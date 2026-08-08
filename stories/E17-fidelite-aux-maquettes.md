@@ -160,14 +160,14 @@
      coût zéro côté produit, mais la charte perd sa typographie et `DV-07` devient sans objet.
   3. **Choisir une police déjà présente** sur les appareils cibles — suppose de connaître le parc,
      ce qui n'est pas le cas en BYOD.
-- **CA** *(à écrire une fois l'option retenue — l'énoncer maintenant préjugerait de l'arbitrage)* :
+- **Contraintes valables quelle que soit l'option retenue** *(le CA complet s'écrit après l'arbitrage ; celles-ci, elles, tiennent dans les trois branches — ce ne sont pas des provisoires à ignorer)* :
   - l'application affiche la **même police** sur un poste **sans accès réseau et sans la police
     installée** — c'est le seul critère qui distingue vraiment les trois options ;
   - **aucun chargement depuis un domaine externe** : un `@import` vers un CDN est un échec silencieux
     en LAN, exactement le mode de panne que l'US vient fermer ;
   - la licence de tout actif embarqué est **versionnée à côté du fichier** et déclarée dans
     [`docs/dependances.md`](../docs/dependances.md) (règle 11).
-- **Notes** : `DV-07` · relève l'unique « non fait » assumé d'`E17US001`. **Piège** : vérifier le
+- **Notes** : `DV-07` · **résorbe [DETTE-043](../docs/dette.md)** (la charte impose Inter, l'application ne l'embarque pas) · relève l'unique « non fait » assumé d'`E17US001`. **Piège** : vérifier le
   rendu **avec la police désinstallée du poste de dev**, sinon le test réussit toujours en local —
   c'est la même classe de piège que `crypto.randomUUID`, qui marche en `localhost` et casse en LAN.
 - **Dépend de** : E17US001 · **Jalon** : J3
@@ -180,7 +180,7 @@
   mesurée ne prévoit **rien** pour le cas destructeur. Le produit utilise donc l'ambre par défaut —
   la **même teinte** que « poste hors ligne » et que l'avertissement. `E17US002` a atténué le
   symptôme (l'action destructrice ne prend plus l'aplat, la sécurité passe par le dialogue
-  d'[ADR-0072](../docs/adr/0072-confirmation-des-actions-irreversibles.md)) sans traiter la cause.
+  d'[ADR-0072](../docs/adr/0072-confirmation-destructrice-dialog-natif.md)) sans traiter la cause.
 - ⛔ **Bloquée sur un arbitrage — trou de charte.** Ce n'est **pas** une US d'écran : la palette ne se
   discute pas en US (`EPIC-17` § Exclus), elle se décide **en ADR** contre la charte mesurée, avec les
   ratios de contraste. Options à soumettre : (a) une **troisième teinte** entrant à la charte, avec
@@ -188,7 +188,7 @@
   `E17US002` a déjà posé (`--danger` avertit, `--danger-strong` escalade) : l'acter suffirait, et
   l'US se réduirait à documenter ; (c) **aucune couleur propre** — le destructeur se signale par la
   **forme** et le dialogue seuls, la couleur n'y jouant aucun rôle.
-- **CA** *(à écrire après l'arbitrage)* :
+- **Contraintes valables quelle que soit l'option retenue** *(le CA complet s'écrit après l'arbitrage ; celles-ci tiennent dans tous les cas)* :
   - une action **irréversible** et un **avertissement** ne partagent pas leur signalement ;
   - le signalement ne repose **jamais sur la couleur seule** (`DV-03`) ;
   - tout jeton ajouté porte son **ratio de contraste mesuré** en commentaire, dans **les deux
@@ -244,7 +244,11 @@
   - ⚠️ **là où fidélité et usage s'opposent, l'usage gagne et la planche est corrigée.** C'est l'axe
     où ce risque est réel : une planche se juge à l'arrêt, un pavé de saisie se juge **une flèche à la
     main**. Tout arbitrage de ce type est **écrit** dans la planche, pas seulement appliqué.
-- **Notes** : `S09 · états système` est la planche à lire en premier — elle fixe le vocabulaire
+- **Notes** : ⚠️ **US à deux temps — à redécouper dès que le relevé est produit.** Le second temps
+  (« les écarts sont résorbés ») n'a **pas de périmètre borné** tant que le relevé n'existe pas : on
+  ne peut donc pas en dériver de test au moment de brancher. Même plafond qu'`E17US007` — **six
+  écrans dans une branche**, et ici il y en a neuf : le redécoupage est la règle, pas l'exception.
+  `S09 · états système` est la planche à lire en premier — elle fixe le vocabulaire
   visuel des états que les huit autres réemploient. **Recoupe `E16US011`**, dont l'une des deux
   contradictions à arbitrer porte sur `S08` (validation de cible) **contre un endpoint vivant** :
   l'attendre plutôt que de trancher ici.
@@ -265,7 +269,9 @@
     retard sur la décision, et c'est **la planche** qui est corrigée ;
   - l'**écran de salle** (`P06`, `P07`) se juge à sa **distance d'usage** — vidéoprojecteur 1920 × 1080
     lu à plusieurs mètres —, pas au navigateur du poste de dev.
-- **Notes** : ⚠️ **`P03` a été redessinée le 05/08 et n'a pas été validée** (pas de tour 2) ; elle est
+- **Notes** : ⚠️ **US à deux temps — à redécouper dès que le relevé est produit**, pour la même
+  raison qu'`E17US008` : le « résorber » n'est pas borné avant que le « relever » ait rendu.
+  ⚠️ **`P03` a été redessinée le 05/08 et n'a pas été validée** (pas de tour 2) ; elle est
   écartée pour la même raison qu'A14. Ne pas rouvrir l'arbitrage d'`E16US004`.
 - **Dépend de** : E17US002 · **Jalon** : J3
 

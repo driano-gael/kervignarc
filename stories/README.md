@@ -273,7 +273,9 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 | 6 | **E05US025** | Plusieurs qualifications dans un même déroulé *(**dépend d'`E05US024`** par nécessité)* | J3 |
 | 7 | **E05US023** | Rendre jouables poules, suisse, colline et Big Shoot Off *(**à découper**)* | J3 |
 
-> ⚠️ **`E05US023` est au rang 7 sur arbitrage du 08/08/2026** — priorité « au plus tôt » donnée par
+> ⚠️ **`E05US023` est au rang 7 de ce chantier — soit le rang 2 de la file d'exécution**
+> (cf. [`SUIVI-US.md`](../journal-d-avancement/SUIVI-US.md), qui ne compte que ce qui reste ; ce
+> tableau-ci inclut les US déjà livrées) — **sur arbitrage du 08/08/2026** : priorité « au plus tôt » donnée par
 > le commanditaire, tempérée par une dépendance dure : `E05US024`+`E05US025` forment **un seul
 > chantier**, et couper au milieu laisserait le peuplement générique à moitié exploité. Elle passe
 > donc **devant `E16US002`** mais **derrière `E05US025`**.
@@ -343,9 +345,11 @@ Découpage des EPICs en user stories **à destination d'un développeur** (maill
 ## US absorbées (hors séquence — l'identifiant reste, la capacité est livrée ailleurs)
 
 > **Ne jamais les ordonnancer.** Une US absorbée dont l'identifiant traîne dans une file de priorité
-> se prend pour du travail restant ; pire, un agent qui vérifie « absorbée, donc faite » en conclut
-> que la capacité est livrée — ce qui est vrai ici, mais **faux pour `E12US004`**, dont le producteur
-> d'audit `FORFAIT` n'existe toujours pas.
+> se prend pour du travail restant. ⚠️ Et « absorbée, donc faite » reste un **raccourci** : rien ne
+> garantit qu'une US absorbante ait livré **toute** la capacité de l'absorbée. Les quatre ci-dessous
+> le sont — `E12US004` comprise : le producteur d'audit `FORFAIT` est livré et câblé
+> (`application/forfaits.py`, trace atomique via `declarer_avec_trace` / `annuler_avec_trace`).
+> Se le faire confirmer **par le code**, jamais par ce tableau.
 
 | US | Titre | Absorbée par | Date |
 |---|---|---|---|

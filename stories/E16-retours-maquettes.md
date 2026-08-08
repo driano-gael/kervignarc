@@ -69,7 +69,7 @@
     crée pas de bibliothèque de phases autonomes. Les deux motifs d'ADR-0060 §5 tiennent toujours —
     le barème n'est pas une entité (il vit dans la définition de l'étape), et une phase hors tournoi
     porterait un `ordre` en collision qui casserait l'invariant de séquence 1..N.
-- **Notes** : touche le **domaine et l'API** — aujourd'hui les réglages de qualification vivent sur le barème du tournoi (`bareme`), pas sur la phase. Relire [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) (catalogue de onze types) et [ADR-0060](../docs/adr/0060-briques-patrimoine-du-club.md) avant de cadrer. **ADR probable**. **Redécoupable** (liste seule / fiche / gabarits) — probablement trop large pour une branche.
+- **Notes** : touche le **domaine et l'API** — aujourd'hui les réglages de qualification vivent sur le barème du tournoi (`bareme`), pas sur la phase. Relire [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) (catalogue de onze types) et [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) avant de cadrer. **ADR probable**. **Redécoupable** (liste seule / fiche / gabarits) — probablement trop large pour une branche.
 - **Dépend de** : E05US015, E01US023, E01US024 · **Jalon** : J2 · **Origine** : questionnaire A07, 04/08/2026
 
 ---
@@ -137,7 +137,7 @@
 - **CA — origine visible** : catégories, blasons, clubs et barèmes portent une **origine** (officielle / locale), affichée et filtrable.
 - **CA — logo du club** : un second logo, **facultatif**, distinct du logo d'événement.
 - **CA — question restée sans réponse, à reposer** : *« l'import depuis un fichier (catégories FFTA, liste de clubs) est-il nécessaire ? »* — il conditionne la façon dont l'origine « officielle » est alimentée.
-- **Notes** : demande un **champ de données** sur les référentiels et sur l'identité — donc migration Alembic. Rattaché à E01US016 pour le logo. Relire [ADR-0060](../docs/adr/0060-briques-patrimoine-du-club.md) : la notion de bibliothèque existe déjà, l'origine s'y ajoute.
+- **Notes** : demande un **champ de données** sur les référentiels et sur l'identité — donc migration Alembic. Rattaché à E01US016 pour le logo. Relire [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) : la notion de bibliothèque existe déjà, l'origine s'y ajoute.
 - **Dépend de** : E01US023, E01US016 · **Jalon** : J2 · **Origine** : questionnaires A05, A06, 04/08/2026
 
 ---
@@ -212,7 +212,7 @@
 - **Contexte** : née de l'arbitrage d'**E16US003** (07/08/2026). Le commanditaire, interrogé sur le seul libellé de l'écran de complétude, a répondu plus large : *« je viserais plus 2 notions : prêt à démarrer, prêt à terminer, et prêt à archiver, prêt à exporter »*. E16US003 n'a livré **qu'un** membre de cette famille — l'écran de complétude sportive, renommé « **Prêt à terminer ?** » — et a explicitement refusé d'improviser les autres.
 - **CA — une forme commune** : chaque écran « prêt à … » répond à **une** question binaire (« puis-je passer à l'étape suivante ? »), liste **ce qui manque** sous forme d'états (pas de barre de progression, `D-17`), et porte **l'action** correspondante. Il **avertit sans bloquer** (`D-15`).
 - **CA — les quatre membres** : *prêt à démarrer*, *prêt à terminer*, *prêt à archiver*, *prêt à exporter*. ⚠️ **À vérifier au cadrage** : le commanditaire a dit « **2 notions** » avant d'en citer quatre — savoir s'il en vise quatre écrans, deux, ou une forme unique paramétrée est **la** question qui commande le découpage.
-- **CA — sans doublonner ce qui existe** : la **frise du cycle de vie** (E14US001, 7 statuts, [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-a-sept-statuts.md)) porte déjà les transitions et leurs gardes ; le **feu vert** (`E16US008`) est déjà un « prêt à lancer un tour ». Ces écrans doivent s'y **brancher**, pas en fabriquer une seconde source.
+- **CA — sans doublonner ce qui existe** : la **frise du cycle de vie** (E14US001, 7 statuts, [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md)) porte déjà les transitions et leurs gardes ; le **feu vert** (`E16US008`) est déjà un « prêt à lancer un tour ». Ces écrans doivent s'y **brancher**, pas en fabriquer une seconde source.
 - **Notes** : ⚠️ **refonte de navigation, ADR probable.** Elle recoupe `E16US007` (exports) et `E16US008` (feu vert) : **à instruire avant elles**, sinon chacune figera sa propre variante dans son coin et la famille sera à refaire. Vérifier aussi l'interaction avec l'ossature à trois axes ([ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)) — « archiver » et « exporter » vivent en **gestion**, « démarrer » et « terminer » en **pilotage** : une famille cohérente qui traverse deux axes est précisément le genre de tension qu'un ADR doit trancher. **Redécoupable par membre.**
 - **Dépend de** : E14US001, E16US003 · **Jalon** : J3 · **Origine** : arbitrage du commanditaire en revue d'E16US003, 07/08/2026
 

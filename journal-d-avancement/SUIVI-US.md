@@ -96,6 +96,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
 > | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
 > | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
+> | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 >
 > ---
 >
@@ -1006,11 +1007,16 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
 - **`~~barré~~`** : l'identifiant ou le titre est barré quand l'US est **absorbée, caduque ou déjà
   faite** dans une file de priorité — le texte barré est conservé pour que la référence reste
   trouvable, jamais supprimé. Le **glyphe d'état n'est pas barré** (sinon l'état devient illisible).
-- **Règle de comptage d'un jalon** : `n/N` compte les **lignes numérotées** du tableau (colonne
-  `Seq`), **US absorbées exclues**. Les lignes à `Seq = —` (US hors séquence, remontées d'une
-  section d'ajouts) sont comptées **dans leur section d'origine**, pas dans le jalon — sans quoi la
-  même US serait comptée deux fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14,
-  J3 12/15 et J4 0/7.
+- **Règle de comptage d'un jalon** : `n/N` compte les **lignes portant un identifiant d'US**
+  (colonne `Seq` quand le tableau en a une — celui de J0 n'en a pas), **US absorbées exclues**. Une
+  ligne **sans identifiant d'US** (relevé, lot hors US — ex. « Relevé d'écarts des 19 planches
+  admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
+  une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
+  **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 12/15 et J4 0/7.
+  *(Les deux précisions — « quand le tableau en a une » et « ligne sans identifiant » — ont été
+  ajoutées en revue le 08/08/2026 : à la lettre, la version initiale rendait `0/0` pour J0, dont le
+  tableau n'a pas de colonne `Seq`, et ne disait pas comment traiter la ligne de relevé d'EPIC-17.)*
   *(Instituée le 08/08/2026 : trois compteurs sur cinq étaient faux, chacun d'un mode différent —
   en-tête mise à jour sans le corps (J3), US absorbée comptée au dénominateur (J4), lignes ajoutées
   sans toucher l'en-tête (démo 27/07). Sans règle écrite, chaque correction en rouvrait une autre.)*

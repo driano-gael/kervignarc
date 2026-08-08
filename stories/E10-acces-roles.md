@@ -81,9 +81,16 @@
   adapter `HorlogeSysteme` UTC, injecté pour le déterminisme (règle 9) ; `ServiceAudit.consigner`
   (primitive d'écriture) et `lister` ; endpoint **`GET /api/v1/tournois/{id}/audit`** réservé à
   l'admin (« consultable par l'admin »).
-- **Reste** : les **producteurs** de traces — `consigner` n'a pas encore d'appelant : la validation
-  et la correction de score l'appelleront depuis **E04US002**, le forfait depuis **E12US004** ; la
-  **surface front** de consultation admin (l'endpoint existe, l'écran non).
+- **Reste** *(état au 19/07/2026 ; ✅ **soldé depuis**, voir ci-dessous)* : les **producteurs** de
+  traces — `consigner` n'avait alors aucun appelant : la validation et la correction de score
+  devaient l'appeler depuis **E04US002**, le forfait depuis **ex-E12US004** ; la **surface front**
+  de consultation admin (l'endpoint existe, l'écran non).
+  > **Mise à jour au 08/08/2026.** Les producteurs sont **livrés** : validation et correction par
+  > **E04US002** (30/07), forfait par **E04US015**, qui a **absorbé ex-E12US004** le 27/07
+  > ([ADR-0050](../docs/adr/0050-forfait-abandon-et-disqualification.md)). Ne pas chercher
+  > `consigner` chez eux : sept des huit chemins d'écriture passent par une méthode `*_avec_trace`
+  > (trace atomique avec l'agrégat) ; `consigner` ne sert qu'au **lancement de tour**, seul acte
+  > sans agrégat. Seule la surface front reste due.
 - **Notes** : **socle avancé hors séquence le 19/07/2026** (arbitrage utilisateur). Motif :
   **E04US002** (seq 41) « Dépend de E10US005 » (seq 47) pour son CA « correction tracée » — une
   dépendance vers une US **postérieure**, insatisfiable en l'état (l'`AuditLog` n'existait pas). Plutôt
@@ -95,8 +102,11 @@
   la persistance réattachant UTC en aveugle à la relecture, un instant naïf ou non-UTC ferait mentir
   le journal en silence — on ferme ce chemin au bord de l'agrégat (revue adversariale).
 - **Limite connue (atomicité)** : `consigner` commit dans **sa propre session** — le socle n'offre
-  **pas** l'atomicité transactionnelle acte↔trace. C'est aux **producteurs** (E04US002/E12US004) de
-  la trancher (cf. Notes d'E04US002) ; le socle, sans appelant, ne régresse rien.
+  **pas** l'atomicité transactionnelle acte↔trace. C'est aux **producteurs** (E04US002 /
+  **E04US015**, qui a absorbé ex-E12US004) de la trancher (cf. Notes d'E04US002) ; le socle, sans
+  appelant, ne régressait rien. **Tranchée depuis** : les producteurs co-écrivent la trace dans la
+  session de l'agrégat (`*_avec_trace` + `AuditRepositorySQL.consigner_dans`, un seul commit —
+  [ADR-0035](../docs/adr/0035-atomicite-acte-trace-session-partagee.md)).
 - **Dépend de** : E10US002 · **Jalon** : J1
 
 ### E10US006 — Modifier le mot de passe admin

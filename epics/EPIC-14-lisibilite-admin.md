@@ -4,7 +4,7 @@
 - **Statut** : ✅ **Close** *(3 capacités sur 3 livrées, 28–29/07/2026)*
 - **Priorité** : MVP *(retours de la démo au client final, 27/07/2026)*
 - **Dépend de** : EPIC-00 (coquille admin), EPIC-01 (cycle de vie 7 statuts), EPIC-12 (complétude, supervision, alertes)
-- **Réfs** : [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) §7.1 (`D-19`, `D-20`) ; [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) (7 statuts) ; ~~[ADR-0032](../docs/adr/0032-navigation-admin-par-etat-local.md) (navigation par état local)~~ **remplacé par [ADR-0059](../docs/adr/0059-une-adresse-par-role.md)** ; [ADR-0052](../docs/adr/0052-accueil-admin-contextualise-par-statut.md) (accueil contextualisé par statut — *l'« ADR à créer » annoncé ici, écrit le 28/07/2026*) ; [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) (trois axes d'activité, révise `D-19`)
+- **Réfs** : [`cahier-des-charges-ux.md`](../cahier-des-charges-ux.md) §7.1 (`D-19`, `D-20`) ; [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md) (7 statuts) ; ~~[ADR-0032](../docs/adr/0032-navigation-admin-par-etat-local.md) (navigation par état local)~~ **remplacé par [ADR-0059](../docs/adr/0059-routage-par-role-dans-l-url-routeur-maison.md)** ; [ADR-0052](../docs/adr/0052-accueil-admin-contextualise-par-statut.md) (accueil contextualisé par statut — *l'« ADR à créer » annoncé ici, écrit le 28/07/2026*) ; [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) (trois axes d'activité, révise `D-19`)
 
 ## Objectif / valeur
 Rendre l'admin **lisible sans formation** : que l'interface « raconte une histoire claire » — où en est
@@ -32,7 +32,7 @@ ne veux pas de formation ».
 - [x] **Ranger l'administration par axe d'activité** plutôt que par temps du tournoi, et donner
       **une adresse par rôle** (`E14US003`) — livré le 29/07/2026.
       [ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) **révise `D-19`** ;
-      [ADR-0059](../docs/adr/0059-une-adresse-par-role.md) **remplace ADR-0032**, listé plus haut en
+      [ADR-0059](../docs/adr/0059-routage-par-role-dans-l-url-routeur-maison.md) **remplace ADR-0032**, listé plus haut en
       « Exclus » — l'exclusion portait sur `react-router`, pas sur le découpage par rôle.
       *(Capacité **manquante jusqu'au 08/08/2026** : l'epic ne listait que 001 et 002, toutes deux
       cochées, et se présentait donc comme **terminé** alors qu'il portait la refonte de navigation

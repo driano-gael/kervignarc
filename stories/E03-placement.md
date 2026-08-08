@@ -49,7 +49,7 @@ disposer d'un plan exploitable sans saisie manuelle.
   — ne pas dériver de cette phrase un CA périmé.)*
 - **Absorbe** : ex-E03US001 à 003, E03US008. **Dépend de** : E01US007, E02US004 · **Jalon** : J1
 
-### E03US004 — Ajuster le placement (glisser-déposer)
+### E03US004 — Ajuster le placement (glisser-déposer) ✅
 *En tant qu'*administrateur, *je veux* déplacer un archer à la main et être empêché par l'UI si le
 déplacement viole les règles, *afin d'*affiner le placement auto sans le casser.
 - **CA — glisser-déposer (ex-004)** : drag & drop d'un archer d'une position à une autre ;
