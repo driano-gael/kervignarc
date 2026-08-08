@@ -40,6 +40,7 @@ from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.politiques import (
+    AggregationParQualification,
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     SeedingSerpent,
@@ -49,6 +50,7 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxDepartRepository,
+    FauxDuelRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
     FauxPhaseRepository,
@@ -61,7 +63,7 @@ from tests.test_service_placement_duels import (
     FauxSerieRepository,
     FauxTournoiRepository,
 )
-from tests.test_service_saisie_duels import ZONES_TRIPLE, FauxDuelRepository
+from tests.test_service_saisie_duels import ZONES_TRIPLE
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
 
@@ -153,6 +155,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
             registre_par_defaut(),
+            AggregationParQualification(),
         )
 
     @property
@@ -171,6 +174,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
             registre_par_defaut(),
+            self.saisie,
         )
 
     @property

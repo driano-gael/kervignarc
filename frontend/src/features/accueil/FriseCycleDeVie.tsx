@@ -58,8 +58,14 @@ function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
       ? ' Ce format exige ce minimum, au-delà de ce que son déroulé impose.'
       : exigence.ordre_phase === null
         ? ' Son déroulé ne peut pas se jouer à moins que cela.'
-        : ` La phase ${exigence.ordre_phase} prélève à partir du rang ${exigence.rang_debut} :` +
-          ` il lui faut au moins ${exigence.minimum} classés pour avoir des tireurs.`
+        : // ⚠️ **`ordre_source` nomme la phase où le rang se lit** (E05US024). Depuis que le
+          // plancher remonte la chaîne des sources, `rang_debut` s'exprime dans le classement de
+          // la phase **source** alors que `minimum` compte des **inscrits** au tournoi : sans la
+          // nommer, les deux chiffres ne se déduisent plus l'un de l'autre. Et « classés » était
+          // faux — le serveur dit « inscrits », et c'est bien d'inscriptions qu'il s'agit.
+          ` La phase ${exigence.ordre_phase} prélève à partir du rang ${exigence.rang_debut}` +
+          `${exigence.ordre_source != null && exigence.ordre_source !== exigence.ordre_phase ? ` de la phase ${exigence.ordre_source}` : ''} :` +
+          ` il lui faut au moins ${exigence.minimum} inscrits pour avoir des tireurs.`
   return (
     <p className="carte__etat carte__etat--alerte" role="status">
       <span aria-hidden="true">▲</span> <strong>Effectif insuffisant</strong> — {exigence.inscrits}{' '}

@@ -9,8 +9,14 @@ puces couvertes, dans l'ordre :
 - « **minimum exigé, facultatif** » — un format peut exiger davantage que son minimum technique,
   jamais moins ; l'énoncer plus bas rend le format inapplicable ;
 - « **visible à la composition** » — la projection annonce le minimum, effectif simulé ou non ;
-- « **portée du calcul** » — un rang se lit dans le classement de sa phase source : seuls les
-  prélèvements visant la **première** phase se traduisent en nombre d'inscrits.
+- « **portée du calcul** » — un rang se lit dans le classement de sa phase source, et la chaîne se
+  **remonte** jusqu'à la phase alimentée par les inscriptions (E05US024). Seules les phases dont le
+  moteur sait lire le classement (`_TYPES_CLASSANTS_LUS`) comptent ; une fenêtre amont **bornée**
+  ne fixe aucun plancher.
+  ⚠️ Cet en-tête a affirmé jusqu'au 08/08/2026 que « seuls les prélèvements visant la **première**
+  phase se traduisent en nombre d'inscrits » — vrai avant E05US024, faux depuis, et non corrigé par
+  le commit qui ajoutait pourtant cinq tests le contredisant. C'est l'oracle local que lira le
+  prochain auteur de test : le laisser périmé, c'est le piège de la règle 9 un cran plus bas.
 
 Le raisonnement du chiffre, une fois pour toutes : une phase en tableau a besoin de **deux**
 participants ; un prélèvement « à partir du rang d » n'en a deux que lorsque la phase source en
@@ -140,10 +146,16 @@ def test_un_prelevement_dans_une_phase_intermediaire_ne_se_lit_pas_en_inscrits()
     assert effectif_minimum(etapes) == 2
 
 
-# --- Le classement traduisible est celui de la QUALIFICATION, pas celui de la première phase -----
-# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._ordre_de_la_qualification`
-# n'honore un prélèvement que s'il vise la phase de type `qualification`. Un plancher qui viserait
-# autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
+# --- Le classement traduisible est celui d'une phase CLASSANTE, où qu'elle soit dans le déroulé ---
+# L'oracle de cette section est le **moteur** : `ServiceSaisieDuels._classement_de_l_ordre` sait
+# lire une qualification **et** un tableau, et rend `None` pour tout autre type. Un plancher qui
+# viserait autre chose mentirait — et il a menti dans les deux sens avant d'être corrigé.
+#
+# ⚠️ **Élargi par E05US024.** La section s'intitulait « celui de la QUALIFICATION, pas celui de la
+# première phase », et son oracle était `_ordre_de_la_qualification` — méthode qui n'existe plus.
+# Ce qui a changé n'est pas la règle (« le plancher vise exactement ce que le moteur lira ») mais
+# **ce que le moteur sait lire**. Les deux tests de refus abusif ci-dessous restent donc valables
+# tels quels : ils portent sur des types que rien n'exécute, ce que cette US ne touche pas.
 
 
 def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
@@ -164,11 +176,40 @@ def test_un_echauffement_en_tete_ne_desactive_pas_le_controle() -> None:
     assert effectif_minimum(etapes) == 34
 
 
-def test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits() -> None:
-    """Sans classement à lire, le moteur ensemence avec **tous** les archers en lice : réclamer le
-    rang de départ serait un refus abusif le jour J.
+def test_le_plancher_remonte_la_chaine_des_prelevements() -> None:
+    """**CA E05US024 — l'effectif minimum suit la chaîne.**
 
-    Il reste le plancher structurel — deux tireurs pour un tableau.
+    « Les rangs 5 et suivants d'un tableau qui prend lui-même les rangs 17 à 32 de la
+    qualification » : pour que ce tableau classe 6 archers (5ᵉ et 6ᵉ, soit les deux tireurs que le
+    tableau aval exige), la qualification doit en classer `17 - 1 + 6 = 22`. Le décalage se
+    **cumule** le long de la chaîne.
+
+    Avant cette US, seule une source visant la qualification comptait : ce déroulé n'annonçait que
+    son plancher structurel, 2. L'organisateur démarrait à 12 inscrits et la phase manquait de monde
+    en salle — le mode de défaillance que le plancher existe pour éviter.
+    """
+    etapes = [
+        _qualification(),
+        _tableau(2, SourcePhase.par_rangs(1, 17, 32)),
+        _tableau(3, SourcePhase.par_rangs(2, rang_debut=5)),
+    ]
+
+    assert effectif_minimum(etapes) == 22
+
+
+def test_un_tableau_en_tete_se_traduit_en_inscrits_comme_une_qualification() -> None:
+    """Une phase **en tête** est alimentée par les inscriptions, quel qu'en soit le type (E05US024).
+
+    ⚠️ **Ce test remplace `test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits`**, dont la
+    prémisse est tombée avec E05US024 : « sans qualification, il n'y a aucun classement à lire ». Ce
+    n'est plus vrai — le moteur lit désormais le classement de **toute** phase classante, et un
+    tableau en tête en est une. « Les rangs 33 et suivants » de ce tableau réclament donc bien 34
+    inscrits : le tableau les classe tous, puisque rien ne l'a filtré en amont.
+
+    Ce que l'ancien test protégeait reste protégé ailleurs, et c'est ce qui permet de le remplacer
+    sans perte : `test_un_type_sans_consommateur_ne_bloque_pas_le_lancement` couvre le refus abusif
+    (le vrai risque), et `test_une_fenetre_dun_seul_rang_ne_fixe_pas_de_plancher` la fenêtre trop
+    étroite.
     """
     etapes = [
         _tableau(1),
@@ -177,7 +218,7 @@ def test_sans_qualification_aucun_rang_ne_se_traduit_en_inscrits() -> None:
         ),
     ]
 
-    assert effectif_minimum(etapes) == 2
+    assert effectif_minimum(etapes) == 34
 
 
 def test_une_phase_sans_opposition_se_contente_dun_participant() -> None:
@@ -380,3 +421,106 @@ def test_la_projection_generique_annonce_le_minimum_deduit() -> None:
     projection = projeter([_qualification(), _tableau(2, SourcePhase.par_rangs(1, rang_debut=33))])
 
     assert projection.effectif_minimum == 34
+
+
+def test_un_deroule_qui_boucle_ne_part_pas_en_recursion() -> None:
+    """Le plancher d'un brouillon cyclique se calcule, il ne fait pas tomber l'écran.
+
+    Bloquant de revue, reproduit par deux axes. `_inscrits_pour_classer` fondait sa terminaison sur
+    l'antériorité des sources, « vérifiée par `verifier_sequence` ». L'argument vaut pour les
+    chemins d'**écriture** — pas pour `projeter`, dont la docstring dit l'inverse (« une séquence
+    incohérente ne fait pas échouer le calcul, elle le **décrit** »), et pas depuis
+    E01US024/ADR-0063, où un format s'enregistre incomplet **sans** passer par `verifier_sequence`.
+
+    Un brouillon dont une étape se désigne elle-même en source partait donc en `RecursionError`,
+    donc en **500** — sur l'écran de diagnostic dont le métier est justement de dire à
+    l'organisateur que sa composition boucle.
+    """
+    etapes = [
+        _qualification(1),
+        _tableau(2, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
+    ]
+
+    # Le plancher structurel subsiste (un tableau veut deux tireurs) ; aucun rang n'est chiffrable.
+    assert effectif_minimum(etapes) == 2
+
+
+def test_un_cycle_entre_deux_etapes_ne_part_pas_en_recursion() -> None:
+    """Même garde, sur un cycle de longueur 2 — l'auto-source n'est pas le seul cas."""
+    etapes = [
+        _qualification(1),
+        _tableau(2, SourcePhase.par_rangs(ordre_source=3, rang_debut=1, rang_fin=8)),
+        _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8)),
+    ]
+
+    assert effectif_minimum(etapes) == 2
+
+
+def test_le_plancher_est_le_minimum_des_exigences_pas_celui_des_rangs() -> None:
+    """Deux sources de **profondeurs différentes** : la plus basse en rang n'est pas la moins chère.
+
+    Correctif de revue (axe C1). Le code prenait d'abord la source au plus petit `rang_debut`, ce
+    qui supposait que toutes visaient la **même** phase — vrai tant que seule la qualification était
+    lisible, faux depuis cette US.
+
+    Ici la phase 3 est nourrie par « les rangs 5 et suivants de la phase 2 » — un tableau qui prend
+    lui-même les places 17 à 32, donc une source **chère** : 22 inscrits — **et** par « les rangs 6
+    et suivants de la qualification », qui n'en réclame que 7. La première a pourtant le
+    `rang_debut`
+    le plus bas (5 < 6) : l'ancien code la choisissait pour ce seul motif et annonçait **22**, alors
+    que 18 suffisent (ce que réclame la phase 2 pour elle-même). Un refus abusif au démarrage.
+    """
+    etapes = [
+        _qualification(1),
+        _tableau(2, SourcePhase.par_rangs(ordre_source=1, rang_debut=17, rang_fin=32)),
+        _tableau(
+            3,
+            SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=None),
+            SourcePhase.par_rangs(ordre_source=1, rang_debut=6, rang_fin=None),
+        ),
+    ]
+
+    # 18 = ce que la phase 2 exige d'elle-même (17 - 1 + 2). La phase 3, elle, se contente de 7.
+    assert effectif_minimum(etapes) == 18
+
+
+def test_une_source_infaisable_n_eteint_pas_l_exigence_de_sa_voisine() -> None:
+    """Le sens inverse du précédent : un `None` ne doit pas ramener le plancher au structurel.
+
+    La phase 3 prélève « les rangs 33 et suivants » d'un tableau qui n'en prend que 32 — infaisable
+    à tout effectif, donc `None` — **et** « les rangs 60 et suivants » de la qualification, qui
+    réclame 61 inscrits. Le premier `None` faisait retomber tout le calcul sur le plancher
+    structurel (2) : le tournoi démarrait, puis manquait de monde en salle.
+    """
+    etapes = [
+        _qualification(1),
+        _tableau(2, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=32)),
+        _tableau(
+            3,
+            SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None),
+            SourcePhase.par_rangs(ordre_source=1, rang_debut=60, rang_fin=None),
+        ),
+    ]
+
+    assert effectif_minimum(etapes) == 61
+
+
+def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> None:
+    """Le verrou de `_TYPES_CLASSANTS_LUS` dans le sens **dangereux** (correctif de revue, axe B/D).
+
+    La table est présentée comme le miroir de `ServiceSaisieDuels._classement_de_l_ordre`, et sa
+    divergence est censée rouvrir le défaut d'E05US021. Or seul le sens « retirer un type » était
+    gardé : y **ajouter** un type que le moteur ne lit pas — ici les poules — produit un plancher
+    réclamé pour un prélèvement que rien n'honorera, soit le « refus abusif le jour J » que la
+    docstring nomme elle-même comme l'un des deux pires modes de défaillance.
+
+    Vérifié par mutation en revue : élargir la table à `{POULES, SUISSE}` laissait **99 tests
+    verts**. Ce test-ci passe à 34 si on l'élargit, et c'est tout son objet.
+    """
+    etapes = [
+        _qualification(1),
+        ModelePhase(ordre=2, type=TypePhase.POULES),
+        _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
+    ]
+
+    assert effectif_minimum(etapes) == 2

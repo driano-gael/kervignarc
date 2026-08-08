@@ -37,6 +37,7 @@ from application.erreurs import (
     ArcherIntrouvable,
     PhaseQualificationAbsente,
     PilotageSimulationInvalide,
+    PrelevementEnAttente,
     SessionSimulationIntrouvable,
     UniteSimulationInvalide,
 )
@@ -671,7 +672,15 @@ class ServicePilotageSimulation:
         for phase_id in session.phases_duels:
             try:
                 etat = session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
-            except EffectifTableauInvalide:
+            # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas
+            # encore
+            # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant
+            # »
+            # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point
+            # de
+            # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+            # trois axes de revue : régression introduite par le refus typé lui-même).
+            except (EffectifTableauInvalide, PrelevementEnAttente):
                 continue
             if etat.est_termine:
                 continue
@@ -695,7 +704,12 @@ class ServicePilotageSimulation:
         sinon."""
         try:
             etat = session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
-        except EffectifTableauInvalide as exc:
+        # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas encore
+        # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant »
+        # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point de
+        # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+        # trois axes de revue : régression introduite par le refus typé lui-même).
+        except (EffectifTableauInvalide, PrelevementEnAttente) as exc:
             raise UniteSimulationInvalide(
                 f"La phase {phase_id} n'a pas encore assez de duellistes classés "
                 "pour jouer un duel."
@@ -746,7 +760,15 @@ class ServicePilotageSimulation:
                 tableaux.append(
                     session.harnais.saisie_duels.etat_tableau(session.tournoi_id, phase_id)
                 )
-            except EffectifTableauInvalide:
+            # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas
+            # encore
+            # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant
+            # »
+            # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point
+            # de
+            # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+            # trois axes de revue : régression introduite par le refus typé lui-même).
+            except (EffectifTableauInvalide, PrelevementEnAttente):
                 continue
         return tuple(tableaux)
 

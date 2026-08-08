@@ -29,7 +29,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from application.erreurs import DepartIntrouvable, GabaritDuTournoiAbsent, PhaseIntrouvable
+from application.erreurs import (
+    DepartIntrouvable,
+    GabaritDuTournoiAbsent,
+    PhaseIntrouvable,
+    PrelevementEnAttente,
+)
 from application.placement_duels import ServicePlacementDuels
 from application.portee import phase_du_depart
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
@@ -374,7 +379,12 @@ class ServiceRoutage:
         """
         try:
             tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase_id)
-        except EffectifTableauInvalide:
+        # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas encore
+        # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant »
+        # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point de
+        # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+        # trois axes de revue : régression introduite par le refus typé lui-même).
+        except (EffectifTableauInvalide, PrelevementEnAttente):
             return None
         return _Grille(
             tableau=tableau,

@@ -44,7 +44,31 @@
 - **CA — liste** : un écran liste les phases du tournoi (titre, type, rang, état), une ligne par phase, avec ajout depuis un **gabarit de phase**.
 - **CA — fiche** : ouvrir une ligne ouvre la fiche de la phase — son **titre** et ses **réglages propres au type** (nombre de séries, de volées, de flèches, de sets…).
 - **CA — plusieurs phases de même type** : deux qualifications aux réglages différents coexistent dans un même tournoi sans se marcher dessus.
+  - **✅ ARBITRÉ le 08/08/2026 — ce CA sort du périmètre d'E16US002 et devient `E05US024` + `E05US025`.**
+    Le cadrage a montré que la question n'est **pas** un problème d'écran. Deux constats, vérifiés
+    dans le code : (a) le **modèle de composition est déjà générique** — une phase en tête prend les
+    inscrits, toute phase en aval prend ce que ses `sources` déclarent, et rien là-dedans ne regarde
+    le *type* de la phase ; (b) mais le **moteur d'exécution** ne lit qu'un seul classement, celui de
+    la qualification (`application/prelevement.py:preleves`), et tout prélèvement visant une autre
+    phase est **ignoré en silence** — la phase reçoit alors *tous* les archers en lice. L'unicité de
+    la qualification (`_anomalies_unicite_qualification`, E05US021) n'est que le **pansement** de ce
+    raccourci : tant que le moteur dit « **la** » qualification, il faut qu'il n'y en ait qu'une.
+    ⚠️ **Conséquence à ne pas perdre** : lever l'unicité **seule** serait le pire des deux mondes —
+    l'écran laisserait composer deux qualifications, et en salle le tableau se peuplerait de tous les
+    archers au lieu des rangs déclarés. C'est exactement « le tournoi démarrait puis cassait en
+    salle » que la docstring d'E05US021 décrit. D'où l'ordre imposé : `E05US024` (le prélèvement lit
+    le classement de **sa** phase source) **puis** `E05US025` (plusieurs qualifications).
+    *Arbitrage du commanditaire : « la création du déroulé doit permettre de composer les phases
+    comme on en a envie, le club est libre de son format de tournoi. »*
 - **CA — réutilisable d'une année sur l'autre** : le **gabarit** est ce qui se réutilise, comme le **format** l'est déjà (ADR-0060 §5). ⚠️ Vérifier au cadrage si « gabarit de phase » et « format » sont deux noms d'une même chose ou deux niveaux distincts — la réponse change tout le modèle.
+  - **✅ ARBITRÉ le 08/08/2026 — un seul niveau : le format reste la brique.**
+    [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5 est
+    **confirmé**, pas amendé : ce qui se range en bibliothèque et se rejoue d'une année sur l'autre
+    est la **séquence** (`FormatTournoi`), pas la phase isolée. « Ajouter depuis un gabarit de phase »
+    se lit donc comme un **préréglage au moment d'ajouter**, sans nouvel agrégat ni table : on ne
+    crée pas de bibliothèque de phases autonomes. Les deux motifs d'ADR-0060 §5 tiennent toujours —
+    le barème n'est pas une entité (il vit dans la définition de l'étape), et une phase hors tournoi
+    porterait un `ordre` en collision qui casserait l'invariant de séquence 1..N.
 - **Notes** : touche le **domaine et l'API** — aujourd'hui les réglages de qualification vivent sur le barème du tournoi (`bareme`), pas sur la phase. Relire [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) (catalogue de onze types) et [ADR-0060](../docs/adr/0060-briques-patrimoine-du-club.md) avant de cadrer. **ADR probable**. **Redécoupable** (liste seule / fiche / gabarits) — probablement trop large pour une branche.
 - **Dépend de** : E05US015, E01US023, E01US024 · **Jalon** : J2 · **Origine** : questionnaire A07, 04/08/2026
 

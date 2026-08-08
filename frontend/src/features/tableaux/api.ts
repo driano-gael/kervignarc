@@ -67,6 +67,15 @@ export interface TableauPublic {
   est_termine: boolean
   duels: DuelPublic[]
   podium: PlacePodium[]
+  // ⚠️ **Non nul = cette phase n'a pas encore d'arbre** (E05US024, ADR-0081) : elle prélève des
+  // places que sa phase source n'a pas encore attribuées — typiquement une consolante « les rangs 5
+  // à 8 du tableau » composée le matin, quarts non tirés. Porte l'`ordre` de la phase attendue.
+  //
+  // Avant cette US, le serveur montait quand même un arbre, en départageant les archers encore en
+  // lice sur leur rang de qualification : la consolante affichait les 4 derniers **qualifiés** au
+  // lieu des 4 battus des quarts. Bien formé, plausible, et faux. Les champs de dimensions valent
+  // 0 et les listes sont vides quand ce champ est renseigné.
+  en_attente_de: number | null
 }
 
 export interface Tableaux {

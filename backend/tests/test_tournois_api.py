@@ -335,6 +335,10 @@ def test_l_exigence_d_effectif_se_lit_avant_de_cliquer(
         "origine": "aucune",
         "ordre_phase": None,
         "rang_debut": None,
+        # E05US024 : la phase **où le rang se lit**. Ajouté délibérément à l'enveloppe — sans lui,
+        # « rang 5 » et « 22 inscrits » ne se déduisent plus l'un de l'autre depuis que le plancher
+        # remonte la chaîne des sources.
+        "ordre_source": None,
     }
     # `origine` = `deroule` : le chiffre vient du déroulé, pas d'une règle de club. C'est lui qui
     # décide de la phrase affichée — le déduire de `ordre_phase is None` faisait annoncer une
@@ -346,6 +350,13 @@ def test_l_exigence_d_effectif_se_lit_avant_de_cliquer(
         "origine": "deroule",
         "ordre_phase": 3,
         "rang_debut": 33,
+        # E05US024 : le **triplet** est asserté, pas seulement le chiffre. `rang_debut` se lit dans
+        # le classement de la phase `ordre_source` — ici la qualification —, alors que `minimum`
+        # compte des inscrits au tournoi. Un premier correctif prenait le minimum sur les exigences
+        # et la phase sur le plus petit rang : les deux pouvaient désigner des sources différentes,
+        # et le message envoyait l'organisateur débloquer une fenêtre qu'aucun effectif ne débloque.
+        # Asserter le minimum seul laissait passer exactement ça.
+        "ordre_source": 1,
     }
 
 

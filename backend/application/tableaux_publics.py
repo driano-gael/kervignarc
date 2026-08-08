@@ -26,13 +26,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from application.erreurs import ApplicationError, DepartIntrouvable
+from application.erreurs import ApplicationError, DepartIntrouvable, PrelevementEnAttente
 from application.saisie_duels import EtatTableau, ServiceSaisieDuels
 from domain.depart import DepartId
 from domain.erreurs import DomainError
 from domain.phase import TYPES_EN_TABLEAU, PhaseId, TypePhase
 from domain.ports import DepartRepository, PhaseRepository
-from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
 
@@ -45,12 +44,30 @@ class TableauPublic:
     fabriquer « Élimination directe » ici mettrait du texte d'interface dans l'application alors que
     le front en tient déjà le catalogue (`shared/phases/catalogue.ts`). La règle 3 veut le même
     vocabulaire partout — le plus sûr moyen est qu'il n'existe qu'à un endroit.
+
+    ⚠️ **`etat` est facultatif depuis E05US024/ADR-0081** : une phase qui prélève des places que sa
+    source n'a pas encore attribuées n'a **pas** d'arbre à montrer, et ce n'est ni une panne ni une
+    absence. `attente` porte alors l'ordre de la phase source qu'elle attend — un fait, pas une
+    phrase : le texte reste au front (même raison que `type` ci-dessus). Les deux champs sont
+    mutuellement exclusifs, et exactement l'un des deux est renseigné.
     """
 
     phase_id: PhaseId
     ordre: int
     type: TypePhase
-    etat: EtatTableau
+    etat: EtatTableau | None = None
+    attente: int | None = None
+
+    def __post_init__(self) -> None:
+        # L'invariant ci-dessus était énoncé en prose et vérifiable nulle part (relevé par trois
+        # axes) : les deux champs ayant `None` pour défaut, un `TableauPublic` **ni monté ni en
+        # attente** se construisait sans erreur, et le DTO le rendait alors en zéros sans
+        # `en_attente_de` — soit « 0 archers » plus un arbre vide, le seul état que le front ne
+        # sait pas lire. Un invariant de frontière API se garde là où il est bon marché.
+        if (self.etat is None) == (self.attente is None):
+            raise ValueError(
+                "Un tableau public porte soit son arbre, soit l'ordre de la phase qu'il attend."
+            )
 
 
 @dataclass(frozen=True)
@@ -103,45 +120,50 @@ class ServiceTableauxPublics:
         for phase in phases:
             if phase.type not in TYPES_EN_TABLEAU or phase.id is None:
                 continue
-            etat = self._etat_ou_rien(depart.tournoi_id, phase.id)
-            if etat is not None:
+            # Trois issues, et non plus deux (E05US024, ADR-0081) : un arbre lisible, une phase
+            # **en attente** de sa source, ou un échec avalé.
+            #
+            # Le matin, un déroulé composé pour 8 archers porte des phases dont la source ne
+            # prélève encore personne : le moteur refuse à juste titre de monter un arbre de moins
+            # de deux participants. Laisser remonter l'erreur donnerait une **page blanche** — sur
+            # une surface publique et projetée, pour tout le monde, à cause d'une phase qui n'a pas
+            # commencé. On avale donc l'échec **par phase**, en le journalisant : une phase absente
+            # du palmarès le jour J serait sinon indébogable (correctif d'une revue antérieure,
+            # relevé par quatre axes ; le modèle est `ServicePalmares._resultat`).
+            #
+            # ⚠️ **La contrepartie a été réduite, pas supprimée.** Un tableau **cassé** restait
+            # indiscernable d'un tableau **à venir** — les deux disparaissaient de la liste. Le cas
+            # « à venir » le plus fréquent, celui d'une phase qui attend que sa source ait
+            # départagé les places qu'elle prélève, est désormais **dit** plutôt que tu. Restent
+            # confondus les autres échecs, ce qui est le bon arbitrage **pour le spectateur** (il
+            # n'a rien à réparer) ; le diagnostic vit à l'atelier (E01US024).
+            #
+            # `KeyError` est capturé **à part** et en `warning` : aucun code de ce chemin ne le lève
+            # délibérément (le domaine s'y refuse explicitement — `phase.py`, `politiques.py`,
+            # `poule.py` disent tous « explicite plutôt qu'un `KeyError` »). Un `KeyError` ici est
+            # un **défaut de programmation**, pas une phase à venir, et le confondre avec elle le
+            # rendrait invisible.
+            try:
+                etat = self._saisie.etat_tableau(depart.tournoi_id, phase.id)
+            except PrelevementEnAttente as exc:
                 lisibles.append(
-                    TableauPublic(phase_id=phase.id, ordre=phase.ordre, type=phase.type, etat=etat)
+                    TableauPublic(
+                        phase_id=phase.id,
+                        ordre=phase.ordre,
+                        type=phase.type,
+                        attente=exc.ordre_source,
+                    )
                 )
+                continue
+            except (ApplicationError, DomainError) as exc:
+                _logger.info("Tableau de la phase %s écarté de la vue publique : %s", phase.id, exc)
+                continue
+            except KeyError as exc:
+                _logger.warning(
+                    "Défaut interne sur la phase %s, tableau écarté : %r", phase.id, exc
+                )
+                continue
+            lisibles.append(
+                TableauPublic(phase_id=phase.id, ordre=phase.ordre, type=phase.type, etat=etat)
+            )
         return TableauxDuDepart(depart_id=depart_id, tableaux=tuple(lisibles))
-
-    def _etat_ou_rien(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatTableau | None:
-        """La photo d'un tableau, ou `None` s'il n'est **pas encore lisible**.
-
-        Le matin, un déroulé composé pour 8 archers porte des phases dont la source ne prélève
-        encore personne : le moteur refuse à juste titre de monter un arbre de moins de deux
-        participants. Laisser remonter l'erreur donnerait une **page blanche** — sur une surface
-        publique et projetée, pour tout le monde, à cause d'une phase qui n'a pas commencé.
-
-        On avale donc l'échec **par phase**. La contrepartie est réelle et assumée : un tableau
-        **cassé** est indiscernable d'un tableau **à venir** — les deux disparaissent de la liste.
-        C'est le bon arbitrage **pour le spectateur** (il n'a rien à réparer), pas pour une surface
-        d'administration ; le diagnostic de format, lui, vit à l'atelier (E01US024).
-
-        ⚠️ **L'indiscernabilité s'arrête au client : le serveur, lui, journalise** (correctif de
-        revue, relevé par quatre axes). Un premier jet copiait `ServiceSuiviDeroule._duels_tranches`
-        — même tuple, aucun log. Le modèle juste est `ServicePalmares._resultat` (E06US004), même
-        surface publique et projetée, dont la docstring dit exactement pourquoi : « une phase
-        absente du palmarès le jour J serait sinon **indébogable** ». La conséquence est ici plus
-        lourde que pour le suivi du déroulé, qui dégrade vers un bloc à zéro — **visible** : ici le
-        tableau **disparaît**, de l'onglet public *et* de l'écran de salle, et sans trace personne
-        ne peut relier les deux.
-
-        `KeyError` est capturé **à part** et en `warning` : aucun code de ce chemin ne le lève
-        délibérément (le domaine s'y refuse explicitement — `phase.py`, `politiques.py`, `poule.py`
-        disent tous « explicite plutôt qu'un `KeyError` »). Un `KeyError` ici est donc un **défaut
-        de programmation**, pas une phase à venir, et le confondre avec elle le rendrait invisible.
-        """
-        try:
-            return self._saisie.etat_tableau(tournoi_id, phase_id)
-        except (ApplicationError, DomainError) as exc:
-            _logger.info("Tableau de la phase %s écarté de la vue publique : %s", phase_id, exc)
-            return None
-        except KeyError as exc:
-            _logger.warning("Défaut interne sur la phase %s, tableau écarté : %r", phase_id, exc)
-            return None

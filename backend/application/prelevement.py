@@ -34,8 +34,12 @@ une règle métier. À rouvrir si une troisième politique de phase rejoint la f
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
+from application.erreurs.moteur import PrelevementEnAttente
 from domain.classement import Classement, LigneClassement, StatutClassement
-from domain.phase import Phase, profondeur_par_defaut
+from domain.classement_de_tableau import ClassementSource
+from domain.phase import NatureSource, Phase, profondeur_par_defaut
 from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
 
 
@@ -82,65 +86,136 @@ def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
     return depth
 
 
+ResolveurClassement = Callable[[int], ClassementSource | None]
+"""Rend le classement produit par la phase de cet `ordre`, ou `None` si elle n'en produit aucun.
+
+Le paramètre qui a remplacé `ordre_qualification` (E05US024). Un **résolveur** et non une table
+toute faite : la résolution d'un tableau amont coûte une reconstruction complète (`DETTE-031`), on
+ne la paie donc que pour les ordres réellement déclarés en source.
+
+Rend un `ClassementSource` et non un `Classement` nu : l'appelant a besoin de deux choses de plus
+que les lignes — les **plages encore indécises** (pour refuser une fenêtre à laquelle la compétition
+n'a pas répondu, ADR-0081) et le **rang de tournoi** du premier rang de ce classement (pour que le
+décalage se cumule le long de la chaîne, cf. `tranche`).
+"""
+
+
+def _en_lice(classement: Classement) -> list[LigneClassement]:
+    """Les lignes prélevables d'un classement, du meilleur rang au moins bon.
+
+    **Seuls les archers en lice.** Un forfait déclaré en qualification (abandon relégué, DSQ exclu)
+    n'accède pas à la phase suivante, et son rang scratch peut être `None` (ADR-0050).
+    """
+    return sorted(
+        (ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE),
+        key=lambda ligne: ligne.rang_scratch or 0,
+    )
+
+
+def _effectif(classement: Classement) -> int:
+    """Les archers **classés** — un disqualifié n'a pas de rang (ADR-0050).
+
+    C'est la borne que `SourcePhase.intervalle` réclame pour résoudre une fin ouverte (« les rangs
+    33 **et suivants** ») : elle se lit sur le classement **de la phase source**, pas sur celui du
+    tournoi. C'est toute la différence qu'apporte E05US024 — une consolante prélevant « le reste »
+    d'un tableau de 32 ne doit pas se croire ouverte jusqu'au 120ᵉ inscrit.
+    """
+    return sum(1 for ligne in classement.lignes if ligne.rang_scratch is not None)
+
+
 def preleves(
-    phase: Phase, classement: Classement, ordre_qualification: int | None
+    phase: Phase, classement: Classement, resoudre_source: ResolveurClassement
 ) -> list[LigneClassement]:
-    """Les archers que **cette phase déclare prélever**, dans l'ordre du classement source.
+    """Les archers prélevés, chacun lu dans le classement de **sa** phase source.
 
     C'est ici que le moteur cesse d'ignorer `phase.sources` (cœur de `DETTE-028`). Jusqu'à
     E05US020, le tableau était ensemencé avec **tous** les archers en lice : un format déclarant
     « les rangs 1 à 32 » se jouait à 120 si 120 archers étaient classés, et l'organisateur repartait
     avec un tournoi qui ne suivait pas le schéma qu'il avait composé et validé (E01US024).
 
-    La règle tient en une phrase : **un prélèvement par rangs garde les archers dont le rang scratch
-    tombe dans son intervalle**. Les bornes viennent du domaine (`SourcePhase.intervalle`), qui sait
-    déjà résoudre une fin ouverte — « les rangs 33 et suivants ». On consomme cette sémantique, on
-    ne la réécrit pas.
+    La règle tient en une phrase : **un prélèvement par rangs garde les archers dont le rang tombe
+    dans son intervalle, au classement de la phase qu'il désigne**. Les bornes viennent du domaine
+    (`SourcePhase.intervalle`), qui sait déjà résoudre une fin ouverte. On consomme cette
+    sémantique, on ne la réécrit pas.
 
-    ⚠️ **Seules les sources visant la QUALIFICATION sont honorées** (`ordre_qualification`). C'est
-    le seul classement lisible ici ; appliquer « les rangs 1 à 8 de la phase 2 » à ce classement
-    prendrait les 8 premiers de la **qualification** en croyant prendre ceux du tableau principal —
-    un tableau bien formé, plausible, et faux, que rien ne signalerait. Lire le classement d'un
-    tableau amont demande la lecture d'E06US004 et créerait un cycle service → service.
+    ⚠️ **E05US024 — chaque source est lue dans son propre classement.** E05US020 n'honorait que les
+    sources visant la **qualification** : « les rangs 1 à 8 de la phase 2 » prenait les 8 premiers
+    de
+    la *qualification* en croyant prendre ceux du tableau principal. Sa note invoquait un cycle
+    service → service ; vérifié depuis, il n'y en a pas — la lecture nécessaire
+    (`tableau.positions_acquises`) est produite par `ServiceSaisieDuels` **lui-même**, donc c'est
+    une
+    récursion, sur un graphe acyclique par construction (`verifier_sequence` exige une source
+    **antérieure**).
 
     ⚠️ **Deux natures restent inertes** : `le_reste` et `par_issue_de_tour`. Vérifié au cadrage —
     ni l'une ni l'autre n'est résolue nulle part (`effectif_selectionne`, `resoudre` et `intervalle`
     rendent `None`). Leur donner un sens dans un service d'exécution serait décider une règle métier
-    au mauvais endroit — l'erreur qu'ADR-0065 §3 a refusé de commettre, que `DETTE-033` acte.
+    au mauvais endroit — l'erreur qu'ADR-0065 §3 a refusé de commettre, que `DETTE-033` acte. Cette
+    US élargit **quelle phase** on lit, pas **quelles natures** on sait résoudre.
 
-    Une phase **sans source** (ou qui n'en déclare que d'inertes) est alimentée par les
-    inscriptions : c'est la première de sa séquence, et c'est le comportement d'avant l'US.
+    ⚠️ **Une fenêtre qui coupe un bloc indécis lève `PrelevementEnAttente`** (ADR-0081,
+    correctif de revue adversariale). Un tableau de 8 non commencé porte ses huit archers sur la
+    plage `[1..8]` de leur quart en cours : lui demander « les rangs 5 à 8 » rendait les 4 derniers
+    **qualifiés** au lieu des 4 battus des quarts — bien formé, plausible, et faux, exactement la
+    classe de défaut que
+    cette US ferme par ailleurs, en **moins détectable** qu'avant (la population avait le bon
+    cardinal). Le refus est typé pour que les trois consommateurs — écran public, plan de cibles,
+    saisie — puissent dire « en attente » au lieu d'afficher une fiction.
+
+    Une phase **sans source** (ou qui n'en déclare que d'illisibles) est alimentée par le
+    `classement` reçu — les inscriptions du créneau. C'est la première de sa séquence, et c'est le
+    comportement d'avant l'US, à ne pas casser (CA « la phase de tête est inchangée »).
+
+    **L'ordre du résultat** est `(ordre de la phase source, rang dans ce classement)`. Il est
+    déterministe et, à source unique, identique à celui d'avant l'US — ce qui compte, parce que le
+    `Seeding` consomme cette liste dans l'ordre : la permuter changerait les appariements.
     """
-    en_lice = sorted(
-        (ligne for ligne in classement.lignes if ligne.statut is StatutClassement.EN_LICE),
-        key=lambda ligne: ligne.rang_scratch or 0,
-    )
-    # L'effectif de la phase source : les archers **classés**. Un disqualifié n'a pas de rang
-    # (ADR-0050). ⚠️ Cette borne est aujourd'hui **redondante** avec le classement lui-même — le
-    # rang d'une ligne classée ne dépasse jamais le nombre de lignes classées, donc la borne haute
-    # d'une fin ouverte ne filtre rien. On la passe quand même parce que c'est l'appel
-    # sémantiquement juste : le jour où `intervalle` changera d'écrêtage, le site sera correct sans
-    # retouche. *(Un premier jet de l'ADR en faisait un argument central ; la revue adversariale a
-    # montré, mutation à l'appui, qu'aucun test ne pouvait le distinguer — parce qu'il n'y a rien à
-    # distinguer. L'argument a été retiré plutôt que d'être illustré par un test décoratif.)*
-    effectif_source = sum(1 for ligne in classement.lignes if ligne.rang_scratch is not None)
-    intervalles = [
-        borne
-        for source in phase.sources
-        if source.ordre_source == ordre_qualification
-        if (borne := source.intervalle(effectif_source)) is not None
-    ]
-    if not intervalles:
-        return en_lice
-    return [
-        ligne
-        for ligne in en_lice
-        if ligne.rang_scratch is not None
-        and any(debut <= ligne.rang_scratch <= fin for debut, fin in intervalles)
-    ]
+    retenus: list[tuple[int, int, LigneClassement]] = []
+    lisible = False
+    for source in phase.sources:
+        # Nature inerte (`le_reste`, `par_issue_de_tour`, `DETTE-033`) : on sort **avant** de
+        # résoudre. Résoudre d'abord coûtait une reconstruction complète du tableau amont pour
+        # jeter le résultat — et pire, faisait **échouer** la phase aval quand cette
+        # reconstruction levait, alors que la source est par contrat sans effet (relevé en revue,
+        # axe C1 : régression mesurée contre `main`).
+        if source.nature is not NatureSource.RANGS:
+            continue
+        source_resolue = resoudre_source(source.ordre_source)
+        if source_resolue is None:
+            continue
+        borne = source.intervalle(_effectif(source_resolue.classement))
+        if borne is None:
+            continue
+        lisible = True
+        debut, fin = borne
+        coupee = source_resolue.coupe(debut, fin)
+        if coupee is not None:
+            raise PrelevementEnAttente(
+                f"La phase {phase.ordre} prélève les rangs {debut} à {fin} de la phase "
+                f"{source.ordre_source}, qui n'a pas encore départagé les rangs {coupee[0]} à "
+                f"{coupee[1]}.",
+                source.ordre_source,
+            )
+        for ligne in _en_lice(source_resolue.classement):
+            if ligne.rang_scratch is not None and debut <= ligne.rang_scratch <= fin:
+                retenus.append((source.ordre_source, ligne.rang_scratch, ligne))
+    if not lisible:
+        return _en_lice(classement)
+    # Dédoublonnage : deux sources peuvent viser le même archer (« les demi-finalistes **et** le
+    # gagnant du secondaire » ne se recoupent pas, mais rien ne l'impose entre phases sources
+    # distinctes — `verifier_sequence` ne contrôle le non-recoupement qu'**au sein** d'une phase).
+    # Un archer présent deux fois dans un tableau y disputerait deux duels à la fois.
+    vus: set[int] = set()
+    ordonnes: list[LigneClassement] = []
+    for _, _, ligne in sorted(retenus, key=lambda entree: (entree[0], entree[1])):
+        if ligne.archer_id not in vus:
+            vus.add(ligne.archer_id)
+            ordonnes.append(ligne)
+    return ordonnes
 
 
-def tranche(phase: Phase, classement: Classement, ordre_qualification: int | None) -> int:
+def tranche(phase: Phase, resoudre_source: ResolveurClassement) -> int:
     """Le **premier rang du tournoi** que cette phase dispute — 1 si elle les dispute tous.
 
     Une phase qui prélève « les rangs 5 et suivants » ne joue **pas** pour la victoire : elle
@@ -153,14 +228,33 @@ def tranche(phase: Phase, classement: Classement, ordre_qualification: int | Non
     tableau principal. Le défaut était inatteignable tant qu'aucun moteur ne consommait les
     prélèvements ; E05US020 l'a rendu atteignable, et la revue adversariale l'a mesuré.
 
+    ⚠️ **Le rang rendu est celui du tournoi, pas celui de la phase source** (E05US024). Une phase
+    prélevant « les rangs 1 à 2 » d'un tableau qui disputait lui-même les places 5 à 8 joue pour la
+    **5ᵉ** place, pas pour la 1ᵉʳᵉ : le décalage se **cumule** le long de la chaîne.
+
+    ⚠️ **Un premier jet affirmait ce cumul sans le faire** (bloquant de revue, relevé par trois
+    axes). Il invoquait le `rang_scratch` du classement source, « qui porte déjà ce décalage quand
+    la
+    source est un tableau » : c'est faux, `classement_de_tableau` numérote **1 à N dans l'espace de
+    rangs du tableau**, précisément pour que les fenêtres déclarées à la composition (« les rangs 1
+    à
+    2 de la phase 2 ») gardent leur sens local. Le décalage ne se cumulait donc pas, et le
+    vainqueur d'une finale de consolante disputant les places 33 à 36 était publié **1ᵉʳ du
+    tournoi**, devant le champion — `DETTE-034` rouverte un cran plus bas par l'US censée l'élargir.
+
+    Le cumul se fait donc ici, explicitement : `ClassementSource.rang_premier` porte le rang de
+    tournoi du rang 1 de ce classement, et l'on compose `rang_premier - 1 + rang_debut`. Une source
+    visant la qualification (`rang_premier = 1`) redonne `rang_debut` — le comportement d'avant, à
+    ne pas casser.
+
     Rend **1** quand la phase ne déclare aucun prélèvement lisible en rangs : elle est alimentée par
     les inscriptions et dispute donc le tournoi entier.
     """
-    effectif_source = sum(1 for ligne in classement.lignes if ligne.rang_scratch is not None)
     debuts = [
-        borne[0]
+        source_resolue.rang_premier - 1 + borne[0]
         for source in phase.sources
-        if source.ordre_source == ordre_qualification
-        if (borne := source.intervalle(effectif_source)) is not None
+        if source.nature is NatureSource.RANGS
+        if (source_resolue := resoudre_source(source.ordre_source)) is not None
+        if (borne := source.intervalle(_effectif(source_resolue.classement))) is not None
     ]
     return min(debuts) if debuts else 1

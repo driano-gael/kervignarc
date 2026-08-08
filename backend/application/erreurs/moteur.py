@@ -140,6 +140,66 @@ class PhasePasUnTableau(ApplicationError):
     code = "phase_pas_un_tableau"
 
 
+class PrelevementEnAttente(ApplicationError):
+    """La phase prélève des places que sa source n'a **pas encore décidées** (E05US024) → 409.
+
+    Un tableau de 8 non commencé porte ses huit archers sur la plage `[1..8]` de leur quart en
+    cours : la compétition n'a encore attribué aucune des huit places. Une consolante qui déclare
+    « les rangs 5 à 8 » demande donc quatre places qui n'existent pas — et jusqu'à ce refus, le
+    moteur y répondait en départageant sur le **rang de qualification**, livrant les 4 derniers
+    qualifiés au lieu des 4 battus des quarts (ADR-0081).
+
+    **Un conflit d'état, pas une panne** : la phase existe, sa composition est valide, il est
+    simplement trop tôt. Le message nomme les deux phases et le bloc en cause pour que
+    l'organisateur sache quoi attendre.
+
+    ⚠️ **Distinct d'un prélèvement inerte** (`le_reste`, `par_issue_de_tour` — `DETTE-033`), qui
+    fait retomber la phase sur son comportement d'avant, et d'une phase **sans source**, alimentée
+    par les inscriptions. Les trois se ressemblaient dans le code d'avant la revue ; les confondre
+    est ce qui rendait le défaut silencieux.
+    """
+
+    code = "prelevement_en_attente"
+
+    def __init__(self, message: str, ordre_source: int) -> None:
+        super().__init__(message)
+        # L'ordre de la phase attendue voyage avec l'erreur : c'est ce que la vue publique affiche
+        # (« en attente de la phase 2 »), et le reconstituer en parsant le message serait le genre
+        # de couplage au texte que la règle 5 proscrit.
+        self.ordre_source = ordre_source
+        # …et il passe aussi par le canal **déjà existant** `details`, que la frontière API publie
+        # dans `{code, message, details?}` (règle 5, inauguré par `ReplacementNonConfirme`). Sans
+        # lui, un client recevant le 409 côté saisie ou plan de cibles devait parser le message
+        # pour savoir quoi attendre — exactement ce que le commentaire ci-dessus dit vouloir
+        # éviter, l'attribut nu n'étant lu que par `ServiceTableauxPublics` (relevé en revue).
+        self.details = {"ordre_source": ordre_source}
+
+
+class DerouleCyclique(ApplicationError):
+    """Une chaîne de sources **boucle** : une phase se prélève elle-même (E05US024) → 409.
+
+    Inatteignable par la composition — `verifier_sequence` exige qu'une source soit **antérieure**,
+    donc le déroulé est acyclique — mais atteignable par une base incohérente (import, migration à
+    la main). Un refus typé vaut mieux qu'un `RecursionError` remonté en 500 muet un jour de
+    compétition.
+
+    ⚠️ **Type dédié, et non `PhaseIntrouvable`** (correctif de revue, relevé par quatre axes). Un
+    premier jet réutilisait `PhaseIntrouvable`, avec deux conséquences : un **404 « phase
+    introuvable »** pour une incohérence de données, et surtout `ServicePalmares._resultat` qui
+    l'attrape déjà pour écarter une phase disparue — le refus censé remplacer un 500 muet devenait
+    une **omission muette** sur l'écran projeté en salle. Aucun `except` **nominatif** ne la cite
+    donc, et `ServicePalmares` la laisse remonter.
+
+    ⚠️ **Elle reste néanmoins avalée par deux filets larges** (`except (ApplicationError,
+    DomainError)`) : `ServiceTableauxPublics.pour_depart` et `ServiceSuiviDeroule`. Sur l'onglet
+    public, un déroulé cyclique redevient donc un tableau silencieusement absent. C'est assumé —
+    le spectateur n'a rien à réparer, et le diagnostic vit à l'atelier — mais l'écrire évite que
+    le prochain lecteur se fie à un « visible partout » qui serait faux (relevé par trois axes).
+    """
+
+    code = "deroule_cyclique"
+
+
 class PhaseSourceReferencee(ApplicationError):
     """Suppression refusée : la phase est la **source** d'une autre phase (E05US001) → 409.
 

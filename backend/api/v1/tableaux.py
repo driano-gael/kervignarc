@@ -128,6 +128,16 @@ class TableauPublicReponse(BaseModel):
 
     `ordre` et `type` plutôt qu'un libellé tout fait : le front tient déjà le catalogue des types
     (`shared/phases/catalogue.ts`) et le traduit une fois pour toutes (règle 3).
+
+    ⚠️ **Une phase peut être présente sans arbre** (E05US024, ADR-0081). `en_attente_de` porte
+    l'`ordre` de la phase source dont les places ne sont pas encore attribuées ; les champs de
+    dimensions valent alors 0 et les listes sont vides. Le front affiche « en attente de la phase
+    *n* » plutôt qu'un bracket — avant cette US, la phase **disparaissait** de la liste, et un
+    tableau à venir était indiscernable d'un tableau cassé.
+
+    Les zéros sont un **choix de forme** : garder les champs obligatoires évite de rendre
+    optionnelle toute la charge utile pour un cas de bord, et `en_attente_de` est le seul
+    discriminant que le front doit lire. Il est **non nul si et seulement si** il n'y a pas d'arbre.
     """
 
     phase_id: int
@@ -139,10 +149,24 @@ class TableauPublicReponse(BaseModel):
     est_termine: bool
     duels: list[DuelPublicReponse]
     podium: list[PlaceReponse]
+    en_attente_de: int | None = None
 
     @staticmethod
     def de_tableau(tableau: TableauPublic) -> TableauPublicReponse:
         etat = tableau.etat
+        if etat is None:
+            return TableauPublicReponse(
+                phase_id=tableau.phase_id,
+                ordre=tableau.ordre,
+                type=tableau.type.value,
+                effectif=0,
+                taille=0,
+                nb_tours=0,
+                est_termine=False,
+                duels=[],
+                podium=[],
+                en_attente_de=tableau.attente,
+            )
         return TableauPublicReponse(
             phase_id=tableau.phase_id,
             ordre=tableau.ordre,

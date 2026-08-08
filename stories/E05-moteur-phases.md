@@ -637,3 +637,117 @@ suit est le **périmètre visé**, pas une seule livraison.
 - **Notes — priorité** : « au plus tôt dans le backlog » (commanditaire, 07/08/2026). À positionner
   au cadrage du prochain jalon.
 - **Résorbe** : `DETTE-028` (par tranches). **Dépend de** : E05US015 · **Jalon** : J3
+
+---
+
+### E05US024 — Un prélèvement lit le classement de **sa** phase source
+*En tant qu'*organisateur, *je veux* que « les rangs 1 à 8 de la phase 2 » prenne les huit premiers
+**de la phase 2**, *afin de* composer mon format librement sans que le moteur ne substitue en silence
+le classement de la qualification.
+
+Origine : **arbitrage du commanditaire du 08/08/2026**, au cadrage d'`E16US002` — « *la création du
+déroulé doit permettre de composer les phases comme on en a envie, le club est libre de son format de
+tournoi* ». Reste ouvert de `DETTE-028` : E05US020 a fait consommer les prélèvements **visant la
+qualification** et a laissé les autres au comportement d'avant, explicitement.
+
+- **CA — le classement lu est celui de la phase désignée** : une phase déclarant « les rangs 1 à 8 de
+  la phase 2 » monte son tableau avec les huit premiers du classement **de la phase 2**, quel que
+  soit le type de celle-ci. Aujourd'hui ce prélèvement est **ignoré** et la phase reçoit *tous* les
+  archers en lice — un tableau bien formé, plausible, et faux, que rien ne signale.
+- **CA — la cascade tient sur plusieurs crans** : la phase 3 prélève dans la phase 2, qui prélève
+  dans la phase 1. La résolution est **récursive** sur le déroulé, acyclique par construction —
+  `verifier_sequence` exige qu'une source soit **antérieure**, donc la descente termine.
+- **CA — la phase de tête est inchangée** : une phase **sans** source déclarée est alimentée par les
+  inscriptions. C'est le cas de la qualification, et d'un tableau tant que rien n'est déclaré. Le
+  comportement d'aujourd'hui ne bouge pas — c'est le CA « première phase » d'E05US020, à ne pas casser.
+- **CA — `tranche` suit la même règle** : le premier rang du tournoi qu'une phase dispute se lit sur
+  **sa** phase source ([ADR-0068](../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md) §5).
+  Sans quoi le palmarès resitue les positions dans le mauvais espace de rangs — c'était `DETTE-034`.
+  Le décalage se **cumule** : une phase prélevant « les rangs 1 à 2 » d'un tableau qui disputait
+  lui-même les places 33 et suivantes joue pour la **33ᵉ** place, pas pour la 1ᵉʳᵉ.
+- **CA — une phase attend que sa source ait départagé les places qu'elle prélève**
+  *(ajouté le 08/08/2026 sur relevé de revue adversariale — [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))*.
+  Un tableau ne décerne pas des rangs mais des **fourchettes**, et avant son premier duel un tableau
+  de 8 porte ses huit archers sur la même plage `[1..8]`. Une consolante « les rangs 5 à 8 » y
+  recevait les 4 derniers **qualifiés** au lieu des 4 battus des quarts — bien formé, plausible et
+  faux, et **moins détectable** qu'avant l'US (la population avait le bon cardinal).
+  La règle : une fenêtre est honorée si elle ne **coupe** pas un bloc indécis — chevaucher **sans
+  contenir**. « Les rangs 1 à 2 » sur les deux finalistes `[1..2]` reste honoré (elle veut les deux
+  finalistes) ; « les rangs 5 à 8 » sur un tableau non commencé est **refusé et annoncé**.
+  L'écran public affiche « en attente du tableau *n* », le plan de cibles n'est pas produit, la
+  saisie refuse (409), et le palmarès écarte la phase.
+- **CA — l'effectif minimum suit la chaîne** : `effectif_minimum` (E05US021) traduit un rang en
+  nombre d'inscrits en **remontant la chaîne des sources** jusqu'à la phase alimentée par les
+  inscriptions, au lieu de ne reconnaître que la qualification. Un déroulé « tableau des rangs 17 à
+  32 → tableau des rangs 5 et suivants » annonce donc son plancher (22 inscrits), là où il est muet
+  aujourd'hui.
+  ⚠️ **Arbitrage du 08/08/2026, reversé ici depuis la revue** : ce CA citait « poules → tableau »,
+  ce que l'US **ne livre pas** — le moteur ne sait lire que la qualification et l'élimination
+  directe (`_TYPES_CLASSANTS_LUS`), une source visant des poules reste ignorée en silence jusqu'à
+  **E05US023**. Le CA était **faux, et non ambigu** : il s'écrivait sans effort, donc le garde-fou
+  « CA ambigu » ne pouvait pas se déclencher, et l'US suivante en aurait dérivé ses tests.
+- **CA — plan de cibles et arbre restent ensemencés à l'identique** : `ServicePlacementDuels` et
+  `ServiceSaisieDuels` continuent de lire la **même** règle (`application/prelevement.py`). L'écart
+  mesuré à la revue d'E05US020 — plan de 8 placements pour un tableau de 4 — ne doit pas se rouvrir.
+- **CA — non-régression** : l'oracle 120 et l'oracle multi-départ restent verts.
+- **Notes — le cycle invoqué par E05US020 n'existe pas** *(vérifié le 08/08/2026)*. E05US020 écartait
+  le cas parce que « lire le classement d'un tableau amont demande la lecture d'E06US004 et créerait
+  un cycle ». `palmares.py` importe bien `ServiceSaisieDuels`, donc l'inverse fermerait la boucle —
+  mais la lecture nécessaire est `tableau.positions_acquises()`, que `ServiceSaisieDuels.reconstruire`
+  produit **déjà lui-même**. Ce n'est donc pas un cycle de modules, c'est une **récursion** d'un
+  service sur lui-même, sur un graphe acyclique. La note était exacte quand elle a été écrite
+  (E06US004 n'était pas livrée) ; elle ne l'est plus.
+- **Notes — coût d'exécution à surveiller** : `DETTE-031` signale déjà que `reconstruire` rebâtit
+  tout le classement du tournoi **une fois par phase à tableau**, sans cache ni plafond, sur deux
+  routes publiques non authentifiées. La récursion multiplie ces reconstructions par la profondeur de
+  la cascade. Mémoïser la résolution **à l'intérieur d'un appel** fait partie de cette US ; le cache
+  transverse reste `DETTE-031` et n'est pas rouvert ici.
+- **Notes — natures inertes inchangées** : `le_reste` et `par_issue_de_tour` restent non résolues
+  (`DETTE-033`). Cette US élargit **quelle phase** on lit, pas **quelles natures** on sait résoudre.
+- **Notes — ne préempte pas E05US022** : les sources désignent toujours leur cible par `ordre_source`.
+  L'ancrage par **identité** reste le sujet d'E05US022, et cette US ne le rend ni plus ni moins urgent.
+- **Notes — surface** : **aucune ligne de front, aucun écran neuf**, donc pas de fiche
+  `docs/fonctionnel/` (rien de nouveau à faire cliquer). Mais la capacité **est visible du
+  commanditaire** — « composer mon format et qu'il se joue » est exactement ce qu'il a demandé le
+  08/08/2026 —, donc **fichier daté au journal et résumé mis à jour**. Le critère retenu est *ce que
+  l'US change pour l'organisateur*, pas *le nombre de fichiers `.tsx` touchés* : une US de moteur peut
+  n'avoir aucune surface d'écran et changer ce que la salle joue.
+- **Résorbe** : le reste de `DETTE-028` pour les prélèvements **par rangs**.
+  **Dépend de** : E05US020, E06US004 · **Jalon** : J3 · **Origine** : arbitrage du 08/08/2026
+
+---
+
+### E05US025 — Plusieurs qualifications dans un même déroulé
+*En tant qu'*organisateur, *je veux* composer **plus d'une** phase de qualification dans un tournoi,
+*afin de* ne pas être enfermé dans le format « une qualification, puis des tableaux ».
+
+Origine : **arbitrage du commanditaire du 08/08/2026** — « *pourquoi on ne peut pas, dans la création
+d'un tournoi, faire plusieurs phases de qualification ?* ». L'interdiction n'est **pas une règle
+métier** : `_anomalies_unicite_qualification` (`domain/phase.py`, E05US021) se décrit elle-même comme
+un invariant « **supposé partout et vérifié nulle part** », posé pour fermer un bug — neuf lecteurs de
+« **la** » qualification, dont deux la résolvaient différemment — plutôt que pour exprimer une règle
+du tir à l'arc. On a interdit le cas au lieu de réparer les lecteurs ; cette US répare les lecteurs.
+
+- **CA — deux qualifications coexistent** : un déroulé porte plusieurs étapes de type `qualification`,
+  chacune avec ses **propres** réglages (barème, grain de validation). L'anomalie
+  `PlusieursQualifications` disparaît.
+- **CA — qualifications successives** : la seconde se peuple du prélèvement qu'elle déclare
+  (« seuls les X premiers sont qualifiés »), par le mécanisme livré en **E05US024**.
+- **CA — le barème se règle par qualification** : `ServiceBaremeQualification` cesse de parler du
+  « barème **du tournoi** » (`bareme_du_tournoi`, et un `definir` qui crée la qualification en tête
+  d'office) ; il règle celui d'une **étape désignée**. L'écran « Barème & validation » suit.
+- **CA — la saisie sait dans quelle qualification elle écrit** : un archer engagé dans deux
+  qualifications y tient deux séries distinctes, et une flèche saisie ne peut pas atterrir dans la
+  mauvaise.
+- **CA — non-régression** : un tournoi à **une** qualification se comporte exactement comme
+  aujourd'hui, oracle 120 compris.
+- **⚠️ À trancher au cadrage** *(non instruit le 08/08/2026 — ne pas deviner)* : (a) ce que devient
+  le **classement de qualification** publié quand il y en a deux (deux classements séparés ? un
+  cumul ?) ; (b) ce qu'affiche l'écran de saisie à un archer engagé dans deux qualifications ;
+  (c) si la **complétude sportive** exige les deux avant de proposer « Terminer ».
+- **Notes** : les **12 appels** de `application/portee.py:qualification_du_tournoi` (9 modules) sont à
+  trier un par un — plusieurs restent légitimes tels quels. Terrain marqué `DETTE-048` : ce module est
+  « le seul à n'être ni testé ni surveillé », et les deux derniers défauts de portée en sont sortis.
+  **ADR attendu.**
+- **Dépend de** : **E05US024** (nécessaire, pas seulement souhaitable : sans peuplement générique une
+  seconde qualification recevrait *tous* les inscrits) · **Jalon** : J3 · **Origine** : arbitrage du 08/08/2026

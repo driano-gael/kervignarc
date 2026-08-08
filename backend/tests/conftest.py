@@ -50,6 +50,7 @@ from domain.categorie import Categorie, CategorieId
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
+from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
 from domain.inscription import Inscription, InscriptionId
@@ -720,3 +721,31 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
     return PhaseRepositorySQL(session_factory).ajouter(
         dataclasses.replace(etape.instancier(phase.depart_id), statut=phase.statut, id=phase.id)
     )
+
+
+class FauxDuelRepository:
+    """Double de `DuelRepository` : ne garde que le **tir** ; réinjecte le contexte à `charger`.
+
+    Hissé ici depuis `test_service_saisie_duels.py` par **E05US024** : le test du plan de cibles en
+    a
+    désormais besoin lui aussi (le plan emprunte la résolution de classement amont de la saisie), et
+    l'importer d'un module de test qui importe déjà celui du placement aurait fait un cycle.
+    """
+
+    def __init__(self) -> None:
+        self._tirs: dict[tuple[int, int], Duel] = {}
+
+    def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
+        return frozenset(numero for (phase, numero) in self._tirs if phase == phase_id)
+
+    def charger(self, phase_id: PhaseId, match_numero: int, *, bareme: BaremeDuel) -> Duel | None:
+        duel = self._tirs.get((phase_id, match_numero))
+        if duel is None:
+            return None
+        # Mime « le tir + l'identité des duellistes sont persistés » : seul le barème est réinjecté
+        # (dérivé de l'arme, ADR-0049). Les participants **stockés** sont conservés.
+        return dataclasses.replace(duel, bareme=bareme)
+
+    def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
+        self._tirs[(phase_id, match_numero)] = duel
+        return duel

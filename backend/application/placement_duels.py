@@ -25,10 +25,12 @@ from application.erreurs import (
     InscriptionIntrouvable,
     PhaseIntrouvable,
     PhasePasUnTableau,
+    PrelevementEnAttente,
     TournoiIntrouvable,
 )
-from application.portee import phase_du_tournoi, qualification_du_tournoi
+from application.portee import phase_du_tournoi
 from application.prelevement import preleves, profondeur_de
+from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import ArcherId
 from domain.cloisonnement import Cloisonnement
 from domain.gabarit_salle import Cible, GabaritSalle
@@ -129,6 +131,7 @@ class ServicePlacementDuels:
         byes: Byes,
         routing: Routing,
         registre: RegistrePolitiques,
+        saisie_duels: ServiceSaisieDuels,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -148,6 +151,11 @@ class ServicePlacementDuels:
         # (`profondeur_de`), qui la porte enfin. Garder le paramètre aurait laissé deux sources —
         # celle du câblage, celle de l'organisateur — dont l'une aurait silencieusement gagné.
         self._registre = registre
+        # E05US024 : **pas** pour saisir, uniquement pour emprunter sa résolution de classement
+        # amont — reconstruire un tableau source est son métier, pas celui du plan de cibles. Le
+        # sens de dépendance est sûr : `saisie_duels` ne connaît pas le placement, et `palmares`
+        # emprunte déjà ce chemin.
+        self._saisie_duels = saisie_duels
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -614,13 +622,28 @@ class ServicePlacementDuels:
         # E05US020 a fait consommer les prélèvements d'un seul côté, et la revue a mesuré un plan de
         # 8 placements pour un tableau de 4. Un archer posté sur une butte sans duel, un autre en
         # face du mauvais adversaire, invisibles jusqu'au jour J.
-        qualification = qualification_du_tournoi(self._phases, tournoi_id)
-        participants = [
-            Participant.individuel(ligne.archer_id)
-            for ligne in preleves(
-                phase, classement, qualification.ordre if qualification is not None else None
-            )
-        ]
+        # E05US024 : le résolveur vient de `ServiceSaisieDuels` — c'est **lui** qui sait
+        # reconstruire
+        # un tableau amont pour le lire comme un classement. Le prendre ici plutôt que de le
+        # réimplémenter est ce qui garantit que le plan pose les duellistes que l'arbre fait jouer :
+        # deux résolutions distinctes rouvriraient l'écart mesuré à E05US020 (plan de 8, tableau
+        # de 4), un cran plus loin dans la chaîne.
+        try:
+            participants = [
+                Participant.individuel(ligne.archer_id)
+                for ligne in preleves(
+                    phase,
+                    classement,
+                    self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
+                )
+            ]
+        except PrelevementEnAttente:
+            # La source n'a pas encore départagé les places prélevées (ADR-0081). On retombe sur le
+            # chemin **gracieux** déjà prévu ci-dessous pour « pas assez de participants » : un plan
+            # vide, pas un écran en erreur. Laisser remonter donnerait un 409 sur le plan de cibles
+            # pendant que l'écran public, lui, dit poliment « en attente » — trois surfaces, trois
+            # comportements pour le même état (relevé en revue, axes C2 et adversarial).
+            return contexte
         if len(participants) < 2:
             return contexte  # pas de tableau possible : plan vide, sans duel
 

@@ -107,6 +107,8 @@ class ExigenceEffectifTournoi:
     origine: OrigineExigence = OrigineExigence.AUCUNE
     ordre_phase: int | None = None
     rang_debut: int | None = None
+    ordre_source: int | None = None
+    """La phase **dans laquelle** `rang_debut` se lit (E05US024) — cf. `ExigenceEffectif`."""
     depart_numero: int | None = None
     """Le **numéro du créneau** dont `inscrits` est le compte — le moins garni (E01US025).
 
@@ -137,9 +139,19 @@ class ExigenceEffectifTournoi:
                 f"Ce tournoi ne peut pas démarrer : {manque}. Son déroulé ne peut pas se jouer à "
                 "moins que cela."
             )
+        # ⚠️ **Le rang et le nombre d'inscrits ne vivent pas dans le même espace** depuis que la
+        # chaîne se remonte (E05US024) : « le rang 5 » se lit dans la phase **source**, tandis que
+        # « 22 inscrits » compte des inscrits au tournoi. Les énoncer sans nommer la source rendait
+        # le message indéchiffrable — deux chiffres qui ne se déduisent plus l'un de l'autre
+        # (relevé en revue, axe C1).
+        ou = (
+            f" de la phase {self.ordre_source}"
+            if self.ordre_source is not None and self.ordre_source != self.ordre_phase
+            else ""
+        )
         return (
             f"Ce tournoi ne peut pas démarrer : {manque}. La phase {self.ordre_phase} prélève à "
-            f"partir du rang {self.rang_debut} : il faut au moins {self.minimum} classés pour "
+            f"partir du rang {self.rang_debut}{ou} : il faut au moins {self.minimum} inscrits pour "
             "qu'elle ait des tireurs. Changez de format ou complétez les inscriptions."
         )
 
@@ -317,6 +329,7 @@ class ServiceTournois:
             origine=OrigineExigence.DEROULE,
             ordre_phase=deduite.ordre,
             rang_debut=deduite.rang_debut,
+            ordre_source=deduite.ordre_source,
             depart_numero=numero,
         )
 

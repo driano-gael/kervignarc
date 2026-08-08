@@ -40,6 +40,9 @@ export interface ExigenceEffectif {
   suffisant: boolean
   origine: OrigineExigence
   ordre_phase: number | null
+  // E05US024 : la phase **où le rang se lit**. Depuis que le plancher remonte la chaîne des
+  // sources, `rang_debut` s'exprime dans le classement de cette phase-là, pas au tournoi.
+  ordre_source?: number | null
   rang_debut: number | null
 }
 
