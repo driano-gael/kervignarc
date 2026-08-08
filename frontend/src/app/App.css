@@ -2817,10 +2817,102 @@ button:disabled {
   font-weight: 600;
 }
 
+/* Recherche publique (E16US004) : nom et club côte à côte, empilés dès qu'un téléphone les serre.
+   Le champ de nom prend la place restante — c'est lui qu'on remplit le plus souvent. */
+.recherche-suivi__criteres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.recherche-suivi__criteres > .formulaire__champ {
+  flex: 1 1 12rem;
+}
+
+.recherche-suivi__club > select {
+  min-height: 44px;
+}
+
+/* Récapitulatif de journée d'un archer suivi (E16US004, P02) — un `<details>` natif : le repli, le
+   clavier et le lecteur d'écran sans une ligne de JavaScript. */
+.suivi-recap {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+}
+
+.suivi-recap__titre {
+  /* Cible tactile : le triangle seul est intouchable au doigt sur un téléphone. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.suivi-recap__section {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Bascule « mes archers / tout » de l'appli publique (E16US004). Même grammaire que les onglets —
+   pilules, aplat de marque sur l'actif — mais précédée de son libellé : ce n'est pas une
+   navigation, c'est un réglage d'affichage, et il vaut mieux le dire que le laisser deviner. */
+.bascule-suivis {
+  align-items: center;
+  margin: 4px 0 0;
+}
+
+.bascule-suivis__libelle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
 /* Conteneur défilant : à 8 colonnes, le classement déborde d'un écran de téléphone. On le laisse
    défiler horizontalement plutôt que d'écraser les colonnes (CA « responsive mobile »). */
 .table-defilement {
   overflow-x: auto;
+}
+
+/* Détail des flèches déplié sous une ligne de classement (E16US004, P03). Le bouton porte le nom de
+   l'archer : il doit rester lisible comme un nom, pas comme un lien de navigation — d'où le
+   soulignement pointillé, plus discret que celui de `.lien`. */
+/* ⚠️ Forme **longue** (`underline dotted`), et non `text-decoration-style` seul — correctif de revue.
+   `.lien` ne pose aucun soulignement au repos : sans `text-decoration-line`, le pointillé n'était
+   jamais dessiné. Et `.lien:hover { text-decoration: underline }` est une forme courte, qui remet
+   `style` à `solid` et l'emporte en spécificité (0,2,0 contre 0,1,0) — d'où la reprise explicite
+   ci-dessous. Le repos comptait plus que le survol : sur une tablette, il n'y a pas de survol, donc
+   c'était l'affordance entière du dépliant qui manquait sur la cible principale de l'appli. */
+.table__detail-bascule {
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  /* Cible tactile (règle 10) : le nom se pointe au doigt, comme les autres surfaces publiques.
+     ⚠️ `inline-flex` + `align-items: center` obligatoires avec ce `min-height` (2ᵉ passe de revue) :
+     `.lien` ne pose ni `display` ni `line-height`, si bien que le texte se collait en **haut** d'une
+     boîte de 44 px pendant que les `<td>` voisins restaient centrés — le nom de l'archer se décalait
+     visiblement au-dessus de son propre rang et de son total. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.table__detail-bascule:hover {
+  text-decoration: underline dotted;
+}
+
+.table__detail > td {
+  background: var(--surface-1);
+}
+
+.table__fleches {
+  padding: 4px 0;
 }
 
 /* Plan de cibles en **lecture seule** (public) : une grille de cartes-cibles, sans glisser-déposer

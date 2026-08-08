@@ -26,14 +26,40 @@ export interface ArcherSuivi {
 
 interface SessionSuivisState {
   suivis: ArcherSuivi[]
+  /** La bascule « mes archers / tout » de l'appli publique (E16US004).
+   *
+   * **Une préférence de lecture, donc globale** — pas par tournoi, contrairement aux suivis :
+   * « je regarde mes archers » se dit une fois et vaut partout. C'est `focus.modeEffectif` qui la
+   * retombe sur « tout » lorsqu'on ouvre un tournoi où l'on ne suit personne (sans quoi tous les
+   * écrans publics seraient vides sans que rien ne l'explique).
+   *
+   * Persistée avec la liste : elle survit à un rechargement, ce qui compte sur un téléphone qu'on
+   * range et ressort toute la journée. Une clé **absente** du `localStorage` d'hier retombe sur la
+   * valeur initiale par la fusion de `persist`.
+   *
+   * ⚠️ *(Cette phrase disait « aucune migration à écrire ». Elle ne vaut que pour une clé absente :
+   * un premier jet de cette US avait déjà **écrit** `false` chez tout appareil ayant ouvert la
+   * branche, et une valeur présente gagne. Cf. `migrate` en bas de fichier.)*
+   *
+   * ⚠️ **Armée par défaut** (`true`), arbitrage du 08/08/2026 en revue d'E16US004. Le CA
+   * d'E07US005 promet que « la lecture *Mon chemin* est celle par défaut **dès qu'on suit
+   * quelqu'un** », et D-09 ouvre déjà l'onglet « Suivi » d'office pour la même raison : qui a
+   * désigné ses archers a dit ce qu'il venait regarder. L'interrupteur unique d'E16US004 ayant
+   * dissous les défauts **par vue**, laisser celui-ci sur `false` révoquait ce CA en silence.
+   * C'est `focus.modeEffectif` qui rend la valeur inoffensive quand on ne suit personne — armée ne
+   * veut donc pas dire « écran vide », jamais.
+   */
+  centrerSurSuivis: boolean
   suivre: (archer: ArcherSuivi) => void
   nePlusSuivre: (archerId: number) => void
+  centrer: (valeur: boolean) => void
 }
 
 export const useSessionSuivisStore = create<SessionSuivisState>()(
   persist(
     (set) => ({
       suivis: [],
+      centrerSurSuivis: true,
       suivre: (archer) =>
         set((etat) =>
           // Idempotent : re-suivre un archer déjà dans la liste ne le duplique pas.
@@ -43,7 +69,27 @@ export const useSessionSuivisStore = create<SessionSuivisState>()(
         ),
       nePlusSuivre: (archerId) =>
         set((etat) => ({ suivis: etat.suivis.filter((s) => s.archerId !== archerId) })),
+      centrer: (valeur) => set({ centrerSurSuivis: valeur }),
     }),
-    { name: 'kervignarc-session-suivis' },
+    {
+      name: 'kervignarc-session-suivis',
+      // ⚠️ **`version: 1` + `migrate` sont indispensables ici** (2ᵉ passe de revue), et pas de la
+      // précaution générale. `persist` fusionne **superficiellement** : une clé **absente** du
+      // stockage retombe sur la valeur initiale — c'est le cas d'un appareil d'avant E16US004, et
+      // c'est bien ce que disait le commentaire ci-dessus. Mais un premier jet de cette US a déjà
+      // écrit `centrerSurSuivis: false` dans le `localStorage` de tout appareil ayant ouvert la
+      // branche. Là, la valeur **persistée gagne** : l'arbitrage du commanditaire aurait été
+      // invisible précisément sur les machines qui comptent — la sienne et celle de la recette —
+      // et se serait diagnostiqué en « le correctif ne marche pas ».
+      //
+      // La migration ne touche **que** la préférence d'affichage, jamais la liste des suivis : on
+      // remet le défaut voulu sans faire perdre à quiconque les archers qu'il suit.
+      version: 1,
+      migrate: (etatPersiste, versionLue) => {
+        const etat = (etatPersiste ?? {}) as Partial<SessionSuivisState>
+        if (versionLue >= 1) return etat as SessionSuivisState
+        return { ...etat, centrerSurSuivis: true } as SessionSuivisState
+      },
+    },
   ),
 )

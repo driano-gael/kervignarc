@@ -54,6 +54,22 @@ export interface EtapeChemin {
   score: string | null
 }
 
+/** Ce qu'on écrit en face de chaque étape d'un chemin. **Un mot par situation, jamais une couleur
+ * seule** (`DV-03`) : l'écran de salle est vu de loin et l'appli publique est lue en plein soleil.
+ *
+ * Vit ici et non dans un composant depuis E16US004 : deux écrans le lisent désormais (l'arbre
+ * « Mon chemin » et le récapitulatif de journée de la carte de suivi), et un vocabulaire dupliqué
+ * finit par diverger — c'est ce que `DETTE-020` compte déjà deux fois sur cette feature. */
+export const LIBELLE_STATUT: Record<StatutEtape, string> = {
+  gagne: 'Gagné',
+  perdu: 'Perdu',
+  en_attente: 'En attente de validation',
+  a_jouer: 'À tirer',
+  attente_adversaire: 'Adversaire à désigner',
+  exempt: 'Exempt',
+  a_venir: 'À venir',
+}
+
 export interface GroupeDeBranche {
   /** Clé de regroupement : le libellé du serveur. Deux branches partageant un tour (une demi-finale
    * et un match des places 5-8) forment donc **deux groupes**, pas un seul. */
@@ -180,6 +196,49 @@ export function cheminDeArcher(tableau: TableauPublic, archerId: number): EtapeC
     })
   }
   return etapes
+}
+
+/** Ce qu'un archer a joué dans **une** phase : le tableau, et ses tours effectivement disputés. */
+export interface ParcoursPhase {
+  phaseId: number
+  ordre: number
+  /** Le type de phase, tel que le serveur le nomme (`TypePhase`). Le libellé se prend dans
+   * `shared/phases/catalogue.ts` — domicile unique du vocabulaire (règle 3). */
+  type: string
+  etapes: EtapeChemin[]
+}
+
+/** Les étapes qui ont **eu lieu**. `a_jouer` et `attente_adversaire` décrivent un match qui n'est
+ * pas tiré ; `a_venir` un tour que l'archer n'a même pas atteint. */
+const ETAPES_JOUEES: ReadonlySet<StatutEtape> = new Set<StatutEtape>([
+  'gagne',
+  'perdu',
+  'en_attente',
+  'exempt',
+])
+
+/** Le récapitulatif de la journée d'un archer, **toutes phases confondues** (E16US004).
+ *
+ * Le questionnaire P02 le demande en ces termes : *« on doit pouvoir retrouver tous les tours de
+ * toutes les phases joués »*. `cheminDeArcher` ne connaît qu'**un** tableau ; ici on parcourt tous
+ * ceux du créneau, dans l'ordre des phases, et l'on ne garde que celles où l'archer a réellement
+ * tiré.
+ *
+ * ⚠️ **Lecture rétrospective** : les étapes `a_venir` que `cheminDeArcher` ajoute pour la vue « Mon
+ * chemin » sont écartées. Ce qui reste à jouer est déjà porté par le bloc « Ensuite » de la carte de
+ * suivi (E07US008) — deux réponses à la même question finissent toujours par diverger, et celle
+ * d'ici serait la moins bien informée (elle ignore le repêchage).
+ */
+export function parcoursToutesPhases(tableaux: TableauPublic[], archerId: number): ParcoursPhase[] {
+  return [...tableaux]
+    .sort((a, b) => a.ordre - b.ordre)
+    .map((tableau) => ({
+      phaseId: tableau.phase_id,
+      ordre: tableau.ordre,
+      type: tableau.type,
+      etapes: cheminDeArcher(tableau, archerId).filter((e) => ETAPES_JOUEES.has(e.statut)),
+    }))
+    .filter((parcours) => parcours.etapes.length > 0)
 }
 
 /** L'arbre complet, groupé **par branche** — variante B de la maquette.

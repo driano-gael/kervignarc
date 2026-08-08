@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
 import type { PlanDeCibles } from '../placement/api'
-import { construireJournee, filtrerArchers, placeDansPlan } from './suivi'
+import {
+  construireJournee,
+  departsDesArchersSuivis,
+  filtrerArchers,
+  placeDansPlan,
+  rechercherArchers,
+} from './suivi'
 
 const archer = (id: number, nom: string, prenom: string): Archer => ({
   id,
@@ -78,6 +84,54 @@ describe('filtrerArchers — recherche par nom', () => {
   })
 })
 
+// E16US004, **dérivé du CA** « recherche : filtre par club, liste qui se met à jour à la frappe,
+// état de suivi actionnable sur chaque ligne » (questionnaire P01 : *« mettre un filtre de tri par
+// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche »*).
+// Écrit avant le câblage de l'écran (règle 9). Seuls les deux premiers volets sont de la logique
+// pure ; l'« état actionnable » est du rendu, vérifié à la recette.
+describe('rechercherArchers — nom et club', () => {
+  const archers = [
+    { ...archer(1, 'Martin', 'Paul'), club_id: 7 },
+    { ...archer(2, 'Durand', 'Rémy'), club_id: 8 },
+    { ...archer(3, 'Martinez', 'Sophie'), club_id: 7 },
+    // Club encore **inconnu** (ADR-0014) : `null` n'est jamais « aucun club ».
+    { ...archer(4, 'Marty', 'Jean'), club_id: null },
+  ]
+
+  it('sans nom ni club, ne propose rien', () => {
+    // On garde la règle d'E07US006 (D-09 : la recherche est l'exception, pas la porte) : sans aucun
+    // critère, on ne déverse pas l'annuaire.
+    expect(rechercherArchers(archers, { requete: '', clubId: null })).toEqual([])
+  })
+
+  it('un club seul suffit à lister ses archers, sans rien taper', () => {
+    // C'est le « filtre en plus » demandé : on choisit un club et la liste apparaît — sinon le
+    // filtre ne servirait qu'à réduire une recherche déjà faite, ce qui n'est pas ce qui est
+    // demandé (« un filtre de tri par club **en plus** »).
+    expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
+  })
+
+  it('nom et club se cumulent', () => {
+    expect(rechercherArchers(archers, { requete: 'martin', clubId: 7 }).map((a) => a.id)).toEqual([
+      1, 3,
+    ])
+    expect(rechercherArchers(archers, { requete: 'martin', clubId: 8 })).toEqual([])
+  })
+
+  it('le nom seul ignore le club (comportement d’avant, inchangé)', () => {
+    expect(rechercherArchers(archers, { requete: 'mart', clubId: null }).map((a) => a.id)).toEqual([
+      1, 3, 4,
+    ])
+  })
+
+  it('un archer au club inconnu ne tombe dans aucun club', () => {
+    // Le piège d'ADR-0014 : `club_id === null` veut dire « pas encore renseigné ». Le ranger
+    // d'office dans le club filtré ferait croire qu'il en est, et l'y chercher ensuite en vain.
+    expect(rechercherArchers(archers, { requete: 'marty', clubId: 7 })).toEqual([])
+    expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
+  })
+})
+
 describe('placeDansPlan — place d’un archer sur un départ', () => {
   const plan: PlanDeCibles = {
     depart_id: 10,
@@ -147,5 +201,58 @@ describe('construireJournee — la journée d’un archer (départs + plans, pas
     const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
 
     expect(construireJournee(7, departs, plans).map((l) => l.departId)).toEqual([10])
+  })
+})
+
+describe('departsDesArchersSuivis — quels créneaux le récapitulatif doit lire', () => {
+  // ⚠️ Le CA dit « tous les tours de **toutes les phases** joués ». Un premier jet lisait le départ
+  // que la **salle** est en train de tirer : dès l'après-midi lancée, un archer du matin perdait
+  // toute sa section « duels », ses volées restant affichées — une amputation silencieuse.
+  const departs = [depart(10, 1, '09:00'), depart(20, 2, '14:00')]
+
+  it('rend le départ de l’archer, pas celui que la salle tire', () => {
+    // L'archer 7 tire le matin (départ 10). Que la salle en soit à l'après-midi ne change rien :
+    // cette fonction ne connaît pas `departDeSalle`, et c'est précisément le correctif.
+    const plans = new Map([
+      [10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])],
+      [20, planAvec(20, [{ index: 1, position: 'A', archerId: 99 }])],
+    ])
+
+    expect(departsDesArchersSuivis([7], departs, plans)).toEqual([10])
+  })
+
+  it('réunit les créneaux de plusieurs archers suivis, sans doublon', () => {
+    const plans = new Map([
+      [
+        10,
+        planAvec(10, [
+          { index: 3, position: 'B', archerId: 7 },
+          { index: 4, position: 'A', archerId: 8 },
+        ]),
+      ],
+      [20, planAvec(20, [{ index: 1, position: 'A', archerId: 9 }])],
+    ])
+
+    // 7 et 8 partagent le départ 10 : il ne doit être interrogé **qu'une fois** — la borne qui
+    // empêche ce correctif d'aggraver DETTE-031.
+    expect(departsDesArchersSuivis([7, 8, 9], departs, plans)).toEqual([10, 20])
+  })
+
+  it('ne réclame aucun créneau tant que les plans ne sont pas chargés', () => {
+    // Aucune requête ne part au premier rendu : le récapitulatif se remplit au suivant. Sans ce
+    // comportement, on interrogerait des départs au hasard le temps du chargement.
+    expect(departsDesArchersSuivis([7], departs, new Map())).toEqual([])
+  })
+
+  it('ne réclame rien quand on ne suit personne', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(departsDesArchersSuivis([], departs, plans)).toEqual([])
+  })
+
+  it('ignore un archer suivi qui n’est posé nulle part', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(departsDesArchersSuivis([404], departs, plans)).toEqual([])
   })
 })

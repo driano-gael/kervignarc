@@ -13,9 +13,10 @@
 // Extrait de `admin/CoquilleAdmin.tsx` en E07US001 : la zone publique est une surface à part entière,
 // pas un repli enfoui dans le module d'administration.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Tournoi } from '../competition/api'
+import { modeEffectif, suivisDuTournoi, type ModeAffichage } from '../../shared/suivis/focus'
 import { VueClassement } from '../competition/VueClassement'
 import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
@@ -75,10 +76,22 @@ export function AccueilPublic() {
 }
 
 function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () => void }) {
+  // ⚠️ Sélecteur **stable** : on lit la référence brute `s.suivis`, jamais un tableau dérivé — un
+  // `getSnapshot` instable boucle indéfiniment en Zustand v5 / React 19. C'est le correctif que
+  // `VueSuivi` et `VueTableaux` portent déjà sur ce même store ; il se réintroduit à chaque nouveau
+  // lecteur, d'où la répétition de l'avertissement.
+  const tousLesSuivis = useSessionSuivisStore((s) => s.suivis)
+  const suivisIci = useMemo(
+    () => suivisDuTournoi(tousLesSuivis, tournoi.id),
+    [tousLesSuivis, tournoi.id],
+  )
+  const centrerSurSuivis = useSessionSuivisStore((s) => s.centrerSurSuivis)
+  const centrer = useSessionSuivisStore((s) => s.centrer)
+  const mode = modeEffectif(centrerSurSuivis, suivisIci)
+
   // Si l'on suit déjà quelqu'un sur ce tournoi, on ouvre directement sur « Suivi » — l'appli tombe sur
   // ses archers sans détour (D-09). Sinon, le classement reste la vue d'accueil par défaut.
-  const aDesSuivis = useSessionSuivisStore((s) => s.suivis.some((x) => x.tournoiId === tournoi.id))
-  const [vue, setVue] = useState<Vue>(aDesSuivis ? 'suivi' : 'classement')
+  const [vue, setVue] = useState<Vue>(suivisIci.length > 0 ? 'suivi' : 'classement')
 
   return (
     <section className="carte carte--large">
@@ -88,6 +101,21 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
       <h2 className="carte__titre">
         {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
       </h2>
+
+      {/* L'interrupteur ne s'affiche que s'il y a quelque chose à centrer : proposer « mes archers »
+          à qui n'en suit aucun offrirait un bouton dont le seul effet serait de vider l'écran. Le
+          geste manquant se fait dans l'onglet « Suivi », et c'est là qu'on l'apprend.
+          ⚠️ **Masqué sur l'onglet « Suivi »** (correctif de revue) : cette vue *est* déjà « mes
+          archers », elle ne lit donc pas le mode. Or « Suivi » est l'onglet d'atterrissage dès
+          qu'on suit quelqu'un — le tout premier geste d'un spectateur était d'actionner un réglage
+          qui ne changeait rien sous ses yeux, ce qui fait douter du reste de l'écran. */}
+      {suivisIci.length > 0 && vue !== 'suivi' && (
+        <BasculeAffichage
+          mode={mode}
+          nbSuivis={suivisIci.length}
+          onChanger={(m) => centrer(m === 'suivis')}
+        />
+      )}
 
       <nav className="onglets" aria-label="Vues publiques du tournoi">
         {VUES.map((v) => (
@@ -103,19 +131,73 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
         ))}
       </nav>
 
+      {/* Le mode descend en **prop explicite**, jamais lu depuis le store par les vues elles-mêmes :
+          `VueClassement`, `VueTableaux` et `VueAffectations` servent aussi la coquille admin et
+          l'écran de salle, où ce filtre n'a rien à faire (même précaution que `filtrable` et
+          `interactif`). */}
       {vue === 'suivi' ? (
         <VueSuivi tournoiId={tournoi.id} />
       ) : vue === 'affectations' ? (
-        <VueAffectations tournoiId={tournoi.id} />
+        <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'tableaux' ? (
-        <VueTableaux tournoiId={tournoi.id} />
+        <VueTableaux tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'classement' ? (
-        <VueClassement tournoiId={tournoi.id} admin={false} />
+        <VueClassement
+          tournoiId={tournoi.id}
+          admin={false}
+          mode={mode}
+          suivis={suivisIci}
+          detailFleches
+        />
       ) : vue === 'palmares' ? (
-        <VuePalmares tournoiId={tournoi.id} />
+        <VuePalmares tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : (
-        <PlanCiblesPublic tournoiId={tournoi.id} />
+        <PlanCiblesPublic tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       )}
     </section>
+  )
+}
+
+/** L'interrupteur « mes archers / tout » (E16US004) — **un seul pour tout l'onglet public**.
+ *
+ * Le commanditaire suit plusieurs archers et veut lire chaque écran des deux façons (P03 : *« il me
+ * faut les 2 »* ; P05 : *« une bascule pour suivre tous les tableaux du tournoi ou uniquement centré
+ * sur les archers que l'on choisit de suivre »*). Un interrupteur **par vue** aurait obligé à le
+ * redire à chaque onglet — arbitrage du cadrage, 08/08/2026.
+ *
+ * Même grammaire visuelle que les onglets (pilules, `.onglet--actif` en aplat de marque) mais
+ * `role="group"` et `aria-pressed` : ce ne sont pas des destinations, c'est un choix d'affichage.
+ * Le compte est écrit en toutes lettres — « Mes archers (3) » dit combien on va voir avant de
+ * cliquer, ce qui évite d'attribuer à une panne un écran soudain court.
+ */
+function BasculeAffichage({
+  mode,
+  nbSuivis,
+  onChanger,
+}: {
+  mode: ModeAffichage
+  nbSuivis: number
+  onChanger: (mode: ModeAffichage) => void
+}) {
+  return (
+    <div className="onglets bascule-suivis" role="group" aria-label="Affichage">
+      <span className="bascule-suivis__libelle">Affichage</span>
+      <button
+        type="button"
+        className={mode === 'tout' ? 'onglet onglet--actif' : 'onglet'}
+        aria-pressed={mode === 'tout'}
+        onClick={() => onChanger('tout')}
+      >
+        Tout le tournoi
+      </button>
+      <button
+        type="button"
+        className={mode === 'suivis' ? 'onglet onglet--actif' : 'onglet'}
+        aria-pressed={mode === 'suivis'}
+        onClick={() => onChanger('suivis')}
+      >
+        Mes archers ({nbSuivis})
+      </button>
+    </div>
   )
 }

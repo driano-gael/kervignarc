@@ -20,53 +20,44 @@
 // précisément le risque que la maquette pointait (« au risque qu'ils glissent et qu'on vous le
 // reproche »). La question reste ouverte au questionnaire P05.
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
-import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeparts } from '../departs/hooks'
+import { type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 import { useTableaux } from './hooks'
-import { cheminDeArcher, parTour, type EtapeChemin } from './presentation'
-
-type Lecture = 'chemin' | 'complet'
+import { cheminDeArcher, LIBELLE_STATUT, parTour } from './presentation'
 
 const nomComplet = (qui: DuellistePublic) => `${qui.prenom} ${qui.nom}`.trim()
-
-/** Ce qu'on écrit en face de chaque étape du chemin. Un mot par situation, jamais une couleur
- * seule (`DV-03`) : l'écran de salle est vu de loin et l'appli publique est lue en plein soleil. */
-const LIBELLE_STATUT: Record<EtapeChemin['statut'], string> = {
-  gagne: 'Gagné',
-  perdu: 'Perdu',
-  en_attente: 'En attente de validation',
-  a_jouer: 'À tirer',
-  attente_adversaire: 'Adversaire à désigner',
-  exempt: 'Exempt',
-  a_venir: 'À venir',
-}
 
 export function VueTableaux({
   tournoiId,
   interactif = true,
+  mode = 'tout',
+  suivis = [],
 }: {
   tournoiId: number
   interactif?: boolean
+  /** La bascule « mes archers / tout » de l'appli publique (E16US004).
+   *
+   * ⚠️ **Elle remplace le sélecteur local « Mon chemin / Tableau complet »** que cette vue portait
+   * depuis E07US005. Les deux disaient exactement la même chose ; les laisser coexister aurait
+   * donné deux interrupteurs contradictoires sur le même écran — un spectateur en « Mes archers »
+   * global voyant l'arbre entier parce qu'un second bouton, ailleurs, dit le contraire. Le CA P05
+   * (*« une bascule pour suivre tous les tableaux du tournoi ou uniquement centré sur les archers
+   * que l'on choisit de suivre »*) est désormais servi par l'interrupteur d'en-tête. */
+  mode?: ModeAffichage
+  /** Les archers suivis **sur ce tournoi**, descendus par `AccueilPublic` — jamais lus au store ici.
+   *
+   * ⚠️ Cette vue était la seule des cinq à **rebâtir** la liste depuis le store alors qu'elle
+   * recevait déjà `mode` en prop (correctif de revue). L'exception rendait invérifiable la règle
+   * qu'elle enfreignait : « le mode public ne se lit pas au store dans une vue partagée », posée
+   * précisément parce que cette vue sert aussi l'écran de salle. Elle abonnait au passage la salle
+   * à un store public dont elle n'a que faire, et faisait dériver « les suivis de ce tournoi » à
+   * trois endroits du même arbre. */
+  suivis?: number[]
 }) {
-  // ⚠️ Sélecteur **stable** : on lit la référence brute `s.suivis`, puis on filtre dans le corps.
-  // Filtrer DANS le sélecteur rend un tableau neuf à chaque appel, donc un `getSnapshot` instable
-  // pour `useSyncExternalStore` → **boucle de rendu infinie** en Zustand v5 / React 19, y compris
-  // avec zéro suivi. C'est le correctif que `VueSuivi` porte déjà, sur le **même store** : un
-  // premier jet de cette US l'avait réintroduit à l'identique, et aucune porte mécanique ne peut
-  // l'attraper — d'où le test de montage `VueTableaux.test.tsx`, qui, lui, le peut.
-  const tousLesSuivis = useSessionSuivisStore((s) => s.suivis)
-  const suivis = useMemo(
-    () => tousLesSuivis.filter((x) => x.tournoiId === tournoiId).map((x) => x.archerId),
-    [tousLesSuivis, tournoiId],
-  )
-  // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre
-  // complet, et le sélecteur n'existe pas. Dans l'appli publique, on ouvre sur « mon chemin » si
-  // l'utilisateur suit quelqu'un — même principe que l'onglet « Suivi » ouvert d'entrée (D-09).
-  const [lecture, setLecture] = useState<Lecture>(suivis.length > 0 ? 'chemin' : 'complet')
   const [phaseChoisie, setPhaseChoisie] = useState<number | null>(null)
   // ⚠️ **Les arbres appartiennent à un créneau** (E01US025, ADR-0075). Ni l'écran de salle ni
   // l'appli publique n'ont de sélecteur de départ ici — le CA veut « aucune interaction » sur le
@@ -107,7 +98,10 @@ export function VueTableaux({
     // aussi la garde d'indexation — une liste non vide rend toujours un élément.)
     return <p className="carte__etat">Pas encore de tableau — les duels ne sont pas lancés.</p>
   }
-  const lectureEffective: Lecture = interactif ? lecture : 'complet'
+  // Sur l'écran de salle il n'y a personne à suivre : la lecture y est **toujours** l'arbre complet
+  // (CA E07US004, « aucune interaction »). Dans l'appli publique, c'est l'interrupteur d'en-tête qui
+  // décide — et lui ne rend « suivis » que s'il y a au moins un archer suivi (`modeEffectif`).
+  const centrerSurSuivis = interactif && mode === 'suivis'
 
   return (
     <div className="tableaux">
@@ -130,25 +124,6 @@ export function VueTableaux({
               </select>
             </label>
           )}
-
-          <div className="tableaux__lecture" role="group" aria-label="Lecture du tableau">
-            <button
-              type="button"
-              className={lecture === 'chemin' ? 'onglet onglet--actif' : 'onglet'}
-              aria-pressed={lecture === 'chemin'}
-              onClick={() => setLecture('chemin')}
-            >
-              Mon chemin
-            </button>
-            <button
-              type="button"
-              className={lecture === 'complet' ? 'onglet onglet--actif' : 'onglet'}
-              aria-pressed={lecture === 'complet'}
-              onClick={() => setLecture('complet')}
-            >
-              Tableau complet
-            </button>
-          </div>
         </div>
       )}
 
@@ -157,7 +132,7 @@ export function VueTableaux({
         {tableau.est_termine ? ' · terminé' : ''}
       </p>
 
-      {lectureEffective === 'chemin' ? (
+      {centrerSurSuivis ? (
         <MonChemin tableau={tableau} suivis={suivis} />
       ) : (
         <ArbreComplet tableau={tableau} />
@@ -171,22 +146,49 @@ export function VueTableaux({
 /** Variante A : l'arbre réduit à la trajectoire de chaque archer suivi. */
 function MonChemin({ tableau, suivis }: { tableau: TableauPublic; suivis: number[] }) {
   if (suivis.length === 0) {
-    // On ne bascule pas d'autorité sur l'autre lecture : ce serait répondre à côté sans le dire.
-    // On nomme le geste manquant — la liste de suivis se remplit dans l'onglet « Suivi »
-    // (E07US006), et c'est le seul endroit où elle se remplit.
+    // Défense en profondeur : l'interrupteur d'en-tête ne rend « suivis » qu'avec au moins un
+    // archer suivi (`modeEffectif`), donc ce cas ne devrait pas se produire depuis l'appli publique.
+    // On ne bascule pas d'autorité sur l'autre lecture — ce serait répondre à côté sans le dire —
+    // et l'on nomme le geste manquant : la liste se remplit dans l'onglet « Suivi » (E07US006), et
+    // nulle part ailleurs.
     return (
       <p className="carte__etat">
-        Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou passez
-        au tableau complet.
+        Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou
+        repassez l’affichage sur « Tout le tournoi ».
+      </p>
+    )
+  }
+  // ⚠️ **Aucun de vos archers ici ≠ aucun archer** (correctif de revue). Le cas est banal — on suit
+  // des archers d'une catégorie, on regarde le tableau d'une autre — et il n'était pas traité : on
+  // rendait **une carte anonyme par archer suivi**, toutes identiques (« Archer suivi / Pas engagé
+  // dans ce tableau »), sans jamais nommer le filtre ni proposer d'en sortir. Anonymes par
+  // construction, d'ailleurs : le nom se lit dans les duels du tableau, où l'archer n'est pas.
+  // C'est la seule des cinq vues qui manquait à la règle « chaque écran nomme son propre vide ».
+  const engages = suivis.filter((archerId) => cheminDeArcher(tableau, archerId).length > 0)
+  if (engages.length === 0) {
+    return (
+      <p className="carte__etat">
+        Aucun des archers que vous suivez n’est engagé dans ce tableau. Passez à « Tout le tournoi »
+        pour voir l’arbre complet.
       </p>
     )
   }
   return (
-    <ul className="tableaux__chemins">
-      {suivis.map((archerId) => (
-        <CheminArcher key={archerId} tableau={tableau} archerId={archerId} />
-      ))}
-    </ul>
+    <>
+      <ul className="tableaux__chemins">
+        {engages.map((archerId) => (
+          <CheminArcher key={archerId} tableau={tableau} archerId={archerId} />
+        ))}
+      </ul>
+      {/* Cas mixte : on dit **combien** manquent plutôt que d'aligner des cartes sans nom. */}
+      {engages.length < suivis.length && (
+        <p className="carte__etat">
+          {suivis.length - engages.length === 1
+            ? 'Un autre archer suivi n’est pas engagé dans ce tableau.'
+            : `${suivis.length - engages.length} autres archers suivis ne sont pas engagés dans ce tableau.`}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -199,8 +201,10 @@ function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId:
     .find((qui) => qui?.archer_id === archerId)
 
   if (etapes.length === 0 || moi === undefined || moi === null) {
-    // Suivi d'un archer qui n'est pas dans **ce** tableau (autre catégorie, sorti en qualification,
-    // ou tableau d'une autre phase) : le dire vaut mieux qu'une carte vide inexplicable.
+    // Défense en profondeur : `MonChemin` ne monte plus que les archers dont le chemin est non
+    // vide, et un chemin non vide implique un duel où l'archer figure — donc un nom trouvable.
+    // Le garde reste pour le typage et pour qu'un futur appelant direct ne rende pas une carte
+    // muette ; ce n'est plus lui qui porte le cas « pas engagé », traité collectivement au-dessus.
     return (
       <li className="tableaux__chemin">
         <span className="tableaux__chemin-nom">Archer suivi</span>

@@ -72,6 +72,20 @@
   color: var(--text);
 }
 
+/* L'archer suivi, sur une butte rendue entière (E16US004, 2ᵉ passe de revue).
+   En « mes archers », le pas de tir garde ses buttes complètes pour que l'adversaire y figure — mais
+   l'interrupteur annonce « Mes archers (3) » juste au-dessus. Sans ce repère, l'écran montrait une
+   douzaine de noms sans dire lesquels étaient les siens : le compte et la liste se contredisaient.
+   Une barre latérale plutôt qu'une couleur de texte : l'ambre porte déjà l'alerte (DV-03) et un
+   second sens se lirait comme un problème. `--brand-border` est la variante **dérivée DV-05** prévue
+   pour les bordures (3,01:1, au-dessus du seuil 3:1 des éléments non textuels) — le rouge de charte
+   `--brand-surface` est un aplat, il ne se pose pas en trait. */
+.affectations__poste--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+  margin-left: -0.5em;
+}
+
 .affectations__titre {
   flex: 0 0 auto;
   font-weight: 600;

@@ -12,13 +12,26 @@
 // regarde toute la journée, c'est là que l'anomalie se remarque ; l'écran d'admin la répare.
 
 import { useState } from 'react'
+import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
-import { aDesExAequo, estExAequo, totauxExAequo } from './departage'
+import { estExAequo, totauxExAequo } from './departage'
 import { usePlacerArcher } from './hooks'
 
 interface TableClassementProps {
   tournoiId: number
   lignes: LigneClassement[]
+  /**
+   * La liste **complète**, quand `lignes` en est un sous-ensemble affiché. Sert au seul calcul des
+   * ex æquo. Par défaut : `lignes` (les deux se confondent hors centrage).
+   *
+   * ⚠️ **Ne pas confondre la source du calcul et la source de l'affichage** (correctif de revue,
+   * E16US004). `totauxExAequo` cherche les totaux qui apparaissent **plusieurs fois** : le lui
+   * donner déjà filtré fait disparaître l'égalité en même temps que l'archer avec qui elle
+   * existait. Centré sur un seul archer, un 542 à égalité avec un autre 542 non suivi se
+   * présentait comme un rang acquis — alors qu'il tient à un départage au nombre de 10, voire à
+   * un barrage à venir.
+   */
+  lignesCompletes?: LigneClassement[]
   admin: boolean
   /**
    * Combien de lignes de tête restent **toujours visibles** pendant que le reste défile (A16 :
@@ -30,14 +43,41 @@ interface TableClassementProps {
    * l'on suit le haut d'une catégorie.
    */
   teteFigee?: number
+  /**
+   * Déplie le **détail des flèches** d'un archer au clic sur sa ligne (E16US004).
+   *
+   * P03 posait la question en toutes lettres — *« le détail des flèches des autres »* — et la
+   * réponse est *« oui »*. Rien à ouvrir côté serveur : `GET …/archers/{id}/deroule` est **déjà**
+   * public et anonyme pour n'importe quel archer (ADR-0039, transparence assumée, scores
+   * provisoires signalés). Cette prop ne fait donc que câbler une surface existante.
+   *
+   * Réservé à l'appli publique : l'admin a l'écran de saisie, et l'écran de salle n'a « aucune
+   * interaction » (CA E07US004).
+   */
+  detailFleches?: boolean
 }
 
-export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: TableClassementProps) {
+export function TableClassement({
+  tournoiId,
+  lignes,
+  lignesCompletes,
+  admin,
+  teteFigee = 0,
+  detailFleches = false,
+}: TableClassementProps) {
   if (lignes.length === 0) {
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
   }
 
-  const egalites = totauxExAequo(lignes)
+  const egalites = totauxExAequo(lignesCompletes ?? lignes)
+  // ⚠️ **La règle ne s'annonce que si une ligne VISIBLE la porte** (2ᵉ passe de revue). Calculer les
+  // égalités sur la liste complète corrige le marquage, mais ne doit pas décider seul de l'affichage
+  // du paragraphe : centré sur trois archers, `egalites` décrit tout le créneau, donc la mention
+  // serait apparue dès qu'une égalité existe **quelque part** — c'est-à-dire en permanence à partir
+  // de la mi-journée — sous une table où aucune ligne n'est marquée. C'est très exactement la
+  // devinette que `departage.ts` dit vouloir éviter (« encore faut-il montrer sur qui »), et le
+  // retour A16 demandait la mention « seulement en cas d'ex æquo ».
+  const egaliteVisible = lignes.some((ligne) => estExAequo(ligne, egalites))
   // Séparation seulement si elle **sert** : figer les 5 premiers d'une liste de 5 ne fait
   // qu'ajouter un cadre autour de rien.
   const separer = teteFigee > 0 && lignes.length > teteFigee
@@ -53,6 +93,7 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
           ligne={ligne}
           admin={admin}
           exAequo={estExAequo(ligne, egalites)}
+          detailFleches={detailFleches}
         />
       ))}
     </tbody>
@@ -98,7 +139,7 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
           une règle qui ne s'applique pas — et un écran qui explique en continu finit par ne plus
           être lu. Les lignes concernées sont marquées : dire « il y a des ex æquo » sans dire
           lesquels serait une devinette. */}
-      {aDesExAequo(egalites) && (
+      {egaliteVisible && (
         <p className="classement__departage" role="note">
           Ex æquo signalés : à total égal, le plus grand nombre de <strong>10</strong> départage,
           puis le nombre de <strong>9</strong> (règle FFTA).
@@ -108,9 +149,18 @@ export function TableClassement({ tournoiId, lignes, admin, teteFigee = 0 }: Tab
   )
 }
 
+/** Le nombre de colonnes **de lecture** (hors « Placer », réservée à l'admin).
+ *
+ * Troisième domicile de ce compte, et le seul qui ne se voie pas : `EnTetes` et `Colonnes` cassent
+ * le rendu ou le typage quand ils divergent, un `colSpan` faux se contente de laisser une case vide
+ * en bout de ligne de détail. La constante ne supprime pas la duplication — elle la rend nommée, ce
+ * qui suffit ici (correctif de revue, sans pattern : les trois listes restent côte à côte). */
+const NB_COLONNES_LECTURE = 8
+
 /** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
  * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
- * ne peut plus décaler l'une par rapport à l'autre. */
+ * ne peut plus décaler l'une par rapport à l'autre. ⚠️ Toute colonne ajoutée ici se compte aussi
+ * dans `NB_COLONNES_LECTURE` et se dessine dans `Colonnes`. */
 function EnTetes({ admin }: { admin: boolean }) {
   return (
     <tr>
@@ -154,13 +204,16 @@ function LigneArcher({
   ligne,
   admin,
   exAequo,
+  detailFleches,
 }: {
   tournoiId: number
   ligne: LigneClassement
   admin: boolean
   exAequo: boolean
+  detailFleches: boolean
 }) {
   const [cible, setCible] = useState('')
+  const [detailOuvert, setDetailOuvert] = useState(false)
   const placer = usePlacerArcher(tournoiId)
 
   const soumettrePlacement = (evenement: React.FormEvent) => {
@@ -189,50 +242,139 @@ function LigneArcher({
     .filter((c) => c !== '')
     .join(' ')
 
+  // Le nombre de colonnes, pour que la ligne de détail s'étale sous la table entière. Les colonnes
+  // de lecture, plus « Placer » côté admin.
+  const nbColonnes = admin ? NB_COLONNES_LECTURE + 1 : NB_COLONNES_LECTURE
+
   return (
-    <tr className={classes === '' ? undefined : classes}>
-      <td>{ligne.rang_categorie ?? '—'}</td>
-      <td className="table__scratch">{ligne.rang_scratch ?? '—'}</td>
-      <td>
-        {identite}
-        {badgeStatut && (
-          <span className="table__badge-forfait" title="Statut de participation">
-            {' '}
-            {badgeStatut}
-          </span>
-        )}
-        {ligne.club_id === null && (
-          <span
-            className="table__anomalie"
-            title="Renseignez son club pour compléter l'inscription"
-          >
-            {' '}
-            Club inconnu
-          </span>
-        )}
-      </td>
-      <td>{ligne.categorie_libelle}</td>
-      <td>{ligne.cible ?? '—'}</td>
-      <td className="table__total">{ligne.total}</td>
-      <td>{ligne.nb_dix}</td>
-      <td>{ligne.nb_neuf}</td>
-      {admin && (
+    <>
+      <tr className={classes === '' ? undefined : classes}>
+        <td>{ligne.rang_categorie ?? '—'}</td>
+        <td className="table__scratch">{ligne.rang_scratch ?? '—'}</td>
         <td>
-          <form className="ligne-action" onSubmit={soumettrePlacement}>
-            <input
-              className="ligne-action__champ"
-              type="number"
-              min={1}
-              value={cible}
-              onChange={(e) => setCible(e.target.value)}
-              aria-label={`Cible de ${identite}`}
-            />
-            <button type="submit" disabled={placer.isPending || cible === ''}>
-              OK
+          {detailFleches ? (
+            // Un vrai `<button>`, pas un `<tr onClick>` : la ligne doit être atteignable au clavier et
+            // annoncée comme dépliable (`aria-expanded`). Une rangée cliquable ne l'est ni l'un ni
+            // l'autre, et l'appli publique se consulte aussi au lecteur d'écran.
+            <button
+              type="button"
+              className="lien table__detail-bascule"
+              aria-expanded={detailOuvert}
+              // `aria-controls` (correctif de revue) : sans lui, le lecteur d'écran annonce
+              // « déplié » sans pouvoir dire **quoi** — l'association bouton → région manquait.
+              aria-controls={`detail-archer-${ligne.archer_id}`}
+              onClick={() => setDetailOuvert((ouvert) => !ouvert)}
+            >
+              {identite}
             </button>
-          </form>
+          ) : (
+            identite
+          )}
+          {badgeStatut && (
+            <span className="table__badge-forfait" title="Statut de participation">
+              {' '}
+              {badgeStatut}
+            </span>
+          )}
+          {ligne.club_id === null && (
+            <span
+              className="table__anomalie"
+              title="Renseignez son club pour compléter l'inscription"
+            >
+              {' '}
+              Club inconnu
+            </span>
+          )}
         </td>
+        <td>{ligne.categorie_libelle}</td>
+        <td>{ligne.cible ?? '—'}</td>
+        <td className="table__total">{ligne.total}</td>
+        <td>{ligne.nb_dix}</td>
+        <td>{ligne.nb_neuf}</td>
+        {admin && (
+          <td>
+            <form className="ligne-action" onSubmit={soumettrePlacement}>
+              <input
+                className="ligne-action__champ"
+                type="number"
+                min={1}
+                value={cible}
+                onChange={(e) => setCible(e.target.value)}
+                aria-label={`Cible de ${identite}`}
+              />
+              <button type="submit" disabled={placer.isPending || cible === ''}>
+                OK
+              </button>
+            </form>
+          </td>
+        )}
+      </tr>
+      {detailOuvert && (
+        <tr className="table__detail" id={`detail-archer-${ligne.archer_id}`}>
+          <td colSpan={nbColonnes}>
+            <DetailFleches tournoiId={tournoiId} archerId={ligne.archer_id} nom={identite} />
+          </td>
+        </tr>
       )}
-    </tr>
+    </>
+  )
+}
+
+/** Les flèches d'un archer, dépliées sous sa ligne de classement (E16US004, P03).
+ *
+ * Même source que la carte de suivi (`useDeroule`, E07US009) — un seul appel par archer déplié,
+ * mis en cache par React Query et invalidé en direct par la diffusion post-commit : le détail suit
+ * la saisie sans qu'on le redemande (P03 : *« en direct, dès que les informations sont
+ * disponibles »*).
+ *
+ * Les volées **non validées** sont montrées, marquées « en attente » : c'est la décision d'ADR-0039,
+ * pas une négligence — les taire ferait un total muet pendant tout un tour.
+ */
+function DetailFleches({
+  tournoiId,
+  archerId,
+  nom,
+}: {
+  tournoiId: number
+  archerId: number
+  nom: string
+}) {
+  const deroule = useDeroule(tournoiId, archerId)
+  const volees = deroule.data?.volees ?? []
+
+  // Ce qu'on CONNAÎT d'abord, l'erreur ensuite, le fait négatif en dernier — l'ordre que les revues
+  // de `VueSuivi` ont imposé : ne jamais présenter un chargement ou une coupure comme « rien tiré ».
+  if (volees.length === 0) {
+    if (deroule.isError) {
+      return <p className="carte__etat">Détail momentanément indisponible — connexion perdue.</p>
+    }
+    if (deroule.isPending) return <p className="carte__etat">Chargement…</p>
+    return <p className="carte__etat">Aucune flèche saisie pour l’instant.</p>
+  }
+
+  return (
+    <div className="table__fleches">
+      <ul className="suivi-deroule__volees" aria-label={`Flèches de ${nom}`}>
+        {volees.map((v) => (
+          <li key={v.numero} className="suivi-volee">
+            <span className="suivi-volee__num">V{v.numero}</span>
+            <span className="suivi-volee__valeurs">{v.valeurs.join(' ')}</span>
+            <span className="suivi-volee__points">{v.points}</span>
+            <span
+              className={
+                v.statut === 'valide'
+                  ? 'suivi-volee__statut suivi-volee__statut--valide'
+                  : 'suivi-volee__statut suivi-volee__statut--attente'
+              }
+            >
+              {v.statut === 'valide' ? 'validé' : 'en attente'}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="suivi-deroule__cumul">
+        Total validé <strong>{deroule.data?.cumul ?? 0}</strong>
+      </p>
+    </div>
   )
 }

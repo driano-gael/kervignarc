@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react'
 import { useArchers } from '../archers/hooks'
 import { useDeparts } from '../departs/hooks'
+import { centrerCibles, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { usePlanDeCibles } from './hooks'
 import { construirePlanConsultation } from './planConsultation'
@@ -32,7 +33,18 @@ function libelleDepart(depart: { numero: number; horaire: string | null }): stri
   return depart.horaire ? `Départ ${depart.numero} — ${depart.horaire}` : `Départ ${depart.numero}`
 }
 
-export function PlanCiblesPublic({ tournoiId }: { tournoiId: number }) {
+export function PlanCiblesPublic({
+  tournoiId,
+  mode = 'tout',
+  suivis = [],
+}: {
+  tournoiId: number
+  /** Bascule « mes archers / tout » (E16US004) : ne garde que les **buttes** où tire un archer
+   * suivi. On filtre la cible entière, voisins compris — sur un plan, « où tire mon archer » se
+   * cherche par la butte, et masquer ses voisins rendrait la carte illisible. */
+  mode?: ModeAffichage
+  suivis?: number[]
+}) {
   const departs = useDeparts(tournoiId)
   // Départ affiché. `null` tant qu'on n'a pas choisi ; on retombe sur le **premier** départ dès que
   // la liste est connue (un plan sans départ choisi n'aurait rien à montrer). On revalide le choix
@@ -71,7 +83,9 @@ export function PlanCiblesPublic({ tournoiId }: { tournoiId: number }) {
           ))}
         </select>
       </label>
-      {departId !== null && <GrilleCibles tournoiId={tournoiId} departId={departId} />}
+      {departId !== null && (
+        <GrilleCibles tournoiId={tournoiId} departId={departId} mode={mode} suivis={suivis} />
+      )}
     </>
   )
 }
@@ -110,7 +124,17 @@ export function PlanCiblesDeSalle({ tournoiId }: { tournoiId: number }) {
 
 // La grille des cibles d'un départ donné. Séparée pour que le changement de départ remonte des hooks
 // dont la clé dépend de `departId` (React Query re-souscrit proprement).
-function GrilleCibles({ tournoiId, departId }: { tournoiId: number; departId: number }) {
+function GrilleCibles({
+  tournoiId,
+  departId,
+  mode = 'tout',
+  suivis = [],
+}: {
+  tournoiId: number
+  departId: number
+  mode?: ModeAffichage
+  suivis?: number[]
+}) {
   const plan = usePlanDeCibles(tournoiId, departId)
   const archers = useArchers(tournoiId)
 
@@ -120,10 +144,14 @@ function GrilleCibles({ tournoiId, departId }: { tournoiId: number; departId: nu
     return map
   }, [archers.data])
 
-  const cibles = useMemo(
-    () => (plan.data ? construirePlanConsultation(plan.data, nomParArcher) : []),
-    [plan.data, nomParArcher],
-  )
+  // Le centrage s'applique au **plan brut** : c'est lui qui porte les `archer_id`, la vue de
+  // consultation ne garde que des noms (cf. `planConsultation.ts`). Filtrer après aurait obligé à
+  // rapatrier les identifiants dans le DTO d'affichage pour rien.
+  const cibles = useMemo(() => {
+    if (!plan.data) return []
+    const retenues = centrerCibles(plan.data.cibles, mode, suivis)
+    return construirePlanConsultation({ ...plan.data, cibles: retenues }, nomParArcher)
+  }, [plan.data, nomParArcher, mode, suivis])
 
   if (plan.isPending) {
     return <p className="carte__etat">Chargement…</p>
@@ -136,7 +164,21 @@ function GrilleCibles({ tournoiId, departId }: { tournoiId: number; departId: nu
     )
   }
   if (cibles.length === 0) {
-    return <p className="carte__etat">Aucune cible pour ce départ.</p>
+    // Deux vides très différents : « ce départ n'a pas de plan » et « aucun de vos archers n'y tire
+    // encore ». Les confondre ferait chercher une panne là où il n'y a qu'un filtre.
+    return mode === 'suivis' ? (
+      <p className="carte__etat">
+        {/* ⚠️ **Nommer le geste utile en PREMIER** (2ᵉ passe de revue). Cet écran porte son propre
+            sélecteur de départ, et il s'ouvre sur le premier créneau ; l'interrupteur étant armé par
+            défaut, le cas banal est « je suis un archer de l'après-midi et je regarde le matin ».
+            Ne proposer que « Tout le tournoi » menait alors à un cul-de-sac : on obtenait le plan
+            complet **du mauvais départ**, toujours sans son archer. */}
+        Aucun des archers que vous suivez n’est placé sur ce départ. Choisissez un autre départ, ou
+        passez à « Tout le tournoi » pour voir le plan complet.
+      </p>
+    ) : (
+      <p className="carte__etat">Aucune cible pour ce départ.</p>
+    )
   }
 
   return (

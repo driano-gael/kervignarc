@@ -10,6 +10,7 @@
 
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import type { LignePalmares, PodiumCategorie } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
@@ -18,8 +19,19 @@ import { detail, etatPodium, medaille, nomComplet, provenance, rang } from './pr
 export function VuePalmares({
   tournoiId,
   interactif = true,
+  mode = 'tout',
+  suivis = [],
 }: {
   tournoiId: number
+  /** Bascule « mes archers / tout » de l'appli publique (E16US004).
+   *
+   * ⚠️ **Elle ne touche que le classement complet, jamais les podiums.** Un podium amputé de ses
+   * médaillés n'est plus un podium — il ne répond pas à « qui a gagné », qui est la seule question
+   * que cet écran serve. Le centrage sert à retrouver *ses* archers dans la longue liste, pas à
+   * réécrire le résultat du tournoi. */
+  mode?: ModeAffichage
+  /** Les archers suivis sur ce tournoi — n'a de sens qu'avec `mode === 'suivis'`. */
+  suivis?: number[]
   /** `false` pour une surface **sans interaction** — l'écran de salle (E07US004).
    *
    * Un `<select>` et un bouton « Exporter » projetés dans un gymnase sont au mieux inutiles, au
@@ -74,12 +86,7 @@ export function VuePalmares({
               effectif={donnees.lignes.filter((l) => l.categorie_id === podium.categorie_id).length}
             />
           ))}
-          <h4 className="palmares-section">Classement complet</h4>
-          {/* Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse
-              défiler horizontalement plutôt que d'écraser les colonnes. */}
-          <div className="table-defilement">
-            <TablePalmares lignes={donnees.lignes} />
-          </div>
+          <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
         </>
       )}
     </>
@@ -125,6 +132,37 @@ function BlocPodium({
         </ol>
       )}
     </section>
+  )
+}
+
+/** Le classement final sous les podiums — entier, ou centré sur les archers suivis (E16US004).
+ *
+ * La table vide n'est **pas** rendue : un `<thead>` seul sous un titre « Mes archers » se lit comme
+ * une panne. On nomme le cas — un archer suivi peut n'être dans aucun tableau (sorti en
+ * qualification), ou dans une catégorie filtrée juste au-dessus.
+ */
+function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: ModeAffichage }) {
+  return (
+    <>
+      <h4 className="palmares-section">
+        {mode === 'suivis' ? 'Mes archers' : 'Classement complet'}
+      </h4>
+      {lignes.length === 0 ? (
+        <p className="carte__etat">
+          {/* Cause non nommée (correctif de revue) : le filtre par catégorie de cet écran vide la
+              liste tout aussi souvent que l'interrupteur, et désigner le second envoyait chercher
+              au mauvais endroit. Le podium, lui, reste entier au-dessus — il n'est jamais centré. */}
+          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
+          tournoi », ou élargissez le filtre.
+        </p>
+      ) : (
+        // Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse
+        // défiler horizontalement plutôt que d'écraser les colonnes.
+        <div className="table-defilement">
+          <TablePalmares lignes={lignes} />
+        </div>
+      )}
+    </>
   )
 }
 

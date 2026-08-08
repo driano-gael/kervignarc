@@ -19,7 +19,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { DuelPublic, TableauPublic } from './api'
-import { cheminDeArcher, parTour, scoreVu } from './presentation'
+import { cheminDeArcher, parcoursToutesPhases, parTour, scoreVu } from './presentation'
 
 const MARTIN = { archer_id: 1, nom: 'MARTIN', prenom: 'Luc' }
 const DURAND = { archer_id: 2, nom: 'DURAND', prenom: 'Eve' }
@@ -386,5 +386,110 @@ describe('parTour', () => {
     const groupes = parTour(tableau([duel({ numero: 1, tour: 1 }), ...DEMIES]))
 
     expect(groupes.map((g) => g.libelle)).toEqual(['Quart de finale'])
+  })
+})
+
+// E16US004, **dérivé du CA** « récapitulatif repliable de la journée, couvrant tous les tours de
+// toutes les phases joués » (questionnaire P02 : *« on doit pouvoir retrouver tous les tours de
+// toutes les phases joués »*). Écrit avant le câblage de l'écran (règle 9).
+//
+// La lecture est **rétrospective** : le récapitulatif dit ce qui s'est passé. Ce qui reste à jouer
+// est déjà porté par le bloc « Ensuite » de la carte de suivi (E07US008) ; le répéter ici ferait
+// deux réponses à la même question, désynchronisées au premier écart.
+describe('parcoursToutesPhases — le récapitulatif de la journée d’un archer', () => {
+  const gagne = (patch: Partial<DuelPublic>) =>
+    duel({
+      points_haut: 6,
+      points_bas: 2,
+      vainqueur: 'haut',
+      termine: true,
+      validee: true,
+      ...patch,
+    })
+
+  it('rend une entrée par phase où l’archer a réellement tiré, dans l’ordre des phases', () => {
+    const principal = tableau([gagne({ numero: 1, tour: 1 })], { phase_id: 10, ordre: 2 })
+    const placement = tableau([gagne({ numero: 1, tour: 1, libelle: 'Places 5 à 8' })], {
+      phase_id: 11,
+      ordre: 3,
+    })
+
+    const parcours = parcoursToutesPhases([placement, principal], MARTIN.archer_id)
+
+    expect(parcours.map((p) => p.phaseId)).toEqual([10, 11])
+  })
+
+  it('écarte une phase où l’archer n’apparaît pas', () => {
+    // Il n'est pas dans toutes les catégories ni dans tous les tableaux : une section vide
+    // « Élimination directe — rien » ferait chercher une erreur là où il n'y en a pas.
+    const sien = tableau([gagne({ numero: 1, tour: 1 })], { phase_id: 10, ordre: 2 })
+    const autre = tableau([gagne({ numero: 1, tour: 1, haut: PETIT, bas: DURAND })], {
+      phase_id: 11,
+      ordre: 3,
+    })
+
+    expect(parcoursToutesPhases([sien, autre], MARTIN.archer_id).map((p) => p.phaseId)).toEqual([
+      10,
+    ])
+  })
+
+  it('retient tous les tours joués d’une phase, dans l’ordre', () => {
+    const arbre = tableau(
+      [
+        gagne({ numero: 1, tour: 1, libelle: 'Huitième de finale' }),
+        gagne({ numero: 2, tour: 2, libelle: 'Quart de finale' }),
+      ],
+      { phase_id: 10, nb_tours: 4 },
+    )
+
+    expect(
+      parcoursToutesPhases([arbre], MARTIN.archer_id)[0]?.etapes.map((e) => e.libelle),
+    ).toEqual(['Huitième de finale', 'Quart de finale'])
+  })
+
+  it('n’annonce pas les tours à venir — le récapitulatif regarde en arrière', () => {
+    // `cheminDeArcher` prolonge le chemin par des étapes `a_venir` (c'est ce que veut la vue
+    // « Mon chemin »). Le récapitulatif, lui, les écarte : « Finale · À venir » sous un titre
+    // « ce qui s'est passé » est une promesse, pas un fait.
+    const arbre = tableau([gagne({ numero: 1, tour: 1 })], { phase_id: 10, nb_tours: 3 })
+
+    const etapes = parcoursToutesPhases([arbre], MARTIN.archer_id)[0]?.etapes ?? []
+
+    expect(etapes.every((e) => e.statut !== 'a_venir')).toBe(true)
+    expect(etapes).toHaveLength(1)
+  })
+
+  it('garde un exempt : il explique un tour sauté', () => {
+    const arbre = tableau(
+      [
+        duel({ numero: 1, tour: 1, est_bye: true, bas: null }),
+        gagne({ numero: 2, tour: 2, libelle: 'Quart de finale' }),
+      ],
+      { phase_id: 10, nb_tours: 3 },
+    )
+
+    expect(parcoursToutesPhases([arbre], MARTIN.archer_id)[0]?.etapes.map((e) => e.statut)).toEqual(
+      ['exempt', 'gagne'],
+    )
+  })
+
+  it('garde un duel tiré mais pas encore validé, avec son statut d’attente', () => {
+    // Le score est là, le scoreur n'a pas scellé : le taire ferait disparaître de la journée un
+    // match que l'archer vient de tirer. C'est le statut qui porte la réserve, pas l'absence.
+    const arbre = tableau(
+      [duel({ numero: 1, tour: 1, points_haut: 6, points_bas: 4, termine: true, validee: false })],
+      { phase_id: 10 },
+    )
+
+    expect(parcoursToutesPhases([arbre], MARTIN.archer_id)[0]?.etapes.map((e) => e.statut)).toEqual(
+      ['en_attente'],
+    )
+  })
+
+  it('écarte une phase où l’archer n’a qu’un match encore à tirer', () => {
+    // Rien ne s'est passé : sa place est annoncée par « Ensuite », pas par le récapitulatif.
+    const arbre = tableau([duel({ numero: 1, tour: 1 })], { phase_id: 10 })
+
+    expect(parcoursToutesPhases([arbre], MARTIN.archer_id)).toEqual([])
   })
 })

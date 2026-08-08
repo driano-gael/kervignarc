@@ -26,9 +26,10 @@
 import { useEffect, useState } from 'react'
 import type { RoutageArcher } from './api'
 import { useDeparts } from '../departs/hooks'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
-import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
+import { alerte, detail, encoreEnLice, partitionner, posesParCible, titre } from './presentation'
 import { nombreDePages, pageCourante, rateauDePage, trancheDePage } from './pagination'
 
 type Tri = 'cible' | 'nom'
@@ -38,9 +39,16 @@ const nomComplet = (ligne: RoutageArcher) => `${ligne.prenom} ${ligne.nom}`.trim
 export function VueAffectations({
   tournoiId,
   interactif = true,
+  mode = 'tout',
+  suivis = [],
 }: {
   tournoiId: number
   interactif?: boolean
+  /** Bascule « mes archers / tout » de l'appli publique (E16US004). Par défaut `'tout'` : l'écran
+   * de salle et la table de l'organisation ne suivent personne. */
+  mode?: ModeAffichage
+  /** Les archers suivis sur ce tournoi — n'a de sens qu'avec `mode === 'suivis'`. */
+  suivis?: number[]
 }) {
   const [tri, setTri] = useState<Tri>('cible')
   // Le pas de tir est celui d'un **créneau** (ADR-0075). Ni l'écran de salle ni la table
@@ -83,10 +91,29 @@ export function VueAffectations({
     return <p className="carte__etat">Tableau final pas encore constitué.</p>
   }
 
+  // Centrage « mes archers » (E16US004) **avant** la partition : c'est bien la même liste qu'on
+  // restreint, poses / attente / sortis compris. Filtrer après aurait demandé de le refaire trois
+  // fois, et la troisième aurait fini par diverger.
+  const archersAffiches = centrerLignes(donnees.archers, mode, suivis)
+  if (archersAffiches.length === 0) {
+    // Le tableau route du monde, mais aucun de *vos* archers : le dire précisément, sinon la page
+    // se lit comme le « Tableau final pas encore constitué » juste au-dessus, qui est faux ici.
+    return (
+      <p className="carte__etat">
+        Aucun des archers que vous suivez n’est affecté sur ce tableau. Passez à « Tout le tournoi »
+        pour voir le pas de tir complet.
+      </p>
+    )
+  }
+
   // La partition vit dans `presentation.ts` — c'est elle qui portait le bloquant de la revue, et
   // la laisser ici la privait de tout test (remarque de la 2ᵉ passe). Le composant ne fait plus que
   // du rendu.
-  const { poses, attente, sortis } = partitionner(donnees.archers)
+  const { poses, attente, sortis } = partitionner(archersAffiches)
+
+  // Le pas de tir garde ses **buttes entières, adversaire compris** — même raison que ci-dessus :
+  // la règle vit dans `presentation.ts` (`posesParCible`), où elle est testée.
+  const posesDuPasDeTir = posesParCible(poses, donnees.archers, mode === 'suivis')
 
   return (
     <div className="affectations">
@@ -114,12 +141,12 @@ export function VueAffectations({
       {/* L'écran projeté ne peut rien actionner : il ne choisit donc pas son tri, il **cycle**
           (P06). `interactif` fait plus que masquer deux boutons — il change la nature de la vue. */}
       {!interactif ? (
-        <SalleParPages poses={poses} tous={donnees.archers} />
+        <SalleParPages poses={poses} tous={archersAffiches} />
       ) : tri === 'nom' ? (
-        <ListeParNom lignes={donnees.archers} />
+        <ListeParNom lignes={archersAffiches} />
       ) : (
         <>
-          <ListeParCible poses={poses} />
+          <ListeParCible poses={posesDuPasDeTir} suivis={mode === 'suivis' ? suivis : []} />
           {/* Encore en lice, sans butte attribuée. Ni dans le pas de tir (ils n'ont pas de cible),
               ni parmi les sortis (ils n'ont rien perdu) : leur propre section, sinon l'écran ment
               dans un sens ou dans l'autre. Titre **neutre** — le groupe rassemble deux attentes que
@@ -266,7 +293,13 @@ function useSecondesDAffichage(): number {
 
 // Le pas de tir, groupé par butte : la disposition physique de la salle. L'ordre vient du serveur —
 // on ne re-trie pas ici, on **groupe** ce qui est déjà trié (cible croissante, puis position A→D).
-function ListeParCible({ poses }: { poses: RoutageArcher[] }) {
+function ListeParCible({ poses, suivis = [] }: { poses: RoutageArcher[]; suivis?: number[] }) {
+  // ⚠️ **Marquer les archers suivis** (2ᵉ passe de revue). La butte est rendue entière pour que
+  // l'adversaire y figure — mais l'interrupteur affiche « Mes archers (3) » au-dessus, et l'écran
+  // en montrait alors une douzaine sans dire lesquels étaient les siens : le compte et la liste se
+  // contredisaient. La règle empruntée au plan de cibles marche là-bas parce qu'on y cherche une
+  // **butte** ; ici on cherche un **nom** dans une liste de noms.
+  const estSuivi = new Set(suivis)
   const parCible = new Map<number, RoutageArcher[]>()
   for (const ligne of poses) {
     const cible = ligne.prochain?.cible
@@ -288,7 +321,14 @@ function ListeParCible({ poses }: { poses: RoutageArcher[] }) {
           <span className="affectations__cible-num">Cible {cible}</span>
           <ul className="affectations__postes">
             {lignes.map((ligne) => (
-              <li key={ligne.archer_id} className="affectations__poste">
+              <li
+                key={ligne.archer_id}
+                className={
+                  estSuivi.has(ligne.archer_id)
+                    ? 'affectations__poste affectations__poste--suivi'
+                    : 'affectations__poste'
+                }
+              >
                 <span className="affectations__position">{ligne.prochain?.position ?? '—'}</span>
                 <span className="affectations__nom">{nomComplet(ligne)}</span>
                 <span className="affectations__contexte">{ligne.prochain?.libelle}</span>

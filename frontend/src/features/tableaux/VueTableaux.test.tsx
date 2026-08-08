@@ -12,12 +12,17 @@
 // (`suivi/VueSuivi.tsx`, « correctif de revue A »). Ce qui manquait n'était pas la connaissance,
 // c'était un test qui **monte le composant**. C'est tout l'objet de ce fichier — et la leçon
 // réutilisable : une feature front sans un seul rendu testé a un angle mort de cette taille.
+//
+// ⚠️ **Depuis E16US004, cette vue ne lit plus le store du tout** : les archers suivis descendent en
+// prop depuis `AccueilPublic`, comme le mode. Le piège du sélecteur instable n'a donc pas disparu,
+// il a **changé d'adresse** — il vit maintenant chez le seul lecteur restant, couvert par
+// `AccueilPublic.test.tsx`. Les tests ci-dessous gardent leur valeur (ils montent réellement la
+// vue), mais ce n'est plus ici que se joue la boucle infinie.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
 import type { DuelPublic, TableauPublic, Tableaux } from './api'
@@ -88,7 +93,6 @@ describe('VueTableaux — montage', () => {
   beforeEach(() => {
     vi.mocked(getTableaux).mockResolvedValue(reponse())
     vi.mocked(getDeparts).mockResolvedValue([_CRENEAU])
-    useSessionSuivisStore.setState({ suivis: [] })
   })
 
   it('se monte et rend l’arbre sans boucler, sans aucun archer suivi', async () => {
@@ -100,15 +104,55 @@ describe('VueTableaux — montage', () => {
     expect(screen.getByText(/MARTIN/)).toBeInTheDocument()
   })
 
-  it('se monte et ouvre sur « Mon chemin » quand on suit un archer', async () => {
-    useSessionSuivisStore.setState({ suivis: [{ archerId: 1, tournoiId: 1 }] })
-
-    render(<Cadre enfants={<VueTableaux tournoiId={1} />} />)
+  it('rend « Mon chemin » quand l’affichage est centré sur les archers suivis', async () => {
+    // ⚠️ **Comportement modifié en E16US004, volontairement.** Jusqu'ici la vue décidait seule
+    // d'ouvrir sur « Mon chemin » dès qu'on suivait quelqu'un, et portait son propre sélecteur
+    // « Mon chemin / Tableau complet ». Ce choix est remonté d'un cran : c'est l'interrupteur
+    // « mes archers / tout » de l'en-tête public (P05) qui le porte, pour tout l'onglet à la fois.
+    // Deux interrupteurs disant la même chose sur le même écran finissaient par se contredire.
+    //
+    // Le CA d'E07US005 — « la lecture *Mon chemin* est celle par défaut **dès qu'on suit
+    // quelqu'un** » — n'est pas abandonné pour autant : il est porté par la valeur initiale de
+    // `centrerSurSuivis` (armée), et c'est `AccueilPublic.test.tsx` qui le vérifie désormais, là où
+    // le défaut se décide. Ici on teste la vue, qui ne fait qu'obéir à ses props.
+    render(<Cadre enfants={<VueTableaux tournoiId={1} mode="suivis" suivis={[1]} />} />)
 
     await waitFor(() => expect(screen.getByText(/MARTIN/)).toBeInTheDocument())
-    // « Mon chemin » est la lecture par défaut dès qu'on suit quelqu'un (D-09) : c'est le nom de
-    // l'archer qui titre sa carte, pas un en-tête de tour.
+    // En « mon chemin », c'est le nom de l'archer qui titre sa carte, pas un en-tête de tour.
     expect(screen.getByText('Luc MARTIN')).toBeInTheDocument()
+  })
+
+  it('rend l’arbre complet en affichage « tout », même en suivant un archer', async () => {
+    render(<Cadre enfants={<VueTableaux tournoiId={1} suivis={[1]} />} />)
+
+    // L'en-tête de branche est la signature de l'arbre complet ; « mon chemin » ne l'affiche pas.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Demi-finale' })).toBeVisible())
+  })
+
+  it('dit « aucun de vos archers » plutôt que d’aligner des cartes sans nom', async () => {
+    // Arbitrage (d) d'E16US004 : chaque vue distingue « aucun de vos archers ici » de son propre
+    // vide. C'était la seule des cinq à ne pas le faire — elle rendait une carte « Archer suivi /
+    // Pas engagé dans ce tableau » **par archer suivi**, toutes identiques et anonymes, sans jamais
+    // proposer de revenir à l'affichage complet. Cas banal : on suit des archers d'une catégorie et
+    // l'on regarde le tableau d'une autre.
+    render(<Cadre enfants={<VueTableaux tournoiId={1} mode="suivis" suivis={[404, 405]} />} />)
+
+    await waitFor(() =>
+      expect(screen.getByText(/Aucun des archers que vous suivez/)).toBeInTheDocument(),
+    )
+    // Le recours est nommé, et aucune carte anonyme ne subsiste.
+    expect(screen.getByText(/Tout le tournoi/)).toBeInTheDocument()
+    expect(screen.queryByText('Archer suivi')).toBeNull()
+  })
+
+  it('en cas mixte, rend les engagés et compte les autres', async () => {
+    // Un suivi engagé (1), un qui ne l'est pas (404) : on montre le premier et l'on dit que l'autre
+    // manque — plutôt qu'une carte muette, le nom étant introuvable par construction (il se lit
+    // dans les duels du tableau, où l'archer n'est pas).
+    render(<Cadre enfants={<VueTableaux tournoiId={1} mode="suivis" suivis={[1, 404]} />} />)
+
+    await waitFor(() => expect(screen.getByText('Luc MARTIN')).toBeInTheDocument())
+    expect(screen.getByText(/Un autre archer suivi n’est pas engagé/)).toBeInTheDocument()
   })
 
   it('n’ouvre pas de requête et le dit quand aucun tableau n’existe', async () => {
@@ -122,9 +166,13 @@ describe('VueTableaux — montage', () => {
   it('sur l’écran de salle, n’affiche aucune commande', async () => {
     // CA E07US004 : **aucune interaction** sur un écran projeté. Ni bascule de lecture, ni
     // sélecteur de phase — un bouton que personne ne peut actionner est un défaut, pas un détail.
-    useSessionSuivisStore.setState({ suivis: [{ archerId: 1, tournoiId: 1 }] })
-
-    render(<Cadre enfants={<VueTableaux tournoiId={1} interactif={false} />} />)
+    // `interactif={false}` verrouille l'arbre complet quoi qu'on lui passe : la salle ne suit
+    // personne, et c'est ce verrou qu'on vérifie ici en lui donnant tout de même un suivi.
+    render(
+      <Cadre
+        enfants={<VueTableaux tournoiId={1} interactif={false} mode="suivis" suivis={[1]} />}
+      />,
+    )
 
     await waitFor(() => expect(screen.getByText(/Demi-finale/)).toBeInTheDocument())
     expect(screen.queryByRole('button')).toBeNull()

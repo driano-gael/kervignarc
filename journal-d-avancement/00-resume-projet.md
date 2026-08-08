@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 7 août 2026
+# Résumé du projet — où on en est au 8 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -135,7 +135,19 @@ compte des archers à encaisser a rejoint l'écran **Paiements** — même infor
 fois, donc jamais contradictoire. Le **tableau de bord d'accueil** a été filtré au passage : lui aussi
 ouvrait l'axe pilotage en mêlant cibles et impayés. Le bouton « Terminer » ne bouge pas : ce qu'il
 fige, c'est le sportif, il n'est **jamais bloqué** par un manque, et il continue de rappeler les
-impayés **au moment de confirmer** — seul endroit où les deux mondes doivent se croiser.
+impayés **au moment de confirmer** — seul endroit où les deux mondes doivent se croiser. Enfin, le
+**08/08/2026**, le public **suit plusieurs archers de bout en bout**. L'application savait le faire
+depuis longtemps, mais un seul écran s'en servait : partout ailleurs il fallait chercher ses archers
+à l'œil dans cent cinquante lignes. Un **interrupteur unique** en tête de l'écran public — « Tout le
+tournoi » / « Mes archers » — centre désormais **tous** les onglets à la fois : classement, tableaux,
+affectations, palmarès, plan de cibles. On le règle une fois, il est retenu. La **recherche accepte
+le club** en plus du nom (un club choisi seul suffit à lister ses archers), on **suit et on cesse de
+suivre depuis la liste** sans la quitter, et chaque archer suivi porte un **récapitulatif repliable
+de sa journée** : sa qualification, puis **tous ses tours de toutes les phases** disputées. Enfin, le
+**détail des flèches de n'importe quel archer** se déplie d'un clic depuis le classement — y compris
+ceux qu'on ne suit pas. Deux garde-fous : les **podiums ne sont jamais amputés** (un podium sans ses
+médaillés ne répond plus à « qui a gagné »), et aucun écran ne se vide en silence — quand vos archers
+ne sont pas sur l'écran regardé, il le **dit** et propose de revenir à l'affichage complet.
 
 ---
 
@@ -500,7 +512,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **104 US livrées** sur `main` (mergées, revues, CI verte) à la date du 07/08/2026. **`SUIVI-US.md`
+- **105 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026. **`SUIVI-US.md`
   fait foi sur le compte exact** (E12US004 « tracer un forfait » a été **absorbée** par E04US015, qui
   livre l'abandon/DSQ en qualif *et* en duels — le décompte du J2 passe donc de 15 à 14 US). Après les
   **cinq bugs** de la démo du 27/07 (cycle de vie 7 statuts E01US017, horaire `HH:MM` E02US010, accès
@@ -531,8 +543,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   ([EPIC-16](../epics/EPIC-16-retours-maquettes.md)), et les retours **écartés** y sont consignés avec
   leur raison — aucun questionnaire ne reste sans suite. **Premier écran refusé relevé : A10 (plan de
   salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. **A14
-  (complétude) a été levé le 07/08/2026** par E16US003. Restent **deux** écrans refusés : A07 (phases)
-  et P03 (classements publics).
+  (complétude) a été levé le 07/08/2026** par E16US003, et **P03 (classements publics) le 08/08/2026**
+  par E16US004 — la bascule « mes archers / tout » qu'il réclamait vaut désormais pour tout l'onglet
+  public, pas seulement pour le classement. Reste **un** écran refusé : A07 (phases), à recadrer avant
+  d'être pris (ADR-0076 en a changé la nature).
 - **Les maquettes montrent désormais l'écran entier (05/08/2026)** — **hors US numérotée**, support de
   conception, compte d'US inchangé. Le commanditaire ne voyait *« que des composants de pages »* :
   chaque planche était bornée à 430 px et **aucune ossature n'était dessinée** (ni navigation, ni

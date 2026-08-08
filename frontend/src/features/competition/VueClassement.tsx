@@ -15,6 +15,7 @@ import { useCategories } from '../categories/hooks'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { creneauRetenu } from '../departs/libelle'
 import { useDeparts } from '../departs/hooks'
+import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useClassement } from './hooks'
 import { DepartageManuel, PanneauBarrages } from './PanneauBarrages'
@@ -24,6 +25,9 @@ export function VueClassement({
   tournoiId,
   admin,
   filtrable = true,
+  mode = 'tout',
+  suivis = [],
+  detailFleches = false,
 }: {
   tournoiId: number
   admin: boolean
@@ -38,6 +42,15 @@ export function VueClassement({
    * départ, il faut donc en désigner un. Interactif, on l'offre au choix ; projeté, on prend celui
    * qu'on est en train de tirer (`departDeSalle`), sans rien à cliquer. */
   filtrable?: boolean
+  /** Bascule « mes archers / tout » de l'appli publique (E16US004). Par défaut `'tout'` : la
+   * coquille admin et l'écran de salle n'ont pas de suivis et ne doivent pas en hériter. */
+  mode?: ModeAffichage
+  /** Les archers suivis sur ce tournoi — n'a de sens qu'avec `mode === 'suivis'`. */
+  suivis?: number[]
+  /** Ouvre le **détail des flèches** d'une ligne au clic (E16US004, P03 : *« le détail des flèches
+   * des autres : oui »*). Réservé à la surface publique : l'admin a son écran de saisie, et la
+   * salle n'a « aucune interaction » (CA E07US004). */
+  detailFleches?: boolean
 }) {
   const [categorieId, setCategorieId] = useState<number | undefined>(undefined)
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
@@ -49,6 +62,29 @@ export function VueClassement({
   // serait la duplication d'invariant que le registre proscrit.
   const departId = creneauRetenu(liste, choixDepart, departDeSalle)
   const classement = useClassement(tournoiId, departId, filtrable ? categorieId : undefined)
+
+  // ⚠️ **Seule la table est centrée sur les suivis.** Les barrages et le départage manuel, plus bas,
+  // gardent `classement.data.lignes` **entier** : ce sont des surfaces d'organisation, et leur
+  // donner une liste amputée ferait proposer un barrage entre deux archers sur trois.
+  const lignesAffichees = centrerLignes(classement.data?.lignes ?? [], mode, suivis)
+  // « Aucun de vos archers ici » n'est pas « aucun archer inscrit » : la table dirait le second, qui
+  // est faux et fait chercher une panne. Le cas est réel — un suivi engagé sur le départ du matin
+  // quand on regarde le créneau de l'après-midi, ou filtré hors de sa catégorie.
+  // ⚠️ `classement.data.lignes.length > 0` (correctif de revue) : sans lui, un classement
+  // **réellement vide** se présentait comme un vide de filtre, et le message envoyait chercher du
+  // côté de l'interrupteur ce qui n'y était pas — le défaut que ce bloc existe pour éviter,
+  // retourné contre lui-même.
+  //
+  // ⚠️ Ce cas est celui d'un départ **sans aucun engagé**, et **non** « le matin avant la première
+  // volée » (rectification de la 2ᵉ passe, qui a repris un premier jet fautif) : `calculer_classement`
+  // crée une ligne `EN_LICE` pour **chaque** archer, série ou pas — avant la première volée, les 120
+  // archers sont là, à zéro. `departage.ts` et `VueAffectations` portent déjà la même rectification ;
+  // c'est manifestement l'erreur que ce coin du domaine inspire, d'où le rappel ici aussi.
+  const aucunSuiviIci =
+    mode === 'suivis' &&
+    classement.data !== undefined &&
+    classement.data.lignes.length > 0 &&
+    lignesAffichees.length === 0
 
   return (
     <>
@@ -89,7 +125,16 @@ export function VueClassement({
           lignes={classement.data.lignes}
         />
       )}
-      {classement.data && (
+      {aucunSuiviIci && (
+        <p className="carte__etat">
+          {/* La cause n'est **pas** nommée (correctif de revue) : le créneau en est une, le filtre
+              par catégorie juste au-dessus en est une autre, tout aussi fréquente. Désigner le
+              créneau seul envoyait changer de départ quand il fallait élargir la catégorie. */}
+          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
+          tournoi », ou élargissez le filtre.
+        </p>
+      )}
+      {classement.data && !aucunSuiviIci && (
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
@@ -107,9 +152,15 @@ export function VueClassement({
               `E16US009` ; jusque-là, la salle rend le classement entier, comme avant. */}
           <TableClassement
             tournoiId={tournoiId}
-            lignes={classement.data.lignes}
+            lignes={lignesAffichees}
+            // Les ex æquo se cherchent sur la liste **entière** : à égalité avec un archer qu'on ne
+            // suit pas, le signalement disparaîtrait avec lui (correctif de revue).
+            lignesCompletes={classement.data.lignes}
             admin={admin}
-            teteFigee={filtrable ? 8 : 0}
+            // Centré sur ses archers, la liste est courte : figer une tête de 8 sur 3 lignes
+            // n'encadre plus rien (même raison que `separer` dans `TableClassement`).
+            teteFigee={filtrable && mode === 'tout' ? 8 : 0}
+            detailFleches={detailFleches}
           />
         </div>
       )}

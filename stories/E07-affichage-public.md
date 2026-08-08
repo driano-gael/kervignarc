@@ -152,6 +152,15 @@ sans traverser le gymnase.
   **rien n'est promis qui ne soit acquis** (ni vainqueur avant validation, ni tour à venir à qui
   n'a plus de match ou dont la défaite n'est pas scellée) ; la vue **`tableaux` entre au catalogue
   de l'écran de salle** (E07US004), où elle montre le **tableau qui se joue**, sans interaction.
+- **⚠️ Où vivent ces deux lectures depuis E16US004** *(reversé le 08/08/2026, [ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md))* :
+  le **sélecteur local** « Mon chemin / Tableau complet » de cette vue **n'existe plus**. Les deux
+  lectures sont conservées à l'identique, mais choisies par l'**interrupteur unique** en tête de
+  l'écran public, qui gouverne aussi le classement, les affectations, le palmarès et le plan de
+  cibles — deux boutons disant la même chose sur le même écran auraient fini par se contredire.
+  Le CA ci-dessus reste **tenu** : « Mon chemin par défaut dès qu'on suit quelqu'un » est désormais
+  porté par la valeur initiale de la préférence, armée pour cette raison précise (arbitrage du
+  commanditaire en revue d'E16US004). Ce qui se **perd** : les deux lectures ne se règlent plus
+  indépendamment d'un onglet à l'autre.
 - **Notes de conception** *(sorties du CA à la revue : ce sont des contraintes de mise en œuvre, pas
   du besoin — les y laisser aurait fait dériver les tests d'une US future de la forme du DTO plutôt
   que du besoin)* : DTO **public restreint** (règle 6, contrainte générale à toute surface
