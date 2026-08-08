@@ -18,7 +18,12 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import DuelDesynchronise, PhaseIntrouvable, PhasePasUnTableau
+from application.erreurs import (
+    DerouleCyclique,
+    DuelDesynchronise,
+    PhaseIntrouvable,
+    PhasePasUnTableau,
+)
 from application.saisie_duels import EtatDuel, ServiceSaisieDuels
 from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
@@ -32,6 +37,7 @@ from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription
 from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
 from domain.politiques import (
+    AggregationParQualification,
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     SeedingSerpent,
@@ -147,6 +153,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
             registre_par_defaut(),
+            AggregationParQualification(),
         )
 
 
@@ -663,12 +670,24 @@ def test_un_deroule_qui_boucle_sur_lui_meme_est_refuse() -> None:
     Inatteignable par la composition (une source est antérieure, ADR-0045 §3) ; atteignable par une
     base incohérente — import, migration à la main. Un refus typé dit la cause ; un `RecursionError`
     remonterait en 500 muet, un jour de compétition.
+
+    ⚠️ **Le type et le code sont assertés, pas seulement le mot « boucle »** (correctif de revue,
+    relevé par quatre axes). Un premier jet levait `PhaseIntrouvable`, avec deux conséquences que ce
+    test **figeait** au lieu de les détecter : un **404 « phase introuvable »** pour une incohérence
+    de données, et surtout `ServicePalmares._resultat` qui attrape déjà ce type pour écarter une
+    phase disparue — le refus censé remplacer un 500 muet devenait une **omission muette** sur
+    l'écran projeté en salle.
     """
     monde = _monde_classe(12)
     _prelever(monde, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=8))
 
-    with pytest.raises(PhaseIntrouvable, match="boucle"):
+    with pytest.raises(DerouleCyclique, match="boucle") as leve:
         _effectif_du_tableau(monde)
+
+    # 409 (conflit d'état) et non 404 : c'est la branche `else` du mapping qui s'en charge, à
+    # condition que le type ne figure pas dans la liste des 404 d'`api/erreurs.py`.
+    assert leve.value.code == "deroule_cyclique"
+    assert not isinstance(leve.value, PhaseIntrouvable)
 
 
 def test_un_prelevement_le_reste_reste_inerte() -> None:

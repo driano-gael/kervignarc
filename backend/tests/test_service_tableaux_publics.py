@@ -33,12 +33,25 @@ from __future__ import annotations
 import pytest
 
 from application.erreurs import DepartIntrouvable
-from application.tableaux_publics import ServiceTableauxPublics
+from application.saisie_duels import EtatTableau
+from application.tableaux_publics import ServiceTableauxPublics, TableauPublic
 from domain.bareme import BaremeQualification
 from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import ProfondeurClassement
 from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _huit, _Monde, _quatre
+
+
+def _etat(tableau: TableauPublic) -> EtatTableau:
+    """L'arbre d'un tableau public, dont ces tests supposent qu'il est **monté**.
+
+    `TableauPublic.etat` est facultatif depuis E05US024 : une phase peut être **en attente** de sa
+    phase source, qui n'a pas encore attribué les places qu'elle prélève (ADR-0081). Les tests de ce
+    module ne décrivent que des tableaux montables ; passer par ce helper garde l'assertion à un
+    seul endroit au lieu de la répéter à chaque accès.
+    """
+    assert tableau.etat is not None
+    return tableau.etat
 
 
 def _service(monde: _Monde) -> ServiceTableauxPublics:
@@ -69,8 +82,8 @@ def test_l_arbre_rendu_porte_le_principal_et_le_placement() -> None:
 
     assert [t.type for t in tableaux] == [TypePhase.ELIMINATION_DIRECTE]
     assert [t.ordre for t in tableaux] == [2]
-    assert [t.etat.phase_id for t in tableaux] == [monde.phase_id]
-    places = {duel.place_en_jeu for duel in tableaux[0].etat.duels}
+    assert [_etat(t).phase_id for t in tableaux] == [monde.phase_id]
+    places = {duel.place_en_jeu for duel in _etat(tableaux[0]).duels}
     assert (1, 2) in places, "la finale du tableau principal"
     # Les paires **nommées**, et non `place[0] > 2` : ce prédicat était satisfait par la petite
     # finale `(3, 4)`, qui existe déjà en profondeur podium — le test passait donc à l'identique
@@ -93,7 +106,7 @@ def test_sans_profondeur_integrale_il_n_y_a_pas_de_match_de_placement() -> None:
 
     tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
-    places = {duel.place_en_jeu for duel in tableaux[0].etat.duels}
+    places = {duel.place_en_jeu for duel in _etat(tableaux[0]).duels}
     assert (1, 2) in places and (3, 4) in places
     assert not ({(5, 6), (7, 8)} & places)
 
@@ -113,7 +126,7 @@ def test_un_match_de_placement_non_terminal_ne_se_nomme_pas_comme_une_demi_final
     _huit(monde)
     monde.placer()
 
-    duels = _service(monde).pour_depart(monde.depart_id).tableaux[0].etat.duels
+    duels = _etat(_service(monde).pour_depart(monde.depart_id).tableaux[0]).duels
     par_libelle = {duel.numero: (duel.libelle, duel.plage) for duel in duels if duel.tour == 2}
 
     demies = [num for num, (lib, _) in par_libelle.items() if lib == "Demi-finale"]
@@ -215,12 +228,12 @@ def test_l_arbre_rendu_porte_le_vainqueur_acquis_et_le_match_suivant() -> None:
     tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
     assert len(tableaux) == 1
-    duels = {duel.numero: duel for duel in tableaux[0].etat.duels}
+    duels = {duel.numero: duel for duel in _etat(tableaux[0]).duels}
     joue = duels[1]
     assert joue.duel is not None and joue.duel.verrouille
     occupants = [
         duel.numero
-        for duel in tableaux[0].etat.duels
+        for duel in _etat(tableaux[0]).duels
         if duel.tour == 2
         and vainqueur in {d.archer_id for d in (duel.haut, duel.bas) if d is not None}
     ]
@@ -240,8 +253,8 @@ def test_le_podium_acquis_est_rendu() -> None:
 
     tableaux = _service(monde).pour_depart(monde.depart_id).tableaux
 
-    assert tableaux[0].etat.est_termine
-    assert [rang for rang, _ in tableaux[0].etat.podium] == [1, 2, 3, 4]
+    assert _etat(tableaux[0]).est_termine
+    assert [rang for rang, _ in _etat(tableaux[0]).podium] == [1, 2, 3, 4]
 
 
 def test_la_lecture_est_pure() -> None:

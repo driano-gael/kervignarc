@@ -192,6 +192,11 @@ def test_le_dto_public_ne_porte_ni_identite_de_scoreur_ni_detail_de_tir(
             "est_termine",
             "duels",
             "podium",
+            # E05US024/ADR-0081 : ajouté **délibérément**, et sans risque — c'est l'`ordre` d'une
+            # phase du même créneau, une donnée déjà publique (elle voyage dans `ordre` ci-dessus).
+            # Il dit « cette phase attend que la phase n ait départagé les places qu'elle prélève »,
+            # ce qui remplace la disparition pure et simple du tableau de la liste.
+            "en_attente_de",
         }, f"champs inattendus sur l'enveloppe publique : {sorted(tableau)}"
 
 

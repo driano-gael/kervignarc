@@ -23,7 +23,12 @@ from __future__ import annotations
 import logging
 
 from application.classements import ServiceClassement
-from application.erreurs import PhaseIntrouvable, TournoiIntrouvable, TournoiSansDepart
+from application.erreurs import (
+    PhaseIntrouvable,
+    PrelevementEnAttente,
+    TournoiIntrouvable,
+    TournoiSansDepart,
+)
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
@@ -203,7 +208,12 @@ class ServicePalmares:
         # cache et sans plafond, sur deux routes publiques non authentifiées (dont le PDF).
         try:
             tableau, _lignes = self._saisie_duels.reconstruire(tournoi_id, phase.id)
-        except (EffectifTableauInvalide, PhaseIntrouvable) as exc:
+        # `PrelevementEnAttente` rejoint la liste (E05US024, ADR-0081) : une phase dont la source
+        # n'a pas encore départagé les places qu'elle prélève n'a **rien** à ajouter au palmarès —
+        # l'écarter est la bonne réponse, pas un pis-aller. `DerouleCyclique`, lui, n'y est
+        # **délibérément pas** : une base incohérente doit rester visible, et c'est précisément
+        # parce qu'un premier jet levait `PhaseIntrouvable` pour ce cas qu'il était avalé ici.
+        except (EffectifTableauInvalide, PhaseIntrouvable, PrelevementEnAttente) as exc:
             _logger.info("Phase %s écartée du palmarès : %s", phase.id, exc)
             return None
         if not self._duels.numeros_enregistres(phase.id):
@@ -231,9 +241,12 @@ class ServicePalmares:
         # qualification. Le même résolveur que l'ensemencement — un décalage calculé sur une autre
         # base que celle qui a peuplé le tableau situerait ses positions dans le mauvais espace de
         # rangs, ce qui est exactement `DETTE-034`.
+        # ⚠️ Le paramètre `classement` a disparu de `tranche` (correctif de revue) : elle ne le
+        # lisait plus depuis E05US024 — l'effectif se lit sur le classement **source**. L'appelant
+        # payait donc ici une reconstruction complète du classement du départ (`DETTE-031`) pour
+        # alimenter un paramètre mort, **une fois par phase à tableau**, sur deux routes publiques.
         rang_premier = tranche(
             phase,
-            self._classements.pour_depart(phase.depart_id),
             self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
         )
         return ResultatPhase(ordre=phase.ordre, positions=positions, rang_premier=rang_premier)

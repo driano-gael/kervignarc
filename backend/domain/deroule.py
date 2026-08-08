@@ -169,6 +169,13 @@ class ExigenceEffectif:
     minimum: int
     ordre: int | None = None
     rang_debut: int | None = None
+    ordre_source: int | None = None
+    """L'ordre de la phase **dans laquelle** `rang_debut` se lit (E05US024).
+
+    Sans lui, le message de refus mêlait deux espaces de rangs : « la phase 3 prélève à partir du
+    rang 5, il faut 22 classés » — or le rang 5 se lit dans la **phase 2**, et les deux chiffres ne
+    se déduisent plus l'un de l'autre depuis que la chaîne se remonte. Relevé en revue (axe C1) sur
+    un message que le CA veut « chiffré et actionnable » (D-16 / P-4)."""
 
 
 @dataclass(frozen=True)
@@ -277,28 +284,33 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     suivants », l'exemple même du CA. Seules la qualification et l'échauffement se contentent d'un
     participant : les six autres types du catalogue opposent des tireurs.
 
-    **Le seul classement traduisible en inscrits est celui de la QUALIFICATION** — et c'est une
-    contrainte du **moteur**, pas une commodité. `ServiceSaisieDuels._ordre_de_la_qualification`
-    n'honore les prélèvements que s'ils visent la phase de type `qualification` ; tout autre
-    prélèvement par rangs est ignoré et la phase reçoit *tous* les archers en lice (`# DETTE-028`).
-    Ce plancher doit donc viser **exactement ce que le moteur lira**, sinon il ment dans les deux
-    sens — et il a menti dans les deux sens avant d'être corrigé :
+    **Ce plancher vise exactement ce que le moteur lira** — c'est une contrainte du **moteur**, pas
+    une commodité, et s'en écarter le fait mentir dans les deux sens. Les types dont le moteur sait
+    lire le classement sont énumérés par `_TYPES_CLASSANTS_LUS`, miroir de
+    `ServiceSaisieDuels._classement_de_l_ordre` ; une source visant un autre type (poules, suisse,
+    colline, Big Shoot Off) reste **inerte**, la phase reçoit *tous* les archers en lice, et aucun
+    plancher n'est donc réclamé pour elle (reste ouvert de `# DETTE-028`, levé par E05US023).
 
-    - viser la **première phase** au lieu de la qualification laissait passer un déroulé
+    Les deux mensonges symétriques, tous deux constatés avant correction :
+
+    - viser la **première phase** au lieu d'un type réellement lu laissait passer un déroulé
       « échauffement → qualification → tableau 33+ » avec un plancher de 1, alors que le moteur
-      lèverait `EffectifTableauInvalide` en salle. C'est le défaut même que l'US retire ;
-    - à l'inverse, un déroulé **sans qualification** se voyait réclamer 34 inscrits alors que le
-      moteur, n'ayant aucun classement à lire, ensemence avec tout le monde et se contente de deux.
-      Un refus abusif le jour J coûte aussi cher qu'un oubli.
+      lèverait `EffectifTableauInvalide` en salle ;
+    - à l'inverse, réclamer un plancher pour un prélèvement que **rien n'honore** est un refus
+      abusif le jour J, qui coûte aussi cher qu'un oubli.
 
-    D'où : sans phase de qualification, **aucun prélèvement par rangs n'est traduisible** et seul le
-    plancher structurel de chaque étape subsiste.
+    ⚠️ **La chaîne se remonte** (E05US024). Un rang se lit dans le classement de sa **phase
+    source**, et cette source a pu elle-même prélever : « les rangs 5 et suivants d'un tableau qui
+    prend les rangs 17 à 32 » réclame **22** inscrits. Une version antérieure de cette docstring
+    affirmait l'inverse (« ne dit rien sur le nombre d'inscrits nécessaires ») et citait une méthode
+    aujourd'hui supprimée — elle décrivait le moteur d'avant l'US, dans la fonction même qui l'a
+    changé. Restent hors de portée les natures qui ne se lisent pas en rangs (`issue_de_tour`,
+    `le_reste`, `# DETTE-033`), dont le compte dépend du déroulé.
 
-    **Portée délibérément étroite** (note du CA). Un rang se lit dans le classement de sa **phase
-    source** : « les rangs 33 et suivants *du tableau* » ne dit rien sur le nombre d'inscrits
-    nécessaires, et l'inclure produirait un chiffre **faux** — pire que pas de chiffre. Même raison
-    pour les natures qui ne se lisent pas en rangs (`issue_de_tour`, `le_reste`), dont le compte
-    dépend du déroulé.
+    ⚠️ **Une fenêtre amont bornée ne fixe aucun plancher.** « Les rangs 33 et suivants d'un tableau
+    qui n'en prend que 32 » est infaisable à 34 inscrits comme à 400 : c'est un défaut de
+    composition, que le diagnostic signale en `PrelevementVide`, et non un besoin d'effectif.
+    Annoncer un chiffre y serait rassurant et faux.
 
     ⚠️ **Ces cas ne sont couverts par rien à la composition** — ni ici, ni par une anomalie :
     `PrelevementVide` et `RangsSourceInexistants` ne naissent que dans la branche `RANGS` de
@@ -384,21 +396,41 @@ def _exigence_de_letape(
     if not lisibles:
         return ExigenceEffectif(minimum=base)
 
-    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
     # ⚠️ **E05US024 — on remonte la chaîne.** Avant, seule une source visant la qualification
-    # comptait
-    # et « rangs 33+ » se traduisait directement en 34 inscrits. Depuis que le moteur lit le
-    # classement de n'importe quelle phase classante, une source peut viser un **tableau**, qui a
-    # lui-même prélevé : « les rangs 5+ d'un tableau qui prend les rangs 17 à 32 de la
-    # qualification » réclame 21 inscrits, pas 6. Traduire un rang en inscrits sans remonter
-    # annoncerait un plancher trop bas — l'organisateur démarrerait, et la phase manquerait de
-    # monde en salle.
-    besoin = _inscrits_pour_classer(
-        par_ordre, plus_bas.ordre_source, plus_bas.rang_debut - 1 + base
-    )
-    if besoin is None:
+    # comptait et « rangs 33+ » se traduisait directement en 34 inscrits. Depuis que le moteur lit
+    # le classement de n'importe quelle phase classante, une source peut viser un **tableau**, qui
+    # a lui-même prélevé : « les rangs 5+ d'un tableau qui prend les rangs 17 à 32 de la
+    # qualification » réclame **22** inscrits (17 - 1 + (5 - 1 + 2)), pas 6. Traduire un rang en
+    # inscrits sans remonter annoncerait un plancher trop bas — l'organisateur démarrerait, et la
+    # phase manquerait de monde en salle.
+    #
+    # Le `min` porte sur les **exigences**, pas sur les `rang_debut` : deux sources peuvent viser
+    # des phases de profondeurs différentes, auquel cas la plus basse en rang n'est pas la moins
+    # exigeante (correctif de revue, axe C1). `_inscrits_pour_classer` applique la même règle un
+    # cran plus bas.
+    besoins = [
+        besoin
+        for source in lisibles
+        if (
+            besoin := _inscrits_pour_classer(
+                par_ordre,
+                source.ordre_source,
+                source.rang_debut - 1 + base,
+                frozenset({etape.ordre}),
+            )
+        )
+        is not None
+    ]
+    if not besoins:
         return ExigenceEffectif(minimum=base)
-    return ExigenceEffectif(minimum=besoin, ordre=etape.ordre, rang_debut=plus_bas.rang_debut)
+    besoin = min(besoins)
+    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
+    return ExigenceEffectif(
+        minimum=besoin,
+        ordre=etape.ordre,
+        rang_debut=plus_bas.rang_debut,
+        ordre_source=plus_bas.ordre_source,
+    )
 
 
 def _source_lisible(source: SourcePhase, par_ordre: dict[int, EtapeSequencee]) -> bool:
@@ -415,7 +447,10 @@ def _source_lisible(source: SourcePhase, par_ordre: dict[int, EtapeSequencee]) -
 
 
 def _inscrits_pour_classer(
-    par_ordre: dict[int, EtapeSequencee], ordre: int, combien: int
+    par_ordre: dict[int, EtapeSequencee],
+    ordre: int,
+    combien: int,
+    vus: frozenset[int] = frozenset(),
 ) -> int | None:
     """Combien d'**inscrits** il faut pour que la phase `ordre` classe `combien` participants.
 
@@ -436,22 +471,53 @@ def _inscrits_pour_classer(
     ailleurs (« refuser à tort est le pire mode de défaillance »). À resserrer le jour où un déroulé
     réel en souffrira, pas avant.
 
-    **Termine** : une source est toujours **antérieure** (ADR-0045 §3, vérifié par
-    `verifier_sequence`), donc `ordre` décroît strictement à chaque appel. Le `par_ordre.get`
-    rendant `None` sur un ordre absent ferme le cas d'une composition incomplète.
+    ⚠️ **`vus` n'est pas une ceinture de sécurité, c'est la seule chose qui fasse terminer cette
+    fonction sur le chemin où elle est appelée** (bloquant de revue, reproduit par deux axes). Un
+    premier jet fondait sa terminaison sur « une source est toujours **antérieure** (ADR-0045 §3,
+    vérifié par `verifier_sequence`) ». L'argument est juste — pour les chemins d'**écriture**. Or
+    `exigence_minimale` est atteinte par `projeter`, dont la docstring dit l'inverse en toutes
+    lettres : « tolérante par construction : une séquence incohérente ne fait pas échouer le calcul,
+    elle le **décrit** ». Et depuis E01US024/ADR-0063, un format s'enregistre **incomplet** sans
+    passer par `verifier_sequence`. Un brouillon dont une étape se désigne elle-même en source est
+    donc parfaitement persistable, et c'est l'écran de **diagnostic** — celui dont le métier est
+    justement de dire à l'organisateur que sa composition boucle — qui partait en `RecursionError`,
+    donc en **500**, donc en page éteinte.
+
+    On rend `None` (« aucun plancher chiffrable ») plutôt que de lever : le cycle est déjà signalé
+    comme anomalie par `anomalies_sequence`, le plancher n'a rien à y ajouter, et `projeter` doit
+    rester tolérante.
     """
+    if ordre in vus:
+        return None
     etape = par_ordre.get(ordre)
     if etape is None:
         return combien
     lisibles = [source for source in etape.sources if _source_lisible(source, par_ordre)]
     if not lisibles:
         return combien  # alimentée par les inscriptions : ce qu'elle classe, on l'y inscrit
-    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
-    if _largeur(plus_bas) < combien:
-        return None
-    return _inscrits_pour_classer(
-        par_ordre, plus_bas.ordre_source, plus_bas.rang_debut - 1 + combien
-    )
+    # ⚠️ **Une exigence par source, puis le minimum des exigences** (correctif de revue, axe C1).
+    # Prendre d'abord la source au plus petit `rang_debut` supposait que toutes visent la **même**
+    # phase — vrai tant que seule la qualification était lisible, faux depuis que les sources
+    # peuvent viser des phases de **profondeurs de chaîne différentes**. L'erreur allait dans les
+    # deux sens : « rangs 1+ d'un tableau des places 49-64 » **et** « rangs 5+ de la qualification »
+    # réclamait 50 inscrits au lieu de 6 (refus abusif au démarrage), et une source dont la fenêtre
+    # bornée rendait `None` **éteignait** les autres, ramenant le plancher à `base`.
+    besoins: list[int] = []
+    for source in lisibles:
+        # Fenêtre **bornée** trop étroite : cette source ne classera jamais `combien` participants,
+        # à 34 inscrits comme à 400. Ce n'est pas un plancher, c'est un défaut de composition — que
+        # `_resoudre` signale déjà en `PrelevementVide`. On l'écarte des candidats plutôt que de
+        # rendre un chiffre rassurant et faux. Le filtre était appliqué au niveau haut
+        # (`_exigence_de_letape`) mais **pas** dans la récursion, où une fenêtre étroite masquait la
+        # vraie exigence de sa voisine (relevé par l'axe adversarial, m8).
+        if _largeur(source) < combien:
+            continue
+        besoin = _inscrits_pour_classer(
+            par_ordre, source.ordre_source, source.rang_debut - 1 + combien, vus | {ordre}
+        )
+        if besoin is not None:
+            besoins.append(besoin)
+    return min(besoins) if besoins else None
 
 
 def _largeur(source: SourcePhase) -> int:

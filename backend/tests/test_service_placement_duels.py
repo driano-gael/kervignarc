@@ -33,9 +33,10 @@ from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation, RaisonConflit
 from domain.politiques import (
+    AggregationParQualification,
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     SeedingSerpent,
@@ -277,6 +278,27 @@ class _Monde:
         return archer.id
 
     @property
+    def saisie_duels(self) -> ServiceSaisieDuels:
+        """Le service jumeau, construit **comme** le plan le construit (E05US024).
+
+        Exposé pour que la parité plan ↔ arbre soit vérifiable de l'extérieur : c'est l'écart entre
+        ces deux-là qu'E05US020 avait laissé passer, et une assertion croisée vaut mieux qu'un
+        commentaire affirmant qu'ils partagent la règle.
+        """
+        return self._saisie_duels(
+            ServiceClassement(
+                self.tournois,
+                self.archers,
+                self.series,
+                self.categories,
+                self.phases,
+                self.forfaits,
+                self.departs,
+                self.inscriptions,
+            )
+        )
+
+    @property
     def service(self) -> ServicePlacementDuels:
         classement = ServiceClassement(
             self.tournois,
@@ -324,6 +346,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
             registre_par_defaut(),
+            AggregationParQualification(),
         )
 
 
@@ -730,3 +753,39 @@ def test_pose_sur_une_cible_de_duels_deja_non_conforme_dit_de_regenerer() -> Non
     message = str(refus.value).lower()
     assert "ne respecte déjà pas" in message
     assert "régénérez" in message
+
+
+def test_le_plan_de_cibles_honore_les_prelevements_comme_l_arbre() -> None:
+    """**CA — plan de cibles et arbre ensemencés à l'identique**, testé là où il avait cassé.
+
+    Correctif de revue (axe B). La parité est censée venir du **partage** de
+    `application/prelevement.py` : les deux services appellent la même fonction. Mais le défaut
+    d'E05US020 — plan de 8 placements pour un tableau de 4 — n'était pas dans la règle, il était
+    dans le **câblage** : le plan ne l'appelait pas. Tester la fonction pure ne dit donc rien du
+    fait que les deux services l'appellent, ce qui est précisément ce qui avait manqué.
+
+    Aucun des dix-neuf tests de ce module ne déclarait de `SourcePhase` avant celui-ci : le nouveau
+    chemin — le plan emprunte `resolveur_de_classement` à la saisie — était livré sans couverture.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre_archers(monde)
+    # La qualification est la phase d'ordre 1 : sans elle, la source ne viserait rien, retomberait
+    # sur « tous les archers en lice », et le test passerait pour la mauvaise raison.
+    monde.phases.ajouter(Phase.qualification(monde.depart_id, BaremeQualification.creer(2, 3)))
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    # Le tableau ne prend que les deux premiers : le plan doit poser deux archers, pas quatre.
+    monde.phases._phases[monde.phase_id] = replace(
+        phase, sources=(SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=2),)
+    )
+
+    plan = monde.service.regenerer(monde.tournoi_id, monde.phase_id)
+
+    poses = [pose.archer_id for cible in plan.cibles for pose in cible.placements]
+    assert len(poses) == 2
+    # …et ce sont **exactement** ceux que l'arbre fera jouer : c'est la parité, pas juste le compte.
+    tableau, _ = monde.saisie_duels.reconstruire(monde.tournoi_id, monde.phase_id)
+    duellistes = {
+        camp.ref_id for match in tableau.matchs for camp in (match.haut, match.bas) if camp
+    }
+    assert set(poses) == duellistes

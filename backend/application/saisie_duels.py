@@ -23,16 +23,17 @@ from dataclasses import dataclass, field
 from application.classements import ServiceClassement
 from application.erreurs import (
     BlasonIntrouvable,
+    DerouleCyclique,
     DuelDesynchronise,
     PhaseIntrouvable,
     PhasePasUnTableau,
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
-from application.prelevement import ResolveurClassement, preleves, profondeur_de
+from application.prelevement import ResolveurClassement, preleves, profondeur_de, tranche
 from domain.blason import ZoneScore
-from domain.classement import Classement, LigneClassement
-from domain.classement_de_tableau import classement_de_tableau
+from domain.classement import LigneClassement
+from domain.classement_de_tableau import ClassementSource, classement_de_tableau
 from domain.depart import DepartId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
@@ -40,7 +41,6 @@ from domain.participant import GenreParticipant, Participant
 from domain.phase import PhaseId, TypePhase
 from domain.politiques import (
     Aggregation,
-    AggregationParQualification,
     Byes,
     RegistrePolitiques,
     Routing,
@@ -147,7 +147,7 @@ class ServiceSaisieDuels:
         byes: Byes,
         routing: Routing,
         registre: RegistrePolitiques,
-        aggregation: Aggregation | None = None,
+        aggregation: Aggregation,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
@@ -169,9 +169,14 @@ class ServiceSaisieDuels:
         # puisse y prélever par rangs. Même patron d'injection que `ServicePalmares` — et **la même
         # politique doit y être câblée**, sinon un archer entrerait dans la consolante par un ordre
         # que le palmarès contredirait le même jour, sur le même écran.
-        self._aggregation = (
-            aggregation if aggregation is not None else AggregationParQualification()
-        )
+        #
+        # ⚠️ **Paramètre obligatoire, sans défaut** (correctif de revue, relevé par les quatre axes).
+        # Un premier jet le laissait optionnel avec un `AggregationParQualification()` instancié en
+        # dur ici — et **aucun** des deux composition roots ne le câblait. L'invariant ci-dessus
+        # n'était donc tenu que par la coïncidence des deux valeurs : le jour où le palmarès résout
+        # `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien ne rougisse.
+        # Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
+        self._aggregation = aggregation
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -289,7 +294,11 @@ class ServiceSaisieDuels:
     # --- Interne : reconstruction du décor (classement → arbre → rejeu des duels validés) -------
 
     def _decor(
-        self, tournoi_id: TournoiId, phase_id: PhaseId, _chaine: tuple[PhaseId, ...] = ()
+        self,
+        tournoi_id: TournoiId,
+        phase_id: PhaseId,
+        _chaine: tuple[PhaseId, ...] = (),
+        _cache: dict[int, ClassementSource | None] | None = None,
     ) -> tuple[Tableau, dict[int, LigneClassement]]:
         """Valide les gardes puis reconstruit l'arbre, duels validés **rejoués** (progression).
 
@@ -310,8 +319,28 @@ class ServiceSaisieDuels:
             )
         # Le classement **du départ de cette phase** (ADR-0075) : ensemencer un tableau avec les
         # rangs tous créneaux confondus y ferait entrer des archers qui ne tirent pas ici.
+        # Le cache est **créé au sommet et descendu** dans toute la récursion (correctif de revue,
+        # axe C2). Créé par niveau, il ne servait qu'à l'intérieur d'un appel : sur un déroulé en
+        # **diamant** (une super-finale nourrie par le principal *et* la consolante, tous deux nés
+        # du même tableau), la phase commune était reconstruite une fois par chemin — coût
+        # exponentiel en profondeur, là où le registre et l'ADR annonçaient « fois la profondeur ».
+        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
         classement = self._classements.pour_depart(phase.depart_id)
         lignes = {ligne.archer_id: ligne for ligne in classement.lignes}
+        # Le classement du départ vient d'être calculé : on l'installe au cache pour que la source
+        # visant la qualification ne le recalcule pas (`ServiceClassement.pour_depart` n'est pas
+        # mémoïsé — 7 accès repository, cf. `DETTE-031`). Sans ça, tout déroulé composé depuis
+        # E01US024 le payait **deux fois** par reconstruction, sur le thread écrivain unique.
+        qualification = next(
+            (
+                p
+                for p in self._phases.par_depart(phase.depart_id)
+                if p.type is TypePhase.QUALIFICATION
+            ),
+            None,
+        )
+        if qualification is not None and qualification.ordre not in cache:
+            cache[qualification.ordre] = ClassementSource(classement=classement)
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
         # duels ; son rang scratch peut d'ailleurs être `None` (DSQ). Le classement complet reste
@@ -321,7 +350,9 @@ class ServiceSaisieDuels:
             for ligne in preleves(
                 phase,
                 classement,
-                self.resolveur_de_classement(tournoi_id, phase.depart_id, (*_chaine, phase_id)),
+                self.resolveur_de_classement(
+                    tournoi_id, phase.depart_id, (*_chaine, phase_id), cache
+                ),
             )
         ]
         tableau = construire_tableau(
@@ -335,7 +366,11 @@ class ServiceSaisieDuels:
         return self._appliquer_forfaits(tableau, phase_id), lignes
 
     def resolveur_de_classement(
-        self, tournoi_id: TournoiId, depart_id: DepartId, _chaine: tuple[PhaseId, ...] = ()
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        _chaine: tuple[PhaseId, ...] = (),
+        _cache: dict[int, ClassementSource | None] | None = None,
     ) -> ResolveurClassement:
         """De quoi lire le classement de **n'importe quelle** phase amont de ce créneau (E05US024).
 
@@ -349,22 +384,32 @@ class ServiceSaisieDuels:
         revue d'E05US020 — plan de 8 placements pour un tableau de 4 — est ce qui arrive quand la
         règle est recopiée au lieu d'être partagée.
 
-        **Mémoïsé par appel** : deux sources visant la même phase amont ne la reconstruisent qu'une
-        fois. Le cache ne franchit pas les niveaux de récursion — le cache transverse reste
-        `DETTE-031`, que cette US ne rouvre pas.
+        **Mémoïsé sur toute la descente** : le cache est créé au sommet et **transmis** aux niveaux
+        inférieurs, si bien qu'une phase amont partagée par deux chemins n'est reconstruite qu'une
+        fois. Le coût est donc linéaire en **nombre de phases** de la chaîne, quelle que soit la
+        forme du graphe de sources — et non en nombre de chemins, comme le faisait un premier jet
+        (correctif de revue, axe C2). Le cache **transverse aux requêtes** reste `DETTE-031`, que
+        cette US ne rouvre pas.
         """
-        cache: dict[int, Classement | None] = {}
+        cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
 
-        def resoudre(ordre: int) -> Classement | None:
+        def resoudre(ordre: int) -> ClassementSource | None:
             if ordre not in cache:
-                cache[ordre] = self._classement_de_l_ordre(tournoi_id, depart_id, ordre, _chaine)
+                cache[ordre] = self._classement_de_l_ordre(
+                    tournoi_id, depart_id, ordre, _chaine, cache
+                )
             return cache[ordre]
 
         return resoudre
 
     def _classement_de_l_ordre(
-        self, tournoi_id: TournoiId, depart_id: DepartId, ordre: int, chaine: tuple[PhaseId, ...]
-    ) -> Classement | None:
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        ordre: int,
+        chaine: tuple[PhaseId, ...],
+        cache: dict[int, ClassementSource | None],
+    ) -> ClassementSource | None:
         """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
 
         Trois cas, et le troisième compte autant que les deux autres :
@@ -382,7 +427,9 @@ class ServiceSaisieDuels:
         if phase is None:
             return None
         if phase.type is TypePhase.QUALIFICATION:
-            return self._classements.pour_depart(depart_id)
+            # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir sont
+            # fermes dès que les volées sont validées, et il dispute le tournoi entier (rang 1).
+            return ClassementSource(classement=self._classements.pour_depart(depart_id))
         if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
             return None
         if phase.id in chaine:
@@ -390,12 +437,26 @@ class ServiceSaisieDuels:
             # **antérieure**, donc le déroulé est acyclique. La garde vise une base incohérente
             # (import, migration à la main) : mieux vaut un refus typé qu'un `RecursionError` en
             # salle, qui remonterait en 500 sans rien dire de la cause.
-            raise PhaseIntrouvable(
+            raise DerouleCyclique(
                 f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se prélever "
                 "elle-même, directement ou par une chaîne de sources."
             )
-        tableau, lignes = self._decor(tournoi_id, phase.id, (*chaine, phase.id))
-        return classement_de_tableau(tableau, lignes, self._aggregation)
+        # `_decor` ajoute lui-même `phase.id` à la chaîne : lui passer `chaine` **sans** l'ajouter
+        # ici évite de l'y voir deux fois (sans effet sur le test d'appartenance, mais trompeur).
+        tableau, lignes = self._decor(tournoi_id, phase.id, chaine, cache)
+        descendante = (*chaine, phase.id)
+        # Le rang de tournoi que dispute **ce tableau-ci**, pour que le décalage se cumule chez son
+        # aval (ADR-0081) : un tableau des places 33+ doit dire à sa consolante que son rang 1 vaut
+        # 33. Le résolveur partage le cache, la remontée ne recalcule donc rien.
+        return classement_de_tableau(
+            tableau,
+            lignes,
+            self._aggregation,
+            tranche(
+                phase,
+                self.resolveur_de_classement(tournoi_id, depart_id, descendante, cache),
+            ),
+        )
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
         """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de

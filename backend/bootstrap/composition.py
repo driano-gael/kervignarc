@@ -233,6 +233,11 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # **Un seul** registre pour les deux services (E06US006) : c'est lui qui résout la profondeur
     # lue sur chaque phase, et deux catalogues distincts laisseraient croire qu'ils divergent.
     registre = registre_par_defaut()
+    # Même instance d'`aggregation` que celle du palmarès : cf. le commentaire de `create_app`.
+    aggregation_simulation = cast(
+        "Aggregation",
+        registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),
+    )
     # ⚠️ **La saisie se construit avant le placement** depuis E05US024 : le plan de cibles lui
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas — c'est le typage qui l'a dit.
@@ -249,6 +254,7 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
         registre,
+        aggregation_simulation,
     )
     placement_duels = ServicePlacementDuels(
         tournois,
@@ -653,6 +659,19 @@ def create_app(
     # de classement amont (`resolveur_de_classement`), pour ensemencer exactement la population que
     # l'arbre fera jouer. Deux résolutions distinctes rouvriraient l'écart mesuré à la revue
     # d'E05US020 — plan de 8 placements pour un tableau de 4.
+    #
+    # ⚠️ **Une seule instance d'`aggregation` pour la saisie ET le palmarès** (correctif de revue,
+    # relevé par les quatre axes). Elle ferme les fourchettes *ex æquo* d'un tableau — côté saisie
+    # pour décider qui entre dans la consolante, côté palmarès pour l'afficher au mur. Les faire
+    # diverger, c'est un archer qui entre par un ordre que l'écran voisin contredit le même jour.
+    # Un premier jet ne la câblait **pas** à la saisie, qui retombait sur une stratégie instanciée
+    # en dur : les deux coïncidaient par accident de valeur, pas par construction.
+    aggregation = cast(
+        "Aggregation",
+        app.state.registre_politiques.resoudre(
+            FamillePolitique.AGGREGATION, "par_qualification", {}
+        ),
+    )
     app.state.service_saisie_duels = ServiceSaisieDuels(
         tournoi_repository,
         phase_repository,
@@ -666,6 +685,7 @@ def create_app(
         ByesAuxMieuxClasses(),
         PlacementEnCascade(),
         app.state.registre_politiques,
+        aggregation,
     )
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
@@ -794,12 +814,7 @@ def create_app(
         duel_repository,
         GenerateurPalmaresPdf(),
         depart_repository,
-        cast(
-            "Aggregation",
-            app.state.registre_politiques.resoudre(
-                FamillePolitique.AGGREGATION, "par_qualification", {}
-            ),
-        ),
+        aggregation,
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,

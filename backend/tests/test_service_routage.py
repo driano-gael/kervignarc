@@ -49,6 +49,7 @@ from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
     RANGS_DU_PODIUM,
+    AggregationParQualification,
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     ProfondeurClassement,
@@ -237,6 +238,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             self.routing,
             _REGISTRE,
+            AggregationParQualification(),
         )
 
     @property

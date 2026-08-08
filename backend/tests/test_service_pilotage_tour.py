@@ -40,6 +40,7 @@ from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.politiques import (
+    AggregationParQualification,
     ByesAuxMieuxClasses,
     PlacementEnCascade,
     SeedingSerpent,
@@ -154,6 +155,7 @@ class _Monde:
             ByesAuxMieuxClasses(),
             PlacementEnCascade(),
             registre_par_defaut(),
+            AggregationParQualification(),
         )
 
     @property

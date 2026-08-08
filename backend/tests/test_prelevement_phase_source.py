@@ -19,7 +19,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from domain.classement import Classement, LigneClassement
-from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
+from domain.classement_de_tableau import ClassementSource
+from domain.phase import IssueTour, Phase, PhaseId, SourcePhase, TypePhase
 from tests.test_service_saisie_duels import _gagner_manches, _Monde
 
 
@@ -171,8 +172,8 @@ def test_preleves_lit_le_classement_de_chaque_source_declaree() -> None:
     """
     from application.prelevement import preleves
 
-    qualification = _classement_factice([10, 20, 30, 40])
-    tableau_amont = _classement_factice([40, 30])
+    qualification = _source_factice([10, 20, 30, 40])
+    tableau_amont = _source_factice([40, 30])
     phase = Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE)
     phase = replace(
         phase,
@@ -182,10 +183,52 @@ def test_preleves_lit_le_classement_de_chaque_source_declaree() -> None:
         ),
     )
 
-    retenus = preleves(phase, qualification, {1: qualification, 2: tableau_amont}.get)
+    retenus = preleves(phase, qualification.classement, {1: qualification, 2: tableau_amont}.get)
 
     # Le 1ᵉʳ de la qualification (10) **et** le 1ᵉʳ du tableau amont (40) — pas deux fois le même.
-    assert sorted(ligne.archer_id for ligne in retenus) == [10, 40]
+    # ⚠️ Assertion sur la **liste**, pas sur son tri (correctif de revue, axe B) : la docstring de
+    # `preleves` fait de l'ordre `(ordre_source, rang)` une propriété essentielle — « le `Seeding`
+    # consomme cette liste dans l'ordre : la permuter changerait les appariements ». Un `sorted()`
+    # dans l'assertion aurait laissé passer n'importe quelle permutation.
+    assert [ligne.archer_id for ligne in retenus] == [10, 40]
+
+
+def test_un_archer_vise_par_deux_sources_n_est_preleve_qu_une_fois() -> None:
+    """Le dédoublonnage de `preleves`, que rien n'exerçait (correctif de revue, axe B).
+
+    `verifier_sequence` ne contrôle le non-recoupement qu'**au sein** d'une phase : rien n'empêche
+    deux sources visant deux phases différentes de désigner le même archer. Sans dédoublonnage, il
+    disputerait deux duels à la fois dans le même tableau.
+    """
+    from application.prelevement import preleves
+
+    qualification = _source_factice([10, 20])
+    # Le 1ᵉʳ du tableau amont est **aussi** le 1ᵉʳ de la qualification.
+    tableau_amont = _source_factice([10, 20])
+    phase = replace(
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
+        sources=(
+            SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=1),
+            SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=1),
+        ),
+    )
+
+    retenus = preleves(phase, qualification.classement, {1: qualification, 2: tableau_amont}.get)
+
+    assert [ligne.archer_id for ligne in retenus] == [10]
+
+
+def _source_factice(
+    archer_ids: list[int],
+    plages_indecises: tuple[tuple[int, int], ...] = (),
+    rang_premier: int = 1,
+) -> ClassementSource:
+    """Un `ClassementSource` minimal : rangs 1..N dans l'ordre donné."""
+    return ClassementSource(
+        classement=_classement_factice(archer_ids),
+        plages_indecises=plages_indecises,
+        rang_premier=rang_premier,
+    )
 
 
 def _classement_factice(archer_ids: list[int]) -> Classement:
@@ -209,3 +252,129 @@ def _classement_factice(archer_ids: list[int]) -> Classement:
             for rang, archer_id in enumerate(archer_ids, start=1)
         )
     )
+
+
+def _jouer_le_premier_tour(monde: _Monde) -> None:
+    """Ne joue que le tour 1 du tableau amont : la finale reste à tirer.
+
+    Le décor du cas « fenêtre qui **contient** un bloc indécis » : les deux vainqueurs partagent
+    la plage `[1..2]` de la finale à venir.
+    """
+    service = monde.service()
+    tableau, _ = service.reconstruire(monde.tournoi_id, monde.phase_id)
+    for numero in sorted(m.numero for m in tableau.matchs if m.tour == 1):
+        _gagner_manches(service, monde, numero, "bas")
+
+
+def test_une_fenetre_qui_coupe_un_bloc_indecis_est_refusee() -> None:
+    """**ADR-0081** — on ne prélève pas des places que la compétition n'a pas encore attribuées.
+
+    Le cas trouvé par la revue adversariale, et le plus dangereux de l'US : un tableau de 8 **non
+    commencé** porte ses huit archers sur la plage `[1..8]` de leur quart en cours. Leur demander
+    « les rangs 5 à 8 » — les quatre battus des quarts — rendait les quatre **derniers qualifiés**,
+    parce que la politique `aggregation` départageait l'unique paquet sur le rang de qualification.
+
+    La consolante recevait donc le bon **nombre** d'archers, avec des noms crédibles : un bracket
+    bien formé, plausible et faux, **moins** détectable qu'avant l'US (où elle recevait tout le
+    monde, ce qui sautait aux yeux). Ce test échoue sur le code d'avant le correctif.
+    """
+    import pytest
+
+    from application.erreurs import PrelevementEnAttente
+
+    monde, aval = _monde_a_deux_tableaux(8)
+    _declarer(
+        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+    )
+    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+
+    with pytest.raises(PrelevementEnAttente, match="pas encore départagé"):
+        monde.service().etat_tableau(monde.tournoi_id, aval)
+
+
+def test_la_meme_fenetre_se_resout_une_fois_les_quarts_tires() -> None:
+    """Le pendant du précédent : le refus est **temporaire**, pas un blocage de composition.
+
+    Une fois le tour 1 joué, les battus portent `[5..8]` avec `en_lice=False` — la plage est
+    *ex æquo*, plus indécise : la politique `aggregation` a le droit de la fermer (Règle R,
+    ADR-0065/0067). La consolante reçoit alors les **vrais** battus.
+    """
+    monde, aval = _monde_a_deux_tableaux(8)
+    qualification = _classement_qualification(monde)
+    _declarer(
+        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+    )
+    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+    _jouer_le_premier_tour(monde)
+
+    battus = sorted(_archers_de(monde, aval))
+    assert len(battus) == 4
+    # Les mal classés ont gagné leurs quarts : les battus sont les **mieux** classés — donc
+    # exactement l'inverse de ce que le repli sur le rang de qualification aurait produit.
+    assert battus == sorted(qualification[:4])
+
+
+def test_une_fenetre_qui_contient_un_bloc_indecis_reste_honoree() -> None:
+    """**ADR-0080 §2 est préservé** : c'est « couper », pas « chevaucher », qui est interdit.
+
+    Deux archers qui vont tirer la finale partagent `[1..2]`. Une phase qui prélève « les rangs 1 à
+    2 » les veut **tous les deux** — elle veut les finalistes, pas le champion. Refuser ici aurait
+    été le refus abusif symétrique, que le projet tient pour aussi coûteux qu'un oubli.
+    """
+    monde, aval = _monde_a_deux_tableaux(4)
+    _declarer(
+        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=4)
+    )
+    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2))
+    _jouer_le_premier_tour(monde)
+
+    assert len(_archers_de(monde, aval)) == 2
+
+
+def test_la_tranche_cumule_le_decalage_le_long_de_la_chaine() -> None:
+    """**CA — `tranche` suit la même règle**, et le premier jet ne la suivait pas.
+
+    Une phase prélevant « les rangs 1 à 2 » d'un tableau qui disputait lui-même les places 33 et
+    suivantes joue pour la **33ᵉ** place. Sans ce cumul, `domain/palmares.py` calculait un décalage
+    nul et publiait le vainqueur de cette finale de consolante **1ᵉʳ du tournoi**, devant le
+    champion — `DETTE-034` rouverte un cran plus bas.
+
+    Testé sur `tranche` directement : le défaut est arithmétique, et un résolveur factice le montre
+    sans monter trois tableaux. Ce test rend **1** sur le code d'avant le correctif.
+    """
+    from application.prelevement import tranche
+
+    # La phase source dispute les places 33+ : son rang local 1 vaut le rang 33 du tournoi.
+    amont = _source_factice([40, 30], rang_premier=33)
+    phase = replace(
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
+        sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+    )
+
+    assert tranche(phase, {2: amont}.get) == 33
+
+
+def test_une_source_de_nature_inerte_ne_fait_pas_echouer_la_phase() -> None:
+    """Une source `le_reste` / `par_issue_de_tour` est **sans effet**, pas destructrice.
+
+    Régression mesurée en revue (axe C1) : le résolveur était appelé **avant** le test de nature,
+    si bien qu'une source inerte visant un tableau amont déclenchait sa reconstruction complète —
+    et faisait remonter l'échec de cette reconstruction à la phase aval. Une source dont le contrat
+    est de ne rien faire cassait l'écran de duels d'une autre phase.
+    """
+    from application.prelevement import preleves
+
+    qualification = _source_factice([10, 20])
+
+    def _resolveur_qui_explose(_ordre: int) -> ClassementSource | None:
+        raise AssertionError("une source inerte ne doit jamais être résolue")
+
+    phase = replace(
+        Phase.creer(1, 3, TypePhase.ELIMINATION_DIRECTE),
+        sources=(SourcePhase.par_issue_de_tour(ordre_source=2, tour=1, issue=IssueTour.PERDANTS),),
+    )
+
+    # Aucune source lisible : la phase retombe sur le classement reçu, sans rien résoudre.
+    retenus = preleves(phase, qualification.classement, _resolveur_qui_explose)
+
+    assert [ligne.archer_id for ligne in retenus] == [10, 20]
