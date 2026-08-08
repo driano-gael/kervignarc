@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
-import { aDesExAequo, estExAequo, totauxExAequo } from './departage'
+import { estExAequo, totauxExAequo } from './departage'
 import { usePlacerArcher } from './hooks'
 
 interface TableClassementProps {
@@ -70,6 +70,14 @@ export function TableClassement({
   }
 
   const egalites = totauxExAequo(lignesCompletes ?? lignes)
+  // ⚠️ **La règle ne s'annonce que si une ligne VISIBLE la porte** (2ᵉ passe de revue). Calculer les
+  // égalités sur la liste complète corrige le marquage, mais ne doit pas décider seul de l'affichage
+  // du paragraphe : centré sur trois archers, `egalites` décrit tout le créneau, donc la mention
+  // serait apparue dès qu'une égalité existe **quelque part** — c'est-à-dire en permanence à partir
+  // de la mi-journée — sous une table où aucune ligne n'est marquée. C'est très exactement la
+  // devinette que `departage.ts` dit vouloir éviter (« encore faut-il montrer sur qui »), et le
+  // retour A16 demandait la mention « seulement en cas d'ex æquo ».
+  const egaliteVisible = lignes.some((ligne) => estExAequo(ligne, egalites))
   // Séparation seulement si elle **sert** : figer les 5 premiers d'une liste de 5 ne fait
   // qu'ajouter un cadre autour de rien.
   const separer = teteFigee > 0 && lignes.length > teteFigee
@@ -131,7 +139,7 @@ export function TableClassement({
           une règle qui ne s'applique pas — et un écran qui explique en continu finit par ne plus
           être lu. Les lignes concernées sont marquées : dire « il y a des ex æquo » sans dire
           lesquels serait une devinette. */}
-      {aDesExAequo(egalites) && (
+      {egaliteVisible && (
         <p className="classement__departage" role="note">
           Ex æquo signalés : à total égal, le plus grand nombre de <strong>10</strong> départage,
           puis le nombre de <strong>9</strong> (règle FFTA).

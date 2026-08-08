@@ -38,12 +38,12 @@ function ligne(patch: Partial<LignePalmares> = {}): LignePalmares {
     categorie_id: 3,
     categorie_libelle: 'Senior 1 Homme',
     club_id: 2,
-    origine: 'tableau',
-    statut: 'classe',
+    origine: 'duels',
+    statut: 'en_lice',
     decerne: true,
     en_lice: false,
     ...patch,
-  } as LignePalmares
+  }
 }
 
 // Le médaillé n'est **pas** suivi ; l'archer suivi est loin derrière. C'est le cas qui compte.
@@ -101,6 +101,11 @@ describe('VuePalmares — centrage « mes archers »', () => {
     await waitFor(() =>
       expect(screen.getByText(/Aucun des archers que vous suivez/)).toBeInTheDocument(),
     )
+    // ⚠️ Assertion sur « élargissez le filtre » (2ᵉ passe de revue) : sans elle, le test passait
+    // **aussi** avec l'ancien message, qui n'imputait la cause qu'à l'interrupteur — il ne prouvait
+    // donc rien du correctif qu'il prétend nommer. Cet écran porte un filtre par catégorie qui vide
+    // la liste tout aussi souvent.
+    expect(screen.getByText(/élargissez le filtre/)).toBeInTheDocument()
     expect(screen.queryByText(/Aucun archer classé/)).toBeNull()
     // Et le podium, lui, reste affiché : ce vide-là ne l'ampute pas non plus.
     expect(screen.getByText(/CHAMPION/)).toBeInTheDocument()

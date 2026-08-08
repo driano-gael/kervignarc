@@ -70,10 +70,16 @@ export function VueClassement({
   // « Aucun de vos archers ici » n'est pas « aucun archer inscrit » : la table dirait le second, qui
   // est faux et fait chercher une panne. Le cas est réel — un suivi engagé sur le départ du matin
   // quand on regarde le créneau de l'après-midi, ou filtré hors de sa catégorie.
-  // ⚠️ `classement.data.lignes.length > 0` (correctif de revue) : sans lui, un créneau **réellement
-  // vide** — aucun inscrit classé, ce qui arrive le matin avant la première volée — se présentait
-  // comme un vide de filtre. Le message envoyait alors chercher du côté de l'interrupteur ce qui
-  // n'y était pas : exactement le défaut que ce bloc existe pour éviter, retourné contre lui-même.
+  // ⚠️ `classement.data.lignes.length > 0` (correctif de revue) : sans lui, un classement
+  // **réellement vide** se présentait comme un vide de filtre, et le message envoyait chercher du
+  // côté de l'interrupteur ce qui n'y était pas — le défaut que ce bloc existe pour éviter,
+  // retourné contre lui-même.
+  //
+  // ⚠️ Ce cas est celui d'un départ **sans aucun engagé**, et **non** « le matin avant la première
+  // volée » (rectification de la 2ᵉ passe, qui a repris un premier jet fautif) : `calculer_classement`
+  // crée une ligne `EN_LICE` pour **chaque** archer, série ou pas — avant la première volée, les 120
+  // archers sont là, à zéro. `departage.ts` et `VueAffectations` portent déjà la même rectification ;
+  // c'est manifestement l'erreur que ce coin du domaine inspire, d'où le rappel ici aussi.
   const aucunSuiviIci =
     mode === 'suivis' &&
     classement.data !== undefined &&

@@ -67,6 +67,25 @@ export const useSessionSuivisStore = create<SessionSuivisState>()(
         set((etat) => ({ suivis: etat.suivis.filter((s) => s.archerId !== archerId) })),
       centrer: (valeur) => set({ centrerSurSuivis: valeur }),
     }),
-    { name: 'kervignarc-session-suivis' },
+    {
+      name: 'kervignarc-session-suivis',
+      // ⚠️ **`version: 1` + `migrate` sont indispensables ici** (2ᵉ passe de revue), et pas de la
+      // précaution générale. `persist` fusionne **superficiellement** : une clé **absente** du
+      // stockage retombe sur la valeur initiale — c'est le cas d'un appareil d'avant E16US004, et
+      // c'est bien ce que disait le commentaire ci-dessus. Mais un premier jet de cette US a déjà
+      // écrit `centrerSurSuivis: false` dans le `localStorage` de tout appareil ayant ouvert la
+      // branche. Là, la valeur **persistée gagne** : l'arbitrage du commanditaire aurait été
+      // invisible précisément sur les machines qui comptent — la sienne et celle de la recette —
+      // et se serait diagnostiqué en « le correctif ne marche pas ».
+      //
+      // La migration ne touche **que** la préférence d'affichage, jamais la liste des suivis : on
+      // remet le défaut voulu sans faire perdre à quiconque les archers qu'il suit.
+      version: 1,
+      migrate: (etatPersiste, versionLue) => {
+        const etat = (etatPersiste ?? {}) as Partial<SessionSuivisState>
+        if (versionLue >= 1) return etat as SessionSuivisState
+        return { ...etat, centrerSurSuivis: true } as SessionSuivisState
+      },
+    },
   ),
 )

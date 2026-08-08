@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest'
 import type { Archer } from '../competition/api'
 import type { Depart } from '../departs/api'
 import type { PlanDeCibles } from '../placement/api'
-import { construireJournee, filtrerArchers, placeDansPlan, rechercherArchers } from './suivi'
+import {
+  construireJournee,
+  departsDesArchersSuivis,
+  filtrerArchers,
+  placeDansPlan,
+  rechercherArchers,
+} from './suivi'
 
 const archer = (id: number, nom: string, prenom: string): Archer => ({
   id,
@@ -195,5 +201,58 @@ describe('construireJournee — la journée d’un archer (départs + plans, pas
     const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
 
     expect(construireJournee(7, departs, plans).map((l) => l.departId)).toEqual([10])
+  })
+})
+
+describe('departsDesArchersSuivis — quels créneaux le récapitulatif doit lire', () => {
+  // ⚠️ Le CA dit « tous les tours de **toutes les phases** joués ». Un premier jet lisait le départ
+  // que la **salle** est en train de tirer : dès l'après-midi lancée, un archer du matin perdait
+  // toute sa section « duels », ses volées restant affichées — une amputation silencieuse.
+  const departs = [depart(10, 1, '09:00'), depart(20, 2, '14:00')]
+
+  it('rend le départ de l’archer, pas celui que la salle tire', () => {
+    // L'archer 7 tire le matin (départ 10). Que la salle en soit à l'après-midi ne change rien :
+    // cette fonction ne connaît pas `departDeSalle`, et c'est précisément le correctif.
+    const plans = new Map([
+      [10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])],
+      [20, planAvec(20, [{ index: 1, position: 'A', archerId: 99 }])],
+    ])
+
+    expect(departsDesArchersSuivis([7], departs, plans)).toEqual([10])
+  })
+
+  it('réunit les créneaux de plusieurs archers suivis, sans doublon', () => {
+    const plans = new Map([
+      [
+        10,
+        planAvec(10, [
+          { index: 3, position: 'B', archerId: 7 },
+          { index: 4, position: 'A', archerId: 8 },
+        ]),
+      ],
+      [20, planAvec(20, [{ index: 1, position: 'A', archerId: 9 }])],
+    ])
+
+    // 7 et 8 partagent le départ 10 : il ne doit être interrogé **qu'une fois** — la borne qui
+    // empêche ce correctif d'aggraver DETTE-031.
+    expect(departsDesArchersSuivis([7, 8, 9], departs, plans)).toEqual([10, 20])
+  })
+
+  it('ne réclame aucun créneau tant que les plans ne sont pas chargés', () => {
+    // Aucune requête ne part au premier rendu : le récapitulatif se remplit au suivant. Sans ce
+    // comportement, on interrogerait des départs au hasard le temps du chargement.
+    expect(departsDesArchersSuivis([7], departs, new Map())).toEqual([])
+  })
+
+  it('ne réclame rien quand on ne suit personne', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(departsDesArchersSuivis([], departs, plans)).toEqual([])
+  })
+
+  it('ignore un archer suivi qui n’est posé nulle part', () => {
+    const plans = new Map([[10, planAvec(10, [{ index: 3, position: 'B', archerId: 7 }])]])
+
+    expect(departsDesArchersSuivis([404], departs, plans)).toEqual([])
   })
 })

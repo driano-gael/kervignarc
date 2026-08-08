@@ -168,8 +168,13 @@ function GrilleCibles({
     // encore ». Les confondre ferait chercher une panne là où il n'y a qu'un filtre.
     return mode === 'suivis' ? (
       <p className="carte__etat">
-        Aucun des archers que vous suivez n’est placé sur ce départ. Passez à « Tout le tournoi »
-        pour voir le plan complet.
+        {/* ⚠️ **Nommer le geste utile en PREMIER** (2ᵉ passe de revue). Cet écran porte son propre
+            sélecteur de départ, et il s'ouvre sur le premier créneau ; l'interrupteur étant armé par
+            défaut, le cas banal est « je suis un archer de l'après-midi et je regarde le matin ».
+            Ne proposer que « Tout le tournoi » menait alors à un cul-de-sac : on obtenait le plan
+            complet **du mauvais départ**, toujours sans son archer. */}
+        Aucun des archers que vous suivez n’est placé sur ce départ. Choisissez un autre départ, ou
+        passez à « Tout le tournoi » pour voir le plan complet.
       </p>
     ) : (
       <p className="carte__etat">Aucune cible pour ce départ.</p>

@@ -8,10 +8,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { useSessionSuivisStore } from './sessionSuivisStore'
 
 beforeEach(() => {
-  // ⚠️ **Remettre aussi `centrerSurSuivis`** (correctif de revue) : un état ajouté au store et
-  // oublié ici fuite d'un test au suivant, et l'ordre d'exécution décide alors du résultat. Le
-  // défaut ne se voit pas tant qu'aucun test ne l'arme — c'est-à-dire jusqu'au prochain.
-  useSessionSuivisStore.setState({ suivis: [], centrerSurSuivis: true })
+  // ⚠️ **Repartir de l'état initial du store**, plutôt que de réécrire ses valeurs à la main
+  // (correctif de revue) : un état ajouté au store et oublié ici fuite d'un test au suivant, et
+  // l'ordre d'exécution décide alors du résultat. `getInitialState()` ne peut pas se désynchroniser
+  // du store — et il évite qu'un `beforeEach` finisse par **poser** la valeur qu'un test vérifie.
+  useSessionSuivisStore.setState(useSessionSuivisStore.getInitialState())
 })
 
 describe('sessionSuivisStore — liste d’archers suivis', () => {

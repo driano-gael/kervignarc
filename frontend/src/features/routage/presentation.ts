@@ -87,6 +87,35 @@ export function partitionner(archers: RoutageArcher[]): {
   }
 }
 
+// Le pas de tir en mode « mes archers » (E16US004) — **logique pure, donc testable**.
+//
+// ⚠️ **La butte reste entière, adversaire compris.** C'est la règle que `shared/suivis/focus.ts`
+// pose pour le plan de cibles — « on garde la cible entière, voisins compris » — et elle compte
+// davantage ici : sur un tableau de duels, le voisin de butte **est** l'adversaire. Filtré ligne à
+// ligne, « Cible 7 · B · MARTIN Luc » ne disait plus contre qui Luc tire, et laissait croire à une
+// butte à un seul tireur. Le bloc ne rend pas le champ `adversaire` : c'est le **voisinage** qui
+// porte l'appariement à l'écran.
+//
+// Extraite du composant en 2ᵉ passe de revue, pour la raison exacte que `partitionner` ci-dessus :
+// laissée dans le JSX, la correction n'avait aucun filet.
+//
+// Ne concerne **que** la lecture « par cible ». Les sections annexes (attente, sortis) restent
+// centrées sur les seuls archers suivis : ce sont des listes de personnes, pas une disposition de
+// salle, et personne n'y cherche un vis-à-vis.
+export function posesParCible(
+  posesCentrees: RoutageArcher[],
+  tousLesArchers: RoutageArcher[],
+  centre: boolean,
+): RoutageArcher[] {
+  if (!centre) return partitionner(tousLesArchers).poses
+  const ciblesSuivies = new Set(
+    posesCentrees.map((ligne) => ligne.prochain?.cible).filter((cible) => cible != null),
+  )
+  return partitionner(tousLesArchers).poses.filter(
+    (ligne) => ligne.prochain?.cible != null && ciblesSuivies.has(ligne.prochain.cible),
+  )
+}
+
 // La ligne principale d'un archer : ce qu'il doit retenir en une seconde.
 //
 // ⚠️ Le défaut de `nommer` est le **vrai** catalogue, pas l'identité (correctif de revue). Un repli

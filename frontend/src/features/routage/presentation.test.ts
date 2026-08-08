@@ -9,6 +9,7 @@ import {
   encoreEnLice,
   panneauOuvert,
   partitionner,
+  posesParCible,
   rang,
   serieClose,
   titre,
@@ -343,5 +344,53 @@ describe('alerte', () => {
 
   it('ne s’applique qu’à un archer qui a un duel devant lui', () => {
     expect(alerte(archer({ issue: 'termine', prochain: null }))).toBeNull()
+  })
+})
+
+describe('posesParCible — le pas de tir en « mes archers »', () => {
+  // ⚠️ La règle testée ici est celle qu'un correctif de revue a dû poser : **la butte reste
+  // entière, adversaire compris**. Sur un tableau de duels, le voisin de cible *est* l'adversaire ;
+  // filtrer ligne à ligne comme on filtre le reste de l'écran cachait contre qui l'archer suivi
+  // tire, et laissait croire à une butte à un seul tireur.
+  const moi = archer({ archer_id: 1, prochain: prochain({ cible: 7, position: 'A' }) })
+  const monAdversaire = archer({
+    archer_id: 2,
+    nom: 'DURAND',
+    prochain: prochain({ cible: 7, position: 'B' }),
+  })
+  const ailleurs = archer({ archer_id: 3, prochain: prochain({ cible: 9, position: 'A' }) })
+  const tous = [moi, monAdversaire, ailleurs]
+
+  it('rend la butte entière quand un seul de ses tireurs est suivi', () => {
+    const poses = posesParCible([moi], tous, true)
+
+    expect(poses.map((l) => l.archer_id)).toEqual([1, 2])
+  })
+
+  it('écarte les buttes où aucun archer suivi ne tire', () => {
+    const poses = posesParCible([moi], tous, true)
+
+    expect(poses.map((l) => l.archer_id)).not.toContain(3)
+  })
+
+  it('rend tout le pas de tir hors centrage', () => {
+    const poses = posesParCible([], tous, false)
+
+    expect(poses.map((l) => l.archer_id)).toEqual([1, 2, 3])
+  })
+
+  it('ne rend aucune butte quand aucun archer suivi n’est posé', () => {
+    // Cas réel : les archers suivis sont en lice mais leur cible n'est pas encore attribuée (les
+    // tours ≥ 2 la reçoivent au lancement). La section « en lice, cible pas encore attribuée » les
+    // porte ; le pas de tir, lui, n'a rien à montrer — et surtout pas tout le tournoi.
+    expect(posesParCible([], tous, true)).toEqual([])
+  })
+
+  it('ignore les archers sortis, même sur une butte retenue', () => {
+    const sorti = archer({ archer_id: 4, issue: 'termine', prochain: null })
+
+    const poses = posesParCible([moi], [...tous, sorti], true)
+
+    expect(poses.map((l) => l.archer_id)).toEqual([1, 2])
   })
 })

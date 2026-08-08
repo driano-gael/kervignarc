@@ -12,10 +12,15 @@
 //     défaut dès qu'on suit quelqu'un » ; depuis qu'un interrupteur unique gouverne les cinq vues,
 //     ce défaut n'est plus porté par `VueTableaux` mais par la valeur initiale du store. Le test
 //     qui le gardait a disparu avec le sélecteur local — le voici, à la bonne adresse.
-//  2. **C'est le dernier lecteur du store.** Le piège du sélecteur Zustand instable (`getSnapshot`
-//     qui rend un tableau neuf → boucle de rendu infinie en Zustand v5 / React 19) n'a pas été
-//     corrigé, il a **changé d'adresse** : `VueTableaux` et `VueSuivi` reçoivent désormais leurs
-//     suivis en prop. Monter ce composant est ce qui détecte la rechute.
+//  2. **C'est le lecteur du store qui dessert les cinq vues partagées.** Le piège du sélecteur
+//     Zustand instable (`getSnapshot` qui rend un tableau neuf → boucle de rendu infinie en Zustand
+//     v5 / React 19) n'a pas été corrigé, il a **changé d'adresse** : `VueTableaux` reçoit désormais
+//     ses suivis en prop. Monter ce composant est ce qui détecte la rechute ici.
+//     ⚠️ **Ce n'est pas le seul lecteur restant** (rectification de la 2ᵉ passe, qui a repris une
+//     affirmation fausse) : `VueSuivi` lit le store lui aussi, pour composer la liste — et ce
+//     fichier le **mocke**, donc ne le couvre pas. `VueSuivi` n'a à ce jour aucun test de montage,
+//     alors que c'est le composant qui a le plus changé dans cette US ; c'est un angle mort connu,
+//     inscrit comme tel plutôt que masqué par un commentaire optimiste.
 //  3. **L'interrupteur ne doit pas s'afficher là où il n'agit pas** — l'onglet « Suivi », qui est
 //     précisément celui d'atterrissage.
 
@@ -87,7 +92,12 @@ async function ouvrirLeTournoi() {
 
 describe('AccueilPublic — interrupteur « mes archers / tout »', () => {
   beforeEach(() => {
-    useSessionSuivisStore.setState({ suivis: [], centrerSurSuivis: true })
+    // ⚠️ **`getInitialState()`, jamais une valeur écrite à la main** (2ᵉ passe de revue). Un premier
+    // jet posait `centrerSurSuivis: true` ici — le test « ouvre centré » **armait donc lui-même** ce
+    // qu'il prétendait observer, et serait resté vert avec le défaut inverse. Repartir de l'état
+    // initial du store fait que ce fichier exerce le **vrai** défaut d'ouverture, celui du CA
+    // d'E07US005 ; le changer ferait échouer ce test, ce qui est tout l'intérêt.
+    useSessionSuivisStore.setState(useSessionSuivisStore.getInitialState())
   })
 
   it('ouvre centré sur ses archers quand on en suit (CA E07US005, D-09)', async () => {

@@ -2893,7 +2893,13 @@ button:disabled {
   text-align: left;
   text-decoration: underline dotted;
   text-underline-offset: 3px;
-  /* Cible tactile (règle 10) : le nom se pointe au doigt, comme les autres surfaces publiques. */
+  /* Cible tactile (règle 10) : le nom se pointe au doigt, comme les autres surfaces publiques.
+     ⚠️ `inline-flex` + `align-items: center` obligatoires avec ce `min-height` (2ᵉ passe de revue) :
+     `.lien` ne pose ni `display` ni `line-height`, si bien que le texte se collait en **haut** d'une
+     boîte de 44 px pendant que les `<td>` voisins restaient centrés — le nom de l'archer se décalait
+     visiblement au-dessus de son propre rang et de son total. */
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
 }
 

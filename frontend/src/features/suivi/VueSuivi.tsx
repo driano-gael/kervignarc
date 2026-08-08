@@ -58,7 +58,7 @@ import { LIBELLE_STATUT, parcoursToutesPhases, type ParcoursPhase } from '../tab
 import { nommerType } from '../../shared/phases/catalogue'
 import { type ArcherSuivi, useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
 import { useDeroule, type VoleeDeroule } from './deroule'
-import { construireJournee, rechercherArchers } from './suivi'
+import { construireJournee, departsDesArchersSuivis, rechercherArchers } from './suivi'
 
 // Borne l'affichage des résultats de recherche : au-delà, on invite à préciser plutôt que de dérouler
 // tout l'annuaire (et de risquer de cacher l'archer cherché en silence).
@@ -129,25 +129,34 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   // cartes — comme `useAffectations` ci-dessus et pour la même raison : un appel par archer suivi
   // multiplierait la lecture la plus chère du serveur (`# DETTE-031`).
   //
-  // ⚠️ **Les départs des archers suivis, pas celui de la salle** (correctif de revue). Un premier
-  // jet lisait `departCourant`, c'est-à-dire le créneau que la salle est en train de tirer : dès
-  // que le départ de l'après-midi était lancé, l'archer du matin perdait **en silence** toute la
-  // section « duels » de son récapitulatif — ses volées restant là, puisque `useDeroule` est scopé
-  // au tournoi. Un récapitulatif « de la journée » qui s'ampute à 15 h ne tient pas le CA.
-  //
-  // La liste se dérive des **plans déjà lus**, sans requête supplémentaire : `construireJournee`
-  // dit déjà où chaque archer suivi tire. On ne paie donc que les départs réellement concernés —
-  // un le plus souvent, deux quand on suit des archers de deux créneaux — et non tous ceux du
-  // tournoi, ce qui aurait aggravé `# DETTE-031` au lieu de la laisser où elle est.
-  const departsSuivis = [
-    ...new Set(
-      suivisIci.flatMap((s) =>
-        construireJournee(s.archerId, departs, plansParDepart).map((l) => l.departId),
-      ),
-    ),
-  ]
-  const tableauxResults = useTableauxDesDeparts(departsSuivis)
+  // ⚠️ **Les départs des archers suivis, pas celui de la salle** (correctif de revue). La règle et
+  // sa justification vivent dans `suivi.ts` (`departsDesArchersSuivis`), où elle est testée : la
+  // laisser ici la privait de tout filet, exactement comme `partitionner` côté routage.
+  const departsSuivis = departsDesArchersSuivis(
+    suivisIci.map((s) => s.archerId),
+    departs,
+    plansParDepart,
+  )
+  // ⚠️ **Repli sur le créneau de la salle quand on ne sait pas encore où l'archer tire** (2ᵉ passe
+  // de revue). `construireJournee` ignore un archer absent du plan de cibles — donc un archer
+  // **engagé en duels mais jamais placé** (le tableau s'ensemence depuis le classement, qui compte
+  // tout inscrit) n'aurait réclamé aucun départ, et aurait perdu sa section « duels » en silence :
+  // le défaut d'origine, re-créé sous un autre déclencheur.
+  const departsARelire =
+    departsSuivis.length > 0 || !besoinPlans
+      ? departsSuivis
+      : departCourant !== null
+        ? [departCourant]
+        : []
+  const tableauxResults = useTableauxDesDeparts(departsARelire)
   const arbres = tableauxResults.flatMap((r) => r.data?.tableaux ?? [])
+  // ⚠️ **Une lecture d'arbres qui échoue doit se dire** (2ᵉ passe de revue). Sans cela, une requête
+  // ratée — banal sur le LAN d'un gymnase, c'est l'argument retenu deux écrans plus loin pour le
+  // référentiel des clubs — faisait **disparaître la section « duels »** sans un mot, les volées de
+  // qualification restant affichées puisqu'elles viennent d'ailleurs. C'est très exactement le
+  // défaut que ce bloc vient de corriger, déplacé du « mauvais départ » vers « le réseau ». Le
+  // fan-out l'aggravait : sur deux départs, une panne partielle amputait un archer et pas l'autre.
+  const erreurArbres = tableauxResults.some((r) => r.isError)
 
   return (
     <div>
@@ -185,6 +194,7 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
               routage={routageParArcher.get(s.archerId) ?? null}
               tableauConstitue={tableauConstitue}
               arbres={arbres}
+              arbresEnErreur={erreurArbres}
             />
           ))}
         </ul>
@@ -350,6 +360,7 @@ function CarteArcherSuivi({
   routage,
   tableauConstitue,
   arbres,
+  arbresEnErreur,
 }: {
   tournoiId: number
   archerId: number
@@ -365,6 +376,9 @@ function CarteArcherSuivi({
   /** Les arbres du créneau, lus une seule fois par `VueSuivi` — la carte n'en extrait que ce qui
    * concerne son archer. */
   arbres: TableauPublic[]
+  /** Leur lecture a échoué : les duels sont **inconnus**, et non **absents**. Confondre les deux
+   * faisait disparaître la section sans un mot (2ᵉ passe de revue). */
+  arbresEnErreur: boolean
 }) {
   const nePlusSuivre = useSessionSuivisStore((s) => s.nePlusSuivre)
   const journee = construireJournee(archerId, departs, plansParDepart)
@@ -446,6 +460,7 @@ function CarteArcherSuivi({
         volees={volees}
         cumul={deroule?.cumul ?? 0}
         parcours={parcoursToutesPhases(arbres, archerId)}
+        arbresEnErreur={arbresEnErreur}
       />
     </li>
   )
@@ -468,17 +483,29 @@ function RecapitulatifJournee({
   volees,
   cumul,
   parcours,
+  arbresEnErreur,
 }: {
   volees: VoleeDeroule[]
   cumul: number
   parcours: ParcoursPhase[]
+  /** La lecture des arbres a échoué : les duels sont **inconnus**, pas **absents**. */
+  arbresEnErreur: boolean
 }) {
   // Rien de tiré, aucun duel joué : pas de section creuse — la carte reste sur « où il tire ».
-  if (volees.length === 0 && parcours.length === 0) return null
+  if (volees.length === 0 && parcours.length === 0 && !arbresEnErreur) return null
 
   return (
     <details className="suivi-recap" open>
       <summary className="suivi-recap__titre">Récapitulatif de la journée</summary>
+
+      {/* On ne présente jamais une panne comme une absence (2ᵉ passe de revue) : un « rien à
+          afficher » silencieux se lit « il n'a pas encore joué », ce qui est faux et indétectable.
+          Même règle que la recherche d'archers vingt lignes plus haut. */}
+      {arbresEnErreur && (
+        <p className="carte__etat carte__etat--erreur">
+          Duels momentanément indisponibles — connexion perdue. La qualification reste à jour.
+        </p>
+      )}
 
       {volees.length > 0 && (
         <div className="suivi-deroule">

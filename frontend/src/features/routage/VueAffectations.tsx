@@ -29,7 +29,7 @@ import { useDeparts } from '../departs/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
-import { alerte, detail, encoreEnLice, partitionner, titre } from './presentation'
+import { alerte, detail, encoreEnLice, partitionner, posesParCible, titre } from './presentation'
 import { nombreDePages, pageCourante, rateauDePage, trancheDePage } from './pagination'
 
 type Tri = 'cible' | 'nom'
@@ -111,26 +111,9 @@ export function VueAffectations({
   // du rendu.
   const { poses, attente, sortis } = partitionner(archersAffiches)
 
-  // ⚠️ **Le pas de tir garde ses buttes entières, adversaire compris** (correctif de revue).
-  //
-  // C'est la règle déjà posée par `focus.centrerCibles` pour le plan de cibles — « on garde la
-  // cible entière, voisins compris » — et elle n'avait pas été appliquée ici, où elle compte
-  // pourtant davantage : sur un tableau de duels, le voisin de butte **est** l'adversaire. Filtré
-  // ligne à ligne, « Cible 7 · B · MARTIN Luc » ne disait plus contre qui Luc tire, alors que
-  // l'affichage complet le montre en face de lui — et laissait croire à une butte à un seul tireur.
-  //
-  // Les sections annexes (attente, sortis) restent, elles, centrées sur les seuls archers suivis :
-  // ce sont des listes de personnes, pas une disposition de salle, et personne n'y cherche un
-  // vis-à-vis.
-  const ciblesSuivies = new Set(
-    poses.map((ligne) => ligne.prochain?.cible).filter((cible) => cible != null),
-  )
-  const posesParCible =
-    mode === 'tout'
-      ? poses
-      : partitionner(donnees.archers).poses.filter(
-          (ligne) => ligne.prochain?.cible != null && ciblesSuivies.has(ligne.prochain.cible),
-        )
+  // Le pas de tir garde ses **buttes entières, adversaire compris** — même raison que ci-dessus :
+  // la règle vit dans `presentation.ts` (`posesParCible`), où elle est testée.
+  const posesDuPasDeTir = posesParCible(poses, donnees.archers, mode === 'suivis')
 
   return (
     <div className="affectations">
@@ -163,7 +146,7 @@ export function VueAffectations({
         <ListeParNom lignes={archersAffiches} />
       ) : (
         <>
-          <ListeParCible poses={posesParCible} />
+          <ListeParCible poses={posesDuPasDeTir} suivis={mode === 'suivis' ? suivis : []} />
           {/* Encore en lice, sans butte attribuée. Ni dans le pas de tir (ils n'ont pas de cible),
               ni parmi les sortis (ils n'ont rien perdu) : leur propre section, sinon l'écran ment
               dans un sens ou dans l'autre. Titre **neutre** — le groupe rassemble deux attentes que
@@ -310,7 +293,13 @@ function useSecondesDAffichage(): number {
 
 // Le pas de tir, groupé par butte : la disposition physique de la salle. L'ordre vient du serveur —
 // on ne re-trie pas ici, on **groupe** ce qui est déjà trié (cible croissante, puis position A→D).
-function ListeParCible({ poses }: { poses: RoutageArcher[] }) {
+function ListeParCible({ poses, suivis = [] }: { poses: RoutageArcher[]; suivis?: number[] }) {
+  // ⚠️ **Marquer les archers suivis** (2ᵉ passe de revue). La butte est rendue entière pour que
+  // l'adversaire y figure — mais l'interrupteur affiche « Mes archers (3) » au-dessus, et l'écran
+  // en montrait alors une douzaine sans dire lesquels étaient les siens : le compte et la liste se
+  // contredisaient. La règle empruntée au plan de cibles marche là-bas parce qu'on y cherche une
+  // **butte** ; ici on cherche un **nom** dans une liste de noms.
+  const estSuivi = new Set(suivis)
   const parCible = new Map<number, RoutageArcher[]>()
   for (const ligne of poses) {
     const cible = ligne.prochain?.cible
@@ -332,7 +321,14 @@ function ListeParCible({ poses }: { poses: RoutageArcher[] }) {
           <span className="affectations__cible-num">Cible {cible}</span>
           <ul className="affectations__postes">
             {lignes.map((ligne) => (
-              <li key={ligne.archer_id} className="affectations__poste">
+              <li
+                key={ligne.archer_id}
+                className={
+                  estSuivi.has(ligne.archer_id)
+                    ? 'affectations__poste affectations__poste--suivi'
+                    : 'affectations__poste'
+                }
+              >
                 <span className="affectations__position">{ligne.prochain?.position ?? '—'}</span>
                 <span className="affectations__nom">{nomComplet(ligne)}</span>
                 <span className="affectations__contexte">{ligne.prochain?.libelle}</span>

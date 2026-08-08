@@ -99,6 +99,33 @@ describe('TableClassement — ex æquo et liste centrée', () => {
     expect(screen.queryByText(/Ex æquo signalés/)).toBeNull()
   })
 
+  it('n’annonce pas la règle quand l’égalité ne concerne aucune ligne affichée', () => {
+    // ⚠️ Le piège du correctif lui-même (2ᵉ passe de revue). Calculer les égalités sur la liste
+    // complète corrige le **marquage**, mais si l'on en déduit aussi l'**affichage** du paragraphe
+    // de règle, celui-ci apparaît dès qu'une égalité existe quelque part dans le créneau — donc
+    // quasiment en permanence — sous une table de trois lignes dont aucune n'est marquée.
+    // `departage.ts` l'énonce : « encore faut-il montrer sur qui ».
+    render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={[ligne()]}
+            lignesCompletes={[
+              ligne(),
+              ligne({ archer_id: 2, total: 500 }),
+              ligne({ archer_id: 3, total: 500 }),
+            ]}
+            admin={false}
+          />
+        }
+      />,
+    )
+
+    // L'égalité existe (500 = 500) mais entre deux archers qu'on n'affiche pas : rien à annoncer.
+    expect(screen.queryByText(/Ex æquo signalés/)).toBeNull()
+  })
+
   it('se comporte comme avant quand aucune liste complète n’est fournie', () => {
     // Non-régression des appelants qui n'ont rien à centrer (admin, simulation, écran de salle) :
     // `lignesCompletes` est optionnelle et retombe sur `lignes`.
