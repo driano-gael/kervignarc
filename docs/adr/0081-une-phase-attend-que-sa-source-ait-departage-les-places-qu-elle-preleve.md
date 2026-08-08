@@ -65,8 +65,17 @@ encore indécis.** « Couper », c'est chevaucher **sans contenir**.
    - `api/v1/tableaux.py` expose `en_attente_de` ;
    - le front affiche « les places disputées ici ne sont pas encore connues : le tableau *n* doit
      d'abord être joué » ;
-   - `ServicePlacementDuels` ne produit ni ne persiste de plan, et la saisie refuse ;
+   - `ServicePlacementDuels` rend un **plan vide** — le chemin gracieux déjà prévu pour « pas assez
+     de participants » — plutôt qu'un écran en erreur, et la saisie refuse (409) ;
    - `ServicePalmares` écarte la phase — elle n'a effectivement rien à publier.
+
+4. **Le refus rejoint les points de tolérance existants.** Le dépôt a un patron établi —
+   `except EffectifTableauInvalide` = « trop tôt, on saute cette phase ». `PrelevementEnAttente` est
+   sémantiquement le **même** cas, et l'introduire sans l'y ajouter faisait échouer en bloc six
+   surfaces qui fonctionnaient la veille : simulation, cockpit de pilotage (×3), routage, feu vert.
+   Elles le traitent donc comme leur voisin. *(Relevé par trois axes en 2ᵉ passe : le refus typé
+   avait été poussé sans en suivre la propagation — la régression que le correctif de `preleves`
+   avait précisément fermée un étage plus bas.)*
 
 ## Conséquences
 
@@ -97,13 +106,26 @@ au registre en `DETTE-051` plutôt que devinée ici — même parti qu'ADR-0065 
 | `backend/application/saisie_duels.py` | `_classement_de_l_ordre` construit le `ClassementSource` et calcule le `rang_premier` de chaque tableau |
 | `backend/application/tableaux_publics.py` | `pour_depart` distingue les trois issues : arbre, attente, échec avalé |
 | `backend/application/palmares.py` | écarte une phase en attente (elle n'a rien à publier), **pas** un déroulé cyclique |
-| `backend/api/v1/tableaux.py` | `TableauPublicReponse.en_attente_de` |
+| `backend/api/v1/tableaux.py` | `TableauPublicReponse.en_attente_de` et la branche « pas d'arbre » |
+| `backend/application/placement_duels.py` | `_charger` retombe sur le plan vide au lieu de lever |
+| `backend/application/simulation.py`, `pilotage_simulation.py`, `routage.py`, `pilotage_tour.py` | traitent l'attente comme « phase pas encore jouable » |
+| `backend/application/erreurs/moteur.py` | `DerouleCyclique` (409), introduit par le même lot pour que le refus de cycle cesse d'être un 404 avalé par le palmarès |
 | `frontend/src/features/tableaux/VueTableaux.tsx` | le rendu « en attente du tableau *n* » |
 
 ## Tests qui le tiennent
 
 - `backend/tests/test_prelevement_phase_source.py` — `test_une_fenetre_qui_coupe_un_bloc_indecis_est_refusee`,
   `test_la_meme_fenetre_se_resout_une_fois_les_quarts_tires`,
-  `test_une_fenetre_qui_contient_un_bloc_indecis_reste_honoree` (le verrou d'ADR-0080 §2)
+  `test_une_fenetre_qui_contient_un_bloc_indecis_reste_honoree` (le verrou d'ADR-0080 §2),
+  `test_le_rang_premier_du_tableau_amont_est_reellement_cable`,
+  `test_l_ecran_public_annonce_la_phase_en_attente_au_lieu_de_la_retirer`,
+  `test_le_dto_public_expose_l_attente_et_ne_ment_pas_sur_les_dimensions`
 - `frontend/src/features/tableaux/VueTableaux.test.tsx` — le rendu et l'absence d'arbre
-- `backend/tests/test_tableaux_api.py` — la liste blanche des champs de l'enveloppe publique
+
+⚠️ **Les trois derniers tests backend ont été ajoutés en 2ᵉ passe, sur relevé adversarial**, et une
+version antérieure de cette section citait à leur place `test_tableaux_api.py` — qui ne fait que
+lister le **nom** du champ dans une liste blanche. La revue l'a prouvé par mutation : annuler le
+cumul de `rang_premier`, puis le `except PrelevementEnAttente` de `ServiceTableauxPublics`, laissait
+**la suite complète verte** dans les deux cas. Les tests visaient la fonction pure et laissaient le
+**câblage** — l'endroit précis où E05US020 avait déjà cassé — sans oracle. Les deux mutations
+échouent désormais, vérifié.

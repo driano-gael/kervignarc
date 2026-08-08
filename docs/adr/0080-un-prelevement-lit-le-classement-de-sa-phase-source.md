@@ -163,8 +163,11 @@ déjà ce chemin. Corollaire au composition root : **la saisie se construit avan
 - **Le club est libre de son format**, au sens fort : ce que l'écran laisse composer, la salle le
   joue. La promesse d'E01US024 (« le tournoi se déroule comme le schéma que j'ai composé et validé »)
   cesse de s'arrêter à la première phase.
-- **Un défaut silencieux devient impossible** : un prélèvement est désormais honoré, **en attente**
-  ou inerte, jamais appliqué au mauvais classement. C'était la classe de bugs la plus coûteuse —
+- **Un défaut silencieux de population devient impossible sur les types que le moteur sait lire** :
+  un prélèvement y est désormais honoré, **en attente** ou inerte, jamais appliqué au mauvais
+  classement. Une source visant un type **non lu** (poules, suisse, colline, Big Shoot Off) reste,
+  elle, ignorée en silence (`DETTE-028`), et un forfait déclaré en tableau reste prélevable sans
+  signal (`DETTE-051`) — deux textes du même commit le disent, le titre d'origine les contredisait. C'était la classe de bugs la plus coûteuse —
   plausible, non signalée, découverte le jour J.
 
   ⚠️ **Cette conséquence était fausse telle qu'écrite, et la revue adversariale l'a réfutée par la
