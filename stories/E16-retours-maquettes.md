@@ -120,9 +120,13 @@
 - **Contexte** : A11 est validé avec réserves. *« Trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un écran PC »*, *« une cible par ligne me paraît plus adaptée »*, *« je ne vois pas de puits de réserve pour déplacer des archers sans les positionner, ce qui évite de toujours faire une inversion entre 2 archers »*. Travail **sur PC uniquement** (question 1). Le recalcul après ajout d'un retardataire **préserve les placements manuels** (question 2 : *« oui »*). Contraintes : *« toutes les contraintes déjà énoncées, dans la mesure du possible »*.
 - **CA — une cible par ligne**, exploitant la largeur disponible (les jetons `--largeur-app` sont posés depuis le lot front du 04/08).
 - **CA — puits de réserve** : une zone où déposer un archer retiré du plan, d'où on le replace ensuite. Un archer en réserve n'est **pas** placé — il doit se distinguer d'un archer sans cible.
+  - ⚠️ **Ce CA recoupe `E03US004`, livrée** (« CA — réserve » : *une zone **réserve** (banc, sans
+    capacité) reçoit les archers non posés* ; le placement auto y range les non-plaçables **avec leur
+    raison**, et « Plan final = réserve vide » est déjà un critère). **Ne pas la respécifier** : lire
+    le CA d'`E03US004` en premier et n'écrire ici que l'**écart**. Renvoi mutuel posé le 08/08/2026.
 - **CA — préservation** : un recalcul après ajout ne défait pas les placements manuels.
 - **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des écrans dont la maquette dit encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran. Le laisser filer rejouerait le refus d'A10 sur un autre écran.
-- **Notes** : vérifier si « en réserve » se représente côté serveur (`cible = null` suffit-il ?) ou seulement à l'écran ; la réponse décide si l'US est front seul. Le glisser-déposer existe (variante A retenue).
+- **Notes** : ~~vérifier si « en réserve » se représente côté serveur (`cible = null` suffit-il ?) ou seulement à l'écran ; la réponse décide si l'US est front seul.~~ **Question fermée le 08/08/2026, sans code à écrire** : la réserve **existe déjà côté serveur** depuis `E03US004` — le modèle de persistance d'[ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md) est *une affectation par inscription, **sans ligne = réserve***. L'US est donc **front seul** sur ce point : ce qui manque est la **zone à l'écran**, pas sa représentation. Le glisser-déposer existe (variante A retenue).
 - **Dépend de** : E03US011, E05US010 · **Jalon** : J2 · **Origine** : questionnaire A11, 04/08/2026
 
 ---
@@ -147,7 +151,7 @@
 - **CA — audit en cours de tournoi** : consultable sans attendre la clôture.
 - **CA — QR par scoreur** : jumeau de celui des cibles, affichable à l'écran.
 - **Notes** : entièrement **backend + API**. ⚠️ **Trop large pour une branche** — à redécouper en au moins trois US (exports/formats · paiement par club · podiums). Les équipes relèvent d'EPIC-13, à ne pas anticiper ici.
-- **Dépend de** : E09US001, E09US003, E08, E06US004, E11 (audit) · **Jalon** : J3 · **Origine** : questionnaires A08, A16, A17, A18, 04/08/2026
+- **Dépend de** : E09US001, E09US003, E08, E06US004, **E10US005** *(journal d'audit — ~~« E11 (audit) »~~ était faux : l'audit métier est dans **EPIC-10**, `E10US005`, livrée ; EPIC-11 est l'exploitation. Corrigé le 08/08/2026)* · **Jalon** : J3 · **Origine** : questionnaires A08, A16, A17, A18, 04/08/2026
 
 ---
 
@@ -198,7 +202,7 @@
 - **CA — P05** : *« [les horaires prévisionnels] seulement pour les départs des différentes phases du tournoi, les autres sont trop imprévisibles »*.
 - **Notes** : ⚠️ **US de rattrapage — à découper avant de prendre.** Elle rassemble sept règles hétérogènes dont deux sont des **contradictions à arbitrer** (S08 vs endpoint existant, A09 vs ADR-0014/0015) et une une **politique d'autorisation** (S09). Ne pas la coder telle quelle : la lire, poser les deux questions, puis redécouper. Elle est ici pour que rien ne se reperde, pas comme un plan de travail.
 - **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des maquettes qui disent encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran.
-- **Dépend de** : E04US018 (routage), E04US003 (validation), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
+- **Dépend de** : E04US018 (routage), **E04US002** (saisie & validation de qualification — ~~`E04US003`~~ **n'existe pas** : l'identifiant a été absorbé par `E04US002` le 17/07/2026 à la refonte de maille. Corrigé le 08/08/2026), E10US001 (rôles), E02US002 (inscriptions) · **Jalon** : J3 · **Origine** : revue adversariale du 05/08/2026 sur le tri des questionnaires
 
 ---
 

@@ -85,11 +85,26 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 
 ## 🎯 Prochaine US
 
-> **⚡ PRIORITÉ — retours du questionnaire de maquettes (04/08/2026), [`EPIC-16`](../epics/EPIC-16-retours-maquettes.md).**
+> **La file d'exécution tient en six lignes.** Le détail par épic est plus bas
+> (§ « Retours du questionnaire de maquettes (EPIC-16) », § « Résorptions de dette planifiées ») ;
+> ici, **l'ordre**, et lui seul.
+>
+> | Rang | US | Pourquoi à ce rang |
+> |---|---|---|
+> | **🎯 1** | `E05US025` | **Plusieurs qualifications dans un même déroulé.** Seconde moitié du chantier ouvert le 08/08 par `E05US024`, dont elle **dépend par nécessité** : sans le peuplement générique, une 2ᵉ qualification recevrait *tous* les inscrits. Hors file E16, et assumé. |
+> | **2** | `E05US023` | **Rendre jouables poules, suisse, colline, Big Shoot Off.** **Priorité donnée par le commanditaire (« au plus tôt »), arbitrée le 08/08/2026 au rang 2** : `E05US024`+`E05US025` forment **un seul chantier** à dépendance dure — couper au milieu laisserait le peuplement générique à moitié exploité. « Au plus tôt » = **dès ce chantier clos**, donc **devant `E16US002`**. ⚠️ **À découper** (4 moteurs × 2 surfaces ne tiennent pas dans une branche) : 1ʳᵉ tranche = contrat « phase jouable » générique + **un** format (elle paie le coût du pattern), puis **une tranche par format**, chacune portant son moteur **et** son exposition à l'atelier. Résorbe le reste de `DETTE-028` ; oblige à **corriger le CA d'`E06US003`**, qui prévoit explicitement sa reprise ; débloque `E01US011` (J4). |
+> | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
+> | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
+> | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
+>
+> ---
+>
+> **⚡ Détail — retours du questionnaire de maquettes (04/08/2026), [`EPIC-16`](../epics/EPIC-16-retours-maquettes.md).**
 > Les 36 planches ont été passées en revue par le commanditaire, une par une. Le **lot « front
 > seul »** (tout ce qui ne demandait ni décision métier ni backend) a été livré le 05/08/2026 sur la
 > branche `feat/retours-maquettes-front` — **hors US numérotée**, d'où un compte d'US inchangé. Ce qui
-> reste est spécifié dans [`stories/E16`](../stories/E16-retours-maquettes.md), dix US.
+> reste est spécifié dans [`stories/E16`](../stories/E16-retours-maquettes.md), **douze US** dont
+> trois livrées ; le tableau complet est en section « Retours du questionnaire de maquettes (EPIC-16) ».
 >
 > **Prendre d'abord les quatre écrans refusés (🔴)** — ce sont les seuls retours qui disent « l'écran
 > ne répond pas au besoin ». **Trois sur quatre sont levés** (A10, A14, P03) ; reste A07 :
@@ -131,7 +146,28 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > et **trois points à trancher au cadrage**, listés dans la story (classement publié quand il y a
 > deux qualifications ; ce que voit un archer engagé dans les deux ; ce qu'exige la complétude).
 >
-> **Ensuite : `E16US002`** — l'écran **« Phases »** (A07), **dernier des quatre écrans refusés**.
+> **Ensuite : `E05US023`** — **rendre jouables poules, système suisse, colline et Big Shoot Off**,
+> et les rendre **composables à l'atelier**. **Rang arbitré le 08/08/2026** sur la priorité
+> « au plus tôt » donnée par le commanditaire : elle passe **devant `E16US002`**, mais **derrière
+> `E05US025`**, parce que `E05US024`+`E05US025` forment un **seul chantier** — les couper laisserait
+> le peuplement générique à moitié exploité, et `E05US023` s'y appuie (un format jouable doit
+> pouvoir être **peuplé** depuis n'importe quelle source).
+> ⚠️ **À découper avant de la prendre** : quatre moteurs × deux surfaces (exécution + atelier) ne
+> tiennent pas dans une branche. Découpage retenu : **1ʳᵉ tranche** = le contrat « phase jouable »
+> générique **plus un** format — c'est elle qui paie le coût du pattern —, puis **une tranche par
+> format restant**, chacune portant son **moteur** et son **exposition à l'atelier**. Ne pas livrer
+> un moteur sans sa surface : `poule.py` et `big_shoot_off.py` sont déjà dans ce cas depuis
+> `E05US015` (moteurs sans consommateur de production, `DETTE-028`) et c'est précisément ce que
+> l'US vient corriger.
+> **Trois effets de bord à traiter dans l'US, pas après** : (a) elle résorbe le reste de
+> `DETTE-028` (poules / suisse / colline / BSO encore ignorés comme **sources** de prélèvement,
+> cf. `E05US024`) ; (b) le CA d'**`E06US003`** dit explicitement « l'US qui livrera l'exécution de
+> ces phases devra reprendre ce CA » — c'est une **obligation de correction de CA**, pas une
+> option ; (c) elle **débloque `E01US011`** (presets de barèmes multi-phases, J4), qui attendait la
+> règle du Big Shoot Off — verrou en réalité **déjà levé** le 31/07 par `E05US015`, la note d'US
+> était périmée (corrigée le 08/08).
+>
+> **Puis : `E16US002`** — l'écran **« Phases »** (A07), **dernier des quatre écrans refusés**.
 > Son périmètre a **rétréci** au cadrage du 08/08/2026 : le CA « plusieurs phases de même type » en a
 > été **sorti** (devenu `E05US024` + `E05US025`), et le CA « gabarit de phase » est **tranché** — un
 > seul niveau, [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §5
@@ -173,10 +209,10 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 >    sont repartis vierges pour un **tour 2**, sur des écrans que le commanditaire n'a pas encore vus.
 > 2. **Trois des quatre écrans refusés ont été redessinés en même temps.** A07 (phases), A14
 >    (complétude) et P03 (classements publics) ont maintenant une proposition en plein écran — qui
->    **n'a pas été validée**. Prendre `E16US002` (ou `E16US004`, qui touche P03) sans avoir la réponse
->    du tour 2 sur ces planches, c'est risquer d'implémenter une proposition que le commanditaire
->    écartera.
->    - **Précédent posé le 07/08/2026 par `E16US003`** : la planche A14 a été **écartée** et l'US
+>    **n'a pas été validée**. **Seul A07 reste concerné** : A14 a été traité par `E16US003` (07/08)
+>    et P03 par `E16US004` (08/08), toutes deux livrées **sans** la réponse du tour 2, en écartant la
+>    planche redessinée. La mise en garde ne vaut donc plus que pour **`E16US002`**.
+>    - **Précédent posé le 07/08/2026 par `E16US003`, confirmé le 08/08 par `E16US004`** : la planche A14 a été **écartée** et l'US
 >      livrée sur le **questionnaire du tour 1**, qui fait foi. Motif à reprendre tel quel — la
 >      **réserve 2 d'ADR-0074** (« un arbitrage explicite du commanditaire l'emporte sur la planche »),
 >      et **non** « la planche n'a pas été validée » : les planches sont opposables **sans** validation,
@@ -375,7 +411,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 >   porte aucun) et **reversées dans `stories/`**. Le CA d'origine tenait en une ligne : sans le
 >   cadrage, l'US aurait livré un tableau brut sans « mon chemin ».
 >
-> **🎯 ~~Prochaine :~~ `E13US002`** — composer les équipes. ⚠️ **Supplanté** le 05/08/2026 : la
+> ~~**🎯 Prochaine : `E13US002`**~~ — composer les équipes. ⚠️ **Supplanté** le 05/08/2026 : la
 > priorité est passée au lot **EPIC-16** (retours de maquettes), voir la section « Prochaine US » en
 > haut de ce fichier, qui **fait foi**. `E13US002` reste la meilleure candidate **hors E16**.
 > *(Choisie parmi les ⬜ : le **fil équipes** est débloqué depuis `E13US001` (abstraction
@@ -737,8 +773,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 35 | E03US001 | Placement automatique & plan de cibles | ✅ |
 | 36 | E03US004 | Ajuster le placement (glisser-déposer) | ✅ |
 | 37 | E10US003 | Scoreurs : définition & session | ✅ |
-| 38 | E09US008 | Imprimer QR de cible & codes scoreurs | ✅ |
-| 39 | E04US001 | Rattacher une tablette à sa cible (QR) | ✅ |
+| 38 | E04US001 | Rattacher une tablette à sa cible (QR + jeton de poste) | ✅ |
+| 39 | E09US008 | Imprimer QR de cible & codes scoreurs | ✅ *(ordre rétabli le 08/08/2026 : `E09US008` **déclare** dépendre d'`E04US001` et a été livrée après elle — 19/07 contre 18/07. L'ordre inverse décrivait l'usage du **jour J**, pas la construction)* |
 | 40 | E10US007 | Poste de cible : saisir sans s'identifier | ✅ |
 | 41 | E04US002 | Saisie de qualification en temps réel | ✅ |
 | 42 | E04US009 | Diffusion live & résilience réseau | ✅ |
@@ -779,7 +815,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (11/13)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (12/15)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -787,7 +823,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 74 | E05US015 | **Catalogue de types de phase** (échauffement, barrage, poules, repêchage, BSO) | ✅ *(11 formats : + suisse, colline, handicap, finale spectacle — le commanditaire a fourni leurs règles le 31/07 ; ADR-0062)* |
 | 74bis | E01US024 | **Composer, diagnostiquer et simuler un déroulé** | ✅ *(brouillon + invariant déplacé vers `appliquer`, schéma SVG maison, 2 gravités d'anomalie, simulation composée sur ADR-0054/0055 ; ADR-0063 — résorbe DETTE-030, ne résorbe DETTE-028 qu'à moitié)* |
 | 74ter | E01US025 | **Le départ est la portée sportive** + le déroulé se définit **une fois** | ✅ *(corrige [ADR-0017](../docs/adr/0017-le-depart-est-un-creneau-du-tournoi.md), resté **13 mois** sans portage dans le moteur : 4 départs de 100 rendaient UN classement de 400. `Phase`/`BarrageDePlaces` pendent au départ, `EtapeDeroule` porte la définition au tournoi ; migrations 0042/0043 ; garde-fou mécanique `test_portee_sportive.py` ; ADR-0075 + ADR-0076. ⚠️ **fiche écrite après coup**, US prise hors tracker — CA de non-régression, pas oracle. Ouvre DETTE-044/045/046, aggrave DETTE-025/026. **Reliquat de revue soldé le 07/08** : portée départ appliquée au suivi du déroulé, aux tableaux publics, au routage jour J et au contrôle d'effectif ; migrations 0042/0043 rendues réversibles ; cloisonnement du barrage ; décors de test passés à **deux créneaux**)* |
-| 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⬜ *(le moteur et sa preuve ne se séparent pas)* |
+| 75 | ~~E05US018~~ | ~~Oracle 120~~ → **absorbée par E05US010** | ⛔ *(le moteur et sa preuve ne se séparent pas ; hors décompte)* |
 | 76 | E06US006 | **Classement intégral 1→N & profondeur configurable** | ✅ *(la profondeur se règle **par phase** et non plus au câblage ; absence = preset du type, podium pour une élimination directe et intégral pour un placement — ADR-0070, DETTE-035 ouverte)* |
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
@@ -799,10 +835,10 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 80 | E01US016 | Définir l'identité visuelle du tournoi | ⬜ |
 | 81 | E07US004 | Écran de salle **+ suivi du déroulé** (un composant, trois surfaces) | ✅ *(poste typé cible/écran, pilotage par état lu, suivi superposé — ADR-0064)* |
 | 82 | E07US005 | **Vue tableaux/arbres live** | ✅ *(onglet public « Tableaux » à deux lectures — « Mon chemin » par archer suivi et tableau complet par tour —, DTO public restreint, vue `tableaux` de l'écran de salle : le catalogue d'ADR-0064 couvre enfin son CA en entier ; DETTE-031 élargie)* |
-| 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **livrée par E01US023** | ✅ *(doublon repéré le 31/07 : ADR-0060 §5)* |
-| — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07)* |
+| 83 | ~~E05US019~~ | ~~Enregistrer une séquence comme modèle~~ → **absorbée par E01US023** | ⛔ *(doublon repéré le 31/07 : ADR-0060 §5 ; hors décompte — la capacité est livrée, l'US ne l'est pas en propre)* |
+| — | E00US015 | Ossature de navigation admin (coquille) | ✅ *(fait en avance — ajout 18/07 ; **comptée dans « Ajouts de l'entretien du 18/07 »**, hors décompte de J3)* |
 
-## J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/8)**
+## J4 — Confort, richesse & robustesse — ⬜ **non commencé (0/7)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -811,7 +847,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 86 | E01US012 | Gérer plusieurs gabarits | ⬜ |
 | 87 | E03US010 | Générer / éditer le déroulé horaire | ⬜ |
 | 88 | E09US007 | Déroulé horaire imprimable | ⬜ |
-| 89 | ~~E05US016~~ | ~~Routing repêchage (WA)~~ → **absorbée par E05US015** | ⬜ |
+| 89 | ~~E05US016~~ | ~~Routing repêchage (WA)~~ → **absorbée par E05US015** | ⛔ *(le repêchage est une politique `routing`, pas un type de phase — ADR-0062 §1 ; hors décompte)* |
 | 90 | E11US006 | Restauration & arrêt propre | ⬜ |
 | 91 | E10US006 | Modifier le mot de passe admin | ⬜ |
 
@@ -855,7 +891,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E01US020 | Modèle de tarification injectable & sujet de facturation (archer/club) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; sujet `club` sur `club_id`/ADR-0014, **pas** via E13)* |
 | E01US021 | Tarification dégressive (option config, %/montant) | à planifier | ⬜ *(définie en `stories/`, non implémentée ; dépend d'E01US020)* |
 
-## Ajouts de la démo du 27/07/2026 — ✅ **traités (10/10)**
+## Ajouts de la démo du 27/07/2026 — ✅ **traités (12/12)**
 
 > Retours de la présentation au client final **et** du développeur (27/07/2026). Cadrage par le
 > dialogue (esprit agile). Deux US **déjà spécifiées** remontent en priorité (♻️, pas de doublon) ;
@@ -878,7 +914,39 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E14US003 | Admin rangée en **trois axes d'activité** + une adresse par rôle | E14 🆕 | ✅ *(ADR-0058 révise `D-19` ; ADR-0059 remplace ADR-0032)* |
 | E01US023 | Les briques de l'atelier deviennent le **patrimoine du club** (bibliothèque, copie, promotion) | E01 🆕 | ✅ *(ADR-0060 ; DETTE-023 résorbée ; brique `FormatTournoi` ajoutée)* |
 
-## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (4 US livrées)**
+## Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (3/12)**
+
+> Ce que le commanditaire reproche **aux maquettes**, là où [`E17`](../epics/EPIC-17-fidelite-aux-maquettes.md)
+> amène le **produit** jusqu'à elles. Issu du questionnaire du 04/08/2026 (36 planches passées une
+> par une). Le **lot « front seul »** — tout ce qui ne demandait ni décision métier ni backend — a
+> été livré le 05/08/2026 **hors US numérotée** (branche `feat/retours-maquettes-front`), d'où un
+> compte d'US inchangé. Détail : [`stories/E16`](../stories/E16-retours-maquettes.md).
+>
+> **Les quatre écrans refusés (🔴) passent en premier** : ce sont les seuls retours qui disent
+> « l'écran ne répond pas au besoin ». Trois sur quatre sont levés ; reste `A07` (`E16US002`).
+
+| US | Titre | Refus levé | État |
+|---|---|---|---|
+| E16US001 | Plan de salle : se mettre d'accord sur ce qu'est un pas de tir | 🔴 A10 | ✅ *(05/08 — « pas de tir » = groupement de cibles, « couloir de tir » = place d'un archer, « poste » = tablette ; ADR-0073 amende ADR-0006 ; renommage `position` → `couloir` différé, DETTE-042)* |
+| E16US002 | Phases : une bibliothèque de phases réglables, pas une séquence figée | 🔴 A07 | ⬜ *(**dernier écran refusé** ; périmètre **rétréci** au cadrage du 08/08 — les CA « plusieurs phases de même type » et « gabarit de phase » en sont sortis. **À recadrer contre ADR-0076 avant d'être prise**)* |
+| E16US003 | Complétude : ne plus mélanger le déroulé et la gestion administrative | 🔴 A14 | ✅ *(07/08 — front seul ; écran renommé « Prêt à terminer ? », l'administratif part en tête de Paiements ; planche redessinée **écartée** au titre de la réserve 2 d'ADR-0074)* |
+| E16US004 | Le public suit **plusieurs** archers, de bout en bout | 🔴 P03 | ✅ *(08/08 — front seul ; **un seul** interrupteur « mes archers / tout » gouvernant les six onglets, ouverture centrée sur les archers suivis ; ADR-0079 ; DETTE-031 élargie)* |
+| E16US005 | Placement : la largeur d'un PC, et un puits de réserve | — | ⬜ *(⚠️ **recoupe `E03US004`**, qui spécifie déjà une zone réserve sans capacité — voir le renvoi dans les deux fiches : le puits est peut-être déjà côté serveur)* |
+| E16US006 | Patrimoine : distinguer l'officiel FFTA du local, et porter le logo du club | — | ⬜ |
+| E16US007 | Impressions, exports et podiums paramétrables | — | ⬜ *(**à redécouper avant de prendre** ; recoupe la famille « prêt à… » d'`E16US012`)* |
+| E16US008 | Feu vert : agir depuis la ligne du duel qui bloque | — | ⬜ *(recoupe `E16US012`)* |
+| E16US009 | Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas | — | ⬜ |
+| E16US010 | Chercher partout, et voir d'avance ce qui bloque un lancement | — | ⬜ |
+| E16US011 | Ce que trois questionnaires « validés » demandaient quand même | — | ⬜ *(**rattrapage** : sept règles classées « validées tel quel » à tort, dont **deux contradictions à arbitrer** — S08 contre un endpoint vivant, A09 contre ADR-0014/0015)* |
+| E16US012 | La famille des écrans « prêt à… » | — | ⬜ *(née d'`E16US003`, hors file des 🔴 : quatre écrans **prêt à démarrer / terminer / archiver / exporter**. **Refonte de navigation**, ADR probable — à instruire **avant** qu'`E16US007` et `E16US008` ne figent chacune sa variante dans son coin)* |
+
+> Les retours **écartés** et les questions **restées sans réponse** sont listés en fin de
+> [`stories/E16`](../stories/E16-retours-maquettes.md) : aucun questionnaire ne reste sans suite.
+> Deux écrans remontés par le dossier de maquettes ne sont **spécifiés nulle part** — le **barrage**
+> (égalité 5–5 en duel) et le **conflit de saisie** (deux postes sur la même volée) : ils sont
+> maquettés, pas décidés.
+
+## Fidélité aux maquettes (EPIC-17) — 🔶 **en cours (4/10)**
 
 > Amener le **produit** jusqu'aux maquettes, là où [`E16`](../stories/E16-retours-maquettes.md) traite
 > les retours *sur* les maquettes. Cf. [ADR-0074](../docs/adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md),
@@ -891,8 +959,12 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | — | **Relevé d'écarts des 19 planches admin** | — | ✅ *(dans [`EPIC-17`](../epics/EPIC-17-fidelite-aux-maquettes.md) ; 6 planches hors périmètre, 3 variantes écartées, 5 écrans sans tableau)* |
 | E17US003 | A01 **connexion** + A02 **accueil des axes** conformes à leur planche | J1 | ✅ |
 | E17US004 | A13 **supervision en grille de tuiles** (variante B retenue) | J2 | ✅ *(écran du jour J ; IP + révocation conservées)* |
-| — | Embarquer **Inter** pour le jour J (`DV-07`) | J3 | ⬜ *(**arbitrage d'actif en attente** — règle 11)* |
-| — | Confronter les 19 planches `A**`, 9 `S**`, 7 `P**` aux écrans livrés | J3 | ⬜ |
+| E17US005 | Embarquer la **police du club** pour le jour J (`DV-07`) | J3 | 🔒 *(**spécifiée, pas prenable** — arbitrage d'ajout d'actif en attente, règle 11 ; 3 options soumises dans la story)* |
+| E17US006 | Donner une couleur à l'**action destructrice** | J3 | 🔒 *(**spécifiée, pas prenable** — trou de la charte, ADR attendu ; `DV-03` exclut le rouge et rien ne couvre le cas)* |
+| E17US007 | **Résorber** les écarts relevés sur les écrans d'administration | J3 | ⬜ *(le relevé est fait depuis le 06/08 ; c'est l'US qui le solde qui manquait — A06, A09, A12, A08, A04, A17)* |
+| E17US008 | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ⬜ |
+| E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
+| E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 
@@ -923,6 +995,28 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
 ## Légende
 
 - ✅ mergé sur `main` · 🎯 prochaine US à prendre · 🔶 jalon en cours · ⬜ à faire
+- **🔒 US bloquée sur un arbitrage** : elle est **spécifiée** dans `stories/` mais **pas prenable**
+  tant que l'utilisateur n'a pas tranché (ajout d'actif — règle 11, choix métier, trou de charte).
+  Elle compte au dénominateur d'un jalon comme une ⬜ : le travail existe, il est seulement en
+  attente. Deux à ce jour : `E17US005` (police), `E17US006` (couleur destructrice).
+- **⛔ US absorbée** : la capacité a été livrée par **une autre US**, celle-ci n'existe donc plus
+  comme unité de travail. À distinguer de **caduque** (`E10US004`), où la capacité elle-même n'a
+  plus d'objet. Une US absorbée n'est **ni ✅ ni ⬜** : elle est **hors décompte** (voir la règle de
+  comptage ci-dessous). Quatre à ce jour : `E05US016`, `E05US018`, `E05US019`, `E12US004`.
+- **`~~barré~~`** : l'identifiant ou le titre est barré quand l'US est **absorbée, caduque ou déjà
+  faite** dans une file de priorité — le texte barré est conservé pour que la référence reste
+  trouvable, jamais supprimé. Le **glyphe d'état n'est pas barré** (sinon l'état devient illisible).
+- **Règle de comptage d'un jalon** : `n/N` compte les **lignes numérotées** du tableau (colonne
+  `Seq`), **US absorbées exclues**. Les lignes à `Seq = —` (US hors séquence, remontées d'une
+  section d'ajouts) sont comptées **dans leur section d'origine**, pas dans le jalon — sans quoi la
+  même US serait comptée deux fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14,
+  J3 12/15 et J4 0/7.
+  *(Instituée le 08/08/2026 : trois compteurs sur cinq étaient faux, chacun d'un mode différent —
+  en-tête mise à jour sans le corps (J3), US absorbée comptée au dénominateur (J4), lignes ajoutées
+  sans toucher l'en-tête (démo 27/07). Sans règle écrite, chaque correction en rouvrait une autre.)*
 - *« fait en avance »* : US traitée avant son rang de séquence (dépendance ou opportunité).
 - *« définie en `stories/`, non implémentée »* : le fichier de spec existe (créé à l'entretien du
   18/07) mais aucun code n'est livré — ne pas confondre présence en `stories/` et US faite.
+  ⚠️ Piège pour toute vérification automatique : `E00US016`, `E01US018` et `E01US019` ont un commit
+  `docs(...)` **dans `main`**, donc un `grep` sur `git log` les compte comme livrées. Elles ne le
+  sont pas.

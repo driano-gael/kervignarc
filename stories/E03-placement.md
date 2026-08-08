@@ -77,6 +77,17 @@ déplacement viole les règles, *afin d'*affiner le placement auto sans le casse
   [ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md). Résorbe **DETTE-009** :
   porte la hauteur de centre au formulaire catégorie et rend `hauteur_cm` obligatoire au PUT.
   *(Arbitrages tranchés le 18/07/2026, reversés ici — règle 9.)*
+- ⚠️ **Renvoi — `E16US005` redemande cette réserve sous le nom de « puits de réserve ».** Le
+  questionnaire A11 du 04/08/2026 dit *« je ne vois pas de puits de réserve pour déplacer des archers
+  sans les positionner »*, et la story pose en question ouverte « en réserve se représente-t-il côté
+  serveur ? ». **La réponse est ici** : oui, et depuis E03US004 — le modèle de persistance d'
+  [ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md) est *une affectation par
+  inscription, **sans ligne = réserve*** ; le placement auto y range déjà les non-plaçables **avec
+  leur raison**. `E16US005` est donc, sur ce point, un **défaut d'écran** (la zone n'est pas rendue),
+  pas une capacité serveur à écrire. *(Renvoi posé le 08/08/2026 : c'est le seul des cinq doublons
+  fonctionnels du backlog que le projet n'avait pas détecté au cadrage — les quatre autres l'ont
+  tous été. Un doublon non signalé se paie deux fois : une US refait ce qu'une autre a livré, ou
+  bien y renonce en croyant le sujet couvert.)*
 - **Absorbe** : ex-E03US004, E03US005. **Dépend de** : E03US001 · **Jalon** : J1
 
 ### E03US006 — Contrainte ≥ 2 clubs par cible ✅

@@ -61,18 +61,35 @@ livrées n'avait de raison de s'en apercevoir : chacune était conforme à *son*
 
 ## Capacités
 
-- [x] Poser la charte du club dans l'application (E17US001).
-- [x] Aligner le catalogue de composants sur les formes des planches (E17US002).
-- [x] Relever les écarts des 19 planches admin (ci-dessous).
-- [x] A01 connexion + A02 accueil des axes (E17US003).
-- [x] A13 supervision — la grille de tuiles (E17US004).
-- [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — **arbitrage d'actif en attente**.
+> **Chaque capacité nomme l'US qui la porte.** *(Instituée le 08/08/2026 : six capacités sur onze
+> n'en avaient aucune, et comme les cinq restantes étaient cochées, l'épic se lisait comme
+> **terminé**. Une capacité sans US n'est pas planifiée — elle ne se fera qu'à la faveur d'un autre
+> travail, ou pas du tout.)*
+
+- [x] Poser la charte du club dans l'application (`E17US001`).
+- [x] Aligner le catalogue de composants sur les formes des planches (`E17US002`).
+- [x] Relever les écarts des 19 planches admin (`A01`→`A19`, ci-dessous).
+- [x] A01 connexion + A02 accueil des axes (`E17US003`).
+- [x] A13 supervision — la grille de tuiles (`E17US004`).
+- [ ] Embarquer **Inter** pour le jour J, sans réseau (`DV-07`) — `E17US005`.
+      ⛔ **Arbitrage d'actif en attente (règle 11)** : l'US est spécifiée, **pas prenable**.
 - [ ] Trancher la **couleur d'une action destructrice** — trou de la charte (`DV-03` exclut le rouge,
-      rien n'est prévu pour ce cas) : aujourd'hui contour ambre, **arbitrage en attente**.
-- [ ] Confronter les 19 planches `A**` (admin) aux écrans livrés et lister les écarts.
-- [ ] Confronter les 9 planches `S**` (saisie & scoreur).
-- [ ] Confronter les 7 planches `P**` (public & écran de salle).
-- [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`.
+      rien n'est prévu pour ce cas) : aujourd'hui contour ambre — `E17US006`.
+      ⛔ **Arbitrage en attente** : ADR attendu, l'US est spécifiée, **pas prenable**.
+- [ ] **Résorber** les écarts relevés sur les planches `A**` (admin) — `E17US007`.
+      *(Le relevé est **fait** ; ce qui manquait était l'US qui le solde. Un relevé sans US de
+      résorption se périme sur place.)*
+- [ ] Confronter les 9 planches `S**` (saisie & scoreur) et résorber — `E17US008`.
+- [ ] Confronter les 7 planches `P**` (public & écran de salle) et résorber — `E17US009`.
+- [ ] Resynchroniser `maquettes/assets/appareils.js` sur `axes.ts`, **et rendre la dérive détectable
+      mécaniquement** — `E17US010`. *(À prendre **avant** `E17US008`/`E17US009` : elles relisent
+      16 planches, autant qu'elles décrivent l'application d'aujourd'hui.)*
+
+> **Compte des planches** : **36** — 1 porte d'entrée (`a00`) + 19 admin (`a01`→`a19`) + 9 saisie
+> (`s01`→`s09`) + 7 public (`p01`→`p07`). La formulation « les 19 `A**`, 9 `S**`, 7 `P**` » de la
+> version précédente en **oubliait `a00`** et ne couvrait donc que 35 planches — corrigé le
+> 08/08/2026 en comptant le dossier plutôt qu'en recopiant un chiffre. `a00` **est confrontée** :
+> elle figure au relevé admin ci-dessous, verdict **conforme**.
 
 ## Relevé d'écarts — les 19 planches admin (06/08/2026)
 

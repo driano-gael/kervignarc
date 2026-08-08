@@ -59,6 +59,12 @@
   lire les ex æquo ni où reverser le verdict — ni `poule.py` ni `big_shoot_off.py` n'ont de
   consommateur de production ([DETTE-028](../docs/dette.md)). **L'US qui livrera l'exécution de ces
   phases devra reprendre ce CA** ; une US qui en dériverait ses tests d'ici là écrirait un test faux.
+  - 👉 **Cette US est nommée : c'est [`E05US023`](E05-moteur-phases.md)** *(« rendre jouables poules,
+    suisse, colline, Big Shoot Off »)*, placée au **rang 2** de la file d'exécution le 08/08/2026.
+    Reprendre ce CA n'y est **pas optionnel** : le jour où un classement de poule existe, « verdict
+    non reversé » cesse d'être une constatation et devient un **bug spécifié**. Renvoi posé ici pour
+    que l'obligation soit trouvable depuis les deux côtés — sans lui, elle ne vivait que dans une
+    phrase sans destinataire.
 - **CA — un verdict périmé ne s'applique pas**. Les tireurs sont **figés à l'annonce** ; le
   classement, lui, continue de vivre. Si une volée validée en retard, une correction ou un forfait
   **change le groupe** d'ex æquo, le verdict ne décrit plus cette égalité : il est **écarté** et
