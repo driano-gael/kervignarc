@@ -9,8 +9,14 @@ puces couvertes, dans l'ordre :
 - « **minimum exigé, facultatif** » — un format peut exiger davantage que son minimum technique,
   jamais moins ; l'énoncer plus bas rend le format inapplicable ;
 - « **visible à la composition** » — la projection annonce le minimum, effectif simulé ou non ;
-- « **portée du calcul** » — un rang se lit dans le classement de sa phase source : seuls les
-  prélèvements visant la **première** phase se traduisent en nombre d'inscrits.
+- « **portée du calcul** » — un rang se lit dans le classement de sa phase source, et la chaîne se
+  **remonte** jusqu'à la phase alimentée par les inscriptions (E05US024). Seules les phases dont le
+  moteur sait lire le classement (`_TYPES_CLASSANTS_LUS`) comptent ; une fenêtre amont **bornée**
+  ne fixe aucun plancher.
+  ⚠️ Cet en-tête a affirmé jusqu'au 08/08/2026 que « seuls les prélèvements visant la **première**
+  phase se traduisent en nombre d'inscrits » — vrai avant E05US024, faux depuis, et non corrigé par
+  le commit qui ajoutait pourtant cinq tests le contredisant. C'est l'oracle local que lira le
+  prochain auteur de test : le laisser périmé, c'est le piège de la règle 9 un cran plus bas.
 
 Le raisonnement du chiffre, une fois pour toutes : une phase en tableau a besoin de **deux**
 participants ; un prélèvement « à partir du rang d » n'en a deux que lorsque la phase source en

@@ -233,7 +233,10 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # **Un seul** registre pour les deux services (E06US006) : c'est lui qui résout la profondeur
     # lue sur chaque phase, et deux catalogues distincts laisseraient croire qu'ils divergent.
     registre = registre_par_defaut()
-    # Même instance d'`aggregation` que celle du palmarès : cf. le commentaire de `create_app`.
+    # Le harnais n'a pas de palmarès : on résout quand même la politique **par le registre** plutôt
+    # que de l'instancier en dur, pour que le harnais reste le miroir du câblage de production
+    # (cf. le commentaire de `create_app`). Un premier jet affirmait ici un partage d'instance avec
+    # un service que cette fonction ne construit pas.
     aggregation_simulation = cast(
         "Aggregation",
         registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),

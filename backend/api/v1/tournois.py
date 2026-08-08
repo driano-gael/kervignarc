@@ -107,10 +107,16 @@ class ExigenceEffectifReponse(BaseModel):
     prévenir *avant* le clic « Démarrer », que le serveur refuserait. `minimum` vaut `0` quand aucun
     déroulé n'est composé — il n'y a alors rien à exiger.
 
-    `ordre_phase` et `rang_debut` disent **pourquoi** — « la phase 3 prélève à partir du rang 33 » —
-    et sont `None` quand le manque ne vient d'aucun prélèvement en particulier (rien de composé, ou
-    exigence propre du club). `D-16` / `P-4` : une alerte qui ne chiffre pas son impact est un clic
-    de plus, pas une protection.
+    `ordre_phase`, `rang_debut` et `ordre_source` disent **pourquoi** — « la phase 3 prélève à
+    partir du rang 5 **de la phase 2** » — et sont `None` quand le manque ne vient d'aucun
+    prélèvement en particulier (rien de composé, ou exigence propre du club). `D-16` / `P-4` : une
+    alerte qui ne chiffre pas son impact est un clic de plus, pas une protection.
+
+    ⚠️ **`ordre_source` est indispensable depuis E05US024** : le plancher remonte la chaîne des
+    sources, si bien que `rang_debut` se lit dans la phase **source** tandis que `minimum` compte
+    des **inscrits** au tournoi. Sans nommer la source, les deux chiffres ne se déduisaient plus
+    l'un de l'autre et l'alerte devenait indéchiffrable — corrigé côté 409 mais pas ici dans un
+    premier jet, alors que c'est cet écran-là que l'organisateur voit **en premier**.
     """
 
     inscrits: int
@@ -122,6 +128,7 @@ class ExigenceEffectifReponse(BaseModel):
     origine: OrigineExigence
     ordre_phase: int | None
     rang_debut: int | None
+    ordre_source: int | None = None
 
     @staticmethod
     def de_agregat(exigence: ExigenceEffectifTournoi) -> ExigenceEffectifReponse:
@@ -133,6 +140,7 @@ class ExigenceEffectifReponse(BaseModel):
             origine=exigence.origine,
             ordre_phase=exigence.ordre_phase,
             rang_debut=exigence.rang_debut,
+            ordre_source=exigence.ordre_source,
         )
 
 

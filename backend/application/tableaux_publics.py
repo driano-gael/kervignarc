@@ -58,6 +58,17 @@ class TableauPublic:
     etat: EtatTableau | None = None
     attente: int | None = None
 
+    def __post_init__(self) -> None:
+        # L'invariant ci-dessus était énoncé en prose et vérifiable nulle part (relevé par trois
+        # axes) : les deux champs ayant `None` pour défaut, un `TableauPublic` **ni monté ni en
+        # attente** se construisait sans erreur, et le DTO le rendait alors en zéros sans
+        # `en_attente_de` — soit « 0 archers » plus un arbre vide, le seul état que le front ne
+        # sait pas lire. Un invariant de frontière API se garde là où il est bon marché.
+        if (self.etat is None) == (self.attente is None):
+            raise ValueError(
+                "Un tableau public porte soit son arbre, soit l'ordre de la phase qu'il attend."
+            )
+
 
 @dataclass(frozen=True)
 class TableauxDuDepart:

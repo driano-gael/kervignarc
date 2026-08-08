@@ -408,8 +408,15 @@ def _exigence_de_letape(
     # des phases de profondeurs différentes, auquel cas la plus basse en rang n'est pas la moins
     # exigeante (correctif de revue, axe C1). `_inscrits_pour_classer` applique la même règle un
     # cran plus bas.
-    besoins = [
-        besoin
+    # ⚠️ **La source retenue voyage avec son exigence.** Un premier correctif prenait le `min` des
+    # besoins d'un côté et, de l'autre, la source au plus petit `rang_debut` pour nommer la phase :
+    # le message rendait alors un chiffre et une fenêtre qui **ne se correspondaient pas**, et pire,
+    # pouvait nommer une fenêtre infaisable à tout effectif (écartée du calcul, mais toujours
+    # candidate au `min` des rangs). L'organisateur était envoyé compléter ses inscriptions pour
+    # débloquer ce qu'aucun effectif ne débloque. Reproduit en revue sur la fixture d'un test ajouté
+    # par ce même commit — c'est exactement le défaut que `ordre_source` existe pour fermer.
+    candidats = [
+        (besoin, source)
         for source in lisibles
         if (
             besoin := _inscrits_pour_classer(
@@ -421,10 +428,9 @@ def _exigence_de_letape(
         )
         is not None
     ]
-    if not besoins:
+    if not candidats:
         return ExigenceEffectif(minimum=base)
-    besoin = min(besoins)
-    plus_bas = min(lisibles, key=lambda source: source.rang_debut)
+    besoin, plus_bas = min(candidats, key=lambda candidat: candidat[0])
     return ExigenceEffectif(
         minimum=besoin,
         ordre=etape.ordre,

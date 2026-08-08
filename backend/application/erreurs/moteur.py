@@ -167,6 +167,12 @@ class PrelevementEnAttente(ApplicationError):
         # (« en attente de la phase 2 »), et le reconstituer en parsant le message serait le genre
         # de couplage au texte que la règle 5 proscrit.
         self.ordre_source = ordre_source
+        # …et il passe aussi par le canal **déjà existant** `details`, que la frontière API publie
+        # dans `{code, message, details?}` (règle 5, inauguré par `ReplacementNonConfirme`). Sans
+        # lui, un client recevant le 409 côté saisie ou plan de cibles devait parser le message
+        # pour savoir quoi attendre — exactement ce que le commentaire ci-dessus dit vouloir
+        # éviter, l'attribut nu n'étant lu que par `ServiceTableauxPublics` (relevé en revue).
+        self.details = {"ordre_source": ordre_source}
 
 
 class DerouleCyclique(ApplicationError):
@@ -181,8 +187,14 @@ class DerouleCyclique(ApplicationError):
     premier jet réutilisait `PhaseIntrouvable`, avec deux conséquences : un **404 « phase
     introuvable »** pour une incohérence de données, et surtout `ServicePalmares._resultat` qui
     l'attrape déjà pour écarter une phase disparue — le refus censé remplacer un 500 muet devenait
-    une **omission muette** sur l'écran projeté en salle. Cette classe n'est donc listée nulle part
-    en `except` : une base qui boucle doit rester visible.
+    une **omission muette** sur l'écran projeté en salle. Aucun `except` **nominatif** ne la cite
+    donc, et `ServicePalmares` la laisse remonter.
+
+    ⚠️ **Elle reste néanmoins avalée par deux filets larges** (`except (ApplicationError,
+    DomainError)`) : `ServiceTableauxPublics.pour_depart` et `ServiceSuiviDeroule`. Sur l'onglet
+    public, un déroulé cyclique redevient donc un tableau silencieusement absent. C'est assumé —
+    le spectateur n'a rien à réparer, et le diagnostic vit à l'atelier — mais l'écrire évite que
+    le prochain lecteur se fie à un « visible partout » qui serait faux (relevé par trois axes).
     """
 
     code = "deroule_cyclique"

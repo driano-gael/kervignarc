@@ -57,6 +57,13 @@ class ClassementSource:
     une qualification ; il vaut 33 pour un tableau qui disputait les places 33 et suivantes. C'est
     lui qui permet à `application/prelevement.py:tranche` de **cumuler** le décalage le long d'une
     chaîne, au lieu de croire que les rangs locaux le portent déjà (ADR-0081).
+
+    ⚠️ **Il est posé par l'appelant, pas par `classement_de_tableau`** (correctif de revue, axe C2) :
+    un tableau ne sait pas quelle tranche du tournoi il dispute — c'est une propriété de sa place
+    dans le déroulé, que seul le service qui remonte la chaîne connaît. Le faire traverser la
+    fonction du domaine en paramètre lui donnait une valeur qu'elle ne pouvait pas vérifier, avec un
+    défaut à `1` qu'un appelant distrait aurait réintroduit en silence — c'est-à-dire `DETTE-034`
+    rouverte, le défaut même que ce champ ferme.
     """
 
     classement: Classement
@@ -88,7 +95,6 @@ def classement_de_tableau(
     tableau: Tableau,
     lignes: Mapping[ArcherId, LigneClassement],
     aggregation: Aggregation,
-    rang_premier: int = 1,
 ) -> ClassementSource:
     """Le classement des participants d'un tableau, rangs **fermes** de 1 à N.
 
@@ -125,7 +131,7 @@ def classement_de_tableau(
         if participant.genre is GenreParticipant.INDIVIDUEL
     }
     if not acquises:
-        return ClassementSource(classement=Classement(lignes=()), rang_premier=rang_premier)
+        return ClassementSource(classement=Classement(lignes=()))
 
     rang_qualification = {
         archer_id: lignes[archer_id].rang_scratch for archer_id in acquises if archer_id in lignes
@@ -135,9 +141,13 @@ def classement_de_tableau(
     paquets: dict[tuple[int, int], list[ArcherId]] = {}
     for archer_id, position in acquises.items():
         paquets.setdefault((position.rang_min, position.rang_max), []).append(archer_id)
-    # Une fourchette est **indécise** dès qu'un de ses porteurs est encore en lice : ce sont les
-    # matchs à venir qui la trancheront, pas une politique. `en_lice` est homogène au sein d'un
-    # paquet (il dérive de la même plage de match), on lit donc le premier venu.
+    # Une fourchette est **indécise** dès qu'**un** de ses porteurs est encore en lice : ce sont
+    # les matchs à venir qui la trancheront, pas une politique. On ne suppose **pas** que `en_lice`
+    # soit homogène au sein d'un paquet — il ne l'est pas toujours (un battu déjà routé vers un
+    # match de placement et un battu qui ne l'est pas peuvent partager la même fourchette). Le sens
+    # retenu est le **conservateur** : marquer indécis au moindre doute produit au pire un refus,
+    # jamais une population fausse. Un premier commentaire annonçait « on lit le premier venu »,
+    # ce que le code ne fait pas — et s'y fier aurait invité à « simplifier » vers un vrai premier.
     en_lice = {
         (position.rang_min, position.rang_max) for position in acquises.values() if position.en_lice
     }
@@ -168,7 +178,6 @@ def classement_de_tableau(
             )
         ),
         plages_indecises=tuple(indecises),
-        rang_premier=rang_premier,
     )
 
 
@@ -178,11 +187,10 @@ def _situee(ligne: LigneClassement, rang: int) -> LigneClassement:
     `statut` est remis à `EN_LICE` : un archer présent dans le tableau y a sa place, quel que soit
     ce que la qualification disait de lui. Le filtre des sortis a déjà eu lieu — à l'ensemencement
     de ce tableau-ci —, et le rejouer ici retirerait deux fois le même archer.
-
+    """
     # DETTE-051 : un forfait déclaré **dans ce tableau-ci** (walkover, ADR-0050) garde sa position
     # acquise et ressort donc `EN_LICE` ici, donc prélevable par une phase aval. Un archer qui a
     # abandonné en 1/8 peut ainsi être ensemencé dans la consolante. Relevé en revue (axe B) ;
     # c'est une **règle métier** à trancher avec le club, pas un correctif de revue — cf.
     # docs/dette.md.
-    """
     return replace(ligne, rang_scratch=rang, statut=StatutClassement.EN_LICE)

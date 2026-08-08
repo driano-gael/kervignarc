@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from application.classements import ServiceClassement
 from application.erreurs import (
+    PrelevementEnAttente,
     SimulationTournoiDemarre,
     TournoiIntrouvable,
     TournoiSansDepart,
@@ -264,7 +265,15 @@ class ServiceSimulation:
                 if gabarit_present:
                     harnais.placement_duels.regenerer(tournoi_id, phase.id)
                 tableaux.append(harnais.saisie_duels.etat_tableau(tournoi_id, phase.id))
-            except EffectifTableauInvalide:
+            # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas
+            # encore
+            # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant
+            # »
+            # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point
+            # de
+            # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+            # trois axes de revue : régression introduite par le refus typé lui-même).
+            except (EffectifTableauInvalide, PrelevementEnAttente):
                 # Tournoi *avant démarrage* : une phase de tableau peut exister alors que moins de
                 # deux duellistes sont classés (personne n'a encore tiré). Elle n'est **pas encore
                 # jouable** — on la saute plutôt que de faire échouer toute la simulation (le CA

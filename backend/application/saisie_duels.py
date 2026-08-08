@@ -18,7 +18,7 @@ Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
@@ -331,6 +331,9 @@ class ServiceSaisieDuels:
         # visant la qualification ne le recalcule pas (`ServiceClassement.pour_depart` n'est pas
         # mémoïsé — 7 accès repository, cf. `DETTE-031`). Sans ça, tout déroulé composé depuis
         # E01US024 le payait **deux fois** par reconstruction, sur le thread écrivain unique.
+        # Sous `if phase.sources` : sans source déclarée, `preleves` n'appelle jamais le résolveur
+        # et l'entrée de cache est pure perte — un SELECT de plus par saisie de manche, sur le
+        # thread écrivain unique, pour le cas de la quasi-totalité des phases (relevé en revue).
         qualification = next(
             (
                 p
@@ -339,7 +342,7 @@ class ServiceSaisieDuels:
             ),
             None,
         )
-        if qualification is not None and qualification.ordre not in cache:
+        if phase.sources and qualification is not None and qualification.ordre not in cache:
             cache[qualification.ordre] = ClassementSource(classement=classement)
         # Ensemencement : **seuls les archers en lice** entrent dans le tableau. Un forfait déclaré
         # en **qualification** (abandon relégué / DSQ exclu, `statut != EN_LICE`) n'accède pas aux
@@ -448,11 +451,9 @@ class ServiceSaisieDuels:
         # Le rang de tournoi que dispute **ce tableau-ci**, pour que le décalage se cumule chez son
         # aval (ADR-0081) : un tableau des places 33+ doit dire à sa consolante que son rang 1 vaut
         # 33. Le résolveur partage le cache, la remontée ne recalcule donc rien.
-        return classement_de_tableau(
-            tableau,
-            lignes,
-            self._aggregation,
-            tranche(
+        return replace(
+            classement_de_tableau(tableau, lignes, self._aggregation),
+            rang_premier=tranche(
                 phase,
                 self.resolveur_de_classement(tournoi_id, depart_id, descendante, cache),
             ),

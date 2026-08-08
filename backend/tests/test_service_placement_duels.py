@@ -769,8 +769,10 @@ def test_le_plan_de_cibles_honore_les_prelevements_comme_l_arbre() -> None:
     """
     monde = _Monde(capacites=(4,))
     _quatre_archers(monde)
-    # La qualification est la phase d'ordre 1 : sans elle, la source ne viserait rien, retomberait
-    # sur « tous les archers en lice », et le test passerait pour la mauvaise raison.
+    # La qualification est la phase d'ordre 1 : sans elle, la source ne viserait rien et
+    # retomberait sur « tous les archers en lice » — le compte serait alors de 4, donc l'assertion
+    # d'effectif **échouerait**, mais celle de parité passerait trivialement (les deux services
+    # partageant le même repli). C'est cette seconde qu'on veut discriminante.
     monde.phases.ajouter(Phase.qualification(monde.depart_id, BaremeQualification.creer(2, 3)))
     phase = monde.phases.par_id(monde.phase_id)
     assert phase is not None

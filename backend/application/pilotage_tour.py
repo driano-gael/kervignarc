@@ -38,7 +38,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from application.audit import ServiceAudit
-from application.erreurs import AucunDuelALancer, GabaritDuTournoiAbsent
+from application.erreurs import AucunDuelALancer, GabaritDuTournoiAbsent, PrelevementEnAttente
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
@@ -130,7 +130,12 @@ class ServicePilotageTour:
         """
         try:
             tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase_id)
-        except EffectifTableauInvalide:
+        # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas encore
+        # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant »
+        # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point de
+        # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+        # trois axes de revue : régression introduite par le refus typé lui-même).
+        except (EffectifTableauInvalide, PrelevementEnAttente):
             return FeuVert(phase_id=phase_id, est_termine=False, duels=(), nb_prets=0)
         cibles = self._cibles_par_archer(tournoi_id, phase_id)
         a_venir = tuple(

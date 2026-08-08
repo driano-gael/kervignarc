@@ -378,3 +378,75 @@ def test_une_source_de_nature_inerte_ne_fait_pas_echouer_la_phase() -> None:
     retenus = preleves(phase, qualification.classement, _resolveur_qui_explose)
 
     assert [ligne.archer_id for ligne in retenus] == [10, 20]
+
+
+def test_le_rang_premier_du_tableau_amont_est_reellement_cable() -> None:
+    """Le **câblage** du cumul, pas son arithmétique (correctif de revue, axes B et adversarial).
+
+    `test_la_tranche_cumule_le_decalage_le_long_de_la_chaine` fabrique un `rang_premier` à la main :
+    il éprouve `tranche`, pas le fait que quoi que ce soit produise un `rang_premier ≠ 1`. La revue
+    l'a montré **par mutation** — retirer l'appel à `tranche` dans `_classement_de_l_ordre` laissait
+    la suite complète verte, alors que c'est exactement le bloquant fermé par ce lot (le vainqueur
+    d'une consolante des places 33+ publié 1ᵉʳ du tournoi, `DETTE-034`).
+
+    C'est le même défaut qu'à E05US020 : la règle était juste, le câblage manquait.
+    """
+    monde, _aval = _monde_a_deux_tableaux(8)
+    # Le tableau amont dispute les places 5 et suivantes : son rang local 1 vaut le rang 5.
+    _declarer(
+        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=5, rang_fin=8)
+    )
+    service = monde.service()
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+
+    resolveur = service.resolveur_de_classement(monde.tournoi_id, phase.depart_id)
+    source = resolveur(2)
+
+    assert source is not None
+    assert source.rang_premier == 5
+
+
+def test_l_ecran_public_annonce_la_phase_en_attente_au_lieu_de_la_retirer() -> None:
+    """Le **livrable visible** de l'US, tenu côté serveur (correctif de revue, trois axes).
+
+    La revue l'a montré par mutation : neutraliser le `except PrelevementEnAttente` de
+    `ServiceTableauxPublics.pour_depart` — ce qu'un futur diff ferait sans effort en rangeant ce
+    bloc **après** le `except (ApplicationError, DomainError)`, que Python n'avertit pas — faisait
+    redisparaître la phase, suite complète verte. Le seul test du comportement était côté front, sur
+    une réponse écrite à la main : il ne disait rien du serveur.
+    """
+    from application.tableaux_publics import ServiceTableauxPublics
+
+    monde, aval = _monde_a_deux_tableaux(8)
+    _declarer(
+        monde, monde.phase_id, SourcePhase.par_rangs(ordre_source=1, rang_debut=1, rang_fin=8)
+    )
+    _declarer(monde, aval, SourcePhase.par_rangs(ordre_source=2, rang_debut=5, rang_fin=8))
+
+    service = ServiceTableauxPublics(monde.departs, monde.phases, monde.service())
+    tableaux = service.pour_depart(monde.depart_id).tableaux
+
+    # La phase aval est **présente** — c'est tout l'objet — et porte l'ordre qu'elle attend.
+    en_attente = [t for t in tableaux if t.phase_id == aval]
+    assert len(en_attente) == 1
+    assert en_attente[0].etat is None
+    assert en_attente[0].attente == 2
+    # …et le tableau amont, lui, reste lisible : on n'a pas éteint la vue au passage.
+    amont = [t for t in tableaux if t.phase_id == monde.phase_id]
+    assert len(amont) == 1 and amont[0].etat is not None
+
+
+def test_le_dto_public_expose_l_attente_et_ne_ment_pas_sur_les_dimensions() -> None:
+    """La branche « pas d'arbre » du DTO, morte côté tests jusqu'ici (relevé par l'adversarial)."""
+    from api.v1.tableaux import TableauPublicReponse
+    from application.tableaux_publics import TableauPublic
+
+    reponse = TableauPublicReponse.de_tableau(
+        TableauPublic(phase_id=7, ordre=3, type=TypePhase.ELIMINATION_DIRECTE, attente=2)
+    )
+
+    assert reponse.en_attente_de == 2
+    assert reponse.duels == [] and reponse.podium == []
+    assert (reponse.effectif, reponse.taille, reponse.nb_tours) == (0, 0, 0)
+    assert reponse.est_termine is False
