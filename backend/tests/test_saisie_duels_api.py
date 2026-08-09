@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
 from domain.archer import Archer
+from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
@@ -81,6 +82,14 @@ class Scenario:
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
         self.archers: list[int] = []
+        # E05US025 : ce decor ne posait que le tableau (ordre 2). Une feuille de marque pend
+        # desormais a sa phase, et le classement qui ensemence le tableau se lit sur la
+        # **qualification** : il faut donc la poser, a l'ordre 1, avant de semer les scores.
+        qualif = poser_phase_sql(
+            db.session_factory, Phase.qualification(_depart_id, BaremeQualification.creer(1, 3))
+        )
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
         for valeurs in (("10", "10", "10"), ("9", "9", "9")):  # scores décroissants → rang 1, 2
             archer = archers.ajouter(
                 Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie.id)
@@ -97,6 +106,7 @@ class Scenario:
                             validee_par="Scoreur",
                         ),
                     ),
+                    phase_id=self.qualif_id,
                 )
             )
             # C'est l'**inscription** qui fait entrer l'archer au classement du créneau

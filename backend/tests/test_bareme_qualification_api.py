@@ -175,3 +175,189 @@ def test_definir_corps_invalide_400(app_bareme: FastAPI, connecter_admin: Connec
         )
     assert reponse.status_code == 400
     assert reponse.json()["code"] == "requete_invalide"
+
+
+# --- E05US025 : plusieurs qualifications dans un même déroulé (ADR-0082) --------------------------
+
+
+def _composer_seconde_qualification(client: TestClient, tournoi_id: int) -> int:
+    """Ajoute une 2ᵉ qualification au déroulé (prélevée dans la 1ʳᵉ) et rend son `etape_id`.
+
+    Passe par l'atelier (`POST .../phases`), c'est-à-dire le chemin réel de composition : un test
+    qui écrirait l'étape par le repository n'éprouverait pas que la séquence l'accepte — or c'est
+    précisément l'invariant qu'E05US025 lève.
+    """
+    reponse = client.post(
+        f"/api/v1/tournois/{tournoi_id}/phases",
+        json={
+            "type": "qualification",
+            "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
+            "effectif": 8,
+        },
+    )
+    assert reponse.status_code == 201, reponse.text
+    return int(reponse.json()["id"])
+
+
+def test_lister_les_qualifications_d_un_deroule(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « deux qualifications coexistent » : l'écran doit pouvoir les lister pour choisir.
+
+    C'est ce que la route historique ne pouvait pas rendre — elle n'en connaissait qu'une.
+    """
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        _composer_seconde_qualification(client, tournoi_id)
+
+        qualifications = client.get(f"/api/v1/tournois/{tournoi_id}/qualifications")
+
+        assert qualifications.status_code == 200, qualifications.text
+        corps = qualifications.json()
+        assert [q["libelle"] for q in corps] == ["Qualification 1", "Qualification 2"]
+        assert corps[0]["bareme"]["nb_volees"] == 20
+        # La seconde arrive avec le **preset FFTA 18 m** : l'invariant du domaine exige qu'une
+        # qualification porte barème et grain, donc l'atelier ne peut pas la composer « vide ».
+        # La valeur de départ est visible ici même — c'est ce qui la rend ajustable plutôt que
+        # subie (arbitrage E05US025, cf. `ServicePhases.ajouter`).
+        assert corps[1]["bareme"]["nb_volees"] == 20
+        assert corps[1]["grain"] == "fin_de_serie"
+
+
+def test_le_bareme_se_regle_par_qualification(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « le barème se règle par qualification » : 3x20 en tête, 3x15 ensuite.
+
+    L'exemple du commanditaire tient dans ce test : les deux tours ne tirent pas le même nombre de
+    flèches, et régler l'un ne doit pas toucher l'autre.
+    """
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        seconde = _composer_seconde_qualification(client, tournoi_id)
+
+        reglee = client.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+
+        assert reglee.status_code == 200, reglee.text
+        assert reglee.json()["nb_volees"] == 15
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/qualifications").json()
+        assert [q["bareme"]["nb_volees"] for q in corps] == [20, 15]
+
+
+def test_regler_le_bareme_d_une_phase_qui_n_est_pas_une_qualification_409(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un tableau n'a pas de barème de série : conflit d'état, pas 404 — l'étape existe bien."""
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        tableau = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={
+                "type": "elimination_directe",
+                "sources": [{"ordre_source": 1, "rang_debut": 1, "rang_fin": 8}],
+                "effectif": 8,
+            },
+        )
+        assert tableau.status_code == 201, tableau.text
+
+        refus = client.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{tableau.json()['id']}/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+
+        assert refus.status_code == 409, refus.text
+        assert refus.json()["code"] == "phase_pas_une_qualification"
+
+
+def test_regler_le_bareme_d_une_etape_inconnue_404(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une étape d'un autre tournoi (ou inexistante) est introuvable **dans celui-ci**."""
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        refus = client.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/9999/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+
+        assert refus.status_code == 404, refus.text
+
+
+def test_le_grain_se_regle_aussi_par_qualification(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « chacune avec ses propres réglages » : le grain suit le barème, par étape."""
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        seconde = _composer_seconde_qualification(client, tournoi_id)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+
+        reglage = client.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/grain-validation",
+            json={"grain": "toutes_les_n_volees", "n_volees": 5},
+        )
+
+        assert reglage.status_code == 200, reglage.text
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/qualifications").json()
+        assert corps[0]["grain"] == "fin_de_serie"
+        assert (corps[1]["grain"], corps[1]["grain_n_volees"]) == ("toutes_les_n_volees", 5)
+
+
+def test_les_reglages_par_qualification_sans_jeton_401(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Les deux routes par étape sont des **écritures admin** : refusées sans session (401).
+
+    Ce fichier a pour convention un test 401 par route d'écriture ; les deux routes neuves ne
+    l'avaient pas (relevé de revue). Sans lui, un retrait futur d'`exiger_admin` passerait la suite
+    au vert — et une écriture ouverte est un bloquant, pas un détail.
+    """
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        seconde = _composer_seconde_qualification(client, tournoi_id)
+
+    with TestClient(app_bareme) as anonyme:
+        bareme = anonyme.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+        grain = anonyme.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/grain-validation",
+            json={"grain": "fin_de_serie"},
+        )
+
+    assert (bareme.status_code, bareme.json()["code"]) == (401, "non_authentifie")
+    assert (grain.status_code, grain.json()["code"]) == (401, "non_authentifie")

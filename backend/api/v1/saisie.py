@@ -284,8 +284,12 @@ async def saisir_volee(
     # L'écriture SEULE est dédoublonnée (unité mémorisée) ; le « quand » se lit **après**, hors de
     # l'unité idempotente : un échec de cette lecture ne fait pas ré-exécuter l'écriture au rejeu.
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)
 
@@ -303,9 +307,20 @@ async def lire_serie(
     saisi renvoie une série **vide** (200), pas un 404 : le front affiche un pavé vierge. Lecture.
     """
     service_saisie: ServiceSaisie = request.app.state.service_saisie
+    service_postes: ServicePostes = request.app.state.service_postes
     if poste is not None and tournoi_id != poste.tournoi_id:
         raise SaisieHorsCible("Ce poste ne sert pas ce tournoi.")
-    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id)
+    # ⚠️ **La lecture reçoit le même créneau que l'écriture** (2ᵉ correctif de revue E05US025). Sans
+    # lui, le service résout le créneau par « le plus petit où l'archer est inscrit » (`DETTE-052`)
+    # alors que la tablette, elle, le sait : un archer inscrit matin **et** après-midi voyait sa
+    # volée écrite dans la phase de l'après-midi puis relue dans celle du matin. Un poste sans
+    # départ courant n'est pas refusé ici (c'est une lecture) : on retombe sur la résolution admin.
+    contexte: ContexteSaisie | None = None
+    if poste is not None:
+        depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
+        if depart_id is not None:
+            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
+    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id, contexte)
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
     return SerieReponse.de_etat(etat)
@@ -342,8 +357,12 @@ async def valider_serie(
         return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)
 
@@ -379,7 +398,11 @@ async def corriger_volee(
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)

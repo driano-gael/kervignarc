@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
-from application.portee import qualification_du_tournoi
+from application.portee import qualification_courante
 from domain.bareme import BaremeQualification
 from domain.depart import DepartId
 from domain.feuille_marque import FeuilleDeMarque, LigneArcher
@@ -81,7 +81,7 @@ class ServiceFeuilleDeMarque:
                 f"Aucun départ d'identifiant {depart_id} dans le tournoi {tournoi_id}."
             )
 
-        bareme = self._bareme_du_tournoi(tournoi_id)
+        bareme = self._bareme_du_creneau(depart_id)
         lignes = [
             ligne
             for affectation in self._placements.par_depart(depart_id)
@@ -98,9 +98,17 @@ class ServiceFeuilleDeMarque:
         )
         return self._generateur.generer(feuille)
 
-    def _bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification:
-        """Le barème de qualification du tournoi, ou le preset FFTA 18 m s'il n'est pas défini."""
-        phase = qualification_du_tournoi(self._phases, tournoi_id)
+    def _bareme_du_creneau(self, depart_id: DepartId) -> BaremeQualification:
+        """Le barème de la qualification **qui se tire dans ce créneau**, ou le preset FFTA 18 m.
+
+        ⚠️ **Correctif de revue E05US025.** Cette méthode lisait `qualification_du_tournoi`, qui
+        rend depuis cette US le barème de la **première** qualification — alors que `generer` tient
+        déjà le `depart_id` sous la main. Sur le déroulé de référence (3x20 puis *haute* et *basse*
+        à 3x15), on imprimait donc des feuilles à **20 volées** pour un tour qui s'en tire 15 : du
+        papier faux distribué au pas de tir, que le jour J ne rattrape pas. Le site avait échappé
+        au tri écrit en tête de `application/portee.py` — il y est désormais énuméré.
+        """
+        phase = qualification_courante(self._phases, depart_id)
         # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais toujours présent sur une
         # qualification ; à défaut (données incohérentes), on retombe sur le preset FFTA.
         if phase is None or phase.bareme is None:

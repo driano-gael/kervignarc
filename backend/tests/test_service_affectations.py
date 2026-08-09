@@ -24,9 +24,7 @@ from application.routage import (
     RoutageArcher,
     ServiceRoutage,
 )
-from domain.bareme import BaremeQualification
 from domain.forfait import Forfait, NatureForfait
-from domain.grain_validation import GrainValidation
 from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
 from domain.politiques import PlacementEnCascade, RoutingRepechage
 from tests.conftest import poser_phase_factice
@@ -117,22 +115,16 @@ def test_la_vue_collective_ignore_un_archer_hors_tableau() -> None:
     monde.placer()
     # La qualification pend au **créneau** (ADR-0075) ; posée sur `tournoi_id`, elle serait
     # orpheline et l'assemblage l'écarterait — le forfait ne s'appliquerait alors à rien.
-    qualif = poser_phase_factice(
-        monde.departs,
-        monde.deroules,
-        monde.phases,
-        Phase.qualification(
-            monde.depart_id,
-            BaremeQualification.creer(1, 2),
-            GrainValidation.fin_de_serie(),
-        ),
-    )
-    assert qualif.id is not None
+    #
+    # E05US025 : on **réutilise** celle du décor. Plusieurs qualifications étant licites depuis
+    # ADR-0082, en poser une seconde ne lève plus d'anomalie : le forfait s'accrochait à celle-ci
+    # pendant que le classement lisait l'autre, et la DSQ ne sortait silencieusement plus personne.
+    qualif_id = monde.qualif_id
     monde.forfaits.semer(
         Forfait.creer(
             monde.tournoi_id,
             archers[0],
-            qualif.id,
+            qualif_id,
             NatureForfait.DISQUALIFICATION,
             "DURAND",
             _QUAND,

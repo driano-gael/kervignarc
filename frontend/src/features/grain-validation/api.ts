@@ -31,3 +31,21 @@ export function definirGrain(tournoiId: number, entree: DefinitionGrain): Promis
     body: JSON.stringify(entree),
   })
 }
+
+// --- E05US025 : réglages par qualification (ADR-0082) -------------------------------------------
+//
+// « Le grain du tournoi » n'existe plus en général : un déroulé peut enchaîner 3x20 puis une haute
+// et une basse à 3x15, chacune avec **ses propres** réglages (c'est le CA). La fonction ci-dessus
+// reste pour le **premier** réglage d'un tournoi neuf, dont le déroulé est vide.
+
+// Règle le grain d'une qualification désignée. Ne crée rien : l'étape est composée à l'atelier.
+export function definirGrainEtape(
+  tournoiId: number,
+  etapeId: number,
+  entree: DefinitionGrain,
+): Promise<Grain> {
+  return fetchJson<Grain>(
+    `/api/v1/tournois/${tournoiId}/qualifications/${etapeId}/grain-validation`,
+    { method: 'PUT', body: JSON.stringify(entree) },
+  )
+}

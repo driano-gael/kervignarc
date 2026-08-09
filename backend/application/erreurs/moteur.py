@@ -128,6 +128,21 @@ class PhaseIntrouvable(ApplicationError):
     code = "phase_introuvable"
 
 
+class PhasePasUneQualification(ApplicationError):
+    """L'étape désignée existe mais n'est **pas** une qualification (E05US025) → 409.
+
+    Pendant symétrique de `PhasePasUnTableau`. Régler un barème ou un grain de validation sur une
+    étape de tableau n'a pas de sens : ce sont les réglages d'un tir en séries. L'étape existant
+    bien, c'est un conflit d'état et non un 404.
+
+    Cette erreur naît avec la **désignation** de l'étape : tant que le barème se réglait « du
+    tournoi », il n'y avait rien à désigner de travers — le service résolvait lui-même la seule
+    qualification possible (ADR-0082).
+    """
+
+    code = "phase_pas_une_qualification"
+
+
 class PhasePasUnTableau(ApplicationError):
     """La phase existe mais n'est **pas** une élimination directe (E03US009) → 409.
 

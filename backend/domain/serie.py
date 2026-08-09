@@ -36,6 +36,7 @@ from domain.erreurs import (
     VoleeVerrouillee,
 )
 from domain.grain_validation import GrainValidation, TypeGrain
+from domain.phase import PhaseId
 from domain.tournoi import TournoiId
 
 SerieId = int
@@ -111,21 +112,43 @@ def _avec_volee(volees: tuple[Volee, ...], volee: Volee) -> tuple[Volee, ...]:
 
 @dataclass(frozen=True)
 class Serie:
-    """La série de qualification d'un archer : l'ensemble ordonné de ses volées.
+    """La feuille de marque d'un archer **dans une phase** : l'ensemble ordonné de ses volées.
 
     Racine d'agrégat : toutes les mutations passent par ses méthodes et renvoient une **nouvelle**
     instance (immuabilité). Le cumul ne compte que les volées **validées**.
+
+    ⚠️ **La clé est `(phase_id, archer_id)`, pas `(tournoi_id, archer_id)`** (E05US025, ADR-0082).
+    Un déroulé peut enchaîner **plusieurs qualifications** : un archer qui tire 3x20 puis, selon son
+    rang, 3x15 dans la *haute* ou la *basse*, y tient **deux feuilles distinctes**. Une flèche du
+    second tour ne peut donc pas atterrir dans la première — c'est le CA « la saisie sait dans
+    quelle qualification elle écrit », et il n'est tenu que par cette clé.
+
+    Cela **résorbe `DETTE-046`** au passage, sans détour : le registre signalait qu'un archer
+    inscrit sur deux créneaux n'avait qu'un seul emplacement pour ses flèches (sa seconde série
+    écrasant la première), et proposait `Serie.depart_id`. La phase **subsume** le départ — elle lui
+    appartient —, donc rattacher la feuille à sa phase règle les deux problèmes d'un seul champ,
+    plutôt que d'en ajouter deux qui diraient la même chose à deux mailles.
+
+    `tournoi_id` **reste** : c'est la portée que lisent les vues d'ensemble, et le déduire par
+    jointure à chaque lecture coûterait plus qu'il ne rapporte. Il n'est plus une clé, seulement un
+    cadre.
     """
 
     tournoi_id: TournoiId
     archer_id: ArcherId
+    phase_id: PhaseId
     volees: tuple[Volee, ...] = ()
     id: SerieId | None = None
 
     @staticmethod
-    def vide(tournoi_id: TournoiId, archer_id: ArcherId) -> Serie:
-        """Une série sans volée, prête à recevoir la saisie."""
-        return Serie(tournoi_id=tournoi_id, archer_id=archer_id)
+    def vide(tournoi_id: TournoiId, archer_id: ArcherId, phase_id: PhaseId) -> Serie:
+        """Une série sans volée, prête à recevoir la saisie **dans cette phase**.
+
+        `phase_id` est **obligatoire** et sans valeur par défaut : un défaut aurait laissé les
+        appelants d'avant l'US continuer de compiler en écrivant tous dans la même feuille, ce qui
+        est exactement le défaut que l'US corrige. Le compilateur doit les faire tomber un par un.
+        """
+        return Serie(tournoi_id=tournoi_id, archer_id=archer_id, phase_id=phase_id)
 
     def volee(self, numero: int) -> Volee | None:
         """La volée de ce numéro, ou `None`."""

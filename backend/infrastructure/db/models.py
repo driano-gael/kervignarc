@@ -482,8 +482,10 @@ class PosteORM(Base):
 class SerieORM(Base):
     """Table `serie` — racine de persistance de l'agrégat `Serie` (saisie de qualif, E04US002).
 
-    **Une série par archer** (`UNIQUE(tournoi_id, archer_id)`, cf. port `SerieRepository`) : la
-    grille de saisie d'un archer sur la phase de qualification. La série ne porte pas ses volées en
+    **Une série par `(phase, archer)`** (`UNIQUE(phase_id, archer_id)`, cf. port `SerieRepository`)
+    :
+    la grille de saisie d'un archer **dans une** phase de qualification — un déroulé peut en compter
+    plusieurs (E05US025, ADR-0082). La série ne porte pas ses volées en
     colonne — elles vivent dans la table enfant `volee` (une ligne par volée), reliée par
     `serie_id`. Le **cumul** n'est pas stocké : il se recalcule des volées validées (`Serie.cumul`),
     seul l'état saisi est persisté.
@@ -495,26 +497,40 @@ class SerieORM(Base):
     """
 
     __tablename__ = "serie"
-    # UNIQUE(tournoi_id, archer_id) : une seule série de qualification par archer. Nommée comme dans
-    # la migration `0026` — présente ici, dans le `Base.metadata` cible de l'autogénération, sinon
-    # un futur `--autogenerate` émettrait un `drop_constraint` fantôme et retirerait le garde-fou.
+    # UNIQUE(phase_id, archer_id) : une feuille par archer **et par phase** (E05US025, ADR-0082).
+    # Nommée comme dans la migration `0044` — présente ici, dans le `Base.metadata` cible de
+    # l'autogénération, sinon un futur `--autogenerate` émettrait un `drop_constraint` fantôme et
+    # retirerait le garde-fou.
     #
-    # DETTE-046 (docs/dette.md) : **la portée de cette unicité est fausse depuis ADR-0075**. Le
-    # modèle autorise un archer à s'inscrire sur **plusieurs** créneaux (`ARCHER }o--o{ DEPART`),
-    # mais ses flèches n'ont ici qu'un seul emplacement pour tout le tournoi : la seconde série
-    # écrase la première ou échoue à l'enregistrement. La résorption est `UNIQUE(depart_id,
-    # archer_id)` + `Serie.depart_id` (migration comprise) — même famille que DETTE-044, une portée
-    # restée au tournoi alors que la réalité est le créneau. Ne pas contourner ici.
-    __table_args__ = (UniqueConstraint("tournoi_id", "archer_id", name="uq_serie_tournoi_archer"),)
+    # DETTE-046 **résorbée** ici. Le registre signalait une unicité au tournoi devenue fausse depuis
+    # ADR-0075 — un archer inscrit sur deux créneaux n'avait qu'un seul emplacement pour ses
+    # flèches,
+    # la seconde série écrasant la première — et proposait `UNIQUE(depart_id, archer_id)`. La phase
+    # **subsume** le départ (elle lui appartient), donc descendre la clé jusqu'à la phase règle le
+    # cas de DETTE-046 *et* celui des qualifications multiples, avec **un** champ au lieu de deux
+    # qui
+    # diraient la même chose à deux mailles.
+    __table_args__ = (UniqueConstraint("phase_id", "archer_id", name="uq_serie_phase_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter
     # dans la même politique de suppression, non tranchée ; ne pas contourner ici.
+    #
+    # ⚠️ **Conservé bien que dérivable** (phase -> depart -> tournoi) : c'est la portée que lisent
+    # les vues d'ensemble, et la jointure à chaque lecture coûterait plus qu'elle ne rapporte. Ce
+    # n'est plus une clé, seulement un cadre — l'unicité est descendue à la phase.
     tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), nullable=False)
     # DETTE-001 (docs/dette.md) : FK sans ON DELETE CASCADE — enfant indirect du tournoi via
     # `archer`. La cascade est **applicative et maîtrisée** (`ArcherRepositorySQL.supprimer`), à
     # l'image de `score.archer_id`/`inscription.archer_id` ; ne pas contourner ici.
     archer_id: Mapped[int] = mapped_column(ForeignKey("archer.id"), nullable=False)
+    # `ON DELETE CASCADE`, à l'image de `duel.phase_id` : les flèches d'une phase supprimée n'ont
+    # plus d'existence sportive. C'est le même parti que le tableau de duels, dont la suppression
+    # emporte les rencontres — et non celui de DETTE-001, qui concerne la descendance du *tournoi*,
+    # dont la politique de purge n'est pas tranchée.
+    phase_id: Mapped[int] = mapped_column(
+        ForeignKey("phase.id", ondelete="CASCADE"), nullable=False
+    )
 
 
 class VoleeORM(Base):

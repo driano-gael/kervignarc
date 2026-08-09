@@ -14,8 +14,11 @@ perdre la position d'ensemble.
 
 from __future__ import annotations
 
+from collections.abc import Collection
+
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
 from application.portee import qualification_du_tournoi
+from domain.archer import ArcherId
 from domain.barrage import PorteeBarrage, VerdictBarrage
 from domain.categorie import CategorieId
 from domain.classement import Classement, calculer_classement
@@ -87,16 +90,46 @@ class ServiceClassement:
     def pour_depart(
         self, depart_id: DepartId, categorie_id: CategorieId | None = None
     ) -> Classement:
-        """Renvoie le classement **d'un départ**, éventuellement **filtré** à une catégorie.
+        """Le classement de la **première** qualification d'un créneau, filtré ou non.
 
         Lève `DepartIntrouvable` si le créneau manque. `categorie_id=None` → toutes catégories
         (ordre scratch) ; sinon, seules les lignes de cette catégorie sont conservées, leurs rangs
-        (scratch **et** catégorie) restant ceux du classement complet **du départ**.
+        (scratch **et** catégorie) restant ceux du classement complet.
 
         **Le périmètre se lit sur les inscriptions**, pas sur le tournoi : un archer appartient au
         classement de ce créneau s'il y est inscrit. C'est la seule source qui dise *qui tire quand*
         — `Archer.tournoi_id` ne le sait pas, et c'est précisément ce raccourci qui produisait le
         classement fusionné.
+
+        ⚠️ **« La » qualification du créneau n'existe plus** (E05US025, ADR-0082) : un déroulé peut
+        en porter plusieurs. Cette méthode désigne désormais explicitement la **première** — celle
+        que tirent tous les inscrits —, ce qui est exactement ce qu'elle rendait avant l'US. Les
+        appelants qui veulent le classement d'un **second** tour passent par `pour_phase`.
+        """
+        return self.pour_phase(depart_id, self._premiere_qualification(depart_id), categorie_id)
+
+    def pour_phase(
+        self,
+        depart_id: DepartId,
+        phase: Phase | None,
+        categorie_id: CategorieId | None = None,
+        admis: Collection[ArcherId] | None = None,
+    ) -> Classement:
+        """Le classement **d'une phase de qualification** donnée (E05US025, ADR-0082).
+
+        `admis` restreint la population à ceux que la phase a **prélevés** : la *haute* ne classe
+        que les 60 archers qu'elle a reçus, pas les 120 inscrits du créneau. `None` = tous les
+        inscrits, ce qui est le cas de la qualification de tête.
+
+        ⚠️ **La population vient de l'appelant, elle n'est pas résolue ici.** La calculer demanderait
+        de lire les phases sources — donc de reconstruire des tableaux amont —, ce que
+        `ServiceSaisieDuels` sait déjà faire et mémoïse (`resolveur_de_classement`). L'y appeler
+        d'ici créerait un cycle entre les deux services ; le classement reçoit sa population et se
+        contente de classer, ce qui le laisse **pur vis-à-vis du moteur de prélèvement**.
+
+        ⚠️ **Les séries se lisent par phase** (`SerieRepository.par_phase`), jamais par tournoi : les
+        3x20 du premier tour et les 3x15 de la *haute* sont des feuilles distinctes, et les
+        confondre rendrait un cumul qui n'a été tiré par personne.
         """
         depart = self._departs.par_id(depart_id)
         if depart is None:
@@ -105,10 +138,18 @@ class ServiceClassement:
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         engages = {i.archer_id for i in self._inscriptions.par_depart(depart_id)}
+        if admis is not None:
+            engages &= set(admis)
         archers = [a for a in self._archers.par_tournoi(tournoi_id) if a.id in engages]
-        series = [s for s in self._series.par_tournoi(tournoi_id) if s.archer_id in engages]
+        # Phase absente ou non persistée : aucune feuille ne peut lui être rattachée (la clé de
+        # `Serie` est `(phase, archer)`), donc aucune série à lire. Les archers figurent quand même
+        # au classement, à zéro — CA « un archer sans flèche apparaît quand même ».
+        series = (
+            [s for s in self._series.par_phase(phase.id) if s.archer_id in engages]
+            if phase is not None and phase.id is not None
+            else []
+        )
         categories = self._categories.par_tournoi(tournoi_id)
-        phase = self._phases.par_depart_et_type(depart_id, TypePhase.QUALIFICATION)
         classement = calculer_classement(
             archers,
             series,
@@ -117,6 +158,7 @@ class ServiceClassement:
             tiebreak=self._tiebreak(phase),
             verdicts=self._verdicts_qualif(depart_id),
         )
+
         if categorie_id is not None:
             classement = Classement(
                 lignes=tuple(
@@ -128,6 +170,21 @@ class ServiceClassement:
                 egalites_a_departager=classement.egalites_a_departager,
             )
         return classement
+
+    def _premiere_qualification(self, depart_id: DepartId) -> Phase | None:
+        """La qualification de **plus petit ordre** de ce créneau, ou `None`.
+
+        Remplace `PhaseRepository.par_depart_et_type(depart_id, QUALIFICATION)`, dont le contrat
+        (« la » phase de ce type) n'a plus de sens depuis qu'un créneau peut en porter plusieurs.
+        Le tri par `ordre` rend le choix **explicite et stable** ; s'en remettre à l'ordre du
+        repository ferait changer le classement affiché d'un rafraîchissement à l'autre.
+        """
+        qualifications = [
+            phase
+            for phase in self._phases.par_depart(depart_id)
+            if phase.type is TypePhase.QUALIFICATION
+        ]
+        return min(qualifications, key=lambda phase: phase.ordre) if qualifications else None
 
     def _tiebreak(self, phase: Phase | None) -> Tiebreak:
         """La politique de départage de la phase de qualification (ADR-0004, ADR-0066).

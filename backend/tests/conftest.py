@@ -47,6 +47,8 @@ import pytest
 from domain.archer import Archer, ArcherId
 from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.classement import Classement, LigneClassement
+from domain.classement_de_tableau import ClassementSource
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
@@ -487,7 +489,14 @@ class FauxPhaseRepository:
         deroules: FauxDerouleRepository | None = None,
     ) -> None:
         self._phases: dict[int, Phase] = {}
-        self._sequence = 0
+        # ⚠️ **La séquence ne démarre pas à 0** (correctif de revue E05US025). `TournoiId`,
+        # `DepartId` et `PhaseId` sont trois alias d'`int` (`DETTE-044`) : un décor où la première
+        # phase reçoit l'identifiant 1, comme le tournoi, rend **vert par coïncidence** tout
+        # service qui confondrait les deux — c'est exactement ce qui a laissé passer le bloquant
+        # d'E05US025 (la feuille de marque lue au tournoi là où le port attend la phase). Décaler
+        # la séquence fait échouer la confusion au lieu de la couvrir ; c'est la discipline que
+        # `test_domain_serie.py` s'imposait déjà localement (`_PHASE = 4`), généralisée.
+        self._sequence = 100
         self._departs = departs
         # ⚠️ **Câblé, cette doublure `assemble` comme les deux adapters de production** (ADR-0076) :
         # la définition rendue vient de l'étape de même rang, pas de ce qui dort dans le magasin.
@@ -749,3 +758,107 @@ class FauxDuelRepository:
     def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
         self._tirs[(phase_id, match_numero)] = duel
         return duel
+
+
+def qualification_de_secours(
+    session_factory: Any, tournoi_id: int, depart_id: int | None = None
+) -> int:
+    """L'identifiant de la qualification d'un créneau (le **premier** par défaut), posée au besoin.
+
+    Échafaudage introduit par **E05US025** (ADR-0082). Une feuille de marque pend désormais à sa
+    phase (`serie.phase_id`, `NOT NULL`) : un décor qui sème des scores « directement par le
+    repository » — parce que dérouler la chorégraphie HTTP de saisie serait hors sujet pour ce
+    qu'il éprouve — doit donc disposer d'une phase réelle, ce que plusieurs n'avaient pas.
+
+    Le helper est **idempotent** : il réutilise la qualification si le créneau en porte déjà une,
+    et n'en pose une (ordre 1, barème minimal) que sinon. Il lève si le tournoi n'a aucun créneau —
+    un décor sans départ ne peut de toute façon rien classer depuis ADR-0075, et un échec net vaut
+    mieux qu'une phase fabriquée sur un tournoi vide.
+    """
+    from domain.bareme import BaremeQualification
+    from domain.phase import Phase, TypePhase
+    from infrastructure.db import DepartRepositorySQL, PhaseRepositorySQL
+
+    departs = DepartRepositorySQL(session_factory).par_tournoi(tournoi_id)
+    if not departs:
+        raise AssertionError(
+            "Ce décor n'a aucun créneau : depuis ADR-0075 une phase pend au départ, il n'y a "
+            "donc nulle part où poser la qualification que réclame `serie.phase_id`."
+        )
+    if depart_id is None:
+        depart_id = departs[0].id
+    assert depart_id is not None
+    existante = next(
+        (
+            p
+            for p in PhaseRepositorySQL(session_factory).par_depart(depart_id)
+            if p.type is TypePhase.QUALIFICATION
+        ),
+        None,
+    )
+    if existante is not None and existante.id is not None:
+        return existante.id
+    phase = poser_phase_sql(
+        session_factory, Phase.qualification(depart_id, BaremeQualification.creer(1, 3))
+    )
+    assert phase.id is not None
+    return phase.id
+
+
+class FauxLecteurPopulations:
+    """Doublure du port `LecteurPopulationPhase` (E05US025, correctif de revue).
+
+    Dit, pour l'`ordre` d'une phase, **quels archers elle a reçus** — la seule chose que la saisie
+    et la complétude lui demandent. `populations` vide ⇒ le résolveur rend `None` partout, et les
+    deux services retombent sur leur comportement mono-qualification : c'est le montage par défaut,
+    et il est **volontairement inerte** pour que les décors existants ne changent pas de sens.
+
+    Renseigner `populations[ordre]` monte la **fourche** du CA (une *haute* et une *basse* qui se
+    jouent ensemble) sans avoir à câbler tout le moteur de classement dans un test de service.
+
+    ⚠️ **`tous` n'est pas un confort, c'est la fidélité à la production** (2ᵉ correctif de revue).
+    En production, une phase **sans source** — la qualification de tête — rend
+    `ClassementSource(pour_depart(...))`, c'est-à-dire **tout le créneau**, y compris les archers à
+    zéro flèche. Une doublure qui rendrait `None` pour l'ordre de tête ferait croire que la tête ne
+    réclame personne, donc que l'ensemble des phases admissibles est toujours un singleton — et le
+    départage entre elles, seul endroit où la production peut se tromper, ne serait exercé par aucun
+    test. C'est le doublage « porté à moitié » que cette même US a dénoncé deux fois ; on ne le
+    refait pas ici. Renseigner `tous` pose donc la population par défaut de tout ordre non déclaré.
+    """
+
+    def __init__(
+        self, populations: dict[int, list[int]] | None = None, tous: list[int] | None = None
+    ) -> None:
+        self.populations: dict[int, list[int]] = {} if populations is None else populations
+        self.tous: list[int] | None = tous
+
+    def resolveur_de_classement(
+        self, tournoi_id: int, depart_id: int
+    ) -> Callable[[int], ClassementSource | None]:
+        def resoudre(ordre: int) -> ClassementSource | None:
+            archers = self.populations.get(ordre, self.tous)
+            if archers is None:
+                return None
+            return ClassementSource(
+                classement=Classement(
+                    lignes=tuple(
+                        LigneClassement(
+                            rang_scratch=rang,
+                            rang_categorie=rang,
+                            archer_id=archer_id,
+                            nom="",
+                            prenom="",
+                            categorie_id=1,
+                            categorie_libelle="",
+                            cible=None,
+                            club_id=None,
+                            total=0,
+                            nb_dix=0,
+                            nb_neuf=0,
+                        )
+                        for rang, archer_id in enumerate(archers, start=1)
+                    )
+                )
+            )
+
+        return resoudre

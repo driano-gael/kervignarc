@@ -81,6 +81,14 @@ class Scenario:
         self.archers: list[int] = []
         # Le 1er est devant ; les deux suivants ont le **même** total, les mêmes 10 et les mêmes 9 :
         # §8.1 est épuisé, c'est exactement le cas que le barrage vient trancher.
+        # E05US025 : la feuille pend a sa phase (`serie.phase_id`, NOT NULL). La qualification
+        # se pose donc **avant** les series, et non apres comme le decor le faisait : sans elle,
+        # chaque insertion violait la cle etrangere.
+        qualif = poser_phase_sql(
+            db.session_factory, Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+        )
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
         for valeurs in (("10", "10", "10"), ("10", "9", "8"), ("10", "9", "8")):
             archer = archers.ajouter(
                 Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie.id)
@@ -97,15 +105,11 @@ class Scenario:
                             validee_par="Scoreur",
                         ),
                     ),
+                    phase_id=self.qualif_id,
                 )
             )
             inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
             self.archers.append(archer.id)
-        qualif = poser_phase_sql(
-            db.session_factory, Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
-        )
-        assert qualif.id is not None
-        self.qualif_id = qualif.id
 
 
 @pytest.fixture
@@ -173,6 +177,7 @@ def _ajouter_archer(app: FastAPI, scenario: Scenario, valeurs: tuple[str, ...]) 
                     validee_par="Scoreur",
                 ),
             ),
+            phase_id=scenario.qualif_id,
         )
     )
     return archer.id

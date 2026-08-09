@@ -708,10 +708,19 @@ class PhaseRepository(Protocol):
         ...
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
+        """Renvoie **la dernière** phase d'un départ pour ce type, ou `None` s'il n'y en a pas.
 
-        Un départ porte **au plus une** phase de `qualification` (E01US009, portée corrigée par
-        ADR-0075).
+        ⚠️ **Cette méthode n'a plus aucun appelant de production** (E05US025) : elle ne survit que
+        dans des décors de tests, qui s'en servent pour retrouver l'unique phase qu'ils viennent de
+        poser. Sa docstring affirmait « un départ porte **au plus une** phase de `qualification` » —
+        exactement l'invariant qu'ADR-0082 retire, et dont le retour « par prudence » est ce que le
+        commentaire de `domain/phase.py` met en garde contre. La phrase est retirée plutôt que la
+        méthode, dont la suppression toucherait une vingtaine de décors sans rien prouver de plus.
+
+        En cas de multiplicité, les deux adapters rendent l'`ordre` **le plus élevé** — c'est un
+        choix arbitraire, pas une résolution de « la » qualification. Qui a besoin de désigner une
+        qualification parmi plusieurs passe par `application/portee.py:qualification_courante`
+        (celle où l'on tire) ou par la population de la phase, jamais par ici.
         """
         ...
 
@@ -1114,29 +1123,59 @@ class RemboursementRepository(Protocol):
 class SerieRepository(Protocol):
     """Port de persistance des séries de saisie de qualification (E04US002).
 
-    Une série par archer. `enregistrer` sert la **saisie** ordinaire (sans trace) ;
-    `enregistrer_avec_trace` co-écrit la série **et** son entrée d'audit dans **une seule
-    transaction** (atomicité acte↔trace, ADR-0035) — la validation et la correction, qui laissent
-    une trace. L'atomicité est réalisée par l'adapter (session partagée) ; au niveau du port, c'est
-    une seule opération « la série ET sa trace, ou ni l'une ni l'autre ».
+    **Une série par `(phase, archer)`** depuis E05US025 (ADR-0082) — et non plus par
+    `(tournoi, archer)`. Un déroulé peut enchaîner plusieurs qualifications : l'archer qui tire la
+    *haute* après la qualification de tête y ouvre une **seconde** feuille, et les deux coexistent.
+    Ce changement de clé **résorbe `DETTE-046`** (un archer sur deux créneaux n'avait qu'un seul
+    emplacement pour ses flèches), la phase appartenant à un départ.
+
+    `enregistrer` sert la **saisie** ordinaire (sans trace) ; `enregistrer_avec_trace` co-écrit la
+    série **et** son entrée d'audit dans **une seule transaction** (atomicité acte↔trace, ADR-0035)
+    — la validation et la correction, qui laissent une trace. L'atomicité est réalisée par l'adapter
+    (session partagée) ; au niveau du port, c'est une seule opération « la série ET sa trace, ou ni
+    l'une ni l'autre ».
     """
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
-        """Renvoie la série de qualification de l'archer, ou `None` si aucune n'existe encore."""
-        ...
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
+        """La feuille de cet archer **dans cette phase**, ou `None` si elle n'existe pas encore.
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
-        """Renvoie toutes les séries d'un tournoi (liste éventuellement vide).
+        ⚠️ **Le premier paramètre était `tournoi_id` jusqu'à E05US025, et rien ne le vérifie.** Le
+        remplacer plutôt que d'ajouter un paramètre visait à faire **cesser de compiler** les
+        appelants restés à la maille tournoi. Le pari a échoué, et la revue l'a mesuré : `TournoiId`
+        et `PhaseId` sont deux **alias** d'`int` (`DETTE-044`), donc mypy voit deux fois le même
+        type. Neuf sites ont été manqués en silence — dont le chemin de lecture de la grille de
+        saisie et l'impression des feuilles de marque.
 
-        Sert au **classement** (E06US001) : cumul et départage se calculent sur l'ensemble des
-        séries du tournoi. L'ordre n'est pas garanti par le port (le classement trie lui-même) ;
-        les volées de chaque série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        La liste des appelants a été **relevée à la main** et les décors de tests ne font plus
+        coïncider `tournoi_id` et `phase_id` (c'est ce qui rendait la confusion invisible). La
+        vraie barrière reste à poser : `NewType("PhaseId", int)`, inscrit à `DETTE-044`. Tant
+        qu'elle n'existe pas, **ne pas se fier au compilateur ici** — vérifier l'appelant.
         """
         ...
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """Toutes les feuilles d'une phase (liste éventuellement vide).
+
+        Sert au **classement** (E06US001), qui se calcule phase par phase : le cumul et le départage
+        d'une qualification ne regardent que les flèches tirées **dans celle-ci**. Les lire au
+        tournoi mélangerait les deux tours de l'exemple d'ADR-0082 et rendrait un classement faux.
+
+        L'ordre n'est pas garanti par le port (le classement trie lui-même) ; les volées de chaque
+        série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        """
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        """Toutes les séries d'un tournoi, **toutes phases confondues** (éventuellement vide).
+
+        ⚠️ **Vue d'ensemble, jamais base de calcul d'un classement.** Depuis E05US025 un archer peut
+        y figurer plusieurs fois — une ligne par phase tirée. Un consommateur qui indexerait le
+        résultat par `archer_id` (`{s.archer_id: s for s in …}`) n'en garderait qu'une **au hasard
+        de l'ordre** : c'est `par_phase` qu'il lui faut.
+        """
+        ...
+
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         """Le « quand » de chaque volée de l'archer, par **numéro** (`{}` s'il n'a pas de série).
 
         Le `created_at` d'une volée est une **métadonnée de persistance**, hors de l'agrégat `Volee`

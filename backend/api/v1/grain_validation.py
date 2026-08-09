@@ -85,3 +85,28 @@ async def definir_grain(
         write_queue.submit(lambda: service.definir(tournoi_id, requete.grain, requete.n_volees))
     )
     return GrainReponse.de_agregat(grain)
+
+
+@router.put(
+    "/tournois/{tournoi_id}/qualifications/{etape_id}/grain-validation",
+    response_model=GrainReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def definir_grain_d_etape(
+    tournoi_id: int, etape_id: int, requete: DefinirGrainRequete, request: Request
+) -> GrainReponse:
+    """Règle le grain d'une qualification **désignée** (**action admin**, E05US025).
+
+    Pendant de la route de barème par étape. `PhaseIntrouvable` (404) si l'étape n'appartient pas
+    à ce tournoi, `PhasePasUneQualification` (409) si elle n'en est pas une.
+    """
+    service: ServiceGrainValidation = request.app.state.service_grain_validation
+    write_queue: WriteQueue = request.app.state.write_queue
+    grain = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.definir_pour_etape(
+                tournoi_id, etape_id, requete.grain, requete.n_volees
+            )
+        )
+    )
+    return GrainReponse.de_agregat(grain)

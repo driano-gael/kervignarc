@@ -23,6 +23,7 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin
 from application.bareme_qualification import ServiceBaremeQualification
 from domain.bareme import BaremeQualification
+from domain.deroule_etape import EtapeDeroule
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["bareme-qualification"])
@@ -86,6 +87,93 @@ async def definir_bareme(
     bareme = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.definir(tournoi_id, requete.nb_volees, requete.nb_fleches_par_volee)
+        )
+    )
+    return BaremeReponse.de_agregat(bareme)
+
+
+class QualificationReponse(BaseModel):
+    """Une qualification du déroulé, avec ses réglages (E05US025, ADR-0082).
+
+    Ce que l'écran « Barème & validation » liste depuis qu'un déroulé peut en porter plusieurs :
+    l'organisateur choisit **laquelle** il règle. `libelle` est dérivé de l'ordre côté serveur —
+    le front n'a pas à réinventer une numérotation, et le vocabulaire reste au même endroit.
+
+    `bareme` et `grain` sont **facultatifs par prudence, pas par usage** : aucun chemin de
+    composition ne laisse aujourd'hui une qualification sans réglage — `ServicePhases.ajouter` pose
+    le preset FFTA 18 m et le grain du type, `ServiceBaremeQualification.definir` crée toujours avec
+    barème, et l'application d'un format passe par `ModelePhase.qualification(bareme)`. Un premier
+    jet de cette docstring justifiait l'optionalité par un état que le même commit rendait
+    inatteignable (relevé de revue) ; elle est conservée parce qu'une base reprise d'une version
+    antérieure peut porter cet état, et que l'écran sait déjà le rendre — pas parce que le geste
+    d'aujourd'hui le produit.
+    """
+
+    etape_id: int
+    ordre: int
+    libelle: str
+    bareme: BaremeReponse | None = None
+    grain: str | None = None
+    grain_n_volees: int | None = None
+
+    @staticmethod
+    def de_agregat(etape: EtapeDeroule, rang: int) -> QualificationReponse:
+        """Traduit une étape de déroulé en DTO.
+
+        `rang` est la position **parmi les qualifications** (1, 2, 3…), pas l'ordre dans la
+        séquence : sur le déroulé de référence la *basse* est l'étape d'ordre 3 mais la 3ᵉ
+        qualification, et l'écran parle de qualifications, pas d'étapes.
+        """
+        assert etape.id is not None, "Une étape relue du dépôt porte toujours son identifiant."
+        return QualificationReponse(
+            etape_id=etape.id,
+            ordre=etape.ordre,
+            libelle=f"Qualification {rang}",
+            bareme=None if etape.bareme is None else BaremeReponse.de_agregat(etape.bareme),
+            grain=None if etape.validation is None else etape.validation.type.value,
+            grain_n_volees=None if etape.validation is None else etape.validation.n_volees,
+        )
+
+
+@router.get(
+    "/tournois/{tournoi_id}/qualifications",
+    response_model=list[QualificationReponse],
+)
+async def lister_qualifications(tournoi_id: int, request: Request) -> list[QualificationReponse]:
+    """Les qualifications du déroulé et leurs réglages (E05US025).
+
+    Remplace, pour l'écran, la lecture `GET .../bareme-qualification` qui ne pouvait en rendre
+    qu'une. Celle-ci reste en place — elle sert les clients qui n'ont pas besoin de choisir.
+
+    Lève `TournoiIntrouvable` (404) si le tournoi n'existe pas ; liste vide si le déroulé n'a
+    aucune qualification.
+    """
+    service: ServiceBaremeQualification = request.app.state.service_bareme_qualification
+    etapes = await run_in_threadpool(service.qualifications, tournoi_id)
+    return [QualificationReponse.de_agregat(etape, rang) for rang, etape in enumerate(etapes, 1)]
+
+
+@router.put(
+    "/tournois/{tournoi_id}/qualifications/{etape_id}/bareme",
+    response_model=BaremeReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def definir_bareme_d_etape(
+    tournoi_id: int, etape_id: int, requete: DefinirBaremeRequete, request: Request
+) -> BaremeReponse:
+    """Règle le barème d'une qualification **désignée** (**action admin**, E05US025).
+
+    Ne crée rien : l'étape est composée à l'atelier. `PhaseIntrouvable` (404) si elle n'appartient
+    pas à ce tournoi, `PhasePasUneQualification` (409) si elle n'en est pas une, et
+    `CadenceValidationSuperieureAuBareme` (409) si le barème passe sous la cadence du grain.
+    """
+    service: ServiceBaremeQualification = request.app.state.service_bareme_qualification
+    write_queue: WriteQueue = request.app.state.write_queue
+    bareme = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.definir_pour_etape(
+                tournoi_id, etape_id, requete.nb_volees, requete.nb_fleches_par_volee
+            )
         )
     )
     return BaremeReponse.de_agregat(bareme)

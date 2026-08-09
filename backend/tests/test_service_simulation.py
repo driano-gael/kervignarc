@@ -34,11 +34,13 @@ from application.erreurs import (
 from application.simulation import ServiceSimulation
 from bootstrap.composition import fabriquer_harnais_simulation
 from domain.archer import Archer
+from domain.bareme import BaremeQualification
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
 from domain.gabarit_salle import GabaritSalle
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.phase import TypePhase
 from domain.serie import Serie, Volee
@@ -111,6 +113,22 @@ class _Reel:
         assert categorie.id is not None
         self.categorie_id = categorie.id
 
+        # E05US025 : une feuille de marque pend à sa phase (ADR-0082), et le classement se lit
+        # sur elle. Ce décor ne posait que le tableau ; il lui faut désormais la qualification, qui
+        # est de toute façon ce que la simulation rejoue (`SessionSimulation.phase_qualif_id`).
+        etape_qualif = self.deroules.ajouter(
+            EtapeDeroule(
+                tournoi_id=self.tournoi_id,
+                ordre=1,
+                type=TypePhase.QUALIFICATION,
+                bareme=BaremeQualification.creer(1, 3),
+                validation=GrainValidation.fin_de_serie(),
+            )
+        )
+        qualif = self.phases.ajouter(etape_qualif.instancier(1))
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
+
         self.phase_tableau_id: int | None = None
         if avec_tableau:
             self.gabarits.ajouter(
@@ -141,6 +159,7 @@ class _Reel:
                 tournoi_id=self.tournoi_id,
                 archer_id=archer.id,
                 volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
+                phase_id=self.qualif_id,
             )
         )
         return archer.id

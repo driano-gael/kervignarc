@@ -39,6 +39,7 @@ from domain.ports import (
 )
 from domain.poste import Poste, TypePoste
 from domain.score import Score
+from domain.serie import Serie
 from domain.tournoi import TournoiId
 
 
@@ -172,8 +173,8 @@ class ServiceArchers:
             raise FusionImpossible(
                 "Ces deux archers appartiennent à des tournois différents : pas un doublon."
             )
-        gagnant_a_tire = self._series.par_archer(gagnant.tournoi_id, gagnant_id) is not None
-        perdant_a_tire = self._series.par_archer(perdant.tournoi_id, perdant_id) is not None
+        gagnant_a_tire = self._a_une_feuille(gagnant.tournoi_id, gagnant_id)
+        perdant_a_tire = self._a_une_feuille(perdant.tournoi_id, perdant_id)
         if gagnant_a_tire and perdant_a_tire:
             raise FusionArchersEngages(
                 f"« {gagnant.prenom} {gagnant.nom} » et « {perdant.prenom} {perdant.nom} » ont "
@@ -390,9 +391,8 @@ class ServiceArchers:
         # « A tiré » dérive des **volées validées** (`Serie`, E04US002), pas de l'agrégat `Score`
         # que plus aucun flux n'alimente (DETTE-013 résorbée). Une volée saisie mais non validée
         # n'est qu'un état intermédiaire : elle ne rend pas l'archer engagé (arbitrage 20/07,
-        # `stories/E02-inscriptions.md`). `par_archer` exige le tournoi — porté par l'agrégat.
-        serie = self._series.par_archer(archer.tournoi_id, archer_id)
-        fleches = serie.nb_fleches_validees if serie is not None else 0
+        # `stories/E02-inscriptions.md`).
+        fleches = self._fleches_validees(archer.tournoi_id, archer_id)
         liste_inscriptions = self._inscriptions.par_archer(archer_id)
         inscriptions = len(liste_inscriptions)
         # DETTE-018 : la suppression d'archer purge ses inscriptions en cascade **sans ouvrir de
@@ -435,6 +435,35 @@ class ServiceArchers:
             "jamais dû être inscrit."
         )
 
+    def _feuilles(self, tournoi_id: TournoiId, archer_id: ArcherId) -> list[Serie]:
+        """Les feuilles de cet archer dans ce tournoi — **toutes phases confondues**.
+
+        ⚠️ **Correctif de revue E05US025.** Ces trois gardes (« a-t-il tiré ? ») appelaient
+        `SerieRepository.par_archer(archer.tournoi_id, …)`, dont le premier paramètre est devenu un
+        `phase_id` avec cette US. `TournoiId` et `PhaseId` sont deux alias de `int` (`DETTE-044`) :
+        rien n'a échoué à la compilation, et les gardes ne trouvaient plus **aucune** série dès que
+        les deux entiers cessaient de coïncider — un archer engagé se supprimait alors *sans le
+        moindre signalement*, exactement le mode de panne contre lequel `_impact_suppression`
+        s'était prémunie par ailleurs.
+
+        La bonne maille est bien le **tournoi** et non la phase : la question posée est « cet archer
+        a-t-il tiré **quelque part** ? », pas « dans laquelle ». `par_tournoi` la répond
+        exactement, et mieux qu'avant l'US — un archer qui n'a tiré que dans la *basse* est
+        désormais vu. L'avertissement du port (« jamais base de calcul d'un classement ») ne vise
+        pas cet usage : on ne classe rien, on compte.
+        """
+        return [
+            serie for serie in self._series.par_tournoi(tournoi_id) if serie.archer_id == archer_id
+        ]
+
+    def _a_une_feuille(self, tournoi_id: TournoiId, archer_id: ArcherId) -> bool:
+        """L'archer a-t-il une feuille de marque ouverte dans ce tournoi (fût-elle vide) ?"""
+        return bool(self._feuilles(tournoi_id, archer_id))
+
+    def _fleches_validees(self, tournoi_id: TournoiId, archer_id: ArcherId) -> int:
+        """Le nombre de flèches **validées** de cet archer, toutes qualifications du tournoi."""
+        return sum(serie.nb_fleches_validees for serie in self._feuilles(tournoi_id, archer_id))
+
     def _signaler_changement_categorie(self, archer_id: ArcherId, edite: Archer) -> None:
         """Lève `ChangementCategorieArcherEngage` si l'archer a déjà tiré (E02US003).
 
@@ -445,8 +474,7 @@ class ServiceArchers:
         # `Score`, DETTE-013 résorbée) : ce sont les flèches **qui comptent** qui basculeraient vers
         # un autre classement. Une volée saisie non validée n'est encore dans aucun classement, rien
         # ne bascule — elle ne déclenche pas ce signalement (arbitrage du 20/07/2026).
-        serie = self._series.par_archer(edite.tournoi_id, archer_id)
-        if serie is not None and serie.nb_fleches_validees > 0:
+        if self._fleches_validees(edite.tournoi_id, archer_id) > 0:
             raise ChangementCategorieArcherEngage(
                 f"« {edite.prenom} {edite.nom} » a déjà tiré dans sa catégorie actuelle. Changer "
                 "de catégorie emporte ses flèches vers un autre classement ; confirmez s'il "

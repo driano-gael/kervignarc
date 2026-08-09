@@ -431,8 +431,36 @@ class ServiceSaisieDuels:
             return None
         if phase.type is TypePhase.QUALIFICATION:
             # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir sont
-            # fermes dès que les volées sont validées, et il dispute le tournoi entier (rang 1).
-            return ClassementSource(classement=self._classements.pour_depart(depart_id))
+            # fermes dès que les volées sont validées.
+            #
+            # ⚠️ **Mais il ne dispute plus forcément le tournoi entier** (E05US025, ADR-0082). Ce
+            # bloc rendait `pour_depart(depart_id)` — le classement de la qualification de tête —
+            # pour **toute** phase de type qualification, quel que soit son ordre. Sur le déroulé de
+            # référence, la *haute* et la *basse* auraient donc toutes deux relu le classement du
+            # premier tour : leurs 3x15 n'auraient servi à rien, et les deux auraient prélevé dans
+            # les mêmes rangs. C'était le vrai câblage à casser, bien plus que les appels de portée.
+            if not phase.sources:
+                # La qualification de tête : tous les inscrits, elle dispute le tournoi entier.
+                return ClassementSource(classement=self._classements.pour_depart(depart_id))
+            # Une qualification **prélevée** : sa population est ce que ses sources lui ont donné,
+            # et elle dispute la tranche de rangs correspondante. Le résolveur passé à `preleves` et
+            # à `tranche` est **le même** (cache compris) : deux bases différentes situeraient la
+            # population et le décalage dans deux espaces de rangs distincts, ce qui est exactement
+            # `DETTE-034`.
+            resolveur = self.resolveur_de_classement(
+                tournoi_id,
+                depart_id,
+                (*chaine, phase.id) if phase.id is not None else chaine,
+                cache,
+            )
+            admis = [
+                ligne.archer_id
+                for ligne in preleves(phase, self._classements.pour_depart(depart_id), resolveur)
+            ]
+            return ClassementSource(
+                classement=self._classements.pour_phase(depart_id, phase, admis=admis),
+                rang_premier=tranche(phase, resolveur),
+            )
         if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
             return None
         if phase.id in chaine:

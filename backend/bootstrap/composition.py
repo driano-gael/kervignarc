@@ -102,6 +102,7 @@ from application.pilotage_tour import ServicePilotageTour
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
+from application.prelevement import LecteurPopulationPhase
 from application.remboursements import ServiceRemboursements
 from application.routage import ServiceRoutage
 from application.saisie import ServiceSaisie
@@ -690,6 +691,13 @@ def create_app(
         app.state.registre_politiques,
         aggregation,
     )
+    # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
+    # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un
+    # `LecteurPopulationPhase` fait **sauter** la vérification du Protocol par mypy — seule la
+    # doublure de test serait alors typée-vérifiée, pas l'implémentation réelle. Sur une US dont la
+    # thèse est « ne pas parier sur une garantie de compilation qui n'existe pas », c'était la même
+    # erreur un cran plus loin.
+    populations: LecteurPopulationPhase = app.state.service_saisie_duels
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
         phase_repository,
@@ -950,6 +958,10 @@ def create_app(
         inscription_repository,
         forfait_repository,
         HorlogeSysteme(),
+        # Correctif de revue E05US025 : la saisie discrimine la qualification qui **admet** cet
+        # archer quand le créneau en porte plusieurs (fourche haute/basse). Construit après
+        # `service_saisie_duels`, qui l'était déjà pour le plan de cibles.
+        populations,
     )
     app.state.service_saisie = service_saisie
 
@@ -1018,6 +1030,9 @@ def create_app(
         phase_repository,
         forfait_repository,
         app.state.service_paiements,
+        # Correctif de revue E05US025 : la complétude juge chaque qualification sur **sa**
+        # population, lue par le même résolveur que la saisie et le plan de cibles.
+        populations,
     )
 
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du

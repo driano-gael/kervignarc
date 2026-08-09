@@ -34,9 +34,10 @@ from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.palmares import OriginePalmares, Palmares
-from domain.phase import Phase
+from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import (
     Aggregation,
     AggregationExAequo,
@@ -100,18 +101,17 @@ def _abandonner_en_qualification(monde: _Monde, archer_id: int) -> None:
     """
     # La qualification pend au **créneau** (ADR-0075) : posée sur `tournoi_id`, elle était
     # orpheline — l'assemblage l'écartait, et le forfait ne reléguait plus personne.
-    phase = poser_phase_factice(
-        monde.departs,
-        monde.deroules,
-        monde.phases,
-        Phase.qualification(monde.depart_id, BaremeQualification.creer(1, 3)),
-    )
-    assert phase.id is not None
+    #
+    # E05US025 : on **réutilise** celle du décor (`monde.qualif_id`) au lieu d'en poser une.
+    # Depuis que plusieurs qualifications sont licites (ADR-0082), en poser une seconde ne lève
+    # plus d'anomalie : le forfait s'accrochait à celle-ci pendant que le classement lisait
+    # l'autre, et l'abandon ne reléguait silencieusement plus personne.
+    phase_id = monde.qualif_id
     monde.forfaits.semer(
         Forfait.creer(
             tournoi_id=monde.tournoi_id,
             archer_id=archer_id,
-            phase_id=phase.id,
+            phase_id=phase_id,
             nature=NatureForfait.ABANDON,
             declare_par="DURAND",
             declare_le=_QUAND,
@@ -521,7 +521,9 @@ def test_le_rang_de_categorie_reste_borne_par_la_categorie() -> None:
         )
         assert archer.id is not None
         monde.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=monde.depart_id))
-        monde.series.semer(monde.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        monde.series.semer(
+            monde.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs), monde.qualif_id
+        )
         archers.append(archer.id)
     monde.creer_phase_tableau()
     monde.placer()
@@ -569,3 +571,64 @@ def test_un_bye_resolu_ne_fait_pas_basculer_le_palmares() -> None:
 
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4, 5, 6]
+
+
+# --- E05US025 : le rang vient de la phase, produit par la chaîne (correctif de revue) ------------
+
+
+def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
+    """CA E05US025 — « le dernier de la haute précède le premier de la basse ».
+
+    ⚠️ **Ce que ce test ajoute au test de domaine** : là-bas, `rang_premier` et `origine` sont
+    **écrits en dur** dans le décor ; ici ils sont **produits** par la chaîne réelle —
+    `ServiceSaisieDuels._source_de` résout `admis` par `preleves` et le décalage par `tranche`, et
+    `ServicePalmares._resultat_qualification` en fait une contribution. C'est précisément le code
+    que cette US a écrit, et il n'était couvert par rien (relevé de revue).
+
+    Décor discriminant : les deux archers de la *basse* tirent **mieux** leur second tour que les
+    deux de tête n'ont tiré le premier. Un palmarès obtenu en triant les séries par total — la
+    réalisation naïve que le CA existe pour interdire — les mettrait donc devant.
+    """
+    monde = _Monde()
+    tete = [
+        monde.inscrire_classe(("9", "9", "9")),
+        monde.inscrire_classe(("9", "9", "8")),
+    ]
+    basse_archers = [
+        monde.inscrire_classe(("8", "8", "8")),
+        monde.inscrire_classe(("8", "8", "7")),
+    ]
+    basse = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase(
+            depart_id=monde.depart_id,
+            ordre=2,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(1, 3),
+            validation=GrainValidation.fin_de_serie(),
+            sources=(SourcePhase.par_rangs(1, 3),),  # « les rangs 3 et suivants »
+        ),
+    )
+    assert basse.id is not None
+    # Les deux relégués tirent un second tour **meilleur** que le premier tour des deux de tête.
+    monde.series.semer(monde.tournoi_id, basse_archers[1], _v10(), basse.id)
+    monde.series.semer(monde.tournoi_id, basse_archers[0], _v10(("10", "10", "9")), basse.id)
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    rangs = [(ligne.archer_id, ligne.rang_min) for ligne in palmares.lignes]
+    assert rangs == [
+        (tete[0], 1),
+        (tete[1], 2),
+        (basse_archers[1], 3),
+        (basse_archers[0], 4),
+    ], "La basse dispute les rangs 3-4, et son ordre est celui de son propre second tour."
+    origines = {ligne.archer_id: ligne.origine for ligne in palmares.lignes}
+    assert origines[basse_archers[0]] is OriginePalmares.QUALIFICATION
+    assert not palmares.podium(monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
+
+
+def _v10(valeurs: tuple[str, ...] = ("10", "10", "10")) -> tuple[ZoneScore, ...]:
+    return tuple(ZoneScore(v) for v in valeurs)

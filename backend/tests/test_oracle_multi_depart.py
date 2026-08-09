@@ -95,17 +95,28 @@ class _TournoiADeuxDeparts:
         self.matin = self._creneau(departs, numero=1, horaire="09:00")
         self.apres_midi = self._creneau(departs, numero=2, horaire="14:00")
 
-        self.archers_matin = self._vague(sf, categorie.id, self.matin, self.SCORES_MATIN)
-        self.archers_apres_midi = self._vague(
-            sf, categorie.id, self.apres_midi, self.SCORES_APRES_MIDI
-        )
-
         # **Une séquence par créneau**, aux mêmes ordres : c'est licite, et c'est le propos —
         # deux « ordre 1 » coexistent parce qu'ils vivent dans des départs différents.
+        #
+        # E05US025 : posées **avant** les vagues, parce qu'une feuille de marque pend désormais à sa
+        # phase (`serie.phase_id`, NOT NULL). Chaque créneau garde la sienne : c'est précisément ce
+        # que cet oracle éprouve — les scores du matin ne doivent pas peser sur l'après-midi.
         phases = PhaseRepositorySQL(sf)
+        qualif_de: dict[int, int] = {}
         for depart_id in (self.matin, self.apres_midi):
-            poser_phase_sql(sf, Phase.qualification(depart_id, BaremeQualification.creer(1, 3)))
+            qualif = poser_phase_sql(
+                sf, Phase.qualification(depart_id, BaremeQualification.creer(1, 3))
+            )
+            assert qualif.id is not None
+            qualif_de[depart_id] = qualif.id
             poser_phase_sql(sf, Phase.creer(depart_id, 2, TypePhase.ELIMINATION_DIRECTE))
+
+        self.archers_matin = self._vague(
+            sf, categorie.id, self.matin, self.SCORES_MATIN, qualif_de[self.matin]
+        )
+        self.archers_apres_midi = self._vague(
+            sf, categorie.id, self.apres_midi, self.SCORES_APRES_MIDI, qualif_de[self.apres_midi]
+        )
 
         self.classement = ServiceClassement(
             TournoiRepositorySQL(sf),
@@ -133,6 +144,7 @@ class _TournoiADeuxDeparts:
         categorie_id: int,
         depart_id: int,
         scores: tuple[tuple[str, ...], ...],
+        phase_id: int,
     ) -> list[int]:
         """Crée les archers d'un créneau, les y **inscrit**, et sème leur série validée.
 
@@ -165,6 +177,7 @@ class _TournoiADeuxDeparts:
                             validee_par="Scoreur",
                         ),
                     ),
+                    phase_id=phase_id,
                 )
             )
             ids.append(archer.id)

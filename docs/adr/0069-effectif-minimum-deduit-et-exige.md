@@ -78,7 +78,15 @@ qu'un bloquant se ferme sur son *raisonnement*, pas sur son cas :
   34 inscrits empêchait de lancer un tournoi qui se serait joué. Un **refus abusif** est le pire
   mode de défaillance de cette US — il ne se répare que le jour J, en éditant le déroulé. Le
   premier jet n'appliquait l'oracle que dans le sens permissif ; il vaut dans les deux.
-- **Une séquence ne porte qu'une qualification** (`PlusieursQualifications`, bloquante). L'unicité
+- ~~**Une séquence ne porte qu'une qualification**~~ — ⚠️ **règle RETIRÉE le 09/08/2026 par
+  [ADR-0082](0082-plusieurs-qualifications-dans-un-meme-deroule.md)** (E05US025). Le diagnostic
+  posé ci-dessous reste exact : l'unicité *était* supposée partout et vérifiée nulle part. C'est le
+  **remède** qui était le mauvais — on a fermé le cas au lieu de réparer les lecteurs, et le
+  commanditaire a ensuite demandé le cas. `PlusieursQualifications` n'existe plus. Le reste de cet
+  ADR est intact ; conservé tel quel pour que le raisonnement d'origine reste lisible.
+
+  > **Texte d'origine** — « Une séquence ne porte qu'une qualification »
+  (`PlusieursQualifications`, bloquante). L'unicité
   était supposée par **neuf** lecteurs de « la » qualification et vérifiée nulle part — et deux la
   résolvaient différemment : plus petit `ordre` dans le domaine, plus grand `id` dans le repository.
   Un déroulé à deux qualifications faisait donc calculer le minimum sur une phase et prélever dans

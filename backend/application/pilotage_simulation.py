@@ -392,7 +392,11 @@ class ServicePilotageSimulation:
                 raise ArcherIntrouvable(
                     f"Aucun archer d'identifiant {archer_id} dans la simulation {session_id}."
                 )
-            serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+            # Correctif de revue E05US025 : la feuille se lit **dans la phase où elle a été
+            # écrite** (`phase_qualif_id`, cf. `_ecrire_volee`). Ce site passait encore
+            # `tournoi_id` — deux alias d'`int` (`DETTE-044`), donc muet à la compilation : le
+            # cockpit rendait un cumul **0** dès que les deux identifiants cessaient de coïncider.
+            serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
             return DetailArcher(
                 archer_id=archer_id,
                 nom=archer.nom,
@@ -573,9 +577,13 @@ class ServicePilotageSimulation:
         produire une donnée plausible n'est pas rejouer la cérémonie de saisie. Le `_avec_volee`
         local duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
         """
-        serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+        # E05US025 : la feuille se résout par `(phase, archer)`. La session porte déjà l'identifiant
+        # de la qualification qu'elle simule (`phase_qualif_id`, posé à l'ouverture) — le harnais ne
+        # simule qu'un déroulé mono-qualification, mais il écrit désormais **dans** cette phase et
+        # non « dans le tournoi », ce qui le rend juste si un scénario multi-qualifications arrive.
+        serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
-            serie = Serie.vide(session.tournoi_id, archer_id)
+            serie = Serie.vide(session.tournoi_id, archer_id, session.phase_qualif_id)
         volee = Volee(numero=numero, valeurs=valeurs, saisie_par=auteur, validee_par=auteur)
         autres = tuple(v for v in serie.volees if v.numero != numero)
         volees = tuple(sorted((*autres, volee), key=lambda v: v.numero))
@@ -735,7 +743,9 @@ class ServicePilotageSimulation:
     # --- Lecture / assemblage de l'état ---------------------------------------------------------
 
     def _volee_validee(self, session: SessionSimulation, archer_id: ArcherId, numero: int) -> bool:
-        serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+        # Correctif de revue E05US025 : même défaut qu'`detail_archer` — lu au tournoi, écrit à la
+        # phase, donc **toujours `False`** hors coïncidence d'identifiants.
+        serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
             return False
         volee = serie.volee(numero)

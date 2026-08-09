@@ -23,7 +23,7 @@ from domain.serie import Serie, Volee
 from infrastructure.db import AuditRepositorySQL, SerieRepositorySQL
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, qualification_de_secours
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,6 +47,7 @@ def _semer_score(app: FastAPI, tournoi_id: int, archer_id: int) -> None:
                 validee_par="Scoreur",
             ),
         ),
+        phase_id=qualification_de_secours(sf, tournoi_id),
     )
     SerieRepositorySQL(sf, AuditRepositorySQL(sf), HorlogeSysteme()).enregistrer(serie)
 

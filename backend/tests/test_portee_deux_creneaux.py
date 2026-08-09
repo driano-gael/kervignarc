@@ -37,7 +37,7 @@ from domain.depart import Depart
 from domain.entree_audit import EntreeAudit
 from domain.inscription import Inscription
 from domain.participant import Participant
-from domain.phase import Phase
+from domain.phase import Phase, PhaseId
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -87,16 +87,18 @@ class FauxSerieRepository:
     def __init__(self, series: list[Serie]) -> None:
         self._series = series
 
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for s in self._series if s.phase_id == phase_id]
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._series if s.tournoi_id == tournoi_id]
 
     # Le reste du port : présent pour **conformer**, jamais appelé par le classement.
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         raise NotImplementedError
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         raise NotImplementedError
 
     def enregistrer(self, serie: Serie) -> Serie:
@@ -180,14 +182,6 @@ class Decor:
         assert alice.id is not None and bob.id is not None
         self.alice, self.bob = alice.id, bob.id
 
-        # Même total : ex æquo au rang 1 dans **chacun** des deux créneaux.
-        self.series = FauxSerieRepository(
-            [
-                self._serie(self.alice, (ZoneScore.NEUF, ZoneScore.NEUF)),
-                self._serie(self.bob, (ZoneScore.NEUF, ZoneScore.NEUF)),
-            ]
-        )
-
         self.departs = FauxDepartRepository()
         for numero, identifiant, horaire in ((1, _MATIN, "09:00"), (2, _APRES_MIDI, "14:00")):
             depart = Depart.creer(
@@ -227,13 +221,28 @@ class Decor:
             assert phase.id is not None
             self.qualif[depart_id] = phase.id
 
+        # Même total : ex æquo au rang 1 dans **chacun** des deux créneaux.
+        #
+        # E05US025 : **une feuille par (archer, phase)**, donc quatre — c'est précisément le cas que
+        # `DETTE-046` décrivait comme cassé (un archer sur deux créneaux n'avait qu'un emplacement
+        # pour ses flèches). Le décor le rend maintenant fidèlement : Alice et Bob tirent le matin
+        # *et* l'après-midi, et chaque tir a sa feuille.
+        self.series = FauxSerieRepository(
+            [
+                self._serie(archer, (ZoneScore.NEUF, ZoneScore.NEUF), self.qualif[depart_id])
+                for depart_id in (_MATIN, _APRES_MIDI)
+                for archer in (self.alice, self.bob)
+            ]
+        )
+
         self.barrages = FauxBarrageRepository(self.departs)
 
     @staticmethod
-    def _serie(archer_id: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
+    def _serie(archer_id: int, valeurs: tuple[ZoneScore, ...], phase_id: int) -> Serie:
         return Serie(
             tournoi_id=_TOURNOI,
             archer_id=archer_id,
+            phase_id=phase_id,
             volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
         )
 

@@ -35,12 +35,15 @@ une règle métier. À rouvrir si une troisième politique de phase rejoint la f
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Protocol
 
 from application.erreurs.moteur import PrelevementEnAttente
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.classement_de_tableau import ClassementSource
+from domain.depart import DepartId
 from domain.phase import NatureSource, Phase, profondeur_par_defaut
 from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
+from domain.tournoi import TournoiId
 
 
 def profondeur_de(phase: Phase, registre: RegistrePolitiques) -> Depth:
@@ -98,6 +101,32 @@ que les lignes — les **plages encore indécises** (pour refuser une fenêtre �
 n'a pas répondu, ADR-0081) et le **rang de tournoi** du premier rang de ce classement (pour que le
 décalage se cumule le long de la chaîne, cf. `tranche`).
 """
+
+
+class LecteurPopulationPhase(Protocol):
+    """Port étroit : « quels archers cette phase a-t-elle reçus ? »
+
+    Réalisé par `ServiceSaisieDuels`.
+
+    Ajouté au correctif de revue d'E05US025. Deux services de **qualification** — la saisie et la
+    complétude — doivent désormais discriminer la population d'une phase : sur la fourche
+    *haute*/*basse* du CA, « la qualification du créneau » n'existe plus, et les deux tomberaient
+    dans le même piège que le moteur de duels avant E05US024 s'ils la devinaient chacun de leur
+    côté (`DETTE-034`). La réponse est celle que `resolveur_de_classement` produit déjà : le
+    classement d'une phase est **restreint** aux archers qu'elle a prélevés.
+
+    **Un port étroit plutôt que le service concret** — même parti que `LecteurPaiements` dans
+    `application/completude.py` : ces deux services n'ont pas besoin de tout `ServiceSaisieDuels`
+    (reconstruction d'arbre, saisie de duels), juste de sa résolution de classement amont. Cela
+    évite aussi que `application/saisie.py` importe `application/saisie_duels.py`, et rend le
+    doublage trivial en test.
+    """
+
+    def resolveur_de_classement(
+        self, tournoi_id: TournoiId, depart_id: DepartId
+    ) -> ResolveurClassement:
+        """De quoi lire le classement **produit** par n'importe quelle phase amont de ce créneau."""
+        ...
 
 
 def _en_lice(classement: Classement) -> list[LigneClassement]:

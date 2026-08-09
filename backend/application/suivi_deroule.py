@@ -201,9 +201,10 @@ class ServiceSuiviDeroule:
         cela produisait quatre défauts d'un coup : le déroulé dessiné **en double**, l'avancement
         du dernier créneau **écrasant** celui des autres (`{phase.ordre: phase}`), l'effectif
         **fusionné** (donc des tableaux dimensionnés pour 400 au lieu de 100), et deux anomalies
-        fausses (`SequenceOrdreInvalide`, `PlusieursQualifications`) sur une route **publique**
-        pollée toutes les 10 s. Le suivi n'a de sens que dans un créneau : c'est lui qui a son
-        effectif, son avancement et son horaire.
+        fausses sur une route **publique** pollée toutes les 10 s — `SequenceOrdreInvalide`, et
+        l'unicité de la qualification, dont l'erreur a depuis disparu (E05US025 : un déroulé peut
+        porter plusieurs qualifications, cf. ADR-0082). Le suivi n'a de sens que dans un créneau :
+        c'est lui qui a son effectif, son avancement et son horaire.
 
         Un créneau **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
         appliqué, l'écran doit afficher « rien à suivre », pas une page cassée.

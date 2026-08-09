@@ -23,6 +23,30 @@ toutes existantes, aucune supposée. La factorisation se fait donc ici et non «
 toujours dans un départ (`PhaseRepository.par_depart`). Quiconque a un `depart_id` sous la main doit
 l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétablit.
 
+# ⚠️ **E05US025 — ce qui reste de `qualification_du_tournoi`, et pourquoi.** Un déroulé peut porter
+# plusieurs qualifications (ADR-0082) : « la » qualification du tournoi n'existe donc plus en
+# général, et cette fonction rend désormais **la première**. Les appelants ont été triés un par un ;
+# les cinq qui subsistent le font pour deux raisons distinctes, à ne pas confondre :
+#
+# - **La famille `DETTE-047`** (`forfaits.declarer` — un seul site —,
+#   `classements._forfaits_qualif`, `saisie._forfaits_qualif`) : le forfait s'**écrit** sur la
+#   phase rendue ici et se **lit** par le même chemin. L'affichage est « cohérent par accident » ;
+#   ne corriger que la lecture rendrait les forfaits **invisibles** au lieu de les rendre justes.
+#   Les deux côtés se portent au départ ensemble, dans l'US de résorption — pas ici.
+# - **Le repli assumé** (`saisie._phase_qualification_ou_none`, `pilotage_simulation`) : le premier
+#   ne s'en sert que lorsqu'aucun créneau n'est résoluble (donnée incohérente), le second simule un
+#   déroulé mono-qualification. Les deux sont justes tels quels.
+#
+# Ce qui **a** été porté au créneau : `saisie.avancement_cible`, les deux comptages de `completude`,
+# et `feuille_de_marque._bareme_du_creneau` — tous trois recevaient déjà un `depart_id`, la portée
+# tournoi n'y était qu'un raccourci.
+#
+# ⚠️ **Ce tri a été faux à sa première rédaction, et le compte tombait juste par compensation** :
+# il annonçait six sites en comptant `forfaits` deux fois et en oubliant `feuille_de_marque`, qui
+# imprimait donc une grille de 20 volées pour un tour qui s'en tire 15. Recompter par `grep` avant
+# d'ajouter ou de retirer une ligne ici — une énumération fausse est pire qu'absente, la prochaine
+# US s'y fiera.
+#
 # DETTE-048 : ce module concentre la portée tournoi résiduelle, et il est le seul à n'être **ni
 # testé ni surveillé**. Aucun test ne l'importe ; et le garde-fou `tests/test_portee_sportive.py` le
 # manque par construction — son balayage AST reconnaît des *noms de variables* (`phase`, `barrage`),
@@ -33,10 +57,15 @@ l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétab
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from domain.depart import DepartId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import PhaseRepository
 from domain.tournoi import TournoiId
+
+_STATUTS_EN_COURS = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
+"""Les statuts d'une phase **démarrée mais pas finie** — celle où l'on tire en ce moment."""
 
 
 def qualification_du_tournoi(phases: PhaseRepository, tournoi_id: TournoiId) -> Phase | None:
@@ -63,6 +92,83 @@ def qualification_du_tournoi(phases: PhaseRepository, tournoi_id: TournoiId) -> 
         if phase.type is TypePhase.QUALIFICATION:
             return phase
     return None
+
+
+def qualification_courante(phases: PhaseRepository, depart_id: DepartId) -> Phase | None:
+    """La qualification **où l'on tire en ce moment** dans ce créneau, ou `None` s'il n'y en a pas.
+
+    Depuis E05US025 (ADR-0082) un créneau peut porter plusieurs qualifications — 3x20, puis une
+    *haute* et une *basse* à 3x15. « La » qualification n'existe donc plus ; ce qui existe, c'est
+    celle qui se tire maintenant. Trois cas, par ordre croissant :
+
+    1. la première **démarrée et non terminée** (`en cours` ou `en pause` — une pause suspend le
+    tir,
+       elle ne rend pas la feuille à une autre phase) ;
+    2. à défaut, la première **à venir** ;
+    3. à défaut, la dernière (tout est terminé — on parle encore de la plus récente).
+
+    Le repli sur « à venir » n'est pas de la complaisance. Démarrer une phase est un geste
+    **manuel**
+    de l'organisateur (`ServicePhases.demarrer`) : faire dépendre la saisie et la complétude de sa
+    discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. C'est le même parti que
+    `ServicePalmares._resultat`, qui refuse déjà de lire `phase.statut` pour décider d'un affichage.
+
+    ⚠️ **Contrairement au reste de ce module, ce n'est pas un raccourci de portée** : la fonction
+    travaille bien à la maille du créneau (`par_depart`), là où le moteur raisonne. Elle vit ici
+    parce que trois services la réclamaient — `ServiceSaisie` et `ServiceCompletude` (deux fois) —,
+    ce qui est la 3ᵉ occurrence que la règle du projet exige avant de factoriser, et parce que
+    `DETTE-022` recense précisément cette famille de duplications.
+    """
+    return la_plus_courante(
+        phase for phase in phases.par_depart(depart_id) if phase.type is TypePhase.QUALIFICATION
+    )
+
+
+def la_plus_avancee(phases: Iterable[Phase]) -> Phase | None:
+    """Celle de ces phases où un archer **qu'elles admettent toutes** tire en ce moment.
+
+    ⚠️ **Sens inverse de `la_plus_courante` sur les phases démarrées, et c'est tout l'objet de cette
+    fonction** (2ᵉ correctif de revue E05US025). Un archer de la *haute* est admis par sa phase
+    **et** par la qualification de tête, qui accueille tout le monde par construction : sur cet
+    ensemble-là, « la première démarrée » désigne toujours la tête. L'organisateur qui lance la
+    fourche sans avoir marqué le premier tour « terminé » — geste manuel, et rien ne l'exige —
+    voyait donc les 3x15 de la basse s'écrire à la suite des 3x20 dans la feuille du premier tour.
+    Le bloquant précédent, déplacé d'un cran.
+
+    Sur un ensemble de phases **qui admettent toutes le même archer**, l'`ordre` est un ordre
+    topologique de son propre parcours : la plus avancée des phases démarrées est celle où il tire.
+    À défaut de phase démarrée, la **première à venir** est la prochaine qu'il tirera ; à défaut, la
+    dernière (tout est terminé).
+
+    Ne pas confondre avec `la_plus_courante`, qui répond à une autre question — « que se tire-t-il
+    dans ce créneau ? », pour un affichage — et sur un ensemble non filtré par archer.
+    """
+    triees = sorted(phases, key=lambda phase: phase.ordre)
+    if not triees:
+        return None
+    demarrees = [p for p in triees if p.statut in _STATUTS_EN_COURS]
+    if demarrees:
+        return demarrees[-1]
+    a_venir = [p for p in triees if p.statut is StatutPhase.A_VENIR]
+    return a_venir[0] if a_venir else triees[-1]
+
+
+def la_plus_courante(phases: Iterable[Phase]) -> Phase | None:
+    """Celle de ces phases où l'on tire **en ce moment** (priorité de statut), ou `None` si aucune.
+
+    Extraite de `qualification_courante` (correctif de revue E05US025) parce qu'un second appelant
+    l'a réclamée : `ServiceSaisie` doit appliquer la **même** priorité, mais après avoir filtré les
+    qualifications sur celle qui **admet** l'archer — sur la fourche *haute*/*basse*, « la première
+    démarrée du créneau » n'est pas la sienne. Recopier la priorité aurait laissé les deux dériver.
+    """
+    qualifications = sorted(phases, key=lambda phase: phase.ordre)
+    if not qualifications:
+        return None
+    demarrees = [p for p in qualifications if p.statut in _STATUTS_EN_COURS]
+    if demarrees:
+        return demarrees[0]
+    a_venir = [p for p in qualifications if p.statut is StatutPhase.A_VENIR]
+    return a_venir[0] if a_venir else qualifications[-1]
 
 
 def phase_du_tournoi(

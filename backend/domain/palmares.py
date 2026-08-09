@@ -89,6 +89,25 @@ class ResultatPhase:
 
     ordre: int
     positions: tuple[PositionPhase, ...]
+    origine: OriginePalmares = OriginePalmares.DUELS
+    """Ce qui a décidé ces positions — **un tir de duel, ou un classement** (E05US025).
+
+    Jusqu'ici la question ne se posait pas : seules les phases à tableau produisaient un
+    `ResultatPhase`, donc `_situer` étiquetait `DUELS` en dur. Un déroulé peut désormais enchaîner
+    **plusieurs qualifications** (ADR-0082), et la seconde décerne bien des rangs — sans qu'aucun
+    duel ait eu lieu.
+
+    ⚠️ **Ce champ garde les médailles.** `LignePalmares.decerne` — la seule forme qui vaut un podium
+    — se déduisait de « position acquise fermée » (`rang_min == rang_max`). Or le rang d'une
+    qualification est *toujours* fermé : sans distinction d'origine, un tournoi de deux
+    qualifications d'affilée remettrait or, argent et bronze **avant le moindre duel**. C'est
+    exactement le défaut que la docstring de `decerne` dit avoir corrigé en revue d'E06US004, sous
+    une autre forme.
+
+    Vaut `DUELS` par défaut : les producteurs existants (phases à tableau) ne passent rien et
+    doivent continuer de décerner. Un défaut inverse aurait retiré le podium à tous les tournois
+    d'aujourd'hui — une régression bien plus grave que le trou comblé."""
+
     rang_premier: int = 1
     """Le **premier rang du tournoi** que cette phase dispute (E05US020, ADR-0068 §5).
 
@@ -369,7 +388,11 @@ def _situer(
         bloc=resultat.ordre,
         rang_min=position.rang_min + decalage,
         rang_max=position.rang_max + decalage,
-        origine=OriginePalmares.DUELS,
+        # E05US025 : l'origine vient de la **phase**, elle n'est plus `DUELS` en dur. Une seconde
+        # qualification décerne des rangs sans qu'aucun duel ait eu lieu, et l'écran doit pouvoir le
+        # dire — « 9ᵉ » ne veut pas dire la même chose selon qu'un duel perdu l'a décidé ou qu'un
+        # second tour de qualification l'a classé.
+        origine=resultat.origine,
         en_lice=position.en_lice,
     )
 
@@ -420,7 +443,13 @@ def _paquets(
             if tete.bloc > 0 and tete.rang_min is not None and tete.rang_max is not None
             else None
         )
-        decerne = acquis is not None and acquis[0] == acquis[1]
+        # ⚠️ **`decerne` exige un duel, pas seulement un rang exact** (E05US025). Le rang d'une
+        # qualification est fermé par construction (`rang_min == rang_max`) : sans la condition
+        # d'origine, le vainqueur d'une seconde qualification recevait l'or, et un déroulé fait de
+        # trois qualifications remettait un podium complet sans qu'une flèche ait été tirée en duel.
+        decerne = (
+            acquis is not None and acquis[0] == acquis[1] and tete.origine is OriginePalmares.DUELS
+        )
         if any(entree.en_lice for entree in groupe):
             # Rien à départager : ces archers ont un match devant eux. Les deux finalistes
             # partagent « 1ᵉʳ-2ᵉ » jusqu'à ce que la finale tranche — leur appliquer la politique

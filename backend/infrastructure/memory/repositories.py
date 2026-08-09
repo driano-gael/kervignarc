@@ -535,18 +535,19 @@ class InMemorySerieRepository(_AllocateurId):
         super().__init__()
         self._items: dict[int, Serie] = {}
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         for serie in self._items.values():
-            if serie.tournoi_id == tournoi_id and serie.archer_id == archer_id:
+            if serie.phase_id == phase_id and serie.archer_id == archer_id:
                 return serie
         return None
+
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        return [s for s in self._items.values() if s.phase_id == phase_id]
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._items.values() if s.tournoi_id == tournoi_id]
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         return {}
 
     def enregistrer(self, serie: Serie) -> Serie:

@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.sql.elements import ColumnElement
 
 from domain.archer import ArcherId
 from domain.barrage import (
@@ -92,6 +93,7 @@ def _vers_serie(ligne: SerieORM, volees: Sequence[VoleeORM]) -> Serie:
     return Serie(
         tournoi_id=ligne.tournoi_id,
         archer_id=ligne.archer_id,
+        phase_id=ligne.phase_id,
         volees=tuple(_vers_volee(v) for v in volees),
         id=ligne.id,
     )
@@ -258,13 +260,17 @@ class SerieRepositorySQL:
         self._audit = audit_repository
         self._horloge = horloge
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
-        """Relit la série de qualification de l'archer (volées triées par numéro), ou `None`."""
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
+        """Relit la feuille de l'archer **dans cette phase** (volées triées par numéro), ou `None`.
+
+        La clé est `(phase_id, archer_id)` depuis E05US025 : un archer peut tenir plusieurs feuilles
+        dans un même tournoi, une par qualification tirée (ADR-0082).
+        """
         try:
             with self._session_factory() as session:
                 ligne = session.execute(
                     select(SerieORM).where(
-                        SerieORM.tournoi_id == tournoi_id,
+                        SerieORM.phase_id == phase_id,
                         SerieORM.archer_id == archer_id,
                     )
                 ).scalar_one_or_none()
@@ -274,20 +280,33 @@ class SerieRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture de la série.") from exc
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
-        """Relit toutes les séries d'un tournoi (volées triées par numéro), pour le classement.
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """Relit les feuilles d'une **phase** (volées triées par numéro), pour son classement.
 
-        Deux requêtes (les séries, puis **toutes** leurs volées d'un bloc regroupées par série) —
-        pas de N+1 par archer. L'ordre des séries n'est pas garanti (le classement trie) ; les
-        volées de chacune le sont, par numéro (même contrat que `par_archer`).
+        C'est la lecture dont le classement a besoin depuis E05US025 : le cumul et le départage
+        d'une qualification ne regardent que les flèches tirées **dans celle-ci**. `par_tournoi`
+        mélangerait les deux tours de l'exemple d'ADR-0082.
+        """
+        return self._series_de(SerieORM.phase_id == phase_id, "de la phase")
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        """Relit toutes les séries d'un tournoi, **toutes phases confondues**.
+
+        ⚠️ Vue d'ensemble : un archer y figure une fois **par phase tirée**. Indexer le résultat par
+        `archer_id` n'en garderait qu'une, au hasard de l'ordre — c'est `par_phase` qu'il faut.
+        """
+        return self._series_de(SerieORM.tournoi_id == tournoi_id, "du tournoi")
+
+    def _series_de(self, critere: ColumnElement[bool], quoi: str) -> list[Serie]:
+        """Les séries répondant au critère, avec leurs volées — **deux requêtes**, pas de N+1.
+
+        Les séries d'abord, puis **toutes** leurs volées d'un bloc regroupées par série. L'ordre des
+        séries n'est pas garanti (le classement trie) ; les volées de chacune le sont, par numéro
+        (même contrat que `par_archer`). `quoi` ne sert qu'au message d'erreur.
         """
         try:
             with self._session_factory() as session:
-                series = (
-                    session.execute(select(SerieORM).where(SerieORM.tournoi_id == tournoi_id))
-                    .scalars()
-                    .all()
-                )
+                series = session.execute(select(SerieORM).where(critere)).scalars().all()
                 if not series:
                     return []
                 volees_par_serie: dict[SerieId, list[VoleeORM]] = {}
@@ -304,11 +323,9 @@ class SerieRepositorySQL:
                     volees_par_serie.setdefault(volee.serie_id, []).append(volee)
                 return [_vers_serie(s, volees_par_serie.get(s.id, [])) for s in series]
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de lecture des séries du tournoi.") from exc
+            raise InfrastructureError(f"Échec de lecture des séries {quoi}.") from exc
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         """Le « quand » (`created_at`, UTC-aware) de chaque volée de l'archer, par **numéro** — `{}`
         s'il n'a pas de série.
 
@@ -321,7 +338,7 @@ class SerieRepositorySQL:
             with self._session_factory() as session:
                 ligne = session.execute(
                     select(SerieORM).where(
-                        SerieORM.tournoi_id == tournoi_id,
+                        SerieORM.phase_id == phase_id,
                         SerieORM.archer_id == archer_id,
                     )
                 ).scalar_one_or_none()
@@ -366,7 +383,7 @@ class SerieRepositorySQL:
             raise InfrastructureError("Échec de persistance de la série et de sa trace.") from exc
 
     def _poser_serie(self, session: Session, serie: Serie) -> SerieORM:
-        """Upsert le parent `serie` (clé métier `tournoi_id, archer_id`) et réécrit ses volées.
+        """Upsert le parent `serie` (clé métier `phase_id, archer_id`) et réécrit ses volées.
 
         Ne commit pas — l'appelant tient la transaction (une seule, éventuellement partagée avec
         l'audit). Renvoie la ligne parente (id attribué). Les volées sont **purgées puis
@@ -396,24 +413,33 @@ class SerieRepositorySQL:
         return ligne
 
     def _ligne_serie(self, session: Session, serie: Serie) -> SerieORM:
-        """Retrouve la ligne parente **par sa clé métier** `(tournoi_id, archer_id)`, ou la crée.
+        """Retrouve la ligne parente **par sa clé métier** `(phase_id, archer_id)`, ou la crée.
 
-        L'identité d'une série **est** son couple `(tournoi, archer)` — « une série par archer »
-        (port `SerieRepository`, garanti par `uq_serie_tournoi_archer`). On ne cherche donc **pas**
-        par `serie.id` : ce lookup PK n'était qu'une micro-optimisation, ouvrant une surface de
-        corruption silencieuse (un `id` incohérent avec la clé métier — venu d'un futur appelant —
+        L'identité d'une feuille **est** son couple `(phase, archer)` — « une série par phase et par
+        archer » (port `SerieRepository`, garanti par `uq_serie_phase_archer`). On ne cherche donc
+        **pas** par `serie.id` : ce lookup PK n'était qu'une micro-optimisation, ouvrant une surface
+        de corruption silencieuse (un `id` incohérent avec la clé métier — venu d'un futur appelant
+        —
         aurait fait réécrire les volées sur la **mauvaise** série). La clé métier est la requête
         d'identité canonique (celle de `par_archer`). `flush` attribue l'id d'une série nouvelle
         avant qu'on lui rattache ses volées.
+
+        ⚠️ **La clé est descendue du tournoi à la phase** (E05US025, ADR-0082). Sous l'ancienne clé,
+        un archer engagé dans deux qualifications aurait vu sa seconde saisie **réécrire les volées
+        de la première** — c'est exactement l'upsert de cette méthode qui l'aurait fait, en silence.
         """
         ligne = session.execute(
             select(SerieORM).where(
-                SerieORM.tournoi_id == serie.tournoi_id,
+                SerieORM.phase_id == serie.phase_id,
                 SerieORM.archer_id == serie.archer_id,
             )
         ).scalar_one_or_none()
         if ligne is None:
-            ligne = SerieORM(tournoi_id=serie.tournoi_id, archer_id=serie.archer_id)
+            ligne = SerieORM(
+                tournoi_id=serie.tournoi_id,
+                archer_id=serie.archer_id,
+                phase_id=serie.phase_id,
+            )
             session.add(ligne)
             session.flush()
         return ligne

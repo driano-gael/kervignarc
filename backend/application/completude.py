@@ -25,15 +25,17 @@ Les **phases éliminatoires** et l'état *prêt / en attente* du classement sont
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
-from application.erreurs import TournoiIntrouvable
+from application.erreurs import ApplicationError, TournoiIntrouvable
 from application.paiements import LignePaiementArcher
-from application.portee import qualification_du_tournoi
+from application.prelevement import LecteurPopulationPhase
 from domain.archer import ArcherId
 from domain.completude import Completude, evaluer_completude
 from domain.cycle_depart import AvancementDepart
 from domain.depart import DepartId
+from domain.phase import Phase, TypePhase
 from domain.ports import (
     DepartRepository,
     ForfaitRepository,
@@ -60,6 +62,21 @@ class LecteurPaiements(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class _JugementPhase:
+    """Ce qu'il faut savoir d'**une** qualification pour juger si ses archers en ont fini.
+
+    Trois choses, et elles vont ensemble : *qui* elle concerne (`population`), *jusqu'où* (son
+    `nb_volees`), et *où en est chacun* (`series`, `forfaits`). Les séparer est ce qui a produit le
+    bloquant de revue — un barème pris sur une phase et des archers pris sur une autre.
+    """
+
+    population: set[ArcherId]
+    nb_volees: int
+    forfaits: set[ArcherId]
+    series: dict[ArcherId, Serie]
+
+
 class ServiceCompletude:
     """Cas d'usage de la complétude : agréger les décomptes d'un tournoi et en juger l'état."""
 
@@ -73,6 +90,7 @@ class ServiceCompletude:
         phase_repository: PhaseRepository,
         forfait_repository: ForfaitRepository,
         paiements: LecteurPaiements,
+        populations: LecteurPopulationPhase,
     ) -> None:
         self._tournois = tournoi_repository
         self._departs = depart_repository
@@ -82,6 +100,10 @@ class ServiceCompletude:
         self._phases = phase_repository
         self._forfaits = forfait_repository
         self._paiements = paiements
+        # ⚠️ `populations` depuis le correctif de revue d'E05US025 : la complétude juge **chaque**
+        # qualification sur **son** effectif (c'est le CA), et cet effectif est celui que ses
+        # sources lui ont donné. Port étroit, même parti que `LecteurPaiements` ci-dessus.
+        self._populations = populations
 
     def pour_tournoi(self, tournoi_id: TournoiId) -> Completude:
         """Complétude d'un tournoi. Lève `TournoiIntrouvable` si le tournoi n'existe pas.
@@ -111,31 +133,22 @@ class ServiceCompletude:
         (`# DETTE-022` — le 3ᵉ cas est arrivé avec `ServiceSaisie` en E04US018 ; l'extraction
         est inscrite au registre, elle se fera en US dédiée).
         """
-        phase = qualification_du_tournoi(self._phases, tournoi_id)
-        nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
-        forfaits_qualif: set[ArcherId] = (
-            {f.archer_id for f in self._forfaits.par_phase(phase.id)}
-            if phase is not None and phase.id is not None
-            else set()
-        )
-        series: dict[ArcherId, Serie] = {
-            s.archer_id: s for s in self._series.par_tournoi(tournoi_id)
-        }
-        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
-        nb_places = 0
-        nb_ayant_tire = 0
-        nb_series_closes = 0
-        for affectation in self._placements.par_depart(depart_id):
-            inscription = inscriptions.get(affectation.inscription_id)
-            if inscription is None:
-                continue  # défensif : affectation sans inscription correspondante
-            archer_id = inscription.archer_id
-            nb_places += 1
-            serie = series.get(archer_id)
-            if serie is not None and serie.nb_fleches_validees > 0:
-                nb_ayant_tire += 1
-            if self._serie_close(serie, nb_volees, archer_id in forfaits_qualif):
-                nb_series_closes += 1
+        # E05US025 : **toutes** les qualifications du créneau, chacune sur sa population. Un premier
+        # jet ne retenait que `qualification_courante` tout en comptant **tous** les archers placés
+        # (bloquant de revue) : sur la fourche du CA, les 60 archers de la *basse* n'ayant aucune
+        # feuille dans la *haute*, aucune série n'était jamais close et le créneau ne pouvait plus
+        # se clore — le cycle de vie d'E12US008 restait bloqué pour toujours.
+        archers = self._archers_places(depart_id)
+        jugements = self._jugements_du_creneau(tournoi_id, depart_id, archers)
+        if not jugements:
+            # Aucune qualification scorable : rien n'est *validable*, donc rien n'est clos. Sans ce
+            # retour, `_est_clos` rendrait `all([]) is True` et le créneau s'annoncerait
+            # intégralement clos alors que personne n'a pu tirer — le contraire de ce que la
+            # docstring promet (correctif de revue).
+            return AvancementDepart(nb_places=len(archers), nb_ayant_tire=0, nb_series_closes=0)
+        nb_places = len(archers)
+        nb_ayant_tire = sum(1 for archer_id in archers if self._a_tire(archer_id, jugements))
+        nb_series_closes = sum(1 for archer_id in archers if self._est_clos(archer_id, jugements))
         return AvancementDepart(
             nb_places=nb_places,
             nb_ayant_tire=nb_ayant_tire,
@@ -153,46 +166,145 @@ class ServiceCompletude:
         remonte en **« en attente »** — pas un « 0/N à finir » trompeur qui laisserait croire la
         saisie en cours. On n'échoue pas là-dessus (robustesse jour J).
         """
-        phase = qualification_du_tournoi(self._phases, tournoi_id)
-        # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais présent sur une qualification ;
-        # absent (données incohérentes) → même issue « rien de scorable » que barème non configuré.
-        nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
-        if nb_volees <= 0 or phase is None:
-            return 0, 0
-        series: dict[ArcherId, Serie] = {
-            s.archer_id: s for s in self._series.par_tournoi(tournoi_id)
-        }
-        # DETTE-014 résorbée (E04US015, ADR-0050) : un archer déclaré **forfait en qualification**
-        # a sa série **close par forfait** — sa cible ne reste plus « à finir » à jamais malgré ses
-        # volées partielles préservées. On lit les forfaits de la phase de qualif (dès qu'elle
-        # est persistée : sans id, aucun forfait n'a pu s'y rattacher).
-        forfaits_qualif: set[ArcherId] = (
-            {f.archer_id for f in self._forfaits.par_phase(phase.id)}
-            if phase.id is not None
-            else set()
-        )
         total = 0
         terminees = 0
         for depart in self._departs.par_tournoi(tournoi_id):
             if depart.id is None:
                 continue  # défensif : un départ lu en base a toujours un id
-            inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart.id)}
-            archers_par_cible: dict[int, list[ArcherId]] = {}
-            for affectation in self._placements.par_depart(depart.id):
-                inscription = inscriptions.get(affectation.inscription_id)
-                if inscription is None:
-                    continue  # défensif : affectation sans inscription correspondante
-                archers_par_cible.setdefault(affectation.cible_index, []).append(
-                    inscription.archer_id
-                )
+            # E05US025 : **par créneau**, et non une phase pour tout le tournoi. Chaque créneau a sa
+            # séquence (ADR-0075) et peut y enchaîner plusieurs qualifications (ADR-0082). Un
+            # créneau non scorable (aucune qualification, ou aucune avec barème) n'apporte
+            # **aucune** cible au compte plutôt que d'en apporter des fausses — même parti
+            # que le `(0, 0)` d'avant l'US, ramené au créneau.
+            archers_par_cible = self._archers_par_cible(depart.id)
+            jugements = self._jugements_du_creneau(
+                tournoi_id, depart.id, {a for ids in archers_par_cible.values() for a in ids}
+            )
+            if not jugements:
+                continue
             for archer_ids in archers_par_cible.values():
                 total += 1
-                if all(
-                    self._serie_close(series.get(aid), nb_volees, aid in forfaits_qualif)
-                    for aid in archer_ids
-                ):
+                if all(self._est_clos(aid, jugements) for aid in archer_ids):
                     terminees += 1
         return terminees, total
+
+    def _archers_places(self, depart_id: DepartId) -> list[ArcherId]:
+        """Les archers **placés** sur ce créneau (un par affectation), dans l'ordre du plan."""
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        places: list[ArcherId] = []
+        for affectation in self._placements.par_depart(depart_id):
+            inscription = inscriptions.get(affectation.inscription_id)
+            if inscription is None:
+                continue  # défensif : affectation sans inscription correspondante
+            places.append(inscription.archer_id)
+        return places
+
+    def _archers_par_cible(self, depart_id: DepartId) -> dict[int, list[ArcherId]]:
+        """Les archers placés du créneau, groupés par index de cible."""
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(depart_id)}
+        par_cible: dict[int, list[ArcherId]] = {}
+        for affectation in self._placements.par_depart(depart_id):
+            inscription = inscriptions.get(affectation.inscription_id)
+            if inscription is None:
+                continue  # défensif : affectation sans inscription correspondante
+            par_cible.setdefault(affectation.cible_index, []).append(inscription.archer_id)
+        return par_cible
+
+    def _jugements_du_creneau(
+        self, tournoi_id: TournoiId, depart_id: DepartId, archers: set[ArcherId] | list[ArcherId]
+    ) -> list[_JugementPhase]:
+        """Un jugement par qualification **scorable** du créneau : sa population et ses feuilles.
+
+        ⚠️ **C'est le CA « la complétude juge chaque qualification sur son propre effectif »**
+        (E05US025). Sur l'exemple de référence — 120 archers en 3x20, puis une *haute* et une
+        *basse* à 3x15 sur le **même** plan de cibles —, les trois phases sont exigées, chacune sur
+        ses 120, 60 et 60 archers. Ne regarder que la phase courante laissait passer une feuille
+        jamais close au premier tour, alors que c'est ce tour-là qui décide qui va où.
+
+        La **population** d'une qualification prélevée est ce que ses sources lui ont donné, lue par
+        le même résolveur que la saisie et le plan de cibles (`LecteurPopulationPhase`) : un archer
+        de la *basse* ne doit pas peser sur la *haute*, sans quoi aucune cible mixte ne serait
+        jamais terminée. La qualification de **tête** (sans source) garde tous les archers placés —
+        c'est le comportement d'avant l'US, à ne pas casser.
+
+        Une phase **sans barème** est écartée : rien n'y est encore *scorable*, on ne va pas la
+        déclarer inachevée pour toujours (robustesse jour J, même parti que le `(0, 0)` d'origine).
+        """
+        jugements: list[_JugementPhase] = []
+        tous = set(archers)
+        for phase in self._phases.par_depart(depart_id):
+            if phase.type is not TypePhase.QUALIFICATION or phase.id is None:
+                continue
+            nb_volees = phase.bareme.nb_volees if phase.bareme is not None else 0
+            if nb_volees <= 0:
+                continue
+            jugements.append(
+                _JugementPhase(
+                    population=self._population(tournoi_id, depart_id, phase, tous),
+                    nb_volees=nb_volees,
+                    # DETTE-014 résorbée (E04US015, ADR-0050) : un archer déclaré **forfait en
+                    # qualification** a sa série **close par forfait** — sa cible ne reste plus
+                    # « à finir » à jamais malgré ses volées partielles préservées.
+                    forfaits={f.archer_id for f in self._forfaits.par_phase(phase.id)},
+                    series=self._feuilles(phase),
+                )
+            )
+        return jugements
+
+    def _population(
+        self, tournoi_id: TournoiId, depart_id: DepartId, phase: Phase, places: set[ArcherId]
+    ) -> set[ArcherId]:
+        """Les archers **placés** que cette qualification concerne.
+
+        Best-effort assumé, comme partout sur ce chemin de lecture : un classement amont illisible
+        (`PrelevementEnAttente`, déroulé incohérent) fait retomber la phase sur **tous** les archers
+        placés — la complétude signale alors « à finir » plutôt que de mentir « terminé ».
+        """
+        if not phase.sources:
+            return places  # la qualification de tête dispute le créneau entier
+        try:
+            source = self._populations.resolveur_de_classement(tournoi_id, depart_id)(phase.ordre)
+        except ApplicationError:
+            return places
+        if source is None:
+            return places
+        return {ligne.archer_id for ligne in source.classement.lignes} & places
+
+    @staticmethod
+    def _a_tire(archer_id: ArcherId, jugements: list[_JugementPhase]) -> bool:
+        """L'archer a validé au moins une flèche dans **l'une** des qualifications du créneau."""
+        return any(
+            (serie := j.series.get(archer_id)) is not None and serie.nb_fleches_validees > 0
+            for j in jugements
+            if archer_id in j.population
+        )
+
+    def _est_clos(self, archer_id: ArcherId, jugements: list[_JugementPhase]) -> bool:
+        """La saisie de cet archer est close dans **toutes** les qualifications qui le concernent.
+
+        Un archer qu'aucune phase ne réclame (prélèvement qui l'a écarté) est clos d'office : il n'a
+        plus rien à tirer dans ce créneau, il ne doit donc pas retenir sa cible.
+        """
+        return all(
+            self._serie_close(j.series.get(archer_id), j.nb_volees, archer_id in j.forfaits)
+            for j in jugements
+            if archer_id in j.population
+        )
+
+    def _feuilles(self, phase: Phase | None) -> dict[ArcherId, Serie]:
+        """Les feuilles de marque **de cette phase**, indexées par archer.
+
+        ⚠️ **`par_phase`, jamais `par_tournoi`** (E05US025, ADR-0082). L'indexation par `archer_id`
+        est ici légitime — dans une phase donnée, un archer n'a qu'une feuille — mais elle ne
+        l'était
+        plus sur `par_tournoi`, qui rend désormais une ligne **par phase tirée** : le `dict` n'en
+        aurait gardé qu'une, au hasard de l'ordre du repository, si bien que la complétude aurait
+        jugé le premier tour sur les volées du second (ou l'inverse) d'un rafraîchissement à
+        l'autre.
+        """
+        if phase is None or phase.id is None:
+            return {}
+        return {serie.archer_id: serie for serie in self._series.par_phase(phase.id)}
 
     @staticmethod
     def _serie_close(serie: Serie | None, nb_volees: int, est_forfait: bool) -> bool:

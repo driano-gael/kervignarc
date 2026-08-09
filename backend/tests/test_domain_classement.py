@@ -33,6 +33,14 @@ from domain.participant import Participant
 from domain.politiques import TiebreakAvecBarrage, TiebreakFftaDefaut
 from domain.serie import Serie, Volee
 
+_PHASE = 4
+"""La phase où se tire la feuille (E05US025, ADR-0082).
+
+**Inerte pour ces tests** : `Serie` ne s'en sert que d'identité, aucune règle de saisie ni de
+cumul ne la lit. La valeur est donc arbitraire — mais nommée, pour qu'on ne la lise pas comme
+un identifiant significatif, et **différente de 1** afin qu'un futur test qui la confondrait
+avec le tournoi échoue au lieu de passer par coïncidence."""
+
 
 def _archer(
     id_: int,
@@ -63,7 +71,7 @@ def _volee_validee(numero: int, valeurs: Sequence[ZoneScore]) -> Volee:
 
 
 def _serie(archer_id: int, volees: Sequence[Volee]) -> Serie:
-    return Serie(tournoi_id=1, archer_id=archer_id, volees=tuple(volees))
+    return Serie(tournoi_id=1, phase_id=_PHASE, archer_id=archer_id, volees=tuple(volees))
 
 
 DIX, NEUF, HUIT, SEPT, SIX, CINQ = (

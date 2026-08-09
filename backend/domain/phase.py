@@ -57,7 +57,6 @@ from domain.erreurs import (
     PhaseQualificationIncomplete,
     PhaseSansClassementPrelevee,
     PlageSourceVide,
-    PlusieursQualifications,
     ProfondeurInvalide,
     RangSourceInvalide,
     RangsSourceInexistants,
@@ -693,7 +692,6 @@ def anomalies_sequence(etapes: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
     `domain.deroule`.
     """
     yield from _anomalies_ordres(etapes)
-    yield from _anomalies_unicite_qualification(etapes)
     yield from _anomalies_sources(etapes)
 
 
@@ -805,29 +803,16 @@ def _anomalies_ordres(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
         )
 
 
-def _anomalies_unicite_qualification(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
-    """Une séquence ne porte **qu'une** phase de qualification (E05US021).
-
-    L'invariant était supposé partout et vérifié nulle part : neuf sites lisent « **la** »
-    qualification (`par_tournoi_et_type`), dont le peuplement des tableaux — et deux d'entre eux la
-    résolvaient différemment (plus petit `ordre` d'un côté, plus grand `id` de l'autre). Un déroulé
-    à deux qualifications faisait donc calculer le minimum d'inscrits sur une phase et prélever dans
-    l'autre : le tournoi démarrait puis cassait en salle.
-
-    Le contrôle est ici, avec les autres invariants **collectifs**, plutôt qu'en garde locale de
-    chaque lecteur : c'est une propriété de la séquence, et la poser une fois ferme les neuf sites
-    d'un coup. Non localisée (`ordre=None`) — c'est la séquence entière qui est ambiguë, aucune des
-    deux phases n'est fautive en particulier.
-    """
-    ordres = [phase.ordre for phase in phases if phase.type is TypePhase.QUALIFICATION]
-    if len(ordres) > 1:
-        yield Anomalie(
-            PlusieursQualifications(
-                "Une séquence ne peut porter qu'une phase de qualification : les phases "
-                f"{sorted(ordres)} en déclarent {len(ordres)}. Une qualification en plusieurs "
-                "manches se règle par son barème, pas par plusieurs phases."
-            )
-        )
+# E05US025 — `_anomalies_unicite_qualification` a été **retiré** ici.
+#
+# E05US021 l'avait posé pour fermer un bug (neuf lecteurs de « la » qualification, dont deux la
+# résolvaient différemment) et sa docstring reconnaissait un invariant « supposé partout et vérifié
+# nulle part ». Ce n'était donc pas une règle du tir à l'arc : on avait interdit le cas au lieu de
+# réparer les lecteurs. E05US025 répare les lecteurs — chacun sait désormais **de quelle** phase il
+# parle — et rend le cas licite, comme le commanditaire le demandait (ADR-0082).
+#
+# ⚠️ Ne pas le réintroduire « par prudence » : c'est le pansement, pas la règle. Un lecteur qui
+# aurait besoin de l'unicité pour être juste est un lecteur à corriger.
 
 
 def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:

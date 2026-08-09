@@ -37,6 +37,15 @@ ZONES_TRIPLE = (
 )
 
 
+_PHASE = 4
+"""La phase où se tire la feuille (E05US025, ADR-0082).
+
+**Inerte pour ces tests** : `Serie` ne s'en sert que d'identité, aucune règle de saisie ni de
+cumul ne la lit. La valeur est donc arbitraire — mais nommée, pour qu'on ne la lise pas comme
+un identifiant significatif, et **différente de 1** afin qu'un futur test qui la confondrait
+avec le tournoi échoue au lieu de passer par coïncidence."""
+
+
 def _v(*valeurs: str) -> tuple[ZoneScore, ...]:
     """Raccourci : construit un tuple de `ZoneScore` à partir de libellés (« 10 », « M »)."""
     return tuple(ZoneScore(v) for v in valeurs)
@@ -51,7 +60,7 @@ def _serie_pleine(
     gardant un **seul** barème cohérent entre saisie et validation (une phase n'a qu'un barème).
     """
     bareme = nb_volees_bareme if nb_volees_bareme is not None else nb_volees
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     for numero in range(1, nb_volees + 1):
         serie = serie.saisir_volee(
             numero,
@@ -68,7 +77,7 @@ def _serie_pleine(
 
 def test_saisir_une_volee_enregistre_valeurs_et_marqueur() -> None:
     """ex-005/017 : une volée porte ses valeurs et le nom du marqueur qui l'a saisie."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7).saisir_volee(
         1,
         _v("10", "9", "8"),
         zones_admises=ZONES_SIMPLE,
@@ -85,7 +94,7 @@ def test_saisir_une_volee_enregistre_valeurs_et_marqueur() -> None:
 
 def test_points_d_une_volee_somme_les_zones_le_manque_vaut_zero() -> None:
     """ex-008 : le total d'une volée somme les zones ; `M` (manqué) vaut 0."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7).saisir_volee(
         1,
         _v("10", "M", "7"),
         zones_admises=ZONES_SIMPLE,
@@ -97,7 +106,7 @@ def test_points_d_une_volee_somme_les_zones_le_manque_vaut_zero() -> None:
 
 def test_pave_deduit_du_blason_refuse_une_valeur_hors_zones() -> None:
     """ex-003/004 : sur un triple 40 les zones 5 → 1 n'existent pas ; un « 5 » est refusé."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     with pytest.raises(ValeurHorsBlason):
         serie.saisir_volee(
             1,
@@ -110,7 +119,7 @@ def test_pave_deduit_du_blason_refuse_une_valeur_hors_zones() -> None:
 
 def test_valeurs_legales_refuse_un_mauvais_nombre_de_fleches() -> None:
     """ex-004 : le nombre de flèches d'une volée doit être conforme au barème."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     with pytest.raises(NombreFlechesVoleeInvalide):
         serie.saisir_volee(
             1,
@@ -124,7 +133,7 @@ def test_valeurs_legales_refuse_un_mauvais_nombre_de_fleches() -> None:
 @pytest.mark.parametrize("numero", [0, -1])
 def test_numero_de_volee_doit_etre_positif(numero: int) -> None:
     """Un numéro de volée est un rang `>= 1`."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     with pytest.raises(NumeroVoleeInvalide):
         serie.saisir_volee(
             numero,
@@ -140,7 +149,7 @@ def test_numero_de_volee_doit_etre_positif(numero: int) -> None:
 
 def test_editer_une_volee_non_validee_remplace_ses_valeurs() -> None:
     """ex-006 : une volée est modifiable tant qu'elle n'est pas validée."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7).saisir_volee(
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7).saisir_volee(
         1,
         _v("10", "9", "8"),
         zones_admises=ZONES_SIMPLE,
@@ -191,7 +200,7 @@ def test_valider_fin_de_serie_avant_la_derniere_volee_est_refuse() -> None:
 def test_valider_fin_de_serie_avec_un_trou_au_milieu_est_refuse() -> None:
     """Complétude sur l'ensemble `{1..N}`, pas un décompte : une série **trouée** (volées 1 et 3,
     barème 3) est refusée en fin de série — comme une série courte, alors que `len` vaudrait 2."""
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     for numero in (1, 3):  # volée 2 absente : trou au milieu, pas en queue
         serie = serie.saisir_volee(
             numero,
@@ -303,7 +312,7 @@ def test_saisir_une_volee_au_dela_du_bareme_est_refuse() -> None:
     Symétrique de la garde sur le nombre de flèches (ex-004) : sans borne haute, saisir la volée 3
     d'un barème à 2 volées entrerait dans le cumul à la validation.
     """
-    serie = Serie.vide(tournoi_id=1, archer_id=7)
+    serie = Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7)
     with pytest.raises(NumeroVoleeInvalide):
         serie.saisir_volee(
             3,
@@ -362,7 +371,7 @@ def test_serie_partielle_n_est_pas_complete() -> None:
 
 def test_serie_vide_n_est_pas_complete() -> None:
     """Aucune volée : rien n'est complet."""
-    assert Serie.vide(tournoi_id=1, archer_id=7).est_complete(3) is False
+    assert Serie.vide(tournoi_id=1, phase_id=_PHASE, archer_id=7).est_complete(3) is False
 
 
 def test_serie_jamais_complete_si_bareme_non_configure() -> None:
