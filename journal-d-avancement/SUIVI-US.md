@@ -12,7 +12,13 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 08/08/2026, 12 h 37** · **106 US livrées** · dernière : `E05US024`
+**Dernière mise à jour : 09/08/2026, 13 h 12** · **107 US livrées** · dernière : `E05US025`
+*(**plusieurs qualifications dans un même déroulé** : un tournoi peut enchaîner 3×20 puis une
+*haute* et une *basse* à 3×15, chacune avec son barème et ses feuilles de marque, pour un
+classement final de 1 à N. L'invariant d'unicité d'E05US021 est retiré — il interdisait le cas
+au lieu de réparer les lecteurs. Résorbe `DETTE-046`. ADR-0082.)*
+
+Précédente : `E05US024`
 *(**le club est libre de son format** : un prélèvement est lu dans le classement de **sa** phase
 source, plus seulement dans la qualification — tableau→consolante, tableau→tableau, sur autant de
 crans que le format en compte, et l'écran public **dit** « en attente » tant que la source n'a pas
@@ -91,8 +97,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 >
 > | Rang | US | Pourquoi à ce rang |
 > |---|---|---|
-> | **🎯 1** | `E05US025` | **Plusieurs qualifications dans un même déroulé.** Seconde moitié du chantier ouvert le 08/08 par `E05US024`, dont elle **dépend par nécessité** : sans le peuplement générique, une 2ᵉ qualification recevrait *tous* les inscrits. Hors file E16, et assumé. |
-> | **2** | `E05US023` | **Rendre jouables poules, suisse, colline, Big Shoot Off.** **Priorité donnée par le commanditaire (« au plus tôt »), arbitrée le 08/08/2026 au rang 2** : `E05US024`+`E05US025` forment **un seul chantier** à dépendance dure — couper au milieu laisserait le peuplement générique à moitié exploité. « Au plus tôt » = **dès ce chantier clos**, donc **devant `E16US002`**. ⚠️ **À découper** (4 moteurs × 2 surfaces ne tiennent pas dans une branche) : 1ʳᵉ tranche = contrat « phase jouable » générique + **un** format (elle paie le coût du pattern), puis **une tranche par format**, chacune portant son moteur **et** son exposition à l'atelier. Résorbe le reste de `DETTE-028` ; oblige à **corriger le CA d'`E06US003`**, qui prévoit explicitement sa reprise ; débloque `E01US011` (J4). |
+> | ~~1~~ ✅ | ~~`E05US025`~~ | **Livrée le 09/08/2026** — plusieurs qualifications dans un même déroulé. Le chantier ouvert le 08/08 par `E05US024` est **clos**. |
+> | **🎯 1** | `E05US023` | **Rendre jouables poules, suisse, colline, Big Shoot Off.** **Priorité donnée par le commanditaire (« au plus tôt »), arbitrée le 08/08/2026 au rang 2** : `E05US024`+`E05US025` forment **un seul chantier** à dépendance dure — couper au milieu laisserait le peuplement générique à moitié exploité. « Au plus tôt » = **dès ce chantier clos**, donc **devant `E16US002`**. ⚠️ **À découper** (4 moteurs × 2 surfaces ne tiennent pas dans une branche) : 1ʳᵉ tranche = contrat « phase jouable » générique + **un** format (elle paie le coût du pattern), puis **une tranche par format**, chacune portant son moteur **et** son exposition à l'atelier. Résorbe le reste de `DETTE-028` ; oblige à **corriger le CA d'`E06US003`**, qui prévoit explicitement sa reprise ; débloque `E01US011` (J4). |
 > | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
 > | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
 > | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
@@ -136,7 +142,22 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > déroulé ». Une partie du refus A07 (« 1/8 et 1/4 présentés comme des phases ») porte sur un écran
 > qui n'existe plus sous cette forme.
 
-> **🎯 Prochaine : `E05US025`** — **plusieurs qualifications dans un même déroulé**, la seconde
+> ~~**🎯 Prochaine : `E05US025`**~~ — ✅ **livrée le 09/08/2026**. Ce qui suit décrivait l'US avant
+> sa prise ; conservé parce que le cadrage l'a **démenti sur un point**, et que la fausse piste vaut
+> d'être gardée : la « fourche » (haute et basse puisant dans la même phase amont) a d'abord été
+> jugée **non représentable**, sur une lecture erronée de l'invariant d'ordres. L'`ordre` d'une phase
+> est **topologique** — il dit qui peut alimenter qui, pas qui passe avant qui sur le pas de tir —
+> et rien n'impose une seule phase en cours à la fois. Aucun chantier de graphe n'était nécessaire.
+> Cf. [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md) §1.
+>
+> **🎯 Prochaine : `E05US023`** — **rendre jouables poules, système suisse, colline et Big Shoot
+> Off**, et les rendre composables à l'atelier. Son rang était déjà arbitré le 08/08/2026 (priorité
+> « au plus tôt » du commanditaire, derrière le chantier `E05US024`+`E05US025` qui vient de se
+> clore). ⚠️ **À découper avant de la prendre** — voir le détail plus bas.
+>
+> <details><summary>Ce que disait cette section avant la livraison d'E05US025</summary>
+>
+> **plusieurs qualifications dans un même déroulé**, la seconde
 > moitié du chantier ouvert le 08/08/2026 par `E05US024`. **Hors file E16**, et assumé : le cadrage
 > d'`E16US002` a montré que le refus A07 n'était pas d'abord un problème d'écran (voir ci-dessous).
 > Elle **dépend d'E05US024** par nécessité, pas par confort — sans le peuplement générique livré
@@ -146,6 +167,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > par un — terrain `DETTE-048`, « le seul module à n'être ni testé ni surveillé ». **ADR attendu**,
 > et **trois points à trancher au cadrage**, listés dans la story (classement publié quand il y a
 > deux qualifications ; ce que voit un archer engagé dans les deux ; ce qu'exige la complétude).
+>
+> </details>
 >
 > **Ensuite : `E05US023`** — **rendre jouables poules, système suisse, colline et Big Shoot Off**,
 > et les rendre **composables à l'atelier**. **Rang arbitré le 08/08/2026** sur la priorité
@@ -829,7 +852,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76bis | E05US020 | **Le moteur consomme les prélèvements déclarés** | ✅ *(cœur de DETTE-028 : prélèvement par rangs honoré, plage relative résolue, tranche de rangs au palmarès — DETTE-034 soldée, ADR-0068)* |
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
 | 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé pour les phases classantes lues** — qualification et élimination directe ; une source visant des poules / suisse / colline / Big Shoot Off reste ignorée jusqu'à E05US023 : tableau→consolante, tableau→tableau, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. **Une fenêtre qui coupe un bloc encore indécis est refusée et annoncée** (ADR-0081) : un tableau de 8 non commencé rendait « les rangs 5 à 8 » comme étant les 4 derniers **qualifiés** — bien formé, plausible, faux, et moins détectable qu'avant l'US ; l'écran public affiche désormais « en attente du tableau *n* ». Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md), [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))* |
-| 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ⬜ 🎯 *(**dépend d'E05US024**, nécessairement : sans peuplement générique, une 2ᵉ qualification recevrait *tous* les inscrits. L'unicité (`_anomalies_unicite_qualification`, E05US021) n'est **pas une règle métier** — sa docstring la dit « supposée partout et vérifiée nulle part », posée pour fermer un bug plutôt que pour exprimer une règle du tir à l'arc. Reste à faire : les **lecteurs**, pas le peuplement — `ServiceBaremeQualification` est bâti sur « **le** barème du tournoi », et les 12 appels de `portee.qualification_du_tournoi` (terrain `DETTE-048`) sont à trier un par un. **ADR attendu** ; 3 points à trancher au cadrage, listés dans la story)* |
+| 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ✅ *(le format demandé le 08/08 se compose, se joue et se classe : **chaque tour a son barème** (écran « Barème & validation » listant une section par qualification), **chaque archer une feuille par tour** (`serie.phase_id`, migration `0044`), et le **classement final va de 1 à N** — la haute occupe 1..60, la basse 61..120, le premier de la basse restant derrière le dernier de la haute même s'il a mieux tiré. `_anomalies_unicite_qualification` retirée : ce n'était pas une règle de tir à l'arc mais un pansement sur neuf lecteurs incohérents, et l'US répare les lecteurs. `ResultatPhase.origine` empêche une qualification de décerner une médaille — sans elle, trois qualifications d'affilée remettaient un podium complet avant le moindre duel. **Résorbe `DETTE-046`** sans US dédiée (la phase subsume le départ). Deux défauts trouvés en route : le cache mypy annonçait « Success » sur des appels qui plantaient à l'exécution, et l'atelier **refusait de composer** une seconde qualification faute de réglages de départ. Ouvre `DETTE-052` (la saisie admin devine le créneau). ADR-0082, qui **amende ADR-0069**)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |

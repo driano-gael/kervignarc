@@ -199,6 +199,10 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0004`, `0011`, `0017`, `0026`, `0028`, `0045`, `0046`, `0049`, `0060`, `0061`, `0062`, `0066`,
 `0067`, `0068`, `0069`, `0070`.
 
+**Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
+`0082`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit
+ici et non dans `CLAUDE.md`.
+
 > *`0049`, `0066` et `0067` ont été ajoutés en revue le 08/08/2026 : le premier jet appliquait le
 > critère « politiques » tout en excluant deux ADR **de politique** (`0066` porte le seuil de
 > barrage dans `tiebreak`, `0067` ajoute la 7ᵉ famille `aggregation`) et l'ADR de **scoring** des

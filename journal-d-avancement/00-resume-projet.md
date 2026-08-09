@@ -512,8 +512,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **106 US livrées** sur `main` (mergées, revues, CI verte) à la date du 08/08/2026, la dernière
-  étant `E05US024`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **107 US livrées** sur `main` (mergées, revues, CI verte) à la date du 09/08/2026, la dernière
+  étant `E05US025`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -631,12 +631,30 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
   relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
   ⚠️ Les phases en **poules**, système suisse, colline et Big Shoot Off restent hors du dispositif :
-  elles n'ont pas encore de moteur (E05US023). ⚠️ Une limite reste **volontairement** en place, pour la suite
-  immédiate : on ne peut toujours pas mettre **deux qualifications** dans un même tournoi — c'est
-  l'objet d'`E05US025`, qui ne pouvait pas passer avant celle-ci (sans cette lecture, une seconde
-  qualification aurait reçu tous les inscrits). Décision d'architecture :
+  elles n'ont pas encore de moteur (E05US023). ✅ La limite « une seule qualification par tournoi »,
+  qui restait volontairement en place à cette date, **a été levée le lendemain par `E05US025`** (voir
+  ci-dessous). Décision d'architecture :
   [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).
-- Dernière US livrée : **E05US024** (un prélèvement lit le classement de sa phase source) — US de
+- **Plusieurs tours de qualification dans un même tournoi (09/08/2026, E05US025).** Le format
+  demandé par le club : 120 archers tirent 3×20, puis la moitié haute et la moitié basse rejouent
+  3×15 chacune. L'application le refusait — non par règle de tir à l'arc, mais parce qu'un garde-fou
+  posé quelques semaines plus tôt interdisait le cas au lieu de réparer les neuf endroits du code qui
+  lisaient « **la** » qualification, dont deux ne désignaient pas la même. Désormais : **chaque tour
+  a son barème** (l'écran « Barème & validation » liste une section par qualification), **chaque
+  archer une feuille par tour** (une flèche du second tour ne peut plus atterrir dans le premier), et
+  le **classement final va de 1 à 120** — la haute occupe les places 1 à 60, la basse 61 à 120. À
+  connaître, et voulu : le premier de la basse reste **derrière** le dernier de la haute même s'il a
+  mieux tiré, la place étant décidée par le tour qui a réparti les archers. Aucune médaille n'est
+  décernée par une qualification : le podium se joue en finale. Corrigé au passage, un défaut connu
+  depuis le 6 août — un archer inscrit sur **deux créneaux** n'avait qu'un emplacement pour ses
+  flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
+  les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
+  [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- Dernière US livrée : **E05US025** (plusieurs qualifications dans un même déroulé) — US **à surface
+  visible**, avec son
+  [fait marquant daté](2026-08-09-13h12-plusieurs-qualifications-dans-un-tournoi.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US025.md).
+- Avant elle, **E05US024** (un prélèvement lit le classement de sa phase source) — US de
   **moteur**, sans écran neuf : elle change ce que la salle joue, pas ce que l'organisateur voit.
 - Avant elle, **E16US004** (le public suit plusieurs archers de bout en bout) — US **à surface
   visible**, avec son [fait marquant daté](2026-08-08-00h44-le-public-suit-plusieurs-archers.md).

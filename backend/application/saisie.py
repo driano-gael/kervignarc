@@ -417,7 +417,7 @@ class ServiceSaisie:
            plusieurs. Ce dernier point reste un **raccourci** : un archer engagé matin et après-midi
            verra l'admin écrire dans son créneau du matin. C'est `DETTE-046` vue de l'autre bout —
            la donnée sait désormais les distinguer (la clé est `(phase, archer)`), mais cette
-           **route** ne porte pas encore le créneau. Marqué `# DETTE-049`.
+           **route** ne porte pas encore le créneau. Marqué `# DETTE-052`.
 
         2. **La phase, parmi les qualifications de ce créneau**, par ordre : celle qui est
            **démarrée et non terminée** d'abord (c'est « la phase en cours », au sens de
@@ -463,7 +463,7 @@ class ServiceSaisie:
             tournoi_id, archer_id, phase.id
         )
 
-    # DETTE-049 : la saisie admin devine le créneau de l'archer au lieu de le recevoir.
+    # DETTE-052 : la saisie admin devine le créneau de l'archer au lieu de le recevoir.
     def _depart_de_saisie(
         self,
         tournoi_id: TournoiId,
@@ -482,7 +482,7 @@ class ServiceSaisie:
         d'un départage sans enjeu — les deux ordres ne diffèrent que si les créneaux ont été
         renumérotés après coup. Ce qui compte ici est d'être **déterministe** : deux saisies
         successives du même archer doivent atterrir dans la même feuille. Le vrai remède n'est pas
-        un meilleur tri, c'est que la route porte le créneau (`# DETTE-049`).
+        un meilleur tri, c'est que la route porte le créneau (`# DETTE-052`).
         """
         if contexte is not None:
             return contexte.depart_id

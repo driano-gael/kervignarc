@@ -557,6 +557,14 @@ format ; le logiciel doit connaître la fourchette basse et avertir l'admin avan
   calculer le minimum sur une phase et prélever dans l'autre. Une anomalie **bloquante**
   (`PlusieursQualifications`) le rend désormais impossible. Une qualification en plusieurs manches
   se règle par son **barème**. *(Arbitrage de la contre-revue du 04/08/2026.)*
+
+  ⚠️ **REVERSÉ le 09/08/2026 par E05US025** ([ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md)).
+  Le **diagnostic** ci-dessus reste exact ; c'est le **remède** qui était mauvais — on a interdit le
+  cas au lieu de réparer les neuf lecteurs, et le commanditaire a ensuite demandé le cas.
+  `PlusieursQualifications` n'existe plus, et chaque lecteur sait désormais **de quelle** phase il
+  parle. La phrase « une qualification en plusieurs manches se règle par son barème » reste vraie
+  *pour ce cas-là* : elle ne décrit simplement pas le format demandé, où les deux tours produisent
+  des classements **distincts** et non un cumul.
 - **Notes — pas de nouvelle anomalie de composition** : le diagnostic signale **déjà**
   `PrelevementVide` quand un prélèvement ne prend personne à l'effectif simulé. Le minimum est donc
   exposé comme une **donnée** de la projection, pas comme une anomalie de plus — un second
