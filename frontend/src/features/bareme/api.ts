@@ -3,6 +3,7 @@
 // le barème est porté côté serveur par la phase de qualification (transparent pour le client).
 
 import { fetchJson } from '../../shared/api/client'
+import type { TypeGrain } from '../grain-validation/api'
 
 export interface Bareme {
   nb_volees: number
@@ -44,7 +45,9 @@ export interface Qualification {
   // métier n'a qu'un domicile, et le front n'a pas à réinventer une numérotation.
   libelle: string
   bareme: Bareme | null
-  grain: string | null
+  // Typé plutôt que `string` : l'écran de grain lit ces deux champs, et un `as TypeGrain` à
+  // l'usage serait un cast non justifié là où le serveur rend déjà une valeur close.
+  grain: TypeGrain | null
   grain_n_volees: number | null
 }
 

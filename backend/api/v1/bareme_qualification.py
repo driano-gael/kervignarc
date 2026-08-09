@@ -99,8 +99,14 @@ class QualificationReponse(BaseModel):
     l'organisateur choisit **laquelle** il règle. `libelle` est dérivé de l'ordre côté serveur —
     le front n'a pas à réinventer une numérotation, et le vocabulaire reste au même endroit.
 
-    `bareme` et `validation` sont facultatifs : une qualification composée à l'atelier peut n'être
-    pas encore réglée, et c'est précisément ce que l'écran doit rendre visible.
+    `bareme` et `grain` sont **facultatifs par prudence, pas par usage** : aucun chemin de
+    composition ne laisse aujourd'hui une qualification sans réglage — `ServicePhases.ajouter` pose
+    le preset FFTA 18 m et le grain du type, `ServiceBaremeQualification.definir` crée toujours avec
+    barème, et l'application d'un format passe par `ModelePhase.qualification(bareme)`. Un premier
+    jet de cette docstring justifiait l'optionalité par un état que le même commit rendait
+    inatteignable (relevé de revue) ; elle est conservée parce qu'une base reprise d'une version
+    antérieure peut porter cet état, et que l'écran sait déjà le rendre — pas parce que le geste
+    d'aujourd'hui le produit.
     """
 
     etape_id: int

@@ -25,18 +25,24 @@ import datetime
 from dataclasses import dataclass
 
 from application.erreurs import (
+    ApplicationError,
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
-from application.portee import qualification_courante, qualification_du_tournoi
+from application.portee import (
+    la_plus_courante,
+    qualification_courante,
+    qualification_du_tournoi,
+)
+from application.prelevement import LecteurPopulationPhase
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
-from domain.phase import Phase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -142,7 +148,16 @@ class ServiceSaisie:
         inscriptions: InscriptionRepository,
         forfaits: ForfaitRepository,
         horloge: Horloge,
+        populations: LecteurPopulationPhase,
     ) -> None:
+        # ⚠️ `populations` depuis le correctif de revue d'E05US025 : la saisie doit savoir **quelle
+        # qualification admet cet archer** quand le créneau en porte plusieurs (fourche
+        # *haute*/*basse*), et cette population se lit par `resolveur_de_classement`. C'est le
+        # **même** résolveur que le plan de cibles (`ServicePlacementDuels`) et le palmarès — 4ᵉ
+        # consommateur du même idiome, pas un pattern neuf : c'est la raison d'être
+        # d'`application/prelevement.py` (« ces deux-là ne peuvent pas diverger »), élargie à un
+        # troisième qui ne le peut pas davantage. Le port est **étroit** (`LecteurPopulationPhase`)
+        # pour que ce module n'importe pas le service de duels entier.
         self._series = series
         self._phases = phases
         self._archers = archers
@@ -152,6 +167,7 @@ class ServiceSaisie:
         self._inscriptions = inscriptions
         self._forfaits = forfaits
         self._horloge = horloge
+        self._populations = populations
 
     def archers_du_poste(
         self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
@@ -211,7 +227,15 @@ class ServiceSaisie:
         for ligne in self.archers_du_poste(tournoi_id, cible_index, depart_id):
             if ligne.archer.id is None:
                 continue  # défensif : un archer non persisté n'a pas de série
-            etat = self.etat_serie(tournoi_id, ligne.archer.id)
+            # La feuille se lit dans la phase **de cet archer** : sur la fourche du CA, une même
+            # cible mêle des tireurs de la *haute* et de la *basse*, et lire tout le monde dans la
+            # phase courante du créneau rendrait la moitié d'entre eux « à 0 volée » — la cible
+            # n'aurait jamais fini. Le `nb_volees` affiché reste, lui, celui de la phase courante :
+            # la console rend **une** ligne par cible, elle ne peut afficher qu'un dénominateur.
+            etat = self._etat_dans(
+                self._qualification_de_l_archer(tournoi_id, depart_id, ligne.archer.id),
+                ligne.archer.id,
+            )
             if etat is None:
                 completes.append(0)
                 continue
@@ -234,22 +258,47 @@ class ServiceSaisie:
         Chemin de lecture de la grille : la série (valeurs, marqueurs, verrou, cumul) **et** le
         `created_at` de chaque volée (ex-017), joints par numéro. Ne cloisonne pas à la cible : une
         lecture, l'appelant (API) a déjà établi le droit d'accès du poste.
-        """
-        serie = self._series.par_archer(tournoi_id, archer_id)
-        if serie is None:
-            return None
-        return EtatSerie(serie=serie, horodatages=self._series.horodatages(tournoi_id, archer_id))
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
-        """Le « quand » (`created_at`) de chaque volée de l'archer, par numéro (`{}` sans série).
+        ⚠️ **La lecture résout la phase comme l'écriture** (correctif de revue E05US025). Elle
+        passait `tournoi_id` au port, dont le premier paramètre est un `phase_id` depuis cette US :
+        `TournoiId` et `PhaseId` étant deux alias de `int` (`DETTE-044`), mypy n'a rien vu et la
+        grille repartait **vierge sur des flèches réellement en base** dès que les deux entiers
+        cessaient de coïncider — c'est-à-dire dès le second tournoi de la base. La résolution est
+        celle du chemin d'écriture, à la nuance près qu'elle ne **lève** pas : une lecture sans
+        qualification configurée rend `None`, comme une série jamais ouverte.
+        """
+        return self._etat_dans(
+            self._phase_qualification_ou_none(tournoi_id, archer_id, None), archer_id
+        )
+
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
+        """Le « quand » de chaque volée de l'archer **dans cette phase** (`{}` sinon).
 
         Chemin de lecture **léger** pour bâtir la réponse d'un acte d'écriture depuis la `Serie`
         qu'il renvoie déjà, sans re-lire la série entière (`etat_serie`) : l'API dédoublonne
         l'**écriture** seule, puis lit ce « quand » **hors** de l'unité idempotente (ADR-0036).
+
+        ⚠️ **Le paramètre est la `phase_id`, pas le tournoi** (correctif de revue E05US025). Les
+        trois appelants d'API tiennent déjà la `Serie` que l'écriture vient de rendre : ils passent
+        son `phase_id`, ce qui est **exact par construction** — aucune résolution à refaire, donc
+        aucune chance qu'elle diverge de celle qui a écrit.
         """
-        return self._series.horodatages(tournoi_id, archer_id)
+        return self._series.horodatages(phase_id, archer_id)
+
+    def _etat_dans(self, phase: Phase | None, archer_id: ArcherId) -> EtatSerie | None:
+        """L'état de la feuille de cet archer **dans cette phase**, ou `None` (phase ou feuille
+        absente).
+
+        Pendant, en lecture, de `_feuille` : un seul endroit joint la série et ses horodatages sur
+        le couple `(phase, archer)`, pour qu'aucun chemin de lecture ne retombe sur la maille
+        tournoi — le défaut que cette US a introduit puis corrigé.
+        """
+        if phase is None or phase.id is None:
+            return None
+        serie = self._series.par_archer(phase.id, archer_id)
+        if serie is None:
+            return None
+        return EtatSerie(serie=serie, horodatages=self._series.horodatages(phase.id, archer_id))
 
     def saisir_volee(
         self,
@@ -433,9 +482,30 @@ class ServiceSaisie:
         Sur un déroulé à **une seule** qualification — tous les tournois d'aujourd'hui — les deux
         résolutions rendent cette unique phase : le comportement est inchangé, oracle 120 compris.
         """
+        phase = self._phase_qualification_ou_none(tournoi_id, archer_id, contexte)
+        if phase is None:
+            raise PhaseQualificationAbsente(
+                "La qualification n'est pas encore configurée pour ce tournoi."
+            )
+        return phase
+
+    def _phase_qualification_ou_none(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        contexte: ContexteSaisie | None,
+    ) -> Phase | None:
+        """Comme `_phase_qualification`, mais rend `None` au lieu de lever (chemins de **lecture**).
+
+        Les lectures (grille de saisie, déroulé public, supervision) ne doivent pas échouer parce
+        qu'un tournoi n'a pas encore de qualification : elles rendent « rien de saisi ». L'écriture,
+        elle, lève — on ne laisse pas une flèche sans destination.
+        """
         depart_id = self._depart_de_saisie(tournoi_id, archer_id, contexte)
         courante = (
-            qualification_courante(self._phases, depart_id) if depart_id is not None else None
+            self._qualification_de_l_archer(tournoi_id, depart_id, archer_id)
+            if depart_id is not None
+            else None
         )
         if courante is not None:
             return courante
@@ -443,12 +513,74 @@ class ServiceSaisie:
         # l'US plutôt que de refuser la saisie. Sur un tournoi mono-qualification c'est la même
         # phase ; sur un tournoi qui en porte plusieurs, un archer sans inscription est de toute
         # façon une donnée incohérente, pas un cas nominal.
-        phase = qualification_du_tournoi(self._phases, tournoi_id)
-        if phase is None:
-            raise PhaseQualificationAbsente(
-                "La qualification n'est pas encore configurée pour ce tournoi."
-            )
-        return phase
+        return qualification_du_tournoi(self._phases, tournoi_id)
+
+    def _qualification_de_l_archer(
+        self, tournoi_id: TournoiId, depart_id: DepartId, archer_id: ArcherId
+    ) -> Phase | None:
+        """La qualification de ce créneau **qui admet cet archer**, ou `None` s'il n'y en a aucune.
+
+        ⚠️ **C'est ici que se tient le CA « une flèche ne peut pas atterrir dans la mauvaise
+        feuille »** — et un premier jet ne le tenait pas (bloquant de revue).
+        `qualification_courante` rend la **première démarrée** du créneau : sur la fourche du CA
+        (*haute* et *basse* composées ensemble, démarrées ensemble, cf. l'arbitrage du 09/08/2026
+        « rien n'impose une seule phase en cours à la fois »), elle rendait la *haute* pour **tout
+        le monde**. Les 60 archers de la *basse* auraient écrit leurs 3x15 dans la feuille de la
+        haute, et la basse serait restée vide — le défaut même que l'US existe pour fermer, déplacé
+        du tournoi vers le créneau.
+
+        La discrimination se fait sur la **population** : une qualification prélevée ne reçoit que
+        les archers que ses sources lui ont donnés. On la lit par le résolveur de classement de
+        `ServiceSaisieDuels` — **le même** que le plan de cibles et le palmarès (raison d'être
+        d'`application/prelevement.py`) : deux résolutions distinctes remettraient un archer à un
+        poste dont l'arbre le croit ailleurs.
+
+        **Court-circuit voulu sur un créneau mono-qualification** : la lecture de classement n'est
+        même pas tentée. C'est le cas de tous les tournois d'aujourd'hui — non-régression par
+        construction (oracle 120 compris), et surtout aucun coût ajouté au chemin chaud de la
+        saisie, qui reconstruirait sinon le classement du créneau à **chaque flèche** (`DETTE-031`,
+        pas de cache transverse aux requêtes).
+        """
+        qualifications = [
+            phase
+            for phase in self._phases.par_depart(depart_id)
+            if phase.type is TypePhase.QUALIFICATION
+        ]
+        if len(qualifications) <= 1:
+            return qualification_courante(self._phases, depart_id)
+        admises = [
+            phase
+            for phase in qualifications
+            if self._admet(tournoi_id, depart_id, phase, archer_id)
+        ]
+        if not admises:
+            # Aucune ne le réclame : classement amont illisible, ou archer hors de toutes les
+            # fenêtres. On ne refuse pas la saisie sur une lecture de classement (robustesse jour
+            # J) — on retombe sur « la phase en cours du créneau », le comportement d'avant.
+            return qualification_courante(self._phases, depart_id)
+        return la_plus_courante(admises)
+
+    def _admet(
+        self, tournoi_id: TournoiId, depart_id: DepartId, phase: Phase, archer_id: ArcherId
+    ) -> bool:
+        """Cette phase compte-t-elle cet archer dans sa population ?
+
+        Le résolveur rend, pour l'`ordre` d'une phase, le classement qu'elle **produit** — donc
+        restreint aux archers qu'elle a reçus (`ClassementSource`, cf.
+        `ServiceSaisieDuels._classement_de_l_ordre`). L'appartenance s'y lit directement, sans
+        redire les règles de prélèvement ici.
+
+        Best-effort assumé : toute erreur de lecture du moteur (`PrelevementEnAttente` sur une
+        source encore indécise, déroulé incohérent) rend `False` — l'appelant retombe alors sur la
+        phase en cours. La saisie du jour J ne s'arrête pas sur un classement illisible.
+        """
+        try:
+            source = self._populations.resolveur_de_classement(tournoi_id, depart_id)(phase.ordre)
+        except ApplicationError:
+            return False
+        if source is None:
+            return False
+        return any(ligne.archer_id == archer_id for ligne in source.classement.lignes)
 
     def _feuille(self, tournoi_id: TournoiId, archer_id: ArcherId, phase: Phase) -> Serie:
         """La feuille de cet archer **dans cette phase**, ou une feuille vierge prête à la recevoir.

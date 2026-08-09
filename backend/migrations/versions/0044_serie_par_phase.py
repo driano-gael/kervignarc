@@ -173,6 +173,18 @@ def upgrade() -> None:
             total,
             detail,
         )
+        # ⚠️ **Les volées partent à la main, avant leur série** (correctif de revue).
+        # `volee.serie_id` déclare bien `ON DELETE CASCADE`, mais SQLite ne l'applique que si
+        # `PRAGMA foreign_keys` est actif — ce qu'Alembic ne fait pas (`migrations/env.py` monte son
+        # propre moteur, sans le listener d'`infrastructure/db/engine.py`). La `0042` a rencontré le
+        # piège et le documente noir sur blanc ; s'en remettre à la cascade laisserait des `volee`
+        # orphelines, et `serie.id` étant un rowid **réutilisable**, une feuille créée plus tard
+        # hériterait de ces volées fantômes — une feuille de marque corrompue en silence.
+        connexion.execute(
+            sa.text(
+                "DELETE FROM volee WHERE serie_id IN (SELECT id FROM serie WHERE phase_id IS NULL)"
+            )
+        )
         connexion.execute(sa.text("DELETE FROM serie WHERE phase_id IS NULL"))
 
     with op.batch_alter_table("serie", schema=None) as batch:
@@ -221,11 +233,18 @@ def downgrade() -> None:
             "conservée.",
             len(surnumeraires),
         )
-        connexion.execute(
-            sa.text("DELETE FROM serie WHERE id IN :ids").bindparams(
-                sa.bindparam("ids", value=tuple(surnumeraires), expanding=True)
+        # Même précaution qu'à l'upgrade : les enfants d'abord, la cascade n'étant pas active sous
+        # Alembic. Ici la réutilisation de rowid est **plus** probable encore — la feuille écartée
+        # est celle de la qualification la plus tardive, donc typiquement la plus récemment insérée.
+        for requete in (
+            "DELETE FROM volee WHERE serie_id IN :ids",
+            "DELETE FROM serie WHERE id IN :ids",
+        ):
+            connexion.execute(
+                sa.text(requete).bindparams(
+                    sa.bindparam("ids", value=tuple(surnumeraires), expanding=True)
+                )
             )
-        )
 
     with op.batch_alter_table("serie", schema=None) as batch:
         batch.drop_constraint("uq_serie_phase_archer", type_="unique")

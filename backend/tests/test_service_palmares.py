@@ -29,18 +29,22 @@ import pytest
 from application.erreurs import TournoiIntrouvable
 from application.palmares import ServicePalmares
 from domain.archer import Archer
+from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.palmares import OriginePalmares, Palmares
+from domain.phase import Phase, SourcePhase, TypePhase
 from domain.politiques import (
     Aggregation,
     AggregationExAequo,
     AggregationParQualification,
     ProfondeurClassement,
 )
+from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -567,3 +571,64 @@ def test_un_bye_resolu_ne_fait_pas_basculer_le_palmares() -> None:
 
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4, 5, 6]
+
+
+# --- E05US025 : le rang vient de la phase, produit par la chaîne (correctif de revue) ------------
+
+
+def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
+    """CA E05US025 — « le dernier de la haute précède le premier de la basse ».
+
+    ⚠️ **Ce que ce test ajoute au test de domaine** : là-bas, `rang_premier` et `origine` sont
+    **écrits en dur** dans le décor ; ici ils sont **produits** par la chaîne réelle —
+    `ServiceSaisieDuels._source_de` résout `admis` par `preleves` et le décalage par `tranche`, et
+    `ServicePalmares._resultat_qualification` en fait une contribution. C'est précisément le code
+    que cette US a écrit, et il n'était couvert par rien (relevé de revue).
+
+    Décor discriminant : les deux archers de la *basse* tirent **mieux** leur second tour que les
+    deux de tête n'ont tiré le premier. Un palmarès obtenu en triant les séries par total — la
+    réalisation naïve que le CA existe pour interdire — les mettrait donc devant.
+    """
+    monde = _Monde()
+    tete = [
+        monde.inscrire_classe(("9", "9", "9")),
+        monde.inscrire_classe(("9", "9", "8")),
+    ]
+    basse_archers = [
+        monde.inscrire_classe(("8", "8", "8")),
+        monde.inscrire_classe(("8", "8", "7")),
+    ]
+    basse = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase(
+            depart_id=monde.depart_id,
+            ordre=2,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(1, 3),
+            validation=GrainValidation.fin_de_serie(),
+            sources=(SourcePhase.par_rangs(1, 3),),  # « les rangs 3 et suivants »
+        ),
+    )
+    assert basse.id is not None
+    # Les deux relégués tirent un second tour **meilleur** que le premier tour des deux de tête.
+    monde.series.semer(monde.tournoi_id, basse_archers[1], _v10(), basse.id)
+    monde.series.semer(monde.tournoi_id, basse_archers[0], _v10(("10", "10", "9")), basse.id)
+
+    palmares = _service(monde).pour_tournoi(monde.tournoi_id)
+
+    rangs = [(ligne.archer_id, ligne.rang_min) for ligne in palmares.lignes]
+    assert rangs == [
+        (tete[0], 1),
+        (tete[1], 2),
+        (basse_archers[1], 3),
+        (basse_archers[0], 4),
+    ], "La basse dispute les rangs 3-4, et son ordre est celui de son propre second tour."
+    origines = {ligne.archer_id: ligne.origine for ligne in palmares.lignes}
+    assert origines[basse_archers[0]] is OriginePalmares.QUALIFICATION
+    assert not palmares.podium(monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
+
+
+def _v10(valeurs: tuple[str, ...] = ("10", "10", "10")) -> tuple[ZoneScore, ...]:
+    return tuple(ZoneScore(v) for v in valeurs)

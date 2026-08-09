@@ -708,10 +708,19 @@ class PhaseRepository(Protocol):
         ...
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie la phase d'un **départ** pour un type donné, ou `None` s'il n'y en a pas.
+        """Renvoie **la dernière** phase d'un départ pour ce type, ou `None` s'il n'y en a pas.
 
-        Un départ porte **au plus une** phase de `qualification` (E01US009, portée corrigée par
-        ADR-0075).
+        ⚠️ **Cette méthode n'a plus aucun appelant de production** (E05US025) : elle ne survit que
+        dans des décors de tests, qui s'en servent pour retrouver l'unique phase qu'ils viennent de
+        poser. Sa docstring affirmait « un départ porte **au plus une** phase de `qualification` » —
+        exactement l'invariant qu'ADR-0082 retire, et dont le retour « par prudence » est ce que le
+        commentaire de `domain/phase.py` met en garde contre. La phrase est retirée plutôt que la
+        méthode, dont la suppression toucherait une vingtaine de décors sans rien prouver de plus.
+
+        En cas de multiplicité, les deux adapters rendent l'`ordre` **le plus élevé** — c'est un
+        choix arbitraire, pas une résolution de « la » qualification. Qui a besoin de désigner une
+        qualification parmi plusieurs passe par `application/portee.py:qualification_courante`
+        (celle où l'on tire) ou par la population de la phase, jamais par ici.
         """
         ...
 
@@ -1130,9 +1139,17 @@ class SerieRepository(Protocol):
     def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         """La feuille de cet archer **dans cette phase**, ou `None` si elle n'existe pas encore.
 
-        ⚠️ Le premier paramètre était `tournoi_id` jusqu'à E05US025. Le remplacer plutôt que
-        d'ajouter un paramètre est délibéré : un appelant resté à la maille tournoi doit **cesser de
-        compiler**, pas continuer en écrivant dans la mauvaise feuille.
+        ⚠️ **Le premier paramètre était `tournoi_id` jusqu'à E05US025, et rien ne le vérifie.** Le
+        remplacer plutôt que d'ajouter un paramètre visait à faire **cesser de compiler** les
+        appelants restés à la maille tournoi. Le pari a échoué, et la revue l'a mesuré : `TournoiId`
+        et `PhaseId` sont deux **alias** d'`int` (`DETTE-044`), donc mypy voit deux fois le même
+        type. Neuf sites ont été manqués en silence — dont le chemin de lecture de la grille de
+        saisie et l'impression des feuilles de marque.
+
+        La liste des appelants a été **relevée à la main** et les décors de tests ne font plus
+        coïncider `tournoi_id` et `phase_id` (c'est ce qui rendait la confusion invisible). La
+        vraie barrière reste à poser : `NewType("PhaseId", int)`, inscrit à `DETTE-044`. Tant
+        qu'elle n'existe pas, **ne pas se fier au compilateur ici** — vérifier l'appelant.
         """
         ...
 

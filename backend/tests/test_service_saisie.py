@@ -41,6 +41,7 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxLecteurPopulations,
     FauxPhaseRepository,
 )
 
@@ -99,7 +100,12 @@ class FauxSerieRepository:
         if serie.id is None:
             self._sequence += 1
             serie = dataclasses.replace(serie, id=self._sequence)
-        self._series[(serie.tournoi_id, serie.archer_id)] = serie
+        # E05US025 (correctif de revue) : la clé d'écriture **doit** être celle de la lecture.
+        # Ce faux écrivait par `(tournoi, archer)` et relisait par `(phase, archer)` : la moitié du
+        # doublage avait été portée, l'autre non, et le fichier ne restait vert que parce que le
+        # montage fait valoir 1 au tournoi comme à la phase. Une doublure qui répond autrement que
+        # la production ne prouve rien (`DETTE-049`).
+        self._series[(serie.phase_id, serie.archer_id)] = serie
         return serie
 
     def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
@@ -210,6 +216,10 @@ class Montage:
         self.inscriptions = FauxInscriptionRepository()
         self.forfaits = FauxForfaitRepository()
         self.horloge = HorlogeFigee(_QUAND)
+        # Inerte par défaut (aucune population déclarée) : le service retombe alors sur « la
+        # qualification en cours du créneau », le comportement mono-qualification. Le test de la
+        # fourche la renseigne.
+        self.populations = FauxLecteurPopulations()
         self.tournoi_id: TournoiId = 1
         blason_id: BlasonId | None = None
         if avec_blason:
@@ -227,14 +237,20 @@ class Montage:
         )
         assert archer.id is not None
         self.archer_id: ArcherId = archer.id
+        # `phase_id` est publié par le montage : les tests lisent la feuille **par sa phase**
+        # (clé du port depuis E05US025), et non par le tournoi — dont l'identifiant ne coïncide
+        # plus, précisément pour que la confusion échoue au lieu de passer (`DETTE-044`).
+        self.phase_id: PhaseId = 0
         if avec_phase:
-            self.phases.ajouter(
+            posee = self.phases.ajouter(
                 Phase.qualification(
                     depart_id=_DEPART,
                     bareme=BaremeQualification.creer(nb_volees, 3),
                     validation=GrainValidation.fin_de_serie(),
                 )
             )
+            assert posee.id is not None
+            self.phase_id = posee.id
         self.service = ServiceSaisie(
             self.series,
             self.phases,
@@ -245,6 +261,7 @@ class Montage:
             self.inscriptions,
             self.forfaits,
             self.horloge,
+            self.populations,
         )
 
     def saisir_serie_complete(self) -> None:
@@ -279,7 +296,7 @@ def test_saisir_volee_persiste_avec_le_marqueur() -> None:
     """ex-005/017 : la volée saisie est persistée, avec le nom du marqueur."""
     m = Montage()
     m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), saisie_par="DURAND")
-    serie = m.series.par_archer(m.tournoi_id, m.archer_id)
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     volee = serie.volee(1)
     assert volee is not None
@@ -299,7 +316,7 @@ def test_valider_trace_une_entree_au_nom_du_scoreur() -> None:
     m = Montage()
     m.saisir_serie_complete()
     m.service.valider(m.tournoi_id, m.archer_id, scoreur="MARTIN")
-    serie = m.series.par_archer(m.tournoi_id, m.archer_id)
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None
     assert all(v.verrouillee for v in serie.volees)
     assert len(m.series.traces) == 1
@@ -482,7 +499,7 @@ def test_saisir_pour_un_archer_de_sa_cible_est_autorise() -> None:
 
     m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"), contexte=contexte)
 
-    serie = m.series.par_archer(m.tournoi_id, m.archer_id)
+    serie = m.series.par_archer(m.phase_id, m.archer_id)
     assert serie is not None and serie.volee(1) is not None
 
 
@@ -522,7 +539,7 @@ def test_saisir_sans_contexte_reste_ouvert_a_l_admin() -> None:
 
     m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))  # contexte par défaut
 
-    assert m.series.par_archer(m.tournoi_id, m.archer_id) is not None
+    assert m.series.par_archer(m.phase_id, m.archer_id) is not None
 
 
 def test_valider_est_aussi_cloisonnee_au_poste() -> None:
@@ -614,8 +631,8 @@ def test_avancement_cible_derniere_saisie_est_le_dernier_tir_tous_archers_confon
     tot = datetime.datetime(2026, 7, 19, 10, 40, tzinfo=datetime.UTC)
     dernier = datetime.datetime(2026, 7, 19, 10, 45, tzinfo=datetime.UTC)
     entre_deux = datetime.datetime(2026, 7, 19, 10, 43, tzinfo=datetime.UTC)
-    m.series.horodatages_forces[(m.tournoi_id, m.archer_id)] = {1: tot, 2: dernier}
-    m.series.horodatages_forces[(m.tournoi_id, autre)] = {1: entre_deux}
+    m.series.horodatages_forces[(m.phase_id, m.archer_id)] = {1: tot, 2: dernier}
+    m.series.horodatages_forces[(m.phase_id, autre)] = {1: entre_deux}
 
     avancement = m.service.avancement_cible(m.tournoi_id, cible_index=1, depart_id=_DEPART)
 
@@ -643,3 +660,97 @@ def test_avancement_cible_sans_archer_place_est_a_zero() -> None:
         12,
         None,
     )
+
+
+# --- E05US025 : la fourche (correctifs de revue) ------------------------------------------------
+
+
+def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
+    """Ajoute au montage une *haute* et une *basse*, et un second archer. Rend leurs identifiants.
+
+    Reproduit l'exemple de référence du CA à l'échelle d'un test : une qualification de tête (celle
+    du montage), puis deux qualifications **prélevées** qui se jouent **ensemble** — l'arbitrage du
+    09/08/2026 dit explicitement que rien n'impose une seule phase en cours à la fois. C'est cette
+    simultanéité qui rend le cas piégeux : « la phase en cours du créneau » ne désigne alors plus
+    personne en particulier.
+    """
+    autre = m.archers.ajouter(
+        Archer(nom="MARTIN", prenom="Luc", tournoi_id=m.tournoi_id, categorie_id=m.categorie_id)
+    )
+    assert autre.id is not None
+    haute = m.phases.ajouter(
+        Phase(
+            depart_id=_DEPART,
+            ordre=2,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(2, 3),
+            validation=GrainValidation.fin_de_serie(),
+        ).demarrer()
+    )
+    basse = m.phases.ajouter(
+        Phase(
+            depart_id=_DEPART,
+            ordre=3,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(2, 3),
+            validation=GrainValidation.fin_de_serie(),
+        ).demarrer()
+    )
+    assert haute.id is not None and basse.id is not None
+    # Les deux archers sont **placés sur la même cible** : c'est le cas du CA (le plan de cibles
+    # reste commun aux trois tours), et c'est aussi ce qui donne un créneau à la saisie admin.
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(autre.id, _DEPART, cible_index=1, position="B")
+    m.populations.populations = {2: [m.archer_id], 3: [autre.id]}
+    return haute.id, basse.id, autre.id
+
+
+def test_la_fourche_ecrit_chaque_archer_dans_sa_propre_qualification() -> None:
+    """CA E05US025 — « une flèche saisie ne peut pas atterrir dans la mauvaise feuille ».
+
+    Bloquant de revue. Sur la fourche, `qualification_courante` rend la **première démarrée** du
+    créneau : les 60 archers de la *basse* auraient écrit leurs 3x15 dans la feuille de la *haute*,
+    et la basse serait restée vide — le défaut même que l'US existe pour fermer, déplacé du tournoi
+    vers le créneau. La discrimination se fait sur la **population** de chaque phase.
+    """
+    m = Montage()
+    haute, basse, autre = _monter_la_fourche(m)
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+
+    feuille_haute = m.series.par_archer(haute, m.archer_id)
+    feuille_basse = m.series.par_archer(basse, autre)
+    assert feuille_haute is not None, "L'archer de la haute écrit dans la haute."
+    assert feuille_basse is not None, "L'archer de la basse écrit dans la basse."
+    assert m.series.par_archer(haute, autre) is None, "…et pas dans la feuille de l'autre phase."
+    assert m.series.par_archer(basse, m.archer_id) is None
+
+
+def test_la_fourche_relit_chaque_archer_dans_sa_propre_qualification() -> None:
+    """Le chemin de **lecture** résout la phase comme celui d'écriture (bloquant de revue).
+
+    `etat_serie` passait `tournoi_id` au port, dont le premier paramètre est un `phase_id` depuis
+    cette US : la grille de saisie repartait **vierge sur des flèches réellement en base**. Deux
+    alias d'`int` (`DETTE-044`), donc rien à la compilation — seul un décor où les identifiants ne
+    coïncident pas le montre.
+    """
+    m = Montage()
+    _haute, _basse, autre = _monter_la_fourche(m)
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+
+    etat = m.service.etat_serie(m.tournoi_id, autre)
+
+    assert etat is not None, "La feuille écrite est relue, pas une grille vide."
+    assert len(etat.serie.volees) == 1
+
+
+def test_la_lecture_retrouve_la_feuille_sur_un_deroule_ordinaire() -> None:
+    """Non-régression du bloquant, hors fourche : `tournoi_id` (1) ≠ `phase_id` suffit à le voir."""
+    m = Montage()
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+
+    etat = m.service.etat_serie(m.tournoi_id, m.archer_id)
+
+    assert m.phase_id != m.tournoi_id, "Le décor doit distinguer les deux identifiants."
+    assert etat is not None and len(etat.serie.volees) == 1

@@ -85,6 +85,7 @@ qu'un bloquant se ferme sur son *raisonnement*, pas sur son cas :
   commanditaire a ensuite demandé le cas. `PlusieursQualifications` n'existe plus. Le reste de cet
   ADR est intact ; conservé tel quel pour que le raisonnement d'origine reste lisible.
 
+  > **Texte d'origine** — « Une séquence ne porte qu'une qualification »
   (`PlusieursQualifications`, bloquante). L'unicité
   était supposée par **neuf** lecteurs de « la » qualification et vérifiée nulle part — et deux la
   résolvaient différemment : plus petit `ordre` dans le domaine, plus grand `id` dans le repository.

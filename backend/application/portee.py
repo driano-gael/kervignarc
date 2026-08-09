@@ -26,19 +26,26 @@ l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétab
 # ⚠️ **E05US025 — ce qui reste de `qualification_du_tournoi`, et pourquoi.** Un déroulé peut porter
 # plusieurs qualifications (ADR-0082) : « la » qualification du tournoi n'existe donc plus en
 # général, et cette fonction rend désormais **la première**. Les appelants ont été triés un par un ;
-# les six qui subsistent le font pour deux raisons distinctes, à ne pas confondre :
+# les cinq qui subsistent le font pour deux raisons distinctes, à ne pas confondre :
 #
-# - **La famille `DETTE-047`** (`forfaits.declarer/annuler`, `classements._forfaits_qualif`,
-#   `saisie._forfaits_qualif`) : le forfait s'**écrit** sur la phase rendue ici et se **lit** par le
-#   même chemin. L'affichage est « cohérent par accident » ; ne corriger que la lecture rendrait les
-#   forfaits **invisibles** au lieu de les rendre justes. Les deux côtés se portent au départ
-#   ensemble, dans l'US de résorption — pas ici.
-# - **Le repli assumé** (`saisie._phase_qualification`, `pilotage_simulation`) : le premier ne s'en
-#   sert que lorsqu'aucun créneau n'est résoluble (donnée incohérente), le second simule un déroulé
-#   mono-qualification. Les deux sont justes tels quels.
+# - **La famille `DETTE-047`** (`forfaits.declarer` — un seul site —,
+#   `classements._forfaits_qualif`, `saisie._forfaits_qualif`) : le forfait s'**écrit** sur la
+#   phase rendue ici et se **lit** par le même chemin. L'affichage est « cohérent par accident » ;
+#   ne corriger que la lecture rendrait les forfaits **invisibles** au lieu de les rendre justes.
+#   Les deux côtés se portent au départ ensemble, dans l'US de résorption — pas ici.
+# - **Le repli assumé** (`saisie._phase_qualification_ou_none`, `pilotage_simulation`) : le premier
+#   ne s'en sert que lorsqu'aucun créneau n'est résoluble (donnée incohérente), le second simule un
+#   déroulé mono-qualification. Les deux sont justes tels quels.
 #
-# Ce qui **a** été porté au créneau : `saisie.avancement_cible` et les deux comptages de
-# `completude`, qui recevaient déjà un `depart_id` — la portée tournoi n'y était qu'un raccourci.
+# Ce qui **a** été porté au créneau : `saisie.avancement_cible`, les deux comptages de `completude`,
+# et `feuille_de_marque._bareme_du_creneau` — tous trois recevaient déjà un `depart_id`, la portée
+# tournoi n'y était qu'un raccourci.
+#
+# ⚠️ **Ce tri a été faux à sa première rédaction, et le compte tombait juste par compensation** :
+# il annonçait six sites en comptant `forfaits` deux fois et en oubliant `feuille_de_marque`, qui
+# imprimait donc une grille de 20 volées pour un tour qui s'en tire 15. Recompter par `grep` avant
+# d'ajouter ou de retirer une ligne ici — une énumération fausse est pire qu'absente, la prochaine
+# US s'y fiera.
 #
 # DETTE-048 : ce module concentre la portée tournoi résiduelle, et il est le seul à n'être **ni
 # testé ni surveillé**. Aucun test ne l'importe ; et le garde-fou `tests/test_portee_sportive.py` le
@@ -49,6 +56,8 @@ l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétab
 """
 
 from __future__ import annotations
+
+from collections.abc import Iterable
 
 from domain.depart import DepartId
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -110,10 +119,20 @@ def qualification_courante(phases: PhaseRepository, depart_id: DepartId) -> Phas
     ce qui est la 3ᵉ occurrence que la règle du projet exige avant de factoriser, et parce que
     `DETTE-022` recense précisément cette famille de duplications.
     """
-    qualifications = sorted(
-        (phase for phase in phases.par_depart(depart_id) if phase.type is TypePhase.QUALIFICATION),
-        key=lambda phase: phase.ordre,
+    return la_plus_courante(
+        phase for phase in phases.par_depart(depart_id) if phase.type is TypePhase.QUALIFICATION
     )
+
+
+def la_plus_courante(phases: Iterable[Phase]) -> Phase | None:
+    """Celle de ces phases où l'on tire **en ce moment** (priorité de statut), ou `None` si aucune.
+
+    Extraite de `qualification_courante` (correctif de revue E05US025) parce qu'un second appelant
+    l'a réclamée : `ServiceSaisie` doit appliquer la **même** priorité, mais après avoir filtré les
+    qualifications sur celle qui **admet** l'archer — sur la fourche *haute*/*basse*, « la première
+    démarrée du créneau » n'est pas la sienne. Recopier la priorité aurait laissé les deux dériver.
+    """
+    qualifications = sorted(phases, key=lambda phase: phase.ordre)
     if not qualifications:
         return None
     demarrees = [p for p in qualifications if p.statut in _STATUTS_EN_COURS]

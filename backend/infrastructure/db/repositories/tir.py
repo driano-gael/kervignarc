@@ -383,7 +383,7 @@ class SerieRepositorySQL:
             raise InfrastructureError("Échec de persistance de la série et de sa trace.") from exc
 
     def _poser_serie(self, session: Session, serie: Serie) -> SerieORM:
-        """Upsert le parent `serie` (clé métier `tournoi_id, archer_id`) et réécrit ses volées.
+        """Upsert le parent `serie` (clé métier `phase_id, archer_id`) et réécrit ses volées.
 
         Ne commit pas — l'appelant tient la transaction (une seule, éventuellement partagée avec
         l'audit). Renvoie la ligne parente (id attribué). Les volées sont **purgées puis

@@ -50,7 +50,8 @@ erDiagram
     PHASE ||--o{ PLACEMENT_TABLEAU : "place les duellistes (E03US009)"
     CIBLE ||--o{ PLACEMENT_TABLEAU : "accueille"
     PHASE ||--o{ CLASSEMENT : "produit"
-    TOURNOI ||--o{ SERIE : "saisie qualif"
+    TOURNOI ||--o{ SERIE : "cadre (E04US002)"
+    PHASE ||--o{ SERIE : "feuille de marque (E05US025)"
     ARCHER ||--o{ SERIE : "saisit"
     SERIE ||--o{ VOLEE : "regroupe"
     PHASE ||--o{ DUEL : "tir des duels (E04US013)"
@@ -420,18 +421,35 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > d'un match (table `DUEL` ci-dessous), keyé par `(phase_id, match_numero)` — pas de table `MATCH`.
 > L'entité `EQUIPE`/`MEMBRE_EQUIPE` et la composition relèvent d'E13US002.
 
-### SERIE (E04US002)
+### SERIE (E04US002, clé descendue à la phase en E05US025)
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
 | archer_id | INTEGER | FK → ARCHER, NOT NULL (DETTE-001) |
-| — | — | **UNIQUE(tournoi_id, archer_id)** — une série de qualification par archer |
+| phase_id | INTEGER | FK → PHASE, NOT NULL, **ON DELETE CASCADE** (E05US025) |
+| — | — | **UNIQUE(phase_id, archer_id)** — une feuille par archer **et par qualification** |
 
 > Racine de l'agrégat de **saisie de qualification** (`Serie`, tranche persistance PR2a — la couture
 > d'atomicité acte↔trace est [ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)) : la
 > grille d'un archer. Le **cumul n'est pas stocké** — il se recalcule des volées validées
 > (`Serie.cumul`) ; seul l'état saisi est persisté. Les volées vivent dans la table enfant `VOLEE`
-> (`serie_id`). Deux FK **sans `ON DELETE`** = **DETTE-001** (donnée saisie de la descendance du
-> tournoi ; la cascade `archer → serie` est **applicative**, `ArcherRepositorySQL.supprimer`).
+> (`serie_id`).
+>
+> ⚠️ **La clé métier est `(phase, archer)` depuis E05US025**
+> ([ADR-0082](adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md), migration `0044`), et non
+> plus `(tournoi, archer)` : un déroulé peut enchaîner plusieurs qualifications — 3×20, puis une
+> *haute* et une *basse* à 3×15 —, et l'archer y tient **une feuille par phase**. Ce changement
+> **résorbe DETTE-046** (un archer inscrit sur deux créneaux n'avait qu'un emplacement pour ses
+> flèches), la phase appartenant à un départ.
+>
+> `tournoi_id` est **conservé** sans être une clé : c'est le cadre que lisent les vues d'ensemble
+> (`SerieRepository.par_tournoi`), pas une seconde source de vérité — le tournoi se déduit par
+> `phase → depart → tournoi`. Un consommateur qui indexerait `par_tournoi` par `archer_id` n'en
+> garderait qu'une au hasard : c'est `par_phase` qu'il lui faut.
+>
+> `tournoi_id` et `archer_id` restent **sans `ON DELETE`** = **DETTE-001** (donnée saisie de la
+> descendance du tournoi ; la cascade `archer → serie` est **applicative**,
+> `ArcherRepositorySQL.supprimer`). `phase_id`, lui, **cascade** : une phase supprimée emporte ses
+> feuilles, comme le reste de sa descendance sportive.
 
 ### VOLEE (E04US002)
 | id | INTEGER | PK |

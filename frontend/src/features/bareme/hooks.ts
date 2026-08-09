@@ -26,13 +26,23 @@ export function useDefinirBareme(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (entree: DefinitionBareme) => definirBareme(tournoiId, entree),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleBareme(tournoiId) }),
+    // ⚠️ La liste des qualifications est invalidée elle aussi (correctif de revue E05US025) : ce
+    // PUT est **le seul chemin qui crée une qualification**. Sans cela, après le tout premier
+    // enregistrement d'un tournoi neuf, la liste restait vide en cache et l'écran continuait
+    // d'afficher le formulaire de création jusqu'à un rechargement complet.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cleBareme(tournoiId) })
+      void queryClient.invalidateQueries({ queryKey: cleQualifications(tournoiId) })
+    },
   })
 }
 
 // --- E05US025 : réglages par qualification (ADR-0082) -------------------------------------------
 
-const cleQualifications = (tournoiId: number) => ['qualifications', tournoiId] as const
+// Exportée : la feature « grain de validation » règle les mêmes qualifications et doit invalider
+// la même lecture. Deux clés distinctes pour une seule ressource laisseraient l'un des deux écrans
+// afficher un réglage périmé après l'enregistrement de l'autre.
+export const cleQualifications = (tournoiId: number) => ['qualifications', tournoiId] as const
 
 export function useQualifications(tournoiId: number) {
   return useQuery({

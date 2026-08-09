@@ -31,7 +31,7 @@ from application.erreurs import (
     TournoiSansDepart,
 )
 from domain.bareme import BaremeQualification
-from domain.deroule_etape import EtapeDeroule
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.phase import TypePhase, grain_par_defaut, verifier_sequence
 from domain.ports import (
     DepartRepository,
@@ -74,6 +74,7 @@ class ServiceBaremeQualification:
             e for e in self._deroules.par_tournoi(tournoi_id) if e.type is TypePhase.QUALIFICATION
         ]
 
+    # DETTE-053 : le nom promet un réglage de tournoi, le code rend celui de la première phase.
     def bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification | None:
         """Le barème de la **première** qualification, ou `None` si aucune n'est encore définie.
 
@@ -92,7 +93,11 @@ class ServiceBaremeQualification:
         return qualifications[0].bareme if qualifications else None
 
     def definir_pour_etape(
-        self, tournoi_id: TournoiId, etape_id: int, nb_volees: int, nb_fleches_par_volee: int
+        self,
+        tournoi_id: TournoiId,
+        etape_id: EtapeDerouleId,
+        nb_volees: int,
+        nb_fleches_par_volee: int,
     ) -> BaremeQualification:
         """Règle le barème d'une **étape désignée** (E05US025, ADR-0082).
 

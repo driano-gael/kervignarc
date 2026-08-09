@@ -789,6 +789,16 @@ du tir à l'arc. On a interdit le cas au lieu de réparer les lecteurs ; cette U
   défauts de portée en sont sortis. *(La fiche annonçait « 12 appels, 9 modules » ; le relevé du
   09/08/2026 en trouve 9 dans 7 modules. Chiffre corrigé plutôt que recopié.)*
   **ADR attendu.**
+- **Notes — arbitrage rendu en revue (09/08/2026) : qui écrit dans quelle qualification.** Le CA
+  « la saisie sait dans quelle qualification elle écrit » n'est **pas** satisfait par « la phase en
+  cours du créneau » : la *haute* et la *basse* se jouant **ensemble**, cette règle désigne la même
+  phase pour tout le monde et enverrait les 60 archers de la basse écrire dans la feuille de la
+  haute. La discrimination se fait sur la **population** — une qualification prélevée ne reçoit que
+  les archers que ses sources lui ont donnés, lus par le **même** résolveur de classement que le
+  plan de cibles et le palmarès (`application/prelevement.py`, port `LecteurPopulationPhase`). Même
+  règle pour la complétude, qui juge **chaque** qualification sur **sa** population. Sur un créneau
+  mono-qualification, la lecture de classement n'est pas même tentée : non-régression par
+  construction, et aucun coût ajouté au chemin chaud de la saisie.
 - **Notes — le vrai câblage à casser** : au-delà de la portée, c'est `application/saisie_duels.py`
   qui résout « phase de type qualification → le classement du départ », **quel que soit son ordre**.
   Tant qu'il tient, la *haute* et la *basse* liraient toutes deux le classement du premier tour.

@@ -47,6 +47,8 @@ import pytest
 from domain.archer import Archer, ArcherId
 from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
+from domain.classement import Classement, LigneClassement
+from domain.classement_de_tableau import ClassementSource
 from domain.club import Club, ClubId, cle_nom
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
@@ -487,7 +489,14 @@ class FauxPhaseRepository:
         deroules: FauxDerouleRepository | None = None,
     ) -> None:
         self._phases: dict[int, Phase] = {}
-        self._sequence = 0
+        # ⚠️ **La séquence ne démarre pas à 0** (correctif de revue E05US025). `TournoiId`,
+        # `DepartId` et `PhaseId` sont trois alias d'`int` (`DETTE-044`) : un décor où la première
+        # phase reçoit l'identifiant 1, comme le tournoi, rend **vert par coïncidence** tout
+        # service qui confondrait les deux — c'est exactement ce qui a laissé passer le bloquant
+        # d'E05US025 (la feuille de marque lue au tournoi là où le port attend la phase). Décaler
+        # la séquence fait échouer la confusion au lieu de la couvrir ; c'est la discipline que
+        # `test_domain_serie.py` s'imposait déjà localement (`_PHASE = 4`), généralisée.
+        self._sequence = 100
         self._departs = departs
         # ⚠️ **Câblé, cette doublure `assemble` comme les deux adapters de production** (ADR-0076) :
         # la définition rendue vient de l'étape de même rang, pas de ce qui dort dans le magasin.
@@ -791,3 +800,50 @@ def qualification_de_secours(session_factory: Any, tournoi_id: int) -> int:
     )
     assert phase.id is not None
     return phase.id
+
+
+class FauxLecteurPopulations:
+    """Doublure du port `LecteurPopulationPhase` (E05US025, correctif de revue).
+
+    Dit, pour l'`ordre` d'une phase, **quels archers elle a reçus** — la seule chose que la saisie
+    et la complétude lui demandent. `populations` vide ⇒ le résolveur rend `None` partout, et les
+    deux services retombent sur leur comportement mono-qualification : c'est le montage par défaut,
+    et il est **volontairement inerte** pour que les décors existants ne changent pas de sens.
+
+    Renseigner `populations[ordre]` monte la **fourche** du CA (une *haute* et une *basse* qui se
+    jouent ensemble) sans avoir à câbler tout le moteur de classement dans un test de service.
+    """
+
+    def __init__(self, populations: dict[int, list[int]] | None = None) -> None:
+        self.populations: dict[int, list[int]] = {} if populations is None else populations
+
+    def resolveur_de_classement(
+        self, tournoi_id: int, depart_id: int
+    ) -> Callable[[int], ClassementSource | None]:
+        def resoudre(ordre: int) -> ClassementSource | None:
+            archers = self.populations.get(ordre)
+            if archers is None:
+                return None
+            return ClassementSource(
+                classement=Classement(
+                    lignes=tuple(
+                        LigneClassement(
+                            rang_scratch=rang,
+                            rang_categorie=rang,
+                            archer_id=archer_id,
+                            nom="",
+                            prenom="",
+                            categorie_id=1,
+                            categorie_libelle="",
+                            cible=None,
+                            club_id=None,
+                            total=0,
+                            nb_dix=0,
+                            nb_neuf=0,
+                        )
+                        for rang, archer_id in enumerate(archers, start=1)
+                    )
+                )
+            )
+
+        return resoudre

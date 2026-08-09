@@ -26,7 +26,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
-from domain.deroule_etape import EtapeDeroule
+from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import TypePhase
 from domain.ports import DerouleRepository, TournoiRepository
@@ -43,9 +43,15 @@ class ServiceGrainValidation:
         # l'avancement, si bien que l'écriture *paraîtrait* réussir sans rien changer.
         self._deroules = deroules
 
+    # DETTE-053 : le nom promet un réglage de tournoi, le code rend celui de la première phase.
     def grain_du_tournoi(self, tournoi_id: TournoiId) -> GrainValidation | None:
-        """Renvoie le grain de validation de la qualification, ou `None` si la phase n'existe pas
-        encore (barème non défini).
+        """Le grain de la **première** qualification, ou `None` si la phase n'existe pas encore
+        (barème non défini).
+
+        ⚠️ **Le nom ment depuis E05US025**, comme celui de `bareme_du_tournoi` — et il le disait,
+        lui, alors que celui-ci ne le disait pas (relevé de revue). Un déroulé peut porter plusieurs
+        qualifications, chacune avec **son** grain : cette lecture rend celui de la première.
+        Conservée parce que la route historique la sert. `DETTE-053`.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas.
         """
@@ -79,7 +85,11 @@ class ServiceGrainValidation:
         return grain
 
     def definir_pour_etape(
-        self, tournoi_id: TournoiId, etape_id: int, type_grain: TypeGrain, n_volees: int | None
+        self,
+        tournoi_id: TournoiId,
+        etape_id: EtapeDerouleId,
+        type_grain: TypeGrain,
+        n_volees: int | None,
     ) -> GrainValidation:
         """Règle le grain d'une **étape désignée** (E05US025, ADR-0082).
 

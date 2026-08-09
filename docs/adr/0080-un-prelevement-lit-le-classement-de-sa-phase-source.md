@@ -138,7 +138,13 @@ déjà ce chemin. Corollaire au composition root : **la saisie se construit avan
 
 ## Ce que cet ADR ne tranche pas
 
-- **Plusieurs qualifications dans un déroulé** reste interdit (`_anomalies_unicite_qualification`).
+- ~~**Plusieurs qualifications dans un déroulé** reste interdit
+  (`_anomalies_unicite_qualification`).~~ **Levé par
+  [ADR-0082](0082-plusieurs-qualifications-dans-un-meme-deroule.md)** (E05US025) : l'anomalie et
+  l'erreur `PlusieursQualifications` n'existent plus, et le relevé du 09/08/2026 comptait **9**
+  appels de `portee.qualification_du_tournoi` (non 12), dont il reste 5. Le raisonnement ci-dessous
+  est conservé lisible : il dit pourquoi cette US ne pouvait pas passer devant celle-ci.
+- (texte d'origine)
   C'est le sujet d'**E05US025**, qui ne pouvait pas passer devant : sans la lecture générique livrée
   ici, une seconde qualification aurait reçu *tous* les inscrits. Ce qui reste à faire là-bas n'est
   pas le peuplement mais les **lecteurs** — `ServiceBaremeQualification` est bâti de bout en bout sur

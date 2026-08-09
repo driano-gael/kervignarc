@@ -49,12 +49,6 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
 
 
-# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
-# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
-# hypothese plutot que de semer des 1 muets, et la suite la verifie.
-_PHASE_TEST = 1
-
-
 def _migrer(url: str) -> None:
     preparer_base(url)
 

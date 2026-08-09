@@ -329,3 +329,35 @@ def test_le_grain_se_regle_aussi_par_qualification(
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/qualifications").json()
         assert corps[0]["grain"] == "fin_de_serie"
         assert (corps[1]["grain"], corps[1]["grain_n_volees"]) == ("toutes_les_n_volees", 5)
+
+
+def test_les_reglages_par_qualification_sans_jeton_401(
+    app_bareme: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Les deux routes par étape sont des **écritures admin** : refusées sans session (401).
+
+    Ce fichier a pour convention un test 401 par route d'écriture ; les deux routes neuves ne
+    l'avaient pas (relevé de revue). Sans lui, un retrait futur d'`exiger_admin` passerait la suite
+    au vert — et une écriture ouverte est un bloquant, pas un détail.
+    """
+    with TestClient(app_bareme) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/bareme-qualification",
+            json={"nb_volees": 20, "nb_fleches_par_volee": 3},
+        )
+        seconde = _composer_seconde_qualification(client, tournoi_id)
+
+    with TestClient(app_bareme) as anonyme:
+        bareme = anonyme.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/bareme",
+            json={"nb_volees": 15, "nb_fleches_par_volee": 3},
+        )
+        grain = anonyme.put(
+            f"/api/v1/tournois/{tournoi_id}/qualifications/{seconde}/grain-validation",
+            json={"grain": "fin_de_serie"},
+        )
+
+    assert (bareme.status_code, bareme.json()["code"]) == (401, "non_authentifie")
+    assert (grain.status_code, grain.json()["code"]) == (401, "non_authentifie")

@@ -162,11 +162,13 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
   de qualification (créneau supprimé, ses phases effacées par cascade) ne peut pas recevoir de
   `phase_id` `NOT NULL` et est **supprimée**, avec journalisation. Arbitrage du commanditaire du
   09/08/2026.
-- **`bareme_du_tournoi` porte un nom qui ment** : il rend celui de la **première** qualification.
-  Conservé parce que la route historique le sert et qu'il est juste sur la quasi-totalité des
-  tournois — mais tout appelant qui veut être juste sur un déroulé composé passe par
-  `qualifications`.
-- **La saisie admin devine le créneau de l'archer** (`# DETTE-049`) : la route ne le porte pas
+- **`bareme_du_tournoi` et `grain_du_tournoi` portent un nom qui ment** : tous deux rendent le
+  réglage de la **première** qualification. Conservés parce que les routes historiques les servent
+  et qu'ils sont justes sur la quasi-totalité des tournois — mais tout appelant qui veut être juste
+  sur un déroulé composé passe par `qualifications`. **Inscrit au registre (`DETTE-053`)** : la
+  revue a rappelé le précédent `DETTE-036`/`DETTE-037` — une limite avouée en ADR **se trace au
+  registre**, l'aveu ne remplace pas la ligne.
+- **La saisie admin devine le créneau de l'archer** (`# DETTE-052`) : la route ne le porte pas
   encore. Sans conséquence tant qu'un archer ne tire qu'un créneau, ce qui est le cas courant.
 - **Le plan de cibles reste par créneau, pas par phase.** La *haute* et la *basse* se placent sur
   le même plan que le premier tour. Suffisant pour l'exemple — les archers ne bougent pas de cible
@@ -182,14 +184,22 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
 - `backend/domain/ports.py` — `SerieRepository` : `par_archer(phase_id, …)`, `par_phase`, et
   l'avertissement sur `par_tournoi` (un archer y figure une fois par phase tirée)
 - `backend/domain/palmares.py` — `ResultatPhase.origine` et la condition `decerne` (§3)
-- `backend/application/portee.py` — `qualification_courante` (§4), et le tri écrit des appelants
-  restants de `qualification_du_tournoi`
+- `backend/application/portee.py` — `qualification_courante` et `la_plus_courante` (§4), et le tri
+  écrit des appelants restants de `qualification_du_tournoi` — **recompté en revue** : il en
+  annonçait six en comptant `forfaits` deux fois et en oubliant `feuille_de_marque`
+- `backend/application/prelevement.py` — le port étroit `LecteurPopulationPhase` : « quels archers
+  cette phase a-t-elle reçus ? », la lecture dont la saisie et la complétude ont besoin pour
+  discriminer la fourche (§4, §6)
 - `backend/application/classements.py` — `pour_phase` et `_premiere_qualification` (§2)
 - `backend/application/saisie_duels.py` — `_classement_de_l_ordre`, branche `QUALIFICATION` : la
   population par `preleves` et la tranche par `tranche`, sur le **même** résolveur
 - `backend/application/palmares.py` — `_resultat_qualification` (§2, §3) et ses trois écartements
-- `backend/application/completude.py` — `_compter_cibles` et `avancement_depart`, par créneau (§6)
-- `backend/application/saisie.py` — `_phase_qualification` et `_feuille` (§4)
+- `backend/application/completude.py` — `_jugements_du_creneau`, `_population` et `_est_clos` :
+  **chaque** qualification du créneau sur **sa** population (§6)
+- `backend/application/saisie.py` — `_qualification_de_l_archer` et `_admet` (l'écriture, §4),
+  `_phase_qualification_ou_none` et `_etat_dans` (la **lecture**, §4), `_feuille`
+- `backend/application/feuille_de_marque.py` — `_bareme_du_creneau` : la feuille papier suit le
+  barème du tour qui se tire, pas celui du premier (§5)
 - `backend/application/bareme_qualification.py` · `backend/application/grain_validation.py` —
   `definir_pour_etape`, `qualifications` (§5)
 - `backend/application/phases.py` — `ajouter` : les réglages de départ d'une qualification composée
@@ -198,7 +208,16 @@ entière de défauts silencieux. Le déroulé de l'exemple se compose, se joue e
   et l'upsert sur la nouvelle clé
 - `backend/migrations/versions/0044_serie_par_phase.py` — la reprise des données, ses trois cas
 - `backend/api/v1/bareme_qualification.py` · `.../grain_validation.py` — les routes par étape
-- `frontend/src/features/bareme/` — l'écran « Barème & validation », un formulaire par qualification
+- `frontend/src/features/bareme/` · `frontend/src/features/grain-validation/` — l'écran
+  « Barème & validation » : un formulaire de barème **et** un de grain par qualification (§5)
 - `backend/tests/test_domain_palmares_qualifications_multiples.py`,
   `backend/tests/test_domain_phase.py` (§ E05US025),
-  `backend/tests/test_bareme_qualification_api.py` (§ E05US025)
+  `backend/tests/test_bareme_qualification_api.py` (§ E05US025),
+  `backend/tests/test_migration_0044_serie_par_phase.py`, et les tests de fourche de
+  `test_service_saisie.py`, `test_service_completude.py`, `test_service_palmares.py`
+
+⚠️ **Cette section a sur-promis à sa première rédaction, et la revue l'a mesuré** — le défaut même
+qu'ADR-0017 a coûté treize mois. Deux entrées sur dix-sept n'étaient pas tenues : `portee.py` était
+nommé pour un tri **incomplet**, et `saisie.py` pour un §4 dont seul le chemin d'**écriture** était
+porté (la lecture passait encore par le tournoi). Nommer un module ne prouve rien : c'est le module
+qu'il faut relire, ligne par ligne, dans le code du jour.

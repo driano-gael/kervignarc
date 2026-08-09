@@ -392,7 +392,11 @@ class ServicePilotageSimulation:
                 raise ArcherIntrouvable(
                     f"Aucun archer d'identifiant {archer_id} dans la simulation {session_id}."
                 )
-            serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+            # Correctif de revue E05US025 : la feuille se lit **dans la phase où elle a été
+            # écrite** (`phase_qualif_id`, cf. `_ecrire_volee`). Ce site passait encore
+            # `tournoi_id` — deux alias d'`int` (`DETTE-044`), donc muet à la compilation : le
+            # cockpit rendait un cumul **0** dès que les deux identifiants cessaient de coïncider.
+            serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
             return DetailArcher(
                 archer_id=archer_id,
                 nom=archer.nom,
@@ -739,7 +743,9 @@ class ServicePilotageSimulation:
     # --- Lecture / assemblage de l'état ---------------------------------------------------------
 
     def _volee_validee(self, session: SessionSimulation, archer_id: ArcherId, numero: int) -> bool:
-        serie = session.harnais.series.par_archer(session.tournoi_id, archer_id)
+        # Correctif de revue E05US025 : même défaut qu'`detail_archer` — lu au tournoi, écrit à la
+        # phase, donc **toujours `False`** hors coïncidence d'identifiants.
+        serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
             return False
         volee = serie.volee(numero)

@@ -30,13 +30,15 @@ from domain.completude import (
     CLE_PAIEMENTS,
     CLE_QUALIFICATION,
     EtatSection,
+    LigneCompletude,
 )
 from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait, NatureForfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.paiement import RecapPaiement
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
@@ -44,16 +46,11 @@ from tests.conftest import (
     FauxDepartRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
+    FauxLecteurPopulations,
     FauxPhaseRepository,
 )
 
 _DATE = datetime.date(2026, 3, 14)
-
-
-# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
-# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
-# hypothese plutot que de semer des 1 muets, et la suite la verifie.
-_PHASE_TEST = 1
 
 
 class FauxTournoiRepository:
@@ -218,6 +215,9 @@ class Montage:
                 )
             )
         self._numero = 0
+        # Inerte par défaut : sans population déclarée, chaque qualification prend tous les
+        # archers placés — le comportement mono-qualification. Le test de la fourche la renseigne.
+        self.populations = FauxLecteurPopulations()
         self.service = ServiceCompletude(
             self.tournois,
             self.departs,
@@ -227,6 +227,7 @@ class Montage:
             self.phases,
             self.forfaits,
             self.paiements,
+            self.populations,
         )
 
     def qualif_de(self, depart_id: DepartId) -> int:
@@ -292,7 +293,7 @@ class Montage:
             Affectation(inscription_id=inscription.id, cible_index=cible_index, position=position),
         )
 
-    def qualification(self) -> object:
+    def qualification(self) -> LigneCompletude:
         return next(
             ligne
             for ligne in self.service.pour_tournoi(self.tournoi_id).sportif
@@ -454,3 +455,100 @@ def test_paiements_comptent_les_archers_dont_le_reste_est_nul() -> None:
     )
     assert (paie.fait, paie.total) == (2, 3)
     assert paie.etat is EtatSection.ALERTE
+
+
+# --- E05US025 : la fourche (correctifs de revue) ------------------------------------------------
+
+
+def test_la_basse_ne_bloque_pas_les_cibles_de_la_haute() -> None:
+    """CA E05US025 — « la complétude juge chaque qualification sur son propre effectif ».
+
+    Bloquant de revue. Un premier jet ne retenait que `qualification_courante` tout en comptant
+    **tous** les archers placés du créneau : sur la fourche, les archers de la *basse* n'ayant
+    aucune feuille dans la *haute*, aucune cible n'était jamais terminée et « Prêt à terminer ? »
+    restait rouge **pour toujours** — l'exact contraire de la fiche de recette (« un archer éliminé
+    à la coupe ne bloque jamais le second tour »).
+
+    Décor : une cible, deux archers, la qualification de tête close pour les deux, puis une *haute*
+    qui ne prend que le premier et une *basse* qui ne prend que le second. Chacun a fini son propre
+    second tour → la cible est terminée.
+    """
+    m = Montage(nb_volees_bareme=2)
+    depart = m.depart_id
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+    m.placer(depart, cible_index=1, archer_id=11, position="B")
+    m.semer(depart, 10, volees_validees=2)
+    m.semer(depart, 11, volees_validees=2)
+    haute, basse = _poser_la_fourche(m, depart)
+    m.populations.populations = {2: [10], 3: [11]}
+    m.series.poser(_serie(10, haute, volees_validees=2))
+    m.series.poser(_serie(11, basse, volees_validees=2))
+
+    ligne = m.qualification()
+
+    assert ligne.fait == 1 and ligne.total == 1, "La cible est terminée : chacun a fini chez lui."
+
+
+def test_une_seconde_qualification_inachevee_retient_la_cible() -> None:
+    """Le pendant : la *haute* non close retient sa cible, même si le premier tour l'est.
+
+    C'est la moitié du CA que le décor précédent ne prouve pas — sans elle, un service qui
+    ignorerait purement et simplement les qualifications aval passerait le test d'à côté.
+    """
+    m = Montage(nb_volees_bareme=2)
+    depart = m.depart_id
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+    m.placer(depart, cible_index=1, archer_id=11, position="B")
+    m.semer(depart, 10, volees_validees=2)
+    m.semer(depart, 11, volees_validees=2)
+    haute, basse = _poser_la_fourche(m, depart)
+    m.populations.populations = {2: [10], 3: [11]}
+    m.series.poser(_serie(10, haute, volees_validees=1))  # une volée manque
+    m.series.poser(_serie(11, basse, volees_validees=2))
+
+    ligne = m.qualification()
+
+    assert ligne.fait == 0 and ligne.total == 1, "Le second tour inachevé retient la cible."
+
+
+def test_avancement_du_creneau_attend_les_deux_moitiés_de_la_fourche() -> None:
+    """Le cycle de vie du créneau (E12US008) suit la même règle que « Prêt à terminer ? ».
+
+    Sans cela, `nb_series_closes` n'atteignait jamais `nb_places` et le créneau ne pouvait plus se
+    clore — un blocage silencieux du jour J, sur un chemin qu'aucun écran n'explique.
+    """
+    m = Montage(nb_volees_bareme=2)
+    depart = m.depart_id
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+    m.placer(depart, cible_index=1, archer_id=11, position="B")
+    m.semer(depart, 10, volees_validees=2)
+    m.semer(depart, 11, volees_validees=2)
+    haute, basse = _poser_la_fourche(m, depart)
+    m.populations.populations = {2: [10], 3: [11]}
+    m.series.poser(_serie(10, haute, volees_validees=2))
+
+    partiel = m.service.avancement_depart(m.tournoi_id, depart)
+    m.series.poser(_serie(11, basse, volees_validees=2))
+    complet = m.service.avancement_depart(m.tournoi_id, depart)
+
+    assert (partiel.nb_places, partiel.nb_series_closes) == (2, 1)
+    assert (complet.nb_places, complet.nb_series_closes) == (2, 2)
+
+
+def _poser_la_fourche(m: Montage, depart_id: DepartId) -> tuple[int, int]:
+    """Ajoute une *haute* (ordre 2) et une *basse* (ordre 3) prélevées, et rend leurs id."""
+    posees = []
+    for ordre in (2, 3):
+        phase = m.phases.ajouter(
+            Phase(
+                depart_id=depart_id,
+                ordre=ordre,
+                type=TypePhase.QUALIFICATION,
+                bareme=BaremeQualification.creer(m.nb_volees_bareme, 3),
+                validation=GrainValidation.fin_de_serie(),
+                sources=(SourcePhase.par_rangs(1),),
+            ).demarrer()
+        )
+        assert phase.id is not None
+        posees.append(phase.id)
+    return posees[0], posees[1]

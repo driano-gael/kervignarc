@@ -284,8 +284,12 @@ async def saisir_volee(
     # L'écriture SEULE est dédoublonnée (unité mémorisée) ; le « quand » se lit **après**, hors de
     # l'unité idempotente : un échec de cette lecture ne fait pas ré-exécuter l'écriture au rejeu.
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)
 
@@ -342,8 +346,12 @@ async def valider_serie(
         return service_saisie.valider(requete.tournoi_id, requete.archer_id, scoreur.nom)
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)
 
@@ -379,7 +387,11 @@ async def corriger_volee(
         )
 
     serie = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
+    # E05US025 (correctif de revue) : le « quand » se lit dans **la phase où l'écriture vient
+    # d'atterrir** — la `Serie` rendue la porte. Passer `tournoi_id`, comme avant, rendait `{}` dès
+    # que les deux identifiants cessaient de coïncider : la réponse annonçait des volées sans leur
+    # horodatage, et le front n'affichait plus « saisie à HH:MM ».
     horodatages = await run_in_threadpool(
-        service_saisie.horodatages, requete.tournoi_id, requete.archer_id
+        service_saisie.horodatages, serie.phase_id, requete.archer_id
     )
     return SerieReponse.de_serie(serie, horodatages)
