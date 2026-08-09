@@ -40,6 +40,7 @@ from domain.phase import (
     verifier_coherence_etape,
 )
 from domain.politiques import ProfondeurClassement
+from domain.poule import ReglageDePoules
 from domain.tournoi import TournoiId
 
 EtapeDerouleId = int
@@ -80,6 +81,18 @@ class EtapeDeroule:
     """
 
     profondeur: ProfondeurClassement | None = None
+    poules: ReglageDePoules | None = None
+    """Le réglage d'une phase de **poules** — taille visée, barème, régime d'ex æquo (E05US023).
+
+    ⚠️ **Porté par l'étape, donc par le tournoi, et non par la phase d'un départ** (ADR-0076) : une
+    taille de poule est une propriété du *format*, pas de l'avancement d'un créneau. Deux départs
+    du même tournoi jouent donc des poules de la même taille — l'inverse serait une divergence de
+    définition, exactement ce qu'ADR-0076 a rendu impossible.
+
+    `None` sur tout autre type, et sur une phase de poules pas encore réglée : le type se choisit
+    avant ses paramètres, et l'atelier doit pouvoir enregistrer un déroulé en cours de composition
+    (le brouillon d'ADR-0063)."""
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
@@ -103,6 +116,7 @@ class EtapeDeroule:
             effectif=self.effectif,
             barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
+            poules=self.poules,
             statut=StatutPhase.A_VENIR,
         )
 

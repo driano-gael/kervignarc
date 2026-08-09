@@ -43,6 +43,7 @@ from domain.phase import (
 )
 from domain.placement import Affectation
 from domain.politiques import NomProfondeur, ProfondeurClassement
+from domain.poule import BaremePoule, ReglageDePoules
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
@@ -112,6 +113,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         effectif = None if effectif is None else int(effectif)
         barrage_jusqu_au = _lire_barrage_jusqu_au(config)
         profondeur = _lire_profondeur(config)
+        poules = _lire_reglage_poules(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -132,6 +134,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
+            poules=poules,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -273,6 +276,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.effectif,
             etape.barrage_jusqu_au,
             etape.profondeur,
+            etape.poules,
         )
     )
 
@@ -284,6 +288,7 @@ def _politiques_json(
     effectif: int | None,
     barrage_jusqu_au: int | None = None,
     profondeur: ProfondeurClassement | None = None,
+    poules: ReglageDePoules | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -348,6 +353,36 @@ def _politiques_json(
         politiques_depth = config.setdefault("policies", {})
         if isinstance(politiques_depth, dict):
             politiques_depth["depth"] = profondeur.en_config()
+    if poules is not None:
+        # Même forme, même raison (E05US023, ADR-0083 §« sans migration ») :
+        # `config.policies.poules = {"nom": "poules", "taille": …, …}`. C'est **exactement** ce que
+        # le `config` JSON d'ADR-0046 permet — un format de tournoi est de la configuration, pas du
+        # code (règle 2) — et c'est ce qui fait que la seule migration de cette US porte sur le
+        # placement, pas sur le réglage.
+        #
+        # ⚠️ Le `nom` n'est pas décoratif : il vaut pour toutes les politiques d'ADR-0046 et
+        # désignera l'implémentation le jour où il en existera deux (un round-robin tronqué reste
+        # aujourd'hui un paramètre, `rencontres`, pas un second moteur). L'omettre ici obligerait à
+        # une migration de données pour l'ajouter, ce que le discriminant de `barrage.portee` a
+        # déjà appris à éviter.
+        politiques_poules = config.setdefault("policies", {})
+        if isinstance(politiques_poules, dict):
+            reglage: dict[str, object] = {"nom": "poules", "taille": poules.taille_visee}
+            # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un
+            # choix de l'organisateur, et le relire d'un défaut de code ferait changer ses points
+            # de match le jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que
+            # si elles sont réglées — leur absence *signifie* quelque chose (« la poule classe »,
+            # « round-robin complet »), qu'un `null` explicite ne dirait pas mieux.
+            reglage["bareme"] = [
+                poules.bareme.victoire,
+                poules.bareme.nul,
+                poules.bareme.defaite,
+            ]
+            if poules.nb_qualifies is not None:
+                reglage["qualifies"] = poules.nb_qualifies
+            if poules.rencontres_par_archer is not None:
+                reglage["rencontres"] = poules.rencontres_par_archer
+            politiques_poules["poules"] = reglage
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -393,6 +428,46 @@ def _lire_barrage_jusqu_au(config: Any) -> int | None:
     if not isinstance(tiebreak, dict) or tiebreak.get("nom") != "barrage":
         return None
     return int(tiebreak["jusqu_au"])
+
+
+def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
+    """Le réglage d'une phase de poules, lu dans `config.policies.poules` (E05US023, ADR-0083).
+
+    Absence = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres, et un
+    déroulé s'enregistre en cours de composition (brouillon d'ADR-0063). C'est la **composition du
+    jour J** qui exigera le réglage, pas la relecture.
+
+    ⚠️ **On relit par la fabrique du domaine, jamais en construisant à la main.** Une taille de 1,
+    un barème qui récompense la défaite, plus de qualifiés que de membres : le repository n'écrit
+    jamais ça — l'agrégat le refuse en amont —, donc le trouver ici signifie que la base a été
+    altérée. `ConfigurationPouleInvalide` remonte alors en « configuration illisible » (ADR-0007),
+    ce qui est exact, plutôt qu'en value object silencieusement invalide qui ferait monter des
+    poules absurdes le jour J.
+
+    Le `bareme` est relu depuis la liste écrite (`[victoire, nul, défaite]`) et **jamais** du défaut
+    de code : si le défaut 3/1/0 changeait un jour, les tournois déjà réglés garderaient leurs
+    points de match. Son absence, elle, ne peut venir que d'une ligne écrite à la main — on retombe
+    alors sur le défaut, seul repli honnête.
+    """
+    politiques = config.get("policies")
+    if not isinstance(politiques, dict):
+        return None
+    poules = politiques.get("poules")
+    if not isinstance(poules, dict):
+        return None
+    bareme = poules.get("bareme")
+    qualifies = poules.get("qualifies")
+    rencontres = poules.get("rencontres")
+    return ReglageDePoules(
+        taille_visee=int(poules["taille"]),
+        bareme=(
+            BaremePoule(victoire=int(bareme[0]), nul=int(bareme[1]), defaite=int(bareme[2]))
+            if isinstance(bareme, list)
+            else BaremePoule()
+        ),
+        nb_qualifies=None if qualifies is None else int(qualifies),
+        rencontres_par_archer=None if rencontres is None else int(rencontres),
+    )
 
 
 def _source_json(source: SourcePhase) -> dict[str, object]:
@@ -446,7 +521,16 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.validation,
                         etape.sources,
                         etape.effectif,
+                        # ⚠️ **`barrage_jusqu_au` était omis ici** alors que `ModelePhase` le porte
+                        # depuis le 07/08/2026 : un format promu depuis un tournoi dont une phase
+                        # avait un seuil de barrage le perdait **en silence** — exactement le
+                        # défaut que l'ajout du champ prétendait fermer, déplacé de l'agrégat à sa
+                        # sérialisation. Constaté en câblant `poules` par le même chemin ; corrigé
+                        # ici plutôt que consigné, parce qu'il coûte un argument et qu'il détruit
+                        # de la donnée d'organisateur (règle « un bug corrigeable dans l'US »).
+                        etape.barrage_jusqu_au,
                         profondeur=etape.profondeur,
+                        poules=etape.poules,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -539,7 +623,9 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         validation=validation,
         sources=_vers_sources(brute),
         effectif=None if effectif is None else int(effectif),
+        barrage_jusqu_au=_lire_barrage_jusqu_au(brute),
         profondeur=_lire_profondeur(brute),
+        poules=_lire_reglage_poules(brute),
     )
 
 
