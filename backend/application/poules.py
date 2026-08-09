@@ -44,7 +44,8 @@ au sommet et descendu — ; le cache transverse aux requêtes n'est pas rouvert 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
@@ -52,6 +53,7 @@ from application.erreurs import (
     PhaseIntrouvable,
     PhasePasDesPoules,
     PhasePasReglee,
+    RencontreIntrouvable,
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
@@ -62,7 +64,7 @@ from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.contrat_phase import TypePhase
 from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
-from domain.erreurs import BarrageRequisAvantQualification
+from domain.erreurs import BarrageRequisAvantQualification, MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId
 from domain.placement_poules import (
@@ -170,12 +172,16 @@ class EtatPoules:
 
 
 class ServicePoules:
-    """Cas d'usage des poules : consulter l'état d'une phase, poser son plan de cibles.
+    """Cas d'usage des poules : consulter une phase, poser son plan, saisir ses rencontres.
 
-    **La saisie d'une rencontre n'est pas ici** : elle passe par `ServiceSaisieDuels`, qui sait déjà
-    écrire un `Duel` dans la table `duel`. Doubler ce chemin pour les poules créerait deux façons
-    d'écrire un tir — l'exacte duplication qu'ADR-0083 se donne pour objet de fermer, à un autre
-    étage.
+    **Ce qui est partagé avec `ServiceSaisieDuels` l'est réellement** : l'agrégat `Duel`, le pavé
+    (`bareme_de` / `zones_de` / `zones_strictes`) et la table `duel`. Une rencontre de poule *est*
+    un duel ordinaire (ADR-0083 §6), et la faire écrire autrement créerait deux façons de saisir un
+    tir — l'exacte duplication que cet ADR se donne pour objet de fermer.
+
+    **Ce qui diffère est la navigation** : là-bas on retrouve un match dans un arbre, ici une
+    rencontre dans un groupe. C'est le `decor` du contrat (la 2ᵉ question), et c'est tout ce que les
+    trois méthodes de saisie ci-dessous réimplémentent.
     """
 
     def __init__(
@@ -270,7 +276,129 @@ class ServicePoules:
             conflits=conflits,
         )
 
-    # --- Écriture (via la file) ------------------------------------------------------------------
+    # --- Saisie d'une rencontre (via la file) ----------------------------------------------------
+    #
+    # ⚠️ **Trois méthodes qui ressemblent à celles de `ServiceSaisieDuels`, et l'écart est
+    # exactement le sujet d'ADR-0083.** Ce qui est partagé — l'agrégat `Duel`, le pavé
+    # (`bareme_de` / `zones_de`), la table `duel` — l'est *réellement* : une rencontre de poule
+    # **est** un duel ordinaire (§6). Ce qui diffère est la **navigation** : là-bas on retrouve un
+    # match dans un arbre, ici une rencontre dans un groupe. C'est le `decor` du contrat, la 2ᵉ
+    # question, et c'est la seule chose que ces trois méthodes réimplémentent.
+    #
+    # L'alternative — élargir `ServiceSaisieDuels` à un second décor — a été écartée : son `_decor`
+    # rend un `Tableau`, type qu'une poule n'a pas, et l'y ouvrir demanderait de rendre le tableau
+    # facultatif dans un service dont **toutes** les méthodes s'en servent. On aurait échangé une
+    # duplication de trente lignes contre un service à deux modes, ce qui est le pire des deux.
+
+    def saisir_manche(
+        self,
+        tournoi_id: TournoiId,
+        phase_id: PhaseId,
+        numero: int,
+        manche: int,
+        valeurs_haut: tuple[ZoneScore, ...],
+        valeurs_bas: tuple[ZoneScore, ...],
+    ) -> RencontreAffichee:
+        """Saisit une manche d'une rencontre — même agrégat, même contrôle qu'un duel de tableau."""
+        return self._ecrire(
+            tournoi_id,
+            phase_id,
+            numero,
+            lambda duel, bareme, zones: duel.saisir_manche(
+                manche,
+                valeurs_haut,
+                valeurs_bas,
+                zones_admises=zones,
+                nb_fleches_par_volee=bareme.nb_fleches_par_volee,
+            ),
+        )
+
+    def saisir_barrage(
+        self,
+        tournoi_id: TournoiId,
+        phase_id: PhaseId,
+        numero: int,
+        fleche_haut: ZoneScore,
+        fleche_bas: ZoneScore,
+        gagnant_designe: Cote | None = None,
+    ) -> RencontreAffichee:
+        """Saisit le tir de barrage **interne** à une rencontre nulle (§8.2).
+
+        ⚠️ **À ne pas confondre avec le barrage de poule** (`domain/barrage.py`, portée `POULE`),
+        qui départage des ex æquo *du classement*. Celui-ci tranche une **rencontre** nulle, et
+        c'est le barrage d'E04US013 — la même distinction qu'entre le barrage d'un duel de tableau
+        et le barrage de places d'E06US003.
+        """
+        return self._ecrire(
+            tournoi_id,
+            phase_id,
+            numero,
+            lambda duel, _bareme, zones: duel.saisir_barrage(
+                fleche_haut, fleche_bas, zones_admises=zones, gagnant_designe=gagnant_designe
+            ),
+        )
+
+    def valider(
+        self, tournoi_id: TournoiId, phase_id: PhaseId, numero: int, scoreur: str
+    ) -> RencontreAffichee:
+        """Valide une rencontre tranchée : c'est elle qui entrera au classement de la poule.
+
+        Seules les rencontres **validées** alimentent `classement_de_poule` — un tir en cours de
+        saisie ferait bouger le classement à chaque flèche, et le barrage requis apparaîtrait puis
+        disparaîtrait sous les yeux du juge.
+        """
+        return self._ecrire(
+            tournoi_id, phase_id, numero, lambda duel, _bareme, _zones: duel.valider(scoreur)
+        )
+
+    def _ecrire(
+        self,
+        tournoi_id: TournoiId,
+        phase_id: PhaseId,
+        numero: int,
+        appliquer: Callable[[Duel, BaremeDuel, tuple[ZoneScore, ...]], Duel],
+    ) -> RencontreAffichee:
+        """Le tronc commun des trois écritures : retrouver la rencontre, appliquer, persister.
+
+        La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table
+        `duel` : c'est ce qui garantit que le tir écrit porte les deux adversaires que la
+        composition du moment désigne. Écrire depuis la ligne persistée reviendrait à se fier à un
+        `match_numero` qui a pu changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert
+        à détecter.
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        rencontre = next(
+            (r for poule in etat.poules for r in poule.rencontres if r.numero == numero), None
+        )
+        if rencontre is None:
+            raise RencontreIntrouvable(
+                f"Aucune rencontre {numero} dans la phase de poules {phase_id}."
+            )
+        if rencontre.haut is None or rencontre.bas is None or rencontre.bareme is None:
+            raise MatchNonJouable(
+                f"La rencontre {numero} n'a pas deux adversaires résolus : rien à y saisir."
+            )
+        haut = Participant.individuel(rencontre.haut.archer_id)
+        bas = Participant.individuel(rencontre.bas.archer_id)
+        # Les zones sont relues en **strict** ici (chemin d'écriture) : un blason indéterminable
+        # doit lever plutôt que produire un pavé vide, sinon on enregistrerait un score dont on ne
+        # sait pas s'il est légal (même exigence qu'E04US002).
+        zones = self._saisie_duels.zones_strictes(haut, self._lignes(phase_id))
+        courant = rencontre.duel or Duel.vide(rencontre.bareme, haut, bas)
+        duel = appliquer(courant, rencontre.bareme, zones)
+        self._duels.enregistrer(phase_id, numero, duel)
+        return replace(rencontre, duel=duel)
+
+    def _lignes(self, phase_id: PhaseId) -> dict[int, LigneClassement]:
+        """Le classement du départ de cette phase, indexé par archer — pour résoudre le blason."""
+        phase = self._phases.par_id(phase_id)
+        assert phase is not None, "`etat` a déjà refusé une phase inconnue."
+        return {
+            ligne.archer_id: ligne
+            for ligne in self._classements.pour_depart(phase.depart_id).lignes
+        }
+
+    # --- Écriture du plan (via la file) ----------------------------------------------------------
 
     def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatPoules:
         """Pose les poules sur la salle et **remplace** le plan existant.

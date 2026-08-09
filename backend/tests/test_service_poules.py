@@ -446,3 +446,115 @@ def test_une_poule_qui_ne_qualifie_pas_ne_designe_personne() -> None:
     etat = monde.service().etat(monde.tournoi_id, phase_id)
 
     assert all(poule.qualifies == () for poule in etat.poules)
+
+
+# --- CA « la poule se classe » (référentiel §10.1) -----------------------------------------------
+
+
+def _gagner(service: ServicePoules, monde: _Monde, numero: int, cote: str) -> None:
+    """Fait gagner 6-0 le camp `cote` de la rencontre `numero` (3 manches), puis valide."""
+    haut = ("10", "10", "10") if cote == "haut" else ("6", "6", "6")
+    bas = ("6", "6", "6") if cote == "haut" else ("10", "10", "10")
+    for manche in (1, 2, 3):
+        service.saisir_manche(
+            monde.tournoi_id,
+            monde.phase_id,
+            numero,
+            manche,
+            tuple(ZoneScore(v) for v in haut),
+            tuple(ZoneScore(v) for v in bas),
+        )
+    service.valider(monde.tournoi_id, monde.phase_id, numero, "DURAND")
+
+
+def test_une_rencontre_se_saisit_et_se_valide_comme_un_duel() -> None:
+    """CA : « une poule n'invente pas une façon de tirer, seulement une façon d'apparier ».
+
+    Le tir passe par l'agrégat `Duel` et la table `duel`, keyée `(phase_id, match_numero)` — sans
+    table ni migration supplémentaires (ADR-0083 §6). Ce qui diffère d'un duel de tableau est la
+    *navigation*, pas le tir.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+
+    _gagner(service, monde, 1, "haut")
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    premiere = poule.rencontres[0]
+    assert premiere.duel is not None
+    assert premiere.duel.verrouille
+
+
+def test_seules_les_rencontres_validees_entrent_au_classement() -> None:
+    """Un tir en cours de saisie ne doit pas faire bouger le classement à chaque flèche.
+
+    Sinon le barrage requis apparaîtrait puis disparaîtrait sous les yeux du juge. Même parti que la
+    reconstruction d'un tableau, qui ne rejoue que les duels validés.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+
+    service.saisir_manche(
+        monde.tournoi_id,
+        phase_id,
+        1,
+        1,
+        (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
+        (ZoneScore.SIX, ZoneScore.SIX, ZoneScore.SIX),
+    )
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert all(ligne.decompte.points_match == 0 for ligne in poule.classement)
+
+
+def test_le_bareme_de_points_de_match_classe_la_poule() -> None:
+    """CA : « un barème de points attribue les victoires, nuls et défaites » (défaut 3 / 1 / 0).
+
+    Une poule de 4 se joue en 3 tours de 2 rencontres. On fait gagner le même archer partout où il
+    figure : il doit finir premier avec 3 victoires, soit 9 points de match.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    vainqueur = poule.rencontres[0].haut
+    assert vainqueur is not None
+
+    for rencontre in poule.rencontres:
+        if rencontre.haut is not None and rencontre.haut.archer_id == vainqueur.archer_id:
+            _gagner(service, monde, rencontre.numero, "haut")
+        elif rencontre.bas is not None and rencontre.bas.archer_id == vainqueur.archer_id:
+            _gagner(service, monde, rencontre.numero, "bas")
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    tete = poule.classement[0]
+    assert tete.participant.ref_id == vainqueur.archer_id
+    assert tete.rang == 1
+    assert tete.decompte.points_match == 9
+
+
+def test_une_poule_qui_qualifie_designe_ses_premiers() -> None:
+    """CA « la phase avale consomme les qualifiés » : `nb_qualifies = k` désigne les k premiers."""
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4, nb_qualifies=1))
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    vainqueur = poule.rencontres[0].haut
+    assert vainqueur is not None
+
+    for rencontre in poule.rencontres:
+        if rencontre.haut is not None and rencontre.haut.archer_id == vainqueur.archer_id:
+            _gagner(service, monde, rencontre.numero, "haut")
+        elif rencontre.bas is not None and rencontre.bas.archer_id == vainqueur.archer_id:
+            _gagner(service, monde, rencontre.numero, "bas")
+        else:
+            _gagner(service, monde, rencontre.numero, "haut")
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert [q.archer_id for q in poule.qualifies] == [vainqueur.archer_id]

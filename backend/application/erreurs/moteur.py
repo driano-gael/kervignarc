@@ -166,6 +166,18 @@ class PhasePasDesPoules(ApplicationError):
     code = "phase_pas_des_poules"
 
 
+class RencontreIntrouvable(ApplicationError):
+    """Aucune rencontre de ce numéro dans cette phase de poules (E05US023) → 404.
+
+    Distinct de `MatchNonJouable` : ici le numéro ne désigne rien du tout. Le cas se produit quand
+    la composition a changé sous un écran resté ouvert — l'effectif a baissé, la phase compte moins
+    de rencontres, et le numéro cliqué n'existe plus. Un 404 est alors la bonne réponse : la
+    tablette rechargera et retrouvera un état cohérent.
+    """
+
+    code = "rencontre_introuvable"
+
+
 class PhasePasReglee(ApplicationError):
     """La phase de poules existe mais sa **taille de poule** n'est pas réglée (E05US023) → 409.
 

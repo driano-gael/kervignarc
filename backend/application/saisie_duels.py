@@ -619,6 +619,18 @@ class ServiceSaisieDuels:
         """Les zones du pavé pour la **lecture** — tolérant, exposé pour la même raison."""
         return self._zones_best_effort(participant, lignes)
 
+    def zones_strictes(
+        self, participant: Participant, lignes: dict[int, LigneClassement]
+    ) -> tuple[ZoneScore, ...]:
+        """Les zones du pavé pour l'**écriture** — lève si le blason est indéterminable.
+
+        Le pendant strict de `zones_de`, et la distinction n'est pas cosmétique : en lecture un
+        blason introuvable rend un pavé vide (« pavé indisponible » sur cette rencontre), en
+        écriture il **lève** — sans quoi on enregistrerait un score sans savoir s'il est légal.
+        Exposer les deux évite que `ServicePoules` choisisse le mauvais par commodité.
+        """
+        return self._zones_du(participant, lignes)
+
     # --- Interne : résolution barème / zones / duelliste ---------------------------------------
 
     def _bareme_du(
