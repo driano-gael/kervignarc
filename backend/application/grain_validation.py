@@ -20,7 +20,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from application.erreurs import PhaseQualificationAbsente, TournoiIntrouvable
+from application.erreurs import (
+    PhaseIntrouvable,
+    PhasePasUneQualification,
+    PhaseQualificationAbsente,
+    TournoiIntrouvable,
+)
 from domain.deroule_etape import EtapeDeroule
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import TypePhase
@@ -71,6 +76,35 @@ class ServiceGrainValidation:
         # Le grain persisté est celui qu'on vient d'écrire ; le renvoyer directement évite de
         # re-narrower `validation` (optionnel depuis E05US001, toujours présent sur une
         # qualification — ADR-0045 §2).
+        return grain
+
+    def definir_pour_etape(
+        self, tournoi_id: TournoiId, etape_id: int, type_grain: TypeGrain, n_volees: int | None
+    ) -> GrainValidation:
+        """Règle le grain d'une **étape désignée** (E05US025, ADR-0082).
+
+        Pendant de `ServiceBaremeQualification.definir_pour_etape` : un déroulé peut porter
+        plusieurs qualifications, chacune avec son propre grain — rien n'oblige la *haute* à valider
+        au même rythme que le premier tour, et le CA le demande explicitement.
+
+        Lève `TournoiIntrouvable`, `PhaseIntrouvable` si l'étape n'appartient pas à ce tournoi,
+        `PhasePasUneQualification` si elle n'en est pas une, et `DomainError` si le grain est
+        invalide ou incohérent avec le barème en place — la construction de l'`EtapeDeroule`
+        remplacée l'éprouve **avant** toute écriture.
+        """
+        self._tournoi_existant(tournoi_id)
+        grain = GrainValidation.creer(type_grain, n_volees)
+        etape = next((e for e in self._deroules.par_tournoi(tournoi_id) if e.id == etape_id), None)
+        if etape is None:
+            raise PhaseIntrouvable(
+                f"Aucune étape d'identifiant {etape_id} dans le déroulé du tournoi {tournoi_id}."
+            )
+        if etape.type is not TypePhase.QUALIFICATION:
+            raise PhasePasUneQualification(
+                f"L'étape {etape_id} est de type « {etape.type.value} » : un grain de "
+                "validation de série ne se règle que sur une qualification."
+            )
+        self._deroules.enregistrer(replace(etape, validation=grain))
         return grain
 
     def _tournoi_existant(self, tournoi_id: TournoiId) -> None:

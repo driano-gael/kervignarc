@@ -40,6 +40,7 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.portee import phase_du_depart
+from domain.bareme import BaremeQualification
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.phase import (
@@ -48,6 +49,7 @@ from domain.phase import (
     SourcePhase,
     StatutPhase,
     TypePhase,
+    grain_par_defaut,
     verifier_sequence,
 )
 from domain.politiques import ProfondeurClassement
@@ -126,8 +128,21 @@ class ServicePhases:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas, une `DomainError` (→ 422) si l'étape
-        ou la séquence obtenue est incohérente (ex. barème manquant pour une qualification, source
-        mal formée). Rien n'est persisté si la validation échoue.
+        ou la séquence obtenue est incohérente (source mal formée, effectif nul…). Rien n'est
+        persisté si la validation échoue.
+
+        ⚠️ **Une qualification composée ici reçoit des réglages de départ** (E05US025, ADR-0082).
+        L'invariant `anomalies_etape` exige qu'une qualification porte barème **et** grain ; cette
+        méthode n'en posait aucun, si bien que composer une **seconde** qualification à l'atelier
+        échouait en `PhaseQualificationIncomplete` — le CA « deux qualifications coexistent » était
+        infaisable de bout en bout, alors que le domaine et le moteur l'acceptaient.
+
+        Le barème de départ est le **preset FFTA 18 m**, celui du club, et le grain celui du type.
+        C'est un arbitrage assumé : `ServiceGrainValidation` refuse par ailleurs « d'inventer un
+        barème que l'organisateur n'a pas choisi », mais la comparaison ne tient pas — là-bas
+        l'alternative était de demander le barème d'abord, ici c'est de ne pas pouvoir composer du
+        tout. La valeur n'est d'ailleurs pas cachée : l'écran la **liste** avec l'étape, et
+        `PUT /tournois/{id}/qualifications/{etape_id}/bareme` la règle.
         """
         self._exiger_tournoi(tournoi_id)
         existantes = self._deroules.par_tournoi(tournoi_id)
@@ -135,6 +150,14 @@ class ServicePhases:
             tournoi_id=tournoi_id,
             ordre=len(existantes) + 1,
             type=type,
+            bareme=(
+                BaremeQualification.preset_ffta_18m() if type is TypePhase.QUALIFICATION else None
+            ),
+            validation=(
+                grain_par_defaut(TypePhase.QUALIFICATION)
+                if type is TypePhase.QUALIFICATION
+                else None
+            ),
             sources=sources,
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,

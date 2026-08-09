@@ -29,3 +29,38 @@ export function definirBareme(tournoiId: number, entree: DefinitionBareme): Prom
     body: JSON.stringify(entree),
   })
 }
+
+// --- E05US025 : plusieurs qualifications dans un même déroulé (ADR-0082) ------------------------
+//
+// Miroir de `QualificationReponse`. « Le barème du tournoi » n'existe plus en général : un déroulé
+// peut enchaîner 3x20 puis une haute et une basse à 3x15, chacune avec ses réglages. Les fonctions
+// ci-dessus restent pour le **premier** réglage d'un tournoi neuf, dont le déroulé est vide — c'est
+// le seul chemin qui *crée* une qualification.
+
+export interface Qualification {
+  etape_id: number
+  ordre: number
+  // Libellé calculé par le serveur (« Qualification 1 », « Qualification 2 »…) : le vocabulaire
+  // métier n'a qu'un domicile, et le front n'a pas à réinventer une numérotation.
+  libelle: string
+  bareme: Bareme | null
+  grain: string | null
+  grain_n_volees: number | null
+}
+
+// Les qualifications du déroulé, dans l'ordre de la séquence (liste vide si aucune).
+export function getQualifications(tournoiId: number): Promise<Qualification[]> {
+  return fetchJson<Qualification[]>(`/api/v1/tournois/${tournoiId}/qualifications`)
+}
+
+// Règle le barème d'une qualification désignée. Ne crée rien : l'étape est composée à l'atelier.
+export function definirBaremeEtape(
+  tournoiId: number,
+  etapeId: number,
+  entree: DefinitionBareme,
+): Promise<Bareme> {
+  return fetchJson<Bareme>(`/api/v1/tournois/${tournoiId}/qualifications/${etapeId}/bareme`, {
+    method: 'PUT',
+    body: JSON.stringify(entree),
+  })
+}

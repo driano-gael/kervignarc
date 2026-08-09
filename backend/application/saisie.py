@@ -198,7 +198,11 @@ class ServiceSaisie:
         La « dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
         dernier **tir**, jamais le dernier heartbeat.
         """
-        phase = qualification_du_tournoi(self._phases, tournoi_id)
+        # E05US025 : la qualification **de ce créneau**, et celle qui s'y tire. Cette lecture
+        # passait par la portée tournoi alors que la méthode reçoit un `depart_id` — sur un déroulé
+        # à plusieurs qualifications, la console aurait annoncé « volée 3/20 » à des archers en
+        # train de tirer un second tour de 15.
+        phase = qualification_courante(self._phases, depart_id)
         # `bareme` optionnel depuis E05US001 (ADR-0045 §2), présent sur une qualification ; absent
         # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0

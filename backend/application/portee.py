@@ -23,6 +23,23 @@ toutes existantes, aucune supposée. La factorisation se fait donc ici et non «
 toujours dans un départ (`PhaseRepository.par_depart`). Quiconque a un `depart_id` sous la main doit
 l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétablit.
 
+# ⚠️ **E05US025 — ce qui reste de `qualification_du_tournoi`, et pourquoi.** Un déroulé peut porter
+# plusieurs qualifications (ADR-0082) : « la » qualification du tournoi n'existe donc plus en
+# général, et cette fonction rend désormais **la première**. Les appelants ont été triés un par un ;
+# les six qui subsistent le font pour deux raisons distinctes, à ne pas confondre :
+#
+# - **La famille `DETTE-047`** (`forfaits.declarer/annuler`, `classements._forfaits_qualif`,
+#   `saisie._forfaits_qualif`) : le forfait s'**écrit** sur la phase rendue ici et se **lit** par le
+#   même chemin. L'affichage est « cohérent par accident » ; ne corriger que la lecture rendrait les
+#   forfaits **invisibles** au lieu de les rendre justes. Les deux côtés se portent au départ
+#   ensemble, dans l'US de résorption — pas ici.
+# - **Le repli assumé** (`saisie._phase_qualification`, `pilotage_simulation`) : le premier ne s'en
+#   sert que lorsqu'aucun créneau n'est résoluble (donnée incohérente), le second simule un déroulé
+#   mono-qualification. Les deux sont justes tels quels.
+#
+# Ce qui **a** été porté au créneau : `saisie.avancement_cible` et les deux comptages de
+# `completude`, qui recevaient déjà un `depart_id` — la portée tournoi n'y était qu'un raccourci.
+#
 # DETTE-048 : ce module concentre la portée tournoi résiduelle, et il est le seul à n'être **ni
 # testé ni surveillé**. Aucun test ne l'importe ; et le garde-fou `tests/test_portee_sportive.py` le
 # manque par construction — son balayage AST reconnaît des *noms de variables* (`phase`, `barrage`),
