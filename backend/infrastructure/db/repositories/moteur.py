@@ -42,6 +42,7 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.placement import Affectation
+from domain.placement_poules import BlocDePoule
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
 from domain.tournoi import TournoiId
@@ -51,6 +52,7 @@ from infrastructure.db.models import (
     FormatTournoiORM,
     PhaseORM,
     PlacementORM,
+    PlacementPouleORM,
     PlacementTableauORM,
 )
 
@@ -756,6 +758,71 @@ def _vers_affectation_tableau(ligne: PlacementTableauORM) -> Affectation:
         cible_index=ligne.cible_index,
         position=ligne.position,
     )
+
+
+class PlacementPouleRepositorySQL:
+    """Adapter SQLite du port `PlacementPouleRepository` — plan de poules matérialisé (E05US023).
+
+    Troisième adapter de placement, et le seul dont l'unité posée soit un **groupe** : une ligne par
+    couloir, portant sa poule et son rang dans le bloc (ADR-0083 §3). Deux gestes seulement, contre
+    quatre pour son aîné — un plan de poules ne s'ajuste pas archer par archer, il se repose.
+
+    Pas de couture d'audit, même raison que `PlacementTableauRepositorySQL` : au moment de poser les
+    poules, aucune rencontre n'est encore tirée, donc la repose n'est jamais « massive » au sens
+    d'E12US007.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_phase(self, phase_id: PhaseId) -> list[BlocDePoule]:
+        """Relit les blocs d'une phase, chacun dans son **ordre de remplissage**.
+
+        Le tri porte sur `(poule_numero, rang)` et non sur `(cible_index, position)` : c'est le rang
+        qui dit l'ordre du bloc, et lui seul. Trier par cible donnerait le même résultat sur une
+        salle homogène — et se tromperait dès qu'une cible a une capacité réduite, précisément le
+        cas que `GabaritSalle.ajuster` rend possible.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PlacementPouleORM)
+                    .where(PlacementPouleORM.phase_id == phase_id)
+                    .order_by(PlacementPouleORM.poule_numero, PlacementPouleORM.rang)
+                ).scalars()
+                blocs: dict[int, list[tuple[int, str]]] = {}
+                for ligne in lignes:
+                    blocs.setdefault(ligne.poule_numero, []).append(
+                        (ligne.cible_index, ligne.position)
+                    )
+                return [
+                    BlocDePoule(poule=numero, places=tuple(places))
+                    for numero, places in blocs.items()
+                ]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du plan de poules.") from exc
+
+    def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDePoule]) -> None:
+        """Purge le plan de poules de la phase puis insère les blocs — **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    delete(PlacementPouleORM).where(PlacementPouleORM.phase_id == phase_id)
+                )
+                session.add_all(
+                    PlacementPouleORM(
+                        phase_id=phase_id,
+                        cible_index=cible_index,
+                        position=position,
+                        poule_numero=bloc.poule,
+                        rang=rang,
+                    )
+                    for bloc in blocs
+                    for rang, (cible_index, position) in enumerate(bloc.places, start=1)
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de définition du plan de poules.") from exc
 
 
 class PlacementTableauRepositorySQL:
