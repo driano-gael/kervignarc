@@ -691,6 +691,45 @@ aurait obligé à le refaire à l'arrivée des poules, **et à repasser sur du c
 - **CA — la phase avale consomme les qualifiés** : un tableau déclarant prendre les rangs d'une phase
   de poules est ensemencé par ce que la poule a qualifié, par le mécanisme d'**E05US024**. Le
   classement de la phase de poules est une **source de prélèvement** comme une autre.
+- **CA — le classement de phase se lit « par rang de poule d'abord »** *(arbitrage du commanditaire
+  du 09/08/2026)* : les poules se jouent **en parallèle** et donnent donc le même classement. Sur
+  `P` poules, les rangs `1..P` sont les **vainqueurs** de poule, `P+1..2P` les **deuxièmes**, et
+  ainsi de suite. Exemple donné : 4 poules de 3 → rangs 1-4 les premiers de poule, 5-8 les
+  deuxièmes, 9-12 les troisièmes.
+  - **Tout le monde y figure**, pas seulement les qualifiés : avec `nb_qualifies = 2` sur 4 poules
+    de 4, les 3ᵉˢ occupent les rangs 9-12 et les 4ᵉˢ les rangs 13-16. C'est le **prélèvement** de la
+    phase avale qui sélectionne, pas le classement qui tronque — ce qui rend une consolante « les
+    rangs 9 à 16 » composable sans réglage neuf.
+  - **Le dernier bloc peut être incomplet, et les surnuméraires vont en dernier** : 30 archers en
+    poules de 4 donnent 7 poules (cinq de 4, deux de 5), donc les rangs 29-30 ne portent que les
+    **5ᵉˢ des deux poules de 5**. Normal et sans conséquence.
+  - **À l'intérieur d'un bloc, les archers sont ex æquo par défaut.** Un **départage optionnel** par
+    décompte (les cinq critères du [référentiel §10.1](../docs/referentiel-ffta.md) — points de
+    match, différence de sets, différence de score, nombre de 10, nombre de 9) affine le classement
+    **si l'organisateur le demande**. Il n'est pas imposé : comparer des décomptes obtenus contre
+    des adversaires différents n'a de valeur que si l'on en a besoin.
+- **CA — un prélèvement qui coupe un bloc de poules est refusé, celui qui le contient est honoré** :
+  c'est [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
+  appliqué tel quel, **sans règle nouvelle**. Sur 4 poules, « les rangs 1 à 4 » prend le bloc entier
+  des vainqueurs et passe, ex æquo ou non ; « les rangs 1 à 2 » **coupe** ce bloc et est refusé et
+  annoncé — sauf si le départage optionnel ci-dessus a été activé. C'est ce qui rend l'option
+  auto-régulée : le départage n'est nécessaire que quand la phase avale prélève *à l'intérieur* d'un
+  bloc, et l'outil le dit au lieu de qualifier sur un ordre d'affichage.
+- **Notes — l'ordre interne d'un bloc pilote la tête de série** : sans départage, l'ordre entre les
+  quatre vainqueurs est celui de la composition, donc le vainqueur de la poule 1 devient tête de
+  série n°1 — au seul motif que sa poule porte le n°1, qui n'a aucun sens sportif. C'est la même
+  faute que `qualifies_de_poule` refuse déjà (« qualifier sur l'ordre d'affichage »). ADR-0081 la
+  ferme pour les prélèvements *partiels* ; elle subsiste pour un prélèvement qui prend le bloc
+  entier, où elle est sans conséquence sur *qui* passe, mais pas sur *contre qui*.
+- **Notes — aucune politique `seeding` neuve n'est nécessaire** *(vérifié le 09/08/2026)*. Le
+  **serpent sépare naturellement** les archers d'une même poule au premier tour, parce que le 1ᵉʳ et
+  le 2ᵉ d'une poule sont distants de `P` rangs et que le serpent apparie des rangs de somme
+  constante. Mesuré sur 4×2, 8×2, 4×4, 8×4, 16×2, 2×4 et 5×2 : **aucun choc**.
+  ⚠️ **Exception mesurée** : quand l'effectif prélevé n'est **pas une puissance de 2**, les byes
+  décalent les paires et un choc redevient possible — 3 poules × 4 qualifiés = 12 archers produit la
+  paire (rang 7, rang 10), tous deux de la poule 1. À **signaler à l'atelier** plutôt qu'à corriger
+  en douce : corriger demanderait une politique de croisement, donc une règle métier que personne
+  n'a demandée.
 - **CA — le signal d'écart disparaît pour les poules, et pour elles seules** : E01US024 signale à
   l'atelier qu'un type composé n'est pas exécutable (`Deroule.tsx`, `simulation_format.py`). Ce
   signal doit cesser de viser les poules **et continuer de viser** le suisse, la colline et le Big

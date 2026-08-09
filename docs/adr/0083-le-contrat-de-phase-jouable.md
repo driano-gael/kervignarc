@@ -130,7 +130,45 @@ lisible le cas extrême où l'effectif est inférieur au double de la taille (7 
 Ce n'est pas un réglage neuf : c'est la présence ou l'absence de `nb_qualifies`, seulement rendue
 **explicite à l'écran** au lieu d'être déduite d'un champ laissé vide.
 
-### 6. Le tir d'une rencontre réutilise la table `duel`
+### 6. Le classement de phase est **« par rang de poule d'abord »**
+
+*(Arbitrage du commanditaire du 09/08/2026, pris en cours de tranche.)* Les poules se jouent **en
+parallèle** et donnent donc le même classement. Sur `P` poules, les rangs `1..P` sont les vainqueurs
+de poule, `P+1..2P` les deuxièmes, et ainsi de suite — c'est ce qu'une phase avale lit quand elle
+déclare « les rangs 1 à 8 ».
+
+Trois conséquences, toutes voulues :
+
+- **Le classement porte tout le monde**, pas seulement les qualifiés. C'est le *prélèvement* qui
+  sélectionne, pas le classement qui tronque — ce qui rend une consolante « les rangs 9 à 16 »
+  composable sans réglage neuf. Le dernier bloc peut être **incomplet** (30 archers en poules de 4 →
+  7 poules, donc les rangs 29-30 ne portent que les 5ᵉˢ des deux poules de 5) ; les surnuméraires
+  vont en dernier.
+- **À l'intérieur d'un bloc, les archers sont ex æquo**, et un départage par décompte (§10.1) reste
+  **optionnel**. Comparer des décomptes obtenus contre des adversaires différents n'a de valeur que
+  si l'on en a besoin.
+- **[ADR-0081] s'applique tel quel, et c'est ce qui rend l'option auto-régulée.** Une fenêtre qui
+  *contient* un bloc est honorée (« les rangs 1 à 4 » sur 4 poules prend les quatre vainqueurs,
+  ex æquo ou non) ; une fenêtre qui le *coupe* est refusée et annoncée (« les rangs 1 à 2 »), sauf
+  départage activé. Le départage n'est donc nécessaire **que** quand la phase avale prélève à
+  l'intérieur d'un bloc, et l'outil le dit au lieu de qualifier sur un ordre d'affichage.
+
+⚠️ **Ce que cet ordre ne ferme pas** : sans départage, l'ordre interne d'un bloc pilote la **tête de
+série** du tableau aval — le vainqueur de la poule 1 devient tête n°1 au seul motif que sa poule
+porte le n°1. ADR-0081 ferme le cas des prélèvements *partiels* ; il subsiste pour un prélèvement qui
+prend le bloc entier, où il est sans conséquence sur *qui* passe, mais pas sur *contre qui*.
+
+**Aucune politique `seeding` neuve n'est requise** *(vérifié le 09/08/2026)* : le serpent sépare
+naturellement les archers d'une même poule au premier tour — le 1ᵉʳ et le 2ᵉ d'une poule sont
+distants de `P` rangs, et le serpent apparie des rangs de somme constante. Mesuré sans choc sur 4×2,
+8×2, 4×4, 8×4, 16×2, 2×4 et 5×2. ⚠️ **Exception mesurée** : à effectif prélevé **non puissance de
+2**, les byes décalent les paires et un choc redevient possible — 3 poules × 4 qualifiés produit
+(rang 7, rang 10), tous deux de la poule 1. Signalé à l'atelier plutôt que corrigé : corriger
+demanderait une politique de croisement, donc une règle métier que personne n'a demandée.
+
+[ADR-0081]: 0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md
+
+### 7. Le tir d'une rencontre réutilise la table `duel`
 
 Une poule « n'invente pas une façon de tirer, seulement une façon d'apparier et de compter »
 (`domain/poule.py`). Une rencontre est un **duel ordinaire** : le pavé de saisie d'E04US013, et la
@@ -191,14 +229,24 @@ qu'ADR-0017 a coûté treize mois.
    rien n'honore, soit le « refus abusif le jour J » d'E05US021. *(Défaut introduit puis refermé le
    09/08/2026 ; cf. le commit `fix(e05us023): le registre cesse d'annoncer…`.)*
 
-   ⚠️ **Bloqué sur un arbitrage du commanditaire, pas sur du code** : dans quel **ordre** les poules
-   se concatènent-elles pour former un classement de phase ? Les premiers de chaque poule, puis les
-   seconds (convention usuelle), ou un autre ordre ? Tant qu'il n'est pas tranché, l'écrire serait
-   décider une règle métier au mauvais endroit.
+   ✅ **L'arbitrage qui bloquait ce point est tranché** (09/08/2026, §6 ci-dessus) : « par rang de
+   poule d'abord », tout le monde au classement, surnuméraires en dernier, départage interne
+   optionnel. Il ne reste donc que du code, décrit ci-dessous.
 
-   Une fois tranché, il reste un **port étroit** (`LecteurClassementPoules`, patron de
-   `LecteurPopulationPhase`) pour casser le cycle `ServicePoules` → `ServiceSaisieDuels`, câblé à la
-   main en `bootstrap/` (règle 8), puis la bascule de la capacité et du test.
+   **Ce qu'il reste à écrire, dans l'ordre** :
+
+   a. `application/poules.py` — une fonction rendant le `ClassementSource` de la phase depuis les
+      `PouleAffichee` : concaténation par rang de poule, `plages_indecises` posées sur **chaque bloc
+      non départagé** (c'est ce qui arme ADR-0081 et rend l'option auto-régulée), `rang_premier` lu
+      par `tranche` comme pour un tableau.
+   b. Un **port étroit** `LecteurClassementPoules` (patron de `LecteurPopulationPhase`, cf.
+      `application/prelevement.py`) pour casser le cycle `ServicePoules` → `ServiceSaisieDuels`,
+      **câblé à la main en `bootstrap/`** (règle 8) — l'un des deux services doit recevoir l'autre
+      après construction, et c'est le genre de branchement qui doit se voir au composition root.
+   c. La bascule `classement_lisible=True` dans `domain/contrat_phase.py`, et le retournement de
+      `test_le_classement_dune_poule_nest_pas_encore_lisible_par_une_phase_avale`.
+   d. Le **signalement** du choc de poule à l'atelier quand l'effectif prélevé n'est pas une
+      puissance de 2 (§6, exception mesurée) — un avertissement, pas un refus.
 
 2. **§5 — l'exposition du barrage de poule.** Le moteur est complet depuis E05US015, la portée
    `POULE` est câblée depuis E06US003, et `ServicePoules._verdicts_de_barrage` **relit déjà** les

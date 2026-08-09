@@ -606,7 +606,7 @@ class ServiceSaisieDuels:
         """Le barème d'un duel, résolu par l'arme du participant — **exposé** pour `ServicePoules`.
 
         Même motif que `resolveur_de_classement` : une rencontre de poule *est* un duel ordinaire
-        (ADR-0083 §6), donc son pavé doit être résolu par le **même** code, sans quoi le même
+        (ADR-0083 §7), donc son pavé doit être résolu par le **même** code, sans quoi le même
         archer tirerait en sets au tableau et en cumul en poule. La recopie a déjà lâché une fois
         sur l'ensemencement (E05US020, plan de 8 pour un tableau de 4) ; on n'en écrit pas une
         seconde.

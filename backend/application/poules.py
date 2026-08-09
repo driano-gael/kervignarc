@@ -17,7 +17,7 @@ le tir se persiste**.
   une fonction déterministe du classement source et du réglage — le persister créerait une seconde
   vérité, périmée dès qu'une volée en retard est validée.
 - **Persisté** : le **bloc de couloirs** de chaque poule (`placement_poule`, migration 0045) et le
-  **tir** de chaque rencontre (table `duel`, sans table ni migration neuve — ADR-0083 §6).
+  **tir** de chaque rencontre (table `duel`, sans table ni migration neuve — ADR-0083 §7).
 
 ## La numérotation des rencontres, et son ancrage
 
@@ -176,7 +176,7 @@ class ServicePoules:
 
     **Ce qui est partagé avec `ServiceSaisieDuels` l'est réellement** : l'agrégat `Duel`, le pavé
     (`bareme_de` / `zones_de` / `zones_strictes`) et la table `duel`. Une rencontre de poule *est*
-    un duel ordinaire (ADR-0083 §6), et la faire écrire autrement créerait deux façons de saisir un
+    un duel ordinaire (ADR-0083 §7), et la faire écrire autrement créerait deux façons de saisir un
     tir — l'exacte duplication que cet ADR se donne pour objet de fermer.
 
     **Ce qui diffère est la navigation** : là-bas on retrouve un match dans un arbre, ici une

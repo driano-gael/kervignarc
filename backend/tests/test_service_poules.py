@@ -471,7 +471,7 @@ def test_une_rencontre_se_saisit_et_se_valide_comme_un_duel() -> None:
     """CA : « une poule n'invente pas une façon de tirer, seulement une façon d'apparier ».
 
     Le tir passe par l'agrégat `Duel` et la table `duel`, keyée `(phase_id, match_numero)` — sans
-    table ni migration supplémentaires (ADR-0083 §6). Ce qui diffère d'un duel de tableau est la
+    table ni migration supplémentaires (ADR-0083 §7). Ce qui diffère d'un duel de tableau est la
     *navigation*, pas le tir.
     """
     monde = _Monde()

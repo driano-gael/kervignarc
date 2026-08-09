@@ -117,7 +117,7 @@ class DecorDeSaisie(str, Enum):
     """Des rencontres appariées **dans un groupe**, présentées par tour : les poules.
 
     Même **pavé** de saisie qu'un arbre de duels (une rencontre *est* un duel ordinaire,
-    ADR-0083 §6), mais une autre **navigation** : on entre par la poule et le tour, pas par le
+    ADR-0083 §7), mais une autre **navigation** : on entre par la poule et le tour, pas par le
     numéro de match d'un arbre."""
 
     RONDES_APPARIEES = "rondes_appariees"
