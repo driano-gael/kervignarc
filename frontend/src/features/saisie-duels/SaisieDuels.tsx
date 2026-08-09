@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
+import type { FamilleDuel } from '../../shared/stores/fileDuelsHorsLigneStore'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
@@ -294,18 +295,33 @@ function GrilleDuel({
   )
 }
 
-function DuelCharge({
+/**
+ * Le **pavé de saisie d'un duel chargé** — en-tête, manches, barrage, validation.
+ *
+ * ⚠️ **Exporté depuis E05US023**, et c'est ce qui rend les poules jouables sans second écran : une
+ * rencontre de poule *est* un duel ordinaire (ADR-0083 §7), donc elle se saisit avec ce pavé-ci.
+ * `famille` dit seulement **où écrire** (`/api/v1/duels/...` ou `/api/v1/poules/...`) ; tout le
+ * reste — l'agrégat, le mode, les zones, le verrou, le barrage interne — est identique.
+ *
+ * Une seule chose ne traverse pas : le **forfait**. Déclarer un abandon en tableau est un
+ * *walkover* qui fait passer l'adversaire (ADR-0050) ; en poule, la question ne se pose pas de la
+ * même façon — le CA d'E05US023 ne l'ouvre pas, et l'offrir ici appellerait un service qui ne sait
+ * pas recomposer une poule. Le bouton n'est donc rendu que pour un tableau.
+ */
+export function DuelCharge({
   tournoiId,
   phaseId,
   matchNumero,
   duel,
   onValide,
+  famille = 'tableau',
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
   onValide: (archerIds: number[]) => void
+  famille?: FamilleDuel
 }) {
   const haut = duel.haut ? `${duel.haut.nom} ${duel.haut.prenom}` : '—'
   const bas = duel.bas ? `${duel.bas.nom} ${duel.bas.prenom}` : '—'
@@ -367,10 +383,11 @@ function DuelCharge({
           phaseId={phaseId}
           matchNumero={matchNumero}
           duel={duel}
+          famille={famille}
         />
       )}
 
-      {!verrou && duel.haut !== null && duel.bas !== null && (
+      {famille === 'tableau' && !verrou && duel.haut !== null && duel.bas !== null && (
         <ForfaitDuel
           tournoiId={tournoiId}
           phaseId={phaseId}
@@ -387,6 +404,7 @@ function DuelCharge({
           phaseId={phaseId}
           matchNumero={matchNumero}
           duel={duel}
+          famille={famille}
         />
       )}
 
@@ -396,6 +414,7 @@ function DuelCharge({
         matchNumero={matchNumero}
         duel={duel}
         onValide={onValide}
+        famille={famille}
       />
     </div>
   )
@@ -455,15 +474,17 @@ function SaisieManche({
   phaseId,
   matchNumero,
   duel,
+  famille,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
+  famille: FamilleDuel
 }) {
   const nbManches = duel.nb_manches ?? 1
   const nbFleches = duel.nb_fleches_par_volee ?? 3
-  const saisir = useSaisirManche(tournoiId, phaseId, matchNumero)
+  const saisir = useSaisirManche(tournoiId, phaseId, matchNumero, famille)
 
   const [numeroChoisi, setNumeroChoisi] = useState<number | null>(null)
   const numeroActif = numeroChoisi ?? prochaineMancheASaisir(duel, nbManches)
@@ -676,13 +697,15 @@ function SaisieBarrage({
   phaseId,
   matchNumero,
   duel,
+  famille,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
+  famille: FamilleDuel
 }) {
-  const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero)
+  const saisir = useSaisirBarrage(tournoiId, phaseId, matchNumero, famille)
   const [flecheHaut, setFlecheHaut] = useState<string | null>(duel.barrage?.haut ?? null)
   const [flecheBas, setFlecheBas] = useState<string | null>(duel.barrage?.bas ?? null)
   const [designe, setDesigne] = useState<Cote | null>(duel.barrage?.gagnant_designe ?? null)
@@ -808,14 +831,16 @@ function Validation({
   matchNumero,
   duel,
   onValide,
+  famille,
 }: {
   tournoiId: number
   phaseId: number
   matchNumero: number
   duel: Duel
   onValide: (archerIds: number[]) => void
+  famille: FamilleDuel
 }) {
-  const valider = useValiderDuel(tournoiId, phaseId, matchNumero)
+  const valider = useValiderDuel(tournoiId, phaseId, matchNumero, famille)
   // Déjà validé, OU validation déjà en file hors-ligne : rien à proposer (le verrou est affiché plus
   // haut). Masquer sur `validation_en_attente` évite de ré-enfiler des validations à chaque tap.
   if (duel.validee_par !== null || duel.validation_en_attente === true) return null

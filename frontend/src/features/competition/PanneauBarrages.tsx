@@ -423,10 +423,16 @@ function SaisieGroupe({
 /** Départager des archers **hors qualification** — poule ou Big Shoot Off (ADR-0066).
  *
  * ⚠️ **Pourquoi un formulaire plutôt qu'un bouton comme en qualification.** Là-haut, l'application
- * *sait* qui est à égalité : elle lit le classement. Ici elle ne le sait pas — aucun classement de
- * poule ni aucun état de Big Shoot Off n'est calculé nulle part (DETTE-028) —, donc c'est
- * l'organisateur qui désigne les tireurs. Le barrage se conduit ensuite exactement pareil ; seul
- * son verdict ne retourne dans aucun classement, faute de classement à alimenter.
+ * *sait* qui est à égalité : elle lit le classement, donc elle propose. Ici l'organisateur désigne
+ * les tireurs lui-même.
+ *
+ * ⚠️ **Ce paragraphe disait « aucun classement de poule n'est calculé nulle part » — c'est faux
+ * depuis E05US023** (ADR-0083). Le classement de poule existe, l'écran de saisie l'affiche, et le
+ * verdict d'un barrage de portée `poule` **referme** ce classement (`ServicePoules`
+ * `_verdicts_de_barrage`). Ce qui reste vrai, et qui justifie le formulaire : la **désignation**
+ * n'est pas automatisée ici — l'écran de saisie des poules *annonce* le barrage requis, il n'ouvre
+ * pas le formulaire à la place de l'organisateur. Le Big Shoot Off, lui, reste entièrement manuel
+ * jusqu'à `E05US028` (reste de `DETTE-028`).
  *
  * Vit **hors de la carte d'alerte** et replié par défaut : il doit rester atteignable en
  * permanence (rien ne peut le signaler), sans pour autant allumer une alerte ambre toute la
@@ -482,9 +488,10 @@ export function DepartageManuel({
     <details className="barrages__manuel">
       <summary>Départager d&apos;autres archers (poule, Big Shoot Off)</summary>
       <p className="carte__aide">
-        L&apos;application ne calcule pas encore les classements de poule ni les manches de Big
-        Shoot Off : désignez vous-même les archers à départager. Le barrage se tire ensuite
-        normalement, mais son résultat ne remonte dans aucun classement.
+        Désignez les archers à départager. En <strong>poule</strong>, l&apos;écran de saisie vous
+        signale quand un barrage est requis, et le verdict <strong>referme le classement</strong> de
+        la poule concernée. Pour un Big Shoot Off, le résultat ne remonte encore dans aucun
+        classement.
       </p>
       <label>
         Départage{' '}

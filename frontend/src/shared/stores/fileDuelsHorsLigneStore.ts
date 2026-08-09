@@ -20,8 +20,20 @@ import { persist } from 'zustand/middleware'
 // Les corps d'actes en attente. Structurellement identiques aux requêtes de `features/saisie-duels/
 // api` (la feature y passe ses corps sans que `shared/` importe la feature — inversion de
 // dépendance, comme `VoleeEnFile`). Discriminés par `type` pour le rejeu (endpoint par acte).
+/** À quelle **surface** l'acte s'adresse : l'arbre d'un tableau, ou une rencontre de poule.
+ *
+ * Ajoutée par E05US023 : une rencontre de poule *est* un duel ordinaire (ADR-0083 §7) et se saisit
+ * avec le même pavé, mais elle s'écrit sur d'autres routes (`/api/v1/poules/...`). Le rejeu doit
+ * donc savoir où renvoyer l'acte.
+ *
+ * ⚠️ **Optionnelle, et absente vaut `tableau`.** La file est persistée dans le `localStorage` : une
+ * tablette qui a des actes en attente au moment du déploiement les a écrits sans ce champ. Les lire
+ * comme des actes de tableau est exact — c'est tout ce qui existait. */
+export type FamilleDuel = 'tableau' | 'poule'
+
 export interface MancheEnFile {
   type: 'manche'
+  famille?: FamilleDuel
   tournoi_id: number
   phase_id: number
   match_numero: number
@@ -33,6 +45,7 @@ export interface MancheEnFile {
 
 export interface BarrageEnFile {
   type: 'barrage'
+  famille?: FamilleDuel
   tournoi_id: number
   phase_id: number
   match_numero: number
@@ -44,6 +57,7 @@ export interface BarrageEnFile {
 
 export interface ValidationEnFile {
   type: 'validation'
+  famille?: FamilleDuel
   tournoi_id: number
   phase_id: number
   match_numero: number
@@ -56,7 +70,10 @@ export type ActeDuelEnFile = MancheEnFile | BarrageEnFile | ValidationEnFile
 // qu'une saisie **en ligne** réussie du même emplacement a rendus obsolètes (supersession, cf.
 // `retirerSlot`). Une manche est scopée par son rang ; barrage et validation par le match. Pure.
 export function cleSlot(acte: ActeDuelEnFile): string {
-  const base = `${acte.type}:${acte.tournoi_id}:${acte.phase_id}:${acte.match_numero}`
+  // La famille entre dans la clé : deux phases distinctes ne partagent jamais un `phase_id`, donc
+  // elle est aujourd'hui redondante — mais l'omettre ferait dépendre la correction d'un invariant
+  // d'une autre table, ce qui est exactement le genre de coïncidence que ce projet a déjà payé.
+  const base = `${acte.famille ?? 'tableau'}:${acte.type}:${acte.tournoi_id}:${acte.phase_id}:${acte.match_numero}`
   return acte.type === 'manche' ? `${base}:${acte.numero}` : base
 }
 

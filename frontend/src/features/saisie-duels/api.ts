@@ -8,6 +8,7 @@
 // zones, résultat viennent de lui ; le front n'affiche que ce qu'il reçoit (ADR-0049).
 
 import { fetchJson } from '../../shared/api/client'
+import type { FamilleDuel } from '../../shared/stores/fileDuelsHorsLigneStore'
 
 // --- DTO (miroir backend) ---
 
@@ -159,27 +160,75 @@ export function getDuel(tournoiId: number, phaseId: number, matchNumero: number)
 }
 
 // --- Écritures (jeton X-Jeton-Scoreur ; routées par la file d'écriture serveur) ---
+//
+// ⚠️ **Deux familles de routes, un seul pavé** (E05US023, ADR-0083 §7). Une rencontre de poule est
+// un duel ordinaire : même agrégat, même table `duel`, même écran de saisie. Ce qui diffère est la
+// **navigation**, donc la ressource : `/api/v1/poules/...` au lieu de `/api/v1/duels/...`. Les
+// corps sont identiques au nom du numéro près — le serveur appelle `numero` ce que le tableau
+// appelle `match_numero`, et `manche` ce qu'il appelle `numero` —, d'où la traduction ci-dessous
+// plutôt qu'un second jeu de types côté client.
 
-export function saisirManche(corps: SaisirManche): Promise<Duel> {
-  return fetchJson<Duel>(
-    '/api/v1/duels/manches',
-    { method: 'POST', body: JSON.stringify(corps) },
-    'scoreur',
-  )
+const ROUTES: Record<FamilleDuel, { manches: string; barrages: string; validations: string }> = {
+  tableau: {
+    manches: '/api/v1/duels/manches',
+    barrages: '/api/v1/duels/barrages',
+    validations: '/api/v1/duels/validations',
+  },
+  poule: {
+    manches: '/api/v1/poules/manches',
+    barrages: '/api/v1/poules/barrages',
+    validations: '/api/v1/poules/validations',
+  },
 }
 
-export function saisirBarrage(corps: SaisirBarrage): Promise<Duel> {
-  return fetchJson<Duel>(
-    '/api/v1/duels/barrages',
-    { method: 'POST', body: JSON.stringify(corps) },
-    'scoreur',
-  )
+// La réponse d'une route de poule enveloppe le duel dans sa rencontre (numéro, poule, tour,
+// couloirs). Le pavé ne consomme que le duel : on déballe ici, une fois, plutôt que de rendre le
+// type de retour des trois hooks dépendant de la famille.
+interface RencontreEnveloppe {
+  duel: Duel
 }
 
-export function validerDuel(corps: ValiderDuel): Promise<Duel> {
-  return fetchJson<Duel>(
-    '/api/v1/duels/validations',
-    { method: 'POST', body: JSON.stringify(corps) },
+function corpsPoule(corps: { match_numero: number }): Record<string, unknown> {
+  const { match_numero, ...reste } = corps as { match_numero: number } & Record<string, unknown>
+  return { ...reste, numero: match_numero }
+}
+
+async function ecrire(
+  famille: FamilleDuel,
+  acte: 'manches' | 'barrages' | 'validations',
+  corps: { match_numero: number },
+): Promise<Duel> {
+  const chemin = ROUTES[famille][acte]
+  if (famille === 'tableau') {
+    return fetchJson<Duel>(chemin, { method: 'POST', body: JSON.stringify(corps) }, 'scoreur')
+  }
+  const enveloppe = await fetchJson<RencontreEnveloppe>(
+    chemin,
+    { method: 'POST', body: JSON.stringify(corpsPoule(corps)) },
     'scoreur',
   )
+  return enveloppe.duel
+}
+
+export function saisirManche(corps: SaisirManche, famille: FamilleDuel = 'tableau'): Promise<Duel> {
+  // Le rang de manche s'appelle `numero` côté tableau et `manche` côté poule : la traduction est
+  // ici, pas dans le composant, pour que le pavé ne connaisse qu'une seule forme.
+  if (famille === 'poule') {
+    const { numero, ...reste } = corps
+    return ecrire(famille, 'manches', { ...reste, manche: numero } as unknown as {
+      match_numero: number
+    })
+  }
+  return ecrire(famille, 'manches', corps)
+}
+
+export function saisirBarrage(
+  corps: SaisirBarrage,
+  famille: FamilleDuel = 'tableau',
+): Promise<Duel> {
+  return ecrire(famille, 'barrages', corps)
+}
+
+export function validerDuel(corps: ValiderDuel, famille: FamilleDuel = 'tableau'): Promise<Duel> {
+  return ecrire(famille, 'validations', corps)
 }
