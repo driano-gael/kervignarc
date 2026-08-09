@@ -169,10 +169,52 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/poule.py` · `couloirs_occupes` | §3 — l'empreinte par le parallélisme, `2 × (effectif ÷ 2)` |
 | `backend/domain/placement_poules.py` | §3 — le bloc contigu, le débordement, l'accolement de la poule suivante, le rapport de conflits |
 | `backend/domain/phase.py` · `Phase.poules` | §4 — le réglage porté par l'agrégat, et l'invariant « pas de réglage de poules sur un autre type » (`ReglageDePoulesInvalide`) |
+| `backend/domain/contrat_phase.py` | §1 — le **registre** : une ligne par type, sept capacités, et les dix tables dérivées (`TYPES_EN_TABLEAU`, `TYPES_MONTES`, `TYPES_CLASSANTS_LUS`, `TYPES_EN_TABLEAU_JOUE`, `TYPES_JOUES`, `TYPES_SIGNALES_EN_ECART`, …) |
+| `backend/domain/deroule.py` · `backend/application/{palmares,simulation_format,saisie_duels,placement_duels,routage}.py` | §1 — les sites **dérivés** ; aucun ne réécrit son filtre |
+| `frontend/src/shared/phases/catalogue.ts` · `TYPES_SIGNALES_EN_ECART` | §1 — le miroir client, écrit **en négatif** (un oubli y coûte un avertissement de trop, jamais un de moins) |
+| `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.policies.poules` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
+| `backend/infrastructure/db/models.py` · `PlacementPouleORM` + `migrations/versions/0045_placement_des_poules.py` | §3 — « poule → couloirs », clé primaire sur le **couloir** (un couloir, un occupant) |
+| `backend/application/poules.py` · `ServicePoules` | §3, §5, §6 — composition le jour J, pose du plan, rencontres par tour, couloirs dérivés, classement, saisie d'une rencontre |
 | `backend/tests/test_domain_placement_poules.py` · `test_domain_reglage_poules.py` | §3, §4, §5 — écrits **depuis le CA** avant l'implémentation (règle 9) |
+| `backend/tests/test_domain_contrat_phase.py` · `test_service_poules.py` · `test_placement_poule_repository.py` | §1, §3, §5, §6 |
 
-**Restent à écrire dans cette tranche** — et donc **volontairement absents du tableau ci-dessus**,
-puisque nommer un module vide est précisément le défaut qu'ADR-0017 a coûté treize mois : le
-registre de résolution du contrat par type, la table de placement des poules et sa migration, le
-service de composition, le décor de saisie des rencontres, le classement de phase, la saisie du
-barrage, et l'exposition à l'atelier.
+### Restent à écrire dans cette tranche *(état au 09/08/2026, après six commits)*
+
+**Volontairement absents du tableau ci-dessus** : nommer un module vide est précisément le défaut
+qu'ADR-0017 a coûté treize mois.
+
+1. **§4 — le classement d'une phase de poules n'est pas encore *lisible*.** `ServicePoules` produit
+   le classement de chaque groupe, mais `ServiceSaisieDuels._classement_de_l_ordre` rend toujours
+   `None` sur ce type, si bien que le CA « la phase avale consomme les qualifiés » **n'est pas
+   livré**. `contrat_phase.py` porte donc `classement_lisible=False` pour les poules, et un test le
+   verrouille — l'avoir mis à `True` par anticipation réclamait 34 inscrits pour un prélèvement que
+   rien n'honore, soit le « refus abusif le jour J » d'E05US021. *(Défaut introduit puis refermé le
+   09/08/2026 ; cf. le commit `fix(e05us023): le registre cesse d'annoncer…`.)*
+
+   ⚠️ **Bloqué sur un arbitrage du commanditaire, pas sur du code** : dans quel **ordre** les poules
+   se concatènent-elles pour former un classement de phase ? Les premiers de chaque poule, puis les
+   seconds (convention usuelle), ou un autre ordre ? Tant qu'il n'est pas tranché, l'écrire serait
+   décider une règle métier au mauvais endroit.
+
+   Une fois tranché, il reste un **port étroit** (`LecteurClassementPoules`, patron de
+   `LecteurPopulationPhase`) pour casser le cycle `ServicePoules` → `ServiceSaisieDuels`, câblé à la
+   main en `bootstrap/` (règle 8), puis la bascule de la capacité et du test.
+
+2. **§5 — l'exposition du barrage de poule.** Le moteur est complet depuis E05US015, la portée
+   `POULE` est câblée depuis E06US003, et `ServicePoules._verdicts_de_barrage` **relit déjà** les
+   verdicts pour refermer le classement. Manque l'**annonce** depuis l'écran quand
+   `PouleAffichee.barrage_requis` est vrai.
+
+3. **L'exposition à l'atelier et en salle** : DTO Pydantic, endpoints `/api/v1`, fiche de réglages
+   avec la répartition en direct (`ServicePoules.repartition` la rend déjà, sans exiger de salle ni
+   de plan), écran de saisie des rencontres, et le **câblage en composition root** — `ServicePoules`
+   n'est instancié nulle part aujourd'hui.
+
+4. **`route_l_archer` reste `False`, et c'est hors périmètre** — à ne pas confondre avec le point 1.
+   `application/routage.py` ne sait pas dire à un membre de poule où il tire ensuite ; ce n'est ni au
+   CA ni à cette liste. Cette capacité-là attendra une US, quand les trois ci-dessus doivent être
+   closes avant que la branche parte en revue.
+
+5. **Les documents de fin d'US** : `docs/fonctionnel/E05US023.md`, `docs/dette.md` (DETTE-028
+   rétrécie au périmètre poules, pas refermée), le journal d'avancement (résumé + fichier daté) et
+   `SUIVI-US.md`.
