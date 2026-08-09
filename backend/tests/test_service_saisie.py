@@ -31,7 +31,7 @@ from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie
 from domain.tournoi import TournoiId
@@ -678,30 +678,34 @@ def _monter_la_fourche(m: Montage) -> tuple[PhaseId, PhaseId, ArcherId]:
         Archer(nom="MARTIN", prenom="Luc", tournoi_id=m.tournoi_id, categorie_id=m.categorie_id)
     )
     assert autre.id is not None
-    haute = m.phases.ajouter(
-        Phase(
-            depart_id=_DEPART,
-            ordre=2,
-            type=TypePhase.QUALIFICATION,
-            bareme=BaremeQualification.creer(2, 3),
-            validation=GrainValidation.fin_de_serie(),
-        ).demarrer()
-    )
-    basse = m.phases.ajouter(
-        Phase(
-            depart_id=_DEPART,
-            ordre=3,
-            type=TypePhase.QUALIFICATION,
-            bareme=BaremeQualification.creer(2, 3),
-            validation=GrainValidation.fin_de_serie(),
-        ).demarrer()
-    )
+    posees = [
+        m.phases.ajouter(
+            Phase(
+                depart_id=_DEPART,
+                ordre=ordre,
+                type=TypePhase.QUALIFICATION,
+                bareme=BaremeQualification.creer(2, 3),
+                validation=GrainValidation.fin_de_serie(),
+                # `sources` renseignées : c'est ce qui rend la phase **prélevée**, donc
+                # discriminante. Sans elles, le service la traite comme une qualification de tête
+                # (qui accueille tout le monde) et le décor ne prouverait rien.
+                sources=(SourcePhase.par_rangs(1),),
+            ).demarrer()
+        )
+        for ordre in (2, 3)
+    ]
+    haute, basse = posees
     assert haute.id is not None and basse.id is not None
     # Les deux archers sont **placés sur la même cible** : c'est le cas du CA (le plan de cibles
     # reste commun aux trois tours), et c'est aussi ce qui donne un créneau à la saisie admin.
     m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
     m.placer(autre.id, _DEPART, cible_index=1, position="B")
     m.populations.populations = {2: [m.archer_id], 3: [autre.id]}
+    # ⚠️ La qualification de **tête** admet tout le monde, comme en production : c'est ce qui rend
+    # le départage entre phases admissibles non trivial — et c'est le défaut qu'un premier
+    # correctif avait laissé passer (il rendait la tête pour tout le monde tant qu'elle était
+    # démarrée). Un décor où la tête ne réclamerait personne ne l'aurait pas vu.
+    m.populations.tous = [m.archer_id, autre.id]
     return haute.id, basse.id, autre.id
 
 
@@ -754,3 +758,31 @@ def test_la_lecture_retrouve_la_feuille_sur_un_deroule_ordinaire() -> None:
 
     assert m.phase_id != m.tournoi_id, "Le décor doit distinguer les deux identifiants."
     assert etat is not None and len(etat.serie.volees) == 1
+
+
+def test_la_fourche_ne_retombe_pas_dans_le_premier_tour_reste_ouvert() -> None:
+    """Le premier tour laissé « en cours » ne doit pas capter la saisie du second.
+
+    ⚠️ **Second bloquant de revue, sur le correctif du premier.** La qualification de tête admet
+    **tout le monde** par construction (elle accueille le créneau entier) : la population ne la
+    discrimine donc jamais, et le départage retombait sur « la première démarrée », c'est-à-dire
+    elle. Or démarrer une phase est un geste manuel : rien n'oblige l'organisateur à marquer le
+    premier tour « terminé » avant de lancer la fourche — et l'arbitrage du 09/08/2026 pose
+    explicitement que plusieurs phases peuvent être en cours à la fois. Les 3x15 du second tour
+    s'écrivaient alors à la suite des 3x20 dans la feuille du premier.
+
+    Le départage se fait donc sur la phase la plus **avancée** parmi celles qui admettent l'archer.
+    """
+    m = Montage()
+    haute, basse, autre = _monter_la_fourche(m)
+    tete = m.phases.par_depart(_DEPART)[0]
+    assert tete.id is not None
+    m.phases.enregistrer(tete.demarrer())  # le premier tour reste ouvert
+
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 1, _v("10", "9", "8"))
+    m.service.saisir_volee(m.tournoi_id, autre, 1, _v("6", "5", "M"))
+
+    assert m.series.par_archer(haute, m.archer_id) is not None
+    assert m.series.par_archer(basse, autre) is not None
+    assert m.series.par_archer(tete.id, m.archer_id) is None, "Rien n'atterrit dans le 1er tour."
+    assert m.series.par_archer(tete.id, autre) is None

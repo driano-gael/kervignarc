@@ -22,6 +22,7 @@ Frontières (cf. `stories/E04-saisie-scores.md`) :
 from __future__ import annotations
 
 import datetime
+import logging
 from dataclasses import dataclass
 
 from application.erreurs import (
@@ -33,15 +34,17 @@ from application.erreurs import (
     SaisieHorsCible,
 )
 from application.portee import (
+    la_plus_avancee,
     la_plus_courante,
     qualification_courante,
     qualification_du_tournoi,
 )
-from application.prelevement import LecteurPopulationPhase
+from application.prelevement import LecteurPopulationPhase, ResolveurClassement
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
+from domain.erreurs import DomainError
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
@@ -56,6 +59,8 @@ from domain.ports import (
 )
 from domain.serie import Serie
 from domain.tournoi import TournoiId
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -222,6 +227,12 @@ class ServiceSaisie:
         # `bareme` optionnel depuis E05US001 (ADR-0045 §2), présent sur une qualification ; absent
         # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
+        # ⚠️ **Un seul résolveur pour toute la cible** (2ᵉ correctif de revue). En construire un par
+        # archer repartait d'un cache vide à chaque fois : sur un créneau à trois qualifications,
+        # la console de supervision — sondée par 30 tablettes — reconstruisait le classement du
+        # créneau quatre fois par cible. Le cache de `resolveur_de_classement` est fait pour être
+        # **partagé sur toute la descente** (E05US024) ; le fabriquer en boucle l'annule.
+        resolveur = self._populations.resolveur_de_classement(tournoi_id, depart_id)
         completes: list[int] = []
         derniere: datetime.datetime | None = None
         for ligne in self.archers_du_poste(tournoi_id, cible_index, depart_id):
@@ -233,7 +244,7 @@ class ServiceSaisie:
             # n'aurait jamais fini. Le `nb_volees` affiché reste, lui, celui de la phase courante :
             # la console rend **une** ligne par cible, elle ne peut afficher qu'un dénominateur.
             etat = self._etat_dans(
-                self._qualification_de_l_archer(tournoi_id, depart_id, ligne.archer.id),
+                self._qualification_de_l_archer(tournoi_id, depart_id, ligne.archer.id, resolveur),
                 ligne.archer.id,
             )
             if etat is None:
@@ -252,7 +263,12 @@ class ServiceSaisie:
             volee_courante=volee_courante, nb_volees=nb_volees, derniere_saisie=derniere
         )
 
-    def etat_serie(self, tournoi_id: TournoiId, archer_id: ArcherId) -> EtatSerie | None:
+    def etat_serie(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        contexte: ContexteSaisie | None = None,
+    ) -> EtatSerie | None:
         """L'état persisté de la série de l'archer (volées + « quand »), ou `None` si rien de saisi.
 
         Chemin de lecture de la grille : la série (valeurs, marqueurs, verrou, cumul) **et** le
@@ -266,9 +282,16 @@ class ServiceSaisie:
         cessaient de coïncider — c'est-à-dire dès le second tournoi de la base. La résolution est
         celle du chemin d'écriture, à la nuance près qu'elle ne **lève** pas : une lecture sans
         qualification configurée rend `None`, comme une série jamais ouverte.
+
+        ⚠️ **`contexte` n'est pas décoratif** (2ᵉ correctif de revue) : sans lui, la lecture résout
+        le créneau par « le plus petit identifiant où l'archer est inscrit » (`DETTE-052`) alors que
+        l'écriture le reçoit du poste. Sur un archer inscrit matin **et** après-midi, la tablette de
+        l'après-midi écrivait dans sa phase et relisait celle du matin : grille vide sur des flèches
+        en base, ou pire, les volées verrouillées du matin. La limite `DETTE-052` ne vaut que pour
+        la saisie **admin** — le poste sait où il est, encore fallait-il le lui demander.
         """
         return self._etat_dans(
-            self._phase_qualification_ou_none(tournoi_id, archer_id, None), archer_id
+            self._phase_qualification_ou_none(tournoi_id, archer_id, contexte), archer_id
         )
 
     def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
@@ -516,7 +539,11 @@ class ServiceSaisie:
         return qualification_du_tournoi(self._phases, tournoi_id)
 
     def _qualification_de_l_archer(
-        self, tournoi_id: TournoiId, depart_id: DepartId, archer_id: ArcherId
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        archer_id: ArcherId,
+        resolveur: ResolveurClassement | None = None,
     ) -> Phase | None:
         """La qualification de ce créneau **qui admet cet archer**, ou `None` s'il n'y en a aucune.
 
@@ -535,11 +562,19 @@ class ServiceSaisie:
         d'`application/prelevement.py`) : deux résolutions distinctes remettraient un archer à un
         poste dont l'arbre le croit ailleurs.
 
+        ⚠️ **La tête n'est jamais discriminante** : une qualification sans source accueille tout le
+        créneau, donc elle admet *aussi* l'archer de la *basse*. Le départage final se fait par
+        `la_plus_avancee` et non `la_plus_courante` — sens **inverse** sur les phases démarrées,
+        pour la raison écrite là-bas. Un premier correctif s'y était trompé : tant que le premier
+        tour restait « en cours », il captait toute la saisie.
+
         **Court-circuit voulu sur un créneau mono-qualification** : la lecture de classement n'est
         même pas tentée. C'est le cas de tous les tournois d'aujourd'hui — non-régression par
         construction (oracle 120 compris), et surtout aucun coût ajouté au chemin chaud de la
         saisie, qui reconstruirait sinon le classement du créneau à **chaque flèche** (`DETTE-031`,
-        pas de cache transverse aux requêtes).
+        pas de cache transverse aux requêtes). Sur un créneau qui en porte plusieurs, `resolveur`
+        permet à un appelant qui boucle sur des archers (`avancement_cible`) de **partager** le
+        cache d'une résolution à l'autre : le construire par appel l'annulait.
         """
         qualifications = [
             phase
@@ -547,22 +582,32 @@ class ServiceSaisie:
             if phase.type is TypePhase.QUALIFICATION
         ]
         if len(qualifications) <= 1:
-            return qualification_courante(self._phases, depart_id)
-        admises = [
-            phase
-            for phase in qualifications
-            if self._admet(tournoi_id, depart_id, phase, archer_id)
-        ]
+            return la_plus_courante(qualifications)
+        resoudre = (
+            resolveur
+            if resolveur is not None
+            else self._populations.resolveur_de_classement(tournoi_id, depart_id)
+        )
+        admises = [phase for phase in qualifications if self._admet(phase, archer_id, resoudre)]
         if not admises:
             # Aucune ne le réclame : classement amont illisible, ou archer hors de toutes les
             # fenêtres. On ne refuse pas la saisie sur une lecture de classement (robustesse jour
-            # J) — on retombe sur « la phase en cours du créneau », le comportement d'avant.
-            return qualification_courante(self._phases, depart_id)
-        return la_plus_courante(admises)
+            # J) — on retombe sur « la phase en cours du créneau », le comportement d'avant. C'est
+            # un repli **destructeur** (des flèches peuvent atterrir dans la mauvaise feuille), à la
+            # différence de celui de la complétude qui, lui, est conservateur : on le **journalise**
+            # plutôt que de le laisser muet.
+            _logger.warning(
+                "Aucune qualification du créneau %s ne réclame l'archer %s parmi %d candidates : "
+                "repli sur la phase en cours. Déroulé incohérent ou classement amont illisible.",
+                depart_id,
+                archer_id,
+                len(qualifications),
+            )
+            return la_plus_courante(qualifications)
+        return la_plus_avancee(admises)
 
-    def _admet(
-        self, tournoi_id: TournoiId, depart_id: DepartId, phase: Phase, archer_id: ArcherId
-    ) -> bool:
+    @staticmethod
+    def _admet(phase: Phase, archer_id: ArcherId, resoudre: ResolveurClassement) -> bool:
         """Cette phase compte-t-elle cet archer dans sa population ?
 
         Le résolveur rend, pour l'`ordre` d'une phase, le classement qu'elle **produit** — donc
@@ -570,13 +615,23 @@ class ServiceSaisie:
         `ServiceSaisieDuels._classement_de_l_ordre`). L'appartenance s'y lit directement, sans
         redire les règles de prélèvement ici.
 
-        Best-effort assumé : toute erreur de lecture du moteur (`PrelevementEnAttente` sur une
-        source encore indécise, déroulé incohérent) rend `False` — l'appelant retombe alors sur la
-        phase en cours. La saisie du jour J ne s'arrête pas sur un classement illisible.
+        **La phase de tête (sans source) rend `True` sans rien lire.** Elle accueille tout le
+        créneau par construction : lui résoudre un classement complet pour conclure « oui » est la
+        plus chère des lectures pour une réponse acquise — sur le chemin **d'écriture**, dans la
+        file du writer unique.
+
+        Best-effort assumé : toute erreur de lecture du moteur rend `False` — l'appelant retombe
+        alors sur la phase en cours, et le journalise. Le filet couvre `ApplicationError`
+        (`PrelevementEnAttente` sur une source indécise) **et** `DomainError` : une qualification
+        peut se prélever d'un tableau, dont la reconstruction lève des erreurs de domaine
+        (`EffectifTableauInvalide`, `FormatTableauIncoherent`) — les omettre aurait fait tomber la
+        saisie en 500 sur un déroulé incohérent, à rebours de ce que ce repli promet.
         """
+        if not phase.sources:
+            return True
         try:
-            source = self._populations.resolveur_de_classement(tournoi_id, depart_id)(phase.ordre)
-        except ApplicationError:
+            source = resoudre(phase.ordre)
+        except (ApplicationError, DomainError):
             return False
         if source is None:
             return False

@@ -307,9 +307,20 @@ async def lire_serie(
     saisi renvoie une série **vide** (200), pas un 404 : le front affiche un pavé vierge. Lecture.
     """
     service_saisie: ServiceSaisie = request.app.state.service_saisie
+    service_postes: ServicePostes = request.app.state.service_postes
     if poste is not None and tournoi_id != poste.tournoi_id:
         raise SaisieHorsCible("Ce poste ne sert pas ce tournoi.")
-    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id)
+    # ⚠️ **La lecture reçoit le même créneau que l'écriture** (2ᵉ correctif de revue E05US025). Sans
+    # lui, le service résout le créneau par « le plus petit où l'archer est inscrit » (`DETTE-052`)
+    # alors que la tablette, elle, le sait : un archer inscrit matin **et** après-midi voyait sa
+    # volée écrite dans la phase de l'après-midi puis relue dans celle du matin. Un poste sans
+    # départ courant n'est pas refusé ici (c'est une lecture) : on retombe sur la résolution admin.
+    contexte: ContexteSaisie | None = None
+    if poste is not None:
+        depart_id = service_postes.depart_courant(extraire_jeton_poste(request))
+        if depart_id is not None:
+            contexte = ContexteSaisie(cible_index=poste.cible(), depart_id=depart_id)
+    etat = await run_in_threadpool(service_saisie.etat_serie, tournoi_id, archer_id, contexte)
     if etat is None:
         return SerieReponse.vide(tournoi_id, archer_id)
     return SerieReponse.de_etat(etat)

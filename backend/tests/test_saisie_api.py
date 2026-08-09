@@ -116,8 +116,14 @@ def _semer(
     connecter_admin(client)
     db: Database = app.state.database
     sf = db.session_factory
+    # ⚠️ **Un tournoi témoin d'abord** (2ᵉ correctif de revue E05US025). `TournoiId`, `DepartId` et
+    # `PhaseId` sont trois alias d'`int` (`DETTE-044`) : sur une base neuve, le premier tournoi, son
+    # premier créneau et sa première phase reçoivent tous l'identifiant 1, et **toute** confusion
+    # entre eux passe au vert. C'est ce qui a laissé ce fichier — celui qui couvre les trois routes
+    # d'écriture de la saisie — ne rien prouver du « quand » lu sur `serie.phase_id`.
+    TournoiRepositorySQL(sf).ajouter(Tournoi.creer("Témoin", _DATE))
     tournoi = TournoiRepositorySQL(sf).ajouter(Tournoi.creer("Salle 18m", _DATE))
-    assert tournoi.id is not None
+    assert tournoi.id is not None and tournoi.id != 1
     GabaritSalleRepositorySQL(sf).ajouter(
         GabaritSalle.creer("Plan", nb_cibles=nb_cibles).pour_tournoi(tournoi.id)
     )

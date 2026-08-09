@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import logging
+from collections.abc import Callable
 
 import pytest
 
@@ -149,6 +150,9 @@ _BAREME_DEFAUT = BaremeQualification.creer(4, 6)
 class _Monde:
     service: ServiceFeuilleDeMarque
     generateur: FauxGenerateur
+    # Pose un second créneau avec sa propre qualification et rend son id : le seul décor où « le
+    # barème du tournoi » et « celui du créneau » diffèrent, donc le seul qui prouve quelque chose.
+    creer_second_tour: Callable[[BaremeQualification], int]
     archers: FauxArcherRepository
     inscriptions: FauxInscriptionRepository
     placements: FauxPlacementRepository
@@ -220,12 +224,15 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
 
     tournoi = tournois.ajouter(Tournoi.creer("Tournoi Test", datetime.date(2026, 1, 18)))
     assert tournoi.id is not None
-    if avec_bareme is not None:
-        phases.ajouter(Phase.qualification(tournoi.id, avec_bareme))
     depart = departs.ajouter(
         Depart.creer(tournoi.id, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
+    # ⚠️ **La phase pend au créneau, pas au tournoi** (ADR-0075, corrigé à la 2ᵉ revue d'E05US025).
+    # Ce décor passait `tournoi.id` comme `depart_id` : ça « marchait » parce que les deux valaient
+    # 1, et c'est exactement le genre de coïncidence qui a masqué le défaut que cette US corrige.
+    if avec_bareme is not None:
+        phases.ajouter(Phase.qualification(depart.id, avec_bareme))
     blason = blasons.ajouter(
         Blason.creer(tournoi.id, "Blason 40", taille=1.0, capacite=1, zones=None)
     )
@@ -243,9 +250,21 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
         phases,
         generateur,
     )
+    tournoi_id = tournoi.id
+
+    def creer_second_tour(bareme: BaremeQualification) -> int:
+        """Un second créneau, avec **sa** qualification et son propre barème. Rend son id."""
+        autre = departs.ajouter(
+            Depart.creer(tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+        )
+        assert autre.id is not None
+        phases.ajouter(Phase.qualification(autre.id, bareme))
+        return autre.id
+
     return _Monde(
         service=service,
         generateur=generateur,
+        creer_second_tour=creer_second_tour,
         archers=archers,
         inscriptions=inscriptions,
         placements=placements,
@@ -376,3 +395,27 @@ def test_affectation_orpheline_est_omise_et_journalisee() -> None:
     assert [a.nom for a in feuille.archers] == ["Durand"]  # l'orpheline est écartée
     assert any("plan incohérent" in message for message in capture.messages)
     assert any("999999" in message for message in capture.messages)
+
+
+def test_la_grille_suit_le_barème_du_tour_qui_se_tire() -> None:
+    """La feuille papier d'un second tour porte **sa** grille, pas celle du premier (E05US025).
+
+    ⚠️ **Correctif de revue.** `_bareme_du_creneau` lisait « la » qualification du tournoi, donc la
+    **première**, alors que `generer` tient déjà le `depart_id`. Sur le déroulé de référence — 3x20
+    puis une *haute* et une *basse* à 3x15 —, on imprimait des feuilles à 20 volées pour un tour
+    qui s'en tire 15 : du papier faux distribué au pas de tir, que le jour J ne rattrape pas.
+    """
+    monde = _monde()
+    seconde = monde.creer_second_tour(
+        BaremeQualification.creer(nb_volees=3, nb_fleches_par_volee=3)
+    )
+    monde.placer("Durand", "Marie", cible_index=1, position="A")
+
+    monde.service.generer(monde.tournoi_id, seconde)
+
+    feuille = monde.generateur.derniere
+    assert feuille is not None
+    assert (feuille.nb_volees, feuille.nb_fleches_par_volee) == (
+        3,
+        3,
+    ), "La feuille du second créneau porte son propre barème, pas celui du premier (4x6)."

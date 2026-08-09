@@ -760,8 +760,10 @@ class FauxDuelRepository:
         return duel
 
 
-def qualification_de_secours(session_factory: Any, tournoi_id: int) -> int:
-    """L'identifiant de la qualification du **premier créneau** d'un tournoi, posée au besoin.
+def qualification_de_secours(
+    session_factory: Any, tournoi_id: int, depart_id: int | None = None
+) -> int:
+    """L'identifiant de la qualification d'un créneau (le **premier** par défaut), posée au besoin.
 
     Échafaudage introduit par **E05US025** (ADR-0082). Une feuille de marque pend désormais à sa
     phase (`serie.phase_id`, `NOT NULL`) : un décor qui sème des scores « directement par le
@@ -783,7 +785,8 @@ def qualification_de_secours(session_factory: Any, tournoi_id: int) -> int:
             "Ce décor n'a aucun créneau : depuis ADR-0075 une phase pend au départ, il n'y a "
             "donc nulle part où poser la qualification que réclame `serie.phase_id`."
         )
-    depart_id = departs[0].id
+    if depart_id is None:
+        depart_id = departs[0].id
     assert depart_id is not None
     existante = next(
         (
@@ -812,16 +815,28 @@ class FauxLecteurPopulations:
 
     Renseigner `populations[ordre]` monte la **fourche** du CA (une *haute* et une *basse* qui se
     jouent ensemble) sans avoir à câbler tout le moteur de classement dans un test de service.
+
+    ⚠️ **`tous` n'est pas un confort, c'est la fidélité à la production** (2ᵉ correctif de revue).
+    En production, une phase **sans source** — la qualification de tête — rend
+    `ClassementSource(pour_depart(...))`, c'est-à-dire **tout le créneau**, y compris les archers à
+    zéro flèche. Une doublure qui rendrait `None` pour l'ordre de tête ferait croire que la tête ne
+    réclame personne, donc que l'ensemble des phases admissibles est toujours un singleton — et le
+    départage entre elles, seul endroit où la production peut se tromper, ne serait exercé par aucun
+    test. C'est le doublage « porté à moitié » que cette même US a dénoncé deux fois ; on ne le
+    refait pas ici. Renseigner `tous` pose donc la population par défaut de tout ordre non déclaré.
     """
 
-    def __init__(self, populations: dict[int, list[int]] | None = None) -> None:
+    def __init__(
+        self, populations: dict[int, list[int]] | None = None, tous: list[int] | None = None
+    ) -> None:
         self.populations: dict[int, list[int]] = {} if populations is None else populations
+        self.tous: list[int] | None = tous
 
     def resolveur_de_classement(
         self, tournoi_id: int, depart_id: int
     ) -> Callable[[int], ClassementSource | None]:
         def resoudre(ordre: int) -> ClassementSource | None:
-            archers = self.populations.get(ordre)
+            archers = self.populations.get(ordre, self.tous)
             if archers is None:
                 return None
             return ClassementSource(

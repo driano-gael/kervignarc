@@ -140,6 +140,12 @@ class ServiceCompletude:
         # se clore — le cycle de vie d'E12US008 restait bloqué pour toujours.
         archers = self._archers_places(depart_id)
         jugements = self._jugements_du_creneau(tournoi_id, depart_id, archers)
+        if not jugements:
+            # Aucune qualification scorable : rien n'est *validable*, donc rien n'est clos. Sans ce
+            # retour, `_est_clos` rendrait `all([]) is True` et le créneau s'annoncerait
+            # intégralement clos alors que personne n'a pu tirer — le contraire de ce que la
+            # docstring promet (correctif de revue).
+            return AvancementDepart(nb_places=len(archers), nb_ayant_tire=0, nb_series_closes=0)
         nb_places = len(archers)
         nb_ayant_tire = sum(1 for archer_id in archers if self._a_tire(archer_id, jugements))
         nb_series_closes = sum(1 for archer_id in archers if self._est_clos(archer_id, jugements))

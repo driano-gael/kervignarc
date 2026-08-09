@@ -110,8 +110,14 @@ class _Contexte:
         self.series = InMemorySerieRepository()
         self.diffusion = _DiffusionFausse()
 
+        # ⚠️ **Un tournoi témoin d'abord** (2ᵉ correctif de revue E05US025). Les magasins en
+        # mémoire allouent chacun leur séquence à partir de 1 : sans lui, le tournoi, le créneau et
+        # la phase de qualification portent **tous** l'identifiant 1, et une confusion entre eux
+        # passe au vert — c'est ce qui a masqué le défaut de `pilotage_simulation`, qui écrivait
+        # dans la phase et relisait dans le tournoi (`DETTE-044`).
+        self.tournois.ajouter(Tournoi.creer("Témoin", _DATE))
         tournoi = self.tournois.ajouter(Tournoi.creer("Salle 18m", _DATE))
-        assert tournoi.id is not None
+        assert tournoi.id is not None and tournoi.id != 1
         self.tournoi_id = tournoi.id
 
         blason = self.blasons.ajouter(Blason.creer(self.tournoi_id, "Blason 40", 0.25, 1))
@@ -154,7 +160,7 @@ class _Contexte:
             )
             assert archer.id is not None
             self.archer_ids.append(archer.id)
-            self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=1))
+            self.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=self.depart_id))
 
     def _poser_etape(self, phase: Phase) -> None:
         """Définit l'étape au tournoi, puis l'instancie dans le créneau (ADR-0076)."""

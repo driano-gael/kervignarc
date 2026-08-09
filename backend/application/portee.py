@@ -124,6 +124,35 @@ def qualification_courante(phases: PhaseRepository, depart_id: DepartId) -> Phas
     )
 
 
+def la_plus_avancee(phases: Iterable[Phase]) -> Phase | None:
+    """Celle de ces phases où un archer **qu'elles admettent toutes** tire en ce moment.
+
+    ⚠️ **Sens inverse de `la_plus_courante` sur les phases démarrées, et c'est tout l'objet de cette
+    fonction** (2ᵉ correctif de revue E05US025). Un archer de la *haute* est admis par sa phase
+    **et** par la qualification de tête, qui accueille tout le monde par construction : sur cet
+    ensemble-là, « la première démarrée » désigne toujours la tête. L'organisateur qui lance la
+    fourche sans avoir marqué le premier tour « terminé » — geste manuel, et rien ne l'exige —
+    voyait donc les 3x15 de la basse s'écrire à la suite des 3x20 dans la feuille du premier tour.
+    Le bloquant précédent, déplacé d'un cran.
+
+    Sur un ensemble de phases **qui admettent toutes le même archer**, l'`ordre` est un ordre
+    topologique de son propre parcours : la plus avancée des phases démarrées est celle où il tire.
+    À défaut de phase démarrée, la **première à venir** est la prochaine qu'il tirera ; à défaut, la
+    dernière (tout est terminé).
+
+    Ne pas confondre avec `la_plus_courante`, qui répond à une autre question — « que se tire-t-il
+    dans ce créneau ? », pour un affichage — et sur un ensemble non filtré par archer.
+    """
+    triees = sorted(phases, key=lambda phase: phase.ordre)
+    if not triees:
+        return None
+    demarrees = [p for p in triees if p.statut in _STATUTS_EN_COURS]
+    if demarrees:
+        return demarrees[-1]
+    a_venir = [p for p in triees if p.statut is StatutPhase.A_VENIR]
+    return a_venir[0] if a_venir else triees[-1]
+
+
 def la_plus_courante(phases: Iterable[Phase]) -> Phase | None:
     """Celle de ces phases où l'on tire **en ce moment** (priorité de statut), ou `None` si aucune.
 

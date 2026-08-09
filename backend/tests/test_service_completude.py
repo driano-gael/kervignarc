@@ -552,3 +552,22 @@ def _poser_la_fourche(m: Montage, depart_id: DepartId) -> tuple[int, int]:
         assert phase.id is not None
         posees.append(phase.id)
     return posees[0], posees[1]
+
+
+def test_un_creneau_sans_qualification_scorable_n_est_pas_clos_d_office() -> None:
+    """Sans barème, rien n'est validable : le créneau reste ouvert, il n'est pas « tout clos ».
+
+    Correctif de revue : `_est_clos` rend `all([])`, donc `True`, sur un créneau sans jugement —
+    `nb_series_closes` aurait égalé `nb_places` alors que personne n'a pu tirer.
+    """
+    m = Montage(nb_volees_bareme=0)  # aucune qualification posée
+    depart = m.creer_depart()
+    m.placer(depart, cible_index=1, archer_id=10, position="A")
+
+    avancement = m.service.avancement_depart(m.tournoi_id, depart)
+
+    assert (avancement.nb_places, avancement.nb_ayant_tire, avancement.nb_series_closes) == (
+        1,
+        0,
+        0,
+    )

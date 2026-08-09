@@ -589,16 +589,27 @@ def test_fusionner_reassigne_la_serie_du_perdant(tmp_path: Path) -> None:
         assert gagnant.id is not None and perdant.id is not None
         # E05US025 : la feuille pend a sa phase — le decor doit en fournir une reelle, donc un
         # creneau ou la poser (une phase pend au depart depuis ADR-0075).
-        DepartRepositorySQL(db.session_factory).ajouter(
-            Depart.creer(tournoi_id, numero=1, tarif_centimes=0, horaire="09:00")
+        departs = DepartRepositorySQL(db.session_factory)
+        # Deux créneaux, et la phase éprouvée est celle du **second** : sans cela, la qualification
+        # reçoit l'identifiant 1 comme le tournoi et la confusion `tournoi_id`/`phase_id` passe au
+        # vert (`DETTE-044`).
+        departs.ajouter(Depart.creer(tournoi_id, numero=1, tarif_centimes=0, horaire="09:00"))
+        qualification_de_secours(db.session_factory, tournoi_id)
+        second = departs.ajouter(
+            Depart.creer(tournoi_id, numero=2, tarif_centimes=0, horaire="14:00")
         )
-        phase_id = qualification_de_secours(db.session_factory, tournoi_id)
+        assert second.id is not None
+        phase_id = qualification_de_secours(db.session_factory, tournoi_id, second.id)
         series.enregistrer(_serie_tiree(tournoi_id, perdant.id, phase_id))
 
         archers.fusionner(gagnant.id, perdant.id)
 
-        assert series.par_archer(tournoi_id, perdant.id) is None
-        serie_gagnant = series.par_archer(tournoi_id, gagnant.id)
+        # ⚠️ La lecture se fait **par la phase** — dernier site du dépôt à passer encore un
+        # `tournoi_id` (relevé de la 2ᵉ revue). Il ne passait que par coïncidence numérique, sur le
+        # fichier même qui éprouve la réassignation de série à la fusion.
+        assert phase_id != tournoi_id, "Le décor doit distinguer les deux identifiants."
+        assert series.par_archer(phase_id, perdant.id) is None
+        serie_gagnant = series.par_archer(phase_id, gagnant.id)
         assert serie_gagnant is not None and serie_gagnant.nb_fleches_validees == 3
     finally:
         db.engine.dispose()
