@@ -31,6 +31,13 @@ import {
   TYPES_SANS_CLASSEMENT,
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import {
+  depuisReglage,
+  estValide as poulesValides,
+  versReglage,
+  POULES_PAR_DEFAUT,
+} from '../../shared/phases/poules'
 import {
   decrireProfondeur,
   depuisProfondeur,
@@ -228,6 +235,10 @@ export function FormulairePhase({
   // celui-ci est monté sous condition, donc une copie interne divergerait au premier aller-retour
   // de type. Le contrôle est partagé avec « Composer un déroulé » — le réglage y a le même sens.
   const [profondeur, setProfondeur] = useState(depuisProfondeur(phase?.profondeur ?? null))
+  // Même parti, même raison (E05US023) : `ReglagePoules` est monté sous condition, donc l'état vit
+  // ici. L'écran ne simule aucun effectif — le tournoi a de vrais inscrits, et c'est
+  // `GET /api/v1/poules/repartition/...` qui dit la répartition réelle une fois la phase posée.
+  const [poules, setPoules] = useState(depuisReglage(phase?.poules ?? null))
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -294,8 +305,12 @@ export function FormulairePhase({
   const effectifInvalide =
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
   const enTableau = TYPES_EN_TABLEAU.includes(type)
+  const estPoules = type === 'poules'
   const soumissionPossible =
-    sources !== 'invalide' && !effectifInvalide && !(enTableau && !estValide(profondeur))
+    sources !== 'invalide' &&
+    !effectifInvalide &&
+    !(enTableau && !estValide(profondeur)) &&
+    !(estPoules && !poulesValides(poules))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -311,6 +326,9 @@ export function FormulairePhase({
       // Même règle d'édition totale que le barrage — mais celle-ci se **règle** ici aussi : une
       // phase retypée hors tableau perd sa profondeur, puisque le serveur la refuserait (422).
       profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
+      // Idem pour le réglage de poules (E05US023) : réémis sur une phase de poules, **effacé** dès
+      // qu'elle est retypée — le serveur refuserait sinon en 422 `reglage_de_poules_invalide`.
+      poules: estPoules ? (versReglage(poules) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -324,6 +342,7 @@ export function FormulairePhase({
           // « Composer un déroulé » ne réinitialise, lui, **aucun** champ (comportement antérieur
           // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
           setProfondeur(PROFONDEUR_AU_PRESET)
+          setPoules(POULES_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -378,6 +397,7 @@ export function FormulairePhase({
             presetIntegral={type === 'placement'}
           />
         )}
+        {estPoules && <ReglagePoules etat={poules} surChangement={setPoules} effectif={null} />}
         <label className="formulaire__tranche">
           <input
             type="checkbox"
@@ -476,6 +496,8 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         // (ce widget n'est rendu que sur la qualification, qui ne porte jamais de profondeur), mais
         // c'était le seul chemin d'appel non audité par l'US — relevé en revue, fermé à une ligne.
         profondeur: phase.profondeur,
+        // Même raison encore : réémis pour ne pas être effacé par une édition **totale**.
+        poules: phase.poules,
       },
     })
   }

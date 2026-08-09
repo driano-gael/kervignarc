@@ -59,6 +59,7 @@ describe('decrireEtape', () => {
       bareme: null,
       validation: null,
       profondeur: null,
+      poules: null,
       sources: [],
       effectif: null,
       ...partiel,

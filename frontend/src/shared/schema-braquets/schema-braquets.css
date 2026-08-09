@@ -164,6 +164,19 @@
   font-size: 13px;
 }
 
+/* Le barème d'une poule (E05US023) : victoire / nul / défaite **sur une ligne**, parce que les
+   trois valeurs se lisent ensemble — « 3 / 1 / 0 » est une seule information, pas trois. Empilés,
+   ils occupaient trois fois la hauteur pour trois champs à un chiffre. */
+.reglage-poules__bareme {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.reglage-poules__bareme input {
+  width: 4rem;
+}
+
 .deroule__table {
   width: 100%;
   border-collapse: collapse;

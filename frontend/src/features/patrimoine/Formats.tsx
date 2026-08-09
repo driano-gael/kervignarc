@@ -303,6 +303,7 @@ function FormulaireFormat() {
       validation: { type: 'fin_de_serie', n_volees: null },
       sources: [],
       effectif: null,
+      poules: null,
       // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
       profondeur: null,
     }

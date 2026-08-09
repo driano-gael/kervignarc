@@ -50,6 +50,13 @@ import {
 } from './sequence'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import {
+  depuisReglage,
+  estValide as poulesValides,
+  versReglage,
+  POULES_PAR_DEFAUT,
+} from '../../shared/phases/poules'
 import {
   depuisProfondeur,
   estValide,
@@ -175,6 +182,7 @@ function CompositionDuFormat({
             setMinimumExige(valeur)
             setModifie(true)
           }}
+          effectifSimule={effectif}
         />
         <div className="formulaire__actions">
           <button
@@ -509,6 +517,7 @@ function EditeurSequence({
   surEtapes,
   minimumExige,
   surMinimumExige,
+  effectifSimule,
 }: {
   nom: string
   surNom: (valeur: string) => void
@@ -516,6 +525,9 @@ function EditeurSequence({
   surEtapes: (etapes: Etape[]) => void
   minimumExige: string
   surMinimumExige: (valeur: string) => void
+  // Traversée jusqu'à `FormulaireEtape` pour l'aperçu de répartition des poules (E05US023). Cet
+  // éditeur n'en fait rien lui-même : il le fait passer, comme il fait passer `etapes`.
+  effectifSimule: number | null
 }) {
   const [edition, setEdition] = useState<number | null>(null)
   return (
@@ -555,6 +567,7 @@ function EditeurSequence({
                   setEdition(null)
                 }}
                 surAnnuler={() => setEdition(null)}
+                effectifSimule={effectifSimule}
               />
             ) : (
               <div className="phase__ligne">
@@ -603,6 +616,7 @@ function EditeurSequence({
       <FormulaireEtape
         etapesAmont={etapes}
         surValider={(nouvelle) => surEtapes(ajouterEtape(etapes, nouvelle))}
+        effectifSimule={effectifSimule}
       />
     </div>
   )
@@ -616,11 +630,16 @@ export function FormulaireEtape({
   etapesAmont,
   surValider,
   surAnnuler,
+  effectifSimule = null,
 }: {
   etape?: Etape
   etapesAmont: Etape[]
   surValider: (etape: Etape) => void
   surAnnuler?: () => void
+  // L'effectif que l'écran simule, **descendu jusqu'ici** pour la seule fiche de poules : c'est le
+  // CA « la répartition obtenue est montrée avant d'être validée » (E05US023). `null` quand l'écran
+  // n'en simule aucun — l'aperçu disparaît alors plutôt que d'annoncer un nombre de poules inventé.
+  effectifSimule?: number | null
 }) {
   const [type, setType] = useState<TypePhase>(etape?.type ?? 'qualification')
   const [nbVolees, setNbVolees] = useState(String(etape?.bareme?.nb_volees ?? 20))
@@ -634,6 +653,10 @@ export function FormulaireEtape({
   // un aller-retour de type le réinitialisait sans réinitialiser celle-ci — l'écran affichait
   // « Podium » et la soumission envoyait « classement intégral » (cf. l'en-tête du composant).
   const [profondeur, setProfondeur] = useState(depuisProfondeur(etape?.profondeur ?? null))
+  // Même parti que la profondeur, et pour la même raison : `ReglagePoules` est monté sous condition,
+  // donc il ne peut pas détenir son propre état sans diverger de celui-ci au premier changement de
+  // type. Une seule source, ici.
+  const [poules, setPoules] = useState(depuisReglage(etape?.poules ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -647,11 +670,13 @@ export function FormulaireEtape({
       ? { nb_volees: volees, nb_fleches_par_volee: fleches }
       : null
   const enTableau = TYPES_EN_TABLEAU.includes(type)
+  const estPoules = type === 'poules'
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
   // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
-  const soumissionBloquee = saisieInvalide || (enTableau && !estValide(profondeur))
+  const soumissionBloquee =
+    saisieInvalide || (enTableau && !estValide(profondeur)) || (estPoules && !poulesValides(poules))
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -668,6 +693,10 @@ export function FormulaireEtape({
     // Même garde que le barème : une profondeur n'a de sens que sur un tableau. Retyper une phase
     // de tableau en poule **efface** donc le réglage plutôt que de l'envoyer se faire refuser.
     profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
+    // Même garde encore : un réglage de poules porté par une élimination directe serait refusé en
+    // 422 (`ReglageDePoulesInvalide`). Retyper la phase l'**efface** donc, au lieu de l'envoyer se
+    // faire recaler — symétrique exact de la ligne au-dessus.
+    poules: estPoules ? (versReglage(poules) ?? null) : null,
   })
 
   return (
@@ -684,6 +713,9 @@ export function FormulaireEtape({
           // ajouts : sans ce reset, « classement intégral » se reportait en silence sur la phase
           // suivante — deux tableaux de 120 partant à ~616 duels que personne n'a demandés.
           setProfondeur(PROFONDEUR_AU_PRESET)
+          // Et le réglage de poules avec, pour la raison exacte donnée juste au-dessus : sans ce
+          // reset, « poules de 6, 4 qualifiés » se reporterait en silence sur la phase suivante.
+          setPoules(POULES_PAR_DEFAUT)
         }
       }}
     >
@@ -743,6 +775,10 @@ export function FormulaireEtape({
           surChangement={setProfondeur}
           presetIntegral={type === 'placement'}
         />
+      )}
+
+      {estPoules && (
+        <ReglagePoules etat={poules} surChangement={setPoules} effectif={effectifSimule} />
       )}
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
