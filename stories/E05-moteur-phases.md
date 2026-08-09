@@ -741,13 +741,58 @@ du tir à l'arc. On a interdit le cas au lieu de réparer les lecteurs ; cette U
   mauvaise.
 - **CA — non-régression** : un tournoi à **une** qualification se comporte exactement comme
   aujourd'hui, oracle 120 compris.
-- **⚠️ À trancher au cadrage** *(non instruit le 08/08/2026 — ne pas deviner)* : (a) ce que devient
-  le **classement de qualification** publié quand il y en a deux (deux classements séparés ? un
-  cumul ?) ; (b) ce qu'affiche l'écran de saisie à un archer engagé dans deux qualifications ;
-  (c) si la **complétude sportive** exige les deux avant de proposer « Terminer ».
-- **Notes** : les **12 appels** de `application/portee.py:qualification_du_tournoi` (9 modules) sont à
-  trier un par un — plusieurs restent légitimes tels quels. Terrain marqué `DETTE-048` : ce module est
-  « le seul à n'être ni testé ni surveillé », et les deux derniers défauts de portée en sont sortis.
+- **CA — le rang vient de la phase, jamais du cumul** : le classement d'un archer est sa **position
+  dans l'effectif de sa phase**, décalée par les effectifs des phases amont. Un tournoi qui coupe
+  120 archers en une *haute* (rangs 1..60) et une *basse* (rangs 61..120) rend un classement final
+  de 1 à 120 où **le dernier de la haute précède le premier de la basse, même si celui-ci a mieux
+  tiré** : la répartition est décidée par la phase amont, pas par les points du second tour.
+  ⚠️ Un classement obtenu en **triant toutes les séries par total** est donc faux — c'est la
+  réalisation naïve que ce CA existe pour interdire.
+- **CA — la complétude juge chaque qualification sur son propre effectif** : « Prêt à terminer ? »
+  exige les **trois** qualifications de l'exemple, la première sur ses 120 archers, la haute et la
+  basse sur leurs 60. Ne regarder que les phases terminales laisserait passer une feuille jamais
+  close au premier tour — or c'est ce tour-là qui décide qui va où.
+- **CA — la saisie ne montre que la phase en cours** : au second tour, l'écran de saisie affiche les
+  flèches du moment et **rien du tour précédent** (pas de rappel du total). Écran utilisé debout au
+  pas de tir : on ne le charge pas d'une information qui ne sert pas au geste (règle 10).
+
+  **Arbitrages rendus au cadrage du 09/08/2026** *(les trois points laissés ouverts le 08/08 ci-dessus
+  sont tranchés ; le quatrième — la forme du déroulé — s'est révélé être une **fausse contrainte** de
+  l'assistant, et mérite d'être noté pour qu'on ne la réintroduise pas)* :
+  **la fourche est déjà représentable.** `_anomalies_ordres` exige des ordres `1..N` sans trou ni
+  doublon, ce qui se lit à tort comme « le déroulé est linéaire, donc pas de branchement ». L'`ordre`
+  est un **ordre topologique** — il dit *qui peut alimenter qui*, pas *qui passe avant qui sur le pas
+  de tir* — et le contrôle de recoupement de rangs ne joue **qu'entre les sources d'une même phase**.
+  Deux phases peuvent donc puiser dans la même phase amont, et rien n'impose non plus **une seule
+  phase en cours à la fois** (`ServicePhases._transition` ne regarde que la phase visée ;
+  `domain/suivi_deroule.py` le dit noir sur blanc). La *haute* et la *basse* se composent et se
+  jouent ensemble sans toucher au séquencement : seul `_anomalies_unicite_qualification` les bloque.
+  L'exemple de référence du commanditaire :
+
+  ```
+  ordre 1 : Qualification          3×20   ← les 120 inscrits       → classement de 120
+  ordre 2 : Qualification haute    3×15   ← rangs   1..60 de l'ordre 1  → rangs finaux   1..60
+  ordre 3 : Qualification basse    3×15   ← rangs  61..120 de l'ordre 1 → rangs finaux  61..120
+  ```
+- **Notes** : les **9 appels** de `application/portee.py:qualification_du_tournoi` (7 modules —
+  `saisie` ×3, `completude` ×2, `classements`, `feuille_de_marque`, `forfaits`,
+  `pilotage_simulation`) sont à trier un par un — plusieurs restent légitimes tels quels. Terrain
+  marqué `DETTE-048` : ce module est « le seul à n'être ni testé ni surveillé », et les deux derniers
+  défauts de portée en sont sortis. *(La fiche annonçait « 12 appels, 9 modules » ; le relevé du
+  09/08/2026 en trouve 9 dans 7 modules. Chiffre corrigé plutôt que recopié.)*
   **ADR attendu.**
+- **Notes — le vrai câblage à casser** : au-delà de la portée, c'est `application/saisie_duels.py`
+  qui résout « phase de type qualification → le classement du départ », **quel que soit son ordre**.
+  Tant qu'il tient, la *haute* et la *basse* liraient toutes deux le classement du premier tour.
+- **Notes — `Serie` n'a pas de phase** : le port l'annonce (« une série par archer ») et la clé est
+  `(tournoi_id, archer_id)`. Un archer engagé dans deux qualifications y tient **deux feuilles** :
+  changement de modèle + **migration Alembic**, et reprise des lecteurs qui indexent par
+  `dict[ArcherId, Serie]`. C'est le vrai coût de l'US, pas le tri des appels de portée.
+- **Notes — `definir` crée une qualification d'office** : `ServiceBaremeQualification.definir` fabrique
+  une étape de qualification **en tête du déroulé** et décale tout le reste d'un cran quand il n'en
+  trouve pas, et l'API n'expose que `PUT /tournois/{id}/bareme-qualification`, sans `phase_id`. Avec
+  trois qualifications à 3×20, 3×15 et 3×15, ce chemin n'a plus de sens : le barème se règle sur une
+  **étape désignée**. Emporte l'écran « Barème & validation » et une route neuve — donc **fiche
+  `docs/fonctionnel/`** (contrairement à E05US024, cette US a bien une surface).
 - **Dépend de** : **E05US024** (nécessaire, pas seulement souhaitable : sans peuplement générique une
   seconde qualification recevrait *tous* les inscrits) · **Jalon** : J3 · **Origine** : arbitrage du 08/08/2026
