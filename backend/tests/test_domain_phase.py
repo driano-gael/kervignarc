@@ -424,6 +424,107 @@ def test_sans_effectif_declare_la_source_ne_declenche_pas_de_controle_d_effectif
     assert len(SequencePhases(phases=(qualif, elim)).phases) == 2
 
 
+# --- E05US025 : plusieurs qualifications dans un même déroulé -------------------------------------
+#
+# Dérivés du CA de `stories/E05-moteur-phases.md` § E05US025, sur l'exemple de référence du
+# commanditaire (arbitrage du 09/08/2026) : 120 archers en 3x20, coupés en une *haute* (rangs 1..60)
+# et une *basse* (rangs 61..120) à 3x15. L'invariant d'unicité qu'E05US021 avait posé — « une
+# séquence ne porte qu'une phase de qualification » — se décrivait lui-même comme « supposé partout
+# et vérifié nulle part », posé pour fermer un bug de lecteurs plutôt que pour dire une règle du tir
+# à l'arc. Il disparaît ici. Les effectifs sont divisés par 10 : la règle de séquence ne dépend pas
+# de la taille.
+
+
+def _qualification_sourcee(
+    ordre: int, rang_debut: int, rang_fin: int, effectif: int | None = None
+) -> Phase:
+    """Une qualification d'ordre `ordre`, peuplée d'un prélèvement par rangs dans l'ordre 1."""
+    return Phase(
+        depart_id=7,
+        ordre=ordre,
+        type=TypePhase.QUALIFICATION,
+        bareme=BaremeQualification.creer(15, 3),
+        validation=GrainValidation.fin_de_serie(),
+        sources=(SourcePhase(ordre_source=1, rang_debut=rang_debut, rang_fin=rang_fin),),
+        effectif=effectif,
+    )
+
+
+def test_deux_qualifications_coexistent_dans_une_sequence() -> None:
+    """CA « deux qualifications coexistent » : plus d'anomalie d'unicité.
+
+    Le cas minimal : une qualification de tête, puis une seconde qui prélève dans son classement.
+    C'est exactement ce que le commanditaire demandait le 08/08/2026 (« pourquoi on ne peut pas
+    faire plusieurs phases de qualification ? »), et qui levait `PlusieursQualifications`.
+    """
+    qualif = _qualification(effectif=12)
+    seconde = _qualification_sourcee(ordre=2, rang_debut=1, rang_fin=6, effectif=6)
+
+    sequence = SequencePhases(phases=(qualif, seconde))
+
+    assert len(sequence.phases) == 2
+
+
+def test_une_fourche_de_deux_qualifications_est_valide() -> None:
+    """CA « fourche » : haute et basse puisent toutes deux dans la même phase amont.
+
+    L'`ordre` d'une phase est **topologique** — il dit qui peut alimenter qui, pas qui passe avant
+    qui sur le pas de tir. La haute (ordre 2) et la basse (ordre 3) se jouent en même temps ; leurs
+    numéros se suivent uniquement parce que `_anomalies_ordres` exige la suite 1..N.
+
+    Le contrôle de non-recoupement des rangs ne joue **qu'entre les sources d'une même phase** : que
+    la haute prenne 1..6 et la basse 7..12 dans le même classement n'est donc pas un conflit, c'est
+    une partition.
+    """
+    qualif = _qualification(effectif=12)
+    haute = _qualification_sourcee(ordre=2, rang_debut=1, rang_fin=6, effectif=6)
+    basse = _qualification_sourcee(ordre=3, rang_debut=7, rang_fin=12, effectif=6)
+
+    sequence = SequencePhases(phases=(qualif, haute, basse))
+
+    assert [phase.ordre for phase in sequence.phases] == [1, 2, 3]
+
+
+def test_chaque_qualification_porte_son_propre_bareme() -> None:
+    """CA « le barème se règle par qualification » : 3x20 en tête, 3x15 ensuite.
+
+    L'invariant interne d'une qualification (barème **et** grain obligatoires) vaut pour chacune,
+    indépendamment. Rien n'oblige deux qualifications d'un même déroulé à tirer le même nombre de
+    flèches — c'est même le cœur de l'exemple.
+    """
+    qualif = _qualification(effectif=12)
+    haute = _qualification_sourcee(ordre=2, rang_debut=1, rang_fin=6, effectif=6)
+
+    sequence = SequencePhases(phases=(qualif, haute))
+
+    baremes = [phase.bareme for phase in sequence.phases]
+    assert baremes[0] is not None and baremes[0].nb_volees == 20
+    assert baremes[1] is not None and baremes[1].nb_volees == 15
+
+
+def test_une_seconde_qualification_sans_bareme_reste_refusee() -> None:
+    """Non-régression : lever l'unicité ne lève pas l'invariant **interne** de la qualification.
+
+    Une qualification porte barème et grain — la seconde comme la première. C'est le contrôle que
+    l'US ne doit surtout pas emporter avec l'unicité en retirant `_anomalies_unicite_qualification`
+    de la liste des invariants collectifs.
+    """
+    qualif = _qualification(effectif=12)
+
+    with pytest.raises(PhaseQualificationIncomplete):
+        SequencePhases(
+            phases=(
+                qualif,
+                Phase(
+                    depart_id=7,
+                    ordre=2,
+                    type=TypePhase.QUALIFICATION,
+                    sources=(SourcePhase(ordre_source=1, rang_debut=1, rang_fin=6),),
+                ),
+            )
+        )
+
+
 # --- E05US015 : le catalogue de types de phase ---------------------------------------------------
 
 
