@@ -60,6 +60,7 @@ from domain.erreurs import (
     ProfondeurInvalide,
     RangSourceInvalide,
     RangsSourceInexistants,
+    ReglageDePoulesInvalide,
     SequenceOrdreInvalide,
     SeuilDeBarrageInvalide,
     SourceApresPhase,
@@ -69,6 +70,7 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
+from domain.poule import ReglageDePoules
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -488,6 +490,13 @@ class Phase:
     qui rend l'US rétro-compatible : une phase écrite avant elle continue de jouer ce qu'elle
     jouait."""
 
+    poules: ReglageDePoules | None = None
+    """Le réglage d'une phase de **poules** (E05US023) — taille visée, barème, régime d'ex æquo.
+
+    `None` sur tout autre type, et sur une phase de poules **pas encore réglée** : le type est
+    choisi avant ses paramètres, et l'atelier doit pouvoir enregistrer un déroulé en cours de
+    composition. C'est la composition du jour J qui exigera le réglage, pas l'agrégat."""
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -499,6 +508,14 @@ class Phase:
             raise ProfondeurInvalide(
                 f"Une phase de type « {self.type.value} » ne monte aucun tableau : elle n'a pas "
                 "de profondeur de classement à régler."
+            )
+        if self.poules is not None and self.type is not TypePhase.POULES:
+            # Même garde que `profondeur` ci-dessus, et pour la même raison : retyper une phase sans
+            # nettoyer son réglage laisserait une élimination directe porter une taille de poule,
+            # que rien ne lirait — un réglage fantôme, invisible et faux.
+            raise ReglageDePoulesInvalide(
+                f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
+                "pas de taille de poule à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

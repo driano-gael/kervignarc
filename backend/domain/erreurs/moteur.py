@@ -69,6 +69,22 @@ class ProfondeurInvalide(DomainError):
     code = "profondeur_invalide"
 
 
+class ReglageDePoulesInvalide(DomainError):
+    """Un réglage de poules porté par une phase qui n'est pas de type `poules` (E05US023).
+
+    Symétrique de `ProfondeurInvalide` sur son troisième cas, et pour la même raison : retyper une
+    phase sans nettoyer son réglage laisserait une élimination directe porter une taille de poule,
+    que plus aucun lecteur n'irait chercher. Un réglage que rien ne lit est pire qu'absent — il se
+    voit en base, il rassure, et il ne s'applique pas.
+
+    Les réglages **incohérents en eux-mêmes** (taille < 2, qualifiés hors bornes) restent
+    `ConfigurationPouleInvalide`, levée par `ReglageDePoules` : c'est la cohérence du réglage,
+    celle-ci est sa compatibilité avec le type qui le porte.
+    """
+
+    code = "reglage_de_poules_invalide"
+
+
 class SeuilDeBarrageInvalide(DomainError):
     """Le rang jusqu'auquel une phase départage **au tir** n'est pas un entier `>= 1` (E06US003).
 
