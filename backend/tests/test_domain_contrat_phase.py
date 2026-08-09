@@ -130,20 +130,34 @@ def test_produit_un_classement_reste_le_negatif_de_la_table() -> None:
 # --- 3. Honnêteté : le registre décrit le code du jour, pas l'intention --------------------------
 
 
-def test_les_poules_sont_montees_lues_et_placees() -> None:
+def test_les_poules_sont_montees_saisies_et_placees() -> None:
     """Ce que la tranche E05US023 rend vrai — et qui ne l'était pas la veille.
 
-    Ce test est le **pivot** de l'US : il dit qu'une phase de poules est désormais montée par un
-    service, que son classement se lit pour y prélever, et qu'elle occupe des couloirs. Les trois
-    ensemble sont ce que « jouable » veut dire ; deux sur trois donneraient un format qui se
-    compose et casse en salle.
+    Une phase de poules est désormais **montée** par un service (`ServicePoules`), **saisie** dans
+    son propre décor et **placée** sur des blocs de couloirs. C'est ce que « jouable » veut dire.
     """
     contrat = contrat_de(TypePhase.POULES)
 
     assert contrat.monte_les_oppositions
-    assert contrat.classement_lisible
     assert contrat.decor is DecorDeSaisie.RENCONTRES_EN_GROUPES
     assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_POULE
+
+
+def test_le_classement_dune_poule_nest_pas_encore_lisible_par_une_phase_avale() -> None:
+    """⚠️ **Reste à livrer dans cette tranche**, et le registre le dit plutôt que de l'anticiper.
+
+    `ServicePoules` produit bien le classement de chaque groupe, mais
+    `ServiceSaisieDuels._classement_de_l_ordre` ne sait pas encore le rendre en `ClassementSource` :
+    l'ordre inter-poules n'est pas arrêté, et le branchement casserait le cycle `ServicePoules` →
+    `ServiceSaisieDuels`.
+
+    Le déclarer `True` par anticipation aurait un effet **mesurable et faux** : le plancher
+    d'inscrits (E05US021) serait réclamé pour un prélèvement que rien n'honore — le « refus abusif
+    le jour J » qu'E05US021 nommait comme sa pire défaillance. Ce test tombe quand le CA « la phase
+    avale consomme les qualifiés » sera réellement livré, et c'est le signal attendu.
+    """
+    assert TypePhase.POULES not in TYPES_CLASSANTS_LUS
+    assert {TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE} == TYPES_CLASSANTS_LUS
 
 
 def test_les_poules_ne_sont_pas_encore_routees() -> None:
