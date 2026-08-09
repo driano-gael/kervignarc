@@ -1,0 +1,448 @@
+"""Service **Poules** — composer, poser, faire tirer, classer (E05US023, [ADR-0083]).
+
+**Chaque test porte le CA dont il dérive** (`stories/E05-moteur-phases.md`, puces « CA »), et non
+une lecture de l'implémentation — c'est la source qui fait l'indépendance, pas l'auteur (règle 9).
+
+⚠️ **Honnêteté sur l'ordre d'écriture** : le service a été écrit avant ces tests, contrairement à
+l'étage domaine de cette même US (`test_domain_reglage_poules.py` et son voisin de placement) qui,
+lui, a bien précédé son implémentation. Les oracles ci-dessous sont donc relus **depuis les
+puces du CA**, ligne à ligne, et non depuis le code — mais l'ordre inverse aurait mieux protégé, et
+le dire vaut mieux que de le taire. Le risque résiduel est nommé : un CA mal compris se serait
+transcrit deux fois de la même façon.
+
+[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+import pytest
+
+from application.classements import ServiceClassement
+from application.erreurs import PhasePasDesPoules, PhasePasReglee
+from application.poules import ServicePoules
+from application.saisie_duels import ServiceSaisieDuels
+from domain.archer import Archer
+from domain.blason import Blason, ZoneScore
+from domain.categorie import Categorie
+from domain.depart import Depart
+from domain.duel import ResolveurBaremeDuelFfta
+from domain.gabarit_salle import GabaritSalle
+from domain.inscription import Inscription
+from domain.phase import Phase, TypePhase
+from domain.politiques import (
+    AggregationParQualification,
+    ByesAuxMieuxClasses,
+    PlacementEnCascade,
+    SeedingSerpent,
+    registre_par_defaut,
+)
+from domain.poule import ReglageDePoules
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxDepartRepository,
+    FauxDuelRepository,
+    FauxForfaitRepository,
+    FauxInscriptionRepository,
+    FauxPhaseRepository,
+)
+from tests.test_service_placement_duels import (
+    FauxBlasonRepository,
+    FauxSerieRepository,
+    FauxTournoiRepository,
+)
+from tests.test_service_saisie_duels import ZONES_TRIPLE
+
+
+class _FauxPlacementPouleRepository:
+    """Double du port `PlacementPouleRepository` — deux gestes, comme le port."""
+
+    def __init__(self) -> None:
+        self._plans: dict[int, list[object]] = {}
+
+    def par_phase(self, phase_id: int) -> list[object]:
+        return list(self._plans.get(phase_id, []))
+
+    def definir_plan(self, phase_id: int, blocs: object) -> None:
+        self._plans[phase_id] = list(blocs)  # type: ignore[call-overload]
+
+
+class _FauxBarrageRepository:
+    """Double du port `BarrageRepository`, réduit à ce que `ServicePoules` en lit."""
+
+    def __init__(self) -> None:
+        self.barrages: list[object] = []
+
+    def par_depart(self, depart_id: int) -> list[object]:
+        return list(self.barrages)
+
+
+class _Monde:
+    """Décor : un tournoi, un créneau, une salle, N archers classés, une phase de **poules**.
+
+    Les archers reçoivent des scores décroissants dans l'ordre de création → rang scratch 1..N,
+    ce qui rend la composition au serpent prévisible : le 1ᵉʳ va en poule 1, le 2ᵉ en poule 2, etc.
+    """
+
+    def __init__(self, *, nb_cibles: int = 8, couloirs: int = 4) -> None:
+        self.tournoi_id = 1
+        self.tournois = FauxTournoiRepository({1})
+        self.departs = FauxDepartRepository()
+        depart = self.departs.ajouter(
+            Depart.creer(tournoi_id=self.tournoi_id, numero=1, tarif_centimes=800, horaire="09:00")
+        )
+        assert depart.id is not None
+        self.depart_id = depart.id
+        self.inscriptions = FauxInscriptionRepository()
+        self.phases = FauxPhaseRepository(self.departs)
+        self.archers = FauxArcherRepository()
+        self.categories = FauxCategorieRepository()
+        self.blasons = FauxBlasonRepository()
+        self.series = FauxSerieRepository()
+        self.duels = FauxDuelRepository()
+        self.forfaits = FauxForfaitRepository()
+        self.placements = _FauxPlacementPouleRepository()
+        self.barrages = _FauxBarrageRepository()
+        self.gabarits = _FauxGabaritRepository(nb_cibles, couloirs)
+        blason = self.blasons.ajouter(
+            Blason.creer(self.tournoi_id, "Triple", taille=0.25, capacite=1)
+        )
+        assert blason.id is not None
+        self.blasons._blasons[blason.id] = replace(blason, zones=ZONES_TRIPLE)
+        categorie = self.categories.ajouter(
+            Categorie.creer(
+                self.tournoi_id, "Cat", arme="Arc Classique", blason_id=blason.id, hauteur_cm=130
+            )
+        )
+        assert categorie.id is not None
+        self.categorie_id = categorie.id
+        from domain.bareme import BaremeQualification
+
+        qualif = self.phases.ajouter(
+            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+        )
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
+        self.phase_id = 0
+
+    def regler(self, reglage: ReglageDePoules | None) -> int:
+        """Pose la phase de poules avec son réglage (ou sans, pour éprouver le refus)."""
+        phase = self.phases.ajouter(
+            Phase(depart_id=self.depart_id, ordre=2, type=TypePhase.POULES, poules=reglage)
+        )
+        assert phase.id is not None
+        self.phase_id = phase.id
+        return phase.id
+
+    def inscrire(self, combien: int) -> list[int]:
+        """Inscrit `combien` archers, classés par scores décroissants (rang 1 = le premier créé)."""
+        ids: list[int] = []
+        for rang in range(combien):
+            archer = self.archers.ajouter(
+                Archer(
+                    nom=f"N{rang}",
+                    prenom="P",
+                    tournoi_id=self.tournoi_id,
+                    categorie_id=self.categorie_id,
+                )
+            )
+            assert archer.id is not None
+            # Trois flèches décroissantes : le premier créé marque le plus, donc rang scratch 1.
+            valeur = str(max(1, 10 - rang))
+            self.series.semer(
+                self.tournoi_id,
+                archer.id,
+                (ZoneScore(valeur), ZoneScore(valeur), ZoneScore(valeur)),
+                self.qualif_id,
+            )
+            self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
+            ids.append(archer.id)
+        return ids
+
+    def service(self) -> ServicePoules:
+        classement = ServiceClassement(
+            self.tournois,
+            self.archers,
+            self.series,
+            self.categories,
+            self.phases,
+            self.forfaits,
+            self.departs,
+            self.inscriptions,
+        )
+        saisie = ServiceSaisieDuels(
+            self.tournois,
+            self.phases,
+            self.categories,
+            self.blasons,
+            self.duels,
+            self.forfaits,
+            classement,
+            ResolveurBaremeDuelFfta(),
+            SeedingSerpent(),
+            ByesAuxMieuxClasses(),
+            PlacementEnCascade(),
+            registre_par_defaut(),
+            AggregationParQualification(),
+        )
+        return ServicePoules(
+            self.tournois,
+            self.phases,
+            self.gabarits,  # type: ignore[arg-type]
+            self.placements,  # type: ignore[arg-type]
+            self.duels,
+            self.barrages,  # type: ignore[arg-type]
+            classement,
+            saisie,
+        )
+
+
+class _FauxGabaritRepository:
+    """Double de `GabaritSalleRepository` : une salle homogène de `nb_cibles` sur `couloirs`."""
+
+    def __init__(self, nb_cibles: int, couloirs: int) -> None:
+        self._gabarit = GabaritSalle.creer("Salle", nb_cibles=nb_cibles, capacite=couloirs)
+
+    def par_tournoi(self, tournoi_id: int) -> GabaritSalle:
+        return self._gabarit
+
+
+# --- CA « la taille commande, le nombre de groupes s'en déduit » --------------------------------
+
+
+def test_trente_archers_en_poules_de_quatre_donnent_cinq_de_quatre_et_deux_de_cinq() -> None:
+    """L'exemple **littéral** du CA (arbitrage du commanditaire du 09/08/2026).
+
+    L'organisateur saisit « poules de 4 », **pas** « 8 poules » : le nombre de groupes vaut
+    `effectif ÷ taille` arrondi **vers le bas**, et le reste gonfle quelques poules. Aucune poule ne
+    compte donc **moins** que la taille demandée — « 8 poules dont deux de 3 » a été explicitement
+    écarté.
+    """
+    monde = _Monde()
+    monde.inscrire(30)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    repartition = monde.service().repartition(monde.tournoi_id, phase_id)
+
+    assert repartition.nb_poules == 7
+    assert sorted(repartition.tailles) == [4, 4, 4, 4, 4, 5, 5]
+
+
+def test_sous_le_double_de_la_taille_il_ne_reste_quune_poule() -> None:
+    """Le cas extrême que le CA veut **montré**, pas empêché.
+
+    7 archers en poules de 4 donnent **une** poule de 7 : les deux invariants (« pas de poule sous
+    la taille » et « pas plus d'une unité d'écart ») deviennent inconciliables et l'on garde le
+    premier. C'est précisément pour ce cas que l'écran doit afficher la répartition obtenue avant
+    de la valider — l'organisateur voit la poule de 7 et corrige sa taille s'il n'en veut pas.
+    """
+    monde = _Monde()
+    monde.inscrire(7)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    assert monde.service().repartition(monde.tournoi_id, phase_id).tailles == (7,)
+
+
+def test_la_repartition_se_lit_sans_salle_ni_plan_pose() -> None:
+    """CA « la répartition obtenue est montrée **avant** d'être validée ».
+
+    L'atelier affiche la répartition en direct sous la fiche de réglages. Exiger un gabarit de
+    salle ou un plan posé pour la calculer rendrait le CA infaisable : l'organisateur règle ses
+    poules des semaines avant de faire sa salle. Le décor de ce test n'appelle donc **jamais**
+    `regenerer_plan`, et c'est tout son objet.
+    """
+    monde = _Monde()
+    monde.inscrire(12)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    repartition = monde.service().repartition(monde.tournoi_id, phase_id)
+
+    assert repartition.nb_poules == 3
+    assert monde.placements.par_phase(phase_id) == []
+
+
+# --- CA « une poule occupe un bloc de couloirs contigus » ---------------------------------------
+
+
+def test_une_poule_de_cinq_tient_sur_quatre_couloirs_comme_une_poule_de_quatre() -> None:
+    """L'arbitrage qui surprend (CA du 09/08/2026) : l'empreinte est le **parallélisme**.
+
+    La méthode du cercle ne fait tirer que `effectif ÷ 2` rencontres par tour — à effectif impair,
+    un membre se repose. Une poule de 5 ne met donc que 4 archers sur la ligne. Réserver un couloir
+    par membre aurait fait déborder toute poule impaire sans raison, et décalé la salle entière d'un
+    cran par poule.
+    """
+    monde = _Monde()
+    monde.inscrire(10)  # 10 en poules de 4 → 2 poules de 5
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    etat = monde.service().regenerer_plan(monde.tournoi_id, phase_id)
+
+    assert etat.repartition.tailles == (5, 5)
+    assert [poule.bloc.nb_couloirs for poule in etat.poules if poule.bloc] == [4, 4]
+
+
+def test_la_poule_suivante_demarre_au_couloir_libre_juste_apres() -> None:
+    """CA : une poule qui déborde n'ouvre **pas** une cible neuve pour la suivante.
+
+    Avec des poules de 6 sur des cibles de 4, la poule 1 prend la cible 1 entière puis deux couloirs
+    de la cible 2 ; la poule 2 démarre au couloir C de cette même cible 2. La salle se remplit en
+    continu, sans trou — règle donnée par le commanditaire le 09/08/2026.
+    """
+    monde = _Monde()
+    monde.inscrire(12)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=6))
+
+    etat = monde.service().regenerer_plan(monde.tournoi_id, phase_id)
+
+    premiere, seconde = (poule.bloc for poule in etat.poules)
+    assert premiere is not None and seconde is not None
+    assert premiere.places == ((1, "A"), (1, "B"), (1, "C"), (1, "D"), (2, "A"), (2, "B"))
+    assert seconde.places[0] == (2, "C")
+
+
+def test_une_salle_trop_petite_rapporte_les_poules_non_posees() -> None:
+    """Le placement **rapporte** ce qu'il n'a pas pu faire au lieu de tronquer en silence.
+
+    Même parti que `PlanDeCibles.conflits` en qualification (ADR-0024) : l'organisateur doit voir à
+    l'atelier qu'une poule n'a pas de cible, pas le découvrir le jour J.
+    """
+    monde = _Monde(nb_cibles=2)  # 8 couloirs pour 3 poules de 4 → la 3ᵉ ne tient pas
+    monde.inscrire(12)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    etat = monde.service().regenerer_plan(monde.tournoi_id, phase_id)
+
+    assert [conflit.poule for conflit in etat.conflits] == [3]
+
+
+# --- CA « les rencontres se saisissent comme des duels ordinaires » -----------------------------
+
+
+def test_les_rencontres_sont_presentees_par_tour_et_numerotees_de_facon_continue() -> None:
+    """CA : « les rencontres sont présentées **par tour**, l'ordre que le moteur produit déjà ».
+
+    C'est le tour qui garantit qu'un archer ne figure pas deux fois dans le même tour, donc que le
+    tour se tire en parallèle. La numérotation, elle, est continue sur toute la phase : c'est ce
+    qui permet à la table `duel` de porter les rencontres de tous les groupes sans les distinguer —
+    donc de réutiliser `(phase_id, match_numero)` tel quel, sans table ni migration neuve.
+    """
+    monde = _Monde()
+    monde.inscrire(8)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    etat = monde.service().etat(monde.tournoi_id, phase_id)
+
+    numeros = [r.numero for poule in etat.poules for r in poule.rencontres]
+    assert numeros == list(range(1, len(numeros) + 1))
+    for poule in etat.poules:
+        # Une poule de 4 : 3 tours de 2 rencontres, et aucun archer deux fois dans un tour.
+        assert [r.tour for r in poule.rencontres] == [1, 1, 2, 2, 3, 3]
+        for tour in (1, 2, 3):
+            du_tour = [r for r in poule.rencontres if r.tour == tour]
+            archers = [d.archer_id for r in du_tour for d in (r.haut, r.bas) if d is not None]
+            assert len(archers) == len(set(archers))
+
+
+def test_chaque_rencontre_porte_les_deux_couloirs_de_ses_adversaires() -> None:
+    """Les couloirs d'une rencontre sont **dérivés** du bloc, pas persistés (ADR-0083 §3).
+
+    Les deux adversaires sont côte à côte — même intention qu'ADR-0048 pour un tableau, obtenue ici
+    sans réordonnancement puisque le bloc est contigu par construction. La *n*-ième rencontre d'un
+    tour prend les couloirs 2n et 2n+1 du bloc, et la numérotation **repart à chaque tour** : sinon
+    la poule glisserait d'un cran par tour et déborderait de son propre bloc.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    etat = monde.service().regenerer_plan(monde.tournoi_id, phase_id)
+
+    (poule,) = etat.poules
+    par_tour = {tour: [r for r in poule.rencontres if r.tour == tour] for tour in (1, 2, 3)}
+    for rencontres in par_tour.values():
+        assert [r.couloirs for r in rencontres] == [((1, "A"), (1, "B")), ((1, "C"), (1, "D"))]
+
+
+def test_une_rencontre_porte_le_pave_de_saisie_avant_tout_tir() -> None:
+    """CA : « le scoreur retrouve le **pavé de saisie de duel** d'E04US013 ».
+
+    Le pavé (barème par arme, zones du blason) est résolu par le **même** code que celui d'un duel
+    de tableau : sans quoi le même archer tirerait en sets au tableau et en cumul en poule.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    (poule,) = monde.service().etat(monde.tournoi_id, phase_id).poules
+
+    assert all(r.bareme is not None for r in poule.rencontres)
+    assert all(r.zones == ZONES_TRIPLE for r in poule.rencontres)
+    assert all(r.duel is None for r in poule.rencontres)
+
+
+# --- CA « deux régimes d'ex æquo, selon ce que la poule produit » -------------------------------
+
+
+def test_une_poule_qui_classe_ne_signale_aucun_barrage_avant_le_premier_tir() -> None:
+    """Avant tout tir, **tous** les membres sont à 0 partout, donc tous ex æquo.
+
+    Signaler un barrage là annoncerait un départage à faire avant que la poule ait commencé — et un
+    signal qui s'allume tout seul apprend à être ignoré. Le CA parle d'ex æquo « irréductible »,
+    c'est-à-dire *après* que les cinq critères ont été appliqués à des rencontres réellement
+    tirées.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    (poule,) = monde.service().etat(monde.tournoi_id, phase_id).poules
+
+    assert not poule.barrage_requis
+
+
+def test_une_poule_non_reglee_refuse_de_se_composer() -> None:
+    """Le type se choisit avant ses paramètres — mais on ne compose pas sans eux.
+
+    C'est la contrepartie assumée du brouillon d'ADR-0063 : l'agrégat accepte une phase de poules
+    non réglée (l'atelier doit pouvoir enregistrer un déroulé en cours de composition), et le refus
+    arrive au moment d'en **jouer** une. `PhasePasReglee` est distinct de `PhasePasDesPoules` parce
+    que la correction l'est aussi : ici le type est bon, il manque un réglage.
+    """
+    monde = _Monde()
+    monde.inscrire(8)
+    phase_id = monde.regler(None)
+
+    with pytest.raises(PhasePasReglee):
+        monde.service().etat(monde.tournoi_id, phase_id)
+
+
+def test_une_phase_dun_autre_type_est_refusee() -> None:
+    """Chaque décor de saisie refuse ce qui n'est pas le sien — filtre dérivé du contrat."""
+    monde = _Monde()
+    monde.inscrire(8)
+
+    with pytest.raises(PhasePasDesPoules):
+        monde.service().etat(monde.tournoi_id, monde.qualif_id)
+
+
+# --- CA « la phase avale consomme les qualifiés » ------------------------------------------------
+
+
+def test_une_poule_qui_ne_qualifie_pas_ne_designe_personne() -> None:
+    """`nb_qualifies` vide = « la poule **classe**, elle ne qualifie pas ».
+
+    La sélection se fait alors par un prélèvement de la phase avale, qui lit le classement de la
+    poule comme celui de n'importe quelle phase classante (E05US024). Rien n'est « qualifié » au
+    sens du champ : inventer deux qualifiés par défaut serait deviner à la place de l'organisateur,
+    ce que le commanditaire a explicitement refusé le 31/07/2026.
+    """
+    monde = _Monde()
+    monde.inscrire(8)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+
+    etat = monde.service().etat(monde.tournoi_id, phase_id)
+
+    assert all(poule.qualifies == () for poule in etat.poules)

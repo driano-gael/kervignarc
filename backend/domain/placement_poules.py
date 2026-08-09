@@ -83,6 +83,17 @@ class RaisonConflitPoule(str, Enum):
     SANS_RENCONTRE = "sans_rencontre"
     """La poule compte moins de deux membres : elle n'apparie personne, donc n'occupe rien."""
 
+    NON_POSEE = "non_posee"
+    """Aucun bloc ne porte cette poule — le plan n'a pas encore été posé, ou l'a été sur une autre
+    composition (E05US023).
+
+    ⚠️ **Cette raison ne naît jamais de `placer_les_poules`**, qui pose ou rapporte `SALLE_PLEINE` :
+    elle naît à la **lecture**, quand la composition du jour ne retrouve pas son bloc en base. Le
+    cas est normal avant la première pose, et il est un **signal** après : l'effectif a bougé depuis
+    que le plan a été écrit, donc il faut le reposer. Le distinguer de `SALLE_PLEINE` évite
+    d'annoncer une salle trop petite à un organisateur qui a simplement oublié de générer son
+    plan."""
+
 
 @dataclass(frozen=True)
 class ConflitDePoule:
