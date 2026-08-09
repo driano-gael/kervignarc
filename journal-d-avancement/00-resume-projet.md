@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 8 août 2026
+# Résumé du projet — où on en est au 9 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -512,8 +512,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **107 US livrées** sur `main` (mergées, revues, CI verte) à la date du 09/08/2026, la dernière
-  étant `E05US025`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **108 US livrées** sur `main` (mergées, revues, CI verte) à la date du 09/08/2026, la dernière
+  étant `E05US023`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -630,8 +630,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   consolante composée le matin affiche « les places disputées ici ne sont pas encore connues »
   plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
   relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
-  ⚠️ Les phases en **poules**, système suisse, colline et Big Shoot Off restent hors du dispositif :
-  elles n'ont pas encore de moteur (E05US023). ✅ La limite « une seule qualification par tournoi »,
+  ⚠️ Les phases en système suisse, colline et Big Shoot Off restent hors du dispositif : leur
+  moteur existe mais rien ne l'appelle encore (E05US026 à E05US028). ✅ Les **poules**, elles, y sont
+  entrées le jour même — voir ci-dessous. ✅ La limite « une seule qualification par tournoi »,
   qui restait volontairement en place à cette date, **a été levée le lendemain par `E05US025`** (voir
   ci-dessous). Décision d'architecture :
   [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).
@@ -650,7 +651,30 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
-- Dernière US livrée : **E05US025** (plusieurs qualifications dans un même déroulé) — US **à surface
+- **Les poules se jouent vraiment (09/08/2026, E05US023).** Le type « poules » était proposé à la
+  composition depuis des semaines, et ne menait nulle part : aucun réglage n'était saisissable,
+  aucun groupe n'était formé, aucune rencontre n'était tirable — l'organisateur pouvait dessiner un
+  tournoi que l'application ne savait pas jouer. C'est fini pour ce format. Il **règle** ses poules
+  à l'atelier (« des poules de 4 », le barème, ce que la poule produit) et **voit en direct** ce que
+  cela donnera sur son effectif : « à 30 archers, 7 poules — deux de 5, cinq de 4 ». Le jour J, les
+  poules se **posent en salle** sur des couloirs voisins, la salle se remplissant sans trou d'une
+  poule à l'autre. Le scoreur les fait tirer avec **le pavé qu'il connaît déjà** — celui des duels
+  de tableau, à l'identique, y compris quand le wifi saute. Chaque poule se **classe** aux cinq
+  critères fédéraux, annonce un **barrage** quand ces critères ne suffisent pas, et la **phase
+  suivante consomme ce qu'elle a qualifié**.
+  ⚠️ Deux choses valent d'être connues, toutes deux voulues. Une poule de 5 n'occupe que **quatre**
+  couloirs : à chaque tour un membre se repose, et lui réserver une place la laisserait vide toute
+  la journée. Et les vainqueurs de poule sont **à égalité entre eux** par défaut : une phase
+  suivante peut les prendre tous, mais pas en choisir une partie — l'application le **refuse et le
+  dit**, au lieu de trancher sur un ordre d'affichage. Une option de départage existe, et l'outil
+  indique quand elle devient nécessaire.
+  Décision d'architecture : [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md), qui pose
+  aussi le **contrat de phase jouable** — la pièce technique qui rendra les trois formats restants
+  beaucoup moins coûteux à livrer.
+- Dernière US livrée : **E05US023** (les poules jouables de bout en bout) — US **à surface
+  visible**, avec son [fait marquant daté](2026-08-09-21h50-les-poules-se-jouent-vraiment.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US023.md).
+- Avant elle, **E05US025** (plusieurs qualifications dans un même déroulé) — US **à surface
   visible**, avec son
   [fait marquant daté](2026-08-09-13h12-plusieurs-qualifications-dans-un-tournoi.md) et sa
   [fiche de recette](../docs/fonctionnel/E05US025.md).

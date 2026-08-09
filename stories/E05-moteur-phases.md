@@ -739,9 +739,23 @@ aurait obligé à le refaire à l'arrivée des poules, **et à repasser sur du c
 - **Notes — tranche d'un bloc, assumé** : le commanditaire a **explicitement** refusé de couper
   entre « composable » et « jouable » (09/08/2026), en connaissance de la taille annoncée. La revue
   sera lourde ; c'est le prix accepté pour livrer les poules finies en une fois.
+- **Notes — un ex æquo *interne* à une poule enjambe deux blocs, et les lie** *(arbitrage tranché en
+  cours d'US, 09/08/2026)*. Deux archers que les cinq critères ne séparent pas aux 3ᵉ et 4ᵉ places de
+  leur poule occupent le 3ᵉ **et** le 4ᵉ bloc du classement de phase — mais on ne sait pas lequel est
+  où. Ces deux blocs sont donc déclarés indécis **ensemble**, sur la seule plage que l'égalité
+  enjambe. Sans cette liaison, « les rangs 5 à 6 » passerait en prenant un archer pour un 3ᵉ avéré :
+  bien formé, plausible, faux — exactement la classe de défaut qu'ADR-0081 existe pour fermer. La
+  liaison est **locale** : elle ne contamine pas les blocs que l'égalité n'enjambe pas, sans quoi un
+  ex æquo de fond de poule rendrait toute la phase illisible et refuserait des prélèvements décidés.
+  ⚠️ Conséquence à connaître : **avant le premier tir**, tous les membres sont à zéro donc tous
+  ex æquo, et le classement de la phase est un **seul** bloc indécis — aucun prélèvement partiel n'y
+  est honoré tant que les poules n'ont pas commencé. C'est exact, et c'est ce qu'on veut.
 - **Notes — ce que cette tranche ne fait pas** : le suisse, la colline et le Big Shoot Off restent
   injouables (`E05US026` à `E05US028`). `ScoreAvecHandicap` et `RoutingRepechage` restent sans
   appelant — `DETTE-028` n'est donc **pas** refermée ici, seulement rétrécie au périmètre poules.
+  Trois capacités restent hors périmètre pour les poules elles-mêmes, et sont dites comme telles :
+  le **routage** (« où je tire ensuite » après une rencontre), l'entrée au **palmarès**, et le
+  **forfait en poule** — un abandon en poule n'est pas un *walkover*, et la règle n'a pas été posée.
 - **Résorbe** : `DETTE-028`, **partiellement** (volet poules + barrage). **Dépend de** : E05US015,
   E05US024 · **Jalon** : J3 · **Origine** : arbitrages des 07/08 et 09/08/2026
 

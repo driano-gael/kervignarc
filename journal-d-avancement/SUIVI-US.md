@@ -12,11 +12,12 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 09/08/2026, 13 h 12** · **107 US livrées** · dernière : `E05US025`
-*(**plusieurs qualifications dans un même déroulé** : un tournoi peut enchaîner 3×20 puis une
-*haute* et une *basse* à 3×15, chacune avec son barème et ses feuilles de marque, pour un
-classement final de 1 à N. L'invariant d'unicité d'E05US021 est retiré — il interdisait le cas
-au lieu de réparer les lecteurs. Résorbe `DETTE-046`. ADR-0082.)*
+**Dernière mise à jour : 09/08/2026, 21 h 50** · **108 US livrées** · dernière : `E05US023`
+*(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
+dix filtres qui décidaient chacun dans leur coin qu'une phase est jouable, et les **poules** le
+taillent en devenant réellement jouables — réglées à l'atelier, posées en salle sur des blocs de
+couloirs, tirées avec le pavé de duel, classées, et **lues par la phase suivante**. Rétrécit
+`DETTE-028` au périmètre poules ; ouvre `DETTE-054`. ADR-0083.)*
 
 Précédente : `E05US024`
 *(**le club est libre de son format** : un prélèvement est lu dans le classement de **sa** phase
@@ -98,7 +99,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | Rang | US | Pourquoi à ce rang |
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E05US025`~~ | **Livrée le 09/08/2026** — plusieurs qualifications dans un même déroulé. Le chantier ouvert le 08/08 par `E05US024` est **clos**. |
-> | **🎯 1** | `E05US023` | **Rendre jouables poules, suisse, colline, Big Shoot Off.** **Priorité donnée par le commanditaire (« au plus tôt »), arbitrée le 08/08/2026 au rang 2** : `E05US024`+`E05US025` forment **un seul chantier** à dépendance dure — couper au milieu laisserait le peuplement générique à moitié exploité. « Au plus tôt » = **dès ce chantier clos**, donc **devant `E16US002`**. ⚠️ **À découper** (4 moteurs × 2 surfaces ne tiennent pas dans une branche) : 1ʳᵉ tranche = contrat « phase jouable » générique + **un** format (elle paie le coût du pattern), puis **une tranche par format**, chacune portant son moteur **et** son exposition à l'atelier. Résorbe le reste de `DETTE-028` ; oblige à **corriger le CA d'`E06US003`**, qui prévoit explicitement sa reprise ; débloque `E01US011` (J4). |
+> | ~~2~~ ✅ | ~~`E05US023`~~ | **Livrée le 09/08/2026** — 1ʳᵉ tranche du découpage : le **contrat de phase jouable** (ADR-0083) et les **poules**, de bout en bout. Le découpage annoncé ci-contre a été fait le jour même : trois tranches restent, une par format. |
+> | **🎯 1** | `E05US026` | **Le système suisse jouable.** 2ᵉ tranche du découpage d'`E05US023` : le moteur existe (`domain/suisse.py`) et n'a aucun appelant. Il **habite** le contrat posé par la 1ʳᵉ tranche — une ligne au registre, un service, une exposition —, ce qui est précisément ce qui rend ces trois tranches tenables. Peut être précédée d'`E05US027` ou d'`E05US028` : les trois sont **indépendantes entre elles**, seule leur dépendance à `E05US023` était dure. ⚠️ **`E05US028` (Big Shoot Off) est celle qui éprouvera le contrat** — ni groupes ni duels, grain `FIN_DE_SERIE` : la prendre tôt ferait remonter tôt un éventuel élargissement, plutôt qu'après deux tranches écrites dessus. |
 > | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
 > | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
 > | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
@@ -150,10 +152,21 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > et rien n'impose une seule phase en cours à la fois. Aucun chantier de graphe n'était nécessaire.
 > Cf. [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md) §1.
 >
-> **🎯 Prochaine : `E05US023`** — **rendre jouables poules, système suisse, colline et Big Shoot
-> Off**, et les rendre composables à l'atelier. Son rang était déjà arbitré le 08/08/2026 (priorité
-> « au plus tôt » du commanditaire, derrière le chantier `E05US024`+`E05US025` qui vient de se
-> clore). ⚠️ **À découper avant de la prendre** — voir le détail plus bas.
+> ~~**🎯 Prochaine : `E05US023`**~~ — ✅ **livrée le 09/08/2026**, découpée le jour même en quatre
+> tranches. La 1ʳᵉ a posé le **contrat de phase jouable** (ADR-0083) et rendu les **poules** jouables
+> de bout en bout ; les trois autres portent chacune un format restant.
+>
+> **🎯 Prochaine : `E05US026` (ou `E05US027`, ou `E05US028`)** — les trois tranches restantes sont
+> **indépendantes entre elles**. Chacune habite le contrat : une ligne au registre
+> (`domain/contrat_phase.py`), un service applicatif, une exposition à l'atelier et en salle. C'est
+> ce que la 1ʳᵉ tranche a acheté, et c'est ce qui les rend tenables une par une.
+>
+> ⚠️ **Un conseil d'ordre, pas une contrainte** : `E05US028` (Big Shoot Off) est celle qui
+> **éprouvera** le contrat — elle n'a ni groupes ni duels, et son grain de validation est
+> `FIN_DE_SERIE` là où les trois autres sont `FIN_DE_DUEL`. La prendre tôt fait remonter tôt un
+> éventuel élargissement du contrat, au lieu de le découvrir après deux tranches écrites dessus.
+> Le contrat annonce lui-même où il pourrait céder (ADR-0083 §2 et sa section « Ce que le contrat a
+> déjà appris »).
 >
 > <details><summary>Ce que disait cette section avant la livraison d'E05US025</summary>
 >
@@ -853,6 +866,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76ter | E05US021 | **Un format connaît son effectif minimum** (avertir avant de lancer) | ✅ *(minimum **déduit** des prélèvements, exigence de club au-dessus, refus au démarrage + annonce avant le clic — ADR-0069)* |
 | 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé pour les phases classantes lues** — qualification et élimination directe ; une source visant des poules / suisse / colline / Big Shoot Off reste ignorée jusqu'à E05US023 : tableau→consolante, tableau→tableau, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. **Une fenêtre qui coupe un bloc encore indécis est refusée et annoncée** (ADR-0081) : un tableau de 8 non commencé rendait « les rangs 5 à 8 » comme étant les 4 derniers **qualifiés** — bien formé, plausible, faux, et moins détectable qu'avant l'US ; l'écran public affiche désormais « en attente du tableau *n* ». Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md), [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))* |
 | 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ✅ *(le format demandé le 08/08 se compose, se joue et se classe : **chaque tour a son barème** (écran « Barème & validation » listant une section par qualification), **chaque archer une feuille par tour** (`serie.phase_id`, migration `0044`), et le **classement final va de 1 à N** — la haute occupe 1..60, la basse 61..120, le premier de la basse restant derrière le dernier de la haute même s'il a mieux tiré. `_anomalies_unicite_qualification` retirée : ce n'était pas une règle de tir à l'arc mais un pansement sur neuf lecteurs incohérents, et l'US répare les lecteurs. `ResultatPhase.origine` empêche une qualification de décerner une médaille — sans elle, trois qualifications d'affilée remettaient un podium complet avant le moindre duel. **Résorbe `DETTE-046`** sans US dédiée (la phase subsume le départ). Deux défauts trouvés en route : le cache mypy annonçait « Success » sur des appels qui plantaient à l'exécution, et l'atelier **refusait de composer** une seconde qualification faute de réglages de départ. Ouvre `DETTE-052` (la saisie admin devine le créneau). ADR-0082, qui **amende ADR-0069**)* |
+| 76sexies | E05US023 | **Les poules jouables de bout en bout** (1ʳᵉ tranche : le contrat de phase jouable) | ✅ *(un **contrat de phase jouable** (`domain/contrat_phase.py`) remplace les **dix** filtres sur `ELIMINATION_DIRECTE` qui répondaient chacun à une question un peu différente et que le code documentait comme « ne se recoupant que par coïncidence » — deux divergences y étaient déjà consignées, ajouter quatre formats en aurait garanti trois de plus. Les tables existantes ne disparaissent pas, elles **dérivent** d'une source unique par capacité. Les **poules** le taillent en devenant jouables : réglées à l'atelier (`config.policies.poules`, sans migration), posées en salle par **bloc de couloirs contigus** — une poule de 5 tient sur 4 couloirs, le membre au repos change à chaque tour, donc on persiste « poule → couloirs » et jamais « archer → couloir » (migration `0045`) —, tirées avec le **pavé de duel d'E04US013** (une rencontre *est* un duel ordinaire, même table `duel`, même file hors-ligne), classées aux cinq critères du §10.1, et **lues par la phase suivante** : le classement de phase se range « par rang de poule d'abord », tout le monde y figure, et les blocs sont déclarés **indécis** tant qu'un départage optionnel n'est pas demandé — ADR-0081 refuse alors la fenêtre qui les coupe et honore celle qui les contient. L'atelier **avertit** quand l'effectif prélevé n'est pas une puissance de 2 (les exempts peuvent rejouer une poule au 1ᵉʳ tour) plutôt que de corriger en douce une règle que personne n'a demandée. Le branchement `ServicePoules` ↔ `ServiceSaisieDuels` passe par un **port étroit** câblé au composition root : les deux services se tiennent par les deux bouts, et un import paresseux aurait caché le cycle au lieu de le casser. **Rétrécit `DETTE-028`** au périmètre poules — le signal d'écart est désormais **dérivé du registre**, donc il ne peut plus mentir type par type. Ouvre `DETTE-054` (3ᵉ paire de DTO jumeaux entre les deux routeurs de composition). Reste hors périmètre et **dit comme tel** : le routage d'un membre de poule, le palmarès, le forfait en poule. [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md))* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
