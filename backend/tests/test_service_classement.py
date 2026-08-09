@@ -21,11 +21,13 @@ import pytest
 from application.classements import ServiceClassement
 from application.erreurs import DepartIntrouvable
 from domain.archer import Archer, ArcherId
+from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.entree_audit import EntreeAudit
 from domain.inscription import Inscription
+from domain.phase import Phase, PhaseId
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
 from tests.conftest import (
@@ -72,15 +74,17 @@ class FauxSerieRepository:
     def __init__(self, series: list[Serie]) -> None:
         self._series = series
 
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for s in self._series if s.phase_id == phase_id]
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._series if s.tournoi_id == tournoi_id]
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         raise NotImplementedError
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         raise NotImplementedError
 
     def enregistrer(self, serie: Serie) -> Serie:
@@ -90,10 +94,11 @@ class FauxSerieRepository:
         raise NotImplementedError
 
 
-def _serie(archer_id: int, valeurs: tuple[ZoneScore, ...]) -> Serie:
+def _serie(archer_id: int, valeurs: tuple[ZoneScore, ...], phase_id: int) -> Serie:
     return Serie(
         tournoi_id=1,
         archer_id=archer_id,
+        phase_id=phase_id,
         volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
     )
 
@@ -110,13 +115,6 @@ def _service() -> ServiceClassement:
     bob = archers.ajouter(Archer.creer("Durand", "Bob", 1, cat_2.id))
     chloe = archers.ajouter(Archer.creer("Petit", "Chloé", 1, cat_1.id))
     assert alice.id is not None and bob.id is not None and chloe.id is not None
-    series = FauxSerieRepository(
-        [
-            _serie(alice.id, (ZoneScore.NEUF, ZoneScore.NEUF)),  # 18
-            _serie(bob.id, (ZoneScore.DIX, ZoneScore.DIX)),  # 20
-            _serie(chloe.id, (ZoneScore.HUIT, ZoneScore.HUIT)),  # 16
-        ]
-    )
     # Le classement est celui **d'un départ** (ADR-0075) : le décor lui donne son créneau, et y
     # inscrit les trois archers — c'est l'inscription qui dit qui tire ici, pas `Archer.tournoi_id`.
     departs = FauxDepartRepository()
@@ -124,6 +122,19 @@ def _service() -> ServiceClassement:
         Depart.creer(tournoi_id=1, numero=1, tarif_centimes=800, horaire="09:00")
     )
     assert depart.id is not None
+    # E05US025 : le classement se calcule **par phase** — les feuilles se lisent sur elle et non
+    # plus sur le tournoi. Le décor doit donc porter la qualification, ce qu'il ne faisait pas :
+    # en base, une série sans phase est de toute façon impossible (`serie.phase_id`, NOT NULL).
+    phases = FauxPhaseRepository(departs)
+    qualif = phases.ajouter(Phase.qualification(depart.id, BaremeQualification.creer(2, 3)))
+    assert qualif.id is not None
+    series = FauxSerieRepository(
+        [
+            _serie(alice.id, (ZoneScore.NEUF, ZoneScore.NEUF), qualif.id),  # 18
+            _serie(bob.id, (ZoneScore.DIX, ZoneScore.DIX), qualif.id),  # 20
+            _serie(chloe.id, (ZoneScore.HUIT, ZoneScore.HUIT), qualif.id),  # 16
+        ]
+    )
     inscriptions = FauxInscriptionRepository()
     for archer_id in (alice.id, bob.id, chloe.id):
         inscriptions.ajouter(Inscription.creer(archer_id, depart.id))
@@ -132,7 +143,7 @@ def _service() -> ServiceClassement:
         archers,
         series,
         categories,
-        FauxPhaseRepository(departs),
+        phases,
         FauxForfaitRepository(),
         departs,
         inscriptions,

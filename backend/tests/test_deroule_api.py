@@ -22,6 +22,7 @@ from bootstrap.composition import create_app
 from domain.archer import Archer
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
 from infrastructure.db import (
@@ -29,11 +30,13 @@ from infrastructure.db import (
     AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
+from tests.conftest import qualification_de_secours
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -44,7 +47,7 @@ def _migrer(url: str) -> None:
     preparer_base(url)
 
 
-def _serie(tournoi_id: int, archer_id: int) -> Serie:
+def _serie(tournoi_id: int, archer_id: int, phase_id: int) -> Serie:
     """État d'en-cours **réaliste** : la volée 1 est **validée**, la volée 2 vient d'être saisie et
     reste **en attente**.
 
@@ -70,6 +73,7 @@ def _serie(tournoi_id: int, archer_id: int) -> Serie:
                 saisie_par=_SCOREUR,
             ),
         ),
+        phase_id=phase_id,
     )
 
 
@@ -89,9 +93,15 @@ def app_deroule(tmp_path: Path) -> Iterator[tuple[FastAPI, int, int]]:
         Archer.creer("Martin", "Alice", tournoi.id, categorie.id)
     )
     assert archer.id is not None
+    # E05US025 : la feuille pend a sa phase (`serie.phase_id`, NOT NULL). Ce decor n'avait ni
+    # creneau ni qualification — il ne semait qu'une serie.
+    DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi.id, numero=1, tarif_centimes=0, horaire="09:00")
+    )
+    phase_id = qualification_de_secours(db.session_factory, tournoi.id)
     SerieRepositorySQL(
         db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
-    ).enregistrer(_serie(tournoi.id, archer.id))
+    ).enregistrer(_serie(tournoi.id, archer.id, phase_id))
     db.engine.dispose()
 
     app = create_app(url, admin_env_path=tmp_path / ".env")

@@ -28,7 +28,7 @@ from infrastructure.db import (
 )
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
-from tests.conftest import ConnecterAdmin
+from tests.conftest import ConnecterAdmin, qualification_de_secours
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,6 +54,7 @@ def _semer_serie(
             tournoi_id=tournoi_id,
             archer_id=archer_id,
             volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
+            phase_id=qualification_de_secours(factory, tournoi_id),
         )
     )
 
@@ -500,6 +501,9 @@ def test_modifier_categorie_d_un_archer_engage_409_puis_passe_sur_confirmation(
             f"/api/v1/tournois/{tournoi_id}/categories", json={"libelle": "Senior 2 H"}
         ).json()
         archer_id = _inscrire(client, tournoi_id, categorie_id, "Robin", "Jean")
+        # E05US025 : un créneau est nécessaire pour que la feuille ait une phase où pendre
+        # (`serie.phase_id`). Ce test n'en créait pas — il ne semait qu'un score.
+        _creer_depart(client, tournoi_id)
         # « A tiré » = au moins une volée **validée** (E04US002), plus l'agrégat `Score` que plus
         # aucun flux n'écrit (DETTE-013). On sème la volée validée directement, comme le classement.
         _semer_serie(app_competition, tournoi_id, archer_id, (ZoneScore.NEUF,) * 3)

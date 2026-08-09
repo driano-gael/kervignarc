@@ -36,6 +36,7 @@ from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.impact import NiveauImpact
 from domain.inscription import Inscription, InscriptionId
+from domain.phase import PhaseId
 from domain.placement import Affectation, CiblePlacee, PlanDeCibles, RaisonConflit
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
@@ -48,6 +49,12 @@ from tests.conftest import (
 
 _DATE = datetime.date(2026, 3, 14)
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
+
+
+# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
+# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
+# hypothese plutot que de semer des 1 muets, et la suite la verifie.
+_PHASE_TEST = 1
 
 
 class FauxTournoiRepository:
@@ -205,20 +212,29 @@ class FauxSerieRepository:
             valeurs=(ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
             validee_par="Scoreur",
         )
-        self._series.append(Serie(tournoi_id=tournoi_id, archer_id=archer_id, volees=(volee,)))
+        self._series.append(
+            Serie(
+                tournoi_id=tournoi_id,
+                archer_id=archer_id,
+                phase_id=_PHASE_TEST,
+                volees=(volee,),
+            )
+        )
+
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for s in self._series if s.phase_id == phase_id]
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._series if s.tournoi_id == tournoi_id]
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         return next(
-            (s for s in self._series if s.tournoi_id == tournoi_id and s.archer_id == archer_id),
+            (s for s in self._series if s.phase_id == phase_id and s.archer_id == archer_id),
             None,
         )
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         return {}
 
     def enregistrer(self, serie: Serie) -> Serie:

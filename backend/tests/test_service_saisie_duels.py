@@ -125,7 +125,9 @@ class _Monde:
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
         )
         assert archer.id is not None
-        self.series.semer(self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        self.series.semer(
+            self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs), self.qualif_id
+        )
         self.inscriptions.ajouter(Inscription.creer(archer.id, self.depart_id))
         return archer.id
 
@@ -245,8 +247,8 @@ def test_duel_desynchronise_quand_le_classement_change() -> None:
 
     # Correction de qualification : b passe devant a.
     monde.series._series = []
-    monde.series.semer(1, b, tuple(ZoneScore(v) for v in ("10", "10", "10")))
-    monde.series.semer(1, a, tuple(ZoneScore(v) for v in ("9", "9", "9")))
+    monde.series.semer(1, b, tuple(ZoneScore(v) for v in ("10", "10", "10")), monde.qualif_id)
+    monde.series.semer(1, a, tuple(ZoneScore(v) for v in ("9", "9", "9")), monde.qualif_id)
 
     apres = service.etat_tableau(1, monde.phase_id)
     finale = next(m for m in apres.duels if m.place_en_jeu == (1, 2))

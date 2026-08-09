@@ -31,7 +31,7 @@ from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie
 from domain.tournoi import TournoiId
@@ -72,25 +72,28 @@ class FauxSerieRepository:
     """
 
     def __init__(self) -> None:
+        # E05US025 : la cle d'une feuille est `(phase, archer)`, comme en base.
         self._series: dict[tuple[int, int], Serie] = {}
         self.traces: list[EntreeAudit] = []
         self._sequence = 0
         # Le « quand » (created_at) est une métadonnée de persistance prouvée au repository
         # (test_serie_repository). Ce faux ne l'attribue pas seul, mais un test peut le **forcer**
         # (clé `(tournoi, archer)` → `{numéro: instant}`) pour couvrir la « dernière saisie » de la
-        # supervision (E12US001, `avancement_cible`), qui lit ce « quand ».
+        # supervision (E12US001, `avancement_cible`), qui lit ce « quand ». Cle `(phase, archer)`.
         self.horodatages_forces: dict[tuple[int, int], dict[int, datetime.datetime]] = {}
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
-        return self._series.get((tournoi_id, archer_id))
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
+        return self._series.get((phase_id, archer_id))
+
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for (p, _), s in self._series.items() if p == phase_id]
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
-        return [s for (t, _), s in self._series.items() if t == tournoi_id]
+        return [s for s in self._series.values() if s.tournoi_id == tournoi_id]
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
-        return self.horodatages_forces.get((tournoi_id, archer_id), {})
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
+        return self.horodatages_forces.get((phase_id, archer_id), {})
 
     def enregistrer(self, serie: Serie) -> Serie:
         if serie.id is None:

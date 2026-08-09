@@ -68,7 +68,23 @@ def app_duels(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
-def _semer(app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneScore, ...]) -> None:
+def _phase_qualification(app: FastAPI, tournoi_id: int) -> int:
+    """Pose la qualification (ordre 1) du premier créneau et renvoie son id.
+
+    E05US025 : une feuille de marque pend à sa phase (`serie.phase_id`, NOT NULL), et le classement
+    qui ensemence le plan de duels se lit sur **cette** phase. Ce décor ne posait que le tableau.
+    """
+    phase = poser_phase_sql(
+        app.state.database.session_factory,
+        Phase.qualification(_premier_depart(app, tournoi_id), BaremeQualification.creer(1, 3)),
+    )
+    assert phase.id is not None
+    return phase.id
+
+
+def _semer(
+    app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneScore, ...], phase_id: int
+) -> None:
     """Insère une volée validée pour un archer (directement par le repository) → il est classé."""
     sf = app.state.database.session_factory
     SerieRepositorySQL(sf, AuditRepositorySQL(sf), HorlogeSysteme()).enregistrer(
@@ -76,6 +92,7 @@ def _semer(app: FastAPI, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneSco
             tournoi_id=tournoi_id,
             archer_id=archer_id,
             volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
+            phase_id=phase_id,
         )
     )
 
@@ -101,10 +118,11 @@ def _quatre_archers_classes(app: FastAPI, client: TestClient, tournoi_id: int) -
         (ZoneScore.HUIT, ZoneScore.HUIT),  # 16 → rang 3
         (ZoneScore.SEPT, ZoneScore.SEPT),  # 14 → rang 4
     )
+    qualif_id = _phase_qualification(app, tournoi_id)
     archers = []
     for prenom, valeurs in zip(prenoms, scores, strict=True):
         archer_id, _ = _inscrire_archer(client, tournoi_id, categorie_id, depart_id, prenom=prenom)
-        _semer(app, tournoi_id, archer_id, valeurs)
+        _semer(app, tournoi_id, archer_id, valeurs, qualif_id)
         archers.append(archer_id)
     return archers
 

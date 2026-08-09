@@ -151,24 +151,36 @@ class FauxSerieRepository:
     def __init__(self) -> None:
         self._series: list[Serie] = []
 
-    def semer(self, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneScore, ...]) -> None:
+    def semer(
+        self, tournoi_id: int, archer_id: int, valeurs: tuple[ZoneScore, ...], phase_id: int
+    ) -> None:
+        """Sème une feuille **dans une phase donnée** (E05US025).
+
+        `phase_id` est explicite et obligatoire : le décor pose souvent le tableau **avant** la
+        qualification, si bien qu'une constante « la phase, c'est 1 » désignait en réalité la
+        phase d'élimination — le classement n'y trouvait alors aucune série, et tous les archers
+        sortaient premiers ex aequo.
+        """
         self._series.append(
             Serie(
                 tournoi_id=tournoi_id,
                 archer_id=archer_id,
+                phase_id=phase_id,
                 volees=(Volee(numero=1, valeurs=valeurs, validee_par="Scoreur"),),
             )
         )
 
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for s in self._series if s.phase_id == phase_id]
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._series if s.tournoi_id == tournoi_id]
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         raise NotImplementedError
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         raise NotImplementedError
 
     def enregistrer(self, serie: Serie) -> Serie:
@@ -252,6 +264,35 @@ class _Monde:
         self.phase_id = phase.id
         self.inscription_par_archer: dict[int, int] = {}
 
+    @property
+    def qualif_id(self) -> int:
+        """La qualification de ce créneau — **posée à la demande** si le décor n'en a pas.
+
+        E05US025 (ADR-0082) : une feuille de marque pend à sa phase, et le classement se lit sur
+        elle. Beaucoup de décors ne posaient que le tableau (ordre 2) et semaient les scores « dans
+        le tournoi » ; il leur faut désormais une qualification réelle. Paresseuse pour ne rien
+        changer aux décors qui ne sèment aucun score — et **idempotente**, pour ne pas en créer une
+        seconde à chaque appel (ce qui serait licite depuis cette US, donc silencieux).
+        """
+        existante = next(
+            (
+                p
+                for p in self.phases.par_depart(self.depart_id)
+                if p.type is TypePhase.QUALIFICATION
+            ),
+            None,
+        )
+        if existante is not None and existante.id is not None:
+            return existante.id
+        # Ce décor n'a pas de dépôt de déroulé : `FauxPhaseRepository` n'assemble donc pas et
+        # `ajouter` suffit (contrairement aux décors qui en ont un, où une phase sans étape serait
+        # écartée comme orpheline — ADR-0076).
+        posee = self.phases.ajouter(
+            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3))
+        )
+        assert posee.id is not None
+        return posee.id
+
     def regler_cloisonnement(self, cloisonnement: Cloisonnement) -> None:
         """Règle le cloisonnement du tournoi (E03US007) — lu par le service à chaque opération."""
         self.tournois.cloisonnement = cloisonnement
@@ -274,7 +315,7 @@ class _Monde:
         )
         assert inscription.id is not None
         self.inscription_par_archer[archer.id] = inscription.id
-        self.series.semer(self.tournoi_id, archer.id, valeurs)
+        self.series.semer(self.tournoi_id, archer.id, valeurs, self.qualif_id)
         return archer.id
 
     @property

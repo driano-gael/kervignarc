@@ -36,7 +36,7 @@ from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription, InscriptionId
 from domain.paiement import RecapPaiement
-from domain.phase import Phase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi, TournoiId
@@ -48,6 +48,12 @@ from tests.conftest import (
 )
 
 _DATE = datetime.date(2026, 3, 14)
+
+
+# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
+# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
+# hypothese plutot que de semer des 1 muets, et la suite la verifie.
+_PHASE_TEST = 1
 
 
 class FauxTournoiRepository:
@@ -114,15 +120,17 @@ class FauxSerieRepository:
     def poser(self, serie: Serie) -> None:
         self._series.append(serie)
 
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        return [s for s in self._series if s.phase_id == phase_id]
+
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         return [s for s in self._series if s.tournoi_id == tournoi_id]
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         raise NotImplementedError
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         raise NotImplementedError
 
     def enregistrer(self, serie: Serie) -> Serie:
@@ -153,7 +161,9 @@ class FauxLecteurPaiements:
         return list(self._lignes)
 
 
-def _serie(archer_id: ArcherId, *, volees_validees: int, nb_saisies: int | None = None) -> Serie:
+def _serie(
+    archer_id: ArcherId, phase_id: int, *, volees_validees: int, nb_saisies: int | None = None
+) -> Serie:
     """Une série de `nb_saisies` volées (défaut `volees_validees`), dont `volees_validees` validées.
 
     Permet une série complète (toutes validées), partielle (moins de volées) ou saisie-mais-non-
@@ -170,7 +180,7 @@ def _serie(archer_id: ArcherId, *, volees_validees: int, nb_saisies: int | None 
         )
         for n in range(1, total + 1)
     )
-    return Serie(tournoi_id=1, archer_id=archer_id, volees=volees)
+    return Serie(tournoi_id=1, archer_id=archer_id, phase_id=phase_id, volees=volees)
 
 
 class Montage:
@@ -219,12 +229,56 @@ class Montage:
             self.paiements,
         )
 
+    def qualif_de(self, depart_id: DepartId) -> int:
+        """La qualification de ce créneau (E05US025) — chaque créneau a la sienne."""
+        phase = next(
+            p for p in self.phases.par_depart(depart_id) if p.type is TypePhase.QUALIFICATION
+        )
+        assert phase.id is not None
+        return phase.id
+
+    def semer(
+        self,
+        depart_id: DepartId,
+        archer_id: ArcherId,
+        *,
+        volees_validees: int,
+        nb_saisies: int | None = None,
+    ) -> None:
+        """Pose la feuille de cet archer **dans la qualification de son créneau**.
+
+        E05US025 : une feuille pend à sa phase. Les tests posaient `_serie(...)` sans dire où, ce
+        qui marchait tant qu'une phase valait pour tout le tournoi ; sur deux créneaux, la feuille
+        atterrissait dans la qualification du premier et le second se lisait vide.
+        """
+        self.series.poser(
+            _serie(
+                archer_id,
+                self.qualif_de(depart_id),
+                volees_validees=volees_validees,
+                nb_saisies=nb_saisies,
+            )
+        )
+
     def creer_depart(self) -> DepartId:
+        """Un créneau **et sa qualification**, comme le fait l'application d'un format.
+
+        E05US025 : la complétude se calcule désormais **par créneau** — chacun a sa séquence
+        (ADR-0075) et peut y enchaîner plusieurs qualifications (ADR-0082). Ce décor ne posait la
+        qualification que sur le premier créneau, ce qui suffisait tant qu'une phase valait pour
+        tout le tournoi ; les créneaux suivants seraient maintenant « en attente », sans cible à
+        compter. Depuis ADR-0076 le déroulé se définit une fois et **chaque** départ l'instancie :
+        le décor le reproduit.
+        """
         self._numero += 1
         depart = self.departs.ajouter(
             Depart.creer(self.tournoi_id, numero=self._numero, tarif_centimes=1000, horaire="09:00")
         )
         assert depart.id is not None
+        if self.nb_volees_bareme > 0:
+            self.phases.ajouter(
+                Phase.qualification(depart.id, BaremeQualification.creer(self.nb_volees_bareme, 3))
+            )
         return depart.id
 
     def placer(
@@ -264,8 +318,8 @@ def test_une_cible_dont_tous_les_archers_ont_fini_est_terminee() -> None:
     depart = m.creer_depart()
     m.placer(depart, cible_index=1, archer_id=10, position="A")
     m.placer(depart, cible_index=1, archer_id=11, position="B")
-    m.series.poser(_serie(10, volees_validees=3))
-    m.series.poser(_serie(11, volees_validees=3))
+    m.semer(depart, 10, volees_validees=3)
+    m.semer(depart, 11, volees_validees=3)
 
     qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
     assert qualif.cle == CLE_QUALIFICATION
@@ -281,13 +335,13 @@ def test_un_archer_forfait_ne_bloque_pas_la_completude_de_sa_cible() -> None:
     depart = m.creer_depart()
     m.placer(depart, cible_index=1, archer_id=10, position="A")
     m.placer(depart, cible_index=1, archer_id=11, position="B")
-    m.series.poser(_serie(10, volees_validees=3))  # fini
-    m.series.poser(_serie(11, volees_validees=1, nb_saisies=1))  # abandon : partiel
+    m.semer(depart, 10, volees_validees=3)  # fini
+    m.semer(depart, 11, volees_validees=1, nb_saisies=1)  # abandon : partiel
     m.forfaits.semer(
         Forfait.creer(
             tournoi_id=m.tournoi_id,
             archer_id=11,
-            phase_id=m.qualif_phase_id,
+            phase_id=m.qualif_de(depart),
             nature=NatureForfait.ABANDON,
             declare_par="Scoreur",
             declare_le=datetime.datetime(2026, 3, 14, 10, 0, tzinfo=datetime.UTC),
@@ -304,8 +358,8 @@ def test_une_cible_avec_un_archer_pas_fini_n_est_pas_terminee() -> None:
     depart = m.creer_depart()
     m.placer(depart, cible_index=1, archer_id=10, position="A")
     m.placer(depart, cible_index=1, archer_id=11, position="B")
-    m.series.poser(_serie(10, volees_validees=3))  # fini
-    m.series.poser(_serie(11, volees_validees=2, nb_saisies=3))  # 2 validées / 3 : pas fini
+    m.semer(depart, 10, volees_validees=3)  # fini
+    m.semer(depart, 11, volees_validees=2, nb_saisies=3)  # 2 validées / 3 : pas fini
 
     qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
     assert (qualif.fait, qualif.total) == (0, 1)
@@ -317,7 +371,7 @@ def test_series_saisies_mais_non_validees_ne_terminent_pas_la_cible() -> None:
     m = Montage(nb_volees_bareme=3)
     depart = m.creer_depart()
     m.placer(depart, cible_index=1, archer_id=10, position="A")
-    m.series.poser(_serie(10, volees_validees=0, nb_saisies=3))
+    m.semer(depart, 10, volees_validees=0, nb_saisies=3)
 
     assert m.service.pour_tournoi(m.tournoi_id).sportif[0].etat is EtatSection.ALERTE
 
@@ -336,8 +390,8 @@ def test_le_compte_de_cibles_couvre_plusieurs_departs() -> None:
     # Départ 2 : cible 1 finie, cible 2 PAS finie (archer sans série).
     m.placer(d2, 1, 20, "A")
     m.placer(d2, 2, 21, "A")
-    for archer_id in (10, 11, 20):
-        m.series.poser(_serie(archer_id, volees_validees=3))
+    for archer_id, creneau in ((10, d1), (11, d1), (20, d2)):
+        m.semer(creneau, archer_id, volees_validees=3)
     # archer 21 : aucune série → cible 2 du départ 2 non terminée
 
     qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
@@ -352,7 +406,7 @@ def test_un_archer_en_reserve_ne_cree_pas_de_cible() -> None:
     # inscription sans affectation (réserve) : on l'ajoute directement, sans `placer`
     m.inscriptions.ajouter(Inscription.creer(archer_id=99, depart_id=depart))
     m.placer(depart, cible_index=1, archer_id=10, position="A")
-    m.series.poser(_serie(10, volees_validees=3))
+    m.semer(depart, 10, volees_validees=3)
 
     qualif = m.service.pour_tournoi(m.tournoi_id).sportif[0]
     assert (qualif.fait, qualif.total) == (1, 1)  # la réserve ne gonfle pas le total

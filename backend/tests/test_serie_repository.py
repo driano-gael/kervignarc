@@ -19,9 +19,12 @@ import pytest
 import sqlalchemy as sa
 
 from domain.archer import Archer
+from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
+from domain.depart import Depart
 from domain.entree_audit import ActionAuditee, EntreeAudit
+from domain.phase import Phase
 from domain.ports import Horloge
 from domain.serie import Serie, Volee
 from domain.tournoi import Tournoi
@@ -30,17 +33,25 @@ from infrastructure.db import (
     AuditRepositorySQL,
     CategorieRepositorySQL,
     Database,
+    DepartRepositorySQL,
     SerieRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
+from tests.conftest import poser_phase_sql
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
 _QUAND = datetime.datetime(2026, 3, 14, 10, 42, tzinfo=datetime.UTC)
 _PLUS_TARD = datetime.datetime(2026, 3, 14, 11, 15, tzinfo=datetime.UTC)
+
+
+# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Ce fichier
+# travaille sur une **vraie** base : l'identifiant est donc celui de la qualification que
+# `_contexte` cree, et non une constante devinee. La valeur initiale n'est qu'un placeholder.
+_PHASE_TEST = 0
 
 
 class HorlogeReglable:
@@ -65,7 +76,15 @@ def _migrer(url: str) -> None:
 
 
 def _contexte(tmp_path: Path) -> tuple[Database, int, int]:
-    """Migre une base jetable, crée tournoi + catégorie + archer ; renvoie base, tournoi, archer."""
+    """Migre une base jetable et monte le décor minimal ; renvoie base, tournoi, archer.
+
+    Depuis E05US025 (ADR-0082), une série pend à sa **phase** (`serie.phase_id`, `NOT NULL`) et non
+    plus au seul tournoi : le décor doit donc aussi créer un **créneau** et sa qualification, sans
+    quoi toute insertion viole la clé étrangère. L'identifiant de cette phase est publié dans
+    `_PHASE_TEST` — un module-global plutôt qu'une valeur rendue, pour ne pas réécrire les vingt
+    appels de `_contexte` de ce fichier.
+    """
+    global _PHASE_TEST
     url = f"sqlite:///{(tmp_path / 'kervignarc.db').as_posix()}"
     _migrer(url)
     db = Database(url)
@@ -79,6 +98,16 @@ def _contexte(tmp_path: Path) -> tuple[Database, int, int]:
         Archer.creer("Martin", "Alice", tournoi.id, categorie.id)
     )
     assert archer.id is not None
+    depart = DepartRepositorySQL(db.session_factory).ajouter(
+        Depart.creer(tournoi.id, numero=1, tarif_centimes=0, horaire="09:00")
+    )
+    assert depart.id is not None
+    phase = poser_phase_sql(
+        db.session_factory,
+        Phase.qualification(depart.id, BaremeQualification.preset_ffta_18m()),
+    )
+    assert phase.id is not None
+    _PHASE_TEST = phase.id
     return db, tournoi.id, archer.id
 
 
@@ -100,6 +129,7 @@ def _serie(tournoi_id: int, archer_id: int, *, validee: str | None = None) -> Se
                 validee_par=validee,
             ),
         ),
+        phase_id=_PHASE_TEST,
     )
 
 
@@ -307,6 +337,7 @@ def test_reenregistrer_reecrit_les_valeurs_d_une_volee(tmp_path: Path) -> None:
                     saisie_par="DURAND Jean",
                 ),
             ),
+            phase_id=_PHASE_TEST,
         )
         repo.enregistrer(modifiee)
 
@@ -377,6 +408,7 @@ def test_enregistrer_ignore_un_id_incoherent(tmp_path: Path) -> None:
                     saisie_par="DURAND Bob",
                 ),
             ),
+            phase_id=_PHASE_TEST,
         )
         repo.enregistrer(piege)
 
@@ -455,6 +487,7 @@ def test_created_at_d_une_volee_nouvelle_recoit_l_instant_courant(tmp_path: Path
             tournoi_id=tournoi_id,
             archer_id=archer_id,
             volees=(Volee(numero=1, valeurs=(ZoneScore("10"), ZoneScore("9"), ZoneScore("8"))),),
+            phase_id=_PHASE_TEST,
         )
         repo.enregistrer(premiere)
 

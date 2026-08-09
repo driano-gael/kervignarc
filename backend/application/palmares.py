@@ -35,6 +35,7 @@ from domain.categorie import CategorieId
 from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.palmares import (
+    OriginePalmares,
     Palmares,
     PositionPhase,
     ResultatPhase,
@@ -124,11 +125,17 @@ class ServicePalmares:
         # que par ricochet : un archer engagé sur deux créneaux (cas soutenu, DETTE-046) pouvait se
         # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
         # répétant d'un départ à l'autre.
+        phases = self._phases.par_depart(premier)
         resultats = tuple(
             resultat
-            for phase in self._phases.par_depart(premier)
+            for phase in phases
             if phase.type in _TYPES_RECONSTRUCTIBLES
             if (resultat := self._resultat(tournoi_id, phase)) is not None
+        ) + tuple(
+            resultat
+            for phase in phases
+            if phase.type is TypePhase.QUALIFICATION
+            if (resultat := self._resultat_qualification(tournoi_id, phase)) is not None
         )
         palmares = calculer_palmares(qualification, resultats, self._aggregation)
         return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
@@ -164,6 +171,64 @@ class ServicePalmares:
         premier = departs[0]
         assert premier.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
         return premier.id
+
+    def _resultat_qualification(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
+        """Ce qu'une **seconde** qualification a classé — `None` si elle n'a rien à dire encore.
+
+        E05US025 (ADR-0082) : un déroulé peut enchaîner les qualifications. Sur l'exemple de
+        référence — 120 archers en 3x20, puis une *haute* (rangs 1..60) et une *basse* (61..120) en
+        3x15 —, c'est **ici** que le classement final devient un 1..120 au lieu de rester celui du
+        premier tour.
+
+        Trois écartements, chacun pour une raison différente :
+
+        1. **La qualification de tête** (`sources` vide) n'est pas un résultat : elle *est* la base
+           du palmarès, passée à `calculer_palmares` comme classement de référence. L'ajouter en
+           plus lui ferait écraser… elle-même, en bloc `ordre` au lieu de bloc 0.
+        2. **Une phase que le résolveur ne sait pas lire** (`None`) — même parti que `_resultat` :
+           une phase n'éteint pas un écran public, elle n'y ajoute rien.
+        3. **Une phase où personne n'a encore marqué** : tous les totaux à zéro rendent un
+        classement
+           d'ex æquo au rang 1, qui donnerait à ses 60 archers la première place du tournoi pendant
+           tout le temps où ils tirent. Même défaut que celui qu'`_resultat` corrige pour les
+           tableaux (« 1ᵉʳ-120ᵉ · à départager » affiché toute la qualification), et même remède :
+           on n'entre au palmarès qu'une fois qu'il y a quelque chose à dire.
+
+           ⚠️ Le critère est `total > 0`, donc une phase où **tout le monde aurait tout manqué**
+           resterait dehors. C'est la limite que `_Decompte.a_tire` documente déjà côté classement
+           (« a tiré » n'est pas « a marqué ») ; ici elle ne fait que **retarder** l'entrée au
+           palmarès, elle ne fausse rien — et le cas ne se produit pas sur un tournoi réel.
+        """
+        if not phase.sources:
+            return None
+        source = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)(
+            phase.ordre
+        )
+        if source is None:
+            return None
+        lignes = source.classement.lignes
+        if not any(ligne.total > 0 for ligne in lignes):
+            return None
+        positions = tuple(
+            PositionPhase(
+                archer_id=ligne.archer_id,
+                rang_min=ligne.rang_scratch,
+                rang_max=ligne.rang_scratch,
+            )
+            for ligne in lignes
+            if ligne.rang_scratch is not None
+        )
+        if not positions:
+            return None
+        # `origine=QUALIFICATION` : ces rangs sont **exacts** mais n'ont été gagnés par aucun match.
+        # Sans cette étiquette, `LignePalmares.decerne` les prendrait pour des rangs de duel et le
+        # podium remettrait or, argent et bronze sans qu'une flèche ait été tirée en duel.
+        return ResultatPhase(
+            ordre=phase.ordre,
+            positions=positions,
+            rang_premier=source.rang_premier,
+            origine=OriginePalmares.QUALIFICATION,
+        )
 
     def _resultat(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une phase à tableau a décidé — `None` si elle n'a **rien** décidé (encore).

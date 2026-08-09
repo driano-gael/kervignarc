@@ -43,7 +43,6 @@ from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
-from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
 from domain.participant import Participant
 from domain.phase import Phase, StatutPhase, TypePhase
@@ -155,6 +154,38 @@ class _Monde:
         self.categorie_id = categorie.id
         self.phase_id: int | None = None
 
+    @property
+    def qualif_id(self) -> int:
+        """La qualification de ce créneau — **posée à la demande** si le décor n'en a pas.
+
+        E05US025 (ADR-0082) : une feuille de marque pend à sa phase, et le classement se lit sur
+        elle. Beaucoup de décors ne posaient que le tableau (ordre 2) et semaient les scores « dans
+        le tournoi » ; il leur faut désormais une qualification réelle. Paresseuse pour ne rien
+        changer aux décors qui ne sèment aucun score — et **idempotente**, pour ne pas en créer une
+        seconde à chaque appel (ce qui serait licite depuis cette US, donc silencieux).
+        """
+        existante = next(
+            (
+                p
+                for p in self.phases.par_depart(self.depart_id)
+                if p.type is TypePhase.QUALIFICATION
+            ),
+            None,
+        )
+        if existante is not None and existante.id is not None:
+            return existante.id
+        # `poser_phase_factice` et non `phases.ajouter` : depuis ADR-0076 une phase sans étape de
+        # déroulé est **orpheline**, et l'assemblage l'écarte silencieusement — `par_depart` ne la
+        # rendrait jamais, si bien que le classement ne trouverait aucune feuille.
+        posee = poser_phase_factice(
+            self.departs,
+            self.deroules,
+            self.phases,
+            Phase.qualification(self.depart_id, BaremeQualification.creer(1, 3)),
+        )
+        assert posee.id is not None
+        return posee.id
+
     def _creneau(self, numero: int, horaire: str, depart_id: int) -> int:
         depart = self.departs.ajouter(
             replace(
@@ -208,7 +239,9 @@ class _Monde:
             )
         )
         assert inscription.id is not None
-        self.series.semer(self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        self.series.semer(
+            self.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs), self.qualif_id
+        )
         return archer.id
 
     def _classement(self) -> ServiceClassement:
@@ -309,7 +342,9 @@ class _Monde:
         self.series._series = [
             serie for serie in self.series._series if serie.archer_id != archer_id
         ]
-        self.series.semer(self.tournoi_id, archer_id, tuple(ZoneScore(v) for v in valeurs))
+        self.series.semer(
+            self.tournoi_id, archer_id, tuple(ZoneScore(v) for v in valeurs), self.qualif_id
+        )
 
     def poses(self) -> dict[int, tuple[int, str]]:
         """`archer_id → (cible, position)` **tel que le plan de duels persisté le dit** — la source
@@ -796,22 +831,17 @@ def test_un_archer_disqualifie_garde_son_nom() -> None:
     monde.placer()
     # La qualification pend au **créneau** (ADR-0075) : passer `tournoi_id` ici posait une phase
     # orpheline, que l'assemblage écarte — le forfait ne s'appliquait alors à rien.
-    qualif = poser_phase_factice(
-        monde.departs,
-        monde.deroules,
-        monde.phases,
-        Phase.qualification(
-            monde.depart_id,
-            BaremeQualification.creer(1, 2),
-            GrainValidation.fin_de_serie(),
-        ),
-    )
-    assert qualif.id is not None
+    #
+    # E05US025 : on **réutilise** celle du décor. Depuis qu'un déroulé peut porter plusieurs
+    # qualifications (ADR-0082), en poser une seconde ne lève plus d'anomalie : le forfait
+    # s'accrochait à celle-ci pendant que le classement lisait l'autre, et la DSQ ne sortait
+    # silencieusement plus personne.
+    qualif_id = monde.qualif_id
     monde.forfaits.semer(
         Forfait.creer(
             monde.tournoi_id,
             archers[0],
-            qualif.id,
+            qualif_id,
             NatureForfait.DISQUALIFICATION,
             "DURAND",
             _QUAND,

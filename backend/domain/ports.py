@@ -1114,29 +1114,51 @@ class RemboursementRepository(Protocol):
 class SerieRepository(Protocol):
     """Port de persistance des séries de saisie de qualification (E04US002).
 
-    Une série par archer. `enregistrer` sert la **saisie** ordinaire (sans trace) ;
-    `enregistrer_avec_trace` co-écrit la série **et** son entrée d'audit dans **une seule
-    transaction** (atomicité acte↔trace, ADR-0035) — la validation et la correction, qui laissent
-    une trace. L'atomicité est réalisée par l'adapter (session partagée) ; au niveau du port, c'est
-    une seule opération « la série ET sa trace, ou ni l'une ni l'autre ».
+    **Une série par `(phase, archer)`** depuis E05US025 (ADR-0082) — et non plus par
+    `(tournoi, archer)`. Un déroulé peut enchaîner plusieurs qualifications : l'archer qui tire la
+    *haute* après la qualification de tête y ouvre une **seconde** feuille, et les deux coexistent.
+    Ce changement de clé **résorbe `DETTE-046`** (un archer sur deux créneaux n'avait qu'un seul
+    emplacement pour ses flèches), la phase appartenant à un départ.
+
+    `enregistrer` sert la **saisie** ordinaire (sans trace) ; `enregistrer_avec_trace` co-écrit la
+    série **et** son entrée d'audit dans **une seule transaction** (atomicité acte↔trace, ADR-0035)
+    — la validation et la correction, qui laissent une trace. L'atomicité est réalisée par l'adapter
+    (session partagée) ; au niveau du port, c'est une seule opération « la série ET sa trace, ou ni
+    l'une ni l'autre ».
     """
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
-        """Renvoie la série de qualification de l'archer, ou `None` si aucune n'existe encore."""
-        ...
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
+        """La feuille de cet archer **dans cette phase**, ou `None` si elle n'existe pas encore.
 
-    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
-        """Renvoie toutes les séries d'un tournoi (liste éventuellement vide).
-
-        Sert au **classement** (E06US001) : cumul et départage se calculent sur l'ensemble des
-        séries du tournoi. L'ordre n'est pas garanti par le port (le classement trie lui-même) ;
-        les volées de chaque série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        ⚠️ Le premier paramètre était `tournoi_id` jusqu'à E05US025. Le remplacer plutôt que
+        d'ajouter un paramètre est délibéré : un appelant resté à la maille tournoi doit **cesser de
+        compiler**, pas continuer en écrivant dans la mauvaise feuille.
         """
         ...
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """Toutes les feuilles d'une phase (liste éventuellement vide).
+
+        Sert au **classement** (E06US001), qui se calcule phase par phase : le cumul et le départage
+        d'une qualification ne regardent que les flèches tirées **dans celle-ci**. Les lire au
+        tournoi mélangerait les deux tours de l'exemple d'ADR-0082 et rendrait un classement faux.
+
+        L'ordre n'est pas garanti par le port (le classement trie lui-même) ; les volées de chaque
+        série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        """
+        ...
+
+    def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
+        """Toutes les séries d'un tournoi, **toutes phases confondues** (éventuellement vide).
+
+        ⚠️ **Vue d'ensemble, jamais base de calcul d'un classement.** Depuis E05US025 un archer peut
+        y figurer plusieurs fois — une ligne par phase tirée. Un consommateur qui indexerait le
+        résultat par `archer_id` (`{s.archer_id: s for s in …}`) n'en garderait qu'une **au hasard
+        de l'ordre** : c'est `par_phase` qu'il lui faut.
+        """
+        ...
+
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         """Le « quand » de chaque volée de l'archer, par **numéro** (`{}` s'il n'a pas de série).
 
         Le `created_at` d'une volée est une **métadonnée de persistance**, hors de l'agrégat `Volee`

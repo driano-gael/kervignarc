@@ -46,6 +46,12 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
 
 
+# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
+# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
+# hypothese plutot que de semer des 1 muets, et la suite la verifie.
+_PHASE_TEST = 1
+
+
 def _migrer(url: str) -> None:
     preparer_base(url)
 
@@ -79,6 +85,13 @@ class Scenario:
             db.session_factory, AuditRepositorySQL(db.session_factory)
         )
         self.archers: list[int] = []
+        # E05US025 : la feuille pend a sa phase (`serie.phase_id`, NOT NULL) — la qualification
+        # se pose donc avant les series, et non apres comme ce decor le faisait.
+        qualif = poser_phase_sql(
+            db.session_factory, Phase.qualification(_depart_id, BaremeQualification.creer(1, 3))
+        )
+        assert qualif.id is not None
+        self.qualif_id = qualif.id
         for valeurs in (("10", "10", "10"), ("8", "8", "8")):  # rang 1 (fort), rang 2 (faible)
             archer = archers.ajouter(
                 Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=categorie.id)
@@ -95,17 +108,13 @@ class Scenario:
                             validee_par="Scoreur",
                         ),
                     ),
+                    phase_id=self.qualif_id,
                 )
             )
             # C'est l'**inscription** qui fait entrer l'archer au classement du créneau
             # (ADR-0075) — sans elle, le tableau s'ensemencerait sur zéro participant.
             inscriptions.ajouter(Inscription.creer(archer.id, _depart_id))
             self.archers.append(archer.id)
-        qualif = poser_phase_sql(
-            db.session_factory, Phase.qualification(_depart_id, BaremeQualification.creer(1, 3))
-        )
-        assert qualif.id is not None
-        self.qualif_id = qualif.id
         tableau = poser_phase_sql(
             db.session_factory, Phase.creer(_depart_id, 2, TypePhase.ELIMINATION_DIRECTE)
         )

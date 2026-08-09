@@ -749,3 +749,45 @@ class FauxDuelRepository:
     def enregistrer(self, phase_id: PhaseId, match_numero: int, duel: Duel) -> Duel:
         self._tirs[(phase_id, match_numero)] = duel
         return duel
+
+
+def qualification_de_secours(session_factory: Any, tournoi_id: int) -> int:
+    """L'identifiant de la qualification du **premier créneau** d'un tournoi, posée au besoin.
+
+    Échafaudage introduit par **E05US025** (ADR-0082). Une feuille de marque pend désormais à sa
+    phase (`serie.phase_id`, `NOT NULL`) : un décor qui sème des scores « directement par le
+    repository » — parce que dérouler la chorégraphie HTTP de saisie serait hors sujet pour ce
+    qu'il éprouve — doit donc disposer d'une phase réelle, ce que plusieurs n'avaient pas.
+
+    Le helper est **idempotent** : il réutilise la qualification si le créneau en porte déjà une,
+    et n'en pose une (ordre 1, barème minimal) que sinon. Il lève si le tournoi n'a aucun créneau —
+    un décor sans départ ne peut de toute façon rien classer depuis ADR-0075, et un échec net vaut
+    mieux qu'une phase fabriquée sur un tournoi vide.
+    """
+    from domain.bareme import BaremeQualification
+    from domain.phase import Phase, TypePhase
+    from infrastructure.db import DepartRepositorySQL, PhaseRepositorySQL
+
+    departs = DepartRepositorySQL(session_factory).par_tournoi(tournoi_id)
+    if not departs:
+        raise AssertionError(
+            "Ce décor n'a aucun créneau : depuis ADR-0075 une phase pend au départ, il n'y a "
+            "donc nulle part où poser la qualification que réclame `serie.phase_id`."
+        )
+    depart_id = departs[0].id
+    assert depart_id is not None
+    existante = next(
+        (
+            p
+            for p in PhaseRepositorySQL(session_factory).par_depart(depart_id)
+            if p.type is TypePhase.QUALIFICATION
+        ),
+        None,
+    )
+    if existante is not None and existante.id is not None:
+        return existante.id
+    phase = poser_phase_sql(
+        session_factory, Phase.qualification(depart_id, BaremeQualification.creer(1, 3))
+    )
+    assert phase.id is not None
+    return phase.id

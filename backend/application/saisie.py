@@ -31,7 +31,7 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
-from application.portee import qualification_du_tournoi
+from application.portee import qualification_courante, qualification_du_tournoi
 from domain.archer import Archer, ArcherId
 from domain.blason import ZoneScore
 from domain.depart import DepartId
@@ -264,9 +264,9 @@ class ServiceSaisie:
         """
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
-        phase = self._phase_qualification(tournoi_id)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
-        serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
+        serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.saisir_volee(
             numero,
             valeurs,
@@ -297,11 +297,11 @@ class ServiceSaisie:
         WS) devra la répliquer** — ou passer le tournoi du scoreur — s'il ouvre un tel chemin.
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
-        phase = self._phase_qualification(tournoi_id)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         assert (
             phase.bareme is not None and phase.validation is not None
         ), "Une qualification porte toujours barème et grain (ADR-0045 §2)."
-        serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
+        serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.valider(
             scoreur, grain=phase.validation, nb_volees_bareme=phase.bareme.nb_volees
         )
@@ -331,9 +331,9 @@ class ServiceSaisie:
         """
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
-        phase = self._phase_qualification(tournoi_id)
+        phase = self._phase_qualification(tournoi_id, archer_id, contexte)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
-        serie = self._series.par_archer(tournoi_id, archer_id) or Serie.vide(tournoi_id, archer_id)
+        serie = self._feuille(tournoi_id, archer_id, phase)
         avant = _valeurs_lisibles(serie, numero)
         serie = serie.corriger_volee(
             numero,
@@ -387,14 +387,107 @@ class ServiceSaisie:
                     return
         raise SaisieHorsCible(f"Ce poste ne sert pas l'archer {archer_id} sur cette cible.")
 
-    def _phase_qualification(self, tournoi_id: TournoiId) -> Phase:
-        """La phase de qualification ; `PhaseQualificationAbsente` si elle n'existe pas."""
+    def _phase_qualification(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        contexte: ContexteSaisie | None = None,
+    ) -> Phase:
+        """La qualification **dans laquelle cet archer tire en ce moment**.
+
+        `PhaseQualificationAbsente` s'il n'y en a aucune.
+
+        ⚠️ **C'est ici que se tient le CA « la saisie sait dans quelle qualification elle écrit »**
+        (E05US025, ADR-0082). Cette méthode résolvait « **la** » qualification du tournoi
+        (`portee.qualification_du_tournoi`, c'est-à-dire celle du **premier** créneau) : avec un
+        déroulé qui en porte plusieurs, les 3x15 de la *haute* seraient allés réécrire les volées
+        des
+        3x20 du premier tour, dans la même feuille et sans le moindre signal.
+
+        Deux résolutions successives, et aucune n'est facultative :
+
+        1. **Le créneau.** Celui du poste (`contexte.depart_id`) quand la saisie vient d'une
+        tablette
+           — c'est l'autorité, le poste sait où il est. En saisie **admin** (`contexte is None`), le
+           créneau se lit sur les inscriptions de l'archer, au numéro le plus bas s'il en a
+           plusieurs. Ce dernier point reste un **raccourci** : un archer engagé matin et après-midi
+           verra l'admin écrire dans son créneau du matin. C'est `DETTE-046` vue de l'autre bout —
+           la donnée sait désormais les distinguer (la clé est `(phase, archer)`), mais cette
+           **route** ne porte pas encore le créneau. Marqué `# DETTE-049`.
+
+        2. **La phase, parmi les qualifications de ce créneau**, par ordre : celle qui est
+           **démarrée et non terminée** d'abord (c'est « la phase en cours », au sens de
+           l'arbitrage) ; à défaut la première **à venir** ; à défaut la dernière.
+
+           Le repli sur « à venir » n'est pas de la complaisance : démarrer une phase est un geste
+           **manuel** de l'organisateur (`ServicePhases.demarrer`), et faire dépendre la saisie de
+           sa
+           discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. Même parti que
+           `ServicePalmares._resultat`, qui refuse déjà de lire `phase.statut` pour décider ce qu'un
+           écran affiche.
+
+        Sur un déroulé à **une seule** qualification — tous les tournois d'aujourd'hui — les deux
+        résolutions rendent cette unique phase : le comportement est inchangé, oracle 120 compris.
+        """
+        depart_id = self._depart_de_saisie(tournoi_id, archer_id, contexte)
+        courante = (
+            qualification_courante(self._phases, depart_id) if depart_id is not None else None
+        )
+        if courante is not None:
+            return courante
+        # Aucun créneau résolu, ou un créneau sans déroulé : on retombe sur la résolution d'avant
+        # l'US plutôt que de refuser la saisie. Sur un tournoi mono-qualification c'est la même
+        # phase ; sur un tournoi qui en porte plusieurs, un archer sans inscription est de toute
+        # façon une donnée incohérente, pas un cas nominal.
         phase = qualification_du_tournoi(self._phases, tournoi_id)
         if phase is None:
             raise PhaseQualificationAbsente(
                 "La qualification n'est pas encore configurée pour ce tournoi."
             )
         return phase
+
+    def _feuille(self, tournoi_id: TournoiId, archer_id: ArcherId, phase: Phase) -> Serie:
+        """La feuille de cet archer **dans cette phase**, ou une feuille vierge prête à la recevoir.
+
+        Un seul endroit résout le couple `(phase, archer)` pour les trois chemins d'écriture
+        (saisie, validation, correction) : les laisser le refaire chacun rouvrirait la porte à ce
+        que
+        l'un d'eux retombe sur la maille tournoi — c'est-à-dire au défaut que l'US corrige.
+        """
+        assert phase.id is not None, "Une phase relue du dépôt porte toujours son identifiant."
+        return self._series.par_archer(phase.id, archer_id) or Serie.vide(
+            tournoi_id, archer_id, phase.id
+        )
+
+    # DETTE-049 : la saisie admin devine le créneau de l'archer au lieu de le recevoir.
+    def _depart_de_saisie(
+        self,
+        tournoi_id: TournoiId,
+        archer_id: ArcherId,
+        contexte: ContexteSaisie | None,
+    ) -> DepartId | None:
+        """Le créneau où cet archer tire : celui du poste, sinon le premier où il est inscrit.
+
+        `None` quand l'archer n'a aucune inscription — l'appelant retombe alors sur la résolution
+        au tournoi. C'est une donnée incohérente (on ne tire pas sans être inscrit), pas un cas
+        nominal : on ne casse pas la saisie dessus le jour J.
+
+        Le départage entre plusieurs inscriptions se fait sur le **plus petit identifiant** de
+        créneau, et non sur son numéro d'affichage : il faudrait injecter un `DepartRepository` pour
+        lire ce numéro, ce qui ferait porter à la composition root une dépendance entière au service
+        d'un départage sans enjeu — les deux ordres ne diffèrent que si les créneaux ont été
+        renumérotés après coup. Ce qui compte ici est d'être **déterministe** : deux saisies
+        successives du même archer doivent atterrir dans la même feuille. Le vrai remède n'est pas
+        un meilleur tri, c'est que la route porte le créneau (`# DETTE-049`).
+        """
+        if contexte is not None:
+            return contexte.depart_id
+        candidats = [
+            inscription.depart_id
+            for inscription in self._inscriptions.par_archer(archer_id)
+            if inscription.depart_id is not None
+        ]
+        return min(candidats) if candidats else None
 
     def _zones_du_blason(self, archer: Archer) -> tuple[ZoneScore, ...]:
         """Les zones admises du blason par défaut de la catégorie de l'archer (le pavé de saisie).

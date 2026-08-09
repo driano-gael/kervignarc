@@ -34,9 +34,12 @@ l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétab
 from __future__ import annotations
 
 from domain.depart import DepartId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import PhaseRepository
 from domain.tournoi import TournoiId
+
+_STATUTS_EN_COURS = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
+"""Les statuts d'une phase **démarrée mais pas finie** — celle où l'on tire en ce moment."""
 
 
 def qualification_du_tournoi(phases: PhaseRepository, tournoi_id: TournoiId) -> Phase | None:
@@ -63,6 +66,44 @@ def qualification_du_tournoi(phases: PhaseRepository, tournoi_id: TournoiId) -> 
         if phase.type is TypePhase.QUALIFICATION:
             return phase
     return None
+
+
+def qualification_courante(phases: PhaseRepository, depart_id: DepartId) -> Phase | None:
+    """La qualification **où l'on tire en ce moment** dans ce créneau, ou `None` s'il n'y en a pas.
+
+    Depuis E05US025 (ADR-0082) un créneau peut porter plusieurs qualifications — 3x20, puis une
+    *haute* et une *basse* à 3x15. « La » qualification n'existe donc plus ; ce qui existe, c'est
+    celle qui se tire maintenant. Trois cas, par ordre croissant :
+
+    1. la première **démarrée et non terminée** (`en cours` ou `en pause` — une pause suspend le
+    tir,
+       elle ne rend pas la feuille à une autre phase) ;
+    2. à défaut, la première **à venir** ;
+    3. à défaut, la dernière (tout est terminé — on parle encore de la plus récente).
+
+    Le repli sur « à venir » n'est pas de la complaisance. Démarrer une phase est un geste
+    **manuel**
+    de l'organisateur (`ServicePhases.demarrer`) : faire dépendre la saisie et la complétude de sa
+    discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. C'est le même parti que
+    `ServicePalmares._resultat`, qui refuse déjà de lire `phase.statut` pour décider d'un affichage.
+
+    ⚠️ **Contrairement au reste de ce module, ce n'est pas un raccourci de portée** : la fonction
+    travaille bien à la maille du créneau (`par_depart`), là où le moteur raisonne. Elle vit ici
+    parce que trois services la réclamaient — `ServiceSaisie` et `ServiceCompletude` (deux fois) —,
+    ce qui est la 3ᵉ occurrence que la règle du projet exige avant de factoriser, et parce que
+    `DETTE-022` recense précisément cette famille de duplications.
+    """
+    qualifications = sorted(
+        (phase for phase in phases.par_depart(depart_id) if phase.type is TypePhase.QUALIFICATION),
+        key=lambda phase: phase.ordre,
+    )
+    if not qualifications:
+        return None
+    demarrees = [p for p in qualifications if p.statut in _STATUTS_EN_COURS]
+    if demarrees:
+        return demarrees[0]
+    a_venir = [p for p in qualifications if p.statut is StatutPhase.A_VENIR]
+    return a_venir[0] if a_venir else qualifications[-1]
 
 
 def phase_du_tournoi(

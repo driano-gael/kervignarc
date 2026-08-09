@@ -29,21 +29,18 @@ import pytest
 from application.erreurs import TournoiIntrouvable
 from application.palmares import ServicePalmares
 from domain.archer import Archer
-from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription
 from domain.palmares import OriginePalmares, Palmares
-from domain.phase import Phase
 from domain.politiques import (
     Aggregation,
     AggregationExAequo,
     AggregationParQualification,
     ProfondeurClassement,
 )
-from tests.conftest import poser_phase_factice
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -100,18 +97,17 @@ def _abandonner_en_qualification(monde: _Monde, archer_id: int) -> None:
     """
     # La qualification pend au **créneau** (ADR-0075) : posée sur `tournoi_id`, elle était
     # orpheline — l'assemblage l'écartait, et le forfait ne reléguait plus personne.
-    phase = poser_phase_factice(
-        monde.departs,
-        monde.deroules,
-        monde.phases,
-        Phase.qualification(monde.depart_id, BaremeQualification.creer(1, 3)),
-    )
-    assert phase.id is not None
+    #
+    # E05US025 : on **réutilise** celle du décor (`monde.qualif_id`) au lieu d'en poser une.
+    # Depuis que plusieurs qualifications sont licites (ADR-0082), en poser une seconde ne lève
+    # plus d'anomalie : le forfait s'accrochait à celle-ci pendant que le classement lisait
+    # l'autre, et l'abandon ne reléguait silencieusement plus personne.
+    phase_id = monde.qualif_id
     monde.forfaits.semer(
         Forfait.creer(
             tournoi_id=monde.tournoi_id,
             archer_id=archer_id,
-            phase_id=phase.id,
+            phase_id=phase_id,
             nature=NatureForfait.ABANDON,
             declare_par="DURAND",
             declare_le=_QUAND,
@@ -521,7 +517,9 @@ def test_le_rang_de_categorie_reste_borne_par_la_categorie() -> None:
         )
         assert archer.id is not None
         monde.inscriptions.ajouter(Inscription(archer_id=archer.id, depart_id=monde.depart_id))
-        monde.series.semer(monde.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs))
+        monde.series.semer(
+            monde.tournoi_id, archer.id, tuple(ZoneScore(v) for v in valeurs), monde.qualif_id
+        )
         archers.append(archer.id)
     monde.creer_phase_tableau()
     monde.placer()

@@ -39,6 +39,7 @@ from infrastructure.db import (
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
+from tests.conftest import qualification_de_secours
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _DATE = datetime.date(2026, 3, 14)
@@ -376,12 +377,12 @@ def test_par_archer_sans_score_renvoie_vide(tmp_path: Path) -> None:
         db.engine.dispose()
 
 
-def _serie_tiree(tournoi_id: TournoiId, archer_id: int) -> Serie:
+def _serie_tiree(tournoi_id: TournoiId, archer_id: int, phase_id: int) -> Serie:
     """Une série d'une volée validée (l'archer « a tiré ») — comme `faire_tirer` côté service."""
     volee = Volee(
         numero=1, valeurs=(ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF), validee_par="S"
     )
-    return Serie(tournoi_id=tournoi_id, archer_id=archer_id, volees=(volee,))
+    return Serie(tournoi_id=tournoi_id, archer_id=archer_id, phase_id=phase_id, volees=(volee,))
 
 
 def test_fusionner_reassigne_inscriptions_et_scores_puis_supprime_le_perdant(
@@ -586,7 +587,13 @@ def test_fusionner_reassigne_la_serie_du_perdant(tmp_path: Path) -> None:
         gagnant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         perdant = archers.ajouter(Archer.creer("Dupont", "Jean", tournoi_id, categorie_id))
         assert gagnant.id is not None and perdant.id is not None
-        series.enregistrer(_serie_tiree(tournoi_id, perdant.id))
+        # E05US025 : la feuille pend a sa phase — le decor doit en fournir une reelle, donc un
+        # creneau ou la poser (une phase pend au depart depuis ADR-0075).
+        DepartRepositorySQL(db.session_factory).ajouter(
+            Depart.creer(tournoi_id, numero=1, tarif_centimes=0, horaire="09:00")
+        )
+        phase_id = qualification_de_secours(db.session_factory, tournoi_id)
+        series.enregistrer(_serie_tiree(tournoi_id, perdant.id, phase_id))
 
         archers.fusionner(gagnant.id, perdant.id)
 

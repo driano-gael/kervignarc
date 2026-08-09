@@ -43,6 +43,7 @@ from domain.erreurs import (
     ScoreInvalide,
 )
 from domain.inscription import Inscription
+from domain.phase import PhaseId
 from domain.poste import Poste
 from domain.score import Score
 from domain.serie import Serie, Volee
@@ -58,6 +59,12 @@ from tests.conftest import (
 )
 
 _DATE = datetime.date(2026, 3, 14)
+
+
+# E05US025 : une feuille de marque se rattache desormais a sa phase (ADR-0082). Les montages de
+# ce fichier n'ont qu'une qualification, dont l'identifiant vaut 1 ; la constante nomme cette
+# hypothese plutot que de semer des 1 muets, et la suite la verifie.
+_PHASE_TEST = 1
 
 
 class FauxTournoiRepository:
@@ -143,18 +150,30 @@ class FauxSerieRepository:
 
     def __init__(self, archers: FauxArcherRepository) -> None:
         self._archers = archers
-        self._series: dict[tuple[TournoiId, ArcherId], Serie] = {}
+        # E05US025 : la cle d'une feuille est `(phase, archer)`, comme en base.
+        self._series: dict[tuple[PhaseId, ArcherId], Serie] = {}
 
     def enregistrer(self, serie: Serie) -> Serie:
-        self._series[(serie.tournoi_id, serie.archer_id)] = serie
+        self._series[(serie.phase_id, serie.archer_id)] = serie
         return serie
 
-    def par_archer(self, tournoi_id: TournoiId, archer_id: ArcherId) -> Serie | None:
+    def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         # Le garde d'existence reproduit la purge du vrai adapter : la série d'un archer effacé ne
         # doit plus compter comme « a tiré » (sinon le fantôme rendrait l'archer indéboulonnable).
         if self._archers.par_id(archer_id) is None:
             return None
-        return self._series.get((tournoi_id, archer_id))
+        return self._series.get((phase_id, archer_id))
+
+    def par_phase(self, phase_id: PhaseId) -> list[Serie]:
+        """E05US025 : le classement lit les feuilles **d'une phase**, plus celles du tournoi."""
+        # Meme garde que `par_archer` : la feuille d'un archer supprime disparait, comme la
+        # cascade du vrai adapter. Un faux qui la laisserait verdirait un service a serie
+        # orpheline.
+        return [
+            serie
+            for (p_id, a_id), serie in self._series.items()
+            if p_id == phase_id and self._archers.par_id(a_id) is not None
+        ]
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Serie]:
         presents = {a.id for a in self._archers.par_tournoi(tournoi_id)}
@@ -164,9 +183,7 @@ class FauxSerieRepository:
             if t_id == tournoi_id and a_id in presents
         ]
 
-    def horodatages(
-        self, tournoi_id: TournoiId, archer_id: ArcherId
-    ) -> dict[int, datetime.datetime]:
+    def horodatages(self, phase_id: PhaseId, archer_id: ArcherId) -> dict[int, datetime.datetime]:
         raise NotImplementedError
 
     def enregistrer_avec_trace(self, serie: Serie, entree: EntreeAudit) -> Serie:
@@ -212,7 +229,12 @@ class Montage(NamedTuple):
         assert archer.id is not None
         volee = Volee(numero=1, valeurs=(ZoneScore.NEUF,) * fleches, validee_par="Scoreur")
         self.series.enregistrer(
-            Serie(tournoi_id=archer.tournoi_id, archer_id=archer.id, volees=(volee,))
+            Serie(
+                tournoi_id=archer.tournoi_id,
+                archer_id=archer.id,
+                volees=(volee,),
+                phase_id=_PHASE_TEST,
+            )
         )
 
     def saisir_sans_valider(self, archer: Archer) -> None:
@@ -225,7 +247,12 @@ class Montage(NamedTuple):
         assert archer.id is not None
         volee = Volee(numero=1, valeurs=(ZoneScore.NEUF, ZoneScore.NEUF, ZoneScore.NEUF))
         self.series.enregistrer(
-            Serie(tournoi_id=archer.tournoi_id, archer_id=archer.id, volees=(volee,))
+            Serie(
+                tournoi_id=archer.tournoi_id,
+                archer_id=archer.id,
+                volees=(volee,),
+                phase_id=_PHASE_TEST,
+            )
         )
 
 
