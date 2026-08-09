@@ -39,6 +39,7 @@ from application.placement_duels import ServicePlacementDuels
 from application.portee import phase_du_depart
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.classement import LigneClassement
+from domain.contrat_phase import TYPES_ROUTES
 from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.participant import GenreParticipant, Participant
@@ -456,9 +457,12 @@ class ServiceRoutage:
             if phase is None:
                 raise PhaseIntrouvable(f"Aucune phase {phase_id} pour le départ {depart_id}.")
             return phase
-        tableaux = [
-            p for p in self._phases.par_depart(depart_id) if p.type is TypePhase.ELIMINATION_DIRECTE
-        ]
+        # Filtre **dérivé** du contrat de phase (ADR-0083, capacité `route_l_archer`). Les poules
+        # n'y figurent pas : E05US023 les rend jouables sans apprendre au routage à dire où un
+        # membre de poule tire ensuite — c'est hors du CA et de la liste de la tranche. Le registre
+        # le **constate** au lieu de le supposer, et le jour où ce service l'apprend, il suffit de
+        # basculer la capacité pour que cette ligne suive.
+        tableaux = [p for p in self._phases.par_depart(depart_id) if p.type in TYPES_ROUTES]
         en_cours = [p for p in tableaux if p.statut is not StatutPhase.TERMINEE]
         if en_cours:
             return en_cours[0]

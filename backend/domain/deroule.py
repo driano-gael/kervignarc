@@ -33,6 +33,11 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.contrat_phase import (
+    TYPES_CLASSANTS_LUS,
+    TYPES_MONTES,
+    TYPES_SANS_OPPOSITION,
+)
 from domain.erreurs import (
     EffectifIncompatible,
     PhaseSansParticipant,
@@ -54,32 +59,32 @@ from domain.phase import (
 )
 from domain.plage import Plage
 
-_TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
+_TYPES_SANS_OPPOSITION = TYPES_SANS_OPPOSITION
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
 
-Liste énoncée **en négatif** des sept autres à dessein. Poule, système suisse, colline, Big Shoot
-Off, barrage et les deux tableaux **opposent** des tireurs : il leur en faut deux. Énumérer les
-« accueillants » plutôt que les « opposants » fait qu'un type ajouté au catalogue hérite du
-plancher **prudent** (2) au lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
+Dérivé de la capacité `oppose_des_tireurs` du registre de contrat (`domain/contrat_phase.py`,
+ADR-0083). Le parti d'origine tient toujours, il est seulement porté ailleurs : la capacité vaut
+`True` par défaut, si bien qu'un type ajouté au catalogue hérite du plancher **prudent** (2) au
+lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
 
-_TYPES_DEROULES = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
+_TYPES_DEROULES = TYPES_MONTES
 """Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
 
-Distinct de `TYPES_EN_TABLEAU`, qu'il recoupe par coïncidence : celui-ci répond « sait-on
-dessiner ses tours ? », celui-là « le moteur va-t-il seulement monter cette phase ? ». Les six
-autres types ont un moteur de domaine mais **aucun consommateur de production** (`# DETTE-028`) —
-leur prélèvement ne sera pas honoré, donc il ne peut pas justifier un refus de démarrage. Le jour
-où l'un d'eux gagne son service, il rejoint cette liste **et** le plancher redevient exigible.
-Miroir de `_TYPES_RECONSTRUCTIBLES` (`application/palmares.py`) et du `TYPES_DEROULES` du front.
+Dérivé de la capacité `monte_les_oppositions` (ADR-0083). Distinct de `TYPES_EN_TABLEAU`, qu'il
+recoupait par coïncidence : celui-ci répond « sait-on dessiner ses tours ? », celui-là « le moteur
+va-t-il seulement monter cette phase ? ». Les types qui ont un moteur de domaine mais **aucun
+consommateur de production** (`# DETTE-028`) n'y figurent pas : leur prélèvement ne sera pas
+honoré, donc il ne peut pas justifier un refus de démarrage.
 
-⚠️ **Cette table est en avance sur la réalité, et E06US006 l'a mis en évidence** : `placement` y
-figure alors qu'**aucun** service ne monte son tableau — les deux services de duels filtrent sur
-`ELIMINATION_DIRECTE` seul, comme `_TYPES_RECONSTRUCTIBLES` et le `TYPES_DEROULES` du front, qui
-divergent donc d'ici. Conséquence à instruire : une phase `placement` qui prélève « les rangs 33 et
-suivants » **relève le plancher d'inscrits** (E05US021) pour une phase que rien ne jouera, ce qui
-est le « refus abusif » que cette US se donnait pour pire défaillance. Défaut **préexistant**, hors
-périmètre d'E06US006 — corriger la table changerait le plancher, donc le comportement d'une autre
-US. Signalé plutôt que tranché ici."""
+⚠️ **Deux mouvements en E05US023**, tous deux voulus. Les **poules** y entrent (elles ont leur
+service), et `placement` en **sort** : aucun service ne monte son tableau, ce que le registre
+constate désormais au lieu de l'affirmer à l'envers. La divergence était signalée par E06US006 et
+laissée en l'état — « corriger la table changerait le plancher, donc le comportement d'une autre
+US ». Elle est tranchée ici, parce que le remède structurel la referme de toute façon : la garder
+demanderait d'écrire un mensonge **explicite** dans le registre. Effet : une phase `placement` qui
+prélève « les rangs 33 et suivants » cesse de relever le plancher d'inscrits pour une phase que
+rien ne joue — c'est exactement le « refus abusif » qu'E05US021 nommait comme sa pire défaillance,
+et il disparaît."""
 
 
 class EtapeProjetable(EtapeSequencee, Protocol):
@@ -337,19 +342,22 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     return exigence
 
 
-_TYPES_CLASSANTS_LUS = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
+_TYPES_CLASSANTS_LUS = TYPES_CLASSANTS_LUS
 """Les types dont le moteur sait **lire le classement** pour y prélever (E05US024).
+
+Dérivé de la capacité `classement_lisible` (ADR-0083).
 
 ⚠️ **À ne pas confondre avec `_TYPES_DEROULES`**, juste au-dessus, et la nuance décide de refus de
 démarrage : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci « sait-il *lire
-ce qu'elle a classé* ? ». Les deux ensembles ne coïncident pas — `placement` est monté sans être lu,
-`qualification` est lue sans être montée.
+ce qu'elle a classé* ? ». Les deux ensembles ne coïncident toujours pas — `qualification` est lue
+sans être montée. C'est précisément parce qu'ils ne coïncident pas qu'ils sont **deux capacités**
+du registre, et non une seule.
 
 Miroir exact de `ServiceSaisieDuels._classement_de_l_ordre` : ce qu'il résout, on l'exige ; ce qu'il
 rend `None`, on ne l'exige pas. Faire diverger les deux rouvrirait le défaut symétrique qu'E05US021
 a corrigé — soit un plancher réclamé pour un prélèvement que rien n'honore (refus abusif le jour J),
 soit un plancher tu pour un prélèvement que le moteur lira (le tournoi démarre puis casse en salle).
-Le jour où E05US023 rend les poules jouables **et lisibles**, ce type rejoint les deux tables.
+E05US023 y fait entrer les **poules**, qui sont désormais montées *et* lues.
 """
 
 

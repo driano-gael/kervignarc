@@ -98,6 +98,33 @@ export const TYPES_SANS_CLASSEMENT: TypePhase[] = ['echauffement']
 // backend refuse (422) une profondeur sur un autre type, l'écran évite simplement de la proposer.
 export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement']
 
+// Les types que l'atelier signale comme **composables mais pas jouables** (E01US024). Miroir de
+// `TYPES_SIGNALES_EN_ECART` côté domaine, dérivé là-bas du registre de contrat de phase
+// (`domain/contrat_phase.py`, ADR-0083).
+//
+// ⚠️ **Écrit en négatif**, à rebours de la table qu'il remplace (`TYPES_DEROULES`, qui vivait dans
+// `features/deroule/Deroule.tsx`). Le sens compte : la liste des types *joués* s'allonge à chaque
+// US de moteur, donc l'oublier ici faisait **mentir le signal par excès** — l'atelier avertissait
+// d'un format que le serveur sait désormais dérouler. La liste des types *en écart*, elle, ne fait
+// que **rétrécir** : un oubli y devient un avertissement de trop, jamais un avertissement de moins.
+// Entre les deux erreurs possibles, on choisit celle qui ne trompe pas l'organisateur sur ce que
+// l'outil sait faire.
+//
+// L'échauffement n'y figure pas : il ne produit rien **par définition** (« sans point et sans
+// classement », §10.1), donc l'annoncer serait un faux positif — et un faux positif répété apprend
+// à ignorer le signal.
+//
+// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout. Le CA
+// l'exige explicitement : le signal doit cesser de viser les poules **et continuer de viser** les
+// quatre autres, sans quoi il mentirait pour ceux qui restent.
+export const TYPES_SIGNALES_EN_ECART: TypePhase[] = [
+  'placement',
+  'barrage',
+  'big_shoot_off',
+  'suisse',
+  'colline',
+]
+
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //
 // `un_vers_n` joue **tous** les rangs (placement intégral) ; `top_n` s'arrête au `jusqu_au`-ième,

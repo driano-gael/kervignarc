@@ -26,6 +26,7 @@ import {
   TOUS_LES_TYPES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
+  TYPES_SIGNALES_EN_ECART,
   type TypePhase,
 } from '../../shared/phases/catalogue'
 import type { Etape, FormatTournoi, Source } from '../patrimoine/api'
@@ -303,12 +304,10 @@ export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
  * exactement le point où cette US **aggrave** la dette, et l'afficher est ce qui transforme une
  * promesse en information.
  */
-// Les types de phase que le moteur **exécute** réellement aujourd'hui. Miroir de
-// `_TYPES_RECONSTRUCTIBLES` côté service, plus l'échauffement — qui ne produit rien **par
-// définition** (« sans point et sans classement », §10.1) et ne mérite donc aucun avertissement.
-// Les autres (poules, suisse, colline, Big Shoot Off, barrage autonome) ont un moteur de domaine
-// mais **aucun service ne les déroule** (`DETTE-028`).
-const TYPES_DEROULES = new Set<TypePhase>(['qualification', 'elimination_directe', 'echauffement'])
+// Les types que le moteur ne sait **pas encore** exécuter — désormais domiciliés au catalogue
+// partagé (`shared/phases/catalogue.ts`), et écrits en **négatif** : cf. la note qui les porte
+// là-bas, un oubli y coûte un avertissement de trop plutôt qu'un avertissement de moins.
+const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
 
 export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
   // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068). Le moteur lit désormais les
@@ -325,7 +324,7 @@ export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
   const prelevementInerte = diagnostic.blocs.some((bloc) =>
     bloc.entrees.some((flux) => flux.nature !== 'rangs'),
   )
-  const typeNonDeroule = diagnostic.blocs.some((bloc) => !TYPES_DEROULES.has(bloc.type))
+  const typeNonDeroule = diagnostic.blocs.some((bloc) => EN_ECART.has(bloc.type))
   if (!prelevementInerte && !typeNonDeroule) return null
   return (
     <p className="carte__etat carte__etat--alerte" role="note">
@@ -337,8 +336,10 @@ export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
           concernée prendra <strong>tous</strong> les archers encore en lice
         </>
       )}
-      {typeNonDeroule && <> — un type de phase qu'il ne déroule pas (poules, suisse, colline)</>}.
-      Les prélèvements <strong>par rangs</strong>, eux, sont respectés. Lancez la simulation pour
+      {typeNonDeroule && (
+        <> — un type de phase qu'il ne déroule pas (suisse, colline, Big Shoot Off)</>
+      )}
+      . Les prélèvements <strong>par rangs</strong>, eux, sont respectés. Lancez la simulation pour
       voir l'écart.
     </p>
   )

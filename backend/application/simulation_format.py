@@ -59,6 +59,7 @@ from domain.archer import Archer
 from domain.blason import Blason
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement
+from domain.contrat_phase import TYPES_JOUES
 from domain.depart import Depart, DepartId
 from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
@@ -67,12 +68,14 @@ from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
-_TYPES_DEROULABLES = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
+_TYPES_DEROULABLES = TYPES_JOUES
 """Les types que le bot sait réellement jouer aujourd'hui.
 
+Dérivé du registre de contrat (`domain/contrat_phase.py`, ADR-0083) : montés, ou lus, ou les deux.
 Tout le reste du catalogue d'E05US015 se **compose** mais ne se **déroule** pas (`# DETTE-028`) :
 c'est ce que `ToursPhase.joue` rend au client, plutôt que des zéros qui passeraient pour des
-constats. À élargir au fur et à mesure que les moteurs trouvent leur consommateur."""
+constats. La table s'élargit **d'elle-même** au fur et à mesure que les moteurs trouvent leur
+consommateur — elle n'est plus à tenir à jour à la main, ce qui était la 5ᵉ occasion de diverger."""
 
 GRAINE_DEFAUT = 20260801
 """Graine par défaut : un même format simulé deux fois rend le **même** déroulé (règle 9)."""

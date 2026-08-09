@@ -34,6 +34,7 @@ from application.prelevement import ResolveurClassement, preleves, profondeur_de
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
+from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
@@ -313,7 +314,11 @@ class ServiceSaisieDuels:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
-        if phase.type is not TypePhase.ELIMINATION_DIRECTE:
+        # Filtre **dérivé** du contrat de phase (ADR-0083) : ce service ne sait dérouler qu'un
+        # arbre de duels monté par un service. Les rencontres de poule se saisissent avec le même
+        # *pavé* (une rencontre est un duel ordinaire) mais dans un autre **décor**, donc par
+        # `ServicePoules` — la distinction est portée une fois, dans le registre.
+        if phase.type not in TYPES_EN_TABLEAU_JOUE:
             raise PhasePasUnTableau(
                 f"La phase {phase_id} n'est pas une élimination directe : pas de duels."
             )

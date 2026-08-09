@@ -81,16 +81,34 @@ describe('ReserveMoteur', () => {
   })
 
   it('prévient aussi sur un type de phase que le moteur ne déroule pas', () => {
-    // Le cas que la première version du correctif avait perdu : « qualification → poules », dont
-    // le prélèvement est par rangs mais dont le moteur ne sait rien faire (DETTE-028).
+    // Le cas que la première version du correctif avait perdu : un prélèvement par rangs, mais un
+    // type dont le moteur ne sait rien faire (DETTE-028).
+    //
+    // ⚠️ **Le cas portait sur les poules jusqu'à E05US023**, qui les rend jouables de bout en
+    // bout. Il vise donc désormais le **système suisse**. Le déplacement n'affaiblit rien : ce qui
+    // est testé est le mécanisme, pas l'identité du type — et le cas « les poules ne déclenchent
+    // plus rien » a son propre test juste en dessous, qui est la moitié utile du changement.
+    render(
+      <ReserveMoteur
+        diagnostic={diagnostic([bloc('qualification'), bloc('suisse', [flux('rangs')])])}
+      />,
+    )
+
+    expect(bandeau()).not.toBeNull()
+    expect(bandeau()?.textContent).toContain('suisse')
+  })
+
+  it('ne prévient plus pour des poules, que le moteur déroule depuis E05US023', () => {
+    // Le CA d'E05US023 l'exige nommément : le signal doit cesser de viser les poules **et
+    // continuer de viser** le suisse, la colline et le Big Shoot Off — sans quoi il mentirait pour
+    // ceux qui restent. Un avertissement qui survit à ce qu'il annonçait apprend à être ignoré.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('poules', [flux('rangs')])])}
       />,
     )
 
-    expect(bandeau()).not.toBeNull()
-    expect(bandeau()?.textContent).toContain('poules')
+    expect(bandeau()).toBeNull()
   })
 
   it('ne prévient pas pour un échauffement, qui ne produit rien par définition', () => {
