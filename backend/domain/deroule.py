@@ -39,6 +39,7 @@ from domain.contrat_phase import (
     TYPES_SANS_OPPOSITION,
 )
 from domain.erreurs import (
+    ChocDePoulePossible,
     EffectifIncompatible,
     PhaseSansParticipant,
     PhaseSansSource,
@@ -255,6 +256,7 @@ def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> 
                 )
             )
         conjoncturelles.extend(_anomalies_effectif_declare(etape, entrees, resolu))
+        conjoncturelles.extend(_anomalies_choc_de_poule(etape, entrees, resolu, triees))
 
     # Second passage : les sorties d'un bloc ne sont connues qu'une fois **toutes** les étapes
     # résolues (une phase peut être prélevée par n'importe laquelle de ses cadettes).
@@ -633,6 +635,55 @@ def _anomalies_effectif_declare(
             etape.ordre,
             Gravite.AVERTISSEMENT,
         )
+
+
+def _anomalies_choc_de_poule(
+    etape: EtapeProjetable,
+    entrees: Sequence[Flux],
+    resolu: int | None,
+    etapes: Sequence[EtapeProjetable],
+) -> Iterator[Anomalie]:
+    """Deux archers d'une même poule peuvent-ils se croiser au **premier tour** du tableau aval ?
+
+    C'est l'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce. Le
+    serpent sépare naturellement les membres d'une poule tant que l'effectif du tableau est une
+    **puissance de 2** — le 1ᵉʳ et le 2ᵉ d'une poule y sont distants de `P` rangs, et le serpent
+    apparie des rangs de somme constante. Les **byes** cassent cette régularité : à 12 archers
+    prélevés sur 3 poules, la paire (rang 7, rang 10) réunit deux membres de la poule 1.
+
+    ⚠️ **L'oracle est l'effectif du tableau, pas celui du prélèvement.** Ce sont les byes qui
+    décalent les paires, et ils se comptent sur la population **entière** de la phase aval : un
+    tableau nourri par des poules *et* par une qualification a des byes que le seul prélèvement de
+    poules ne dit pas. On lit donc `resolu`.
+
+    Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
+    règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
+    phase que le moteur ne monte pas — l'appariement n'y existe pas.
+    """
+    if resolu is None or resolu < 2 or etape.type not in TYPES_EN_TABLEAU:
+        return
+    if etape.type not in _TYPES_DEROULES or resolu & (resolu - 1) == 0:
+        return
+    types_amont = {autre.ordre: autre.type for autre in etapes}
+    sources_poules = sorted(
+        {
+            entree.ordre_source
+            for entree in entrees
+            if types_amont.get(entree.ordre_source) is TypePhase.POULES
+        }
+    )
+    if not sources_poules:
+        return
+    citees = ", ".join(str(ordre) for ordre in sources_poules)
+    yield Anomalie(
+        ChocDePoulePossible(
+            f"La phase {etape.ordre} prélève {resolu} archers dans la phase {citees} (poules) : "
+            "l'effectif n'étant pas une puissance de 2, les exempts décalent les appariements et "
+            "deux archers d'une même poule peuvent se rencontrer dès le premier tour."
+        ),
+        etape.ordre,
+        Gravite.AVERTISSEMENT,
+    )
 
 
 # --- Résolution d'un prélèvement -----------------------------------------------------------------

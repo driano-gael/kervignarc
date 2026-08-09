@@ -211,6 +211,24 @@ class PrelevementVide(DomainError):
     code = "prelevement_vide"
 
 
+class ChocDePoulePossible(DomainError):
+    """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
+
+    Le serpent sépare naturellement les membres d'une poule quand l'effectif prélevé est une
+    **puissance de 2** : le 1ᵉʳ et le 2ᵉ d'une poule y sont distants de `P` rangs, et le serpent
+    apparie des rangs de somme constante. Mesuré sans choc sur 4x2, 8x2, 4x4, 8x4, 16x2, 2x4, 5x2.
+
+    Hors puissance de 2, les **byes** décalent les paires et le choc redevient possible : 3 poules x
+    4 qualifiés = 12 archers produit la paire (rang 7, rang 10), tous deux de la poule 1.
+
+    **Avertissement, jamais bloquant** (arbitrage du 09/08/2026) : corriger demanderait une
+    politique de croisement, donc une règle métier que personne n'a demandée. On le **signale** à
+    l'atelier plutôt qu'en douce — l'organisateur ajuste son nombre de qualifiés s'il y tient.
+    """
+
+    code = "choc_de_poule_possible"
+
+
 class PolitiqueInconnue(DomainError):
     """Une politique de phase désigne une implémentation non enregistrée (E05US003, ADR-0004).
 
