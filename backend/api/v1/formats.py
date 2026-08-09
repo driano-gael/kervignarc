@@ -41,6 +41,7 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
+from domain.poule import BaremePoule, ReglageDePoules
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["formats"])
@@ -128,6 +129,65 @@ class ProfondeurDTO(BaseModel):
         return ProfondeurDTO(nom=profondeur.nom, jusqu_au=profondeur.jusqu_au)
 
 
+class BaremePouleDTO(BaseModel):
+    """Ce que rapporte une rencontre de poule — victoire / nul / défaite, défaut 3 / 1 / 0.
+
+    Jumeau de `api/v1/phases.BaremePouleDTO` (cf. `ReglagePoulesDTO` ci-dessus). Aucune borne
+    Pydantic : `BaremePoule` porte l'invariant, un second lieu rendrait deux codes pour une faute.
+    """
+
+    victoire: int = 3
+    nul: int = 1
+    defaite: int = 0
+
+    def vers_agregat(self) -> BaremePoule:
+        return BaremePoule(victoire=self.victoire, nul=self.nul, defaite=self.defaite)
+
+    @staticmethod
+    def de_agregat(bareme: BaremePoule) -> BaremePouleDTO:
+        return BaremePouleDTO(victoire=bareme.victoire, nul=bareme.nul, defaite=bareme.defaite)
+
+
+class ReglagePoulesDTO(BaseModel):
+    """Le réglage d'une étape de **poules** dans un format (E05US023, ADR-0083 §4).
+
+    Jumeau assumé de `api/v1/phases.ReglagePoulesDTO` — même notion, deux ressources distinctes,
+    pour la raison déjà tranchée sur `SourceDTO` et `ProfondeurDTO`. C'est la **3ᵉ** paire de
+    jumeaux entre ces deux routeurs : le seuil du « remède structurel » de `CLAUDE.md` est atteint,
+    et l'extraction est inscrite à `DETTE-054` plutôt que faite ici, où elle noierait le diff.
+
+    ⚠️ **Régime brouillon** (ADR-0063), comme `profondeur` : un réglage de poules posé sur une
+    élimination directe s'enregistre dans un format et n'est refusé qu'à `pour_tournoi`
+    (`ReglageDePoulesInvalide`). Les incohérences **internes** du réglage (taille < 2, plus de
+    qualifiés que de membres), elles, sont refusées ici même en 422 — `ReglageDePoules` les porte.
+    """
+
+    taille_visee: int
+    bareme: BaremePouleDTO | None = None
+    nb_qualifies: int | None = None
+    rencontres_par_archer: int | None = None
+    departage_inter_poules: bool = False
+
+    def vers_agregat(self) -> ReglageDePoules:
+        return ReglageDePoules(
+            taille_visee=self.taille_visee,
+            bareme=BaremePoule() if self.bareme is None else self.bareme.vers_agregat(),
+            nb_qualifies=self.nb_qualifies,
+            rencontres_par_archer=self.rencontres_par_archer,
+            departage_inter_poules=self.departage_inter_poules,
+        )
+
+    @staticmethod
+    def de_agregat(reglage: ReglageDePoules) -> ReglagePoulesDTO:
+        return ReglagePoulesDTO(
+            taille_visee=reglage.taille_visee,
+            bareme=BaremePouleDTO.de_agregat(reglage.bareme),
+            nb_qualifies=reglage.nb_qualifies,
+            rencontres_par_archer=reglage.rencontres_par_archer,
+            departage_inter_poules=reglage.departage_inter_poules,
+        )
+
+
 class EtapeDTO(BaseModel):
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
@@ -159,6 +219,13 @@ class EtapeDTO(BaseModel):
     profondeur: ProfondeurDTO | None = None
     """Jusqu'où cette étape départage (E06US006). `null` = non réglée → preset du type."""
 
+    poules: ReglagePoulesDTO | None = None
+    """Le réglage d'une étape de poules (E05US023). `null` = non réglée.
+
+    ⚠️ Le `extra="forbid"` ci-dessus rend ce champ **inaccessible aux clients d'avant l'US** — ce
+    qui est voulu dans les deux sens : ils ne peuvent pas l'envoyer par erreur, et le PUT étant une
+    édition **totale**, un client à jour qui l'omet **efface** le réglage."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
@@ -188,6 +255,7 @@ class EtapeDTO(BaseModel):
             sources=tuple(source.vers_agregat() for source in self.sources),
             effectif=self.effectif,
             profondeur=None if self.profondeur is None else self.profondeur.vers_agregat(),
+            poules=None if self.poules is None else self.poules.vers_agregat(),
         )
 
     @staticmethod
@@ -213,6 +281,7 @@ class EtapeDTO(BaseModel):
             profondeur=(
                 None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
             ),
+            poules=None if etape.poules is None else ReglagePoulesDTO.de_agregat(etape.poules),
         )
 
 

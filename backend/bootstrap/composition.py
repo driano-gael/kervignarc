@@ -55,6 +55,7 @@ from api.v1.placement import router as placement_router
 from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
+from api.v1.poules import router as poules_router
 from api.v1.remboursements import router as remboursements_router
 from api.v1.routage import router as routage_router
 from api.v1.saisie import router as saisie_router
@@ -102,7 +103,11 @@ from application.pilotage_tour import ServicePilotageTour
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
-from application.prelevement import LecteurPopulationPhase
+from application.poules import ServicePoules
+from application.prelevement import (
+    LecteurClassementPoules,
+    LecteurPopulationPhase,
+)
 from application.remboursements import ServiceRemboursements
 from application.routage import ServiceRoutage
 from application.saisie import ServiceSaisie
@@ -147,6 +152,7 @@ from infrastructure.db import (
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
+    PlacementPouleRepositorySQL,
     PlacementRepositorySQL,
     PlacementTableauRepositorySQL,
     PosteRepositorySQL,
@@ -427,6 +433,10 @@ def create_app(
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
     duel_repository = DuelRepositorySQL(database.session_factory)
+    # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais
+    # « archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
+    # information *fausse*, pas seulement incomplète (ADR-0083 §3).
+    placement_poule_repository = PlacementPouleRepositorySQL(database.session_factory)
     # Forfaits — abandon / DSQ (E04US015, ADR-0050) : co-écrivent leur trace d'audit `FORFAIT` dans
     # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage
     # infra → infra, comme la série, l'inscription et le placement.
@@ -714,6 +724,31 @@ def create_app(
         app.state.registre_politiques,
         app.state.service_saisie_duels,
     )
+
+    # Poules (E05US023, ADR-0083) : le consommateur de production qui manquait à `domain/poule.py`
+    # depuis E05US015 — six moteurs livrés, aucun appelé (`DETTE-028`). Il reçoit `service_saisie_
+    # duels` pour deux emprunts et deux seulement : la résolution du classement amont (`preleves`)
+    # et celle du pavé (barème par arme, zones du blason). Même patron que `ServicePlacementDuels`.
+    app.state.service_poules = ServicePoules(
+        tournoi_repository,
+        phase_repository,
+        gabarit_repository,
+        placement_poule_repository,
+        duel_repository,
+        barrage_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # ⚠️ **Le seul branchement tardif du projet, et il est ici pour être vu** (règle 8). Les deux
+    # services se tiennent par les deux bouts : celui des poules a besoin de la saisie ci-dessus, la
+    # saisie a besoin du classement de poule pour honorer un prélèvement qui vise ce type. Aucun
+    # ordre de construction ne satisfait les deux — le port étroit `LecteurClassementPoules` casse
+    # le cycle, et le `setter` le rend explicite plutôt que caché derrière un import paresseux.
+    #
+    # ⚠️ Variable **annotée**, même raison qu'au-dessus : `app.state.*` rend `Any`, donc passer
+    # `app.state.service_poules` directement ferait sauter la vérification du Protocol par mypy.
+    classements_de_poules: LecteurClassementPoules = app.state.service_poules
+    app.state.service_saisie_duels.brancher_poules(classements_de_poules)
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
@@ -1130,6 +1165,7 @@ def create_app(
     app.include_router(placement_router)
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
+    app.include_router(poules_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)
     app.include_router(tableaux_router)
