@@ -57,11 +57,13 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
-from application.prelevement import preleves
+from application.prelevement import ResolveurClassement, preleves, tranche
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.barrage import PorteeBarrage
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
+from domain.classement_de_poules import classement_de_poules
+from domain.classement_de_tableau import ClassementSource
 from domain.contrat_phase import TypePhase
 from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
 from domain.erreurs import BarrageRequisAvantQualification, MatchNonJouable
@@ -73,6 +75,7 @@ from domain.placement_poules import (
     RaisonConflitPoule,
     placer_les_poules,
 )
+from domain.politiques import TiebreakPoules
 from domain.ports import (
     BarrageRepository,
     DuelRepository,
@@ -229,6 +232,50 @@ class ServicePoules:
         `PhasePasReglee` (409).
         """
         phase, participants = self._population(tournoi_id, phase_id)
+        return self._photo(phase, participants)
+
+    def classement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
+    ) -> ClassementSource:
+        """Le classement que cette phase de poules **produit** — le port `LecteurClassementPoules`.
+
+        C'est ce qui rend le CA « la phase avale consomme les qualifiés » livrable : jusqu'ici
+        `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
+        visant une phase de poules restait **inerte** — la phase aval recevait tous les archers en
+        lice, ce qui est plausible et faux.
+
+        L'ordre est celui d'ADR-0083 §6, porté par `domain/classement_de_poules.py` : par rang de
+        poule d'abord, tout le monde au classement, blocs indécis tant que le départage n'est pas
+        demandé. Le **départage** vient du réglage de la phase (`ReglageDePoules`) : c'est un choix
+        d'organisateur, pas une politique du moteur, donc `TiebreakPoules` n'est instancié que
+        lorsqu'il est demandé.
+
+        `rang_premier` est posé ici, avec le **même** résolveur que celui qui a servi à prélever :
+        deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
+        distincts, ce qui est exactement `DETTE-034` (cf. `_classement_de_l_ordre`).
+        """
+        phase, participants = self._population(tournoi_id, phase_id, resolveur)
+        photo = self._photo(phase, participants)
+        reglage = phase.poules
+        assert reglage is not None, "`_configuration` a déjà refusé une phase non réglée."
+        return replace(
+            classement_de_poules(
+                [poule.classement for poule in photo.poules],
+                {ligne.archer_id: ligne for ligne in participants},
+                departage=TiebreakPoules() if reglage.departage_inter_poules else None,
+            ),
+            rang_premier=tranche(phase, resolveur),
+        )
+
+    def _photo(self, phase: Phase, participants: list[LigneClassement]) -> EtatPoules:
+        """Le cœur de `etat`, séparé des **gardes** : composer, poser, tirer, classer.
+
+        Extrait pour que `classement_de_phase` réutilise exactement le même calcul sans repayer la
+        résolution de population — et surtout sans la refaire avec un **autre** résolveur, ce qui
+        composerait deux répartitions différentes pour la même phase.
+        """
+        phase_id = phase.id
+        assert phase_id is not None, "`_population` a déjà refusé une phase sans identité."
         lignes = {ligne.archer_id: ligne for ligne in participants}
         configuration = self._configuration(phase, len(participants))
         poules = composer_poules(
@@ -426,13 +473,21 @@ class ServicePoules:
     # --- Rouages ---------------------------------------------------------------------------------
 
     def _population(
-        self, tournoi_id: TournoiId, phase_id: PhaseId
+        self,
+        tournoi_id: TournoiId,
+        phase_id: PhaseId,
+        resolveur: ResolveurClassement | None = None,
     ) -> tuple[Phase, list[LigneClassement]]:
         """Les gardes, puis **qui entre dans la phase** — la 1ʳᵉ question du contrat (ADR-0083 §1).
 
         Générique depuis ADR-0068/E05US024 : `preleves` lit chaque source dans le classement de
         **sa** phase, en remontant la chaîne. Une phase de poules sans source déclarée est donc
         alimentée par le classement du départ, comme un tableau de tête.
+
+        `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
+        chaîne par `LecteurClassementPoules`) : on réutilise alors son cache et sa chaîne de phases
+        visitées plutôt que d'en ouvrir un second. En fabriquer un neuf coûterait la reconstruction
+        d'un tableau amont déjà résolu (`DETTE-031`) et perdrait la détection de cycle.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -445,7 +500,9 @@ class ServicePoules:
         participants = preleves(
             phase,
             classement,
-            self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
+            resolveur
+            if resolveur is not None
+            else self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
         )
         return phase, participants
 

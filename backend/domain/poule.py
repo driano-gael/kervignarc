@@ -145,6 +145,21 @@ class ReglageDePoules:
     bareme: BaremePoule = field(default_factory=BaremePoule)
     nb_qualifies: int | None = None
     rencontres_par_archer: int | None = None
+    departage_inter_poules: bool = False
+    """Départager les archers d'un **même rang de poule** par leur décompte (§10.1, ADR-0083 §6).
+
+    Le classement de phase range « par rang de poule d'abord » : sur `P` poules, les rangs `1..P`
+    sont les vainqueurs. À l'intérieur de ce bloc, les archers sont **ex æquo par défaut** :
+    comparer des décomptes obtenus contre des adversaires différents n'a de valeur qu'au besoin.
+
+    L'option est **auto-régulée par ADR-0081** : sans elle, une phase avale qui prélève le bloc
+    entier (« les rangs 1 à 4 » sur 4 poules) passe, et une qui le coupe (« les rangs 1 à 2 ») est
+    refusée **et annoncée**. L'organisateur n'a donc à l'activer que quand l'outil le lui dit — au
+    lieu de qualifier en silence sur un ordre d'affichage.
+
+    ⚠️ Elle ne ferme **que** ce que le décompte sépare : deux décomptes identiques restent ex æquo,
+    et un ex æquo *interne* à une poule reste irréductible quoi qu'on active
+    (`domain/classement_de_poules.py`)."""
 
     def __post_init__(self) -> None:
         if self.taille_visee < 2:

@@ -143,21 +143,25 @@ def test_les_poules_sont_montees_saisies_et_placees() -> None:
     assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_POULE
 
 
-def test_le_classement_dune_poule_nest_pas_encore_lisible_par_une_phase_avale() -> None:
-    """⚠️ **Reste à livrer dans cette tranche**, et le registre le dit plutôt que de l'anticiper.
+def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
+    """CA — « la phase avale consomme les qualifiés », livré en fin de tranche E05US023.
 
-    `ServicePoules` produit bien le classement de chaque groupe, mais
-    `ServiceSaisieDuels._classement_de_l_ordre` ne sait pas encore le rendre en `ClassementSource` :
-    l'ordre inter-poules n'est pas arrêté, et le branchement casserait le cycle `ServicePoules` →
-    `ServiceSaisieDuels`.
+    Ce test **a changé de camp** : jusqu'au 6ᵉ commit de l'US, il vérifiait l'inverse et documentait
+    ce qui manquait (l'ordre inter-poules n'était pas arrêté, et le branchement
+    `ServicePoules` ↔ `ServiceSaisieDuels` était un cycle). Les deux sont désormais écrits —
+    `domain/classement_de_poules.py` pour l'ordre, le port `LecteurClassementPoules` pour le cycle —
+    donc le registre peut le déclarer sans mentir.
 
-    Le déclarer `True` par anticipation aurait un effet **mesurable et faux** : le plancher
-    d'inscrits (E05US021) serait réclamé pour un prélèvement que rien n'honore — le « refus abusif
-    le jour J » qu'E05US021 nommait comme sa pire défaillance. Ce test tombe quand le CA « la phase
-    avale consomme les qualifiés » sera réellement livré, et c'est le signal attendu.
+    ⚠️ L'effet est **mesurable**, et c'est ce qui interdisait de le déclarer plus tôt : le plancher
+    d'inscrits (E05US021) est désormais réclamé pour un prélèvement visant une phase de poules. Il
+    ne l'est légitimement que parce que le prélèvement est réellement honoré.
     """
-    assert TypePhase.POULES not in TYPES_CLASSANTS_LUS
-    assert {TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE} == TYPES_CLASSANTS_LUS
+    assert TypePhase.POULES in TYPES_CLASSANTS_LUS
+    assert {
+        TypePhase.QUALIFICATION,
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.POULES,
+    } == TYPES_CLASSANTS_LUS
 
 
 def test_les_poules_ne_sont_pas_encore_routees() -> None:

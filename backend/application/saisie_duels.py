@@ -30,7 +30,13 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
-from application.prelevement import ResolveurClassement, preleves, profondeur_de, tranche
+from application.prelevement import (
+    LecteurClassementPoules,
+    ResolveurClassement,
+    preleves,
+    profondeur_de,
+    tranche,
+)
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
@@ -178,6 +184,25 @@ class ServiceSaisieDuels:
         # `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien ne rougisse.
         # Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
         self._aggregation = aggregation
+        # E05US023 : le classement d'une phase de **poules**, lu par le port étroit
+        # `LecteurClassementPoules`. Branché **après** construction (`brancher_poules`) parce que
+        # `ServicePoules` reçoit ce service-ci dans son propre constructeur : les deux se tiennent
+        # par les deux bouts, et aucun ordre de construction ne les satisfait tous les deux.
+        #
+        # ⚠️ `None` n'est **pas** un défaut de câblage silencieux : c'est le régime légitime de tout
+        # montage qui n'a pas de poules — le harnais de simulation, les tests de tableau. Le prix
+        # est que l'oubli au composition root ne construit pas moins bien, il *lit* moins bien ; le
+        # test de câblage `test_composition` est donc le garde-fou, pas le typage.
+        self._poules: LecteurClassementPoules | None = None
+
+    def brancher_poules(self, poules: LecteurClassementPoules) -> None:
+        """Donne à ce service de quoi lire le classement d'une phase de poules (E05US023).
+
+        Appelé **une fois, au composition root** (règle 8), juste après la construction de
+        `ServicePoules`. Sans ce branchement, une source visant une phase de poules reste inerte —
+        exactement le comportement d'avant E05US023, donc sûr par défaut.
+        """
+        self._poules = poules
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -420,16 +445,20 @@ class ServiceSaisieDuels:
     ) -> ClassementSource | None:
         """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
 
-        Trois cas, et le troisième compte autant que les deux autres :
+        Quatre cas, et le dernier compte autant que les trois autres :
 
         1. **qualification** — le classement de tir du départ (ADR-0075 : jamais tous créneaux
            confondus, ce qui y ferait entrer des archers qui ne tirent pas ici) ;
         2. **élimination directe** — l'arbre reconstruit, lu comme un classement
            (`domain/classement_de_tableau.py`). C'est ici que le service **s'appelle lui-même** ;
-        3. **tout autre type** — `None`. Poules, système suisse, colline et Big Shoot Off n'ont
-           aucun classement lisible tant qu'`E05US023` ne les rend pas jouables (`DETTE-028`).
-           Rendre `None` fait retomber la phase sur son comportement d'avant plutôt que d'inventer
-           un ordre — le prélèvement reste **inerte**, pas faux.
+        3. **poules** (E05US023) — le classement de phase « par rang de poule d'abord », délégué à
+           `ServicePoules` par le port `LecteurClassementPoules`. Le service n'y touche pas
+           lui-même : composer les groupes demande le réglage, le plan et les tirs, c'est-à-dire
+           trois repositories qu'un service de tableau n'a aucune raison de connaître ;
+        4. **tout autre type** — `None`. Système suisse, colline et Big Shoot Off n'ont aucun
+           classement lisible tant qu'`E05US026` à `E05US028` ne les rendent pas jouables
+           (`DETTE-028`). Rendre `None` fait retomber la phase sur son comportement d'avant plutôt
+           que d'inventer un ordre — le prélèvement reste **inerte**, pas faux.
         """
         phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
         if phase is None:
@@ -465,6 +494,23 @@ class ServiceSaisieDuels:
             return ClassementSource(
                 classement=self._classements.pour_phase(depart_id, phase, admis=admis),
                 rang_premier=tranche(phase, resolveur),
+            )
+        if phase.type is TypePhase.POULES and phase.id is not None:
+            if self._poules is None:
+                # Aucun lecteur branché : ce montage n'a pas de poules (harnais de simulation, test
+                # de tableau). On retombe sur le comportement d'avant E05US023 — inerte, pas faux.
+                return None
+            if phase.id in chaine:
+                raise DerouleCyclique(
+                    f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se "
+                    "prélever elle-même, directement ou par une chaîne de sources."
+                )
+            # Le résolveur **descendant** porte le cache et la chaîne : `ServicePoules` remonte à
+            # son tour ses sources, et une phase amont partagée n'est reconstruite qu'une fois.
+            return self._poules.classement_de_phase(
+                tournoi_id,
+                phase.id,
+                self.resolveur_de_classement(tournoi_id, depart_id, (*chaine, phase.id), cache),
             )
         if phase.type is not TypePhase.ELIMINATION_DIRECTE or phase.id is None:
             return None

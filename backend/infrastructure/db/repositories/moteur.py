@@ -384,6 +384,12 @@ def _politiques_json(
                 reglage["qualifies"] = poules.nb_qualifies
             if poules.rencontres_par_archer is not None:
                 reglage["rencontres"] = poules.rencontres_par_archer
+            # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les
+            # archers d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute
+            # phase écrite avant que l'option existe. Écrire `false` explicitement ne dirait rien de
+            # plus et ferait diverger deux documents équivalents.
+            if poules.departage_inter_poules:
+                reglage["departage"] = True
             politiques_poules["poules"] = reglage
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
@@ -469,6 +475,7 @@ def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
         ),
         nb_qualifies=None if qualifies is None else int(qualifies),
         rencontres_par_archer=None if rencontres is None else int(rencontres),
+        departage_inter_poules=poules.get("departage") is True,
     )
 
 

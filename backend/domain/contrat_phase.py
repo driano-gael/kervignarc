@@ -238,26 +238,21 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         decor=DecorDeSaisie.RENCONTRES_EN_GROUPES,
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_POULE,
         monte_les_oppositions=True,
-        # ⚠️ **`classement_lisible` reste `False` au 09/08/2026**, et c'est le constat le plus
-        # inconfortable de ce registre. Le CA d'E05US023 exige qu'une phase avale consomme les
-        # qualifiés d'une poule ; `ServicePoules` produit bien le classement de chaque groupe —
-        # mais `ServiceSaisieDuels._classement_de_l_ordre` ne sait pas encore le rendre en
-        # `ClassementSource`, faute d'un ordre inter-poules arrêté (les premiers de chaque poule,
-        # puis les seconds ?) et d'un branchement cassant le cycle `ServicePoules` →
-        # `ServiceSaisieDuels`.
+        # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
+        # fois le code écrit. Ce qui l'autorise, module par module :
+        # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
+        # §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
+        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementPoules`.
         #
-        # Le mettre à `True` par anticipation aurait un effet **mesurable et faux** : le plancher
-        # d'inscrits (E05US021) serait réclamé pour un prélèvement que rien n'honore, soit le
-        # « refus abusif le jour J » que cette US-là nommait comme sa pire défaillance. C'est
-        # exactement le défaut d'ADR-0017 à l'échelle d'une capacité, et le registre ne vaut que
-        # s'il décrit le code du jour.
-        #
-        # ⚠️ **`route_l_archer` reste `False`** pour une raison voisine mais distincte : le routage
+        # ⚠️ L'effet de cette ligne est **mesurable**, et c'est pourquoi elle a attendu : elle fait
+        # réclamer le plancher d'inscrits (E05US021) pour un prélèvement visant des poules. Un
+        # `True` posé par anticipation aurait exigé 34 inscrits pour une source que rien n'honore —
+        # le « refus abusif le jour J » que cette US-là nommait comme sa pire défaillance.
+        classement_lisible=True,
+        # ⚠️ **`route_l_archer` reste `False`**, pour une raison distincte et assumée : le routage
         # est la 5ᵉ question du contrat, et `application/routage.py` ne sait pas dire à un membre de
-        # poule où il tire ensuite. Celle-là n'est ni au CA ni à la liste d'ADR-0083 §« Restent à
-        # écrire » — c'est une capacité **hors périmètre**, quand la précédente est une capacité
-        # **au périmètre et non encore livrée**. Les distinguer importe : la première attendra une
-        # US, la seconde doit être close avant que celle-ci parte en revue.
+        # poule où il tire ensuite. Ce n'est ni au CA d'E05US023 ni à la liste d'ADR-0083
+        # §« Restent à écrire » — c'est une capacité **hors périmètre**, qui attendra une US.
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
