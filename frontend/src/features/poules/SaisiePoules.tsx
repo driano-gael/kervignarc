@@ -107,18 +107,33 @@ function PhaseDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: num
         <button type="button" className="lien duel__retour" onClick={() => setOuverte(null)}>
           ← Retour aux poules
         </button>
+        {/* ⚠️ Le garde vaut aussi **pavé ouvert**, pas seulement à l'entrée. La rencontre peut se
+            désynchroniser pendant la saisie — l'organisateur inscrit un retardataire, le refetch
+            qui suit l'enregistrement d'une manche recompose les poules — et le pavé se viderait
+            sous les doigts du scoreur en gardant l'air prêt à saisir. C'est le piège même que
+            l'écran ferme un cran plus haut (correctif de revue). */}
+        {rencontre.desynchronisee && (
+          <p className="carte__etat carte__etat--alerte" role="status">
+            Le tir enregistré sur cette rencontre oppose d’autres archers : la composition de la
+            poule a changé depuis. Demandez à l’organisateur de rétablir la population du créneau —
+            le score n’est pas perdu, il est mis de côté le temps que les poules redeviennent celles
+            de ce tir.
+          </p>
+        )}
         <p className="duel__entete">
           Poule {rencontre.poule} · tour {rencontre.tour}
           {rencontre.couloirs !== null && ` · ${decrirePlaces(rencontre.couloirs)}`}
         </p>
-        <DuelCharge
-          tournoiId={tournoiId}
-          phaseId={phaseId}
-          matchNumero={rencontre.numero}
-          duel={rencontre.duel}
-          onValide={() => setOuverte(null)}
-          famille="poule"
-        />
+        {!rencontre.desynchronisee && (
+          <DuelCharge
+            tournoiId={tournoiId}
+            phaseId={phaseId}
+            matchNumero={rencontre.numero}
+            duel={rencontre.duel}
+            onValide={() => setOuverte(null)}
+            famille="poule"
+          />
+        )}
       </div>
     )
   }
@@ -269,7 +284,7 @@ function rangsExAequo(poule: Poule): number[] {
 
 /** L'état d'une rencontre en un mot — le même vocabulaire que la liste des duels d'un tableau. */
 function etatRencontre(rencontre: Rencontre): string {
-  if (rencontre.desynchronisee) return 'tir désynchronisé — à rétablir'
+  if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'
   const duel = rencontre.duel
   if (duel.validee_par !== null) return 'validée'
   if (duel.validation_en_attente === true) return 'validation en attente'
