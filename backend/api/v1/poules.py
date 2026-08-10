@@ -106,6 +106,12 @@ class RencontreReponse(BaseModel):
     tour: int
     couloirs: list[list[int | str]] | None
     duel: DuelReponse
+    desynchronisee: bool
+    """Un tir **existe** en base pour cette rencontre, mais il oppose d'autres duellistes.
+
+    La composition a bougé sous un score déjà saisi (un archer ajouté ou retiré recompose les
+    poules). Le tir est **masqué** plutôt que ré-attribué (ADR-0049 §4), et le service refuse de
+    l'écraser — donc l'écran doit le dire, et non proposer une saisie qui partira en 409."""
 
     @staticmethod
     def de_rencontre(rencontre: RencontreAffichee) -> RencontreReponse:
@@ -115,6 +121,7 @@ class RencontreReponse(BaseModel):
             tour=rencontre.tour,
             couloirs=_couloirs(rencontre.couloirs),
             duel=DuelReponse.de_etat(_en_etat_duel(rencontre)),
+            desynchronisee=rencontre.desynchronisee,
         )
 
 
@@ -146,6 +153,9 @@ class RencontrePubliqueReponse(BaseModel):
     vainqueur: str | None
     termine: bool
     validee: bool
+    desynchronisee: bool
+    """Cf. `RencontreReponse.desynchronisee`. Servi au public aussi : un écran de salle qui
+    afficherait « à tirer » sur une rencontre bloquée ferait attendre des archers pour rien."""
 
     @staticmethod
     def de_rencontre(rencontre: RencontreAffichee) -> RencontrePubliqueReponse:
@@ -163,6 +173,7 @@ class RencontrePubliqueReponse(BaseModel):
             vainqueur=None if issue is None or issue.vainqueur is None else issue.vainqueur.value,
             termine=False if issue is None else issue.termine,
             validee=False if duel is None else duel.verrouille,
+            desynchronisee=rencontre.desynchronisee,
         )
 
 

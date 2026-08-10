@@ -875,3 +875,39 @@ def test_un_seuil_de_barrage_ne_remplace_pas_l_ordre_de_classement_d_une_poule()
     assert (
         poule.classement[1].decompte.nb_dix == 6
     ), "le battu aligne bien plus de 10 : c'est ce qui rend les deux ordres discriminables"
+
+
+def test_une_rencontre_dont_les_duellistes_ont_change_est_signalee_bloquee() -> None:
+    """Un tir masqué (ADR-0049 §4) doit se **voir** comme bloqué, pas comme « à tirer ».
+
+    Masquer un score dont les duellistes ne correspondent plus est juste — l'attribuer au mauvais
+    couple serait pire. Mais la rencontre s'affichait alors exactement comme une rencontre jamais
+    commencée, et le service refusait l'écriture en 409 : l'écran invitait à saisir ce qu'il allait
+    refuser. Le drapeau distingue les deux cas (correctif de revue).
+
+    Le décor recompose la phase sous un tir déjà validé — un archer de plus, et le serpent
+    redistribue les groupes.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    numero = poule.rencontres[0].numero
+    _gagner(service, monde, numero, "haut")
+
+    avant = service.etat(monde.tournoi_id, phase_id).poules[0].rencontres[0]
+    assert avant.duel is not None
+    assert avant.desynchronisee is False
+
+    # Quatre archers de plus : deux poules de 4, le serpent redistribue, donc d'autres
+    # appariements portent les mêmes numéros de rencontre.
+    monde.inscrire(4)
+
+    rencontres = [r for p in service.etat(monde.tournoi_id, phase_id).poules for r in p.rencontres]
+    bloquees = [r for r in rencontres if r.desynchronisee]
+
+    assert bloquees, "la recomposition doit désynchroniser au moins la rencontre déjà tirée"
+    assert all(
+        r.duel is None for r in bloquees
+    ), "le tir reste masqué : on ne prête pas un score au mauvais couple"

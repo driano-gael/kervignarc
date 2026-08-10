@@ -130,7 +130,10 @@ class RencontreAffichee:
     adversaires occupent à ce tour — dérivés du bloc, comme l'appariement d'un tableau.
 
     `duel` vaut `None` tant qu'aucun tir n'est saisi **ou** si le tir enregistré ne correspond plus
-    aux deux adversaires recalculés (ADR-0049 §4).
+    aux deux adversaires recalculés (ADR-0049 §4). `desynchronisee` distingue **ces deux cas** : à
+    `True`, une ligne existe bien en base mais oppose d'autres duellistes. Les confondre faisait
+    afficher « à tirer » sur une rencontre que le service refuse d'écrire, et le scoreur découvrait
+    le refus une flèche plus tard.
     """
 
     numero: int
@@ -142,6 +145,7 @@ class RencontreAffichee:
     duel: Duel | None
     bareme: BaremeDuel | None
     zones: tuple[ZoneScore, ...]
+    desynchronisee: bool = False
 
 
 @dataclass(frozen=True)
@@ -705,10 +709,9 @@ class ServicePoules:
         # adversaires recalculés est **masqué**, jamais ré-attribué : la rencontre s'affiche non
         # tirée plutôt que de prêter un score au mauvais couple. Le cas se produit dès qu'une
         # composition change sous un tir déjà saisi — un forfait, une volée validée en retard.
-        duel = (
-            charge
-            if charge is not None and (charge.participant_haut, charge.participant_bas) == (a, b)
-            else None
+        concorde = charge is not None and (charge.participant_haut, charge.participant_bas) == (
+            a,
+            b,
         )
         return RencontreAffichee(
             numero=numero,
@@ -717,7 +720,13 @@ class ServicePoules:
             haut=self._duelliste(a, lignes),
             bas=self._duelliste(b, lignes),
             couloirs=_couloirs_de_la_rencontre(bloc, position_dans_le_tour),
-            duel=duel,
+            duel=charge if concorde else None,
+            # ⚠️ **Masquer ne suffisait pas : il faut le dire.** Sans ce drapeau, la rencontre
+            # s'affichait « à tirer » — indiscernable d'une rencontre jamais commencée — et le
+            # scoreur se prenait un 409 au premier enregistrement, sur un écran qui l'invitait à
+            # saisir. Le service refuse à juste titre (écraser perdrait un tir validé), mais l'écran
+            # tendait le piège (relevé en revue).
+            desynchronisee=charge is not None and not concorde,
             bareme=bareme,
             zones=self._saisie_duels.zones_de(a, lignes),
         )
