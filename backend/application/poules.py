@@ -236,6 +236,9 @@ class ServicePoules:
     def etat(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatPoules:
         """La photo complète : composition, plan posé, rencontres tirées, classements.
 
+        `# DETTE-031` — recomposée **intégralement** à chaque lecture, chaîne de sources amont
+        comprise, sans mémoïsation transverse aux requêtes.
+
         Lève `TournoiIntrouvable` / `PhaseIntrouvable` (404), `PhasePasDesPoules` ou
         `PhasePasReglee` (409).
         """
@@ -427,6 +430,9 @@ class ServicePoules:
         appliquer: Callable[[Duel, BaremeDuel, tuple[ZoneScore, ...]], Duel],
     ) -> RencontreAffichee:
         """Le tronc commun des trois écritures : retrouver la rencontre, appliquer, persister.
+
+        `# DETTE-031` — appelle `etat()` à **chaque** manche, barrage et validation, donc rejoue la
+        reconstruction complète sur le thread du writer unique.
 
         La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table
         `duel` : c'est ce qui garantit que le tir écrit porte les deux adversaires que la

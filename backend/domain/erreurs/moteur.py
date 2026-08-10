@@ -214,12 +214,19 @@ class PrelevementVide(DomainError):
 class ChocDePoulePossible(DomainError):
     """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
 
-    Le serpent sépare naturellement les membres d'une poule quand l'effectif prélevé est une
-    **puissance de 2** : le 1ᵉʳ et le 2ᵉ d'une poule y sont distants de `P` rangs, et le serpent
-    apparie des rangs de somme constante. Mesuré sans choc sur 4x2, 8x2, 4x4, 8x4, 16x2, 2x4, 5x2.
+    Le serpent sépare les membres d'une poule quand leur nombre `P` est **pair** : le tableau
+    apparie les rangs `r` et `M+1-r` (`M` = taille du tableau, une puissance de 2), donc l'écart
+    entre deux adversaires est **impair** et n'est jamais divisible par un `P` pair. À `P` impair il
+    existe des paires fautives : 3 poules x 4 qualifiés = 12 archers produit (rang 7, rang 10), tous
+    deux de la poule 1 — l'exemple du CA.
 
-    Hors puissance de 2, les **byes** décalent les paires et le choc redevient possible : 3 poules x
-    4 qualifiés = 12 archers produit la paire (rang 7, rang 10), tous deux de la poule 1.
+    ⚠️ **Deux énoncés antérieurs de cette règle étaient faux, et l'un vivait ici.** « Puissance de 2
+    ⇒ pas de choc » ne tient pas : à 3 poules et 16 places, la paire (1, 16) réunit le n° 1 et un
+    membre de sa propre poule. Les sept mesures qui l'étayaient — 4x2, 8x2, 4x4, 8x4, 16x2, 2x4,
+    5x2 — avaient toutes soit un `P` pair, soit un effectif non puissance de 2 : un échantillon
+    biaisé dont on avait tiré une loi générale. Et « les byes décalent les paires » est un faux
+    positif systématique à `P` pair. Le prédicat exact vit dans `domain/deroule.py`
+    (`_motif_de_choc`), vérifié contre l'appariement réel sur 9945 configurations.
 
     **Avertissement, jamais bloquant** (arbitrage du 09/08/2026) : corriger demanderait une
     politique de croisement, donc une règle métier que personne n'a demandée. On le **signale** à

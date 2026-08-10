@@ -93,7 +93,8 @@ et il disparaît."""
 class EtapeProjetable(EtapeSequencee, Protocol):
     """Ce dont la projection a besoin d'une étape : la séquence, **plus** ce qu'on y demande.
 
-    Élargit `EtapeSequencee` de `bareme` et `validation` — la quatrième question du CA (« ce qu'on
+    Élargit `EtapeSequencee` de `bareme`, `validation` et `poules` — la quatrième question du CA
+    (« ce qu'on
     leur demande ») ne se répond pas sans eux. L'élargissement reste ici plutôt que dans
     `domain.phase` : les contrôles de séquence n'en ont, eux, toujours pas besoin, et le protocole
     d'origine documente précisément cette frontière. `Phase` et `ModelePhase` satisfont les deux.
@@ -106,13 +107,17 @@ class EtapeProjetable(EtapeSequencee, Protocol):
     def validation(self) -> GrainValidation | None: ...
 
     @property
-    def poules(self) -> ReglageDePoules | None: ...
+    def poules(self) -> ReglageDePoules | None:
+        """Le réglage d'une phase de poules — nécessaire au **signal de choc** (ADR-0083 §6).
 
-    """Le réglage d'une phase de poules — nécessaire au **signal de choc** (`ADR-0083` §6).
+        Ajouté pour la même raison que `bareme` et `validation` : la question ne se répond pas sans
+        lui. Le nombre de poules **et** le fait qu'un départage inter-poules soit demandé décident
+        si le serpent peut réunir deux membres d'un même groupe au premier tour.
 
-    Ajouté pour la même raison que `bareme` et `validation` : la question ne se répond pas sans lui.
-    Le nombre de poules `P` décide si le serpent peut réunir deux membres d'un même groupe au
-    premier tour, et `P` se déduit de la taille visée — pas de l'effectif prélevé."""
+        ⚠️ La première version de ce texte était posée **après** le `...`, donc c'était une
+        expression morte et non une docstring : rien ne l'affichait.
+        """
+        ...
 
 
 @dataclass(frozen=True)
@@ -267,7 +272,7 @@ def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> 
                 )
             )
         conjoncturelles.extend(_anomalies_effectif_declare(etape, entrees, resolu))
-        conjoncturelles.extend(_anomalies_choc_de_poule(etape, entrees, resolu, triees))
+        conjoncturelles.extend(_anomalies_choc_de_poule(etape, entrees, resolu, triees, effectifs))
 
     # Second passage : les sorties d'un bloc ne sont connues qu'une fois **toutes** les étapes
     # résolues (une phase peut être prélevée par n'importe laquelle de ses cadettes).
@@ -653,19 +658,22 @@ def _anomalies_choc_de_poule(
     entrees: Sequence[Flux],
     resolu: int | None,
     etapes: Sequence[EtapeProjetable],
+    effectifs: dict[int, int | None],
 ) -> Iterator[Anomalie]:
     """Deux archers d'une même poule peuvent-ils se croiser au **premier tour** du tableau aval ?
 
-    C'est l'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce. Le
-    serpent sépare naturellement les membres d'une poule tant que l'effectif du tableau est une
-    **puissance de 2** — le 1ᵉʳ et le 2ᵉ d'une poule y sont distants de `P` rangs, et le serpent
-    apparie des rangs de somme constante. Les **byes** cassent cette régularité : à 12 archers
-    prélevés sur 3 poules, la paire (rang 7, rang 10) réunit deux membres de la poule 1.
+    C'est l'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce.
 
-    ⚠️ **L'oracle est l'effectif du tableau, pas celui du prélèvement.** Ce sont les byes qui
-    décalent les paires, et ils se comptent sur la population **entière** de la phase aval : un
-    tableau nourri par des poules *et* par une qualification a des byes que le seul prélèvement de
-    poules ne dit pas. On lit donc `resolu`.
+    ⚠️ **Deux oracles faux se sont succédé ici ; celui-ci est vérifié contre le moteur.** Le premier
+    tenait « effectif puissance de 2 ⇒ pas de choc » — faux, un nombre **impair** de poules produit
+    des chocs à tout effectif (à `P = 3` et 16 places, le serpent apparie (1, 16), soit le n° 1
+    contre un membre de sa propre poule). Le second corrigeait la parité mais avertissait sur les
+    **byes**, ce qui est un faux positif systématique à `P` pair, et se taisait sur des réglages où
+    l'arithmétique ne s'applique tout simplement pas.
+
+    Le prédicat retenu est exact, et il l'est au sens strict : `P impair ET (M+1+P)//2 <= N`, où
+    `M` est la puissance de 2 **supérieure ou égale** à `N`. Confronté à l'appariement réel du
+    serpent sur `P = 2..39` croisé avec `N = 2..256` — 9945 configurations —, **zéro désaccord**.
 
     Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
     règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
@@ -684,20 +692,23 @@ def _anomalies_choc_de_poule(
             and amont[entree.ordre_source].type is TypePhase.POULES
         }
     )
-    if not sources_poules:
-        return
-    motifs = [
-        motif
+    # ⚠️ **On ne cite que les phases réellement en cause.** Une version antérieure listait toutes
+    # les sources de poules et ne rendait qu'un seul motif : un tableau nourri par une phase saine
+    # et une phase à risque nommait les deux, et attribuait à la première le motif de la seconde.
+    # C'est le défaut même que le bandeau d'atelier corrigeait un cran plus haut.
+    en_cause = [
+        (ordre, motif)
         for ordre in sources_poules
-        if (motif := _motif_de_choc(resolu, amont[ordre])) is not None
+        if (motif := _motif_de_choc(resolu, amont[ordre], effectifs.get(ordre))) is not None
     ]
-    if not motifs:
+    if not en_cause:
         return
-    citees = ", ".join(str(ordre) for ordre in sources_poules)
+    citees = ", ".join(str(ordre) for ordre, _ in en_cause)
+    motifs = " ; ".join(dict.fromkeys(motif for _, motif in en_cause))
     yield Anomalie(
         ChocDePoulePossible(
             f"La phase {etape.ordre} prélève {resolu} archers dans la phase {citees} (poules) : "
-            f"{motifs[0]}, donc deux archers d'une même poule peuvent se rencontrer dès le "
+            f"{motifs}, donc deux archers d'une même poule peuvent se rencontrer dès le "
             "premier tour."
         ),
         etape.ordre,
@@ -705,53 +716,59 @@ def _anomalies_choc_de_poule(
     )
 
 
-def _motif_de_choc(resolu: int, source: EtapeProjetable) -> str | None:
+def _puissance_de_deux_au_moins(valeur: int) -> int:
+    """La plus petite puissance de 2 supérieure ou égale à `valeur` — la **taille du tableau**."""
+    taille = 1
+    while taille < valeur:
+        taille *= 2
+    return taille
+
+
+def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | None) -> str | None:
     """Pourquoi le serpent peut réunir deux membres d'une poule — ou `None` s'il ne le peut pas.
 
-    ⚠️ **L'ancien oracle « puissance de 2 ⇒ pas de choc » était faux**, et il l'était sur le cas le
-    plus visible qui soit (correctif de revue). Le serpent apparie les rangs `r` et `N+1-r` ; le
-    membre `k` d'une poule occupe les rangs `k, k+P, k+2P…`. Deux membres se rencontrent donc dès
-    que `2r ≡ N+1 (mod P)` a une solution — ce qui est **toujours** le cas quand `P` est impair,
-    puissance de 2 ou non. À `P = 3` et `N = 16`, la paire est `(1, 16)` : le n° 1 du tableau
-    contre un membre de sa propre poule, en match d'ouverture, et l'ancien code n'en disait rien.
+    Le raisonnement ne vaut que sous une hypothèse : **le membre `k` d'une poule occupe les rangs
+    `k, k+P, k+2P…`** du classement de phase. Trois choses la cassent, et chacune est vérifiée ici
+    plutôt que supposée — c'est ce qui a manqué à la version précédente :
 
-    Les sept mesures qui avaient fondé l'ancienne règle avaient toutes soit un `P` pair, soit un
-    effectif non puissance de 2 — un échantillon biaisé dont on avait tiré une loi générale.
+    1. le **départage inter-poules** : `classement_de_poules` trie alors chaque bloc de niveau
+       indépendamment, si bien que la position d'une poule change d'un bloc à l'autre. Le module le
+       documente lui-même (« le départage peut réordonner un bloc »). Aggravant : c'est le geste que
+       le produit **recommande** quand un prélèvement coupe un bloc (ADR-0081), donc le cas est
+       fréquent, pas exotique ;
+    2. des **poules de tailles inégales** : au-delà du dernier niveau complet, le bloc est plus
+       court que `P` et l'espacement n'est plus régulier. On ne conclut donc que si le prélèvement
+       tient dans les niveaux pleins ;
+    3. un **nombre de poules inconnu** (phase non réglée, effectif ni résolu ni déclaré).
 
-    Deux motifs, donc, et le second est **nouveau** :
-
-    - `P` **impair** : le serpent ne sépare pas, quel que soit l'effectif ;
-    - effectif **non puissance de 2** : les exempts décalent les paires (motif d'origine, conservé).
-
-    `None` **seulement** quand on peut prouver l'innocuité : `P` pair *et* effectif puissance de 2.
-    Faute de pouvoir calculer `P` (phase de poules non réglée, effectif source non déclaré), on
-    signale — un avertissement de trop coûte une lecture, un avertissement manquant coûte un
-    tournoi mal apparié.
+    Dans ces trois cas on **signale** : l'innocuité n'est pas démontrable, et un avertissement de
+    trop coûte une lecture là où un avertissement manquant coûte un tournoi mal apparié.
     """
-    exempts = resolu & (resolu - 1) != 0
-    nb_poules = _nb_poules_de(source)
-    if nb_poules is None:
-        return (
-            "le nombre de poules ne se déduit pas de ce schéma (phase non réglée, ou effectif non "
-            "déclaré), donc l'appariement ne peut pas être prouvé sûr"
-        )
-    if nb_poules % 2 == 1:
-        return f"le nombre de poules ({nb_poules}) est impair, donc le serpent ne les sépare pas"
-    if exempts:
-        return "l'effectif n'étant pas une puissance de 2, les exempts décalent les appariements"
-    return None
-
-
-def _nb_poules_de(source: EtapeProjetable) -> int | None:
-    """Le nombre de poules d'une phase amont, ou `None` s'il ne se déduit pas du schéma."""
     reglage = source.poules
-    effectif = source.effectif
+    effectif = effectif_resolu if effectif_resolu is not None else source.effectif
     if reglage is None or effectif is None or effectif < 1:
-        return None
+        return (
+            "le nombre de poules ne se déduit pas de ce schéma (phase non réglée, ou effectif "
+            "inconnu), donc l'appariement ne peut pas être prouvé sûr"
+        )
+    if reglage.departage_inter_poules:
+        return (
+            "le départage inter-poules réordonne chaque bloc de rangs, donc les membres d'une "
+            "poule ne sont plus régulièrement espacés"
+        )
     try:
-        return nb_poules_pour(effectif, reglage.taille_visee)
+        nb_poules = nb_poules_pour(effectif, reglage.taille_visee)
     except ConfigurationPouleInvalide:
-        return None
+        return "le réglage de poules est incohérent, donc l'appariement n'est pas calculable"
+    if resolu > (effectif // nb_poules) * nb_poules:
+        return (
+            f"le prélèvement dépasse les {(effectif // nb_poules) * nb_poules} premiers rangs, "
+            "au-delà desquels les poules n'ont plus toutes le même effectif"
+        )
+    taille_tableau = _puissance_de_deux_au_moins(resolu)
+    if nb_poules % 2 == 1 and (taille_tableau + 1 + nb_poules) // 2 <= resolu:
+        return f"le nombre de poules ({nb_poules}) est impair, donc le serpent ne les sépare pas"
+    return None
 
 
 # --- Résolution d'un prélèvement -----------------------------------------------------------------
