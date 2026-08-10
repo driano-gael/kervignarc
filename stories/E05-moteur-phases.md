@@ -735,13 +735,33 @@ aurait obligé à le refaire à l'arrivée des poules, **et à repasser sur du c
 - **Notes — aucune politique `seeding` neuve n'est nécessaire** *(vérifié le 09/08/2026)*. Le
   **serpent sépare naturellement** les archers d'une même poule au premier tour, parce que le 1ᵉʳ et
   le 2ᵉ d'une poule sont distants de `P` rangs et que le serpent apparie des rangs de somme
-  constante. Mesuré sur 4×2, 8×2, 4×4, 8×4, 16×2, 2×4 et 5×2 : **aucun choc**.
-  ⚠️ **Exception mesurée** : quand l'effectif prélevé n'est **pas une puissance de 2**, les byes
-  décalent les paires et un choc redevient possible — 3 poules × 4 qualifiés = 12 archers produit la
-  paire (rang 7, rang 10), tous deux de la poule 1. À **signaler à l'atelier** plutôt qu'à corriger
-  en douce : corriger demanderait une politique de croisement, donc une règle métier que personne
-  n'a demandée.
-- **CA — le signal d'écart disparaît pour les poules, et pour elles seules** : E01US024 signale à
+  constante.
+
+  ⚠️ **Corrigé à la revue du 10/08/2026 — la conclusion tient, sa raison était fausse.** La mesure
+  d'origine (4×2, 8×2, 4×4, 8×4, 16×2, 2×4, 5×2 : « aucun choc ») était un **échantillon biaisé** :
+  toutes ces configurations ont soit un nombre de poules pair, soit un effectif non puissance de 2.
+  Deux d'entre elles sont même fausses — `5×2` produit la paire (3, 8), tous deux de la poule 3.
+
+  Le vrai discriminant est la **parité du nombre de poules `P`** : à `P` pair le tableau apparie des
+  rangs d'écart **impair**, jamais divisible par `P`, donc aucun choc — byes ou pas. À `P` impair il
+  existe des paires fautives dès que la paire tombe dans le prélèvement. Le prédicat exact est
+  `P impair ET (M+1+P)//2 ≤ N`, `M` étant la taille du tableau ; il a été confronté à l'appariement
+  réel du serpent sur 9945 configurations, **zéro désaccord**. Trois réglages le rendent
+  inapplicable et font signaler par défaut : le **départage inter-poules** (il réordonne chaque bloc
+  de rangs), des **poules de tailles inégales** au-delà du dernier niveau plein, et un nombre de
+  poules **inconnu**.
+
+  L'exemple du CA reste vrai : 3 poules × 4 qualifiés = 12 archers produit bien la paire (7, 10) —
+  parce que `P = 3` est impair, non parce que 12 n'est pas une puissance de 2. À **signaler à
+  l'atelier** plutôt qu'à corriger en douce : corriger demanderait une politique de croisement, donc
+  une règle métier que personne n'a demandée.
+- **CA — le signal d'écart disparaît pour les poules, et pour elles seules** *(précisé à la revue
+  du 10/08/2026 : **deux signaux distincts**, pas un)*. Le **bandeau d'atelier**
+  (`TYPES_SIGNALES_EN_ECART`, `Deroule.tsx`) cesse de viser les poules — c'est ce que la puce
+  demande, et c'est tenu. Le **bot de simulation** (`simulation_format.py`), lui, ne sait toujours
+  pas les jouer : `fabriquer_harnais_simulation` ne construit aucun `ServicePoules`, donc
+  `joue=False` y reste **exact**. Les confondre faisait annoncer « joué : 0 tour, 0 duel » comme un
+  constat et supprimait l'avertissement. E01US024 signale à
   l'atelier qu'un type composé n'est pas exécutable (`Deroule.tsx`, `simulation_format.py`). Ce
   signal doit cesser de viser les poules **et continuer de viser** le suisse, la colline et le Big
   Shoot Off — sans quoi il mentirait pour ceux qui restent.
