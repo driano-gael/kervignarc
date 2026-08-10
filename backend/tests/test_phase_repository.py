@@ -32,9 +32,12 @@ from sqlalchemy import text
 from domain.bareme import BaremeQualification
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
+from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation
+from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import ProfondeurClassement
+from domain.poule import BaremePoule, ReglageDePoules
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import (
     Database,
@@ -42,6 +45,7 @@ from infrastructure.db import (
     DepartRepositorySQL,
     DerouleEtapeORM,
     DerouleEtapeRepositorySQL,
+    FormatTournoiRepositorySQL,
     PhaseORM,
     PhaseRepositorySQL,
     TournoiRepositorySQL,
@@ -907,3 +911,171 @@ def test_une_profondeur_alteree_remonte_en_erreur_typee(
 
     with pytest.raises(InfrastructureError):
         PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+
+
+# --- E05US023 / ADR-0083 : le réglage de poules à la racine du `config` -------------------------
+
+
+def _poules_brutes(db: Database, depart_id: DepartId, config: str) -> None:
+    """Jumeau de `_tableau_brut` pour une étape de **type poules**, config imposée.
+
+    Un réglage de poules relu sur une élimination directe échouerait pour une **autre** raison
+    (`ReglageDePoulesInvalide` : le type n'en porte pas), donc sans rien prouver de la relecture
+    elle-même. Il faut le bon type pour que le test parle du bon sujet.
+    """
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        session.add(
+            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="poules", config=config)
+        )
+        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.commit()
+
+
+def test_le_reglage_de_poules_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.poules` s'écrit et se relit à l'identique — **sans migration**.
+
+    C'est le CA « le réglage vit dans le `config`, sans migration » : il tient dans le JSON
+    existant. **À la racine**, comme `validation`/`sources`/`effectif`, et non sous `policies` —
+    ce dernier est un catalogue **fermé** de familles injectables (`FamillePolitique`), et une
+    taille de poule n'est pas une stratégie (arbitrage de revue, reversé au CA). Aucune colonne
+    neuve, alors que
+    le *placement* des poules, lui, en demandera une (ADR-0083 §3) — la différence tient à ce que
+    le réglage est **de la configuration** et le plan **de la donnée d'exploitation**.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        reglage = ReglageDePoules(
+            taille_visee=4,
+            bareme=BaremePoule(victoire=2, nul=1, defaite=0),
+            nb_qualifies=2,
+            rencontres_par_archer=3,
+        )
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.POULES, poules=reglage)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.poules == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_un_bareme_non_defaut_ne_se_relit_pas_du_defaut_de_code(tmp_path: Path) -> None:
+    """Le barème est **écrit même quand il vaut le défaut**, et relu de ce qui est écrit.
+
+    Le piège serait de n'écrire que ce qui diffère de 3/1/0 pour alléger le document : le jour où
+    ce défaut changerait, tous les tournois déjà réglés changeraient de points de match **sans que
+    personne ne touche à leur réglage**. Un classement de poule resterait parfaitement cohérent, et
+    faux — c'est le mode de défaillance que `BaremePoule` documente déjà pour l'invariant
+    victoire ≥ nul ≥ défaite.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.POULES,
+            poules=ReglageDePoules(taille_visee=4, bareme=BaremePoule()),
+        )
+
+        with db.session_factory() as session:
+            ligne = session.execute(text("SELECT config FROM deroule_etape")).scalar_one()
+
+        assert json.loads(ligne)["poules"]["bareme"] == [3, 1, 0]
+    finally:
+        db.engine.dispose()
+
+
+def test_une_phase_de_poules_non_reglee_se_relit_sans_reglage(tmp_path: Path) -> None:
+    """Le type se choisit **avant** ses paramètres : le déroulé s'enregistre en cours de route.
+
+    C'est le brouillon d'ADR-0063 appliqué aux poules — l'absence de clé n'est pas une incohérence,
+    et la relecture ne doit surtout pas inventer une taille. C'est la **composition du jour J** qui
+    exigera le réglage, pas la relecture.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poules_brutes(db, depart_id, "{}")
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.poules is None
+    finally:
+        db.engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "poules",
+    [
+        {"taille": 1},  # une poule apparie au moins deux archers
+        {"taille": 4, "bareme": [0, 1, 3]},  # perdre ferait monter
+        {"taille": 4, "qualifies": 5},  # plus de qualifiés que de membres
+        {},  # pas de taille : on ne devine pas la répartition
+    ],
+)
+def test_un_reglage_de_poules_altere_remonte_en_erreur_typee(
+    tmp_path: Path, poules: dict[str, object]
+) -> None:
+    """Une `config` altérée hors API rend « configuration illisible », **jamais** un value object.
+
+    Le repository n'écrit jamais ces valeurs — l'agrégat les refuse en amont —, donc les trouver en
+    base signifie que quelqu'un a édité le fichier. Les relire par la fabrique du domaine plutôt
+    que de construire à la main est ce qui transforme « poules absurdes le jour J » en refus net à
+    la lecture (ADR-0007).
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poules_brutes(db, depart_id, json.dumps({"poules": poules}))
+
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+# --- E05US023 : la **seconde** table — le format de bibliothèque ------------------------------
+
+
+def test_un_format_conserve_le_reglage_de_poules_et_le_seuil_de_barrage(tmp_path: Path) -> None:
+    """L'aller-retour du **format**, seconde représentation de la même définition (ADR-0060 §5).
+
+    Deux champs y sont vérifiés ensemble, et le second est un correctif :
+
+    - `poules` : sans lui, promouvoir un tournoi dont une phase est réglée en poules de 4 rendrait
+      un format qui ne l'est plus. C'est l'écueil que la migration 0036 nommait — « un format resté
+      en forme ancienne produirait, à l'application, exactement le défaut qu'on vient de corriger ».
+    - `barrage_jusqu_au` : **il était perdu**. `ModelePhase` le porte depuis le 07/08/2026, avec une
+      docstring affirmant que le défaut est clos — mais `_config_format` ne le passait pas à
+      `_politiques_json`, si bien que le champ existait dans l'agrégat et disparaissait à
+      l'écriture. Le défaut avait seulement changé d'étage, de l'agrégat vers sa sérialisation, et
+      rien ne le testait. Trouvé en câblant `poules` par le même chemin.
+
+    C'est la raison pour laquelle ce test vérifie une **égalité d'étapes**, pas deux champs isolés :
+    un aller-retour se garde en entier, sinon le prochain champ ajouté se perdra de la même façon.
+    """
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1,
+            type=TypePhase.POULES,
+            poules=ReglageDePoules(taille_visee=4, nb_qualifies=2),
+            barrage_jusqu_au=8,
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Poules de 4", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()

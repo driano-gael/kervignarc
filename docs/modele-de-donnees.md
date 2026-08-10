@@ -331,6 +331,28 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > de revue). **`ON DELETE CASCADE` assumé** (exception DETTE-001, comme `PLACEMENT`) : donnée dérivée,
 > reconstructible, feuille — elle suit la phase ou l'inscription.
 
+### PLACEMENT_POULE (E05US023, [ADR-0083](adr/0083-le-contrat-de-phase-jouable.md) §3)
+Table du **plan de cibles d'une phase de poules** — migration `0045`. Ce qui est posé n'est **pas
+l'archer** mais la **poule** : elle occupe un **bloc de couloirs contigus**, et c'est ce bloc qui est
+persisté. L'occupant d'un couloir change à chaque tour (méthode du cercle : un membre se repose à
+effectif impair), donc le stocker n'aurait décrit qu'un tour sur trois. La **taille** du bloc est
+l'empreinte simultanée sur la ligne — `2 × (effectif ÷ 2)` couloirs —, pas l'effectif de la poule.
+
+| phase_id | INTEGER | **PK** (composite), FK → PHASE, **ON DELETE CASCADE** |
+| cible_index | INTEGER | **PK** (composite) — rang de la cible dans le gabarit (1-based) |
+| position | TEXT | **PK** (composite) — `A`\|`B`\|`C`\|`D`… (même plafond code que `PLACEMENT`, `# DETTE-042`) |
+| poule_numero | INTEGER | la poule qui occupe ce couloir |
+| rang | INTEGER | position du couloir **dans le bloc** (0-based) ; `UNIQUE (phase_id, poule_numero, rang)` |
+
+> **PK composite `(phase_id, cible_index, position)`** : un couloir est occupé par **au plus une**
+> poule dans une phase — la non-double-occupation est ici tenue par le **schéma**, contrairement à
+> `PLACEMENT`/`PLACEMENT_TABLEAU` où elle l'est par le service, parce que l'unité posée est un bloc
+> et non une personne. `UNIQUE (phase_id, poule_numero, rang)` tient l'autre bout : un bloc est une
+> **suite** ordonnée, deux couloirs ne peuvent pas partager le même rang. **`ON DELETE CASCADE`
+> assumé** (exception DETTE-001, comme ses deux sœurs) : donnée dérivée, reconstructible, feuille.
+> La pose est **grossière par construction** — on repose tout le plan — parce que la contiguïté d'un
+> bloc est l'invariant du format et qu'un déplacement unitaire la casserait.
+
 ### DEROULE_ETAPE (E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md))
 | id | INTEGER | PK |
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL — le déroulé se **définit au tournoi**, une seule fois |
@@ -682,8 +704,16 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Depuis
 objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implémentation, résolue par le
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
-sous `policies` ; le grain de `validation`, les `sources` de peuplement et l'`effectif` restent **à
-la racine** (ce ne sont pas des politiques de moteur). Exemples :
+sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et le réglage
+de `poules` restent **à la racine** (ce ne sont pas des politiques de moteur). Exemples :
+
+> ⚠️ **`poules` est à la racine, et c'est un correctif.** E05US023 l'avait d'abord écrit sous
+> `policies` (« par analogie avec les autres réglages ») — ce que la phrase ci-dessus interdit déjà,
+> et que le code refuse : `FamillePolitique` est le catalogue **fermé** des clés de `policies`, et
+> `assembler_politiques` lève `PolitiqueMalFormee` sur toute clé hors énumération. Une taille de
+> poule, un barème et un nombre de qualifiés sont des **paramètres de phase** : aucune
+> implémentation alternative, aucun point d'injection, aucun registre pour les résoudre. Corrigé à
+> la revue du 10/08/2026, avant qu'un tournoi réglé n'impose une migration de données.
 
 ```jsonc
 // Qualification (E01US009+, forme livrée)

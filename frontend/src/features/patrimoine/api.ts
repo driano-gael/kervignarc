@@ -167,6 +167,11 @@ export interface Source {
 // feature. Les imports existants ne changent pas.
 export type { Profondeur } from '../../shared/phases/catalogue'
 
+// Même parti que `Profondeur` : le type est domicilié dans `shared/phases/`, où vivent aussi la
+// conversion et le composant de saisie, et ré-exporté ici pour les imports existants.
+export type { BaremePoule, ReglagePoules } from '../../shared/phases/poules'
+import type { ReglagePoules } from '../../shared/phases/poules'
+
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).
 export interface Etape {
@@ -178,6 +183,10 @@ export interface Etape {
   effectif: number | null
   // `null` = **non réglée**, donc le preset du type (le podium pour un tableau) — pas « 1→N ».
   profondeur: Profondeur | null
+  // Le réglage d'une étape de **poules** (E05US023, ADR-0083). `null` = non réglée, ce qui est
+  // licite : le type se choisit avant ses paramètres, et un brouillon s'enregistre en cours de
+  // composition. ⚠️ Le `PUT` est une édition **totale** : omettre le champ **efface** le réglage.
+  poules: ReglagePoules | null
 }
 
 export interface FormatTournoi {

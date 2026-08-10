@@ -119,6 +119,12 @@ class AnnonceRequete(BaseModel):
                 "Hors qualification, aucun classement n'est calculé : désignez les archers à "
                 "départager (archer_ids)."
             )
+        # DETTE-055 — en portée `poule`, `phase_id` et `rang` restent **facultatifs au contrat**
+        # alors qu'un barrage qui en manque ne referme plus rien depuis E05US023. Le formulaire les
+        # exige, le serveur non : c'est exactement l'écart que le bloc ci-dessus reproche au régime
+        # de qualification (« L'UI ne le permettait pas ; l'API est le contrat »). Les resserrer
+        # invalide un comportement que les tests d'E06US003 documentent comme voulu — donc un
+        # arbitrage, pas de la plomberie. Relevé en 2ᵉ passe de revue d'E05US023.
         return self
 
 

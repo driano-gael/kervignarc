@@ -674,6 +674,10 @@ def poser_phase_factice(
                 effectif=phase.effectif,
                 barrage_jusqu_au=phase.barrage_jusqu_au,
                 profondeur=phase.profondeur,
+                # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
+                # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
+                # exactement la classe de divergence que la docstring ci-dessus décrit.
+                poules=phase.poules,
             )
         )
     return phases.ajouter(
@@ -725,6 +729,10 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 effectif=phase.effectif,
                 barrage_jusqu_au=phase.barrage_jusqu_au,
                 profondeur=phase.profondeur,
+                # E05US023 : le réglage de poules aussi. Les deux jumeaux le perdaient, si bien
+                # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
+                # exactement la classe de divergence que la docstring ci-dessus décrit.
+                poules=phase.poules,
             )
         )
     return PhaseRepositorySQL(session_factory).ajouter(

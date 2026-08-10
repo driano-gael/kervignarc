@@ -31,6 +31,14 @@ const validation: ActeDuelEnFile = {
 }
 
 describe('rejouerActes', () => {
+  function mancheDe(matchNumero: number, numero: number): ActeDuelEnFile {
+    return {
+      ...manche(numero),
+      match_numero: matchNumero,
+      identifiant_saisie: `id-${matchNumero}-${numero}`,
+    }
+  }
+
   it('rejoue les actes dans l’ordre (manches puis validation), une seule fois chacun', async () => {
     const envoyes: string[] = []
     const envoyer = vi.fn((a: ActeDuelEnFile) => {
@@ -102,6 +110,56 @@ describe('rejouerActes', () => {
     expect(envoyer).toHaveBeenCalledTimes(1)
   })
 
+  it('ARRÊTE tout sur un 401, même si les actes suivants sont d’autres rencontres', async () => {
+    // ⚠️ Ce test existait, mais son décor n'avait qu'un seul `match_numero` : depuis le blocage par
+    // rencontre, il aurait passé pour une raison latérale — un test resté vert en cessant de
+    // prouver ce qu'il annonce. Une session perdue vaut pour **tout** ce que la tablette enverra ;
+    // insister rencontre par rencontre enverrait N requêtes vouées à l'échec, et la première purge
+    // déjà la session, donc les suivantes partiraient anonymes.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      return Promise.reject(new ErreurApi(401, 'non_authentifie', 'session perdue'))
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(2, 1), mancheDe(3, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1'])
+    expect(res.traites).toEqual([])
+    expect(res.interrompu).toBe(true)
+  })
+
+  it('GARDE en file l’acte d’une rencontre disparue au lieu de le jeter (404)', async () => {
+    // Le trou que le blocage par rencontre avait **découvert** : les actes situés derrière un 409
+    // n'étaient jamais envoyés, donc jamais jugés. Envoyés, un `404 rencontre_introuvable` les
+    // faisait retirer de la file — score perdu contre un `console.error`. La cause est pourtant
+    // réversible : rétablir la population fait redésigner la rencontre.
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      if (a.match_numero === 1) {
+        return Promise.reject(new ErreurApi(409, 'duel_desynchronise', 'désynchronisé'))
+      }
+      return Promise.reject(new ErreurApi(404, 'rencontre_introuvable', 'disparue'))
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(7, 1)], envoyer)
+
+    expect(res.traites).toEqual([]) // ni l'un ni l'autre n'est retiré de la file
+    expect(res.refuses).toEqual([]) // et surtout : aucun n'est journalisé comme perdu
+    expect(res.interrompu).toBe(true)
+  })
+
+  it('jette bien un refus définitif qui n’a rien d’une recomposition (422 duel_verrouille)', async () => {
+    // Le pendant : relâcher trop large garderait en file des actes qui ne passeront jamais.
+    const envoyer = vi.fn(() =>
+      Promise.reject(new ErreurApi(422, 'duel_verrouille', 'déjà validé')),
+    )
+
+    const res = await rejouerActes([mancheDe(2, 1)], envoyer)
+
+    expect(res.traites.map((a) => a.identifiant_saisie)).toEqual(['id-2-1'])
+    expect(res.refuses.map((a) => a.identifiant_saisie)).toEqual(['id-2-1'])
+  })
+
   it('SAUTE un acte superseded (retiré de la file par une saisie en ligne pendant le rejeu)', async () => {
     const envoyes: string[] = []
     const envoyer = vi.fn((a: ActeDuelEnFile) => {
@@ -115,5 +173,65 @@ describe('rejouerActes', () => {
     expect(envoyes).toEqual(['id-m1', 'id-v']) // m2 sautée
     expect(res.traites.map((a) => a.identifiant_saisie)).toEqual(['id-m1', 'id-v'])
     expect(res.interrompu).toBe(false)
+  })
+
+  // --- Correctif de revue E05US023 : un 409 ne gèle plus la tablette entière ------------------
+
+  it('poursuit le drainage sur les AUTRES rencontres quand une rencontre est refusée en 409', async () => {
+    // ⚠️ Le cas du jour J en poules : le `match_numero` court sur toute la phase, donc un archer
+    // ajouté recompose les groupes et désynchronise définitivement les rencontres déjà tirées. Le
+    // rejeu s'arrêtait au premier 409 et gardait TOUT en file — y compris les actes des rencontres
+    // saines, qui n'avaient aucun problème. Une tablette ayant saisi pendant une coupure ne
+    // synchronisait plus rien de la journée.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      if (a.match_numero === 1) {
+        return Promise.reject(new ErreurApi(409, 'duel_desynchronise', 'désynchronisé'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(2, 1), mancheDe(3, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1', 'id-2-1', 'id-3-1'])
+    expect(res.traites.map((a) => a.match_numero)).toEqual([2, 3])
+    expect(res.refuses).toEqual([])
+    expect(res.interrompu).toBe(true) // la rencontre 1 reste en file : rien n'est perdu
+  })
+
+  it('garde l’ordre AU SEIN d’une rencontre refusée : sa validation n’est pas envoyée', async () => {
+    // L'ordre entre rencontres distinctes n'a aucune dépendance ; celui d'une même rencontre en a
+    // une, et elle est stricte : valider suppose ses manches rejouées.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      if (a.match_numero === 1) {
+        return Promise.reject(new ErreurApi(409, 'duel_desynchronise', 'désynchronisé'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), validation, mancheDe(2, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1', 'id-2-1']) // la validation de la rencontre 1 est sautée
+    expect(res.traites.map((a) => a.identifiant_saisie)).toEqual(['id-2-1'])
+    expect(res.interrompu).toBe(true)
+  })
+
+  it('s’arrête pour de bon sur une panne réseau, sans essayer les rencontres suivantes', async () => {
+    // Une panne réseau n'est pas un refus : poursuivre ne ferait que collectionner des `fetch` qui
+    // pendent. La distinction avec le 409 est tout l'objet du correctif.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      return Promise.reject(new TypeError('Failed to fetch'))
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(2, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1'])
+    expect(res.traites).toEqual([])
+    expect(res.interrompu).toBe(true)
   })
 })

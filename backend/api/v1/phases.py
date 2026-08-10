@@ -33,6 +33,7 @@ from domain.phase import (
     TypePhase,
 )
 from domain.politiques import NomProfondeur, ProfondeurClassement
+from domain.poule import BaremePoule, ReglageDePoules
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
@@ -112,6 +113,72 @@ class ProfondeurDTO(BaseModel):
         return ProfondeurDTO(nom=profondeur.nom, jusqu_au=profondeur.jusqu_au)
 
 
+class BaremePouleDTO(BaseModel):
+    """Ce que rapporte une rencontre de poule — victoire / nul / défaite (E05US023).
+
+    Défaut **3 / 1 / 0**, arbitré le 31/07/2026. Aucune borne Pydantic : l'invariant
+    « victoire ≥ nul ≥ défaite ≥ 0 » est porté par `BaremePoule`, et le recopier ici rendrait deux
+    codes d'erreur pour une même faute — la leçon déjà tirée sur `ProfondeurDTO.jusqu_au`.
+    """
+
+    victoire: int = 3
+    nul: int = 1
+    defaite: int = 0
+
+    def vers_agregat(self) -> BaremePoule:
+        return BaremePoule(victoire=self.victoire, nul=self.nul, defaite=self.defaite)
+
+    @staticmethod
+    def de_agregat(bareme: BaremePoule) -> BaremePouleDTO:
+        return BaremePouleDTO(victoire=bareme.victoire, nul=bareme.nul, defaite=bareme.defaite)
+
+
+class ReglagePoulesDTO(BaseModel):
+    """Le réglage d'une phase de **poules** (E05US023, ADR-0083 §4).
+
+    Porte la **taille visée**, pas le nombre de groupes : le déroulé se compose des semaines avant
+    le tournoi, inscriptions ouvertes, et le nombre de poules n'y est pas calculable. La conversion
+    se fait le jour J, sur l'effectif réel, en un seul endroit (`ReglageDePoules.pour_effectif`).
+
+    `nb_qualifies` porte aussi le **régime d'ex æquo** (§5) : vide, la poule *classe* et tout
+    ex æquo irréductible se départage au barrage ; renseigné, elle *qualifie* et seul un ex æquo
+    tombant sur la barre justifie un barrage. Pas un champ de plus — le même, rendu explicite.
+
+    ⚠️ **Jumeau assumé de `api/v1/formats.ReglagePoulesDTO`**, pour la raison déjà tranchée sur
+    `SourceDTO` et `ProfondeurDTO` : même notion, deux ressources distinctes. C'est la **3ᵉ** paire
+    de jumeaux entre ces deux routeurs, donc le seuil du « remède structurel » de `CLAUDE.md` est
+    atteint — inscrit à `DETTE-054` plutôt que traité ici, où il noierait le diff de l'US.
+    """
+
+    taille_visee: int
+    bareme: BaremePouleDTO | None = None
+    """`null` = le barème par défaut 3 / 1 / 0. Le service, lui, l'écrit **toujours** en base."""
+
+    nb_qualifies: int | None = None
+    rencontres_par_archer: int | None = None
+    departage_inter_poules: bool = False
+    """Départager les archers d'un même rang de poule par leur décompte (§10.1, ADR-0083 §6)."""
+
+    def vers_agregat(self) -> ReglageDePoules:
+        return ReglageDePoules(
+            taille_visee=self.taille_visee,
+            bareme=BaremePoule() if self.bareme is None else self.bareme.vers_agregat(),
+            nb_qualifies=self.nb_qualifies,
+            rencontres_par_archer=self.rencontres_par_archer,
+            departage_inter_poules=self.departage_inter_poules,
+        )
+
+    @staticmethod
+    def de_agregat(reglage: ReglageDePoules) -> ReglagePoulesDTO:
+        return ReglagePoulesDTO(
+            taille_visee=reglage.taille_visee,
+            bareme=BaremePouleDTO.de_agregat(reglage.bareme),
+            nb_qualifies=reglage.nb_qualifies,
+            rencontres_par_archer=reglage.rencontres_par_archer,
+            departage_inter_poules=reglage.departage_inter_poules,
+        )
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -147,6 +214,17 @@ class ConfigPhaseRequete(BaseModel):
 
     ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
     réglage et fait retomber la phase sur son preset.
+    """
+
+    poules: ReglagePoulesDTO | None = None
+    """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
+
+    `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
+    C'est la composition du jour J qui exigera le réglage (`PhasePasReglee`, 409), pas l'édition.
+
+    ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
+    réglage. Posé sur un type qui n'est pas `poules`, il lève `ReglageDePoulesInvalide` (422) —
+    contrairement à `profondeur`, dont l'incompatibilité de type n'est refusée qu'à l'application.
     """
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
@@ -191,6 +269,7 @@ class PhaseReponse(BaseModel):
     sources: list[SourceDTO]
     effectif: int | None
     profondeur: ProfondeurDTO | None = None
+    poules: ReglagePoulesDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -207,6 +286,7 @@ class PhaseReponse(BaseModel):
             profondeur=(
                 None if phase.profondeur is None else ProfondeurDTO.de_agregat(phase.profondeur)
             ),
+            poules=None if phase.poules is None else ReglagePoulesDTO.de_agregat(phase.poules),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -226,6 +306,7 @@ class EtapeReponse(BaseModel):
     sources: list[SourceDTO]
     effectif: int | None
     profondeur: ProfondeurDTO | None = None
+    poules: ReglagePoulesDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -241,6 +322,7 @@ class EtapeReponse(BaseModel):
             profondeur=(
                 None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
             ),
+            poules=None if etape.poules is None else ReglagePoulesDTO.de_agregat(etape.poules),
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
 
@@ -291,6 +373,7 @@ async def ajouter_phase(
                 requete.effectif,
                 requete.barrage_jusqu_au,
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
+                None if requete.poules is None else requete.poules.vers_agregat(),
             )
         )
     )
@@ -319,6 +402,7 @@ async def modifier_phase(
                 requete.effectif,
                 requete.barrage_jusqu_au,
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
+                None if requete.poules is None else requete.poules.vers_agregat(),
             )
         )
     )

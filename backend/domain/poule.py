@@ -119,6 +119,160 @@ class ConfigurationPoules:
 
 
 @dataclass(frozen=True)
+class ReglageDePoules:
+    """Ce que l'organisateur **règle à l'atelier**, avant que l'effectif soit connu (E05US023).
+
+    **À ne pas confondre avec `ConfigurationPoules`**, et la distinction est tout le sujet :
+
+    - `ReglageDePoules` porte une **taille visée** (« des poules de 4 »), connue dès la
+      **composition** du déroulé, inscriptions encore ouvertes ;
+    - `ConfigurationPoules` porte un **nombre de poules** (« 7 poules »), qui n'existe que le
+      **jour J**, une fois l'effectif arrêté.
+
+    Le déroulé se compose des semaines avant le tournoi : le nombre de poules n'y est **pas
+    calculable**, il dépend du nombre d'inscrits. Stocker `nb_poules` dans la phase reviendrait à
+    figer la répartition sur un effectif supposé — un tournoi réglé pour 32 et joué à 30 monterait
+    8 poules dont deux à 3 archers, sans que rien ne le signale. C'est `pour_effectif` qui fait la
+    conversion, au dernier moment et **en un seul endroit**.
+
+    `nb_qualifies` porte aussi le **régime d'ex æquo** (arbitrage du 09/08/2026) : vide, la poule
+    *classe* et tout ex æquo irréductible se départage ; renseigné, elle *qualifie* et seul un
+    ex æquo tombant sur la barre justifie un barrage. Ce n'est pas un champ de plus — c'est la même
+    information, seulement rendue explicite à l'écran plutôt que déduite d'un champ laissé vide.
+    """
+
+    taille_visee: int
+    bareme: BaremePoule = field(default_factory=BaremePoule)
+    nb_qualifies: int | None = None
+    rencontres_par_archer: int | None = None
+    departage_inter_poules: bool = False
+    """Départager les archers d'un **même rang de poule** par leur décompte (§10.1, ADR-0083 §6).
+
+    Le classement de phase range « par rang de poule d'abord » : sur `P` poules, les rangs `1..P`
+    sont les vainqueurs. À l'intérieur de ce bloc, les archers sont **ex æquo par défaut** :
+    comparer des décomptes obtenus contre des adversaires différents n'a de valeur qu'au besoin.
+
+    L'option est **auto-régulée par ADR-0081** : sans elle, une phase avale qui prélève le bloc
+    entier (« les rangs 1 à 4 » sur 4 poules) passe, et une qui le coupe (« les rangs 1 à 2 ») est
+    refusée **et annoncée**. L'organisateur n'a donc à l'activer que quand l'outil le lui dit — au
+    lieu de qualifier en silence sur un ordre d'affichage.
+
+    ⚠️ Elle ne ferme **que** ce que le décompte sépare : deux décomptes identiques restent ex æquo,
+    et un ex æquo *interne* à une poule reste irréductible quoi qu'on active
+    (`domain/classement_de_poules.py`)."""
+
+    def __post_init__(self) -> None:
+        if self.taille_visee < 2:
+            raise ConfigurationPouleInvalide(
+                f"Une poule apparie au moins deux archers (taille visée reçue : "
+                f"{self.taille_visee})."
+            )
+        if self.nb_qualifies is not None:
+            if self.nb_qualifies < 1:
+                raise ConfigurationPouleInvalide(
+                    f"Le nombre de qualifiés par poule est au moins 1, ou non déclaré "
+                    f"(reçu {self.nb_qualifies})."
+                )
+            # Contrôlé **ici** plutôt qu'au seul `qualifies_de_poule` : à l'atelier l'organisateur
+            # corrige son réglage, en salle il serait bloqué devant une poule qu'on lui demande de
+            # qualifier au-delà de son effectif. La borne est la taille **visée** — les poules
+            # gonflées d'une unité en comptent une de plus, jamais une de moins.
+            if self.nb_qualifies > self.taille_visee:
+                raise ConfigurationPouleInvalide(
+                    f"{self.nb_qualifies} qualifiés demandés dans des poules de "
+                    f"{self.taille_visee}."
+                )
+        if self.rencontres_par_archer is not None and self.rencontres_par_archer < 1:
+            raise ConfigurationPouleInvalide(
+                f"Un archer dispute au moins une rencontre, ou toutes si le nombre n'est pas "
+                f"déclaré (reçu {self.rencontres_par_archer})."
+            )
+
+    @property
+    def produit_des_qualifies(self) -> bool:
+        """La poule désigne un nombre de qualifiés pour la phase suivante."""
+        return self.nb_qualifies is not None
+
+    @property
+    def produit_un_classement(self) -> bool:
+        """La poule classe ses membres, et c'est son livrable — donc tout ex æquo se départage."""
+        return self.nb_qualifies is None
+
+    def pour_effectif(self, effectif: int) -> ConfigurationPoules:
+        """La configuration que le moteur consomme, une fois l'effectif du jour connu."""
+        return ConfigurationPoules(
+            nb_poules=nb_poules_pour(effectif, self.taille_visee),
+            bareme=self.bareme,
+            nb_qualifies=self.nb_qualifies,
+            rencontres_par_archer=self.rencontres_par_archer,
+        )
+
+
+def nb_poules_pour(effectif: int, taille_visee: int) -> int:
+    """Combien de groupes former pour des poules « de `taille_visee` » (arbitrage du 09/08/2026).
+
+    L'organisateur raisonne en **taille de poule**, pas en nombre de groupes : il demande « des
+    poules de 4 », et c'est l'effectif du jour qui décide combien il y en aura. Cette fonction fait
+    la conversion, et elle arrondit **vers le bas** :
+
+    - 32 archers en poules de 4 → **8** poules de 4 ;
+    - 30 archers en poules de 4 → **7** poules, que `composer_poules` remplira en cinq de 4 et deux
+      de 5.
+
+    **Pourquoi vers le bas.** Arrondir vers le haut donnerait 8 poules dont deux de 3 — le
+    commanditaire l'a écarté explicitement : « il est possible pour répartir de faire quelques
+    poules de 5 ». L'invariant retenu est donc *aucune poule ne compte moins que la taille
+    demandée*, jamais l'inverse. C'est cohérent avec `composer_poules`, qui répartit au serpent et
+    ne produit jamais plus d'une unité d'écart entre groupes.
+
+    ⚠️ **Conséquence assumée** : sous le double de la taille visée, il ne reste qu'**une** poule —
+    7 archers en poules de 4 donnent une poule de 7. Les deux invariants (« pas de poule sous la
+    taille » et « pas plus d'une unité d'écart ») sont alors inconciliables, et on garde le premier.
+    C'est pour ce cas que le CA exige que l'écran **montre** la répartition obtenue avant de la
+    valider : l'organisateur voit la poule de 7 et corrige sa taille s'il n'en veut pas.
+    """
+    # ⚠️ **Erreurs typées, pas des `ValueError` nus** (règle 5, correctif de revue).
+    #
+    # Le second cas est **atteignable depuis le client** : `ServicePoules._configuration` appelle
+    # `pour_effectif(len(participants))`, et une population vide est parfaitement licite — phase de
+    # poules composée avant les inscriptions, ou source amont qui ne prélève encore rien. Un
+    # `ValueError` n'étant ni `DomainError` ni `ApplicationError`, il tombait dans le filet
+    # « erreur inattendue » de la frontière API et sortait en **500** — sur l'écran de réglage, sur
+    # l'écran de saisie, et sur toute phase avale qui prélève dans des poules encore vides.
+    if taille_visee < 2:
+        raise ConfigurationPouleInvalide(
+            f"Une poule apparie au moins deux archers (taille visée reçue : {taille_visee})."
+        )
+    if effectif < 1:
+        raise ConfigurationPouleInvalide(
+            f"Aucun archer à répartir en poules (effectif reçu : {effectif})."
+        )
+    return max(1, effectif // taille_visee)
+
+
+def couloirs_occupes(effectif_de_poule: int) -> int:
+    """Combien de **couloirs de tir** une poule occupe — son parallélisme, pas son effectif.
+
+    **C'est l'arbitrage du 09/08/2026, et il n'est pas intuitif.** Une poule ne met pas tous ses
+    membres sur la ligne en même temps : `rencontres_de_poule` apparie par la méthode du cercle,
+    qui produit `effectif ÷ 2` rencontres par tour — à effectif **impair**, un membre se repose (le
+    cercle tourne autour d'une place vide). Une poule de 5 ne dispute donc que **deux** rencontres
+    simultanées, soit **quatre** archers sur la ligne : elle tient sur une seule cible de 4
+    couloirs, exactement comme une poule de 4.
+
+    Réserver un couloir par membre aurait fait déborder toute poule impaire sans raison, et décalé
+    la salle entière d'un cran par poule. Les membres **tournent** sur le bloc : celui qui se repose
+    change à chaque tour, ce qui est aussi la raison pour laquelle le plan place la **poule** et non
+    l'archer (`domain/placement_poules.py`, ADR-0083).
+
+    Une poule de moins de deux membres n'apparie personne et n'occupe donc aucun couloir.
+    """
+    if effectif_de_poule < 2:
+        return 0
+    return 2 * (effectif_de_poule // 2)
+
+
+@dataclass(frozen=True)
 class Poule:
     """Un groupe et ses membres, dans l'ordre où la composition les y a placés."""
 

@@ -3761,17 +3761,6 @@ button:disabled {
 }
 
 /* --- Styles par feature ------------------------------------------------------------
-   Sortis d'ici par l'action 2 de l'audit de maintenabilité. Ils sont ré-importés **dans
-   l'ordre où ils se trouvaient**, pour que la cascade soit rigoureusement identique. Une
-   feature neuve ajoute son fichier et une ligne ici, au lieu de trois mille lignes à
-   parcourir. */
-@import '../../features/routage/routage.css';
-@import '../../features/deroule/deroule.css';
-@import '../../shared/schema-braquets/schema-braquets.css';
-@import '../../features/salle/salle.css';
-@import '../../features/supervision/piloter-ecrans.css';
-@import '../../features/routage/affectations.css';
-@import '../../features/suivi/ensuite.css';
-@import '../../features/competition/barrages.css';
-@import '../../features/palmares/palmares.css';
-@import '../../features/tableaux/tableaux.css';
+   Sortis d'ici par l'action 2 de l'audit de maintenabilité, ils vivent dans `features.css`,
+   qu'`App.tsx` importe **après** ce fichier — un `@import` doit précéder toute autre règle,
+   il ne pouvait donc pas rester ici. Une feature neuve ajoute sa ligne là-bas. */

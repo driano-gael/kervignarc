@@ -47,6 +47,7 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.politiques import ProfondeurClassement
+from domain.poule import ReglageDePoules
 from domain.tournoi import TournoiId
 
 FormatTournoiId = int
@@ -99,6 +100,11 @@ class ModelePhase:
     une profondeur réglée sur un type qui ne monte pas de tableau est un modèle **licite** qui
     refusera de s'appliquer, `Phase.__post_init__` faisant barrage à `pour_tournoi`."""
 
+    poules: ReglageDePoules | None = None
+    """Le réglage d'une phase de **poules** (E05US023) — même régime de brouillon que `profondeur` :
+    un réglage de poules posé sur une élimination directe est un modèle **licite** qui refusera de
+    s'appliquer (`ReglageDePoulesInvalide` à la construction de la `Phase`)."""
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -140,6 +146,7 @@ class ModelePhase:
             effectif=self.effectif,
             barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
+            poules=self.poules,
         )
 
     @staticmethod
@@ -163,6 +170,7 @@ class ModelePhase:
             effectif=etape.effectif,
             barrage_jusqu_au=etape.barrage_jusqu_au,
             profondeur=etape.profondeur,
+            poules=etape.poules,
         )
 
 

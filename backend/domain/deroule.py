@@ -33,7 +33,14 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.contrat_phase import (
+    TYPES_CLASSANTS_LUS,
+    TYPES_MONTES,
+    TYPES_SANS_OPPOSITION,
+)
 from domain.erreurs import (
+    ChocDePoulePossible,
+    ConfigurationPouleInvalide,
     EffectifIncompatible,
     PhaseSansParticipant,
     PhaseSansSource,
@@ -53,39 +60,41 @@ from domain.phase import (
     anomalies_sequence,
 )
 from domain.plage import Plage
+from domain.poule import ReglageDePoules, nb_poules_pour
 
-_TYPES_SANS_OPPOSITION = frozenset({TypePhase.QUALIFICATION, TypePhase.ECHAUFFEMENT})
+_TYPES_SANS_OPPOSITION = TYPES_SANS_OPPOSITION
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
 
-Liste énoncée **en négatif** des sept autres à dessein. Poule, système suisse, colline, Big Shoot
-Off, barrage et les deux tableaux **opposent** des tireurs : il leur en faut deux. Énumérer les
-« accueillants » plutôt que les « opposants » fait qu'un type ajouté au catalogue hérite du
-plancher **prudent** (2) au lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
+Dérivé de la capacité `oppose_des_tireurs` du registre de contrat (`domain/contrat_phase.py`,
+ADR-0083). Le parti d'origine tient toujours, il est seulement porté ailleurs : la capacité vaut
+`True` par défaut, si bien qu'un type ajouté au catalogue hérite du plancher **prudent** (2) au
+lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
 
-_TYPES_DEROULES = frozenset({TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT})
+_TYPES_DEROULES = TYPES_MONTES
 """Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
 
-Distinct de `TYPES_EN_TABLEAU`, qu'il recoupe par coïncidence : celui-ci répond « sait-on
-dessiner ses tours ? », celui-là « le moteur va-t-il seulement monter cette phase ? ». Les six
-autres types ont un moteur de domaine mais **aucun consommateur de production** (`# DETTE-028`) —
-leur prélèvement ne sera pas honoré, donc il ne peut pas justifier un refus de démarrage. Le jour
-où l'un d'eux gagne son service, il rejoint cette liste **et** le plancher redevient exigible.
-Miroir de `_TYPES_RECONSTRUCTIBLES` (`application/palmares.py`) et du `TYPES_DEROULES` du front.
+Dérivé de la capacité `monte_les_oppositions` (ADR-0083). Distinct de `TYPES_EN_TABLEAU`, qu'il
+recoupait par coïncidence : celui-ci répond « sait-on dessiner ses tours ? », celui-là « le moteur
+va-t-il seulement monter cette phase ? ». Les types qui ont un moteur de domaine mais **aucun
+consommateur de production** (`# DETTE-028`) n'y figurent pas : leur prélèvement ne sera pas
+honoré, donc il ne peut pas justifier un refus de démarrage.
 
-⚠️ **Cette table est en avance sur la réalité, et E06US006 l'a mis en évidence** : `placement` y
-figure alors qu'**aucun** service ne monte son tableau — les deux services de duels filtrent sur
-`ELIMINATION_DIRECTE` seul, comme `_TYPES_RECONSTRUCTIBLES` et le `TYPES_DEROULES` du front, qui
-divergent donc d'ici. Conséquence à instruire : une phase `placement` qui prélève « les rangs 33 et
-suivants » **relève le plancher d'inscrits** (E05US021) pour une phase que rien ne jouera, ce qui
-est le « refus abusif » que cette US se donnait pour pire défaillance. Défaut **préexistant**, hors
-périmètre d'E06US006 — corriger la table changerait le plancher, donc le comportement d'une autre
-US. Signalé plutôt que tranché ici."""
+⚠️ **Deux mouvements en E05US023**, tous deux voulus. Les **poules** y entrent (elles ont leur
+service), et `placement` en **sort** : aucun service ne monte son tableau, ce que le registre
+constate désormais au lieu de l'affirmer à l'envers. La divergence était signalée par E06US006 et
+laissée en l'état — « corriger la table changerait le plancher, donc le comportement d'une autre
+US ». Elle est tranchée ici, parce que le remède structurel la referme de toute façon : la garder
+demanderait d'écrire un mensonge **explicite** dans le registre. Effet : une phase `placement` qui
+prélève « les rangs 33 et suivants » cesse de relever le plancher d'inscrits pour une phase que
+rien ne joue — c'est exactement le « refus abusif » qu'E05US021 nommait comme sa pire défaillance,
+et il disparaît."""
 
 
 class EtapeProjetable(EtapeSequencee, Protocol):
     """Ce dont la projection a besoin d'une étape : la séquence, **plus** ce qu'on y demande.
 
-    Élargit `EtapeSequencee` de `bareme` et `validation` — la quatrième question du CA (« ce qu'on
+    Élargit `EtapeSequencee` de `bareme`, `validation` et `poules` — la quatrième question du CA
+    (« ce qu'on
     leur demande ») ne se répond pas sans eux. L'élargissement reste ici plutôt que dans
     `domain.phase` : les contrôles de séquence n'en ont, eux, toujours pas besoin, et le protocole
     d'origine documente précisément cette frontière. `Phase` et `ModelePhase` satisfont les deux.
@@ -96,6 +105,19 @@ class EtapeProjetable(EtapeSequencee, Protocol):
 
     @property
     def validation(self) -> GrainValidation | None: ...
+
+    @property
+    def poules(self) -> ReglageDePoules | None:
+        """Le réglage d'une phase de poules — nécessaire au **signal de choc** (ADR-0083 §6).
+
+        Ajouté pour la même raison que `bareme` et `validation` : la question ne se répond pas sans
+        lui. Le nombre de poules **et** le fait qu'un départage inter-poules soit demandé décident
+        si le serpent peut réunir deux membres d'un même groupe au premier tour.
+
+        ⚠️ La première version de ce texte était posée **après** le `...`, donc c'était une
+        expression morte et non une docstring : rien ne l'affichait.
+        """
+        ...
 
 
 @dataclass(frozen=True)
@@ -250,6 +272,7 @@ def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> 
                 )
             )
         conjoncturelles.extend(_anomalies_effectif_declare(etape, entrees, resolu))
+        conjoncturelles.extend(_anomalies_choc_de_poule(etape, entrees, resolu, triees, effectifs))
 
     # Second passage : les sorties d'un bloc ne sont connues qu'une fois **toutes** les étapes
     # résolues (une phase peut être prélevée par n'importe laquelle de ses cadettes).
@@ -337,19 +360,22 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     return exigence
 
 
-_TYPES_CLASSANTS_LUS = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
+_TYPES_CLASSANTS_LUS = TYPES_CLASSANTS_LUS
 """Les types dont le moteur sait **lire le classement** pour y prélever (E05US024).
+
+Dérivé de la capacité `classement_lisible` (ADR-0083).
 
 ⚠️ **À ne pas confondre avec `_TYPES_DEROULES`**, juste au-dessus, et la nuance décide de refus de
 démarrage : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci « sait-il *lire
-ce qu'elle a classé* ? ». Les deux ensembles ne coïncident pas — `placement` est monté sans être lu,
-`qualification` est lue sans être montée.
+ce qu'elle a classé* ? ». Les deux ensembles ne coïncident toujours pas — `qualification` est lue
+sans être montée. C'est précisément parce qu'ils ne coïncident pas qu'ils sont **deux capacités**
+du registre, et non une seule.
 
 Miroir exact de `ServiceSaisieDuels._classement_de_l_ordre` : ce qu'il résout, on l'exige ; ce qu'il
 rend `None`, on ne l'exige pas. Faire diverger les deux rouvrirait le défaut symétrique qu'E05US021
 a corrigé — soit un plancher réclamé pour un prélèvement que rien n'honore (refus abusif le jour J),
 soit un plancher tu pour un prélèvement que le moteur lira (le tournoi démarre puis casse en salle).
-Le jour où E05US023 rend les poules jouables **et lisibles**, ce type rejoint les deux tables.
+E05US023 y fait entrer les **poules**, qui sont désormais montées *et* lues.
 """
 
 
@@ -625,6 +651,124 @@ def _anomalies_effectif_declare(
             etape.ordre,
             Gravite.AVERTISSEMENT,
         )
+
+
+def _anomalies_choc_de_poule(
+    etape: EtapeProjetable,
+    entrees: Sequence[Flux],
+    resolu: int | None,
+    etapes: Sequence[EtapeProjetable],
+    effectifs: dict[int, int | None],
+) -> Iterator[Anomalie]:
+    """Deux archers d'une même poule peuvent-ils se croiser au **premier tour** du tableau aval ?
+
+    C'est l'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce.
+
+    ⚠️ **Deux oracles faux se sont succédé ici ; celui-ci est vérifié contre le moteur.** Le premier
+    tenait « effectif puissance de 2 ⇒ pas de choc » — faux, un nombre **impair** de poules produit
+    des chocs à tout effectif (à `P = 3` et 16 places, le serpent apparie (1, 16), soit le n° 1
+    contre un membre de sa propre poule). Le second corrigeait la parité mais avertissait sur les
+    **byes**, ce qui est un faux positif systématique à `P` pair, et se taisait sur des réglages où
+    l'arithmétique ne s'applique tout simplement pas.
+
+    Le prédicat retenu est exact, et il l'est au sens strict : `P impair ET (M+1+P)//2 <= N`, où
+    `M` est la puissance de 2 **supérieure ou égale** à `N`. Confronté à l'appariement réel du
+    serpent sur `P = 2..39` croisé avec `N = 2..256` — 9945 configurations —, **zéro désaccord**.
+
+    Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
+    règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
+    phase que le moteur ne monte pas — l'appariement n'y existe pas.
+    """
+    if resolu is None or resolu < 2 or etape.type not in TYPES_EN_TABLEAU:
+        return
+    if etape.type not in _TYPES_DEROULES:
+        return
+    amont = {autre.ordre: autre for autre in etapes}
+    sources_poules = sorted(
+        {
+            entree.ordre_source
+            for entree in entrees
+            if amont.get(entree.ordre_source) is not None
+            and amont[entree.ordre_source].type is TypePhase.POULES
+        }
+    )
+    # ⚠️ **On ne cite que les phases réellement en cause.** Une version antérieure listait toutes
+    # les sources de poules et ne rendait qu'un seul motif : un tableau nourri par une phase saine
+    # et une phase à risque nommait les deux, et attribuait à la première le motif de la seconde.
+    # C'est le défaut même que le bandeau d'atelier corrigeait un cran plus haut.
+    en_cause = [
+        (ordre, motif)
+        for ordre in sources_poules
+        if (motif := _motif_de_choc(resolu, amont[ordre], effectifs.get(ordre))) is not None
+    ]
+    if not en_cause:
+        return
+    citees = ", ".join(str(ordre) for ordre, _ in en_cause)
+    motifs = " ; ".join(dict.fromkeys(motif for _, motif in en_cause))
+    yield Anomalie(
+        ChocDePoulePossible(
+            f"La phase {etape.ordre} prélève {resolu} archers dans la phase {citees} (poules) : "
+            f"{motifs}, donc deux archers d'une même poule peuvent se rencontrer dès le "
+            "premier tour."
+        ),
+        etape.ordre,
+        Gravite.AVERTISSEMENT,
+    )
+
+
+def _puissance_de_deux_au_moins(valeur: int) -> int:
+    """La plus petite puissance de 2 supérieure ou égale à `valeur` — la **taille du tableau**."""
+    taille = 1
+    while taille < valeur:
+        taille *= 2
+    return taille
+
+
+def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | None) -> str | None:
+    """Pourquoi le serpent peut réunir deux membres d'une poule — ou `None` s'il ne le peut pas.
+
+    Le raisonnement ne vaut que sous une hypothèse : **le membre `k` d'une poule occupe les rangs
+    `k, k+P, k+2P…`** du classement de phase. Trois choses la cassent, et chacune est vérifiée ici
+    plutôt que supposée — c'est ce qui a manqué à la version précédente :
+
+    1. le **départage inter-poules** : `classement_de_poules` trie alors chaque bloc de niveau
+       indépendamment, si bien que la position d'une poule change d'un bloc à l'autre. Le module le
+       documente lui-même (« le départage peut réordonner un bloc »). Aggravant : c'est le geste que
+       le produit **recommande** quand un prélèvement coupe un bloc (ADR-0081), donc le cas est
+       fréquent, pas exotique ;
+    2. des **poules de tailles inégales** : au-delà du dernier niveau complet, le bloc est plus
+       court que `P` et l'espacement n'est plus régulier. On ne conclut donc que si le prélèvement
+       tient dans les niveaux pleins ;
+    3. un **nombre de poules inconnu** (phase non réglée, effectif ni résolu ni déclaré).
+
+    Dans ces trois cas on **signale** : l'innocuité n'est pas démontrable, et un avertissement de
+    trop coûte une lecture là où un avertissement manquant coûte un tournoi mal apparié.
+    """
+    reglage = source.poules
+    effectif = effectif_resolu if effectif_resolu is not None else source.effectif
+    if reglage is None or effectif is None or effectif < 1:
+        return (
+            "le nombre de poules ne se déduit pas de ce schéma (phase non réglée, ou effectif "
+            "inconnu), donc l'appariement ne peut pas être prouvé sûr"
+        )
+    if reglage.departage_inter_poules:
+        return (
+            "le départage inter-poules réordonne chaque bloc de rangs, donc les membres d'une "
+            "poule ne sont plus régulièrement espacés"
+        )
+    try:
+        nb_poules = nb_poules_pour(effectif, reglage.taille_visee)
+    except ConfigurationPouleInvalide:
+        return "le réglage de poules est incohérent, donc l'appariement n'est pas calculable"
+    if resolu > (effectif // nb_poules) * nb_poules:
+        return (
+            f"le prélèvement dépasse les {(effectif // nb_poules) * nb_poules} premiers rangs, "
+            "au-delà desquels les poules n'ont plus toutes le même effectif"
+        )
+    taille_tableau = _puissance_de_deux_au_moins(resolu)
+    if nb_poules % 2 == 1 and (taille_tableau + 1 + nb_poules) // 2 <= resolu:
+        return f"le nombre de poules ({nb_poules}) est impair, donc le serpent ne les sépare pas"
+    return None
 
 
 # --- Résolution d'un prélèvement -----------------------------------------------------------------

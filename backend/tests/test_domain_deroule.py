@@ -23,6 +23,7 @@ from domain.bareme import BaremeQualification
 from domain.deroule import projeter
 from domain.format_tournoi import ModelePhase
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
+from domain.poule import ReglageDePoules
 
 
 def _qualification(ordre: int = 1, effectif: int | None = None) -> ModelePhase:
@@ -419,3 +420,191 @@ def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale
 
     assert "effectif_incompatible" in _codes(projection.blocs[1].anomalies)
     assert projection.est_applicable
+
+
+# --- CA E05US023 : le choc de poule est signalé à l'atelier, jamais corrigé en douce -------------
+
+
+def _poules(
+    ordre: int,
+    sources: tuple[SourcePhase, ...] = (),
+    effectif: int | None = None,
+    taille_visee: int = 4,
+) -> ModelePhase:
+    """Une phase de poules. `effectif` et `taille_visee` fixent **P**, le nombre de poules.
+
+    Les deux sont paramétrables depuis le correctif de revue : c'est P — et sa parité — qui décide
+    si le serpent peut réunir deux membres d'une même poule, et sans lui le signal ne peut rien
+    prouver.
+    """
+    return ModelePhase(
+        ordre=ordre,
+        type=TypePhase.POULES,
+        sources=sources,
+        effectif=effectif,
+        poules=ReglageDePoules(taille_visee=taille_visee, nb_qualifies=4),
+    )
+
+
+def test_un_tableau_nourri_par_des_poules_hors_puissance_de_deux_avertit() -> None:
+    """CA E05US023 — « À **signaler à l'atelier** plutôt qu'à corriger en douce ».
+
+    L'exemple est celui du CA, verbatim : **3 poules x 4 qualifiés = 12 archers**, qui produit la
+    paire (rang 7, rang 10), tous deux de la poule 1.
+
+    ⚠️ La *raison* n'est pas celle que le CA avançait. Ce ne sont pas les byes : à nombre **pair**
+    de poules, l'effectif a beau ne pas être une puissance de 2, le serpent sépare toujours (le
+    tableau apparie `r` et `M+1-r` avec `M` pair, donc l'écart entre deux adversaires est impair et
+    n'est jamais divisible par un `P` pair). C'est l'**imparité de `P`** qui casse la séparation —
+    ici `P = 3`. Le cas du CA reste vrai, son explication était fausse.
+
+    Avertissement, **jamais bloquant** : le format reste applicable. Corriger demanderait une
+    politique de croisement, donc une règle métier que personne n'a demandée.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 12),)),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 12),)),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "choc_de_poule_possible" in _codes(projection.blocs[2].anomalies)
+    assert projection.est_applicable
+
+
+def test_un_tableau_nourri_par_un_nombre_pair_de_poules_sans_bye_navertit_pas() -> None:
+    """CA E05US023, l'autre versant : « le serpent sépare naturellement » — mais **à P pair**.
+
+    Le membre `k` d'une poule occupe les rangs `k, k+P, k+2P…`, et le serpent apparie `r` contre
+    `N+1-r`. Deux membres se croisent donc quand `2r ≡ N+1 (mod P)` a une solution. À **P pair** et
+    sans bye, il n'y en a pas : 16 archers en 4 poules ne produisent aucun choc, et avertir ici
+    serait du bruit — le bruit est ce qui fait ignorer les vrais signaux.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 16),), effectif=16, taille_visee=4),  # P = 4
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_nombre_impair_de_poules_avertit_meme_a_effectif_puissance_de_deux() -> None:
+    """⚠️ Le contre-exemple qui invalide l'oracle « puissance de 2 ⇒ pas de choc ».
+
+    24 archers en poules de 8 font **3** poules ; un tableau de 16 y prélève les rangs 1 à 16. Le
+    serpent apparie alors (1, 16), (4, 13) et (7, 10) — **trois** paires de la poule 1, dont le n° 1
+    du tableau contre un membre de son propre groupe **en match d'ouverture**. L'effectif est
+    pourtant une puissance de 2, donc l'ancienne règle ne disait rien.
+
+    Le test est écrit depuis le CA (« signaler à l'atelier plutôt que corriger en douce ») et non
+    depuis le code : c'est l'arithmétique du serpent qui l'établit, vérifiable à la main.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 24),), effectif=24, taille_visee=8),  # P = 3
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_une_phase_de_poules_non_reglee_avertit_plutot_que_de_se_taire() -> None:
+    """Sans réglage, le nombre de poules ne se calcule pas : on ne peut pas prouver l'innocuité.
+
+    Un avertissement de trop coûte une lecture ; un avertissement manquant coûte un tournoi mal
+    apparié. Le CA demande de ne pas mentir, pas d'être fin.
+
+    ⚠️ L'effectif **déclaré**, lui, ne manque presque jamais : la projection résout l'effectif de
+    chaque phase et le signal lit désormais ce résolu. Une version antérieure lisait le seul
+    déclaré — champ facultatif que le formulaire laisse vide par défaut —, si bien qu'elle
+    s'allumait sur **tout** tableau nourri par des poules. Un signal permanent est ce qui fait
+    ignorer les vrais.
+    """
+    etapes = [
+        _qualification(),
+        ModelePhase(ordre=2, type=TypePhase.POULES, sources=(SourcePhase.par_rangs(1, 1, 16),)),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_le_departage_inter_poules_rend_l_appariement_indemontrable() -> None:
+    """⚠️ Le réglage qui invalide l'arithmétique — et que le produit **recommande**.
+
+    `classement_de_poules` trie chaque bloc de niveau indépendamment quand le départage est actif :
+    la position d'une poule change alors d'un bloc à l'autre, et « le membre `k` occupe les rangs
+    `k, k+P, …` » cesse d'être vrai. Or c'est précisément le geste que l'outil conseille quand un
+    prélèvement coupe un bloc (ADR-0081). Le signal doit donc s'allumer **même à `P` pair**, où
+    l'arithmétique conclurait à tort à l'innocuité.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 24),), effectif=24, taille_visee=4),  # P = 6, pair
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+    sans_departage = _codes(projeter(etapes, effectif=120).anomalies)
+    assert "choc_de_poule_possible" not in sans_departage
+
+    etapes[1] = ModelePhase(
+        ordre=2,
+        type=TypePhase.POULES,
+        sources=(SourcePhase.par_rangs(1, 1, 24),),
+        effectif=24,
+        poules=ReglageDePoules(taille_visee=4, nb_qualifies=4, departage_inter_poules=True),
+    )
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_nombre_impair_de_poules_ne_suffit_pas_si_le_prelevement_est_trop_court() -> None:
+    """L'imparité ne suffit pas : encore faut-il que la paire fautive tombe dans le prélèvement.
+
+    9 poules et un tableau de 8 : les 8 têtes viennent de 8 poules distinctes, aucun choc n'est
+    possible. La version précédente avertissait — elle testait `P` impair sans vérifier que la
+    solution de `2r ≡ M+1 (mod P)` tombe dans `[1, N]`. Un signal qui s'allume sur un format sain
+    est un signal qu'on apprend à ignorer.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=4),  # P = 9
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 8),)),
+    ]
+
+    assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_tableau_nourri_par_une_qualification_navertit_jamais() -> None:
+    """Le signal vise le **format poules**, pas l'imparité d'un tableau.
+
+    Un tableau de 12 issu d'une qualification a les mêmes byes, et aucun choc de poule possible :
+    il n'y a pas de poule. Sans cette borne, l'avertissement se déclencherait sur la majorité des
+    déroulés existants et ne dirait plus rien.
+    """
+    etapes = [_qualification(), _tableau(2, (SourcePhase.par_rangs(1, 1, 12),))]
+
+    assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_la_phase_de_poules_elle_meme_nest_pas_signalee() -> None:
+    """Le choc est un défaut d'**appariement de tableau** : il se colle au bloc qui apparie.
+
+    Le rattacher à la phase de poules le montrerait sur le bloc amont, où l'organisateur n'a rien à
+    corriger — c'est le nombre de qualifiés ou la taille du tableau qu'il ajusterait, pas la poule.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 12),)),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 12),)),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "choc_de_poule_possible" not in _codes(projection.blocs[1].anomalies)
+    assert [
+        anomalie.ordre
+        for anomalie in projection.anomalies
+        if anomalie.code == "choc_de_poule_possible"
+    ] == [3]

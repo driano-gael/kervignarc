@@ -200,7 +200,7 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit
+`0082`, `0083`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit
 ici et non dans `CLAUDE.md`.
 
 > *`0049`, `0066` et `0067` ont été ajoutés en revue le 08/08/2026 : le premier jet appliquait le

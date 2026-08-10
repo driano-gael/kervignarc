@@ -174,19 +174,24 @@ def classement_de_tableau(
     return ClassementSource(
         classement=Classement(
             lignes=tuple(
-                _situee(lignes[archer_id], rang) for rang, archer_id in enumerate(ordonnes, start=1)
+                situee_au_rang(lignes[archer_id], rang)
+                for rang, archer_id in enumerate(ordonnes, start=1)
             )
         ),
         plages_indecises=tuple(indecises),
     )
 
 
-def _situee(ligne: LigneClassement, rang: int) -> LigneClassement:
-    """La même ligne, resituée au rang que le **tableau** lui a donné.
+def situee_au_rang(ligne: LigneClassement, rang: int) -> LigneClassement:
+    """La même ligne, resituée au rang que la **phase** lui a donné.
 
-    `statut` est remis à `EN_LICE` : un archer présent dans le tableau y a sa place, quel que soit
+    `statut` est remis à `EN_LICE` : un archer présent dans la phase y a sa place, quel que soit
     ce que la qualification disait de lui. Le filtre des sortis a déjà eu lieu — à l'ensemencement
-    de ce tableau-ci —, et le rejouer ici retirerait deux fois le même archer.
+    de cette phase-ci —, et le rejouer ici retirerait deux fois le même archer.
+
+    ⚠️ **Publique et non plus privée depuis E05US023** : `domain/classement_de_poules.py` situe ses
+    lignes par la **même** règle. La recopier là-bas aurait dupliqué un invariant — et la note
+    `DETTE-051` ci-dessous avec lui, qui aurait alors décrit deux codes au lieu d'un.
     """
     # DETTE-051 : un forfait déclaré **dans ce tableau-ci** (walkover, ADR-0050) garde sa position
     # acquise et ressort donc `EN_LICE` ici, donc prélevable par une phase aval. Un archer qui a

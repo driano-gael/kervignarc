@@ -611,9 +611,9 @@ Origine : `DETTE-026`, dont le seuil de résorption (règle 16 — « au 3ᵉ é
 
 ---
 
-### E05US023 — Rendre jouables poules, système suisse, colline et Big Shoot Off
-*En tant qu'*organisateur, *je veux* **composer** ces formats dans le déroulé à l'atelier **et** les
-faire jouer le jour J, *afin de* couvrir les compétitions que le club organise réellement et pas
+### E05US023 — Les poules jouables de bout en bout *(1ʳᵉ tranche — découpée le 09/08/2026)*
+*En tant qu'*organisateur, *je veux* **composer** une phase de poules dans le déroulé à l'atelier
+**et** la faire jouer le jour J, *afin de* couvrir le format que le club organise réellement et pas
 seulement l'élimination directe.
 
 Origine : `DETTE-028` — les six moteurs et les trois politiques livrés par E05US015 n'ont **aucun
@@ -623,28 +623,172 @@ leurs paramètres, et `ServiceSaisieDuels._decor` refuse tout type autre que l'�
 le backlog**, et aussi et surtout pouvoir les **générer dans le déroulé du format de tournoi dans
 l'atelier** ».
 
-⚠️ **Cette US est une tranche à découper** (maille INVEST) : quatre moteurs × deux surfaces
-(composition et exécution) ne tient pas dans une branche. Le découpage se fera au cadrage ; ce qui
-suit est le **périmètre visé**, pas une seule livraison.
+⚠️ **Découpage arrêté le 09/08/2026.** Le périmètre d'origine (quatre moteurs × deux surfaces) ne
+tient pas dans une branche. Cette US devient la **1ʳᵉ tranche** : le **contrat de phase jouable**
+(cf. [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md)) **plus les poules**, de bout en
+bout. Les trois autres formats suivent en `E05US026` (système suisse), `E05US027` (colline),
+`E05US028` (Big Shoot Off), chacun portant son moteur **et** son exposition à l'atelier.
+**Les poules ouvrent délibérément** : c'est le format le plus riche des quatre (groupes, duels,
+barème, table de rangs, départage à cinq critères, barrage), donc celui qui dessine le contrat le
+plus accueillant. Poser le contrat sur un format pauvre — le Big Shoot Off n'a ni groupes ni duels —
+aurait obligé à le refaire à l'arrivée des poules, **et à repasser sur du code déjà livré**.
 
-- **CA — composables à l'atelier** *(la moitié que le commanditaire souligne)* : l'écran « Composer
-  un déroulé » propose ces types **avec leurs paramètres** — `nb_poules`, `nb_manches`,
-  `portee_de_defi`, restants… — et le schéma à braquets les **dessine** comme il dessine les
-  tableaux. Aujourd'hui le type est sélectionnable mais ses réglages n'ont nulle part où aller.
-- **CA — `config.policies` sait les porter** : les paramètres entrent dans la forme nommée
-  d'[ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md), sans migration
-  de schéma — c'est exactement ce que le `config` JSON permet.
-- **CA — exécutables le jour J** : le service de saisie sait monter le décor de ces phases, le
-  classement sait en lire l'issue, et le routage sait dire « où je tire ensuite ».
-- **CA — le barrage y retourne son verdict** : en poule et en Big Shoot Off, le barrage est
-  aujourd'hui pleinement opérationnel mais son verdict **ne retourne dans aucun classement**, faute
-  de classement à alimenter. Cette US ferme la boucle.
-- **Notes — l'écart est déjà affiché, pas caché** : E01US024 signale à l'atelier qu'un type composé
-  n'est pas exécutable. Ce signal doit **disparaître** type par type, au fur et à mesure — et non
-  d'un coup, sans quoi il mentirait pour ceux qui restent.
-- **Notes — priorité** : « au plus tôt dans le backlog » (commanditaire, 07/08/2026). À positionner
-  au cadrage du prochain jalon.
-- **Résorbe** : `DETTE-028` (par tranches). **Dépend de** : E05US015 · **Jalon** : J3
+- **CA — composer et régler une phase de poules à l'atelier** : choisir le type « poules » ouvre une
+  fiche de réglages, là où aujourd'hui le type est sélectionnable mais ses réglages n'ont nulle part
+  où aller. Trois réglages : la **taille de poule**, le **barème** de points (victoire / nul /
+  défaite, défaut **3 / 1 / 0**, arbitrage du 31/07/2026), et **ce que la poule produit** — un
+  classement, ou un nombre de qualifiés. Le schéma à braquets **dessine** la phase comme il dessine
+  les tableaux.
+- **CA — la taille commande, le nombre de groupes s'en déduit** *(arbitrage du 09/08/2026)* :
+  l'organisateur saisit « poules de 4 », **pas** « 8 poules ». Le nombre de groupes vaut
+  `effectif ÷ taille` **arrondi vers le bas** (au moins 1), et le reste **gonfle** quelques poules :
+  32 archers en poules de 4 donnent 8 poules de 4 ; **30 archers donnent 7 poules — cinq de 4 et
+  deux de 5**. Aucune poule ne compte **moins** que la taille demandée. `composer_poules` produit
+  déjà des tailles inégales d'une unité : la conversion taille → nombre de groupes se fait à la
+  frontière, le domaine ne bouge pas.
+- **CA — la répartition obtenue est montrée avant d'être validée** : l'écran affiche, en direct,
+  ce que le réglage produit sur l'effectif réel (« 30 archers → 7 poules : cinq de 4, deux de 5 »).
+  C'est ce qui rend l'arrondi lisible plutôt que surprenant, et ce qui rend inoffensif le cas
+  extrême où l'effectif est inférieur au double de la taille demandée (7 archers en poules de 4 →
+  **une** poule de 7, que l'organisateur voit et corrige s'il ne la veut pas).
+- **CA — le réglage vit dans le `config` de l'étape, sans migration** : il tient dans le JSON
+  existant, **à la racine** (`config.poules`), comme `validation`, `sources` et `effectif`. Aucune
+  colonne neuve.
+
+  *(Arbitrage tranché à la revue du 10/08/2026, reversé ici — règle 9. Le CA disait « sous
+  `config.policies` », par analogie avec [ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md).
+  C'était insatisfaisable en l'état : `config.policies` est le **catalogue fermé** des familles
+  injectables (`domain/politiques.py`, `FamillePolitique`), et `assembler_politiques` refuse toute
+  clé hors énumération — une phase de poules réglée serait devenue illisible le jour où l'on branche
+  la config d'une phase sur son propre validateur. Y faire entrer `poules` aurait demandé une
+  **huitième famille décorative** : il n'existe ni implémentation alternative, ni point d'injection,
+  ni registre qui la résolve — une taille de poule et un barème sont des **paramètres de phase**,
+  pas une stratégie. L'intention du CA — « ça tient dans le JSON, aucune colonne neuve » — est
+  tenue à l'identique, et rien ne change pour l'organisateur.)*
+- **CA — une poule occupe un bloc de couloirs contigus** *(arbitrage du 09/08/2026, précisé par le
+  commanditaire le même jour)* : la phase produit un **plan de cibles**, comme un tableau. L'empreinte
+  d'une poule n'est **pas son effectif** mais le nombre d'archers **simultanément sur la ligne**,
+  soit `2 × (effectif ÷ 2 arrondi bas)` couloirs — la méthode du cercle ne fait tirer que
+  `effectif ÷ 2` rencontres par tour, et à effectif impair un membre se repose. Donc une poule de
+  **4 comme de 5 tient sur une seule cible** de 4 couloirs ; une poule de 6 en demande 6 et
+  **déborde** sur la cible suivante. Une poule qui déborde n'ouvre pas une cible neuve pour la
+  suivante : **la poule d'après démarre au couloir libre juste après**, sans trou. La salle se
+  remplit en continu, poule après poule.
+- **CA — les rencontres se saisissent comme des duels ordinaires** : une poule n'invente pas une
+  façon de tirer, seulement une façon d'apparier et de compter (`domain/poule.py`). Le scoreur
+  retrouve le **pavé de saisie de duel** d'E04US013, rencontre par rencontre. Les rencontres sont
+  présentées **par tour**, l'ordre que le moteur produit déjà — c'est lui qui garantit qu'un archer
+  ne figure pas deux fois dans le même tour, donc que le tour se tire en parallèle.
+- **CA — la poule se classe** : la table de poule applique les cinq critères du
+  [référentiel §10.1](../docs/referentiel-ffta.md) — points de match, différence de sets, différence
+  de score, nombre de 10, nombre de 9 — et marque `ex_aequo` ce que ces cinq critères ne séparent pas.
+- **CA — deux régimes d'ex æquo, selon ce que la poule produit** *(arbitrage du 09/08/2026)* :
+  - la poule produit un **classement** → le classement *est* le livrable, donc **tout** ex æquo
+    irréductible se départage au barrage ;
+  - la poule produit un **nombre de qualifiés** → seul le franchissement de la barre compte. Barrage
+    **uniquement** si l'égalité tombe **pile sur la barre** ; deux archers à égalité aux rangs 3-4
+    d'une poule qui en qualifie 2 **restent à égalité**, et l'outil ne les départage pas.
+
+  Ce régime n'est pas un réglage neuf en base : c'est `nb_qualifies` — vide = « la poule classe »,
+  renseigné = « la poule qualifie » —, seulement rendu **explicite à l'écran** plutôt que déduit
+  d'un champ laissé vide.
+- **CA — le barrage se tire et se saisit** *(arbitrage du 09/08/2026)* : quand un barrage est requis,
+  l'outil ouvre une **saisie de flèches** — une par archer à départager — et `resoudre_barrage`
+  applique la règle fédérale B.6.5.2 : plus haut score, puis **le plus près du centre**, répété tant
+  que l'égalité subsiste ; l'archer **absent est déclaré perdant**. Le verdict **referme le
+  classement de la poule**. C'est ce qui ferme la boucle que `DETTE-028` laissait ouverte : le
+  moteur de barrage est complet depuis E05US015 et son verdict ne retournait dans aucun classement.
+  Le tir de barrage est **tracé en base**, pas seulement son issue.
+- **CA — la phase avale consomme les qualifiés** : un tableau déclarant prendre les rangs d'une phase
+  de poules est ensemencé par ce que la poule a qualifié, par le mécanisme d'**E05US024**. Le
+  classement de la phase de poules est une **source de prélèvement** comme une autre.
+- **CA — le classement de phase se lit « par rang de poule d'abord »** *(arbitrage du commanditaire
+  du 09/08/2026)* : les poules se jouent **en parallèle** et donnent donc le même classement. Sur
+  `P` poules, les rangs `1..P` sont les **vainqueurs** de poule, `P+1..2P` les **deuxièmes**, et
+  ainsi de suite. Exemple donné : 4 poules de 3 → rangs 1-4 les premiers de poule, 5-8 les
+  deuxièmes, 9-12 les troisièmes.
+  - **Tout le monde y figure**, pas seulement les qualifiés : avec `nb_qualifies = 2` sur 4 poules
+    de 4, les 3ᵉˢ occupent les rangs 9-12 et les 4ᵉˢ les rangs 13-16. C'est le **prélèvement** de la
+    phase avale qui sélectionne, pas le classement qui tronque — ce qui rend une consolante « les
+    rangs 9 à 16 » composable sans réglage neuf.
+  - **Le dernier bloc peut être incomplet, et les surnuméraires vont en dernier** : 30 archers en
+    poules de 4 donnent 7 poules (cinq de 4, deux de 5), donc les rangs 29-30 ne portent que les
+    **5ᵉˢ des deux poules de 5**. Normal et sans conséquence.
+  - **À l'intérieur d'un bloc, les archers sont ex æquo par défaut.** Un **départage optionnel** par
+    décompte (les cinq critères du [référentiel §10.1](../docs/referentiel-ffta.md) — points de
+    match, différence de sets, différence de score, nombre de 10, nombre de 9) affine le classement
+    **si l'organisateur le demande**. Il n'est pas imposé : comparer des décomptes obtenus contre
+    des adversaires différents n'a de valeur que si l'on en a besoin.
+- **CA — un prélèvement qui coupe un bloc de poules est refusé, celui qui le contient est honoré** :
+  c'est [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
+  appliqué tel quel, **sans règle nouvelle**. Sur 4 poules, « les rangs 1 à 4 » prend le bloc entier
+  des vainqueurs et passe, ex æquo ou non ; « les rangs 1 à 2 » **coupe** ce bloc et est refusé et
+  annoncé — sauf si le départage optionnel ci-dessus a été activé. C'est ce qui rend l'option
+  auto-régulée : le départage n'est nécessaire que quand la phase avale prélève *à l'intérieur* d'un
+  bloc, et l'outil le dit au lieu de qualifier sur un ordre d'affichage.
+- **Notes — l'ordre interne d'un bloc pilote la tête de série** : sans départage, l'ordre entre les
+  quatre vainqueurs est celui de la composition, donc le vainqueur de la poule 1 devient tête de
+  série n°1 — au seul motif que sa poule porte le n°1, qui n'a aucun sens sportif. C'est la même
+  faute que `qualifies_de_poule` refuse déjà (« qualifier sur l'ordre d'affichage »). ADR-0081 la
+  ferme pour les prélèvements *partiels* ; elle subsiste pour un prélèvement qui prend le bloc
+  entier, où elle est sans conséquence sur *qui* passe, mais pas sur *contre qui*.
+- **Notes — aucune politique `seeding` neuve n'est nécessaire** *(vérifié le 09/08/2026)*. Le
+  **serpent sépare naturellement** les archers d'une même poule au premier tour, parce que le 1ᵉʳ et
+  le 2ᵉ d'une poule sont distants de `P` rangs et que le serpent apparie des rangs de somme
+  constante.
+
+  ⚠️ **Corrigé à la revue du 10/08/2026 — la conclusion tient, sa raison était fausse.** La mesure
+  d'origine (4×2, 8×2, 4×4, 8×4, 16×2, 2×4, 5×2 : « aucun choc ») était un **échantillon biaisé** :
+  toutes ces configurations ont soit un nombre de poules pair, soit un effectif non puissance de 2.
+  Deux d'entre elles sont même fausses — `5×2` produit la paire (3, 8), tous deux de la poule 3.
+
+  Le vrai discriminant est la **parité du nombre de poules `P`** : à `P` pair le tableau apparie des
+  rangs d'écart **impair**, jamais divisible par `P`, donc aucun choc — byes ou pas. À `P` impair il
+  existe des paires fautives dès que la paire tombe dans le prélèvement. Le prédicat exact est
+  `P impair ET (M+1+P)//2 ≤ N`, `M` étant la taille du tableau ; il a été confronté à l'appariement
+  réel du serpent sur 9945 configurations, **zéro désaccord**. Trois réglages le rendent
+  inapplicable et font signaler par défaut : le **départage inter-poules** (il réordonne chaque bloc
+  de rangs), des **poules de tailles inégales** au-delà du dernier niveau plein, et un nombre de
+  poules **inconnu**.
+
+  L'exemple du CA reste vrai : 3 poules × 4 qualifiés = 12 archers produit bien la paire (7, 10) —
+  parce que `P = 3` est impair, non parce que 12 n'est pas une puissance de 2. À **signaler à
+  l'atelier** plutôt qu'à corriger en douce : corriger demanderait une politique de croisement, donc
+  une règle métier que personne n'a demandée.
+- **CA — le signal d'écart disparaît pour les poules, et pour elles seules** *(précisé à la revue
+  du 10/08/2026 : **deux signaux distincts**, pas un)*. Le **bandeau d'atelier**
+  (`TYPES_SIGNALES_EN_ECART`, `Deroule.tsx`) cesse de viser les poules — c'est ce que la puce
+  demande, et c'est tenu. Le **bot de simulation** (`simulation_format.py`), lui, ne sait toujours
+  pas les jouer : `fabriquer_harnais_simulation` ne construit aucun `ServicePoules`, donc
+  `joue=False` y reste **exact**. Les confondre faisait annoncer « joué : 0 tour, 0 duel » comme un
+  constat et supprimait l'avertissement. E01US024 signale à
+  l'atelier qu'un type composé n'est pas exécutable (`Deroule.tsx`, `simulation_format.py`). Ce
+  signal doit cesser de viser les poules **et continuer de viser** le suisse, la colline et le Big
+  Shoot Off — sans quoi il mentirait pour ceux qui restent.
+- **CA — non-régression** : l'oracle 120 et l'oracle multi-départ restent verts ; un déroulé sans
+  phase de poules se comporte **exactement** comme aujourd'hui.
+- **Notes — tranche d'un bloc, assumé** : le commanditaire a **explicitement** refusé de couper
+  entre « composable » et « jouable » (09/08/2026), en connaissance de la taille annoncée. La revue
+  sera lourde ; c'est le prix accepté pour livrer les poules finies en une fois.
+- **Notes — un ex æquo *interne* à une poule enjambe deux blocs, et les lie** *(arbitrage tranché en
+  cours d'US, 09/08/2026)*. Deux archers que les cinq critères ne séparent pas aux 3ᵉ et 4ᵉ places de
+  leur poule occupent le 3ᵉ **et** le 4ᵉ bloc du classement de phase — mais on ne sait pas lequel est
+  où. Ces deux blocs sont donc déclarés indécis **ensemble**, sur la seule plage que l'égalité
+  enjambe. Sans cette liaison, « les rangs 5 à 6 » passerait en prenant un archer pour un 3ᵉ avéré :
+  bien formé, plausible, faux — exactement la classe de défaut qu'ADR-0081 existe pour fermer. La
+  liaison est **locale** : elle ne contamine pas les blocs que l'égalité n'enjambe pas, sans quoi un
+  ex æquo de fond de poule rendrait toute la phase illisible et refuserait des prélèvements décidés.
+  ⚠️ Conséquence à connaître : **avant le premier tir**, tous les membres sont à zéro donc tous
+  ex æquo, et le classement de la phase est un **seul** bloc indécis — aucun prélèvement partiel n'y
+  est honoré tant que les poules n'ont pas commencé. C'est exact, et c'est ce qu'on veut.
+- **Notes — ce que cette tranche ne fait pas** : le suisse, la colline et le Big Shoot Off restent
+  injouables (`E05US026` à `E05US028`). `ScoreAvecHandicap` et `RoutingRepechage` restent sans
+  appelant — `DETTE-028` n'est donc **pas** refermée ici, seulement rétrécie au périmètre poules.
+  Trois capacités restent hors périmètre pour les poules elles-mêmes, et sont dites comme telles :
+  le **routage** (« où je tire ensuite » après une rencontre), l'entrée au **palmarès**, et le
+  **forfait en poule** — un abandon en poule n'est pas un *walkover*, et la règle n'a pas été posée.
+- **Résorbe** : `DETTE-028`, **partiellement** (volet poules + barrage). **Dépend de** : E05US015,
+  E05US024 · **Jalon** : J3 · **Origine** : arbitrages des 07/08 et 09/08/2026
 
 ---
 
@@ -814,3 +958,61 @@ du tir à l'arc. On a interdit le cas au lieu de réparer les lecteurs ; cette U
   `docs/fonctionnel/`** (contrairement à E05US024, cette US a bien une surface).
 - **Dépend de** : **E05US024** (nécessaire, pas seulement souhaitable : sans peuplement générique une
   seconde qualification recevrait *tous* les inscrits) · **Jalon** : J3 · **Origine** : arbitrage du 08/08/2026
+
+---
+
+### E05US026 — Le système suisse jouable
+*En tant qu'*organisateur, *je veux* composer et faire jouer une phase au **système suisse**, *afin de*
+classer un gros effectif en peu de rondes sans éliminer personne.
+
+Origine : 2ᵉ tranche du découpage d'`E05US023` (09/08/2026). Le moteur (`domain/suisse.py`,
+`apparier_ronde` / `classement_suisse`, appariement par points avec évitement des revanches et
+gestion des byes) est complet depuis E05US015 et **sans appelant de production**.
+
+- **CA — habiter le contrat de phase jouable** posé par `E05US023`
+  ([ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md)) : cette US **n'a pas à le redessiner**.
+  Si elle doit l'élargir, l'élargissement se documente à l'ADR — c'est le signal que le contrat a été
+  taillé trop court, et il vaut d'être tracé.
+- **CA — réglages à l'atelier** : nombre de rondes (`ConfigurationSuisse`), avec le maximum que
+  l'effectif autorise affiché en clair (`_rondes_maximales`).
+- **CA — les rondes s'enchaînent** : l'appariement de la ronde `n+1` se calcule des résultats de la
+  ronde `n`, et le plan de cibles suit — mêmes règles d'empreinte et de contiguïté qu'en poules.
+- **CA — le signal d'écart d'E01US024 cesse de viser le suisse**, et lui seul.
+- **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet suisse)
+
+---
+
+### E05US027 — La colline jouable
+*En tant qu'*organisateur, *je veux* composer et faire jouer une phase de **colline**, *afin de*
+proposer le format à défis que le club utilise en animation.
+
+Origine : 3ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet (`domain/colline.py`,
+`defis_de_la_manche` / `appliquer_manche` / `classement_colline`), sans appelant de production.
+
+- **CA — habiter le contrat de phase jouable**, mêmes termes qu'`E05US026`.
+- **CA — réglages à l'atelier** : portée de défi et nombre de manches (`ConfigurationColline`).
+- **CA — les manches s'enchaînent** et le classement se lit de l'ordre final de la colline.
+- **CA — le signal d'écart d'E01US024 cesse de viser la colline**, et elle seule.
+- **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet colline)
+
+---
+
+### E05US028 — Le Big Shoot Off jouable
+*En tant qu'*organisateur, *je veux* composer et faire jouer un **Big Shoot Off**, *afin de* trancher
+un gros effectif au spectacle, tout le monde sur la ligne.
+
+Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
+(`domain/big_shoot_off.py`, `demarrer` / `jouer_manche` / `eliminer_apres_barrage`), sans appelant.
+
+- **CA — habiter le contrat de phase jouable**, mêmes termes qu'`E05US026`. ⚠️ C'est le format qui
+  **l'éprouvera le plus** : il n'a ni groupes ni duels, et son grain de validation est
+  `FIN_DE_SERIE` là où les trois autres sont `FIN_DE_DUEL`. Si le contrat d'`E05US023` doit céder
+  quelque part, c'est ici — et c'est **voulu** : on a préféré tailler le contrat sur le format le
+  plus riche et l'assouplir pour le plus pauvre, plutôt que l'inverse.
+- **CA — réglages à l'atelier** : nombre d'éliminés par manche et restants (`ConfigurationBigShootOff`).
+- **CA — le barrage y retourne son verdict** : l'égalité au plus faible se départage par
+  `resoudre_barrage`, dont `eliminer_apres_barrage` consomme déjà l'issue. La **saisie** du barrage
+  est celle livrée par `E05US023` — pas une seconde.
+- **CA — le signal d'écart d'E01US024 cesse de viser le Big Shoot Off**, et lui seul. À cette US, et
+  seulement à cette US, `DETTE-028` peut être **refermée** sur son volet « moteurs sans appelant ».
+- **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet Big Shoot Off)

@@ -42,7 +42,9 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.placement import Affectation
+from domain.placement_poules import BlocDePoule
 from domain.politiques import NomProfondeur, ProfondeurClassement
+from domain.poule import BaremePoule, ReglageDePoules
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
@@ -50,6 +52,7 @@ from infrastructure.db.models import (
     FormatTournoiORM,
     PhaseORM,
     PlacementORM,
+    PlacementPouleORM,
     PlacementTableauORM,
 )
 
@@ -112,6 +115,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         effectif = None if effectif is None else int(effectif)
         barrage_jusqu_au = _lire_barrage_jusqu_au(config)
         profondeur = _lire_profondeur(config)
+        poules = _lire_reglage_poules(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -132,6 +136,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             effectif=effectif,
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
+            poules=poules,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -273,6 +278,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.effectif,
             etape.barrage_jusqu_au,
             etape.profondeur,
+            etape.poules,
         )
     )
 
@@ -284,6 +290,7 @@ def _politiques_json(
     effectif: int | None,
     barrage_jusqu_au: int | None = None,
     profondeur: ProfondeurClassement | None = None,
+    poules: ReglageDePoules | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -348,6 +355,46 @@ def _politiques_json(
         politiques_depth = config.setdefault("policies", {})
         if isinstance(politiques_depth, dict):
             politiques_depth["depth"] = profondeur.en_config()
+    if poules is not None:
+        # Le réglage d'une phase de poules vit **à la racine du `config`**, comme `validation`,
+        # `sources` et `effectif` — et non sous `policies` (E05US023, ADR-0083 §« sans migration »).
+        #
+        # ⚠️ C'est un correctif de revue, et il valait mieux le payer maintenant. La première
+        # version écrivait `config.policies.poules`, ce que `docs/modele-de-donnees.md` interdit en
+        # toutes lettres (« seules les familles d'ADR-0004 vivent sous `policies` ») et que le code
+        # refuse : `FamillePolitique` est documenté comme le **catalogue fermé** des clés de
+        # `config.policies`, et `assembler_politiques` lève `PolitiqueMalFormee` sur toute clé hors
+        # énumération. Rien ne cassait aujourd'hui — aucun appelant ne passe encore le `policies`
+        # complet d'une phase à son validateur —, mais le jour où l'on branche cette vérification,
+        # **toute phase de poules réglée** devenait illisible. Trois lignes ici ; une migration de
+        # données une fois qu'un tournoi est réglé en base.
+        #
+        # Et c'est juste sur le fond : une taille de poule, un barème, un nombre de qualifiés sont
+        # des **paramètres de phase**, pas des stratégies injectables. Il n'existe pas deux
+        # implémentations entre lesquelles un registre choisirait — d'où la disparition du `nom`,
+        # qui mimait un discriminant de politique que rien ne résolvait.
+        reglage: dict[str, object] = {"taille": poules.taille_visee}
+        # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un
+        # choix de l'organisateur, et le relire d'un défaut de code ferait changer ses points
+        # de match le jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que
+        # si elles sont réglées — leur absence *signifie* quelque chose (« la poule classe »,
+        # « round-robin complet »), qu'un `null` explicite ne dirait pas mieux.
+        reglage["bareme"] = [
+            poules.bareme.victoire,
+            poules.bareme.nul,
+            poules.bareme.defaite,
+        ]
+        if poules.nb_qualifies is not None:
+            reglage["qualifies"] = poules.nb_qualifies
+        if poules.rencontres_par_archer is not None:
+            reglage["rencontres"] = poules.rencontres_par_archer
+        # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les
+        # archers d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute
+        # phase écrite avant que l'option existe. Écrire `false` explicitement ne dirait rien de
+        # plus et ferait diverger deux documents équivalents.
+        if poules.departage_inter_poules:
+            reglage["departage"] = True
+        config["poules"] = reglage
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -393,6 +440,58 @@ def _lire_barrage_jusqu_au(config: Any) -> int | None:
     if not isinstance(tiebreak, dict) or tiebreak.get("nom") != "barrage":
         return None
     return int(tiebreak["jusqu_au"])
+
+
+def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
+    """Le réglage d'une phase de poules, lu **à la racine** du `config` (E05US023, ADR-0083).
+
+    Racine et non `policies` : c'est un paramètre de phase, au même titre que `validation`,
+    `sources` et `effectif`, et `config.policies` est un catalogue **fermé** (cf. l'écriture).
+
+    Absence = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres, et un
+    déroulé s'enregistre en cours de composition (brouillon d'ADR-0063). C'est la **composition du
+    jour J** qui exigera le réglage, pas la relecture.
+
+    ⚠️ **On relit par la fabrique du domaine, jamais en construisant à la main.** Une taille de 1,
+    un barème qui récompense la défaite, plus de qualifiés que de membres : le repository n'écrit
+    jamais ça — l'agrégat le refuse en amont —, donc le trouver ici signifie que la base a été
+    altérée. `ConfigurationPouleInvalide` remonte alors en « configuration illisible » (ADR-0007),
+    ce qui est exact, plutôt qu'en value object silencieusement invalide qui ferait monter des
+    poules absurdes le jour J.
+
+    Le `bareme` est relu depuis la liste écrite (`[victoire, nul, défaite]`) et **jamais** du défaut
+    de code : si le défaut 3/1/0 changeait un jour, les tournois déjà réglés garderaient leurs
+    points de match. Son absence, elle, ne peut venir que d'une ligne écrite à la main — on retombe
+    alors sur le défaut, seul repli honnête.
+    """
+    poules = config.get("poules")
+    if not isinstance(poules, dict):
+        return None
+    taille = poules.get("taille")
+    if taille is None:
+        # ⚠️ Erreur **typée**, et non `KeyError` nu ni `None` silencieux.
+        #
+        # `_vers_modele_phase` appelle cette fonction **hors** du `try/except` qui enveloppe la
+        # lecture d'une étape : un `int(poules["taille"])` sur une clé absente en sortait donc en
+        # `KeyError`, donc en 500 brut, au lieu du « configuration illisible » d'ADR-0007 que la
+        # docstring annonce (relevé en revue). Rendre `None` serait pire encore : « pas de taille »
+        # se lirait « phase non réglée », et le jour J la composition inventerait une répartition
+        # là où la base dit quelque chose d'incohérent.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    bareme = poules.get("bareme")
+    qualifies = poules.get("qualifies")
+    rencontres = poules.get("rencontres")
+    return ReglageDePoules(
+        taille_visee=int(taille),
+        bareme=(
+            BaremePoule(victoire=int(bareme[0]), nul=int(bareme[1]), defaite=int(bareme[2]))
+            if isinstance(bareme, list) and len(bareme) >= 3
+            else BaremePoule()
+        ),
+        nb_qualifies=None if qualifies is None else int(qualifies),
+        rencontres_par_archer=None if rencontres is None else int(rencontres),
+        departage_inter_poules=poules.get("departage") is True,
+    )
 
 
 def _source_json(source: SourcePhase) -> dict[str, object]:
@@ -446,7 +545,16 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.validation,
                         etape.sources,
                         etape.effectif,
+                        # ⚠️ **`barrage_jusqu_au` était omis ici** alors que `ModelePhase` le porte
+                        # depuis le 07/08/2026 : un format promu depuis un tournoi dont une phase
+                        # avait un seuil de barrage le perdait **en silence** — exactement le
+                        # défaut que l'ajout du champ prétendait fermer, déplacé de l'agrégat à sa
+                        # sérialisation. Constaté en câblant `poules` par le même chemin ; corrigé
+                        # ici plutôt que consigné, parce qu'il coûte un argument et qu'il détruit
+                        # de la donnée d'organisateur (règle « un bug corrigeable dans l'US »).
+                        etape.barrage_jusqu_au,
                         profondeur=etape.profondeur,
+                        poules=etape.poules,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -539,7 +647,9 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         validation=validation,
         sources=_vers_sources(brute),
         effectif=None if effectif is None else int(effectif),
+        barrage_jusqu_au=_lire_barrage_jusqu_au(brute),
         profondeur=_lire_profondeur(brute),
+        poules=_lire_reglage_poules(brute),
     )
 
 
@@ -670,6 +780,71 @@ def _vers_affectation_tableau(ligne: PlacementTableauORM) -> Affectation:
         cible_index=ligne.cible_index,
         position=ligne.position,
     )
+
+
+class PlacementPouleRepositorySQL:
+    """Adapter SQLite du port `PlacementPouleRepository` — plan de poules matérialisé (E05US023).
+
+    Troisième adapter de placement, et le seul dont l'unité posée soit un **groupe** : une ligne par
+    couloir, portant sa poule et son rang dans le bloc (ADR-0083 §3). Deux gestes seulement, contre
+    quatre pour son aîné — un plan de poules ne s'ajuste pas archer par archer, il se repose.
+
+    Pas de couture d'audit, même raison que `PlacementTableauRepositorySQL` : au moment de poser les
+    poules, aucune rencontre n'est encore tirée, donc la repose n'est jamais « massive » au sens
+    d'E12US007.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_phase(self, phase_id: PhaseId) -> list[BlocDePoule]:
+        """Relit les blocs d'une phase, chacun dans son **ordre de remplissage**.
+
+        Le tri porte sur `(poule_numero, rang)` et non sur `(cible_index, position)` : c'est le rang
+        qui dit l'ordre du bloc, et lui seul. Trier par cible donnerait le même résultat sur une
+        salle homogène — et se tromperait dès qu'une cible a une capacité réduite, précisément le
+        cas que `GabaritSalle.ajuster` rend possible.
+        """
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(
+                    select(PlacementPouleORM)
+                    .where(PlacementPouleORM.phase_id == phase_id)
+                    .order_by(PlacementPouleORM.poule_numero, PlacementPouleORM.rang)
+                ).scalars()
+                blocs: dict[int, list[tuple[int, str]]] = {}
+                for ligne in lignes:
+                    blocs.setdefault(ligne.poule_numero, []).append(
+                        (ligne.cible_index, ligne.position)
+                    )
+                return [
+                    BlocDePoule(poule=numero, places=tuple(places))
+                    for numero, places in blocs.items()
+                ]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du plan de poules.") from exc
+
+    def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDePoule]) -> None:
+        """Purge le plan de poules de la phase puis insère les blocs — **une** transaction."""
+        try:
+            with self._session_factory() as session:
+                session.execute(
+                    delete(PlacementPouleORM).where(PlacementPouleORM.phase_id == phase_id)
+                )
+                session.add_all(
+                    PlacementPouleORM(
+                        phase_id=phase_id,
+                        cible_index=cible_index,
+                        position=position,
+                        poule_numero=bloc.poule,
+                        rang=rang,
+                    )
+                    for bloc in blocs
+                    for rang, (cible_index, position) in enumerate(bloc.places, start=1)
+                )
+                session.commit()
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de définition du plan de poules.") from exc
 
 
 class PlacementTableauRepositorySQL:

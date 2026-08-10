@@ -13,6 +13,7 @@ import {
   useSessionScoreurStore,
 } from '../../shared/stores/sessionScoreurStore'
 import { SaisieDuels } from '../saisie-duels/SaisieDuels'
+import { SaisiePoules } from '../poules/SaisiePoules'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
@@ -88,6 +89,9 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
       {/* Saisie en duels (E04US013) : le scoreur choisit une phase de tableau, ouvre un duel et le
           score. Monté ici, une fois la session ouverte — comme le poste monte la grille de qualif. */}
       <SaisieDuels tournoiId={scoreur.tournoi_id} />
+      {/* Saisie des poules (E05US023) : même pavé, autre navigation — on entre par la poule et le
+          tour. L'écran ne s'ouvre que si le créneau porte une phase de poules ; sinon il le dit. */}
+      <SaisiePoules tournoiId={scoreur.tournoi_id} />
     </div>
   )
 }

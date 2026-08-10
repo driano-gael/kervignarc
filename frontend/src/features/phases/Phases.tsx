@@ -31,6 +31,14 @@ import {
   TYPES_SANS_CLASSEMENT,
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
+import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
+import {
+  depuisReglage,
+  estValide as poulesValides,
+  versReglage,
+  POULES_PAR_DEFAUT,
+} from '../../shared/phases/poules'
 import {
   decrireProfondeur,
   depuisProfondeur,
@@ -85,6 +93,81 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
       )}
     </section>
   )
+}
+
+/** Le geste de **pose du plan de couloirs** d'une phase de poules — action admin.
+ *
+ * ⚠️ Sans ce composant, tout le placement des poules était **inatteignable depuis le produit** : le
+ * domaine, le port, l'adapter, la table `placement_poule` et sa migration existaient, l'endpoint
+ * admin aussi, et le hook `useRegenererPlanPoules` n'avait **aucun appelant** (relevé en revue
+ * d'E05US023, deux axes indépendamment). La table restait donc vide en toutes circonstances, l'écran
+ * de saisie affichait en permanence « le plan n'est pas posé, l'organisateur doit le (re)générer »
+ * — en désignant une action que l'application n'offrait pas —, et aucune poule n'avait de couloirs :
+ * les archers ne savaient pas sur quelle cible tirer.
+ *
+ * Calqué sur ses deux jumeaux (`features/duels/Duels.tsx`, `features/placement/Placement.tsx`) :
+ * même libellé selon que le plan est vide ou déjà posé, même ton **ambre** pour un refus non
+ * bloquant.
+ */
+function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatPoules(tournoiId, phaseId)
+  const regenerer = useRegenererPlanPoules(tournoiId, phaseId)
+
+  // Le plan est « vide » quand aucune poule ne porte de bloc. On ne se fie pas aux seuls conflits :
+  // une phase sans participant n'a ni poule ni conflit, et « Régénérer » y serait un contresens.
+  const poules = etat.data?.poules ?? []
+  const planVide = poules.length === 0 || poules.every((poule) => poule.bloc === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {decrireConflits(conflits)}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+    </>
+  )
+}
+
+/** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
+ *
+ * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
+ * n'est persisté qui dise pourquoi une poule n'a pas de bloc, et le serveur répond alors
+ * `non_posee`. C'est exact, et c'est ce qui distingue « vous n'avez pas encore généré » de « votre
+ * salle est trop petite » — la première version confondait les deux et invitait l'organisateur à
+ * regénérer indéfiniment une salle qui ne pouvait pas grandir.
+ */
+function decrireConflits(conflits: { poule: number; raison: string }[]): string {
+  // ⚠️ **Groupé par raison, pas globalisé.** Une première version listait tous les numéros puis
+  // rendait la raison de plus haute priorité : une poule sans rencontre et une poule qui ne tient
+  // pas dans la salle s'annonçaient toutes deux « la salle est trop petite », donc l'organisateur
+  // agrandissait sa salle pour un problème qui n'en venait pas (relevé en revue).
+  const nonPosee = (n: string) => `Poule(s) ${n} sans couloirs : le plan n’est pas posé.`
+  const libelles: Record<string, ((numeros: string) => string) | undefined> = {
+    salle_pleine: (n) => `Poule(s) ${n} sans couloirs : la salle est trop petite.`,
+    sans_rencontre: (n) => `Poule(s) ${n} sans rencontre à tirer : rien à poser.`,
+    non_posee: nonPosee,
+  }
+  const parRaison = new Map<string, number[]>()
+  for (const conflit of conflits) {
+    parRaison.set(conflit.raison, [...(parRaison.get(conflit.raison) ?? []), conflit.poule])
+  }
+  return [...parRaison.entries()]
+    .map(([raison, numeros]) => {
+      const liste = numeros.join(', ')
+      return (libelles[raison] ?? nonPosee)(liste)
+    })
+    .join(' ')
 }
 
 function LignePhase({
@@ -162,6 +245,7 @@ function LignePhase({
           ↓
         </button>
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
+        {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -228,6 +312,10 @@ export function FormulairePhase({
   // celui-ci est monté sous condition, donc une copie interne divergerait au premier aller-retour
   // de type. Le contrôle est partagé avec « Composer un déroulé » — le réglage y a le même sens.
   const [profondeur, setProfondeur] = useState(depuisProfondeur(phase?.profondeur ?? null))
+  // Même parti, même raison (E05US023) : `ReglagePoules` est monté sous condition, donc l'état vit
+  // ici. L'écran ne simule aucun effectif — le tournoi a de vrais inscrits, et c'est
+  // `GET /api/v1/poules/repartition/...` qui dit la répartition réelle une fois la phase posée.
+  const [poules, setPoules] = useState(depuisReglage(phase?.poules ?? null))
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -294,8 +382,12 @@ export function FormulairePhase({
   const effectifInvalide =
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
   const enTableau = TYPES_EN_TABLEAU.includes(type)
+  const estPoules = type === 'poules'
   const soumissionPossible =
-    sources !== 'invalide' && !effectifInvalide && !(enTableau && !estValide(profondeur))
+    sources !== 'invalide' &&
+    !effectifInvalide &&
+    !(enTableau && !estValide(profondeur)) &&
+    !(estPoules && !poulesValides(poules))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -311,6 +403,9 @@ export function FormulairePhase({
       // Même règle d'édition totale que le barrage — mais celle-ci se **règle** ici aussi : une
       // phase retypée hors tableau perd sa profondeur, puisque le serveur la refuserait (422).
       profondeur: enTableau ? (versProfondeur(profondeur) ?? null) : null,
+      // Idem pour le réglage de poules (E05US023) : réémis sur une phase de poules, **effacé** dès
+      // qu'elle est retypée — le serveur refuserait sinon en 422 `reglage_de_poules_invalide`.
+      poules: estPoules ? (versReglage(poules) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -324,6 +419,7 @@ export function FormulairePhase({
           // « Composer un déroulé » ne réinitialise, lui, **aucun** champ (comportement antérieur
           // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
           setProfondeur(PROFONDEUR_AU_PRESET)
+          setPoules(POULES_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -378,6 +474,7 @@ export function FormulairePhase({
             presetIntegral={type === 'placement'}
           />
         )}
+        {estPoules && <ReglagePoules etat={poules} surChangement={setPoules} effectif={null} />}
         <label className="formulaire__tranche">
           <input
             type="checkbox"
@@ -476,6 +573,8 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         // (ce widget n'est rendu que sur la qualification, qui ne porte jamais de profondeur), mais
         // c'était le seul chemin d'appel non audité par l'US — relevé en revue, fermé à une ligne.
         profondeur: phase.profondeur,
+        // Même raison encore : réémis pour ne pas être effacé par une édition **totale**.
+        poules: phase.poules,
       },
     })
   }

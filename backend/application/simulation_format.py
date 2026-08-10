@@ -59,6 +59,7 @@ from domain.archer import Archer
 from domain.blason import Blason
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement
+from domain.contrat_phase import TYPES_JOUES
 from domain.depart import Depart, DepartId
 from domain.deroule import ProjectionDeroule
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
@@ -67,12 +68,25 @@ from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
-_TYPES_DEROULABLES = frozenset({TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE})
-"""Les types que le bot sait réellement jouer aujourd'hui.
+_TYPES_DEROULABLES = TYPES_JOUES - {TypePhase.POULES}
+"""Les types que **le bot de simulation** sait réellement jouer aujourd'hui.
 
-Tout le reste du catalogue d'E05US015 se **compose** mais ne se **déroule** pas (`# DETTE-028`) :
-c'est ce que `ToursPhase.joue` rend au client, plutôt que des zéros qui passeraient pour des
-constats. À élargir au fur et à mesure que les moteurs trouvent leur consommateur."""
+⚠️ **Deux questions distinctes, et les confondre a fait mentir cet écran** (correctif de revue).
+`TYPES_JOUES` répond « un service de **production** sait faire jouer ce type » ; ce site demande
+« le **bot** sait-il le jouer ? ». E05US023 a fait entrer `POULES` dans la première sans que la
+seconde change : `fabriquer_harnais_simulation` ne construit aucun `ServicePoules`, et
+`application/simulation.py` ne déroule que l'élimination directe.
+
+Conséquence, avant ce retrait : une phase de poules tombait dans la branche « pas d'état » et
+sortait `joue=True, tours=0, duels=0` — donc l'atelier affichait « 0 tour, 0 duel » comme un
+**constat**, et le bandeau « le moteur ne sait pas encore dérouler ce type » **disparaissait**.
+C'est mot pour mot ce que le drapeau existe pour empêcher (cf. `_phases_jouees`). Remplacer une
+table écrite à la main par une table dérivée n'est sûr que si la capacité dérivée répond
+**exactement** à la même question ; ici elle n'y répondait pas.
+
+Le retrait est explicite plutôt que dérivé parce qu'il n'existe pas encore de capacité « le bot
+sait simuler ce type » au registre de contrat. La poser serait le remède propre — elle vaut une US
+dédiée, pas un cavalier dans un correctif de revue (`# DETTE-028`)."""
 
 GRAINE_DEFAUT = 20260801
 """Graine par défaut : un même format simulé deux fois rend le **même** déroulé (règle 9)."""

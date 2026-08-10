@@ -213,9 +213,7 @@ def test_un_tableau_en_tete_se_traduit_en_inscrits_comme_une_qualification() -> 
     """
     etapes = [
         _tableau(1),
-        ModelePhase(
-            ordre=2, type=TypePhase.PLACEMENT, sources=(SourcePhase.par_rangs(1, rang_debut=33),)
-        ),
+        _tableau(2, SourcePhase.par_rangs(1, rang_debut=33)),
     ]
 
     assert effectif_minimum(etapes) == 34
@@ -235,16 +233,24 @@ def _avec_prelevement_haut(type_phase: TypePhase) -> list[ModelePhase]:
     ]
 
 
-@pytest.mark.parametrize("type_deroule", [TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT])
+@pytest.mark.parametrize("type_deroule", [TypePhase.ELIMINATION_DIRECTE, TypePhase.POULES])
 def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: TypePhase) -> None:
-    """Le plancher n'a de sens que si le moteur va réellement monter la phase — c'est le cas ici."""
+    """Le plancher n'a de sens que si le moteur va réellement monter la phase — c'est le cas ici.
+
+    ⚠️ **Les poules y entrent en E05US023, `placement` en sort** — les deux mouvements viennent du
+    registre de contrat ([ADR-0083]), qui ne laisse plus écrire « déroulé » à côté de « aucun
+    service ne le monte ». Le cas `placement` est traité par
+    `test_un_type_au_decor_darbre_mais_sans_service_ne_bloque_pas_le_lancement` ci-dessous.
+
+    [ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+    """
     assert effectif_minimum(_avec_prelevement_haut(type_deroule)) == 34
 
 
 @pytest.mark.parametrize(
     "type_sans_moteur",
     [
-        TypePhase.POULES,
+        TypePhase.PLACEMENT,
         TypePhase.SUISSE,
         TypePhase.COLLINE,
         TypePhase.BIG_SHOOT_OFF,
@@ -252,7 +258,7 @@ def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: Typ
     ],
 )
 def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: TypePhase) -> None:
-    """Ces types ont un moteur de domaine mais **aucun service ne les déroule** (`DETTE-028`).
+    """Ces types ont un moteur de domaine — ou un décor — mais **aucun service ne les déroule**.
 
     Leur prélèvement ne sera pas honoré : rien ne cassera en salle, donc rien ne justifie de refuser
     le démarrage. ⚠️ Un premier jet leur réclamait 34 inscrits — un déroulé « qualification →
@@ -260,8 +266,15 @@ def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: 
     le pire mode de défaillance de cette US** : il ne se répare que le jour J, en éditant le
     déroulé. Le plancher structurel (deux tireurs) subsiste, lui.
 
-    Le jour où l'un de ces types gagne son service, il entre dans `_TYPES_DEROULES` et ce test
-    change de camp — c'est le signal attendu, pas une régression.
+    ⚠️ **`placement` a rejoint cette liste en E05US023, et les poules l'ont quittée.** Le cas
+    `placement` est le plus instructif : il n'a jamais eu de service pour monter son tableau, mais
+    `_TYPES_DEROULES` l'y comptait — E06US006 l'avait constaté et laissé, « corriger la table
+    changerait le plancher, donc le comportement d'une autre US ». Le registre de contrat
+    (`domain/contrat_phase.py`, ADR-0083) a tranché : ce test-ci est donc, littéralement, la
+    disparition du refus abusif qu'E05US021 nommait comme sa pire défaillance.
+
+    Le jour où l'un de ces types gagne son service, il entre dans `TYPES_MONTES` et ce test change
+    de camp — c'est le signal attendu, pas une régression.
     """
     assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2
 
@@ -510,16 +523,22 @@ def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> No
 
     La table est présentée comme le miroir de `ServiceSaisieDuels._classement_de_l_ordre`, et sa
     divergence est censée rouvrir le défaut d'E05US021. Or seul le sens « retirer un type » était
-    gardé : y **ajouter** un type que le moteur ne lit pas — ici les poules — produit un plancher
-    réclamé pour un prélèvement que rien n'honorera, soit le « refus abusif le jour J » que la
-    docstring nomme elle-même comme l'un des deux pires modes de défaillance.
+    gardé : y **ajouter** un type que le moteur ne lit pas produit un plancher réclamé pour un
+    prélèvement que rien n'honorera, soit le « refus abusif le jour J » que la docstring nomme
+    elle-même comme l'un des deux pires modes de défaillance.
 
-    Vérifié par mutation en revue : élargir la table à `{POULES, SUISSE}` laissait **99 tests
-    verts**. Ce test-ci passe à 34 si on l'élargit, et c'est tout son objet.
+    Vérifié par mutation en revue : élargir la table laissait **99 tests verts**. Ce test-ci passe
+    à 34 si on l'élargit, et c'est tout son objet.
+
+    ⚠️ **Le cas portait sur les poules jusqu'à E05US023**, qui les a rendues lisibles — la garde
+    vise donc désormais le **système suisse**, non lu et sans service. Le déplacement n'affaiblit
+    rien : ce qui est testé est le mécanisme (un type non lisible ne fixe pas de plancher), pas
+    l'identité du type. `test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits` couvre le sens
+    opposé pour les poules.
     """
     etapes = [
         _qualification(1),
-        ModelePhase(ordre=2, type=TypePhase.POULES),
+        ModelePhase(ordre=2, type=TypePhase.SUISSE),
         _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
     ]
 

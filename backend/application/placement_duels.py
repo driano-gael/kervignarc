@@ -33,10 +33,11 @@ from application.prelevement import preleves, profondeur_de
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import ArcherId
 from domain.cloisonnement import Cloisonnement
+from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
-from domain.phase import PhaseId, TypePhase
+from domain.phase import PhaseId
 from domain.placement import (
     Affectation,
     ArcherAPlacer,
@@ -600,7 +601,10 @@ class ServicePlacementDuels:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
-        if phase.type is not TypePhase.ELIMINATION_DIRECTE:
+        # Filtre **dérivé** du contrat de phase (ADR-0083) : un arbre de duels, monté par un
+        # service. Une phase de poules produit bien un plan de cibles, mais `par_bloc_de_poule` —
+        # c'est `ServicePoules` qui le pose, pas ce service-ci.
+        if phase.type not in TYPES_EN_TABLEAU_JOUE:
             raise PhasePasUnTableau(
                 f"La phase {phase_id} n'est pas une élimination directe : pas de plan de duels."
             )

@@ -35,6 +35,7 @@ from domain.erreurs.exploitation import (
 )
 from domain.erreurs.moteur import (
     CadenceValidationSuperieureAuBareme,
+    ChocDePoulePossible,
     EffectifIncompatible,
     EffectifMinimumIncoherent,
     EffectifPhaseInvalide,
@@ -58,6 +59,7 @@ from domain.erreurs.moteur import (
     ProfondeurInvalide,
     RangSourceInvalide,
     RangsSourceInexistants,
+    ReglageDePoulesInvalide,
     RoutingNonSupporte,
     SequenceOrdreInvalide,
     SeuilDeBarrageInvalide,
@@ -135,6 +137,7 @@ __all__ = [
     "CadenceValidationSuperieureAuBareme",
     "CapaciteBlasonInvalide",
     "CapaciteCibleInvalide",
+    "ChocDePoulePossible",
     "CibleInvalide",
     "CodePosteInvalide",
     "CodeScoreurInvalide",
@@ -203,6 +206,7 @@ __all__ = [
     "QuotaDepartInvalide",
     "RangSourceInvalide",
     "RangsSourceInexistants",
+    "ReglageDePoulesInvalide",
     "RemboursementMontantInvalide",
     "RienAValider",
     "RoutingNonSupporte",

@@ -21,6 +21,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     type: 'elimination_directe',
     bareme: null,
     validation: null,
+    poules: null,
     sources,
     effectif: null,
     profondeur: null,
@@ -153,6 +154,7 @@ describe('decrireEtape', () => {
       validation: null,
       sources: [rangs(1, 1, 32)],
       profondeur: null,
+      poules: null,
       effectif: 32,
     }
 

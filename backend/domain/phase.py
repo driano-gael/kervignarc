@@ -48,6 +48,10 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
+from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
+from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
+from domain.contrat_phase import TypePhase as TypePhase
+from domain.contrat_phase import produit_un_classement as produit_un_classement
 from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
@@ -60,6 +64,7 @@ from domain.erreurs import (
     ProfondeurInvalide,
     RangSourceInvalide,
     RangsSourceInexistants,
+    ReglageDePoulesInvalide,
     SequenceOrdreInvalide,
     SeuilDeBarrageInvalide,
     SourceApresPhase,
@@ -69,48 +74,10 @@ from domain.erreurs import (
 )
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
+from domain.poule import ReglageDePoules
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
-
-
-class TypePhase(str, Enum):
-    """Type d'une phase. E05US001 ouvre le typage aux formats dont la **règle est écrite** ;
-    **E05US015 peuple le catalogue** avec les six types dont la règle a été obtenue du
-    commanditaire le 31/07/2026 (référentiel §10.1) ou tirée du règlement (§8.2).
-
-    ⚠️ La règle d'ADR-0045 §2 tient toujours — « on n'offre pas en façade un type qu'aucun moteur
-    ne sait dérouler » : **chaque** valeur ajoutée ici vient avec son moteur de domaine
-    (`poule.py`, `big_shoot_off.py`, `suisse.py`, `colline.py`, `barrage.py`) ; l'échauffement est
-    le seul sans moteur, et c'est **son** contenu — une phase qui ne calcule rien.
-
-    Trois formats du catalogue ouvert (EF-3.2) **n'apparaissent pas ici**, et ce n'est pas un
-    oubli : le **repêchage** est une politique `routing`, le **handicap** une politique `scoring`,
-    la **finale spectacle** un assemblage d'`elimination_directe` + `BaremeDuel` (E05US015,
-    [ADR-0062]). Un type de phase se justifie par une **structure** propre, pas par un réglage.
-    """
-
-    QUALIFICATION = "qualification"
-    ELIMINATION_DIRECTE = "elimination_directe"
-    PLACEMENT = "placement"
-    ECHAUFFEMENT = "echauffement"
-    """Sans point et sans classement (§10.1) : elle occupe du temps et des cibles, rien de plus."""
-
-    BARRAGE = "barrage"
-    """Départage de tir **autonome** — 1 flèche, plus haut score (§8.2), avant de monter un
-    tableau. Distinct du barrage *interne* à un duel nul (E04US013)."""
-
-    POULES = "poules"
-    """Groupes se rencontrant en round-robin, classement de poule à cinq critères (§10.1)."""
-
-    BIG_SHOOT_OFF = "big_shoot_off"
-    """Finale à N archers en parallèle, le plus faible éliminé à chaque manche (§10.1)."""
-
-    SUISSE = "suisse"
-    """Rondes appariant vainqueurs contre vainqueurs, personne n'est éliminé (§10.1)."""
-
-    COLLINE = "colline"
-    """King of the Hill et Ladder — **un seul moteur**, la portée de défi les sépare (§10.1)."""
 
 
 class StatutPhase(str, Enum):
@@ -162,29 +129,13 @@ _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
     TypePhase.BIG_SHOOT_OFF: GrainValidation.fin_de_serie(),
 }
 
-# Les types qui **ordonnent** leurs participants en fin de phase. Tous, sauf l'échauffement : c'est
-# la définition même du format (« sans point et sans classement », §10.1). Cette table est la
-# **source** du contrôle `PhaseSansClassementPrelevee` ; on l'écrit en négatif (l'ensemble des types
-# non classants) pour qu'un type ajouté demain soit classant par défaut — l'oubli le plus probable
-# est d'ajouter un vrai format, pas un second échauffement.
-_TYPES_SANS_CLASSEMENT: frozenset[TypePhase] = frozenset({TypePhase.ECHAUFFEMENT})
-
-# Les types qui montent un **arbre de duels** : leur nombre de tours se déduit de l'effectif seul,
-# et ce sont les seuls dont la profondeur de classement soit un réglage (E06US006).
-#
-# Déclaré ici plutôt que dans `deroule.py` — qui le portait seul jusqu'à E06US006 — parce que trois
-# modules en ont désormais besoin (`domain.deroule`, `application.suivi_deroule`, et le contrôle de
-# `Phase.profondeur` ci-dessous) et qu'une copie de plus divergerait au premier type ajouté. ⚠️ Les
-# **trois** sites ont été ramenés ici : un premier jet n'en avait consolidé que deux, en affirmant
-# dans ce commentaire même qu'une seconde copie divergerait — pendant qu'une troisième vivait dans
-# `suivi_deroule`. Relevé par trois axes de revue.
-#
-# À ne pas confondre avec `_TYPES_SANS_CLASSEMENT` (une poule **classe** ses participants sans
-# monter d'arbre) ni avec `deroule._TYPES_DEROULES`, qui répond à une autre question — « le moteur
-# va-t-il seulement monter cette phase ? » — et ne recoupe celle-ci que par coïncidence.
-TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
-    {TypePhase.ELIMINATION_DIRECTE, TypePhase.PLACEMENT}
-)
+# ⚠️ `TYPES_SANS_CLASSEMENT` et `TYPES_EN_TABLEAU` **vivaient ici** jusqu'à E05US023 ; ce sont
+# désormais des dérivées du registre de contrat (`domain/contrat_phase.py`, ADR-0083), ré-exportées
+# en tête de module pour que les ~30 sites qui les importent d'ici restent valides. Le commentaire
+# qu'elles portaient — « une copie de plus divergerait au premier type ajouté » — est resté vrai un
+# cran plus haut : trois copies de `TYPES_EN_TABLEAU` avaient été consolidées en deux, un
+# commentaire affirmant l'unicité pendant qu'une troisième vivait dans `suivi_deroule`. Le registre
+# rend la divergence **impossible** au lieu d'improbable, ce qu'aucun commentaire ne sait faire.
 
 # Profondeur preset de chaque type en tableau (« politique sans migration », ADR-0011).
 #
@@ -236,16 +187,6 @@ def profondeur_par_defaut(type_phase: TypePhase) -> ProfondeurClassement:
             "profondeur de classement à régler."
         )
     return preset
-
-
-def produit_un_classement(type_phase: TypePhase) -> bool:
-    """Cette phase ordonne-t-elle ses participants en sortie ? (E05US015, référentiel §10.1)
-
-    Faux pour le seul **échauffement**. C'est ce qui rend « les rangs 1 à 32 de l'échauffement »
-    insensé et fonde `PhaseSansClassementPrelevee` : la seule succession licite à une phase non
-    classante est « les mêmes participants, sans ordre » (`SourcePhase.le_reste`).
-    """
-    return type_phase not in _TYPES_SANS_CLASSEMENT
 
 
 def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
@@ -488,6 +429,13 @@ class Phase:
     qui rend l'US rétro-compatible : une phase écrite avant elle continue de jouer ce qu'elle
     jouait."""
 
+    poules: ReglageDePoules | None = None
+    """Le réglage d'une phase de **poules** (E05US023) — taille visée, barème, régime d'ex æquo.
+
+    `None` sur tout autre type, et sur une phase de poules **pas encore réglée** : le type est
+    choisi avant ses paramètres, et l'atelier doit pouvoir enregistrer un déroulé en cours de
+    composition. C'est la composition du jour J qui exigera le réglage, pas l'agrégat."""
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -499,6 +447,14 @@ class Phase:
             raise ProfondeurInvalide(
                 f"Une phase de type « {self.type.value} » ne monte aucun tableau : elle n'a pas "
                 "de profondeur de classement à régler."
+            )
+        if self.poules is not None and self.type is not TypePhase.POULES:
+            # Même garde que `profondeur` ci-dessus, et pour la même raison : retyper une phase sans
+            # nettoyer son réglage laisserait une élimination directe porter une taille de poule,
+            # que rien ne lirait — un réglage fantôme, invisible et faux.
+            raise ReglageDePoulesInvalide(
+                f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
+                "pas de taille de poule à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

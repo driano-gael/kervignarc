@@ -41,7 +41,7 @@ from application.erreurs.moteur import PrelevementEnAttente
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.classement_de_tableau import ClassementSource
 from domain.depart import DepartId
-from domain.phase import NatureSource, Phase, profondeur_par_defaut
+from domain.phase import NatureSource, Phase, PhaseId, profondeur_par_defaut
 from domain.politiques import Depth, RegistrePolitiques, assembler_politiques
 from domain.tournoi import TournoiId
 
@@ -126,6 +126,39 @@ class LecteurPopulationPhase(Protocol):
         self, tournoi_id: TournoiId, depart_id: DepartId
     ) -> ResolveurClassement:
         """De quoi lire le classement **produit** par n'importe quelle phase amont de ce créneau."""
+        ...
+
+
+class LecteurClassementPoules(Protocol):
+    """Port étroit : « quel classement cette phase de **poules** a-t-elle produit ? » (E05US023).
+
+    Réalisé par `ServicePoules`, consommé par `ServiceSaisieDuels._classement_de_l_ordre` — qui est
+    le point unique où le moteur transforme « l'ordre d'une phase amont » en `ClassementSource`.
+
+    **Pourquoi un port, et pas le service concret.** Les deux services se tiennent par les deux
+    bouts : `ServicePoules` a besoin de `ServiceSaisieDuels` pour résoudre son classement amont et
+    son pavé de saisie ; `ServiceSaisieDuels` a besoin de `ServicePoules` pour lire ce qu'une phase
+    de poules a classé. Un import mutuel serait un **cycle de modules**, et le constructeur des deux
+    ne peut pas recevoir l'autre. Le port casse le cycle dans le bon sens : `application/poules.py`
+    importe déjà `application/saisie_duels.py`, jamais l'inverse — c'est ici, dans le module que les
+    deux partagent, que l'interface vit. Même parti que `LecteurPopulationPhase` ci-dessus.
+
+    ⚠️ **Le branchement est donc tardif, et il se voit au composition root** (règle 8) : l'un des
+    deux services reçoit l'autre **après** construction (`ServiceSaisieDuels.brancher_poules`).
+    C'est le seul câblage du projet dans ce cas, et il est explicite dans `bootstrap/` plutôt que
+    caché derrière un import paresseux — un cycle qu'on ne voit pas est un cycle qu'on réintroduit.
+
+    **Le résolveur est passé par l'appelant**, et ce n'est pas de la plomberie : il porte le cache
+    de reconstruction **et** la chaîne de phases déjà visitées. En laisser `ServicePoules` fabriquer
+    un neuf ferait payer deux fois un tableau amont partagé (`DETTE-031`) et, surtout, perdrait la
+    détection de cycle — un déroulé incohérent remonterait en `RecursionError` (500 muet) au lieu de
+    `DerouleCyclique`.
+    """
+
+    def classement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
+    ) -> ClassementSource:
+        """Le classement de la phase de poules `phase_id`, prêt à être prélevé."""
         ...
 
 

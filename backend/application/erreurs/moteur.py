@@ -155,6 +155,45 @@ class PhasePasUnTableau(ApplicationError):
     code = "phase_pas_un_tableau"
 
 
+class PhasePasDesPoules(ApplicationError):
+    """La phase existe mais n'est **pas** une phase de poules (E05US023) → 409.
+
+    Jumeau de `PhasePasUnTableau`, et le fait qu'il en faille un second est le symptôme même
+    qu'ADR-0083 traite : chaque décor de saisie refuse ce qui n'est pas le sien. La différence est
+    qu'ici le refus est **dérivé du contrat de phase** au lieu d'être écrit à la main.
+    """
+
+    code = "phase_pas_des_poules"
+
+
+class RencontreIntrouvable(ApplicationError):
+    """Aucune rencontre de ce numéro dans cette phase de poules (E05US023) → 404.
+
+    Distinct de `MatchNonJouable` : ici le numéro ne désigne rien du tout. Le cas se produit quand
+    la composition a changé sous un écran resté ouvert — l'effectif a baissé, la phase compte moins
+    de rencontres, et le numéro cliqué n'existe plus. Un 404 est alors la bonne réponse : la
+    tablette rechargera et retrouvera un état cohérent.
+    """
+
+    code = "rencontre_introuvable"
+
+
+class PhasePasReglee(ApplicationError):
+    """La phase de poules existe mais sa **taille de poule** n'est pas réglée (E05US023) → 409.
+
+    Distinct de `PhasePasDesPoules` parce que la correction l'est aussi : ici le type est bon, il
+    manque un paramètre que l'organisateur fixe à l'atelier. Le confondre avec « pas des poules »
+    enverrait le message « cette phase n'est pas une phase de poules » sur une phase qui en est
+    une — l'utilisateur chercherait la faute au mauvais endroit.
+
+    C'est la contrepartie assumée du brouillon d'ADR-0063 : le type se choisit avant ses
+    paramètres, donc l'agrégat accepte une phase de poules non réglée. Le refus arrive au moment
+    d'en jouer une, pas au moment de l'écrire.
+    """
+
+    code = "phase_pas_reglee"
+
+
 class PrelevementEnAttente(ApplicationError):
     """La phase prélève des places que sa source n'a **pas encore décidées** (E05US024) → 409.
 

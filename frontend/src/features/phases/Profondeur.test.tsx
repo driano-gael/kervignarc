@@ -42,6 +42,7 @@ const PHASE: EtapeDeroule = {
   effectif: 16,
   barrage_jusqu_au: null,
   profondeur: { nom: 'un_vers_n', jusqu_au: null },
+  poules: null,
 }
 
 function poser(phase: EtapeDeroule = PHASE) {

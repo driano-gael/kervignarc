@@ -69,6 +69,22 @@ class ProfondeurInvalide(DomainError):
     code = "profondeur_invalide"
 
 
+class ReglageDePoulesInvalide(DomainError):
+    """Un réglage de poules porté par une phase qui n'est pas de type `poules` (E05US023).
+
+    Symétrique de `ProfondeurInvalide` sur son troisième cas, et pour la même raison : retyper une
+    phase sans nettoyer son réglage laisserait une élimination directe porter une taille de poule,
+    que plus aucun lecteur n'irait chercher. Un réglage que rien ne lit est pire qu'absent — il se
+    voit en base, il rassure, et il ne s'applique pas.
+
+    Les réglages **incohérents en eux-mêmes** (taille < 2, qualifiés hors bornes) restent
+    `ConfigurationPouleInvalide`, levée par `ReglageDePoules` : c'est la cohérence du réglage,
+    celle-ci est sa compatibilité avec le type qui le porte.
+    """
+
+    code = "reglage_de_poules_invalide"
+
+
 class SeuilDeBarrageInvalide(DomainError):
     """Le rang jusqu'auquel une phase départage **au tir** n'est pas un entier `>= 1` (E06US003).
 
@@ -193,6 +209,31 @@ class PrelevementVide(DomainError):
     """
 
     code = "prelevement_vide"
+
+
+class ChocDePoulePossible(DomainError):
+    """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
+
+    Le serpent sépare les membres d'une poule quand leur nombre `P` est **pair** : le tableau
+    apparie les rangs `r` et `M+1-r` (`M` = taille du tableau, une puissance de 2), donc l'écart
+    entre deux adversaires est **impair** et n'est jamais divisible par un `P` pair. À `P` impair il
+    existe des paires fautives : 3 poules x 4 qualifiés = 12 archers produit (rang 7, rang 10), tous
+    deux de la poule 1 — l'exemple du CA.
+
+    ⚠️ **Deux énoncés antérieurs de cette règle étaient faux, et l'un vivait ici.** « Puissance de 2
+    ⇒ pas de choc » ne tient pas : à 3 poules et 16 places, la paire (1, 16) réunit le n° 1 et un
+    membre de sa propre poule. Les sept mesures qui l'étayaient — 4x2, 8x2, 4x4, 8x4, 16x2, 2x4,
+    5x2 — avaient toutes soit un `P` pair, soit un effectif non puissance de 2 : un échantillon
+    biaisé dont on avait tiré une loi générale. Et « les byes décalent les paires » est un faux
+    positif systématique à `P` pair. Le prédicat exact vit dans `domain/deroule.py`
+    (`_motif_de_choc`), vérifié contre l'appariement réel sur 9945 configurations.
+
+    **Avertissement, jamais bloquant** (arbitrage du 09/08/2026) : corriger demanderait une
+    politique de croisement, donc une règle métier que personne n'a demandée. On le **signale** à
+    l'atelier plutôt qu'en douce — l'organisateur ajuste son nombre de qualifiés s'il y tient.
+    """
+
+    code = "choc_de_poule_possible"
 
 
 class PolitiqueInconnue(DomainError):

@@ -32,6 +32,7 @@ from application.erreurs import (
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
+from domain.contrat_phase import TYPES_RECONSTRUCTIBLES
 from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.palmares import (
@@ -55,13 +56,16 @@ from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
 
-_TYPES_RECONSTRUCTIBLES = (TypePhase.ELIMINATION_DIRECTE,)
-"""Les types de phase dont ce service sait lire le résultat aujourd'hui.
+_TYPES_RECONSTRUCTIBLES = TYPES_RECONSTRUCTIBLES
+"""Les types de phase dont ce service sait **rejouer l'arbre** aujourd'hui.
 
-Une **liste blanche**, à rebours de `produit_un_classement` qui est écrit en négatif : là-bas
-l'oubli probable est d'ajouter un vrai format (donc classant par défaut), ici c'est de croire lire
-une phase dont aucun moteur ne déroule le résultat. Un type absent de cette liste ne casse pas le
-palmarès — il n'y apporte simplement rien.
+Dérivé du registre de contrat (`domain/contrat_phase.py`, ADR-0083) : conjonction d'un décor en
+arbre de duels **et** d'un service qui le monte. Le parti reste celui d'une **liste blanche**, à
+rebours de `produit_un_classement` qui est écrit en négatif : là-bas l'oubli probable est
+d'ajouter un vrai format (donc classant par défaut), ici c'est de croire lire une phase dont aucun
+moteur ne déroule le résultat. Un type absent ne casse pas le palmarès — il n'y apporte
+simplement rien, ce qui est le cas des **poules** dans cette tranche (leur classement est lisible,
+mais il n'y a pas d'arbre à rejouer et le CA d'E05US023 ne demande pas leur palmarès).
 """
 
 
