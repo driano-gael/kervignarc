@@ -7,8 +7,12 @@
 // `features/saisie-duels`, avec la famille `'poule'` — c'est ce qui lui donne gratuitement
 // l'idempotence, la file hors-ligne et le rejeu.
 //
-// Lectures en portée `'aucune'` : l'état d'une phase de poules est une consultation, comme le
-// tableau public ou le classement (E10US001). Le serveur reste l'autorité.
+// **Deux vues, deux DTO** (correctif de revue E05US023). La consultation (`/etat`, portée
+// `'aucune'`) est ouverte comme le tableau public ou le classement (E10US001) — elle porte donc un
+// contenu **restreint** : ni flèches, ni barrage interne, ni zones/barème du pavé, ni nom du
+// bénévole validateur. La saisie (`/saisie`, portée `'scoreur'`) porte le duel entier. La première
+// version servait le DTO du scoreur sur la route anonyme, ce qui publiait l'identité d'un bénévole
+// et le tir flèche à flèche à qui interrogeait le LAN.
 
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'
@@ -31,6 +35,24 @@ export interface Rencontre {
   tour: number
   couloirs: [Place, Place] | null
   duel: Duel
+}
+
+/** La même rencontre **en consultation** : l'avancement, jamais le détail de saisie.
+ *
+ * `termine` et `validee` disent deux choses distinctes — le tir est allé au bout / le scoreur a
+ * scellé —, et c'est entre les deux que s'affiche « en attente de validation ». */
+export interface RencontrePublique {
+  numero: number
+  poule: number
+  tour: number
+  couloirs: [Place, Place] | null
+  haut: Duelliste | null
+  bas: Duelliste | null
+  points_haut: number | null
+  points_bas: number | null
+  vainqueur: string | null
+  termine: boolean
+  validee: boolean
 }
 
 /** Une ligne du classement d'une poule — les cinq critères du §10.1, pour un départage traçable. */
@@ -66,7 +88,22 @@ export interface Conflit {
   raison: string
 }
 
+/** La même poule **en consultation**. Tout est identique sauf le détail de saisie des rencontres :
+ * composition, bloc, classement complet et drapeau de barrage n'ont rien de confidentiel. */
+export interface PoulePublique extends Omit<Poule, 'rencontres'> {
+  rencontres: RencontrePublique[]
+}
+
+/** La photo d'une phase, **en consultation** — ce que lit l'écran d'organisation et la salle. */
 export interface EtatPoules {
+  phase_id: number
+  repartition: Repartition
+  poules: PoulePublique[]
+  conflits: Conflit[]
+}
+
+/** La même photo **avec le pavé** de chaque rencontre — réservée à la saisie (scoreur). */
+export interface EtatPoulesSaisie {
   phase_id: number
   repartition: Repartition
   poules: Poule[]
@@ -75,6 +112,15 @@ export interface EtatPoules {
 
 export function getEtatPoules(tournoiId: number, phaseId: number): Promise<EtatPoules> {
   return fetchJson<EtatPoules>(`/api/v1/poules/etat/${tournoiId}/${phaseId}`, undefined, 'aucune')
+}
+
+/** L'état **de saisie** : jeton scoreur, et borné au tournoi du scoreur (403 sinon). */
+export function getEtatPoulesSaisie(tournoiId: number, phaseId: number): Promise<EtatPoulesSaisie> {
+  return fetchJson<EtatPoulesSaisie>(
+    `/api/v1/poules/saisie/${tournoiId}/${phaseId}`,
+    undefined,
+    'scoreur',
+  )
 }
 
 export function getRepartition(tournoiId: number, phaseId: number): Promise<Repartition> {

@@ -38,6 +38,9 @@ import {
 } from '../shared/navigation/routeur'
 import { naviguer, useChemin } from '../shared/navigation/useChemin'
 import './App.css'
+// Après `App.css`, et jamais avant : les feuilles de feature complètent le socle du shell, donc
+// elles doivent gagner à spécificité égale. Cf. l'en-tête de `features.css`.
+import './features.css'
 
 export function App() {
   const roleChoisi = useSessionRoleStore((s) => s.role)

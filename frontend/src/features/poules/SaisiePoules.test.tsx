@@ -18,7 +18,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { EtatPoules } from './api'
+import type { EtatPoulesSaisie } from './api'
 import { SaisiePoules } from './SaisiePoules'
 
 const PHASES = [
@@ -45,7 +45,7 @@ vi.mock('../saisie-duels/hooks', () => ({
 }))
 
 vi.mock('./hooks', () => ({
-  useEtatPoules: () => ({ isPending: false, isError: false, data: ETAT, error: null }),
+  useEtatPoulesSaisie: () => ({ isPending: false, isError: false, data: ETAT, error: null }),
 }))
 
 const MUTATION = { mutate: vi.fn(), isPending: false, isError: false, error: null }
@@ -70,7 +70,7 @@ function duel(numero: number, hautNom: string, basNom: string) {
   }
 }
 
-const ETAT: EtatPoules = {
+const ETAT: EtatPoulesSaisie = {
   phase_id: 902,
   repartition: { effectif: 6, taille_visee: 3, nb_poules: 2, tailles: [3, 3] },
   poules: [

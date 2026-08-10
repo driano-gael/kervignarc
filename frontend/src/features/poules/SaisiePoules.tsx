@@ -17,17 +17,25 @@ import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
-import type { Poule, Rencontre } from './api'
-import { useEtatPoules } from './hooks'
+import type { Place, Poule, Rencontre } from './api'
+import { useEtatPoulesSaisie } from './hooks'
 
 export function SaisiePoules({ tournoiId }: { tournoiId: number }) {
   // Le créneau **dont on joue les poules**, figé dès qu'il est résolu — même raison que la saisie en
   // duels : sans ce gel, la clôture de la qualification ferait basculer l'écran sous les doigts.
-  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
+  const { liste, departId, choisir } = useCreneauDesDuels(tournoiId)
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
   const poulesDispo = (phases.data ?? []).filter((phase) => phase.type === 'poules')
+
+  // ⚠️ **Rien du tout tant qu'il n'y a pas de poule à saisir.** Le panneau rendait sa coquille en
+  // toutes circonstances : sur un tournoi sans poules — c'est-à-dire tous ceux d'aujourd'hui —
+  // l'espace scoreur affichait un **second sélecteur de créneau**, indépendant de celui des duels
+  // (deux `useCreneauDesDuels`, deux `useState`, donc deux valeurs qui divergent au premier
+  // changement). Deux sélecteurs de créneau désaccordés sur une tablette, en salle, c'est une
+  // erreur de saisie qui attend (relevé en revue ; règle 10, l'ergonomie tactile prime ici).
+  if (poulesDispo.length === 0) return null
   // Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait scorer les
   // poules de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
   const phaseRetenue =
@@ -40,17 +48,8 @@ export function SaisiePoules({ tournoiId }: { tournoiId: number }) {
       </div>
 
       <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
-      {departs.isSuccess && liste.length === 0 && (
-        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
-      )}
 
       {phases.isError && <MessageErreur erreur={phases.error} />}
-      {phases.isSuccess && poulesDispo.length === 0 && (
-        <p className="carte__etat">
-          Aucune phase de poules dans ce créneau : la saisie s’ouvrira quand une phase de poules
-          aura été composée et réglée.
-        </p>
-      )}
       {poulesDispo.length > 0 && (
         <select
           className="formulaire__champ"
@@ -76,7 +75,7 @@ export function SaisiePoules({ tournoiId }: { tournoiId: number }) {
 }
 
 function PhaseDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
-  const etat = useEtatPoules(tournoiId, phaseId)
+  const etat = useEtatPoulesSaisie(tournoiId, phaseId)
   const [ouverte, setOuverte] = useState<number | null>(null)
 
   if (etat.isPending) return <p className="carte__etat">Chargement des poules…</p>
@@ -96,8 +95,7 @@ function PhaseDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: num
         </button>
         <p className="duel__entete">
           Poule {rencontre.poule} · tour {rencontre.tour}
-          {rencontre.couloirs !== null &&
-            ` · cible ${rencontre.couloirs[0][0]} couloirs ${rencontre.couloirs[0][1]}-${rencontre.couloirs[1][1]}`}
+          {rencontre.couloirs !== null && ` · ${decrirePlaces(rencontre.couloirs)}`}
         </p>
         <DuelCharge
           tournoiId={tournoiId}
@@ -147,10 +145,7 @@ function GroupeDePoule({ poule, onOuvrir }: { poule: Poule; onOuvrir: (numero: n
       <h4 className="carte__soustitre">
         Poule {poule.numero}
         {poule.bloc !== null && poule.bloc.length > 0 && (
-          <span className="carte__aide">
-            {' '}
-            — cible {poule.bloc[0]?.[0]}, couloirs {poule.bloc.map((place) => place[1]).join(', ')}
-          </span>
+          <span className="carte__aide"> — {decrirePlaces(poule.bloc)}</span>
         )}
       </h4>
 
@@ -159,9 +154,10 @@ function GroupeDePoule({ poule, onOuvrir }: { poule: Poule; onOuvrir: (numero: n
           annoncer, faire tirer et clore. Dupliquer la saisie ici aurait fait deux barrages. */}
       {poule.barrage_requis && (
         <p className="carte__etat carte__etat--alerte" role="status">
-          Barrage requis : les cinq critères du départage n’ont pas séparé cette poule. Faites-le
-          tirer depuis « Départager les archers » (portée poule) — le verdict refermera ce
-          classement.
+          Barrage requis : les cinq critères du départage n’ont pas séparé cette poule
+          {rangsExAequo(poule).length > 0 && ` (rang ${rangsExAequo(poule).join(', ')})`}. Faites-le
+          tirer depuis « Départager les archers » (portée poule) — indiquez cette phase et ce rang,
+          c’est ce qui permet au verdict de refermer ce classement.
         </p>
       )}
 
@@ -217,6 +213,38 @@ function GroupeDePoule({ poule, onOuvrir }: { poule: Poule; onOuvrir: (numero: n
         </tbody>
       </table>
     </section>
+  )
+}
+
+/** Les rangs que les cinq critères n'ont pas séparés, dédoublonnés et ordonnés.
+ *
+ * Sert à **nommer** le rang dans l'alerte : l'annonce du barrage se fait au panneau admin (elle est
+ * derrière `exiger_admin`, donc hors de portée de cet écran scoreur), et l'organisateur doit y
+ * ressaisir le rang disputé. Le lui faire lire ici évite de le lui faire deviner — c'est ce champ
+ * qui décide si le verdict refermera le classement ou ne fera rien.
+ */
+/** Des places de tir en toutes lettres, **groupées par cible**.
+ *
+ * Un bloc de poule est contigu dans la salle *mise à plat*, pas sur une seule cible : une poule de 6
+ * en salle à 4 couloirs occupe `1C 1D 2A 2B 2C 2D`. La première version affichait « cible 1,
+ * couloirs C, D, A, B, C, D » — deux « C » et deux « D » sur une cible qui n'en a que quatre — et le
+ * cas n'a rien d'exotique, c'est le cas nominal dès qu'une poule ne tombe pas pile sur une cible
+ * (relevé en revue). Le débordement est même ce que `_couloirs_du_gabarit` produit *exprès*, en
+ * respectant des capacités qui peuvent varier d'une cible à l'autre.
+ */
+function decrirePlaces(places: readonly Place[]): string {
+  const parCible = new Map<number, string[]>()
+  for (const [cible, couloir] of places) {
+    parCible.set(cible, [...(parCible.get(cible) ?? []), couloir])
+  }
+  return [...parCible.entries()]
+    .map(([cible, couloirs]) => `cible ${cible} : ${couloirs.join(', ')}`)
+    .join(' · ')
+}
+
+function rangsExAequo(poule: Poule): number[] {
+  return [...new Set(poule.classement.filter((l) => l.ex_aequo).map((l) => l.rang))].sort(
+    (a, b) => a - b,
   )
 }
 

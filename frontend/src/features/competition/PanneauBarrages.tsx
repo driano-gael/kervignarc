@@ -16,6 +16,7 @@
 
 import { useState } from 'react'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import { usePhases } from '../saisie-duels/hooks'
 import type { Barrage, EgaliteADepartager, LigneClassement, PorteeBarrage, TirBarrage } from './api'
 import {
   correspond,
@@ -452,7 +453,26 @@ export function DepartageManuel({
   const [reference, setReference] = useState('')
   const [recherche, setRecherche] = useState('')
   const [choisis, setChoisis] = useState<number[]>([])
+  // `phaseId` et `rang` **situent** le barrage de poule, et ils sont l'un et l'autre indispensables
+  // au verdict — c'est le correctif du bloquant relevé en revue d'E05US023. Sans `phase_id`,
+  // `ServicePoules._verdicts_de_barrage` écarte le barrage (il filtre sur l'égalité des phases, et
+  // `None` n'égale aucune phase) ; sans `rang`, `Barrage.verdict()` rend un ordre vide, donc
+  // `_appliquer_verdicts` n'a rien à appliquer. Deux pannes indépendantes, l'une et l'autre
+  // silencieuses : le barrage se tirait, se clôturait, et le classement de la poule restait ex æquo.
+  const [phaseId, setPhaseId] = useState<number | null>(null)
+  const [rang, setRang] = useState('')
+  const phases = usePhases(departId)
+  const poulesDispo = (phases.data ?? []).filter((phase) => phase.type === 'poules')
   const annoncer = useAnnoncerBarrage(tournoiId)
+
+  // Un barrage de poule n'est annonçable que **situé**. On le vérifie ici plutôt que de laisser
+  // partir la requête : le serveur l'accepterait (les deux champs sont facultatifs au DTO, parce
+  // qu'un Big Shoot Off désigne un sortant et non une place), et l'organisateur croirait le barrage
+  // opérant jusqu'à découvrir, la poule close, qu'il n'a rien refermé.
+  const rangSaisi = Number(rang)
+  const situe =
+    portee !== 'poule' ||
+    (phaseId !== null && rang.trim() !== '' && Number.isInteger(rangSaisi) && rangSaisi >= 1)
 
   const basculer = (archerId: number) =>
     setChoisis((actuel) =>
@@ -475,11 +495,15 @@ export function DepartageManuel({
         portee,
         archer_ids: choisis,
         reference: reference.trim() === '' ? null : reference.trim(),
+        // Uniquement en poule : en Big Shoot Off, `_coherence_du_regime` accepte `phase_id`, mais il
+        // n'y a aucune phase où retourner un verdict, et le `rang` n'y désigne pas une place.
+        ...(portee === 'poule' ? { phase_id: phaseId, rang: rangSaisi } : {}),
       },
       {
         onSuccess: () => {
           setChoisis([])
           setReference('')
+          setRang('')
         },
       },
     )
@@ -503,6 +527,43 @@ export function DepartageManuel({
           <option value="big_shoot_off">de Big Shoot Off</option>
         </select>
       </label>
+      {portee === 'poule' && (
+        <>
+          <label>
+            Phase de poules{' '}
+            <select
+              value={phaseId ?? ''}
+              onChange={(e) => setPhaseId(e.target.value === '' ? null : Number(e.target.value))}
+            >
+              <option value="">Choisir une phase…</option>
+              {poulesDispo.map((phase) => (
+                <option key={phase.id} value={phase.id}>
+                  Phase {phase.ordre} — poules
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Rang disputé{' '}
+            <input
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={rang}
+              onChange={(e) => setRang(e.target.value)}
+              placeholder="ex. 2"
+            />
+          </label>
+          <p className="carte__aide">
+            Le rang <strong>dans la poule</strong> — celui que l&apos;écran de saisie marque
+            d&apos;un « = ». C&apos;est lui que le verdict départage : sans lui, le barrage se tire
+            sans rien refermer.
+          </p>
+          {phases.isSuccess && poulesDispo.length === 0 && (
+            <p className="carte__etat">Aucune phase de poules dans ce créneau.</p>
+          )}
+        </>
+      )}
       <label>
         Repère{' '}
         <input
@@ -533,11 +594,21 @@ export function DepartageManuel({
           </li>
         ))}
       </ul>
-      <button type="button" onClick={soumettre} disabled={choisis.length < 2 || annoncer.isPending}>
+      <button
+        type="button"
+        onClick={soumettre}
+        disabled={choisis.length < 2 || !situe || annoncer.isPending}
+      >
         Faire tirer les archers sélectionnés ({choisis.length})
       </button>
       {choisis.length < 2 && (
         <p className="carte__etat">Un barrage départage au moins deux archers.</p>
+      )}
+      {choisis.length >= 2 && !situe && (
+        <p className="carte__etat">
+          Indiquez la phase de poules et le rang disputé : c&apos;est ce qui permet au verdict de
+          refermer le classement de la poule.
+        </p>
       )}
       {annoncer.isError && (
         // DETTE-050

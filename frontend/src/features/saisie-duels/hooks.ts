@@ -51,6 +51,19 @@ const cleDuel = (
 export const clePoules = (tournoiId: number, phaseId: number) =>
   ['poules-etat', tournoiId, phaseId] as const
 
+// Une phase de poules se lit sous **deux** formes depuis le correctif de revue d'E05US023 : la
+// consultation (contenu restreint, ouverte) et la saisie (le duel entier, scoreur). Ce sont deux
+// entrées de cache distinctes, dérivées de `clePoules` — qui reste donc le **préfixe** commun.
+//
+// C'est ce qui fait que l'invalidation d'écriture n'a pas eu à changer : React Query invalide par
+// préfixe, donc `invalidateQueries({ queryKey: clePoules(t, p) })` atteint les deux. Deux clés
+// sœurs écrites à la main auraient laissé la vue d'organisation périmée après chaque flèche, sans
+// que rien ne le signale.
+export const clePoulesSaisie = (tournoiId: number, phaseId: number) =>
+  [...clePoules(tournoiId, phaseId), 'saisie'] as const
+export const clePoulesPubliques = (tournoiId: number, phaseId: number) =>
+  [...clePoules(tournoiId, phaseId), 'publique'] as const
+
 // `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
 // désactivée plutôt que lancée sur un identifiant inventé (convention de `phases/hooks.ts`).
 export function usePhases(departId: number | null) {

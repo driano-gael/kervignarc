@@ -32,6 +32,7 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
 import {
   depuisReglage,
   estValide as poulesValides,
@@ -92,6 +93,70 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
       )}
     </section>
   )
+}
+
+/** Le geste de **pose du plan de couloirs** d'une phase de poules — action admin.
+ *
+ * ⚠️ Sans ce composant, tout le placement des poules était **inatteignable depuis le produit** : le
+ * domaine, le port, l'adapter, la table `placement_poule` et sa migration existaient, l'endpoint
+ * admin aussi, et le hook `useRegenererPlanPoules` n'avait **aucun appelant** (relevé en revue
+ * d'E05US023, deux axes indépendamment). La table restait donc vide en toutes circonstances, l'écran
+ * de saisie affichait en permanence « le plan n'est pas posé, l'organisateur doit le (re)générer »
+ * — en désignant une action que l'application n'offrait pas —, et aucune poule n'avait de couloirs :
+ * les archers ne savaient pas sur quelle cible tirer.
+ *
+ * Calqué sur ses deux jumeaux (`features/duels/Duels.tsx`, `features/placement/Placement.tsx`) :
+ * même libellé selon que le plan est vide ou déjà posé, même ton **ambre** pour un refus non
+ * bloquant.
+ */
+function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatPoules(tournoiId, phaseId)
+  const regenerer = useRegenererPlanPoules(tournoiId, phaseId)
+
+  // Le plan est « vide » quand aucune poule ne porte de bloc. On ne se fie pas aux seuls conflits :
+  // une phase sans participant n'a ni poule ni conflit, et « Régénérer » y serait un contresens.
+  const poules = etat.data?.poules ?? []
+  const planVide = poules.length === 0 || poules.every((poule) => poule.bloc === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {decrireConflits(conflits)}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+    </>
+  )
+}
+
+/** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
+ *
+ * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
+ * n'est persisté qui dise pourquoi une poule n'a pas de bloc, et le serveur répond alors
+ * `non_posee`. C'est exact, et c'est ce qui distingue « vous n'avez pas encore généré » de « votre
+ * salle est trop petite » — la première version confondait les deux et invitait l'organisateur à
+ * regénérer indéfiniment une salle qui ne pouvait pas grandir.
+ */
+function decrireConflits(conflits: { poule: number; raison: string }[]): string {
+  const numeros = conflits.map((conflit) => conflit.poule).join(', ')
+  const raisons = new Set(conflits.map((conflit) => conflit.raison))
+  if (raisons.has('salle_pleine')) {
+    return `Poule(s) ${numeros} sans couloirs : la salle est trop petite pour ce nombre de poules.`
+  }
+  if (raisons.has('sans_rencontre')) {
+    return `Poule(s) ${numeros} sans rencontre à tirer : rien à poser.`
+  }
+  return `Poule(s) ${numeros} sans couloirs : le plan n’est pas posé.`
 }
 
 function LignePhase({
@@ -169,6 +234,7 @@ function LignePhase({
           ↓
         </button>
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
+        {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>

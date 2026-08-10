@@ -332,7 +332,15 @@ export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
   const prelevementInerte = diagnostic.blocs.some((bloc) =>
     bloc.entrees.some((flux) => flux.nature !== 'rangs'),
   )
-  const typeNonDeroule = diagnostic.blocs.some((bloc) => EN_ECART.has(bloc.type))
+  // Les types **réellement** en cause, et non une liste figée. Le bandeau nommait « suisse,
+  // colline, Big Shoot Off » en dur alors que `TYPES_SIGNALES_EN_ECART` en compte cinq : composer
+  // une phase `placement` ou `barrage` allumait donc un avertissement qui désignait trois formats
+  // que l'organisateur n'avait pas utilisés (correctif de revue). Le CA fait précisément de la
+  // justesse de ce signal son exigence.
+  const typesEnEcart = [...new Set(diagnostic.blocs.map((bloc) => bloc.type))].filter((type) =>
+    EN_ECART.has(type),
+  )
+  const typeNonDeroule = typesEnEcart.length > 0
   if (!prelevementInerte && !typeNonDeroule) return null
   return (
     <p className="carte__etat carte__etat--alerte" role="note">
@@ -345,7 +353,11 @@ export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
         </>
       )}
       {typeNonDeroule && (
-        <> — un type de phase qu'il ne déroule pas (suisse, colline, Big Shoot Off)</>
+        <>
+          {' '}
+          — un type de phase qu&apos;il ne déroule pas (
+          {typesEnEcart.map((type) => LIBELLE_TYPE[type]).join(', ')})
+        </>
       )}
       . Les prélèvements <strong>par rangs</strong>, eux, sont respectés. Lancez la simulation pour
       voir l'écart.
