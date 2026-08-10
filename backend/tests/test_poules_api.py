@@ -562,3 +562,29 @@ def test_la_lecture_de_saisie_est_bornee_au_tournoi_du_scoreur(
 
     assert reponse.status_code == 403, reponse.text
     assert reponse.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_le_drapeau_de_desynchronisation_traverse_les_deux_vues(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`desynchronisee` est servi **par les deux routes**, et il est faux sur une phase saine.
+
+    C'est le câblage qui manquait : le drapeau existait au service et n'était asserté sur
+    aucune des deux surfaces. La vue publique le porte aussi — un écran de salle qui
+    afficherait « à tirer » sur une rencontre bloquée ferait attendre des archers pour rien.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+
+        publique = client.get(f"/api/v1/poules/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+        saisie = client.get(
+            f"/api/v1/poules/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
+        ).json()
+
+    for corps in (publique, saisie):
+        rencontres = [r for poule in corps["poules"] for r in poule["rencontres"]]
+        assert rencontres, "le décor doit produire des rencontres"
+        assert all(
+            r["desynchronisee"] is False for r in rencontres
+        ), "aucune rencontre n'a encore été tirée : rien ne peut être désynchronisé"
