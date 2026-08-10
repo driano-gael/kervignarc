@@ -188,15 +188,26 @@ interface RencontreEnveloppe {
   duel: Duel
 }
 
-function corpsPoule(corps: { match_numero: number }): Record<string, unknown> {
-  const { match_numero, ...reste } = corps as { match_numero: number } & Record<string, unknown>
+/** Traduit un corps de tableau en corps de poule : `match_numero` s'y appelle `numero`. */
+function corpsPoule<C extends { match_numero: number }>(corps: C): Record<string, unknown> {
+  const { match_numero, ...reste } = corps
   return { ...reste, numero: match_numero }
 }
 
-async function ecrire(
+/** Poste un acte de tir sur la route de sa famille, en traduisant le corps s'il va aux poules.
+ *
+ * ⚠️ **Générique, et c'est ce qui supprime deux casts.** Le paramètre était le contrat minimal
+ * `{ match_numero: number }`, ce qui déclenchait le contrôle de propriétés excédentaires sur un
+ * littéral **frais** (« ce corps, plus `manche` ») — d'où deux `as unknown as`, dont un double cast
+ * que la règle de typage vise nommément, sur une **traduction de noms de champs** qu'aucun test ne
+ * couvrait. Un renommage fautif ne se serait vu qu'en salle, en 422, pendant que mypy, eslint, tsc
+ * et la suite restaient verts (relevé en revue). Inférer `C` de l'argument lève la contrainte sans
+ * rien affaiblir : `match_numero` reste exigé.
+ */
+async function ecrire<C extends { match_numero: number }>(
   famille: FamilleDuel,
   acte: 'manches' | 'barrages' | 'validations',
-  corps: { match_numero: number },
+  corps: C,
 ): Promise<Duel> {
   const chemin = ROUTES[famille][acte]
   if (famille === 'tableau') {
@@ -215,9 +226,7 @@ export function saisirManche(corps: SaisirManche, famille: FamilleDuel = 'tablea
   // ici, pas dans le composant, pour que le pavé ne connaisse qu'une seule forme.
   if (famille === 'poule') {
     const { numero, ...reste } = corps
-    return ecrire(famille, 'manches', { ...reste, manche: numero } as unknown as {
-      match_numero: number
-    })
+    return ecrire(famille, 'manches', { ...reste, manche: numero })
   }
   return ecrire(famille, 'manches', corps)
 }

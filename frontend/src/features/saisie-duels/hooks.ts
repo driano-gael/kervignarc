@@ -28,6 +28,7 @@ import {
   type ValiderDuel,
   validerDuel,
 } from './api'
+import type { EtatPoulesSaisie } from '../poules/api'
 import { injecterBarrage, injecterManche } from './duel'
 import { estDejaHorsLigne, estRefusServeur } from './horsLigne'
 import { rejouerActes } from './rejeu'
@@ -118,6 +119,50 @@ function placeholderDuel(matchNumero: number): Duel {
   }
 }
 
+/** Le duel d'une rencontre, lu dans la photo **de saisie** de la phase de poules (ou `null`).
+ *
+ * Domicile unique de cette navigation : la photo porte les rencontres groupées par poule, et c'est
+ * `numero` — le `match_numero` de la table `duel` — qui les identifie de bout en bout.
+ */
+function dueDeLaPhase(
+  queryClient: QueryClient,
+  tournoiId: number,
+  phaseId: number,
+  matchNumero: number,
+): Duel | null {
+  const etat = queryClient.getQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId))
+  if (etat === undefined) return null
+  for (const poule of etat.poules) {
+    for (const rencontre of poule.rencontres) {
+      if (rencontre.numero === matchNumero) return rencontre.duel
+    }
+  }
+  return null
+}
+
+/** Réécrit le duel d'une rencontre **dans la photo de la phase** — l'entrée que l'écran affiche. */
+function poserDuelDansLaPhase(
+  queryClient: QueryClient,
+  tournoiId: number,
+  phaseId: number,
+  matchNumero: number,
+  duel: Duel,
+): void {
+  queryClient.setQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId), (etat) =>
+    etat === undefined
+      ? etat
+      : {
+          ...etat,
+          poules: etat.poules.map((poule) => ({
+            ...poule,
+            rencontres: poule.rencontres.map((rencontre) =>
+              rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+            ),
+          })),
+        },
+  )
+}
+
 // Fabrique une mutation d'acte de duel : chemin nominal (POST direct, l'accusé rafraîchit le cache),
 // repli **hors-ligne** (mise en file + état optimiste), et — au succès **en ligne** — invalidation +
 // supersession de la file + drainage. `optimiste` construit l'état local à afficher hors-ligne.
@@ -136,8 +181,14 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
     mutationFn: async (corps) => {
       const enFile = () => {
         mettreEnFile(versActe(corps))
+        // La base de l'état optimiste doit être le **duel réel**, pas un gabarit vide : sinon la
+        // manche saisie hors-ligne s'affiche seule, sans les précédentes. En poules, le duel ne vit
+        // pas sous `cleDuel` (l'écran ne lit jamais cette entrée) mais dans la photo de la phase.
         const base =
           queryClient.getQueryData<Duel>(cleDuel(tournoiId, phaseId, matchNumero, famille)) ??
+          (famille === 'poule'
+            ? dueDeLaPhase(queryClient, tournoiId, phaseId, matchNumero)
+            : null) ??
           placeholderDuel(matchNumero)
         return optimiste(base, corps)
       }
@@ -152,6 +203,14 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
     },
     onSuccess: (duel, corps) => {
       queryClient.setQueryData(cleDuel(tournoiId, phaseId, matchNumero, famille), duel)
+      // ⚠️ **En poules, l'écran ne lit pas `cleDuel`** — il lit la photo de la phase. Écrire le
+      // seul `cleDuel` revenait à mettre à jour une entrée que personne n'affiche : hors-ligne, le
+      // scoreur tapait « Enregistrer la manche », l'acte partait bien en file (aucune donnée
+      // perdue) et **l'écran ne bougeait pas** — ni les manches, ni l'état « en cours », ni le
+      // verrou qui masque le bouton de validation. Il retapait (relevé en revue).
+      if (famille === 'poule') {
+        poserDuelDansLaPhase(queryClient, tournoiId, phaseId, matchNumero, duel)
+      }
       const enFile = useFileDuelsHorsLigneStore
         .getState()
         .enAttente.some((a) => a.identifiant_saisie === corps.identifiant_saisie)
