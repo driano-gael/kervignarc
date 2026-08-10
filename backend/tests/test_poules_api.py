@@ -16,6 +16,7 @@ compilation — seulement, en salle, un prélèvement visant des poules qui rede
 from __future__ import annotations
 
 import datetime
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -490,3 +491,74 @@ def test_un_prelevement_dans_des_poules_non_jouees_est_mis_en_attente(
 
     assert reponse.status_code == 409, reponse.text
     assert reponse.json()["code"] == "prelevement_en_attente"
+
+
+# --------------------------------------------------------------------------------------------
+# Sécurité — la scission `/etat` (public restreint) / `/saisie` (scoreur)
+# --------------------------------------------------------------------------------------------
+#
+# ⚠️ Ces trois tests sont la **porte** du correctif de sécurité, et ils manquaient : la première
+# version servait `DuelReponse` en entier — nom du bénévole validateur, chaque flèche, barrage,
+# zones et barème — sur une route **anonyme**. Sans eux, remettre `response_model=EtatPoulesReponse`
+# sur `/etat` repasserait toute la suite au vert, et l'argument « un DTO distinct, pas un `exclude`
+# »
+# n'aurait aucune porte. C'est la décision d'`api/v1/tableaux.py`, qui a les siens.
+
+
+def test_la_lecture_ouverte_ne_publie_pas_le_detail_de_saisie(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`/etat` est ouvert, donc il ne porte **ni** flèches, **ni** identité de bénévole.
+
+    On tire et on valide **d'abord** : un état vide ne prouverait rien, puisque les champs à ne pas
+    fuir n'existeraient de toute façon pas encore.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        _jouer_toute_la_phase(client, scn, entetes)
+
+        reponse = client.get(f"/api/v1/poules/etat/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    rencontres = [r for poule in corps["poules"] for r in poule["rencontres"]]
+    assert rencontres, "le décor doit avoir produit des rencontres, sinon le test ne prouve rien"
+    assert all("duel" not in rencontre for rencontre in rencontres)
+    brut = json.dumps(corps)
+    for interdit in ("validee_par", "manches", "zones", "bareme", "ROUX"):
+        assert interdit not in brut, f"« {interdit} » n'a rien à faire dans une lecture ouverte"
+    # …et ce que le public **doit** lire y est bien : l'avancement, pas le détail.
+    assert all("validee" in rencontre for rencontre in rencontres)
+    assert any(rencontre["termine"] for rencontre in rencontres)
+
+
+def test_la_lecture_de_saisie_exige_une_session_scoreur(app_poules: FastAPI) -> None:
+    """`/saisie` porte le duel entier : sans jeton scoreur, 401 — comme `duels/tableau`."""
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+
+        reponse = client.get(f"/api/v1/poules/saisie/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_la_lecture_de_saisie_est_bornee_au_tournoi_du_scoreur(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Un scoreur n'officie que dans **son** tournoi : ailleurs, 403 `scoreur_hors_tournoi`.
+
+    Le jeton seul ne suffit pas — sans cette borne, un scoreur du tournoi du matin lirait le détail
+    de saisie de celui de l'après-midi. C'est la garde que porte déjà chaque écriture de ce routeur.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        autre = Scenario(app_poules)
+
+        reponse = client.get(
+            f"/api/v1/poules/saisie/{autre.tournoi_id}/{autre.phase_id}", headers=entetes
+        )
+
+    assert reponse.status_code == 403, reponse.text
+    assert reponse.json()["code"] == "scoreur_hors_tournoi"

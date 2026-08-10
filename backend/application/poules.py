@@ -467,8 +467,26 @@ class ServicePoules:
         """
         if phase.barrage_jusqu_au is None:
             return TiebreakPoules()
+        # ⚠️ **`sinon` n'est pas optionnel ici**, et l'oublier a coûté un bloquant en revue.
+        #
+        # `_fabriquer_barrage` fait défaut sur `{"nom": "ffta_defaut"}`, soit l'ordre §8.1 — nombre
+        # de 10, puis de 9. Sans `sinon`, régler un seuil de barrage sur une phase de poules ne se
+        # contentait pas d'ajouter le seuil : il **remplaçait** l'ordre §10.1 (points de match,
+        # différence de sets, différence de score, puis 10 et 9) par §8.1 pour tout le tri. Un
+        # archer à 9 points de match serait passé derrière un archer à 3 points ayant un 10 de plus.
+        # `TiebreakPoules` avertit précisément de ne pas confondre les deux ordres : §10.1
+        # **précède**
+        # §8.1 de trois critères, il ne s'y substitue pas. Le premier correctif rendait donc la
+        # politique opérante en lui faisant appliquer la mauvaise règle — pire que la décoration
+        # qu'il venait fermer.
         politiques = assembler_politiques(
-            {"tiebreak": {"nom": "barrage", "jusqu_au": phase.barrage_jusqu_au}},
+            {
+                "tiebreak": {
+                    "nom": "barrage",
+                    "jusqu_au": phase.barrage_jusqu_au,
+                    "sinon": {"nom": "poules"},
+                }
+            },
             self._registre,
         )
         tiebreak = politiques.tiebreak

@@ -130,10 +130,21 @@ class _Monde:
         self.qualif_id = qualif.id
         self.phase_id = 0
 
-    def regler(self, reglage: ReglageDePoules | None) -> int:
-        """Pose la phase de poules avec son réglage (ou sans, pour éprouver le refus)."""
+    def regler(self, reglage: ReglageDePoules | None, barrage_jusqu_au: int | None = None) -> int:
+        """Pose la phase de poules avec son réglage (ou sans, pour éprouver le refus).
+
+        `barrage_jusqu_au` est le **seuil de barrage** (ADR-0066) : il se règle sur la phase et se
+        résout par le registre de politiques. Paramétrable ici depuis le correctif de revue — sans
+        lui, aucun test ne pouvait exercer le chemin où la politique est réellement injectée.
+        """
         phase = self.phases.ajouter(
-            Phase(depart_id=self.depart_id, ordre=2, type=TypePhase.POULES, poules=reglage)
+            Phase(
+                depart_id=self.depart_id,
+                ordre=2,
+                type=TypePhase.POULES,
+                poules=reglage,
+                barrage_jusqu_au=barrage_jusqu_au,
+            )
         )
         assert phase.id is not None
         self.phase_id = phase.id
@@ -810,3 +821,57 @@ def test_une_poule_qui_qualifie_departage_une_egalite_qui_enjambe_la_barre() -> 
 
     assert poule.barrage_requis is True
     assert poule.qualifies == ()
+
+
+def test_un_seuil_de_barrage_ne_remplace_pas_l_ordre_de_classement_d_une_poule() -> None:
+    """⚠️ Un seuil de barrage **ajoute** un cran de départage, il ne change pas la règle sportive.
+
+    Le §10.1 (points de match, différence de sets, différence de score, 10, 9) **précède** le §8.1
+    (10, puis 9) de trois critères — le référentiel avertit explicitement de ne pas confondre les
+    deux ordres. Un `barrage_jusqu_au` réglé sur la phase doit donc **envelopper** `TiebreakPoules`,
+    jamais s'y substituer.
+
+    Le décor sépare exprès les deux ordres, ce qu'un décor naïf ne fait pas : le vainqueur gagne
+    ses trois manches **27 à 26**, sans un seul 10, pendant que le battu en aligne six. Sous §10.1
+    il est premier (3 points de match contre 0) ; sous §8.1 il serait **dernier**. Un décor où le
+    gagnant tire des 10 corrèle les deux critères et ne prouve rien — c'est le piège dans lequel la
+    première version de ce test est tombée.
+
+    Il **échoue** sur le premier correctif de revue : celui-ci résolvait bien la politique par le
+    registre — ce qu'on lui demandait — mais laissait la fabrique retomber sur son défaut
+    `ffta_defaut`, si bien que tout le classement de poule se triait soudain au nombre de 10.
+    Rendre une politique opérante en lui faisant appliquer la mauvaise règle est pire que la
+    laisser décorative : c'est faux **et** silencieux.
+    """
+    monde = _Monde()
+    monde.inscrire(2)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=2), barrage_jusqu_au=2)
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    (rencontre,) = poule.rencontres
+    assert rencontre.haut is not None
+
+    # Le haut gagne chaque manche 27-26 **sans aucun 10** ; le bas en tire six et perd.
+    for manche in (1, 2, 3):
+        service.saisir_manche(
+            monde.tournoi_id,
+            phase_id,
+            rencontre.numero,
+            manche,
+            (ZoneScore("9"), ZoneScore("9"), ZoneScore("9")),
+            (ZoneScore("10"), ZoneScore("10"), ZoneScore("6")),
+        )
+    service.valider(monde.tournoi_id, phase_id, rencontre.numero, "DURAND")
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    tete = poule.classement[0]
+
+    assert tete.participant.ref_id == rencontre.haut.archer_id, (
+        "le vainqueur des trois manches est premier de sa poule, même sans un seul 10 : "
+        "un seuil de barrage enveloppe l'ordre §10.1, il ne lui substitue pas le §8.1"
+    )
+    assert tete.decompte.points_match == 3
+    assert tete.decompte.nb_dix == 0
+    assert (
+        poule.classement[1].decompte.nb_dix == 6
+    ), "le battu aligne bien plus de 10 : c'est ce qui rend les deux ordres discriminables"
