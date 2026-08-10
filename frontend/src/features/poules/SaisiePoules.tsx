@@ -186,6 +186,11 @@ function GroupeDePoule({ poule, onOuvrir }: { poule: Poule; onOuvrir: (numero: n
                   <button
                     type="button"
                     className="duels-liste__ligne"
+                    // ⚠️ **Une rencontre désynchronisée ne s'ouvre pas.** Elle s'affichait « à
+                    // tirer », indiscernable d'une rencontre jamais commencée, et le service la
+                    // refusait en 409 au premier enregistrement — l'écran tendait le piège. On
+                    // bloque l'entrée plutôt que de faire découvrir le refus une flèche plus tard.
+                    disabled={r.desynchronisee}
                     onClick={() => onOuvrir(r.numero)}
                   >
                     <span className="duels-liste__nom">
@@ -264,6 +269,7 @@ function rangsExAequo(poule: Poule): number[] {
 
 /** L'état d'une rencontre en un mot — le même vocabulaire que la liste des duels d'un tableau. */
 function etatRencontre(rencontre: Rencontre): string {
+  if (rencontre.desynchronisee) return 'tir désynchronisé — à rétablir'
   const duel = rencontre.duel
   if (duel.validee_par !== null) return 'validée'
   if (duel.validation_en_attente === true) return 'validation en attente'

@@ -85,8 +85,22 @@ const ETAT: EtatPoulesSaisie = {
         [1, 'B'],
       ],
       rencontres: [
-        { numero: 1, poule: 1, tour: 1, couloirs: null, duel: duel(1, 'DURAND', 'LEFEVRE') },
-        { numero: 2, poule: 1, tour: 2, couloirs: null, duel: duel(2, 'DURAND', 'MOREAU') },
+        {
+          numero: 1,
+          poule: 1,
+          tour: 1,
+          couloirs: null,
+          duel: duel(1, 'DURAND', 'LEFEVRE'),
+          desynchronisee: false,
+        },
+        {
+          numero: 2,
+          poule: 1,
+          tour: 2,
+          couloirs: null,
+          duel: duel(2, 'DURAND', 'MOREAU'),
+          desynchronisee: false,
+        },
       ],
       classement: [
         {
@@ -108,7 +122,14 @@ const ETAT: EtatPoulesSaisie = {
       membres: [{ archer_id: 20, nom: 'PETIT', prenom: 'P' }],
       bloc: null,
       rencontres: [
-        { numero: 3, poule: 2, tour: 1, couloirs: null, duel: duel(3, 'PETIT', 'ROUX') },
+        {
+          numero: 3,
+          poule: 2,
+          tour: 1,
+          couloirs: null,
+          duel: duel(3, 'PETIT', 'ROUX'),
+          desynchronisee: false,
+        },
       ],
       classement: [],
       qualifies: [],

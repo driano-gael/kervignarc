@@ -116,4 +116,72 @@ describe('rejouerActes', () => {
     expect(res.traites.map((a) => a.identifiant_saisie)).toEqual(['id-m1', 'id-v'])
     expect(res.interrompu).toBe(false)
   })
+
+  // --- Correctif de revue E05US023 : un 409 ne gèle plus la tablette entière ------------------
+
+  function mancheDe(matchNumero: number, numero: number): ActeDuelEnFile {
+    return {
+      ...manche(numero),
+      match_numero: matchNumero,
+      identifiant_saisie: `id-${matchNumero}-${numero}`,
+    }
+  }
+
+  it('poursuit le drainage sur les AUTRES rencontres quand une rencontre est refusée en 409', async () => {
+    // ⚠️ Le cas du jour J en poules : le `match_numero` court sur toute la phase, donc un archer
+    // ajouté recompose les groupes et désynchronise définitivement les rencontres déjà tirées. Le
+    // rejeu s'arrêtait au premier 409 et gardait TOUT en file — y compris les actes des rencontres
+    // saines, qui n'avaient aucun problème. Une tablette ayant saisi pendant une coupure ne
+    // synchronisait plus rien de la journée.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      if (a.match_numero === 1) {
+        return Promise.reject(new ErreurApi(409, 'duel_desynchronise', 'désynchronisé'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(2, 1), mancheDe(3, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1', 'id-2-1', 'id-3-1'])
+    expect(res.traites.map((a) => a.match_numero)).toEqual([2, 3])
+    expect(res.refuses).toEqual([])
+    expect(res.interrompu).toBe(true) // la rencontre 1 reste en file : rien n'est perdu
+  })
+
+  it('garde l’ordre AU SEIN d’une rencontre refusée : sa validation n’est pas envoyée', async () => {
+    // L'ordre entre rencontres distinctes n'a aucune dépendance ; celui d'une même rencontre en a
+    // une, et elle est stricte : valider suppose ses manches rejouées.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      if (a.match_numero === 1) {
+        return Promise.reject(new ErreurApi(409, 'duel_desynchronise', 'désynchronisé'))
+      }
+      return Promise.resolve()
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), validation, mancheDe(2, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1', 'id-2-1']) // la validation de la rencontre 1 est sautée
+    expect(res.traites.map((a) => a.identifiant_saisie)).toEqual(['id-2-1'])
+    expect(res.interrompu).toBe(true)
+  })
+
+  it('s’arrête pour de bon sur une panne réseau, sans essayer les rencontres suivantes', async () => {
+    // Une panne réseau n'est pas un refus : poursuivre ne ferait que collectionner des `fetch` qui
+    // pendent. La distinction avec le 409 est tout l'objet du correctif.
+    const envoyes: string[] = []
+    const envoyer = vi.fn((a: ActeDuelEnFile) => {
+      envoyes.push(a.identifiant_saisie)
+      return Promise.reject(new TypeError('Failed to fetch'))
+    })
+
+    const res = await rejouerActes([mancheDe(1, 1), mancheDe(2, 1)], envoyer)
+
+    expect(envoyes).toEqual(['id-1-1'])
+    expect(res.traites).toEqual([])
+    expect(res.interrompu).toBe(true)
+  })
 })

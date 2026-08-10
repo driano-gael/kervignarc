@@ -35,6 +35,10 @@ export interface Rencontre {
   tour: number
   couloirs: [Place, Place] | null
   duel: Duel
+  /** Un tir existe en base mais oppose d'autres duellistes — la composition a bougé sous un score
+   * déjà saisi. Le serveur le masque (ADR-0049 §4) et refuse de l'écraser : la rencontre est donc
+   * **bloquée**, pas « à tirer ». */
+  desynchronisee: boolean
 }
 
 /** La même rencontre **en consultation** : l'avancement, jamais le détail de saisie.
@@ -53,6 +57,7 @@ export interface RencontrePublique {
   vainqueur: string | null
   termine: boolean
   validee: boolean
+  desynchronisee: boolean
 }
 
 /** Une ligne du classement d'une poule — les cinq critères du §10.1, pour un départage traçable. */
