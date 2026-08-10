@@ -651,9 +651,20 @@ aurait obligé à le refaire à l'arrivée des poules, **et à repasser sur du c
   C'est ce qui rend l'arrondi lisible plutôt que surprenant, et ce qui rend inoffensif le cas
   extrême où l'effectif est inférieur au double de la taille demandée (7 archers en poules de 4 →
   **une** poule de 7, que l'organisateur voit et corrige s'il ne la veut pas).
-- **CA — les réglages vivent sous `config.policies`, sans migration** : ils entrent dans la forme
-  nommée d'[ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md) — c'est
-  exactement ce que le `config` JSON permet. Aucune colonne neuve.
+- **CA — le réglage vit dans le `config` de l'étape, sans migration** : il tient dans le JSON
+  existant, **à la racine** (`config.poules`), comme `validation`, `sources` et `effectif`. Aucune
+  colonne neuve.
+
+  *(Arbitrage tranché à la revue du 10/08/2026, reversé ici — règle 9. Le CA disait « sous
+  `config.policies` », par analogie avec [ADR-0046](../docs/adr/0046-config-policies-politiques-nommees-parametrees.md).
+  C'était insatisfaisable en l'état : `config.policies` est le **catalogue fermé** des familles
+  injectables (`domain/politiques.py`, `FamillePolitique`), et `assembler_politiques` refuse toute
+  clé hors énumération — une phase de poules réglée serait devenue illisible le jour où l'on branche
+  la config d'une phase sur son propre validateur. Y faire entrer `poules` aurait demandé une
+  **huitième famille décorative** : il n'existe ni implémentation alternative, ni point d'injection,
+  ni registre qui la résolve — une taille de poule et un barème sont des **paramètres de phase**,
+  pas une stratégie. L'intention du CA — « ça tient dans le JSON, aucune colonne neuve » — est
+  tenue à l'identique, et rien ne change pour l'organisateur.)*
 - **CA — une poule occupe un bloc de couloirs contigus** *(arbitrage du 09/08/2026, précisé par le
   commanditaire le même jour)* : la phase produit un **plan de cibles**, comme un tableau. L'empreinte
   d'une poule n'est **pas son effectif** mais le nombre d'archers **simultanément sur la ligne**,

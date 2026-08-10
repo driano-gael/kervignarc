@@ -6,7 +6,7 @@
 - **Précise** : [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md) (typage ouvert des
   phases) · [ADR-0062](0062-catalogue-de-types-de-phase.md) (catalogue de types)
 - **S'appuie sur** : [ADR-0046](0046-config-policies-politiques-nommees-parametrees.md)
-  (`config.policies`) · [ADR-0024](0024-plan-de-cibles-materialise-ajustable.md) et
+  (le `config` JSON d'une étape) · [ADR-0024](0024-plan-de-cibles-materialise-ajustable.md) et
   [ADR-0048](0048-cote-a-cote-des-duellistes-par-reordonnancement.md) (plans de cibles matérialisés) · [ADR-0068](0068-le-moteur-consomme-les-prelevements-declares.md)
   (prélèvements consommés)
 - **Résorbe** : [DETTE-028](../dette.md), **partiellement** — volet poules et barrage
@@ -182,7 +182,9 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 - **Un type de phase s'ajoute à un endroit**, non à dix. `E05US026` à `E05US028` en bénéficient
   directement ; c'est ce qui rend leur découpage tenable.
 - **Une migration**, pour la seule table de placement des poules. Les réglages passent par
-  `config.policies` (ADR-0046) et le tir par `duel` : ni l'un ni l'autre ne touche au schéma.
+  le `config` JSON de l'étape (ADR-0046) et le tir par `duel` : ni l'un ni l'autre ne touche au
+  schéma. Le réglage vit **à la racine** du `config` — `config.policies` est le catalogue **fermé**
+  des familles injectables, et un paramètre de phase n'en est pas une (arbitrage de revue, 10/08/2026).
 - **`DETTE-028` rétrécit sans se refermer.** Le suisse, la colline et le Big Shoot Off restent sans
   appelant, et `ScoreAvecHandicap` comme `RoutingRepechage` restent inertes. Le signal d'écart
   d'E01US024 doit donc cesser de viser les poules **et continuer de viser les trois autres** — sans
@@ -214,11 +216,11 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/contrat_phase.py` | §1 — le **registre** : une ligne par type, sept capacités, et les dix tables dérivées (`TYPES_EN_TABLEAU`, `TYPES_MONTES`, `TYPES_CLASSANTS_LUS`, `TYPES_EN_TABLEAU_JOUE`, `TYPES_JOUES`, `TYPES_SIGNALES_EN_ECART`, …) |
 | `backend/domain/deroule.py` · `backend/application/{palmares,simulation_format,saisie_duels,placement_duels,routage}.py` | §1 — les sites **dérivés** ; aucun ne réécrit son filtre |
 | `frontend/src/shared/phases/catalogue.ts` · `TYPES_SIGNALES_EN_ECART` | §1 — le miroir client, écrit **en négatif** (un oubli y coûte un avertissement de trop, jamais un de moins) |
-| `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.policies.poules` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
+| `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.poules`, à la racine du `config` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
 | `backend/infrastructure/db/models.py` · `PlacementPouleORM` + `migrations/versions/0045_placement_des_poules.py` | §3 — « poule → couloirs », clé primaire sur le **couloir** (un couloir, un occupant) |
 | `backend/application/poules.py` · `ServicePoules` | §3, §5, §6 — composition le jour J, pose du plan, rencontres par tour, couloirs dérivés, classement, saisie d'une rencontre, et `classement_de_phase` (le port ci-dessous) |
-| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste ci-dessous l'annonçait en `application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
-| `backend/domain/poule.py` · `ReglageDePoules.departage_inter_poules` | §6 — le départage optionnel, persisté sous `config.policies.poules.departage` (toujours sans migration) |
+| `backend/domain/classement_de_poules.py` | §6 — l'ordre « par rang de poule d'abord », les blocs **indécis** (ADR-0081), la liaison d'un ex æquo interne qui enjambe deux blocs, et le départage optionnel. ⚠️ **Descendu dans le domaine** alors que la liste de tranche — supprimée à la clôture — l'annonçait en `application/poules.py` : il croise des `RangPoule`, un `LigneClassement` et une politique `Tiebreak` — l'argument exact qui a placé son jumeau `classement_de_tableau` là |
+| `backend/domain/poule.py` · `ReglageDePoules.departage_inter_poules` | §6 — le départage optionnel, persisté sous `config.poules.departage` (toujours sans migration) |
 | `backend/application/prelevement.py` · `LecteurClassementPoules` | §6 — le **port étroit** qui casse le cycle `ServicePoules` ↔ `ServiceSaisieDuels`, et qui fait traverser le résolveur (donc le cache de reconstruction **et** la chaîne anti-boucle) |
 | `backend/application/saisie_duels.py` · `brancher_poules` / `_classement_de_l_ordre` | §6 — le 3ᵉ cas de résolution d'un ordre amont : une phase de poules a désormais un classement lisible |
 | `backend/domain/deroule.py` · `_anomalies_choc_de_poule` | §6 (exception mesurée) — l'avertissement d'atelier quand l'effectif prélevé d'un tableau nourri par des poules n'est pas une puissance de 2 |
