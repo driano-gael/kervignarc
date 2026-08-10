@@ -720,3 +720,93 @@ def test_un_barrage_non_resolu_laisse_le_rang_partage() -> None:
 
     (poule,) = service.etat(monde.tournoi_id, phase_id).poules
     assert poule.barrage_requis is True
+
+
+# --------------------------------------------------------------------------------------------
+# CA — les **deux régimes** d'ex æquo (ADR-0083 §5)
+# --------------------------------------------------------------------------------------------
+#
+# « La poule qui **classe** départage tout ex æquo irréductible ; celle qui **qualifie** ne
+# départage que la barre. » Seule la garde négative (« avant le premier tir, rien n'est signalé »)
+# était couverte : les deux régimes eux-mêmes ne l'étaient ni l'un ni l'autre, y compris l'exemple
+# que le CA donne verbatim (relevé en revue).
+
+
+def _poule_de_quatre_avec_un_premier_net(monde: _Monde, nb_qualifies: int | None) -> ServicePoules:
+    """Une poule de 4 : un premier qui gagne tout, et **trois autres en cycle** derrière lui.
+
+    Le cycle rend les trois derniers irréductiblement ex æquo (une victoire, une défaite, mêmes
+    sets, mêmes scores) pendant que le premier se détache proprement. C'est le décor qui permet de
+    placer la barre **au-dessus** de l'égalité (rang 1) ou **dedans** (rang 2), donc de distinguer
+    les deux régimes sur un même tirage.
+    """
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4, nb_qualifies=nb_qualifies))
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    membres = sorted(membre.archer_id for membre in poule.membres)
+    premier, autres = membres[0], membres[1:]
+    suivant = {autres[i]: autres[(i + 1) % 3] for i in range(3)}
+
+    for rencontre in poule.rencontres:
+        assert rencontre.haut is not None and rencontre.bas is not None
+        haut, bas = rencontre.haut.archer_id, rencontre.bas.archer_id
+        if premier in (haut, bas):
+            gagnant = "haut" if haut == premier else "bas"
+        else:
+            gagnant = "haut" if suivant[haut] == bas else "bas"
+        _gagner(service, monde, rencontre.numero, gagnant)
+    return service
+
+
+def test_une_poule_qui_classe_departage_tout_ex_aequo_irreductible() -> None:
+    """Régime « classe » (`nb_qualifies` non déclaré) : le classement **est** le livrable.
+
+    Trois archers que les cinq critères ne séparent pas, aux rangs 2-3-4 : il n'y a pas de barre,
+    donc l'égalité compte, où qu'elle soit.
+    """
+    monde = _Monde()
+    service = _poule_de_quatre_avec_un_premier_net(monde, nb_qualifies=None)
+
+    (poule,) = service.etat(monde.tournoi_id, monde.phase_id).poules
+
+    assert poule.barrage_requis is True
+    assert sum(1 for ligne in poule.classement if ligne.ex_aequo) == 3
+
+
+def test_une_poule_qui_qualifie_ignore_une_egalite_entierement_sous_la_barre() -> None:
+    """⚠️ **L'exemple du CA, verbatim** — et le seul cas qui distingue l'implémentation retenue
+    de la lecture naïve « tout ex æquo se départage ».
+
+    « Deux archers à égalité aux rangs 3-4 d'une poule qui en qualifie 2 restent à égalité. » Ici
+    l'égalité tient les rangs 2-3-4 et la poule n'en qualifie qu'**un** : elle est entièrement sous
+    la barre, donc aucun barrage n'est requis — et la qualification est pourtant décidée.
+    """
+    monde = _Monde()
+    service = _poule_de_quatre_avec_un_premier_net(monde, nb_qualifies=1)
+
+    (poule,) = service.etat(monde.tournoi_id, monde.phase_id).poules
+
+    assert (
+        poule.barrage_requis is False
+    ), "une égalité qui ne franchit pas la barre ne se départage pas : le CA l'exige"
+    assert len(poule.qualifies) == 1
+    assert any(
+        ligne.ex_aequo for ligne in poule.classement
+    ), "l'égalité subsiste et reste visible — elle n'est simplement pas à trancher"
+
+
+def test_une_poule_qui_qualifie_departage_une_egalite_qui_enjambe_la_barre() -> None:
+    """L'autre versant : la barre tombe **dans** l'égalité, donc elle décide qui passe.
+
+    Trois archers ex æquo aux rangs 2-3-4 et deux qualifiés : le second billet se joue entre eux,
+    et il n'est pas attribuable sans barrage. La qualification reste donc **vide** tant qu'il n'a
+    pas été tiré — un billet attribué au hasard serait pire qu'un billet en attente.
+    """
+    monde = _Monde()
+    service = _poule_de_quatre_avec_un_premier_net(monde, nb_qualifies=2)
+
+    (poule,) = service.etat(monde.tournoi_id, monde.phase_id).poules
+
+    assert poule.barrage_requis is True
+    assert poule.qualifies == ()
