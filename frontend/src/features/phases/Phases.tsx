@@ -148,15 +148,26 @@ function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
  * regénérer indéfiniment une salle qui ne pouvait pas grandir.
  */
 function decrireConflits(conflits: { poule: number; raison: string }[]): string {
-  const numeros = conflits.map((conflit) => conflit.poule).join(', ')
-  const raisons = new Set(conflits.map((conflit) => conflit.raison))
-  if (raisons.has('salle_pleine')) {
-    return `Poule(s) ${numeros} sans couloirs : la salle est trop petite pour ce nombre de poules.`
+  // ⚠️ **Groupé par raison, pas globalisé.** Une première version listait tous les numéros puis
+  // rendait la raison de plus haute priorité : une poule sans rencontre et une poule qui ne tient
+  // pas dans la salle s'annonçaient toutes deux « la salle est trop petite », donc l'organisateur
+  // agrandissait sa salle pour un problème qui n'en venait pas (relevé en revue).
+  const nonPosee = (n: string) => `Poule(s) ${n} sans couloirs : le plan n’est pas posé.`
+  const libelles: Record<string, ((numeros: string) => string) | undefined> = {
+    salle_pleine: (n) => `Poule(s) ${n} sans couloirs : la salle est trop petite.`,
+    sans_rencontre: (n) => `Poule(s) ${n} sans rencontre à tirer : rien à poser.`,
+    non_posee: nonPosee,
   }
-  if (raisons.has('sans_rencontre')) {
-    return `Poule(s) ${numeros} sans rencontre à tirer : rien à poser.`
+  const parRaison = new Map<string, number[]>()
+  for (const conflit of conflits) {
+    parRaison.set(conflit.raison, [...(parRaison.get(conflit.raison) ?? []), conflit.poule])
   }
-  return `Poule(s) ${numeros} sans couloirs : le plan n’est pas posé.`
+  return [...parRaison.entries()]
+    .map(([raison, numeros]) => {
+      const liste = numeros.join(', ')
+      return (libelles[raison] ?? nonPosee)(liste)
+    })
+    .join(' ')
 }
 
 function LignePhase({

@@ -124,7 +124,7 @@ function placeholderDuel(matchNumero: number): Duel {
  * Domicile unique de cette navigation : la photo porte les rencontres groupées par poule, et c'est
  * `numero` — le `match_numero` de la table `duel` — qui les identifie de bout en bout.
  */
-function dueDeLaPhase(
+function duelDeLaPhase(
   queryClient: QueryClient,
   tournoiId: number,
   phaseId: number,
@@ -187,7 +187,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
         const base =
           queryClient.getQueryData<Duel>(cleDuel(tournoiId, phaseId, matchNumero, famille)) ??
           (famille === 'poule'
-            ? dueDeLaPhase(queryClient, tournoiId, phaseId, matchNumero)
+            ? duelDeLaPhase(queryClient, tournoiId, phaseId, matchNumero)
             : null) ??
           placeholderDuel(matchNumero)
         return optimiste(base, corps)
