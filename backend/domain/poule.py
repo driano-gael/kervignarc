@@ -231,12 +231,22 @@ def nb_poules_pour(effectif: int, taille_visee: int) -> int:
     C'est pour ce cas que le CA exige que l'écran **montre** la répartition obtenue avant de la
     valider : l'organisateur voit la poule de 7 et corrige sa taille s'il n'en veut pas.
     """
+    # ⚠️ **Erreurs typées, pas des `ValueError` nus** (règle 5, correctif de revue).
+    #
+    # Le second cas est **atteignable depuis le client** : `ServicePoules._configuration` appelle
+    # `pour_effectif(len(participants))`, et une population vide est parfaitement licite — phase de
+    # poules composée avant les inscriptions, ou source amont qui ne prélève encore rien. Un
+    # `ValueError` n'étant ni `DomainError` ni `ApplicationError`, il tombait dans le filet
+    # « erreur inattendue » de la frontière API et sortait en **500** — sur l'écran de réglage, sur
+    # l'écran de saisie, et sur toute phase avale qui prélève dans des poules encore vides.
     if taille_visee < 2:
-        raise ValueError(
+        raise ConfigurationPouleInvalide(
             f"Une poule apparie au moins deux archers (taille visée reçue : {taille_visee})."
         )
     if effectif < 1:
-        raise ValueError(f"Aucun archer à répartir en poules (effectif reçu : {effectif}).")
+        raise ConfigurationPouleInvalide(
+            f"Aucun archer à répartir en poules (effectif reçu : {effectif})."
+        )
     return max(1, effectif // taille_visee)
 
 

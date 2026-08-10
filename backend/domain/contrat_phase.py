@@ -252,7 +252,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # ⚠️ **`route_l_archer` reste `False`**, pour une raison distincte et assumée : le routage
         # est la 5ᵉ question du contrat, et `application/routage.py` ne sait pas dire à un membre de
         # poule où il tire ensuite. Ce n'est ni au CA d'E05US023 ni à la liste d'ADR-0083
-        # §« Restent à écrire » — c'est une capacité **hors périmètre**, qui attendra une US.
+        # capacité **hors périmètre** d'ADR-0083, qui attendra une US dédiée.
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,

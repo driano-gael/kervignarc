@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pytest
 
+from domain.erreurs import ConfigurationPouleInvalide
 from domain.gabarit_salle import GabaritSalle
 from domain.participant import Participant
 from domain.placement_poules import placer_les_poules
@@ -82,11 +83,27 @@ def test_effectif_inferieur_au_double_de_la_taille_donne_une_seule_poule() -> No
 
 
 def test_la_taille_visee_doit_permettre_au_moins_une_rencontre() -> None:
-    """Une « poule » de 1 n'apparie personne : c'est un réglage à refuser, pas à arrondir."""
-    with pytest.raises(ValueError):
+    """Une « poule » de 1 n'apparie personne : c'est un réglage à refuser, pas à arrondir.
+
+    Le refus est une **erreur de domaine typée** et non un `ValueError` nu (règle 5) : le même
+    chemin est atteignable depuis le client par un effectif nul, où un `ValueError` sortait en 500
+    au lieu d'un refus lisible (correctif de revue).
+    """
+    with pytest.raises(ConfigurationPouleInvalide):
         nb_poules_pour(effectif=32, taille_visee=1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigurationPouleInvalide):
         nb_poules_pour(effectif=32, taille_visee=0)
+
+
+def test_un_effectif_nul_est_refuse_par_une_erreur_de_domaine() -> None:
+    """Zéro archer ne se répartit pas — mais le refus doit être **typé**, pas un `ValueError`.
+
+    C'est le pendant domaine du court-circuit de `ServicePoules` : le service rend une répartition
+    vide (une phase pas encore peuplée se consulte), et le moteur, lui, refuse net si on l'appelle
+    quand même.
+    """
+    with pytest.raises(ConfigurationPouleInvalide):
+        nb_poules_pour(effectif=0, taille_visee=4)
 
 
 def test_un_effectif_plus_petit_que_la_taille_ne_fabrique_pas_de_poule_vide() -> None:

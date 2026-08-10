@@ -15,6 +15,7 @@ transcrit deux fois de la même façon.
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import replace
 
 import pytest
@@ -24,12 +25,14 @@ from application.erreurs import PhasePasDesPoules, PhasePasReglee
 from application.poules import ServicePoules
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
+from domain.barrage import BarrageDePlaces, PorteeBarrage, TirBarrage
 from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
+from domain.participant import Participant
 from domain.phase import Phase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
@@ -196,6 +199,7 @@ class _Monde:
             self.barrages,  # type: ignore[arg-type]
             classement,
             saisie,
+            registre_par_defaut(),
         )
 
 
@@ -558,3 +562,161 @@ def test_une_poule_qui_qualifie_designe_ses_premiers() -> None:
 
     (poule,) = service.etat(monde.tournoi_id, phase_id).poules
     assert [q.archer_id for q in poule.qualifies] == [vainqueur.archer_id]
+
+
+# --------------------------------------------------------------------------------------------
+# CA — « le verdict du barrage referme le classement de la poule »
+# --------------------------------------------------------------------------------------------
+#
+# ⚠️ Ces tests **manquaient**, et c'est leur absence qui a laissé passer un bloquant : le double
+# `_FauxBarrageRepository` existait, déclaré, et n'était peuplé par aucun test.
+# `_verdicts_de_barrage` et `_appliquer_verdicts` n'avaient donc **aucune** couverture, à
+# aucun niveau — alors qu'ils portent le CA central de l'US, celui qui ferme la boucle
+# que `DETTE-028` laissait ouverte.
+#
+# Ils sont écrits depuis le CA (« le barrage se tire et se saisit », « le verdict referme ce
+# classement »), pas depuis le code : chacun décrit ce que l'organisateur observe.
+
+
+def _barrage_de_poule(
+    monde: _Monde,
+    phase_id: int | None,
+    rang_dispute: int | None,
+    archers: list[int],
+    scores: list[int],
+) -> BarrageDePlaces:
+    """Un barrage de portée `poule`, tiré en une manche — le geste de l'organisateur, en objet.
+
+    `phase_id` et `rang_dispute` sont **paramétrés** parce que ce sont eux qui décident si le
+    verdict s'applique : les passer en dur aurait masqué les deux pannes que ces tests ancrent.
+    """
+    participants = tuple(Participant.individuel(archer_id) for archer_id in archers)
+    return BarrageDePlaces(
+        depart_id=monde.depart_id,
+        portee=PorteeBarrage.POULE,
+        participants=participants,
+        cree_le=datetime.datetime(2026, 8, 10, 9, 0, tzinfo=datetime.UTC),
+        manches=(
+            tuple(
+                TirBarrage(participant, score)
+                for participant, score in zip(participants, scores, strict=True)
+            ),
+        ),
+        rang_dispute=rang_dispute,
+        phase_id=phase_id,
+    )
+
+
+def _poule_a_deux_ex_aequo(monde: _Monde) -> tuple[ServicePoules, int, list[int]]:
+    """Une poule de 3 où les trois se battent en cycle : personne ne se détache, tout est ex æquo.
+
+    Le cycle à trois (A bat B, B bat C, C bat A) est le cas d'égalité **irréductible** par
+    excellence — les cinq critères du §10.1 rendent le même décompte pour les trois. C'est
+    exactement la situation que le CA destine au barrage.
+    """
+    monde.inscrire(3)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=3))
+    service = monde.service()
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    membres = sorted(membre.archer_id for membre in poule.membres)
+    # Le **cycle** : chacun bat le suivant, le dernier bat le premier. Chaque membre finit à une
+    # victoire et une défaite, avec les mêmes sets, le même score et les mêmes 10 — les cinq
+    # critères du §10.1 rendent donc le même décompte pour les trois. Faire gagner « le haut »
+    # partout, au contraire, produit un ordre net : le décor doit construire l'égalité, pas
+    # l'espérer.
+    suivant = {membres[i]: membres[(i + 1) % 3] for i in range(3)}
+    for rencontre in poule.rencontres:
+        assert rencontre.haut is not None and rencontre.bas is not None
+        vainqueur = (
+            "haut" if suivant[rencontre.haut.archer_id] == rencontre.bas.archer_id else "bas"
+        )
+        _gagner(service, monde, rencontre.numero, vainqueur)
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    return service, phase_id, [ligne.participant.ref_id for ligne in poule.classement]
+
+
+def test_sans_barrage_les_ex_aequo_dune_poule_restent_partages() -> None:
+    """L'état de départ : le moteur **signale** l'égalité, il ne la tranche pas tout seul."""
+    monde = _Monde()
+    service, phase_id, _ = _poule_a_deux_ex_aequo(monde)
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+
+    assert poule.barrage_requis is True
+    assert any(ligne.ex_aequo for ligne in poule.classement)
+
+
+def test_le_verdict_dun_barrage_de_poule_referme_le_classement() -> None:
+    """CA — « le verdict **referme le classement** de la poule concernée ».
+
+    C'est la boucle complète : une poule finit à égalité, l'organisateur fait tirer un barrage de
+    portée `poule` sur cette phase et sur le rang partagé, et le classement cesse d'être ex æquo.
+    """
+    monde = _Monde()
+    service, phase_id, archers = _poule_a_deux_ex_aequo(monde)
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    rang_partage = min(ligne.rang for ligne in poule.classement if ligne.ex_aequo)
+
+    monde.barrages.barrages.append(
+        _barrage_de_poule(monde, phase_id, rang_partage, archers, scores=[10, 9, 8])
+    )
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert [ligne.rang for ligne in poule.classement] == sorted(
+        ligne.rang for ligne in poule.classement
+    )
+    assert not any(
+        ligne.ex_aequo for ligne in poule.classement
+    ), "le verdict a été tiré et clos : plus aucun rang ne doit rester partagé"
+    assert poule.barrage_requis is False
+
+
+def test_un_barrage_qui_ne_designe_pas_sa_phase_ne_referme_rien() -> None:
+    """⚠️ Le bloquant, retourné en oracle : **sans `phase_id`, le verdict n'est pas applicable**.
+
+    C'est la première des deux pannes qu'avait le formulaire d'annonce. Le service filtre les
+    barrages sur l'égalité des phases, et `None` n'égale aucune phase : le barrage se tirait, se
+    clôturait, et le classement restait ex æquo — sans le moindre message. Le test l'ancre pour que
+    le filtre ne se relâche pas « pour faire marcher un cas ».
+    """
+    monde = _Monde()
+    service, phase_id, archers = _poule_a_deux_ex_aequo(monde)
+
+    monde.barrages.barrages.append(_barrage_de_poule(monde, None, 1, archers, scores=[10, 9, 8]))
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert poule.barrage_requis is True
+    assert any(ligne.ex_aequo for ligne in poule.classement)
+
+
+def test_un_barrage_sans_rang_dispute_ne_referme_rien() -> None:
+    """⚠️ La **seconde** panne, indépendante de la première.
+
+    Même sur la bonne phase, un barrage sans `rang_dispute` rend un verdict d'ordre vide (c'est le
+    régime Big Shoot Off, qui désigne un sortant et non une place). Corriger `phase_id` seul aurait
+    donné un correctif qui paraît juste et ne referme toujours rien.
+    """
+    monde = _Monde()
+    service, phase_id, archers = _poule_a_deux_ex_aequo(monde)
+
+    monde.barrages.barrages.append(
+        _barrage_de_poule(monde, phase_id, None, archers, scores=[10, 9, 8])
+    )
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert poule.barrage_requis is True
+
+
+def test_un_barrage_non_resolu_laisse_le_rang_partage() -> None:
+    """Un barrage annoncé mais **pas encore tranché** n'apporte rien — et ne doit rien casser.
+
+    Le classement reste partagé, et l'annonce reste affichée : c'est ce qui empêche l'écran de
+    déclarer une poule close pendant que ses archers sont encore sur la ligne.
+    """
+    monde = _Monde()
+    service, phase_id, archers = _poule_a_deux_ex_aequo(monde)
+
+    monde.barrages.barrages.append(_barrage_de_poule(monde, phase_id, 1, archers, scores=[9, 9, 9]))
+
+    (poule,) = service.etat(monde.tournoi_id, phase_id).poules
+    assert poule.barrage_requis is True

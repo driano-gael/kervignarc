@@ -356,41 +356,45 @@ def _politiques_json(
         if isinstance(politiques_depth, dict):
             politiques_depth["depth"] = profondeur.en_config()
     if poules is not None:
-        # Même forme, même raison (E05US023, ADR-0083 §« sans migration ») :
-        # `config.policies.poules = {"nom": "poules", "taille": …, …}`. C'est **exactement** ce que
-        # le `config` JSON d'ADR-0046 permet — un format de tournoi est de la configuration, pas du
-        # code (règle 2) — et c'est ce qui fait que la seule migration de cette US porte sur le
-        # placement, pas sur le réglage.
+        # Le réglage d'une phase de poules vit **à la racine du `config`**, comme `validation`,
+        # `sources` et `effectif` — et non sous `policies` (E05US023, ADR-0083 §« sans migration »).
         #
-        # ⚠️ Le `nom` n'est pas décoratif : il vaut pour toutes les politiques d'ADR-0046 et
-        # désignera l'implémentation le jour où il en existera deux (un round-robin tronqué reste
-        # aujourd'hui un paramètre, `rencontres`, pas un second moteur). L'omettre ici obligerait à
-        # une migration de données pour l'ajouter, ce que le discriminant de `barrage.portee` a
-        # déjà appris à éviter.
-        politiques_poules = config.setdefault("policies", {})
-        if isinstance(politiques_poules, dict):
-            reglage: dict[str, object] = {"nom": "poules", "taille": poules.taille_visee}
-            # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un
-            # choix de l'organisateur, et le relire d'un défaut de code ferait changer ses points
-            # de match le jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que
-            # si elles sont réglées — leur absence *signifie* quelque chose (« la poule classe »,
-            # « round-robin complet »), qu'un `null` explicite ne dirait pas mieux.
-            reglage["bareme"] = [
-                poules.bareme.victoire,
-                poules.bareme.nul,
-                poules.bareme.defaite,
-            ]
-            if poules.nb_qualifies is not None:
-                reglage["qualifies"] = poules.nb_qualifies
-            if poules.rencontres_par_archer is not None:
-                reglage["rencontres"] = poules.rencontres_par_archer
-            # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les
-            # archers d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute
-            # phase écrite avant que l'option existe. Écrire `false` explicitement ne dirait rien de
-            # plus et ferait diverger deux documents équivalents.
-            if poules.departage_inter_poules:
-                reglage["departage"] = True
-            politiques_poules["poules"] = reglage
+        # ⚠️ C'est un correctif de revue, et il valait mieux le payer maintenant. La première
+        # version écrivait `config.policies.poules`, ce que `docs/modele-de-donnees.md` interdit en
+        # toutes lettres (« seules les familles d'ADR-0004 vivent sous `policies` ») et que le code
+        # refuse : `FamillePolitique` est documenté comme le **catalogue fermé** des clés de
+        # `config.policies`, et `assembler_politiques` lève `PolitiqueMalFormee` sur toute clé hors
+        # énumération. Rien ne cassait aujourd'hui — aucun appelant ne passe encore le `policies`
+        # complet d'une phase à son validateur —, mais le jour où l'on branche cette vérification,
+        # **toute phase de poules réglée** devenait illisible. Trois lignes ici ; une migration de
+        # données une fois qu'un tournoi est réglé en base.
+        #
+        # Et c'est juste sur le fond : une taille de poule, un barème, un nombre de qualifiés sont
+        # des **paramètres de phase**, pas des stratégies injectables. Il n'existe pas deux
+        # implémentations entre lesquelles un registre choisirait — d'où la disparition du `nom`,
+        # qui mimait un discriminant de politique que rien ne résolvait.
+        reglage: dict[str, object] = {"taille": poules.taille_visee}
+        # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un
+        # choix de l'organisateur, et le relire d'un défaut de code ferait changer ses points
+        # de match le jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que
+        # si elles sont réglées — leur absence *signifie* quelque chose (« la poule classe »,
+        # « round-robin complet »), qu'un `null` explicite ne dirait pas mieux.
+        reglage["bareme"] = [
+            poules.bareme.victoire,
+            poules.bareme.nul,
+            poules.bareme.defaite,
+        ]
+        if poules.nb_qualifies is not None:
+            reglage["qualifies"] = poules.nb_qualifies
+        if poules.rencontres_par_archer is not None:
+            reglage["rencontres"] = poules.rencontres_par_archer
+        # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les
+        # archers d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute
+        # phase écrite avant que l'option existe. Écrire `false` explicitement ne dirait rien de
+        # plus et ferait diverger deux documents équivalents.
+        if poules.departage_inter_poules:
+            reglage["departage"] = True
+        config["poules"] = reglage
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -439,7 +443,10 @@ def _lire_barrage_jusqu_au(config: Any) -> int | None:
 
 
 def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
-    """Le réglage d'une phase de poules, lu dans `config.policies.poules` (E05US023, ADR-0083).
+    """Le réglage d'une phase de poules, lu **à la racine** du `config` (E05US023, ADR-0083).
+
+    Racine et non `policies` : c'est un paramètre de phase, au même titre que `validation`,
+    `sources` et `effectif`, et `config.policies` est un catalogue **fermé** (cf. l'écriture).
 
     Absence = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres, et un
     déroulé s'enregistre en cours de composition (brouillon d'ADR-0063). C'est la **composition du
@@ -457,20 +464,28 @@ def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
     points de match. Son absence, elle, ne peut venir que d'une ligne écrite à la main — on retombe
     alors sur le défaut, seul repli honnête.
     """
-    politiques = config.get("policies")
-    if not isinstance(politiques, dict):
-        return None
-    poules = politiques.get("poules")
+    poules = config.get("poules")
     if not isinstance(poules, dict):
         return None
+    taille = poules.get("taille")
+    if taille is None:
+        # ⚠️ Erreur **typée**, et non `KeyError` nu ni `None` silencieux.
+        #
+        # `_vers_modele_phase` appelle cette fonction **hors** du `try/except` qui enveloppe la
+        # lecture d'une étape : un `int(poules["taille"])` sur une clé absente en sortait donc en
+        # `KeyError`, donc en 500 brut, au lieu du « configuration illisible » d'ADR-0007 que la
+        # docstring annonce (relevé en revue). Rendre `None` serait pire encore : « pas de taille »
+        # se lirait « phase non réglée », et le jour J la composition inventerait une répartition
+        # là où la base dit quelque chose d'incohérent.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     bareme = poules.get("bareme")
     qualifies = poules.get("qualifies")
     rencontres = poules.get("rencontres")
     return ReglageDePoules(
-        taille_visee=int(poules["taille"]),
+        taille_visee=int(taille),
         bareme=(
             BaremePoule(victoire=int(bareme[0]), nul=int(bareme[1]), defaite=int(bareme[2]))
-            if isinstance(bareme, list)
+            if isinstance(bareme, list) and len(bareme) >= 3
             else BaremePoule()
         ),
         nb_qualifies=None if qualifies is None else int(qualifies),

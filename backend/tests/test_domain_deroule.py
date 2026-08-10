@@ -425,12 +425,24 @@ def test_un_effectif_declare_que_les_prelevements_ne_remplissent_pas_est_signale
 # --- CA E05US023 : le choc de poule est signalé à l'atelier, jamais corrigé en douce -------------
 
 
-def _poules(ordre: int, sources: tuple[SourcePhase, ...] = ()) -> ModelePhase:
+def _poules(
+    ordre: int,
+    sources: tuple[SourcePhase, ...] = (),
+    effectif: int | None = None,
+    taille_visee: int = 4,
+) -> ModelePhase:
+    """Une phase de poules. `effectif` et `taille_visee` fixent **P**, le nombre de poules.
+
+    Les deux sont paramétrables depuis le correctif de revue : c'est P — et sa parité — qui décide
+    si le serpent peut réunir deux membres d'une même poule, et sans lui le signal ne peut rien
+    prouver.
+    """
     return ModelePhase(
         ordre=ordre,
         type=TypePhase.POULES,
         sources=sources,
-        poules=ReglageDePoules(taille_visee=4, nb_qualifies=4),
+        effectif=effectif,
+        poules=ReglageDePoules(taille_visee=taille_visee, nb_qualifies=4),
     )
 
 
@@ -457,20 +469,56 @@ def test_un_tableau_nourri_par_des_poules_hors_puissance_de_deux_avertit() -> No
     assert projection.est_applicable
 
 
-def test_un_tableau_nourri_par_des_poules_a_effectif_puissance_de_deux_navertit_pas() -> None:
-    """CA E05US023, l'autre versant : « le serpent sépare naturellement » — mesuré sans choc.
+def test_un_tableau_nourri_par_un_nombre_pair_de_poules_sans_bye_navertit_pas() -> None:
+    """CA E05US023, l'autre versant : « le serpent sépare naturellement » — mais **à P pair**.
 
-    Le 1ᵉʳ et le 2ᵉ d'une poule sont distants de `P` rangs, et le serpent apparie des rangs de somme
-    constante : sans bye, aucun croisement au premier tour. Avertir ici serait du bruit, et le bruit
-    est ce qui fait ignorer les vrais signaux.
+    Le membre `k` d'une poule occupe les rangs `k, k+P, k+2P…`, et le serpent apparie `r` contre
+    `N+1-r`. Deux membres se croisent donc quand `2r ≡ N+1 (mod P)` a une solution. À **P pair** et
+    sans bye, il n'y en a pas : 16 archers en 4 poules ne produisent aucun choc, et avertir ici
+    serait du bruit — le bruit est ce qui fait ignorer les vrais signaux.
     """
     etapes = [
         _qualification(),
-        _poules(2, (SourcePhase.par_rangs(1, 1, 16),)),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 16),), effectif=16, taille_visee=4),  # P = 4
         _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
     ]
 
     assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_nombre_impair_de_poules_avertit_meme_a_effectif_puissance_de_deux() -> None:
+    """⚠️ Le contre-exemple qui invalide l'oracle « puissance de 2 ⇒ pas de choc ».
+
+    24 archers en poules de 8 font **3** poules ; un tableau de 16 y prélève les rangs 1 à 16. Le
+    serpent apparie alors (1, 16), (4, 13) et (7, 10) — **trois** paires de la poule 1, dont le n° 1
+    du tableau contre un membre de son propre groupe **en match d'ouverture**. L'effectif est
+    pourtant une puissance de 2, donc l'ancienne règle ne disait rien.
+
+    Le test est écrit depuis le CA (« signaler à l'atelier plutôt que corriger en douce ») et non
+    depuis le code : c'est l'arithmétique du serpent qui l'établit, vérifiable à la main.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 24),), effectif=24, taille_visee=8),  # P = 3
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_nombre_de_poules_indeterminable_avertit_plutot_que_de_se_taire() -> None:
+    """Sans effectif déclaré à l'amont, on ne peut pas prouver l'innocuité — donc on signale.
+
+    Un avertissement de trop coûte une lecture ; un avertissement manquant coûte un tournoi mal
+    apparié. Le CA demande de ne pas mentir, pas d'être fin.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 16),)),  # effectif non déclaré → P inconnu
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
 
 
 def test_un_tableau_nourri_par_une_qualification_navertit_jamais() -> None:

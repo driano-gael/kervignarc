@@ -377,7 +377,12 @@ def _jouer_toute_la_phase(
 
     Rend, poule par poule, les archers dans l'ordre du classement obtenu.
     """
-    etat = client.get(f"/api/v1/poules/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+    # `/saisie` et non `/etat` : c'est la route **scoreur** qui porte le duel entier. `/etat` est la
+    # consultation, à contenu restreint (correctif de revue — l'anonyme n'a à voir ni les flèches ni
+    # le nom du validateur).
+    etat = client.get(
+        f"/api/v1/poules/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
+    ).json()
     for poule in etat["poules"]:
         for rencontre in poule["rencontres"]:
             duel = rencontre["duel"]

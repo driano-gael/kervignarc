@@ -738,6 +738,9 @@ def create_app(
         barrage_repository,
         app.state.service_classement,
         app.state.service_saisie_duels,
+        # Le **même** registre que le classement (ligne 577) : un seuil de barrage réglé sur une
+        # phase de poules doit s'y résoudre comme ailleurs, sinon la politique est décorative.
+        app.state.registre_politiques,
     )
     # ⚠️ **Le seul branchement tardif du projet, et il est ici pour être vu** (règle 8). Les deux
     # services se tiennent par les deux bouts : celui des poules a besoin de la saisie ci-dessus, la

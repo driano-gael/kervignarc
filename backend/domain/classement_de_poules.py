@@ -49,7 +49,7 @@ n'enjambe pas, sans quoi un ex æquo de fond de poule rendrait toute la phase il
 **Pourquoi le domaine.** La fonction croise des `RangPoule`, un `LigneClassement` et une politique
 `Tiebreak` — trois notions du domaine, aucune infrastructure, aucun repository. C'est l'argument
 exact de `classement_de_tableau`, et il n'y a aucune raison que les deux jumeaux vivent dans deux
-couches. *(ADR-0083 §« Restent à écrire » plaçait cette fonction en `application/poules.py` ; elle
+couches. *(ADR-0083 plaçait d'abord cette fonction en `application/poules.py` ; elle
 descend ici pour cette raison, et l'ADR est corrigé en conséquence.)*
 
 Domaine **pur** : aucun framework, aucune autre couche (règle 1).

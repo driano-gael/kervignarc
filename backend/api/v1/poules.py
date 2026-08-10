@@ -44,7 +44,7 @@ from application.poules import (
     RepartitionPoules,
     ServicePoules,
 )
-from application.saisie_duels import EtatDuel
+from application.saisie_duels import Duelliste, EtatDuel
 from domain.blason import ZoneScore
 from domain.duel import Cote
 from domain.scoreur import Scoreur
@@ -81,6 +81,15 @@ class RepartitionReponse(BaseModel):
         )
 
 
+def _couloirs(places: tuple[tuple[int, str], ...] | None) -> list[list[int | str]] | None:
+    """Projection JSON d'une suite de places `(cible, couloir)`. Domicile **unique** de ce format.
+
+    Écrit trois fois à l'identique dans la première version (rencontre, bloc, et le jumeau public
+    ajouté depuis) : une divergence entre eux se serait lue comme une différence de contrat.
+    """
+    return None if places is None else [[cible, couloir] for cible, couloir in places]
+
+
 class RencontreReponse(BaseModel):
     """Une rencontre de poule, prête pour le pavé de saisie d'E04US013.
 
@@ -104,12 +113,56 @@ class RencontreReponse(BaseModel):
             numero=rencontre.numero,
             poule=rencontre.poule,
             tour=rencontre.tour,
-            couloirs=(
-                None
-                if rencontre.couloirs is None
-                else [[cible, couloir] for cible, couloir in rencontre.couloirs]
-            ),
+            couloirs=_couloirs(rencontre.couloirs),
             duel=DuelReponse.de_etat(_en_etat_duel(rencontre)),
+        )
+
+
+class RencontrePubliqueReponse(BaseModel):
+    """La **même** rencontre, vue de qui n'a pas à saisir — écran de salle, public, écran admin.
+
+    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et c'est la raison d'être de ce
+    DTO. `RencontreReponse` ci-dessus sert `DuelReponse` en entier : chaque flèche de chaque volée,
+    le barrage, les zones et le barème du pavé, et le **nom du bénévole qui a validé**. Rien de
+    cela n'a de raison d'être lu hors de la saisie — c'est mot pour mot la décision qu'`api/v1/
+    tableaux.py` porte pour les arbres, et que la première version d'E05US023 a contournée sans le
+    vouloir en servant le DTO du scoreur sur une route **anonyme** (relevé en revue).
+
+    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
+    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
+
+    `termine` et `validee` disent deux choses différentes : le tir est allé au bout / le scoreur a
+    scellé. Le public voit « en attente de validation » entre les deux.
+    """
+
+    numero: int
+    poule: int
+    tour: int
+    couloirs: list[list[int | str]] | None
+    haut: DuellisteReponse | None
+    bas: DuellisteReponse | None
+    points_haut: int | None
+    points_bas: int | None
+    vainqueur: str | None
+    termine: bool
+    validee: bool
+
+    @staticmethod
+    def de_rencontre(rencontre: RencontreAffichee) -> RencontrePubliqueReponse:
+        duel = rencontre.duel
+        issue = None if duel is None else duel.resultat
+        return RencontrePubliqueReponse(
+            numero=rencontre.numero,
+            poule=rencontre.poule,
+            tour=rencontre.tour,
+            couloirs=_couloirs(rencontre.couloirs),
+            haut=DuellisteReponse.de_duelliste(rencontre.haut),
+            bas=DuellisteReponse.de_duelliste(rencontre.bas),
+            points_haut=None if issue is None else issue.points_haut,
+            points_bas=None if issue is None else issue.points_bas,
+            vainqueur=None if issue is None or issue.vainqueur is None else issue.vainqueur.value,
+            termine=False if issue is None else issue.termine,
+            validee=False if duel is None else duel.verrouille,
         )
 
 
@@ -129,6 +182,35 @@ class RangPouleReponse(BaseModel):
     nb_dix: int
     nb_neuf: int
     ex_aequo: bool
+
+
+def _duellistes(duellistes: tuple[Duelliste | None, ...]) -> list[DuellisteReponse]:
+    """Projection d'une suite de duellistes, les inconnus **retirés** (et non rendus `null`)."""
+    return [
+        reponse
+        for duelliste in duellistes
+        if (reponse := DuellisteReponse.de_duelliste(duelliste)) is not None
+    ]
+
+
+def _bloc(poule: PouleAffichee) -> list[list[int | str]] | None:
+    return None if poule.bloc is None else _couloirs(poule.bloc.places)
+
+
+def _classement(poule: PouleAffichee) -> list[RangPouleReponse]:
+    return [
+        RangPouleReponse(
+            rang=ligne.rang,
+            archer_id=ligne.participant.ref_id,
+            points_match=ligne.decompte.points_match,
+            diff_sets=ligne.decompte.diff_sets,
+            diff_score=ligne.decompte.diff_score,
+            nb_dix=ligne.decompte.nb_dix,
+            nb_neuf=ligne.decompte.nb_neuf,
+            ex_aequo=ligne.ex_aequo,
+        )
+        for ligne in poule.classement
+    ]
 
 
 class PouleReponse(BaseModel):
@@ -155,35 +237,43 @@ class PouleReponse(BaseModel):
     def de_poule(poule: PouleAffichee) -> PouleReponse:
         return PouleReponse(
             numero=poule.numero,
-            membres=[
-                reponse
-                for membre in poule.membres
-                if (reponse := DuellisteReponse.de_duelliste(membre)) is not None
-            ],
-            bloc=(
-                None
-                if poule.bloc is None
-                else [[cible, couloir] for cible, couloir in poule.bloc.places]
-            ),
+            membres=_duellistes(poule.membres),
+            bloc=_bloc(poule),
             rencontres=[RencontreReponse.de_rencontre(r) for r in poule.rencontres],
-            classement=[
-                RangPouleReponse(
-                    rang=ligne.rang,
-                    archer_id=ligne.participant.ref_id,
-                    points_match=ligne.decompte.points_match,
-                    diff_sets=ligne.decompte.diff_sets,
-                    diff_score=ligne.decompte.diff_score,
-                    nb_dix=ligne.decompte.nb_dix,
-                    nb_neuf=ligne.decompte.nb_neuf,
-                    ex_aequo=ligne.ex_aequo,
-                )
-                for ligne in poule.classement
-            ],
-            qualifies=[
-                reponse
-                for qualifie in poule.qualifies
-                if (reponse := DuellisteReponse.de_duelliste(qualifie)) is not None
-            ],
+            classement=_classement(poule),
+            qualifies=_duellistes(poule.qualifies),
+            barrage_requis=poule.barrage_requis,
+        )
+
+
+class PoulePubliqueReponse(BaseModel):
+    """La même poule, **sans le détail de saisie** de ses rencontres.
+
+    Cf. `RencontrePubliqueReponse`.
+
+    Tout le reste est identique et **volontairement servi** : la composition, le bloc de couloirs,
+    le classement complet avec ses cinq critères et le drapeau de barrage requis n'ont rien de
+    confidentiel — c'est ce qu'un spectateur vient lire, et ce dont l'écran d'organisation a besoin
+    pour savoir si le plan est posé et si une poule attend un départage.
+    """
+
+    numero: int
+    membres: list[DuellisteReponse]
+    bloc: list[list[int | str]] | None
+    rencontres: list[RencontrePubliqueReponse]
+    classement: list[RangPouleReponse]
+    qualifies: list[DuellisteReponse]
+    barrage_requis: bool
+
+    @staticmethod
+    def de_poule(poule: PouleAffichee) -> PoulePubliqueReponse:
+        return PoulePubliqueReponse(
+            numero=poule.numero,
+            membres=_duellistes(poule.membres),
+            bloc=_bloc(poule),
+            rencontres=[RencontrePubliqueReponse.de_rencontre(r) for r in poule.rencontres],
+            classement=_classement(poule),
+            qualifies=_duellistes(poule.qualifies),
             barrage_requis=poule.barrage_requis,
         )
 
@@ -213,10 +303,32 @@ class EtatPoulesReponse(BaseModel):
             phase_id=etat.phase_id,
             repartition=RepartitionReponse.de_repartition(etat.repartition),
             poules=[PouleReponse.de_poule(poule) for poule in etat.poules],
-            conflits=[
-                ConflitReponse(poule=conflit.poule, raison=conflit.raison.value)
-                for conflit in etat.conflits
-            ],
+            conflits=_conflits(etat),
+        )
+
+
+def _conflits(etat: EtatPoules) -> list[ConflitReponse]:
+    return [
+        ConflitReponse(poule=conflit.poule, raison=conflit.raison.value)
+        for conflit in etat.conflits
+    ]
+
+
+class EtatPoulesPubliqueReponse(BaseModel):
+    """La photo d'une phase, **sans le détail de saisie**. Cf. `RencontrePubliqueReponse`."""
+
+    phase_id: int
+    repartition: RepartitionReponse
+    poules: list[PoulePubliqueReponse]
+    conflits: list[ConflitReponse]
+
+    @staticmethod
+    def de_etat(etat: EtatPoules) -> EtatPoulesPubliqueReponse:
+        return EtatPoulesPubliqueReponse(
+            phase_id=etat.phase_id,
+            repartition=RepartitionReponse.de_repartition(etat.repartition),
+            poules=[PoulePubliqueReponse.de_poule(poule) for poule in etat.poules],
+            conflits=_conflits(etat),
         )
 
 
@@ -321,13 +433,34 @@ async def lire_repartition(tournoi_id: int, phase_id: int, request: Request) -> 
     return RepartitionReponse.de_repartition(repartition)
 
 
-@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatPoulesReponse)
-async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatPoulesReponse:
-    """La photo complète : composition, plan posé, rencontres tirées, classements, barrages requis.
+@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatPoulesPubliqueReponse)
+async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatPoulesPubliqueReponse:
+    """La photo d'une phase : composition, plan posé, avancement, classements, barrages requis.
 
-    Lecture ouverte : c'est aussi ce que l'écran de salle et le public affichent.
+    Lecture ouverte — c'est ce que l'écran de salle, le public et l'écran d'organisation affichent —
+    donc **contenu restreint** : cf. `RencontrePubliqueReponse`. Le détail de saisie (flèches,
+    barrage, zones, barème, nom du validateur) se lit sur `/saisie`, derrière `exiger_scoreur`.
     """
     service: ServicePoules = request.app.state.service_poules
+    etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
+    return EtatPoulesPubliqueReponse.de_etat(etat)
+
+
+@router.get("/saisie/{tournoi_id}/{phase_id}", response_model=EtatPoulesReponse)
+async def lire_pour_saisie(
+    tournoi_id: int,
+    phase_id: int,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> EtatPoulesReponse:
+    """La même photo, **avec le pavé de saisie** de chaque rencontre. Scoreur, dans son tournoi.
+
+    Jumelle exacte de `duels.lire_tableau` : même garde, même raison. Ce que cette route ajoute à
+    la précédente — les manches tirées, le barrage interne, les zones et le barème, le nom du
+    scoreur qui a validé — n'a de lecteur qu'à la saisie.
+    """
+    service: ServicePoules = request.app.state.service_poules
+    _exiger_meme_tournoi(scoreur, tournoi_id)
     etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
     return EtatPoulesReponse.de_etat(etat)
 
@@ -337,22 +470,28 @@ async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatPou
 
 @router.post(
     "/plan/{tournoi_id}/{phase_id}/regenerer",
-    response_model=EtatPoulesReponse,
+    response_model=EtatPoulesPubliqueReponse,
     dependencies=[Depends(exiger_admin)],
 )
-async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> EtatPoulesReponse:
+async def regenerer_plan(
+    tournoi_id: int, phase_id: int, request: Request
+) -> EtatPoulesPubliqueReponse:
     """Pose les poules sur la salle et **remplace** le plan existant (**action admin**).
 
     Le geste est volontairement grossier — on repose tout — parce que l'unité déplaçable est la
     **poule** et que la contiguïté de son bloc est l'invariant du format. `404
     gabarit_du_tournoi_absent` si aucune salle n'est appliquée au tournoi.
+
+    Rend la photo **publique** : c'est l'écran d'organisation qui appelle, il n'a pas à recevoir le
+    détail de saisie, et c'est la même forme que celle qu'il relit ensuite — donc la même entrée de
+    cache côté client, sans conversion.
     """
     service: ServicePoules = request.app.state.service_poules
     write_queue: WriteQueue = request.app.state.write_queue
     etat = await asyncio.wrap_future(
         write_queue.submit(lambda: service.regenerer_plan(tournoi_id, phase_id))
     )
-    return EtatPoulesReponse.de_etat(etat)
+    return EtatPoulesPubliqueReponse.de_etat(etat)
 
 
 # --- Saisie d'une rencontre (scoreur, via la file) ---

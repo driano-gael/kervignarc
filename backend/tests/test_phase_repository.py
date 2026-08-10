@@ -913,7 +913,7 @@ def test_une_profondeur_alteree_remonte_en_erreur_typee(
         PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
 
 
-# --- E05US023 / ADR-0083 : le réglage de poules sous `config.policies` -------------------------
+# --- E05US023 / ADR-0083 : le réglage de poules à la racine du `config` -------------------------
 
 
 def _poules_brutes(db: Database, depart_id: DepartId, config: str) -> None:
@@ -934,10 +934,13 @@ def _poules_brutes(db: Database, depart_id: DepartId, config: str) -> None:
 
 
 def test_le_reglage_de_poules_fait_l_aller_retour(tmp_path: Path) -> None:
-    """`config.policies.poules` s'écrit et se relit à l'identique — **sans migration**.
+    """`config.poules` s'écrit et se relit à l'identique — **sans migration**.
 
-    C'est le CA « les réglages vivent sous `config.policies` » : ils entrent dans la forme nommée
-    d'ADR-0046, et c'est exactement ce que le `config` JSON permet. Aucune colonne neuve, alors que
+    C'est le CA « le réglage vit dans le `config`, sans migration » : il tient dans le JSON
+    existant. **À la racine**, comme `validation`/`sources`/`effectif`, et non sous `policies` —
+    ce dernier est un catalogue **fermé** de familles injectables (`FamillePolitique`), et une
+    taille de poule n'est pas une stratégie (arbitrage de revue, reversé au CA). Aucune colonne
+    neuve, alors que
     le *placement* des poules, lui, en demandera une (ADR-0083 §3) — la différence tient à ce que
     le réglage est **de la configuration** et le plan **de la donnée d'exploitation**.
     """
@@ -982,7 +985,7 @@ def test_un_bareme_non_defaut_ne_se_relit_pas_du_defaut_de_code(tmp_path: Path) 
         with db.session_factory() as session:
             ligne = session.execute(text("SELECT config FROM deroule_etape")).scalar_one()
 
-        assert json.loads(ligne)["policies"]["poules"]["bareme"] == [3, 1, 0]
+        assert json.loads(ligne)["poules"]["bareme"] == [3, 1, 0]
     finally:
         db.engine.dispose()
 
@@ -1009,10 +1012,10 @@ def test_une_phase_de_poules_non_reglee_se_relit_sans_reglage(tmp_path: Path) ->
 @pytest.mark.parametrize(
     "poules",
     [
-        {"nom": "poules", "taille": 1},  # une poule apparie au moins deux archers
-        {"nom": "poules", "taille": 4, "bareme": [0, 1, 3]},  # perdre ferait monter
-        {"nom": "poules", "taille": 4, "qualifies": 5},  # plus de qualifiés que de membres
-        {"nom": "poules"},  # pas de taille : on ne devine pas la répartition
+        {"taille": 1},  # une poule apparie au moins deux archers
+        {"taille": 4, "bareme": [0, 1, 3]},  # perdre ferait monter
+        {"taille": 4, "qualifies": 5},  # plus de qualifiés que de membres
+        {},  # pas de taille : on ne devine pas la répartition
     ],
 )
 def test_un_reglage_de_poules_altere_remonte_en_erreur_typee(
@@ -1028,7 +1031,7 @@ def test_un_reglage_de_poules_altere_remonte_en_erreur_typee(
     db = _base(tmp_path)
     try:
         depart_id = _depart(db)
-        _poules_brutes(db, depart_id, json.dumps({"policies": {"poules": poules}}))
+        _poules_brutes(db, depart_id, json.dumps({"poules": poules}))
 
         with pytest.raises(InfrastructureError):
             PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))

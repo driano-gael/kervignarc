@@ -49,6 +49,7 @@ from dataclasses import dataclass, replace
 
 from application.classements import ServiceClassement
 from application.erreurs import (
+    DuelDesynchronise,
     GabaritDuTournoiAbsent,
     PhaseIntrouvable,
     PhasePasDesPoules,
@@ -75,7 +76,7 @@ from domain.placement_poules import (
     RaisonConflitPoule,
     placer_les_poules,
 )
-from domain.politiques import TiebreakPoules
+from domain.politiques import RegistrePolitiques, Tiebreak, TiebreakPoules, assembler_politiques
 from domain.ports import (
     BarrageRepository,
     DuelRepository,
@@ -88,6 +89,7 @@ from domain.poule import (
     ConfigurationPoules,
     Poule,
     RangPoule,
+    ReglageDePoules,
     RencontrePoule,
     ResultatRencontre,
     classement_de_poule,
@@ -197,7 +199,13 @@ class ServicePoules:
         barrages: BarrageRepository,
         classements: ServiceClassement,
         saisie_duels: ServiceSaisieDuels,
+        registre: RegistrePolitiques,
     ) -> None:
+        # Le registre est le **point d'injection** des politiques du moteur (règle 2). Il manquait :
+        # `_poule_affichee` appelait `classement_de_poule` sans `tiebreak`, donc un
+        # `barrage_jusqu_au` réglé sur une phase de poules était honoré pour la qualification et
+        # **silencieusement ignoré** dans les poules — la politique devenait une décoration.
+        self._registre = registre
         self._tournois = tournois
         self._phases = phases
         self._gabarits = gabarits
@@ -276,8 +284,19 @@ class ServicePoules:
         """
         phase_id = phase.id
         assert phase_id is not None, "`_population` a déjà refusé une phase sans identité."
+        if not participants:
+            # Même raison qu'à `_repartition` : une phase encore vide est une photo **vide**, pas
+            # une erreur. Sans cette porte, l'écran de saisie et toute phase avale qui prélève dans
+            # des poules pas encore peuplées sortaient en 500.
+            return EtatPoules(
+                phase_id=phase_id,
+                repartition=self._repartition(phase, 0),
+                poules=(),
+                conflits=(),
+            )
         lignes = {ligne.archer_id: ligne for ligne in participants}
         configuration = self._configuration(phase, len(participants))
+        tiebreak = self._tiebreak(phase)
         poules = composer_poules(
             [Participant.individuel(ligne.archer_id) for ligne in participants], configuration
         )
@@ -314,7 +333,9 @@ class ServicePoules:
                 )
                 position += 1
             affichees.append(
-                self._poule_affichee(poule, rencontres, configuration, lignes, blocs, verdicts)
+                self._poule_affichee(
+                    poule, rencontres, configuration, lignes, blocs, verdicts, tiebreak
+                )
             )
         return EtatPoules(
             phase_id=phase_id,
@@ -431,10 +452,61 @@ class ServicePoules:
         # doit lever plutôt que produire un pavé vide, sinon on enregistrerait un score dont on ne
         # sait pas s'il est légal (même exigence qu'E04US002).
         zones = self._saisie_duels.zones_strictes(haut, self._lignes(phase_id))
-        courant = rencontre.duel or Duel.vide(rencontre.bareme, haut, bas)
+        courant = self._duel_courant(phase_id, numero, rencontre.bareme, haut, bas)
         duel = appliquer(courant, rencontre.bareme, zones)
         self._duels.enregistrer(phase_id, numero, duel)
         return replace(rencontre, duel=duel)
+
+    def _tiebreak(self, phase: Phase) -> Tiebreak:
+        """Le départage **interne** à une poule, résolu par le registre (ADR-0004, ADR-0066).
+
+        Sans seuil réglé sur la phase : l'ordre à cinq critères du §10.1, qui est le défaut du
+        domaine. Réglé, le seuil se résout **par le registre**, sur la forme `config.policies`
+        d'ADR-0046 — exactement comme `ServiceClassement._tiebreak`, et pour la même raison :
+        instancier la stratégie à la main ferait de la politique une décoration.
+        """
+        if phase.barrage_jusqu_au is None:
+            return TiebreakPoules()
+        politiques = assembler_politiques(
+            {"tiebreak": {"nom": "barrage", "jusqu_au": phase.barrage_jusqu_au}},
+            self._registre,
+        )
+        tiebreak = politiques.tiebreak
+        return tiebreak if tiebreak is not None else TiebreakPoules()
+
+    def _duel_courant(
+        self,
+        phase_id: PhaseId,
+        numero: int,
+        bareme: BaremeDuel,
+        haut: Participant,
+        bas: Participant,
+    ) -> Duel:
+        """Le duel persisté de la rencontre, ou un duel vierge — **jamais un écrasement**.
+
+        ⚠️ Jumeau exact de `ServiceSaisieDuels._duel_courant`, et c'est tout l'objet du correctif.
+        L'écriture partait de `rencontre.duel or Duel.vide(...)`, ce qui paraît anodin et ne l'est
+        pas : `rencontre.duel` vaut aussi `None` quand une ligne **existe** en base mais oppose
+        d'autres duellistes — c'est l'ancrage d'ADR-0049 §4, qui la *masque* en lecture pour ne pas
+        attribuer un score au mauvais couple. Le `or` reconstruisait alors un duel vierge et
+        `enregistrer` **remplaçait la ligne** : un tir validé disparaissait sans trace dès qu'une
+        composition avait bougé (validation tardive, forfait, effectif corrigé). Pire, le verrou de
+        validation sautait avec — un `Duel.vide` n'a pas de `validee_par`, donc `DuelVerrouille` ne
+        se déclenchait pas et une rencontre déjà scellée se réécrivait.
+
+        Le chemin tableau, lui, refusait déjà en 409. Deux régimes pour le même geste, sur la même
+        table, dont un qui perd de la donnée (relevé en revue).
+        """
+        duel = self._duels.charger(phase_id, numero, bareme=bareme)
+        if duel is None:
+            return Duel.vide(bareme, haut, bas)
+        if (duel.participant_haut, duel.participant_bas) != (haut, bas):
+            raise DuelDesynchronise(
+                f"Le tir de la rencontre {numero} oppose d'autres duellistes : la composition de "
+                "la poule a changé depuis. Reposez le plan ou rétablissez la population avant de "
+                "saisir."
+            )
+        return duel
 
     def _lignes(self, phase_id: PhaseId) -> dict[int, LigneClassement]:
         """Le classement du départ de cette phase, indexé par archer — pour résoudre le blason."""
@@ -468,7 +540,20 @@ class ServicePoules:
         )
         plan = placer_les_poules(poules, gabarit)
         self._placements.definir_plan(phase_id, plan.blocs)
-        return self.etat(tournoi_id, phase_id)
+        etat = self.etat(tournoi_id, phase_id)
+        # ⚠️ Les conflits **du plan** l'emportent sur ceux que la relecture re-synthétise.
+        #
+        # `_conflits_du_plan` ne sait dire qu'une chose — « aucun bloc ne porte cette poule »,
+        # donc `NON_POSEE`. C'est exact en lecture (rien n'est persisté qui dise *pourquoi*),
+        # et faux
+        # juste après une pose : ici on sait que la salle était trop petite ou que la poule n'avait
+        # aucune rencontre, `placer_les_poules` vient de le rapporter. Sans ce report,
+        # l'organisateur
+        # dont la salle est trop petite lisait « le plan n'est pas posé, à vous de le générer »
+        # **au moment même où il venait de le générer**, et pouvait recommencer indéfiniment — et
+        # `SALLE_PLEINE` / `SANS_RENCONTRE` n'avaient aucun appelant de production malgré leurs
+        # tests de domaine (relevé en revue d'E05US023).
+        return replace(etat, conflits=plan.conflits)
 
     # --- Rouages ---------------------------------------------------------------------------------
 
@@ -508,6 +593,19 @@ class ServicePoules:
 
     def _repartition(self, phase: Phase, effectif: int) -> RepartitionPoules:
         """La répartition obtenue — les tailles réelles, pas seulement leur nombre."""
+        reglage_declare = self._reglage(phase)
+        if effectif == 0:
+            # ⚠️ **Une phase sans participant se lit, elle ne se refuse pas** (correctif de revue).
+            #
+            # Le cas est licite et fréquent : une phase de poules se compose et se règle **avant**
+            # que sa population existe (inscriptions à venir, ou source amont qui ne prélève encore
+            # rien). `nb_poules_pour` refuse l'effectif 0 — à raison, on ne répartit pas zéro
+            # archer —, mais l'écran de réglage, lui, doit rester consultable : sa docstring promet
+            # qu'il « n'exige ni gabarit, ni plan posé, ni le moindre tir », et exiger au moins un
+            # inscrit sans le dire est la même promesse rompue. Zéro poule est la réponse juste.
+            return RepartitionPoules(
+                effectif=0, taille_visee=reglage_declare.taille_visee, tailles=()
+            )
         configuration = self._configuration(phase, effectif)
         # On compte les tailles **par le serpent lui-même** plutôt que par une division : c'est le
         # même code qui répartira le jour J, donc l'écran ne peut pas annoncer autre chose que ce
@@ -516,13 +614,24 @@ class ServicePoules:
         poules = composer_poules(
             [Participant.individuel(rang) for rang in range(1, effectif + 1)], configuration
         )
-        reglage = phase.poules
-        assert reglage is not None, "`_configuration` a déjà refusé une phase non réglée."
         return RepartitionPoules(
             effectif=effectif,
-            taille_visee=reglage.taille_visee,
+            taille_visee=reglage_declare.taille_visee,
             tailles=tuple(len(poule.membres) for poule in poules),
         )
+
+    def _reglage(self, phase: Phase) -> ReglageDePoules:
+        """Le réglage de la phase, ou `PhasePasReglee` — la garde, **sans** l'effectif.
+
+        Séparée de `_configuration` parce que la répartition d'un effectif nul a besoin de la
+        première (pour rendre la taille visée) sans pouvoir passer la seconde.
+        """
+        if phase.poules is None:
+            raise PhasePasReglee(
+                f"La phase {phase.id} est une phase de poules, mais sa taille de poule n'est pas "
+                "réglée : l'organisateur doit la fixer à l'atelier avant de composer."
+            )
+        return phase.poules
 
     def _configuration(self, phase: Phase, effectif: int) -> ConfigurationPoules:
         """Le réglage de l'atelier, converti sur l'effectif du jour — **en un seul endroit**.
@@ -531,12 +640,7 @@ class ServicePoules:
         appelée que d'ici : deux appels indépendants pourraient recevoir deux effectifs différents
         (l'un avant, l'autre après une validation de volée) et monter deux répartitions.
         """
-        if phase.poules is None:
-            raise PhasePasReglee(
-                f"La phase {phase.id} est une phase de poules, mais sa taille de poule n'est pas "
-                "réglée : l'organisateur doit la fixer à l'atelier avant de composer."
-            )
-        return phase.poules.pour_effectif(effectif)
+        return self._reglage(phase).pour_effectif(effectif)
 
     def _conflits_du_plan(
         self, poules: tuple[Poule, ...], blocs: dict[int, BlocDePoule]
@@ -602,8 +706,14 @@ class ServicePoules:
         lignes: dict[int, LigneClassement],
         blocs: dict[int, BlocDePoule],
         verdicts: dict[Participant, int],
+        tiebreak: Tiebreak,
     ) -> PouleAffichee:
-        """Classe la poule depuis les rencontres **tirées**, puis referme sur le barrage."""
+        """Classe la poule depuis les rencontres **tirées**, puis referme sur le barrage.
+
+        Le `tiebreak` est **passé**, jamais laissé au défaut : c'est le point d'injection que
+        `classement_de_poule` documente, et l'omettre rendait inopérant tout seuil de barrage réglé
+        sur la phase (correctif de revue, règle 2).
+        """
         classement = classement_de_poule(
             poule,
             [
@@ -612,6 +722,7 @@ class ServicePoules:
                 if (resultat := _resultat_de(rencontre)) is not None
             ],
             configuration,
+            tiebreak=tiebreak,
         )
         classement = _appliquer_verdicts(classement, verdicts)
         return PouleAffichee(
