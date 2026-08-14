@@ -29,6 +29,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from application.big_shoot_off import LecteurEtatBigShootOff
 from application.erreurs import (
     DepartIntrouvable,
     GabaritDuTournoiAbsent,
@@ -132,6 +133,15 @@ class IssueRoutage(str, Enum):
     phase qui le reprend.
     """
 
+    PROCHAINE_MANCHE = "prochaine_manche"
+    """Il tire une **volée collective** au prochain tour : le Big Shoot Off (E05US028).
+
+    ⚠️ **Cinquième issue, et non un `PROCHAIN_DUEL` déguisé.** Un Big Shoot Off n'oppose personne :
+    tous les finalistes sont sur la ligne, et c'est le classement de la manche qui élimine. Faire
+    passer ce rendez-vous par `ProchainDuel` aurait annoncé un adversaire absent (`None`) et un
+    numéro de match qui n'existe pas — précisément le genre de nom trop étroit qu'ADR-0083 a dû
+    corriger sur `monte_les_oppositions`. Le champ `prochaine_manche` porte l'information."""
+
     INDISPONIBLE = "indisponible"
     """On ne sait pas le router (`motif` dit pourquoi)."""
 
@@ -163,6 +173,29 @@ class ProchainDuel:
     sources_en_attente: tuple[int, ...]
     manque: str | None
     alerte: str | None = None
+
+
+@dataclass(frozen=True)
+class ProchaineManche:
+    """Le rendez-vous suivant d'un finaliste de Big Shoot Off : quelle manche, et combien sortent.
+
+    Pas d'adversaire, pas de numéro de match : la manche est **collective**. `elimine` dit combien
+    d'archers sortiront à l'issue de ce tour — c'est l'information qui compte pour le tireur, bien
+    plus que le numéro de la manche.
+
+    ⚠️ **`cible` et `position` sont toujours `None` aujourd'hui**, et c'est nommé plutôt que tu :
+    le service ne lit pas le plan de cibles du créneau, donc il ne sait pas où le finaliste tire.
+    `manque` le dit en clair (`P-3`, « ce qui n'est pas connu est nommé »). Les leur donner
+    demanderait `PlacementRepository` **et** `InscriptionRepository` à ce service — deux dépendances
+    pour une information que l'écran de salle affiche déjà par ailleurs ; c'est une US, pas un
+    cavalier (`# DETTE-059`).
+    """
+
+    numero: int
+    elimine: int
+    cible: int | None = None
+    position: str | None = None
+    manque: str | None = None
 
 
 @dataclass(frozen=True)
@@ -208,6 +241,12 @@ class RoutageArcher:
     prenom: str
     issue: IssueRoutage
     prochain: ProchainDuel | None = None
+    prochaine_manche: ProchaineManche | None = None
+    """Le rendez-vous d'un finaliste de Big Shoot Off (E05US028) — exclusif de `prochain`.
+
+    Deux champs plutôt qu'un champ polymorphe : le client sait déjà lire `prochain` et n'a pas à
+    deviner lequel des deux sens s'applique. Un archer n'a jamais les deux — son issue le dit."""
+
     rang_final: int | None = None
     rang_min: int | None = None
     rang_max: int | None = None
@@ -274,7 +313,13 @@ class ServiceRoutage:
         archers: ArcherRepository,
         phases: PhaseRepository,
         departs: DepartRepository,
+        big_shoot_off: LecteurEtatBigShootOff | None = None,
     ) -> None:
+        # E05US028 : de quoi router un finaliste de Big Shoot Off. Au **constructeur** et non par un
+        # `brancher_…` : il n'y a aucun cycle (`big_shoot_off` n'importe pas `routage`), donc rien
+        # ne justifie de perdre le contrôle du compilateur. `None` reste licite — c'est le régime de
+        # tout montage sans Big Shoot Off, et il se lit dans la signature.
+        self._big_shoot_off = big_shoot_off
         self._saisie_duels = saisie_duels
         self._placement_duels = placement_duels
         self._archers = archers
@@ -318,6 +363,10 @@ class ServiceRoutage:
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return self._tous_indisponibles(tournoi_id, None, archer_ids, PHASE_ABSENTE)
+        if phase.type is TypePhase.BIG_SHOOT_OFF:
+            # Bifurcation **avant** `_grille` : un Big Shoot Off n'a pas d'arbre à reconstruire, et
+            # l'y envoyer léverait `PhasePasUnTableau` sur un panneau qui doit rester consultable.
+            return self._routage_big_shoot_off(tournoi_id, phase, archer_ids)
         grille = self._grille(tournoi_id, phase, phase.id)
         if grille is None:
             # Moins de deux archers en lice : il n'y a pas d'arbre. Comme le feu vert, on rend un
@@ -348,6 +397,9 @@ class ServiceRoutage:
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return Routage(phase_id=None, archers=())
+        if phase.type is TypePhase.BIG_SHOOT_OFF:
+            # `affectations` ne reçoit **aucun** identifiant : la population est celle de la phase.
+            return self._routage_big_shoot_off(tournoi_id, phase, archer_ids=None)
         grille = self._grille(tournoi_id, phase, phase.id)
         if grille is None:
             return Routage(phase_id=phase.id, archers=())
@@ -356,6 +408,81 @@ class ServiceRoutage:
             phase_id=phase.id,
             archers=tuple(sorted(lignes, key=_ordre_du_pas_de_tir)),
         )
+
+    def _routage_big_shoot_off(
+        self, tournoi_id: TournoiId, phase: Phase, archer_ids: tuple[int, ...] | None
+    ) -> Routage:
+        """Route les finalistes d'un Big Shoot Off (E05US028) — le 5ᵉ canal du panneau.
+
+        `archer_ids` vaut `None` quand l'appel vient d'`affectations` : on rend alors **tous** les
+        finalistes, dans l'ordre du classement de la phase. Fourni (`routage`), on rend une ligne
+        par archer demandé, **dans l'ordre demandé** — y compris une ligne motivée pour qui n'est
+        pas dans cette phase, exactement comme pour un tableau.
+
+        Trois issues, et une seule est neuve :
+
+        - **`PROCHAINE_MANCHE`** — il est encore en lice et la phase n'est pas finie ;
+        - **`TERMINE`** — il est sorti (avec son rang), ou la phase est allée à son terme pour lui
+          (les rescapés d'un Big Shoot Off achevé partagent le rang 1) ;
+        - **`INDISPONIBLE`** — il ne fait pas partie de cette phase, ou le service n'est pas câblé.
+
+        ⚠️ **Aucune cible n'est donnée** : ce service ne lit pas le plan du créneau. C'est nommé
+        (`manque`) plutôt que tu — `P-3`, « ce qui n'est pas connu est nommé » — et tracé
+        (`# DETTE-059`). Un panneau muet se prendrait pour une panne réseau.
+        """
+        assert phase.id is not None, "L'appelant a déjà refusé une phase sans identité."
+        if self._big_shoot_off is None:
+            motif = "Ce montage ne sait pas dérouler un Big Shoot Off."
+            return self._tous_indisponibles(tournoi_id, phase.id, archer_ids or (), motif)
+        etat = self._big_shoot_off.etat(tournoi_id, phase.id)
+        par_archer = {tireur.archer_id: tireur for tireur in etat.tireurs}
+        demandes = archer_ids if archer_ids is not None else tuple(par_archer)
+        prochaine = next((manche for manche in etat.manches if not manche.jouee), None)
+        lignes: list[RoutageArcher] = []
+        for archer_id in demandes:
+            tireur = par_archer.get(archer_id)
+            if tireur is None:
+                identite = self._identites(tournoi_id).get(archer_id, ("", ""))
+                lignes.append(
+                    RoutageArcher(
+                        archer_id=archer_id,
+                        nom=identite[0],
+                        prenom=identite[1],
+                        issue=IssueRoutage.INDISPONIBLE,
+                        motif="Cet archer ne fait pas partie de ce Big Shoot Off.",
+                    )
+                )
+                continue
+            if not tireur.en_lice or etat.termine or prochaine is None:
+                lignes.append(
+                    RoutageArcher(
+                        archer_id=archer_id,
+                        nom=tireur.nom,
+                        prenom=tireur.prenom,
+                        issue=IssueRoutage.TERMINE,
+                        # Un rescapé d'une phase achevée n'a pas de `rang` porté par le moteur : il
+                        # partage le rang 1 avec les autres restants (règle du 31/07). On le pose
+                        # ici plutôt que de laisser un `None` que l'écran lirait « pas de rang ».
+                        rang_final=tireur.rang if tireur.rang is not None else 1,
+                        rang_min=tireur.rang if tireur.rang is not None else 1,
+                        rang_max=tireur.rang if tireur.rang is not None else 1,
+                    )
+                )
+                continue
+            lignes.append(
+                RoutageArcher(
+                    archer_id=archer_id,
+                    nom=tireur.nom,
+                    prenom=tireur.prenom,
+                    issue=IssueRoutage.PROCHAINE_MANCHE,
+                    prochaine_manche=ProchaineManche(
+                        numero=prochaine.numero,
+                        elimine=prochaine.elimine,
+                        manque="votre cible n'est pas encore connue pour cette phase",
+                    ),
+                )
+            )
+        return Routage(phase_id=phase.id, archers=tuple(lignes))
 
     # --- Lecture de la grille --------------------------------------------------------------------
 

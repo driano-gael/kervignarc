@@ -270,7 +270,23 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
+        # ⚠️ **Reste `AUCUN`, et c'est un manque assumé** (E05US028). Les finalistes tirent bien en
+        # parallèle, donc ils occupent des couloirs — mais aucun service ne les leur attribue : ce
+        # sont des inscrits du créneau, et leur couloir de qualification n'est pas relu par le
+        # moteur du format. Le routage le **nomme** au lieu de le taire (`DETTE-059`).
         plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ Les trois capacités basculent **en fin de tranche E05US028**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023 pour les poules. Ce qui les autorise, module par
+        # module :
+        # `application/big_shoot_off.py` rejoue la phase des volées validées et rend son état
+        # (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementBigShootOff` (`classement_lisible`), et
+        # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
+        # (`route_l_archer`).
+        deroule_par_un_service=True,
+        classement_lisible=True,
+        route_l_archer=True,
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,

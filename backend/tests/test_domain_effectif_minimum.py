@@ -253,7 +253,6 @@ def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: Typ
         TypePhase.PLACEMENT,
         TypePhase.SUISSE,
         TypePhase.COLLINE,
-        TypePhase.BIG_SHOOT_OFF,
         TypePhase.BARRAGE,
     ],
 )
@@ -274,7 +273,9 @@ def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: 
     disparition du refus abusif qu'E05US021 nommait comme sa pire défaillance.
 
     Le jour où l'un de ces types gagne son service, il entre dans `TYPES_DEROULES` et ce test change
-    de camp — c'est le signal attendu, pas une régression.
+    de camp — c'est le signal attendu, pas une régression. **C'est arrivé au Big Shoot Off le
+    14/08/2026** (E05US028) : il a quitté cette liste pour celle du test précédent, et le plancher
+    de 34 lui est désormais réclamé — légitimement, puisque son prélèvement est réellement honoré.
     """
     assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2
 

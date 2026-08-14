@@ -161,19 +161,28 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
         TypePhase.QUALIFICATION,
         TypePhase.ELIMINATION_DIRECTE,
         TypePhase.POULES,
+        # E05US028 : `ServiceBigShootOff.classement_de_phase` rend le classement des rangs
+        # décernés, lu par le port `LecteurClassementBigShootOff`.
+        TypePhase.BIG_SHOOT_OFF,
     } == TYPES_CLASSANTS_LUS
 
 
-def test_les_poules_ne_sont_pas_encore_routees() -> None:
+def test_les_poules_ne_sont_toujours_pas_routees() -> None:
     """⚠️ La capacité qu'il aurait été le plus tentant de mentir (ADR-0083, 5ᵉ question).
 
-    `application/routage.py` ne sait pas dire à un membre de poule où il tire ensuite : ce n'est ni
-    au CA d'E05US023 ni à la liste de la tranche. Déclarer `route_l_archer=True` « puisque la phase
-    est jouable » reproduirait `DETTE-028` à l'échelle d'une capacité — un moteur annoncé, aucun
-    appelant. Le test tombe le jour où le routage l'apprend, et c'est le signal attendu.
+    `application/routage.py` ne sait pas dire à un membre de **poule** où il tire ensuite : ce
+    n'était ni au CA d'E05US023 ni à la liste de la tranche, et E05US028 ne l'a pas ajouté non
+    plus — son CA porte sur le Big Shoot Off, pas sur les poules. Déclarer `route_l_archer=True`
+    « puisque la phase est jouable » reproduirait `DETTE-028` à l'échelle d'une capacité : un moteur
+    annoncé, aucun appelant.
+
+    ⚠️ **Le Big Shoot Off, lui, y est entré en E05US028** — et c'est le scénario que la version
+    précédente de ce test annonçait (« le test tombe le jour où le routage l'apprend, et c'est le
+    signal attendu »). Il est tombé pour la bonne raison :
+    `ServiceRoutage._routage_big_shoot_off` existe et dit à un finaliste quelle manche il tire.
     """
     assert TypePhase.POULES not in TYPES_ROUTES
-    assert {TypePhase.ELIMINATION_DIRECTE} == TYPES_ROUTES
+    assert {TypePhase.ELIMINATION_DIRECTE, TypePhase.BIG_SHOOT_OFF} == TYPES_ROUTES
 
 
 def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
@@ -198,23 +207,47 @@ def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
 
 @pytest.mark.parametrize(
     "type_sans_service",
-    [TypePhase.SUISSE, TypePhase.COLLINE, TypePhase.BIG_SHOOT_OFF, TypePhase.BARRAGE],
+    [TypePhase.SUISSE, TypePhase.COLLINE, TypePhase.BARRAGE],
 )
 def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: TypePhase) -> None:
     """`DETTE-028` **rétrécit sans se refermer** — et le registre doit le dire.
 
-    Ces quatre-là ont un moteur de domaine depuis E05US015 et **aucun appelant de production**.
-    Les déclarer jouables parce que les poules le sont devenues serait exactement la faute que
-    l'ADR-0083 se donne pour objet d'empêcher : le signal d'écart de l'atelier cesserait de les
-    viser, et l'organisateur composerait un déroulé que rien ne déroulera.
+    Ceux-là ont un moteur de domaine depuis E05US015 et **aucun appelant de production**. Les
+    déclarer jouables parce que d'autres le sont devenus serait exactement la faute qu'ADR-0083 se
+    donne pour objet d'empêcher : le signal d'écart de l'atelier cesserait de les viser, et
+    l'organisateur composerait un déroulé que rien ne déroulera.
 
-    Ce test **change de camp** à chacune des US `E05US026` à `E05US028`, une ligne à la fois.
+    Ce test **change de camp** à chacune des US `E05US026` à `E05US028`, une ligne à la fois. Le
+    **Big Shoot Off en est sorti le 14/08/2026** (E05US028) : `ServiceBigShootOff` le déroule, son
+    classement est lu par une phase avale, et le routage sait dire quelle manche vient.
     """
     contrat = contrat_de(type_sans_service)
 
     assert not contrat.deroule_par_un_service
     assert not contrat.classement_lisible
     assert type_sans_service in TYPES_SIGNALES_EN_ECART
+
+
+def test_le_big_shoot_off_est_joue_lu_et_route() -> None:
+    """CA d'E05US028, les trois capacités d'un coup — et le signal d'écart cesse de le viser.
+
+    ⚠️ **Le `plan_de_cibles` reste `AUCUN`, et ce n'est pas un oubli.** Les finalistes tirent bien
+    en parallèle, donc ils occupent des couloirs — mais aucun service ne les leur attribue : ce sont
+    des inscrits du créneau, et le moteur du format ne relit pas leur couloir de qualification. Le
+    routage le **nomme** au lieu de le taire (`DETTE-059`). Déclarer un plan ici mentirait
+    exactement comme `deroule_par_un_service` aurait menti avant que le service existe.
+    """
+    contrat = contrat_de(TypePhase.BIG_SHOOT_OFF)
+
+    assert contrat.deroule_par_un_service
+    assert contrat.classement_lisible
+    assert contrat.route_l_archer
+    assert contrat.decor is DecorDeSaisie.VOLEE_COLLECTIVE
+    assert contrat.plan_de_cibles is PlanDeCibles.AUCUN
+    assert TypePhase.BIG_SHOOT_OFF not in TYPES_SIGNALES_EN_ECART
+    # Il n'entre **pas** au palmarès par reconstruction d'arbre : il n'en a pas. Son entrée passe
+    # par `ServicePalmares._resultat_big_shoot_off`, un résultat propre au format.
+    assert TypePhase.BIG_SHOOT_OFF not in TYPES_RECONSTRUCTIBLES
 
 
 def test_le_registre_est_le_miroir_des_filtres_de_service() -> None:

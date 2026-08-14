@@ -23,6 +23,8 @@ from application.big_shoot_off import ServiceBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import PhasePasReglee, PhasePasUnBigShootOff
 from application.palmares import ServicePalmares
+from application.placement_duels import ServicePlacementDuels
+from application.routage import IssueRoutage, ServiceRoutage
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -52,7 +54,12 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxPhaseRepository,
 )
-from tests.test_service_placement_duels import FauxBlasonRepository, FauxTournoiRepository
+from tests.test_service_placement_duels import (
+    FauxBlasonRepository,
+    FauxGabaritRepository,
+    FauxPlacementTableauRepository,
+    FauxTournoiRepository,
+)
 from tests.test_service_saisie_duels import ZONES_TRIPLE
 
 
@@ -664,3 +671,102 @@ def test_un_big_shoot_off_sans_elimination_n_entre_pas_au_palmares() -> None:
     )._resultat_big_shoot_off(monde.tournoi_id, phase)
 
     assert resultat is None
+
+
+# --- CA « le routage sait où l'archer tire ensuite » (cadrage du 14/08) ---------------------------
+
+
+def _routage(monde: _Monde, service: ServiceBigShootOff) -> ServiceRoutage:
+    """Un `ServiceRoutage` câblé sur le décor, Big Shoot Off compris.
+
+    `ServicePlacementDuels` est construit bien qu'inutile ici : la branche Big Shoot Off ne le
+    touche jamais (elle bifurque **avant** `_grille`). Le passer pour de vrai plutôt qu'un `None`
+    casté évite un piège — un `None` typé survivrait au jour où la branche l'utiliserait.
+    """
+    placement = ServicePlacementDuels(
+        monde.tournois,
+        monde.phases,
+        FauxGabaritRepository(),
+        monde.inscriptions,
+        monde.archers,
+        monde.categories,
+        monde.blasons,
+        FauxPlacementTableauRepository(),
+        service._classements,
+        SeedingSerpent(),
+        ByesAuxMieuxClasses(),
+        PlacementEnCascade(),
+        registre_par_defaut(),
+        service._saisie_duels,
+    )
+    return ServiceRoutage(
+        service._saisie_duels,
+        placement,
+        monde.archers,
+        monde.phases,
+        monde.departs,
+        service,
+    )
+
+
+def test_le_routage_annonce_la_manche_qui_vient() -> None:
+    """CA ajouté au cadrage : « le routage sait où l'archer tire ensuite ».
+
+    ⚠️ **Issue `prochaine_manche`, pas `prochain_duel`.** Un Big Shoot Off n'oppose personne : faire
+    passer ce rendez-vous par `ProchainDuel` aurait annoncé un adversaire absent et un numéro de
+    match inexistant. `elimine` porte ce qui compte vraiment pour le tireur — combien sortent.
+    """
+    monde = _Monde()
+    a, b, c, d = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2, 1)))
+    service = monde.service()
+
+    routage = _routage(monde, service).routage(monde.depart_id, (a, b, c, d))
+
+    ligne = next(archer for archer in routage.archers if archer.archer_id == a)
+    assert ligne.issue is IssueRoutage.PROCHAINE_MANCHE
+    assert ligne.prochaine_manche is not None
+    assert ligne.prochaine_manche.numero == 1
+    assert ligne.prochaine_manche.elimine == 2
+    # ⚠️ La cible n'est pas connue, et c'est **nommé** plutôt que tu (`P-3`, DETTE-059).
+    assert ligne.prochaine_manche.cible is None
+    assert ligne.prochaine_manche.manque is not None
+    assert ligne.prochain is None
+
+
+def test_le_routage_annonce_son_rang_a_un_archer_sorti() -> None:
+    """Un archer éliminé n'a plus de rendez-vous : il a un **rang**. Lui annoncer une manche le
+    ferait revenir sur le pas de tir."""
+    monde = _Monde()
+    a, b, c, d = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2, 1)))
+    service = monde.service()
+    for archer_id, zone in ((a, "10"), (b, "9"), (c, "8"), (d, "7")):
+        monde.tirer(service, archer_id, 1, zone)
+
+    routage = _routage(monde, service).routage(monde.depart_id, (a, d))
+
+    sorti = next(archer for archer in routage.archers if archer.archer_id == d)
+    assert sorti.issue is IssueRoutage.TERMINE
+    assert sorti.rang_final == 4
+    assert sorti.prochaine_manche is None
+    encore = next(archer for archer in routage.archers if archer.archer_id == a)
+    assert encore.issue is IssueRoutage.PROCHAINE_MANCHE
+
+
+def test_le_routage_dit_ce_qu_il_ne_sait_pas_plutot_que_de_se_taire() -> None:
+    """Un archer étranger à la phase reçoit une ligne **motivée**, pas une absence (`P-3`).
+
+    C'est le contrat de `routage` (par opposition à `affectations`) : on a *demandé* cet archer,
+    donc on lui doit une réponse — un panneau muet se prend pour une panne réseau.
+    """
+    monde = _Monde()
+    a, _b, _c, _d = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2,)))
+    service = monde.service()
+
+    routage = _routage(monde, service).routage(monde.depart_id, (a, 9999))
+
+    inconnu = next(archer for archer in routage.archers if archer.archer_id == 9999)
+    assert inconnu.issue is IssueRoutage.INDISPONIBLE
+    assert inconnu.motif is not None
