@@ -22,6 +22,7 @@ import pytest
 from application.big_shoot_off import ServiceBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import PhasePasReglee, PhasePasUnBigShootOff
+from application.palmares import ServicePalmares
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -584,3 +585,82 @@ def test_le_verdict_du_barrage_debloque_la_manche() -> None:
     assert sorts[d] == (False, 4)
     assert sorts[c] == (True, None)
     assert etat.barrage_entre == ()
+
+
+# --- CA « le palmarès consomme les rangs décernés » (cadrage du 14/08) ----------------------------
+
+
+class _FauxGenerateurPalmares:
+    """Double du port `GenerateurPalmares` — le palmarès de ce test ne s'imprime pas."""
+
+    def palmares(self, nom: str, palmares: object) -> bytes:
+        raise NotImplementedError
+
+
+def test_le_palmares_consomme_les_rangs_du_big_shoot_off() -> None:
+    """CA ajouté au cadrage du 14/08/2026, à la demande du commanditaire.
+
+    ⚠️ **Par un `_resultat` propre au format, pas par `TYPES_RECONSTRUCTIBLES`.** Cette table est
+    l'alias de `TYPES_EN_TABLEAU_JOUE` — « rejouer l'arbre » —, et un Big Shoot Off n'a pas d'arbre.
+    Y inscrire le type aurait envoyé `ServiceSaisieDuels.reconstruire` sur une phase sans tableau.
+    C'est exactement ce qu'ADR-0083 annonçait comme condition d'entrée au palmarès.
+    """
+    monde = _Monde()
+    a, b, c, d = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1, 1, 1)))
+    service = monde.service()
+    for archer_id, zone in ((a, "10"), (b, "9"), (c, "8"), (d, "7")):
+        monde.tirer(service, archer_id, 1, zone)
+    for archer_id, zone in ((a, "10"), (b, "9"), (c, "8")):
+        monde.tirer(service, archer_id, 2, zone)
+    for archer_id, zone in ((a, "10"), (b, "9")):
+        monde.tirer(service, archer_id, 3, zone)
+
+    palmares = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        service._classements,
+        service._saisie_duels,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        None,
+        service,
+    ).pour_tournoi(monde.tournoi_id)
+
+    rangs = {ligne.archer_id: (ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes}
+    assert rangs[a] == (1, 1)
+    assert rangs[d] == (4, 4)
+    # ⚠️ Le rang est **décerné au tir** : les manches l'ont gagné, contrairement à un rang de
+    # qualification. C'est ce qui autorise le podium à remettre or, argent et bronze.
+    assert next(ligne for ligne in palmares.lignes if ligne.archer_id == a).decerne is True
+
+
+def test_un_big_shoot_off_sans_elimination_n_entre_pas_au_palmares() -> None:
+    """Tous les finalistes partagent le rang 1 tant que la 1ʳᵉ manche n'est pas jouée : les verser
+    au palmarès donnerait la **première place du tournoi** à chacun d'eux pendant qu'ils tirent.
+
+    Même défaut que celui qu'`_resultat` corrige pour les tableaux (« 1ᵉʳ-120ᵉ · à départager »
+    affiché toute la qualification), et même remède : on n'entre au palmarès qu'une fois qu'il y a
+    quelque chose à dire.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+    service = monde.service()
+
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    resultat = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        service._classements,
+        service._saisie_duels,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        None,
+        service,
+    )._resultat_big_shoot_off(monde.tournoi_id, phase)
+
+    assert resultat is None

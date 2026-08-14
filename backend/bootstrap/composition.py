@@ -74,6 +74,7 @@ from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
 from application.barrages import ServiceBarrage
+from application.big_shoot_off import ServiceBigShootOff
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
@@ -105,6 +106,7 @@ from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.poules import ServicePoules
 from application.prelevement import (
+    LecteurClassementBigShootOff,
     LecteurClassementPoules,
     LecteurPopulationPhase,
 )
@@ -753,6 +755,23 @@ def create_app(
     classements_de_poules: LecteurClassementPoules = app.state.service_poules
     app.state.service_saisie_duels.brancher_poules(classements_de_poules)
 
+    # Big Shoot Off (E05US028) : le moteur `domain/big_shoot_off.py` reçoit enfin son consommateur
+    # de production (DETTE-028). Le tir vit dans `serie`/`volee`, sans table propre — le pendant
+    # d'ADR-0083 §7, où une rencontre de poule réutilise `duel`.
+    app.state.service_big_shoot_off = ServiceBigShootOff(
+        tournoi_repository,
+        phase_repository,
+        serie_repository,
+        barrage_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # Second branchement tardif, **et pour la même raison que celui des poules** : les deux services
+    # se tiennent par les deux bouts. Il n'y en avait qu'un au projet jusqu'ici ; il y en a deux, ce
+    # qui reste sous le seuil du remède structurel (cf. `LecteurClassementBigShootOff`).
+    classements_de_big_shoot_off: LecteurClassementBigShootOff = app.state.service_big_shoot_off
+    app.state.service_saisie_duels.brancher_big_shoot_off(classements_de_big_shoot_off)
+
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
     # L'usine `fabriquer_harnais_simulation` (module, ci-dessus) est le **seul** point qui connaît
@@ -864,6 +883,10 @@ def create_app(
         GenerateurPalmaresPdf(),
         depart_repository,
         aggregation,
+        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès et
+        # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
+        # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
+        app.state.service_big_shoot_off,
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,

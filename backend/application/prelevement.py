@@ -162,6 +162,37 @@ class LecteurClassementPoules(Protocol):
         ...
 
 
+class LecteurClassementBigShootOff(Protocol):
+    """Port étroit : « quel classement cette phase de **Big Shoot Off** a-t-elle produit ? »
+    (E05US028).
+
+    Réalisé par `ServiceBigShootOff`, consommé par `ServiceSaisieDuels._classement_de_l_ordre`.
+    Mêmes raisons que `LecteurClassementPoules` juste au-dessus, à l'identique : les deux services
+    se tiennent par les deux bouts (`ServiceBigShootOff` a besoin de `ServiceSaisieDuels` pour son
+    classement amont et son pavé), donc le port casse le cycle et le branchement est **tardif**,
+    visible au composition root (règle 8).
+
+    ⚠️ **C'est la 2ᵉ occurrence d'un port structurellement identique, et elle est dupliquée
+    volontairement.** Les deux protocoles ont la même signature — au point qu'un service qui
+    satisfait l'un satisfait l'autre par typage structurel. La tentation est de les fondre en un
+    `LecteurClassementDePhase` unique, résolu par un dictionnaire indexé sur `TypePhase` : ce serait
+    un **remède structurel**, et `CLAUDE.md` demande qu'il repose sur une **3ᵉ occurrence réelle**
+    dans le code d'aujourd'hui, pas sur une évolution supposée. On duplique donc, et on attend.
+
+    La 3ᵉ et la 4ᵉ arrivent avec `E05US026` (système suisse) et `E05US027` (colline) : c'est **là**
+    que la généralisation se justifiera sur preuve. Elle est facile à faire à ce moment-là — trois
+    slots nommés deviennent un `dict[TypePhase, LecteurClassementDePhase]` et la cascade de `if` de
+    `_classement_de_l_ordre` devient une recherche. La faire ici obligerait à parier sur la forme
+    que prendront ces deux US.
+    """
+
+    def classement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
+    ) -> ClassementSource:
+        """Le classement du Big Shoot Off `phase_id`, prêt à être prélevé."""
+        ...
+
+
 def _en_lice(classement: Classement) -> list[LigneClassement]:
     """Les lignes prélevables d'un classement, du meilleur rang au moins bon.
 
