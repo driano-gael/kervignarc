@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 09/08/2026, 21 h 50** · **108 US livrées** · dernière : `E05US023`
+**Dernière mise à jour : 14/08/2026, 23 h 30** · **109 US livrées** · dernière : `E05US028`
 *(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
 dix filtres qui décidaient chacun dans leur coin qu'une phase est jouable, et les **poules** le
 taillent en devenant réellement jouables — réglées à l'atelier, posées en salle sur des blocs de
@@ -100,7 +100,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > |---|---|---|
 > | ~~1~~ ✅ | ~~`E05US025`~~ | **Livrée le 09/08/2026** — plusieurs qualifications dans un même déroulé. Le chantier ouvert le 08/08 par `E05US024` est **clos**. |
 > | ~~2~~ ✅ | ~~`E05US023`~~ | **Livrée le 09/08/2026** — 1ʳᵉ tranche du découpage : le **contrat de phase jouable** (ADR-0083) et les **poules**, de bout en bout. Le découpage annoncé ci-contre a été fait le jour même : trois tranches restent, une par format. |
-> | **🎯 1** | `E05US026` | **Le système suisse jouable.** 2ᵉ tranche du découpage d'`E05US023` : le moteur existe (`domain/suisse.py`) et n'a aucun appelant. Il **habite** le contrat posé par la 1ʳᵉ tranche — une ligne au registre, un service, une exposition —, ce qui est précisément ce qui rend ces trois tranches tenables. Peut être précédée d'`E05US027` ou d'`E05US028` : les trois sont **indépendantes entre elles**, seule leur dépendance à `E05US023` était dure. ⚠️ **`E05US028` (Big Shoot Off) est celle qui éprouvera le contrat** — ni groupes ni duels, grain `FIN_DE_SERIE` : la prendre tôt ferait remonter tôt un éventuel élargissement, plutôt qu'après deux tranches écrites dessus. |
+> | ~~3~~ ✅ | ~~`E05US028`~~ | **Livrée le 14/08/2026** — le **Big Shoot Off** jouable de bout en bout. Prise avant le suisse et la colline sur le conseil d'ordre ci-dessous, et **le conseil s'est vérifié** : le contrat d'ADR-0083 a bien cédé, mais **sur un nom seulement** (`monte_les_oppositions` → `deroule_par_un_service`), pas sur une structure. Deux capacités ajoutées au périmètre par le commanditaire (palmarès, routage), et surtout un **changement de règle métier** — plusieurs sortants par manche, dits tour par tour — sorti du garde-fou « test écrit depuis le CA ». Référentiel §10.1 amendé. |
+> | **🎯 1** | `E05US026` | **Le système suisse jouable.** 3ᵉ tranche du découpage d'`E05US023` : le moteur existe (`domain/suisse.py`) et n'a aucun appelant. Il **habite** le contrat, désormais éprouvé par deux formats de formes opposées — les poules (groupes + duels) et le Big Shoot Off (volée collective). Indépendante d'`E05US027`. ⚠️ **C'est ici que le remède structurel du port de classement se justifiera** : `LecteurClassementPoules` et `LecteurClassementBigShootOff` sont deux protocoles identiques, dupliqués **volontairement** en E05US028 faute d'une 3ᵉ occurrence réelle. Le suisse est cette 3ᵉ — le `dict[TypePhase, LecteurClassementDePhase]` se pose alors sur preuve, pas sur pari. |
 > | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
 > | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
 > | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
@@ -156,10 +157,25 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > tranches. La 1ʳᵉ a posé le **contrat de phase jouable** (ADR-0083) et rendu les **poules** jouables
 > de bout en bout ; les trois autres portent chacune un format restant.
 >
-> **🎯 Prochaine : `E05US026` (ou `E05US027`, ou `E05US028`)** — les trois tranches restantes sont
+> ~~**🎯 Prochaine : `E05US028`**~~ — ✅ **livrée le 14/08/2026**. Ce qui suit décrivait les trois
+> tranches avant leur prise ; le conseil d'ordre a été suivi et **il était juste**, ce qui vaut
+> d'être gardé : le contrat n'a cédé que sur un **nom**, et le corriger a coûté quatre fichiers au
+> lieu d'un rework sur du code livré. Deux tranches restent.
+>
+> ⚠️ **Ce que cette US a coûté de plus que prévu, et qui n'était dans aucune fiche** : le CA
+> annonçait un réglage (« nombre d'éliminés par manche ») que ni `ConfigurationBigShootOff`, ni le
+> moteur, ni le référentiel §10.1 ne connaissaient. La divergence est sortie **en écrivant le test
+> depuis le CA**, avant d'implémenter — exactement là où la règle 9 la place. Questionné, le
+> commanditaire a **élargi la règle** plutôt que corrigé le CA, et a ajouté deux capacités au
+> périmètre (palmarès, routage). Le suisse et la colline n'ont pas ce risque : leur règle est écrite
+> et leur CA cite des paramètres qui **existent**.
+>
+> **🎯 Prochaine : `E05US026` (ou `E05US027`)** — les deux tranches restantes sont
 > **indépendantes entre elles**. Chacune habite le contrat : une ligne au registre
 > (`domain/contrat_phase.py`), un service applicatif, une exposition à l'atelier et en salle. C'est
 > ce que la 1ʳᵉ tranche a acheté, et c'est ce qui les rend tenables une par une.
+>
+> <details><summary>Le conseil d'ordre qui a décidé de prendre E05US028 en premier (vérifié)</summary>
 >
 > ⚠️ **Un conseil d'ordre, pas une contrainte** : `E05US028` (Big Shoot Off) est celle qui
 > **éprouvera** le contrat — elle n'a ni groupes ni duels, et son grain de validation est
@@ -167,6 +183,12 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > éventuel élargissement du contrat, au lieu de le découvrir après deux tranches écrites dessus.
 > Le contrat annonce lui-même où il pourrait céder (ADR-0083 §2 et sa section « Ce que le contrat a
 > déjà appris »).
+>
+> **Verdict du 14/08/2026** : le pari est tenu. Le contrat a cédé sur **une capacité mal nommée**,
+> pas sur une structure — les six questions, le décor `VOLEE_COLLECTIVE` et le grain `FIN_DE_SERIE`
+> ont tous tenu tels quels. Le coût du correctif : quatre fichiers, aucune migration.
+>
+> </details>
 >
 > <details><summary>Ce que disait cette section avant la livraison d'E05US025</summary>
 >

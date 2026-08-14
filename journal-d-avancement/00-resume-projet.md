@@ -512,8 +512,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **108 US livrées** sur `main` (mergées, revues, CI verte) à la date du 09/08/2026, la dernière
-  étant `E05US023`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **109 US livrées** sur `main` (mergées, revues, CI verte) à la date du 14/08/2026, la dernière
+  étant `E05US028`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -630,9 +630,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   consolante composée le matin affiche « les places disputées ici ne sont pas encore connues »
   plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
   relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
-  ⚠️ Les phases en système suisse, colline et Big Shoot Off restent hors du dispositif : leur
-  moteur existe mais rien ne l'appelle encore (E05US026 à E05US028). ✅ Les **poules**, elles, y sont
-  entrées le jour même — voir ci-dessous. ✅ La limite « une seule qualification par tournoi »,
+  ⚠️ Les phases en système suisse et colline restent hors du dispositif : leur moteur existe mais
+  rien ne l'appelle encore (E05US026, E05US027). ✅ Les **poules** y sont entrées le jour même, et le
+  **Big Shoot Off** le 14/08/2026 — voir ci-dessous. ✅ La limite « une seule qualification par tournoi »,
   qui restait volontairement en place à cette date, **a été levée le lendemain par `E05US025`** (voir
   ci-dessous). Décision d'architecture :
   [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).
@@ -651,6 +651,24 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **La finale spectacle se joue, et sa règle a changé (14/08/2026, E05US028).** Le « Big Shoot Off »
+  était proposé à la composition sans mener nulle part, comme les poules avant lui. En préparant son
+  écran, une contradiction est apparue : la fiche de l'US promettait un réglage que ni la règle ni le
+  moteur ne connaissaient. Question posée au club, **règle élargie** : une finale sort **plusieurs**
+  archers par tour, et le rythme se dit **tour par tour**. L'organisateur écrit donc une liste — « 4,
+  2, 1 » — et le nombre de rescapés a **disparu des réglages**, puisqu'il se déduit de ce que la
+  liste n'élimine pas. L'atelier montre la projection en direct (« à 12 archers : 12 → 8 → 6 → 5 »)
+  et **nomme les manches qui ne se joueront pas** si l'effectif ne porte pas la liste : le format ne
+  refuse rien, il s'écourte, parce qu'il se réutilise d'une année sur l'autre. Au pas de tir, une
+  **ligne de tir** remplace le pavé de duel — il n'y a pas d'adversaire. Une égalité à la frontière
+  **suspend** la manche et le dit plutôt que de deviner qui sort. Le palmarès reprend les rangs
+  décernés, et une phase suivante peut y prélever. ⚠️ **Corriger une flèche défait l'élimination
+  qu'elle avait causée** : rien n'est stocké de « untel est sorti », tout se rejoue depuis les
+  scores. ⚠️ Deux limites nommées : le panneau de routage dit **quelle** manche vient mais pas **où**
+  tirer (une question de règle reste ouverte — cibles de qualification ou cibles dédiées ?), et cet
+  écran n'a **pas** de file hors-ligne. Référentiel §10.1 amendé ;
+  [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md) amendé — le contrat de phase a cédé
+  sur un nom, à l'endroit exact où il annonçait qu'il céderait.
 - **Les poules se jouent vraiment (09/08/2026, E05US023).** Le type « poules » était proposé à la
   composition depuis des semaines, et ne menait nulle part : aucun réglage n'était saisissable,
   aucun groupe n'était formé, aucune rencontre n'était tirable — l'organisateur pouvait dessiner un
