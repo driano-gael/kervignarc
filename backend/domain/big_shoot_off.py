@@ -1,30 +1,48 @@
 """Moteur du **Big Shoot Off** — finale à N archers en parallèle (E05US015, [ADR-0062]).
 
 Règle **fournie par le commanditaire le 31/07/2026**, qui **ferme la question Q9** du cahier des
-charges — bloquante depuis l'origine du projet. Reproduite au [référentiel §10.1] :
+charges — bloquante depuis l'origine du projet — puis **élargie par lui le 14/08/2026** au cadrage
+d'E05US028. Les deux états sont reproduits au [référentiel §10.1] ; le second fait foi :
 
-> Une phase finale qui reçoit x archers. Ils sont en parallèle, chacun tire x volées de x flèches,
-> et le plus faible score est éliminé — jusqu'aux x derniers restants.
+> Une phase finale qui reçoit N archers. Ils tirent en parallèle, par tours ; à chaque tour chacun
+> tire V volées de F flèches, et **les plus faibles sont éliminés** — l'organisateur dit, **tour par
+> tour, combien sortent**.
 
 ⚠️ **Ce n'est pas un barème de duel mais un type de phase à N participants.** Le « Big » désigne le
 **nombre d'archers**, pas le nombre de flèches. Le cadrage a levé ainsi une tension du cahier des
 charges, qui le rangeait tantôt en barème (EF-1.5, EF-5.2) tantôt en type de phase (EF-3.2) : c'est
 bien un type, et c'est pourquoi il a son moteur plutôt qu'une ligne dans `BaremeDuel`.
 
-Les quatre `x` de la règle sont **quatre paramètres distincts** que l'énoncé confond : N vient de la
-source, V (volées par manche), F (flèches par volée) et K (derniers restants) se règlent à la
-composition. Les lire comme un seul nombre donnerait « 5 archers tirent 5 volées de 5 flèches
-jusqu'aux 5 derniers » — c'est-à-dire une phase qui ne se termine jamais.
+## Ce que l'élargissement du 14/08/2026 a changé, et pourquoi
 
-**Arbitrages du 31/07/2026** (reversés dans `stories/E05-moteur-phases.md`) :
-- **cumul ou remise à zéro entre manches** : c'est un **paramètre** (`cumul_des_manches`), à la
-  demande du commanditaire. Défaut : **remise à zéro** — lecture littérale de « chacun tire … et le
-  plus faible score est éliminé », et c'est ce qui fait le suspense d'une finale spectacle. Au
-  cumul, un mauvais premier tour pèse jusqu'au bout et les dernières manches perdent leur enjeu.
-- **égalité au plus faible** → **barrage** (§8.2, `domain/barrage.py`) ;
-- les éliminés prennent les rangs dans l'**ordre inverse** de leur sortie, ce qui fait du BSO une
-  phase qui **classe tout le monde**, cohérente avec le placement 1→N d'E05US010 ;
-- **K = 1** par défaut ; si `K > 1`, les restants **partagent** le rang.
+La première règle éliminait **un** archer par tour, et `restants` (K) disait où s'arrêter. Deux
+paramètres pour une même information — combien de monde sort, et jusqu'où — qui pouvaient se
+contredire : `demarrer` devait refuser `K >= N`. Le commanditaire a demandé de pouvoir sortir
+**plusieurs** archers par tour (le rythme d'une finale spectacle : 12 → 8 → 4 → 2), ce qui rend le
+compte par tour explicite et **fait disparaître K** — il ne reste que ce qu'on n'a pas éliminé.
+
+⚠️ **`eliminations` est une liste écrite par l'organisateur, pas une progression déduite.** Une case
+par manche, « combien sortent à ce tour ». Rien n'impose qu'elle décroisse ni qu'elle soit
+régulière : `(2, 2, 2, 2)`, `(4, 2, 1)` et `(1, 5)` sont également valides. *(Le mot « suite » a été
+écarté au cadrage : il faisait entendre une règle imposée par l'outil.)*
+
+**On joue tant que la manche est possible.** Une liste n'est jamais refusée, elle s'écourte : un
+format est de la **configuration** (règle 2) : il part au patrimoine et se réutilise sur des
+effectifs qu'il ne connaît pas. Refuser aurait obligé à ressaisir la liste le jour J — au moment
+où il a le moins de temps, et sur une phase **avale** dont l'effectif dépend de qui a survécu au
+tableau. `paliers_pour` existe pour que l'atelier **montre** ce que la liste donne sur l'effectif du
+jour, avant de composer : on montre, on ne décide pas à sa place.
+
+## Les égalités, et les deux barrages qu'elles déclenchent
+
+- **À la barre** — la frontière entre sortants et rescapés. Elle décide *qui continue*, donc elle se
+  tire toujours (§8.2). Seuls les ex æquo **de la frontière** tirent : un archer déjà condamné, ou
+  déjà sauvé, ne monte pas sur le pas de tir.
+- **Entre sortants** — deux éliminés au même score ne diffèrent que par leur *numéro de rang*. Les
+  départager est un **choix d'organisateur** (`departage_les_sortants`, demandé le 14/08), pas une
+  règle : c'est le jumeau exact de `ReglageDePoules.departage_inter_poules`, et pour la même raison
+  un barrage immobilise le pas de tir et le juge, donc on ne le déclenche pas pour une distinction
+  que personne n'utilisera.
 
 ⚠️ **Ce module ne fait pas tirer.** Il reçoit les scores d'une manche et dit qui sort ; c'est une
 mécanique d'élimination, pas une saisie. Domaine **pur** (règle 1).
@@ -41,20 +59,41 @@ from dataclasses import dataclass
 from domain.erreurs import ConfigurationBigShootOffInvalide, ScoreDeMancheManquant
 from domain.participant import Participant
 
+_Cle = tuple[int, int]
+"""La clé de comparaison d'un archer dans la manche courante : (score comparé, rang de départage).
+
+Le second terme vaut 0 tant qu'aucun barrage n'a tranché, si bien qu'il est **neutre** dans le cas
+courant. C'est lui qui permet à `_conclure` d'être rejouée à l'identique après un barrage : le
+verdict n'écrase pas le score, il ne fait que départager ceux qui le partagent — un 21 ne peut donc
+jamais passer sous un 18 parce qu'un barrage l'a désigné."""
+
 
 @dataclass(frozen=True)
 class ConfigurationBigShootOff:
-    """Les quatre paramètres du format — les `x` que l'énoncé de la règle confond en un seul.
+    """Ce que l'organisateur règle — **une case par manche**, plus le format du tir.
 
-    `restants` est le K : le nombre d'archers encore en lice quand la phase s'arrête. Sa validation
-    dépend de l'effectif réel, donc elle vit dans `demarrer` et non ici — une configuration de
-    bibliothèque (`FormatTournoi`) est écrite avant de savoir combien d'archers arriveront.
+    `eliminations` porte le nombre de sortants **de chaque manche**, dans l'ordre. Elle n'a pas de
+    valeur par défaut, et c'est délibéré : une liste vide décrirait une phase sans élimination,
+    donc un échauffement. « Pas encore réglé » se dit `Phase.big_shoot_off is None` — le patron de
+    `ReglageDePoules`, où l'absence de réglage est un état de la **phase**, pas une configuration
+    dégénérée qu'un moteur devrait interpréter.
+
+    ⚠️ **Aucune validation ne dépend de l'effectif ici**, et c'est ce qui rend le format
+    réutilisable : une configuration de bibliothèque (`FormatTournoi`) s'écrit **avant** de savoir
+    combien d'archers arriveront. L'ajustement à l'effectif réel se fait à la lecture
+    (`paliers_pour`) et au jeu (`EtatBigShootOff.quota_de_la_manche`), jamais par un refus.
     """
 
+    eliminations: tuple[int, ...]
     volees: int = 1
     fleches_par_volee: int = 3
-    restants: int = 1
     cumul_des_manches: bool = False
+    departage_les_sortants: bool = False
+    """Faire tirer un barrage entre **éliminés** à égalité, pour leur donner des rangs distincts.
+
+    Demandé par le commanditaire le 14/08/2026. Sans lui, deux sortants au même score **partagent**
+    leur rang : leur égalité ne change rien à qui continue, elle ne décide que d'un numéro. Avec
+    lui, le classement final est complet, au prix de barrages sans effet sur le cours du jeu."""
 
     def __post_init__(self) -> None:
         if self.volees < 1:
@@ -65,9 +104,15 @@ class ConfigurationBigShootOff:
             raise ConfigurationBigShootOffInvalide(
                 f"Une volée compte au moins une flèche (reçu {self.fleches_par_volee})."
             )
-        if self.restants < 1:
+        if not self.eliminations:
             raise ConfigurationBigShootOffInvalide(
-                f"Le Big Shoot Off laisse au moins un archer en lice (reçu {self.restants})."
+                "Un Big Shoot Off élimine à chaque manche : dites combien d'archers sortent au "
+                "premier tour. Une phase qui n'élimine personne est un échauffement."
+            )
+        if any(quota < 1 for quota in self.eliminations):
+            raise ConfigurationBigShootOffInvalide(
+                "Une manche qui n'élimine personne se ferait tirer pour rien : retirez la case "
+                f"plutôt que d'y mettre zéro (reçu {self.eliminations})."
             )
 
     @property
@@ -75,13 +120,37 @@ class ConfigurationBigShootOff:
         """Combien de flèches chaque archer tire à chaque manche (V volées de F flèches)."""
         return self.volees * self.fleches_par_volee
 
+    def paliers_pour(self, effectif: int) -> tuple[int, ...]:
+        """Ce qu'il **reste** après chaque manche réellement jouable, sur cet effectif.
+
+        C'est la projection que l'atelier affiche sous la fiche de réglages — patron
+        `RepartitionPoules` : « avec vos 12 inscrits : 12 → 8 → 6 → 5 ». L'organisateur voit que sa
+        dernière case ne servira pas **avant** de composer, au lieu de le découvrir en salle.
+
+        La liste s'arrête à la première manche qui viderait la lice : sortir 2 archers sur 2 ne
+        laisserait personne, donc cette manche ne se joue pas.
+        """
+        paliers: list[int] = []
+        restant = effectif
+        for quota in self.eliminations:
+            if restant - quota < 1:
+                break
+            restant -= quota
+            paliers.append(restant)
+        return tuple(paliers)
+
+    def restants_pour(self, effectif: int) -> int:
+        """Combien d'archers survivent — le **K dérivé**, qui n'est plus un paramètre."""
+        paliers = self.paliers_pour(effectif)
+        return paliers[-1] if paliers else effectif
+
 
 @dataclass(frozen=True)
 class EtatBigShootOff:
     """L'état d'un Big Shoot Off entre deux manches — **immuable**, comme tout agrégat du domaine.
 
     `en_lice` est ordonné et ne sert qu'à l'affichage ; `rangs` associe à chaque **éliminé** le rang
-    qu'il emporte. Un BSO terminé a `en_lice` réduit à K et `rangs` complet.
+    qu'il emporte, trié par rang croissant. Un BSO terminé a `rangs` complet.
     """
 
     configuration: ConfigurationBigShootOff
@@ -92,25 +161,60 @@ class EtatBigShootOff:
     """Scores cumulés depuis le début — vides et inutilisés quand `cumul_des_manches` est faux."""
 
     barrage_en_cours: tuple[Participant, ...] = ()
-    """Les ex æquo au plus faible score dont le barrage n'est pas encore tranché.
+    """Les ex æquo dont le barrage n'est pas encore tranché.
 
     ⚠️ **Porté par l'état, pas seulement par l'issue de la manche** — sans quoi la couture avec
     `domain/barrage.py` n'est pas praticable : `eliminer_apres_barrage` ne pourrait vérifier ni
-    qu'une manche est réellement suspendue, ni que le sortant faisait partie des ex æquo. Un service
+    qu'une manche est réellement suspendue, ni que le verdict porte sur les bons archers. Un service
     pourrait alors éliminer n'importe qui, à n'importe quel moment, et lui décerner un rang."""
+
+    places_au_barrage: int = 0
+    """Combien des ex æquo ci-dessus sortent réellement.
+
+    Distingue les **deux** barrages du format : à la barre, il est strictement inférieur au nombre
+    d'ex æquo (trois archers à 22 pour une seule place) ; entre sortants, il leur est **égal** — ils
+    sortent tous, le barrage ne fait qu'ordonner leurs rangs."""
+
+    scores_suspendus: tuple[tuple[Participant, int], ...] = ()
+    """Les scores comparés de la manche suspendue, mémorisés pour pouvoir la conclure.
+
+    ⚠️ **C'est ce champ qui rend la reprise honnête.** Sans lui, `eliminer_apres_barrage` devrait
+    deviner qui sortait *en plus* des ex æquo — or, dès qu'une manche élimine plusieurs archers, des
+    sortants **certains** coexistent avec l'égalité de la barre. Les recalculer depuis les cumuls
+    serait faux en mode remise à zéro, où le score de la manche n'est stocké nulle part ailleurs."""
+
+    departages_acquis: tuple[tuple[Participant, int], ...] = ()
+    """Les verdicts de barrage déjà rendus **dans la manche courante**, par archer.
+
+    Une manche peut demander plusieurs barrages successifs (l'égalité à la barre, puis, si
+    l'organisateur l'a réglé, celle des sortants). Chaque verdict s'ajoute ici et la conclusion est
+    rejouée à l'identique : c'est ce qui évite d'écrire un chemin de reprise distinct par cas."""
+
+    @property
+    def quota_de_la_manche(self) -> int | None:
+        """Combien d'archers la **prochaine** manche élimine, ou `None` si elle ne se joue pas.
+
+        Deux raisons de ne pas se jouer, et elles disent la même chose : la liste de l'organisateur
+        est épuisée, ou la manche viderait le pas de tir. Les réunir ici est ce qui permet à
+        `est_termine` d'être une lecture et non une règle de plus.
+        """
+        eliminations = self.configuration.eliminations
+        if self.manche >= len(eliminations):
+            return None
+        quota = eliminations[self.manche]
+        return quota if len(self.en_lice) - quota >= 1 else None
 
     @property
     def est_termine(self) -> bool:
-        """La phase s'arrête quand il ne reste que K archers (règle : « jusqu'aux x derniers »)."""
-        return len(self.en_lice) <= self.configuration.restants
+        """La phase s'arrête quand plus aucune manche n'est possible (arbitrage du 14/08/2026)."""
+        return self.quota_de_la_manche is None
 
     def classement(self) -> tuple[tuple[Participant, int], ...]:
-        """Le classement complet : les K restants d'abord, puis les éliminés dans l'ordre inverse.
+        """Le classement complet : les restants d'abord, puis les éliminés par rang croissant.
 
-        Les **restants partagent le rang 1** quand `K > 1` : la règle ne prévoit rien pour les
-        départager entre eux — c'est le principe même d'un « jusqu'aux x derniers ». Leur imposer un
-        ordre reviendrait à inventer un critère (le score de la dernière manche ?) que le
-        commanditaire n'a pas donné.
+        Les **restants partagent le rang 1** : la règle ne prévoit rien pour les départager entre
+        eux — c'est le principe même d'un « jusqu'aux derniers ». Leur imposer un ordre serait
+        inventer un critère (le score de la dernière manche ?) que le commanditaire n'a pas donné.
         """
         tetes = tuple((participant, 1) for participant in self.en_lice)
         return tetes + self.rangs
@@ -118,17 +222,21 @@ class EtatBigShootOff:
 
 @dataclass(frozen=True)
 class IssueManche:
-    """Ce qu'une manche produit : qui sort, et à quel rang — ou l'égalité qui bloque.
+    """Ce qu'une manche produit : qui sort et à quel rang — ou l'égalité qui la suspend.
 
-    `barrage_entre` n'est pas vide quand plusieurs archers partagent le score le plus faible : la
-    manche **ne peut pas** se conclure, il faut faire tirer (§8.2). L'état renvoyé est alors
-    inchangé — on ne devine pas un éliminé.
+    `barrage_entre` n'est pas vide quand une égalité empêche de conclure : la manche **ne peut pas**
+    se terminer, il faut faire tirer (§8.2). L'état renvoyé est alors inchangé quant à la lice — on
+    ne devine pas un sortant.
+
+    `elimines` et `rangs_attribues` sont ordonnés du **plus faible au plus fort**, donc du rang le
+    plus bas au plus haut.
     """
 
     etat: EtatBigShootOff
-    elimine: Participant | None = None
-    rang_attribue: int | None = None
+    elimines: tuple[Participant, ...] = ()
+    rangs_attribues: tuple[tuple[Participant, int], ...] = ()
     barrage_entre: tuple[Participant, ...] = ()
+    places_au_barrage: int = 0
 
 
 def demarrer(
@@ -136,15 +244,11 @@ def demarrer(
 ) -> EtatBigShootOff:
     """Ouvre un Big Shoot Off sur les `participants` reçus de la phase source.
 
-    `restants` doit être **strictement inférieur** à l'effectif : à `K = N`, personne n'est jamais
-    éliminé et la phase ne se termine pas. C'est le seul contrôle qui exige de connaître l'effectif,
-    d'où sa place ici plutôt que sur la configuration.
+    ⚠️ **Ne refuse plus rien** (élargissement du 14/08/2026). L'ancien contrôle `K >= N` n'a plus
+    d'objet : K n'est plus un paramètre à confronter à l'effectif, il est ce que les éliminations
+    laissent. Un effectif trop mince pour la première manche donne simplement un BSO immédiatement
+    terminé, que l'atelier annonce par `paliers_pour` **avant** qu'on y arrive.
     """
-    if configuration.restants >= len(participants):
-        raise ConfigurationBigShootOffInvalide(
-            f"Un Big Shoot Off à {len(participants)} entrants ne peut pas en laisser "
-            f"{configuration.restants} en lice : aucun archer ne serait jamais éliminé."
-        )
     return EtatBigShootOff(
         configuration=configuration,
         en_lice=tuple(participants),
@@ -153,15 +257,15 @@ def demarrer(
 
 
 def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> IssueManche:
-    """Applique une manche : le **plus faible score sort**, et prend le rang le plus bas restant.
+    """Applique une manche : **les plus faibles sortent**, et prennent les derniers rangs.
 
     `scores` porte le score **de la manche** pour chaque archer encore en lice. En mode cumul, le
     moteur les additionne aux manches précédentes avant de comparer ; en mode remise à zéro (le
     défaut), il compare la manche seule.
 
-    Le rang attribué à l'éliminé est `len(en_lice)` — le dernier rang encore disponible. C'est
-    l'« ordre inverse de sortie » de l'arbitrage : le premier sorti d'un BSO à 5 prend le rang 5, et
-    le vainqueur restera seul au rang 1.
+    Les rangs attribués descendent depuis `len(en_lice)` : le plus faible d'un BSO à 12 dont 4
+    sortent prend le rang 12, le suivant 11, etc. C'est l'« ordre inverse de sortie » de l'arbitrage
+    du 31/07, généralisé aux sorties multiples le 14/08.
 
     ⚠️ Un score **manquant** est refusé plutôt que traité comme un zéro. Un archer sans score dans
     la table n'est pas un archer à zéro : c'est une saisie incomplète, et le traiter comme le plus
@@ -169,7 +273,8 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
     """
     if etat.est_termine:
         raise ConfigurationBigShootOffInvalide(
-            "Ce Big Shoot Off est terminé : il ne reste que les archers à conserver."
+            "Ce Big Shoot Off est terminé : plus aucune manche ne peut se jouer sans vider le pas "
+            "de tir."
         )
     if etat.barrage_en_cours:
         # ⚠️ **Le garde-fou de l'autre porte.** `eliminer_apres_barrage` vérifiait déjà qu'une manche
@@ -190,76 +295,176 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
     cumuls = dict(etat.cumuls)
     compares: dict[Participant, int] = {}
     for participant in etat.en_lice:
-        de_la_manche = scores[participant]
-        cumuls[participant] = cumuls.get(participant, 0) + de_la_manche
+        cumuls[participant] = cumuls.get(participant, 0) + scores[participant]
         compares[participant] = (
-            cumuls[participant] if etat.configuration.cumul_des_manches else de_la_manche
+            cumuls[participant] if etat.configuration.cumul_des_manches else scores[participant]
         )
-    plus_faible = min(compares.values())
-    a_egalite = tuple(
-        participant for participant in etat.en_lice if compares[participant] == plus_faible
-    )
-    manche = etat.manche + 1
     cumuls_tries = tuple((participant, cumuls[participant]) for participant in etat.en_lice)
-    if len(a_egalite) > 1:
-        # Égalité au plus faible → barrage (§8.2). L'état **n'avance pas** : la manche est jouée,
-        # mais son issue reste suspendue tant que le barrage n'a pas désigné le sortant. Faire
-        # avancer `manche` ici ferait croire qu'un tour de plus a été tiré.
-        return IssueManche(
-            etat=EtatBigShootOff(
-                configuration=etat.configuration,
-                en_lice=etat.en_lice,
-                rangs=etat.rangs,
-                manche=etat.manche,
-                cumuls=cumuls_tries if etat.configuration.cumul_des_manches else etat.cumuls,
-                barrage_en_cours=a_egalite,
-            ),
-            barrage_entre=a_egalite,
-        )
-    return _eliminer(etat, a_egalite[0], manche, cumuls_tries)
+    return _conclure(etat, compares, departages={}, cumuls=cumuls_tries)
 
 
-def eliminer_apres_barrage(etat: EtatBigShootOff, perdant_du_barrage: Participant) -> IssueManche:
+def eliminer_apres_barrage(etat: EtatBigShootOff, ordre: Sequence[Participant]) -> IssueManche:
     """Conclut une manche que l'égalité avait suspendue, une fois le barrage tiré (§8.2).
 
-    Le `perdant_du_barrage` est celui que `resoudre_barrage` a désigné (`ResultatBarrage.perdant`
-    du groupe correspondant) : le moteur du BSO ne rejoue pas le barrage, il en applique le verdict.
-    Séparer les deux est ce qui permet au barrage d'être réutilisé tel quel par les poules et par un
-    duel nul.
+    `ordre` range les ex æquo **du plus faible au plus fort** : c'est ce que `resoudre_barrage`
+    produit (`ResultatBarrage.verdict().rangs()`), et le moteur du BSO ne rejoue pas le barrage, il
+    en applique le verdict. Séparer les deux est ce qui permet au barrage d'être réutilisé tel quel
+    par les poules et par un duel nul.
+
+    ⚠️ **Le verdict départage, il ne réordonne pas.** Il n'entre dans la comparaison qu'en second
+    terme, derrière le score de la manche (`_Cle`) : un archer à 21 ne peut donc jamais passer sous
+    un archer à 18 parce qu'un barrage l'a désigné. C'est ce qui rend sûre la reprise quand
+    l'organisateur a réglé `departage_les_sortants` et qu'une manche demande **deux** barrages
+    successifs — la conclusion est simplement rejouée avec un critère de plus.
 
     ⚠️ **Deux vérifications, et aucune n'est superflue** : il faut qu'une manche soit réellement
     **suspendue** (sinon on éliminerait quelqu'un hors de toute manche, en lui décernant un rang),
-    et que le sortant fasse partie des **ex æquo** de ce barrage (sinon le verdict d'un barrage
-    servirait à éliminer un tiers). Sans elles, la couture BSO ↔ barrage laisse au service une
-    liberté qu'aucune règle ne lui donne.
+    et que le verdict porte **exactement** sur les ex æquo de ce barrage (sinon le verdict d'un
+    barrage servirait à éliminer un tiers, ou en oublierait un).
     """
     if not etat.barrage_en_cours:
         raise ConfigurationBigShootOffInvalide(
             "Aucun barrage n'est en attente : ce Big Shoot Off n'a pas de manche suspendue."
         )
-    if perdant_du_barrage not in etat.barrage_en_cours:
+    if sorted(ordre, key=_identite) != sorted(etat.barrage_en_cours, key=_identite):
         raise ConfigurationBigShootOffInvalide(
-            "Le perdant désigné ne faisait pas partie des ex æquo de ce barrage."
+            "Le verdict du barrage doit porter exactement sur les ex æquo qu'il départage : "
+            f"{len(etat.barrage_en_cours)} archers attendus, {len(tuple(ordre))} reçus."
         )
-    return _eliminer(etat, perdant_du_barrage, etat.manche + 1, etat.cumuls)
+    departages = dict(etat.departages_acquis)
+    departages.update({participant: rang for rang, participant in enumerate(ordre)})
+    return _conclure(
+        etat,
+        compares=dict(etat.scores_suspendus),
+        departages=departages,
+        cumuls=etat.cumuls,
+    )
+
+
+def _conclure(
+    etat: EtatBigShootOff,
+    compares: Mapping[Participant, int],
+    departages: Mapping[Participant, int],
+    cumuls: tuple[tuple[Participant, int], ...],
+) -> IssueManche:
+    """Le tronc commun : puis-je conclure cette manche, ou dois-je faire tirer ?
+
+    Appelée à l'identique par `jouer_manche` et par `eliminer_apres_barrage` — c'est ce qui évite un
+    chemin de reprise distinct par cas de figure, et ce qui garantit qu'un barrage ne change rien
+    d'autre que ce qu'il a départagé.
+    """
+    quota = etat.quota_de_la_manche
+    assert quota is not None, "Les appelants ont déjà refusé un Big Shoot Off terminé."
+    cles = {
+        participant: (compares[participant], departages.get(participant, 0))
+        for participant in etat.en_lice
+    }
+    ordonnes = sorted(etat.en_lice, key=lambda participant: cles[participant])
+
+    # 1. L'égalité **à la barre** : elle décide qui continue, donc elle se tire toujours.
+    barre = cles[ordonnes[quota - 1]]
+    certains = [participant for participant in etat.en_lice if cles[participant] < barre]
+    a_la_barre = [participant for participant in etat.en_lice if cles[participant] == barre]
+    places = quota - len(certains)
+    if len(a_la_barre) > places:
+        return _suspendre(etat, compares, departages, tuple(a_la_barre), places)
+
+    sortants = ordonnes[:quota]
+    # 2. L'égalité **entre sortants** : elle ne décide que d'un numéro de rang, donc elle ne se tire
+    #    que si l'organisateur l'a réglé. On ne prend que le **premier** groupe encore à égalité ;
+    #    s'il en reste un autre, la conclusion rejouée le trouvera au tour suivant.
+    if etat.configuration.departage_les_sortants:
+        for participant in sortants:
+            groupe = [autre for autre in sortants if cles[autre] == cles[participant]]
+            if len(groupe) > 1:
+                return _suspendre(etat, compares, departages, tuple(groupe), len(groupe))
+
+    return _eliminer(etat, sortants, cles, cumuls)
+
+
+def _suspendre(
+    etat: EtatBigShootOff,
+    compares: Mapping[Participant, int],
+    departages: Mapping[Participant, int],
+    ex_aequo: tuple[Participant, ...],
+    places: int,
+) -> IssueManche:
+    """Fige la manche en attendant un barrage — **rien ne bouge** dans la lice.
+
+    `manche` n'avance pas : la manche est tirée, mais son issue reste suspendue tant que le barrage
+    n'a pas parlé. La faire avancer ici ferait croire qu'un tour de plus a été tiré.
+
+    Les cumuls ne sont **pas** repliés non plus. C'est ce qui permet à `jouer_manche` d'être rejouée
+    sans double comptage si la manche suspendue devait être ressaisie.
+    """
+    return IssueManche(
+        etat=EtatBigShootOff(
+            configuration=etat.configuration,
+            en_lice=etat.en_lice,
+            rangs=etat.rangs,
+            manche=etat.manche,
+            cumuls=etat.cumuls,
+            barrage_en_cours=ex_aequo,
+            places_au_barrage=places,
+            scores_suspendus=tuple(
+                (participant, compares[participant]) for participant in etat.en_lice
+            ),
+            departages_acquis=tuple(departages.items()),
+        ),
+        barrage_entre=ex_aequo,
+        places_au_barrage=places,
+    )
 
 
 def _eliminer(
     etat: EtatBigShootOff,
-    sortant: Participant,
-    manche: int,
+    sortants: Sequence[Participant],
+    cles: Mapping[Participant, _Cle],
     cumuls: tuple[tuple[Participant, int], ...],
 ) -> IssueManche:
-    """Retire `sortant` de la lice et lui décerne le dernier rang encore disponible."""
-    rang = len(etat.en_lice)
-    en_lice = tuple(participant for participant in etat.en_lice if participant != sortant)
+    """Retire les `sortants` de la lice et leur décerne les derniers rangs disponibles.
+
+    Les rangs descendent depuis `len(en_lice)`, le plus faible d'abord. Deux sortants de clé
+    **identique** partagent leur rang, au sens usuel du classement sportif (« 1224 ») : le suivant
+    reprend son rang naturel, et le rang sauté reste vacant. Ce trou est la trace visible d'un
+    départage qui n'a pas eu lieu — c'est `departage_les_sortants` qui le referme, à la demande.
+    """
+    depart = len(etat.en_lice)
+    attribues: list[tuple[Participant, int]] = []
+    for index, sortant in enumerate(sortants):
+        naturel = depart - index
+        if index and cles[sortant] == cles[sortants[index - 1]]:
+            naturel = attribues[index - 1][1]
+        attribues.append((sortant, naturel))
+    partants = set(sortants)
+    en_lice = tuple(participant for participant in etat.en_lice if participant not in partants)
     suivant = EtatBigShootOff(
         configuration=etat.configuration,
         en_lice=en_lice,
-        rangs=((sortant, rang), *etat.rangs),
-        manche=manche,
+        # `rangs` reste trié par rang croissant : les nouveaux sont inversés (le meilleur d'abord)
+        # avant d'être empilés, sinon `classement()` rendrait une liste en dents de scie.
+        rangs=(*reversed(attribues), *etat.rangs),
+        manche=etat.manche + 1,
         cumuls=tuple((p, s) for p, s in cumuls if p in en_lice),
-        # La manche est conclue : le barrage éventuel ne l'est plus « en cours ».
+        # La manche est conclue : le barrage éventuel ne l'est plus « en cours », et les verdicts
+        # rendus ne valent que pour elle.
         barrage_en_cours=(),
+        places_au_barrage=0,
+        scores_suspendus=(),
+        departages_acquis=(),
     )
-    return IssueManche(etat=suivant, elimine=sortant, rang_attribue=rang)
+    return IssueManche(
+        etat=suivant,
+        elimines=tuple(sortants),
+        rangs_attribues=tuple(attribues),
+    )
+
+
+def _identite(participant: Participant) -> tuple[str, int]:
+    """Une clé de tri **totale** et stable pour comparer deux ensembles de participants.
+
+    `Participant` n'est pas ordonnable (c'est un agrégat, pas un scalaire) : trier sur son genre et
+    sa référence est ce qui permet de comparer « les ex æquo attendus » et « le verdict reçu » comme
+    des ensembles, sans exiger d'eux le même ordre — c'est justement l'ordre qui est le verdict.
+    """
+    return (participant.genre.value, participant.ref_id)

@@ -1009,7 +1009,37 @@ Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
   `FIN_DE_SERIE` là où les trois autres sont `FIN_DE_DUEL`. Si le contrat d'`E05US023` doit céder
   quelque part, c'est ici — et c'est **voulu** : on a préféré tailler le contrat sur le format le
   plus riche et l'assouplir pour le plus pauvre, plutôt que l'inverse.
-- **CA — réglages à l'atelier** : nombre d'éliminés par manche et restants (`ConfigurationBigShootOff`).
+- **CA — réglages à l'atelier** : **le nombre de sortants, manche par manche** — une liste écrite par
+  l'organisateur (`4, 2, 1` = quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ) —, plus le format du
+  tir (volées, flèches par volée), le **cumul** entre manches et le **départage des sortants**
+  (`ConfigurationBigShootOff`). L'atelier **montre la projection** sur l'effectif du jour, patron
+  `RepartitionPoules` : « avec vos 12 inscrits : 12 → 8 → 6 → 5 ».
+
+  ⚠️ **Ce CA était faux, et sa correction est l'événement du cadrage** *(14/08/2026)*. Il annonçait
+  « nombre d'éliminés par manche **et restants** » en citant `ConfigurationBigShootOff`, qui ne
+  portait **ni l'un ni l'autre** : elle avait `restants` (K) et éliminait **un** archer par manche.
+  La divergence est apparue en essayant d'écrire le test depuis le CA — exactement le garde-fou de
+  la règle 9 — et le commanditaire, questionné, a **élargi la règle** plutôt que corrigé le CA :
+  plusieurs sortants par manche, dits manche par manche. Quatre arbitrages en sont sortis, tous
+  reversés au [référentiel §10.1](../docs/referentiel-ffta.md) qui fait autorité sur ce format :
+  - le réglage est **une liste, une case par manche** — pas une progression imposée ;
+  - **K disparaît** des réglages : il se déduit de ce que la liste n'élimine pas ;
+  - **on joue tant que la manche est possible** : une liste ne se refuse jamais, elle s'écourte (un
+    format est de la configuration, règle 2 — il se réutilise sur des effectifs qu'il ignore) ;
+  - les sortants d'une même manche sont **classés au score de la manche** ; les départager quand ils
+    sont à égalité est un **paramètre** (`departage_les_sortants`), jumeau de
+    `ReglageDePoules.departage_inter_poules`.
+
+- **CA — le classement de la phase est lisible** : une phase avale peut y prélever, et le
+  **palmarès** consomme les rangs qu'elle a décernés. *(Ajouté au cadrage du 14/08/2026 : le CA
+  initial s'arrêtait à « habiter le contrat », or `TYPES_RECONSTRUCTIBLES` n'accueille que les
+  arbres rejouables — un Big Shoot Off rend des rangs **exacts** sans arbre à rejouer, donc un
+  `_resultat` propre au format, ce qu'[ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md)
+  annonçait déjà comme la condition d'entrée au palmarès.)*
+
+- **CA — le routage sait où l'archer tire ensuite** (`route_l_archer`). *(Ajouté au cadrage du
+  14/08/2026, à la demande du commanditaire. `route_l_archer` était resté `False` pour les poules
+  en E05US023, capacité explicitement hors périmètre ; elle est demandée ici.)*
 - **CA — le barrage y retourne son verdict** : l'égalité au plus faible se départage par
   `resoudre_barrage`, dont `eliminer_apres_barrage` consomme déjà l'issue. La **saisie** du barrage
   est celle livrée par `E05US023` — pas une seconde.
