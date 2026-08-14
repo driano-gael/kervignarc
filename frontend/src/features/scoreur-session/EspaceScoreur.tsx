@@ -14,6 +14,7 @@ import {
 } from '../../shared/stores/sessionScoreurStore'
 import { SaisieDuels } from '../saisie-duels/SaisieDuels'
 import { SaisiePoules } from '../poules/SaisiePoules'
+import { SaisieBigShootOff } from '../big-shoot-off/SaisieBigShootOff'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
@@ -92,6 +93,9 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
       {/* Saisie des poules (E05US023) : même pavé, autre navigation — on entre par la poule et le
           tour. L'écran ne s'ouvre que si le créneau porte une phase de poules ; sinon il le dit. */}
       <SaisiePoules tournoiId={scoreur.tournoi_id} />
+      {/* E05US028. ⚠️ Troisième panneau à porter son propre sélecteur de créneau — `DETTE-056`
+          s'élargit d'un cran : le remède (un état de créneau partagé) devient d'autant plus dû. */}
+      <SaisieBigShootOff tournoiId={scoreur.tournoi_id} />
     </div>
   )
 }

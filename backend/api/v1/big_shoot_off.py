@@ -61,6 +61,8 @@ class ProjectionReponse(BaseModel):
     effectif: int
     eliminations: list[int]
     paliers: list[int]
+    volees: int
+    fleches_par_volee: int
     restants: int
     manches_jouables: int
     manches_ignorees: int
@@ -71,6 +73,8 @@ class ProjectionReponse(BaseModel):
             effectif=projection.effectif,
             eliminations=list(projection.eliminations),
             paliers=list(projection.paliers),
+            volees=projection.volees,
+            fleches_par_volee=projection.fleches_par_volee,
             restants=projection.restants,
             manches_jouables=projection.manches_jouables,
             manches_ignorees=projection.manches_ignorees,

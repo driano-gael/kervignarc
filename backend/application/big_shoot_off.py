@@ -108,6 +108,12 @@ class ProjectionBigShootOff:
     effectif: int
     eliminations: tuple[int, ...]
     paliers: tuple[int, ...]
+    volees: int
+    fleches_par_volee: int
+    """Le format du tir, porté par la projection parce que **l'écran de saisie en a besoin**.
+
+    Sans lui, la ligne de tir ne sait pas combien de champs de flèche afficher : elle devrait le
+    deviner, et un défaut en dur y serait faux dès qu'un club règle autre chose que 3."""
 
     @property
     def restants(self) -> int:
@@ -591,6 +597,8 @@ class ServiceBigShootOff:
             effectif=effectif,
             eliminations=configuration.eliminations,
             paliers=configuration.paliers_pour(effectif),
+            volees=configuration.volees,
+            fleches_par_volee=configuration.fleches_par_volee,
         )
 
     def _feuille(self, tournoi_id: TournoiId, phase: Phase, archer_id: int) -> Serie:
