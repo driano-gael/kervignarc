@@ -166,6 +166,32 @@ class PhasePasDesPoules(ApplicationError):
     code = "phase_pas_des_poules"
 
 
+class PhasePasUnBigShootOff(ApplicationError):
+    """La phase existe mais n'est **pas** un Big Shoot Off (E05US028) → 409.
+
+    Troisième jumeau de `PhasePasUnTableau`, et le troisième n'est **pas** le signal d'un remède
+    structurel à introduire : chaque décor refuse ce qui n'est pas le sien, et c'est précisément le
+    rôle que le contrat de phase (ADR-0083) laisse aux services. Ce qui serait dupliqué, ce serait
+    la **table** des types admis — or elle est dérivée du registre depuis E05US023, donc il ne reste
+    ici qu'un nom d'erreur par décor. Trois noms distincts valent mieux qu'un message générique :
+    l'organisateur lit « cette phase n'est pas un Big Shoot Off », pas « type de phase incorrect ».
+    """
+
+    code = "phase_pas_un_big_shoot_off"
+
+
+class MancheIntrouvable(ApplicationError):
+    """Aucune manche de ce numéro dans ce Big Shoot Off (E05US028) → 404.
+
+    Cousin de `RencontreIntrouvable`, même cause : l'écran est resté ouvert pendant que l'effectif
+    bougeait, et la manche cliquée n'existe plus — la liste de sortants s'écourte quand la lice se
+    vide (« on joue tant que la manche est possible »). Un 404 est la bonne réponse : la tablette
+    recharge et retrouve un état cohérent.
+    """
+
+    code = "manche_introuvable"
+
+
 class RencontreIntrouvable(ApplicationError):
     """Aucune rencontre de ce numéro dans cette phase de poules (E05US023) → 404.
 
