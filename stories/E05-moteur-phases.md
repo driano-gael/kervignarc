@@ -1085,7 +1085,7 @@ Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
    fois seulement les points 3 à 6 écrits** (une ligne du registre est un constat sur le code du
    jour, jamais une promesse).
 
-   ✅ **Le renommage, lui, est fait** *(commit `27dfa5b`)* : `monte_les_oppositions` →
+   ✅ **Le renommage, lui, est fait** *(14/08/2026)* : `monte_les_oppositions` →
    `deroule_par_un_service`, `TYPES_MONTES` → `TYPES_DEROULES`. Motif : un Big Shoot Off n'a ni
    matchs ni groupes, donc **aucune** valeur de l'ancien booléen n'était défendable — `True`
    contredisait sa propre définition, `False` faisait mentir le signal d'écart de l'atelier. C'est
