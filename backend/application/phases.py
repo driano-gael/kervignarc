@@ -41,6 +41,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_depart
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.phase import (
@@ -126,6 +127,7 @@ class ServicePhases:
         barrage_jusqu_au: int | None = None,
         profondeur: ProfondeurClassement | None = None,
         poules: ReglageDePoules | None = None,
+        big_shoot_off: ConfigurationBigShootOff | None = None,
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
@@ -165,6 +167,7 @@ class ServicePhases:
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
             poules=poules,
+            big_shoot_off=big_shoot_off,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence([*existantes, nouvelle])
@@ -183,6 +186,7 @@ class ServicePhases:
         barrage_jusqu_au: int | None = None,
         profondeur: ProfondeurClassement | None = None,
         poules: ReglageDePoules | None = None,
+        big_shoot_off: ConfigurationBigShootOff | None = None,
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
         séquence — `ordre` et barème/grain sont préservés).
@@ -203,6 +207,7 @@ class ServicePhases:
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
             poules=poules,
+            big_shoot_off=big_shoot_off,
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
         verifier_sequence([*autres, modifiee])

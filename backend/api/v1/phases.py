@@ -23,6 +23,7 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from application.phases import ServicePhases
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
     IssueTour,
@@ -179,6 +180,58 @@ class ReglagePoulesDTO(BaseModel):
         )
 
 
+class ReglageBigShootOffDTO(BaseModel):
+    """Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
+
+    `eliminations` est une **liste écrite par l'organisateur**, une case par manche : `[4, 2, 1]`
+    veut dire « quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ ». Rien n'impose qu'elle décroisse
+    ni qu'elle soit régulière — ce n'est pas une progression, et le mot « suite » a été écarté au
+    cadrage pour cette raison.
+
+    ⚠️ **Il n'y a pas de champ « restants » (K)**, et c'est le cœur de l'élargissement du
+    14/08/2026 : K se **déduit** de ce que la liste n'élimine pas. Deux champs pour la même
+    information pouvaient se contredire ; il n'en reste qu'un.
+
+    Aucune borne haute n'est posée sur la longueur de la liste : le format est réutilisé sur des
+    effectifs qu'il ignore, et « on joue tant que la manche est possible ». L'écran montre la
+    projection (`/api/v1/big-shoot-off/projection/…`) avant que l'organisateur compose.
+
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 4ᵉ paire, `DETTE-054`.
+    """
+
+    eliminations: list[int]
+    volees: int = 1
+    fleches_par_volee: int = 3
+    cumul_des_manches: bool = False
+    """Cumuler les manches plutôt que repartir de zéro. Défaut : remise à zéro — c'est ce qui garde
+    l'enjeu jusqu'à la dernière flèche (arbitrage du 31/07/2026)."""
+
+    departage_les_sortants: bool = False
+    """Faire tirer un barrage entre **éliminés** à égalité, pour leur donner des rangs distincts.
+
+    Défaut : non. Leur égalité ne change rien à qui continue — elle ne décide que d'un numéro de
+    rang —, et un barrage immobilise le pas de tir et le juge (arbitrage du 14/08/2026)."""
+
+    def vers_agregat(self) -> ConfigurationBigShootOff:
+        return ConfigurationBigShootOff(
+            eliminations=tuple(self.eliminations),
+            volees=self.volees,
+            fleches_par_volee=self.fleches_par_volee,
+            cumul_des_manches=self.cumul_des_manches,
+            departage_les_sortants=self.departage_les_sortants,
+        )
+
+    @staticmethod
+    def de_agregat(reglage: ConfigurationBigShootOff) -> ReglageBigShootOffDTO:
+        return ReglageBigShootOffDTO(
+            eliminations=list(reglage.eliminations),
+            volees=reglage.volees,
+            fleches_par_volee=reglage.fleches_par_volee,
+            cumul_des_manches=reglage.cumul_des_manches,
+            departage_les_sortants=reglage.departage_les_sortants,
+        )
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -217,6 +270,7 @@ class ConfigPhaseRequete(BaseModel):
     """
 
     poules: ReglagePoulesDTO | None = None
+    big_shoot_off: ReglageBigShootOffDTO | None = None
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
 
     `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
@@ -270,6 +324,7 @@ class PhaseReponse(BaseModel):
     effectif: int | None
     profondeur: ProfondeurDTO | None = None
     poules: ReglagePoulesDTO | None = None
+    big_shoot_off: ReglageBigShootOffDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -287,6 +342,11 @@ class PhaseReponse(BaseModel):
                 None if phase.profondeur is None else ProfondeurDTO.de_agregat(phase.profondeur)
             ),
             poules=None if phase.poules is None else ReglagePoulesDTO.de_agregat(phase.poules),
+            big_shoot_off=(
+                None
+                if phase.big_shoot_off is None
+                else ReglageBigShootOffDTO.de_agregat(phase.big_shoot_off)
+            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -307,6 +367,7 @@ class EtapeReponse(BaseModel):
     effectif: int | None
     profondeur: ProfondeurDTO | None = None
     poules: ReglagePoulesDTO | None = None
+    big_shoot_off: ReglageBigShootOffDTO | None = None
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -323,6 +384,11 @@ class EtapeReponse(BaseModel):
                 None if etape.profondeur is None else ProfondeurDTO.de_agregat(etape.profondeur)
             ),
             poules=None if etape.poules is None else ReglagePoulesDTO.de_agregat(etape.poules),
+            big_shoot_off=(
+                None
+                if etape.big_shoot_off is None
+                else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
+            ),
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
 
@@ -374,6 +440,7 @@ async def ajouter_phase(
                 requete.barrage_jusqu_au,
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
                 None if requete.poules is None else requete.poules.vers_agregat(),
+                None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
             )
         )
     )
@@ -403,6 +470,7 @@ async def modifier_phase(
                 requete.barrage_jusqu_au,
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
                 None if requete.poules is None else requete.poules.vers_agregat(),
+                None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
             )
         )
     )

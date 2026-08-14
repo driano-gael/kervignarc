@@ -28,6 +28,7 @@ from api.v1.audit import router as audit_router
 from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
 from api.v1.barrages import router as barrages_router
+from api.v1.big_shoot_off import router as big_shoot_off_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
@@ -1192,6 +1193,7 @@ def create_app(
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
     app.include_router(poules_router)
+    app.include_router(big_shoot_off_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)
     app.include_router(tableaux_router)

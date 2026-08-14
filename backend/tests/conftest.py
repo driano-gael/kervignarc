@@ -678,6 +678,13 @@ def poser_phase_factice(
                 # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
                 # exactement la classe de divergence que la docstring ci-dessus décrit.
                 poules=phase.poules,
+                # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
+                # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
+                # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
+                # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
+                # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
+                # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
+                big_shoot_off=phase.big_shoot_off,
             )
         )
     return phases.ajouter(
@@ -733,6 +740,13 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # qu'un décor posant une phase de poules réglée obtenait une phase **non réglée** —
                 # exactement la classe de divergence que la docstring ci-dessus décrit.
                 poules=phase.poules,
+                # ⚠️ **Le même oubli s'est reproduit en E05US028**, à l'identique : un décor posant
+                # un Big Shoot Off réglé obtenait une phase non réglée, et le test d'API échouait en
+                # `phase_pas_reglee` sur une phase qui l'était. C'est la **2ᵉ** occurrence — ce
+                # recopiage champ par champ est structurellement fragile (rien ne rougit quand on en
+                # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
+                # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
+                big_shoot_off=phase.big_shoot_off,
             )
         )
     return PhaseRepositorySQL(session_factory).ajouter(
