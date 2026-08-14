@@ -157,10 +157,16 @@ def test_la_projection_se_lit_sans_le_moindre_tir(
         reponse = client.get(f"/api/v1/big-shoot-off/projection/{scn.tournoi_id}/{scn.phase_id}")
 
     assert reponse.status_code == 200, reponse.text
+    # ⚠️ Assertion **exhaustive** du corps, et non champ par champ : c'est elle qui a fait tomber
+    # l'ajout de `volees` / `fleches_par_volee` au moment où l'écran de saisie en a eu besoin. Un
+    # `assert corps["restants"] == 1` n'aurait rien vu — et un champ ajouté au contrat public sans
+    # que rien ne le signale est exactement ce qu'on veut voir passer sous les yeux.
     assert reponse.json() == {
         "effectif": 4,
         "eliminations": [2, 1],
         "paliers": [2, 1],
+        "volees": 1,
+        "fleches_par_volee": 3,
         "restants": 1,
         "manches_jouables": 2,
         "manches_ignorees": 0,
