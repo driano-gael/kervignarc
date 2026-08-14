@@ -171,6 +171,7 @@ export type { Profondeur } from '../../shared/phases/catalogue'
 // conversion et le composant de saisie, et ré-exporté ici pour les imports existants.
 export type { BaremePoule, ReglagePoules } from '../../shared/phases/poules'
 import type { ReglagePoules } from '../../shared/phases/poules'
+import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).
@@ -187,6 +188,9 @@ export interface Etape {
   // licite : le type se choisit avant ses paramètres, et un brouillon s'enregistre en cours de
   // composition. ⚠️ Le `PUT` est une édition **totale** : omettre le champ **efface** le réglage.
   poules: ReglagePoules | null
+  // Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
+  // `null` = non réglé, ce qui est licite : le type se choisit avant ses paramètres.
+  big_shoot_off: ReglageBigShootOff | null
 }
 
 export interface FormatTournoi {

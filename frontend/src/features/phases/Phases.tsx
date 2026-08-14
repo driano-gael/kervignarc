@@ -32,6 +32,13 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageBigShootOff } from '../../shared/phases/ReglageBigShootOff'
+import {
+  depuisReglage as depuisReglageBso,
+  estValide as bsoValide,
+  versReglage as versReglageBso,
+  BIG_SHOOT_OFF_PAR_DEFAUT,
+} from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
 import {
   depuisReglage,
@@ -316,6 +323,7 @@ export function FormulairePhase({
   // ici. L'écran ne simule aucun effectif — le tournoi a de vrais inscrits, et c'est
   // `GET /api/v1/poules/repartition/...` qui dit la répartition réelle une fois la phase posée.
   const [poules, setPoules] = useState(depuisReglage(phase?.poules ?? null))
+  const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -383,11 +391,14 @@ export function FormulairePhase({
     effectifAnalyse !== null && (!Number.isInteger(effectifAnalyse) || effectifAnalyse < 1)
   const enTableau = TYPES_EN_TABLEAU.includes(type)
   const estPoules = type === 'poules'
+  // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
+  const estBigShootOff = type === 'big_shoot_off'
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
     !(enTableau && !estValide(profondeur)) &&
-    !(estPoules && !poulesValides(poules))
+    !(estPoules && !poulesValides(poules)) &&
+    !(estBigShootOff && !bsoValide(bigShootOff))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -406,6 +417,10 @@ export function FormulairePhase({
       // Idem pour le réglage de poules (E05US023) : réémis sur une phase de poules, **effacé** dès
       // qu'elle est retypée — le serveur refuserait sinon en 422 `reglage_de_poules_invalide`.
       poules: estPoules ? (versReglage(poules) ?? null) : null,
+      // Même garde encore (E05US028) : un réglage de Big Shoot Off porté par un autre type serait
+      // refusé en 422. Retyper la phase l'**efface** donc. La garde compte davantage ici
+      // qu'ailleurs : ce réglage décrit **qui sort**.
+      big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -420,6 +435,7 @@ export function FormulairePhase({
           // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
+          setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -475,6 +491,9 @@ export function FormulairePhase({
           />
         )}
         {estPoules && <ReglagePoules etat={poules} surChangement={setPoules} effectif={null} />}
+        {estBigShootOff && (
+          <ReglageBigShootOff etat={bigShootOff} surChangement={setBigShootOff} effectif={null} />
+        )}
         <label className="formulaire__tranche">
           <input
             type="checkbox"

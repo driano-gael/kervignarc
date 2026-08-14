@@ -51,6 +51,13 @@ import {
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageBigShootOff } from '../../shared/phases/ReglageBigShootOff'
+import {
+  depuisReglage as depuisReglageBso,
+  estValide as bsoValide,
+  versReglage as versReglageBso,
+  BIG_SHOOT_OFF_PAR_DEFAUT,
+} from '../../shared/phases/bigShootOff'
 import {
   depuisReglage,
   estValide as poulesValides,
@@ -669,6 +676,7 @@ export function FormulaireEtape({
   // donc il ne peut pas détenir son propre état sans diverger de celui-ci au premier changement de
   // type. Une seule source, ici.
   const [poules, setPoules] = useState(depuisReglage(etape?.poules ?? null))
+  const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(etape?.big_shoot_off ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -683,12 +691,17 @@ export function FormulaireEtape({
       : null
   const enTableau = TYPES_EN_TABLEAU.includes(type)
   const estPoules = type === 'poules'
+  // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
+  const estBigShootOff = type === 'big_shoot_off'
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
   // qu'il faut faire, puisqu'un top N sans rang d'arrêt est précisément ce qui est refusé.
   const soumissionBloquee =
-    saisieInvalide || (enTableau && !estValide(profondeur)) || (estPoules && !poulesValides(poules))
+    saisieInvalide ||
+    (enTableau && !estValide(profondeur)) ||
+    (estPoules && !poulesValides(poules)) ||
+    (estBigShootOff && !bsoValide(bigShootOff))
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -709,6 +722,10 @@ export function FormulaireEtape({
     // 422 (`ReglageDePoulesInvalide`). Retyper la phase l'**efface** donc, au lieu de l'envoyer se
     // faire recaler — symétrique exact de la ligne au-dessus.
     poules: estPoules ? (versReglage(poules) ?? null) : null,
+    // Même garde encore : un réglage de Big Shoot Off porté par un autre type serait refusé en 422
+    // (`ConfigurationBigShootOffInvalide`). Retyper la phase l'**efface** donc. La garde compte
+    // davantage ici qu'ailleurs : ce réglage décrit **qui sort**.
+    big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
   })
 
   return (
@@ -728,6 +745,7 @@ export function FormulaireEtape({
           // Et le réglage de poules avec, pour la raison exacte donnée juste au-dessus : sans ce
           // reset, « poules de 6, 4 qualifiés » se reporterait en silence sur la phase suivante.
           setPoules(POULES_PAR_DEFAUT)
+          setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
         }
       }}
     >
@@ -791,6 +809,14 @@ export function FormulaireEtape({
 
       {estPoules && (
         <ReglagePoules etat={poules} surChangement={setPoules} effectif={effectifSimule} />
+      )}
+
+      {estBigShootOff && (
+        <ReglageBigShootOff
+          etat={bigShootOff}
+          surChangement={setBigShootOff}
+          effectif={effectifSimule}
+        />
       )}
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />

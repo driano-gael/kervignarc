@@ -114,16 +114,11 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // classement », §10.1), donc l'annoncer serait un faux positif — et un faux positif répété apprend
 // à ignorer le signal.
 //
-// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout. Le CA
-// l'exige explicitement : le signal doit cesser de viser les poules **et continuer de viser** les
-// quatre autres, sans quoi il mentirait pour ceux qui restent.
-export const TYPES_SIGNALES_EN_ECART: TypePhase[] = [
-  'placement',
-  'barrage',
-  'big_shoot_off',
-  'suisse',
-  'colline',
-]
+// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout, et le **Big
+// Shoot Off en E05US028**. Le CA l'exige explicitement à chaque fois : le signal doit cesser de
+// viser le format que l'US rend jouable **et continuer de viser** les autres, sans quoi il
+// mentirait pour ceux qui restent.
+export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'suisse', 'colline']
 
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //
