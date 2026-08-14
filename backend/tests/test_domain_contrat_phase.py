@@ -12,7 +12,7 @@ Trois familles de garde, donc :
 1. **complétude** — tout `TypePhase` a un contrat, et rien d'autre n'en a un ;
 2. **dérivation** — chaque table publique se recalcule depuis le registre, et non l'inverse ;
 3. **honnêteté** — les deux capacités qu'il serait le plus facile de mentir
-   (`monte_les_oppositions`, `classement_lisible`) sont confrontées au **code du jour**, pas à
+   (`deroule_par_un_service`, `classement_lisible`) sont confrontées au **code du jour**, pas à
    l'intention. C'est la garde qui aurait attrapé `DETTE-028` et le défaut d'ADR-0017.
 
 [ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
@@ -24,10 +24,10 @@ import pytest
 
 from domain.contrat_phase import (
     TYPES_CLASSANTS_LUS,
+    TYPES_DEROULES,
     TYPES_EN_TABLEAU,
     TYPES_EN_TABLEAU_JOUE,
     TYPES_JOUES,
-    TYPES_MONTES,
     TYPES_RECONSTRUCTIBLES,
     TYPES_ROUTES,
     TYPES_SANS_CLASSEMENT,
@@ -84,7 +84,7 @@ def test_les_tables_derivees_se_recalculent_depuis_le_registre() -> None:
     assert {
         t for t, c in contrats.items() if c.decor is DecorDeSaisie.ARBRE_DE_DUELS
     } == TYPES_EN_TABLEAU
-    assert {t for t, c in contrats.items() if c.monte_les_oppositions} == TYPES_MONTES
+    assert {t for t, c in contrats.items() if c.deroule_par_un_service} == TYPES_DEROULES
     assert {t for t, c in contrats.items() if c.classement_lisible} == TYPES_CLASSANTS_LUS
     assert {t for t, c in contrats.items() if c.route_l_archer} == TYPES_ROUTES
     assert {t for t, c in contrats.items() if not c.produit_un_classement} == TYPES_SANS_CLASSEMENT
@@ -92,9 +92,9 @@ def test_les_tables_derivees_se_recalculent_depuis_le_registre() -> None:
     assert {
         t
         for t, c in contrats.items()
-        if c.monte_les_oppositions and c.decor is DecorDeSaisie.ARBRE_DE_DUELS
+        if c.deroule_par_un_service and c.decor is DecorDeSaisie.ARBRE_DE_DUELS
     } == TYPES_EN_TABLEAU_JOUE
-    assert TYPES_JOUES == TYPES_CLASSANTS_LUS | TYPES_MONTES
+    assert TYPES_JOUES == TYPES_CLASSANTS_LUS | TYPES_DEROULES
     assert TYPES_RECONSTRUCTIBLES == TYPES_EN_TABLEAU_JOUE
 
 
@@ -104,7 +104,7 @@ def test_un_type_en_tableau_joue_est_a_la_fois_en_tableau_et_monte() -> None:
     C'est ce qui a manqué aux dix filtres d'origine : `placement` a l'arbre sans le service, les
     poules le service sans l'arbre, et chaque appelant redécouvrait la nuance dans son coin.
     """
-    assert TYPES_EN_TABLEAU_JOUE == TYPES_EN_TABLEAU & TYPES_MONTES
+    assert TYPES_EN_TABLEAU_JOUE == TYPES_EN_TABLEAU & TYPES_DEROULES
 
 
 def test_le_signal_decart_ne_vise_que_ce_qui_produit_sans_etre_joue() -> None:
@@ -138,7 +138,7 @@ def test_les_poules_sont_montees_saisies_et_placees() -> None:
     """
     contrat = contrat_de(TypePhase.POULES)
 
-    assert contrat.monte_les_oppositions
+    assert contrat.deroule_par_un_service
     assert contrat.decor is DecorDeSaisie.RENCONTRES_EN_GROUPES
     assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_POULE
 
@@ -191,9 +191,9 @@ def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
     contrat = contrat_de(TypePhase.PLACEMENT)
 
     assert contrat.decor is DecorDeSaisie.ARBRE_DE_DUELS
-    assert not contrat.monte_les_oppositions
+    assert not contrat.deroule_par_un_service
     assert TypePhase.PLACEMENT in TYPES_EN_TABLEAU
-    assert TypePhase.PLACEMENT not in TYPES_MONTES
+    assert TypePhase.PLACEMENT not in TYPES_DEROULES
 
 
 @pytest.mark.parametrize(
@@ -212,7 +212,7 @@ def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: Type
     """
     contrat = contrat_de(type_sans_service)
 
-    assert not contrat.monte_les_oppositions
+    assert not contrat.deroule_par_un_service
     assert not contrat.classement_lisible
     assert type_sans_service in TYPES_SIGNALES_EN_ECART
 

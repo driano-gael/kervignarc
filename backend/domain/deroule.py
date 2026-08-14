@@ -35,7 +35,7 @@ from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
 from domain.contrat_phase import (
     TYPES_CLASSANTS_LUS,
-    TYPES_MONTES,
+    TYPES_DEROULES,
     TYPES_SANS_OPPOSITION,
 )
 from domain.erreurs import (
@@ -70,10 +70,10 @@ ADR-0083). Le parti d'origine tient toujours, il est seulement porté ailleurs :
 `True` par défaut, si bien qu'un type ajouté au catalogue hérite du plancher **prudent** (2) au
 lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
 
-_TYPES_DEROULES = TYPES_MONTES
+_TYPES_DEROULES = TYPES_DEROULES
 """Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
 
-Dérivé de la capacité `monte_les_oppositions` (ADR-0083). Distinct de `TYPES_EN_TABLEAU`, qu'il
+Dérivé de la capacité `deroule_par_un_service` (ADR-0083). Distinct de `TYPES_EN_TABLEAU`, qu'il
 recoupait par coïncidence : celui-ci répond « sait-on dessiner ses tours ? », celui-là « le moteur
 va-t-il seulement monter cette phase ? ». Les types qui ont un moteur de domaine mais **aucun
 consommateur de production** (`# DETTE-028`) n'y figurent pas : leur prélèvement ne sera pas

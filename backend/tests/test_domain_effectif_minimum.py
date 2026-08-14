@@ -273,7 +273,7 @@ def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: 
     (`domain/contrat_phase.py`, ADR-0083) a tranché : ce test-ci est donc, littéralement, la
     disparition du refus abusif qu'E05US021 nommait comme sa pire défaillance.
 
-    Le jour où l'un de ces types gagne son service, il entre dans `TYPES_MONTES` et ce test change
+    Le jour où l'un de ces types gagne son service, il entre dans `TYPES_DEROULES` et ce test change
     de camp — c'est le signal attendu, pas une régression.
     """
     assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2

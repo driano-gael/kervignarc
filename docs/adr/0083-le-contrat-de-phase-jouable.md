@@ -1,7 +1,8 @@
 # ADR-0083 — Le contrat de phase jouable, et les poules pour le tailler
 
 - **Statut** : Accepté
-- **Date** : 2026-08-09
+- **Date** : 2026-08-09, **amendé le 2026-08-14** (E05US028 — le contrat cède où le §2 l'annonçait :
+  une capacité renommée, cf. § « Ce que le contrat a appris de sa **deuxième** mise à l'épreuve »)
 - **Décideurs** : Organisateur / Architecte
 - **Précise** : [ADR-0045](0045-sequence-de-phases-cycle-de-vie-typage-source.md) (typage ouvert des
   phases) · [ADR-0062](0062-catalogue-de-types-de-phase.md) (catalogue de types)
@@ -81,6 +82,13 @@ livré**. On taille le gabarit sur le vêtement le plus large.
 `E05US028` (Big Shoot Off) est donc l'US qui **éprouvera** ce contrat. S'il doit céder quelque part,
 c'est là, et l'élargissement se documentera ici — c'est le signal utile que le contrat était trop
 court, et il vaut d'être tracé plutôt que subi.
+
+> ✅ **Le pari est tenu, et le contrat a cédé — d'un cran, à l'endroit prévu.** E05US028 (14/08/2026)
+> n'a pas eu à redessiner les six questions : elle a renommé **une capacité**, dont le nom décrivait
+> *comment* les types déjà écrits y répondaient au lieu de nommer la question. Détail au § « Ce que
+> le contrat a appris de sa **deuxième** mise à l'épreuve ». Le choix de tailler sur les poules
+> plutôt que sur le Big Shoot Off se confirme donc **a posteriori** : l'inverse aurait demandé de
+> repasser sur du code livré, là où il n'a fallu qu'un `git mv` de vocabulaire.
 
 ### 3. L'unité de placement d'une poule est **la poule**, pas l'archer
 
@@ -205,6 +213,13 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > effacée, mais **remplacée par les lignes qu'elle annonçait**, plus deux sections sur ce qui n'a
 > volontairement pas été fait. C'est le régime que la règle de `CLAUDE.md` cherche : un ADR dont la
 > section décrit un code vérifiable, jamais une intention.
+>
+> 🔄 **Re-vérifiée le 14/08/2026**, l'ADR étant rouvert par E05US028 (sa section *Décision* §2 a
+> reçu le verdict du pari, et une capacité a été renommée). Trois lignes ajoutées, aucune retirée.
+> La vérification a porté sur le **code du jour** et non sur l'US en cours : c'est pourquoi rien n'y
+> figure pour le service, le palmarès ou le routage du Big Shoot Off — ils ne sont pas écrits, et
+> les annoncer ici reproduirait exactement le défaut d'ADR-0017 que cette section existe pour
+> empêcher.
 
 | Module | Ce qu'il porte |
 |---|---|
@@ -213,7 +228,10 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/poule.py` · `couloirs_occupes` | §3 — l'empreinte par le parallélisme, `2 × (effectif ÷ 2)` |
 | `backend/domain/placement_poules.py` | §3 — le bloc contigu, le débordement, l'accolement de la poule suivante, le rapport de conflits |
 | `backend/domain/phase.py` · `Phase.poules` | §4 — le réglage porté par l'agrégat, et l'invariant « pas de réglage de poules sur un autre type » (`ReglageDePoulesInvalide`) |
-| `backend/domain/contrat_phase.py` | §1 — le **registre** : une ligne par type, sept capacités, et les dix tables dérivées (`TYPES_EN_TABLEAU`, `TYPES_MONTES`, `TYPES_CLASSANTS_LUS`, `TYPES_EN_TABLEAU_JOUE`, `TYPES_JOUES`, `TYPES_SIGNALES_EN_ECART`, …) |
+| `backend/domain/contrat_phase.py` | §1 — le **registre** : une ligne par type, sept capacités, et les dix tables dérivées (`TYPES_EN_TABLEAU`, `TYPES_DEROULES`, `TYPES_CLASSANTS_LUS`, `TYPES_EN_TABLEAU_JOUE`, `TYPES_JOUES`, `TYPES_SIGNALES_EN_ECART`, …) |
+| `backend/domain/contrat_phase.py` · `deroule_par_un_service` · `TYPES_DEROULES` | §1 — la capacité **renommée le 14/08/2026** (ex-`monte_les_oppositions` / `TYPES_MONTES`) : elle nomme la *question*, plus la forme que prend la réponse. ⚠️ Vérifié sur le code du jour : la ligne `BIG_SHOOT_OFF` du registre garde `classement_lisible` **et** `route_l_archer` à `False` — son service n'est pas écrit, et l'US qui le portera est en cours |
+| `backend/domain/deroule.py` · `_TYPES_DEROULES` | §1 — seul consommateur de la table ; l'alias local devient homonyme, comme `_TYPES_CLASSANTS_LUS` juste à côté |
+| `backend/domain/{phase,deroule_etape,format_tournoi}.py` · `big_shoot_off` · `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_big_shoot_off` | §4 — le **précédent appliqué** : un réglage de format vit dans `config` à la racine, **sans migration**, exactement comme `config.poules`. Écrit le 14/08/2026 pour le Big Shoot Off |
 | `backend/domain/deroule.py` · `backend/application/{palmares,simulation_format,saisie_duels,placement_duels,routage}.py` | §1 — les sites **dérivés** ; aucun ne réécrit son filtre |
 | `frontend/src/shared/phases/catalogue.ts` · `TYPES_SIGNALES_EN_ECART` | §1 — le miroir client, écrit **en négatif** (un oubli y coûte un avertissement de trop, jamais un de moins) |
 | `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_poules` | §4 — `config.poules`, à la racine du `config` (ADR-0046), **sans migration** ; barème toujours écrit, relu de ce qui est écrit |
@@ -260,4 +278,52 @@ Le contrat a tenu sur les poules, mais deux choses valent d'être notées avant 
   `ClassementSource.plages_indecises` (ADR-0081), donc hors du registre. Ce n'est pas un défaut du
   contrat : c'est une propriété de la **donnée**, pas du type. Mais un lecteur qui chercherait la
   réponse dans le registre ne l'y trouverait pas, et c'est le genre d'angle mort qui coûte cher.
+
+### Ce que le contrat a appris de sa **deuxième** mise à l'épreuve (E05US028, 14/08/2026)
+
+Le Big Shoot Off était l'épreuve annoncée au §2. Le contrat a tenu, **sauf sur un nom** — et c'est
+la forme la plus intéressante d'échec, parce qu'elle ne se voit pas à la compilation.
+
+**Le constat.** `monte_les_oppositions` valait `True` « quand un service de production monte
+réellement les matchs/groupes de ce type ». Un Big Shoot Off n'a **ni matchs ni groupes** : il fait
+tirer une volée collective, tout le monde sur la ligne. Une fois son service écrit, aucune des deux
+valeurs n'était juste :
+
+- `True` contredisait la **définition écrite** de la capacité — on aurait affirmé qu'un service
+  monte des oppositions qui n'existent pas ;
+- `False` faisait mentir tout ce qui en dérive : `TYPES_JOUES` aurait exclu le Big Shoot Off, donc
+  l'atelier aurait continué de le signaler « composable mais pas jouable » (E01US024) sur un format
+  désormais joué de bout en bout, et son prélèvement n'aurait pas relevé le plancher d'inscrits
+  (E05US021).
+
+**Ce que ça dit, et qui vaut au-delà du cas.** Quand aucune valeur d'un booléen n'est défendable,
+ce n'est pas un cas particulier à traiter par une exception : c'est que le **nom** est plus étroit
+que la question. La capacité a toujours répondu à « *un service de production exécute-t-il ce
+type ?* » ; son nom, lui, décrivait la **forme** que prenait la réponse pour les deux seuls types
+qui l'avaient à `True` au moment de l'écrire (élimination directe, poules — tous deux à
+oppositions). Le premier format d'une autre forme l'a rendue inrépondable.
+
+**Décision** — la capacité est renommée `deroule_par_un_service`, et sa table dérivée
+`TYPES_MONTES` devient `TYPES_DEROULES`. Le verbe « dérouler » n'est pas neuf : c'est celui
+qu'emploient déjà `domain/deroule.py`, `_TYPES_DEROULES` et le message d'atelier « le moteur ne sait
+pas encore dérouler ce type ». Le renommage **retire** donc un vocabulaire concurrent au lieu d'en
+ajouter un — `deroule._TYPES_DEROULES = TYPES_DEROULES` devient un alias local homonyme, comme
+`_TYPES_CLASSANTS_LUS` juste à côté.
+
+**Portée du changement** : quatre fichiers, aucun front (la capacité n'a pas de miroir client — seul
+`TYPES_SIGNALES_EN_ECART` en a un, et il dérive, donc il suit sans être touché). Aucune migration :
+c'est du vocabulaire de code, rien n'en est persisté.
+
+**Ce qui n'a pas bougé, et qui était le vrai pari** : les **six questions**, `DecorDeSaisie`
+(`VOLEE_COLLECTIVE` existait déjà), `PlanDeCibles`, et le grain — `FIN_DE_SERIE` était admis pour ce
+type depuis E05US015. Le §2 pariait qu'un contrat taillé sur le format le plus riche accueillerait
+le plus pauvre au prix d'un assouplissement ; le prix s'est révélé être **un mot**, pas une
+structure. C'est la confirmation *a posteriori* du choix de tailler sur les poules : l'ordre inverse
+aurait demandé de repasser sur du code déjà livré.
+
+⚠️ **Ce que cette section ne dit pas encore.** Au 14/08/2026, `classement_lisible` et
+`route_l_archer` du Big Shoot Off sont **toujours à `False`** : son service, son entrée au palmarès
+et son routage ne sont pas écrits. La ligne du registre reste donc un constat exact sur le code du
+jour — c'est précisément la discipline que ce module s'impose, et la basculer « puisque l'US est en
+cours » reproduirait `DETTE-028`.
 

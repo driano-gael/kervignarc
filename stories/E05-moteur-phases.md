@@ -1083,11 +1083,14 @@ Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
    qu'il ne sait pas (`P-3`) plutôt que de rendre un panneau muet.
 7. **Registre de contrat** — basculer `classement_lisible` et `route_l_archer` à `True`, et **une
    fois seulement les points 3 à 6 écrits** (une ligne du registre est un constat sur le code du
-   jour). ⚠️ `monte_les_oppositions` pose un problème de **nom** : sa docstring dit « monte
-   réellement les matchs/groupes », or un BSO n'a ni l'un ni l'autre — le mettre à `True` serait
-   faux au sens de sa propre définition. C'est l'élargissement qu'ADR-0083 §2 annonçait ; le renommer
-   en capacité neutre (« un service de production exécute ce type ») est le remède, et il se
-   documente à l'ADR.
+   jour, jamais une promesse).
+
+   ✅ **Le renommage, lui, est fait** *(commit `27dfa5b`)* : `monte_les_oppositions` →
+   `deroule_par_un_service`, `TYPES_MONTES` → `TYPES_DEROULES`. Motif : un Big Shoot Off n'a ni
+   matchs ni groupes, donc **aucune** valeur de l'ancien booléen n'était défendable — `True`
+   contredisait sa propre définition, `False` faisait mentir le signal d'écart de l'atelier. C'est
+   l'endroit exact où [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md) §2 annonçait que
+   le contrat céderait ; l'ADR est amendé et sa section « Porté dans le code par » re-vérifiée.
 8. **API** (`api/v1/big_shoot_off.py` + DTO de réglage sur `phases` et `formats`, jumeaux assumés
    `DETTE-054`), **bootstrap**, **front** (miroir `catalogue.ts`, fiche de réglage avec la
    projection des paliers, écran de saisie), puis **docs** : ADR neuf, `DETTE-028` rétrécie,
