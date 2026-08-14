@@ -31,6 +31,7 @@ from dataclasses import dataclass, replace
 
 from domain.anomalie import Anomalie, Gravite
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
 from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import (
@@ -105,6 +106,13 @@ class ModelePhase:
     un réglage de poules posé sur une élimination directe est un modèle **licite** qui refusera de
     s'appliquer (`ReglageDePoulesInvalide` à la construction de la `Phase`)."""
 
+    big_shoot_off: ConfigurationBigShootOff | None = None
+    """Le réglage d'un **Big Shoot Off** — combien sortent, manche par manche (E05US028).
+
+    Même régime de brouillon. ⚠️ Ce champ est **la** raison pour laquelle le moteur refuse de
+    rejeter une liste inadaptée à l'effectif : un format est réutilisé d'un tournoi à l'autre, sur
+    des effectifs qu'il ne connaît pas au moment où on l'écrit."""
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -147,6 +155,7 @@ class ModelePhase:
             barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
             poules=self.poules,
+            big_shoot_off=self.big_shoot_off,
         )
 
     @staticmethod
@@ -171,6 +180,7 @@ class ModelePhase:
             barrage_jusqu_au=etape.barrage_jusqu_au,
             profondeur=etape.profondeur,
             poules=etape.poules,
+            big_shoot_off=etape.big_shoot_off,
         )
 
 

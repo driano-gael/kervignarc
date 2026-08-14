@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
 from domain.grain_validation import GrainValidation
 from domain.phase import (
@@ -93,6 +94,12 @@ class EtapeDeroule:
     avant ses paramètres, et l'atelier doit pouvoir enregistrer un déroulé en cours de composition
     (le brouillon d'ADR-0063)."""
 
+    big_shoot_off: ConfigurationBigShootOff | None = None
+    """Le réglage d'un **Big Shoot Off** — combien sortent, manche par manche (E05US028).
+
+    Même régime que `poules` ci-dessus, et pour les mêmes raisons : porté par l'étape donc par le
+    tournoi (ADR-0076), `None` tant que le type est choisi sans ses paramètres."""
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
@@ -117,6 +124,7 @@ class EtapeDeroule:
             barrage_jusqu_au=self.barrage_jusqu_au,
             profondeur=self.profondeur,
             poules=self.poules,
+            big_shoot_off=self.big_shoot_off,
             statut=StatutPhase.A_VENIR,
         )
 

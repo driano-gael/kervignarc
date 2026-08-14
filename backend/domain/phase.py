@@ -48,6 +48,7 @@ from typing import Protocol
 
 from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
 from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
@@ -55,6 +56,7 @@ from domain.contrat_phase import produit_un_classement as produit_un_classement
 from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
+    ConfigurationBigShootOffInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
@@ -436,6 +438,20 @@ class Phase:
     choisi avant ses paramètres, et l'atelier doit pouvoir enregistrer un déroulé en cours de
     composition. C'est la composition du jour J qui exigera le réglage, pas l'agrégat."""
 
+    big_shoot_off: ConfigurationBigShootOff | None = None
+    """Le réglage d'une phase de **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
+
+    Même régime que `poules` ci-dessus : `None` sur tout autre type, et sur un Big Shoot Off **pas
+    encore réglé**.
+
+    ⚠️ **Une seule classe ici, là où les poules en ont deux**, et l'asymétrie est justifiée. Les
+    poules séparent `ReglageDePoules` (une *taille visée*, connue à la composition) de
+    `ConfigurationPoules` (un *nombre de poules*, qui n'existe que le jour J) parce que la
+    conversion **dépend de l'effectif**. La liste de sortants d'un Big Shoot Off, elle, n'en dépend
+    pas : « 4 puis 2 puis 1 » se lit à l'identique sur 12 ou sur 20 inscrits — c'est la *projection*
+    (`paliers_pour`) qui varie, et elle se calcule à la lecture sans rien figer. Dédoubler la classe
+    ici n'aurait donc porté aucune information, seulement une conversion identité."""
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -455,6 +471,14 @@ class Phase:
             raise ReglageDePoulesInvalide(
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
+            )
+        if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
+            # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
+            # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le
+            # retrouver actif après un retypage éliminerait des archers sur une consigne oubliée.
+            raise ConfigurationBigShootOffInvalide(
+                f"Une phase de type « {self.type.value} » n'est pas un Big Shoot Off : elle n'a "
+                "pas de nombre de sortants à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

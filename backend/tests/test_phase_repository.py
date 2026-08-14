@@ -30,6 +30,7 @@ from alembic.config import Config
 from sqlalchemy import text
 
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
 from domain.format_tournoi import FormatTournoi, ModelePhase
@@ -960,6 +961,111 @@ def test_le_reglage_de_poules_fait_l_aller_retour(tmp_path: Path) -> None:
         assert relue.poules == reglage
     finally:
         db.engine.dispose()
+
+
+# --- E05US028 : le réglage du Big Shoot Off, même domicile et même mécanisme --------------------
+
+
+def test_le_reglage_de_big_shoot_off_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.big_shoot_off` s'écrit et se relit à l'identique — **sans migration**.
+
+    Même mécanisme que `config.poules` (ADR-0083) et pour la même raison : un réglage est de la
+    **configuration**, il tient dans le JSON existant. À la racine, jamais sous `policies` — le
+    nombre de sortants d'une manche n'est pas une stratégie injectable.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        reglage = ConfigurationBigShootOff(
+            eliminations=(4, 2, 1),
+            volees=2,
+            fleches_par_volee=3,
+            cumul_des_manches=True,
+            departage_les_sortants=True,
+        )
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.BIG_SHOOT_OFF, big_shoot_off=reglage)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.big_shoot_off == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_le_format_du_tir_ne_se_relit_pas_du_defaut_de_code(tmp_path: Path) -> None:
+    """`volees` et `fleches` sont **écrits même aux défauts**, et relus de ce qui est écrit.
+
+    Même piège que le barème de poule ci-dessous : n'écrire que ce qui diffère du défaut ferait
+    changer le nombre de flèches de tous les tournois déjà réglés le jour où ce défaut changerait.
+    Les **options**, elles, ne s'écrivent que si elles sont actives — leur absence *signifie* le
+    défaut, qui est aussi le régime de toute phase écrite avant qu'elles existent.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.BIG_SHOOT_OFF,
+            big_shoot_off=ConfigurationBigShootOff(eliminations=(1,)),
+        )
+
+        with db.session_factory() as session:
+            ligne = session.execute(text("SELECT config FROM deroule_etape")).scalar_one()
+
+        ecrit = json.loads(ligne)["big_shoot_off"]
+        assert ecrit["volees"] == 1
+        assert ecrit["fleches"] == 3
+        assert "cumul" not in ecrit
+        assert "departage_sortants" not in ecrit
+    finally:
+        db.engine.dispose()
+
+
+def test_un_big_shoot_off_non_regle_se_relit_sans_reglage(tmp_path: Path) -> None:
+    """Le type se choisit **avant** ses paramètres : l'atelier enregistre un déroulé en cours de
+    composition, et la relecture ne doit pas inventer une liste de sortants."""
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.BIG_SHOOT_OFF)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.big_shoot_off is None
+    finally:
+        db.engine.dispose()
+
+
+def test_un_reglage_de_big_shoot_off_altere_remonte_en_erreur_typee(tmp_path: Path) -> None:
+    """Une liste absente ne se lit **pas** « phase non réglée » : la base dit autre chose.
+
+    Le cas mérite d'autant plus une erreur typée qu'une liste altérée décrit **qui sort** — la
+    tolérer ferait éliminer des archers sur une donnée corrompue, ce qu'aucun écran ne rattraperait.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _big_shoot_off_brut(db, depart_id, json.dumps({"big_shoot_off": {"volees": 2}}))
+
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+def _big_shoot_off_brut(db: Database, depart_id: DepartId, config: str) -> None:
+    """Jumeau de `_poules_brutes` pour une étape de type **big_shoot_off**, config imposée."""
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        session.add(
+            DerouleEtapeORM(
+                tournoi_id=depart.tournoi_id, ordre=1, type="big_shoot_off", config=config
+            )
+        )
+        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.commit()
 
 
 def test_un_bareme_non_defaut_ne_se_relit_pas_du_defaut_de_code(tmp_path: Path) -> None:

@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
+    ConfigurationBigShootOffInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
@@ -550,6 +554,37 @@ def test_le_big_shoot_off_se_valide_comme_une_serie() -> None:
     """Il fait tirer des **volées en parallèle**, pas des duels : son grain est celui d'une
     série."""
     assert grain_par_defaut(TypePhase.BIG_SHOOT_OFF) == GrainValidation.fin_de_serie()
+
+
+# --- E05US028 : le réglage du Big Shoot Off, porté par l'agrégat ---------------------------------
+
+
+def test_une_phase_de_big_shoot_off_porte_son_nombre_de_sortants() -> None:
+    """CA « réglages à l'atelier » : la liste des sortants vit sur la phase, comme la taille des
+    poules (E05US023). L'atelier la règle, le service la lit le jour J."""
+    phase = replace(
+        Phase.creer(depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF),
+        big_shoot_off=ConfigurationBigShootOff(eliminations=(4, 2, 1)),
+    )
+    assert phase.big_shoot_off is not None
+    assert phase.big_shoot_off.eliminations == (4, 2, 1)
+
+
+def test_une_phase_de_big_shoot_off_peut_n_etre_pas_encore_reglee() -> None:
+    """Le type se choisit **avant** ses paramètres : l'atelier doit pouvoir enregistrer un déroulé
+    en cours de composition. C'est le service du jour J qui exigera le réglage, pas l'agrégat."""
+    assert Phase.creer(depart_id=7, ordre=2, type=TypePhase.BIG_SHOOT_OFF).big_shoot_off is None
+
+
+def test_un_autre_type_ne_porte_pas_de_nombre_de_sortants() -> None:
+    """Même garde que `poules` et `profondeur`, et elle compte davantage ici : un réglage oublié
+    après un retypage décrirait **qui sort**, donc il éliminerait des archers sur une consigne que
+    plus personne ne croit active."""
+    with pytest.raises(ConfigurationBigShootOffInvalide):
+        replace(
+            Phase.creer(depart_id=7, ordre=2, type=TypePhase.ELIMINATION_DIRECTE),
+            big_shoot_off=ConfigurationBigShootOff(eliminations=(1,)),
+        )
 
 
 def test_l_echauffement_n_admet_aucun_grain_de_validation() -> None:
