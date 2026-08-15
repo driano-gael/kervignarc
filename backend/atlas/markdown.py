@@ -77,7 +77,10 @@ def section(texte: str, nom: str) -> str:
 
 
 _LIEN_MD = re.compile(r"\[(?P<texte>[^\]]*)\]\((?P<cible>[^)]*)\)")
-_BALISE = re.compile(r"[*`_]")
+# Le tiret bas est **volontairement absent** : Markdown en fait un marqueur d'italique, mais dans
+# ce corpus c'est presque toujours un identifiant de code (`depart_id`, `_TRANSITIONS`). Le retirer
+# transformait « depart_id » en « departid » — un nom qui n'existe nulle part.
+_BALISE = re.compile(r"[*`]")
 
 
 def en_clair(markdown: str) -> str:

@@ -78,6 +78,25 @@ def _amendements(corps: str) -> tuple[Amendement, ...]:
 _MARQUEUR_DE_LISTE = re.compile(r"^(?:\d+\.|[-*])\s*")
 
 
+def _sans_decor(bloc: str) -> str:
+    """Le bloc débarrassé de son ancre et de son marqueur de liste."""
+    return _MARQUEUR_DE_LISTE.sub("", _ANCRE.sub("", bloc).strip()).strip()
+
+
+def _corps(bloc: str) -> str:
+    """Le texte de la règle **sans le titre** qui l'ouvre.
+
+    Sans cette coupe, la fiche afficherait deux fois le même intitulé — une fois en titre, une fois
+    en tête du corps. Quand la règle n'a pas de titre en gras et tient en une phrase, le titre dit
+    déjà tout : le corps est alors vide plutôt que redondant.
+    """
+    texte = _sans_decor(bloc)
+    gras = _GRAS.match(texte)
+    if gras:
+        return texte[gras.end() :].lstrip(" .:\n").strip()
+    return "" if len(texte) <= 120 else texte
+
+
 def _titre(bloc: str) -> str:
     """Le titre en gras **qui ouvre** la règle ; à défaut, sa première phrase.
 
@@ -89,7 +108,7 @@ def _titre(bloc: str) -> str:
       (« …doit être **redécoupée** ») : prendre le premier gras venu donnerait « redécoupée » pour
       titre. D'où `match` et non `search` — le gras ne fait titre que s'il ouvre la règle.
     """
-    texte = _MARQUEUR_DE_LISTE.sub("", _ANCRE.sub("", bloc).strip()).strip()
+    texte = _sans_decor(bloc)
     gras = _GRAS.match(texte)
     return markdown.tronquer(markdown.en_clair(gras.group("titre") if gras else texte), 80).rstrip(
         " .:"
@@ -120,7 +139,10 @@ def lire_regles(racine: Path) -> tuple[Regle, ...]:
     for position, (debut, identifiant, section_courante) in enumerate(reperes):
         fin = _fin_du_bloc(lignes, debut, reperes, position)
         bloc = "\n".join(lignes[debut:fin])
-        corps = _ANCRE.sub("", bloc).strip()
+        # On extrait depuis le bloc **entier** et on n'affiche que le corps allégé de son titre :
+        # chercher dans le texte tronqué perdrait les incises et les renvois d'une règle dont le
+        # titre porte toute la phrase.
+        entier = _sans_decor(bloc)
         rangs[section_courante] = rangs.get(section_courante, 0) + 1
         regles.append(
             Regle(
@@ -128,13 +150,13 @@ def lire_regles(racine: Path) -> tuple[Regle, ...]:
                 section=section_courante,
                 rang=rangs[section_courante],
                 titre=_titre(bloc),
-                corps=corps,
+                corps=_corps(bloc),
                 fichier="CLAUDE.md",
                 ligne=debut + 1,
                 ligne_fin=fin,
-                amendements=_amendements(corps),
-                adr=tuple(dict.fromkeys(_ADR_CITE.findall(corps))),
-                us=tuple(dict.fromkeys(_US_CITEE.findall(corps))),
+                amendements=_amendements(entier),
+                adr=tuple(dict.fromkeys(_ADR_CITE.findall(entier))),
+                us=tuple(dict.fromkeys(_US_CITEE.findall(entier))),
             )
         )
 
