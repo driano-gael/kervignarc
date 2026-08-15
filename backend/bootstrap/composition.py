@@ -995,12 +995,21 @@ def create_app(
     # ⚠️ `depart_repository` depuis E01US025 : les quatre canaux de routage entrent par le
     # **créneau** (ADR-0075) — « le tableau qui vient » n'a de sens que dans une séquence, et la
     # vue transverse `par_tournoi` en concatène N.
+    # ⚠️ `service_big_shoot_off` depuis E05US028 : sans lui, `_routage_big_shoot_off` prend la
+    # branche « montage sans Big Shoot Off » et rend INDISPONIBLE sur les quatre canaux. Le
+    # paramètre est optionnel (aucun cycle, cf. son commentaire au constructeur), donc **rien ne
+    # rougissait** quand il manquait : la ligne `route_l_archer=True` du registre de contrats se
+    # justifiait par une méthode morte en production, pendant que les tests montaient leur propre
+    # `ServiceRoutage` avec le port. C'est le mode de défaillance d'ADR-0017 — une capacité déclarée
+    # dont le porteur nommé ne porte rien — et c'est `test_composition_routage_big_shoot_off` qui
+    # l'ancre désormais, en interrogeant le service **tel que `create_app` le câble**.
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
         archer_repository,
         phase_repository,
         depart_repository,
+        app.state.service_big_shoot_off,
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service

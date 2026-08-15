@@ -279,9 +279,14 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
     if etat.barrage_en_cours:
         # ⚠️ **Le garde-fou de l'autre porte.** `eliminer_apres_barrage` vérifiait déjà qu'une manche
         # est suspendue ; `jouer_manche` ne vérifiait rien, donc on pouvait enjamber un barrage en
-        # cours en rejouant une manche. Constaté : le leader s'y faisait éliminer, l'égalité était
-        # oubliée sans trace, et les scores de la manche suspendue — déjà repliés dans `cumuls` —
-        # étaient comptés deux fois. Fermer une porte et laisser l'autre ouverte ne ferme rien.
+        # cours en rejouant une manche. Constaté : le leader s'y faisait éliminer, et l'égalité
+        # était oubliée sans trace. Fermer une porte et laisser l'autre ouverte ne ferme rien.
+        #
+        # ⚠️ **Correction de diagnostic (revue d'E05US028).** Cette note affirmait que les scores de
+        # la manche suspendue étaient « déjà repliés dans `cumuls`, donc comptés deux fois ». C'est
+        # l'inverse : `_suspendre` ne replie rien, ils étaient *perdus*. Le diagnostic faux a
+        # survécu au correctif et a directement produit le bug de
+        # `_cumuls_de_la_manche_suspendue` — d'où sa rectification ici plutôt que sa suppression.
         raise ConfigurationBigShootOffInvalide(
             "Un barrage est en attente entre "
             f"{len(etat.barrage_en_cours)} archers : il doit être tranché avant la manche suivante."
@@ -337,7 +342,39 @@ def eliminer_apres_barrage(etat: EtatBigShootOff, ordre: Sequence[Participant]) 
         etat,
         compares=dict(etat.scores_suspendus),
         departages=departages,
-        cumuls=etat.cumuls,
+        cumuls=_cumuls_de_la_manche_suspendue(etat),
+    )
+
+
+def _cumuls_de_la_manche_suspendue(
+    etat: EtatBigShootOff,
+) -> tuple[tuple[Participant, int], ...]:
+    """Les cumuls **manche comprise**, à replier au moment de conclure un barrage.
+
+    ⚠️ **C'est ici que se jouait une inversion de vainqueur** (revue d'E05US028). `_suspendre` ne
+    replie délibérément pas les cumuls — c'est ce qui permet de ressaisir une manche suspendue sans
+    double comptage — mais `eliminer_apres_barrage` repassait ensuite ces mêmes cumuls *d'avant la
+    manche* à `_conclure`, qui les persistait tels quels. Le score de la manche tranchée au barrage
+    disparaissait donc du total, et toutes les manches suivantes comparaient des cumuls amputés :
+    en mode cumul, le moteur pouvait désigner le mauvais vainqueur d'une finale.
+
+    Le repli diffère selon le mode, et c'est ce qui rend la ligne non triviale :
+    - en **cumul**, `scores_suspendus` porte déjà le total (`compares` *est* le cumul dans
+      `jouer_manche`) — le reprendre tel quel, l'additionner le compterait deux fois ;
+    - en **remise à zéro**, il ne porte que la manche — il s'ajoute aux cumuls antérieurs, qui ne
+      servent alors qu'à l'affichage mais n'ont aucune raison d'être faux.
+
+    Le commentaire qui a laissé passer le défaut disait l'inverse du code (« déjà repliés dans
+    `cumuls`, donc comptés deux fois ») ; ils étaient *perdus*. Un diagnostic inversé est ce qui
+    rend un bug durable : il ferme la piste qui y menait.
+    """
+    suspendus = dict(etat.scores_suspendus)
+    anciens = dict(etat.cumuls)
+    if etat.configuration.cumul_des_manches:
+        return tuple((participant, suspendus[participant]) for participant in etat.en_lice)
+    return tuple(
+        (participant, anciens.get(participant, 0) + suspendus[participant])
+        for participant in etat.en_lice
     )
 
 
@@ -425,17 +462,34 @@ def _eliminer(
     """Retire les `sortants` de la lice et leur décerne les derniers rangs disponibles.
 
     Les rangs descendent depuis `len(en_lice)`, le plus faible d'abord. Deux sortants de clé
-    **identique** partagent leur rang, au sens usuel du classement sportif (« 1224 ») : le suivant
-    reprend son rang naturel, et le rang sauté reste vacant. Ce trou est la trace visible d'un
-    départage qui n'a pas eu lieu — c'est `departage_les_sortants` qui le referme, à la demande.
+    **identique** partagent leur rang, au sens usuel du classement sportif (« 1224 ») : chacun prend
+    le rang **du meilleur** de son groupe d'ex æquo — c'est-à-dire `1 + le nombre d'archers
+    strictement meilleurs` — et le ou les rangs sautés restent vacants **après** le groupe. Ce trou
+    est la trace visible d'un départage qui n'a pas eu lieu — c'est `departage_les_sortants` qui le
+    referme, à la demande.
+
+    ⚠️ **Le sens du partage a été arbitré le 15/08/2026** (revue d'E05US028) et reversé au
+    référentiel §10.1, qui disait seulement « ils partagent leur rang » sans dire lequel. Le code
+    appliquait la convention inverse (« 1334 » : le rang du plus faible du groupe, vacance *avant*),
+    ce qui coûtait une place à chaque ex æquo — et le test figeait ce comportement en invoquant,
+    lui, la convention « 1224 ». Sur 12 archers, 4 sortants à 18/21/21/24, on attribue donc
+    `{12, 10, 10, 9}` et non `{12, 11, 11, 9}` : les deux 21 ont bien neuf archers devant eux.
+
+    C'est aussi la convention que `classement()` applique déjà aux **rescapés** dans ce même
+    module ; les deux lectures d'un même agrégat n'ont aucune raison de se contredire.
     """
     depart = len(etat.en_lice)
     attribues: list[tuple[Participant, int]] = []
-    for index, sortant in enumerate(sortants):
-        naturel = depart - index
-        if index and cles[sortant] == cles[sortants[index - 1]]:
-            naturel = attribues[index - 1][1]
-        attribues.append((sortant, naturel))
+    for sortant in sortants:
+        # Le rang du **dernier** membre du groupe d'ex æquo, pas du premier : `sortants` est trié du
+        # plus faible au plus fort, donc le dernier ex æquo est celui qui a le moins d'archers
+        # devant lui — c'est lui qui porte le rang « 1224 » que tout le groupe partage.
+        dernier = max(
+            autre_index
+            for autre_index, autre in enumerate(sortants)
+            if cles[autre] == cles[sortant]
+        )
+        attribues.append((sortant, depart - dernier))
     partants = set(sortants)
     en_lice = tuple(participant for participant in etat.en_lice if participant not in partants)
     suivant = EtatBigShootOff(

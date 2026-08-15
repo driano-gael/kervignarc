@@ -504,15 +504,25 @@ class ServiceBigShootOff:
             if scores is None:
                 break
             issue = jouer_manche(etat, scores)
-            if issue.barrage_entre:
+            # ⚠️ **Une manche peut demander plusieurs barrages successifs**, et le rejeu doit les
+            # appliquer *tous* avant d'avancer (revue d'E05US028). Le domaine ne départage qu'un
+            # groupe d'ex æquo à la fois — `_conclure` le dit : « s'il en reste un autre, la
+            # conclusion rejouée le trouvera au tour suivant » — donc `eliminer_apres_barrage` peut
+            # **re-suspendre** la même manche. Un premier jet n'appliquait qu'un seul verdict puis
+            # rebouclait : `etat.manche` n'ayant pas avancé, `jouer_manche` retrouvait un barrage en
+            # attente et levait `ConfigurationBigShootOffInvalide` — à *chaque lecture*, donc
+            # l'écran de saisie, le panneau de routage et le palmarès tombaient tous les trois,
+            # définitivement. Le cas est ordinaire dès que `departage_les_sortants` est réglé : deux
+            # groupes d'ex æquo parmi les sortants suffisent, sur un shoot-off à 3 flèches.
+            while issue.barrage_entre:
                 ordre = verdicts.get(frozenset(issue.barrage_entre))
                 if ordre is None:
-                    # Le barrage n'a pas encore parlé : la phase s'arrête là, et l'écran le dit.
-                    etat = issue.etat
                     break
-                etat = eliminer_apres_barrage(issue.etat, ordre).etat
-            else:
-                etat = issue.etat
+                issue = eliminer_apres_barrage(issue.etat, ordre)
+            etat = issue.etat
+            if issue.barrage_entre:
+                # Un barrage n'a pas encore parlé : la phase s'arrête là, et l'écran le dit.
+                break
         return etat, tuple(lices)
 
     def _verdicts_de_barrage(

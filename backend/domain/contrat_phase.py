@@ -204,6 +204,23 @@ class ContratDePhase:
     sans que rien ne sache le *lire*, et un prélèvement la visant restait inerte."""
 
     route_l_archer: bool = False
+    route_tout_le_plateau: bool = True
+    """Cette phase concerne-t-elle **tous** les archers du créneau, ou une population restreinte ?
+
+    ⚠️ **Capacité ajoutée à la revue d'E05US028**, sur un défaut constaté et non sur un pronostic.
+    `route_l_archer` répond à « sait-on dire où cet archer tire ensuite ? » ; elle ne dit rien de
+    *combien d'archers* la phase concerne. Tant que seule l'élimination directe routait, les deux
+    questions se confondaient — un tableau reçoit le plateau. Le Big Shoot Off les sépare : il route
+    **huit finalistes** sur cent vingt.
+
+    Ce que la confusion coûtait, en production : `ServiceRoutage._phase_de_tableau` dérive sa cible
+    de `TYPES_ROUTES` et, en résolution **implicite** (`phase_id=None`, le régime par défaut des
+    tablettes), prend la dernière phase routée du créneau. Dès que l'élimination directe passait à
+    `TERMINEE`, le Big Shoot Off devenait cette cible et les **112 non-finalistes** lisaient « Cet
+    archer ne fait pas partie de ce Big Shoot Off » à la place de leur rang final — définitivement,
+    puisque `tableaux[-1]` reste le Big Shoot Off une fois tout terminé. C'est le défaut que le
+    commentaire de `_phase_de_tableau` disait vouloir éviter, appliqué à l'envers.
+    """
     """Le routage sait dire où un archer de cette phase tire ensuite (`application/routage.py`)."""
 
 
@@ -287,6 +304,10 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         deroule_par_un_service=True,
         classement_lisible=True,
         route_l_archer=True,
+        # ⚠️ **La seule phase du registre à population restreinte** : les finalistes, pas le
+        # plateau. C'est ce qui la retire de la résolution *implicite* du routage (revue
+        # d'E05US028) — elle reste routée, mais seulement quand on la désigne.
+        route_tout_le_plateau=False,
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
@@ -359,6 +380,17 @@ TYPES_ROUTES: frozenset[TypePhase] = frozenset(
     type_phase for type_phase, contrat in _CONTRATS.items() if contrat.route_l_archer
 )
 """Les types dont le routage sait dire où l'archer tire ensuite (`application/routage.py`)."""
+
+TYPES_ROUTES_IMPLICITEMENT: frozenset[TypePhase] = frozenset(
+    type_phase
+    for type_phase, contrat in _CONTRATS.items()
+    if contrat.route_l_archer and contrat.route_tout_le_plateau
+)
+"""Les types qu'une tablette peut atteindre **sans les nommer** (`phase_id=None`).
+
+Sous-ensemble strict de `TYPES_ROUTES` : une phase à population restreinte reste routée, mais
+seulement quand on la désigne. Sans quoi elle capte le routage de tout le plateau — cf.
+`ContratDePhase.route_tout_le_plateau`."""
 
 TYPES_EN_TABLEAU_JOUE: frozenset[TypePhase] = frozenset(
     type_phase

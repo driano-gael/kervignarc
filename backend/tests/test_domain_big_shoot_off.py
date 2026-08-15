@@ -196,9 +196,16 @@ def test_les_restants_partagent_le_rang_un() -> None:
 def test_des_sortants_a_egalite_restent_ex_aequo_sans_le_parametre() -> None:
     """Sans `departage_les_sortants`, deux sortants au même score **partagent** leur rang.
 
-    Rang partagé au sens usuel (« 1224 ») : sur 12 archers dont 4 sortent à 18, 21, 21 et 24, le
-    18 est 12ᵉ, les deux 21 sont **11ᵉ ex æquo**, le 24 est 9ᵉ. Le rang 10 reste vacant — c'est la
-    trace du départage qui n'a pas eu lieu, et il vaut mieux qu'elle se voie.
+    Rang partagé au sens usuel (« 1224 »), arbitré par le commanditaire le 15/08/2026 et reversé au
+    référentiel §10.1 : chaque ex æquo prend `1 + le nombre d'archers strictement meilleurs`. Sur
+    12 archers dont 4 sortent à 18, 21, 21 et 24, le 18 est 12ᵉ, les deux 21 sont **10ᵉ ex æquo**
+    (neuf archers devant eux), le 24 est 9ᵉ. Le rang **11** reste vacant, *après* le groupe — c'est
+    la trace du départage qui n'a pas eu lieu, et il vaut mieux qu'elle se voie.
+
+    ⚠️ **Ce test figeait la convention inverse** (« 1334 » : 12, 11, 11, 9, vacance au rang 10) tout
+    en invoquant « 1224 » dans sa propre docstring — un oracle recopié du comportement observé, et
+    la signature exacte de ce que la règle 9 existe pour attraper. Il contredisait aussi
+    `classement()`, qui applique déjà la convention standard aux rescapés du même agrégat.
     """
     archers = finalistes(12)
     etat = demarrer(archers, ConfigurationBigShootOff(eliminations=(4,)))
@@ -210,8 +217,8 @@ def test_des_sortants_a_egalite_restent_ex_aequo_sans_le_parametre() -> None:
     issue = jouer_manche(etat, scores)
     assert dict(issue.rangs_attribues) == {
         archers[11]: 12,
-        archers[10]: 11,
-        archers[9]: 11,
+        archers[10]: 10,
+        archers[9]: 10,
         archers[8]: 9,
     }
 
@@ -343,7 +350,8 @@ def test_le_departage_des_sortants_declenche_un_barrage_entre_elimines() -> None
 
     Ici les deux plus faibles sortent tous les deux et sont à 18 : leur égalité ne change **rien**
     à qui continue, elle ne décide que du 12ᵉ et du 11ᵉ. Sans le paramètre, on ne les fait pas
-    retirer ; avec, on les départage.
+    retirer — ils sont alors 11ᵉ ex æquo (convention « 1224 ») et le rang 12 reste vacant ; avec,
+    on les départage et les deux rangs sont attribués.
     """
     archers = finalistes(12)
     scores = {archer: 30 for archer in archers}
@@ -352,7 +360,10 @@ def test_le_departage_des_sortants_declenche_un_barrage_entre_elimines() -> None
 
     sans = jouer_manche(demarrer(archers, ConfigurationBigShootOff(eliminations=(2,))), scores)
     assert sans.barrage_entre == ()
-    assert dict(sans.rangs_attribues) == {archers[11]: 12, archers[10]: 12}
+    # Convention « 1224 » (arbitrage du 15/08/2026, référentiel §10.1) : dix archers à 30 les
+    # devancent tous les deux, ils sont donc **11ᵉ ex æquo** et le rang 12 reste vacant — personne
+    # n'est strictement moins bon que les deux.
+    assert dict(sans.rangs_attribues) == {archers[11]: 11, archers[10]: 11}
 
     avec = jouer_manche(
         demarrer(archers, ConfigurationBigShootOff(eliminations=(2,), departage_les_sortants=True)),
@@ -387,3 +398,90 @@ def test_un_score_manquant_n_est_pas_un_zero() -> None:
     etat = demarrer([a, b, c], ConfigurationBigShootOff(eliminations=(1,)))
     with pytest.raises(ScoreDeMancheManquant):
         jouer_manche(etat, {a: 28, b: 27})
+
+
+# --- cumul ET barrage : la conjonction que la revue d'E05US028 a trouvée -------------------------
+
+
+def test_le_cumul_survit_a_une_manche_tranchee_au_barrage() -> None:
+    """En mode cumul, une manche résolue par barrage **entre au total** comme les autres.
+
+    ⚠️ **Ce test ancre une inversion de vainqueur.** `_suspendre` ne replie délibérément pas les
+    cumuls (c'est ce qui permet de ressaisir une manche suspendue sans double comptage), mais
+    `eliminer_apres_barrage` repassait ensuite les cumuls *d'avant la manche* : le score de la
+    manche tranchée disparaissait, et toutes les manches suivantes comparaient des totaux amputés.
+
+    Le scénario ci-dessous le rend visible en deux manches. Cumuls vrais après la manche 1 :
+    `a=28, b=20`. Manche 2 : `a=5, b=12` → totaux `a=33, b=32`, donc **b** sort et **a** gagne. Avec
+    les cumuls perdus, le moteur ne comparait que `5` contre `12` et éliminait **a** : le vainqueur
+    de la finale était inversé.
+
+    Aucun test ne le voyait parce que les tests de cumul ne passaient jamais par un barrage, et que
+    les tests de barrage ne rejouaient jamais de manche après — la conjonction exacte que l'axe C1
+    de la revue cherche.
+    """
+    a, b, c = finalistes(3)
+    configuration = ConfigurationBigShootOff(eliminations=(1, 1), cumul_des_manches=True)
+    etat = demarrer([a, b, c], configuration)
+
+    # Manche 1 : b et c à égalité à la barre, c sort au barrage. a=28, b=20 entrent au cumul.
+    suspendue = jouer_manche(etat, {a: 28, b: 20, c: 20})
+    assert set(suspendue.barrage_entre) == {b, c}
+    apres = eliminer_apres_barrage(suspendue.etat, [c, b])
+    assert dict(apres.etat.cumuls) == {a: 28, b: 20}
+
+    # Manche 2 : a marque moins que b sur la manche, mais reste devant au cumul.
+    finale = jouer_manche(apres.etat, {a: 5, b: 12})
+    assert finale.elimines == (b,)
+    assert finale.etat.en_lice == (a,)
+
+
+def test_en_remise_a_zero_le_barrage_n_efface_pas_les_cumuls_d_affichage() -> None:
+    """Même correctif, branche « remise à zéro » : les cumuls ne servent pas à comparer, mais ils
+    sont lus par l'écran — ils n'ont aucune raison d'être faux.
+
+    L'axe adversarial ne proposait que la branche « cumul » ; s'en tenir là aurait laissé cet
+    affichage amputé, sans qu'aucun test ne rougisse.
+    """
+    a, b, c = finalistes(3)
+    etat = demarrer([a, b, c], ConfigurationBigShootOff(eliminations=(1, 1)))
+    suspendue = jouer_manche(etat, {a: 28, b: 20, c: 20})
+    apres = eliminer_apres_barrage(suspendue.etat, [c, b])
+    assert dict(apres.etat.cumuls) == {a: 28, b: 20}
+
+
+def test_une_manche_peut_demander_deux_barrages_successifs() -> None:
+    """Avec `departage_les_sortants`, une manche peut suspendre **deux fois** : l'égalité à la
+    barre d'abord, puis celle des sortants — et la conclusion se rejoue avec un critère de plus.
+
+    C'est le cas que le service ne savait pas rejouer (il n'appliquait qu'un verdict par manche,
+    puis relevait `ConfigurationBigShootOffInvalide` à chaque lecture). Le domaine, lui, l'a
+    toujours su : le test le **prouve** au lieu de le supposer, pour que le correctif du service ait
+    un oracle.
+    """
+    archers = finalistes(6)
+    configuration = ConfigurationBigShootOff(eliminations=(4,), departage_les_sortants=True)
+    etat = demarrer(archers, configuration)
+    # Deux groupes d'ex æquo parmi les quatre sortants : 10/10 et 15/15.
+    scores = {
+        archers[0]: 25,
+        archers[1]: 20,
+        archers[2]: 15,
+        archers[3]: 15,
+        archers[4]: 10,
+        archers[5]: 10,
+    }
+    premier = jouer_manche(etat, scores)
+    assert set(premier.barrage_entre) == {archers[4], archers[5]}
+
+    second = eliminer_apres_barrage(premier.etat, [archers[5], archers[4]])
+    assert set(second.barrage_entre) == {archers[2], archers[3]}
+
+    fin = eliminer_apres_barrage(second.etat, [archers[3], archers[2]])
+    assert fin.barrage_entre == ()
+    assert dict(fin.rangs_attribues) == {
+        archers[5]: 6,
+        archers[4]: 5,
+        archers[3]: 4,
+        archers[2]: 3,
+    }

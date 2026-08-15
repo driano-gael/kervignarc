@@ -30,8 +30,9 @@ import logging
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import (
-    ApplicationError,
     PhaseIntrouvable,
+    PhasePasReglee,
+    PhasePasUnBigShootOff,
     PrelevementEnAttente,
     TournoiIntrouvable,
     TournoiSansDepart,
@@ -241,10 +242,25 @@ class ServicePalmares:
             return None
         try:
             etat = self._big_shoot_off.etat(tournoi_id, phase.id)
-        except (PhaseIntrouvable, PrelevementEnAttente, ApplicationError) as exc:
+        except (
+            PhaseIntrouvable,
+            PrelevementEnAttente,
+            PhasePasReglee,
+            PhasePasUnBigShootOff,
+        ) as exc:
             # Mêmes absorptions que `_resultat`, et **journalisées** pour la même raison : le
             # palmarès est public et projeté en salle, donc une phase de la séquence ne doit pas
             # éteindre l'écran — mais une phase absente du palmarès le jour J serait indébogable.
+            #
+            # ⚠️ **La liste est nominative, et ce n'est pas un détail de style** (revue d'E05US028).
+            # Un premier jet écrivait `(PhaseIntrouvable, PrelevementEnAttente, ApplicationError)` :
+            # les deux premiers termes étant filles du troisième, la clause attrapait **toute**
+            # erreur applicative, présente et future. Elle ré-avalait notamment `DerouleCyclique`,
+            # que `_resultat` exclut **délibérément** (« une base incohérente doit rester visible »)
+            # et que cette US venait justement de faire lever sur ce chemin — la garde était donc
+            # écrite d'un côté du diff et neutralisée de l'autre. `ruff B014` ne voit pas ce
+            # doublon : il ne résout pas les relations de sous-classe.
+            _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
             _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
             return None
         if not any(tireur.rang is not None for tireur in etat.tireurs):
