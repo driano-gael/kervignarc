@@ -279,3 +279,90 @@ def test_le_reglage_traverse_la_frontiere_dans_les_deux_sens(
         "cumul_des_manches": True,
         "departage_les_sortants": True,
     }
+
+
+# --- gardes de la frontière : les cas qu'aucun test n'exerçait (revue d'E05US028) ----------------
+
+
+def test_un_archer_etranger_a_la_phase_rend_404_et_son_propre_code(
+    app_bso: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le refus « pas finaliste » sort en **404** avec `archer_hors_big_shoot_off`.
+
+    ⚠️ **Deux défauts fermés d'un coup.** Le refus empruntait `MancheIntrouvable` — aucune manche
+    n'étant en cause — et cette erreur-là, bien que documentée « → 404 », **n'était pas dans la
+    chaîne `isinstance`** du mapping HTTP : elle retombait sur le `else: 409`. Le mapping est une
+    liste écrite à la main, rien ne relie une docstring à ce `isinstance`, et aucun test d'API ne
+    couvrait le cas. Un client recevait donc un conflit là où il fallait recharger.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        reponse = client.post(
+            "/api/v1/big-shoot-off/volees",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "archer_id": max(scn.archers) + 9999,
+                "numero": 1,
+                "valeurs": ["10", "10", "10"],
+            },
+            headers=entetes,
+        )
+
+    assert reponse.status_code == 404, reponse.text
+    assert reponse.json()["code"] == "archer_hors_big_shoot_off"
+
+
+def test_un_scoreur_d_un_autre_tournoi_est_refuse_sur_les_trois_routes(
+    app_bso: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`_exiger_meme_tournoi` est la seule garde d'isolation inter-tournois de ce routeur.
+
+    Les tests couvraient le 401 (aucune session) mais pas le **403** d'une session valide portant
+    sur un autre tournoi — c'est-à-dire le cas où le jeton *existe*, seule situation où la garde
+    sert réellement. Ce projet fait tourner plusieurs tournois en parallèle (intérieur +
+    extérieur), donc ce n'est pas théorique.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+        # `_scoreur` connecte l'admin ; on ne le rappelle pas ensuite (la configuration de l'accès
+        # admin n'est pas idempotente, elle rend 409). Le scoreur du tournoi voisin se crée donc
+        # avec la session déjà ouverte.
+        _scoreur(client, scn.tournoi_id, connecter_admin)
+        autre = client.post("/api/v1/tournois", json={"nom": "Autre tournoi", "date": "2026-09-01"})
+        assert autre.status_code in (200, 201), autre.text
+        autre_id = autre.json()["id"]
+        cree = client.post(f"/api/v1/tournois/{autre_id}/scoreurs", json={"nom": "VOISIN"})
+        assert cree.status_code in (200, 201), cree.text
+        jeton = client.post("/api/v1/scoreurs/session", json={"code": cree.json()["code"]}).json()[
+            "jeton"
+        ]
+        entetes = {"X-Jeton-Scoreur": jeton}
+
+        etat = client.get(
+            f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}",
+            headers=entetes,
+        )
+        volee = client.post(
+            "/api/v1/big-shoot-off/volees",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "archer_id": scn.archers[0],
+                "numero": 1,
+                "valeurs": ["10", "10", "10"],
+            },
+            headers=entetes,
+        )
+        validation = client.post(
+            "/api/v1/big-shoot-off/validations",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "archer_id": scn.archers[0],
+            },
+            headers=entetes,
+        )
+
+    assert [etat.status_code, volee.status_code, validation.status_code] == [403, 403, 403]

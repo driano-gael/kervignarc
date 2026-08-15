@@ -67,6 +67,8 @@ from typing import Protocol
 
 from application.classements import ServiceClassement
 from application.erreurs import (
+    ArcherDejaSorti,
+    ArcherHorsBigShootOff,
     MancheIntrouvable,
     PhaseIntrouvable,
     PhasePasReglee,
@@ -667,12 +669,22 @@ class ServiceBigShootOff:
         return Serie.vide(tournoi_id, archer_id, phase_id)
 
     def _exiger_en_lice(self, photo: EtatBigShootOffAffiche, archer_id: int) -> None:
-        """Refuse d'écrire pour un archer déjà sorti (ou étranger à la phase)."""
+        """Refuse d'écrire pour un archer déjà sorti (ou étranger à la phase).
+
+        ⚠️ **Deux erreurs dédiées depuis la revue d'E05US028**, là où ce refus empruntait les codes
+        de `MancheIntrouvable` et de `PhasePasReglee`. Le second était le plus coûteux : le même
+        code `phase_pas_reglee` sortait du même endpoint pour deux situations dont les corrections
+        **opposées** — « allez régler la phase à l'atelier » et « rechargez, cet archer est
+        éliminé ». Le champ `code` existe pour qu'un client aiguille dessus (règle 5) ; deux sens
+        pour un code, c'est un contresens affiché en salle.
+        """
         tireur = next((t for t in photo.tireurs if t.archer_id == archer_id), None)
         if tireur is None:
-            raise MancheIntrouvable(f"L'archer {archer_id} ne fait pas partie de ce Big Shoot Off.")
+            raise ArcherHorsBigShootOff(
+                f"L'archer {archer_id} ne fait pas partie de ce Big Shoot Off."
+            )
         if not tireur.en_lice:
-            raise PhasePasReglee(
+            raise ArcherDejaSorti(
                 f"L'archer {archer_id} est sorti au rang {tireur.rang} : il ne tire plus dans ce "
                 "Big Shoot Off."
             )

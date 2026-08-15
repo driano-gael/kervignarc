@@ -36,6 +36,8 @@ from application.erreurs.exploitation import (
     UniteSimulationInvalide,
 )
 from application.erreurs.moteur import (
+    ArcherDejaSorti,
+    ArcherHorsBigShootOff,
     DepartIntrouvable,
     DeplacementInvalide,
     DerouleCyclique,
@@ -113,7 +115,9 @@ __all__ = [
     "AccesDejaConfigure",
     "AccesNonConfigure",
     "ApplicationError",
+    "ArcherDejaSorti",
     "ArcherEngage",
+    "ArcherHorsBigShootOff",
     "ArcherIntrouvable",
     "AucunDuelALancer",
     "BarrageIntrouvable",

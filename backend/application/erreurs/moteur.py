@@ -192,6 +192,36 @@ class MancheIntrouvable(ApplicationError):
     code = "manche_introuvable"
 
 
+class ArcherHorsBigShootOff(ApplicationError):
+    """Cet archer ne fait pas partie de ce Big Shoot Off (E05US028) → 404.
+
+    ⚠️ **Erreur ajoutée à la revue d'E05US028**, où ce refus empruntait le code de
+    `MancheIntrouvable`. Aucune manche n'est pourtant en cause : c'est la **population** de la phase
+    qui ne contient pas cet archer. Un client qui aiguille sur le `code` — et c'est la raison d'être
+    du champ (règle 5) — affichait donc « cette manche n'existe pas » à un archer qui n'était
+    simplement pas finaliste.
+    """
+
+    code = "archer_hors_big_shoot_off"
+
+
+class ArcherDejaSorti(ApplicationError):
+    """Cet archer est sorti du Big Shoot Off : il ne tire plus (E05US028) → 409.
+
+    ⚠️ **Erreur ajoutée à la revue d'E05US028**, où ce refus empruntait `PhasePasReglee` — dont le
+    code (`phase_pas_reglee`) signifie « l'organisateur doit régler la phase à l'atelier ». Le même
+    code sortait donc du même endpoint pour deux situations dont les corrections sont **opposées** :
+    aller régler la phase, ou recharger la tablette parce que cet archer est éliminé. C'est
+    exactement l'argument que la docstring de `PhasePasReglee` oppose déjà à sa confusion avec
+    `PhasePasDesPoules`.
+
+    409 et non 404 : l'archer **existe** dans cette phase, il y a même un rang. C'est son état qui
+    interdit l'écriture, pas son absence.
+    """
+
+    code = "archer_deja_sorti"
+
+
 class RencontreIntrouvable(ApplicationError):
     """Aucune rencontre de ce numéro dans cette phase de poules (E05US023) → 404.
 

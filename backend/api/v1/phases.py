@@ -199,9 +199,15 @@ class ReglageBigShootOffDTO(BaseModel):
     ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 4ᵉ paire, `DETTE-054`.
     """
 
-    eliminations: list[int]
-    volees: int = 1
-    fleches_par_volee: int = 3
+    # ⚠️ Bornes ajoutées à la revue d'E05US028. Les **valeurs** restent libres (`paliers_pour`
+    # s'ajuste à l'effectif, c'est ce qui rend un format réutilisable), mais la **longueur** et les
+    # entiers du format du tir ne le sont pas : le produit `len(eliminations)` par `volees` devient
+    # le barème d'une `Serie`, et le réglage est réémis dans chaque projection. Le voisin
+    # `ConfigPhaseRequete.sources` portait déjà ce plafond avec le motif « une liste non bornée à la
+    # frontière est une saisie qui a dérapé » — l'asymétrie était gratuite.
+    eliminations: list[int] = Field(max_length=64)
+    volees: int = Field(default=1, ge=1)
+    fleches_par_volee: int = Field(default=3, ge=1)
     cumul_des_manches: bool = False
     """Cumuler les manches plutôt que repartir de zéro. Défaut : remise à zéro — c'est ce qui garde
     l'enjeu jusqu'à la dernière flèche (arbitrage du 31/07/2026)."""

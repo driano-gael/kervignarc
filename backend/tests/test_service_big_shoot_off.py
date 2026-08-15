@@ -21,7 +21,12 @@ import pytest
 
 from application.big_shoot_off import ServiceBigShootOff
 from application.classements import ServiceClassement
-from application.erreurs import PhasePasReglee, PhasePasUnBigShootOff
+from application.erreurs import (
+    ArcherDejaSorti,
+    ArcherHorsBigShootOff,
+    PhasePasReglee,
+    PhasePasUnBigShootOff,
+)
 from application.palmares import ServicePalmares
 from application.placement_duels import ServicePlacementDuels
 from application.routage import IssueRoutage, ServiceRoutage
@@ -469,7 +474,13 @@ def test_corriger_une_volee_defait_l_elimination_qu_elle_avait_causee() -> None:
 def test_on_refuse_d_ecrire_pour_un_archer_deja_sorti() -> None:
     """Une tablette restée ouverte sur la manche 2 affiche encore un archer sorti à la manche 1.
     Sans ce refus, ses flèches entreraient dans une manche qu'il ne tire pas, et le classement de
-    cette manche changerait **pour tout le monde**."""
+    cette manche changerait **pour tout le monde**.
+
+    ⚠️ **L'erreur attendue est `ArcherDejaSorti` depuis la revue d'E05US028**, et non
+    `PhasePasReglee`. Le refus empruntait un code (`phase_pas_reglee`) qui signifie « l'organisateur
+    doit régler la phase à l'atelier » : le même code sortait du même endpoint pour deux situations
+    aux corrections **opposées**, et un client qui aiguille dessus — c'est la raison d'être du champ
+    (règle 5) — affichait un contresens en salle."""
     monde = _Monde()
     a, b, c, d = monde.inscrire(4)
     monde.regler(ConfigurationBigShootOff(eliminations=(1, 1)))
@@ -477,9 +488,30 @@ def test_on_refuse_d_ecrire_pour_un_archer_deja_sorti() -> None:
     for archer_id, zone in ((a, "10"), (b, "9"), (c, "8"), (d, "7")):
         monde.tirer(service, archer_id, 1, zone)
 
-    with pytest.raises(PhasePasReglee):
+    with pytest.raises(ArcherDejaSorti):
         service.saisir_volee(
             monde.tournoi_id, monde.phase_id, d, 2, (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX)
+        )
+
+
+def test_on_refuse_d_ecrire_pour_un_archer_etranger_a_la_phase() -> None:
+    """Le refus « pas finaliste » a son **propre** code (`archer_hors_big_shoot_off`, 404).
+
+    Il empruntait `MancheIntrouvable` : aucune manche n'est pourtant en cause, c'est la population
+    de la phase qui ne contient pas cet archer. Deux refus, deux codes — un client ne peut pas
+    aiguiller sur un code qui décrit autre chose."""
+    monde = _Monde()
+    a, _b, _c = monde.inscrire(3)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+    service = monde.service()
+
+    with pytest.raises(ArcherHorsBigShootOff):
+        service.saisir_volee(
+            monde.tournoi_id,
+            monde.phase_id,
+            a + 9999,
+            1,
+            (ZoneScore.DIX, ZoneScore.DIX, ZoneScore.DIX),
         )
 
 

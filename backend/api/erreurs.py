@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse
 
 from application.erreurs import (
     ApplicationError,
+    ArcherHorsBigShootOff,
     ArcherIntrouvable,
     BarrageIntrouvable,
     BlasonIntrouvable,
@@ -41,6 +42,7 @@ from application.erreurs import (
     GabaritIntrouvable,
     IdentifiantsInvalides,
     InscriptionIntrouvable,
+    MancheIntrouvable,
     NonAuthentifie,
     PhaseIntrouvable,
     PhaseQualificationAbsente,
@@ -109,6 +111,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | BarrageIntrouvable
         | RemboursementIntrouvable
         | RencontreIntrouvable
+        # ⚠️ Ajoutées à la revue d'E05US028. `MancheIntrouvable` se documentait « → 404 » et se
+        # réclamait de `RencontreIntrouvable` juste au-dessus, mais n'était **pas** dans cette
+        # chaîne : elle retombait sur le `else: 409`. Le mapping est une liste écrite à la main —
+        # rien ne relie une docstring à ce `isinstance`, et aucun test d'API n'exerçait le cas.
+        | MancheIntrouvable
+        | ArcherHorsBigShootOff
         | ScenarioInconnu
         | SessionSimulationIntrouvable,
     ):
