@@ -980,6 +980,49 @@ gestion des byes) est complet depuis E05US015 et **sans appelant de production**
 - **CA — le signal d'écart d'E01US024 cesse de viser le suisse**, et lui seul.
 - **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet suisse)
 
+#### Arbitrages du cadrage du 15/08/2026 *(reversés ici, règle 9)*
+
+Le CA ci-dessus est celui du découpage du 09/08/2026. Cinq points ont été tranchés au cadrage, et
+le périmètre en sort **élargi** — trois d'entre eux dépassent le seul système suisse :
+
+1. **Le plan de cibles du suisse est `PAR_DUEL`, recalculé à chaque ronde.** Le CA disait « mêmes
+   règles d'empreinte et de contiguïté qu'en poules », ce qui n'était pas transposable : une poule
+   est un **groupe stable** occupant un bloc de couloirs (ADR-0083 §3), là où une ronde de suisse
+   ré-apparie **tout le plateau**. Une ronde de suisse est un tour de duels : elle réutilise
+   `ServicePlacementDuels` et le côte-à-côte d'[ADR-0048](../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md),
+   donc **aucune table ni migration neuve**. Le CA a été écrit par analogie avec la tranche
+   précédente ; l'analogie était fausse.
+2. **Le routage entre dans le périmètre — et il y entre aussi pour les poules.** `route_l_archer`
+   passe à `True` pour `SUISSE` **et** `POULES`. Le calcul « où cet archer tire-t-il à la ronde
+   suivante » s'écrit de toute façon pour le suisse ; l'étendre aux poules coûte quelques lignes, et
+   ne pas le faire laisserait les poules **seul format jouable sans routage** alors que le Big Shoot
+   Off l'a depuis `E05US028`.
+3. **Le palmarès entre dans le périmètre, et sa règle n'est pas « par type de phase ».**
+   Une phase **décerne** ses rangs — donc peut donner une médaille — **si et seulement si aucune
+   phase avale ne prélève dedans**. Le critère est structurel, lu sur le graphe des sources, et il
+   remplace l'intuition de départ (« une phase de poules ne titre jamais »), que le commanditaire a
+   lui-même invalidée en décrivant sa cascade : dans un format « 6 poules → 6 poules de niveau », la
+   dernière phase **est** une phase de poules et rend le classement final exact. Conséquences :
+   - une phase **consommée** contribue ses rangs sans médaille (`origine=QUALIFICATION`) — ce qui
+     classe enfin les **non-qualifiés** d'une phase de poules à leur vraie place plutôt qu'à leur
+     rang de qualification ;
+   - une phase **terminale** décerne (`origine=DUELS`) ;
+   - la règle vaut pour **tous** les types, donc elle sert aussi la colline en `E05US027`.
+4. **Le palmarès affiche les deux informations** *(arbitrage du commanditaire, 15/08/2026)* : le rang
+   de tournoi **et** l'origine du rang — « **19ᵉ** » *et* « **1ᵉʳ de la poule D** ». La question posée
+   était de choisir l'information principale ; la réponse est qu'aucune ne se suffit. Le rang seul
+   perd ce que l'archer a réellement gagné sur le terrain ; l'origine seule ne dit pas où il finit au
+   tournoi. Le modèle porte déjà les deux (`OriginePalmares`, `PositionPhase`) : c'est l'écran et le
+   PDF qui doivent rendre le couple.
+5. **Le port de classement est unifié dans cette US, avec son ADR.** `LecteurClassementPoules` et
+   `LecteurClassementBigShootOff` sont deux protocoles identiques, dupliqués **volontairement** en
+   `E05US028` faute d'une 3ᵉ occurrence réelle ; le suisse est cette 3ᵉ. Le remède —
+   `dict[TypePhase, LecteurClassementDePhase]` — se pose donc sur preuve. ⚠️ **Écart assumé à la
+   règle « un remède structurel se traite en US dédiée »**, tranché par le commanditaire le
+   15/08/2026 : la preuve naît *dans ce diff*, et différer obligerait à écrire un 3ᵉ port jetable
+   pour le défaire aussitôt. La contrepartie exigée est la **lisibilité de la revue** — le remède
+   voyage dans un **commit séparé**, en tête de branche, sans une ligne de suisse dedans.
+
 ---
 
 ### E05US027 — La colline jouable
@@ -1072,3 +1115,58 @@ garde-fou de la règle 9 qui a fonctionné, et la trace est gardée ici pour la 
 **Vocabulaire tranché au cadrage** : on dit « **le nombre de sortants, manche par manche** », jamais
 « la suite » — le mot faisait entendre une progression imposée par l'outil, alors que l'organisateur
 écrit une liste libre.
+
+---
+
+### E05US029 — Des **poules de niveau** en une seule étape
+*En tant qu'*organisateur, *je veux* composer « une phase de poules **par niveau** » en une étape qui
+se déplie en groupes, *afin de* monter un tournoi club en cascade sans écrire une étape par groupe.
+
+Origine : **cadrage d'`E05US026`, le 15/08/2026**. Le commanditaire a décrit un format club en
+cascade et demandé que cette US soit prise **après** `E05US026`, dont elle dépend par le palmarès :
+
+> 36 archers. **Phase 1** : 6 poules de 6, disputant les rangs 1-36. **Phase 2** : 6 poules de 6, mais
+> composées **par niveau** — les rangs 1-6, 7-12, 13-18, 19-24, 25-30, 31-36. Le classement de la
+> phase 2 est alors le **classement final** du tournoi, exact de 1 à 36. Variante : 3 qualifiés par
+> poule, plusieurs phases enchaînées, et le palmarès se resserre de cran en cran.
+
+**Le format est déjà composable aujourd'hui, et il faut le dire d'emblée** : il s'écrit en **une étape
+par niveau** — six étapes, chacune portant une poule et sa source (« les rangs 1 à 6 de la phase 1 »,
+« les rangs 7 à 12 »…). C'est `E05US024` / [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md)
+qui l'a ouvert, et `E05US026` qui rend son classement final réellement publiable. Cette US-ci est donc
+un **confort de composition**, pas une capacité manquante — d'où son rang après, et non avant.
+
+⚠️ **Et « une étape par niveau » n'est pas qu'un contournement : c'est la forme exacte.** Deux
+obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cosmétiques :
+
+1. **Le serpent.** `composer_poules` répartit en serpentin — 1→A, 2→B, 3→C, 4→C, 5→B, 6→A — et c'est
+   un arbitrage explicite du 31/07/2026 : il équilibre la force des groupes pour ne pas éliminer la
+   moitié des favoris au premier tour. Il est **juste pour la première** phase de poules, où personne
+   ne connaît encore les niveaux, et **faux pour les suivantes**, dont tout l'intérêt est que la poule
+   A soit celle des meilleurs. Composer les six poules d'une phase 2 par le serpent éparpillerait les
+   six têtes dans les six groupes, soit l'inverse exact de l'intention.
+2. **L'espace de rangs est porté par la *phase*, pas par la *poule*.** `ResultatPhase.rang_premier`
+   (« le premier rang du tournoi que cette phase dispute », [ADR-0068](../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md) §5)
+   vaut pour l'étape entière. Six poules de niveau dans **une** étape disputent six espaces distincts
+   (1-6, 7-12, …) ; sans décalage par groupe, le classement de phase se re-rangerait par blocs et
+   annoncerait le vainqueur de la poule F — composée des 31ᵉ-36ᵉ — « 1ᵉʳ-6ᵉ du tournoi ». Un
+   classement bien formé, plausible, et faux : la classe de défaut qu'[ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
+   nomme.
+
+- **CA — une étape « poules de niveau » se déplie en groupes** : l'organisateur déclare une seule
+  étape, sa taille de poule et sa source ; l'outil en dérive les groupes **par tranches de rangs
+  contiguës**, un groupe par tranche, au lieu du serpent.
+- **CA — le mode de composition est un réglage, pas un type de phase neuf** : `ReglageDePoules` gagne
+  le choix « serpent » (défaut, comportement d'aujourd'hui) ou « par niveau ». Un format de tournoi
+  est de la **configuration** (règle 2) ; `TypePhase.POULES` ne se dédouble pas.
+- **CA — chaque groupe dispute son propre espace de rangs**, et le classement de l'étape le respecte :
+  le vainqueur du groupe des 31ᵉ-36ᵉ est **31ᵉ**, jamais 1ᵉʳ. C'est le point qui demande de porter le
+  décalage **au groupe** et non à l'étape.
+- **CA — l'atelier montre la répartition avant validation**, patron `RepartitionPoules` d'`E05US023` :
+  « 36 archers → 6 poules de niveau : rangs 1-6, 7-12, 13-18, 19-24, 25-30, 31-36 ».
+- **CA — l'organisateur est averti s'il compose une 2ᵉ phase de poules au serpent**, cas où le réglage
+  par défaut est très probablement le mauvais. C'est le seul garde-fou du lot qui vaut **avant** cette
+  US, et il est tracé à ce titre (`DETTE-062`).
+- **Dépend de** : `E05US026` (le palmarès d'une phase terminale de poules — sans lui la cascade
+  s'arrête sans classement final publiable) · **Jalon** : J3 · **Origine** : cadrage d'`E05US026`,
+  15/08/2026
