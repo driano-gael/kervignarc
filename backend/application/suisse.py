@@ -98,7 +98,7 @@ class RencontreDeRonde:
     duel: Duel | None
     desynchronisee: bool
     bareme: BaremeDuel
-    zones: tuple[str, ...]
+    zones: tuple[ZoneScore, ...]
 
 
 @dataclass(frozen=True)

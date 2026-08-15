@@ -64,6 +64,7 @@ from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.simulation import router as simulation_router
+from api.v1.suisse import router as suisse_router
 from api.v1.suivi_deroule import router as suivi_deroule_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
@@ -1225,6 +1226,7 @@ def create_app(
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
     app.include_router(poules_router)
+    app.include_router(suisse_router)
     app.include_router(big_shoot_off_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)
