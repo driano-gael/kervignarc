@@ -700,12 +700,28 @@ class ServiceBigShootOff:
         `Serie.saisir_volee` borne déjà au « barème » (`len(eliminations) · V`), mais ce barème
         décrit la liste **complète** — or elle s'écourte quand l'effectif ne la porte pas. Sans
         cette garde, on pourrait saisir les volées d'une manche que la phase ne jouera jamais.
+
+        ⚠️ **La borne est resserrée à la manche COURANTE depuis la revue d'E05US028**, et pas
+        seulement à l'ensemble des manches jouables. Rien n'interdisait de saisir la volée 4 (manche
+        2) avant la volée 3 (manche 1), or `Serie.valider(toutes_les_n_volees(V))` verrouille « le
+        prochain lot de V volées **non validées**, par numéro », sans considération de manche : le
+        lot pouvait donc emporter une volée de la manche suivante, et la manche courante devenait
+        **définitivement incomplétable** — sa volée manquante étant désormais verrouillée, donc
+        refusée à la saisie. La docstring de `valider_manche` (« le lot de la manche courante »)
+        n'était vraie que si la saisie arrivait dans l'ordre, ce que rien ne garantissait. Le
+        serveur est autoritaire : il ne suppose pas l'ordre, il l'impose.
         """
         jouables = photo.projection.manches_jouables * configuration.volees
         if not 1 <= numero <= jouables:
             raise MancheIntrouvable(
                 f"La volée {numero} n'appartient à aucune manche jouable : cet effectif n'en "
                 f"permet que {photo.projection.manches_jouables}."
+            )
+        courante = next((manche for manche in photo.manches if not manche.jouee), None)
+        if courante is not None and numero not in courante.volees:
+            raise MancheIntrouvable(
+                f"La volée {numero} n'appartient pas à la manche en cours (manche "
+                f"{courante.numero}) : les manches se tirent dans l'ordre."
             )
 
     def _duelliste(

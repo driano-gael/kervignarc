@@ -23,6 +23,7 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   AIDE_TYPE,
   LIBELLE_TYPE,
+  MOTEUR_SAIT_JOUER,
   TOUS_LES_TYPES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
@@ -506,10 +507,19 @@ function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
             scoreurs, on montre l'écart avec ce que le schéma annonçait — et on dit quand le moteur
             n'a rien joué du tout. Les prélèvements **par rangs** sont désormais honorés (E05US020),
             donc l'écart s'y referme de lui-même. */}
+        {/* ⚠️ **Deux phrases, parce qu'il y a deux causes** (correctif de revue E05US028). E05US023
+            puis E05US028 ont rendu les poules et le Big Shoot Off **jouables par le moteur**, mais
+            le *bot de simulation* ne sait toujours pas les jouer (`_TYPES_DEROULABLES` les exclut
+            explicitement, côté serveur). La phrase unique disait « le moteur ne sait pas dérouler ce
+            type » : factuellement fausse depuis, et affichée à l'organisateur la veille du tournoi,
+            sur l'écran fait pour le rassurer. Le lot d'origine fermait le signal honnête (le bandeau
+            de réserve) et laissait celui-ci en place. */}
         {!phase.joue ? (
           <span className="deroule__ecart" role="note">
             {' '}
-            ▲ le moteur ne sait pas encore dérouler ce type de phase — rien n'a été joué ici
+            {MOTEUR_SAIT_JOUER.has(phase.type)
+              ? '▲ la simulation ne sait pas encore jouer ce type de phase — le moteur, si : le tournoi réel se déroulera normalement'
+              : "▲ le moteur ne sait pas encore dérouler ce type de phase — rien n'a été joué ici"}
           </span>
         ) : (
           phase.ecart && (

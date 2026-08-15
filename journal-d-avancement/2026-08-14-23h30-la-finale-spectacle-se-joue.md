@@ -45,15 +45,21 @@ peut aussi puiser dans son classement.
 
 ## Trois choses à savoir
 
-**Corriger une flèche défait l'élimination qu'elle avait causée.** L'application ne garde nulle part
-« untel est sorti » : elle rejoue la finale depuis les scores chaque fois qu'elle l'affiche. Une
-correction ne peut donc pas laisser le classement et les scores se contredire.
+**Une manche validée ne se corrige pas encore.** C'est la limite à connaître avant le jour J : une
+fois la manche validée, ses flèches sont verrouillées et aucun écran ne permet d'y revenir. La
+correction fera l'objet d'une livraison à part. Bonne nouvelle pour la suite : l'application ne garde
+nulle part « untel est sorti », elle rejoue la finale depuis les scores chaque fois qu'elle
+l'affiche — donc le jour où la correction existera, l'élimination se refera toute seule. C'est le
+geste qui manque, pas le calcul.
 
-**Les rescapés partagent la première place.** S'il en reste plusieurs à la fin, rien dans la règle ne
-dit lequel est premier — leur en inventer un ordre serait ajouter à la règle.
+**Une finale doit désigner un vainqueur, et l'application le vérifie.** Si votre liste de sortants ne
+descend pas jusqu'à un seul rescapé sur l'effectif annoncé, elle est refusée à la composition, avec
+le compte exact : « sur 12 archers, cette liste laisse 5 rescapés ». Mieux vaut l'apprendre en
+composant que devant le public — plusieurs archers premiers *ex æquo*, ce n'est pas une finale.
 
-**Le panneau de routage ne donne pas la cible.** Il dit quelle manche vient et combien sortent, mais
-pas où tirer, et il l'écrit en clair plutôt que de laisser un blanc. Une question reste ouverte :
+**Le panneau de routage ne donne pas la cible.** Il dit quelle manche vient et combien sortent — et
+il l'affiche bien aux finalistes, ce qu'une relecture a dû corriger avant livraison — mais pas où
+tirer, et il l'écrit en clair plutôt que de laisser un blanc. Une question reste ouverte :
 **une finale se tire-t-elle sur les cibles de qualification, ou sur des cibles dédiées devant le
 public ?** Répondez-nous et le panneau saura le dire.
 

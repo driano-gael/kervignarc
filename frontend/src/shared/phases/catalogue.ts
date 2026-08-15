@@ -120,6 +120,21 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // mentirait pour ceux qui restent.
 export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'suisse', 'colline']
 
+// Les types que **le moteur** sait dérouler mais que le **bot de simulation** ne sait pas jouer.
+//
+// ⚠️ **Distinction ajoutée à la revue d'E05US028**, sur un message devenu faux. Côté serveur,
+// `_TYPES_DEROULABLES = TYPES_JOUES - {POULES, BIG_SHOOT_OFF}` : la simulation exclut ces deux
+// formats, et `LignePhaseSimulee` affichait « le moteur ne sait pas encore dérouler ce type de
+// phase ». C'était vrai avant E05US023 et E05US028 ; ce ne l'est plus. Le lot d'origine a retiré le
+// signal *honnête* (le bandeau de réserve à la composition) et laissé celui-ci — le seul des deux
+// qui trompe, sur l'écran que l'organisateur regarde la veille du tournoi.
+//
+// La distinction que le serveur documente longuement, le texte affiché ne la faisait pas : ce n'est
+// pas le **moteur** qui ne sait pas, c'est le **bot**. Écrit en positif, contrairement à la liste
+// ci-dessus, parce qu'il énumère une capacité acquise : un oubli d'ajout ici rend le vieux message
+// (« le moteur ne sait pas »), donc pessimiste — jamais un faux « tout va bien ».
+export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set(['poules', 'big_shoot_off'])
+
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //
 // `un_vers_n` joue **tous** les rangs (placement intégral) ; `top_n` s'arrête au `jusqu_au`-ième,

@@ -14,6 +14,7 @@
 // dette dont le point d'accroche est introuvable n'est pas tracée.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { nouvelIdentifiant } from '../saisie/volees'
 
 import { getEtatBigShootOff, saisirVolee, validerManche, type EtatBigShootOff } from './api'
 
@@ -39,8 +40,20 @@ export function useEtatBigShootOff(tournoiId: number, phaseId: number | null) {
 export function useSaisirVolee(tournoiId: number, phaseId: number) {
   const client = useQueryClient()
   return useMutation({
+    // ⚠️ **L'identifiant de saisie est engendré ici** (correctif de revue E05US028). Il était
+    // facultatif au DTO, transmis par `api.ts`… et **jamais fourni** : `_cle_idempotence` rendait
+    // donc toujours `null` et `RegistreIdempotence` ne dédoublonnait rien, alors que la note de
+    // module de l'API promettait « les mêmes garanties que la saisie de qualification » (ADR-0036).
+    // Les deux autres surfaces de saisie le déclarent obligatoire ; le Big Shoot Off était la seule
+    // sans. Sur `/validations` ce n'était pas neutre : `Serie.valider` verrouille « le prochain lot
+    // de N volées non validées » sans vérifier qu'il s'agit de la manche courante, donc un rejeu
+    // pouvait verrouiller les volées de la manche **suivante**.
+    //
+    // ⚠️ `nouvelIdentifiant` et non `crypto.randomUUID` : WebCrypto n'expose `randomUUID` qu'en
+    // contexte sécurisé, et le jour J tourne en **http sur LAN**. Le repli `getRandomValues` est
+    // déjà écrit là-bas, on le réutilise plutôt que de le redécouvrir en salle.
     mutationFn: (corps: { archerId: number; numero: number; valeurs: string[] }) =>
-      saisirVolee({ tournoiId, phaseId, ...corps }),
+      saisirVolee({ tournoiId, phaseId, ...corps, identifiantSaisie: nouvelIdentifiant() }),
     onSuccess: (etat: EtatBigShootOff) =>
       client.setQueryData(cleBigShootOff(tournoiId, phaseId), etat),
   })
@@ -50,7 +63,8 @@ export function useSaisirVolee(tournoiId: number, phaseId: number) {
 export function useValiderManche(tournoiId: number, phaseId: number) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (corps: { archerId: number }) => validerManche({ tournoiId, phaseId, ...corps }),
+    mutationFn: (corps: { archerId: number }) =>
+      validerManche({ tournoiId, phaseId, ...corps, identifiantSaisie: nouvelIdentifiant() }),
     onSuccess: (etat: EtatBigShootOff) =>
       client.setQueryData(cleBigShootOff(tournoiId, phaseId), etat),
   })

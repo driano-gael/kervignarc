@@ -24,6 +24,7 @@ from application.classements import ServiceClassement
 from application.erreurs import (
     ArcherDejaSorti,
     ArcherHorsBigShootOff,
+    MancheIntrouvable,
     PhasePasReglee,
     PhasePasUnBigShootOff,
 )
@@ -869,3 +870,28 @@ def test_un_archer_sorti_n_a_plus_de_volee_a_tirer() -> None:
     assert par_archer[c].prochaine_volee is None
     # La phase est terminée (2 rescapés, la manche suivante viderait la lice) : plus rien à tirer.
     assert par_archer[a].prochaine_volee is None
+
+
+def test_on_ne_saisit_pas_une_volee_de_la_manche_suivante() -> None:
+    """Les manches se tirent **dans l'ordre**, et le serveur l'impose plutôt que de le supposer.
+
+    ⚠️ **Sans cette borne, la manche courante devenait définitivement incomplétable.**
+    `Serie.valider(toutes_les_n_volees(V))` verrouille « le prochain lot de V volées non validées,
+    par numéro », sans considération de manche : saisir la volée 3 (manche 2) avant la volée 2
+    (manche 1) faisait emporter au lot une volée de la manche suivante, et la volée manquante de la
+    manche 1 se retrouvait verrouillée — donc refusée à la saisie, pour toujours.
+    """
+    monde = _Monde()
+    a, b = monde.inscrire(2)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,), volees=2))
+    service = monde.service()
+    trois = (ZoneScore("9"), ZoneScore("9"), ZoneScore("9"))
+
+    # La manche 1 occupe les volées 1 et 2 ; la 3 appartient à une manche qui n'est pas la courante.
+    with pytest.raises(MancheIntrouvable):
+        service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 3, trois)
+
+    # Les deux volées de la manche courante, elles, passent.
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 1, trois)
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 2, trois)
+    assert b is not None
