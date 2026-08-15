@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Le règlement — Atlas Kervignarc</title>
+    <link rel="stylesheet" href="statique/atlas.css" />
+  </head>
+  <body>
+    <main></main>
+    <!-- Données servies en `.js` et non en `.json` : sur `file://`, `fetch()` est bloqué par la
+         politique d'origine. C'est ce qui permet d'ouvrir l'atlas d'un simple double-clic. -->
+    <script src="donnees/reglement.js"></script>
+    <script src="donnees/historique.js"></script>
+    <script src="statique/coquille.js"></script>
+    <script src="statique/pages.js"></script>
+    <script>
+      Atlas.demarrer("index.html", Pages.reglement);
+    </script>
+  </body>
+</html>
