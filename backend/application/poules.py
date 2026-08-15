@@ -252,7 +252,7 @@ class ServicePoules:
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
     ) -> ClassementSource:
-        """Le classement que cette phase de poules **produit** — le port `LecteurClassementPoules`.
+        """Le classement que cette phase de poules **produit** — le port `LecteurClassementDePhase`.
 
         C'est ce qui rend le CA « la phase avale consomme les qualifiés » livrable : jusqu'ici
         `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
@@ -598,7 +598,7 @@ class ServicePoules:
         alimentée par le classement du départ, comme un tableau de tête.
 
         `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
-        chaîne par `LecteurClassementPoules`) : on réutilise alors son cache et sa chaîne de phases
+        chaîne par `LecteurClassementDePhase`) : on réutilise alors son cache et sa chaîne de phases
         visitées plutôt que d'en ouvrir un second. En fabriquer un neuf coûterait la reconstruction
         d'un tableau amont déjà résolu (`DETTE-031`) et perdrait la détection de cycle.
         """

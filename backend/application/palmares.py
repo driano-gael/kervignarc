@@ -116,7 +116,7 @@ class ServicePalmares:
         # reconstruction d'un arbre qu'il n'a pas.
         #
         # ⚠️ **Au constructeur, et non par un `brancher_…` tardif.** Le branchement tardif de
-        # `ServiceSaisieDuels.brancher_poules` existe pour casser un **cycle** ; il n'y en a pas
+        # `ServiceSaisieDuels.brancher_lecteur` existe pour casser un **cycle** ; il n'y en a pas
         # ici. L'imiter sans sa raison aurait échangé un contrôle du compilateur contre un test de
         # câblage, pour rien. `None` reste licite : c'est le régime de tout montage sans Big Shoot
         # Off (harnais de simulation, tests de tableau), et il se lit dans la signature.

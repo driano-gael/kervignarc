@@ -107,8 +107,7 @@ from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.poules import ServicePoules
 from application.prelevement import (
-    LecteurClassementBigShootOff,
-    LecteurClassementPoules,
+    LecteurClassementDePhase,
     LecteurPopulationPhase,
 )
 from application.remboursements import ServiceRemboursements
@@ -122,6 +121,7 @@ from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDer
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
+from domain.contrat_phase import TypePhase
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
     Aggregation,
@@ -745,16 +745,19 @@ def create_app(
         # phase de poules doit s'y résoudre comme ailleurs, sinon la politique est décorative.
         app.state.registre_politiques,
     )
-    # ⚠️ **Le seul branchement tardif du projet, et il est ici pour être vu** (règle 8). Les deux
-    # services se tiennent par les deux bouts : celui des poules a besoin de la saisie ci-dessus, la
-    # saisie a besoin du classement de poule pour honorer un prélèvement qui vise ce type. Aucun
-    # ordre de construction ne satisfait les deux — le port étroit `LecteurClassementPoules` casse
-    # le cycle, et le `setter` le rend explicite plutôt que caché derrière un import paresseux.
+    # ⚠️ **Les branchements tardifs du projet, et ils sont ici pour être vus** (règle 8). Les deux
+    # côtés se tiennent par les deux bouts : le service d'un format a besoin de la saisie ci-dessus,
+    # la saisie a besoin du classement du format pour honorer un prélèvement qui vise ce type. Aucun
+    # ordre de construction ne satisfait les deux — le port `LecteurClassementDePhase` casse le
+    # cycle ([ADR-0084]), et le `setter` le rend explicite plutôt que caché derrière un import
+    # paresseux.
     #
     # ⚠️ Variable **annotée**, même raison qu'au-dessus : `app.state.*` rend `Any`, donc passer
     # `app.state.service_poules` directement ferait sauter la vérification du Protocol par mypy.
-    classements_de_poules: LecteurClassementPoules = app.state.service_poules
-    app.state.service_saisie_duels.brancher_poules(classements_de_poules)
+    #
+    # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+    classements_de_poules: LecteurClassementDePhase = app.state.service_poules
+    app.state.service_saisie_duels.brancher_lecteur(TypePhase.POULES, classements_de_poules)
 
     # Big Shoot Off (E05US028) : le moteur `domain/big_shoot_off.py` reçoit enfin son consommateur
     # de production (DETTE-028). Le tir vit dans `serie`/`volee`, sans table propre — le pendant
@@ -767,11 +770,14 @@ def create_app(
         app.state.service_classement,
         app.state.service_saisie_duels,
     )
-    # Second branchement tardif, **et pour la même raison que celui des poules** : les deux services
-    # se tiennent par les deux bouts. Il n'y en avait qu'un au projet jusqu'ici ; il y en a deux, ce
-    # qui reste sous le seuil du remède structurel (cf. `LecteurClassementBigShootOff`).
-    classements_de_big_shoot_off: LecteurClassementBigShootOff = app.state.service_big_shoot_off
-    app.state.service_saisie_duels.brancher_big_shoot_off(classements_de_big_shoot_off)
+    # Deuxième branchement tardif, **par le même port et la même méthode** que celui des poules : le
+    # type de phase est désormais un *argument*, plus un nom de méthode ([ADR-0084]). C'est là que
+    # se mesure le remède — ajouter un format ne touche plus ni le port, ni le service, seulement
+    # cette ligne-ci.
+    classements_de_big_shoot_off: LecteurClassementDePhase = app.state.service_big_shoot_off
+    app.state.service_saisie_duels.brancher_lecteur(
+        TypePhase.BIG_SHOOT_OFF, classements_de_big_shoot_off
+    )
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.

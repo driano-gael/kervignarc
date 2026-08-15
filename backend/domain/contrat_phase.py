@@ -273,7 +273,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # fois le code écrit. Ce qui l'autorise, module par module :
         # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
         # §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
-        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementPoules`.
+        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementDePhase`.
         #
         # ⚠️ L'effet de cette ligne est **mesurable**, et c'est pourquoi elle a attendu : elle fait
         # réclamer le plancher d'inscrits (E05US021) pour un prélèvement visant des poules. Un
@@ -298,7 +298,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # `application/big_shoot_off.py` rejoue la phase des volées validées et rend son état
         # (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
         # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
-        # `LecteurClassementBigShootOff` (`classement_lisible`), et
+        # `LecteurClassementDePhase` (`classement_lisible`), et
         # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
         # (`route_l_archer`).
         deroule_par_un_service=True,

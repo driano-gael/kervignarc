@@ -9,7 +9,7 @@ poule, placement en blocs, classement de phase) est couverte par `test_domain_po
 Écrit **après** l'implémentation (règle 9 : API et câblage, il n'y a pas d'oracle en jeu).
 
 ⚠️ Ce fichier couvre aussi le **branchement du composition root**, qui n'a pas d'autre garde : le
-port `LecteurClassementPoules` est câblé après construction, donc son oubli ne casserait aucune
+port `LecteurClassementDePhase` est câblé après construction, donc son oubli ne casserait aucune
 compilation — seulement, en salle, un prélèvement visant des poules qui redeviendrait inerte.
 """
 
@@ -421,7 +421,7 @@ def test_un_tableau_aval_est_ensemence_par_ce_que_les_poules_ont_qualifie(
     """CA — « la phase avale consomme les qualifiés », de bout en bout et par HTTP.
 
     C'est le seul test qui éprouve le **branchement tardif** du composition root : le port
-    `LecteurClassementPoules` est câblé après construction, donc son oubli ne casserait aucune
+    `LecteurClassementDePhase` est câblé après construction, donc son oubli ne casserait aucune
     compilation. Sans lui, le tableau serait ensemencé avec les **six** archers en lice — une
     population bien formée, plausible et fausse, exactement le défaut d'avant E05US024.
 

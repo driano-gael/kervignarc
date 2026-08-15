@@ -149,8 +149,8 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
     Ce test **a changé de camp** : jusqu'au 6ᵉ commit de l'US, il vérifiait l'inverse et documentait
     ce qui manquait (l'ordre inter-poules n'était pas arrêté, et le branchement
     `ServicePoules` ↔ `ServiceSaisieDuels` était un cycle). Les deux sont désormais écrits —
-    `domain/classement_de_poules.py` pour l'ordre, le port `LecteurClassementPoules` pour le cycle —
-    donc le registre peut le déclarer sans mentir.
+    `domain/classement_de_poules.py` pour l'ordre, le port `LecteurClassementDePhase` pour le
+    cycle — donc le registre peut le déclarer sans mentir.
 
     ⚠️ L'effet est **mesurable**, et c'est ce qui interdisait de le déclarer plus tôt : le plancher
     d'inscrits (E05US021) est désormais réclamé pour un prélèvement visant une phase de poules. Il
@@ -162,7 +162,7 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
         TypePhase.ELIMINATION_DIRECTE,
         TypePhase.POULES,
         # E05US028 : `ServiceBigShootOff.classement_de_phase` rend le classement des rangs
-        # décernés, lu par le port `LecteurClassementBigShootOff`.
+        # décernés, lu par le port `LecteurClassementDePhase`.
         TypePhase.BIG_SHOOT_OFF,
     } == TYPES_CLASSANTS_LUS
 
