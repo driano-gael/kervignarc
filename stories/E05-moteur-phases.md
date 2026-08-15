@@ -1014,7 +1014,20 @@ le périmètre en sort **élargi** — trois d'entre eux dépassent le seul syst
    perd ce que l'archer a réellement gagné sur le terrain ; l'origine seule ne dit pas où il finit au
    tournoi. Le modèle porte déjà les deux (`OriginePalmares`, `PositionPhase`) : c'est l'écran et le
    PDF qui doivent rendre le couple.
-5. **Le port de classement est unifié dans cette US, avec son ADR.** `LecteurClassementPoules` et
+5. **L'US s'arrête au backend ; le front part en `E05US030`** *(arbitrage du commanditaire,
+   15/08/2026, en cours d'US)*. Le périmètre avait triplé depuis la fiche d'origine — suisse +
+   routage des poules + palmarès + remède structurel — et le commanditaire a coupé au bon endroit :
+   la couture backend/front est la seule qui **ne coûte rien** à trancher ici, parce que les quatre
+   commits déjà écrits sont chacun cohérents et relisibles seuls.
+
+   ⚠️ **Conséquence sur les livrables de suivi, et elle n'est pas cosmétique.** `E05US026` devient
+   une US **sans surface utilisateur** : elle ne produit donc **ni fichier daté** au journal
+   d'avancement, **ni scénario dans [`docs/fonctionnel/`](../docs/fonctionnel/)** — ces deux
+   livrables décrivent ce qu'un non-technicien peut *voir*, et il n'y a rien à voir tant que
+   l'écran n'existe pas. Seuls les **chiffres repères** du résumé bougent. C'est `E05US030` qui
+   portera les deux. La porte de revue vaut donc pour elle, pas pour celle-ci.
+
+6. **Le port de classement est unifié dans cette US, avec son ADR.** `LecteurClassementPoules` et
    `LecteurClassementBigShootOff` sont deux protocoles identiques, dupliqués **volontairement** en
    `E05US028` faute d'une 3ᵉ occurrence réelle ; le suisse est cette 3ᵉ. Le remède —
    `dict[TypePhase, LecteurClassementDePhase]` — se pose donc sur preuve. ⚠️ **Écart assumé à la
@@ -1170,3 +1183,41 @@ obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cos
 - **Dépend de** : `E05US026` (le palmarès d'une phase terminale de poules — sans lui la cascade
   s'arrête sans classement final publiable) · **Jalon** : J3 · **Origine** : cadrage d'`E05US026`,
   15/08/2026
+
+---
+
+### E05US030 — Le système suisse à l'écran
+*En tant qu'*organisateur *et* scoreur, *je veux* régler, suivre et saisir un système suisse depuis
+l'application, *afin de* faire jouer le format que le backend sait dérouler depuis `E05US026`.
+
+Origine : **arbitrage du commanditaire du 15/08/2026, en cours d'`E05US026`**. Le périmètre de
+celle-ci avait triplé au cadrage (le suisse, plus le routage des poules, plus le palmarès, plus le
+remède structurel du port de classement) ; la coupe backend / front a été choisie parce que c'est la
+seule qui ne coûte rien — les commits du backend sont cohérents et relisibles indépendamment, et le
+front n'a aucune dette à reprendre puisqu'il n'a pas commencé.
+
+⚠️ **C'est cette US-ci qui porte les livrables de suivi du système suisse**, `E05US026` n'ayant
+aucune surface utilisateur : le fichier daté du [journal d'avancement](../journal-d-avancement/), la
+mise à jour du [résumé](../journal-d-avancement/00-resume-projet.md) et le scénario de recette dans
+[`docs/fonctionnel/`](../docs/fonctionnel/). La porte de revue les exigera ici.
+
+- **CA — la fiche de réglages** : choisir « système suisse » ouvre le champ **nombre de rondes**,
+  avec le **maximum que l'effectif du jour autorise affiché en clair** — la borne existe au domaine
+  (`rondes_maximales`, vérifiée par `EtapeDeroule`), il reste à la montrer plutôt qu'à la faire
+  découvrir par un refus. Patron `ReglageBigShootOffTsx` / `ReglagePoules`.
+- **CA — l'écran de saisie, ronde par ronde** : le scoreur entre par la **ronde**, pas par un numéro
+  de match d'arbre — c'est le décor `RONDES_APPARIEES` du contrat (ADR-0083 §1, 2ᵉ question). Le
+  **pavé** de saisie est celui d'un duel ordinaire, réutilisé tel quel : une rencontre de suisse
+  *est* un duel (ADR-0083 §7), comme une rencontre de poule.
+- **CA — la ronde suivante n'apparaît qu'une fois la précédente close**, et l'écran le dit : le
+  moteur refuse d'apparier sur une ronde partiellement saisie (`_rondes_closes`), donc l'écran doit
+  nommer l'attente au lieu de laisser un bouton inerte.
+- **CA — le suivi du déroulé et l'écran de salle montrent le suisse** : catalogue de vues d'ADR-0064,
+  au même titre que les poules et le Big Shoot Off.
+- **CA — le bandeau d'écart de l'atelier cesse de viser le suisse côté front** (`TYPES_DEROULES` du
+  catalogue TS), miroir de ce que `E05US026` a fait côté registre de contrat.
+- ⚠️ **À vérifier au cadrage** : `DETTE-056` (trois sélecteurs de créneau indépendants dans l'espace
+  scoreur) passerait à **quatre** avec l'écran du suisse. La dette est **mineure** mais son rayon
+  croît d'un format à l'autre ; c'est peut-être ici qu'elle se résorbe plutôt que de s'élargir une
+  fois de plus.
+- **Dépend de** : `E05US026` · **Jalon** : J3 · **Origine** : arbitrage du 15/08/2026
