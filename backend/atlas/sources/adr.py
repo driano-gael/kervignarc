@@ -47,16 +47,47 @@ def _date_iso(brut: str, *, fichier: str) -> str:
 
 
 _RACINES_DE_CODE = ("backend/", "frontend/", "docs/", "stories/", "epics/", ".github/", "atlas/")
+# Fichiers de premier niveau qu'un ADR peut légitimement déclarer porter sa décision. Énumérés
+# plutôt que devinés : un motif large attraperait de la prose (« le fichier `machin.md` »), et un
+# faux chemin produit un « chemin disparu » **bloquant**. Liste à élargir au besoin.
+_FICHIERS_RACINE = (
+    ".pre-commit-config.yaml",
+    ".gitattributes",
+    "CLAUDE.md",
+    "guide-architecture.md",
+    "pyproject.toml",
+)
 _EXTENSIONS_VERIFIABLES = (".py", ".ts", ".tsx")
 
-# Les sections « Porté dans le code par » sont des listes à puces dont chaque entrée cite un
-# chemin puis, en prose, les symboles qu'il porte — sous des formes libres :
+# Les sections « Porté dans le code par » citent un chemin puis, en prose, les symboles qu'il
+# porte — sous des formes libres, et sous **deux structures** :
 #     - `backend/domain/participant.py` — `Participant` (`genre` + `ref_id`, `frozen`) et…
-#     - `backend/domain/deroule_etape.py` (`EtapeDeroule`)
-# D'où la lecture **par puce** : le premier accent grave qui ressemble à un chemin est la cible,
-# les autres identifiants entre accents graves de la même puce en sont les symboles promis.
+#     | `backend/domain/phase.py` | le contrat de phase |
+# D'où la lecture **par entrée** (puce OU ligne de tableau) : le premier accent grave qui
+# ressemble à un chemin est la cible, les autres identifiants de la même entrée sont ses symboles.
 _TOKEN = re.compile(r"`(?P<valeur>[^`\n]+)`")
 _IDENTIFIANT = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
+# Notation compacte employée par ADR-0083 : `backend/domain/{phase,deroule_etape}.py`. La lire
+# telle quelle fabriquerait des « chemins disparus » bloquants sur des modules qui existent.
+_ACCOLADE = re.compile(r"^(?P<avant>[^{]*)\{(?P<liste>[^}]*)\}(?P<apres>.*)$")
+
+
+def _est_chemin(token: str) -> bool:
+    return token.startswith(_RACINES_DE_CODE) or token in _FICHIERS_RACINE
+
+
+def _developper(chemin: str) -> list[str]:
+    """Développe `a/{x,y}.py` en `a/x.py` et `a/y.py` ; rend `[chemin]` s'il n'y a rien à faire."""
+    accolade = _ACCOLADE.match(chemin)
+    if not accolade:
+        return [chemin]
+    avant, apres = accolade.group("avant"), accolade.group("apres")
+    return [
+        developpe
+        for morceau in accolade.group("liste").split(",")
+        if morceau.strip()
+        for developpe in _developper(f"{avant}{morceau.strip()}{apres}")
+    ]
 
 
 def _cibles_adr(valeur: str) -> tuple[str, ...]:
@@ -98,47 +129,100 @@ def _portage(texte: str, champs: list[tuple[str, str]], racine: Path) -> tuple[P
     brut = markdown.section(texte, "Porté dans le code par")
     brut += "\n" + "\n".join(f"- {v}" for libelle, v in champs if "code par" in libelle.lower())
 
-    portes: list[Portage] = []
-    vus: set[str] = set()
-    for puce in _puces(brut):
-        tokens = _TOKEN.findall(puce)
-        chemins = [t for t in tokens if t.startswith(_RACINES_DE_CODE)]
-        if not chemins or chemins[0] in vus:
+    # Un même module peut être cité par plusieurs entrées (ADR-0083 nomme `poule.py` quatre fois,
+    # à chaque fois pour un rôle différent) : on **fusionne** les symboles au lieu d'ignorer les
+    # entrées suivantes, sinon les promesses des puces 2 à 4 disparaissaient sans bruit.
+    promesses: dict[str, list[str]] = {}
+    for entree in _entrees(brut):
+        tokens = _TOKEN.findall(entree)
+        cites = [t for t in tokens if _est_chemin(t)]
+        if not cites:
             continue
-        chemin = chemins[0]
-        vus.add(chemin)
-        cible = racine / chemin
-        existe = cible.exists()
-        # Les identifiants d'US cités dans la même puce (« …, E13US002 ») ne sont pas des
+        chemins = _developper(cites[0])
+        # Les identifiants d'US cités dans la même entrée (« …, E13US002 ») ne sont pas des
         # symboles : les garder ferait dire au contrôle qu'un module « ne contient pas E13US002 »,
         # ce qui est vrai et sans intérêt. Du bruit dans un signal finit par le rendre inaudible.
-        symboles = tuple(
-            dict.fromkeys(
-                t
-                for t in tokens
-                if t != chemin and _IDENTIFIANT.match(t) and not _US_CITEE.fullmatch(t)
-            )
-        )
+        promis = [
+            t
+            for t in tokens
+            if t not in cites and _IDENTIFIANT.match(t) and not _US_CITEE.fullmatch(t)
+        ]
+        for chemin in chemins:
+            promesses.setdefault(chemin, []).extend(promis)
+
+    portes: list[Portage] = []
+    for chemin in sorted(promesses):
+        cible = _cible_sure(racine, chemin)
+        symboles = tuple(dict.fromkeys(promesses[chemin]))
+        existe = cible is not None and cible.exists()
+        verifiable = existe and cible is not None and _lisible(cible)
         portes.append(
             Portage(
                 chemin=chemin,
                 existe=existe,
                 symboles=symboles,
-                symboles_absents=_symboles_absents(cible, symboles) if existe else symboles,
+                symboles_absents=(
+                    _symboles_absents(cible, symboles)
+                    if verifiable and cible is not None
+                    else (() if existe else symboles)
+                ),
+                verifiable=verifiable or not symboles,
             )
         )
     return tuple(portes)
 
 
-def _puces(section: str) -> list[str]:
-    """Découpe une liste Markdown en puces, continuations indentées recollées."""
-    puces: list[list[str]] = []
+def _cible_sure(racine: Path, chemin: str) -> Path | None:
+    """Le chemin absolu, ou `None` s'il sort de l'arbre du dépôt.
+
+    Le chemin vient d'un ADR — donc d'une source versionnée et relue —, mais rien n'empêche
+    `backend/../../secrets.py` de franchir le filtre de préfixe. Une borne coûte deux lignes ;
+    l'absence de borne fait de l'atlas un oracle « telle chaîne figure-t-elle dans tel fichier
+    de la machine ».
+    """
+    cible = (racine / chemin).resolve()
+    return cible if cible.is_relative_to(racine.resolve()) else None
+
+
+def _lisible(cible: Path) -> bool:
+    return cible.is_file() and cible.suffix in _EXTENSIONS_VERIFIABLES
+
+
+def _entrees(section: str) -> list[str]:
+    """Découpe une section en entrées : puces Markdown **et** lignes de tableau.
+
+    Le registre a adopté le tableau en cours de route (ADR-0079, 0081, 0083) sans que personne
+    ne le décide : ne lire que les puces perdait **un tiers des promesses**, en silence, et la
+    fiche affichait « cette décision ne nomme aucun module » sur les trois ADR les plus rigoureux
+    du dépôt. C'est précisément le « parseur qui devine et finit par affirmer » que ce module
+    s'interdit ailleurs.
+    """
+    entrees: list[list[str]] = []
+    tableau: list[str] = []
+
+    def vider_tableau() -> None:
+        # Une ligne de séparation (`|---|---|`) marque la ligne précédente comme en-tête : les
+        # deux se jettent, le reste est du contenu.
+        lignes = tableau[2:] if len(tableau) >= 2 and _est_separateur(tableau[1]) else tableau
+        entrees.extend([ligne] for ligne in lignes)
+        tableau.clear()
+
     for ligne in section.split("\n"):
-        if ligne.lstrip().startswith(("- ", "* ")) and not ligne.startswith((" ", "\t")):
-            puces.append([ligne.strip()])
-        elif puces and ligne.strip():
-            puces[-1].append(ligne.strip())
-    return [" ".join(morceaux) for morceaux in puces]
+        nue = ligne.strip()
+        if nue.startswith("|"):
+            tableau.append(nue)
+            continue
+        vider_tableau()
+        if nue.startswith(("- ", "* ")) and not ligne.startswith((" ", "\t")):
+            entrees.append([nue])
+        elif entrees and nue:
+            entrees[-1].append(nue)
+    vider_tableau()
+    return [" ".join(morceaux) for morceaux in entrees]
+
+
+def _est_separateur(ligne: str) -> bool:
+    return set(ligne) <= set("|-: ")
 
 
 def _symboles_absents(cible: Path, symboles: tuple[str, ...]) -> tuple[str, ...]:
@@ -149,8 +233,6 @@ def _symboles_absents(cible: Path, symboles: tuple[str, ...]) -> tuple[str, ...]
     module **fait** ce que l'ADR annonce. Cette limite est assumée, affichée, et c'est pourquoi
     le résultat est un signal et non un blocage.
     """
-    if not cible.is_file() or cible.suffix not in _EXTENSIONS_VERIFIABLES:
-        return ()
     source = markdown.lire(cible)
     return tuple(s for s in symboles if s.rsplit(".", 1)[-1] not in source)
 

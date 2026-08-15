@@ -71,6 +71,22 @@ def verifier(
                         ),
                     )
                 )
+            elif not portage.verifiable:
+                # Sans ce signal, une cible non lisible (un répertoire, une extension inconnue)
+                # rendait « aucun symbole absent » — donc s'affichait comme **tenue** alors que
+                # rien n'avait été vérifié. Une promesse non contrôlée doit se dire, pas se taire.
+                trouves.append(
+                    Controle(
+                        code="portage-non-verifiable",
+                        severite=Severite.SIGNAL,
+                        sujet=sujet,
+                        message=(
+                            f"annonce {', '.join(portage.symboles)} dans « {portage.chemin} », "
+                            f"qui n'est pas un fichier lisible symbole par symbole : la promesse "
+                            f"existe mais n'est pas contrôlée."
+                        ),
+                    )
+                )
 
         for lien in decision.liens:
             if lien.type.value == "us":

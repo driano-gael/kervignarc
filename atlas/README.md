@@ -58,7 +58,7 @@ regarde à l'œil :
 
 - **Le règlement** — les 29 règles en vigueur, dans l'ordre où elles sont écrites.
 - **Une règle** (`regle.html?id=…`) — son texte du jour, puis son histoire datée.
-- **Les décisions** — les 83 ADR, filtrables, plus les chaînes d'amendement.
+- **Les décisions** — tous les ADR du registre, filtrables, plus les groupes liés par amendement.
 - **Une décision** (`adr.html?id=0075`) — son voisinage et l'état réel de ce qu'elle promet.
 - **Ce qui a changé** — l'errata, du plus récent au plus ancien.
 - **Écarts constatés** — là où l'écrit et le code ont divergé.

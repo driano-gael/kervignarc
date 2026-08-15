@@ -1,5 +1,10 @@
 /* Atlas — rendu des pages.
  *
+ * DETTE-065 — ce fichier ne passe sous aucun linter : `eslint` et `prettier` sont cadrés sur
+ * `^frontend/` (hooks pre-commit) et `working-directory: frontend` (CI). Ce qui est vérifié
+ * mécaniquement l'est par `backend/tests/test_atlas_site.py` ; le rendu, lui, se regarde à l'œil
+ * (checklist dans `atlas/README.md`).
+ *
  * Un seul fichier pour toutes les vues : chaque page HTML ne charge que les données dont elle a
  * besoin et appelle `Pages.<nom>()`. Les schémas sont du SVG construit ici, à partir de
  * géométries triviales (colonnes fixes, rangs par date) — aucun moteur de mise en page, donc
@@ -215,13 +220,15 @@ var Pages = (function () {
     cible.appendChild(Atlas.element("div", null, "")).id = "resultats";
     appliquerFiltres(toutes);
 
-    cible.appendChild(Atlas.element("h2", null, "Chaînes d'amendement"));
+    cible.appendChild(Atlas.element("h2", null, "Décisions liées par amendement"));
     cible.appendChild(
       Atlas.element(
         "p",
         "chapo",
-        "Une chaîne, c'est l'histoire d'une même question tranchée plusieurs fois. " +
-          "Lecture de gauche à droite, dans l'ordre des dates."
+        "Chaque groupe rassemble des décisions qui se sont amendées les unes les autres — " +
+          "l'histoire d'une même question tranchée plusieurs fois. Les boîtes sont rangées par " +
+          "date ; <strong>seules les relations réellement déclarées sont tracées</strong>, et " +
+          "leur libellé apparaît au survol. Deux boîtes voisines ne sont donc pas forcément liées."
       )
     );
     chaines(toutes).forEach(function (chaine) {
@@ -331,16 +338,27 @@ var Pages = (function () {
   }
 
   /* Composantes connexes sur les seules arêtes d'amendement et de remplacement : `voisin` et
-   * `socle` relient presque tout à presque tout et noieraient le signal. */
+   * `socle` relient presque tout à presque tout et noieraient le signal.
+   *
+   * ⚠️ Chaque groupe transporte **ses arêtes réelles**, et pas seulement ses nœuds. Une version
+   * antérieure ne rendait que la liste des nœuds, et le dessin reliait les voisins consécutifs :
+   * une composante n'étant pas un chemin, cela **fabriquait des relations** — 11 arêtes
+   * inexistantes sur la plus grande composante, pendant que 7 vraies n'étaient jamais montrées.
+   * Le lecteur en concluait qu'ADR-0079 amende ADR-0083. C'est le « parseur qui devine et finit
+   * par affirmer » que tout le reste de cet atlas s'interdit. */
   function chaines(toutes) {
     var index = {};
     var voisins = {};
+    var aretes = [];
     toutes.forEach(function (decision) {
       index[decision.identifiant] = decision;
       voisins[decision.identifiant] = voisins[decision.identifiant] || {};
+    });
+    toutes.forEach(function (decision) {
       decision.amende_par.forEach(function (source) {
+        if (!index[source]) return;
+        aretes.push({ de: source, vers: decision.identifiant });
         voisins[decision.identifiant][source] = true;
-        voisins[source] = voisins[source] || {};
         voisins[source][decision.identifiant] = true;
       });
     });
@@ -358,26 +376,32 @@ var Pages = (function () {
           if (vus[courant]) continue;
           vus[courant] = true;
           groupe.push(courant);
-          Object.keys(voisins[courant] || {}).forEach(function (suivant) {
+          Object.keys(voisins[courant]).forEach(function (suivant) {
             if (!vus[suivant]) pile.push(suivant);
           });
         }
-        if (groupe.length > 1) {
-          groupes.push(
-            groupe
-              .filter(function (numero) {
-                return index[numero];
-              })
-              .sort(function (a, b) {
-                return index[a].date < index[b].date ? -1 : 1;
-              })
-          );
-        }
+        if (groupe.length < 2) return;
+        var membres = {};
+        groupe.forEach(function (numero) {
+          membres[numero] = true;
+        });
+        groupes.push({
+          noeuds: groupe.sort(function (a, b) {
+            return index[a].date < index[b].date ? -1 : index[a].date > index[b].date ? 1 : a < b ? -1 : 1;
+          }),
+          aretes: aretes.filter(function (arete) {
+            return membres[arete.de] && membres[arete.vers];
+          }),
+        });
       });
     return groupes;
   }
 
-  /* Un maillon = une boîte ; les liaisons sont des segments strictement horizontaux. */
+  /* Les nœuds sont posés sur une rangée, dans l'ordre des dates ; **seules les arêtes réelles**
+   * sont tracées, dans des couloirs sous la rangée. Chaque arête fait trois segments — vertical,
+   * horizontal, vertical — donc que des angles droits, et le couloir garantit qu'aucune ne
+   * traverse une boîte. Les couloirs sont attribués par coloration gloutonne d'intervalles :
+   * deux arêtes qui ne se chevauchent pas partagent le même, ce qui garde le schéma bas. */
   function schemaChaine(chaine) {
     var index = {};
     ((Atlas.donnees("decisions") || {}).decisions || []).forEach(function (decision) {
@@ -387,21 +411,57 @@ var Pages = (function () {
     var LARGEUR = 148;
     var HAUTEUR = 46;
     var ECART = 46;
-    var total = chaine.length * LARGEUR + (chaine.length - 1) * ECART;
-    var svg =
-      "<svg class='reseau' viewBox='0 0 " +
-      (total + 4) +
-      " 76' role='img' aria-label='Chaîne d’amendement'>";
+    var COULOIR = 14;
+    var BAS_DES_BOITES = 8 + HAUTEUR;
 
-    chaine.forEach(function (numero, rang) {
+    var rangs = {};
+    chaine.noeuds.forEach(function (numero, rang) {
+      rangs[numero] = rang;
+    });
+    function centre(numero) {
+      return 2 + rangs[numero] * (LARGEUR + ECART) + LARGEUR / 2;
+    }
+
+    var placees = [];
+    chaine.aretes
+      .slice()
+      .sort(function (a, b) {
+        return Math.abs(rangs[b.de] - rangs[b.vers]) - Math.abs(rangs[a.de] - rangs[a.vers]);
+      })
+      .forEach(function (arete) {
+        var bas = Math.min(rangs[arete.de], rangs[arete.vers]);
+        var haut = Math.max(rangs[arete.de], rangs[arete.vers]);
+        var couloir = 0;
+        while (
+          placees.some(function (posee) {
+            return posee.couloir === couloir && posee.bas < haut && bas < posee.haut;
+          })
+        ) {
+          couloir += 1;
+        }
+        placees.push({ arete: arete, bas: bas, haut: haut, couloir: couloir });
+      });
+
+    var couloirs = placees.reduce(function (max, posee) {
+      return Math.max(max, posee.couloir + 1);
+    }, 0);
+    var largeurTotale = chaine.noeuds.length * LARGEUR + (chaine.noeuds.length - 1) * ECART + 4;
+    var hauteurTotale = BAS_DES_BOITES + couloirs * COULOIR + 14;
+
+    var svg =
+      "<svg class='reseau' viewBox='0 0 " + largeurTotale + " " + hauteurTotale +
+      "' role='img' aria-label='Amendements entre décisions liées'>";
+
+    placees.forEach(function (posee) {
+      var y = BAS_DES_BOITES + (posee.couloir + 1) * COULOIR;
+      svg +=
+        "<path class='arete' d='M " + centre(posee.arete.de) + " " + BAS_DES_BOITES +
+        " V " + y + " H " + centre(posee.arete.vers) + " V " + BAS_DES_BOITES + "'></path>" +
+        "<title>ADR-" + E(posee.arete.de) + " amende ADR-" + E(posee.arete.vers) + "</title>";
+    });
+
+    chaine.noeuds.forEach(function (numero, rang) {
       var x = 2 + rang * (LARGEUR + ECART);
-      if (rang > 0) {
-        var depart = x - ECART;
-        svg +=
-          "<path class='arete' d='M " + depart + " " + (HAUTEUR / 2 + 8) +
-          " H " + x + "'></path>" +
-          "<text class='etiquette' x='" + (depart + 4) + "' y='" + (HAUTEUR / 2 + 2) + "'>amende</text>";
-      }
       svg +=
         "<rect class='boite' x='" + x + "' y='8' width='" + LARGEUR + "' height='" + HAUTEUR +
         "' rx='4'></rect>" +
@@ -494,13 +554,22 @@ var Pages = (function () {
       index[autre.identifiant] = autre;
     });
 
+    /* Le sens de l'arête décide de la colonne. Le backend distingue soigneusement les relations
+     * entrantes (« Prolongé par », « Complété et partiellement révisé par ») des sortantes, avec
+     * un avertissement explicite dans `normalisation.py` ; ignorer `lien.sens` ici jetait ce
+     * travail et dessinait le même ADR **des deux côtés** du schéma. */
     var amont = {};
-    decision.liens.forEach(function (lien) {
-      if (lien.type !== "us" && index[lien.cible]) amont[lien.cible] = lien.libelle;
-    });
     var aval = {};
+    decision.liens.forEach(function (lien) {
+      if (lien.type === "us" || !index[lien.cible]) return;
+      if (lien.sens === "entrant") aval[lien.cible] = lien.libelle;
+      else amont[lien.cible] = lien.libelle;
+    });
     decision.amende_par.forEach(function (numero) {
-      if (index[numero]) aval[numero] = "amende";
+      if (index[numero]) aval[numero] = aval[numero] || "amende";
+    });
+    Object.keys(aval).forEach(function (numero) {
+      delete amont[numero];
     });
 
     var gauche = Object.keys(amont).sort();
@@ -703,6 +772,15 @@ var Pages = (function () {
 
   /* --- 7. Recherche -------------------------------------------------------------------------- */
 
+  /* Même normalisation que celle appliquée côté Python à la génération : minuscules, sans
+   * diacritiques. Écrite une fois ici plutôt que recopiée à chaque usage. */
+  function normaliser(texte) {
+    return String(texte || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
   function recherche(cible) {
     var documents = (Atlas.donnees("corpus") || {}).documents || [];
 
@@ -728,18 +806,23 @@ var Pages = (function () {
         resultats.innerHTML = "<p class='discret'>Saisis au moins deux caractères.</p>";
         return;
       }
-      var terme = brut
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+      var terme = normaliser(brut);
 
       var trouves = documents
-        .map(function (document_) {
-          var position = document_.recherche.indexOf(terme);
+        .map(function (fiche) {
+          var position = fiche.recherche.indexOf(terme);
           if (position < 0) return null;
-          var dansTitre = document_.titre.toLowerCase().normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "").indexOf(terme) >= 0;
-          return { document: document_, score: (dansTitre ? 100 : 0) - position, position: position };
+          var dansTitre = normaliser(fiche.titre).indexOf(terme) >= 0;
+          /* \u26a0\ufe0f `position` est un index dans `recherche` (titre + section + texte), pas dans
+           * `texte`. Trancher l'extrait avec cet index-l\u00e0 d\u00e9calait **les 113 documents** \u2014 sur
+           * ADR-0075 le d\u00e9calage vaut 193 caract\u00e8res, et chercher \u00ab barrage \u00bb rendait un extrait
+           * vide. On relocalise donc le terme dans le texte affich\u00e9. */
+          var dansTexte = normaliser(fiche.texte).indexOf(terme);
+          return {
+            document: fiche,
+            score: (dansTitre ? 100 : 0) - position,
+            position: dansTexte >= 0 ? dansTexte : 0,
+          };
         })
         .filter(Boolean)
         .sort(function (a, b) {

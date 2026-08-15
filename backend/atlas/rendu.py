@@ -69,7 +69,12 @@ def _charge_utile(contenu: str, cle: str) -> Any:
     debut = contenu.find(marqueur)
     if debut < 0:
         return None
-    return json.loads(contenu[debut + len(marqueur) :].rstrip().removesuffix(";"))
+    try:
+        return json.loads(contenu[debut + len(marqueur) :].rstrip().removesuffix(";"))
+    except json.JSONDecodeError:
+        # Un fichier tronqué à la main doit produire le message « illisible — régénère » prévu
+        # par l'appelant, pas une trace d'exception remontée depuis un hook pre-commit.
+        return None
 
 
 def ecarts(racine: Path, fichiers: dict[str, str]) -> list[str]:
@@ -98,22 +103,50 @@ def ecarts(racine: Path, fichiers: dict[str, str]) -> list[str]:
 
 
 def _ecarts_historique(present: str, attendu: str) -> list[str]:
+    """La tolérance porte sur l'**ajout**, et sur rien d'autre.
+
+    ⚠️ Une première version ne vérifiait qu'une inclusion des empreintes : `historique.js` vidé à
+    `{}`, réduit à une entrée par règle, ou dont toutes les dates et tous les motifs avaient été
+    réécrits passait **au vert**. La porte ne garantissait donc rien sur le seul fichier qu'elle
+    prétendait couvrir avec souplesse. On compare désormais les entrées partagées **champ par
+    champ**, et une règle vidée est signalée.
+    """
     commite = _charge_utile(present, CLE_TOLERANTE)
     frais = _charge_utile(attendu, CLE_TOLERANTE)
     if not isinstance(commite, dict) or not isinstance(frais, dict):
         return [f"{CLE_TOLERANTE}.js : illisible — régénère."]
     if not frais:
         return []  # git indisponible : on ne peut rien affirmer, donc on n'affirme rien
-    perdues = [
-        f"{CLE_TOLERANTE}.js : la règle « {identifiant} » a perdu des entrées d'historique"
-        for identifiant, entrees in sorted(commite.items())
-        if not _inclus(entrees, frais.get(identifiant, []))
-    ]
-    return perdues
 
-
-def _inclus(anciennes: Any, nouvelles: Any) -> bool:
-    if not isinstance(anciennes, list) or not isinstance(nouvelles, list):
-        return False
-    references = {e.get("reference") for e in nouvelles if isinstance(e, dict)}
-    return all(e.get("reference") in references for e in anciennes if isinstance(e, dict))
+    problemes: list[str] = []
+    for identifiant, fraiches in sorted(frais.items()):
+        # `get(..., [])` et non `get(...)` : une clé **absente** doit tomber dans le cas « aucune
+        # entrée commitée », pas dans « forme inattendue » — c'est précisément la forme que prend
+        # un `historique.js` vidé.
+        anciennes = commite.get(identifiant, [])
+        if not isinstance(anciennes, list) or not isinstance(fraiches, list):
+            problemes.append(f"{CLE_TOLERANTE}.js : « {identifiant} » n'a pas la forme attendue.")
+            continue
+        if fraiches and not anciennes:
+            problemes.append(
+                f"{CLE_TOLERANTE}.js : « {identifiant} » n'a aucune entrée commitée alors que "
+                f"l'historique en donne {len(fraiches)}."
+            )
+            continue
+        par_empreinte = {e.get("reference"): e for e in fraiches if isinstance(e, dict)}
+        for entree in anciennes:
+            if not isinstance(entree, dict):
+                problemes.append(
+                    f"{CLE_TOLERANTE}.js : « {identifiant} » porte une entrée illisible."
+                )
+            elif entree.get("reference") not in par_empreinte:
+                problemes.append(
+                    f"{CLE_TOLERANTE}.js : « {identifiant} » a perdu l'entrée "
+                    f"{entree.get('reference')}."
+                )
+            elif par_empreinte[entree["reference"]] != entree:
+                problemes.append(
+                    f"{CLE_TOLERANTE}.js : « {identifiant} » — l'entrée {entree['reference']} "
+                    f"diffère de ce que l'historique dit."
+                )
+    return problemes

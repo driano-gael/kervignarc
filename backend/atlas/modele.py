@@ -109,6 +109,10 @@ class Portage:
     existe: bool
     symboles: tuple[str, ...] = ()
     symboles_absents: tuple[str, ...] = ()
+    # `False` quand la cible n'est pas lisible symbole par symbole (un répertoire, une extension
+    # dont on ne sait rien). Sans ce drapeau, « aucun symbole absent » et « aucun symbole
+    # vérifié » se confondaient — et une promesse jamais contrôlée s'affichait comme tenue.
+    verifiable: bool = True
 
 
 @dataclass(frozen=True, slots=True)

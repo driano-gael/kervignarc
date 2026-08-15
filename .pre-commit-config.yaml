@@ -64,8 +64,12 @@ repos:
         # Le hook **vérifie, il ne régénère pas** : un hook qui réécrit des fichiers pendant le
         # commit laisse un état `staged` / `unstaged` incohérent et surprend. Il échoue en donnant
         # la commande à lancer.
-        # Motif restreint aux seules sources des cartes : le générateur lit l'historique git
-        # (~3 s), on ne l'impose pas à tous les commits.
+        # ⚠️ Couverture **partielle, et assumée comme telle**. Les cartes dépendent aussi du code
+        # source lui-même : le contrôle de portage teste l'existence des modules nommés par les
+        # ADR et y cherche les symboles promis. Renommer une classe citée par un ADR périme donc
+        # les cartes **sans** déclencher ce hook. Élargir le motif à tout `backend/**.py`
+        # imposerait ~3 s de `git log` à presque chaque commit ; l'arbitrage est de laisser la
+        # **CI** être l'autorité sur ce cas — c'est elle qui vérifie sur tout diff.
         files: ^(CLAUDE\.md|docs/adr/.*\.md|stories/.*\.md|backend/atlas/.*\.py|atlas/donnees/.*)$
 
       - id: eslint

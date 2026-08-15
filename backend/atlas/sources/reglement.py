@@ -83,36 +83,39 @@ def _sans_decor(bloc: str) -> str:
     return _MARQUEUR_DE_LISTE.sub("", _ANCRE.sub("", bloc).strip()).strip()
 
 
-def _corps(bloc: str) -> str:
-    """Le texte de la règle **sans le titre** qui l'ouvre.
+_FIN_DE_PHRASE = re.compile(r"(?<=[.!?])\s+")
 
-    Sans cette coupe, la fiche afficherait deux fois le même intitulé — une fois en titre, une fois
-    en tête du corps. Quand la règle n'a pas de titre en gras et tient en une phrase, le titre dit
-    déjà tout : le corps est alors vide plutôt que redondant.
+
+def _titre_et_corps(bloc: str) -> tuple[str, str]:
+    """Le titre d'une règle et son corps — calculés **ensemble**, donc jamais superposés.
+
+    Deux pièges que le dépôt contient réellement :
+    - le gras d'un titre court parfois sur deux lignes et **enferme un lien Markdown** (« Le suivi
+      des US ([`journal-d-avancement/SUIVI-US.md`](…)) est tenu à jour… ») — d'où le `DOTALL` et
+      le passage par `en_clair` ;
+    - certaines règles n'ont **pas** de titre en gras, mais du gras au milieu de leur phrase
+      (« …doit être **redécoupée** ») : prendre le premier gras venu donnerait « redécoupée » pour
+      titre. D'où `match` et non `search` — le gras ne fait titre que s'il ouvre la règle.
+
+    ⚠️ Les deux valeurs sont rendues par la même fonction parce qu'une version antérieure ne
+    coupait le titre du corps **que** dans le cas du gras : les trois règles qui ouvrent en prose
+    (`registre-de-dette`, `remede-structurel`, `lancer-la-pr`) affichaient donc leur intitulé deux
+    fois. Le cas signalé était fermé, la classe ne l'était pas.
     """
     texte = _sans_decor(bloc)
     gras = _GRAS.match(texte)
     if gras:
-        return texte[gras.end() :].lstrip(" .:\n").strip()
-    return "" if len(texte) <= 120 else texte
+        titre = markdown.en_clair(gras.group("titre"))
+        corps = texte[gras.end() :].lstrip(" .:\n").strip()
+    else:
+        morceaux = _FIN_DE_PHRASE.split(texte, maxsplit=1)
+        titre = markdown.en_clair(morceaux[0])
+        corps = morceaux[1].strip() if len(morceaux) > 1 else ""
+    return markdown.tronquer(titre, 80).rstrip(" .:"), corps
 
 
 def _titre(bloc: str) -> str:
-    """Le titre en gras **qui ouvre** la règle ; à défaut, sa première phrase.
-
-    Deux pièges que le dépôt contient réellement :
-    - le gras court parfois sur deux lignes et **enferme un lien Markdown** (« Le suivi des US
-      ([`journal-d-avancement/SUIVI-US.md`](…)) est tenu à jour… ») — d'où le `DOTALL` et le
-      passage par `en_clair` ;
-    - certaines règles n'ont **pas** de titre en gras, mais du gras au milieu de leur phrase
-      (« …doit être **redécoupée** ») : prendre le premier gras venu donnerait « redécoupée » pour
-      titre. D'où `match` et non `search` — le gras ne fait titre que s'il ouvre la règle.
-    """
-    texte = _sans_decor(bloc)
-    gras = _GRAS.match(texte)
-    return markdown.tronquer(markdown.en_clair(gras.group("titre") if gras else texte), 80).rstrip(
-        " .:"
-    )
+    return _titre_et_corps(bloc)[0]
 
 
 def lire_regles(racine: Path) -> tuple[Regle, ...]:
@@ -143,14 +146,15 @@ def lire_regles(racine: Path) -> tuple[Regle, ...]:
         # chercher dans le texte tronqué perdrait les incises et les renvois d'une règle dont le
         # titre porte toute la phrase.
         entier = _sans_decor(bloc)
+        titre, corps = _titre_et_corps(bloc)
         rangs[section_courante] = rangs.get(section_courante, 0) + 1
         regles.append(
             Regle(
                 identifiant=identifiant,
                 section=section_courante,
                 rang=rangs[section_courante],
-                titre=_titre(bloc),
-                corps=_corps(bloc),
+                titre=titre,
+                corps=corps,
                 fichier="CLAUDE.md",
                 ligne=debut + 1,
                 ligne_fin=fin,
@@ -172,9 +176,20 @@ def lire_regles(racine: Path) -> tuple[Regle, ...]:
 def _fin_du_bloc(
     lignes: list[str], debut: int, reperes: list[tuple[int, str, str]], position: int
 ) -> int:
-    """La borne haute (exclue) du bloc d'une règle : l'ancre suivante, ou la fin de la section."""
-    suivante = reperes[position + 1][0] if position + 1 < len(reperes) else len(lignes)
+    """La borne haute (incluse) du bloc d'une règle : l'ancre suivante, ou la fin de la section.
+
+    La borne est plafonnée au nombre **réel** de lignes du fichier : `split("\\n")` produit un
+    élément vide final, donc `len(lignes)` vaut une ligne de plus que ce que git connaît.
+
+    *Mesuré plutôt que supposé* : git **tolère** une borne de fin trop grande et la ramène à la
+    taille du fichier — seule une borne de **départ** au-delà de la fin le fait sortir en erreur,
+    ce qui ne peut pas arriver ici puisqu'une ancre occupe cette ligne. Le plafonnement est donc
+    une exactitude, pas un correctif de panne ; il évite surtout de publier des bornes qui ne
+    correspondent à rien dans la fiche d'une règle.
+    """
+    dernier = len(lignes) - 1 if lignes and not lignes[-1].strip() else len(lignes)
+    suivante = reperes[position + 1][0] if position + 1 < len(reperes) else dernier
     for index in range(debut + 1, min(suivante, len(lignes))):
         if lignes[index].startswith("## "):
             return index
-    return suivante
+    return min(suivante, dernier)

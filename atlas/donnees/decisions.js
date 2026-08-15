@@ -64,6 +64,29 @@ window.ATLAS.decisions = {
    "liens": [],
    "portage": [
     {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "scoring",
+      "tiebreak",
+      "routing",
+      "aggregation"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "TypePhase",
+      "config",
+      "SourcePhase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/politiques.py",
      "existe": true,
      "symboles": [
@@ -80,7 +103,8 @@ window.ATLAS.decisions = {
       "RegistrePolitiques",
       "config"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/tableau.py",
@@ -90,28 +114,8 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [
       "Protocol"
-     ]
-    },
-    {
-     "chemin": "backend/domain/phase.py",
-     "existe": true,
-     "symboles": [
-      "TypePhase",
-      "config",
-      "SourcePhase"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/bootstrap/composition.py",
-     "existe": true,
-     "symboles": [
-      "scoring",
-      "tiebreak",
-      "routing",
-      "aggregation"
-     ],
-     "symboles_absents": []
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -250,6 +254,15 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/domain/bareme.py",
+     "existe": true,
+     "symboles": [
+      "BaremeQualification"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/phase.py",
      "existe": true,
      "symboles": [
@@ -257,15 +270,8 @@ window.ATLAS.decisions = {
       "TypePhase",
       "StatutPhase"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/bareme.py",
-     "existe": true,
-     "symboles": [
-      "BaremeQualification"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/moteur.py",
@@ -278,7 +284,8 @@ window.ATLAS.decisions = {
       "tournoi_id",
       "Phase"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -545,7 +552,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "DEPART"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -862,13 +870,11 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/tournoi.py",
+     "chemin": "backend/api/v1/tournois.py",
      "existe": true,
-     "symboles": [
-      "StatutTournoi",
-      "TransitionTournoi"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/tournois.py",
@@ -876,13 +882,18 @@ window.ATLAS.decisions = {
      "symboles": [
       "TransitionStatutInvalide"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/api/v1/tournois.py",
+     "chemin": "backend/domain/tournoi.py",
      "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles": [
+      "StatutTournoi",
+      "TransitionTournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "frontend/src/features/accueil/FriseCycleDeVie.tsx",
@@ -893,7 +904,8 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [
       "transitions_possibles"
-     ]
+     ],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -976,25 +988,17 @@ window.ATLAS.decisions = {
       "frozen",
       "GenreParticipant"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/tableau.py",
      "existe": true,
      "symboles": [
-      "Participant",
-      "Equipe",
-      "MEMBRE_EQUIPE",
-      "Participant.ref_id",
-      "EquipeId",
-      "participant.py"
+      "Participant"
      ],
-     "symboles_absents": [
-      "Equipe",
-      "MEMBRE_EQUIPE",
-      "Participant.ref_id",
-      "EquipeId"
-     ]
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -1705,16 +1709,13 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/phase.py",
+     "chemin": "backend/api/v1/phases.py",
      "existe": true,
      "symboles": [
-      "StatutPhase",
-      "demarrer",
-      "mettre_en_pause",
-      "reprendre",
-      "terminer"
+      "transitions"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/phases.py",
@@ -1723,15 +1724,27 @@ window.ATLAS.decisions = {
       "TransitionStatutInvalide",
       "ServiceTournois"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/api/v1/phases.py",
+     "chemin": "backend/domain/phase.py",
      "existe": true,
      "symboles": [
-      "transitions"
+      "StatutPhase",
+      "demarrer",
+      "mettre_en_pause",
+      "reprendre",
+      "terminer",
+      "SourcePhase",
+      "TypePhase",
+      "poules",
+      "suisse",
+      "colline",
+      "big_shoot_off"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -1771,23 +1784,6 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/politiques.py",
-     "existe": true,
-     "symboles": [
-      "PolitiquesPhase",
-      "RegistrePolitiques"
-     ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/infrastructure/db/repositories/moteur.py",
-     "existe": true,
-     "symboles": [
-      "config"
-     ],
-     "symboles_absents": []
-    },
-    {
      "chemin": "backend/domain/phase.py",
      "existe": true,
      "symboles": [
@@ -1799,7 +1795,27 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [
       "tiebreak"
-     ]
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/politiques.py",
+     "existe": true,
+     "symboles": [
+      "PolitiquesPhase",
+      "RegistrePolitiques"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "config"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -1973,6 +1989,16 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_decor",
+      "_etat_du_match"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/duel.py",
      "existe": true,
      "symboles": [
@@ -1988,18 +2014,17 @@ window.ATLAS.decisions = {
       "ModeDuel",
       "Barrage",
       "Duel.barrage",
-      "_vainqueur_barrage"
+      "_vainqueur_barrage",
+      "BaremeDuel",
+      "preset_ffta_classique",
+      "preset_ffta_poulies",
+      "preset_club",
+      "Protocol",
+      "ResolveurBaremeDuel",
+      "ResolveurBaremeDuelFfta"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/saisie_duels.py",
-     "existe": true,
-     "symboles": [
-      "_decor",
-      "_etat_du_match"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/tir.py",
@@ -2017,7 +2042,8 @@ window.ATLAS.decisions = {
      "symboles_absents": [
       "_bareme_du",
       "BaremeQualification"
-     ]
+     ],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -2468,14 +2494,6 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/patrimoine.py",
-     "existe": true,
-     "symboles": [
-      "tournoi_id"
-     ],
-     "symboles_absents": []
-    },
-    {
      "chemin": "backend/application/patrimoine.py",
      "existe": true,
      "symboles": [
@@ -2487,7 +2505,26 @@ window.ATLAS.decisions = {
       "dupliquer_blason",
       "precharger_ffta"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "FormatTournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/patrimoine.py",
+     "existe": true,
+     "symboles": [
+      "tournoi_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/ports.py",
@@ -2496,15 +2533,8 @@ window.ATLAS.decisions = {
       "CategorieRepository",
       "BlasonRepository"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/format_tournoi.py",
-     "existe": true,
-     "symboles": [
-      "FormatTournoi"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -2554,6 +2584,13 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/domain/plage.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/politiques.py",
      "existe": true,
      "symboles": [
@@ -2565,19 +2602,15 @@ window.ATLAS.decisions = {
       "RoutingRepechage",
       "ContexteRoutage"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/plage.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/tableau.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/",
@@ -2588,7 +2621,8 @@ window.ATLAS.decisions = {
       "Routing",
       "Depth"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": false
     }
    ],
    "remplace_par": "",
@@ -2646,13 +2680,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "TypePhase"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/poule.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/politiques.py",
@@ -2677,7 +2706,15 @@ window.ATLAS.decisions = {
       "ServiceSaisieDuels._decor",
       "_decor",
       "echauffement"
-     ]
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/poule.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -2884,6 +2921,15 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/domain/barrage.py",
+     "existe": true,
+     "symboles": [
+      "politiques.py"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/politiques.py",
      "existe": true,
      "symboles": [
@@ -2895,15 +2941,8 @@ window.ATLAS.decisions = {
       "TiebreakPoules.barrage_requis",
       "False"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/barrage.py",
-     "existe": true,
-     "symboles": [
-      "politiques.py"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -2963,16 +3002,15 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/politiques.py",
+     "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
-      "ClePolitique.AGGREGATION",
-      "Protocol",
-      "Aggregation",
-      "AggregationParQualification",
-      "AggregationExAequo"
+      "ServicePalmares",
+      "pour_tournoi",
+      "calculer_palmares"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/palmares.py",
@@ -2985,17 +3023,21 @@ window.ATLAS.decisions = {
       "OriginePalmares",
       "Phase"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/palmares.py",
+     "chemin": "backend/domain/politiques.py",
      "existe": true,
      "symboles": [
-      "ServicePalmares",
-      "pour_tournoi",
-      "calculer_palmares"
+      "ClePolitique.AGGREGATION",
+      "Protocol",
+      "Aggregation",
+      "AggregationParQualification",
+      "AggregationExAequo"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3058,13 +3100,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/prelevement.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/phase.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/saisie_duels.py",
@@ -3072,7 +3109,15 @@ window.ATLAS.decisions = {
      "symboles": [
       "phase.sources"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3124,6 +3169,31 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/formats.py",
+     "existe": true,
+     "symboles": [
+      "PrelevementVide"
+     ],
+     "symboles_absents": [
+      "PrelevementVide"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/tournois.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/deroule.py",
      "existe": true,
      "symboles": [
@@ -3135,35 +3205,15 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [
       "FormatTournoi.effectif_minimum_exige"
-     ]
+     ],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/formats.py",
-     "existe": true,
-     "symboles": [
-      "PrelevementVide"
-     ],
-     "symboles_absents": [
-      "PrelevementVide"
-     ]
-    },
-    {
-     "chemin": "backend/application/tournois.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/api/v1/formats.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3223,6 +3273,24 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "RegistrePolitiques",
+      "config.policies.depth",
+      "aucun"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/politiques.py",
      "existe": true,
      "symboles": [
@@ -3234,23 +3302,8 @@ window.ATLAS.decisions = {
       "ProfondeurPodium",
       "AucunClassement"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/domain/phase.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/prelevement.py",
-     "existe": true,
-     "symboles": [
-      "RegistrePolitiques",
-      "config.policies.depth",
-      "aucun"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3473,15 +3526,6 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/phase.py",
-     "existe": true,
-     "symboles": [
-      "Phase.depart_id",
-      "SequencePhases"
-     ],
-     "symboles_absents": []
-    },
-    {
      "chemin": "backend/application/classements.py",
      "existe": true,
      "symboles": [
@@ -3492,7 +3536,8 @@ window.ATLAS.decisions = {
      "symboles_absents": [
       "pour_tournoi",
       "phase_id"
-     ]
+     ],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/format_tournoi.py",
@@ -3500,19 +3545,32 @@ window.ATLAS.decisions = {
      "symboles": [
       "appliquer"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Phase.depart_id",
+      "SequencePhases"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/moteur.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_portee_sportive.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3554,24 +3612,11 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/deroule_etape.py",
+     "chemin": "backend/api/v1/phases.py",
      "existe": true,
-     "symboles": [
-      "EtapeDeroule",
-      "Phase",
-      "SequencePhases"
-     ],
-     "symboles_absents": [
-      "SequencePhases"
-     ]
-    },
-    {
-     "chemin": "backend/domain/format_tournoi.py",
-     "existe": true,
-     "symboles": [
-      "appliquer"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/departs.py",
@@ -3579,7 +3624,17 @@ window.ATLAS.decisions = {
      "symboles": [
       "ServiceDeparts.creer"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/grain_validation.py",
+     "existe": true,
+     "symboles": [
+      "PhaseRepository"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/phases.py",
@@ -3591,21 +3646,30 @@ window.ATLAS.decisions = {
      "symboles_absents": [
       "qualification_representative",
       "qualification_du_tournoi"
-     ]
+     ],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/grain_validation.py",
+     "chemin": "backend/domain/deroule_etape.py",
      "existe": true,
      "symboles": [
-      "PhaseRepository"
+      "EtapeDeroule",
+      "Phase",
+      "SequencePhases"
      ],
-     "symboles_absents": []
+     "symboles_absents": [
+      "SequencePhases"
+     ],
+     "verifiable": true
     },
     {
-     "chemin": "backend/api/v1/phases.py",
+     "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles": [
+      "appliquer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/models.py",
@@ -3614,13 +3678,15 @@ window.ATLAS.decisions = {
       "DerouleEtapeORM",
       "PhaseORM"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_portee_sportive.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3722,7 +3788,82 @@ window.ATLAS.decisions = {
      "type": "remplace"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "frontend/src/features/competition/VueClassement.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/VuePalmares.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/placement/PlanCiblesPublic.tsx",
+     "existe": true,
+     "symboles": [
+      "getInitialState",
+      "posesParCible",
+      "departsDesArchersSuivis",
+      "suivi.test.ts"
+     ],
+     "symboles_absents": [
+      "getInitialState",
+      "posesParCible",
+      "departsDesArchersSuivis"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/public/AccueilPublic.tsx",
+     "existe": true,
+     "symboles": [
+      "BasculeAffichage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/VueAffectations.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tableaux/VueTableaux.tsx",
+     "existe": true,
+     "symboles": [
+      "suivis"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/stores/sessionSuivisStore.ts",
+     "existe": true,
+     "symboles": [
+      "centrerSurSuivis"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/suivis/focus.ts",
+     "existe": true,
+     "symboles": [
+      "centrerCibles",
+      "modeEffectif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "accepté",
@@ -3775,13 +3916,20 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/classement_de_tableau.py",
+     "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
-      "classement_de_tableau",
-      "aggregation"
+      "tranche"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/prelevement.py",
@@ -3791,7 +3939,8 @@ window.ATLAS.decisions = {
       "preleves",
       "tranche"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/saisie_duels.py",
@@ -3801,21 +3950,25 @@ window.ATLAS.decisions = {
       "_classement_de_l_ordre",
       "_decor"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/placement_duels.py",
+     "chemin": "backend/bootstrap/composition.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/palmares.py",
+     "chemin": "backend/domain/classement_de_tableau.py",
      "existe": true,
      "symboles": [
-      "tranche"
+      "classement_de_tableau",
+      "aggregation"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/domain/deroule.py",
@@ -3825,19 +3978,15 @@ window.ATLAS.decisions = {
       "_source_lisible",
       "_inscrits_pour_classer"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/bootstrap/composition.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_prelevement_phase_source.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -3888,7 +4037,107 @@ window.ATLAS.decisions = {
      "type": "complete"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/tableaux.py",
+     "existe": true,
+     "symboles": [
+      "TableauPublicReponse.en_attente_de"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/erreurs/moteur.py",
+     "existe": true,
+     "symboles": [
+      "PrelevementEnAttente",
+      "ordre_source",
+      "DerouleCyclique"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [
+      "_charger"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "preleves",
+      "PrelevementEnAttente",
+      "tranche"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_classement_de_l_ordre",
+      "ClassementSource",
+      "rang_premier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/simulation.py",
+     "existe": true,
+     "symboles": [
+      "pilotage_simulation.py",
+      "routage.py",
+      "pilotage_tour.py"
+     ],
+     "symboles_absents": [
+      "pilotage_simulation.py",
+      "routage.py",
+      "pilotage_tour.py"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/tableaux_publics.py",
+     "existe": true,
+     "symboles": [
+      "pour_depart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/classement_de_tableau.py",
+     "existe": true,
+     "symboles": [
+      "ClassementSource.plages_indecises",
+      "rang_premier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tableaux/VueTableaux.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "accepté",
@@ -3939,39 +4188,69 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/domain/phase.py",
+     "chemin": "backend/api/v1/bareme_qualification.py",
      "existe": true,
-     "symboles": [
-      "_anomalies_unicite_qualification"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/domain/serie.py",
+     "chemin": "backend/application/bareme_qualification.py",
      "existe": true,
      "symboles": [
-      "Serie.phase_id"
+      "definir_pour_etape",
+      "qualifications"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/domain/ports.py",
+     "chemin": "backend/application/classements.py",
      "existe": true,
      "symboles": [
-      "SerieRepository",
-      "par_phase",
-      "par_tournoi"
+      "pour_phase",
+      "_premiere_qualification"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/domain/palmares.py",
+     "chemin": "backend/application/completude.py",
      "existe": true,
      "symboles": [
-      "ResultatPhase.origine",
-      "decerne"
+      "_jugements_du_creneau",
+      "_population",
+      "_est_clos"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/feuille_de_marque.py",
+     "existe": true,
+     "symboles": [
+      "_bareme_du_creneau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_resultat_qualification"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "ajouter"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/portee.py",
@@ -3983,7 +4262,8 @@ window.ATLAS.decisions = {
       "forfaits",
       "feuille_de_marque"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/prelevement.py",
@@ -3991,45 +4271,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "LecteurPopulationPhase"
      ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/classements.py",
-     "existe": true,
-     "symboles": [
-      "pour_phase",
-      "_premiere_qualification"
-     ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/saisie_duels.py",
-     "existe": true,
-     "symboles": [
-      "_classement_de_l_ordre",
-      "QUALIFICATION",
-      "preleves",
-      "tranche"
-     ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/palmares.py",
-     "existe": true,
-     "symboles": [
-      "_resultat_qualification"
-     ],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/application/completude.py",
-     "existe": true,
-     "symboles": [
-      "_jugements_du_creneau",
-      "_population",
-      "_est_clos"
-     ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/application/saisie.py",
@@ -4041,56 +4284,73 @@ window.ATLAS.decisions = {
       "_etat_dans",
       "_feuille"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/feuille_de_marque.py",
+     "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
-      "_bareme_du_creneau"
+      "_classement_de_l_ordre",
+      "QUALIFICATION",
+      "preleves",
+      "tranche"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/bareme_qualification.py",
+     "chemin": "backend/domain/palmares.py",
      "existe": true,
      "symboles": [
-      "definir_pour_etape",
-      "qualifications"
+      "ResultatPhase.origine",
+      "decerne"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/application/phases.py",
+     "chemin": "backend/domain/phase.py",
      "existe": true,
      "symboles": [
-      "ajouter"
+      "_anomalies_unicite_qualification"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "SerieRepository",
+      "par_phase",
+      "par_tournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/serie.py",
+     "existe": true,
+     "symboles": [
+      "Serie.phase_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/models.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/migrations/versions/0044_serie_par_phase.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "backend/api/v1/bareme_qualification.py",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": "frontend/src/features/bareme/",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_domain_palmares_qualifications_multiples.py",
@@ -4102,7 +4362,15 @@ window.ATLAS.decisions = {
       "portee.py",
       "saisie.py"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/bareme/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -4160,7 +4428,373 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "ReglageBigShootOffDTO"
+     ],
+     "symboles_absents": [
+      "ReglageBigShootOffDTO"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePoulesDTO"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePoulesDTO"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/poules.py",
+     "existe": true,
+     "symboles": [
+      "saisie_duels"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "ServiceBigShootOff",
+      "duel",
+      "serie",
+      "volee",
+      "LecteurEtatBigShootOff",
+      "LecteurClassementBigShootOff",
+      "LecteurClassementPoules"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_resultat_big_shoot_off",
+      "_resultat",
+      "TYPES_RECONSTRUCTIBLES"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/poules.py",
+     "existe": true,
+     "symboles": [
+      "ServicePoules",
+      "classement_de_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "LecteurClassementPoules",
+      "ServicePoules",
+      "ServiceSaisieDuels"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "_routage_big_shoot_off",
+      "ProchaineManche",
+      "IssueRoutage.PROCHAINE_MANCHE",
+      "plan_de_cibles",
+      "AUCUN"
+     ],
+     "symboles_absents": [
+      "plan_de_cibles",
+      "AUCUN"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_classement_de_l_ordre",
+      "brancher_poules"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "ServicePoules"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/classement_de_poules.py",
+     "existe": true,
+     "symboles": [
+      "RangPoule",
+      "LigneClassement",
+      "Tiebreak",
+      "classement_de_tableau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "TYPES_EN_TABLEAU",
+      "TYPES_DEROULES",
+      "TYPES_CLASSANTS_LUS",
+      "TYPES_EN_TABLEAU_JOUE",
+      "TYPES_JOUES",
+      "TYPES_SIGNALES_EN_ECART",
+      "deroule_par_un_service",
+      "monte_les_oppositions",
+      "TYPES_MONTES",
+      "BIG_SHOOT_OFF",
+      "classement_lisible",
+      "route_l_archer",
+      "True",
+      "route_tout_le_plateau",
+      "TYPES_ROUTES_IMPLICITEMENT"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule.py",
+     "existe": true,
+     "symboles": [
+      "_TYPES_DEROULES",
+      "_TYPES_CLASSANTS_LUS",
+      "_anomalies_choc_de_poule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "big_shoot_off",
+      "_lire_reglage_big_shoot_off",
+      "config",
+      "config.poules"
+     ],
+     "symboles_absents": [
+      "_lire_reglage_big_shoot_off"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "big_shoot_off",
+      "_lire_reglage_big_shoot_off",
+      "config",
+      "config.poules"
+     ],
+     "symboles_absents": [
+      "_lire_reglage_big_shoot_off"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Phase.poules",
+      "ReglageDePoulesInvalide",
+      "big_shoot_off",
+      "_lire_reglage_big_shoot_off",
+      "config",
+      "config.poules"
+     ],
+     "symboles_absents": [
+      "_lire_reglage_big_shoot_off"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/placement_poules.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/poule.py",
+     "existe": true,
+     "symboles": [
+      "ReglageDePoules",
+      "pour_effectif",
+      "produit_un_classement",
+      "produit_des_qualifies",
+      "nb_poules_pour",
+      "couloirs_occupes",
+      "ReglageDePoules.departage_inter_poules",
+      "config.poules.departage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "PlacementPouleORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_lire_reglage_poules",
+      "config.poules",
+      "config"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_big_shoot_off.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "test_service_poules.py",
+      "test_placement_poule_repository.py",
+      "test_poules_api.py",
+      "route_l_archer",
+      "False",
+      "TYPES_RECONSTRUCTIBLES",
+      "TYPES_EN_TABLEAU_JOUE",
+      "_resultat",
+      "ScoreAvecHandicap",
+      "RoutingRepechage"
+     ],
+     "symboles_absents": [
+      "False",
+      "ScoreAvecHandicap",
+      "RoutingRepechage"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_placement_poules.py",
+     "existe": true,
+     "symboles": [
+      "test_domain_reglage_poules.py",
+      "test_domain_classement_de_poules.py"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx",
+     "existe": true,
+     "symboles": [
+      "DecorDeSaisie.VOLEE_COLLECTIVE"
+     ],
+     "symboles_absents": [
+      "DecorDeSaisie.VOLEE_COLLECTIVE"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/poules/SaisiePoules.tsx",
+     "existe": true,
+     "symboles": [
+      "DuelCharge",
+      "poule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageBigShootOff.tsx",
+     "existe": true,
+     "symboles": [
+      "paliers_pour"
+     ],
+     "symboles_absents": [
+      "paliers_pour"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglagePoules.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/bigShootOff.ts",
+     "existe": true,
+     "symboles": [
+      "paliers_pour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/catalogue.ts",
+     "existe": true,
+     "symboles": [
+      "TYPES_SIGNALES_EN_ECART"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/poules.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/stores/fileDuelsHorsLigneStore.ts",
+     "existe": true,
+     "symboles": [
+      "FamilleDuel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -4219,28 +4853,32 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
-     "chemin": "backend/atlas/normalisation.py",
+     "chemin": ".gitattributes",
      "existe": true,
-     "symboles": [
-      "_RELATIONS"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/atlas/sources/reglement.py",
+     "chemin": ".github/workflows/ci.yml",
      "existe": true,
-     "symboles": [
-      "lire_regles"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "backend/atlas/sources/adr.py",
+     "chemin": ".pre-commit-config.yaml",
      "existe": true,
-     "symboles": [
-      "lire_decisions"
-     ],
-     "symboles_absents": []
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "atlas/statique/pages.js",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/atlas/controles.py",
@@ -4248,7 +4886,17 @@ window.ATLAS.decisions = {
      "symboles": [
       "verifier"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/atlas/normalisation.py",
+     "existe": true,
+     "symboles": [
+      "_RELATIONS"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/atlas/rendu.py",
@@ -4257,31 +4905,63 @@ window.ATLAS.decisions = {
       "serialiser",
       "ecarts"
      ],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/atlas/sources/adr.py",
+     "existe": true,
+     "symboles": [
+      "lire_decisions"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/atlas/sources/reglement.py",
+     "existe": true,
+     "symboles": [
+      "lire_regles"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_contrats.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_atlas_corpus.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_historique.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
      "chemin": "backend/tests/test_atlas_site.py",
      "existe": true,
      "symboles": [],
-     "symboles_absents": []
+     "symboles_absents": [],
+     "verifiable": true
     },
     {
-     "chemin": "atlas/statique/pages.js",
+     "chemin": "backend/tests/test_domain_isolation.py",
      "existe": true,
-     "symboles": [],
-     "symboles_absents": []
-    },
-    {
-     "chemin": ".github/workflows/ci.yml",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": []
+     "symboles": [
+      "atlas"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",

@@ -1,5 +1,7 @@
 /* Atlas — coquille : navigation, helpers DOM, rendu Markdown minimal.
  *
+ * DETTE-065 — ce fichier ne passe sous aucun linter (cf. `docs/dette.md`).
+ *
  * Script classique, pas de module ES : sur `file://`, les modules sont soumis au CORS et le site
  * se casserait en silence au double-clic tout en marchant parfaitement en `localhost`. Même
  * raison pour les données, servies en `.js` (`window.ATLAS`) et non en `.json`.
@@ -22,12 +24,19 @@ var Atlas = (function () {
     return trouve ? decodeURIComponent(trouve[1].replace(/\+/g, " ")) : "";
   }
 
+  /* ⚠️ L'apostrophe est échappée, et ce n'est pas décoratif : **tous** les attributs produits par
+   * `pages.js` sont écrits en apostrophes simples (`href='…'`, `class='…'`). Une primitive qui
+   * n'échappe que le guillemet double laisse donc la porte ouverte sur la seule forme que le site
+   * emploie — dans un corpus intégralement francophone, où l'apostrophe est partout. Aujourd'hui
+   * rien d'exploitable (seuls des identifiants `\d{4}` et des slugs entrent en attribut), mais la
+   * sûreté reposait alors sur des classes de caractères en amont, jamais sur l'échappement. */
   function echapper(texte) {
     return String(texte === undefined || texte === null ? "" : texte)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   /* Rendu Markdown volontairement minimal : gras, italique, code, liens, listes, paragraphes.
@@ -73,8 +82,14 @@ var Atlas = (function () {
         return;
       }
       if (dansListe) {
-        /* Continuation indentée d'une puce : on la recolle au dernier <li>. */
-        html = html.replace(/<\/li>$/, " " + enligne(ligne.trim()) + "</li>");
+        /* Continuation indentée d'une puce : on la recolle au dernier <li>.
+         * Le remplacement passe par une **fonction** et non par une chaîne : dans une chaîne de
+         * remplacement, `$&`, `` $` ``, `$'` et `$1` sont réinterprétés par `replace`. Un `$`
+         * dans le texte d'une règle produirait du balisage dupliqué ou tronqué. */
+        var suite = " " + enligne(ligne.trim()) + "</li>";
+        html = html.replace(/<\/li>$/, function () {
+          return suite;
+        });
         return;
       }
       tampon.push(ligne.trim());

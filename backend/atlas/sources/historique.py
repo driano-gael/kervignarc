@@ -44,8 +44,12 @@ def _git(racine: Path, *arguments: str) -> str:
             encoding="utf-8",
             errors="replace",
             check=False,
+            # Ce code tourne dans un hook pre-commit et dans un job de CI : un `git` qui pend
+            # (verrou `index.lock`, invite d'authentification) doit dégrader, pas bloquer jusqu'au
+            # délai de la plateforme.
+            timeout=60,
         )
-    except (OSError, ValueError):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return ""
     return acheve.stdout if acheve.returncode == 0 else ""
 
@@ -86,20 +90,18 @@ def _amendements_du_bloc(
 
 
 def historique(racine: Path, regles: tuple[Regle, ...]) -> dict[str, tuple[Amendement, ...]]:
-    """L'historique de chaque règle, indexé par son ancre.
+    """L'historique de chaque règle, indexé par son ancre — dans l'ordre que git rend.
 
-    Trié du plus récent au plus ancien, puis par empreinte à date égale : deux commits du même jour
-    doivent sortir dans un ordre stable, sinon la sortie oscille d'une génération à l'autre.
+    ⚠️ **On ne retrie pas.** Une version antérieure ordonnait par `(date, empreinte)` : la date
+    étant au jour près, tous les commits d'une même journée se retrouvaient classés par **hash**,
+    donc dans un ordre arbitraire qui n'a rien de chronologique. Sur ce dépôt — 781 commits en
+    cinq semaines — le cas est la règle, pas l'exception. `git log` rend déjà l'antichronologie
+    exacte, et il la rend de façon déterministe : la garder est à la fois plus juste et plus
+    simple.
     """
     if not disponible(racine):
         return {}
     return {
-        regle.identifiant: tuple(
-            sorted(
-                _amendements_du_bloc(racine, regle.fichier, regle.ligne, regle.ligne_fin),
-                key=lambda a: (a.date, a.reference),
-                reverse=True,
-            )
-        )
+        regle.identifiant: _amendements_du_bloc(racine, regle.fichier, regle.ligne, regle.ligne_fin)
         for regle in regles
     }

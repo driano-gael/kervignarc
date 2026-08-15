@@ -1,5 +1,7 @@
 /* Atlas — feuille de style unique.
  *
+ * DETTE-065 — ce fichier ne passe sous aucun linter ni formateur (cf. `docs/dette.md`).
+ *
  * Mobile-first, EXACTEMENT deux points de rupture (48rem, 80rem). Une seule dimension de
  * variation, donc une seule chose à vérifier à l'œil — c'est le prix à payer pour se passer d'un
  * outil de test de rendu (règles 11 et 12 : la rigueur va au moteur métier, pas à l'outillage).
@@ -372,10 +374,15 @@ a.pastille:hover {
 
 /* Lignes droites, coudes à angle droit, aucune courbe : c'est une exigence explicite du
    commanditaire, et c'est aussi ce qui reste lisible sans moteur de mise en page. */
+/* ⚠️ `min-width: max-content` et **surtout pas** `max-width: 100%`. Un `<svg viewBox>` sans
+ * largeur explicite se *réduit* pour tenir dans son parent : le conteneur `.defilable` qui
+ * l'entoure ne défilait alors jamais, et le plus grand schéma tombait à 1,5 px de texte sur un
+ * écran de 360 px. Le contrôle mécanique ne voyait rien — il vérifie la présence du conteneur
+ * défilant, pas le fait qu'il défile. */
 .reseau {
   display: block;
   height: auto;
-  max-width: 100%;
+  min-width: max-content;
   overflow: visible;
 }
 

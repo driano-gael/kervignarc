@@ -78,11 +78,6 @@ def cle(libelle: str) -> str:
     return re.sub(r"\s+", " ", sans_accent(libelle).lower()).strip()
 
 
-def slug(texte: str) -> str:
-    """Un identifiant stable et lisible dérivé d'un titre."""
-    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", sans_accent(texte).lower())).strip("-")
-
-
 def est_metadonnee(libelle: str) -> bool:
     return cle(libelle) in _METADONNEES
 
@@ -118,12 +113,15 @@ def normaliser_statut(brut: str, *, fichier: str) -> tuple[Statut, str]:
     un `**Remplacé par [ADR-0059](…)** (30/07/2026)`. On normalise pour trier et filtrer, mais
     l'appelant conserve le texte brut : les parenthèses portent souvent la nuance utile.
     """
+    # Le test le plus **spécifique** d'abord : un « Accepté (remplace en partie ADR-00xx) » serait
+    # classé « Remplacé » par une recherche de sous-chaîne menée en premier. Aucun cas dans le
+    # registre aujourd'hui, mais l'ordre inverse était un piège gratuit.
     canonique = cle(brut)
+    if canonique.startswith("accepte"):
+        return Statut.ACCEPTE, ""
     if "remplac" in canonique:
         cite = _ADR_CITE.search(brut)
         return Statut.REMPLACE, cite.group(1) if cite else ""
-    if canonique.startswith("accepte"):
-        return Statut.ACCEPTE, ""
     raise AtlasSourceInvalide(
         f"{fichier} : statut d'ADR non reconnu « {brut} ». "
         f"Attendu « Accepté » ou « Remplacé par [ADR-nnnn] »."

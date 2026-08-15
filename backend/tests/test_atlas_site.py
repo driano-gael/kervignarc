@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+from atlas.modele import Sens, Severite, Statut, TypeLien
+
 SITE = Path(__file__).resolve().parents[2] / "atlas"
 PAGES = sorted(SITE.glob("*.html"))
 SCRIPTS = sorted((SITE / "statique").glob("*.js"))
@@ -57,12 +59,23 @@ def test_aucun_script_ne_recupere_ses_donnees_par_le_reseau(script: Path) -> Non
     assert not re.search(r"^\s*(import|export)\s", source, re.MULTILINE)
 
 
-@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
-def test_aucune_page_ne_charge_de_ressource_externe(page: Path) -> None:
-    """Déploiement hors ligne le jour J : aucun CDN, aucune police distante."""
-    source = _lire(page)
+RESSOURCES = sorted([*PAGES, *SCRIPTS, SITE / "statique" / "atlas.css"])
 
-    assert not re.search(r'(src|href)\s*=\s*"(https?:)?//', source)
+
+@pytest.mark.parametrize("ressource", RESSOURCES, ids=lambda p: p.name)
+def test_aucune_ressource_externe(ressource: Path) -> None:
+    """Déploiement hors ligne le jour J : aucun CDN, aucune police distante.
+
+    Le balayage couvre **aussi le CSS et le JS**, et les attributs quels que soient leurs
+    guillemets. Une première version ne lisait que les `.html` et les attributs entre guillemets
+    doubles : un `@font-face { src: url(https://…) }` aurait passé le test au vert tout en cassant
+    l'exigence que ce test existe pour tenir.
+    """
+    source = _lire(ressource)
+
+    assert not re.search(r"https?://", source), "URL absolue"
+    assert not re.search(r"(src|href)\s*=\s*['\"]//", source), "URL protocol-relative"
+    assert "@import" not in source, "import CSS distant possible"
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
@@ -97,6 +110,27 @@ def test_tout_tableau_vit_dans_un_conteneur_defilant() -> None:
     source = _lire(SITE / "statique" / "pages.js")
 
     assert source.count("<table>") <= source.count('"defilable"')
+
+
+def test_le_js_connait_les_valeurs_que_python_serialise() -> None:
+    """Le site compare des littéraux qui sont le contrat de sérialisation du générateur.
+
+    `statut === "accepte"`, `severite === "bloquant"`, `origine === "incise"`… Renommer une valeur
+    d'énumération côté Python laisse **toute la suite verte** et vide silencieusement une page : le
+    filtre « Remplacées » n'afficherait plus rien pendant que le compteur continuerait d'annoncer
+    un nombre. Encore un atlas qui affirme faux, et sans le moindre signal.
+    """
+    source = _lire(SITE / "statique" / "pages.js")
+    attendues = [
+        *(s.value for s in Statut),
+        *(s.value for s in Severite),
+        *(t.value for t in TypeLien if t is TypeLien.US),
+        *(s.value for s in Sens if s is Sens.ENTRANT),
+    ]
+
+    manquantes = [valeur for valeur in attendues if f'"{valeur}"' not in source]
+
+    assert manquantes == [], "valeurs sérialisées que le site ne sait pas reconnaître"
 
 
 def test_la_feuille_de_style_tient_ses_deux_points_de_rupture() -> None:

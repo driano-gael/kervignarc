@@ -16,7 +16,8 @@ from pathlib import Path
 import pytest
 
 from atlas import controles as controles_module
-from atlas.modele import Decision, Regle, Severite, TypeLien
+from atlas import markdown
+from atlas.modele import Decision, Regle, TypeLien
 from atlas.sources import adr, reglement
 
 RACINE = Path(__file__).resolve().parents[2]
@@ -76,8 +77,34 @@ def test_le_controle_de_portage_n_est_pas_creux(decisions: tuple[Decision, ...])
     """
     portages = [p for d in decisions for p in d.portage]
 
-    assert len(portages) >= 50
-    assert sum(len(p.symboles) for p in portages) >= 100
+    # Cliquet volontaire, calé **sous** les valeurs du jour (149 portages, 360 symboles) mais
+    # assez haut pour qu'une perte de format se voie. Des planchers trop bas ont laissé passer la
+    # perte d'un tiers des promesses : les sections écrites en tableau étaient ignorées, et le
+    # site affichait « cette décision ne nomme aucun module » sur les ADR les plus rigoureux.
+    assert len(portages) >= 140
+    assert sum(len(p.symboles) for p in portages) >= 330
+
+
+def test_toute_section_de_portage_non_vide_produit_un_portage(
+    decisions: tuple[Decision, ...],
+) -> None:
+    """Un plancher global ne dit rien d'un ADR **précis** dont la section serait mal lue.
+
+    C'est le contrôle qui aurait attrapé la perte des sections en tableau : il compare, ADR par
+    ADR, la présence d'une section à la production d'au moins un module. Les sections réduites à
+    un marqueur « à renseigner » sont exclues — elles annoncent explicitement qu'elles sont vides.
+    """
+    muets = []
+    for decision in decisions:
+        section = markdown.section(
+            markdown.lire(RACINE / decision.fichier), "Porté dans le code par"
+        )
+        if not section or "à renseigner" in section:
+            continue
+        if not decision.portage:
+            muets.append(decision.identifiant)
+
+    assert muets == []
 
 
 def test_le_registre_est_bien_un_graphe_date(decisions: tuple[Decision, ...]) -> None:
@@ -129,10 +156,8 @@ def test_aucun_ecart_bloquant_dans_le_depot(
     assert [f"{c.sujet} {c.message}" for c in bloquants] == []
 
 
-def test_les_signaux_restent_visibles(
-    regles: tuple[Regle, ...], decisions: tuple[Decision, ...]
-) -> None:
-    """Non bloquants, mais jamais silencieux : leur disparition serait une régression."""
-    verdicts = controles_module.verifier(RACINE, regles, decisions)
-
-    assert any(c.severite is Severite.SIGNAL for c in verdicts)
+# Un test « il existe au moins un signal dans le dépôt » a été **retiré** d'ici : il aurait rougi
+# le jour où les signaux du jour (dates non canoniques, symboles introuvables) seraient résorbés,
+# c'est-à-dire quand tout irait mieux — et le réflexe aurait été de le supprimer, pas de le
+# remplacer. La garde anti-creux vit désormais dans `test_atlas_contrats.py`, sur des entrées
+# construites à la main : elle prouve la règle, pas l'état du jour.

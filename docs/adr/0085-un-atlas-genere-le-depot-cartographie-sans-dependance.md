@@ -25,7 +25,7 @@ Ce n'est pas un besoin de dessin d'architecture, et la mesure le confirme :
 | ADR au statut `Accepté` | **82 sur 83** |
 | ADR explicitement `Remplacé` | **1** |
 | Arêtes « Amende » déclarées entre ADR | **42**, dont **19 ADR** effectivement amendés |
-| Libellés d'en-tête distincts | **33**, pour ~6 sens réels de relation |
+| Libellés de **relation** distincts | **26**, pour ~6 sens réels (33 libellés d'en-tête toutes natures confondues) |
 | Amendements datés en clair dans `CLAUDE.md` | **6**, pour **19** commits ayant touché le fichier |
 
 Autrement dit : **le champ `Statut` ne discrimine rien.** La péremption réelle d'une décision est
@@ -76,15 +76,29 @@ aucune mise en page et où les cycles se lisent sous la diagonale — et non de 
 
 **3. Données générées, commitées, vérifiées en CI.** `atlas/donnees/*.js` est du généré committé :
 l'atlas est ainsi consultable après un simple clone, sans rien lancer. La CI régénère et compare.
-Le bruit de diff, contrepartie assumée, est borné par `linguist-generated` + `-diff` dans
-`.gitattributes`, par une sortie triée sans horodatage, et par un `indent=1` qui donne des diffs à
-la ligne.
+Le bruit de diff, contrepartie assumée, est borné par `linguist-generated` dans `.gitattributes`,
+par une sortie triée sans horodatage, et par un `indent=1` qui donne des diffs à la ligne.
+
+*La comparaison a **une** exemption, et il faut la nommer ici puisque c'est cette porte qui rend le
+point 1 acceptable.* Quatre fichiers sur cinq se comparent à l'octet près. `historique.js`, dérivé
+de git, ne le peut pas : au moment du hook pre-commit le commit en cours n'existe pas encore, alors
+que la CI le voit — une comparaison stricte serait **rouge en permanence**, donc désactivée. Il se
+compare donc par **tolérance d'ajout** : la régénération peut contenir des entrées de plus, mais
+aucune entrée commitée ne peut disparaître **ni être modifiée**, et une règle vidée est signalée.
+Ce qui reste toléré, et qu'il faut savoir : l'histoire d'une règle est **toujours en retard de son
+dernier commit**, rattrapée à la régénération suivante.
+
+*Deux garde-fous en découlent.* La génération **refuse de tourner sans git** — sans lui,
+`historique()` rendrait un dictionnaire vide qui serait écrit et annoncé « atlas généré », effaçant
+toute l'histoire sans un mot. Et `.gitattributes` porte `linguist-generated` **sans** `-diff` :
+marquer ces fichiers binaires pour git rendait `git diff`, `git blame` et la vue PR muets, si bien
+qu'une falsification n'était visible sur aucun canal.
 
 **4. Le partage généré / manuel, et deux calibrages de sévérité.**
 
 - Un **libellé de relation inconnu fait échouer le générateur**. Le vocabulaire des ADR est ouvert
-  (33 libellés, un nouveau tous les 3-4 ADR) : sans échec bruyant, le graphe perdrait des arêtes en
-  silence. Le message d'erreur donne la ligne à coller.
+  (26 libellés de relation, un nouveau tous les 3-4 ADR) : sans échec bruyant, le graphe perdrait
+  des arêtes en silence. Le message d'erreur donne la ligne à coller.
 - Une **incise datée de nature inconnue ne fait pas échouer** : c'est de la prose. Une porte qui
   rougit sur un choix de style est désactivée en un mois, et on perd alors aussi les contrôles
   justes.
@@ -97,9 +111,28 @@ la ligne.
 premier réordonnancement — `CLAUDE.md` a bougé dix-neuf fois en cinq semaines — et l'atlas
 afficherait alors l'histoire d'une règle sous une autre **sans rien casser de visible**.
 
+⚠️ *Ce que l'ancre ne fait pas, dit ici pour ne pas sur-promettre.* Elle **nomme** l'identité ;
+elle ne la **prouve** pas. L'historique vient de `git log -L <bornes>`, donc de la **position** des
+lignes : échanger deux ancres, ou réécrire une règle sous une ancre héritée, produit un atlas faux
+que `--verifier` ne peut pas voir — il compare du généré à du généré. Une revue l'a démontré en
+clone jetable. La fiche d'une règle dit donc ce que sa part git est réellement : *l'histoire des
+lignes qui portent cette règle aujourd'hui*.
+
 *Périmètre :* les quatre sections d'ingénierie (Règles non négociables, Dette, Économie de
 contexte, Workflow). Le `guide-architecture.md` §12 n'est **pas** ancré : c'est une checklist de
 rappel des mêmes règles, et lui donner des ancres créerait deux identités pour une seule règle.
+
+**6. Le générateur vit sous `backend/`, hors de l'hexagone et hors du paquet livré.** Ce n'est ni
+une couche ni un détail d'arborescence : `backend/pyproject.toml` déclare `mypy files=["."]`,
+`ruff src=["."]` et `pytest testpaths=["tests"]` **relativement à `backend/`**. Du Python posé
+ailleurs échapperait aux trois portes de qualité. Il est en revanche **exclu** de
+`[tool.setuptools.packages.find]` : c'est de l'outillage, il n'a rien à faire dans la wheel ni dans
+le binaire PyInstaller. Précédent assumé : `backend/build_release.py` et `backend/release/`.
+
+*Conséquence à tenir :* `backend/atlas/` **n'appartient à aucune couche** et n'a le droit d'importer
+aucune d'elles ni d'être importé par elles. C'est pourquoi `atlas` a été ajouté à la denylist de
+`backend/tests/test_domain_isolation.py` — sans quoi le domaine aurait pu l'importer en silence,
+la denylist ne protégeant que ce qu'on a pensé à y écrire.
 
 ## Conséquences
 
@@ -142,6 +175,12 @@ chiffre que le même audit relève — le rayon d'impact d'une US passé de 6 à
 **Dépendances : aucune.** Le générateur est en stdlib pure. C'est vérifié par construction : son
 job de CI tourne **sans `pip install`**.
 
+⚠️ **Le job n'est une porte qu'après un geste manuel.** Comme les deux autres, `Atlas — cartes
+générées à jour` ne bloque un merge que s'il est ajouté aux *required status checks* côté GitHub.
+Piège de second ordre, à connaître : sur une *pull request*, GitHub exécute le workflow **de la
+tête de PR** — une branche ouverte avant cette US n'a pas le job, mergera sans jamais le lancer, et
+laissera `main` rouge jusqu'à la régénération suivante.
+
 **Dette ouverte :** [DETTE-065](../dette.md) — le JavaScript du site n'est ni typé ni linté,
 `eslint` et `prettier` ne voyant que `frontend/`.
 
@@ -156,6 +195,11 @@ job de CI tourne **sans `pip install`**.
 - `backend/atlas/controles.py` — `verifier`, les deux sévérités (point 4)
 - `backend/atlas/rendu.py` — `serialiser` et `ecarts`, le déterminisme et la porte (point 3)
 - `backend/tests/test_atlas_corpus.py` — les garde-fous sur le dépôt réel
+- `backend/tests/test_atlas_contrats.py` — les promesses de l'US, éprouvées hors du dépôt réel
+- `backend/tests/test_atlas_historique.py` — `git log -L` éprouvé sur un dépôt jetable (point 5)
 - `backend/tests/test_atlas_site.py` — les contraintes du site statique (point 2)
+- `backend/tests/test_domain_isolation.py` — `atlas` dans la denylist du domaine (point 6)
 - `atlas/statique/pages.js` — les schémas en SVG maison (point 2)
 - `.github/workflows/ci.yml` — le job qui régénère et compare, sans installer de dépendance
+- `.pre-commit-config.yaml` — la moitié locale de la porte, à couverture partielle assumée
+- `.gitattributes` — `linguist-generated` sans `-diff` (point 3)

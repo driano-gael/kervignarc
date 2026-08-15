@@ -34,6 +34,10 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "infrastructure",
         "api",
         "bootstrap",
+        # Outillage de génération, hors des cinq couches (ADR-0085). Ajouté ici parce que la
+        # denylist ne protège que ce qu'on a pensé à y écrire : sans cette ligne, `atlas` était
+        # un paquet importable depuis `domain/` que ni le hook, ni la CI, ni la revue n'auraient vu.
+        "atlas",
     }
 )
 

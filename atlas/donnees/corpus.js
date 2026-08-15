@@ -103,16 +103,16 @@ window.ATLAS.corpus = {
    "genre": "regle",
    "identifiant": "registre-de-dette",
    "lien": "regle.html?id=registre-de-dette",
-   "recherche": "une dette assumee (technique ou de conception) s'inscrit au registre […] dette une dette assumee (technique ou de conception) s'inscrit au registre docs/dette.md dans le commit qui l'introduit : ligne au tableau + section de detail + marqueur # dette-nnn a l'endroit exact du raccourci. une us qui aggrave une dette deja listee elargit la ligne existante au lieu d'inventer un contournement local. une dette silencieuse est remontee en majeur a la revue ; ce qui casse un cas utilisateur reel des maintenant n'est pas de la dette mais un bloquant a corriger avant merge. le registre n'est pas une liste de taches : un bug corrigeable dans l'us se corrige dans l'us.",
-   "texte": "Une dette assumée (technique ou de conception) s'inscrit au registre docs/dette.md dans le commit qui l'introduit : ligne au tableau + section de détail + marqueur # DETTE-nnn à l'endroit exact du raccourci. Une US qui aggrave une dette déjà listée élargit la ligne existante au lieu d'inventer un contournement local. Une dette silencieuse est remontée en majeur à la revue ; ce qui casse un cas utilisateur réel dès maintenant n'est pas de la dette mais un bloquant à corriger avant merge. Le registre n'est pas une liste de tâches : un bug corrigeable dans l'US se corrige dans l'US.",
+   "recherche": "une dette assumee (technique ou de conception) s'inscrit au registre […] dette une us qui aggrave une dette deja listee elargit la ligne existante au lieu d'inventer un contournement local. une dette silencieuse est remontee en majeur a la revue ; ce qui casse un cas utilisateur reel des maintenant n'est pas de la dette mais un bloquant a corriger avant merge. le registre n'est pas une liste de taches : un bug corrigeable dans l'us se corrige dans l'us.",
+   "texte": "Une US qui aggrave une dette déjà listée élargit la ligne existante au lieu d'inventer un contournement local. Une dette silencieuse est remontée en majeur à la revue ; ce qui casse un cas utilisateur réel dès maintenant n'est pas de la dette mais un bloquant à corriger avant merge. Le registre n'est pas une liste de tâches : un bug corrigeable dans l'US se corrige dans l'US.",
    "titre": "Une dette assumée (technique ou de conception) s'inscrit au registre […]"
   },
   {
    "genre": "regle",
    "identifiant": "remede-structurel",
    "lien": "regle.html?id=remede-structurel",
-   "recherche": "un remede structurel (introduire un pattern) se propose sur preuve dans le code […] dette un remede structurel (introduire un pattern) se propose sur preuve dans le code d'aujourd'hui — 3ᵉ occurrence reelle, invariant deja duplique — jamais sur une evolution supposee, et se traite en adr + us dediee, jamais en douce dans l'us courante. « dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une reponse valide.",
-   "texte": "Un remède structurel (introduire un pattern) se propose sur preuve dans le code d'aujourd'hui — 3ᵉ occurrence réelle, invariant déjà dupliqué — jamais sur une évolution supposée, et se traite en ADR + US dédiée, jamais en douce dans l'US courante. « Dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une réponse valide.",
+   "recherche": "un remede structurel (introduire un pattern) se propose sur preuve dans le code […] dette « dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une reponse valide.",
+   "texte": "« Dupliquer une 2ᵉ fois et attendre le 3ᵉ cas » est une réponse valide.",
    "titre": "Un remède structurel (introduire un pattern) se propose sur preuve dans le code […]"
   },
   {
@@ -175,8 +175,8 @@ window.ATLAS.corpus = {
    "genre": "regle",
    "identifiant": "lancer-la-pr",
    "lien": "regle.html?id=lancer-la-pr",
-   "recherche": "quand l'utilisateur dit « lance la pr », executer /revue-us : revue du diff par […] workflow quand l'utilisateur dit « lance la pr », executer /revue-us : revue du diff par des agents dedies en parallele (quatre axes + porte mecanique, plus un relecteur adversarial si le changement est structurel — adr-0013), puis synthese et correction par l'agent auteur, re-commit et push — sans repasser par l'utilisateur. l'assistant redige titre et corps de la pr ; il l'ouvre lui-meme si l'outillage du poste le permet (gh authentifie), sinon il livre le lien pull/new/\u003cbranche> pret a coller. le resultat est le meme des deux cotes : c'est l'utilisateur qui merge, puis dit « c'est merge ». (la disponibilite de gh est un fait de poste — l'utilisateur developpe sur plusieurs machines. elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)",
-   "texte": "Quand l'utilisateur dit « lance la PR », exécuter /revue-us : revue du diff par des agents dédiés en parallèle (quatre axes + porte mécanique, plus un relecteur adversarial si le changement est structurel — ADR-0013), puis synthèse et correction par l'agent auteur, re-commit et push — sans repasser par l'utilisateur. L'assistant rédige titre et corps de la PR ; il l'ouvre lui-même si l'outillage du poste le permet (gh authentifié), sinon il livre le lien pull/new/\u003cbranche> prêt à coller. Le résultat est le même des deux côtés : c'est l'utilisateur qui merge, puis dit « c'est mergé ». (La disponibilité de gh est un fait de poste — l'utilisateur développe sur plusieurs machines. Elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)",
+   "recherche": "quand l'utilisateur dit « lance la pr », executer /revue-us : revue du diff par […] workflow l'assistant redige titre et corps de la pr ; il l'ouvre lui-meme si l'outillage du poste le permet (gh authentifie), sinon il livre le lien pull/new/\u003cbranche> pret a coller. le resultat est le meme des deux cotes : c'est l'utilisateur qui merge, puis dit « c'est merge ». (la disponibilite de gh est un fait de poste — l'utilisateur developpe sur plusieurs machines. elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)",
+   "texte": "L'assistant rédige titre et corps de la PR ; il l'ouvre lui-même si l'outillage du poste le permet (gh authentifié), sinon il livre le lien pull/new/\u003cbranche> prêt à coller. Le résultat est le même des deux côtés : c'est l'utilisateur qui merge, puis dit « c'est mergé ». (La disponibilité de gh est un fait de poste — l'utilisateur développe sur plusieurs machines. Elle ne s'inscrit donc jamais ici : ce fichier voyage, le poste non.)",
    "titre": "Quand l'utilisateur dit « lance la PR », exécuter /revue-us : revue du diff par […]"
   },
   {
@@ -191,8 +191,8 @@ window.ATLAS.corpus = {
    "genre": "regle",
    "identifiant": "cycle-de-branche",
    "lien": "regle.html?id=cycle-de-branche",
-   "recherche": "cycle : branche depuis main a jour → pr → revue + ci verte → merge → […] workflow ",
-   "texte": "",
+   "recherche": "cycle : branche depuis main a jour → pr → revue + ci verte → merge → […] workflow quand deux pr sont en vol, celle qui fusionne en second regenere l'atlas avant son merge (cd backend && python -m atlas, un commit d'une ligne). deux branches peuvent n'avoir aucun conflit git — fichiers distincts, regions disjointes — et se perimer mutuellement : il suffit que l'une ajoute un adr et que l'autre ait genere ses cartes avant. sans ce geste, main part rouge. (constate des la livraison de l'atlas, adr-0085 § consequences.)",
+   "texte": "Quand deux PR sont en vol, celle qui fusionne en second régénère l'atlas avant son merge (cd backend && python -m atlas, un commit d'une ligne). Deux branches peuvent n'avoir aucun conflit git — fichiers distincts, régions disjointes — et se périmer mutuellement : il suffit que l'une ajoute un ADR et que l'autre ait généré ses cartes avant. Sans ce geste, main part rouge. (Constaté dès la livraison de l'atlas, ADR-0085 § Conséquences.)",
    "titre": "Cycle : branche depuis main à jour → PR → revue + CI verte → merge → […]"
   },
   {

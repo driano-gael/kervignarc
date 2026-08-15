@@ -114,6 +114,42 @@ def test_l_historique_tolere_les_entrees_ajoutees(tmp_path: Path) -> None:
     assert rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)}) == []
 
 
+def test_l_historique_vide_est_signale(tmp_path: Path) -> None:
+    """La tolérance porte sur l'ajout, pas sur l'effacement.
+
+    Un `historique.js` vidé à `{}` passait au vert — le fichier étant par ailleurs soustrait à la
+    relecture par `.gitattributes`, la panne était invisible sur les trois canaux à la fois.
+    """
+    rendu.ecrire(tmp_path, {"historique": rendu.serialiser("historique", {})})
+    frais = {"une-regle": [{"reference": "aaa", "date": "2026-01-01"}]}
+
+    problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
+
+    assert problemes and "aucune entrée commitée" in problemes[0]
+
+
+def test_l_historique_falsifie_est_signale(tmp_path: Path) -> None:
+    """Comparer les seules empreintes laissait réécrire dates et motifs sans que rien ne bronche."""
+    commite = {"une-regle": [{"reference": "aaa", "date": "1999-01-01", "motif": "MENSONGE"}]}
+    frais = {"une-regle": [{"reference": "aaa", "date": "2026-01-01", "motif": "la vérité"}]}
+    rendu.ecrire(tmp_path, {"historique": rendu.serialiser("historique", commite)})
+
+    problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
+
+    assert problemes and "diffère de ce que l'historique dit" in problemes[0]
+
+
+def test_un_fichier_tronque_donne_un_message_pas_une_trace(tmp_path: Path) -> None:
+    """Le message « illisible — régénère » existait mais n'était jamais atteint."""
+    cible = tmp_path / "atlas" / "donnees" / "historique.js"
+    cible.parent.mkdir(parents=True, exist_ok=True)
+    cible.write_text('window.ATLAS.historique = {"a": [', encoding="utf-8", newline="\n")
+
+    problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", {"a": []})})
+
+    assert problemes and "illisible" in problemes[0]
+
+
 def test_l_historique_signale_une_entree_perdue(tmp_path: Path) -> None:
     """Perdre une entrée signale que les bornes d'une règle ont bougé : à régénérer."""
     commite = {"une-regle": [{"reference": "aaa"}, {"reference": "bbb"}]}
@@ -122,7 +158,7 @@ def test_l_historique_signale_une_entree_perdue(tmp_path: Path) -> None:
 
     problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
 
-    assert problemes and "perdu des entrées" in problemes[0]
+    assert problemes and "a perdu l'entrée bbb" in problemes[0]
 
 
 def test_l_historique_absent_ne_condamne_rien(tmp_path: Path) -> None:
