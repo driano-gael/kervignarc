@@ -43,6 +43,7 @@ from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["formats"])
@@ -211,6 +212,29 @@ class ReglageBigShootOffDTO(BaseModel):
         )
 
 
+class ReglageSuisseDTO(BaseModel):
+    """Le réglage d'une étape au **système suisse** dans un format (E05US026) — le nombre de rondes.
+
+    Jumeau assumé de `api/v1/phases.ReglageSuisseDTO` — **5ᵉ** paire, `DETTE-054`.
+
+    ⚠️ **Régime brouillon** (ADR-0063), et il porte ici tout son sens : un format de bibliothèque
+    s'écrit sans connaître l'effectif, or c'est l'effectif qui borne le nombre de rondes
+    appariables sans ré-affrontement. « 5 rondes » est donc un modèle **licite** qui refusera de
+    s'appliquer à un tournoi de 5 archers — le refus tombe à l'étape, jamais sur la brique.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_rondes: int = Field(default=5, ge=1, le=64)
+
+    def vers_agregat(self) -> ConfigurationSuisse:
+        return ConfigurationSuisse(nb_rondes=self.nb_rondes)
+
+    @staticmethod
+    def de_agregat(reglage: ConfigurationSuisse) -> ReglageSuisseDTO:
+        return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
+
+
 class ReglagePoulesDTO(BaseModel):
     """Le réglage d'une étape de **poules** dans un format (E05US023, ADR-0083 §4).
 
@@ -284,6 +308,7 @@ class EtapeDTO(BaseModel):
 
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
+    suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une étape de poules (E05US023). `null` = non réglée.
 
     ⚠️ Le `extra="forbid"` ci-dessus rend ce champ **inaccessible aux clients d'avant l'US** — ce
@@ -323,6 +348,7 @@ class EtapeDTO(BaseModel):
             big_shoot_off=(
                 None if self.big_shoot_off is None else self.big_shoot_off.vers_agregat()
             ),
+            suisse=(None if self.suisse is None else self.suisse.vers_agregat()),
         )
 
     @staticmethod
@@ -354,6 +380,7 @@ class EtapeDTO(BaseModel):
                 if etape.big_shoot_off is None
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
+            suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
         )
 
 

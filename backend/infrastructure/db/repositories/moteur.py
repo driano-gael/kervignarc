@@ -46,6 +46,7 @@ from domain.placement import Affectation
 from domain.placement_poules import BlocDePoule
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
@@ -118,6 +119,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         profondeur = _lire_profondeur(config)
         poules = _lire_reglage_poules(config)
         big_shoot_off = _lire_reglage_big_shoot_off(config)
+        suisse = _lire_reglage_suisse(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -140,6 +142,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             profondeur=profondeur,
             poules=poules,
             big_shoot_off=big_shoot_off,
+            suisse=suisse,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -283,6 +286,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.profondeur,
             etape.poules,
             etape.big_shoot_off,
+            etape.suisse,
         )
     )
 
@@ -296,6 +300,7 @@ def _politiques_json(
     profondeur: ProfondeurClassement | None = None,
     poules: ReglageDePoules | None = None,
     big_shoot_off: ConfigurationBigShootOff | None = None,
+    suisse: ConfigurationSuisse | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -418,6 +423,12 @@ def _politiques_json(
         if big_shoot_off.departage_les_sortants:
             souffle["departage_sortants"] = True
         config["big_shoot_off"] = souffle
+    if suisse is not None:
+        # Même domicile et même raison que ses deux voisins : racine du `config`, pas `policies`.
+        # Un nombre de rondes est un **paramètre de phase**, et `policies` est le catalogue fermé
+        # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
+        # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
+        config["suisse"] = {"rondes": suisse.nb_rondes}
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -499,6 +510,35 @@ def _lire_reglage_big_shoot_off(config: Any) -> ConfigurationBigShootOff | None:
         cumul_des_manches=bool(souffle.get("cumul", False)),
         departage_les_sortants=bool(souffle.get("departage_sortants", False)),
     )
+
+
+def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
+    """Le réglage d'une phase au système suisse, lu **à la racine** du `config` (E05US026).
+
+    Même domicile et même régime d'absence que ses deux voisins : racine plutôt que `policies`
+    (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non réglée**, ce
+    qui est licite — le type se choisit avant ses paramètres.
+
+    ⚠️ **On relit par la fabrique du domaine**, jamais en construisant à la main : un nombre de
+    rondes nul ou négatif est une chose que le repository n'écrit jamais, l'agrégat le refusant en
+    amont. Le trouver ici signifie que la base a été altérée, et `ConfigurationSuisseInvalide`
+    remonte alors en « configuration illisible » (ADR-0007), ce qui est exact.
+
+    ⚠️ **Aucune vérification contre l'effectif ici**, et c'est délibéré : la borne appariable est
+    une propriété du couple (rondes, effectif), portée par `EtapeDeroule`. La refaire à la
+    relecture refuserait de **charger** un déroulé que l'atelier a le droit d'avoir enregistré en
+    brouillon — on ne rend pas illisible ce qui est seulement injouable en l'état.
+    """
+    souffle = config.get("suisse")
+    if not isinstance(souffle, dict):
+        return None
+    rondes = souffle.get("rondes")
+    if rondes is None:
+        # Erreur **typée** plutôt que `None` : « pas de nombre de rondes » se lirait « phase non
+        # réglée », et la composition du jour J inventerait un déroulé là où la base dit quelque
+        # chose d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    return ConfigurationSuisse(nb_rondes=int(rondes))
 
 
 def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
@@ -615,6 +655,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         profondeur=etape.profondeur,
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
+                        suisse=etape.suisse,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -711,6 +752,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         profondeur=_lire_profondeur(brute),
         poules=_lire_reglage_poules(brute),
         big_shoot_off=_lire_reglage_big_shoot_off(brute),
+        suisse=_lire_reglage_suisse(brute),
     )
 
 

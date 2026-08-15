@@ -32,7 +32,7 @@ from dataclasses import dataclass, replace
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
-from domain.erreurs import ConfigurationBigShootOffInvalide
+from domain.erreurs import ConfigurationBigShootOffInvalide, ConfigurationSuisseInvalide
 from domain.grain_validation import GrainValidation
 from domain.phase import (
     Phase,
@@ -43,6 +43,7 @@ from domain.phase import (
 )
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.suisse import ConfigurationSuisse, rondes_maximales
 from domain.tournoi import TournoiId
 
 EtapeDerouleId = int
@@ -101,12 +102,48 @@ class EtapeDeroule:
     Même régime que `poules` ci-dessus, et pour les mêmes raisons : porté par l'étape donc par le
     tournoi (ADR-0076), `None` tant que le type est choisi sans ses paramètres."""
 
+    suisse: ConfigurationSuisse | None = None
+    """Le réglage d'un **système suisse** — le nombre de rondes (E05US026).
+
+    Même régime que les deux ci-dessus. **Une seule classe**, comme le Big Shoot Off et à la
+    différence des poules : un nombre de rondes se décide à la composition, il ne dépend pas de
+    l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
+    (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         self._verifier_convergence_du_big_shoot_off()
+        self._verifier_rondes_appariables()
+
+    def _verifier_rondes_appariables(self) -> None:
+        """À N participants, on ne peut pas apparier plus de N-1 rondes sans ré-affrontement.
+
+        **Même place et même raison que la convergence du Big Shoot Off juste au-dessus** : c'est
+        une propriété du **couple** (nb_rondes, effectif), pas du réglage seul.
+        `ConfigurationSuisse` refuse donc par contrat toute validation dépendant de l'effectif —
+        c'est ce qui rend un format de bibliothèque réutilisable d'un tournoi à l'autre (règle 2) —
+        et le refus vit ici, là où l'effectif est déclaré.
+
+        ⚠️ **Le dire à la composition, c'est éviter de le découvrir à la ronde 6, le jour J.**
+        `apparier_ronde` lève déjà `ConfigurationSuisseInvalide` sur ce même motif, mais il le lève
+        *en salle*, une fois les rondes précédentes tirées : l'organisateur n'a alors plus aucun
+        geste de rattrapage. La docstring de `ConfigurationSuisse` annonçait exactement ce
+        contrôle-ci comme « validé contre l'effectif au démarrage et non ici ».
+
+        Silencieux quand l'effectif n'est **pas** déclaré : on ne refuse pas ce qu'on ne peut pas
+        juger. L'atelier montre alors le maximum atteignable et l'organisateur décide.
+        """
+        if self.suisse is None or self.effectif is None:
+            return
+        maximum = rondes_maximales(self.effectif)
+        if self.suisse.nb_rondes > maximum:
+            raise ConfigurationSuisseInvalide(
+                f"À {self.effectif} archers, {maximum} rondes au plus sont appariables sans "
+                f"ré-affrontement ; {self.suisse.nb_rondes} en sont demandées."
+            )
 
     def _verifier_convergence_du_big_shoot_off(self) -> None:
         """Une finale doit désigner **un** vainqueur : la liste doit converger sur cet effectif.
@@ -156,6 +193,7 @@ class EtapeDeroule:
             profondeur=self.profondeur,
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
+            suisse=self.suisse,
             statut=StatutPhase.A_VENIR,
         )
 
