@@ -44,6 +44,14 @@ function LigneTireur({
   const valider = useValiderManche(tournoiId, phaseId)
   const complete = valeurs.every((valeur) => valeur.trim() !== '')
 
+  // ⚠️ **La volée à poser vient du serveur** (revue d'E05US028). Ce composant envoyait
+  // `manche.volees[0]` — « la première volée de la manche » — alors que son propre commentaire
+  // annonçait « la première non encore posée ». Les deux ne coïncident qu'à `volees = 1`, seule
+  // valeur exercée par les tests ; à `volees = 2`, chaque « Enregistrer » réécrivait la volée 1 et
+  // la manche ne pouvait jamais se conclure (`RienAValider`). Le front ne re-dérive pas une
+  // numérotation qu'il ne persiste pas.
+  const prochaine = tireur.prochaine_volee
+
   // Un archer sorti ne tire plus : on montre son rang, on ne lui ouvre pas de champ. Sans cela, une
   // tablette restée ouverte laisserait saisir des flèches qui n'entreraient dans aucune manche.
   if (!tireur.en_lice) {
@@ -77,16 +85,20 @@ function LigneTireur({
         ))}
         <button
           type="button"
-          disabled={!complete || saisir.isPending}
-          onClick={() =>
+          disabled={prochaine === null || !complete || saisir.isPending}
+          onClick={() => {
+            if (prochaine === null) return
             saisir.mutate(
-              // La manche occupe V volées consécutives ; on saisit la première non encore posée.
-              { archerId: tireur.archer_id, numero: manche.volees[0] as number, valeurs },
+              { archerId: tireur.archer_id, numero: prochaine, valeurs },
               { onSuccess: () => setValeurs(Array.from({ length: fleches }, () => '')) },
             )
-          }
+          }}
         >
-          Enregistrer
+          {/* Le numéro dans le libellé quand la manche compte plusieurs volées : sans lui, le
+              scoreur ne sait pas laquelle des deux il est en train de poser. */}
+          {manche.volees.length > 1 && prochaine !== null
+            ? `Enregistrer la volée ${prochaine - manche.volees[0]! + 1}/${manche.volees.length}`
+            : 'Enregistrer'}
         </button>
         <button
           type="button"

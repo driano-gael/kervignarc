@@ -37,6 +37,12 @@ export interface Tireur {
   en_lice: boolean
   rang: number | null
   scores: number[]
+  // Le numéro de la **prochaine volée à saisir** pour cet archer, ou `null` s'il n'y a rien à tirer
+  // (sorti, phase finie, ou barrage en cours). C'est le serveur qui le calcule : la manche *m*
+  // occupe les volées `(m-1)·V+1 … m·V`, une numérotation qu'il persiste et que le front n'a pas à
+  // re-dériver. Deviner « la première volée de la manche » n'était juste qu'à `volees = 1`, et
+  // rendait la finale injouable dès `volees = 2` (revue d'E05US028).
+  prochaine_volee: number | null
 }
 
 /** Une manche : son rang, combien elle élimine, où en est sa saisie. */

@@ -96,6 +96,18 @@ class TireurReponse(BaseModel):
     en_lice: bool
     rang: int | None
     scores: list[int]
+    prochaine_volee: int | None = None
+    """La **prochaine volée à saisir** pour cet archer, ou `null` s'il n'y a rien à tirer.
+
+    ⚠️ **Sans ce champ, l'écran de saisie devait deviner** — et il devinait « la première volée de
+    la manche », ce qui n'est juste qu'à `volees = 1`. Dès `volees = 2`, la seconde n'était jamais
+    saisissable et la finale se bloquait (revue d'E05US028). La manche *m* occupe les volées
+    `(m-1)·V+1 … m·V` : c'est une numérotation que le serveur persiste et que le front n'a pas à
+    re-dériver.
+
+    `null` a trois causes, toutes légitimes : l'archer est sorti, la phase est terminée, ou un
+    barrage la suspend. Dans les trois cas l'écran doit fermer le pavé plutôt que proposer une
+    saisie qui sera refusée."""
 
     @staticmethod
     def de_tireur(tireur: TireurAffiche) -> TireurReponse:
@@ -106,6 +118,7 @@ class TireurReponse(BaseModel):
             en_lice=tireur.en_lice,
             rang=tireur.rang,
             scores=list(tireur.scores),
+            prochaine_volee=tireur.prochaine_volee,
         )
 
 

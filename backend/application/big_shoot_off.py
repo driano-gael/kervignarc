@@ -143,6 +143,21 @@ class TireurAffiche:
     en_lice: bool
     rang: int | None
     scores: tuple[int, ...]
+    prochaine_volee: int | None = None
+    """La **prochaine volée à saisir** pour cet archer, ou `None` s'il n'y a rien à tirer.
+
+    ⚠️ **Champ ajouté à la revue d'E05US028, et il ferme un cas injouable.** La manche *m* occupe
+    les volées `(m-1)·V+1 … m·V`, et rien au DTO ne disait laquelle était déjà posée : l'écran de
+    saisie envoyait donc **toujours** la première volée de la manche. À `V = 1` c'est juste par
+    accident — seule valeur pour laquelle « la première » et « la prochaine » coïncident, et seule
+    valeur que les tests exerçaient. Dès `V = 2`, la volée 2 n'était jamais saisissable :
+    chaque « Enregistrer » réécrivait la volée 1, et `Serie.valider` refusait un lot incomplet
+    (`RienAValider`). La finale était bloquée en salle, sur un réglage que **cette US expose
+    elle-même** au formulaire.
+
+    Le calcul appartient au serveur : c'est lui qui tient la série et qui sait ce qui est validé. Le
+    front ne doit pas re-dériver une numérotation de volées qu'il ne persiste pas — c'est la même
+    règle que `manque` sur le routage, « le serveur sait pourquoi, le front affiche »."""
 
 
 @dataclass(frozen=True)
@@ -440,6 +455,13 @@ class ServiceBigShootOff:
         }
         etat, lices = self._rejouer(phase, configuration, participants, series)
         rangs = dict(etat.rangs)
+        manches = self._manches(configuration, projection, etat, lices, series)
+        # La manche que la salle tire **en ce moment** : la première non jouée. `None` quand la
+        # phase est finie ou suspendue par un barrage — dans les deux cas il n'y a rien à saisir, et
+        # `prochaine_volee` doit le dire au lieu de laisser l'écran proposer un pavé inopérant.
+        courante = next((m.numero - 1 for m in manches if not m.jouee), None)
+        if etat.barrage_en_cours:
+            courante = None
         tireurs = tuple(
             TireurAffiche(
                 archer_id=ligne.archer_id,
@@ -448,6 +470,11 @@ class ServiceBigShootOff:
                 en_lice=Participant.individuel(ligne.archer_id) in etat.en_lice,
                 rang=rangs.get(Participant.individuel(ligne.archer_id)),
                 scores=_scores_par_manche(series.get(ligne.archer_id), configuration),
+                prochaine_volee=(
+                    _prochaine_volee(series.get(ligne.archer_id), configuration, courante)
+                    if Participant.individuel(ligne.archer_id) in etat.en_lice
+                    else None
+                ),
             )
             for ligne in participants
         )
@@ -455,7 +482,7 @@ class ServiceBigShootOff:
             phase_id=phase_id,
             projection=projection,
             tireurs=tireurs,
-            manches=self._manches(configuration, projection, etat, lices, series),
+            manches=manches,
             termine=etat.est_termine,
             barrage_entre=tuple(
                 duelliste
@@ -707,6 +734,35 @@ def _volees_validees(serie: Serie | None, numeros: tuple[int, ...]) -> bool:
     return all(
         (volee := serie.volee(numero)) is not None and volee.verrouillee for numero in numeros
     )
+
+
+def _prochaine_volee(
+    serie: Serie | None,
+    configuration: ConfigurationBigShootOff,
+    manche: int | None,
+) -> int | None:
+    """La prochaine volée à saisir pour cet archer dans `manche`, ou `None` s'il n'y a rien à tirer.
+
+    `manche` est **0-indexée** (le `numero` de `MancheAffichee` l'est à partir de 1). On rend la
+    première volée du bloc `(manche·V+1 … (manche+1)·V)` qui n'est **pas encore posée**.
+
+    ⚠️ **« Pas encore posée » et non « pas encore verrouillée »**, et la nuance est ce qui fait
+    avancer l'écran. Une manche se valide d'un **bloc** de V volées (`toutes_les_n_volees`) : entre
+    la première saisie et la validation, les V volées coexistent non verrouillées. Viser la première
+    non verrouillée ferait donc revenir le pavé sur la volée 1 après l'avoir posée, et la manche ne
+    progresserait jamais — exactement le blocage que ce champ existe pour lever.
+
+    Rend `None` quand le bloc est complet : il n'y a plus qu'à valider. Corriger une volée posée
+    mais non validée n'est pas de la compétence de cet écran — c'est le geste de correction, tracé
+    au registre (`DETTE-061`).
+    """
+    if manche is None:
+        return None
+    debut = manche * configuration.volees
+    for numero in range(debut + 1, debut + configuration.volees + 1):
+        if serie is None or serie.volee(numero) is None:
+            return numero
+    return None
 
 
 def _scores_par_manche(

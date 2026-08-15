@@ -770,3 +770,70 @@ def test_le_routage_dit_ce_qu_il_ne_sait_pas_plutot_que_de_se_taire() -> None:
     inconnu = next(archer for archer in routage.archers if archer.archer_id == 9999)
     assert inconnu.issue is IssueRoutage.INDISPONIBLE
     assert inconnu.motif is not None
+
+
+# --- `volees > 1` : le format que l'US expose et qu'aucun test n'exerçait ------------------------
+
+
+def test_la_prochaine_volee_avance_dans_la_manche_a_deux_volees() -> None:
+    """CA « la salle fait tirer » : à V volées par manche, l'écran doit savoir **laquelle** poser.
+
+    ⚠️ **Ce test ancre un cas injouable en salle.** Rien au DTO ne disait quelle volée d'une manche
+    était déjà posée, et l'écran de saisie envoyait donc toujours la **première** — juste par
+    accident à `volees = 1`, seule valeur que les tests exerçaient. À `volees = 2`, chaque
+    « Enregistrer » réécrivait la volée 1 et la manche ne pouvait jamais se conclure : la finale
+    était bloquée sur un réglage que **cette US expose elle-même** au formulaire.
+    """
+    monde = _Monde()
+    a, b = monde.inscrire(2)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,), volees=2))
+    service = monde.service()
+
+    def prochaine(archer_id: int) -> int | None:
+        etat = service.etat(monde.tournoi_id, monde.phase_id)
+        tireur = next(t for t in etat.tireurs if t.archer_id == archer_id)
+        return tireur.prochaine_volee
+
+    trois = (ZoneScore("9"), ZoneScore("9"), ZoneScore("9"))
+
+    # Rien de posé : c'est la volée 1 de la manche 1.
+    assert prochaine(a) == 1
+
+    # La volée 1 posée, l'écran passe à la **2** — c'est tout l'objet du champ. Viser « la première
+    # non verrouillée » ramènerait ici sur la volée 1, et la manche ne progresserait jamais : les V
+    # volées d'une manche restent non verrouillées jusqu'à la validation du bloc.
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 1, trois)
+    assert prochaine(a) == 2
+
+    # Les deux volées posées : plus rien à saisir, il ne reste qu'à valider la manche.
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 2, trois)
+    assert prochaine(a) is None
+
+    # Et la validation porte bien sur le **bloc** de deux volées : elle passe, là où elle levait
+    # `RienAValider` tant que la volée 2 restait inatteignable.
+    sept = (ZoneScore("7"), ZoneScore("7"), ZoneScore("7"))
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, b, 1, sept)
+    service.saisir_volee(monde.tournoi_id, monde.phase_id, b, 2, sept)
+    service.valider_manche(monde.tournoi_id, monde.phase_id, a, "Scoreur")
+    service.valider_manche(monde.tournoi_id, monde.phase_id, b, "Scoreur")
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+    assert etat.manches[0].jouee is True
+
+
+def test_un_archer_sorti_n_a_plus_de_volee_a_tirer() -> None:
+    """`prochaine_volee` est `None` pour qui ne tire plus : l'écran ferme le pavé au lieu de
+    proposer une saisie que le serveur refusera."""
+    monde = _Monde()
+    a, b, c = monde.inscrire(3)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+    service = monde.service()
+    monde.tirer(service, a, 1, "10")
+    monde.tirer(service, b, 1, "9")
+    monde.tirer(service, c, 1, "6")
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+    par_archer = {tireur.archer_id: tireur for tireur in etat.tireurs}
+    assert par_archer[c].en_lice is False
+    assert par_archer[c].prochaine_volee is None
+    # La phase est terminée (2 rescapés, la manche suivante viderait la lice) : plus rien à tirer.
+    assert par_archer[a].prochaine_volee is None

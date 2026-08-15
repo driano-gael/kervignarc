@@ -462,7 +462,14 @@ export function DepartageManuel({
   const [phaseId, setPhaseId] = useState<number | null>(null)
   const [rang, setRang] = useState('')
   const phases = usePhases(departId)
-  const poulesDispo = (phases.data ?? []).filter((phase) => phase.type === 'poules')
+  // ⚠️ **Les deux portées ont besoin de `phase_id`, et depuis E05US028 seulement.** Le verdict d'un
+  // barrage de Big Shoot Off est relu par `ServiceBigShootOff._verdicts_de_barrage`, qui filtre sur
+  // `barrage.phase_id != phase.id` — un barrage annoncé sans phase est donc écarté à *chaque*
+  // relecture : la manche reste suspendue à vie, aucun rang n'est décerné, le palmarès n'entre
+  // jamais. C'est le bloquant d'E05US023 reproduit à l'identique, et le commentaire qui justifiait
+  // l'omission (« il n'y a aucune phase où retourner un verdict ») était vrai avant cette US-ci.
+  const typeAttendu = portee === 'poule' ? 'poules' : 'big_shoot_off'
+  const phasesDispo = (phases.data ?? []).filter((phase) => phase.type === typeAttendu)
   const annoncer = useAnnoncerBarrage(tournoiId)
 
   // Un barrage de poule n'est annonçable que **situé**. On le vérifie ici plutôt que de laisser
@@ -470,9 +477,13 @@ export function DepartageManuel({
   // qu'un Big Shoot Off désigne un sortant et non une place), et l'organisateur croirait le barrage
   // opérant jusqu'à découvrir, la poule close, qu'il n'a rien refermé.
   const rangSaisi = Number(rang)
+  // La phase est exigée dans **les deux** portées ; le rang ne l'est qu'en poule, parce qu'un Big
+  // Shoot Off départage des *sortants* et non une place au classement. Deux besoins distincts qu'il
+  // ne faut pas fusionner : exiger le rang en Big Shoot Off bloquerait un barrage parfaitement
+  // annonçable.
   const situe =
-    portee !== 'poule' ||
-    (phaseId !== null && rang.trim() !== '' && Number.isInteger(rangSaisi) && rangSaisi >= 1)
+    phaseId !== null &&
+    (portee !== 'poule' || (rang.trim() !== '' && Number.isInteger(rangSaisi) && rangSaisi >= 1))
 
   const basculer = (archerId: number) =>
     setChoisis((actuel) =>
@@ -495,9 +506,10 @@ export function DepartageManuel({
         portee,
         archer_ids: choisis,
         reference: reference.trim() === '' ? null : reference.trim(),
-        // Uniquement en poule : en Big Shoot Off, `_coherence_du_regime` accepte `phase_id`, mais il
-        // n'y a aucune phase où retourner un verdict, et le `rang` n'y désigne pas une place.
-        ...(portee === 'poule' ? { phase_id: phaseId, rang: rangSaisi } : {}),
+        // `phase_id` dans les deux portées (cf. `phasesDispo`) ; `rang` en poule seulement — un Big
+        // Shoot Off départage des sortants, pas une place au classement.
+        phase_id: phaseId,
+        ...(portee === 'poule' ? { rang: rangSaisi } : {}),
       },
       {
         onSuccess: () => {
@@ -514,8 +526,9 @@ export function DepartageManuel({
       <p className="carte__aide">
         Désignez les archers à départager. En <strong>poule</strong>, l&apos;écran de saisie vous
         signale quand un barrage est requis, et le verdict <strong>referme le classement</strong> de
-        la poule concernée. Pour un Big Shoot Off, le résultat ne remonte encore dans aucun
-        classement.
+        la poule concernée. En <strong>Big Shoot Off</strong>, le verdict{' '}
+        <strong>débloque la manche</strong> suspendue par l&apos;égalité et décerne les rangs :
+        désignez la phase, sinon le barrage se tire sans que la finale reparte.
       </p>
       <label>
         Départage{' '}
@@ -527,22 +540,27 @@ export function DepartageManuel({
           <option value="big_shoot_off">de Big Shoot Off</option>
         </select>
       </label>
+      <label>
+        {portee === 'poule' ? 'Phase de poules' : 'Phase de Big Shoot Off'}{' '}
+        <select
+          value={phaseId ?? ''}
+          onChange={(e) => setPhaseId(e.target.value === '' ? null : Number(e.target.value))}
+        >
+          <option value="">Choisir une phase…</option>
+          {phasesDispo.map((phase) => (
+            <option key={phase.id} value={phase.id}>
+              Phase {phase.ordre} — {portee === 'poule' ? 'poules' : 'Big Shoot Off'}
+            </option>
+          ))}
+        </select>
+      </label>
+      {phases.isSuccess && phasesDispo.length === 0 && (
+        <p className="carte__etat">
+          Aucune phase {portee === 'poule' ? 'de poules' : 'de Big Shoot Off'} dans ce créneau.
+        </p>
+      )}
       {portee === 'poule' && (
         <>
-          <label>
-            Phase de poules{' '}
-            <select
-              value={phaseId ?? ''}
-              onChange={(e) => setPhaseId(e.target.value === '' ? null : Number(e.target.value))}
-            >
-              <option value="">Choisir une phase…</option>
-              {poulesDispo.map((phase) => (
-                <option key={phase.id} value={phase.id}>
-                  Phase {phase.ordre} — poules
-                </option>
-              ))}
-            </select>
-          </label>
           <label>
             Rang disputé{' '}
             <input
@@ -559,9 +577,6 @@ export function DepartageManuel({
             d&apos;un « = ». C&apos;est lui que le verdict départage : sans lui, le barrage se tire
             sans rien refermer.
           </p>
-          {phases.isSuccess && poulesDispo.length === 0 && (
-            <p className="carte__etat">Aucune phase de poules dans ce créneau.</p>
-          )}
         </>
       )}
       <label>

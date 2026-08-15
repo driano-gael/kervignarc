@@ -37,6 +37,7 @@ function archer(patch: Partial<RoutageArcher> = {}): RoutageArcher {
     prenom: 'Léa',
     issue: 'prochain_duel',
     prochain: prochain(),
+    prochaine_manche: null,
     rang_final: null,
     rang_min: null,
     rang_max: null,
@@ -400,5 +401,62 @@ describe('posesParCible — le pas de tir en « mes archers »', () => {
     const poses = posesParCible([moi], [...tous, sorti], true)
 
     expect(poses.map((l) => l.archer_id)).toEqual([1, 2])
+  })
+})
+
+// --- Big Shoot Off : la 5ᵉ issue (E05US028, correctif de revue) --------------------------------
+//
+// Ces tests ancrent un défaut qui était **entièrement côté front** : le serveur publiait
+// `prochaine_manche`, ses DTO et trois tests backend verts, mais aucun consommateur front n'avait
+// été touché. Les finalistes lisaient « Destination inconnue » et étaient rangés avec les sortis —
+// le scénario de recette de l'US était infaisable en salle.
+describe('routage d’un finaliste de Big Shoot Off', () => {
+  function finaliste(patch: Partial<RoutageArcher> = {}): RoutageArcher {
+    return archer({
+      issue: 'prochaine_manche',
+      prochain: null,
+      prochaine_manche: {
+        numero: 2,
+        elimine: 2,
+        cible: null,
+        position: null,
+        manque: 'cible non attribuée',
+      },
+      ...patch,
+    })
+  }
+
+  it('annonce la manche qui vient, pas « Destination inconnue »', () => {
+    expect(titre(finaliste())).toBe('Manche 2')
+  })
+
+  it('dit combien d’archers sortent à ce tour, et nomme la cible manquante', () => {
+    expect(detail(finaliste())).toBe('2 archers sortent · cible non attribuée')
+  })
+
+  it('accorde le singulier quand un seul archer sort', () => {
+    const seul = finaliste({
+      prochaine_manche: {
+        numero: 3,
+        elimine: 1,
+        cible: null,
+        position: null,
+        manque: null,
+      },
+    })
+    expect(detail(seul)).toBe('1 archer sort')
+  })
+
+  it('le compte comme encore en lice — sinon il rentre chez lui au milieu de la finale', () => {
+    expect(encoreEnLice(finaliste())).toBe(true)
+    // Sur une phase de Big Shoot Off, les finalistes **sont** le pas de tir : ils vont en attente
+    // (pas de plan de cibles, `DETTE-059`), surtout pas sous « Sortis du tableau ».
+    const { attente, sortis } = partitionner([finaliste()])
+    expect(attente.map((l) => l.archer_id)).toEqual([1])
+    expect(sortis).toEqual([])
+  })
+
+  it('n’affiche pas d’alerte de placement : un Big Shoot Off n’oppose personne', () => {
+    expect(alerte(finaliste())).toBeNull()
   })
 })
