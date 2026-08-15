@@ -31,6 +31,7 @@ from api.v1.saisie_duels import DuellisteReponse
 from application.routage import (
     DestinationRepechage,
     ProchainDuel,
+    ProchaineManche,
     Routage,
     RoutageArcher,
     ServiceRoutage,
@@ -39,7 +40,9 @@ from domain.phase import TypePhase
 
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 
-IssueRoutageReponse = Literal["prochain_duel", "termine", "repeche", "indisponible"]
+IssueRoutageReponse = Literal[
+    "prochain_duel", "prochaine_manche", "termine", "repeche", "indisponible"
+]
 """Les seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
 pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
 Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6).
@@ -50,6 +53,40 @@ valeur du domaine ne circule sans être déclarée ici."""
 
 
 # --- DTO ---
+
+
+class ProchaineMancheReponse(BaseModel):
+    """Le prochain rendez-vous d'un finaliste de **Big Shoot Off** (E05US028).
+
+    ⚠️ **Un DTO distinct de `ProchainDuelReponse`, et non son élargissement.** Un Big Shoot Off
+    n'oppose personne : tous les finalistes sont sur la ligne, et c'est le classement de la manche
+    qui élimine. Réutiliser le DTO de duel aurait publié au schéma un `adversaire` toujours `null`
+    et un `numero` de match qui n'existe pas — le genre de nom trop étroit qu'ADR-0083 a dû
+    corriger côté domaine.
+
+    `elimine` dit combien d'archers sortiront à l'issue de ce tour : c'est l'information qui compte
+    pour le tireur, davantage que le numéro de la manche.
+
+    `cible`/`position` sont **toujours `null` aujourd'hui**, et `manque` le dit en clair : le
+    routage ne lit pas le plan du créneau pour cette phase (`DETTE-059`). Nommer le manque plutôt
+    que le taire est la règle `P-3` — un panneau muet se prend pour une panne réseau.
+    """
+
+    numero: int
+    elimine: int
+    cible: int | None
+    position: str | None
+    manque: str | None
+
+    @staticmethod
+    def de_manche(manche: ProchaineManche) -> ProchaineMancheReponse:
+        return ProchaineMancheReponse(
+            numero=manche.numero,
+            elimine=manche.elimine,
+            cible=manche.cible,
+            position=manche.position,
+            manque=manche.manque,
+        )
 
 
 class ProchainDuelReponse(BaseModel):
@@ -145,6 +182,11 @@ class RoutageArcherReponse(BaseModel):
     tour_sortie: str | None
     destination: DestinationRepechageReponse | None
     motif: str | None
+    prochaine_manche: ProchaineMancheReponse | None = None
+    """Le rendez-vous d'un finaliste de Big Shoot Off (E05US028), quand `issue` vaut
+    `prochaine_manche`. **Exclusif de `prochain`** : un archer n'a jamais les deux, et son issue
+    dit lequel lire. Champ **ajouté** avec un défaut, donc un client d'avant E05US028 ne casse
+    pas — il ne peut simplement pas rencontrer cette issue sur un tournoi sans Big Shoot Off."""
 
     @staticmethod
     def de_archer(ligne: RoutageArcher) -> RoutageArcherReponse:
@@ -168,6 +210,11 @@ class RoutageArcherReponse(BaseModel):
                 else None
             ),
             motif=ligne.motif,
+            prochaine_manche=(
+                ProchaineMancheReponse.de_manche(ligne.prochaine_manche)
+                if ligne.prochaine_manche is not None
+                else None
+            ),
         )
 
 

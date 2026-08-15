@@ -28,6 +28,7 @@ from api.v1.audit import router as audit_router
 from api.v1.auth import router as auth_router
 from api.v1.bareme_qualification import router as bareme_qualification_router
 from api.v1.barrages import router as barrages_router
+from api.v1.big_shoot_off import router as big_shoot_off_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
@@ -74,6 +75,7 @@ from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
 from application.barrages import ServiceBarrage
+from application.big_shoot_off import ServiceBigShootOff
 from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
@@ -105,6 +107,7 @@ from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.poules import ServicePoules
 from application.prelevement import (
+    LecteurClassementBigShootOff,
     LecteurClassementPoules,
     LecteurPopulationPhase,
 )
@@ -753,6 +756,23 @@ def create_app(
     classements_de_poules: LecteurClassementPoules = app.state.service_poules
     app.state.service_saisie_duels.brancher_poules(classements_de_poules)
 
+    # Big Shoot Off (E05US028) : le moteur `domain/big_shoot_off.py` reçoit enfin son consommateur
+    # de production (DETTE-028). Le tir vit dans `serie`/`volee`, sans table propre — le pendant
+    # d'ADR-0083 §7, où une rencontre de poule réutilise `duel`.
+    app.state.service_big_shoot_off = ServiceBigShootOff(
+        tournoi_repository,
+        phase_repository,
+        serie_repository,
+        barrage_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # Second branchement tardif, **et pour la même raison que celui des poules** : les deux services
+    # se tiennent par les deux bouts. Il n'y en avait qu'un au projet jusqu'ici ; il y en a deux, ce
+    # qui reste sous le seuil du remède structurel (cf. `LecteurClassementBigShootOff`).
+    classements_de_big_shoot_off: LecteurClassementBigShootOff = app.state.service_big_shoot_off
+    app.state.service_saisie_duels.brancher_big_shoot_off(classements_de_big_shoot_off)
+
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
     # L'usine `fabriquer_harnais_simulation` (module, ci-dessus) est le **seul** point qui connaît
@@ -864,6 +884,10 @@ def create_app(
         GenerateurPalmaresPdf(),
         depart_repository,
         aggregation,
+        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès et
+        # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
+        # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
+        app.state.service_big_shoot_off,
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,
@@ -971,12 +995,21 @@ def create_app(
     # ⚠️ `depart_repository` depuis E01US025 : les quatre canaux de routage entrent par le
     # **créneau** (ADR-0075) — « le tableau qui vient » n'a de sens que dans une séquence, et la
     # vue transverse `par_tournoi` en concatène N.
+    # ⚠️ `service_big_shoot_off` depuis E05US028 : sans lui, `_routage_big_shoot_off` prend la
+    # branche « montage sans Big Shoot Off » et rend INDISPONIBLE sur les quatre canaux. Le
+    # paramètre est optionnel (aucun cycle, cf. son commentaire au constructeur), donc **rien ne
+    # rougissait** quand il manquait : la ligne `route_l_archer=True` du registre de contrats se
+    # justifiait par une méthode morte en production, pendant que les tests montaient leur propre
+    # `ServiceRoutage` avec le port. C'est le mode de défaillance d'ADR-0017 — une capacité déclarée
+    # dont le porteur nommé ne porte rien — et c'est `test_composition_routage_big_shoot_off` qui
+    # l'ancre désormais, en interrogeant le service **tel que `create_app` le câble**.
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
         archer_repository,
         phase_repository,
         depart_repository,
+        app.state.service_big_shoot_off,
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
@@ -1169,6 +1202,7 @@ def create_app(
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
     app.include_router(poules_router)
+    app.include_router(big_shoot_off_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)
     app.include_router(tableaux_router)

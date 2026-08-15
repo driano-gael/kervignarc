@@ -1009,10 +1009,66 @@ Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
   `FIN_DE_SERIE` là où les trois autres sont `FIN_DE_DUEL`. Si le contrat d'`E05US023` doit céder
   quelque part, c'est ici — et c'est **voulu** : on a préféré tailler le contrat sur le format le
   plus riche et l'assouplir pour le plus pauvre, plutôt que l'inverse.
-- **CA — réglages à l'atelier** : nombre d'éliminés par manche et restants (`ConfigurationBigShootOff`).
+- **CA — réglages à l'atelier** : **le nombre de sortants, manche par manche** — une liste écrite par
+  l'organisateur (`4, 2, 1` = quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ) —, plus le format du
+  tir (volées, flèches par volée), le **cumul** entre manches et le **départage des sortants**
+  (`ConfigurationBigShootOff`). L'atelier **montre la projection** sur l'effectif du jour, patron
+  `RepartitionPoules` : « avec vos 12 inscrits : 12 → 8 → 6 → 5 ».
+
+  ⚠️ **Ce CA était faux, et sa correction est l'événement du cadrage** *(14/08/2026)*. Il annonçait
+  « nombre d'éliminés par manche **et restants** » en citant `ConfigurationBigShootOff`, qui ne
+  portait **ni l'un ni l'autre** : elle avait `restants` (K) et éliminait **un** archer par manche.
+  La divergence est apparue en essayant d'écrire le test depuis le CA — exactement le garde-fou de
+  la règle 9 — et le commanditaire, questionné, a **élargi la règle** plutôt que corrigé le CA :
+  plusieurs sortants par manche, dits manche par manche. Quatre arbitrages en sont sortis, tous
+  reversés au [référentiel §10.1](../docs/referentiel-ffta.md) qui fait autorité sur ce format :
+  - le réglage est **une liste, une case par manche** — pas une progression imposée ;
+  - **K disparaît** des réglages : il se déduit de ce que la liste n'élimine pas ;
+  - **on joue tant que la manche est possible** : une liste ne se refuse jamais, elle s'écourte (un
+    format est de la configuration, règle 2 — il se réutilise sur des effectifs qu'il ignore) ;
+  - les sortants d'une même manche sont **classés au score de la manche** ; les départager quand ils
+    sont à égalité est un **paramètre** (`departage_les_sortants`), jumeau de
+    `ReglageDePoules.departage_inter_poules`.
+
+- **CA — le classement de la phase est lisible** : une phase avale peut y prélever, et le
+  **palmarès** consomme les rangs qu'elle a décernés. *(Ajouté au cadrage du 14/08/2026 : le CA
+  initial s'arrêtait à « habiter le contrat », or `TYPES_RECONSTRUCTIBLES` n'accueille que les
+  arbres rejouables — un Big Shoot Off rend des rangs **exacts** sans arbre à rejouer, donc un
+  `_resultat` propre au format, ce qu'[ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md)
+  annonçait déjà comme la condition d'entrée au palmarès.)*
+
+- **CA — le routage sait où l'archer tire ensuite** (`route_l_archer`). *(Ajouté au cadrage du
+  14/08/2026, à la demande du commanditaire. `route_l_archer` était resté `False` pour les poules
+  en E05US023, capacité explicitement hors périmètre ; elle est demandée ici.)*
 - **CA — le barrage y retourne son verdict** : l'égalité au plus faible se départage par
   `resoudre_barrage`, dont `eliminer_apres_barrage` consomme déjà l'issue. La **saisie** du barrage
   est celle livrée par `E05US023` — pas une seconde.
 - **CA — le signal d'écart d'E01US024 cesse de viser le Big Shoot Off**, et lui seul. À cette US, et
   seulement à cette US, `DETTE-028` peut être **refermée** sur son volet « moteurs sans appelant ».
 - **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet Big Shoot Off)
+
+#### Arbitrages tranchés en cours d'US et à la revue *(reversés ici, règle 9)*
+
+Trois arbitrages du commanditaire, **postérieurs à la rédaction du CA**, tous reversés au
+[référentiel §10.1](../docs/referentiel-ffta.md) dans le même commit que le code qui les applique :
+
+1. **Convention du rang partagé** *(15/08/2026)* — « à égalité ils partagent leur rang » ne disait
+   pas **lequel**. C'est la convention **« 1224 »** : chacun prend `1 + le nombre d'archers
+   strictement meilleurs`, les rangs sautés restent vacants **après** le groupe. Le code appliquait
+   la convention inverse, et son test la figeait tout en invoquant « 1224 » dans sa docstring.
+2. **Une liste doit converger vers un vainqueur unique** *(15/08/2026)* — refus **à la composition**,
+   là où l'effectif est connu (une phase posée sur un créneau), jamais sur le format de bibliothèque :
+   la convergence est une propriété du couple (liste, effectif), pas de la liste. Sans ce refus, un
+   Big Shoot Off fini à N rescapés leur décernait l'or à tous et bloquait définitivement le
+   prélèvement d'une phase avale.
+3. **La correction d'une flèche validée reste hors périmètre** *(15/08/2026)* — dette assumée
+   (`DETTE-061`), livrée en US dédiée. Le rejeu la supporte déjà ; c'est le geste d'entrée qui manque.
+
+⚠️ **Le CA portait par ailleurs un réglage que le moteur n'a jamais eu** (« nombre d'éliminés par
+manche **et restants** ») : la contradiction est sortie en écrivant les tests depuis le CA, et a
+produit l'élargissement de règle du 14/08/2026 — `K` cesse d'être un paramètre et se déduit. C'est le
+garde-fou de la règle 9 qui a fonctionné, et la trace est gardée ici pour la prochaine lecture.
+
+**Vocabulaire tranché au cadrage** : on dit « **le nombre de sortants, manche par manche** », jamais
+« la suite » — le mot faisait entendre une progression imposée par l'outil, alors que l'organisateur
+écrit une liste libre.

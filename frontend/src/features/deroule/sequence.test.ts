@@ -22,6 +22,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     bareme: null,
     validation: null,
     poules: null,
+    big_shoot_off: null,
     sources,
     effectif: null,
     profondeur: null,
@@ -155,6 +156,7 @@ describe('decrireEtape', () => {
       sources: [rangs(1, 1, 32)],
       profondeur: null,
       poules: null,
+      big_shoot_off: null,
       effectif: 32,
     }
 

@@ -31,6 +31,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import (
+    LecteurClassementBigShootOff,
     LecteurClassementPoules,
     ResolveurClassement,
     preleves,
@@ -194,6 +195,10 @@ class ServiceSaisieDuels:
         # est que l'oubli au composition root ne construit pas moins bien, il *lit* moins bien ; le
         # test de câblage `test_composition` est donc le garde-fou, pas le typage.
         self._poules: LecteurClassementPoules | None = None
+        # E05US028 : jumeau exact du précédent, pour le Big Shoot Off. La duplication est assumée —
+        # 2ᵉ occurrence, pas 3ᵉ (cf. `LecteurClassementBigShootOff`). E05US026 et E05US027 la
+        # porteront à quatre : c'est là que le `dict[TypePhase, …]` se justifiera sur preuve.
+        self._big_shoot_off: LecteurClassementBigShootOff | None = None
 
     def brancher_poules(self, poules: LecteurClassementPoules) -> None:
         """Donne à ce service de quoi lire le classement d'une phase de poules (E05US023).
@@ -203,6 +208,15 @@ class ServiceSaisieDuels:
         exactement le comportement d'avant E05US023, donc sûr par défaut.
         """
         self._poules = poules
+
+    def brancher_big_shoot_off(self, big_shoot_off: LecteurClassementBigShootOff) -> None:
+        """Donne à ce service de quoi lire le classement d'un Big Shoot Off (E05US028).
+
+        Appelé **une fois, au composition root** (règle 8), juste après la construction de
+        `ServiceBigShootOff`. Sans ce branchement, une source visant un Big Shoot Off reste inerte —
+        exactement le comportement d'avant E05US028, donc sûr par défaut.
+        """
+        self._big_shoot_off = big_shoot_off
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -445,7 +459,7 @@ class ServiceSaisieDuels:
     ) -> ClassementSource | None:
         """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
 
-        Quatre cas, et le dernier compte autant que les trois autres :
+        Cinq cas, et le dernier compte autant que les quatre autres :
 
         1. **qualification** — le classement de tir du départ (ADR-0075 : jamais tous créneaux
            confondus, ce qui y ferait entrer des archers qui ne tirent pas ici) ;
@@ -455,10 +469,14 @@ class ServiceSaisieDuels:
            `ServicePoules` par le port `LecteurClassementPoules`. Le service n'y touche pas
            lui-même : composer les groupes demande le réglage, le plan et les tirs, c'est-à-dire
            trois repositories qu'un service de tableau n'a aucune raison de connaître ;
-        4. **tout autre type** — `None`. Système suisse, colline et Big Shoot Off n'ont aucun
-           classement lisible tant qu'`E05US026` à `E05US028` ne les rendent pas jouables
-           (`DETTE-028`). Rendre `None` fait retomber la phase sur son comportement d'avant plutôt
-           que d'inventer un ordre — le prélèvement reste **inerte**, pas faux.
+        4. **Big Shoot Off** (E05US028) — les rangs décernés par les éliminations successives,
+           délégués à `ServiceBigShootOff` par le port `LecteurClassementBigShootOff`. Même montage
+           que les poules, et pour la même raison : rejouer la phase demande les volées, le réglage
+           et les barrages, trois lectures qu'un service de tableau n'a pas à connaître ;
+        5. **tout autre type** — `None`. Système suisse et colline n'ont aucun classement lisible
+           tant qu'`E05US026` et `E05US027` ne les rendent pas jouables (`DETTE-028`). Rendre `None`
+           fait retomber la phase sur son comportement d'avant plutôt que d'inventer un ordre — le
+           prélèvement reste **inerte**, pas faux.
         """
         phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
         if phase is None:
@@ -508,6 +526,21 @@ class ServiceSaisieDuels:
             # Le résolveur **descendant** porte le cache et la chaîne : `ServicePoules` remonte à
             # son tour ses sources, et une phase amont partagée n'est reconstruite qu'une fois.
             return self._poules.classement_de_phase(
+                tournoi_id,
+                phase.id,
+                self.resolveur_de_classement(tournoi_id, depart_id, (*chaine, phase.id), cache),
+            )
+        if phase.type is TypePhase.BIG_SHOOT_OFF and phase.id is not None:
+            if self._big_shoot_off is None:
+                # Aucun lecteur branché : ce montage n'a pas de Big Shoot Off. On retombe sur le
+                # comportement d'avant E05US028 — inerte, pas faux.
+                return None
+            if phase.id in chaine:
+                raise DerouleCyclique(
+                    f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se "
+                    "prélever elle-même, directement ou par une chaîne de sources."
+                )
+            return self._big_shoot_off.classement_de_phase(
                 tournoi_id,
                 phase.id,
                 self.resolveur_de_classement(tournoi_id, depart_id, (*chaine, phase.id), cache),

@@ -23,6 +23,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.bareme import BaremeQualification
+from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.entree_audit import EntreeAudit
@@ -116,6 +117,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         barrage_jusqu_au = _lire_barrage_jusqu_au(config)
         profondeur = _lire_profondeur(config)
         poules = _lire_reglage_poules(config)
+        big_shoot_off = _lire_reglage_big_shoot_off(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -137,6 +139,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             barrage_jusqu_au=barrage_jusqu_au,
             profondeur=profondeur,
             poules=poules,
+            big_shoot_off=big_shoot_off,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -279,6 +282,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.barrage_jusqu_au,
             etape.profondeur,
             etape.poules,
+            etape.big_shoot_off,
         )
     )
 
@@ -291,6 +295,7 @@ def _politiques_json(
     barrage_jusqu_au: int | None = None,
     profondeur: ProfondeurClassement | None = None,
     poules: ReglageDePoules | None = None,
+    big_shoot_off: ConfigurationBigShootOff | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -395,6 +400,24 @@ def _politiques_json(
         if poules.departage_inter_poules:
             reglage["departage"] = True
         config["poules"] = reglage
+    if big_shoot_off is not None:
+        # Même domicile et même raison que `poules` : racine du `config`, pas `policies` — c'est un
+        # paramètre de phase, et `policies` est un catalogue **fermé** de stratégies injectables.
+        # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
+        souffle: dict[str, object] = {"eliminations": list(big_shoot_off.eliminations)}
+        # Le format du tir est **toujours** écrit, y compris aux défauts (1 volée de 3), pour la
+        # même raison que le barème de poule : c'est un choix de l'organisateur, et le relire d'un
+        # défaut de code ferait changer son nombre de flèches le jour où le défaut change.
+        souffle["volees"] = big_shoot_off.volees
+        souffle["fleches"] = big_shoot_off.fleches_par_volee
+        # Les deux options ne s'écrivent **que si elles sont actives** : leur absence signifie le
+        # défaut, qui est aussi le régime de toute phase écrite avant qu'elles existent. Un `false`
+        # explicite ne dirait rien de plus et ferait diverger deux documents équivalents.
+        if big_shoot_off.cumul_des_manches:
+            souffle["cumul"] = True
+        if big_shoot_off.departage_les_sortants:
+            souffle["departage_sortants"] = True
+        config["big_shoot_off"] = souffle
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -440,6 +463,42 @@ def _lire_barrage_jusqu_au(config: Any) -> int | None:
     if not isinstance(tiebreak, dict) or tiebreak.get("nom") != "barrage":
         return None
     return int(tiebreak["jusqu_au"])
+
+
+def _lire_reglage_big_shoot_off(config: Any) -> ConfigurationBigShootOff | None:
+    """Le réglage d'un Big Shoot Off, lu **à la racine** du `config` (E05US028).
+
+    Même domicile et même régime d'absence que `_lire_reglage_poules` : racine plutôt que
+    `policies` (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non
+    réglé**, ce qui est licite — le type se choisit avant ses paramètres.
+
+    ⚠️ **On relit par la fabrique du domaine**, jamais en construisant à la main : une liste vide,
+    une case à zéro, un nombre de flèches nul sont des choses que le repository n'écrit jamais —
+    l'agrégat les refuse en amont. Les trouver ici signifie que la base a été altérée, et
+    `ConfigurationBigShootOffInvalide` remonte alors en « configuration illisible » (ADR-0007),
+    ce qui est exact. Le cas mérite d'autant plus une erreur qu'une liste altérée décrirait **qui
+    sort** : la tolérer ferait éliminer des archers sur une donnée corrompue.
+    """
+    souffle = config.get("big_shoot_off")
+    if not isinstance(souffle, dict):
+        return None
+    eliminations = souffle.get("eliminations")
+    if not isinstance(eliminations, list):
+        # Erreur **typée** plutôt que `None` : « pas de liste » se lirait « phase non réglée », et
+        # la composition du jour J inventerait un déroulé là où la base dit quelque chose
+        # d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    volees = souffle.get("volees")
+    fleches = souffle.get("fleches")
+    return ConfigurationBigShootOff(
+        eliminations=tuple(int(quota) for quota in eliminations),
+        # Repli sur le défaut du domaine seulement si la clé manque — ce qui ne peut venir que
+        # d'une ligne écrite à la main, l'écriture les posant toujours.
+        volees=1 if volees is None else int(volees),
+        fleches_par_volee=3 if fleches is None else int(fleches),
+        cumul_des_manches=bool(souffle.get("cumul", False)),
+        departage_les_sortants=bool(souffle.get("departage_sortants", False)),
+    )
 
 
 def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
@@ -555,6 +614,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.barrage_jusqu_au,
                         profondeur=etape.profondeur,
                         poules=etape.poules,
+                        big_shoot_off=etape.big_shoot_off,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -650,6 +710,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         barrage_jusqu_au=_lire_barrage_jusqu_au(brute),
         profondeur=_lire_profondeur(brute),
         poules=_lire_reglage_poules(brute),
+        big_shoot_off=_lire_reglage_big_shoot_off(brute),
     )
 
 

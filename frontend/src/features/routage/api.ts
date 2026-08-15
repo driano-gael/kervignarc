@@ -32,7 +32,24 @@ export interface ProchainDuel {
   alerte: string | null
 }
 
-export type IssueRoutage = 'prochain_duel' | 'termine' | 'repeche' | 'indisponible'
+export type IssueRoutage =
+  'prochain_duel' | 'prochaine_manche' | 'termine' | 'repeche' | 'indisponible'
+
+// Le prochain rendez-vous d'un finaliste de **Big Shoot Off** (E05US028) — jamais un duel : un Big
+// Shoot Off n'oppose personne, tous les finalistes sont sur la ligne et c'est le classement de la
+// manche qui élimine. `elimine` dit combien sortiront à l'issue de ce tour, ce qui compte davantage
+// pour le tireur que le numéro de la manche.
+//
+// ⚠️ `cible`/`position` sont **toujours `null` aujourd'hui** et `manque` le dit en clair : le
+// routage ne lit pas le plan du créneau pour cette phase (`DETTE-059`). On affiche le manque plutôt
+// que de laisser un blanc, qui se lirait comme une panne réseau (`P-3`).
+export interface ProchaineManche {
+  numero: number
+  elimine: number
+  cible: number | null
+  position: string | null
+  manque: string | null
+}
 
 // La phase qui **reprend** un repêché (E07US008). Elle n'est pas dans son tableau : un repêché en
 // sort, et c'est une phase avale qui le prélève. Pas de libellé tout fait côté serveur — le front
@@ -49,6 +66,8 @@ export interface RoutageArcher {
   prenom: string
   issue: IssueRoutage
   prochain: ProchainDuel | null
+  // **Exclusif de `prochain`** : un archer n'a jamais les deux, et son issue dit lequel lire.
+  prochaine_manche: ProchaineManche | null
   // `rang_final` = le rang **exact**, décerné par un match terminal. `rang_min`/`rang_max` = la
   // **fourchette acquise**, qui vaut aussi dans un tableau tronqué au podium : le battu d'un quart
   // est 5ᵉ-8ᵉ *ex æquo*, et aucun match n'a été joué pour les départager. Quand le rang exact

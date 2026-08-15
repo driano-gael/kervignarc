@@ -304,6 +304,7 @@ function FormulaireFormat() {
       sources: [],
       effectif: null,
       poules: null,
+      big_shoot_off: null,
       // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
       profondeur: null,
     }

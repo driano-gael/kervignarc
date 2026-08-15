@@ -1,7 +1,7 @@
 ---
 description: Revue de code d'une US par des agents dédiés en parallèle, puis correction par l'agent auteur (déclenché au « lance la PR »)
 argument-hint: "[ExxUSyyy optionnel — sinon déduit de la branche]"
-allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git diff:*), Bash(git log:*), Bash(git fetch:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ruff:*), Bash(mypy:*), Bash(pytest:*), Bash(pip-audit:*), Bash(npm run:*), Bash(npm audit:*), Read, Grep, Glob, Edit, Write, Agent
+allowed-tools: Bash(git status:*), Bash(git branch:*), Bash(git diff:*), Bash(git log:*), Bash(git fetch:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(ruff:*), Bash(mypy:*), Bash(pytest:*), Bash(pip-audit:*), Bash(npm run:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Read, Grep, Glob, Edit, Write, Agent
 ---
 
 # Revue d'US Kervignarc → correction → PR prête
@@ -29,9 +29,11 @@ US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<
 4. **Règle 12 — le format, ici ; le jugement, à un relecteur.** `git log --format='%h %s%n%b' origin/main..HEAD`. Tu vérifies toi-même le **factuel** : type/scope conventionnel, cohérence avec la branche, corps qui explique le quoi **et** le pourquoi, références présentes. Tu **ne juges pas** « décision structurante ⇒ ADR » : c'est la seule règle des seize dont l'objet est de rattraper ce que **tu** as escamoté, et te la confier la neutralise. Elle est à l'axe C2 (règle 12-ADR) ; passe-lui le log en périmètre. *(Preuve que ce n'est pas théorique : le commit `b47b25c` — refonte de cette procédure même — a été livré sans ADR, et c'est un relecteur tiers qui l'a rattrapé. ADR-0013 n'existerait pas autrement.)*
 5. **Passer la porte mécanique AVANT de dépenser une passe de revue.** Selon les fichiers touchés — commandes **identiques à celles de `.github/workflows/ci.yml`**, qui est l'autorité bloquante (mêmes options : une commande approchante n'est pas la même mesure) :
    - backend : `ruff check .` · `ruff format --check .` · `mypy .` · `pytest` · `pip-audit -r requirements.txt --strict`
-   - frontend : `npm ci` · `npm run lint` · `npm run format:check` · `npm run typecheck` · `npm run build` · `npm audit --audit-level=high`
+   - frontend : `npm ci` · `npm run lint` · `npm run format:check` · `npm run typecheck` · `npm test` · `npm run build` · `npm audit --audit-level=high`
 
    **Rouge ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe pas mypy fait relire du code condamné. La porte est un **sous-ensemble volontaire** de la CI : **une seule** étape est sciemment omise, le contrôle de synchro `requirements.txt`↔`pyproject.toml`. Toute **autre** divergence est un bug de cette procédure. La CI garde le dernier mot.
+
+   ⚠️ **Ouvre `.github/workflows/ci.yml` et compare, plutôt que de te fier à la liste ci-dessus.** Elle est recopiée à la main : elle décrit la CI **du jour où quelqu'un l'a écrite**, et une étape ajoutée à la CI n'y arrive pas toute seule. Le contrôle coûte un `grep` sur les `run:` du fichier ; l'omettre coûte une revue qui se croit complète. *(Cas réel, 15/08/2026 — E05US028 : `npm test` (`ci.yml:129`, 797 tests front) manquait à cette liste depuis sa rédaction. La règle « une seule omission volontaire » ci-dessus a bien joué son rôle de détecteur — mais seulement parce que l'agent a ouvert `ci.yml` de son propre chef pour vérifier une autre étape. Sans ce réflexe, la porte aurait été « verte » en ne lançant aucun test front.)*
 6. **Décider si la décharge s'applique** (voir ci-dessous) et noter le résultat : il est passé aux relecteurs.
 
 ### La décharge mécanique — et sa suspension

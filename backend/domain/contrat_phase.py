@@ -28,14 +28,23 @@ capacités, pas un moteur.
 6. *Combien de couloirs, et comment ?* — `plan_de_cibles` (`PlanDeCibles`).
 
 Deux capacités s'y ajoutent, qu'aucune des six ne recouvre mais que le code posait déjà :
-`oppose_des_tireurs` (le plancher d'inscrits d'E05US021) et `monte_les_oppositions` (« un service
+`oppose_des_tireurs` (le plancher d'inscrits d'E05US021) et `deroule_par_un_service` (« un service
 de production **exécute** ce type aujourd'hui »).
 
-⚠️ **`monte_les_oppositions` décrit le code du jour, pas l'intention.** C'est la capacité la plus
-facile à mentir : elle vaut `True` seulement si un service de production monte réellement les
-oppositions du type. `PLACEMENT` y vaut donc `False` — aucun service ne monte son tableau, ce que
-`phase.py` consignait déjà (`# DETTE-028`) pendant que `deroule._TYPES_DEROULES` affirmait le
-contraire. C'est l'une des deux divergences que ce module ferme.
+⚠️ **`deroule_par_un_service` décrit le code du jour, pas l'intention.** C'est la capacité la plus
+facile à mentir : elle vaut `True` seulement si un service de production fait réellement jouer ce
+type. `PLACEMENT` y vaut donc `False` — aucun service ne monte son tableau, ce que `phase.py`
+consignait déjà (`# DETTE-028`) pendant que `deroule._TYPES_DEROULES` affirmait le contraire. C'est
+l'une des deux divergences que ce module ferme.
+
+⚠️ **Elle s'appelait `monte_les_oppositions` jusqu'à E05US028**, et le renommage est le premier
+endroit où ce contrat a cédé — exactement là où [ADR-0083] §2 annonçait qu'il céderait. Le Big Shoot
+Off n'a **ni matchs ni groupes** : il fait tirer une volée collective. La mettre à `True` pour lui
+aurait été faux au sens de sa **propre définition**, et la laisser à `False` aurait fait mentir le
+signal d'écart de l'atelier sur un format désormais jouable. Aucune des deux réponses n'était juste,
+ce qui est la signature d'un nom trop étroit et non d'un cas particulier : la capacité a toujours
+répondu « un service exécute-t-il ce type ? », c'est son nom qui décrivait *comment*. Les tables
+dérivées ont suivi (`TYPES_MONTES` → `TYPES_DEROULES`).
 
 Domaine **pur** : aucun framework, aucune autre couche (règle 1).
 
@@ -177,11 +186,16 @@ class ContratDePhase:
     oppose_des_tireurs: bool = True
     """Un match y oppose **deux** tireurs — donc le plancher structurel est 2, pas 1 (E05US021)."""
 
-    monte_les_oppositions: bool = False
-    """Un service de **production** monte réellement les matchs/groupes de ce type, aujourd'hui.
+    deroule_par_un_service: bool = False
+    """Un service de **production** fait réellement jouer ce type, aujourd'hui.
 
     ⚠️ Se vérifie dans le code, jamais par l'intention. `PLACEMENT` vaut `False` parce qu'aucun
-    service ne monte son tableau, quand bien même son *décor* est un arbre de duels."""
+    service ne monte son tableau, quand bien même son *décor* est un arbre de duels.
+
+    ⚠️ **Le nom ne dit pas *comment*, et c'est le correctif d'E05US028** : `monte_les_oppositions`
+    supposait des matchs ou des groupes, que le Big Shoot Off n'a pas. Une capacité doit nommer la
+    **question** qu'elle tranche, pas la forme que prend la réponse pour les types déjà écrits —
+    sans quoi le premier format d'une autre forme la rend inrépondable."""
 
     classement_lisible: bool = False
     """Le moteur sait **lire** le classement de cette phase pour y prélever (E05US024).
@@ -190,13 +204,30 @@ class ContratDePhase:
     sans que rien ne sache le *lire*, et un prélèvement la visant restait inerte."""
 
     route_l_archer: bool = False
+    route_tout_le_plateau: bool = True
+    """Cette phase concerne-t-elle **tous** les archers du créneau, ou une population restreinte ?
+
+    ⚠️ **Capacité ajoutée à la revue d'E05US028**, sur un défaut constaté et non sur un pronostic.
+    `route_l_archer` répond à « sait-on dire où cet archer tire ensuite ? » ; elle ne dit rien de
+    *combien d'archers* la phase concerne. Tant que seule l'élimination directe routait, les deux
+    questions se confondaient — un tableau reçoit le plateau. Le Big Shoot Off les sépare : il route
+    **huit finalistes** sur cent vingt.
+
+    Ce que la confusion coûtait, en production : `ServiceRoutage._phase_de_tableau` dérive sa cible
+    de `TYPES_ROUTES` et, en résolution **implicite** (`phase_id=None`, le régime par défaut des
+    tablettes), prend la dernière phase routée du créneau. Dès que l'élimination directe passait à
+    `TERMINEE`, le Big Shoot Off devenait cette cible et les **112 non-finalistes** lisaient « Cet
+    archer ne fait pas partie de ce Big Shoot Off » à la place de leur rang final — définitivement,
+    puisque `tableaux[-1]` reste le Big Shoot Off une fois tout terminé. C'est le défaut que le
+    commentaire de `_phase_de_tableau` disait vouloir éviter, appliqué à l'envers.
+    """
     """Le routage sait dire où un archer de cette phase tire ensuite (`application/routage.py`)."""
 
 
 # Le **registre** : une ligne par type, et la seule source de vérité des tables dérivées.
 #
 # ⚠️ Chaque ligne se lit comme un constat sur le code du jour, pas comme une promesse. Le rappel
-# vaut surtout pour `monte_les_oppositions` : le mettre à `True` « puisque le moteur de domaine
+# vaut surtout pour `deroule_par_un_service` : le mettre à `True` « puisque le moteur de domaine
 # existe » reproduirait exactement `DETTE-028` — six moteurs livrés, aucun appelé.
 _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.QUALIFICATION: ContratDePhase(
@@ -209,7 +240,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.ELIMINATION_DIRECTE: ContratDePhase(
         decor=DecorDeSaisie.ARBRE_DE_DUELS,
         plan_de_cibles=PlanDeCibles.PAR_DUEL,
-        monte_les_oppositions=True,
+        deroule_par_un_service=True,
         classement_lisible=True,
         route_l_archer=True,
     ),
@@ -221,7 +252,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # **relevait le plancher d'inscrits** (E05US021) pour une phase que rien ne joue : le
         # « refus abusif le jour J » que cette US-là se donnait pour pire défaillance. Divergence
         # constatée et signalée par E06US006, tranchée ici (ADR-0083).
-        monte_les_oppositions=False,
+        deroule_par_un_service=False,
     ),
     TypePhase.ECHAUFFEMENT: ContratDePhase(
         decor=DecorDeSaisie.AUCUN,
@@ -237,7 +268,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.POULES: ContratDePhase(
         decor=DecorDeSaisie.RENCONTRES_EN_GROUPES,
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_POULE,
-        monte_les_oppositions=True,
+        deroule_par_un_service=True,
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
         # fois le code écrit. Ce qui l'autorise, module par module :
         # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
@@ -256,7 +287,27 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
+        # ⚠️ **Reste `AUCUN`, et c'est un manque assumé** (E05US028). Les finalistes tirent bien en
+        # parallèle, donc ils occupent des couloirs — mais aucun service ne les leur attribue : ce
+        # sont des inscrits du créneau, et leur couloir de qualification n'est pas relu par le
+        # moteur du format. Le routage le **nomme** au lieu de le taire (`DETTE-059`).
         plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ Les trois capacités basculent **en fin de tranche E05US028**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023 pour les poules. Ce qui les autorise, module par
+        # module :
+        # `application/big_shoot_off.py` rejoue la phase des volées validées et rend son état
+        # (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementBigShootOff` (`classement_lisible`), et
+        # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
+        # (`route_l_archer`).
+        deroule_par_un_service=True,
+        classement_lisible=True,
+        route_l_archer=True,
+        # ⚠️ **La seule phase du registre à population restreinte** : les finalistes, pas le
+        # plateau. C'est ce qui la retire de la résolution *implicite* du routage (revue
+        # d'E05US028) — elle reste routée, mais seulement quand on la désigne.
+        route_tout_le_plateau=False,
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
@@ -290,10 +341,15 @@ TYPES_EN_TABLEAU: frozenset[TypePhase] = frozenset(
 Répond à « sait-on **dessiner** ses tours ? », donc porte sur le *décor* et non sur l'existence
 d'un service : `placement` en fait partie sans être monté par personne."""
 
-TYPES_MONTES: frozenset[TypePhase] = frozenset(
-    type_phase for type_phase, contrat in _CONTRATS.items() if contrat.monte_les_oppositions
+TYPES_DEROULES: frozenset[TypePhase] = frozenset(
+    type_phase for type_phase, contrat in _CONTRATS.items() if contrat.deroule_par_un_service
 )
 """Les types qu'un service **exécute réellement** aujourd'hui (`deroule._TYPES_DEROULES`).
+
+⚠️ **Nommée `TYPES_MONTES` jusqu'à E05US028** : « monter » supposait des oppositions à monter, ce
+qu'un Big Shoot Off n'a pas. Le verbe « dérouler » est celui qu'emploie déjà tout le reste du code
+(`domain/deroule.py`, « le moteur ne sait pas encore dérouler ce type »), donc le renommage
+**supprime** un vocabulaire au lieu d'en ajouter un.
 
 Répond à « le moteur va-t-il seulement monter cette phase ? ». C'est cette table qui décide si le
 prélèvement d'une phase sera honoré, donc si son rang de départ **relève le plancher d'inscrits**
@@ -325,10 +381,21 @@ TYPES_ROUTES: frozenset[TypePhase] = frozenset(
 )
 """Les types dont le routage sait dire où l'archer tire ensuite (`application/routage.py`)."""
 
+TYPES_ROUTES_IMPLICITEMENT: frozenset[TypePhase] = frozenset(
+    type_phase
+    for type_phase, contrat in _CONTRATS.items()
+    if contrat.route_l_archer and contrat.route_tout_le_plateau
+)
+"""Les types qu'une tablette peut atteindre **sans les nommer** (`phase_id=None`).
+
+Sous-ensemble strict de `TYPES_ROUTES` : une phase à population restreinte reste routée, mais
+seulement quand on la désigne. Sans quoi elle capte le routage de tout le plateau — cf.
+`ContratDePhase.route_tout_le_plateau`."""
+
 TYPES_EN_TABLEAU_JOUE: frozenset[TypePhase] = frozenset(
     type_phase
     for type_phase, contrat in _CONTRATS.items()
-    if contrat.monte_les_oppositions and contrat.decor is DecorDeSaisie.ARBRE_DE_DUELS
+    if contrat.deroule_par_un_service and contrat.decor is DecorDeSaisie.ARBRE_DE_DUELS
 )
 """Les types dont un service monte **et** déroule l'arbre de duels — l'élimination directe, seule.
 
@@ -353,7 +420,7 @@ Les **poules** n'entrent donc pas au palmarès dans cette tranche. Ce n'est pas 
 limite de périmètre (le CA d'E05US023 ne le demande pas) ; l'y verser demanderait un `_resultat`
 propre au format, pas une entrée de plus dans une table."""
 
-TYPES_JOUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS | TYPES_MONTES
+TYPES_JOUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS | TYPES_DEROULES
 """Les types que la production sait **faire jouer**, montage ou classement (`ToursPhase.joue`).
 
 Union assumée : la qualification n'a aucune opposition à monter mais se joue de bout en bout,

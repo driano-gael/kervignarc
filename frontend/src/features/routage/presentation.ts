@@ -14,7 +14,7 @@
 //    hasard dedans. Le classement officiel, agrégé entre phases, reste E06US004.
 
 import { nommerType } from '../../shared/phases/catalogue'
-import type { ProchainDuel, RoutageArcher } from './api'
+import type { IssueRoutage, ProchainDuel, RoutageArcher } from './api'
 
 // « Cible 4 · couloir B », ou `null` si la cible n'est pas encore attribuée (tour ≥ 2, ou plan de
 // duels non matérialisé) — le panneau affiche alors `manque` à la place.
@@ -76,10 +76,17 @@ export function partitionner(archers: RoutageArcher[]): {
   attente: RoutageArcher[]
   sortis: RoutageArcher[]
 } {
-  const enLice = (l: RoutageArcher) => l.issue === 'prochain_duel'
+  // ⚠️ `prochaine_manche` compte ici (E05US028, correctif de revue) : sur une phase de Big Shoot
+  // Off, les finalistes **sont** le pas de tir. Ne tester que `prochain_duel` les rangeait sous
+  // « Sortis du tableau » sur l'écran projeté du gymnase, pendant toute la finale — le jumeau exact
+  // du bloquant déjà corrigé ici pour les demi-finalistes sans cible. Faute de plan de cibles pour
+  // cette phase (`DETTE-059`), ils tombent en **attente**, avec le manque nommé.
+  const enLice = (l: RoutageArcher) => l.issue === 'prochain_duel' || l.issue === 'prochaine_manche'
+  const cible = (l: RoutageArcher) =>
+    l.issue === 'prochaine_manche' ? l.prochaine_manche?.cible : l.prochain?.cible
   return {
-    poses: archers.filter((l) => enLice(l) && l.prochain?.cible != null),
-    attente: archers.filter((l) => enLice(l) && l.prochain?.cible == null),
+    poses: archers.filter((l) => enLice(l) && cible(l) != null),
+    attente: archers.filter((l) => enLice(l) && cible(l) == null),
     // `indisponible` atterrit ici. Injoignable sur ce canal — la vue collective n'itère que sur les
     // occupants du tableau, donc `_router` ne peut pas rendre « non retenu » — mais si cela changeait,
     // « sorti » reste la lecture la moins fausse.
@@ -132,6 +139,13 @@ export function titre(
   // Un repêché **avant** un éliminé, et jamais confondu avec lui : il n'a pas de rang et n'a pas
   // fini. Lui afficher « Éliminé » le ferait rentrer chez lui avant son duel.
   if (archer.issue === 'repeche') return repechage(archer, nommer)
+  // Le rendez-vous d'un finaliste de Big Shoot Off (E05US028). Sans cette branche, l'issue tombait
+  // dans le repli et les huit finalistes lisaient « Destination inconnue » sur les quatre canaux —
+  // le CA « le routage sait où l'archer tire ensuite » n'était pas délivré côté utilisateur, alors
+  // que trois tests backend et `route_l_archer=True` affirmaient le contraire.
+  if (archer.issue === 'prochaine_manche' && archer.prochaine_manche !== null) {
+    return `Manche ${archer.prochaine_manche.numero}`
+  }
   if (archer.issue === 'termine') {
     const place = rang(archer)
     if (place !== null) return place
@@ -149,8 +163,25 @@ export function alerte(archer: RoutageArcher): string | null {
 // L'archer a-t-il encore quelque chose à jouer ? Un repêché **oui**, même sans duel affiché : il est
 // sorti de ce tableau, pas de la compétition. Sert aux surfaces qui distinguent « en lice » de
 // « fini » (couleur, tri) — la distinction est métier, pas décorative, d'où sa place ici.
+// ⚠️ **Le garde-fou d'exhaustivité de ce module** (correctif de revue E05US028). Un `Record` indexé
+// par `IssueRoutage` fait **échouer la compilation** quand le serveur publie une issue de plus et
+// qu'on oublie de la traiter ici. Sans lui, `tsc` était aveugle par construction : les issues
+// arrivent par `fetchJson<Routage>`, donc castées, et une chaîne de `===` se contente d'un repli
+// silencieux. C'est exactement ce qui s'est produit pour `prochaine_manche`, livrée côté serveur et
+// jamais lue côté front — les finalistes étaient rangés avec les sortis.
+const EN_LICE: Record<IssueRoutage, boolean> = {
+  prochain_duel: true,
+  // Un finaliste de Big Shoot Off a une manche devant lui : le ranger avec les sortis le ferait
+  // rentrer chez lui au milieu de la finale (E05US028).
+  prochaine_manche: true,
+  // Un repêché est sorti de **ce tableau**, pas de la compétition (E07US008).
+  repeche: true,
+  termine: false,
+  indisponible: false,
+}
+
 export function encoreEnLice(archer: RoutageArcher): boolean {
-  return archer.issue === 'prochain_duel' || archer.issue === 'repeche'
+  return EN_LICE[archer.issue]
 }
 
 // La ligne secondaire : le contexte, ou **l'attente nommée** quand l'information n'existe pas encore.
@@ -169,6 +200,15 @@ export function detail(archer: RoutageArcher): string | null {
   // sans quoi « Repêché → phase 3 » ne se rattache à rien de ce qu'il vient de vivre. Le `motif`
   // reprend la main quand il n'y a pas de destination — c'est alors la seule chose à dire.
   if (archer.issue === 'repeche') return archer.motif ?? archer.tour_sortie
+  if (archer.issue === 'prochaine_manche' && archer.prochaine_manche !== null) {
+    // Combien sortent à ce tour — l'information qui compte pour le tireur, davantage que le numéro
+    // de la manche déjà porté par le titre. `manque` reprend la main pour dire que la cible n'est
+    // pas connue (`DETTE-059`), au lieu de laisser un blanc qui se lirait comme une panne.
+    const sortants = archer.prochaine_manche.elimine
+    const combien = `${sortants} archer${sortants > 1 ? 's' : ''} ${sortants > 1 ? 'sortent' : 'sort'}`
+    const manque = archer.prochaine_manche.manque
+    return manque !== null ? `${combien} · ${manque}` : combien
+  }
   if (archer.issue === 'termine' && archer.motif === null && rang(archer) !== null) {
     return archer.tour_sortie
   }

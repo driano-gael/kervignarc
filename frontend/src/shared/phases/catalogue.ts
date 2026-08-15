@@ -114,16 +114,26 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // classement », §10.1), donc l'annoncer serait un faux positif — et un faux positif répété apprend
 // à ignorer le signal.
 //
-// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout. Le CA
-// l'exige explicitement : le signal doit cesser de viser les poules **et continuer de viser** les
-// quatre autres, sans quoi il mentirait pour ceux qui restent.
-export const TYPES_SIGNALES_EN_ECART: TypePhase[] = [
-  'placement',
-  'barrage',
-  'big_shoot_off',
-  'suisse',
-  'colline',
-]
+// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout, et le **Big
+// Shoot Off en E05US028**. Le CA l'exige explicitement à chaque fois : le signal doit cesser de
+// viser le format que l'US rend jouable **et continuer de viser** les autres, sans quoi il
+// mentirait pour ceux qui restent.
+export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'suisse', 'colline']
+
+// Les types que **le moteur** sait dérouler mais que le **bot de simulation** ne sait pas jouer.
+//
+// ⚠️ **Distinction ajoutée à la revue d'E05US028**, sur un message devenu faux. Côté serveur,
+// `_TYPES_DEROULABLES = TYPES_JOUES - {POULES, BIG_SHOOT_OFF}` : la simulation exclut ces deux
+// formats, et `LignePhaseSimulee` affichait « le moteur ne sait pas encore dérouler ce type de
+// phase ». C'était vrai avant E05US023 et E05US028 ; ce ne l'est plus. Le lot d'origine a retiré le
+// signal *honnête* (le bandeau de réserve à la composition) et laissé celui-ci — le seul des deux
+// qui trompe, sur l'écran que l'organisateur regarde la veille du tournoi.
+//
+// La distinction que le serveur documente longuement, le texte affiché ne la faisait pas : ce n'est
+// pas le **moteur** qui ne sait pas, c'est le **bot**. Écrit en positif, contrairement à la liste
+// ci-dessus, parce qu'il énumère une capacité acquise : un oubli d'ajout ici rend le vieux message
+// (« le moteur ne sait pas »), donc pessimiste — jamais un faux « tout va bien ».
+export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set(['poules', 'big_shoot_off'])
 
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //

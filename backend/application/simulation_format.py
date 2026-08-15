@@ -68,7 +68,7 @@ from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
-_TYPES_DEROULABLES = TYPES_JOUES - {TypePhase.POULES}
+_TYPES_DEROULABLES = TYPES_JOUES - {TypePhase.POULES, TypePhase.BIG_SHOOT_OFF}
 """Les types que **le bot de simulation** sait réellement jouer aujourd'hui.
 
 ⚠️ **Deux questions distinctes, et les confondre a fait mentir cet écran** (correctif de revue).
@@ -86,7 +86,13 @@ table écrite à la main par une table dérivée n'est sûr que si la capacité 
 
 Le retrait est explicite plutôt que dérivé parce qu'il n'existe pas encore de capacité « le bot
 sait simuler ce type » au registre de contrat. La poser serait le remède propre — elle vaut une US
-dédiée, pas un cavalier dans un correctif de revue (`# DETTE-028`)."""
+dédiée, pas un cavalier dans un correctif de revue (`# DETTE-028`).
+
+⚠️ **Le Big Shoot Off rejoint la liste en E05US028**, pour exactement la même raison et sans qu'il
+ait fallu le redécouvrir : `fabriquer_harnais_simulation` ne construit aucun `ServiceBigShootOff`,
+et `application/simulation.py` ne déroule que l'élimination directe. C'est la **2ᵉ** fois que le
+retrait est nécessaire, ce qui confirme que la capacité manquante est réelle — mais deux n'est pas
+trois, et la poser reste une US."""
 
 GRAINE_DEFAUT = 20260801
 """Graine par défaut : un même format simulé deux fois rend le **même** déroulé (règle 9)."""

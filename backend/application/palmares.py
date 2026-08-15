@@ -12,19 +12,27 @@ palmarès annoncerait un vainqueur que l'écran de duels ne montre pas. C'est la
 `ServiceListesImpression` s'accorde sur `ServicePaiements.recap_par_club` — on duplique une
 chaîne de ports, jamais une règle métier.
 
-**Portée : qualification + phases à tableau.** Les autres types classants (`poules`, `suisse`,
-`colline`, `big_shoot_off`) ont un moteur de domaine (E05US015) mais **aucun service ne les
-déroule** (`# DETTE-028`) : il n'existe littéralement rien à lire. Ils entreront au palmarès sans
-toucher au domaine — `calculer_palmares` ne connaît que des positions acquises.
+**Portée : qualification + phases à tableau + Big Shoot Off.** Les deux premiers passent par la
+reconstruction d'un arbre ; le troisième **non**, et c'est tout l'intérêt du cas (E05US028) : ses
+rangs sont exacts par construction, donc il rend directement des `PositionPhase` fermées. C'est ce
+qu'ADR-0083 appelait « un `_resultat` propre au format, pas une entrée de plus dans une table ».
+
+Restent dehors les **poules**, le **système suisse** et la **colline**. Pour les deux derniers,
+aucun service ne les déroule encore (`# DETTE-028`) : il n'existe littéralement rien à lire. Pour
+les poules, le service existe depuis E05US023 mais leur classement n'est pas un ordre de sortie —
+l'y verser demande de décider ce qu'une poule *acquiert* au palmarès, ce que le CA n'a pas posé.
 """
 
 from __future__ import annotations
 
 import logging
 
+from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import (
     PhaseIntrouvable,
+    PhasePasReglee,
+    PhasePasUnBigShootOff,
     PrelevementEnAttente,
     TournoiIntrouvable,
     TournoiSansDepart,
@@ -82,6 +90,7 @@ class ServicePalmares:
         generateur: GenerateurPalmares,
         departs: DepartRepository,
         aggregation: Aggregation | None = None,
+        big_shoot_off: LecteurEtatBigShootOff | None = None,
     ) -> None:
         self._tournois = tournois
         # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
@@ -103,6 +112,15 @@ class ServicePalmares:
         self._aggregation = (
             aggregation if aggregation is not None else AggregationParQualification()
         )
+        # E05US028 : le Big Shoot Off entre au palmarès par son **propre** résultat, pas par la
+        # reconstruction d'un arbre qu'il n'a pas.
+        #
+        # ⚠️ **Au constructeur, et non par un `brancher_…` tardif.** Le branchement tardif de
+        # `ServiceSaisieDuels.brancher_poules` existe pour casser un **cycle** ; il n'y en a pas
+        # ici. L'imiter sans sa raison aurait échangé un contrôle du compilateur contre un test de
+        # câblage, pour rien. `None` reste licite : c'est le régime de tout montage sans Big Shoot
+        # Off (harnais de simulation, tests de tableau), et il se lit dans la signature.
+        self._big_shoot_off = big_shoot_off
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -130,16 +148,25 @@ class ServicePalmares:
         # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
         # répétant d'un départ à l'autre.
         phases = self._phases.par_depart(premier)
-        resultats = tuple(
-            resultat
-            for phase in phases
-            if phase.type in _TYPES_RECONSTRUCTIBLES
-            if (resultat := self._resultat(tournoi_id, phase)) is not None
-        ) + tuple(
-            resultat
-            for phase in phases
-            if phase.type is TypePhase.QUALIFICATION
-            if (resultat := self._resultat_qualification(tournoi_id, phase)) is not None
+        resultats = (
+            tuple(
+                resultat
+                for phase in phases
+                if phase.type in _TYPES_RECONSTRUCTIBLES
+                if (resultat := self._resultat(tournoi_id, phase)) is not None
+            )
+            + tuple(
+                resultat
+                for phase in phases
+                if phase.type is TypePhase.QUALIFICATION
+                if (resultat := self._resultat_qualification(tournoi_id, phase)) is not None
+            )
+            + tuple(
+                resultat
+                for phase in phases
+                if phase.type is TypePhase.BIG_SHOOT_OFF
+                if (resultat := self._resultat_big_shoot_off(tournoi_id, phase)) is not None
+            )
         )
         palmares = calculer_palmares(qualification, resultats, self._aggregation)
         return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
@@ -175,6 +202,85 @@ class ServicePalmares:
         premier = departs[0]
         assert premier.id is not None, "Un départ relu du dépôt porte toujours son identifiant."
         return premier.id
+
+    def _resultat_big_shoot_off(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
+        """Ce qu'un Big Shoot Off a décidé — `None` s'il n'a **rien** décidé (encore) (E05US028).
+
+        ⚠️ **Un `_resultat` propre au format, et non une entrée de plus dans
+        `TYPES_RECONSTRUCTIBLES`.** ADR-0083 l'annonçait pour les poules : cette table est l'alias
+        de `TYPES_EN_TABLEAU_JOUE`, donc « rejouer l'arbre » — et un Big Shoot Off n'a pas d'arbre.
+        Y ajouter le type aurait envoyé `ServiceSaisieDuels.reconstruire` sur une phase sans
+        tableau. Ce qu'il faut lui demander est autre chose, et c'est plus simple : ses rangs sont
+        **exacts** par construction, donc `rang_min == rang_max`.
+
+        Trois écartements, et chacun a sa raison :
+
+        1. **une phase que le lecteur ne sait pas résoudre** (`None`) — même parti que `_resultat` :
+           une phase n'éteint pas un écran public, elle n'y ajoute rien ;
+        2. **une phase où personne n'est encore sorti** : tous les finalistes partagent le rang 1
+           tant que la première manche n'est pas jouée, ce qui leur donnerait à tous la première
+           place du tournoi pendant qu'ils tirent. Même défaut que celui qu'`_resultat` corrige
+           pour les tableaux (« 1ᵉʳ-120ᵉ · à départager » affiché toute la qualification), et même
+           remède : on n'entre au palmarès qu'une fois qu'il y a quelque chose à dire ;
+        3. **les rescapés d'une phase encore en cours**, marqués `en_lice` : leur rang 1 partagé
+           n'est pas un titre, c'est une absence de verdict, et `LignePalmares.decerne` doit
+           pouvoir les distinguer d'un vainqueur — sinon cinq archers reçoivent l'or.
+
+        ⚠️ **`en_lice` se ferme quand la phase est terminée**, et l'oubli coûtait le podium. Le
+        moteur garde les rescapés dans `en_lice` même une fois `est_termine` — c'est sa lice, pas
+        un pronostic. Mais `LignePalmares.en_lice` répond à une autre question : « cet archer a-t-il
+        encore un match devant lui ? ». Reporter le champ tel quel laissait le **vainqueur** en
+        lice, donc `decerne=False`, donc **pas d'or** sur un BSO pourtant fini. Trouvé par le
+        test de palmarès, pas par relecture : les deux champs portent le même nom et disent deux
+        choses différentes.
+
+        Aucune étiquette `origine=QUALIFICATION` ici, à la différence d'`_resultat_qualification` :
+        les rangs d'un Big Shoot Off sont **gagnés au tir**, manche après manche. Le podium qu'ils
+        décernent est légitime, et c'est précisément ce que ce format sert à produire.
+        """
+        if phase.id is None or self._big_shoot_off is None:
+            return None
+        try:
+            etat = self._big_shoot_off.etat(tournoi_id, phase.id)
+        except (
+            PhaseIntrouvable,
+            PrelevementEnAttente,
+            PhasePasReglee,
+            PhasePasUnBigShootOff,
+        ) as exc:
+            # Mêmes absorptions que `_resultat`, et **journalisées** pour la même raison : le
+            # palmarès est public et projeté en salle, donc une phase de la séquence ne doit pas
+            # éteindre l'écran — mais une phase absente du palmarès le jour J serait indébogable.
+            #
+            # ⚠️ **La liste est nominative, et ce n'est pas un détail de style** (revue d'E05US028).
+            # Un premier jet écrivait `(PhaseIntrouvable, PrelevementEnAttente, ApplicationError)` :
+            # les deux premiers termes étant filles du troisième, la clause attrapait **toute**
+            # erreur applicative, présente et future. Elle ré-avalait notamment `DerouleCyclique`,
+            # que `_resultat` exclut **délibérément** (« une base incohérente doit rester visible »)
+            # et que cette US venait justement de faire lever sur ce chemin — la garde était donc
+            # écrite d'un côté du diff et neutralisée de l'autre. `ruff B014` ne voit pas ce
+            # doublon : il ne résout pas les relations de sous-classe.
+            _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
+            _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
+            return None
+        if not any(tireur.rang is not None for tireur in etat.tireurs):
+            return None
+        positions = tuple(
+            PositionPhase(
+                archer_id=tireur.archer_id,
+                rang_min=tireur.rang if tireur.rang is not None else 1,
+                rang_max=tireur.rang if tireur.rang is not None else 1,
+                en_lice=tireur.en_lice and not etat.termine,
+            )
+            for tireur in etat.tireurs
+        )
+        return ResultatPhase(
+            ordre=phase.ordre,
+            positions=positions,
+            rang_premier=tranche(
+                phase, self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)
+            ),
+        )
 
     def _resultat_qualification(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une **seconde** qualification a classé — `None` si elle n'a rien à dire encore.

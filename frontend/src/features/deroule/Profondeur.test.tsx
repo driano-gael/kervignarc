@@ -34,6 +34,7 @@ function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'eliminati
         bareme: null,
         validation: null,
         poules: null,
+        big_shoot_off: null,
         sources: [],
         effectif: null,
         profondeur: null,

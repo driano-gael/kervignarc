@@ -272,17 +272,37 @@ document en est la source : rien d'autre ne les décrit. Ne pas les présenter c
 quand le commanditaire a fourni leurs règles.)*
 
 **Big Shoot Off** — `❌ hors FFTA` · règle donnée le **31/07/2026** *(ferme la question Q9 du cahier
-des charges, bloquante depuis l'origine)*.
+des charges, bloquante depuis l'origine)*, **élargie le 14/08/2026** *(cadrage d'E05US028)*.
 > Une phase **finale** qui reçoit **N archers**. Ils tirent **en parallèle**, par tours ; à chaque
-> tour chacun tire **V volées de F flèches**, et **le plus faible score est éliminé** — jusqu'à
-> **K restants**.
+> tour chacun tire **V volées de F flèches**, et **les plus faibles sont éliminés** — l'organisateur
+> dit, **tour par tour, combien sortent**.
 
 Ce n'est **pas un barème de duel** mais un **type de phase à N participants** : le « Big » désigne le
-nombre d'archers, pas le nombre de flèches. Quatre points restés à préciser, tranchés le
-**31/07/2026** et **à confirmer à l'usage** : le cumul entre manches est un **paramètre** (par
-défaut on repart de zéro, donc on compare le score **du tour**) ; une égalité au plus faible se
-départage au **barrage** (§8.2) ; les éliminés prennent les rangs dans l'**ordre inverse** de leur
-sortie ; **K = 1** par défaut, et si K > 1 les restants **partagent** le rang.
+nombre d'archers, pas le nombre de flèches.
+
+**Ce que l'élargissement du 14/08/2026 a changé.** La règle du 31/07 éliminait **un** archer par
+tour et s'arrêtait à **K restants**. Le commanditaire a demandé de pouvoir en sortir **plusieurs**,
+et de le dire **tour par tour** — le rythme d'une finale spectacle (12 → 8 → 4 → 2). Conséquence
+directe : **K n'est plus un paramètre**, c'est ce que les éliminations n'ont pas retiré.
+
+⚠️ **Le nombre de sortants est une liste écrite par l'organisateur, pas une progression.** Une case
+par manche. Rien n'impose qu'elle décroisse ni qu'elle soit régulière : `2, 2, 2, 2`, `4, 2, 1` et
+`1, 5` sont également valides.
+
+Les points tranchés, **à confirmer à l'usage** :
+
+| Point | Décision | Date |
+|---|---|---|
+| Cumul entre manches | **paramètre** ; par défaut on repart de zéro, donc on compare le score **du tour** | 31/07/2026 |
+| Rangs des éliminés | **ordre inverse** de leur sortie (le premier sorti prend le dernier rang) | 31/07/2026 |
+| Restants entre eux | ils **partagent** le rang 1 — la règle ne donne aucun critère pour les départager | 31/07/2026 |
+| Nombre de sortants | **une liste, une case par manche** ; K en est déduit et cesse d'être un réglage | 14/08/2026 |
+| Liste inadaptée à l'effectif | **on joue tant que la manche est possible** — une liste ne se refuse jamais, elle s'écourte à la première manche qui viderait le pas de tir | 14/08/2026 |
+| Sortants d'une même manche | **classés entre eux au score de la manche** ; à égalité ils partagent leur rang | 14/08/2026 |
+| **Quel** rang partagent les ex æquo | convention **« 1224 »** : chacun prend `1 + le nombre d'archers strictement meilleurs`, et le ou les rangs sautés restent vacants **après** le groupe. Sur 12 archers, 4 sortants à 18/21/21/24 → rangs 12, 10, 10, 9 (le 11 est vacant) | 15/08/2026 |
+| Égalité **à la barre** (la frontière sortants / rescapés) | **barrage** (§8.2), toujours — elle décide qui continue. Seuls les ex æquo de la frontière tirent | 14/08/2026 |
+| Égalité **entre sortants** (déjà tous éliminés) | **paramètre** ; par défaut on ne fait pas tirer, l'égalité ne décidant que d'un numéro de rang | 14/08/2026 |
+| Liste qui ne converge pas vers **un** rescapé | **refus à la composition**, et là seulement : le refus vit là où l'effectif est connu (une phase posée sur un créneau), jamais sur le format de bibliothèque — `(4, 2, 1)` laisse 5 rescapés sur 12 archers et exactement 1 sur 8, c'est donc une propriété du couple (liste, effectif) | 15/08/2026 |
 
 **Poules** — `❌ hors FFTA` (en salle 18 m) · règle donnée le **31/07/2026**.
 > **Principe** — les archers sont regroupés en poules et se rencontrent dans leur groupe.

@@ -4,6 +4,7 @@
 import { fetchJson } from '../../shared/api/client'
 import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 import type { ReglagePoules } from '../../shared/phases/poules'
+import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
 import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
@@ -54,6 +55,9 @@ export interface EtapeDeroule {
   // Le réglage d'une phase de **poules** (E05US023, ADR-0083). `null` = non réglée, ce qui est
   // licite : le type se choisit avant ses paramètres. C'est la composition du jour J qui l'exigera.
   poules: ReglagePoules | null
+  // Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
+  // `null` = non réglé, ce qui est licite : le type se choisit avant ses paramètres.
+  big_shoot_off: ReglageBigShootOff | null
 }
 
 // La **phase** : l'avancement de cette étape dans un créneau. Elle porte la définition **assemblée**
@@ -80,6 +84,8 @@ export interface ConfigPhase {
   profondeur?: Profondeur | null
   // Même règle d'édition totale : omis, le réglage de poules est **effacé** côté serveur.
   poules?: ReglagePoules | null
+  // Même règle d'édition totale : omis, le réglage du Big Shoot Off est **effacé** côté serveur.
+  big_shoot_off?: ReglageBigShootOff | null
 }
 
 // --- Composition : le déroulé du tournoi (atelier) ----------------------------------------------
