@@ -112,6 +112,22 @@ le cas dont `CLAUDE.md` avertit, `ADR-0028` promettant une classe `Equipe` qui n
 de table de relations tous les trois ou quatre ADR. Une casse de parseur à chaque fois qu'un
 fichier lu change de forme.
 
+**Le coût le moins évident : deux branches parallèles périment l'atlas sans se toucher.** Deux US
+menées de front peuvent n'avoir **aucun conflit git** — fichiers distincts, régions disjointes — et
+laisser malgré tout `main` avec des données périmées : il suffit que l'une ajoute un ADR et que
+l'autre ait généré ses cartes avant. La seconde fusion rend alors le job de l'atlas **rouge sur
+`main`**, avec un message qui dit quoi faire (`cd backend && python -m atlas`).
+
+*Constaté dès la première livraison* : `E00US018` et la branche du système suisse fusionnaient sans
+un seul conflit, tout en se périmant mutuellement par ADR-0084 interposé.
+
+C'est la contrepartie assumée du généré committé, et elle se traite par une **règle de merge**, pas
+par du code : **la PR qui fusionne en second régénère l'atlas avant son merge**. Un commit d'une
+ligne, dans la branche, avant de merger. On ne cherche pas à automatiser : régénérer à la fusion
+demanderait d'écrire dans un dépôt depuis la CI, ce qui coûte bien plus cher que le geste qu'on
+évite. C'est le même compromis, et le même geste, que le contrôle de synchronisation
+`requirements.txt` ↔ `pyproject.toml` déjà en place.
+
 **Ce que ça ne fera jamais.** Dire si une règle est *encore d'actualité* — indécidable
 mécaniquement. L'atlas affiche des **signaux à vérifier**, jamais un verdict. Et le contrôle de
 portage vérifie qu'un fichier **existe**, pas qu'il **fait** ce que l'ADR promet : c'est un
