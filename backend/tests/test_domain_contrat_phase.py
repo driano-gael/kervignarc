@@ -164,6 +164,9 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
         # E05US028 : `ServiceBigShootOff.classement_de_phase` rend le classement des rangs
         # décernés, lu par le port `LecteurClassementDePhase`.
         TypePhase.BIG_SHOOT_OFF,
+        # E05US026 : `ServiceSuisse.classement_de_phase` rend le sien par le **même** port — c'est
+        # la 3ᵉ occurrence qui a justifié de fondre les ports jumeaux (ADR-0084).
+        TypePhase.SUISSE,
     } == TYPES_CLASSANTS_LUS
 
 
@@ -207,7 +210,7 @@ def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
 
 @pytest.mark.parametrize(
     "type_sans_service",
-    [TypePhase.SUISSE, TypePhase.COLLINE, TypePhase.BARRAGE],
+    [TypePhase.COLLINE, TypePhase.BARRAGE],
 )
 def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: TypePhase) -> None:
     """`DETTE-028` **rétrécit sans se refermer** — et le registre doit le dire.
@@ -219,7 +222,12 @@ def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: Type
 
     Ce test **change de camp** à chacune des US `E05US026` à `E05US028`, une ligne à la fois. Le
     **Big Shoot Off en est sorti le 14/08/2026** (E05US028) : `ServiceBigShootOff` le déroule, son
-    classement est lu par une phase avale, et le routage sait dire quelle manche vient.
+    classement est lu par une phase avale, et le routage sait dire quelle manche vient. Le
+    **système suisse en est sorti le 15/08/2026** (E05US026) : `ServiceSuisse` rejoue ses rondes des
+    duels validés et `classement_de_suisse` rend son classement de phase.
+
+    Il ne reste donc que la **colline** (`E05US027`, qui refermera la ligne) et le **barrage**, dont
+    le cas est différent et permanent : c'est un départage, pas un format qu'on déroule.
     """
     contrat = contrat_de(type_sans_service)
 

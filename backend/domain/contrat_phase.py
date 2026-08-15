@@ -311,7 +311,28 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
+        # ⚠️ **Reste `AUCUN`, et c'est un manque assumé** (E05US026, `DETTE-063`). Une ronde
+        # apparie tout le plateau et **ré-apparie à chaque ronde** : personne n'a de couloir
+        # attitré, donc « archer → couloir » serait une information *fausse* — exactement la raison
+        # pour laquelle les poules persistent un bloc et non un archer (ADR-0083 §3). Le mécanisme
+        # existe ; ce qui manque est le service qui le pose pour ce type-ci.
         plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ Les deux capacités basculent **en fin de tranche E05US026**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023 et E05US028. Ce qui les autorise, module par
+        # module : `application/suisse.py` rejoue la phase des duels validés, ronde après ronde, et
+        # rend son état (`deroule_par_un_service`) ; `ServiceSuisse.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementDePhase`, via `domain/classement_de_suisse.py` (`classement_lisible`).
+        #
+        # ⚠️ L'effet de `classement_lisible` est **mesurable** : elle fait réclamer le plancher
+        # d'inscrits (E05US021) pour un prélèvement visant un suisse. Elle n'est légitime que parce
+        # que le prélèvement est réellement honoré — un `True` posé par anticipation aurait exigé
+        # des inscrits pour une source que rien n'honore.
+        deroule_par_un_service=True,
+        classement_lisible=True,
+        # ⚠️ **`route_l_archer` reste `False`** : `application/routage.py` ne sait pas encore dire à
+        # un participant de ronde où il tire ensuite. Capacité au périmètre de l'US (arbitrage du
+        # 15/08/2026) mais pas encore écrite — la ligne suivra le code, jamais l'intention.
     ),
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,

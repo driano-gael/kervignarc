@@ -117,6 +117,7 @@ from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
+from application.suisse import ServiceSuisse
 from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
@@ -778,6 +779,22 @@ def create_app(
     app.state.service_saisie_duels.brancher_lecteur(
         TypePhase.BIG_SHOOT_OFF, classements_de_big_shoot_off
     )
+
+    # Système suisse (E05US026) : le moteur `domain/suisse.py` reçoit enfin son consommateur de
+    # production (`DETTE-028`, volet suisse). Comme les rencontres de poule, une rencontre de ronde
+    # **est** un duel ordinaire : elle vit dans la table `duel`, sans table propre ni migration
+    # (ADR-0083 §7).
+    app.state.service_suisse = ServiceSuisse(
+        tournoi_repository,
+        phase_repository,
+        duel_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # Troisième branchement tardif — et le premier qui ne coûte **que** cette ligne. C'est la mesure
+    # concrète d'[ADR-0084] : ni port, ni slot, ni méthode `brancher_<format>` à écrire.
+    classements_de_suisse: LecteurClassementDePhase = app.state.service_suisse
+    app.state.service_saisie_duels.brancher_lecteur(TypePhase.SUISSE, classements_de_suisse)
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
