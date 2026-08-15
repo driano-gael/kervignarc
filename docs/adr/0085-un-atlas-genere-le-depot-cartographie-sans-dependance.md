@@ -142,7 +142,7 @@ chiffre que le même audit relève — le rayon d'impact d'une US passé de 6 à
 **Dépendances : aucune.** Le générateur est en stdlib pure. C'est vérifié par construction : son
 job de CI tourne **sans `pip install`**.
 
-**Dette ouverte :** [DETTE-063](../dette.md) — le JavaScript du site n'est ni typé ni linté,
+**Dette ouverte :** [DETTE-065](../dette.md) — le JavaScript du site n'est ni typé ni linté,
 `eslint` et `prettier` ne voyant que `frontend/`.
 
 ## Porté dans le code par

@@ -18,7 +18,7 @@ vigueur** puis l'**histoire datée** de chaque règle, et qui calcule ce que le 
 82 ADR sur 83 portent le statut « Accepté », un seul est marqué « Remplacé », alors que **19** sont
 amendés par une décision plus récente. Il confronte aussi les 234 symboles promis par les sections
 « Porté dans le code par » au dépôt réel. Généré depuis les sources versionnées, sans aucune
-dépendance, vérifié en CI. ADR-0085 ; ouvre `DETTE-063`. Quatre tranches restent.)*
+dépendance, vérifié en CI. ADR-0085 ; ouvre `DETTE-065`. Quatre tranches restent.)*
 
 Précédente : `E05US028`
 *(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
@@ -1043,7 +1043,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > [ADR-0085](../docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md).
 > Livrée le 15/08 : le règlement en vigueur, l'histoire datée de chaque règle, les 83 décisions avec
 > **ce qui les a amendées depuis**, et la confrontation de ce que l'écrit promet à ce que le dépôt
-> contient. Ouvre `DETTE-063`.
+> contient. Ouvre `DETTE-065`.
 
 | US | Titre | Jalon | État |
 |---|---|---|---|

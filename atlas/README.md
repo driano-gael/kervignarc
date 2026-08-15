@@ -42,7 +42,7 @@ portage vérifie qu'un fichier **existe**, pas qu'il **fait** ce que l'ADR prome
 
 ## Vérifier le rendu après une modification
 
-Le site n'a ni build, ni typage, ni test de rendu (`DETTE-063`). Ce qui est vérifié
+Le site n'a ni build, ni typage, ni test de rendu (`DETTE-065`). Ce qui est vérifié
 mécaniquement — absence de `fetch()`, de module ES, de ressource externe, présence du `viewport`,
 tableaux dans un conteneur défilant — l'est par `backend/tests/test_atlas_site.py`. Le reste se
 regarde à l'œil :
