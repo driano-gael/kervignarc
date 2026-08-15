@@ -97,7 +97,7 @@ problème vient d'un paquet qu'on ne déclare pas soi-même.
 | `@emnapi/core` | `1.11.1` | `npm ci` échouait en CI sur « Missing @emnapi/core/runtime » — un lockfile valide pour `npm install` peut ne pas l'être pour `npm ci`, qui est plus strict. Dépendance optionnelle de binaires par plateforme (rollup/oxide). |
 | `@emnapi/runtime` | `1.11.1` | idem. |
 | `brace-expansion` | `5.0.9` | Advisory **GHSA-rgw5-rvv9-x895** (DoS, sévérité **high**) couvrant `4.0.0 – 5.0.8`. Tiré par `eslint` → `minimatch`. **Dev only** : rien n'en part dans le bundle du jour J. |
-| `nanoid` | `^3.3.17` | Advisory **GHSA-2v37-7h3g-55p8** (boucle infinie si `size` vaut zéro, sévérité **high**) couvrant `< 3.3.17`. Tiré par `vite` → `postcss`. **Dev only** : `postcss` ne tourne qu'au *build*, rien n'en part dans le bundle du jour J — et le défaut suppose un générateur personnalisé, que nous n'écrivons pas. Épinglé quand même : `npm audit --audit-level=high` est **bloquant en CI**, il ne distingue pas dev et prod. |
+| `nanoid` | `^3.3.18` | Advisory **GHSA-2v37-7h3g-55p8** (boucle infinie si `size` vaut zéro, sévérité **high**). ⚠️ **Borne remontée le 15/08/2026** : l'advisory a été **réévalué** pour couvrir `< 3.3.18` alors que l'épingle disait `^3.3.17`, et la CI est passée au rouge sans qu'aucun commit n'y touche — un audit vert n'est vrai qu'à sa date. Tiré par `vite` → `postcss`. **Dev only** : `postcss` ne tourne qu'au *build*, rien n'en part dans le bundle du jour J — et le défaut suppose un générateur personnalisé, que nous n'écrivons pas. Épinglé quand même : `npm audit --audit-level=high` est **bloquant en CI**, il ne distingue pas dev et prod. |
 | `postcss` | `^8.5.23` | Advisory **GHSA-fxqj-rqcc-2cmp** (lecture de `.map` arbitraires via `sourceMappingURL` quand `from` n'est pas défini, sévérité *moderate*) couvrant `<= 8.5.22`. Tiré par `vite`. **Dev only**, même raisonnement. Sévérité sous le seuil de la CI, montée **au passage** de `nanoid` : les deux advisories visent la même chaîne, les traiter séparément aurait fait deux allers-retours. |
 
 ### ⚠️ Une épingle doit être **relue** à chaque advisory
@@ -114,9 +114,17 @@ première fois.
 
 ### ⚠️ Ne **jamais** régénérer ce lockfile depuis un poste Windows
 
-`npm install --package-lock-only` **élague** du lockfile les paquets optionnels propres à une autre
-plateforme. Sous Windows, les deux entrées `@emnapi` disparaissent — elles ne servent qu'aux binaires
-Linux. Le lockfile obtenu est parfaitement valide **sur le poste qui l'a produit**, et fait échouer
+**Toute** commande npm qui réécrit le lockfile **élague** les paquets optionnels propres à une autre
+plateforme : `npm install --package-lock-only`, mais aussi un `npm install` tout court et un
+`npm audit fix`. Sous Windows, les deux entrées `@emnapi` disparaissent — elles ne servent qu'aux
+binaires Linux.
+
+⚠️ **Cette phrase ne nommait que `--package-lock-only` jusqu'au 15/08/2026**, et c'est un
+`npm install` nu qui a refait tomber le projet dans le piège (montée de `nanoid`, revue d'E05US028).
+Un garde-fou qui nomme *une* commande se lit comme s'il ne visait qu'elle : c'est le **comportement**
+qu'il faut nommer, pas l'incantation. Au passage : `npm audit fix` proposait ici d'**ajouter**
+`@emnapi/wasi-threads` en plus du correctif visé — raison de plus pour ne jamais le lancer sur ce
+dépôt. Le lockfile obtenu est parfaitement valide **sur le poste qui l'a produit**, et fait échouer
 `npm ci` en CI :
 
 ```
