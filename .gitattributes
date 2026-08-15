@@ -1,6 +1,11 @@
 # Normalisation des fins de ligne : LF dans le dépôt, quel que soit l'OS.
 * text=auto eol=lf
 
+# Données générées de l'atlas (ADR-0085) : elles sont commitées pour que le site soit consultable
+# après un simple clone, mais elles se relisent dans leur source, jamais dans le diff.
+# `linguist-generated` les replie sur GitHub, `-diff` les fait sauter à `git diff`.
+atlas/donnees/*.js linguist-generated=true -diff
+
 # Fichiers binaires (pas de conversion)
 *.xlsx binary
 *.docx binary

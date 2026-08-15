@@ -54,6 +54,20 @@ repos:
         # ajouté là casserait le garde-fou sans que la CI (environnement complet) ne le voie.
         files: ^backend/(domain/.*|tests/(test_domain_isolation|conftest))\.py$
 
+      - id: atlas-a-jour
+        name: atlas — cartes générées à jour
+        entry: bash -c 'cd backend && python -m atlas --verifier'
+        # `language: system` et non `python` : le générateur est en **stdlib pure**, il n'a besoin
+        # d'aucun environnement dédié (ADR-0085). Même patron que les hooks eslint / prettier.
+        language: system
+        pass_filenames: false
+        # Le hook **vérifie, il ne régénère pas** : un hook qui réécrit des fichiers pendant le
+        # commit laisse un état `staged` / `unstaged` incohérent et surprend. Il échoue en donnant
+        # la commande à lancer.
+        # Motif restreint aux seules sources des cartes : le générateur lit l'historique git
+        # (~3 s), on ne l'impose pas à tous les commits.
+        files: ^(CLAUDE\.md|docs/adr/.*\.md|stories/.*\.md|backend/atlas/.*\.py|atlas/donnees/.*)$
+
       - id: eslint
         name: eslint — frontend
         entry: bash -c 'cd frontend && npx --no-install eslint .'

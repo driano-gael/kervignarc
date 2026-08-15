@@ -98,6 +98,31 @@ jobs:
           pip install pip-audit
           pip-audit -r requirements.txt --strict
 
+  # Job séparé, et volontairement **sans `pip install`** : c'est ce qui prouve que le générateur
+  # de l'atlas est en stdlib pure (règle 11, ADR-0085). Le jour où quelqu'un y ajoute une
+  # dépendance, ce job casse — la parcimonie est ainsi vérifiée par construction plutôt que
+  # déclarée. Il tourne en parallèle des deux autres : aucun temps ajouté au chemin critique.
+  atlas:
+    name: Atlas — cartes générées à jour
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ⚠️ Indispensable : `actions/checkout` clone en profondeur 1 par défaut. L'historique
+          # par règle vient de `git log -L` ; sans l'historique complet, la comparaison serait
+          # rouge à chaque exécution, et une porte toujours rouge finit désactivée.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Atlas régénéré et identique au dépôt
+        run: python -m atlas --verifier
+
   frontend:
     name: Frontend — lint, format, types, tests, build
     runs-on: ubuntu-latest
