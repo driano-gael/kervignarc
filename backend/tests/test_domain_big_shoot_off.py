@@ -40,6 +40,7 @@ from domain.big_shoot_off import (
     eliminer_apres_barrage,
     jouer_manche,
 )
+from domain.contrat_phase import TypePhase
 from domain.erreurs import ConfigurationBigShootOffInvalide, ScoreDeMancheManquant
 from domain.participant import Participant
 
@@ -485,3 +486,61 @@ def test_une_manche_peut_demander_deux_barrages_successifs() -> None:
         archers[3]: 4,
         archers[2]: 3,
     }
+
+
+# --- convergence : l'arbitrage du 15/08/2026 (référentiel §10.1) ---------------------------------
+
+
+def test_une_liste_qui_ne_converge_pas_est_refusee_a_la_composition() -> None:
+    """Une finale doit désigner **un** vainqueur : la liste doit converger sur cet effectif.
+
+    ⚠️ **Le refus vit sur l'étape, pas sur la configuration** (cf. le test suivant). Un Big Shoot
+    Off fini à plusieurs rescapés les laisse tous au rang 1 : le palmarès leur décernait l'or à
+    tous, et une phase avale prélevant « les rangs 1 à 2 » restait bloquée en attente **pour
+    toujours** — plus aucune flèche à tirer pour la lever.
+    """
+    from domain.deroule_etape import EtapeDeroule
+
+    # `(4, 2, 1)` sur 12 archers : 12 → 8 → 6 → 5. Cinq rescapés, aucun vainqueur.
+    with pytest.raises(ConfigurationBigShootOffInvalide):
+        EtapeDeroule(
+            tournoi_id=1,
+            ordre=2,
+            type=TypePhase.BIG_SHOOT_OFF,
+            effectif=12,
+            big_shoot_off=ConfigurationBigShootOff(eliminations=(4, 2, 1)),
+        )
+
+
+def test_la_meme_liste_est_acceptee_sur_l_effectif_qui_la_fait_converger() -> None:
+    """La convergence est une propriété du **couple** (liste, effectif), jamais de la liste seule.
+
+    C'est la raison pour laquelle le refus ne peut pas vivre dans `ConfigurationBigShootOff` : la
+    même liste laisse 5 rescapés sur 12 archers et exactement 1 sur 8. L'y mettre casserait la
+    réutilisabilité des formats de bibliothèque (règle 2), qui s'écrivent sans connaître l'effectif.
+    """
+    from domain.deroule_etape import EtapeDeroule
+
+    # `(4, 2, 1)` sur 8 archers : 8 → 4 → 2 → 1. Un vainqueur.
+    assert ConfigurationBigShootOff(eliminations=(4, 2, 1)).restants_pour(8) == 1
+    etape = EtapeDeroule(
+        tournoi_id=1,
+        ordre=2,
+        type=TypePhase.BIG_SHOOT_OFF,
+        effectif=8,
+        big_shoot_off=ConfigurationBigShootOff(eliminations=(4, 2, 1)),
+    )
+    assert etape.effectif == 8
+
+
+def test_sans_effectif_declare_on_ne_refuse_rien() -> None:
+    """On ne refuse pas ce qu'on ne peut pas juger : l'atelier montre alors la projection."""
+    from domain.deroule_etape import EtapeDeroule
+
+    etape = EtapeDeroule(
+        tournoi_id=1,
+        ordre=2,
+        type=TypePhase.BIG_SHOOT_OFF,
+        big_shoot_off=ConfigurationBigShootOff(eliminations=(4, 2, 1)),
+    )
+    assert etape.effectif is None

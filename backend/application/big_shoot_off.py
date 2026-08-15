@@ -19,10 +19,21 @@ structure se recalcule, le tir se persiste**.
   cela n'est stocké — c'est une fonction déterministe des volées validées et du réglage. Le
   persister créerait une **seconde vérité**, périmée dès qu'une flèche mal saisie est corrigée.
 
-⚠️ **Le second point est ce qui rend une correction possible en salle.** Si « éliminé à la manche 2 »
-était une ligne en base, corriger une volée de la manche 1 laisserait l'élimination en place : le
-classement dirait une chose, les scores une autre. Ici la correction remonte d'elle-même toute la
-chaîne — au prix d'un rejeu complet à chaque lecture (`# DETTE-031`).
+⚠️ **Le second point est ce qui *rendra* une correction possible en salle.** Si « éliminé à la
+manche 2 » était une ligne en base, corriger une volée de la manche 1 laisserait l'élimination en
+place : le classement dirait une chose, les scores une autre. Ici la correction remonterait d'elle-
+même toute la chaîne — au prix d'un rejeu complet à chaque lecture (`# DETTE-031`).
+
+⚠️ **Mais aucun chemin de correction n'existe encore** (`# DETTE-061`), et cette note affirmait
+le contraire au présent jusqu'au 15/08/2026 : « ici la correction remonte d'elle-même ». Le rejeu
+est bien correct ; c'est le **geste d'entrée** qui manque. `saisir_volee` passe par
+`Serie.saisir_volee`, qui refuse une volée verrouillée, et le seul appelant de `corriger_volee`
+résout sa feuille
+par `_phase_qualification` — jamais celle d'une finale. Une flèche mal saisie et **validée** en Big
+Shoot Off est donc définitive, l'élimination qu'elle a produite avec elle. Dette assumée par le
+commanditaire le 15/08/2026 ; correction livrée en US dédiée. La promesse au présent est corrigée
+ici plutôt que supprimée : c'est elle qui a fait croire la capacité livrée, dans l'US **et** dans la
+fiche de recette.
 
 ## La numérotation des volées, et son ancrage
 

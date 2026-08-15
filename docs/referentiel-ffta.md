@@ -299,8 +299,10 @@ Les points tranchés, **à confirmer à l'usage** :
 | Nombre de sortants | **une liste, une case par manche** ; K en est déduit et cesse d'être un réglage | 14/08/2026 |
 | Liste inadaptée à l'effectif | **on joue tant que la manche est possible** — une liste ne se refuse jamais, elle s'écourte à la première manche qui viderait le pas de tir | 14/08/2026 |
 | Sortants d'une même manche | **classés entre eux au score de la manche** ; à égalité ils partagent leur rang | 14/08/2026 |
+| **Quel** rang partagent les ex æquo | convention **« 1224 »** : chacun prend `1 + le nombre d'archers strictement meilleurs`, et le ou les rangs sautés restent vacants **après** le groupe. Sur 12 archers, 4 sortants à 18/21/21/24 → rangs 12, 10, 10, 9 (le 11 est vacant) | 15/08/2026 |
 | Égalité **à la barre** (la frontière sortants / rescapés) | **barrage** (§8.2), toujours — elle décide qui continue. Seuls les ex æquo de la frontière tirent | 14/08/2026 |
 | Égalité **entre sortants** (déjà tous éliminés) | **paramètre** ; par défaut on ne fait pas tirer, l'égalité ne décidant que d'un numéro de rang | 14/08/2026 |
+| Liste qui ne converge pas vers **un** rescapé | **refus à la composition**, et là seulement : le refus vit là où l'effectif est connu (une phase posée sur un créneau), jamais sur le format de bibliothèque — `(4, 2, 1)` laisse 5 rescapés sur 12 archers et exactement 1 sur 8, c'est donc une propriété du couple (liste, effectif) | 15/08/2026 |
 
 **Poules** — `❌ hors FFTA` (en salle 18 m) · règle donnée le **31/07/2026**.
 > **Principe** — les archers sont regroupés en poules et se rencontrent dans leur groupe.

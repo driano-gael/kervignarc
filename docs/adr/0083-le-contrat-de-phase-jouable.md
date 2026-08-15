@@ -215,11 +215,24 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > section décrit un code vérifiable, jamais une intention.
 >
 > 🔄 **Re-vérifiée le 14/08/2026**, l'ADR étant rouvert par E05US028 (sa section *Décision* §2 a
-> reçu le verdict du pari, et une capacité a été renommée). Trois lignes ajoutées, aucune retirée.
-> La vérification a porté sur le **code du jour** et non sur l'US en cours : c'est pourquoi rien n'y
-> figure pour le service, le palmarès ou le routage du Big Shoot Off — ils ne sont pas écrits, et
-> les annoncer ici reproduirait exactement le défaut d'ADR-0017 que cette section existe pour
-> empêcher.
+> reçu le verdict du pari, et une capacité a été renommée).
+>
+> 🔄 **Re-vérifiée le 15/08/2026 à la revue d'E05US028, et c'est cette passe-là qui a corrigé le
+> document.** La version du 14/08 affirmait, à trois endroits, que le service, le palmarès et le
+> routage du Big Shoot Off « ne sont pas écrits » et que ses capacités restaient à `False` — vrai
+> quand ces phrases ont été écrites, faux dans le commit qui les livrait, puisque le même diff les
+> a écrits et a basculé les trois capacités à `True` (`domain/contrat_phase.py`). Le commit de
+> rendu annonçait pourtant la section « re-vérifiée sur le code du jour » : elle ne l'avait pas
+> été après coup.
+>
+> ⚠️ **C'est le défaut d'ADR-0017 à polarité inversée**, et il coûte autant. Ici l'ADR
+> *sous-décrivait* le code au lieu de le sur-promettre — mais la prochaine US (E05US026, système
+> suisse) l'aurait lu comme référence de contrat et y aurait trouvé écrit que le Big Shoot Off
+> n'est ni classant ni routé. Un document périmé n'est pas *ambigu* : il s'écrit sans effort et il
+> est faux, donc le garde-fou « CA ambigu » de la règle 9 ne se déclenche pas. La leçon est celle
+> que `CLAUDE.md` énonce déjà et qu'il a fallu réapprendre : **écrire la section, c'est vérifier
+> dans le code du jour** — et « re-vérifier » un ADR qu'on rouvre, c'est aussi relire ce qu'on y
+> avait écrit la veille, pas seulement y ajouter des lignes.
 
 | Module | Ce qu'il porte |
 |---|---|
@@ -229,7 +242,8 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 | `backend/domain/placement_poules.py` | §3 — le bloc contigu, le débordement, l'accolement de la poule suivante, le rapport de conflits |
 | `backend/domain/phase.py` · `Phase.poules` | §4 — le réglage porté par l'agrégat, et l'invariant « pas de réglage de poules sur un autre type » (`ReglageDePoulesInvalide`) |
 | `backend/domain/contrat_phase.py` | §1 — le **registre** : une ligne par type, sept capacités, et les dix tables dérivées (`TYPES_EN_TABLEAU`, `TYPES_DEROULES`, `TYPES_CLASSANTS_LUS`, `TYPES_EN_TABLEAU_JOUE`, `TYPES_JOUES`, `TYPES_SIGNALES_EN_ECART`, …) |
-| `backend/domain/contrat_phase.py` · `deroule_par_un_service` · `TYPES_DEROULES` | §1 — la capacité **renommée le 14/08/2026** (ex-`monte_les_oppositions` / `TYPES_MONTES`) : elle nomme la *question*, plus la forme que prend la réponse. ⚠️ Vérifié sur le code du jour : la ligne `BIG_SHOOT_OFF` du registre garde `classement_lisible` **et** `route_l_archer` à `False` — son service n'est pas écrit, et l'US qui le portera est en cours |
+| `backend/domain/contrat_phase.py` · `deroule_par_un_service` · `TYPES_DEROULES` | §1 — la capacité **renommée le 14/08/2026** (ex-`monte_les_oppositions` / `TYPES_MONTES`) : elle nomme la *question*, plus la forme que prend la réponse. ⚠️ Vérifié sur le code du 15/08/2026 : la ligne `BIG_SHOOT_OFF` bascule ses trois capacités (`deroule_par_un_service`, `classement_lisible`, `route_l_archer`) à `True` **en fin de tranche E05US028**, une fois les modules ci-dessous écrits — la discipline d'E05US023 pour les poules, tenue à l'identique |
+| `backend/domain/contrat_phase.py` · `route_tout_le_plateau` · `TYPES_ROUTES_IMPLICITEMENT` | §1 — 8ᵉ capacité, ajoutée à la **revue d'E05US028** sur un défaut constaté : `route_l_archer` disait « sait-on router cet archer ? » sans dire *combien d'archers* la phase concerne. Les deux questions se confondaient tant que seul un tableau routait ; le Big Shoot Off les sépare (8 finalistes sur 120), et sans la distinction il captait la résolution **implicite** du panneau — les non-finalistes lisaient « ne fait pas partie de ce Big Shoot Off » au lieu de leur rang final |
 | `backend/domain/deroule.py` · `_TYPES_DEROULES` | §1 — seul consommateur de la table ; l'alias local devient homonyme, comme `_TYPES_CLASSANTS_LUS` juste à côté |
 | `backend/domain/{phase,deroule_etape,format_tournoi}.py` · `big_shoot_off` · `backend/infrastructure/db/repositories/moteur.py` · `_lire_reglage_big_shoot_off` | §4 — le **précédent appliqué** : un réglage de format vit dans `config` à la racine, **sans migration**, exactement comme `config.poules`. Écrit le 14/08/2026 pour le Big Shoot Off |
 | `backend/application/big_shoot_off.py` · `ServiceBigShootOff` | §1, §7 — le service qui rend le format jouable : projection, rejeu de la phase depuis les volées **validées**, saisie, validation par manche. ⚠️ **Le §7 s'applique à un second format** — là où une rencontre de poule réutilise `duel`, une manche de Big Shoot Off réutilise `serie`/`volee` (clé `(phase_id, archer_id)` depuis E05US025), **sans table ni migration** |
@@ -330,9 +344,16 @@ le plus pauvre au prix d'un assouplissement ; le prix s'est révélé être **un
 structure. C'est la confirmation *a posteriori* du choix de tailler sur les poules : l'ordre inverse
 aurait demandé de repasser sur du code déjà livré.
 
-⚠️ **Ce que cette section ne dit pas encore.** Au 14/08/2026, `classement_lisible` et
-`route_l_archer` du Big Shoot Off sont **toujours à `False`** : son service, son entrée au palmarès
-et son routage ne sont pas écrits. La ligne du registre reste donc un constat exact sur le code du
-jour — c'est précisément la discipline que ce module s'impose, et la basculer « puisque l'US est en
-cours » reproduirait `DETTE-028`.
+⚠️ **Ce paragraphe portait, jusqu'au 15/08/2026, l'affirmation inverse du code livré** : « au
+14/08/2026, `classement_lisible` et `route_l_archer` du Big Shoot Off sont toujours à `False` : son
+service, son entrée au palmarès et son routage ne sont pas écrits ». C'était exact à l'instant où
+la phrase a été écrite, et faux dans le commit qui l'a livrée — E05US028 a écrit les trois et
+basculé les trois capacités dans le même diff.
+
+La discipline qu'il énonçait reste la bonne, et elle a été tenue : **on ne bascule une capacité
+qu'une fois le code écrit**, jamais « puisque l'US est en cours » — c'est ce qui a évité de
+reproduire `DETTE-028`. Ce qui a manqué, c'est la relecture de la phrase **en fin de tranche**, une
+fois la bascule faite. Une note d'état datée survit mal à l'US qui la périme : celle-ci est
+conservée comme trace de l'erreur plutôt que supprimée, puisqu'elle documente le mode de défaillance
+que la section « Porté dans le code par » existe pour empêcher.
 

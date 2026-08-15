@@ -32,6 +32,7 @@ from dataclasses import dataclass, replace
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
+from domain.erreurs import ConfigurationBigShootOffInvalide
 from domain.grain_validation import GrainValidation
 from domain.phase import (
     Phase,
@@ -105,6 +106,36 @@ class EtapeDeroule:
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
+        self._verifier_convergence_du_big_shoot_off()
+
+    def _verifier_convergence_du_big_shoot_off(self) -> None:
+        """Une finale doit désigner **un** vainqueur : la liste doit converger sur cet effectif.
+
+        ⚠️ **Arbitrage du commanditaire du 15/08/2026** (revue d'E05US028, référentiel §10.1), et sa
+        place ici n'est pas un détail. Un Big Shoot Off terminé à plusieurs rescapés les laisse tous
+        au rang 1 : le palmarès leur décernait l'or à tous, et une phase avale prélevant « les rangs
+        1 à 2 » restait bloquée en `PrelevementEnAttente` **pour toujours** — plus aucune flèche à
+        tirer pour lever l'attente. Deux défauts, une seule cause.
+
+        ⚠️ **Le refus vit sur l'étape, pas sur `ConfigurationBigShootOff`**, et c'est délibéré. La
+        convergence est une propriété du **couple** (liste, effectif), pas de la liste : `(4, 2, 1)`
+        laisse 5 rescapés sur 12 archers et exactement 1 sur 8. La configuration, elle, refuse par
+        contrat toute validation dépendant de l'effectif — c'est ce qui rend un format de
+        bibliothèque réutilisable d'un tournoi à l'autre (règle 2). Mettre le refus là aurait
+        échangé un défaut contre un autre.
+
+        Silencieux quand l'effectif n'est **pas** déclaré : on ne refuse pas ce qu'on ne peut pas
+        juger. L'atelier montre alors la projection (`paliers_pour`) et l'organisateur décide.
+        """
+        if self.big_shoot_off is None or self.effectif is None:
+            return
+        restants = self.big_shoot_off.restants_pour(self.effectif)
+        if restants != 1:
+            raise ConfigurationBigShootOffInvalide(
+                f"Sur {self.effectif} archers, cette liste laisse {restants} rescapés à égalité au "
+                "rang 1 : la finale ne désignerait aucun vainqueur, et la phase suivante ne "
+                "pourrait jamais y prélever de rang. Ajoutez ou ajustez une manche."
+            )
 
     def instancier(self, depart_id: DepartId) -> Phase:
         """Crée la **phase** qui joue cette étape dans un créneau, au statut `à venir`.

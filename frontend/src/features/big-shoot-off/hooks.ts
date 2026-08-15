@@ -7,6 +7,11 @@
 // Les deux mutations **écrivent directement le cache** avec l'état renvoyé, au lieu d'invalider :
 // la réponse *est* la photo complète et à jour, donc un aller-retour de plus ne ferait qu'ouvrir
 // une fenêtre où l'écran montre un archer sorti comme encore en lice.
+//
+// ⚠️ **Ces deux mutations partent en direct, hors de la file hors-ligne d'E04US009**
+// (`DETTE-060`) : une coupure LAN pendant une finale fait perdre la volée en cours. Le marqueur
+// était annoncé par le registre sur ce fichier sans y figurer — corrigé à la revue d'E05US028, une
+// dette dont le point d'accroche est introuvable n'est pas tracée.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 

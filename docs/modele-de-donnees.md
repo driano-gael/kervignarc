@@ -448,7 +448,15 @@ l'empreinte simultanée sur la ligne — `2 × (effectif ÷ 2)` couloirs —, pa
 | tournoi_id | INTEGER | FK → TOURNOI, NOT NULL (DETTE-001) |
 | archer_id | INTEGER | FK → ARCHER, NOT NULL (DETTE-001) |
 | phase_id | INTEGER | FK → PHASE, NOT NULL, **ON DELETE CASCADE** (E05US025) |
-| — | — | **UNIQUE(phase_id, archer_id)** — une feuille par archer **et par qualification** |
+| — | — | **UNIQUE(phase_id, archer_id)** — une feuille par archer **et par phase de tir** |
+
+> ⚠️ **Depuis E05US028, une feuille sert aussi un Big Shoot Off.** La table n'a pas bougé (aucune
+> migration), mais sa portée si : le tir d'une finale s'y écrit comme une qualification. La
+> correspondance **manche → volées** est **dérivée du réglage et jamais stockée** — la manche *m*
+> occupe les volées `(m-1)·V+1 … m·V`, avec `V = config.big_shoot_off.volees` de l'étape. Rien dans
+> le schéma ne dit donc qu'une `VOLEE` de numéro 3 appartient à la manche 2 : c'est une lecture, pas
+> une colonne. Conséquence pratique à connaître avant de toucher au réglage — **changer `volees` sur
+> une phase déjà tirée re-partitionne des volées validées dans d'autres manches** (`DETTE-062`).
 
 > Racine de l'agrégat de **saisie de qualification** (`Serie`, tranche persistance PR2a — la couture
 > d'atomicité acte↔trace est [ADR-0035](adr/0035-atomicite-acte-trace-session-partagee.md)) : la
@@ -493,7 +501,8 @@ l'empreinte simultanée sur la ligne — `2 × (effectif ÷ 2)` couloirs —, pa
 >
 > **Colonnes des tranches suivantes** (non encore livrées) : `saisie_uid` (idempotence **persistée**
 > au rejeu offline — E04US009 ; l'idempotence de PR2b est **en mémoire**, ADR-0036, non une colonne).
-> `VOLEE` ne couvre que la **qualification** (via `SERIE`) ; la **saisie en duels** est livrée
+> `VOLEE` couvre la **qualification** et, depuis E05US028, le **Big Shoot Off** (via `SERIE` dans les
+> deux cas) ; la **saisie en duels** est livrée
 > (E04US013) dans la table `DUEL` (ci-dessus), qui porte les volées de duel en **JSON** (elle ne
 > réutilise pas `VOLEE`, agrégat de qualification distinct — [ADR-0049](adr/0049-saisie-et-scoring-des-duels.md)).
 
@@ -704,8 +713,9 @@ Portée : les **politiques injectables** (ADR-0004) et leurs paramètres. Depuis
 objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implémentation, résolue par le
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
-sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et le réglage
-de `poules` restent **à la racine** (ce ne sont pas des politiques de moteur). Exemples :
+sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et les réglages
+de `poules` **et de `big_shoot_off`** restent **à la racine** (ce ne sont pas des politiques de
+moteur). Exemples :
 
 > ⚠️ **`poules` est à la racine, et c'est un correctif.** E05US023 l'avait d'abord écrit sous
 > `policies` (« par analogie avec les autres réglages ») — ce que la phrase ci-dessus interdit déjà,

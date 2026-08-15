@@ -197,6 +197,15 @@ class ServicePhases:
 
         Lève `PhaseIntrouvable` si l'étape n'est pas dans ce tournoi, une `DomainError` (→ 422) si
         le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
+
+        ⚠️ **Aucune garde sur le format du tir d'un Big Shoot Off déjà tiré** (`# DETTE-062`, relevé
+        à la revue d'E05US028). Le découpage manche → volées est **dérivé du réglage à chaque
+        lecture** (`(m-1)·V+1 … m·V`) et n'est stocké nulle part : passer `volees` de 1 à 2 en cours
+        de phase **re-partitionne des volées déjà validées** dans d'autres manches, donc rejoue les
+        éliminations autrement, sans le moindre message. C'est une classe de risque neuve — la
+        qualification n'a aucun regroupement dérivé — et c'est le pendant de `DETTE-057` côté format
+        du tir plutôt que population. `eliminations` et les options, elles, ne déplacent aucune
+        borne : seuls `volees` et `fleches_par_volee` sont en cause.
         """
         etape = self._exiger_etape(tournoi_id, etape_id)
         modifiee = replace(

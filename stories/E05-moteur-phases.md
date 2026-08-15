@@ -1047,54 +1047,27 @@ Origine : 4ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet
   seulement à cette US, `DETTE-028` peut être **refermée** sur son volet « moteurs sans appelant ».
 - **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet Big Shoot Off)
 
-#### État d'avancement — branche `feat/e05us028-big-shoot-off-jouable` *(14/08/2026)*
+#### Arbitrages tranchés en cours d'US et à la revue *(reversés ici, règle 9)*
 
-> ⚠️ **US en cours, non livrée.** Point de reprise pour une session neuve : ce qui suit dit ce qui
-> est **écrit et vert**, ce qui reste, et les décisions déjà prises qu'il ne faut pas re-trancher.
+Trois arbitrages du commanditaire, **postérieurs à la rédaction du CA**, tous reversés au
+[référentiel §10.1](../docs/referentiel-ffta.md) dans le même commit que le code qui les applique :
 
-**Fait, commité, backend entier vert** (mypy 413 fichiers, suite complète, 0 échec) :
+1. **Convention du rang partagé** *(15/08/2026)* — « à égalité ils partagent leur rang » ne disait
+   pas **lequel**. C'est la convention **« 1224 »** : chacun prend `1 + le nombre d'archers
+   strictement meilleurs`, les rangs sautés restent vacants **après** le groupe. Le code appliquait
+   la convention inverse, et son test la figeait tout en invoquant « 1224 » dans sa docstring.
+2. **Une liste doit converger vers un vainqueur unique** *(15/08/2026)* — refus **à la composition**,
+   là où l'effectif est connu (une phase posée sur un créneau), jamais sur le format de bibliothèque :
+   la convergence est une propriété du couple (liste, effectif), pas de la liste. Sans ce refus, un
+   Big Shoot Off fini à N rescapés leur décernait l'or à tous et bloquait définitivement le
+   prélèvement d'une phase avale.
+3. **La correction d'une flèche validée reste hors périmètre** *(15/08/2026)* — dette assumée
+   (`DETTE-061`), livrée en US dédiée. Le rejeu la supporte déjà ; c'est le geste d'entrée qui manque.
 
-1. `f36a49a` — le **moteur** porte la règle élargie (liste de sortants, K dérivé, on joue tant que
-   la manche est possible, sortants classés au score, deux barrages dont un optionnel). 22 tests
-   dérivés du CA. Référentiel §10.1 et CA ci-dessus amendés dans le même commit.
-2. `43cedb7` — le **réglage** traverse `Phase` → `EtapeDeroule` → `ModelePhase` → repository, dans
-   `config` à la racine, **sans migration**. Aller-retour en base testé.
-
-**Reste à faire**, dans cet ordre (chaque point dépend du précédent) :
-
-3. **`application/big_shoot_off.py`** — le service, patron `application/poules.py`. Décision déjà
-   prise et à ne pas rejouer : **le tir réutilise `serie`/`volee`, aucune table ni migration**.
-   `Serie` est keyée `(phase_id, archer_id)` depuis E05US025, donc les V volées de chaque manche
-   tiennent dans **une** série par archer, numérotées en continu (manche *m* = volées
-   *(m−1)·V+1 … m·V*). C'est le pendant exact d'ADR-0083 §7, où une rencontre de poule réutilise la
-   table `duel`. L'état se **rejoue** de `demarrer` puis d'un `jouer_manche` par manche dont toutes
-   les volées sont validées — la structure se recalcule, le tir se persiste.
-4. **Port `LecteurClassementBigShootOff`** + 4ᵉ cas dans `ServiceSaisieDuels._classement_de_l_ordre`
-   (patron `LecteurClassementPoules`, qui casse le cycle et fait traverser le résolveur).
-5. **Palmarès** — `_resultat_big_shoot_off` dans `ServicePalmares`. Vérifié : `calculer_palmares` ne
-   consomme que des `PositionPhase` (rang_min/rang_max/en_lice), et le BSO en produit d'**exacts**
-   sans arbre à rejouer. `TYPES_RECONSTRUCTIBLES` (alias de `TYPES_EN_TABLEAU_JOUE`) ne convient
-   pas : c'est bien le `_resultat` propre au format qu'ADR-0083 annonçait.
-6. **Routage** — `application/routage.py`. ⚠️ **Le point dur.** `ProchainDuel` est entièrement
-   centré sur l'arbre (`numero`, `tour`, `adversaire`, `sources_en_attente`) et un BSO n'a ni match
-   ni adversaire. Piste retenue : ne pas inventer un plan de cibles propre au BSO — les finalistes
-   sont des inscrits du départ, donc `PlacementRepository.par_depart` porte déjà leur couloir, comme
-   pour la qualification. Le routage annonce alors « manche *n*, sur votre couloir », et nomme ce
-   qu'il ne sait pas (`P-3`) plutôt que de rendre un panneau muet.
-7. **Registre de contrat** — basculer `classement_lisible` et `route_l_archer` à `True`, et **une
-   fois seulement les points 3 à 6 écrits** (une ligne du registre est un constat sur le code du
-   jour, jamais une promesse).
-
-   ✅ **Le renommage, lui, est fait** *(14/08/2026)* : `monte_les_oppositions` →
-   `deroule_par_un_service`, `TYPES_MONTES` → `TYPES_DEROULES`. Motif : un Big Shoot Off n'a ni
-   matchs ni groupes, donc **aucune** valeur de l'ancien booléen n'était défendable — `True`
-   contredisait sa propre définition, `False` faisait mentir le signal d'écart de l'atelier. C'est
-   l'endroit exact où [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md) §2 annonçait que
-   le contrat céderait ; l'ADR est amendé et sa section « Porté dans le code par » re-vérifiée.
-8. **API** (`api/v1/big_shoot_off.py` + DTO de réglage sur `phases` et `formats`, jumeaux assumés
-   `DETTE-054`), **bootstrap**, **front** (miroir `catalogue.ts`, fiche de réglage avec la
-   projection des paliers, écran de saisie), puis **docs** : ADR neuf, `DETTE-028` rétrécie,
-   `docs/fonctionnel/E05US028.md`, journal daté + résumé, `SUIVI-US.md`.
+⚠️ **Le CA portait par ailleurs un réglage que le moteur n'a jamais eu** (« nombre d'éliminés par
+manche **et restants** ») : la contradiction est sortie en écrivant les tests depuis le CA, et a
+produit l'élargissement de règle du 14/08/2026 — `K` cesse d'être un paramètre et se déduit. C'est le
+garde-fou de la règle 9 qui a fonctionné, et la trace est gardée ici pour la prochaine lecture.
 
 **Vocabulaire tranché au cadrage** : on dit « **le nombre de sortants, manche par manche** », jamais
 « la suite » — le mot faisait entendre une progression imposée par l'outil, alors que l'organisateur
