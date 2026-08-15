@@ -12,7 +12,15 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 14/08/2026, 23 h 30** · **109 US livrées** · dernière : `E05US028`
+**Dernière mise à jour : 15/08/2026, 16 h 48** · **110 US livrées** · dernière : `E00US018`
+*(**l'atlas du projet** : un site statique, ouvrable au double-clic, qui montre le **règlement en
+vigueur** puis l'**histoire datée** de chaque règle, et qui calcule ce que le registre ne dit pas —
+82 ADR sur 83 portent le statut « Accepté », un seul est marqué « Remplacé », alors que **19** sont
+amendés par une décision plus récente. Il confronte aussi les 234 symboles promis par les sections
+« Porté dans le code par » au dépôt réel. Généré depuis les sources versionnées, sans aucune
+dépendance, vérifié en CI. ADR-0085 ; ouvre `DETTE-063`. Quatre tranches restent.)*
+
+Précédente : `E05US028`
 *(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
 dix filtres qui décidaient chacun dans leur coin qu'une phase est jouable, et les **poules** le
 taillent en devenant réellement jouables — réglées à l'atelier, posées en salle sur des blocs de
@@ -1025,6 +1033,25 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US008 | Confronter les **9 planches de saisie** `S**` et résorber | J3 | ⬜ |
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
 | E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
+
+## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (1/5)**
+
+> Demande du commanditaire, hors file d'exécution : *« je ne vois pas bien l'état réel du projet,
+> et son historique »*. Outillage de suivi, pas une capacité produit — ces US **n'entrent pas** dans
+> la file 🎯 ci-dessus, qui reste celle du produit ; elles se prennent quand le commanditaire le
+> décide. Cf. [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US018 et
+> [ADR-0085](../docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md).
+> Livrée le 15/08 : le règlement en vigueur, l'histoire datée de chaque règle, les 83 décisions avec
+> **ce qui les a amendées depuis**, et la confrontation de ce que l'écrit promet à ce que le dépôt
+> contient. Ouvre `DETTE-063`.
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E00US018 | L'atlas : le règlement en vigueur et l'histoire des décisions | hors jalon | ✅ |
+| E00US019 | Atlas — l'avancement (SUIVI-US, epics, dette) | hors jalon | ⬜ *(cible, sans fiche détaillée)* |
+| E00US020 | Atlas — la carte du code (imports, matrice de dépendances, ports) | hors jalon | ⬜ *(cible)* |
+| E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | ⬜ *(cible)* |
+| E00US022 | Atlas — les flux (saisie → file d'écriture → WebSocket) | hors jalon | ⬜ *(cible)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 
