@@ -512,8 +512,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **109 US livrées** sur `main` (mergées, revues, CI verte) à la date du 14/08/2026, la dernière
-  étant `E05US028`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **110 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
+  étant `E05US026` — le **système suisse**, backend seul (son écran est `E05US030`). **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une

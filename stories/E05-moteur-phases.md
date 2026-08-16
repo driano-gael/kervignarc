@@ -1020,12 +1020,17 @@ le périmètre en sort **élargi** — trois d'entre eux dépassent le seul syst
    la couture backend/front est la seule qui **ne coûte rien** à trancher ici, parce que les quatre
    commits déjà écrits sont chacun cohérents et relisibles seuls.
 
-   ⚠️ **Conséquence sur les livrables de suivi, et elle n'est pas cosmétique.** `E05US026` devient
-   une US **sans surface utilisateur** : elle ne produit donc **ni fichier daté** au journal
-   d'avancement, **ni scénario dans [`docs/fonctionnel/`](../docs/fonctionnel/)** — ces deux
-   livrables décrivent ce qu'un non-technicien peut *voir*, et il n'y a rien à voir tant que
-   l'écran n'existe pas. Seuls les **chiffres repères** du résumé bougent. C'est `E05US030` qui
-   portera les deux. La porte de revue vaut donc pour elle, pas pour celle-ci.
+   ⚠️ **Conséquence sur les livrables de suivi, et elle a été rectifiée en cours d'US.** Le premier
+   raisonnement disait : `E05US026` n'a **aucune** surface utilisateur, donc ni fichier daté ni
+   scénario fonctionnel, seuls les chiffres repères bougent. **C'était faux d'un cran**, et la
+   vérification l'a montré : deux élargissements du cadrage touchent des écrans **déjà livrés** —
+   le **routage des poules** (le panneau « où je tire ensuite » répondait à tous les formats joués
+   sauf celui-là) et le **palmarès des poules** (les non-qualifiés retombaient à leur rang de
+   qualification). Un fichier daté est donc bien produit, **restreint à ces deux effets**, et il dit
+   explicitement que le suisse n'a pas encore d'écran. Le scénario dans
+   [`docs/fonctionnel/`](../docs/fonctionnel/) reste à `E05US030`, qui livrera les écrans à
+   recetter. *Leçon : « pas d'écran neuf » ne veut pas dire « rien de visible » — un changement de
+   règle se voit sur les écrans existants.*
 
 6. **Le port de classement est unifié dans cette US, avec son ADR.** `LecteurClassementPoules` et
    `LecteurClassementBigShootOff` sont deux protocoles identiques, dupliqués **volontairement** en
