@@ -55,34 +55,12 @@ window.ATLAS.historique = {
    ]
   },
   {
-   "adr": [
-    "0075"
-   ],
-   "date": "2026-08-06",
-   "motif": "docs(e01us025): acter que le départ est la portée sportive (ADR-0075)",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "1a5e5a4329",
-   "us": [
-    "E01US025"
-   ]
-  },
-  {
    "adr": [],
    "date": "2026-07-20",
    "motif": "docs(process): cadrer l'intention en tête d'une US à surface utilisateur",
    "nature": "commit",
    "origine": "git",
    "reference": "cfd23b4754",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-15",
-   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "2d04c9babb",
    "us": []
   }
  ],
@@ -174,6 +152,17 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-08-16",
+   "motif": "fix(e00us018): 2e passe — les trous que le 1er correctif avait déplacés",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "8fd9e6c8b2",
+   "us": [
+    "E00US018"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-16",
    "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
    "nature": "commit",
    "origine": "git",
@@ -192,15 +181,6 @@ window.ATLAS.historique = {
    "us": [
     "E00US018"
    ]
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
-   "motif": "docs(process): marquer l'US ✅ à la revue, dans son propre commit",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "bf3cead778",
-   "us": []
   },
   {
    "adr": [],
@@ -250,6 +230,19 @@ window.ATLAS.historique = {
    "origine": "git",
    "reference": "f54ceb74ac",
    "us": []
+  },
+  {
+   "adr": [
+    "0075"
+   ],
+   "date": "2026-08-06",
+   "motif": "docs(e01us025): acter que le départ est la portée sportive (ADR-0075)",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "1a5e5a4329",
+   "us": [
+    "E01US025"
+   ]
   },
   {
    "adr": [],
@@ -461,15 +454,6 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-07-20",
-   "motif": "docs(process): cadrer l'intention en tête d'une US à surface utilisateur",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "cfd23b4754",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
    "motif": "docs(process): le journal d'avancement est un livrable tenu à jour",
    "nature": "commit",
    "origine": "git",
@@ -589,6 +573,17 @@ window.ATLAS.historique = {
   }
  ],
  "redecouper-une-us-trop-grosse": [
+  {
+   "adr": [],
+   "date": "2026-08-15",
+   "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "bc38f0140b",
+   "us": [
+    "E00US018"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-07-15",
@@ -724,15 +719,6 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-07-20",
-   "motif": "docs(process): le journal d'avancement est un livrable tenu à jour",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "351987fd43",
-   "us": []
-  },
-  {
-   "adr": [],
-   "date": "2026-07-20",
    "motif": "docs(process): marquer l'US ✅ à la revue, dans son propre commit",
    "nature": "commit",
    "origine": "git",
@@ -746,6 +732,15 @@ window.ATLAS.historique = {
    "nature": "commit",
    "origine": "git",
    "reference": "4096ee0ca5",
+   "us": []
+  },
+  {
+   "adr": [],
+   "date": "2026-07-15",
+   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "2d04c9babb",
    "us": []
   }
  ],
