@@ -106,7 +106,9 @@ def _titre_et_corps(bloc: str) -> tuple[str, str]:
     gras = _GRAS.match(texte)
     if gras:
         titre = markdown.en_clair(gras.group("titre"))
-        corps = texte[gras.end() :].lstrip(" .:\n").strip()
+        # La virgule fait partie du jeu : « **Une branche par US**, jamais… » laissait un corps
+        # commençant par « , jamais… » dans le livrable.
+        corps = texte[gras.end() :].lstrip(" ,.:;\n").strip()
     else:
         morceaux = _FIN_DE_PHRASE.split(texte, maxsplit=1)
         titre = markdown.en_clair(morceaux[0])

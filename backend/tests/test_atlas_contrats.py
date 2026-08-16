@@ -97,6 +97,61 @@ def test_un_chemin_qui_sort_du_depot_est_ecarte(tmp_path: Path) -> None:
     assert adr._cible_sure(tmp_path, "backend/domain/phase.py") is not None
 
 
+def test_une_entree_citant_plusieurs_modules_les_verifie_tous() -> None:
+    """« Une entrée, plusieurs modules » est la forme la plus courante du registre.
+
+    N'en retenir que le premier laissait 26 modules promis hors contrôle — le bloquant des
+    sections en tableau, **déplacé** d'un cran au lieu d'être fermé.
+    """
+    entrees = adr._entrees(
+        "\n- Les moteurs : `backend/domain/poule.py`, `backend/domain/suisse.py` et "
+        "`backend/domain/colline.py`\n"
+    )
+
+    assert len(entrees) == 1
+    cites = [t for t in adr._TOKEN.findall(entrees[0]) if adr._est_chemin(t)]
+    assert cites == [
+        "backend/domain/poule.py",
+        "backend/domain/suisse.py",
+        "backend/domain/colline.py",
+    ]
+
+
+def test_une_accolade_malformee_laisse_le_chemin_intact() -> None:
+    """Ne rien deviner : ni chemin fantôme (faux bloquant), ni promesse évaporée (pire)."""
+    assert adr._developper("a/{x,{y,z}}.py") == ["a/{x,{y,z}}.py"]
+    assert adr._developper("a/{}.py") == ["a/{}.py"]
+    assert adr._developper("a/{x,y.py") == ["a/{x,y.py"]
+
+
+def test_un_nom_de_fichier_n_est_pas_un_symbole() -> None:
+    """`_IDENTIFIANT` accepte le point : `routage.py` passait pour un symbole à chercher."""
+    assert adr._est_symbole("ContratPhase")
+    assert adr._est_symbole("Phase.depart_id")
+    assert not adr._est_symbole("routage.py")
+    assert not adr._est_symbole("E13US002")
+
+
+def test_un_symbole_promis_et_absent_est_repere_dans_le_vrai_fichier(tmp_path: Path) -> None:
+    """Le raccord `_portage` → `symboles_absents` n'était exercé par rien.
+
+    Les autres tests construisent les `Portage` à la main : une régression où l'extraction
+    cesserait de peupler `symboles_absents` — le bug corrigé pour les cibles non lisibles —
+    serait restée verte.
+    """
+    (tmp_path / "backend").mkdir()
+    (tmp_path / "backend" / "module.py").write_text(
+        "class Presente:\n    pass\n", encoding="utf-8", newline="\n"
+    )
+    section = "\n- `backend/module.py` — `Presente` et `Absente`\n"
+
+    (portage,) = adr._portage(f"## Porté dans le code par\n{section}", [], tmp_path)
+
+    assert portage.existe and portage.verifiable
+    assert portage.symboles == ("Presente", "Absente")
+    assert portage.symboles_absents == ("Absente",)
+
+
 # --- CA : « un chemin disparu est bloquant, un symbole introuvable est un signal » -------------
 
 

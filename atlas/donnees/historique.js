@@ -173,6 +173,17 @@ window.ATLAS.historique = {
  "cycle-de-branche": [
   {
    "adr": [],
+   "date": "2026-08-16",
+   "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "b800b6c00c",
+   "us": [
+    "E00US018"
+   ]
+  },
+  {
+   "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",
    "nature": "commit",
@@ -239,19 +250,6 @@ window.ATLAS.historique = {
    "origine": "git",
    "reference": "f54ceb74ac",
    "us": []
-  },
-  {
-   "adr": [
-    "0075"
-   ],
-   "date": "2026-08-06",
-   "motif": "docs(e01us025): acter que le départ est la portée sportive (ADR-0075)",
-   "nature": "commit",
-   "origine": "git",
-   "reference": "1a5e5a4329",
-   "us": [
-    "E01US025"
-   ]
   },
   {
    "adr": [],
@@ -834,6 +832,17 @@ window.ATLAS.historique = {
   }
  ],
  "une-branche-par-us": [
+  {
+   "adr": [],
+   "date": "2026-08-16",
+   "motif": "fix(e00us018): l'atlas cesse d'affirmer deux choses fausses",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "b800b6c00c",
+   "us": [
+    "E00US018"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-08-15",

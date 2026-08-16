@@ -21,7 +21,27 @@ from atlas.sources import historique
 
 
 def _git(depot: Path, *arguments: str) -> None:
-    subprocess.run(["git", "-C", str(depot), *arguments], check=True, capture_output=True)
+    """Neutralise la configuration **globale** du poste : signature GPG et hooks du projet.
+
+    Sans cela, un poste où `commit.gpgsign` est activé globalement fait échouer le test — ou
+    attendre une passphrase, sans `timeout`. La règle 9 exige des tests déterministes ;
+    l'environnement du poste n'a pas à entrer dans l'équation.
+    """
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=",
+            "-C",
+            str(depot),
+            *arguments,
+        ],
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
 
 
 def _regle(ligne: int, ligne_fin: int) -> Regle:

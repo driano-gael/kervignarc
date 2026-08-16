@@ -169,10 +169,15 @@ var Pages = (function () {
     var liste = Atlas.element("ul", "frise");
     entrees.forEach(function (entree) {
       var element = Atlas.element("li", entree.origine === "incise" ? "change" : null);
-      var origine =
-        entree.origine === "incise"
-          ? "note écrite dans la règle"
-          : "commit " + E(entree.reference || "").slice(0, 7);
+      /* Les deux origines sont comparées **explicitement**, `git` compris : un `else` implicite
+       * aurait laissé un renommage côté Python passer sans bruit, et la fiche aurait cessé de
+       * distinguer une note écrite d'un commit. Un test relie ces littéraux à leur source. */
+      var origine = "origine inconnue";
+      if (entree.origine === "incise") {
+        origine = "note écrite dans la règle";
+      } else if (entree.origine === "git") {
+        origine = "commit " + E(entree.reference || "").slice(0, 7);
+      }
       element.innerHTML =
         "<div class='quand'>" +
         Atlas.jour(entree.date) +

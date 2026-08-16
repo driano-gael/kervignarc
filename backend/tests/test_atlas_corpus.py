@@ -77,12 +77,12 @@ def test_le_controle_de_portage_n_est_pas_creux(decisions: tuple[Decision, ...])
     """
     portages = [p for d in decisions for p in d.portage]
 
-    # Cliquet volontaire, calé **sous** les valeurs du jour (149 portages, 360 symboles) mais
-    # assez haut pour qu'une perte de format se voie. Des planchers trop bas ont laissé passer la
-    # perte d'un tiers des promesses : les sections écrites en tableau étaient ignorées, et le
-    # site affichait « cette décision ne nomme aucun module » sur les ADR les plus rigoureux.
-    assert len(portages) >= 140
-    assert sum(len(p.symboles) for p in portages) >= 330
+    # Cliquet volontaire, calé **sous** les valeurs du jour (173 portages, 325 symboles) mais
+    # assez haut pour qu'une perte de format se voie. Des planchers trop bas ont laissé passer
+    # deux pertes successives, chacune d'un tiers : les sections en tableau, puis les entrées
+    # citant plusieurs modules. Une reperte de l'une ou l'autre passe sous ces seuils.
+    assert len(portages) >= 160
+    assert sum(len(p.symboles) for p in portages) >= 300
 
 
 def test_toute_section_de_portage_non_vide_produit_un_portage(
@@ -94,17 +94,22 @@ def test_toute_section_de_portage_non_vide_produit_un_portage(
     ADR, la présence d'une section à la production d'au moins un module. Les sections réduites à
     un marqueur « à renseigner » sont exclues — elles annoncent explicitement qu'elles sont vides.
     """
-    muets = []
+    manques = []
     for decision in decisions:
         section = markdown.section(
             markdown.lire(RACINE / decision.fichier), "Porté dans le code par"
         )
         if not section or "à renseigner" in section:
             continue
-        if not decision.portage:
-            muets.append(decision.identifiant)
+        # On compare le nombre de chemins **cités** au nombre de portages produits : exiger « au
+        # moins un » laisserait ADR-0083 perdre 31 modules sur 32 sans rougir.
+        cites = {t for t in adr._TOKEN.findall(section) if adr._est_chemin(t)}
+        attendus = {d for cite in cites for d in adr._developper(cite)}
+        produits = {p.chemin for p in decision.portage}
+        if not attendus <= produits:
+            manques.append((decision.fichier, sorted(attendus - produits)))
 
-    assert muets == []
+    assert manques == [], "chemins cités par un ADR mais jamais confrontés au dépôt"
 
 
 def test_le_registre_est_bien_un_graphe_date(decisions: tuple[Decision, ...]) -> None:

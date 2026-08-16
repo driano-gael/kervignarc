@@ -234,11 +234,18 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
   est simplement difficile à défaire. *(Ajouté le 29/07/2026 : la règle antérieure ne parlait que
   d'« arbitrage », donc ne couvrait pas ce cas — il s'était présenté deux fois dans la même journée.)*
 - <!--regle:cycle-de-branche--> Cycle : branche depuis `main` à jour → PR → revue + CI verte → merge → suppression de la branche.
-  **Quand deux PR sont en vol, celle qui fusionne en second régénère l'atlas avant son merge**
-  (`cd backend && python -m atlas`, un commit d'une ligne). Deux branches peuvent n'avoir **aucun
-  conflit git** — fichiers distincts, régions disjointes — et se périmer mutuellement : il suffit
-  que l'une ajoute un ADR et que l'autre ait généré ses cartes avant. Sans ce geste, `main` part
-  rouge. *(Constaté dès la livraison de l'atlas, [ADR-0085](docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md) § Conséquences.)*
+  **L'atlas se régénère APRÈS le commit, dans deux cas où le hook ne peut structurellement rien
+  voir** (`cd backend && python -m atlas`, un commit d'une ligne) :
+  - **un commit qui déplace des lignes de `CLAUDE.md`** — l'historique d'une règle vient d'un
+    `git log -L <bornes>`, et ces bornes sont résolues contre `HEAD`, donc contre le fichier
+    **d'avant** le commit. Le hook valide parce qu'il compare du périmé à du périmé : il est
+    auto-cohérent. Le fichier devient faux à l'instant du commit, et seule la CI le voit ;
+  - **deux PR en vol** : celle qui fusionne en **second** régénère avant son merge. Deux branches
+    peuvent n'avoir **aucun conflit git** — fichiers distincts, régions disjointes — et se périmer
+    mutuellement, il suffit que l'une ajoute un ADR et que l'autre ait généré ses cartes avant.
+
+  Sans ce geste, `main` part rouge. *(Les deux cas ont été constatés à la livraison même de
+  l'atlas, le second en revue — [ADR-0085](docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md) § Conséquences.)*
 - <!--regle:suivi-des-us--> **Le suivi des US ([`journal-d-avancement/SUIVI-US.md`](journal-d-avancement/SUIVI-US.md)) est tenu
   à jour dès que nécessaire** : c'est le **point de reprise** de « reprend les US » (état de chaque US,
   prochaine à prendre). Une US passe à ✅ **dans son propre dernier commit, une fois la revue

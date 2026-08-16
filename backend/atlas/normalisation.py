@@ -113,13 +113,24 @@ def normaliser_statut(brut: str, *, fichier: str) -> tuple[Statut, str]:
     un `**Remplacé par [ADR-0059](…)** (30/07/2026)`. On normalise pour trier et filtrer, mais
     l'appelant conserve le texte brut : les parenthèses portent souvent la nuance utile.
     """
-    # Le test le plus **spécifique** d'abord : un « Accepté (remplace en partie ADR-00xx) » serait
-    # classé « Remplacé » par une recherche de sous-chaîne menée en premier. Aucun cas dans le
-    # registre aujourd'hui, mais l'ordre inverse était un piège gratuit.
+    # ⚠️ Les deux ordres possibles sont des pièges **de polarité opposée** : tester « remplac »
+    # d'abord classe un « Accepté (remplace en partie …) » comme obsolète ; tester « accepté »
+    # d'abord classe un « Accepté, remplacé par … » comme en vigueur — le plus coûteux des deux,
+    # puisqu'il fait passer une décision morte pour vivante. Aucune des deux formes n'existe au
+    # registre. Plutôt que de choisir le moindre mal, on **refuse de deviner** : c'est la ligne de
+    # conduite du module, et la seule qui ne mente pas si le cas apparaît.
     canonique = cle(brut)
-    if canonique.startswith("accepte"):
+    accepte = canonique.startswith("accepte")
+    remplace = "remplac" in canonique
+    if accepte and remplace:
+        raise AtlasSourceInvalide(
+            f"{fichier} : statut ambigu « {brut} » — il dit à la fois « accepté » et "
+            f"« remplacé ». Tranche dans l'ADR : un statut qui se contredit ne peut être ni "
+            f"affiché ni filtré honnêtement."
+        )
+    if accepte:
         return Statut.ACCEPTE, ""
-    if "remplac" in canonique:
+    if remplace:
         cite = _ADR_CITE.search(brut)
         return Statut.REMPLACE, cite.group(1) if cite else ""
     raise AtlasSourceInvalide(

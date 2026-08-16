@@ -92,7 +92,13 @@ def _dire_les_bloquants(verdicts: tuple[Controle, ...]) -> None:
     )
 
 
-def principal(arguments: list[str] | None = None) -> int:
+def principal(arguments: list[str] | None = None, racine: Path = RACINE) -> int:
+    """Les quatre issues : 0 à jour · 1 périmé · 2 source invalide · 3 écart bloquant.
+
+    `racine` est un paramètre et non le global : sans cela la fonction n'était **pas testable**,
+    et c'est précisément ce qui avait laissé le correctif « les écarts bloquants font rougir la
+    porte » sans le moindre test — donc au même point qu'avant, à un code de retour près.
+    """
     analyseur = argparse.ArgumentParser(
         prog="python -m atlas",
         description="Génère les données de l'atlas depuis les sources versionnées du dépôt.",
@@ -106,7 +112,7 @@ def principal(arguments: list[str] | None = None) -> int:
     options = analyseur.parse_args(arguments)
 
     try:
-        cartes = assembler(RACINE)
+        cartes = assembler(racine)
     except AtlasSourceInvalide as invalide:
         print(f"atlas : source invalide.\n{invalide}", file=sys.stderr)
         return 2
@@ -114,11 +120,11 @@ def principal(arguments: list[str] | None = None) -> int:
     if not options.verifier:
         # La génération **écrit toujours**, y compris en présence d'écarts bloquants : la page
         # « Écarts constatés » est précisément là pour les montrer. C'est `--verifier` qui refuse.
-        rendu.ecrire(RACINE, cartes.fichiers)
+        rendu.ecrire(racine, cartes.fichiers)
         print(f"atlas généré — {cartes.resume}")
         return 0
 
-    problemes = rendu.ecarts(RACINE, cartes.fichiers)
+    problemes = rendu.ecarts(racine, cartes.fichiers)
     if problemes:
         print("atlas : les données générées ne correspondent plus aux sources.", file=sys.stderr)
         for probleme in problemes:

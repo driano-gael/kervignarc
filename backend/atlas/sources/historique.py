@@ -30,10 +30,16 @@ _ADR_CITE = re.compile(r"ADR-(\d{4})", re.IGNORECASE)
 
 
 def _git(racine: Path, *arguments: str) -> str:
-    """Appelle git en lecture seule. Rend une chaîne vide si git est indisponible.
+    """Appelle git en lecture seule. Rend une chaîne vide sur **toute** défaillance.
 
-    L'atlas doit rester consultable dans une archive sans `.git` : l'absence d'historique dégrade
-    la fiche d'une règle, elle ne casse pas la génération.
+    ⚠️ Ne dit rien de ce que la génération fait de ce vide : depuis qu'un historique vide écrit en
+    silence a été identifié comme une panne muette, `assembler()` **refuse de générer** sans git.
+    Ici on dégrade ; c'est l'appelant qui décide si la dégradation est acceptable — et il a décidé
+    que non.
+
+    Le silence couvre aussi le code retour non nul et le dépassement de délai : un `git log -L`
+    hors bornes rend donc une règle sans histoire plutôt qu'une exception. C'est voulu (le cas
+    existe et il est figé par un test), mais c'est un silence, pas une absence de problème.
     """
     try:
         # Arguments littéraux, jamais d'entrée utilisateur : pas de `shell=True`, pas de format.

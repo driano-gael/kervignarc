@@ -76,18 +76,44 @@ def _est_chemin(token: str) -> bool:
     return token.startswith(_RACINES_DE_CODE) or token in _FICHIERS_RACINE
 
 
+_EXTENSIONS_DE_FICHIER = (".py", ".ts", ".tsx", ".js", ".md", ".yaml", ".yml", ".toml", ".css")
+
+
+def _est_symbole(token: str) -> bool:
+    """Un identifiant de code, pas un nom de fichier ni une US.
+
+    `_IDENTIFIANT` accepte le point (pour `Phase.depart_id`), ce qui laissait passer `routage.py`
+    et faisait annoncer « le module ne contient pas routage.py » — vrai, et sans le moindre
+    intérêt.
+    """
+    return bool(
+        _IDENTIFIANT.match(token)
+        and not _US_CITEE.fullmatch(token)
+        and not token.endswith(_EXTENSIONS_DE_FICHIER)
+    )
+
+
 def _developper(chemin: str) -> list[str]:
-    """Développe `a/{x,y}.py` en `a/x.py` et `a/y.py` ; rend `[chemin]` s'il n'y a rien à faire."""
+    """Développe `a/{x,y}.py` en `a/x.py` et `a/y.py` ; rend `[chemin]` s'il n'y a rien à faire.
+
+    Une accolade **vide ou malformée** rend le chemin **inchangé** plutôt que rien : le registre
+    n'emploie aujourd'hui que la forme simple, mais une notation exotique ne doit ni faire
+    disparaître une promesse en silence (c'est le pire des deux), ni fabriquer des chemins
+    fantômes qui deviendraient de faux écarts bloquants.
+    """
     accolade = _ACCOLADE.match(chemin)
     if not accolade:
         return [chemin]
     avant, apres = accolade.group("avant"), accolade.group("apres")
-    return [
+    if "{" in accolade.group("liste") or "{" in apres:
+        return [chemin]  # imbrication : on ne devine pas
+    developpes = [
         developpe
         for morceau in accolade.group("liste").split(",")
         if morceau.strip()
         for developpe in _developper(f"{avant}{morceau.strip()}{apres}")
     ]
+    return developpes or [chemin]
 
 
 def _cibles_adr(valeur: str) -> tuple[str, ...]:
@@ -133,43 +159,74 @@ def _portage(texte: str, champs: list[tuple[str, str]], racine: Path) -> tuple[P
     # à chaque fois pour un rôle différent) : on **fusionne** les symboles au lieu d'ignorer les
     # entrées suivantes, sinon les promesses des puces 2 à 4 disparaissaient sans bruit.
     promesses: dict[str, list[str]] = {}
+    fratries: list[list[str]] = []
     for entree in _entrees(brut):
         tokens = _TOKEN.findall(entree)
         cites = [t for t in tokens if _est_chemin(t)]
         if not cites:
             continue
-        chemins = _developper(cites[0])
+        # ⚠️ **Tous** les chemins de l'entrée, pas seulement le premier. « Une entrée, plusieurs
+        # modules » est la forme la plus courante du registre — ADR-0062 cite cinq moteurs sur une
+        # seule puce. N'en retenir qu'un laissait 26 modules promis hors contrôle, exactement de la
+        # façon silencieuse qu'on venait de corriger pour les sections en tableau.
+        chemins = [developpe for cite in cites for developpe in _developper(cite)]
         # Les identifiants d'US cités dans la même entrée (« …, E13US002 ») ne sont pas des
-        # symboles : les garder ferait dire au contrôle qu'un module « ne contient pas E13US002 »,
-        # ce qui est vrai et sans intérêt. Du bruit dans un signal finit par le rendre inaudible.
-        promis = [
-            t
-            for t in tokens
-            if t not in cites and _IDENTIFIANT.match(t) and not _US_CITEE.fullmatch(t)
-        ]
+        # symboles, et les noms de fichiers non plus : les garder ferait dire au contrôle qu'un
+        # module « ne contient pas routage.py ». Du bruit dans un signal finit par le rendre
+        # inaudible, et la page « Écarts constatés » ne vaut que par son crédit.
+        promis = [t for t in tokens if t not in cites and _est_symbole(t)]
         for chemin in chemins:
             promesses.setdefault(chemin, []).extend(promis)
+        # Une entrée qui nomme plusieurs modules **répartit** ses symboles entre eux : elle ne
+        # promet pas chacun d'eux dans chacun. Sans cette fraternité, ADR-0083 se voyait reprocher
+        # trois fois le même symbole, absent de deux modules sur trois **par construction**.
+        if len(chemins) > 1:
+            fratries.append(chemins)
 
-    portes: list[Portage] = []
+    portes: dict[str, Portage] = {}
     for chemin in sorted(promesses):
         cible = _cible_sure(racine, chemin)
         symboles = tuple(dict.fromkeys(promesses[chemin]))
         existe = cible is not None and cible.exists()
         verifiable = existe and cible is not None and _lisible(cible)
-        portes.append(
-            Portage(
-                chemin=chemin,
-                existe=existe,
-                symboles=symboles,
-                symboles_absents=(
-                    _symboles_absents(cible, symboles)
-                    if verifiable and cible is not None
-                    else (() if existe else symboles)
-                ),
-                verifiable=verifiable or not symboles,
-            )
+        portes[chemin] = Portage(
+            chemin=chemin,
+            existe=existe,
+            symboles=symboles,
+            symboles_absents=(
+                _symboles_absents(cible, symboles)
+                if verifiable and cible is not None
+                else (() if existe else symboles)
+            ),
+            verifiable=verifiable or not symboles,
         )
-    return tuple(portes)
+    return tuple(_dedouaner_les_fratries(portes, fratries).values())
+
+
+def _dedouaner_les_fratries(
+    portes: dict[str, Portage], fratries: list[list[str]]
+) -> dict[str, Portage]:
+    """Un symbole trouvé chez un frère cesse d'être « absent » chez les autres.
+
+    Une entrée qui nomme plusieurs modules répartit ses symboles entre eux ; exiger chacun dans
+    chacun fabriquait des signaux vrais et vides de sens — le genre de bruit qui finit par rendre
+    la page « Écarts constatés » inaudible, et un signal qu'on n'écoute plus ne vaut rien.
+    """
+    for fratrie in fratries:
+        presents = {
+            symbole
+            for frere in fratrie
+            if frere in portes
+            for symbole in portes[frere].symboles
+            if symbole not in portes[frere].symboles_absents
+        }
+        for frere in fratrie:
+            portage = portes.get(frere)
+            if portage is None or not portage.symboles_absents:
+                continue
+            restants = tuple(s for s in portage.symboles_absents if s not in presents)
+            portes[frere] = dataclasses.replace(portage, symboles_absents=restants)
+    return portes
 
 
 def _cible_sure(racine: Path, chemin: str) -> Path | None:
@@ -215,7 +272,10 @@ def _entrees(section: str) -> list[str]:
         vider_tableau()
         if nue.startswith(("- ", "* ")) and not ligne.startswith((" ", "\t")):
             entrees.append([nue])
-        elif entrees and nue:
+        elif entrees and nue and ligne.startswith((" ", "\t")):
+            # Seules les lignes **indentées** continuent une puce. Recoller toute ligne non vide
+            # collait la prose qui suit la liste sur la dernière entrée : ADR-0062 se voyait alors
+            # reprocher de ne pas contenir des identifiants tirés du paragraphe d'après.
             entrees[-1].append(nue)
     vider_tableau()
     return [" ".join(morceaux) for morceaux in entrees]

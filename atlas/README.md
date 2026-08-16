@@ -14,10 +14,26 @@ Un serveur local marche aussi, si tu préfères : `python -m http.server 8000` d
 ## Le régénérer
 
 ```bash
-cd backend && python -m atlas
+cd backend && python -m atlas              # génère
+cd backend && python -m atlas --verifier   # ne rien écrire, juste dire si c'est à jour
 ```
 
 Stdlib pure, aucune dépendance — c'est ce que prouve le job de CI, qui tourne sans `pip install`.
+La génération **exige git** : sans lui, l'histoire des règles ne peut pas être reconstituée, et un
+atlas amputé de son histoire serait pire qu'une génération refusée.
+
+`--verifier` a quatre issues, et elles sont toutes des états distincts :
+
+| Code | Ce qu'il dit |
+|---|---|
+| `0` | à jour |
+| `1` | **données périmées** — régénère |
+| `2` | source invalide (git absent, ADR illisible, libellé de relation inconnu) |
+| `3` | **écart bloquant** — un ADR nomme un module qui n'existe pas |
+
+⚠️ **Après un commit qui déplace des lignes de `CLAUDE.md`, régénère et commite à nouveau.**
+L'histoire d'une règle vient d'un `git log -L <bornes>` résolu contre `HEAD` : au moment du hook,
+le commit n'existe pas encore, et le hook valide du périmé contre du périmé. Seule la CI le voit.
 
 ## Ce qui est généré, ce qui ne l'est pas
 

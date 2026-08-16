@@ -120,12 +120,18 @@ def test_le_js_connait_les_valeurs_que_python_serialise() -> None:
     filtre « Remplacées » n'afficherait plus rien pendant que le compteur continuerait d'annoncer
     un nombre. Encore un atlas qui affirme faux, et sans le moindre signal.
     """
-    source = _lire(SITE / "statique" / "pages.js")
+    source = _lire(SITE / "statique" / "pages.js") + _lire(SITE / "statique" / "coquille.js")
     attendues = [
         *(s.value for s in Statut),
         *(s.value for s in Severite),
         *(t.value for t in TypeLien if t is TypeLien.US),
         *(s.value for s in Sens if s is Sens.ENTRANT),
+        # `origine` n'est pas une énumération : deux littéraux posés à la main dans
+        # `sources/historique.py` et `sources/reglement.py`, comparés par le site pour distinguer
+        # une note écrite d'un commit. Rien ne les figeait — c'est justement la valeur que le
+        # docstring donnait en exemple et que ce test laissait passer.
+        "git",
+        "incise",
     ]
 
     manquantes = [valeur for valeur in attendues if f'"{valeur}"' not in source]
