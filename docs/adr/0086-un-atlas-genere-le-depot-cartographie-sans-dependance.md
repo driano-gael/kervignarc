@@ -3,7 +3,7 @@
 - **Statut** : Accepté
 - **Date** : 2026-08-15
 - **Décideurs** : Organisateur / Architecte
-- **Introduit par** : E00US018
+- **Introduit par** : E00US018 · E00US019
 - **S'appuie sur** : [ADR-0001](0001-adopter-les-adr.md) (le Markdown versionné fait autorité) ·
   [ADR-0009](0009-gouvernance-dependances.md) (parcimonie) ·
   [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) (précédent du SVG maison)
@@ -64,7 +64,9 @@ cet ADR contredirait ADR-0001** — c'est le point 3 qui rend le point 1 accepta
 
 **2. SVG maison, aucune bibliothèque de rendu.** Les schémas sont construits à la main à partir de
 géométries connues d'avance (trois colonnes fixes pour le voisinage d'un ADR, un rang par date pour
-les chaînes d'amendement). Segments strictement horizontaux et verticaux, coudes à angle droit.
+les chaînes d'amendement, **une colonne par rang de plus-long-chemin pour les epics** — avec une
+passe de barycentre pour décroiser et des couloirs sous le schéma pour les liaisons de portée > 1).
+Segments strictement horizontaux et verticaux, coudes à angle droit.
 Précédent : [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) §5 bis.
 
 *Limite assumée, écrite ici pour ne pas être redécouverte plus tard :* **aucun moteur de mise en
@@ -73,6 +75,15 @@ semaines de réglage. On ne l'écrit pas, et on ne le sous-traite pas non plus :
 vues dont la forme est connue**. Le jour où un graphe libre s'imposera (le graphe d'imports du
 backend, ~250 nœuds), la réponse sera de **changer de forme** — une matrice de dépendances, qui n'a
 aucune mise en page et où les cycles se lisent sous la diagonale — et non de monter en échelle.
+
+⚠️ **Le schéma des epics dessine la réduction transitive du graphe déclaré**, pas le graphe entier :
+une dépendance déjà impliquée par un chemin plus long n'est pas redessinée (38 arêtes déclarées, 19
+dessinées au 16/08/2026). Aucune information n'est perdue — la dépendance reste impliquée — et c'est
+ce qui rend un dessin sans moteur de mise en page réellement lisible à 18 nœuds. Mais cela a un
+angle mort, nommé ici pour ne pas être redécouvert : **sur un cycle, la réduction efface toutes les
+arêtes**, chacune étant impliquée par le chemin qui passe par les autres. Le graphe faux serait
+alors la seule chose invisible. L'acyclicité est donc un contrôle **bloquant**
+(`cycle-entre-epics`), et non une promesse du dessin.
 
 **3. Données générées, commitées, vérifiées en CI.** `atlas/donnees/*.js` est du généré committé :
 l'atlas est ainsi consultable après un simple clone, sans rien lancer. La CI régénère et compare.
@@ -181,8 +192,47 @@ Piège de second ordre, à connaître : sur une *pull request*, GitHub exécute 
 tête de PR** — une branche ouverte avant cette US n'a pas le job, mergera sans jamais le lancer, et
 laissera `main` rouge jusqu'à la régénération suivante.
 
-**Dette ouverte :** [DETTE-065](../dette.md) — le JavaScript du site n'est ni typé ni linté,
+**Dette ouverte :** [DETTE-067](../dette.md) — le JavaScript du site n'est ni typé ni linté,
 `eslint` et `prettier` ne voyant que `frontend/`.
+
+### Amendement du 16/08/2026 (E00US019) — la porte s'étend aux livrables de suivi
+
+La décision d'origine ne confrontait que **l'écrit au code** : un ADR nomme un module, le module
+existe-t-il ? `E00US019` l'étend à un second couple, **l'écrit à l'écrit** — quatre fichiers de
+suivi écrits à la main (`SUIVI-US.md`, `epics/README.md`, `stories/`, `docs/dette.md`) qui se
+citent les uns les autres sans que rien ne vérifie qu'ils concordent.
+
+Le calibrage des sévérités ne change pas, mais il gagne un cas dont on n'avait pas d'exemple :
+un **compteur** est un constat sans ambiguïté — il se recalcule, il concorde ou non — donc
+**bloquant**, quand bien même il ne s'agit « que » de documentation. Le tracker est le point de
+reprise du projet : un compteur faux ne se rattrape pas à la lecture, il fait repartir la session
+suivante sur une base fausse.
+
+**Trois défauts réels trouvés le jour même de la livraison**, tous invisibles à la relecture :
+1. le compteur J3 annonçait `12/15` quand son corps portait 14 ✅ sur 16 lignes ;
+2. `E05US026` et `E05US028`, **livrées**, n'existaient que dans la file d'attente — un tableau en
+   citation qu'aucun compteur ne lit. Seul le **total annoncé en tête** pouvait les trahir, et
+   c'est ce qui a fait naître ce contrôle ;
+3. deux `DETTE-065` coexistaient sur `main`. Deux agents avaient pris le même numéro libre et,
+   **pour éviter un conflit**, chacun l'avait écrit loin de l'autre : git a fusionné sans un mot.
+   La précaution anti-conflit est exactement ce qui a rendu la collision invisible.
+   *(Rectifié en revue : le contrôle livré au premier jet ne voyait ce défaut-là **ni** dans la
+   porte **ni** sur la page — il comparait les deux tables du registre, alors que les deux lignes
+   étaient du même côté. L'invariant vivait dans un test. Il est désormais un `Controle`
+   bloquant, `dette-numero-en-double`, donc opposable au même titre que les autres.)*
+
+⚠️ **Un contrôle a été écrit puis retiré, et le dire fait partie de la décision.** La
+concordance des **titres** entre le tracker et `stories/` semblait mesurable par recouvrement de
+mots. Elle ne l'est pas : à l'égalité stricte, le contrôle criait sur 23 des 109 US livrées,
+**toutes** des reformulations du même travail ; au seuil qui les taisait, on construisait sans
+effort des faux négatifs (« Supprimer un archer » concordait avec « Supprimer un club »). Précision
+mesurée : **0 vrai positif sur 2 signaux**. Aucun seuil ne sépare les deux populations, parce qu'un
+titre *reformulé* et un titre *changé* se ressemblent exactement autant.
+
+Un signal à la fois bruyant et poreux n'apprend qu'une chose au lecteur : ignorer la page. Le
+retirer vaut mieux que de le documenter comme « calibré » — et c'est la même règle que celle du
+calibrage des sévérités, appliquée un cran plus loin : **un contrôle qu'on ne peut pas rendre juste
+ne se garde pas en le déclarant heuristique.**
 
 ## Porté dans le code par
 
@@ -192,9 +242,14 @@ laissera `main` rouge jusqu'à la régénération suivante.
 - `backend/atlas/normalisation.py` — la table `_RELATIONS`, garde-fou du vocabulaire (point 4)
 - `backend/atlas/sources/reglement.py` — `lire_regles`, la lecture par ancre (point 5)
 - `backend/atlas/sources/adr.py` — `lire_decisions`, le graphe d'amendement et le portage (point 1)
-- `backend/atlas/controles.py` — `verifier`, les deux sévérités (point 4)
+- `backend/atlas/controles.py` — `verifier` et `verifier_avancement`, les deux sévérités (point 4)
+- `backend/atlas/sources/suivi.py` — `lire_sections`, `compter`, `lire_entete` : la règle de comptage du tracker, appliquée à la lettre
+- `backend/atlas/sources/backlog.py` — `lire_epics`, `lire_dettes`, `lire_us_specifiees`
+- `backend/atlas/avancement.py` — `construire`, le rapprochement des quatre sources
 - `backend/atlas/rendu.py` — `serialiser` et `ecarts`, le déterminisme et la porte (point 3)
 - `backend/tests/test_atlas_corpus.py` — les garde-fous sur le dépôt réel
+- `backend/tests/test_atlas_avancement.py` — la règle de comptage, sur des tableaux littéraux
+- `backend/tests/test_atlas_coherence.py` — les contradictions entre livrables, cas par cas
 - `backend/tests/test_atlas_contrats.py` — les promesses de l'US, éprouvées hors du dépôt réel
 - `backend/tests/test_atlas_historique.py` — `git log -L` éprouvé sur un dépôt jetable (point 5)
 - `backend/tests/test_atlas_site.py` — les contraintes du site statique (point 2)

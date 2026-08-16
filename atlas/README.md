@@ -28,8 +28,8 @@ atlas amputé de son histoire serait pire qu'une génération refusée.
 |---|---|
 | `0` | à jour |
 | `1` | **données périmées** — régénère |
-| `2` | source invalide (git absent, ADR illisible, libellé de relation inconnu) |
-| `3` | **écart bloquant** — un ADR nomme un module qui n'existe pas |
+| `2` | source invalide — **git absent**, fichier source manquant, ADR illisible, libellé de relation inconnu, en-tête de tracker illisible, table de suivi mal formée |
+| `3` | **écart bloquant** — un ADR nomme un module qui n'existe pas, ou deux livrables de suivi se contredisent |
 
 ⚠️ **Après un commit qui déplace des lignes de `CLAUDE.md`, régénère et commite à nouveau.**
 L'histoire d'une règle vient d'un `git log -L <bornes>` résolu contre `HEAD` : au moment du hook,
@@ -52,13 +52,15 @@ existe malgré cette décision.
 Il **calcule** ce que le registre ne dit pas : quelles décisions ont été amendées depuis, et si les
 modules qu'un ADR déclare porter sa décision existent encore.
 
+Il **recalcule** aussi les compteurs du tracker au lieu de les recopier — c'est ce qui a trouvé, le jour de sa livraison, un compteur de jalon faux et deux US livrées qui n'apparaissaient dans aucun tableau compté.
+
 Il ne dit **pas** si une règle est encore d'actualité — c'est indécidable mécaniquement. La page
 « Écarts constatés » affiche des **signaux à vérifier**, jamais un verdict. Et le contrôle de
 portage vérifie qu'un fichier **existe**, pas qu'il **fait** ce que l'ADR promet.
 
 ## Vérifier le rendu après une modification
 
-Le site n'a ni build, ni typage, ni test de rendu (`DETTE-065`). Ce qui est vérifié
+Le site n'a ni build, ni typage, ni test de rendu (`DETTE-067`, dont le seuil de résorption — 2 000 lignes — est à ~20 lignes). Ce qui est vérifié
 mécaniquement — absence de `fetch()`, de module ES, de ressource externe, présence du `viewport`,
 tableaux dans un conteneur défilant — l'est par `backend/tests/test_atlas_site.py`. Le reste se
 regarde à l'œil :
@@ -76,6 +78,9 @@ regarde à l'œil :
 - **Une règle** (`regle.html?id=…`) — son texte du jour, puis son histoire datée.
 - **Les décisions** — tous les ADR du registre, filtrables, plus les groupes liés par amendement.
 - **Une décision** (`adr.html?id=0075`) — son voisinage et l'état réel de ce qu'elle promet.
+- **L'avancement** — les US par section, l'ordre des epics, la dette ouverte. Les compteurs y
+  sont **recalculés**, jamais recopiés.
+- **Une US** (`us.html?id=E05US026`) — ce que les quatre livrables de suivi disent d'elle.
 - **Ce qui a changé** — l'errata, du plus récent au plus ancien.
 - **Écarts constatés** — là où l'écrit et le code ont divergé.
 - **Rechercher** — balayage direct du corpus, expressions exactes comprises.

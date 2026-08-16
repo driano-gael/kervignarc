@@ -76,6 +76,12 @@ window.ATLAS.controles = {
    "sujet": "ADR-0083"
   },
   {
+   "code": "etat-contradictoire",
+   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (16/18)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "severite": "signal",
+   "sujet": "E05US023"
+  },
+  {
    "code": "portage-non-verifiable",
    "message": "annonce DEPART dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
@@ -150,6 +156,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 24
+  "signaux": 25
  }
 };

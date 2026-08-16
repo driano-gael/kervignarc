@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from atlas.modele import AtlasSourceInvalide
 from atlas.normalisation import cle
 
 
@@ -18,7 +19,19 @@ from atlas.normalisation import cle
 # `read_text()` sans encodage explicite retombe sur cp1252 et massacre un corpus intégralement
 # francophone. Même raison pour `newline="\n"` à l'écriture (cf. `rendu.py`).
 def lire(chemin: Path) -> str:
-    return chemin.read_text(encoding="utf-8")
+    """Le texte d'une source — ou un refus qui nomme le fichier manquant.
+
+    Un `FileNotFoundError` nu remonté depuis un hook pre-commit est un piège à trois heures
+    perdues, et il se déclenche pendant une US urgente. `AtlasSourceInvalide` sort en code 2
+    (« source invalide ») avec le chemin en clair : le générateur déclare ainsi ce dont il dépend.
+    """
+    try:
+        return chemin.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise AtlasSourceInvalide(
+            f"source absente : « {chemin} ». L'atlas lit des fichiers versionnés du dépôt ; "
+            f"celui-ci manque, et rien ne peut être déduit de son absence."
+        ) from None
 
 
 _H1 = re.compile(r"^# +(?P<titre>.+?)\s*$", re.MULTILINE)
@@ -86,6 +99,99 @@ _BALISE = re.compile(r"[*`]")
 def en_clair(markdown: str) -> str:
     """Le texte sans son balisage — pour la recherche et les résumés, pas pour l'affichage."""
     return re.sub(r"\s+", " ", _BALISE.sub("", _LIEN_MD.sub(r"\g<texte>", markdown))).strip()
+
+
+_SEPARATEUR_DE_TABLEAU = re.compile(r"^[\s|:-]+$")
+# Le tube **échappé** (`\|`) appartient à la cellule, il ne la termine pas. La convention est déjà
+# employée dans le dépôt (`docs/modele-de-donnees.md`) : découper naïvement sur `|` y fabriquerait
+# une cellule de plus, donc un décalage de toutes les colonnes suivantes.
+_TUBE = re.compile(r"(?<!\\)\|")
+
+
+def est_separateur(ligne: str) -> bool:
+    """La ligne `|---|---|` qui sépare l'en-tête du corps."""
+    return bool(_SEPARATEUR_DE_TABLEAU.match(ligne))
+
+
+def cellules(ligne: str) -> list[str]:
+    """Les cellules d'une ligne de tableau, tube échappé compris.
+
+    On retire **un** tube extérieur de chaque côté, pas tous : une cellule finale légitimement
+    vide (`| a | |`) doit rester dans le compte, sans quoi la ligne paraîtrait plus courte que son
+    en-tête — et c'est précisément ce décalage que les appelants refusent.
+    """
+    nue = ligne.strip()
+    if nue.startswith("|"):
+        nue = nue[1:]
+    if nue.endswith("|") and not nue.endswith("\\|"):
+        nue = nue[:-1]
+    return [cellule.strip().replace("\\|", "|") for cellule in _TUBE.split(nue)]
+
+
+def index_colonnes(entete: list[str]) -> dict[str, int]:
+    """Les colonnes **par leur nom**, jamais par leur position.
+
+    Le dépôt fait coexister sept variantes d'en-tête de tableau d'US et deux de tableau de dette :
+    se caler sur un rang lirait l'épic comme un état au premier tableau venu.
+    """
+    return {nom.strip("* "): rang for rang, nom in enumerate(entete)}
+
+
+def cellule(cellules_: list[str], index: dict[str, int], nom: str) -> str:
+    """La cellule d'une colonne nommée — vide si la colonne ou la cellule manque."""
+    rang = index.get(nom)
+    return cellules_[rang] if rang is not None and rang < len(cellules_) else ""
+
+
+def tableaux(texte: str) -> list[tuple[str, list[str], list[list[str]]]]:
+    """Les tableaux Markdown de premier niveau, sous forme (section, en-tête, lignes).
+
+    La **section** est le titre `## ` qui précède le tableau. Elle est rendue parce que le sens
+    d'un tableau en dépend parfois : dans `docs/dette.md`, c'est le titre — « Dette ouverte » ou
+    « Dette résorbée » — qui dit ce que la ligne signifie, une colonne ne le dit pas.
+
+    Les tableaux **en citation** (`> | … |`) sont ignorés : dans ce dépôt, ce sont des vues de
+    priorité ou des encadrés, jamais des inventaires. Une ligne plus courte que son en-tête est
+    rendue telle quelle — c'est à l'appelant de décider si le décalage est tolérable, parce que la
+    réponse dépend de ce qu'il compte : un tableau d'états ne le tolère pas, un tableau descriptif
+    s'en accommode.
+    """
+    trouves: list[tuple[str, list[str], list[list[str]]]] = []
+    section = ""
+    entete: list[str] | None = None
+    lignes: list[list[str]] = []
+
+    def fermer() -> None:
+        if entete is not None:
+            trouves.append((section, entete, lignes))
+
+    for brute in texte.split("\n"):
+        if brute.startswith("## "):
+            fermer()
+            entete, lignes = None, []
+            section = brute[3:].strip()
+            continue
+        if not brute.strip():
+            # ⚠️ Une ligne **vide** n'interrompt pas le tableau. Les registres écrits à la main en
+            # contiennent, pour aérer des lignes de plusieurs centaines de caractères : les traiter
+            # comme une fin de tableau coupait « Dette ouverte » en trois, et le lecteur ne voyait
+            # plus que 4 des 53 dettes — silencieusement, puisqu'un morceau de table reste une
+            # table bien formée.
+            continue
+        if not brute.startswith("|"):
+            if entete is not None:
+                fermer()
+                entete, lignes = None, []
+            continue
+        if est_separateur(brute):
+            continue
+        decoupee = cellules(brute)
+        if entete is None:
+            entete, lignes = decoupee, []
+        else:
+            lignes.append(decoupee)
+    fermer()
+    return trouves
 
 
 def tronquer(texte: str, taille: int) -> str:

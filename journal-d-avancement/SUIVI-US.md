@@ -12,16 +12,24 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 16/08/2026, 15 h 32** · **111 US livrées** · dernière : `E00US018`
+**Dernière mise à jour : 16/08/2026, 16 h 19** · **112 US livrées** · dernière : `E00US019`
+*(**l'avancement, et des livrables de suivi qui ne se contredisent plus** : l'atlas montre les US
+section par section avec leur état, l'ordre des epics en un schéma, la dette ouverte, et une fiche
+par US qui rapproche les quatre sources. Surtout, il **recalcule** chaque compteur et **bloque** la
+CI sur un écart. Il a trouvé trois défauts réels le jour même : le compteur J3 faux, deux US
+livrées qui n'existaient que dans la file d'attente, et deux `DETTE-065` sur `main`. ADR-0086
+amendé ; élargit `DETTE-067`. Trois tranches restent.)*
+
+Précédente : `E00US018`
 *(**l'atlas du projet** : un site statique, ouvrable au double-clic, qui montre le **règlement
 en vigueur** puis l'**histoire datée** de chaque règle, et qui calcule ce que le registre ne dit
 pas — une seule décision sur l'ensemble du registre porte la mention « Remplacé », alors que
 vingt-deux sont amendées par une décision plus récente. Il confronte aussi au dépôt réel les
 modules et symboles promis par les sections « Porté dans le code par ». Généré depuis les
-sources versionnées, sans aucune dépendance, vérifié en CI. ADR-0086 ; ouvre `DETTE-065`.
+sources versionnées, sans aucune dépendance, vérifié en CI. ADR-0086 ; ouvre `DETTE-067`.
 Quatre tranches restent.)*
 
-Précédente : `E05US026`
+Avant elles : `E05US026`
 *(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
 dix filtres qui décidaient chacun dans leur coin qu'une phase est jouable, et les **poules** le
 taillent en devenant réellement jouables — réglées à l'atelier, posées en salle sur des blocs de
@@ -888,7 +896,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (12/15)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (16/18)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -903,6 +911,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76quater | E05US024 | **Un prélèvement lit le classement de sa phase source** | ✅ *(reste de `DETTE-028` sur les rangs **résorbé pour les phases classantes lues** — qualification et élimination directe ; une source visant des poules / suisse / colline / Big Shoot Off reste ignorée jusqu'à E05US023 : tableau→consolante, tableau→tableau, cascade récursive sur un graphe acyclique ; un tableau se lit comme un classement, fourchettes *ex æquo* fermées par la politique `aggregation` (ADR-0067) et non par un départage local qui aurait contredit le palmarès ; le plancher d'inscrits remonte la chaîne et refuse de chiffrer une fenêtre amont plafonnée. **Une fenêtre qui coupe un bloc encore indécis est refusée et annoncée** (ADR-0081) : un tableau de 8 non commencé rendait « les rangs 5 à 8 » comme étant les 4 derniers **qualifiés** — bien formé, plausible, faux, et moins détectable qu'avant l'US ; l'écran public affiche désormais « en attente du tableau *n* ». Le « cycle » invoqué par E05US020 pour reporter ce cas **n'existait pas** — récursion, pas cycle de modules : une justification de report se re-vérifie à la reprise. [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md), [ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md))* |
 | 76quinquies | E05US025 | **Plusieurs qualifications dans un même déroulé** | ✅ *(le format demandé le 08/08 se compose, se joue et se classe : **chaque tour a son barème** (écran « Barème & validation » listant une section par qualification), **chaque archer une feuille par tour** (`serie.phase_id`, migration `0044`), et le **classement final va de 1 à N** — la haute occupe 1..60, la basse 61..120, le premier de la basse restant derrière le dernier de la haute même s'il a mieux tiré. `_anomalies_unicite_qualification` retirée : ce n'était pas une règle de tir à l'arc mais un pansement sur neuf lecteurs incohérents, et l'US répare les lecteurs. `ResultatPhase.origine` empêche une qualification de décerner une médaille — sans elle, trois qualifications d'affilée remettaient un podium complet avant le moindre duel. **Résorbe `DETTE-046`** sans US dédiée (la phase subsume le départ). Deux défauts trouvés en route : le cache mypy annonçait « Success » sur des appels qui plantaient à l'exécution, et l'atelier **refusait de composer** une seconde qualification faute de réglages de départ. Ouvre `DETTE-052` (la saisie admin devine le créneau). ADR-0082, qui **amende ADR-0069**)* |
 | 76sexies | E05US023 | **Les poules jouables de bout en bout** (1ʳᵉ tranche : le contrat de phase jouable) | ✅ *(un **contrat de phase jouable** (`domain/contrat_phase.py`) remplace les **dix** filtres sur `ELIMINATION_DIRECTE` qui répondaient chacun à une question un peu différente et que le code documentait comme « ne se recoupant que par coïncidence » — deux divergences y étaient déjà consignées, ajouter quatre formats en aurait garanti trois de plus. Les tables existantes ne disparaissent pas, elles **dérivent** d'une source unique par capacité. Les **poules** le taillent en devenant jouables : réglées à l'atelier (`config.poules`, à la racine du `config`, sans migration), posées en salle par **bloc de couloirs contigus** — une poule de 5 tient sur 4 couloirs, le membre au repos change à chaque tour, donc on persiste « poule → couloirs » et jamais « archer → couloir » (migration `0045`) —, tirées avec le **pavé de duel d'E04US013** (une rencontre *est* un duel ordinaire, même table `duel`, même file hors-ligne), classées aux cinq critères du §10.1, et **lues par la phase suivante** : le classement de phase se range « par rang de poule d'abord », tout le monde y figure, et les blocs sont déclarés **indécis** tant qu'un départage optionnel n'est pas demandé — ADR-0081 refuse alors la fenêtre qui les coupe et honore celle qui les contient. L'atelier **avertit** quand un tableau nourri par des poules peut réunir deux membres d'un même groupe (les exempts peuvent rejouer une poule au 1ᵉʳ tour) plutôt que de corriger en douce une règle que personne n'a demandée. Le branchement `ServicePoules` ↔ `ServiceSaisieDuels` passe par un **port étroit** câblé au composition root : les deux services se tiennent par les deux bouts, et un import paresseux aurait caché le cycle au lieu de le casser. **Rétrécit `DETTE-028`** au périmètre poules — le signal d'écart est désormais **dérivé du registre**, donc il ne peut plus mentir type par type. Ouvre `DETTE-054` (3ᵉ paire de DTO jumeaux entre les deux routeurs de composition). Reste hors périmètre et **dit comme tel** : le routage d'un membre de poule, le palmarès, le forfait en poule. [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md))* |
+| 76septies | E05US028 | **Le Big Shoot Off jouable de bout en bout** | ✅ *(3ᵉ tranche du découpage d'`E05US023`, livrée le 14/08/2026 : la volée de barrage se règle, se joue, se départage et entre au palmarès. Règle métier amendée en cours d'US — plusieurs sortants par manche, dits tour par tour (référentiel §10.1). ADR-0083 tenu sur sa structure. **Insérée ici le 16/08/2026** : elle n'existait que dans la file d'attente, donc dans aucun compteur.)* |
+| 76octies | E05US026 | **Le système suisse jouable** (backend) | ✅ *(livrée le 16/08/2026, **backend seul** — le front part en `E05US030`. Se règle, se joue ronde après ronde, se pose sur la salle, se classe, se route et entre au palmarès. Les deux ports de classement jumeaux fondus en un ([ADR-0084](../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)). Ouvre `DETTE-064` (majeure), referme `DETTE-063`. **Insérée ici le 16/08/2026**, même raison.)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
@@ -1040,7 +1050,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
 | E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
 
-## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (1/5)**
+## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**
 
 > Demande du commanditaire, hors file d'exécution : *« je ne vois pas bien l'état réel du projet,
 > et son historique »*. Outillage de suivi, pas une capacité produit — ces US **n'entrent pas** dans
@@ -1049,13 +1059,16 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > [ADR-0086](../docs/adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md).
 > Livrée le 15/08 : le règlement en vigueur, l'histoire datée de chaque règle, les 83 décisions avec
 > **ce qui les a amendées depuis**, et la confrontation de ce que l'écrit promet à ce que le dépôt
-> contient. Ouvre `DETTE-065`.
+> contient. Ouvre `DETTE-067`.
+> Livrée le 16/08 : l'**avancement** — les US section par section, l'ordre des epics, la dette
+> ouverte, une fiche par US — et le **garde-fou de cohérence** entre les quatre livrables de
+> suivi, compteurs recalculés compris. Trois défauts réels trouvés le jour même.
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E00US018 | L'atlas : le règlement en vigueur et l'histoire des décisions | hors jalon | ✅ |
-| E00US019 | Atlas — l'avancement (SUIVI-US, epics, dette) | hors jalon | ⬜ *(cible, sans fiche détaillée)* |
-| E00US020 | Atlas — la carte du code (imports, matrice de dépendances, ports) | hors jalon | ⬜ *(cible)* |
+| E00US019 | L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas | hors jalon | ✅ *(compteurs recalculés et **bloquants**, graphe des epics en réduction transitive, fiche par US ; a trouvé le compteur J3 faux, deux US livrées restées hors jalon, et deux `DETTE-065` sur `main`)* |
+| E00US020 | Atlas — la carte du code (imports, matrice de dépendances, ports) | hors jalon | 🎯 *(cible, sans fiche détaillée — prochaine tranche de l'atlas)* |
 | E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | ⬜ *(cible)* |
 | E00US022 | Atlas — les flux (saisie → file d'écriture → WebSocket) | hors jalon | ⬜ *(cible)* |
 
@@ -1105,7 +1118,14 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
   admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
   une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
   **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
-  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 12/15 et J4 0/7.
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 16/18 et J4 0/7.
+  *(J3 corrigé **deux fois** le 16/08/2026, par deux modes de panne différents, tous deux
+  trouvés par le recalcul automatique d'`E00US019` et non à l'œil. **1.** Le compteur disait
+  `12/15` quand le corps portait 14 ✅ sur 16 lignes — l'en-tête n'avait pas suivi le corps.
+  **2.** `E05US026` et `E05US028`, livrées, n'existaient que dans la **file d'attente** — un
+  tableau en citation, qu'aucun compteur ne lit. Elles ont été insérées ici (`76septies`,
+  `76octies`), d'où `16/18`. Ce second mode est propre au total annoncé en tête : il gonflait
+  « 111 US livrées » sans faire bouger un seul `n/N`, donc rien ne le contredisait.)*
   *(Les deux précisions — « quand le tableau en a une » et « ligne sans identifiant » — ont été
   ajoutées en revue le 08/08/2026 : à la lettre, la version initiale rendait `0/0` pour J0, dont le
   tableau n'a pas de colonne `Seq`, et ne disait pas comment traiter la ligne de relevé d'EPIC-17.)*

@@ -4982,6 +4982,12 @@ window.ATLAS.decisions = {
      "type": "us"
     },
     {
+     "cible": "E00US019",
+     "libelle": "Introduit par",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
      "cible": "0001",
      "libelle": "S'appuie sur",
      "sens": "sortant",
@@ -5036,10 +5042,20 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/atlas/avancement.py",
+     "existe": true,
+     "symboles": [
+      "construire"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/atlas/controles.py",
      "existe": true,
      "symboles": [
-      "verifier"
+      "verifier",
+      "verifier_avancement"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -5073,11 +5089,47 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/atlas/sources/backlog.py",
+     "existe": true,
+     "symboles": [
+      "lire_epics",
+      "lire_dettes",
+      "lire_us_specifiees"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/atlas/sources/reglement.py",
      "existe": true,
      "symboles": [
       "lire_regles"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/atlas/sources/suivi.py",
+     "existe": true,
+     "symboles": [
+      "lire_sections",
+      "compter",
+      "lire_entete"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_avancement.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_coherence.py",
+     "existe": true,
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -5124,7 +5176,10 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Un atlas généré : le dépôt cartographié en site statique, sans dépendance de rendu",
    "us": [
-    "E00US018"
+    "E00US018",
+    "E00US019",
+    "E05US026",
+    "E05US028"
    ]
   }
  ]
