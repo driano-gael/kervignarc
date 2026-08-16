@@ -327,14 +327,37 @@ window.ATLAS.decisions = {
    "fichier": "docs/adr/0013-conduite-de-la-revue-d-us.md",
    "identifiant": "0013",
    "liens": [],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": ".github/workflows/ci.yml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/pyproject.toml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_isolation.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
    "titre": "Conduite de la revue d'US : axes parallèles + porte mécanique",
    "us": [
     "E01US001",
-    "E02US001"
+    "E02US001",
+    "E05US028"
    ]
   },
   {

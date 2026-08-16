@@ -103,6 +103,31 @@ régime, le présent ADR n'existerait pas.
 - **−** Un défaut né de la **conjonction** de deux axes n'appartient à aucun des deux. C1 en est
   explicitement propriétaire, parce qu'il est le seul à voir le diff entier.
 
+### Conséquences propres à l'amendement du 16/08/2026 (décisions 8 et 9)
+
+- **+** La barrière qualité ne peut plus se dégrader **en silence** : le modèle des relecteurs ne suit
+  plus celui de la session. Corollaire pratique : mener une US mécanique en Sonnet devient un
+  arbitrage de coût **sans effet de bord** sur la revue.
+- **+** « Ne modifie aucun fichier » cesse d'être une confiance pour devenir une absence de capacité
+  (ni `Edit` ni `Write` sur les cinq relecteurs).
+- **+** La sortie volumineuse des tests quitte le contexte de l'agent auteur, où elle était renvoyée à
+  chaque tour jusqu'au `/clear`. C'est le gain de contexte le plus net du lot — plus net que le gain
+  de coût, qui reste modeste.
+- **−** **Le nombre de fichiers à maintenir passe de 1 à 8.** C'est le prix réel de cet amendement.
+  Il est payé volontairement contre la propriété inverse : une grille ne vit plus qu'à un seul
+  endroit, et le modèle n'est plus une convention orale. Le préambule commun, lui, reste **en un seul
+  exemplaire** dans `/revue-us` — ne pas le recopier dans les agents, ce serait rejouer exactement le
+  mode de défaillance que la décision 8 vient de fermer.
+- **−** Le risque de dérive **change de forme sans disparaître** : `/revue-us` et les définitions
+  d'agents peuvent désormais se contredire (un axe renommé, une règle déplacée). Rien ne le vérifie
+  mécaniquement. À surveiller ; si un troisième cas de dérive survient, c'est le signal qu'il faut un
+  garde-fou et non une vigilance.
+- **−** L'agent `porte-mecanique` tourne sur un **modèle léger** : il exécute et recopie, il ne juge
+  pas. Deux contrôles restent explicitement chez l'auteur — la complétude de la liste des `run:`
+  (qu'il rend verbatim pour cela) et l'unique interprétation autorisée (`atlas --verifier` rouge =
+  cas connu de régénération post-commit). Le jour où l'on serait tenté de lui confier un jugement,
+  c'est le modèle qu'il faudrait remonter, pas la consigne.
+
 ## Retour d'expérience — deux tours, et les deux ont trouvé des bloquants
 
 Cette procédure a été soumise **à elle-même**, deux fois. Le détail est conservé parce qu'il
@@ -143,6 +168,60 @@ cherchera à raccourcir la revue.
 
 **7. Le relecteur adversarial est un axe à part entière** (axe D), lancé dans le même message que les
 autres, au même format, compté au verdict global — **requis** dès que le changement est structurel.
+
+**8. Chaque relecteur est un agent versionné, à modèle épinglé et outils restreints.**
+*(Amendement du 16/08/2026.)* Les grilles quittent le corps de `/revue-us` pour
+`.claude/agents/revue-axe-{a,b,c1,c2,d}.md` — un fichier par axe, versionné, donc identique sur tous
+les postes. Trois propriétés que le prompt inline ne pouvait pas offrir :
+
+- **Le modèle est épinglé** (`model: opus`) au lieu d'être hérité de la session. C'est la mise en
+  application *mécanique* de l'option écartée en tête de cet ADR (« dégrader le modèle du relecteur —
+  écartée sans discussion ») : jusqu'ici, un `/model sonnet` choisi pour une US mécanique dégradait
+  la barrière qualité au `lance la PR` suivant, **sans que rien ne le signale**. L'épinglage ferme ce
+  trou sans rien coûter.
+- **Les outils sont restreints** : les agents de revue n'ont ni `Edit` ni `Write`. « Ne modifie aucun
+  fichier » était une consigne de prompt — donc une confiance ; c'est désormais une absence de
+  capacité. *Résidu assumé* : `Bash` reste ouvert (les relecteurs ont besoin de `git diff`), donc une
+  écriture par shell reste théoriquement possible. La fermer complètement relève des permissions du
+  poste, pas de la définition d'agent, et n'est pas faite ici.
+- **La porte mécanique devient un agent** (`porte-mecanique`, `model: haiku`) qui **lit `ci.yml`** au
+  lieu de suivre une liste, et rend un verdict + les échecs verbatim. Double effet : la sortie des
+  tests (10-50 k tokens) quitte le contexte de l'auteur, et la liste ne peut plus dériver.
+
+**Ce dernier point corrige un défaut réel de la décision 1.** Elle affirmait qu'« une seule étape est
+sciemment omise ». C'était vrai de l'intention, faux de la mise en œuvre : la liste recopiée dans
+`/revue-us` a divergé de `ci.yml` **deux fois** — `npm test` (797 tests front, `ci.yml:154`) absent
+depuis la rédaction de la procédure, découvert le 15/08/2026 sur E05US028 ; puis le job **`atlas`**
+(`python -m atlas --verifier`, `ci.yml:124`) jamais mentionné, découvert au présent amendement. Deux
+occurrences du même mode de défaillance suffisent à trancher : **la liste n'est pas la bonne forme,
+la lecture du fichier l'est.**
+
+L'agent `porte-mecanique.md` rejoint par conséquent les fichiers dont le diff **suspend la décharge**
+(décision 5) : il définit désormais ce que la porte exécute.
+
+**9. La mesure est un fichier, pas un outil.** *(Amendement du 16/08/2026.)*
+[`journal-d-avancement/metriques-revue.md`](../../journal-d-avancement/metriques-revue.md) reçoit une
+ligne par passe de revue, remplie à l'étape 2 : durées, verdict par axe, et **quel axe a trouvé les
+bloquants**. Il répond aux deux inconnues que cet ADR admet plus bas (chemin critique non mesuré,
+~2× non confirmé) sans introduire la moindre dépendance — règle 11 (parcimonie) et règle 12 (la
+rigueur va au moteur métier, pas à l'outillage). Le **coût en tokens par axe** reste hors de portée :
+une session ne peut pas lire sa propre consommation ventilée par sous-agent, et une colonne remplie à
+l'estime vaudrait moins qu'une case vide.
+
+## Porté dans le code par
+
+| Ce qui applique la décision | Décisions portées |
+|---|---|
+| [`.claude/commands/revue-us.md`](../../.claude/commands/revue-us.md) | 1 à 7 — orchestration, préambule commun, table de décharge, principe de suspension, bornage de l'étape 3 |
+| `.claude/agents/revue-axe-a.md` · `-b` · `-c1` · `-c2` | 2, 3, 4, 6 — les quatre grilles disjointes ; `model: opus` épinglé (décision 8) |
+| `.claude/agents/revue-axe-d.md` | 7 — le relecteur adversarial, sans grille par construction |
+| [`.claude/agents/porte-mecanique.md`](../../.claude/agents/porte-mecanique.md) | 1 et 8 — lit `ci.yml`, exécute, rend les échecs verbatim ; l'omission volontaire y est nommée |
+| [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | 1 — l'autorité bloquante dont la porte est un sous-ensemble |
+| `backend/tests/test_domain_isolation.py`, `backend/pyproject.toml` (`[tool.mypy]`, `[tool.ruff*]`) | 1 et 5 — les preuves machine qui fondent la décharge, et les fichiers dont le diff la suspend |
+| [`journal-d-avancement/metriques-revue.md`](../../journal-d-avancement/metriques-revue.md) | 9 — l'instrument de mesure |
+
+⚠️ Cette table nomme des fichiers **vérifiés le 16/08/2026**. Un module nommé ici qui ne porterait
+plus rien serait pire que pas de table : elle se relit dans le code du jour, pas dans cet ADR.
 
 ## Liens
 
