@@ -9,7 +9,14 @@
 
 import { describe, expect, it } from 'vitest'
 
-import { decrirePoints, motDeLaFin, nomDeLArcher, type RondeLisible } from './presentation'
+import {
+  decrirePlaces,
+  decrirePoints,
+  etatRencontre,
+  motDeLaFin,
+  nomDeLArcher,
+  type RondeLisible,
+} from './presentation'
 
 function duelliste(archerId: number) {
   return { archer_id: archerId, nom: `NOM${archerId}`, prenom: `Prenom${archerId}` }
@@ -92,5 +99,73 @@ describe('nomDeLArcher', () => {
 
   it('retombe sur l’identifiant plutôt que sur du vide', () => {
     expect(nomDeLArcher([ronde(1, true)], 99)).toBe('#99')
+  })
+})
+
+describe('decrirePlaces', () => {
+  // ⚠️ Extraite pour être testable, elle ne l'était pas encore (relevé au 2ᵉ tour). Elle est
+  // maintenant lue sur la **ligne de rencontre** : c'est ce que le scoreur suit pour aller à la
+  // butte.
+  it('groupe les couloirs par cible', () => {
+    expect(
+      decrirePlaces([
+        [1, 'A'],
+        [1, 'B'],
+      ]),
+    ).toBe('cible 1 : A, B')
+  })
+
+  it('nomme les DEUX cibles quand la rencontre est à cheval', () => {
+    // Un bloc est contigu dans la salle *mise à plat*, pas sur une seule cible : c'est le cas
+    // nominal dès qu'une phase ne tombe pas pile sur une butte.
+    expect(
+      decrirePlaces([
+        [1, 'D'],
+        [2, 'A'],
+      ]),
+    ).toBe('cible 1 : D · cible 2 : A')
+  })
+})
+
+describe('etatRencontre', () => {
+  // ⚠️ Le `duel` est fusionné **après** le reste du patch : l'écraser en bloc ferait passer
+  // `validee_par` à `undefined`, donc `!== null`, et toute rencontre s'annoncerait « validée ».
+  // C'est arrivé au premier jet de ce fichier — le test a rougi, ce qui est exactement son travail.
+  function rencontre(patch: { desynchronisee?: boolean; duel?: Record<string, unknown> } = {}) {
+    return {
+      numero: 1,
+      ronde: 1,
+      couloirs: null,
+      haut: duelliste(1),
+      bas: duelliste(2),
+      desynchronisee: patch.desynchronisee ?? false,
+      duel: {
+        validee_par: null,
+        validation_en_attente: false,
+        resultat: null,
+        manches: [],
+        ...(patch.duel ?? {}),
+      },
+    } as unknown as Parameters<typeof etatRencontre>[0]
+  }
+
+  it('annonce « à tirer » sur une rencontre vierge', () => {
+    expect(etatRencontre(rencontre())).toBe('à tirer')
+  })
+
+  it('suit l’avancement du duel, dans l’ordre', () => {
+    expect(etatRencontre(rencontre({ duel: { manches: [{}] } }))).toBe('en cours')
+    expect(etatRencontre(rencontre({ duel: { resultat: { termine: true } } }))).toBe('à valider')
+    expect(etatRencontre(rencontre({ duel: { validation_en_attente: true } }))).toBe(
+      'validation en attente',
+    )
+    expect(etatRencontre(rencontre({ duel: { validee_par: 'Camille' } }))).toBe('validée')
+  })
+
+  it('fait passer la DÉSYNCHRONISATION avant tout le reste', () => {
+    // L'ordre compte : une rencontre désynchronisée dont le duel est par ailleurs validé ne doit
+    // pas s'annoncer « validée » — c'est ce libellé qui explique pourquoi la ligne est bloquée.
+    const bloquee = rencontre({ desynchronisee: true, duel: { validee_par: 'Camille' } })
+    expect(etatRencontre(bloquee)).toBe('tir mis de côté — population à rétablir')
   })
 })

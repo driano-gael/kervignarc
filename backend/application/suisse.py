@@ -161,7 +161,39 @@ class EtatSuisse:
     la seule `regenerer_plan`, ce champ restait vide sur la route de saisie, si bien que le message
     « le plan de cibles n'est pas posé » de l'écran scoreur ne pouvait **jamais** s'afficher. En
     relecture, la seule raison connaissable est `NON_POSEE` — rien n'est persisté qui dise pourquoi
-    un bloc manque ; `regenerer_plan` l'écrase par la raison réelle qu'il vient d'observer."""
+    un bloc manque. `regenerer_plan` rend la raison réelle (`SALLE_PLEINE`, `SANS_RENCONTRE`) dans
+    **sa propre réponse** ; dès le refetch suivant, on retombe sur `NON_POSEE`. L'organisateur dont
+    la salle est trop petite relit donc « le plan n'est pas posé » et peut regénérer en vain — c'est
+    le régime **hérité du jumeau poules** (`application/poules.py`), assumé là-bas comme ici, et non
+    un écart introduit par cette US. Le rendre durable demanderait de persister la raison avec le
+    plan."""
+
+
+_PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
+"""Le seul conflit qu'une **relecture** sait rapporter : le plan ne couvre pas le plateau."""
+
+
+def _plan_suffisant(bloc: BlocDeCouloirs | None, effectif: int) -> bool:
+    """Le bloc posé couvre-t-il **le plateau d'aujourd'hui** ?
+
+    ⚠️ **Tester la seule présence du bloc ne suffit pas**, et le premier correctif s'y était arrêté
+    (relevé au 2ᵉ tour de revue par deux axes, sonde à l'appui). `regenerer_plan` dimensionne le
+    bloc unique sur l'effectif **du jour de la pose**, et son numéro est toujours 1 : un archer
+    inscrit après coup ne fait pas disparaître le bloc, il le rend **trop court**. Les rencontres en
+    débordement perdaient alors leur cible sans que rien ne le signale — la branche morte d'origine,
+    un cran plus loin, et sur un cas banal le jour J (retardataire, forfait annulé, phase amont qui
+    bouge).
+
+    ⚠️ **Le jumeau poules n'a pas ce trou, et c'est ce qui l'a rendu invisible par analogie** : une
+    croissance d'effectif y ajoute des *groupes*, dont les numéros n'ont aucun bloc, donc
+    `_conflits_du_plan` les voit. Le suisse n'a qu'un groupe, qui ne disparaît jamais.
+
+    L'empreinte attendue est celle de `regenerer_plan` : `2 * (effectif // 2)` couloirs — le porteur
+    du bye ne tire pas, on ne lui réserve pas de place.
+    """
+    if bloc is None:
+        return False
+    return len(bloc.places) >= 2 * (effectif // 2)
 
 
 class ServiceSuisse:
@@ -290,9 +322,10 @@ class ServiceSuisse:
             # que lire (ADR-0083 §3).
             #
             # `NON_POSEE` et rien d'autre : en relecture, rien n'est persisté qui dise *pourquoi* le
-            # bloc manque. `regenerer_plan` continue d'écraser cette valeur par les raisons réelles
-            # (`SALLE_PLEINE`, `SANS_RENCONTRE`) qu'il vient d'observer.
-            conflits=() if bloc is not None else (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),),
+            # bloc manque. `regenerer_plan` rend les raisons réelles (`SALLE_PLEINE`,
+            # `SANS_RENCONTRE`) dans **sa propre réponse** ; la relecture suivante retombe ici, donc
+            # sur `NON_POSEE`. C'est le régime du jumeau poules, assumé de la même façon.
+            conflits=() if _plan_suffisant(bloc, len(tireurs)) else _PLAN_A_REPOSER,
         )
 
     def _rejouer(

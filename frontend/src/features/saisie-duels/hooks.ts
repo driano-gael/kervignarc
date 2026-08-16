@@ -61,7 +61,7 @@ export const clePoules = (tournoiId: number, phaseId: number) =>
 // préfixe, donc `invalidateQueries({ queryKey: clePoules(t, p) })` atteint les deux. Deux clés
 // sœurs écrites à la main auraient laissé la vue d'organisation périmée après chaque flèche, sans
 // que rien ne le signale.
-export const clePoulesSaisie = (tournoiId: number, phaseId: number) =>
+export const clePoulesSaisie: CleDe<EtatPoulesSaisie> = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'saisie'] as const
 export const clePoulesPubliques = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'publique'] as const
@@ -71,7 +71,7 @@ export const clePoulesPubliques = (tournoiId: number, phaseId: number) =>
 // atteigne les deux sans que personne n'ait à s'en souvenir.
 export const cleSuisse = (tournoiId: number, phaseId: number) =>
   ['suisse-etat', tournoiId, phaseId] as const
-export const cleSuisseSaisie = (tournoiId: number, phaseId: number) =>
+export const cleSuisseSaisie: CleDe<EtatSuisseSaisie> = (tournoiId: number, phaseId: number) =>
   [...cleSuisse(tournoiId, phaseId), 'saisie'] as const
 export const cleSuissePublique = (tournoiId: number, phaseId: number) =>
   [...cleSuisse(tournoiId, phaseId), 'publique'] as const
@@ -147,6 +147,20 @@ const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => rea
   suisse: cleSuisse,
 }
 
+/** Une clé de cache **marquée par le DTO qu'elle porte** — le marqueur n'existe qu'à la compilation.
+ *
+ * ⚠️ Sans lui, `photoDe<E>()` ne confinait qu'à moitié (relevé au 2ᵉ tour de revue, par deux axes) :
+ * les lambdas étaient bien vérifiées contre `E`, mais `cle` restait typée « une clé quelconque »,
+ * si bien qu'**intervertir `clePoulesSaisie` et `cleSuisseSaisie` entre les deux entrées compilait
+ * encore** — et produisait exactement le `TypeError` sur `.rondes.flatMap` que le commentaire de la
+ * fabrique disait avoir supprimé. Le marquage ferme le dernier tiers, et il a été **vérifié par
+ * sonde** : l'interversion rend `Type 'CleDe<EtatPoulesSaisie>' is not assignable to type
+ * 'CleDe<EtatSuisseSaisie>'`. Un marqueur qu'on n'éprouve pas est un commentaire, pas un garde-fou.
+ */
+type CleDe<E> = ((tournoiId: number, phaseId: number) => readonly unknown[]) & {
+  readonly __dto?: E
+}
+
 /** La photo de saisie d'une famille : où l'écran lit ses duels, quand ce n'est pas `cleDuel`.
  *
  * `null` pour le tableau, qui lit bien `cleDuel` — c'est la seule famille dans ce cas. Les phases à
@@ -154,7 +168,7 @@ const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => rea
  * `numero` (le `match_numero` de la table `duel`) les identifie de bout en bout.
  */
 interface PhotoDeSaisie<E> {
-  cle: (tournoiId: number, phaseId: number) => readonly unknown[]
+  cle: CleDe<E>
   /** Aplatit la photo en rencontres, quel que soit le niveau intermédiaire (poule, ronde). */
   rencontres: (etat: E) => { numero: number; duel: Duel }[]
   /** Réécrit le duel d'une rencontre dans la photo, en préservant la structure. */

@@ -1,7 +1,7 @@
 # ADR-0087 — Une attente n'est pas une indisponibilité
 
 - **Statut** : accepté
-- **Date** : 16/08/2026
+- **Date** : 2026-08-16
 - **US** : E05US030 (le système suisse à l'écran)
 - **Voisins** : [ADR-0065](0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §2 (le précédent
   exact : un repêché n'est pas un éliminé), [ADR-0083](0083-le-contrat-de-phase-jouable.md) (le

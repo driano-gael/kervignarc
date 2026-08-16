@@ -97,9 +97,17 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
     // « Départ » côte à côte, montrant deux créneaux différents, se lisaient comme un défaut.
     monter()
 
-    expect(await screen.findByRole('combobox', { name: 'Départ des forfaits' })).toBeInTheDocument()
-    // Et il n'entraîne pas les panneaux de saisie avec lui.
-    expect(screen.getByText('duels : 41')).toBeInTheDocument()
+    const forfaits = await screen.findByRole('combobox', { name: 'Départ des forfaits' })
+    await screen.findByText('duels : 41')
+
+    // Les deux sélecteurs sont réellement **indépendants** : bouger celui des forfaits n'entraîne
+    // aucun panneau de saisie. Se contenter de constater « duels : 41 » ne prouvait rien — c'était
+    // l'état initial, déjà couvert deux fois dans ce fichier.
+    await userEvent.selectOptions(forfaits, '42')
+
+    for (const nom of ['duels', 'poules', 'bso', 'suisse']) {
+      expect(screen.getByText(`${nom} : 41`)).toBeInTheDocument()
+    }
   })
 
   it('ouvre sur le créneau DONT ON JOUE LES DUELS, pas sur celui qui tire sa qualif', async () => {

@@ -5342,7 +5342,7 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-08-16",
-   "date_brute": "16/08/2026",
+   "date_brute": "2026-08-16",
    "extrait": "### 1. EN_ATTENTE est une issue à part entière, pas un INDISPONIBLE motivé Sixième valeur de IssueRoutage, de même nature que REPECHE (ADR-0065 §2) : elle sépare deux situations métier que le champ motif ne pouvait distinguer que pour un lecteur humain. Ce qui la justifie n'est pas la formulation du message, c'est le classement de l'archer : EN_ATTENTE compte parmi ceux qui tirent encore, INDISPONIBLE non. Les trois cas de ServiceRoutage._sans_rencontre sont désormais distincts de bout en bout : | Situation | Issue | Ce que l'écran en fait | |---|---|---| | Il n'est pas dans cette phase | INDISPONIBLE | rangé hors course, motif affiché | | La phase est épuisée, ou il a fini | TERMINE | […]",
    "fichier": "docs/adr/0087-une-attente-n-est-pas-une-indisponibilite.md",
    "identifiant": "0087",

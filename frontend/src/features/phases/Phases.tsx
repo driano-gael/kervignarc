@@ -592,6 +592,12 @@ export function FormulairePhase({
             etat={suisse}
             surChangement={setSuisse}
             effectif={etatSuisseDeLaPhase.data?.effectif ?? null}
+            // ⚠️ **La borne vient du serveur ici, pas du miroir** (correctif de 2ᵉ tour) : l'état de
+            // la phase la porte déjà (`rondes_maximales`), et `decrireBorneConnue` a été écrite
+            // dans ce même lot pour ce cas — recalculer côté client aurait enfreint la règle que le
+            // lot venait de poser. Dans l'atelier, au contraire, aucune phase n'existe : le miroir
+            // y est le seul recours, et c'est ce qui le justifie.
+            maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
           />
         )}
         <label className="formulaire__tranche">

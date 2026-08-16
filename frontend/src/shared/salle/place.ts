@@ -6,6 +6,13 @@
 // (règle 10) réserve à `shared/`, et la **3ᵉ** occurrence du genre : c'est le seuil que le projet
 // se fixe. `poules/api.ts` le ré-exporte, donc aucun import existant ne casse.
 //
+// ⚠️ **Ce qui remonte en `shared/`, c'est le VOCABULAIRE partagé, pas les surfaces.** La règle n'est
+// pas « aucune feature n'importe d'une feature » : `features/phases` **orchestre** les formats et
+// importe légitimement leurs hooks et leurs vues (`../poules/hooks`, `../suisse/hooks`,
+// `../suisse/ClassementSuisse`). Ce qui n'a pas sa place dans une feature, c'est un **type que
+// plusieurs features doivent nommer de la même façon** — précision ajoutée en revue, la première
+// rédaction laissait croire à une règle appliquée à moitié dans le même commit.
+//
 // ⚠️ **Homonymie à connaître** : `features/saisie-duels/api.ts` exporte une **autre** `Place` (une
 // interface décrivant la place d'un duelliste sur un plan de duels, pas un couple cible/couloir).
 // Les deux ne se distinguent aujourd'hui que par leur chemin d'import. Renommer l'une des deux

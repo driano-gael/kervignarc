@@ -11,7 +11,13 @@
 // fait au classement courant, et les couloirs sont posés d'un bloc pour toute la phase.
 
 import type { EtatSuisse } from './suisse'
-import { RONDES_MAX_REGLABLES, decrireBorne, estValide, versReglage } from './suisse'
+import {
+  RONDES_MAX_REGLABLES,
+  decrireBorne,
+  decrireBorneConnue,
+  estValide,
+  versReglage,
+} from './suisse'
 
 /**
  * Rend la fiche de réglages d'un système suisse. Aucun état : l'unique source est `etat`, détenu
@@ -24,10 +30,21 @@ export function ReglageSuisse({
   etat,
   surChangement,
   effectif,
+  maximum = null,
 }: {
   etat: EtatSuisse
   surChangement: (etat: EtatSuisse) => void
   effectif: number | null
+  /**
+   * La borne **que le serveur a calculée**, quand l'appelant l'a sous la main.
+   *
+   * ⚠️ Ce paramètre existe pour ne pas rejouer une règle dont l'autorité est ailleurs : sur l'écran
+   * des phases, l'état de la phase porte `rondes_maximales`, et le recalculer côté client
+   * reviendrait à entretenir deux arithmétiques pour une même règle. `null` — le cas de l'atelier,
+   * où aucune phase n'existe encore — retombe sur le miroir de `shared/phases/suisse.ts`, qui est
+   * alors le seul recours possible.
+   */
+  maximum?: number | null
 }) {
   const reglage = versReglage(etat)
 
@@ -55,7 +72,9 @@ export function ReglageSuisse({
           ou en voyant moins de rondes que prévu le jour J (le service borne à la lecture). */}
       {effectif !== null && reglage !== undefined && (
         <p className="carte__aide" role="status">
-          {decrireBorne(effectif, reglage.nb_rondes)}
+          {maximum === null
+            ? decrireBorne(effectif, reglage.nb_rondes)
+            : decrireBorneConnue(effectif, reglage.nb_rondes, maximum)}
         </p>
       )}
 

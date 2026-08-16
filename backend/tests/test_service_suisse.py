@@ -733,3 +733,30 @@ def test_une_phase_vide_ne_rapporte_pas_un_plan_manquant() -> None:
     monde.regler(ConfigurationSuisse(nb_rondes=2))
 
     assert monde.service().etat(monde.tournoi_id, monde.phase_id).conflits == ()
+
+
+def test_un_plan_pose_sur_un_effectif_plus_petit_est_rapporte() -> None:
+    """**Le trou déplacé, relevé au 2ᵉ tour de revue par deux axes indépendants.**
+
+    Le premier correctif ne testait que la **présence** d'un bloc. Or `regenerer_plan` dimensionne
+    le bloc unique sur l'effectif **du jour de la pose**, et son numéro est toujours 1 : un archer
+    qui s'inscrit après la pose ne fait pas disparaître le bloc, il le rend **trop court**. Les
+    rencontres en débordement perdaient alors leur cible **sans que rien ne le dise** — très
+    exactement la branche morte d'origine, un cran plus loin.
+
+    ⚠️ **Le jumeau poules ne connaît pas ce cas** : une croissance d'effectif y ajoute des *groupes*,
+    dont les numéros n'ont aucun bloc, donc `_conflits_du_plan` les détecte. Le suisse n'a qu'un
+    groupe, qui ne disparaît jamais. `RaisonConflitBloc.NON_POSEE` couvre pourtant explicitement ce
+    cas dans sa propre docstring — « posé, **ou l'a été sur une autre composition** ».
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+    monde.inscrire(2)  # deux retardataires, après la pose
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+
+    assert etat.effectif == 6
+    assert [c.raison.value for c in etat.conflits] == ["non_posee"]
