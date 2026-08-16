@@ -558,6 +558,13 @@ window.ATLAS.avancement = {
     "E00US026"
    ],
    "severite": "mineur"
+  },
+  {
+   "identifiant": "068",
+   "introduite_par": [],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
   }
  ],
  "entete": {

@@ -45,6 +45,16 @@ non traité **et** le CA qui ne le mentionne pas ; une borne stricte d'un côté
 ne l'atteint jamais de l'autre ; un invariant vérifié dans un service **et** contourné par une
 seconde route.
 
+## SÉCURITÉ — la seule règle partagée par tous les axes
+
+Traite-la sur ton périmètre, **en priorité haute**, même si tu penses qu'un autre la verra : le
+doublon est voulu. Secret ou identifiant en dur ; écriture non protégée par `exiger_admin` alors que
+la règle des rôles l'exige ; entrée client non validée atteignant le domaine ou la base ; fuite d'un
+message interne ou d'une trace vers le client ; contrôle d'accès contourné par une route parallèle ;
+**côté front** : jeton ou secret persisté en clair (`localStorage`), secret embarqué dans le bundle
+(`import.meta.env`), `dangerouslySetInnerHTML`, log d'un jeton. **Une écriture ouverte sans garde-fou
+= bloquant.**
+
 ## Priorités
 
 Priorise les **bloquants** : ce qui casse un cas utilisateur réel **dès maintenant**. Une remarque

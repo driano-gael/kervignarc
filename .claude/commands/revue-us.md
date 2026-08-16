@@ -28,17 +28,19 @@ US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<
 
 ## Étape 0 — Cadrage (toi, l'agent auteur)
 
-1. `git branch --show-current` — vérifier qu'on est sur une **branche d'US** (jamais `main`/`master`). Sinon, stop et prévenir.
+1. **Noter l'heure** (`date`) — c'est la première des deux bornes de `durée porte`. Puis `git branch --show-current` : vérifier qu'on est sur une **branche d'US** (jamais `main`/`master`). Sinon, stop et prévenir.
 2. `git fetch` puis déterminer la base : `git merge-base HEAD origin/main`.
 3. Calculer le périmètre : `git diff --stat origin/main...HEAD` et la liste des fichiers modifiés. Ignorer les artefacts (`node_modules/`, `.venv/`, `dist/`, lockfiles générés sauf incohérence). **Repère de détection pour l'axe B (règle 9-doc)** : le diff touche-t-il `frontend/src/**` **sans** ajouter ni compléter un `docs/fonctionnel/<ExxUSyyy>.md` ? Si oui, c'est le signal d'une **fiche fonctionnelle manquante** — passe-le explicitement à l'axe B, qui tranchera (fiche due et absente = bloquant, ou US purement outillage front à justifier).
 4. **Règle 12 — le format, ici ; le jugement, à un relecteur.** `git log --format='%h %s%n%b' origin/main..HEAD`. Tu vérifies toi-même le **factuel** : type/scope conventionnel, cohérence avec la branche, corps qui explique le quoi **et** le pourquoi, références présentes. Tu **ne juges pas** « décision structurante ⇒ ADR » : c'est la seule règle des seize dont l'objet est de rattraper ce que **tu** as escamoté, et te la confier la neutralise. Elle est à l'axe C2 ; passe-lui le log en périmètre. *(Preuve que ce n'est pas théorique : le commit `b47b25c` — refonte de cette procédure même — a été livré sans ADR, et c'est un relecteur tiers qui l'a rattrapé. ADR-0013 n'existerait pas autrement.)*
 5. **Passer la porte mécanique AVANT de dépenser une passe de revue** — via l'agent **`porte-mecanique`**, à qui tu passes la liste des fichiers touchés. Il lit `.github/workflows/ci.yml`, exécute les étapes concernées, et te rend la liste verbatim des `run:` qu'il y a trouvés, un `EXIT` par commande, et les échecs non résumés. **La sortie volumineuse des tests reste dans son contexte, pas dans le tien.**
 
-   **Ce que tu vérifies sur son rapport, et que lui ne peut pas vérifier** : la liste verbatim des `run:` correspond-elle à ce qu'il a exécuté, et l'omission volontaire est-elle bien la **seule** (la synchro `requirements.txt`↔`pyproject.toml`) ? Toute **autre** divergence est un bug de cette procédure. *(Ce contrôle n'est pas décoratif : la liste de commandes que cette commande portait en dur avait divergé de `ci.yml` **deux fois** — `npm test` manquant depuis sa rédaction, découvert le 15/08/2026 sur E05US028, puis le job `atlas` jamais mentionné. C'est la raison pour laquelle l'agent **lit** `ci.yml` au lieu de suivre une liste.)*
+   ⚠️ **Ouvre `.github/workflows/ci.yml` et compare toi-même** — `grep -n 'run:' .github/workflows/ci.yml`, une dizaine de lignes — plutôt que de recouper le rapport de l'agent avec lui-même. Un exécutant qui omet une étape l'omet **aussi de sa transcription** : les deux colonnes concordent alors sans rien prouver, et c'est exactement l'auto-cohérence que `CLAUDE.md` § Cycle de branche décrit pour le hook de l'atlas (« il compare du périmé à du périmé »). Ce que l'agent apporte, c'est de lire `ci.yml` **au lieu** d'une liste recopiée ; ce que toi seul apportes, c'est un **second regard indépendant** — il coûte un `grep`. Si la section verbatim manque au rapport, ou si elle diverge de ce que tu lis, **le rapport est nul et non avenu**.
 
-   **Rouge ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe pas mypy fait relire du code condamné. Seule interprétation qui t'appartient : `python -m atlas --verifier` rouge **peut** être le cas connu de régénération post-commit (`CLAUDE.md` § Cycle de branche) ; tout le reste est un échec à corriger. La CI garde le dernier mot.
-6. **Décider si la décharge s'applique** (voir ci-dessous) et noter le résultat : il est passé aux relecteurs.
-7. **Noter l'heure** : elle alimente [`journal-d-avancement/metriques-revue.md`](../../journal-d-avancement/metriques-revue.md) à l'étape 2.
+   Vérifie ensuite que les omissions sont bien les **deux** énumérées dans `porte-mecanique.md` — installation des dépendances Python, synchro `requirements.txt`↔`pyproject.toml` — et **rien d'autre** : `npm ci` en particulier doit avoir tourné. Toute autre divergence est un bug de cette procédure. *(Ce contrôle n'est pas décoratif : la liste que cette commande portait en dur avait divergé de `ci.yml` **deux fois** — `npm test` manquant depuis sa rédaction, découvert le 15/08/2026 sur E05US028, puis le job `atlas` jamais mentionné.)*
+
+   **Rouge ou INCOMPLÈTE ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe pas mypy fait relire du code condamné, et une porte incomplète ne prouve rien. Seule interprétation qui t'appartient : `python -m atlas --verifier` rouge **peut** être le cas connu de régénération post-commit (`CLAUDE.md` § Cycle de branche) — auquel cas tu **régénères** (`cd backend && python -m atlas`), tu **commites** la carte et tu **redemandes la porte**. Un atlas rouge ne franchit jamais l'étape 0. La CI garde le dernier mot.
+6. **Décider si la décharge s'applique** (voir ci-dessous). Si elle est suspendue, **note les fichiers qui la suspendent** : c'est cette liste, et pas le seul mot « SUSPENDUE », qui est passée à l'axe A.
+7. **Noter l'heure une seconde fois** (la première est au point 1) : les deux bornes donnent `durée porte` dans [`docs/metriques-revue.md`](../../docs/metriques-revue.md).
 
 ### La décharge mécanique — et sa suspension
 
@@ -65,10 +67,20 @@ un garde-fou sans rien faire rougir), `frontend/package.json` (**bloc `scripts`*
 définition de la porte front), `.pre-commit-config.yaml`, `.github/workflows/ci.yml`,
 `frontend/eslint.config.js`, `frontend/tsconfig*.json`, `backend/tests/test_domain_isolation.py`,
 `backend/tests/conftest.py` (cf. le commentaire de `.pre-commit-config.yaml` : un import ajouté là
-casse le garde-fou sans que la CI le voie), **et `.claude/agents/porte-mecanique.md`** — l'agent qui
-exécute la porte en fait désormais partie au même titre.
+casse le garde-fou sans que la CI le voie), **`.claude/settings.json`** (une permission retirée
+empêche une étape de tourner sans rien faire rougir), et **tout `.claude/agents/**` ou
+`.claude/commands/revue-us.md`** — les grilles définissent ce que la revue **vérifie**, la commande
+définit ce qui est **déchargé**, `porte-mecanique.md` définit ce qui est **exécuté** : les trois sont
+la porte au même titre que `ci.yml`.
 
-Suspension ⇒ signale-le aux agents, et l'axe A relit ces fichiers **ligne à ligne**. Tout
+⚠️ **Ne cite jamais un seul fichier de `.claude/` dans cette énumération sans ses frères.** Une liste
+qui nomme `porte-mecanique.md` et tait `revue-axe-a.md` s'interprète *a contrario* : l'auteur d'un
+futur diff qui affaiblirait une grille constatera que son fichier n'y figure pas. C'est le mode exact
+par lequel ce garde-fou a été percé la première fois.
+
+Suspension ⇒ **passe aux agents la liste des fichiers en cause**, pas seulement le mot « SUSPENDUE » :
+l'axe A porte le principe, pas l'énumération, et il ne peut pas deviner lesquels relire. Il les relit
+**ligne à ligne**. Tout
 assouplissement (exclusion élargie, `disable_error_code`, `addopts` qui saute un test, script npm
 neutralisé, ajout à `ignore`, étape CI retirée, hook supprimé, denylist non élargie) est
 **bloquant** sauf justification explicite au corps du commit.
@@ -96,8 +108,20 @@ ne dégrade plus sa propre revue en silence. On parallélise la revue, on ne la 
 
 **Gain attendu ~2×** sur le temps mur, pour un coût en tokens de ~2,5×. Honnêteté sur ce chiffre :
 le chemin critique est `max(A, B, C1, C2, D)` et il **n'a jamais été mesuré** — c'est exactement ce
-que [`metriques-revue.md`](../../journal-d-avancement/metriques-revue.md) sert à établir, passe après
+que [`metriques-revue.md`](../../docs/metriques-revue.md) sert à établir, passe après
 passe.
+
+### Concordance des numéros — à lire avant la grille
+
+La grille reprend les **règles 1-11** de `CLAUDE.md` § Règles non négociables, **mêmes numéros**. Les
+règles **12 à 16 sont propres à la revue** et ne correspondent PAS à la numérotation de `CLAUDE.md` :
+en particulier, la règle **12 de `CLAUDE.md`** (« simplicité assumée hors domaine ») est couverte ici
+par la règle **13**, et la règle **12 de la grille** (traçabilité) n'existe pas dans `CLAUDE.md`.
+`9-doc` (fiche fonctionnelle) n'y existe pas non plus.
+
+⚠️ Cette numérotation vit désormais **à la main dans sept fichiers** (cette commande + les cinq
+grilles + `CLAUDE.md`) au lieu de deux. Quand l'une bouge, propager à toutes — c'est le coût de
+maintenance qu'ADR-0013 assume, aggravé par la décision 8. `<!-- DETTE-068 -->`
 
 ### Périmètre : une aide à la LECTURE, jamais un déclencheur
 
@@ -117,20 +141,29 @@ distingue le bon axe du mauvais, c'est la **preuve de lecture**.
 
 En cas de doute sur l'applicabilité d'une règle, **on l'applique**.
 
-### Préambule commun — à passer à TOUS les agents, axe D compris
+### Préambule commun — à passer VERBATIM à TOUS les agents, axe D compris
+
+⚠️ **Verbatim veut dire verbatim : ni résumé, ni reformulé, ni abrégé.** Tu le recopies à la main à
+chaque lancement, et une consigne perdue à la transcription ne produit **aucun symptôme** — un axe
+qui ne cherche pas une chose rend le même rapport qu'un axe qui ne la trouve pas. *(Ce n'est pas
+théorique : à la toute première passe sous ce régime, l'auteur a transmis la règle de sécurité
+réduite à son titre. C'est la raison pour laquelle elle vit maintenant dans les cinq grilles et non
+ici.)*
 
 > « Relis le diff `origin/main...HEAD` de la branche d'US courante (US : `<ExxUSyyy>`). Ta grille est
 > dans ta propre définition d'agent ; ce qui suit la complète.
 >
 > **Ce que tu remontes (restriction dure)** : `<diff intégral | uniquement les fichiers : X, Y>`. Hors de là, ne remonte rien. Cette restriction **prime** sur le périmètre de lecture de ta définition ; elle ne lève pas l'interdiction de court-circuit des règles 9 et 9-doc **sur le périmètre donné**.
 >
-> Rapport structuré : pour chaque remarque → `fichier:ligne`, sévérité (**bloquant** / **majeur** / **mineur** / **suggestion**), description, correctif proposé. Termine par une synthèse (nb par sévérité) et un verdict d'axe : *axe OK* / *corrections requises*. Sois concret et actionnable ; **pas de remarque décorative** — une remarque que l'auteur ne peut pas transformer en diff est du bruit.
+> Rapport structuré : pour chaque remarque → `fichier:ligne`, sévérité (**bloquant** / **majeur** / **mineur** / **suggestion**), description, correctif proposé. Termine par une synthèse (nb par sévérité), un verdict d'axe (*axe OK* / *corrections requises*) et une ligne `Durée : <hh:mm> → <hh:mm>`. Sois concret et actionnable ; **pas de remarque décorative** — une remarque que l'auteur ne peut pas transformer en diff est du bruit.
 >
-> **SÉCURITÉ — la seule règle partagée par tous les axes. Traite-la sur ton périmètre, en priorité haute**, même si tu penses qu'un autre la verra : secret ou identifiant en dur ; écriture non protégée par `exiger_admin` alors que la règle des rôles l'exige ; entrée client non validée atteignant le domaine ou la base ; fuite d'un message interne ou d'une trace vers le client ; contrôle d'accès contourné par une route parallèle ; **côté front** : jeton ou secret persisté en clair (`localStorage`), secret embarqué dans le bundle (`import.meta.env`), `dangerouslySetInnerHTML`, log d'un jeton. Une écriture ouverte sans garde-fou = **bloquant**.
->
-> **Décharge mécanique** : `<tableau de décharge, ou « SUSPENDUE — le diff touche la configuration des outils »>`. Ne re-vérifie pas ce qui y est marqué prouvé ; **tout le reste est à toi**, y compris les résidus explicités. Un outil **contourné** (`# type: ignore`, `eslint-disable`, `noqa`, `skip`/`xfail`, assertion retirée, denylist non élargie, config assouplie) n'est jamais « vert » : signale-le comme **dette** (axe C2).
+> **Décharge mécanique** : `<tableau de décharge, ou « SUSPENDUE — le diff touche : <liste des fichiers en cause> »>`. Ne re-vérifie pas ce qui y est marqué prouvé ; **tout le reste est à toi**, y compris les résidus explicités. Un outil **contourné** (`# type: ignore`, `eslint-disable`, `noqa`, `skip`/`xfail`, assertion retirée, denylist non élargie, config assouplie, permission retirée) n'est jamais « vert » : signale-le comme **dette** (axe C2).
 >
 > **Périmètre** : ta définition te dit par où commencer, pas quand te taire — tes règles s'appliquent même si ce périmètre n'est pas touché par le diff. **Tu ne conclus jamais sans avoir lu** ; si tu ne trouves pas de surface pour tes règles, dis **ce que tu as lu** et pourquoi il n'y a rien — c'est un rapport valide. En cas de doute, applique la règle. »
+
+**La règle de sécurité n'est pas ici** : elle vit dans les **cinq** définitions d'agents, à
+l'identique. C'est la seule règle que le projet double délibérément (ADR-0013, décision 4) ; la
+charger avec la grille, plutôt que de la retranscrire, est ce qui l'empêche de se perdre.
 
 ## Étape 2 — Synthèse & correction par l'agent auteur (toi)
 
@@ -159,8 +192,8 @@ En cas de doute sur l'applicabilité d'une règle, **on l'applique**.
    - **mineur / suggestion** → corrige si rapide et sûr ; sinon justifie brièvement de ne pas le faire.
    - **remède structurel proposé (règle 16)** → ne l'implémente **pas** dans l'US courante, même si la remarque est majeure. Vérifie les trois conditions (preuve dans le code, coût chiffré, option « rien » écartée à raison) ; si elles tiennent, inscris la dette au registre et propose l'ADR + l'US dédiée à l'utilisateur. Si elles ne tiennent pas, écarte la remarque en le justifiant — c'est de la sur-ingénierie.
    - **dette (technique ou de conception)** → soit tu la résorbes dans l'US, soit tu l'**assumes explicitement** en suivant la procédure de [`docs/dette.md`](../../docs/dette.md) : ligne au registre + détail, marqueur `# DETTE-nnn` à l'endroit du raccourci, mention dans le corps de la PR, et proposition d'une US de résorption à l'utilisateur. Jamais laissée silencieuse.
-3. Après corrections, **repasse la porte** via l'agent `porte-mecanique`. Correctif mineur et ciblé ⇒ demande-lui explicitement le **mode ciblé** (il notera « suite partielle » dans son rapport) ; sinon, porte complète.
-4. **Renseigne une ligne** dans [`journal-d-avancement/metriques-revue.md`](../../journal-d-avancement/metriques-revue.md) : durées, verdicts par axe, et surtout **quel axe a trouvé les bloquants**. C'est la seule mesure dont ADR-0013 admet manquer ; elle ne coûte qu'une ligne, à partir de ce que tu as déjà en main.
+3. Après corrections, **repasse la porte complète** via l'agent `porte-mecanique`, sur les jobs concernés par les fichiers touchés. **Pas de porte partielle, pas de `pytest` restreint à un chemin** : la décision 1 d'ADR-0013 dit qu'« une commande approchante n'est pas la même mesure », et un correctif écrit sous pression est exactement la population où la suite complète sert. Les ~3 min se dépensent en tâche de fond, une fois par passe.
+4. **Renseigne une ligne** dans [`docs/metriques-revue.md`](../../docs/metriques-revue.md) : les deux bornes de l'étape 0 donnent `durée porte`, les lignes `Durée :` des rapports donnent `axe le + lent`, et la colonne décisive est **quel axe a trouvé les bloquants**. C'est la seule mesure dont ADR-0013 admet manquer.
 5. Prépare le **message de commit** conventionnel des correctifs (`<type>(<scope>): …` + corps quoi/pourquoi + `US: ExxUSyyy`).
 6. **Committe et pousse** les correctifs sans demander l'aval — c'est le workflow autonome (`CLAUDE.md` § Workflow) : tu ne rends pas la main pour ça. Seuls `git merge`, `git rebase` et l'ajout de dépendance (règle 11) restent soumis à arbitrage.
 
@@ -180,7 +213,8 @@ En cas de doute sur l'applicabilité d'une règle, **on l'applique**.
     une absence : un correctif non testé ne touche aucun fichier de test et n'éveillerait donc jamais
     son propre relecteur — et un correctif écrit sous pression sur le domaine est précisément la
     population où les tests sautent.
-  - **Si les correctifs touchent la config des outils** — `.claude/agents/porte-mecanique.md`
-    compris — la décharge devient suspendue et l'axe A est rejoué.
+  - **Si les correctifs touchent la config des outils** — au sens du principe ci-dessus, donc
+    `.claude/settings.json`, `.claude/agents/**` et cette commande compris — la décharge devient
+    suspendue et l'axe A est rejoué.
   - Si les correctifs ont **débordé** des fichiers déjà relus, tous les axes se rejouent.
 - Sinon, fournis la **PR prête** : lien `pull/new/<branche>`, **titre** (`<type>(<ExxUSyyy>): <résumé>`, rappel de l'ID d'US) et **corps** (contexte, ce qui a été fait, remarques de revue traitées, `US: ExxUSyyy`, ADR éventuels). Rappelle que c'est l'utilisateur qui ouvre et merge, puis dit « c'est mergé ».

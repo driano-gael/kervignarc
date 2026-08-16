@@ -4,7 +4,7 @@
 > choisi de ne pas corriger tout de suite, et qu'on s'engage à résorber.
 > Règle : une dette introduite ou aggravée par une US doit être **inscrite ici dans le même commit**
 > que son introduction. Une dette non inscrite est une dette **silencieuse** — elle est remontée en
-> **majeur** à la revue de PR (cf. [`../.claude/commands/revue-us.md`](../.claude/commands/revue-us.md), règles 14-15).
+> **majeur** à la revue de PR (cf. [`../.claude/agents/revue-axe-c2.md`](../.claude/agents/revue-axe-c2.md), règles 14-15).
 >
 > Ce registre n'est **pas** une liste de tâches : il n'accueille que la dette **acceptée en connaissance
 > de cause**. Un bug qu'on peut corriger dans l'US se corrige dans l'US ; il n'atterrit pas ici.
@@ -86,6 +86,7 @@
 | [DETTE-049](#dette-049--les-doublures-de-phase-ont-un--mode-indulgent--qui-nassemble-pas) | technique | mineur | `backend/infrastructure/memory/repositories.py` (`InMemoryPhaseRepository._assemble`), `backend/tests/conftest.py` (`FauxPhaseRepository`) | Sans magasin de départs **et** de déroulés, les deux doublures rendent les phases **telles que posées** au lieu d'assembler leur définition depuis le déroulé. Le câblage réel (`bootstrap/composition.py`) passe toujours les deux ; la majorité des décors de test n'en passe qu'un | Une doublure qui répond autrement que la production peut **consacrer** un bug au lieu de l'attraper — précisément le mode de panne que l'US a rencontré deux fois. Aggravant : la concession vit dans un module de **production**, pas seulement dans `conftest` | Introduite par E01US025 (séparation déroulé / avancement, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)), tracée sur relevé de revue (axe C2 en **majeur**, axe adversarial en **suggestion** — arbitré **mineur** : la branche est morte au câblage réel, et le contrat est vérifié par `test_conformite_ports_memoire` sur la variante câblée) | Résorption : rendre `departs`/`deroules` **obligatoires** dans les deux classes et corriger les décors (~20 lignes mécaniques), ou les fabriquer en interne par défaut. À faire dans l'US qui touchera ces décors, pas en propre. Marqueur `# DETTE-049` sur `_assemble` |
 | [DETTE-043](#dette-043--la-charte-impose-inter-lapplication-ne-lembarque-pas) | conception | mineur | `frontend/src/index.css` (`--sans`) | `DV-07` impose **Inter**. La pile de polices la déclare en tête, mais **aucun fichier de police n'est livré** : sur un poste qui ne l'a pas installée, le navigateur retombe silencieusement sur `Segoe UI` ou la police système | Le jour J tourne **sans internet** : aucune tablette ne pourra la télécharger. Le rendu réel sera donc, en pratique, celui de la police système sur la quasi-totalité du parc — proportions justes, dessin des lettres faux. Aucun effet fonctionnel, mais la charte est **déclarée satisfaite alors qu'elle ne l'est pas** | **E17US001** (05/08/2026, [ADR-0074](adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) : la charte a été posée sans embarquer la police | **E17US005** (spécifiée le 08/08/2026, 🔒 bloquée sur arbitrage) — embarquer les `.woff2` d'Inter dans `frontend/public/` avec un `@font-face` local. **Bloqué sur arbitrage** : c'est un ajout d'actif au dépôt (règle 11) — ~100 à 300 Ko, licence OFL —, donc une décision du commanditaire, pas de l'implémenteur |
 | [DETTE-067](#dette-067--le-javascript-de-latlas-nest-ni-typé-ni-linté) | technique | mineur | `atlas/statique/` — **1 837 lignes de JS** (`pages.js` 1 656, `coquille.js` 181) plus 530 de CSS, soit **2 367 lignes** — élargie par E00US019 (+ 420 lignes : vue d'avancement, graphe des epics, fiche d'US) puis par E00US020 (+ 353 lignes de JS, + 371 avec le CSS : carte du code, schéma des couches, matrice, ports) ; marqueurs `DETTE-067` en tête des trois fichiers | Le JavaScript du site de l'atlas n'est ni typé, ni linté, ni formaté automatiquement. `eslint` et `prettier` sont cadrés sur `^frontend/` (hooks pre-commit) et `working-directory: frontend` (CI) : `atlas/`, à la racine, leur est invisible | **Borné.** Le site ne touche aucune donnée du tournoi — il lit du généré et affiche du texte : une régression y dégrade la lecture d'une documentation, jamais un score. Les trois fautes invisibles en développement (`fetch()` ou module ES, mortels en `file://` ; ressource externe, alors que le jour J est hors ligne ; `viewport` manquant) sont couvertes par `backend/tests/test_atlas_site.py`. Ce qui reste à découvert est le **rendu** : rien ne garantit qu'une page est lisible à 360 px | E00US018 ([ADR-0086](adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)) — assumé au titre de la règle 12 : rallier ces 700 lignes demanderait soit d'étendre l'outillage du front à un dossier qui n'en est pas, soit une seconde chaîne Node sans build | **Déclencheur franchi le 16/08/2026 par E00US020** (2 367 lignes pour un seuil de 2 000) : la résorption est **ouverte** — `E00US026`, comme le prévoyait la clause « la prochaine US qui touche `atlas/statique/` ouvre la résorption, elle ne relève pas le seuil ». Déclencheurs d'origine : `atlas/statique/` dépasse **2 000 lignes**, **ou** un défaut de rendu échappe deux fois. ⚠️ Le seuil initialement inscrit (« ~1 000 lignes ») était **déjà franchi le jour de l'inscription** — le volume avait été estimé à ~700 lignes pour 1 550 réelles. Un déclencheur atteint à la rédaction n'en est pas un : il ne se déclenchera jamais *plus tard*, et il neutralise l'entrée. Relevé en revue, corrigé ici. Sortie la moins coûteuse : élargir les patrons existants (`^(frontend|atlas)/`), pas introduire un build |
+| [DETTE-068](#dette-068--la-grille-de-revue-et-son-orchestration-vivent-dans-sept-fichiers-sans-garde-fou-de-cohérence) | conception | mineur | `.claude/commands/revue-us.md` et `.claude/agents/revue-axe-{a,b,c1,c2,d}.md` + `porte-mecanique.md` — marqueur `DETTE-068` dans la commande, § « Concordance des numéros » | ADR-0013 décision 8 sort les grilles de la commande vers sept fichiers versionnés. La commande garde l'orchestration, le préambule et la table de décharge ; chaque agent porte sa grille. **Rien ne vérifie mécaniquement que les deux restent d'accord** — la numérotation des règles, la liste de suspension, les renvois croisés sont tenus à la main | **Réel, et déjà constaté trois fois au commit d'introduction** : `docs/adr/0075:220` et `docs/dette.md:7` pointaient encore vers l'ancien emplacement de `12-ADR` et des règles 14-15 ; et `revue-axe-a.md` omettait `porte-mecanique.md` de sa liste de suspension — le fichier même qui suspendait la décharge sur ce lot. Un renvoi mort se lit comme une preuve : c'est le défaut « ADR creux » que la revue existe pour trouver, appliqué à sa propre procédure | `chore/agents-dedies-revue` (16/08/2026), ADR-0013 décision 8 — assumé au titre de la règle 12 : un test qui compare deux textes en prose coûterait plus que le mal, puisque chaque agent reformule légitimement | **La prochaine divergence constatée ouvre la résorption** — pas « la troisième » : le compte de trois est atteint à la rédaction, et un déclencheur déjà franchi ne se déclenche jamais *plus tard* (leçon de DETTE-067, corrigée ici à l'inscription). Piste la moins chère, sur preuve du code d'aujourd'hui : élargir `_RACINES_DE_CODE` de `backend/atlas/sources/adr.py` à `.claude/` — le contrôle `portage-inexistant` vérifierait alors l'**existence** des fichiers nommés par les tables « Porté dans le code par », ce qu'il ne fait pas aujourd'hui (4 des 7 lignes d'ADR-0013 lui sont invisibles). Ne couvre pas le contenu |
 
 ## Dette résorbée
 
@@ -2599,6 +2600,55 @@ dans un diff déjà à 155 fichiers, pour un gain qui n'est pas dans le produit.
 Résorption : rendre `departs`/`deroules` **obligatoires** dans les deux classes (ou les fabriquer en
 interne par défaut) et corriger les décors — mécanique. À faire dans l'US qui touchera ces décors,
 pas en propre.
+
+### DETTE-068 — la grille de revue et son orchestration vivent dans sept fichiers, sans garde-fou de cohérence
+
+**Constat.** Avant le 16/08/2026, `/revue-us` était un fichier : les cinq grilles, le préambule, la
+table de décharge et l'orchestration y cohabitaient. ADR-0013 décision 8 les sépare — la commande
+orchestre, sept agents versionnés portent les grilles, leur modèle et leurs outils. Le gain est réel
+(modèle épinglé, `Edit`/`Write` retirés, sortie des tests hors contexte) et il est documenté.
+
+Le prix l'est aussi : **six surfaces de plus où la même chose peut être dite deux fois, et diverger.**
+
+**Conséquence.** Trois divergences existaient déjà dans le commit qui introduit la séparation, toutes
+relevées en revue et corrigées avant merge :
+
+1. `docs/adr/0075:220` renvoyait à `.claude/commands/revue-us.md` pour la règle `12-ADR` — déménagée
+   dans `revue-axe-c2.md`. Or ADR-0075 désigne ce renvoi comme **la contrepartie** d'une règle qui
+   borne la détection : un pointeur mort y annule la garantie.
+2. `docs/dette.md:7` (l'en-tête de ce fichier) renvoyait au même endroit pour les règles 14-15.
+3. `revue-axe-a.md` recopiait la liste des fichiers qui suspendent la décharge **sans**
+   `porte-mecanique.md` — c'est-à-dire sans le fichier qui suspendait la décharge sur ce lot précis.
+
+Le mode de défaillance est celui d'un renvoi qui **se lit comme une preuve** : personne ne vérifie un
+lien qui a l'air juste.
+
+**Pourquoi non corrigée.** Il n'y a pas de correctif mécanique proportionné. Un test qui comparerait
+la commande et les grilles devrait comparer deux textes en prose qui divergent **légitimement** —
+chaque agent reformule sa consigne pour son propre usage. Le coût dépasserait le mal (règle 12 :
+la rigueur va au moteur métier, pas à l'outillage ; règle 16 : pas de remède structurel sans preuve
+et sans chiffrage).
+
+Trois atténuations sont en place, et elles sont ce qui maintient la sévérité à *mineur* :
+
+- la liste de suspension n'existe plus qu'en **un** exemplaire (le principe est chez l'agent, la
+  liste illustrative dans la commande) ;
+- la règle de **sécurité** est délibérément dupliquée à l'identique dans les cinq grilles, parce
+  qu'elle se charge avec la grille au lieu d'être retranscrite à la main ;
+- la section « Concordance des numéros » est rétablie dans la commande, avec l'avertissement que la
+  numérotation vit désormais dans sept fichiers.
+
+**Résorption.** La **prochaine** divergence constatée l'ouvre. Formulation choisie à dessein : le
+seuil « au troisième cas » qu'ADR-0013 proposait initialement était **déjà franchi à la rédaction**,
+et DETTE-067 a montré ce que produit un déclencheur atteint le jour de son inscription — il ne se
+déclenche jamais *plus tard*, et il neutralise l'entrée.
+
+La piste la moins chère est identifiée, sur preuve du code d'aujourd'hui : `_RACINES_DE_CODE` de
+`backend/atlas/sources/adr.py` ne contient ni `.claude/` ni `journal-d-avancement/`, si bien que **4
+des 7 lignes** de la table « Porté dans le code par » d'ADR-0013 sont invisibles au contrôle
+`portage-inexistant` — pourtant bloquant en CI. Deux éléments de tuple suffiraient à vérifier
+l'**existence** des fichiers nommés (pas leur contenu). C'est une modification du générateur d'atlas,
+donc de la configuration d'outillage : elle relève d'une US `chore/` dédiée, jamais du lot courant.
 
 ### DETTE-067 — le JavaScript de l'atlas n'est ni typé ni linté
 

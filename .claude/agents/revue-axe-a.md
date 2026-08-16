@@ -57,18 +57,36 @@ aucune fuite de message interne vers le client.
 **8. Composition root.** Câblage explicite dans `bootstrap/` / `main.py`, sans DI magique ; tout
 nouveau branchement y est reflété.
 
+## SÉCURITÉ — la seule règle partagée par tous les axes
+
+Traite-la sur ton périmètre, **en priorité haute**, même si tu penses qu'un autre la verra : le
+doublon est voulu. Secret ou identifiant en dur ; écriture non protégée par `exiger_admin` alors que
+la règle des rôles l'exige ; entrée client non validée atteignant le domaine ou la base ; fuite d'un
+message interne ou d'une trace vers le client ; contrôle d'accès contourné par une route parallèle ;
+**côté front** : jeton ou secret persisté en clair (`localStorage`), secret embarqué dans le bundle
+(`import.meta.env`), `dangerouslySetInnerHTML`, log d'un jeton. **Une écriture ouverte sans garde-fou
+= bloquant.**
+
 ## Si la décharge est SUSPENDUE
 
-Le préambule te le dira (le diff touche la configuration des outils). C'est alors **ta charge
-prioritaire** : relis `backend/pyproject.toml` (`[tool.mypy]`, `[tool.ruff*]`,
-`[tool.pytest.ini_options]`), `.pre-commit-config.yaml`, `.github/workflows/ci.yml`,
-`frontend/eslint.config.js`, `frontend/tsconfig*.json`, `frontend/package.json` (bloc `scripts`),
-`backend/tests/test_domain_isolation.py`, `backend/tests/conftest.py` — **ligne à ligne**.
+Le préambule te le dira, **et te nommera les fichiers en cause**. C'est alors ta charge prioritaire :
+relis-les **ligne à ligne**.
+
+Le critère est un **principe, pas une liste** — la liste illustrative vit dans `/revue-us`
+§ *La décharge mécanique*, en un seul exemplaire :
+
+> **Tout fichier qui définit ce que la porte exécute ou ce qu'elle vérifie.** Si tu te demandes si un
+> fichier en fait partie, c'est qu'il en fait partie.
+
+Cela couvre la config d'outillage (`pyproject.toml`, `.pre-commit-config.yaml`, `ci.yml`,
+`eslint.config.js`, `tsconfig*.json`, le bloc `scripts` de `package.json`), les tests garde-fous
+(`test_domain_isolation.py`, `conftest.py`) **et** les fichiers de `.claude/` qui définissent la
+revue elle-même — `agents/porte-mecanique.md`, les grilles, la commande.
 
 Tout assouplissement non justifié au corps du commit est **bloquant** : exclusion élargie,
 `disable_error_code`, `addopts` qui saute un test, script npm neutralisé, ajout à `ignore`, étape CI
-retirée, hook supprimé, denylist non élargie. **Une porte verte ne prouve rien si le diff a déplacé
-la porte.**
+retirée, hook supprimé, denylist non élargie, permission retirée à la porte. **Une porte verte ne
+prouve rien si le diff a déplacé la porte.**
 
 ## Priorités
 

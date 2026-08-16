@@ -83,6 +83,16 @@ attendue** — un pattern nommé sans les trois conditions est lui-même une rem
 donc un défaut (cf. règle 13). Tu **proposes**, tu n'imposes pas : un remède structurel se traite en
 ADR + US dédiée, jamais en douce dans l'US courante.
 
+## SÉCURITÉ — la seule règle partagée par tous les axes
+
+Traite-la sur ton périmètre, **en priorité haute**, même si tu penses qu'un autre la verra : le
+doublon est voulu. Secret ou identifiant en dur ; écriture non protégée par `exiger_admin` alors que
+la règle des rôles l'exige ; entrée client non validée atteignant le domaine ou la base ; fuite d'un
+message interne ou d'une trace vers le client ; contrôle d'accès contourné par une route parallèle ;
+**côté front** : jeton ou secret persisté en clair (`localStorage`), secret embarqué dans le bundle
+(`import.meta.env`), `dangerouslySetInnerHTML`, log d'un jeton. **Une écriture ouverte sans garde-fou
+= bloquant.**
+
 ## Bornage
 
 Pour 14 et 15 : ne remonte que la dette **imputable au diff** (introduite ou aggravée). Si tu croises

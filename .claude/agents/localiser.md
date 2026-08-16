@@ -1,6 +1,6 @@
 ---
 name: localiser
-description: Localise du code, de la doc ou un pattern dans le dépôt kervignarc et rend une conclusion courte, sans verser les fichiers dans le contexte appelant. À utiliser pour « où est le service qui… », « quel pattern suit l'existant », « quels fichiers touchent X », « comment est câblé Y ». Ne juge pas, n'audite pas, ne relit pas : pour un jugement de qualité, utiliser les agents revue-axe-*.
+description: "Localise du code, de la doc ou un pattern dans le dépôt kervignarc et rend une conclusion courte, sans verser les fichiers dans le contexte appelant. À utiliser pour « où est le service qui… », « quel pattern suit l'existant », « quels fichiers touchent X », « comment est câblé Y ». Ne juge pas, n'audite pas, ne relit pas — pour un jugement de qualité, utiliser les agents revue-axe-*."
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

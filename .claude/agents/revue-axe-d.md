@@ -33,11 +33,16 @@ demande-toi **où ailleurs le même raisonnement s'applique** — c'est là que 
 particulière à une correction faite **sous pression** : l'auteur vient d'être repris, il a réécrit
 vite, et il est motivé à croire que c'est réglé.
 
-**Sécurité** — traite-la en priorité haute, même si tu penses qu'un autre la verra : secret ou
-identifiant en dur ; écriture non protégée par `exiger_admin` ; entrée client non validée atteignant
-le domaine ou la base ; fuite d'un message interne ou d'une trace vers le client ; contrôle d'accès
-contourné par une route parallèle ; côté front, jeton persisté en clair (`localStorage`), secret
-embarqué dans le bundle (`import.meta.env`), `dangerouslySetInnerHTML`, log d'un jeton.
+**SÉCURITÉ — la seule règle partagée par tous les axes.** Traite-la sur ton périmètre, **en priorité
+haute**, même si tu penses qu'un autre la verra : le doublon est voulu. Secret ou identifiant en dur ;
+écriture non protégée par `exiger_admin` alors que la règle des rôles l'exige ; entrée client non
+validée atteignant le domaine ou la base ; fuite d'un message interne ou d'une trace vers le client ;
+contrôle d'accès contourné par une route parallèle ; **côté front** : jeton ou secret persisté en
+clair (`localStorage`), secret embarqué dans le bundle (`import.meta.env`),
+`dangerouslySetInnerHTML`, log d'un jeton. **Une écriture ouverte sans garde-fou = bloquant.**
+
+Cette liste est ton **plancher**, pas ton plafond : ton métier est de chercher ce qu'elle ne liste
+pas.
 
 ## Rapport
 
