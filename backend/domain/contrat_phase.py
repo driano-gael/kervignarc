@@ -334,8 +334,14 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         classement_lisible=True,
         # ✅ **`route_l_archer` bascule ici aussi**, par le même chemin
         # (`ServiceRoutage._routage_par_rencontres`) : une rencontre de ronde **est** un duel, avec
-        # deux adversaires nommés et deux couloirs. Aucune issue de routage neuve n'a été
+        # deux adversaires nommés et deux couloirs — aucun champ de rendez-vous neuf n'a donc été
         # nécessaire, à la différence du Big Shoot Off dont la manche collective n'oppose personne.
+        #
+        # ⚠️ **Une issue neuve l'a été, en revanche** (E05US030, ce commentaire disait le contraire
+        # jusque-là) : `EN_ATTENTE`. Elle ne vient pas de la forme du rendez-vous mais du **rythme**
+        # du format — seule la ronde courante existe, donc un archer peut être en course sans rien
+        # à tirer à cet instant (le porteur du bye, ou celui dont la rencontre vient d'être
+        # validée). Un format à groupes connus d'avance, comme les poules, n'a pas ce régime.
         route_l_archer=True,
     ),
     TypePhase.COLLINE: ContratDePhase(

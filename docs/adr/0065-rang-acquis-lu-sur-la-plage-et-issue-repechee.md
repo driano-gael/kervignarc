@@ -73,6 +73,14 @@ occupe l'espace que le motif « rang publié en fin de phase » laissait vide.
 ### 2. `REPECHE` est une **issue à part entière**, pas un sous-cas de `TERMINE`
 
 `IssueRoutage` passe de trois à quatre valeurs. La distinction est métier, pas technique :
+
+> ⚠️ **Compte périmé, critère toujours valable** *(note ajoutée le 16/08/2026)*. L'énumération en
+> compte **six** depuis `PROCHAINE_MANCHE` (E05US028) et `EN_ATTENTE`
+> ([ADR-0087](0087-une-attente-n-est-pas-une-indisponibilite.md), E05US030). Ce dernier a
+> **resserré** le sens d'`INDISPONIBLE`, qui servait jusque-là les archers en attente d'un
+> appariement. Le critère posé ici — « la distinction est métier, pas technique », et l'exemple du
+> repêché à qui l'on dit « éliminé » — est précisément celui qui a tranché les deux fois.
+
 `HorsTableau` **consomme** un rang (le perdant a fini sa compétition), `VersRepechage` n'en consomme
 **aucun** — le repêché peut encore remonter disputer le titre (`domain/politiques.py`). Annoncer
 « éliminé » à un repêché le fait rentrer chez lui avant son duel : c'est un défaut visible en salle,

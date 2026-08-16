@@ -59,6 +59,13 @@ import {
   versReglage as versReglageBso,
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
+import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
+import {
+  depuisReglage as depuisReglageSuisse,
+  estValide as suisseValide,
+  versReglage as versReglageSuisse,
+  SUISSE_PAR_DEFAUT,
+} from '../../shared/phases/suisse'
 import {
   depuisReglage,
   estValide as poulesValides,
@@ -687,6 +694,8 @@ export function FormulaireEtape({
   // type. Une seule source, ici.
   const [poules, setPoules] = useState(depuisReglage(etape?.poules ?? null))
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(etape?.big_shoot_off ?? null))
+  // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
+  const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -703,6 +712,7 @@ export function FormulaireEtape({
   const estPoules = type === 'poules'
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
+  const estSuisse = type === 'suisse'
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
@@ -711,7 +721,8 @@ export function FormulaireEtape({
     saisieInvalide ||
     (enTableau && !estValide(profondeur)) ||
     (estPoules && !poulesValides(poules)) ||
-    (estBigShootOff && !bsoValide(bigShootOff))
+    (estBigShootOff && !bsoValide(bigShootOff)) ||
+    (estSuisse && !suisseValide(suisse))
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -736,6 +747,9 @@ export function FormulaireEtape({
     // (`ConfigurationBigShootOffInvalide`). Retyper la phase l'**efface** donc. La garde compte
     // davantage ici qu'ailleurs : ce réglage décrit **qui sort**.
     big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
+    // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
+    // 422. Retyper la phase l'**efface** donc, au lieu de l'envoyer se faire recaler.
+    suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
   })
 
   return (
@@ -756,6 +770,7 @@ export function FormulaireEtape({
           // reset, « poules de 6, 4 qualifiés » se reporterait en silence sur la phase suivante.
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
+          setSuisse(SUISSE_PAR_DEFAUT)
         }
       }}
     >
@@ -826,6 +841,22 @@ export function FormulaireEtape({
           etat={bigShootOff}
           surChangement={setBigShootOff}
           effectif={effectifSimule}
+        />
+      )}
+
+      {estSuisse && (
+        // ⚠️ **L'effectif DE L'ÉTAPE d'abord, la simulation en repli** (correctif de revue).
+        // Les deux fiches voisines annoncent une *projection* indicative, et l'effectif simulé du
+        // déroulé leur suffit. Celle-ci annonce une **borne opposable** : c'est
+        // `EtapeDeroule._verifier_rondes_appariables` qui refuse l'étape, et il la vérifie contre
+        // `effectif` — le champ que ce formulaire envoie juste à côté, pas contre la simulation.
+        // Sans ce correctif, simuler 120 archers puis déclarer une étape à 8 affichait « 119
+        // rondes au maximum », feu vert, et l'enregistrement rendait 422 : très exactement le
+        // parcours que le CA veut supprimer.
+        <ReglageSuisse
+          etat={suisse}
+          surChangement={setSuisse}
+          effectif={effectifLu ?? effectifSimule}
         />
       )}
 

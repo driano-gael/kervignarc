@@ -15,6 +15,9 @@ import {
 import { SaisieDuels } from '../saisie-duels/SaisieDuels'
 import { SaisiePoules } from '../poules/SaisiePoules'
 import { SaisieBigShootOff } from '../big-shoot-off/SaisieBigShootOff'
+import { SaisieSuisse } from '../suisse/SaisieSuisse'
+import { ChoixCreneau } from '../departs/ChoixCreneau'
+import { useCreneauDesDuels } from '../departs/hooks'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
@@ -67,6 +70,18 @@ function FormulaireCode() {
 
 function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
   const deconnexion = useDeconnexionScoreur()
+  // ✅ **`DETTE-056` refermée ici (E05US030).** Le créneau des panneaux de saisie est choisi **une
+  // fois**, en tête de l'espace, et passé en prop. Chacun des panneaux appelait auparavant
+  // `useCreneauDesDuels` pour son compte — le choix vivant en `useState` **local** au hook —, donc
+  // autant de sélecteurs côte à côte qu'il y a de formats, indépendants et divergents dès la
+  // première bascule. Le scoreur changeait de créneau dans un panneau, saisissait dans l'autre, et
+  // scorait les rencontres du mauvais départ **avec des identifiants valides, donc sans erreur**.
+  // Le quatrième format (le système suisse) aurait porté le nombre de couples désaccordables à six.
+  //
+  // Remonté **ici** et non dans `useSessionScoreurStore` : ce store est persisté au `localStorage`,
+  // et un créneau qui survit à la fermeture de l'onglet rouvrirait la journée du lendemain sur le
+  // départ de la veille. Le gel voulu dure une session d'écran, pas une nuit.
+  const { departs, liste, departId, choisir } = useCreneauDesDuels(scoreur.tournoi_id)
 
   return (
     <div>
@@ -87,15 +102,23 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
       {/* Forfaits de qualification (E04US015) : déclarer / annuler un abandon ou une DSQ. Placé
           au-dessus des duels — un abandon en qualif se prononce avant l'entrée en tableau. */}
       <PanneauForfaitsQualif tournoiId={scoreur.tournoi_id} />
+
+      {/* Le créneau de **tous** les panneaux de saisie ci-dessous, choisi une fois. */}
+      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
+      {departs.isSuccess && liste.length === 0 && (
+        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
+      )}
+
       {/* Saisie en duels (E04US013) : le scoreur choisit une phase de tableau, ouvre un duel et le
           score. Monté ici, une fois la session ouverte — comme le poste monte la grille de qualif. */}
-      <SaisieDuels tournoiId={scoreur.tournoi_id} />
+      <SaisieDuels tournoiId={scoreur.tournoi_id} departId={departId} />
       {/* Saisie des poules (E05US023) : même pavé, autre navigation — on entre par la poule et le
           tour. L'écran ne s'ouvre que si le créneau porte une phase de poules ; sinon il le dit. */}
-      <SaisiePoules tournoiId={scoreur.tournoi_id} />
-      {/* E05US028. ⚠️ Troisième panneau à porter son propre sélecteur de créneau — `DETTE-056`
-          s'élargit d'un cran : le remède (un état de créneau partagé) devient d'autant plus dû. */}
-      <SaisieBigShootOff tournoiId={scoreur.tournoi_id} />
+      <SaisiePoules tournoiId={scoreur.tournoi_id} departId={departId} />
+      <SaisieBigShootOff tournoiId={scoreur.tournoi_id} departId={departId} />
+      {/* Saisie du système suisse (E05US030) : même pavé encore, et l'entrée se fait par la
+       **ronde** — le décor `RONDES_APPARIEES` du contrat de phase (ADR-0083 §1). */}
+      <SaisieSuisse tournoiId={scoreur.tournoi_id} departId={departId} />
     </div>
   )
 }

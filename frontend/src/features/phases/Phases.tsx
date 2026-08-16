@@ -32,6 +32,13 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
+import {
+  depuisReglage as depuisReglageSuisse,
+  estValide as suisseValide,
+  versReglage as versReglageSuisse,
+  SUISSE_PAR_DEFAUT,
+} from '../../shared/phases/suisse'
 import { ReglageBigShootOff } from '../../shared/phases/ReglageBigShootOff'
 import {
   depuisReglage as depuisReglageBso,
@@ -40,6 +47,8 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
+import { useEtatSuisse, useRegenererPlanSuisse } from '../suisse/hooks'
+import { ClassementSuisse } from '../suisse/ClassementSuisse'
 import {
   depuisReglage,
   estValide as poulesValides,
@@ -146,6 +155,59 @@ function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
   )
 }
 
+/** Le même geste pour une phase au **système suisse** (E05US030) — action admin.
+ *
+ * ⚠️ **Écrit d'emblée pour ne pas rejouer le défaut d'E05US023**, dont le récit est juste au-dessus :
+ * l'endpoint, le port et le hook existaient, et rien ne les appelait — le plan restait vide en
+ * toutes circonstances, l'écran de saisie réclamait une action que le produit n'offrait pas, et
+ * aucun archer ne savait sur quelle cible tirer. `E05US026` a livré `POST /suisse/plan/…` ; sans ce
+ * bouton, la même impasse se serait reproduite à l'identique, un format plus loin.
+ *
+ * Une différence de fond avec les poules : le suisse pose **un seul bloc** pour toute la phase (une
+ * ronde apparie tout le plateau d'un coup), donc « le plan est vide » se lit sur les rencontres et
+ * non sur des groupes.
+ */
+function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatSuisse(tournoiId, phaseId)
+  const regenerer = useRegenererPlanSuisse(tournoiId, phaseId)
+
+  const rencontres = (etat.data?.rondes ?? []).flatMap((ronde) => ronde.rencontres)
+  // On ne se fie pas aux seuls conflits : une phase sans participant n'a ni ronde ni conflit, et
+  // « Régénérer » y serait un contresens.
+  const planVide = rencontres.length === 0 || rencontres.every((r) => r.couloirs === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {/* ⚠️ **« Bloc » et non « Poule(s) »** (correctif de revue) : `decrireConflits` fige son
+              vocabulaire, et un suisse — qui n'a aucune poule, mais un bloc unique — lisait
+              « Poule(s) 1 sans couloirs : la salle est trop petite ». Le type avait bien été
+              distingué (`ConflitSuisse.groupe` vs `Conflit.poule`), le message pas encore. */}
+          {decrireConflits(
+            conflits.map((c) => ({ poule: c.groupe, raison: c.raison })),
+            'Bloc',
+          )}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+      {/* CA — « le classement provisoire se lit entre les rondes, **côté organisateur** et
+          scoreur ». Il n'était livré qu'au scoreur ; la donnée était déjà là, lue pour le bouton
+          ci-dessus, et personne ne l'affichait (relevé en revue). */}
+      <ClassementSuisse classement={etat.data?.classement ?? []} rondes={etat.data?.rondes ?? []} />
+    </>
+  )
+}
+
 /** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
  *
  * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
@@ -154,15 +216,20 @@ function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
  * salle est trop petite » — la première version confondait les deux et invitait l'organisateur à
  * regénérer indéfiniment une salle qui ne pouvait pas grandir.
  */
-function decrireConflits(conflits: { poule: number; raison: string }[]): string {
+function decrireConflits(
+  conflits: { poule: number; raison: string }[],
+  // Le nom du groupe est **paramétrable** depuis E05US030 : le système suisse n'a pas de poules,
+  // mais un bloc unique. Défaut inchangé, donc aucun appelant existant ne bouge.
+  groupe = 'Poule(s)',
+): string {
   // ⚠️ **Groupé par raison, pas globalisé.** Une première version listait tous les numéros puis
   // rendait la raison de plus haute priorité : une poule sans rencontre et une poule qui ne tient
   // pas dans la salle s'annonçaient toutes deux « la salle est trop petite », donc l'organisateur
   // agrandissait sa salle pour un problème qui n'en venait pas (relevé en revue).
-  const nonPosee = (n: string) => `Poule(s) ${n} sans couloirs : le plan n’est pas posé.`
+  const nonPosee = (n: string) => `${groupe} ${n} sans couloirs : le plan n’est pas posé.`
   const libelles: Record<string, ((numeros: string) => string) | undefined> = {
-    salle_pleine: (n) => `Poule(s) ${n} sans couloirs : la salle est trop petite.`,
-    sans_rencontre: (n) => `Poule(s) ${n} sans rencontre à tirer : rien à poser.`,
+    salle_pleine: (n) => `${groupe} ${n} sans couloirs : la salle est trop petite.`,
+    sans_rencontre: (n) => `${groupe} ${n} sans rencontre à tirer : rien à poser.`,
     non_posee: nonPosee,
   }
   const parRaison = new Map<string, number[]>()
@@ -253,6 +320,7 @@ function LignePhase({
         </button>
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
         {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
+        {phase.type === 'suisse' && <PlanDeSuisse tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -324,6 +392,21 @@ export function FormulairePhase({
   // `GET /api/v1/poules/repartition/...` qui dit la répartition réelle une fois la phase posée.
   const [poules, setPoules] = useState(depuisReglage(phase?.poules ?? null))
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
+  // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
+  // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
+  // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
+  // le seul écran où « l'effectif du jour » du CA existe vraiment. Et comme `ServiceSuisse.etat`
+  // **borne silencieusement à la lecture**, l'organisateur ne l'apprenait pas davantage à
+  // l'enregistrement : il voyait simplement moins de rondes le jour J.
+  //
+  // La donnée est déjà servie par la route publique que `PlanDeSuisse` interroge pour cette même
+  // phase — on la relit, on ne la recalcule pas. `null` tant qu'il n'y a pas de phase (création
+  // pure) : là, aucun effectif n'existe encore, et annoncer une borne serait l'inventer.
+  const etatSuisseDeLaPhase = useEtatSuisse(
+    tournoiId,
+    phase !== undefined && phase.type === 'suisse' ? phase.id : null,
+  )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -393,12 +476,14 @@ export function FormulairePhase({
   const estPoules = type === 'poules'
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
+  const estSuisse = type === 'suisse'
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
     !(enTableau && !estValide(profondeur)) &&
     !(estPoules && !poulesValides(poules)) &&
-    !(estBigShootOff && !bsoValide(bigShootOff))
+    !(estBigShootOff && !bsoValide(bigShootOff)) &&
+    !(estSuisse && !suisseValide(suisse))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -421,6 +506,9 @@ export function FormulairePhase({
       // refusé en 422. Retyper la phase l'**efface** donc. La garde compte davantage ici
       // qu'ailleurs : ce réglage décrit **qui sort**.
       big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
+      // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
+      // 422 `configuration_suisse_invalide`.
+      suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -436,6 +524,7 @@ export function FormulairePhase({
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
+          setSuisse(SUISSE_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -493,6 +582,23 @@ export function FormulairePhase({
         {estPoules && <ReglagePoules etat={poules} surChangement={setPoules} effectif={null} />}
         {estBigShootOff && (
           <ReglageBigShootOff etat={bigShootOff} surChangement={setBigShootOff} effectif={null} />
+        )}
+        {/* Contrairement à ses deux voisines, cette fiche reçoit un effectif : l'**effectif réel du
+            créneau**, lu sur la phase en cours d'édition. Ce n'est pas une simulation — c'est le
+            nombre que le moteur opposera le jour J, et il n'y avait aucune raison de le cacher à
+            celui qui règle le nombre de rondes. */}
+        {estSuisse && (
+          <ReglageSuisse
+            etat={suisse}
+            surChangement={setSuisse}
+            effectif={etatSuisseDeLaPhase.data?.effectif ?? null}
+            // ⚠️ **La borne vient du serveur ici, pas du miroir** (correctif de 2ᵉ tour) : l'état de
+            // la phase la porte déjà (`rondes_maximales`), et `decrireBorneConnue` a été écrite
+            // dans ce même lot pour ce cas — recalculer côté client aurait enfreint la règle que le
+            // lot venait de poser. Dans l'atelier, au contraire, aucune phase n'existe : le miroir
+            // y est le seul recours, et c'est ce qui le justifie.
+            maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
+          />
         )}
         <label className="formulaire__tranche">
           <input

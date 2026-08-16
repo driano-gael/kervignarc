@@ -59,6 +59,7 @@ describe('decrireEtape', () => {
       bareme: null,
       validation: null,
       big_shoot_off: null,
+      suisse: null,
       profondeur: null,
       poules: null,
       sources: [],

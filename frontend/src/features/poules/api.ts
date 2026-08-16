@@ -17,8 +17,12 @@
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'
 
-/** Une place de tir : `[cible, couloir]` — le couloir est une lettre (`A`…`D`). */
-export type Place = [number, string]
+// `Place` a été **remontée dans `shared/salle/`** en revue d'E05US030 : `features/suisse` en avait
+// besoin, et une feature n'importe pas d'une feature sœur (règle 10). Ré-exportée ici pour ne
+// casser aucun import existant.
+import type { Place } from '../../shared/salle/place'
+
+export type { Place }
 
 /** Ce que le réglage produit sur l'effectif du jour — le CA « la répartition est montrée ». */
 export interface Repartition {

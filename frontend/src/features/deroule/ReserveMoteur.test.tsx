@@ -84,18 +84,34 @@ describe('ReserveMoteur', () => {
     // Le cas que la première version du correctif avait perdu : un prélèvement par rangs, mais un
     // type dont le moteur ne sait rien faire (DETTE-028).
     //
-    // ⚠️ **Le cas portait sur les poules jusqu'à E05US023**, qui les rend jouables de bout en
-    // bout. Il vise donc désormais le **système suisse**. Le déplacement n'affaiblit rien : ce qui
-    // est testé est le mécanisme, pas l'identité du type — et le cas « les poules ne déclenchent
-    // plus rien » a son propre test juste en dessous, qui est la moitié utile du changement.
+    // ⚠️ **Ce cas a déjà changé de type deux fois** : les poules jusqu'à E05US023, le système
+    // suisse jusqu'à E05US030 — chaque US rendant jouable le format qu'il citait. Il vise donc
+    // désormais la **colline**, dernier format que le moteur ne déroule pas (`E05US027`). Le
+    // déplacement n'affaiblit rien : ce qui est testé est le mécanisme, pas l'identité du type — et
+    // chaque type sorti de la liste gagne son propre test « ne prévient plus », ci-dessous, qui est
+    // la moitié utile du changement.
+    render(
+      <ReserveMoteur
+        diagnostic={diagnostic([bloc('qualification'), bloc('colline', [flux('rangs')])])}
+      />,
+    )
+
+    expect(bandeau()).not.toBeNull()
+    // Le libellé du catalogue, pas la valeur d'énumération : c'est ce que l'organisateur lit.
+    expect(bandeau()?.textContent).toContain('Colline')
+  })
+
+  it('ne prévient plus pour un système suisse, que le moteur déroule depuis E05US030', () => {
+    // Même exigence qu'E05US023 pour les poules, un format plus loin : le moteur du suisse est
+    // livré (E05US026) **et** ses écrans le sont (E05US030), donc l'avertissement mentirait. La
+    // colline, elle, reste visée — c'est le test ci-dessus.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('suisse', [flux('rangs')])])}
       />,
     )
 
-    expect(bandeau()).not.toBeNull()
-    expect(bandeau()?.textContent).toContain('suisse')
+    expect(bandeau()).toBeNull()
   })
 
   it('ne prévient plus pour des poules, que le moteur déroule depuis E05US023', () => {

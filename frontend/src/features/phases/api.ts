@@ -5,6 +5,7 @@ import { fetchJson } from '../../shared/api/client'
 import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
+import type { ReglageSuisse } from '../../shared/phases/suisse'
 import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
@@ -58,6 +59,9 @@ export interface EtapeDeroule {
   // Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
   // `null` = non réglé, ce qui est licite : le type se choisit avant ses paramètres.
   big_shoot_off: ReglageBigShootOff | null
+  // Le réglage d'un **système suisse** (E05US030) — le nombre de rondes. Même régime que les deux
+  // ci-dessus : `null` = non réglé, et le `PUT` étant une édition totale, l'omettre l'**efface**.
+  suisse: ReglageSuisse | null
 }
 
 // La **phase** : l'avancement de cette étape dans un créneau. Elle porte la définition **assemblée**
@@ -86,6 +90,8 @@ export interface ConfigPhase {
   poules?: ReglagePoules | null
   // Même règle d'édition totale : omis, le réglage du Big Shoot Off est **effacé** côté serveur.
   big_shoot_off?: ReglageBigShootOff | null
+  // Même règle d'édition totale : omis, le réglage du système suisse est **effacé** côté serveur.
+  suisse?: ReglageSuisse | null
 }
 
 // --- Composition : le déroulé du tournoi (atelier) ----------------------------------------------

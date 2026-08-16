@@ -2912,6 +2912,8 @@ window.ATLAS.decisions = {
     "E01US024",
     "E04US018",
     "E05US010",
+    "E05US028",
+    "E05US030",
     "E06US004",
     "E07US004",
     "E07US006",
@@ -4622,6 +4624,17 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/suisse.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSuisse",
+      "rondes_maximales",
+      "conflits"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
      "symboles": [
@@ -4638,6 +4651,17 @@ window.ATLAS.decisions = {
       "LigneClassement",
       "Tiebreak",
       "classement_de_tableau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/classement_de_suisse.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSuisse",
+      "rondes_maximales",
+      "conflits"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4743,6 +4767,17 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/suisse.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSuisse",
+      "rondes_maximales",
+      "conflits"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/infrastructure/db/models.py",
      "existe": true,
      "symboles": [
@@ -4823,6 +4858,63 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/saisie-duels/api.ts",
+     "existe": true,
+     "symboles": [
+      "ROUTES",
+      "CLE_DECOR",
+      "PHOTO",
+      "Record"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie-duels/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "ROUTES",
+      "CLE_DECOR",
+      "PHOTO",
+      "Record"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/ClassementSuisse.tsx",
+     "existe": true,
+     "symboles": [
+      "RONDES_APPARIEES",
+      "DuelCharge",
+      "suisse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/SaisieSuisse.tsx",
+     "existe": true,
+     "symboles": [
+      "RONDES_APPARIEES",
+      "DuelCharge",
+      "suisse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "RONDES_APPARIEES",
+      "DuelCharge",
+      "suisse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/shared/phases/ReglageBigShootOff.tsx",
      "existe": true,
      "symboles": [
@@ -4833,6 +4925,13 @@ window.ATLAS.decisions = {
     },
     {
      "chemin": "frontend/src/shared/phases/ReglagePoules.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageSuisse.tsx",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -4864,10 +4963,20 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/shared/phases/suisse.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/shared/stores/fileDuelsHorsLigneStore.ts",
      "existe": true,
      "symboles": [
-      "FamilleDuel"
+      "FamilleDuel",
+      "tableau",
+      "poule",
+      "suisse"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4887,7 +4996,8 @@ window.ATLAS.decisions = {
     "E05US024",
     "E05US025",
     "E05US026",
-    "E05US028"
+    "E05US028",
+    "E05US030"
    ]
   },
   {
@@ -5225,7 +5335,122 @@ window.ATLAS.decisions = {
     "E00US019",
     "E00US020",
     "E05US026",
-    "E05US028"
+    "E05US028",
+    "E05US030"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-16",
+   "date_brute": "2026-08-16",
+   "extrait": "### 1. EN_ATTENTE est une issue à part entière, pas un INDISPONIBLE motivé Sixième valeur de IssueRoutage, de même nature que REPECHE (ADR-0065 §2) : elle sépare deux situations métier que le champ motif ne pouvait distinguer que pour un lecteur humain. Ce qui la justifie n'est pas la formulation du message, c'est le classement de l'archer : EN_ATTENTE compte parmi ceux qui tirent encore, INDISPONIBLE non. Les trois cas de ServiceRoutage._sans_rencontre sont désormais distincts de bout en bout : | Situation | Issue | Ce que l'écran en fait | |---|---|---| | Il n'est pas dans cette phase | INDISPONIBLE | rangé hors course, motif affiché | | La phase est épuisée, ou il a fini | TERMINE | […]",
+   "fichier": "docs/adr/0087-une-attente-n-est-pas-une-indisponibilite.md",
+   "identifiant": "0087",
+   "liens": [
+    {
+     "cible": "E05US030",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0065",
+     "libelle": "Voisins",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0083",
+     "libelle": "Voisins",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0084",
+     "libelle": "Voisins",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/routage.py",
+     "existe": true,
+     "symboles": [
+      "IssueRoutageReponse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "IssueRoutage.EN_ATTENTE",
+      "ServiceRoutage._sans_rencontre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_routage_api.py",
+     "existe": true,
+     "symboles": [
+      "test_issue_reponse_est_le_miroir_de_l_enumeration",
+      "Literal"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_routage.py",
+     "existe": true,
+     "symboles": [
+      "_router_sans_rencontre",
+      "EN_ATTENTE",
+      "TERMINE",
+      "INDISPONIBLE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/api.ts",
+     "existe": true,
+     "symboles": [
+      "IssueRoutage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/presentation.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "EN_LICE",
+      "partitionner",
+      "titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "accepté",
+   "titre": "Une attente n'est pas une indisponibilité",
+   "us": [
+    "E05US026",
+    "E05US027",
+    "E05US030",
+    "E05US032"
    ]
   }
  ]

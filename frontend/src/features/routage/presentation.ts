@@ -81,7 +81,13 @@ export function partitionner(archers: RoutageArcher[]): {
   // « Sortis du tableau » sur l'écran projeté du gymnase, pendant toute la finale — le jumeau exact
   // du bloquant déjà corrigé ici pour les demi-finalistes sans cible. Faute de plan de cibles pour
   // cette phase (`DETTE-059`), ils tombent en **attente**, avec le manque nommé.
-  const enLice = (l: RoutageArcher) => l.issue === 'prochain_duel' || l.issue === 'prochaine_manche'
+  // ⚠️ `en_attente` compte ici aussi (E05US030) : sur une phase à rondes, l'archer qui porte le bye
+  // — ou dont la rencontre vient d'être validée — n'a **aucune** cible à cet instant, et il en aura
+  // une à la ronde suivante. Le laisser hors de ce test le rangeait sous « Sortis », sur l'écran
+  // projeté, alors qu'il lui reste des rondes à tirer : jumeau exact du bloquant du Big Shoot Off
+  // ci-dessus. Faute de rendez-vous connu, il tombe en **attente**, avec le motif du serveur.
+  const enLice = (l: RoutageArcher) =>
+    l.issue === 'prochain_duel' || l.issue === 'prochaine_manche' || l.issue === 'en_attente'
   const cible = (l: RoutageArcher) =>
     l.issue === 'prochaine_manche' ? l.prochaine_manche?.cible : l.prochain?.cible
   return {
@@ -151,6 +157,11 @@ export function titre(
     if (place !== null) return place
     return archer.tour_sortie !== null ? `Éliminé — ${archer.tour_sortie}` : 'Éliminé'
   }
+  // ⚠️ **« Rien à tirer pour l'instant » n'est pas « terminé »** (E05US030). Le titre doit dire
+  // l'attente et rien d'autre : le *pourquoi* est dans le motif du serveur, que `detail` rend. Un
+  // titre qui annoncerait « Ronde suivante » promettrait un rendez-vous qui n'est pas encore
+  // apparié — les adversaires se choisissent au classement du moment.
+  if (archer.issue === 'en_attente') return 'Rien à tirer pour l’instant'
   return 'Destination inconnue'
 }
 
@@ -176,6 +187,11 @@ const EN_LICE: Record<IssueRoutage, boolean> = {
   prochaine_manche: true,
   // Un repêché est sorti de **ce tableau**, pas de la compétition (E07US008).
   repeche: true,
+  // Le porteur d'un bye, ou celui dont la rencontre vient d'être validée pendant que la ronde
+  // s'achève (E05US030). Il tirera la ronde suivante : le ranger avec les sortis le ferait rentrer
+  // chez lui **au milieu** de la phase. C'est ce que l'emprunt d'`indisponible` faisait
+  // jusqu'ici — la valeur ne disait rien de faux, mais elle le comptait du mauvais côté.
+  en_attente: true,
   termine: false,
   indisponible: false,
 }

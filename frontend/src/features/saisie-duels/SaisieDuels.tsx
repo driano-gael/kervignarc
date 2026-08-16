@@ -12,8 +12,6 @@ import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { FamilleDuel } from '../../shared/stores/fileDuelsHorsLigneStore'
-import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useCreneauDesDuels } from '../departs/hooks'
 import { useDeclarerForfaitDuel } from '../forfaits/hooks'
 import { PanneauRoutage } from '../routage/PanneauRoutage'
 import type { Cote, Duel, Tableau } from './api'
@@ -48,14 +46,25 @@ const LIBELLE_STATUT: Record<StatutDuel, string> = {
   valide: 'Validé',
 }
 
-export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
+/**
+ * `departId` vient de l'**espace scoreur** depuis E05US030 (`DETTE-056` refermée) : les quatre
+ * panneaux de saisie partagent un seul créneau, choisi une fois en tête d'écran. Chacun appelait
+ * auparavant `useCreneauDesDuels` pour son compte, avec un `useState` local — donc quatre
+ * sélecteurs côte à côte, qui divergeaient au premier changement. Le scoreur changeait de créneau
+ * dans un panneau, saisissait dans l'autre, et scorait les rencontres du mauvais départ **avec des
+ * identifiants valides, donc sans la moindre erreur**.
+ */
+export function SaisieDuels({
+  tournoiId,
+  departId,
+}: {
+  tournoiId: number
+  departId: number | null
+}) {
   // Rejeu de la file hors-ligne à la reconnexion (E04US009) : monté ici, seul endroit où le scoreur
   // saisit — inutile de le faire tourner ailleurs.
   useRejeuDuelsHorsLigne()
 
-  // Le créneau **dont on joue les duels**, figé dès qu'il est résolu : sans ce gel, la clôture de
-  // la qualification faisait basculer l'écran sous les doigts du scoreur (cf. `useCreneauDesDuels`).
-  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
@@ -74,11 +83,6 @@ export function SaisieDuels({ tournoiId }: { tournoiId: number }) {
         <h3 className="carte__soustitre">Saisie des duels</h3>
         <IndicateurAttente />
       </div>
-
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
-      {departs.isSuccess && liste.length === 0 && (
-        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
-      )}
 
       {phases.isError && <MessageErreur erreur={phases.error} />}
       {phases.isSuccess && tableaux.length === 0 && (

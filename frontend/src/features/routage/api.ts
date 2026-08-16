@@ -33,7 +33,17 @@ export interface ProchainDuel {
 }
 
 export type IssueRoutage =
-  'prochain_duel' | 'prochaine_manche' | 'termine' | 'repeche' | 'indisponible'
+  | 'prochain_duel'
+  | 'prochaine_manche'
+  | 'termine'
+  | 'repeche'
+  // E05US030 : il est dans la phase, en course, mais **rien à tirer maintenant** — le porteur du
+  // bye d'une ronde impaire, ou celui dont la rencontre vient d'être validée pendant que la ronde
+  // s'achève. `E05US026` servait ce cas sous `indisponible` avec un motif, faute de pouvoir toucher
+  // au contrat d'API depuis une US backend seule : c'est un **rétrécissement** d'`indisponible`, pas
+  // seulement un ajout.
+  | 'en_attente'
+  | 'indisponible'
 
 // Le prochain rendez-vous d'un finaliste de **Big Shoot Off** (E05US028) — jamais un duel : un Big
 // Shoot Off n'oppose personne, tous les finalistes sont sur la ligne et c'est le classement de la

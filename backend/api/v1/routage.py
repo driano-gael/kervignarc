@@ -41,7 +41,7 @@ from domain.phase import TypePhase
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 
 IssueRoutageReponse = Literal[
-    "prochain_duel", "prochaine_manche", "termine", "repeche", "indisponible"
+    "prochain_duel", "prochaine_manche", "termine", "repeche", "en_attente", "indisponible"
 ]
 """Les seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
 pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
@@ -49,7 +49,21 @@ Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (rè
 
 `repeche` est ajouté par E07US008 : **élargissement**, pas rupture — un client qui ne le connaît
 pas ne peut pas le rencontrer sur un tournoi sans repêchage, et le test miroir garantit qu'aucune
-valeur du domaine ne circule sans être déclarée ici."""
+valeur du domaine ne circule sans être déclarée ici.
+
+`en_attente` est ajouté par E05US030, et **c'est un rétrécissement d'`indisponible`, pas seulement
+un élargissement** : `E05US026` servait cette valeur-ci sous `indisponible` avec un motif, faute de
+pouvoir toucher au contrat depuis une US backend seule. Un client resté à l'ancienne union verra
+donc une valeur inconnue là où il lisait « on ne sait pas ».
+
+⚠️ **Ce que les garde-fous couvrent, exactement** (précisé en revue, la première rédaction
+promettait plus) : le test miroir (`test_issue_reponse_est_le_miroir_de_l_enumeration`) garde la
+cohérence **entre l'énumération d'application et ce DTO**, rien d'autre ; le `Record` exhaustif du
+front (`features/routage/presentation.ts`, `EN_LICE`) ne fait échouer la compilation qu'**une fois
+l'union TypeScript élargie** — il est indexé par le type du front, pas par celui du serveur. Une
+issue ajoutée **côté serveur seul** ne rougit donc nulle part : elle rendrait `EN_LICE[inconnue]`
+→ `undefined` → falsy, et l'archer partirait chez les sortis. Les deux côtés se livrent ensemble,
+c'est ce qui rend le rétrécissement sûr — pas un mécanisme."""
 
 
 # --- DTO ---
@@ -161,8 +175,14 @@ class RoutageArcherReponse(BaseModel):
     """La ligne d'un archer : son issue et le détail qui va avec.
 
     `issue` est fermée (`IssueRoutageReponse`), et chacune de ses valeurs dit quel champ lire
-    ensuite : `prochain` pour `prochain_duel`, `rang_final`/`rang_min`/`rang_max` pour `termine`,
-    `destination` pour `repeche`, `motif` pour `indisponible`.
+    ensuite : `prochain` pour `prochain_duel`, `prochaine_manche` pour `prochaine_manche`,
+    `rang_final`/`rang_min`/`rang_max` pour `termine`, `destination` pour `repeche`, `motif` pour
+    `en_attente` et pour `indisponible`.
+
+    ⚠️ **`en_attente` et `indisponible` ne se disent pas de la même façon** malgré le champ commun :
+    le premier veut dire « il est dans la phase, en course, mais rien n'est apparié pour lui à cet
+    instant » — il **compte parmi les tireurs encore en lice** ; le second, « on ne sait pas le
+    router ». Les confondre a été le défaut d'E05US026, corrigé en E05US030.
 
     **Trois champs de rang, et ils ne se répètent pas** (E07US008) : `rang_final` est le rang
     **exact** quand un match terminal l'a décerné ; `rang_min`/`rang_max` la **fourchette acquise**,

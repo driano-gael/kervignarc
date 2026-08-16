@@ -38,7 +38,18 @@ export function PanneauForfaitsQualif({ tournoiId }: { tournoiId: number }) {
         Déclarez l'abandon ou la disqualification d'un archer. Ses flèches déjà tirées sont
         conservées ; l'acte est réversible tant que le tournoi n'est pas terminé.
       </p>
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={setChoixDepart} />
+      {/* ⚠️ **Étiquette distincte depuis E05US030** (correctif de revue). Ce sélecteur est
+          volontairement **indépendant** de celui des panneaux de saisie — un forfait se prononce
+          parfois sur un archer d'un autre créneau (cf. l'en-tête) —, et son défaut n'est même pas
+          le même (`departDeSalle`, pas `creneauDesDuels`). Deux sélecteurs « Départ » côte à côte,
+          affichant deux créneaux différents dès le premier rendu, se lisaient comme le défaut que
+          `DETTE-056` venait de refermer : c'est le libellé qui manquait, pas la séparation. */}
+      <ChoixCreneau
+        departs={liste}
+        valeur={departId}
+        surChangement={setChoixDepart}
+        etiquette="Départ des forfaits"
+      />
       <MessageErreur erreur={declarer.error ?? annuler.error} />
       {lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>

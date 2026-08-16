@@ -544,8 +544,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **113 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
-  étant `E00US020` — la **carte du code de l'atlas** et son verrou sur le sens des dépendances. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **114 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
+  étant `E05US030` — le **système suisse à l'écran** (réglage, saisie ronde par ronde, classement
+  provisoire), qui rend enfin jouable le moteur livré le matin même par `E05US026`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -662,9 +663,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   consolante composée le matin affiche « les places disputées ici ne sont pas encore connues »
   plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
   relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
-  ⚠️ Les phases en système suisse et colline restent hors du dispositif : leur moteur existe mais
-  rien ne l'appelle encore (E05US026, E05US027). ✅ Les **poules** y sont entrées le jour même, et le
-  **Big Shoot Off** le 14/08/2026 — voir ci-dessous. ✅ La limite « une seule qualification par tournoi »,
+  ⚠️ La **colline** reste hors du dispositif : son moteur existe mais rien ne l'appelle encore
+  (E05US027). ✅ Les **poules** y sont entrées le jour même, le **Big Shoot Off** le 14/08/2026, et
+  le **système suisse** le 16/08/2026 (moteur par `E05US026`, écrans par `E05US030`) — voir
+  ci-dessous. ✅ La limite « une seule qualification par tournoi »,
   qui restait volontairement en place à cette date, **a été levée le lendemain par `E05US025`** (voir
   ci-dessous). Décision d'architecture :
   [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).
@@ -683,6 +685,27 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **Le système suisse se joue (16/08/2026, E05US026 puis E05US030).** Troisième format sans arbre à
+  devenir jouable de bout en bout, et le premier livré en **deux tranches** : le moteur le matin, les
+  écrans le soir — le périmètre ayant triplé au cadrage, la coupe s'est faite là où elle ne coûtait
+  rien. Personne n'y est éliminé : à chaque **ronde**, les archers sont appariés selon le classement
+  du moment, et à effectif impair l'un d'eux chôme à tour de rôle, ce repos lui comptant une victoire.
+  L'organisateur choisit son **nombre de rondes**, et l'écran lui annonce **combien l'effectif du jour
+  en autorise** — une limite qui existait dans le moteur mais que personne ne voyait : on se faisait
+  refuser son étape sans savoir pourquoi, ou l'on jouait moins de rondes que prévu sans message. Le
+  scoreur saisit **ronde par ronde**, avec le pavé de duel qu'il connaît ; la ronde suivante
+  n'apparaît qu'une fois la précédente close, **et l'écran dit pourquoi** — les adversaires se
+  choisissent au classement du moment, donc ils ne peuvent pas être connus d'avance. Entre les rondes,
+  le **classement provisoire** se lit (points, et le « Buchholz » qui départage à points égaux selon
+  la force des adversaires rencontrés) : c'est la seule lecture d'avancement d'un format sans arbre.
+  ⚠️ Deux manques nommés : le **public** ne voit pas encore le détail des rondes — lacune commune aux
+  trois formats sans arbre, traitée d'un bloc par `E05US031` plutôt que format par format —, et le
+  passage à la ronde suivante reste **automatique**, un pilotage explicite demandant de rouvrir une
+  décision technique du moteur (`E05US032`). ✅ Au passage, un défaut ancien de l'espace scoreur est
+  refermé : chaque panneau de saisie portait **son propre** sélecteur de créneau, si bien qu'on
+  pouvait changer de départ dans l'un, saisir dans l'autre, et scorer les rencontres du mauvais
+  créneau — avec des identifiants valides, donc **sans erreur visible**. Il n'y a plus qu'un choix de
+  départ, en tête d'écran (`DETTE-056`).
 - **La finale spectacle se joue, et sa règle a changé (14/08/2026, E05US028).** Le « Big Shoot Off »
   était proposé à la composition sans mener nulle part, comme les poules avant lui. En préparant son
   écran, une contradiction est apparue : la fiche de l'US promettait un réglage que ni la règle ni le
@@ -721,7 +744,28 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   Décision d'architecture : [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md), qui pose
   aussi le **contrat de phase jouable** — la pièce technique qui rendra les trois formats restants
   beaucoup moins coûteux à livrer.
-- Dernière US livrée : **E05US023** (les poules jouables de bout en bout) — US **à surface
+> ⚠️ **Cette liste avait pris six US de retard** (constaté le 16/08/2026, en livrant `E05US030`) :
+> elle s'arrêtait à `E05US023`, alors que `E05US028`, `E00US018` à `E00US020` et `E05US026` étaient
+> livrées. Les entrées manquantes sont rétablies ci-dessous. `SUIVI-US.md` **fait foi** sur le compte
+> exact ; cette liste n'en est que le reflet lisible.
+
+- Dernière US livrée : **E05US030** (le système suisse à l'écran) — US **à surface visible**, avec
+  son [fait marquant daté](2026-08-16-19h50-le-systeme-suisse-se-joue-vraiment.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US030.md).
+- Avant elle, **E00US020** (l'atlas : la carte du code) — outillage de suivi, avec son
+  [fait marquant daté](2026-08-16-18h02-la-carte-du-code.md).
+- Avant elle, **E05US026** (le moteur du système suisse) — deux effets visibles seulement (le
+  routage et le palmarès des poules), avec son
+  [fait marquant daté](2026-08-16-11h43-les-poules-savent-enfin-ou-vous-envoyer.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US026.md).
+- Avant elle, **E00US019** (l'atlas : l'avancement) et **E00US018** (l'atlas : le règlement et les
+  décisions) — outillage de suivi, avec leurs faits marquants datés
+  ([16/08](2026-08-16-16h19-l-avancement-qui-se-verifie-lui-meme.md),
+  [15/08](2026-08-15-16h48-l-atlas-du-projet.md)).
+- Avant elles, **E05US028** (la finale spectacle jouable) — US **à surface visible**, avec son
+  [fait marquant daté](2026-08-14-23h30-la-finale-spectacle-se-joue.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US028.md).
+- Avant elle, **E05US023** (les poules jouables de bout en bout) — US **à surface
   visible**, avec son [fait marquant daté](2026-08-09-21h50-les-poules-se-jouent-vraiment.md) et sa
   [fiche de recette](../docs/fonctionnel/E05US023.md).
 - Avant elle, **E05US025** (plusieurs qualifications dans un même déroulé) — US **à surface

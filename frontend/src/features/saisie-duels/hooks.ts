@@ -29,6 +29,7 @@ import {
   validerDuel,
 } from './api'
 import type { EtatPoulesSaisie } from '../poules/api'
+import type { EtatSuisseSaisie } from '../suisse/api'
 import { injecterBarrage, injecterManche } from './duel'
 import { estDejaHorsLigne, estRefusServeur } from './horsLigne'
 import { rejouerActes } from './rejeu'
@@ -60,10 +61,20 @@ export const clePoules = (tournoiId: number, phaseId: number) =>
 // préfixe, donc `invalidateQueries({ queryKey: clePoules(t, p) })` atteint les deux. Deux clés
 // sœurs écrites à la main auraient laissé la vue d'organisation périmée après chaque flèche, sans
 // que rien ne le signale.
-export const clePoulesSaisie = (tournoiId: number, phaseId: number) =>
+export const clePoulesSaisie: CleDe<EtatPoulesSaisie> = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'saisie'] as const
 export const clePoulesPubliques = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'publique'] as const
+
+// Le **système suisse** (E05US030) suit exactement le même dessin, et pour les mêmes raisons : deux
+// vues (saisie / rédigée) sous un **préfixe** commun, de sorte qu'une invalidation d'écriture
+// atteigne les deux sans que personne n'ait à s'en souvenir.
+export const cleSuisse = (tournoiId: number, phaseId: number) =>
+  ['suisse-etat', tournoiId, phaseId] as const
+export const cleSuisseSaisie: CleDe<EtatSuisseSaisie> = (tournoiId: number, phaseId: number) =>
+  [...cleSuisse(tournoiId, phaseId), 'saisie'] as const
+export const cleSuissePublique = (tournoiId: number, phaseId: number) =>
+  [...cleSuisse(tournoiId, phaseId), 'publique'] as const
 
 // `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
 // désactivée plutôt que lancée sur un identifiant inventé (convention de `phases/hooks.ts`).
@@ -119,47 +130,122 @@ function placeholderDuel(matchNumero: number): Duel {
   }
 }
 
-/** Le duel d'une rencontre, lu dans la photo **de saisie** de la phase de poules (ou `null`).
+// --- Ce qui distingue une famille d'une autre (E05US030) -----------------------------------------
+//
+// ⚠️ **Trois tables, et non trois `if`.** Le mécanisme était binaire — « poule ou tableau » —, écrit
+// en `famille === 'poule' ? … : …` à quatre endroits. Y ajouter le système suisse par une quatrième
+// comparaison aurait fait tomber le nouveau format dans la branche **tableau** partout où l'un des
+// quatre aurait été oublié : le duel serait parti sur `/api/v1/duels/manches` avec un `match_numero`
+// que ce routeur ne connaît pas, et la photo de la phase ne se serait jamais rafraîchie hors-ligne.
+// Un `Record` exhaustif fait échouer la **compilation** au lieu de laisser le défaut sortir en
+// salle — même parti que `EN_LICE` dans `features/routage/presentation.ts`.
+
+/** La clé du **décor** d'une famille : ce qu'une écriture invalide en plus du duel lui-même. */
+const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => readonly unknown[]> = {
+  tableau: cleTableau,
+  poule: clePoules,
+  suisse: cleSuisse,
+}
+
+/** Une clé de cache **marquée par le DTO qu'elle porte** — le marqueur n'existe qu'à la compilation.
  *
- * Domicile unique de cette navigation : la photo porte les rencontres groupées par poule, et c'est
- * `numero` — le `match_numero` de la table `duel` — qui les identifie de bout en bout.
+ * ⚠️ Sans lui, `photoDe<E>()` ne confinait qu'à moitié (relevé au 2ᵉ tour de revue, par deux axes) :
+ * les lambdas étaient bien vérifiées contre `E`, mais `cle` restait typée « une clé quelconque »,
+ * si bien qu'**intervertir `clePoulesSaisie` et `cleSuisseSaisie` entre les deux entrées compilait
+ * encore** — et produisait exactement le `TypeError` sur `.rondes.flatMap` que le commentaire de la
+ * fabrique disait avoir supprimé. Le marquage ferme le dernier tiers, et il a été **vérifié par
+ * sonde** : l'interversion rend `Type 'CleDe<EtatPoulesSaisie>' is not assignable to type
+ * 'CleDe<EtatSuisseSaisie>'`. Un marqueur qu'on n'éprouve pas est un commentaire, pas un garde-fou.
  */
+type CleDe<E> = ((tournoiId: number, phaseId: number) => readonly unknown[]) & {
+  readonly __dto?: E
+}
+
+/** La photo de saisie d'une famille : où l'écran lit ses duels, quand ce n'est pas `cleDuel`.
+ *
+ * `null` pour le tableau, qui lit bien `cleDuel` — c'est la seule famille dans ce cas. Les phases à
+ * rencontres portent leurs duels **dans la photo de la phase**, groupés par poule ou par ronde ;
+ * `numero` (le `match_numero` de la table `duel`) les identifie de bout en bout.
+ */
+interface PhotoDeSaisie<E> {
+  cle: CleDe<E>
+  /** Aplatit la photo en rencontres, quel que soit le niveau intermédiaire (poule, ronde). */
+  rencontres: (etat: E) => { numero: number; duel: Duel }[]
+  /** Réécrit le duel d'une rencontre dans la photo, en préservant la structure. */
+  remplacer: (etat: E, matchNumero: number, duel: Duel) => E
+}
+
+/** Confine en **un seul point** l'assertion « cette clé porte ce DTO ».
+ *
+ * ⚠️ Sans cette fabrique, chaque entrée portait ses propres `as EtatXxx` sur des lambdas typées
+ * `unknown` (relevé par trois axes de revue) : intervertir deux `cle` compilait, et la faute ne
+ * sortait qu'en `TypeError` sur `.rondes.flatMap` — dans le chemin **optimiste hors-ligne**, celui
+ * qui par construction ne lève aucune erreur visible. C'était le trou que le `Record` exhaustif
+ * ferme un cran plus haut, réintroduit un cran plus bas. Ici, chaque entrée est vérifiée contre son
+ * vrai DTO, et le seul cast restant est celui de l'effacement, à un endroit nommé.
+ */
+function photoDe<E>(photo: PhotoDeSaisie<E>): PhotoDeSaisie<unknown> {
+  return photo as PhotoDeSaisie<unknown>
+}
+
+const PHOTO: Record<FamilleDuel, PhotoDeSaisie<unknown> | null> = {
+  tableau: null,
+  poule: photoDe<EtatPoulesSaisie>({
+    cle: clePoulesSaisie,
+    rencontres: (etat) => etat.poules.flatMap((poule) => poule.rencontres),
+    remplacer: (etat, matchNumero, duel) => ({
+      ...etat,
+      poules: etat.poules.map((poule) => ({
+        ...poule,
+        rencontres: poule.rencontres.map((rencontre) =>
+          rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+        ),
+      })),
+    }),
+  }),
+  suisse: photoDe<EtatSuisseSaisie>({
+    cle: cleSuisseSaisie,
+    rencontres: (etat) => etat.rondes.flatMap((ronde) => ronde.rencontres),
+    remplacer: (etat, matchNumero, duel) => ({
+      ...etat,
+      rondes: etat.rondes.map((ronde) => ({
+        ...ronde,
+        rencontres: ronde.rencontres.map((rencontre) =>
+          rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+        ),
+      })),
+    }),
+  }),
+}
+
+/** Le duel d'une rencontre, lu dans la photo **de saisie** de sa phase (ou `null`). */
 function duelDeLaPhase(
   queryClient: QueryClient,
+  famille: FamilleDuel,
   tournoiId: number,
   phaseId: number,
   matchNumero: number,
 ): Duel | null {
-  const etat = queryClient.getQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId))
+  const photo = PHOTO[famille]
+  if (photo === null) return null
+  const etat = queryClient.getQueryData<unknown>(photo.cle(tournoiId, phaseId))
   if (etat === undefined) return null
-  for (const poule of etat.poules) {
-    for (const rencontre of poule.rencontres) {
-      if (rencontre.numero === matchNumero) return rencontre.duel
-    }
-  }
-  return null
+  return photo.rencontres(etat).find((r) => r.numero === matchNumero)?.duel ?? null
 }
 
 /** Réécrit le duel d'une rencontre **dans la photo de la phase** — l'entrée que l'écran affiche. */
 function poserDuelDansLaPhase(
   queryClient: QueryClient,
+  famille: FamilleDuel,
   tournoiId: number,
   phaseId: number,
   matchNumero: number,
   duel: Duel,
 ): void {
-  queryClient.setQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId), (etat) =>
-    etat === undefined
-      ? etat
-      : {
-          ...etat,
-          poules: etat.poules.map((poule) => ({
-            ...poule,
-            rencontres: poule.rencontres.map((rencontre) =>
-              rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
-            ),
-          })),
-        },
+  const photo = PHOTO[famille]
+  if (photo === null) return
+  queryClient.setQueryData<unknown>(photo.cle(tournoiId, phaseId), (etat: unknown) =>
+    etat === undefined ? etat : photo.remplacer(etat, matchNumero, duel),
   )
 }
 
@@ -186,9 +272,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
         // pas sous `cleDuel` (l'écran ne lit jamais cette entrée) mais dans la photo de la phase.
         const base =
           queryClient.getQueryData<Duel>(cleDuel(tournoiId, phaseId, matchNumero, famille)) ??
-          (famille === 'poule'
-            ? duelDeLaPhase(queryClient, tournoiId, phaseId, matchNumero)
-            : null) ??
+          duelDeLaPhase(queryClient, famille, tournoiId, phaseId, matchNumero) ??
           placeholderDuel(matchNumero)
         return optimiste(base, corps)
       }
@@ -208,9 +292,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
       // scoreur tapait « Enregistrer la manche », l'acte partait bien en file (aucune donnée
       // perdue) et **l'écran ne bougeait pas** — ni les manches, ni l'état « en cours », ni le
       // verrou qui masque le bouton de validation. Il retapait (relevé en revue).
-      if (famille === 'poule') {
-        poserDuelDansLaPhase(queryClient, tournoiId, phaseId, matchNumero, duel)
-      }
+      poserDuelDansLaPhase(queryClient, famille, tournoiId, phaseId, matchNumero, duel)
       const enFile = useFileDuelsHorsLigneStore
         .getState()
         .enAttente.some((a) => a.identifiant_saisie === corps.identifiant_saisie)
@@ -228,8 +310,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
       // le decor de la famille concernee — l'arbre du tableau, ou l'etat de la phase de poules,
       // dont dependent le classement de poule et l'annonce de barrage.
       void queryClient.invalidateQueries({
-        queryKey:
-          famille === 'poule' ? clePoules(tournoiId, phaseId) : cleTableau(tournoiId, phaseId),
+        queryKey: CLE_DECOR[famille](tournoiId, phaseId),
       })
       useFileDuelsHorsLigneStore.getState().retirerSlot(cleSlot(versActe(corps)))
       void draineLaFileDuels(queryClient)
@@ -363,8 +444,17 @@ async function draineLaFileDuels(queryClient: QueryClient): Promise<void> {
       const [famille, tournoi, phase] = cle.split(':')
       const t = Number(tournoi)
       const p = Number(phase)
+      // Le préfixe vient d'une **chaîne** (la clé du `Set`), donc il faut le revalider avant de
+      // s'en servir comme index : une famille inconnue — un acte écrit par une version future et
+      // relu depuis le `localStorage` — retombe sur le tableau, comme partout ailleurs ici.
+      //
+      // ⚠️ `Object.hasOwn` et **non `in`** (correctif de revue, relevé par quatre axes) : `in`
+      // remonte la chaîne de prototypes, donc `'toString'`, `'constructor'` et `'valueOf'`
+      // passaient la garde — et `CLE_DECOR['toString'](t, p)` rend une **chaîne** là où
+      // `invalidateQueries` attend un tableau. La garde ne gardait pas ce qu'elle annonçait.
+      const connue = famille !== undefined && Object.hasOwn(CLE_DECOR, famille)
       void queryClient.invalidateQueries({
-        queryKey: famille === 'poule' ? clePoules(t, p) : cleTableau(t, p),
+        queryKey: connue ? CLE_DECOR[famille as FamilleDuel](t, p) : cleTableau(t, p),
       })
     }
     for (const acte of refuses) {

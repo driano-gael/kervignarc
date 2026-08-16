@@ -172,6 +172,21 @@ demanderait d'écrire dans un dépôt depuis la CI, ce qui coûte bien plus cher
 évite. C'est le même compromis, et le même geste, que le contrôle de synchronisation
 `requirements.txt` ↔ `pyproject.toml` déjà en place.
 
+**Un troisième coût, constaté le 16/08/2026 (E05US030) : découper une US large en commits atomiques
+devient coûteux.** Le hook `atlas-a-jour` régénère les cartes depuis l'arbre **indexé** (il remise
+le non-indexé, comme tout hook `pre-commit`). Une US dont le diff s'étend sur le front, le backend
+et les documents a donc, à chaque commit **partiel**, un `carte.js` qui ne correspond ni à l'état
+d'avant ni à celui d'après — y compris pour trois fichiers backend qui n'ajoutent aucune
+dépendance, la carte portant aussi des mesures de volume. Le hook refuse, à juste titre.
+
+**Ce n'est pas impossible, c'est cher** : il faudrait régénérer et indexer l'atlas *à chaque* commit
+de la série, donc autant de régénérations que de commits, chacune décrivant un état intermédiaire
+qui n'aura jamais existé sur `main`. E05US030 a donc livré **un commit unique**, et l'a dit dans son
+corps. À traiter le jour où le découpage manquera vraiment : la sortie la moins chère serait de
+faire porter le hook sur le **résultat du merge** plutôt que sur chaque commit — ce qui est
+exactement ce que fait déjà la CI (`python -m atlas --verifier`), le hook n'étant qu'une avance de
+phase. Rien ne presse tant que le geste reste « un commit par US ».
+
 **Ce que ça ne fera jamais.** Dire si une règle est *encore d'actualité* — indécidable
 mécaniquement. L'atlas affiche des **signaux à vérifier**, jamais un verdict. Et le contrôle de
 portage vérifie qu'un fichier **existe**, pas qu'il **fait** ce que l'ADR promet : c'est un

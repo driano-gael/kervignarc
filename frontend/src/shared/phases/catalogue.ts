@@ -114,11 +114,12 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // classement », §10.1), donc l'annoncer serait un faux positif — et un faux positif répété apprend
 // à ignorer le signal.
 //
-// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout, et le **Big
-// Shoot Off en E05US028**. Le CA l'exige explicitement à chaque fois : le signal doit cesser de
-// viser le format que l'US rend jouable **et continuer de viser** les autres, sans quoi il
-// mentirait pour ceux qui restent.
-export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'suisse', 'colline']
+// ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout, le **Big
+// Shoot Off en E05US028**, et le **système suisse en E05US030** — son moteur était livré par
+// E05US026, mais tant qu'aucun écran ne le réglait ni ne le saisissait, le signal restait vrai. Le
+// CA l'exige explicitement à chaque fois : le signal doit cesser de viser le format que l'US rend
+// jouable **et continuer de viser** les autres, sans quoi il mentirait pour ceux qui restent.
+export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'colline']
 
 // Les types que **le moteur** sait dérouler mais que le **bot de simulation** ne sait pas jouer.
 //
@@ -133,7 +134,11 @@ export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'su
 // pas le **moteur** qui ne sait pas, c'est le **bot**. Écrit en positif, contrairement à la liste
 // ci-dessus, parce qu'il énumère une capacité acquise : un oubli d'ajout ici rend le vieux message
 // (« le moteur ne sait pas »), donc pessimiste — jamais un faux « tout va bien ».
-export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set(['poules', 'big_shoot_off'])
+export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
+  'poules',
+  'big_shoot_off',
+  'suisse',
+])
 
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //
