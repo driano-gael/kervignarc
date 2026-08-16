@@ -13,10 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from atlas import avancement as avancement_module
 from atlas import controles as controles_module
 from atlas import rendu
 from atlas.modele import AtlasSourceInvalide, Controle, Severite
-from atlas.sources import adr, corpus, historique, reglement
+from atlas.sources import adr, backlog, corpus, historique, reglement, suivi
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -47,7 +48,23 @@ def assembler(racine: Path) -> Cartes:
 
     regles = reglement.lire_regles(racine)
     decisions = adr.lire_decisions(racine)
-    verdicts = controles_module.verifier(racine, regles, decisions)
+
+    # Les quatre livrables de suivi. Ils se citent les uns les autres sans que rien ne vérifie
+    # qu'ils concordent — et le tracker est le **point de reprise** du projet : ce qu'il annonce
+    # de faux ne se rattrape pas à la lecture, il fait repartir la session suivante sur une base
+    # fausse. D'où des compteurs recalculés, et des écarts qui bloquent.
+    sections = suivi.lire_sections(racine)
+    entete = suivi.lire_entete(racine)
+    epics = backlog.lire_epics(racine)
+    dettes = backlog.lire_dettes(racine)
+    us_specifiees = backlog.lire_us_specifiees(racine)
+
+    verdicts = controles_module.trier(
+        controles_module.verifier(racine, regles, decisions)
+        + controles_module.verifier_avancement(
+            sections, epics, dettes, us_specifiees, decisions, entete
+        )
+    )
     bloquants = controles_module.bloquants(verdicts)
 
     charges: dict[str, Any] = {
@@ -60,15 +77,29 @@ def assembler(racine: Path) -> Cartes:
                 "signaux": sum(1 for c in verdicts if c.severite is Severite.SIGNAL),
             },
         },
+        "avancement": avancement_module.construire(
+            sections, epics, dettes, us_specifiees, decisions, entete
+        ),
         "corpus": {"documents": corpus.construire(regles, decisions)},
         "historique": historique.historique(racine, regles),
     }
     amendes = sum(1 for d in decisions if d.amende_par)
+    # Des US **distinctes**, comme le total annoncé en tête du tracker : deux US sont légitimement
+    # re-listées dans un lot d'ajouts postérieur, et compter les lignes annoncerait deux de trop.
+    livrees = len(
+        {
+            ligne.identifiant
+            for section in sections
+            for ligne in section.comptees
+            if ligne.etat == suivi.LIVREE
+        }
+    )
     return Cartes(
         fichiers={cle: rendu.serialiser(cle, charge) for cle, charge in charges.items()},
         verdicts=verdicts,
         resume=(
             f"{len(regles)} règles · {len(decisions)} décisions "
+            f"· {livrees} US livrées "
             f"(dont {amendes} amendées par une décision plus récente) · "
             f"{len(bloquants)} écart(s) bloquant(s), "
             f"{len(verdicts) - len(bloquants)} signal(aux)"

@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from atlas.modele import AtlasSourceInvalide
 from atlas.normalisation import cle
 
 
@@ -18,7 +19,19 @@ from atlas.normalisation import cle
 # `read_text()` sans encodage explicite retombe sur cp1252 et massacre un corpus intégralement
 # francophone. Même raison pour `newline="\n"` à l'écriture (cf. `rendu.py`).
 def lire(chemin: Path) -> str:
-    return chemin.read_text(encoding="utf-8")
+    """Le texte d'une source — ou un refus qui nomme le fichier manquant.
+
+    Un `FileNotFoundError` nu remonté depuis un hook pre-commit est un piège à trois heures
+    perdues, et il se déclenche pendant une US urgente. `AtlasSourceInvalide` sort en code 2
+    (« source invalide ») avec le chemin en clair : le générateur déclare ainsi ce dont il dépend.
+    """
+    try:
+        return chemin.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise AtlasSourceInvalide(
+            f"source absente : « {chemin} ». L'atlas lit des fichiers versionnés du dépôt ; "
+            f"celui-ci manque, et rien ne peut être déduit de son absence."
+        ) from None
 
 
 _H1 = re.compile(r"^# +(?P<titre>.+?)\s*$", re.MULTILINE)
@@ -86,6 +99,50 @@ _BALISE = re.compile(r"[*`]")
 def en_clair(markdown: str) -> str:
     """Le texte sans son balisage — pour la recherche et les résumés, pas pour l'affichage."""
     return re.sub(r"\s+", " ", _BALISE.sub("", _LIEN_MD.sub(r"\g<texte>", markdown))).strip()
+
+
+_SEPARATEUR_DE_TABLEAU = re.compile(r"^[\s|:-]+$")
+
+
+def tableaux(texte: str) -> list[tuple[list[str], list[list[str]]]]:
+    """Les tableaux Markdown de premier niveau, sous forme (en-tête, lignes).
+
+    Les tableaux **en citation** (`> | … |`) sont ignorés : dans ce dépôt, ce sont des vues de
+    priorité ou des encadrés, jamais des inventaires. Une ligne plus courte que son en-tête est
+    rendue telle quelle — c'est à l'appelant de décider si le décalage est tolérable, parce que la
+    réponse dépend de ce qu'il compte : un tableau d'états ne le tolère pas, un tableau descriptif
+    s'en accommode.
+    """
+    trouves: list[tuple[list[str], list[list[str]]]] = []
+    entete: list[str] | None = None
+    lignes: list[list[str]] = []
+
+    def fermer() -> None:
+        if entete is not None:
+            trouves.append((entete, lignes))
+
+    for brute in texte.split("\n"):
+        if not brute.strip():
+            # ⚠️ Une ligne **vide** n'interrompt pas le tableau. Les registres écrits à la main en
+            # contiennent, pour aérer des lignes de plusieurs centaines de caractères : les traiter
+            # comme une fin de tableau coupait « Dette ouverte » en trois, et le lecteur ne voyait
+            # plus que 4 des 53 dettes — silencieusement, puisqu'un morceau de table reste une
+            # table bien formée.
+            continue
+        if not brute.startswith("|"):
+            if entete is not None:
+                fermer()
+                entete, lignes = None, []
+            continue
+        if _SEPARATEUR_DE_TABLEAU.match(brute):
+            continue
+        cellules = [c.strip() for c in brute.strip().strip("|").split("|")]
+        if entete is None:
+            entete, lignes = cellules, []
+        else:
+            lignes.append(cellules)
+    fermer()
+    return trouves
 
 
 def tronquer(texte: str, taille: int) -> str:

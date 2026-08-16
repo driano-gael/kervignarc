@@ -40,6 +40,8 @@ def test_le_site_a_bien_ses_pages() -> None:
         "errata.html",
         "controles.html",
         "recherche.html",
+        "avancement.html",
+        "us.html",
     }
 
 

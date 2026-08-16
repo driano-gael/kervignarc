@@ -1,6 +1,6 @@
 /* Atlas — coquille : navigation, helpers DOM, rendu Markdown minimal.
  *
- * DETTE-065 — ce fichier ne passe sous aucun linter (cf. `docs/dette.md`).
+ * DETTE-067 — ce fichier ne passe sous aucun linter (cf. `docs/dette.md`).
  *
  * Script classique, pas de module ES : sur `file://`, les modules sont soumis au CORS et le site
  * se casserait en silence au double-clic tout en marchant parfaitement en `localhost`. Même
@@ -14,6 +14,7 @@ var Atlas = (function () {
   var PAGES = [
     { fichier: "index.html", libelle: "Le règlement" },
     { fichier: "decisions.html", libelle: "Les décisions" },
+    { fichier: "avancement.html", libelle: "L'avancement" },
     { fichier: "errata.html", libelle: "Ce qui a changé" },
     { fichier: "controles.html", libelle: "Écarts constatés" },
     { fichier: "recherche.html", libelle: "Rechercher" },

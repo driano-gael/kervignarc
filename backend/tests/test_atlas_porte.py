@@ -51,6 +51,45 @@ ADR_QUI_PROMET_DU_VENT = ADR_SAIN.replace(
 )
 
 
+# Les quatre livrables de suivi. Minimaux, mais **concordants** : le dépôt jetable doit pouvoir
+# passer la porte, sans quoi les tests ne mesureraient plus que la présence de ces fichiers.
+SUIVI = """# Suivi des US
+
+**Dernière mise à jour : 01/01/2026** · dernière : `E00US001`
+*(une US d'essai. ADR-0001.)*
+
+Précédente : `E00US000`
+
+## J0 — le socle (1/1)
+
+| Seq | US | Titre | État |
+|---|---|---|---|
+| 1 | `E00US001` | Une US d'essai | ✅ |
+"""
+
+EPICS = """# Les epics
+
+| ID | Titre | Priorité | Dépend de |
+|---|---|---|---|
+| EPIC-00 | Socle | P0 | — |
+"""
+
+DETTE = """# Registre de dette
+
+## Dette ouverte
+
+| ID | Type | Sévérité | Portée | Introduite par | Résorption |
+|---|---|---|---|---|---|
+| DETTE-001 | technique | mineur | `backend/` | E00US001 | E00US001 |
+"""
+
+STORY = """# EPIC-00 — Socle
+
+### E00US001 — Une US d'essai
+- **CA** : rien.
+"""
+
+
 def _git(depot: Path, *arguments: str) -> None:
     """Appelle git en neutralisant la configuration **globale** du poste.
 
@@ -84,6 +123,15 @@ def _poser_depot(racine: Path, *, adr: str = ADR_SAIN) -> None:
     (racine / "backend" / "present.py").write_text(
         "class ChosePresente:\n    pass\n", encoding="utf-8", newline="\n"
     )
+    for chemin, contenu in (
+        ("journal-d-avancement/SUIVI-US.md", SUIVI),
+        ("epics/README.md", EPICS),
+        ("docs/dette.md", DETTE),
+        ("stories/E00-socle.md", STORY),
+    ):
+        cible = racine / chemin
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_text(contenu, encoding="utf-8", newline="\n")
 
 
 @pytest.fixture

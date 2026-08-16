@@ -18,7 +18,7 @@ import pytest
 from atlas import controles as controles_module
 from atlas import markdown
 from atlas.modele import Decision, Regle, TypeLien
-from atlas.sources import adr, reglement
+from atlas.sources import adr, backlog, reglement, suivi
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -177,3 +177,75 @@ def test_aucun_ecart_bloquant_dans_le_depot(
 # c'est-à-dire quand tout irait mieux — et le réflexe aurait été de le supprimer, pas de le
 # remplacer. La garde anti-creux vit désormais dans `test_atlas_contrats.py`, sur des entrées
 # construites à la main : elle prouve la règle, pas l'état du jour.
+
+
+# Le type est nommé : un `tuple[object, ...]` aurait fait passer mypy en rendant les cinq
+# éléments opaques — donc en désactivant le typage là où il servait.
+Livrables = tuple[
+    tuple[suivi.Section, ...],
+    tuple[backlog.Epic, ...],
+    tuple[backlog.Dette, ...],
+    tuple[backlog.UsSpecifiee, ...],
+    suivi.Entete,
+]
+
+
+@pytest.fixture(scope="module")
+def avancement() -> Livrables:
+    """Les quatre livrables de suivi, lus une fois pour toutes les vérifications qui suivent."""
+    return (
+        suivi.lire_sections(RACINE),
+        backlog.lire_epics(RACINE),
+        backlog.lire_dettes(RACINE),
+        backlog.lire_us_specifiees(RACINE),
+        suivi.lire_entete(RACINE),
+    )
+
+
+def test_chaque_compteur_du_tracker_est_exact(avancement: Livrables) -> None:
+    """La règle de comptage de la Légende, appliquée à chaque section — le cœur de la porte.
+
+    Elle a été instituée le 08/08/2026 parce que **trois compteurs sur cinq** étaient faux, chacun
+    d'un mode différent. Ce test est ce qui empêche le quatrième mode d'exister.
+    """
+    sections = avancement[0]
+    ecarts = [
+        f"{section.titre} : écrit {section.compteur_ecrit}, recalculé {suivi.compter(section)}"
+        for section in sections
+        if section.compteur_ecrit is not None and suivi.compter(section) != section.compteur_ecrit
+    ]
+
+    assert ecarts == []
+
+
+def test_aucun_ecart_bloquant_entre_les_livrables_de_suivi(
+    avancement: Livrables, decisions: tuple[Decision, ...]
+) -> None:
+    """Les quatre fichiers se citent les uns les autres : aucun ne doit contredire les autres.
+
+    Les **signaux** (titre reformulé, US annoncée « dernière ») restent hors de cette porte, pour
+    la même raison qu'en portage : un contrôle heuristique qui bloque la CI finit désactivé.
+    """
+    sections, epics, dettes, us_specifiees, entete = avancement
+    bloquants = controles_module.bloquants(
+        controles_module.verifier_avancement(
+            sections, epics, dettes, us_specifiees, decisions, entete
+        )
+    )
+
+    assert [f"{c.sujet} {c.message}" for c in bloquants] == []
+
+
+def test_aucun_identifiant_de_dette_n_est_attribue_deux_fois(avancement: Livrables) -> None:
+    """Deux `DETTE-065` ont coexisté sur `main` sans le moindre conflit git : régions disjointes.
+
+    Deux agents ont pris le même numéro libre, chacun l'a écrit loin de l'autre **pour éviter un
+    conflit** — et c'est cette précaution qui a rendu la collision invisible. Rien, dans le
+    processus, ne pouvait la voir : elle ne se voit qu'en relisant le registre entier.
+    """
+    dettes = avancement[2]
+    vus: dict[str, int] = {}
+    for dette in dettes:
+        vus[dette.identifiant] = vus.get(dette.identifiant, 0) + 1
+
+    assert [identifiant for identifiant, compte in sorted(vus.items()) if compte > 1] == []

@@ -1,6 +1,6 @@
 /* Atlas — rendu des pages.
  *
- * DETTE-065 — ce fichier ne passe sous aucun linter : `eslint` et `prettier` sont cadrés sur
+ * DETTE-067 — ce fichier ne passe sous aucun linter : `eslint` et `prettier` sont cadrés sur
  * `^frontend/` (hooks pre-commit) et `working-directory: frontend` (CI). Ce qui est vérifié
  * mécaniquement l'est par `backend/tests/test_atlas_site.py` ; le rendu, lui, se regarde à l'œil
  * (checklist dans `atlas/README.md`).
@@ -863,12 +863,424 @@ var Pages = (function () {
     chercher();
   }
 
+  /* --- 8. L'avancement ------------------------------------------------------------------------ */
+
+  /* Les six glyphes de la Légende de `SUIVI-US.md`. Le glyphe **fait autorité** sur l'état d'une
+   * US : rien ici ne le déduit de git, et c'est délibéré — trois US ont un commit dans `main`
+   * sans être livrées, une vue qui lirait le journal des commits les compterait faites. */
+  var ETATS = {
+    "✅": "livrée",
+    "⬜": "à faire",
+    "🔶": "en cours",
+    "🎯": "prochaine",
+    "🔒": "bloquée",
+    "⛔": "absorbée",
+  };
+
+  function libelleEtat(glyphe) {
+    return ETATS[glyphe] || "état inconnu";
+  }
+
+  function pastilleEtat(glyphe) {
+    var classe = glyphe === "✅" ? "tenu" : glyphe === "🔒" ? "alerte" : glyphe === "🎯" ? "change" : null;
+    return "<span class='pastille" + (classe ? " " + classe : "") + "'>" +
+      E(glyphe) + " " + E(libelleEtat(glyphe)) + "</span>";
+  }
+
+  function avancement(cible) {
+    var donnees = Atlas.donnees("avancement") || { sections: [], epics: [], dettes: [], fiches: [] };
+
+    var vivantes = donnees.fiches.filter(function (fiche) {
+      return fiche.etat !== "⛔";
+    });
+    var livrees = vivantes.filter(function (fiche) {
+      return fiche.etat === "✅";
+    });
+    var divergentes = donnees.sections.filter(function (section) {
+      return (
+        section.compteur_ecrit &&
+        (section.compteur_ecrit[0] !== section.calcule[0] ||
+          section.compteur_ecrit[1] !== section.calcule[1])
+      );
+    });
+
+    titrePage(
+      cible,
+      "L'avancement",
+      "Ce que les quatre livrables de suivi disent, mis côte à côte : le tracker pour l'état, " +
+        "<span class='mono'>stories/</span> pour le contenu, <span class='mono'>epics/</span> pour " +
+        "l'ordre, le registre pour ce qui reste dû. Les compteurs sont <strong>recalculés</strong> " +
+        "depuis la règle de comptage de la Légende — jamais recopiés."
+    );
+
+    var grille = Atlas.element("div", "grille");
+    grille.innerHTML =
+      "<div class='carte'><span class='compteur'>" + livrees.length + " / " + vivantes.length +
+      "</span> US livrées<p class='discret'>US distinctes, absorbées exclues. La somme des " +
+      "compteurs de section vaut davantage : deux US sont listées dans deux sections.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + donnees.epics.length +
+      "</span> epics<p class='discret'>Le graphe ci-dessous est leur <strong>réduction " +
+      "transitive</strong> : une dépendance déjà impliquée par un chemin plus long n'est pas " +
+      "redessinée.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + donnees.dettes.length +
+      "</span> dettes ouvertes<p class='discret'>Telles que la table « Dette ouverte » les " +
+      "porte. Une dette résorbée change de table.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + divergentes.length +
+      "</span> compteur(s) divergent(s)<p class='discret'>Un compteur faux fait repartir la " +
+      "session suivante sur une base fausse : c'est un écart <strong>bloquant</strong>.</p></div>";
+    cible.appendChild(grille);
+
+    cible.appendChild(Atlas.element("h2", null, "L'ordre des epics"));
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Chaque colonne ne peut commencer qu'une fois la précédente disponible. " +
+          "Les liaisons longues passent sous le schéma pour ne traverser aucune boîte."
+      )
+    );
+    cible.appendChild(grapheEpics(donnees.epics));
+
+    cible.appendChild(Atlas.element("h2", null, "Section par section"));
+    donnees.sections.forEach(function (section) {
+      cible.appendChild(sectionAvancement(section));
+    });
+
+    cible.appendChild(Atlas.element("h2", null, "La dette ouverte"));
+    cible.appendChild(tableauDettes(donnees.dettes));
+  }
+
+  function sectionAvancement(section) {
+    var bloc = Atlas.element("section", "regle");
+    var ecrit = section.compteur_ecrit;
+    var concorde =
+      !ecrit || (ecrit[0] === section.calcule[0] && ecrit[1] === section.calcule[1]);
+    var badge = !ecrit
+      ? "<span class='pastille'>sans compteur écrit</span>"
+      : concorde
+        ? "<span class='pastille tenu'>" + section.calcule[0] + "/" + section.calcule[1] +
+          " — concorde</span>"
+        : "<span class='pastille alerte'>écrit " + ecrit[0] + "/" + ecrit[1] + ", recalculé " +
+          section.calcule[0] + "/" + section.calcule[1] + "</span>";
+
+    var tete = Atlas.element("div", "regle-tete");
+    tete.innerHTML = "<h3>" + E(section.titre) + "</h3>" + badge;
+    bloc.appendChild(tete);
+
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>US</th><th>Titre</th><th>État</th></tr></thead><tbody>" +
+      section.lignes
+        .map(function (ligne) {
+          var nom = ligne.identifiant
+            ? "<a href='us.html?id=" + encodeURIComponent(ligne.identifiant) + "'>" +
+              E(ligne.identifiant) + "</a>"
+            : "<span class='discret'>hors US</span>";
+          return (
+            "<tr><td class='mono'>" + nom + "</td><td>" + E(ligne.titre) + "</td><td>" +
+            (ligne.etat ? pastilleEtat(ligne.etat) : "") +
+            (ligne.comptee ? "" : " <span class='discret'>hors décompte</span>") +
+            "</td></tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    bloc.appendChild(enveloppe);
+    return bloc;
+  }
+
+  function tableauDettes(dettes) {
+    var enveloppe = Atlas.element("div", "defilable");
+    if (!dettes.length) {
+      return Atlas.element("p", "discret", "Aucune dette ouverte.");
+    }
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>Dette</th><th>Sévérité</th><th>Introduite par</th>" +
+      "<th>Résorption prévue</th></tr></thead><tbody>" +
+      dettes
+        .map(function (dette) {
+          return (
+            "<tr><td class='mono'>DETTE-" + E(dette.identifiant) + "</td><td>" +
+            E(dette.severite) + "</td><td class='mono'>" +
+            (dette.introduite_par.map(E).join(" ") || "—") + "</td><td class='mono'>" +
+            (dette.resorption_us.map(E).join(" ") || "—") + "</td></tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    return enveloppe;
+  }
+
+  /* Réduction transitive : une arête A→C est retirée si un chemin A→…→C existe déjà. Sur le
+   * dépôt du 16/08/2026, elle fait tomber le graphe de 38 arêtes à 19, dont 18 franchissent une
+   * seule colonne. Aucune information n'est perdue — la dépendance reste impliquée — et c'est ce
+   * qui rend un dessin sans moteur de mise en page réellement lisible. */
+  function reduire(dependances) {
+    function atteignables(depart, vus) {
+      (dependances[depart] || []).forEach(function (voisin) {
+        if (!vus[voisin]) {
+          vus[voisin] = true;
+          atteignables(voisin, vus);
+        }
+      });
+      return vus;
+    }
+    var reduites = {};
+    Object.keys(dependances).forEach(function (noeud) {
+      var indirects = {};
+      (dependances[noeud] || []).forEach(function (direct) {
+        atteignables(direct, indirects);
+      });
+      reduites[noeud] = (dependances[noeud] || []).filter(function (direct) {
+        return !indirects[direct];
+      });
+    });
+    return reduites;
+  }
+
+  function grapheEpics(epics) {
+    if (!epics.length) {
+      return Atlas.element("p", "discret", "Aucun epic déclaré.");
+    }
+
+    var LARGEUR = 196;
+    var HAUTEUR = 46;
+    var ECART_X = 74;
+    var ECART_Y = 18;
+    var COULOIR = 12;
+
+    var dependances = {};
+    epics.forEach(function (epic) {
+      dependances[epic.identifiant] = epic.depend_de.filter(function (cible) {
+        return dependances.hasOwnProperty(cible) || epics.some(function (autre) {
+          return autre.identifiant === cible;
+        });
+      });
+    });
+    var reduites = reduire(dependances);
+
+    /* Rang = longueur du plus long chemin depuis une racine. Le balayage est répété autant de fois
+     * qu'il y a d'epics : c'est la borne d'un DAG, et cela termine même si le tableau contenait un
+     * cycle — un graphe faux ne doit pas figer la page, il doit se voir. */
+    var rangs = {};
+    epics.forEach(function () {
+      epics.forEach(function (epic) {
+        var maximum = 0;
+        (dependances[epic.identifiant] || []).forEach(function (cible) {
+          maximum = Math.max(maximum, (rangs[cible] || 0) + 1);
+        });
+        rangs[epic.identifiant] = maximum;
+      });
+    });
+
+    var colonnes = [];
+    epics
+      .slice()
+      .sort(function (a, b) {
+        return a.identifiant < b.identifiant ? -1 : 1;
+      })
+      .forEach(function (epic) {
+        var rang = rangs[epic.identifiant];
+        colonnes[rang] = colonnes[rang] || [];
+        colonnes[rang].push(epic);
+      });
+
+    var positions = {};
+    function poser() {
+      colonnes.forEach(function (colonne, rang) {
+        colonne.forEach(function (epic, ligne) {
+          positions[epic.identifiant] = {
+            x: 2 + rang * (LARGEUR + ECART_X),
+            y: 10 + ligne * (HAUTEUR + ECART_Y),
+            rang: rang,
+          };
+        });
+      });
+    }
+    poser();
+
+    /* Une passe de barycentre : chaque epic se replace en face de la moyenne de ses dépendances.
+     * Une seule passe, pas dix — l'objectif est de décroiser l'évident, pas d'optimiser. */
+    colonnes.forEach(function (colonne) {
+      colonne.sort(function (a, b) {
+        function moyenne(epic) {
+          var cibles = reduites[epic.identifiant] || [];
+          if (!cibles.length) return positions[epic.identifiant].y;
+          return (
+            cibles.reduce(function (somme, cible) {
+              return somme + (positions[cible] ? positions[cible].y : 0);
+            }, 0) / cibles.length
+          );
+        }
+        return moyenne(a) - moyenne(b);
+      });
+    });
+    poser();
+
+    var hautes = colonnes.reduce(function (max, colonne) {
+      return Math.max(max, colonne.length);
+    }, 0);
+    var basDesBoites = 10 + hautes * (HAUTEUR + ECART_Y);
+
+    /* Deux routages, et le critère est la portée. Une liaison entre colonnes voisines tient dans
+     * l'écart qui les sépare. Une liaison plus longue traverserait des boîtes : elle descend sous
+     * le schéma, y circule, et remonte — même parti pris que les chaînes d'amendement. */
+    var courtes = [];
+    var longues = [];
+    Object.keys(reduites).forEach(function (vers) {
+      reduites[vers].forEach(function (de) {
+        if (!positions[de] || !positions[vers]) return;
+        var portee = positions[vers].rang - positions[de].rang;
+        (portee === 1 ? courtes : longues).push({ de: de, vers: vers });
+      });
+    });
+
+    /* Allocation de couloir par coloration d'intervalles : deux liaisons ne partagent un couloir
+     * que si leurs portées ne se chevauchent pas. Même algorithme que `schemaChaine`. */
+    function allouer(liaisons, borne) {
+      var placees = [];
+      liaisons.forEach(function (liaison) {
+        var bas = Math.min(borne(liaison).a, borne(liaison).b);
+        var haut = Math.max(borne(liaison).a, borne(liaison).b);
+        var couloir = 0;
+        while (
+          placees.some(function (posee) {
+            return posee.couloir === couloir && posee.bas < haut && bas < posee.haut;
+          })
+        ) {
+          couloir += 1;
+        }
+        placees.push({ liaison: liaison, bas: bas, haut: haut, couloir: couloir });
+      });
+      return placees;
+    }
+
+    var placeesLongues = allouer(longues, function (liaison) {
+      return { a: positions[liaison.de].x, b: positions[liaison.vers].x };
+    });
+    var couloirs = placeesLongues.reduce(function (max, posee) {
+      return Math.max(max, posee.couloir + 1);
+    }, 0);
+
+    var largeurTotale = colonnes.length * (LARGEUR + ECART_X) + 4;
+    var hauteurTotale = basDesBoites + couloirs * COULOIR + 14;
+
+    var svg =
+      "<svg class='reseau' width='" + largeurTotale + "' viewBox='0 0 " + largeurTotale + " " +
+      hauteurTotale + "' role='img' aria-label='Dépendances entre epics'>";
+
+    courtes.forEach(function (liaison) {
+      var depart = positions[liaison.de];
+      var arrivee = positions[liaison.vers];
+      var milieu = depart.x + LARGEUR + ECART_X / 2;
+      svg +=
+        "<path class='arete' d='M " + (depart.x + LARGEUR) + " " + (depart.y + HAUTEUR / 2) +
+        " H " + milieu + " V " + (arrivee.y + HAUTEUR / 2) + " H " + arrivee.x + "'>" +
+        "<title>EPIC-" + E(liaison.vers) + " dépend d'EPIC-" + E(liaison.de) + "</title></path>";
+    });
+
+    placeesLongues.forEach(function (posee) {
+      var depart = positions[posee.liaison.de];
+      var arrivee = positions[posee.liaison.vers];
+      var y = basDesBoites + (posee.couloir + 1) * COULOIR;
+      svg +=
+        "<path class='arete' d='M " + (depart.x + LARGEUR / 2) + " " + (depart.y + HAUTEUR) +
+        " V " + y + " H " + (arrivee.x + LARGEUR / 2) + " V " + (arrivee.y + HAUTEUR) + "'>" +
+        "<title>EPIC-" + E(posee.liaison.vers) + " dépend d'EPIC-" + E(posee.liaison.de) +
+        "</title></path>";
+    });
+
+    epics.forEach(function (epic) {
+      var position = positions[epic.identifiant];
+      svg +=
+        "<rect class='boite' x='" + position.x + "' y='" + position.y + "' width='" + LARGEUR +
+        "' height='" + HAUTEUR + "' rx='4'></rect>" +
+        "<text x='" + (position.x + 10) + "' y='" + (position.y + 19) + "'>EPIC-" +
+        E(epic.identifiant) + "</text>" +
+        "<text class='etiquette' x='" + (position.x + 10) + "' y='" + (position.y + 36) + "'>" +
+        E(couper(epic.titre, 30)) + "</text>";
+    });
+
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML = svg + "</svg>";
+    return enveloppe;
+  }
+
+  /* --- 9. La fiche d'une US ------------------------------------------------------------------- */
+
+  function ficheUs(cible) {
+    var donnees = Atlas.donnees("avancement") || { fiches: [], dettes: [] };
+    var identifiant = Atlas.parametre("id");
+    var fiche = donnees.fiches.filter(function (candidate) {
+      return candidate.identifiant === identifiant;
+    })[0];
+
+    if (!fiche) {
+      titrePage(cible, "US introuvable", "Le tracker ne porte aucune ligne « " + E(identifiant) + " ».");
+      cible.appendChild(Atlas.element("p", null, "<a href='avancement.html'>Retour à l'avancement</a>"));
+      return;
+    }
+
+    titrePage(cible, fiche.identifiant + " — " + fiche.titre, "");
+
+    var tete = Atlas.element("p", null);
+    tete.innerHTML =
+      pastilleEtat(fiche.etat) +
+      " <span class='pastille'>EPIC-" + E(fiche.epic) +
+      (fiche.epic_titre ? " · " + E(fiche.epic_titre) : "") + "</span>";
+    cible.appendChild(tete);
+
+    var lignes = [
+      ["Sections du tracker", fiche.sections.map(E).join(" · ") || "—"],
+      [
+        "Spécifiée dans",
+        fiche.story
+          ? "<span class='mono'>" + E(fiche.story) + "</span>" +
+            (fiche.titre_story && fiche.titre_story !== fiche.titre
+              ? " — « " + E(fiche.titre_story) + " »"
+              : "")
+          : "<strong>aucune fiche dans stories/</strong>",
+      ],
+      [
+        "Décisions qui la citent",
+        fiche.adr
+          .map(function (numero) {
+            return "<a href='adr.html?id=" + E(numero) + "'>ADR-" + E(numero) + "</a>";
+          })
+          .join(" · ") || "—",
+      ],
+      ["Dette introduite", fiche.dettes_introduites.map(function (d) { return "DETTE-" + E(d); }).join(" · ") || "—"],
+      ["Dette résorbée", fiche.dettes_resorbees.map(function (d) { return "DETTE-" + E(d); }).join(" · ") || "—"],
+    ];
+
+    var liste = Atlas.element("ul", "liste-nue");
+    liste.innerHTML = lignes
+      .map(function (couple) {
+        return "<li><div class='discret'>" + couple[0] + "</div><div>" + couple[1] + "</div></li>";
+      })
+      .join("");
+    cible.appendChild(liste);
+
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "L'atlas ne dit pas si cette US est <em>faite</em> : il rapporte le glyphe écrit dans le " +
+          "tracker, qui fait autorité. Trois US ont un commit dans <span class='mono'>main</span> " +
+          "sans être livrées — un état déduit de git serait faux."
+      )
+    );
+    cible.appendChild(Atlas.element("p", null, "<a href='avancement.html'>Retour à l'avancement</a>"));
+  }
+
   return {
+    avancement: avancement,
     controles: controles,
     decisions: decisions,
     errata: errata,
     ficheDecision: ficheDecision,
     ficheRegle: ficheRegle,
+    ficheUs: ficheUs,
     recherche: recherche,
     reglement: reglement,
   };

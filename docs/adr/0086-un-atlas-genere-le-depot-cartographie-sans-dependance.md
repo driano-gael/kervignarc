@@ -3,7 +3,7 @@
 - **Statut** : Accepté
 - **Date** : 2026-08-15
 - **Décideurs** : Organisateur / Architecte
-- **Introduit par** : E00US018
+- **Introduit par** : E00US018 · E00US019
 - **S'appuie sur** : [ADR-0001](0001-adopter-les-adr.md) (le Markdown versionné fait autorité) ·
   [ADR-0009](0009-gouvernance-dependances.md) (parcimonie) ·
   [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) (précédent du SVG maison)
@@ -181,8 +181,36 @@ Piège de second ordre, à connaître : sur une *pull request*, GitHub exécute 
 tête de PR** — une branche ouverte avant cette US n'a pas le job, mergera sans jamais le lancer, et
 laissera `main` rouge jusqu'à la régénération suivante.
 
-**Dette ouverte :** [DETTE-065](../dette.md) — le JavaScript du site n'est ni typé ni linté,
+**Dette ouverte :** [DETTE-067](../dette.md) — le JavaScript du site n'est ni typé ni linté,
 `eslint` et `prettier` ne voyant que `frontend/`.
+
+### Amendement du 16/08/2026 (E00US019) — la porte s'étend aux livrables de suivi
+
+La décision d'origine ne confrontait que **l'écrit au code** : un ADR nomme un module, le module
+existe-t-il ? `E00US019` l'étend à un second couple, **l'écrit à l'écrit** — quatre fichiers de
+suivi écrits à la main (`SUIVI-US.md`, `epics/README.md`, `stories/`, `docs/dette.md`) qui se
+citent les uns les autres sans que rien ne vérifie qu'ils concordent.
+
+Le calibrage des sévérités ne change pas, mais il gagne un cas dont on n'avait pas d'exemple :
+un **compteur** est un constat sans ambiguïté — il se recalcule, il concorde ou non — donc
+**bloquant**, quand bien même il ne s'agit « que » de documentation. Le tracker est le point de
+reprise du projet : un compteur faux ne se rattrape pas à la lecture, il fait repartir la session
+suivante sur une base fausse.
+
+**Trois défauts réels trouvés le jour même de la livraison**, tous invisibles à la relecture :
+1. le compteur J3 annonçait `12/15` quand son corps portait 14 ✅ sur 16 lignes ;
+2. `E05US026` et `E05US028`, **livrées**, n'existaient que dans la file d'attente — un tableau en
+   citation qu'aucun compteur ne lit. Seul le **total annoncé en tête** pouvait les trahir, et
+   c'est ce qui a fait naître ce contrôle ;
+3. deux `DETTE-065` coexistaient sur `main`. Deux agents avaient pris le même numéro libre et,
+   **pour éviter un conflit**, chacun l'avait écrit loin de l'autre : git a fusionné sans un mot.
+   La précaution anti-conflit est exactement ce qui a rendu la collision invisible.
+
+⚠️ **Une limite assumée, et elle est du même ordre que celle du portage.** Le contrôle de
+concordance des **titres** repose sur un recouvrement de mots, seuil calibré sur le dépôt : c'est
+un **signal**, jamais un verdict. À l'égalité stricte il criait sur 23 des 109 US livrées, presque
+toutes de simples reformulations — et un contrôle à ce niveau de bruit n'est plus lu, ce qui
+emporte aussi les constats justes.
 
 ## Porté dans le code par
 
@@ -192,9 +220,14 @@ laissera `main` rouge jusqu'à la régénération suivante.
 - `backend/atlas/normalisation.py` — la table `_RELATIONS`, garde-fou du vocabulaire (point 4)
 - `backend/atlas/sources/reglement.py` — `lire_regles`, la lecture par ancre (point 5)
 - `backend/atlas/sources/adr.py` — `lire_decisions`, le graphe d'amendement et le portage (point 1)
-- `backend/atlas/controles.py` — `verifier`, les deux sévérités (point 4)
+- `backend/atlas/controles.py` — `verifier` et `verifier_avancement`, les deux sévérités (point 4)
+- `backend/atlas/sources/suivi.py` — `lire_sections`, `compter`, `lire_entete` : la règle de comptage du tracker, appliquée à la lettre
+- `backend/atlas/sources/backlog.py` — `lire_epics`, `lire_dettes`, `lire_us_specifiees`
+- `backend/atlas/avancement.py` — `construire`, le rapprochement des quatre sources
 - `backend/atlas/rendu.py` — `serialiser` et `ecarts`, le déterminisme et la porte (point 3)
 - `backend/tests/test_atlas_corpus.py` — les garde-fous sur le dépôt réel
+- `backend/tests/test_atlas_avancement.py` — la règle de comptage, sur des tableaux littéraux
+- `backend/tests/test_atlas_coherence.py` — les contradictions entre livrables, cas par cas
 - `backend/tests/test_atlas_contrats.py` — les promesses de l'US, éprouvées hors du dépôt réel
 - `backend/tests/test_atlas_historique.py` — `git log -L` éprouvé sur un dépôt jetable (point 5)
 - `backend/tests/test_atlas_site.py` — les contraintes du site statique (point 2)

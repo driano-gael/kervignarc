@@ -161,6 +161,16 @@ depuis les fichiers du projet**, et la vérification automatique échoue si l'af
 plus aux sources. Détail dans
 [`2026-08-15-16h48-l-atlas-du-projet.md`](2026-08-15-16h48-l-atlas-du-projet.md).
 
+Le **16/08/2026**, l'atlas a gagné une page **« L'avancement »** : les US regroupées par jalon avec
+leur état, l'ordre dans lequel les grands chantiers peuvent s'enchaîner, la dette encore ouverte, et
+une fiche par US qui rassemble ce que les quatre documents de suivi en disent. Surtout, il **refait
+lui-même les comptes** au lieu de recopier ceux qui sont écrits — et il refuse de valider tant qu'un
+écart subsiste. Il a trouvé **trois erreurs réelles le jour même** : un compteur de jalon qui
+annonçait 12 US faites sur 15 quand il y en avait 16 dont 14 faites ; deux US **livrées** qui
+n'apparaissaient dans aucun tableau de suivi ; et deux dettes différentes portant le même numéro,
+arrivées sur `main` sans que rien ne s'en aperçoive. Détail dans
+[`2026-08-16-16h19-l-avancement-qui-se-verifie-lui-meme.md`](2026-08-16-16h19-l-avancement-qui-se-verifie-lui-meme.md).
+
 ---
 
 ## Ce qui a été construit, par blocs
@@ -524,8 +534,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **110 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
-  étant `E05US026` — le **système suisse**, backend seul (son écran est `E05US030`). **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **112 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
+  étant `E00US019` — la **vue d'avancement de l'atlas** et son garde-fou de cohérence. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
