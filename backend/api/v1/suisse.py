@@ -38,7 +38,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from api.dependances import exiger_scoreur
+from api.dependances import exiger_admin, exiger_scoreur
 from api.v1.saisie_duels import DuellisteReponse, DuelReponse
 from application.erreurs import ScoreurHorsTournoi
 from application.saisie_duels import EtatDuel
@@ -55,6 +55,22 @@ router = APIRouter(prefix="/api/v1/suisse", tags=["suisse"])
 # --- DTO ---
 
 
+def _couloirs(
+    places: tuple[tuple[int, str], tuple[int, str]] | None,
+) -> list[list[int | str]] | None:
+    """Sérialise un couple de couloirs en `[[cible, lettre], …]`, ou `null` si rien n'est posé."""
+    if places is None:
+        return None
+    return [[cible, lettre] for cible, lettre in places]
+
+
+class ConflitReponse(BaseModel):
+    """Ce que la pose du plan n'a pas pu faire, et pourquoi — rapporté, jamais tu (ADR-0024)."""
+
+    groupe: int
+    raison: str
+
+
 class RencontreReponse(BaseModel):
     """Une rencontre d'une ronde : son numéro, sa ronde, ses duellistes et son tir."""
 
@@ -62,6 +78,13 @@ class RencontreReponse(BaseModel):
     ronde: int
     haut: DuellisteReponse | None
     bas: DuellisteReponse | None
+    couloirs: list[list[int | str]] | None
+    """Les deux couloirs `[[cible, lettre], [cible, lettre]]`, ou `null` si le plan n'est pas posé.
+
+    Dérivés du bloc de la phase, jamais persistés : c'est le **bloc** qui l'est (ADR-0083 §3).
+    Un plan non posé rend `null` plutôt qu'un couloir deviné — l'écran doit pouvoir dire
+    « générez le plan » au lieu d'afficher une salle plausible et fausse."""
+
     duel: DuelReponse
     """Le pavé **et** le tir : `DuelReponse` dimensionne l'écran de saisie même sans flèche tirée
     (mode, barème, zones du blason), exactement comme pour un duel de tableau ou de poule."""
@@ -81,6 +104,7 @@ class RencontreReponse(BaseModel):
             ronde=rencontre.ronde,
             haut=None if rencontre.haut is None else DuellisteReponse.de_duelliste(rencontre.haut),
             bas=None if rencontre.bas is None else DuellisteReponse.de_duelliste(rencontre.bas),
+            couloirs=_couloirs(rencontre.couloirs),
             duel=DuelReponse.de_etat(_en_etat_duel(rencontre)),
             desynchronisee=rencontre.desynchronisee,
         )
@@ -142,6 +166,7 @@ class EtatSuisseReponse(BaseModel):
     effectif: int
     rondes: list[RondeReponse]
     classement: list[RangSuisseReponse]
+    conflits: list[ConflitReponse]
 
     @staticmethod
     def de_etat(etat: EtatSuisse) -> EtatSuisseReponse:
@@ -160,6 +185,9 @@ class EtatSuisseReponse(BaseModel):
                     ex_aequo=ligne.ex_aequo,
                 )
                 for ligne in etat.classement
+            ],
+            conflits=[
+                ConflitReponse(groupe=c.groupe, raison=c.raison.value) for c in etat.conflits
             ],
         )
 
@@ -257,6 +285,26 @@ async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatSui
     """
     service: ServiceSuisse = request.app.state.service_suisse
     etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
+    return EtatSuisseReponse.de_etat(etat)
+
+
+@router.post(
+    "/plan/{tournoi_id}/{phase_id}",
+    response_model=EtatSuisseReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> EtatSuisseReponse:
+    """Pose la phase sur la salle et **remplace** le plan. Admin ; via la **file**.
+
+    Geste **non idempotent par nature** — il repose tout, comme `poules/plan` et
+    `plan-de-duels/regenerer`. Pas de clé de déduplication, donc : rejouer la pose est justement ce
+    qu'on veut après un changement d'effectif.
+    """
+    service: ServiceSuisse = request.app.state.service_suisse
+    write_queue: WriteQueue = request.app.state.write_queue
+    etat = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.regenerer_plan(tournoi_id, phase_id))
+    )
     return EtatSuisseReponse.de_etat(etat)
 
 

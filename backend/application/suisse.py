@@ -45,6 +45,7 @@ from dataclasses import dataclass, replace
 from application.classements import ServiceClassement
 from application.erreurs import (
     DuelDesynchronise,
+    GabaritDuTournoiAbsent,
     PhaseIntrouvable,
     PhasePasReglee,
     PhasePasUnSuisse,
@@ -61,7 +62,19 @@ from domain.classement_de_tableau import ClassementSource
 from domain.duel import BaremeDuel, Cote, Duel
 from domain.participant import Participant
 from domain.phase import Phase, PhaseId, TypePhase
-from domain.ports import DuelRepository, PhaseRepository, TournoiRepository
+from domain.placement_par_bloc import (
+    BlocDeCouloirs,
+    ConflitDeBloc,
+    couloirs_de_la_paire,
+    placer_les_blocs,
+)
+from domain.ports import (
+    DuelRepository,
+    GabaritSalleRepository,
+    PhaseRepository,
+    PlacementParBlocRepository,
+    TournoiRepository,
+)
 from domain.suisse import (
     POINTS_DEFAITE,
     POINTS_NUL,
@@ -95,6 +108,10 @@ class RencontreDeRonde:
     ronde: int
     haut: Duelliste | None
     bas: Duelliste | None
+    couloirs: tuple[tuple[int, str], tuple[int, str]] | None
+    """Les deux couloirs de la rencontre, **dérivés** du bloc de la phase — `None` si le plan n'est
+    pas posé. Jamais persistés : c'est le bloc qui l'est (ADR-0083 §3)."""
+
     duel: Duel | None
     desynchronisee: bool
     bareme: BaremeDuel
@@ -131,6 +148,12 @@ class EtatSuisse:
     effectif: int
     rondes: tuple[RondeAffichee, ...]
     classement: tuple[RangSuisse, ...]
+    conflits: tuple[ConflitDeBloc, ...] = ()
+    """Ce que la pose du plan n'a **pas** pu faire — vide tant qu'on n'a rien posé.
+
+    Même parti que les poules et que le plan de cibles de qualification (ADR-0024) : le placement
+    **rapporte** son échec au lieu de tronquer en silence. L'organisateur doit voir à l'atelier que
+    sa salle est trop petite, pas le découvrir le jour J."""
 
 
 class ServiceSuisse:
@@ -140,12 +163,16 @@ class ServiceSuisse:
         self,
         tournois: TournoiRepository,
         phases: PhaseRepository,
+        gabarits: GabaritSalleRepository,
+        placements: PlacementParBlocRepository,
         duels: DuelRepository,
         classements: ServiceClassement,
         saisie_duels: ServiceSaisieDuels,
     ) -> None:
         self._tournois = tournois
         self._phases = phases
+        self._gabarits = gabarits
+        self._placements = placements
         self._duels = duels
         self._classements = classements
         # ⚠️ **Pas pour saisir** — uniquement pour emprunter sa résolution de classement amont et sa
@@ -214,7 +241,10 @@ class ServiceSuisse:
                 classement=(),
             )
         tireurs = [Participant.individuel(ligne.archer_id) for ligne in participants]
-        rondes, resultats, byes = self._rejouer(phase_id, tireurs, configuration, lignes)
+        # Un **seul** bloc pour toute la phase : une ronde apparie tout le plateau d'un coup, il n'y
+        # a donc pas de groupes à distinguer. Le numéro 1 est celui que `placer_les_blocs` attribue.
+        bloc = next(iter(self._placements.par_phase(phase_id)), None)
+        rondes, resultats, byes = self._rejouer(phase_id, tireurs, configuration, lignes, bloc)
         return EtatSuisse(
             phase_id=phase_id,
             nb_rondes=configuration.nb_rondes,
@@ -230,6 +260,7 @@ class ServiceSuisse:
         tireurs: list[Participant],
         configuration: ConfigurationSuisse,
         lignes: dict[int, LigneClassement],
+        bloc: BlocDeCouloirs | None,
     ) -> tuple[tuple[RondeAffichee, ...], list[ResultatRonde], list[Participant]]:
         """Rejoue les rondes des duels validés, et **s'arrête à la première ronde incomplète**.
 
@@ -256,12 +287,18 @@ class ServiceSuisse:
             acquis: list[ResultatRonde] = []
             bye: Participant | None = None
             close = True
+            # La position **dans la ronde** décide des couloirs, et se recompte à chaque ronde : une
+            # position cumulée ferait glisser la phase d'un cran par ronde et déborder de son bloc.
+            position = 0
             for appariement in appariements:
                 if appariement.est_bye:
                     bye = appariement.a
                     continue
                 numero += 1
-                rencontre = self._rencontre(numero, index + 1, appariement, phase_id, lignes)
+                rencontre = self._rencontre(
+                    numero, index + 1, appariement, phase_id, lignes, bloc, position
+                )
+                position += 1
                 rencontres.append(rencontre)
                 resultat = _resultat_de(rencontre)
                 if resultat is None:
@@ -290,6 +327,8 @@ class ServiceSuisse:
         appariement: Appariement,
         phase_id: PhaseId,
         lignes: dict[int, LigneClassement],
+        bloc: BlocDeCouloirs | None,
+        position: int,
     ) -> RencontreDeRonde:
         """Assemble une rencontre : ses adversaires résolus, son pavé, son tir.
 
@@ -319,6 +358,7 @@ class ServiceSuisse:
             ronde=ronde,
             haut=self._duelliste(a, lignes),
             bas=self._duelliste(b, lignes),
+            couloirs=couloirs_de_la_paire(bloc, position),
             duel=charge if concorde else None,
             # Masquer ne suffit pas : sans ce drapeau la rencontre s'afficherait « à tirer »,
             # indiscernable d'une rencontre jamais commencée, et le scoreur se prendrait un 409 sur
@@ -334,6 +374,37 @@ class ServiceSuisse:
         if ligne is None:
             return Duelliste(archer_id=participant.ref_id, nom="?", prenom="")
         return Duelliste(archer_id=ligne.archer_id, nom=ligne.nom, prenom=ligne.prenom)
+
+    def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatSuisse:
+        """Pose la phase sur la salle et **remplace** le plan existant.
+
+        ⚠️ **Un seul bloc, là où les poules en posent un par groupe**, et c'est toute la différence
+        entre les deux formats : une ronde de suisse apparie **tout le plateau** d'un coup. Il n'y a
+        donc pas de groupes à séparer — la phase entière occupe une plage contiguë, et les couloirs
+        de chaque rencontre s'y dérivent ronde par ronde.
+
+        L'empreinte est `2 * (effectif // 2)` : deux couloirs par rencontre, et à effectif impair le
+        porteur de bye ne tire pas — mais **ce n'est jamais le même**, ce qui est exactement la
+        raison pour laquelle on persiste le bloc et non « archer → couloir » (ADR-0083 §3).
+
+        Le geste est volontairement grossier — on repose tout. Reposer après un changement
+        d'effectif est sûr, à ceci près que les tirs déjà saisis peuvent se retrouver rattachés à
+        d'autres adversaires : c'est ce qu'ADR-0049 §4 détecte, et ce que `desynchronisee` dit.
+        """
+        phase, participants = self._population(tournoi_id, phase_id)
+        gabarit = self._gabarits.par_tournoi(tournoi_id)
+        if gabarit is None:
+            raise GabaritDuTournoiAbsent(
+                f"Aucun gabarit de salle n'est appliqué au tournoi {tournoi_id}."
+            )
+        plan = placer_les_blocs([2 * (len(participants) // 2)], gabarit)
+        self._placements.definir_plan(phase_id, plan.blocs)
+        # ⚠️ Les conflits **de la pose** l'emportent sur le silence de la relecture : la lecture ne
+        # sait pas *pourquoi* un bloc manque (rien n'est persisté qui le dise), alors qu'ici on
+        # vient de l'apprendre. Sans ce report, l'organisateur dont la salle est trop petite verrait
+        # un plan vide sans explication, au moment même où il vient de le générer — le défaut relevé
+        # en revue d'E05US023.
+        return replace(self.etat(tournoi_id, phase_id), conflits=plan.conflits)
 
     # --- Gardes ----------------------------------------------------------------------------------
 

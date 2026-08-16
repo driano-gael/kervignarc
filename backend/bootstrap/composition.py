@@ -441,7 +441,7 @@ def create_app(
     # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais
     # « archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
     # information *fausse*, pas seulement incomplète (ADR-0083 §3).
-    placement_poule_repository = PlacementParBlocRepositorySQL(database.session_factory)
+    placement_par_bloc_repository = PlacementParBlocRepositorySQL(database.session_factory)
     # Forfaits — abandon / DSQ (E04US015, ADR-0050) : co-écrivent leur trace d'audit `FORFAIT` dans
     # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage
     # infra → infra, comme la série, l'inscription et le placement.
@@ -738,7 +738,7 @@ def create_app(
         tournoi_repository,
         phase_repository,
         gabarit_repository,
-        placement_poule_repository,
+        placement_par_bloc_repository,
         duel_repository,
         barrage_repository,
         app.state.service_classement,
@@ -788,6 +788,8 @@ def create_app(
     app.state.service_suisse = ServiceSuisse(
         tournoi_repository,
         phase_repository,
+        gabarit_repository,
+        placement_par_bloc_repository,
         duel_repository,
         app.state.service_classement,
         app.state.service_saisie_duels,

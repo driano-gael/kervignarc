@@ -122,6 +122,37 @@ class PlanDeBlocs:
     conflits: tuple[ConflitDeBloc, ...] = ()
 
 
+def couloirs_de_la_paire(
+    bloc: BlocDeCouloirs | None, position: int
+) -> tuple[tuple[int, str], tuple[int, str]] | None:
+    """Les deux couloirs qu'une **rencontre** occupe — dérivés du bloc, jamais persistés.
+
+    La *n*-ième rencontre d'un tour (ou d'une ronde) prend les couloirs `2n` et `2n+1` du bloc, donc
+    les deux adversaires sont **côte à côte** : c'est l'intention d'[ADR-0048] pour un tableau,
+    obtenue ici sans réordonnancement puisque le bloc est contigu par construction.
+
+    Rend `None` si le bloc manque (plan non posé) ou s'il est trop court pour cette position — un
+    plan incomplet doit se **voir** incomplet, pas se compléter tout seul.
+
+    ⚠️ **La position se compte par tour, jamais sur le groupe entier.** Au tour 2, la première
+    rencontre doit retrouver les couloirs qu'occupait la première rencontre du tour 1 ; une position
+    cumulée ferait glisser le groupe d'un cran à chaque tour et déborder de son propre bloc.
+
+    ⚠️ **Hissée ici en E05US026**, depuis `application/poules.py` où elle vivait en fonction privée.
+    C'est une dérivation **pure** sur un value object du domaine, et le système suisse en a besoin à
+    l'identique : la laisser dans un service aurait obligé l'autre à l'importer d'un module qu'il
+    n'a aucune raison de connaître, ou à la recopier.
+
+    [ADR-0048]: ../../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md
+    """
+    if bloc is None:
+        return None
+    debut = 2 * position
+    if debut + 1 >= len(bloc.places):
+        return None
+    return bloc.places[debut], bloc.places[debut + 1]
+
+
 def _couloirs_du_gabarit(gabarit: GabaritSalle) -> tuple[tuple[int, str], ...]:
     """Tous les couloirs de la salle, à plat et dans l'ordre de remplissage.
 

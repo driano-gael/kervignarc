@@ -311,12 +311,12 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
-        # ⚠️ **Reste `AUCUN`, et c'est un manque assumé** (E05US026, `DETTE-063`). Une ronde
-        # apparie tout le plateau et **ré-apparie à chaque ronde** : personne n'a de couloir
-        # attitré, donc « archer → couloir » serait une information *fausse* — exactement la raison
-        # pour laquelle les poules persistent un bloc et non un archer (ADR-0083 §3). Le mécanisme
-        # existe ; ce qui manque est le service qui le pose pour ce type-ci.
-        plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ **Bascule en fin de tranche E05US026**, une fois `ServiceSuisse.regenerer_plan` écrit.
+        # Une ronde apparie tout le plateau et **ré-apparie à chaque ronde** : personne n'a de
+        # couloir attitré, donc « archer → couloir » serait une information *fausse* — exactement la
+        # raison pour laquelle les poules persistent un bloc (ADR-0083 §3). Le suisse en pose **un
+        # seul**, là où une phase de poules en pose un par groupe : il n'y a rien à séparer.
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
         # ✅ Les deux capacités basculent **en fin de tranche E05US026**, et seulement une fois le
         # code écrit — même discipline qu'E05US023 et E05US028. Ce qui les autorise, module par
         # module : `application/suisse.py` rejoue la phase des duels validés, ronde après ronde, et

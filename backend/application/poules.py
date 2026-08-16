@@ -74,6 +74,7 @@ from domain.placement_par_bloc import (
     BlocDeCouloirs,
     ConflitDeBloc,
     RaisonConflitBloc,
+    couloirs_de_la_paire,
     placer_les_blocs,
 )
 from domain.politiques import RegistrePolitiques, Tiebreak, TiebreakPoules, assembler_politiques
@@ -724,7 +725,7 @@ class ServicePoules:
             tour=rencontre.tour,
             haut=self._duelliste(a, lignes),
             bas=self._duelliste(b, lignes),
-            couloirs=_couloirs_de_la_rencontre(bloc, position_dans_le_tour),
+            couloirs=couloirs_de_la_paire(bloc, position_dans_le_tour),
             duel=charge if concorde else None,
             # ⚠️ **Masquer ne suffisait pas : il faut le dire.** Sans ce drapeau, la rencontre
             # s'affichait « à tirer » — indiscernable d'une rencontre jamais commencée — et le
@@ -809,26 +810,6 @@ class ServicePoules:
         if ligne is None:
             return None
         return Duelliste(archer_id=participant.ref_id, nom=ligne.nom, prenom=ligne.prenom)
-
-
-def _couloirs_de_la_rencontre(
-    bloc: BlocDeCouloirs | None, position_dans_le_tour: int
-) -> tuple[tuple[int, str], tuple[int, str]] | None:
-    """Les deux couloirs qu'une rencontre occupe — **dérivés** du bloc, jamais persistés.
-
-    La *n*-ième rencontre d'un tour prend les couloirs `2n` et `2n+1` du bloc, donc les deux
-    adversaires sont **côte à côte** : c'est la même intention qu'ADR-0048 pour un tableau, obtenue
-    ici sans réordonnancement puisque le bloc est contigu par construction.
-
-    Rend `None` si le bloc manque (plan non posé) ou est trop court pour cette position — un plan
-    incomplet doit se voir comme incomplet, pas se compléter tout seul.
-    """
-    if bloc is None:
-        return None
-    debut = 2 * position_dans_le_tour
-    if debut + 1 >= len(bloc.places):
-        return None
-    return bloc.places[debut], bloc.places[debut + 1]
 
 
 def _resultat_de(rencontre: RencontreAffichee) -> ResultatRencontre | None:

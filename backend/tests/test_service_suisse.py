@@ -30,6 +30,7 @@ from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
+from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
 from domain.politiques import (
@@ -57,6 +58,29 @@ from tests.test_service_placement_duels import (
 from tests.test_service_saisie_duels import ZONES_TRIPLE
 
 
+class _FauxPlacementParBlocRepository:
+    """Double du port `PlacementParBlocRepository` — deux gestes, comme le port."""
+
+    def __init__(self) -> None:
+        self._plans: dict[int, list[object]] = {}
+
+    def par_phase(self, phase_id: int) -> list[object]:
+        return list(self._plans.get(phase_id, []))
+
+    def definir_plan(self, phase_id: int, blocs: object) -> None:
+        self._plans[phase_id] = list(blocs)  # type: ignore[call-overload]
+
+
+class _FauxGabaritRepository:
+    """Double de `GabaritSalleRepository` : une salle homogène de `nb_cibles` sur `couloirs`."""
+
+    def __init__(self, nb_cibles: int = 8, couloirs: int = 4) -> None:
+        self._gabarit = GabaritSalle.creer("Salle", nb_cibles=nb_cibles, capacite=couloirs)
+
+    def par_tournoi(self, tournoi_id: int) -> GabaritSalle:
+        return self._gabarit
+
+
 class _Monde:
     """Décor : un tournoi, un créneau, N archers classés, une phase de **système suisse**.
 
@@ -80,6 +104,8 @@ class _Monde:
         self.series = FauxSerieRepository()
         self.duels = FauxDuelRepository()
         self.forfaits = FauxForfaitRepository()
+        self.placements = _FauxPlacementParBlocRepository()
+        self.gabarits = _FauxGabaritRepository()
         blason = self.blasons.ajouter(
             Blason.creer(self.tournoi_id, "Triple", taille=0.25, capacite=1)
         )
@@ -162,7 +188,15 @@ class _Monde:
             registre_par_defaut(),
             AggregationParQualification(),
         )
-        return ServiceSuisse(self.tournois, self.phases, self.duels, classement, saisie)
+        return ServiceSuisse(
+            self.tournois,
+            self.phases,
+            self.gabarits,  # type: ignore[arg-type]
+            self.placements,  # type: ignore[arg-type]
+            self.duels,
+            classement,
+            saisie,
+        )
 
 
 def _gagner(service: ServiceSuisse, monde: _Monde, numero: int, *, le_bas: bool) -> None:
@@ -377,3 +411,102 @@ def test_une_phase_sans_population_est_une_photo_vide_pas_une_erreur() -> None:
     assert etat.effectif == 0
     assert etat.rondes == ()
     assert etat.classement == ()
+
+
+# --- CA « le plan de cibles suit » ----------------------------------------------------------------
+
+
+def test_la_phase_occupe_un_seul_bloc_de_couloirs_contigus() -> None:
+    """CA « le plan de cibles suit », et **un seul** bloc là où les poules en posent un par groupe.
+
+    C'est toute la différence entre les deux formats : une ronde de suisse apparie **tout le
+    plateau** d'un coup, il n'y a donc pas de groupes à séparer. À 4 archers, l'empreinte vaut
+    `2 * (4 // 2) = 4` couloirs — deux rencontres côte à côte.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+
+    etat = service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+
+    couloirs = [r.couloirs for r in etat.rondes[0].rencontres]
+    assert couloirs == [((1, "A"), (1, "B")), ((1, "C"), (1, "D"))]
+    assert etat.conflits == ()
+
+
+def test_a_effectif_impair_le_porteur_de_bye_ne_consomme_aucun_couloir() -> None:
+    """5 archers → 2 rencontres → **4** couloirs, pas 5.
+
+    Le porteur de bye ne tire pas ; mais ce n'est jamais le même d'une ronde à l'autre, et c'est
+    exactement pourquoi on persiste le **bloc** et non « archer → couloir » (ADR-0083 §3). Réserver
+    un 5ᵉ couloir pour un absent tournant serait une salle mal remplie **et** une information
+    fausse.
+    """
+    monde = _Monde()
+    monde.inscrire(5)
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+    service = monde.service()
+
+    etat = service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+
+    assert [r.couloirs for r in etat.rondes[0].rencontres] == [
+        ((1, "A"), (1, "B")),
+        ((1, "C"), (1, "D")),
+    ]
+    assert etat.rondes[0].bye is not None
+
+
+def test_la_ronde_suivante_retrouve_les_memes_couloirs() -> None:
+    """La position se compte **par ronde**, jamais cumulée sur la phase.
+
+    Une position cumulée ferait glisser la phase d'un cran à chaque ronde et déborder de son propre
+    bloc — la même erreur que les poules ont dû éviter tour par tour. Les couloirs sont donc
+    identiques d'une ronde à l'autre : c'est le **plateau** qui est réservé, pas la rencontre.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+    _gagner(service, monde, 1, le_bas=True)
+    _gagner(service, monde, 2, le_bas=True)
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+
+    assert len(etat.rondes) == 2
+    assert [r.couloirs for r in etat.rondes[1].rencontres] == [
+        ((1, "A"), (1, "B")),
+        ((1, "C"), (1, "D")),
+    ]
+
+
+def test_sans_plan_pose_les_couloirs_ne_s_inventent_pas() -> None:
+    """Un plan non posé se **voit** non posé : `None`, jamais un couloir deviné.
+
+    L'écran doit pouvoir dire « générez le plan » plutôt que d'afficher une salle plausible et
+    fausse — même parti que les poules et que le plan de cibles de qualification.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+
+    etat = monde.service().etat(monde.tournoi_id, monde.phase_id)
+
+    assert all(r.couloirs is None for r in etat.rondes[0].rencontres)
+
+
+def test_une_salle_trop_petite_est_rapportee_et_non_tronquee() -> None:
+    """Le placement **rapporte** ce qu'il n'a pas pu faire (ADR-0024), il ne tronque pas en silence.
+
+    Sans ce report, l'organisateur dont la salle est trop petite verrait un plan vide sans
+    explication, au moment même où il vient de le générer — le défaut relevé en revue d'E05US023.
+    """
+    monde = _Monde()
+    monde.inscrire(8)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    monde.gabarits = _FauxGabaritRepository(nb_cibles=1, couloirs=2)
+
+    etat = monde.service().regenerer_plan(monde.tournoi_id, monde.phase_id)
+
+    assert [c.raison.value for c in etat.conflits] == ["salle_pleine"]

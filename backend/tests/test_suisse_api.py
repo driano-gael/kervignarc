@@ -42,6 +42,7 @@ from infrastructure.db import (
 from infrastructure.horloge import HorlogeSysteme
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin, poser_phase_sql
+from tests.test_placement_api import _appliquer_gabarit
 
 _DATE = datetime.date(2026, 3, 1)
 
@@ -314,3 +315,48 @@ def test_une_phase_avale_preleve_dans_le_suisse(
     assert aval.id in tableaux
     # Les deux **vainqueurs** de la ronde, pas les deux premiers de la qualification.
     assert tableaux[aval.id]["effectif"] == 2
+
+
+def test_la_pose_du_plan_donne_ses_couloirs_a_chaque_rencontre(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA « le plan de cibles suit », par HTTP — un seul bloc pour toute la phase.
+
+    Une ronde apparie **tout le plateau** : il n'y a pas de groupes à séparer, donc pas un bloc par
+    groupe comme en poules. À 4 archers, deux rencontres côte à côte sur les quatre premiers
+    couloirs.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        connecter_admin(client)
+        _appliquer_gabarit(client, scn.tournoi_id, nb_cibles=4)
+
+        reponse = client.post(f"/api/v1/suisse/plan/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert [r["couloirs"] for r in corps["rondes"][0]["rencontres"]] == [
+        [[1, "A"], [1, "B"]],
+        [[1, "C"], [1, "D"]],
+    ]
+    assert corps["conflits"] == []
+
+
+def test_sans_plan_pose_les_couloirs_sont_nuls(app_suisse: FastAPI) -> None:
+    """Un plan non posé se **voit** non posé : l'écran doit dire « générez-le », pas inventer."""
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+
+        corps = client.get(f"/api/v1/suisse/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+
+    assert all(r["couloirs"] is None for r in corps["rondes"][0]["rencontres"])
+
+
+def test_la_pose_du_plan_est_reservee_a_l_admin(app_suisse: FastAPI) -> None:
+    """Poser un plan est un geste d'organisateur, pas de scoreur (E10US001)."""
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+
+        reponse = client.post(f"/api/v1/suisse/plan/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 401, reponse.text
