@@ -2483,7 +2483,8 @@ window.ATLAS.avancement = {
     "0083",
     "0084",
     "0085",
-    "0086"
+    "0086",
+    "0087"
    ],
    "dettes_introduites": [
     "031",
@@ -2509,6 +2510,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0065",
     "0083",
     "0084",
     "0086"
@@ -2539,7 +2541,12 @@ window.ATLAS.avancement = {
    "titre_story": "Le Big Shoot Off jouable"
   },
   {
-   "adr": [],
+   "adr": [
+    "0065",
+    "0083",
+    "0086",
+    "0087"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [
     "056"
@@ -2571,7 +2578,9 @@ window.ATLAS.avancement = {
    "titre_story": "Le public voit les formats sans arbre"
   },
   {
-   "adr": [],
+   "adr": [
+    "0087"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "05",

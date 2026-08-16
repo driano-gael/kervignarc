@@ -51,7 +51,20 @@ vi.mock('../saisie-duels/SaisieDuels', () => ({ SaisieDuels: panneau('duels') })
 vi.mock('../poules/SaisiePoules', () => ({ SaisiePoules: panneau('poules') }))
 vi.mock('../big-shoot-off/SaisieBigShootOff', () => ({ SaisieBigShootOff: panneau('bso') }))
 vi.mock('../suisse/SaisieSuisse', () => ({ SaisieSuisse: panneau('suisse') }))
-vi.mock('../forfaits/PanneauForfaitsQualif', () => ({ PanneauForfaitsQualif: () => null }))
+
+// ⚠️ **Le panneau des forfaits n'est PAS doublé, et c'est le point** (correctif de revue). Une
+// première version le remplaçait par `null` — l'assertion « il n'y a qu'un sélecteur de départ »
+// passait alors **parce que le seul contre-exemple avait été retiré du DOM**. Or ce panneau porte
+// bien son propre sélecteur, volontairement indépendant (un forfait se prononce parfois sur un
+// archer d'un autre créneau), avec un défaut différent. Le doubler revenait à manufacturer le vert
+// du test censé garder `DETTE-056`. Seules ses données sont doublées.
+vi.mock('../competition/hooks', () => ({
+  useClassement: () => ({ data: undefined, isPending: false, isError: false, error: null }),
+}))
+vi.mock('../forfaits/hooks', () => ({
+  useDeclarerForfaitQualif: () => MUTATION,
+  useAnnulerForfaitQualif: () => MUTATION,
+}))
 
 function monter() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -69,12 +82,24 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
     ]
   })
 
-  it('n’affiche qu’UN sélecteur de créneau', async () => {
-    // Le cœur de `DETTE-056` : il y en avait un par panneau.
+  it('n’affiche qu’UN sélecteur pour les quatre panneaux de saisie', async () => {
+    // Le cœur de `DETTE-056` : il y en avait un par panneau de saisie.
     monter()
     await screen.findByText('duels : 41')
 
-    expect(screen.getAllByRole('combobox', { name: /Départ/ })).toHaveLength(1)
+    expect(screen.getAllByRole('combobox', { name: 'Départ' })).toHaveLength(1)
+  })
+
+  it('laisse aux FORFAITS leur propre sélecteur, nommé distinctement', async () => {
+    // Séparation **voulue** : un forfait se prononce parfois sur un archer d'un autre créneau, et
+    // son défaut n'est pas le même (le départ en salle, pas celui dont on joue les duels). Ce que
+    // la revue a corrigé n'est donc pas la séparation mais son **libellé** : deux sélecteurs
+    // « Départ » côte à côte, montrant deux créneaux différents, se lisaient comme un défaut.
+    monter()
+
+    expect(await screen.findByRole('combobox', { name: 'Départ des forfaits' })).toBeInTheDocument()
+    // Et il n'entraîne pas les panneaux de saisie avec lui.
+    expect(screen.getByText('duels : 41')).toBeInTheDocument()
   })
 
   it('ouvre sur le créneau DONT ON JOUE LES DUELS, pas sur celui qui tire sa qualif', async () => {
@@ -93,7 +118,7 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
       expect(screen.getByText(`${nom} : 41`)).toBeInTheDocument()
     }
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /Départ/ }), '42')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Départ' }), '42')
 
     for (const nom of ['duels', 'poules', 'bso', 'suisse']) {
       expect(screen.getByText(`${nom} : 42`)).toBeInTheDocument()

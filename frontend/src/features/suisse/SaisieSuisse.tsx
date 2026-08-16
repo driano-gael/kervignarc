@@ -19,8 +19,10 @@ import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
-import type { Place } from '../poules/api'
-import type { RangSuisse, RencontreSuisse, Ronde } from './api'
+import type { Ronde } from './api'
+import { ClassementSuisse } from './ClassementSuisse'
+import { decrireBorneConnue } from '../../shared/phases/suisse'
+import { decrirePlaces, etatRencontre, motDeLaFin } from './presentation'
 import { useEtatSuisseSaisie } from './hooks'
 
 export function SaisieSuisse({
@@ -124,15 +126,18 @@ function PhaseSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numbe
   }
 
   const rondesDues = Math.min(etat.data.nb_rondes, etat.data.rondes_maximales)
-  const derniere = etat.data.rondes[etat.data.rondes.length - 1] ?? null
+  const mot = motDeLaFin(etat.data.rondes, rondesDues)
 
   return (
     <div>
+      {/* La borne vient du **serveur** (`rondes_maximales`) et n'est jamais recalculée ici : deux
+          arithmétiques pour une même règle divergent tôt ou tard. La rédaction, elle, est celle de
+          `decrireBorne` — dont l'accord au singulier et le cas « moins de deux tireurs » ont été
+          écrits et testés une fois pour toutes (corrigé en revue : cette ligne réimplémentait la
+          phrase à la main et rendait « 1 archers … 0 ronde sans que deux archers se rencontrent
+          deux fois », dont la raison invoquée était fausse). */}
       <p className="carte__aide">
-        {etat.data.effectif} archers, {rondesDues} ronde(s) à jouer
-        {etat.data.nb_rondes > etat.data.rondes_maximales &&
-          ` (${etat.data.nb_rondes} réglées, mais l’effectif n’en permet que ${etat.data.rondes_maximales} sans que deux archers se rencontrent deux fois)`}
-        .
+        {decrireBorneConnue(etat.data.effectif, etat.data.nb_rondes, etat.data.rondes_maximales)}
       </p>
       {etat.data.conflits.length > 0 && (
         // On **rapporte** le manque, on ne le comble pas : poser le bloc à la lecture reviendrait à
@@ -149,22 +154,21 @@ function PhaseSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numbe
 
       {/* CA — « la ronde suivante n'apparaît qu'une fois la précédente close, et l'écran le dit ».
           Sans cette phrase, il ne reste qu'une absence : le scoreur ne peut pas distinguer « il n'y
-          a plus rien à jouer » de « il reste des rencontres à saisir avant que la suite existe ». */}
-      {derniere !== null && !derniere.close && etat.data.rondes.length < rondesDues && (
+          a plus rien à jouer » de « il reste des rencontres à saisir avant que la suite existe ».
+          La condition vit dans `presentation.ts` — trois états, et le troisième (« se taire ») est
+          celui qu'une condition écrite dans le JSX rend invisible au test. */}
+      {mot?.etat === 'attente' && (
         <p className="carte__etat" role="status">
-          La ronde {derniere.numero + 1} sera appariée quand la ronde {derniere.numero} sera{' '}
+          La ronde {mot.suivante} sera appariée quand la ronde {mot.courante} sera{' '}
           <strong>entièrement</strong> saisie et validée : les adversaires se choisissent au
           classement du moment, donc ils ne peuvent pas être connus avant.
         </p>
       )}
-      {etat.data.rondes.length >= rondesDues &&
-        derniere !== null &&
-        derniere.close &&
-        rondesDues > 0 && (
-          <p className="carte__etat" role="status">
-            Toutes les rondes sont jouées : le classement ci-dessous est définitif.
-          </p>
-        )}
+      {mot?.etat === 'fini' && (
+        <p className="carte__etat" role="status">
+          Toutes les rondes sont jouées : le classement ci-dessous est définitif.
+        </p>
+      )}
 
       <ClassementSuisse classement={etat.data.classement} rondes={etat.data.rondes} />
     </div>
@@ -204,6 +208,13 @@ function GroupeDeRonde({ ronde, onOuvrir }: { ronde: Ronde; onOuvrir: (numero: n
               <span className="duels-liste__nom">
                 {r.haut ? `${r.haut.nom} ${r.haut.prenom}` : '—'} contre{' '}
                 {r.bas ? `${r.bas.nom} ${r.bas.prenom}` : '—'}
+                {/* La place de tir **sur la ligne**, pas seulement dans le pavé ouvert (correctif
+                    de revue) : en salle, on lit la liste pour aller à la butte, et la fiche de
+                    recette le promettait déjà. Le jumeau poules l'affiche sur le titre du groupe —
+                    ici c'est par rencontre, un suisse n'ayant qu'un bloc pour tout le plateau. */}
+                {r.couloirs !== null && (
+                  <span className="carte__aide"> — {decrirePlaces(r.couloirs)}</span>
+                )}
               </span>
               <span className="duels-liste__etat">{etatRencontre(r)}</span>
             </button>
@@ -212,88 +223,4 @@ function GroupeDeRonde({ ronde, onOuvrir }: { ronde: Ronde; onOuvrir: (numero: n
       </ul>
     </section>
   )
-}
-
-/** Le classement **provisoire**, relu après chaque ronde close (CA du 16/08/2026).
- *
- * C'est la seule lecture d'avancement d'un format sans arbre : personne n'est éliminé, donc rien
- * dans la liste des rondes ne dit qui mène. Et c'est aussi ce qui **explique** les appariements de
- * la ronde suivante, qui s'y lisent d'avance.
- */
-function ClassementSuisse({ classement, rondes }: { classement: RangSuisse[]; rondes: Ronde[] }) {
-  if (classement.length === 0) return null
-  const nom = (archerId: number) => {
-    for (const ronde of rondes) {
-      for (const r of ronde.rencontres) {
-        if (r.haut?.archer_id === archerId) return `${r.haut.nom} ${r.haut.prenom}`
-        if (r.bas?.archer_id === archerId) return `${r.bas.nom} ${r.bas.prenom}`
-      }
-      if (ronde.bye?.archer_id === archerId) return `${ronde.bye.nom} ${ronde.bye.prenom}`
-    }
-    return `#${archerId}`
-  }
-
-  return (
-    <table className="deroule__table">
-      <caption>Classement après {rondes.filter((r) => r.close).length} ronde(s)</caption>
-      <thead>
-        <tr>
-          <th>Rang</th>
-          <th>Archer</th>
-          <th>Points</th>
-          <th>Buchholz</th>
-        </tr>
-      </thead>
-      <tbody>
-        {classement.map((ligne) => (
-          <tr key={ligne.archer_id}>
-            <td>
-              {ligne.rang}
-              {ligne.ex_aequo ? ' =' : ''}
-            </td>
-            <td>{nom(ligne.archer_id)}</td>
-            <td>{decrirePoints(ligne.points)}</td>
-            <td>{decrirePoints(ligne.buchholz)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
-}
-
-/** Les points, rendus **en points réels**.
- *
- * ⚠️ Le serveur les transporte en **demi-points doublés** (victoire = 2, nul = 1) pour ne comparer
- * que des entiers — une égalité de départage ne doit pas reposer sur un flottant. C'est donc à
- * l'affichage de rendre la moitié : servir le nombre brut annoncerait « 6 victoires » à qui en a
- * trois.
- */
-function decrirePoints(doubles: number): string {
-  return doubles % 2 === 0 ? String(doubles / 2) : `${Math.floor(doubles / 2)},5`
-}
-
-/** Des places de tir en toutes lettres, **groupées par cible** (repris de `SaisiePoules`).
- *
- * Un bloc de couloirs est contigu dans la salle *mise à plat*, pas sur une seule cible : les deux
- * places d'une rencontre peuvent chevaucher deux cibles.
- */
-function decrirePlaces(places: readonly Place[]): string {
-  const parCible = new Map<number, string[]>()
-  for (const [cible, couloir] of places) {
-    parCible.set(cible, [...(parCible.get(cible) ?? []), couloir])
-  }
-  return [...parCible.entries()]
-    .map(([cible, couloirs]) => `cible ${cible} : ${couloirs.join(', ')}`)
-    .join(' · ')
-}
-
-/** L'état d'une rencontre en un mot — le même vocabulaire que les duels et les poules. */
-function etatRencontre(rencontre: RencontreSuisse): string {
-  if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'
-  const duel = rencontre.duel
-  if (duel.validee_par !== null) return 'validée'
-  if (duel.validation_en_attente === true) return 'validation en attente'
-  if (duel.resultat?.termine === true) return 'à valider'
-  if (duel.manches.length > 0) return 'en cours'
-  return 'à tirer'
 }

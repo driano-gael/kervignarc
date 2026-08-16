@@ -845,7 +845,19 @@ export function FormulaireEtape({
       )}
 
       {estSuisse && (
-        <ReglageSuisse etat={suisse} surChangement={setSuisse} effectif={effectifSimule} />
+        // ⚠️ **L'effectif DE L'ÉTAPE d'abord, la simulation en repli** (correctif de revue).
+        // Les deux fiches voisines annoncent une *projection* indicative, et l'effectif simulé du
+        // déroulé leur suffit. Celle-ci annonce une **borne opposable** : c'est
+        // `EtapeDeroule._verifier_le_suisse` qui refuse l'étape, et il la vérifie contre
+        // `effectif` — le champ que ce formulaire envoie juste à côté, pas contre la simulation.
+        // Sans ce correctif, simuler 120 archers puis déclarer une étape à 8 affichait « 119
+        // rondes au maximum », feu vert, et l'enregistrement rendait 422 : très exactement le
+        // parcours que le CA veut supprimer.
+        <ReglageSuisse
+          etat={suisse}
+          surChangement={setSuisse}
+          effectif={effectifLu ?? effectifSimule}
+        />
       )}
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />

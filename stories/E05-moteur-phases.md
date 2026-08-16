@@ -1050,6 +1050,20 @@ proposer le format à défis que le club utilise en animation.
 Origine : 3ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet (`domain/colline.py`,
 `defis_de_la_manche` / `appliquer_manche` / `classement_colline`), sans appelant de production.
 
+> 📌 **Rendez-vous posé par la revue d'`E05US030` (16/08/2026) — la 3ᵉ occurrence, c'est ici.**
+> `decrirePlaces` et `etatRencontre` sont aujourd'hui **dupliqués** entre `features/poules` et
+> `features/suisse`, caractère pour caractère. C'est une 2ᵉ occurrence, et « dupliquer une 2ᵉ fois
+> et attendre le 3ᵉ cas » est la réponse que le § *Dette* de `CLAUDE.md` tient pour valide : rien
+> n'a donc été extrait. Mais sans ce rendez-vous écrit, la colline recopierait une **3ᵉ** fois par
+> mimétisme, et le seuil serait franchi sans que personne le remarque. À l'extraction, les emmener
+> vers `shared/` — le tuple `Place` y est déjà parti (`shared/salle/place.ts`).
+>
+> ⚠️ **Et un point de contrat** : la colline partage le décor `RONDES_APPARIEES` du suisse, donc
+> elle produira le même cas « en course, mais rien à tirer maintenant ». L'issue existe désormais
+> (`EN_ATTENTE`, [ADR-0087](../docs/adr/0087-une-attente-n-est-pas-une-indisponibilite.md)) —
+> il n'y aura rien à inventer, mais il faudra la **brancher des deux côtés dans la même US**, la
+> sûreté du contrat venant du déploiement conjoint et non d'un mécanisme de typage.
+
 - **CA — habiter le contrat de phase jouable**, mêmes termes qu'`E05US026`.
 - **CA — réglages à l'atelier** : portée de défi et nombre de manches (`ConfigurationColline`).
 - **CA — les manches s'enchaînent** et le classement se lit de l'ordre final de la colline.
@@ -1221,9 +1235,15 @@ qui n'existait pas encore : les écrans du suisse.
   moteur refuse d'apparier sur une ronde partiellement saisie (`_rondes_closes`), donc l'écran doit
   nommer l'attente au lieu de laisser un bouton inerte.
 - **CA — le suivi du déroulé et l'écran de salle montrent le suisse** : catalogue de vues d'ADR-0064,
-  au même titre que les poules et le Big Shoot Off.
-- **CA — le bandeau d'écart de l'atelier cesse de viser le suisse côté front** (`TYPES_DEROULES` du
-  catalogue TS), miroir de ce que `E05US026` a fait côté registre de contrat.
+  au même titre que les poules et le Big Shoot Off. ✅ **Tenu au niveau où ses deux jumeaux le sont,
+  et sans une ligne de code** *(vérifié en revue)* : le suivi du déroulé et l'écran de salle sont
+  **génériques** — ils rendent un bloc par son libellé de type et les affectations par le panneau de
+  routage, qui bifurque déjà sur le suisse. ⚠️ **Ce que « au même titre » ne veut pas dire** : il
+  n'existe **aucune** vue détaillée par format dans le catalogue — ni pour les poules, ni pour le Big
+  Shoot Off, ni ici. Ce manque est commun aux trois, et il part en `E05US031` ; il ne faut pas lire
+  cette puce comme si la vue publique du suisse avait été livrée.
+- **CA — le bandeau d'écart de l'atelier cesse de viser le suisse côté front** (`TYPES_SIGNALES_EN_ECART`
+  du catalogue TS — la puce disait `TYPES_DEROULES`, constante qui n'existe pas côté front ; corrigé en revue), miroir de ce que `E05US026` a fait côté registre de contrat.
 - **CA — l'issue de routage `EN_ATTENTE`** *(reversé ici en revue d'`E05US026`, règle 9)*. Le
   panneau doit distinguer « il a fini » de « il n'a rien à tirer **pour l'instant** » — le porteur
   d'un bye, ou l'archer dont la rencontre vient d'être validée pendant que la ronde s'achève.
@@ -1237,6 +1257,9 @@ qui n'existait pas encore : les écrans du suisse.
   (`EtatSuisseReponse.classement`, `EtatSuissePubliqueReponse.classement` — `rang` en convention
   « 1224 », `points` en demi-points doublés, `buchholz`, `ex_aequo`) : il n'y a qu'à l'afficher, côté
   organisateur et scoreur. La lecture **publique** de ce même classement part en `E05US031`.
+  ⚠️ **Le volet organisateur a failli être oublié** (rattrapé en revue) : le tableau n'était rendu
+  que par l'écran de saisie, alors que l'écran des phases lisait déjà l'état pour son bouton de plan
+  et n'en affichait rien. Les deux surfaces partagent désormais le même composant.
 - **CA — `DETTE-056` se résorbe ici** *(tranché au cadrage du 16/08/2026)*. Elle passerait sinon à
   **quatre** sélecteurs de créneau indépendants dans l'espace scoreur. Le choix de créneau remonte
   dans un état **partagé** par les quatre panneaux ; les trois marqueurs `# DETTE-056` disparaissent

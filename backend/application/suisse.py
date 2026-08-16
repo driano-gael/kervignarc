@@ -66,6 +66,7 @@ from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement_par_bloc import (
     BlocDeCouloirs,
     ConflitDeBloc,
+    RaisonConflitBloc,
     couloirs_de_la_paire,
     placer_les_blocs,
 )
@@ -150,11 +151,17 @@ class EtatSuisse:
     rondes: tuple[RondeAffichee, ...]
     classement: tuple[RangSuisse, ...]
     conflits: tuple[ConflitDeBloc, ...] = ()
-    """Ce que la pose du plan n'a **pas** pu faire — vide tant qu'on n'a rien posé.
+    """Ce que la pose du plan n'a **pas** pu faire — **ou** le fait qu'elle n'a pas eu lieu.
 
     Même parti que les poules et que le plan de cibles de qualification (ADR-0024) : le placement
     **rapporte** son échec au lieu de tronquer en silence. L'organisateur doit voir à l'atelier que
-    sa salle est trop petite, pas le découvrir le jour J."""
+    sa salle est trop petite, pas le découvrir le jour J.
+
+    ⚠️ **Renseigné en lecture aussi, depuis E05US030.** Le défaut valait la correction : rempli par
+    la seule `regenerer_plan`, ce champ restait vide sur la route de saisie, si bien que le message
+    « le plan de cibles n'est pas posé » de l'écran scoreur ne pouvait **jamais** s'afficher. En
+    relecture, la seule raison connaissable est `NON_POSEE` — rien n'est persisté qui dise pourquoi
+    un bloc manque ; `regenerer_plan` l'écrase par la raison réelle qu'il vient d'observer."""
 
 
 class ServiceSuisse:
@@ -271,6 +278,21 @@ class ServiceSuisse:
             effectif=len(tireurs),
             rondes=rondes,
             classement=classement_suisse(tireurs, resultats, byes),
+            # ⚠️ **Le manque se rapporte à la LECTURE, pas seulement après une pose** (correctif de
+            # revue E05US030, axe adversarial). `conflits` n'était renseigné que par
+            # `regenerer_plan` : sur la route de saisie il restait **toujours vide**, donc le
+            # message « le plan de cibles n'est pas posé » de l'écran scoreur était une **branche
+            # morte**. Le scoreur voyait ses rondes sans aucune cible et sans un mot d'explication.
+            #
+            # Le jumeau poules le fait depuis E05US023 (`ServicePoules._conflits_du_plan`), et pour
+            # la même raison qu'ici : on **relaie** le manque, on ne le comble pas — poser le bloc
+            # dans cette méthode reviendrait à écrire un plan là où l'appelant croit qu'on ne fait
+            # que lire (ADR-0083 §3).
+            #
+            # `NON_POSEE` et rien d'autre : en relecture, rien n'est persisté qui dise *pourquoi* le
+            # bloc manque. `regenerer_plan` continue d'écraser cette valeur par les raisons réelles
+            # (`SALLE_PLEINE`, `SANS_RENCONTRE`) qu'il vient d'observer.
+            conflits=() if bloc is not None else (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),),
         )
 
     def _rejouer(

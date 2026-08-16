@@ -88,10 +88,6 @@ window.ATLAS.carte = {
     "feature": "blasons"
    },
    {
-    "clientes": 4,
-    "feature": "poules"
-   },
-   {
     "clientes": 3,
     "feature": "clubs"
    },
@@ -106,6 +102,10 @@ window.ATLAS.carte = {
    {
     "clientes": 3,
     "feature": "palmares"
+   },
+   {
+    "clientes": 3,
+    "feature": "poules"
    },
    {
     "clientes": 3,
@@ -2649,7 +2649,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 142,
+  "aretes_front": 141,
   "enchevetrements": 3,
   "features": 45,
   "imports": 827,

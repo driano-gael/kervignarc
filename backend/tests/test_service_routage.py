@@ -916,19 +916,31 @@ class _FauxLecteurDeRencontres:
         return self._lecture
 
 
-def _router_dans_un_suisse(*, membre: bool, epuisee: bool, termine: bool = False) -> RoutageArcher:
-    """Route **un** archer d'un créneau portant une phase suisse, sans rencontre à tirer.
+def _router_sans_rencontre(
+    *,
+    membre: bool,
+    epuisee: bool,
+    termine: bool = False,
+    type_phase: TypePhase = TypePhase.SUISSE,
+) -> RoutageArcher:
+    """Route **un** archer d'une phase à rencontres qui n'a rien à lui donner à tirer.
 
     Les trois booléens sont exactement les trois champs dont `_sans_rencontre` tire sa conclusion :
     `membre` dit s'il figure dans `participants`, `epuisee` si la phase est allée à son terme pour
     tout le monde, `termine` s'il a fini alors qu'elle continue.
+
+    ⚠️ **`type_phase` est un paramètre et non une constante** (correctif de revue) : le décor était
+    figé sur `SUISSE`, y compris pour le cas `termines`, que `ServiceSuisse` ne produit **jamais**
+    (`RencontresARouter` le documente : seule la ronde courante existe, donc personne n'a fini tant
+    que la dernière n'est pas close). L'assertion restait juste, mais la scène mentait — ce cas est
+    celui des **poules**, dont le round-robin est connu d'avance.
     """
     monde = _Monde()
     phase = poser_phase_factice(
         monde.departs,
         monde.deroules,
         monde.phases,
-        Phase.creer(monde.depart_id, 2, TypePhase.SUISSE),
+        Phase.creer(monde.depart_id, 2, type_phase),
     )
     assert phase.id is not None
     archer_id = monde.inscrire_classe(("10", "10", "10"))
@@ -938,13 +950,17 @@ def _router_dans_un_suisse(*, membre: bool, epuisee: bool, termine: bool = False
         epuisee=epuisee,
         termines=frozenset({archer_id}) if termine else frozenset(),
     )
+    lecteur = _FauxLecteurDeRencontres(lecture)
+    # Le service résout le lecteur **par le type de la phase** : le brancher sur le mauvais canal
+    # rendrait « ce montage ne sait pas dérouler ce format » au lieu du cas visé.
     service = ServiceRoutage(
         monde.saisie,
         monde.placement,
         monde.archers,
         monde.phases,
         monde.departs,
-        suisse=_FauxLecteurDeRencontres(lecture),
+        suisse=lecteur if type_phase is TypePhase.SUISSE else None,
+        poules=lecteur if type_phase is TypePhase.POULES else None,
     )
     return service.routage(monde.depart_id, (archer_id,), phase_id=phase.id).archers[0]
 
@@ -957,7 +973,7 @@ def test_l_archer_sans_rencontre_appariee_est_en_attente_pas_termine() -> None:
     avec ceux qu'on ne sait **pas** router : le panneau ne pouvait donc pas le montrer comme encore
     **en lice**. `EN_ATTENTE` est l'issue propre.
     """
-    ligne = _router_dans_un_suisse(membre=True, epuisee=False)
+    ligne = _router_sans_rencontre(membre=True, epuisee=False)
 
     assert ligne.issue is IssueRoutage.EN_ATTENTE
     assert ligne.motif is not None
@@ -970,12 +986,14 @@ def test_la_phase_epuisee_dit_termine_et_non_en_attente() -> None:
     à tort, on dirait « attends » à qui peut partir. C'est le défaut exact qu'`E05US026` a relevé en
     revue, dans l'autre sens.
     """
-    assert _router_dans_un_suisse(membre=True, epuisee=True).issue is IssueRoutage.TERMINE
+    assert _router_sans_rencontre(membre=True, epuisee=True).issue is IssueRoutage.TERMINE
 
 
 def test_celui_qui_a_fini_pendant_que_la_phase_continue_dit_termine() -> None:
     """Le cas des **poules** : un round-robin est connu d'avance, donc un membre peut finir seul."""
-    ligne = _router_dans_un_suisse(membre=True, epuisee=False, termine=True)
+    ligne = _router_sans_rencontre(
+        membre=True, epuisee=False, termine=True, type_phase=TypePhase.POULES
+    )
 
     assert ligne.issue is IssueRoutage.TERMINE
 
@@ -986,4 +1004,4 @@ def test_l_archer_etranger_a_la_phase_reste_indisponible() -> None:
     `INDISPONIBLE` garde ainsi son sens d'origine — « on ne sait pas », pas « attendez ». C'est ce
     que l'emprunt d'`E05US026` brouillait.
     """
-    assert _router_dans_un_suisse(membre=False, epuisee=False).issue is IssueRoutage.INDISPONIBLE
+    assert _router_sans_rencontre(membre=False, epuisee=False).issue is IssueRoutage.INDISPONIBLE

@@ -682,3 +682,54 @@ def test_une_rencontre_a_egalite_exige_son_barrage_avant_validation() -> None:
     assert etat.rondes[0].close is True
     # Le barrage a tranché : le camp haut de la rencontre 1 marque la victoire pleine.
     assert sorted(ligne.points for ligne in etat.classement) == [0, 0, 2, 2]
+
+
+# --- Correctif de revue E05US030 : la lecture dit que le plan n'est pas posé -------------------
+
+
+def test_une_phase_sans_plan_rapporte_le_manque_a_la_lecture() -> None:
+    """**Branche morte relevée en revue (axe adversarial).**
+
+    `EtatSuisse.conflits` n'était rempli que par `regenerer_plan` : sur la route de saisie, la
+    liste était **toujours vide**, donc le message « le plan de cibles n'est pas posé » de l'écran
+    scoreur ne pouvait jamais s'afficher. Le scoreur voyait ses rondes sans aucune cible et sans un
+    mot d'explication — exactement ce que la fiche de recette promet l'inverse.
+
+    Le jumeau poules le fait depuis E05US023 (`ServicePoules._conflits_du_plan`) : on relaie le
+    manque, on ne le comble pas — poser le bloc ici reviendrait à écrire un plan dans une méthode
+    dont l'appelant croit qu'elle ne fait que lire.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+
+    etat = monde.service().etat(monde.tournoi_id, monde.phase_id)
+
+    assert [c.raison.value for c in etat.conflits] == ["non_posee"]
+    assert etat.rondes[0].rencontres[0].couloirs is None
+
+
+def test_une_phase_dont_le_plan_est_pose_ne_rapporte_aucun_conflit() -> None:
+    """Le miroir : sans lui, rendre `NON_POSEE` en tout cas passerait le test précédent."""
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+    service = monde.service()
+    service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+
+    assert etat.conflits == ()
+    assert etat.rondes[0].rencontres[0].couloirs is not None
+
+
+def test_une_phase_vide_ne_rapporte_pas_un_plan_manquant() -> None:
+    """Sous deux tireurs il n'y a **rien** à poser : réclamer un plan serait un contresens.
+
+    C'est la borne que le jumeau poules tient par construction (aucune poule composée ⇒ aucun
+    conflit) et que la photo vide du suisse doit tenir explicitement.
+    """
+    monde = _Monde()
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+
+    assert monde.service().etat(monde.tournoi_id, monde.phase_id).conflits == ()

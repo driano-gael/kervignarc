@@ -76,6 +76,12 @@ window.ATLAS.controles = {
    "sujet": "ADR-0083"
   },
   {
+   "code": "date-non-canonique",
+   "message": "date « 16/08/2026 » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
+   "severite": "signal",
+   "sujet": "ADR-0087"
+  },
+  {
    "code": "etat-contradictoire",
    "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (17/21)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
    "severite": "signal",
@@ -192,6 +198,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 31
+  "signaux": 32
  }
 };

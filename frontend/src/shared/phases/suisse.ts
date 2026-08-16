@@ -82,7 +82,20 @@ export function rondesMaximales(effectif: number): number {
  * montre la borne vaut mieux qu'un écran qui refuse.
  */
 export function decrireBorne(effectif: number, nbRondes: number): string {
-  const maximum = rondesMaximales(effectif)
+  return decrireBorneConnue(effectif, nbRondes, rondesMaximales(effectif))
+}
+
+/**
+ * La **même phrase**, mais sur une borne que l'appelant connaît déjà — celle du serveur.
+ *
+ * ⚠️ Cette variante existe pour une raison précise (correctif de revue) : l'écran de saisie a
+ * `rondes_maximales` dans sa réponse d'état, et `api.ts` documente qu'il ne doit **jamais** le
+ * recalculer — deux arithmétiques pour une même règle divergent tôt ou tard. Appeler `decrireBorne`
+ * là-bas aurait rejoué le miroir au lieu de lire l'autorité ; réécrire la phrase à la main, ce qui
+ * avait été fait, a produit un texte faux au cas limite (« 1 archers », et « sans que deux archers
+ * se rencontrent deux fois » comme raison alors que la vraie est « il en faut au moins deux »).
+ */
+export function decrireBorneConnue(effectif: number, nbRondes: number, maximum: number): string {
   if (maximum === 0) {
     const archers = effectif > 1 ? 'archers' : 'archer'
     return `${effectif} ${archers} : aucune ronde n’est appariable (il en faut au moins deux).`

@@ -13,7 +13,7 @@
 
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'
-import type { Place } from '../poules/api'
+import type { Place } from '../../shared/salle/place'
 
 /** Ce que la pose du plan n'a pas pu faire, et pourquoi — rapporté, jamais tu (ADR-0024).
  *

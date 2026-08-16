@@ -153,48 +153,55 @@ const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => rea
  * rencontres portent leurs duels **dans la photo de la phase**, groupés par poule ou par ronde ;
  * `numero` (le `match_numero` de la table `duel`) les identifie de bout en bout.
  */
-interface PhotoDeSaisie {
+interface PhotoDeSaisie<E> {
   cle: (tournoiId: number, phaseId: number) => readonly unknown[]
   /** Aplatit la photo en rencontres, quel que soit le niveau intermédiaire (poule, ronde). */
-  rencontres: (etat: unknown) => { numero: number; duel: Duel }[]
+  rencontres: (etat: E) => { numero: number; duel: Duel }[]
   /** Réécrit le duel d'une rencontre dans la photo, en préservant la structure. */
-  remplacer: (etat: unknown, matchNumero: number, duel: Duel) => unknown
+  remplacer: (etat: E, matchNumero: number, duel: Duel) => E
 }
 
-const PHOTO: Record<FamilleDuel, PhotoDeSaisie | null> = {
+/** Confine en **un seul point** l'assertion « cette clé porte ce DTO ».
+ *
+ * ⚠️ Sans cette fabrique, chaque entrée portait ses propres `as EtatXxx` sur des lambdas typées
+ * `unknown` (relevé par trois axes de revue) : intervertir deux `cle` compilait, et la faute ne
+ * sortait qu'en `TypeError` sur `.rondes.flatMap` — dans le chemin **optimiste hors-ligne**, celui
+ * qui par construction ne lève aucune erreur visible. C'était le trou que le `Record` exhaustif
+ * ferme un cran plus haut, réintroduit un cran plus bas. Ici, chaque entrée est vérifiée contre son
+ * vrai DTO, et le seul cast restant est celui de l'effacement, à un endroit nommé.
+ */
+function photoDe<E>(photo: PhotoDeSaisie<E>): PhotoDeSaisie<unknown> {
+  return photo as PhotoDeSaisie<unknown>
+}
+
+const PHOTO: Record<FamilleDuel, PhotoDeSaisie<unknown> | null> = {
   tableau: null,
-  poule: {
+  poule: photoDe<EtatPoulesSaisie>({
     cle: clePoulesSaisie,
-    rencontres: (etat) => (etat as EtatPoulesSaisie).poules.flatMap((poule) => poule.rencontres),
-    remplacer: (etat, matchNumero, duel) => {
-      const photo = etat as EtatPoulesSaisie
-      return {
-        ...photo,
-        poules: photo.poules.map((poule) => ({
-          ...poule,
-          rencontres: poule.rencontres.map((rencontre) =>
-            rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
-          ),
-        })),
-      }
-    },
-  },
-  suisse: {
+    rencontres: (etat) => etat.poules.flatMap((poule) => poule.rencontres),
+    remplacer: (etat, matchNumero, duel) => ({
+      ...etat,
+      poules: etat.poules.map((poule) => ({
+        ...poule,
+        rencontres: poule.rencontres.map((rencontre) =>
+          rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+        ),
+      })),
+    }),
+  }),
+  suisse: photoDe<EtatSuisseSaisie>({
     cle: cleSuisseSaisie,
-    rencontres: (etat) => (etat as EtatSuisseSaisie).rondes.flatMap((ronde) => ronde.rencontres),
-    remplacer: (etat, matchNumero, duel) => {
-      const photo = etat as EtatSuisseSaisie
-      return {
-        ...photo,
-        rondes: photo.rondes.map((ronde) => ({
-          ...ronde,
-          rencontres: ronde.rencontres.map((rencontre) =>
-            rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
-          ),
-        })),
-      }
-    },
-  },
+    rencontres: (etat) => etat.rondes.flatMap((ronde) => ronde.rencontres),
+    remplacer: (etat, matchNumero, duel) => ({
+      ...etat,
+      rondes: etat.rondes.map((ronde) => ({
+        ...ronde,
+        rencontres: ronde.rencontres.map((rencontre) =>
+          rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+        ),
+      })),
+    }),
+  }),
 }
 
 /** Le duel d'une rencontre, lu dans la photo **de saisie** de sa phase (ou `null`). */
@@ -426,7 +433,12 @@ async function draineLaFileDuels(queryClient: QueryClient): Promise<void> {
       // Le préfixe vient d'une **chaîne** (la clé du `Set`), donc il faut le revalider avant de
       // s'en servir comme index : une famille inconnue — un acte écrit par une version future et
       // relu depuis le `localStorage` — retombe sur le tableau, comme partout ailleurs ici.
-      const connue = famille !== undefined && famille in CLE_DECOR
+      //
+      // ⚠️ `Object.hasOwn` et **non `in`** (correctif de revue, relevé par quatre axes) : `in`
+      // remonte la chaîne de prototypes, donc `'toString'`, `'constructor'` et `'valueOf'`
+      // passaient la garde — et `CLE_DECOR['toString'](t, p)` rend une **chaîne** là où
+      // `invalidateQueries` attend un tableau. La garde ne gardait pas ce qu'elle annonçait.
+      const connue = famille !== undefined && Object.hasOwn(CLE_DECOR, famille)
       void queryClient.invalidateQueries({
         queryKey: connue ? CLE_DECOR[famille as FamilleDuel](t, p) : cleTableau(t, p),
       })
