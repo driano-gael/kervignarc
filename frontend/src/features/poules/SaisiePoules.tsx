@@ -13,34 +13,31 @@
 import { useState } from 'react'
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useCreneauDesDuels } from '../departs/hooks'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
 import type { Place, Poule, Rencontre } from './api'
 import { useEtatPoulesSaisie } from './hooks'
 
-export function SaisiePoules({ tournoiId }: { tournoiId: number }) {
-  // Le créneau **dont on joue les poules**, figé dès qu'il est résolu — même raison que la saisie en
-  // duels : sans ce gel, la clôture de la qualification ferait basculer l'écran sous les doigts.
-  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
+export function SaisiePoules({
+  tournoiId,
+  departId,
+}: {
+  tournoiId: number
+  departId: number | null
+}) {
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
   const poulesDispo = (phases.data ?? []).filter((phase) => phase.type === 'poules')
 
-  // ⚠️ **Pas de `return null` ici, et c'est un correctif de correctif** (`# DETTE-056`).
+  // ⚠️ **Toujours pas de `return null` ici**, et la raison a survécu au remède de `DETTE-056`
+  // (E05US030, qui a remonté le créneau dans l'espace scoreur). Une première tentative — E05US023 —
+  // masquait tout le panneau quand le créneau ne portait aucune poule, pour supprimer le second
+  // sélecteur de créneau : elle créait un cul-de-sac, le sélecteur vivant *dans* le JSX retiré.
+  // Le sélecteur n'est plus ici, mais masquer resterait faux pour l'autre moitié du défaut : la
+  // branche d'erreur deviendrait morte, et un `/phases` en échec ferait disparaître le panneau
+  // **sans un mot**, en salle, wifi instable.
   //
-  // Une première tentative masquait tout le panneau quand le créneau ne portait aucune poule, pour
-  // supprimer le **second sélecteur de créneau** que l'espace scoreur affiche à côté de celui des
-  // duels. Le remède était pire : le sélecteur vit *dans* le JSX retiré et `useCreneauDesDuels`
-  // garde son choix en `useState` **local**, si bien qu'un scoreur basculé sur un créneau sans
-  // poules perdait le panneau **et** le moyen d'en revenir — il fallait quitter l'écran. Il perdait
-  // au passage le message qui l'expliquait, et la branche d'erreur devenait morte : un `/phases` en
-  // échec faisait disparaître le panneau **sans un mot**, en salle, wifi instable.
-  //
-  // Le vrai remède est de partager l'état de créneau entre les deux panneaux — c'est lui qui règle
-  // la désynchronisation invoquée, et il ne tient pas dans un correctif de revue.
   // Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait scorer les
   // poules de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
   const phaseRetenue =
@@ -51,11 +48,6 @@ export function SaisiePoules({ tournoiId }: { tournoiId: number }) {
       <div className="duels-saisie__entete">
         <h3 className="carte__soustitre">Saisie des poules</h3>
       </div>
-
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
-      {departs.isSuccess && liste.length === 0 && (
-        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
-      )}
 
       {phases.isError && <MessageErreur erreur={phases.error} />}
       {phases.isSuccess && poulesDispo.length === 0 && (

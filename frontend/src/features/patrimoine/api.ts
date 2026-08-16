@@ -172,6 +172,7 @@ export type { Profondeur } from '../../shared/phases/catalogue'
 export type { BaremePoule, ReglagePoules } from '../../shared/phases/poules'
 import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
+import type { ReglageSuisse } from '../../shared/phases/suisse'
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).
@@ -191,6 +192,10 @@ export interface Etape {
   // Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
   // `null` = non réglé, ce qui est licite : le type se choisit avant ses paramètres.
   big_shoot_off: ReglageBigShootOff | null
+  // Le réglage d'un **système suisse** (E05US030) — le nombre de rondes. Le serveur le portait
+  // depuis E05US026 (`ReglageSuisseDTO`) ; le front l'ignorait, donc composer un format au suisse
+  // envoyait `suisse: null` et l'étape restait non réglée sans que rien ne le dise.
+  suisse: ReglageSuisse | null
 }
 
 export interface FormatTournoi {

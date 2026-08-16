@@ -29,6 +29,7 @@ import {
   validerDuel,
 } from './api'
 import type { EtatPoulesSaisie } from '../poules/api'
+import type { EtatSuisseSaisie } from '../suisse/api'
 import { injecterBarrage, injecterManche } from './duel'
 import { estDejaHorsLigne, estRefusServeur } from './horsLigne'
 import { rejouerActes } from './rejeu'
@@ -64,6 +65,16 @@ export const clePoulesSaisie = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'saisie'] as const
 export const clePoulesPubliques = (tournoiId: number, phaseId: number) =>
   [...clePoules(tournoiId, phaseId), 'publique'] as const
+
+// Le **système suisse** (E05US030) suit exactement le même dessin, et pour les mêmes raisons : deux
+// vues (saisie / rédigée) sous un **préfixe** commun, de sorte qu'une invalidation d'écriture
+// atteigne les deux sans que personne n'ait à s'en souvenir.
+export const cleSuisse = (tournoiId: number, phaseId: number) =>
+  ['suisse-etat', tournoiId, phaseId] as const
+export const cleSuisseSaisie = (tournoiId: number, phaseId: number) =>
+  [...cleSuisse(tournoiId, phaseId), 'saisie'] as const
+export const cleSuissePublique = (tournoiId: number, phaseId: number) =>
+  [...cleSuisse(tournoiId, phaseId), 'publique'] as const
 
 // `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
 // désactivée plutôt que lancée sur un identifiant inventé (convention de `phases/hooks.ts`).
@@ -119,47 +130,101 @@ function placeholderDuel(matchNumero: number): Duel {
   }
 }
 
-/** Le duel d'une rencontre, lu dans la photo **de saisie** de la phase de poules (ou `null`).
+// --- Ce qui distingue une famille d'une autre (E05US030) -----------------------------------------
+//
+// ⚠️ **Trois tables, et non trois `if`.** Le mécanisme était binaire — « poule ou tableau » —, écrit
+// en `famille === 'poule' ? … : …` à quatre endroits. Y ajouter le système suisse par une quatrième
+// comparaison aurait fait tomber le nouveau format dans la branche **tableau** partout où l'un des
+// quatre aurait été oublié : le duel serait parti sur `/api/v1/duels/manches` avec un `match_numero`
+// que ce routeur ne connaît pas, et la photo de la phase ne se serait jamais rafraîchie hors-ligne.
+// Un `Record` exhaustif fait échouer la **compilation** au lieu de laisser le défaut sortir en
+// salle — même parti que `EN_LICE` dans `features/routage/presentation.ts`.
+
+/** La clé du **décor** d'une famille : ce qu'une écriture invalide en plus du duel lui-même. */
+const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => readonly unknown[]> = {
+  tableau: cleTableau,
+  poule: clePoules,
+  suisse: cleSuisse,
+}
+
+/** La photo de saisie d'une famille : où l'écran lit ses duels, quand ce n'est pas `cleDuel`.
  *
- * Domicile unique de cette navigation : la photo porte les rencontres groupées par poule, et c'est
- * `numero` — le `match_numero` de la table `duel` — qui les identifie de bout en bout.
+ * `null` pour le tableau, qui lit bien `cleDuel` — c'est la seule famille dans ce cas. Les phases à
+ * rencontres portent leurs duels **dans la photo de la phase**, groupés par poule ou par ronde ;
+ * `numero` (le `match_numero` de la table `duel`) les identifie de bout en bout.
  */
+interface PhotoDeSaisie {
+  cle: (tournoiId: number, phaseId: number) => readonly unknown[]
+  /** Aplatit la photo en rencontres, quel que soit le niveau intermédiaire (poule, ronde). */
+  rencontres: (etat: unknown) => { numero: number; duel: Duel }[]
+  /** Réécrit le duel d'une rencontre dans la photo, en préservant la structure. */
+  remplacer: (etat: unknown, matchNumero: number, duel: Duel) => unknown
+}
+
+const PHOTO: Record<FamilleDuel, PhotoDeSaisie | null> = {
+  tableau: null,
+  poule: {
+    cle: clePoulesSaisie,
+    rencontres: (etat) => (etat as EtatPoulesSaisie).poules.flatMap((poule) => poule.rencontres),
+    remplacer: (etat, matchNumero, duel) => {
+      const photo = etat as EtatPoulesSaisie
+      return {
+        ...photo,
+        poules: photo.poules.map((poule) => ({
+          ...poule,
+          rencontres: poule.rencontres.map((rencontre) =>
+            rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+          ),
+        })),
+      }
+    },
+  },
+  suisse: {
+    cle: cleSuisseSaisie,
+    rencontres: (etat) => (etat as EtatSuisseSaisie).rondes.flatMap((ronde) => ronde.rencontres),
+    remplacer: (etat, matchNumero, duel) => {
+      const photo = etat as EtatSuisseSaisie
+      return {
+        ...photo,
+        rondes: photo.rondes.map((ronde) => ({
+          ...ronde,
+          rencontres: ronde.rencontres.map((rencontre) =>
+            rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
+          ),
+        })),
+      }
+    },
+  },
+}
+
+/** Le duel d'une rencontre, lu dans la photo **de saisie** de sa phase (ou `null`). */
 function duelDeLaPhase(
   queryClient: QueryClient,
+  famille: FamilleDuel,
   tournoiId: number,
   phaseId: number,
   matchNumero: number,
 ): Duel | null {
-  const etat = queryClient.getQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId))
+  const photo = PHOTO[famille]
+  if (photo === null) return null
+  const etat = queryClient.getQueryData<unknown>(photo.cle(tournoiId, phaseId))
   if (etat === undefined) return null
-  for (const poule of etat.poules) {
-    for (const rencontre of poule.rencontres) {
-      if (rencontre.numero === matchNumero) return rencontre.duel
-    }
-  }
-  return null
+  return photo.rencontres(etat).find((r) => r.numero === matchNumero)?.duel ?? null
 }
 
 /** Réécrit le duel d'une rencontre **dans la photo de la phase** — l'entrée que l'écran affiche. */
 function poserDuelDansLaPhase(
   queryClient: QueryClient,
+  famille: FamilleDuel,
   tournoiId: number,
   phaseId: number,
   matchNumero: number,
   duel: Duel,
 ): void {
-  queryClient.setQueryData<EtatPoulesSaisie>(clePoulesSaisie(tournoiId, phaseId), (etat) =>
-    etat === undefined
-      ? etat
-      : {
-          ...etat,
-          poules: etat.poules.map((poule) => ({
-            ...poule,
-            rencontres: poule.rencontres.map((rencontre) =>
-              rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
-            ),
-          })),
-        },
+  const photo = PHOTO[famille]
+  if (photo === null) return
+  queryClient.setQueryData<unknown>(photo.cle(tournoiId, phaseId), (etat: unknown) =>
+    etat === undefined ? etat : photo.remplacer(etat, matchNumero, duel),
   )
 }
 
@@ -186,9 +251,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
         // pas sous `cleDuel` (l'écran ne lit jamais cette entrée) mais dans la photo de la phase.
         const base =
           queryClient.getQueryData<Duel>(cleDuel(tournoiId, phaseId, matchNumero, famille)) ??
-          (famille === 'poule'
-            ? duelDeLaPhase(queryClient, tournoiId, phaseId, matchNumero)
-            : null) ??
+          duelDeLaPhase(queryClient, famille, tournoiId, phaseId, matchNumero) ??
           placeholderDuel(matchNumero)
         return optimiste(base, corps)
       }
@@ -208,9 +271,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
       // scoreur tapait « Enregistrer la manche », l'acte partait bien en file (aucune donnée
       // perdue) et **l'écran ne bougeait pas** — ni les manches, ni l'état « en cours », ni le
       // verrou qui masque le bouton de validation. Il retapait (relevé en revue).
-      if (famille === 'poule') {
-        poserDuelDansLaPhase(queryClient, tournoiId, phaseId, matchNumero, duel)
-      }
+      poserDuelDansLaPhase(queryClient, famille, tournoiId, phaseId, matchNumero, duel)
       const enFile = useFileDuelsHorsLigneStore
         .getState()
         .enAttente.some((a) => a.identifiant_saisie === corps.identifiant_saisie)
@@ -228,8 +289,7 @@ function useMutationActe<C extends { identifiant_saisie: string }>(
       // le decor de la famille concernee — l'arbre du tableau, ou l'etat de la phase de poules,
       // dont dependent le classement de poule et l'annonce de barrage.
       void queryClient.invalidateQueries({
-        queryKey:
-          famille === 'poule' ? clePoules(tournoiId, phaseId) : cleTableau(tournoiId, phaseId),
+        queryKey: CLE_DECOR[famille](tournoiId, phaseId),
       })
       useFileDuelsHorsLigneStore.getState().retirerSlot(cleSlot(versActe(corps)))
       void draineLaFileDuels(queryClient)
@@ -363,8 +423,12 @@ async function draineLaFileDuels(queryClient: QueryClient): Promise<void> {
       const [famille, tournoi, phase] = cle.split(':')
       const t = Number(tournoi)
       const p = Number(phase)
+      // Le préfixe vient d'une **chaîne** (la clé du `Set`), donc il faut le revalider avant de
+      // s'en servir comme index : une famille inconnue — un acte écrit par une version future et
+      // relu depuis le `localStorage` — retombe sur le tableau, comme partout ailleurs ici.
+      const connue = famille !== undefined && famille in CLE_DECOR
       void queryClient.invalidateQueries({
-        queryKey: famille === 'poule' ? clePoules(t, p) : cleTableau(t, p),
+        queryKey: connue ? CLE_DECOR[famille as FamilleDuel](t, p) : cleTableau(t, p),
       })
     }
     for (const acte of refuses) {

@@ -179,6 +179,13 @@ const ROUTES: Record<FamilleDuel, { manches: string; barrages: string; validatio
     barrages: '/api/v1/poules/barrages',
     validations: '/api/v1/poules/validations',
   },
+  // E05US030 : une rencontre de ronde est un duel comme une rencontre de poule, et son routeur
+  // reprend les mêmes corps au même nom près. La seule différence est la ressource.
+  suisse: {
+    manches: '/api/v1/suisse/manches',
+    barrages: '/api/v1/suisse/barrages',
+    validations: '/api/v1/suisse/validations',
+  },
 }
 
 // La réponse d'une route de poule enveloppe le duel dans sa rencontre (numéro, poule, tour,
@@ -188,8 +195,10 @@ interface RencontreEnveloppe {
   duel: Duel
 }
 
-/** Traduit un corps de tableau en corps de poule : `match_numero` s'y appelle `numero`. */
-function corpsPoule<C extends { match_numero: number }>(corps: C): Record<string, unknown> {
+/** Traduit un corps de tableau en corps de **phase à rencontres** : `match_numero` s'y appelle
+ * `numero`. Vaut pour les poules comme pour le système suisse — les deux routeurs partagent ce
+ * contrat, seule la ressource diffère. */
+function corpsRencontre<C extends { match_numero: number }>(corps: C): Record<string, unknown> {
   const { match_numero, ...reste } = corps
   return { ...reste, numero: match_numero }
 }
@@ -210,21 +219,24 @@ async function ecrire<C extends { match_numero: number }>(
   corps: C,
 ): Promise<Duel> {
   const chemin = ROUTES[famille][acte]
+  // ⚠️ La condition porte sur `tableau`, **pas** sur la liste des autres familles : c'est ce qui a
+  // permis au système suisse (E05US030) d'entrer sans retoucher cette fonction. Une condition
+  // écrite « si poule ou suisse » aurait fait tomber le format suivant du mauvais côté.
   if (famille === 'tableau') {
     return fetchJson<Duel>(chemin, { method: 'POST', body: JSON.stringify(corps) }, 'scoreur')
   }
   const enveloppe = await fetchJson<RencontreEnveloppe>(
     chemin,
-    { method: 'POST', body: JSON.stringify(corpsPoule(corps)) },
+    { method: 'POST', body: JSON.stringify(corpsRencontre(corps)) },
     'scoreur',
   )
   return enveloppe.duel
 }
 
 export function saisirManche(corps: SaisirManche, famille: FamilleDuel = 'tableau'): Promise<Duel> {
-  // Le rang de manche s'appelle `numero` côté tableau et `manche` côté poule : la traduction est
-  // ici, pas dans le composant, pour que le pavé ne connaisse qu'une seule forme.
-  if (famille === 'poule') {
+  // Le rang de manche s'appelle `numero` côté tableau et `manche` côté phase à rencontres : la
+  // traduction est ici, pas dans le composant, pour que le pavé ne connaisse qu'une seule forme.
+  if (famille !== 'tableau') {
     const { numero, ...reste } = corps
     return ecrire(famille, 'manches', { ...reste, manche: numero })
   }

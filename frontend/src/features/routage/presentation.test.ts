@@ -460,3 +460,49 @@ describe('routage d’un finaliste de Big Shoot Off', () => {
     expect(alerte(finaliste())).toBeNull()
   })
 })
+
+describe('routage d’un tireur en attente de la ronde suivante (E05US030)', () => {
+  // Le porteur du bye d'une ronde impaire, ou celui dont la rencontre vient d'être validée pendant
+  // que la ronde s'achève. `E05US026` servait ce cas sous `indisponible` avec un motif, faute de
+  // pouvoir toucher au contrat d'API depuis une US backend seule.
+  function enAttente(patch: Partial<RoutageArcher> = {}): RoutageArcher {
+    return archer({
+      issue: 'en_attente',
+      prochain: null,
+      prochaine_manche: null,
+      motif: 'Rien à tirer pour l’instant : sa prochaine rencontre n’est pas encore appariée.',
+      ...patch,
+    })
+  }
+
+  it('dit l’attente sans promettre un rendez-vous qui n’est pas apparié', () => {
+    // Surtout pas « Ronde 3 » : les adversaires se choisissent au classement du moment, donc la
+    // ronde suivante n'existe pas encore. Et surtout pas « Destination inconnue », qui se lit comme
+    // une panne.
+    expect(titre(enAttente())).toBe('Rien à tirer pour l’instant')
+  })
+
+  it('laisse le serveur dire pourquoi', () => {
+    expect(detail(enAttente())).toBe(
+      'Rien à tirer pour l’instant : sa prochaine rencontre n’est pas encore appariée.',
+    )
+  })
+
+  it('le compte comme encore en lice — il lui reste des rondes à tirer', () => {
+    expect(encoreEnLice(enAttente())).toBe(true)
+  })
+
+  it('le range en ATTENTE, jamais parmi les sortis', () => {
+    // C'est tout l'objet de l'issue : sous `indisponible`, il tombait chez les sortis sur l'écran
+    // projeté, et l'organisateur qui compte ses tireurs ne le retrouvait plus.
+    const { poses, attente, sortis } = partitionner([enAttente()])
+    expect(attente.map((l) => l.archer_id)).toEqual([1])
+    expect(poses).toEqual([])
+    expect(sortis).toEqual([])
+  })
+
+  it('reste distinct de « terminé » et d’« indisponible »', () => {
+    expect(encoreEnLice(archer({ issue: 'termine', prochain: null }))).toBe(false)
+    expect(encoreEnLice(archer({ issue: 'indisponible', prochain: null }))).toBe(false)
+  })
+})

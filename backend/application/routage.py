@@ -147,6 +147,22 @@ class IssueRoutage(str, Enum):
     numéro de match qui n'existe pas — précisément le genre de nom trop étroit qu'ADR-0083 a dû
     corriger sur `monte_les_oppositions`. Le champ `prochaine_manche` porte l'information."""
 
+    EN_ATTENTE = "en_attente"
+    """Il est dans la phase, en course, mais **rien à tirer maintenant** (E05US030).
+
+    ⚠️ **Sixième issue, et non un `INDISPONIBLE` motivé.** `E05US026` avait emprunté celle-ci faute
+    de pouvoir toucher au contrat d'API depuis une US backend seule ; l'emprunt ne disait rien de
+    faux, mais il rangeait un archer **encore en lice** avec ceux qu'on ne sait pas router. Le
+    panneau partitionne sur l'issue (`EN_LICE`, côté front) : sous `INDISPONIBLE`, le porteur de bye
+    sortait du groupe des tireurs en course, et l'organisateur qui compte ses archers ne le
+    retrouvait plus.
+
+    Deux populations la reçoivent : le porteur du **bye** d'une ronde impaire, et celui dont la
+    rencontre vient d'être validée pendant que la ronde s'achève. Dans les deux cas la ronde
+    suivante existera — elle n'est simplement pas encore appariée, le moteur refusant d'apparier
+    par-dessus une ronde en cours (`domain/suisse.py::_rondes_closes`).
+    """
+
     INDISPONIBLE = "indisponible"
     """On ne sait pas le router (`motif` dit pourquoi)."""
 
@@ -579,10 +595,12 @@ class ServiceRoutage:
         `PAR_BLOC_DE_COULOIRS` et leur plan est posé, donc `cible` et `position` sont renseignés et
         `manque` reste `None`.
 
-        Trois issues :
+        Quatre issues :
 
         - **`PROCHAIN_DUEL`** — une rencontre non validée l'attend, c'est la première dans l'ordre ;
         - **`TERMINE`** — il n'a plus rien à tirer dans cette phase ;
+        - **`EN_ATTENTE`** — il y est et il est en course, mais rien n'est appariée pour lui à cet
+          instant (bye de la ronde, ou rencontre validée pendant que la ronde s'achève — E05US030) ;
         - **`INDISPONIBLE`** — il n'y figure pas, ou le service n'est pas câblé.
 
         Le panneau **dégrade, il ne tombe pas** : une phase composée mais pas encore réglée est un
@@ -693,12 +711,11 @@ class ServiceRoutage:
            est validée pendant que la ronde s'achève. Le panneau doit dire « pas maintenant »,
            jamais « c'est fini » : un archer à qui l'on dit terminé range son arc.
 
-        Le 3ᵉ cas emprunte `INDISPONIBLE` avec un motif explicite plutôt qu'une 6ᵉ issue. C'est un
-        choix **de portée** : `IssueRoutage` est un contrat d'API que le front consomme
-        (`features/routage/api.ts` en tient l'union), et cette US est backend seul. Une issue
-        `EN_ATTENTE` propre est la bonne cible, elle est notée au CA d'`E05US030` qui livrera
-        l'écran. `INDISPONIBLE` ne dit rien de faux entre-temps — le panneau ne *peut pas* dire où
-        cet archer tire ensuite —, là où `TERMINE` mentait.
+        ✅ **Le 3ᵉ cas a son issue depuis E05US030** : `EN_ATTENTE`. `E05US026` avait emprunté
+        `INDISPONIBLE` avec un motif explicite, faute de pouvoir toucher au contrat d'API depuis une
+        US backend seule — `IssueRoutage` est consommé par le front (`features/routage/api.ts`).
+        L'emprunt ne disait rien de faux, mais il ne permettait pas de **compter** cet archer parmi
+        ceux qui tirent encore : le front partitionne sur l'issue.
         """
         if not inscrit:
             return RoutageArcher(
@@ -720,7 +737,7 @@ class ServiceRoutage:
             archer_id=archer_id,
             nom=nom,
             prenom=prenom,
-            issue=IssueRoutage.INDISPONIBLE,
+            issue=IssueRoutage.EN_ATTENTE,
             motif="Rien à tirer pour l'instant : sa prochaine rencontre n'est pas encore appariée.",
         )
 

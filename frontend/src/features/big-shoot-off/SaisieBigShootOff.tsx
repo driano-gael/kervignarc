@@ -19,8 +19,6 @@
 import { useState } from 'react'
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
-import { ChoixCreneau } from '../departs/ChoixCreneau'
-import { useCreneauDesDuels } from '../departs/hooks'
 import { usePhases } from '../saisie-duels/hooks'
 import type { Manche, Tireur } from './api'
 import { useEtatBigShootOff, useSaisirVolee, useValiderManche } from './hooks'
@@ -114,12 +112,13 @@ function LigneTireur({
   )
 }
 
-export function SaisieBigShootOff({ tournoiId }: { tournoiId: number }) {
-  // Le créneau **dont on joue le Big Shoot Off**, figé dès qu'il est résolu — même raison que la
-  // saisie en duels : sans ce gel, la clôture de la qualification ferait basculer l'écran sous les
-  // doigts. ⚠️ Il porte le même défaut partagé que `SaisiePoules` (`DETTE-056`) : deux sélecteurs de
-  // créneau indépendants dans l'espace scoreur.
-  const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
+export function SaisieBigShootOff({
+  tournoiId,
+  departId,
+}: {
+  tournoiId: number
+  departId: number | null
+}) {
   const phases = usePhases(departId)
   const [phaseId, setPhaseId] = useState<number | null>(null)
 
@@ -137,11 +136,6 @@ export function SaisieBigShootOff({ tournoiId }: { tournoiId: number }) {
       <div className="duels-saisie__entete">
         <h3 className="carte__soustitre">Saisie du Big Shoot Off</h3>
       </div>
-
-      <ChoixCreneau departs={liste} valeur={departId} surChangement={choisir} />
-      {departs.isSuccess && liste.length === 0 && (
-        <p className="carte__etat">Aucun départ n’est encore défini pour ce tournoi.</p>
-      )}
 
       {phases.isError && <MessageErreur erreur={phases.error} />}
       {phases.isSuccess && disponibles.length === 0 && (

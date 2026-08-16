@@ -144,7 +144,7 @@ function monter() {
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>
   }
-  return render(<SaisiePoules tournoiId={1} />, { wrapper: Enveloppe })
+  return render(<SaisiePoules tournoiId={1} departId={41} />, { wrapper: Enveloppe })
 }
 
 async function choisirLaPhase() {

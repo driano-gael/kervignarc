@@ -41,7 +41,7 @@ from domain.phase import TypePhase
 router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 
 IssueRoutageReponse = Literal[
-    "prochain_duel", "prochaine_manche", "termine", "repeche", "indisponible"
+    "prochain_duel", "prochaine_manche", "termine", "repeche", "en_attente", "indisponible"
 ]
 """Les seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
 pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
@@ -49,7 +49,13 @@ Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (rè
 
 `repeche` est ajouté par E07US008 : **élargissement**, pas rupture — un client qui ne le connaît
 pas ne peut pas le rencontrer sur un tournoi sans repêchage, et le test miroir garantit qu'aucune
-valeur du domaine ne circule sans être déclarée ici."""
+valeur du domaine ne circule sans être déclarée ici.
+
+`en_attente` est ajouté par E05US030, et **c'est un rétrécissement d'`indisponible`, pas seulement
+un élargissement** : `E05US026` servait cette valeur-ci sous `indisponible` avec un motif, faute de
+pouvoir toucher au contrat depuis une US backend seule. Un client resté à l'ancienne union verra
+donc une valeur inconnue là où il lisait « on ne sait pas » — c'est précisément ce que le miroir
+fermé et le `Record` exhaustif du front rendent visible à la compilation plutôt qu'à l'exécution."""
 
 
 # --- DTO ---

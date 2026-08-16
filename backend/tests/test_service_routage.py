@@ -32,6 +32,8 @@ from application.routage import (
     CIBLE_NON_ATTRIBUEE,
     PLACEMENT_AUTRE_CIBLE,
     IssueRoutage,
+    RencontresARouter,
+    RoutageArcher,
     ServiceRoutage,
 )
 from application.saisie_duels import ServiceSaisieDuels
@@ -888,3 +890,100 @@ def test_le_routage_est_une_lecture_pure() -> None:
     assert premier == second
     assert len(monde.placements.par_phase(monde.phase_id or 0)) == poses_avant
     assert len(monde.duels._tirs) == duels_avant
+
+
+# --- CA « le panneau distingue "il a fini" de "rien à tirer pour l'instant" » (E05US030) --------
+#
+# Ces trois cas dérivent du CA d'`E05US030` (`stories/E05-moteur-phases.md`), écrits **avant**
+# l'implémentation (règle 9). Ils exercent `_sans_rencontre`, le seul chemin du routage que rien ne
+# couvrait au niveau service : `E05US026` l'a livré et testé **côté port** (les trois champs de
+# `RencontresARouter`, cf. `test_service_suisse.py`), mais aucun test ne vérifiait ce que le service
+# en **conclut**. C'est précisément là que vivait l'emprunt d'`INDISPONIBLE` que cette US remplace.
+
+
+class _FauxLecteurDeRencontres:
+    """Doublure du port `LecteurRencontresARouter` — rend la lecture qu'on lui donne, telle quelle.
+
+    Volontairement inerte : ce qui est sous test ici n'est pas la reconstruction d'une phase (elle
+    l'est dans `test_service_suisse.py`), mais la **conclusion** que le routage tire des trois
+    champs de `RencontresARouter`.
+    """
+
+    def __init__(self, lecture: RencontresARouter) -> None:
+        self._lecture = lecture
+
+    def rencontres_a_tirer(self, tournoi_id: int, phase_id: int) -> RencontresARouter:
+        return self._lecture
+
+
+def _router_dans_un_suisse(*, membre: bool, epuisee: bool, termine: bool = False) -> RoutageArcher:
+    """Route **un** archer d'un créneau portant une phase suisse, sans rencontre à tirer.
+
+    Les trois booléens sont exactement les trois champs dont `_sans_rencontre` tire sa conclusion :
+    `membre` dit s'il figure dans `participants`, `epuisee` si la phase est allée à son terme pour
+    tout le monde, `termine` s'il a fini alors qu'elle continue.
+    """
+    monde = _Monde()
+    phase = poser_phase_factice(
+        monde.departs,
+        monde.deroules,
+        monde.phases,
+        Phase.creer(monde.depart_id, 2, TypePhase.SUISSE),
+    )
+    assert phase.id is not None
+    archer_id = monde.inscrire_classe(("10", "10", "10"))
+    lecture = RencontresARouter(
+        rencontres=(),
+        participants=(archer_id,) if membre else (),
+        epuisee=epuisee,
+        termines=frozenset({archer_id}) if termine else frozenset(),
+    )
+    service = ServiceRoutage(
+        monde.saisie,
+        monde.placement,
+        monde.archers,
+        monde.phases,
+        monde.departs,
+        suisse=_FauxLecteurDeRencontres(lecture),
+    )
+    return service.routage(monde.depart_id, (archer_id,), phase_id=phase.id).archers[0]
+
+
+def test_l_archer_sans_rencontre_appariee_est_en_attente_pas_termine() -> None:
+    """Le cœur du CA : porteur de bye, ou rencontre validée pendant que la ronde s'achève.
+
+    `E05US026` avait **emprunté `INDISPONIBLE`** avec un motif, faute de pouvoir toucher au contrat
+    d'API depuis une US backend seule. L'emprunt ne disait rien de faux, mais il rangeait cet archer
+    avec ceux qu'on ne sait **pas** router : le panneau ne pouvait donc pas le montrer comme encore
+    **en lice**. `EN_ATTENTE` est l'issue propre.
+    """
+    ligne = _router_dans_un_suisse(membre=True, epuisee=False)
+
+    assert ligne.issue is IssueRoutage.EN_ATTENTE
+    assert ligne.motif is not None
+
+
+def test_la_phase_epuisee_dit_termine_et_non_en_attente() -> None:
+    """Le miroir du cas précédent : le seul cas où « rangez votre arc » est vrai.
+
+    Sans cette assertion, `EN_ATTENTE` pourrait absorber `TERMINE` — on ne dirait plus « terminé »
+    à tort, on dirait « attends » à qui peut partir. C'est le défaut exact qu'`E05US026` a relevé en
+    revue, dans l'autre sens.
+    """
+    assert _router_dans_un_suisse(membre=True, epuisee=True).issue is IssueRoutage.TERMINE
+
+
+def test_celui_qui_a_fini_pendant_que_la_phase_continue_dit_termine() -> None:
+    """Le cas des **poules** : un round-robin est connu d'avance, donc un membre peut finir seul."""
+    ligne = _router_dans_un_suisse(membre=True, epuisee=False, termine=True)
+
+    assert ligne.issue is IssueRoutage.TERMINE
+
+
+def test_l_archer_etranger_a_la_phase_reste_indisponible() -> None:
+    """Et le troisième cas ne bouge pas : hors de la phase, on ne sait pas le router.
+
+    `INDISPONIBLE` garde ainsi son sens d'origine — « on ne sait pas », pas « attendez ». C'est ce
+    que l'emprunt d'`E05US026` brouillait.
+    """
+    assert _router_dans_un_suisse(membre=False, epuisee=False).issue is IssueRoutage.INDISPONIBLE

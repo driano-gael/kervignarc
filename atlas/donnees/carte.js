@@ -28,6 +28,7 @@ window.ATLAS.carte = {
     "routage",
     "saisie-duels",
     "salle",
+    "suisse",
     "suivi",
     "suivi-deroule",
     "tableaux"
@@ -47,7 +48,7 @@ window.ATLAS.carte = {
     "feature": "competition"
    },
    {
-    "clientes": 17,
+    "clientes": 15,
     "feature": "departs"
    },
    {
@@ -79,12 +80,16 @@ window.ATLAS.carte = {
     "feature": "routage"
    },
    {
+    "clientes": 5,
+    "feature": "saisie-duels"
+   },
+   {
     "clientes": 4,
     "feature": "blasons"
    },
    {
     "clientes": 4,
-    "feature": "saisie-duels"
+    "feature": "poules"
    },
    {
     "clientes": 3,
@@ -104,7 +109,7 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
-    "feature": "poules"
+    "feature": "suisse"
    },
    {
     "clientes": 3,
@@ -207,7 +212,7 @@ window.ATLAS.carte = {
     "feature": "simulation"
    }
   ],
-  "features": 44
+  "features": 45
  },
  "matrice": [
   {
@@ -2644,12 +2649,12 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 139,
+  "aretes_front": 142,
   "enchevetrements": 3,
-  "features": 44,
+  "features": 45,
   "imports": 827,
   "imports_entre_couches": 700,
-  "plus_gros_noeud": 19,
+  "plus_gros_noeud": 20,
   "ports": 60,
   "ports_hors_domaine": 20,
   "ports_sans_adapter": 0,

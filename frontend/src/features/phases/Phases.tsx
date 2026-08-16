@@ -32,6 +32,13 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
+import {
+  depuisReglage as depuisReglageSuisse,
+  estValide as suisseValide,
+  versReglage as versReglageSuisse,
+  SUISSE_PAR_DEFAUT,
+} from '../../shared/phases/suisse'
 import { ReglageBigShootOff } from '../../shared/phases/ReglageBigShootOff'
 import {
   depuisReglage as depuisReglageBso,
@@ -40,6 +47,7 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
+import { useEtatSuisse, useRegenererPlanSuisse } from '../suisse/hooks'
 import {
   depuisReglage,
   estValide as poulesValides,
@@ -139,6 +147,48 @@ function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
       {conflits.length > 0 && (
         <span className="carte__etat carte__etat--alerte" role="status">
           {decrireConflits(conflits)}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+    </>
+  )
+}
+
+/** Le même geste pour une phase au **système suisse** (E05US030) — action admin.
+ *
+ * ⚠️ **Écrit d'emblée pour ne pas rejouer le défaut d'E05US023**, dont le récit est juste au-dessus :
+ * l'endpoint, le port et le hook existaient, et rien ne les appelait — le plan restait vide en
+ * toutes circonstances, l'écran de saisie réclamait une action que le produit n'offrait pas, et
+ * aucun archer ne savait sur quelle cible tirer. `E05US026` a livré `POST /suisse/plan/…` ; sans ce
+ * bouton, la même impasse se serait reproduite à l'identique, un format plus loin.
+ *
+ * Une différence de fond avec les poules : le suisse pose **un seul bloc** pour toute la phase (une
+ * ronde apparie tout le plateau d'un coup), donc « le plan est vide » se lit sur les rencontres et
+ * non sur des groupes.
+ */
+function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatSuisse(tournoiId, phaseId)
+  const regenerer = useRegenererPlanSuisse(tournoiId, phaseId)
+
+  const rencontres = (etat.data?.rondes ?? []).flatMap((ronde) => ronde.rencontres)
+  // On ne se fie pas aux seuls conflits : une phase sans participant n'a ni ronde ni conflit, et
+  // « Régénérer » y serait un contresens.
+  const planVide = rencontres.length === 0 || rencontres.every((r) => r.couloirs === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {decrireConflits(conflits.map((c) => ({ poule: c.groupe, raison: c.raison })))}
         </span>
       )}
       <MessageErreur erreur={regenerer.error} />
@@ -253,6 +303,7 @@ function LignePhase({
         </button>
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
         {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
+        {phase.type === 'suisse' && <PlanDeSuisse tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -324,6 +375,8 @@ export function FormulairePhase({
   // `GET /api/v1/poules/repartition/...` qui dit la répartition réelle une fois la phase posée.
   const [poules, setPoules] = useState(depuisReglage(phase?.poules ?? null))
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
+  // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
   const [ordreSource, setOrdreSource] = useState(
@@ -393,12 +446,14 @@ export function FormulairePhase({
   const estPoules = type === 'poules'
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
+  const estSuisse = type === 'suisse'
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
     !(enTableau && !estValide(profondeur)) &&
     !(estPoules && !poulesValides(poules)) &&
-    !(estBigShootOff && !bsoValide(bigShootOff))
+    !(estBigShootOff && !bsoValide(bigShootOff)) &&
+    !(estSuisse && !suisseValide(suisse))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -421,6 +476,9 @@ export function FormulairePhase({
       // refusé en 422. Retyper la phase l'**efface** donc. La garde compte davantage ici
       // qu'ailleurs : ce réglage décrit **qui sort**.
       big_shoot_off: estBigShootOff ? (versReglageBso(bigShootOff) ?? null) : null,
+      // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
+      // 422 `configuration_suisse_invalide`.
+      suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -436,6 +494,7 @@ export function FormulairePhase({
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
+          setSuisse(SUISSE_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -494,6 +553,10 @@ export function FormulairePhase({
         {estBigShootOff && (
           <ReglageBigShootOff etat={bigShootOff} surChangement={setBigShootOff} effectif={null} />
         )}
+        {/* `effectif={null}` comme ses deux voisines : le tournoi a de vrais inscrits, et c'est
+            `GET /api/v1/suisse/saisie/…` qui rend la borne réelle une fois la phase posée. Simuler
+            ici annoncerait une borne calculée sur un effectif déclaré, pas sur les présents. */}
+        {estSuisse && <ReglageSuisse etat={suisse} surChangement={setSuisse} effectif={null} />}
         <label className="formulaire__tranche">
           <input
             type="checkbox"

@@ -1231,8 +1231,97 @@ qui n'existait pas encore : les écrans du suisse.
   contrat d'API depuis une US backend seule : `IssueRoutage` est une union que le front tient dans
   `features/routage/api.ts`. Cette US-ci livre l'issue propre, des deux côtés. *(Sans cette puce, le
   report ne vivait que dans une docstring de `application/routage.py` — invisible au cadrage.)*
-- ⚠️ **À vérifier au cadrage** : `DETTE-056` (trois sélecteurs de créneau indépendants dans l'espace
-  scoreur) passerait à **quatre** avec l'écran du suisse. La dette est **mineure** mais son rayon
-  croît d'un format à l'autre ; c'est peut-être ici qu'elle se résorbe plutôt que de s'élargir une
-  fois de plus.
+- **CA — le classement provisoire se lit entre les rondes** *(ajouté au cadrage du 16/08/2026)*. Le
+  suisse n'a pas d'arbre : à mi-parcours, seul le classement dit où en est chacun, et c'est lui qui
+  détermine les appariements de la ronde suivante. Le backend le rend **déjà** dans la réponse d'état
+  (`EtatSuisseReponse.classement`, `EtatSuissePubliqueReponse.classement` — `rang` en convention
+  « 1224 », `points` en demi-points doublés, `buchholz`, `ex_aequo`) : il n'y a qu'à l'afficher, côté
+  organisateur et scoreur. La lecture **publique** de ce même classement part en `E05US031`.
+- **CA — `DETTE-056` se résorbe ici** *(tranché au cadrage du 16/08/2026)*. Elle passerait sinon à
+  **quatre** sélecteurs de créneau indépendants dans l'espace scoreur. Le choix de créneau remonte
+  dans un état **partagé** par les quatre panneaux ; les trois marqueurs `# DETTE-056` disparaissent
+  et la ligne se ferme au registre. Motif du choix : c'est la **4ᵉ occurrence** — le seuil « attendre
+  le 3ᵉ cas » du § *Dette* est dépassé — et le défaut n'est pas cosmétique, il fait scorer le mauvais
+  départ avec des identifiants valides, donc **sans erreur visible**.
 - **Dépend de** : `E05US026` · **Jalon** : J3 · **Origine** : arbitrage du 15/08/2026
+
+> **Cadrage du 16/08/2026 — le lot demandé a été découpé en trois tranches.** Le commanditaire a
+> demandé, en plus du CA ci-dessus, le **classement provisoire entre rondes**, une **vue publique du
+> suisse** et un **pilotage explicite des rondes**, en autorisant le découpage si le lot était trop
+> gros. Il l'était, et deux des trois ajouts se sont révélés d'une autre nature que « du front » :
+>
+> - Le **classement provisoire** est resté ici : le backend le rend déjà, c'est de l'affichage.
+> - La **vue publique** n'est pas un manque du suisse mais des **trois formats non-tableau** :
+>   `features/tableaux/` ne sait rendre qu'un arbre de duels, et ni les poules ni le Big Shoot Off
+>   n'ont de vue publique aujourd'hui. La livrer pour le seul suisse créerait une occurrence isolée
+>   d'un geste qui en réclame trois → `E05US031`.
+> - Le **pilotage explicite des rondes** demande de rouvrir un **choix de conception du backend**,
+>   assumé et documenté (`backend/api/v1/suisse.py`, en-tête) : il n'existe aucune route « ronde
+>   suivante », la ronde N+1 **se déduit à la lecture** dès que la dernière rencontre de la ronde N
+>   est validée. Un geste organisateur explicite suppose une clôture de ronde au contrat → `E05US032`.
+
+---
+
+### E05US031 — Le public voit les formats sans arbre
+
+*En tant que* spectateur, *je veux* suivre à l'écran une **poule**, un **système suisse** ou un **Big
+Shoot Off** comme je suis déjà un tableau de duels, *afin de* ne pas perdre de vue les archers que je
+suis dès que le tournoi quitte l'élimination directe.
+
+Origine : **cadrage d'`E05US030`, le 16/08/2026**. La demande initiale était « une vue publique du
+suisse » ; l'exploration a montré que le manque est **commun aux trois formats sans arbre**, livrés
+successivement par `E05US023` (poules), `E05US028` (Big Shoot Off) et `E05US026` (suisse) sans qu'un
+seul d'entre eux n'atteigne jamais l'application publique. Faire le suisse seul figerait une
+troisième variante locale au lieu de combler le trou.
+
+- **CA — l'onglet public rend les phases sans arbre**, au même titre que les tableaux : les
+  rencontres de la ronde ou du groupe en cours, avec leur cible, et le classement du format. Le
+  catalogue de vues d'[ADR-0064](../docs/adr/0064-un-catalogue-de-vues-pour-l-ecran-de-salle.md) est
+  aujourd'hui restreint à l'**arbre de duels** (`TableauPublic` : `duels`, `nb_tours`, `plage`,
+  `podium`) — c'est cette restriction qui est levée.
+- **CA — « mes archers » gouverne cette vue comme les autres** : l'interrupteur unique
+  d'[ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md) vaut
+  ici sans exception, et la vue nomme « aucun de vos archers ici » distinctement de son propre vide.
+- **CA — l'écran de salle sait projeter ces formats**, puisqu'il puise au même catalogue de vues.
+- **CA — le classement d'un suisse en cours est public** : c'est la part publique du classement
+  provisoire livré côté organisateur par `E05US030`. Le backend l'expose déjà
+  (`GET /api/v1/suisse/etat/{tournoi_id}/{phase_id}`, publique et anonyme).
+- ⚠️ **ADR probable** : étendre le catalogue de vues à des formats dont la forme n'est pas un arbre
+  n'est pas un ajout d'écran, c'est une **révision d'ADR-0064**. À instruire avant de coder.
+- ⚠️ **À vérifier au cadrage** : quelle part est déjà exposée sans authentification pour les
+  **poules** et le **Big Shoot Off** — le suisse l'est (`/suisse/etat/…`), les deux autres restent à
+  confirmer ; si une route publique manque, cette US porte aussi du backend.
+- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026
+
+---
+
+### E05US032 — L'organisateur ouvre la ronde suivante
+
+*En tant qu'*organisateur, *je veux* décider explicitement du passage à la ronde suivante d'un système
+suisse, *afin de* garder la main sur le moment où la salle repart au lieu de la voir avancer toute
+seule à la dernière flèche saisie.
+
+Origine : **cadrage d'`E05US030`, le 16/08/2026**. Le commanditaire a demandé un geste « lancer la
+ronde N+1 » qui **dise ce qui manque** quand il est refusé. Ce n'est pas un bouton : c'est un
+**changement de contrat backend**, et il contredit un choix assumé — d'où une US à part.
+
+⚠️ **Ce qui existe aujourd'hui, et qu'il faut décider de rouvrir.** Le backend n'a **aucune** route
+« ronde suivante » ; l'en-tête de `backend/api/v1/suisse.py` le pose explicitement : la ronde N+1
+**se déduit à la lecture** dès que la ronde N est close. `ServiceSuisse._rejouer` rejoue les rondes
+validées et s'arrête à la première ronde incomplète, et `domain/suisse.py::_rondes_closes` **refuse**
+d'apparier par-dessus une ronde en cours. Le geste qui fait exister la ronde suivante est donc, de
+fait, la validation de sa dernière rencontre.
+
+- **CA — la ronde suivante ne s'ouvre que sur décision de l'organisateur**, et l'écran distingue
+  « la ronde est close, à vous de lancer la suivante » de « la ronde est encore en cours ».
+- **CA — un refus dit ce qui manque** : quelles rencontres ne sont pas validées, et lesquelles ne
+  sont pas encore saisies. Le refus muet actuel (`ConfigurationSuisseInvalide`) n'est pas un message
+  d'écran.
+- **CA — l'état d'une ronde devient lisible en tant que tel**, et non déduit du compte de résultats.
+- ⚠️ **ADR requis** : cela **rouvre** la décision de dérivation à la lecture. Deux voies au moins —
+  persister une clôture de ronde, ou garder la dérivation et n'ajouter qu'un **verrou d'ouverture** —
+  et elles n'ont pas le même coût de migration. À trancher avant de coder.
+- ⚠️ **Question au commanditaire, à poser au cadrage** : la même décision se pose-t-elle pour les
+  **poules** et la **colline** (`RONDES_APPARIEES` est un décor partagé), ou le suisse est-il un cas
+  isolé ? Livrer un pilotage propre au suisse serait une 1ʳᵉ occurrence à ne pas dupliquer ensuite.
+- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026

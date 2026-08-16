@@ -10,7 +10,15 @@
 // identique à une étape), `eslint` non, et aucun des tests de logique pure de cette feature
 // (`duel.ts`, `etat.ts`, `rejeu.ts`) ne monte le composant — donc aucun ne sait **quel hook l'écran
 // appelle**. C'est précisément l'angle mort que `PanneauBarrages.test.tsx` documente dans son propre
-// en-tête, et qui vient de se reproduire ici. D'où ce fichier.
+// en-tête. D'où ce fichier.
+//
+// ⚠️ **Le choix du créneau a déménagé** (E05US030, `DETTE-056` refermée) : il est fait une fois dans
+// `EspaceScoreur`, qui le passe en prop aux quatre panneaux de saisie. Les cas qui portaient sur ce
+// choix — quel créneau par défaut, changer de créneau, « aucun départ » — vivent donc désormais dans
+// `features/scoreur-session/EspaceScoreur.test.tsx`. Ce qui reste ici est ce dont ce panneau répond
+// toujours : **la phase demandée est celle du créneau reçu**, et changer de créneau **remet à zéro**
+// le choix de phase. Déplacer plutôt que supprimer : c'est le même défaut d'un cran plus bas, et il
+// resterait aussi silencieux.
 //
 // On double **uniquement** les hooks de données ; le JSX est celui de production.
 
@@ -23,11 +31,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SaisieDuels } from './SaisieDuels'
 
 const usePhases = vi.fn()
-let departsRendus: { id: number; numero: number; horaire: string | null; etat: string }[] = []
-
-vi.mock('../departs/api', () => ({
-  getDeparts: () => Promise.resolve(departsRendus),
-}))
 
 vi.mock('./hooks', () => ({
   usePhases: (departId: number | null) => {
@@ -58,54 +61,38 @@ const PHASES_PAR_DEPART: Record<number, { id: number; ordre: number; type: strin
   42: [{ id: 902, ordre: 1, type: 'elimination_directe' }],
 }
 
-// Le `QueryClient` et `useDeparts` sont ceux de **production** — seul l'appel HTTP est doublé. Un
-// `useDeparts` doublé ne dirait rien du hook `useCreneauDesDuels`, qui est justement ce qu'on teste.
-function monter() {
+function monter(departId: number | null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>
   }
-  return render(<SaisieDuels tournoiId={1} />, { wrapper: Enveloppe })
+  return render(<SaisieDuels tournoiId={1} departId={departId} />, { wrapper: Enveloppe })
 }
 
 describe('SaisieDuels — le créneau commande l’écran', () => {
   beforeEach(() => {
     usePhases.mockClear()
-    departsRendus = [
-      { id: 41, numero: 1, horaire: '09:00', etat: 'clos' },
-      { id: 42, numero: 2, horaire: '14:00', etat: 'lance' },
-    ]
   })
 
   it('demande les phases D’UN CRÉNEAU, jamais celles du tournoi', async () => {
-    // ⚠️ Le bloquant. `usePhases` doit recevoir un `depart_id`, pas le `tournoiId` (1). Sans cette
-    // assertion, remettre `usePhases(tournoiId)` laisse toute la suite verte.
-    monter()
+    // ⚠️ Le bloquant. `usePhases` doit recevoir le `depart_id` reçu en prop, pas le `tournoiId` (1).
+    // Sans cette assertion, remettre `usePhases(tournoiId)` laisse toute la suite verte.
+    monter(41)
     await screen.findByRole('combobox', { name: /Phase de tableau à scorer/ })
 
     expect(usePhases).toHaveBeenCalledWith(41)
     expect(usePhases).not.toHaveBeenCalledWith(1)
   })
 
-  it('ouvre sur le créneau DONT ON JOUE LES DUELS, pas sur celui qui tire sa qualif', async () => {
-    // Le matin est `clos` (sa qualification est finie, donc ses duels se jouent) ; l'après-midi est
-    // `lance` (il tire encore sa qualification). La règle de l'écran de salle rendrait
-    // l'après-midi — qui n'a aucun duel à scorer.
-    monter()
-    await screen.findByRole('combobox', { name: /Phase de tableau à scorer/ })
-
-    expect(usePhases).toHaveBeenCalledWith(41)
-  })
-
   it('change de créneau à la demande, et REMET À ZÉRO le choix de phase', async () => {
     // Garder la phase de l'ancien créneau ferait scorer le tableau de l'autre départ sous un
-    // identifiant parfaitement valide — donc sans erreur. C'est le même défaut d'un cran plus bas.
-    monter()
+    // identifiant parfaitement valide — donc sans erreur.
+    const { rerender } = monter(41)
     const phases = await screen.findByRole('combobox', { name: /Phase de tableau à scorer/ })
     await userEvent.selectOptions(phases, '901')
     expect((phases as HTMLSelectElement).value).toBe('901')
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /Départ/ }), String(42))
+    rerender(<SaisieDuels tournoiId={1} departId={42} />)
 
     expect(usePhases).toHaveBeenCalledWith(42)
     const apres = screen.getByRole('combobox', { name: /Phase de tableau à scorer/ })
@@ -114,15 +101,8 @@ describe('SaisieDuels — le créneau commande l’écran', () => {
 
   it('ne lance aucune requête de phases tant que les créneaux ne sont pas arrivés', () => {
     // `enabled: departId !== null` — interroger `/departs/null/phases` produirait un 404 en boucle.
-    monter()
+    monter(null)
     expect(usePhases).toHaveBeenCalledWith(null)
     expect(usePhases).not.toHaveBeenCalledWith(1)
-  })
-
-  it('le dit franchement quand le tournoi n’a aucun créneau', async () => {
-    departsRendus = []
-    monter()
-
-    expect(await screen.findByText(/Aucun départ n’est encore défini/)).toBeInTheDocument()
   })
 })
