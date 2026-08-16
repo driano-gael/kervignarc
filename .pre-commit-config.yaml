@@ -64,16 +64,25 @@ repos:
         # Le hook **vérifie, il ne régénère pas** : un hook qui réécrit des fichiers pendant le
         # commit laisse un état `staged` / `unstaged` incohérent et surprend. Il échoue en donnant
         # la commande à lancer.
-        # ⚠️ Couverture **partielle, et assumée comme telle**. Les cartes dépendent aussi du code
-        # source lui-même : le contrôle de portage teste l'existence des modules nommés par les
-        # ADR et y cherche les symboles promis. Renommer une classe citée par un ADR périme donc
-        # les cartes **sans** déclencher ce hook. Élargir le motif à tout `backend/**.py`
-        # imposerait ~3 s de `git log` à presque chaque commit ; l'arbitrage est de laisser la
-        # **CI** être l'autorité sur ce cas — c'est elle qui vérifie sur tout diff.
         # Les quatre livrables de suivi entrent dans ce motif depuis E00US019 : l'atlas recalcule
         # leurs compteurs et confronte leurs renvois. Sans eux, corriger une ligne de `SUIVI-US.md`
         # périmait les cartes sans que rien ne le dise ici — et la CI le découvrait après le push.
-        files: ^(CLAUDE\.md|docs/adr/.*\.md|docs/dette\.md|stories/.*\.md|epics/README\.md|journal-d-avancement/SUIVI-US\.md|backend/atlas/.*\.py|atlas/donnees/.*)$
+        #
+        # ⚠️ **Le code source entre dans le motif depuis E00US020**, et c'est un renversement
+        # d'arbitrage assumé. Jusque-là, le code ne périmait les cartes que **rarement** (renommer
+        # une classe citée par un ADR), et la note d'origine tranchait : « laisser la CI être
+        # l'autorité sur ce cas », plutôt qu'imposer quelques secondes à presque chaque commit.
+        # La carte du code renverse le rapport : elle compte **tous** les imports du backend et
+        # tous ceux entre features du front, donc désormais presque **chaque US** périme les
+        # cartes. Garder l'ancien arbitrage ferait rougir la CI sur presque **toutes** les PR,
+        # avec un correctif d'une ligne à chaque fois — c'est précisément le mécanisme qui fait
+        # désactiver une porte. Le coût constaté est de ~5 s sur les commits concernés.
+        #
+        # Le motif épouse **exactement la surface lue** : les cinq couches plus `atlas/` côté
+        # backend, `features/` côté front. Un `backend/.*\.py` large aurait fait payer ces
+        # secondes aux commits purement de tests ou de migrations, que la carte ne lit jamais —
+        # une porte qui se déclenche pour rien s'apprend aussi vite qu'une porte qui rougit à tort.
+        files: ^(CLAUDE\.md|docs/adr/.*\.md|docs/dette\.md|stories/.*\.md|epics/README\.md|journal-d-avancement/SUIVI-US\.md|backend/(domain|application|infrastructure|api|bootstrap|atlas)/.*\.py|frontend/src/features/.*\.tsx?|atlas/donnees/.*)$
 
       - id: eslint
         name: eslint — frontend

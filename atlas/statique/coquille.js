@@ -15,6 +15,7 @@ var Atlas = (function () {
     { fichier: "index.html", libelle: "Le règlement" },
     { fichier: "decisions.html", libelle: "Les décisions" },
     { fichier: "avancement.html", libelle: "L'avancement" },
+    { fichier: "code.html", libelle: "La carte du code" },
     { fichier: "errata.html", libelle: "Ce qui a changé" },
     { fichier: "controles.html", libelle: "Écarts constatés" },
     { fichier: "recherche.html", libelle: "Rechercher" },

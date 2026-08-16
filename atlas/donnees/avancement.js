@@ -562,15 +562,16 @@ window.ATLAS.avancement = {
     "E00US018"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E00US020",
+    "E00US026"
+   ],
    "severite": "mineur"
   }
  ],
  "entete": {
-  "adr_du_resume": [
-   "0086"
-  ],
-  "derniere": "E00US019"
+  "adr_du_resume": [],
+  "derniere": "E00US020"
  },
  "epics": [
   {
@@ -1046,7 +1047,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US018",
    "sections": [
-    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
+    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "L'atlas : le règlement en vigueur et l'histoire des décisions",
@@ -1063,11 +1064,30 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US019",
    "sections": [
-    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
+    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas",
    "titre_story": "L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas"
+  },
+  {
+   "adr": [
+    "0086"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [
+    "067"
+   ],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "✅",
+   "identifiant": "E00US020",
+   "sections": [
+    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "L'atlas : la carte du code",
+   "titre_story": "L'atlas : la carte du code"
   },
   {
    "adr": [],
@@ -1076,24 +1096,9 @@ window.ATLAS.avancement = {
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
    "etat": "🎯",
-   "identifiant": "E00US020",
-   "sections": [
-    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
-   ],
-   "story": "",
-   "titre": "Atlas — la carte du code (imports, matrice de dépendances, ports)",
-   "titre_story": ""
-  },
-  {
-   "adr": [],
-   "dettes_introduites": [],
-   "dettes_resorbees": [],
-   "epic": "00",
-   "epic_titre": "Socle technique & walking skeleton",
-   "etat": "⬜",
    "identifiant": "E00US021",
    "sections": [
-    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
+    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
    ],
    "story": "",
    "titre": "Atlas — le métier (cycles de vie, énumérations, entités)",
@@ -1108,11 +1113,73 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E00US022",
    "sections": [
-    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
+    "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
    ],
    "story": "",
    "titre": "Atlas — les flux (saisie → file d'écriture → WebSocket)",
    "titre_story": ""
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US023",
+   "sections": [
+    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Nommer le noyau partagé du front, et défaire les enchevêtrements",
+   "titre_story": "Nommer le noyau partagé du front, et défaire les enchevêtrements"
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US024",
+   "sections": [
+    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Sortir la logique des quatre composants XXL du front",
+   "titre_story": "Sortir la logique des quatre composants XXL du front"
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US025",
+   "sections": [
+    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Le contrat DTO front ↔ back, vérifié plutôt que recopié",
+   "titre_story": "Le contrat DTO front ↔ back, vérifié plutôt que recopié"
+  },
+  {
+   "adr": [],
+   "dettes_introduites": [],
+   "dettes_resorbees": [
+    "067"
+   ],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US026",
+   "sections": [
+    "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Rallier le JavaScript de l'atlas à l'outillage du front (DETTE-067)",
+   "titre_story": "Rallier le JavaScript de l'atlas à l'outillage du front"
   },
   {
    "adr": [
@@ -3784,8 +3851,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 112,
-  "vivantes": 151
+  "livrees": 113,
+  "vivantes": 155
  },
  "sections": [
   {
@@ -4842,11 +4909,11 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    2,
+    3,
     5
    ],
    "compteur_ecrit": [
-    2,
+    3,
     5
    ],
    "lignes": [
@@ -4864,13 +4931,13 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "🎯",
+     "etat": "✅",
      "identifiant": "E00US020",
-     "titre": "Atlas — la carte du code (imports, matrice de dépendances, ports)"
+     "titre": "L'atlas : la carte du code"
     },
     {
      "comptee": true,
-     "etat": "⬜",
+     "etat": "🎯",
      "identifiant": "E00US021",
      "titre": "Atlas — le métier (cycles de vie, énumérations, entités)"
     },
@@ -4881,7 +4948,44 @@ window.ATLAS.avancement = {
      "titre": "Atlas — les flux (saisie → file d'écriture → WebSocket)"
     }
    ],
-   "titre": "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**"
+   "titre": "Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**"
+  },
+  {
+   "calcule": [
+    0,
+    4
+   ],
+   "compteur_ecrit": [
+    0,
+    4
+   ],
+   "lignes": [
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US023",
+     "titre": "Nommer le noyau partagé du front, et défaire les enchevêtrements"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US024",
+     "titre": "Sortir la logique des quatre composants XXL du front"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US025",
+     "titre": "Le contrat DTO front ↔ back, vérifié plutôt que recopié"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US026",
+     "titre": "Rallier le JavaScript de l'atlas à l'outillage du front (DETTE-067)"
+    }
+   ],
+   "titre": "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
   },
   {
    "calcule": [

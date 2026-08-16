@@ -1290,8 +1290,389 @@ var Pages = (function () {
     cible.appendChild(Atlas.element("p", null, "<a href='avancement.html'>Retour à l'avancement</a>"));
   }
 
+  /* --- 8. La carte du code -------------------------------------------------------------------- */
+
+  /* Le schéma du sens des dépendances. Les cinq couches sont posées **dans l'ordre du sens
+   * autorisé** — le domaine à gauche, la racine de composition à droite —, et chaque import
+   * traversant est tiré sous la rangée. La propriété visuelle est alors immédiate : quand
+   * l'architecture est tenue, **toutes les flèches pointent vers la gauche**. Une seule qui pointe
+   * à droite, et elle est rouge.
+   *
+   * Tracé orthogonal (V/H), comme les deux autres schémas du site : aucune courbe, aucun
+   * chevauchement — le rendu Mermaid avait été écarté pour cette raison exacte (ADR-0086). */
+  function schemaCouches(donnees) {
+    var LARGEUR = 148;
+    var HAUTEUR = 44;
+    var ECART = 30;
+    var COULOIR = 17;
+    var BAS = 8 + HAUTEUR;
+
+    var couches = donnees.couches || [];
+    var rang = {};
+    couches.forEach(function (couche, index) {
+      rang[couche] = index;
+    });
+    var centre = function (couche) {
+      return 2 + rang[couche] * (LARGEUR + ECART) + LARGEUR / 2;
+    };
+
+    var traversantes = (donnees.matrice || []).filter(function (cellule) {
+      return cellule.occurrences > 0;
+    });
+
+    /* Placement en couloirs : une liaison descend jusqu'au premier couloir libre sur son
+     * intervalle, donc deux liaisons qui se chevauchent ne partagent jamais un couloir.
+     *
+     * ⚠️ Le nommage suit **exactement** celui des deux autres schémas du site (`schemaChaine`,
+     * `grapheEpics`) : `bas` = borne inférieure, `haut` = borne supérieure, test de recouvrement
+     * `posee.bas < haut && bas < posee.haut`. La première version inversait les deux noms et le
+     * sens des comparaisons — correct isolément, mais c'est le piège : copier une ligne d'un
+     * schéma à l'autre y introduisait un bug muet, sur du JS que ni linter ni typage ne regardent
+     * (DETTE-067). Le tri diffère en revanche volontairement (courtes d'abord ici, longues
+     * d'abord dans `schemaChaine`) : ce schéma n'a que cinq boîtes, les courtes au plus près.
+     *
+     * 3ᵉ occurrence de cette coloration d'intervalles dans le fichier : le seuil du § Dette est
+     * atteint, le remède (hisser `allouer` au niveau du module) est renvoyé à E00US026, qui
+     * touche déjà ces fichiers — pas en douce ici. */
+    var placees = [];
+    traversantes
+      .slice()
+      .sort(function (a, b) {
+        return (
+          Math.abs(rang[a.source] - rang[a.cible]) - Math.abs(rang[b.source] - rang[b.cible])
+        );
+      })
+      .forEach(function (cellule) {
+        var bas = Math.min(centre(cellule.source), centre(cellule.cible));
+        var haut = Math.max(centre(cellule.source), centre(cellule.cible));
+        var couloir = 0;
+        while (
+          placees.some(function (posee) {
+            return posee.couloir === couloir && posee.bas < haut && bas < posee.haut;
+          })
+        ) {
+          couloir += 1;
+        }
+        placees.push({ cellule: cellule, bas: bas, haut: haut, couloir: couloir });
+      });
+
+    var couloirs = placees.reduce(function (max, posee) {
+      return Math.max(max, posee.couloir + 1);
+    }, 0);
+    var largeurTotale = couches.length * LARGEUR + (couches.length - 1) * ECART + 4;
+    var hauteurTotale = BAS + couloirs * COULOIR + 18;
+
+    var svg =
+      "<svg class='reseau' width='" + largeurTotale + "' viewBox='0 0 " + largeurTotale + " " +
+      hauteurTotale + "' role='img' aria-label='Sens des dépendances entre les cinq couches'>";
+
+    placees.forEach(function (posee) {
+      var cellule = posee.cellule;
+      var y = BAS + (posee.couloir + 1) * COULOIR;
+      var xDepart = centre(cellule.source);
+      var xArrivee = centre(cellule.cible);
+      var classe = cellule.autorise ? "arete" : "arete interdite";
+      var sens = cellule.autorise ? "dépend de" : "REMONTE vers";
+      svg +=
+        "<path class='" + classe + "' d='M " + xDepart + " " + BAS + " V " + y + " H " + xArrivee +
+        " V " + (BAS + 7) + "'><title>" + E(cellule.source) + " " + sens + " " + E(cellule.cible) +
+        " — " + cellule.occurrences + " imports</title></path>" +
+        /* La pointe marque **l'arrivée** : sans elle, un tracé orthogonal ne dit pas qui dépend
+         * de qui, et le schéma se lit à l'envers une fois sur deux. */
+        "<path class='fleche" + (cellule.autorise ? "" : " interdite") + "' d='M " +
+        (xArrivee - 4) + " " + (BAS + 8) + " L " + (xArrivee + 4) + " " + (BAS + 8) + " L " +
+        xArrivee + " " + BAS + " Z'></path>" +
+        "<text class='etiquette' x='" + ((xDepart + xArrivee) / 2) + "' y='" + (y - 4) +
+        "' text-anchor='middle'>" + cellule.occurrences + "</text>";
+    });
+
+    couches.forEach(function (couche, index) {
+      var x = 2 + index * (LARGEUR + ECART);
+      var permis = (donnees.sens_autorise || {})[couche] || [];
+      svg +=
+        "<rect class='boite" + (couche === "domain" ? " pivot" : "") + "' x='" + x +
+        "' y='8' width='" + LARGEUR + "' height='" + HAUTEUR + "' rx='4'><title>" + E(couche) +
+        " peut importer : " + E(permis.join(", ") || "aucune couche") + "</title></rect>" +
+        "<text x='" + (x + 10) + "' y='27'>" + E(couche) + "</text>" +
+        "<text class='etiquette' x='" + (x + 10) + "' y='44'>" +
+        E(permis.length ? "→ " + permis.length + " couche(s)" : "n'importe rien") + "</text>";
+    });
+
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML = svg + "</svg>";
+    return enveloppe;
+  }
+
+  function matriceCouches(donnees) {
+    var couches = donnees.couches || [];
+    var par = {};
+    (donnees.matrice || []).forEach(function (cellule) {
+      par[cellule.source + ">" + cellule.cible] = cellule;
+    });
+
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>importe →</th>" +
+      couches
+        .map(function (couche) {
+          return "<th>" + E(couche) + "</th>";
+        })
+        .join("") +
+      "</tr></thead><tbody>" +
+      couches
+        .map(function (source) {
+          return (
+            "<tr><th scope='row'>" + E(source) + "</th>" +
+            couches
+              .map(function (cible) {
+                if (source === cible) {
+                  return "<td class='discret'>—</td>";
+                }
+                var cellule = par[source + ">" + cible];
+                if (!cellule || !cellule.occurrences) {
+                  /* Une case vide **autorisée** et une case vide **interdite** ne disent pas la
+                   * même chose : la première est une dépendance qui n'existe pas encore, la
+                   * seconde une dépendance qui ne doit jamais exister. */
+                  return (
+                    "<td class='discret'>" +
+                    (cellule && cellule.autorise ? "0" : "<span title='interdit par la règle 2'>✕</span>") +
+                    "</td>"
+                  );
+                }
+                return cellule.autorise
+                  ? "<td class='mono'>" + cellule.occurrences + "</td>"
+                  : "<td class='mono'><span class='pastille alerte'>" + cellule.occurrences +
+                      " — interdit</span></td>";
+              })
+              .join("") +
+            "</tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    return enveloppe;
+  }
+
+  function tableauPaquets(paquets) {
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>Paquet</th><th>importe</th><th>Imports</th><th>Depuis</th></tr>" +
+      "</thead><tbody>" +
+      paquets
+        .map(function (arete) {
+          var fichiers = arete.origines
+            .map(function (chemin) {
+              return "<li class='mono'>" + E(chemin) + "</li>";
+            })
+            .join("");
+          return (
+            "<tr><td class='mono'>" + E(arete.source) + "</td><td class='mono'>" +
+            E(arete.cible) + "</td><td>" +
+            (arete.autorise
+              ? arete.occurrences
+              : "<span class='pastille alerte'>" + arete.occurrences + " — interdit</span>") +
+            "</td><td><details><summary>" +
+            Atlas.pluriel(arete.origines.length, "fichier") +
+            "</summary><ul class='liste-nue'>" + fichiers + "</ul></details></td></tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    return enveloppe;
+  }
+
+  function tableauPorts(ports) {
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>Port</th><th>Déclaré dans</th><th>Méthodes</th><th>Adapters</th>" +
+      "</tr></thead><tbody>" +
+      ports
+        .map(function (port) {
+          /* Un port à un seul membre apparie tout ce qui porte une méthode du même nom, sémantique
+           * comprise : 26 des 60 ports sont dans ce cas et produisent plus de la moitié des
+           * appariements affichés. Le dire sur la ligne, plutôt que de laisser « 24 candidats »
+           * passer pour un inventaire. */
+          var peuDiscriminant = port.methodes.length < 2 && port.adapters.length > 2;
+          var adapters = port.adapters.length
+            ? "<details><summary>" + Atlas.pluriel(port.adapters.length, "candidat") +
+              (peuDiscriminant ? " <span class='discret'>— apparié sur un seul membre, peu discriminant</span>" : "") +
+              "</summary><ul class='liste-nue'>" +
+              port.adapters
+                .map(function (adapter) {
+                  return (
+                    "<li><strong>" + E(adapter.nom) + "</strong> <span class='discret mono'>" +
+                    E(adapter.fichier) + "</span></li>"
+                  );
+                })
+                .join("") +
+              "</ul></details>"
+            : "<span class='pastille alerte'>aucun</span>";
+          return (
+            "<tr><td><strong>" + E(port.nom) + "</strong></td><td class='mono'>" +
+            E(port.fichier) +
+            (port.hors_domaine ? " <span class='pastille change'>hors domaine</span>" : "") +
+            "</td><td class='discret'>" + E(port.methodes.join(", ") || "aucune") + "</td><td>" +
+            adapters + "</td></tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    return enveloppe;
+  }
+
+  function tableauFront(front) {
+    var enveloppe = Atlas.element("div", "defilable");
+    enveloppe.innerHTML =
+      "<table><thead><tr><th>Feature</th><th>Importée par</th></tr></thead><tbody>" +
+      front.fan_in
+        .map(function (ligne) {
+          /* Le seuil est **indicatif** et assumé comme tel : rien dans les règles ne fixe le
+           * nombre de clientes à partir duquel une feature cesse d'en être une. Il attire l'œil,
+           * il ne prononce pas de verdict — le verdict, ce sont les nœuds ci-dessus. */
+          var brique = ligne.clientes >= 8;
+          return (
+            "<tr><td class='mono'>" + E(ligne.feature) + "</td><td>" + ligne.clientes +
+            (brique
+              ? " <span class='pastille change'>brique commune de fait</span>"
+              : "") +
+            "</td></tr>"
+          );
+        })
+        .join("") +
+      "</tbody></table>";
+    return enveloppe;
+  }
+
+  function carte(cible) {
+    var donnees =
+      Atlas.donnees("carte") ||
+      { couches: [], matrice: [], paquets: [], ports: [], front: { fan_in: [], enchevetrements: [] }, resume: {} };
+    var resume = donnees.resume || {};
+    var front = donnees.front || { fan_in: [], enchevetrements: [], aretes: [] };
+
+    titrePage(
+      cible,
+      "La carte du code",
+      "Ce que les imports font <strong>réellement</strong> des règles d'architecture. Le backend " +
+        "est lu à l'<strong>AST</strong> — exact, imports relatifs résolus : c'est ce qui autorise " +
+        "un contrôle bloquant. Le front est lu à l'<strong>expression régulière</strong>, faute de " +
+        "savoir lire du TypeScript sans dépendance : ses constats sont des <strong>signaux</strong>, " +
+        "jamais des blocages."
+    );
+
+    var grille = Atlas.element("div", "grille");
+    grille.innerHTML =
+      /* Les deux nombres, et pas seulement le premier : la matrice ci-dessous ne somme que les
+       * imports **franchissant une couche**, l'écart étant celui des arêtes intra-couche entre
+       * paquets. Une page dont l'argument est « un nombre qu'on ne peut pas aller vérifier ne se
+       * corrige jamais » ne peut pas se permettre une addition qui ne tombe pas juste. */
+      "<div class='carte'><span class='compteur'>" + (resume.imports || 0) +
+      "</span> imports entre paquets<p class='discret'>Dont <strong>" +
+      (resume.imports_entre_couches || 0) + "</strong> franchissent une couche — c'est ce que " +
+      "somme la matrice — et <strong>" + (resume.violations || 0) + "</strong> à contresens. Un " +
+      "seul suffit à faire rougir <span class='mono'>--verifier</span> : la règle 2 n'était " +
+      "vérifiée que pour le domaine.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + (resume.ports || 0) +
+      "</span> ports<p class='discret'>Dont <strong>" + (resume.ports_hors_domaine || 0) +
+      "</strong> hors du domaine et <strong>" + (resume.ports_sans_adapter || 0) +
+      "</strong> sans adapter. Appariement structurel : signalé, jamais bloqué.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + (resume.features || 0) +
+      "</span> features au front<p class='discret'>Reliées par <strong>" +
+      (resume.aretes_front || 0) + "</strong> imports croisés. La règle 10 veut des features " +
+      "autonomes ; rien ne le vérifiait.</p></div>" +
+      "<div class='carte'><span class='compteur'>" + (resume.enchevetrements || 0) +
+      "</span> nœuds enchevêtrés<p class='discret'>Le plus gros tient <strong>" +
+      (resume.plus_gros_noeud || 0) + "</strong> features : aucune ne peut plus être lue, testée " +
+      "ni retirée seule.</p></div>";
+    cible.appendChild(grille);
+
+    cible.appendChild(Atlas.element("h2", null, "Le sens des dépendances"));
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Les couches sont posées dans l'ordre du sens autorisé — le domaine à gauche, la racine " +
+          "de composition à droite. Quand l'architecture est tenue, <strong>toutes les flèches " +
+          "pointent vers la gauche</strong> ; une flèche rouge remonte le courant. " +
+          "<strong>Limite assumée</strong> : la lecture couvre les imports statiques et les " +
+          "<span class='mono'>import_module(\"…\")</span> à cible littérale ; un module dont le " +
+          "nom est <em>calculé</em> à l'exécution reste hors de portée."
+      )
+    );
+    cible.appendChild(schemaCouches(donnees));
+
+    cible.appendChild(Atlas.element("h2", null, "Couche par couche"));
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Une case <span class='mono'>✕</span> est une dépendance que la règle 2 interdit : elle " +
+          "doit rester vide. Une case <span class='mono'>0</span> est simplement une dépendance " +
+          "qui n'existe pas encore."
+      )
+    );
+    cible.appendChild(matriceCouches(donnees));
+
+    cible.appendChild(Atlas.element("h2", null, "Paquet par paquet"));
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Le grain fin, fichiers d'origine compris — un nombre qu'on ne peut pas aller vérifier " +
+          "ne se corrige jamais."
+      )
+    );
+    cible.appendChild(tableauPaquets(donnees.paquets || []));
+
+    cible.appendChild(Atlas.element("h2", null, "Les ports et leurs adapters"));
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Un <span class='mono'>Protocol</span> s'implémente <strong>sans héritage</strong> : " +
+          "l'appariement est donc structurel — une classe qui porte toutes les méthodes publiques " +
+          "du port. Un port à une seule méthode courante sur-apparie ; seul le <strong>zéro</strong> " +
+          "est signalé, le reste est laissé au jugement."
+      )
+    );
+    cible.appendChild(tableauPorts(donnees.ports || []));
+
+    cible.appendChild(Atlas.element("h2", null, "Le front, mesuré à l'expression régulière"));
+    var noeuds = front.enchevetrements || [];
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        null,
+        noeuds.length
+          ? "<strong>" + Atlas.pluriel(noeuds.length, "groupe") + "</strong> de features " +
+            "s'importent mutuellement, directement ou non : " +
+            noeuds
+              .map(function (noeud) {
+                return "<span class='mono'>" + E(noeud.join(" ↔ ")) + "</span>";
+              })
+              .join(" · ") +
+            "."
+          : "Aucune feature n'en importe une autre en cercle."
+      )
+    );
+    cible.appendChild(
+      Atlas.element(
+        "p",
+        "discret",
+        "Ce sont des <strong>composantes fortement connexes</strong>, pas un compte de cycles : " +
+          "ce dernier dépend de l'ordre de parcours, donc deux exécutions pourraient en annoncer " +
+          "des nombres différents — inacceptable sur une sortie comparée à l'octet en CI. Les " +
+          "fichiers de <strong>test</strong> sont exclus du graphe : reprocher à une feature de " +
+          "ne plus pouvoir être <em>testée</em> seule n'a pas de sens si c'est le test qui crée " +
+          "le lien."
+      )
+    );
+    cible.appendChild(tableauFront(front));
+  }
+
   return {
     avancement: avancement,
+    carte: carte,
     controles: controles,
     decisions: decisions,
     errata: errata,

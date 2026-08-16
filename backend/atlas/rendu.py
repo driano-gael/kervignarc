@@ -22,7 +22,7 @@ from typing import Any
 DOSSIER = ("atlas", "donnees")
 
 # Comparées à l'octet près : ce sont des fonctions pures de l'arbre de travail.
-CLES_STRICTES = ("reglement", "decisions", "controles", "corpus", "avancement")
+CLES_STRICTES = ("reglement", "decisions", "controles", "corpus", "avancement", "carte")
 # Comparée avec tolérance d'ajout : dérivée de git, donc en retard d'un commit au pre-commit.
 CLE_TOLERANTE = "historique"
 

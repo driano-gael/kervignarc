@@ -234,6 +234,64 @@ retirer vaut mieux que de le documenter comme « calibré » — et c'est la mê
 calibrage des sévérités, appliquée un cran plus loin : **un contrôle qu'on ne peut pas rendre juste
 ne se garde pas en le déclarant heuristique.**
 
+### Amendement du 16/08/2026 (E00US020) — la porte s'étend au code
+
+Deux extensions ont porté sur l'**écrit** (l'écrit contre le code, puis l'écrit contre l'écrit).
+`E00US020` ajoute la troisième et dernière famille : le **code contre le code**. La règle 2 de
+`CLAUDE.md` — « tout pointe vers le domaine » — n'était vérifiée automatiquement que **pour le
+domaine** (`backend/tests/test_domain_isolation.py`). Les quatre autres sens ne l'étaient par rien :
+un `application/` important `api/` passait le hook, la CI et la revue.
+
+**`SENS_AUTORISE` est désormais l'écriture machine de la règle 2**, et il faut le dire parce que
+cela crée une **seconde écriture normative** d'une règle non négociable. Ce que la table autorise
+au-delà de la lettre de la prose, avec son motif :
+
+- **`infrastructure → application`** — un adapter doit importer le port qu'il satisfait, et
+  quelques ports techniques (l'authentification) sont déclarés dans `application/`. Étendue réelle
+  au jour de la décision : **un seul import** (`infrastructure/auth/identifiants.py`). Que ces
+  ports soient hors du domaine est un écart à la règle 2, **signalé** (`port-hors-domaine`) et non
+  bloqué : trancher mécaniquement qu'un port d'authentification est du métier de tir à l'arc
+  reviendrait à arbitrer seul une question de conception ;
+- **`api → infrastructure`** — la règle 5 impose le mapping des erreurs à la frontière API, et les
+  objets câblés par `bootstrap` sont typés dans les signatures `Depends` (règle 6). 39 imports,
+  répartis sur 32 fichiers à raison de un ou deux chacun : c'est le patron de câblage, pas une
+  fuite. Écrit ici pour qu'un futur relecteur ne « corrige l'oubli » en retirant l'arête — il
+  produirait 39 faux bloquants le lendemain ;
+- **une couche s'importe elle-même** (`infrastructure/db → infrastructure`). Sans cette clause, la
+  porte annonçait **neuf** violations bloquantes le jour de sa livraison, toutes fausses.
+
+**Le calibrage gagne son troisième cas, et c'est le critère général** : *exact ⇒ bloquant,
+heuristique ⇒ signal*. Le backend est lu à l'**AST** — imports relatifs résolus, `import_module`
+à cible littérale compris —, donc il peut bloquer. Le front est lu à l'**expression régulière**,
+faute de savoir lire du TypeScript sans dépendance : ses constats sont des signaux, et la limite
+est **écrite sur la page**, pas seulement en commentaire.
+
+**Ce garde-fou ne remplace pas `test_domain_isolation.py`, et les deux ne font pas doublon.** Le
+test couvre `domain → {frameworks, outillage, autres couches}` par une **denylist** ; la porte
+couvre `couche → couche` sur les cinq sens. La porte est aveugle aux frameworks (elle ne regarde
+que les têtes appartenant aux couches) : la fusionner **perdrait** de la couverture, y compris
+l'entrée `atlas` que le point 6 avait fait ajouter exprès. Le remède structurel — basculer la
+denylist en liste blanche et faire dériver les deux d'une table unique — est déjà nommé dans
+`test_domain_isolation.py` et relève d'un ADR à lui.
+
+**Un arbitrage antérieur est renversé, et le dire fait partie de la décision.** Le commentaire du
+hook `atlas-a-jour` tranchait explicitement de ne pas élargir son motif au code source : « laisser
+la **CI** être l'autorité sur ce cas ». C'était juste tant que le code ne périmait les cartes que
+rarement (renommer une classe citée par un ADR). La carte du code renverse le rapport : elle compte
+**tous** les imports du backend, donc presque **chaque US** périme désormais les cartes. Garder
+l'ancien arbitrage aurait fait rougir la CI sur presque toutes les PR, avec un correctif d'une
+ligne à chaque fois — le mécanisme même qui fait désactiver une porte. Coût mesuré : ~5 s sur les
+commits concernés.
+
+⚠️ **Un contrôle a failli être livré faux, et c'est le même piège que le « titre divergent »
+ci-dessus.** `port-sans-adapter` reposait sur un appariement structurel ne lisant que les
+**méthodes** : il rendait **0 vrai positif sur 2 signaux**, parce qu'un port déclare en `@property`
+là où son implémentation porte des **champs de dataclass `frozen`** (règle 4) — le patron dominant
+du domaine. La différence avec le titre divergent est décisive : **ce contrôle-là pouvait être
+rendu juste** (lire aussi les attributs annotés), et il l'a été. La règle se précise donc : un
+contrôle qu'on ne peut pas rendre juste ne se garde pas ; un contrôle qu'on peut rendre juste se
+corrige — il ne se documente pas comme « heuristique assumée ».
+
 ## Porté dans le code par
 
 > *Vérifié dans le code du jour, pas déduit de cet ADR — nommer un module vide reproduirait
@@ -242,7 +300,11 @@ ne se garde pas en le déclarant heuristique.**
 - `backend/atlas/normalisation.py` — la table `_RELATIONS`, garde-fou du vocabulaire (point 4)
 - `backend/atlas/sources/reglement.py` — `lire_regles`, la lecture par ancre (point 5)
 - `backend/atlas/sources/adr.py` — `lire_decisions`, le graphe d'amendement et le portage (point 1)
-- `backend/atlas/controles.py` — `verifier` et `verifier_avancement`, les deux sévérités (point 4)
+- `backend/atlas/controles.py` — `verifier`, `verifier_avancement` et `verifier_code` : les **trois** familles de bloquants (l'écrit contre le code, l'écrit contre l'écrit, le code contre le code) et les deux sévérités (point 4)
+- `backend/atlas/sources/code.py` — `SENS_AUTORISE` et `autorise` (l'écriture machine de la règle 2), `lire_aretes`, `lire_ports`, `lire_aretes_front`, `lister_features`, `enchevetrements` ; `_fichiers_python` porte le refus de conclure d'une couche non lue
+- `backend/atlas/carte.py` — `construire` et `violations`, la charge utile de la carte du code
+- `backend/tests/test_atlas_carte.py` — la table du sens des dépendances transcrite depuis le CA, l'appariement structurel, l'exclusion des tests du graphe du front
+- `atlas/code.html` + `Pages.carte` dans `atlas/statique/pages.js` — le rendu (schéma des couches, matrice à deux mailles, inventaire des ports, graphe du front)
 - `backend/atlas/sources/suivi.py` — `lire_sections`, `compter`, `lire_entete` : la règle de comptage du tracker, appliquée à la lettre
 - `backend/atlas/sources/backlog.py` — `lire_epics`, `lire_dettes`, `lire_us_specifiees`
 - `backend/atlas/avancement.py` — `construire`, le rapprochement des quatre sources
@@ -256,5 +318,5 @@ ne se garde pas en le déclarant heuristique.**
 - `backend/tests/test_domain_isolation.py` — `atlas` dans la denylist du domaine (point 6)
 - `atlas/statique/pages.js` — les schémas en SVG maison (point 2)
 - `.github/workflows/ci.yml` — le job qui régénère et compare, sans installer de dépendance
-- `.pre-commit-config.yaml` — la moitié locale de la porte, à couverture partielle assumée
+- `.pre-commit-config.yaml` — la moitié locale de la porte. Son motif couvre depuis `E00US020` le **code source** (les cinq couches du backend et les features du front) et non plus les seuls documents : la « couverture partielle assumée » qui figurait ici décrivait un arbitrage désormais renversé (cf. l'amendement ci-dessus)
 - `.gitattributes` — `linguist-generated` sans `-diff` (point 3)

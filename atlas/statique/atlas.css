@@ -404,6 +404,24 @@ a.pastille:hover {
   stroke-width: 2;
 }
 
+/* La pointe d'une liaison : elle marque l'**arrivée**. Un tracé orthogonal sans elle se lit à
+   l'envers une fois sur deux — et sur un schéma dont le sujet *est* le sens, c'est fatal. */
+.reseau .fleche {
+  fill: var(--bord);
+  stroke: none;
+}
+
+/* Une dépendance qui remonte le courant. Rouge, comme un écart bloquant sur les autres pages :
+   c'est le même verdict, il doit avoir la même couleur d'un bout à l'autre du site. */
+.reseau .arete.interdite {
+  stroke: var(--bloquant);
+  stroke-width: 2;
+}
+
+.reseau .fleche.interdite {
+  fill: var(--bloquant);
+}
+
 .reseau text {
   fill: var(--texte);
   font-family: ui-monospace, "Consolas", monospace;

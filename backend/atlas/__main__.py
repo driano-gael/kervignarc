@@ -14,10 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from atlas import avancement as avancement_module
+from atlas import carte as carte_module
 from atlas import controles as controles_module
 from atlas import markdown, rendu
 from atlas.modele import AtlasSourceInvalide, Controle, Severite
-from atlas.sources import adr, backlog, corpus, historique, reglement, suivi
+from atlas.sources import adr, backlog, code, corpus, historique, reglement, suivi
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -62,11 +63,20 @@ def assembler(racine: Path) -> Cartes:
     dettes = backlog.lire_dettes(racine)
     us_specifiees = backlog.lire_us_specifiees(racine)
 
+    # Le code, lu dans le code. Les autres sources lisent des documents ; celle-ci confronte les
+    # règles d'architecture à ce que les imports font réellement (E00US020).
+    aretes = code.lire_aretes(racine)
+    ports = code.lire_ports(racine)
+    aretes_front = code.lire_aretes_front(racine)
+    noeuds = code.enchevetrements(aretes_front)
+    features = code.lister_features(racine)
+
     verdicts = controles_module.trier(
         controles_module.verifier(racine, regles, decisions)
         + controles_module.verifier_avancement(
             sections, epics, dettes, us_specifiees, decisions, entete
         )
+        + controles_module.verifier_code(aretes, ports, noeuds)
     )
     bloquants = controles_module.bloquants(verdicts)
 
@@ -83,6 +93,7 @@ def assembler(racine: Path) -> Cartes:
         "avancement": avancement_module.construire(
             sections, epics, dettes, us_specifiees, decisions, entete
         ),
+        "carte": carte_module.construire(aretes, ports, aretes_front, noeuds, features),
         "corpus": {"documents": corpus.construire(regles, decisions)},
         "historique": historique.historique(racine, regles),
     }
@@ -104,6 +115,7 @@ def assembler(racine: Path) -> Cartes:
             f"{len(regles)} règles · {len(decisions)} décisions "
             f"(dont {amendes} amendées par une décision plus récente) · "
             f"{livrees} US livrées · "
+            f"{len(ports)} ports · "
             f"{len(bloquants)} écart(s) bloquant(s), "
             f"{len(verdicts) - len(bloquants)} signal(aux)"
         ),
@@ -116,17 +128,18 @@ def construire(racine: Path) -> dict[str, str]:
 
 
 def _dire_les_bloquants(verdicts: tuple[Controle, ...]) -> None:
-    # Le libellé couvre les **deux** familles de bloquants : l'écrit contre le code (un ADR
-    # nomme un module absent) et l'écrit contre l'écrit (deux livrables de suivi qui se
-    # contredisent). Il n'envoyait jusqu'ici corriger qu'un ADR — y compris sur un compteur.
-    print(
-        "atlas : l'écrit se contredit, ou promet ce que le dépôt ne contient pas.", file=sys.stderr
-    )
+    # Le libellé couvre les **trois** familles de bloquants : l'écrit contre le code (un ADR nomme
+    # un module absent), l'écrit contre l'écrit (deux livrables de suivi qui se contredisent) et,
+    # depuis E00US020, le **code contre le code** (une couche qui remonte le sens des dépendances).
+    # Il a déjà dû être élargi une fois pour cette raison exacte : la version précédente envoyait
+    # relire un ADR le développeur dont la CI rougissait sur un import fautif.
+    print("atlas : un écart sans ambiguïté a été constaté.", file=sys.stderr)
     for controle in controles_module.bloquants(verdicts):
         print(f"  - {controle.sujet} {controle.message}", file=sys.stderr)
     print(
-        "\nCorrige l'ADR ou le code. Ces écarts sont des constats sans ambiguïté : c'est "
-        "exactement ce que l'atlas existe pour empêcher de laisser filer.",
+        "\nCorrige le code, l'ADR ou le livrable de suivi selon le cas — chaque ligne le dit. "
+        "Ces écarts sont des constats sans ambiguïté : c'est exactement ce que l'atlas existe "
+        "pour empêcher de laisser filer.",
         file=sys.stderr,
     )
 

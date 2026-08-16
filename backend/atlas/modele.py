@@ -142,3 +142,68 @@ class Controle:
     severite: Severite
     sujet: str
     message: str
+
+
+@dataclass(frozen=True, slots=True)
+class AreteCode:
+    """Un import franchissant une frontière de paquet, agrégé — le grain de la matrice.
+
+    `occurrences` compte les imports, pas les fichiers : deux `from domain.archer import …` dans
+    le même module font deux. `origines` nomme les fichiers, sans quoi la matrice afficherait un
+    nombre que le lecteur ne peut pas aller vérifier — et un chiffre invérifiable ne se corrige
+    jamais, il se contourne.
+    """
+
+    couche_source: str
+    couche_cible: str
+    paquet_source: str
+    paquet_cible: str
+    occurrences: int
+    origines: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Port:
+    """Une interface déclarée (`Protocol`) et les classes qui la satisfont.
+
+    ⚠️ `adapters` est rempli par **appariement structurel** — une classe qui porte tous les membres
+    publics du port, méthodes **et attributs annotés** —, jamais par héritage : aucune
+    implémentation du dépôt n'hérite du port qu'elle satisfait, un inventaire fondé sur les bases
+    de classe rendrait donc une page vide en affirmant qu'elle est complète.
+
+    Les deux directions d'imprécision sont assumées, et **écrites** — la revue a montré que n'en
+    documenter qu'une revenait à sur-vendre le contrôle :
+    - **sur**-appariement : un port à un seul membre au nom courant apparie beaucoup (26 des ports
+      du dépôt n'en ont qu'un). D'où un **nombre de candidats** affiché, jamais un verdict ;
+    - **sous**-appariement : il a existé, et il a produit **deux signaux faux sur deux** avant
+      correction — un port en `@property` face à une dataclass à champs annotés. C'est pourquoi
+      `_membres` lit aussi les attributs : le patron dominant du domaine (règle 4, immutabilité)
+      passait au travers.
+    """
+
+    nom: str
+    fichier: str
+    couche: str
+    methodes: tuple[str, ...]
+    adapters: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AreteFeature:
+    """Un import d'une feature du front vers une autre (règle 10 : découpage par feature)."""
+
+    de: str
+    vers: str
+    occurrences: int
+
+
+@dataclass(frozen=True, slots=True)
+class NoeudEnchevetre:
+    """Un groupe de features qui s'importent mutuellement, directement ou non.
+
+    Une **composante fortement connexe** de taille > 1, et non « un cycle » : le nombre de cycles
+    dépend de l'ordre de parcours et n'est donc pas une mesure — deux exécutions du même code sur
+    le même dépôt peuvent en annoncer des comptes différents. La composante, elle, est unique.
+    """
+
+    features: tuple[str, ...]

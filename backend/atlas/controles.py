@@ -20,9 +20,10 @@ from collections import Counter
 from pathlib import Path
 
 from atlas import markdown
-from atlas.modele import Controle, Decision, Regle, Severite
+from atlas.modele import AreteCode, Controle, Decision, NoeudEnchevetre, Port, Regle, Severite
 from atlas.sources import suivi
 from atlas.sources.backlog import Dette, Epic, UsSpecifiee
+from atlas.sources.code import SENS_AUTORISE, autorise, est_hors_domaine, est_sans_adapter
 from atlas.sources.suivi import Entete, Section, compter
 
 _US = re.compile(r"E\d{2}US\d{3}")
@@ -441,6 +442,103 @@ def verifier_avancement(
                     f"est annoncée « dernière » en tête du tracker, mais son résumé cite "
                     f"{', '.join('ADR-' + adr for adr in cites)}, qui ne la mentionne pas — "
                     f"le résumé décrit peut-être une autre US."
+                ),
+            )
+        )
+
+    return trier(tuple(trouves))
+
+
+def verifier_code(
+    aretes: tuple[AreteCode, ...],
+    ports: tuple[Port, ...],
+    noeuds: tuple[NoeudEnchevetre, ...],
+) -> tuple[Controle, ...]:
+    """Ce que le code fait des règles d'architecture — un seul bloquant, et il est exact.
+
+    Calibrage, dans la ligne des sévérités posées en tête de module :
+
+    - **bloquant** — `sens-des-dependances`. Constat AST, donc sans approximation, et **satisfait
+      au moment de la livraison** : la porte est verte le premier jour et ne fait que verrouiller
+      un invariant. C'est le trou réel que cette tranche bouche —
+      `tests/test_domain_isolation.py` ne surveille que le domaine, les quatre autres sens ne
+      l'étaient par rien ;
+    - **signal** — tout le reste. `port-hors-domaine` est un écart de **conception** qui peut être
+      légitime ; `port-sans-adapter` repose sur un appariement structurel heuristique ;
+      `features-enchevetrees` est lu à l'expression régulière. Bloquer là-dessus ferait rougir la
+      CI dès la livraison (19 features sont déjà enchevêtrées) et la ferait désactiver — on
+      perdrait alors aussi le bloquant ci-dessus, qui, lui, était juste.
+    """
+    trouves: list[Controle] = []
+
+    for arete in aretes:
+        if autorise(arete.couche_source, arete.couche_cible):
+            continue
+        permis = sorted(SENS_AUTORISE.get(arete.couche_source, frozenset()))
+        # `origines` ne peut pas être vide par construction, mais `AreteCode` est une dataclass
+        # publique : une garde vaut mieux qu'un `IndexError` au milieu d'un contrôle bloquant.
+        exemple = f", dont {arete.origines[0]}" if arete.origines else ""
+        trouves.append(
+            Controle(
+                code="sens-des-dependances",
+                severite=Severite.BLOQUANT,
+                sujet=arete.paquet_source,
+                message=(
+                    f"importe {arete.paquet_cible} ({arete.occurrences} fois{exemple}) : la "
+                    f"couche « {arete.couche_source} » ne peut dépendre que de "
+                    f"{', '.join(permis) or '— aucune couche'} (règle 2)."
+                ),
+            )
+        )
+
+    # ⚠️ **Agrégé, et non un signal par port.** Vingt ports hors domaine faisaient vingt verdicts
+    # au message identique — 39 % de la page « Écarts constatés » réduits à une seule ligne
+    # répétée, relevant tous du **même** arbitrage déjà tranché. C'est le mécanisme que le
+    # calibrage ci-dessus dit vouloir éviter, appliqué un cran plus bas : une page de signaux
+    # qu'on cesse de lire. Le détail port par port vit sur « La carte du code », qui l'affiche.
+    hors_domaine = [port for port in ports if est_hors_domaine(port)]
+    if hors_domaine:
+        trouves.append(
+            Controle(
+                code="port-hors-domaine",
+                severite=Severite.SIGNAL,
+                sujet=", ".join(sorted({port.couche for port in hors_domaine})),
+                message=(
+                    f"déclare {len(hors_domaine)} port(s) hors du domaine "
+                    f"({', '.join(port.nom for port in hors_domaine[:4])}"
+                    f"{'…' if len(hors_domaine) > 4 else ''}) — la règle 2 veut les ports dans le "
+                    f"domaine et les adapters dans l'infrastructure. Écart peut-être légitime "
+                    f"(une préoccupation technique n'est pas du métier de tir à l'arc) : à "
+                    f"trancher par un humain, pas par la porte. Détail sur « La carte du code »."
+                ),
+            )
+        )
+
+    for port in ports:
+        if est_sans_adapter(port):
+            trouves.append(
+                Controle(
+                    code="port-sans-adapter",
+                    severite=Severite.SIGNAL,
+                    sujet=port.nom,
+                    message=(
+                        f"({port.fichier}) n'est satisfait par aucune classe du backend : "
+                        f"aucune ne porte ses {len(port.methodes)} membre(s) public(s). "
+                        f"Port mort, ou adapter hors des cinq couches."
+                    ),
+                )
+            )
+
+    for noeud in noeuds:
+        trouves.append(
+            Controle(
+                code="features-enchevetrees",
+                severite=Severite.SIGNAL,
+                sujet=noeud.features[0],
+                message=(
+                    f"et {len(noeud.features) - 1} autre(s) feature(s) s'importent mutuellement "
+                    f"({', '.join(noeud.features)}) : aucune ne peut plus être lue, testée ni "
+                    f"retirée seule (règle 10). Lecture heuristique — jamais bloquante."
                 ),
             )
         )

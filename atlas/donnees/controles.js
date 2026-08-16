@@ -82,6 +82,30 @@ window.ATLAS.controles = {
    "sujet": "E05US023"
   },
   {
+   "code": "features-enchevetrees",
+   "message": "et 1 autre(s) feature(s) s'importent mutuellement (admin, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "admin"
+  },
+  {
+   "code": "features-enchevetrees",
+   "message": "et 18 autre(s) feature(s) s'importent mutuellement (archers, blasons, categories, competition, departs, duels, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie-duels, salle, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "archers"
+  },
+  {
+   "code": "features-enchevetrees",
+   "message": "et 1 autre(s) feature(s) s'importent mutuellement (bareme, grain-validation) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "bareme"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "déclare 20 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, GenerateurScores…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "severite": "signal",
+   "sujet": "application"
+  },
+  {
    "code": "portage-non-verifiable",
    "message": "annonce DEPART dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
@@ -92,6 +116,18 @@ window.ATLAS.controles = {
    "message": "annonce podium dans « backend/tests/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0061"
+  },
+  {
+   "code": "portage-non-verifiable",
+   "message": "annonce Pages.carte dans « atlas/code.html », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0086"
+  },
+  {
+   "code": "portage-non-verifiable",
+   "message": "annonce Pages.carte dans « atlas/statique/pages.js », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0086"
   },
   {
    "code": "portage-symbole-absent",
@@ -156,6 +192,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 25
+  "signaux": 31
  }
 };
