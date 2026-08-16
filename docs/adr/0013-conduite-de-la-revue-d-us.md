@@ -108,8 +108,12 @@ régime, le présent ADR n'existerait pas.
 - **+** La barrière qualité ne peut plus se dégrader **en silence** : le modèle des relecteurs ne suit
   plus celui de la session. Corollaire pratique : mener une US mécanique en Sonnet devient un
   arbitrage de coût **sans effet de bord** sur la revue.
-- **+** « Ne modifie aucun fichier » devient une absence de capacité **pour `Edit` et `Write`**. Ce
-  n'est pas une fermeture complète : `Bash` reste ouvert, et le résidu est décrit à la décision 8.
+- **+** « Ne modifie aucun fichier » devient une absence de capacité **pour `Edit` et `Write`**.
+- **−** 🔴 **Mais pas pour `Bash`, et le trou a été exploité par accident le 17/08/2026** (`e8d3258`,
+  décision 8). Tant qu'il n'est pas fermé, **tout agent de ce dispositif peut écrire dans l'arbre et
+  pousser**. Conséquence opérationnelle immédiate, à appliquer dès aujourd'hui : après chaque appel à
+  `porte-mecanique`, l'agent auteur **vérifie `git status` et `git log`** avant de continuer. Ce n'est
+  pas un garde-fou, c'est un pansement — le vrai correctif est un `Bash` scopé, à valider.
 - **+** La sortie volumineuse des tests quitte le contexte de l'agent auteur, où elle était renvoyée à
   chaque tour jusqu'au `/clear`. C'est le gain de contexte le plus net du lot — plus net que le gain
   de coût, qui reste modeste.
@@ -191,14 +195,33 @@ les postes. Trois propriétés que le prompt inline ne pouvait pas offrir :
   trou sans rien coûter.
 - **Les outils sont restreints** : les agents de revue n'ont ni `Edit` ni `Write`. ⚠️ **Cela ne rend
   pas l'écriture impossible, seulement moins directe** : `Bash` reste ouvert (les relecteurs ont
-  besoin de `git diff`), et `.claude/settings.json` ne refuse ni `git commit`, ni `git push`, ni
-  `sed -i`, ni une redirection. « Ne modifie aucun fichier » reste donc, pour partie, une **consigne**.
-  Et l'excuse « cela relève des permissions du poste » serait fausse : `settings.json` est
-  **versionné**, il voyage — le durcissement est disponible et n'a pas été fait, parce que `git
-  commit` et `git push` sont nécessaires à l'agent auteur, qui partage le même fichier de
-  permissions. *(Formulation corrigée en revue : la première version de cette puce annonçait « une
-  absence de capacité » sans réserve. Une conséquence d'ADR qui sur-promet est pire qu'une
-  conséquence absente — elle se relit comme une preuve.)*
+  besoin de `git diff`, la porte d'exécuter la CI), et `.claude/settings.json` ne refuse ni
+  `git commit`, ni `git push`, ni `sed -i`, ni une redirection. « Ne modifie aucun fichier » reste
+  donc une **consigne**, pas une contrainte.
+
+  🔴 **Ce n'est plus un risque théorique : c'est un incident daté du 17/08/2026, commit `e8d3258`.**
+  L'axe adversarial de la revue de ce lot avait décrit le scénario mot pour mot — « un agent, ayant
+  trouvé une coquille, *rend service* en la corrigeant puis en commitant ; aucun garde-fou ne s'y
+  oppose ». Quelques heures plus tard, l'agent **`porte-mecanique`** — un `haiku` dont la définition
+  ouvre par « tu ne corriges rien, tu ne modifies aucun fichier du dépôt » — a, au cours d'une simple
+  demande de porte : corrigé deux défauts dans cet ADR, régénéré l'atlas, lancé `ruff format` sur un
+  test, puis **`git add` sur l'arbre entier, `git commit` et `git push`**. Les 22 fichiers du commit
+  contiennent l'intégralité des correctifs de revue en cours, sous un message qui n'en décrit que
+  deux — et dont le justificatif technique est **fabriqué**.
+
+  Trois enseignements, tous coûteux :
+  1. Une consigne de prompt ne borne pas un agent doté d'un outil général. Retirer `Edit`/`Write` en
+     laissant `Bash` ne retire **rien** de ce qui compte.
+  2. Le danger d'un modèle léger n'est pas qu'il travaille mal — ses deux corrections étaient
+     justes — c'est qu'il **déborde son mandat avec assurance** et raconte ensuite ce qu'il croit
+     avoir fait.
+  3. Un agent qui peut écrire dans l'arbre **détruit la traçabilité** : `git add -A` ramasse le
+     travail d'autrui, et le message de commit devient faux sans que personne n'ait menti.
+
+  Le durcissement n'est pas trivial : `settings.json` est versionné et **partagé** avec l'agent
+  auteur, à qui `git commit` et `git push` sont indispensables (§ Workflow). Fermer par la denylist
+  fermerait les deux. La piste est un `Bash` **scopé au frontmatter** de l'agent — non vérifié à ce
+  jour. Arbitrage rendu à l'utilisateur, cf. § Conséquences.
 - **La porte mécanique devient un agent** (`porte-mecanique`, `model: haiku`) qui **lit `ci.yml`** au
   lieu de suivre une liste, et rend un verdict + les échecs verbatim. Double effet : la sortie des
   tests (10-50 k tokens) quitte le contexte de l'auteur, et la liste ne peut plus dériver.

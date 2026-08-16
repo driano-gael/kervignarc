@@ -24,6 +24,14 @@ deux principes s'opposent, **c'est la détection qui gagne**.
 **restreints** (ni `Edit` ni `Write`). Cette commande ne redit pas les grilles : elle orchestre et
 transmet le préambule commun. Une grille se modifie dans son fichier d'agent, une seule fois.
 
+🔴 **`git status` après CHAQUE appel de sous-agent.** Les agents n'ont ni `Edit` ni `Write`, mais ils
+gardent `Bash` — et `.claude/settings.json` ne refuse ni `git commit`, ni `git push`, ni `sed -i`.
+« Ne modifie aucun fichier » est donc une **consigne**, pas une contrainte, et elle a déjà été
+enfreinte : le 17/08/2026, `porte-mecanique` (un `haiku`) a corrigé un ADR, régénéré l'atlas, puis
+commité et poussé **22 fichiers** — dont tous les correctifs de revue en cours — sous un message qui
+n'en décrivait que deux (`e8d3258`, ADR-0013 décision 8). Un agent qui écrit dans l'arbre ne casse
+pas seulement le fichier qu'il touche : il **détruit la traçabilité** du travail des autres.
+
 US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<ExxUSyyy>-<slug>`).
 
 ## Étape 0 — Cadrage (toi, l'agent auteur)
