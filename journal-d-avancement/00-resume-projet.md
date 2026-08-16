@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 9 août 2026
+# Résumé du projet — où on en est au 15 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -148,6 +148,18 @@ de sa journée** : sa qualification, puis **tous ses tours de toutes les phases*
 ceux qu'on ne suit pas. Deux garde-fous : les **podiums ne sont jamais amputés** (un podium sans ses
 médaillés ne répond plus à « qui a gagné »), et aucun écran ne se vide en silence — quand vos archers
 ne sont pas sur l'écran regardé, il le **dit** et propose de revenir à l'affichage complet.
+
+Le **15/08/2026**, le projet s'est doté d'un **atlas** — un dossier qu'on ouvre d'un double-clic,
+sans rien lancer, pour voir **ce qui fait règle aujourd'hui et depuis quand**. Il montre le règlement
+en vigueur, puis l'histoire datée de chaque règle, lue directement dans l'historique du dépôt. Il
+répond surtout à une question qui n'en avait pas : **85 des 86 décisions d'architecture portent la
+mention « Accepté »** et une seule est marquée « remplacée », alors que **22 ont été amendées** par
+une décision plus récente — information qui ne figurait sur aucune des fiches concernées. L'atlas la
+calcule, et confronte au passage les centaines de modules et de symboles que ces décisions promettent
+au code réellement présent. Ce n'est pas une documentation de plus à tenir : tout y est **regénéré
+depuis les fichiers du projet**, et la vérification automatique échoue si l'affichage ne correspond
+plus aux sources. Détail dans
+[`2026-08-15-16h48-l-atlas-du-projet.md`](2026-08-15-16h48-l-atlas-du-projet.md).
 
 ---
 

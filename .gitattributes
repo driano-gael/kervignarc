@@ -1,6 +1,17 @@
 # Normalisation des fins de ligne : LF dans le dépôt, quel que soit l'OS.
 * text=auto eol=lf
 
+# Données générées de l'atlas (ADR-0085) : commitées pour que le site soit consultable après un
+# simple clone, et repliées sur GitHub pour ne pas noyer les revues.
+#
+# ⚠️ `linguist-generated` **seul**, sans `-diff`. Les deux attributs n'ont pas le même coût :
+# `linguist-generated` replie le diff en le laissant dépliable d'un clic, tandis que `-diff`
+# marque le fichier **binaire pour git** — `git diff`, `git blame` et `git log -p` deviennent
+# muets, et GitHub affiche « binary file not shown » sans recours. Une revue avait montré la
+# conséquence : un `historique.js` vidé ou falsifié devenait invisible sur les trois canaux à la
+# fois (CI verte, diff muet, UI silencieuse). La porte a été durcie, et l'aveuglement retiré.
+atlas/donnees/*.js linguist-generated=true
+
 # Fichiers binaires (pas de conversion)
 *.xlsx binary
 *.docx binary

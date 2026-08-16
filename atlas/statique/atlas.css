@@ -1,0 +1,512 @@
+/* Atlas — feuille de style unique.
+ *
+ * DETTE-065 — ce fichier ne passe sous aucun linter ni formateur (cf. `docs/dette.md`).
+ *
+ * Mobile-first, EXACTEMENT deux points de rupture (48rem, 80rem). Une seule dimension de
+ * variation, donc une seule chose à vérifier à l'œil — c'est le prix à payer pour se passer d'un
+ * outil de test de rendu (règles 11 et 12 : la rigueur va au moteur métier, pas à l'outillage).
+ *
+ * Sombre par défaut, conformément à la charte du projet ; le clair suit `prefers-color-scheme`.
+ * L'ambre signale, le rouge bloque, le vert rassure — jamais la couleur seule : chaque état porte
+ * aussi un mot, pour rester lisible en cas de daltonisme ou d'impression.
+ */
+
+:root {
+  --fond: #1d1d1b;
+  --surface: #262624;
+  --surface-haute: #302f2c;
+  --bord: #3d3b37;
+  --texte: #edebe7;
+  --discret: #a8a49c;
+  --lien: #7fb3d5;
+  --bloquant: #ff7a7a;
+  --signal: #e6a23c;
+  --tenu: #6fbf8b;
+  --accent: #c8102e;
+
+  --mesure: 68ch;
+  --rayon: 6px;
+  --pas: 1rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fond: #faf9f7;
+    --surface: #ffffff;
+    --surface-haute: #f0eeea;
+    --bord: #d9d5cd;
+    --texte: #23221f;
+    --discret: #625e57;
+    --lien: #1d5f8a;
+    --bloquant: #b3261e;
+    --signal: #8a5a00;
+    --tenu: #1f6b3f;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* `overflow-wrap` plutôt que `hyphens` : le corpus est bourré de chemins de fichiers et
+     d'identifiants qui ne doivent pas se couper n'importe où. */
+  overflow-wrap: break-word;
+}
+
+code,
+kbd,
+.mono {
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 0.9em;
+}
+
+code {
+  background: var(--surface-haute);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+a {
+  color: var(--lien);
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* --- Coquille ------------------------------------------------------------------------------ */
+
+.bandeau {
+  background: var(--surface);
+  border-bottom: 1px solid var(--bord);
+  padding: 0.75rem var(--pas);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bandeau-corps {
+  margin: 0 auto;
+  max-width: 80rem;
+}
+
+.marque {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.marque strong {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.marque span {
+  color: var(--discret);
+  font-size: 0.85rem;
+}
+
+/* Sous 48rem la navigation se replie : sur un téléphone, sept entrées en ligne deviennent
+   illisibles bien avant d'être inatteignables. */
+.menu > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.35rem 0;
+}
+
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu > summary::before {
+  content: "☰ Navigation";
+  color: var(--discret);
+  font-size: 0.9rem;
+}
+
+.menu[open] > summary::before {
+  content: "✕ Fermer";
+}
+
+.menu nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-top: 0.35rem;
+}
+
+.menu nav a {
+  border-radius: var(--rayon);
+  color: var(--texte);
+  padding: 0.6rem 0.5rem; /* ≥ 44 px de cible tactile avec la hauteur de ligne */
+  text-decoration: none;
+}
+
+.menu nav a[aria-current="page"] {
+  background: var(--surface-haute);
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 600;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 80rem;
+  padding: 1.5rem var(--pas) 4rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin: 0 0 0.35rem;
+}
+
+h2 {
+  border-bottom: 1px solid var(--bord);
+  font-size: 1.15rem;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.35rem;
+}
+
+.chapo {
+  color: var(--discret);
+  margin: 0 0 2rem;
+  max-width: var(--mesure);
+}
+
+/* --- Règles --------------------------------------------------------------------------------- */
+
+.regle {
+  border-left: 2px solid var(--bord);
+  margin-bottom: 1.75rem;
+  padding-left: 1rem;
+}
+
+.regle-tete {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rang {
+  background: var(--surface-haute);
+  border-radius: 50%;
+  color: var(--discret);
+  display: inline-grid;
+  flex: none;
+  font-size: 0.8rem;
+  height: 1.6rem;
+  place-items: center;
+  width: 1.6rem;
+}
+
+.regle-tete h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.regle-tete h3 a {
+  color: var(--texte);
+  text-decoration: none;
+}
+
+.regle-tete h3 a:hover {
+  text-decoration: underline;
+}
+
+.corps {
+  max-width: var(--mesure);
+}
+
+.corps p {
+  margin: 0.5rem 0;
+}
+
+/* --- Pastilles ------------------------------------------------------------------------------ */
+
+.pastille {
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  color: var(--discret);
+  display: inline-block;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 0.05rem 0.55rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.pastille:hover {
+  border-color: var(--lien);
+  color: var(--lien);
+}
+
+.pastille.change {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.pastille.alerte {
+  border-color: var(--bloquant);
+  color: var(--bloquant);
+}
+
+.pastille.tenu {
+  border-color: var(--tenu);
+  color: var(--tenu);
+}
+
+/* --- Cartes et listes ----------------------------------------------------------------------- */
+
+.grille {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+.carte {
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: var(--rayon);
+  padding: 1rem;
+}
+
+.carte h3 {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+.carte p {
+  margin: 0.35rem 0 0;
+}
+
+.compteur {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.liste-nue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.liste-nue li {
+  border-bottom: 1px solid var(--bord);
+  padding: 0.6rem 0;
+}
+
+.discret {
+  color: var(--discret);
+  font-size: 0.85rem;
+}
+
+/* --- Frise ---------------------------------------------------------------------------------- */
+
+/* Frise en CSS et non en SVG : elle reste sélectionnable, cherchable par le navigateur, et
+   bascule en liste verticale sur petit écran sans qu'on ait à recalculer une géométrie. */
+.frise {
+  border-left: 2px solid var(--bord);
+  margin: 0;
+  padding: 0 0 0 1rem;
+}
+
+.frise li {
+  list-style: none;
+  padding: 0 0 1.1rem;
+  position: relative;
+}
+
+.frise li::before {
+  background: var(--bord);
+  border-radius: 50%;
+  content: "";
+  height: 9px;
+  left: calc(-1rem - 5.5px);
+  position: absolute;
+  top: 0.55em;
+  width: 9px;
+}
+
+.frise li.change::before {
+  background: var(--signal);
+}
+
+.frise .quand {
+  color: var(--discret);
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+/* --- Filtres -------------------------------------------------------------------------------- */
+
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.filtres input,
+.filtres select {
+  background: var(--surface);
+  border: 1px solid var(--bord);
+  border-radius: var(--rayon);
+  color: var(--texte);
+  font: inherit;
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+}
+
+.filtres input[type="search"] {
+  flex: 1 1 14rem;
+}
+
+/* --- Réseau (SVG maison) -------------------------------------------------------------------- */
+
+/* Lignes droites, coudes à angle droit, aucune courbe : c'est une exigence explicite du
+   commanditaire, et c'est aussi ce qui reste lisible sans moteur de mise en page. */
+/* ⚠️ La largeur des schémas est posée **par un attribut `width` sur le `<svg>`**, à la
+ * génération — pas ici. Deux tentatives ont échoué avant celle-là, et la seconde est instructive :
+ * `max-width: 100%` réduisait le SVG pour le faire tenir (1,4 px de texte à 326 px, le conteneur
+ * `.defilable` ne défilant jamais) ; `min-width: max-content` **n'a rien changé**, parce qu'un
+ * `<svg viewBox>` sans dimension intrinsèque n'a pas de `max-content` égal à son viewBox — et il
+ * agrandissait au passage les petits schémas de 3,5×. Seule une largeur intrinsèque donne au
+ * conteneur quelque chose à faire défiler. La CSS ne peut pas la connaître : elle dépend du
+ * nombre de nœuds. */
+.reseau {
+  display: block;
+  height: auto;
+  overflow: visible;
+}
+
+.reseau .arete {
+  fill: none;
+  stroke: var(--bord);
+  stroke-width: 1.5;
+}
+
+.reseau .boite {
+  fill: var(--surface-haute);
+  stroke: var(--bord);
+}
+
+.reseau .boite.pivot {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.reseau text {
+  fill: var(--texte);
+  font-family: ui-monospace, "Consolas", monospace;
+  font-size: 12px;
+}
+
+.reseau .etiquette {
+  fill: var(--discret);
+  font-size: 10px;
+}
+
+/* --- Tableaux ------------------------------------------------------------------------------- */
+
+/* Tout tableau vit dans un conteneur défilant : c'est la faute de mise en page la plus fréquente,
+   et la seule qui casse vraiment une page sur téléphone. */
+.defilable {
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--bord);
+  border-radius: var(--rayon);
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--bord);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--discret);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* --- Points de rupture ---------------------------------------------------------------------- */
+
+@media (min-width: 48rem) {
+  body {
+    font-size: 17px;
+  }
+
+  .menu > summary {
+    display: none;
+  }
+
+  .menu nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    padding-top: 0.5rem;
+  }
+
+  .menu nav a {
+    padding: 0.4rem 0.7rem;
+  }
+
+  .menu nav a[aria-current="page"] {
+    box-shadow: inset 0 -3px 0 var(--accent);
+  }
+
+  h1 {
+    font-size: 1.9rem;
+  }
+
+  main {
+    padding: 2rem 1.5rem 5rem;
+  }
+
+  .grille {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+}
+
+@media (min-width: 80rem) {
+  main {
+    padding: 2.5rem 2rem 6rem;
+  }
+}
+
+/* Le menu replié n'a de sens que sur petit écran : au-delà, `details` reste ouvert en
+   permanence, sinon la navigation disparaîtrait pour qui a refermé le volet sur mobile. */
+@media (min-width: 48rem) {
+  .menu > nav {
+    display: flex !important;
+  }
+}
+
+@media print {
+  .bandeau,
+  .filtres {
+    display: none;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

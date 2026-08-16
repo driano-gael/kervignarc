@@ -34,8 +34,25 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "infrastructure",
         "api",
         "bootstrap",
+        # Paquets hors des cinq couches : outillage (`atlas` — ADR-0086 —, `release`), tests et
+        # migrations. La denylist ne protège que ce qu'on a pensé à y écrire, et il en manquait
+        # **quatre** : chacun était importable depuis `domain/` sans que le hook, la CI ni la revue
+        # ne le voient. `release` en particulier — « outillage du binaire de release » — est la
+        # catégorie exacte qui a justifié l'ajout d'`atlas`.
+        # L'inversion en liste blanche (« le domaine n'importe que la stdlib et lui-même ») serait
+        # le remède structurel ; elle relève d'un ADR, pas d'une ligne ajoutée en revue.
+        "atlas",
+        "release",
+        "tests",
+        "migrations",
     }
 )
+
+
+def test_les_paquets_hors_couches_sont_dans_la_denylist() -> None:
+    """Ancre les quatre ajouts : sans eux, `domain/` pouvait les importer en silence."""
+    assert _forbidden_imports("import atlas") == {"atlas"}
+    assert _forbidden_imports("from release.chemins import x") == {"release"}
 
 
 def _forbidden_imports(source: str) -> set[str]:
