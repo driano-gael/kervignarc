@@ -360,3 +360,79 @@ def test_la_pose_du_plan_est_reservee_a_l_admin(app_suisse: FastAPI) -> None:
         reponse = client.post(f"/api/v1/suisse/plan/{scn.tournoi_id}/{scn.phase_id}")
 
     assert reponse.status_code == 401, reponse.text
+
+
+# --- CA « le palmarès » : décerne si rien ne prélève dedans (arbitrage du 15/08/2026) -------------
+
+
+def _palmares(client: TestClient, tournoi_id: int) -> dict[int, dict[str, object]]:
+    reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
+    assert reponse.status_code == 200, reponse.text
+    return {ligne["archer_id"]: ligne for ligne in reponse.json()["lignes"]}
+
+
+def test_un_suisse_terminal_decerne_ses_rangs(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Le CA du palmarès.** Rien ne prélève dans cette phase : elle titre.
+
+    C'est le format club décrit par le commanditaire — une cascade dont la dernière phase n'est pas
+    un tableau. L'intuition « une phase à rencontres ne titre jamais » est fausse : ici le vainqueur
+    du suisse **est** le vainqueur du tournoi, et `decerne` doit le dire.
+
+    ⚠️ **Il faut deux rondes, et c'est instructif.** Après une seule, les deux vainqueurs sont à
+    égalité parfaite — mêmes points, même Buchholz, même décompte — donc le classement les déclare
+    *ex æquo* et le palmarès rend une **fourchette** 1ᵉʳ-2ᵉ, sans médaille. Être terminale ne suffit
+    pas à décerner : encore faut-il avoir tranché (ADR-0081). La 2ᵉ ronde oppose les deux vainqueurs
+    et sépare enfin la tête.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse, nb_rondes=2)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+
+        _gagner(client, entetes, scn, 1, le_bas=True)
+        _gagner(client, entetes, scn, 2, le_bas=True)
+        # Ronde 2 : les deux vainqueurs s'affrontent, les deux perdants aussi.
+        _gagner(client, entetes, scn, 3, le_bas=True)
+        _gagner(client, entetes, scn, 4, le_bas=True)
+        lignes = _palmares(client, scn.tournoi_id)
+
+    premier = next(a for a, ligne in lignes.items() if ligne["rang_min"] == 1)
+    assert lignes[premier]["rang_max"] == 1
+    assert lignes[premier]["decerne"] is True
+
+
+def test_un_suisse_consomme_classe_sans_titrer(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une phase **prélevée** contribue ses rangs sans médaille — l'autre moitié de la règle.
+
+    Le tableau aval n'a pas encore été joué : personne ne doit porter de médaille, alors même que le
+    suisse a fini et que ses rangs sont exacts. Sans le critère structurel, les vainqueurs de la
+    ronde recevraient l'or **avant le moindre duel du tableau** — exactement le défaut
+    qu'`OriginePalmares` a été créé pour fermer sur les qualifications multiples.
+
+    ⚠️ Les rangs, eux, sont bien versés : c'est le gain de cette règle pour les **non-qualifiés**,
+    qui étaient jusqu'ici renvoyés à leur rang de qualification.
+    """
+    from domain.phase import SourcePhase
+
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse, nb_rondes=1)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        db: Database = app_suisse.state.database
+        poser_phase_sql(
+            db.session_factory,
+            Phase(
+                depart_id=scn.depart_id,
+                ordre=3,
+                type=TypePhase.ELIMINATION_DIRECTE,
+                sources=(SourcePhase.par_rangs(ordre_source=2, rang_debut=1, rang_fin=2),),
+            ),
+        )
+
+        _gagner(client, entetes, scn, 1, le_bas=True)
+        _gagner(client, entetes, scn, 2, le_bas=True)
+        lignes = _palmares(client, scn.tournoi_id)
+
+    assert not any(ligne["decerne"] for ligne in lignes.values())

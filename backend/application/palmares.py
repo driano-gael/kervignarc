@@ -12,15 +12,32 @@ palmarès annoncerait un vainqueur que l'écran de duels ne montre pas. C'est la
 `ServiceListesImpression` s'accorde sur `ServicePaiements.recap_par_club` — on duplique une
 chaîne de ports, jamais une règle métier.
 
-**Portée : qualification + phases à tableau + Big Shoot Off.** Les deux premiers passent par la
-reconstruction d'un arbre ; le troisième **non**, et c'est tout l'intérêt du cas (E05US028) : ses
-rangs sont exacts par construction, donc il rend directement des `PositionPhase` fermées. C'est ce
-qu'ADR-0083 appelait « un `_resultat` propre au format, pas une entrée de plus dans une table ».
+**Portée : tout ce qui classe.** Quatre chemins, parce que quatre façons de décerner un rang :
+la qualification (elle *est* la base), les phases à **tableau** (rejeu d'arbre), le **Big Shoot
+Off** (rangs exacts par élimination), et depuis E05US026 les phases dont on lit le **classement de
+phase** — poules et système suisse. Seule la **colline** reste dehors, faute de service qui la
+déroule (`# DETTE-028`).
 
-Restent dehors les **poules**, le **système suisse** et la **colline**. Pour les deux derniers,
-aucun service ne les déroule encore (`# DETTE-028`) : il n'existe littéralement rien à lire. Pour
-les poules, le service existe depuis E05US023 mais leur classement n'est pas un ordre de sortie —
-l'y verser demande de décider ce qu'une poule *acquiert* au palmarès, ce que le CA n'a pas posé.
+## Ce qui décerne une médaille, et ce qui ne fait que classer
+
+⚠️ **La règle n'est pas « par type de phase »** (arbitrage du commanditaire, 15/08/2026). Une phase
+**décerne** ses rangs — donc peut donner un podium — **si et seulement si aucune phase avale ne
+prélève dedans**. Le critère est structurel, lu sur le graphe des sources du déroulé.
+
+L'intuition de départ était « une phase de poules ne titre jamais, il faut une phase finale », et le
+commanditaire l'a lui-même invalidée en décrivant un format club : *36 archers, 6 poules de 6, puis
+6 poules composées par niveau* — la dernière phase **est** une phase de poules, et elle rend le
+classement final exact de 1 à 36. Elle doit donc titrer.
+
+Les deux régimes, et ce qu'ils changent :
+
+- une phase **consommée** contribue ses rangs sans médaille (`origine=QUALIFICATION`). C'est ce qui
+  classe enfin les **non-qualifiés** d'une phase de poules à leur vraie place, au lieu de les
+  renvoyer à leur rang de qualification ;
+- une phase **terminale** décerne (`origine=DUELS`).
+
+Le mécanisme de fusion fait le reste seul : `_positions_par_archer` retient la position de plus
+grand `ordre`, donc les qualifiés d'un tableau aval reçoivent bien le rang du tableau.
 """
 
 from __future__ import annotations
@@ -40,7 +57,7 @@ from application.erreurs import (
 from application.prelevement import tranche
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
-from domain.contrat_phase import TYPES_RECONSTRUCTIBLES
+from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_RECONSTRUCTIBLES
 from domain.depart import DepartId
 from domain.erreurs import EffectifTableauInvalide
 from domain.palmares import (
@@ -63,6 +80,21 @@ from domain.ports import (
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
+
+_TYPES_CLASSANTS_AU_PALMARES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS - (
+    TYPES_RECONSTRUCTIBLES | {TypePhase.QUALIFICATION, TypePhase.BIG_SHOOT_OFF}
+)
+"""Les types dont le palmarès lit le **classement de phase** plutôt qu'un arbre (E05US026).
+
+Aujourd'hui : les **poules** et le **système suisse**. Ni l'un ni l'autre n'a d'arbre à rejouer, et
+tous deux rendent un `ClassementSource` complet — c'est précisément ce que `classement_lisible`
+promet. Les lire par leur classement, et non par une reconstruction, est donc la voie **directe**.
+
+**Dérivée, pas énumérée** : un format qui devient `classement_lisible` sans être reconstructible
+entre ici automatiquement. Les trois soustraits sont ceux qui ont déjà leur chemin — les tableaux
+(rejeu d'arbre), la qualification (elle *est* la base du palmarès) et le Big Shoot Off (ses rangs
+viennent des éliminations, pas d'un ordre de classement).
+"""
 
 _TYPES_RECONSTRUCTIBLES = TYPES_RECONSTRUCTIBLES
 """Les types de phase dont ce service sait **rejouer l'arbre** aujourd'hui.
@@ -167,6 +199,12 @@ class ServicePalmares:
                 if phase.type is TypePhase.BIG_SHOOT_OFF
                 if (resultat := self._resultat_big_shoot_off(tournoi_id, phase)) is not None
             )
+            + tuple(
+                resultat
+                for phase in phases
+                if phase.type in _TYPES_CLASSANTS_AU_PALMARES
+                if (resultat := self._resultat_classant(tournoi_id, phase, phases)) is not None
+            )
         )
         palmares = calculer_palmares(qualification, resultats, self._aggregation)
         return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
@@ -261,7 +299,6 @@ class ServicePalmares:
             # écrite d'un côté du diff et neutralisée de l'autre. `ruff B014` ne voit pas ce
             # doublon : il ne résout pas les relations de sous-classe.
             _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
-            _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
             return None
         if not any(tireur.rang is not None for tireur in etat.tireurs):
             return None
@@ -280,6 +317,69 @@ class ServicePalmares:
             rang_premier=tranche(
                 phase, self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)
             ),
+        )
+
+    def _resultat_classant(
+        self, tournoi_id: TournoiId, phase: Phase, phases: list[Phase]
+    ) -> ResultatPhase | None:
+        """Ce qu'une phase **classante sans arbre** a décidé — poules, système suisse (E05US026).
+
+        On lit son **classement de phase**, celui-là même qu'un prélèvement consomme
+        (`ClassementSource`) : rangs et plages encore indécises. C'est la voie directe, et surtout
+        la seule qui ne puisse pas **diverger** de ce que la phase avale reçoit — deux calculs pour
+        un même ordre finiraient par se contredire.
+
+        ⚠️ **`origine` porte la règle « décerne si rien ne prélève dedans »** (arbitrage du
+        15/08/2026). Une phase consommée contribue ses rangs sans médaille ; une phase terminale
+        décerne. Le critère est **structurel** — le graphe des sources du déroulé — et non « par
+        type » : dans une cascade « poules → poules de niveau », la dernière phase *est* une phase
+        de poules et rend le classement final exact, elle doit donc titrer.
+
+        ⚠️ **Les plages indécises deviennent des fourchettes**, et c'est exactement leur sens : les
+        quatre vainqueurs de quatre poules sont 1ᵉʳˢ-4ᵉˢ, et rien ne les départage tant que
+        l'organisateur n'a pas demandé le départage inter-poules. C'est la politique `aggregation`
+        qui tranchera, comme pour les battus d'un quart de finale — pas nous, ici, au hasard.
+
+        Rend `None` quand la phase n'a **rien** classé : une phase qui n'a pas commencé n'ajoute
+        rien au palmarès, elle n'y met pas tout le monde au rang 1.
+        """
+        if phase.id is None:
+            return None
+        resolveur = self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id)
+        try:
+            source = resolveur(phase.ordre)
+        except (
+            PhaseIntrouvable,
+            PrelevementEnAttente,
+            PhasePasReglee,
+            EffectifTableauInvalide,
+        ) as exc:
+            # Mêmes absorptions **nominatives** que les deux autres chemins, et pour la même
+            # raison : le palmarès est public et projeté en salle, une phase de la séquence ne doit
+            # pas éteindre l'écran. Journalisé pour qu'une absence reste débogable le jour J.
+            _logger.info("Phase classante %s écartée du palmarès : %s", phase.id, exc)
+            return None
+        if source is None or not source.classement.lignes:
+            return None
+        indecises = source.plages_indecises
+        positions = tuple(
+            PositionPhase(
+                archer_id=ligne.archer_id,
+                rang_min=_borne(ligne.rang_scratch, indecises, haute=False),
+                rang_max=_borne(ligne.rang_scratch, indecises, haute=True),
+            )
+            for ligne in source.classement.lignes
+            if ligne.rang_scratch is not None
+        )
+        if not positions:
+            return None
+        return ResultatPhase(
+            ordre=phase.ordre,
+            positions=positions,
+            origine=OriginePalmares.DUELS
+            if _est_terminale(phase, phases)
+            else OriginePalmares.QUALIFICATION,
+            rang_premier=source.rang_premier,
         )
 
     def _resultat_qualification(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
@@ -425,3 +525,36 @@ class ServicePalmares:
             self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
         )
         return ResultatPhase(ordre=phase.ordre, positions=positions, rang_premier=rang_premier)
+
+
+def _est_terminale(phase: Phase, phases: list[Phase]) -> bool:
+    """Aucune autre phase du créneau ne **prélève** dans celle-ci (E05US026).
+
+    C'est le critère qui décide si une phase décerne des médailles ou se contente de classer. Il est
+    **structurel** — lu sur le graphe des sources — et non « par type de phase » : la même phase de
+    poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne.
+
+    ⚠️ **Se lit sur `ordre`, pas sur l'identité**, parce que c'est ainsi qu'une source désigne sa
+    phase (`SourcePhase.ordre_source`). C'est l'ancrage par ordre de `DETTE-026` ; le suivre ici est
+    juste, s'en écarter créerait une seconde convention.
+    """
+    return not any(
+        source.ordre_source == phase.ordre
+        for autre in phases
+        if autre.id != phase.id
+        for source in autre.sources
+    )
+
+
+def _borne(rang: int, indecises: tuple[tuple[int, int], ...], *, haute: bool) -> int:
+    """La borne de la fourchette d'un rang : la plage indécise qui le contient, ou lui-même.
+
+    Une plage indécise **est** une fourchette au sens du palmarès : les quatre vainqueurs de quatre
+    poules occupent les positions 1 à 4 sans que rien ne les sépare. Les y écraser sur leur position
+    exacte donnerait un ordre que la compétition n'a pas produit — c'est la faute qu'ADR-0081 nomme,
+    transposée du prélèvement à l'affichage.
+    """
+    for debut, fin in indecises:
+        if debut <= rang <= fin:
+            return fin if haute else debut
+    return rang
