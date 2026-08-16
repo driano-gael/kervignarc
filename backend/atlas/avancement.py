@@ -15,8 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 from atlas.modele import Decision
+from atlas.sources import suivi
 from atlas.sources.backlog import Dette, Epic, UsSpecifiee
-from atlas.sources.suivi import Entete, Section, compter
+from atlas.sources.suivi import LIVREE, Entete, Section, compter
 
 
 def _epic_de(identifiant: str) -> str:
@@ -52,10 +53,6 @@ def construire(
     vues: dict[str, dict[str, Any]] = {}
     rendu_sections: list[dict[str, Any]] = []
     for section in sections:
-        # Identité et non égalité : deux lignes d'une même section peuvent être identiques champ
-        # pour champ. `comptees` renvoie les objets de `lignes`, jamais des copies — et rejouer
-        # ici la règle de comptage la ferait diverger de sa seule définition, dans `suivi.py`.
-        comptees = {id(ligne) for ligne in section.comptees}
         calcule = compter(section)
         rendu_sections.append(
             {
@@ -67,7 +64,7 @@ def construire(
                         "identifiant": ligne.identifiant,
                         "titre": ligne.titre,
                         "etat": ligne.etat,
-                        "comptee": id(ligne) in comptees,
+                        "comptee": section.est_comptee(ligne),
                     }
                     for ligne in section.lignes
                 ],
@@ -81,6 +78,7 @@ def construire(
                 {
                     "identifiant": ligne.identifiant,
                     "titre": ligne.titre,
+                    "titre_retenu": False,
                     "etat": ligne.etat,
                     "sections": [],
                     "epic": _epic_de(ligne.identifiant),
@@ -94,16 +92,35 @@ def construire(
             )
             fiche["sections"].append(section.titre)
             # Une US listée dans deux sections (remontée d'un lot d'ajouts) : l'état le plus avancé
-            # gagne — c'est le glyphe de la section où elle a réellement été livrée.
-            if ligne.etat == "✅":
-                fiche["etat"] = "✅"
+            # gagne — c'est le glyphe de la section où elle a réellement été livrée. Une éventuelle
+            # contradiction n'est pas tue pour autant : `etat-contradictoire` la signale.
+            if ligne.etat == LIVREE:
+                fiche["etat"] = LIVREE
+            # Le titre affiché doit être celui que le contrôle compare — la première ligne
+            # **comptée**. Sans cette clause, la fiche d'`E00US015` montrait le libellé de sa ligne
+            # hors décompte, donc un titre que rien n'avait vérifié.
+            if section.est_comptee(ligne) and not fiche["titre_retenu"]:
+                fiche["titre_retenu"] = True
+                fiche["titre"] = ligne.titre
             story = specifiees.get(ligne.identifiant)
             if story is not None:
                 fiche["story"] = story.fichier
                 fiche["titre_story"] = story.titre
 
+    # `titre_retenu` n'est qu'un drapeau de construction : il ne sort pas. Une clé interne
+    # sérialisée serait comparée à l'octet par la CI et lue par le site — donc un contrat de fait.
+    fiches = [{c: v for c, v in vues[i].items() if c != "titre_retenu"} for i in sorted(vues)]
+    vivantes = [fiche for fiche in fiches if fiche["etat"] != suivi.ABSORBEE]
+
     return {
         "entete": {"derniere": entete.derniere, "adr_du_resume": list(entete.adr_du_resume)},
+        # Les nombres de la page sont calculés **ici**, par la même règle que les contrôles. Les
+        # recalculer en JavaScript aurait fait une **troisième** écriture de la règle de comptage,
+        # sur la page dont le sujet est précisément que les compteurs ne se contredisent pas.
+        "resume": {
+            "livrees": sum(1 for fiche in vivantes if fiche["etat"] == LIVREE),
+            "vivantes": len(vivantes),
+        },
         "sections": rendu_sections,
         "epics": [
             {
@@ -125,5 +142,5 @@ def construire(
             for dette in dettes
             if dette.ouverte
         ],
-        "fiches": [vues[identifiant] for identifiant in sorted(vues)],
+        "fiches": fiches,
     }

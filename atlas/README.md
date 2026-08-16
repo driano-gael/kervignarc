@@ -28,7 +28,7 @@ atlas amputé de son histoire serait pire qu'une génération refusée.
 |---|---|
 | `0` | à jour |
 | `1` | **données périmées** — régénère |
-| `2` | source invalide (git absent, ADR illisible, libellé de relation inconnu) |
+| `2` | source invalide — **git absent**, fichier source manquant, ADR illisible, libellé de relation inconnu, en-tête de tracker illisible, table de suivi mal formée |
 | `3` | **écart bloquant** — un ADR nomme un module qui n'existe pas, ou deux livrables de suivi se contredisent |
 
 ⚠️ **Après un commit qui déplace des lignes de `CLAUDE.md`, régénère et commite à nouveau.**

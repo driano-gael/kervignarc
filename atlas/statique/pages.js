@@ -890,12 +890,10 @@ var Pages = (function () {
   function avancement(cible) {
     var donnees = Atlas.donnees("avancement") || { sections: [], epics: [], dettes: [], fiches: [] };
 
-    var vivantes = donnees.fiches.filter(function (fiche) {
-      return fiche.etat !== "⛔";
-    });
-    var livrees = vivantes.filter(function (fiche) {
-      return fiche.etat === "✅";
-    });
+    /* Les deux nombres viennent du générateur (`avancement.resume`), calculés par la règle de
+     * comptage de la Légende — la seule. Les recalculer ici en aurait fait une **troisième**
+     * écriture, sur la page dont le sujet est justement que les compteurs ne se contredisent pas. */
+    var resume = donnees.resume || { livrees: 0, vivantes: 0 };
     var divergentes = donnees.sections.filter(function (section) {
       return (
         section.compteur_ecrit &&
@@ -915,7 +913,7 @@ var Pages = (function () {
 
     var grille = Atlas.element("div", "grille");
     grille.innerHTML =
-      "<div class='carte'><span class='compteur'>" + livrees.length + " / " + vivantes.length +
+      "<div class='carte'><span class='compteur'>" + resume.livrees + " / " + resume.vivantes +
       "</span> US livrées<p class='discret'>US distinctes, absorbées exclues. La somme des " +
       "compteurs de section vaut davantage : deux US sont listées dans deux sections.</p></div>" +
       "<div class='carte'><span class='compteur'>" + donnees.epics.length +
@@ -929,6 +927,18 @@ var Pages = (function () {
       "</span> compteur(s) divergent(s)<p class='discret'>Un compteur faux fait repartir la " +
       "session suivante sur une base fausse : c'est un écart <strong>bloquant</strong>.</p></div>";
     cible.appendChild(grille);
+
+    if (donnees.entete && donnees.entete.derniere) {
+      cible.appendChild(
+        Atlas.element(
+          "p",
+          "discret",
+          "Dernière US annoncée en tête du tracker : <a href='us.html?id=" +
+            E(encodeURIComponent(donnees.entete.derniere)) + "'>" + E(donnees.entete.derniere) +
+            "</a>."
+        )
+      );
+    }
 
     cible.appendChild(Atlas.element("h2", null, "L'ordre des epics"));
     cible.appendChild(
@@ -972,8 +982,12 @@ var Pages = (function () {
       "<table><thead><tr><th>US</th><th>Titre</th><th>État</th></tr></thead><tbody>" +
       section.lignes
         .map(function (ligne) {
+          /* `E()` **par-dessus** `encodeURIComponent` : ce dernier n'encode pas l'apostrophe,
+           * et tous les attributs du site sont écrits en apostrophes simples. Rien d'exploitable
+           * ici (`_US` garantit `E\d{2}US\d{3}`), mais la sûreté ne doit pas reposer sur une
+           * classe de caractères posée trois modules plus haut. */
           var nom = ligne.identifiant
-            ? "<a href='us.html?id=" + encodeURIComponent(ligne.identifiant) + "'>" +
+            ? "<a href='us.html?id=" + E(encodeURIComponent(ligne.identifiant)) + "'>" +
               E(ligne.identifiant) + "</a>"
             : "<span class='discret'>hors US</span>";
           return (
@@ -1060,8 +1074,11 @@ var Pages = (function () {
     var reduites = reduire(dependances);
 
     /* Rang = longueur du plus long chemin depuis une racine. Le balayage est répété autant de fois
-     * qu'il y a d'epics : c'est la borne d'un DAG, et cela termine même si le tableau contenait un
-     * cycle — un graphe faux ne doit pas figer la page, il doit se voir. */
+     * qu'il y a d'epics : c'est la borne d'un DAG, et cela **termine** même sur un cycle.
+     * ⚠️ Terminer n'est pas montrer : sur un cycle, la réduction transitive efface **toutes** ses
+     * arêtes, chacune étant impliquée par le chemin qui passe par les autres — le graphe faux est
+     * alors la seule chose invisible. C'est pourquoi l'acyclicité est un contrôle **bloquant**
+     * (`cycle-entre-epics`), et non une promesse de ce dessin. */
     var rangs = {};
     epics.forEach(function () {
       epics.forEach(function (epic) {

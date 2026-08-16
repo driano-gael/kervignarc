@@ -11,11 +11,14 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from atlas import markdown
+from atlas import markdown, normalisation
+from atlas.modele import AtlasSourceInvalide
 
 _EPIC = re.compile(r"EPIC-(\d{2})")
 _DETTE = re.compile(r"DETTE-(\d{3})")
 _US = re.compile(r"E\d{2}US\d{3}")
+# Les deux sections du registre, et ce qu'elles disent de la ligne qu'elles portent.
+_ETAT_DE_DETTE = {"dette ouverte": True, "dette resorbee": False}
 # Le séparateur est écrit en échappements Unicode et non en toutes lettres : cadratin, demi-cadratin
 # et trait d'union se ressemblent à l'œil et se confondent à la relecture.
 _TITRE_US = re.compile(
@@ -47,33 +50,44 @@ class UsSpecifiee:
     fichier: str
 
 
-def _cellule(cellules: list[str], index: dict[str, int], nom: str) -> str:
-    """La cellule d'une colonne nommée — vide si la colonne ou la cellule manque."""
-    rang = index.get(nom)
-    return cellules[rang] if rang is not None and rang < len(cellules) else ""
+def _dependances(cellule: str) -> tuple[str, ...]:
+    """« 02, 03, 04 », « EPIC-02 · EPIC-03 » ou « — » — et rien d'autre.
+
+    ⚠️ La version précédente cherchait `\\b(\\d{2})\\b` **dans toute la cellule** : une glose datée
+    (« 03 *(depuis le 15/08)* ») y fabriquait des dépendances vers EPIC-15 et EPIC-08 — qui
+    existent, donc aucun contrôle ne les contredisait, et le schéma dessinait une arête inventée.
+    On découpe donc d'abord la liste, puis on n'accepte qu'un jeton **entièrement** conforme.
+    """
+    trouves = [
+        entier.group(1)
+        for jeton in re.split(r"[,;·]", cellule)
+        # En **tête** de jeton, jamais au milieu : « 03 *(depuis le 15/08)* » vaut bien une
+        # dépendance vers 03 — une annotation ne l'annule pas — mais « 15 » et « 08 » ne sont
+        # pas des dépendances. Exiger le jeton entier aurait perdu la dépendance légitime ;
+        # accepter n'importe où en fabriquait deux fausses.
+        if (entier := re.match(r"\s*`?(?:EPIC-)?(\d{2})\b", jeton))
+    ]
+    return tuple(dict.fromkeys(trouves))
 
 
 def lire_epics(racine: Path) -> tuple[Epic, ...]:
     """La carte des epics et leurs dépendances, telle que `epics/README.md` la tabule."""
     texte = markdown.lire(racine / "epics" / "README.md")
     trouves: list[Epic] = []
-    for entete, lignes in markdown.tableaux(texte):
-        index = {nom.strip("* "): rang for rang, nom in enumerate(entete)}
+    for _, entete, lignes in markdown.tableaux(texte):
+        index = markdown.index_colonnes(entete)
         if "ID" not in index or "Dépend de" not in index:
             continue
         for cellules in lignes:
-            identifiant = _EPIC.search(_cellule(cellules, index, "ID"))
+            identifiant = _EPIC.search(markdown.cellule(cellules, index, "ID"))
             if not identifiant:
                 continue
             trouves.append(
                 Epic(
                     identifiant=identifiant.group(1),
-                    titre=markdown.en_clair(_cellule(cellules, index, "Titre")),
-                    priorite=markdown.en_clair(_cellule(cellules, index, "Priorité")),
-                    # « 02, 03, 04 » ou « — » : on lit les nombres à deux chiffres, rien d'autre.
-                    depend_de=tuple(
-                        re.findall(r"\b(\d{2})\b", _cellule(cellules, index, "Dépend de"))
-                    ),
+                    titre=markdown.en_clair(markdown.cellule(cellules, index, "Titre")),
+                    priorite=markdown.en_clair(markdown.cellule(cellules, index, "Priorité")),
+                    depend_de=_dependances(markdown.cellule(cellules, index, "Dépend de")),
                 )
             )
     return tuple(trouves)
@@ -82,35 +96,59 @@ def lire_epics(racine: Path) -> tuple[Epic, ...]:
 def lire_dettes(racine: Path) -> tuple[Dette, ...]:
     """Les deux registres de dette — ouverte et résorbée — dans l'ordre du fichier.
 
-    Le drapeau `ouverte` se déduit de la **table** où la ligne se trouve, pas d'une colonne : la
-    procédure du projet veut qu'une dette résorbée **change de table**, et c'est ce déplacement
-    qui fait foi.
+    Le drapeau `ouverte` se déduit de la **section** où la table se trouve — « Dette ouverte » ou
+    « Dette résorbée » — parce que la procédure du projet veut qu'une dette résorbée **change de
+    table**, et que c'est ce déplacement qui fait foi.
+
+    ⚠️ Il se déduisait auparavant de la **présence d'une colonne `Sévérité`**, ce qui marchait par
+    coïncidence et contredisait cette docstring. Ajouter une colonne `Sévérité` à la table des
+    dettes résorbées — pour garder la sévérité historique, geste parfaitement naturel — les aurait
+    toutes basculées en « ouvertes », rendant `dette-dans-les-deux-tables` définitivement incapable
+    de se déclencher. Un lecteur silencieusement faux vaut moins que pas de lecteur.
     """
     texte = markdown.lire(racine / "docs" / "dette.md")
     trouves: list[Dette] = []
-    for entete, lignes in markdown.tableaux(texte):
-        index = {nom.strip("* "): rang for rang, nom in enumerate(entete)}
+    for section, entete, lignes in markdown.tableaux(texte):
+        index = markdown.index_colonnes(entete)
         if "ID" not in index:
             continue
-        ouverte = "Sévérité" in index
+        etat = _ETAT_DE_DETTE.get(normalisation.cle(section))
+        if etat is None:
+            # ⚠️ Une table qui porte des `DETTE-nnn` **sous une section inconnue** ne peut pas être
+            # lue : rien ne dit si ses lignes sont ouvertes ou résorbées. Sans ce refus, renommer
+            # une section rendait sa table invisible — le registre le plus contrôlé du dépôt
+            # redevenait muet **en silence**, et les contrôles qui le lisent passaient au vert par
+            # vacuité. On ne réclame pas que les deux sections existent : seulement qu'aucune table
+            # de dettes ne se retrouve orpheline.
+            orphelines = [c for c in lignes if _DETTE.search(markdown.cellule(c, index, "ID"))]
+            if orphelines:
+                raise AtlasSourceInvalide(
+                    f"docs/dette.md : la section « {section} » porte {len(orphelines)} dette(s) "
+                    f"mais n'est ni « Dette ouverte » ni « Dette résorbée ».\n"
+                    f"C'est la section qui dit si une dette est ouverte ou résorbée — une table "
+                    f"rangée ailleurs ne peut pas être lue, et la taire serait pire."
+                )
+            continue
         for cellules in lignes:
-            identifiant = _DETTE.search(_cellule(cellules, index, "ID"))
+            identifiant = _DETTE.search(markdown.cellule(cellules, index, "ID"))
             if not identifiant:
                 continue
             trouves.append(
                 Dette(
                     identifiant=identifiant.group(1),
-                    ouverte=ouverte,
-                    severite=markdown.en_clair(_cellule(cellules, index, "Sévérité")),
+                    ouverte=etat,
+                    severite=markdown.en_clair(markdown.cellule(cellules, index, "Sévérité")),
                     introduite_par=tuple(
-                        dict.fromkeys(_US.findall(_cellule(cellules, index, "Introduite par")))
+                        dict.fromkeys(
+                            _US.findall(markdown.cellule(cellules, index, "Introduite par"))
+                        )
                     ),
                     resorption_us=tuple(
                         dict.fromkeys(
                             _US.findall(
-                                _cellule(cellules, index, "Résorption")
+                                markdown.cellule(cellules, index, "Résorption")
                                 + " "
-                                + _cellule(cellules, index, "Soldée par")
+                                + markdown.cellule(cellules, index, "Soldée par")
                             )
                         )
                     ),

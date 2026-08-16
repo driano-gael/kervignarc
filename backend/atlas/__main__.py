@@ -15,7 +15,7 @@ from typing import Any
 
 from atlas import avancement as avancement_module
 from atlas import controles as controles_module
-from atlas import rendu
+from atlas import markdown, rendu
 from atlas.modele import AtlasSourceInvalide, Controle, Severite
 from atlas.sources import adr, backlog, corpus, historique, reglement, suivi
 
@@ -53,8 +53,11 @@ def assembler(racine: Path) -> Cartes:
     # qu'ils concordent — et le tracker est le **point de reprise** du projet : ce qu'il annonce
     # de faux ne se rattrape pas à la lecture, il fait repartir la session suivante sur une base
     # fausse. D'où des compteurs recalculés, et des écarts qui bloquent.
-    sections = suivi.lire_sections(racine)
-    entete = suivi.lire_entete(racine)
+    # Lu **une fois** : la docstring de cette fonction le promettait déjà, le code lisait deux
+    # fois le même fichier de 1 100 lignes.
+    tracker = markdown.lire(racine / suivi.FICHIER)
+    sections = suivi.lire_sections_du_texte(tracker)
+    entete = suivi.lire_entete_du_texte(tracker)
     epics = backlog.lire_epics(racine)
     dettes = backlog.lire_dettes(racine)
     us_specifiees = backlog.lire_us_specifiees(racine)
@@ -99,8 +102,8 @@ def assembler(racine: Path) -> Cartes:
         verdicts=verdicts,
         resume=(
             f"{len(regles)} règles · {len(decisions)} décisions "
-            f"· {livrees} US livrées "
             f"(dont {amendes} amendées par une décision plus récente) · "
+            f"{livrees} US livrées · "
             f"{len(bloquants)} écart(s) bloquant(s), "
             f"{len(verdicts) - len(bloquants)} signal(aux)"
         ),
@@ -113,7 +116,12 @@ def construire(racine: Path) -> dict[str, str]:
 
 
 def _dire_les_bloquants(verdicts: tuple[Controle, ...]) -> None:
-    print("atlas : l'écrit promet des choses que le dépôt ne contient pas.", file=sys.stderr)
+    # Le libellé couvre les **deux** familles de bloquants : l'écrit contre le code (un ADR
+    # nomme un module absent) et l'écrit contre l'écrit (deux livrables de suivi qui se
+    # contredisent). Il n'envoyait jusqu'ici corriger qu'un ADR — y compris sur un compteur.
+    print(
+        "atlas : l'écrit se contredit, ou promet ce que le dépôt ne contient pas.", file=sys.stderr
+    )
     for controle in controles_module.bloquants(verdicts):
         print(f"  - {controle.sujet} {controle.message}", file=sys.stderr)
     print(

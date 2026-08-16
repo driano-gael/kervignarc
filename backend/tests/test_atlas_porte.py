@@ -55,7 +55,7 @@ ADR_QUI_PROMET_DU_VENT = ADR_SAIN.replace(
 # passer la porte, sans quoi les tests ne mesureraient plus que la présence de ces fichiers.
 SUIVI = """# Suivi des US
 
-**Dernière mise à jour : 01/01/2026** · dernière : `E00US001`
+**Dernière mise à jour : 01/01/2026** · **1 US livrée** · dernière : `E00US001`
 *(une US d'essai. ADR-0001.)*
 
 Précédente : `E00US000`
@@ -206,3 +206,29 @@ def test_la_generation_ecrit_meme_avec_un_ecart_bloquant(tmp_path: Path) -> None
 
     assert principal([], racine=tmp_path) == 0
     assert (tmp_path / "atlas" / "donnees" / "controles.js").is_file()
+
+
+def test_un_compteur_de_tracker_faux_sort_en_trois(depot: Path) -> None:
+    """La promesse la plus visible de l'US, éprouvée de bout en bout.
+
+    `test_un_ecart_bloquant_sort_en_trois` n'exerçait que le portage d'ADR : rien ne prouvait qu'un
+    écart entre livrables de suivi rougissait vraiment la porte.
+    """
+    principal([], racine=depot)
+    (depot / "journal-d-avancement" / "SUIVI-US.md").write_text(
+        SUIVI.replace("## J0 — le socle (1/1)", "## J0 — le socle (1/2)"),
+        encoding="utf-8",
+        newline="\n",
+    )
+    principal([], racine=depot)
+
+    assert principal(["--verifier"], racine=depot) == 3
+
+
+def test_un_entete_de_tracker_illisible_sort_en_deux(depot: Path) -> None:
+    """Le silence ne vaut pas accord : un en-tête illisible **refuse**, il ne se tait pas."""
+    (depot / "journal-d-avancement" / "SUIVI-US.md").write_text(
+        SUIVI.replace("**1 US livrée**", "une poignée d'US"), encoding="utf-8", newline="\n"
+    )
+
+    assert principal(["--verifier"], racine=depot) == 2

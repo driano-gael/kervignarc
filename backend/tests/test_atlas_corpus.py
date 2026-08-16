@@ -218,6 +218,29 @@ def test_chaque_compteur_du_tracker_est_exact(avancement: Livrables) -> None:
     assert ecarts == []
 
 
+def test_les_quatre_livrables_de_suivi_ne_sont_pas_vides(avancement: Livrables) -> None:
+    """Un plancher, et il n'est pas décoratif.
+
+    Les trois tests qui précèdent sont **vides de sens** si un lecteur rend un tuple vide : une
+    dérive de format dans `epics/README.md` ou `docs/dette.md` ferait taire `epic-inexistant` et
+    `dette-numero-en-double` en silence, CI verte comprise. La parade existe déjà dans ce fichier
+    pour le côté ADR (`test_le_controle_de_portage_n_est_pas_creux`) ; elle manquait ici.
+
+    Les seuils sont **bas et fixes** : ils attrapent un lecteur cassé, pas une évolution du
+    backlog. Un plancher trop haut se périme et finit relevé sans qu'on regarde pourquoi.
+    """
+    sections, epics, dettes, us_specifiees, entete = avancement
+
+    assert len(sections) >= 12, "le tracker porte au moins les jalons J0→J4 et ses lots d'ajouts"
+    assert sum(len(s.lignes) for s in sections) >= 120
+    assert len(epics) >= 15
+    assert len(dettes) >= 50, "le registre porte les deux tables, ouverte et résorbée"
+    assert any(not d.ouverte for d in dettes), "la table « Dette résorbée » doit être lue"
+    assert len(us_specifiees) >= 100
+    assert entete.livrees >= 100
+    assert len(entete.recapitulatif) >= 4, "la Légende rappelle les compteurs de jalon"
+
+
 def test_aucun_ecart_bloquant_entre_les_livrables_de_suivi(
     avancement: Livrables, decisions: tuple[Decision, ...]
 ) -> None:

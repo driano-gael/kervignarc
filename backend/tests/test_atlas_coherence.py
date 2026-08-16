@@ -49,7 +49,19 @@ def _decision(identifiant: str, us: tuple[str, ...] = ()) -> Decision:
     )
 
 
-_RIEN = Entete(derniere="", adr_du_resume=())
+def _entete(
+    livrees: int = 0,
+    derniere: str = "",
+    adr: tuple[str, ...] = (),
+    recapitulatif: tuple[tuple[str, int, int], ...] = (),
+) -> Entete:
+    """Un en-tête de tracker. `livrees` n'est **jamais** optionnel — cf. `lire_entete_du_texte`."""
+    return Entete(
+        derniere=derniere, adr_du_resume=adr, livrees=livrees, recapitulatif=recapitulatif
+    )
+
+
+_RIEN = _entete()
 
 
 def _codes(controles: tuple[Controle, ...]) -> list[str]:
@@ -61,9 +73,8 @@ def _codes(controles: tuple[Controle, ...]) -> list[str]:
 
 def test_compteur_exact_ne_produit_rien() -> None:
     section = _section(compteur=(1, 2), lignes=(_ligne("E00US001"), _ligne("E00US002", "⬜")))
-    assert (
-        verifier_avancement((section,), (), (), (_us("E00US001"), _us("E00US002")), (), _RIEN) == ()
-    )
+    us = (_us("E00US001"), _us("E00US002"))
+    assert verifier_avancement((section,), (), (), us, (), _entete(1)) == ()
 
 
 def test_compteur_divergent_est_bloquant() -> None:
@@ -71,7 +82,7 @@ def test_compteur_divergent_est_bloquant() -> None:
     section = _section(
         titre="J3 — les duels (12/15)", compteur=(12, 15), lignes=(_ligne("E05US001"),)
     )
-    trouves = verifier_avancement((section,), (), (), (_us("E05US001"),), (), _RIEN)
+    trouves = verifier_avancement((section,), (), (), (_us("E05US001"),), (), _entete(1))
 
     assert _codes(trouves) == ["compteur-divergent"]
     assert trouves[0].severite is Severite.BLOQUANT
@@ -80,7 +91,7 @@ def test_compteur_divergent_est_bloquant() -> None:
 
 def test_section_sans_compteur_ecrit_nest_pas_controlee() -> None:
     section = _section(titre="Ajouts de la démo", compteur=None, lignes=(_ligne("E00US001"),))
-    assert verifier_avancement((section,), (), (), (_us("E00US001"),), (), _RIEN) == ()
+    assert verifier_avancement((section,), (), (), (_us("E00US001"),), (), _entete(1)) == ()
 
 
 def test_le_total_annonce_en_tete_est_recalcule() -> None:
@@ -91,7 +102,7 @@ def test_le_total_annonce_en_tete_est_recalcule() -> None:
     `n/N`. Cas réel du 16/08/2026 : `E05US026` et `E05US028`, livrées, restées dans la file.
     """
     section = _section(compteur=(1, 1), lignes=(_ligne("E00US001"),))
-    entete = Entete(derniere="", adr_du_resume=(), livrees=3)
+    entete = _entete(3)
     trouves = verifier_avancement((section,), (), (), (_us("E00US001"),), (), entete)
 
     assert _codes(trouves) == ["total-annonce-divergent"]
@@ -110,7 +121,7 @@ def test_le_total_annonce_compte_les_us_distinctes() -> None:
         _section(titre="J0 (1/1)", compteur=(1, 1), lignes=lignes),
         _section(titre="Ajouts (1/1)", compteur=(1, 1), lignes=lignes),
     )
-    entete = Entete(derniere="", adr_du_resume=(), livrees=1)
+    entete = _entete(1)
 
     assert verifier_avancement(sections, (), (), (_us("E00US001"),), (), entete) == ()
 
@@ -120,7 +131,7 @@ def test_le_total_annonce_compte_les_us_distinctes() -> None:
 
 def test_us_livree_absente_de_stories_est_bloquante() -> None:
     section = _section(compteur=(1, 1), lignes=(_ligne("E09US042"),))
-    trouves = verifier_avancement((section,), (), (), (), (), _RIEN)
+    trouves = verifier_avancement((section,), (), (), (), (), _entete(1))
 
     assert _codes(trouves) == ["us-hors-stories"]
     assert trouves[0].severite is Severite.BLOQUANT
@@ -178,8 +189,10 @@ def test_dette_presente_dans_les_deux_tables_est_bloquante() -> None:
     )
     trouves = verifier_avancement((), (), dettes, (), (), _RIEN)
 
-    assert _codes(trouves) == ["dette-dans-les-deux-tables"]
-    assert trouves[0].severite is Severite.BLOQUANT
+    # Les deux constats sont voulus : l'identifiant est à la fois **dupliqué** et **des deux
+    # côtés du registre**. Deux défauts distincts ; le second ne subsume pas le premier.
+    assert _codes(trouves) == ["dette-dans-les-deux-tables", "dette-numero-en-double"]
+    assert all(c.severite is Severite.BLOQUANT for c in trouves)
     assert "DETTE-028" in trouves[0].sujet
 
 
@@ -199,38 +212,142 @@ def test_us_de_resorption_absente_de_stories_est_un_signal() -> None:
     assert trouves[0].severite is Severite.SIGNAL
 
 
-# --- Les titres ---------------------------------------------------------------------------------
+def test_un_meme_numero_de_dette_inscrit_deux_fois_est_bloquant() -> None:
+    """Le défaut **réellement survenu** : deux `DETTE-065` dans la même table, sur `main`.
 
-
-def test_titre_divergent_entre_tracker_et_stories_est_un_signal() -> None:
-    section = _section(compteur=(1, 1), lignes=(_ligne("E00US001", titre="Le socle CI"),))
-    trouves = verifier_avancement(
-        (section,), (), (), (_us("E00US001", "La CI bloquante"),), (), _RIEN
-    )
-
-    assert _codes(trouves) == ["titre-divergent"]
-    assert trouves[0].severite is Severite.SIGNAL
-
-
-def test_titre_reformule_ne_produit_rien() -> None:
-    """Le même travail dit deux fois : c'est le cas ordinaire, il ne doit pas faire de bruit.
-
-    Cas réel du dépôt (E00US009). Un contrôle qui signalerait cette paire signalerait un cinquième
-    des US livrées, et personne ne lirait plus la page.
+    Deux agents ont pris le même numéro libre et, chacun l'ayant écrit loin de l'autre **pour
+    éviter un conflit**, git les a fusionnées sans un mot. `dette-dans-les-deux-tables` ne pouvait
+    pas le voir : les deux lignes étaient du même côté du registre.
     """
-    section = _section(
-        compteur=(1, 1), lignes=(_ligne("E00US009", titre="Repository + endpoint bout-en-bout"),)
+    ligne = Dette(
+        identifiant="065", ouverte=True, severite="mineur", introduite_par=(), resorption_us=()
     )
-    us = (_us("E00US009", "Repository + endpoint de bout en bout"),)
-    assert verifier_avancement((section,), (), (), us, (), _RIEN) == ()
+    trouves = verifier_avancement((), (), (ligne, ligne), (), (), _RIEN)
+
+    assert _codes(trouves) == ["dette-numero-en-double"]
+    assert trouves[0].severite is Severite.BLOQUANT
+    assert "DETTE-065" in trouves[0].sujet
 
 
-def test_titre_identique_aux_accents_et_a_la_casse_pres_ne_produit_rien() -> None:
-    section = _section(
-        compteur=(1, 1), lignes=(_ligne("E00US001", titre="L'ATLAS : l'avancement"),)
+def test_trois_dettes_reclamant_la_meme_us_absente_font_trois_signaux() -> None:
+    """Trois faits distincts, pas un : le sujet du contrôle est la **dette**, pas l'US."""
+    dettes = tuple(
+        Dette(
+            identifiant=numero,
+            ouverte=True,
+            severite="majeur",
+            introduite_par=(),
+            resorption_us=("E09US042",),
+        )
+        for numero in ("001", "002", "003")
     )
-    us = (_us("E00US001", "L'atlas : l'avancement"),)
-    assert verifier_avancement((section,), (), (), us, (), _RIEN) == ()
+    trouves = verifier_avancement((), (), dettes, (), (), _RIEN)
+
+    assert _codes(trouves) == ["resorption-hors-stories"] * 3
+    assert [c.sujet for c in trouves] == ["DETTE-001", "DETTE-002", "DETTE-003"]
+
+
+# --- Les cycles d'epics -------------------------------------------------------------------------
+
+
+def test_un_cycle_entre_epics_est_bloquant() -> None:
+    """Le seul défaut du tableau des epics que le **schéma** ne peut pas montrer.
+
+    Sur un cycle, la réduction transitive efface toutes les arêtes — chacune est impliquée par le
+    chemin qui passe par les autres. Le graphe faux devient la seule chose invisible ; c'est donc
+    au contrôle de parler, pas au dessin.
+    """
+    epics = (
+        Epic(identifiant="01", titre="Un", priorite="P1", depend_de=("02",)),
+        Epic(identifiant="02", titre="Deux", priorite="P1", depend_de=("01",)),
+    )
+    trouves = verifier_avancement((), epics, (), (), (), _RIEN)
+
+    assert _codes(trouves) == ["cycle-entre-epics"] * 2
+    assert all(c.severite is Severite.BLOQUANT for c in trouves)
+
+
+def test_un_cycle_indirect_est_vu() -> None:
+    epics = (
+        Epic(identifiant="01", titre="Un", priorite="P1", depend_de=("03",)),
+        Epic(identifiant="02", titre="Deux", priorite="P1", depend_de=("01",)),
+        Epic(identifiant="03", titre="Trois", priorite="P1", depend_de=("02",)),
+    )
+    trouves = verifier_avancement((), epics, (), (), (), _RIEN)
+
+    assert _codes(trouves) == ["cycle-entre-epics"] * 3
+
+
+def test_un_losange_n_est_pas_un_cycle() -> None:
+    """Deux chemins vers le même ancêtre : le cas le plus banal d'un backlog, jamais un défaut."""
+    epics = (
+        Epic(identifiant="00", titre="Socle", priorite="P0", depend_de=()),
+        Epic(identifiant="01", titre="Un", priorite="P1", depend_de=("00",)),
+        Epic(identifiant="02", titre="Deux", priorite="P1", depend_de=("00",)),
+        Epic(identifiant="03", titre="Trois", priorite="P1", depend_de=("01", "02")),
+    )
+    assert verifier_avancement((), epics, (), (), (), _RIEN) == ()
+
+
+# --- Les états contradictoires ------------------------------------------------------------------
+
+
+def test_deux_etats_pour_une_meme_us_est_un_signal() -> None:
+    """Cas réel : `E05US023` est ✅ en J3 et ⬜ dans « Résorptions de dette planifiées ».
+
+    **Signal et non bloquant** : la colonne « État » ne dit pas partout la même chose — là-bas elle
+    dit si la résorption est faite, pas si l'US est livrée. Trancher mécaniquement entre les deux
+    lectures reviendrait à arbitrer un sens que le tracker n'a jamais fixé.
+    """
+    sections = (
+        _section(titre="J3 (1/1)", compteur=(1, 1), lignes=(_ligne("E05US023"),)),
+        _section(titre="Résorptions", compteur=None, lignes=(_ligne("E05US023", "⬜"),)),
+    )
+    trouves = verifier_avancement(sections, (), (), (_us("E05US023"),), (), _entete(1))
+
+    assert _codes(trouves) == ["etat-contradictoire"]
+    assert trouves[0].severite is Severite.SIGNAL
+    assert "J3 (1/1)" in trouves[0].message and "Résorptions" in trouves[0].message
+
+
+def test_un_meme_etat_dans_deux_sections_ne_produit_rien() -> None:
+    lignes = (_ligne("E01US017"),)
+    sections = (
+        _section(titre="J1 (1/1)", compteur=(1, 1), lignes=lignes),
+        _section(titre="Ajouts (1/1)", compteur=(1, 1), lignes=lignes),
+    )
+    assert verifier_avancement(sections, (), (), (_us("E01US017"),), (), _entete(1)) == ()
+
+
+# --- Le rappel de la Légende --------------------------------------------------------------------
+
+
+def _jalon() -> Section:
+    return _section(
+        titre="J3 — les duels (1/2)",
+        compteur=(1, 2),
+        lignes=(_ligne("E05US001"), _ligne("E05US002", "⬜")),
+    )
+
+
+def test_le_recapitulatif_de_la_legende_est_recalcule() -> None:
+    """« C'est cette règle qui donne J0 12/12, J1 46/46, … » — 5ᵉ écriture des mêmes nombres.
+
+    Elle est éditée à la main dans le fichier même qui édicte la règle de comptage, et se périme
+    exactement comme les en-têtes de section qu'elle récapitule.
+    """
+    entete = _entete(1, recapitulatif=(("J3", 9, 9),))
+    trouves = verifier_avancement((_jalon(),), (), (), (_us("E05US001"),), (), entete)
+
+    assert _codes(trouves) == ["recapitulatif-divergent"]
+    assert trouves[0].severite is Severite.BLOQUANT
+    assert "9/9" in trouves[0].message and "1/2" in trouves[0].message
+
+
+def test_un_recapitulatif_exact_ne_produit_rien() -> None:
+    entete = _entete(1, recapitulatif=(("J3", 1, 2),))
+
+    assert verifier_avancement((_jalon(),), (), (), (_us("E05US001"),), (), entete) == ()
 
 
 # --- L'en-tête du tracker -----------------------------------------------------------------------
@@ -238,7 +355,7 @@ def test_titre_identique_aux_accents_et_a_la_casse_pres_ne_produit_rien() -> Non
 
 def test_derniere_us_dont_le_resume_cite_un_adr_qui_lignore_est_un_signal() -> None:
     """Le défaut réel trouvé sur `main` le 16/08 : en-tête « E05US026 », résumé sur E05US028."""
-    entete = Entete(derniere="E05US026", adr_du_resume=("0084",))
+    entete = _entete(derniere="E05US026", adr=("0084",))
     trouves = verifier_avancement((), (), (), (), (_decision("0084", us=("E05US028",)),), entete)
 
     assert _codes(trouves) == ["derniere-us-orpheline"]
@@ -247,11 +364,11 @@ def test_derniere_us_dont_le_resume_cite_un_adr_qui_lignore_est_un_signal() -> N
 
 
 def test_derniere_us_citee_par_l_adr_de_son_resume_ne_produit_rien() -> None:
-    entete = Entete(derniere="E00US018", adr_du_resume=("0086",))
+    entete = _entete(derniere="E00US018", adr=("0086",))
     assert verifier_avancement((), (), (), (), (_decision("0086", us=("E00US018",)),), entete) == ()
 
 
 def test_resume_sans_adr_ne_produit_rien() -> None:
     """Le contrôle a besoin d'un ADR pour recouper : sans lui, il n'a rien à dire — et se tait."""
-    entete = Entete(derniere="E02US010", adr_du_resume=())
+    entete = _entete(derniere="E02US010")
     assert verifier_avancement((), (), (), (), (_decision("0086", us=("E00US018",)),), entete) == ()

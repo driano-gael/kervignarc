@@ -102,10 +102,53 @@ def en_clair(markdown: str) -> str:
 
 
 _SEPARATEUR_DE_TABLEAU = re.compile(r"^[\s|:-]+$")
+# Le tube **échappé** (`\|`) appartient à la cellule, il ne la termine pas. La convention est déjà
+# employée dans le dépôt (`docs/modele-de-donnees.md`) : découper naïvement sur `|` y fabriquerait
+# une cellule de plus, donc un décalage de toutes les colonnes suivantes.
+_TUBE = re.compile(r"(?<!\\)\|")
 
 
-def tableaux(texte: str) -> list[tuple[list[str], list[list[str]]]]:
-    """Les tableaux Markdown de premier niveau, sous forme (en-tête, lignes).
+def est_separateur(ligne: str) -> bool:
+    """La ligne `|---|---|` qui sépare l'en-tête du corps."""
+    return bool(_SEPARATEUR_DE_TABLEAU.match(ligne))
+
+
+def cellules(ligne: str) -> list[str]:
+    """Les cellules d'une ligne de tableau, tube échappé compris.
+
+    On retire **un** tube extérieur de chaque côté, pas tous : une cellule finale légitimement
+    vide (`| a | |`) doit rester dans le compte, sans quoi la ligne paraîtrait plus courte que son
+    en-tête — et c'est précisément ce décalage que les appelants refusent.
+    """
+    nue = ligne.strip()
+    if nue.startswith("|"):
+        nue = nue[1:]
+    if nue.endswith("|") and not nue.endswith("\\|"):
+        nue = nue[:-1]
+    return [cellule.strip().replace("\\|", "|") for cellule in _TUBE.split(nue)]
+
+
+def index_colonnes(entete: list[str]) -> dict[str, int]:
+    """Les colonnes **par leur nom**, jamais par leur position.
+
+    Le dépôt fait coexister sept variantes d'en-tête de tableau d'US et deux de tableau de dette :
+    se caler sur un rang lirait l'épic comme un état au premier tableau venu.
+    """
+    return {nom.strip("* "): rang for rang, nom in enumerate(entete)}
+
+
+def cellule(cellules_: list[str], index: dict[str, int], nom: str) -> str:
+    """La cellule d'une colonne nommée — vide si la colonne ou la cellule manque."""
+    rang = index.get(nom)
+    return cellules_[rang] if rang is not None and rang < len(cellules_) else ""
+
+
+def tableaux(texte: str) -> list[tuple[str, list[str], list[list[str]]]]:
+    """Les tableaux Markdown de premier niveau, sous forme (section, en-tête, lignes).
+
+    La **section** est le titre `## ` qui précède le tableau. Elle est rendue parce que le sens
+    d'un tableau en dépend parfois : dans `docs/dette.md`, c'est le titre — « Dette ouverte » ou
+    « Dette résorbée » — qui dit ce que la ligne signifie, une colonne ne le dit pas.
 
     Les tableaux **en citation** (`> | … |`) sont ignorés : dans ce dépôt, ce sont des vues de
     priorité ou des encadrés, jamais des inventaires. Une ligne plus courte que son en-tête est
@@ -113,15 +156,21 @@ def tableaux(texte: str) -> list[tuple[list[str], list[list[str]]]]:
     réponse dépend de ce qu'il compte : un tableau d'états ne le tolère pas, un tableau descriptif
     s'en accommode.
     """
-    trouves: list[tuple[list[str], list[list[str]]]] = []
+    trouves: list[tuple[str, list[str], list[list[str]]]] = []
+    section = ""
     entete: list[str] | None = None
     lignes: list[list[str]] = []
 
     def fermer() -> None:
         if entete is not None:
-            trouves.append((entete, lignes))
+            trouves.append((section, entete, lignes))
 
     for brute in texte.split("\n"):
+        if brute.startswith("## "):
+            fermer()
+            entete, lignes = None, []
+            section = brute[3:].strip()
+            continue
         if not brute.strip():
             # ⚠️ Une ligne **vide** n'interrompt pas le tableau. Les registres écrits à la main en
             # contiennent, pour aérer des lignes de plusieurs centaines de caractères : les traiter
@@ -134,13 +183,13 @@ def tableaux(texte: str) -> list[tuple[list[str], list[list[str]]]]:
                 fermer()
                 entete, lignes = None, []
             continue
-        if _SEPARATEUR_DE_TABLEAU.match(brute):
+        if est_separateur(brute):
             continue
-        cellules = [c.strip() for c in brute.strip().strip("|").split("|")]
+        decoupee = cellules(brute)
         if entete is None:
-            entete, lignes = cellules, []
+            entete, lignes = decoupee, []
         else:
-            lignes.append(cellules)
+            lignes.append(decoupee)
     fermer()
     return trouves
 

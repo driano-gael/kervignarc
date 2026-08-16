@@ -31,22 +31,30 @@ ABSORBEE = "⛔"
 LIVREE = "✅"
 
 _US = re.compile(r"E\d{2}US\d{3}")
-_COMPTEUR = re.compile(r"\((\d+)/(\d+)\)")
+# Ancré en **fin de titre** : c'est la forme de toutes les sections réelles, et un `(2026/08)`
+# glissé au milieu d'un libellé serait sinon lu comme un compteur — donc rejeté comme divergent,
+# sur un titre parfaitement légitime.
+_COMPTEUR = re.compile(r"\((\d+)/(\d+)\)\s*\**\s*$")
 _BARRE = re.compile(r"~~")
-_SEPARATEUR = re.compile(r"^[\s|:-]+$")
 _ADR = re.compile(r"ADR-(\d{4})")
-# « · dernière : `E00US018` », puis le résumé en italique jusqu'à « Précédente : ».
+# La ligne d'annonce porte les deux champs : « … · **112 US livrées** · dernière : `E00US019` ».
 _DERNIERE = re.compile(r"derni[èe]re\s*:\s*`(E\d{2}US\d{3})`", re.I)
-_TOTAL_LIVREES = re.compile(r"(\d+)\s+US\s+livr[ée]es", re.I)
-_PRECEDENTE = re.compile(r"^\s*Pr[ée]c[ée]dente\s*:", re.I | re.M)
+_TOTAL_LIVREES = re.compile(r"(\d+)\s+US\s+livr[ée]es?", re.I)
+# « … qui donne J0 12/12, J1 46/46, J2 14/14, J3 16/18 et J4 0/7 », dans la Légende.
+_RAPPEL_DE_JALON = re.compile(r"\bJ(\d)\s+(\d+)/(\d+)")
 
 
 @dataclass(frozen=True, slots=True)
 class Entete:
-    """Ce que l'en-tête du tracker annonce : la dernière US livrée, et les ADR que son résumé cite.
+    """Ce que le tracker **déclare de lui-même**, et que rien d'autre ne vérifiait.
 
-    Les deux se recoupent : si le résumé décrit une **autre** US que celle annoncée — le défaut
-    trouvé sur `main` le 16/08/2026 — l'ADR qu'il cite ne connaîtra pas l'US annoncée.
+    L'annonce de tête (dernière US, total livré, ADR cités par le résumé) et le rappel des
+    compteurs de jalon dans la Légende. Ce sont tous des nombres et des noms écrits **à la main**
+    dans le fichier qu'ils décrivent : ils se périment exactement comme les en-têtes de section, et
+    ils sont donc recalculés comme eux.
+
+    L'annonce et le résumé se recoupent : si le résumé décrit une **autre** US que celle annoncée
+    — le défaut trouvé sur `main` le 16/08/2026 — l'ADR qu'il cite ne connaîtra pas l'US annoncée.
     """
 
     derniere: str
@@ -54,8 +62,12 @@ class Entete:
     # Le total annoncé en tête. C'est un compteur au même titre que ceux des sections — et il se
     # trompe d'un mode qui leur est propre : une US **livrée mais jamais insérée dans un jalon**
     # (elle n'existe que dans la file d'attente, en citation) le gonfle sans qu'aucune section ne
-    # bouge. `None` quand l'en-tête n'annonce rien.
-    livrees: int | None = None
+    # bouge. Jamais optionnel : un en-tête illisible fait **échouer la lecture**, il ne rend pas un
+    # champ vide que le contrôle traiterait comme « rien à dire ».
+    livrees: int
+    # Les compteurs de jalon rappelés en toutes lettres dans la Légende — cinquième écriture des
+    # mêmes nombres, recalculée comme les autres.
+    recapitulatif: tuple[tuple[str, int, int], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,9 +87,8 @@ class Section:
     lignes: tuple[LigneUS, ...]
     a_colonne_seq: bool
 
-    @property
-    def comptees(self) -> tuple[LigneUS, ...]:
-        """Les lignes qui entrent dans le `n/N`, selon la règle de la Légende.
+    def est_comptee(self, ligne: LigneUS) -> bool:
+        """La règle de la Légende, définie **une seule fois**, ici.
 
         Trois exclusions, et chacune correspond à un mode de panne réellement constaté :
         - **pas d'identifiant d'US** — un relevé, un lot hors US : du travail livré, pas une unité
@@ -85,24 +96,28 @@ class Section:
         - **absorbée (⛔)** — la capacité a été livrée par une autre US, celle-ci n'existe plus ;
         - **hors séquence (`Seq = —`)** dans un jalon — l'US est remontée d'une section d'ajouts et
           y est déjà comptée ; sans cette clause elle compterait deux fois.
+
+        Exposée en **prédicat** et pas seulement en filtre : les consommateurs qui doivent marquer
+        une ligne « hors décompte » passaient auparavant par l'identité mémoire des objets rendus
+        par `comptees`, ce qui marchait mais serait devenu faux en silence le jour où la propriété
+        rendrait des copies.
         """
-        return tuple(
-            ligne
-            for ligne in self.lignes
-            if ligne.identifiant
+        return bool(
+            ligne.identifiant
             and ligne.etat != ABSORBEE
             and not (self.a_colonne_seq and ligne.hors_sequence)
         )
+
+    @property
+    def comptees(self) -> tuple[LigneUS, ...]:
+        """Les lignes qui entrent dans le `n/N`."""
+        return tuple(ligne for ligne in self.lignes if self.est_comptee(ligne))
 
 
 def compter(section: Section) -> tuple[int, int]:
     """Le `(n, N)` d'une section : N les lignes comptées, n celles qui sont livrées."""
     comptees = section.comptees
     return sum(1 for ligne in comptees if ligne.etat == LIVREE), len(comptees)
-
-
-def _cellules(ligne: str) -> list[str]:
-    return [cellule.strip() for cellule in ligne.strip().strip("|").split("|")]
 
 
 def _glyphe(cellule: str) -> str:
@@ -113,23 +128,24 @@ def _glyphe(cellule: str) -> str:
 
 
 def _colonnes(entete: list[str], *, titre: str, compte: bool) -> dict[str, int]:
-    """Repère les colonnes **par leur nom**, jamais par leur position.
+    """Les colonnes du tableau d'une section, repérées par leur nom.
 
-    Sept variantes d'en-tête coexistent (`Seq|US|Titre|État`, `US|Titre|Jalon|État`,
-    `US|Titre|Épic|État`…) : se caler sur un rang aurait lu l'épic comme un état au premier
-    tableau venu.
+    Cf. `markdown.index_colonnes` : sept variantes d'en-tête coexistent dans ce fichier.
     """
-    index = {nom.strip("* "): rang for rang, nom in enumerate(entete)}
+    index = markdown.index_colonnes(entete)
     if "US" not in index:
         raise AtlasSourceInvalide(
             f"{FICHIER} : la section « {titre} » porte un tableau sans colonne « US ». "
             f"Le lecteur ne devine pas les colonnes — nomme-la, ou sors ce tableau de la section."
         )
     if compte and "État" not in index:
+        # ⚠️ Le remède proposé ne mentionne **pas** « retire le `n/N` du titre », bien que ce soit
+        # techniquement suffisant pour faire taire l'erreur : un message qui enseigne la porte de
+        # sortie à parité du correctif transforme le garde-fou en option.
         raise AtlasSourceInvalide(
             f"{FICHIER} : la section « {titre} » annonce un compteur mais son tableau n'a pas de "
             f"colonne « État ». Un compteur qu'on ne peut pas recalculer ne prouve rien : "
-            f"ajoute la colonne, ou retire le `n/N` du titre."
+            f"ajoute la colonne « État » au tableau."
         )
     return index
 
@@ -139,7 +155,9 @@ def lire_sections_du_texte(texte: str) -> tuple[Section, ...]:
 
     Les tableaux **en citation** (`> | … |`, comme la file d'exécution de « 🎯 Prochaine US ») sont
     ignorés : ce sont des vues de priorité, pas des inventaires d'US, et leurs colonnes n'ont rien
-    à voir.
+    à voir. ⚠️ Corollaire à connaître : une US qui ne figure **que** dans un tel tableau est
+    invisible à tous les contrôles de section. C'est l'angle mort qui a laissé `E05US026` et
+    `E05US028`, livrées, hors de tout jalon — seul le total annoncé en tête les a trahies.
     """
     sections: list[Section] = []
     titre = ""
@@ -147,6 +165,7 @@ def lire_sections_du_texte(texte: str) -> tuple[Section, ...]:
     entete: dict[str, int] | None = None
     largeur = 0
     lignes: list[LigneUS] = []
+    dans_un_bloc_de_code = False
 
     def fermer() -> None:
         if titre:
@@ -160,6 +179,14 @@ def lire_sections_du_texte(texte: str) -> tuple[Section, ...]:
             )
 
     for brute in texte.split("\n"):
+        # Un `## ` **dans un bloc de code** n'ouvre pas de section : ce fichier documente son propre
+        # format, il cite donc ses propres titres. Sans cette clause, l'exemple devenait une section
+        # fantôme — bruyante, mais avec un diagnostic faux.
+        if brute.lstrip().startswith("```"):
+            dans_un_bloc_de_code = not dans_un_bloc_de_code
+            continue
+        if dans_un_bloc_de_code:
+            continue
         if brute.startswith("## "):
             fermer()
             titre = brute[3:].strip()
@@ -169,21 +196,30 @@ def lire_sections_du_texte(texte: str) -> tuple[Section, ...]:
             lignes = []
             continue
         if not brute.startswith("|"):
+            # ⚠️ Toute ligne non vide hors tableau **ferme** le tableau courant. Sans cela, un
+            # second tableau de la même section était lu avec les colonnes du premier : ses
+            # lignes sortaient avec un identifiant vide, donc hors décompte, et disparaissaient
+            # **en silence** — dans le module dont le parti pris est de ne jamais compter faux
+            # sans le dire.
+            if brute.strip():
+                entete = None
             continue
-        cellules = _cellules(brute)
-        if _SEPARATEUR.match(brute):
+        if markdown.est_separateur(brute):
             continue
+        cellules = markdown.cellules(brute)
         if entete is None:
             entete = _colonnes(cellules, titre=titre, compte=compteur is not None)
             largeur = len(cellules)
             continue
-        if len(cellules) < largeur:
-            # ⚠️ Une ligne plus courte que son en-tête décale toutes les colonnes suivantes : l'état
-            # se lirait vide, donc « non livrée », et le compteur serait faux **sans un mot**. C'est
-            # exactement le décompte silencieux que ce module refuse.
+        if len(cellules) != largeur:
+            # ⚠️ Un décalage de colonnes, dans **les deux sens**. Trop court : l'état se lit vide,
+            # donc « non livrée ». Trop long : l'état se lit sur la mauvaise cellule. Les deux
+            # rendent le compteur faux, et la seconde moitié de ce garde a manqué jusqu'au
+            # 16/08/2026 — le commentaire, lui, décrivait déjà les deux.
             raise AtlasSourceInvalide(
                 f"{FICHIER} : dans « {titre} », une ligne porte {len(cellules)} cellules pour "
                 f"{largeur} colonnes — l'état ne peut pas être lu de façon sûre.\n"
+                f"Un tube littéral dans une cellule s'écrit `\\|`.\n"
                 f"Ligne : {' | '.join(cellules)[:120]}"
             )
         lignes.append(_ligne(cellules, entete))
@@ -194,8 +230,7 @@ def lire_sections_du_texte(texte: str) -> tuple[Section, ...]:
 
 def _ligne(cellules: list[str], entete: dict[str, int]) -> LigneUS:
     def cellule(nom: str) -> str:
-        rang = entete.get(nom)
-        return cellules[rang] if rang is not None and rang < len(cellules) else ""
+        return markdown.cellule(cellules, entete, nom)
 
     brut_us = _BARRE.sub("", cellule("US"))
     trouve = _US.search(brut_us)
@@ -210,21 +245,60 @@ def _ligne(cellules: list[str], entete: dict[str, int]) -> LigneUS:
 
 
 def lire_entete_du_texte(texte: str) -> Entete:
-    """L'annonce de tête : « dernière : `ExxUSyyy` » et les ADR cités par le résumé qui la suit.
+    """Ce que le tracker déclare de lui-même : son annonce de tête et le rappel de sa Légende.
 
-    Le résumé court de l'annonce jusqu'à « Précédente : » — pas jusqu'à la fin du fichier, sans
-    quoi le contrôle ramasserait les ADR de **toutes** les US et ne dirait plus rien.
+    ⚠️ **Refuse plutôt que de rendre un en-tête à moitié lu.** La version précédente rendait des
+    champs vides quand une regex ne mordait pas, et les contrôles qui en dépendent étaient gardés
+    par des `is not None` : déplacer un `**` ou intervertir deux champs de la ligne d'annonce
+    suffisait à **éteindre en silence** le seul contrôle capable de voir une US livrée restée hors
+    jalon. Mesuré le 16/08/2026 : un tracker annonçant « 999 US livrées » passait au vert. Le
+    silence ne peut pas valoir accord sur un fichier écrit à la main que chaque US réécrit.
+
+    Les deux champs se lisent sur **la même ligne** — c'est la forme du fichier — et le résumé
+    court jusqu'à la première ligne vide : une borne locale, là où le marqueur « Précédente : »
+    était distant et a déjà été réécrit une fois dans ce même diff.
     """
-    annonce = _DERNIERE.search(texte)
-    if not annonce:
-        return Entete(derniere="", adr_du_resume=())
-    suivant = _PRECEDENTE.search(texte, annonce.end())
-    resume = texte[annonce.end() : suivant.start() if suivant else len(texte)]
-    total = _TOTAL_LIVREES.search(texte[: annonce.end()])
-    return Entete(
-        derniere=annonce.group(1),
-        adr_du_resume=tuple(dict.fromkeys(_ADR.findall(resume))),
-        livrees=int(total.group(1)) if total else None,
+    lignes = texte.split("\n")
+    for rang, ligne in enumerate(lignes):
+        annonce = _DERNIERE.search(ligne)
+        if not annonce:
+            continue
+        total = _TOTAL_LIVREES.search(ligne)
+        if not total:
+            raise AtlasSourceInvalide(
+                f"{FICHIER} : la ligne d'annonce nomme la dernière US "
+                f"({annonce.group(1)}) mais n'annonce pas de total.\n"
+                f"Forme attendue sur une seule ligne : « … · **N US livrées** · dernière : "
+                f"`ExxUSyyy` ».\nLigne : {ligne.strip()[:120]}"
+            )
+        resume: list[str] = []
+        for suite in lignes[rang + 1 :]:
+            if not suite.strip():
+                break
+            resume.append(suite)
+        return Entete(
+            derniere=annonce.group(1),
+            adr_du_resume=tuple(dict.fromkeys(_ADR.findall("\n".join(resume)))),
+            livrees=int(total.group(1)),
+            recapitulatif=_recapitulatif(texte),
+        )
+    raise AtlasSourceInvalide(
+        f"{FICHIER} : aucune ligne d'annonce lisible.\n"
+        f"Forme attendue : « … · **N US livrées** · dernière : `ExxUSyyy` ».\n"
+        f"Sans elle, le total annoncé n'est comparable à rien — et une US livrée restée hors "
+        f"jalon redeviendrait invisible."
+    )
+
+
+def _recapitulatif(texte: str) -> tuple[tuple[str, int, int], ...]:
+    """Les compteurs de jalon rappelés en toutes lettres dans la Légende.
+
+    « C'est cette règle qui donne J0 12/12, J1 46/46, … » — une **cinquième** écriture des mêmes
+    nombres, éditée à la main, et qui se périmait exactement comme les en-têtes de section qu'elle
+    récapitule. Elle est donc recalculée comme elles.
+    """
+    return tuple(
+        (f"J{jalon}", int(n), int(total)) for jalon, n, total in _RAPPEL_DE_JALON.findall(texte)
     )
 
 

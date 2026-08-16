@@ -995,7 +995,7 @@ window.ATLAS.avancement = {
     "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (4/10)**"
    ],
    "story": "stories/E00-socle.md",
-   "titre": "Ossature de navigation admin (coquille)",
+   "titre": "Coquille de navigation admin",
    "titre_story": "Ossature de navigation de l'appli admin (coquille)"
   },
   {
@@ -3783,6 +3783,10 @@ window.ATLAS.avancement = {
    "titre_story": "Empêcher le dossier de maquettes de dériver du produit"
   }
  ],
+ "resume": {
+  "livrees": 112,
+  "vivantes": 151
+ },
  "sections": [
   {
    "calcule": [

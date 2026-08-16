@@ -76,6 +76,12 @@ window.ATLAS.controles = {
    "sujet": "ADR-0083"
   },
   {
+   "code": "etat-contradictoire",
+   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (16/18)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "severite": "signal",
+   "sujet": "E05US023"
+  },
+  {
    "code": "portage-non-verifiable",
    "message": "annonce DEPART dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
@@ -146,22 +152,10 @@ window.ATLAS.controles = {
    "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
-  },
-  {
-   "code": "titre-divergent",
-   "message": "s'intitule « Admin rangée en trois axes d'activité + une adresse par rôle » au tracker et « Ranger l'administration par axe d'activité, plus par temps du tournoi (D-19) » dans `stories/E14-lisibilite-admin.md`.",
-   "severite": "signal",
-   "sujet": "E14US003"
-  },
-  {
-   "code": "titre-divergent",
-   "message": "s'intitule « A01 connexion + A02 accueil des axes conformes à leur planche » au tracker et « Les deux premiers écrans de l'admin se conforment à leur planche » dans `stories/E17-fidelite-aux-maquettes.md`.",
-   "severite": "signal",
-   "sujet": "E17US003"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 26
+  "signaux": 25
  }
 };

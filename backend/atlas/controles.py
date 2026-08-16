@@ -16,9 +16,10 @@ Calibrage des sévérités, délibéré :
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 
-from atlas import markdown, normalisation
+from atlas import markdown
 from atlas.modele import Controle, Decision, Regle, Severite
 from atlas.sources import suivi
 from atlas.sources.backlog import Dette, Epic, UsSpecifiee
@@ -29,6 +30,14 @@ _DATE_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _us_du_backlog(racine: Path) -> set[str]:
+    """Tout identifiant **cité** dans `stories/`, fiche ou simple mention en prose.
+
+    ⚠️ Volontairement plus large que `backlog.lire_us_specifiees`, qui n'accepte qu'un **titre**
+    de fiche. Les deux répondent à « cette US est-elle dans `stories/` ? » et divergent sur le cas
+    intermédiaire — une US mentionnée sans fiche propre. C'est délibéré : ici, un ADR qui cite une
+    US inconnue est un **signal** et la mention suffit à lever le doute ; là-bas, une US **livrée**
+    sans fiche est un **bloquant** et seule une vraie fiche l'acquitte.
+    """
     dossier = racine / "stories"
     if not dossier.is_dir():
         return set()
@@ -162,29 +171,45 @@ def verifier(
     return trier(tuple(trouves))
 
 
-def _mots(titre: str) -> set[str]:
-    """Les mots significatifs d'un libellé — sans accent, sans casse, sans les mots outils."""
-    return {mot for mot in re.split(r"[^a-z0-9]+", normalisation.cle(titre)) if len(mot) > 2}
+def _cycles(epics: tuple[Epic, ...]) -> tuple[str, ...]:
+    """Les epics engagés dans un cycle de dépendances, par ordre d'identifiant.
 
-
-def _titres_concordent(tracker: str, story: str) -> bool:
-    """Le tracker et la story désignent-ils visiblement le même travail ?
-
-    Comparer à l'égalité ne marche pas : les deux libellés du **même** travail sont presque
-    toujours des reformulations — « Repository + endpoint bout-en-bout » contre « … de bout en
-    bout », un titre augmenté d'une glose ou tronqué. Mesuré sur le dépôt le 16/08/2026, l'égalité
-    stricte donnait **23 signaux sur 109 US livrées**, presque tous des synonymes : un contrôle à
-    ce niveau de bruit n'est plus lu, et sa disparition emporte les constats qui, eux, étaient bons.
-
-    On mesure donc le **recouvrement** des mots significatifs, rapporté au plus court des deux
-    libellés (le plus court est souvent une troncature volontaire, qu'on ne veut pas pénaliser).
-    Sous la moitié des mots en commun, les deux titres ne parlent visiblement plus de la même
-    chose. Seuil **calibré sur le dépôt**, pas déduit : il y laisse deux signaux, tous deux réels.
+    Parcours en profondeur avec pile explicite : le graphe est minuscule, mais une récursion
+    Python sur un graphe faux buterait sur la limite d'appels avant de dire quoi que ce soit.
     """
-    a, b = _mots(tracker), _mots(story)
-    if not a or not b:
-        return True
-    return len(a & b) / min(len(a), len(b)) >= 0.5
+    dependances = {epic.identifiant: epic.depend_de for epic in epics}
+    engages: set[str] = set()
+    for depart in dependances:
+        pile = [(depart, iter(dependances.get(depart, ())))]
+        en_cours = {depart}
+        while pile:
+            noeud, voisins = pile[-1]
+            suivant = next(voisins, None)
+            if suivant is None:
+                pile.pop()
+                en_cours.discard(noeud)
+                continue
+            if suivant == depart:
+                engages.add(depart)
+                pile.clear()
+                break
+            if suivant in en_cours or suivant not in dependances:
+                continue
+            en_cours.add(suivant)
+            pile.append((suivant, iter(dependances[suivant])))
+    return tuple(sorted(engages))
+
+
+# ⚠️ **Il n'y a pas de contrôle de « titre divergent » ici, et c'est un constat, pas un oubli.**
+# La première version comparait le libellé du tracker à celui de `stories/` par recouvrement de
+# mots. Mesuré le 16/08/2026, puis attaqué en revue : à l'égalité stricte il criait sur 23 des 109
+# US livrées, **toutes** des reformulations du même travail ; au seuil qui les taisait, on
+# construisait sans effort des faux négatifs — « Supprimer un archer » concordait avec « Supprimer
+# un club », « Placement automatique des cibles » avec « Placement manuel des cibles ». Précision
+# mesurée : **0 vrai positif sur 2 signaux**. Aucun seuil ne sépare les deux populations, parce
+# qu'un titre reformulé et un titre changé se ressemblent exactement autant.
+# Un signal à la fois bruyant et poreux n'apprend qu'une chose au lecteur : ignorer la page. Le
+# retirer est plus honnête que de le documenter comme « calibré ».
 
 
 def verifier_avancement(
@@ -230,7 +255,7 @@ def verifier_avancement(
         for ligne in section.comptees
         if ligne.etat == suivi.LIVREE
     }
-    if entete.livrees is not None and sections and entete.livrees != len(distinctes):
+    if sections and entete.livrees != len(distinctes):
         trouves.append(
             Controle(
                 code="total-annonce-divergent",
@@ -269,20 +294,49 @@ def verifier_avancement(
                         ),
                     )
                 )
-            elif not _titres_concordent(ligne.titre, story.titre):
-                trouves.append(
-                    Controle(
-                        code="titre-divergent",
-                        severite=Severite.SIGNAL,
-                        sujet=ligne.identifiant,
-                        message=(
-                            f"s'intitule « {ligne.titre} » au tracker et « {story.titre} » "
-                            f"dans `{story.fichier}`."
-                        ),
-                    )
+    # Un même identifiant porté par deux glyphes différents dans deux sections. En **signal** et
+    # non en bloquant : la colonne « État » ne dit pas partout la même chose — dans « Résorptions
+    # de dette planifiées », elle dit si la résorption est faite, pas si l'US est livrée. Trancher
+    # mécaniquement entre les deux lectures reviendrait à arbitrer un sens que le tracker n'a pas
+    # fixé ; le dire à l'humain est le bon niveau.
+    etats: dict[str, dict[str, str]] = {}
+    for section in sections:
+        for ligne in section.comptees:
+            etats.setdefault(ligne.identifiant, {})[section.titre] = ligne.etat
+    for identifiant, par_section in sorted(etats.items()):
+        if len(set(par_section.values())) > 1:
+            trouves.append(
+                Controle(
+                    code="etat-contradictoire",
+                    severite=Severite.SIGNAL,
+                    sujet=identifiant,
+                    message=(
+                        "porte deux états différents selon la section : "
+                        + " · ".join(
+                            f"{glyphe or '(vide)'} dans « {titre} »"
+                            for titre, glyphe in sorted(par_section.items())
+                        )
+                        + "."
+                    ),
                 )
+            )
 
     connus = {epic.identifiant for epic in epics}
+    for identifiant in _cycles(epics):
+        trouves.append(
+            Controle(
+                code="cycle-entre-epics",
+                severite=Severite.BLOQUANT,
+                sujet=f"EPIC-{identifiant}",
+                message=(
+                    "appartient à un cycle de dépendances : aucun de ces epics ne peut commencer "
+                    "avant les autres. ⚠️ Un cycle est aussi la seule erreur que le schéma ne "
+                    "montre pas — sa réduction transitive en efface toutes les arêtes, chacune "
+                    "étant impliquée par le chemin qui passe par les suivantes."
+                ),
+            )
+        )
+
     for epic in epics:
         for cible in epic.depend_de:
             if cible not in connus:
@@ -310,18 +364,64 @@ def verifier_avancement(
             )
         )
 
-    reclamees: set[str] = set()
+    # ⚠️ Le doublon **dans une même table** est un cas distinct du précédent, et c'est **celui qui
+    # s'est réellement produit** : deux `DETTE-065` ont atteint `main`, toutes deux dans « Dette
+    # ouverte ». `ouvertes & resorbees` était vide, donc muet. Le garde-fou né de ce défaut ne le
+    # voyait pas — il vivait dans un test, pas dans la porte.
+    comptes = Counter(dette.identifiant for dette in dettes)
+    for identifiant, combien in sorted(comptes.items()):
+        if combien > 1:
+            trouves.append(
+                Controle(
+                    code="dette-numero-en-double",
+                    severite=Severite.BLOQUANT,
+                    sujet=f"DETTE-{identifiant}",
+                    message=(
+                        f"est inscrite {combien} fois au registre. Deux dettes distinctes ont pris "
+                        f"le même numéro libre et, chacune l'ayant écrite loin de l'autre **pour "
+                        f"éviter un conflit**, git les a fusionnées sans un mot."
+                    ),
+                )
+            )
+
+    reclamees: set[tuple[str, str]] = set()
     for dette in dettes:
         for us in dette.resorption_us:
-            if us in specifiees or us in reclamees:
+            # Dédoublonné par **(dette, US)** et non par US seule : trois dettes qui réclament la
+            # même US absente sont trois faits, pas un — le sujet du contrôle est la dette.
+            if us in specifiees or (dette.identifiant, us) in reclamees:
                 continue
-            reclamees.add(us)
+            reclamees.add((dette.identifiant, us))
             trouves.append(
                 Controle(
                     code="resorption-hors-stories",
                     severite=Severite.SIGNAL,
                     sujet=f"DETTE-{dette.identifiant}",
                     message=f"annonce sa résorption par {us}, absente de `stories/`.",
+                )
+            )
+
+    # Le rappel « … qui donne J0 12/12, J1 46/46, … » de la Légende : une **cinquième** écriture
+    # des mêmes nombres, à la main, dans le fichier même qui édicte la règle de comptage. Elle se
+    # périme exactement comme les en-têtes de section qu'elle récapitule — mode de panne n°1 du
+    # 08/08/2026, un cran au-dessus.
+    calcules = {
+        section.titre.split(" ", 1)[0]: compter(section)
+        for section in sections
+        if section.compteur_ecrit is not None
+    }
+    for jalon, n, total in entete.recapitulatif:
+        attendu = calcules.get(jalon)
+        if attendu is not None and attendu != (n, total):
+            trouves.append(
+                Controle(
+                    code="recapitulatif-divergent",
+                    severite=Severite.BLOQUANT,
+                    sujet=f"le rappel de la Légende, {jalon}",
+                    message=(
+                        f"annonce {n}/{total} alors que la section donne "
+                        f"{attendu[0]}/{attendu[1]}."
+                    ),
                 )
             )
 

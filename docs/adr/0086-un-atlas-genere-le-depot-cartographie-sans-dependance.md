@@ -64,7 +64,9 @@ cet ADR contredirait ADR-0001** — c'est le point 3 qui rend le point 1 accepta
 
 **2. SVG maison, aucune bibliothèque de rendu.** Les schémas sont construits à la main à partir de
 géométries connues d'avance (trois colonnes fixes pour le voisinage d'un ADR, un rang par date pour
-les chaînes d'amendement). Segments strictement horizontaux et verticaux, coudes à angle droit.
+les chaînes d'amendement, **une colonne par rang de plus-long-chemin pour les epics** — avec une
+passe de barycentre pour décroiser et des couloirs sous le schéma pour les liaisons de portée > 1).
+Segments strictement horizontaux et verticaux, coudes à angle droit.
 Précédent : [ADR-0063](0063-brouillon-de-format-invariant-a-l-application.md) §5 bis.
 
 *Limite assumée, écrite ici pour ne pas être redécouverte plus tard :* **aucun moteur de mise en
@@ -73,6 +75,15 @@ semaines de réglage. On ne l'écrit pas, et on ne le sous-traite pas non plus :
 vues dont la forme est connue**. Le jour où un graphe libre s'imposera (le graphe d'imports du
 backend, ~250 nœuds), la réponse sera de **changer de forme** — une matrice de dépendances, qui n'a
 aucune mise en page et où les cycles se lisent sous la diagonale — et non de monter en échelle.
+
+⚠️ **Le schéma des epics dessine la réduction transitive du graphe déclaré**, pas le graphe entier :
+une dépendance déjà impliquée par un chemin plus long n'est pas redessinée (38 arêtes déclarées, 19
+dessinées au 16/08/2026). Aucune information n'est perdue — la dépendance reste impliquée — et c'est
+ce qui rend un dessin sans moteur de mise en page réellement lisible à 18 nœuds. Mais cela a un
+angle mort, nommé ici pour ne pas être redécouvert : **sur un cycle, la réduction efface toutes les
+arêtes**, chacune étant impliquée par le chemin qui passe par les autres. Le graphe faux serait
+alors la seule chose invisible. L'acyclicité est donc un contrôle **bloquant**
+(`cycle-entre-epics`), et non une promesse du dessin.
 
 **3. Données générées, commitées, vérifiées en CI.** `atlas/donnees/*.js` est du généré committé :
 l'atlas est ainsi consultable après un simple clone, sans rien lancer. La CI régénère et compare.
@@ -205,12 +216,23 @@ suivante sur une base fausse.
 3. deux `DETTE-065` coexistaient sur `main`. Deux agents avaient pris le même numéro libre et,
    **pour éviter un conflit**, chacun l'avait écrit loin de l'autre : git a fusionné sans un mot.
    La précaution anti-conflit est exactement ce qui a rendu la collision invisible.
+   *(Rectifié en revue : le contrôle livré au premier jet ne voyait ce défaut-là **ni** dans la
+   porte **ni** sur la page — il comparait les deux tables du registre, alors que les deux lignes
+   étaient du même côté. L'invariant vivait dans un test. Il est désormais un `Controle`
+   bloquant, `dette-numero-en-double`, donc opposable au même titre que les autres.)*
 
-⚠️ **Une limite assumée, et elle est du même ordre que celle du portage.** Le contrôle de
-concordance des **titres** repose sur un recouvrement de mots, seuil calibré sur le dépôt : c'est
-un **signal**, jamais un verdict. À l'égalité stricte il criait sur 23 des 109 US livrées, presque
-toutes de simples reformulations — et un contrôle à ce niveau de bruit n'est plus lu, ce qui
-emporte aussi les constats justes.
+⚠️ **Un contrôle a été écrit puis retiré, et le dire fait partie de la décision.** La
+concordance des **titres** entre le tracker et `stories/` semblait mesurable par recouvrement de
+mots. Elle ne l'est pas : à l'égalité stricte, le contrôle criait sur 23 des 109 US livrées,
+**toutes** des reformulations du même travail ; au seuil qui les taisait, on construisait sans
+effort des faux négatifs (« Supprimer un archer » concordait avec « Supprimer un club »). Précision
+mesurée : **0 vrai positif sur 2 signaux**. Aucun seuil ne sépare les deux populations, parce qu'un
+titre *reformulé* et un titre *changé* se ressemblent exactement autant.
+
+Un signal à la fois bruyant et poreux n'apprend qu'une chose au lecteur : ignorer la page. Le
+retirer vaut mieux que de le documenter comme « calibré » — et c'est la même règle que celle du
+calibrage des sévérités, appliquée un cran plus loin : **un contrôle qu'on ne peut pas rendre juste
+ne se garde pas en le déclarant heuristique.**
 
 ## Porté dans le code par
 

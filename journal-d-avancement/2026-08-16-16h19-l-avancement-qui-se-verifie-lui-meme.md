@@ -36,3 +36,24 @@ Les trois sont corrigées. La quatrième du même genre, elle, sera signalée au
 L'atlas ne dit **pas** qu'une US est faite : il rapporte ce que le tableau de suivi écrit, et rien
 d'autre. Trois US ont une trace dans l'historique du dépôt sans être livrées — un outil qui
 déduirait l'avancement de cet historique les compterait faites, et se tromperait.
+
+## À vérifier
+
+La convention `docs/fonctionnel/` ne s'applique pas ici — elle vise les US qui livrent une surface
+dans l'application (`frontend/src/**`), pas l'atlas. La recette tient donc en cinq gestes, à faire
+en ouvrant `atlas/index.html` d'un double-clic puis en cliquant « L'avancement » :
+
+1. les quatre cartes du haut annoncent un nombre d'US livrées **identique** à celui écrit en tête
+   de `journal-d-avancement/SUIVI-US.md`, et « 0 compteur divergent » ;
+2. chaque section porte une pastille **verte** « concorde » ; une pastille rouge signale un
+   compteur à corriger, et c'est un défaut, pas un affichage ;
+3. le schéma « L'ordre des epics » se lit de gauche à droite, en lignes droites, sans qu'aucun
+   trait ne traverse une boîte ; il défile horizontalement dans son cadre sans déborder la page ;
+4. un clic sur un identifiant d'US ouvre sa fiche : état, epic, fiche de `stories/`, décisions qui
+   la citent, dette introduite ou résorbée ;
+5. à **360 px de large** (téléphone), aucune page ne défile horizontalement : seuls les tableaux et
+   le schéma défilent, chacun dans son propre cadre.
+
+⚠️ Le point 5 n'a **pas** pu être vérifié à la livraison (la fenêtre du navigateur de ce poste ne
+descend pas sous la largeur d'écran). Ce qui est prouvé mécaniquement : aucun débordement de page,
+et tout tableau vit dans un conteneur défilant.
