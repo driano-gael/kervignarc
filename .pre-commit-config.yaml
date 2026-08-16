@@ -58,7 +58,7 @@ repos:
         name: atlas — cartes générées à jour
         entry: bash -c 'cd backend && python -m atlas --verifier'
         # `language: system` et non `python` : le générateur est en **stdlib pure**, il n'a besoin
-        # d'aucun environnement dédié (ADR-0085). Même patron que les hooks eslint / prettier.
+        # d'aucun environnement dédié (ADR-0086). Même patron que les hooks eslint / prettier.
         language: system
         pass_filenames: false
         # Le hook **vérifie, il ne régénère pas** : un hook qui réécrit des fichiers pendant le

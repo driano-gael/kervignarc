@@ -2976,7 +2976,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0085"
+   ],
    "date": "2026-08-03",
    "date_brute": "03/08/2026",
    "extrait": "### 1. Le palmarès est une fusion de blocs, la phase la plus tardive l'emportant Chaque archer est situé par la phase la plus tardive qui l'a classé (son ordre dans la séquence), la qualification faisant bloc 0. Les blocs se rangent par ordre décroissant, et à l'intérieur d'un bloc par position acquise croissante ; les rangs sont ensuite renumérotés 1→N sans trou. Deux conséquences qui ne sont pas des détails : - avoir disputé le tableau passe avant tout. Le battu du 1ᵉʳ tour devance tout non-qualifié, quel qu'ait été le rang de qualification de l'un et de l'autre : il a franchi une porte que l'autre n'a pas franchie. C'est l'usage, et c'est ce que « fusionner » veut dire — sans quoi le […]",
@@ -3594,7 +3596,8 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Le départ est la portée sportive, pas seulement un créneau logistique",
    "us": [
-    "E01US025"
+    "E01US025",
+    "E05US026"
    ]
   },
   {
@@ -4035,7 +4038,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0085"
+   ],
    "date": "2026-08-08",
    "date_brute": "2026-08-08",
    "extrait": "Une fenêtre de prélèvement est honorée si et seulement si elle ne coupe aucun bloc de rangs encore indécis. « Couper », c'est chevaucher sans contenir. 1. domain/classement_de_tableau.py rend un ClassementSource — le classement plus la liste des plages_indecises, blocs de rangs portés par des archers encore en lice. Les rangs provisoires continuent d'être produits : le palmarès en a besoin pour situer tout le monde à chaque instant. Ce qui change, c'est qu'ils sont désormais étiquetés. 2. application/prelevement.py:preleves lève PrelevementEnAttente quand la fenêtre coupe un de ces blocs. Le raisonnement d'ADR-0080 §2 est préservé, pas jeté : une fenêtre qui contient entièrement le bloc […]",
@@ -4438,7 +4443,10 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0084",
+    "0085"
+   ],
    "date": "2026-08-09",
    "date_brute": "2026-08-09, **amendé le 2026-08-14** (E05US028 — le contrat cède où le §2 l'annonçait : une capacité renommée, cf. § « Ce que le contrat a appris de sa **deuxième** mise à l'épreuve »)",
    "extrait": "### 1. Un contrat de phase jouable, résolu par type Ce qu'une phase doit savoir répondre pour être jouable tient en six questions — celles que les dix tables ci-dessus posaient chacune dans son coin : 1. Qui entre dedans ? — générique depuis ADR-0068/E05US024, aucune reprise nécessaire. 2. Qu'est-ce qu'on saisit ? — le décor : un arbre de duels, des rencontres en groupes, une volée collective. 3. Quand est-ce validé ? — le grain, déjà porté par le catalogue (_GRAINS_ADMIS). 4. Qui est classé, et dans quel ordre ? 5. Où l'archer tire-t-il ensuite ? 6. Combien de couloirs la phase occupe-t-elle, et comment ? Les tables existantes ne sont pas supprimées — leurs noms sont lus par une centaine […]",
@@ -4483,17 +4491,6 @@ window.ATLAS.decisions = {
     }
    ],
    "portage": [
-    {
-     "chemin": "CLAUDE.md",
-     "existe": true,
-     "symboles": [
-      "LecteurEtatBigShootOff",
-      "LecteurClassementBigShootOff",
-      "LecteurClassementPoules"
-     ],
-     "symboles_absents": [],
-     "verifiable": false
-    },
     {
      "chemin": "backend/api/v1/big_shoot_off.py",
      "existe": true,
@@ -4541,10 +4538,11 @@ window.ATLAS.decisions = {
       "serie",
       "volee",
       "LecteurEtatBigShootOff",
-      "LecteurClassementBigShootOff",
-      "LecteurClassementPoules"
+      "LecteurClassementBigShootOff"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "LecteurClassementBigShootOff"
+     ],
      "verifiable": true
     },
     {
@@ -4579,11 +4577,11 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/prelevement.py",
      "existe": true,
      "symboles": [
-      "LecteurEtatBigShootOff",
-      "LecteurClassementBigShootOff",
-      "LecteurClassementPoules",
+      "LecteurClassementDePhase",
       "ServicePoules",
-      "ServiceSaisieDuels"
+      "ServiceSaisieDuels",
+      "LecteurClassementPoules",
+      "LecteurClassementBigShootOff"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4598,10 +4596,7 @@ window.ATLAS.decisions = {
       "plan_de_cibles",
       "AUCUN"
      ],
-     "symboles_absents": [
-      "plan_de_cibles",
-      "AUCUN"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4609,9 +4604,14 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "_classement_de_l_ordre",
+      "brancher_lecteur",
+      "TYPES_DELEGUES",
+      "brancher_poules",
+      "classement_lisible"
+     ],
+     "symboles_absents": [
       "brancher_poules"
      ],
-     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4646,6 +4646,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/contrat_phase.py",
      "existe": true,
      "symboles": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
       "TYPES_EN_TABLEAU",
       "TYPES_DEROULES",
       "TYPES_CLASSANTS_LUS",
@@ -4662,7 +4664,10 @@ window.ATLAS.decisions = {
       "route_tout_le_plateau",
       "TYPES_ROUTES_IMPLICITEMENT"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES"
+     ],
      "verifiable": true
     },
     {
@@ -4715,7 +4720,7 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "backend/domain/placement_poules.py",
+     "chemin": "backend/domain/placement_par_bloc.py",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -4741,7 +4746,11 @@ window.ATLAS.decisions = {
      "chemin": "backend/infrastructure/db/models.py",
      "existe": true,
      "symboles": [
-      "PlacementPouleORM"
+      "PlacementParBlocORM",
+      "placement_poule",
+      "placement_par_bloc",
+      "poule_numero",
+      "groupe_numero"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4770,19 +4779,23 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/test_domain_contrat_phase.py",
      "existe": true,
      "symboles": [
-      "TYPES_EN_TABLEAU_JOUE",
+      "ServiceRoutage._routage_par_rencontres",
+      "ProchainDuel",
+      "_resultat_classant",
       "_resultat",
       "ScoreAvecHandicap",
       "RoutingRepechage"
      ],
      "symboles_absents": [
+      "ProchainDuel",
+      "_resultat_classant",
       "ScoreAvecHandicap",
       "RoutingRepechage"
      ],
      "verifiable": true
     },
     {
-     "chemin": "backend/tests/test_domain_placement_poules.py",
+     "chemin": "backend/tests/test_domain_placement_par_bloc.py",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -4881,9 +4894,86 @@ window.ATLAS.decisions = {
    "amende_par": [],
    "date": "2026-08-15",
    "date_brute": "2026-08-15",
-   "extrait": "Cinq points. 1. Un site isolé, généré, sans autorité. atlas/ sert un site statique lu depuis CLAUDE.md et docs/adr/. L'atlas ne remplace rien : chaque page nomme sa source, aucun corps de texte n'y est dupliqué, et le supprimer ne perdrait aucune information. Pourquoi ce n'est pas le wiki rejeté par ADR-0001. Le mode de défaillance qu'ADR-0001 redoutait est la désynchronisation. Ici elle est rendue impossible par construction : les données sont régénérées depuis le dépôt et la CI échoue si elles divergent. Un wiki externe se désynchronise parce que personne ne le régénère ; un artefact dérivé sous porte mécanique, non. Sans la porte, cet ADR contredirait ADR-0001 — c'est le point 3 qui rend […]",
-   "fichier": "docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md",
+   "extrait": "### 1. Un port unique, LecteurClassementDePhase Les deux protocoles sont fondus en un. Il pose une question — « quel classement cette phase a-t-elle produit ? » — et il est réalisé par chaque service de format. ### 2. Le type de phase devient un argument, pas un nom de méthode brancher_poules(...) et brancher_big_shoot_off(...) deviennent brancher_lecteur(TypePhase.POULES, ...). Les slots nommés deviennent un dict[TypePhase, LecteurClassementDePhase], et la cascade de if une recherche. Ajouter un format ne touche plus ni le port, ni le service : seulement une ligne au composition root. ### 3. La liste des types délégués dérive du registre de contrat python TYPES_DELEGUES = […]",
+   "fichier": "docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md",
+   "identifiant": "0084",
+   "liens": [
+    {
+     "cible": "0083",
+     "libelle": "Précise",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0080",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0081",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un seul port de lecture de classement, résolu par type",
+   "us": [
+    "E05US023",
+    "E05US026",
+    "E05US027",
+    "E05US028"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-16",
+   "date_brute": "2026-08-16",
+   "extrait": "### 1. Le critère est structurel, pas typologique > Une phase décerne ses rangs — donc peut donner une médaille — si et seulement si aucune > phase avale ne prélève dedans. Le critère se lit sur le graphe des sources du déroulé, pas sur TypePhase. La même phase de poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne, sans que l'organisateur ait quoi que ce soit à régler. Il se lit sur ordre et non sur l'identité, parce que c'est ainsi qu'une source désigne sa phase (SourcePhase.ordre_source) : c'est l'ancrage par ordre de DETTE-026, et s'en écarter ici créerait une seconde convention. ### 2. Deux régimes, portés par origine - phase consommée → […]",
+   "fichier": "docs/adr/0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md",
    "identifiant": "0085",
+   "liens": [
+    {
+     "cible": "0067",
+     "libelle": "Précise",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0081",
+     "libelle": "Précise",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0083",
+     "libelle": "Précise",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une phase décerne ses rangs si rien ne prélève dedans",
+   "us": [
+    "E05US025",
+    "E05US026",
+    "E05US029"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-15",
+   "date_brute": "2026-08-15",
+   "extrait": "Cinq points. 1. Un site isolé, généré, sans autorité. atlas/ sert un site statique lu depuis CLAUDE.md et docs/adr/. L'atlas ne remplace rien : chaque page nomme sa source, aucun corps de texte n'y est dupliqué, et le supprimer ne perdrait aucune information. Pourquoi ce n'est pas le wiki rejeté par ADR-0001. Le mode de défaillance qu'ADR-0001 redoutait est la désynchronisation. Ici elle est rendue impossible par construction : les données sont régénérées depuis le dépôt et la CI échoue si elles divergent. Un wiki externe se désynchronise parce que personne ne le régénère ; un artefact dérivé sous porte mécanique, non. Sans la porte, cet ADR contredirait ADR-0001 — c'est le point 3 qui rend […]",
+   "fichier": "docs/adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md",
+   "identifiant": "0086",
    "liens": [
     {
      "cible": "E00US018",

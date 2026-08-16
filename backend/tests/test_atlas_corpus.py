@@ -101,9 +101,20 @@ def test_toute_section_de_portage_non_vide_produit_un_portage(
         )
         if not section or "à renseigner" in section:
             continue
-        # On compare le nombre de chemins **cités** au nombre de portages produits : exiger « au
-        # moins un » laisserait ADR-0083 perdre 31 modules sur 32 sans rougir.
-        cites = {t for t in adr._TOKEN.findall(section) if adr._est_chemin(t)}
+        # On compare les chemins **cités par une entrée** aux portages produits : exiger « au moins
+        # un » laisserait un ADR perdre 31 modules sur 32 sans rougir.
+        #
+        # ⚠️ La lecture se fait sur les **entrées**, pas sur la section entière : un ADR peut citer
+        # un fichier dans un encadré de prose (ADR-0083 renvoie à `CLAUDE.md` pour justifier sa
+        # démarche) sans le déclarer comme porteur. Balayer toute la section faisait rougir ce
+        # garde-fou sur une mention qui n'est pas une promesse — un test qui accuse à tort finit
+        # par être neutralisé, et emporte la détection qu'il portait.
+        cites = {
+            token
+            for entree in adr._entrees(section)
+            for token in adr._TOKEN.findall(entree)
+            if adr._est_chemin(token)
+        }
         attendus = {d for cite in cites for d in adr._developper(cite)}
         produits = {p.chemin for p in decision.portage}
         if not attendus <= produits:

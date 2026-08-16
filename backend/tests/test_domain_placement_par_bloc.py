@@ -22,7 +22,7 @@ import pytest
 from domain.erreurs import ConfigurationPouleInvalide
 from domain.gabarit_salle import GabaritSalle
 from domain.participant import Participant
-from domain.placement_poules import placer_les_poules
+from domain.placement_par_bloc import placer_les_blocs
 from domain.poule import ConfigurationPoules, composer_poules, couloirs_occupes, nb_poules_pour
 
 
@@ -167,7 +167,10 @@ def test_l_empreinte_est_coherente_avec_les_rencontres_que_le_moteur_produit() -
 def test_des_poules_de_quatre_occupent_une_cible_chacune() -> None:
     """Le cas nominal du club : poules de 4, gabarit à 4 couloirs → une poule par cible."""
     poules = composer_poules(_archers(16), ConfigurationPoules(nb_poules=4))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=6, capacite=4))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=6, capacite=4),
+    )
 
     assert [bloc.cible_index for bloc in plan.blocs] == [1, 2, 3, 4]
     assert all(bloc.position_depart == "A" for bloc in plan.blocs)
@@ -182,7 +185,10 @@ def test_une_poule_de_cinq_tient_encore_sur_une_seule_cible() -> None:
     toute la salle — cinq cibles auraient suffi pour rien.
     """
     poules = composer_poules(_archers(30), ConfigurationPoules(nb_poules=7))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=8, capacite=4))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=8, capacite=4),
+    )
 
     assert [bloc.cible_index for bloc in plan.blocs] == [1, 2, 3, 4, 5, 6, 7]
     assert all(bloc.nb_couloirs == 4 for bloc in plan.blocs)
@@ -197,7 +203,10 @@ def test_une_poule_qui_deborde_prend_la_suite_et_la_suivante_s_accole() -> None:
     - poule 2 : démarre **cible 2, couloir C** — pas cible 3.
     """
     poules = composer_poules(_archers(18), ConfigurationPoules(nb_poules=3))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=6, capacite=4))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=6, capacite=4),
+    )
 
     assert [(bloc.cible_index, bloc.position_depart) for bloc in plan.blocs] == [
         (1, "A"),
@@ -215,7 +224,10 @@ def test_le_bloc_enumere_les_couloirs_qu_il_couvre_a_travers_les_cibles() -> Non
     « cible 1, couloir A, 6 couloirs » reste illisible pour qui doit poser les archers.
     """
     poules = composer_poules(_archers(6), ConfigurationPoules(nb_poules=1))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=3, capacite=4))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=3, capacite=4),
+    )
 
     assert plan.blocs[0].couloirs() == (
         (1, "A"),
@@ -234,10 +246,13 @@ def test_une_salle_trop_petite_signale_les_poules_non_placees() -> None:
     qu'une poule n'a pas de cible, pas la découvrir le jour J.
     """
     poules = composer_poules(_archers(16), ConfigurationPoules(nb_poules=4))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=2, capacite=4))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=2, capacite=4),
+    )
 
-    assert [bloc.poule for bloc in plan.blocs] == [1, 2]
-    assert [conflit.poule for conflit in plan.conflits] == [3, 4]
+    assert [bloc.groupe for bloc in plan.blocs] == [1, 2]
+    assert [conflit.groupe for conflit in plan.conflits] == [3, 4]
 
 
 def test_un_gabarit_a_capacite_reduite_fait_deborder_plus_tot() -> None:
@@ -247,7 +262,10 @@ def test_un_gabarit_a_capacite_reduite_fait_deborder_plus_tot() -> None:
     l'autre (`ajuster`). Une poule de 4 sur des cibles à 2 couloirs occupe donc deux cibles.
     """
     poules = composer_poules(_archers(8), ConfigurationPoules(nb_poules=2))
-    plan = placer_les_poules(poules, GabaritSalle.creer("salle", nb_cibles=6, capacite=2))
+    plan = placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules],
+        GabaritSalle.creer("salle", nb_cibles=6, capacite=2),
+    )
 
     assert [(bloc.cible_index, bloc.position_depart) for bloc in plan.blocs] == [(1, "A"), (3, "A")]
     assert plan.blocs[0].couloirs() == ((1, "A"), (1, "B"), (2, "A"), (2, "B"))
@@ -258,4 +276,6 @@ def test_le_placement_est_deterministe() -> None:
     poules = composer_poules(_archers(30), ConfigurationPoules(nb_poules=7))
     gabarit = GabaritSalle.creer("salle", nb_cibles=8, capacite=4)
 
-    assert placer_les_poules(poules, gabarit) == placer_les_poules(poules, gabarit)
+    assert placer_les_blocs(
+        [couloirs_occupes(len(p.membres)) for p in poules], gabarit
+    ) == placer_les_blocs([couloirs_occupes(len(p.membres)) for p in poules], gabarit)

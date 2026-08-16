@@ -99,7 +99,7 @@ jobs:
           pip-audit -r requirements.txt --strict
 
   # Job séparé, et volontairement **sans `pip install`** : c'est ce qui prouve que le générateur
-  # de l'atlas est en stdlib pure (règle 11, ADR-0085). Le jour où quelqu'un y ajoute une
+  # de l'atlas est en stdlib pure (règle 11, ADR-0086). Le jour où quelqu'un y ajoute une
   # dépendance, ce job casse — la parcimonie est ainsi vérifiée par construction plutôt que
   # déclarée. Il tourne en parallèle des deux autres : aucun temps ajouté au chemin critique.
   atlas:

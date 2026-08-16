@@ -331,23 +331,30 @@ seule la **pose** l'est. Un duelliste **sans** ligne est en **réserve**.
 > de revue). **`ON DELETE CASCADE` assumé** (exception DETTE-001, comme `PLACEMENT`) : donnée dérivée,
 > reconstructible, feuille — elle suit la phase ou l'inscription.
 
-### PLACEMENT_POULE (E05US023, [ADR-0083](adr/0083-le-contrat-de-phase-jouable.md) §3)
-Table du **plan de cibles d'une phase de poules** — migration `0045`. Ce qui est posé n'est **pas
-l'archer** mais la **poule** : elle occupe un **bloc de couloirs contigus**, et c'est ce bloc qui est
-persisté. L'occupant d'un couloir change à chaque tour (méthode du cercle : un membre se repose à
-effectif impair), donc le stocker n'aurait décrit qu'un tour sur trois. La **taille** du bloc est
-l'empreinte simultanée sur la ligne — `2 × (effectif ÷ 2)` couloirs —, pas l'effectif de la poule.
+### PLACEMENT_PAR_BLOC (E05US023, [ADR-0083](adr/0083-le-contrat-de-phase-jouable.md) §3)
+Table du **plan de cibles d'un groupe de tireurs** — migrations `0045` puis `0046`. Ce qui est posé
+n'est **pas l'archer** mais le **groupe** : il occupe un **bloc de couloirs contigus**, et c'est ce
+bloc qui est persisté. L'occupant d'un couloir change à chaque tour, donc le stocker n'aurait décrit
+qu'un tour sur trois. La **taille** du bloc est l'empreinte simultanée sur la ligne —
+`2 × (effectif ÷ 2)` couloirs —, pas l'effectif du groupe.
+
+⚠️ **Renommée en E05US026** (`placement_poule` → `placement_par_bloc`, `poule_numero` →
+`groupe_numero`, migration `0046` réversible sans perte). Le mécanisme sert désormais **deux
+formats** : une **poule** (un bloc par groupe, le membre au repos tourne) et une **ronde de système
+suisse** (un bloc unique pour tout le plateau, l'appariement change à chaque ronde). Le nom d'origine
+désignait donc le mauvais concept — arbitrage inverse de `DETTE-042`, où le mot est seulement
+imparfait et la migration différée.
 
 | phase_id | INTEGER | **PK** (composite), FK → PHASE, **ON DELETE CASCADE** |
 | cible_index | INTEGER | **PK** (composite) — rang de la cible dans le gabarit (1-based) |
 | position | TEXT | **PK** (composite) — `A`\|`B`\|`C`\|`D`… (même plafond code que `PLACEMENT`, `# DETTE-042`) |
-| poule_numero | INTEGER | la poule qui occupe ce couloir |
-| rang | INTEGER | position du couloir **dans le bloc** (0-based) ; `UNIQUE (phase_id, poule_numero, rang)` |
+| groupe_numero | INTEGER | le groupe qui occupe ce couloir — poule *n*, ou `1` pour le plateau d'un suisse |
+| rang | INTEGER | position du couloir **dans le bloc** (0-based) ; `UNIQUE (phase_id, groupe_numero, rang)` |
 
-> **PK composite `(phase_id, cible_index, position)`** : un couloir est occupé par **au plus une**
-> poule dans une phase — la non-double-occupation est ici tenue par le **schéma**, contrairement à
+> **PK composite `(phase_id, cible_index, position)`** : un couloir est occupé par **au plus un**
+> groupe dans une phase — la non-double-occupation est ici tenue par le **schéma**, contrairement à
 > `PLACEMENT`/`PLACEMENT_TABLEAU` où elle l'est par le service, parce que l'unité posée est un bloc
-> et non une personne. `UNIQUE (phase_id, poule_numero, rang)` tient l'autre bout : un bloc est une
+> et non une personne. `UNIQUE (phase_id, groupe_numero, rang)` tient l'autre bout : un bloc est une
 > **suite** ordonnée, deux couloirs ne peuvent pas partager le même rang. **`ON DELETE CASCADE`
 > assumé** (exception DETTE-001, comme ses deux sœurs) : donnée dérivée, reconstructible, feuille.
 > La pose est **grossière par construction** — on repose tout le plan — parce que la contiguïté d'un
@@ -714,8 +721,8 @@ objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implém
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
 sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et les réglages
-de `poules` **et de `big_shoot_off`** restent **à la racine** (ce ne sont pas des politiques de
-moteur). Exemples :
+de `poules`, `big_shoot_off` **et `suisse`** (E05US026 — `{"suisse": {"rondes": 5}}`) restent **à
+la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de phase**. Exemples :
 
 > ⚠️ **`poules` est à la racine, et c'est un correctif.** E05US023 l'avait d'abord écrit sous
 > `policies` (« par analogie avec les autres réglages ») — ce que la phrase ci-dessus interdit déjà,

@@ -1,4 +1,4 @@
-# ADR-0085 — Un atlas généré : le dépôt cartographié en site statique, sans dépendance de rendu
+# ADR-0086 — Un atlas généré : le dépôt cartographié en site statique, sans dépendance de rendu
 
 - **Statut** : Accepté
 - **Date** : 2026-08-15

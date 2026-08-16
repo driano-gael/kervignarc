@@ -172,7 +172,7 @@ def apparier_ronde(
         raise ConfigurationSuisseInvalide(
             f"Les {configuration.nb_rondes} rondes de cette phase ont déjà été disputées."
         )
-    maximum = _rondes_maximales(len(participants))
+    maximum = rondes_maximales(len(participants))
     if configuration.nb_rondes > maximum:
         raise ConfigurationSuisseInvalide(
             f"À {len(participants)} participants, {maximum} rondes au plus sont appariables sans "
@@ -276,7 +276,7 @@ def classement_suisse(
 # --- rouages internes ----------------------------------------------------------------------------
 
 
-def _rondes_maximales(effectif: int) -> int:
+def rondes_maximales(effectif: int) -> int:
     """Combien de rondes sont appariables sans qu'aucune paire ne se répète.
 
     À effectif **pair**, chacun a `n-1` adversaires et joue à chaque ronde : `n-1` rondes.

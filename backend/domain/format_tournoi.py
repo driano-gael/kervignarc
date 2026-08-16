@@ -49,6 +49,7 @@ from domain.phase import (
 )
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
 
 FormatTournoiId = int
@@ -113,6 +114,14 @@ class ModelePhase:
     rejeter une liste inadaptée à l'effectif : un format est réutilisé d'un tournoi à l'autre, sur
     des effectifs qu'il ne connaît pas au moment où on l'écrit."""
 
+    suisse: ConfigurationSuisse | None = None
+    """Le réglage d'un **système suisse** — le nombre de rondes (E05US026).
+
+    Même régime de brouillon, et **exactement la même raison** que le Big Shoot Off ci-dessus de ne
+    rien vérifier ici : « 5 rondes » est appariable à 12 archers et ne l'est pas à 5. La borne se
+    juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
+    de bibliothèque."""
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -156,6 +165,7 @@ class ModelePhase:
             profondeur=self.profondeur,
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
+            suisse=self.suisse,
         )
 
     @staticmethod
@@ -181,6 +191,7 @@ class ModelePhase:
             profondeur=etape.profondeur,
             poules=etape.poules,
             big_shoot_off=etape.big_shoot_off,
+            suisse=etape.suisse,
         )
 
 

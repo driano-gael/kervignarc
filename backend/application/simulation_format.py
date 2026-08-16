@@ -68,7 +68,21 @@ from domain.phase import TypePhase
 from domain.ports import FormatTournoiRepository
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 
-_TYPES_DEROULABLES = TYPES_JOUES - {TypePhase.POULES, TypePhase.BIG_SHOOT_OFF}
+_TYPES_DEROULABLES = TYPES_JOUES - {
+    TypePhase.POULES,
+    TypePhase.BIG_SHOOT_OFF,
+    # DETTE-066 — ⚠️ **3ᵉ retrait à la main, et il a été oublié une fois** (revue d'E05US026) :
+    # `SUISSE` entre dans `TYPES_JOUES` dès que le service le déroule, alors que
+    # `fabriquer_harnais_simulation` ne construit **aucun** `ServiceSuisse`. Sans ce terme,
+    # l'atelier annonçait `joue=True, 0 tour, 0 duel` — des zéros lus comme un constat — et le
+    # bandeau « le moteur ne sait pas encore dérouler ce type » **disparaissait**.
+    #
+    # La 3ᵉ occurrence atteint le seuil du remède structurel de `CLAUDE.md` : la capacité manquante
+    # au registre de contrat est « le **bot** sait-il simuler ce type ? », question distincte de
+    # « un service de production le déroule-t-il ? ». Inscrite au registre (`DETTE-066`), à traiter
+    # en US dédiée — la colline en fera un 4ᵉ retrait sinon.
+    TypePhase.SUISSE,
+}
 """Les types que **le bot de simulation** sait réellement jouer aujourd'hui.
 
 ⚠️ **Deux questions distinctes, et les confondre a fait mentir cet écran** (correctif de revue).

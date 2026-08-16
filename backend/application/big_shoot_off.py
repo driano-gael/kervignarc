@@ -212,10 +212,10 @@ class LecteurEtatBigShootOff(Protocol):
     Consommé par `ServicePalmares`, qui a besoin des rangs décernés mais n'a aucune raison de
     connaître les volées, les barrages ni le prélèvement qui les produisent.
 
-    ⚠️ **Ce port n'est pas branché tardivement**, contrairement à `LecteurClassementPoules` : il n'y
-    a **pas de cycle** ici (`palmares` importe déjà `saisie_duels`, et `big_shoot_off` n'importe pas
-    `palmares`). Le branchement tardif de `brancher_poules` existe pour casser un cycle réel ; le
-    reproduire sans cycle n'aurait fait qu'échanger un contrôle du compilateur contre un test de
+    ⚠️ **Ce port n'est pas branché tardivement**, contrairement à `LecteurClassementDePhase` : il
+    n'y a **pas de cycle** ici (`palmares` importe déjà `saisie_duels`, et `big_shoot_off` n'importe
+    pas `palmares`). Le branchement tardif de `brancher_lecteur` existe pour casser un cycle réel ;
+    le reproduire sans cycle n'aurait fait qu'échanger un contrôle du compilateur contre un test de
     câblage — un oubli au composition root serait passé en silence. Le port se passe donc au
     **constructeur**, comme toutes les autres dépendances du projet.
     """
@@ -285,7 +285,7 @@ class ServiceBigShootOff:
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
     ) -> ClassementSource:
-        """Le classement que ce Big Shoot Off **produit** — le port `LecteurClassementBigShootOff`.
+        """Le classement que ce Big Shoot Off **produit** — le port `LecteurClassementDePhase`.
 
         C'est ce qui rend une phase avale alimentable par un Big Shoot Off : jusqu'ici
         `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement

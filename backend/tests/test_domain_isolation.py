@@ -34,7 +34,7 @@ _FORBIDDEN_ROOTS: frozenset[str] = frozenset(
         "infrastructure",
         "api",
         "bootstrap",
-        # Paquets hors des cinq couches : outillage (`atlas` — ADR-0085 —, `release`), tests et
+        # Paquets hors des cinq couches : outillage (`atlas` — ADR-0086 —, `release`), tests et
         # migrations. La denylist ne protège que ce qu'on a pensé à y écrire, et il en manquait
         # **quatre** : chacun était importable depuis `domain/` sans que le hook, la CI ni la revue
         # ne le voient. `release` en particulier — « outillage du binaire de release » — est la

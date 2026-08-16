@@ -101,6 +101,8 @@ class AnnulerDuelRequete(BaseModel):
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
+    # DETTE-065 : 6ᵉ copie verbatim de ce **garde d'autorisation**. Un 7ᵉ routeur d'écriture qui
+    # l'oublierait ne ferait rougir personne — résorption : `api/dependances.py`.
     """Refuse (`403 scoreur_hors_tournoi`) un scoreur agissant hors de **son** tournoi."""
     if scoreur.tournoi_id != tournoi_id:
         raise ScoreurHorsTournoi("Ce scoreur n'officie pas dans ce tournoi.")

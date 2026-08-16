@@ -140,7 +140,7 @@ def test_les_poules_sont_montees_saisies_et_placees() -> None:
 
     assert contrat.deroule_par_un_service
     assert contrat.decor is DecorDeSaisie.RENCONTRES_EN_GROUPES
-    assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_POULE
+    assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_COULOIRS
 
 
 def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
@@ -149,8 +149,8 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
     Ce test **a changé de camp** : jusqu'au 6ᵉ commit de l'US, il vérifiait l'inverse et documentait
     ce qui manquait (l'ordre inter-poules n'était pas arrêté, et le branchement
     `ServicePoules` ↔ `ServiceSaisieDuels` était un cycle). Les deux sont désormais écrits —
-    `domain/classement_de_poules.py` pour l'ordre, le port `LecteurClassementPoules` pour le cycle —
-    donc le registre peut le déclarer sans mentir.
+    `domain/classement_de_poules.py` pour l'ordre, le port `LecteurClassementDePhase` pour le
+    cycle — donc le registre peut le déclarer sans mentir.
 
     ⚠️ L'effet est **mesurable**, et c'est ce qui interdisait de le déclarer plus tôt : le plancher
     d'inscrits (E05US021) est désormais réclamé pour un prélèvement visant une phase de poules. Il
@@ -162,27 +162,37 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
         TypePhase.ELIMINATION_DIRECTE,
         TypePhase.POULES,
         # E05US028 : `ServiceBigShootOff.classement_de_phase` rend le classement des rangs
-        # décernés, lu par le port `LecteurClassementBigShootOff`.
+        # décernés, lu par le port `LecteurClassementDePhase`.
         TypePhase.BIG_SHOOT_OFF,
+        # E05US026 : `ServiceSuisse.classement_de_phase` rend le sien par le **même** port — c'est
+        # la 3ᵉ occurrence qui a justifié de fondre les ports jumeaux (ADR-0084).
+        TypePhase.SUISSE,
     } == TYPES_CLASSANTS_LUS
 
 
-def test_les_poules_ne_sont_toujours_pas_routees() -> None:
+def test_les_quatre_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None:
     """⚠️ La capacité qu'il aurait été le plus tentant de mentir (ADR-0083, 5ᵉ question).
 
-    `application/routage.py` ne sait pas dire à un membre de **poule** où il tire ensuite : ce
-    n'était ni au CA d'E05US023 ni à la liste de la tranche, et E05US028 ne l'a pas ajouté non
-    plus — son CA porte sur le Big Shoot Off, pas sur les poules. Déclarer `route_l_archer=True`
-    « puisque la phase est jouable » reproduirait `DETTE-028` à l'échelle d'une capacité : un moteur
-    annoncé, aucun appelant.
+    **Ce test a changé de camp deux fois, et chaque fois pour la bonne raison.** Il vérifiait
+    d'abord que les poules n'étaient **pas** routées — ce n'était ni au CA d'E05US023 ni à la liste
+    de la tranche, et déclarer `route_l_archer=True` « puisque la phase est jouable » aurait
+    reproduit `DETTE-028` à l'échelle d'une capacité : une promesse sans appelant.
 
-    ⚠️ **Le Big Shoot Off, lui, y est entré en E05US028** — et c'est le scénario que la version
-    précédente de ce test annonçait (« le test tombe le jour où le routage l'apprend, et c'est le
-    signal attendu »). Il est tombé pour la bonne raison :
-    `ServiceRoutage._routage_big_shoot_off` existe et dit à un finaliste quelle manche il tire.
+    Le Big Shoot Off y est entré en **E05US028** (`_routage_big_shoot_off`), puis le suisse **et**
+    les poules en **E05US026** (`_routage_par_rencontres`, qui sert les deux : une rencontre de
+    ronde comme de groupe *est* un duel, avec deux adversaires et deux couloirs).
+
+    Il ne reste donc dehors que ce qui n'est pas joué — et le test le dit en négatif, pour qu'un
+    format rendu jouable sans son routage se voie immédiatement.
     """
-    assert TypePhase.POULES not in TYPES_ROUTES
-    assert {TypePhase.ELIMINATION_DIRECTE, TypePhase.BIG_SHOOT_OFF} == TYPES_ROUTES
+    assert {
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.BIG_SHOOT_OFF,
+        TypePhase.POULES,
+        TypePhase.SUISSE,
+    } == TYPES_ROUTES
+    # Tout type **joué** est routé : c'est l'invariant que les trois US successives ont installé.
+    assert {t for t in TYPES_DEROULES if t is not TypePhase.PLACEMENT} <= TYPES_ROUTES
 
 
 def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
@@ -207,7 +217,7 @@ def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
 
 @pytest.mark.parametrize(
     "type_sans_service",
-    [TypePhase.SUISSE, TypePhase.COLLINE, TypePhase.BARRAGE],
+    [TypePhase.COLLINE, TypePhase.BARRAGE],
 )
 def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: TypePhase) -> None:
     """`DETTE-028` **rétrécit sans se refermer** — et le registre doit le dire.
@@ -219,7 +229,12 @@ def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: Type
 
     Ce test **change de camp** à chacune des US `E05US026` à `E05US028`, une ligne à la fois. Le
     **Big Shoot Off en est sorti le 14/08/2026** (E05US028) : `ServiceBigShootOff` le déroule, son
-    classement est lu par une phase avale, et le routage sait dire quelle manche vient.
+    classement est lu par une phase avale, et le routage sait dire quelle manche vient. Le
+    **système suisse en est sorti le 15/08/2026** (E05US026) : `ServiceSuisse` rejoue ses rondes des
+    duels validés et `classement_de_suisse` rend son classement de phase.
+
+    Il ne reste donc que la **colline** (`E05US027`, qui refermera la ligne) et le **barrage**, dont
+    le cas est différent et permanent : c'est un départage, pas un format qu'on déroule.
     """
     contrat = contrat_de(type_sans_service)
 
@@ -260,3 +275,33 @@ def test_le_registre_est_le_miroir_des_filtres_de_service() -> None:
     le traiter, c'est ici qu'on le verrait — pas en salle.
     """
     assert {TypePhase.ELIMINATION_DIRECTE} == TYPES_EN_TABLEAU_JOUE
+
+
+def test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas() -> None:
+    """⚠️ **Le seul garde-fou de `_TYPES_DEROULABLES` était un commentaire** (correctif de revue).
+
+    `application/simulation_format.py` part de `TYPES_JOUES` — table **dérivée** — et lui retranche
+    **à la main** les formats que `fabriquer_harnais_simulation` ne construit pas. Les deux
+    répondent à des questions différentes : « un service de production déroule-t-il ce type ? »
+    contre « le **bot** sait-il le jouer ? ».
+
+    L'oubli s'est produit **trois fois** (poules, Big Shoot Off, système suisse), et à chaque fois
+    l'atelier annonçait `joue=True, 0 tour, 0 duel` — des zéros lus comme un constat — en perdant le
+    bandeau « le moteur ne sait pas encore dérouler ce type ».
+
+    Ce test est le garde-fou qui manquait : il tombe au 4ᵉ oubli, que `DETTE-066` annonce pour la
+    colline. Il vit ici et non dans les tests de simulation parce que ce qu'il garde est la
+    **divergence entre deux tables**, pas le comportement de l'atelier.
+    """
+    from application.simulation_format import _TYPES_DEROULABLES
+
+    # Ce que le bot sait réellement jouer aujourd'hui : le harnais ne construit que la
+    # qualification et les duels de tableau.
+    assert {TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE} == _TYPES_DEROULABLES
+    # Et tout format **joué en production** mais absent de cette liste doit l'être *explicitement* :
+    # c'est le retrait à la main que DETTE-066 tracera jusqu'à sa résorption.
+    assert {
+        TypePhase.POULES,
+        TypePhase.BIG_SHOOT_OFF,
+        TypePhase.SUISSE,
+    } == TYPES_JOUES - _TYPES_DEROULABLES

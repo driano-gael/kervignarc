@@ -64,6 +64,7 @@ from api.v1.saisie_duels import router as saisie_duels_router
 from api.v1.scoreurs import router as scoreurs_router
 from api.v1.scoreurs import session_router as scoreur_session_router
 from api.v1.simulation import router as simulation_router
+from api.v1.suisse import router as suisse_router
 from api.v1.suivi_deroule import router as suivi_deroule_router
 from api.v1.supervision import heartbeat_router as poste_heartbeat_router
 from api.v1.supervision import router as supervision_router
@@ -107,21 +108,22 @@ from application.placement_duels import ServicePlacementDuels
 from application.postes import ServicePostes
 from application.poules import ServicePoules
 from application.prelevement import (
-    LecteurClassementBigShootOff,
-    LecteurClassementPoules,
+    LecteurClassementDePhase,
     LecteurPopulationPhase,
 )
 from application.remboursements import ServiceRemboursements
-from application.routage import ServiceRoutage
+from application.routage import LecteurRencontresARouter, ServiceRoutage
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
+from application.suisse import ServiceSuisse
 from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
+from domain.contrat_phase import TypePhase
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.politiques import (
     Aggregation,
@@ -155,7 +157,7 @@ from infrastructure.db import (
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
-    PlacementPouleRepositorySQL,
+    PlacementParBlocRepositorySQL,
     PlacementRepositorySQL,
     PlacementTableauRepositorySQL,
     PosteRepositorySQL,
@@ -439,7 +441,7 @@ def create_app(
     # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais
     # « archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
     # information *fausse*, pas seulement incomplète (ADR-0083 §3).
-    placement_poule_repository = PlacementPouleRepositorySQL(database.session_factory)
+    placement_par_bloc_repository = PlacementParBlocRepositorySQL(database.session_factory)
     # Forfaits — abandon / DSQ (E04US015, ADR-0050) : co-écrivent leur trace d'audit `FORFAIT` dans
     # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage
     # infra → infra, comme la série, l'inscription et le placement.
@@ -736,7 +738,7 @@ def create_app(
         tournoi_repository,
         phase_repository,
         gabarit_repository,
-        placement_poule_repository,
+        placement_par_bloc_repository,
         duel_repository,
         barrage_repository,
         app.state.service_classement,
@@ -745,16 +747,19 @@ def create_app(
         # phase de poules doit s'y résoudre comme ailleurs, sinon la politique est décorative.
         app.state.registre_politiques,
     )
-    # ⚠️ **Le seul branchement tardif du projet, et il est ici pour être vu** (règle 8). Les deux
-    # services se tiennent par les deux bouts : celui des poules a besoin de la saisie ci-dessus, la
-    # saisie a besoin du classement de poule pour honorer un prélèvement qui vise ce type. Aucun
-    # ordre de construction ne satisfait les deux — le port étroit `LecteurClassementPoules` casse
-    # le cycle, et le `setter` le rend explicite plutôt que caché derrière un import paresseux.
+    # ⚠️ **Les branchements tardifs du projet, et ils sont ici pour être vus** (règle 8). Les deux
+    # côtés se tiennent par les deux bouts : le service d'un format a besoin de la saisie ci-dessus,
+    # la saisie a besoin du classement du format pour honorer un prélèvement qui vise ce type. Aucun
+    # ordre de construction ne satisfait les deux — le port `LecteurClassementDePhase` casse le
+    # cycle ([ADR-0084]), et le `setter` le rend explicite plutôt que caché derrière un import
+    # paresseux.
     #
     # ⚠️ Variable **annotée**, même raison qu'au-dessus : `app.state.*` rend `Any`, donc passer
     # `app.state.service_poules` directement ferait sauter la vérification du Protocol par mypy.
-    classements_de_poules: LecteurClassementPoules = app.state.service_poules
-    app.state.service_saisie_duels.brancher_poules(classements_de_poules)
+    #
+    # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+    classements_de_poules: LecteurClassementDePhase = app.state.service_poules
+    app.state.service_saisie_duels.brancher_lecteur(TypePhase.POULES, classements_de_poules)
 
     # Big Shoot Off (E05US028) : le moteur `domain/big_shoot_off.py` reçoit enfin son consommateur
     # de production (DETTE-028). Le tir vit dans `serie`/`volee`, sans table propre — le pendant
@@ -767,11 +772,32 @@ def create_app(
         app.state.service_classement,
         app.state.service_saisie_duels,
     )
-    # Second branchement tardif, **et pour la même raison que celui des poules** : les deux services
-    # se tiennent par les deux bouts. Il n'y en avait qu'un au projet jusqu'ici ; il y en a deux, ce
-    # qui reste sous le seuil du remède structurel (cf. `LecteurClassementBigShootOff`).
-    classements_de_big_shoot_off: LecteurClassementBigShootOff = app.state.service_big_shoot_off
-    app.state.service_saisie_duels.brancher_big_shoot_off(classements_de_big_shoot_off)
+    # Deuxième branchement tardif, **par le même port et la même méthode** que celui des poules : le
+    # type de phase est désormais un *argument*, plus un nom de méthode ([ADR-0084]). C'est là que
+    # se mesure le remède — ajouter un format ne touche plus ni le port, ni le service, seulement
+    # cette ligne-ci.
+    classements_de_big_shoot_off: LecteurClassementDePhase = app.state.service_big_shoot_off
+    app.state.service_saisie_duels.brancher_lecteur(
+        TypePhase.BIG_SHOOT_OFF, classements_de_big_shoot_off
+    )
+
+    # Système suisse (E05US026) : le moteur `domain/suisse.py` reçoit enfin son consommateur de
+    # production (`DETTE-028`, volet suisse). Comme les rencontres de poule, une rencontre de ronde
+    # **est** un duel ordinaire : elle vit dans la table `duel`, sans table propre ni migration
+    # (ADR-0083 §7).
+    app.state.service_suisse = ServiceSuisse(
+        tournoi_repository,
+        phase_repository,
+        gabarit_repository,
+        placement_par_bloc_repository,
+        duel_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # Troisième branchement tardif — et le premier qui ne coûte **que** cette ligne. C'est la mesure
+    # concrète d'[ADR-0084] : ni port, ni slot, ni méthode `brancher_<format>` à écrire.
+    classements_de_suisse: LecteurClassementDePhase = app.state.service_suisse
+    app.state.service_saisie_duels.brancher_lecteur(TypePhase.SUISSE, classements_de_suisse)
 
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
@@ -875,6 +901,14 @@ def create_app(
     # est **injectée ici**, au défaut `par_qualification` (usage World Archery), résolu **par le
     # registre** : la contourner en instanciant la stratégie à la main ferait de la politique une
     # décoration (même parti que le `tiebreak` du classement, ADR-0066).
+    # ⚠️ Variable **annotée**, comme les branchements de classement ci-dessus et pour la même
+    # raison : `app.state.*` rend `Any`, donc un littéral passé cru ferait sauter la vérification du
+    # Protocol par mypy. La signature de `rencontres_a_tirer` a justement changé dans cette US —
+    # sans cette annotation, une réalisation qui divergerait demain ne casserait rien ici.
+    rencontres_a_router: dict[TypePhase, LecteurRencontresARouter] = {
+        TypePhase.SUISSE: app.state.service_suisse,
+        TypePhase.POULES: app.state.service_poules,
+    }
     app.state.service_palmares = ServicePalmares(
         tournoi_repository,
         phase_repository,
@@ -888,6 +922,11 @@ def create_app(
         # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
         # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
         app.state.service_big_shoot_off,
+        # E05US026 : de quoi savoir si une phase **à rencontres** est allée à son terme. Le **même**
+        # port que celui du routage, et le même dictionnaire de lecteurs : sans lui, le palmarès
+        # décernait or, argent et bronze dès la composition d'une phase terminale — avant la
+        # première flèche, sur des rangs venus de la qualification (bloquant de revue).
+        rencontres_a_router,
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,
@@ -1010,6 +1049,11 @@ def create_app(
         phase_repository,
         depart_repository,
         app.state.service_big_shoot_off,
+        # E05US026 : les deux formats à **rencontres** — suisse et poules — routent par le même
+        # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non
+        # chez l'un des deux réalisateurs : ils sont deux, la question se pose ici.
+        rencontres_a_router[TypePhase.SUISSE],
+        rencontres_a_router[TypePhase.POULES],
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
@@ -1202,6 +1246,7 @@ def create_app(
     app.include_router(placement_duels_router)
     app.include_router(saisie_duels_router)
     app.include_router(poules_router)
+    app.include_router(suisse_router)
     app.include_router(big_shoot_off_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)

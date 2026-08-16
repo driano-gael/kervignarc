@@ -12,15 +12,16 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 15/08/2026, 16 h 48** · **110 US livrées** · dernière : `E00US018`
-*(**l'atlas du projet** : un site statique, ouvrable au double-clic, qui montre le **règlement en
-vigueur** puis l'**histoire datée** de chaque règle, et qui calcule ce que le registre ne dit pas —
-82 ADR sur 83 portent le statut « Accepté », un seul est marqué « Remplacé », alors que **19** sont
-amendés par une décision plus récente. Il confronte aussi les 234 symboles promis par les sections
-« Porté dans le code par » au dépôt réel. Généré depuis les sources versionnées, sans aucune
-dépendance, vérifié en CI. ADR-0085 ; ouvre `DETTE-065`. Quatre tranches restent.)*
+**Dernière mise à jour : 16/08/2026, 15 h 32** · **111 US livrées** · dernière : `E00US018`
+*(**l'atlas du projet** : un site statique, ouvrable au double-clic, qui montre le **règlement
+en vigueur** puis l'**histoire datée** de chaque règle, et qui calcule ce que le registre ne dit
+pas — une seule décision sur l'ensemble du registre porte la mention « Remplacé », alors que
+vingt-deux sont amendées par une décision plus récente. Il confronte aussi au dépôt réel les
+modules et symboles promis par les sections « Porté dans le code par ». Généré depuis les
+sources versionnées, sans aucune dépendance, vérifié en CI. ADR-0086 ; ouvre `DETTE-065`.
+Quatre tranches restent.)*
 
-Précédente : `E05US028`
+Précédente : `E05US026`
 *(**les poules jouables de bout en bout**, 1ʳᵉ tranche : un **contrat de phase jouable** remplace les
 dix filtres qui décidaient chacun dans leur coin qu'une phase est jouable, et les **poules** le
 taillent en devenant réellement jouables — réglées à l'atelier, posées en salle sur des blocs de
@@ -109,9 +110,12 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~1~~ ✅ | ~~`E05US025`~~ | **Livrée le 09/08/2026** — plusieurs qualifications dans un même déroulé. Le chantier ouvert le 08/08 par `E05US024` est **clos**. |
 > | ~~2~~ ✅ | ~~`E05US023`~~ | **Livrée le 09/08/2026** — 1ʳᵉ tranche du découpage : le **contrat de phase jouable** (ADR-0083) et les **poules**, de bout en bout. Le découpage annoncé ci-contre a été fait le jour même : trois tranches restent, une par format. |
 > | ~~3~~ ✅ | ~~`E05US028`~~ | **Livrée le 14/08/2026** — le **Big Shoot Off** jouable de bout en bout. Prise avant le suisse et la colline sur le conseil d'ordre ci-dessous, et **le conseil s'est vérifié** : le contrat d'ADR-0083 a bien cédé, mais **sur un nom seulement** (`monte_les_oppositions` → `deroule_par_un_service`), pas sur une structure. Deux capacités ajoutées au périmètre par le commanditaire (palmarès, routage), et surtout un **changement de règle métier** — plusieurs sortants par manche, dits tour par tour — sorti du garde-fou « test écrit depuis le CA ». Référentiel §10.1 amendé. |
-> | **🎯 1** | `E05US026` | **Le système suisse jouable.** 3ᵉ tranche du découpage d'`E05US023` : le moteur existe (`domain/suisse.py`) et n'a aucun appelant. Il **habite** le contrat, désormais éprouvé par deux formats de formes opposées — les poules (groupes + duels) et le Big Shoot Off (volée collective). Indépendante d'`E05US027`. ⚠️ **C'est ici que le remède structurel du port de classement se justifiera** : `LecteurClassementPoules` et `LecteurClassementBigShootOff` sont deux protocoles identiques, dupliqués **volontairement** en E05US028 faute d'une 3ᵉ occurrence réelle. Le suisse est cette 3ᵉ — le `dict[TypePhase, LecteurClassementDePhase]` se pose alors sur preuve, pas sur pari. |
-> | **3** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
-> | 4… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
+> | ~~4~~ ✅ | ~~`E05US026`~~ | **Livrée le 16/08/2026 — backend seul**, le front partant en `E05US030` (périmètre coupé en cours d'US, le 15/08). Le système suisse se règle, se joue ronde après ronde, se pose sur la salle, se classe, se route et entre au palmarès. **Le remède structurel annoncé a bien eu lieu** : les deux ports de classement jumeaux sont fondus en un ([ADR-0084](../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) — la 3ᵉ occurrence étant née dans ce diff, l'écart à « en US dédiée » a été tranché par le commanditaire contre un commit séparé. ⚠️ **Le périmètre a triplé au cadrage** : routage (suisse **et** poules, qui l'attendaient depuis E05US023), palmarès avec une règle neuve — *une phase décerne si rien ne prélève dedans* —, et renommage `placement_poule` → `placement_par_bloc` (migration 0046). Deux dettes ouvertes (`DETTE-064` majeure), une refermée (`DETTE-063`). |
+> | **🎯 1** | `E05US030` | **Le système suisse à l'écran.** ⚠️ **Née d'un arbitrage du 15/08/2026, en cours d'`E05US026`** : celle-ci avait triplé de périmètre au cadrage, et le commanditaire a coupé à la couture backend / front — la seule qui ne coûte rien, les commits backend étant cohérents et relisibles seuls. ⚠️ **C'est cette US qui porte les livrables de suivi du suisse** (fichier daté du journal, résumé, scénario `docs/fonctionnel/`), `E05US026` n'ayant aucune surface utilisateur : la porte de revue les exige **ici**, pas là-bas. À prendre juste après, sans quoi le backend reste injouable par un humain. |
+> | **2** | `E05US029` | **Des poules de niveau en une seule étape.** ⚠️ **Née du cadrage d'`E05US026`, le 15/08/2026, et le commanditaire a demandé qu'elle passe *après* lui** — c'est `E05US026` qui rend publiable le classement final d'une cascade de poules, sans quoi cette US-ci composerait joliment un format qui ne décerne rien. Le format visé (36 archers → 6 poules de 6 → 6 poules **par niveau**, rangs 1-6 / 7-12 / …) est **déjà composable** en une étape par niveau : ce qui manque est le confort, pas la capacité. Deux obstacles structurels à lever, tous deux nommés dans la fiche : le **serpent** (juste en 1ʳᵉ phase, faux ensuite) et l'**espace de rangs porté par l'étape** et non par le groupe. |
+> | **3** | `E05US027` | **La colline jouable** — 4ᵉ et dernière tranche du découpage d'`E05US023`, celle qui referme `DETTE-028` sur son volet « moteurs sans appelant ». **Indépendante d'`E05US026`** : plaçable avant, après ou entre, au gré de la fenêtre. Elle bénéficiera du port unifié posé par `E05US026` — quatrième occurrence, plus aucune duplication à écrire. |
+> | **4** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
+> | 5… | reste d'`E16` | `E16US005`, `E16US006`, `E16US008`, `E16US009`, `E16US010`, `E16US007` (**à redécouper**), `E16US011`, `E16US012` — **sans ordre imposé**, hors la remarque d'`E16US012` (elle recoupe `E16US007` et `E16US008` : l'instruire **avant** qu'elles ne figent chacune leur variante). |
 > | hors file | `E06US009`, `E01US026`, `E05US022` | Résorptions de dette **tranchées** le 07/08, à replacer quand une fenêtre s'ouvre — voir leur section. |
 > | 🔒 **en attente de vous** | `E17US005`, `E17US006` | **Deux décisions vous sont demandées**, et ces US ne sont **pas prenables** avant. `E17US005` : embarquer la police Inter au dépôt (ajout d'actif, règle 11 — trois options, cf. sa fiche ; résorbe `DETTE-043`). `E17US006` : quelle couleur pour l'action **destructrice**, la charte l'ayant laissée vide (`DV-03` exclut le rouge). Une US bloquée sur arbitrage se débloque en **posant la question** : elle est posée ici pour ne pas dormir au fond d'`EPIC-17`. |
 >
@@ -178,7 +182,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > périmètre (palmarès, routage). Le suisse et la colline n'ont pas ce risque : leur règle est écrite
 > et leur CA cite des paramètres qui **existent**.
 >
-> **🎯 Prochaine : `E05US026` (ou `E05US027`)** — les deux tranches restantes sont
+> ~~**🎯 Prochaine : `E05US026` (ou `E05US027`)**~~ — ✅ **`E05US026` livrée le 16/08/2026**,
+> backend seul. Ce qui suit décrivait les deux tranches restantes ; **la colline reste**, et le
+> constat ci-dessous se vérifie une troisième fois. Elles sont
 > **indépendantes entre elles**. Chacune habite le contrat : une ligne au registre
 > (`domain/contrat_phase.py`), un service applicatif, une exposition à l'atelier et en salle. C'est
 > ce que la 1ʳᵉ tranche a acheté, et c'est ce qui les rend tenables une par une.
@@ -1040,7 +1046,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > et son historique »*. Outillage de suivi, pas une capacité produit — ces US **n'entrent pas** dans
 > la file 🎯 ci-dessus, qui reste celle du produit ; elles se prennent quand le commanditaire le
 > décide. Cf. [`stories/E00-socle.md`](../stories/E00-socle.md) § E00US018 et
-> [ADR-0085](../docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md).
+> [ADR-0086](../docs/adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md).
 > Livrée le 15/08 : le règlement en vigueur, l'histoire datée de chaque règle, les 83 décisions avec
 > **ce qui les a amendées depuis**, et la confrontation de ce que l'écrit promet à ce que le dépôt
 > contient. Ouvre `DETTE-065`.

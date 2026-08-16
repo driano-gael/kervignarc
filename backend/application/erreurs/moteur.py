@@ -180,6 +180,20 @@ class PhasePasUnBigShootOff(ApplicationError):
     code = "phase_pas_un_big_shoot_off"
 
 
+class PhasePasUnSuisse(ApplicationError):
+    """La phase existe mais n'est **pas** un système suisse (E05US026) → 409.
+
+    Quatrième et dernier jumeau de `PhasePasUnTableau` pour les formats livrés — la colline
+    (`E05US027`) en fera un cinquième. La justification est celle donnée à `PhasePasUnBigShootOff`
+    et elle tient toujours : ce qui serait fâcheux à dupliquer, c'est la **table** des types admis,
+    et elle est dérivée du registre de contrat depuis E05US023. Il ne reste ici qu'un nom d'erreur
+    par décor, et un nom par décor est ce qui permet à l'organisateur de lire « cette phase n'est
+    pas un système suisse » plutôt qu'un « type de phase incorrect » qui ne l'aide en rien.
+    """
+
+    code = "phase_pas_un_suisse"
+
+
 class MancheIntrouvable(ApplicationError):
     """Aucune manche de ce numéro dans ce Big Shoot Off (E05US028) → 404.
 

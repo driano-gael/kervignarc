@@ -88,12 +88,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0061"
   },
   {
-   "code": "portage-non-verifiable",
-   "message": "annonce LecteurEtatBigShootOff, LecteurClassementBigShootOff, LecteurClassementPoules dans « CLAUDE.md », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
    "code": "portage-symbole-absent",
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
@@ -131,19 +125,31 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce ScoreAvecHandicap, RoutingRepechage dans « backend/tests/test_domain_contrat_phase.py » — introuvable(s) dans le fichier.",
+   "message": "annonce LecteurClassementBigShootOff dans « backend/application/big_shoot_off.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce plan_de_cibles, AUCUN dans « backend/application/routage.py » — introuvable(s) dans le fichier.",
+   "message": "annonce ProchainDuel, _resultat_classant, ScoreAvecHandicap, RoutingRepechage dans « backend/tests/test_domain_contrat_phase.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 23
+  "signaux": 24
  }
 };

@@ -1,6 +1,6 @@
 # 15 août 2026, 16 h 48 — l'atlas : ce qui fait règle, et depuis quand
 
-**US : E00US018** · [ADR-0085](../docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md)
+**US : E00US018** · [ADR-0086](../docs/adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)
 
 ## Ce qui ne marchait pas
 

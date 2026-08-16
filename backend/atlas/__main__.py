@@ -132,7 +132,7 @@ def principal(arguments: list[str] | None = None, racine: Path = RACINE) -> int:
         print("\nRégénère : cd backend && python -m atlas", file=sys.stderr)
         return 1
 
-    # La promesse d'ADR-0085 — « la CI a le droit de rougir dessus » — n'était portée par rien :
+    # La promesse d'ADR-0086 — « la CI a le droit de rougir dessus » — n'était portée par rien :
     # les écarts bloquants étaient comptés, affichés sur une page web, et la porte restait verte.
     if controles_module.bloquants(cartes.verdicts):
         _dire_les_bloquants(cartes.verdicts)

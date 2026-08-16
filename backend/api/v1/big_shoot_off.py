@@ -220,6 +220,9 @@ class ValiderMancheRequete(BaseModel):
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
+    # DETTE-065 : copie verbatim de ce **garde d'autorisation**, présent dans six routeurs. Un
+    # 7ᵉ routeur d'écriture qui l'oublierait ne ferait rougir personne — résorption :
+    # `api/dependances.py`.
     """Un scoreur n'écrit que dans **son** tournoi (403 sinon) — jumeau de `api/v1/poules.py`."""
     if scoreur.tournoi_id != tournoi_id:
         raise ScoreurHorsTournoi("Ce scoreur n'est pas rattaché à ce tournoi.")

@@ -334,10 +334,10 @@ window.ATLAS.reglement = {
   },
   {
    "adr": [
-    "0085"
+    "0086"
    ],
    "amendements": [],
-   "corps": "**L'atlas se régénère APRÈS le commit, dans deux cas où le hook ne peut structurellement rien\n  voir** (`cd backend && python -m atlas`, un commit d'une ligne) :\n  - **un commit qui déplace des lignes de `CLAUDE.md`** — l'historique d'une règle vient d'un\n    `git log -L \u003cbornes>`, et ces bornes sont résolues contre `HEAD`, donc contre le fichier\n    **d'avant** le commit. Le hook valide parce qu'il compare du périmé à du périmé : il est\n    auto-cohérent. Le fichier devient faux à l'instant du commit, et seule la CI le voit ;\n  - **deux PR en vol** : celle qui fusionne en **second** régénère avant son merge. Deux branches\n    peuvent n'avoir **aucun conflit git** — fichiers distincts, régions disjointes — et se périmer\n    mutuellement, il suffit que l'une ajoute un ADR et que l'autre ait généré ses cartes avant.\n\n  Sans ce geste, `main` part rouge. *(Les deux cas ont été constatés à la livraison même de\n  l'atlas, le second en revue — [ADR-0085](docs/adr/0085-un-atlas-genere-le-depot-cartographie-sans-dependance.md) § Conséquences.)*",
+   "corps": "**L'atlas se régénère APRÈS le commit, dans deux cas où le hook ne peut structurellement rien\n  voir** (`cd backend && python -m atlas`, un commit d'une ligne) :\n  - **un commit qui déplace des lignes de `CLAUDE.md`** — l'historique d'une règle vient d'un\n    `git log -L \u003cbornes>`, et ces bornes sont résolues contre `HEAD`, donc contre le fichier\n    **d'avant** le commit. Le hook valide parce qu'il compare du périmé à du périmé : il est\n    auto-cohérent. Le fichier devient faux à l'instant du commit, et seule la CI le voit ;\n  - **deux PR en vol** : celle qui fusionne en **second** régénère avant son merge. Deux branches\n    peuvent n'avoir **aucun conflit git** — fichiers distincts, régions disjointes — et se périmer\n    mutuellement, il suffit que l'une ajoute un ADR et que l'autre ait généré ses cartes avant.\n\n  Sans ce geste, `main` part rouge. *(Les deux cas ont été constatés à la livraison même de\n  l'atlas, le second en revue — [ADR-0086](docs/adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md) § Conséquences.)*",
    "fichier": "CLAUDE.md",
    "identifiant": "cycle-de-branche",
    "ligne": 234,
