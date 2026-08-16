@@ -265,12 +265,21 @@ class RencontresARouter:
 
     - `participants` — toute la population de la phase. Sert à distinguer « il n'y est pas »
       (`INDISPONIBLE`) de « il y est, mais rien à tirer maintenant ».
-    - `epuisee` — plus **aucune** rencontre ne viendra. Seul cas où `TERMINE` est vrai.
+    - `epuisee` — plus **aucune** rencontre ne viendra, pour personne.
+    - `termines` — ceux qui ont fini **alors que la phase continue**. Le champ n'existe que parce
+      que les deux formats ne se ressemblent pas ici : un round-robin est connu d'avance, donc un
+      membre de poule dont toutes les rencontres sont validées a réellement fini, même si la poule
+      d'à côté tire encore. Un système suisse, lui, ne montre que sa ronde courante — personne n'y
+      a fini tant que la dernière ronde n'est pas close, et il laisse donc ce champ vide.
+
+    ⚠️ **Sans `termines`, le correctif du bloquant précédent créait son miroir** (relevé en revue) :
+    on ne disait plus « terminé » à tort, on disait « attends » à qui pouvait partir.
     """
 
     rencontres: tuple[RencontreARouter, ...]
     participants: tuple[int, ...]
     epuisee: bool
+    termines: frozenset[int] = frozenset()
 
 
 class LecteurRencontresARouter(Protocol):
@@ -659,6 +668,13 @@ class ServiceRoutage:
                     ),
                 )
             )
+        if archer_ids is None:
+            # ⚠️ **`affectations` promet « dans l'ordre du pas de tir »**, et la branche tableau le
+            # tient (`_ordre_du_pas_de_tir`). Sans ce tri, l'écran de salle recevait l'ordre du
+            # **classement de phase** — sans rapport avec la salle —, ce que la fiche de recette
+            # démentait elle aussi. Le tri n'a de sens que sur ce canal : `routage` doit rendre les
+            # lignes **dans l'ordre demandé** par la tablette.
+            lignes.sort(key=_ordre_du_pas_de_tir)
         return Routage(phase_id=phase.id, archers=tuple(lignes))
 
     def _sans_rencontre(
@@ -670,7 +686,9 @@ class ServiceRoutage:
         aux trois, alors qu'un seul a réellement fini :
 
         1. **il n'est pas dans cette phase** → `INDISPONIBLE`, comme le Big Shoot Off le fait déjà ;
-        2. **la phase est épuisée** → `TERMINE`, la seule fois où c'est vrai ;
+        2. **la phase est épuisée, ou lui a fini** → `TERMINE`. Les deux, parce qu'un format à
+           groupes connus d'avance laisse un membre finir avant les autres — et lui dire d'attendre
+           serait aussi faux que dire « terminé » à qui a encore une ronde devant lui ;
         3. **il y est, mais rien à tirer maintenant** → il porte le bye de la ronde, ou sa rencontre
            est validée pendant que la ronde s'achève. Le panneau doit dire « pas maintenant »,
            jamais « c'est fini » : un archer à qui l'on dit terminé range son arc.
@@ -690,7 +708,7 @@ class ServiceRoutage:
                 issue=IssueRoutage.INDISPONIBLE,
                 motif="Cet archer ne fait pas partie de cette phase.",
             )
-        if lecture.epuisee:
+        if lecture.epuisee or archer_id in lecture.termines:
             return RoutageArcher(
                 archer_id=archer_id,
                 nom=nom,

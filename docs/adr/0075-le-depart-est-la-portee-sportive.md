@@ -200,8 +200,14 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit
-ici et non dans `CLAUDE.md`.
+`0082`, `0083`, `0084`, `0085`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant
+— c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
+
+⚠️ **`0084` y avait été oublié à sa création, et `0085` a failli l'être** (relevé en revue
+d'E05US026, deux fois). Deux omissions de suite sur le registre qui existe pour empêcher
+exactement ça : la liste ne se met pas à jour toute seule, et l'auteur d'un ADR neuf est le
+moins bien placé pour se souvenir de l'y inscrire. C'est à la revue de le vérifier — l'axe qui
+juge les ADR a le log de branche en périmètre, il voit donc les ADR créés.
 
 > *`0049`, `0066` et `0067` ont été ajoutés en revue le 08/08/2026 : le premier jet appliquait le
 > critère « politiques » tout en excluant deux ADR **de politique** (`0066` porte le seuil de

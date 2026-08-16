@@ -48,7 +48,6 @@ from collections.abc import Mapping
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import (
-    ApplicationError,
     PhaseIntrouvable,
     PhasePasReglee,
     PhasePasUnBigShootOff,
@@ -434,6 +433,10 @@ class ServicePalmares:
     def _est_epuisee(self, tournoi_id: TournoiId, phase: Phase) -> bool:
         """La phase est-elle allée à son terme ? — par le port partagé avec le routage.
 
+        `# DETTE-031` — `rencontres_a_tirer` rejoue l'état complet de la phase, **avec un résolveur
+        neuf** : c'est un second rejeu de la chaîne amont par phase classante, pas une simple
+        lecture d'avancement (précision apportée en revue).
+
         Prudent par défaut : sans lecteur branché, on répond « non », donc les archers restent
         `en_lice` et **aucune médaille n'est décernée**. Un montage incomplet retire un podium, il
         n'en invente pas.
@@ -443,7 +446,19 @@ class ServicePalmares:
             return False
         try:
             return lecteur.rencontres_a_tirer(tournoi_id, phase.id).epuisee
-        except (ApplicationError, DomainError) as exc:
+        except (
+            PhaseIntrouvable,
+            PrelevementEnAttente,
+            PhasePasReglee,
+            EffectifTableauInvalide,
+            DomainError,
+        ) as exc:
+            # ⚠️ **Nominative comme partout ailleurs dans ce fichier**, et le premier jet ne l'était
+            # pas : `except ApplicationError` avalait `DerouleCyclique`, à trois lignes du
+            # commentaire qui explique que cette erreur doit **traverser** (« une base incohérente
+            # doit rester visible »). Sans effet observable — `classement_de_phase` la lève plus
+            # tôt — mais c'est la convention du fichier, et une convention qui souffre une
+            # exception non écrite ne tient pas longtemps. Relevé en revue.
             _logger.info("Avancement de la phase %s illisible : %s", phase.id, exc)
             return False
 

@@ -307,15 +307,22 @@ class EtapeDTO(BaseModel):
     """Jusqu'où cette étape départage (E06US006). `null` = non réglée → preset du type."""
 
     poules: ReglagePoulesDTO | None = None
-    big_shoot_off: ReglageBigShootOffDTO | None = None
-    suisse: ReglageSuisseDTO | None = None
-    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
-
     """Le réglage d'une étape de poules (E05US023). `null` = non réglée.
 
     ⚠️ Le `extra="forbid"` ci-dessus rend ce champ **inaccessible aux clients d'avant l'US** — ce
     qui est voulu dans les deux sens : ils ne peuvent pas l'envoyer par erreur, et le PUT étant une
     édition **totale**, un client à jour qui l'omet **efface** le réglage."""
+
+    big_shoot_off: ReglageBigShootOffDTO | None = None
+    """Le réglage d'un **Big Shoot Off** (E05US028) — `null` = non réglé, même régime."""
+
+    suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une étape au **système suisse** (E05US026) — `null` = non réglée.
+
+    ⚠️ Les trois docstrings sont désormais **rattachées à leur champ**. Elles ne l'étaient plus : en
+    Python, un littéral documente l'attribut qui le **précède**, et le bloc « poules » avait glissé
+    d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
+    en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.

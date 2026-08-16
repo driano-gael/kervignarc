@@ -567,11 +567,16 @@ class ServicePoules:
         Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée
         (ADR-0049 §4), l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
 
-        ⚠️ **`epuisee` vaut ici « toutes les rencontres sont validées »**, et c'est plus simple que
-        pour le suisse : un round-robin est connu d'avance, donc l'absence d'un membre de la liste
-        signifie réellement qu'il a fini. Le champ existe quand même, parce que le port est partagé
-        et qu'une rencontre **désynchronisée** l'écarte aussi de la liste — auquel cas « terminé »
-        serait faux pour les poules aussi.
+        ⚠️ **`epuisee` vaut « toutes les rencontres sont validées », désynchronisées comprises.**
+        Le filtre `if not r.desynchronisee` qui figurait ici était un **défaut de revue**, et le
+        pire des trois cas : une poule dont une rencontre est bloquée et les autres validées se
+        déclarait épuisée, donc ses deux archers recevaient « Plus aucune rencontre à tirer » — sur
+        une rencontre qu'ils ne *peuvent pas* saisir (écriture refusée, ADR-0049 §4). Sur une phase
+        entièrement saisie puis **recomposée**, la liste filtrée devenait vide, `all(())` valait
+        `True`, et le palmarès décernait les médailles d'une phase irrésolue.
+
+        Une rencontre désynchronisée signifie exactement le contraire d'« épuisée » : il reste
+        quelque chose à faire, et ce quelque chose demande d'abord de rétablir la population.
         """
         etat = self.etat(tournoi_id, phase_id)
         rencontres = tuple(
@@ -591,13 +596,21 @@ class ServicePoules:
             and (rencontre.duel is None or not rencontre.duel.verrouille)
         )
         toutes = [r for poule in etat.poules for r in poule.rencontres]
+        restants = {a for r in rencontres for a in (r.haut, r.bas)}
         return RencontresARouter(
             rencontres=rencontres,
             participants=tuple(
                 ligne.participant.ref_id for poule in etat.poules for ligne in poule.classement
             ),
-            epuisee=all(
-                r.duel is not None and r.duel.verrouille for r in toutes if not r.desynchronisee
+            epuisee=all(r.duel is not None and r.duel.verrouille for r in toutes),
+            # ⚠️ **Un round-robin est connu d'avance**, donc un membre sans rencontre restante a
+            # réellement fini — même si la poule d'à côté tire encore. Sans ce champ, le correctif
+            # du bloquant précédent produisait son miroir : « attends » servi à qui peut partir.
+            termines=frozenset(
+                ligne.participant.ref_id
+                for poule in etat.poules
+                for ligne in poule.classement
+                if ligne.participant.ref_id not in restants
             ),
         )
 

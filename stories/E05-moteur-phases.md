@@ -1201,10 +1201,13 @@ remède structurel du port de classement) ; la coupe backend / front a été cho
 seule qui ne coûte rien — les commits du backend sont cohérents et relisibles indépendamment, et le
 front n'a aucune dette à reprendre puisqu'il n'a pas commencé.
 
-⚠️ **C'est cette US-ci qui porte les livrables de suivi du système suisse**, `E05US026` n'ayant
-aucune surface utilisateur : le fichier daté du [journal d'avancement](../journal-d-avancement/), la
-mise à jour du [résumé](../journal-d-avancement/00-resume-projet.md) et le scénario de recette dans
-[`docs/fonctionnel/`](../docs/fonctionnel/). La porte de revue les exigera ici.
+⚠️ **C'est cette US-ci qui porte les livrables de suivi du *système suisse***, faute d'écran à
+recetter avant elle : le scénario de recette du suisse dans
+[`docs/fonctionnel/`](../docs/fonctionnel/). ⚠️ **Correction apportée en revue d'`E05US026`** : cette
+phrase disait d'abord que `E05US026` n'avait « aucune surface utilisateur » et lui retirait *tous*
+les livrables — c'était faux d'un cran. Elle a bien livré son fichier daté, son résumé **et** un
+scénario restreint à ses deux effets visibles (routage et palmarès des poules). Ne reste ici que ce
+qui n'existait pas encore : les écrans du suisse.
 
 - **CA — la fiche de réglages** : choisir « système suisse » ouvre le champ **nombre de rondes**,
   avec le **maximum que l'effectif du jour autorise affiché en clair** — la borne existe au domaine
@@ -1221,6 +1224,13 @@ mise à jour du [résumé](../journal-d-avancement/00-resume-projet.md) et le sc
   au même titre que les poules et le Big Shoot Off.
 - **CA — le bandeau d'écart de l'atelier cesse de viser le suisse côté front** (`TYPES_DEROULES` du
   catalogue TS), miroir de ce que `E05US026` a fait côté registre de contrat.
+- **CA — l'issue de routage `EN_ATTENTE`** *(reversé ici en revue d'`E05US026`, règle 9)*. Le
+  panneau doit distinguer « il a fini » de « il n'a rien à tirer **pour l'instant** » — le porteur
+  d'un bye, ou l'archer dont la rencontre vient d'être validée pendant que la ronde s'achève.
+  `E05US026` a **emprunté `INDISPONIBLE`** avec un motif explicite, faute de pouvoir toucher au
+  contrat d'API depuis une US backend seule : `IssueRoutage` est une union que le front tient dans
+  `features/routage/api.ts`. Cette US-ci livre l'issue propre, des deux côtés. *(Sans cette puce, le
+  report ne vivait que dans une docstring de `application/routage.py` — invisible au cadrage.)*
 - ⚠️ **À vérifier au cadrage** : `DETTE-056` (trois sélecteurs de créneau indépendants dans l'espace
   scoreur) passerait à **quatre** avec l'écran du suisse. La dette est **mineure** mais son rayon
   croît d'un format à l'autre ; c'est peut-être ici qu'elle se résorbe plutôt que de s'élargir une

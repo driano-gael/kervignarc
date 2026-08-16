@@ -308,10 +308,6 @@ class ConfigPhaseRequete(BaseModel):
     """
 
     poules: ReglagePoulesDTO | None = None
-    big_shoot_off: ReglageBigShootOffDTO | None = None
-    suisse: ReglageSuisseDTO | None = None
-    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
-
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
 
     `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
@@ -321,6 +317,17 @@ class ConfigPhaseRequete(BaseModel):
     réglage. Posé sur un type qui n'est pas `poules`, il lève `ReglageDePoulesInvalide` (422) —
     contrairement à `profondeur`, dont l'incompatibilité de type n'est refusée qu'à l'application.
     """
+
+    big_shoot_off: ReglageBigShootOffDTO | None = None
+    """Le réglage d'un **Big Shoot Off** (E05US028) — `null` = non réglé, même régime."""
+
+    suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée.
+
+    ⚠️ Les trois docstrings sont désormais **rattachées à leur champ**. Elles ne l'étaient plus : en
+    Python, un littéral documente l'attribut qui le **précède**, et le bloc « poules » avait glissé
+    d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
+    en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).

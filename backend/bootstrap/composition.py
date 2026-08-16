@@ -112,7 +112,7 @@ from application.prelevement import (
     LecteurPopulationPhase,
 )
 from application.remboursements import ServiceRemboursements
-from application.routage import ServiceRoutage
+from application.routage import LecteurRencontresARouter, ServiceRoutage
 from application.saisie import ServiceSaisie
 from application.saisie_duels import ServiceSaisieDuels
 from application.scoreurs import ServiceScoreurs
@@ -901,6 +901,14 @@ def create_app(
     # est **injectée ici**, au défaut `par_qualification` (usage World Archery), résolu **par le
     # registre** : la contourner en instanciant la stratégie à la main ferait de la politique une
     # décoration (même parti que le `tiebreak` du classement, ADR-0066).
+    # ⚠️ Variable **annotée**, comme les branchements de classement ci-dessus et pour la même
+    # raison : `app.state.*` rend `Any`, donc un littéral passé cru ferait sauter la vérification du
+    # Protocol par mypy. La signature de `rencontres_a_tirer` a justement changé dans cette US —
+    # sans cette annotation, une réalisation qui divergerait demain ne casserait rien ici.
+    rencontres_a_router: dict[TypePhase, LecteurRencontresARouter] = {
+        TypePhase.SUISSE: app.state.service_suisse,
+        TypePhase.POULES: app.state.service_poules,
+    }
     app.state.service_palmares = ServicePalmares(
         tournoi_repository,
         phase_repository,
@@ -918,10 +926,7 @@ def create_app(
         # port que celui du routage, et le même dictionnaire de lecteurs : sans lui, le palmarès
         # décernait or, argent et bronze dès la composition d'une phase terminale — avant la
         # première flèche, sur des rangs venus de la qualification (bloquant de revue).
-        {
-            TypePhase.SUISSE: app.state.service_suisse,
-            TypePhase.POULES: app.state.service_poules,
-        },
+        rencontres_a_router,
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,
@@ -1047,8 +1052,8 @@ def create_app(
         # E05US026 : les deux formats à **rencontres** — suisse et poules — routent par le même
         # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non
         # chez l'un des deux réalisateurs : ils sont deux, la question se pose ici.
-        app.state.service_suisse,
-        app.state.service_poules,
+        rencontres_a_router[TypePhase.SUISSE],
+        rencontres_a_router[TypePhase.POULES],
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service

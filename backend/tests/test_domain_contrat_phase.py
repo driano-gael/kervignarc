@@ -275,3 +275,33 @@ def test_le_registre_est_le_miroir_des_filtres_de_service() -> None:
     le traiter, c'est ici qu'on le verrait — pas en salle.
     """
     assert {TypePhase.ELIMINATION_DIRECTE} == TYPES_EN_TABLEAU_JOUE
+
+
+def test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas() -> None:
+    """⚠️ **Le seul garde-fou de `_TYPES_DEROULABLES` était un commentaire** (correctif de revue).
+
+    `application/simulation_format.py` part de `TYPES_JOUES` — table **dérivée** — et lui retranche
+    **à la main** les formats que `fabriquer_harnais_simulation` ne construit pas. Les deux
+    répondent à des questions différentes : « un service de production déroule-t-il ce type ? »
+    contre « le **bot** sait-il le jouer ? ».
+
+    L'oubli s'est produit **trois fois** (poules, Big Shoot Off, système suisse), et à chaque fois
+    l'atelier annonçait `joue=True, 0 tour, 0 duel` — des zéros lus comme un constat — en perdant le
+    bandeau « le moteur ne sait pas encore dérouler ce type ».
+
+    Ce test est le garde-fou qui manquait : il tombe au 4ᵉ oubli, que `DETTE-066` annonce pour la
+    colline. Il vit ici et non dans les tests de simulation parce que ce qu'il garde est la
+    **divergence entre deux tables**, pas le comportement de l'atelier.
+    """
+    from application.simulation_format import _TYPES_DEROULABLES
+
+    # Ce que le bot sait réellement jouer aujourd'hui : le harnais ne construit que la
+    # qualification et les duels de tableau.
+    assert {TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE} == _TYPES_DEROULABLES
+    # Et tout format **joué en production** mais absent de cette liste doit l'être *explicitement* :
+    # c'est le retrait à la main que DETTE-066 tracera jusqu'à sa résorption.
+    assert {
+        TypePhase.POULES,
+        TypePhase.BIG_SHOOT_OFF,
+        TypePhase.SUISSE,
+    } == TYPES_JOUES - _TYPES_DEROULABLES
