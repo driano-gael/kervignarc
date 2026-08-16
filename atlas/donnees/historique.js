@@ -152,6 +152,17 @@ window.ATLAS.historique = {
   {
    "adr": [],
    "date": "2026-08-16",
+   "motif": "Merge origin/main dans E00US018 — l'atlas prend le système suisse",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "7d2b31ac7f",
+   "us": [
+    "E00US018"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-16",
    "motif": "fix(e00us018): 2e passe — les trous que le 1er correctif avait déplacés",
    "nature": "commit",
    "origine": "git",
