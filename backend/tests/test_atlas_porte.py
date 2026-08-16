@@ -13,6 +13,7 @@ vers le code.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -123,6 +124,19 @@ def _poser_depot(racine: Path, *, adr: str = ADR_SAIN) -> None:
     (racine / "backend" / "present.py").write_text(
         "class ChosePresente:\n    pass\n", encoding="utf-8", newline="\n"
     )
+    # Les cinq couches et le dossier des features **doivent** exister : depuis E00US020, l'atlas
+    # refuse de lire un dépôt dont une couche a disparu plutôt que de conclure « aucune
+    # dépendance » d'un répertoire qu'il n'a pas trouvé. Un dépôt d'essai est donc un dépôt qui a
+    # des couches — c'est la contrepartie assumée du garde-fou.
+    for couche in ("domain", "application", "infrastructure", "api", "bootstrap"):
+        dossier = racine / "backend" / couche
+        dossier.mkdir(parents=True, exist_ok=True)
+        (dossier / "__init__.py").write_text("", encoding="utf-8", newline="\n")
+    features = racine / "frontend" / "src" / "features" / "accueil"
+    features.mkdir(parents=True, exist_ok=True)
+    (features / "Accueil.tsx").write_text(
+        "export const Accueil = () => null\n", encoding="utf-8", newline="\n"
+    )
     for chemin, contenu in (
         ("journal-d-avancement/SUIVI-US.md", SUIVI),
         ("epics/README.md", EPICS),
@@ -223,6 +237,53 @@ def test_un_compteur_de_tracker_faux_sort_en_trois(depot: Path) -> None:
     principal([], racine=depot)
 
     assert principal(["--verifier"], racine=depot) == 3
+
+
+def test_une_dependance_a_contresens_sort_en_trois(depot: Path) -> None:
+    """La promesse d'`E00US020`, éprouvée **de bout en bout** — pas seulement en unitaire.
+
+    `test_atlas_carte.py` prouve que `verifier_code` rend un bloquant ; il ne prouvait pas que
+    `assembler` l'appelle, ni que `principal(["--verifier"])` rende 3. C'est exactement le trou
+    qu'`E00US019` avait déjà comblé une US plus tôt pour les livrables de suivi (cf.
+    `test_un_compteur_de_tracker_faux_sort_en_trois`) : la troisième famille de bloquants ne
+    peut pas arriver sans son équivalent.
+    """
+    principal([], racine=depot)
+    (depot / "backend" / "domain" / "archer.py").write_text(
+        "from infrastructure.db import session\n", encoding="utf-8", newline="\n"
+    )
+    principal([], racine=depot)
+
+    assert principal(["--verifier"], racine=depot) == 3
+
+
+def test_une_couche_disparue_refuse_de_conclure(depot: Path) -> None:
+    """Le mode de défaillance dont on ne se relève pas : vert **parce qu'on n'a rien regardé**.
+
+    `rglob` sur un répertoire absent ne lève rien. Sans ce refus, renommer `bootstrap/` faisait
+    fondre ses imports, vidait sa ligne de la matrice, rendait invisible tout futur
+    `api → composition` — et la porte restait verte. Le diff de `carte.js` étant replié par
+    `.gitattributes`, personne ne l'aurait vu passer.
+    """
+    principal([], racine=depot)
+    shutil.rmtree(depot / "backend" / "bootstrap")
+
+    assert principal([], racine=depot) == 2
+    assert principal(["--verifier"], racine=depot) == 2
+
+
+def test_un_module_illisible_sort_en_deux_pas_en_traceback(depot: Path) -> None:
+    """Le contrat d'erreurs du générateur vaut aussi pour le code qu'il lit.
+
+    Le motif du hook couvrant désormais tout `backend/**.py`, un module à moitié écrit se
+    rencontre en cours de refactor. `rendu.py` s'était déjà donné la règle : « un fichier tronqué
+    doit produire le message prévu, pas une trace d'exception remontée depuis un hook ».
+    """
+    (depot / "backend" / "domain" / "casse.py").write_text(
+        "def (:\n", encoding="utf-8", newline="\n"
+    )
+
+    assert principal([], racine=depot) == 2
 
 
 def test_un_entete_de_tracker_illisible_sort_en_deux(depot: Path) -> None:

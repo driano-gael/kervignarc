@@ -77,7 +77,12 @@ repos:
         # cartes. Garder l'ancien arbitrage ferait rougir la CI sur presque **toutes** les PR,
         # avec un correctif d'une ligne à chaque fois — c'est précisément le mécanisme qui fait
         # désactiver une porte. Le coût constaté est de ~5 s sur les commits concernés.
-        files: ^(CLAUDE\.md|docs/adr/.*\.md|docs/dette\.md|stories/.*\.md|epics/README\.md|journal-d-avancement/SUIVI-US\.md|backend/.*\.py|frontend/src/.*\.tsx?|atlas/donnees/.*)$
+        #
+        # Le motif épouse **exactement la surface lue** : les cinq couches plus `atlas/` côté
+        # backend, `features/` côté front. Un `backend/.*\.py` large aurait fait payer ces
+        # secondes aux commits purement de tests ou de migrations, que la carte ne lit jamais —
+        # une porte qui se déclenche pour rien s'apprend aussi vite qu'une porte qui rougit à tort.
+        files: ^(CLAUDE\.md|docs/adr/.*\.md|docs/dette\.md|stories/.*\.md|epics/README\.md|journal-d-avancement/SUIVI-US\.md|backend/(domain|application|infrastructure|api|bootstrap|atlas)/.*\.py|frontend/src/features/.*\.tsx?|atlas/donnees/.*)$
 
       - id: eslint
         name: eslint — frontend

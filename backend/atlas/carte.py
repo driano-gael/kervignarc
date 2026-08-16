@@ -12,7 +12,13 @@ from __future__ import annotations
 from typing import Any
 
 from atlas.modele import AreteCode, AreteFeature, NoeudEnchevetre, Port
-from atlas.sources.code import COUCHES, SENS_AUTORISE, autorise
+from atlas.sources.code import (
+    COUCHES,
+    SENS_AUTORISE,
+    autorise,
+    est_hors_domaine,
+    est_sans_adapter,
+)
 
 
 def violations(aretes: tuple[AreteCode, ...]) -> tuple[AreteCode, ...]:
@@ -35,6 +41,7 @@ def construire(
     ports: tuple[Port, ...],
     aretes_front: tuple[AreteFeature, ...],
     noeuds: tuple[NoeudEnchevetre, ...],
+    features: tuple[str, ...],
 ) -> dict[str, Any]:
     """La charge utile de la page — triée, sans horodatage, sans chemin absolu."""
     couche_a_couche: dict[tuple[str, str], int] = {}
@@ -54,13 +61,12 @@ def construire(
         if source != cible
     ]
 
-    hors_domaine = [port for port in ports if port.couche != "domain"]
-    sans_adapter = [port for port in ports if port.methodes and not port.adapters]
+    hors_domaine = [port for port in ports if est_hors_domaine(port)]
+    sans_adapter = [port for port in ports if est_sans_adapter(port)]
 
     clientes: dict[str, set[str]] = {}
     for lien in aretes_front:
         clientes.setdefault(lien.vers, set()).add(lien.de)
-    features = sorted({arete.de for arete in aretes_front} | {arete.vers for arete in aretes_front})
 
     return {
         "couches": list(COUCHES),
@@ -85,30 +91,44 @@ def construire(
                 "couche": port.couche,
                 "methodes": list(port.methodes),
                 "adapters": [_adapter(qualifie) for qualifie in port.adapters],
-                "herite": [_adapter(qualifie) for qualifie in port.herite],
-                "hors_domaine": port.couche != "domain",
-                "sans_adapter": bool(port.methodes) and not port.adapters,
+                "hors_domaine": est_hors_domaine(port),
+                "sans_adapter": est_sans_adapter(port),
             }
             for port in ports
         ],
         "front": {
+            # Les features telles que le **disque** les porte : une feature devenue autonome n'a
+            # plus d'arête, et disparaîtrait d'un compte dérivé du graphe — le compteur baisserait
+            # quand l'architecture s'améliore.
             "features": len(features),
-            "aretes": [
-                {"de": arete.de, "vers": arete.vers, "occurrences": arete.occurrences}
-                for arete in aretes_front
-            ],
+            # `aretes` (142 entrées) était sérialisé, commité, comparé à l'octet… et lu par
+            # personne : le site n'affiche que le fan-in et les nœuds. De la donnée morte dans un
+            # artefact sous porte mécanique se paie sans rien rendre.
             "enchevetrements": [list(noeud.features) for noeud in noeuds],
             # Le fan-in désigne le **noyau partagé resté dans `features/`** : une feature importée
             # par quinze autres n'est plus une feature, c'est une brique commune qui n'a jamais été
             # nommée. C'est le chiffre qui rend la dérive lisible d'un coup d'œil.
+            # L'**union** du disque et du graphe, jamais le seul disque : une feature citée par une
+            # arête mais absente de la liste des répertoires disparaîtrait sans un mot du
+            # classement. Ce cas ne se produit pas aujourd'hui (toute cible d'arête est un
+            # répertoire), et c'est précisément pourquoi il faut le traiter ici : le jour où il se
+            # produira, ce sera le signe d'une incohérence, pas une raison de se taire.
             "fan_in": [
-                {"feature": feature, "clientes": len(clientes.get(feature, set()))}
-                for feature in sorted(features, key=lambda f: (-len(clientes.get(f, set())), f))
-                if clientes.get(feature)
+                {"feature": feature, "clientes": len(clientes[feature])}
+                for feature in sorted(clientes, key=lambda f: (-len(clientes[f]), f))
+                if clientes[feature]
             ],
         },
         "resume": {
             "imports": sum(arete.occurrences for arete in aretes),
+            # Distingué de `imports` **parce que l'addition ne tombait pas juste** : la carte
+            # annonçait 827, la matrice juste en dessous en sommait 700. L'écart (127) est celui
+            # des arêtes intra-couche entre paquets (`api/v1 → api`), agrégées sur une diagonale
+            # que la matrice n'affiche pas. Sur une page dont l'argument est « un nombre qu'on ne
+            # peut pas aller vérifier ne se corrige jamais », c'était le seul endroit invérifiable.
+            "imports_entre_couches": sum(
+                arete.occurrences for arete in aretes if arete.couche_source != arete.couche_cible
+            ),
             "violations": len(violations(aretes)),
             "ports": len(ports),
             "ports_hors_domaine": len(hors_domaine),

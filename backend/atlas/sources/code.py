@@ -27,9 +27,10 @@ from __future__ import annotations
 import ast
 import re
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 
-from atlas.modele import AreteCode, AreteFeature, NoeudEnchevetre, Port
+from atlas.modele import AreteCode, AreteFeature, AtlasSourceInvalide, NoeudEnchevetre, Port
 
 BACKEND = "backend"
 FEATURES = ("frontend", "src", "features")
@@ -46,11 +47,24 @@ COUCHES: tuple[str, ...] = ("domain", "application", "infrastructure", "api", "b
 #: composition est un consommateur **terminal**. Quiconque l'importe inverse le câblage et fait
 #: d'un point d'assemblage une dépendance, ce qui rend la composition impossible à relire.
 #:
-#: `infrastructure → application` est **autorisé** : quelques ports techniques (l'authentification)
-#: sont déclarés dans `application/`, et leur adapter doit bien les importer. Que ces ports ne
-#: soient pas dans le domaine est un écart à la règle 2 — mais il est **signalé** (`port-hors-
-#: domaine`), pas bloqué : trancher mécaniquement qu'un port d'authentification est du métier de
-#: tir à l'arc reviendrait à arbitrer seul une question de conception.
+#: Deux autorisations vont au-delà de la lettre de la prose. Elles sont écrites ici **et** dans
+#: l'amendement `E00US020` d'ADR-0086 — sans quoi un relecteur futur « corrigerait l'oubli » en
+#: retirant une arête, et produirait des dizaines de faux bloquants le lendemain :
+#:
+#: - `infrastructure → application` : quelques ports techniques (l'authentification) sont déclarés
+#:   dans `application/`, et leur adapter doit bien les importer. Étendue réelle : **un** import.
+#:   Que ces ports ne soient pas dans le domaine est un écart à la règle 2 — mais il est
+#:   **signalé** (`port-hors-domaine`), pas bloqué : trancher mécaniquement qu'un port
+#:   d'authentification est du métier de tir à l'arc reviendrait à arbitrer seul une conception ;
+#: - `api → infrastructure` : la règle 5 impose le mapping des erreurs à la frontière API, et les
+#:   objets câblés par `bootstrap` sont typés dans les signatures `Depends` (règle 6). 39 imports
+#:   répartis sur 32 fichiers à raison de un ou deux chacun — c'est le patron de câblage, pas une
+#:   fuite. Cette arête n'est écrite ni dans la règle 2 ni dans le guide : c'est un **arbitrage**,
+#:   pas une transcription, et il doit se lire comme tel.
+#:
+#: `test_domain_isolation.py` reste **complémentaire** et n'est pas subsumé : il couvre
+#: `domain → {frameworks, outillage}`, que cette table ne regarde pas (elle ne retient que les
+#: têtes appartenant aux couches). Les fusionner perdrait de la couverture.
 SENS_AUTORISE: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "application": frozenset({"domain"}),
@@ -74,6 +88,21 @@ def autorise(couche_source: str, couche_cible: str) -> bool:
     return couche_cible in SENS_AUTORISE.get(couche_source, frozenset())
 
 
+def est_hors_domaine(port: Port) -> bool:
+    """La règle 2 veut les ports **dans le domaine**. Écrit ici, et nulle part ailleurs.
+
+    Ce prédicat et le suivant étaient recopiés dans `carte.py` **et** dans `controles.py` : la page
+    et la porte pouvaient donc diverger en silence. C'est l'argument même que `carte.py` oppose à
+    un recalcul en JavaScript — il vaut aussi entre deux modules Python.
+    """
+    return port.couche != "domain"
+
+
+def est_sans_adapter(port: Port) -> bool:
+    """Aucune classe du backend ne satisfait ce port. Le seul cas **exact** de l'inventaire."""
+    return bool(port.methodes) and not port.adapters
+
+
 @dataclass(frozen=True, slots=True)
 class _Classe:
     """Une classe lue dans le backend — de quoi apparier un port à ses adapters."""
@@ -91,13 +120,60 @@ def _racine_backend(racine: Path) -> Path:
 
 
 def _fichiers_python(racine: Path) -> list[tuple[Path, str]]:
-    """Tous les modules des cinq couches, triés — l'ordre de sortie est comparé à l'octet en CI."""
+    """Tous les modules des cinq couches, triés — l'ordre de sortie est comparé à l'octet en CI.
+
+    ⚠️ **Une couche absente ou vide fait échouer la lecture**, elle ne rend pas zéro fichier.
+    `rglob` sur un répertoire inexistant ne lève rien : renommer `bootstrap/` aurait fait fondre
+    ses imports, vidé sa ligne de la matrice, rendu **invisible** tout futur `api → composition`
+    — et la porte serait restée **verte**, parce qu'elle n'aurait rien regardé. Le plancher agrégé
+    des tests ne l'aurait pas vu non plus : mesuré, le dépôt passe encore `imports >= 500` après
+    la disparition de `bootstrap` (713), d'`infrastructure` (669) ou d'`api` (517).
+
+    C'est le seul mode de défaillance dont on ne se relève pas : le diff de `carte.js` est replié
+    par `.gitattributes`, la CI est verte, et l'atlas affirme une architecture saine pendant des
+    mois. Un garde-fou doit échouer **bruyamment** quand il ne peut pas faire son travail.
+    """
     backend = _racine_backend(racine)
-    return [
-        (chemin, couche)
-        for couche in COUCHES
-        for chemin in sorted((backend / couche).rglob("*.py"))
-    ]
+    fichiers: list[tuple[Path, str]] = []
+    for couche in COUCHES:
+        dossier = backend / couche
+        if not dossier.is_dir():
+            raise AtlasSourceInvalide(
+                f"{BACKEND}/{couche}/ est introuvable : la carte du code ne peut pas être "
+                f"établie.\nUne couche renommée ou déplacée vide silencieusement la matrice de "
+                f"dépendances — et la porte resterait verte faute d'avoir rien lu. Corrige "
+                f"`COUCHES` dans atlas/sources/code.py si le découpage a réellement changé."
+            )
+        trouves = sorted(dossier.rglob("*.py"))
+        if not trouves:
+            raise AtlasSourceInvalide(
+                f"{BACKEND}/{couche}/ ne contient aucun module Python : refus de conclure que "
+                f"cette couche ne dépend de rien."
+            )
+        fichiers.extend((chemin, couche) for chemin in trouves)
+    return fichiers
+
+
+@cache
+def _arbre(chemin: Path) -> ast.Module:
+    """L'arbre d'un module, lu **une seule fois** et converti au contrat d'erreurs du générateur.
+
+    Deux corrections en une, toutes deux relevées en revue :
+
+    - `ast.parse` non gardé laissait remonter une `SyntaxError` ou une `UnicodeDecodeError`
+      **nue**, avec sa trace, alors que tout le reste de l'atlas passe par `AtlasSourceInvalide`
+      → sortie 2 → message lisible. `rendu.py` s'était déjà donné la règle : « un fichier tronqué
+      doit produire le message prévu, pas une trace remontée depuis un hook pre-commit ». Le motif
+      du hook couvrant désormais tout `backend/**.py`, le cas se rencontre en cours de refactor ;
+    - les 217 modules étaient parsés **deux fois** (une passe pour les imports, une pour les
+      classes) — ~0,8 s sur les ~5 s facturées à presque chaque commit, et le défaut exact
+      qu'`E00US019` venait de corriger sur le tracker. Le cache est sûr ici : le générateur est
+      mono-passe et le dépôt ne bouge pas sous lui.
+    """
+    try:
+        return ast.parse(chemin.read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError) as erreur:
+        raise AtlasSourceInvalide(f"{chemin} n'est pas du Python lisible : {erreur}") from erreur
 
 
 def _chemin_relatif(chemin: Path, racine: Path) -> str:
@@ -142,16 +218,53 @@ def _paquet_courant(chemin: Path, backend: Path) -> str:
     return module.rpartition(".")[0]
 
 
-def _modules_importes(arbre: ast.AST, paquet: str) -> list[str]:
-    """Les modules importés, **imports relatifs résolus**.
+def _import_dynamique(noeud: ast.Call) -> str | None:
+    """`importlib.import_module("api.v1")` ou `__import__("api")` — la cible, si elle est littérale.
 
-    La résolution n'est pas un raffinement : sans elle, `from ..api import x` échapperait à un
-    contrôle **bloquant**. Un garde-fou qu'une syntaxe alternative contourne ne garde rien — il
-    donne seulement l'impression d'avoir regardé.
+    ⚠️ Ce n'est pas une exhaustivité de façade : un module calculé (`import_module(nom)`) reste
+    hors de portée, et le restera. Mais `importlib.import_module` est **la** syntaxe qu'on écrit
+    pour casser un cycle d'imports — c'est-à-dire dans la situation même que cette porte
+    surveille. Laisser béante la seule échappatoire qu'un développeur a une raison d'emprunter,
+    c'est garder l'apparence d'avoir regardé.
+    """
+    appele = noeud.func
+    nom = (
+        appele.attr
+        if isinstance(appele, ast.Attribute)
+        else appele.id
+        if isinstance(appele, ast.Name)
+        else ""
+    )
+    if nom not in {"import_module", "__import__"} or not noeud.args:
+        return None
+    premier = noeud.args[0]
+    return (
+        premier.value
+        if isinstance(premier, ast.Constant) and isinstance(premier.value, str)
+        else None
+    )
+
+
+def _modules_importes(arbre: ast.AST, paquet: str) -> list[str]:
+    """Les modules importés — imports relatifs résolus, imports dynamiques littéraux compris.
+
+    ⚠️ **La résolution des relatifs ne change aujourd'hui aucun verdict, et c'est écrit ici pour
+    ne pas sur-vendre le garde-fou.** Les cinq couches sont des paquets de **premier niveau** (il
+    n'existe pas de `backend/__init__.py`), donc un import relatif valide reste toujours à
+    l'intérieur de son propre paquet, donc de sa propre couche — et le dépôt n'en contient
+    d'ailleurs aucun. La résolution est une défense contre une **évolution de la racine de
+    paquet**, pas contre un contournement d'aujourd'hui. La version précédente de ce commentaire
+    affirmait le contraire (« sans elle, `from ..api import x` échapperait au contrôle ») : c'était
+    faux — depuis `infrastructure/db/`, cet import désigne `infrastructure.api`. Le projet traite
+    une justification sur-vendue comme un défaut, ADR-0017 lui a coûté treize mois.
     """
     trouves: list[str] = []
     for noeud in ast.walk(arbre):
-        if isinstance(noeud, ast.Import):
+        if isinstance(noeud, ast.Call):
+            dynamique = _import_dynamique(noeud)
+            if dynamique:
+                trouves.append(dynamique)
+        elif isinstance(noeud, ast.Import):
             trouves.extend(alias.name for alias in noeud.names)
         elif isinstance(noeud, ast.ImportFrom):
             if noeud.level == 0:
@@ -178,7 +291,7 @@ def lire_aretes(racine: Path) -> tuple[AreteCode, ...]:
     cumuls: dict[tuple[str, str, str, str], list[str]] = {}
 
     for chemin, couche in _fichiers_python(racine):
-        arbre = ast.parse(chemin.read_text(encoding="utf-8"))
+        arbre = _arbre(chemin)
         source = _paquet_du_fichier(chemin, backend)
         origine = _chemin_relatif(chemin, racine)
         for module in _modules_importes(arbre, _paquet_courant(chemin, backend)):
@@ -207,20 +320,41 @@ def lire_aretes(racine: Path) -> tuple[AreteCode, ...]:
     )
 
 
-def _methodes(noeud: ast.ClassDef) -> frozenset[str]:
-    """Les méthodes **publiques** d'une classe. Le privé ne fait pas partie d'un contrat."""
-    return frozenset(
+def _membres(noeud: ast.ClassDef) -> frozenset[str]:
+    """Les membres **publics** d'une classe : méthodes **et attributs annotés**.
+
+    ⚠️ Les attributs comptent, et c'est le correctif central de la revue. Un port déclare ses
+    membres en `@property` (il le doit : c'est une interface) tandis que son implémentation les
+    porte en **champs de dataclass `frozen`** — la règle 4 privilégie l'immutabilité dans le
+    domaine, donc c'est le patron **dominant** ici. En ne lisant que les `FunctionDef`,
+    l'appariement ratait systématiquement ce couple : les deux seuls signaux `port-sans-adapter`
+    livrés (`EtapeSequencee`, `EtapeProjetable`) étaient **tous les deux faux**, et leurs propres
+    docstrings disaient déjà que `Phase` et `ModelePhase` satisfont le contrat.
+
+    Le précédent est dans le même fichier : ADR-0086 a **retiré** le contrôle « titre divergent »
+    sur exactement ce ratio — « 0 vrai positif sur 2 signaux […] un signal à la fois bruyant et
+    poreux n'apprend qu'à ignorer la page ». Ce contrôle-ci, lui, pouvait être rendu juste.
+    """
+    membres = {
         membre.name
         for membre in noeud.body
         if isinstance(membre, ast.FunctionDef | ast.AsyncFunctionDef)
         and not membre.name.startswith("_")
-    )
+    }
+    membres |= {
+        membre.target.id
+        for membre in noeud.body
+        if isinstance(membre, ast.AnnAssign)
+        and isinstance(membre.target, ast.Name)
+        and not membre.target.id.startswith("_")
+    }
+    return frozenset(membres)
 
 
 def _classes(racine: Path) -> tuple[_Classe, ...]:
     lues: list[_Classe] = []
     for chemin, couche in _fichiers_python(racine):
-        arbre = ast.parse(chemin.read_text(encoding="utf-8"))
+        arbre = _arbre(chemin)
         for noeud in ast.walk(arbre):
             if not isinstance(noeud, ast.ClassDef):
                 continue
@@ -231,7 +365,7 @@ def _classes(racine: Path) -> tuple[_Classe, ...]:
                     fichier=_chemin_relatif(chemin, racine),
                     couche=couche,
                     bases=bases,
-                    methodes=_methodes(noeud),
+                    methodes=_membres(noeud),
                     # `Protocol` ou `Protocol[T]`, importé sous son nom ou via `typing.Protocol` :
                     # l'appartenance textuelle couvre les trois formes employées par le dépôt.
                     est_protocole=any("Protocol" in base for base in bases),
@@ -243,21 +377,38 @@ def _classes(racine: Path) -> tuple[_Classe, ...]:
 def lire_ports(racine: Path) -> tuple[Port, ...]:
     """Les ports du dépôt et les classes qui les satisfont.
 
-    L'appariement est **structurel** — une classe qui porte toutes les méthodes publiques du port.
-    C'est le seul appariement qui fonctionne ici : un `Protocol` s'implémente sans héritage, et le
-    dépôt ne compte qu'un héritage explicite pour des dizaines de ports. Un inventaire fondé sur
-    les bases de classe rendrait donc une page **vide** en affirmant qu'elle est complète — le
-    genre exact de « rendu qui affirme faux » qu'ADR-0086 veut empêcher.
+    L'appariement est **structurel** — une classe qui porte tous les membres publics du port.
+    C'est le seul appariement qui fonctionne ici : un `Protocol` s'implémente **sans héritage**, et
+    le dépôt ne compte aucun héritage de port par une implémentation. Un inventaire fondé sur les
+    bases de classe rendrait donc une page **vide** en affirmant qu'elle est complète — le genre
+    exact de « rendu qui affirme faux » qu'ADR-0086 veut empêcher.
 
-    Un port **sans méthode publique** (un simple marqueur) n'apparie personne : tout le monde
+    Un port **sans membre public** (un simple marqueur) n'apparie personne : tout le monde
     satisfait l'ensemble vide. Ses adapters restent vides et il n'est pas signalé pour autant — il
     n'y a rien à constater, seulement rien à dire.
     """
     classes = _classes(racine)
     ports = [classe for classe in classes if classe.est_protocole]
-    # Un `Protocol` en satisfait souvent un autre par accident (mêmes méthodes) : les exclure évite
+    # Un `Protocol` en satisfait souvent un autre par accident (mêmes membres) : les exclure évite
     # d'annoncer qu'un port est « implémenté » par une seconde interface, qui n'implémente rien.
     candidats = [classe for classe in classes if not classe.est_protocole]
+    par_nom = {port.nom: port for port in ports}
+
+    def contrat(port: _Classe, vus: frozenset[str] = frozenset()) -> frozenset[str]:
+        """Les membres exigés par un port, **héritage de port compris**.
+
+        Sans cette remontée, `EtapeProjetable(EtapeSequencee, Protocol)` était publié avec **3**
+        membres alors qu'il en exige **7** — donc affiché comme plus facile à satisfaire qu'il ne
+        l'est, et apparié à des classes qui ne l'implémentent pas. `vus` borne la récursion : une
+        hiérarchie cyclique est impossible en Python, mais un lecteur ne doit pas en dépendre.
+        """
+        exiges = port.methodes
+        for base in port.bases:
+            nom = base.split("[")[0]
+            herite = par_nom.get(nom)
+            if herite is not None and nom not in vus:
+                exiges |= contrat(herite, vus | {port.nom})
+        return exiges
 
     return tuple(
         sorted(
@@ -266,19 +417,12 @@ def lire_ports(racine: Path) -> tuple[Port, ...]:
                     nom=port.nom,
                     fichier=port.fichier,
                     couche=port.couche,
-                    methodes=tuple(sorted(port.methodes)),
+                    methodes=tuple(sorted(contrat(port))),
                     adapters=tuple(
                         sorted(
                             f"{candidat.fichier}::{candidat.nom}"
                             for candidat in candidats
-                            if port.methodes and port.methodes <= candidat.methodes
-                        )
-                    ),
-                    herite=tuple(
-                        sorted(
-                            f"{candidat.fichier}::{candidat.nom}"
-                            for candidat in candidats
-                            if any(port.nom == base.split("[")[0] for base in candidat.bases)
+                            if contrat(port) and contrat(port) <= candidat.methodes
                         )
                     ),
                 )
@@ -296,20 +440,60 @@ def _dossier_features(racine: Path) -> Path:
     return racine.joinpath(*FEATURES)
 
 
+def lister_features(racine: Path) -> tuple[str, ...]:
+    """Les features telles que le **disque** les porte, pas telles que le graphe les révèle.
+
+    ⚠️ Compter les extrémités d'arêtes donnait le bon nombre aujourd'hui — par coïncidence, les 44
+    features participent toutes au graphe — mais une feature **autonome** n'a aucune arête, donc
+    n'existait pas pour le compteur. Le jour où `E00US023` fait son travail, la page aurait annoncé
+    « 38 features » **parce que six seraient devenues saines** : un chiffre qui décroît quand
+    l'architecture s'améliore, publié en tête de page et repris dans la recette du journal.
+    """
+    dossier = _dossier_features(racine)
+    _exiger_le_front(dossier)
+    return tuple(sorted(enfant.name for enfant in dossier.iterdir() if enfant.is_dir()))
+
+
+def _exiger_le_front(dossier: Path) -> None:
+    """Même raison que pour les couches : ne jamais conclure « rien » d'un dossier qu'on n'a pas lu.
+
+    `E00US023`, que cette US inscrit au backlog, **déplace précisément** `features/`. Un `return ()`
+    silencieux aurait alors annoncé « 0 feature, 0 enchevêtrement » — c'est-à-dire exactement le
+    résultat qu'`E00US023` cherche à produire, rendu indiscernable de sa réussite.
+    """
+    if not dossier.is_dir():
+        raise AtlasSourceInvalide(
+            f"{'/'.join(FEATURES)} est introuvable : la carte du front ne peut pas être établie.\n"
+            f"Rendre « 0 feature » serait indiscernable d'un front parfaitement découpé."
+        )
+
+
+def _est_un_test(chemin: Path) -> bool:
+    """`Saisie.test.ts`, `volees.spec.tsx` — du code de test, pas du couplage de production."""
+    return ".test." in chemin.name or ".spec." in chemin.name
+
+
 def lire_aretes_front(racine: Path) -> tuple[AreteFeature, ...]:
     """Les imports d'une feature vers une autre — la mesure de la règle 10.
 
     Lecture par expression régulière, donc **heuristique** : un import écrit autrement lui échappe.
     Elle attrape les trois formes que le front emploie (`from '…'`, `import '…'`, `import('…')`),
     ce qui suffit à mesurer une tendance — jamais à bloquer une CI.
+
+    ⚠️ **Les fichiers de test sont exclus.** Ils ne pesaient que 3 arêtes sur 142 — mais ces 3
+    suffisaient à faire naître un **nœud d'enchevêtrement entier** (`accueil ↔ completude ↔
+    paiements`), soit un quart des nœuds annoncés. Or le grief fait à un nœud est qu'« aucune
+    feature ne peut plus être lue, **testée** ni retirée seule » : le fonder sur le test lui-même
+    n'a pas de sens. Sans eux : 139 arêtes, 3 nœuds.
     """
     dossier = _dossier_features(racine)
-    if not dossier.is_dir():
-        return ()
+    _exiger_le_front(dossier)
 
     cumuls: dict[tuple[str, str], int] = {}
     reference = dossier.resolve()
     for chemin in sorted(dossier.rglob("*.ts*")):
+        if _est_un_test(chemin):
+            continue
         feature = chemin.relative_to(dossier).parts[0]
         for specificateur in _IMPORT_TS.findall(chemin.read_text(encoding="utf-8")):
             if not specificateur.startswith("."):

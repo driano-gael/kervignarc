@@ -5035,11 +5035,22 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "atlas/code.html",
+     "existe": true,
+     "symboles": [
+      "Pages.carte"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
+    },
+    {
      "chemin": "atlas/statique/pages.js",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "Pages.carte"
+     ],
      "symboles_absents": [],
-     "verifiable": true
+     "verifiable": false
     },
     {
      "chemin": "backend/atlas/avancement.py",
@@ -5051,11 +5062,22 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/atlas/carte.py",
+     "existe": true,
+     "symboles": [
+      "construire",
+      "violations"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/atlas/controles.py",
      "existe": true,
      "symboles": [
       "verifier",
-      "verifier_avancement"
+      "verifier_avancement",
+      "verifier_code"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -5100,6 +5122,22 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/atlas/sources/code.py",
+     "existe": true,
+     "symboles": [
+      "SENS_AUTORISE",
+      "autorise",
+      "lire_aretes",
+      "lire_ports",
+      "lire_aretes_front",
+      "lister_features",
+      "enchevetrements",
+      "_fichiers_python"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/atlas/sources/reglement.py",
      "existe": true,
      "symboles": [
@@ -5121,6 +5159,13 @@ window.ATLAS.decisions = {
     },
     {
      "chemin": "backend/tests/test_atlas_avancement.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_atlas_carte.py",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -5178,6 +5223,7 @@ window.ATLAS.decisions = {
    "us": [
     "E00US018",
     "E00US019",
+    "E00US020",
     "E05US026",
     "E05US028"
    ]

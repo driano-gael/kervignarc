@@ -17,7 +17,7 @@
 matrice de dépendances est lue à l'**AST**, et une couche qui remonte le courant fait **rougir la
 CI** — la règle 2 n'était vérifiée que pour le domaine, les quatre autres sens ne l'étaient par
 rien. Les 60 ports sont appariés **structurellement** à leurs adapters. Côté front, la mesure a
-trouvé **4 nœuds de features enchevêtrées**, dont un de **19 sur 44** : quatre chantiers en sont
+trouvé **3 nœuds de features enchevêtrées**, dont un de **19 sur 44** : quatre chantiers en sont
 nés, inscrits au backlog sans être pris. Élargit `DETTE-067`, dont le déclencheur est franchi.
 Deux tranches d'atlas restent.)*
 
@@ -1077,7 +1077,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 |---|---|---|---|
 | E00US018 | L'atlas : le règlement en vigueur et l'histoire des décisions | hors jalon | ✅ |
 | E00US019 | L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas | hors jalon | ✅ *(compteurs recalculés et **bloquants**, graphe des epics en réduction transitive, fiche par US ; a trouvé le compteur J3 faux, deux US livrées restées hors jalon, et deux `DETTE-065` sur `main`)* |
-| E00US020 | L'atlas : la carte du code | hors jalon | ✅ *(matrice de dépendances lue à l'AST et **sens des dépendances bloquant** — la règle 2 n'était vérifiée que pour le domaine ; 60 ports appariés structurellement à leurs adapters ; graphe des features du front. A mesuré 4 nœuds d'enchevêtrement, dont un de **19 features sur 44**)* |
+| E00US020 | L'atlas : la carte du code | hors jalon | ✅ *(matrice de dépendances lue à l'AST et **sens des dépendances bloquant** — la règle 2 n'était vérifiée que pour le domaine ; 60 ports appariés structurellement à leurs adapters ; graphe des features du front. A mesuré 3 nœuds d'enchevêtrement, dont un de **19 features sur 44**)* |
 | E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | 🎯 *(cible, sans fiche détaillée — prochaine tranche de l'atlas)* |
 | E00US022 | Atlas — les flux (saisie → file d'écriture → WebSocket) | hors jalon | ⬜ *(cible)* |
 

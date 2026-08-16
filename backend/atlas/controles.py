@@ -23,7 +23,7 @@ from atlas import markdown
 from atlas.modele import AreteCode, Controle, Decision, NoeudEnchevetre, Port, Regle, Severite
 from atlas.sources import suivi
 from atlas.sources.backlog import Dette, Epic, UsSpecifiee
-from atlas.sources.code import SENS_AUTORISE, autorise
+from atlas.sources.code import SENS_AUTORISE, autorise, est_hors_domaine, est_sans_adapter
 from atlas.sources.suivi import Entete, Section, compter
 
 _US = re.compile(r"E\d{2}US\d{3}")
@@ -475,35 +475,47 @@ def verifier_code(
         if autorise(arete.couche_source, arete.couche_cible):
             continue
         permis = sorted(SENS_AUTORISE.get(arete.couche_source, frozenset()))
+        # `origines` ne peut pas être vide par construction, mais `AreteCode` est une dataclass
+        # publique : une garde vaut mieux qu'un `IndexError` au milieu d'un contrôle bloquant.
+        exemple = f", dont {arete.origines[0]}" if arete.origines else ""
         trouves.append(
             Controle(
                 code="sens-des-dependances",
                 severite=Severite.BLOQUANT,
                 sujet=arete.paquet_source,
                 message=(
-                    f"importe {arete.paquet_cible} ({arete.occurrences} fois, "
-                    f"dont {arete.origines[0]}) : la couche « {arete.couche_source} » ne peut "
-                    f"dépendre que de {', '.join(permis) or '— aucune couche'} (règle 2)."
+                    f"importe {arete.paquet_cible} ({arete.occurrences} fois{exemple}) : la "
+                    f"couche « {arete.couche_source} » ne peut dépendre que de "
+                    f"{', '.join(permis) or '— aucune couche'} (règle 2)."
+                ),
+            )
+        )
+
+    # ⚠️ **Agrégé, et non un signal par port.** Vingt ports hors domaine faisaient vingt verdicts
+    # au message identique — 39 % de la page « Écarts constatés » réduits à une seule ligne
+    # répétée, relevant tous du **même** arbitrage déjà tranché. C'est le mécanisme que le
+    # calibrage ci-dessus dit vouloir éviter, appliqué un cran plus bas : une page de signaux
+    # qu'on cesse de lire. Le détail port par port vit sur « La carte du code », qui l'affiche.
+    hors_domaine = [port for port in ports if est_hors_domaine(port)]
+    if hors_domaine:
+        trouves.append(
+            Controle(
+                code="port-hors-domaine",
+                severite=Severite.SIGNAL,
+                sujet=", ".join(sorted({port.couche for port in hors_domaine})),
+                message=(
+                    f"déclare {len(hors_domaine)} port(s) hors du domaine "
+                    f"({', '.join(port.nom for port in hors_domaine[:4])}"
+                    f"{'…' if len(hors_domaine) > 4 else ''}) — la règle 2 veut les ports dans le "
+                    f"domaine et les adapters dans l'infrastructure. Écart peut-être légitime "
+                    f"(une préoccupation technique n'est pas du métier de tir à l'arc) : à "
+                    f"trancher par un humain, pas par la porte. Détail sur « La carte du code »."
                 ),
             )
         )
 
     for port in ports:
-        if port.couche != "domain":
-            trouves.append(
-                Controle(
-                    code="port-hors-domaine",
-                    severite=Severite.SIGNAL,
-                    sujet=port.nom,
-                    message=(
-                        f"est déclaré dans {port.fichier}, hors du domaine — la règle 2 veut les "
-                        f"ports dans le domaine et les adapters dans l'infrastructure. Écart "
-                        f"peut-être légitime (une préoccupation technique n'est pas du métier) : "
-                        f"à trancher par un humain, pas par la porte."
-                    ),
-                )
-            )
-        if port.methodes and not port.adapters:
+        if est_sans_adapter(port):
             trouves.append(
                 Controle(
                     code="port-sans-adapter",
@@ -511,7 +523,7 @@ def verifier_code(
                     sujet=port.nom,
                     message=(
                         f"({port.fichier}) n'est satisfait par aucune classe du backend : "
-                        f"aucune ne porte ses {len(port.methodes)} méthode(s) publique(s). "
+                        f"aucune ne porte ses {len(port.methodes)} membre(s) public(s). "
                         f"Port mort, ou adapter hors des cinq couches."
                     ),
                 )

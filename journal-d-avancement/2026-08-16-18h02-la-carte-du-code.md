@@ -25,7 +25,7 @@ branché.
 ## Ce que la mesure a trouvé du côté des écrans
 
 L'application côté tablette est découpée en **44 morceaux** censés être indépendants. Ils ne le sont
-plus : **142 liens** les relient, et surtout ils forment **quatre nœuds** où chacun dépend des
+plus : **139 liens** les relient, et surtout ils forment **trois nœuds** où chacun dépend des
 autres en cercle — dont un seul nœud qui en emprisonne **19 sur 44**. Concrètement, aucun de ces 19
 morceaux ne peut plus être lu, testé ou remplacé sans les 18 autres.
 
@@ -42,6 +42,11 @@ analyser ce langage-là sans ajouter d'outil extérieur — un principe du proje
 aucun sans nécessité. C'est écrit sur la page : les constats côté écrans sont des **signalements**,
 jamais des blocages. Un chiffre y est une tendance, pas une preuve.
 
+Les fichiers de **test** sont volontairement écartés du décompte côté écrans. La relecture l'a
+montré : trois liens créés par des tests suffisaient à faire apparaître un quatrième nœud qui
+n'existe pas dans l'application livrée. Reprocher à un morceau d'écran de ne plus pouvoir être
+*testé* seul, quand c'est le test lui-même qui crée le lien, n'aurait eu aucun sens.
+
 ## À vérifier
 
 La convention `docs/fonctionnel/` ne s'applique pas ici — elle vise les US qui livrent une surface
@@ -49,7 +54,7 @@ dans l'application, pas l'atlas. La recette tient en cinq gestes, en ouvrant `at
 double-clic puis en cliquant **« La carte du code »** :
 
 1. les quatre cartes du haut annoncent **0** dépendance à contresens, **60** prises, **44** morceaux
-   d'écran et **4** nœuds — dont le plus gros à **19** ;
+   d'écran et **3** nœuds — dont le plus gros à **19** ;
 2. le schéma du haut se lit de gauche à droite ; **toutes les flèches pointent vers la gauche** (le
    cœur métier est la boîte de gauche, encadrée). Une flèche rouge signalerait une règle enfreinte ;
 3. dans le tableau « Couche par couche », les cases marquées **✕** sont vides, et les cases avec un

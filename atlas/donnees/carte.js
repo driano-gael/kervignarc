@@ -10,718 +10,6 @@ window.ATLAS.carte = {
   "bootstrap"
  ],
  "front": {
-  "aretes": [
-   {
-    "de": "accueil",
-    "occurrences": 6,
-    "vers": "competition"
-   },
-   {
-    "de": "accueil",
-    "occurrences": 6,
-    "vers": "completude"
-   },
-   {
-    "de": "accueil",
-    "occurrences": 1,
-    "vers": "paiements"
-   },
-   {
-    "de": "accueil",
-    "occurrences": 2,
-    "vers": "supervision"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "accueil"
-   },
-   {
-    "de": "admin",
-    "occurrences": 3,
-    "vers": "archers"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "archive"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "bareme"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "blasons"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "categories"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "clubs"
-   },
-   {
-    "de": "admin",
-    "occurrences": 7,
-    "vers": "competition"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "completude"
-   },
-   {
-    "de": "admin",
-    "occurrences": 3,
-    "vers": "departs"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "deroule"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "duels"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "ecrans"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "exports"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "feu-vert"
-   },
-   {
-    "de": "admin",
-    "occurrences": 2,
-    "vers": "gabarits"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "grain-validation"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "jeu-essai"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "paiements"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "palmares"
-   },
-   {
-    "de": "admin",
-    "occurrences": 4,
-    "vers": "patrimoine"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "phases"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "placement"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "postes"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "recherche"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "scoreurs"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "simulation"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "suivi-deroule"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "supervision"
-   },
-   {
-    "de": "admin",
-    "occurrences": 1,
-    "vers": "tournois"
-   },
-   {
-    "de": "archers",
-    "occurrences": 2,
-    "vers": "blasons"
-   },
-   {
-    "de": "archers",
-    "occurrences": 3,
-    "vers": "categories"
-   },
-   {
-    "de": "archers",
-    "occurrences": 3,
-    "vers": "clubs"
-   },
-   {
-    "de": "archers",
-    "occurrences": 3,
-    "vers": "competition"
-   },
-   {
-    "de": "archers",
-    "occurrences": 1,
-    "vers": "inscriptions"
-   },
-   {
-    "de": "bareme",
-    "occurrences": 1,
-    "vers": "grain-validation"
-   },
-   {
-    "de": "big-shoot-off",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "big-shoot-off",
-    "occurrences": 1,
-    "vers": "saisie"
-   },
-   {
-    "de": "big-shoot-off",
-    "occurrences": 1,
-    "vers": "saisie-duels"
-   },
-   {
-    "de": "blasons",
-    "occurrences": 1,
-    "vers": "patrimoine"
-   },
-   {
-    "de": "categories",
-    "occurrences": 2,
-    "vers": "blasons"
-   },
-   {
-    "de": "categories",
-    "occurrences": 1,
-    "vers": "patrimoine"
-   },
-   {
-    "de": "competition",
-    "occurrences": 1,
-    "vers": "categories"
-   },
-   {
-    "de": "competition",
-    "occurrences": 3,
-    "vers": "departs"
-   },
-   {
-    "de": "competition",
-    "occurrences": 1,
-    "vers": "saisie-duels"
-   },
-   {
-    "de": "competition",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "competition",
-    "occurrences": 3,
-    "vers": "suivi"
-   },
-   {
-    "de": "completude",
-    "occurrences": 4,
-    "vers": "accueil"
-   },
-   {
-    "de": "completude",
-    "occurrences": 4,
-    "vers": "competition"
-   },
-   {
-    "de": "completude",
-    "occurrences": 4,
-    "vers": "paiements"
-   },
-   {
-    "de": "completude",
-    "occurrences": 3,
-    "vers": "supervision"
-   },
-   {
-    "de": "departs",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "deroule",
-    "occurrences": 7,
-    "vers": "patrimoine"
-   },
-   {
-    "de": "deroule",
-    "occurrences": 1,
-    "vers": "phases"
-   },
-   {
-    "de": "duels",
-    "occurrences": 1,
-    "vers": "archers"
-   },
-   {
-    "de": "duels",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "duels",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "duels",
-    "occurrences": 1,
-    "vers": "phases"
-   },
-   {
-    "de": "duels",
-    "occurrences": 2,
-    "vers": "placement"
-   },
-   {
-    "de": "exports",
-    "occurrences": 1,
-    "vers": "departs"
-   },
-   {
-    "de": "feu-vert",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "feu-vert",
-    "occurrences": 1,
-    "vers": "phases"
-   },
-   {
-    "de": "forfaits",
-    "occurrences": 3,
-    "vers": "competition"
-   },
-   {
-    "de": "forfaits",
-    "occurrences": 3,
-    "vers": "departs"
-   },
-   {
-    "de": "forfaits",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "grain-validation",
-    "occurrences": 2,
-    "vers": "bareme"
-   },
-   {
-    "de": "inscriptions",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "inscriptions",
-    "occurrences": 1,
-    "vers": "departs"
-   },
-   {
-    "de": "jeu-essai",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "paiements",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "paiements",
-    "occurrences": 2,
-    "vers": "completude"
-   },
-   {
-    "de": "palmares",
-    "occurrences": 1,
-    "vers": "categories"
-   },
-   {
-    "de": "patrimoine",
-    "occurrences": 4,
-    "vers": "blasons"
-   },
-   {
-    "de": "patrimoine",
-    "occurrences": 3,
-    "vers": "categories"
-   },
-   {
-    "de": "patrimoine",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "patrimoine",
-    "occurrences": 2,
-    "vers": "phases"
-   },
-   {
-    "de": "patrimoine",
-    "occurrences": 1,
-    "vers": "suivi-deroule"
-   },
-   {
-    "de": "phases",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "phases",
-    "occurrences": 1,
-    "vers": "patrimoine"
-   },
-   {
-    "de": "phases",
-    "occurrences": 1,
-    "vers": "poules"
-   },
-   {
-    "de": "placement",
-    "occurrences": 2,
-    "vers": "archers"
-   },
-   {
-    "de": "placement",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "placement",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "placement",
-    "occurrences": 1,
-    "vers": "duels"
-   },
-   {
-    "de": "placement",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "poste",
-    "occurrences": 1,
-    "vers": "saisie"
-   },
-   {
-    "de": "poste",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "poules",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "poules",
-    "occurrences": 4,
-    "vers": "saisie-duels"
-   },
-   {
-    "de": "public",
-    "occurrences": 3,
-    "vers": "competition"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "palmares"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "placement"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "routage"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "suivi"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "tableaux"
-   },
-   {
-    "de": "public",
-    "occurrences": 1,
-    "vers": "tournois"
-   },
-   {
-    "de": "recherche",
-    "occurrences": 1,
-    "vers": "archers"
-   },
-   {
-    "de": "recherche",
-    "occurrences": 1,
-    "vers": "departs"
-   },
-   {
-    "de": "recherche",
-    "occurrences": 2,
-    "vers": "placement"
-   },
-   {
-    "de": "recherche",
-    "occurrences": 1,
-    "vers": "suivi"
-   },
-   {
-    "de": "routage",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "routage",
-    "occurrences": 2,
-    "vers": "salle"
-   },
-   {
-    "de": "saisie",
-    "occurrences": 2,
-    "vers": "routage"
-   },
-   {
-    "de": "saisie-duels",
-    "occurrences": 2,
-    "vers": "departs"
-   },
-   {
-    "de": "saisie-duels",
-    "occurrences": 1,
-    "vers": "forfaits"
-   },
-   {
-    "de": "saisie-duels",
-    "occurrences": 1,
-    "vers": "poules"
-   },
-   {
-    "de": "saisie-duels",
-    "occurrences": 1,
-    "vers": "routage"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "competition"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "departs"
-   },
-   {
-    "de": "salle",
-    "occurrences": 4,
-    "vers": "ecrans"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "palmares"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "placement"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "routage"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "suivi-deroule"
-   },
-   {
-    "de": "salle",
-    "occurrences": 1,
-    "vers": "tableaux"
-   },
-   {
-    "de": "scoreur-session",
-    "occurrences": 1,
-    "vers": "big-shoot-off"
-   },
-   {
-    "de": "scoreur-session",
-    "occurrences": 1,
-    "vers": "forfaits"
-   },
-   {
-    "de": "scoreur-session",
-    "occurrences": 1,
-    "vers": "poules"
-   },
-   {
-    "de": "scoreur-session",
-    "occurrences": 1,
-    "vers": "saisie-duels"
-   },
-   {
-    "de": "simulation",
-    "occurrences": 2,
-    "vers": "competition"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 2,
-    "vers": "archers"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 1,
-    "vers": "clubs"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 3,
-    "vers": "competition"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 5,
-    "vers": "departs"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 5,
-    "vers": "placement"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 4,
-    "vers": "routage"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "suivi",
-    "occurrences": 4,
-    "vers": "tableaux"
-   },
-   {
-    "de": "suivi-deroule",
-    "occurrences": 3,
-    "vers": "departs"
-   },
-   {
-    "de": "suivi-deroule",
-    "occurrences": 2,
-    "vers": "phases"
-   },
-   {
-    "de": "suivi-deroule",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "supervision",
-    "occurrences": 3,
-    "vers": "ecrans"
-   },
-   {
-    "de": "supervision",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "tableaux",
-    "occurrences": 4,
-    "vers": "departs"
-   },
-   {
-    "de": "tableaux",
-    "occurrences": 1,
-    "vers": "salle"
-   },
-   {
-    "de": "tournois",
-    "occurrences": 1,
-    "vers": "accueil"
-   },
-   {
-    "de": "tournois",
-    "occurrences": 1,
-    "vers": "admin"
-   },
-   {
-    "de": "tournois",
-    "occurrences": 5,
-    "vers": "competition"
-   }
-  ],
   "enchevetrements": [
    [
     "archers",
@@ -743,11 +31,6 @@ window.ATLAS.carte = {
     "suivi",
     "suivi-deroule",
     "tableaux"
-   ],
-   [
-    "accueil",
-    "completude",
-    "paiements"
    ],
    [
     "admin",
@@ -805,10 +88,6 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
-    "feature": "accueil"
-   },
-   {
-    "clientes": 3,
     "feature": "clubs"
    },
    {
@@ -818,10 +97,6 @@ window.ATLAS.carte = {
    {
     "clientes": 3,
     "feature": "ecrans"
-   },
-   {
-    "clientes": 3,
-    "feature": "paiements"
    },
    {
     "clientes": 3,
@@ -841,11 +116,11 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
-    "feature": "supervision"
+    "feature": "tableaux"
    },
    {
-    "clientes": 3,
-    "feature": "tableaux"
+    "clientes": 2,
+    "feature": "accueil"
    },
    {
     "clientes": 2,
@@ -865,7 +140,15 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 2,
+    "feature": "paiements"
+   },
+   {
+    "clientes": 2,
     "feature": "saisie"
+   },
+   {
+    "clientes": 2,
+    "feature": "supervision"
    },
    {
     "clientes": 2,
@@ -1886,7 +1169,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "departager"
@@ -1907,7 +1189,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -1930,7 +1211,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "consigner",
@@ -1948,7 +1228,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "clore",
@@ -1984,7 +1263,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2006,7 +1284,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "porteurs_de_bye"
@@ -2027,7 +1304,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2054,7 +1330,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2076,7 +1351,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/suivi_deroule.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "nb_engages_du_depart"
@@ -2093,7 +1367,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/archive.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "construire"
@@ -2114,7 +1387,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2144,7 +1416,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "rangs_a_classer"
@@ -2173,7 +1444,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2194,7 +1464,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/pilotage_simulation.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "signaler"
@@ -2215,7 +1484,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "charger",
@@ -2226,24 +1494,68 @@ window.ATLAS.carte = {
    "sans_adapter": false
   },
   {
-   "adapters": [],
+   "adapters": [
+    {
+     "fichier": "backend/api/v1/formats.py",
+     "nom": "EtapeDTO"
+    },
+    {
+     "fichier": "backend/domain/deroule_etape.py",
+     "nom": "EtapeDeroule"
+    },
+    {
+     "fichier": "backend/domain/format_tournoi.py",
+     "nom": "ModelePhase"
+    },
+    {
+     "fichier": "backend/domain/phase.py",
+     "nom": "Phase"
+    }
+   ],
    "couche": "domain",
    "fichier": "backend/domain/deroule.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "bareme",
+    "effectif",
+    "ordre",
     "poules",
+    "sources",
+    "type",
     "validation"
    ],
    "nom": "EtapeProjetable",
-   "sans_adapter": true
+   "sans_adapter": false
   },
   {
-   "adapters": [],
+   "adapters": [
+    {
+     "fichier": "backend/api/v1/formats.py",
+     "nom": "EtapeDTO"
+    },
+    {
+     "fichier": "backend/api/v1/phases.py",
+     "nom": "EtapeReponse"
+    },
+    {
+     "fichier": "backend/api/v1/phases.py",
+     "nom": "PhaseReponse"
+    },
+    {
+     "fichier": "backend/domain/deroule_etape.py",
+     "nom": "EtapeDeroule"
+    },
+    {
+     "fichier": "backend/domain/format_tournoi.py",
+     "nom": "ModelePhase"
+    },
+    {
+     "fichier": "backend/domain/phase.py",
+     "nom": "Phase"
+    }
+   ],
    "couche": "domain",
    "fichier": "backend/domain/phase.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "effectif",
@@ -2252,7 +1564,7 @@ window.ATLAS.carte = {
     "type"
    ],
    "nom": "EtapeSequencee",
-   "sans_adapter": true
+   "sans_adapter": false
   },
   {
    "adapters": [
@@ -2267,7 +1579,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "annuler_avec_trace",
@@ -2292,7 +1603,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2318,7 +1628,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2344,7 +1653,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "cartes_scoreurs",
@@ -2367,7 +1675,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "generer"
@@ -2384,7 +1691,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "club_paiement",
@@ -2402,7 +1708,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "palmares"
@@ -2412,6 +1717,10 @@ window.ATLAS.carte = {
   },
   {
    "adapters": [
+    {
+     "fichier": "backend/api/v1/simulation.py",
+     "nom": "ProchaineUniteReponse"
+    },
     {
      "fichier": "backend/application/generateur_scores.py",
      "nom": "GenerateurScoresPlausibles"
@@ -2423,7 +1732,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/generateur_scores.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "volee"
@@ -2440,7 +1748,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "maintenant"
@@ -2461,7 +1768,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2486,7 +1792,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/supervision.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "avancement_cible"
@@ -2503,7 +1808,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/departs.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "avancement_depart"
@@ -2528,7 +1832,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/prelevement.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "classement_de_phase"
@@ -2637,7 +1940,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/tournois.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "par_tournoi"
@@ -2678,7 +1980,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/formats.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "par_phase"
@@ -2688,6 +1989,18 @@ window.ATLAS.carte = {
   },
   {
    "adapters": [
+    {
+     "fichier": "backend/api/v1/completude.py",
+     "nom": "LigneCompletudeReponse"
+    },
+    {
+     "fichier": "backend/api/v1/departs.py",
+     "nom": "DepartReponse"
+    },
+    {
+     "fichier": "backend/api/v1/supervision.py",
+     "nom": "LigneSupervisionReponse"
+    },
     {
      "fichier": "backend/application/big_shoot_off.py",
      "nom": "ServiceBigShootOff"
@@ -2710,7 +2023,23 @@ window.ATLAS.carte = {
     },
     {
      "fichier": "backend/application/supervision.py",
+     "nom": "LigneSupervision"
+    },
+    {
+     "fichier": "backend/application/supervision.py",
      "nom": "ServiceSupervision"
+    },
+    {
+     "fichier": "backend/application/tableaux_publics.py",
+     "nom": "TableauPublic"
+    },
+    {
+     "fichier": "backend/domain/big_shoot_off.py",
+     "nom": "IssueManche"
+    },
+    {
+     "fichier": "backend/domain/completude.py",
+     "nom": "LigneCompletude"
     },
     {
      "fichier": "backend/domain/cycle_depart.py",
@@ -2719,7 +2048,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/big_shoot_off.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "etat"
@@ -2740,7 +2068,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/completude.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "lister_par_archer"
@@ -2757,7 +2084,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/prelevement.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "resolveur_de_classement"
@@ -2774,7 +2100,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/supervision.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "prises"
@@ -2791,7 +2116,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/listes_impression.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "recap_par_club"
@@ -2812,7 +2136,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/routage.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "rencontres_a_tirer"
@@ -2829,7 +2152,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/suivi_deroule.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "reconstruire"
@@ -2850,7 +2172,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2882,7 +2203,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "definir_plan",
@@ -2900,7 +2220,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "definir_plan",
@@ -2925,7 +2244,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "definir_plan",
@@ -2945,7 +2263,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -2968,7 +2285,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "poser",
@@ -2989,7 +2305,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "derniere_activite",
@@ -3008,7 +2323,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "enregistrer_avec_trace",
@@ -3027,7 +2341,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/duel.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "bareme_pour"
@@ -3052,7 +2365,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "route"
@@ -3069,7 +2381,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -3092,7 +2403,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -3108,6 +2418,30 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/api/v1/competition.py",
+     "nom": "LigneClassementReponse"
+    },
+    {
+     "fichier": "backend/api/v1/completude.py",
+     "nom": "LigneCompletudeReponse"
+    },
+    {
+     "fichier": "backend/api/v1/formats.py",
+     "nom": "LigneClassementDTO"
+    },
+    {
+     "fichier": "backend/domain/classement.py",
+     "nom": "LigneClassement"
+    },
+    {
+     "fichier": "backend/domain/classement.py",
+     "nom": "_Decompte"
+    },
+    {
+     "fichier": "backend/domain/completude.py",
+     "nom": "LigneCompletude"
+    },
+    {
      "fichier": "backend/domain/politiques.py",
      "nom": "ScoreAvecHandicap"
     },
@@ -3118,7 +2452,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "total"
@@ -3135,7 +2468,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ordre_des_tetes"
@@ -3156,7 +2488,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "enregistrer",
@@ -3178,7 +2509,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/auth.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "ecrire",
@@ -3196,7 +2526,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/auth.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "est_valide",
@@ -3215,7 +2544,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/postes.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "depart_courant_par_poste",
@@ -3239,7 +2567,6 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/scoreurs.py",
-   "herite": [],
    "hors_domaine": true,
    "methodes": [
     "fermer",
@@ -3267,7 +2594,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/politiques.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "barrage_requis",
@@ -3305,7 +2631,6 @@ window.ATLAS.carte = {
    ],
    "couche": "domain",
    "fichier": "backend/domain/ports.py",
-   "herite": [],
    "hors_domaine": false,
    "methodes": [
     "ajouter",
@@ -3319,14 +2644,15 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 142,
-  "enchevetrements": 4,
+  "aretes_front": 139,
+  "enchevetrements": 3,
   "features": 44,
   "imports": 827,
+  "imports_entre_couches": 700,
   "plus_gros_noeud": 19,
   "ports": 60,
   "ports_hors_domaine": 20,
-  "ports_sans_adapter": 2,
+  "ports_sans_adapter": 0,
   "violations": 0
  },
  "sens_autorise": {

@@ -1320,9 +1320,20 @@ var Pages = (function () {
       return cellule.occurrences > 0;
     });
 
-    /* Même placement en couloirs que le schéma des chaînes d'ADR : une liaison descend jusqu'au
-     * premier couloir libre sur son intervalle. Les longues passent donc sous les courtes au lieu
-     * de les croiser. */
+    /* Placement en couloirs : une liaison descend jusqu'au premier couloir libre sur son
+     * intervalle, donc deux liaisons qui se chevauchent ne partagent jamais un couloir.
+     *
+     * ⚠️ Le nommage suit **exactement** celui des deux autres schémas du site (`schemaChaine`,
+     * `grapheEpics`) : `bas` = borne inférieure, `haut` = borne supérieure, test de recouvrement
+     * `posee.bas < haut && bas < posee.haut`. La première version inversait les deux noms et le
+     * sens des comparaisons — correct isolément, mais c'est le piège : copier une ligne d'un
+     * schéma à l'autre y introduisait un bug muet, sur du JS que ni linter ni typage ne regardent
+     * (DETTE-067). Le tri diffère en revanche volontairement (courtes d'abord ici, longues
+     * d'abord dans `schemaChaine`) : ce schéma n'a que cinq boîtes, les courtes au plus près.
+     *
+     * 3ᵉ occurrence de cette coloration d'intervalles dans le fichier : le seuil du § Dette est
+     * atteint, le remède (hisser `allouer` au niveau du module) est renvoyé à E00US026, qui
+     * touche déjà ces fichiers — pas en douce ici. */
     var placees = [];
     traversantes
       .slice()
@@ -1332,17 +1343,17 @@ var Pages = (function () {
         );
       })
       .forEach(function (cellule) {
-        var haut = Math.min(centre(cellule.source), centre(cellule.cible));
-        var bas = Math.max(centre(cellule.source), centre(cellule.cible));
+        var bas = Math.min(centre(cellule.source), centre(cellule.cible));
+        var haut = Math.max(centre(cellule.source), centre(cellule.cible));
         var couloir = 0;
         while (
           placees.some(function (posee) {
-            return posee.couloir === couloir && posee.bas > haut && bas > posee.haut;
+            return posee.couloir === couloir && posee.bas < haut && bas < posee.haut;
           })
         ) {
           couloir += 1;
         }
-        placees.push({ cellule: cellule, haut: haut, bas: bas, couloir: couloir });
+        placees.push({ cellule: cellule, bas: bas, haut: haut, couloir: couloir });
       });
 
     var couloirs = placees.reduce(function (max, posee) {
@@ -1477,8 +1488,14 @@ var Pages = (function () {
       "</tr></thead><tbody>" +
       ports
         .map(function (port) {
+          /* Un port à un seul membre apparie tout ce qui porte une méthode du même nom, sémantique
+           * comprise : 26 des 60 ports sont dans ce cas et produisent plus de la moitié des
+           * appariements affichés. Le dire sur la ligne, plutôt que de laisser « 24 candidats »
+           * passer pour un inventaire. */
+          var peuDiscriminant = port.methodes.length < 2 && port.adapters.length > 2;
           var adapters = port.adapters.length
             ? "<details><summary>" + Atlas.pluriel(port.adapters.length, "candidat") +
+              (peuDiscriminant ? " <span class='discret'>— apparié sur un seul membre, peu discriminant</span>" : "") +
               "</summary><ul class='liste-nue'>" +
               port.adapters
                 .map(function (adapter) {
@@ -1545,10 +1562,16 @@ var Pages = (function () {
 
     var grille = Atlas.element("div", "grille");
     grille.innerHTML =
+      /* Les deux nombres, et pas seulement le premier : la matrice ci-dessous ne somme que les
+       * imports **franchissant une couche**, l'écart étant celui des arêtes intra-couche entre
+       * paquets. Une page dont l'argument est « un nombre qu'on ne peut pas aller vérifier ne se
+       * corrige jamais » ne peut pas se permettre une addition qui ne tombe pas juste. */
       "<div class='carte'><span class='compteur'>" + (resume.imports || 0) +
       "</span> imports entre paquets<p class='discret'>Dont <strong>" +
-      (resume.violations || 0) + "</strong> à contresens. Un seul suffit à faire rougir " +
-      "<span class='mono'>--verifier</span> : la règle 2 n'était vérifiée que pour le domaine.</p></div>" +
+      (resume.imports_entre_couches || 0) + "</strong> franchissent une couche — c'est ce que " +
+      "somme la matrice — et <strong>" + (resume.violations || 0) + "</strong> à contresens. Un " +
+      "seul suffit à faire rougir <span class='mono'>--verifier</span> : la règle 2 n'était " +
+      "vérifiée que pour le domaine.</p></div>" +
       "<div class='carte'><span class='compteur'>" + (resume.ports || 0) +
       "</span> ports<p class='discret'>Dont <strong>" + (resume.ports_hors_domaine || 0) +
       "</strong> hors du domaine et <strong>" + (resume.ports_sans_adapter || 0) +
@@ -1570,7 +1593,10 @@ var Pages = (function () {
         "discret",
         "Les couches sont posées dans l'ordre du sens autorisé — le domaine à gauche, la racine " +
           "de composition à droite. Quand l'architecture est tenue, <strong>toutes les flèches " +
-          "pointent vers la gauche</strong> ; une flèche rouge remonte le courant."
+          "pointent vers la gauche</strong> ; une flèche rouge remonte le courant. " +
+          "<strong>Limite assumée</strong> : la lecture couvre les imports statiques et les " +
+          "<span class='mono'>import_module(\"…\")</span> à cible littérale ; un module dont le " +
+          "nom est <em>calculé</em> à l'exécution reste hors de portée."
       )
     );
     cible.appendChild(schemaCouches(donnees));
@@ -1635,7 +1661,10 @@ var Pages = (function () {
         "discret",
         "Ce sont des <strong>composantes fortement connexes</strong>, pas un compte de cycles : " +
           "ce dernier dépend de l'ordre de parcours, donc deux exécutions pourraient en annoncer " +
-          "des nombres différents — inacceptable sur une sortie comparée à l'octet en CI."
+          "des nombres différents — inacceptable sur une sortie comparée à l'octet en CI. Les " +
+          "fichiers de <strong>test</strong> sont exclus du graphe : reprocher à une feature de " +
+          "ne plus pouvoir être <em>testée</em> seule n'a pas de sens si c'est le test qui crée " +
+          "le lien."
       )
     );
     cible.appendChild(tableauFront(front));

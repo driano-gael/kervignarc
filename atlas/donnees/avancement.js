@@ -1071,7 +1071,9 @@ window.ATLAS.avancement = {
    "titre_story": "L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas"
   },
   {
-   "adr": [],
+   "adr": [
+    "0086"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [
     "067"

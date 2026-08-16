@@ -166,12 +166,19 @@ class AreteCode:
 class Port:
     """Une interface déclarée (`Protocol`) et les classes qui la satisfont.
 
-    ⚠️ `adapters` est rempli par **appariement structurel** — une classe qui porte toutes les
-    méthodes publiques du port —, jamais par héritage : le dépôt ne compte qu'**un seul** héritage
-    explicite de `Protocol` pour des dizaines de ports, un inventaire fondé sur les bases de classe
-    rendrait donc une page vide en affirmant qu'elle est complète. La contrepartie est assumée : un
-    port à une seule méthode au nom courant sur-apparie. D'où un **signal** sur le seul cas
-    exact — zéro adapter —, et un nombre affiché sur tous les autres, à charge du lecteur.
+    ⚠️ `adapters` est rempli par **appariement structurel** — une classe qui porte tous les membres
+    publics du port, méthodes **et attributs annotés** —, jamais par héritage : aucune
+    implémentation du dépôt n'hérite du port qu'elle satisfait, un inventaire fondé sur les bases
+    de classe rendrait donc une page vide en affirmant qu'elle est complète.
+
+    Les deux directions d'imprécision sont assumées, et **écrites** — la revue a montré que n'en
+    documenter qu'une revenait à sur-vendre le contrôle :
+    - **sur**-appariement : un port à un seul membre au nom courant apparie beaucoup (26 des ports
+      du dépôt n'en ont qu'un). D'où un **nombre de candidats** affiché, jamais un verdict ;
+    - **sous**-appariement : il a existé, et il a produit **deux signaux faux sur deux** avant
+      correction — un port en `@property` face à une dataclass à champs annotés. C'est pourquoi
+      `_membres` lit aussi les attributs : le patron dominant du domaine (règle 4, immutabilité)
+      passait au travers.
     """
 
     nom: str
@@ -179,7 +186,6 @@ class Port:
     couche: str
     methodes: tuple[str, ...]
     adapters: tuple[str, ...]
-    herite: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
