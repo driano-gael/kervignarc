@@ -57,6 +57,7 @@ from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
     ConfigurationBigShootOffInvalide,
+    ConfigurationSuisseInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
@@ -77,6 +78,7 @@ from domain.erreurs import (
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -452,6 +454,14 @@ class Phase:
     (`paliers_pour`) qui varie, et elle se calcule à la lecture sans rien figer. Dédoubler la classe
     ici n'aurait donc porté aucune information, seulement une conversion identité."""
 
+    suisse: ConfigurationSuisse | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — le nombre de rondes.
+
+    Même régime que les deux réglages ci-dessus, et **une seule classe** pour la même raison que le
+    Big Shoot Off : un nombre de rondes ne dépend pas de l'effectif. Ce qui en dépend est la
+    **borne** appariable sans ré-affrontement (`suisse.rondes_maximales`), affichée à l'atelier et
+    vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici."""
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -479,6 +489,14 @@ class Phase:
             raise ConfigurationBigShootOffInvalide(
                 f"Une phase de type « {self.type.value} » n'est pas un Big Shoot Off : elle n'a "
                 "pas de nombre de sortants à régler."
+            )
+        if self.suisse is not None and self.type is not TypePhase.SUISSE:
+            # Même garde que les deux précédentes. Un nombre de rondes oublié sur une phase
+            # retypée est moins dangereux qu'une liste de sortants — il ne décide de l'élimination
+            # de personne — mais il reste un réglage que rien ne lit, donc invisible et faux.
+            raise ConfigurationSuisseInvalide(
+                f"Une phase de type « {self.type.value} » n'est pas un système suisse : elle n'a "
+                "pas de nombre de rondes à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

@@ -129,67 +129,50 @@ class LecteurPopulationPhase(Protocol):
         ...
 
 
-class LecteurClassementPoules(Protocol):
-    """Port étroit : « quel classement cette phase de **poules** a-t-elle produit ? » (E05US023).
+class LecteurClassementDePhase(Protocol):
+    """Port étroit : « quel classement **cette phase** a-t-elle produit ? » ([ADR-0084]).
 
-    Réalisé par `ServicePoules`, consommé par `ServiceSaisieDuels._classement_de_l_ordre` — qui est
-    le point unique où le moteur transforme « l'ordre d'une phase amont » en `ClassementSource`.
+    Réalisé par les services de format — `ServicePoules` (E05US023), `ServiceBigShootOff`
+    (E05US028), `ServiceSuisse` (E05US026) — et consommé par
+    `ServiceSaisieDuels._classement_de_l_ordre`, qui est le point unique où le moteur transforme
+    « l'ordre d'une phase amont » en `ClassementSource`. Le moteur ne connaît aucun de ces
+    services : il connaît **cette question**, et le composition root dit qui y répond, par type.
 
-    **Pourquoi un port, et pas le service concret.** Les deux services se tiennent par les deux
-    bouts : `ServicePoules` a besoin de `ServiceSaisieDuels` pour résoudre son classement amont et
-    son pavé de saisie ; `ServiceSaisieDuels` a besoin de `ServicePoules` pour lire ce qu'une phase
-    de poules a classé. Un import mutuel serait un **cycle de modules**, et le constructeur des deux
-    ne peut pas recevoir l'autre. Le port casse le cycle dans le bon sens : `application/poules.py`
-    importe déjà `application/saisie_duels.py`, jamais l'inverse — c'est ici, dans le module que les
-    deux partagent, que l'interface vit. Même parti que `LecteurPopulationPhase` ci-dessus.
+    **Pourquoi un port, et pas le service concret.** Les deux côtés se tiennent par les deux bouts :
+    `ServicePoules` a besoin de `ServiceSaisieDuels` pour résoudre son classement amont et son pavé
+    de saisie ; `ServiceSaisieDuels` a besoin de `ServicePoules` pour lire ce qu'une phase de poules
+    a classé. Un import mutuel serait un **cycle de modules**, et le constructeur des deux ne peut
+    pas recevoir l'autre. Le port casse le cycle dans le bon sens : `application/poules.py` importe
+    déjà `application/saisie_duels.py`, jamais l'inverse — c'est ici, dans le module que les deux
+    partagent, que l'interface vit. Même parti que `LecteurPopulationPhase` ci-dessus.
 
     ⚠️ **Le branchement est donc tardif, et il se voit au composition root** (règle 8) : l'un des
-    deux services reçoit l'autre **après** construction (`ServiceSaisieDuels.brancher_poules`).
+    deux services reçoit l'autre **après** construction (`ServiceSaisieDuels.brancher_lecteur`).
     C'est le seul câblage du projet dans ce cas, et il est explicite dans `bootstrap/` plutôt que
     caché derrière un import paresseux — un cycle qu'on ne voit pas est un cycle qu'on réintroduit.
 
     **Le résolveur est passé par l'appelant**, et ce n'est pas de la plomberie : il porte le cache
-    de reconstruction **et** la chaîne de phases déjà visitées. En laisser `ServicePoules` fabriquer
-    un neuf ferait payer deux fois un tableau amont partagé (`DETTE-031`) et, surtout, perdrait la
-    détection de cycle — un déroulé incohérent remonterait en `RecursionError` (500 muet) au lieu de
-    `DerouleCyclique`.
+    de reconstruction **et** la chaîne de phases déjà visitées. En laisser le service de format
+    fabriquer un neuf ferait payer deux fois un tableau amont partagé (`DETTE-031`) et, surtout,
+    perdrait la détection de cycle — un déroulé incohérent remonterait en `RecursionError` (500
+    muet) au lieu de `DerouleCyclique`.
+
+    ⚠️ **Ce port est né dupliqué, et sa fusion a attendu sa preuve.** Il s'est d'abord appelé
+    `LecteurClassementPoules` (E05US023), puis a été **recopié** en `LecteurClassementBigShootOff`
+    (E05US028) — deux protocoles à la signature identique, au point qu'un service satisfaisant l'un
+    satisfaisait l'autre par typage structurel. La duplication était **volontaire** : `CLAUDE.md`
+    veut qu'un remède structurel repose sur une **3ᵉ occurrence réelle** du code d'aujourd'hui, pas
+    sur une évolution supposée, et E05US028 n'en avait que deux. Le système suisse est cette 3ᵉ, et
+    la fusion se fait donc sur preuve. Le détail — et l'écart assumé à « en US dédiée » — est en
+    [ADR-0084].
+
+    [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
     """
 
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
     ) -> ClassementSource:
-        """Le classement de la phase de poules `phase_id`, prêt à être prélevé."""
-        ...
-
-
-class LecteurClassementBigShootOff(Protocol):
-    """Port étroit : « quel classement cette phase de **Big Shoot Off** a-t-elle produit ? »
-    (E05US028).
-
-    Réalisé par `ServiceBigShootOff`, consommé par `ServiceSaisieDuels._classement_de_l_ordre`.
-    Mêmes raisons que `LecteurClassementPoules` juste au-dessus, à l'identique : les deux services
-    se tiennent par les deux bouts (`ServiceBigShootOff` a besoin de `ServiceSaisieDuels` pour son
-    classement amont et son pavé), donc le port casse le cycle et le branchement est **tardif**,
-    visible au composition root (règle 8).
-
-    ⚠️ **C'est la 2ᵉ occurrence d'un port structurellement identique, et elle est dupliquée
-    volontairement.** Les deux protocoles ont la même signature — au point qu'un service qui
-    satisfait l'un satisfait l'autre par typage structurel. La tentation est de les fondre en un
-    `LecteurClassementDePhase` unique, résolu par un dictionnaire indexé sur `TypePhase` : ce serait
-    un **remède structurel**, et `CLAUDE.md` demande qu'il repose sur une **3ᵉ occurrence réelle**
-    dans le code d'aujourd'hui, pas sur une évolution supposée. On duplique donc, et on attend.
-
-    La 3ᵉ et la 4ᵉ arrivent avec `E05US026` (système suisse) et `E05US027` (colline) : c'est **là**
-    que la généralisation se justifiera sur preuve. Elle est facile à faire à ce moment-là — trois
-    slots nommés deviennent un `dict[TypePhase, LecteurClassementDePhase]` et la cascade de `if` de
-    `_classement_de_l_ordre` devient une recherche. La faire ici obligerait à parier sur la forme
-    que prendront ces deux US.
-    """
-
-    def classement_de_phase(
-        self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
-    ) -> ClassementSource:
-        """Le classement du Big Shoot Off `phase_id`, prêt à être prélevé."""
+        """Le classement de la phase `phase_id`, prêt à être prélevé."""
         ...
 
 

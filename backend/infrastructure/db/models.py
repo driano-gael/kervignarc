@@ -348,31 +348,39 @@ class PlacementTableauORM(Base):
     position: Mapped[str] = mapped_column(nullable=False)
 
 
-class PlacementPouleORM(Base):
-    """Table `placement_poule` — les couloirs qu'une **poule** occupe, par phase (E05US023).
+class PlacementParBlocORM(Base):
+    """Table `placement_par_bloc` — les couloirs qu'un **groupe** occupe, par phase (E05US023).
 
     Troisième table de placement, et la seule dont l'unité posée ne soit pas un archer. C'est tout
-    le sujet d'[ADR-0083] §3 : une poule de 5 tient sur 4 couloirs — la méthode du cercle ne fait
-    tirer que `effectif ÷ 2` rencontres par tour, donc un membre se repose — **mais ce n'est jamais
-    le même**. Aucun des cinq n'a de couloir attitré ; ils tournent sur le bloc. Persister
-    « archer → couloir », comme le fait `placement_tableau` (keyé `(phase_id, inscription_id)`),
-    écrirait donc une information **fausse**, pas seulement incomplète. C'est la raison — la seule —
-    pour laquelle cette US demande une migration là où le reste n'en demande aucune.
+    le sujet d'[ADR-0083] §3 : **le tireur au repos change à chaque tour**. Une poule de 5 tient sur
+    4 couloirs — la méthode du cercle ne fait tirer que `effectif ÷ 2` rencontres par tour, donc un
+    membre se repose, mais jamais le même ; une ronde de système suisse ré-apparie tout le plateau,
+    donc aucun de ses tireurs n'a de couloir attitré non plus. Persister « archer → couloir », comme
+    le fait `placement_tableau` (keyé `(phase_id, inscription_id)`), écrirait dans les deux cas une
+    information **fausse**, pas seulement incomplète.
 
-    Une ligne = **un couloir** attribué à une poule. `rang` porte sa position dans le bloc (1-based)
+    ⚠️ **Elle s'appelait `placement_poule` jusqu'à E05US026** (migration 0046), et la colonne
+    `poule_numero` s'appelle désormais `groupe_numero`. Le renommage a été demandé par le
+    commanditaire le 16/08/2026 plutôt que de laisser un système suisse ranger ses blocs dans une
+    table qui dit « poule » — une table qui ment sur ce qu'elle contient est un écart à la règle 3,
+    et le prochain lecteur y perd plus que ce que la migration coûte. C'est l'arbitrage inverse de
+    `DETTE-042` (`position` / « couloir »), et pour une raison assumée : là-bas le mot juste ne
+    changeait **rien** au contenu, ici le nom désignait le mauvais **concept**.
+
+    Une ligne = **un couloir** attribué à un groupe. `rang` porte sa position dans le bloc (1-based)
     pour que la plage se relise dans l'ordre de remplissage : un bloc peut déborder d'une cible sur
     la suivante, et « cible 3 couloir C » ne dit pas à lui seul s'il vient avant ou après « cible 4
     couloir A » sur des salles à capacité variable.
 
-    ⚠️ **La clé primaire est le couloir** (`phase_id, cible_index, position`), pas la poule. Elle
+    ⚠️ **La clé primaire est le couloir** (`phase_id, cible_index, position`), pas le groupe. Elle
     porte donc l'invariant qui compte en salle — *un couloir, un occupant* —, que la base fait
-    respecter au lieu de le confier au seul service. `UNIQUE(phase_id, poule_numero, rang)` tient
+    respecter au lieu de le confier au seul service. `UNIQUE(phase_id, groupe_numero, rang)` tient
     l'autre bout : un bloc ne saute ni ne répète de position, et l'index sert la lecture « les
-    couloirs de la poule *n* », qui est la requête de tous les appelants.
+    couloirs du groupe *n* », qui est la requête de tous les appelants.
 
     Les couloirs de chaque **rencontre**, tour par tour, ne sont pas ici : ils sont **dérivés** à la
     lecture, comme l'appariement d'un tableau (ADR-0023/0048). Persister le bloc et dériver le
-    détail est ce qui permet à l'organisateur de déplacer une poule entière sans réécrire un plan de
+    détail est ce qui permet à l'organisateur de déplacer un groupe entier sans réécrire un plan de
     rencontres qui, lui, dépend du tour affiché.
 
     **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception
@@ -381,9 +389,9 @@ class PlacementPouleORM(Base):
     [ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
     """
 
-    __tablename__ = "placement_poule"
+    __tablename__ = "placement_par_bloc"
     __table_args__ = (
-        UniqueConstraint("phase_id", "poule_numero", "rang", name="uq_placement_poule_bloc"),
+        UniqueConstraint("phase_id", "groupe_numero", "rang", name="uq_placement_par_bloc"),
     )
 
     phase_id: Mapped[int] = mapped_column(
@@ -395,7 +403,7 @@ class PlacementPouleORM(Base):
     # de laisser trois tables de placement en nommer deux à l'ancienne et une à la neuve. Le
     # renommage se fera d'un bloc avec DETTE-010, pour n'écrire qu'une migration.
     position: Mapped[str] = mapped_column(primary_key=True)
-    poule_numero: Mapped[int] = mapped_column(nullable=False)
+    groupe_numero: Mapped[int] = mapped_column(nullable=False)
     rang: Mapped[int] = mapped_column(nullable=False)
 
 

@@ -320,7 +320,7 @@ class EtatPoulesReponse(BaseModel):
 
 def _conflits(etat: EtatPoules) -> list[ConflitReponse]:
     return [
-        ConflitReponse(poule=conflit.poule, raison=conflit.raison.value)
+        ConflitReponse(poule=conflit.groupe, raison=conflit.raison.value)
         for conflit in etat.conflits
     ]
 
@@ -413,6 +413,8 @@ def _en_etat_duel(rencontre: RencontreAffichee) -> EtatDuel:
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
+    # DETTE-065 : 6ᵉ copie verbatim de ce **garde d'autorisation**. Un 7ᵉ routeur d'écriture qui
+    # l'oublierait ne ferait rougir personne — résorption : `api/dependances.py`.
     """Refuse (`403 scoreur_hors_tournoi`) un scoreur agissant hors de **son** tournoi."""
     if scoreur.tournoi_id != tournoi_id:
         raise ScoreurHorsTournoi("Ce scoreur n'officie pas dans ce tournoi.")

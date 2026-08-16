@@ -144,7 +144,7 @@ class PlanDeCibles(str, Enum):
 
     L'**unité placée** diffère d'un format à l'autre, et c'est tout le sujet : un archer en
     qualification, une paire d'adversaires en élimination directe ([ADR-0048]), un **bloc de
-    couloirs contigus** en poules (ADR-0083 §3, `domain/placement_poules.py`).
+    couloirs contigus** en poules (ADR-0083 §3, `domain/placement_par_bloc.py`).
 
     [ADR-0048]: ../../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md
     """
@@ -158,7 +158,7 @@ class PlanDeCibles(str, Enum):
     PAR_DUEL = "par_duel"
     """Les deux duellistes côte à côte (`ServicePlacementDuels`, ADR-0048)."""
 
-    PAR_BLOC_DE_POULE = "par_bloc_de_poule"
+    PAR_BLOC_DE_COULOIRS = "par_bloc_de_couloirs"
     """Un bloc de couloirs contigus par **poule** — jamais « archer → couloir » (ADR-0083 §3).
 
     La raison est dans `poule.couloirs_occupes` : le membre au repos change à chaque tour, donc
@@ -267,23 +267,25 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.POULES: ContratDePhase(
         decor=DecorDeSaisie.RENCONTRES_EN_GROUPES,
-        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_POULE,
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
         deroule_par_un_service=True,
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
         # fois le code écrit. Ce qui l'autorise, module par module :
         # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
         # §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
-        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementPoules`.
+        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementDePhase`.
         #
         # ⚠️ L'effet de cette ligne est **mesurable**, et c'est pourquoi elle a attendu : elle fait
         # réclamer le plancher d'inscrits (E05US021) pour un prélèvement visant des poules. Un
         # `True` posé par anticipation aurait exigé 34 inscrits pour une source que rien n'honore —
         # le « refus abusif le jour J » que cette US-là nommait comme sa pire défaillance.
         classement_lisible=True,
-        # ⚠️ **`route_l_archer` reste `False`**, pour une raison distincte et assumée : le routage
-        # est la 5ᵉ question du contrat, et `application/routage.py` ne sait pas dire à un membre de
-        # poule où il tire ensuite. Ce n'est ni au CA d'E05US023 ni à la liste d'ADR-0083
-        # capacité **hors périmètre** d'ADR-0083, qui attendra une US dédiée.
+        # ✅ **`route_l_archer` bascule en E05US026.** Elle valait `False` depuis E05US023, où le
+        # routage était une capacité **explicitement hors périmètre** — au point que les poules
+        # étaient devenues le seul format jouable sans routage une fois le Big Shoot Off livré.
+        # Le commanditaire l'a fait entrer au périmètre le 15/08/2026 : le calcul s'écrivait de
+        # toute façon pour le suisse, et `ServiceRoutage._routage_par_rencontres` sert les deux.
+        route_l_archer=True,
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
@@ -298,7 +300,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # `application/big_shoot_off.py` rejoue la phase des volées validées et rend son état
         # (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
         # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
-        # `LecteurClassementBigShootOff` (`classement_lisible`), et
+        # `LecteurClassementDePhase` (`classement_lisible`), et
         # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
         # (`route_l_archer`).
         deroule_par_un_service=True,
@@ -311,7 +313,30 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
-        plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ **Bascule en fin de tranche E05US026**, une fois `ServiceSuisse.regenerer_plan` écrit.
+        # Une ronde apparie tout le plateau et **ré-apparie à chaque ronde** : personne n'a de
+        # couloir attitré, donc « archer → couloir » serait une information *fausse* — exactement la
+        # raison pour laquelle les poules persistent un bloc (ADR-0083 §3). Le suisse en pose **un
+        # seul**, là où une phase de poules en pose un par groupe : il n'y a rien à séparer.
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
+        # ✅ Les deux capacités basculent **en fin de tranche E05US026**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023 et E05US028. Ce qui les autorise, module par
+        # module : `application/suisse.py` rejoue la phase des duels validés, ronde après ronde, et
+        # rend son état (`deroule_par_un_service`) ; `ServiceSuisse.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementDePhase`, via `domain/classement_de_suisse.py` (`classement_lisible`).
+        #
+        # ⚠️ L'effet de `classement_lisible` est **mesurable** : elle fait réclamer le plancher
+        # d'inscrits (E05US021) pour un prélèvement visant un suisse. Elle n'est légitime que parce
+        # que le prélèvement est réellement honoré — un `True` posé par anticipation aurait exigé
+        # des inscrits pour une source que rien n'honore.
+        deroule_par_un_service=True,
+        classement_lisible=True,
+        # ✅ **`route_l_archer` bascule ici aussi**, par le même chemin
+        # (`ServiceRoutage._routage_par_rencontres`) : une rencontre de ronde **est** un duel, avec
+        # deux adversaires nommés et deux couloirs. Aucune issue de routage neuve n'a été
+        # nécessaire, à la différence du Big Shoot Off dont la manche collective n'oppose personne.
+        route_l_archer=True,
     ),
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,

@@ -233,7 +233,10 @@ def _avec_prelevement_haut(type_phase: TypePhase) -> list[ModelePhase]:
     ]
 
 
-@pytest.mark.parametrize("type_deroule", [TypePhase.ELIMINATION_DIRECTE, TypePhase.POULES])
+@pytest.mark.parametrize(
+    "type_deroule",
+    [TypePhase.ELIMINATION_DIRECTE, TypePhase.POULES, TypePhase.SUISSE],
+)
 def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: TypePhase) -> None:
     """Le plancher n'a de sens que si le moteur va réellement monter la phase — c'est le cas ici.
 
@@ -251,7 +254,6 @@ def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: Typ
     "type_sans_moteur",
     [
         TypePhase.PLACEMENT,
-        TypePhase.SUISSE,
         TypePhase.COLLINE,
         TypePhase.BARRAGE,
     ],
@@ -274,8 +276,9 @@ def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: 
 
     Le jour où l'un de ces types gagne son service, il entre dans `TYPES_DEROULES` et ce test change
     de camp — c'est le signal attendu, pas une régression. **C'est arrivé au Big Shoot Off le
-    14/08/2026** (E05US028) : il a quitté cette liste pour celle du test précédent, et le plancher
-    de 34 lui est désormais réclamé — légitimement, puisque son prélèvement est réellement honoré.
+    14/08/2026** (E05US028) puis au **système suisse le 15/08/2026** (E05US026) : tous deux ont
+    quitté cette liste pour celle du test précédent, et le plancher de 34 leur est désormais
+    réclamé — légitimement, puisque leur prélèvement est réellement honoré.
     """
     assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2
 
@@ -531,15 +534,15 @@ def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> No
     Vérifié par mutation en revue : élargir la table laissait **99 tests verts**. Ce test-ci passe
     à 34 si on l'élargit, et c'est tout son objet.
 
-    ⚠️ **Le cas portait sur les poules jusqu'à E05US023**, qui les a rendues lisibles — la garde
-    vise donc désormais le **système suisse**, non lu et sans service. Le déplacement n'affaiblit
-    rien : ce qui est testé est le mécanisme (un type non lisible ne fixe pas de plancher), pas
-    l'identité du type. `test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits` couvre le sens
-    opposé pour les poules.
+    ⚠️ **La garde a déjà changé de sujet deux fois, et c'est le signe qu'elle vise le mécanisme et
+    non un type.** Elle portait sur les poules jusqu'à E05US023, puis sur le **système suisse**
+    jusqu'à E05US026 — les deux sont devenus lisibles. Elle vise désormais la **colline**, dernier
+    format non lu et sans service (`E05US027` la déplacera une fois de plus, et il faudra alors la
+    poser sur `PLACEMENT`, qui restera durablement dans ce cas).
     """
     etapes = [
         _qualification(1),
-        ModelePhase(ordre=2, type=TypePhase.SUISSE),
+        ModelePhase(ordre=2, type=TypePhase.COLLINE),
         _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
     ]
 

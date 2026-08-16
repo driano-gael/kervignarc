@@ -59,8 +59,8 @@ from tests.test_service_placement_duels import (
 from tests.test_service_saisie_duels import ZONES_TRIPLE
 
 
-class _FauxPlacementPouleRepository:
-    """Double du port `PlacementPouleRepository` — deux gestes, comme le port."""
+class _FauxPlacementParBlocRepository:
+    """Double du port `PlacementParBlocRepository` — deux gestes, comme le port."""
 
     def __init__(self) -> None:
         self._plans: dict[int, list[object]] = {}
@@ -106,7 +106,7 @@ class _Monde:
         self.series = FauxSerieRepository()
         self.duels = FauxDuelRepository()
         self.forfaits = FauxForfaitRepository()
-        self.placements = _FauxPlacementPouleRepository()
+        self.placements = _FauxPlacementParBlocRepository()
         self.barrages = _FauxBarrageRepository()
         self.gabarits = _FauxGabaritRepository(nb_cibles, couloirs)
         blason = self.blasons.ajouter(
@@ -330,7 +330,7 @@ def test_une_salle_trop_petite_rapporte_les_poules_non_posees() -> None:
 
     etat = monde.service().regenerer_plan(monde.tournoi_id, phase_id)
 
-    assert [conflit.poule for conflit in etat.conflits] == [3]
+    assert [conflit.groupe for conflit in etat.conflits] == [3]
 
 
 # --- CA « les rencontres se saisissent comme des duels ordinaires » -----------------------------

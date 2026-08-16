@@ -39,6 +39,7 @@ from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import (
     Database,
@@ -1185,3 +1186,76 @@ def test_un_format_conserve_le_reglage_de_poules_et_le_seuil_de_barrage(tmp_path
         assert relu.etapes == (modele,)
     finally:
         db.engine.dispose()
+
+
+# --- E05US026 : le réglage du système suisse, même domicile et même mécanisme --------------------
+
+
+def test_le_reglage_de_suisse_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.suisse` s'écrit et se relit à l'identique — **sans migration**.
+
+    Troisième réglage à emprunter ce chemin, après `config.poules` (E05US023) et
+    `config.big_shoot_off` (E05US028), et pour la même raison qu'eux : un nombre de rondes est de
+    la **configuration**, il tient dans le JSON existant. À la racine, jamais sous `policies` — ce
+    n'est pas une stratégie injectable mais un paramètre de phase, et `assembler_politiques` refuse
+    de toute façon toute clé hors de son énumération fermée.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        reglage = ConfigurationSuisse(nb_rondes=7)
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.SUISSE, suisse=reglage)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.suisse == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_un_suisse_non_regle_se_relit_sans_reglage(tmp_path: Path) -> None:
+    """Absence = **non réglé**, ce qui est licite : le type se choisit avant ses paramètres.
+
+    C'est le brouillon d'ADR-0063 : l'atelier doit pouvoir enregistrer un déroulé en cours de
+    composition. C'est la composition du jour J qui exigera le réglage, pas la relecture.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.SUISSE)
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.suisse is None
+    finally:
+        db.engine.dispose()
+
+
+def test_un_reglage_de_suisse_altere_remonte_en_erreur_typee(tmp_path: Path) -> None:
+    """Un document `suisse` sans `rondes` ne se lit **pas** « phase non réglée ».
+
+    Même parti que la `taille` absente d'un réglage de poules : « pas de nombre de rondes » se
+    lirait « phase non réglée », et la composition du jour J inventerait un déroulé là où la base
+    dit quelque chose d'incohérent.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _suisse_brut(db, depart_id, json.dumps({"suisse": {}}))
+
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+def _suisse_brut(db: Database, depart_id: DepartId, config: str) -> None:
+    """Jumeau de `_big_shoot_off_brut` pour une étape de type **suisse**, config imposée."""
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        session.add(
+            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="suisse", config=config)
+        )
+        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.commit()

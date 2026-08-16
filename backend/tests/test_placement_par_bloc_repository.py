@@ -24,12 +24,12 @@ import sqlalchemy as sa
 
 from domain.depart import Depart
 from domain.phase import Phase, TypePhase
-from domain.placement_poules import BlocDePoule
+from domain.placement_par_bloc import BlocDeCouloirs
 from domain.tournoi import Tournoi
 from infrastructure.db import (
     Database,
     DepartRepositorySQL,
-    PlacementPouleRepositorySQL,
+    PlacementParBlocRepositorySQL,
     TournoiRepositorySQL,
 )
 from infrastructure.erreurs import InfrastructureError
@@ -63,8 +63,8 @@ class _Decor:
         self.phase_id = phase.id
 
     @property
-    def placements(self) -> PlacementPouleRepositorySQL:
-        return PlacementPouleRepositorySQL(self.db.session_factory)
+    def placements(self) -> PlacementParBlocRepositorySQL:
+        return PlacementParBlocRepositorySQL(self.db.session_factory)
 
 
 def test_definir_plan_puis_relire(tmp_path: Path) -> None:
@@ -78,8 +78,8 @@ def test_definir_plan_puis_relire(tmp_path: Path) -> None:
     decor = _Decor(tmp_path)
     try:
         blocs = [
-            BlocDePoule(poule=1, places=((1, "A"), (1, "B"), (1, "C"), (1, "D"))),
-            BlocDePoule(poule=2, places=((2, "A"), (2, "B"), (2, "C"), (2, "D"))),
+            BlocDeCouloirs(groupe=1, places=((1, "A"), (1, "B"), (1, "C"), (1, "D"))),
+            BlocDeCouloirs(groupe=2, places=((2, "A"), (2, "B"), (2, "C"), (2, "D"))),
         ]
 
         decor.placements.definir_plan(decor.phase_id, blocs)
@@ -100,8 +100,8 @@ def test_un_bloc_qui_deborde_se_relit_dans_lordre_et_non_par_cible(tmp_path: Pat
     """
     decor = _Decor(tmp_path)
     try:
-        poule_1 = BlocDePoule(poule=1, places=((1, "C"), (1, "D"), (2, "A")))
-        poule_2 = BlocDePoule(poule=2, places=((2, "B"), (2, "C")))
+        poule_1 = BlocDeCouloirs(groupe=1, places=((1, "C"), (1, "D"), (2, "A")))
+        poule_2 = BlocDeCouloirs(groupe=2, places=((2, "B"), (2, "C")))
 
         decor.placements.definir_plan(decor.phase_id, [poule_1, poule_2])
 
@@ -120,14 +120,14 @@ def test_definir_plan_remplace_tout(tmp_path: Path) -> None:
     decor = _Decor(tmp_path)
     try:
         decor.placements.definir_plan(
-            decor.phase_id, [BlocDePoule(poule=1, places=((1, "A"), (1, "B")))]
+            decor.phase_id, [BlocDeCouloirs(groupe=1, places=((1, "A"), (1, "B")))]
         )
         decor.placements.definir_plan(
-            decor.phase_id, [BlocDePoule(poule=1, places=((3, "C"), (3, "D")))]
+            decor.phase_id, [BlocDeCouloirs(groupe=1, places=((3, "C"), (3, "D")))]
         )
 
         assert decor.placements.par_phase(decor.phase_id) == [
-            BlocDePoule(poule=1, places=((3, "C"), (3, "D")))
+            BlocDeCouloirs(groupe=1, places=((3, "C"), (3, "D")))
         ]
     finally:
         decor.db.engine.dispose()
@@ -160,8 +160,8 @@ def test_deux_poules_ne_peuvent_pas_partager_un_couloir(tmp_path: Path) -> None:
             decor.placements.definir_plan(
                 decor.phase_id,
                 [
-                    BlocDePoule(poule=1, places=((1, "A"), (1, "B"))),
-                    BlocDePoule(poule=2, places=((1, "B"), (1, "C"))),
+                    BlocDeCouloirs(groupe=1, places=((1, "A"), (1, "B"))),
+                    BlocDeCouloirs(groupe=2, places=((1, "B"), (1, "C"))),
                 ],
             )
     finally:
@@ -178,7 +178,7 @@ def test_le_plan_disparait_avec_sa_phase(tmp_path: Path) -> None:
     decor = _Decor(tmp_path)
     try:
         decor.placements.definir_plan(
-            decor.phase_id, [BlocDePoule(poule=1, places=((1, "A"), (1, "B")))]
+            decor.phase_id, [BlocDeCouloirs(groupe=1, places=((1, "A"), (1, "B")))]
         )
 
         with decor.db.session_factory() as session:

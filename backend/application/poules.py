@@ -3,7 +3,7 @@
 C'est le consommateur de production qui manquait à `domain/poule.py` depuis E05US015 : le moteur
 existait, testé, et **personne ne l'appelait** (`DETTE-028`). Ce service assemble ce que le domaine
 tient séparé — le **classement source** (`application/prelevement.py`), la **composition** en
-groupes (`composer_poules`), le **placement** en blocs de couloirs (`placer_les_poules`), les
+groupes (`composer_poules`), le **placement** en blocs de couloirs (`placer_les_blocs`), les
 **rencontres** (`rencontres_de_poule`), le **classement de poule** (`classement_de_poule`) et le
 **barrage** (`domain/barrage.py`, déjà opérationnel en portée `poule` depuis E06US003).
 
@@ -59,6 +59,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
+from application.routage import RencontreARouter, RencontresARouter
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.barrage import PorteeBarrage
 from domain.blason import ZoneScore
@@ -70,11 +71,12 @@ from domain.duel import BaremeDuel, Cote, Duel, ModeDuel
 from domain.erreurs import BarrageRequisAvantQualification, MatchNonJouable
 from domain.participant import GenreParticipant, Participant
 from domain.phase import Phase, PhaseId
-from domain.placement_poules import (
-    BlocDePoule,
-    ConflitDePoule,
-    RaisonConflitPoule,
-    placer_les_poules,
+from domain.placement_par_bloc import (
+    BlocDeCouloirs,
+    ConflitDeBloc,
+    RaisonConflitBloc,
+    couloirs_de_la_paire,
+    placer_les_blocs,
 )
 from domain.politiques import RegistrePolitiques, Tiebreak, TiebreakPoules, assembler_politiques
 from domain.ports import (
@@ -82,7 +84,7 @@ from domain.ports import (
     DuelRepository,
     GabaritSalleRepository,
     PhaseRepository,
-    PlacementPouleRepository,
+    PlacementParBlocRepository,
     TournoiRepository,
 )
 from domain.poule import (
@@ -94,6 +96,7 @@ from domain.poule import (
     ResultatRencontre,
     classement_de_poule,
     composer_poules,
+    couloirs_occupes,
     qualifies_de_poule,
     rencontres_de_poule,
 )
@@ -163,7 +166,7 @@ class PouleAffichee:
 
     numero: int
     membres: tuple[Duelliste, ...]
-    bloc: BlocDePoule | None
+    bloc: BlocDeCouloirs | None
     rencontres: tuple[RencontreAffichee, ...]
     classement: tuple[RangPoule, ...]
     qualifies: tuple[Duelliste, ...]
@@ -177,7 +180,7 @@ class EtatPoules:
     phase_id: PhaseId
     repartition: RepartitionPoules
     poules: tuple[PouleAffichee, ...]
-    conflits: tuple[ConflitDePoule, ...]
+    conflits: tuple[ConflitDeBloc, ...]
 
 
 class ServicePoules:
@@ -198,7 +201,7 @@ class ServicePoules:
         tournois: TournoiRepository,
         phases: PhaseRepository,
         gabarits: GabaritSalleRepository,
-        placements: PlacementPouleRepository,
+        placements: PlacementParBlocRepository,
         duels: DuelRepository,
         barrages: BarrageRepository,
         classements: ServiceClassement,
@@ -252,7 +255,7 @@ class ServicePoules:
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement
     ) -> ClassementSource:
-        """Le classement que cette phase de poules **produit** — le port `LecteurClassementPoules`.
+        """Le classement que cette phase de poules **produit** — le port `LecteurClassementDePhase`.
 
         C'est ce qui rend le CA « la phase avale consomme les qualifiés » livrable : jusqu'ici
         `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
@@ -307,7 +310,7 @@ class ServicePoules:
         poules = composer_poules(
             [Participant.individuel(ligne.archer_id) for ligne in participants], configuration
         )
-        blocs = {bloc.poule: bloc for bloc in self._placements.par_phase(phase_id)}
+        blocs = {bloc.groupe: bloc for bloc in self._placements.par_phase(phase_id)}
         conflits = self._conflits_du_plan(poules, blocs)
         # La numérotation est **continue sur toute la phase**, poule après poule : c'est ce qui
         # permet à la table `duel` de porter les rencontres de tous les groupes sans les distinguer,
@@ -547,6 +550,70 @@ class ServicePoules:
 
     # --- Écriture du plan (via la file) ----------------------------------------------------------
 
+    def rencontres_a_tirer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> RencontresARouter:
+        """Les rencontres encore à tirer — le port `LecteurRencontresARouter` (E05US026).
+
+        ⚠️ **Le routage des poules était hors périmètre d'E05US023**, capacité explicitement laissée
+        de côté : `route_l_archer` valait `False`, et les poules restaient le seul format jouable
+        sans routage une fois le Big Shoot Off livré. Le commanditaire l'a fait entrer au périmètre
+        d'E05US026 le 15/08/2026, où le calcul s'écrivait de toute façon pour le suisse.
+
+        `# DETTE-031` — appelle `etat()`, donc rejoue la phase entière et sa chaîne amont, à chaque
+        lecture du panneau de routage.
+
+        Dans l'ordre du déroulé : poules dans l'ordre, tours dans l'ordre du cercle. La **première**
+        rencontre non tirée d'un membre est celle qui vient.
+
+        Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée
+        (ADR-0049 §4), l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
+
+        ⚠️ **`epuisee` vaut « toutes les rencontres sont validées », désynchronisées comprises.**
+        Le filtre `if not r.desynchronisee` qui figurait ici était un **défaut de revue**, et le
+        pire des trois cas : une poule dont une rencontre est bloquée et les autres validées se
+        déclarait épuisée, donc ses deux archers recevaient « Plus aucune rencontre à tirer » — sur
+        une rencontre qu'ils ne *peuvent pas* saisir (écriture refusée, ADR-0049 §4). Sur une phase
+        entièrement saisie puis **recomposée**, la liste filtrée devenait vide, `all(())` valait
+        `True`, et le palmarès décernait les médailles d'une phase irrésolue.
+
+        Une rencontre désynchronisée signifie exactement le contraire d'« épuisée » : il reste
+        quelque chose à faire, et ce quelque chose demande d'abord de rétablir la population.
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        rencontres = tuple(
+            RencontreARouter(
+                numero=rencontre.numero,
+                tour=rencontre.tour,
+                libelle=f"Poule {rencontre.poule} — tour {rencontre.tour}",
+                haut=rencontre.haut.archer_id,
+                bas=rencontre.bas.archer_id,
+                couloirs=rencontre.couloirs,
+            )
+            for poule in etat.poules
+            for rencontre in poule.rencontres
+            if rencontre.haut is not None
+            and rencontre.bas is not None
+            and not rencontre.desynchronisee
+            and (rencontre.duel is None or not rencontre.duel.verrouille)
+        )
+        toutes = [r for poule in etat.poules for r in poule.rencontres]
+        restants = {a for r in rencontres for a in (r.haut, r.bas)}
+        return RencontresARouter(
+            rencontres=rencontres,
+            participants=tuple(
+                ligne.participant.ref_id for poule in etat.poules for ligne in poule.classement
+            ),
+            epuisee=all(r.duel is not None and r.duel.verrouille for r in toutes),
+            # ⚠️ **Un round-robin est connu d'avance**, donc un membre sans rencontre restante a
+            # réellement fini — même si la poule d'à côté tire encore. Sans ce champ, le correctif
+            # du bloquant précédent produisait son miroir : « attends » servi à qui peut partir.
+            termines=frozenset(
+                ligne.participant.ref_id
+                for poule in etat.poules
+                for ligne in poule.classement
+                if ligne.participant.ref_id not in restants
+            ),
+        )
+
     def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatPoules:
         """Pose les poules sur la salle et **remplace** le plan existant.
 
@@ -566,7 +633,11 @@ class ServicePoules:
         poules = composer_poules(
             [Participant.individuel(ligne.archer_id) for ligne in participants], configuration
         )
-        plan = placer_les_poules(poules, gabarit)
+        # L'empreinte d'une poule est son **parallélisme** (`couloirs_occupes`), pas son
+        # effectif : une poule de 5 tient sur 4 couloirs, un membre se reposant à chaque tour.
+        # C'est l'appelant qui la calcule depuis E05US026 — le placement ne connaît plus que
+        # des nombres de couloirs, ce qui est tout ce dont il a jamais eu besoin.
+        plan = placer_les_blocs([couloirs_occupes(len(poule.membres)) for poule in poules], gabarit)
         self._placements.definir_plan(phase_id, plan.blocs)
         etat = self.etat(tournoi_id, phase_id)
         # ⚠️ Les conflits **du plan** l'emportent sur ceux que la relecture re-synthétise.
@@ -575,7 +646,7 @@ class ServicePoules:
         # donc `NON_POSEE`. C'est exact en lecture (rien n'est persisté qui dise *pourquoi*),
         # et faux
         # juste après une pose : ici on sait que la salle était trop petite ou que la poule n'avait
-        # aucune rencontre, `placer_les_poules` vient de le rapporter. Sans ce report,
+        # aucune rencontre, `placer_les_blocs` vient de le rapporter. Sans ce report,
         # l'organisateur
         # dont la salle est trop petite lisait « le plan n'est pas posé, à vous de le générer »
         # **au moment même où il venait de le générer**, et pouvait recommencer indéfiniment — et
@@ -598,7 +669,7 @@ class ServicePoules:
         alimentée par le classement du départ, comme un tableau de tête.
 
         `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
-        chaîne par `LecteurClassementPoules`) : on réutilise alors son cache et sa chaîne de phases
+        chaîne par `LecteurClassementDePhase`) : on réutilise alors son cache et sa chaîne de phases
         visitées plutôt que d'en ouvrir un second. En fabriquer un neuf coûterait la reconstruction
         d'un tableau amont déjà résolu (`DETTE-031`) et perdrait la détection de cycle.
         """
@@ -671,18 +742,18 @@ class ServicePoules:
         return self._reglage(phase).pour_effectif(effectif)
 
     def _conflits_du_plan(
-        self, poules: tuple[Poule, ...], blocs: dict[int, BlocDePoule]
-    ) -> tuple[ConflitDePoule, ...]:
+        self, poules: tuple[Poule, ...], blocs: dict[int, BlocDeCouloirs]
+    ) -> tuple[ConflitDeBloc, ...]:
         """Les poules composées qu'aucun bloc ne porte — plan non posé, ou salle trop petite.
 
         ⚠️ **On rapporte le manque, on ne le comble pas.** Poser ici la poule oubliée reviendrait à
         écrire un plan à la lecture, donc à décider du placement dans une méthode dont l'appelant
-        croit qu'elle ne fait que lire. `placer_les_poules` a déjà tranché la règle (à la première
+        croit qu'elle ne fait que lire. `placer_les_blocs` a déjà tranché la règle (à la première
         poule qui ne tient pas, on s'arrête et on rapporte le reste) ; on la relaie, on ne la
         rejoue pas.
         """
         return tuple(
-            ConflitDePoule(poule.numero, RaisonConflitPoule.NON_POSEE)
+            ConflitDeBloc(poule.numero, RaisonConflitBloc.NON_POSEE)
             for poule in poules
             if poule.numero not in blocs
         )
@@ -693,7 +764,7 @@ class ServicePoules:
         rencontre: RencontrePoule,
         phase_id: PhaseId,
         lignes: dict[int, LigneClassement],
-        bloc: BlocDePoule | None,
+        bloc: BlocDeCouloirs | None,
         position_dans_le_tour: int,
     ) -> RencontreAffichee:
         """Assemble une rencontre : ses adversaires résolus, son pavé, ses couloirs, son tir.
@@ -719,7 +790,7 @@ class ServicePoules:
             tour=rencontre.tour,
             haut=self._duelliste(a, lignes),
             bas=self._duelliste(b, lignes),
-            couloirs=_couloirs_de_la_rencontre(bloc, position_dans_le_tour),
+            couloirs=couloirs_de_la_paire(bloc, position_dans_le_tour),
             duel=charge if concorde else None,
             # ⚠️ **Masquer ne suffisait pas : il faut le dire.** Sans ce drapeau, la rencontre
             # s'affichait « à tirer » — indiscernable d'une rencontre jamais commencée — et le
@@ -737,7 +808,7 @@ class ServicePoules:
         rencontres: list[RencontreAffichee],
         configuration: ConfigurationPoules,
         lignes: dict[int, LigneClassement],
-        blocs: dict[int, BlocDePoule],
+        blocs: dict[int, BlocDeCouloirs],
         verdicts: dict[Participant, int],
         tiebreak: Tiebreak,
     ) -> PouleAffichee:
@@ -804,26 +875,6 @@ class ServicePoules:
         if ligne is None:
             return None
         return Duelliste(archer_id=participant.ref_id, nom=ligne.nom, prenom=ligne.prenom)
-
-
-def _couloirs_de_la_rencontre(
-    bloc: BlocDePoule | None, position_dans_le_tour: int
-) -> tuple[tuple[int, str], tuple[int, str]] | None:
-    """Les deux couloirs qu'une rencontre occupe — **dérivés** du bloc, jamais persistés.
-
-    La *n*-ième rencontre d'un tour prend les couloirs `2n` et `2n+1` du bloc, donc les deux
-    adversaires sont **côte à côte** : c'est la même intention qu'ADR-0048 pour un tableau, obtenue
-    ici sans réordonnancement puisque le bloc est contigu par construction.
-
-    Rend `None` si le bloc manque (plan non posé) ou est trop court pour cette position — un plan
-    incomplet doit se voir comme incomplet, pas se compléter tout seul.
-    """
-    if bloc is None:
-        return None
-    debut = 2 * position_dans_le_tour
-    if debut + 1 >= len(bloc.places):
-        return None
-    return bloc.places[debut], bloc.places[debut + 1]
 
 
 def _resultat_de(rencontre: RencontreAffichee) -> ResultatRencontre | None:

@@ -4,12 +4,12 @@ Traverse HTTP → `ServicePoules` → moteur → repositories, sur un tournoi jo
 archers **classés** (séries validées), une phase de poules réglée, un scoreur. On valide le
 **câblage** des routes, l'auth, la pose du plan et la saisie d'une rencontre — la logique (moteur de
 poule, placement en blocs, classement de phase) est couverte par `test_domain_poule`,
-`test_domain_placement_poules`, `test_domain_classement_de_poules` et `test_service_poules`.
+`test_domain_placement_par_bloc`, `test_domain_classement_de_poules` et `test_service_poules`.
 
 Écrit **après** l'implémentation (règle 9 : API et câblage, il n'y a pas d'oracle en jeu).
 
 ⚠️ Ce fichier couvre aussi le **branchement du composition root**, qui n'a pas d'autre garde : le
-port `LecteurClassementPoules` est câblé après construction, donc son oubli ne casserait aucune
+port `LecteurClassementDePhase` est câblé après construction, donc son oubli ne casserait aucune
 compilation — seulement, en salle, un prélèvement visant des poules qui redeviendrait inerte.
 """
 
@@ -421,7 +421,7 @@ def test_un_tableau_aval_est_ensemence_par_ce_que_les_poules_ont_qualifie(
     """CA — « la phase avale consomme les qualifiés », de bout en bout et par HTTP.
 
     C'est le seul test qui éprouve le **branchement tardif** du composition root : le port
-    `LecteurClassementPoules` est câblé après construction, donc son oubli ne casserait aucune
+    `LecteurClassementDePhase` est câblé après construction, donc son oubli ne casserait aucune
     compilation. Sans lui, le tableau serait ensemencé avec les **six** archers en lice — une
     population bien formée, plausible et fausse, exactement le défaut d'avant E05US024.
 
@@ -588,3 +588,81 @@ def test_le_drapeau_de_desynchronisation_traverse_les_deux_vues(
         assert all(
             r["desynchronisee"] is False for r in rencontres
         ), "aucune rencontre n'a encore été tirée : rien ne peut être désynchronisé"
+
+
+# --- Correctifs de revue E05US026 : routage et palmarès des poules -------------------------------
+
+
+def _palmares_lignes(client: TestClient, tournoi_id: int) -> list[dict[str, object]]:
+    reponse = client.get(f"/api/v1/tournois/{tournoi_id}/palmares")
+    assert reponse.status_code == 200, reponse.text
+    lignes: list[dict[str, object]] = reponse.json()["lignes"]
+    return lignes
+
+
+def test_le_panneau_de_routage_repond_aux_archers_en_poules(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Correctif de revue.** Le routage des poules était livré, annoncé — et sans aucun test.
+
+    C'est la capacité que le fichier daté du journal promet au commanditaire (« le panneau répond
+    enfin aux archers en poules »). Elle traverse ici les trois maillons : service, route, et
+    **branchement du composition root**.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        connecter_admin(client)
+        _appliquer_gabarit(client, scn.tournoi_id, nb_cibles=4)
+        regen = client.post(f"/api/v1/poules/plan/{scn.tournoi_id}/{scn.phase_id}/regenerer")
+        assert regen.status_code == 200, regen.text
+
+        reponse = client.get(
+            f"/api/v1/routage/departs/{scn.depart_id}",
+            params={"archer_id": scn.archers, "phase_id": scn.phase_id},
+        )
+
+    assert reponse.status_code == 200, reponse.text
+    lignes = {ligne["archer_id"]: ligne for ligne in reponse.json()["archers"]}
+    assert all(ligne["issue"] == "prochain_duel" for ligne in lignes.values())
+    premier = lignes[scn.archers[0]]["prochain"]
+    assert premier["libelle"].startswith("Poule ")
+    # La cible **est** donnée : le plan de poules est posé.
+    assert premier["cible"] is not None and premier["position"] is not None
+
+
+def test_l_ecran_de_salle_lit_les_affectations_d_une_phase_de_poules(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Correctif de revue — régression.** `affectations()` rendait 409 sur tout créneau à poules.
+
+    Faire entrer les poules dans `TYPES_ROUTES` les rend cibles implicites de `_phase_de_tableau` ;
+    sans bifurcation, cette route publique tombait dans `_grille`. Le canal n°2 s'éteignait pour
+    **tous les tournois livrés depuis E05US023**, et c'est ce test qui l'aurait vu.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        connecter_admin(client)
+        _appliquer_gabarit(client, scn.tournoi_id, nb_cibles=4)
+        client.post(f"/api/v1/poules/plan/{scn.tournoi_id}/{scn.phase_id}/regenerer")
+
+        reponse = client.get(f"/api/v1/routage/departs/{scn.depart_id}/affectations")
+
+    assert reponse.status_code == 200, reponse.text
+    assert {ligne["archer_id"] for ligne in reponse.json()["archers"]} == set(scn.archers)
+
+
+def test_une_phase_de_poules_non_commencee_ne_decerne_aucune_medaille(
+    app_poules: FastAPI,
+) -> None:
+    """**Correctif de revue.** Le palmarès des poules n'était testé nulle part.
+
+    C'est pourtant la moitié de la règle d'ADR-0085 qui change un écran **déjà livré** : avant, un
+    non-qualifié retombait à son rang de qualification. Et c'est le chemin par lequel le podium
+    prématuré était passé — le classement d'une phase de poules est complet dès la composition.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+
+        lignes = _palmares_lignes(client, scn.tournoi_id)
+
+    assert not any(ligne["decerne"] for ligne in lignes)

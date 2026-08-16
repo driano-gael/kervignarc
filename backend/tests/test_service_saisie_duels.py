@@ -719,3 +719,36 @@ def test_un_prelevement_qui_ne_garde_personne_refuse_de_monter_un_tableau() -> N
 
     with pytest.raises(EffectifTableauInvalide):
         _effectif_du_tableau(monde)
+
+
+def test_brancher_un_lecteur_pour_un_type_non_delegue_est_refuse() -> None:
+    """Le câblage ne peut pas diverger du registre de contrat (ADR-0083, ADR-0084).
+
+    Écrit **après** l'implémentation — c'est du câblage, il n'y a pas d'oracle métier en jeu
+    (règle 9). Ce que la garde ferme : `brancher_lecteur` accepte un `TypePhase` en argument, donc
+    rien dans le typage n'empêche d'y brancher un format que le registre ne déclare **pas**
+    `classement_lisible`. Le lecteur serait alors branché et jamais consulté — un câblage muet, qui
+    est exactement la classe de défaut qu'ADR-0083 s'est donné pour tâche de rendre *impossible*
+    plutôt qu'improbable. Elle rejette aussi les deux types que le service résout **lui-même**, pour
+    lesquels un lecteur serait tout aussi mort.
+
+    Le refus est une `ValueError` et non une erreur typée du projet : c'est une faute de
+    programmation au démarrage, pas une donnée d'exécution qui remonterait à un utilisateur.
+    """
+
+    class _LecteurMuet:
+        def classement_de_phase(
+            self, tournoi_id: int, phase_id: int, resolveur: object
+        ) -> None:  # pragma: no cover - jamais appelé, le branchement est refusé avant
+            raise AssertionError("Ce lecteur ne doit jamais être consulté.")
+
+    service = _Monde().service()
+
+    # L'échauffement ne produit aucun classement : rien à lire, donc rien à brancher.
+    with pytest.raises(ValueError, match="n'attend aucun lecteur"):
+        service.brancher_lecteur(TypePhase.ECHAUFFEMENT, _LecteurMuet())  # type: ignore[arg-type]
+
+    # L'élimination directe est `classement_lisible`, mais le service la résout **sur place** :
+    # y brancher un lecteur serait tout aussi mort, et le message doit le dire.
+    with pytest.raises(ValueError, match="n'attend aucun lecteur"):
+        service.brancher_lecteur(TypePhase.ELIMINATION_DIRECTE, _LecteurMuet())  # type: ignore[arg-type]

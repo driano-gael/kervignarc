@@ -35,6 +35,7 @@ from domain.phase import (
 )
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.suisse import ConfigurationSuisse
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
@@ -238,6 +239,37 @@ class ReglageBigShootOffDTO(BaseModel):
         )
 
 
+class ReglageSuisseDTO(BaseModel):
+    """Le réglage d'une phase au **système suisse** (E05US026) — le nombre de rondes.
+
+    Un seul champ, et c'est voulu : tout le reste du format est déjà écrit dans le moteur
+    (appariement vainqueurs contre vainqueurs, évitement des revanches, byes, Buchholz au
+    départage). L'organisateur ne règle que **combien de rondes on tire**.
+
+    ⚠️ **La borne haute n'est pas ici**, et ce n'est pas un oubli. À N participants, on ne peut
+    apparier que N-1 rondes sans ré-affrontement (N à effectif impair, le bye coûtant un tour) —
+    donc la borne dépend de l'**effectif**, que ce DTO ne connaît pas et qu'un format de
+    bibliothèque ne connaîtra jamais. Elle est vérifiée par `EtapeDeroule`, là où l'effectif est
+    déclaré, et l'atelier affiche le maximum atteignable sous le champ.
+
+    Le plafond posé ici (`le=64`) n'est donc pas la règle du suisse : c'est la garde de frontière
+    habituelle contre une saisie qui a dérapé, au même titre que `ConfigPhaseRequete.sources`.
+
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 5ᵉ paire, `DETTE-054`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_rondes: int = Field(default=5, ge=1, le=64)
+
+    def vers_agregat(self) -> ConfigurationSuisse:
+        return ConfigurationSuisse(nb_rondes=self.nb_rondes)
+
+    @staticmethod
+    def de_agregat(reglage: ConfigurationSuisse) -> ReglageSuisseDTO:
+        return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -276,7 +308,6 @@ class ConfigPhaseRequete(BaseModel):
     """
 
     poules: ReglagePoulesDTO | None = None
-    big_shoot_off: ReglageBigShootOffDTO | None = None
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
 
     `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
@@ -286,6 +317,17 @@ class ConfigPhaseRequete(BaseModel):
     réglage. Posé sur un type qui n'est pas `poules`, il lève `ReglageDePoulesInvalide` (422) —
     contrairement à `profondeur`, dont l'incompatibilité de type n'est refusée qu'à l'application.
     """
+
+    big_shoot_off: ReglageBigShootOffDTO | None = None
+    """Le réglage d'un **Big Shoot Off** (E05US028) — `null` = non réglé, même régime."""
+
+    suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée.
+
+    ⚠️ Les trois docstrings sont désormais **rattachées à leur champ**. Elles ne l'étaient plus : en
+    Python, un littéral documente l'attribut qui le **précède**, et le bloc « poules » avait glissé
+    d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
+    en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
@@ -331,6 +373,9 @@ class PhaseReponse(BaseModel):
     profondeur: ProfondeurDTO | None = None
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
+    suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -353,6 +398,7 @@ class PhaseReponse(BaseModel):
                 if phase.big_shoot_off is None
                 else ReglageBigShootOffDTO.de_agregat(phase.big_shoot_off)
             ),
+            suisse=(None if phase.suisse is None else ReglageSuisseDTO.de_agregat(phase.suisse)),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -374,6 +420,9 @@ class EtapeReponse(BaseModel):
     profondeur: ProfondeurDTO | None = None
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
+    suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -395,6 +444,7 @@ class EtapeReponse(BaseModel):
                 if etape.big_shoot_off is None
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
+            suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
 
@@ -447,6 +497,7 @@ async def ajouter_phase(
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
+                None if requete.suisse is None else requete.suisse.vers_agregat(),
             )
         )
     )
@@ -477,6 +528,7 @@ async def modifier_phase(
                 None if requete.profondeur is None else requete.profondeur.vers_agregat(),
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
+                None if requete.suisse is None else requete.suisse.vers_agregat(),
             )
         )
     )

@@ -105,7 +105,7 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
 /** Le geste de **pose du plan de couloirs** d'une phase de poules — action admin.
  *
  * ⚠️ Sans ce composant, tout le placement des poules était **inatteignable depuis le produit** : le
- * domaine, le port, l'adapter, la table `placement_poule` et sa migration existaient, l'endpoint
+ * domaine, le port, l'adapter, la table `placement_par_bloc` et sa migration existaient, l'endpoint
  * admin aussi, et le hook `useRegenererPlanPoules` n'avait **aucun appelant** (relevé en revue
  * d'E05US023, deux axes indépendamment). La table restait donc vide en toutes circonstances, l'écran
  * de saisie affichait en permanence « le plan n'est pas posé, l'organisateur doit le (re)générer »

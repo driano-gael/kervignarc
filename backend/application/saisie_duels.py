@@ -31,8 +31,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import (
-    LecteurClassementBigShootOff,
-    LecteurClassementPoules,
+    LecteurClassementDePhase,
     ResolveurClassement,
     preleves,
     profondeur_de,
@@ -41,7 +40,7 @@ from application.prelevement import (
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
 from domain.classement_de_tableau import ClassementSource, classement_de_tableau
-from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
+from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_EN_TABLEAU_JOUE
 from domain.depart import DepartId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
@@ -64,6 +63,27 @@ from domain.ports import (
 )
 from domain.tableau import Match, Tableau, construire_tableau, libelle_tour
 from domain.tournoi import TournoiId
+
+_TYPES_RESOLUS_SUR_PLACE: frozenset[TypePhase] = frozenset(
+    {TypePhase.QUALIFICATION, TypePhase.ELIMINATION_DIRECTE}
+)
+"""Les deux types dont ce service produit lui-même le classement, sans passer par un port.
+
+Ce ne sont pas des formats « à part » : ce sont ceux dont la lecture ne demande **rien de plus**
+que ce que ce service a déjà en main — le classement de tir pour l'une, l'arbre qu'il reconstruit
+pour l'autre. Les autres formats demandent le réglage, le plan et les tirs de leur phase, soit
+trois repositories qu'un service de tableau n'a aucune raison de connaître : d'où la délégation.
+"""
+
+TYPES_DELEGUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS - _TYPES_RESOLUS_SUR_PLACE
+"""Les types dont le classement est lu par un `LecteurClassementDePhase` branché ([ADR-0084]).
+
+**Dérivé du registre de contrat**, pas énuméré à la main : un format qui devient
+`classement_lisible` entre ici automatiquement, et le composition root doit alors lui brancher son
+lecteur — le test de câblage le vérifie. C'est la promesse d'ADR-0083 appliquée à ce site-ci.
+
+[ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+"""
 
 
 @dataclass(frozen=True)
@@ -185,38 +205,41 @@ class ServiceSaisieDuels:
         # `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien ne rougisse.
         # Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
         self._aggregation = aggregation
-        # E05US023 : le classement d'une phase de **poules**, lu par le port étroit
-        # `LecteurClassementPoules`. Branché **après** construction (`brancher_poules`) parce que
-        # `ServicePoules` reçoit ce service-ci dans son propre constructeur : les deux se tiennent
-        # par les deux bouts, et aucun ordre de construction ne les satisfait tous les deux.
+        # Les classements que ce service ne sait pas produire lui-même, délégués par type au
+        # service du format ([ADR-0084]). Branchés **après** construction (`brancher_lecteur`)
+        # parce que ces services reçoivent celui-ci dans leur propre constructeur : les deux côtés
+        # se tiennent par les deux bouts, et aucun ordre de construction ne les satisfait.
         #
-        # ⚠️ `None` n'est **pas** un défaut de câblage silencieux : c'est le régime légitime de tout
-        # montage qui n'a pas de poules — le harnais de simulation, les tests de tableau. Le prix
-        # est que l'oubli au composition root ne construit pas moins bien, il *lit* moins bien ; le
-        # test de câblage `test_composition` est donc le garde-fou, pas le typage.
-        self._poules: LecteurClassementPoules | None = None
-        # E05US028 : jumeau exact du précédent, pour le Big Shoot Off. La duplication est assumée —
-        # 2ᵉ occurrence, pas 3ᵉ (cf. `LecteurClassementBigShootOff`). E05US026 et E05US027 la
-        # porteront à quatre : c'est là que le `dict[TypePhase, …]` se justifiera sur preuve.
-        self._big_shoot_off: LecteurClassementBigShootOff | None = None
+        # ⚠️ Une entrée **absente** n'est pas un défaut de câblage silencieux : c'est le régime
+        # légitime de tout montage qui n'a pas ce format — le harnais de simulation, les tests de
+        # tableau. Le prix est que l'oubli au composition root ne construit pas moins bien, il
+        # *lit* moins bien ; le test de câblage `test_composition` est donc le garde-fou, pas le
+        # typage.
+        #
+        # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+        self._lecteurs: dict[TypePhase, LecteurClassementDePhase] = {}
 
-    def brancher_poules(self, poules: LecteurClassementPoules) -> None:
-        """Donne à ce service de quoi lire le classement d'une phase de poules (E05US023).
+    def brancher_lecteur(self, type_phase: TypePhase, lecteur: LecteurClassementDePhase) -> None:
+        """Donne à ce service de quoi lire le classement d'un type de phase ([ADR-0084]).
 
-        Appelé **une fois, au composition root** (règle 8), juste après la construction de
-        `ServicePoules`. Sans ce branchement, une source visant une phase de poules reste inerte —
-        exactement le comportement d'avant E05US023, donc sûr par défaut.
+        Appelé **une fois par format, au composition root** (règle 8), juste après la construction
+        du service concerné. Sans branchement, une source visant ce type reste inerte — exactement
+        le comportement d'avant que le format ne soit jouable, donc sûr par défaut.
+
+        ⚠️ **Refuse un type que le registre de contrat ne dit pas lisible.** `classement_lisible`
+        (`domain/contrat_phase.py`, ADR-0083) est la source unique de « sait-on lire ce que cette
+        phase a classé ? » ; brancher un lecteur pour un type qui l'a à `False` ferait diverger le
+        câblage du registre, c'est-à-dire exactement le défaut qu'ADR-0083 s'est donné pour tâche
+        de rendre **impossible** plutôt qu'improbable. C'est une erreur de programmation, pas une
+        donnée d'exécution : elle casse au démarrage, pas en salle.
         """
-        self._poules = poules
-
-    def brancher_big_shoot_off(self, big_shoot_off: LecteurClassementBigShootOff) -> None:
-        """Donne à ce service de quoi lire le classement d'un Big Shoot Off (E05US028).
-
-        Appelé **une fois, au composition root** (règle 8), juste après la construction de
-        `ServiceBigShootOff`. Sans ce branchement, une source visant un Big Shoot Off reste inerte —
-        exactement le comportement d'avant E05US028, donc sûr par défaut.
-        """
-        self._big_shoot_off = big_shoot_off
+        if type_phase not in TYPES_DELEGUES:
+            raise ValueError(
+                f"Le type de phase « {type_phase.value} » n'attend aucun lecteur : il n'est pas "
+                "déclaré `classement_lisible` au registre de contrat, ou ce service produit son "
+                "classement lui-même (ADR-0083)."
+            )
+        self._lecteurs[type_phase] = lecteur
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -459,24 +482,27 @@ class ServiceSaisieDuels:
     ) -> ClassementSource | None:
         """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
 
-        Cinq cas, et le dernier compte autant que les quatre autres :
+        Quatre cas, et le dernier compte autant que les trois autres :
 
         1. **qualification** — le classement de tir du départ (ADR-0075 : jamais tous créneaux
            confondus, ce qui y ferait entrer des archers qui ne tirent pas ici) ;
         2. **élimination directe** — l'arbre reconstruit, lu comme un classement
            (`domain/classement_de_tableau.py`). C'est ici que le service **s'appelle lui-même** ;
-        3. **poules** (E05US023) — le classement de phase « par rang de poule d'abord », délégué à
-           `ServicePoules` par le port `LecteurClassementPoules`. Le service n'y touche pas
-           lui-même : composer les groupes demande le réglage, le plan et les tirs, c'est-à-dire
-           trois repositories qu'un service de tableau n'a aucune raison de connaître ;
-        4. **Big Shoot Off** (E05US028) — les rangs décernés par les éliminations successives,
-           délégués à `ServiceBigShootOff` par le port `LecteurClassementBigShootOff`. Même montage
-           que les poules, et pour la même raison : rejouer la phase demande les volées, le réglage
-           et les barrages, trois lectures qu'un service de tableau n'a pas à connaître ;
-        5. **tout autre type** — `None`. Système suisse et colline n'ont aucun classement lisible
-           tant qu'`E05US026` et `E05US027` ne les rendent pas jouables (`DETTE-028`). Rendre `None`
-           fait retomber la phase sur son comportement d'avant plutôt que d'inventer un ordre — le
+        3. **tout type délégué** (`TYPES_DELEGUES` — poules, Big Shoot Off, système suisse) — le
+           classement est produit par le service du format et lu par le port
+           `LecteurClassementDePhase`, [ADR-0084]. Le service n'y touche pas lui-même : rejouer une
+           de ces phases demande son réglage, son plan et ses tirs, c'est-à-dire trois repositories
+           qu'un service de tableau n'a aucune raison de connaître ;
+        4. **tout autre type** — `None`. C'est aussi la réponse quand le type est délégué mais
+           qu'**aucun lecteur n'est branché** : le montage n'a pas ce format. Rendre `None` fait
+           retomber la phase sur son comportement d'avant plutôt que d'inventer un ordre — le
            prélèvement reste **inerte**, pas faux.
+
+        ⚠️ **La cascade était écrite un type par branche jusqu'à E05US026**, et les deux dernières
+        étaient identiques au type près. C'est la duplication qu'[ADR-0084] a refermée sur sa 3ᵉ
+        occurrence : ajouter la colline (`E05US027`) ne demandera plus de brancher ici.
+
+        [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
         """
         phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
         if phase is None:
@@ -513,34 +539,21 @@ class ServiceSaisieDuels:
                 classement=self._classements.pour_phase(depart_id, phase, admis=admis),
                 rang_premier=tranche(phase, resolveur),
             )
-        if phase.type is TypePhase.POULES and phase.id is not None:
-            if self._poules is None:
-                # Aucun lecteur branché : ce montage n'a pas de poules (harnais de simulation, test
-                # de tableau). On retombe sur le comportement d'avant E05US023 — inerte, pas faux.
+        if phase.type in TYPES_DELEGUES and phase.id is not None:
+            lecteur = self._lecteurs.get(phase.type)
+            if lecteur is None:
+                # Aucun lecteur branché pour ce type : ce montage n'a pas ce format (harnais de
+                # simulation, test de tableau). On retombe sur le comportement d'avant que le
+                # format ne soit jouable — inerte, pas faux.
                 return None
             if phase.id in chaine:
                 raise DerouleCyclique(
                     f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se "
                     "prélever elle-même, directement ou par une chaîne de sources."
                 )
-            # Le résolveur **descendant** porte le cache et la chaîne : `ServicePoules` remonte à
-            # son tour ses sources, et une phase amont partagée n'est reconstruite qu'une fois.
-            return self._poules.classement_de_phase(
-                tournoi_id,
-                phase.id,
-                self.resolveur_de_classement(tournoi_id, depart_id, (*chaine, phase.id), cache),
-            )
-        if phase.type is TypePhase.BIG_SHOOT_OFF and phase.id is not None:
-            if self._big_shoot_off is None:
-                # Aucun lecteur branché : ce montage n'a pas de Big Shoot Off. On retombe sur le
-                # comportement d'avant E05US028 — inerte, pas faux.
-                return None
-            if phase.id in chaine:
-                raise DerouleCyclique(
-                    f"Le déroulé boucle sur la phase {phase.id} : une phase ne peut pas se "
-                    "prélever elle-même, directement ou par une chaîne de sources."
-                )
-            return self._big_shoot_off.classement_de_phase(
+            # Le résolveur **descendant** porte le cache et la chaîne : le service du format remonte
+            # à son tour ses sources, et une phase amont partagée n'est reconstruite qu'une fois.
+            return lecteur.classement_de_phase(
                 tournoi_id,
                 phase.id,
                 self.resolveur_de_classement(tournoi_id, depart_id, (*chaine, phase.id), cache),

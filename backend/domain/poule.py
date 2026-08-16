@@ -263,7 +263,7 @@ def couloirs_occupes(effectif_de_poule: int) -> int:
     Réserver un couloir par membre aurait fait déborder toute poule impaire sans raison, et décalé
     la salle entière d'un cran par poule. Les membres **tournent** sur le bloc : celui qui se repose
     change à chaque tour, ce qui est aussi la raison pour laquelle le plan place la **poule** et non
-    l'archer (`domain/placement_poules.py`, ADR-0083).
+    l'archer (`domain/placement_par_bloc.py`, ADR-0083).
 
     Une poule de moins de deux membres n'apparie personne et n'occupe donc aucun couloir.
     """
