@@ -1036,6 +1036,11 @@ def create_app(
         phase_repository,
         depart_repository,
         app.state.service_big_shoot_off,
+        # E05US026 : les deux formats à **rencontres** — suisse et poules — routent par le même
+        # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non
+        # chez l'un des deux réalisateurs : ils sont deux, la question se pose ici.
+        app.state.service_suisse,
+        app.state.service_poules,
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service

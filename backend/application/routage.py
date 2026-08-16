@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol
 
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.erreurs import (
@@ -222,6 +223,53 @@ class DestinationRepechage:
 
 
 @dataclass(frozen=True)
+class RencontreARouter:
+    """Une rencontre **à tirer**, réduite à ce dont le panneau de routage a besoin (E05US026).
+
+    Volontairement pauvre : ni pavé, ni tir, ni barème. Le routage répond à « où je tire ensuite »,
+    pas « comment je saisis » — lui passer l'état complet d'une phase le coupleraient à deux formats
+    dont il n'a que faire.
+
+    `couloirs` porte les deux couloirs de la rencontre, dans l'ordre `(haut, bas)`, ou `None` si le
+    plan n'est pas posé. C'est la différence de fond avec le Big Shoot Off (`DETTE-059`) : ici la
+    cible **est** connue.
+    """
+
+    numero: int
+    tour: int
+    libelle: str
+    haut: int
+    bas: int
+    couloirs: tuple[tuple[int, str], tuple[int, str]] | None = None
+
+    def couloir_de(self, archer_id: int) -> tuple[int, str] | None:
+        """Le couloir de **cet** archer — `None` si le plan n'est pas posé."""
+        if self.couloirs is None:
+            return None
+        return self.couloirs[0] if archer_id == self.haut else self.couloirs[1]
+
+
+class LecteurRencontresARouter(Protocol):
+    """Port étroit : « quelles rencontres restent à tirer dans cette phase ? » ([ADR-0083]).
+
+    Réalisé par `ServiceSuisse` et `ServicePoules`, consommé ici. **Déclaré chez le consommateur**,
+    à la différence de `LecteurEtatBigShootOff` qui vit chez son unique réalisateur : ils sont deux,
+    et le port doit vivre là où la question se pose, pas dans l'un des deux qui y répondent.
+
+    L'ordre compte : la **première** rencontre non tirée d'un archer est celle qui vient. C'est au
+    service du format de la rendre dans l'ordre du déroulé — ronde par ronde, ou tour par tour.
+
+    [ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+    """
+
+    def rencontres_a_tirer(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> tuple[RencontreARouter, ...]:
+        """Les rencontres encore à tirer, dans l'ordre du déroulé."""
+        ...
+
+
+@dataclass(frozen=True)
 class RoutageArcher:
     """Ce que le panneau affiche pour **un** archer : son issue et ce qui la détaille.
 
@@ -315,12 +363,22 @@ class ServiceRoutage:
         phases: PhaseRepository,
         departs: DepartRepository,
         big_shoot_off: LecteurEtatBigShootOff | None = None,
+        suisse: LecteurRencontresARouter | None = None,
+        poules: LecteurRencontresARouter | None = None,
     ) -> None:
         # E05US028 : de quoi router un finaliste de Big Shoot Off. Au **constructeur** et non par un
         # `brancher_…` : il n'y a aucun cycle (`big_shoot_off` n'importe pas `routage`), donc rien
         # ne justifie de perdre le contrôle du compilateur. `None` reste licite — c'est le régime de
         # tout montage sans Big Shoot Off, et il se lit dans la signature.
         self._big_shoot_off = big_shoot_off
+        # E05US026 : de quoi router une rencontre de **ronde** ou de **groupe**. Même régime que
+        # ci-dessus — au constructeur, aucun cycle, `None` licite pour un montage sans ce format.
+        #
+        # ⚠️ **Ces deux-là donnent leur cible**, à la différence du Big Shoot Off : leur plan de
+        # cibles est posé (`PAR_BLOC_DE_COULOIRS`), donc `ProchainDuel.cible` est renseigné et
+        # `manque` reste `None`. C'est ce que `DETTE-059` attend encore pour la finale.
+        self._suisse = suisse
+        self._poules = poules
         self._saisie_duels = saisie_duels
         self._placement_duels = placement_duels
         self._archers = archers
@@ -389,6 +447,9 @@ class ServiceRoutage:
             # Bifurcation **avant** `_grille` : un Big Shoot Off n'a pas d'arbre à reconstruire, et
             # l'y envoyer léverait `PhasePasUnTableau` sur un panneau qui doit rester consultable.
             return self._routage_big_shoot_off(tournoi_id, phase, archer_ids)
+        if phase.type in (TypePhase.SUISSE, TypePhase.POULES):
+            # Même bifurcation, et même motif : ni l'un ni l'autre n'a d'arbre (E05US026).
+            return self._routage_par_rencontres(tournoi_id, phase, archer_ids)
         grille = self._grille(tournoi_id, phase, phase.id)
         if grille is None:
             # Moins de deux archers en lice : il n'y a pas d'arbre. Comme le feu vert, on rend un
@@ -462,6 +523,101 @@ class ServiceRoutage:
         except ApplicationError:
             return frozenset()
         return frozenset(tireur.archer_id for tireur in etat.tireurs)
+
+    def _routage_par_rencontres(
+        self, tournoi_id: TournoiId, phase: Phase, archer_ids: tuple[int, ...] | None
+    ) -> Routage:
+        """Route un tireur de **ronde** (suisse) ou de **groupe** (poules) — E05US026.
+
+        Les deux formats partagent ce chemin parce qu'ils partagent ce qui compte ici : leurs
+        rencontres **sont des duels** (ADR-0083 §7), avec deux adversaires nommés et deux couloirs
+        contigus. `ProchainDuel` convient donc tel quel — il n'a pas fallu d'issue neuve, à la
+        différence du Big Shoot Off dont la manche collective n'oppose personne.
+
+        ⚠️ **Et cette fois la cible est connue.** `DETTE-059` note que le routage d'un Big Shoot Off
+        ne donne aucun couloir : son type déclare `plan_de_cibles=AUCUN`. Ces deux-ci déclarent
+        `PAR_BLOC_DE_COULOIRS` et leur plan est posé, donc `cible` et `position` sont renseignés et
+        `manque` reste `None`.
+
+        Trois issues :
+
+        - **`PROCHAIN_DUEL`** — une rencontre non validée l'attend, c'est la première dans l'ordre ;
+        - **`TERMINE`** — il n'a plus rien à tirer dans cette phase ;
+        - **`INDISPONIBLE`** — il n'y figure pas, ou le service n'est pas câblé.
+
+        Le panneau **dégrade, il ne tombe pas** : une phase composée mais pas encore réglée est un
+        état licite (brouillon d'ADR-0063) sur lequel `etat()` lève `PhasePasReglee`. Sans cette
+        garde, une route **publique non authentifiée** rendrait 4xx — le défaut relevé en revue
+        d'E05US028, ici évité d'emblée.
+        """
+        assert phase.id is not None, "L'appelant a déjà refusé une phase sans identité."
+        lecteur = self._suisse if phase.type is TypePhase.SUISSE else self._poules
+        if lecteur is None:
+            return self._tous_indisponibles(
+                tournoi_id,
+                phase.id,
+                archer_ids or (),
+                "Ce montage ne sait pas dérouler ce format.",
+            )
+        try:
+            rencontres = lecteur.rencontres_a_tirer(tournoi_id, phase.id)
+        except ApplicationError:
+            return self._tous_indisponibles(
+                tournoi_id,
+                phase.id,
+                archer_ids or (),
+                "Cette phase n'est pas encore réglée : ses rencontres ne sont pas connues.",
+            )
+        attendues: dict[int, RencontreARouter] = {}
+        for rencontre in rencontres:
+            for archer_id in (rencontre.haut, rencontre.bas):
+                # La **première** rencontre non tirée dans l'ordre : c'est celle qui vient. Les
+                # suivantes ne se promettent pas — l'appariement d'une ronde ultérieure n'existe
+                # même pas tant que celle-ci n'est pas close.
+                attendues.setdefault(archer_id, rencontre)
+        demandes = archer_ids if archer_ids is not None else tuple(attendues)
+        identites = self._identites(tournoi_id)
+        lignes: list[RoutageArcher] = []
+        for archer_id in demandes:
+            nom, prenom = identites.get(archer_id, ("", ""))
+            attendue = attendues.get(archer_id)
+            if attendue is None:
+                lignes.append(
+                    RoutageArcher(
+                        archer_id=archer_id,
+                        nom=nom,
+                        prenom=prenom,
+                        issue=IssueRoutage.TERMINE,
+                        motif="Plus aucune rencontre à tirer dans cette phase.",
+                    )
+                )
+                continue
+            adverse = attendue.bas if attendue.haut == archer_id else attendue.haut
+            couloir = attendue.couloir_de(archer_id)
+            nom_adverse, prenom_adverse = identites.get(adverse, ("", ""))
+            lignes.append(
+                RoutageArcher(
+                    archer_id=archer_id,
+                    nom=nom,
+                    prenom=prenom,
+                    issue=IssueRoutage.PROCHAIN_DUEL,
+                    prochain=ProchainDuel(
+                        numero=attendue.numero,
+                        tour=attendue.tour,
+                        libelle=attendue.libelle,
+                        cible=None if couloir is None else couloir[0],
+                        position=None if couloir is None else couloir[1],
+                        adversaire=Duelliste(
+                            archer_id=adverse, nom=nom_adverse, prenom=prenom_adverse
+                        ),
+                        sources_en_attente=(),
+                        manque=None
+                        if couloir is not None
+                        else "Le plan de cibles de cette phase n'est pas encore posé.",
+                    ),
+                )
+            )
+        return Routage(phase_id=phase.id, archers=tuple(lignes))
 
     def _routage_big_shoot_off(
         self, tournoi_id: TournoiId, phase: Phase, archer_ids: tuple[int, ...] | None

@@ -510,3 +510,46 @@ def test_une_salle_trop_petite_est_rapportee_et_non_tronquee() -> None:
     etat = monde.service().regenerer_plan(monde.tournoi_id, monde.phase_id)
 
     assert [c.raison.value for c in etat.conflits] == ["salle_pleine"]
+
+
+# --- CA « le routage sait où l'archer tire ensuite » (arbitrage du 15/08/2026) ------------------
+
+
+def test_le_routage_annonce_la_rencontre_qui_vient_avec_sa_cible() -> None:
+    """Le port `LecteurRencontresARouter` : la **première** rencontre non tirée est celle qui vient.
+
+    ⚠️ **Et sa cible est connue**, à la différence du Big Shoot Off (`DETTE-059`) : le plan de
+    cibles d'un suisse est posé, donc `couloirs` est renseigné.
+    """
+    monde = _Monde()
+    archers = monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+
+    a_tirer = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+
+    assert [(r.numero, r.tour, r.libelle) for r in a_tirer] == [
+        (1, 1, "Ronde 1"),
+        (2, 1, "Ronde 1"),
+    ]
+    assert a_tirer[0].couloir_de(archers[0]) == (1, "A")
+    assert a_tirer[0].couloir_de(archers[2]) == (1, "B")
+
+
+def test_une_rencontre_validee_ne_reste_pas_a_tirer() -> None:
+    """Le routage n'envoie personne sur une rencontre déjà scellée.
+
+    Et il **n'annonce pas la ronde suivante** tant que la courante n'est pas close : son appariement
+    n'existe pas encore, il n'y a rien à promettre.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    service.regenerer_plan(monde.tournoi_id, monde.phase_id)
+    _gagner(service, monde, 1, le_bas=True)
+
+    a_tirer = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+
+    assert [r.numero for r in a_tirer] == [2]

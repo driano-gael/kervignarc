@@ -54,6 +54,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
+from application.routage import RencontreARouter
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.blason import ZoneScore
 from domain.classement import LigneClassement
@@ -405,6 +406,36 @@ class ServiceSuisse:
         # un plan vide sans explication, au moment même où il vient de le générer — le défaut relevé
         # en revue d'E05US023.
         return replace(self.etat(tournoi_id, phase_id), conflits=plan.conflits)
+
+    def rencontres_a_tirer(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> tuple[RencontreARouter, ...]:
+        """Les rencontres encore à tirer — le port `LecteurRencontresARouter` (E05US026).
+
+        Dans l'ordre du déroulé, donc ronde par ronde : la **première** d'un archer est celle qui
+        vient. Les rondes ultérieures n'existent même pas tant que la courante n'est pas close, donc
+        il n'y a rien à promettre au-delà.
+
+        Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée,
+        l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        return tuple(
+            RencontreARouter(
+                numero=rencontre.numero,
+                tour=ronde.numero,
+                libelle=f"Ronde {ronde.numero}",
+                haut=rencontre.haut.archer_id,
+                bas=rencontre.bas.archer_id,
+                couloirs=rencontre.couloirs,
+            )
+            for ronde in etat.rondes
+            for rencontre in ronde.rencontres
+            if rencontre.haut is not None
+            and rencontre.bas is not None
+            and not rencontre.desynchronisee
+            and (rencontre.duel is None or not rencontre.duel.verrouille)
+        )
 
     # --- Gardes ----------------------------------------------------------------------------------
 

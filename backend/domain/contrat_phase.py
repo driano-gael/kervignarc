@@ -280,10 +280,12 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # `True` posé par anticipation aurait exigé 34 inscrits pour une source que rien n'honore —
         # le « refus abusif le jour J » que cette US-là nommait comme sa pire défaillance.
         classement_lisible=True,
-        # ⚠️ **`route_l_archer` reste `False`**, pour une raison distincte et assumée : le routage
-        # est la 5ᵉ question du contrat, et `application/routage.py` ne sait pas dire à un membre de
-        # poule où il tire ensuite. Ce n'est ni au CA d'E05US023 ni à la liste d'ADR-0083
-        # capacité **hors périmètre** d'ADR-0083, qui attendra une US dédiée.
+        # ✅ **`route_l_archer` bascule en E05US026.** Elle valait `False` depuis E05US023, où le
+        # routage était une capacité **explicitement hors périmètre** — au point que les poules
+        # étaient devenues le seul format jouable sans routage une fois le Big Shoot Off livré.
+        # Le commanditaire l'a fait entrer au périmètre le 15/08/2026 : le calcul s'écrivait de
+        # toute façon pour le suisse, et `ServiceRoutage._routage_par_rencontres` sert les deux.
+        route_l_archer=True,
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
@@ -330,9 +332,11 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # des inscrits pour une source que rien n'honore.
         deroule_par_un_service=True,
         classement_lisible=True,
-        # ⚠️ **`route_l_archer` reste `False`** : `application/routage.py` ne sait pas encore dire à
-        # un participant de ronde où il tire ensuite. Capacité au périmètre de l'US (arbitrage du
-        # 15/08/2026) mais pas encore écrite — la ligne suivra le code, jamais l'intention.
+        # ✅ **`route_l_archer` bascule ici aussi**, par le même chemin
+        # (`ServiceRoutage._routage_par_rencontres`) : une rencontre de ronde **est** un duel, avec
+        # deux adversaires nommés et deux couloirs. Aucune issue de routage neuve n'a été
+        # nécessaire, à la différence du Big Shoot Off dont la manche collective n'oppose personne.
+        route_l_archer=True,
     ),
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,

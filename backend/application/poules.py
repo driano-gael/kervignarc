@@ -59,6 +59,7 @@ from application.erreurs import (
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
+from application.routage import RencontreARouter
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
 from domain.barrage import PorteeBarrage
 from domain.blason import ZoneScore
@@ -548,6 +549,40 @@ class ServicePoules:
         }
 
     # --- Écriture du plan (via la file) ----------------------------------------------------------
+
+    def rencontres_a_tirer(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> tuple[RencontreARouter, ...]:
+        """Les rencontres encore à tirer — le port `LecteurRencontresARouter` (E05US026).
+
+        ⚠️ **Le routage des poules était hors périmètre d'E05US023**, capacité explicitement laissée
+        de côté : `route_l_archer` valait `False`, et les poules restaient le seul format jouable
+        sans routage une fois le Big Shoot Off livré. Le commanditaire l'a fait entrer au périmètre
+        d'E05US026 le 15/08/2026, où le calcul s'écrivait de toute façon pour le suisse.
+
+        Dans l'ordre du déroulé : poules dans l'ordre, tours dans l'ordre du cercle. La **première**
+        rencontre non tirée d'un membre est celle qui vient.
+
+        Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée
+        (ADR-0049 §4), l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        return tuple(
+            RencontreARouter(
+                numero=rencontre.numero,
+                tour=rencontre.tour,
+                libelle=f"Poule {rencontre.poule} — tour {rencontre.tour}",
+                haut=rencontre.haut.archer_id,
+                bas=rencontre.bas.archer_id,
+                couloirs=rencontre.couloirs,
+            )
+            for poule in etat.poules
+            for rencontre in poule.rencontres
+            if rencontre.haut is not None
+            and rencontre.bas is not None
+            and not rencontre.desynchronisee
+            and (rencontre.duel is None or not rencontre.duel.verrouille)
+        )
 
     def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatPoules:
         """Pose les poules sur la salle et **remplace** le plan existant.

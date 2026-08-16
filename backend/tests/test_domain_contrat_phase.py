@@ -170,22 +170,29 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
     } == TYPES_CLASSANTS_LUS
 
 
-def test_les_poules_ne_sont_toujours_pas_routees() -> None:
+def test_les_quatre_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None:
     """⚠️ La capacité qu'il aurait été le plus tentant de mentir (ADR-0083, 5ᵉ question).
 
-    `application/routage.py` ne sait pas dire à un membre de **poule** où il tire ensuite : ce
-    n'était ni au CA d'E05US023 ni à la liste de la tranche, et E05US028 ne l'a pas ajouté non
-    plus — son CA porte sur le Big Shoot Off, pas sur les poules. Déclarer `route_l_archer=True`
-    « puisque la phase est jouable » reproduirait `DETTE-028` à l'échelle d'une capacité : un moteur
-    annoncé, aucun appelant.
+    **Ce test a changé de camp deux fois, et chaque fois pour la bonne raison.** Il vérifiait
+    d'abord que les poules n'étaient **pas** routées — ce n'était ni au CA d'E05US023 ni à la liste
+    de la tranche, et déclarer `route_l_archer=True` « puisque la phase est jouable » aurait
+    reproduit `DETTE-028` à l'échelle d'une capacité : une promesse sans appelant.
 
-    ⚠️ **Le Big Shoot Off, lui, y est entré en E05US028** — et c'est le scénario que la version
-    précédente de ce test annonçait (« le test tombe le jour où le routage l'apprend, et c'est le
-    signal attendu »). Il est tombé pour la bonne raison :
-    `ServiceRoutage._routage_big_shoot_off` existe et dit à un finaliste quelle manche il tire.
+    Le Big Shoot Off y est entré en **E05US028** (`_routage_big_shoot_off`), puis le suisse **et**
+    les poules en **E05US026** (`_routage_par_rencontres`, qui sert les deux : une rencontre de
+    ronde comme de groupe *est* un duel, avec deux adversaires et deux couloirs).
+
+    Il ne reste donc dehors que ce qui n'est pas joué — et le test le dit en négatif, pour qu'un
+    format rendu jouable sans son routage se voie immédiatement.
     """
-    assert TypePhase.POULES not in TYPES_ROUTES
-    assert {TypePhase.ELIMINATION_DIRECTE, TypePhase.BIG_SHOOT_OFF} == TYPES_ROUTES
+    assert {
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.BIG_SHOOT_OFF,
+        TypePhase.POULES,
+        TypePhase.SUISSE,
+    } == TYPES_ROUTES
+    # Tout type **joué** est routé : c'est l'invariant que les trois US successives ont installé.
+    assert {t for t in TYPES_DEROULES if t is not TypePhase.PLACEMENT} <= TYPES_ROUTES
 
 
 def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
