@@ -171,6 +171,16 @@ n'apparaissaient dans aucun tableau de suivi ; et deux dettes différentes porta
 arrivées sur `main` sans que rien ne s'en aperçoive. Détail dans
 [`2026-08-16-16h19-l-avancement-qui-se-verifie-lui-meme.md`](2026-08-16-16h19-l-avancement-qui-se-verifie-lui-meme.md).
 
+Le **16/08/2026** toujours, l'atlas a cessé de ne lire que des documents : la page **« La carte du
+code »** lit le **code**. Elle compte les 827 liens entre les morceaux du programme et **refuse de
+valider** si l'un d'eux remonte le courant — la règle de construction du projet (« tout pointe vers
+le cœur métier ») n'était vérifiée automatiquement que pour le cœur métier lui-même ; les quatre
+autres sens ne l'étaient par rien. Aucun ne remonte aujourd'hui : le verrou arrive à temps. La même
+page a mesuré, côté écrans, que **19 des 44 morceaux** sont pris dans un même nœud de dépendances
+croisées — plus aucun ne peut être lu ni testé seul. Rien n'est corrigé : **quatre chantiers** ont
+été écrits et rangés en attente d'arbitrage. Détail dans
+[`2026-08-16-18h02-la-carte-du-code.md`](2026-08-16-18h02-la-carte-du-code.md).
+
 ---
 
 ## Ce qui a été construit, par blocs
@@ -534,8 +544,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **112 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
-  étant `E00US019` — la **vue d'avancement de l'atlas** et son garde-fou de cohérence. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **113 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
+  étant `E00US020` — la **carte du code de l'atlas** et son verrou sur le sens des dépendances. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une

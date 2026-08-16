@@ -12,7 +12,16 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 16/08/2026, 16 h 19** · **112 US livrées** · dernière : `E00US019`
+**Dernière mise à jour : 16/08/2026, 18 h 02** · **113 US livrées** · dernière : `E00US020`
+*(**la carte du code** : l'atlas lit désormais le **code** et plus seulement les documents. La
+matrice de dépendances est lue à l'**AST**, et une couche qui remonte le courant fait **rougir la
+CI** — la règle 2 n'était vérifiée que pour le domaine, les quatre autres sens ne l'étaient par
+rien. Les 60 ports sont appariés **structurellement** à leurs adapters. Côté front, la mesure a
+trouvé **4 nœuds de features enchevêtrées**, dont un de **19 sur 44** : quatre chantiers en sont
+nés, inscrits au backlog sans être pris. Élargit `DETTE-067`, dont le déclencheur est franchi.
+Deux tranches d'atlas restent.)*
+
+Précédente : `E00US019`
 *(**l'avancement, et des livrables de suivi qui ne se contredisent plus** : l'atlas montre les US
 section par section avec leur état, l'ordre des epics en un schéma, la dette ouverte, et une fiche
 par US qui rapproche les quatre sources. Surtout, il **recalcule** chaque compteur et **bloque** la
@@ -1050,7 +1059,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E17US009 | Confronter les **7 planches publiques** `P**` et résorber | J3 | ⬜ |
 | E17US010 | Empêcher le dossier de maquettes de **dériver** du produit | J3 | ⬜ *(resynchroniser `appareils.js` **et** rendre la dérive mécaniquement détectable ; **à prendre avant** E17US008/E17US009)* |
 
-## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (2/5)**
+## Ajout du 15/08/2026 — Atlas du projet — 🔶 **en cours (3/5)**
 
 > Demande du commanditaire, hors file d'exécution : *« je ne vois pas bien l'état réel du projet,
 > et son historique »*. Outillage de suivi, pas une capacité produit — ces US **n'entrent pas** dans
@@ -1068,9 +1077,22 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 |---|---|---|---|
 | E00US018 | L'atlas : le règlement en vigueur et l'histoire des décisions | hors jalon | ✅ |
 | E00US019 | L'atlas : l'avancement, et des livrables de suivi qui ne se contredisent pas | hors jalon | ✅ *(compteurs recalculés et **bloquants**, graphe des epics en réduction transitive, fiche par US ; a trouvé le compteur J3 faux, deux US livrées restées hors jalon, et deux `DETTE-065` sur `main`)* |
-| E00US020 | Atlas — la carte du code (imports, matrice de dépendances, ports) | hors jalon | 🎯 *(cible, sans fiche détaillée — prochaine tranche de l'atlas)* |
-| E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | ⬜ *(cible)* |
+| E00US020 | L'atlas : la carte du code | hors jalon | ✅ *(matrice de dépendances lue à l'AST et **sens des dépendances bloquant** — la règle 2 n'était vérifiée que pour le domaine ; 60 ports appariés structurellement à leurs adapters ; graphe des features du front. A mesuré 4 nœuds d'enchevêtrement, dont un de **19 features sur 44**)* |
+| E00US021 | Atlas — le métier (cycles de vie, énumérations, entités) | hors jalon | 🎯 *(cible, sans fiche détaillée — prochaine tranche de l'atlas)* |
 | E00US022 | Atlas — les flux (saisie → file d'écriture → WebSocket) | hors jalon | ⬜ *(cible)* |
+
+## Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**
+
+> Ces quatre US **n'existent que parce qu'`E00US020` les a mesurées**. Elles ne sont dans aucun
+> jalon et ne se prennent pas d'elles-mêmes : elles attendent l'arbitrage du commanditaire.
+> `E00US025` demande en outre une décision **avant** de coder (ajout de dépendance, règle 11).
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E00US023 | Nommer le noyau partagé du front, et défaire les enchevêtrements | hors jalon | ⬜ |
+| E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ⬜ |
+| E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
+| E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

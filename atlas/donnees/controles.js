@@ -82,6 +82,162 @@ window.ATLAS.controles = {
    "sujet": "E05US023"
   },
   {
+   "code": "features-enchevetrees",
+   "message": "et 2 autre(s) feature(s) s'importent mutuellement (accueil, completude, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "accueil"
+  },
+  {
+   "code": "features-enchevetrees",
+   "message": "et 1 autre(s) feature(s) s'importent mutuellement (admin, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "admin"
+  },
+  {
+   "code": "features-enchevetrees",
+   "message": "et 18 autre(s) feature(s) s'importent mutuellement (archers, blasons, categories, competition, departs, duels, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie-duels, salle, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "archers"
+  },
+  {
+   "code": "features-enchevetrees",
+   "message": "et 1 autre(s) feature(s) s'importent mutuellement (bareme, grain-validation) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "bareme"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/suivi_deroule.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "CompteurEngages"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/archive.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "ConstructeurArchive"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/pilotage_simulation.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "DiffusionSimulation"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/generateur_scores.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "GenerateurScores"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/supervision.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurAvancement"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/departs.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurAvancementDepart"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/prelevement.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurClassementDePhase"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/tournois.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurDerouleDuTournoi"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/formats.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurDonneesDePhase"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/big_shoot_off.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurEtatBigShootOff"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/completude.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurPaiements"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/prelevement.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurPopulationPhase"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/supervision.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurPrises"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/listes_impression.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurRecapClub"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/routage.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurRencontresARouter"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/suivi_deroule.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "LecteurTableau"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/auth.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "StoreIdentifiantsAdmin"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/auth.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "StoreSessions"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/postes.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "StoreSessionsPoste"
+  },
+  {
+   "code": "port-hors-domaine",
+   "message": "est déclaré dans backend/application/scoreurs.py, hors du domaine — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier) : à trancher par un humain, pas par la porte.",
+   "severite": "signal",
+   "sujet": "StoreSessionsScoreur"
+  },
+  {
+   "code": "port-sans-adapter",
+   "message": "(backend/domain/deroule.py) n'est satisfait par aucune classe du backend : aucune ne porte ses 3 méthode(s) publique(s). Port mort, ou adapter hors des cinq couches.",
+   "severite": "signal",
+   "sujet": "EtapeProjetable"
+  },
+  {
+   "code": "port-sans-adapter",
+   "message": "(backend/domain/phase.py) n'est satisfait par aucune classe du backend : aucune ne porte ses 4 méthode(s) publique(s). Port mort, ou adapter hors des cinq couches.",
+   "severite": "signal",
+   "sujet": "EtapeSequencee"
+  },
+  {
    "code": "portage-non-verifiable",
    "message": "annonce DEPART dans « backend/infrastructure/db/repositories/ », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
@@ -156,6 +312,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 25
+  "signaux": 51
  }
 };

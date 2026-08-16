@@ -54,6 +54,10 @@ modules qu'un ADR déclare porter sa décision existent encore.
 
 Il **recalcule** aussi les compteurs du tracker au lieu de les recopier — c'est ce qui a trouvé, le jour de sa livraison, un compteur de jalon faux et deux US livrées qui n'apparaissaient dans aucun tableau compté.
 
+Il **confronte** enfin les règles d'architecture au code : le sens des dépendances entre couches est
+lu à l'AST et **fait rougir la porte** s'il est enfreint — jusqu'à `E00US020`, seul le domaine était
+surveillé, les quatre autres sens ne l'étaient par rien.
+
 Il ne dit **pas** si une règle est encore d'actualité — c'est indécidable mécaniquement. La page
 « Écarts constatés » affiche des **signaux à vérifier**, jamais un verdict. Et le contrôle de
 portage vérifie qu'un fichier **existe**, pas qu'il **fait** ce que l'ADR promet.
@@ -81,6 +85,9 @@ regarde à l'œil :
 - **L'avancement** — les US par section, l'ordre des epics, la dette ouverte. Les compteurs y
   sont **recalculés**, jamais recopiés.
 - **Une US** (`us.html?id=E05US026`) — ce que les quatre livrables de suivi disent d'elle.
+- **La carte du code** — la matrice de dépendances entre couches et paquets, l'inventaire des ports
+  et de leurs adapters, le graphe des features du front. Le backend y est lu à l'**AST** (exact,
+  donc bloquant) ; le front à l'**expression régulière** (heuristique, donc signalé).
 - **Ce qui a changé** — l'errata, du plus récent au plus ancien.
 - **Écarts constatés** — là où l'écrit et le code ont divergé.
 - **Rechercher** — balayage direct du corpus, expressions exactes comprises.

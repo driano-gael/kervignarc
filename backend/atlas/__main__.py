@@ -14,10 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from atlas import avancement as avancement_module
+from atlas import carte as carte_module
 from atlas import controles as controles_module
 from atlas import markdown, rendu
 from atlas.modele import AtlasSourceInvalide, Controle, Severite
-from atlas.sources import adr, backlog, corpus, historique, reglement, suivi
+from atlas.sources import adr, backlog, code, corpus, historique, reglement, suivi
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -62,11 +63,19 @@ def assembler(racine: Path) -> Cartes:
     dettes = backlog.lire_dettes(racine)
     us_specifiees = backlog.lire_us_specifiees(racine)
 
+    # Le code, lu dans le code. Les autres sources lisent des documents ; celle-ci confronte les
+    # règles d'architecture à ce que les imports font réellement (E00US020).
+    aretes = code.lire_aretes(racine)
+    ports = code.lire_ports(racine)
+    aretes_front = code.lire_aretes_front(racine)
+    noeuds = code.enchevetrements(aretes_front)
+
     verdicts = controles_module.trier(
         controles_module.verifier(racine, regles, decisions)
         + controles_module.verifier_avancement(
             sections, epics, dettes, us_specifiees, decisions, entete
         )
+        + controles_module.verifier_code(aretes, ports, noeuds)
     )
     bloquants = controles_module.bloquants(verdicts)
 
@@ -83,6 +92,7 @@ def assembler(racine: Path) -> Cartes:
         "avancement": avancement_module.construire(
             sections, epics, dettes, us_specifiees, decisions, entete
         ),
+        "carte": carte_module.construire(aretes, ports, aretes_front, noeuds),
         "corpus": {"documents": corpus.construire(regles, decisions)},
         "historique": historique.historique(racine, regles),
     }
@@ -104,6 +114,7 @@ def assembler(racine: Path) -> Cartes:
             f"{len(regles)} règles · {len(decisions)} décisions "
             f"(dont {amendes} amendées par une décision plus récente) · "
             f"{livrees} US livrées · "
+            f"{len(ports)} ports · "
             f"{len(bloquants)} écart(s) bloquant(s), "
             f"{len(verdicts) - len(bloquants)} signal(aux)"
         ),

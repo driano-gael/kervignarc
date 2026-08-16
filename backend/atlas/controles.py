@@ -20,9 +20,10 @@ from collections import Counter
 from pathlib import Path
 
 from atlas import markdown
-from atlas.modele import Controle, Decision, Regle, Severite
+from atlas.modele import AreteCode, Controle, Decision, NoeudEnchevetre, Port, Regle, Severite
 from atlas.sources import suivi
 from atlas.sources.backlog import Dette, Epic, UsSpecifiee
+from atlas.sources.code import SENS_AUTORISE, autorise
 from atlas.sources.suivi import Entete, Section, compter
 
 _US = re.compile(r"E\d{2}US\d{3}")
@@ -441,6 +442,91 @@ def verifier_avancement(
                     f"est annoncée « dernière » en tête du tracker, mais son résumé cite "
                     f"{', '.join('ADR-' + adr for adr in cites)}, qui ne la mentionne pas — "
                     f"le résumé décrit peut-être une autre US."
+                ),
+            )
+        )
+
+    return trier(tuple(trouves))
+
+
+def verifier_code(
+    aretes: tuple[AreteCode, ...],
+    ports: tuple[Port, ...],
+    noeuds: tuple[NoeudEnchevetre, ...],
+) -> tuple[Controle, ...]:
+    """Ce que le code fait des règles d'architecture — un seul bloquant, et il est exact.
+
+    Calibrage, dans la ligne des sévérités posées en tête de module :
+
+    - **bloquant** — `sens-des-dependances`. Constat AST, donc sans approximation, et **satisfait
+      au moment de la livraison** : la porte est verte le premier jour et ne fait que verrouiller
+      un invariant. C'est le trou réel que cette tranche bouche —
+      `tests/test_domain_isolation.py` ne surveille que le domaine, les quatre autres sens ne
+      l'étaient par rien ;
+    - **signal** — tout le reste. `port-hors-domaine` est un écart de **conception** qui peut être
+      légitime ; `port-sans-adapter` repose sur un appariement structurel heuristique ;
+      `features-enchevetrees` est lu à l'expression régulière. Bloquer là-dessus ferait rougir la
+      CI dès la livraison (19 features sont déjà enchevêtrées) et la ferait désactiver — on
+      perdrait alors aussi le bloquant ci-dessus, qui, lui, était juste.
+    """
+    trouves: list[Controle] = []
+
+    for arete in aretes:
+        if autorise(arete.couche_source, arete.couche_cible):
+            continue
+        permis = sorted(SENS_AUTORISE.get(arete.couche_source, frozenset()))
+        trouves.append(
+            Controle(
+                code="sens-des-dependances",
+                severite=Severite.BLOQUANT,
+                sujet=arete.paquet_source,
+                message=(
+                    f"importe {arete.paquet_cible} ({arete.occurrences} fois, "
+                    f"dont {arete.origines[0]}) : la couche « {arete.couche_source} » ne peut "
+                    f"dépendre que de {', '.join(permis) or '— aucune couche'} (règle 2)."
+                ),
+            )
+        )
+
+    for port in ports:
+        if port.couche != "domain":
+            trouves.append(
+                Controle(
+                    code="port-hors-domaine",
+                    severite=Severite.SIGNAL,
+                    sujet=port.nom,
+                    message=(
+                        f"est déclaré dans {port.fichier}, hors du domaine — la règle 2 veut les "
+                        f"ports dans le domaine et les adapters dans l'infrastructure. Écart "
+                        f"peut-être légitime (une préoccupation technique n'est pas du métier) : "
+                        f"à trancher par un humain, pas par la porte."
+                    ),
+                )
+            )
+        if port.methodes and not port.adapters:
+            trouves.append(
+                Controle(
+                    code="port-sans-adapter",
+                    severite=Severite.SIGNAL,
+                    sujet=port.nom,
+                    message=(
+                        f"({port.fichier}) n'est satisfait par aucune classe du backend : "
+                        f"aucune ne porte ses {len(port.methodes)} méthode(s) publique(s). "
+                        f"Port mort, ou adapter hors des cinq couches."
+                    ),
+                )
+            )
+
+    for noeud in noeuds:
+        trouves.append(
+            Controle(
+                code="features-enchevetrees",
+                severite=Severite.SIGNAL,
+                sujet=noeud.features[0],
+                message=(
+                    f"et {len(noeud.features) - 1} autre(s) feature(s) s'importent mutuellement "
+                    f"({', '.join(noeud.features)}) : aucune ne peut plus être lue, testée ni "
+                    f"retirée seule (règle 10). Lecture heuristique — jamais bloquante."
                 ),
             )
         )

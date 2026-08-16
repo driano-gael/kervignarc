@@ -42,6 +42,7 @@ def test_le_site_a_bien_ses_pages() -> None:
         "recherche.html",
         "avancement.html",
         "us.html",
+        "code.html",
     }
 
 
