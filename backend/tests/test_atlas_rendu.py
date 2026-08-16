@@ -125,7 +125,7 @@ def test_l_historique_vide_est_signale(tmp_path: Path) -> None:
 
     problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
 
-    assert problemes and "aucune entrée commitée" in problemes[0]
+    assert problemes and "manque au fichier commité" in problemes[0]
 
 
 def test_l_historique_falsifie_est_signale(tmp_path: Path) -> None:
@@ -136,7 +136,7 @@ def test_l_historique_falsifie_est_signale(tmp_path: Path) -> None:
 
     problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
 
-    assert problemes and "diffère de ce que l'historique dit" in problemes[0]
+    assert problemes and "n'est pas la fin" in problemes[0]
 
 
 def test_un_fichier_tronque_donne_un_message_pas_une_trace(tmp_path: Path) -> None:
@@ -158,7 +158,7 @@ def test_l_historique_signale_une_entree_perdue(tmp_path: Path) -> None:
 
     problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
 
-    assert problemes and "a perdu l'entrée bbb" in problemes[0]
+    assert problemes and "n'est pas la fin" in problemes[0]
 
 
 def test_l_historique_absent_ne_condamne_rien(tmp_path: Path) -> None:
@@ -167,3 +167,45 @@ def test_l_historique_absent_ne_condamne_rien(tmp_path: Path) -> None:
     rendu.ecrire(tmp_path, {"historique": rendu.serialiser("historique", commite)})
 
     assert rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", {})}) == []
+
+
+def test_l_historique_tronque_par_la_tete_est_signale(tmp_path: Path) -> None:
+    """Garder « la plus récente de chaque règle » supprime l'histoire et passait au VERT.
+
+    L'attaque est celle qu'une docstring antérieure prétendait avoir fermée : réduire chaque règle
+    à une entrée. Une comparaison par empreintes ne la voyait pas, puisque l'entrée conservée
+    existe bel et bien. La tolérance porte sur l'ajout **en tête** : le commité doit être la
+    **fin** du frais, donc ses entrées les plus anciennes.
+    """
+    frais = {"une-regle": [{"reference": "ccc"}, {"reference": "bbb"}, {"reference": "aaa"}]}
+    commite = {"une-regle": [{"reference": "ccc"}]}
+    rendu.ecrire(tmp_path, {"historique": rendu.serialiser("historique", commite)})
+
+    problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
+
+    assert problemes and "n'est pas la fin" in problemes[0]
+
+
+def test_un_historique_remis_dans_l_ordre_inverse_est_signale(tmp_path: Path) -> None:
+    """La comparaison par empreintes était insensible à l'ordre — donc au bug d'antichronologie."""
+    entrees = [{"reference": "ccc"}, {"reference": "bbb"}, {"reference": "aaa"}]
+    rendu.ecrire(
+        tmp_path, {"historique": rendu.serialiser("historique", {"une-regle": entrees[::-1]})}
+    )
+
+    problemes = rendu.ecarts(
+        tmp_path, {"historique": rendu.serialiser("historique", {"une-regle": entrees})}
+    )
+
+    assert problemes and "n'est pas la fin" in problemes[0]
+
+
+def test_une_regle_inventee_dans_le_fichier_commite_est_signalee(tmp_path: Path) -> None:
+    """Le parcours ne regardait que les clés du frais : une ancre renommée passait inaperçue."""
+    commite = {"une-regle": [{"reference": "aaa"}], "regle-fantome": [{"reference": "zzz"}]}
+    frais = {"une-regle": [{"reference": "aaa"}]}
+    rendu.ecrire(tmp_path, {"historique": rendu.serialiser("historique", commite)})
+
+    problemes = rendu.ecarts(tmp_path, {"historique": rendu.serialiser("historique", frais)})
+
+    assert problemes and "regle-fantome" in problemes[0]

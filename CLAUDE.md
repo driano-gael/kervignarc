@@ -143,8 +143,7 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
 
 ## Dette
 
-<!--regle:registre-de-dette-->
-Une dette **assumée** (technique ou de conception) s'inscrit au registre
+<!--regle:registre-de-dette--> Une dette **assumée** (technique ou de conception) s'inscrit au registre
 [`docs/dette.md`](docs/dette.md) **dans le commit qui l'introduit** : ligne au tableau + section de
 détail + marqueur `# DETTE-nnn` à l'endroit exact du raccourci. Une US qui **aggrave** une dette déjà
 listée élargit la ligne existante au lieu d'inventer un contournement local. Une dette silencieuse
@@ -152,8 +151,7 @@ est remontée en **majeur** à la revue ; ce qui casse un cas utilisateur réel 
 de la dette mais un **bloquant** à corriger avant merge. Le registre n'est pas une liste de tâches :
 un bug corrigeable dans l'US se corrige dans l'US.
 
-<!--regle:remede-structurel-->
-Un **remède structurel** (introduire un pattern) se propose sur **preuve dans le code d'aujourd'hui**
+<!--regle:remede-structurel--> Un **remède structurel** (introduire un pattern) se propose sur **preuve dans le code d'aujourd'hui**
 — 3ᵉ occurrence réelle, invariant déjà dupliqué — jamais sur une évolution supposée, et se traite en
 ADR + US dédiée, jamais en douce dans l'US courante. « Dupliquer une 2ᵉ fois et attendre le 3ᵉ cas »
 est une réponse valide.

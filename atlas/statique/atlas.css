@@ -374,15 +374,17 @@ a.pastille:hover {
 
 /* Lignes droites, coudes à angle droit, aucune courbe : c'est une exigence explicite du
    commanditaire, et c'est aussi ce qui reste lisible sans moteur de mise en page. */
-/* ⚠️ `min-width: max-content` et **surtout pas** `max-width: 100%`. Un `<svg viewBox>` sans
- * largeur explicite se *réduit* pour tenir dans son parent : le conteneur `.defilable` qui
- * l'entoure ne défilait alors jamais, et le plus grand schéma tombait à 1,5 px de texte sur un
- * écran de 360 px. Le contrôle mécanique ne voyait rien — il vérifie la présence du conteneur
- * défilant, pas le fait qu'il défile. */
+/* ⚠️ La largeur des schémas est posée **par un attribut `width` sur le `<svg>`**, à la
+ * génération — pas ici. Deux tentatives ont échoué avant celle-là, et la seconde est instructive :
+ * `max-width: 100%` réduisait le SVG pour le faire tenir (1,4 px de texte à 326 px, le conteneur
+ * `.defilable` ne défilant jamais) ; `min-width: max-content` **n'a rien changé**, parce qu'un
+ * `<svg viewBox>` sans dimension intrinsèque n'a pas de `max-content` égal à son viewBox — et il
+ * agrandissait au passage les petits schémas de 3,5×. Seule une largeur intrinsèque donne au
+ * conteneur quelque chose à faire défiler. La CSS ne peut pas la connaître : elle dépend du
+ * nombre de nœuds. */
 .reseau {
   display: block;
   height: auto;
-  min-width: max-content;
   overflow: visible;
 }
 

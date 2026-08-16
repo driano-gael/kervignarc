@@ -454,15 +454,17 @@ var Pages = (function () {
     var hauteurTotale = BAS_DES_BOITES + couloirs * COULOIR + 14;
 
     var svg =
-      "<svg class='reseau' viewBox='0 0 " + largeurTotale + " " + hauteurTotale +
+      "<svg class='reseau' width='" + largeurTotale + "' viewBox='0 0 " +
+      largeurTotale + " " + hauteurTotale +
       "' role='img' aria-label='Amendements entre décisions liées'>";
 
     placees.forEach(function (posee) {
       var y = BAS_DES_BOITES + (posee.couloir + 1) * COULOIR;
       svg +=
         "<path class='arete' d='M " + centre(posee.arete.de) + " " + BAS_DES_BOITES +
-        " V " + y + " H " + centre(posee.arete.vers) + " V " + BAS_DES_BOITES + "'></path>" +
-        "<title>ADR-" + E(posee.arete.de) + " amende ADR-" + E(posee.arete.vers) + "</title>";
+        " V " + y + " H " + centre(posee.arete.vers) + " V " + BAS_DES_BOITES + "'>" +
+        "<title>ADR-" + E(posee.arete.de) + " amende ADR-" + E(posee.arete.vers) +
+        "</title></path>";
     });
 
     chaine.noeuds.forEach(function (numero, rang) {
@@ -624,7 +626,8 @@ var Pages = (function () {
     }
 
     var svg =
-      "<svg class='reseau' viewBox='0 0 " + (X_DROITE + LARGEUR + 4) + " " + hauteurTotale +
+      "<svg class='reseau' width='" + (X_DROITE + LARGEUR + 4) + "' viewBox='0 0 " +
+      (X_DROITE + LARGEUR + 4) + " " + hauteurTotale +
       "' role='img' aria-label='Voisinage de la décision'>" +
       colonne(gauche, X_GAUCHE, amont, true) +
       colonne(droite, X_DROITE, aval, false) +
@@ -840,13 +843,16 @@ var Pages = (function () {
         trouves
           .slice(0, 60)
           .map(function (trouve) {
-            var extrait = trouve.document.texte.slice(
-              Math.max(0, trouve.position - 70),
-              trouve.position + 130
-            );
+            /* Quand le terme n'est **que** dans le titre ou l'en-tête, `position` vaut 0 et
+             * l'extrait est le début du document. L'encadrer de « … » des deux côtés le ferait
+             * passer pour un passage relocalisé autour du terme — un extrait qui ne contient pas
+             * ce qu'on cherche, présenté comme s'il le contenait. */
+            var debut = Math.max(0, trouve.position - 70);
+            var extrait = trouve.document.texte.slice(debut, trouve.position + 130);
+            var fin = debut + extrait.length < trouve.document.texte.length ? "…" : "";
             return (
               "<li><a href='" + trouve.document.lien + "'>" + E(trouve.document.titre) + "</a>" +
-              "<div class='discret'>…" + E(extrait) + "…</div></li>"
+              "<div class='discret'>" + (debut > 0 ? "…" : "") + E(extrait) + fin + "</div></li>"
             );
           })
           .join("") +

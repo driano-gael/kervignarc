@@ -103,13 +103,19 @@ def ecarts(racine: Path, fichiers: dict[str, str]) -> list[str]:
 
 
 def _ecarts_historique(present: str, attendu: str) -> list[str]:
-    """La tolérance porte sur l'**ajout**, et sur rien d'autre.
+    """La tolérance porte sur l'**ajout en tête**, et sur rien d'autre.
 
-    ⚠️ Une première version ne vérifiait qu'une inclusion des empreintes : `historique.js` vidé à
-    `{}`, réduit à une entrée par règle, ou dont toutes les dates et tous les motifs avaient été
-    réécrits passait **au vert**. La porte ne garantissait donc rien sur le seul fichier qu'elle
-    prétendait couvrir avec souplesse. On compare désormais les entrées partagées **champ par
-    champ**, et une règle vidée est signalée.
+    L'histoire d'une règle est une liste antichronologique. Entre le hook pre-commit et la CI, elle
+    ne peut varier que d'une façon : gagner des entrées **au début**. Le commité doit donc être un
+    **suffixe exact** du frais — même contenu, même ordre, sans trou.
+
+    ⚠️ Deux versions antérieures ont sous-estimé ce que « tolérance » devait exclure. La première
+    ne comparait que les empreintes : dates et motifs pouvaient être réécrits. La seconde comparait
+    les entrées partagées champ par champ, mais parcourait les seules clés du **frais** et
+    n'imposait aucune borne à la réduction : `historique.js` amputé de 67 % de son contenu, remis
+    dans l'ordre inverse, ou enrichi d'une règle inventée passait **au vert** — pendant que la
+    docstring affirmait le contraire. Un contrôle qui se décrit plus strict qu'il n'est vaut moins
+    que pas de contrôle : il dispense de regarder.
     """
     commite = _charge_utile(present, CLE_TOLERANTE)
     frais = _charge_utile(attendu, CLE_TOLERANTE)
@@ -119,34 +125,28 @@ def _ecarts_historique(present: str, attendu: str) -> list[str]:
         return []  # git indisponible : on ne peut rien affirmer, donc on n'affirme rien
 
     problemes: list[str] = []
-    for identifiant, fraiches in sorted(frais.items()):
-        # `get(..., [])` et non `get(...)` : une clé **absente** doit tomber dans le cas « aucune
-        # entrée commitée », pas dans « forme inattendue » — c'est précisément la forme que prend
-        # un `historique.js` vidé.
-        anciennes = commite.get(identifiant, [])
+    # ⚠️ L'union des clés, et non les seules clés du frais : une règle **inventée** dans le fichier
+    # commité, ou une ancre renommée, n'était jamais regardée.
+    for identifiant in sorted(set(frais) | set(commite)):
+        fraiches = frais.get(identifiant)
+        anciennes = commite.get(identifiant)
+        if fraiches is None:
+            problemes.append(
+                f"{CLE_TOLERANTE}.js : « {identifiant} » est commitée mais ne correspond à aucune "
+                f"règle — ancre renommée ou entrée inventée."
+            )
+            continue
+        if anciennes is None:
+            problemes.append(f"{CLE_TOLERANTE}.js : « {identifiant} » manque au fichier commité.")
+            continue
         if not isinstance(anciennes, list) or not isinstance(fraiches, list):
             problemes.append(f"{CLE_TOLERANTE}.js : « {identifiant} » n'a pas la forme attendue.")
             continue
-        if fraiches and not anciennes:
+        decalage = len(fraiches) - len(anciennes)
+        if decalage < 0 or fraiches[decalage:] != anciennes:
             problemes.append(
-                f"{CLE_TOLERANTE}.js : « {identifiant} » n'a aucune entrée commitée alors que "
-                f"l'historique en donne {len(fraiches)}."
+                f"{CLE_TOLERANTE}.js : « {identifiant} » — l'historique commité n'est pas la fin "
+                f"de celui que git donne ({len(anciennes)} entrée(s) commitée(s) pour "
+                f"{len(fraiches)}). Une entrée a été perdue, modifiée ou déplacée."
             )
-            continue
-        par_empreinte = {e.get("reference"): e for e in fraiches if isinstance(e, dict)}
-        for entree in anciennes:
-            if not isinstance(entree, dict):
-                problemes.append(
-                    f"{CLE_TOLERANTE}.js : « {identifiant} » porte une entrée illisible."
-                )
-            elif entree.get("reference") not in par_empreinte:
-                problemes.append(
-                    f"{CLE_TOLERANTE}.js : « {identifiant} » a perdu l'entrée "
-                    f"{entree.get('reference')}."
-                )
-            elif par_empreinte[entree["reference"]] != entree:
-                problemes.append(
-                    f"{CLE_TOLERANTE}.js : « {identifiant} » — l'entrée {entree['reference']} "
-                    f"diffère de ce que l'historique dit."
-                )
     return problemes
