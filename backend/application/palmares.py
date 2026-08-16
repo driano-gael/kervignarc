@@ -43,10 +43,12 @@ grand `ordre`, donc les qualifiés d'un tableau aval reçoivent bien le rang du 
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
 from application.erreurs import (
+    ApplicationError,
     PhaseIntrouvable,
     PhasePasReglee,
     PhasePasUnBigShootOff,
@@ -55,11 +57,12 @@ from application.erreurs import (
     TournoiSansDepart,
 )
 from application.prelevement import tranche
+from application.routage import LecteurRencontresARouter
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_RECONSTRUCTIBLES
 from domain.depart import DepartId
-from domain.erreurs import EffectifTableauInvalide
+from domain.erreurs import DomainError, EffectifTableauInvalide
 from domain.palmares import (
     OriginePalmares,
     Palmares,
@@ -123,6 +126,7 @@ class ServicePalmares:
         departs: DepartRepository,
         aggregation: Aggregation | None = None,
         big_shoot_off: LecteurEtatBigShootOff | None = None,
+        rencontres: Mapping[TypePhase, LecteurRencontresARouter] | None = None,
     ) -> None:
         self._tournois = tournois
         # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
@@ -153,6 +157,15 @@ class ServicePalmares:
         # câblage, pour rien. `None` reste licite : c'est le régime de tout montage sans Big Shoot
         # Off (harnais de simulation, tests de tableau), et il se lit dans la signature.
         self._big_shoot_off = big_shoot_off
+        # E05US026 : de quoi savoir si une phase **à rencontres** est allée à son terme. C'est le
+        # **même port** que celui du routage (`LecteurRencontresARouter`), réutilisé plutôt que
+        # dupliqué : la question « reste-t-il quelque chose à tirer ? » est la même des deux côtés,
+        # et deux calculs concurrents finiraient par se contredire sur qui a fini.
+        #
+        # ⚠️ **Absent ⇒ prudent, pas optimiste** : sans lecteur, `_est_epuisee` rend `False`, donc
+        # `en_lice=True`, donc **aucune médaille**. Un montage incomplet retire un podium ; il n'en
+        # invente pas.
+        self._rencontres: dict[TypePhase, LecteurRencontresARouter] = dict(rencontres or {})
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -324,6 +337,9 @@ class ServicePalmares:
     ) -> ResultatPhase | None:
         """Ce qu'une phase **classante sans arbre** a décidé — poules, système suisse (E05US026).
 
+        `# DETTE-031` — une résolution de classement **par phase classante**, plus une lecture
+        d'avancement (`_est_epuisee`), sur les deux routes publiques du palmarès dont le PDF.
+
         On lit son **classement de phase**, celui-là même qu'un prélèvement consomme
         (`ClassementSource`) : rangs et plages encore indécises. C'est la voie directe, et surtout
         la seule qui ne puisse pas **diverger** de ce que la phase avale reçoit — deux calculs pour
@@ -353,20 +369,43 @@ class ServicePalmares:
             PrelevementEnAttente,
             PhasePasReglee,
             EffectifTableauInvalide,
+            DomainError,
         ) as exc:
-            # Mêmes absorptions **nominatives** que les deux autres chemins, et pour la même
-            # raison : le palmarès est public et projeté en salle, une phase de la séquence ne doit
-            # pas éteindre l'écran. Journalisé pour qu'une absence reste débogable le jour J.
+            # Absorptions nominatives, **plus `DomainError`** — et ce dernier terme est un correctif
+            # de revue, pas une précaution. Les moteurs de format lèvent des erreurs de **domaine**
+            # (`ConfigurationSuisseInvalide`, `AppariementImpossible`,
+            # `ConfigurationPouleInvalide`), qui ne sont pas des `ApplicationError` : la liste
+            # d'origine les laissait passer, et une seule phase mal dimensionnée rendait **422 le
+            # palmarès du tournoi entier, écran public et PDF compris** (reproduit par deux axes).
+            #
+            # ⚠️ `DomainError` est volontairement **le dernier terme** et non un remplacement des
+            # quatre autres : ceux-ci restent nominatifs pour que la liste dise ce qu'elle attend,
+            # et `DerouleCyclique` — une `ApplicationError` — continue de **traverser**, comme
+            # `_resultat` l'exige (« une base incohérente doit rester visible »).
             _logger.info("Phase classante %s écartée du palmarès : %s", phase.id, exc)
             return None
         if source is None or not source.classement.lignes:
             return None
+        # ⚠️ **Une phase qui n'a rien joué ne décerne rien**, et l'oubli de cette garde était un
+        # bloquant de revue. `classement_de_suisse` / `classement_de_poules` rendent un ordre
+        # **complet** dès la composition — dérivé du classement amont, pas d'un tir. Sans ce
+        # contrôle, une phase terminale non commencée posait `origine=DUELS` et `en_lice=False` sur
+        # tout le monde, et `Palmares.podium` décernait or, argent et bronze **avant la première
+        # flèche**, sur des rangs venus de la qualification du matin. C'est mot pour mot le défaut
+        # qu'`OriginePalmares` a été créé pour fermer (E05US025), rouvert par un autre chemin.
+        if not self._a_commence(phase):
+            return None
         indecises = source.plages_indecises
+        # `en_lice` tant que la phase n'est pas allée à son terme : `LignePalmares.decerne` répond à
+        # « cet archer a-t-il encore quelque chose devant lui ? », et un rang annoncé avant la fin
+        # serait un faux départ. Même parti que `_resultat` pour les tableaux.
+        en_cours = not self._est_epuisee(tournoi_id, phase)
         positions = tuple(
             PositionPhase(
                 archer_id=ligne.archer_id,
                 rang_min=_borne(ligne.rang_scratch, indecises, haute=False),
                 rang_max=_borne(ligne.rang_scratch, indecises, haute=True),
+                en_lice=en_cours,
             )
             for ligne in source.classement.lignes
             if ligne.rang_scratch is not None
@@ -381,6 +420,32 @@ class ServicePalmares:
             else OriginePalmares.QUALIFICATION,
             rang_premier=source.rang_premier,
         )
+
+    def _a_commence(self, phase: Phase) -> bool:
+        """Au moins un tir a-t-il été enregistré dans cette phase ?
+
+        Même signal que `_resultat` pour les tableaux, et même dépôt (`numeros_enregistres`) : le
+        classement d'une phase à rencontres, lui, est **complet dès la composition** — il dérive du
+        classement amont, pas d'un tir. Sans cette question, une phase jamais commencée décernerait
+        des rangs venus de la qualification du matin.
+        """
+        return phase.id is not None and bool(self._duels.numeros_enregistres(phase.id))
+
+    def _est_epuisee(self, tournoi_id: TournoiId, phase: Phase) -> bool:
+        """La phase est-elle allée à son terme ? — par le port partagé avec le routage.
+
+        Prudent par défaut : sans lecteur branché, on répond « non », donc les archers restent
+        `en_lice` et **aucune médaille n'est décernée**. Un montage incomplet retire un podium, il
+        n'en invente pas.
+        """
+        lecteur = self._rencontres.get(phase.type)
+        if lecteur is None or phase.id is None:
+            return False
+        try:
+            return lecteur.rencontres_a_tirer(tournoi_id, phase.id).epuisee
+        except (ApplicationError, DomainError) as exc:
+            _logger.info("Avancement de la phase %s illisible : %s", phase.id, exc)
+            return False
 
     def _resultat_qualification(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une **seconde** qualification a classé — `None` si elle n'a rien à dire encore.

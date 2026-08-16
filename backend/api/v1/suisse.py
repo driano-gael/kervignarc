@@ -110,6 +110,74 @@ class RencontreReponse(BaseModel):
         )
 
 
+class RencontrePubliqueReponse(BaseModel):
+    """La **même** rencontre, vue de qui n'a pas à saisir — écran de salle, public, écran admin.
+
+    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et ce DTO est un correctif de
+    revue. `RencontreReponse` ci-dessous sert `DuelReponse` en entier : chaque flèche de chaque
+    volée, le barrage, les zones et le barème du pavé, et le **nom du bénévole qui a validé**. Rien
+    de cela n'a de raison d'être lu hors de la saisie.
+
+    La première version de ce routeur servait ce DTO-là sur une route **anonyme** — exactement ce
+    qu'`api/v1/poules.py` avait dû corriger en revue d'E05US023, et dont la docstring de son
+    `RencontrePubliqueReponse` porte le récit. Le défaut a été recopié en même temps que la
+    structure du fichier, sans la leçon qu'elle portait.
+
+    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
+    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
+    """
+
+    numero: int
+    ronde: int
+    couloirs: list[list[int | str]] | None
+    haut: DuellisteReponse | None
+    bas: DuellisteReponse | None
+    points_haut: int | None
+    points_bas: int | None
+    vainqueur: str | None
+    termine: bool
+    validee: bool
+    desynchronisee: bool
+    """Cf. `RencontreReponse.desynchronisee`. Servi au public aussi : un écran de salle qui
+    afficherait « à tirer » sur une rencontre bloquée ferait attendre des archers pour rien."""
+
+    @staticmethod
+    def de_rencontre(rencontre: RencontreDeRonde) -> RencontrePubliqueReponse:
+        duel = rencontre.duel
+        issue = None if duel is None else duel.resultat
+        return RencontrePubliqueReponse(
+            numero=rencontre.numero,
+            ronde=rencontre.ronde,
+            couloirs=_couloirs(rencontre.couloirs),
+            haut=None if rencontre.haut is None else DuellisteReponse.de_duelliste(rencontre.haut),
+            bas=None if rencontre.bas is None else DuellisteReponse.de_duelliste(rencontre.bas),
+            points_haut=None if issue is None else issue.points_haut,
+            points_bas=None if issue is None else issue.points_bas,
+            vainqueur=None if issue is None or issue.vainqueur is None else issue.vainqueur.value,
+            termine=duel is not None and issue is not None and issue.vainqueur is not None,
+            validee=duel is not None and duel.verrouille,
+            desynchronisee=rencontre.desynchronisee,
+        )
+
+
+class RondePubliqueReponse(BaseModel):
+    """Une ronde, vue du public : ses rencontres rédigées, son porteur de bye, si elle est close."""
+
+    numero: int
+    rencontres: list[RencontrePubliqueReponse]
+    bye: DuellisteReponse | None
+    close: bool
+
+    @staticmethod
+    def de_ronde(ronde: RondeAffichee) -> RondePubliqueReponse:
+        return RondePubliqueReponse(
+            numero=ronde.numero,
+            rencontres=[RencontrePubliqueReponse.de_rencontre(r) for r in ronde.rencontres],
+            bye=None if ronde.bye is None else DuellisteReponse.de_duelliste(ronde.bye),
+            close=ronde.close,
+        )
+
+
 class RondeReponse(BaseModel):
     """Une ronde : ses rencontres, son porteur de bye, et si elle est close.
 
@@ -192,6 +260,46 @@ class EtatSuisseReponse(BaseModel):
         )
 
 
+class EtatSuissePubliqueReponse(BaseModel):
+    """L'état d'une phase, **rédigé** — la forme servie aux surfaces ouvertes.
+
+    Mêmes champs de cadrage que la forme complète (réglage, borne, effectif, conflits de pose) ;
+    seules les **rencontres** sont réduites. C'est le contenu du tir qui est protégé, pas la
+    structure de la phase, que l'écran de salle doit précisément montrer.
+    """
+
+    phase_id: int
+    nb_rondes: int
+    rondes_maximales: int
+    effectif: int
+    rondes: list[RondePubliqueReponse]
+    classement: list[RangSuisseReponse]
+    conflits: list[ConflitReponse]
+
+    @staticmethod
+    def de_etat(etat: EtatSuisse) -> EtatSuissePubliqueReponse:
+        return EtatSuissePubliqueReponse(
+            phase_id=etat.phase_id,
+            nb_rondes=etat.nb_rondes,
+            rondes_maximales=etat.rondes_maximales,
+            effectif=etat.effectif,
+            rondes=[RondePubliqueReponse.de_ronde(ronde) for ronde in etat.rondes],
+            classement=[
+                RangSuisseReponse(
+                    rang=ligne.rang,
+                    archer_id=ligne.participant.ref_id,
+                    points=ligne.points,
+                    buchholz=ligne.buchholz,
+                    ex_aequo=ligne.ex_aequo,
+                )
+                for ligne in etat.classement
+            ],
+            conflits=[
+                ConflitReponse(groupe=c.groupe, raison=c.raison.value) for c in etat.conflits
+            ],
+        )
+
+
 class SaisirMancheRequete(BaseModel):
     """Corps de la saisie d'une manche d'une rencontre : les deux volées opposées."""
 
@@ -207,9 +315,10 @@ class SaisirMancheRequete(BaseModel):
 class SaisirBarrageRequete(BaseModel):
     """Corps du barrage **interne** à une rencontre nulle (§8.2, E04US013).
 
-    ⚠️ **Offert, mais pas exigé — et c'est propre au suisse.** Un nul est ici un résultat légitime :
-    le barème du format le prévoit, là où une poule ou un tableau doivent toujours désigner un
-    vainqueur. Ne pas tirer le barrage laisse la rencontre à 1-1, ce qui est une réponse.
+    ⚠️ **Exigé pour valider**, comme sur les deux autres décors : `Duel.valider` refuse un duel non
+    tranché. La première version de cette docstring annonçait le contraire (« un nul est un résultat
+    légitime propre au suisse ») — le moteur admet bien le nul, mais le décor de saisie du projet
+    est le duel FFTA, qui exige un vainqueur. Corrigé en revue.
     """
 
     tournoi_id: int
@@ -262,6 +371,8 @@ def _en_etat_duel(rencontre: RencontreDeRonde) -> EtatDuel:
 
 
 def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
+    # DETTE-065 : 6ᵉ copie verbatim de ce **garde d'autorisation**. Un 7ᵉ routeur d'écriture qui
+    # l'oublierait ne ferait rougir personne — résorption : `api/dependances.py`.
     """Refuse (`403 scoreur_hors_tournoi`) un scoreur agissant hors de **son** tournoi."""
     if scoreur.tournoi_id != tournoi_id:
         raise ScoreurHorsTournoi("Ce scoreur n'officie pas dans ce tournoi.")
@@ -277,23 +388,46 @@ def _cle_idempotence(operation: str, identifiant: str | None, *portee: int) -> s
 # --- Lecture ---
 
 
-@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatSuisseReponse)
-async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatSuisseReponse:
-    """L'état complet d'une phase de suisse. Lecture **ouverte** (E10US001).
+@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatSuissePubliqueReponse)
+async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatSuissePubliqueReponse:
+    """L'état d'une phase de suisse, **rédigé**. Lecture ouverte (E10US001).
+
+    ⚠️ **Rédigé, et c'est un correctif de revue.** Cette route servait la forme complète — donc
+    chaque flèche et le nom du bénévole validateur — sans authentification. Scission calquée sur
+    `api/v1/poules.py`, qui avait dû la faire pour la même raison.
 
     `# DETTE-031` — recomposée intégralement à chaque appel, chaîne de sources amont comprise.
     """
     service: ServiceSuisse = request.app.state.service_suisse
+    etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
+    return EtatSuissePubliqueReponse.de_etat(etat)
+
+
+@router.get("/saisie/{tournoi_id}/{phase_id}", response_model=EtatSuisseReponse)
+async def lire_pour_saisie(
+    tournoi_id: int,
+    phase_id: int,
+    request: Request,
+    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+) -> EtatSuisseReponse:
+    """L'état **complet** — pavé de saisie compris. Réservé au scoreur de **ce** tournoi.
+
+    Jumelle de `GET /poules/saisie/…`. C'est la seule surface où `DuelReponse` a lieu d'être servi.
+    """
+    service: ServiceSuisse = request.app.state.service_suisse
+    _exiger_meme_tournoi(scoreur, tournoi_id)
     etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
     return EtatSuisseReponse.de_etat(etat)
 
 
 @router.post(
     "/plan/{tournoi_id}/{phase_id}",
-    response_model=EtatSuisseReponse,
+    response_model=EtatSuissePubliqueReponse,
     dependencies=[Depends(exiger_admin)],
 )
-async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> EtatSuisseReponse:
+async def regenerer_plan(
+    tournoi_id: int, phase_id: int, request: Request
+) -> EtatSuissePubliqueReponse:
     """Pose la phase sur la salle et **remplace** le plan. Admin ; via la **file**.
 
     Geste **non idempotent par nature** — il repose tout, comme `poules/plan` et
@@ -305,7 +439,9 @@ async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> Et
     etat = await asyncio.wrap_future(
         write_queue.submit(lambda: service.regenerer_plan(tournoi_id, phase_id))
     )
-    return EtatSuisseReponse.de_etat(etat)
+    # Forme **rédigée** même pour l'admin : poser un plan n'est pas saisir, et l'écran d'atelier
+    # n'a pas besoin du pavé. Même parti que `poules/plan`.
+    return EtatSuissePubliqueReponse.de_etat(etat)
 
 
 # --- Saisie d'une rencontre (scoreur, via la file) ---

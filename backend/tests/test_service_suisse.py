@@ -30,6 +30,7 @@ from domain.blason import Blason, ZoneScore
 from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
+from domain.erreurs import DuelIncomplet
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -527,8 +528,9 @@ def test_le_routage_annonce_la_rencontre_qui_vient_avec_sa_cible() -> None:
     service = monde.service()
     service.regenerer_plan(monde.tournoi_id, monde.phase_id)
 
-    a_tirer = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+    lecture = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
 
+    a_tirer = lecture.rencontres
     assert [(r.numero, r.tour, r.libelle) for r in a_tirer] == [
         (1, 1, "Ronde 1"),
         (2, 1, "Ronde 1"),
@@ -544,12 +546,139 @@ def test_une_rencontre_validee_ne_reste_pas_a_tirer() -> None:
     n'existe pas encore, il n'y a rien à promettre.
     """
     monde = _Monde()
-    monde.inscrire(4)
+    archers = monde.inscrire(4)
     monde.regler(ConfigurationSuisse(nb_rondes=3))
     service = monde.service()
     service.regenerer_plan(monde.tournoi_id, monde.phase_id)
     _gagner(service, monde, 1, le_bas=True)
 
-    a_tirer = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+    lecture = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
 
-    assert [r.numero for r in a_tirer] == [2]
+    assert [r.numero for r in lecture.rencontres] == [2]
+    # ⚠️ **La phase n'est pas épuisée pour autant** : c'est ce que le port doit dire, et son
+    # absence était un bloquant de revue. Sans `epuisee`, l'archer dont la rencontre vient
+    # d'être validée passait pour « terminé » alors qu'il lui reste deux rondes.
+    assert lecture.epuisee is False
+    assert set(lecture.participants) == set(archers)
+
+
+# --- Correctifs de revue : les bornes que les fixtures d'origine évitaient toutes ----------------
+
+
+def test_le_reglage_par_defaut_se_borne_a_ce_que_l_effectif_permet() -> None:
+    """**Bloquant de revue.** `nb_rondes` vaut 5 par défaut ; à 4 archers, 3 rondes au plus.
+
+    `EtapeDeroule` ne vérifie la borne que si l'effectif est **déclaré** — régime licite et testé
+    juste à côté. Une phase réglée par défaut et jouée à 4 archers faisait donc lever
+    `apparier_ronde` (`ConfigurationSuisseInvalide`, une **erreur de domaine**), ce qui remontait en
+    422 sur le palmarès public, son PDF et le panneau de routage.
+
+    On **borne à la lecture** plutôt que de lever : c'est la seule façon de tenir la promesse que
+    `_configuration` écrit noir sur blanc — « un écran qui refuse de s'ouvrir vaut moins qu'un écran
+    qui montre la borne ». L'état expose les deux nombres, donc l'atelier montre l'écart.
+
+    ⚠️ Aucune fixture d'origine ne franchissait cette borne (`nb_rondes ∈ {1,2,3}` à 4 archers) :
+    c'est ce qui rendait le défaut invisible en CI.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse())  # défaut = 5 rondes
+
+    etat = monde.service().etat(monde.tournoi_id, monde.phase_id)
+
+    assert etat.nb_rondes == 5
+    assert etat.rondes_maximales == 3
+    assert len(etat.rondes) == 1  # la ronde 1 est appariée, pas une exception
+
+
+def test_une_phase_vide_annonce_zero_ronde_appariable() -> None:
+    """Sous deux tireurs, aucune ronde n'est appariable — la borne honnête est 0, pas 1."""
+    monde = _Monde()
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+
+    assert monde.service().etat(monde.tournoi_id, monde.phase_id).rondes_maximales == 0
+
+
+def test_le_porteur_de_bye_n_est_pas_annonce_termine() -> None:
+    """**Bloquant de revue.** À effectif impair, un archer chôme — il n'a pas fini pour autant.
+
+    Le port ne rendait que les rencontres : le porteur de bye en était absent, donc le panneau lui
+    disait « Plus aucune rencontre à tirer dans cette phase ». Un archer à qui l'on dit terminé
+    range son arc. `participants` et `epuisee` existent pour rendre les trois cas distincts.
+    """
+    monde = _Monde()
+    archers = monde.inscrire(5)
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+    service = monde.service()
+
+    lecture = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+
+    apparies = {a for r in lecture.rencontres for a in (r.haut, r.bas)}
+    porteur = set(archers) - apparies
+    assert len(porteur) == 1
+    # Il est bien **dans** la phase, et la phase n'est pas épuisée : le routage ne peut donc pas
+    # conclure « terminé ».
+    assert porteur.issubset(set(lecture.participants))
+    assert lecture.epuisee is False
+
+
+def test_une_phase_entierement_jouee_est_epuisee() -> None:
+    """Le seul cas où « terminé » est vrai : plus aucune rencontre ne viendra."""
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=1))
+    service = monde.service()
+    _gagner(service, monde, 1, le_bas=True)
+    _gagner(service, monde, 2, le_bas=True)
+
+    lecture = service.rencontres_a_tirer(monde.tournoi_id, monde.phase_id)
+
+    assert lecture.rencontres == ()
+    assert lecture.epuisee is True
+
+
+def test_une_rencontre_a_egalite_exige_son_barrage_avant_validation() -> None:
+    """⚠️ **Ce test a corrigé une docstring fausse, pas un bug** — et c'est le garde-fou règle 9.
+
+    Deux docstrings de cette US affirmaient qu'« un nul est ici un résultat **légitime** : le barème
+    du format le prévoit (`POINTS_NUL`) […] ne pas tirer le barrage laisse la rencontre à 1-1, ce
+    qui est une réponse ». C'est **faux au niveau de l'agrégat** : `Duel.valider` refuse un duel non
+    tranché (`DuelIncomplet`), exactement comme pour une poule ou un tableau.
+
+    La confusion venait du **moteur de domaine** : `domain/suisse.py` sait représenter un nul
+    (`ResultatRonde.nul`, `POINTS_NUL`) parce qu'un système suisse générique en admet. Mais le
+    **décor de saisie** du projet est le duel FFTA (ADR-0083 §7), et lui exige un vainqueur. La
+    branche `POINTS_NUL` de `_resultat_de` est donc **inatteignable par le service** aujourd'hui.
+
+    Écrire le test depuis la règle annoncée est ce qui a fait tomber l'écart : les docstrings ont
+    été corrigées, le code non — il était juste.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=2))
+    service = monde.service()
+    # Cinq manches nulles : 5-5, le duel est complet et l'égalité appelle le barrage (§8.2).
+    egal = (ZoneScore("9"),) * 3
+    for manche in (1, 2, 3, 4, 5):
+        service.saisir_manche(monde.tournoi_id, monde.phase_id, 1, manche, egal, egal)
+
+    with pytest.raises(DuelIncomplet):
+        service.valider(monde.tournoi_id, monde.phase_id, 1, "scoreur")
+
+    # Le barrage tranche, et la rencontre entre alors au classement.
+    service.saisir_barrage(
+        monde.tournoi_id,
+        monde.phase_id,
+        1,
+        ZoneScore("10"),
+        ZoneScore("9"),
+    )
+    service.valider(monde.tournoi_id, monde.phase_id, 1, "scoreur")
+    # La seconde rencontre clôt la ronde : sans elle, aucun résultat n'entre au classement — c'est
+    # le refus d'apparier par-dessus une ronde en cours, éprouvé plus haut.
+    _gagner(service, monde, 2, le_bas=True)
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+    assert etat.rondes[0].close is True
+    # Le barrage a tranché : le camp haut de la rencontre 1 marque la victoire pleine.
+    assert sorted(ligne.points for ligne in etat.classement) == [0, 0, 2, 2]

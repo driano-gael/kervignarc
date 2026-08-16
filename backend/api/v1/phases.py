@@ -310,6 +310,8 @@ class ConfigPhaseRequete(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
 
     `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
@@ -365,6 +367,8 @@ class PhaseReponse(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -410,6 +414,8 @@ class EtapeReponse(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod

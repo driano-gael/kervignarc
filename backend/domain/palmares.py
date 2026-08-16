@@ -23,10 +23,15 @@ La fourchette n'est **pas** une approximation : dans un tableau tronqué au podi
 été joué pour départager les quatre battus des quarts. La politique `aggregation` décide alors si
 l'on emprunte un ordre à la qualification (défaut, usage World Archery) ou si l'on publie l'ex æquo.
 
-⚠️ **Portée : qualification + phases à tableau.** Les moteurs `poule`, `big_shoot_off`, `suisse` et
-`colline` existent (E05US015) mais **aucun service ne les déroule** (`# DETTE-028`) : ils ne
-produisent donc aucun `ResultatPhase`. Le jour où ils en produiront, ce module n'aura pas à changer
-— il ne connaît que des positions acquises, pas la structure qui les a produites.
+⚠️ **Portée : tout ce qui décerne un rang.** La qualification, les phases à tableau, le Big Shoot
+Off (E05US028) et — depuis E05US026 — les **poules** et le **système suisse**, par leur
+classement de phase. Seule la `colline` reste dehors, faute de service (`# DETTE-028`).
+
+La promesse de ce module s'est vérifiée : il n'a **pas** eu à changer pour les accueillir — il ne
+connaît que des positions acquises, pas la structure qui les a produites. Ce qui décide *quand* une
+phase décerne est tranché par [ADR-0085], hors du domaine.
+
+[ADR-0085]: ../../docs/adr/0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md
 
 [ADR-0067]: ../../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md
 """

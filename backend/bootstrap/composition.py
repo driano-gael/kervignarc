@@ -914,6 +914,14 @@ def create_app(
         # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
         # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
         app.state.service_big_shoot_off,
+        # E05US026 : de quoi savoir si une phase **à rencontres** est allée à son terme. Le **même**
+        # port que celui du routage, et le même dictionnaire de lecteurs : sans lui, le palmarès
+        # décernait or, argent et bronze dès la composition d'une phase terminale — avant la
+        # première flèche, sur des rangs venus de la qualification (bloquant de revue).
+        {
+            TypePhase.SUISSE: app.state.service_suisse,
+            TypePhase.POULES: app.state.service_poules,
+        },
     )
     # Archive de fin de tournoi (E11US003) : paquet ZIP réunissant l'instantané SQLite complet, un
     # dump CSV de toute la base, les PDF régénérés du tournoi (feuilles de marque par départ,

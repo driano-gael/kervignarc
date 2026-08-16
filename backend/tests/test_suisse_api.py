@@ -436,3 +436,175 @@ def test_un_suisse_consomme_classe_sans_titrer(
         lignes = _palmares(client, scn.tournoi_id)
 
     assert not any(ligne["decerne"] for ligne in lignes.values())
+
+
+# --- Correctifs de revue : routage, sécurité et palmarès, de bout en bout ------------------------
+
+
+def test_le_panneau_de_routage_annonce_la_rencontre_et_sa_cible(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Bloquant de revue.** `route_l_archer` basculait à `True` sans qu'aucun test ne l'exerce.
+
+    Ce test couvre les trois maillons d'un coup — le service, la route et le **branchement du
+    composition root**. C'est le garde-fou que le commentaire de `composition.py` réclame : « une
+    capacité déclarée dont le porteur nommé ne porte rien » est le mode de défaillance d'ADR-0017.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        connecter_admin(client)
+        _appliquer_gabarit(client, scn.tournoi_id, nb_cibles=4)
+        client.post(f"/api/v1/suisse/plan/{scn.tournoi_id}/{scn.phase_id}")
+
+        reponse = client.get(
+            f"/api/v1/routage/departs/{scn.depart_id}",
+            params={"archer_id": scn.archers, "phase_id": scn.phase_id},
+        )
+
+    assert reponse.status_code == 200, reponse.text
+    lignes = {ligne["archer_id"]: ligne for ligne in reponse.json()["archers"]}
+    assert all(ligne["issue"] == "prochain_duel" for ligne in lignes.values())
+    premier = lignes[scn.archers[0]]["prochain"]
+    assert premier["libelle"] == "Ronde 1"
+    # La cible **est** donnée, à la différence du Big Shoot Off (`DETTE-059`) : le plan est posé.
+    assert (premier["cible"], premier["position"]) == (1, "A")
+    assert premier["manque"] is None
+
+
+def test_l_ecran_de_salle_lit_les_affectations_d_une_phase_a_rencontres(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Bloquant de revue — régression.** `affectations()` n'avait pas reçu la bifurcation.
+
+    Faire entrer le suisse et les poules dans `TYPES_ROUTES` les rend cibles **implicites** de
+    `_phase_de_tableau`. Sans bifurcation, cette route tombait dans `_grille` et rendait **409 sur
+    une route publique non authentifiée** : le canal n°2 (écran de salle, table d'organisation)
+    s'éteignait exactement pendant la phase qu'il sert, et pour tout créneau à poules déjà livré.
+
+    Le test n'envoie **aucun** identifiant — c'est toute la différence avec `routage`, et c'est ce
+    qui éprouve que la population vient de la phase et non des rencontres restantes.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        connecter_admin(client)
+        _appliquer_gabarit(client, scn.tournoi_id, nb_cibles=4)
+        client.post(f"/api/v1/suisse/plan/{scn.tournoi_id}/{scn.phase_id}")
+
+        reponse = client.get(f"/api/v1/routage/departs/{scn.depart_id}/affectations")
+
+    assert reponse.status_code == 200, reponse.text
+    assert {ligne["archer_id"] for ligne in reponse.json()["archers"]} == set(scn.archers)
+
+
+def test_un_archer_dont_la_rencontre_est_validee_n_est_pas_dit_termine(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """**Bloquant de revue.** « Terminé » était dit à qui a encore des rondes devant lui.
+
+    Après la seule rencontre 1 validée, ses deux tireurs n'ont plus rien à tirer *pour l'instant* :
+    la ronde 2 n'existe pas tant que la ronde 1 n'est pas close. Leur annoncer `termine` les envoie
+    ranger leur arc. Le panneau doit dire « pas maintenant ».
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        _gagner(client, entetes, scn, 1, le_bas=True)
+
+        reponse = client.get(
+            f"/api/v1/routage/departs/{scn.depart_id}",
+            params={"archer_id": scn.archers, "phase_id": scn.phase_id},
+        )
+
+    lignes = {ligne["archer_id"]: ligne for ligne in reponse.json()["archers"]}
+    joues = [lignes[scn.archers[0]], lignes[scn.archers[2]]]
+    assert all(ligne["issue"] != "termine" for ligne in joues)
+    assert all("pas encore appariée" in (ligne["motif"] or "") for ligne in joues)
+
+
+def test_le_panneau_degrade_au_lieu_de_tomber_sur_un_reglage_hors_borne(
+    app_suisse: FastAPI,
+) -> None:
+    """**Bloquant de revue.** Le réglage par défaut faisait rendre 422 à trois surfaces publiques.
+
+    `nb_rondes=5` à 4 archers dépasse la borne ; `apparier_ronde` levait une **erreur de domaine**
+    que ni le routage ni le palmarès n'absorbaient. Les deux docstrings promettaient pourtant de
+    dégrader. On borne désormais à la lecture, si bien qu'il n'y a plus rien à absorber ici.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse, nb_rondes=5)
+
+        etat = client.get(f"/api/v1/suisse/etat/{scn.tournoi_id}/{scn.phase_id}")
+        routage = client.get(f"/api/v1/routage/departs/{scn.depart_id}/affectations")
+        palmares = client.get(f"/api/v1/tournois/{scn.tournoi_id}/palmares")
+
+    assert etat.status_code == 200, etat.text
+    assert etat.json()["rondes_maximales"] == 3
+    assert routage.status_code == 200, routage.text
+    assert palmares.status_code == 200, palmares.text
+
+
+def test_l_etat_public_ne_sert_pas_le_pave_de_saisie(app_suisse: FastAPI) -> None:
+    """**Bloquant de revue — sécurité.** La route ouverte servait le DTO du scoreur.
+
+    Chaque flèche de chaque volée, le barrage, les zones, le barème, et `validee_par` — le **nom du
+    bénévole** qui a validé. Rien de cela n'a de raison d'être lu hors de la saisie ;
+    `api/v1/poules.py` avait dû faire la même scission en revue d'E05US023, et sa docstring en porte
+    le récit. Le défaut a été recopié avec la structure du fichier, sans la leçon qu'elle portait.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+
+        reponse = client.get(f"/api/v1/suisse/etat/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 200, reponse.text
+    rencontre = reponse.json()["rondes"][0]["rencontres"][0]
+    assert "duel" not in rencontre
+    assert set(rencontre) == {
+        "numero",
+        "ronde",
+        "couloirs",
+        "haut",
+        "bas",
+        "points_haut",
+        "points_bas",
+        "vainqueur",
+        "termine",
+        "validee",
+        "desynchronisee",
+    }
+
+
+def test_le_pave_de_saisie_reste_accessible_au_scoreur(
+    app_suisse: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La contrepartie : le scoreur de **ce** tournoi lit bien l'état complet, et lui seul."""
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+
+        ouverte = client.get(f"/api/v1/suisse/saisie/{scn.tournoi_id}/{scn.phase_id}")
+        reponse = client.get(
+            f"/api/v1/suisse/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
+        )
+
+    assert ouverte.status_code == 401, ouverte.text
+    assert reponse.status_code == 200, reponse.text
+    assert "duel" in reponse.json()["rondes"][0]["rencontres"][0]
+
+
+def test_un_suisse_non_commence_ne_decerne_aucune_medaille(app_suisse: FastAPI) -> None:
+    """**Bloquant de revue.** Un podium était décerné avant la première flèche.
+
+    `_resultat_classant` posait `origine=DUELS` et `en_lice=False` dès que la phase était terminale,
+    sans notion d'avancement — or le classement d'une phase à rencontres est **complet dès la
+    composition**, dérivé du classement amont. Le podium affiché venait donc de la qualification du
+    matin, présenté comme issu des duels. C'est le défaut qu'`OriginePalmares` a été créé pour
+    fermer, rouvert par un autre chemin.
+    """
+    with TestClient(app_suisse) as client:
+        scn = Scenario(app_suisse)
+
+        reponse = client.get(f"/api/v1/tournois/{scn.tournoi_id}/palmares")
+
+    assert reponse.status_code == 200, reponse.text
+    assert not any(ligne["decerne"] for ligne in reponse.json()["lignes"])

@@ -309,6 +309,8 @@ class EtapeDTO(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     """Le réglage d'une étape de poules (E05US023). `null` = non réglée.
 
     ⚠️ Le `extra="forbid"` ci-dessus rend ce champ **inaccessible aux clients d'avant l'US** — ce

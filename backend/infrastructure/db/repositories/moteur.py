@@ -886,11 +886,11 @@ def _vers_affectation_tableau(ligne: PlacementTableauORM) -> Affectation:
 
 
 class PlacementParBlocRepositorySQL:
-    """Adapter SQLite du port `PlacementParBlocRepository` — plan de poules matérialisé (E05US023).
+    """Adapter SQLite du port `PlacementParBlocRepository` — plan de blocs matérialisé (E05US023).
 
     Troisième adapter de placement, et le seul dont l'unité posée soit un **groupe** : une ligne par
     couloir, portant sa poule et son rang dans le bloc (ADR-0083 §3). Deux gestes seulement, contre
-    quatre pour son aîné — un plan de poules ne s'ajuste pas archer par archer, il se repose.
+    quatre pour son aîné — un plan de blocs ne s'ajuste pas archer par archer, il se repose.
 
     Pas de couture d'audit, même raison que `PlacementTableauRepositorySQL` : au moment de poser les
     poules, aucune rencontre n'est encore tirée, donc la repose n'est jamais « massive » au sens
@@ -904,9 +904,9 @@ class PlacementParBlocRepositorySQL:
         """Relit les blocs d'une phase, chacun dans son **ordre de remplissage**.
 
         Le tri porte sur `(groupe_numero, rang)` et non sur `(cible_index, position)` : c'est le
-        qui dit l'ordre du bloc, et lui seul. Trier par cible donnerait le même résultat sur une
-        salle homogène — et se tromperait dès qu'une cible a une capacité réduite, précisément le
-        cas que `GabaritSalle.ajuster` rend possible.
+        **rang** qui dit l'ordre du bloc, et lui seul. Trier par cible donnerait le même résultat
+        sur une salle homogène — et se tromperait dès qu'une cible a une capacité réduite,
+        précisément le cas que `GabaritSalle.ajuster` rend possible.
         """
         try:
             with self._session_factory() as session:
@@ -925,10 +925,10 @@ class PlacementParBlocRepositorySQL:
                     for numero, places in blocs.items()
                 ]
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de lecture du plan de poules.") from exc
+            raise InfrastructureError("Échec de lecture du plan de blocs.") from exc
 
     def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDeCouloirs]) -> None:
-        """Purge le plan de poules de la phase puis insère les blocs — **une** transaction."""
+        """Purge le plan de blocs de la phase puis insère les blocs — **une** transaction."""
         try:
             with self._session_factory() as session:
                 session.execute(
@@ -947,7 +947,7 @@ class PlacementParBlocRepositorySQL:
                 )
                 session.commit()
         except SQLAlchemyError as exc:
-            raise InfrastructureError("Échec de définition du plan de poules.") from exc
+            raise InfrastructureError("Échec de définition du plan de blocs.") from exc
 
 
 class PlacementTableauRepositorySQL:

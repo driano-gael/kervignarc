@@ -365,22 +365,22 @@ class PlacementRepository(Protocol):
 
 
 class PlacementParBlocRepository(Protocol):
-    """Port de persistance du **plan de poules** matérialisé d'une phase (E05US023, ADR-0083 §3).
+    """Port de persistance du **plan de blocs** matérialisé d'une phase (E05US023, ADR-0083 §3).
 
     Troisième port de placement, et le seul dont l'unité posée ne soit pas un archer : on persiste
-    « poule → plage de couloirs contigus », jamais « archer → couloir ». La raison est dans
+    « groupe → plage de couloirs contigus », jamais « archer → couloir ». La raison est dans
     `poule.couloirs_occupes` — le membre au repos change à chaque tour, donc aucun membre n'a de
     couloir attitré, et écrire l'archer serait écrire une information *fausse*.
 
     Le port ne connaît que **deux** gestes, contre quatre pour `PlacementTableauRepository`, et
-    l'écart est volontaire : un plan de poules ne s'ajuste pas au glisser-déposer archer par archer.
-    L'organisateur déplace une **poule**, ce qui revient à reposer le plan entier — le CA n'offre
+    l'écart est volontaire : un plan de blocs ne s'ajuste pas au glisser-déposer archer par archer.
+    L'organisateur déplace un **groupe**, ce qui revient à reposer le plan entier — le CA n'offre
     pas d'autre geste, et en offrir un ici inviterait à casser la contiguïté du bloc, qui est
     l'invariant de tout le format.
     """
 
     def par_phase(self, phase_id: PhaseId) -> list[BlocDeCouloirs]:
-        """Renvoie les blocs posés d'une phase, poule par poule (liste vide = plan non posé).
+        """Renvoie les blocs posés d'une phase, groupe par groupe (liste vide = plan non posé).
 
         Les couloirs de chaque bloc sortent **dans l'ordre de remplissage** — c'est ce que
         `BlocDeCouloirs.places` promet, et ce dont dépend la dérivation des couloirs de rencontre.
@@ -388,7 +388,7 @@ class PlacementParBlocRepository(Protocol):
         ...
 
     def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDeCouloirs]) -> None:
-        """Remplace **intégralement** le plan de poules d'une phase, en une transaction.
+        """Remplace **intégralement** le plan de blocs d'une phase, en une transaction.
 
         Purge puis insère. Le remplacement en bloc n'est pas une commodité : un plan partiellement
         réécrit pourrait laisser deux poules sur le même couloir le temps d'une lecture, et la
