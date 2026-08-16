@@ -43,7 +43,7 @@ from domain.phase import (
     grain_par_defaut,
 )
 from domain.placement import Affectation
-from domain.placement_poules import BlocDePoule
+from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
 from domain.suisse import ConfigurationSuisse
@@ -54,7 +54,7 @@ from infrastructure.db.models import (
     FormatTournoiORM,
     PhaseORM,
     PlacementORM,
-    PlacementPouleORM,
+    PlacementParBlocORM,
     PlacementTableauORM,
 )
 
@@ -885,8 +885,8 @@ def _vers_affectation_tableau(ligne: PlacementTableauORM) -> Affectation:
     )
 
 
-class PlacementPouleRepositorySQL:
-    """Adapter SQLite du port `PlacementPouleRepository` — plan de poules matérialisé (E05US023).
+class PlacementParBlocRepositorySQL:
+    """Adapter SQLite du port `PlacementParBlocRepository` — plan de poules matérialisé (E05US023).
 
     Troisième adapter de placement, et le seul dont l'unité posée soit un **groupe** : une ligne par
     couloir, portant sa poule et son rang dans le bloc (ADR-0083 §3). Deux gestes seulement, contre
@@ -900,10 +900,10 @@ class PlacementPouleRepositorySQL:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def par_phase(self, phase_id: PhaseId) -> list[BlocDePoule]:
+    def par_phase(self, phase_id: PhaseId) -> list[BlocDeCouloirs]:
         """Relit les blocs d'une phase, chacun dans son **ordre de remplissage**.
 
-        Le tri porte sur `(poule_numero, rang)` et non sur `(cible_index, position)` : c'est le rang
+        Le tri porte sur `(groupe_numero, rang)` et non sur `(cible_index, position)` : c'est le
         qui dit l'ordre du bloc, et lui seul. Trier par cible donnerait le même résultat sur une
         salle homogène — et se tromperait dès qu'une cible a une capacité réduite, précisément le
         cas que `GabaritSalle.ajuster` rend possible.
@@ -911,35 +911,35 @@ class PlacementPouleRepositorySQL:
         try:
             with self._session_factory() as session:
                 lignes = session.execute(
-                    select(PlacementPouleORM)
-                    .where(PlacementPouleORM.phase_id == phase_id)
-                    .order_by(PlacementPouleORM.poule_numero, PlacementPouleORM.rang)
+                    select(PlacementParBlocORM)
+                    .where(PlacementParBlocORM.phase_id == phase_id)
+                    .order_by(PlacementParBlocORM.groupe_numero, PlacementParBlocORM.rang)
                 ).scalars()
                 blocs: dict[int, list[tuple[int, str]]] = {}
                 for ligne in lignes:
-                    blocs.setdefault(ligne.poule_numero, []).append(
+                    blocs.setdefault(ligne.groupe_numero, []).append(
                         (ligne.cible_index, ligne.position)
                     )
                 return [
-                    BlocDePoule(poule=numero, places=tuple(places))
+                    BlocDeCouloirs(groupe=numero, places=tuple(places))
                     for numero, places in blocs.items()
                 ]
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture du plan de poules.") from exc
 
-    def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDePoule]) -> None:
+    def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDeCouloirs]) -> None:
         """Purge le plan de poules de la phase puis insère les blocs — **une** transaction."""
         try:
             with self._session_factory() as session:
                 session.execute(
-                    delete(PlacementPouleORM).where(PlacementPouleORM.phase_id == phase_id)
+                    delete(PlacementParBlocORM).where(PlacementParBlocORM.phase_id == phase_id)
                 )
                 session.add_all(
-                    PlacementPouleORM(
+                    PlacementParBlocORM(
                         phase_id=phase_id,
                         cible_index=cible_index,
                         position=position,
-                        poule_numero=bloc.poule,
+                        groupe_numero=bloc.groupe,
                         rang=rang,
                     )
                     for bloc in blocs

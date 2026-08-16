@@ -4,7 +4,7 @@ Traverse HTTP → `ServicePoules` → moteur → repositories, sur un tournoi jo
 archers **classés** (séries validées), une phase de poules réglée, un scoreur. On valide le
 **câblage** des routes, l'auth, la pose du plan et la saisie d'une rencontre — la logique (moteur de
 poule, placement en blocs, classement de phase) est couverte par `test_domain_poule`,
-`test_domain_placement_poules`, `test_domain_classement_de_poules` et `test_service_poules`.
+`test_domain_placement_par_bloc`, `test_domain_classement_de_poules` et `test_service_poules`.
 
 Écrit **après** l'implémentation (règle 9 : API et câblage, il n'y a pas d'oracle en jeu).
 

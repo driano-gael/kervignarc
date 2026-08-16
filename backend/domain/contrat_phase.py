@@ -144,7 +144,7 @@ class PlanDeCibles(str, Enum):
 
     L'**unité placée** diffère d'un format à l'autre, et c'est tout le sujet : un archer en
     qualification, une paire d'adversaires en élimination directe ([ADR-0048]), un **bloc de
-    couloirs contigus** en poules (ADR-0083 §3, `domain/placement_poules.py`).
+    couloirs contigus** en poules (ADR-0083 §3, `domain/placement_par_bloc.py`).
 
     [ADR-0048]: ../../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md
     """
@@ -158,7 +158,7 @@ class PlanDeCibles(str, Enum):
     PAR_DUEL = "par_duel"
     """Les deux duellistes côte à côte (`ServicePlacementDuels`, ADR-0048)."""
 
-    PAR_BLOC_DE_POULE = "par_bloc_de_poule"
+    PAR_BLOC_DE_COULOIRS = "par_bloc_de_couloirs"
     """Un bloc de couloirs contigus par **poule** — jamais « archer → couloir » (ADR-0083 §3).
 
     La raison est dans `poule.couloirs_occupes` : le membre au repos change à chaque tour, donc
@@ -267,7 +267,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.POULES: ContratDePhase(
         decor=DecorDeSaisie.RENCONTRES_EN_GROUPES,
-        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_POULE,
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
         deroule_par_un_service=True,
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
         # fois le code écrit. Ce qui l'autorise, module par module :

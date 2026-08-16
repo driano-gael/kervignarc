@@ -140,7 +140,7 @@ def test_les_poules_sont_montees_saisies_et_placees() -> None:
 
     assert contrat.deroule_par_un_service
     assert contrat.decor is DecorDeSaisie.RENCONTRES_EN_GROUPES
-    assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_POULE
+    assert contrat.plan_de_cibles is PlanDeCibles.PAR_BLOC_DE_COULOIRS
 
 
 def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:

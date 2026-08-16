@@ -320,7 +320,7 @@ class EtatPoulesReponse(BaseModel):
 
 def _conflits(etat: EtatPoules) -> list[ConflitReponse]:
     return [
-        ConflitReponse(poule=conflit.poule, raison=conflit.raison.value)
+        ConflitReponse(poule=conflit.groupe, raison=conflit.raison.value)
         for conflit in etat.conflits
     ]
 
