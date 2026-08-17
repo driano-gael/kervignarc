@@ -220,9 +220,9 @@ les postes. Trois propriétés que le prompt inline ne pouvait pas offrir :
 
   Le durcissement n'est pas trivial : `settings.json` est versionné et **partagé** avec l'agent
   auteur, à qui `git commit` et `git push` sont indispensables (§ Workflow) ; et `settings.local.json`
-  ne voyage pas entre les postes. La piste restante est un `Bash` **scopé au frontmatter**. Elle n'a
-  **pas pu être testée** — voir ci-dessous. Trou inscrit en **[DETTE-069](../dette.md)**, avec son
-  protocole d'essai prêt à l'emploi (`.claude/agents/essai-portee-bash.md`).
+  ne voyage pas entre les postes. La piste restante est un `Bash` **scopé au frontmatter**. Elle a été
+  **essayée le 17/08/2026 et reste indécidée** — voir ci-dessous. Trou inscrit en
+  **[DETTE-069](../dette.md)**, avec son protocole d'essai (`.claude/agents/essai-portee-bash.md`).
 
 ⚠️ **Le registre d'agents est figé au démarrage de la session.** Vérifié deux fois le 17/08/2026 : un
 agent créé en cours de session reste **introuvable** pour le harnais, et un champ `tools:` modifié
@@ -233,8 +233,32 @@ qu'aucune documentation ne donne et qui changent la façon de travailler :
    de revue de ce lot — le bloc sécurité des cinq grilles, la réécriture de `porte-mecanique` — ont
    été écrits, relus et poussés **sans jamais s'exécuter**. `backend/tests/test_agents_de_revue.py`
    en prouve la *forme* ; leur *comportement* sera éprouvé pour la première fois à la revue suivante.
-2. **Toute expérience sur un frontmatter exige une session neuve.** C'est ce qui empêche de trancher
-   le `Bash` scopé ici, et non un manque de volonté.
+2. **Toute expérience sur un frontmatter exige une session neuve.** C'est ce qui empêchait de
+   trancher le `Bash` scopé le 16/08/2026.
+
+⚠️ **Et la session neuve n'a pas suffi : l'essai du 17/08/2026 est non concluant, pour une raison que
+la rédaction ci-dessus n'avait pas vue.** L'agent `essai-portee-bash`, déclaré
+`tools: Read, Bash(git log:*)`, a exécuté `git status` **et** `git remote -v` — cette dernière étant
+absente de l'`allow` comme du `deny` de `settings.json`. Le protocole tenait pour acquis qu'un refus
+« ne pourrait venir que du frontmatter » ; il existe une **troisième source d'autorisation**, non
+versionnée : `.claude/settings.local.json` ouvre son `allow` sur **`Bash(*)`**.
+
+Trois enseignements, au-delà du cas :
+
+1. **Le champ `tools:` reste indécidé.** Sous un `allow` universel, un scope appliqué et un scope
+   ignoré produisent une trace **identique**. On n'a pas démontré le pire cas — on a démontré qu'on
+   ne pouvait pas le distinguer.
+2. **Les permissions sont bien évaluées.** `pip install`, membre du `deny` versionné, a été refusé
+   aux deux niveaux. L'échec ne vient donc pas d'un mode de session permissif : le poste était en
+   `acceptEdits`, qui n'auto-approuve que les éditions de fichiers, jamais `Bash`. `deny` l'emporte
+   sur `allow` ; c'est tout ce qui tient encore.
+3. **L'`allow` versionné de `settings.json` est décoratif dès qu'un poste pose `Bash(*)` en local.**
+   Ce fichier est le seul levier de permission que le dépôt peut porter d'une machine à l'autre, et
+   il est annulable en une ligne par un fichier que personne ne relit — parce qu'il ne voyage pas.
+   Un garde-fou que le dépôt ne peut ni voir ni contredire n'est pas un garde-fou.
+
+Le protocole corrigé — neutraliser `Bash(*)` **puis** redémarrer la session — est tabulé dans
+**[DETTE-069](../dette.md)**, avec son coût : il rétablit les demandes de confirmation.
 - **La porte mécanique devient un agent** (`porte-mecanique`, `model: haiku`) qui **lit `ci.yml`** au
   lieu de suivre une liste, et rend un verdict + les échecs verbatim. Double effet : la sortie des
   tests (10-50 k tokens) quitte le contexte de l'auteur, et la liste ne peut plus dériver.
