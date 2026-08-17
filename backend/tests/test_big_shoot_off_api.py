@@ -183,14 +183,55 @@ def test_la_projection_est_reservee_a_l_admin(app_bso: FastAPI) -> None:
     assert reponse.status_code == 401, reponse.text
 
 
-def test_l_etat_est_reserve_au_scoreur(app_bso: FastAPI) -> None:
-    """L'état porte les scores manche par manche : le public n'a pas à les lire avant validation."""
+def test_l_etat_de_saisie_est_reserve_au_scoreur(app_bso: FastAPI) -> None:
+    """L'état **de saisie** porte de quoi tirer : sans jeton scoreur, 401.
+
+    ⚠️ C'est l'ancienne route `/etat` (renommée en E05US031, ADR-0089 §5). Ce test garde son objet :
+    ce qui était protégé le reste, sous le nom que ses formats jumeaux emploient.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+
+        reponse = client.get(f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_l_etat_public_se_lit_sans_aucun_jeton(app_bso: FastAPI) -> None:
+    """La lecture publique est **ouverte et anonyme**, comme `/poules/etat` et `/suisse/etat`.
+
+    C'est le CA d'E05US031 : sans elle, le Big Shoot Off était le seul des trois formats sans arbre
+    qu'aucun spectateur ne pouvait suivre.
+    """
     with TestClient(app_bso) as client:
         scn = Scenario(app_bso)
 
         reponse = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}")
 
-    assert reponse.status_code == 401, reponse.text
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert corps["phase_id"] == scn.phase_id
+    assert len(corps["tireurs"]) == 4
+    assert all(tireur["en_lice"] for tireur in corps["tireurs"])
+
+
+def test_le_dto_public_ne_porte_aucune_affordance_de_saisie(app_bso: FastAPI) -> None:
+    """Règle 6 : le DTO public est un **contrat distinct**, pas l'objet interne appauvri.
+
+    Les trois champs vérifiés ici sont ceux qu'ADR-0089 §5 retire nommément. Le test porte sur leur
+    **absence** et non sur leur valeur : un `null` poli laisserait la porte ouverte à ce qu'un
+    futur `de_etat` les repeuple sans que rien ne rougisse.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+
+        corps = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+
+    assert "prochaine_volee" not in corps["tireurs"][0]
+    assert "volees" not in corps["manches"][0]
+    # `volees` / `fleches_par_volee` sont le **format du tir** : seul le pavé de saisie en a besoin.
+    assert "volees" not in corps["projection"]
+    assert "fleches_par_volee" not in corps["projection"]
 
 
 def test_une_manche_saisie_puis_validee_elimine_sur_la_vraie_chaine(
@@ -341,7 +382,7 @@ def test_un_scoreur_d_un_autre_tournoi_est_refuse_sur_les_trois_routes(
         entetes = {"X-Jeton-Scoreur": jeton}
 
         etat = client.get(
-            f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}",
+            f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}",
             headers=entetes,
         )
         volee = client.post(

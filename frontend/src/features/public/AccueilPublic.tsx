@@ -22,7 +22,7 @@ import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
-import { VueTableaux } from '../tableaux/VueTableaux'
+import { VuePhases } from '../phases-publiques/VuePhases'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -42,12 +42,19 @@ import { GestionTournois } from '../tournois/Tournois'
 // « Classement » (celui de la qualification) et non à sa place : les deux se consultent, et à des
 // moments différents de la journée. On les distingue par le libellé plutôt que de renommer l'un des
 // deux, qui ferait chercher longtemps celui qu'on connaissait.
+//
+// ⚠️ **« Tableaux » est devenu « Rencontres » le 17/08/2026** (E05US031, ADR-0089 §3). L'onglet ne
+// montrait qu'un **arbre de duels** ; il montre désormais la phase qui se joue, quelle que soit sa
+// forme — poules, système suisse, Big Shoot Off. Le mot « Tableaux » était devenu faux pour trois
+// formats sur quatre. La **clé technique reste `tableaux`** ici comme au catalogue de vues de
+// l'écran de salle : elle est persistée là-bas (ADR-0064 §3), et la renommer imposerait une
+// migration de données pour changer un mot. L'écart clé ↔ libellé est inscrit (`DETTE-070`).
 type Vue = 'suivi' | 'affectations' | 'tableaux' | 'classement' | 'palmares' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
   { id: 'suivi', libelle: 'Suivi' },
   { id: 'affectations', libelle: 'Affectations' },
-  { id: 'tableaux', libelle: 'Tableaux' },
+  { id: 'tableaux', libelle: 'Rencontres' },
   { id: 'classement', libelle: 'Classement' },
   { id: 'palmares', libelle: 'Palmarès' },
   { id: 'plan', libelle: 'Plan de cibles' },
@@ -132,7 +139,7 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
       </nav>
 
       {/* Le mode descend en **prop explicite**, jamais lu depuis le store par les vues elles-mêmes :
-          `VueClassement`, `VueTableaux` et `VueAffectations` servent aussi la coquille admin et
+          `VueClassement`, `VuePhases` et `VueAffectations` servent aussi la coquille admin et
           l'écran de salle, où ce filtre n'a rien à faire (même précaution que `filtrable` et
           `interactif`). */}
       {vue === 'suivi' ? (
@@ -140,7 +147,7 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
       ) : vue === 'affectations' ? (
         <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'tableaux' ? (
-        <VueTableaux tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+        <VuePhases tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'classement' ? (
         <VueClassement
           tournoiId={tournoi.id}

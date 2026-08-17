@@ -18,9 +18,20 @@ stocké : la manche *m* occupe les volées `(m-1)·V + 1 … m·V`.
 Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
 saisie (ADR-0036) — mêmes garanties que la saisie de qualification et celle des poules.
 
-**Deux surfaces de lecture, deux droits.** L'état complet est derrière `exiger_scoreur` : il porte
-les scores manche par manche, donc ce que le public n'a pas à voir avant validation. La projection,
-elle, est **admin** — c'est un écran d'atelier, pas un panneau de salle.
+**Trois surfaces de lecture, trois droits** (E05US031, ADR-0089 §5 —
+`docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md`) :
+
+- `/saisie` — **scoreur** : l'état complet, avec `prochaine_volee` et la numérotation des volées ;
+- `/etat` — **public et anonyme** : l'avancement rédigé, sans aucune affordance de saisie ;
+- `/projection` — **admin** : l'aperçu de l'atelier, qui n'exige ni tir ni plan de salle.
+
+⚠️ **Les deux premières routes ont échangé leur nom le 17/08/2026.** Jusqu'à E05US031, `/etat`
+désignait ici la lecture **scoreur**, alors que ses deux formats jumeaux (`poules.py`, `suisse.py`)
+appellent `/etat` la lecture **publique** et `/saisie` celle du scoreur. Trois moteurs frères, deux
+conventions, dont une qui plaçait une lecture protégée derrière le nom de la lecture ouverte : c'est
+le genre d'écart qui ne coûte rien jusqu'au jour où l'on ajoute une route en recopiant le mauvais
+voisin. Le front et le serveur étant livrés ensemble (SPA servie par le backend), il n'y avait aucun
+client tiers à ménager.
 """
 
 from __future__ import annotations
@@ -194,6 +205,121 @@ class EtatReponse(BaseModel):
         )
 
 
+class ProjectionPubliqueReponse(BaseModel):
+    """Le déroulé **annoncé** du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ».
+
+    Trois champs de `ProjectionReponse` n'y figurent pas, et l'absence **est** la décision (règle
+    6 — un DTO public est un contrat distinct, pas l'objet interne appauvri par politesse) :
+    `volees` et `fleches_par_volee` sont le **format du tir**, dont seul le pavé de saisie a
+    besoin ; `manches_ignorees` est un avertissement d'**atelier** (« votre liste de sortants
+    dépasse votre effectif »), adressé à l'organisateur qui règle, pas au public qui regarde.
+    """
+
+    effectif: int
+    eliminations: list[int]
+    paliers: list[int]
+    restants: int
+    manches_jouables: int
+
+    @staticmethod
+    def de_projection(projection: ProjectionBigShootOff) -> ProjectionPubliqueReponse:
+        return ProjectionPubliqueReponse(
+            effectif=projection.effectif,
+            eliminations=list(projection.eliminations),
+            paliers=list(projection.paliers),
+            restants=projection.restants,
+            manches_jouables=projection.manches_jouables,
+        )
+
+
+class TireurPublicReponse(BaseModel):
+    """Un finaliste **en consultation** : son sort et ce qu'il a marqué, jamais ce qu'il doit tirer.
+
+    `scores` est conservé tel quel : `TireurAffiche.scores` ne porte que les manches **entièrement
+    validées**, donc rien qui ne soit acquis — c'est le pendant exact des points d'un duel sur la
+    route publique des tableaux. `prochaine_volee` est retiré : c'est une **affordance de saisie**,
+    elle n'a aucun sens pour un lecteur et la publier apprendrait au passage où en est la feuille
+    d'un archer.
+    """
+
+    archer_id: int
+    nom: str
+    prenom: str
+    en_lice: bool
+    rang: int | None
+    scores: list[int]
+
+    @staticmethod
+    def de_tireur(tireur: TireurAffiche) -> TireurPublicReponse:
+        return TireurPublicReponse(
+            archer_id=tireur.archer_id,
+            nom=tireur.nom,
+            prenom=tireur.prenom,
+            en_lice=tireur.en_lice,
+            rang=tireur.rang,
+            scores=list(tireur.scores),
+        )
+
+
+class ManchePubliqueReponse(BaseModel):
+    """Une manche **en consultation** : son rang, ce qu'elle élimine, où elle en est.
+
+    `volees` (les numéros de volée qu'occupe la manche) n'y figure pas : c'est la numérotation de la
+    feuille de saisie, dérivée du réglage (`(m-1)·V+1 … m·V`), et elle ne dit rien à qui regarde.
+    """
+
+    numero: int
+    elimine: int
+    complete: bool
+    jouee: bool
+
+    @staticmethod
+    def de_manche(manche: MancheAffichee) -> ManchePubliqueReponse:
+        return ManchePubliqueReponse(
+            numero=manche.numero,
+            elimine=manche.elimine,
+            complete=manche.complete,
+            jouee=manche.jouee,
+        )
+
+
+class EtatPubliqueReponse(BaseModel):
+    """La photo d'un Big Shoot Off **rédigée** — appli publique et écran de salle (ADR-0089 §5).
+
+    Le barrage y figure : c'est **lui** qui explique pourquoi la manche suivante ne s'ouvre pas. Le
+    taire laisserait le public devant une finale qui n'avance plus sans raison visible — le même
+    motif qui a fait remonter `BarrageEnAttenteReponse` jusqu'au scoreur en E05US028.
+    """
+
+    phase_id: int
+    projection: ProjectionPubliqueReponse
+    tireurs: list[TireurPublicReponse]
+    manches: list[ManchePubliqueReponse]
+    termine: bool
+    barrage: BarrageEnAttenteReponse | None
+
+    @staticmethod
+    def de_etat(etat: EtatBigShootOffAffiche) -> EtatPubliqueReponse:
+        return EtatPubliqueReponse(
+            phase_id=etat.phase_id,
+            projection=ProjectionPubliqueReponse.de_projection(etat.projection),
+            tireurs=[TireurPublicReponse.de_tireur(tireur) for tireur in etat.tireurs],
+            manches=[ManchePubliqueReponse.de_manche(manche) for manche in etat.manches],
+            termine=etat.termine,
+            barrage=(
+                BarrageEnAttenteReponse(
+                    archer_ids=[duelliste.archer_id for duelliste in etat.barrage_entre],
+                    noms=[
+                        f"{duelliste.prenom} {duelliste.nom}" for duelliste in etat.barrage_entre
+                    ],
+                    places=etat.places_au_barrage,
+                )
+                if etat.barrage_entre
+                else None
+            ),
+        )
+
+
 class SaisirVoleeRequete(BaseModel):
     """Une volée d'un finaliste. `valeurs` porte les zones tirées, dans l'ordre."""
 
@@ -258,14 +384,31 @@ async def lire_projection(tournoi_id: int, phase_id: int, request: Request) -> P
     return ProjectionReponse.de_projection(projection)
 
 
-@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatReponse)
-async def lire_etat(
+@router.get("/etat/{tournoi_id}/{phase_id}", response_model=EtatPubliqueReponse)
+async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatPubliqueReponse:
+    """L'état **rédigé** de la phase — ouvert, comme `/poules/etat` et `/suisse/etat` (E05US031).
+
+    C'est la lecture de l'appli publique et de l'écran de salle : qui est en lice, qui est sorti et
+    à quel rang, où en est la manche courante. Aucune affordance de saisie n'y circule (ADR-0089
+    §5) ; le détail complet se lit sur `/saisie`, derrière `exiger_scoreur`.
+    """
+    service: ServiceBigShootOff = request.app.state.service_big_shoot_off
+    etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)
+    return EtatPubliqueReponse.de_etat(etat)
+
+
+@router.get("/saisie/{tournoi_id}/{phase_id}", response_model=EtatReponse)
+async def lire_pour_saisie(
     tournoi_id: int,
     phase_id: int,
     request: Request,
     scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
 ) -> EtatReponse:
-    """L'état complet de la phase — **scoreur**, parce qu'il porte les scores manche par manche."""
+    """L'état complet de la phase — **scoreur**, parce qu'il porte de quoi saisir.
+
+    ⚠️ **Cette route s'appelait `/etat` jusqu'au 17/08/2026** ; elle a pris le nom que ses deux
+    formats jumeaux donnent à leur lecture de saisie, et rendu `/etat` au public (cf. en-tête).
+    """
     service: ServiceBigShootOff = request.app.state.service_big_shoot_off
     _exiger_meme_tournoi(scoreur, tournoi_id)
     etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)

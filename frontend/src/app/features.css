@@ -22,3 +22,5 @@
 @import '../features/competition/barrages.css';
 @import '../features/palmares/palmares.css';
 @import '../features/tableaux/tableaux.css';
+@import '../shared/rencontres/rencontres.css';
+@import '../features/big-shoot-off/big-shoot-off-public.css';

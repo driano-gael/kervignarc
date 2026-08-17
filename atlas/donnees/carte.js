@@ -13,6 +13,7 @@ window.ATLAS.carte = {
   "enchevetrements": [
    [
     "archers",
+    "big-shoot-off",
     "blasons",
     "categories",
     "competition",
@@ -23,9 +24,11 @@ window.ATLAS.carte = {
     "palmares",
     "patrimoine",
     "phases",
+    "phases-publiques",
     "placement",
     "poules",
     "routage",
+    "saisie",
     "saisie-duels",
     "salle",
     "suisse",
@@ -48,15 +51,15 @@ window.ATLAS.carte = {
     "feature": "competition"
    },
    {
-    "clientes": 15,
+    "clientes": 16,
     "feature": "departs"
    },
    {
-    "clientes": 9,
+    "clientes": 10,
     "feature": "salle"
    },
    {
-    "clientes": 6,
+    "clientes": 7,
     "feature": "phases"
    },
    {
@@ -88,6 +91,14 @@ window.ATLAS.carte = {
     "feature": "blasons"
    },
    {
+    "clientes": 4,
+    "feature": "poules"
+   },
+   {
+    "clientes": 4,
+    "feature": "suisse"
+   },
+   {
     "clientes": 3,
     "feature": "clubs"
    },
@@ -105,23 +116,11 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
-    "feature": "poules"
-   },
-   {
-    "clientes": 3,
-    "feature": "suisse"
-   },
-   {
-    "clientes": 3,
     "feature": "suivi"
    },
    {
     "clientes": 3,
     "feature": "suivi-deroule"
-   },
-   {
-    "clientes": 3,
-    "feature": "tableaux"
    },
    {
     "clientes": 2,
@@ -130,6 +129,10 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "bareme"
+   },
+   {
+    "clientes": 2,
+    "feature": "big-shoot-off"
    },
    {
     "clientes": 2,
@@ -149,11 +152,19 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 2,
+    "feature": "phases-publiques"
+   },
+   {
+    "clientes": 2,
     "feature": "saisie"
    },
    {
     "clientes": 2,
     "feature": "supervision"
+   },
+   {
+    "clientes": 2,
+    "feature": "tableaux"
    },
    {
     "clientes": 2,
@@ -166,10 +177,6 @@ window.ATLAS.carte = {
    {
     "clientes": 1,
     "feature": "archive"
-   },
-   {
-    "clientes": 1,
-    "feature": "big-shoot-off"
    },
    {
     "clientes": 1,
@@ -212,7 +219,7 @@ window.ATLAS.carte = {
     "feature": "simulation"
    }
   ],
-  "features": 45
+  "features": 46
  },
  "matrice": [
   {
@@ -2649,12 +2656,12 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 141,
+  "aretes_front": 148,
   "enchevetrements": 3,
-  "features": 45,
+  "features": 46,
   "imports": 827,
   "imports_entre_couches": 700,
-  "plus_gros_noeud": 20,
+  "plus_gros_noeud": 23,
   "ports": 60,
   "ports_hors_domaine": 20,
   "ports_sans_adapter": 0,

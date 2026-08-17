@@ -2857,7 +2857,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0089"
+   ],
    "date": "2026-08-01",
    "date_brute": "01/08/2026",
    "extrait": "### 1. L'écran de salle est un Poste typé, pas un agrégat parallèle Poste gagne un type (cible | ecran). Un écran porte un libellé de place dans le gymnase au lieu d'un cible_index, et son déroulé de vues (SequenceVues). Le typage rend cible_index facultatif. Plutôt que de laisser chaque appelant décider quoi faire d'un None — et parfois l'oublier —, l'invariant « seul un poste de cible a une cible » est rendu exigible au point d'usage : Poste.cible() lève PosteSansCible. Symétriquement, PosteSansEcran garde deroule_effectif / avec_libelle. L'exclusivité cible_index ↔ libelle n'est pas un CHECK en base : le projet n'en utilise nulle part, et en poser un ferait vivre une règle métier hors du […]",
@@ -5518,6 +5520,229 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Les sous-agents du dépôt sont versionnés et à modèle épinglé",
    "us": []
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-17",
+   "date_brute": "17/08/2026",
+   "extrait": "### 1. Une forme commune « rencontres groupées + classement », pas une vue par type Poules et système suisse partagent le décor RONDES_APPARIEES du contrat de phase (ADR-0083 §1), et la même grammaire de lecture : des rencontres appariées, groupées par tour ou par ronde, et un classement qui dit où en est chacun. Ils sont rendus par un seul composant, alimenté par un modèle neutre (shared/rencontres/) auquel chaque format s'adapte. Ce n'est pas une économie de lignes, c'est la seule forme qui tienne sur la durée : la colline partage le même décor et arrive en E05US027. Écrire trois vues cousines aujourd'hui, c'est en écrire une quatrième demain et garantir qu'elles divergeront sur la seule […]",
+   "fichier": "docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md",
+   "identifiant": "0089",
+   "liens": [
+    {
+     "cible": "E05US031",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0064",
+     "libelle": "Révise",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0083",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0079",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0075",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0081",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0076",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "lire_etat",
+      "lire_pour_saisie",
+      "EtatPubliqueReponse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "PhasePublique",
+      "getPhasesPubliques",
+      "renduDe",
+      "phaseAMontrer",
+      "lister_avancement"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ecran.py",
+     "existe": true,
+     "symboles": [
+      "LIBELLE_VUE",
+      "VueEcran"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/big-shoot-off/VueBigShootOffPublique.tsx",
+     "existe": true,
+     "symboles": [
+      "lignesTireurs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/big-shoot-off/publique.ts",
+     "existe": true,
+     "symboles": [
+      "lignesTireurs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/ecrans/api.ts",
+     "existe": true,
+     "symboles": [
+      "LIBELLE_VUE",
+      "VueEcran"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases-publiques/VuePhases.tsx",
+     "existe": true,
+     "symboles": [
+      "mode",
+      "suivis",
+      "MesArchers"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases-publiques/api.ts",
+     "existe": true,
+     "symboles": [
+      "PhasePublique",
+      "getPhasesPubliques",
+      "renduDe",
+      "phaseAMontrer",
+      "lister_avancement"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases-publiques/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "PhasePublique",
+      "getPhasesPubliques",
+      "renduDe",
+      "phaseAMontrer",
+      "lister_avancement"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/poules/publique.ts",
+     "existe": true,
+     "symboles": [
+      "formatPublicDesPoules",
+      "formatPublicDuSuisse",
+      "enDemiPoints"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/publique.ts",
+     "existe": true,
+     "symboles": [
+      "formatPublicDesPoules",
+      "formatPublicDuSuisse",
+      "enDemiPoints"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/rencontres/VueRencontres.tsx",
+     "existe": true,
+     "symboles": [
+      "TourVue",
+      "mode",
+      "suivis",
+      "MesArchers"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/rencontres/modele.test.ts",
+     "existe": true,
+     "symboles": [
+      "cheminDe",
+      "rangDe",
+      "engagesParmi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/rencontres/modele.ts",
+     "existe": true,
+     "symboles": [
+      "TourVue",
+      "cheminDe",
+      "rangDe",
+      "engagesParmi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "accepté",
+   "titre": "Les vues publiques rendent les formats sans arbre",
+   "us": [
+    "E05US023",
+    "E05US026",
+    "E05US027",
+    "E05US028",
+    "E05US030",
+    "E05US031",
+    "E16US004"
+   ]
   }
  ]
 };

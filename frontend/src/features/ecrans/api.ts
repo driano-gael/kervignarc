@@ -22,9 +22,20 @@ export const LIBELLE_VUE: Record<VueEcran, string> = {
   plan_cibles: 'Plan de cibles',
   suivi_deroule: 'Suivi du déroulé',
   affectations: 'Affectations',
-  // « Tableaux » et non « Arbres » : c'est le mot de la salle et celui du CA (règle 3). Sur l'écran
-  // projeté, la vue montre le tableau **qui se joue** — personne n'est là pour en choisir un.
-  tableaux: 'Tableaux',
+  // ⚠️ **« Rencontres » depuis E05US031** (ADR-0089 §3) — le libellé s'élargit, **la clé reste
+  // `tableaux`**. La vue ne projette plus le seul arbre de duels mais la phase qui se joue, quelle
+  // que soit sa forme : poules, système suisse, Big Shoot Off. « Tableaux » était devenu faux pour
+  // trois formats sur quatre.
+  //
+  // La clé n'est pas renommée parce qu'elle est **persistée** sur chaque poste-écran (ADR-0064 §3 :
+  // le déroulé de vues est un réglage de préparation, en base). La changer imposerait une migration
+  // de données pour un mot, et casserait tout déroulé déjà composé. L'écart assumé entre la clé
+  // technique et le libellé métier est inscrit au registre (`DETTE-070`) : non écrit, il se
+  // redécouvre en cherchant pourquoi un `grep tableaux` ne trouve rien.
+  //
+  // Sur l'écran projeté, la vue montre la phase **qui se joue** — personne n'est là pour en choisir
+  // une.
+  tableaux: 'Rencontres',
   // « Palmarès » et non « Podium » : la vue porte les podiums **et** le classement final complet.
   // L'appeler podium ferait croire à quatre lignes, et l'organisateur qui cherche le classement de
   // fin de journée ne le programmerait pas.

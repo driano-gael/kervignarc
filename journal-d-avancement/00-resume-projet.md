@@ -544,9 +544,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **114 US livrées** sur `main` (mergées, revues, CI verte) à la date du 16/08/2026, la dernière
-  étant `E05US030` — le **système suisse à l'écran** (réglage, saisie ronde par ronde, classement
-  provisoire), qui rend enfin jouable le moteur livré le matin même par `E05US026`. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
+- **115 US livrées** sur `main` (mergées, revues, CI verte) à la date du 17/08/2026, la dernière
+  étant `E05US031` — le **public voit les formats sans arbre** : poules, système suisse et Big Shoot
+  Off atteignent enfin l'application publique et l'écran de salle, trois formats jouables depuis des
+  semaines que personne ne pouvait suivre depuis les gradins. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
   tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -706,6 +707,21 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   pouvait changer de départ dans l'un, saisir dans l'autre, et scorer les rencontres du mauvais
   créneau — avec des identifiants valides, donc **sans erreur visible**. Il n'y a plus qu'un choix de
   départ, en tête d'écran (`DETTE-056`).
+- **Le public voit tous les formats (17/08/2026, E05US031).** L'application publique — celle qu'un
+  spectateur ouvre sur son téléphone, sans compte — avait un onglet « Tableaux » qui ne savait montrer
+  qu'**une seule chose** : un arbre d'élimination directe. Les trois formats sans arbre livrés depuis
+  — **poules**, **système suisse**, **Big Shoot Off** — étaient jouables mais **invisibles** : dès que
+  le tournoi y entrait, le public n'avait plus rien à regarder, y compris sur les archers qu'il avait
+  choisi de suivre. L'onglet s'appelle désormais « **Rencontres** » et montre la phase **qui se joue**,
+  quelle que soit sa forme : les rencontres du tour ou de la ronde **avec leur cible**, le classement
+  du format, et l'historique des tours déjà joués. Le suivi personnel vaut ici comme ailleurs — pour
+  chaque archer suivi, sa position et le détail de ses rencontres. L'**écran de salle** projette ces
+  formats sans qu'on ait rien à reprogrammer. Le manque était **commun aux trois** formats : le
+  traiter d'un bloc plutôt que format par format évitait d'écrire trois écrans cousins — et la
+  **colline** en héritera sans une ligne quand elle deviendra jouable. Un seul format demandait du
+  travail côté serveur : le Big Shoot Off était le seul dont aucune lecture n'était ouverte au public.
+  Décision d'architecture :
+  [ADR-0089](../docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md).
 - **La finale spectacle se joue, et sa règle a changé (14/08/2026, E05US028).** Le « Big Shoot Off »
   était proposé à la composition sans mener nulle part, comme les poules avant lui. En préparant son
   écran, une contradiction est apparue : la fiche de l'US promettait un réglage que ni la règle ni le
@@ -749,7 +765,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 > livrées. Les entrées manquantes sont rétablies ci-dessous. `SUIVI-US.md` **fait foi** sur le compte
 > exact ; cette liste n'en est que le reflet lisible.
 
-- Dernière US livrée : **E05US030** (le système suisse à l'écran) — US **à surface visible**, avec
+- Dernière US livrée : **E05US031** (le public voit les formats sans arbre) — US **à surface
+  visible**, avec son [fait marquant daté](2026-08-17-21h40-le-public-voit-tous-les-formats.md) et sa
+  [fiche de recette](../docs/fonctionnel/E05US031.md).
+- Avant elle, **E05US030** (le système suisse à l'écran) — US **à surface visible**, avec
   son [fait marquant daté](2026-08-16-19h50-le-systeme-suisse-se-joue-vraiment.md) et sa
   [fiche de recette](../docs/fonctionnel/E05US030.md).
 - Avant elle, **E00US020** (l'atlas : la carte du code) — outillage de suivi, avec son

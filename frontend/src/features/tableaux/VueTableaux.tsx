@@ -33,11 +33,21 @@ const nomComplet = (qui: DuellistePublic) => `${qui.prenom} ${qui.nom}`.trim()
 
 export function VueTableaux({
   tournoiId,
+  phaseId = null,
   interactif = true,
   mode = 'tout',
   suivis = [],
 }: {
   tournoiId: number
+  /** La phase **imposée** par l'appelant (E05US031). Quand elle est fournie, cette vue n'est plus
+   * qu'un rendu d'arbre : elle masque son propre sélecteur et ne choisit plus rien.
+   *
+   * ⚠️ **C'est ce qui empêche deux sélecteurs contradictoires sur le même écran.** Depuis
+   * ADR-0089 §4, l'index public est la liste des phases du créneau (`features/phases-publiques`),
+   * et un arbre n'en est qu'un cas particulier. Laisser cette vue rechoisir « le tableau qui se
+   * joue » lui ferait afficher un autre arbre que celui que le spectateur vient de sélectionner —
+   * exactement le défaut que l'interrupteur unique d'ADR-0079 a dû corriger, un cran plus haut. */
+  phaseId?: number | null
   interactif?: boolean
   /** La bascule « mes archers / tout » de l'appli publique (E16US004).
    *
@@ -88,11 +98,29 @@ export function VueTableaux({
   // terminé, sinon le dernier (à 17 h, c'est celui dont on veut voir le podium). Même règle que le
   // plan de cibles de salle, calé sur le départ en cours et non sur le premier.
   const courant = donnees.tableaux.find((t) => !t.est_termine) ?? donnees.tableaux.at(-1)
+  // Une phase **imposée** l'emporte sur tout le reste, y compris sur un choix local antérieur : elle
+  // vient de l'index public, qui est désormais la seule autorité sur « quelle phase regarde-t-on ».
+  const impose = phaseId === null ? undefined : donnees.tableaux.find((t) => t.phase_id === phaseId)
   const tableau =
-    (interactif && phaseChoisie !== null
+    impose ??
+    (interactif && phaseId === null && phaseChoisie !== null
       ? donnees.tableaux.find((t) => t.phase_id === phaseChoisie)
-      : undefined) ?? courant
+      : undefined) ??
+    (phaseId === null ? courant : undefined)
   if (tableau === undefined) {
+    // ⚠️ **Une phase imposée peut n'avoir aucun arbre**, et ce n'est pas la même chose que « pas de
+    // tableau du tout » : `/tableaux/departs/{id}` ne rend que les phases en tableau, tandis que
+    // l'index public liste **toutes** les phases du créneau. Une élimination directe composée mais
+    // dont l'arbre n'est pas encore monté tombe donc ici, et le dire vaut mieux que de basculer en
+    // silence sur un autre arbre.
+    if (phaseId !== null) {
+      return (
+        <p className="carte__etat">
+          L’arbre de cette phase n’est pas encore monté — il apparaîtra dès que les duels seront
+          lancés.
+        </p>
+      )
+    }
     // Liste vide : ni erreur ni page blanche. Le matin, les tableaux n'existent pas encore, et le
     // dire évite de laisser croire à une panne devant un écran vide. (Le test `undefined` porte
     // aussi la garde d'indexation — une liste non vide rend toujours un élément.)
@@ -105,7 +133,9 @@ export function VueTableaux({
 
   return (
     <div className="tableaux">
-      {interactif && (
+      {/* Le sélecteur **disparaît dès qu'une phase est imposée** (E05US031) : c'est l'index public
+          qui choisit, et deux sélecteurs sur un même écran finissent toujours par se contredire. */}
+      {interactif && phaseId === null && (
         <div className="tableaux__barre">
           {/* Le choix de phase n'apparaît que s'il y a un choix à faire : un tournoi à un seul
               tableau n'a pas à afficher une liste d'un élément. */}

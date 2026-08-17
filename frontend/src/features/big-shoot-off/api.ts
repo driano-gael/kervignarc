@@ -71,9 +71,56 @@ export interface EtatBigShootOff {
   barrage: BarrageEnAttente | null
 }
 
-export function getEtatBigShootOff(tournoiId: number, phaseId: number): Promise<EtatBigShootOff> {
-  return fetchJson<EtatBigShootOff>(
+/** Le finaliste **en consultation** : son sort et ce qu'il a marqué, jamais ce qu'il doit tirer.
+ *
+ * `prochaine_volee` n'y est pas : c'est une affordance de **saisie** (ADR-0089 §5). Ne pas
+ * « compléter » ce type en recopiant `Tireur` — l'absence de ce champ **est** la décision, et un
+ * test la verrouille côté serveur. */
+export type TireurPublic = Omit<Tireur, 'prochaine_volee'>
+
+/** La manche **en consultation** : sans la numérotation de volées, qui sert la feuille de saisie. */
+export type ManchePublique = Omit<Manche, 'volees'>
+
+/** Le déroulé annoncé du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ». */
+export type ProjectionPublique = Omit<
+  Projection,
+  'volees' | 'fleches_par_volee' | 'manches_ignorees'
+>
+
+/** La photo **rédigée** d'un Big Shoot Off — appli publique et écran de salle (E05US031). */
+export interface EtatBigShootOffPublic {
+  phase_id: number
+  projection: ProjectionPublique
+  tireurs: TireurPublic[]
+  manches: ManchePublique[]
+  termine: boolean
+  barrage: BarrageEnAttente | null
+}
+
+/** L'état **rédigé** — lecture **ouverte et anonyme**, comme `/poules/etat` et `/suisse/etat`. */
+export function getEtatBigShootOffPublic(
+  tournoiId: number,
+  phaseId: number,
+): Promise<EtatBigShootOffPublic> {
+  return fetchJson<EtatBigShootOffPublic>(
     `/api/v1/big-shoot-off/etat/${tournoiId}/${phaseId}`,
+    undefined,
+    'aucune',
+  )
+}
+
+/** L'état **de saisie** : jeton scoreur, et borné au tournoi du scoreur (403 sinon).
+ *
+ * ⚠️ **La route s'appelait `/etat` jusqu'au 17/08/2026** (E05US031, ADR-0089 §5). Elle a pris le nom
+ * que les poules et le suisse donnent à leur lecture de saisie, et rendu `/etat` au public : trois
+ * formats jumeaux portaient deux conventions, dont une qui plaçait une lecture protégée derrière le
+ * nom de la lecture ouverte. */
+export function getEtatBigShootOffSaisie(
+  tournoiId: number,
+  phaseId: number,
+): Promise<EtatBigShootOff> {
+  return fetchJson<EtatBigShootOff>(
+    `/api/v1/big-shoot-off/saisie/${tournoiId}/${phaseId}`,
     undefined,
     'scoreur',
   )

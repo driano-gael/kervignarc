@@ -27,7 +27,7 @@ import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
 import { VuePalmares } from '../palmares/VuePalmares'
 import { VueAffectations } from '../routage/VueAffectations'
-import { VueTableaux } from '../tableaux/VueTableaux'
+import { VuePhases } from '../phases-publiques/VuePhases'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
 import { departDeSalle } from './rotation'
@@ -161,9 +161,17 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
   if (vue === 'tableaux') {
     // `interactif={false}` : ni sélecteur de phase ni bascule « mon chemin » (CA E07US004 — aucune
     // interaction). Ce n'est pas qu'une question de boutons inutiles : « mon chemin » n'a aucun
-    // sens devant un projecteur, personne n'y suit d'archer. L'écran montre donc **l'arbre
-    // complet** du tableau qui se joue, seule lecture qui informe une salle entière.
-    return <VueTableaux tournoiId={tournoiId} interactif={false} />
+    // sens devant un projecteur, personne n'y suit d'archer. L'écran montre donc la lecture
+    // **complète** de la phase qui se joue, seule qui informe une salle entière.
+    //
+    // ⚠️ **`VuePhases` et non `VueTableaux` depuis E05US031** (ADR-0089 §3). La clé `tableaux` est
+    // conservée — elle est **persistée** sur les postes-écrans (ADR-0064 §3), la renommer imposerait
+    // une migration pour changer un mot —, mais ce qu'elle projette n'est plus le seul arbre de
+    // duels : c'est la phase en cours, poules et système suisse et Big Shoot Off compris. La règle
+    // d'ADR-0064 (« on n'inscrit une vue qu'une fois son écran capable de l'afficher ») est
+    // honorée à l'envers et reste tenue : aucune vue n'est ajoutée, on rend capable celle qui
+    // existe — donc aucun déroulé déjà composé ne peut programmer une page vide.
+    return <VuePhases tournoiId={tournoiId} interactif={false} />
   }
   if (vue === 'palmares') {
     // `interactif={false}` : ni filtre ni bouton d'export sur un écran projeté (CA E07US004). La

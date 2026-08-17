@@ -1299,9 +1299,21 @@ troisième variante locale au lieu de combler le trou.
 
 - **CA — l'onglet public rend les phases sans arbre**, au même titre que les tableaux : les
   rencontres de la ronde ou du groupe en cours, avec leur cible, et le classement du format. Le
-  catalogue de vues d'[ADR-0064](../docs/adr/0064-un-catalogue-de-vues-pour-l-ecran-de-salle.md) est
-  aujourd'hui restreint à l'**arbre de duels** (`TableauPublic` : `duels`, `nb_tours`, `plage`,
+  catalogue de vues d'[ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)
+  est aujourd'hui restreint à l'**arbre de duels** (`TableauPublic` : `duels`, `nb_tours`, `plage`,
   `podium`) — c'est cette restriction qui est levée.
+- **CA — l'historique des tours joués reste lisible** *(élargissement du cadrage du 17/08/2026)* :
+  un spectateur qui arrive à la ronde 4 doit pouvoir lire les rondes 1 à 3, et pas seulement le tour
+  en cours. Aucun backend en jeu — les routes d'état rendent déjà **toutes** les rondes ou tous les
+  tours ; c'est une décision d'affichage, et la formuler évite de livrer une vue qui n'ouvre que le
+  dernier bloc « pour ne pas charger l'écran ».
+- **CA — « mon chemin » existe pour ces formats aussi** *(élargissement du cadrage du 17/08/2026)* :
+  pour chaque archer suivi, ses rencontres passées et sa rencontre en cours dans la phase, comme
+  l'arbre le rend depuis `E07US005`. Sans lui, l'interrupteur « mes archers » d'ADR-0079 gouverne
+  une vue qui n'a rien de propre à montrer, et le CA suivant serait tenu à vide.
+- **CA — le classement d'une phase terminée reste consultable** *(élargissement du cadrage du
+  17/08/2026)* : il ne disparaît pas au démarrage de la phase suivante. C'est une conséquence du
+  sélecteur, qui liste **toutes** les phases du créneau et non la seule phase en cours.
 - **CA — « mes archers » gouverne cette vue comme les autres** : l'interrupteur unique
   d'[ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md) vaut
   ici sans exception, et la vue nomme « aucun de vos archers ici » distinctement de son propre vide.
@@ -1309,12 +1321,21 @@ troisième variante locale au lieu de combler le trou.
 - **CA — le classement d'un suisse en cours est public** : c'est la part publique du classement
   provisoire livré côté organisateur par `E05US030`. Le backend l'expose déjà
   (`GET /api/v1/suisse/etat/{tournoi_id}/{phase_id}`, publique et anonyme).
-- ⚠️ **ADR probable** : étendre le catalogue de vues à des formats dont la forme n'est pas un arbre
-  n'est pas un ajout d'écran, c'est une **révision d'ADR-0064**. À instruire avant de coder.
-- ⚠️ **À vérifier au cadrage** : quelle part est déjà exposée sans authentification pour les
-  **poules** et le **Big Shoot Off** — le suisse l'est (`/suisse/etat/…`), les deux autres restent à
-  confirmer ; si une route publique manque, cette US porte aussi du backend.
-- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026
+- ✅ **ADR rendu** : [ADR-0089](../docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md)
+  révise ADR-0064. Décision principale, **tranchée par le commanditaire au cadrage du 17/08/2026** :
+  une **forme commune** « rencontres groupées + classement » pour les poules et le suisse (décor
+  `RONDES_APPARIEES` partagé, ADR-0083 §1), et une **vue propre** au Big Shoot Off, dont la manche
+  est un tir collectif sans adversaire. Le critère pour le format suivant est le **décor**, pas le
+  compte de formats — la colline (`E05US027`) entrera donc dans la forme commune sans écrire de vue.
+- ✅ **Vérification faite au cadrage** *(la puce d'origine la demandait)* : les **poules**
+  (`/poules/etat/…`, `/poules/repartition/…`) et le **suisse** (`/suisse/etat/…`) sont déjà publics
+  et anonymes ; le **Big Shoot Off** ne l'est pas — sa seule lecture est derrière `exiger_scoreur` et
+  sa projection derrière `exiger_admin`. **Cette US porte donc du backend pour ce format-là** : un
+  DTO public restreint et l'alignement de ses deux routes sur celles de ses jumeaux (`/etat` publique,
+  `/saisie` scoreur — ADR-0089 §5).
+- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026,
+  **périmètre élargi au cadrage du 17/08/2026** (historique, « mon chemin », classement d'une phase
+  terminée)
 
 ---
 

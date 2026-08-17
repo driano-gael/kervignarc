@@ -1,0 +1,94 @@
+/* --- Vue publique du Big Shoot Off (E05US031) ---------------------------------------------------
+   Mêmes contraintes que `tableaux.css` et `rencontres.css` : un seul jeu de règles pour l'appli
+   publique (360 px) et l'écran de salle (projeté, lu de loin), **tailles en `em`** parce que
+   `.salle` porte sa propre échelle typographique (E07US004).
+
+   La forme est un tableau et non une liste, à rebours des deux autres vues publiques : ici la
+   lecture est une **comparaison** — qui a marqué quoi à la même manche —, et c'est exactement ce
+   qu'une liste rend impossible. */
+
+.bso-public {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8em;
+}
+
+/* L'échelle « 12 → 8 → 6 → 5 ». La flèche est décorative et posée en `::before` : elle ne doit pas
+   être lue par un lecteur d'écran, qui entendrait « douze flèche droite huit ». */
+.bso-public__echelle {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bso-public__palier {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.bso-public__palier + .bso-public__palier::before {
+  content: '→';
+  margin-right: 0.5em;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.bso-public__restants,
+.bso-public__termine {
+  font-size: 0.85em;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* Ambre, jamais le rouge : une phase suspendue par un barrage n'est pas en faute. */
+.bso-public__barrage {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--danger);
+}
+
+.bso-public__table-defilante {
+  overflow-x: auto;
+}
+
+.bso-public__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+.bso-public__table th,
+.bso-public__table td {
+  text-align: left;
+  padding: 0.3em 0.5em;
+  white-space: nowrap;
+}
+
+.bso-public__table th {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bso-public__table td {
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.bso-public__table td:first-child {
+  font-variant-numeric: normal;
+  white-space: normal;
+}
+
+/* Le sorti s'efface **sans disparaître** : son parcours reste lisible (c'est le CA « l'historique
+   reste lisible »), mais la ligne cesse de disputer l'attention à ceux qui tirent encore. L'opacité
+   ne porte pas le sens seule — la colonne « Sort » écrit le rang en toutes lettres (`DV-03`). */
+.bso-public__sorti {
+  opacity: 0.65;
+}
