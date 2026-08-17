@@ -141,6 +141,16 @@
     d'E04US002 (`exiger_poste` refuse déjà un tournoi **terminé**, ADR-0029).
 - **Dépend de** : E04US001, E10US001 · **Jalon** : J1
 
+### E10US009 — L'avancement d'un créneau ne sert au public que ce qu'il regarde
+*En tant que* développeur, *je veux* que la lecture publique d'un créneau rende **un contrat étroit** et non l'objet interne, *afin qu'*un champ ajouté demain à une phase ne parte pas au public sans que personne l'ait décidé.
+- **Contexte** : **résorption de [`DETTE-071`](../docs/dette.md#dette-071--lavancement-dun-créneau-sert-les-réglages-complets-à-un-anonyme)**. `GET /api/v1/departs/{depart_id}/phases` est une lecture ouverte (E10US001) qui rend `PhaseReponse` **entière** — `sources`, `effectif`, `profondeur`, `poules`, `suisse`, `big_shoot_off`, `barrage_jusqu_au`. Un anonyme lit donc les **réglages d'atelier** du créneau, là où ses consommateurs publics n'ont besoin que de quatre champs. Rien de secret (ces réglages sont annoncés en salle), mais la surface est plus large que l'usage, et c'est le **mécanisme** qui coûte : tout champ ajouté à `PhaseReponse` part au public sans décision et sans qu'un test rougisse. Relevé deux fois à la revue d'`E05US031` (axes C2 et adversarial), qui l'ont classé hors périmètre à raison.
+- **CA — un DTO public étroit** : la route sert `id`, `ordre`, `type`, `statut` et rien d'autre. `PhaseReponse` reste au **pilotage** (admin). Le patron est celui qu'`E05US031` a déjà posé pour le Big Shoot Off ([ADR-0089](../docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md) §5) : deux classes, pas un `exclude`.
+- **CA — l'absence est testée, pas la valeur** : un test vérifie que les champs de réglage **ne figurent pas** dans la réponse. Un `null` poli laisserait un futur `de_agregat` les repeupler sans que rien ne le voie — c'est l'assertion qu'`E05US031` a dû corriger sur le DTO du Big Shoot Off.
+- **CA — aucun écran ne casse** : l'onglet public « Rencontres », l'écran de salle et l'écran de pilotage continuent de fonctionner. ⚠️ **Ne pas fermer la route par une garde admin** : l'appli publique et l'écran de salle n'ont pas de session — ce serait casser un usage réel pour supprimer une exposition qui n'en est pas une.
+- **CA — la dette change de table** : marqueur `# DETTE-071` retiré de `lister_avancement`, ligne déplacée en « Dette résorbée ».
+- **Notes** : petite US, sans surface utilisateur — donc **pas de `docs/fonctionnel/`** (règle du journal : une US sans rendu visible ne produit pas de fiche datée). Le front `features/phases-publiques/api.ts` déclare **déjà** les quatre champs et son en-tête signale l'écart : il n'y a probablement rien à y changer, à vérifier. Vérifier aussi l'écran de **pilotage**, seul consommateur admin, qui doit garder `PhaseReponse`.
+- **Dépend de** : `E05US031` *(qui a fait de cette route un consommateur public)* · **Jalon** : hors jalon *(dette de conception, inscrite le 18/08/2026)*
+
 ---
 
 ## Correspondance ancien → nouveau (maille révisée du 17/07/2026)

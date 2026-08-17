@@ -572,6 +572,19 @@ window.ATLAS.avancement = {
    "ouverte": true,
    "resorption_us": [],
    "severite": "majeur"
+  },
+  {
+   "identifiant": "071",
+   "introduite_par": [
+    "E01US025",
+    "E05US031"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E05US031",
+    "E10US009"
+   ],
+   "severite": "mineur"
   }
  ],
  "entete": {
@@ -1661,7 +1674,8 @@ window.ATLAS.avancement = {
     "026",
     "047",
     "048",
-    "049"
+    "049",
+    "071"
    ],
    "dettes_resorbees": [],
    "epic": "01",
@@ -2579,8 +2593,12 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [],
-   "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_introduites": [
+    "071"
+   ],
+   "dettes_resorbees": [
+    "071"
+   ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
    "etat": "🎯",
