@@ -164,10 +164,13 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 **sortie des outils**. D'où :
 
 - **Déléguer la lecture, garder le jugement.** <!--regle:deleguer-la-lecture-garder-le-jugement--> La localisation (« où est le service qui… », « quel
-  pattern suit l'existant ») part à un sous-agent `Explore` : les fichiers atterrissent dans *son*
-  contexte, l'assistant ne reçoit que la conclusion. Un sous-agent qui **localise** peut tourner sur
-  un modèle moins cher ; un sous-agent qui **juge** — le relecteur de `/revue-us` — garde le modèle
-  fort : c'est une barrière qualité, elle ne s'optimise pas.
+  pattern suit l'existant ») part à l'agent [`localiser`](.claude/agents/localiser.md) : les fichiers
+  atterrissent dans *son* contexte, l'assistant ne reçoit que la conclusion. Un sous-agent qui
+  **localise** tourne sur un modèle moins cher ; un sous-agent qui **juge** — les relecteurs de
+  `/revue-us` — garde le modèle fort : c'est une barrière qualité, elle ne s'optimise pas. Ces
+  modèles sont **épinglés au frontmatter** des agents, jamais hérités de la session
+  ([ADR-0088](docs/adr/0088-les-sous-agents-du-depot-sont-versionnes-et-a-modele-epingle.md)) : sans
+  cela, un `/model sonnet` choisi pour une US mécanique dégradait sa propre revue en silence.
 - **Lire les gros documents par la section utile.** <!--regle:lire-les-gros-documents-par-la-section-utile--> [`docs/dette.md`](docs/dette.md),
   [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) et
   [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) pèsent ~20 Ko chacun : `Grep`, ou `Read`

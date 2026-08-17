@@ -267,6 +267,17 @@ window.ATLAS.historique = {
  ],
  "deleguer-la-lecture-garder-le-jugement": [
   {
+   "adr": [
+    "0013"
+   ],
+   "date": "2026-08-17",
+   "motif": "fix(chore): corriger ADR-0013 — pyproject.toml non préfixé + table dupliquée",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "e8d3258cf7",
+   "us": []
+  },
+  {
    "adr": [],
    "date": "2026-08-15",
    "motif": "docs(e00us018): ancrer les règles de CLAUDE.md pour suivre leur histoire",

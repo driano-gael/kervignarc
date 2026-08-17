@@ -327,14 +327,54 @@ window.ATLAS.decisions = {
    "fichier": "docs/adr/0013-conduite-de-la-revue-d-us.md",
    "identifiant": "0013",
    "liens": [],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": ".github/workflows/ci.yml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/pyproject.toml",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_agents_de_revue.py",
+     "existe": true,
+     "symboles": [
+      "Edit",
+      "Write"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_isolation.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "docs/metriques-revue.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
    "titre": "Conduite de la revue d'US : axes parallèles + porte mécanique",
    "us": [
     "E01US001",
-    "E02US001"
+    "E02US001",
+    "E05US028"
    ]
   },
   {
@@ -5452,6 +5492,32 @@ window.ATLAS.decisions = {
     "E05US030",
     "E05US032"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-16",
+   "date_brute": "2026-08-16",
+   "extrait": "1. Tout sous-agent réutilisable du dépôt est un fichier versionné de .claude/agents/. Il voyage entre les postes, il se relit, il se diffe, il passe en revue comme le reste du code. Un sous-agent défini à la volée dans un prompt n'est pas reproductible et n'a pas de mémoire d'un poste à l'autre. 2. Son modèle est épinglé au frontmatter, jamais hérité. Le critère est celui de CLAUDE.md : | Ce que fait l'agent | Modèle | Pourquoi | |---|---|---| | Juger — les cinq relecteurs de /revue-us | opus | Barrière qualité. Elle ne s'optimise pas (ADR-0013) | | Localiser — localiser | sonnet | Beaucoup d'entrée, peu de jugement. Pas haiku : 200 K de contexte, et ce dépôt peut le saturer — une […]",
+   "fichier": "docs/adr/0088-les-sous-agents-du-depot-sont-versionnes-et-a-modele-epingle.md",
+   "identifiant": "0088",
+   "liens": [],
+   "portage": [
+    {
+     "chemin": "backend/tests/test_agents_de_revue.py",
+     "existe": true,
+     "symboles": [
+      "Edit",
+      "Write"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Les sous-agents du dépôt sont versionnés et à modèle épinglé",
+   "us": []
   }
  ]
 };

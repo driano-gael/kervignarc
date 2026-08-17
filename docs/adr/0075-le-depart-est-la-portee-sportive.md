@@ -217,7 +217,8 @@ juge les ADR a le log de branche en périmètre, il voit donc les ADR créés.
 ### Le garde-fou
 
 Une règle qui borne ce qu'une revue a le droit de relever doit dire **qui la vérifie**, sinon elle
-ne retire que de la détection. La grille de revue (`.claude/commands/revue-us.md`, axe C2, `12-ADR`)
+ne retire que de la détection. La grille de revue (`.claude/agents/revue-axe-c2.md`, règle `12-ADR`, orchestrée par
+`.claude/commands/revue-us.md`)
 porte donc la contrepartie : elle exige la section sur tout ADR **créé**, et sur tout ADR
 **rouvert** au sens du point 2. Sans cette contrepartie, le bornage serait un pur affaiblissement.
 

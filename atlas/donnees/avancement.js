@@ -558,6 +558,20 @@ window.ATLAS.avancement = {
     "E00US026"
    ],
    "severite": "mineur"
+  },
+  {
+   "identifiant": "068",
+   "introduite_par": [],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "069",
+   "introduite_par": [],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
   }
  ],
  "entete": {
@@ -2510,6 +2524,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0013",
     "0065",
     "0083",
     "0084",
