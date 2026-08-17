@@ -164,7 +164,7 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
     // sens devant un projecteur, personne n'y suit d'archer. L'écran montre donc la lecture
     // **complète** de la phase qui se joue, seule qui informe une salle entière.
     //
-    // ⚠️ **`VuePhases` et non `VueTableaux` depuis E05US031** (ADR-0089 §3). La clé `tableaux` est
+    // ⚠️ **`VuePhases` et non `VueTableaux` depuis E05US031** (ADR-0089 §3) — `DETTE-070`. La clé `tableaux` est
     // conservée — elle est **persistée** sur les postes-écrans (ADR-0064 §3), la renommer imposerait
     // une migration pour changer un mot —, mais ce qu'elle projette n'est plus le seul arbre de
     // duels : c'est la phase en cours, poules et système suisse et Big Shoot Off compris. La règle

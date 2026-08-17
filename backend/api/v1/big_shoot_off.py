@@ -208,27 +208,36 @@ class EtatReponse(BaseModel):
 class ProjectionPubliqueReponse(BaseModel):
     """Le déroulé **annoncé** du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ».
 
-    Trois champs de `ProjectionReponse` n'y figurent pas, et l'absence **est** la décision (règle
+    Cinq champs de `ProjectionReponse` n'y figurent pas, et l'absence **est** la décision (règle
     6 — un DTO public est un contrat distinct, pas l'objet interne appauvri par politesse) :
     `volees` et `fleches_par_volee` sont le **format du tir**, dont seul le pavé de saisie a
     besoin ; `manches_ignorees` est un avertissement d'**atelier** (« votre liste de sortants
     dépasse votre effectif »), adressé à l'organisateur qui règle, pas au public qui regarde.
+
+    ⚠️ `eliminations` et `manches_jouables` **ont été retirés en revue** : ils étaient servis sans
+    qu'aucune vue ne les lise. `eliminations` est la liste de sortants — le **réglage d'atelier
+    lui-même** —, dont `effectif` + `paliers` est déjà la forme lisible ; `manches_jouables` n'est
+    que `len(paliers)`. Un champ public que personne ne consomme est une surface d'API à maintenir
+    et à faire fuir, contre zéro service rendu : le front pose la doctrine inverse à la même
+    ligne (« le client public ne déclare que ce qu'il consomme »).
+
+    ⚠️ **`restants` se lit « effectif à la FIN du format », pas « en lice maintenant ».** C'est
+    `paliers[-1]`, une constante connue avant le premier tir. La première vue publique l'a affiché
+    comme un compte d'archers encore en lice — défaut **bloquant** relevé en revue : sur une finale
+    à un rescapé, l'écran annonçait « 1 archer en lice » du début à la fin. Le compte réel se
+    dérive de `tireurs`, jamais d'ici.
     """
 
     effectif: int
-    eliminations: list[int]
     paliers: list[int]
     restants: int
-    manches_jouables: int
 
     @staticmethod
     def de_projection(projection: ProjectionBigShootOff) -> ProjectionPubliqueReponse:
         return ProjectionPubliqueReponse(
             effectif=projection.effectif,
-            eliminations=list(projection.eliminations),
             paliers=list(projection.paliers),
             restants=projection.restants,
-            manches_jouables=projection.manches_jouables,
         )
 
 
@@ -283,6 +292,36 @@ class ManchePubliqueReponse(BaseModel):
         )
 
 
+class BarragePublicReponse(BaseModel):
+    """Le barrage **en consultation** — mêmes champs qu'aujourd'hui, contrat distinct.
+
+    ⚠️ **Pourquoi une classe et non `BarrageEnAttenteReponse` réutilisée.** Le DTO public de cette
+    route revendique d'être un contrat **séparé**, pas l'objet du scoreur appauvri par politesse
+    (règle 6) : la garantie recherchée est qu'un champ ajouté demain côté saisie n'atterrisse pas
+    sur une route anonyme. Or partager l'objet imbriqué **trouait** exactement cette garantie —
+    un champ ajouté au barrage du scoreur (flèches de départage, nom du validateur, horodatage)
+    serait parti au public sans qu'aucun test rougisse. Relevé en revue par l'axe architecture.
+
+    Les deux classes sont identiques aujourd'hui, et c'est normal : ce n'est pas de la duplication
+    à résorber, c'est **deux contrats qui se trouvent coïncider** — les faire diverger doit rester
+    possible sans toucher l'autre.
+    """
+
+    archer_ids: list[int]
+    noms: list[str]
+    places: int
+
+    @staticmethod
+    def de_etat(etat: EtatBigShootOffAffiche) -> BarragePublicReponse | None:
+        if not etat.barrage_entre:
+            return None
+        return BarragePublicReponse(
+            archer_ids=[duelliste.archer_id for duelliste in etat.barrage_entre],
+            noms=[f"{duelliste.prenom} {duelliste.nom}" for duelliste in etat.barrage_entre],
+            places=etat.places_au_barrage,
+        )
+
+
 class EtatPubliqueReponse(BaseModel):
     """La photo d'un Big Shoot Off **rédigée** — appli publique et écran de salle (ADR-0089 §5).
 
@@ -296,7 +335,7 @@ class EtatPubliqueReponse(BaseModel):
     tireurs: list[TireurPublicReponse]
     manches: list[ManchePubliqueReponse]
     termine: bool
-    barrage: BarrageEnAttenteReponse | None
+    barrage: BarragePublicReponse | None
 
     @staticmethod
     def de_etat(etat: EtatBigShootOffAffiche) -> EtatPubliqueReponse:
@@ -306,17 +345,7 @@ class EtatPubliqueReponse(BaseModel):
             tireurs=[TireurPublicReponse.de_tireur(tireur) for tireur in etat.tireurs],
             manches=[ManchePubliqueReponse.de_manche(manche) for manche in etat.manches],
             termine=etat.termine,
-            barrage=(
-                BarrageEnAttenteReponse(
-                    archer_ids=[duelliste.archer_id for duelliste in etat.barrage_entre],
-                    noms=[
-                        f"{duelliste.prenom} {duelliste.nom}" for duelliste in etat.barrage_entre
-                    ],
-                    places=etat.places_au_barrage,
-                )
-                if etat.barrage_entre
-                else None
-            ),
+            barrage=BarragePublicReponse.de_etat(etat),
         )
 
 
@@ -378,6 +407,14 @@ async def lire_projection(tournoi_id: int, phase_id: int, request: Request) -> P
 
     **Admin**, et séparé de l'état : montrer la projection ne doit exiger ni tir ni plan de salle,
     sinon l'organisateur ne pourrait pas régler sa phase avant d'avoir fait sa salle.
+
+    ⚠️ **« Admin » ne veut plus dire « rien de ceci n'est public » depuis E05US031.** L'échelle
+    (`effectif`, `eliminations`, `paliers`, `restants`, `manches_jouables`) est aussi servie
+    **anonymement** par `/etat`, via `ProjectionPubliqueReponse` — c'est elle qui rend le format
+    lisible d'emblée pour un spectateur. Ce qui reste réservé ici, c'est le **format du tir**
+    (`volees`, `fleches_par_volee`, dont seul le pavé de saisie a besoin) et l'avertissement
+    d'atelier `manches_ignorees`. Ajouter un champ à `ProjectionReponse` n'est donc plus sans
+    conséquence publique : vérifier s'il doit rejoindre le DTO public ou en rester dehors.
     """
     service: ServiceBigShootOff = request.app.state.service_big_shoot_off
     projection = await run_in_threadpool(service.projection, tournoi_id, phase_id)

@@ -6,6 +6,7 @@
 // que le front n'ait jamais tolérée. Le partage porte sur le **modèle de rendu**, pas sur les
 // contrats de format.
 
+import { libelleConflit } from '../../shared/rencontres/modele'
 import type {
   ArcherPublic,
   BlocRencontres,
@@ -126,6 +127,6 @@ function versBloc(poule: PoulePublique): BlocRencontres {
 export function formatPublicDesPoules(etat: EtatPoules): FormatPublic {
   return {
     blocs: [...etat.poules].sort((a, b) => a.numero - b.numero).map(versBloc),
-    conflits: etat.conflits.map((c) => `Poule ${c.poule} : ${c.raison}`),
+    conflits: etat.conflits.map((c) => libelleConflit(c.raison, `Poule ${c.poule}`)),
   }
 }

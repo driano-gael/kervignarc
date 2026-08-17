@@ -10,6 +10,7 @@
 // aussi l'écran de salle, où il n'y a personne à suivre — et parce qu'abonner la salle à un store
 // public est exactement le défaut qu'E16US004 a dû corriger en revue sur `VueTableaux`.
 
+import { libelleCibles } from '../salle/place'
 import { type ModeAffichage } from '../suivis/focus'
 import {
   cheminDe,
@@ -46,8 +47,10 @@ export function VueRencontres({
 
   return (
     <div className="rencontres">
-      {format.conflits.map((conflit) => (
-        <p key={conflit} className="rencontres__conflit">
+      {/* Clé = l'index : les conflits viennent d'un enum côté serveur, donc deux conflits de même
+          raison rendraient deux clés identiques. L'ordre est celui de l'adaptateur, il est stable. */}
+      {format.conflits.map((conflit, index) => (
+        <p key={index} className="rencontres__conflit">
           {conflit}
         </p>
       ))}
@@ -76,8 +79,17 @@ function Bloc({ bloc }: { bloc: BlocRencontres }) {
       {/* **Tous** les tours, pas seulement celui en cours : c'est le CA « l'historique des tours
           reste lisible » (cadrage du 17/08/2026). Un spectateur qui arrive à la ronde 4 doit
           pouvoir lire les trois premières. */}
-      {bloc.tours.map((tour) => (
-        <Tour key={tour.libelle} tour={tour} />
+      {/* ⚠️ Le **premier** tour non clos seulement porte la marque « en cours ». Le suisse
+          n'apparie la ronde N+1 qu'après la N, donc un seul tour ouvert existe ; mais les poules
+          dérivent le round-robin **complet** dès la composition — sans cet index, une poule de 4
+          affichait « Tour 1 en cours · Tour 2 en cours · Tour 3 en cours », et la marque perdait
+          exactement ce qu'elle sert à dire. */}
+      {bloc.tours.map((tour, index) => (
+        <Tour
+          key={tour.libelle}
+          tour={tour}
+          enCours={index === bloc.tours.findIndex((candidat) => !candidat.clos)}
+        />
       ))}
 
       {bloc.classement.length > 0 && <Classement bloc={bloc} />}
@@ -85,14 +97,15 @@ function Bloc({ bloc }: { bloc: BlocRencontres }) {
   )
 }
 
-function Tour({ tour }: { tour: TourVue }) {
+function Tour({ tour, enCours }: { tour: TourVue; enCours: boolean }) {
   return (
     <section className="rencontres__tour">
       <h5 className="rencontres__tour-titre">
         {tour.libelle}
         {/* « En cours » plutôt que rien : sur un format sans arbre, c'est la seule marque qui
-            distingue le tour qu'on regarde tirer de ceux qui sont derrière. */}
-        {!tour.clos && <span className="rencontres__en-cours">en cours</span>}
+            distingue le tour qu'on regarde tirer de ceux qui sont derrière. Le calcul est chez
+            l'appelant, qui seul voit la suite des tours (cf. `Bloc`). */}
+        {enCours && <span className="rencontres__en-cours">en cours</span>}
       </h5>
 
       {tour.rencontres.length === 0 ? (
@@ -132,12 +145,11 @@ function LigneRencontre({ rencontre }: { rencontre: RencontreVue }) {
         {rencontre.bas === null ? '—' : nomComplet(rencontre.bas)}
       </span>
       {/* La **cible** est ce que le CA demande explicitement : « les rencontres du tour en cours,
-          avec leur cible ». C'est ce qu'un spectateur cherche d'abord — où regarder. */}
+          avec leur cible ». C'est ce qu'un spectateur cherche d'abord — où regarder. Le libellé vit
+          dans `shared/salle/place` : une rencontre peut enjamber **deux** cibles, et l'écrire ici
+          revenait à jeter la seconde. */}
       {rencontre.couloirs !== null && (
-        <span className="rencontres__cible">
-          Cible {rencontre.couloirs[0][0]}
-          {rencontre.couloirs[0][1]}/{rencontre.couloirs[1][1]}
-        </span>
+        <span className="rencontres__cible">{libelleCibles(rencontre.couloirs)}</span>
       )}
       {rencontre.termine && !rencontre.validee && (
         <span className="rencontres__attente">En attente de validation</span>

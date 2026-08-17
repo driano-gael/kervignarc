@@ -4,6 +4,7 @@
 // Même partage que les poules : la feature est propriétaire de son DTO, `shared/rencontres/` ne
 // connaît que le modèle de rendu.
 
+import { libelleConflit } from '../../shared/rencontres/modele'
 import type {
   ArcherPublic,
   ColonneClassement,
@@ -13,6 +14,7 @@ import type {
   TourVue,
 } from '../../shared/rencontres/modele'
 import type { EtatSuissePublique, RencontreSuissePublique, RondePublique } from './api'
+import { motDeLaFin } from './presentation'
 
 const COLONNES: ColonneClassement[] = [
   { cle: 'points', libelle: 'Pts', aide: 'Une victoire vaut 1 point, un nul un demi-point.' },
@@ -103,21 +105,53 @@ function classementDe(etat: EtatSuissePublique): LigneClassement[] {
   })
 }
 
+/** Ce que l'écran public a à dire **sous** les rondes.
+ *
+ * ⚠️ **Les rondes dues sont `min(nb_rondes, rondes_maximales)`, jamais `nb_rondes` seul.**
+ * `nb_rondes` est le **réglage** (5 par défaut) ; `rondes_maximales` est ce que l'effectif permet
+ * réellement — à 4 archers, 3. Comparer au réglage affichait « Ronde 3 sur 5 — l'appariement de la
+ * suivante est imminent » **en permanence** sur une phase finie, pour une ronde qui n'arriverait
+ * jamais. L'écran scoreur faisait déjà ce `Math.min` (`SaisieSuisse`) ; le calcul se délègue donc à
+ * `motDeLaFin`, qui traite les trois états — dont « se taire », le seul juste quand la dernière
+ * ronde due est en cours.
+ *
+ * ⚠️ **Zéro ronde n'est pas « ronde 0 »** : le serveur rend une photo vide sous deux participants
+ * (l'état nominal du matin, ou une source amont qui n'a pas encore prélevé). Comme le suisse
+ * fabrique **toujours** un bloc, le vide générique de `VueRencontres` est inatteignable ici : sans
+ * ce cas, l'écran affichait « Ronde 0 sur 5 — l'appariement de la suivante est imminent ».
+ */
 function notesDe(etat: EtatSuissePublique): string[] {
-  const notes: string[] = []
-  const jouees = etat.rondes.length
-  if (jouees < etat.nb_rondes) {
-    // ⚠️ **La ronde suivante n'apparaît qu'une fois la précédente close** : on le **dit** au lieu de
-    // laisser un blanc que le spectateur lira comme une panne. C'est le CA d'E05US030 côté scoreur,
-    // et il vaut ici pour la même raison.
-    const derniere = etat.rondes.at(-1)
-    notes.push(
-      derniere !== undefined && !derniere.close
-        ? `Ronde ${jouees} sur ${etat.nb_rondes} — la suivante sera appariée quand toutes les rencontres de celle-ci seront validées.`
-        : `Ronde ${jouees} sur ${etat.nb_rondes} — l’appariement de la suivante est imminent.`,
-    )
+  if (etat.rondes.length === 0) {
+    return [
+      'Cette phase n’a pas encore de participants : aucune ronde n’est appariée pour le moment.',
+    ]
   }
-  return notes
+  const dues = Math.min(etat.nb_rondes, etat.rondes_maximales)
+  // `motDeLaFin` lit la **dernière** du tableau : on la lui donne triée, l'ordre du DTO n'étant
+  // garanti nulle part.
+  const triees = [...etat.rondes].sort((a, b) => a.numero - b.numero)
+  const mot = motDeLaFin(triees, dues)
+  if (mot !== null && mot.etat === 'fini') {
+    return [`Les ${dues} rondes ont été tirées : le classement ci-dessous est définitif.`]
+  }
+  // ⚠️ **La ronde suivante n'apparaît qu'une fois la précédente close** : on le **dit** au lieu de
+  // laisser un blanc que le spectateur lira comme une panne. C'est le CA d'E05US030 côté scoreur,
+  // et il vaut ici pour la même raison.
+  if (mot !== null) {
+    return [
+      `Ronde ${mot.courante} sur ${dues} — la ronde ${mot.suivante} sera appariée quand toutes les rencontres de celle-ci seront validées.`,
+    ]
+  }
+  // `motDeLaFin` rend `null` dans deux cas, et un seul mérite un mot : une ronde **close** alors
+  // qu'il en reste à tirer — l'appariement de la suivante n'a pas encore été fait. On le constate
+  // sans rien promettre : « imminent » était un engagement que rien ici ne tient, le reproche fait
+  // au même endroit à `PhaseSansVue`. L'autre cas (la dernière ronde due est en cours) reste muet,
+  // se taire y étant la seule réponse juste.
+  const derniere = triees.at(-1)
+  if (derniere !== undefined && derniere.close && triees.length < dues) {
+    return [`Ronde ${triees.length} sur ${dues} tirée — la suivante n’est pas encore appariée.`]
+  }
+  return []
 }
 
 /** Une phase de système suisse, prête pour la vue commune.
@@ -138,6 +172,7 @@ export function formatPublicDuSuisse(etat: EtatSuissePublique): FormatPublic {
         notes: notesDe(etat),
       },
     ],
-    conflits: etat.conflits.map((c) => c.raison),
+    // Le plateau du suisse est unique : le préfixer d'un numéro de groupe n'apprendrait rien.
+    conflits: etat.conflits.map((c) => libelleConflit(c.raison)),
   }
 }

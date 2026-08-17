@@ -20,6 +20,30 @@ export function estSorti(ligne: LigneTireur): boolean {
   return ligne.rang !== null
 }
 
+/** Combien d'archers **tirent encore**, maintenant.
+ *
+ * ⚠️ Ce n'est **pas** `projection.restants`, et la confusion a coûté un défaut relevé en revue :
+ * `restants` vaut `paliers[-1]`, c'est-à-dire l'effectif **à la fin** du format — une constante de
+ * la phase, connue avant le premier tir. L'afficher comme « en lice » annonçait « 1 archer en
+ * lice » du début à la fin d'une finale à un rescapé. Le seul état qui dise qui tire encore est la
+ * population elle-même. */
+export function nbEnLice(etat: EtatBigShootOffPublic): number {
+  return etat.tireurs.filter((tireur) => tireur.rang === null).length
+}
+
+/** Le mot de la colonne « Sort » — jamais une couleur seule (`DV-03`).
+ *
+ * ⚠️ `rang` reste `null` pour le **rescapé** : le serveur ne range que les éliminés
+ * (`ServiceBigShootOff` n'attribue un rang qu'à la sortie). Sans le cas `termine`, le vainqueur de
+ * la finale restait donc affiché « En lice » jusqu'au soir, alors que le palmarès le donne 1ᵉʳ.
+ * Au pluriel (`restants > 1`, une échelle qui s'arrête à plusieurs), aucun des rescapés n'est
+ * vainqueur de personne : on dit « Qualifié ». */
+export function libelleSort(ligne: LigneTireur, etat: EtatBigShootOffPublic): string {
+  if (ligne.rang !== null) return `${ligne.rang}ᵉ`
+  if (!etat.termine) return 'En lice'
+  return nbEnLice(etat) === 1 ? 'Vainqueur' : 'Qualifié'
+}
+
 /** Les finalistes dans l'ordre de lecture : **ceux qui tirent encore d'abord**, puis les sortis du
  * mieux classé au dernier.
  *

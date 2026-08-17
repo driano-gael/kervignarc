@@ -12,7 +12,19 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 17/08/2026, 21 h 40** · **115 US livrées** · dernière : `E05US031`
+**Dernière mise à jour : 17/08/2026, 22 h 40** · **115 US livrées** · dernière : `E05US031`
+*(**le public voit enfin les trois formats sans arbre** : les poules, le système suisse et le Big
+Shoot Off sont jouables depuis des semaines, mais aucun n'atteignait l'appli publique ni l'écran de
+salle — l'onglet était bâti sur les seuls **arbres de duels**, et dès que le tournoi quittait
+l'élimination directe le spectateur n'avait plus rien. L'index public devient la **liste des phases
+du créneau** : poules et suisse partagent une **forme commune** « rencontres groupées + classement »
+(`shared/rencontres/`), le Big Shoot Off garde une vue propre — sa manche est un tir collectif sans
+adversaire. Avec l'**historique des tours**, « **mon chemin** » pour un archer suivi, et le
+classement d'une **phase terminée** qui reste consultable. Côté serveur, le Big Shoot Off était le
+seul des trois sans lecture publique : ses routes sont alignées sur celles de ses jumeaux (`/etat`
+publique, saisie scoreur sur `/saisie`). ADR-0089 (révise ADR-0064) ; `DETTE-070` ouverte —
+l'onglet s'appelle « Rencontres » mais la clé persistée reste `tableaux`.)*
+<!-- Entrée précédente, conservée pour mémoire :
 *(**le système suisse à l'écran** : le moteur livré le matin même par `E05US026` devient jouable par
 un humain — nombre de rondes réglable avec la **borne d'effectif affichée en clair**, saisie **ronde
 par ronde** au pavé de duel, attente nommée tant que la ronde en cours n'est pas close, **classement
@@ -22,14 +34,6 @@ indépendants faisaient scorer le mauvais départ sans la moindre erreur visible
 `EN_ATTENTE` livrée des deux côtés (`E05US026` l'avait empruntée à `INDISPONIBLE`). Le cadrage a
 produit **deux US neuves**, `E05US031` (vue publique des trois formats sans arbre) et `E05US032`
 (pilotage explicite des rondes, qui rouvre un choix de conception du backend).)*
-<!-- Entrée précédente, conservée pour mémoire :
-*(**la carte du code** : l'atlas lit désormais le **code** et plus seulement les documents. La
-matrice de dépendances est lue à l'**AST**, et une couche qui remonte le courant fait **rougir la
-CI** — la règle 2 n'était vérifiée que pour le domaine, les quatre autres sens ne l'étaient par
-rien. Les 60 ports sont appariés **structurellement** à leurs adapters. Côté front, la mesure a
-trouvé **3 nœuds de features enchevêtrées**, dont un de **19 sur 44** : quatre chantiers en sont
-nés, inscrits au backlog sans être pris. Élargit `DETTE-067`, dont le déclencheur est franchi.
-Deux tranches d'atlas restent.)*
 -->
 
 Précédente : `E00US019`

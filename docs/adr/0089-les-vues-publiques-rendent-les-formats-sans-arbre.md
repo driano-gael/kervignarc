@@ -65,7 +65,7 @@ suivant, et elle évite le débat « faut-il forcer ? » à chaque US de moteur.
 
 ### 2. Le modèle neutre est **du code testé**, pas du JSX
 
-`shared/rencontres/modele.ts` porte les types (`BlocRencontres`, `RencontrePublique`,
+`shared/rencontres/modele.ts` porte les types (`BlocRencontres`, `TourVue`, `RencontreVue`,
 `LigneClassement`) et les opérations pures — dont `cheminDe(archerId)`, qui extrait la trajectoire
 d'un archer suivi. L'adaptation d'un DTO de format vers ce modèle vit **dans la feature du format**,
 qui est propriétaire de son DTO ; le rendu vit dans `shared/`.
@@ -166,6 +166,21 @@ le cas banal, pas le cas limite.
 - L'onglet public passe de six à six vues (aucune n'est ajoutée), mais son sélecteur de phase liste
   désormais **toutes** les phases du créneau, échauffement compris. Les types sans vue détaillée
   affichent une ligne honnête plutôt qu'un écran vide.
+- ⚠️ **`/etat` change de contrat en gardant son chemin — recharger les tablettes scoreur au
+  déploiement.** Le §5 renomme une lecture, mais du point de vue d'un client déjà chargé c'est pire
+  qu'un renommage : un bundle antérieur qui appelle `/etat` avec son jeton reçoit **200** et le DTO
+  **public**, au lieu du 404 bruyant qu'aurait produit une URL disparue. `prochaine_volee` valant
+  alors `undefined`, l'écran de saisie ferme son pavé **sans message d'erreur** — le mode de panne
+  silencieux exact qu'E05US028 avait dû corriger. L'argument « front et serveur sont livrés
+  ensemble » couvre le déploiement, pas les onglets ouverts depuis le matin. La parade est
+  opérationnelle et tient en une ligne de consigne ; garder l'ancien chemin au scoreur aurait
+  rouvert l'arbitrage du §5 pour un risque qui se règle par un rechargement. *(Relevé en revue par
+  les axes architecture et adversarial.)*
+- **Cette US aggrave `DETTE-031`** sans une ligne de code de plus : les trois `etat()` des formats
+  sans arbre recomposent la phase entière à chaque lecture, et ils passent de surfaces d'atelier à
+  des lectures **publiques** — donc en autant d'exemplaires qu'il y a de spectateurs. Le registre a
+  été élargi en conséquence. *(Relevé en revue par l'axe adversarial ; le commit d'origine ne
+  touchait pas la ligne.)*
 
 ## Alternatives écartées
 

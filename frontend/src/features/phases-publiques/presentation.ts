@@ -45,24 +45,51 @@ export const LIBELLE_STATUT_PHASE: Record<StatutPhase, string> = {
   terminee: 'terminée',
 }
 
+/** Le statut en toutes lettres, avec **repli sur la valeur brute**.
+ *
+ * Même raison que le repli `ailleurs` de `renduDe`, dix lignes plus haut : `statut` vient du
+ * serveur et l'appli publique reste ouverte des heures sur un téléphone. Indexer le `Record`
+ * directement rendait une chaîne **vide** pour un statut qu'un backend plus récent nommerait —
+ * « Poules · » dans l'en-tête et dans chaque option du sélecteur. Le raisonnement était juste à
+ * dix lignes de là, mais appliqué à une seule des deux valeurs serveur. */
+export function libelleStatut(statut: StatutPhase): string {
+  return LIBELLE_STATUT_PHASE[statut] ?? statut
+}
+
 /** La phase à montrer quand personne ne choisit — l'écran de salle, et l'ouverture de l'onglet.
  *
- * L'ordre de préférence dit une intention simple : **ce qui se joue maintenant**, sinon ce qui vient
- * de se jouer.
+ * L'ordre de préférence dit une intention simple : **ce qui se joue maintenant**, sinon ce qui vient.
  *
  *  1. la première phase **en cours** (plusieurs peuvent l'être : deux blocs d'un même créneau) ;
  *  2. sinon la première **en pause** — arrêtée, mais c'est encore d'elle qu'on parle dans la salle ;
- *  3. sinon la **dernière terminée** : à 17 h, c'est son classement qu'on vient lire, pas celui du
- *     matin. C'est la même règle que `VueTableaux` applique déjà aux arbres ;
- *  4. sinon la première **à venir** — le matin, avant que rien ne commence.
+ *  3. sinon la première **à venir** ;
+ *  4. sinon la **dernière** de la liste — à 17 h, tout est terminé et c'est son classement qu'on
+ *     vient lire, pas celui du matin.
+ *
+ * ⚠️ **« À venir » passe AVANT « dernière terminée », et l'inverse était une régression.** Le
+ * backend a tranché ce même arbitrage deux fois — `application/portee.py::la_plus_courante` et
+ * `ServicePalmares._resultat`, ce dernier en correctif de revue — avec le motif qui vaut ici mot
+ * pour mot : *démarrer une phase est un geste **manuel** de l'organisateur ; faire dépendre un
+ * écran public de sa discipline le laisserait muet tout l'après-midi s'il l'oublie*. Avec la
+ * priorité inverse, un créneau « qualification terminée + élimination directe pas encore démarrée »
+ * affichait la qualification pendant que les duels se tiraient.
+ *
+ * ⚠️ **Seules les phases qui ont une vue sont candidates.** Les transitions de statut ne sont pas
+ * chaînées (`demarrer`/`terminer` ne touchent qu'une phase) : un organisateur qui lance les poules
+ * sans « terminer » la qualification laissait l'écran projeté sur « les résultats de la
+ * qualification se lisent dans l'onglet Classement » — vrai, mais ce n'est pas ce qui se tire. Le
+ * repli sur la liste complète garde le cas où **aucune** phase n'a de vue : mieux vaut dire
+ * laquelle se joue que ne rien afficher.
  */
 export function phaseAMontrer(phases: PhasePublique[]): PhasePublique | null {
   const ordonnees = [...phases].sort((a, b) => a.ordre - b.ordre)
+  const avecVue = ordonnees.filter((p) => renduDe(p.type) !== 'ailleurs')
+  const candidates = avecVue.length > 0 ? avecVue : ordonnees
   return (
-    ordonnees.find((p) => p.statut === 'en_cours') ??
-    ordonnees.find((p) => p.statut === 'en_pause') ??
-    [...ordonnees].reverse().find((p) => p.statut === 'terminee') ??
-    ordonnees.find((p) => p.statut === 'a_venir') ??
+    candidates.find((p) => p.statut === 'en_cours') ??
+    candidates.find((p) => p.statut === 'en_pause') ??
+    candidates.find((p) => p.statut === 'a_venir') ??
+    candidates.at(-1) ??
     null
   )
 }

@@ -232,6 +232,37 @@ def test_le_dto_public_ne_porte_aucune_affordance_de_saisie(app_bso: FastAPI) ->
     # `volees` / `fleches_par_volee` sont le **format du tir** : seul le pavé de saisie en a besoin.
     assert "volees" not in corps["projection"]
     assert "fleches_par_volee" not in corps["projection"]
+    # `manches_ignorees` est un avertissement d'**atelier**, adressé à qui règle la phase.
+    assert "manches_ignorees" not in corps["projection"]
+    # Retirés en revue : servis sans qu'aucune vue ne les lise, et `eliminations` **est** le réglage
+    # de sortants lui-même — `effectif` + `paliers` en sont déjà la forme lisible.
+    assert "eliminations" not in corps["projection"]
+    assert "manches_jouables" not in corps["projection"]
+
+
+def test_l_etat_de_saisie_sert_bien_le_dto_complet_au_scoreur(
+    app_bso: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le pendant **positif** du test d'absence : ce que le public perd, le scoreur le garde.
+
+    ⚠️ Les deux tests qui touchaient `/saisie` ne vérifiaient qu'un **refus** (401, 403). Le chemin
+    était donc prouvé existant, mais rien ne prouvait qu'il sert encore le DTO complet après le
+    renommage — or c'est là que vit `prochaine_volee`, le champ dont l'absence avait rendu une
+    finale injouable en E05US028. Relevé en revue.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+
+        reponse = client.get(
+            f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
+        )
+
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert "prochaine_volee" in corps["tireurs"][0]
+    assert "fleches_par_volee" in corps["projection"]
+    assert "volees" in corps["projection"]
 
 
 def test_une_manche_saisie_puis_validee_elimine_sur_la_vraie_chaine(

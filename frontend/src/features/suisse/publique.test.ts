@@ -125,17 +125,60 @@ describe('formatPublicDuSuisse', () => {
     expect(enCours.blocs[0]?.notes[0]).toContain('validées')
 
     const close = formatPublicDuSuisse(mkEtat({ rondes: [mkRonde({ close: true })] }))
-    expect(close.blocs[0]?.notes[0]).toContain('imminent')
+    expect(close.blocs[0]?.notes[0]).toContain('pas encore appariée')
   })
 
   it('ne dit rien quand toutes les rondes prévues sont là', () => {
     const complet = formatPublicDuSuisse(
       mkEtat({
         nb_rondes: 2,
+        rondes_maximales: 2,
         rondes: [mkRonde({ numero: 1, close: true }), mkRonde({ numero: 2, close: true })],
       }),
     )
 
-    expect(complet.blocs[0]?.notes).toEqual([])
+    expect(complet.blocs[0]?.notes).toEqual([
+      'Les 2 rondes ont été tirées : le classement ci-dessous est définitif.',
+    ])
+  })
+
+  // ⚠️ **Le nombre de rondes dues est borné par l'effectif, pas par le réglage.** `nb_rondes` vaut 5
+  // par défaut ; à 4 archers, le moteur n'en apparie que 3. Comparer au réglage seul affichait
+  // « Ronde 3 sur 5 — l'appariement de la suivante est imminent » à perpétuité sur une phase finie.
+  // La fixture posait `nb_rondes === rondes_maximales` partout, donc rien ne pouvait rougir.
+  it('borne les rondes dues par rondes_maximales, jamais par le seul réglage', () => {
+    const fini = formatPublicDuSuisse(
+      mkEtat({
+        nb_rondes: 5,
+        rondes_maximales: 3,
+        rondes: [
+          mkRonde({ numero: 1, close: true }),
+          mkRonde({ numero: 2, close: true }),
+          mkRonde({ numero: 3, close: true }),
+        ],
+      }),
+    )
+
+    const note = fini.blocs[0]?.notes[0] ?? ''
+    expect(note).not.toContain('sur 5')
+    expect(note).toContain('3 rondes ont été tirées')
+  })
+
+  // ⚠️ Le serveur rend une photo **vide** sous deux participants : c'est l'état nominal du matin,
+  // pas une erreur. Comme le suisse fabrique toujours un bloc, le vide générique de `VueRencontres`
+  // est inatteignable ici — sans ce cas, l'écran affichait « Ronde 0 sur 5 ».
+  it('ne parle pas de « ronde 0 » sur une phase encore sans participants', () => {
+    const vide = formatPublicDuSuisse(mkEtat({ nb_rondes: 5, rondes_maximales: 0, rondes: [] }))
+
+    const note = vide.blocs[0]?.notes[0] ?? ''
+    expect(note).not.toContain('Ronde 0')
+    expect(note).toContain('pas encore de participants')
+  })
+
+  it('ne montre jamais un code technique de conflit au spectateur', () => {
+    const format = formatPublicDuSuisse(mkEtat({ conflits: [{ groupe: 1, raison: 'non_posee' }] }))
+
+    expect(format.conflits[0]).not.toMatch(/_/)
+    expect(format.conflits[0]).toContain('plan de tir')
   })
 })

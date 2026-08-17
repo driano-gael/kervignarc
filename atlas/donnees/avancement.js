@@ -268,7 +268,8 @@ window.ATLAS.avancement = {
     "E07US005",
     "E16US004",
     "E05US026",
-    "E05US024"
+    "E05US024",
+    "E05US031"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -584,7 +585,10 @@ window.ATLAS.avancement = {
   }
  ],
  "entete": {
-  "adr_du_resume": [],
+  "adr_du_resume": [
+   "0089",
+   "0064"
+  ],
   "derniere": "E05US031"
  },
  "epics": [
@@ -2595,6 +2599,7 @@ window.ATLAS.avancement = {
     "0089"
    ],
    "dettes_introduites": [
+    "031",
     "070"
    ],
    "dettes_resorbees": [],

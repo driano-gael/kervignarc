@@ -148,12 +148,36 @@ describe('formatPublicDesPoules', () => {
     expect(format.blocs[0]?.notes[1]).toContain('barrage')
   })
 
-  it('nomme la poule que le plan n’a pas pu placer', () => {
+  // ⚠️ **La fixture porte la vraie valeur d'enum du serveur, pas une phrase inventée.** La première
+  // rédaction posait `raison: 'aucun bloc libre de 6 couloirs'` — un DTO que le serveur n'émet
+  // jamais : `ConflitReponse.raison` vaut `RaisonConflitBloc.value`, donc `salle_pleine`,
+  // `non_posee` ou `sans_rencontre`. Le test décrivait un contrat imaginé, et laissait passer
+  // l'affichage du code brut au public.
+  it('nomme la poule que le plan n’a pas pu placer, en français', () => {
     const format = formatPublicDesPoules(
-      mkEtat({ conflits: [{ poule: 3, raison: 'aucun bloc libre de 6 couloirs' }] }),
+      mkEtat({ conflits: [{ poule: 3, raison: 'salle_pleine' }] }),
     )
 
-    expect(format.conflits).toEqual(['Poule 3 : aucun bloc libre de 6 couloirs'])
+    expect(format.conflits).toEqual([
+      'Poule 3 — Pas assez de couloirs libres dans la salle : les cibles ne sont pas attribuées.',
+    ])
+  })
+
+  it('ne montre jamais un code technique au spectateur', () => {
+    const format = formatPublicDesPoules(
+      mkEtat({
+        conflits: [
+          { poule: 1, raison: 'non_posee' },
+          { poule: 2, raison: 'sans_rencontre' },
+          // Un code qu'un serveur plus récent nommerait : le repli reste une phrase.
+          { poule: 3, raison: 'raison_inconnue_du_bundle' },
+        ],
+      }),
+    )
+
+    for (const conflit of format.conflits) {
+      expect(conflit).not.toMatch(/_/)
+    }
   })
 
   it('ordonne les poules par numéro, quel que soit l’ordre du serveur', () => {

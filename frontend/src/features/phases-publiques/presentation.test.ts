@@ -81,6 +81,43 @@ describe('phaseAMontrer', () => {
     expect(phaseAMontrer([phase(2, 2, 'a_venir'), phase(1, 1, 'a_venir')])?.id).toBe(1)
   })
 
+  // ⚠️ **Le cas de la journée, et il manquait.** « Dernière terminée » n'était exercé que sur une
+  // liste SANS phase à venir. Or démarrer une phase est un geste **manuel** : un créneau
+  // « qualification terminée + élimination directe pas encore démarrée » est banal, et la priorité
+  // inverse y affichait la qualification pendant que les duels se tiraient — sans sortie de secours
+  // sur l'écran de salle. Le backend a tranché ce même arbitrage deux fois
+  // (`portee.py::la_plus_courante`, `ServicePalmares._resultat`) : « à venir » passe devant.
+  it('préfère une phase à venir à une phase déjà terminée', () => {
+    const choisie = phaseAMontrer([
+      phase(1, 1, 'terminee', 'qualification'),
+      phase(2, 2, 'a_venir', 'elimination_directe'),
+    ])
+
+    expect(choisie?.id).toBe(2)
+  })
+
+  // ⚠️ Les transitions ne sont pas chaînées : `demarrer` ne touche qu'une phase. Un organisateur
+  // qui lance les poules sans « terminer » la qualification laissait l'écran projeté sur « les
+  // résultats de la qualification se lisent dans l'onglet Classement » — vrai, mais ce n'est pas ce
+  // qui se tire.
+  it('ne montre pas une phase sans vue quand une autre a quelque chose à afficher', () => {
+    const choisie = phaseAMontrer([
+      phase(1, 1, 'en_cours', 'qualification'),
+      phase(2, 2, 'en_cours', 'poules'),
+    ])
+
+    expect(choisie?.id).toBe(2)
+  })
+
+  it('retombe sur une phase sans vue si AUCUNE n’en a — mieux vaut nommer que se taire', () => {
+    const choisie = phaseAMontrer([
+      phase(1, 1, 'en_cours', 'qualification'),
+      phase(2, 2, 'a_venir', 'echauffement'),
+    ])
+
+    expect(choisie?.id).toBe(1)
+  })
+
   it('rend null sur un déroulé vide', () => {
     expect(phaseAMontrer([])).toBeNull()
   })

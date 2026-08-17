@@ -59,11 +59,19 @@ class VueEcran(str, Enum):
     SUIVI_DEROULE = "suivi_deroule"
     AFFECTATIONS = "affectations"
     TABLEAUX = "tableaux"
-    """Les **arbres de duels** du tournoi (E07US005).
+    """La **phase qui se joue**, quelle qu'en soit la forme (E07US005, élargie en E05US031).
 
     Complète le CA d'E07US004 (« classement, affectations, **tableaux**, plans »). Comme
     `AFFECTATIONS`, elle n'a de contenu qu'**après** la qualification — elle n'entre donc pas non
-    plus au déroulé par défaut, pour la même raison (cf. `SequenceVues.par_defaut`)."""
+    plus au déroulé par défaut, pour la même raison (cf. `SequenceVues.par_defaut`).
+
+    `# DETTE-070` — ⚠️ **le nom de cette clé ment depuis E05US031.** La vue ne rend plus seulement
+    un arbre de duels : elle rend aussi les poules, le système suisse et le Big Shoot Off, et son
+    libellé est devenu « Rencontres » partout où quelqu'un lit. La **clé** est restée `tableaux`
+    parce qu'elle est **persistée** (`poste.sequence_vues`, ADR-0064 §3) : la renommer imposait une
+    migration de données pour changer un mot, et cassait tout déroulé de vues déjà composé.
+    Arbitrage écrit en ADR-0089 §3. C'est **ici** qu'est le raccourci — pas dans le front, qui ne
+    fait que suivre."""
     PALMARES = "palmares"
     """Le classement **final** — podiums en tête (E06US004).
 

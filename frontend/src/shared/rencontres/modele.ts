@@ -274,6 +274,32 @@ export function nomDeArcher(format: FormatPublic, archerId: number): string | nu
   return null
 }
 
+/** Un conflit de placement, **rédigé pour un spectateur**.
+ *
+ * ⚠️ **`ConflitReponse.raison` est un code, pas une phrase.** Le serveur y sert la valeur de l'enum
+ * `RaisonConflitBloc` — `non_posee`, `salle_pleine`, `sans_rencontre`. Les deux adaptateurs
+ * publics le recopiaient tel quel, si bien que l'écran du gymnase affichait littéralement
+ * « **non_posee** » — et pour le système suisse c'était le régime **nominal**, le serveur renvoyant
+ * `_PLAN_A_REPOSER` tant que le plan n'est pas posé. Relevé par l'axe adversarial.
+ *
+ * ⚠️ **Registre public, distinct de celui de l'organisateur.** `decrireConflits`
+ * (`features/phases/Phases.tsx`) dit à l'organisateur *quoi faire* (« la salle est trop petite »,
+ * qui appelle une action) ; ici on dit au spectateur *ce qu'il voit* — pourquoi les cibles
+ * manquent, sans lui demander d'agir. Même enum, deux publics.
+ *
+ * `groupe` nomme le bloc quand il y en a plusieurs (« Poule 3 ») ; `null` pour le plateau unique du
+ * suisse, où préfixer n'apprendrait rien. */
+export function libelleConflit(raison: string, groupe: string | null = null): string {
+  const prefixe = groupe === null ? '' : `${groupe} — `
+  const libelles: Record<string, string | undefined> = {
+    non_posee: 'le plan de tir n’est pas encore posé : les cibles s’afficheront dès qu’il le sera.',
+    salle_pleine: 'pas assez de couloirs libres dans la salle : les cibles ne sont pas attribuées.',
+    sans_rencontre: 'aucune rencontre à tirer.',
+  }
+  const phrase = libelles[raison] ?? 'les cibles ne sont pas encore attribuées.'
+  return `${prefixe}${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}`
+}
+
 /** Les archers de `suivis` qui figurent réellement dans cette phase, dans l'ordre donné.
  *
  * ⚠️ **« Aucun de vos archers ici » n'est pas « rien à afficher »** (ADR-0089 §6). Le cas est banal

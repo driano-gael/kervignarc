@@ -12,6 +12,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Depart } from '../departs/api'
@@ -19,7 +20,7 @@ import { getDeparts } from '../departs/api'
 import { getEtatPoules } from '../poules/api'
 import { getEtatSuisse } from '../suisse/api'
 import { getEtatBigShootOffPublic } from '../big-shoot-off/api'
-import { getTableaux } from '../tableaux/api'
+import { getTableaux, type TableauPublic } from '../tableaux/api'
 import type { PhasePublique } from './api'
 import { getPhasesPubliques } from './api'
 import { VuePhases } from './VuePhases'
@@ -63,6 +64,20 @@ const MARTIN = { archer_id: 1, nom: 'MARTIN', prenom: 'Luc' }
 const DURAND = { archer_id: 2, nom: 'DURAND', prenom: 'Eve' }
 
 const phase = (type: string, id = 10): PhasePublique => ({ id, ordre: 2, type, statut: 'en_cours' })
+
+const mkTableau = (over: Partial<TableauPublic> = {}): TableauPublic => ({
+  phase_id: 10,
+  ordre: 2,
+  type: 'elimination_directe',
+  effectif: 8,
+  taille: 8,
+  nb_tours: 3,
+  est_termine: false,
+  duels: [],
+  podium: [],
+  en_attente_de: null,
+  ...over,
+})
 
 function Cadre({ enfants }: { enfants: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -112,16 +127,22 @@ describe('VuePhases — routage par type', () => {
       classement: [],
       conflits: [],
     })
+    // ⚠️ **Fixture cohérente avec ce que le serveur produit réellement.** La première rédaction
+    // posait `paliers: [1]` **et** `restants: 2` — impossible, `restants` valant `paliers[-1]` —
+    // puis assertait « 2 archers en lice » sur cette valeur. Le test consacrait ainsi le défaut
+    // qu'il aurait dû trouver : `restants` est l'effectif de **fin** de format, pas le compte des
+    // archers qui tirent encore.
     vi.mocked(getEtatBigShootOffPublic).mockResolvedValue({
       phase_id: 10,
       projection: {
         effectif: 2,
-        eliminations: [1],
         paliers: [1],
-        restants: 2,
-        manches_jouables: 1,
+        restants: 1,
       },
-      tireurs: [{ ...MARTIN, en_lice: true, rang: null, scores: [] }],
+      tireurs: [
+        { ...MARTIN, en_lice: true, rang: null, scores: [] },
+        { ...DURAND, en_lice: true, rang: null, scores: [] },
+      ],
       manches: [],
       termine: false,
       barrage: null,
@@ -155,9 +176,11 @@ describe('VuePhases — routage par type', () => {
 
     render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
 
-    // L'échelle du format — « 2 → 1 » —, qui n'existe dans aucune autre vue.
+    // L'échelle du format — « 2 → 1 » —, qui n'existe dans aucune autre vue. Le compte annoncé est
+    // celui des archers qui **tirent encore** (deux), pas l'effectif de fin (`restants`, qui vaut 1
+    // ici) : c'est tout l'objet du correctif.
     expect(await screen.findByText('2 archers en lice')).toBeInTheDocument()
-    expect(screen.getByText('En lice')).toBeInTheDocument()
+    expect(screen.getAllByText('En lice')).toHaveLength(2)
   })
 
   it('renvoie la qualification vers l’onglet où elle se lit, au lieu d’un blanc', async () => {
@@ -244,5 +267,117 @@ describe('VuePhases — « mes archers »', () => {
 
     expect(await screen.findByText('Poule 1')).toBeInTheDocument()
     expect(screen.queryByText(/Aucun des archers que vous suivez/)).not.toBeInTheDocument()
+  })
+
+  // ⚠️ **Le sélecteur n'était monté par AUCUN test.** Les six cas ci-dessus fournissent tous une
+  // liste d'**une seule** phase, donc `phases.data.length > 1` était toujours faux : le CA reversé
+  // au cadrage — « le classement d'une phase terminée reste consultable » — était couvert par des
+  // tests qui n'atteignaient jamais la surface qui le rend vrai.
+  it('laisse consulter une phase terminée après le démarrage de la suivante', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([
+      { id: 9, ordre: 1, type: 'poules', statut: 'terminee' },
+      { id: 10, ordre: 2, type: 'suisse', statut: 'en_cours' },
+    ])
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    // Par défaut, ce qui se joue : le suisse.
+    expect(await screen.findByText('Ronde 1')).toBeInTheDocument()
+
+    // Les poules terminées restent dans la liste, avec leur rang et leur statut.
+    const selecteur = screen.getByRole('combobox')
+    expect(screen.getByRole('option', { name: '1. Poules — terminée' })).toBeInTheDocument()
+
+    await userEvent.selectOptions(selecteur, '9')
+    expect(await screen.findByText('Poule 1')).toBeInTheDocument()
+  })
+
+  it('cache le sélecteur sur l’écran de salle, où personne ne peut choisir', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([
+      { id: 9, ordre: 1, type: 'poules', statut: 'terminee' },
+      { id: 10, ordre: 2, type: 'suisse', statut: 'en_cours' },
+    ])
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} interactif={false} />} />)
+
+    expect(await screen.findByText('Ronde 1')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  // ⚠️ **Le point de non-régression que la fiche de recette désigne elle-même** (scénario 8) :
+  // l'arbre n'a pas bougé. `VueTableaux` gagne pourtant une prop `phaseId` et une chaîne de
+  // sélection à trois branches, qu'aucun test ne montait.
+  it('impose la phase choisie à l’arbre, sans lui laisser un second sélecteur', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([phase('elimination_directe', 10)])
+    vi.mocked(getTableaux).mockResolvedValue({
+      depart_id: 41,
+      tableaux: [mkTableau({ phase_id: 10 })],
+    })
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    expect(await screen.findByText(/8 archers/)).toBeInTheDocument()
+    // Un seul sélecteur au plus sur l'écran — celui de `VuePhases`, masqué ici (une seule phase).
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+
+  // ⚠️ **Une seule marque « en cours », sur le premier tour ouvert.** Le suisse n'apparie la ronde
+  // N+1 qu'après la N, donc un seul tour ouvert y existe — mais les poules dérivent le round-robin
+  // **complet** dès la composition. Sans cet arbitrage, une poule de 4 affichait « Tour 1 en cours ·
+  // Tour 2 en cours · Tour 3 en cours », et la marque perdait ce qu'elle sert à dire : distinguer le
+  // tour qu'on regarde tirer de ceux qui sont derrière.
+  it('ne marque « en cours » que le premier tour non clos d’une poule', async () => {
+    const rencontre = (numero: number, tour: number, validee: boolean) => ({
+      numero,
+      poule: 1,
+      tour,
+      couloirs: null,
+      haut: MARTIN,
+      bas: DURAND,
+      points_haut: null,
+      points_bas: null,
+      vainqueur: null,
+      termine: validee,
+      validee,
+      desynchronisee: false,
+    })
+    vi.mocked(getEtatPoules).mockResolvedValue({
+      phase_id: 10,
+      repartition: { effectif: 2, taille_visee: 2, nb_poules: 1, tailles: [2] },
+      poules: [
+        {
+          numero: 1,
+          membres: [MARTIN, DURAND],
+          bloc: null,
+          // Tour 1 scellé, tours 2 et 3 encore à tirer : le round-robin complet existe dès la
+          // composition, tel que le serveur le rend.
+          rencontres: [rencontre(1, 1, true), rencontre(2, 2, false), rencontre(3, 3, false)],
+          classement: [],
+          qualifies: [],
+          barrage_requis: false,
+        },
+      ],
+      conflits: [],
+    })
+    vi.mocked(getPhasesPubliques).mockResolvedValue([phase('poules')])
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    expect(await screen.findByText('Tour 3')).toBeInTheDocument()
+    expect(screen.getAllByText('en cours')).toHaveLength(1)
+  })
+
+  it('dit que l’arbre de cette phase n’est pas monté, plutôt que d’en montrer un autre', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([phase('elimination_directe', 10)])
+    vi.mocked(getTableaux).mockResolvedValue({
+      depart_id: 41,
+      tableaux: [mkTableau({ phase_id: 777 })],
+    })
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    expect(await screen.findByText(/n’est pas encore monté/)).toBeInTheDocument()
+    // L'arbre de l'AUTRE phase ne doit pas s'afficher en remplacement.
+    expect(screen.queryByText(/8 archers/)).not.toBeInTheDocument()
   })
 })

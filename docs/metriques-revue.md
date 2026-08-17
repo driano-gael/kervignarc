@@ -35,6 +35,29 @@ dit.
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
+| 2026-08-17 | `E05US031` | 42 | +4163/−160 | ~27 min | ~16 min | C1 | mineur:4 | majeur:5 mineur:2 suggestion:1 | bloquant:1 majeur:6 mineur:3 suggestion:1 | majeur:1 mineur:3 | majeur:6 mineur:4 suggestion:1 | **C1 (1)** | 1 |
+
+**Lecture de la deuxième ligne (E05US031).** Trois enseignements, dont un qui contredit la première.
+
+1. **La durée « porte » n'est pas une mesure de la porte** — 27 min ici contre 1 min, pour un diff
+   3× plus gros seulement. L'essentiel est du **temps perdu** : l'agent `porte-mecanique` a rendu un
+   faux « PORTE ROUGE » en tuant `pytest` à 120 s sur une suite qui dure plus longtemps, puis la
+   relance manuelle a d'abord visé le Python global au lieu du venv. La colonne mesure donc le
+   franchissement de la porte, pas son exécution. *À corriger dans l'agent, pas dans la colonne.*
+2. **Le chemin critique et la détection ne coïncident toujours pas, mais autrement.** C1 est à la
+   fois l'axe le plus lent **et** celui qui trouve le bloquant — l'inverse de la première ligne. Un
+   échantillon de deux ne tranche rien ; ce qu'on peut dire, c'est qu'aucune règle simple
+   « lent ⇒ trouve » ni « lent ⇒ ne trouve pas » ne survit aux deux mesures.
+3. **L'axe adversarial ne trouve pas de bloquant pour la première fois — et reste indispensable.**
+   Il rend 6 majeurs dont **4 que personne d'autre n'a vus** (codes d'enum affichés au public, panne
+   réseau confondue avec un refus, `DETTE-031` non élargie, fiches de recette périmées). Le compte de
+   bloquants est un mauvais indicateur de sa valeur : sa contribution ici est d'avoir vu que le code
+   neuf **rejouait des raisonnements déjà corrigés ailleurs dans le dépôt** — un motif qu'aucune
+   grille n'encode, parce qu'il n'est visible qu'en lisant le reste du code.
+
+Note de méthode : `A` rend *axe OK* avec 4 mineurs. C'est un rapport valide au sens de la commande —
+il dit ce qu'il a lu, et son mineur n° 1 (le DTO de barrage partagé entre contrat public et contrat
+scoreur) est le plus structurant du lot. **La sévérité déclarée n'ordonne pas l'utilité.**
 
 **Lecture de la première ligne.** Elle contredit déjà une présomption d'ADR-0013 et en confirme une
 autre. C2 est bien l'axe le plus lent — la scission C1/C2 tient. Mais les **bloquants** viennent de A

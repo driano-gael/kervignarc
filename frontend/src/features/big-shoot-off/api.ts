@@ -81,10 +81,18 @@ export type TireurPublic = Omit<Tireur, 'prochaine_volee'>
 /** La manche **en consultation** : sans la numérotation de volées, qui sert la feuille de saisie. */
 export type ManchePublique = Omit<Manche, 'volees'>
 
-/** Le déroulé annoncé du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ». */
+/** Le déroulé annoncé du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ».
+ *
+ * ⚠️ `eliminations` et `manches_jouables` **ont quitté le contrat public en revue** : servis, mais
+ * lus par aucune vue. `eliminations` est le réglage d'atelier lui-même, dont `effectif` + `paliers`
+ * est la forme lisible.
+ *
+ * ⚠️ **`restants` n'est PAS le nombre d'archers en lice** : c'est `paliers[-1]`, l'effectif à la
+ * **fin** du format — une constante de la phase. Le compte de ceux qui tirent encore se dérive de
+ * `tireurs` (`nbEnLice`, dans `publique.ts`). L'avoir confondu a coûté un défaut bloquant en revue. */
 export type ProjectionPublique = Omit<
   Projection,
-  'volees' | 'fleches_par_volee' | 'manches_ignorees'
+  'volees' | 'fleches_par_volee' | 'manches_ignorees' | 'eliminations' | 'manches_jouables'
 >
 
 /** La photo **rédigée** d'un Big Shoot Off — appli publique et écran de salle (E05US031). */

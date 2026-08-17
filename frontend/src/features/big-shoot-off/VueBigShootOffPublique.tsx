@@ -11,7 +11,7 @@
 // manche**. Le reste — quelle volée saisir, combien de flèches — est de la saisie.
 
 import { type ModeAffichage } from '../../shared/suivis/focus'
-import { estSorti, lignesTireurs, type LigneTireur } from './publique'
+import { estSorti, libelleSort, lignesTireurs, nbEnLice, type LigneTireur } from './publique'
 import type { EtatBigShootOffPublic } from './api'
 
 export function VueBigShootOffPublique({
@@ -61,7 +61,7 @@ export function VueBigShootOffPublique({
             : 'Aucun finaliste n’est encore désigné pour cette phase.'}
         </p>
       ) : (
-        <Finalistes lignes={lignes} nbManches={nbManches} />
+        <Finalistes lignes={lignes} nbManches={nbManches} etat={etat} />
       )}
     </div>
   )
@@ -70,7 +70,13 @@ export function VueBigShootOffPublique({
 /** L'échelle annoncée du format : « 12 → 8 → 6 → 5 ». C'est ce qui rend le format lisible d'emblée
  * — sans elle, un spectateur voit des archers disparaître sans savoir combien sortent à chaque fois. */
 function Echelle({ etat }: { etat: EtatBigShootOffPublic }) {
-  const { effectif, paliers, restants } = etat.projection
+  const { effectif, paliers } = etat.projection
+  const enLice = nbEnLice(etat)
+  // ⚠️ `termine` est rendu **vrai sur une phase encore vide** (`_photo` d'une population nulle est
+  // une photo terminée, pas une erreur) : c'est l'état nominal du matin. Sans la population, le
+  // badge « terminé » s'affichait au-dessus de « Aucun finaliste n'est encore désigné » — deux
+  // affirmations contradictoires, dont une fausse, sur l'écran projeté.
+  const acheve = etat.termine && etat.tireurs.length > 0
   return (
     <p className="bso-public__echelle">
       <span className="bso-public__palier">{effectif}</span>
@@ -81,17 +87,25 @@ function Echelle({ etat }: { etat: EtatBigShootOffPublic }) {
           {palier}
         </span>
       ))}
-      {etat.termine && <span className="bso-public__termine">terminé</span>}
-      {!etat.termine && restants > 0 && (
+      {acheve && <span className="bso-public__termine">terminé</span>}
+      {!acheve && enLice > 0 && (
         <span className="bso-public__restants">
-          {restants === 1 ? '1 archer en lice' : `${restants} archers en lice`}
+          {enLice === 1 ? '1 archer en lice' : `${enLice} archers en lice`}
         </span>
       )}
     </p>
   )
 }
 
-function Finalistes({ lignes, nbManches }: { lignes: LigneTireur[]; nbManches: number }) {
+function Finalistes({
+  lignes,
+  nbManches,
+  etat,
+}: {
+  lignes: LigneTireur[]
+  nbManches: number
+  etat: EtatBigShootOffPublic
+}) {
   return (
     // Le tableau défile dans son **propre** conteneur : au-delà de quatre manches, il déborde de
     // 360 px, et faire défiler la page entière casserait la lecture de l'échelle au-dessus.
@@ -118,9 +132,10 @@ function Finalistes({ lignes, nbManches }: { lignes: LigneTireur[]; nbManches: n
                 // croirait l'archer en difficulté. Une manche non validée affiche un tiret.
                 <td key={index}>{ligne.scores[index] ?? '—'}</td>
               ))}
-              {/* Un mot, jamais une couleur seule (`DV-03`). `rang` est `null` tant que l'archer
-                  est en lice : un rang annoncé avant la sortie serait un faux départ. */}
-              <td>{ligne.rang === null ? 'En lice' : `${ligne.rang}ᵉ`}</td>
+              {/* Un mot, jamais une couleur seule (`DV-03`). Le libellé vit dans `publique.ts` :
+                  « en lice » et « vainqueur » se distinguent par `termine`, que le JSX n'a pas à
+                  arbitrer (et ne le faisait pas — le champion restait « En lice »). */}
+              <td>{libelleSort(ligne, etat)}</td>
             </tr>
           ))}
         </tbody>

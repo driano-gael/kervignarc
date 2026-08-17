@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { EtatBigShootOffPublic, TireurPublic } from './api'
-import { estSorti, lignesTireurs } from './publique'
+import { estSorti, libelleSort, lignesTireurs, nbEnLice } from './publique'
 
 function mkTireur(over: Partial<TireurPublic> & { archer_id: number }): TireurPublic {
   return {
@@ -25,10 +25,8 @@ function mkEtat(tireurs: TireurPublic[]): EtatBigShootOffPublic {
     phase_id: 9,
     projection: {
       effectif: tireurs.length,
-      eliminations: [2, 1],
       paliers: [4, 3],
-      restants: tireurs.filter((t) => t.rang === null).length,
-      manches_jouables: 2,
+      restants: 3,
     },
     tireurs,
     manches: [],
@@ -72,14 +70,14 @@ describe('lignesTireurs', () => {
   })
 
   it('retient le rang, qui porte aussi la place obtenue', () => {
-    const [enLice, sorti] = lignesTireurs(
+    const lignes = lignesTireurs(
       mkEtat([mkTireur({ archer_id: 1, rang: 4, en_lice: false }), mkTireur({ archer_id: 2 })]),
     )
 
-    expect(enLice?.rang).toBeNull()
-    expect(estSorti(enLice as never)).toBe(false)
-    expect(sorti?.rang).toBe(4)
-    expect(estSorti(sorti as never)).toBe(true)
+    // Assertion sur la **liste**, pas sur deux éléments déstructurés : cela supprime le `as never`
+    // qui neutralisait le typage pour contourner un `| undefined`, et verrouille l'ordre au passage.
+    expect(lignes.map((l) => l.rang)).toEqual([null, 4])
+    expect(lignes.map(estSorti)).toEqual([false, true])
   })
 
   it('recopie les scores des manches validées sans les compléter', () => {
@@ -88,5 +86,72 @@ describe('lignesTireurs', () => {
     const [ligne] = lignesTireurs(mkEtat([mkTireur({ archer_id: 1, scores: [27] })]))
 
     expect(ligne?.scores).toEqual([27])
+  })
+})
+
+describe('nbEnLice', () => {
+  // ⚠️ **Le défaut bloquant de cette US.** L'écran affichait `projection.restants`, qui vaut
+  // `paliers[-1]` — l'effectif **à la fin** du format, une constante connue avant le premier tir.
+  // Sur une finale 12 → 8 → 6 → 5 il annonçait « 5 archers en lice » dès la manche 1 ; sur le cas
+  // nominal (déroulé validé à 1 rescapé), « 1 archer en lice » du début à la fin.
+  it('compte les archers qui tirent ENCORE, pas l’effectif de fin de format', () => {
+    const etat = mkEtat([
+      mkTireur({ archer_id: 1 }),
+      mkTireur({ archer_id: 2 }),
+      mkTireur({ archer_id: 3, rang: 3, en_lice: false }),
+    ])
+    // Ce que le serveur annonce comme échelle : la phase se terminera à 3 archers.
+    etat.projection.paliers = [4, 3]
+    etat.projection.restants = 3
+
+    expect(nbEnLice(etat)).toBe(2)
+  })
+
+  it('rend 0 sur une phase encore sans population', () => {
+    expect(nbEnLice(mkEtat([]))).toBe(0)
+  })
+})
+
+describe('libelleSort', () => {
+  it('dit « en lice » tant que la phase se joue', () => {
+    const etat = mkEtat([mkTireur({ archer_id: 1 })])
+    const [ligne] = lignesTireurs(etat)
+
+    expect(libelleSort(ligne!, etat)).toBe('En lice')
+  })
+
+  it('nomme le rang d’un archer sorti', () => {
+    const etat = mkEtat([mkTireur({ archer_id: 1, rang: 4, en_lice: false })])
+    const [ligne] = lignesTireurs(etat)
+
+    expect(libelleSort(ligne!, etat)).toBe('4ᵉ')
+  })
+
+  // ⚠️ **Le rescapé n'a pas de rang** : le serveur ne range que les éliminés. Sans le cas
+  // `termine`, le vainqueur de la finale restait affiché « En lice » jusqu'au soir, alors que le
+  // palmarès le donne 1ᵉʳ.
+  it('nomme le vainqueur une fois la finale terminée', () => {
+    const etat = {
+      ...mkEtat([mkTireur({ archer_id: 1 }), mkTireur({ archer_id: 2, rang: 2, en_lice: false })]),
+      termine: true,
+    }
+    const lignes = lignesTireurs(etat)
+
+    expect(lignes.map((l) => libelleSort(l, etat))).toEqual(['Vainqueur', '2ᵉ'])
+  })
+
+  it('dit « qualifié » quand l’échelle s’arrête à plusieurs rescapés', () => {
+    // Personne n'est vainqueur de personne : la phase en qualifie plusieurs pour la suite.
+    const etat = {
+      ...mkEtat([
+        mkTireur({ archer_id: 1 }),
+        mkTireur({ archer_id: 2 }),
+        mkTireur({ archer_id: 3, rang: 3, en_lice: false }),
+      ]),
+      termine: true,
+    }
+    const lignes = lignesTireurs(etat)
+
+    expect(lignes.map((l) => libelleSort(l, etat))).toEqual(['Qualifié', 'Qualifié', '3ᵉ'])
   })
 })

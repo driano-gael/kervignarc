@@ -17,6 +17,7 @@
 
 import { useState, type ReactNode } from 'react'
 
+import { ErreurApi } from '../../shared/api/client'
 import { nommerType } from '../../shared/phases/catalogue'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import { VueRencontres } from '../../shared/rencontres/VueRencontres'
@@ -31,7 +32,7 @@ import { useEtatSuisse } from '../suisse/hooks'
 import { formatPublicDuSuisse } from '../suisse/publique'
 import type { PhasePublique } from './api'
 import { usePhasesPubliques } from './hooks'
-import { LIBELLE_STATUT_PHASE, phaseAffichee, renduDe } from './presentation'
+import { libelleStatut, phaseAffichee, renduDe } from './presentation'
 
 export function VuePhases({
   tournoiId,
@@ -89,7 +90,7 @@ export function VuePhases({
                 .sort((a, b) => a.ordre - b.ordre)
                 .map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.ordre}. {nommerType(p.type)} — {LIBELLE_STATUT_PHASE[p.statut]}
+                    {p.ordre}. {nommerType(p.type)} — {libelleStatut(p.statut)}
                   </option>
                 ))}
             </select>
@@ -98,7 +99,7 @@ export function VuePhases({
       )}
 
       <p className="tableaux__entete">
-        {nommerType(phase.type)} · {LIBELLE_STATUT_PHASE[phase.statut]}
+        {nommerType(phase.type)} · {libelleStatut(phase.statut)}
       </p>
 
       <ContenuDePhase
@@ -176,14 +177,21 @@ function ContenuDePhase({
   // ⚠️ **On nomme où la lecture se trouve, on ne laisse pas un blanc.** Une qualification a bien une
   // vue publique — l'onglet « Classement » — et un échauffement ne produit rien par définition
   // (§10.1). Renvoyer un écran vide ferait chercher une panne dans les deux cas.
-  return <PhaseSansVue phase={phase} />
+  return <PhaseSansVue phase={phase} interactif={interactif} />
 }
 
-/** Le squelette commun aux trois lectures de format : chargement, erreur, refus déterministe.
+/** Le squelette commun aux trois lectures de format : chargement, refus déterministe, panne.
  *
  * ⚠️ Un **409** est la réponse normale d'une phase non réglée (« ce Big Shoot Off n'a pas de liste
  * de sortants »), pas une panne : les hooks ne le réessaient donc pas, et l'écran le dit comme un
  * état et non comme une erreur.
+ *
+ * ⚠️ **Une panne n'est pas un refus, et les confondre fait mentir l'écran.** La première rédaction
+ * prenait un booléen `isError` : un 500, une coupure Wi-Fi ou un redémarrage serveur affichaient
+ * « cette phase n'est pas encore prête » **pendant qu'elle se jouait**. Et c'était durable — les
+ * hooks ne réessaient pas, et une reconnexion WebSocket ne réinvalide rien tant qu'aucune écriture
+ * ne survient ailleurs. Le composant parent, cent lignes plus haut, tenait déjà le raisonnement
+ * inverse (correctif de revue d'E07US008) : le trou avait seulement été déplacé.
  */
 function EtatDeLecture({
   chargement,
@@ -191,17 +199,18 @@ function EtatDeLecture({
   children,
 }: {
   chargement: boolean
-  erreur: boolean
+  erreur: unknown
   children: ReactNode
 }) {
   if (chargement) return <p className="carte__etat">Chargement…</p>
-  if (erreur) {
-    return (
-      <p className="carte__etat">
-        Cette phase n’est pas encore prête à être suivie — elle sera visible dès qu’elle sera réglée
-        et lancée.
-      </p>
-    )
+  if (erreur !== null && erreur !== undefined) {
+    // Un statut déterministe (la phase n'est pas réglée, elle n'existe pas encore) se dit comme un
+    // état ; tout le reste — pas de statut du tout, ou 5xx — est une panne de liaison.
+    const refus =
+      erreur instanceof ErreurApi && [404, 409, 422].includes(erreur.statut)
+        ? 'Cette phase n’est pas encore prête à être suivie — elle sera visible dès qu’elle sera réglée et lancée.'
+        : 'Connexion momentanément perdue — mise à jour au retour.'
+    return <p className="carte__etat">{refus}</p>
   }
   return <>{children}</>
 }
@@ -223,7 +232,7 @@ function PhasePoules({
   return (
     <EtatDeLecture
       chargement={etat.data === undefined && !etat.isError}
-      erreur={etat.data === undefined && etat.isError}
+      erreur={etat.data === undefined ? etat.error : null}
     >
       {etat.data !== undefined && (
         <VueRencontres
@@ -254,7 +263,7 @@ function PhaseSuisse({
   return (
     <EtatDeLecture
       chargement={etat.data === undefined && !etat.isError}
-      erreur={etat.data === undefined && etat.isError}
+      erreur={etat.data === undefined ? etat.error : null}
     >
       {etat.data !== undefined && (
         <VueRencontres
@@ -285,7 +294,7 @@ function PhaseBigShootOff({
   return (
     <EtatDeLecture
       chargement={etat.data === undefined && !etat.isError}
-      erreur={etat.data === undefined && etat.isError}
+      erreur={etat.data === undefined ? etat.error : null}
     >
       {etat.data !== undefined && (
         <VueBigShootOffPublique
@@ -299,11 +308,20 @@ function PhaseBigShootOff({
   )
 }
 
-function PhaseSansVue({ phase }: { phase: PhasePublique }) {
+/** Ce qu'on dit d'une phase qui n'a pas de vue ici — sans jamais laisser un blanc.
+ *
+ * ⚠️ **`interactif` change la formulation, pas seulement l'interaction.** Sur l'écran de salle il
+ * n'y a ni onglet ni personne pour cliquer : renvoyer le spectateur vers « l'onglet Classement »
+ * l'envoie sur une cible qui n'existe pas sur cet écran-là. On y nomme la **vue projetée**
+ * correspondante. Le composant recevait déjà `interactif` deux niveaux plus haut sans le
+ * descendre. */
+function PhaseSansVue({ phase, interactif }: { phase: PhasePublique; interactif: boolean }) {
   if (phase.type === 'qualification') {
     return (
       <p className="carte__etat">
-        Les résultats de la qualification se lisent dans l’onglet « Classement ».
+        {interactif
+          ? 'Les résultats de la qualification se lisent dans l’onglet « Classement ».'
+          : 'Les résultats de la qualification sont projetés par la vue « Classement ».'}
       </p>
     )
   }
@@ -325,7 +343,9 @@ function PhaseSansVue({ phase }: { phase: PhasePublique }) {
   // rien : dire « bientôt » serait un engagement que rien ici ne tient.
   return (
     <p className="carte__etat">
-      Le détail de cette phase n’est pas encore consultable depuis l’application publique.
+      {interactif
+        ? 'Le détail de cette phase n’est pas encore consultable depuis l’application publique.'
+        : 'Le détail de cette phase n’est pas encore projetable sur l’écran de salle.'}
     </p>
   )
 }
