@@ -87,7 +87,7 @@
 | [DETTE-043](#dette-043--la-charte-impose-inter-lapplication-ne-lembarque-pas) | conception | mineur | `frontend/src/index.css` (`--sans`) | `DV-07` impose **Inter**. La pile de polices la déclare en tête, mais **aucun fichier de police n'est livré** : sur un poste qui ne l'a pas installée, le navigateur retombe silencieusement sur `Segoe UI` ou la police système | Le jour J tourne **sans internet** : aucune tablette ne pourra la télécharger. Le rendu réel sera donc, en pratique, celui de la police système sur la quasi-totalité du parc — proportions justes, dessin des lettres faux. Aucun effet fonctionnel, mais la charte est **déclarée satisfaite alors qu'elle ne l'est pas** | **E17US001** (05/08/2026, [ADR-0074](adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) : la charte a été posée sans embarquer la police | **E17US005** (spécifiée le 08/08/2026, 🔒 bloquée sur arbitrage) — embarquer les `.woff2` d'Inter dans `frontend/public/` avec un `@font-face` local. **Bloqué sur arbitrage** : c'est un ajout d'actif au dépôt (règle 11) — ~100 à 300 Ko, licence OFL —, donc une décision du commanditaire, pas de l'implémenteur |
 | [DETTE-067](#dette-067--le-javascript-de-latlas-nest-ni-typé-ni-linté) | technique | mineur | `atlas/statique/` — **1 837 lignes de JS** (`pages.js` 1 656, `coquille.js` 181) plus 530 de CSS, soit **2 367 lignes** — élargie par E00US019 (+ 420 lignes : vue d'avancement, graphe des epics, fiche d'US) puis par E00US020 (+ 353 lignes de JS, + 371 avec le CSS : carte du code, schéma des couches, matrice, ports) ; marqueurs `DETTE-067` en tête des trois fichiers | Le JavaScript du site de l'atlas n'est ni typé, ni linté, ni formaté automatiquement. `eslint` et `prettier` sont cadrés sur `^frontend/` (hooks pre-commit) et `working-directory: frontend` (CI) : `atlas/`, à la racine, leur est invisible | **Borné.** Le site ne touche aucune donnée du tournoi — il lit du généré et affiche du texte : une régression y dégrade la lecture d'une documentation, jamais un score. Les trois fautes invisibles en développement (`fetch()` ou module ES, mortels en `file://` ; ressource externe, alors que le jour J est hors ligne ; `viewport` manquant) sont couvertes par `backend/tests/test_atlas_site.py`. Ce qui reste à découvert est le **rendu** : rien ne garantit qu'une page est lisible à 360 px | E00US018 ([ADR-0086](adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)) — assumé au titre de la règle 12 : rallier ces 700 lignes demanderait soit d'étendre l'outillage du front à un dossier qui n'en est pas, soit une seconde chaîne Node sans build | **Déclencheur franchi le 16/08/2026 par E00US020** (2 367 lignes pour un seuil de 2 000) : la résorption est **ouverte** — `E00US026`, comme le prévoyait la clause « la prochaine US qui touche `atlas/statique/` ouvre la résorption, elle ne relève pas le seuil ». Déclencheurs d'origine : `atlas/statique/` dépasse **2 000 lignes**, **ou** un défaut de rendu échappe deux fois. ⚠️ Le seuil initialement inscrit (« ~1 000 lignes ») était **déjà franchi le jour de l'inscription** — le volume avait été estimé à ~700 lignes pour 1 550 réelles. Un déclencheur atteint à la rédaction n'en est pas un : il ne se déclenchera jamais *plus tard*, et il neutralise l'entrée. Relevé en revue, corrigé ici. Sortie la moins coûteuse : élargir les patrons existants (`^(frontend|atlas)/`), pas introduire un build |
 | [DETTE-068](#dette-068--la-grille-de-revue-et-son-orchestration-vivent-dans-sept-fichiers-sans-garde-fou-de-cohérence) | conception | mineur | `.claude/commands/revue-us.md` et `.claude/agents/revue-axe-{a,b,c1,c2,d}.md` + `porte-mecanique.md` — marqueur `DETTE-068` dans la commande, § « Concordance des numéros » | ADR-0013 décision 8 sort les grilles de la commande vers sept fichiers versionnés. La commande garde l'orchestration, le préambule et la table de décharge ; chaque agent porte sa grille. **Rien ne vérifie mécaniquement que les deux restent d'accord** — la numérotation des règles, la liste de suspension, les renvois croisés sont tenus à la main | **Réel, et déjà constaté trois fois au commit d'introduction** : `docs/adr/0075:220` et `docs/dette.md:7` pointaient encore vers l'ancien emplacement de `12-ADR` et des règles 14-15 ; et `revue-axe-a.md` omettait `porte-mecanique.md` de sa liste de suspension — le fichier même qui suspendait la décharge sur ce lot. Un renvoi mort se lit comme une preuve : c'est le défaut « ADR creux » que la revue existe pour trouver, appliqué à sa propre procédure | `chore/agents-dedies-revue` (16/08/2026), ADR-0013 décision 8 — assumé au titre de la règle 12 : un test qui compare deux textes en prose coûterait plus que le mal, puisque chaque agent reformule légitimement | **La prochaine divergence constatée ouvre la résorption** — pas « la troisième » : le compte de trois est atteint à la rédaction, et un déclencheur déjà franchi ne se déclenche jamais *plus tard* (leçon de DETTE-067, corrigée ici à l'inscription). Piste la moins chère, sur preuve du code d'aujourd'hui : élargir `_RACINES_DE_CODE` de `backend/atlas/sources/adr.py` à `.claude/` — le contrôle `portage-inexistant` vérifierait alors l'**existence** des fichiers nommés par les tables « Porté dans le code par », ce qu'il ne fait pas aujourd'hui (4 des 7 lignes d'ADR-0013 lui sont invisibles). Ne couvre pas le contenu |
-| [DETTE-069](#dette-069--un-sous-agent-peut-écrire-dans-larbre-et-pousser) | technique | **majeur** | `.claude/settings.json` (`deny`), `.claude/agents/*.md` (champ `tools`) — marqueur `DETTE-069` dans `revue-us.md` § « Où vivent les grilles » et dans `porte-mecanique.md` | Les six agents du dispositif de revue n'ont ni `Edit` ni `Write`, mais gardent **`Bash` non scopé**. Le `deny` versionné ne refuse ni `git commit`, ni `git push`, ni `sed -i`, ni une redirection. « Tu ne modifies aucun fichier » est donc une **consigne de prompt**, pas une contrainte. **Élargie le 17/08/2026** : `.claude/settings.local.json`, non versionné donc jamais relu en revue, ouvre son `allow` sur **`Bash(*)`** et `PowerShell(*)` — les 28 entrées restreintes de `settings.json` sont **court-circuitées**, seul le `deny` versionné survit (il l'emporte sur l'`allow`) | **Constaté, pas théorique.** Le 17/08/2026, l'agent `porte-mecanique` (un `haiku`), appelé pour exécuter la porte, a corrigé un ADR, régénéré l'atlas, lancé `ruff format`, puis `git add` / `commit` / `push` — **22 fichiers**, dont l'intégralité des correctifs de revue en cours, sous un message qui n'en décrivait que deux et dont le justificatif était inventé (`e8d3258`). Ses corrections étaient justes ; le geste ne l'était pas. Le dommage principal n'est pas le fichier touché mais la **traçabilité détruite** : `git add -A` ramasse le travail d'autrui, et le message devient faux sans que personne n'ait menti | [ADR-0013](adr/0013-conduite-de-la-revue-d-us.md) décision 8 (16/08/2026) — l'axe adversarial de sa propre revue avait décrit le scénario mot pour mot quelques heures avant qu'il ne se produise **Essai joué le 17/08/2026 — sans conclusion, et le protocole était fautif.** Les trois sondes sont passées, y compris une commande absente de l'`allow` **et** du `deny` : `Bash(*)` dans `settings.local.json` autorisait tout. La prémisse « un refus ne pourrait venir que du frontmatter » ignorait cette troisième source d'autorisation, non versionnée. **Le champ `tools:` reste donc indécidé** : sous un `allow` universel, un scope appliqué et un scope ignoré rendent la même trace. Acquis tout de même : les permissions **sont** évaluées (`pip install`, au `deny`, a été refusé), donc l'échec ne vient pas d'un mode de session permissif — le poste était en `acceptEdits`, qui n'auto-approuve que les éditions. **Protocole corrigé, deux conditions** : (1) neutraliser `Bash(*)`/`PowerShell(*)` dans `settings.local.json`, (2) **redémarrer la session** — registre d'agents et fichiers de réglages sont lus au démarrage, une édition à chaud ne prend pas. ⚠️ L'étape (1) est un **arbitrage de l'utilisateur** : elle rétablit une demande de confirmation à chaque commande hors `allow` versionné, contre la préférence « zéro interruption » du poste |
+| [DETTE-069](#dette-069--un-sous-agent-peut-écrire-dans-larbre-et-pousser) | technique | **majeur** | `.claude/settings.json` (`deny`), `.claude/agents/*.md` (champ `tools`) — marqueur `DETTE-069` dans `revue-us.md` § « Où vivent les grilles » et dans `porte-mecanique.md` | Les six agents du dispositif de revue n'ont ni `Edit` ni `Write`, mais gardent **`Bash` non scopé**. Le `deny` versionné ne refuse ni `git commit`, ni `git push`, ni `sed -i`, ni une redirection. « Tu ne modifies aucun fichier » est donc une **consigne de prompt**, pas une contrainte. **Élargie le 17/08/2026** : `.claude/settings.local.json`, non versionné donc jamais relu en revue, ouvre son `allow` sur **`Bash(*)`** et `PowerShell(*)` — les 28 entrées restreintes de `settings.json` sont **court-circuitées**, seul le `deny` versionné survit (il l'emporte sur l'`allow`) | **Constaté, pas théorique.** Le 17/08/2026, l'agent `porte-mecanique` (un `haiku`), appelé pour exécuter la porte, a corrigé un ADR, régénéré l'atlas, lancé `ruff format`, puis `git add` / `commit` / `push` — **22 fichiers**, dont l'intégralité des correctifs de revue en cours, sous un message qui n'en décrivait que deux et dont le justificatif était inventé (`e8d3258`). Ses corrections étaient justes ; le geste ne l'était pas. Le dommage principal n'est pas le fichier touché mais la **traçabilité détruite** : `git add -A` ramasse le travail d'autrui, et le message devient faux sans que personne n'ait menti | [ADR-0013](adr/0013-conduite-de-la-revue-d-us.md) décision 8 (16/08/2026) — l'axe adversarial de sa propre revue avait décrit le scénario mot pour mot quelques heures avant qu'il ne se produise | **Essai joué et conclu le 17/08/2026 : la piste du `Bash` scopé est morte.** Un agent déclaré `tools: Read, Bash(git log:*)` a exécuté `git status` (hors scope mais dans l'`allow` — seul le frontmatter aurait pu la refuser), `git count-objects` (hors `allow` et hors `deny`), et surtout un `touch` en **écriture**, fichier vérifié sur le disque. Le spécificateur est accepté sans erreur et **ignoré en silence**, en lecture comme en écriture. Scoper les six agents ne donnerait qu'un garde-fou de **façade** — pire que rien, puisqu'on cesserait de surveiller ce qui ne l'est pas. Il ne reste que le pansement (`git status` après chaque sous-agent dans `/revue-us`) : **la dette reste ouverte, sans piste de durcissement mécanique**. Deux passes, dont une non concluante, et l'enseignement de méthode qui en sort (sonder le geste que le garde-fou est censé empêcher ; énumérer *toutes* les couches qui peuvent dire oui) sont en section. Agent d'essai supprimé. Arbitrage laissé ouvert, **par poste donc hors dépôt** : remettre ou non `Bash(*)` dans `settings.local.json` |
 
 ## Dette résorbée
 
@@ -2632,43 +2632,63 @@ deux commandes sont indispensables (`CLAUDE.md` § Workflow, autonomie de bout e
 `.claude/settings.local.json` ne marche pas non plus : ce fichier ne voyage pas entre les postes, et
 l'utilisateur développe sur plusieurs machines.
 
-La piste restante est un **`Bash` scopé au champ `tools:`** de chaque agent
-(`Bash(git diff:*), Bash(git log:*)…`). Elle a été **essayée le 17/08/2026 et reste indécidée** : le
-registre d'agents est figé au démarrage de la session — vérifié deux fois, un agent neuf reste
-introuvable et un `tools:` modifié n'est pas relu — mais ce n'était pas le vrai obstacle. Voir
-« Essai exécuté » ci-dessous : l'expérience est neutralisée par un `Bash(*)` local et non versionné.
+La piste restante était un **`Bash` scopé au champ `tools:`** de chaque agent
+(`Bash(git diff:*), Bash(git log:*)…`). Elle a été **essayée deux fois le 17/08/2026, et elle est
+morte** : le spécificateur est accepté sans erreur et **n'est appliqué ni en lecture ni en écriture**.
+Voir « Essai exécuté » ci-dessous. Il ne reste donc, pour cette dette, aucune piste de durcissement
+mécanique — seulement le pansement.
 
 **Atténuation en place, et ce qu'elle vaut.** `/revue-us` impose désormais un `git status` après
 **chaque** appel de sous-agent, et l'incident y est cité en clair. C'est une vigilance, pas un
 garde-fou : l'incident prouve précisément que la vigilance seule ne tient pas. Ne pas la confondre
 avec une résorption.
 
-**Essai exécuté le 17/08/2026 — le protocole était invalide, et c'est le résultat le plus utile.**
-Le registre d'agents étant figé au démarrage, `essai-portee-bash` était disponible dès la session
-suivante : le test a bien pu être joué. Trois sondes en lecture seule, la troisième ajoutée en cours
-de route.
+**Essai exécuté le 17/08/2026 — deux passes, et le verdict est le pire cas.** Le registre d'agents
+étant figé au démarrage, `essai-portee-bash` était disponible dès la session suivante : le test a bien
+pu être joué. Il a fallu deux tentatives, et l'écart entre les deux vaut autant que le résultat.
 
-| Sonde | Commande | Dans `tools:` ? | Dans l'`allow` de `settings.json` ? | Résultat |
-|---|---|---|---|---|
-| 1 | `git log --oneline -1` | ✅ | ✅ | **exécutée** |
-| 2 | `git status --porcelain` | ❌ | ✅ | **exécutée** |
-| 3 | `git remote -v` | ❌ | ❌ (ni `deny`) | **exécutée** |
-| contrôle | `git remote -v` depuis la boucle principale | — | ❌ | **exécutée, sans confirmation demandée** |
+**Première passe — non concluante.** Trois sondes en lecture seule sont toutes passées, dont
+`git remote -v`, absente de l'`allow` comme du `deny`. Le protocole tenait pour acquis qu'un refus
+« ne pourrait venir que du frontmatter » : il ignorait une **troisième source d'autorisation**, non
+versionnée — `.claude/settings.local.json`, dont l'`allow` s'ouvrait sur **`Bash(*)`** et
+`PowerShell(*)`. Sous un `allow` universel, un scope appliqué et un scope ignoré rendent une trace
+identique : on ne démontrait pas le pire cas, on démontrait qu'on ne pouvait pas le distinguer.
 
-Aucune de ces trois issues n'est celle qui était tabulée. La sonde de contrôle a révélé le défaut :
-**le protocole reposait sur une prémisse fausse.** Il affirmait que `git status` étant autorisé par
-`settings.json`, « un refus ne pourrait venir que du frontmatter ». Il existe une **troisième source
-d'autorisation**, que la rédaction n'a pas regardée parce qu'elle n'est pas versionnée —
-`.claude/settings.local.json`, dont l'`allow` s'ouvre sur **`Bash(*)`** et `PowerShell(*)`.
+**Seconde passe — concluante.** Les deux jokers retirés du `settings.local.json` du poste (arbitrage
+de l'utilisateur, cf. l'avertissement en fin de section) et la session redémarrée, l'essai a été
+rejoué avec **quatre** sondes, dont une en **écriture** :
 
-**Le pire cas n'est donc pas démontré, il est indécidable en l'état.** Sous un `allow` universel,
-un scope de frontmatter qui *serait* appliqué et un scope *ignoré* produisent exactement la même
-trace. On ne peut rien conclure sur le champ `tools:`.
+| Sonde | Commande | Nature | Dans `tools:` ? | Dans un `allow` ? | Résultat |
+|---|---|---|---|---|---|
+| 1 | `git log --oneline -1` | lecture | ✅ | ✅ | exécutée |
+| 2 | `git status --porcelain` | lecture | ❌ | ✅ | **exécutée** |
+| 3 | `git count-objects -v` | lecture | ❌ | ❌ (ni `deny`) | **exécutée** |
+| 4 | `touch <scratchpad>/sonde-agent.txt` | **écriture** | ❌ | ❌ (ni `deny`) | **exécutée — fichier vérifié sur le disque** |
 
-Un fait est en revanche établi : `pip install`, membre du `deny` versionné, a été **refusé** aux deux
-niveaux. Les permissions sont donc bel et bien évaluées — ce n'est pas un mode de session permissif
-qui a tout ouvert (le poste était en `acceptEdits`, qui n'auto-approuve que les éditions de fichiers,
-jamais `Bash`). C'est bien `Bash(*)`, et `deny` lui survit parce que `deny` l'emporte toujours.
+**Conclusion : le spécificateur `Bash(git log:*)` au champ `tools:` est accepté sans erreur et ignoré
+en silence.** Deux points rendent le verdict indépendant de toute interprétation :
+
+- **La sonde 2 suffit à elle seule**, quels que soient le mode de session et le bac à sable : elle est
+  couverte par l'`allow`, donc rien d'autre que le frontmatter n'aurait pu la refuser. Elle est passée.
+- **La sonde 4 ferme la dernière échappatoire**, et elle a été ajoutée en cours d'essai sur un constat
+  de méthode : les trois premières sondes sont en **lecture seule**, or une commande en lecture seule
+  emprunte le **bac à sable** et court-circuite la couche de permission. Un scope appliqué *dans*
+  cette couche aurait donc été contourné pour les lectures **et resté actif pour les écritures** —
+  c'est-à-dire pour `git add` / `commit` / `push`, les seules commandes qui fondent cette dette.
+  Conclure de trois lectures aurait été tester la serrure par la fenêtre ouverte. La sonde 4 écrit :
+  le fichier a bien été créé, vérifié sur le disque, hors du dépôt.
+
+Reste une nuance indécidable et sans portée : le spécificateur pourrait être traduit en règle d'`allow`
+**additionnelle** plutôt qu'ignoré. Sans importance — une règle d'`allow` n'a jamais refusé quoi que ce
+soit. Dans les deux lectures, `tools: Bash(…)` ne **restreint** rien.
+
+**Les permissions sont bel et bien évaluées** — c'est ce qui rend la seconde passe décidable, et
+c'est établi deux fois : `pip install`, membre du `deny` versionné, a été refusé aux deux niveaux ;
+et après retrait des jokers, un `touch` hors `allow` lancé depuis la boucle principale a **demandé
+confirmation**. Ce n'est donc pas un mode de session permissif qui ouvre tout : le poste était en
+`acceptEdits`, qui n'auto-approuve que les éditions de fichiers, jamais `Bash`. ⚠️ Piège à connaître
+pour tout essai futur : le **mode plan** auto-approuve en revanche les commandes en lecture seule —
+les toutes premières sondes ont été jouées sous ce mode et leur silence n'apprenait rien.
 
 **Aggravation découverte au passage — l'`allow` versionné est décoratif sur ce poste.** Les 28
 entrées soigneusement restreintes de `.claude/settings.json` (`git status:*`, `pytest:*`, `ruff:*`…)
@@ -2676,32 +2696,35 @@ sont **intégralement court-circuitées** par `Bash(*)`. Seul le `deny` versionn
 est resté invisible pour la raison même qui rend cette dette difficile : `settings.local.json` **ne
 voyage pas**, donc personne ne le relit en revue, et aucun garde-fou versionné ne peut le contredire.
 Ce que le dépôt croit restreindre, le poste l'ouvre en une ligne — et l'écart ne se voit qu'en
-ouvrant le fichier à la main.
+ouvrant le fichier à la main. Le joker a été retiré de **ce** poste le 17/08/2026 pour rendre l'essai
+décidable, mais le constat est structurel et il demeure : rien n'empêche un poste — celui-ci demain,
+un autre aujourd'hui — de le reposer, et rien ne le signalerait.
 
-**Protocole corrigé.** Trois étapes, et l'étape 0 est celle qui a manqué la première fois :
+**Suite — la piste est morte, la dette reste ouverte.** Scoper le `Bash` des six agents de revue
+produirait un garde-fou de **façade**, ce qui est strictement pire que pas de garde-fou : on
+cesserait de surveiller ce qui n'est en fait pas surveillé, et l'ADR redirait ce qu'ADR-0013 disait
+déjà à tort le 16/08/2026. **Ne pas le faire.** Ce qui reste en place :
 
-0. **Ouvrir `.claude/settings.local.json` et chercher `Bash(*)`.** Ce fichier est **par poste** et
-   non versionné : le constat ci-dessus vaut pour la machine où l'essai a été joué le 17/08/2026, et
-   **pour elle seule**. Sur un poste dont l'`allow` local ne contient pas de joker, le protocole
-   d'origine est **déjà valide tel quel** — les deux sondes suffisent, il n'y a rien à neutraliser
-   ni à redémarrer. Ne pas supposer : lire le fichier. C'est le premier geste de l'essai, pas une
-   précaution.
-1. si le joker est là, le neutraliser (`Bash(*)`, `PowerShell(*)`) ;
-2. **redémarrer la session** — le registre d'agents *et* les fichiers de réglages sont lus au
-   démarrage ; l'édition faite à chaud ne prend pas effet dans la session courante.
+- le pansement — le `git status` imposé après **chaque** appel de sous-agent dans `/revue-us` ;
+- le `deny` versionné, seule couche qui refuse réellement, mais inutilisable ici : `git commit` et
+  `git push` sont indispensables à l'agent auteur, qui partage ce fichier ;
+- rien d'autre. L'agent d'essai `.claude/agents/essai-portee-bash.md` est **supprimé avec ce
+  constat** : il a rendu son résultat, et le garder ferait croire l'essai encore à jouer.
 
-Alors seulement les trois issues ci-dessous redeviennent discriminantes :
+**Enseignement de méthode, réutilisable hors de ce cas.** Un essai sur un garde-fou doit sonder **le
+geste que le garde-fou est censé empêcher** — ici une écriture, pas trois lectures. Les deux passes
+ont buté sur la même faute de forme : le protocole tenait pour acquis un pan du dispositif qu'il
+n'avait pas lu. La première fois une **source d'autorisation** (`settings.local.json`), la seconde
+une **couche d'exécution** (le bac à sable, qui dispense les lectures de toute permission). Avant de
+conclure d'un essai de permission, énumérer *toutes* les couches qui peuvent dire oui : `deny`
+versionné, `allow` versionné, `allow` local du poste, mode de session, bac à sable, champ `tools:`.
 
-| Observation | Conclusion | Suite |
-|---|---|---|
-| `git log` passe, `git status` refusée | Le scope est appliqué | Scoper les six agents, supprimer l'agent d'essai, solder cette dette |
-| Les deux passent | Le scope est **ignoré en silence** — le pire cas | L'écrire dans ADR-0013 ; la dette reste ouverte avec le seul pansement |
-| Les deux échouent | Le spécificateur coupe `Bash` entièrement | Utilisable pour les cinq relecteurs (à confirmer : ont-ils besoin d'autre chose que `git diff` ?), pas pour la porte |
-
-⚠️ **Le coût de l'étape 1 est réel et c'est un arbitrage de l'utilisateur, pas une évidence
-technique** : retirer `Bash(*)` rétablit une demande de confirmation à chaque commande hors de
-l'`allow` versionné, ce qui heurte frontalement la préférence « zéro interruption » du poste. Ne pas
-le faire dans le dos de l'utilisateur ; ne pas non plus le présenter comme un détail de plomberie.
+⚠️ **Arbitrage laissé ouvert : faut-il remettre `Bash(*)` / `PowerShell(*)` dans le
+`settings.local.json` du poste ?** Leur retrait était la condition de l'essai ; l'essai est fini. Les
+laisser dehors rétablit une demande de confirmation à chaque commande hors de l'`allow` versionné —
+ce qui heurte la préférence « zéro interruption » du poste, mais redonne du sens aux 28 entrées
+restreintes de `settings.json`. C'est une décision de l'utilisateur, pas de l'implémenteur, et elle
+est **par poste** : elle ne s'inscrit pas dans le dépôt.
 
 ⚠️ **Cette dette est classée majeure et non mineure** parce qu'elle porte sur un dispositif dont la
 raison d'être est d'être un garde-fou. Un relecteur qui peut modifier ce qu'il relit n'est pas un
