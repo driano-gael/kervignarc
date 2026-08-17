@@ -2678,9 +2678,15 @@ voyage pas**, donc personne ne le relit en revue, et aucun garde-fou versionné 
 Ce que le dépôt croit restreindre, le poste l'ouvre en une ligne — et l'écart ne se voit qu'en
 ouvrant le fichier à la main.
 
-**Protocole corrigé.** Deux conditions, et la seconde n'était pas connue :
+**Protocole corrigé.** Trois étapes, et l'étape 0 est celle qui a manqué la première fois :
 
-1. neutraliser `Bash(*)` et `PowerShell(*)` dans `.claude/settings.local.json` ;
+0. **Ouvrir `.claude/settings.local.json` et chercher `Bash(*)`.** Ce fichier est **par poste** et
+   non versionné : le constat ci-dessus vaut pour la machine où l'essai a été joué le 17/08/2026, et
+   **pour elle seule**. Sur un poste dont l'`allow` local ne contient pas de joker, le protocole
+   d'origine est **déjà valide tel quel** — les deux sondes suffisent, il n'y a rien à neutraliser
+   ni à redémarrer. Ne pas supposer : lire le fichier. C'est le premier geste de l'essai, pas une
+   précaution.
+1. si le joker est là, le neutraliser (`Bash(*)`, `PowerShell(*)`) ;
 2. **redémarrer la session** — le registre d'agents *et* les fichiers de réglages sont lus au
    démarrage ; l'édition faite à chaud ne prend pas effet dans la session courante.
 
