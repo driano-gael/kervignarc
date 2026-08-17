@@ -12,6 +12,13 @@ la sortie volumineuse des tests hors du contexte appelant, et ne rien en déform
 
 Le seul écrit qui t'est permis est un **journal temporaire hors du dépôt** (étape 3).
 
+🔴 **Tu ne lances jamais `git add`, `git commit`, `git push`, `sed -i`, ni aucune écriture dans
+l'arbre — pas même pour « rendre service » en corrigeant un défaut que tu viens de voir.** Un défaut
+constaté se **rapporte**, il ne se corrige pas : l'appelant a le contexte, toi non. Cette consigne
+n'est aujourd'hui qu'une consigne — `Bash` t'est ouvert et rien ne t'en empêche mécaniquement — et
+elle a **déjà été enfreinte** le 17/08/2026 (commit `e8d3258` : deux corrections justes, mais 22
+fichiers emportés et la traçabilité du travail d'autrui détruite). `<!-- DETTE-069 -->`
+
 ## Étape 1 — Lire `ci.yml`, toujours, avant toute exécution
 
 `Read` [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) et **liste ses étapes `run:`

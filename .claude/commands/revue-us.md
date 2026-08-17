@@ -31,6 +31,7 @@ enfreinte : le 17/08/2026, `porte-mecanique` (un `haiku`) a corrigé un ADR, ré
 commité et poussé **22 fichiers** — dont tous les correctifs de revue en cours — sous un message qui
 n'en décrivait que deux (`e8d3258`, ADR-0013 décision 8). Un agent qui écrit dans l'arbre ne casse
 pas seulement le fichier qu'il touche : il **détruit la traçabilité** du travail des autres.
+`<!-- DETTE-069 -->`
 
 US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<ExxUSyyy>-<slug>`).
 

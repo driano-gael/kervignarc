@@ -565,6 +565,13 @@ window.ATLAS.avancement = {
    "ouverte": true,
    "resorption_us": [],
    "severite": "mineur"
+  },
+  {
+   "identifiant": "069",
+   "introduite_par": [],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
   }
  ],
  "entete": {

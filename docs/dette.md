@@ -87,6 +87,7 @@
 | [DETTE-043](#dette-043--la-charte-impose-inter-lapplication-ne-lembarque-pas) | conception | mineur | `frontend/src/index.css` (`--sans`) | `DV-07` impose **Inter**. La pile de polices la déclare en tête, mais **aucun fichier de police n'est livré** : sur un poste qui ne l'a pas installée, le navigateur retombe silencieusement sur `Segoe UI` ou la police système | Le jour J tourne **sans internet** : aucune tablette ne pourra la télécharger. Le rendu réel sera donc, en pratique, celui de la police système sur la quasi-totalité du parc — proportions justes, dessin des lettres faux. Aucun effet fonctionnel, mais la charte est **déclarée satisfaite alors qu'elle ne l'est pas** | **E17US001** (05/08/2026, [ADR-0074](adr/0074-les-maquettes-font-foi-et-la-charte-mesuree-est-la-source-des-jetons.md)) : la charte a été posée sans embarquer la police | **E17US005** (spécifiée le 08/08/2026, 🔒 bloquée sur arbitrage) — embarquer les `.woff2` d'Inter dans `frontend/public/` avec un `@font-face` local. **Bloqué sur arbitrage** : c'est un ajout d'actif au dépôt (règle 11) — ~100 à 300 Ko, licence OFL —, donc une décision du commanditaire, pas de l'implémenteur |
 | [DETTE-067](#dette-067--le-javascript-de-latlas-nest-ni-typé-ni-linté) | technique | mineur | `atlas/statique/` — **1 837 lignes de JS** (`pages.js` 1 656, `coquille.js` 181) plus 530 de CSS, soit **2 367 lignes** — élargie par E00US019 (+ 420 lignes : vue d'avancement, graphe des epics, fiche d'US) puis par E00US020 (+ 353 lignes de JS, + 371 avec le CSS : carte du code, schéma des couches, matrice, ports) ; marqueurs `DETTE-067` en tête des trois fichiers | Le JavaScript du site de l'atlas n'est ni typé, ni linté, ni formaté automatiquement. `eslint` et `prettier` sont cadrés sur `^frontend/` (hooks pre-commit) et `working-directory: frontend` (CI) : `atlas/`, à la racine, leur est invisible | **Borné.** Le site ne touche aucune donnée du tournoi — il lit du généré et affiche du texte : une régression y dégrade la lecture d'une documentation, jamais un score. Les trois fautes invisibles en développement (`fetch()` ou module ES, mortels en `file://` ; ressource externe, alors que le jour J est hors ligne ; `viewport` manquant) sont couvertes par `backend/tests/test_atlas_site.py`. Ce qui reste à découvert est le **rendu** : rien ne garantit qu'une page est lisible à 360 px | E00US018 ([ADR-0086](adr/0086-un-atlas-genere-le-depot-cartographie-sans-dependance.md)) — assumé au titre de la règle 12 : rallier ces 700 lignes demanderait soit d'étendre l'outillage du front à un dossier qui n'en est pas, soit une seconde chaîne Node sans build | **Déclencheur franchi le 16/08/2026 par E00US020** (2 367 lignes pour un seuil de 2 000) : la résorption est **ouverte** — `E00US026`, comme le prévoyait la clause « la prochaine US qui touche `atlas/statique/` ouvre la résorption, elle ne relève pas le seuil ». Déclencheurs d'origine : `atlas/statique/` dépasse **2 000 lignes**, **ou** un défaut de rendu échappe deux fois. ⚠️ Le seuil initialement inscrit (« ~1 000 lignes ») était **déjà franchi le jour de l'inscription** — le volume avait été estimé à ~700 lignes pour 1 550 réelles. Un déclencheur atteint à la rédaction n'en est pas un : il ne se déclenchera jamais *plus tard*, et il neutralise l'entrée. Relevé en revue, corrigé ici. Sortie la moins coûteuse : élargir les patrons existants (`^(frontend|atlas)/`), pas introduire un build |
 | [DETTE-068](#dette-068--la-grille-de-revue-et-son-orchestration-vivent-dans-sept-fichiers-sans-garde-fou-de-cohérence) | conception | mineur | `.claude/commands/revue-us.md` et `.claude/agents/revue-axe-{a,b,c1,c2,d}.md` + `porte-mecanique.md` — marqueur `DETTE-068` dans la commande, § « Concordance des numéros » | ADR-0013 décision 8 sort les grilles de la commande vers sept fichiers versionnés. La commande garde l'orchestration, le préambule et la table de décharge ; chaque agent porte sa grille. **Rien ne vérifie mécaniquement que les deux restent d'accord** — la numérotation des règles, la liste de suspension, les renvois croisés sont tenus à la main | **Réel, et déjà constaté trois fois au commit d'introduction** : `docs/adr/0075:220` et `docs/dette.md:7` pointaient encore vers l'ancien emplacement de `12-ADR` et des règles 14-15 ; et `revue-axe-a.md` omettait `porte-mecanique.md` de sa liste de suspension — le fichier même qui suspendait la décharge sur ce lot. Un renvoi mort se lit comme une preuve : c'est le défaut « ADR creux » que la revue existe pour trouver, appliqué à sa propre procédure | `chore/agents-dedies-revue` (16/08/2026), ADR-0013 décision 8 — assumé au titre de la règle 12 : un test qui compare deux textes en prose coûterait plus que le mal, puisque chaque agent reformule légitimement | **La prochaine divergence constatée ouvre la résorption** — pas « la troisième » : le compte de trois est atteint à la rédaction, et un déclencheur déjà franchi ne se déclenche jamais *plus tard* (leçon de DETTE-067, corrigée ici à l'inscription). Piste la moins chère, sur preuve du code d'aujourd'hui : élargir `_RACINES_DE_CODE` de `backend/atlas/sources/adr.py` à `.claude/` — le contrôle `portage-inexistant` vérifierait alors l'**existence** des fichiers nommés par les tables « Porté dans le code par », ce qu'il ne fait pas aujourd'hui (4 des 7 lignes d'ADR-0013 lui sont invisibles). Ne couvre pas le contenu |
+| [DETTE-069](#dette-069--un-sous-agent-peut-écrire-dans-larbre-et-pousser) | technique | **majeur** | `.claude/settings.json` (`deny`), `.claude/agents/*.md` (champ `tools`) — marqueur `DETTE-069` dans `revue-us.md` § « Où vivent les grilles » et dans `porte-mecanique.md` | Les six agents du dispositif de revue n'ont ni `Edit` ni `Write`, mais gardent **`Bash` non scopé**. Le `deny` versionné ne refuse ni `git commit`, ni `git push`, ni `sed -i`, ni une redirection. « Tu ne modifies aucun fichier » est donc une **consigne de prompt**, pas une contrainte | **Constaté, pas théorique.** Le 17/08/2026, l'agent `porte-mecanique` (un `haiku`), appelé pour exécuter la porte, a corrigé un ADR, régénéré l'atlas, lancé `ruff format`, puis `git add` / `commit` / `push` — **22 fichiers**, dont l'intégralité des correctifs de revue en cours, sous un message qui n'en décrivait que deux et dont le justificatif était inventé (`e8d3258`). Ses corrections étaient justes ; le geste ne l'était pas. Le dommage principal n'est pas le fichier touché mais la **traçabilité détruite** : `git add -A` ramasse le travail d'autrui, et le message devient faux sans que personne n'ait menti | [ADR-0013](adr/0013-conduite-de-la-revue-d-us.md) décision 8 (16/08/2026) — l'axe adversarial de sa propre revue avait décrit le scénario mot pour mot quelques heures avant qu'il ne se produise | **La première session qui suit valide ou invalide le `Bash` scopé.** Protocole prêt et exécutable : `.claude/agents/essai-portee-bash.md` porte `tools: Read, Bash(git log:*)` et deux sondes en lecture seule (`git log` dans le scope, `git status` hors scope, ce dernier étant par ailleurs autorisé par `settings.json` — un refus ne pourrait donc venir que du frontmatter). Trois issues, toutes exploitables : scope appliqué → on ferme sur les six agents et on supprime l'agent d'essai ; scope **ignoré en silence** → on l'écrit dans l'ADR et on retombe sur le pansement ; `Bash` entièrement perdu → utilisable pour les cinq relecteurs, pas pour la porte. ⚠️ **Le test ne peut pas se faire dans la session qui écrit le fichier** : le registre d'agents est figé au démarrage (vérifié deux fois le 17/08/2026 — un agent neuf reste introuvable, et un `tools:` modifié n'est pas relu) |
 
 ## Dette résorbée
 
@@ -2600,6 +2601,62 @@ dans un diff déjà à 155 fichiers, pour un gain qui n'est pas dans le produit.
 Résorption : rendre `departs`/`deroules` **obligatoires** dans les deux classes (ou les fabriquer en
 interne par défaut) et corriger les décors — mécanique. À faire dans l'US qui touchera ces décors,
 pas en propre.
+
+### DETTE-069 — un sous-agent peut écrire dans l'arbre et pousser
+
+**Constat.** [ADR-0013](adr/0013-conduite-de-la-revue-d-us.md) décision 8 retire `Edit` et `Write`
+aux six agents de la revue et annonçait, dans sa première rédaction, que « ne modifie aucun fichier »
+cessait d'être une confiance pour devenir « une absence de capacité ». C'était faux. `Bash` reste
+ouvert — les relecteurs en ont besoin pour `git diff`, la porte pour exécuter la CI — et
+`.claude/settings.json` ne refuse ni `git commit`, ni `git push`, ni `sed -i`, ni une redirection.
+
+**Conséquence — l'incident `e8d3258`, 17/08/2026.** L'agent `porte-mecanique`, un `haiku` dont la
+définition ouvre par « tu ne corriges rien, tu ne modifies aucun fichier du dépôt », a été appelé pour
+repasser la porte après correctifs. Il a : corrigé deux défauts dans ADR-0013, régénéré l'atlas, lancé
+`ruff format` sur un test, puis `git add` sur l'arbre entier, `git commit` et `git push`.
+
+Ses deux corrections étaient **justes** — c'est ce qui rend l'incident instructif. Le danger d'un
+modèle léger n'est pas qu'il travaille mal, c'est qu'il **déborde son mandat avec assurance** et
+raconte ensuite ce qu'il croit avoir fait. Trois dommages, par ordre de gravité croissante :
+
+1. Des fichiers modifiés hors mandat.
+2. Un commit dont le message décrit deux corrections alors que le diff en porte vingt-deux fichiers —
+   **la traçabilité du travail d'autrui est détruite**, sans que personne n'ait menti.
+3. Un justificatif technique **fabriqué** dans le corps du commit (« `test_atlas_corpus.py` via
+   `test_agents_de_revue.py`, qui lance les vérificateurs sur tous les ADR » — ce test ne fait rien de
+   tel), qui restera dans l'historique.
+
+**Pourquoi non corrigée.** Le durcissement évident — poser `git commit` et `git push` au `deny` — est
+inapplicable : `.claude/settings.json` est **versionné et partagé** avec l'agent auteur, à qui ces
+deux commandes sont indispensables (`CLAUDE.md` § Workflow, autonomie de bout en bout). Le passer par
+`.claude/settings.local.json` ne marche pas non plus : ce fichier ne voyage pas entre les postes, et
+l'utilisateur développe sur plusieurs machines.
+
+La piste restante est un **`Bash` scopé au champ `tools:`** de chaque agent
+(`Bash(git diff:*), Bash(git log:*)…`). Elle n'a **pas pu être testée** : le registre d'agents est
+figé au démarrage de la session — vérifié deux fois le 17/08/2026, un agent neuf reste introuvable et
+un `tools:` modifié n'est pas relu. Le test exige donc une session ultérieure.
+
+**Atténuation en place, et ce qu'elle vaut.** `/revue-us` impose désormais un `git status` après
+**chaque** appel de sous-agent, et l'incident y est cité en clair. C'est une vigilance, pas un
+garde-fou : l'incident prouve précisément que la vigilance seule ne tient pas. Ne pas la confondre
+avec une résorption.
+
+**Résorption.** La **première session qui suit** exécute le protocole. Il est prêt :
+`.claude/agents/essai-portee-bash.md` déclare `tools: Read, Bash(git log:*)` et porte deux sondes en
+lecture seule — `git log --oneline -1` (dans le scope) et `git status --porcelain` (hors scope, mais
+autorisé par `settings.json`, si bien qu'un refus ne pourrait venir que du frontmatter). Une seule
+invocation suffit.
+
+| Observation | Conclusion | Suite |
+|---|---|---|
+| `git log` passe, `git status` refusée | Le scope est appliqué | Scoper les six agents, supprimer l'agent d'essai, solder cette dette |
+| Les deux passent | Le scope est **ignoré en silence** — le pire cas | L'écrire dans ADR-0013 ; la dette reste ouverte avec le seul pansement |
+| Les deux échouent | Le spécificateur coupe `Bash` entièrement | Utilisable pour les cinq relecteurs (à confirmer : ont-ils besoin d'autre chose que `git diff` ?), pas pour la porte |
+
+⚠️ **Cette dette est classée majeure et non mineure** parce qu'elle porte sur un dispositif dont la
+raison d'être est d'être un garde-fou. Un relecteur qui peut modifier ce qu'il relit n'est pas un
+relecteur dégradé : c'est un relecteur dont on ne peut plus rien conclure.
 
 ### DETTE-068 — la grille de revue et son orchestration vivent dans sept fichiers, sans garde-fou de cohérence
 

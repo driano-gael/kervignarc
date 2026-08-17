@@ -219,9 +219,22 @@ les postes. Trois propriétés que le prompt inline ne pouvait pas offrir :
      travail d'autrui, et le message de commit devient faux sans que personne n'ait menti.
 
   Le durcissement n'est pas trivial : `settings.json` est versionné et **partagé** avec l'agent
-  auteur, à qui `git commit` et `git push` sont indispensables (§ Workflow). Fermer par la denylist
-  fermerait les deux. La piste est un `Bash` **scopé au frontmatter** de l'agent — non vérifié à ce
-  jour. Arbitrage rendu à l'utilisateur, cf. § Conséquences.
+  auteur, à qui `git commit` et `git push` sont indispensables (§ Workflow) ; et `settings.local.json`
+  ne voyage pas entre les postes. La piste restante est un `Bash` **scopé au frontmatter**. Elle n'a
+  **pas pu être testée** — voir ci-dessous. Trou inscrit en **[DETTE-069](../dette.md)**, avec son
+  protocole d'essai prêt à l'emploi (`.claude/agents/essai-portee-bash.md`).
+
+⚠️ **Le registre d'agents est figé au démarrage de la session.** Vérifié deux fois le 17/08/2026 : un
+agent créé en cours de session reste **introuvable** pour le harnais, et un champ `tools:` modifié
+n'est **pas relu** — l'agent interrogé se déclare doté de ses outils d'origine. Deux conséquences
+qu'aucune documentation ne donne et qui changent la façon de travailler :
+
+1. **Une correction apportée à un agent n'est active qu'à la session suivante.** Tous les correctifs
+   de revue de ce lot — le bloc sécurité des cinq grilles, la réécriture de `porte-mecanique` — ont
+   été écrits, relus et poussés **sans jamais s'exécuter**. `backend/tests/test_agents_de_revue.py`
+   en prouve la *forme* ; leur *comportement* sera éprouvé pour la première fois à la revue suivante.
+2. **Toute expérience sur un frontmatter exige une session neuve.** C'est ce qui empêche de trancher
+   le `Bash` scopé ici, et non un manque de volonté.
 - **La porte mécanique devient un agent** (`porte-mecanique`, `model: haiku`) qui **lit `ci.yml`** au
   lieu de suivre une liste, et rend un verdict + les échecs verbatim. Double effet : la sortie des
   tests (10-50 k tokens) quitte le contexte de l'auteur, et la liste ne peut plus dériver.

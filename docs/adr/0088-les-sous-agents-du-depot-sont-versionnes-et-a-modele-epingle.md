@@ -93,6 +93,18 @@ l'orchestrateur lit pour choisir. Elle dit **quand** appeler l'agent et **quand 
 - **−** Le critère du tableau (juger / localiser / exécuter) est un **jugement**, pas une mesure.
   Aucune donnée du projet ne démontre que Sonnet suffit à la localisation ; c'est un pari, à réviser
   si une exploration rend une conclusion fausse.
+- **−** ⚠️ **Un agent versionné n'est pas un agent à effet immédiat.** Le registre est **figé au
+  démarrage de la session** (vérifié deux fois le 17/08/2026 : un agent neuf reste introuvable, un
+  `tools:` modifié n'est pas relu). Corriger un agent, c'est donc corriger *la session suivante* —
+  jamais celle en cours. Deux corollaires : une correction d'agent ne peut pas être éprouvée dans le
+  commit qui l'écrit, et un fichier d'agent poussé sur `main` n'agit chez les autres postes qu'à leur
+  prochain démarrage. Ce n'est pas un défaut du dépôt, c'est une propriété du harnais — mais elle doit
+  être connue, sans quoi on croit avoir corrigé ce qu'on n'a fait qu'écrire.
+- **−** `Bash` reste non scopé sur tous les agents, y compris ceux qui n'ont aucun besoin d'écrire :
+  la restriction d'outils est donc partielle. Le trou est constaté, pas théorique
+  (**[DETTE-069](../dette.md)**, incident `e8d3258`), et sa résorption dépend d'une question ouverte
+  — le champ `tools:` accepte-t-il et applique-t-il un spécificateur `Bash(git log:*)` ? — que le
+  point précédent empêche de trancher dans la session qui la pose.
 
 ## Porté dans le code par
 
