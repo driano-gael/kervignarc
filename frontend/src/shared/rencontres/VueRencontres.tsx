@@ -66,6 +66,9 @@ export function VueRencontres({
 
 /** Un bloc autonome : une poule, ou l'unique plateau d'un système suisse. */
 function Bloc({ bloc }: { bloc: BlocRencontres }) {
+  // Calculé **une fois**, hors du `map` : le lecteur voit l'invariant d'un coup d'œil, et on ne
+  // refait pas la recherche à chaque tour. `-1` quand tout est clos — aucun index ne l'égale.
+  const indexEnCours = bloc.tours.findIndex((tour) => !tour.clos)
   return (
     <section className="rencontres__bloc">
       {bloc.titre !== null && <h4 className="rencontres__titre">{bloc.titre}</h4>}
@@ -85,11 +88,7 @@ function Bloc({ bloc }: { bloc: BlocRencontres }) {
           affichait « Tour 1 en cours · Tour 2 en cours · Tour 3 en cours », et la marque perdait
           exactement ce qu'elle sert à dire. */}
       {bloc.tours.map((tour, index) => (
-        <Tour
-          key={tour.libelle}
-          tour={tour}
-          enCours={index === bloc.tours.findIndex((candidat) => !candidat.clos)}
-        />
+        <Tour key={tour.libelle} tour={tour} enCours={index === indexEnCours} />
       ))}
 
       {bloc.classement.length > 0 && <Classement bloc={bloc} />}

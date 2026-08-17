@@ -45,15 +45,26 @@ export const LIBELLE_STATUT_PHASE: Record<StatutPhase, string> = {
   terminee: 'terminée',
 }
 
-/** Le statut en toutes lettres, avec **repli sur la valeur brute**.
+/** Le statut en toutes lettres, avec un **repli qui reste lisible**.
  *
  * Même raison que le repli `ailleurs` de `renduDe`, dix lignes plus haut : `statut` vient du
  * serveur et l'appli publique reste ouverte des heures sur un téléphone. Indexer le `Record`
  * directement rendait une chaîne **vide** pour un statut qu'un backend plus récent nommerait —
  * « Poules · » dans l'en-tête et dans chaque option du sélecteur. Le raisonnement était juste à
- * dix lignes de là, mais appliqué à une seule des deux valeurs serveur. */
-export function libelleStatut(statut: StatutPhase): string {
-  return LIBELLE_STATUT_PHASE[statut] ?? statut
+ * dix lignes de là, mais appliqué à une seule des deux valeurs serveur.
+ *
+ * ⚠️ **Le paramètre est une `string`, et c'est ce qui rend le repli réel** (correction de la 2ᵉ
+ * passe de revue). Typé `StatutPhase`, il annonçait une protection que le type interdisait
+ * d'atteindre : `LIBELLE_STATUT_PHASE` est un `Record` **total** sur cette union, donc `?? statut`
+ * était statiquement mort — alors que le danger, lui, est bien réel et vient d'ailleurs. TypeScript
+ * ne valide rien à l'exécution : un JSON qui porte `"annulee"` traverse le type sans être vu.
+ * `renduDe` prend une `string` pour exactement cette raison. */
+export function libelleStatut(statut: string): string {
+  // ⚠️ Le repli ne rend **pas** la valeur brute : ce serait montrer un code d'enum au spectateur —
+  // « Poules · statut_2027 » —, exactement ce que `libelleConflit` s'interdit soixante lignes plus
+  // loin dans le même module. Deux doctrines opposées sur la même classe de valeur, relevé par
+  // l'axe adversarial. On dit qu'on ne sait pas, en français.
+  return LIBELLE_STATUT_PHASE[statut as StatutPhase] ?? 'statut inconnu'
 }
 
 /** La phase à montrer quand personne ne choisit — l'écran de salle, et l'ouverture de l'onglet.
@@ -77,19 +88,40 @@ export function libelleStatut(statut: StatutPhase): string {
  * ⚠️ **Seules les phases qui ont une vue sont candidates.** Les transitions de statut ne sont pas
  * chaînées (`demarrer`/`terminer` ne touchent qu'une phase) : un organisateur qui lance les poules
  * sans « terminer » la qualification laissait l'écran projeté sur « les résultats de la
- * qualification se lisent dans l'onglet Classement » — vrai, mais ce n'est pas ce qui se tire. Le
- * repli sur la liste complète garde le cas où **aucune** phase n'a de vue : mieux vaut dire
- * laquelle se joue que ne rien afficher.
+ * qualification se lisent dans l'onglet Classement » — vrai, mais ce n'est pas ce qui se tire.
+ *
+ * ⚠️ **La PREMIÈRE démarrée, pas la dernière — arbitrage tranché sur pièce en revue.** L'axe
+ * adversarial a proposé `demarrees[-1]` en s'appuyant sur `portee.py::la_plus_avancee`, au motif
+ * qu'un organisateur peut lancer une phase sans « terminer » la précédente, laissant deux `en_cours`
+ * dont la plus ancienne est figée. Le risque est réel, mais la référence ne s'applique pas :
+ * `la_plus_avancee` opère sur les phases **qui admettent un archer donné**, où l'ordre est
+ * topologique de *son* parcours, et sa propre docstring prévient — « ne pas confondre avec
+ * `la_plus_courante`, qui répond à une autre question : *que se tire-t-il dans ce créneau ?*, **pour
+ * un affichage** ». C'est mot pour mot la question posée ici. On suit donc `la_plus_courante`
+ * (`demarrees[0]`, puis `a_venir[0]`, puis la dernière). Dévier rouvrirait la divergence front ↔
+ * back que cette correction est justement venue fermer.
+ *
+ * ⚠️ **Le filtre s'applique DANS chaque palier, jamais avant.** C'est une correction de correction,
+ * relevée à la seconde passe de revue : filtrer d'abord faisait gagner une phase `a_venir` **avec**
+ * vue contre une phase `en_cours` **sans** vue, ce qui retourne la priorité n° 1 que cette même
+ * docstring énonce. Le déroulé qui le déclenche est celui de tous les matins — la qualification est
+ * toujours `ordre = 1`, et l'élimination directe est composée d'avance : l'onglet se serait ouvert
+ * sur l'ED, à afficher « l'arbre n'est pas encore monté », pendant que la qualification se tirait.
+ * Le statut décide d'abord ; la vue ne départage qu'à statut égal.
  */
 export function phaseAMontrer(phases: PhasePublique[]): PhasePublique | null {
   const ordonnees = [...phases].sort((a, b) => a.ordre - b.ordre)
   const avecVue = ordonnees.filter((p) => renduDe(p.type) !== 'ailleurs')
-  const candidates = avecVue.length > 0 ? avecVue : ordonnees
+  // À statut égal, on préfère une phase qu'on sait afficher ; sinon on montre quand même celle qui
+  // se joue — mieux vaut la nommer que ne rien dire.
+  const choisir = (statut: PhasePublique['statut']) =>
+    avecVue.find((p) => p.statut === statut) ?? ordonnees.find((p) => p.statut === statut)
   return (
-    candidates.find((p) => p.statut === 'en_cours') ??
-    candidates.find((p) => p.statut === 'en_pause') ??
-    candidates.find((p) => p.statut === 'a_venir') ??
-    candidates.at(-1) ??
+    choisir('en_cours') ??
+    choisir('en_pause') ??
+    choisir('a_venir') ??
+    avecVue.at(-1) ??
+    ordonnees.at(-1) ??
     null
   )
 }

@@ -1333,6 +1333,28 @@ troisième variante locale au lieu de combler le trou.
   sa projection derrière `exiger_admin`. **Cette US porte donc du backend pour ce format-là** : un
   DTO public restreint et l'alignement de ses deux routes sur celles de ses jumeaux (`/etat` publique,
   `/saisie` scoreur — ADR-0089 §5).
+- **Notes — arbitrages tranchés en revue (17/08/2026), reversés ici au titre de la règle 9.** Ils
+  décident de ce qu'un spectateur lit ; sans eux, le CA resterait muet et l'US suivante en dériverait
+  ses tests :
+  - **la phase montrée par défaut** suit `application/portee.py::la_plus_courante` — première
+    démarrée, sinon première **à venir**, sinon la dernière. « À venir » passe **devant** la dernière
+    terminée : démarrer une phase est un geste manuel, et l'inverse laissait l'écran sur la
+    qualification pendant que les duels se tiraient. À statut égal seulement, on préfère une phase
+    dont on sait afficher le détail ;
+  - **une rencontre à cheval sur deux cibles** nomme les **deux** (« Cibles 1C et 2A ») : un bloc de
+    couloirs est contigu dans la salle *mise à plat*, pas sur une cible ;
+  - **un seul tour porte la mention « en cours »**, le premier non terminé — une poule dérive son
+    round-robin **complet** dès la composition, tous ses tours existent d'emblée ;
+  - **le sort d'un finaliste de Big Shoot Off**, une fois la phase achevée : « **Vainqueur** » s'il
+    reste un seul rescapé, « **1ᵉʳ ex æquo** » s'ils sont plusieurs — le domaine leur donne le rang 1
+    **partagé** (`EtatBigShootOff.classement`), et le public ne doit pas lire autre chose que le
+    palmarès. Tant que la phase se joue : « En lice » ;
+  - **aucun code technique n'atteint le spectateur** : les raisons de conflit de placement
+    (`non_posee`, `salle_pleine`, `sans_rencontre`) et les statuts de phase sont rédigés en français,
+    repli compris ;
+  - **une panne réseau se distingue d'un refus** : « pas encore prête à être suivie » est réservé aux
+    refus déterministes du serveur (404/409/422) ; tout le reste dit « connexion momentanément
+    perdue ». Affirmer la première pendant qu'une phase se joue serait faux, et durable.
 - **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026,
   **périmètre élargi au cadrage du 17/08/2026** (historique, « mon chemin », classement d'une phase
   terminée)

@@ -72,7 +72,14 @@ function toursDe(poule: PoulePublique): TourVue[] {
       // Une poule n'a pas de bye : le round-robin apparie tout le monde à chaque tour, et un
       // effectif impair se règle à la composition, pas au tour.
       exempt: null,
-      clos: rencontres.every((r) => r.validee),
+      // ⚠️ **`desynchronisee` compte comme close**, sans quoi le tour ne se clôt **jamais** : le
+      // serveur refuse d'écrire sur une rencontre désynchronisée (la population a bougé sous un
+      // score déjà saisi), donc elle ne sera jamais `validee`. Tant que la marque « en cours »
+      // ornait *tous* les tours ouverts, le défaut passait inaperçu ; depuis qu'elle ne marque que
+      // le **premier**, un tour bloqué la capte définitivement et le tour réellement tiré n'en
+      // porte plus aucune. Relevé par l'axe adversarial à la 2ᵉ passe — la correction précédente
+      // avait déplacé le défaut plutôt que de le créer.
+      clos: rencontres.every((r) => r.validee || r.desynchronisee),
     }))
 }
 

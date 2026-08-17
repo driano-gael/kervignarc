@@ -14,6 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import { ErreurApi } from '../../shared/api/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
@@ -21,6 +22,7 @@ import { getEtatPoules } from '../poules/api'
 import { getEtatSuisse } from '../suisse/api'
 import { getEtatBigShootOffPublic } from '../big-shoot-off/api'
 import { getTableaux, type TableauPublic } from '../tableaux/api'
+import type { Place } from '../../shared/salle/place'
 import type { PhasePublique } from './api'
 import { getPhasesPubliques } from './api'
 import { VuePhases } from './VuePhases'
@@ -100,7 +102,14 @@ describe('VuePhases — routage par type', () => {
               numero: 1,
               poule: 1,
               tour: 1,
-              couloirs: null,
+              // ⚠️ **À cheval sur deux cibles, délibérément.** Le défaut d'origine était dans le
+              // JSX — il ne lisait que la première place —, donc `libelleCibles` testé seul ne le
+              // couvre pas : il faut qu'un rendu **traverse** le composant avec deux cibles
+              // distinctes (relevé à la 2ᵉ passe de revue).
+              couloirs: [
+                [1, 'C'],
+                [2, 'A'],
+              ] as [Place, Place],
               haut: MARTIN,
               bas: DURAND,
               points_haut: null,
@@ -140,8 +149,8 @@ describe('VuePhases — routage par type', () => {
         restants: 1,
       },
       tireurs: [
-        { ...MARTIN, en_lice: true, rang: null, scores: [] },
-        { ...DURAND, en_lice: true, rang: null, scores: [] },
+        { ...MARTIN, rang: null, scores: [] },
+        { ...DURAND, rang: null, scores: [] },
       ],
       manches: [],
       termine: false,
@@ -158,6 +167,8 @@ describe('VuePhases — routage par type', () => {
     expect(await screen.findByText('Poule 1')).toBeInTheDocument()
     expect(screen.getByText('Tour 1')).toBeInTheDocument()
     expect(screen.getByText('Luc MARTIN')).toBeInTheDocument()
+    // Les DEUX cibles sont nommées : « Cible 1C/A » enverrait le second archer au mauvais endroit.
+    expect(screen.getByText('Cibles 1C et 2A')).toBeInTheDocument()
   })
 
   it('rend un système suisse par la même vue, en nommant l’exempt', async () => {
@@ -365,6 +376,30 @@ describe('VuePhases — « mes archers »', () => {
 
     expect(await screen.findByText('Tour 3')).toBeInTheDocument()
     expect(screen.getAllByText('en cours')).toHaveLength(1)
+  })
+
+  // ⚠️ **Le correctif le plus facile à réintroduire en silence** : il tient à un `instanceof` et à
+  // une liste de statuts. Sans ces deux cas, revenir au booléen `isError` ne ferait rougir personne
+  // — et l'écran affirmerait « pas encore prête » pendant qu'une phase se joue.
+  it('dit qu’une phase non réglée n’est pas prête — c’est un état, pas une panne', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([phase('suisse')])
+    vi.mocked(getEtatSuisse).mockRejectedValue(
+      new ErreurApi(409, 'phase_non_reglee', 'La phase n’est pas réglée.'),
+    )
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    expect(await screen.findByText(/pas encore prête à être suivie/)).toBeInTheDocument()
+  })
+
+  it('ne confond pas une coupure réseau avec un refus du serveur', async () => {
+    vi.mocked(getPhasesPubliques).mockResolvedValue([phase('suisse')])
+    vi.mocked(getEtatSuisse).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    render(<Cadre enfants={<VuePhases tournoiId={1} />} />)
+
+    expect(await screen.findByText(/Connexion momentanément perdue/)).toBeInTheDocument()
+    expect(screen.queryByText(/pas encore prête à être suivie/)).not.toBeInTheDocument()
   })
 
   it('dit que l’arbre de cette phase n’est pas monté, plutôt que d’en montrer un autre', async () => {

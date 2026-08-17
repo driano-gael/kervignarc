@@ -1,4 +1,10 @@
-// Hooks React Query du **Big Shoot Off** (E05US028) — état serveur d'une phase.
+// Hooks React Query du **Big Shoot Off** (E05US028) — état serveur d'une phase.//
+// `# DETTE-031` — cette lecture **recompose la phase entière à chaque appel**, chaîne amont
+// comprise. Depuis E05US031 elle est servie au **public** et à l'écran de salle : la charge n'est
+// plus bornée par le nombre de postes de travail mais par le nombre de spectateurs. Aggravé par
+// `shared/realtime/useRealtime`, qui invalide **sans clé** — chaque score validé refetch tout, chez
+// tout le monde. Cf. le registre : la résorption est une mémoïsation par `(tournoi_id, version)`,
+// pas un cache posé au jugé.
 //
 // ⚠️ **Les mutations vivent ici**, contrairement aux poules — dont les rencontres s'écrivent par
 // `features/saisie-duels` parce qu'elles *sont* des duels (ADR-0083 §7). Une volée collective n'a

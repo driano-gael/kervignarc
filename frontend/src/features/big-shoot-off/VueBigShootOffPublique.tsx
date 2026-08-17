@@ -11,7 +11,14 @@
 // manche**. Le reste — quelle volée saisir, combien de flèches — est de la saisie.
 
 import { type ModeAffichage } from '../../shared/suivis/focus'
-import { estSorti, libelleSort, lignesTireurs, nbEnLice, type LigneTireur } from './publique'
+import {
+  estAchevee,
+  estSorti,
+  libelleSort,
+  lignesTireurs,
+  nbEnLice,
+  type LigneTireur,
+} from './publique'
 import type { EtatBigShootOffPublic } from './api'
 
 export function VueBigShootOffPublique({
@@ -72,11 +79,12 @@ export function VueBigShootOffPublique({
 function Echelle({ etat }: { etat: EtatBigShootOffPublic }) {
   const { effectif, paliers } = etat.projection
   const enLice = nbEnLice(etat)
-  // ⚠️ `termine` est rendu **vrai sur une phase encore vide** (`_photo` d'une population nulle est
-  // une photo terminée, pas une erreur) : c'est l'état nominal du matin. Sans la population, le
-  // badge « terminé » s'affichait au-dessus de « Aucun finaliste n'est encore désigné » — deux
-  // affirmations contradictoires, dont une fausse, sur l'écran projeté.
-  const acheve = etat.termine && etat.tireurs.length > 0
+  // ⚠️ `termine` est rendu **vrai avant le premier tir** dans deux cas — phase encore vide (l'état
+  // nominal du matin) et réglage injouable —, et le badge « terminé » s'affichait alors au-dessus
+  // de « Aucun finaliste n'est encore désigné » : deux affirmations contradictoires, dont une
+  // fausse, sur l'écran projeté. `estAchevee` vit dans `publique.ts` pour que le JSX et les
+  // libellés partagent **une seule** notion d'achevé (ils en avaient chacun la leur).
+  const acheve = estAchevee(etat)
   return (
     <p className="bso-public__echelle">
       <span className="bso-public__palier">{effectif}</span>

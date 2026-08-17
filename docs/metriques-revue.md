@@ -35,7 +35,32 @@ dit.
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
-| 2026-08-17 | `E05US031` | 42 | +4163/−160 | ~27 min | ~16 min | C1 | mineur:4 | majeur:5 mineur:2 suggestion:1 | bloquant:1 majeur:6 mineur:3 suggestion:1 | majeur:1 mineur:3 | majeur:6 mineur:4 suggestion:1 | **C1 (1)** | 1 |
+| 2026-08-17 | `E05US031` | 42 | +4163/−160 | ~27 min | ~16 min | C1 | mineur:4 | majeur:5 mineur:2 suggestion:1 | bloquant:1 majeur:6 mineur:3 suggestion:1 | majeur:1 mineur:3 | majeur:6 mineur:4 suggestion:1 | **C1 (1)** | 2 |
+| 2026-08-17 (passe 2) | `E05US031` | 29 | +849/−125 | ~2 min | ~30 min | D | — | majeur:5 mineur:5 suggestion:2 | majeur:1 mineur:7 suggestion:1 | — | majeur:1 mineur:7 suggestion:1 | **aucun** | — |
+
+**Lecture de la passe 2 — la seule mesure qui compte ici.** Elle a été lancée parce que les
+correctifs avaient **débordé** des fichiers déjà relus (le déclencheur prévu par la commande), pas
+parce qu'un bloquant subsistait. Elle a trouvé, sur 849 lignes de correctifs :
+
+- **une régression introduite par un correctif** — le filtre « phases avec vue » appliqué *avant* les
+  paliers de statut retournait la priorité n° 1, sur le déroulé de tous les matins. Trouvée
+  **indépendamment par C1 et par B** ;
+- **un test qui ne prouvait pas ce qu'il annonçait** — la fixture y était réduite à une seule
+  candidate par le filtre, donc il passait avec l'ancien code comme avec le nouveau. Ce défaut-là
+  n'est visible que d'un relecteur : l'auteur, lui, vient de voir son test passer ;
+- **trois correctifs sans test** (distinction panne/refus, barrage public, rendu des deux cibles) ;
+- **un défaut déplacé** — la marque « en cours » ne se posant plus que sur le premier tour ouvert,
+  une rencontre bloquée capte définitivement la marque. Le correctif avait créé la condition.
+
+Conclusion opérationnelle : **la passe sur correctifs n'est pas une formalité**. Trois axes sur trois
+ont rendu *corrections requises* sur du code que la porte mécanique validait intégralement, et dont
+l'auteur pensait raisonnablement qu'il fermait les défauts de la passe 1.
+
+Un contre-exemple utile, aussi : l'axe adversarial a rendu son unique majeur sur une **citation
+inversée** — il invoquait `la_plus_avancee` pour un cas que la docstring de cette même fonction
+renvoie explicitement à `la_plus_courante`. Écarté sur pièce, et l'arbitrage écrit dans le code pour
+qu'il ne se rejoue pas. **Un rapport d'axe est une hypothèse à vérifier, pas un verdict** — c'est la
+deuxième fois de la session, après le faux « PORTE ROUGE » d'un `pytest` tué à 120 s.
 
 **Lecture de la deuxième ligne (E05US031).** Trois enseignements, dont un qui contredit la première.
 

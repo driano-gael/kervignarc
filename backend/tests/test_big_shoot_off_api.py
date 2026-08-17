@@ -212,7 +212,10 @@ def test_l_etat_public_se_lit_sans_aucun_jeton(app_bso: FastAPI) -> None:
     corps = reponse.json()
     assert corps["phase_id"] == scn.phase_id
     assert len(corps["tireurs"]) == 4
-    assert all(tireur["en_lice"] for tireur in corps["tireurs"])
+    # ⚠️ « Personne n'est encore sorti » se lit sur `rang`, **pas** sur `en_lice` : ce dernier a
+    # quitté le contrat public en revue (aucune vue ne le lisait, et il redisait ce que `rang is
+    # None` dit déjà). Le domaine n'attribue un rang qu'à la sortie.
+    assert all(tireur["rang"] is None for tireur in corps["tireurs"])
 
 
 def test_le_dto_public_ne_porte_aucune_affordance_de_saisie(app_bso: FastAPI) -> None:
@@ -238,6 +241,8 @@ def test_le_dto_public_ne_porte_aucune_affordance_de_saisie(app_bso: FastAPI) ->
     # de sortants lui-même — `effectif` + `paliers` en sont déjà la forme lisible.
     assert "eliminations" not in corps["projection"]
     assert "manches_jouables" not in corps["projection"]
+    # `en_lice` redisait `rang is None` : deux champs pour un fait finissent par diverger.
+    assert "en_lice" not in corps["tireurs"][0]
 
 
 def test_l_etat_de_saisie_sert_bien_le_dto_complet_au_scoreur(
@@ -263,6 +268,56 @@ def test_l_etat_de_saisie_sert_bien_le_dto_complet_au_scoreur(
     assert "prochaine_volee" in corps["tireurs"][0]
     assert "fleches_par_volee" in corps["projection"]
     assert "volees" in corps["projection"]
+
+
+def test_le_barrage_public_porte_ses_trois_champs_et_rien_d_autre(
+    app_bso: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le barrage est servi **anonymement**, par un DTO qui lui est propre.
+
+    ⚠️ **C'est le test qui donne sa raison d'être à `BarragePublicReponse`.** Cette classe dédouble
+    volontairement `BarrageEnAttenteReponse` — identique aujourd'hui — pour qu'un champ ajouté
+    demain au barrage du scoreur (flèches de départage, nom du validateur, horodatage) n'atterrisse
+    pas sur une route anonyme. Sans une assertion sur l'ensemble **exact** des clés, la garantie
+    n'était portée par rien : remettre la classe partagée laissait la suite verte (relevé à la 2ᵉ
+    passe de revue).
+
+    Le barrage est provoqué par le cas réel : quatre archers au **même** score sur une manche qui
+    n'en élimine que deux — le moteur ne peut pas les départager et suspend la phase.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        for archer_id in scn.archers:
+            client.post(
+                "/api/v1/big-shoot-off/volees",
+                json={
+                    "tournoi_id": scn.tournoi_id,
+                    "phase_id": scn.phase_id,
+                    "archer_id": archer_id,
+                    "numero": 1,
+                    "valeurs": ["9", "9", "9"],
+                },
+                headers=entetes,
+            )
+        for archer_id in scn.archers:
+            client.post(
+                "/api/v1/big-shoot-off/validations",
+                json={
+                    "tournoi_id": scn.tournoi_id,
+                    "phase_id": scn.phase_id,
+                    "archer_id": archer_id,
+                },
+                headers=entetes,
+            )
+
+        corps = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+
+    barrage = corps["barrage"]
+    assert barrage is not None, "quatre archers à égalité pour deux places : la phase est suspendue"
+    # L'ensemble **exact** des clés, pas seulement leur présence : c'est la seule forme d'assertion
+    # qui voit un champ *ajouté*.
+    assert set(barrage) == {"archer_ids", "noms", "places"}
 
 
 def test_une_manche_saisie_puis_validee_elimine_sur_la_vraie_chaine(

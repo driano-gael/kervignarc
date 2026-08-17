@@ -130,6 +130,8 @@ export function SaisieBigShootOff({
   const etat = useEtatBigShootOffSaisie(tournoiId, phaseRetenue)
   const prochaine = (etat.data?.manches ?? []).find((manche) => !manche.jouee) ?? null
   const fleches = etat.data?.projection.fleches_par_volee ?? 3
+  // Les rescapés **réels**, comptés sur la population — cf. le commentaire du bloc « terminé ».
+  const rescapes = (etat.data?.tireurs ?? []).filter((tireur) => tireur.en_lice).length
 
   return (
     <div className="duels-saisie">
@@ -177,10 +179,16 @@ export function SaisieBigShootOff({
             </p>
           )}
 
-          {etat.data.termine ? (
+          {/* ⚠️ **Le compte des rescapés se lit sur les TIREURS, jamais sur `projection.restants`.**
+              `restants` vaut `paliers[-1]` — l'effectif *prévu* à la fin du format, une constante
+              connue avant le premier tir : une égalité au plus faible peut en sortir plus que prévu.
+              La confusion a coûté le défaut bloquant de la vue publique ; elle vivait ici aussi, une
+              porte plus loin (relevé par l'axe adversarial). La garde `manches.length` évite en
+              outre d'annoncer « terminé » sur une phase encore vide ou au réglage injouable, où
+              `termine` est vrai d'emblée. */}
+          {etat.data.termine && etat.data.manches.length > 0 ? (
             <p className="carte__etat" role="status">
-              Big Shoot Off terminé : {etat.data.projection.restants} rescapé
-              {etat.data.projection.restants > 1 ? 's' : ''}.
+              Big Shoot Off terminé : {rescapes} rescapé{rescapes > 1 ? 's' : ''}.
             </p>
           ) : (
             prochaine !== null && (

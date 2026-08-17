@@ -35,3 +35,11 @@ Trois détails qui comptent dans la salle :
 Le manque était **le même pour les trois formats**. Le traiter d'un bloc plutôt que format par format
 a évité d'écrire trois écrans cousins qui auraient fini par se contredire — et la **colline**, le
 dernier format à rendre jouable, en héritera sans une ligne de plus.
+
+## Un geste à faire une seule fois, au moment de la mise à jour
+
+**Rechargez les tablettes des scoreurs** (F5) après avoir installé cette version, avant de reprendre
+la saisie d'un Big Shoot Off. L'adresse qui servait la saisie de ce format sert désormais la lecture
+publique : une tablette restée ouverte depuis le matin verrait son pavé de saisie se fermer **sans
+message d'erreur**. Un rechargement suffit, et le problème ne peut pas revenir ensuite. Rien à faire
+du côté des spectateurs.

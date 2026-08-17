@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StatutPhase } from '../phases/api'
 import type { PhasePublique } from './api'
-import { phaseAffichee, phaseAMontrer, renduDe } from './presentation'
+import { libelleStatut, phaseAffichee, phaseAMontrer, renduDe } from './presentation'
 
 const phase = (id: number, ordre: number, statut: StatutPhase, type = 'poules'): PhasePublique => ({
   id,
@@ -67,12 +67,13 @@ describe('phaseAMontrer', () => {
   })
 
   it('à défaut, montre la DERNIÈRE phase terminée', () => {
-    // À 17 h, c'est son classement qu'on vient lire — pas celui de la qualification du matin. Même
-    // règle que `VueTableaux` applique déjà aux arbres.
-    const choisie = phaseAMontrer([
-      phase(1, 1, 'terminee', 'qualification'),
-      phase(2, 2, 'terminee'),
-    ])
+    // À 17 h, c'est son classement qu'on vient lire — pas celui du matin. Même règle que
+    // `VueTableaux` applique déjà aux arbres.
+    //
+    // ⚠️ Les deux phases ont une **vue** : avec une `qualification` en première position, le filtre
+    // `avecVue` l'écartait avant tout arbitrage et le test ne départageait plus rien (relevé à la
+    // 2ᵉ passe de revue — un test à une seule candidate passe quel que soit l'ordre de préférence).
+    const choisie = phaseAMontrer([phase(1, 1, 'terminee', 'suisse'), phase(2, 2, 'terminee')])
 
     expect(choisie?.id).toBe(2)
   })
@@ -88,8 +89,10 @@ describe('phaseAMontrer', () => {
   // sur l'écran de salle. Le backend a tranché ce même arbitrage deux fois
   // (`portee.py::la_plus_courante`, `ServicePalmares._resultat`) : « à venir » passe devant.
   it('préfère une phase à venir à une phase déjà terminée', () => {
+    // ⚠️ Les deux phases portent une vue, sans quoi le filtre `avecVue` réduirait la liste à une
+    // seule candidate et le test rendrait le même résultat avec l'ancien ordre de préférence.
     const choisie = phaseAMontrer([
-      phase(1, 1, 'terminee', 'qualification'),
+      phase(1, 1, 'terminee', 'poules'),
       phase(2, 2, 'a_venir', 'elimination_directe'),
     ])
 
@@ -109,6 +112,20 @@ describe('phaseAMontrer', () => {
     expect(choisie?.id).toBe(2)
   })
 
+  // ⚠️ **Le cas que la première correction avait cassé** (relevé à la 2ᵉ passe de revue) : le filtre
+  // « seules les phases avec vue » était appliqué AVANT les paliers de statut, si bien qu'une phase
+  // à venir *avec* vue battait une phase en cours *sans* vue. C'est le déroulé de tous les matins —
+  // la qualification est toujours `ordre = 1`, l'élimination directe est composée d'avance : l'écran
+  // se serait ouvert sur l'ED (« l'arbre n'est pas encore monté ») pendant qu'on tirait la qualif.
+  it('montre la phase EN COURS même sans vue, plutôt qu’une phase à venir qui en a une', () => {
+    const choisie = phaseAMontrer([
+      phase(1, 1, 'en_cours', 'qualification'),
+      phase(2, 2, 'a_venir', 'elimination_directe'),
+    ])
+
+    expect(choisie?.id).toBe(1)
+  })
+
   it('retombe sur une phase sans vue si AUCUNE n’en a — mieux vaut nommer que se taire', () => {
     const choisie = phaseAMontrer([
       phase(1, 1, 'en_cours', 'qualification'),
@@ -120,6 +137,22 @@ describe('phaseAMontrer', () => {
 
   it('rend null sur un déroulé vide', () => {
     expect(phaseAMontrer([])).toBeNull()
+  })
+})
+
+describe('libelleStatut', () => {
+  it('nomme les quatre statuts connus', () => {
+    expect(libelleStatut('en_cours')).toBe('en cours')
+    expect(libelleStatut('terminee')).toBe('terminée')
+  })
+
+  // ⚠️ Le cas que le type ne peut pas empêcher : TypeScript ne valide rien à l'exécution, et un
+  // serveur plus récent peut servir un statut que ce bundle ignore. Sans repli, l'en-tête affichait
+  // « Poules · » et chaque option du sélecteur perdait son statut.
+  it('ne montre jamais un code technique pour un statut inconnu du bundle', () => {
+    // Même doctrine que `libelleConflit` : un code d'enum ne s'affiche pas à un spectateur.
+    expect(libelleStatut('statut_2027')).toBe('statut inconnu')
+    expect(libelleStatut('statut_2027')).not.toMatch(/_/)
   })
 })
 

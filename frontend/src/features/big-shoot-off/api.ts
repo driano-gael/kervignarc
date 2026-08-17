@@ -71,12 +71,29 @@ export interface EtatBigShootOff {
   barrage: BarrageEnAttente | null
 }
 
+/** Le barrage **en consultation**.
+ *
+ * ⚠️ **Type distinct, en miroir de `BarragePublicReponse` côté serveur.** Le backend a dédoublé la
+ * classe pour qu'un champ ajouté demain au barrage du scoreur ne parte pas au public ; garder ici
+ * le type du scoreur rendait la garantie **à sens unique** (relevé par l'axe adversarial) : le
+ * champ neuf aurait compilé côté public et rendu `undefined` sur l'écran projeté, le serveur ne le
+ * servant pas. Les deux types coïncident aujourd'hui — c'est voulu, pas une duplication à résorber. */
+export interface BarragePublic {
+  archer_ids: number[]
+  noms: string[]
+  places: number
+}
+
 /** Le finaliste **en consultation** : son sort et ce qu'il a marqué, jamais ce qu'il doit tirer.
  *
  * `prochaine_volee` n'y est pas : c'est une affordance de **saisie** (ADR-0089 §5). Ne pas
  * « compléter » ce type en recopiant `Tireur` — l'absence de ce champ **est** la décision, et un
- * test la verrouille côté serveur. */
-export type TireurPublic = Omit<Tireur, 'prochaine_volee'>
+ * test la verrouille côté serveur.
+ *
+ * ⚠️ `en_lice` **a quitté le contrat public en revue** : aucune vue publique ne le lisait, et il
+ * redit ce que `rang === null` dit déjà — deux champs pour un fait, c'est la porte ouverte à ce
+ * qu'ils divergent un jour sans que rien ne le voie. Le compte se dérive de `rang` (`nbEnLice`). */
+export type TireurPublic = Omit<Tireur, 'prochaine_volee' | 'en_lice'>
 
 /** La manche **en consultation** : sans la numérotation de volées, qui sert la feuille de saisie. */
 export type ManchePublique = Omit<Manche, 'volees'>
@@ -102,7 +119,7 @@ export interface EtatBigShootOffPublic {
   tireurs: TireurPublic[]
   manches: ManchePublique[]
   termine: boolean
-  barrage: BarrageEnAttente | null
+  barrage: BarragePublic | null
 }
 
 /** L'état **rédigé** — lecture **ouverte et anonyme**, comme `/poules/etat` et `/suisse/etat`. */

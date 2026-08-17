@@ -34,14 +34,34 @@ export function nbEnLice(etat: EtatBigShootOffPublic): number {
 /** Le mot de la colonne « Sort » — jamais une couleur seule (`DV-03`).
  *
  * ⚠️ `rang` reste `null` pour le **rescapé** : le serveur ne range que les éliminés
- * (`ServiceBigShootOff` n'attribue un rang qu'à la sortie). Sans le cas `termine`, le vainqueur de
+ * (`ServiceBigShootOff` n'attribue un rang qu'à la sortie). Sans le cas « achevée », le vainqueur de
  * la finale restait donc affiché « En lice » jusqu'au soir, alors que le palmarès le donne 1ᵉʳ.
- * Au pluriel (`restants > 1`, une échelle qui s'arrête à plusieurs), aucun des rescapés n'est
- * vainqueur de personne : on dit « Qualifié ». */
+ *
+ * ⚠️ **Au pluriel, c'est « 1ᵉʳ ex æquo », pas « Qualifié »** (correction de la 2ᵉ passe de revue).
+ * Le domaine tranche explicitement : `EtatBigShootOff.classement()` donne **le rang 1 partagé** à
+ * tous les restants — « la règle ne prévoit rien pour les départager entre eux ». Écrire
+ * « Qualifié » faisait dire deux choses différentes des mêmes archers à deux surfaces publiques du
+ * même tournoi (cet onglet et le classement / palmarès), **et** affirmait une phase avale que le
+ * front ne peut pas connaître : un Big Shoot Off peut être la dernière phase du déroulé. */
 export function libelleSort(ligne: LigneTireur, etat: EtatBigShootOffPublic): string {
   if (ligne.rang !== null) return `${ligne.rang}ᵉ`
-  if (!etat.termine) return 'En lice'
-  return nbEnLice(etat) === 1 ? 'Vainqueur' : 'Qualifié'
+  if (!estAchevee(etat)) return 'En lice'
+  return nbEnLice(etat) === 1 ? 'Vainqueur' : '1ᵉʳ ex æquo'
+}
+
+/** La phase est-elle **réellement** allée à son terme ?
+ *
+ * ⚠️ **`termine` seul ne suffit pas, et il ment dans deux cas.** `est_termine` vaut « plus aucune
+ * manche n'est possible », ce qui est vrai avant le premier tir dans deux situations : une phase
+ * encore **vide** (l'état nominal du matin), et un réglage **injouable** — une liste de sortants
+ * qui ne laisserait personne, par exemple « 4 sortants » sur 4 archers, où `quota_de_la_manche`
+ * rend `None` d'emblée. Dans les deux cas `paliers` — donc `manches` — est vide.
+ *
+ * Tester les manches subsume donc le test de la population, et c'est une **seule** notion d'achevé
+ * partagée par le JSX et les libellés : la 2ᵉ passe de revue a relevé que les deux en avaient chacun
+ * la leur, et que celle du JSX ne couvrait pas le réglage injouable. */
+export function estAchevee(etat: EtatBigShootOffPublic): boolean {
+  return etat.termine && etat.manches.length > 0
 }
 
 /** Les finalistes dans l'ordre de lecture : **ceux qui tirent encore d'abord**, puis les sortis du

@@ -122,9 +122,12 @@ function classementDe(etat: EtatSuissePublique): LigneClassement[] {
  */
 function notesDe(etat: EtatSuissePublique): string[] {
   if (etat.rondes.length === 0) {
-    return [
-      'Cette phase n’a pas encore de participants : aucune ronde n’est appariée pour le moment.',
-    ]
+    // Le serveur rend une photo vide dès **moins de deux** participants : dire « aucun » serait faux
+    // quand il y en a un — et un organisateur qui cherche pourquoi rien ne s'apparie a besoin du
+    // vrai motif.
+    return etat.effectif === 1
+      ? ['Un seul archer est engagé sur cette phase : aucune ronde ne peut être appariée.']
+      : ['Cette phase n’a pas encore de participants : aucune ronde n’est appariée pour le moment.']
   }
   const dues = Math.min(etat.nb_rondes, etat.rondes_maximales)
   // `motDeLaFin` lit la **dernière** du tableau : on la lui donne triée, l'ordre du DTO n'étant
@@ -147,6 +150,13 @@ function notesDe(etat: EtatSuissePublique): string[] {
   // sans rien promettre : « imminent » était un engagement que rien ici ne tient, le reproche fait
   // au même endroit à `PhaseSansVue`. L'autre cas (la dernière ronde due est en cours) reste muet,
   // se taire y étant la seule réponse juste.
+  //
+  // ⚠️ **Défense, pas chemin nominal** : `_rejouer` s'arrête à la première ronde incomplète, donc un
+  // état « dernière ronde close alors qu'il en reste » n'est pas produit par le serveur d'aujourd'hui
+  // (relevé à la 2ᵉ passe de revue). La branche reste — elle coûte deux lignes et E05US032 doit
+  // précisément rendre l'appariement **explicite**, ce qui la rendra atteignable —, mais aucun test
+  // ne la verrouille : fabriquer la fixture reviendrait à décrire un contrat que l'API n'émet pas,
+  // le défaut même que cette passe a corrigé ailleurs.
   const derniere = triees.at(-1)
   if (derniere !== undefined && derniere.close && triees.length < dues) {
     return [`Ronde ${triees.length} sur ${dues} tirée — la suivante n’est pas encore appariée.`]

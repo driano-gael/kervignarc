@@ -249,12 +249,17 @@ class TireurPublicReponse(BaseModel):
     route publique des tableaux. `prochaine_volee` est retiré : c'est une **affordance de saisie**,
     elle n'a aucun sens pour un lecteur et la publier apprendrait au passage où en est la feuille
     d'un archer.
+
+    ⚠️ `en_lice` **a été retiré en revue**, au même critère que `eliminations` : aucune vue publique
+    ne le lisait. Il redit par ailleurs ce que `rang is None` dit déjà — le domaine n'attribue un
+    rang qu'à la sortie —, et deux champs pour un seul fait finissent par diverger sans qu'aucun
+    test ne le voie, le jour où sortir de la lice cessera de décerner un rang (forfait,
+    disqualification). Le compte d'archers encore en lice se dérive de `rang`.
     """
 
     archer_id: int
     nom: str
     prenom: str
-    en_lice: bool
     rang: int | None
     scores: list[int]
 
@@ -264,7 +269,6 @@ class TireurPublicReponse(BaseModel):
             archer_id=tireur.archer_id,
             nom=tireur.nom,
             prenom=tireur.prenom,
-            en_lice=tireur.en_lice,
             rang=tireur.rang,
             scores=list(tireur.scores),
         )

@@ -98,6 +98,26 @@ describe('formatPublicDesPoules', () => {
     expect(format.blocs[0]?.tours[0]?.clos).toBe(false)
   })
 
+  // ⚠️ Une rencontre **désynchronisée** ne sera jamais validée — le serveur refuse d'écrire dessus.
+  // Sans ce cas, son tour restait ouvert pour toujours et captait la marque « en cours », que le
+  // tour réellement tiré perdait alors (relevé par l'axe adversarial à la 2ᵉ passe de revue).
+  it('clôt un tour dont la seule rencontre non validée est bloquée', () => {
+    const format = formatPublicDesPoules(
+      mkEtat({
+        poules: [
+          mkPoule({
+            rencontres: [
+              mkRencontre({ numero: 1, validee: true }),
+              mkRencontre({ numero: 2, validee: false, desynchronisee: true }),
+            ],
+          }),
+        ],
+      }),
+    )
+
+    expect(format.blocs[0]?.tours[0]?.clos).toBe(true)
+  })
+
   it('range les cinq critères de départage dans l’ordre du §10.1', () => {
     const format = formatPublicDesPoules(
       mkEtat({

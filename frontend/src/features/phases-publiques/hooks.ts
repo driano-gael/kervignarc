@@ -1,4 +1,10 @@
-// Hooks React Query de l'index des phases publiques (E05US031).
+// Hooks React Query de l'index des phases publiques (E05US031).//
+// `# DETTE-031` — cette lecture **recompose la phase entière à chaque appel**, chaîne amont
+// comprise. Depuis E05US031 elle est servie au **public** et à l'écran de salle : la charge n'est
+// plus bornée par le nombre de postes de travail mais par le nombre de spectateurs. Aggravé par
+// `shared/realtime/useRealtime`, qui invalide **sans clé** — chaque score validé refetch tout, chez
+// tout le monde. Cf. le registre : la résorption est une mémoïsation par `(tournoi_id, version)`,
+// pas un cache posé au jugé.
 
 import { useQuery } from '@tanstack/react-query'
 
