@@ -114,12 +114,13 @@ export function VueTableaux({
   // attribuées — ADR-0081). Retomber en silence sur « le tableau qui se joue » ferait afficher un
   // arbre sous un titre qui en annonce un autre, ce qui est pire que de dire ce qui manque.
   if (phaseId !== null && impose === undefined) {
-    return (
-      <p className="carte__etat">
-        L’arbre de cette phase n’est pas encore monté : les archers qui s’y affronteront ne sont pas
-        tous connus.
-      </p>
-    )
+    // ⚠️ **Sans cause annoncée** (correctif de revue, axe C1). Une première rédaction expliquait
+    // « les archers qui s'y affronteront ne sont pas tous connus » — or ce cas-là est **présent**
+    // dans la liste, avec `en_attente_de`, et traité plus bas. Ce chemin-ci ne s'atteint que si
+    // `pour_depart` a avalé un échec, ou si les deux caches (`avancement-phases` et `tableaux`,
+    // clés et invalidations distinctes) sont momentanément désaccordés. Le message annonçait donc
+    // une cause qui n'est généralement pas la bonne, et le spectateur n'a rien à réparer.
+    return <p className="carte__etat">Cet arbre n’est pas encore disponible.</p>
   }
   if (tableau === undefined) {
     // Liste vide : ni erreur ni page blanche. Le matin, les tableaux n'existent pas encore, et le

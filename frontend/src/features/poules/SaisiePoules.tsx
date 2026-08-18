@@ -15,7 +15,8 @@ import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
-import type { Place, Poule, Rencontre } from './api'
+import { decrirePlaces } from '../../shared/salle/place'
+import type { Poule, Rencontre } from './api'
 import { useEtatPoulesSaisie } from './hooks'
 
 export function SaisiePoules({
@@ -249,25 +250,6 @@ function GroupeDePoule({ poule, onOuvrir }: { poule: Poule; onOuvrir: (numero: n
  * ressaisir le rang disputé. Le lui faire lire ici évite de le lui faire deviner — c'est ce champ
  * qui décide si le verdict refermera le classement ou ne fera rien.
  */
-/** Des places de tir en toutes lettres, **groupées par cible**.
- *
- * Un bloc de poule est contigu dans la salle *mise à plat*, pas sur une seule cible : une poule de 6
- * en salle à 4 couloirs occupe `1C 1D 2A 2B 2C 2D`. La première version affichait « cible 1,
- * couloirs C, D, A, B, C, D » — deux « C » et deux « D » sur une cible qui n'en a que quatre — et le
- * cas n'a rien d'exotique, c'est le cas nominal dès qu'une poule ne tombe pas pile sur une cible
- * (relevé en revue). Le débordement est même ce que `_couloirs_du_gabarit` produit *exprès*, en
- * respectant des capacités qui peuvent varier d'une cible à l'autre.
- */
-function decrirePlaces(places: readonly Place[]): string {
-  const parCible = new Map<number, string[]>()
-  for (const [cible, couloir] of places) {
-    parCible.set(cible, [...(parCible.get(cible) ?? []), couloir])
-  }
-  return [...parCible.entries()]
-    .map(([cible, couloirs]) => `cible ${cible} : ${couloirs.join(', ')}`)
-    .join(' · ')
-}
-
 function rangsExAequo(poule: Poule): number[] {
   return [...new Set(poule.classement.filter((l) => l.ex_aequo).map((l) => l.rang))].sort(
     (a, b) => a - b,

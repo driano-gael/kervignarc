@@ -468,7 +468,7 @@ async def lister_avancement(depart_id: int, request: Request) -> list[PhaseRepon
 
     `# DETTE-071` — ⚠️ **route ouverte servant `PhaseReponse` entière.** Un anonyme y lit les
     réglages d'atelier du créneau (`sources`, `poules`, `suisse`, `big_shoot_off`, `profondeur`),
-    alors que ses consommateurs publics — l'onglet « Rencontres » et l'écran de salle depuis
+    alors que ses consommateurs publics — l'onglet « En cours » et l'écran de salle depuis
     E05US031 — n'ont besoin que de `id`, `ordre`, `type`, `statut`. Rien de secret, mais **tout
     champ ajouté à `PhaseReponse` part au public sans décision** : y ajouter un réglage qu'on ne
     veut pas annoncer se ferait en silence. Résorption par un DTO public étroit (E10US009), pas par

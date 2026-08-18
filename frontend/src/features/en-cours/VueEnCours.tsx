@@ -27,6 +27,7 @@
 
 import { useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
+import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import { VueBigShootOffPublique } from '../big-shoot-off/VueBigShootOffPublique'
 import { useDeparts } from '../departs/hooks'
@@ -60,6 +61,11 @@ export function VueEnCours({
   // helper pur que le classement, le plan de cibles et les tableaux.
   const departs = useDeparts(tournoiId)
   const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  // ⚠️ `# DETTE-071` — `GET /departs/{id}/phases` sert le `PhaseReponse` **entier** à un anonyme :
+  // sources, effectif et réglages de format compris. Cet onglet est le consommateur **public** de
+  // cette route, sur deux surfaces ouvertes (appli publique et écran de salle). Le hook rend le type
+  // `Phase` complet — le front ne filtre rien, contrairement à ce que le registre affirmait avant
+  // d'être corrigé en revue. Résorption : `E10US009` (DTO d'avancement étroit).
   const phases = useAvancementPhases(departId)
   const donnees = phases.data
 
@@ -70,11 +76,12 @@ export function VueEnCours({
   // réussie pendant un échec. Tester `isError` d'abord jetterait un déroulé encore exact au premier
   // clignotement réseau et laisserait l'écran projeté sur un message d'erreur ≥ 20 s.
   if (donnees === undefined) {
-    return (
-      <p className="carte__etat">
-        {phases.isError ? 'Connexion momentanément perdue — mise à jour au retour.' : 'Chargement…'}
-      </p>
-    )
+    // ⚠️ **L'erreur des départs compte autant que celle des phases** (correctif de revue, axe C1).
+    // Si `useDeparts` échoue sans cache, `departId` reste `null`, `useAvancementPhases` est
+    // désactivée, donc `phases.isError` vaut `false` : l'écran affichait « Chargement… »
+    // **indéfiniment** au lieu de nommer la panne. Le défaut était hérité de `VueTableaux`, mais
+    // reproduit dans un fichier neuf et sur toutes les surfaces de l'onglet.
+    return <p className="carte__etat">{messageDeLecture(departs.isError ? departs : phases)}</p>
   }
 
   const courante = phaseAAtterrir(donnees)
@@ -118,7 +125,13 @@ export function VueEnCours({
         {phase.statut === 'terminee' && <span className="encours__statut"> · terminée</span>}
       </h3>
 
+      {/* ⚠️ `key={phase.id}` : **remonte** le composant de format à chaque changement de phase
+          (correctif de revue, axe C1). Sans elle, React réconcilie en place quand le type est
+          identique, et l'état local du format survit — sur un départ à deux phases suisse, on
+          atterrissait sur « ronde 3 » de la nouvelle phase au lieu de sa ronde courante. Le geste
+          ferme la classe entière du défaut pour les formats à venir. */}
       <Format
+        key={phase.id}
         phase={phase}
         tournoiId={tournoiId}
         interactif={interactif}

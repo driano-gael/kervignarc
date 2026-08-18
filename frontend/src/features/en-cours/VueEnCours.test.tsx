@@ -7,7 +7,17 @@
 // naturel est précisément d'appeler le mauvais composant, ce que seul un montage attrape.
 //
 // Les vues de format sont des témoins : ce qu'on garde ici est le **choix** et la **descente des
-// props**, pas le rendu de chaque format — chacun a ses propres tests.
+// props**, pas le rendu de chaque format — chacun a ses propres tests
+// (`VuePoulesPublique.test.tsx`, `VueSuissePublique.test.tsx`,
+// `VueBigShootOffPublique.test.tsx`).
+//
+// ⚠️ **Cette dernière phrase était FAUSSE à la première passe de revue, et c'est ce qui a rendu le
+// trou acceptable.** Les trois vues n'avaient aucun test ; le fichier affirmait le contraire dans le
+// paragraphe même qui raconte pourquoi un rendu non testé est un angle mort. Relevé par trois axes
+// (B, C2, adversarial). Une trace qui se lit comme une preuve coûte plus cher qu'une absence de
+// trace : c'est la mécanique exacte d'un ADR nommant un module vide (ADR-0075). Les trois fichiers
+// existent désormais, et le bloquant de l'US — un compteur d'archers « en lice » qui n'en était pas
+// un — a été trouvé par l'un d'eux.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

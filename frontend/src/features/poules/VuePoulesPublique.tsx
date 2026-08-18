@@ -1,8 +1,15 @@
 // La vue **publique** d'une phase de poules (E05US031, ADR-0089).
 //
-// Un seul composant pour trois surfaces, comme `VueTableaux` : l'appli publique, l'écran de salle
-// (`interactif=false`) et l'écran d'organisation. Les dessiner séparément les ferait diverger sur la
-// seule chose qui compte — l'appariement affiché.
+// Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
+// salle (`interactif=false`), toutes deux montées par l'aiguilleur `features/en-cours/`. Les
+// dessiner séparément les ferait diverger sur la seule chose qui compte — l'appariement affiché.
+//
+// ⚠️ **« Trois surfaces » jusqu'à la revue** : la formule, reprise de `VueTableaux`, ajoutait
+// l'écran d'organisation — qui ne monte pas cette vue. Relevé par l'axe C2, et ce n'est pas
+// cosmétique : c'est cette liste de surfaces qui **justifie** la contrainte « cette vue ne lit pas
+// le store, elle reçoit `mode` et `suivis` en props ». Justifier une contrainte réelle par une
+// surface imaginaire, c'est la même classe d'erreur qu'un ADR nommant un module vide — un lecteur
+// qui vérifie ne trouve rien et peut en conclure que la contrainte est morte.
 //
 // **L'historique est ici gratuit** : une poule est un round-robin, ses tours sont tous joués sur le
 // même plateau et tiennent à l'écran. On les affiche donc **tous**, du premier au dernier, plutôt
@@ -12,6 +19,7 @@
 import { LigneRencontre } from '../../shared/duels/LigneRencontre'
 import { decrirePlaces } from '../../shared/salle/place'
 import { participants } from '../../shared/duels/rencontre'
+import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import type { PoulePublique, RencontrePublique } from './api'
 import { useEtatPoules } from './hooks'
@@ -39,11 +47,7 @@ export function VuePoulesPublique({
   // réussie pendant un échec. Tester `isError` d'abord jetterait une poule encore exacte au premier
   // clignotement réseau et laisserait l'écran projeté sur un message d'erreur ≥ 20 s.
   if (donnees === undefined) {
-    return (
-      <p className="carte__etat">
-        {etat.isError ? 'Connexion momentanément perdue — mise à jour au retour.' : 'Chargement…'}
-      </p>
-    )
+    return <p className="carte__etat">{messageDeLecture(etat)}</p>
   }
   if (donnees.poules.length === 0) {
     return <p className="carte__etat">Les poules ne sont pas encore composées.</p>

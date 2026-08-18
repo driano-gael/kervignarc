@@ -45,8 +45,13 @@ export function LigneRencontre({
       {places != null && <span className="encours__places">{places}</span>}
       {/* L'état n'est écrit que lorsqu'il apprend quelque chose : « validée » sur une ligne qui
           porte déjà son score en gras est du bruit, et sur un écran projeté le bruit coûte de la
-          place lisible. « À tirer » non plus n'apprend rien — l'absence de score le dit. */}
-      {!rencontre.validee && (rencontre.termine || rencontre.desynchronisee) && (
+          place lisible. « À tirer » non plus n'apprend rien — l'absence de score le dit.
+          ⚠️ **La désynchronisation prime, ici comme dans `etatRencontre`** (correctif de revue,
+          axe C1). La condition d'origine (`!validee && (termine || desynchronisee)`) taisait le cas
+          `desynchronisee && validee`, alors que `rencontre.test.ts` lui consacre un cas et que
+          `rencontre.ts` argumente que ce drapeau prime sur tout le reste : la paire test ↔ rendu
+          était incohérente, dans le sens qui cache un tir bloqué. */}
+      {(rencontre.desynchronisee || (rencontre.termine && !rencontre.validee)) && (
         <span className="encours__etat">{etatRencontre(rencontre)}</span>
       )}
     </li>

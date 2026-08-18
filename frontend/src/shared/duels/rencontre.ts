@@ -57,9 +57,16 @@ export function nomComplet(qui: DuellisteLisible): string {
  *
  * ⚠️ Distinct d'`etatRencontre` (`features/suisse/presentation.ts`), qui lit le `duel` de saisie —
  * `validee_par`, `validation_en_attente`, `manches` — et ne peut donc pas servir ici : le DTO
- * public ne porte rien de tout cela, et c'est exactement sa raison d'être (règle 6). Les deux
- * vocabulaires restent alignés à dessein : un bénévole qui passe de la tablette à l'écran de salle
- * ne doit pas avoir à traduire.
+ * public ne porte rien de tout cela, et c'est exactement sa raison d'être (règle 6).
+ *
+ * ⚠️ **Les deux vocabulaires se recouvrent sans être identiques**, et l'affirmation contraire a été
+ * corrigée en revue (axe B). Là où la tablette distingue « à valider » de « validation en attente »
+ * — deux états de **saisie** —, l'écran public n'en connaît qu'un, « en attente de validation », qui
+ * les recouvre : le spectateur n'a pas à savoir laquelle des deux gâchettes manque. De même,
+ * « tir mis de côté » est la forme courte de « tir mis de côté — population à rétablir », dont la
+ * seconde moitié nomme un geste qui n'appartient qu'au scoreur. Ce n'est pas une divergence à
+ * résorber, c'est une réduction voulue ; l'écrire « alignés » laissait croire à une contrainte
+ * d'égalité que personne ne tient.
  *
  * `desynchronisee` passe en premier parce qu'elle **prime** : une rencontre dont le tir a été mis
  * de côté n'est pas « à tirer », elle est bloquée, et l'annoncer autrement ferait attendre des

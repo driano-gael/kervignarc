@@ -5557,6 +5557,63 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/v1/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ecran.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0047_vue_en_cours.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/big-shoot-off/VueBigShootOffPublique.tsx",
      "existe": true,
      "symboles": [
@@ -5565,17 +5622,33 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/ecrans/api.ts",
+     "existe": true,
+     "symboles": [
       "VueEcran.EN_COURS",
       "EtatPubliqueReponse",
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5587,17 +5660,14 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
-      "VueEcran.EN_COURS",
-      "EtatPubliqueReponse",
-      "TireurPubliqueReponse",
-      "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5609,17 +5679,14 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
-      "VueEcran.EN_COURS",
-      "EtatPubliqueReponse",
-      "TireurPubliqueReponse",
-      "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5631,17 +5698,14 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
-      "VueEcran.EN_COURS",
-      "EtatPubliqueReponse",
-      "TireurPubliqueReponse",
-      "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5653,17 +5717,33 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.tsx",
+     "existe": true,
+     "symboles": [
       "VueEcran.EN_COURS",
       "EtatPubliqueReponse",
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5675,17 +5755,14 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
-      "VueEcran.EN_COURS",
-      "EtatPubliqueReponse",
-      "TireurPubliqueReponse",
-      "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5697,17 +5774,33 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/duels/LigneRencontre.tsx",
+     "existe": true,
+     "symboles": [
       "VueEcran.EN_COURS",
       "EtatPubliqueReponse",
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
      ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -5719,17 +5812,14 @@ window.ATLAS.decisions = {
       "TireurPubliqueReponse",
       "ManchePubliqueReponse",
       "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
       "switch",
       "phaseAAtterrir",
       "phaseId"
      ],
-     "symboles_absents": [
-      "VueEcran.EN_COURS",
-      "EtatPubliqueReponse",
-      "TireurPubliqueReponse",
-      "ManchePubliqueReponse",
-      "FormatPubliqueReponse"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],

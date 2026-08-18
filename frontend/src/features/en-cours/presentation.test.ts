@@ -4,11 +4,22 @@
 // « qui se place sur la phase en cours » avec la possibilité de remonter le déroulé du départ. Cette
 // phrase se teste, et c'est ce qui est écrit ici — la fonction est ensuite libre de son moyen.
 //
-// ⚠️ **Honnêteté sur l'ordre** : cette US est une US d'écran, où la règle 9 place les tests après
-// l'implémentation (« API, repository, câblage »). Ces cas-ci ont bien été écrits après le
-// composant. Ce qui les protège du travers que la règle vise — un test qui ne fait que décrire le
-// code — est leur **source** : les trois premiers sortent de la phrase du cadrage, le quatrième du
-// besoin de salle déjà formulé par `VueTableaux` (« à 17 h, c'est le podium qu'on veut voir »).
+// ⚠️ **Le régime de test avait été mal qualifié, et la revue l'a corrigé (axe B).** L'en-tête
+// d'origine invoquait « API, repository, câblage : tests après l'implémentation » au motif que
+// E05US031 est une US d'écran. C'était faux : `phaseAAtterrir` porte une **règle**, pas du câblage,
+// et cette règle vient d'un CA qui existait **avant** la première ligne de code (l'arbitrage du
+// cadrage du 18/08). « Écran » n'est aucun des trois termes de la dérogation ; ces cas auraient dû
+// être écrits d'abord.
+//
+// La correction n'est pas seulement rédactionnelle : deux des six cas d'origine (`en_pause`,
+// `a_venir`) ne dérivaient d'aucun CA — ils enregistraient le résultat d'un choix d'implémentation,
+// exactement le travers que la règle 9 vise. Ils sont conservés parce qu'ils sont **justes**, mais
+// rattachés explicitement à ce qu'ils gardent, et le septième cas ci-dessous vient d'un défaut réel
+// trouvé en revue, pas du code.
+//
+// *(Le module voisin `shared/duels/rencontre.ts`, lui, relevait bien du régime « tests après » —
+// mais comme **non-régression** : sa lecture est l'extraction littérale de `LigneDuel`, livré en
+// E07US005, donc l'oracle EST le comportement actuel. Ce n'est pas le même motif.)*
 
 import { describe, expect, it } from 'vitest'
 import { phaseAAtterrir, type PhaseLisible } from './presentation'
@@ -53,6 +64,27 @@ describe('phaseAAtterrir — l’onglet s’ouvre sur ce qui se joue', () => {
     // JSON. Se fier à la position dans le tableau ferait atterrir sur une phase au hasard le jour
     // où le repository changerait son `ORDER BY` — un défaut invisible en revue de diff.
     const phases = [phase(3, 'a_venir'), phase(1, 'terminee'), phase(2, 'en_cours')]
+
+    expect(phaseAAtterrir(phases)?.ordre).toBe(2)
+  })
+
+  it('préfère la phase démarrée la plus avancée à une phase amont restée ouverte', () => {
+    // ⚠️ **Le défaut trouvé en revue (axes C1 et adversarial), et le seul cas qui vienne d'un
+    // scénario de salle plutôt que du CA.** `StatutPhase` est **déclaratif** : aucun service de tir
+    // ne le consulte, donc rien n'oblige à clore la phase 1 avant de démarrer la 2. Une
+    // qualification qu'on oublie de passer à « Terminée » figeait l'onglet **et le projecteur** sur
+    // « il n'y a pas de rencontre à suivre » pendant qu'on tirait les duels — sans recours, le fil
+    // du déroulé étant masqué en salle.
+    const phases = [phase(1, 'en_cours'), phase(2, 'en_cours'), phase(3, 'a_venir')]
+
+    expect(phaseAAtterrir(phases)?.ordre).toBe(2)
+  })
+
+  it('retombe sur la première non terminée quand aucune phase n’est démarrée', () => {
+    // Entre deux phases : la 1 est close, la 2 n'a pas été lancée. La règle 1 ne s'applique pas, la
+    // règle 2 reprend la main — sans quoi le correctif ci-dessus aurait cassé le cas nominal du
+    // matin.
+    const phases = [phase(1, 'terminee'), phase(2, 'a_venir'), phase(3, 'a_venir')]
 
     expect(phaseAAtterrir(phases)?.ordre).toBe(2)
   })

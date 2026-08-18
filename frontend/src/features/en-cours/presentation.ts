@@ -20,13 +20,28 @@ export interface PhaseLisible {
 
 /** La phase sur laquelle l'onglet **atterrit**, ou `null` si le départ n'en porte aucune.
  *
- * La règle est celle de `VueTableaux` — « la première non terminée, sinon la dernière » — et elle
- * n'est pas arbitraire :
+ * Trois règles, dans cet ordre :
  *
- * - **la première non terminée** est ce qui se joue ou ce qui va se jouer. C'est la réponse juste
- *   pendant toute la journée ;
- * - **sinon la dernière**, parce qu'à 17 h tout est terminé et qu'un écran vide serait pire que
- *   l'ultime phase jouée — c'est justement son résultat que la salle veut voir.
+ * 1. **la phase démarrée de rang le plus élevé** (`en_cours` ou `en_pause`) ;
+ * 2. sinon **la première non terminée** — ce qui va se jouer : entre deux phases, le matin, c'est la
+ *    réponse juste et l'en-tête dit « pas encore lancée » ;
+ * 3. sinon **la dernière**, parce qu'à 17 h tout est terminé et qu'un écran vide serait pire que
+ *    l'ultime phase jouée — c'est justement son résultat que la salle veut voir.
+ *
+ * ⚠️ **La règle 1 est un correctif de revue (axes C1 et adversarial), et elle vaut d'être comprise.**
+ * Une première version se contentait de la règle 2, transposée de `VueTableaux`. La transposition
+ * était fausse d'un cran : `VueTableaux` se cale sur `est_termine`, qui est **calculé** à partir des
+ * duels, tandis que `StatutPhase` est **déclaratif** — il n'est mû que par les transitions manuelles
+ * de l'écran de pilotage, et *aucun* service de tir ne le consulte pour accepter un score. Rien
+ * n'oblige donc à clore la phase N avant de démarrer la N+1, et deux phases peuvent être `en_cours`
+ * ensemble.
+ *
+ * Conséquence de la version fausse : une qualification qu'on oublie de passer à « Terminée » — un
+ * geste sans effet nulle part ailleurs dans le produit, donc facile à omettre — figeait l'onglet
+ * **et l'écran de salle** sur « il n'y a pas de rencontre à suivre » pendant qu'on tirait les duels.
+ * Sur le projecteur, `interactif={false}` supprime le fil du déroulé : il n'existait aucun recours,
+ * et aucun message d'erreur pour alerter. C'est la première surface du produit **sans opérateur
+ * devant elle** dont le contenu dépend d'une case à cocher.
  *
  * ⚠️ **L'ordre vient du serveur** (`ordre`, contigu 1..N par départ, ADR-0076) et n'est pas
  * re-trié ici : deux ordonnancements pour une même séquence divergent tôt ou tard. On se contente
@@ -35,7 +50,13 @@ export interface PhaseLisible {
 export function phaseAAtterrir(phases: readonly PhaseLisible[]): PhaseLisible | null {
   if (phases.length === 0) return null
   const parOrdre = [...phases].sort((a, b) => a.ordre - b.ordre)
-  return parOrdre.find((phase) => phase.statut !== 'terminee') ?? parOrdre.at(-1) ?? null
+  const demarrees = parOrdre.filter((p) => p.statut === 'en_cours' || p.statut === 'en_pause')
+  return (
+    demarrees.at(-1) ??
+    parOrdre.find((phase) => phase.statut !== 'terminee') ??
+    parOrdre.at(-1) ??
+    null
+  )
 }
 
 // ⚠️ **Il n'y a délibérément pas de table « les types que l'onglet sait dessiner » ici.** Une

@@ -65,6 +65,8 @@ export function useEtatBigShootOff(tournoiId: number, phaseId: number | null) {
 export function useEtatBigShootOffSaisie(tournoiId: number, phaseId: number | null) {
   return useQuery({
     queryKey: cleBigShootOff(tournoiId, phaseId ?? 0),
+    // `as number` sûr **parce que** `enabled` ci-dessous désactive la requête sur `null` — le
+    // compilateur ne peut pas le voir, d'où la mention (règle 4 : un `as` se justifie).
     queryFn: () => getEtatBigShootOffSaisie(tournoiId, phaseId as number),
     enabled: phaseId !== null,
     retry: false,

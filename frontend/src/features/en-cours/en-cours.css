@@ -9,6 +9,14 @@
    ronde de 20 rencontres et une finale à 12 tireurs n'ont pas la même densité ; seule une liste
    encaisse les trois sans réglage par format. */
 
+/* ⚠️ **Les règles de la LIGNE D'UNE RENCONTRE ne sont plus ici** : elles vivent dans
+   `shared/duels/rencontre.css`, auprès du composant `shared/duels/LigneRencontre.tsx` qui les
+   consomme (correctif de revue, axes A et adversarial). Un module de `shared/` stylé par la feuille
+   d'une feature, c'est l'inversion `shared/ → features/` exprimée en CSS : `rencontre.ts` consacre
+   un paragraphe entier à la refuser pour les imports, et elle passait par la porte de derrière —
+   invisible à `tsc` comme à ESLint, donc à toutes les portes mécaniques. Ce qui reste ci-dessous
+   est la mise en page de l'onglet lui-même : fil du déroulé, blocs, en-têtes, bye. */
+
 .encours__deroule,
 .encours__rondes {
   display: flex;
@@ -52,40 +60,6 @@
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-/* La ligne d'une rencontre : deux noms encadrant le score, et les compléments (places, état) qui
-   passent à la ligne sur mobile plutôt que de comprimer les noms — c'est le nom qu'on cherche. */
-.encours__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5em;
-  padding: 0.35em 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-/* Un archer suivi tire ici (ADR-0079). Marqué par un **liseré**, pas par une couleur de fond : la
-   charte réserve les aplats aux états, et un aplat de plus rendrait la liste illisible dès que la
-   moitié des lignes concerne un archer suivi. */
-.encours__ligne--suivi {
-  border-left: 3px solid var(--brand-border);
-  padding-left: 0.5em;
-}
-
-.encours__vs {
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.encours__gagnant {
-  font-weight: 600;
-}
-
-.encours__places,
-.encours__etat {
-  font-size: 0.85em;
-  color: var(--text-secondary);
 }
 
 .encours__bye {

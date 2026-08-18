@@ -1,7 +1,12 @@
 // La vue **publique** d'une phase au système suisse (E05US031, ADR-0089).
 //
-// Un seul composant pour trois surfaces, comme `VueTableaux` : l'appli publique, l'écran de salle
-// (`interactif=false`) et l'écran d'organisation.
+// Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
+// salle (`interactif=false`), toutes deux montées par l'aiguilleur `features/en-cours/`.
+//
+// ⚠️ **« Trois surfaces » jusqu'à la revue** (axe C2) : la formule, reprise de `VueTableaux`,
+// ajoutait l'écran d'organisation, qui ne monte pas cette vue. C'est cette liste qui **justifie** la
+// contrainte « cette vue ne lit pas le store » ; l'appuyer sur une surface imaginaire la rend
+// invérifiable.
 //
 // **C'est le seul des trois formats sans arbre qui réclame une navigation d'historique.** Une poule
 // tient tous ses tours à l'écran (round-robin sur un plateau), un Big Shoot Off met ses manches en
@@ -13,6 +18,7 @@ import { useState } from 'react'
 import { LigneRencontre } from '../../shared/duels/LigneRencontre'
 import { participants } from '../../shared/duels/rencontre'
 import { decrirePlaces } from '../../shared/salle/place'
+import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import type { RondePublique } from './api'
 import { ClassementSuisse } from './ClassementSuisse'
@@ -38,11 +44,7 @@ export function VueSuissePublique({
   const donnees = etat.data
 
   if (donnees === undefined) {
-    return (
-      <p className="carte__etat">
-        {etat.isError ? 'Connexion momentanément perdue — mise à jour au retour.' : 'Chargement…'}
-      </p>
-    )
+    return <p className="carte__etat">{messageDeLecture(etat)}</p>
   }
   if (donnees.rondes.length === 0) {
     return <p className="carte__etat">La première ronde n’est pas encore appariée.</p>
@@ -71,6 +73,19 @@ export function VueSuissePublique({
         Ronde {ronde.numero} sur {donnees.nb_rondes} · {donnees.effectif} archers
         {ronde.close ? ' · close' : ''}
       </p>
+
+      {/* Une ronde qu'aucun bloc de couloirs ne porte : plan non posé, ou salle trop petite. On le
+          **dit**, sinon les rencontres s'affichent sans cible et le spectateur croit à un oubli.
+          ⚠️ Ajouté en revue (axe C1) : `VuePoulesPublique` le faisait déjà, sur le même champ et
+          dans le même onglet, et le suisse se taisait — deux comportements pour une même
+          situation, à un écran d'écart. */}
+      {donnees.conflits.length > 0 && (
+        <p className="carte__etat">
+          {donnees.conflits.length === 1
+            ? 'Une rencontre n’a pas encore de cibles attribuées.'
+            : `${donnees.conflits.length} rencontres n’ont pas encore de cibles attribuées.`}
+        </p>
+      )}
 
       {/* Le choix n'apparaît que s'il y a un choix à faire : une phase à une seule ronde n'a pas à
           afficher une barre d'un bouton. */}
@@ -149,8 +164,12 @@ function BlocRonde({
         ))}
       </ul>
       {/* Le porteur du bye ne tire pas et **marque quand même** : le taire ferait chercher son nom
-          dans une liste où il ne peut pas être, et croire à un oubli d'appariement. */}
-      {ronde.bye !== null && (
+          dans une liste où il ne peut pas être, et croire à un oubli d'appariement.
+          ⚠️ **Mais il passe par le filtre comme le reste** (correctif de revue, axes B et C1) : il
+          était rendu inconditionnellement, si bien qu'en « mes archers » le nom d'un archer non
+          suivi s'affichait quand même. Le CA est explicite — l'interrupteur d'ADR-0079 vaut ici
+          « sans exception » —, et la fiche de recette promet un filtrage des **lignes**. */}
+      {ronde.bye !== null && (mode !== 'suivis' || byeSuivi) && (
         <p className={byeSuivi ? 'encours__bye encours__bye--suivi' : 'encours__bye'}>
           {`${ronde.bye.prenom} ${ronde.bye.nom}`.trim()} ne tire pas cette ronde (bye) et marque la
           victoire.

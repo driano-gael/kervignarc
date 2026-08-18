@@ -11,21 +11,24 @@
   contrat de phase jouable) · [ADR-0076](0076-un-deroule-defini-une-fois-un-avancement-par-depart.md)
   (un avancement par départ, qui donne son ordre au fil du déroulé)
 - **Porté dans le code par** :
-  `domain/ecran.py` (`VueEcran.EN_COURS`) ·
-  `migrations/versions/0047_vue_en_cours.py` (le renommage de la valeur persistée) ·
-  `api/v1/big_shoot_off.py` (`EtatPubliqueReponse`, `TireurPubliqueReponse`,
+  `backend/domain/ecran.py` (`VueEcran.EN_COURS`) ·
+  `backend/migrations/versions/0047_vue_en_cours.py` (le renommage de la valeur persistée) ·
+  `backend/api/v1/big_shoot_off.py` (`EtatPubliqueReponse`, `TireurPubliqueReponse`,
   `ManchePubliqueReponse`, `FormatPubliqueReponse`, la route ouverte `GET /etat/` et la route
   scoreur `GET /saisie/`) ·
+  `frontend/src/features/ecrans/api.ts` (`VueEcran`, `LIBELLE_VUE`, `TOUTES_LES_VUES` — le
+  catalogue côté front, second exemplaire de celui du domaine) ·
   `frontend/src/features/en-cours/VueEnCours.tsx` (l'aiguilleur et son `switch` exhaustif) ·
   `frontend/src/features/en-cours/presentation.ts` (`phaseAAtterrir`) ·
   `frontend/src/features/poules/VuePoulesPublique.tsx` ·
   `frontend/src/features/suisse/VueSuissePublique.tsx` ·
   `frontend/src/features/big-shoot-off/VueBigShootOffPublique.tsx` ·
-  `frontend/src/shared/duels/rencontre.ts` et `LigneRencontre.tsx` (la lecture publique commune) ·
+  `frontend/src/shared/duels/rencontre.ts` et
+  `frontend/src/shared/duels/LigneRencontre.tsx` (la lecture publique commune) ·
   `frontend/src/features/tableaux/VueTableaux.tsx` (la prop `phaseId`, qui rend l'arbre pilotable
   de l'extérieur) ·
-  `frontend/src/features/public/AccueilPublic.tsx` et `features/salle/EcranSalle.tsx` (les deux
-  surfaces qui montent la vue)
+  `frontend/src/features/public/AccueilPublic.tsx` et
+  `frontend/src/features/salle/EcranSalle.tsx` (les deux surfaces qui montent la vue)
 
 ## Contexte et problème
 
@@ -92,9 +95,21 @@ migration » serait un contresens. C'est la seule chose que cet ADR retire au pr
 
 ### 3. L'historique est une **navigation dans le déroulé du départ**, pas un journal
 
-L'onglet atterrit sur la phase courante et laisse remonter aux précédentes (`phaseAAtterrir` : la
-première non terminée, sinon la dernière). À l'intérieur d'une phase, la profondeur d'historique est
-**dictée par la forme du format** et non par un composant commun :
+L'onglet atterrit sur la phase courante et laisse remonter aux précédentes. `phaseAAtterrir` prend
+**la phase démarrée de rang le plus élevé**, sinon la première non terminée, sinon la dernière.
+
+⚠️ **Les deux premières règles ne sont pas interchangeables, et la revue l'a démontré.** Une première
+version se contentait de « la première non terminée », transposée de `VueTableaux`. La transposition
+était fausse d'un cran : `VueTableaux` se cale sur `est_termine`, **calculé** à partir des duels,
+tandis que `StatutPhase` est **déclaratif** — aucun service de tir ne le consulte pour accepter un
+score, et rien n'oblige à clore la phase N avant de démarrer la N+1. Une qualification qu'on oublie
+de passer à « Terminée » figeait donc l'onglet **et le projecteur** sur « il n'y a pas de rencontre à
+suivre » pendant qu'on tirait les duels — sans recours, `interactif={false}` masquant le fil du
+déroulé. C'est la première surface du produit **sans opérateur devant elle** dont le contenu dépend
+d'une case à cocher.
+
+À l'intérieur d'une phase, la profondeur d'historique est **dictée par la forme du format** et non
+par un composant commun :
 
 - une **poule** est un round-robin sur un plateau : tous ses tours tiennent à l'écran, on les affiche
   tous. Rien à bâtir ;
@@ -157,6 +172,15 @@ pour de bon l'asymétrie entre les trois formats.
   `tableaux__*` et sa feuille calibrée sur deux surfaces ; la refondre aurait mêlé un remaniement de
   l'existant à cette US sans bénéfice pour le CA. La duplication restante est **bornée à deux
   rendus** et nommée dans le code — pas une dette silencieuse, un point d'entrée.
+- ⚠️ **La section « Porté dans le code par » est machine-lue, et sa forme compte autant que son
+  contenu.** Le vérificateur d'atlas ne reconnaît un chemin qu'à sa racine (`backend/…`,
+  `frontend/…`, `docs/…`) : une première rédaction en laissait cinq sans préfixe, qui étaient
+  silencieusement jetés — donc **hors du seul contrôle qui vérifie les promesses** — pendant que
+  leurs symboles retombaient sur les modules voisins, y produisant huit faux signaux. C'est le
+  défaut d'ADR-0017 à l'envers : non pas un module vide nommé, mais de vrais modules placés hors de
+  portée du vérificateur. Corollaire découvert dans le même geste : **on n'écrit pas de prose dans
+  cette section** — le paragraphe qui expliquait ce piège y citait des racines de chemin, que le
+  parseur a lues comme trois promesses de plus. D'où sa place ici.
 - **Ce que cet ADR ne tranche pas** : `E05US032` (l'organisateur ouvre la ronde suivante) rouvrira la
   dérivation à la lecture du système suisse. Rien ici n'y touche — l'onglet lit l'état, il ne le fait
   pas avancer.

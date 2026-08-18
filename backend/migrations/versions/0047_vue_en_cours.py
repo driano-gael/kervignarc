@@ -45,6 +45,7 @@ et reste lisible par le bundle d'avant — il montrera l'arbre seul, ce qu'il sa
 
 from __future__ import annotations
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "0047_vue_en_cours"
@@ -57,12 +58,21 @@ _NOUVEAU = '"vue": "en_cours"'
 
 
 def _substituer(depuis: str, vers: str) -> None:
-    """Remplace une paire clé/valeur dans les déroulés d'écran persistés."""
+    """Remplace une paire clé/valeur dans les déroulés d'écran persistés.
+
+    ⚠️ **Paramètres liés, pas d'interpolation** (correctif de revue, axe A). Les deux bornes sont
+    aujourd'hui des littéraux de ce module, donc une f-string aurait été sûre — mais elle ne l'était
+    que par le **contrat d'appel** de cette fonction, et rien ne le vérifie : les règles `S`/bandit
+    ne sont pas activées dans `[tool.ruff]`. Un futur appelant qui passerait une variable n'aurait
+    été arrêté par rien. La `0046`, citée en précédent, construit son SQL sans interpolation non
+    plus.
+    """
     op.execute(
-        # Pas d'entrée utilisateur : les deux bornes sont des littéraux de ce module.
-        f"UPDATE poste "
-        f"SET deroule_json = replace(deroule_json, '{depuis}', '{vers}') "
-        f"WHERE deroule_json IS NOT NULL"
+        sa.text(
+            "UPDATE poste "
+            "SET deroule_json = replace(deroule_json, :depuis, :vers) "
+            "WHERE deroule_json IS NOT NULL"
+        ).bindparams(depuis=depuis, vers=vers)
     )
 
 
