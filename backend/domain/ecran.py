@@ -49,7 +49,12 @@ class VueEcran(str, Enum):
     `TABLEAUX` (E07US005) —, ce qui valide au-delà du doute le choix d'origine : persister la
     **chaîne** et non un rang. Chaque élargissement a coûté une ligne ici et zéro dans la base.
 
-    La règle qui a gouverné ces trois ajouts, et qui vaut pour le suivant : **on n'inscrit une vue
+    ⚠️ **Le quatrième mouvement n'était pas un élargissement, et il a coûté une migration**
+    (E05US031, `0047`) : `TABLEAUX` est devenue `EN_COURS`. Persister la chaîne rend un **ajout**
+    gratuit, pas un **renommage** — la propriété validée trois fois ci-dessus ne couvrait pas ce
+    cas-là, et la lire comme « le catalogue ne coûte jamais de migration » aurait été un contresens.
+
+    La règle qui a gouverné les trois ajouts, et qui vaut pour le suivant : **on n'inscrit une vue
     qu'une fois son écran capable de l'afficher**, sinon le réglage programme une page vide — un
     écran de salle n'a personne devant lui pour comprendre ce qui manque.
     """
@@ -58,12 +63,20 @@ class VueEcran(str, Enum):
     PLAN_CIBLES = "plan_cibles"
     SUIVI_DEROULE = "suivi_deroule"
     AFFECTATIONS = "affectations"
-    TABLEAUX = "tableaux"
-    """Les **arbres de duels** du tournoi (E07US005).
+    EN_COURS = "en_cours"
+    """**Ce qui se joue maintenant**, quel que soit le format — l'arbre de duels, mais aussi la
+    poule, la ronde de système suisse et la manche de Big Shoot Off (E05US031, ADR-0089).
 
     Complète le CA d'E07US004 (« classement, affectations, **tableaux**, plans »). Comme
     `AFFECTATIONS`, elle n'a de contenu qu'**après** la qualification — elle n'entre donc pas non
-    plus au déroulé par défaut, pour la même raison (cf. `SequenceVues.par_defaut`)."""
+    plus au déroulé par défaut, pour la même raison (cf. `SequenceVues.par_defaut`).
+
+    ⚠️ **Elle s'appelait `TABLEAUX` jusqu'à E05US031**, et le renommage n'est pas cosmétique : un
+    `Tableau` est, au glossaire, un « arbre de matchs à élimination » — le nom d'un **format**. Le
+    garder sur une vue qui rend aussi une poule aurait fait dire à la base quelque chose de faux,
+    au même titre que `poule_numero` sur une ronde de suisse (migration `0046`, E05US026) : ce
+    n'est pas un synonyme mal choisi, c'est le mauvais concept. Le mot juste ici est celui de
+    l'onglet public — **« En cours »** — et non `PHASE`, exact mais illisible pour un spectateur."""
     PALMARES = "palmares"
     """Le classement **final** — podiums en tête (E06US004).
 

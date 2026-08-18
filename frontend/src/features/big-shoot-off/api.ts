@@ -61,7 +61,7 @@ export interface BarrageEnAttente {
   places: number
 }
 
-/** La photo d'un Big Shoot Off, telle que la salle la lit. */
+/** La photo d'un Big Shoot Off **avec l'adressage de saisie** — réservée au scoreur. */
 export interface EtatBigShootOff {
   phase_id: number
   projection: Projection
@@ -71,9 +71,72 @@ export interface EtatBigShootOff {
   barrage: BarrageEnAttente | null
 }
 
-export function getEtatBigShootOff(tournoiId: number, phaseId: number): Promise<EtatBigShootOff> {
-  return fetchJson<EtatBigShootOff>(
+/** La **forme** du format, telle qu'un spectateur la lit : « 12 → 8 → 6 → 5, 3 volées de 3 ».
+ *
+ * `Projection` amputée de ce qui appartient à l'atelier — `eliminations` (la liste réglée) et
+ * `manches_ignorees` (le réglage dépasse l'effectif). Ce dernier n'est pas confidentiel, il est
+ * **sans destinataire** devant une salle, et l'afficher ferait croire à un incident. */
+export interface FormatBigShootOff {
+  effectif: number
+  paliers: number[]
+  restants: number
+  volees: number
+  fleches_par_volee: number
+  manches_jouables: number
+}
+
+/** Le même finaliste **en consultation** : son sort et ses manches validées, jamais la prochaine
+ * volée à saisir — c'est une affordance de pavé, sans objet hors de la tablette. */
+export interface TireurPublic {
+  archer_id: number
+  nom: string
+  prenom: string
+  en_lice: boolean
+  rang: number | null
+  scores: number[]
+}
+
+/** La même manche, sans les numéros de volée de la feuille de saisie. */
+export interface ManchePublique {
+  numero: number
+  elimine: number
+  complete: boolean
+  jouee: boolean
+}
+
+/** La photo d'un Big Shoot Off **rédigée** — appli publique, écran de salle, écran d'organisation.
+ *
+ * ⚠️ **Cette forme n'existe que depuis E05US031.** Le Big Shoot Off était le seul des trois formats
+ * sans arbre à n'avoir aucune surface de lecture ouverte : sa route `/etat/` était scoreur, et
+ * l'onglet public restait donc muet pendant une finale. */
+export interface EtatBigShootOffPublic {
+  phase_id: number
+  format: FormatBigShootOff
+  tireurs: TireurPublic[]
+  manches: ManchePublique[]
+  termine: boolean
+  barrage: BarrageEnAttente | null
+}
+
+/** L'état **en consultation** — contenu restreint, lecture ouverte. */
+export function getEtatBigShootOff(
+  tournoiId: number,
+  phaseId: number,
+): Promise<EtatBigShootOffPublic> {
+  return fetchJson<EtatBigShootOffPublic>(
     `/api/v1/big-shoot-off/etat/${tournoiId}/${phaseId}`,
+    undefined,
+    'aucune',
+  )
+}
+
+/** L'état **de saisie** — l'adressage du pavé en plus. Scoreur, dans son tournoi. */
+export function getEtatBigShootOffSaisie(
+  tournoiId: number,
+  phaseId: number,
+): Promise<EtatBigShootOff> {
+  return fetchJson<EtatBigShootOff>(
+    `/api/v1/big-shoot-off/saisie/${tournoiId}/${phaseId}`,
     undefined,
     'scoreur',
   )

@@ -21,7 +21,7 @@ import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../saisie-duels/hooks'
 import type { Manche, Tireur } from './api'
-import { useEtatBigShootOff, useSaisirVolee, useValiderManche } from './hooks'
+import { useEtatBigShootOffSaisie, useSaisirVolee, useValiderManche } from './hooks'
 
 /** Le pavé de saisie d'une volée : autant de champs que de flèches, plus le bouton de validation. */
 function LigneTireur({
@@ -127,7 +127,7 @@ export function SaisieBigShootOff({
   // finale de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
   const phaseRetenue =
     phaseId !== null && disponibles.some((phase) => phase.id === phaseId) ? phaseId : null
-  const etat = useEtatBigShootOff(tournoiId, phaseRetenue)
+  const etat = useEtatBigShootOffSaisie(tournoiId, phaseRetenue)
   const prochaine = (etat.data?.manches ?? []).find((manche) => !manche.jouee) ?? null
   const fleches = etat.data?.projection.fleches_par_volee ?? 3
 

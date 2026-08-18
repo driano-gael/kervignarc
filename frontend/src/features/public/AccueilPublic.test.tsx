@@ -69,8 +69,8 @@ vi.mock('../suivi/VueSuivi', () => ({
 vi.mock('../competition/VueClassement', () => ({
   VueClassement: (p: ProprietesTemoin) => rendu('classement', p),
 }))
-vi.mock('../tableaux/VueTableaux', () => ({
-  VueTableaux: (p: ProprietesTemoin) => rendu('tableaux', p),
+vi.mock('../en-cours/VueEnCours', () => ({
+  VueEnCours: (p: ProprietesTemoin) => rendu('en-cours', p),
 }))
 vi.mock('../routage/VueAffectations', () => ({
   VueAffectations: (p: ProprietesTemoin) => rendu('affectations', p),
@@ -135,7 +135,7 @@ describe('AccueilPublic — interrupteur « mes archers / tout »', () => {
     expect(screen.getByTestId('suivi')).toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Affichage' })).toBeNull()
 
-    await utilisateur.click(screen.getByRole('button', { name: 'Tableaux' }))
+    await utilisateur.click(screen.getByRole('button', { name: 'En cours' }))
     expect(screen.getByRole('group', { name: 'Affichage' })).toBeInTheDocument()
   })
 
@@ -145,19 +145,24 @@ describe('AccueilPublic — interrupteur « mes archers / tout »', () => {
     useSessionSuivisStore.setState({ suivis: [{ archerId: 7, tournoiId: 1 }] })
 
     const utilisateur = await ouvrirLeTournoi()
-    await utilisateur.click(screen.getByRole('button', { name: 'Tableaux' }))
+    await utilisateur.click(screen.getByRole('button', { name: 'En cours' }))
     await utilisateur.click(screen.getByRole('button', { name: 'Tout le tournoi' }))
 
-    expect(screen.getByTestId('tableaux')).toHaveTextContent('mode=tout')
+    expect(screen.getByTestId('en-cours')).toHaveTextContent('mode=tout')
 
     await utilisateur.click(screen.getByRole('button', { name: 'Affectations' }))
     expect(screen.getByTestId('affectations')).toHaveTextContent('mode=tout')
   })
 
-  it('passe les archers suivis en prop à la vue tableaux', async () => {
+  it('passe les archers suivis en prop à la vue « En cours »', async () => {
     // Régression ciblée : `VueTableaux` était la seule des cinq à rebâtir cette liste depuis le
     // store alors qu'elle recevait déjà `mode` en prop — l'exception qui rendait la règle
     // invérifiable, et qui abonnait l'écran de salle à un store public dont il n'a que faire.
+    //
+    // ⚠️ La vue en question est `VueEnCours` depuis E05US031 : elle a pris la place de l'onglet
+    // « Tableaux » et **descend** ces deux props à chaque format qu'elle aiguille. La règle porte
+    // donc désormais sur une chaîne de deux composants, et c'est le premier maillon qu'on garde
+    // ici — le second est couvert par `VueEnCours.test.tsx`.
     useSessionSuivisStore.setState({
       suivis: [
         { archerId: 7, tournoiId: 1 },
@@ -166,8 +171,8 @@ describe('AccueilPublic — interrupteur « mes archers / tout »', () => {
     })
 
     const utilisateur = await ouvrirLeTournoi()
-    await utilisateur.click(screen.getByRole('button', { name: 'Tableaux' }))
+    await utilisateur.click(screen.getByRole('button', { name: 'En cours' }))
 
-    expect(screen.getByTestId('tableaux')).toHaveTextContent('suivis=7,8')
+    expect(screen.getByTestId('en-cours')).toHaveTextContent('suivis=7,8')
   })
 })

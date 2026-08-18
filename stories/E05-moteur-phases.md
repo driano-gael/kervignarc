@@ -1309,12 +1309,31 @@ troisième variante locale au lieu de combler le trou.
 - **CA — le classement d'un suisse en cours est public** : c'est la part publique du classement
   provisoire livré côté organisateur par `E05US030`. Le backend l'expose déjà
   (`GET /api/v1/suisse/etat/{tournoi_id}/{phase_id}`, publique et anonyme).
-- ⚠️ **ADR probable** : étendre le catalogue de vues à des formats dont la forme n'est pas un arbre
-  n'est pas un ajout d'écran, c'est une **révision d'ADR-0064**. À instruire avant de coder.
-- ⚠️ **À vérifier au cadrage** : quelle part est déjà exposée sans authentification pour les
-  **poules** et le **Big Shoot Off** — le suisse l'est (`/suisse/etat/…`), les deux autres restent à
-  confirmer ; si une route publique manque, cette US porte aussi du backend.
-- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026
+- **CA — l'onglet s'appelle « En cours » et remplace « Tableaux »** *(arbitrage du cadrage,
+  18/08/2026)*. **Un seul** onglet, pas un par format : le spectateur n'a pas à savoir quel format le
+  club a choisi. Le libellé a été tranché en trois temps — « Tableaux » élargi serait **faux**
+  (`Tableau` = « arbre de matchs à élimination » au glossaire, règle 3) ; « Phases » serait **exact**
+  mais demande au spectateur un vocabulaire qu'il n'a pas ; « En cours » ne nomme aucun format et
+  reste vrai quand un dixième type arrivera.
+- **CA — l'onglet remonte le déroulé du départ** *(ajouté au cadrage, 18/08/2026)*. Il **atterrit**
+  sur la phase en cours, et les phases précédentes du départ sont accessibles d'un geste. À
+  l'intérieur d'une phase, la profondeur d'historique suit la **forme du format** : une poule montre
+  tous ses tours, un Big Shoot Off toutes ses manches jouées, un système suisse atterrit sur la ronde
+  courante avec un retour aux rondes closes.
+- ✅ **ADR requis, et écrit** : [ADR-0089](../docs/adr/0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md),
+  qui **révise** ADR-0064. Le renommage de `VueEcran.TABLEAUX` en `EN_COURS` **coûte une migration**
+  (`0047`) : persister la chaîne rendait un *ajout* gratuit, pas un *renommage*.
+- ✅ **Vérification faite au cadrage, et elle donne du backend à cette US.** Les **poules**
+  (`/poules/etat/…`) et le **suisse** (`/suisse/etat/…`) ont déjà leur route anonyme avec DTO public
+  dédié. Le **Big Shoot Off n'en a aucune** : son `/etat/` était `exiger_scoreur` et sa
+  `/projection/` est `exiger_admin`. L'US porte donc un DTO public neuf et ouvre `/etat/`, la lecture
+  du scoreur migrant sur `/saisie/` — le couple exact de ses deux jumeaux.
+  ⚠️ **La justification de l'ancienne restriction était fausse** : l'en-tête du routeur invoquait
+  « les scores manche par manche, que le public n'a pas à voir avant validation », or
+  `_scores_par_manche` ne rend **que** les manches entièrement validées. Ce qui distingue réellement
+  les deux formes est l'**adressage de saisie** (`prochaine_volee`, `volees`).
+- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026 ·
+  **Périmètre arrêté** : cadrage du 18/08/2026
 
 ---
 

@@ -276,6 +276,10 @@ class ServiceBigShootOff:
         `# DETTE-031` — l'état est **rejoué intégralement** à chaque lecture, chaîne de sources
         amont comprise, sans mémoïsation transverse aux requêtes.
 
+        ⚠️ **Élargie par E05US031** : cette lecture n'était servie qu'à des scoreurs authentifiés ;
+        elle l'est désormais aussi sur `GET /big-shoot-off/etat/`, route **ouverte**, montée par
+        l'onglet public « En cours » en autant d'exemplaires qu'il y a de spectateurs.
+
         Lève `TournoiIntrouvable` / `PhaseIntrouvable` (404), `PhasePasUnBigShootOff` ou
         `PhasePasReglee` (409).
         """

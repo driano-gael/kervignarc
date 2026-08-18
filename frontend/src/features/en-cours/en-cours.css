@@ -1,0 +1,100 @@
+/* --- Onglet « En cours » : la phase qui se joue, quel que soit son format (E05US031) -------------
+   Un seul jeu de règles pour deux surfaces : l'appli publique (360 px, tenue à la main) et l'écran
+   de salle (projeté, lu à cinq mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle
+   typographique dédiée (E07US004) et des px figés y resteraient illisibles de loin. Même règle que
+   `tableaux.css` et `affectations.css`, pour la même raison.
+
+   Le parti de mise en page est celui que `tableaux.css` a tranché et qu'il n'y a aucune raison de
+   rejouer : **des listes**, jamais de branches ni de grilles à colonnes fixes. Une poule de 6, une
+   ronde de 20 rencontres et une finale à 12 tireurs n'ont pas la même densité ; seule une liste
+   encaisse les trois sans réglage par format. */
+
+.encours__deroule,
+.encours__rondes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.encours__phase {
+  margin: 0 0 0.6em;
+  font-size: 1.05em;
+}
+
+.encours__statut,
+.encours__entete {
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+.encours__entete {
+  margin: 0 0 0.8em;
+}
+
+.encours__bloc {
+  margin-bottom: 1.4em;
+}
+
+.encours__titre {
+  margin: 0 0 0.4em;
+  font-size: 1em;
+}
+
+.encours__tour-titre {
+  margin: 0.6em 0 0.3em;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.encours__lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* La ligne d'une rencontre : deux noms encadrant le score, et les compléments (places, état) qui
+   passent à la ligne sur mobile plutôt que de comprimer les noms — c'est le nom qu'on cherche. */
+.encours__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Un archer suivi tire ici (ADR-0079). Marqué par un **liseré**, pas par une couleur de fond : la
+   charte réserve les aplats aux états, et un aplat de plus rendrait la liste illisible dès que la
+   moitié des lignes concerne un archer suivi. */
+.encours__ligne--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+}
+
+.encours__vs {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.encours__gagnant {
+  font-weight: 600;
+}
+
+.encours__places,
+.encours__etat {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.encours__bye {
+  margin: 0.5em 0 0;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.encours__bye--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+}

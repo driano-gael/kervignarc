@@ -21,3 +21,24 @@
 
 /** Une place de tir : `[cible, couloir]` — le couloir est une lettre (`A`…`D`). */
 export type Place = [number, string]
+
+/** Des places de tir en toutes lettres, **groupées par cible**.
+ *
+ * Un bloc de couloirs est contigu dans la salle *mise à plat*, pas sur une seule cible : les deux
+ * places d'une rencontre peuvent chevaucher deux cibles.
+ *
+ * ⚠️ **Remontée ici en E05US031**, depuis `features/suisse/presentation.ts` où elle vivait seule.
+ * L'onglet « En cours » la réclame pour les poules **et** pour le suisse ; l'importer depuis l'une
+ * des deux features aurait rouvert l'inversion `shared/ → features/` que ce module documente
+ * ci-dessus, et la recopier aurait été pire. `suisse/presentation.ts` la **ré-exporte**, donc aucun
+ * import existant ne casse — même geste que `poules/api.ts` pour `Place`.
+ */
+export function decrirePlaces(places: readonly Place[]): string {
+  const parCible = new Map<number, string[]>()
+  for (const [cible, couloir] of places) {
+    parCible.set(cible, [...(parCible.get(cible) ?? []), couloir])
+  }
+  return [...parCible.entries()]
+    .map(([cible, couloirs]) => `cible ${cible} : ${couloirs.join(', ')}`)
+    .join(' · ')
+}

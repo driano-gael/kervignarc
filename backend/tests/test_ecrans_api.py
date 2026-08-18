@@ -431,7 +431,7 @@ def test_une_vue_inconnue_est_refusee_sans_500(
         )
         desormais_connue = client.put(
             f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
-            json={"vues": [{"vue": "tableaux", "cadence_s": 30}]},
+            json={"vues": [{"vue": "en_cours", "cadence_s": 30}]},
         )
 
         assert deroule.status_code == 400, deroule.text

@@ -77,7 +77,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "etat-contradictoire",
-   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (17/21)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (18/21)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
    "severite": "signal",
    "sujet": "E05US023"
   },
@@ -89,7 +89,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
-   "message": "et 19 autre(s) feature(s) s'importent mutuellement (archers, blasons, categories, competition, departs, duels, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "message": "et 22 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, competition, departs, duels, en-cours, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "archers"
   },
@@ -188,10 +188,58 @@ window.ATLAS.controles = {
    "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/big-shoot-off/VueBigShootOffPublique.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/en-cours/VueEnCours.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/en-cours/presentation.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/poules/VuePoulesPublique.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/public/AccueilPublic.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/suisse/VueSuissePublique.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/features/tableaux/VueTableaux.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce VueEcran.EN_COURS, EtatPubliqueReponse, TireurPubliqueReponse, ManchePubliqueReponse, FormatPubliqueReponse dans « frontend/src/shared/duels/rencontre.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0089"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 31
+  "signaux": 39
  }
 };
