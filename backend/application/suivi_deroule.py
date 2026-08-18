@@ -34,16 +34,42 @@ from application.erreurs import ApplicationError, DepartIntrouvable
 from domain.depart import DepartId
 from domain.deroule import ProjectionDeroule, TourBraquet, projeter
 from domain.erreurs import DomainError
-from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId
+from domain.phase import TYPES_EN_TABLEAU, Phase, PhaseId, TypePhase
 from domain.ports import (
     DepartRepository,
     InscriptionRepository,
     PhaseRepository,
     TournoiRepository,
 )
-from domain.suivi_deroule import AvancementDeroule, avancement_bloc
+from domain.suivi_deroule import AvancementDePhase, AvancementDeroule, avancement_bloc
 from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
+
+
+class LecteurAvancementDePhase(Protocol):
+    """Port étroit : « **où en est** cette phase ? » ([ADR-0090] §5).
+
+    Réalisé par les services de format — `ServicePoules`, `ServiceSuisse`, `ServiceBigShootOff` —,
+    branché **par type** au composition root (règle 8), et consommé ici seulement. Le suivi ne
+    connaît aucun de ces services : il connaît **cette question**, et `bootstrap/` dit qui y répond.
+
+    ⚠️ **Même patron que `LecteurClassementDePhase`** ([ADR-0084]), et délibérément : le projet a
+    déjà payé une fois le prix de deux ports jumeaux nés séparément puis fondus. Un second mécanisme
+    de résolution par type aurait été la 4ᵉ occurrence de la même idée.
+
+    Rend `None` quand le service ne sait rien dire de cette phase — pas réglée, pas encore montée.
+    C'est une **réponse**, pas une erreur : l'écran de salle tourne en permanence, et une phase
+    muette y coûte une ligne incomplète là où une exception coûte l'affichage de la journée.
+
+    [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
+
+    def avancement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> AvancementDePhase | None:
+        """Combien de tours cette phase compte aujourd'hui, et lequel tourne."""
+        ...
 
 
 class CompteurEngages(Protocol):
@@ -191,6 +217,20 @@ class ServiceSuiviDeroule:
         self._phases = phase_repository
         self._engages = engages
         self._tableaux = tableaux
+        self._avancements: dict[TypePhase, LecteurAvancementDePhase] = {}
+
+    def brancher_lecteur_avancement(
+        self, type_phase: TypePhase, lecteur: LecteurAvancementDePhase
+    ) -> None:
+        """Dit qui sait répondre « où en est cette phase ? » pour ce type ([ADR-0090] §5).
+
+        Branchement **tardif et visible** au composition root, comme celui de
+        `ServiceSaisieDuels.brancher_lecteur` (ADR-0084) : les services de format sont construits
+        après le suivi, et un cycle qu'on ne voit pas est un cycle qu'on réintroduit.
+
+        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        """
+        self._avancements[type_phase] = lecteur
 
     def pour_depart(self, depart_id: DepartId) -> SuiviDeroule:
         """Le suivi complet d'un **créneau**. `DepartIntrouvable` si le créneau n'existe pas.
@@ -229,6 +269,7 @@ class ServiceSuiviDeroule:
                 statut=par_ordre[bloc.ordre].statut,
                 tours=bloc.tours,
                 joues_par_tour=self._duels_tranches(tournoi_id, par_ordre[bloc.ordre], bloc.tours),
+                avancement_lu=self._avancement_lu(tournoi_id, par_ordre[bloc.ordre]),
             )
             for bloc in projection.blocs
         )
@@ -237,6 +278,26 @@ class ServiceSuiviDeroule:
             projection=projection,
             avancement=AvancementDeroule(blocs=blocs),
         )
+
+    def _avancement_lu(self, tournoi_id: TournoiId, phase: Phase) -> AvancementDePhase | None:
+        """Ce que le service du format dit de l'avancement de cette phase, ou `None`.
+
+        ⚠️ **Aucune exception ne remonte d'ici**, même parti que `_duels_tranches` juste en dessous
+        et pour la même raison : cette méthode alimente un endpoint **public**, pollé toutes les
+        10 s par l'écran de salle et par l'appli du public. Une phase mal réglée — cas courant en
+        cours de composition — ferait tomber tout le schéma au lieu d'une ligne.
+
+        Un type sans lecteur branché rend `None` sans rien tenter : c'est le cas de la
+        qualification, de l'échauffement, du barrage et du placement, qui comptent un tour et n'ont
+        donc rien à faire dire à personne (ADR-0090 §3).
+        """
+        lecteur = self._avancements.get(phase.type)
+        if lecteur is None or phase.id is None:
+            return None
+        try:
+            return lecteur.avancement_de_phase(tournoi_id, phase.id)
+        except (DomainError, ApplicationError):
+            return None
 
     def _duels_tranches(
         self, tournoi_id: TournoiId, phase: Phase, braquets: Sequence[TourBraquet]

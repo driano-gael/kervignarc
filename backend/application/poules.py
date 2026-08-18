@@ -101,6 +101,7 @@ from domain.poule import (
     rencontres_de_poule,
 )
 from domain.serie import Volee
+from domain.suivi_deroule import AvancementDePhase
 from domain.tournoi import TournoiId
 
 
@@ -251,6 +252,38 @@ class ServicePoules:
         """
         phase, participants = self._population(tournoi_id, phase_id)
         return self._photo(phase, participants)
+
+    def avancement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> AvancementDePhase | None:
+        """Où en est cette phase de poules — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+
+        Les tours d'un round-robin sont **connus d'avance** (contrairement aux rondes d'un suisse,
+        qui s'apparient au fil de l'eau) : le nombre de tours est le plus grand numéro de tour
+        composé, toutes poules confondues. « Toutes confondues » et non « de la première poule » :
+        des poules d'effectifs inégaux n'ont pas le même nombre de tours, et la phase avance au
+        rythme de la plus longue.
+
+        Le tour courant est le **premier tour incomplet** — celui dont une rencontre n'a pas encore
+        de vainqueur. Même convention que les braquets d'un tableau (`domain.suivi_deroule`) :
+        « non terminé » et non « entamé », pour que l'organisateur lise « on attaque le tour 3 »
+        entre deux tours plutôt que « rien en cours ».
+
+        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        rencontres = [rencontre for poule in etat.poules for rencontre in poule.rencontres]
+        if not rencontres:
+            return None
+        inacheves = {
+            rencontre.tour
+            for rencontre in rencontres
+            if rencontre.duel is None or rencontre.duel.vainqueur is None
+        }
+        return AvancementDePhase(
+            nb_tours=max(rencontre.tour for rencontre in rencontres),
+            tour_courant=min(inacheves) if inacheves else None,
+        )
 
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement

@@ -119,7 +119,11 @@ from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
 from application.suisse import ServiceSuisse
-from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
+from application.suivi_deroule import (
+    CompteurEngagesRepository,
+    LecteurAvancementDePhase,
+    ServiceSuiviDeroule,
+)
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
@@ -1114,6 +1118,32 @@ def create_app(
         phase_repository,
         compteur_engages,
         app.state.service_saisie_duels,
+    )
+    # ⚠️ **Trois branchements tardifs de plus** (E05US032, [ADR-0090] §5) — « où en est cette
+    # phase ? », résolu par type. Même port, même méthode, une ligne par format : c'est
+    # délibérément le patron d'[ADR-0084] repris à la lettre, plutôt qu'un second mécanisme de
+    # résolution qui aurait été la 4ᵉ occurrence de la même idée.
+    #
+    # Ce qui manque ici se lit en creux : la qualification, l'échauffement, le barrage et le
+    # placement n'ont **aucun** lecteur, et c'est correct — ils comptent un tour (ADR-0090 §3),
+    # donc il n'y a rien à demander à personne. Le suivi rendra `nb_tours=1` sans tour courant.
+    #
+    # Variables **annotées**, même raison qu'aux branchements de classement plus haut :
+    # `app.state.*` rend `Any`, donc passer l'attribut directement ferait sauter la vérification
+    # du Protocol.
+    #
+    # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules
+    avancement_de_suisse: LecteurAvancementDePhase = app.state.service_suisse
+    avancement_de_big_shoot_off: LecteurAvancementDePhase = app.state.service_big_shoot_off
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.POULES, avancement_de_poules
+    )
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.SUISSE, avancement_de_suisse
+    )
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
     )
 
     # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de

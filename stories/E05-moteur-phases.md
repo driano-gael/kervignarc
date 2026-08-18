@@ -1337,33 +1337,110 @@ troisième variante locale au lieu de combler le trou.
 
 ---
 
-### E05US032 — L'organisateur ouvre la ronde suivante
+### E05US032 — Une phase avance par tours
 
-*En tant qu'*organisateur, *je veux* décider explicitement du passage à la ronde suivante d'un système
-suisse, *afin de* garder la main sur le moment où la salle repart au lieu de la voir avancer toute
-seule à la dernière flèche saisie.
+*En tant qu'*organisateur, *je veux* que l'application sache où en est **chaque** phase — pas
+seulement celles en tableau —, *afin de* lire d'un coup d'œil ce qui se joue en salle quel que soit
+le format.
 
-Origine : **cadrage d'`E05US030`, le 16/08/2026**. Le commanditaire a demandé un geste « lancer la
-ronde N+1 » qui **dise ce qui manque** quand il est refusé. Ce n'est pas un bouton : c'est un
-**changement de contrat backend**, et il contredit un choix assumé — d'où une US à part.
+Origine : **cadrage du 18/08/2026**, qui a **recadré** cette US et l'a coupée en deux. Le
+commanditaire a demandé pourquoi le projet emploie **quatre mots** — tour, ronde, manche, volée —
+pour ce qui lui semblait un seul concept, et s'il y avait une raison ou un angle mort. La réponse
+est qu'il **a raison** : la pluralité des mots est légitime **à l'écran** (c'est le vocabulaire de
+la salle, règle 3, et le glossaire assume déjà l'homonymie « manche » duel / Big Shoot Off), mais
+elle ne recouvre **aucun concept commun dans le code**. Chaque format a inventé sa progression dans
+son coin — `Match.tour`, `RondeAffichee`, les manches du Big Shoot Off, les tours de poule —, et
+`domain/suivi_deroule.py` le constate sans le nommer : « une phase sans braquet rend un bloc à zéro
+tour », avec un marqueur `# DETTE-028`. Cinq occurrences : le seuil du § *Dette* pour un remède
+structurel est largement franchi.
 
-⚠️ **Ce qui existe aujourd'hui, et qu'il faut décider de rouvrir.** Le backend n'a **aucune** route
-« ronde suivante » ; l'en-tête de `backend/api/v1/suisse.py` le pose explicitement : la ronde N+1
-**se déduit à la lecture** dès que la ronde N est close. `ServiceSuisse._rejouer` rejoue les rondes
-validées et s'arrête à la première ronde incomplète, et `domain/suisse.py::_rondes_closes` **refuse**
-d'apparier par-dessus une ronde en cours. Le geste qui fait exister la ronde suivante est donc, de
-fait, la validation de sa dernière rencontre.
+⚠️ **Le CA précédent de cette US est révoqué**, et il faut le lire pour comprendre la suite. Il
+disait : « la ronde suivante ne s'ouvre **que** sur décision de l'organisateur ». Le commanditaire a
+tranché **l'inverse** le 18/08/2026 : l'enchaînement **automatique reste le défaut**, et l'arrêt
+devient une décision **programmée** — c'est `E05US033`. Cette US-ci ne livre aucun pilotage : elle
+pose le concept dont il aura besoin, et qui manque de toute façon au suivi.
 
-- **CA — la ronde suivante ne s'ouvre que sur décision de l'organisateur**, et l'écran distingue
-  « la ronde est close, à vous de lancer la suivante » de « la ronde est encore en cours ».
-- **CA — un refus dit ce qui manque** : quelles rencontres ne sont pas validées, et lesquelles ne
-  sont pas encore saisies. Le refus muet actuel (`ConfigurationSuisseInvalide`) n'est pas un message
-  d'écran.
-- **CA — l'état d'une ronde devient lisible en tant que tel**, et non déduit du compte de résultats.
-- ⚠️ **ADR requis** : cela **rouvre** la décision de dérivation à la lecture. Deux voies au moins —
-  persister une clôture de ronde, ou garder la dérivation et n'ajouter qu'un **verrou d'ouverture** —
-  et elles n'ont pas le même coût de migration. À trancher avant de coder.
-- ⚠️ **Question au commanditaire, à poser au cadrage** : la même décision se pose-t-elle pour les
-  **poules** et la **colline** (`RONDES_APPARIEES` est un décor partagé), ou le suisse est-il un cas
-  isolé ? Livrer un pilotage propre au suisse serait une 1ʳᵉ occurrence à ne pas dupliquer ensuite.
-- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026
+- **CA — toute phase compte des tours, quel que soit son format.** Le tour est un **numéro** (1..N)
+  qui dit où en est la phase. Aucun type n'en est exclu — ni la qualification, ni l'échauffement.
+- **CA — un tour est une unité d'*avancement*, jamais de *classement*** *(invariant posé par le
+  commanditaire au cadrage)*. Certaines phases classent **au fil des tours** (l'élimination directe :
+  chaque tour attribue une tranche de rangs, le *braquet*, Règle R) ; d'autres ne classent **qu'à la
+  fin** (la qualification : le total, pas la volée 12). Les deux notions doivent rester séparées dans
+  le modèle. C'est précisément ce que le code confond aujourd'hui — `AvancementTour` **dérive** les
+  tours des braquets, d'où la phase sans braquet qui affiche zéro tour.
+- **CA — le nombre de tours est dérivé quand la structure le détermine, et vaut 1 sinon.** Dérivé :
+  élimination directe (braquets), poules (round-robin), suisse et colline (rondes réglées), Big Shoot
+  Off (manches). **1 tour** : qualification et échauffement — rien dans « 20 volées » ne dit s'il y a
+  un ou quatre tours, c'est un **choix** de l'organisateur, et ce réglage est reporté à `E05US033`,
+  là où il sert. « 1 tour » est **vrai**, pas un trou : la phase entière est un tour.
+- **CA — le libellé affiché est le mot du métier, résolu par le type de phase.** « Demi-finale »
+  (tableau), « Tour 3 » (poules), « Ronde 3 » (suisse, colline), « Manche 2 » (Big Shoot Off). Une
+  phase à **un seul** tour n'annonce pas de numéro : il n'y a rien à distinguer.
+  ⚠️ **Ne pas ouvrir un troisième domicile au libellé de tour** : [DETTE-020](../docs/dette.md) en
+  compte déjà deux (`domain/tableau.py` et le front `saisie-duels/duel.ts`), et `E07US005` a failli
+  en ouvrir un troisième avant de le refermer en **servant** le libellé du domaine au DTO. La
+  résolution générique doit **absorber** l'existante, pas s'ajouter à côté.
+- **CA — le suivi du déroulé montre le tour en cours de *chaque* phase démarrée**, plus seulement
+  des phases en tableau. C'est la surface visible de l'US.
+- ⚠️ **ADR requis** : le tour comme unité d'avancement générique, et sa séparation d'avec le braquet.
+  Complète [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md) — le contrat de phase est
+  l'endroit où chaque format répond aux questions « comment on me joue », et « en combien de tours,
+  sous quel nom » en est une.
+- **Dépend de** : rien · **Jalon** : J3 · **Origine** : cadrage du 18/08/2026 (recadrage de l'US
+  « L'organisateur ouvre la ronde suivante », dont la seconde moitié devient `E05US033`)
+
+---
+
+### E05US033 — L'organisateur programme les pauses du déroulé
+
+*En tant qu'*organisateur, *je veux* prévoir à l'atelier — et ajuster le jour J — les moments où la
+salle s'arrête, *afin de* garder la main sur une phase qui dure plusieurs heures au lieu de la voir
+enchaîner toute seule jusqu'au bout.
+
+Origine : **cadrage du 18/08/2026**, seconde moitié de l'ancienne `E05US032`. Le besoin énoncé n'est
+pas « déclencher chaque tour à la main » mais « **pouvoir couper** » : une phase longue doit pouvoir
+s'interrompre pour le repas, une réorganisation de salle, une annonce.
+
+- **CA — l'enchaînement automatique reste le défaut.** Une phase sans arrêt programmé se comporte
+  **exactement** comme aujourd'hui. C'est ce qui rend la livraison sûre : aucune phase en cours le
+  jour du déploiement ne change de comportement.
+- **CA — les arrêts se programment à l'atelier**, à la création du déroulé, sur une phase, après un
+  tour donné. **Plusieurs par phase** : c'est une liste, pas un arrêt unique — l'organisateur prépare
+  son planning de journée à l'avance (« pause après le tour 2, pause après le tour 5 »).
+- **CA — un arrêt porte une portée** : **cette phase seule**, ou **toutes les phases du même
+  départ**. Le départ est la portée sportive du projet ([ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md))
+  et correspond à « ce qui tire en salle en ce moment ». Le statut du **tournoi** n'est pas touché :
+  il a déjà sa propre pause, à une autre maille (ADR-0026 §3).
+- **CA — un arrêt de portée « départ » laisse chaque phase finir son tour en cours.** Il n'est donc
+  **pas simultané** : si l'arrêt tombe à la fin du tour 3 des poules, la qualification finit ses
+  volées en cours et le duel engagé va à son terme. Personne n'est coupé en plein tir ; la salle
+  s'éteint en quelques minutes, pas d'un coup. *(Arbitrage du commanditaire, 18/08/2026.)*
+- **CA — le jour J, l'organisateur pose un arrêt relatif** depuis le pilotage : « bloquer dans
+  x tours ». Il s'ajoute aux arrêts programmés, il ne les remplace pas.
+- **CA — un arrêt atteint met la phase en pause toute seule**, sur le statut **existant**
+  `StatutPhase.EN_PAUSE` ([ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §1).
+  On n'invente pas une notion parallèle d'« arrêtée » à côté du cycle de vie : c'est le déclencheur
+  qui est neuf, pas l'état.
+- **CA — la reprise est un geste manuel d'un admin**, et un arrêt de portée « départ » se relance
+  **d'un seul geste** pour toutes les phases qu'il a arrêtées. Quatre boutons pour un seul arrêt
+  créerait exactement le piège qu'on cherche à éviter — en oublier une.
+- **CA — après reprise, la phase repart en automatique jusqu'au prochain arrêt**, programmé ou posé
+  en cours de journée. Le pilotage tour par tour reste donc possible sans second mode : il suffit de
+  programmer un arrêt à chaque tour.
+- **CA — l'application rappelle qu'une phase attend sa relance.** Pastille au tableau de bord
+  (« 2 phases attendent votre relance depuis 14 min »). Sans ce filet, la capacité crée un **mode de
+  panne neuf** : la salle attend, personne ne sait pourquoi, et rien n'a l'air anormal.
+  *(Explicitement demandé dans cette tranche au cadrage, et non reporté.)*
+- **CA — la qualification et l'échauffement deviennent divisibles en tours** (« 20 volées en 2 tours
+  de 10 »), réglage reporté d'`E05US032` — sans lui, ces deux types n'ont qu'un tour et ne peuvent
+  donc pas s'arrêter en cours de route.
+- **CA — la pause se voit du public et de l'écran de salle.** Sans mention explicite, un spectateur
+  lira l'arrêt comme une panne.
+- ⚠️ **Deux pièges à vérifier avant de coder.** `EN_PAUSE` **gèle la validation des scores** : à un
+  arrêt programmé tout est validé, donc c'est cohérent, mais il faut s'assurer qu'une **correction**
+  reste possible pendant la pause — sinon on crée un cul-de-sac en salle. Et le **routage** doit dire
+  « en attente » à l'archer pendant la pause : l'issue `EN_ATTENTE` existe depuis `E05US030`, elle se
+  réutilise plutôt que de s'inventer.
+- ⚠️ **ADR probable** : portée et sémantique de l'arrêt programmé (ce qu'il gèle, ce qu'il laisse
+  finir, ce que « toutes les phases » recouvre).
+- **Dépend de** : `E05US032` · **Jalon** : J3 · **Origine** : cadrage du 18/08/2026

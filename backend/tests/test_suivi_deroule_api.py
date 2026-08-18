@@ -119,3 +119,60 @@ def test_les_phases_apparaissent_avec_leur_statut(
         assert corps["avancement"][0]["duels_attendus"] == 7
         assert corps["avancement"][0]["duels_joues"] == 0
         assert [tour["duels"] for tour in corps["blocs"][0]["tours"]] == [4, 2, 1]
+
+
+def test_le_tour_en_cours_est_servi_avec_le_mot_de_la_salle(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E05US032 — le DTO porte le **libellé** du tour, pas seulement son numéro (ADR-0090 §4).
+
+    Test d'API, donc écrit **après** l'implémentation (règle 9 : il n'y a pas d'oracle en jeu, la
+    règle métier est testée dans `test_domain_tour_de_phase.py`). Ce qu'il garde est le **contrat de
+    frontière** : le front ne doit pas avoir à redériver « à rebours de la finale », faute de quoi
+    `DETTE-020` gagne un domicile de plus.
+
+    Un tableau de 8 non démarré n'annonce aucun tour, mais **compte** ses trois tours : c'est la
+    séparation posée par l'ADR — le nombre est structurel, le tour courant dépend du statut.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        creation = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={"type": "elimination_directe", "effectif": 8},
+        )
+        assert creation.status_code == 201, creation.text
+
+        avancement = client.get(f"/api/v1/departs/{depart_id}/suivi-deroule").json()["avancement"][
+            0
+        ]
+
+        assert avancement["nb_tours"] == 3
+        assert avancement["tour_courant"] is None
+        assert avancement["libelle_tour_courant"] is None
+
+
+def test_une_phase_sans_braquet_compte_un_tour_plutot_que_zero(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E05US032 — une qualification **avance** elle aussi, même si elle ne classe qu'à la fin.
+
+    C'est le défaut que l'US corrige : `nb_tours` se dérivait des braquets, donc toute phase hors
+    tableau s'affichait à zéro tour. Un est **vrai** — la phase entière en est un — et le réglage
+    « diviser en x tours » arrive avec `E05US033`, là où il sert.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        creation = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases",
+            json={"type": "qualification", "effectif": 8},
+        )
+        assert creation.status_code == 201, creation.text
+
+        avancement = client.get(f"/api/v1/departs/{depart_id}/suivi-deroule").json()["avancement"][
+            0
+        ]
+
+        assert avancement["nb_tours"] == 1
+        assert avancement["tours"] == []

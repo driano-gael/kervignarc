@@ -31,7 +31,9 @@ from starlette.concurrency import run_in_threadpool
 
 from application.suivi_deroule import ServiceSuiviDeroule, SuiviDeroule
 from domain.deroule import BlocDeroule, Flux, TourBraquet
+from domain.phase import TypePhase
 from domain.suivi_deroule import AvancementBloc, AvancementTour
+from domain.tour_de_phase import libelle_de_tour, unite_de_tour
 
 router = APIRouter(prefix="/api/v1/departs/{depart_id}", tags=["suivi"])
 
@@ -136,16 +138,37 @@ class AvancementBlocReponse(BaseModel):
     ordre: int
     statut: str
     tour_courant: int | None
+    nb_tours: int
+    libelle_tour_courant: str | None
     duels_joues: int
     duels_attendus: int
     tours: list[AvancementTourReponse]
 
     @staticmethod
-    def de_bloc(bloc: AvancementBloc) -> AvancementBlocReponse:
+    def de_bloc(bloc: AvancementBloc, type_phase: TypePhase) -> AvancementBlocReponse:
+        """⚠️ **Le libellé est servi, jamais recalculé à l'écran** (E05US032, [ADR-0090] §4).
+
+        Le front pourrait dériver « Demi-finale » de `tour_courant` et `nb_tours` — c'est ce que
+        `saisie-duels/duel.ts` fait déjà, et c'est précisément `DETTE-020` : deux domiciles pour une
+        règle de vocabulaire. E07US005 a refermé la même tentation en servant le libellé du domaine
+        au DTO ; on fait pareil, sinon l'US **aggrave** une dette qu'elle est censée contenir.
+
+        `place_en_jeu` et `plage` restent à `None` : on nomme ici le tour **de la phase**, pas un
+        match particulier. La petite finale et les sous-tableaux de placement se nomment au match,
+        là où le routage et la vue publique les rendent déjà.
+
+        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        """
         return AvancementBlocReponse(
             ordre=bloc.ordre,
             statut=bloc.statut.value,
             tour_courant=bloc.tour_courant,
+            nb_tours=bloc.nb_tours,
+            libelle_tour_courant=(
+                libelle_de_tour(unite_de_tour(type_phase), bloc.tour_courant, bloc.nb_tours)
+                if bloc.tour_courant is not None
+                else None
+            ),
             duels_joues=bloc.duels_joues,
             duels_attendus=bloc.duels_attendus,
             tours=[AvancementTourReponse.de_tour(t) for t in bloc.tours],
@@ -167,11 +190,18 @@ class SuiviDerouleReponse(BaseModel):
 
     @staticmethod
     def de_suivi(suivi: SuiviDeroule) -> SuiviDerouleReponse:
+        # Le type de phase vient de la **projection**, appariée à l'avancement par `ordre` — le même
+        # appariement que le front fait pour superposer les deux listes. Le porter dans
+        # `AvancementBloc` l'aurait dupliqué dans les deux moitiés de la réponse.
+        types = {bloc.ordre: bloc.type for bloc in suivi.projection.blocs}
         return SuiviDerouleReponse(
             effectif=suivi.effectif,
             ordre_courant=suivi.avancement.ordre_courant,
             blocs=[BlocReponse.de_bloc(bloc) for bloc in suivi.projection.blocs],
-            avancement=[AvancementBlocReponse.de_bloc(bloc) for bloc in suivi.avancement.blocs],
+            avancement=[
+                AvancementBlocReponse.de_bloc(bloc, types[bloc.ordre])
+                for bloc in suivi.avancement.blocs
+            ],
         )
 
 

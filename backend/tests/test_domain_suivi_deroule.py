@@ -16,7 +16,7 @@ import pytest
 
 from domain.deroule import TourBraquet
 from domain.phase import StatutPhase
-from domain.suivi_deroule import AvancementTour, avancement_bloc
+from domain.suivi_deroule import AvancementDePhase, AvancementTour, avancement_bloc
 
 
 def _tours(*duels: int) -> tuple[TourBraquet, ...]:
@@ -128,15 +128,99 @@ def test_une_phase_en_pause_garde_son_tour_en_cours() -> None:
 # --- Robustesse -----------------------------------------------------------------------------------
 
 
-def test_une_phase_sans_braquet_reste_lisible() -> None:
-    """Une qualification (ou un type dont le moteur ne déduit pas les tours, `# DETTE-028`) n'a pas
-    de braquet : le bloc existe quand même, avec son statut — sinon le schéma perdrait une phase."""
+def test_une_phase_sans_braquet_ni_lecteur_reste_lisible() -> None:
+    """Une phase dont aucun service ne sait dire où elle en est : le bloc existe quand même.
+
+    Dégradation, pas exception — l'écran de salle tourne en permanence : une phase muette y coûte
+    une ligne incomplète, une exception y coûte l'affichage de la journée. Elle compte **un** tour
+    (ADR-0090 §3 : « 1 tour » est vrai — la phase entière en est un), sans tour courant faute de
+    quiconque pour le dire.
+    """
     bloc = avancement_bloc(ordre=1, statut=StatutPhase.EN_COURS, tours=(), joues_par_tour={})
 
     assert bloc.tours == ()
     assert bloc.tour_courant is None
+    assert bloc.nb_tours == 1
     assert bloc.duels_attendus == 0
     assert bloc.duels_joues == 0
+
+
+# --- Le tour, unité d'avancement générique (E05US032, ADR-0090) -----------------------------------
+
+
+def test_une_phase_sans_braquet_affiche_le_tour_lu_a_son_format() -> None:
+    """CA — « le suivi montre le tour en cours de **chaque** phase démarrée ».
+
+    Le cas qui motive l'US : un système suisse à la 3ᵉ de ses 5 rondes n'a **aucun braquet** (il ne
+    classe pas au fil de l'eau, il classe à la fin) et s'affichait donc à « zéro tour ». Le tour ne
+    se dérive plus du braquet, il se lit au service du format.
+    """
+    bloc = avancement_bloc(
+        ordre=2,
+        statut=StatutPhase.EN_COURS,
+        tours=(),
+        joues_par_tour={},
+        avancement_lu=AvancementDePhase(nb_tours=5, tour_courant=3),
+    )
+
+    assert bloc.tour_courant == 3
+    assert bloc.nb_tours == 5
+    assert bloc.tours == ()
+
+
+def test_le_tour_lu_ne_survit_pas_a_une_phase_non_demarree() -> None:
+    """Une phase **à venir** n'a pas de tour en cours, quoi qu'en dise son service.
+
+    Le service répond sur les données qu'il a ; le statut, lui, est la décision de l'organisateur.
+    Un moteur qui aurait déjà de quoi apparier ne doit pas faire dire au suivi qu'une phase non
+    démarrée tourne — c'est la règle qui existait déjà pour les braquets, tenue à l'identique.
+    """
+    bloc = avancement_bloc(
+        ordre=3,
+        statut=StatutPhase.A_VENIR,
+        tours=(),
+        joues_par_tour={},
+        avancement_lu=AvancementDePhase(nb_tours=5, tour_courant=1),
+    )
+
+    assert bloc.tour_courant is None
+
+
+def test_une_phase_en_pause_garde_le_tour_lu_a_son_format() -> None:
+    """La pause suspend le tir, pas le tour — et l'organisateur doit lire *où* il a suspendu.
+
+    Règle déjà tenue pour les braquets (`_STATUTS_DEMARRES`), étendue au tour lu. Elle prend tout
+    son sens avec `E05US033` : une phase arrêtée par un point de pause **doit** dire à quel tour
+    elle s'est arrêtée, sans quoi le bouton de relance ne veut rien dire.
+    """
+    bloc = avancement_bloc(
+        ordre=2,
+        statut=StatutPhase.EN_PAUSE,
+        tours=(),
+        joues_par_tour={},
+        avancement_lu=AvancementDePhase(nb_tours=5, tour_courant=3),
+    )
+
+    assert bloc.tour_courant == 3
+
+
+def test_le_braquet_prime_sur_le_tour_lu() -> None:
+    """Un tableau garde sa règle : le premier tour **non terminé**, au duel près.
+
+    Les deux sources ne se contredisent pas, l'une est plus fine — le braquet sait « ce tour est
+    terminé quand ses N duels sont tranchés », un service ne rend qu'un numéro. Le test fixe la
+    priorité pour qu'un branchement ultérieur ne la renverse pas par accident.
+    """
+    bloc = avancement_bloc(
+        ordre=1,
+        statut=StatutPhase.EN_COURS,
+        tours=_tours(8, 4, 2),
+        joues_par_tour={1: 8, 2: 1},
+        avancement_lu=AvancementDePhase(nb_tours=99, tour_courant=99),
+    )
+
+    assert bloc.tour_courant == 2
+    assert bloc.nb_tours == 3
 
 
 def test_un_compte_joue_superieur_a_l_attendu_ne_deborde_pas() -> None:

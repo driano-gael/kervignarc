@@ -249,7 +249,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 321,
+   "occurrences": 324,
    "source": "application"
   },
   {
@@ -297,7 +297,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 80,
+   "occurrences": 82,
    "source": "api"
   },
   {
@@ -511,7 +511,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 76,
+   "occurrences": 78,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -711,7 +711,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 307,
+   "occurrences": 310,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -1814,6 +1814,30 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/big_shoot_off.py",
+     "nom": "ServiceBigShootOff"
+    },
+    {
+     "fichier": "backend/application/poules.py",
+     "nom": "ServicePoules"
+    },
+    {
+     "fichier": "backend/application/suisse.py",
+     "nom": "ServiceSuisse"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/suivi_deroule.py",
+   "hors_domaine": true,
+   "methodes": [
+    "avancement_de_phase"
+   ],
+   "nom": "LecteurAvancementDePhase",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/application/completude.py",
      "nom": "ServiceCompletude"
     }
@@ -2659,11 +2683,11 @@ window.ATLAS.carte = {
   "aretes_front": 148,
   "enchevetrements": 3,
   "features": 46,
-  "imports": 827,
-  "imports_entre_couches": 700,
+  "imports": 832,
+  "imports_entre_couches": 705,
   "plus_gros_noeud": 23,
-  "ports": 60,
-  "ports_hors_domaine": 20,
+  "ports": 61,
+  "ports_hors_domaine": 21,
   "ports_sans_adapter": 0,
   "violations": 0
  },
