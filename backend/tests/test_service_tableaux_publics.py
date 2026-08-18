@@ -3,7 +3,7 @@
 Ces cas dérivent du CA d'E07US005 (`stories/E07-affichage-public.md`), écrits **avant**
 l'implémentation (règle 9). Le CA tient en une ligne — « rendu de l'arbre (**principal +
 placement**) mis à jour en live » —, complétée par le cadrage d'intention du 04/08/2026 (deux
-lectures dans l'appli publique, plus la vue `tableaux` de l'écran de salle). Ce qui en relève du
+lectures dans l'appli publique, plus la vue `en_cours` de l'écran de salle). Ce qui en relève du
 **service** :
 
 - « principal **+ placement** » — le point du CA qui décide quelque chose ici, et qui a demandé

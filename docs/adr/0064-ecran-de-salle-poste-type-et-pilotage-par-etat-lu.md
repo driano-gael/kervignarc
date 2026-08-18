@@ -249,3 +249,24 @@ tournent plus forcément sur la même page — ils tournent ensemble sur les **v
 plus sur les **pages** (temps d'affichage propre, qui dépend de l'instant d'allumage). C'est le prix
 assumé pour que toutes les pages sortent : mieux vaut deux écrans décalés que des archers dont le nom
 n'est jamais projeté.
+
+---
+
+## Amendement du 18/08/2026 — le catalogue porte des **phases**, pas des arbres
+
+`VueEcran.TABLEAUX` est devenue `VueEcran.EN_COURS`
+([ADR-0089](0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md), `E05US031`) : la vue rend
+désormais la phase qui se joue quel que soit son format — poule, ronde de système suisse, manche de
+Big Shoot Off, arbre de duels. Les trois formats sans arbre étaient jouables de bout en bout depuis
+plusieurs semaines sans qu'aucun n'atteigne jamais l'écran de salle : le trou était dans la **forme**
+de ce catalogue, dont la seule valeur de rencontre supposait un arbre.
+
+⚠️ **Ce que cet amendement retire au §1 ci-dessus, et lui seul.** La section se félicitait — à juste
+titre — que le catalogue se soit élargi **trois fois sans une seule migration**, preuve que persister
+la **chaîne** valait mieux qu'un rang. La propriété tient toujours : elle rend un **ajout** gratuit.
+Elle ne dit rien d'un **renommage**, et le quatrième mouvement en fut un : il a coûté la migration
+`0047`. Lire le §1 comme « le catalogue ne coûte jamais de migration » serait un contresens.
+
+La règle du §1 qui gouverne les ajouts — *on n'inscrit une vue qu'une fois son écran capable de
+l'afficher* — n'est pas touchée, et elle a été **tenue** : l'aiguilleur front et le DTO public du Big
+Shoot Off sont livrés dans le même diff que la valeur d'enum.

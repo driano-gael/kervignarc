@@ -13,18 +13,24 @@ import { fetchJson } from '../../shared/api/client'
  * CA d'E07US004 en entier** : le catalogue s'est élargi trois fois — palmarès (E06US004),
  * affectations (E07US008), tableaux (E07US005) — **sans une seule migration**, la valeur persistée
  * étant la chaîne et non un rang. La règle qui a tenu à chaque fois : on n'inscrit une vue qu'une
- * fois son écran capable de l'afficher, sinon le réglage programme une page vide. */
+ * fois son écran capable de l'afficher, sinon le réglage programme une page vide.
+ *
+ * ⚠️ Le quatrième mouvement, lui, **a coûté une migration** (`0047`, E05US031) : `tableaux` est
+ * devenue `en_cours` en s'élargissant aux trois formats sans arbre. Persister la chaîne rend un
+ * **ajout** gratuit, pas un **renommage**. */
 export type VueEcran =
-  'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'tableaux'
+  'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'en_cours'
 
 export const LIBELLE_VUE: Record<VueEcran, string> = {
   classement: 'Classement',
   plan_cibles: 'Plan de cibles',
   suivi_deroule: 'Suivi du déroulé',
   affectations: 'Affectations',
-  // « Tableaux » et non « Arbres » : c'est le mot de la salle et celui du CA (règle 3). Sur l'écran
-  // projeté, la vue montre le tableau **qui se joue** — personne n'est là pour en choisir un.
-  tableaux: 'Tableaux',
+  // « En cours » et non « Phases » : c'est le mot que l'organisateur reconnaît sur une liste de
+  // vues à programmer, et le même que l'onglet public (règle 3). « Tableaux » était juste tant que
+  // la vue ne montrait qu'un arbre ; elle montre désormais la phase qui se joue, quel que soit son
+  // format (E05US031, ADR-0089). Sur l'écran projeté, personne n'est là pour en choisir une.
+  en_cours: 'En cours',
   // « Palmarès » et non « Podium » : la vue porte les podiums **et** le classement final complet.
   // L'appeler podium ferait croire à quatre lignes, et l'organisateur qui cherche le classement de
   // fin de journée ne le programmerait pas.
@@ -36,7 +42,7 @@ export const TOUTES_LES_VUES: VueEcran[] = [
   'plan_cibles',
   'suivi_deroule',
   'affectations',
-  'tableaux',
+  'en_cours',
   'palmares',
 ]
 

@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-18 | `E05US031` | 43 | +3064/−177 | ~10 min | ~45 min | D (16:12→16:57) | majeur:2 mineur:2 suggestion:2 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | majeur:2 mineur:3 suggestion:2 | majeur:4 mineur:2 suggestion:1 | C1 | 1 |
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
 
 **Lecture de la première ligne.** Elle contredit déjà une présomption d'ADR-0013 et en confirme une
@@ -41,3 +42,24 @@ autre. C2 est bien l'axe le plus lent — la scission C1/C2 tient. Mais les **bl
 et de D, pas du chemin critique : la vitesse d'un axe ne prédit pas ce qu'il trouve. Et pour la
 troisième fois consécutive, l'axe adversarial trouve le plus grand nombre de bloquants — dont deux
 qu'aucun axe de conformité n'avait vus.
+
+**Lecture de la deuxième ligne (E05US031).** Trois enseignements, dont deux vont contre la première
+ligne.
+
+1. **L'axe adversarial n'a PAS trouvé le bloquant** — c'est C1, un axe de conformité, qui l'a vu
+   (un compteur d'archers « encore en lice » qui affichait combien il en resterait à la fin). La
+   série « D trouve le plus de bloquants » s'arrête à trois. Ce que D a apporté ici est d'un autre
+   ordre : deux défauts de **raisonnement transporté** — une règle juste chez son auteur d'origine,
+   réutilisée là où son hypothèse ne tient plus — qu'aucune grille ne décrit.
+2. **D reste l'axe le plus lent** (45 min), et de loin, alors que la première ligne désignait C2.
+   L'écart tient au périmètre : ici D a relu du code d'appui hors diff pour vérifier une affirmation
+   de l'auteur. C'est ce qu'on lui demande ; le chemin critique s'allonge en conséquence.
+3. **Les cinq axes ont trouvé, et aucun n'était redondant.** Quatre défauts n'ont été vus que par un
+   seul axe : le bloquant (C1), le portage d'ADR hors de portée du vérificateur d'atlas (C2, confirmé
+   par D), l'inversion `shared/ → features/` exprimée en CSS (A), et une section de registre décrivant
+   une version antérieure de l'US (D). La grille de conformité et l'adversarial ne se recouvrent pas.
+
+⚠️ **Le coût réel de la passe est sous-estimé par la colonne « durée revue ».** Les correctifs ont
+demandé une heure de plus que la revue elle-même, l'essentiel étant les **trois fichiers de tests de
+montage** qui manquaient (+26 cas). C'est la contrepartie honnête d'un axe B qui fait son travail :
+il ne coûte rien à la revue et beaucoup à la correction.

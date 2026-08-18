@@ -2857,7 +2857,9 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0089"
+   ],
    "date": "2026-08-01",
    "date_brute": "01/08/2026",
    "extrait": "### 1. L'écran de salle est un Poste typé, pas un agrégat parallèle Poste gagne un type (cible | ecran). Un écran porte un libellé de place dans le gymnase au lieu d'un cible_index, et son déroulé de vues (SequenceVues). Le typage rend cible_index facultatif. Plutôt que de laisser chaque appelant décider quoi faire d'un None — et parfois l'oublier —, l'invariant « seul un poste de cible a une cible » est rendu exigible au point d'usage : Poste.cible() lève PosteSansCible. Symétriquement, PosteSansEcran garde deroule_effectif / avec_libelle. L'exclusivité cible_index ↔ libelle n'est pas un CHECK en base : le projet n'en utilise nulle part, et en poser un ferait vivre une règle métier hors du […]",
@@ -2903,6 +2905,7 @@ window.ATLAS.decisions = {
    "us": [
     "E01US016",
     "E01US024",
+    "E05US031",
     "E06US004",
     "E07US004",
     "E07US005",
@@ -5518,6 +5521,321 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Les sous-agents du dépôt sont versionnés et à modèle épinglé",
    "us": []
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-18",
+   "date_brute": "2026-08-18",
+   "extrait": "### 1. La vue s'appelle « En cours » et montre la phase qui se joue, quel que soit son format VueEcran.TABLEAUX devient VueEcran.EN_COURS, et l'onglet public « Tableaux » devient « En cours ». La vue rend l'arbre de duels comme avant, et en plus la poule, la ronde de système suisse et la manche de Big Shoot Off. Pourquoi pas garder « Tableaux ». Le glossaire définit Tableau comme un « arbre de matchs à élimination » : c'est le nom d'un format, pas d'un contenant. Le garder sur une vue qui rend aussi une poule aurait fait dire au code et à la base quelque chose de faux — la règle 3 exige un vocabulaire cohérent entre code, API, UI et doc, et c'est exactement le genre d'écart qui ne se […]",
+   "fichier": "docs/adr/0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md",
+   "identifiant": "0089",
+   "liens": [
+    {
+     "cible": "0064",
+     "libelle": "Révise",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0079",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0083",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0076",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ecran.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0047_vue_en_cours.py",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/big-shoot-off/VueBigShootOffPublique.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/ecrans/api.ts",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/en-cours/VueEnCours.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/en-cours/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/poules/VuePoulesPublique.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/public/AccueilPublic.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/VueSuissePublique.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tableaux/VueTableaux.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/duels/LigneRencontre.tsx",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/duels/rencontre.ts",
+     "existe": true,
+     "symboles": [
+      "VueEcran.EN_COURS",
+      "EtatPubliqueReponse",
+      "TireurPubliqueReponse",
+      "ManchePubliqueReponse",
+      "FormatPubliqueReponse",
+      "VueEcran",
+      "LIBELLE_VUE",
+      "TOUTES_LES_VUES",
+      "switch",
+      "phaseAAtterrir",
+      "phaseId"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le catalogue de vues porte des **phases**, pas des arbres",
+   "us": [
+    "E05US023",
+    "E05US026",
+    "E05US027",
+    "E05US028",
+    "E05US030",
+    "E05US032",
+    "E16US004"
+   ]
   }
  ]
 };

@@ -33,11 +33,23 @@ const nomComplet = (qui: DuellistePublic) => `${qui.prenom} ${qui.nom}`.trim()
 
 export function VueTableaux({
   tournoiId,
+  phaseId = null,
   interactif = true,
   mode = 'tout',
   suivis = [],
 }: {
   tournoiId: number
+  /** La phase à montrer, **imposée** par l'appelant — `null` = cette vue choisit elle-même.
+   *
+   * Ajouté par E05US031 : l'onglet « En cours » porte désormais le fil du déroulé du départ et
+   * aiguille vers un rendu par format. Quand c'est lui qui pilote, le tableau affiché doit être
+   * celui qu'il désigne — sinon il annoncerait « 3. Élimination directe » au-dessus d'un arbre qui
+   * en montre un autre, dès qu'un départ porte deux tableaux (cas banal : principal + consolante).
+   *
+   * ⚠️ **Imposer la phase éteint aussi le sélecteur local**, même en `interactif` : deux barres de
+   * choix concurrentes sur le même écran donneraient deux vérités contradictoires — exactement le
+   * défaut qu'E16US004 a corrigé sur la bascule « mes archers » de cette même vue. */
+  phaseId?: number | null
   interactif?: boolean
   /** La bascule « mes archers / tout » de l'appli publique (E16US004).
    *
@@ -88,10 +100,28 @@ export function VueTableaux({
   // terminé, sinon le dernier (à 17 h, c'est celui dont on veut voir le podium). Même règle que le
   // plan de cibles de salle, calé sur le départ en cours et non sur le premier.
   const courant = donnees.tableaux.find((t) => !t.est_termine) ?? donnees.tableaux.at(-1)
+  // Trois sources, dans cet ordre de priorité : la phase **imposée** par l'appelant, celle que le
+  // spectateur a choisie dans le sélecteur local, puis le tableau qui se joue.
+  const impose = phaseId === null ? undefined : donnees.tableaux.find((t) => t.phase_id === phaseId)
   const tableau =
+    impose ??
     (interactif && phaseChoisie !== null
       ? donnees.tableaux.find((t) => t.phase_id === phaseChoisie)
-      : undefined) ?? courant
+      : undefined) ??
+    courant
+  // ⚠️ **Une phase imposée mais absente de la liste n'est pas un vide** : c'est une phase en
+  // tableau dont l'arbre n'existe pas encore (elle prélève des places qu'une phase amont n'a pas
+  // attribuées — ADR-0081). Retomber en silence sur « le tableau qui se joue » ferait afficher un
+  // arbre sous un titre qui en annonce un autre, ce qui est pire que de dire ce qui manque.
+  if (phaseId !== null && impose === undefined) {
+    // ⚠️ **Sans cause annoncée** (correctif de revue, axe C1). Une première rédaction expliquait
+    // « les archers qui s'y affronteront ne sont pas tous connus » — or ce cas-là est **présent**
+    // dans la liste, avec `en_attente_de`, et traité plus bas. Ce chemin-ci ne s'atteint que si
+    // `pour_depart` a avalé un échec, ou si les deux caches (`avancement-phases` et `tableaux`,
+    // clés et invalidations distinctes) sont momentanément désaccordés. Le message annonçait donc
+    // une cause qui n'est généralement pas la bonne, et le spectateur n'a rien à réparer.
+    return <p className="carte__etat">Cet arbre n’est pas encore disponible.</p>
+  }
   if (tableau === undefined) {
     // Liste vide : ni erreur ni page blanche. Le matin, les tableaux n'existent pas encore, et le
     // dire évite de laisser croire à une panne devant un écran vide. (Le test `undefined` porte
@@ -105,10 +135,11 @@ export function VueTableaux({
 
   return (
     <div className="tableaux">
-      {interactif && (
+      {interactif && phaseId === null && (
         <div className="tableaux__barre">
           {/* Le choix de phase n'apparaît que s'il y a un choix à faire : un tournoi à un seul
-              tableau n'a pas à afficher une liste d'un élément. */}
+              tableau n'a pas à afficher une liste d'un élément. Ni quand la phase est **imposée**
+              par l'appelant — c'est alors son fil de déroulé qui porte le choix. */}
           {donnees.tableaux.length > 1 && (
             <label className="tableaux__phase">
               <span className="tableaux__phase-libelle">Tableau</span>
@@ -272,7 +303,11 @@ function CheminArcher({ tableau, archerId }: { tableau: TableauPublic; archerId:
   )
 }
 
-/** Variante B : l'arbre complet, en **liste par tour** (concession mobile assumée, maquette P05). */
+/** Variante B : l'arbre complet, en **liste par tour** (concession mobile assumée, maquette P05).
+ *
+ * ⚠️ `# DETTE-072` — `LigneDuel` ci-dessous rend la même ligne que
+ * `shared/duels/LigneRencontre.tsx`, que les trois formats sans arbre partagent depuis E05US031.
+ * Les deux vivent dans le **même onglet public** (« En cours »). Voir `docs/dette.md`. */
 function ArbreComplet({ tableau }: { tableau: TableauPublic }) {
   const groupes = parTour(tableau)
   if (groupes.length === 0) {

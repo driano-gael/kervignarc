@@ -183,14 +183,52 @@ def test_la_projection_est_reservee_a_l_admin(app_bso: FastAPI) -> None:
     assert reponse.status_code == 401, reponse.text
 
 
-def test_l_etat_est_reserve_au_scoreur(app_bso: FastAPI) -> None:
-    """L'état porte les scores manche par manche : le public n'a pas à les lire avant validation."""
+def test_la_saisie_est_reservee_au_scoreur(app_bso: FastAPI) -> None:
+    """`/saisie/` porte l'adressage du pavé (`prochaine_volee`, `volees`) : elle reste restreinte.
+
+    ⚠️ Ce test gardait `/etat/` jusqu'à E05US031, sur la justification « les scores manche par
+    manche, que le public n'a pas à lire avant validation ». La justification était fausse — cf.
+    `test_l_etat_est_ouvert_et_ne_dit_rien_de_la_saisie` juste en dessous — mais la restriction
+    reste juste pour une **autre** raison, et c'est celle-ci qu'il faut garder.
+    """
+    with TestClient(app_bso) as client:
+        scn = Scenario(app_bso)
+
+        reponse = client.get(f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}")
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_l_etat_est_ouvert_et_ne_dit_rien_de_la_saisie(app_bso: FastAPI) -> None:
+    """`/etat/` se lit **sans jeton** — c'est ce que l'appli publique et l'écran de salle affichent.
+
+    L'assertion porte sur ce que le DTO **ne contient pas** autant que sur ce qu'il contient :
+    c'est la seule forme qui détecte la dérive redoutée par `TireurPubliqueReponse` — un champ
+    ajouté au DTO du scoreur qui se serait propagé ici. Le format est servi sous `format` et non
+    `projection` : l'aperçu d'atelier (`manches_ignorees`) ne franchit pas la frontière.
+    """
     with TestClient(app_bso) as client:
         scn = Scenario(app_bso)
 
         reponse = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}")
 
-    assert reponse.status_code == 401, reponse.text
+    assert reponse.status_code == 200, reponse.text
+    corps = reponse.json()
+    assert corps["phase_id"] == scn.phase_id
+    assert "projection" not in corps
+    assert set(corps["format"]) == {
+        "effectif",
+        "paliers",
+        "restants",
+        "volees",
+        "fleches_par_volee",
+        "manches_jouables",
+    }
+    assert corps["tireurs"], "le scénario engage des finalistes"
+    for tireur in corps["tireurs"]:
+        assert "prochaine_volee" not in tireur
+    for manche in corps["manches"]:
+        assert "volees" not in manche
 
 
 def test_une_manche_saisie_puis_validee_elimine_sur_la_vraie_chaine(
@@ -341,7 +379,7 @@ def test_un_scoreur_d_un_autre_tournoi_est_refuse_sur_les_trois_routes(
         entetes = {"X-Jeton-Scoreur": jeton}
 
         etat = client.get(
-            f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}",
+            f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}",
             headers=entetes,
         )
         volee = client.post(
