@@ -22,7 +22,7 @@ import { VuePalmares } from '../palmares/VuePalmares'
 import { PlanCiblesPublic } from '../placement/PlanCiblesPublic'
 import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
-import { VuePhases } from '../phases-publiques/VuePhases'
+import { VueEnCours } from '../en-cours/VueEnCours'
 import { BadgeStatut } from '../competition/BadgeStatut'
 import { GestionTournois } from '../tournois/Tournois'
 
@@ -34,6 +34,15 @@ import { GestionTournois } from '../tournois/Tournois'
 // classements : l'ordre suit la journée de l'archer (qui je suis, où je tire, contre qui, qui a
 // gagné), pas la structure du logiciel.
 //
+// ⚠️ **« Tableaux » est devenu « En cours » en E05US031** (ADR-0089), et ce n'est pas un renommage
+// d'étiquette : l'onglet ne montre plus un arbre de duels mais **la phase qui se joue**, quel qu'en
+// soit le format — poule, ronde de système suisse, manche de Big Shoot Off, arbre. Les trois
+// premiers étaient jouables depuis des semaines sans qu'aucun n'atteigne jamais l'appli publique.
+// Un onglet par format aurait fait deviner au spectateur lequel regarder et en aurait laissé la
+// moitié vides ; « Tableaux » élargi aurait menti, `Tableau` désignant au glossaire un arbre à
+// élimination (règle 3). Sa place dans la liste ne bouge pas — l'ordre suit toujours la journée de
+// l'archer.
+//
 // « Affectations » (E07US008) sert deux publics d'un coup : l'archer qui cherche sa butte et la
 // **table de l'organisation**, qui vérifie le pas de tir — c'est la même lecture, et le CA n'en
 // demandait qu'une. On la place après le suivi (« mes archers » reste la porte d'entrée, `D-09`).
@@ -42,19 +51,12 @@ import { GestionTournois } from '../tournois/Tournois'
 // « Classement » (celui de la qualification) et non à sa place : les deux se consultent, et à des
 // moments différents de la journée. On les distingue par le libellé plutôt que de renommer l'un des
 // deux, qui ferait chercher longtemps celui qu'on connaissait.
-//
-// ⚠️ **« Tableaux » est devenu « Rencontres » le 17/08/2026** (E05US031, ADR-0089 §3). L'onglet ne
-// montrait qu'un **arbre de duels** ; il montre désormais la phase qui se joue, quelle que soit sa
-// forme — poules, système suisse, Big Shoot Off. Le mot « Tableaux » était devenu faux pour trois
-// formats sur quatre. La **clé technique reste `tableaux`** ici comme au catalogue de vues de
-// l'écran de salle : elle est persistée là-bas (ADR-0064 §3), et la renommer imposerait une
-// migration de données pour changer un mot. L'écart clé ↔ libellé est inscrit (`DETTE-070`).
-type Vue = 'suivi' | 'affectations' | 'tableaux' | 'classement' | 'palmares' | 'plan'
+type Vue = 'suivi' | 'affectations' | 'en_cours' | 'classement' | 'palmares' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
   { id: 'suivi', libelle: 'Suivi' },
   { id: 'affectations', libelle: 'Affectations' },
-  { id: 'tableaux', libelle: 'Rencontres' },
+  { id: 'en_cours', libelle: 'En cours' },
   { id: 'classement', libelle: 'Classement' },
   { id: 'palmares', libelle: 'Palmarès' },
   { id: 'plan', libelle: 'Plan de cibles' },
@@ -139,15 +141,15 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
       </nav>
 
       {/* Le mode descend en **prop explicite**, jamais lu depuis le store par les vues elles-mêmes :
-          `VueClassement`, `VuePhases` et `VueAffectations` servent aussi la coquille admin et
+          `VueClassement`, `VueTableaux` et `VueAffectations` servent aussi la coquille admin et
           l'écran de salle, où ce filtre n'a rien à faire (même précaution que `filtrable` et
           `interactif`). */}
       {vue === 'suivi' ? (
         <VueSuivi tournoiId={tournoi.id} />
       ) : vue === 'affectations' ? (
         <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
-      ) : vue === 'tableaux' ? (
-        <VuePhases tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+      ) : vue === 'en_cours' ? (
+        <VueEnCours tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
       ) : vue === 'classement' ? (
         <VueClassement
           tournoiId={tournoi.id}

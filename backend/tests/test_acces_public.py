@@ -72,10 +72,26 @@ _LECTURES = [
     # verrou existe pour empêcher (ajouté sur remarque de revue).
     "/api/v1/tournois/1/suivi-deroule",
     # Tableaux du tournoi (E07US005) : « voir les arbres en direct ». Deux destinataires sans
-    # session — le spectateur sur son téléphone et l'écran de salle (vue `tableaux`). Le contenu
+    # session — le spectateur sur son téléphone et l'écran de salle (vue `en_cours`). Le contenu
     # est restreint au DTO (`api/v1/tableaux.py`) : pas d'identité de scoreur, pas de détail
     # flèche à flèche.
     "/api/v1/tableaux/1",
+    # Les **trois formats sans arbre** (E05US031, ADR-0089) : l'onglet public « En cours » monte
+    # l'une de ces trois routes selon la phase qui se joue, et l'écran de salle projette la même
+    # vue. Aucun des deux n'a de session.
+    #
+    # ⚠️ **Ajoutées sur remarque de revue (axe A), et les deux premières comblent un trou
+    # antérieur** : `/poules/etat/` et `/suisse/etat/` étaient ouvertes depuis E05US023 et E05US026
+    # sans figurer ici, donc sans verrou — les protéger par mégarde aurait éteint l'onglet public
+    # sans faire échouer un seul test. C'est exactement le scénario que ce fichier existe pour
+    # empêcher, et il ne l'attrapait pas pour ces routes-là.
+    #
+    # `/big-shoot-off/etat/` s'ouvre avec cette US : son contenu est restreint par un DTO distinct
+    # (`EtatPubliqueReponse`), sans l'adressage de saisie. Le contrôle de contenu vit dans
+    # `test_big_shoot_off_api.py` ; ici on ne garde que l'**ouverture**.
+    "/api/v1/poules/etat/1/1",
+    "/api/v1/suisse/etat/1/1",
+    "/api/v1/big-shoot-off/etat/1/1",
 ]
 
 

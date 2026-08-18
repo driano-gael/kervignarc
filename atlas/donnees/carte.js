@@ -19,12 +19,12 @@ window.ATLAS.carte = {
     "competition",
     "departs",
     "duels",
+    "en-cours",
     "forfaits",
     "inscriptions",
     "palmares",
     "patrimoine",
     "phases",
-    "phases-publiques",
     "placement",
     "poules",
     "routage",
@@ -140,6 +140,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 2,
+    "feature": "en-cours"
+   },
+   {
+    "clientes": 2,
     "feature": "forfaits"
    },
    {
@@ -149,10 +153,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "paiements"
-   },
-   {
-    "clientes": 2,
-    "feature": "phases-publiques"
    },
    {
     "clientes": 2,

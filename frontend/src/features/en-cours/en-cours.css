@@ -1,0 +1,74 @@
+/* --- Onglet « En cours » : la phase qui se joue, quel que soit son format (E05US031) -------------
+   Un seul jeu de règles pour deux surfaces : l'appli publique (360 px, tenue à la main) et l'écran
+   de salle (projeté, lu à cinq mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle
+   typographique dédiée (E07US004) et des px figés y resteraient illisibles de loin. Même règle que
+   `tableaux.css` et `affectations.css`, pour la même raison.
+
+   Le parti de mise en page est celui que `tableaux.css` a tranché et qu'il n'y a aucune raison de
+   rejouer : **des listes**, jamais de branches ni de grilles à colonnes fixes. Une poule de 6, une
+   ronde de 20 rencontres et une finale à 12 tireurs n'ont pas la même densité ; seule une liste
+   encaisse les trois sans réglage par format. */
+
+/* ⚠️ **Les règles de la LIGNE D'UNE RENCONTRE ne sont plus ici** : elles vivent dans
+   `shared/duels/rencontre.css`, auprès du composant `shared/duels/LigneRencontre.tsx` qui les
+   consomme (correctif de revue, axes A et adversarial). Un module de `shared/` stylé par la feuille
+   d'une feature, c'est l'inversion `shared/ → features/` exprimée en CSS : `rencontre.ts` consacre
+   un paragraphe entier à la refuser pour les imports, et elle passait par la porte de derrière —
+   invisible à `tsc` comme à ESLint, donc à toutes les portes mécaniques. Ce qui reste ci-dessous
+   est la mise en page de l'onglet lui-même : fil du déroulé, blocs, en-têtes, bye. */
+
+.encours__deroule,
+.encours__rondes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.encours__phase {
+  margin: 0 0 0.6em;
+  font-size: 1.05em;
+}
+
+.encours__statut,
+.encours__entete {
+  font-size: 0.9em;
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+.encours__entete {
+  margin: 0 0 0.8em;
+}
+
+.encours__bloc {
+  margin-bottom: 1.4em;
+}
+
+.encours__titre {
+  margin: 0 0 0.4em;
+  font-size: 1em;
+}
+
+.encours__tour-titre {
+  margin: 0.6em 0 0.3em;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.encours__lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.encours__bye {
+  margin: 0.5em 0 0;
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.encours__bye--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+}

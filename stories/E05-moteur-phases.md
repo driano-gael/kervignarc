@@ -1299,21 +1299,9 @@ troisième variante locale au lieu de combler le trou.
 
 - **CA — l'onglet public rend les phases sans arbre**, au même titre que les tableaux : les
   rencontres de la ronde ou du groupe en cours, avec leur cible, et le classement du format. Le
-  catalogue de vues d'[ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md)
-  est aujourd'hui restreint à l'**arbre de duels** (`TableauPublic` : `duels`, `nb_tours`, `plage`,
+  catalogue de vues d'[ADR-0064](../docs/adr/0064-un-catalogue-de-vues-pour-l-ecran-de-salle.md) est
+  aujourd'hui restreint à l'**arbre de duels** (`TableauPublic` : `duels`, `nb_tours`, `plage`,
   `podium`) — c'est cette restriction qui est levée.
-- **CA — l'historique des tours joués reste lisible** *(élargissement du cadrage du 17/08/2026)* :
-  un spectateur qui arrive à la ronde 4 doit pouvoir lire les rondes 1 à 3, et pas seulement le tour
-  en cours. Aucun backend en jeu — les routes d'état rendent déjà **toutes** les rondes ou tous les
-  tours ; c'est une décision d'affichage, et la formuler évite de livrer une vue qui n'ouvre que le
-  dernier bloc « pour ne pas charger l'écran ».
-- **CA — « mon chemin » existe pour ces formats aussi** *(élargissement du cadrage du 17/08/2026)* :
-  pour chaque archer suivi, ses rencontres passées et sa rencontre en cours dans la phase, comme
-  l'arbre le rend depuis `E07US005`. Sans lui, l'interrupteur « mes archers » d'ADR-0079 gouverne
-  une vue qui n'a rien de propre à montrer, et le CA suivant serait tenu à vide.
-- **CA — le classement d'une phase terminée reste consultable** *(élargissement du cadrage du
-  17/08/2026)* : il ne disparaît pas au démarrage de la phase suivante. C'est une conséquence du
-  sélecteur, qui liste **toutes** les phases du créneau et non la seule phase en cours.
 - **CA — « mes archers » gouverne cette vue comme les autres** : l'interrupteur unique
   d'[ADR-0079](../docs/adr/0079-un-seul-interrupteur-mes-archers-pour-tout-l-onglet-public.md) vaut
   ici sans exception, et la vue nomme « aucun de vos archers ici » distinctement de son propre vide.
@@ -1321,43 +1309,31 @@ troisième variante locale au lieu de combler le trou.
 - **CA — le classement d'un suisse en cours est public** : c'est la part publique du classement
   provisoire livré côté organisateur par `E05US030`. Le backend l'expose déjà
   (`GET /api/v1/suisse/etat/{tournoi_id}/{phase_id}`, publique et anonyme).
-- ✅ **ADR rendu** : [ADR-0089](../docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md)
-  révise ADR-0064. Décision principale, **tranchée par le commanditaire au cadrage du 17/08/2026** :
-  une **forme commune** « rencontres groupées + classement » pour les poules et le suisse (décor
-  `RONDES_APPARIEES` partagé, ADR-0083 §1), et une **vue propre** au Big Shoot Off, dont la manche
-  est un tir collectif sans adversaire. Le critère pour le format suivant est le **décor**, pas le
-  compte de formats — la colline (`E05US027`) entrera donc dans la forme commune sans écrire de vue.
-- ✅ **Vérification faite au cadrage** *(la puce d'origine la demandait)* : les **poules**
-  (`/poules/etat/…`, `/poules/repartition/…`) et le **suisse** (`/suisse/etat/…`) sont déjà publics
-  et anonymes ; le **Big Shoot Off** ne l'est pas — sa seule lecture est derrière `exiger_scoreur` et
-  sa projection derrière `exiger_admin`. **Cette US porte donc du backend pour ce format-là** : un
-  DTO public restreint et l'alignement de ses deux routes sur celles de ses jumeaux (`/etat` publique,
-  `/saisie` scoreur — ADR-0089 §5).
-- **Notes — arbitrages tranchés en revue (17/08/2026), reversés ici au titre de la règle 9.** Ils
-  décident de ce qu'un spectateur lit ; sans eux, le CA resterait muet et l'US suivante en dériverait
-  ses tests :
-  - **la phase montrée par défaut** suit `application/portee.py::la_plus_courante` — première
-    démarrée, sinon première **à venir**, sinon la dernière. « À venir » passe **devant** la dernière
-    terminée : démarrer une phase est un geste manuel, et l'inverse laissait l'écran sur la
-    qualification pendant que les duels se tiraient. À statut égal seulement, on préfère une phase
-    dont on sait afficher le détail ;
-  - **une rencontre à cheval sur deux cibles** nomme les **deux** (« Cibles 1C et 2A ») : un bloc de
-    couloirs est contigu dans la salle *mise à plat*, pas sur une cible ;
-  - **un seul tour porte la mention « en cours »**, le premier non terminé — une poule dérive son
-    round-robin **complet** dès la composition, tous ses tours existent d'emblée ;
-  - **le sort d'un finaliste de Big Shoot Off**, une fois la phase achevée : « **Vainqueur** » s'il
-    reste un seul rescapé, « **1ᵉʳ ex æquo** » s'ils sont plusieurs — le domaine leur donne le rang 1
-    **partagé** (`EtatBigShootOff.classement`), et le public ne doit pas lire autre chose que le
-    palmarès. Tant que la phase se joue : « En lice » ;
-  - **aucun code technique n'atteint le spectateur** : les raisons de conflit de placement
-    (`non_posee`, `salle_pleine`, `sans_rencontre`) et les statuts de phase sont rédigés en français,
-    repli compris ;
-  - **une panne réseau se distingue d'un refus** : « pas encore prête à être suivie » est réservé aux
-    refus déterministes du serveur (404/409/422) ; tout le reste dit « connexion momentanément
-    perdue ». Affirmer la première pendant qu'une phase se joue serait faux, et durable.
-- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026,
-  **périmètre élargi au cadrage du 17/08/2026** (historique, « mon chemin », classement d'une phase
-  terminée)
+- **CA — l'onglet s'appelle « En cours » et remplace « Tableaux »** *(arbitrage du cadrage,
+  18/08/2026)*. **Un seul** onglet, pas un par format : le spectateur n'a pas à savoir quel format le
+  club a choisi. Le libellé a été tranché en trois temps — « Tableaux » élargi serait **faux**
+  (`Tableau` = « arbre de matchs à élimination » au glossaire, règle 3) ; « Phases » serait **exact**
+  mais demande au spectateur un vocabulaire qu'il n'a pas ; « En cours » ne nomme aucun format et
+  reste vrai quand un dixième type arrivera.
+- **CA — l'onglet remonte le déroulé du départ** *(ajouté au cadrage, 18/08/2026)*. Il **atterrit**
+  sur la phase en cours, et les phases précédentes du départ sont accessibles d'un geste. À
+  l'intérieur d'une phase, la profondeur d'historique suit la **forme du format** : une poule montre
+  tous ses tours, un Big Shoot Off toutes ses manches jouées, un système suisse atterrit sur la ronde
+  courante avec un retour aux rondes closes.
+- ✅ **ADR requis, et écrit** : [ADR-0089](../docs/adr/0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md),
+  qui **révise** ADR-0064. Le renommage de `VueEcran.TABLEAUX` en `EN_COURS` **coûte une migration**
+  (`0047`) : persister la chaîne rendait un *ajout* gratuit, pas un *renommage*.
+- ✅ **Vérification faite au cadrage, et elle donne du backend à cette US.** Les **poules**
+  (`/poules/etat/…`) et le **suisse** (`/suisse/etat/…`) ont déjà leur route anonyme avec DTO public
+  dédié. Le **Big Shoot Off n'en a aucune** : son `/etat/` était `exiger_scoreur` et sa
+  `/projection/` est `exiger_admin`. L'US porte donc un DTO public neuf et ouvre `/etat/`, la lecture
+  du scoreur migrant sur `/saisie/` — le couple exact de ses deux jumeaux.
+  ⚠️ **La justification de l'ancienne restriction était fausse** : l'en-tête du routeur invoquait
+  « les scores manche par manche, que le public n'a pas à voir avant validation », or
+  `_scores_par_manche` ne rend **que** les manches entièrement validées. Ce qui distingue réellement
+  les deux formes est l'**adressage de saisie** (`prochaine_volee`, `volees`).
+- **Dépend de** : `E05US030` · **Jalon** : J3 · **Origine** : cadrage d'`E05US030`, 16/08/2026 ·
+  **Périmètre arrêté** : cadrage du 18/08/2026
 
 ---
 

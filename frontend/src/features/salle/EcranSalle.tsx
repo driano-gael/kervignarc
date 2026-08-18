@@ -27,7 +27,7 @@ import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
 import { VuePalmares } from '../palmares/VuePalmares'
 import { VueAffectations } from '../routage/VueAffectations'
-import { VuePhases } from '../phases-publiques/VuePhases'
+import { VueEnCours } from '../en-cours/VueEnCours'
 import { SchemaBraquets } from '../../shared/schema-braquets/SchemaBraquets'
 import { useSuiviDeroule } from '../suivi-deroule/hooks'
 import { departDeSalle } from './rotation'
@@ -158,20 +158,16 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
     // tir**, le seul qui se lise de loin quand on cherche sa butte (`Q-UX2`).
     return <VueAffectations tournoiId={tournoiId} interactif={false} />
   }
-  if (vue === 'tableaux') {
-    // `interactif={false}` : ni sélecteur de phase ni bascule « mon chemin » (CA E07US004 — aucune
-    // interaction). Ce n'est pas qu'une question de boutons inutiles : « mon chemin » n'a aucun
-    // sens devant un projecteur, personne n'y suit d'archer. L'écran montre donc la lecture
-    // **complète** de la phase qui se joue, seule qui informe une salle entière.
+  if (vue === 'en_cours') {
+    // `interactif={false}` : ni fil du déroulé, ni sélecteur de ronde, ni bascule « mon chemin »
+    // (CA E07US004 — aucune interaction). Ce n'est pas qu'une question de boutons inutiles :
+    // « mon chemin » n'a aucun sens devant un projecteur, personne n'y suit d'archer. L'écran
+    // montre donc **la phase qui se joue**, en entier, seule lecture qui informe une salle.
     //
-    // ⚠️ **`VuePhases` et non `VueTableaux` depuis E05US031** (ADR-0089 §3) — `DETTE-070`. La clé `tableaux` est
-    // conservée — elle est **persistée** sur les postes-écrans (ADR-0064 §3), la renommer imposerait
-    // une migration pour changer un mot —, mais ce qu'elle projette n'est plus le seul arbre de
-    // duels : c'est la phase en cours, poules et système suisse et Big Shoot Off compris. La règle
-    // d'ADR-0064 (« on n'inscrit une vue qu'une fois son écran capable de l'afficher ») est
-    // honorée à l'envers et reste tenue : aucune vue n'est ajoutée, on rend capable celle qui
-    // existe — donc aucun déroulé déjà composé ne peut programmer une page vide.
-    return <VuePhases tournoiId={tournoiId} interactif={false} />
+    // ⚠️ **L'historique s'éteint avec l'interactivité, et c'est voulu** : remonter les rondes
+    // closes est un geste, or il n'y a personne pour le faire devant un projecteur. Un écran de
+    // salle figé sur la ronde 1 pendant qu'on tire la ronde 4 serait le pire des deux mondes.
+    return <VueEnCours tournoiId={tournoiId} interactif={false} />
   }
   if (vue === 'palmares') {
     // `interactif={false}` : ni filtre ni bouton d'export sur un écran projeté (CA E07US004). La

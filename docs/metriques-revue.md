@@ -34,58 +34,32 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-18 | `E05US031` | 43 | +3064/−177 | ~10 min | ~45 min | D (16:12→16:57) | majeur:2 mineur:2 suggestion:2 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | majeur:2 mineur:3 suggestion:2 | majeur:4 mineur:2 suggestion:1 | C1 | 1 |
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
-| 2026-08-17 | `E05US031` | 42 | +4163/−160 | ~27 min | ~16 min | C1 | mineur:4 | majeur:5 mineur:2 suggestion:1 | bloquant:1 majeur:6 mineur:3 suggestion:1 | majeur:1 mineur:3 | majeur:6 mineur:4 suggestion:1 | **C1 (1)** | 2 |
-| 2026-08-17 (passe 2) | `E05US031` | 29 | +849/−125 | ~2 min | ~30 min | D | — | majeur:5 mineur:5 suggestion:2 | majeur:1 mineur:7 suggestion:1 | — | majeur:1 mineur:7 suggestion:1 | **aucun** | — |
-
-**Lecture de la passe 2 — la seule mesure qui compte ici.** Elle a été lancée parce que les
-correctifs avaient **débordé** des fichiers déjà relus (le déclencheur prévu par la commande), pas
-parce qu'un bloquant subsistait. Elle a trouvé, sur 849 lignes de correctifs :
-
-- **une régression introduite par un correctif** — le filtre « phases avec vue » appliqué *avant* les
-  paliers de statut retournait la priorité n° 1, sur le déroulé de tous les matins. Trouvée
-  **indépendamment par C1 et par B** ;
-- **un test qui ne prouvait pas ce qu'il annonçait** — la fixture y était réduite à une seule
-  candidate par le filtre, donc il passait avec l'ancien code comme avec le nouveau. Ce défaut-là
-  n'est visible que d'un relecteur : l'auteur, lui, vient de voir son test passer ;
-- **trois correctifs sans test** (distinction panne/refus, barrage public, rendu des deux cibles) ;
-- **un défaut déplacé** — la marque « en cours » ne se posant plus que sur le premier tour ouvert,
-  une rencontre bloquée capte définitivement la marque. Le correctif avait créé la condition.
-
-Conclusion opérationnelle : **la passe sur correctifs n'est pas une formalité**. Trois axes sur trois
-ont rendu *corrections requises* sur du code que la porte mécanique validait intégralement, et dont
-l'auteur pensait raisonnablement qu'il fermait les défauts de la passe 1.
-
-Un contre-exemple utile, aussi : l'axe adversarial a rendu son unique majeur sur une **citation
-inversée** — il invoquait `la_plus_avancee` pour un cas que la docstring de cette même fonction
-renvoie explicitement à `la_plus_courante`. Écarté sur pièce, et l'arbitrage écrit dans le code pour
-qu'il ne se rejoue pas. **Un rapport d'axe est une hypothèse à vérifier, pas un verdict** — c'est la
-deuxième fois de la session, après le faux « PORTE ROUGE » d'un `pytest` tué à 120 s.
-
-**Lecture de la deuxième ligne (E05US031).** Trois enseignements, dont un qui contredit la première.
-
-1. **La durée « porte » n'est pas une mesure de la porte** — 27 min ici contre 1 min, pour un diff
-   3× plus gros seulement. L'essentiel est du **temps perdu** : l'agent `porte-mecanique` a rendu un
-   faux « PORTE ROUGE » en tuant `pytest` à 120 s sur une suite qui dure plus longtemps, puis la
-   relance manuelle a d'abord visé le Python global au lieu du venv. La colonne mesure donc le
-   franchissement de la porte, pas son exécution. *À corriger dans l'agent, pas dans la colonne.*
-2. **Le chemin critique et la détection ne coïncident toujours pas, mais autrement.** C1 est à la
-   fois l'axe le plus lent **et** celui qui trouve le bloquant — l'inverse de la première ligne. Un
-   échantillon de deux ne tranche rien ; ce qu'on peut dire, c'est qu'aucune règle simple
-   « lent ⇒ trouve » ni « lent ⇒ ne trouve pas » ne survit aux deux mesures.
-3. **L'axe adversarial ne trouve pas de bloquant pour la première fois — et reste indispensable.**
-   Il rend 6 majeurs dont **4 que personne d'autre n'a vus** (codes d'enum affichés au public, panne
-   réseau confondue avec un refus, `DETTE-031` non élargie, fiches de recette périmées). Le compte de
-   bloquants est un mauvais indicateur de sa valeur : sa contribution ici est d'avoir vu que le code
-   neuf **rejouait des raisonnements déjà corrigés ailleurs dans le dépôt** — un motif qu'aucune
-   grille n'encode, parce qu'il n'est visible qu'en lisant le reste du code.
-
-Note de méthode : `A` rend *axe OK* avec 4 mineurs. C'est un rapport valide au sens de la commande —
-il dit ce qu'il a lu, et son mineur n° 1 (le DTO de barrage partagé entre contrat public et contrat
-scoreur) est le plus structurant du lot. **La sévérité déclarée n'ordonne pas l'utilité.**
 
 **Lecture de la première ligne.** Elle contredit déjà une présomption d'ADR-0013 et en confirme une
 autre. C2 est bien l'axe le plus lent — la scission C1/C2 tient. Mais les **bloquants** viennent de A
 et de D, pas du chemin critique : la vitesse d'un axe ne prédit pas ce qu'il trouve. Et pour la
 troisième fois consécutive, l'axe adversarial trouve le plus grand nombre de bloquants — dont deux
 qu'aucun axe de conformité n'avait vus.
+
+**Lecture de la deuxième ligne (E05US031).** Trois enseignements, dont deux vont contre la première
+ligne.
+
+1. **L'axe adversarial n'a PAS trouvé le bloquant** — c'est C1, un axe de conformité, qui l'a vu
+   (un compteur d'archers « encore en lice » qui affichait combien il en resterait à la fin). La
+   série « D trouve le plus de bloquants » s'arrête à trois. Ce que D a apporté ici est d'un autre
+   ordre : deux défauts de **raisonnement transporté** — une règle juste chez son auteur d'origine,
+   réutilisée là où son hypothèse ne tient plus — qu'aucune grille ne décrit.
+2. **D reste l'axe le plus lent** (45 min), et de loin, alors que la première ligne désignait C2.
+   L'écart tient au périmètre : ici D a relu du code d'appui hors diff pour vérifier une affirmation
+   de l'auteur. C'est ce qu'on lui demande ; le chemin critique s'allonge en conséquence.
+3. **Les cinq axes ont trouvé, et aucun n'était redondant.** Quatre défauts n'ont été vus que par un
+   seul axe : le bloquant (C1), le portage d'ADR hors de portée du vérificateur d'atlas (C2, confirmé
+   par D), l'inversion `shared/ → features/` exprimée en CSS (A), et une section de registre décrivant
+   une version antérieure de l'US (D). La grille de conformité et l'adversarial ne se recouvrent pas.
+
+⚠️ **Le coût réel de la passe est sous-estimé par la colonne « durée revue ».** Les correctifs ont
+demandé une heure de plus que la revue elle-même, l'essentiel étant les **trois fichiers de tests de
+montage** qui manquaient (+26 cas). C'est la contrepartie honnête d'un axe B qui fait son travail :
+il ne coûte rien à la revue et beaucoup à la correction.

@@ -544,11 +544,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **115 US livrées** sur `main` (mergées, revues, CI verte) à la date du 17/08/2026, la dernière
-  étant `E05US031` — le **public voit les formats sans arbre** : poules, système suisse et Big Shoot
-  Off atteignent enfin l'application publique et l'écran de salle, trois formats jouables depuis des
-  semaines que personne ne pouvait suivre depuis les gradins. **`SUIVI-US.md` fait foi sur le compte exact** ; ce résumé le **reflète** et ne
-  tient pas un second décompte.
+- **115 US livrées** sur `main` (mergées, revues, CI verte) à la date du 18/08/2026, la dernière
+  étant `E05US031` — **le public voit les trois formats sans arbre** : l'onglet « Tableaux » devient
+  « En cours » et montre la phase qui se joue quel qu'en soit le format. **`SUIVI-US.md` fait foi sur
+  le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
   ligne de code** (elles sont ⬜), tandis qu'`E17US003` et `E17US004` ont été livrées sous la
@@ -686,6 +685,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **Le public voit ce qui se joue, quel que soit le format (18/08/2026, E05US031).** Trois formats
+  — les poules, le Big Shoot Off et le système suisse — étaient jouables de bout en bout depuis des
+  semaines, et **aucun n'était visible du public** : l'onglet où l'on suit les rencontres ne savait
+  dessiner qu'un arbre d'élimination directe. Un spectateur qui suivait un archer le perdait de vue
+  dès que le club sortait de ce format. L'onglet s'appelle désormais **« En cours »** et montre la
+  phase du moment quelle qu'elle soit — une poule avec ses tours et son classement, une ronde de
+  système suisse avec ses cibles, une manche de Big Shoot Off avec qui reste en lice et qui est sorti
+  à quel rang. Il **s'ouvre sur ce qui se joue** et laisse **remonter tout le déroulé du départ** :
+  on peut revenir sur la qualification du matin ou sur les poules déjà jouées. Le filtre « mes
+  archers » vaut ici comme partout ailleurs, et l'**écran de salle** projette les mêmes vues.
+  Décision d'architecture : [ADR-0089](../docs/adr/0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md).
 - **Le système suisse se joue (16/08/2026, E05US026 puis E05US030).** Troisième format sans arbre à
   devenir jouable de bout en bout, et le premier livré en **deux tranches** : le moteur le matin, les
   écrans le soir — le périmètre ayant triplé au cadrage, la coupe s'est faite là où elle ne coûtait
@@ -707,21 +717,6 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   pouvait changer de départ dans l'un, saisir dans l'autre, et scorer les rencontres du mauvais
   créneau — avec des identifiants valides, donc **sans erreur visible**. Il n'y a plus qu'un choix de
   départ, en tête d'écran (`DETTE-056`).
-- **Le public voit tous les formats (17/08/2026, E05US031).** L'application publique — celle qu'un
-  spectateur ouvre sur son téléphone, sans compte — avait un onglet « Tableaux » qui ne savait montrer
-  qu'**une seule chose** : un arbre d'élimination directe. Les trois formats sans arbre livrés depuis
-  — **poules**, **système suisse**, **Big Shoot Off** — étaient jouables mais **invisibles** : dès que
-  le tournoi y entrait, le public n'avait plus rien à regarder, y compris sur les archers qu'il avait
-  choisi de suivre. L'onglet s'appelle désormais « **Rencontres** » et montre la phase **qui se joue**,
-  quelle que soit sa forme : les rencontres du tour ou de la ronde **avec leur cible**, le classement
-  du format, et l'historique des tours déjà joués. Le suivi personnel vaut ici comme ailleurs — pour
-  chaque archer suivi, sa position et le détail de ses rencontres. L'**écran de salle** projette ces
-  formats sans qu'on ait rien à reprogrammer. Le manque était **commun aux trois** formats : le
-  traiter d'un bloc plutôt que format par format évitait d'écrire trois écrans cousins — et la
-  **colline** en héritera sans une ligne quand elle deviendra jouable. Un seul format demandait du
-  travail côté serveur : le Big Shoot Off était le seul dont aucune lecture n'était ouverte au public.
-  Décision d'architecture :
-  [ADR-0089](../docs/adr/0089-les-vues-publiques-rendent-les-formats-sans-arbre.md).
 - **La finale spectacle se joue, et sa règle a changé (14/08/2026, E05US028).** Le « Big Shoot Off »
   était proposé à la composition sans mener nulle part, comme les poules avant lui. En préparant son
   écran, une contradiction est apparue : la fiche de l'US promettait un réglage que ni la règle ni le
@@ -766,8 +761,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 > exact ; cette liste n'en est que le reflet lisible.
 
 - Dernière US livrée : **E05US031** (le public voit les formats sans arbre) — US **à surface
-  visible**, avec son [fait marquant daté](2026-08-17-21h40-le-public-voit-tous-les-formats.md) et sa
-  [fiche de recette](../docs/fonctionnel/E05US031.md).
+  visible**, avec son [fait marquant daté](2026-08-18-16h05-le-public-voit-enfin-ce-qui-se-joue.md)
+  et sa [fiche de recette](../docs/fonctionnel/E05US031.md).
 - Avant elle, **E05US030** (le système suisse à l'écran) — US **à surface visible**, avec
   son [fait marquant daté](2026-08-16-19h50-le-systeme-suisse-se-joue-vraiment.md) et sa
   [fiche de recette](../docs/fonctionnel/E05US030.md).

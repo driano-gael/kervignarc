@@ -112,6 +112,15 @@
   font-size: 1em;
 }
 
+/* ⚠️ **Le `caption` échappait à la règle ci-dessus** (relevé en revue, axe adversarial) :
+   `.salle__scene table` (0,1,1) l'emporte bien sur `.deroule__table` (0,1,0) pour le corps, mais
+   rien ne surchargeait `.deroule__table caption { font-size: 12px }`. Sur un projecteur où le corps
+   monte à ~28 px, « Finalistes » et « Classement de la poule » restaient à 12 px. Le cas n'existait
+   pas avant E05US031 : ces tableaux ne servaient que des surfaces tenues en main. */
+.salle__scene table caption {
+  font-size: 0.8em;
+}
+
 /* ————————————————————————————————————————————————————————————————————————————————————————————————
    Pages d'affectations projetées (P06, retour maquettes du 04/08/2026)
    ————————————————————————————————————————————————————————————————————————————————————————————————

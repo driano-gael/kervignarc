@@ -15,8 +15,12 @@
 // premier jet portait un paramètre `actif` qu'aucun appelant ne passait — et trois textes, dont le
 // registre de dette, lui attribuaient la protection : un futur mainteneur y aurait cru. Le vrai
 // mécanisme est celui qu'`EcranSalle` a appliqué à `useSuiviDeroule` : la vue n'est **rendue** que
-// lorsqu'elle est affichée (`if (vue === 'tableaux')` côté salle, ternaire d'onglets côté public),
-// donc React Query démonte l'observateur et arrête l'intervalle. `useSuiviDeroule` n'a pas non plus
+// lorsqu'elle est affichée (`if (vue === 'en_cours')` côté salle, ternaire d'onglets côté public),
+// donc React Query démonte l'observateur et arrête l'intervalle.
+// ⚠️ **Depuis E05US031, le montage passe par l'aiguilleur `VueEnCours`** : ni la salle ni l'onglet
+// public ne montent `VueTableaux` directement, et la valeur d'écran `'tableaux'` n'existe plus
+// (migration `0047`). Le mécanisme de bornage est inchangé — c'est son adresse qui a bougé, et la
+// laisser fausse ici trompait précisément la prochaine lecture de `DETTE-031`. `useSuiviDeroule` n'a pas non plus
 // de paramètre `actif` — la convention est cohérente, il ne fallait pas s'en écarter.
 //
 // ⚠️ **Cette protection ne borne plus l'endpoint depuis E16US004** (élargissement inscrit au

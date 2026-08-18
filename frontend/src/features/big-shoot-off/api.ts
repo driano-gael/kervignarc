@@ -61,7 +61,7 @@ export interface BarrageEnAttente {
   places: number
 }
 
-/** La photo d'un Big Shoot Off, telle que la salle la lit. */
+/** La photo d'un Big Shoot Off **avec l'adressage de saisie** — réservée au scoreur. */
 export interface EtatBigShootOff {
   phase_id: number
   projection: Projection
@@ -71,59 +71,55 @@ export interface EtatBigShootOff {
   barrage: BarrageEnAttente | null
 }
 
-/** Le barrage **en consultation**.
+/** La **forme** du format, telle qu'un spectateur la lit : « 12 → 8 → 6 → 5, 3 volées de 3 ».
  *
- * ⚠️ **Type distinct, en miroir de `BarragePublicReponse` côté serveur.** Le backend a dédoublé la
- * classe pour qu'un champ ajouté demain au barrage du scoreur ne parte pas au public ; garder ici
- * le type du scoreur rendait la garantie **à sens unique** (relevé par l'axe adversarial) : le
- * champ neuf aurait compilé côté public et rendu `undefined` sur l'écran projeté, le serveur ne le
- * servant pas. Les deux types coïncident aujourd'hui — c'est voulu, pas une duplication à résorber. */
-export interface BarragePublic {
-  archer_ids: number[]
-  noms: string[]
-  places: number
+ * `Projection` amputée de ce qui appartient à l'atelier — `eliminations` (la liste réglée) et
+ * `manches_ignorees` (le réglage dépasse l'effectif). Ce dernier n'est pas confidentiel, il est
+ * **sans destinataire** devant une salle, et l'afficher ferait croire à un incident. */
+export interface FormatBigShootOff {
+  effectif: number
+  paliers: number[]
+  restants: number
+  volees: number
+  fleches_par_volee: number
+  manches_jouables: number
 }
 
-/** Le finaliste **en consultation** : son sort et ce qu'il a marqué, jamais ce qu'il doit tirer.
- *
- * `prochaine_volee` n'y est pas : c'est une affordance de **saisie** (ADR-0089 §5). Ne pas
- * « compléter » ce type en recopiant `Tireur` — l'absence de ce champ **est** la décision, et un
- * test la verrouille côté serveur.
- *
- * ⚠️ `en_lice` **a quitté le contrat public en revue** : aucune vue publique ne le lisait, et il
- * redit ce que `rang === null` dit déjà — deux champs pour un fait, c'est la porte ouverte à ce
- * qu'ils divergent un jour sans que rien ne le voie. Le compte se dérive de `rang` (`nbEnLice`). */
-export type TireurPublic = Omit<Tireur, 'prochaine_volee' | 'en_lice'>
+/** Le même finaliste **en consultation** : son sort et ses manches validées, jamais la prochaine
+ * volée à saisir — c'est une affordance de pavé, sans objet hors de la tablette. */
+export interface TireurPublic {
+  archer_id: number
+  nom: string
+  prenom: string
+  en_lice: boolean
+  rang: number | null
+  scores: number[]
+}
 
-/** La manche **en consultation** : sans la numérotation de volées, qui sert la feuille de saisie. */
-export type ManchePublique = Omit<Manche, 'volees'>
+/** La même manche, sans les numéros de volée de la feuille de saisie. */
+export interface ManchePublique {
+  numero: number
+  elimine: number
+  complete: boolean
+  jouee: boolean
+}
 
-/** Le déroulé annoncé du format, tel qu'un spectateur peut le lire : « 12 → 8 → 6 → 5 ».
+/** La photo d'un Big Shoot Off **rédigée** — appli publique, écran de salle, écran d'organisation.
  *
- * ⚠️ `eliminations` et `manches_jouables` **ont quitté le contrat public en revue** : servis, mais
- * lus par aucune vue. `eliminations` est le réglage d'atelier lui-même, dont `effectif` + `paliers`
- * est la forme lisible.
- *
- * ⚠️ **`restants` n'est PAS le nombre d'archers en lice** : c'est `paliers[-1]`, l'effectif à la
- * **fin** du format — une constante de la phase. Le compte de ceux qui tirent encore se dérive de
- * `tireurs` (`nbEnLice`, dans `publique.ts`). L'avoir confondu a coûté un défaut bloquant en revue. */
-export type ProjectionPublique = Omit<
-  Projection,
-  'volees' | 'fleches_par_volee' | 'manches_ignorees' | 'eliminations' | 'manches_jouables'
->
-
-/** La photo **rédigée** d'un Big Shoot Off — appli publique et écran de salle (E05US031). */
+ * ⚠️ **Cette forme n'existe que depuis E05US031.** Le Big Shoot Off était le seul des trois formats
+ * sans arbre à n'avoir aucune surface de lecture ouverte : sa route `/etat/` était scoreur, et
+ * l'onglet public restait donc muet pendant une finale. */
 export interface EtatBigShootOffPublic {
   phase_id: number
-  projection: ProjectionPublique
+  format: FormatBigShootOff
   tireurs: TireurPublic[]
   manches: ManchePublique[]
   termine: boolean
-  barrage: BarragePublic | null
+  barrage: BarrageEnAttente | null
 }
 
-/** L'état **rédigé** — lecture **ouverte et anonyme**, comme `/poules/etat` et `/suisse/etat`. */
-export function getEtatBigShootOffPublic(
+/** L'état **en consultation** — contenu restreint, lecture ouverte. */
+export function getEtatBigShootOff(
   tournoiId: number,
   phaseId: number,
 ): Promise<EtatBigShootOffPublic> {
@@ -134,12 +130,7 @@ export function getEtatBigShootOffPublic(
   )
 }
 
-/** L'état **de saisie** : jeton scoreur, et borné au tournoi du scoreur (403 sinon).
- *
- * ⚠️ **La route s'appelait `/etat` jusqu'au 17/08/2026** (E05US031, ADR-0089 §5). Elle a pris le nom
- * que les poules et le suisse donnent à leur lecture de saisie, et rendu `/etat` au public : trois
- * formats jumeaux portaient deux conventions, dont une qui plaçait une lecture protégée derrière le
- * nom de la lecture ouverte. */
+/** L'état **de saisie** — l'adressage du pavé en plus. Scoreur, dans son tournoi. */
 export function getEtatBigShootOffSaisie(
   tournoiId: number,
   phaseId: number,

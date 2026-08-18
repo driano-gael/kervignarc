@@ -9,7 +9,6 @@
 // Un calcul dont la recette dit « vérifiez que… » mérite un test.
 
 import type { Duelliste } from '../saisie-duels/api'
-import type { Place } from '../../shared/salle/place'
 import type { RencontreSuisse } from './api'
 
 /** La forme d'une ronde dont ce module a besoin — commune aux deux vues (saisie et rédigée).
@@ -50,18 +49,11 @@ export function etatRencontre(rencontre: RencontreSuisse): string {
 
 /** Des places de tir en toutes lettres, **groupées par cible**.
  *
- * Un bloc de couloirs est contigu dans la salle *mise à plat*, pas sur une seule cible : les deux
- * places d'une rencontre peuvent chevaucher deux cibles.
+ * ⚠️ **Domiciliée dans `shared/salle/place.ts` depuis E05US031** — auprès du type qu'elle manipule,
+ * l'onglet « En cours » en ayant besoin pour les poules autant que pour le suisse. Ré-exportée ici
+ * pour qu'aucun import existant ne casse ; les appelants neufs prennent le chemin `shared/`.
  */
-export function decrirePlaces(places: readonly Place[]): string {
-  const parCible = new Map<number, string[]>()
-  for (const [cible, couloir] of places) {
-    parCible.set(cible, [...(parCible.get(cible) ?? []), couloir])
-  }
-  return [...parCible.entries()]
-    .map(([cible, couloirs]) => `cible ${cible} : ${couloirs.join(', ')}`)
-    .join(' · ')
-}
+export { decrirePlaces } from '../../shared/salle/place'
 
 /** Ce que l'écran a à dire **sous** la liste des rondes — le CA de l'attente nommée.
  *

@@ -1,10 +1,4 @@
-// Hooks React Query du **Big Shoot Off** (E05US028) — état serveur d'une phase.//
-// `# DETTE-031` — cette lecture **recompose la phase entière à chaque appel**, chaîne amont
-// comprise. Depuis E05US031 elle est servie au **public** et à l'écran de salle : la charge n'est
-// plus bornée par le nombre de postes de travail mais par le nombre de spectateurs. Aggravé par
-// `shared/realtime/useRealtime`, qui invalide **sans clé** — chaque score validé refetch tout, chez
-// tout le monde. Cf. le registre : la résorption est une mémoïsation par `(tournoi_id, version)`,
-// pas un cache posé au jugé.
+// Hooks React Query du **Big Shoot Off** (E05US028) — état serveur d'une phase.
 //
 // ⚠️ **Les mutations vivent ici**, contrairement aux poules — dont les rencontres s'écrivent par
 // `features/saisie-duels` parce qu'elles *sont* des duels (ADR-0083 §7). Une volée collective n'a
@@ -23,33 +17,42 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { nouvelIdentifiant } from '../saisie/volees'
 
 import {
-  getEtatBigShootOffPublic,
+  getEtatBigShootOff,
   getEtatBigShootOffSaisie,
   saisirVolee,
   validerManche,
   type EtatBigShootOff,
 } from './api'
 
-/** La clé de cache de l'état **de saisie**. Domiciliée **ici** : c'est cette feature qui l'écrit.
- *
- * ⚠️ **Deux caches, deux clés** depuis E05US031 : la lecture publique et la lecture de saisie ne
- * portent pas le même contenu (ADR-0089 §5), donc les confondre ferait servir un DTO restreint à un
- * pavé de saisie — ou l'inverse. C'est le partage que les poules et le suisse tiennent déjà
- * (`cleSuissePublique` / `cleSuisseSaisie`). */
-export function cleBigShootOffSaisie(tournoiId: number, phaseId: number) {
+/** La clé de cache de l'état **de saisie**. Domiciliée **ici** : c'est cette feature qui l'écrit. */
+export function cleBigShootOff(tournoiId: number, phaseId: number) {
   return ['big-shoot-off', tournoiId, phaseId] as const
 }
 
-/** La clé de cache de l'état **rédigé** — appli publique, écran de salle. */
+/** La clé de cache de l'état **rédigé** (E05US031).
+ *
+ * ⚠️ **Distincte de celle de saisie, et il le faut** : les deux routes rendent deux formes du même
+ * objet. Une clé commune ferait écrire la photo du scoreur — `prochaine_volee` comprise — dans le
+ * cache que lit l'appli publique ; le DTO restreint côté serveur ne servirait alors plus à rien,
+ * le front l'ayant contourné tout seul.
+ *
+ * Conséquence à connaître : les deux mutations ci-dessous écrivent **la clé de saisie**, pas
+ * celle-ci. La vue publique se remet à jour par l'invalidation globale de `useRealtime`, qui part de
+ * toute écriture serveur — même chemin que les poules et le tableau, et non un cas particulier. */
 export function cleBigShootOffPublique(tournoiId: number, phaseId: number) {
-  return ['big-shoot-off-public', tournoiId, phaseId] as const
+  return ['big-shoot-off-publique', tournoiId, phaseId] as const
 }
 
-/** L'état **de saisie** de la phase — scoreur, dans son tournoi. */
-export function useEtatBigShootOffSaisie(tournoiId: number, phaseId: number | null) {
+/** L'état **en consultation** — contenu restreint, lecture ouverte. Public, salle, organisation.
+ *
+ * ⚠️ `# DETTE-031` **élargie par E05US031** : `ServiceBigShootOff.etat` rejoue la phase entière à
+ * chaque lecture, et cette lecture-ci part désormais d'une route **ouverte**, montée par l'onglet
+ * public en autant d'exemplaires qu'il y a de spectateurs. Aucun `refetchInterval` : le
+ * rafraîchissement vient de l'invalidation globale de `useRealtime`, donc des écritures réelles. */
+export function useEtatBigShootOff(tournoiId: number, phaseId: number | null) {
   return useQuery({
-    queryKey: cleBigShootOffSaisie(tournoiId, phaseId ?? 0),
-    queryFn: () => getEtatBigShootOffSaisie(tournoiId, phaseId as number),
+    queryKey: cleBigShootOffPublique(tournoiId, phaseId ?? 0),
+    queryFn: () => getEtatBigShootOff(tournoiId, phaseId as number),
     enabled: phaseId !== null,
     // Même parti que les poules et le tableau : un refus déterministe (409 phase non réglée) ne
     // gagne rien à être réessayé, et un refetch au focus écraserait une frappe en cours.
@@ -58,11 +61,13 @@ export function useEtatBigShootOffSaisie(tournoiId: number, phaseId: number | nu
   })
 }
 
-/** L'état **rédigé** — lecture ouverte. */
-export function useEtatBigShootOffPublic(tournoiId: number, phaseId: number | null) {
+/** L'état **de saisie** — scoreur, dans son tournoi. */
+export function useEtatBigShootOffSaisie(tournoiId: number, phaseId: number | null) {
   return useQuery({
-    queryKey: cleBigShootOffPublique(tournoiId, phaseId ?? 0),
-    queryFn: () => getEtatBigShootOffPublic(tournoiId, phaseId as number),
+    queryKey: cleBigShootOff(tournoiId, phaseId ?? 0),
+    // `as number` sûr **parce que** `enabled` ci-dessous désactive la requête sur `null` — le
+    // compilateur ne peut pas le voir, d'où la mention (règle 4 : un `as` se justifie).
+    queryFn: () => getEtatBigShootOffSaisie(tournoiId, phaseId as number),
     enabled: phaseId !== null,
     retry: false,
     refetchOnWindowFocus: false,
@@ -88,7 +93,7 @@ export function useSaisirVolee(tournoiId: number, phaseId: number) {
     mutationFn: (corps: { archerId: number; numero: number; valeurs: string[] }) =>
       saisirVolee({ tournoiId, phaseId, ...corps, identifiantSaisie: nouvelIdentifiant() }),
     onSuccess: (etat: EtatBigShootOff) =>
-      client.setQueryData(cleBigShootOffSaisie(tournoiId, phaseId), etat),
+      client.setQueryData(cleBigShootOff(tournoiId, phaseId), etat),
   })
 }
 
@@ -99,6 +104,6 @@ export function useValiderManche(tournoiId: number, phaseId: number) {
     mutationFn: (corps: { archerId: number }) =>
       validerManche({ tournoiId, phaseId, ...corps, identifiantSaisie: nouvelIdentifiant() }),
     onSuccess: (etat: EtatBigShootOff) =>
-      client.setQueryData(cleBigShootOffSaisie(tournoiId, phaseId), etat),
+      client.setQueryData(cleBigShootOff(tournoiId, phaseId), etat),
   })
 }

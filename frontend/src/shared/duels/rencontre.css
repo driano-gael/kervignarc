@@ -1,0 +1,62 @@
+/* --- La ligne d'une rencontre rédigée (E05US031, ADR-0089) ---------------------------------------
+   Les règles que `shared/duels/LigneRencontre.tsx` consomme, domiciliées **auprès de lui**.
+
+   ⚠️ **Ce fichier est né d'un correctif de revue** (axes A et adversarial), et le défaut qu'il
+   referme vaut d'être connu : le composant vivait dans `shared/` mais n'était stylé que par
+   `features/en-cours/en-cours.css`. C'est la même dépendance que celle que `shared/duels/rencontre.ts`
+   refuse explicitement pour les imports — l'inversion `shared/ → features/` que
+   `shared/salle/place.ts` documente comme la seule du front —, simplement exprimée dans un langage
+   qu'aucune porte mécanique ne lit. Sorti de la feature, le composant rendait une liste nue : ni
+   liseré d'archer suivi, ni score tabulaire, ni séparateur.
+
+   Le dépôt avait déjà tranché dans ce sens : `deroule__table` vit dans `shared/schema-braquets/`,
+   `carte__etat` dans `app/App.css`. Une classe consommée depuis `shared/` vit dans `shared/`.
+
+   Les noms de classe sont **conservés** (`encours__*`) : les renommer en `rencontre__*` serait plus
+   honnête mais élargirait le diff à quatre composants pour un gain nul sur le CA. C'est le point
+   d'entrée du jour où l'on unifiera vraiment (cf. `DETTE-072`).
+
+   Tailles en **em**, jamais en px : `.salle` porte une échelle typographique dédiée (E07US004) et
+   des px figés y resteraient illisibles de loin. */
+
+/* Deux noms encadrant le score, et les compléments (places, état) qui passent à la ligne sur mobile
+   plutôt que de comprimer les noms — c'est le nom qu'on cherche. */
+.encours__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Un archer suivi tire ici (ADR-0079). Marqué par un **liseré**, pas par une couleur de fond : la
+   charte réserve les aplats aux états, et un aplat de plus rendrait la liste illisible dès que la
+   moitié des lignes concerne un archer suivi. */
+.encours__ligne--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+}
+
+/* ⚠️ Variante **cellule de tableau**, pour le Big Shoot Off (correctif de revue, axes B et C1) :
+   sur un `<tr>`, `padding-left` n'a aucun effet et `border-left` ne rend de façon fiable qu'en
+   `border-collapse`. Le marquage se pose donc sur la première `<td>`. */
+.encours__cellule--suivi {
+  border-left: 3px solid var(--brand-border);
+  padding-left: 0.5em;
+}
+
+.encours__vs {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.encours__gagnant {
+  font-weight: 600;
+}
+
+.encours__places,
+.encours__etat {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}

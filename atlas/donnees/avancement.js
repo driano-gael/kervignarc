@@ -4,7 +4,7 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
-   "identifiant": "070",
+   "identifiant": "072",
    "introduite_par": [
     "E05US031"
    ],
@@ -272,7 +272,9 @@ window.ATLAS.avancement = {
     "E05US031"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E05US031"
+   ],
    "severite": "mineur"
   },
   {
@@ -582,6 +584,19 @@ window.ATLAS.avancement = {
    "ouverte": true,
    "resorption_us": [],
    "severite": "majeur"
+  },
+  {
+   "identifiant": "071",
+   "introduite_par": [
+    "E01US025",
+    "E05US031"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E05US031",
+    "E10US009"
+   ],
+   "severite": "mineur"
   }
  ],
  "entete": {
@@ -1674,7 +1689,8 @@ window.ATLAS.avancement = {
     "026",
     "047",
     "048",
-    "049"
+    "049",
+    "071"
    ],
    "dettes_resorbees": [],
    "epic": "01",
@@ -2596,13 +2612,17 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0089"
+    "0064"
    ],
    "dettes_introduites": [
     "031",
-    "070"
+    "071",
+    "072"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "031",
+    "071"
+   ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
    "etat": "✅",
@@ -2616,13 +2636,14 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0087"
+    "0087",
+    "0089"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
-   "etat": "🎯",
+   "etat": "⬜",
    "identifiant": "E05US032",
    "sections": [
     "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (18/21)**"
@@ -4527,7 +4548,7 @@ window.ATLAS.avancement = {
     },
     {
      "comptee": true,
-     "etat": "🎯",
+     "etat": "⬜",
      "identifiant": "E05US032",
      "titre": "L'organisateur ouvre la ronde suivante"
     },

@@ -1,153 +1,149 @@
-// Vue publique du **Big Shoot Off** (E05US031, ADR-0089 §1) — appli publique et écran de salle.
+// La vue **publique** d'un Big Shoot Off (E05US031, ADR-0089).
 //
-// ⚠️ **Vue propre, et non la forme commune des formats appariés.** Une manche de Big Shoot Off est
-// un **tir collectif sans adversaire** : pas de rencontre, pas d'appariement, pas de vainqueur de
-// rencontre. La plier dans `shared/rencontres/` demanderait d'y inventer des champs vides porteurs
-// de sens implicite — le défaut nommé par ADR-0089 §1, et déjà par ADR-0064 §2 (*« quand une valeur
-// doit signifier deux choses selon le contexte, elle finit par mentir dans l'un des deux »*).
+// Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
+// salle, toutes deux montées par l'aiguilleur `features/en-cours/`.
 //
-// Ce que le format donne à lire tient en trois choses, et l'écran ne dit rien d'autre : **l'échelle**
-// annoncée (12 → 8 → 6 → 5), **qui est encore en lice**, et **ce que chacun a marqué manche par
-// manche**. Le reste — quelle volée saisir, combien de flèches — est de la saisie.
+// ⚠️ **« Trois surfaces » jusqu'à la revue** (axe C2) : la formule ajoutait l'écran d'organisation,
+// qui ne monte pas cette vue. C'est cette liste qui **justifie** la contrainte « cette vue ne lit
+// pas le store » ; l'appuyer sur une surface imaginaire la rend invérifiable.
+//
+// **L'historique est ici gratuit, comme pour les poules** : une finale se lit en tableau — un
+// tireur par ligne, une manche par colonne —, donc toutes les manches jouées sont visibles
+// d'emblée. Aucune navigation à bâtir : c'est la forme du format qui la rend inutile.
+//
+// ⚠️ **La lecture est celle du sort, pas celle du score.** Ce qu'un spectateur vient chercher ici
+// est « qui reste en lice » et « qui est sorti à quel rang » — les totaux de manche ne sont qu'un
+// moyen de le comprendre. D'où l'ordre des colonnes : le rang d'abord, le détail ensuite.
 
+import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
-import {
-  estAchevee,
-  estSorti,
-  libelleSort,
-  lignesTireurs,
-  nbEnLice,
-  type LigneTireur,
-} from './publique'
-import type { EtatBigShootOffPublic } from './api'
+import type { TireurPublic } from './api'
+import { useEtatBigShootOff } from './hooks'
 
 export function VueBigShootOffPublique({
-  etat,
-  interactif = true,
+  tournoiId,
+  phaseId,
   mode = 'tout',
   suivis = [],
 }: {
-  etat: EtatBigShootOffPublic
-  interactif?: boolean
+  tournoiId: number
+  phaseId: number
   mode?: ModeAffichage
   suivis?: number[]
 }) {
-  // Sur l'écran de salle il n'y a personne à suivre (CA E07US004) ; dans l'appli publique, c'est
-  // l'interrupteur d'en-tête qui décide (ADR-0079). Jamais le store, ce composant sert les deux.
-  const centrerSurSuivis = interactif && mode === 'suivis'
-  const toutes = lignesTireurs(etat)
-  const lignes = centrerSurSuivis ? toutes.filter((l) => suivis.includes(l.archer_id)) : toutes
-  const nbManches = etat.manches.length
+  const etat = useEtatBigShootOff(tournoiId, phaseId)
+  const donnees = etat.data
+
+  if (donnees === undefined) {
+    return <p className="carte__etat">{messageDeLecture(etat)}</p>
+  }
+  if (donnees.tireurs.length === 0) {
+    return <p className="carte__etat">Les finalistes ne sont pas encore connus.</p>
+  }
+
+  const retenus =
+    mode === 'suivis'
+      ? donnees.tireurs.filter((t) => suivis.includes(t.archer_id))
+      : donnees.tireurs
+  if (retenus.length === 0) {
+    // ⚠️ **Aucun de vos archers ici ≠ aucun finaliste** (ADR-0079). Le cas est même le plus
+    // fréquent des trois formats : une finale n'engage qu'une poignée d'archers.
+    return (
+      <p className="carte__etat">
+        Aucun des archers que vous suivez n’est en finale. Passez à « Tout le tournoi » pour la
+        suivre quand même.
+      </p>
+    )
+  }
+
+  // Les manches **déjà jouées** portent les colonnes : en afficher de vides ferait lire une finale
+  // plus longue qu'elle ne le sera, le réglage pouvant dépasser l'effectif (`manches_ignorees`).
+  const jouees = donnees.manches.filter((manche) => manche.jouee)
 
   return (
-    <div className="bso-public">
-      <Echelle etat={etat} />
+    <div className="encours">
+      <p className="encours__entete">
+        {/* ⚠️ **`paliers` commence APRÈS la première manche** : `paliers_pour` rend « ce qu'il reste
+            après chaque manche réellement jouable », donc `8 → 6 → 5` là où la salle attend
+            `12 → 8 → 6 → 5`. L'effectif de départ se remet en tête — c'est la forme que la
+            docstring du domaine, `shared/phases/bigShootOff.ts` et la fiche de recette emploient
+            tous les trois (relevé en revue, axe C1). */}
+        {[donnees.format.effectif, ...donnees.format.paliers].join(' → ')} · {donnees.format.volees}{' '}
+        volée(s) de {donnees.format.fleches_par_volee} flèches
+        {/* ⚠️ **PAS `format.restants`** : c'est le « K dérivé », combien il restera **à la fin**
+            (`domain/big_shoot_off.py::restants_pour` = `paliers[-1]`). L'afficher ici annonçait
+            « 5 encore en lice » dès la première manche, avec 12 archers sur les cibles, et le
+            chiffre ne bougeait pas de la finale — sur l'information même que cette vue existe pour
+            donner. Bloquant relevé en revue (axe C1) ; aucun autre axe ne pouvait le voir, le DTO
+            étant conforme et cette vue n'ayant alors aucun test de rendu.
+            Compté sur `donnees.tireurs` et **jamais** sur `retenus`, qui est filtré par
+            « mes archers » — sinon le total dépendrait de qui l'on suit. */}
+        {donnees.termine
+          ? ' · terminé'
+          : ` · ${donnees.tireurs.filter((t) => t.en_lice).length} encore en lice`}
+      </p>
 
-      {/* Le **barrage suspend la phase**, et c'est lui qui explique pourquoi rien n'avance. Le taire
-          laisserait le public devant une finale figée sans raison visible. */}
-      {etat.barrage !== null && (
-        <p className="bso-public__barrage">
-          Égalité à départager : {etat.barrage.noms.join(', ')} —{' '}
-          {etat.barrage.places === 1 ? 'une place' : `${etat.barrage.places} places`} en jeu. La
-          manche suivante attend ce barrage.
-        </p>
-      )}
-
-      {centrerSurSuivis && suivis.length === 0 ? (
+      {/* Une égalité **suspend** la phase : sans ce mot, la salle voit une manche saisie et validée
+          qui n'élimine personne, et rien n'explique pourquoi la suivante ne part pas. */}
+      {donnees.barrage !== null && (
         <p className="carte__etat">
-          Aucun archer suivi. Ajoutez-en dans l’onglet « Suivi » pour voir son parcours ici, ou
-          repassez l’affichage sur « Tout le tournoi ».
+          Barrage en cours entre {donnees.barrage.noms.join(', ')} pour{' '}
+          {donnees.barrage.places === 1 ? 'une place' : `${donnees.barrage.places} places`}.
         </p>
-      ) : lignes.length === 0 ? (
-        // ⚠️ « Aucun de vos archers ici » ≠ « personne en finale » (ADR-0089 §6) : une finale à six
-        // ne contient presque jamais les archers qu'on suit, et confondre les deux vides ferait
-        // croire à un écran cassé.
-        <p className="carte__etat">
-          {centrerSurSuivis
-            ? 'Aucun des archers que vous suivez n’est en finale. Passez à « Tout le tournoi » pour voir les finalistes.'
-            : 'Aucun finaliste n’est encore désigné pour cette phase.'}
-        </p>
-      ) : (
-        <Finalistes lignes={lignes} nbManches={nbManches} etat={etat} />
       )}
-    </div>
-  )
-}
 
-/** L'échelle annoncée du format : « 12 → 8 → 6 → 5 ». C'est ce qui rend le format lisible d'emblée
- * — sans elle, un spectateur voit des archers disparaître sans savoir combien sortent à chaque fois. */
-function Echelle({ etat }: { etat: EtatBigShootOffPublic }) {
-  const { effectif, paliers } = etat.projection
-  const enLice = nbEnLice(etat)
-  // ⚠️ `termine` est rendu **vrai avant le premier tir** dans deux cas — phase encore vide (l'état
-  // nominal du matin) et réglage injouable —, et le badge « terminé » s'affichait alors au-dessus
-  // de « Aucun finaliste n'est encore désigné » : deux affirmations contradictoires, dont une
-  // fausse, sur l'écran projeté. `estAchevee` vit dans `publique.ts` pour que le JSX et les
-  // libellés partagent **une seule** notion d'achevé (ils en avaient chacun la leur).
-  const acheve = estAchevee(etat)
-  return (
-    <p className="bso-public__echelle">
-      <span className="bso-public__palier">{effectif}</span>
-      {/* Clé = l'index, et c'est **correct ici** : deux paliers peuvent valoir le même nombre (une
-          manche qui n'élimine personne), donc le rang dans la suite est la seule identité stable. */}
-      {paliers.map((palier, index) => (
-        <span key={index} className="bso-public__palier">
-          {palier}
-        </span>
-      ))}
-      {acheve && <span className="bso-public__termine">terminé</span>}
-      {!acheve && enLice > 0 && (
-        <span className="bso-public__restants">
-          {enLice === 1 ? '1 archer en lice' : `${enLice} archers en lice`}
-        </span>
-      )}
-    </p>
-  )
-}
-
-function Finalistes({
-  lignes,
-  nbManches,
-  etat,
-}: {
-  lignes: LigneTireur[]
-  nbManches: number
-  etat: EtatBigShootOffPublic
-}) {
-  return (
-    // Le tableau défile dans son **propre** conteneur : au-delà de quatre manches, il déborde de
-    // 360 px, et faire défiler la page entière casserait la lecture de l'échelle au-dessus.
-    <div className="bso-public__table-defilante">
-      <table className="bso-public__table">
+      <table className="deroule__table">
+        <caption>Finalistes</caption>
         <thead>
           <tr>
-            <th scope="col">Archer</th>
-            {Array.from({ length: nbManches }, (_, index) => (
-              <th key={index} scope="col">
-                M{index + 1}
-              </th>
+            <th>Archer</th>
+            <th>Sort</th>
+            {jouees.map((manche) => (
+              <th key={manche.numero}>M{manche.numero}</th>
             ))}
-            <th scope="col">Sort</th>
           </tr>
         </thead>
         <tbody>
-          {lignes.map((ligne) => (
-            <tr key={ligne.archer_id} className={estSorti(ligne) ? 'bso-public__sorti' : undefined}>
-              <td>{ligne.nom}</td>
-              {Array.from({ length: nbManches }, (_, index) => (
-                // `scores` ne porte que les manches **entièrement validées** : un total partiel
-                // ferait lire « 12 » pour une manche dont deux volées manquent, et le spectateur
-                // croirait l'archer en difficulté. Une manche non validée affiche un tiret.
-                <td key={index}>{ligne.scores[index] ?? '—'}</td>
+          {retenus.map((tireur) => (
+            // ⚠️ Le liseré se pose sur la **première cellule**, pas sur le `<tr>` (correctif de
+            // revue, axes B et C1) : `padding-left` n'a aucun effet sur une ligne de tableau, et
+            // `border-left` n'y rend de façon fiable qu'en `border-collapse`. La recette promet un
+            // liseré (scénario 6) ; sur `<tr>` il était au mieux collé au texte.
+            <tr key={tireur.archer_id}>
+              <td
+                className={
+                  suivis.includes(tireur.archer_id) ? 'encours__cellule--suivi' : undefined
+                }
+              >
+                {`${tireur.prenom} ${tireur.nom}`.trim()}
+              </td>
+              <td>{decrireSort(tireur)}</td>
+              {jouees.map((manche) => (
+                // `scores` ne porte que les manches **entièrement validées** : une case vide dit
+                // « pas encore scellée », jamais « zéro ». Un `0` inventé ferait croire à un tir
+                // manqué sur un archer dont la feuille est simplement en cours de validation.
+                //
+                // ⚠️ Indexé par `manche.numero - 1`, **pas** par le rang dans `jouees` (correctif
+                // de revue, axe C1). L'alignement des deux tenait aujourd'hui — `jouee` est un
+                // préfixe sans trou — mais c'était la coïncidence de deux constructions
+                // indépendantes : le jour où une manche serait sautée, les scores glisseraient
+                // d'une colonne sans qu'aucun test ne bronche. On exprime la correspondance.
+                <td key={manche.numero}>{tireur.scores[manche.numero - 1] ?? '—'}</td>
               ))}
-              {/* Un mot, jamais une couleur seule (`DV-03`). Le libellé vit dans `publique.ts` :
-                  « en lice » et « vainqueur » se distinguent par `termine`, que le JSX n'a pas à
-                  arbitrer (et ne le faisait pas — le champion restait « En lice »). */}
-              <td>{libelleSort(ligne, etat)}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   )
+}
+
+/** Le sort d'un finaliste en toutes lettres.
+ *
+ * `rang` est `null` tant que l'archer est en lice — un rang annoncé avant la sortie serait un faux
+ * départ, et c'est le serveur qui tient cette règle (cf. `TireurAffiche`). L'écran se contente donc
+ * de la rendre lisible. */
+function decrireSort(tireur: TireurPublic): string {
+  if (tireur.en_lice) return 'en lice'
+  return tireur.rang === null ? 'sorti' : `${tireur.rang}ᵉ`
 }

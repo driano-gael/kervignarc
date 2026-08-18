@@ -13,29 +13,24 @@ import { fetchJson } from '../../shared/api/client'
  * CA d'E07US004 en entier** : le catalogue s'est élargi trois fois — palmarès (E06US004),
  * affectations (E07US008), tableaux (E07US005) — **sans une seule migration**, la valeur persistée
  * étant la chaîne et non un rang. La règle qui a tenu à chaque fois : on n'inscrit une vue qu'une
- * fois son écran capable de l'afficher, sinon le réglage programme une page vide. */
+ * fois son écran capable de l'afficher, sinon le réglage programme une page vide.
+ *
+ * ⚠️ Le quatrième mouvement, lui, **a coûté une migration** (`0047`, E05US031) : `tableaux` est
+ * devenue `en_cours` en s'élargissant aux trois formats sans arbre. Persister la chaîne rend un
+ * **ajout** gratuit, pas un **renommage**. */
 export type VueEcran =
-  'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'tableaux'
+  'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'en_cours'
 
 export const LIBELLE_VUE: Record<VueEcran, string> = {
   classement: 'Classement',
   plan_cibles: 'Plan de cibles',
   suivi_deroule: 'Suivi du déroulé',
   affectations: 'Affectations',
-  // ⚠️ **« Rencontres » depuis E05US031** (ADR-0089 §3) — le libellé s'élargit, **la clé reste
-  // `tableaux`**. La vue ne projette plus le seul arbre de duels mais la phase qui se joue, quelle
-  // que soit sa forme : poules, système suisse, Big Shoot Off. « Tableaux » était devenu faux pour
-  // trois formats sur quatre.
-  //
-  // La clé n'est pas renommée parce qu'elle est **persistée** sur chaque poste-écran (ADR-0064 §3 :
-  // le déroulé de vues est un réglage de préparation, en base). La changer imposerait une migration
-  // de données pour un mot, et casserait tout déroulé déjà composé. L'écart assumé entre la clé
-  // technique et le libellé métier est inscrit au registre (`DETTE-070`) : non écrit, il se
-  // redécouvre en cherchant pourquoi un `grep tableaux` ne trouve rien.
-  //
-  // Sur l'écran projeté, la vue montre la phase **qui se joue** — personne n'est là pour en choisir
-  // une.
-  tableaux: 'Rencontres',
+  // « En cours » et non « Phases » : c'est le mot que l'organisateur reconnaît sur une liste de
+  // vues à programmer, et le même que l'onglet public (règle 3). « Tableaux » était juste tant que
+  // la vue ne montrait qu'un arbre ; elle montre désormais la phase qui se joue, quel que soit son
+  // format (E05US031, ADR-0089). Sur l'écran projeté, personne n'est là pour en choisir une.
+  en_cours: 'En cours',
   // « Palmarès » et non « Podium » : la vue porte les podiums **et** le classement final complet.
   // L'appeler podium ferait croire à quatre lignes, et l'organisateur qui cherche le classement de
   // fin de journée ne le programmerait pas.
@@ -47,7 +42,7 @@ export const TOUTES_LES_VUES: VueEcran[] = [
   'plan_cibles',
   'suivi_deroule',
   'affectations',
-  'tableaux',
+  'en_cours',
   'palmares',
 ]
 

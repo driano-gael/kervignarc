@@ -76,12 +76,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0083"
   },
   {
-   "code": "date-non-canonique",
-   "message": "date « 17/08/2026 » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
-   "severite": "signal",
-   "sujet": "ADR-0089"
-  },
-  {
    "code": "etat-contradictoire",
    "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (18/21)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
    "severite": "signal",
@@ -95,7 +89,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
-   "message": "et 22 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, competition, departs, duels, forfaits, inscriptions, palmares, patrimoine, phases, phases-publiques, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "message": "et 22 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, competition, departs, duels, en-cours, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "archers"
   },
@@ -198,6 +192,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 32
+  "signaux": 31
  }
 };

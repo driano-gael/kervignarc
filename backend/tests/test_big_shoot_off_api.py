@@ -183,11 +183,13 @@ def test_la_projection_est_reservee_a_l_admin(app_bso: FastAPI) -> None:
     assert reponse.status_code == 401, reponse.text
 
 
-def test_l_etat_de_saisie_est_reserve_au_scoreur(app_bso: FastAPI) -> None:
-    """L'état **de saisie** porte de quoi tirer : sans jeton scoreur, 401.
+def test_la_saisie_est_reservee_au_scoreur(app_bso: FastAPI) -> None:
+    """`/saisie/` porte l'adressage du pavé (`prochaine_volee`, `volees`) : elle reste restreinte.
 
-    ⚠️ C'est l'ancienne route `/etat` (renommée en E05US031, ADR-0089 §5). Ce test garde son objet :
-    ce qui était protégé le reste, sous le nom que ses formats jumeaux emploient.
+    ⚠️ Ce test gardait `/etat/` jusqu'à E05US031, sur la justification « les scores manche par
+    manche, que le public n'a pas à lire avant validation ». La justification était fausse — cf.
+    `test_l_etat_est_ouvert_et_ne_dit_rien_de_la_saisie` juste en dessous — mais la restriction
+    reste juste pour une **autre** raison, et c'est celle-ci qu'il faut garder.
     """
     with TestClient(app_bso) as client:
         scn = Scenario(app_bso)
@@ -197,11 +199,13 @@ def test_l_etat_de_saisie_est_reserve_au_scoreur(app_bso: FastAPI) -> None:
     assert reponse.status_code == 401, reponse.text
 
 
-def test_l_etat_public_se_lit_sans_aucun_jeton(app_bso: FastAPI) -> None:
-    """La lecture publique est **ouverte et anonyme**, comme `/poules/etat` et `/suisse/etat`.
+def test_l_etat_est_ouvert_et_ne_dit_rien_de_la_saisie(app_bso: FastAPI) -> None:
+    """`/etat/` se lit **sans jeton** — c'est ce que l'appli publique et l'écran de salle affichent.
 
-    C'est le CA d'E05US031 : sans elle, le Big Shoot Off était le seul des trois formats sans arbre
-    qu'aucun spectateur ne pouvait suivre.
+    L'assertion porte sur ce que le DTO **ne contient pas** autant que sur ce qu'il contient :
+    c'est la seule forme qui détecte la dérive redoutée par `TireurPubliqueReponse` — un champ
+    ajouté au DTO du scoreur qui se serait propagé ici. Le format est servi sous `format` et non
+    `projection` : l'aperçu d'atelier (`manches_ignorees`) ne franchit pas la frontière.
     """
     with TestClient(app_bso) as client:
         scn = Scenario(app_bso)
@@ -211,113 +215,20 @@ def test_l_etat_public_se_lit_sans_aucun_jeton(app_bso: FastAPI) -> None:
     assert reponse.status_code == 200, reponse.text
     corps = reponse.json()
     assert corps["phase_id"] == scn.phase_id
-    assert len(corps["tireurs"]) == 4
-    # ⚠️ « Personne n'est encore sorti » se lit sur `rang`, **pas** sur `en_lice` : ce dernier a
-    # quitté le contrat public en revue (aucune vue ne le lisait, et il redisait ce que `rang is
-    # None` dit déjà). Le domaine n'attribue un rang qu'à la sortie.
-    assert all(tireur["rang"] is None for tireur in corps["tireurs"])
-
-
-def test_le_dto_public_ne_porte_aucune_affordance_de_saisie(app_bso: FastAPI) -> None:
-    """Règle 6 : le DTO public est un **contrat distinct**, pas l'objet interne appauvri.
-
-    Les trois champs vérifiés ici sont ceux qu'ADR-0089 §5 retire nommément. Le test porte sur leur
-    **absence** et non sur leur valeur : un `null` poli laisserait la porte ouverte à ce qu'un
-    futur `de_etat` les repeuple sans que rien ne rougisse.
-    """
-    with TestClient(app_bso) as client:
-        scn = Scenario(app_bso)
-
-        corps = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}").json()
-
-    assert "prochaine_volee" not in corps["tireurs"][0]
-    assert "volees" not in corps["manches"][0]
-    # `volees` / `fleches_par_volee` sont le **format du tir** : seul le pavé de saisie en a besoin.
-    assert "volees" not in corps["projection"]
-    assert "fleches_par_volee" not in corps["projection"]
-    # `manches_ignorees` est un avertissement d'**atelier**, adressé à qui règle la phase.
-    assert "manches_ignorees" not in corps["projection"]
-    # Retirés en revue : servis sans qu'aucune vue ne les lise, et `eliminations` **est** le réglage
-    # de sortants lui-même — `effectif` + `paliers` en sont déjà la forme lisible.
-    assert "eliminations" not in corps["projection"]
-    assert "manches_jouables" not in corps["projection"]
-    # `en_lice` redisait `rang is None` : deux champs pour un fait finissent par diverger.
-    assert "en_lice" not in corps["tireurs"][0]
-
-
-def test_l_etat_de_saisie_sert_bien_le_dto_complet_au_scoreur(
-    app_bso: FastAPI, connecter_admin: ConnecterAdmin
-) -> None:
-    """Le pendant **positif** du test d'absence : ce que le public perd, le scoreur le garde.
-
-    ⚠️ Les deux tests qui touchaient `/saisie` ne vérifiaient qu'un **refus** (401, 403). Le chemin
-    était donc prouvé existant, mais rien ne prouvait qu'il sert encore le DTO complet après le
-    renommage — or c'est là que vit `prochaine_volee`, le champ dont l'absence avait rendu une
-    finale injouable en E05US028. Relevé en revue.
-    """
-    with TestClient(app_bso) as client:
-        scn = Scenario(app_bso)
-        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
-
-        reponse = client.get(
-            f"/api/v1/big-shoot-off/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
-        )
-
-    assert reponse.status_code == 200, reponse.text
-    corps = reponse.json()
-    assert "prochaine_volee" in corps["tireurs"][0]
-    assert "fleches_par_volee" in corps["projection"]
-    assert "volees" in corps["projection"]
-
-
-def test_le_barrage_public_porte_ses_trois_champs_et_rien_d_autre(
-    app_bso: FastAPI, connecter_admin: ConnecterAdmin
-) -> None:
-    """Le barrage est servi **anonymement**, par un DTO qui lui est propre.
-
-    ⚠️ **C'est le test qui donne sa raison d'être à `BarragePublicReponse`.** Cette classe dédouble
-    volontairement `BarrageEnAttenteReponse` — identique aujourd'hui — pour qu'un champ ajouté
-    demain au barrage du scoreur (flèches de départage, nom du validateur, horodatage) n'atterrisse
-    pas sur une route anonyme. Sans une assertion sur l'ensemble **exact** des clés, la garantie
-    n'était portée par rien : remettre la classe partagée laissait la suite verte (relevé à la 2ᵉ
-    passe de revue).
-
-    Le barrage est provoqué par le cas réel : quatre archers au **même** score sur une manche qui
-    n'en élimine que deux — le moteur ne peut pas les départager et suspend la phase.
-    """
-    with TestClient(app_bso) as client:
-        scn = Scenario(app_bso)
-        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
-        for archer_id in scn.archers:
-            client.post(
-                "/api/v1/big-shoot-off/volees",
-                json={
-                    "tournoi_id": scn.tournoi_id,
-                    "phase_id": scn.phase_id,
-                    "archer_id": archer_id,
-                    "numero": 1,
-                    "valeurs": ["9", "9", "9"],
-                },
-                headers=entetes,
-            )
-        for archer_id in scn.archers:
-            client.post(
-                "/api/v1/big-shoot-off/validations",
-                json={
-                    "tournoi_id": scn.tournoi_id,
-                    "phase_id": scn.phase_id,
-                    "archer_id": archer_id,
-                },
-                headers=entetes,
-            )
-
-        corps = client.get(f"/api/v1/big-shoot-off/etat/{scn.tournoi_id}/{scn.phase_id}").json()
-
-    barrage = corps["barrage"]
-    assert barrage is not None, "quatre archers à égalité pour deux places : la phase est suspendue"
-    # L'ensemble **exact** des clés, pas seulement leur présence : c'est la seule forme d'assertion
-    # qui voit un champ *ajouté*.
-    assert set(barrage) == {"archer_ids", "noms", "places"}
+    assert "projection" not in corps
+    assert set(corps["format"]) == {
+        "effectif",
+        "paliers",
+        "restants",
+        "volees",
+        "fleches_par_volee",
+        "manches_jouables",
+    }
+    assert corps["tireurs"], "le scénario engage des finalistes"
+    for tireur in corps["tireurs"]:
+        assert "prochaine_volee" not in tireur
+    for manche in corps["manches"]:
+        assert "volees" not in manche
 
 
 def test_une_manche_saisie_puis_validee_elimine_sur_la_vraie_chaine(
