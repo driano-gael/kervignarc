@@ -188,22 +188,10 @@ window.ATLAS.controles = {
    "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce EtapeDeroule.instancier dans « backend/domain/phase.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0091"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce ReglageBarrage, decoupage dans « frontend/src/shared/phases/ReglageArrets.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0091"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 33
+  "signaux": 31
  }
 };

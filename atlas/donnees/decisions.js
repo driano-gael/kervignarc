@@ -6014,6 +6014,33 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/big_shoot_off.py",
+     "existe": true,
+     "symboles": [
+      "refuser_si_en_pause"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/gel_de_pause.py",
+     "existe": true,
+     "symboles": [
+      "refuser_si_en_pause"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/poules.py",
+     "existe": true,
+     "symboles": [
+      "refuser_si_en_pause"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/routage.py",
      "existe": true,
      "symboles": [
@@ -6026,8 +6053,33 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/saisie.py",
      "existe": true,
      "symboles": [
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage",
       "avancement_de_phase",
       "QUALIFICATION"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "refuser_si_en_pause",
+      "corriger_volee",
+      "saisir_manche",
+      "saisir_barrage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/suisse.py",
+     "existe": true,
+     "symboles": [
+      "refuser_si_en_pause"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6076,6 +6128,9 @@ window.ATLAS.decisions = {
       "_politiques_json",
       "_lire_arrets",
       "_lire_decoupage",
+      "Phase",
+      "Phase.decoupage",
+      "EtapeDeroule.instancier",
       "TypePhase.QUALIFICATION"
      ],
      "symboles_absents": [],
@@ -6101,9 +6156,7 @@ window.ATLAS.decisions = {
       "EtapeDeroule.instancier",
       "TypePhase.QUALIFICATION"
      ],
-     "symboles_absents": [
-      "EtapeDeroule.instancier"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -6131,6 +6184,24 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/deroule/Deroule.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageBarrage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/Phases.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageBarrage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
      "existe": true,
      "symboles": [
@@ -6152,14 +6223,18 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
      "existe": true,
      "symboles": [
-      "ReglageBarrage",
-      "arrets",
-      "decoupage"
+      "ReglageBarrage"
      ],
-     "symboles_absents": [
-      "ReglageBarrage",
-      "decoupage"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/arrets.ts",
+     "existe": true,
+     "symboles": [
+      "ReglageBarrage"
      ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],
