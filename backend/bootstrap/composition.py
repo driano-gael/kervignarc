@@ -119,7 +119,11 @@ from application.scoreurs import ServiceScoreurs
 from application.simulation import HarnaisSimulation, ServiceSimulation
 from application.simulation_format import ServiceSimulationFormat
 from application.suisse import ServiceSuisse
-from application.suivi_deroule import CompteurEngagesRepository, ServiceSuiviDeroule
+from application.suivi_deroule import (
+    CompteurEngagesRepository,
+    LecteurAvancementDePhase,
+    ServiceSuiviDeroule,
+)
 from application.supervision import ServiceSupervision
 from application.tableaux_publics import ServiceTableauxPublics
 from application.tournois import ServiceTournois
@@ -1114,6 +1118,41 @@ def create_app(
         phase_repository,
         compteur_engages,
         app.state.service_saisie_duels,
+    )
+    # ⚠️ **Trois branchements tardifs de plus** (E05US032, [ADR-0090] §5) — « où en est cette
+    # phase ? », résolu par type. Même port, même méthode, une ligne par format : c'est
+    # délibérément le patron d'[ADR-0084] repris à la lettre, plutôt qu'un second mécanisme de
+    # résolution qui aurait été la 4ᵉ occurrence de la même idée.
+    #
+    # Ce qui manque ici se lit en creux, et l'énumération doit être **complète** sous peine de se
+    # lire comme une garantie (relevé en revue par trois axes) : la qualification, l'échauffement,
+    # le barrage et le placement n'ont aucun lecteur, et c'est **correct** — ils comptent un tour
+    # (ADR-0090 §3). L'élimination directe non plus, et c'est correct aussi : ses tours se lisent
+    # dans les braquets de la projection, sans passer par un service.
+    #
+    # ⚠️ **La colline est le seul cas où le silence est faux.** Elle est déclarée
+    # `UniteDeTour.RONDE` et l'ADR §3 lui promet « nombre de rondes réglé », mais aucun
+    # `ServiceColline` n'existe encore (`DETTE-028`, volet colline, `E05US027`) : elle retombera
+    # donc sur « un tour, aucun tour courant ». Manque assumé et nommé, pas un branchement oublié.
+    #
+    # Variables **annotées** : cela type le **paramètre passé** à `brancher_lecteur_avancement` et
+    # documente l'intention. ⚠️ Cela ne **prouve** rien — mypy accepte silencieusement d'affecter
+    # une expression `Any` (`app.state.*`) à une variable annotée. La conformité au Protocol et
+    # l'appariement type→service sont garantis par le test de composition, pas par le typage ;
+    # le commentaire d'origine affirmait le contraire (relevé en revue, axe A).
+    #
+    # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules
+    avancement_de_suisse: LecteurAvancementDePhase = app.state.service_suisse
+    avancement_de_big_shoot_off: LecteurAvancementDePhase = app.state.service_big_shoot_off
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.POULES, avancement_de_poules
+    )
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.SUISSE, avancement_de_suisse
+    )
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
     )
 
     # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de

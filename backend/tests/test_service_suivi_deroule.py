@@ -20,7 +20,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from application.erreurs import DepartIntrouvable
+from application.erreurs import DepartIntrouvable, PhasePasReglee
 from application.suivi_deroule import ServiceSuiviDeroule
 from domain.bareme import BaremeQualification
 from domain.depart import Depart, DepartId
@@ -34,6 +34,7 @@ from domain.politiques import (
     ProfondeurPodium,
     SeedingSerpent,
 )
+from domain.suivi_deroule import AvancementDePhase
 from domain.tableau import Tableau, construire_tableau
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import (
@@ -587,3 +588,96 @@ def test_un_creneau_sans_phase_ne_voit_pas_celles_de_son_voisin(ctx: Contexte) -
 
     assert suivi.avancement.blocs == ()
     assert suivi.avancement.ordre_courant is None
+
+
+# --- Le tour, lu au service du format (E05US032, ADR-0090) ----------------------------------------
+
+
+class FauxLecteurAvancement:
+    """Un service de format qui sait dire où en est sa phase — ou qui refuse de répondre.
+
+    `erreur` permet de rejouer le cas réel qui motive la garde de robustesse : une phase **pas
+    encore réglée** fait lever le vrai service (`PhasePasReglee`), et cet endpoint est **public**,
+    pollé toutes les 10 s par l'écran de salle.
+    """
+
+    def __init__(self, avancement: AvancementDePhase | None, erreur: Exception | None = None):
+        self._avancement = avancement
+        self._erreur = erreur
+        self.appels: list[tuple[int, int]] = []
+
+    def avancement_de_phase(self, tournoi_id: int, phase_id: int) -> AvancementDePhase | None:
+        self.appels.append((tournoi_id, phase_id))
+        if self._erreur is not None:
+            raise self._erreur
+        return self._avancement
+
+
+def test_une_phase_sans_braquet_lit_son_tour_au_service_de_son_format(ctx: Contexte) -> None:
+    """CA — « le suivi montre le tour en cours de **chaque** phase démarrée ».
+
+    Le cœur de l'US : une phase qui ne classe pas au fil de l'eau n'a aucun braquet et affichait
+    donc « zéro tour ». Le suivi ne connaît pas le service du format — il connaît la **question**,
+    et le composition root dit qui y répond, par type ([ADR-0090] §5).
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id, statut=StatutPhase.EN_COURS), 1)
+    ctx.service.brancher_lecteur_avancement(
+        TypePhase.QUALIFICATION,
+        FauxLecteurAvancement(AvancementDePhase(nb_tours=4, tour_courant=2)),
+    )
+
+    bloc = ctx.service.pour_depart(ctx.depart_id).avancement.blocs[0]
+
+    assert bloc.tour_courant == 2
+    assert bloc.nb_tours == 4
+
+
+def test_un_type_sans_lecteur_branche_compte_un_tour(ctx: Contexte) -> None:
+    """Aucun lecteur pour ce type : la phase compte **un** tour, sans tour courant.
+
+    C'est le régime normal de la qualification, de l'échauffement, du barrage et du placement
+    (ADR-0090 §3) — pas une dégradation : « un tour » est vrai, la phase entière en est un.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id, statut=StatutPhase.EN_COURS), 1)
+
+    bloc = ctx.service.pour_depart(ctx.depart_id).avancement.blocs[0]
+
+    assert bloc.nb_tours == 1
+    assert bloc.tour_courant is None
+
+
+def test_un_lecteur_qui_leve_ne_fait_pas_tomber_le_suivi(ctx: Contexte) -> None:
+    """Une phase mal réglée ne coûte qu'une ligne incomplète, jamais le schéma entier.
+
+    Même garde que `_duels_tranches` et pour la même raison : l'endpoint est **public** et l'écran
+    de salle tourne sans personne devant pour le relancer. Le cas n'est pas théorique — composer un
+    déroulé laisse temporairement des phases sans réglage, et le vrai service lève alors.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id, statut=StatutPhase.EN_COURS), 1)
+    ctx.service.brancher_lecteur_avancement(
+        TypePhase.QUALIFICATION,
+        FauxLecteurAvancement(None, erreur=PhasePasReglee("pas encore réglée")),
+    )
+
+    bloc = ctx.service.pour_depart(ctx.depart_id).avancement.blocs[0]
+
+    assert bloc.nb_tours == 1
+    assert bloc.tour_courant is None
+
+
+def test_le_lecteur_est_interroge_avec_le_tournoi_du_creneau(ctx: Contexte) -> None:
+    """Le service de format reçoit le **tournoi** du créneau, pas le créneau lui-même.
+
+    `TournoiId` et `DepartId` sont le même type pour mypy (`DETTE-044`) : rien ne rattraperait
+    l'inversion à la compilation, et les deux valeurs sont volontairement disjointes dans ces tests
+    (`_MATIN = 41` contre un tournoi à 1) pour qu'elle ne passe pas par coïncidence numérique.
+    """
+    ctx.ajouter_phase(_qualification(ctx.depart_id, statut=StatutPhase.EN_COURS), 1)
+    lecteur = FauxLecteurAvancement(AvancementDePhase(nb_tours=2, tour_courant=1))
+    ctx.service.brancher_lecteur_avancement(TypePhase.QUALIFICATION, lecteur)
+
+    ctx.service.pour_depart(ctx.depart_id)
+
+    assert lecteur.appels == [(ctx.tournoi_id, 1)]

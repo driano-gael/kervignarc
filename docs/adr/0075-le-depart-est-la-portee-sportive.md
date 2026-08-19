@@ -200,8 +200,12 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`, `0084`, `0085`. La liste dérive à chaque US qui crée ou rouvre un ADR structurant
-— c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
+`0082`, `0083`, `0084`, `0085`, `0090`. La liste dérive à chaque US qui crée ou rouvre un ADR
+structurant — c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
+
+⚠️ **`0090` y a été oublié à son tour**, et rattrapé en revue d'E05US032 (axe C2) — soit la
+**troisième** omission consécutive sur cette liste. Le constat ci-dessous n'a donc rien perdu de son
+actualité, et il faut le lire comme une mesure : le réflexe n'est pas acquis, seule la revue le tient.
 
 ⚠️ **`0084` y avait été oublié à sa création, et `0085` a failli l'être** (relevé en revue
 d'E05US026, deux fois). Deux omissions de suite sur le registre qui existe pour empêcher

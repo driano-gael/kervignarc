@@ -105,6 +105,47 @@ class TypePhase(str, Enum):
     """King of the Hill et Ladder — **un seul moteur**, la portée de défi les sépare (§10.1)."""
 
 
+class UniteDeTour(str, Enum):
+    """*En combien de tours, et sous quel nom ?* — la 7ᵉ question du contrat ([ADR-0090]).
+
+    Toute phase avance par tours, et **un tour n'est pas un braquet** : le tour dit *où on en
+    est*, le braquet dit *quels rangs ce tour attribue*. Certaines phases classent au fil des
+    tours (l'élimination directe, Règle R), d'autres ne classent qu'à la fin (la qualification :
+    le total, pas la volée 12). L'unité vit ici, avec les autres questions du contrat ; sa
+    **résolution en libellé** vit dans `domain/tour_de_phase.py`, qui délègue au tableau ce que
+    le tableau sait déjà faire.
+
+    L'unité est le **mot de la salle**, pas une forme technique : deux formats qui avancent de la
+    même façon peuvent porter deux unités si le métier les nomme différemment (règle 3).
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
+
+    PHASE_ENTIERE = "phase_entiere"
+    """La phase **est** son tour — un seul, et il ne s'annonce pas.
+
+    Qualification, échauffement, barrage : rien dans « 20 volées » ne dit s'il y a un ou quatre
+    tours, c'est un choix de l'organisateur, et ce réglage arrive avec `E05US033` (les pauses
+    programmées), là où il sert. En attendant, « un tour » est **vrai** — la phase entière en est
+    un — et non un cas dégénéré à traiter à part. C'est aussi le **défaut prudent** du registre :
+    un type ajouté demain et laissé au défaut avance d'un bloc, ce qui n'affiche rien de faux."""
+
+    TOUR_DE_TABLEAU = "tour_de_tableau"
+    """Un tour d'arbre, nommé par sa **distance au titre** : « Quart de finale », « 1/8 ».
+
+    Le seul dont le libellé ne se déduit pas du numéro seul, et le seul qui connaisse des
+    exceptions (petite finale, sous-tableau de placement)."""
+
+    TOUR = "tour"
+    """Un tour de round-robin : les poules."""
+
+    RONDE = "ronde"
+    """Une ronde appariée : le système suisse et la colline (référentiel §10.1)."""
+
+    MANCHE = "manche"
+    """Une manche collective : le Big Shoot Off — tous les finalistes tirent en parallèle."""
+
+
 class DecorDeSaisie(str, Enum):
     """*Qu'est-ce qu'on saisit ?* — la 2ᵉ question du contrat (ADR-0083 §1).
 
@@ -203,6 +244,17 @@ class ContratDePhase:
     Distinct de `produit_un_classement` : une poule *produisait* un classement depuis E05US015
     sans que rien ne sache le *lire*, et un prélèvement la visant restait inerte."""
 
+    unite_de_tour: UniteDeTour = UniteDeTour.PHASE_ENTIERE
+    """Dans quelle unité cette phase **avance**, et sous quel mot la salle la nomme ([ADR-0090]).
+
+    ⚠️ **Sans rapport avec `produit_un_classement`**, et c'est tout l'objet de l'ADR : l'échauffement
+    ne classe rien mais occupe du temps et des cibles — donc il avance, donc il a un tour. Le code
+    dérivait jusqu'ici les tours des **braquets**, ce qui faisait afficher « zéro tour » à toute
+    phase ne classant pas au fil de l'eau.
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
+
     route_l_archer: bool = False
     route_tout_le_plateau: bool = True
     """Cette phase concerne-t-elle **tous** les archers du créneau, ou une population restreinte ?
@@ -240,6 +292,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.ELIMINATION_DIRECTE: ContratDePhase(
         decor=DecorDeSaisie.ARBRE_DE_DUELS,
         plan_de_cibles=PlanDeCibles.PAR_DUEL,
+        unite_de_tour=UniteDeTour.TOUR_DE_TABLEAU,
         deroule_par_un_service=True,
         classement_lisible=True,
         route_l_archer=True,
@@ -247,6 +300,11 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.PLACEMENT: ContratDePhase(
         decor=DecorDeSaisie.ARBRE_DE_DUELS,
         plan_de_cibles=PlanDeCibles.PAR_DUEL,
+        # Un tableau de placement se joue par tours comme un autre, même si aucun service
+        # ne le monte encore : l'unité décrit la **forme** du format, pas son état
+        # d'avancement dans le code (contrairement à `deroule_par_un_service` juste en
+        # dessous, qui est un constat sur le code du jour).
+        unite_de_tour=UniteDeTour.TOUR_DE_TABLEAU,
         # ⚠️ **Aucun service ne monte ce tableau** — les deux services de duels filtrent sur
         # `ELIMINATION_DIRECTE` seul. `deroule._TYPES_DEROULES` l'y comptait pourtant, ce qui
         # **relevait le plancher d'inscrits** (E05US021) pour une phase que rien ne joue : le
@@ -268,6 +326,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.POULES: ContratDePhase(
         decor=DecorDeSaisie.RENCONTRES_EN_GROUPES,
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
+        unite_de_tour=UniteDeTour.TOUR,
         deroule_par_un_service=True,
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
         # fois le code écrit. Ce qui l'autorise, module par module :
@@ -289,6 +348,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.BIG_SHOOT_OFF: ContratDePhase(
         decor=DecorDeSaisie.VOLEE_COLLECTIVE,
+        unite_de_tour=UniteDeTour.MANCHE,
         # ⚠️ **Reste `AUCUN`, et c'est un manque assumé** (E05US028). Les finalistes tirent bien en
         # parallèle, donc ils occupent des couloirs — mais aucun service ne les leur attribue : ce
         # sont des inscrits du créneau, et leur couloir de qualification n'est pas relu par le
@@ -313,6 +373,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.SUISSE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
+        unite_de_tour=UniteDeTour.RONDE,
         # ✅ **Bascule en fin de tranche E05US026**, une fois `ServiceSuisse.regenerer_plan` écrit.
         # Une ronde apparie tout le plateau et **ré-apparie à chaque ronde** : personne n'a de
         # couloir attitré, donc « archer → couloir » serait une information *fausse* — exactement la
@@ -346,6 +407,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
+        unite_de_tour=UniteDeTour.RONDE,
         plan_de_cibles=PlanDeCibles.AUCUN,
     ),
 }

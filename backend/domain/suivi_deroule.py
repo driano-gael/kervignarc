@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from domain.deroule import TourBraquet
 from domain.phase import StatutPhase
 
-_STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
+STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
 """Les statuts où un « tour en cours » a un sens.
 
 Une phase **à venir** n'en a pas encore ; une phase **terminée** n'en a plus, même si des duels
@@ -60,13 +60,44 @@ class AvancementTour:
 
 
 @dataclass(frozen=True)
+class AvancementDePhase:
+    """*Où en est cette phase ?* — la réponse d'un service de format ([ADR-0090] §5).
+
+    Deux nombres, et rien d'autre : combien de tours cette phase compte **aujourd'hui** (un suisse
+    réglé à 7 rondes n'en joue que 5 si l'effectif ne permet pas plus), et lequel tourne. Le
+    **libellé** ne passe pas par ici : il se résout du type de phase (`domain.tour_de_phase`), et le
+    faire voyager obligerait chaque service à connaître le vocabulaire de la salle.
+
+    `tour_courant` vaut `None` quand plus rien ne tourne — tout est joué, même si la phase n'est pas
+    clôturée. C'est la même convention que `tour_courant()` plus bas, délibérément : deux notions de
+    « rien en cours » divergeraient au premier écran qui les mélange.
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
+
+    nb_tours: int
+    tour_courant: int | None
+
+
+@dataclass(frozen=True)
 class AvancementBloc:
-    """L'avancement d'une phase : son statut, ses braquets remplis, et le tour qui tourne."""
+    """L'avancement d'une phase : son statut, ses braquets remplis, et le tour qui tourne.
+
+    ⚠️ **`nb_tours` n'est pas `len(tours)`** ([ADR-0090]). `tours` porte les **braquets** — les
+    tranches de rangs qu'un tableau attribue au fil de l'eau —, et une phase qui ne classe
+    pas au fil de l'eau n'en a aucun tout en avançant par tours : un système suisse en compte
+    cinq, une poule en compte autant que son round-robin. Dériver l'un de l'autre est ce que ce
+    module faisait jusqu'à E05US032, et c'est pourquoi toute phase hors tableau s'affichait à
+    « zéro tour ».
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    """
 
     ordre: int
     statut: StatutPhase
     tours: tuple[AvancementTour, ...]
     tour_courant: int | None
+    nb_tours: int
     duels_joues: int
     duels_attendus: int
 
@@ -77,6 +108,7 @@ def avancement_bloc(
     statut: StatutPhase,
     tours: Sequence[TourBraquet],
     joues_par_tour: Mapping[int, int],
+    avancement_lu: AvancementDePhase | None = None,
 ) -> AvancementBloc:
     """Superpose le réel (`joues_par_tour`) sur les braquets projetés (`tours`).
 
@@ -90,9 +122,29 @@ def avancement_bloc(
     - un numéro de tour **inconnu** de la projection est **ignoré** — pas de braquet fantôme dans un
       schéma censé être *le même* qu'à l'atelier.
 
-    Une phase sans braquet (qualification, ou type dont le moteur ne déduit pas les tours,
-    `# DETTE-028`) rend un bloc à zéro tour : elle reste dessinée, avec son statut. La faire
-    disparaître du schéma coûterait la phase la plus visible de la journée.
+    **Une phase sans braquet avance quand même** ([ADR-0090], E05US032). Elle n'a pas de braquet à
+    remplir — elle ne classe pas au fil de l'eau —, mais elle a des tours, et `avancement_lu` les
+    porte : c'est ce que le service de son format a répondu au port `LecteurAvancementDePhase`. Sans
+    lecteur branché, le bloc retombe sur **un** tour, sans tour courant : dégradation lisible plutôt
+    qu'exception, parce que l'écran de salle tourne en permanence, souvent sans personne devant pour
+    le relancer.
+
+    ⚠️ **Le braquet prime sur le lu quand il existe**, et ce n'est pas arbitraire : la règle des
+    braquets connaît le détail (« ce tour est terminé quand ses N duels sont tranchés ») là où un
+    service ne rend qu'un numéro. Les deux ne se contredisent pas, l'un est plus fin.
+
+    **`nb_tours` ne descend jamais sous 1, `tour_courant` est filtré par le statut.** Les deux
+    asymétries sont voulues et se lisent ensemble : un *compte* de tours est **structurel** — une
+    phase à venir en compte déjà autant qu'elle en comptera —, tandis qu'un *tour courant* est la
+    conséquence d'un geste de l'organisateur. Le plancher à 1 est une ceinture : un lecteur qui
+    répondrait `0` (le suisse le faisait, sous deux tireurs) ferait réapparaître le « zéro tour »
+    que cette US supprime, et le repli `else 1` ne joue que quand le lecteur est **absent**. Les
+    deux gardes ont été posées sur relevé de revue (axes B, C1).
+
+    ⚠️ **Limite connue** : une phase **en tableau** dont la tranche d'entrée est indéterminable
+    (plusieurs sources) ne produit aucun braquet et retombe donc sur `1`, ce qui est faux — elle en
+    compte autant que son arbre. Sans effet visible aujourd'hui (`nb_tours` n'est rendu par aucun
+    écran), mais `E05US033` consommera ce champ : à reprendre là-bas, où le besoin le nommera.
     """
     remplis = tuple(
         AvancementTour(
@@ -102,11 +154,22 @@ def avancement_bloc(
         )
         for braquet in tours
     )
+    demarree = statut in STATUTS_DEMARRES
+    lu = avancement_lu if demarree else None
     return AvancementBloc(
         ordre=ordre,
         statut=statut,
         tours=remplis,
-        tour_courant=tour_courant(statut, remplis),
+        tour_courant=(
+            tour_courant(statut, remplis)
+            if remplis
+            else (lu.tour_courant if lu is not None else None)
+        ),
+        nb_tours=(
+            len(remplis)
+            if remplis
+            else max(1, avancement_lu.nb_tours if avancement_lu is not None else 1)
+        ),
         duels_joues=sum(t.duels_joues for t in remplis),
         duels_attendus=sum(t.duels_attendus for t in remplis),
     )
@@ -120,7 +183,7 @@ def tour_courant(statut: StatutPhase, tours: Sequence[AvancementTour]) -> int | 
     lancer. Rend `None` quand tous les duels sont tranchés : plus rien ne tourne, même si la phase
     n'est pas encore clôturée.
     """
-    if statut not in _STATUTS_DEMARRES:
+    if statut not in STATUTS_DEMARRES:
         return None
     for tour in tours:
         if not tour.est_termine:
@@ -148,6 +211,6 @@ class AvancementDeroule:
         celle qui doit se refermer d'abord.
         """
         for bloc in self.blocs:
-            if bloc.statut in _STATUTS_DEMARRES:
+            if bloc.statut in STATUTS_DEMARRES:
                 return bloc.ordre
         return None

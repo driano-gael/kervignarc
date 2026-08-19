@@ -89,6 +89,19 @@ export interface AvancementBloc {
   ordre: number
   statut: StatutPhase
   tour_courant: number | null
+  /** Combien de tours cette phase compte — **pas** `tours.length` (E05US032, ADR-0090).
+   *
+   * `tours` porte les *braquets*, les tranches de rangs qu'un tableau attribue au fil de l'eau, et
+   * une phase qui ne classe qu'à la fin n'en a aucun tout en avançant par tours : un système suisse
+   * en compte cinq. C'est la confusion qui faisait afficher « zéro tour » hors tableau. */
+  nb_tours: number
+  /** Le nom que la salle donne au tour en cours — « Demi-finale », « Ronde 3 », « Manche 2 ».
+   *
+   * **Servi par le backend, jamais recalculé ici** : la règle « à rebours de la finale » a déjà deux
+   * domiciles (`DETTE-020`, dont `saisie-duels/duel.ts`), et en dériver un troisième est ce que le
+   * CA d'E05US032 interdit nommément. `null` quand la phase n'annonce pas de tour — une
+   * qualification est *une* étape, elle ne se dit pas « tour 1 sur 1 ». */
+  libelle_tour_courant: string | null
   duels_joues: number
   duels_attendus: number
   tours: AvancementTour[]

@@ -911,3 +911,77 @@ def test_une_rencontre_dont_les_duellistes_ont_change_est_signalee_bloquee() -> 
     assert all(
         r.duel is None for r in bloquees
     ), "le tir reste masqué : on ne prête pas un score au mauvais couple"
+
+
+# --- Où en est cette phase ? — port `LecteurAvancementDePhase` (E05US032, ADR-0090) -------------
+
+
+def test_l_avancement_compte_les_tours_du_round_robin() -> None:
+    """CA d'E05US032 — « le nombre de tours est **dérivé** quand la structure le détermine ».
+
+    Pour des poules, la structure c'est le round-robin : une poule de 4 se joue en 3 tours. Le tour
+    courant part à 1 tant que rien n'est validé.
+
+    ⚠️ Ce test naît d'un relevé de revue : la réalisation du port n'était éprouvée que par une
+    **doublure** qui rendait ce qu'on lui donnait.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ReglageDePoules(taille_visee=4))
+
+    avancement = monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id)
+
+    assert avancement is not None
+    assert avancement.nb_tours == 3
+    assert avancement.tour_courant == 1
+
+
+def test_le_tour_courant_n_avance_qu_une_fois_les_rencontres_validees() -> None:
+    """Défaut trouvé par l'axe adversarial : le tour avançait **avant** validation.
+
+    `Duel.vainqueur` devient non-`None` dès que le seuil de sets est atteint — donc dès la saisie du
+    dernier set, avant que le scoreur valide. Le suivi affichait « Tour 2 » pendant que
+    `rencontres_a_tirer` et `_resultat_de` — qui lisent tous deux `verrouille` — envoyaient encore
+    la salle sur le tour 1. Deux écrans du même produit se contredisaient sur l'état du pas de tir.
+
+    Le test tire ici **une seule** rencontre du tour 1 sur deux : le tour reste 1, ce qui est vrai
+    quel que soit le prédicat. C'est le second assert qui discrimine — les deux rencontres saisies
+    **et validées** font passer au tour 2.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+    rencontres = [
+        r for p in service.etat(monde.tournoi_id, monde.phase_id).poules for r in p.rencontres
+    ]
+    premier_tour = [r.numero for r in rencontres if r.tour == 1]
+
+    # Saisie **sans validation** de tout le tour 1 : rien ne doit avancer.
+    for numero in premier_tour:
+        for manche in (1, 2, 3):
+            service.saisir_manche(
+                monde.tournoi_id,
+                monde.phase_id,
+                numero,
+                manche,
+                tuple(ZoneScore(v) for v in ("10", "10", "10")),
+                tuple(ZoneScore(v) for v in ("6", "6", "6")),
+            )
+    avant = service.avancement_de_phase(monde.tournoi_id, monde.phase_id)
+    assert avant is not None
+    assert avant.tour_courant == 1, "un tour saisi mais non validé ne fait pas avancer la salle"
+
+    for numero in premier_tour:
+        service.valider(monde.tournoi_id, monde.phase_id, numero, "DURAND")
+    apres = service.avancement_de_phase(monde.tournoi_id, monde.phase_id)
+    assert apres is not None
+    assert apres.tour_courant == 2
+
+
+def test_une_phase_de_poules_sans_rencontre_ne_dit_rien() -> None:
+    """Sans population prélevée, il n'y a aucune rencontre : ne rien savoir se dit `None`."""
+    monde = _Monde()
+    monde.regler(ReglageDePoules(taille_visee=4))
+
+    assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None

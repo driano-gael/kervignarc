@@ -100,6 +100,7 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.serie import Serie
+from domain.suivi_deroule import AvancementDePhase
 from domain.tournoi import TournoiId
 
 
@@ -285,6 +286,36 @@ class ServiceBigShootOff:
         """
         phase, participants = self._population(tournoi_id, phase_id)
         return self._photo(phase, participants)
+
+    def avancement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> AvancementDePhase | None:
+        """Où en est ce Big Shoot Off — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+
+        Une manche est le tour de ce format : tous les finalistes y tirent la même volée en
+        parallèle (§10.1). Le tour courant est la première manche **non jouée** ; `None` quand la
+        phase est terminée, y compris si une manche reste théoriquement au programme — un Big Shoot
+        Off qui a désigné son vainqueur n'a plus de tour en cours, et sa liste de sortants s'écourte
+        d'elle-même (`manches_ignorees`).
+
+        ⚠️ **Un barrage suspend la phase, donc plus aucun tour ne tourne** (correctif de revue, axes
+        C1 et adversarial). `_photo` porte déjà cette règle — « `None` quand la phase est finie **ou
+        suspendue par un barrage** : dans les deux cas il n'y a rien à saisir » — et la première
+        rédaction n'en reprenait que la moitié, annonçant « Manche 3 » pendant que l'écran de saisie
+        disait qu'il n'y avait rien à tirer. Deux définitions de « la manche qui tourne » dans le
+        même service.
+
+        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        """
+        etat = self.etat(tournoi_id, phase_id)
+        if not etat.manches:
+            return None
+        ouverte = next((manche for manche in etat.manches if not manche.jouee), None)
+        suspendue = bool(etat.barrage_entre)
+        return AvancementDePhase(
+            nb_tours=len(etat.manches),
+            tour_courant=(None if etat.termine or suspendue or ouverte is None else ouverte.numero),
+        )
 
     def classement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId, resolveur: ResolveurClassement

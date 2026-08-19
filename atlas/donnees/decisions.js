@@ -3642,7 +3642,8 @@ window.ATLAS.decisions = {
    "titre": "Le départ est la portée sportive, pas seulement un créneau logistique",
    "us": [
     "E01US025",
-    "E05US026"
+    "E05US026",
+    "E05US032"
    ]
   },
   {
@@ -4494,7 +4495,7 @@ window.ATLAS.decisions = {
    ],
    "date": "2026-08-09",
    "date_brute": "2026-08-09, **amendé le 2026-08-14** (E05US028 — le contrat cède où le §2 l'annonçait : une capacité renommée, cf. § « Ce que le contrat a appris de sa **deuxième** mise à l'épreuve »)",
-   "extrait": "### 1. Un contrat de phase jouable, résolu par type Ce qu'une phase doit savoir répondre pour être jouable tient en six questions — celles que les dix tables ci-dessus posaient chacune dans son coin : 1. Qui entre dedans ? — générique depuis ADR-0068/E05US024, aucune reprise nécessaire. 2. Qu'est-ce qu'on saisit ? — le décor : un arbre de duels, des rencontres en groupes, une volée collective. 3. Quand est-ce validé ? — le grain, déjà porté par le catalogue (_GRAINS_ADMIS). 4. Qui est classé, et dans quel ordre ? 5. Où l'archer tire-t-il ensuite ? 6. Combien de couloirs la phase occupe-t-elle, et comment ? Les tables existantes ne sont pas supprimées — leurs noms sont lus par une centaine […]",
+   "extrait": "### 1. Un contrat de phase jouable, résolu par type Ce qu'une phase doit savoir répondre pour être jouable tient en six questions — celles que les dix tables ci-dessus posaient chacune dans son coin : > 🔄 Une 7ᵉ question s'est ajoutée le 18/08/2026 — en combien de tours, et sous quel nom ? > (ContratDePhase.unite_de_tour, ADR-0090). > Elle est décrite là-bas et n'est pas reprise ici, mais ce paragraphe ne dit plus six sans le > dire : un lecteur qui arrive par cet ADR pour ajouter un type de phase en oublierait une. C'est > exactement le mode de défaillance que les deux encarts ⚠️ de cet ADR documentent déjà — un > paragraphe qui porte l'affirmation inverse du code livré. Relevé en revue […]",
    "fichier": "docs/adr/0083-le-contrat-de-phase-jouable.md",
    "identifiant": "0083",
    "liens": [
@@ -5040,7 +5041,8 @@ window.ATLAS.decisions = {
     "E05US025",
     "E05US026",
     "E05US028",
-    "E05US030"
+    "E05US030",
+    "E05US032"
    ]
   },
   {
@@ -5835,6 +5837,106 @@ window.ATLAS.decisions = {
     "E05US030",
     "E05US032",
     "E16US004"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-18",
+   "date_brute": "2026-08-18",
+   "extrait": "### 1. Le tour est l'unité d'avancement générique d'une phase Toute phase, quel que soit son type, compte N tours numérotés de 1 à N, et sait dire lequel est en cours. Aucun type n'en est exclu — la qualification et l'échauffement en comptent un, ce qui est vrai (la phase entière est un tour) et non un cas dégénéré à traiter à part. ### 2. Un tour est une unité d'avancement, jamais de classement C'est l'invariant central, et c'est celui que le code viole aujourd'hui. - Certaines phases classent au fil des tours : chaque tour d'une élimination directe attribue une tranche de rangs — le braquet, la Règle R de moteur-placement-lucky-loser.md. - D'autres ne classent qu'à la fin : une […]",
+   "fichier": "docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md",
+   "identifiant": "0090",
+   "liens": [
+    {
+     "cible": "E05US032",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E05US033",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0083",
+     "libelle": "Complète",
+     "sens": "sortant",
+     "type": "complete"
+    },
+    {
+     "cible": "0084",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/application/poules.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/suivi_deroule.py",
+     "existe": true,
+     "symboles": [
+      "LecteurAvancementDePhase",
+      "ServiceSuiviDeroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "UniteDeTour",
+      "ContratDePhase.unite_de_tour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/suivi_deroule.py",
+     "existe": true,
+     "symboles": [
+      "AvancementBloc",
+      "TourBraquet"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tour_de_phase.py",
+     "existe": true,
+     "symboles": [
+      "unite_de_tour",
+      "libelle_de_tour",
+      "domain.tableau.libelle_tour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une phase avance par tours ; un tour n'est pas un braquet",
+   "us": [
+    "E05US032",
+    "E05US033",
+    "E07US005"
    ]
   }
  ]

@@ -895,3 +895,58 @@ def test_on_ne_saisit_pas_une_volee_de_la_manche_suivante() -> None:
     service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 1, trois)
     service.saisir_volee(monde.tournoi_id, monde.phase_id, a, 2, trois)
     assert b is not None
+
+
+# --- Où en est cette phase ? — port `LecteurAvancementDePhase` (E05US032, ADR-0090) -------------
+
+
+def test_l_avancement_compte_les_manches_jouables() -> None:
+    """CA d'E05US032 — « le nombre de tours est **dérivé** quand la structure le détermine ».
+
+    Pour un Big Shoot Off, la structure c'est la liste de sortants : `(2, 1)` sur 4 finalistes fait
+    deux manches. Le compte porte les manches **jouables**, donc il s'écourte de lui-même sur les
+    `manches_ignorees` — une liste qui viderait le pas de tir n'ajoute pas de tour fantôme.
+
+    ⚠️ Ce test naît d'un relevé de revue : la réalisation du port n'était éprouvée que par une
+    **doublure** qui rendait ce qu'on lui donnait.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2, 1)))
+
+    avancement = monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id)
+
+    assert avancement is not None
+    assert avancement.nb_tours == 2
+    assert avancement.tour_courant == 1
+
+
+def test_un_barrage_suspend_la_phase_donc_plus_aucune_manche_ne_tourne() -> None:
+    """Défaut trouvé en revue (axes C1 et adversarial) : le barrage était ignoré.
+
+    `_photo` porte déjà la règle — « `None` quand la phase est finie **ou suspendue par un
+    barrage** : dans les deux cas il n'y a rien à saisir » — et la première rédaction du port n'en
+    reprenait que la moitié. Résultat : le suivi annonçait « Manche 2 » pendant que l'écran de
+    saisie disait qu'il n'y avait rien à tirer. Deux définitions de « la manche qui tourne » dans le
+    même service, ce que le domaine se donne justement pour objet d'éviter.
+    """
+    monde = _Monde()
+    a, b, c, d = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+    service = monde.service()
+    for archer_id, zone in ((a, "10"), (b, "9"), (c, "7"), (d, "7")):
+        monde.tirer(service, archer_id, 1, zone)
+    assert service.etat(monde.tournoi_id, monde.phase_id).barrage_entre != ()
+
+    avancement = service.avancement_de_phase(monde.tournoi_id, monde.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant is None
+
+
+def test_un_big_shoot_off_sans_finaliste_ne_dit_rien() -> None:
+    """Sans population prélevée, aucune manche n'existe : ne rien savoir se dit `None`."""
+    monde = _Monde()
+    monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
+
+    assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None

@@ -12,16 +12,23 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 18/08/2026, 16 h 05** · **115 US livrées** · dernière : `E05US031`
+**Dernière mise à jour : 18/08/2026, 22 h 20** · **116 US livrées** · dernière : `E05US032`
+*(**chaque phase dit où elle en est** : le suivi du déroulé annonçait « on attaque les quarts » sur
+un tableau et **rien** sur les cinq autres formats. Le **tour** devient l'unité d'avancement
+générique de toutes les phases, **séparée du braquet** — *avancer ≠ classer*, invariant posé par le
+commanditaire : un tableau distribue des rangs à chaque tour, une qualification n'en distribue qu'à
+la fin, et c'est de cette confusion que venait le « zéro tour ». Le mot affiché reste celui du métier
+(« Demi-finale », « Ronde 3 », « Tour 2 », « Manche 2 »), résolu par le contrat de phase. ⚠️ **L'US
+qui portait ce numéro a été révoquée et coupée en deux** : son CA disait « la ronde suivante ne
+s'ouvre **que** sur décision de l'organisateur », le commanditaire a tranché l'inverse — l'automatique
+reste le défaut, l'arrêt devient **programmé** (`E05US033`). ADR-0090, qui complète ADR-0083 ; port
+calqué sur ADR-0084. **Aucune migration.**)*
+<!-- Entrée précédente, conservée pour mémoire :
 *(**le public voit enfin les trois formats sans arbre** : l'onglet « Tableaux » devient **« En
 cours »** et montre la phase qui se joue quel qu'en soit le format — poule, ronde de système suisse,
-manche de Big Shoot Off, arbre de duels. Les trois premiers étaient jouables depuis des semaines sans
-qu'aucun n'atteigne jamais l'appli publique ni l'écran de salle : le trou était dans la **forme** du
-catalogue de vues, dont la seule valeur de rencontre supposait un arbre. L'onglet **atterrit** sur la
-phase en cours et laisse **remonter tout le déroulé du départ**. Le **Big Shoot Off** reçoit la route
-publique qui lui manquait — et la restriction qu'elle remplace reposait sur un secret **inexistant**.
-`VueEcran.TABLEAUX` → `EN_COURS`, migration `0047`. ADR-0089, qui **révise** ADR-0064.)*
-<!-- Entrée précédente, conservée pour mémoire :
+manche de Big Shoot Off, arbre de duels. L'onglet **atterrit** sur la phase en cours et laisse
+**remonter tout le déroulé du départ**. Le **Big Shoot Off** reçoit la route publique qui lui
+manquait. `VueEcran.TABLEAUX` → `EN_COURS`, migration `0047`. ADR-0089, qui **révise** ADR-0064.)*
 *(**le système suisse à l'écran** : le moteur livré le matin même par `E05US026` devient jouable par
 un humain — nombre de rondes réglable avec la **borne d'effectif affichée en clair**, saisie **ronde
 par ronde** au pavé de duel, attente nommée tant que la ronde en cours n'est pas close, **classement
@@ -29,7 +36,7 @@ provisoire** (points, Buchholz) entre les rondes, pose du plan de cibles. **`DET
 Le cadrage a produit **deux US neuves**, `E05US031` (livrée ici) et `E05US032`.)*
 -->
 
-Précédente : `E05US030`
+Précédente : `E05US031`
 <!-- Entrée précédente, conservée pour mémoire :
 *(**la carte du code** : l'atlas lit désormais le **code** et plus seulement les documents. La
 matrice de dépendances est lue à l'**AST**, et une couche qui remonte le courant fait **rougir la
@@ -149,7 +156,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 > | ~~4~~ ✅ | ~~`E05US026`~~ | **Livrée le 16/08/2026 — backend seul**, le front partant en `E05US030` (périmètre coupé en cours d'US, le 15/08). Le système suisse se règle, se joue ronde après ronde, se pose sur la salle, se classe, se route et entre au palmarès. **Le remède structurel annoncé a bien eu lieu** : les deux ports de classement jumeaux sont fondus en un ([ADR-0084](../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)) — la 3ᵉ occurrence étant née dans ce diff, l'écart à « en US dédiée » a été tranché par le commanditaire contre un commit séparé. ⚠️ **Le périmètre a triplé au cadrage** : routage (suisse **et** poules, qui l'attendaient depuis E05US023), palmarès avec une règle neuve — *une phase décerne si rien ne prélève dedans* —, et renommage `placement_poule` → `placement_par_bloc` (migration 0046). Deux dettes ouvertes (`DETTE-064` majeure), une refermée (`DETTE-063`). |
 > | ~~🎯 1~~ ✅ | ~~`E05US030`~~ | **Livrée le 16/08/2026** — le système suisse **se joue** : fiche de réglages avec la **borne d'effectif affichée en clair**, saisie **ronde par ronde** au pavé de duel, attente nommée tant que la ronde précédente n'est pas close, **classement provisoire** entre les rondes (ajouté au cadrage), pose du plan de cibles, bandeau d'écart retiré. ⚠️ **Le cadrage a produit deux US neuves** (`E05US031`, `E05US032`) : le commanditaire voulait aussi la vue publique et un pilotage explicite des rondes, et les deux se sont révélés d'une autre nature que « du front » — voir leur ligne. ✅ **`DETTE-056` refermée** (le créneau de l'espace scoreur remonté, un seul sélecteur pour quatre panneaux) et l'issue de routage `EN_ATTENTE` livrée des deux côtés, ce qu'`E05US026` avait reporté ici. |
 > | ~~🎯 1~~ ✅ | ~~`E05US031`~~ | **Livrée le 18/08/2026** — l'onglet public « Tableaux » devient **« En cours »** et rend la phase qui se joue quel qu'en soit le format ; il **atterrit** sur la phase courante et laisse **remonter le déroulé du départ**. ⚠️ **L'ADR annoncé « probable » était bien requis** : [ADR-0089](../docs/adr/0089-le-catalogue-de-vues-porte-des-phases-pas-des-arbres.md) révise ADR-0064, et le renommage `VueEcran.TABLEAUX` → `EN_COURS` **coûte une migration** (`0047`) — la propriété « trois élargissements sans migration » vaut pour un *ajout*, pas pour un *renommage*. ⚠️ **Le cadrage a ajouté du backend** : le **Big Shoot Off** n'avait aucune route publique (les deux autres formats en avaient une) ; DTO public neuf, `/etat/` ouverte, lecture scoreur migrée sur `/saisie/` — et la restriction remplacée reposait sur un secret **inexistant** (`scores` ne porte que les manches validées). Nommage tranché par le commanditaire : « En cours » plutôt que « Phases », exact mais illisible pour un spectateur. |
-> | **🎯 1** | `E05US032` | **L'organisateur ouvre la ronde suivante.** Née du même cadrage. ⚠️ **Rouvre un choix de conception assumé du backend** (`api/v1/suisse.py` : la ronde N+1 se déduit **à la lecture**, il n'existe aucune route) — donc ADR requis avant de coder, et une question à poser : le même geste vaut-il pour les poules et la colline, qui partagent le décor `RONDES_APPARIEES` ? |
+> | ~~🎯 1~~ ✅ | ~~`E05US032`~~ | **Livrée le 18/08/2026 — et ce n'est plus l'US qui portait ce numéro.** Le cadrage l'a **recadrée puis coupée en deux** sur une question du commanditaire : *pourquoi quatre mots — tour, ronde, manche, volée — pour un seul concept ?* Réponse : la pluralité est légitime **à l'écran** (règle 3), mais elle ne recouvrait **aucun concept commun dans le code** — cinq progressions privées, et `domain/suivi_deroule.py` qui le constatait sans le nommer (« une phase sans braquet rend un bloc à zéro tour », `# DETTE-028`). Cette tranche pose donc le **tour** comme unité d'avancement générique des six formats, **séparée du braquet** — *avancer ≠ classer*, invariant posé par le commanditaire —, avec le **mot du métier** résolu par le contrat de phase ([ADR-0090](../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md), qui complète ADR-0083). Le suivi cesse d'être aveugle hors tableau. ⚠️ **Le CA d'origine est révoqué** : il disait « la ronde suivante ne s'ouvre **que** sur décision de l'organisateur », le commanditaire a tranché **l'inverse** — l'automatique reste le défaut, l'arrêt devient une décision **programmée**. ⚠️ **La question de cadrage inscrite à la fiche était fausse sur un point** : les poules ne partagent **pas** le décor `RONDES_APPARIEES` (c'est `RENCONTRES_EN_GROUPES`) — la colline seule le partage. Sans effet sur la décision, qui vaut pour les six formats. Port `LecteurAvancementDePhase` **calqué sur ADR-0084**, trois branchements au composition root. Aucune migration. |
+> | **🎯 1** | `E05US033` | **L'organisateur programme les pauses du déroulé.** Seconde moitié de l'ancienne `E05US032`, et le vrai besoin : « pouvoir couper » une phase qui dure des heures, pas déclencher chaque tour à la main. Arrêts posés **à l'atelier** (une liste, pas un arrêt unique), portée **phase seule ou tout le départ**, arrêt global qui laisse **chaque phase finir son tour en cours**, arrêt relatif « dans x tours » le jour J, bascule automatique sur le statut **existant** `EN_PAUSE`, reprise **admin** d'un seul geste puis retour à l'automatique jusqu'au prochain arrêt, et **pastille de rappel** au tableau de bord (demandée dans cette tranche). Y arrive aussi le réglage « diviser une qualification en x tours », reporté d'`E05US032` faute d'emploi avant. ⚠️ Deux pièges à vérifier : `EN_PAUSE` gèle la validation (une **correction** doit rester possible), et le routage doit dire « en attente » — issue livrée en `E05US030`. |
 > | **2** | `E05US029` | **Des poules de niveau en une seule étape.** ⚠️ **Née du cadrage d'`E05US026`, le 15/08/2026, et le commanditaire a demandé qu'elle passe *après* lui** — c'est `E05US026` qui rend publiable le classement final d'une cascade de poules, sans quoi cette US-ci composerait joliment un format qui ne décerne rien. Le format visé (36 archers → 6 poules de 6 → 6 poules **par niveau**, rangs 1-6 / 7-12 / …) est **déjà composable** en une étape par niveau : ce qui manque est le confort, pas la capacité. Deux obstacles structurels à lever, tous deux nommés dans la fiche : le **serpent** (juste en 1ʳᵉ phase, faux ensuite) et l'**espace de rangs porté par l'étape** et non par le groupe. |
 > | **3** | `E05US027` | **La colline jouable** — 4ᵉ et dernière tranche du découpage d'`E05US023`, celle qui referme `DETTE-028` sur son volet « moteurs sans appelant ». **Indépendante d'`E05US026`** : plaçable avant, après ou entre, au gré de la fenêtre. Elle bénéficiera du port unifié posé par `E05US026` — quatrième occurrence, plus aucune duplication à écrire. |
 > | **4** | `E16US002` | **Écran « Phases » (A07), dernier des quatre écrans refusés.** ⚠️ **À recadrer avant d'être prise** — voir plus bas. |
@@ -926,7 +934,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 71 | E06US003 | Barrage de tir pour places décisives | ✅ *(seuil dans la politique `tiebreak`, manches persistées, verdict recalculé, ADR-0066)* |
 | 72 | E06US004 | Podium des duels & agrégation des rangs | ✅ *(palmarès : fusion des rangs de phases, podiums par catégorie, export PDF, politique `aggregation`, ADR-0067)* |
 
-## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (18/21)**
+## J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (19/22)**
 
 | Seq | US | Titre | État |
 |---|---|---|---|
@@ -945,7 +953,8 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | 76octies | E05US026 | **Le système suisse jouable** (backend) | ✅ *(livrée le 16/08/2026, **backend seul** — le front part en `E05US030`. Se règle, se joue ronde après ronde, se pose sur la salle, se classe, se route et entre au palmarès. Les deux ports de classement jumeaux fondus en un ([ADR-0084](../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md)). Ouvre `DETTE-064` (majeure), referme `DETTE-063`. **Insérée ici le 16/08/2026**, même raison.)* |
 | 76nonies | E05US030 | **Le système suisse à l'écran** | ✅ *(livrée le 16/08/2026 — la 2ᵉ moitié d'`E05US026`, coupée à la couture backend / front. Fiche de réglages (nombre de rondes) avec la **borne d'effectif dite en clair** — elle existait au domaine et ne se voyait nulle part, donc l'organisateur la découvrait par un refus ou par un déficit de rondes muet le jour J. Saisie **ronde par ronde** au pavé de duel (`famille: 'suisse'`, 3ᵉ valeur — les quatre aiguillages binaires « poule ou tableau » du mécanisme sont passés en `Record` exhaustifs, faute de quoi le format tombait du côté tableau partout où l'un d'eux aurait été oublié). Attente nommée tant que la ronde en cours n'est pas close, **classement provisoire** (points rendus en victoires, Buchholz) ajouté au cadrage, bouton de pose du plan de cibles — écrit d'emblée pour ne pas rejouer le défaut d'E05US023, où le hook de pose n'avait aucun appelant. ✅ **`DETTE-056` refermée** ; ✅ issue de routage `EN_ATTENTE` livrée des deux côtés. ⚠️ Le cadrage a produit `E05US031` et `E05US032`.)* |
 | 76decies | E05US031 | **Le public voit les formats sans arbre** | ✅ *(livrée le 18/08/2026 — onglet « En cours » qui aiguille par format et remonte le déroulé du départ ; route publique neuve pour le Big Shoot Off ; `VueEcran.TABLEAUX` → `EN_COURS`, migration `0047`. ADR-0089, révise ADR-0064)* |
-| 76undecies | E05US032 | **L'organisateur ouvre la ronde suivante** | ⬜ *(née du même cadrage ; rouvre un choix de conception assumé du backend, ADR requis avant de coder)* |
+| 76undecies | E05US032 | **Une phase avance par tours** | ✅ *(livrée le 18/08/2026 — **recadrée au cadrage du jour** : la fiche s'intitulait « L'organisateur ouvre la ronde suivante » et son CA est **révoqué**. Le **tour** devient l'unité d'avancement générique des six formats, séparée du **braquet** (*avancer ≠ classer*), avec le mot du métier résolu par le contrat de phase — 7ᵉ question, `UniteDeTour`. Le suivi du déroulé cesse d'afficher « zéro tour » sur tout format qui ne classe qu'à la fin. Port `LecteurAvancementDePhase` calqué sur ADR-0084, branché par type. [ADR-0090](../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md). Aucune migration.)* |
+| 76duodecies | E05US033 | **L'organisateur programme les pauses du déroulé** | 🎯 *(seconde moitié de l'ancienne `E05US032` — arrêts programmés à l'atelier, portée phase ou départ, reprise admin, pastille de rappel ; porte aussi le découpage en tours de la qualification)* |
 | 77 | E03US007 | **Contrainte séparation catégorie/blason** | ✅ *(réglage de tournoi à 4 positions, contrainte **dure** au placement auto **et** au glisser-déposer, **sur les deux plans** (cibles et duels), raison de réserve propre `cloisonnement`, cibles non conformes signalées — ADR-0071, DETTE-036/037 ; tranche la priorité des contraintes restée ouverte à EPIC-03)* |
 | 78 | E09US005 | Classements PDF | ⬜ *(rétrécie par E06US004 : le **palmarès** a son PDF ; reste celui du classement de **qualification**)* |
 | 79 | E00US013 | Factoriser les briques d'UI partagées | ✅ *(remontée de J3, DETTE-004 résorbée)* |
@@ -1164,7 +1173,7 @@ appels compilables et faux. À prendre avant la prochaine US qui touche une port
   admin » d'EPIC-17) ne compte **ni au numérateur ni au dénominateur** : c'est du travail livré, pas
   une US. Les lignes à `Seq = —` (US hors séquence, remontées d'une section d'ajouts) sont comptées
   **dans leur section d'origine**, pas dans le jalon — sans quoi la même US serait comptée deux
-  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 18/21 et J4 0/7.
+  fois. C'est cette règle qui donne J0 12/12, J1 46/46, J2 14/14, J3 19/22 et J4 0/7.
   *(J3 corrigé **deux fois** le 16/08/2026, par deux modes de panne différents, tous deux
   trouvés par le recalcul automatique d'`E00US019` et non à l'œil. **1.** Le compteur disait
   `12/15` quand le corps portait 14 ✅ sur 16 lignes — l'en-tête n'avait pas suivi le corps.

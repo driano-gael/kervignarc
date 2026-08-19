@@ -544,10 +544,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **115 US livrées** sur `main` (mergées, revues, CI verte) à la date du 18/08/2026, la dernière
-  étant `E05US031` — **le public voit les trois formats sans arbre** : l'onglet « Tableaux » devient
-  « En cours » et montre la phase qui se joue quel qu'en soit le format. **`SUIVI-US.md` fait foi sur
-  le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
+- **116 US livrées** sur `main` (mergées, revues, CI verte) à la date du 18/08/2026, la dernière
+  étant `E05US032` — **chaque phase dit où elle en est**, dans le mot de son format (« Demi-finale »,
+  « Ronde 3 », « Manche 2 »), là où le suivi ne savait le dire que d'un tableau. **`SUIVI-US.md` fait
+  foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
   ligne de code** (elles sont ⬜), tandis qu'`E17US003` et `E17US004` ont été livrées sous la
@@ -685,6 +685,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **Chaque phase dit où elle en est (18/08/2026, E05US032).** L'écran de suivi annonçait « on
+  attaque les quarts » sur un tableau d'élimination directe, et **rien** sur tout le reste — une
+  qualification, des poules, un système suisse, un Big Shoot Off apparaissaient avec leur état mais
+  sans jamais dire à quel stade ils en étaient. Chaque format parle désormais **sa** langue :
+  « Demi-finale », « Ronde 3 », « Tour 2 », « Manche 2 » — le mot qu'on entend au micro, jamais un
+  numéro technique. La cause de l'angle mort valait d'être nommée : l'application confondait
+  **avancer** et **classer**, comptant les tours d'une phase à partir des rangs que chaque tour
+  distribue — ce qui ne marche que pour un tableau. Première moitié d'une demande du jour même :
+  décider quand la salle repart plutôt que la voir enchaîner seule pendant des heures ; la seconde
+  (programmer les pauses, relancer d'un bouton) est `E05US033`. Décision d'architecture :
+  [ADR-0090](../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md).
 - **Le public voit ce qui se joue, quel que soit le format (18/08/2026, E05US031).** Trois formats
   — les poules, le Big Shoot Off et le système suisse — étaient jouables de bout en bout depuis des
   semaines, et **aucun n'était visible du public** : l'onglet où l'on suit les rencontres ne savait

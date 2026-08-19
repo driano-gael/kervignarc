@@ -94,7 +94,10 @@ function EnTeteSuivi({ suivi }: { suivi: SuiviDerouleData }) {
 }
 
 function phraseDePhase(bloc: AvancementBloc): string {
-  const tour = bloc.tour_courant === null ? '' : ` · tour ${bloc.tour_courant}`
+  // Le **mot de la salle**, servi par le backend (E05US032, ADR-0090) : « Demi-finale » sur un
+  // arbre, « Ronde 3 » au système suisse, « Manche 2 » au Big Shoot Off. Disait « tour N » pour
+  // tout le monde jusqu'ici — et ne disait rien du tout hors tableau, faute de tour à afficher.
+  const tour = bloc.libelle_tour_courant === null ? '' : ` · ${bloc.libelle_tour_courant}`
   const duels =
     bloc.duels_attendus === 0 ? '' : ` · ${bloc.duels_joues}/${bloc.duels_attendus} duels joués`
   return `phase ${bloc.ordre} ${LIBELLE_STATUT[bloc.statut]}${tour}${duels}`
