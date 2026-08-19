@@ -1,0 +1,179 @@
+[
+ {
+  "chemin": "backend/api/v1/phases.py",
+  "existe": true,
+  "symboles": [
+   "lever",
+   "relancer_arret",
+   "RelanceDesArrets"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/application/arrets_programmes.py",
+  "existe": true,
+  "symboles": [
+   "phases_a_arreter",
+   "_armer_sur_le_depart",
+   "_resoudre_les_arrets_armes",
+   "_avancement_connu",
+   "lever",
+   "relancer_arret",
+   "RelanceDesArrets",
+   "evaluer",
+   "avancement_par_phase"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/application/routage.py",
+  "existe": true,
+  "symboles": [
+   "_en_pause"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/application/saisie.py",
+  "existe": true,
+  "symboles": [
+   "avancement_de_phase",
+   "QUALIFICATION"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/application/suivi_deroule.py",
+  "existe": true,
+  "symboles": [
+   "evaluer",
+   "avancement_par_phase"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/bootstrap/composition.py",
+  "existe": true,
+  "symboles": [],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/domain/arret_programme.py",
+  "existe": true,
+  "symboles": [
+   "ArretProgramme",
+   "verifier_arrets",
+   "arrets_atteints",
+   "FranchissementArret",
+   "EtatFranchissement",
+   "FranchissementArretORM",
+   "phases_a_arreter",
+   "_armer_sur_le_depart",
+   "_resoudre_les_arrets_armes",
+   "_avancement_connu"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/domain/deroule_etape.py",
+  "existe": true,
+  "symboles": [
+   "EtapeDeroule.arrets",
+   "_verifier_arrets_applicables",
+   "_politiques_json",
+   "_lire_arrets",
+   "_lire_decoupage",
+   "TypePhase.QUALIFICATION"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/domain/format_tournoi.py",
+  "existe": true,
+  "symboles": [
+   "ModelePhase.arrets",
+   "pour_tournoi",
+   "d_etape"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/domain/phase.py",
+  "existe": true,
+  "symboles": [
+   "Phase",
+   "Phase.decoupage",
+   "EtapeDeroule.instancier",
+   "TypePhase.QUALIFICATION"
+  ],
+  "symboles_absents": [
+   "EtapeDeroule.instancier"
+  ],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/infrastructure/db/models.py",
+  "existe": true,
+  "symboles": [
+   "FranchissementArret",
+   "EtatFranchissement",
+   "FranchissementArretORM"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "backend/infrastructure/db/repositories/moteur.py",
+  "existe": true,
+  "symboles": [
+   "EtapeDeroule.arrets",
+   "_verifier_arrets_applicables",
+   "_politiques_json",
+   "_lire_arrets",
+   "_lire_decoupage"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
+  "existe": true,
+  "symboles": [
+   "lever",
+   "relancer_arret",
+   "RelanceDesArrets"
+  ],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "frontend/src/features/suivi-deroule/hooks.ts",
+  "existe": true,
+  "symboles": [],
+  "symboles_absents": [],
+  "verifiable": true
+ },
+ {
+  "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+  "existe": true,
+  "symboles": [
+   "ReglageBarrage",
+   "arrets",
+   "decoupage"
+  ],
+  "symboles_absents": [
+   "ReglageBarrage",
+   "decoupage"
+  ],
+  "verifiable": true
+ }
+]

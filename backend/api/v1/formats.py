@@ -378,7 +378,7 @@ class EtapeDTO(BaseModel):
     decoupage: DecoupageDTO | None = None
     """Le découpage en tours d'une étape (E05US033) — `null` = non découpée, phase entière."""
 
-    arrets: list[ArretProgrammeDTO] = Field(default_factory=list)
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033) — liste vide = aucune, le défaut."""
 
     def vers_modele(self) -> ModelePhase:

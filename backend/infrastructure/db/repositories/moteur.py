@@ -2,13 +2,13 @@
 
 Séquence de phases, formats, plans de placement (qualification et duels).
 
-Découpé de l'ancien `repositories.py` (3 378 lignes, 21 adapters) par l'action 2 de [l'audit de
-maintenabilité](../../../../docs/audit-maintenabilite.md) : le fichier unique figurait parmi les
-onze « passages obligés » du dépôt. Le contenu n'a pas bougé d'un caractère ; seuls les imports
-inutiles ont été élagués.
+Découpé de l'ancien `repositories.py` (3 378 lignes, 21 adapters) par l'action 2 de
+[l'audit de maintenabilité](../../../../docs/audit-maintenabilite.md) : le fichier unique
+figurait parmi les onze « passages obligés » du dépôt. Le contenu n'a pas bougé d'un
+caractère ; seuls les imports inutiles ont été élagués.
 
-Chaque opération ouvre une **session courte** (ADR-0005) et traduit les lignes ORM en agrégats de
-domaine. Les pannes SQLAlchemy sont **enveloppées** en `InfrastructureError` — le domaine ne
+Chaque opération ouvre une **session courte** (ADR-0005) et traduit les lignes ORM en agrégats
+de domaine. Les pannes SQLAlchemy sont **enveloppées** en `InfrastructureError` — le domaine ne
 voit jamais d'exception brute."""
 
 from __future__ import annotations
@@ -66,9 +66,9 @@ from infrastructure.db.models import (
     PlacementTableauORM,
 )
 
-# `AuditRepositorySQL` vit dans le thème `exploitation` mais s'annote ici : plusieurs adapters
-# **co-écrivent** leur trace d'audit dans la même transaction (ADR-0035). Import direct et acyclique
-# — `exploitation` n'importe aucun autre thème.
+# `AuditRepositorySQL` vit dans le thème `exploitation` mais s'annote ici : plusieurs
+# adapters **co-écrivent** leur trace d'audit dans la même transaction (ADR-0035). Import
+# direct et acyclique — `exploitation` n'importe aucun autre thème.
 from infrastructure.db.repositories.exploitation import AuditRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 
@@ -76,9 +76,9 @@ from infrastructure.erreurs import InfrastructureError
 def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
     """Traduit une ligne ORM en `EtapeDeroule` (config JSON → barème, grain, source, effectif).
 
-    **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.policies.scoring` (forme
-    cible, ADR-0046), le grain depuis `config.validation`. Une `config` illisible **ou hors règle**
-    (le repository en est le seul rédacteur et écrit toujours des valeurs valides) est une
+    **Qualification** (E01US009/E01US015) : le barème est lu depuis `config.policies.scoring`
+    (forme cible, ADR-0046), le grain depuis `config.validation`. Une `config` illisible **ou hors
+    règle** (le repository en est le seul rédacteur et écrit toujours des valeurs valides) est une
     **incohérence technique** → on relit via les fabriques du domaine pour que même une valeur hors
     plage remonte en `InfrastructureError` (ADR-0007), jamais en value object silencieusement
     invalide. L'**absence** de `validation` n'est pas une incohérence — phase écrite avant E01US015
@@ -167,9 +167,9 @@ def _vers_phase(ligne: PhaseORM, etape: EtapeDeroule) -> Phase:
     """Assemble l'objet du moteur : l'**avancement** d'une ligne `phase` + la **définition** de son
     étape (ADR-0076).
 
-    C'est *la* couture de la séparation. Le domaine et les services ne la voient pas : ils reçoivent
-    une `Phase` complète, comme avant. La jointure est l'affaire de l'adapter (ADR-0003), et c'est
-    ce qui permet aux 34 modules qui lisent `phase.bareme` de n'avoir pas bougé.
+    C'est *la* couture de la séparation. Le domaine et les services ne la voient pas : ils
+    reçoivent une `Phase` complète, comme avant. La jointure est l'affaire de l'adapter (ADR-0003),
+    et c'est ce qui permet aux 34 modules qui lisent `phase.bareme` de n'avoir pas bougé.
     """
     try:
         statut = StatutPhase(ligne.statut)
@@ -246,8 +246,8 @@ def _vers_sources(config: Any) -> tuple[SourcePhase, ...]:
     """Relit **tous** les prélèvements d'une étape, forme cible **ou** ancienne.
 
     Cible (E05US010) : `config.sources`, une liste. Ancienne (E05US001) : `config.source`, un objet
-    unique — relu comme une liste d'un élément, puisque c'en est exactement le sous-cas. Absence des
-    deux : la phase est alimentée par les inscriptions.
+    unique — relu comme une liste d'un élément, puisque c'en est exactement le sous-cas. Absence
+    des deux : la phase est alimentée par les inscriptions.
     """
     brutes = config.get("sources")
     if brutes is None:
@@ -259,8 +259,8 @@ def _vers_sources(config: Any) -> tuple[SourcePhase, ...]:
 def _vers_grain(validation: Any) -> GrainValidation:
     """Relit le grain de validation depuis sa forme JSON (`config.validation`).
 
-    Passe par `GrainValidation.creer` pour qu'une valeur hors règle (cadence `< 1`, ou manquante sur
-    un grain qui l'exige) remonte en `DomainError`, convertie en `InfrastructureError` par
+    Passe par `GrainValidation.creer` pour qu'une valeur hors règle (cadence `< 1`, ou manquante
+    sur un grain qui l'exige) remonte en `DomainError`, convertie en `InfrastructureError` par
     l'appelant — jamais en value object silencieusement invalide.
 
     `validation` est typé `Any` parce qu'il sort de `json.loads` : rien ne garantit que ce soit un
@@ -278,13 +278,13 @@ def _config_etape(etape: EtapeDeroule) -> str:
     """Sérialise les politiques et le peuplement d'une phase en JSON (forme cible, ADR-0046).
 
     Forme : `{"policies"?: {...}, "validation"?: {...}, "source"?: {...}, "effectif"?: int}`. Les
-    **politiques du moteur** (ADR-0004) vivent sous `config.policies`, chacune un objet `{"nom":
-    <implémentation>, …paramètres}` — E05US003 a tranché DETTE-003 (`config.policies` +
+    **politiques du moteur** (ADR-0004) vivent sous `config.policies`, chacune un objet
+    `{"nom": <implémentation>, …paramètres}` — E05US003 a tranché DETTE-003 (`config.policies` +
     nom+paramètres). Ici seul `scoring` est écrit, et seulement pour une **qualification** :
     `{"nom": "cumul", "volees": N, "fleches": M}` (le `nom` désigne le classement au cumul, les
     paramètres portent le barème). Le grain de `validation` **n'est pas** une politique de moteur —
-    il reste **hors** `policies`, à la racine (ADR-0046), et ne porte `n_volees` que pour le grain «
-    toutes les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont
+    il reste **hors** `policies`, à la racine (ADR-0046), et ne porte `n_volees` que pour le grain
+    « toutes les N volées ». La **source** (peuplement) et l'**effectif** sont écrits s'ils sont
     déclarés, quel que soit le type. La relecture (`_vers_etape`) reste tolérante à l'ancienne forme
     à plat pour une base non migrée.
     """
@@ -353,9 +353,9 @@ def _politiques_json(
     elif marquer_absences and porte_un_bareme:
         # Seule une **qualification** peut porter un barème : marquer son absence sur un autre type
         # écrirait « le rédacteur n'en a pas voulu » là où la question ne se pose pas, et
-        # contredirait la règle de `_config_phase` (« `scoring`, et seulement pour une qualification
-        # »). Sans effet aujourd'hui — la relecture n'y lit pas le scoring —, mais un piège le jour
-        # où ces types porteront leurs propres politiques (ADR-0062).
+        # contredirait la règle de `_config_phase` (« `scoring`, et seulement pour une
+        # qualification »). Sans effet aujourd'hui — la relecture n'y lit pas le scoring —, mais un
+        # piège le jour où ces types porteront leurs propres politiques (ADR-0062).
         config["policies"] = {"scoring": None}
     if validation is not None:
         grain: dict[str, object] = {"grain": validation.type.value}
@@ -384,6 +384,7 @@ def _politiques_json(
     if poules is not None:
         # Le réglage d'une phase de poules vit **à la racine du `config`**, comme `validation`,
         # `sources` et `effectif` — et non sous `policies` (E05US023, ADR-0083 §« sans migration »).
+        #
         # ⚠️ C'est un correctif de revue, et il valait mieux le payer maintenant. La première
         # version écrivait `config.policies.poules`, ce que `docs/modele-de-donnees.md` interdit en
         # toutes lettres (« seules les familles d'ADR-0004 vivent sous `policies` ») et que le code
@@ -392,17 +393,18 @@ def _politiques_json(
         # énumération. Rien ne cassait aujourd'hui — aucun appelant ne passe encore le `policies`
         # complet d'une phase à son validateur —, mais le jour où l'on branche cette vérification,
         # **toute phase de poules réglée** devenait illisible. Trois lignes ici ; une migration de
-        # données une fois qu'un tournoi est réglé en base. Et c'est juste sur le fond : une taille
-        # de poule, un barème, un nombre de qualifiés sont des **paramètres de phase**, pas des
-        # stratégies injectables. Il n'existe pas deux implémentations entre lesquelles un registre
-        # choisirait — d'où la disparition du `nom`, qui mimait un discriminant de politique que
-        # rien ne résolvait.
+        # données une fois qu'un tournoi est réglé en base.
+        #
+        # Et c'est juste sur le fond : une taille de poule, un barème, un nombre de qualifiés sont
+        # des **paramètres de phase**, pas des stratégies injectables. Il n'existe pas deux
+        # implémentations entre lesquelles un registre choisirait — d'où la disparition du `nom`,
+        # qui mimait un discriminant de politique que rien ne résolvait.
         reglage: dict[str, object] = {"taille": poules.taille_visee}
-        # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un choix
-        # de l'organisateur, et le relire d'un défaut de code ferait changer ses points de match le
-        # jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que si elles sont
-        # réglées — leur absence *signifie* quelque chose (« la poule classe », « round-robin
-        # complet »), qu'un `null` explicite ne dirait pas mieux.
+        # Le barème est **toujours** écrit, y compris quand il vaut le défaut 3/1/0 : c'est un
+        # choix de l'organisateur, et le relire d'un défaut de code ferait changer ses points
+        # de match le jour où le défaut change. Les deux autres clés, elles, ne s'écrivent que
+        # si elles sont réglées — leur absence *signifie* quelque chose (« la poule classe »,
+        # « round-robin complet »), qu'un `null` explicite ne dirait pas mieux.
         reglage["bareme"] = [
             poules.bareme.victoire,
             poules.bareme.nul,
@@ -412,10 +414,10 @@ def _politiques_json(
             reglage["qualifies"] = poules.nb_qualifies
         if poules.rencontres_par_archer is not None:
             reglage["rencontres"] = poules.rencontres_par_archer
-        # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les archers
-        # d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute phase écrite
-        # avant que l'option existe. Écrire `false` explicitement ne dirait rien de plus et ferait
-        # diverger deux documents équivalents.
+        # Même règle que les deux clés ci-dessus : l'absence **signifie** le défaut (« les
+        # archers d'un même rang de poule restent ex æquo »), qui est aussi le régime de toute
+        # phase écrite avant que l'option existe. Écrire `false` explicitement ne dirait rien de
+        # plus et ferait diverger deux documents équivalents.
         if poules.departage_inter_poules:
             reglage["departage"] = True
         config["poules"] = reglage
@@ -438,23 +440,23 @@ def _politiques_json(
             souffle["departage_sortants"] = True
         config["big_shoot_off"] = souffle
     if suisse is not None:
-        # Même domicile et même raison que ses deux voisins : racine du `config`, pas `policies`. Un
-        # nombre de rondes est un **paramètre de phase**, et `policies` est le catalogue fermé des
-        # familles injectables (`assembler_politiques` refuse toute clé hors énumération). Aucune
-        # migration, donc : ADR-0046 laisse le document libre à la racine.
+        # Même domicile et même raison que ses deux voisins : racine du `config`, pas `policies`.
+        # Un nombre de rondes est un **paramètre de phase**, et `policies` est le catalogue fermé
+        # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
+        # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
         config["suisse"] = {"rondes": suisse.nb_rondes}
     if decoupage is not None:
-        # Même domicile et même raison que ses quatre voisins : racine du `config`, pas `policies`
-        # (catalogue fermé des familles injectables). Aucune migration : ADR-0046 laisse le document
-        # libre à la racine — c'est ce qui permet à cette US de n'en demander une que pour le
-        # **franchissement**, qui est de l'avancement.
+        # Même domicile et même raison que ses quatre voisins : racine du `config`, pas
+        # `policies` (catalogue fermé des familles injectables). Aucune migration : ADR-0046
+        # laisse le document libre à la racine — c'est ce qui permet à cette US de n'en
+        # demander une que pour le **franchissement**, qui est de l'avancement.
         config["decoupage"] = {"tours": decoupage.nb_tours}
     if arrets:
-        # Une **liste**, et non un objet : c'est la lettre du CA (« plusieurs par phase »). `portee`
-        # s'écrit toujours, y compris pour le défaut : ce n'est pas une option qu'on active mais un
-        # choix parmi deux, et l'omettre rendrait un document relu ambigu le jour où le défaut
-        # changerait — le raisonnement inverse de `cumul` du Big Shoot Off, où l'absence *signifie*
-        # quelque chose.
+        # Une **liste**, et non un objet : c'est la lettre du CA (« plusieurs par phase »).
+        # `portee` s'écrit toujours, y compris pour le défaut : ce n'est pas une option qu'on
+        # active mais un choix parmi deux, et l'omettre rendrait un document relu ambigu le jour
+        # où le défaut changerait — le raisonnement inverse de `cumul` du Big Shoot Off, où
+        # l'absence *signifie* quelque chose.
         config["arrets"] = [
             {"apres_tour": arret.apres_tour, "portee": arret.portee.value} for arret in arrets
         ]
@@ -508,15 +510,15 @@ def _lire_barrage_jusqu_au(config: Any) -> int | None:
 def _lire_reglage_big_shoot_off(config: Any) -> ConfigurationBigShootOff | None:
     """Le réglage d'un Big Shoot Off, lu **à la racine** du `config` (E05US028).
 
-    Même domicile et même régime d'absence que `_lire_reglage_poules` : racine plutôt que `policies`
-    (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non réglé**, ce qui
-    est licite — le type se choisit avant ses paramètres.
+    Même domicile et même régime d'absence que `_lire_reglage_poules` : racine plutôt que
+    `policies` (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non
+    réglé**, ce qui est licite — le type se choisit avant ses paramètres.
 
     ⚠️ **On relit par la fabrique du domaine**, jamais en construisant à la main : une liste vide,
     une case à zéro, un nombre de flèches nul sont des choses que le repository n'écrit jamais —
     l'agrégat les refuse en amont. Les trouver ici signifie que la base a été altérée, et
-    `ConfigurationBigShootOffInvalide` remonte alors en « configuration illisible » (ADR-0007), ce
-    qui est exact. Le cas mérite d'autant plus une erreur qu'une liste altérée décrirait **qui
+    `ConfigurationBigShootOffInvalide` remonte alors en « configuration illisible » (ADR-0007),
+    ce qui est exact. Le cas mérite d'autant plus une erreur qu'une liste altérée décrirait **qui
     sort** : la tolérer ferait éliminer des archers sur une donnée corrompue.
     """
     souffle = config.get("big_shoot_off")
@@ -532,8 +534,8 @@ def _lire_reglage_big_shoot_off(config: Any) -> ConfigurationBigShootOff | None:
     fleches = souffle.get("fleches")
     return ConfigurationBigShootOff(
         eliminations=tuple(int(quota) for quota in eliminations),
-        # Repli sur le défaut du domaine seulement si la clé manque — ce qui ne peut venir que d'une
-        # ligne écrite à la main, l'écriture les posant toujours.
+        # Repli sur le défaut du domaine seulement si la clé manque — ce qui ne peut venir que
+        # d'une ligne écrite à la main, l'écriture les posant toujours.
         volees=1 if volees is None else int(volees),
         fleches_par_volee=3 if fleches is None else int(fleches),
         cumul_des_manches=bool(souffle.get("cumul", False)),
@@ -545,8 +547,8 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
     """Le réglage d'une phase au système suisse, lu **à la racine** du `config` (E05US026).
 
     Même domicile et même régime d'absence que ses deux voisins : racine plutôt que `policies`
-    (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non réglée**, ce qui
-    est licite — le type se choisit avant ses paramètres.
+    (c'est un paramètre de phase, pas une stratégie injectable), et absence = **non réglée**, ce
+    qui est licite — le type se choisit avant ses paramètres.
 
     ⚠️ **On relit par la fabrique du domaine**, jamais en construisant à la main : un nombre de
     rondes nul ou négatif est une chose que le repository n'écrit jamais, l'agrégat le refusant en
@@ -554,9 +556,9 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
     remonte alors en « configuration illisible » (ADR-0007), ce qui est exact.
 
     ⚠️ **Aucune vérification contre l'effectif ici**, et c'est délibéré : la borne appariable est
-    une propriété du couple (rondes, effectif), portée par `EtapeDeroule`. La refaire à la relecture
-    refuserait de **charger** un déroulé que l'atelier a le droit d'avoir enregistré en brouillon —
-    on ne rend pas illisible ce qui est seulement injouable en l'état.
+    une propriété du couple (rondes, effectif), portée par `EtapeDeroule`. La refaire à la
+    relecture refuserait de **charger** un déroulé que l'atelier a le droit d'avoir enregistré en
+    brouillon — on ne rend pas illisible ce qui est seulement injouable en l'état.
     """
     souffle = config.get("suisse")
     if not isinstance(souffle, dict):
@@ -579,8 +581,8 @@ def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
 
     ⚠️ **On relit par la fabrique du domaine**, comme les autres : un nombre de tours nul ou négatif
     est une chose que le repository n'écrit jamais, l'agrégat le refusant en amont. Le trouver ici
-    signifie que la base a été altérée, et `DecoupageEnToursInvalide` remonte alors en «
-    configuration illisible » (ADR-0007), ce qui est exact.
+    signifie que la base a été altérée, et `DecoupageEnToursInvalide` remonte alors en
+    « configuration illisible » (ADR-0007), ce qui est exact.
     """
     souffle = config.get("decoupage")
     if not isinstance(souffle, dict):
@@ -666,13 +668,14 @@ def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
         return None
     taille = poules.get("taille")
     if taille is None:
-        # ⚠️ Erreur **typée**, et non `KeyError` nu ni `None` silencieux. `_vers_modele_phase`
-        # appelle cette fonction **hors** du `try/except` qui enveloppe la lecture d'une étape : un
-        # `int(poules["taille"])` sur une clé absente en sortait donc en `KeyError`, donc en 500
-        # brut, au lieu du « configuration illisible » d'ADR-0007 que la docstring annonce (relevé
-        # en revue). Rendre `None` serait pire encore : « pas de taille » se lirait « phase non
-        # réglée », et le jour J la composition inventerait une répartition là où la base dit
-        # quelque chose d'incohérent.
+        # ⚠️ Erreur **typée**, et non `KeyError` nu ni `None` silencieux.
+        #
+        # `_vers_modele_phase` appelle cette fonction **hors** du `try/except` qui enveloppe la
+        # lecture d'une étape : un `int(poules["taille"])` sur une clé absente en sortait donc en
+        # `KeyError`, donc en 500 brut, au lieu du « configuration illisible » d'ADR-0007 que la
+        # docstring annonce (relevé en revue). Rendre `None` serait pire encore : « pas de taille »
+        # se lirait « phase non réglée », et le jour J la composition inventerait une répartition
+        # là où la base dit quelque chose d'incohérent.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     bareme = poules.get("bareme")
     qualifies = poules.get("qualifies")
@@ -743,21 +746,21 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         etape.effectif,
                         # ⚠️ **`barrage_jusqu_au` était omis ici** alors que `ModelePhase` le porte
                         # depuis le 07/08/2026 : un format promu depuis un tournoi dont une phase
-                        # avait un seuil de barrage le perdait **en silence** — exactement le défaut
-                        # que l'ajout du champ prétendait fermer, déplacé de l'agrégat à sa
+                        # avait un seuil de barrage le perdait **en silence** — exactement le
+                        # défaut que l'ajout du champ prétendait fermer, déplacé de l'agrégat à sa
                         # sérialisation. Constaté en câblant `poules` par le même chemin ; corrigé
-                        # ici plutôt que consigné, parce qu'il coûte un argument et qu'il détruit de
-                        # la donnée d'organisateur (règle « un bug corrigeable dans l'US »).
+                        # ici plutôt que consigné, parce qu'il coûte un argument et qu'il détruit
+                        # de la donnée d'organisateur (règle « un bug corrigeable dans l'US »).
                         etape.barrage_jusqu_au,
                         profondeur=etape.profondeur,
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
                         suisse=etape.suisse,
                         # E05US033 : câblés dès l'ajout du champ, et non « plus tard ». Le
-                        # commentaire de `barrage_jusqu_au` juste au-dessus dit ce que coûte l'oubli
-                        # — un champ ajouté à l'agrégat mais absent de sa sérialisation rouvre
-                        # exactement le défaut que l'ajout prétendait fermer, déplacé de l'agrégat à
-                        # sa persistance, et il détruit de la donnée d'organisateur.
+                        # commentaire de `barrage_jusqu_au` juste au-dessus dit ce que coûte
+                        # l'oubli — un champ ajouté à l'agrégat mais absent de sa sérialisation
+                        # rouvre exactement le défaut que l'ajout prétendait fermer, déplacé de
+                        # l'agrégat à sa persistance, et il détruit de la donnée d'organisateur.
                         decoupage=etape.decoupage,
                         arrets=etape.arrets,
                         marquer_absences=True,
@@ -813,13 +816,13 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
     type, même mécanisme « politique sans migration » qu'ADR-0011 : un format écrit avant l'ajout
     d'une clé reste relisible.
 
-    ⚠️ **Un modèle d'étape peut n'avoir ni barème ni grain depuis E01US024** — c'est le brouillon du
-    CA, et c'est la relecture qui a failli l'interdire. Un premier jet lisait `_lire_scoring`
+    ⚠️ **Un modèle d'étape peut n'avoir ni barème ni grain depuis E01US024** — c'est le brouillon
+    du CA, et c'est la relecture qui a failli l'interdire. Un premier jet lisait `_lire_scoring`
     **inconditionnellement** pour une qualification : le `KeyError` remontait en
     `InfrastructureError` → 500, **après** le `commit`. La ligne restait en base et `lister()`
-    mappant *toutes* les lignes, un seul brouillon incomplet mettait la bibliothèque entière en 500
-    — sans qu'aucune route ne permette de le supprimer, puisqu'elles relisent toutes. Défaut relevé
-    par deux axes de la revue, reproduit de bout en bout. Cf. `_politiques_json` pour le
+    mappant *toutes* les lignes, un seul brouillon incomplet mettait la bibliothèque entière en
+    500 — sans qu'aucune route ne permette de le supprimer, puisqu'elles relisent toutes. Défaut
+    relevé par deux axes de la revue, reproduit de bout en bout. Cf. `_politiques_json` pour le
     discriminant « clé présente à `null` » vs « clé absente ».
     """
     type_phase = TypePhase(brute["type"])
@@ -1138,8 +1141,8 @@ class PlacementTableauRepositorySQL:
 class FormatTournoiRepositorySQL:
     """Adapter SQLite du port `FormatTournoiRepository` (E01US023, ADR-0060 §5).
 
-    Pas de `par_tournoi` : un format n'existe qu'en bibliothèque, sa copie dans un tournoi étant les
-    **phases** produites par son application (`PhaseRepositorySQL`).
+    Pas de `par_tournoi` : un format n'existe qu'en bibliothèque, sa copie dans un tournoi étant
+    les **phases** produites par son application (`PhaseRepositorySQL`).
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -1148,9 +1151,9 @@ class FormatTournoiRepositorySQL:
     def ajouter(self, format_tournoi: FormatTournoi) -> FormatTournoi:
         """Persiste un format et le renvoie avec son identifiant attribué.
 
-        Le `nom` étant `UNIQUE`, un homonyme remonte en `InfrastructureError` : le refus fonctionnel
-        (409) est porté en amont par le service, qui interroge `par_nom` d'abord — la contrainte
-        n'est ici qu'un garde-fou d'intégrité (même patron que `club`).
+        Le `nom` étant `UNIQUE`, un homonyme remonte en `InfrastructureError` : le refus
+        fonctionnel (409) est porté en amont par le service, qui interroge `par_nom` d'abord — la
+        contrainte n'est ici qu'un garde-fou d'intégrité (même patron que `club`).
         """
         try:
             with self._session_factory() as session:

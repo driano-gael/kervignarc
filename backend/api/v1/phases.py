@@ -400,7 +400,7 @@ class ConfigPhaseRequete(BaseModel):
     Posé sur un type qui compte ses tours par sa structure, il lève
     `DecoupageEnToursInvalide` (422)."""
 
-    arrets: list[ArretProgrammeDTO] = Field(default_factory=list)
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033, ADR-0091) — liste vide = aucune.
 
     ⚠️ Une **liste**, parce que c'est la lettre du CA : l'organisateur prépare sa journée (« pause
@@ -527,7 +527,7 @@ class EtapeReponse(BaseModel):
     decoupage: DecoupageDTO | None = None
     """Le découpage en tours (E05US033) — `null` = non découpée, donc la phase entière."""
 
-    arrets: list[ArretProgrammeDTO] = Field(default_factory=list)
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les pauses programmées de cette étape (E05US033) — **rendues au complet**.
 
     L'édition étant totale, l'écran d'atelier doit renvoyer la liste entière au `PUT` : c'est

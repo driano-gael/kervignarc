@@ -244,15 +244,38 @@ def phases_a_arreter(
       n'a plus d'avancement à lire ; l'attendre ferait d'un geste de clôture légitime un gel de la
       reprise.
 
+    ⚠️ **La comparaison est `>` et non `!=`, et c'est un correctif de bloquant de 2ᵉ passe** (axe
+    adversarial). Un tour qui **recule** n'est pas un tour fini — et il peut reculer : le tour d'une
+    qualification se dérive du tireur le **moins** avancé du plateau, or un archer qui commence en
+    retard fait baisser ce minimum. Avec `!=`, toute différence valait « a fini son tour », donc la
+    phase était **mise en pause en plein tour** par un arrêt de créneau à la première volée d'un
+    retardataire.
+
+    La correction vit **ici**, au domaine, et non chez le lecteur qui produit le tour : c'est ce qui
+    ferme la classe entière quel que soit le format et quelle que soit la façon dont son service
+    calcule son avancement. La corriger côté lecteur aurait rejoué le même raisonnement un cran plus
+    haut, une fois par format — et l'axe adversarial a montré qu'une première tentative y avait
+    aussitôt réintroduit deux trous.
+
+    `tour_courant is None` compte aussi comme « fini » : c'est la convention d'`AvancementDePhase`
+    (ADR-0090), et une phase dont plus rien ne tourne n'a effectivement plus de tour à finir.
+
     Rendu **trié par identifiant** pour que deux évaluations successives produisent la même liste :
     un ordre instable rendrait les diffs de trace illisibles et les tests dépendants du hasard.
     """
+
+    def a_fini(phase_id: PhaseId, tour_a_finir: int | None) -> bool:
+        if tour_a_finir is None:
+            return True
+        if phase_id not in tours_courants:
+            return True
+        courant = tours_courants[phase_id]
+        return courant is None or courant > tour_a_finir
+
     return tuple(
         sorted(
             phase_id
             for phase_id, tour_a_finir in tours_a_finir.items()
-            if tour_a_finir is None
-            or phase_id not in tours_courants
-            or tours_courants[phase_id] != tour_a_finir
+            if a_fini(phase_id, tour_a_finir)
         )
     )

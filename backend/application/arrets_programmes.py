@@ -29,9 +29,9 @@ docstring du port met explicitement en garde.
 chaque appel, et ce service l'appelle après chaque validation de score. `DETTE-031` est élargie en
 conséquence — le marqueur est posé au point d'appel, pas ici.
 
-[ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md [ADR-0090]:
-../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md [ADR-0091]:
-../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+[ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md
+[ADR-0090]: ../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+[ADR-0091]: ../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
 """
 
 from __future__ import annotations
@@ -75,24 +75,6 @@ class LecteurAvancementDuDepart(Protocol):
 
     def avancement_par_phase(self, depart_id: DepartId) -> dict[PhaseId, AvancementDePhase]:
         """L'avancement de chaque phase du créneau, par identifiant de phase."""
-        ...
-
-
-class EvaluateurArrets(Protocol):
-    """Port étroit dans l'autre sens : « quelque chose vient d'être validé dans ce créneau ».
-
-    Réalisé par `ServiceArretsProgrammes` et consommé par les services de **saisie**, qui sont les
-    seuls à savoir qu'un résultat vient d'être écrit. Un port plutôt qu'une dépendance au service
-    entier : la saisie n'a pas à connaître les arrêts, seulement à **signaler**. C'est le même parti
-    que `DiffusionSimulation` (ADR-0055 §5).
-
-    Branché **tardivement** au composition root (`brancher_evaluateur_arrets`), comme
-    `ServiceSuiviDeroule.brancher_lecteur_avancement` : ce service est construit après la saisie, et
-    un cycle qu'on ne voit pas est un cycle qu'on réintroduit.
-    """
-
-    def evaluer(self, depart_id: DepartId) -> tuple[PhaseId, ...]:
-        """Applique les arrêts devenus dus et renvoie les phases mises en pause."""
         ...
 
 
@@ -147,16 +129,34 @@ class ServiceArretsProgrammes:
     # --- Lecture ------------------------------------------------------------------------------
 
     def en_attente_de_relance(self, depart_id: DepartId) -> tuple[FranchissementArret, ...]:
-        """Les arrêts **franchis et pas encore levés** de ce créneau : ce qui attend un geste.
+        """Les arrêts qui **attendent un geste** dans ce créneau : tout ce qui a déjà coupé.
 
-        Ni les `ARME` — la coupe est décidée, pas faite : une phase finit son tour, et annoncer une
-        relance possible ferait cliquer l'organisateur sur un bouton qui n'a rien à rendre — ni les
-        `LEVE`, qui sont consommés.
+        Les `FRANCHI` — toutes les phases concernées sont arrêtées — **et** les `ARME` qui ont
+        **déjà arrêté au moins une phase**.
+
+        ⚠️ **Cette seconde catégorie est un correctif de bloquant de 2ᵉ passe** (axe C1). Ne rendre
+        que les `FRANCHI` laissait un trou par lequel l'organisateur perdait la main : un arrêt de
+        portée départ met **immédiatement** en pause sa phase déclenchante, mais reste `ARME` tant
+        que toutes les phases photographiées n'ont pas changé de tour. Or une qualification **non
+        découpée** compte un seul tour : son tour ne change qu'à la validation de la dernière volée
+        du plateau entier. L'arrêt restait donc `ARME` pendant toute la qualification — donc
+        **absent de la liste de relance** — pendant qu'une phase était déjà éteinte, sans un bouton
+        pour la rallumer. Le CA dit « la qualification finit ses volées en cours » ;
+        l'implémentation le lisait « toutes ses volées ».
+
+        Rendre l'arrêt relançable dès qu'il a coupé quelque chose est le geste juste :
+        l'organisateur récupère la main sur ce qui est arrêté, et `lever` ne relance que les phases
+        qu'il a effectivement coupées — celles qui finissent encore leur tour ne sont pas dans
+        `phases_arretees`, donc ne sont pas touchées.
+
+        Reste dehors : un `ARME` qui n'a **rien** arrêté (la coupe est décidée, pas encore faite —
+        annoncer une relance ferait cliquer sur un bouton sans effet) et les `LEVE`, consommés.
         """
         return tuple(
             franchissement
             for franchissement in self._franchissements.par_depart(depart_id)
             if franchissement.etat is EtatFranchissement.FRANCHI
+            or (franchissement.etat is EtatFranchissement.ARME and franchissement.phases_arretees)
         )
 
     # --- Le déclencheur -----------------------------------------------------------------------
@@ -197,23 +197,24 @@ class ServiceArretsProgrammes:
         aucun_arme = not any(f.etat is EtatFranchissement.ARME for f in franchissements)
         if aucun_arret and aucun_arme:
             return ()
-        # DETTE-031 : cette lecture recompose **intégralement** chaque phase qui tourne, chaîne de
-        # sources amont comprise (`ServicePoules.etat` / `ServiceSuisse.etat` /
-        # `ServiceBigShootOff.etat` et la reconstruction du tableau). Jusqu'ici seuls le pilotage et
-        # l'écran de salle la payaient, toutes les 10 s ; ce service la paie après **chaque
-        # validation de score**. Le facteur d'appel a donc changé de nature. L'ordre de grandeur
-        # reste tenable — une ou deux phases actives par créneau, ~30 tablettes, SQLite en local,
-        # aucune I/O réseau — et la dette est **élargie** plutôt que contournée par une mémoïsation
-        # locale, qui serait un remède structurel posé au mauvais endroit (§ Dette). Cf.
-        # docs/dette.md. ⚠️ **L'`AvancementDePhase` entier, pas seulement `tour_courant`**
-        # (correctif de revue, relevé par les quatre axes). La première rédaction ne gardait que le
-        # tour courant, et perdait donc `nb_tours` — or c'est lui qui distingue « la phase est finie
-        # » de « je ne sais pas où elle en est ». Cf. `_tour_acheve`, où toute la correction se
-        # joue. ⚠️ **Une phase absente de ce dictionnaire a un avancement INCONNU**, ce qui n'est
-        # pas la même chose qu'un `tour_courant` à `None`. Le distinguer par la présence de la clé
-        # plutôt que par une valeur sentinelle est ce qui rend l'oubli impossible : `.get()`
-        # rendrait `None` dans les deux cas, et c'est exactement la confusion qui a produit le
-        # bloquant.
+        # DETTE-031 : cette lecture recompose **intégralement** chaque phase qui tourne, chaîne
+        # de sources amont comprise. Jusqu'ici seuls le pilotage et l'écran de salle la payaient,
+        # toutes les 10 s ; ce service la paie après **chaque validation de score**. Le facteur
+        # d'appel a donc changé de nature. L'ordre de grandeur reste tenable — une ou deux phases
+        # actives par créneau, ~30 tablettes, SQLite en local — et la dette est **élargie** plutôt
+        # que contournée par une mémoïsation locale, qui serait un remède structurel posé au
+        # mauvais endroit (§ Dette). Cf. docs/dette.md.
+        #
+        # ⚠️ **L'`AvancementDePhase` entier, pas seulement `tour_courant`** (correctif de revue,
+        # relevé par les quatre axes). La première rédaction ne gardait que le tour courant, et
+        # perdait donc `nb_tours` — or c'est lui qui distingue « la phase est finie » de « je ne
+        # sais pas où elle en est ». La distinction se fait dans `_avancement_connu`, et nulle
+        # part ailleurs.
+        #
+        # ⚠️ **Ne pas croire discriminer sur la présence de la clé.** Une première rédaction le
+        # croyait ; c'est faux, `avancement_par_phase` rend une entrée pour **chaque** phase du
+        # créneau. L'axe adversarial l'a démontré contre l'arbre de travail, et le commentaire
+        # rassurant d'alors est ce qui avait masqué le défaut.
         avancements = self._suivi.avancement_par_phase(depart_id)
         arretees: list[PhaseId] = []
         arretees.extend(self._resoudre_les_arrets_armes(depart_id, phases, avancements))
@@ -339,8 +340,16 @@ class ServiceArretsProgrammes:
         applique, *manques = dus
         arretees: list[PhaseId] = []
         if applique.portee is PorteeArret.PHASE:
-            if self._mettre_en_pause(depart_id, phase_id, phases):
-                arretees.append(phase_id)
+            # ⚠️ **La trace AVANT la pause, et l'ordre compte** (correctif de 2ᵉ passe, axe C2).
+            # Les deux écritures sont dans des transactions distinctes : si le franchissement
+            # échouait après la mise en pause (SQLite occupé, conflit d'unicité), l'exception était
+            # avalée par le signalement et la phase restait `EN_PAUSE` **sans franchissement** —
+            # donc absente de la liste de relance, donc **aucun bouton** pour la rallumer. Le mode
+            # de panne que tout cet ADR est écrit pour empêcher, atteint par la porte de l'`except`.
+            #
+            # Dans cet ordre, la panne symétrique est bénigne : une trace écrite sans pause laisse
+            # un bouton qui ne trouve aucune phase `EN_PAUSE` à rendre (`lever` les ignore déjà),
+            # et le déclencheur suivant remettra la phase en pause, l'arrêt étant tracé.
             self._franchissements.ajouter(
                 FranchissementArret(
                     phase_id=phase_id,
@@ -349,6 +358,8 @@ class ServiceArretsProgrammes:
                     phases_arretees=(phase_id,),
                 )
             )
+            if self._mettre_en_pause(depart_id, phase_id, phases):
+                arretees.append(phase_id)
         else:
             arretees.extend(
                 self._armer_sur_le_depart(depart_id, phase_id, phases, avancements, applique)
@@ -460,8 +471,8 @@ class ServiceArretsProgrammes:
         franchissement = next(
             (
                 item
-                for item in self._franchissements.par_depart(depart_id)
-                if item.id == franchissement_id and item.etat is EtatFranchissement.FRANCHI
+                for item in self.en_attente_de_relance(depart_id)
+                if item.id == franchissement_id
             ),
             None,
         )

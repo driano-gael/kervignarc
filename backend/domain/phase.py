@@ -32,8 +32,8 @@ sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent s
 (le barème sous `config.policies.scoring`), le grain de `validation` restant à la racine. Agrégats
 de domaine **purs** (immuables, sans dépendance framework).
 
-[ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md [ADR-0061]:
-../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
+[ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
+[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
 """
 
 from __future__ import annotations

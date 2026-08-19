@@ -484,20 +484,60 @@ class ServiceSaisie:
         if phase is None or phase.type is not TypePhase.QUALIFICATION or phase.bareme is None:
             return None
         nb_tours = nb_tours_regles(phase.type, phase.decoupage)
-        volees_par_tour = phase.bareme.nb_volees / nb_tours
-        series = self._series.par_phase(phase_id)
-        if not series:
-            # Phase démarrée mais rien de tiré : le tour 1 tourne. Ce n'est pas « inconnu » — on
-            # sait parfaitement où elle en est —, et rendre `None` ici ferait retomber le
-            # déclencheur sur son repli prudent, donc rendrait tout arrêt de cette phase inerte.
-            return AvancementDePhase(nb_tours=nb_tours, tour_courant=1)
-        validees = min(sum(1 for volee in serie.volees if volee.verrouillee) for serie in series)
+        attendus = self._tireurs_attendus(phase_id, phase.depart_id)
+        if not attendus:
+            # Personne de placé, ou personne qui tirera : on ne sait rien dire du tour. `None`
+            # plutôt que « tour 1 » — le déclencheur retombe alors sur son repli prudent et ne coupe
+            # rien.
+            return None
+        validees_par_archer = {
+            serie.archer_id: sum(1 for volee in serie.volees if volee.verrouillee)
+            for serie in self._series.par_phase(phase_id)
+        }
+        # ⚠️ **`.get(archer, 0)` sur le plateau attendu, et non un `min` sur les feuilles
+        # existantes.** C'est le correctif d'un bloquant de 2ᵉ passe (axe B). Une `Serie` ne naît
+        # qu'à la première volée saisie : un archer — ou une cible entière — qui n'a **rien** tiré
+        # n'a pas de feuille, était donc **invisible** du `min`, et le tour avançait au rythme des
+        # seuls partants. La pause tombait pendant que d'autres n'avaient pas commencé : « coupé en
+        # plein tir », l'arbitrage du commanditaire pris à l'envers, et exactement ce que la fiche
+        # de recette déclare réparé.
+        validees = min(validees_par_archer.get(archer_id, 0) for archer_id in attendus)
         if validees >= phase.bareme.nb_volees:
             # Tout est tiré et validé : plus rien ne tourne, la convention d'ADR-0090.
             return AvancementDePhase(nb_tours=nb_tours, tour_courant=None)
-        return AvancementDePhase(
-            nb_tours=nb_tours, tour_courant=min(nb_tours, int(validees // volees_par_tour) + 1)
-        )
+        # Arithmétique **entière** (correctif de revue, axe A) : `validees / volees_par_tour` en
+        # flottant sur un compte de tours est une invitation à l'erreur d'arrondi.
+        tour = validees * nb_tours // phase.bareme.nb_volees + 1
+        return AvancementDePhase(nb_tours=nb_tours, tour_courant=min(nb_tours, tour))
+
+    def _tireurs_attendus(self, phase_id: PhaseId, depart_id: DepartId) -> frozenset[ArcherId]:
+        """Qui doit tirer cette qualification : les archers **placés** du créneau, forfaits exclus.
+
+        ⚠️ **Les forfaits sont exclus, et c'est la seconde moitié du correctif** (axe B). Un archer
+        déclaré forfait ou disqualifié garde sa feuille figée à *k* volées : le laisser dans le
+        plateau bloquait le `min` à *k* **pour toujours**, donc la pause programmée ne se
+        déclenchait **jamais**. Le dépôt portait déjà la notion (`ServiceCompletude._serie_close` :
+        « barème validé **ou** forfait ») et ce service portait déjà `_forfaits_qualif` : le lecteur
+        neuf ne s'en servait pas.
+
+        ⚠️ **Les archers PLACÉS, pas les inscrits.** Un archer en réserve (inscrit sans affectation)
+        ne tire pas : le compter bloquerait le tour à 1 indéfiniment. C'est la même définition du
+        plateau que `archers_du_poste`, à la cible près.
+        """
+        inscriptions = {i.id: i.archer_id for i in self._inscriptions.par_depart(depart_id)}
+        # ⚠️ **Les forfaits DE CETTE PHASE, et non `_forfaits_qualif(tournoi_id)`** — correctif de
+        # bloquant de 2ᵉ passe (axe adversarial). Ce raccourci résout « **la** » qualification du
+        # tournoi, c'est-à-dire celle du **premier créneau** : c'est verbatim le bloquant d'E05US025
+        # que ce fichier documente pourtant comme réparé (« cette méthode résolvait "la"
+        # qualification du tournoi… celle du premier créneau »). Les forfaits soustraits n'auraient
+        # pas été ceux de la phase lue.
+        forfaits = frozenset(forfait.archer_id for forfait in self._forfaits.par_phase(phase_id))
+        places = {
+            inscriptions[affectation.inscription_id]
+            for affectation in self._placements.par_depart(depart_id)
+            if affectation.inscription_id in inscriptions
+        }
+        return frozenset(places - forfaits)
 
     def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
         """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""

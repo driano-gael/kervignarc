@@ -6,7 +6,7 @@ domaine tient séparé — le **prélèvement** (`application/prelevement.py`), 
 d'élimination** (`demarrer` / `jouer_manche` / `eliminer_apres_barrage`), le **tir**
 (`domain/serie.py`) et le **barrage** (`domain/barrage.py`, portée `BIG_SHOOT_OFF`).
 
-# # Ce qui est recalculé, ce qui est persisté
+## Ce qui est recalculé, ce qui est persisté
 
 Le parti est celui des poules (ADR-0083) et du tableau (ADR-0023/0048), pour la même raison : **la
 structure se recalcule, le tir se persiste**.
@@ -24,27 +24,28 @@ manche 2 » était une ligne en base, corriger une volée de la manche 1 laisser
 place : le classement dirait une chose, les scores une autre. Ici la correction remonterait d'elle-
 même toute la chaîne — au prix d'un rejeu complet à chaque lecture (`# DETTE-031`).
 
-⚠️ **Mais aucun chemin de correction n'existe encore** (`# DETTE-061`), et cette note affirmait le
-contraire au présent jusqu'au 15/08/2026 : « ici la correction remonte d'elle-même ». Le rejeu est
-bien correct ; c'est le **geste d'entrée** qui manque. `saisir_volee` passe par
+⚠️ **Mais aucun chemin de correction n'existe encore** (`# DETTE-061`), et cette note affirmait
+le contraire au présent jusqu'au 15/08/2026 : « ici la correction remonte d'elle-même ». Le rejeu
+est bien correct ; c'est le **geste d'entrée** qui manque. `saisir_volee` passe par
 `Serie.saisir_volee`, qui refuse une volée verrouillée, et le seul appelant de `corriger_volee`
-résout sa feuille par `_phase_qualification` — jamais celle d'une finale. Une flèche mal saisie et
-**validée** en Big Shoot Off est donc définitive, l'élimination qu'elle a produite avec elle. Dette
-assumée par le commanditaire le 15/08/2026 ; correction livrée en US dédiée. La promesse au présent
-est corrigée ici plutôt que supprimée : c'est elle qui a fait croire la capacité livrée, dans l'US
-**et** dans la fiche de recette.
+résout sa feuille
+par `_phase_qualification` — jamais celle d'une finale. Une flèche mal saisie et **validée** en Big
+Shoot Off est donc définitive, l'élimination qu'elle a produite avec elle. Dette assumée par le
+commanditaire le 15/08/2026 ; correction livrée en US dédiée. La promesse au présent est corrigée
+ici plutôt que supprimée : c'est elle qui a fait croire la capacité livrée, dans l'US **et** dans la
+fiche de recette.
 
-# # La numérotation des volées, et son ancrage
+## La numérotation des volées, et son ancrage
 
-Une manche est un **bloc de V volées consécutives** : la manche *m* occupe les volées `(m-1)·V + 1 …
-m·V`. Le nombre total de volées d'un archer est donc `len(eliminations) · V` — le « barème » au sens
-de `Serie`, qui borne la saisie.
+Une manche est un **bloc de V volées consécutives** : la manche *m* occupe les volées
+`(m-1)·V + 1 … m·V`. Le nombre total de volées d'un archer est donc `len(eliminations) · V` — le
+« barème » au sens de `Serie`, qui borne la saisie.
 
 La numérotation est **continue et dérivée**, jamais stockée : elle se recalcule du réglage. Un
 archer éliminé à la manche 2 n'a simplement pas de volées au-delà — l'absence *est* l'information,
 comme pour la réserve d'un plan de cibles (ADR-0024).
 
-# # Le grain de validation, et pourquoi le service ne lit pas `phase.validation`
+## Le grain de validation, et pourquoi le service ne lit pas `phase.validation`
 
 Une manche se valide d'un bloc, et `Serie.valider` sait déjà le faire : `toutes_les_n_volees(V)`
 verrouille « le prochain lot de V volées non validées », ce qui **est** la manche courante. Le grain
@@ -54,8 +55,8 @@ est donc dérivé du réglage (`configuration.volees`) plutôt que lu sur la pha
 l'atelier pour ce type (`_GRAINS_ADMIS` y admet `FIN_DE_SERIE` et `TOUTES_LES_N_VOLEES`), mais un
 Big Shoot Off validé « en fin de série » serait injouable : on ne saurait qui est éliminé qu'après
 la dernière manche, c'est-à-dire jamais, puisque la dernière manche dépend des précédentes. Le
-service impose donc le seul grain cohérent au lieu d'honorer un réglage qui bloquerait la salle. Le
-remède propre — retirer `FIN_DE_SERIE` des grains admis pour ce type — touche un invariant de
+service impose donc le seul grain cohérent au lieu d'honorer un réglage qui bloquerait la salle.
+Le remède propre — retirer `FIN_DE_SERIE` des grains admis pour ce type — touche un invariant de
 `domain/phase.py` partagé avec la qualification ; il vaut une US, pas un cavalier ici.
 """
 
@@ -263,11 +264,11 @@ class ServiceBigShootOff:
         # qu'`application/prelevement.py` existe pour empêcher.
         self._saisie_duels = saisie_duels
 
-        # --- Lecture
-        # --------------------------------------------------------------------------------- E05US033
-        # : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # E05US033 : collaborateur **partagé** par les cinq services qui écrivent un résultat
         # (`application.gel_de_pause`), inerte tant que le composition root n'y a rien branché.
         self._arrets = DeclencheurArrets()
+
+    # --- Lecture ---------------------------------------------------------------------------------
 
     def projection(self, tournoi_id: TournoiId, phase_id: PhaseId) -> ProjectionBigShootOff:
         """Ce que la liste de sortants donne sur l'effectif réel, **sans rien écrire**.
@@ -277,6 +278,12 @@ class ServiceBigShootOff:
         salle. Même découpe que `ServicePoules.repartition`, et pour la même raison.
         """
         phase, participants = self._population(tournoi_id, phase_id)
+        # E05US033 — **le gel d'un résultat neuf**, par symétrie avec la qualification (correctif de
+        # 2ᵉ passe, axe adversarial). Une volée de Big Shoot Off est un **résultat neuf** pour un
+        # archer, comme une volée de qualification : la doctrine de `refuser_si_en_pause` la gèle.
+        # Ce qu'elle ne gèle pas, c'est la **poursuite d'une rencontre engagée** — un duel, une
+        # manche de poule —, ce qui n'existe pas ici : le Big Shoot Off tire par feuille.
+        refuser_si_en_pause(phase)
         return self._projection(phase, len(participants))
 
     def etat(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatBigShootOffAffiche:
@@ -373,8 +380,8 @@ class ServiceBigShootOff:
     def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
         """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
 
-        ⚠️ **Ce branchement manquait à la première livraison de l'US**, et c'était un bloquant :
-        le déclencheur n'était appelé que depuis la qualification et l'élimination directe, si bien
+        ⚠️ **Ce branchement manquait à la première livraison**, et c'était un bloquant : le
+        déclencheur n'était appelé que depuis la qualification et l'élimination directe, si bien
         qu'un arrêt programmé sur ce format ne se déclenchait **jamais** — la phase tournant seule,
         aucune validation n'atteignait le déclencheur. Relevé par les quatre axes de revue.
         """
@@ -579,8 +586,8 @@ class ServiceBigShootOff:
         juge. Même parti que la reconstruction d'un tableau, qui ne rejoue que les duels validés.
 
         On s'arrête à la première manche **incomplète** : tant qu'un archer en lice n'a pas validé
-        ses V volées, la manche n'a pas eu lieu. La traiter en la comptant comme un zéro éliminerait
-        quelqu'un sur une donnée absente — ce que `jouer_manche` refuse déjà
+        ses V volées, la manche n'a pas eu lieu. La traiter en la comptant comme un zéro
+        éliminerait quelqu'un sur une donnée absente — ce que `jouer_manche` refuse déjà
         (`ScoreDeMancheManquant`), et qu'on n'a donc pas à lui demander.
 
         Les **verdicts de barrage** déjà rendus sont appliqués au passage : sans eux, une manche
@@ -589,8 +596,8 @@ class ServiceBigShootOff:
 
         Rend aussi la **lice au début de chaque manche**, capturée au fil du rejeu. ⚠️ Un premier
         jet la reconstituait *après coup* en dépliant les rangs décernés à l'envers : exact tant
-        qu'une manche ne sort qu'un archer, faux dès qu'elle en sort plusieurs à rangs partagés — et
-        l'erreur ne se serait vue qu'en salle, sur l'écran de saisie d'une manche intermédiaire.
+        qu'une manche ne sort qu'un archer, faux dès qu'elle en sort plusieurs à rangs partagés —
+        et l'erreur ne se serait vue qu'en salle, sur l'écran de saisie d'une manche intermédiaire.
         Capturer ce que la boucle sait déjà coûte une ligne et supprime la classe d'erreur.
         """
         etat = demarrer(
@@ -636,8 +643,8 @@ class ServiceBigShootOff:
 
         ⚠️ **On lit `resultat()`, jamais `verdict()`, et le domaine le disait déjà.** `verdict()`
         éclate un *rang partagé* en rangs consécutifs — il rend donc un ordre **vide** quand
-        `rang_dispute is None`, ce qui est précisément le cas d'un Big Shoot Off : l'égalité au plus
-        faible ne dispute aucun rang, elle désigne un **sortant**. Sa docstring renvoie
+        `rang_dispute is None`, ce qui est précisément le cas d'un Big Shoot Off : l'égalité au
+        plus faible ne dispute aucun rang, elle désigne un **sortant**. Sa docstring renvoie
         explicitement l'appelant vers `resultat()`. Un premier jet de ce service lisait
         `verdict().rangs()` et trouvait donc toujours le vide : la manche restait suspendue **même
         après le barrage tiré**, et la phase se bloquait en salle sans rien dire. C'est le test de
@@ -734,9 +741,9 @@ class ServiceBigShootOff:
         ⚠️ **Deux erreurs dédiées depuis la revue d'E05US028**, là où ce refus empruntait les codes
         de `MancheIntrouvable` et de `PhasePasReglee`. Le second était le plus coûteux : le même
         code `phase_pas_reglee` sortait du même endpoint pour deux situations dont les corrections
-        **opposées** — « allez régler la phase à l'atelier » et « rechargez, cet archer est éliminé
-        ». Le champ `code` existe pour qu'un client aiguille dessus (règle 5) ; deux sens pour un
-        code, c'est un contresens affiché en salle.
+        **opposées** — « allez régler la phase à l'atelier » et « rechargez, cet archer est
+        éliminé ». Le champ `code` existe pour qu'un client aiguille dessus (règle 5) ; deux sens
+        pour un code, c'est un contresens affiché en salle.
         """
         tireur = next((t for t in photo.tireurs if t.archer_id == archer_id), None)
         if tireur is None:

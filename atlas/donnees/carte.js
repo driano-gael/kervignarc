@@ -1596,22 +1596,6 @@ window.ATLAS.carte = {
     }
    ],
    "couche": "application",
-   "fichier": "backend/application/arrets_programmes.py",
-   "hors_domaine": true,
-   "methodes": [
-    "evaluer"
-   ],
-   "nom": "EvaluateurArrets",
-   "sans_adapter": false
-  },
-  {
-   "adapters": [
-    {
-     "fichier": "backend/application/arrets_programmes.py",
-     "nom": "ServiceArretsProgrammes"
-    }
-   ],
-   "couche": "application",
    "fichier": "backend/application/gel_de_pause.py",
    "hors_domaine": true,
    "methodes": [
@@ -2791,8 +2775,8 @@ window.ATLAS.carte = {
   "imports": 858,
   "imports_entre_couches": 727,
   "plus_gros_noeud": 23,
-  "ports": 65,
-  "ports_hors_domaine": 24,
+  "ports": 64,
+  "ports_hors_domaine": 23,
   "ports_sans_adapter": 0,
   "violations": 0
  },

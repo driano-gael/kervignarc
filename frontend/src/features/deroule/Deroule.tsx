@@ -725,7 +725,12 @@ export function FormulaireEtape({
   // E05US033 : les deux seuls types dont la structure ne dit pas combien de tours ils comptent —
   // le contrat de phase les déclare `PHASE_ENTIERE` (ADR-0090). Miroir assumé et court, comme
   // dans l'écran des phases.
-  const decoupable = type === 'qualification' || type === 'echauffement'
+  // ⚠️ **La qualification SEULE**, et c'est un correctif de 2ᵉ passe relevé par trois axes.
+  // Le serveur refuse désormais le découpage sur tout autre type — l'échauffement compris,
+  // faute de barème et de feuille de marque dont dériver un tour. L'offrir revenait à
+  // proposer un geste qui échoue en 422, et comme le `PUT` est une édition **totale**, c'est
+  // l'étape entière qui était refusée.
+  const decoupable = type === 'qualification'
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce

@@ -1196,7 +1196,7 @@ def create_app(
     # par les quatre axes de revue, sur les formats mêmes que le CA vise (« une phase qui dure des
     # heures »). Il n'existe aucun garde-fou automatique contre l'oubli d'une sixième : c'est
     # `DETTE-028` (six moteurs livrés, aucun appelé), et c'est pourquoi le test de composition
-    # `test_composition_arrets.py` assère nommément que les cinq sont branchés.
+    # `tests/test_arrets_api.py` assère nommément que les cinq sont branchés.
     for service_ecrivant in (
         app.state.service_saisie,
         app.state.service_saisie_duels,

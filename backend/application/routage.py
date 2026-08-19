@@ -12,10 +12,10 @@ tire sur la cible 4, quel que soit son vainqueur » — donc l'affectation exist
 (`ServiceSaisieDuels`) et le plan de duels persisté (`ServicePlacementDuels`) tiennent déjà : aucune
 écriture, aucun placement, aucune trace d'audit — un panneau de routage ne *décide* de rien.
 
-**Ce qui n'est pas encore connu est nommé, jamais masqué** (`P-3`, arbitré au cadrage du 30/07/2026)
-— même parti pris que le `blocage` du feu vert d'E12US002 : la cible d'un tour ≥ 2 (E05US010 non
-livrée), l'adversaire pas encore sorti de son duel amont, le rang intermédiaire (E06US004 non
-livrée). Un blanc se lit comme une panne ; une phrase se lit comme une attente.
+**Ce qui n'est pas encore connu est nommé, jamais masqué** (`P-3`, arbitré au cadrage du
+30/07/2026) — même parti pris que le `blocage` du feu vert d'E12US002 : la cible d'un tour ≥ 2
+(E05US010 non livrée), l'adversaire pas encore sorti de son duel amont, le rang intermédiaire
+(E06US004 non livrée). Un blanc se lit comme une panne ; une phrase se lit comme une attente.
 
 *Jumeau assumé de `pilotage_tour.py`* (**`# DETTE-019`**) : la lecture « archer → pose du plan » et
 la règle « pas de cible au-delà du tour 1 » y existent déjà, sous un autre angle (le duel, pas
@@ -83,9 +83,9 @@ PLACEMENT_AUTRE_CIBLE = "placement à revoir — votre adversaire est sur la cib
 Le plan a été matérialisé sur un **autre appariement** (le classement a bougé — une correction de
 score suffit, E04US013 — et l'arbre est recalculé à chaque lecture, ADR-0023, alors que les poses
 sont persistées), ou les cibles sont trop étroites pour rapprocher les duellistes. On annonce quand
-même la pose — c'est la ligne de cet archer sur le plan, et la taire ne dirait rien de plus utile —
-mais on **nomme la butte de l'autre** : c'est ce qui permet de comprendre en deux secondes qu'il
-faut aller voir l'organisateur plutôt que de s'installer.
+même la pose — c'est la ligne de cet archer sur le plan, et la taire ne dirait rien de plus
+utile — mais on **nomme la butte de l'autre** : c'est ce qui permet de comprendre en deux
+secondes qu'il faut aller voir l'organisateur plutôt que de s'installer.
 """
 
 PLACEMENT_VOISIN_ELOIGNE = "votre adversaire tire sur la même cible, couloir {position}"
@@ -281,12 +281,12 @@ class RencontresARouter:
 
     - `participants` — toute la population de la phase. Sert à distinguer « il n'y est pas »
       (`INDISPONIBLE`) de « il y est, mais rien à tirer maintenant ».
-    - `epuisee` — plus **aucune** rencontre ne viendra, pour personne. - `termines` — ceux qui ont
-    fini **alors que la phase continue**. Le champ n'existe que parce
+    - `epuisee` — plus **aucune** rencontre ne viendra, pour personne.
+    - `termines` — ceux qui ont fini **alors que la phase continue**. Le champ n'existe que parce
       que les deux formats ne se ressemblent pas ici : un round-robin est connu d'avance, donc un
       membre de poule dont toutes les rencontres sont validées a réellement fini, même si la poule
-      d'à côté tire encore. Un système suisse, lui, ne montre que sa ronde courante — personne n'y a
-      fini tant que la dernière ronde n'est pas close, et il laisse donc ce champ vide.
+      d'à côté tire encore. Un système suisse, lui, ne montre que sa ronde courante — personne n'y
+      a fini tant que la dernière ronde n'est pas close, et il laisse donc ce champ vide.
 
     ⚠️ **Sans `termines`, le correctif du bloquant précédent créait son miroir** (relevé en revue) :
     on ne disait plus « terminé » à tort, on disait « attends » à qui pouvait partir.
@@ -322,8 +322,8 @@ class RoutageArcher:
 
     Trois champs disent un rang, et ils ne sont pas redondants (E07US008) :
 
-    - `rang_final` — le rang **exact**, décerné par un match terminal (`Tableau.classement`) ; -
-    `rang_min`/`rang_max` — la **fourchette acquise**, qui vaut aussi quand le tableau est tronqué
+    - `rang_final` — le rang **exact**, décerné par un match terminal (`Tableau.classement`) ;
+    - `rang_min`/`rang_max` — la **fourchette acquise**, qui vaut aussi quand le tableau est tronqué
       au podium : le battu d'un quart est 5ᵉ-8ᵉ *ex æquo*, et aucun match n'a été joué pour le
       départager. Quand le rang exact existe, la fourchette s'y referme (`min == max == rang_final`)
       — c'est la même notion à deux profondeurs, pas deux calculs concurrents.
@@ -355,11 +355,11 @@ class RoutageArcher:
 class _PlanLu:
     """Ce que le routage retient du plan de duels : les poses, et **qui n'est pas côte à côte**.
 
-    `separes` vient de `PlanDeDuels.duels_separes`, dérivé par le domaine (`duels_non_cote_a_cote`)
-    des paires du tableau **d'aujourd'hui** confrontées aux poses **persistées**. C'est exactement
-    l'oracle qu'il faut ici, et il existait déjà : le recalculer à la main (« même index de cible »)
-    en serait une 3ᵉ écriture, plus faible — elle raterait le cas « même cible, positions non
-    adjacentes ».
+    `separes` vient de `PlanDeDuels.duels_separes`, dérivé par le domaine
+    (`duels_non_cote_a_cote`) des paires du tableau **d'aujourd'hui** confrontées aux poses
+    **persistées**. C'est exactement l'oracle qu'il faut ici, et il existait déjà : le recalculer à
+    la main (« même index de cible ») en serait une 3ᵉ écriture, plus faible — elle raterait le cas
+    « même cible, positions non adjacentes ».
     """
 
     poses: dict[int, tuple[int, str]]
@@ -371,8 +371,8 @@ class Routage:
     """La réponse du panneau : la phase de tableau visée, et une ligne par archer.
 
     `phase_id` est `None` quand aucune phase d'élimination n'est configurée — l'écran le dit au lieu
-    de rendre une liste vide qu'on prendrait pour une panne. C'est la seule chose qui distingue « il
-    n'y a pas encore de tableau » de « le tableau ne route personne ».
+    de rendre une liste vide qu'on prendrait pour une panne. C'est la seule chose qui distingue
+    « il n'y a pas encore de tableau » de « le tableau ne route personne ».
 
     Même type pour les deux lectures (`routage` par identifiants, `affectations` pour tout le
     tableau) : les quatre canaux de routage doivent dire **la même chose**, et deux formes de
@@ -419,10 +419,11 @@ class ServiceRoutage:
         # tout montage sans Big Shoot Off, et il se lit dans la signature.
         self._big_shoot_off = big_shoot_off
         # E05US026 : de quoi router une rencontre de **ronde** ou de **groupe**. Même régime que
-        # ci-dessus — au constructeur, aucun cycle, `None` licite pour un montage sans ce format. ⚠️
-        # **Ces deux-là donnent leur cible**, à la différence du Big Shoot Off : leur plan de cibles
-        # est posé (`PAR_BLOC_DE_COULOIRS`), donc `ProchainDuel.cible` est renseigné et `manque`
-        # reste `None`. C'est ce que `DETTE-059` attend encore pour la finale.
+        # ci-dessus — au constructeur, aucun cycle, `None` licite pour un montage sans ce format.
+        #
+        # ⚠️ **Ces deux-là donnent leur cible**, à la différence du Big Shoot Off : leur plan de
+        # cibles est posé (`PAR_BLOC_DE_COULOIRS`), donc `ProchainDuel.cible` est renseigné et
+        # `manque` reste `None`. C'est ce que `DETTE-059` attend encore pour la finale.
         self._suisse = suisse
         self._poules = poules
         self._saisie_duels = saisie_duels
@@ -452,14 +453,14 @@ class ServiceRoutage:
     ) -> Routage:
         """Route chaque archer demandé, **dans l'ordre demandé** (l'ordre des positions A→D).
 
-        La maille est le **créneau** (E01US025, ADR-0075) : c'est déjà ce que la tablette connaît («
-        sa cible et son départ »), et c'est la seule où « le tableau qui vient » veut dire quelque
-        chose. `DepartIntrouvable` (404) si le créneau n'existe pas.
+        La maille est le **créneau** (E01US025, ADR-0075) : c'est déjà ce que la tablette connaît
+        (« sa cible et son départ »), et c'est la seule où « le tableau qui vient » veut dire
+        quelque chose. `DepartIntrouvable` (404) si le créneau n'existe pas.
 
         `phase_id` non fourni ⇒ on vise le **tableau qui vient** (cf. `_phase_de_tableau`). Fourni
         (écran de duels), il est **validé** — `PhaseIntrouvable` (404) s'il est inconnu ou relève
-        d'un autre créneau ; `PhasePasUnTableau` remonte ensuite du service de saisie, comme partout
-        ailleurs.
+        d'un autre créneau ; `PhasePasUnTableau` remonte ensuite du service de saisie, comme
+        partout ailleurs.
 
         Aucune erreur n'est levée pour un archer : une ligne **indisponible** motivée vaut mieux
         qu'un panneau qui échoue en bloc parce qu'un seul des quatre n'est pas dans le tableau.
@@ -533,12 +534,12 @@ class ServiceRoutage:
         lignes anonymes — la résolution `Participant → équipe` viendra avec les équipes elles-mêmes.
         """
         tournoi_id = self._tournoi_du_depart(depart_id)
-        # ⚠️ **Pas de garde de pause ici, et c'est délibéré** (ADR-0091 §6, tableau des trois points
-        # de résolution). `affectations` est une **lecture publique** (`VueEcran.AFFECTATIONS`,
-        # E07US008), pas un ordre de tir : le CA veut qu'on puisse voir où en est la salle *pendant*
-        # la pause. Conséquence assumée et **détectable depuis ici** (l'axe A la voulait tracée) :
-        # l'écran de salle continue d'afficher des affectations sans dire qu'il y a pause. La
-        # mention publique de la pause est le CA d'`E05US034`, à livrer avant tout déploiement réel.
+        # ⚠️ **Pas de garde de pause ici, et c'est délibéré** (ADR-0091 §6, tableau des trois
+        # points de résolution). `affectations` est une **lecture publique**
+        # (`VueEcran.AFFECTATIONS`, E07US008), pas un ordre de tir : le CA veut qu'on puisse voir où
+        # en est la salle *pendant* la pause. Conséquence assumée et **détectable depuis ici**
+        # (l'axe A la voulait tracée) : l'écran de salle continue d'afficher des affectations sans
+        # dire qu'il y a pause. La mention publique de la pause est le CA d'`E05US034`.
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return Routage(phase_id=None, archers=())
@@ -550,8 +551,8 @@ class ServiceRoutage:
             # Faire entrer ces deux types dans `TYPES_ROUTES` les rend cibles implicites de
             # `_phase_de_tableau` : sans cette ligne, `affectations` tombait dans `_grille` et
             # remontait `PhasePasUnTableau` — un **409 sur une route publique non authentifiée**,
-            # pour tout créneau portant une phase de poules, donc en régression sur E05US023. Le
-            # canal n°2 (écran de salle, table d'organisation) s'éteignait exactement pendant la
+            # pour tout créneau portant une phase de poules, donc en régression sur E05US023.
+            # Le canal n°2 (écran de salle, table d'organisation) s'éteignait exactement pendant la
             # phase qu'il sert. Reproduit par deux axes de revue.
             return self._routage_par_rencontres(tournoi_id, phase, archer_ids=None)
         grille = self._grille(tournoi_id, phase, phase.id)
@@ -613,8 +614,8 @@ class ServiceRoutage:
         Quatre issues :
 
         - **`PROCHAIN_DUEL`** — une rencontre non validée l'attend, c'est la première dans l'ordre ;
-        - **`TERMINE`** — il n'a plus rien à tirer dans cette phase ; - **`EN_ATTENTE`** — il y est
-        et il est en course, mais rien n'est appariée pour lui à cet
+        - **`TERMINE`** — il n'a plus rien à tirer dans cette phase ;
+        - **`EN_ATTENTE`** — il y est et il est en course, mais rien n'est appariée pour lui à cet
           instant (bye de la ronde, ou rencontre validée pendant que la ronde s'achève — E05US030) ;
         - **`INDISPONIBLE`** — il n'y figure pas, ou le service n'est pas câblé.
 
@@ -644,8 +645,9 @@ class ServiceRoutage:
             # première version n'attrapait que `ApplicationError` et laissait donc un 422 sortir sur
             # cette route **publique et non authentifiée**. C'est le défaut d'E05US028 que la
             # docstring ci-dessus se targuait d'avoir évité, reproduit par un autre chemin (relevé
-            # par trois axes de revue, reproduit par sonde). Journalisé : une phase muette le jour J
-            # doit rester débogable.
+            # par trois axes de revue, reproduit par sonde).
+            #
+            # Journalisé : une phase muette le jour J doit rester débogable.
             _logger.info("Phase à rencontres %s écartée du routage : %s", phase.id, exc)
             return self._tous_indisponibles(
                 tournoi_id,
@@ -767,14 +769,14 @@ class ServiceRoutage:
 
         Trois issues, et une seule est neuve :
 
-        - **`PROCHAINE_MANCHE`** — il est encore en lice et la phase n'est pas finie ; -
-        **`TERMINE`** — il est sorti (avec son rang), ou la phase est allée à son terme pour lui
+        - **`PROCHAINE_MANCHE`** — il est encore en lice et la phase n'est pas finie ;
+        - **`TERMINE`** — il est sorti (avec son rang), ou la phase est allée à son terme pour lui
           (les rescapés d'un Big Shoot Off achevé partagent le rang 1) ;
         - **`INDISPONIBLE`** — il ne fait pas partie de cette phase, ou le service n'est pas câblé.
 
         ⚠️ **Aucune cible n'est donnée** : ce service ne lit pas le plan du créneau. C'est nommé
-        (`manque`) plutôt que tu — `P-3`, « ce qui n'est pas connu est nommé » — et tracé (`#
-        DETTE-059`). Un panneau muet se prendrait pour une panne réseau.
+        (`manque`) plutôt que tu — `P-3`, « ce qui n'est pas connu est nommé » — et tracé
+        (`# DETTE-059`). Un panneau muet se prendrait pour une panne réseau.
         """
         assert phase.id is not None, "L'appelant a déjà refusé une phase sans identité."
         if self._big_shoot_off is None:
@@ -864,18 +866,18 @@ class ServiceRoutage:
         Sous `ProfondeurPodium()` **par défaut** (`jusqu_au=4`, le câblage de production), la sortie
         est identique à celle d'hier : seules `[1..2]` et `[3..4]` sont terminales, donc
         `classement()` ne rend jamais de rang > 4. ⚠️ Mais `jusqu_au` est un **paramètre** — sous
-        `ProfondeurPodium(jusqu_au=8)`, le service gagne les rangs 5-8 exacts que `podium()` jetait.
-        C'est donc bien un changement de comportement dans cette configuration, et il est **voulu**
-        ; la formulation « ce n'est pas un changement de comportement » d'un premier jet était
-        fausse et la revue l'a rattrapée.
+        `ProfondeurPodium(jusqu_au=8)`, le service gagne les rangs 5-8 exacts que `podium()`
+        jetait. C'est donc bien un changement de comportement dans cette configuration, et il est
+        **voulu** ; la formulation « ce n'est pas un changement de comportement » d'un premier jet
+        était fausse et la revue l'a rattrapée.
         """
         try:
             tableau, lignes = self._saisie_duels.reconstruire(tournoi_id, phase_id)
         # PrelevementEnAttente rejoint la garde (E05US024, ADR-0081) : « la source n'a pas encore
-        # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant » —
-        # il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point de
-        # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par trois
-        # axes de revue : régression introduite par le refus typé lui-même).
+        # départagé les places prélevées » est le **même** cas métier qu'« effectif insuffisant »
+        # — il est trop tôt. Sans cet élargissement, la nouvelle exception traversait ce point de
+        # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
+        # trois axes de revue : régression introduite par le refus typé lui-même).
         except (EffectifTableauInvalide, PrelevementEnAttente):
             return None
         return _Grille(
@@ -929,8 +931,8 @@ class ServiceRoutage:
         - `phase_id` **imposé** (écran de duels) : un identifiant fourni par le client est
           **validé**, comme partout ailleurs — inconnu, ou relevant d'un autre créneau ⇒
           `PhaseIntrouvable` (404). Sans cette garde, un `phase_id` périmé (phase supprimée
-          entre-temps) rendrait un placide « phase finale non configurée » au lieu d'un vrai refus :
-          l'écran mentirait.
+          entre-temps) rendrait un placide « phase finale non configurée » au lieu d'un vrai
+          refus : l'écran mentirait.
         - **résolution implicite** (tablette de qualification, qui ne connaît que sa cible et son
           départ) : best-effort, `None` si le créneau n'a pas de tableau — l'écran le dit.
 
@@ -950,13 +952,14 @@ class ServiceRoutage:
             return phase
         # Filtre **dérivé** du contrat de phase (ADR-0083, capacité `route_l_archer`). Il contient
         # aujourd'hui l'élimination directe, le Big Shoot Off, les **poules** et le **système
-        # suisse** — les deux derniers y sont entrés en E05US026, par `_routage_par_rencontres`. ⚠️
-        # **Toute bascule de `route_l_archer` doit passer par ici *et* par `affectations()`.** Les
-        # deux canaux lisent ce filtre, et seul `routage()` avait reçu la bifurcation lors de cette
-        # bascule : `affectations` tombait dans `_grille` et rendait 409 sur une route publique. Le
-        # registre centralise la **décision**, pas la vérification de ses lecteurs. ⚠️
-        # `TYPES_ROUTES_IMPLICITEMENT` et non `TYPES_ROUTES` (revue d'E05US028) : on est ici dans la
-        # résolution **implicite**, celle qui choisit à la place de la tablette. Une phase à
+        # suisse** — les deux derniers y sont entrés en E05US026, par `_routage_par_rencontres`.
+        #
+        # ⚠️ **Toute bascule de `route_l_archer` doit passer par ici *et* par `affectations()`.**
+        # Les deux canaux lisent ce filtre, et seul `routage()` avait reçu la bifurcation lors de
+        # cette bascule : `affectations` tombait dans `_grille` et rendait 409 sur une route
+        # publique. Le registre centralise la **décision**, pas la vérification de ses lecteurs.
+        # ⚠️ `TYPES_ROUTES_IMPLICITEMENT` et non `TYPES_ROUTES` (revue d'E05US028) : on est ici dans
+        # la résolution **implicite**, celle qui choisit à la place de la tablette. Une phase à
         # population restreinte n'y a pas sa place comme **cible unique** — elle capterait le
         # routage des archers qu'elle ne contient pas, et le `tableaux[-1]` ci-dessous rendrait la
         # perte définitive. Les finalistes ne la perdent pas pour autant : `_phase_restreinte_en_
@@ -1022,12 +1025,14 @@ class ServiceRoutage:
         ⚠️ **La garde est posée ici et non dans `_phase_de_tableau`**, et c'est le point délicat de
         ce correctif. Écarter les phases en pause de la **sélection** aurait fait tomber le routage
         sur une *autre* phase — ou sur `tableaux[-1]` — donc envoyé l'archer tirer ailleurs au lieu
-        de lui dire d'attendre. Un défaut pire que celui qu'on corrige : la sélection dit *de quoi
-        on parle*, pas *si ça tourne*.
+        de lui
+        dire d'attendre. Un défaut pire que celui qu'on corrige : la sélection dit *de quoi on
+        parle*,
+        pas *si ça tourne*.
 
-        L'issue `EN_ATTENTE` est **réutilisée** (E05US030) plutôt qu'une neuve : côté tablette, «
-        rien à tirer pour l'instant » est déjà rendu, et un état de plus aurait demandé un écran de
-        plus pour la même chose.
+        L'issue `EN_ATTENTE` est **réutilisée** (E05US030) plutôt qu'une neuve : côté tablette,
+        « rien à tirer pour l'instant » est déjà rendu, et un état de plus aurait demandé un écran
+        de plus pour la même chose.
         """
         return self._tous_indisponibles(
             tournoi_id,
@@ -1119,22 +1124,27 @@ class ServiceRoutage:
             rang_min=fourchette[0] if fourchette is not None else None,
             rang_max=fourchette[1] if fourchette is not None else None,
             tour_sortie=tour_sortie,
-            # ⚠️ **`# DETTE-033` — un battu repris par la *séquence* n'est pas annoncé ici.** Les
-            # deux moitiés du repêchage se lisent à deux sources indépendantes : le **routing**
-            # (`_est_repeche`, décidé match par match — c'est la branche ci-dessus) et les **sources
-            # de la séquence** (`grille.repechages`, indexées par **tour**). Un premier correctif de
-            # revue a voulu annoncer la seconde ici aussi ; deux relecteurs l'ont démoli, et de deux
-            # façons **opposées** : - `dernier` est le **dernier match joué**, pas le match perdu :
-            # sous cascade, le battu des demies redescend en petite finale, donc son `dernier.tour`
-            # vaut 3 et l'on rate précisément les archers que « perdants du tour 2 » désigne ; - un
-            # **tour couvre plusieurs plages** dès qu'il y a des sous-tableaux : finale et petite
-            # finale sont toutes deux au tour 3, si bien qu'une source « perdants du tour 3 »
-            # décorerait aussi le 4ᵉ du podium. Les deux correctifs proposés étaient
-            # **incompatibles** (restreindre au braquet principal / élargir à tous les tours
-            # perdus), et pour cause : la sémantique de `SourcePhase.par_issue_de_tour` n'est **pas
-            # tranchée** — `# DETTE-028` acte qu'aucun moteur ne consomme encore ces prélèvements.
-            # La figer ici, dans un canal d'affichage, serait décider une règle métier au mauvais
-            # endroit. On s'abstient donc, et la lacune est inscrite au registre plutôt que devinée.
+            # ⚠️ **`# DETTE-033` — un battu repris par la *séquence* n'est pas annoncé ici.**
+            #
+            # Les deux moitiés du repêchage se lisent à deux sources indépendantes : le **routing**
+            # (`_est_repeche`, décidé match par match — c'est la branche ci-dessus) et les
+            # **sources de la séquence** (`grille.repechages`, indexées par **tour**). Un premier
+            # correctif de revue a voulu annoncer la seconde ici aussi ; deux relecteurs l'ont
+            # démoli, et de deux façons **opposées** :
+            #
+            # - `dernier` est le **dernier match joué**, pas le match perdu : sous cascade, le battu
+            #   des demies redescend en petite finale, donc son `dernier.tour` vaut 3 et l'on rate
+            #   précisément les archers que « perdants du tour 2 » désigne ;
+            # - un **tour couvre plusieurs plages** dès qu'il y a des sous-tableaux : finale et
+            #   petite finale sont toutes deux au tour 3, si bien qu'une source « perdants du
+            #   tour 3 » décorerait aussi le 4ᵉ du podium.
+            #
+            # Les deux correctifs proposés étaient **incompatibles** (restreindre au braquet
+            # principal / élargir à tous les tours perdus), et pour cause : la sémantique de
+            # `SourcePhase.par_issue_de_tour` n'est **pas tranchée** — `# DETTE-028` acte qu'aucun
+            # moteur ne consomme encore ces prélèvements. La figer ici, dans un canal d'affichage,
+            # serait décider une règle métier au mauvais endroit. On s'abstient donc, et la lacune
+            # est inscrite au registre plutôt que devinée.
             destination=None,
             # `RANG_A_VENIR` ne subsiste que là où **rien** n'est acquis : ni rang exact, ni
             # fourchette (plage absente d'un `Match` bâti à la main). Avant E07US008 il couvrait
@@ -1187,8 +1197,8 @@ class ServiceRoutage:
            **n'efface pas** la cible : c'est la ligne de cet archer sur le plan, et la lui retirer
            échangerait une information contre un vide.
 
-           Mais « non côte à côte » recouvre **deux situations qui appellent des conseils opposés**,
-           et les confondre sous un message unique, c'était forcément se tromper sur
+           Mais « non côte à côte » recouvre **deux situations qui appellent des conseils
+           opposés**, et les confondre sous un message unique, c'était forcément se tromper sur
            l'une des deux :
            - **même butte, places éloignées** (la disposition nominale — quatre archers sur une
              cible) : la pose est le **bon** conseil, il n'y a qu'à se décaler d'une place ;
@@ -1221,8 +1231,9 @@ class ServiceRoutage:
         Jumeau de `ServicePilotageTour._cibles_par_archer` (2ᵉ occurrence), à deux choses près : le
         routage garde la **position** (le pilotage ne compte que des cibles) et il **conserve** le
         signal `duels_separes` — que le pilotage, lui, jette. C'est précisément l'information qui
-        dit que la pose ne correspond plus au duel du jour ; la recalculer ici en serait une
-        écriture de plus, et plus faible.
+        dit
+        que la pose ne correspond plus au duel du jour ; la recalculer ici en serait une écriture de
+        plus, et plus faible.
 
         Même tolérance : sans gabarit appliqué, plan **vide** — d'où « cible non attribuée », jamais
         un échec du panneau.
@@ -1245,9 +1256,9 @@ class ServiceRoutage:
     def _sources_en_attente(match: Match) -> tuple[int, ...]:
         """Les duels amont dont ce match attend encore l'issue — pour **nommer** qui l'on attend.
 
-        Jumeau de `ServicePilotageTour._sources_en_attente` (2ᵉ occurrence). Un camp `VainqueurDe` /
-        `PerdantDe` **sans occupant** signale un duel amont non tranché : « en attente du duel n°2 »
-        plutôt qu'un adversaire vide.
+        Jumeau de `ServicePilotageTour._sources_en_attente` (2ᵉ occurrence). Un camp `VainqueurDe`
+        / `PerdantDe` **sans occupant** signale un duel amont non tranché : « en attente du duel
+        n°2 » plutôt qu'un adversaire vide.
         """
         pending: list[int] = []
         for source, occupant in (
@@ -1273,22 +1284,23 @@ def _est_repeche(tableau: Tableau, match: Match) -> bool:
     """
     if match.plage is None or match.plage.largeur < 4:
         # ⚠️ **Le routing ne s'interroge pas sur une plage indivisible**, et ce n'est pas une
-        # optimisation : `construire_tableau` sort *avant* de l'appeler dans ce cas (*Règle T* — «
-        # l'issue fixe les deux rangs, il n'y a plus rien à diviser »), si bien que
+        # optimisation : `construire_tableau` sort *avant* de l'appeler dans ce cas (*Règle T* —
+        # « l'issue fixe les deux rangs, il n'y a plus rien à diviser »), si bien que
         # `PlacementEnCascade` y appelle `moitie_basse()` et lève `PlageInvalide`. Le contrat est
-        # désormais écrit à sa source (`Routing.route`, ADR-0065 §2) ; on le redonde ici parce qu'on
-        # est le deuxième appelant — et le premier à l'avoir enfreint. `largeur < 4` et non
-        # `est_terminale` (largeur 2) : c'est la borne exacte que `Plage._demi_largeur` refuse
-        # (correctif de revue). Métier, la garde est vraie de toute façon : un match terminal
-        # **décerne** les deux rangs, son perdant est classé ici.
+        # désormais écrit à sa source (`Routing.route`, ADR-0065 §2) ; on le redonde ici parce
+        # qu'on est le deuxième appelant — et le premier à l'avoir enfreint.
+        #
+        # `largeur < 4` et non `est_terminale` (largeur 2) : c'est la borne exacte que
+        # `Plage._demi_largeur` refuse (correctif de revue). Métier, la garde est vraie de toute
+        # façon : un match terminal **décerne** les deux rangs, son perdant est classé ici.
         return False
     destination = tableau.routing.route(ContexteRoutage(tour=match.tour, plage=match.plage))
     return isinstance(destination, VersRepechage)
 
 
-# `_fourchette_de_rangs` a **remonté dans le domaine** en E06US004 (`domain.tableau`) : le palmarès
-# en est le second consommateur, et deux services s'important une fonction privée l'un de l'autre
-# auraient inversé le sens des dépendances (règle 2) pour une règle métier.
+# `_fourchette_de_rangs` a **remonté dans le domaine** en E06US004 (`domain.tableau`) : le
+# palmarès en est le second consommateur, et deux services s'important une fonction privée
+# l'un de l'autre auraient inversé le sens des dépendances (règle 2) pour une règle métier.
 
 
 def _archers_du_tableau(tableau: Tableau) -> tuple[int, ...]:

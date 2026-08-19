@@ -493,7 +493,12 @@ export function FormulairePhase({
   // comptent — le contrat de phase les déclare `PHASE_ENTIERE` (ADR-0090). Miroir assumé de
   // `domain/contrat_phase.py` : la liste est courte, stable, et sa dérive ne produirait qu'un
   // champ offert en trop (refusé en 422) ou manquant — jamais un tournoi faux.
-  const decoupable = type === 'qualification' || type === 'echauffement'
+  // ⚠️ **La qualification SEULE**, et c'est un correctif de 2ᵉ passe relevé par trois axes.
+  // Le serveur refuse désormais le découpage sur tout autre type — l'échauffement compris,
+  // faute de barème et de feuille de marque dont dériver un tour. L'offrir revenait à
+  // proposer un geste qui échoue en 422, et comme le `PUT` est une édition **totale**, c'est
+  // l'étape entière qui était refusée.
+  const decoupable = type === 'qualification'
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
