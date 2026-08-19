@@ -157,6 +157,21 @@ les phases en pause de la sélection aurait fait tomber le routage sur une *autr
 `tableaux[-1]` — donc envoyé l'archer tirer ailleurs au lieu de lui dire d'attendre : un défaut pire
 que celui qu'on corrige. La sélection dit *de quoi on parle*, pas *si ça tourne*.
 
+⚠️ **`ServiceRoutage` résout une phase à TROIS endroits, et deux seulement sont gardés.** Le compte
+exact importe, parce qu'un lecteur qui en trouve trois là où l'ADR en annonce deux ne peut pas savoir
+si le troisième est un oubli :
+
+| Point de résolution | Gardé ? | Pourquoi |
+|---|---|---|
+| `routage()` → `_phase_de_tableau` | **oui** | c'est ce qui dit à un archer où tirer |
+| `routage()` → `_phase_restreinte_en_cours` (voie superposée) | **oui** | elle **court-circuite** la résolution principale ; sans garde, une finale en pause aurait continué à router ses huit finalistes |
+| `affectations()` → `_phase_de_tableau` | **non, délibérément** | c'est une **lecture publique** (`VueEcran.AFFECTATIONS`, E07US008), pas un ordre de tir. Le CA veut qu'on puisse *voir* où en est la salle pendant la pause |
+
+La conséquence assumée de la troisième ligne : l'écran de salle continue d'afficher les affectations
+pendant une pause, **sans dire qu'il y a pause**. Ce n'est pas un trou de cette décision mais
+exactement l'angle mort déclaré en § *Conséquences* — la mention publique de la pause est le CA
+d'`E05US034`. Le distinguer d'un oubli est le seul objet de ce tableau.
+
 ⚠️ **Les duels n'ont aucun chemin de correction** (à la différence de la qualification). Le CA de la
 correction est donc sans objet pour eux. C'est un manque **préexistant** — un duel validé de travers
 ne se rectifie nulle part aujourd'hui —, ni introduit ni aggravé ici, signalé plutôt que passé sous
@@ -247,7 +262,7 @@ la propriété de toujours rendre une réponse.
 | §4 chaque phase finit son tour | `backend/domain/arret_programme.py` (`phases_a_arreter`) ; `backend/application/arrets_programmes.py` (`_armer_sur_le_depart`, `_resoudre_les_arrets_armes`) | oui — `tests/test_service_arrets_programmes.py` |
 | §5 reprise d'un seul geste | `backend/application/arrets_programmes.py` (`lever`) ; `backend/api/v1/phases.py` (`relancer_arret`) ; `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`RelanceDesArrets`) | oui |
 | §6 gel de la saisie | `backend/application/saisie.py` (`_refuser_si_en_pause`), `backend/application/saisie_duels.py` (idem) | oui — `tests/test_service_saisie.py` § E05US033 |
-| §6 gel du routage | `backend/application/routage.py` (`_en_pause`, appelé aux **deux** résolutions de phase) | oui |
+| §6 gel du routage | `backend/application/routage.py` (`_en_pause`, appelé aux **deux** résolutions de `routage()` — `affectations()` ne l'est pas, cf. le tableau du §6) | oui — les trois points de résolution comptés à la main |
 | §6 correction non gelée | `backend/application/saisie.py` (`corriger_volee`, **sans** garde — délibéré) | oui — oracle de non-garde dans `test_service_saisie.py` |
 | §7 déclencheur idempotent | `backend/application/arrets_programmes.py` (`evaluer`) ; couture `backend/application/suivi_deroule.py` (`avancement_par_phase`) ; branchement `backend/bootstrap/composition.py` | oui |
 | §8 découpage en tours | `backend/domain/tour_de_phase.py` (`DecoupageEnTours`, `unite_de_tour_effective`, `nb_tours_regles`) ; garde de type dans `backend/domain/phase.py` | oui |
