@@ -47,7 +47,7 @@ from domain.arret_programme import (
 )
 from domain.contrat_phase import TypePhase, UniteDeTour
 from domain.erreurs import ArretProgrammeInvalide, DecoupageEnToursInvalide
-from domain.phase import PhaseId
+from domain.phase import Phase, PhaseId
 from domain.tour_de_phase import (
     DecoupageEnTours,
     libelle_de_tour,
@@ -136,8 +136,8 @@ def test_aucun_arret_n_est_saute_quand_plusieurs_tours_s_achevent_d_un_coup() ->
 def test_un_arret_porte_sur_sa_phase_seule_par_defaut() -> None:
     """CA — *« cette phase seule, ou toutes les phases du même départ »*.
 
-    Le défaut est le moins intrusif des deux : couper une phase n'éteint pas la salle. C'est le
-    sens de lecture de la règle 12 appliqué à une valeur par défaut — le geste large se demande.
+    Le défaut est le moins intrusif des deux : couper une phase n'éteint pas la salle. C'est le sens
+    de lecture de la règle 12 appliqué à une valeur par défaut — le geste large se demande.
     """
     assert ArretProgramme(apres_tour=3).portee is PorteeArret.PHASE
     assert set(PorteeArret) == {PorteeArret.PHASE, PorteeArret.DEPART}
@@ -342,8 +342,13 @@ def test_une_qualification_non_decoupee_reste_une_phase_entiere() -> None:
     """CA — le défaut ne change pas : *« 1 tour est vrai, pas un trou »* (E05US032).
 
     Garde la compatibilité avec l'US précédente : sans réglage, rien ne bouge.
+
+    ⚠️ **`unite_de_tour_effective` prend le nombre de tours OBSERVÉ, pas le réglage** (correctif de
+    revue). Faire juger l'affichage sur le réglage pendant que le déclencheur juge sur l'avancement
+    lu créait deux sources pour le même nombre — et elles peuvent diverger (un suisse réglé à 9
+    rondes n'en apparie que 5). C'est le nombre du terrain qui fait foi.
     """
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, None) is UniteDeTour.PHASE_ENTIERE
+    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 1) is UniteDeTour.PHASE_ENTIERE
     assert nb_tours_regles(TypePhase.QUALIFICATION, None) == 1
 
 
@@ -360,16 +365,17 @@ def test_une_qualification_decoupee_avance_par_tours() -> None:
     """
     decoupage = DecoupageEnTours(nb_tours=2)
 
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, decoupage) is UniteDeTour.TOUR
+    # Le réglage dit combien de tours la phase comptera…
     assert nb_tours_regles(TypePhase.QUALIFICATION, decoupage) == 2
-    assert unite_de_tour_effective(TypePhase.ECHAUFFEMENT, decoupage) is UniteDeTour.TOUR
+    # … et c'est ce nombre-là, une fois **observé** par le suivi, qui donne l'unité affichée.
+    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 2) is UniteDeTour.TOUR
 
 
 def test_une_qualification_decoupee_annonce_enfin_un_numero_de_tour() -> None:
     """CA d'E05US032 — *« le libellé affiché est le mot du métier »* — appliqué au cas neuf.
 
-    Une qualification entière ne dit rien (« Qualification », jamais « Qualification — tour 1 sur
-    1 ») ; découpée en deux, elle dit « Tour 2 ». C'est le seul point où E05US033 touche au libellé,
+    Une qualification entière ne dit rien (« Qualification », jamais « Qualification — tour 1 sur 1
+    ») ; découpée en deux, elle dit « Tour 2 ». C'est le seul point où E05US033 touche au libellé,
     et il passe par la fonction **existante** : ouvrir un domicile de plus au libellé de tour est ce
     que `DETTE-020` interdit.
     """
@@ -380,14 +386,31 @@ def test_une_qualification_decoupee_annonce_enfin_un_numero_de_tour() -> None:
 def test_un_decoupage_en_un_seul_tour_reste_une_phase_entiere() -> None:
     """Cas limite : « découpée en 1 tour » est le défaut écrit en clair, pas un découpage.
 
-    Sans cette clause, une qualification réglée à 1 tour annoncerait « Tour 1 » — exactement le
-    « Qualification — tour 1 sur 1 » que le CA d'E05US032 refuse, réintroduit par la porte du
-    réglage.
+    Sans cette clause, une qualification réglée à 1 tour annoncerait « Tour 1 » — exactement le «
+    Qualification — tour 1 sur 1 » que le CA d'E05US032 refuse, réintroduit par la porte du réglage.
     """
     decoupage = DecoupageEnTours(nb_tours=1)
 
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, decoupage) is UniteDeTour.PHASE_ENTIERE
     assert nb_tours_regles(TypePhase.QUALIFICATION, decoupage) == 1
+    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 1) is UniteDeTour.PHASE_ENTIERE
+
+
+def test_seule_une_qualification_se_decoupe_en_tours() -> None:
+    """Le découpage est refusé ailleurs — **y compris sur l'échauffement** (correctif de revue).
+
+    Le CA nommait « la qualification **et** l'échauffement ». La revue a montré que l'échauffement
+    n'a ni barème ni série (`ContratDePhase` : décor et plan de cibles à `AUCUN`), donc **aucune
+    donnée** dont dériver un tour : aucun lecteur d'avancement ne peut exister pour lui, et un
+    découpage y serait accepté à l'atelier puis définitivement inerte le jour J. Le CA est amputé de
+    cette moitié — reversé dans `stories/`, et reporté à `E05US034` si le besoin se confirme.
+
+    Le **barrage** tombait dans le même trou pour une autre raison : son contrat vaut aussi
+    `PHASE_ENTIERE`, donc la première garde, écrite sur le contrat, le laissait passer alors que six
+    docstrings de l'US l'excluaient.
+    """
+    for type_phase in (TypePhase.ECHAUFFEMENT, TypePhase.BARRAGE, TypePhase.SUISSE):
+        with pytest.raises(DecoupageEnToursInvalide):
+            Phase(depart_id=1, ordre=1, type=type_phase, decoupage=DecoupageEnTours(2))
 
 
 def test_un_decoupage_ne_se_regle_pas_a_zero_tour() -> None:
@@ -413,11 +436,6 @@ def test_un_decoupage_ne_change_rien_a_un_format_qui_compte_deja_ses_tours() -> 
     propriété de rendre toujours une réponse. Un résolveur qui lèverait obligerait chaque écran de
     lecture à gérer une exception sur une donnée déjà validée à l'écriture.
     """
-    decoupage = DecoupageEnTours(nb_tours=4)
-
-    assert unite_de_tour_effective(TypePhase.SUISSE, decoupage) is UniteDeTour.RONDE
-    assert unite_de_tour_effective(TypePhase.POULES, decoupage) is UniteDeTour.TOUR
-    assert (
-        unite_de_tour_effective(TypePhase.ELIMINATION_DIRECTE, decoupage)
-        is UniteDeTour.TOUR_DE_TABLEAU
-    )
+    assert unite_de_tour_effective(TypePhase.SUISSE, 4) is UniteDeTour.RONDE
+    assert unite_de_tour_effective(TypePhase.POULES, 4) is UniteDeTour.TOUR
+    assert unite_de_tour_effective(TypePhase.ELIMINATION_DIRECTE, 1) is UniteDeTour.TOUR_DE_TABLEAU

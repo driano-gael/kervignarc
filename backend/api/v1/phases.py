@@ -462,8 +462,17 @@ class PhaseReponse(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
-    decoupage: DecoupageDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
+    decoupage: DecoupageDTO | None = None
+    """Le découpage en tours (E05US033) — `null` = non découpée, donc la phase entière.
+
+    ⚠️ **Cette docstring a été rattachée au mauvais champ à la première rédaction** : insérer
+    `decoupage` entre `suisse` et son littéral faisait documenter le découpage par le texte du
+    système suisse, et publiait donc une description **fausse** au schéma OpenAPI. C'est exactement
+    ce que le commentaire de `DETTE-054` de ce fichier prédit (« le bloc avait glissé d'un cran à
+    chaque réglage inséré ») — reproduit une fois de plus, relevé par deux axes de revue.
+    """
 
     barrage_jusqu_au: int | None = None
 
@@ -513,14 +522,17 @@ class EtapeReponse(BaseModel):
     poules: ReglagePoulesDTO | None = None
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
+    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
     decoupage: DecoupageDTO | None = None
+    """Le découpage en tours (E05US033) — `null` = non découpée, donc la phase entière."""
+
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list)
     """Les pauses programmées de cette étape (E05US033) — **rendues au complet**.
 
     L'édition étant totale, l'écran d'atelier doit renvoyer la liste entière au `PUT` : c'est
     pourquoi elle est servie ici sans pagination ni delta.
     """
-    """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
 
     barrage_jusqu_au: int | None = None
 
@@ -759,10 +771,12 @@ async def lister_arrets_en_attente(depart_id: int, request: Request) -> list[Arr
     relancer — ni les arrêts déjà levés.
     """
     service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
-    return [
-        ArretFranchiReponse.de_agregat(franchissement)
-        for franchissement in service.en_attente_de_relance(depart_id)
-    ]
+    # ⚠️ **`run_in_threadpool`, comme les deux `GET` voisins de ce fichier** (règle 7 : lectures
+    # synchrones **hors** boucle événementielle). La première rédaction appelait le service
+    # directement dans la coroutine, alors qu'il fait un `SELECT` avec jointure — et que le pilotage
+    # polle cette route toutes les 10 s, par client. Relevé en revue (axe A).
+    franchissements = await run_in_threadpool(service.en_attente_de_relance, depart_id)
+    return [ArretFranchiReponse.de_agregat(f) for f in franchissements]
 
 
 @router.post(

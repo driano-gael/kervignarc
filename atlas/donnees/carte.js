@@ -249,7 +249,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 332,
+   "occurrences": 336,
    "source": "application"
   },
   {
@@ -327,7 +327,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 48,
+   "occurrences": 49,
    "source": "bootstrap"
   },
   {
@@ -655,7 +655,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 47,
+   "occurrences": 48,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -677,6 +677,7 @@ window.ATLAS.carte = {
     "backend/application/forfaits.py",
     "backend/application/formats.py",
     "backend/application/gabarits.py",
+    "backend/application/gel_de_pause.py",
     "backend/application/grain_validation.py",
     "backend/application/inscriptions.py",
     "backend/application/jeu_essai.py",
@@ -712,7 +713,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 318,
+   "occurrences": 322,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -733,6 +734,7 @@ window.ATLAS.carte = {
     "backend/application/forfaits.py",
     "backend/application/formats.py",
     "backend/application/gabarits.py",
+    "backend/application/gel_de_pause.py",
     "backend/application/generateur_scores.py",
     "backend/application/grain_validation.py",
     "backend/application/inscriptions.py",
@@ -817,7 +819,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 48,
+   "occurrences": 49,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1474,6 +1476,10 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/gel_de_pause.py",
+     "nom": "DeclencheurArrets"
+    },
+    {
      "fichier": "backend/infrastructure/realtime/diffusion_simulation.py",
      "nom": "DiffusionSimulationBroadcaster"
     }
@@ -1591,6 +1597,22 @@ window.ATLAS.carte = {
    ],
    "couche": "application",
    "fichier": "backend/application/arrets_programmes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "evaluer"
+   ],
+   "nom": "EvaluateurArrets",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/application/arrets_programmes.py",
+     "nom": "ServiceArretsProgrammes"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/gel_de_pause.py",
    "hors_domaine": true,
    "methodes": [
     "evaluer"
@@ -1875,6 +1897,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/application/poules.py",
      "nom": "ServicePoules"
+    },
+    {
+     "fichier": "backend/application/saisie.py",
+     "nom": "ServiceSaisie"
     },
     {
      "fichier": "backend/application/suisse.py",
@@ -2762,11 +2788,11 @@ window.ATLAS.carte = {
   "aretes_front": 148,
   "enchevetrements": 3,
   "features": 46,
-  "imports": 852,
-  "imports_entre_couches": 722,
+  "imports": 858,
+  "imports_entre_couches": 727,
   "plus_gros_noeud": 23,
-  "ports": 64,
-  "ports_hors_domaine": 23,
+  "ports": 65,
+  "ports_hors_domaine": 24,
   "ports_sans_adapter": 0,
   "violations": 0
  },

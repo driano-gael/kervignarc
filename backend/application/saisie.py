@@ -25,22 +25,18 @@ import datetime
 import logging
 from dataclasses import dataclass
 
-# ⚠️ **Le port `EvaluateurArrets` est importé de son *réalisateur*, pas défini ici** (E05US033).
-# La convention du projet place un port étroit chez son **consommateur** (`LecteurAvancementDePhase`
-# dans `application.suivi_deroule`, `DiffusionSimulation` dans `application.pilotage_simulation`).
-# Elle est enfreinte sciemment : ce port a **deux** consommateurs — les deux services de saisie —,
-# et le définir chez l'un obligerait l'autre à l'importer de son jumeau, ou à en tenir une copie.
-# Un port en double se désaccorde ; un import de Protocol ne couple aucun comportement, et il n'y a
-# pas de cycle (`arrets_programmes` n'importe aucun service de saisie).
-from application.arrets_programmes import EvaluateurArrets
 from application.erreurs import (
     ApplicationError,
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
-    PhaseEnPause,
     PhaseQualificationAbsente,
     SaisieHorsCible,
+)
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
 )
 from application.portee import (
     la_plus_avancee,
@@ -54,7 +50,7 @@ from domain.blason import ZoneScore
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
-from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -67,6 +63,8 @@ from domain.ports import (
     SerieRepository,
 )
 from domain.serie import Serie
+from domain.suivi_deroule import AvancementDePhase
+from domain.tour_de_phase import nb_tours_regles
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
@@ -131,10 +129,10 @@ class AvancementCible:
     `volee_courante` : la volée en cours (1-based) au rythme du **plus lent** des archers de la
     cible — **0** si **aucun archer** n'est placé sur la cible (grille vide) ; des archers placés
     mais qui n'ont rien saisi donnent **1** (le retardataire tient la cible). `nb_volees` : total
-    attendu (barème de qualification),
-    **0** si la qualification n'est pas configurée (la supervision n'échoue pas là-dessus, elle
-    affiche « — »). `derniere_saisie` : « quand » de la dernière volée saisie sur la cible, tous
-    archers confondus, ou `None` — c'est l'**activité** affichée, jamais le heartbeat (ADR-0038 §2).
+    attendu (barème de qualification), **0** si la qualification n'est pas configurée (la
+    supervision n'échoue pas là-dessus, elle affiche « — »). `derniere_saisie` : « quand » de la
+    dernière volée saisie sur la cible, tous archers confondus, ou `None` — c'est l'**activité**
+    affichée, jamais le heartbeat (ADR-0038 §2).
     """
 
     volee_courante: int
@@ -182,9 +180,10 @@ class ServiceSaisie:
         self._forfaits = forfaits
         self._horloge = horloge
         self._populations = populations
-        # E05US033 : branché **tardivement** (`brancher_evaluateur_arrets`), donc `None` ici.
-        # Non branché = comportement d'avant l'US, ce qui laisse tous les décors de test intacts.
-        self._evaluateur_arrets: EvaluateurArrets | None = None
+        # E05US033 : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # (`application.gel_de_pause`). Construit sans argument et **inerte** tant que le
+        # composition root n'y a rien branché — donc les décors de test existants sont inchangés.
+        self._arrets = DeclencheurArrets()
 
     def archers_du_poste(
         self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
@@ -225,10 +224,10 @@ class ServiceSaisie:
         """Compose l'avancement d'une cible pour la console de supervision (E12US001, ADR-0038 §2).
 
         Lecture seule. Le total de volées vient du barème de qualification (**0** si elle n'est pas
-        configurée : la supervision **ne lève pas** `PhaseQualificationAbsente`, affiche « — »).
-        Le rythme se lit sur les séries des archers **placés** sur la cible ; « volée courante »
-        = celle du **plus lent** (les archers d'une cible tirent ensemble, avance en bloc).
-        La « dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
+        configurée : la supervision **ne lève pas** `PhaseQualificationAbsente`, affiche « — »). Le
+        rythme se lit sur les séries des archers **placés** sur la cible ; « volée courante » =
+        celle du **plus lent** (les archers d'une cible tirent ensemble, avance en bloc). La «
+        dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
         dernier **tir**, jamais le dernier heartbeat.
         """
         # E05US025 : la qualification **de ce créneau**, et celle qui s'y tire. Cette lecture
@@ -240,10 +239,10 @@ class ServiceSaisie:
         # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
         nb_volees = phase.bareme.nb_volees if phase is not None and phase.bareme is not None else 0
         # ⚠️ **Un seul résolveur pour toute la cible** (2ᵉ correctif de revue). En construire un par
-        # archer repartait d'un cache vide à chaque fois : sur un créneau à trois qualifications,
-        # la console de supervision — sondée par 30 tablettes — reconstruisait le classement du
-        # créneau quatre fois par cible. Le cache de `resolveur_de_classement` est fait pour être
-        # **partagé sur toute la descente** (E05US024) ; le fabriquer en boucle l'annule.
+        # archer repartait d'un cache vide à chaque fois : sur un créneau à trois qualifications, la
+        # console de supervision — sondée par 30 tablettes — reconstruisait le classement du créneau
+        # quatre fois par cible. Le cache de `resolveur_de_classement` est fait pour être **partagé
+        # sur toute la descente** (E05US024) ; le fabriquer en boucle l'annule.
         resolveur = self._populations.resolveur_de_classement(tournoi_id, depart_id)
         completes: list[int] = []
         derniere: datetime.datetime | None = None
@@ -353,7 +352,7 @@ class ServiceSaisie:
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
-        self._refuser_si_en_pause(phase)
+        refuser_si_en_pause(phase)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.saisir_volee(
@@ -387,7 +386,7 @@ class ServiceSaisie:
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
-        self._refuser_si_en_pause(phase)
+        refuser_si_en_pause(phase)
         assert (
             phase.bareme is not None and phase.validation is not None
         ), "Une qualification porte toujours barème et grain (ADR-0045 §2)."
@@ -404,7 +403,7 @@ class ServiceSaisie:
         )
         enregistree = self._series.enregistrer_avec_trace(serie, entree)
         # Le résultat est **écrit** : c'est maintenant qu'un tour peut être achevé (E05US033).
-        self._signaler_validation(phase.depart_id)
+        self._arrets.signaler(phase.depart_id)
         return enregistree
 
     def corriger_volee(
@@ -446,76 +445,63 @@ class ServiceSaisie:
         )
         return self._series.enregistrer_avec_trace(serie, entree)
 
+    def avancement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> AvancementDePhase | None:
+        """Où en est cette **qualification** — réalise `LecteurAvancementDePhase` (E05US033).
+
+        ⚠️ **Ce lecteur manquait, et son absence était le bloquant central de l'US** (relevé par les
+        quatre axes de revue). `DecoupageEnTours` était écrit, validé, sérialisé, exposé en DTO et
+        éditable à l'écran — et **lu par personne**. Une qualification n'ayant aucun lecteur
+        branché, son `tour_courant` restait `None` pour toujours, et le déclencheur d'arrêt lisait
+        ce `None` comme « tout est joué » : une pause « après le tour 1 » se déclenchait à la
+        **première** série validée, avant que quiconque ait tiré ses dix volées. Le CA « la
+        qualification devient divisible en tours — sans lui, ce type n'a qu'un tour et ne peut pas
+        s'arrêter en cours de route » n'était pas livré, et le mécanisme se retournait contre lui.
+
+        **Comment le tour se dérive.** Le découpage donne `nb_tours` ; chaque tour vaut `nb_volees /
+        nb_tours` volées du barème. Le tour courant est celui de la **volée la moins avancée du
+        plateau** : une phase avance au rythme du dernier archer, pas du premier. Compter sur le
+        plus avancé ferait couper la salle alors qu'une cible tire encore.
+
+        ⚠️ **Seules les volées VALIDÉES comptent**, et c'est la même définition d'« achevé » que
+        partout ailleurs dans le moteur (`AvancementTour` ne compte que les duels tranchés, un tour
+        de poule que les rencontres verrouillées). Une volée saisie mais non validée laisse le tour
+        ouvert — sinon un arrêt tomberait sur une saisie que le scoreur n'a pas encore confirmée.
+
+        Rend `None` — « je ne sais pas » — dans deux cas, et il faut que ce soit `None` et non «
+        tour 1 » : phase qui n'est pas une qualification (le lecteur est branché par type, mais une
+        phase peut être retypée), et phase sans barème lisible. Le déclencheur ne coupe alors rien,
+        ce qui est le repli sûr.
+
+        ⚠️ **L'échauffement n'est PAS couvert**, alors que le CA le nommait avec la qualification.
+        Il n'a ni barème ni série (`ContratDePhase` : `decor=AUCUN`, `plan_de_cibles=AUCUN`), donc
+        il n'existe **rien** dont dériver un tour : ce n'est pas un manque d'implémentation mais une
+        absence de donnée. Le CA est amputé de cette moitié, l'atelier refuse désormais un découpage
+        sur un échauffement, et `stories/` est aligné en conséquence.
+        """
+        phase = self._phases.par_id(phase_id)
+        if phase is None or phase.type is not TypePhase.QUALIFICATION or phase.bareme is None:
+            return None
+        nb_tours = nb_tours_regles(phase.type, phase.decoupage)
+        volees_par_tour = phase.bareme.nb_volees / nb_tours
+        series = self._series.par_phase(phase_id)
+        if not series:
+            # Phase démarrée mais rien de tiré : le tour 1 tourne. Ce n'est pas « inconnu » — on
+            # sait parfaitement où elle en est —, et rendre `None` ici ferait retomber le
+            # déclencheur sur son repli prudent, donc rendrait tout arrêt de cette phase inerte.
+            return AvancementDePhase(nb_tours=nb_tours, tour_courant=1)
+        validees = min(sum(1 for volee in serie.volees if volee.verrouillee) for serie in series)
+        if validees >= phase.bareme.nb_volees:
+            # Tout est tiré et validé : plus rien ne tourne, la convention d'ADR-0090.
+            return AvancementDePhase(nb_tours=nb_tours, tour_courant=None)
+        return AvancementDePhase(
+            nb_tours=nb_tours, tour_courant=min(nb_tours, int(validees // volees_par_tour) + 1)
+        )
+
     def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
-        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
-
-        Branchement **tardif et visible** au composition root, sur le patron de
-        `ServiceSuiviDeroule.brancher_lecteur_avancement` (ADR-0090) et de
-        `ServiceSaisieDuels.brancher_lecteur` (ADR-0084) : le service d'arrêts est construit après
-        celui-ci — il consomme le suivi, qui consomme les services de format — et un cycle qu'on ne
-        voit pas est un cycle qu'on réintroduit.
-
-        Non branché, ce service se comporte **exactement** comme avant E05US033 : aucun arrêt ne se
-        déclenche. C'est ce qui rend les décors de test existants indifférents à cette US, et c'est
-        aussi le mode de panne à connaître — un branchement oublié rend toute l'US inerte sans
-        qu'une seule ligne rougisse (`DETTE-028`, six moteurs livrés dont aucun appelé).
-        """
-        self._evaluateur_arrets = evaluateur
-
-    def _signaler_validation(self, depart_id: DepartId) -> None:
-        """Fait évaluer les arrêts programmés du créneau après une validation (E05US033).
-
-        ⚠️ **Appelé après l'écriture, jamais avant.** L'arrêt se déclenche sur un tour *achevé* :
-        évaluer avant que le résultat soit persisté ferait lire l'avancement d'avant, donc manquer
-        la frontière de tour — et le suivant l'attraperait, avec un tour de retard visible en salle.
-
-        ⚠️ **Les erreurs du déclencheur ne remontent pas au scoreur.** La validation, elle, a réussi
-        : faire échouer la requête parce qu'une phase voisine a été clôturée entre-temps rendrait un
-        500 à un archer qui a bien tiré, et lui ferait ressaisir une volée déjà enregistrée. On
-        journalise et l'on rend la main ; la validation suivante réévaluera, le déclencheur étant
-        idempotent.
-        """
-        if self._evaluateur_arrets is None:
-            return
-        try:
-            self._evaluateur_arrets.evaluer(depart_id)
-        except Exception as exc:
-            # ⚠️ **`Exception` et non le triplet typé habituel**, et c'est un choix, pas un
-            # raccourci. Le tuple `(ApplicationError, DomainError)` — celui de
-            # `ServiceSuiviDeroule._avancement_lu` — laisserait passer une `InfrastructureError`
-            # (SQLite occupé, base altérée), et l'attraper nommément demanderait à cette couche
-            # d'importer `infrastructure`, donc d'inverser le sens des dépendances (règle 2) pour
-            # une seule ligne de `except`. Le vrai argument est ailleurs : la validation **a réussi
-            # et est persistée**. Toute exception d'ici est celle d'un *effet de bord*, et la
-            # laisser remonter rendrait un 500 à un archer qui a bien tiré — qui ressaisirait alors
-            # une volée déjà enregistrée. Le déclencheur étant idempotent, la validation suivante
-            # réévaluera : le pire coût est une pause qui tombe un résultat plus tard.
-            _logger.warning(
-                "Arrêts programmés non évalués après validation sur le créneau %s : %r",
-                depart_id,
-                exc,
-            )
-
-    @staticmethod
-    def _refuser_si_en_pause(phase: Phase) -> None:
-        """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.
-
-        ⚠️ **Appelée par `saisir_volee` et `valider`, jamais par `corriger_volee`**, et c'est un CA
-        explicite du commanditaire (19/08/2026). La pause gèle ce qui *avance* ; elle ne gèle pas ce
-        qui *répare*. C'est précisément pendant la pause que l'on relit les feuilles et que l'on
-        découvre les erreurs de saisie — les interdire ferait de chaque pause un cul-de-sac,
-        dont la seule issue serait de relancer toute la salle pour corriger un 9 pris pour un 10.
-
-        ⚠️ **Avant cette US, rien ici ne regardait le statut de la phase** : mettre une phase en
-        pause n'arrêtait aucune saisie, et la pause n'était qu'un libellé dans le suivi. Cf.
-        `DETTE-073` pour le volet **tournoi**, resté cosmétique et hors périmètre (autre maille,
-        ADR-0026 §3).
-        """
-        if phase.statut is StatutPhase.EN_PAUSE:
-            raise PhaseEnPause(
-                "Cette phase est en pause : la saisie reprendra quand l'organisateur relancera. "
-                "La correction d'un score déjà saisi reste possible."
-            )
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
+        self._arrets.brancher(evaluateur)
 
     def _charger_archer(
         self, tournoi_id: TournoiId, archer_id: ArcherId, contexte: ContexteSaisie | None
@@ -565,8 +551,7 @@ class ServiceSaisie:
         (E05US025, ADR-0082). Cette méthode résolvait « **la** » qualification du tournoi
         (`portee.qualification_du_tournoi`, c'est-à-dire celle du **premier** créneau) : avec un
         déroulé qui en porte plusieurs, les 3x15 de la *haute* seraient allés réécrire les volées
-        des
-        3x20 du premier tour, dans la même feuille et sans le moindre signal.
+        des 3x20 du premier tour, dans la même feuille et sans le moindre signal.
 
         Deux résolutions successives, et aucune n'est facultative :
 
@@ -585,8 +570,7 @@ class ServiceSaisie:
 
            Le repli sur « à venir » n'est pas de la complaisance : démarrer une phase est un geste
            **manuel** de l'organisateur (`ServicePhases.demarrer`), et faire dépendre la saisie de
-           sa
-           discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. Même parti que
+           sa discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. Même parti que
            `ServicePalmares._resultat`, qui refuse déjà de lire `phase.statut` pour décider ce qu'un
            écran affiche.
 
@@ -635,14 +619,13 @@ class ServiceSaisie:
     ) -> Phase | None:
         """La qualification de ce créneau **qui admet cet archer**, ou `None` s'il n'y en a aucune.
 
-        ⚠️ **C'est ici que se tient le CA « une flèche ne peut pas atterrir dans la mauvaise
-        feuille »** — et un premier jet ne le tenait pas (bloquant de revue).
-        `qualification_courante` rend la **première démarrée** du créneau : sur la fourche du CA
-        (*haute* et *basse* composées ensemble, démarrées ensemble, cf. l'arbitrage du 09/08/2026
-        « rien n'impose une seule phase en cours à la fois »), elle rendait la *haute* pour **tout
-        le monde**. Les 60 archers de la *basse* auraient écrit leurs 3x15 dans la feuille de la
-        haute, et la basse serait restée vide — le défaut même que l'US existe pour fermer, déplacé
-        du tournoi vers le créneau.
+        ⚠️ **C'est ici que se tient le CA « une flèche ne peut pas atterrir dans la mauvaise feuille
+        »** — et un premier jet ne le tenait pas (bloquant de revue). `qualification_courante` rend
+        la **première démarrée** du créneau : sur la fourche du CA (*haute* et *basse* composées
+        ensemble, démarrées ensemble, cf. l'arbitrage du 09/08/2026 « rien n'impose une seule phase
+        en cours à la fois »), elle rendait la *haute* pour **tout le monde**. Les 60 archers de la
+        *basse* auraient écrit leurs 3x15 dans la feuille de la haute, et la basse serait restée
+        vide — le défaut même que l'US existe pour fermer, déplacé du tournoi vers le créneau.
 
         La discrimination se fait sur la **population** : une qualification prélevée ne reçoit que
         les archers que ses sources lui ont donnés. On la lit par le résolveur de classement de
@@ -679,9 +662,9 @@ class ServiceSaisie:
         admises = [phase for phase in qualifications if self._admet(phase, archer_id, resoudre)]
         if not admises:
             # Aucune ne le réclame : classement amont illisible, ou archer hors de toutes les
-            # fenêtres. On ne refuse pas la saisie sur une lecture de classement (robustesse jour
-            # J) — on retombe sur « la phase en cours du créneau », le comportement d'avant. C'est
-            # un repli **destructeur** (des flèches peuvent atterrir dans la mauvaise feuille), à la
+            # fenêtres. On ne refuse pas la saisie sur une lecture de classement (robustesse jour J)
+            # — on retombe sur « la phase en cours du créneau », le comportement d'avant. C'est un
+            # repli **destructeur** (des flèches peuvent atterrir dans la mauvaise feuille), à la
             # différence de celui de la complétude qui, lui, est conservateur : on le **journalise**
             # plutôt que de le laisser muet.
             _logger.warning(
@@ -730,8 +713,7 @@ class ServiceSaisie:
 
         Un seul endroit résout le couple `(phase, archer)` pour les trois chemins d'écriture
         (saisie, validation, correction) : les laisser le refaire chacun rouvrirait la porte à ce
-        que
-        l'un d'eux retombe sur la maille tournoi — c'est-à-dire au défaut que l'US corrige.
+        que l'un d'eux retombe sur la maille tournoi — c'est-à-dire au défaut que l'US corrige.
         """
         assert phase.id is not None, "Une phase relue du dépôt porte toujours son identifiant."
         return self._series.par_archer(phase.id, archer_id) or Serie.vide(
@@ -747,9 +729,9 @@ class ServiceSaisie:
     ) -> DepartId | None:
         """Le créneau où cet archer tire : celui du poste, sinon le premier où il est inscrit.
 
-        `None` quand l'archer n'a aucune inscription — l'appelant retombe alors sur la résolution
-        au tournoi. C'est une donnée incohérente (on ne tire pas sans être inscrit), pas un cas
-        nominal : on ne casse pas la saisie dessus le jour J.
+        `None` quand l'archer n'a aucune inscription — l'appelant retombe alors sur la résolution au
+        tournoi. C'est une donnée incohérente (on ne tire pas sans être inscrit), pas un cas nominal
+        : on ne casse pas la saisie dessus le jour J.
 
         Le départage entre plusieurs inscriptions se fait sur le **plus petit identifiant** de
         créneau, et non sur son numéro d'affichage : il faudrait injecter un `DepartRepository` pour

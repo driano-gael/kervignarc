@@ -9,6 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { RACINE_AVANCEMENT } from '../phases/hooks'
 import { getArretsEnAttente, getSuiviDeroule, relancerArret } from './api'
 
 /** ~10 s : le suivi est au grain du **tour**, pas de la flèche — il n'a pas besoin d'être nerveux,
@@ -67,6 +68,13 @@ export function useRelancerArret(departId: number | null) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: RACINE_ARRETS })
       void client.invalidateQueries({ queryKey: RACINE_SUIVI })
+      // ⚠️ **`RACINE_AVANCEMENT` aussi, et c'est celle qui manquait** (correctif de revue, axe C1).
+      // `RACINE_SUIVI` porte le **schéma**, pas la liste de phases qui affiche les statuts et les
+      // boutons de cycle de vie — celle-ci vient de `useAvancementPhases`. Sans cette invalidation,
+      // les phases relancées restaient affichées « En pause » avec un bouton « Reprendre » jusqu'au
+      // rechargement de la page, et le clic rendait un 409. C'est mot pour mot le défaut que la
+      // docstring de ce hook annonçait éviter (« l'organisateur cliquerait deux fois »).
+      void client.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
     },
   })
 }

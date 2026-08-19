@@ -9,11 +9,11 @@ déjà : il n'y avait pas de raison d'en remonter un second ici.
 ⚠️ **L'oracle du gel n'est pas le code existant, et c'est le point à comprendre avant de lire.** Au
 cadrage du 19/08/2026, la vérification a montré que `StatutPhase.EN_PAUSE` **ne gelait rien** :
 aucune garde dans `application/saisie.py`, aucune dans `application/saisie_duels.py`, et
-`application/routage.py` traitait une phase en pause comme une phase en cours (filtre
-`statut is not TERMINEE`). La pause était **cosmétique** — un libellé dans le suivi. Un test écrit
-en lisant ce code aurait donc consacré une pause qui n'arrête personne, et l'US aurait livré une
-étiquette. La fiche l'annonçait à l'envers (« `EN_PAUSE` gèle la validation » y figurait comme un
-piège **à vérifier**) : c'est le cas d'école de la règle 9 — le CA, pas le code.
+`application/routage.py` traitait une phase en pause comme une phase en cours (filtre `statut is not
+TERMINEE`). La pause était **cosmétique** — un libellé dans le suivi. Un test écrit en lisant ce
+code aurait donc consacré une pause qui n'arrête personne, et l'US aurait livré une étiquette. La
+fiche l'annonçait à l'envers (« `EN_PAUSE` gèle la validation » y figurait comme un piège **à
+vérifier**) : c'est le cas d'école de la règle 9 — le CA, pas le code.
 
 Deux gardes portent l'essentiel :
 
@@ -113,12 +113,18 @@ class FauxSuivi:
 
     def __init__(self) -> None:
         self.tours: dict[PhaseId, int | None] = {}
+        # ⚠️ **`nb_tours` est pilotable, et ne l'était pas.** La première rédaction le codait à `9`
+        # en dur, si bien qu'aucun test n'atteignait la signature du **repli** d'`avancement_bloc`
+        # (`nb_tours=1, tour_courant=None`, qui veut dire « je ne sais pas »). Les quatre axes de
+        # revue ont relevé que c'est exactement ce que la doublure masquait : trois bloquants sont
+        # passés au travers de 3453 tests verts parce que la borne n'était pas atteignable.
+        self.nb_tours: dict[PhaseId, int] = {}
         self.appels = 0
 
     def avancement_par_phase(self, depart_id: int) -> dict[PhaseId, AvancementDePhase]:
         self.appels += 1
         return {
-            phase_id: AvancementDePhase(nb_tours=9, tour_courant=tour)
+            phase_id: AvancementDePhase(nb_tours=self.nb_tours.get(phase_id, 9), tour_courant=tour)
             for phase_id, tour in self.tours.items()
         }
 
@@ -291,8 +297,8 @@ def test_un_arret_de_depart_ne_coupe_pas_une_phase_au_milieu_de_son_tour(decor: 
     """CA — *« un arrêt de portée départ laisse chaque phase finir son tour en cours »*.
 
     ⚠️ **Arbitrage du commanditaire du 18/08/2026, et c'est le test qui l'exige.** Un arrêt qui
-    couperait net serait plus simple à écrire — et il interromprait un duel engagé, quelqu'un
-    l'arc levé. La salle s'éteint en quelques minutes, pas d'un coup.
+    couperait net serait plus simple à écrire — et il interromprait un duel engagé, quelqu'un l'arc
+    levé. La salle s'éteint en quelques minutes, pas d'un coup.
 
     La phase déclenchante s'arrête **tout de suite** : son tour vient précisément de finir.
     """
@@ -472,10 +478,10 @@ def test_un_arret_deja_leve_ne_se_releve_pas(decor: Decor) -> None:
 def test_le_declencheur_est_idempotent(decor: Decor) -> None:
     """Rappelé sans que rien ne change, il ne coupe rien de plus et n'écrit rien de plus.
 
-    ⚠️ **Propriété non négociable** : le déclencheur est appelé après **chaque** validation de score,
-    soit des centaines de fois dans une journée, et plusieurs tablettes peuvent valider dans la même
-    seconde. Un déclencheur à effet cumulatif écrirait un franchissement par appel et rendrait la
-    liste de relance du pilotage illisible.
+    ⚠️ **Propriété non négociable** : le déclencheur est appelé après **chaque** validation de
+    score, soit des centaines de fois dans une journée, et plusieurs tablettes peuvent valider dans
+    la même seconde. Un déclencheur à effet cumulatif écrirait un franchissement par appel et
+    rendrait la liste de relance du pilotage illisible.
     """
     phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=2),), tour_courant=3)
 
@@ -538,3 +544,162 @@ def test_les_arrets_en_attente_se_lisent_pour_le_pilotage(decor: Decor) -> None:
     assert attendu.id is not None
     decor.service.lever(decor.depart_id, attendu.id)
     assert decor.service.en_attente_de_relance(decor.depart_id) == ()
+
+
+# ───────────── Ce que la revue a trouvé, et qu'aucun test n'attrapait ───────────── Cette section
+# est née des quatre axes de `/revue-us`. Chacun de ces tests correspond à un défaut **reproduit**
+# sur le code livré, et chacun était invisible parce que la doublure d'avancement ne produisait
+# jamais la valeur qui casse. C'est la leçon à retenir plus que les correctifs : une doublure qui ne
+# sait pas exprimer le cas limite le rend intestable.
+
+
+def test_un_avancement_inconnu_ne_declenche_aucun_arret(decor: Decor) -> None:
+    """**Bloquant.** `tour_courant=None` + `nb_tours=1` veut dire « je ne sais pas », pas « fini ».
+
+    ⚠️ C'est le défaut central de la première livraison. `None` a **cinq** provenances et une seule
+    signifie « tout est joué » : aucun lecteur branché pour ce type, service de format qui refuse,
+    rien encore composé, phase sans braquet… Le déclencheur les lisait toutes comme « le dernier
+    tour est achevé » et **coupait la salle au premier score validé du créneau**, avant que personne
+    ait tiré.
+
+    La signature `nb_tours=1, tour_courant=None` est exactement le repli d'`avancement_bloc`, que sa
+    propre docstring appelle « dégradation lisible ».
+    """
+    phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=2),), tour_courant=None)
+    decor.suivi.nb_tours[phase_id] = 1
+
+    assert decor.service.evaluer(decor.depart_id) == ()
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS
+    assert decor.franchissements.items == []
+
+
+def test_un_arret_de_depart_ne_coupe_pas_une_phase_dont_le_tour_est_inconnu(decor: Decor) -> None:
+    """**Bloquant.** Le CA du 18/08/2026 : *« personne n'est coupé en plein tir »*.
+
+    ⚠️ **Deux correctifs successifs ont été nécessaires ici, et le premier était faux.** Il excluait
+    de la photo les phases *absentes* du dictionnaire d'avancement — or le suivi rend une entrée
+    pour **chaque** phase du créneau, donc ce signal ne discriminait rien et le défaut était intact.
+    L'axe adversarial l'a démontré contre l'arbre de travail. Le seul signal qui marche est
+    `tour_courant is not None` : « un tour tourne, on peut le laisser finir ».
+
+    Sans lui, une qualification en train de tirer était notée « n'avait plus rien en cours » et
+    coupée **dans la seconde** par un arrêt de créneau.
+    """
+    declenchante = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),), tour_courant=3
+    )
+    tour_inconnu = decor.poser(ordre=2, tour_courant=None)
+    decor.suivi.nb_tours[tour_inconnu] = 1
+
+    arretees = decor.service.evaluer(decor.depart_id)
+
+    assert arretees == (declenchante,)
+    assert decor.statut(tour_inconnu) is StatutPhase.EN_COURS
+
+
+def test_deux_arrets_dus_au_meme_appel_ne_font_pas_echouer_le_declencheur(decor: Decor) -> None:
+    """**Bloquant.** Le cliché des phases était périmé entre les deux passes.
+
+    ⚠️ Séquence exacte : la passe 1 met la phase 2 en pause (arrêt de créneau de la phase 1) ; la
+    passe 2 relit son statut **dans le cliché**, y voit encore `EN_COURS`, et rappelle
+    `mettre_en_pause` sur une phase déjà en pause — `TransitionStatutInvalide`.
+
+    Ce que ça coûtait est pire que l'exception : elle était **avalée** par le `except Exception` du
+    signalement et **abandonnait la boucle**, si bien que l'arrêt de la phase 2 n'était jamais tracé
+    et se redéclenchait après la relance. C'est-à-dire « l'organisateur perd la main », que tout
+    l'ADR est construit pour empêcher. Le CA autorise « un arrêt à chaque tour » : la collision
+    n'est pas exotique.
+    """
+    premiere = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),), tour_courant=3
+    )
+    seconde = decor.poser(ordre=2, arrets=(ArretProgramme(apres_tour=4),), tour_courant=5)
+
+    arretees = decor.service.evaluer(decor.depart_id)
+
+    assert set(arretees) == {premiere, seconde}
+    assert decor.statut(seconde) is StatutPhase.EN_PAUSE
+    # Et surtout : l'arrêt propre de la seconde est **tracé**, donc il ne se redéclenchera pas.
+    traites = {(f.phase_id, f.apres_tour) for f in decor.franchissements.items}
+    assert (seconde, 4) in traites
+
+
+def test_deux_arrets_de_depart_armes_ensemble_aboutissent_tous_les_deux(decor: Decor) -> None:
+    """**Majeur.** Deux arrêts de créneau s'attendaient mutuellement, sans fin.
+
+    Chacun attendait que l'autre phase finisse un tour — or celle-ci venait d'être mise en pause par
+    l'autre arrêt, donc son tour ne bougerait plus jamais. Les deux restaient `ARME`, donc **absents
+    de la liste de relance**, donc la salle était arrêtée sans aucun bouton pour la repartir.
+
+    Le correctif : une phase qui n'est plus `EN_COURS` compte comme « a fini son tour » — elle est
+    arrêtée, c'est bien le résultat voulu.
+    """
+    premiere = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),), tour_courant=3
+    )
+    seconde = decor.poser(
+        ordre=2, arrets=(ArretProgramme(apres_tour=4, portee=PorteeArret.DEPART),), tour_courant=5
+    )
+
+    decor.service.evaluer(decor.depart_id)
+
+    assert decor.statut(premiere) is StatutPhase.EN_PAUSE
+    assert decor.statut(seconde) is StatutPhase.EN_PAUSE
+    etats = [f.etat for f in decor.franchissements.items]
+    assert EtatFranchissement.ARME not in etats, "un arrêt armé n'est pas relançable"
+    assert len(decor.service.en_attente_de_relance(decor.depart_id)) == 2
+
+
+def test_une_phase_suspendue_a_la_main_apres_l_armement_ne_bloque_pas_l_arret(decor: Decor) -> None:
+    """**Majeur.** Même interblocage, par une autre porte : la pause manuelle.
+
+    L'exclusion des phases déjà en pause **au moment de l'armement** avait été corrigée ; celle
+    d'une phase suspendue **après** ne l'était pas. Son tour se figeait, l'arrêt restait `ARME` pour
+    toujours, et l'organisateur perdait la main sur tout le créneau à cause d'un geste qu'il avait
+    fait lui-même.
+    """
+    declenchante = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),), tour_courant=3
+    )
+    voisine = decor.poser(ordre=2, tour_courant=5)
+    decor.service.evaluer(decor.depart_id)
+    assert [f.etat for f in decor.franchissements.items] == [EtatFranchissement.ARME]
+
+    # L'organisateur suspend la voisine à la main, pour une raison à lui.
+    decor.service_phases.mettre_en_pause(decor.depart_id, voisine)
+    decor.service.evaluer(decor.depart_id)
+
+    (franchissement,) = decor.franchissements.items
+    assert franchissement.etat is EtatFranchissement.FRANCHI
+    assert declenchante in franchissement.phases_arretees
+
+
+def test_sans_aucun_arret_le_declencheur_ne_lit_meme_pas_l_avancement(decor: Decor) -> None:
+    """**Majeur.** La promesse « rien ne change sans pause » portait aussi sur le **coût**.
+
+    ⚠️ `evaluer` est appelé **depuis la file d'écriture**, donc sur le thread du writer unique qui
+    sérialise toutes les écritures de l'application (règle 7). Payer la recomposition intégrale du
+    créneau après chaque validation, sur un tournoi qui n'a programmé **aucune** pause, retardait
+    toutes les tablettes pour rien.
+
+    L'oracle est la doublure : si elle n'est pas appelée, la lecture lourde n'a pas eu lieu.
+    """
+    decor.poser(ordre=1, arrets=(), tour_courant=3)
+    decor.poser(ordre=2, arrets=(), tour_courant=1)
+
+    assert decor.service.evaluer(decor.depart_id) == ()
+    assert decor.suivi.appels == 0, "aucun arrêt nulle part : rien ne justifie de lire l'avancement"
+
+
+def test_un_arret_au_dela_du_dernier_tour_joue_ne_coupe_pas_une_phase_finie(decor: Decor) -> None:
+    """Cas limite : un suisse réglé à 9 rondes qui n'en apparie que 5.
+
+    L'arrêt « après le tour 7 » ne doit pas se déclencher **à la fin** de la phase : il mettrait en
+    pause une phase dont tout est tiré, qu'il faudrait relancer pour pouvoir la clôturer. Le tour
+    achevé est borné par le nombre de tours **réellement joué**.
+    """
+    phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=7),), tour_courant=None)
+    decor.suivi.nb_tours[phase_id] = 5
+
+    assert decor.service.evaluer(decor.depart_id) == ()
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS

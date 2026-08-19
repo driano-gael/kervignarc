@@ -733,6 +733,20 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         profondeur: phase.profondeur,
         // Même raison encore : réémis pour ne pas être effacé par une édition **totale**.
         poules: phase.poules,
+        // ⚠️ **E05US033, et c'est un bloquant que la revue a trouvé** (axe adversarial). Ce widget
+        // n'est rendu **que sur la qualification** — c'est-à-dire exactement le seul type dont le
+        // découpage est licite, et celui que la recette demande de doter d'une pause. Sans ces deux
+        // lignes, renseigner « barrage jusqu'au rang 8 » **effaçait tout le planning de journée** de
+        // l'étape, sans message et avec un `PUT` qui réussit.
+        //
+        // C'est la leçon de `barrage_jusqu_au` rejouée dans le widget dont le commentaire ci-dessus
+        // la raconte, et elle contredisait la promesse écrite dans le DTO côté serveur (« l'écran
+        // doit toujours renvoyer la liste complète, jamais un delta »).
+        decoupage: phase.decoupage,
+        arrets: phase.arrets,
+        // Trou **préexistant** fermé au passage : inoffensif sur la qualification (qui ne porte
+        // jamais de réglage de suisse), mais c'était le dernier champ non réémis de ce chemin.
+        suisse: phase.suisse,
       },
     })
   }

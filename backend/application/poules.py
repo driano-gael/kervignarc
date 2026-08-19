@@ -7,7 +7,7 @@ groupes (`composer_poules`), le **placement** en blocs de couloirs (`placer_les_
 **rencontres** (`rencontres_de_poule`), le **classement de poule** (`classement_de_poule`) et le
 **barrage** (`domain/barrage.py`, déjà opérationnel en portée `poule` depuis E06US003).
 
-## Ce qui est recalculé, ce qui est persisté
+# # Ce qui est recalculé, ce qui est persisté
 
 Le parti est celui du tableau (ADR-0023/0048), et pour la même raison : **la structure se recalcule,
 le tir se persiste**.
@@ -19,7 +19,7 @@ le tir se persiste**.
 - **Persisté** : le **bloc de couloirs** de chaque poule (`placement_poule`, migration 0045) et le
   **tir** de chaque rencontre (table `duel`, sans table ni migration neuve — ADR-0083 §7).
 
-## La numérotation des rencontres, et son ancrage
+# # La numérotation des rencontres, et son ancrage
 
 Une rencontre est un **duel ordinaire** : elle se saisit avec le pavé d'E04US013 et se range dans
 `duel`, keyée `(phase_id, match_numero)`. Le `match_numero` est attribué **déterministe** — poules
@@ -30,14 +30,14 @@ fait **détecter** la divergence au lieu de ré-attribuer un score à d'autres (
 
 ⚠️ **Ce garde-fou masque, il ne répare pas.** Un score dont les duellistes ne correspondent plus
 s'affiche « non tiré » — ce qui est le comportement voulu, mais qui reste une perte visible pour le
-scoreur. En salle, recomposer une phase de poules déjà entamée n'est donc pas une opération
-anodine ; le CA ne l'offre pas, et rien ici ne la facilite.
+scoreur. En salle, recomposer une phase de poules déjà entamée n'est donc pas une opération anodine
+; le CA ne l'offre pas, et rien ici ne la facilite.
 
-## Coût d'exécution
+# # Coût d'exécution
 
-La composition relit le classement source, donc hérite de `DETTE-031` (reconstruction non
-mémoïsée). La mémoïsation **à l'intérieur d'un appel** suit le parti d'E05US024 — le cache est créé
-au sommet et descendu — ; le cache transverse aux requêtes n'est pas rouvert ici.
+La composition relit le classement source, donc hérite de `DETTE-031` (reconstruction non mémoïsée).
+La mémoïsation **à l'intérieur d'un appel** suit le parti d'E05US024 — le cache est créé au sommet
+et descendu — ; le cache transverse aux requêtes n'est pas rouvert ici.
 
 [ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
 """
@@ -56,6 +56,11 @@ from application.erreurs import (
     PhasePasReglee,
     RencontreIntrouvable,
     TournoiIntrouvable,
+)
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
@@ -221,22 +226,26 @@ class ServicePoules:
         self._duels = duels
         self._barrages = barrages
         self._classements = classements
-        # ⚠️ **Pas pour saisir** — uniquement pour emprunter sa résolution de classement amont et
-        # sa résolution de pavé (barème par arme, zones du blason). Même parti que
+        # ⚠️ **Pas pour saisir** — uniquement pour emprunter sa résolution de classement amont et sa
+        # résolution de pavé (barème par arme, zones du blason). Même parti que
         # `ServicePlacementDuels`, et le sens de dépendance est sûr : `saisie_duels` ne connaît pas
         # les poules. L'alternative — recopier `resolveur_de_classement` ici — est exactement ce
         # qu'`application/prelevement.py` existe pour empêcher.
         self._saisie_duels = saisie_duels
 
-    # --- Lecture ---------------------------------------------------------------------------------
+        # --- Lecture
+        # --------------------------------------------------------------------------------- E05US033
+        # : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # (`application.gel_de_pause`), inerte tant que le composition root n'y a rien branché.
+        self._arrets = DeclencheurArrets()
 
     def repartition(self, tournoi_id: TournoiId, phase_id: PhaseId) -> RepartitionPoules:
         """Ce que le réglage produit sur l'effectif **réel**, sans rien poser ni écrire.
 
-        C'est ce que l'atelier affiche en direct sous la fiche de réglages (« 30 archers → 7
-        poules : cinq de 4, deux de 5 »). Volontairement séparé d'`etat` : montrer la répartition ne
-        doit exiger ni gabarit de salle, ni plan posé, ni le moindre tir — sans quoi l'organisateur
-        ne pourrait pas régler ses poules avant d'avoir fait sa salle.
+        C'est ce que l'atelier affiche en direct sous la fiche de réglages (« 30 archers → 7 poules
+        : cinq de 4, deux de 5 »). Volontairement séparé d'`etat` : montrer la répartition ne doit
+        exiger ni gabarit de salle, ni plan posé, ni le moindre tir — sans quoi l'organisateur ne
+        pourrait pas régler ses poules avant d'avoir fait sa salle.
         """
         phase, participants = self._population(tournoi_id, phase_id)
         return self._repartition(phase, len(participants))
@@ -361,9 +370,9 @@ class ServicePoules:
         for poule in poules:
             rencontres: list[RencontreAffichee] = []
             # La **position dans le tour** décide des couloirs (la n-ième rencontre d'un tour prend
-            # les couloirs 2n et 2n+1 du bloc). Elle se compte par tour, et non sur la poule
-            # entière : au tour 2, la première rencontre doit retrouver les couloirs qu'occupait la
-            # première rencontre du tour 1, sans quoi la poule glisserait d'un cran à chaque tour et
+            # les couloirs 2n et 2n+1 du bloc). Elle se compte par tour, et non sur la poule entière
+            # : au tour 2, la première rencontre doit retrouver les couloirs qu'occupait la première
+            # rencontre du tour 1, sans quoi la poule glisserait d'un cran à chaque tour et
             # déborderait de son propre bloc.
             position = 0
             tour_courant = 0
@@ -395,18 +404,16 @@ class ServicePoules:
         )
 
     # --- Saisie d'une rencontre (via la file) ----------------------------------------------------
-    #
     # ⚠️ **Trois méthodes qui ressemblent à celles de `ServiceSaisieDuels`, et l'écart est
-    # exactement le sujet d'ADR-0083.** Ce qui est partagé — l'agrégat `Duel`, le pavé
-    # (`bareme_de` / `zones_de`), la table `duel` — l'est *réellement* : une rencontre de poule
-    # **est** un duel ordinaire (§6). Ce qui diffère est la **navigation** : là-bas on retrouve un
-    # match dans un arbre, ici une rencontre dans un groupe. C'est le `decor` du contrat, la 2ᵉ
-    # question, et c'est la seule chose que ces trois méthodes réimplémentent.
-    #
-    # L'alternative — élargir `ServiceSaisieDuels` à un second décor — a été écartée : son `_decor`
-    # rend un `Tableau`, type qu'une poule n'a pas, et l'y ouvrir demanderait de rendre le tableau
-    # facultatif dans un service dont **toutes** les méthodes s'en servent. On aurait échangé une
-    # duplication de trente lignes contre un service à deux modes, ce qui est le pire des deux.
+    # exactement le sujet d'ADR-0083.** Ce qui est partagé — l'agrégat `Duel`, le pavé (`bareme_de`
+    # / `zones_de`), la table `duel` — l'est *réellement* : une rencontre de poule **est** un duel
+    # ordinaire (§6). Ce qui diffère est la **navigation** : là-bas on retrouve un match dans un
+    # arbre, ici une rencontre dans un groupe. C'est le `decor` du contrat, la 2ᵉ question, et c'est
+    # la seule chose que ces trois méthodes réimplémentent. L'alternative — élargir
+    # `ServiceSaisieDuels` à un second décor — a été écartée : son `_decor` rend un `Tableau`, type
+    # qu'une poule n'a pas, et l'y ouvrir demanderait de rendre le tableau facultatif dans un
+    # service dont **toutes** les méthodes s'en servent. On aurait échangé une duplication de trente
+    # lignes contre un service à deux modes, ce qui est le pire des deux.
 
     def saisir_manche(
         self,
@@ -469,6 +476,16 @@ class ServicePoules:
             tournoi_id, phase_id, numero, lambda duel, _bareme, _zones: duel.valider(scoreur)
         )
 
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
+
+        ⚠️ **Ce branchement manquait à la première livraison de l'US**, et c'était un bloquant :
+        le déclencheur n'était appelé que depuis la qualification et l'élimination directe, si bien
+        qu'un arrêt programmé sur ce format ne se déclenchait **jamais** — la phase tournant seule,
+        aucune validation n'atteignait le déclencheur. Relevé par les quatre axes de revue.
+        """
+        self._arrets.brancher(evaluateur)
+
     def _ecrire(
         self,
         tournoi_id: TournoiId,
@@ -481,12 +498,17 @@ class ServicePoules:
         `# DETTE-031` — appelle `etat()` à **chaque** manche, barrage et validation, donc rejoue la
         reconstruction complète sur le thread du writer unique.
 
-        La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table
-        `duel` : c'est ce qui garantit que le tir écrit porte les deux adversaires que la
-        composition du moment désigne. Écrire depuis la ligne persistée reviendrait à se fier à un
-        `match_numero` qui a pu changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert
-        à détecter.
+        La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table `duel`
+        : c'est ce qui garantit que le tir écrit porte les deux adversaires que la composition du
+        moment désigne. Écrire depuis la ligne persistée reviendrait à se fier à un `match_numero`
+        qui a pu changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert à détecter.
         """
+        # E05US033 — **le gel**. Une phase en pause n'accepte plus de résultat neuf. Cette garde
+        # manquait à la première livraison : la pause y restait **cosmétique**, l'archer lisait « en
+        # attente » pendant que le scoreur continuait d'écrire. Relevé par les quatre axes.
+        phase_en_cours = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase_en_cours is not None:
+            refuser_si_en_pause(phase_en_cours)
         etat = self.etat(tournoi_id, phase_id)
         rencontre = next(
             (r for poule in etat.poules for r in poule.rencontres if r.numero == numero), None
@@ -508,6 +530,10 @@ class ServicePoules:
         courant = self._duel_courant(phase_id, numero, rencontre.bareme, haut, bas)
         duel = appliquer(courant, rencontre.bareme, zones)
         self._duels.enregistrer(phase_id, numero, duel)
+        # E05US033 — **le signalement**, après l'écriture : c'est ici, et nulle part ailleurs, que
+        # le déclencheur peut constater qu'un tour de ce format vient de s'achever.
+        if phase_en_cours is not None:
+            self._arrets.signaler(phase_en_cours.depart_id)
         return replace(rencontre, duel=duel)
 
     def _tiebreak(self, phase: Phase) -> Tiebreak:
@@ -521,17 +547,15 @@ class ServicePoules:
         if phase.barrage_jusqu_au is None:
             return TiebreakPoules()
         # ⚠️ **`sinon` n'est pas optionnel ici**, et l'oublier a coûté un bloquant en revue.
-        #
         # `_fabriquer_barrage` fait défaut sur `{"nom": "ffta_defaut"}`, soit l'ordre §8.1 — nombre
         # de 10, puis de 9. Sans `sinon`, régler un seuil de barrage sur une phase de poules ne se
         # contentait pas d'ajouter le seuil : il **remplaçait** l'ordre §10.1 (points de match,
         # différence de sets, différence de score, puis 10 et 9) par §8.1 pour tout le tri. Un
         # archer à 9 points de match serait passé derrière un archer à 3 points ayant un 10 de plus.
         # `TiebreakPoules` avertit précisément de ne pas confondre les deux ordres : §10.1
-        # **précède**
-        # §8.1 de trois critères, il ne s'y substitue pas. Le premier correctif rendait donc la
-        # politique opérante en lui faisant appliquer la mauvaise règle — pire que la décoration
-        # qu'il venait fermer.
+        # **précède** §8.1 de trois critères, il ne s'y substitue pas. Le premier correctif rendait
+        # donc la politique opérante en lui faisant appliquer la mauvaise règle — pire que la
+        # décoration qu'il venait fermer.
         politiques = assembler_politiques(
             {
                 "tiebreak": {
@@ -607,11 +631,11 @@ class ServicePoules:
         Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée
         (ADR-0049 §4), l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
 
-        ⚠️ **`epuisee` vaut « toutes les rencontres sont validées », désynchronisées comprises.**
-        Le filtre `if not r.desynchronisee` qui figurait ici était un **défaut de revue**, et le
-        pire des trois cas : une poule dont une rencontre est bloquée et les autres validées se
-        déclarait épuisée, donc ses deux archers recevaient « Plus aucune rencontre à tirer » — sur
-        une rencontre qu'ils ne *peuvent pas* saisir (écriture refusée, ADR-0049 §4). Sur une phase
+        ⚠️ **`epuisee` vaut « toutes les rencontres sont validées », désynchronisées comprises.** Le
+        filtre `if not r.desynchronisee` qui figurait ici était un **défaut de revue**, et le pire
+        des trois cas : une poule dont une rencontre est bloquée et les autres validées se déclarait
+        épuisée, donc ses deux archers recevaient « Plus aucune rencontre à tirer » — sur une
+        rencontre qu'ils ne *peuvent pas* saisir (écriture refusée, ADR-0049 §4). Sur une phase
         entièrement saisie puis **recomposée**, la liste filtrée devenait vide, `all(())` valait
         `True`, et le palmarès décernait les médailles d'une phase irrésolue.
 
@@ -673,23 +697,20 @@ class ServicePoules:
         poules = composer_poules(
             [Participant.individuel(ligne.archer_id) for ligne in participants], configuration
         )
-        # L'empreinte d'une poule est son **parallélisme** (`couloirs_occupes`), pas son
-        # effectif : une poule de 5 tient sur 4 couloirs, un membre se reposant à chaque tour.
-        # C'est l'appelant qui la calcule depuis E05US026 — le placement ne connaît plus que
-        # des nombres de couloirs, ce qui est tout ce dont il a jamais eu besoin.
+        # L'empreinte d'une poule est son **parallélisme** (`couloirs_occupes`), pas son effectif :
+        # une poule de 5 tient sur 4 couloirs, un membre se reposant à chaque tour. C'est l'appelant
+        # qui la calcule depuis E05US026 — le placement ne connaît plus que des nombres de couloirs,
+        # ce qui est tout ce dont il a jamais eu besoin.
         plan = placer_les_blocs([couloirs_occupes(len(poule.membres)) for poule in poules], gabarit)
         self._placements.definir_plan(phase_id, plan.blocs)
         etat = self.etat(tournoi_id, phase_id)
         # ⚠️ Les conflits **du plan** l'emportent sur ceux que la relecture re-synthétise.
-        #
-        # `_conflits_du_plan` ne sait dire qu'une chose — « aucun bloc ne porte cette poule »,
-        # donc `NON_POSEE`. C'est exact en lecture (rien n'est persisté qui dise *pourquoi*),
-        # et faux
+        # `_conflits_du_plan` ne sait dire qu'une chose — « aucun bloc ne porte cette poule », donc
+        # `NON_POSEE`. C'est exact en lecture (rien n'est persisté qui dise *pourquoi*), et faux
         # juste après une pose : ici on sait que la salle était trop petite ou que la poule n'avait
-        # aucune rencontre, `placer_les_blocs` vient de le rapporter. Sans ce report,
-        # l'organisateur
-        # dont la salle est trop petite lisait « le plan n'est pas posé, à vous de le générer »
-        # **au moment même où il venait de le générer**, et pouvait recommencer indéfiniment — et
+        # aucune rencontre, `placer_les_blocs` vient de le rapporter. Sans ce report, l'organisateur
+        # dont la salle est trop petite lisait « le plan n'est pas posé, à vous de le générer » **au
+        # moment même où il venait de le générer**, et pouvait recommencer indéfiniment — et
         # `SALLE_PLEINE` / `SANS_RENCONTRE` n'avaient aucun appelant de production malgré leurs
         # tests de domaine (relevé en revue d'E05US023).
         return replace(etat, conflits=plan.conflits)
@@ -735,13 +756,12 @@ class ServicePoules:
         reglage_declare = self._reglage(phase)
         if effectif == 0:
             # ⚠️ **Une phase sans participant se lit, elle ne se refuse pas** (correctif de revue).
-            #
             # Le cas est licite et fréquent : une phase de poules se compose et se règle **avant**
             # que sa population existe (inscriptions à venir, ou source amont qui ne prélève encore
-            # rien). `nb_poules_pour` refuse l'effectif 0 — à raison, on ne répartit pas zéro
-            # archer —, mais l'écran de réglage, lui, doit rester consultable : sa docstring promet
-            # qu'il « n'exige ni gabarit, ni plan posé, ni le moindre tir », et exiger au moins un
-            # inscrit sans le dire est la même promesse rompue. Zéro poule est la réponse juste.
+            # rien). `nb_poules_pour` refuse l'effectif 0 — à raison, on ne répartit pas zéro archer
+            # —, mais l'écran de réglage, lui, doit rester consultable : sa docstring promet qu'il «
+            # n'exige ni gabarit, ni plan posé, ni le moindre tir », et exiger au moins un inscrit
+            # sans le dire est la même promesse rompue. Zéro poule est la réponse juste.
             return RepartitionPoules(
                 effectif=0, taille_visee=reglage_declare.taille_visee, tailles=()
             )
@@ -789,8 +809,8 @@ class ServicePoules:
         ⚠️ **On rapporte le manque, on ne le comble pas.** Poser ici la poule oubliée reviendrait à
         écrire un plan à la lecture, donc à décider du placement dans une méthode dont l'appelant
         croit qu'elle ne fait que lire. `placer_les_blocs` a déjà tranché la règle (à la première
-        poule qui ne tient pas, on s'arrête et on rapporte le reste) ; on la relaie, on ne la
-        rejoue pas.
+        poule qui ne tient pas, on s'arrête et on rapporte le reste) ; on la relaie, on ne la rejoue
+        pas.
         """
         return tuple(
             ConflitDeBloc(poule.numero, RaisonConflitBloc.NON_POSEE)

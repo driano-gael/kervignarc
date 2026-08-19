@@ -29,14 +29,15 @@ docstring du port met explicitement en garde.
 chaque appel, et ce service l'appelle après chaque validation de score. `DETTE-031` est élargie en
 conséquence — le marqueur est posé au point d'appel, pas ici.
 
-[ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md
-[ADR-0090]: ../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
-[ADR-0091]: ../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+[ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md [ADR-0090]:
+../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md [ADR-0091]:
+../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
 """
 
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import Protocol
 
 from application.erreurs import ArretIntrouvable
@@ -93,6 +94,30 @@ class EvaluateurArrets(Protocol):
     def evaluer(self, depart_id: DepartId) -> tuple[PhaseId, ...]:
         """Applique les arrêts devenus dus et renvoie les phases mises en pause."""
         ...
+
+
+def _avancement_connu(avancement: AvancementDePhase) -> bool:
+    """Sait-on où en est cette phase ? — le seul discriminant qui vaille (E05US033).
+
+    ⚠️ **Trois rédactions ont été nécessaires**, et les deux premières étaient fausses. Le problème
+    est que `tour_courant is None` a **deux** sens opposés :
+
+    - *tout est joué* — la convention d'`AvancementDePhase` (ADR-0090). On sait, et la phase est
+      finie : un arrêt de créneau peut l'arrêter tout de suite, elle ne tire plus ;
+    - *je ne sais pas* — le repli d'`avancement_bloc` pour une phase sans lecteur et sans braquet,
+      qui rend alors `nb_tours=1`. On ne sait pas, donc on ne coupe pas.
+
+    `nb_tours` les sépare : un service qui a **répondu** annonce le nombre de tours qu'il connaît ;
+    le repli, lui, retombe sur `1`. D'où la règle : l'avancement est connu si un tour tourne, **ou**
+    si la phase annonce plus d'un tour.
+
+    La 1ʳᵉ rédaction lisait tout `None` comme « fini » et **coupait la salle avant la première
+    flèche** ; la 2ᵉ discriminait sur l'absence de clé dans le dictionnaire d'avancement, qui ne
+    discrimine rien (le suivi rend une entrée par phase du créneau) ; la 3ᵉ excluait tout `None` et
+    laissait `EN_COURS` une phase dont tout est joué. Les trois sont documentées ici parce que
+    chacune paraissait juste en la lisant.
+    """
+    return avancement.tour_courant is not None or avancement.nb_tours > 1
 
 
 class ServiceArretsProgrammes:
@@ -154,6 +179,24 @@ class ServiceArretsProgrammes:
         }
         if not phases:
             return ()
+        # ⚠️ **Sortir AVANT la lecture lourde quand il n'y a rien à faire** (correctif de revue, axe
+        # adversarial). Sans cette garde, un tournoi **sans aucune pause programmée** payait la
+        # recomposition intégrale du créneau après chaque validation de score — ce qui contredisait
+        # à la lettre la promesse de l'US (« une phase sans arrêt programmé se comporte exactement
+        # comme avant »). Le comportement fonctionnel était bien identique ; le **coût** ne l'était
+        # pas, et le coût est ici le sujet. Aggravant, et c'est ce qui rend la garde non négociable
+        # : `evaluer` est appelé **depuis une commande de la file d'écriture**, donc cette lecture
+        # occupait le **writer unique** qui sérialise toutes les écritures de l'application (règle 7
+        # : « pas de logique métier longue »). Avec ~30 tablettes, chaque validation retardait
+        # toutes les autres. Deux requêtes légères (le déroulé du tournoi, les franchissements du
+        # créneau) contre une recomposition complète : le cas « aucun arrêt nulle part » est le cas
+        # normal du dépôt.
+        etapes = self._etapes_du_depart(depart_id)
+        franchissements = self._franchissements.par_depart(depart_id)
+        aucun_arret = not any(etape.arrets for etape in etapes.values())
+        aucun_arme = not any(f.etat is EtatFranchissement.ARME for f in franchissements)
+        if aucun_arret and aucun_arme:
+            return ()
         # DETTE-031 : cette lecture recompose **intégralement** chaque phase qui tourne, chaîne de
         # sources amont comprise (`ServicePoules.etat` / `ServiceSuisse.etat` /
         # `ServiceBigShootOff.etat` et la reconstruction du tableau). Jusqu'ici seuls le pilotage et
@@ -162,21 +205,40 @@ class ServiceArretsProgrammes:
         # reste tenable — une ou deux phases actives par créneau, ~30 tablettes, SQLite en local,
         # aucune I/O réseau — et la dette est **élargie** plutôt que contournée par une mémoïsation
         # locale, qui serait un remède structurel posé au mauvais endroit (§ Dette). Cf.
-        # docs/dette.md.
-        tours = {
-            phase_id: avancement.tour_courant
-            for phase_id, avancement in self._suivi.avancement_par_phase(depart_id).items()
-        }
+        # docs/dette.md. ⚠️ **L'`AvancementDePhase` entier, pas seulement `tour_courant`**
+        # (correctif de revue, relevé par les quatre axes). La première rédaction ne gardait que le
+        # tour courant, et perdait donc `nb_tours` — or c'est lui qui distingue « la phase est finie
+        # » de « je ne sais pas où elle en est ». Cf. `_tour_acheve`, où toute la correction se
+        # joue. ⚠️ **Une phase absente de ce dictionnaire a un avancement INCONNU**, ce qui n'est
+        # pas la même chose qu'un `tour_courant` à `None`. Le distinguer par la présence de la clé
+        # plutôt que par une valeur sentinelle est ce qui rend l'oubli impossible : `.get()`
+        # rendrait `None` dans les deux cas, et c'est exactement la confusion qui a produit le
+        # bloquant.
+        avancements = self._suivi.avancement_par_phase(depart_id)
         arretees: list[PhaseId] = []
-        arretees.extend(self._resoudre_les_arrets_armes(depart_id, phases, tours))
-        arretees.extend(self._declencher_les_arrets_atteints(depart_id, phases, tours))
+        arretees.extend(self._resoudre_les_arrets_armes(depart_id, phases, avancements))
+        arretees.extend(self._declencher_les_arrets_atteints(depart_id, phases, avancements))
+        # ⚠️ **Une seconde résolution, et une boucle bornée** (correctif de revue, axe C1 §5 puis
+        # test de non-régression). Mettre une phase en pause peut **débloquer** un arrêt armé qui
+        # l'attendait : deux arrêts de portée départ dus au même appel s'attendaient mutuellement,
+        # et le premier restait `ARME` — donc absent de la liste de relance, donc la salle arrêtée
+        # **sans aucun bouton pour la repartir**. Une seule passe ne suffit pas, parce que l'ordre
+        # d'itération décide qui voit quoi. La boucle est **bornée par le nombre de phases** :
+        # chaque tour supplémentaire met au moins une phase en pause, et il y en a un nombre fini.
+        # Une borne plutôt qu'un `while True` — cette fonction tourne sur le thread du writer
+        # unique.
+        for _ in range(len(phases)):
+            de_plus = self._resoudre_les_arrets_armes(depart_id, phases, avancements)
+            if not de_plus:
+                break
+            arretees.extend(de_plus)
         return tuple(arretees)
 
     def _resoudre_les_arrets_armes(
         self,
         depart_id: DepartId,
         phases: dict[PhaseId, Phase],
-        tours: dict[PhaseId, int | None],
+        avancements: dict[PhaseId, AvancementDePhase],
     ) -> list[PhaseId]:
         """Arrête les phases d'un arrêt armé qui viennent de finir leur tour, et clôt l'arrêt.
 
@@ -189,12 +251,25 @@ class ServiceArretsProgrammes:
             if franchissement.etat is not EtatFranchissement.ARME:
                 continue
             attendues = dict(franchissement.tours_a_finir)
+            # ⚠️ **Seules les phases encore `EN_COURS` fournissent un tour à comparer** (correctif
+            # de revue, axe C1 §5). Une phase mise en pause **après** l'armement — par un autre
+            # arrêt, ou à la main — voit son tour se figer : `phases_a_arreter` ne l'aurait jamais
+            # déclarée finie, l'arrêt serait resté `ARME` pour toujours, donc **absent** de
+            # `en_attente_de_relance` et non relançable d'un geste. Deux arrêts de portée départ
+            # armés en même temps s'attendaient mutuellement sans fin. L'exclure de `tours_courants`
+            # la fait tomber dans la branche « phase disparue » de `phases_a_arreter`, qui la compte
+            # finie — ce qui est le sens voulu : elle est arrêtée.
+            tours = {
+                phase_id: avancements[phase_id].tour_courant
+                for phase_id, phase in phases.items()
+                if phase.statut is StatutPhase.EN_COURS and phase_id in avancements
+            }
             finies = phases_a_arreter(attendues, tours)
             deja_en_pause = list(franchissement.phases_arretees)
             for phase_id in finies:
                 if phase_id in deja_en_pause:
                     continue
-                if self._mettre_en_pause(depart_id, phases.get(phase_id)):
+                if self._mettre_en_pause(depart_id, phase_id, phases):
                     arretees.append(phase_id)
                 deja_en_pause.append(phase_id)
             if len(finies) == len(attendues):
@@ -219,7 +294,7 @@ class ServiceArretsProgrammes:
         self,
         depart_id: DepartId,
         phases: dict[PhaseId, Phase],
-        tours: dict[PhaseId, int | None],
+        avancements: dict[PhaseId, AvancementDePhase],
     ) -> list[PhaseId]:
         """Repère les arrêts que l'avancement vient d'atteindre, et les applique."""
         etapes = self._etapes_du_depart(depart_id)
@@ -231,13 +306,13 @@ class ServiceArretsProgrammes:
             etape = etapes.get(phase.ordre)
             if etape is None or not etape.arrets:
                 continue
-            tour_acheve = self._tour_acheve(tours.get(phase_id), etape, phase_id)
+            tour_acheve = self._tour_acheve(avancements.get(phase_id), etape)
             if tour_acheve is None:
                 continue
             dus = arrets_atteints(etape.arrets, tour_acheve, deja.get(phase_id, ()))
             if not dus:
                 continue
-            arretees.extend(self._appliquer(depart_id, phase_id, phases, tours, dus))
+            arretees.extend(self._appliquer(depart_id, phase_id, phases, avancements, dus))
         return arretees
 
     def _appliquer(
@@ -245,7 +320,7 @@ class ServiceArretsProgrammes:
         depart_id: DepartId,
         phase_id: PhaseId,
         phases: dict[PhaseId, Phase],
-        tours: dict[PhaseId, int | None],
+        avancements: dict[PhaseId, AvancementDePhase],
         dus: tuple[ArretProgramme, ...],
     ) -> list[PhaseId]:
         """Applique **un seul** arrêt — le plus ancien dû — et consomme les autres.
@@ -264,7 +339,7 @@ class ServiceArretsProgrammes:
         applique, *manques = dus
         arretees: list[PhaseId] = []
         if applique.portee is PorteeArret.PHASE:
-            if self._mettre_en_pause(depart_id, phases.get(phase_id)):
+            if self._mettre_en_pause(depart_id, phase_id, phases):
                 arretees.append(phase_id)
             self._franchissements.ajouter(
                 FranchissementArret(
@@ -275,7 +350,9 @@ class ServiceArretsProgrammes:
                 )
             )
         else:
-            arretees.extend(self._armer_sur_le_depart(depart_id, phase_id, phases, tours, applique))
+            arretees.extend(
+                self._armer_sur_le_depart(depart_id, phase_id, phases, avancements, applique)
+            )
         for manque in manques:
             _logger.warning(
                 "Arrêt programmé après le tour %s de la phase %s manqué : l'avancement l'a "
@@ -297,7 +374,7 @@ class ServiceArretsProgrammes:
         depart_id: DepartId,
         phase_id: PhaseId,
         phases: dict[PhaseId, Phase],
-        tours: dict[PhaseId, int | None],
+        avancements: dict[PhaseId, AvancementDePhase],
         arret: ArretProgramme,
     ) -> list[PhaseId]:
         """Arme un arrêt de portée départ : la phase déclenchante s'arrête, les autres finissent.
@@ -326,7 +403,31 @@ class ServiceArretsProgrammes:
         for autre_id, autre in phases.items():
             if autre.statut is not StatutPhase.EN_COURS:
                 continue
-            a_finir[autre_id] = None if autre_id == phase_id else tours.get(autre_id)
+            if autre_id == phase_id:
+                a_finir[autre_id] = None
+                continue
+            # ⚠️ **Seule une phase dont on LIT le tour entre dans la photo** (correctif de revue,
+            # quatre axes — puis **second** correctif, l'axe adversarial ayant démontré que le
+            # premier ne fermait rien). Le défaut : `phases_a_arreter` lit un `tour_a_finir` à
+            # `None` comme « cette phase n'avait plus rien en cours, elle s'arrête tout de suite ».
+            # La photo enregistrait donc `None` pour une phase dont le tour est simplement
+            # **inconnu**, et un arrêt de créneau la coupait **en plein tir** — l'exact contraire de
+            # l'arbitrage du commanditaire du 18/08/2026, et du scénario que la fiche de recette
+            # désigne comme le plus important. ⚠️ **Le premier correctif discriminait sur l'absence
+            # de clé dans `avancements`, et ne discriminait rien** :
+            # `ServiceSuiviDeroule.avancement_par_phase` rend une entrée pour **chaque** phase du
+            # créneau (un bloc par étape projetée), donc la clé est toujours là. Le commentaire
+            # rassurait, le code ne changeait pas. C'est le seul signal qui marche : `tour_courant
+            # is not None`, c'est-à-dire « un tour tourne, on peut le laisser finir ». Conséquence
+            # assumée : un arrêt de portée départ ne coupe que les phases dont on sait lire le tour.
+            # C'est le seul comportement honnête — on ne peut pas « laisser finir son tour » une
+            # phase dont on ignore le tour. Les types sans lecteur (barrage, placement, colline) ne
+            # comptent de toute façon aucun tour jouable aujourd'hui, et l'atelier refuse désormais
+            # d'y poser un arrêt.
+            avancement = avancements.get(autre_id)
+            if avancement is None or not _avancement_connu(avancement):
+                continue
+            a_finir[autre_id] = avancement.tour_courant
         # L'écriture compte, pas la valeur rendue : la résolution ci-dessous **relit** les
         # franchissements du créneau, ce qui garantit qu'un arrêt neuf et un arrêt déjà armé suivent
         # exactement le même chemin. Garder la valeur ouvrirait deux traitements à maintenir.
@@ -341,7 +442,7 @@ class ServiceArretsProgrammes:
         # Résolution immédiate : la phase déclenchante, et toute phase qui n'avait déjà plus rien en
         # cours, s'arrêtent dans le même appel. Réutiliser la passe 1 plutôt que de dupliquer sa
         # logique garantit qu'un arrêt armé et un arrêt neuf se comportent exactement pareil.
-        return self._resoudre_les_arrets_armes(depart_id, phases, tours)
+        return self._resoudre_les_arrets_armes(depart_id, phases, avancements)
 
     # --- Le geste de l'admin ------------------------------------------------------------------
 
@@ -380,17 +481,40 @@ class ServiceArretsProgrammes:
 
     # --- Rouages ------------------------------------------------------------------------------
 
-    def _mettre_en_pause(self, depart_id: DepartId, phase: Phase | None) -> bool:
+    def _mettre_en_pause(
+        self, depart_id: DepartId, phase_id: PhaseId, phases: dict[PhaseId, Phase]
+    ) -> bool:
         """Met la phase en pause si elle est en cours. Renvoie `True` si le statut a changé.
 
         Silencieux sur une phase absente, déjà en pause, à venir ou terminée : le déclencheur est
         rejoué en permanence et sur un créneau qui bouge, donc il **constate** au lieu d'exiger.
         Lever `TransitionStatutInvalide` ici ferait échouer la validation de score qui l'a appelé —
         un archer verrait sa volée refusée parce qu'une phase voisine a été clôturée entre-temps.
+
+        ⚠️ **Le statut est RELU au dépôt, pas lu dans le cliché** (correctif de revue, axes A et C1
+        — bloquant). `evaluer` prend son cliché des phases une seule fois, mais la passe 1 **change
+        des statuts en base** avant que la passe 2 ne les relise : une phase mise en pause par un
+        arrêt de départ y apparaissait encore `EN_COURS`, et si elle portait son propre arrêt dû au
+        même tour, `ServicePhases.mettre_en_pause` levait `TransitionStatutInvalide` (`EN_PAUSE →
+        EN_PAUSE`).
+
+        Ce que ça coûtait est pire que l'exception : elle sortait d'`evaluer`, était **avalée** par
+        le `except Exception` de `_signaler_validation`, et **abandonnait la boucle** — les arrêts
+        des phases suivantes n'étaient ni appliqués ni tracés, donc l'arrêt sans franchissement se
+        redéclenchait à la relance. C'est-à-dire précisément le « l'organisateur perd la main » que
+        tout cet ADR est construit pour empêcher. La configuration n'était pas exotique : le CA
+        autorise « un arrêt à chaque tour ».
+
+        Le cliché est **rafraîchi** au passage, pour que le filtre de la passe 2 et la photo d'un
+        arrêt de départ voient l'état réel — relire ne suffit pas si l'appelant continue de décider
+        sur du périmé.
         """
+        phase = self._phases.par_id(phase_id)
         if phase is None or phase.id is None or phase.statut is not StatutPhase.EN_COURS:
             return False
         self._cycle_de_vie.mettre_en_pause(depart_id, phase.id)
+        if phase_id in phases:
+            phases[phase_id] = replace(phases[phase_id], statut=StatutPhase.EN_PAUSE)
         return True
 
     def _etapes_du_depart(self, depart_id: DepartId) -> dict[int, EtapeDeroule]:
@@ -412,21 +536,51 @@ class ServiceArretsProgrammes:
         return {phase_id: tuple(tours) for phase_id, tours in traites.items()}
 
     @staticmethod
-    def _tour_acheve(
-        tour_courant: int | None, etape: EtapeDeroule, phase_id: PhaseId
-    ) -> int | None:
-        """Quel tour vient de s'achever, sachant le tour en cours. `None` si aucun.
+    def _tour_acheve(avancement: AvancementDePhase | None, etape: EtapeDeroule) -> int | None:
+        """Quel tour vient de s'achever pour cette phase. `None` si aucun, ou si on ne sait pas.
 
-        `tour_courant is None` signifie « plus rien ne tourne » (ADR-0090) : tout est joué, donc le
-        tour achevé est le **dernier**. On le prend comme le plus grand arrêt programmé plutôt que
-        comme un nombre de tours qu'on ne connaît pas ici — c'est suffisant pour que tout arrêt
-        restant soit dû, et cela évite de faire descendre `nb_tours` dans cette fonction pour un
-        résultat identique.
+        ⚠️ **C'est ici que se jouait le bloquant central de l'US**, relevé par les quatre axes de
+        revue. La première rédaction lisait `tour_courant is None` comme « tout est joué, donc le
+        dernier tour est achevé » et rendait `max(apres_tour)`. Or `None` a **au moins cinq**
+        provenances, dont une seule signifie « fini » :
+
+        1. *tout est joué* — la convention d'`AvancementDePhase` (ADR-0090). La seule qui autorise à
+           couper ;
+        2. *aucun lecteur branché pour ce type* — `ServiceSuiviDeroule._avancement_lu` le rend sans
+           rien tenter, et sa docstring nomme les cas : qualification, échauffement, barrage,
+           placement, colline ;
+        3. *le service du format a refusé* — `PhasePasReglee`, `KeyError` : journalisés puis avalés,
+           donc indistinguables d'un succès ;
+        4. *rien n'est encore composé* — un suisse dont l'amont n'a classé personne
+           (`rondes_maximales == 0`, cas « normal et durable » selon sa propre docstring), des
+           poules dont les rencontres ne sont pas montées ;
+        5. *phase sans braquet* — `avancement_bloc` retombe sur `nb_tours=1, tour_courant=None`, ce
+           que sa docstring appelle « dégradation lisible », c'est-à-dire **on ne sait pas**.
+
+        Les cas 2 à 5 faisaient donc **couper la salle au premier score validé du créneau**, avant
+        que personne ait tiré son tour. Deux signaux distinguent désormais les situations :
+
+        - **avancement absent** (`None` ici) — la phase n'était pas dans `avancement_par_phase`,
+        donc
+          son avancement est *inconnu*. On ne coupe pas. C'est le repli sûr : une US qui n'arrête
+          rien est inerte, une US qui arrête au mauvais moment casse une compétition ;
+        - **`nb_tours <= 1` avec `tour_courant is None`** — c'est la signature exacte du repli
+          d'`avancement_bloc` (cas 5) et de tout format à un seul tour dont on n'a rien lu. On ne
+          coupe pas non plus : un arrêt sur une phase d'un seul tour est de toute façon refusé à la
+          composition, donc il n'y a rien à y déclencher.
+
+        Le `min(nb_tours, …)` de la branche « tout est joué » évite de créditer un arrêt posé
+        au-delà du dernier tour **réellement joué** : un suisse réglé à 9 rondes qui n'en apparie
+        que 5 ne doit pas voir se déclencher, à la fin, la pause qu'on avait prévue « après le tour
+        7 » — elle mettrait en pause une phase dont tout est tiré, et il faudrait la relancer pour
+        pouvoir la clôturer.
 
         Au tour 1 en cours, aucun tour n'est achevé : la phase vient de démarrer.
         """
-        if tour_courant is None:
-            return max(arret.apres_tour for arret in etape.arrets)
-        if tour_courant <= 1:
+        if avancement is None or not _avancement_connu(avancement):
             return None
-        return tour_courant - 1
+        if avancement.tour_courant is None:
+            return min(avancement.nb_tours, max(arret.apres_tour for arret in etape.arrets))
+        if avancement.tour_courant <= 1:
+            return None
+        return avancement.tour_courant - 1

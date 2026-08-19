@@ -518,8 +518,11 @@ class FranchissementArretORM(Base):
     # Deux documents JSON plutôt que deux tables d'association : les volumes sont de l'ordre de
     # quelques lignes par créneau, rien ne les interroge autrement que « pour cet arrêt », et la
     # règle 12 (« l'infra reste simple : mono-club, local ») dit où mettre la rigueur.
-    tours_a_finir: Mapped[str] = mapped_column(nullable=False, default="{}")
-    phases_arretees: Mapped[str] = mapped_column(nullable=False, default="[]")
+    # `server_default` et non `default` : c'est la convention du fichier partout où la migration en
+    # pose un, et l'écart faisait diverger le schéma des métadonnées de celui que produit Alembic
+    # (`0048` déclare bien `server_default`). Relevé en revue (axe A).
+    tours_a_finir: Mapped[str] = mapped_column(nullable=False, server_default="{}")
+    phases_arretees: Mapped[str] = mapped_column(nullable=False, server_default="[]")
 
 
 class ScoreurORM(Base):
