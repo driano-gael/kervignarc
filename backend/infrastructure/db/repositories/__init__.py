@@ -24,6 +24,7 @@ from infrastructure.db.repositories.exploitation import (
 from infrastructure.db.repositories.moteur import (
     DerouleEtapeRepositorySQL,
     FormatTournoiRepositorySQL,
+    FranchissementArretRepositorySQL,
     PhaseRepositorySQL,
     PlacementParBlocRepositorySQL,
     PlacementRepositorySQL,
@@ -60,6 +61,7 @@ __all__ = [
     "DuelRepositorySQL",
     "ForfaitRepositorySQL",
     "FormatTournoiRepositorySQL",
+    "FranchissementArretRepositorySQL",
     "GabaritSalleRepositorySQL",
     "InscriptionRepositorySQL",
     "PhaseRepositorySQL",

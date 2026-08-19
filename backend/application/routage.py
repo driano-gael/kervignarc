@@ -476,7 +476,15 @@ class ServiceRoutage:
             finalistes = self._archers_de_la_phase_restreinte(tournoi_id, restreinte)
             vises = tuple(a for a in archer_ids if a in finalistes)
             if vises:
-                routage_restreint = self._routage_big_shoot_off(tournoi_id, restreinte, vises)
+                # Même garde que ci-dessous, et il faut les deux : cette voie **court-circuite** la
+                # résolution principale, donc une finale en pause aurait continué à router ses huit
+                # finalistes vers leur cible. Le repli des autres archers reste inchangé — ils
+                # dépendent de *leur* phase, pas de celle-ci.
+                routage_restreint = (
+                    self._en_pause(tournoi_id, restreinte.id, vises)
+                    if restreinte.statut is StatutPhase.EN_PAUSE
+                    else self._routage_big_shoot_off(tournoi_id, restreinte, vises)
+                )
                 autres = tuple(a for a in archer_ids if a not in finalistes)
                 if not autres:
                     return routage_restreint
@@ -490,6 +498,8 @@ class ServiceRoutage:
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return self._tous_indisponibles(tournoi_id, None, archer_ids, PHASE_ABSENTE)
+        if phase.statut is StatutPhase.EN_PAUSE:
+            return self._en_pause(tournoi_id, phase.id, archer_ids)
         if phase.type is TypePhase.BIG_SHOOT_OFF:
             # Bifurcation **avant** `_grille` : un Big Shoot Off n'a pas d'arbre à reconstruire, et
             # l'y envoyer léverait `PhasePasUnTableau` sur un panneau qui doit rester consultable.
@@ -769,17 +779,16 @@ class ServiceRoutage:
         try:
             etat = self._big_shoot_off.etat(tournoi_id, phase.id)
         except ApplicationError:
-            # ⚠️ **Le panneau dégrade, il ne tombe pas** (revue d'E05US028) — même point de tolérance
-            # que `_grille`, dont le commentaire dit : « sans cet élargissement, la nouvelle
-            # exception traversait ce point de tolérance et faisait échouer en bloc ce que le site
-            # s'engage à dégrader ». Un Big Shoot Off **composé mais pas encore réglé** est un état
-            # parfaitement licite (le brouillon d'ADR-0063, et l'état de toute phase composée avant
-            # cette US, où `EtapeDeroule.big_shoot_off` vaut `None`) : `etat()` y lève
-            # `PhasePasReglee`. Sans cette garde, c'est une **route publique non authentifiée** qui
-            # rendait 4xx — et pas seulement pour les finalistes, cf. `_phase_de_tableau`.
-            #
-            # Le motif est **écrit ici**, pas repris de l'exception : `P-3` demande de nommer ce
-            # qui n'est pas connu, et la règle 5 interdit qu'un message interne parte au client.
+            # ⚠️ **Le panneau dégrade, il ne tombe pas** (revue d'E05US028) — même point de
+            # tolérance que `_grille`, dont le commentaire dit : « sans cet élargissement, la
+            # nouvelle exception traversait ce point de tolérance et faisait échouer en bloc ce que
+            # le site s'engage à dégrader ». Un Big Shoot Off **composé mais pas encore réglé** est
+            # un état parfaitement licite (le brouillon d'ADR-0063, et l'état de toute phase
+            # composée avant cette US, où `EtapeDeroule.big_shoot_off` vaut `None`) : `etat()` y
+            # lève `PhasePasReglee`. Sans cette garde, c'est une **route publique non authentifiée**
+            # qui rendait 4xx — et pas seulement pour les finalistes, cf. `_phase_de_tableau`. Le
+            # motif est **écrit ici**, pas repris de l'exception : `P-3` demande de nommer ce qui
+            # n'est pas connu, et la règle 5 interdit qu'un message interne parte au client.
             return self._tous_indisponibles(
                 tournoi_id,
                 phase.id,
@@ -966,6 +975,7 @@ class ServiceRoutage:
         phase_id: int | None,
         archer_ids: tuple[int, ...],
         motif: str,
+        issue: IssueRoutage = IssueRoutage.INDISPONIBLE,
     ) -> Routage:
         """Le panneau dégradé — mais **nominatif**.
 
@@ -974,6 +984,12 @@ class ServiceRoutage:
         illisibles, et un panneau qui ne sait plus dire *qui* est qui a perdu sa raison d'être. Les
         noms viennent des **archers du tournoi**, lisibles indépendamment de toute phase de tableau
         — c'est justement ce que les deux branches dégradées n'ont pas.
+
+        ⚠️ **`issue` est un paramètre depuis E05US033**, et le défaut reste `INDISPONIBLE` pour que
+        les trois appels existants ne changent pas d'un caractère. La **pause** a besoin du même
+        panneau nominatif avec l'issue `EN_ATTENTE` : « rien à tirer *pour l'instant* » est un état
+        transitoire dont l'archer sortira, quand `INDISPONIBLE` dit « ce n'est pas pour vous ». Les
+        distinguer n'est pas cosmétique — c'est la différence entre « attendez » et « partez ».
         """
         identites = self._identites(tournoi_id)
         return Routage(
@@ -983,11 +999,41 @@ class ServiceRoutage:
                     archer_id=archer_id,
                     nom=identites.get(archer_id, ("", ""))[0],
                     prenom=identites.get(archer_id, ("", ""))[1],
-                    issue=IssueRoutage.INDISPONIBLE,
+                    issue=issue,
                     motif=motif,
                 )
                 for archer_id in archer_ids
             ),
+        )
+
+    def _en_pause(
+        self, tournoi_id: TournoiId, phase_id: int, archer_ids: tuple[int, ...]
+    ) -> Routage:
+        """La phase est en pause : l'archer doit **savoir pourquoi** (E05US033).
+
+        ⚠️ **Avant cette US, `StatutPhase.EN_PAUSE` ne changeait rien ici** : le filtre de sélection
+        de phase est `statut is not TERMINEE`, si bien qu'une phase en pause était routée exactement
+        comme une phase en cours — les archers recevaient leur cible et tiraient. La pause était
+        cosmétique (constat vérifié au cadrage du 19/08/2026, cf. `DETTE-073`).
+
+        ⚠️ **La garde est posée ici et non dans `_phase_de_tableau`**, et c'est le point délicat de
+        ce correctif. Écarter les phases en pause de la **sélection** aurait fait tomber le routage
+        sur une *autre* phase — ou sur `tableaux[-1]` — donc envoyé l'archer tirer ailleurs au lieu
+        de lui
+        dire d'attendre. Un défaut pire que celui qu'on corrige : la sélection dit *de quoi on
+        parle*,
+        pas *si ça tourne*.
+
+        L'issue `EN_ATTENTE` est **réutilisée** (E05US030) plutôt qu'une neuve : côté tablette,
+        « rien à tirer pour l'instant » est déjà rendu, et un état de plus aurait demandé un écran
+        de plus pour la même chose.
+        """
+        return self._tous_indisponibles(
+            tournoi_id,
+            phase_id,
+            archer_ids,
+            "Tir suspendu : l'organisateur a mis cette phase en pause. Restez à disposition.",
+            issue=IssueRoutage.EN_ATTENTE,
         )
 
     def _identites(self, tournoi_id: TournoiId) -> dict[int, tuple[str, str]]:

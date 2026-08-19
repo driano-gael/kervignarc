@@ -77,7 +77,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "etat-contradictoire",
-   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (19/22)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (20/23)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
    "severite": "signal",
    "sujet": "E05US023"
   },
@@ -101,7 +101,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 21 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, GenerateurScores…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 23 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application"
   },
@@ -188,10 +188,16 @@ window.ATLAS.controles = {
    "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce EtapeDeroule.instancier dans « backend/domain/phase.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0091"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 31
+  "signaux": 32
  }
 };

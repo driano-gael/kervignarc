@@ -19,9 +19,15 @@ from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import delete, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from domain.arret_programme import (
+    ArretProgramme,
+    EtatFranchissement,
+    FranchissementArret,
+    PorteeArret,
+)
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
@@ -47,11 +53,13 @@ from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
 from domain.suisse import ConfigurationSuisse
+from domain.tour_de_phase import DecoupageEnTours
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
     DerouleEtapeORM,
     FormatTournoiORM,
+    FranchissementArretORM,
     PhaseORM,
     PlacementORM,
     PlacementParBlocORM,
@@ -120,6 +128,8 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         poules = _lire_reglage_poules(config)
         big_shoot_off = _lire_reglage_big_shoot_off(config)
         suisse = _lire_reglage_suisse(config)
+        decoupage = _lire_decoupage(config)
+        arrets = _lire_arrets(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -143,6 +153,8 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            decoupage=decoupage,
+            arrets=arrets,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -287,6 +299,8 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.poules,
             etape.big_shoot_off,
             etape.suisse,
+            etape.decoupage,
+            etape.arrets,
         )
     )
 
@@ -301,6 +315,8 @@ def _politiques_json(
     poules: ReglageDePoules | None = None,
     big_shoot_off: ConfigurationBigShootOff | None = None,
     suisse: ConfigurationSuisse | None = None,
+    decoupage: DecoupageEnTours | None = None,
+    arrets: tuple[ArretProgramme, ...] = (),
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -429,6 +445,21 @@ def _politiques_json(
         # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
         # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
         config["suisse"] = {"rondes": suisse.nb_rondes}
+    if decoupage is not None:
+        # Même domicile et même raison que ses quatre voisins : racine du `config`, pas
+        # `policies` (catalogue fermé des familles injectables). Aucune migration : ADR-0046
+        # laisse le document libre à la racine — c'est ce qui permet à cette US de n'en
+        # demander une que pour le **franchissement**, qui est de l'avancement.
+        config["decoupage"] = {"tours": decoupage.nb_tours}
+    if arrets:
+        # Une **liste**, et non un objet : c'est la lettre du CA (« plusieurs par phase »).
+        # `portee` s'écrit toujours, y compris pour le défaut : ce n'est pas une option qu'on
+        # active mais un choix parmi deux, et l'omettre rendrait un document relu ambigu le jour
+        # où le défaut changerait — le raisonnement inverse de `cumul` du Big Shoot Off, où
+        # l'absence *signifie* quelque chose.
+        config["arrets"] = [
+            {"apres_tour": arret.apres_tour, "portee": arret.portee.value} for arret in arrets
+        ]
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -539,6 +570,69 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
         # chose d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return ConfigurationSuisse(nb_rondes=int(rondes))
+
+
+def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
+    """Le découpage en tours d'une étape, lu **à la racine** du `config` (E05US033).
+
+    Même domicile et même régime d'absence que ses quatre voisins : absence = **non découpée**, ce
+    qui est licite et signifie « un seul tour, la phase entière » — la valeur vraie par défaut
+    (E05US032), pas un trou.
+
+    ⚠️ **On relit par la fabrique du domaine**, comme les autres : un nombre de tours nul ou négatif
+    est une chose que le repository n'écrit jamais, l'agrégat le refusant en amont. Le trouver ici
+    signifie que la base a été altérée, et `DecoupageEnToursInvalide` remonte alors en
+    « configuration illisible » (ADR-0007), ce qui est exact.
+    """
+    souffle = config.get("decoupage")
+    if not isinstance(souffle, dict):
+        return None
+    tours = souffle.get("tours")
+    if tours is None:
+        # Erreur **typée** plutôt que `None`, même raisonnement que le nombre de rondes absent d'un
+        # réglage de suisse : « pas de nombre de tours » se lirait « non découpée », et un arrêt
+        # programmé dessus deviendrait silencieusement inerte.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    return DecoupageEnTours(nb_tours=int(tours))
+
+
+def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
+    """Les arrêts programmés d'une étape, lus **à la racine** du `config` (E05US033, ADR-0091).
+
+    Absence = **aucun arrêt**, et c'est le cas de toute étape écrite avant cette US : l'enchaînement
+    automatique reste le défaut (CA), donc une base non migrée se relit en comportement inchangé.
+    C'est ce qui rend la livraison sûre sans toucher au schéma.
+
+    ⚠️ **Aucune vérification de la liste ici**, à la différence des invariants d'un arrêt seul (que
+    la fabrique du domaine tient). Les doublons et les arrêts inertes se jugent contre le nombre de
+    tours, propriété du couple (arrêts, découpage) portée par `EtapeDeroule` — la refaire à la
+    relecture refuserait de **charger** un déroulé que l'atelier a le droit d'avoir enregistré en
+    brouillon (ADR-0063). Même parti que `_lire_reglage_suisse` face à l'effectif : on ne rend pas
+    illisible ce qui est seulement injouable en l'état.
+
+    ⚠️ **`portee` absente se relit `PHASE`** — le défaut. Ce cas ne devrait pas exister (l'écriture
+    la pose toujours), mais le silence est ici la bonne dégradation : une portée inconnue élargirait
+    l'arrêt à tout le créneau, ce qui est le geste le plus intrusif des deux. En cas de doute, on
+    coupe le moins.
+    """
+    souffle = config.get("arrets")
+    if not isinstance(souffle, list):
+        return ()
+    arrets = []
+    for brut in souffle:
+        if not isinstance(brut, dict):
+            raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+        apres_tour = brut.get("apres_tour")
+        if apres_tour is None:
+            raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+        portee = brut.get("portee")
+        arrets.append(
+            ArretProgramme(
+                apres_tour=int(apres_tour),
+                portee=PorteeArret(portee) if portee else PorteeArret.PHASE,
+            )
+        )
+    return tuple(arrets)
 
 
 def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
@@ -656,6 +750,13 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
                         suisse=etape.suisse,
+                        # E05US033 : câblés dès l'ajout du champ, et non « plus tard ». Le
+                        # commentaire de `barrage_jusqu_au` juste au-dessus dit ce que coûte
+                        # l'oubli — un champ ajouté à l'agrégat mais absent de sa sérialisation
+                        # rouvre exactement le défaut que l'ajout prétendait fermer, déplacé de
+                        # l'agrégat à sa persistance, et il détruit de la donnée d'organisateur.
+                        decoupage=etape.decoupage,
+                        arrets=etape.arrets,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -753,6 +854,8 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         poules=_lire_reglage_poules(brute),
         big_shoot_off=_lire_reglage_big_shoot_off(brute),
         suisse=_lire_reglage_suisse(brute),
+        decoupage=_lire_decoupage(brute),
+        arrets=_lire_arrets(brute),
     )
 
 
@@ -1221,6 +1324,107 @@ class DerouleEtapeRepositorySQL:
             raise InfrastructureError("Échec de suppression de l'étape de déroulé.") from exc
 
 
+class FranchissementArretRepositorySQL:
+    """Adapter SQLite du port `FranchissementArretRepository` (E05US033, ADR-0091).
+
+    Ne persiste que l'**avancement** d'un arrêt, jamais sa définition — celle-ci vit dans
+    `deroule_etape.config` (JSON, sans migration) et se lit par `DerouleRepository`.
+
+    La lecture est **par créneau**, ce qui impose une jointure `franchissement_arret → phase` : la
+    table ne porte pas `depart_id`, et le dupliquer serait une seconde source pour ce que la phase
+    dit déjà (le raisonnement de `PhaseORM.ordre` face à un `etape_id`, DETTE-026).
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_depart(self, depart_id: DepartId) -> list[FranchissementArret]:
+        """Tous les franchissements du créneau, quel qu'en soit l'état."""
+        try:
+            with self._session_factory() as session:
+                lignes = (
+                    session.execute(
+                        select(FranchissementArretORM)
+                        .join(PhaseORM, PhaseORM.id == FranchissementArretORM.phase_id)
+                        .where(PhaseORM.depart_id == depart_id)
+                        .order_by(FranchissementArretORM.id)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [_vers_franchissement(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des arrêts programmés.") from exc
+
+    def par_id(self, franchissement_id: int) -> FranchissementArret | None:
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(FranchissementArretORM, franchissement_id)
+                return None if ligne is None else _vers_franchissement(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture d'un arrêt programmé.") from exc
+
+    def ajouter(self, franchissement: FranchissementArret) -> FranchissementArret:
+        try:
+            with self._session_factory() as session:
+                ligne = FranchissementArretORM(
+                    phase_id=franchissement.phase_id,
+                    apres_tour=franchissement.apres_tour,
+                    etat=franchissement.etat.value,
+                    tours_a_finir=_tours_a_finir_json(franchissement.tours_a_finir),
+                    phases_arretees=json.dumps(list(franchissement.phases_arretees)),
+                )
+                session.add(ligne)
+                session.commit()
+                session.refresh(ligne)
+                return _vers_franchissement(ligne)
+        except IntegrityError as exc:
+            # L'unicité `(phase_id, apres_tour)` a parlé : deux écritures concurrentes du même
+            # franchissement. Ce n'est pas une incohérence mais la **course** que la contrainte est
+            # là pour arbitrer — le déclencheur tourne après chaque validation, et ~30 tablettes
+            # valident.
+            raise InfrastructureError("Cet arrêt a déjà été franchi dans ce créneau.") from exc
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement d'un arrêt franchi.") from exc
+
+    def enregistrer(self, franchissement: FranchissementArret) -> FranchissementArret:
+        try:
+            with self._session_factory() as session:
+                ligne = session.get(FranchissementArretORM, franchissement.id)
+                if ligne is None:
+                    raise InfrastructureError("Arrêt programmé à mettre à jour introuvable.")
+                ligne.etat = franchissement.etat.value
+                ligne.tours_a_finir = _tours_a_finir_json(franchissement.tours_a_finir)
+                ligne.phases_arretees = json.dumps(list(franchissement.phases_arretees))
+                session.commit()
+                session.refresh(ligne)
+                return _vers_franchissement(ligne)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de mise à jour d'un arrêt programmé.") from exc
+
+
+def _tours_a_finir_json(tours: tuple[tuple[PhaseId, int | None], ...]) -> str:
+    """Sérialise la photo des tours à finir. Les clés JSON sont des **chaînes**, par nature."""
+    return json.dumps({str(phase_id): tour for phase_id, tour in tours})
+
+
+def _vers_franchissement(ligne: FranchissementArretORM) -> FranchissementArret:
+    """Relit un franchissement. Une ligne illisible est une base altérée, pas un doute."""
+    try:
+        tours = json.loads(ligne.tours_a_finir)
+        arretees = json.loads(ligne.phases_arretees)
+        return FranchissementArret(
+            phase_id=ligne.phase_id,
+            apres_tour=ligne.apres_tour,
+            etat=EtatFranchissement(ligne.etat),
+            tours_a_finir=tuple((int(clef), valeur) for clef, valeur in tours.items()),
+            phases_arretees=tuple(int(phase_id) for phase_id in arretees),
+            id=ligne.id,
+        )
+    except (json.JSONDecodeError, AttributeError, TypeError, ValueError) as exc:
+        raise InfrastructureError("Arrêt programmé illisible en base.") from exc
+
+
 class PhaseRepositorySQL:
     """Adapter SQLite du port `PhaseRepository` — l'**avancement** d'une étape (ADR-0076).
 
@@ -1279,15 +1483,14 @@ class PhaseRepositorySQL:
                     statut=phase.statut.value,
                 )
                 session.add(ligne)
-                # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025, axe B). Committer
-                # d'abord laissait la ligne orpheline **en base** quand l'exception partait :
-                # invisible à toute lecture (l'assemblage l'écarte), mais occupant le couple
-                # `(depart_id, ordre)` de `uq_phase_depart_ordre` — si bien que le jour où le
-                # déroulé
-                # gagnait ce rang, l'instanciation légitime butait sur l'unicité, sans recours par
-                # l'écran. Le `flush` donne l'identifiant sans rien acter ; sortir du `with` sans
-                # commit annule tout. L'adapter en mémoire fait déjà ce choix (il retire l'entrée
-                # avant de lever) : les deux ne doivent pas diverger.
+                # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025, axe B).
+                # Committer d'abord laissait la ligne orpheline **en base** quand l'exception
+                # partait : invisible à toute lecture (l'assemblage l'écarte), mais occupant le
+                # couple `(depart_id, ordre)` de `uq_phase_depart_ordre` — si bien que le jour où le
+                # déroulé gagnait ce rang, l'instanciation légitime butait sur l'unicité, sans
+                # recours par l'écran. Le `flush` donne l'identifiant sans rien acter ; sortir du
+                # `with` sans commit annule tout. L'adapter en mémoire fait déjà ce choix (il retire
+                # l'entrée avant de lever) : les deux ne doivent pas diverger.
                 session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:

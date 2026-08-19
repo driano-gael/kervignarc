@@ -171,3 +171,27 @@ class ForfaitTournoiTermine(ApplicationError):
     """
 
     code = "forfait_tournoi_termine"
+
+
+class PhaseEnPause(ApplicationError):
+    """La phase est **en pause** : on n'y saisit ni ne valide de résultat neuf (E05US033) → 409.
+
+    ⚠️ **Cette garde n'existait pas avant E05US033**, et son absence était le défaut central que le
+    cadrage du 19/08/2026 a mis au jour : `StatutPhase.EN_PAUSE` (ADR-0045 §1) ne gelait **rien** —
+    ni la saisie, ni la validation, ni le routage. Mettre une phase en pause changeait un libellé
+    dans le suivi, et les archers continuaient de tirer. La docstring de
+    `ServiceTournois.mettre_en_pause` affirmait pourtant « la saisie s'arrête jusqu'à `reprendre` »
+    : c'était faux. Cf. `DETTE-073` pour le volet **tournoi**, resté cosmétique et hors du périmètre
+    de cette US (autre maille, ADR-0026 §3).
+
+    ⚠️ **Ce refus ne couvre pas la correction**, et c'est un CA explicite du commanditaire :
+    `EN_PAUSE` gèle un résultat **neuf**, jamais la **rectification** d'un score déjà saisi. La
+    pause est précisément le moment où l'on relit les feuilles et où l'on découvre les erreurs ;
+    interdire de les réparer ferait de chaque pause un cul-de-sac. `ServiceSaisie.corriger_volee`
+    n'a donc **pas** cette garde, et ce n'est pas un oubli.
+
+    409 et non 403 : ce n'est pas une question de droit mais d'**état** — le même geste redeviendra
+    licite dès la reprise, sans que rien ne change côté appelant.
+    """
+
+    code = "phase_en_pause"

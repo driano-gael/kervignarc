@@ -32,6 +32,14 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageArrets } from '../../shared/phases/ReglageArrets'
+import {
+  ARRETS_PAR_DEFAUT,
+  depuisEtape as depuisArrets,
+  estValide as arretsValides,
+  versArrets,
+  versDecoupage,
+} from '../../shared/phases/arrets'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -394,6 +402,10 @@ export function FormulairePhase({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
+  // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
+  // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
+  // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
+  const [arrets, setArrets] = useState(depuisArrets(phase?.arrets, phase?.decoupage))
   // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
   // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
   // le seul écran où « l'effectif du jour » du CA existe vraiment. Et comme `ServiceSuisse.etat`
@@ -477,13 +489,20 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US033 : les deux seuls types dont la **structure** ne dit pas combien de tours ils
+  // comptent — le contrat de phase les déclare `PHASE_ENTIERE` (ADR-0090). Miroir assumé de
+  // `domain/contrat_phase.py` : la liste est courte, stable, et sa dérive ne produirait qu'un
+  // champ offert en trop (refusé en 422) ou manquant — jamais un tournoi faux.
+  const decoupable = type === 'qualification' || type === 'echauffement'
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
     !(enTableau && !estValide(profondeur)) &&
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
-    !(estSuisse && !suisseValide(suisse))
+    !(estSuisse && !suisseValide(suisse)) &&
+    // E05US033 : sans condition de type — les arrêts valent pour toute phase.
+    arretsValides(arrets)
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -509,6 +528,15 @@ export function FormulairePhase({
       // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
       // 422 `configuration_suisse_invalide`.
       suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+      // E05US033. Deux régimes différents dans la même ligne, et il faut les distinguer :
+      // — le **découpage** n'a de sens que sur un type que l'organisateur règle (qualification,
+      //   échauffement) ; ailleurs le serveur le refuse en 422, donc on l'efface au retypage,
+      //   exactement comme les quatre réglages ci-dessus ;
+      // — les **arrêts**, eux, valent pour **tous** les types : toute phase avance par tours
+      //   (ADR-0090). Ils ne s'effacent donc jamais sur un changement de type. Les traiter comme
+      //   les autres réglages aurait détruit du planning d'organisateur sans le dire.
+      decoupage: decoupable ? (versDecoupage(arrets) ?? null) : null,
+      arrets: versArrets(arrets) ?? [],
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -525,6 +553,7 @@ export function FormulairePhase({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -600,6 +629,10 @@ export function FormulairePhase({
             maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
           />
         )}
+        {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
+            ci-dessus : toute phase avance par tours (ADR-0090), donc toute phase peut porter une
+            pause. Seul le champ de découpage, à l'intérieur, dépend du type. */}
+        <ReglageArrets etat={arrets} surChangement={setArrets} decoupable={decoupable} />
         <label className="formulaire__tranche">
           <input
             type="checkbox"

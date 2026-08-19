@@ -18,13 +18,23 @@ Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field, replace
 
+# ⚠️ **Le port `EvaluateurArrets` est importé de son *réalisateur*, pas défini ici** (E05US033).
+# La convention du projet place un port étroit chez son **consommateur** (`LecteurAvancementDePhase`
+# dans `application.suivi_deroule`, `DiffusionSimulation` dans `application.pilotage_simulation`).
+# Elle est enfreinte sciemment : ce port a **deux** consommateurs — les deux services de saisie —,
+# et le définir chez l'un obligerait l'autre à l'importer de son jumeau, ou à en tenir une copie.
+# Un port en double se désaccorde ; un import de Protocol ne couple aucun comportement, et il n'y a
+# pas de cycle (`arrets_programmes` n'importe aucun service de saisie).
+from application.arrets_programmes import EvaluateurArrets
 from application.classements import ServiceClassement
 from application.erreurs import (
     BlasonIntrouvable,
     DerouleCyclique,
     DuelDesynchronise,
+    PhaseEnPause,
     PhaseIntrouvable,
     PhasePasUnTableau,
     TournoiIntrouvable,
@@ -45,7 +55,7 @@ from domain.depart import DepartId
 from domain.duel import BaremeDuel, Cote, Duel, ResolveurBaremeDuel
 from domain.erreurs import MatchNonJouable
 from domain.participant import GenreParticipant, Participant
-from domain.phase import PhaseId, TypePhase
+from domain.phase import PhaseId, StatutPhase, TypePhase
 from domain.politiques import (
     Aggregation,
     Byes,
@@ -84,6 +94,9 @@ lecteur — le test de câblage le vérifie. C'est la promesse d'ADR-0083 appliq
 
 [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
 """
+
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -198,12 +211,12 @@ class ServiceSaisieDuels:
         # politique doit y être câblée**, sinon un archer entrerait dans la consolante par un ordre
         # que le palmarès contredirait le même jour, sur le même écran.
         #
-        # ⚠️ **Paramètre obligatoire, sans défaut** (correctif de revue, relevé par les quatre axes).
-        # Un premier jet le laissait optionnel avec un `AggregationParQualification()` instancié en
-        # dur ici — et **aucun** des deux composition roots ne le câblait. L'invariant ci-dessus
-        # n'était donc tenu que par la coïncidence des deux valeurs : le jour où le palmarès résout
-        # `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien ne rougisse.
-        # Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
+        # ⚠️ **Paramètre obligatoire, sans défaut** (correctif de revue, relevé par les quatre
+        # axes). Un premier jet le laissait optionnel avec un `AggregationParQualification()`
+        # instancié en dur ici — et **aucun** des deux composition roots ne le câblait. L'invariant
+        # ci-dessus n'était donc tenu que par la coïncidence des deux valeurs : le jour où le
+        # palmarès résout `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien
+        # ne rougisse. Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
         self._aggregation = aggregation
         # Les classements que ce service ne sait pas produire lui-même, délégués par type au
         # service du format ([ADR-0084]). Branchés **après** construction (`brancher_lecteur`)
@@ -218,6 +231,8 @@ class ServiceSaisieDuels:
         #
         # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
         self._lecteurs: dict[TypePhase, LecteurClassementDePhase] = {}
+        # E05US033 : branché **tardivement** (`brancher_evaluateur_arrets`), donc `None` ici.
+        self._evaluateur_arrets: EvaluateurArrets | None = None
 
     def brancher_lecteur(self, type_phase: TypePhase, lecteur: LecteurClassementDePhase) -> None:
         """Donne à ce service de quoi lire le classement d'un type de phase ([ADR-0084]).
@@ -306,6 +321,7 @@ class ServiceSaisieDuels:
         valeurs_bas: tuple[ZoneScore, ...],
     ) -> EtatDuel:
         """Saisit (ou réédite) une manche d'un match : les deux volées opposées."""
+        self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(haut, lignes)
@@ -331,6 +347,7 @@ class ServiceSaisieDuels:
         gagnant_designe: Cote | None = None,
     ) -> EtatDuel:
         """Saisit le tir de barrage d'un match à égalité (§8.2)."""
+        self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(haut, lignes)
@@ -346,13 +363,95 @@ class ServiceSaisieDuels:
         self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int, scoreur: str
     ) -> EtatDuel:
         """Valide un match **tranché** au nom du scoreur : son vainqueur avancera le tableau."""
+        self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
         self._duels.enregistrer(phase_id, match_numero, duel)
+        # Le duel est **écrit** : c'est maintenant qu'un tour de tableau peut être achevé
+        # (E05US033). ⚠️ Ici et non dans `saisir_manche` / `saisir_barrage` : un braquet n'avance
+        # que sur des duels **tranchés et validés** (`AvancementTour`, ADR-0090), donc une manche
+        # saisie ne franchit aucune frontière de tour. Y appeler le déclencheur aurait payé la
+        # recomposition du créneau à chaque volée de duel pour un résultat toujours identique
+        # (`DETTE-031`).
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is not None:
+            self._signaler_validation(phase.depart_id)
         return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
+
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
+
+        Branchement **tardif et visible** au composition root, sur le patron de
+        `ServiceSuiviDeroule.brancher_lecteur_avancement` (ADR-0090) et de
+        `ServiceSaisieDuels.brancher_lecteur` (ADR-0084) : le service d'arrêts est construit après
+        celui-ci — il consomme le suivi, qui consomme les services de format — et un cycle qu'on ne
+        voit pas est un cycle qu'on réintroduit.
+
+        Non branché, ce service se comporte **exactement** comme avant E05US033 : aucun arrêt ne se
+        déclenche. C'est ce qui rend les décors de test existants indifférents à cette US, et c'est
+        aussi le mode de panne à connaître — un branchement oublié rend toute l'US inerte sans
+        qu'une seule ligne rougisse (`DETTE-028`, six moteurs livrés dont aucun appelé).
+        """
+        self._evaluateur_arrets = evaluateur
+
+    def _signaler_validation(self, depart_id: DepartId) -> None:
+        """Fait évaluer les arrêts programmés du créneau après une validation (E05US033).
+
+        ⚠️ **Appelé après l'écriture, jamais avant.** L'arrêt se déclenche sur un tour *achevé* :
+        évaluer avant que le résultat soit persisté ferait lire l'avancement d'avant, donc manquer
+        la frontière de tour — et le suivant l'attraperait, avec un tour de retard visible en salle.
+
+        ⚠️ **Les erreurs du déclencheur ne remontent pas au scoreur.** La validation, elle, a réussi
+        : faire échouer la requête parce qu'une phase voisine a été clôturée entre-temps rendrait un
+        500 à un archer qui a bien tiré, et lui ferait ressaisir une volée déjà enregistrée. On
+        journalise et l'on rend la main ; la validation suivante réévaluera, le déclencheur étant
+        idempotent.
+        """
+        if self._evaluateur_arrets is None:
+            return
+        try:
+            self._evaluateur_arrets.evaluer(depart_id)
+        except Exception as exc:
+            # ⚠️ **`Exception` et non le triplet typé habituel**, et c'est un choix, pas un
+            # raccourci. Le tuple `(ApplicationError, DomainError)` — celui de
+            # `ServiceSuiviDeroule._avancement_lu` — laisserait passer une `InfrastructureError`
+            # (SQLite occupé, base altérée), et l'attraper nommément demanderait à cette couche
+            # d'importer `infrastructure`, donc d'inverser le sens des dépendances (règle 2) pour
+            # une seule ligne de `except`. Le vrai argument est ailleurs : la validation **a réussi
+            # et est persistée**. Toute exception d'ici est celle d'un *effet de bord*, et la
+            # laisser remonter rendrait un 500 à un archer qui a bien tiré — qui ressaisirait alors
+            # une volée déjà enregistrée. Le déclencheur étant idempotent, la validation suivante
+            # réévaluera : le pire coût est une pause qui tombe un résultat plus tard.
+            _logger.warning(
+                "Arrêts programmés non évalués après validation sur le créneau %s : %r",
+                depart_id,
+                exc,
+            )
+
+    def _refuser_si_en_pause(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
+        """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.
+
+        ⚠️ **La garde est aux trois écritures, pas dans `_decor`**, et c'est le point à ne pas
+        simplifier. `_decor` est le passage obligé des écritures **et** des lectures (sept appels,
+        dont l'état d'un match, la grille et la reconstruction récursive d'une phase amont) : y
+        poser le refus rendrait le tableau **illisible** pendant la pause — le pilotage, l'écran de
+        salle et l'affichage public tomberaient tous les trois, au moment précis où l'organisateur
+        a besoin de voir où il en est.
+
+        ⚠️ **Les duels n'ont aucun chemin de correction**, à la différence de la qualification
+        (`ServiceSaisie.corriger_volee`). Le CA « une correction reste possible pendant la pause »
+        est donc sans objet ici : il n'y a rien à préserver. C'est un manque **préexistant** — un
+        duel validé de travers ne se rectifie nulle part aujourd'hui —, ni introduit ni aggravé par
+        cette US, et signalé pour ce qu'il est plutôt que passé sous silence.
+        """
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is not None and phase.statut is StatutPhase.EN_PAUSE:
+            raise PhaseEnPause(
+                "Cette phase est en pause : les duels reprendront quand l'organisateur relancera."
+            )
 
     # --- Interne : reconstruction du décor (classement → arbre → rejeu des duels validés) -------
 

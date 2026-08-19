@@ -25,11 +25,20 @@ import datetime
 import logging
 from dataclasses import dataclass
 
+# ⚠️ **Le port `EvaluateurArrets` est importé de son *réalisateur*, pas défini ici** (E05US033).
+# La convention du projet place un port étroit chez son **consommateur** (`LecteurAvancementDePhase`
+# dans `application.suivi_deroule`, `DiffusionSimulation` dans `application.pilotage_simulation`).
+# Elle est enfreinte sciemment : ce port a **deux** consommateurs — les deux services de saisie —,
+# et le définir chez l'un obligerait l'autre à l'importer de son jumeau, ou à en tenir une copie.
+# Un port en double se désaccorde ; un import de Protocol ne couple aucun comportement, et il n'y a
+# pas de cycle (`arrets_programmes` n'importe aucun service de saisie).
+from application.arrets_programmes import EvaluateurArrets
 from application.erreurs import (
     ApplicationError,
     ArcherIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
+    PhaseEnPause,
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
@@ -45,7 +54,7 @@ from domain.blason import ZoneScore
 from domain.depart import DepartId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import DomainError
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -173,6 +182,9 @@ class ServiceSaisie:
         self._forfaits = forfaits
         self._horloge = horloge
         self._populations = populations
+        # E05US033 : branché **tardivement** (`brancher_evaluateur_arrets`), donc `None` ici.
+        # Non branché = comportement d'avant l'US, ce qui laisse tous les décors de test intacts.
+        self._evaluateur_arrets: EvaluateurArrets | None = None
 
     def archers_du_poste(
         self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
@@ -341,6 +353,7 @@ class ServiceSaisie:
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        self._refuser_si_en_pause(phase)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.saisir_volee(
@@ -374,6 +387,7 @@ class ServiceSaisie:
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        self._refuser_si_en_pause(phase)
         assert (
             phase.bareme is not None and phase.validation is not None
         ), "Une qualification porte toujours barème et grain (ADR-0045 §2)."
@@ -388,7 +402,10 @@ class ServiceSaisie:
             horodatage=self._horloge.maintenant(),
             objet=f"série de qualification de l'archer {archer_id}",
         )
-        return self._series.enregistrer_avec_trace(serie, entree)
+        enregistree = self._series.enregistrer_avec_trace(serie, entree)
+        # Le résultat est **écrit** : c'est maintenant qu'un tour peut être achevé (E05US033).
+        self._signaler_validation(phase.depart_id)
+        return enregistree
 
     def corriger_volee(
         self,
@@ -428,6 +445,77 @@ class ServiceSaisie:
             apres=_valeurs_lisibles(serie, numero),
         )
         return self._series.enregistrer_avec_trace(serie, entree)
+
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
+
+        Branchement **tardif et visible** au composition root, sur le patron de
+        `ServiceSuiviDeroule.brancher_lecteur_avancement` (ADR-0090) et de
+        `ServiceSaisieDuels.brancher_lecteur` (ADR-0084) : le service d'arrêts est construit après
+        celui-ci — il consomme le suivi, qui consomme les services de format — et un cycle qu'on ne
+        voit pas est un cycle qu'on réintroduit.
+
+        Non branché, ce service se comporte **exactement** comme avant E05US033 : aucun arrêt ne se
+        déclenche. C'est ce qui rend les décors de test existants indifférents à cette US, et c'est
+        aussi le mode de panne à connaître — un branchement oublié rend toute l'US inerte sans
+        qu'une seule ligne rougisse (`DETTE-028`, six moteurs livrés dont aucun appelé).
+        """
+        self._evaluateur_arrets = evaluateur
+
+    def _signaler_validation(self, depart_id: DepartId) -> None:
+        """Fait évaluer les arrêts programmés du créneau après une validation (E05US033).
+
+        ⚠️ **Appelé après l'écriture, jamais avant.** L'arrêt se déclenche sur un tour *achevé* :
+        évaluer avant que le résultat soit persisté ferait lire l'avancement d'avant, donc manquer
+        la frontière de tour — et le suivant l'attraperait, avec un tour de retard visible en salle.
+
+        ⚠️ **Les erreurs du déclencheur ne remontent pas au scoreur.** La validation, elle, a réussi
+        : faire échouer la requête parce qu'une phase voisine a été clôturée entre-temps rendrait un
+        500 à un archer qui a bien tiré, et lui ferait ressaisir une volée déjà enregistrée. On
+        journalise et l'on rend la main ; la validation suivante réévaluera, le déclencheur étant
+        idempotent.
+        """
+        if self._evaluateur_arrets is None:
+            return
+        try:
+            self._evaluateur_arrets.evaluer(depart_id)
+        except Exception as exc:
+            # ⚠️ **`Exception` et non le triplet typé habituel**, et c'est un choix, pas un
+            # raccourci. Le tuple `(ApplicationError, DomainError)` — celui de
+            # `ServiceSuiviDeroule._avancement_lu` — laisserait passer une `InfrastructureError`
+            # (SQLite occupé, base altérée), et l'attraper nommément demanderait à cette couche
+            # d'importer `infrastructure`, donc d'inverser le sens des dépendances (règle 2) pour
+            # une seule ligne de `except`. Le vrai argument est ailleurs : la validation **a réussi
+            # et est persistée**. Toute exception d'ici est celle d'un *effet de bord*, et la
+            # laisser remonter rendrait un 500 à un archer qui a bien tiré — qui ressaisirait alors
+            # une volée déjà enregistrée. Le déclencheur étant idempotent, la validation suivante
+            # réévaluera : le pire coût est une pause qui tombe un résultat plus tard.
+            _logger.warning(
+                "Arrêts programmés non évalués après validation sur le créneau %s : %r",
+                depart_id,
+                exc,
+            )
+
+    @staticmethod
+    def _refuser_si_en_pause(phase: Phase) -> None:
+        """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.
+
+        ⚠️ **Appelée par `saisir_volee` et `valider`, jamais par `corriger_volee`**, et c'est un CA
+        explicite du commanditaire (19/08/2026). La pause gèle ce qui *avance* ; elle ne gèle pas ce
+        qui *répare*. C'est précisément pendant la pause que l'on relit les feuilles et que l'on
+        découvre les erreurs de saisie — les interdire ferait de chaque pause un cul-de-sac,
+        dont la seule issue serait de relancer toute la salle pour corriger un 9 pris pour un 10.
+
+        ⚠️ **Avant cette US, rien ici ne regardait le statut de la phase** : mettre une phase en
+        pause n'arrêtait aucune saisie, et la pause n'était qu'un libellé dans le suivi. Cf.
+        `DETTE-073` pour le volet **tournoi**, resté cosmétique et hors périmètre (autre maille,
+        ADR-0026 §3).
+        """
+        if phase.statut is StatutPhase.EN_PAUSE:
+            raise PhaseEnPause(
+                "Cette phase est en pause : la saisie reprendra quand l'organisateur relancera. "
+                "La correction d'un score déjà saisi reste possible."
+            )
 
     def _charger_archer(
         self, tournoi_id: TournoiId, archer_id: ArcherId, contexte: ContexteSaisie | None

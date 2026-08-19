@@ -61,6 +61,9 @@ describe('decrireEtape', () => {
       big_shoot_off: null,
       suisse: null,
       profondeur: null,
+      // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
+      decoupage: null,
+      arrets: [],
       poules: null,
       sources: [],
       effectif: null,

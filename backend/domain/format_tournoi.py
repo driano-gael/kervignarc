@@ -30,6 +30,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 
 from domain.anomalie import Anomalie, Gravite
+from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
@@ -50,6 +51,7 @@ from domain.phase import (
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse
+from domain.tour_de_phase import DecoupageEnTours
 from domain.tournoi import TournoiId
 
 FormatTournoiId = int
@@ -122,6 +124,29 @@ class ModelePhase:
     juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
     de bibliothèque."""
 
+    decoupage: DecoupageEnTours | None = None
+    """En combien de tours cette étape se joue, quand sa structure ne le dit pas (E05US033).
+
+    Même régime de brouillon que ses voisins : un découpage posé sur un système suisse est un modèle
+    **licite** qui refusera de s'appliquer (`DecoupageEnToursInvalide` à la construction de la
+    `Phase`)."""
+
+    arrets: tuple[ArretProgramme, ...] = ()
+    """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033, [ADR-0091]).
+
+    ⚠️ **Présent ici parce que son absence serait exactement le défaut de `barrage_jusqu_au`
+    ci-dessus** : capturer un tournoi en format perdrait ses pauses **en silence**, et le format
+    réappliqué n'en aurait plus. Le dépôt a déjà payé cette leçon une fois ; on ne la repaie pas.
+
+    Même régime de brouillon : aucune vérification contre le nombre de tours ici, pour la raison
+    donnée par le Big Shoot Off et le suisse — un format est réutilisé sur des effectifs qu'il ne
+    connaît pas au moment où on l'écrit, et « après le tour 5 » est applicable à un suisse de
+    7 rondes, inerte à un suisse de 5. Le refus vit sur l'`EtapeDeroule`, là où l'effectif est
+    déclaré.
+
+    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    """
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -166,6 +191,8 @@ class ModelePhase:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            decoupage=self.decoupage,
+            arrets=self.arrets,
         )
 
     @staticmethod
@@ -192,6 +219,8 @@ class ModelePhase:
             poules=etape.poules,
             big_shoot_off=etape.big_shoot_off,
             suisse=etape.suisse,
+            decoupage=etape.decoupage,
+            arrets=etape.arrets,
         )
 
 

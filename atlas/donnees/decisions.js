@@ -5938,6 +5938,248 @@ window.ATLAS.decisions = {
     "E05US033",
     "E07US005"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-19",
+   "date_brute": "2026-08-19",
+   "extrait": "### 1. Un arrêt se pose après un tour, jamais à une heure ArretProgramme(apres_tour, portee). Le tour est l'unité d'avancement générique posée par ADR-0090 : c'est ce qui rend un arrêt exprimable sur les six formats sans un cas par format. Le planning horaire de journée (« pause repas 12h–13h30 », l'application calculant quel tour tombe avant) est un besoin futur annoncé par le commanditaire le 19/08/2026, hors du besoin d'aujourd'hui. Il n'est pas anticipé : un déclencheur polymorphe posé sur une évolution supposée est exactement ce que le § Dette de CLAUDE.md interdit — un remède structurel se propose sur preuve dans le code du jour, 3ᵉ occurrence réelle, et il y en a une. Cet ADR se […]",
+   "fichier": "docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md",
+   "identifiant": "0091",
+   "liens": [
+    {
+     "cible": "E05US033",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E05US034",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0090",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0076",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0045",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0056",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "lever",
+      "relancer_arret",
+      "RelanceDesArrets"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/arrets_programmes.py",
+     "existe": true,
+     "symboles": [
+      "phases_a_arreter",
+      "_armer_sur_le_depart",
+      "_resoudre_les_arrets_armes",
+      "lever",
+      "relancer_arret",
+      "RelanceDesArrets",
+      "evaluer",
+      "avancement_par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "_en_pause"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie.py",
+     "existe": true,
+     "symboles": [
+      "_refuser_si_en_pause",
+      "corriger_volee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_refuser_si_en_pause"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/suivi_deroule.py",
+     "existe": true,
+     "symboles": [
+      "evaluer",
+      "avancement_par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "evaluer",
+      "avancement_par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/arret_programme.py",
+     "existe": true,
+     "symboles": [
+      "ArretProgramme",
+      "verifier_arrets",
+      "arrets_atteints",
+      "FranchissementArret",
+      "EtatFranchissement",
+      "FranchissementArretORM",
+      "phases_a_arreter",
+      "_armer_sur_le_depart",
+      "_resoudre_les_arrets_armes"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.arrets",
+      "_verifier_arrets_applicables",
+      "_politiques_json",
+      "_lire_arrets",
+      "_lire_decoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.arrets",
+      "pour_tournoi",
+      "d_etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "Phase",
+      "Phase.decoupage",
+      "EtapeDeroule.instancier",
+      "DecoupageEnTours",
+      "unite_de_tour_effective",
+      "nb_tours_regles"
+     ],
+     "symboles_absents": [
+      "EtapeDeroule.instancier"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tour_de_phase.py",
+     "existe": true,
+     "symboles": [
+      "DecoupageEnTours",
+      "unite_de_tour_effective",
+      "nb_tours_regles"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "FranchissementArret",
+      "EtatFranchissement",
+      "FranchissementArretORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "EtapeDeroule.arrets",
+      "_verifier_arrets_applicables",
+      "_politiques_json",
+      "_lire_arrets",
+      "_lire_decoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
+     "existe": true,
+     "symboles": [
+      "lever",
+      "relancer_arret",
+      "RelanceDesArrets"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un arrêt programmé coupe le déroulé à la fin d'un tour",
+   "us": [
+    "E05US030",
+    "E05US033",
+    "E05US034"
+   ]
   }
  ]
 };

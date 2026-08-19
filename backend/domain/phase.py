@@ -52,12 +52,14 @@ from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
 from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
+from domain.contrat_phase import UniteDeTour
 from domain.contrat_phase import produit_un_classement as produit_un_classement
 from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
     ConfigurationBigShootOffInvalide,
     ConfigurationSuisseInvalide,
+    DecoupageEnToursInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
     GrainIncompatibleAvecTypePhase,
@@ -79,6 +81,7 @@ from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse
+from domain.tour_de_phase import DecoupageEnTours, unite_de_tour
 
 PhaseId = int
 """Identifiant technique d'une phase, attribué par la persistance."""
@@ -462,6 +465,26 @@ class Phase:
     **borne** appariable sans ré-affrontement (`suisse.rondes_maximales`), affichée à l'atelier et
     vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici."""
 
+    decoupage: DecoupageEnTours | None = None
+    """En combien de tours l'organisateur découpe cette phase (E05US033, [ADR-0091]).
+
+    Ne concerne que les types dont la **structure ne détermine pas** les tours — la qualification et
+    l'échauffement, ceux que le contrat déclare `PHASE_ENTIERE` : « 20 volées en 2 tours de 10 ».
+    Partout ailleurs le nombre de tours se lit de la donnée qui le détermine (braquets, round-robin,
+    rondes réglées, manches), et un découpage d'organisateur y ouvrirait une **seconde source** pour
+    le même nombre.
+
+    ⚠️ **`arrets` n'a pas de miroir ici, à la différence de ce réglage-ci**, et l'asymétrie est
+    voulue plutôt que subie. Le découpage est lu par le **suivi** à partir d'une `Phase`
+    (`unite_de_tour_effective`), donc il doit voyager avec elle pour que la couture de l'assemblage
+    reste invisible (ADR-0076). Les arrêts programmés ne sont lus que par `ServiceArretsProgrammes`,
+    qui adresse déjà le déroulé par rang : les recopier ici ajouterait un champ que **personne** ne
+    lit, et l'import `phase → arret_programme` fermerait un cycle (`arret_programme` a besoin de
+    `PhaseId`) — exactement celui qu'E05US023 avait eu à défaire en déplaçant `TypePhase`.
+
+    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    """
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -497,6 +520,16 @@ class Phase:
             raise ConfigurationSuisseInvalide(
                 f"Une phase de type « {self.type.value} » n'est pas un système suisse : elle n'a "
                 "pas de nombre de rondes à régler."
+            )
+        if self.decoupage is not None and unite_de_tour(self.type) is not UniteDeTour.PHASE_ENTIERE:
+            # Même garde que `poules`, `big_shoot_off` et `suisse` ci-dessus, et le motif est le
+            # même : un réglage que rien ne lit est invisible et faux. Il l'est d'autant plus ici
+            # qu'un arrêt programmé s'y adosse — un découpage fantôme sur un système suisse ferait
+            # accepter à l'atelier une pause « après le tour 3 » que le jour J ne déclencherait
+            # jamais, la vraie source des rondes étant ailleurs.
+            raise DecoupageEnToursInvalide(
+                f"Une phase de type « {self.type.value} » compte ses tours par sa structure : elle "
+                "n'a pas de découpage à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

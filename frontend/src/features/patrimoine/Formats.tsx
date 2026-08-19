@@ -308,6 +308,9 @@ function FormulaireFormat() {
       suisse: null,
       // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
       profondeur: null,
+      // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
+      decoupage: null,
+      arrets: [],
     }
     creer.mutate(
       { nom, etapes: [etape], effectif_minimum_exige: null },

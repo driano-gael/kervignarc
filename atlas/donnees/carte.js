@@ -249,7 +249,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 324,
+   "occurrences": 332,
    "source": "application"
   },
   {
@@ -273,7 +273,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 82,
+   "occurrences": 84,
    "source": "infrastructure"
   },
   {
@@ -297,13 +297,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 83,
+   "occurrences": 87,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 63,
+   "occurrences": 64,
    "source": "api"
   },
   {
@@ -327,7 +327,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 47,
+   "occurrences": 48,
    "source": "bootstrap"
   },
   {
@@ -420,7 +420,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 52,
+   "occurrences": 53,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -511,7 +511,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 79,
+   "occurrences": 83,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -655,10 +655,11 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 46,
+   "occurrences": 47,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
+    "backend/application/arrets_programmes.py",
     "backend/application/audit.py",
     "backend/application/auth.py",
     "backend/application/bareme_qualification.py",
@@ -711,10 +712,11 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 310,
+   "occurrences": 318,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
+    "backend/application/arrets_programmes.py",
     "backend/application/audit.py",
     "backend/application/bareme_qualification.py",
     "backend/application/barrages.py",
@@ -815,7 +817,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 47,
+   "occurrences": 48,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -947,10 +949,11 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "domain",
-   "occurrences": 31,
+   "occurrences": 33,
    "origines": [
     "backend/domain/anomalie.py",
     "backend/domain/archer.py",
+    "backend/domain/arret_programme.py",
     "backend/domain/bareme.py",
     "backend/domain/barrage.py",
     "backend/domain/big_shoot_off.py",
@@ -979,6 +982,7 @@ window.ATLAS.carte = {
     "backend/domain/serie.py",
     "backend/domain/suisse.py",
     "backend/domain/tableau.py",
+    "backend/domain/tour_de_phase.py",
     "backend/domain/tournoi.py"
    ],
    "source": "domain"
@@ -1010,7 +1014,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 49,
+   "occurrences": 51,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/exploitation.py",
@@ -1581,6 +1585,22 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/arrets_programmes.py",
+     "nom": "ServiceArretsProgrammes"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/arrets_programmes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "evaluer"
+   ],
+   "nom": "EvaluateurArrets",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/infrastructure/db/repositories/tir.py",
      "nom": "ForfaitRepositorySQL"
     },
@@ -1625,6 +1645,41 @@ window.ATLAS.carte = {
     "supprimer"
    ],
    "nom": "FormatTournoiRepository",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "FranchissementArretRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "PhaseRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "InscriptionRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryInscriptionRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryPhaseRepository"
+    }
+   ],
+   "couche": "domain",
+   "fichier": "backend/domain/ports.py",
+   "hors_domaine": false,
+   "methodes": [
+    "ajouter",
+    "enregistrer",
+    "par_depart",
+    "par_id"
+   ],
+   "nom": "FranchissementArretRepository",
    "sans_adapter": false
   },
   {
@@ -1854,6 +1909,22 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/suivi_deroule.py",
+     "nom": "ServiceSuiviDeroule"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/arrets_programmes.py",
+   "hors_domaine": true,
+   "methodes": [
+    "avancement_par_phase"
+   ],
+   "nom": "LecteurAvancementDuDepart",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/application/big_shoot_off.py",
      "nom": "ServiceBigShootOff"
     },
@@ -2070,6 +2141,10 @@ window.ATLAS.carte = {
      "nom": "TableauPublic"
     },
     {
+     "fichier": "backend/domain/arret_programme.py",
+     "nom": "FranchissementArret"
+    },
+    {
      "fichier": "backend/domain/big_shoot_off.py",
      "nom": "IssueManche"
     },
@@ -2080,6 +2155,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/cycle_depart.py",
      "nom": "AvancementDepart"
+    },
+    {
+     "fichier": "backend/infrastructure/db/models.py",
+     "nom": "FranchissementArretORM"
     }
    ],
    "couche": "application",
@@ -2683,11 +2762,11 @@ window.ATLAS.carte = {
   "aretes_front": 148,
   "enchevetrements": 3,
   "features": 46,
-  "imports": 833,
-  "imports_entre_couches": 706,
+  "imports": 852,
+  "imports_entre_couches": 722,
   "plus_gros_noeud": 23,
-  "ports": 61,
-  "ports_hors_domaine": 21,
+  "ports": 64,
+  "ports_hors_domaine": 23,
   "ports_sans_adapter": 0,
   "violations": 0
  },

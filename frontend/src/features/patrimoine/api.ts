@@ -4,6 +4,7 @@
 //
 // Aucune de ces adresses de bibliothèque ne porte de `tournoiId` — c'est tout l'objet de l'US, et ce
 // qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
+import type { ArretProgramme, Decoupage } from '../../shared/phases/arrets'
 
 import { fetchJson } from '../../shared/api/client'
 import type { Profondeur, TypePhase } from '../../shared/phases/catalogue'
@@ -196,6 +197,15 @@ export interface Etape {
   // depuis E05US026 (`ReglageSuisseDTO`) ; le front l'ignorait, donc composer un format au suisse
   // envoyait `suisse: null` et l'étape restait non réglée sans que rien ne le dise.
   suisse: ReglageSuisse | null
+  // Le découpage en tours d'une étape (E05US033) — `null` = non découpée, donc la phase entière.
+  decoupage: Decoupage | null
+  // Les **pauses programmées** de cette étape (E05US033, ADR-0091) — `[]` = aucune, le défaut.
+  //
+  // ⚠️ **Présent sur un format de bibliothèque, et pas seulement sur le déroulé d'un tournoi.** Son
+  // absence rejouerait le défaut de `barrage_jusqu_au` : capturer un tournoi en format perdrait ses
+  // pauses **en silence**, et le format réappliqué n'en aurait plus. Le dépôt a déjà payé cette
+  // leçon une fois (cf. `ModelePhase.barrage_jusqu_au`, côté serveur).
+  arrets: ArretProgramme[]
 }
 
 export interface FormatTournoi {

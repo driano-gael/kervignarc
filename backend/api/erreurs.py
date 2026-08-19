@@ -27,6 +27,7 @@ from application.erreurs import (
     ApplicationError,
     ArcherHorsBigShootOff,
     ArcherIntrouvable,
+    ArretIntrouvable,
     BarrageIntrouvable,
     BlasonIntrouvable,
     CategorieIntrouvable,
@@ -118,7 +119,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         | MancheIntrouvable
         | ArcherHorsBigShootOff
         | ScenarioInconnu
-        | SessionSimulationIntrouvable,
+        | SessionSimulationIntrouvable
+        # E05US033. `ArretIntrouvable` couvre l'identifiant inconnu, l'arrêt d'un autre créneau,
+        # l'arrêt encore armé et l'arrêt déjà levé : quatre situations, un seul geste utile côté
+        # client — recharger l'écran. Le 404 est donc exact, et il évite d'exposer *lequel* des
+        # quatre, ce qui ne changerait rien pour l'organisateur.
+        | ArretIntrouvable,
     ):
         status = 404
     else:

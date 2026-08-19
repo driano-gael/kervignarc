@@ -79,6 +79,9 @@ function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'st
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
+    decoupage: null,
+    arrets: [],
     ...patch,
   }
 }

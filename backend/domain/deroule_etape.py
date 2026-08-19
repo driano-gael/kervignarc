@@ -29,8 +29,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from domain.arret_programme import ArretProgramme, verifier_arrets
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.contrat_phase import UniteDeTour
 from domain.depart import DepartId
 from domain.erreurs import ConfigurationBigShootOffInvalide, ConfigurationSuisseInvalide
 from domain.grain_validation import GrainValidation
@@ -44,6 +46,7 @@ from domain.phase import (
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse, rondes_maximales
+from domain.tour_de_phase import DecoupageEnTours, nb_tours_regles, unite_de_tour
 from domain.tournoi import TournoiId
 
 EtapeDerouleId = int
@@ -110,6 +113,32 @@ class EtapeDeroule:
     l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
     (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
 
+    decoupage: DecoupageEnTours | None = None
+    """En combien de tours l'organisateur découpe cette étape (E05US033, [ADR-0091]).
+
+    Même régime que `poules`, `big_shoot_off` et `suisse` : porté par l'étape donc par le tournoi
+    (ADR-0076), et `None` tant que le type est choisi sans ses paramètres. Ne concerne que la
+    qualification et l'échauffement — les types que le contrat déclare `PHASE_ENTIERE`, faute que
+    leur structure dise combien de tours ils comptent. Le refus sur un autre type vit sur `Phase`,
+    avec ses trois jumeaux.
+
+    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    """
+
+    arrets: tuple[ArretProgramme, ...] = ()
+    """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033).
+
+    ⚠️ **Porté par l'étape, donc par le tournoi**, et la conséquence mérite d'être dite en clair :
+    **tous les départs du tournoi rejouent les mêmes arrêts.** C'est voulu, et c'est même le sens
+    d'ADR-0076 — un planning de journée est une propriété du *déroulé*, et deux créneaux libres de
+    diverger sur leurs pauses seraient exactement la divergence silencieuse que cet ADR a rendue
+    impossible. La conséquence pratique est bénigne : les créneaux d'un tournoi de salle enchaînent
+    le même programme, et la pause repas tombe au même endroit du déroulé pour chacun.
+
+    Ce qui **avance** — l'arrêt a-t-il coupé, l'admin l'a-t-il relevé — n'est pas ici : c'est un
+    `FranchissementArret`, propre au créneau, dans sa propre table (`domain.arret_programme`).
+    """
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
@@ -117,6 +146,36 @@ class EtapeDeroule:
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         self._verifier_convergence_du_big_shoot_off()
         self._verifier_rondes_appariables()
+        self._verifier_arrets_applicables()
+
+    def _verifier_arrets_applicables(self) -> None:
+        """Les arrêts programmés décrivent-ils des coupes que cette étape peut appliquer (E05US033).
+
+        **Même place et même raison que les deux vérifications ci-dessus** : un arrêt seul se juge à
+        son `__post_init__` (le tour 0 n'existe pas), mais un arrêt **face au nombre de tours** est
+        une propriété du couple, et le nombre de tours n'est connu qu'ici.
+
+        ⚠️ **Il n'est connu que pour les types que l'organisateur règle** — la qualification et
+        l'échauffement, dont le découpage *est* la source. Partout ailleurs le nombre de tours se
+        lit
+        du terrain le jour J (braquets projetés, round-robin, rondes appariables selon l'effectif,
+        manches d'un Big Shoot Off) et l'atelier ne peut pas le juger : on passe alors `None`, et
+        seul le doublon est refusé. C'est la doctrine déjà tenue par les deux vérifications voisines
+        — « on ne refuse pas ce qu'on ne peut pas juger » —, et la reprendre évite d'inventer une
+        seconde règle de silence.
+
+        Le cas utile de ce refus est le plus courant de tous : un arrêt posé sur une qualification
+        **non découpée**. Elle ne compte qu'un tour, donc « après le tour 1 » tombe après la fin —
+        l'arrêt serait inerte, et l'organisateur le découvrirait le jour J en constatant que sa
+        pause repas n'a jamais eu lieu.
+        """
+        if not self.arrets:
+            return
+        connu = unite_de_tour(self.type) is UniteDeTour.PHASE_ENTIERE
+        verifier_arrets(
+            self.arrets,
+            nb_tours=nb_tours_regles(self.type, self.decoupage) if connu else None,
+        )
 
     def _verifier_rondes_appariables(self) -> None:
         """À N participants, on ne peut pas apparier plus de N-1 rondes sans ré-affrontement.
@@ -180,6 +239,12 @@ class EtapeDeroule:
         C'est ici que `depart_id` et `statut` naissent : l'étape ne les portait pas. La phase
         obtenue est l'objet du moteur — elle porte la définition **recopiée en mémoire**, jamais
         persistée en double (ADR-0076).
+
+        ⚠️ **`arrets` n'est délibérément pas recopié**, et ce n'est pas un oubli : `Phase` ne porte
+        pas ce champ. Les arrêts programmés ne sont lus que par `ServiceArretsProgrammes`, qui
+        adresse le déroulé par rang ; les faire voyager ici ajouterait un champ que personne ne lit
+        et fermerait un cycle d'import (`phase` → `arret_programme` → `phase`). Le raisonnement
+        complet est sur `Phase.decoupage`, qui est le champ voisin ayant fait le choix inverse.
         """
         return Phase(
             depart_id=depart_id,
@@ -194,6 +259,7 @@ class EtapeDeroule:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            decoupage=self.decoupage,
             statut=StatutPhase.A_VENIR,
         )
 

@@ -72,6 +72,7 @@ from api.v1.tableaux import router as tableaux_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.archive import ServiceArchive
+from application.arrets_programmes import EvaluateurArrets, ServiceArretsProgrammes
 from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
@@ -158,6 +159,7 @@ from infrastructure.db import (
     DuelRepositorySQL,
     ForfaitRepositorySQL,
     FormatTournoiRepositorySQL,
+    FranchissementArretRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
@@ -710,12 +712,12 @@ def create_app(
         app.state.registre_politiques,
         aggregation,
     )
-    # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
-    # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un
-    # `LecteurPopulationPhase` fait **sauter** la vérification du Protocol par mypy — seule la
-    # doublure de test serait alors typée-vérifiée, pas l'implémentation réelle. Sur une US dont la
-    # thèse est « ne pas parier sur une garantie de compilation qui n'existe pas », c'était la même
-    # erreur un cran plus loin.
+    # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*`
+    # rend `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui
+    # attendent un `LecteurPopulationPhase` fait **sauter** la vérification du Protocol par mypy —
+    # seule la doublure de test serait alors typée-vérifiée, pas l'implémentation réelle. Sur une US
+    # dont la thèse est « ne pas parier sur une garantie de compilation qui n'existe pas », c'était
+    # la même erreur un cran plus loin.
     populations: LecteurPopulationPhase = app.state.service_saisie_duels
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
@@ -922,8 +924,8 @@ def create_app(
         GenerateurPalmaresPdf(),
         depart_repository,
         aggregation,
-        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès et
-        # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
+        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès
+        # et le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
         # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
         app.state.service_big_shoot_off,
         # E05US026 : de quoi savoir si une phase **à rencontres** est allée à son terme. Le **même**
@@ -1154,6 +1156,35 @@ def create_app(
     app.state.service_suivi_deroule.brancher_lecteur_avancement(
         TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
     )
+
+    # --- Arrêts programmés (E05US033, ADR-0091) : « la salle s'arrête après ce tour, et repart
+    # quand je le dis ». Trois branchements, et l'ordre compte. ---
+    #
+    # 1. Le service se monte **après** `service_suivi_deroule`, dont il consomme la couture
+    # d'avancement (`LecteurAvancementDuDepart`) : c'est le seul endroit qui sache répondre « quel
+    # tour tourne » pour **tous** les formats, tableau compris. Il compose aussi `service_phases`
+    # plutôt que de muter les statuts lui-même — `mettre_en_pause` / `reprendre` sont les
+    # transitions gardées d'ADR-0045, et un automate en double finit toujours par diverger.
+    franchissement_arret_repository = FranchissementArretRepositorySQL(database.session_factory)
+    app.state.service_arrets_programmes = ServiceArretsProgrammes(
+        phases=phase_repository,
+        deroules=deroule_repository,
+        departs=depart_repository,
+        franchissements=franchissement_arret_repository,
+        suivi=app.state.service_suivi_deroule,
+        cycle_de_vie=app.state.service_phases,
+    )
+    # 2. Le **déclencheur** se branche tardivement sur les deux services de saisie, sur le patron de
+    # `brancher_lecteur_avancement` juste au-dessus : eux seuls savent qu'un résultat vient d'être
+    # écrit, et ils sont construits avant celui-ci. Le branchement tardif rend le cycle **visible**
+    # ici plutôt que de le refermer en douce dans un constructeur. ⚠️ **Sans ces deux lignes, l'US
+    # est inerte** : les arrêts se programmeraient, se liraient, se relanceraient — et ne se
+    # déclencheraient jamais, faute d'un seul appel. C'est exactement le mode de panne de
+    # `DETTE-028` (six moteurs livrés, aucun appelé), d'où le test de composition qui exige la
+    # présence du branchement.
+    evaluateur: EvaluateurArrets = app.state.service_arrets_programmes
+    app.state.service_saisie.brancher_evaluateur_arrets(evaluateur)
+    app.state.service_saisie_duels.brancher_evaluateur_arrets(evaluateur)
 
     # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de
     # salle. Lecture pure, **sans authentification**, montée sur le même `ServiceSaisieDuels` que
