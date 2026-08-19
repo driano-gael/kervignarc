@@ -32,6 +32,7 @@ from starlette.concurrency import run_in_threadpool
 from application.suivi_deroule import ServiceSuiviDeroule, SuiviDeroule
 from domain.deroule import BlocDeroule, Flux, TourBraquet
 from domain.phase import TypePhase
+from domain.plage import Plage
 from domain.suivi_deroule import AvancementBloc, AvancementTour
 from domain.tour_de_phase import libelle_de_tour, unite_de_tour
 
@@ -132,7 +133,19 @@ class AvancementBlocReponse(BaseModel):
     """Le calque de réalité d'un bloc : statut, braquets remplis, tour en cours.
 
     `statut` ∈ `a_venir` · `en_cours` · `en_pause` · `terminee`. `tour_courant` est `null` quand
-    rien ne tourne — phase pas encore démarrée, déjà close, ou tous ses duels tranchés.
+    rien ne tourne — phase pas encore démarrée, déjà close, ou tout son contenu tranché.
+
+    ⚠️ **`tour_courant` n'est plus un numéro de braquet** (E05US032, [ADR-0090]) : c'est le numéro du
+    tour de la phase, dans l'unité de son format — un tour d'arbre, un tour de poule, une **ronde**
+    de système suisse, une **manche** de Big Shoot Off. `libelle_tour_courant` porte le mot que la
+    salle emploie, **servi ici** et jamais redérivé côté client (`DETTE-020` compte déjà deux
+    domiciles pour cette règle).
+
+    ⚠️ **`nb_tours` n'est pas `len(tours)`** : `tours` porte les **braquets** — les tranches de rangs
+    qu'un tableau attribue au fil de l'eau —, et une phase qui ne classe qu'à la fin en a zéro tout
+    en comptant plusieurs tours. Il ne descend jamais sous 1.
+
+    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
     """
 
     ordre: int
@@ -145,7 +158,9 @@ class AvancementBlocReponse(BaseModel):
     tours: list[AvancementTourReponse]
 
     @staticmethod
-    def de_bloc(bloc: AvancementBloc, type_phase: TypePhase) -> AvancementBlocReponse:
+    def de_bloc(
+        bloc: AvancementBloc, type_phase: TypePhase, tranche: tuple[int, int] | None
+    ) -> AvancementBlocReponse:
         """⚠️ **Le libellé est servi, jamais recalculé à l'écran** (E05US032, [ADR-0090] §4).
 
         Le front pourrait dériver « Demi-finale » de `tour_courant` et `nb_tours` — c'est ce que
@@ -153,9 +168,18 @@ class AvancementBlocReponse(BaseModel):
         règle de vocabulaire. E07US005 a refermé la même tentation en servant le libellé du domaine
         au DTO ; on fait pareil, sinon l'US **aggrave** une dette qu'elle est censée contenir.
 
-        `place_en_jeu` et `plage` restent à `None` : on nomme ici le tour **de la phase**, pas un
-        match particulier. La petite finale et les sous-tableaux de placement se nomment au match,
-        là où le routage et la vue publique les rendent déjà.
+        `place_en_jeu` reste à `None` : on nomme ici le tour **de la phase**, pas un match — la
+        petite finale se nomme au match, là où le routage et la vue publique la rendent déjà.
+
+        ⚠️ **`plage`, en revanche, est indispensable** (correctif de revue, axe adversarial). Sans
+        elle, `libelle_tour` nomme **par la distance au titre** un tour dont la tranche ne part pas
+        du rang 1 : une phase de `placement` alimentée par les perdants du tour 1 s'annonçait
+        « **Finale** » pour le match des places 7-8, et un tableau secondaire prélevant « les rangs
+        33 et suivants » faisait de même. C'est nommément le défaut que `libelle_tour` porte dans
+        ses propres encarts (« trois "Finale" simultanées sur le panneau de routage »), et l'écran
+        disait « tour 2 » — neutre et **vrai** — avant cette US : une régression de véracité sur la
+        surface même que l'US livre. Une plage qui commence au rang 1 est celle du titre et ne
+        discrimine rien : on ne la passe pas, pour laisser jouer la branche « distance au titre ».
 
         [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
         """
@@ -165,7 +189,12 @@ class AvancementBlocReponse(BaseModel):
             tour_courant=bloc.tour_courant,
             nb_tours=bloc.nb_tours,
             libelle_tour_courant=(
-                libelle_de_tour(unite_de_tour(type_phase), bloc.tour_courant, bloc.nb_tours)
+                libelle_de_tour(
+                    unite_de_tour(type_phase),
+                    bloc.tour_courant,
+                    bloc.nb_tours,
+                    plage=Plage(*tranche) if tranche is not None and tranche[0] > 1 else None,
+                )
                 if bloc.tour_courant is not None
                 else None
             ),
@@ -190,16 +219,20 @@ class SuiviDerouleReponse(BaseModel):
 
     @staticmethod
     def de_suivi(suivi: SuiviDeroule) -> SuiviDerouleReponse:
-        # Le type de phase vient de la **projection**, appariée à l'avancement par `ordre` — le même
-        # appariement que le front fait pour superposer les deux listes. Le porter dans
-        # `AvancementBloc` l'aurait dupliqué dans les deux moitiés de la réponse.
+        # Le type de phase et la tranche d'entrée viennent de la **projection**, appariée à
+        # l'avancement par `ordre` — le même appariement que le front fait pour superposer les deux
+        # listes. Les porter dans `AvancementBloc` les aurait dupliqués dans les deux moitiés de la
+        # réponse. L'appariement est sûr par construction (`pour_depart` itère sur
+        # `projection.blocs`) ; `tranches.get(...)` tolère malgré tout l'absence, une tranche nulle
+        # étant un cas **normal** (phase à plusieurs sources).
         types = {bloc.ordre: bloc.type for bloc in suivi.projection.blocs}
+        tranches = {bloc.ordre: bloc.tranche for bloc in suivi.projection.blocs}
         return SuiviDerouleReponse(
             effectif=suivi.effectif,
             ordre_courant=suivi.avancement.ordre_courant,
             blocs=[BlocReponse.de_bloc(bloc) for bloc in suivi.projection.blocs],
             avancement=[
-                AvancementBlocReponse.de_bloc(bloc, types[bloc.ordre])
+                AvancementBlocReponse.de_bloc(bloc, types[bloc.ordre], tranches.get(bloc.ordre))
                 for bloc in suivi.avancement.blocs
             ],
         )

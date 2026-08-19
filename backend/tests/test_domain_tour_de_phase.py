@@ -3,13 +3,17 @@
 Tests écrits **depuis le CA** de l'US, avant l'implémentation (règle 9) : la règle métier en jeu
 est celle que le commanditaire a posée au cadrage du 18/08/2026 — *« un tour est une unité
 d'avancement, jamais de classement »* —, pas ce que le code sait déjà faire. C'est précisément la
-distinction que le code **viole** aujourd'hui : `AvancementTour` dérive les tours des braquets,
-donc une phase qui ne classe pas au fil de l'eau n'a « aucun tour ».
+distinction que le code **violait** avant cette US : `AvancementTour` dérivait les tours des
+braquets, donc une phase qui ne classe pas au fil de l'eau n'avait « aucun tour ».
 
 Deux gardes ont une valeur particulière et méritent d'être lues avant les autres :
 
-- `test_l_echauffement_qui_ne_classe_rien_avance_quand_meme_par_tours` est l'**oracle de
-  l'invariant**. S'il tombe un jour, c'est que quelqu'un a re-branché le tour sur le classement.
+- `test_l_echauffement_qui_ne_classe_rien_avance_quand_meme_par_tours` garde le **registre** :
+  un type qui ne classe rien porte quand même une unité de tour. ⚠️ Il ne garde **pas** le calcul —
+  `avancement_bloc` pourrait re-dériver les tours des braquets qu'il resterait vert. L'oracle de
+  l'invariant est `test_une_phase_sans_braquet_affiche_le_tour_lu_a_son_format`, dans
+  `test_domain_suivi_deroule.py` ; la première rédaction de cet en-tête promettait le contraire
+  (relevé en revue, axe B).
 - `test_le_libelle_d_un_tour_de_tableau_se_compte_a_rebours_de_la_finale` garde la **délégation**
   au domaine du tableau. Le CA l'exige explicitement : la résolution générique doit *absorber*
   `domain/tableau.py`, pas ouvrir un troisième domicile au libellé de tour (`DETTE-020`). Un
@@ -23,19 +27,23 @@ from __future__ import annotations
 
 import pytest
 
-from domain.contrat_phase import TypePhase, contrat_de
-from domain.tour_de_phase import UniteDeTour, libelle_de_tour, unite_de_tour
+from domain.contrat_phase import TypePhase, UniteDeTour, contrat_de
+from domain.tour_de_phase import libelle_de_tour, unite_de_tour
 
 
 def test_tout_type_de_phase_avance_par_tours() -> None:
     """CA — « toute phase compte des tours, quel que soit son format ».
 
-    Complétude, pas recopie : on ne vérifie pas *quelle* unité chaque type porte (le registre le
-    dirait deux fois), on vérifie qu'**aucun** type n'en est dépourvu. C'est la garde qui échouera
-    le jour où un type neuf entrera au catalogue sans répondre à la 7ᵉ question du contrat.
+    ⚠️ **La garde est l'exhaustivité du tableau ci-dessous, pas un `isinstance`.** La première
+    rédaction itérait sur `TypePhase` en vérifiant que l'unité est bien une `UniteDeTour` : comme
+    `ContratDePhase.unite_de_tour` porte une **valeur par défaut**, un type neuf répond toujours, et
+    l'assertion ne pouvait pas échouer — elle promettait une détection qu'elle n'offrait pas
+    (relevé en revue, axes C1 et adversarial). Ce qu'on veut réellement empêcher, c'est qu'un type
+    neuf entre au catalogue sans que **quelqu'un ait décidé** de son unité ; le seul endroit où
+    cette décision se lit est le tableau de vocabulaire du test suivant.
     """
-    for type_phase in TypePhase:
-        assert isinstance(unite_de_tour(type_phase), UniteDeTour)
+    couverts = {cas.values[0] for cas in _UNITES_ATTENDUES}
+    assert couverts == set(TypePhase)
 
 
 def test_l_echauffement_qui_ne_classe_rien_avance_quand_meme_par_tours() -> None:
@@ -52,19 +60,23 @@ def test_l_echauffement_qui_ne_classe_rien_avance_quand_meme_par_tours() -> None
     assert unite_de_tour(TypePhase.ECHAUFFEMENT) is UniteDeTour.PHASE_ENTIERE
 
 
-@pytest.mark.parametrize(
-    ("type_phase", "attendue"),
-    [
-        (TypePhase.QUALIFICATION, UniteDeTour.PHASE_ENTIERE),
-        (TypePhase.ECHAUFFEMENT, UniteDeTour.PHASE_ENTIERE),
-        (TypePhase.ELIMINATION_DIRECTE, UniteDeTour.TOUR_DE_TABLEAU),
-        (TypePhase.PLACEMENT, UniteDeTour.TOUR_DE_TABLEAU),
-        (TypePhase.POULES, UniteDeTour.TOUR),
-        (TypePhase.SUISSE, UniteDeTour.RONDE),
-        (TypePhase.COLLINE, UniteDeTour.RONDE),
-        (TypePhase.BIG_SHOOT_OFF, UniteDeTour.MANCHE),
-    ],
-)
+_UNITES_ATTENDUES = [
+    pytest.param(TypePhase.QUALIFICATION, UniteDeTour.PHASE_ENTIERE),
+    pytest.param(TypePhase.ECHAUFFEMENT, UniteDeTour.PHASE_ENTIERE),
+    # `BARRAGE` est le seul type dont le diff d'E05US032 ne touche pas le contrat : il hérite du
+    # défaut. C'est donc précisément celui qu'un tableau de vocabulaire doit épingler — son absence
+    # a été relevée en revue par deux axes.
+    pytest.param(TypePhase.BARRAGE, UniteDeTour.PHASE_ENTIERE),
+    pytest.param(TypePhase.ELIMINATION_DIRECTE, UniteDeTour.TOUR_DE_TABLEAU),
+    pytest.param(TypePhase.PLACEMENT, UniteDeTour.TOUR_DE_TABLEAU),
+    pytest.param(TypePhase.POULES, UniteDeTour.TOUR),
+    pytest.param(TypePhase.SUISSE, UniteDeTour.RONDE),
+    pytest.param(TypePhase.COLLINE, UniteDeTour.RONDE),
+    pytest.param(TypePhase.BIG_SHOOT_OFF, UniteDeTour.MANCHE),
+]
+
+
+@pytest.mark.parametrize(("type_phase", "attendue"), _UNITES_ATTENDUES)
 def test_chaque_format_avance_dans_l_unite_de_son_metier(
     type_phase: TypePhase, attendue: UniteDeTour
 ) -> None:
@@ -92,6 +104,34 @@ def test_le_libelle_nomme_le_tour_dans_le_mot_de_la_salle(
 ) -> None:
     """CA — « Ronde 3 », « Manche 2 », « Tour 3 »."""
     assert libelle_de_tour(unite, tour, nb_tours) == attendu
+
+
+@pytest.mark.parametrize(
+    ("unite", "attendu"),
+    [
+        (UniteDeTour.RONDE, None),
+        (UniteDeTour.TOUR, None),
+        (UniteDeTour.MANCHE, None),
+        # Le tableau fait exception, et c'est le point : son tour unique porte un **nom**, pas un
+        # numéro. La clause du CA vise « ne pas annoncer de numéro », pas « ne rien dire ».
+        (UniteDeTour.TOUR_DE_TABLEAU, "Finale"),
+    ],
+)
+def test_une_phase_a_un_seul_tour_n_annonce_pas_de_numero(
+    unite: UniteDeTour, attendu: str | None
+) -> None:
+    """CA — « une phase à **un seul** tour n'annonce pas de numéro : il n'y a rien à distinguer ».
+
+    Cas réels sur un petit plateau de club : une poule de deux archers, un système suisse dont
+    l'effectif n'autorise qu'une ronde, un Big Shoot Off à manche unique.
+
+    ⚠️ **Ce test est né d'un relevé de revue, et le défaut vaut d'être nommé** : la clause n'était
+    appliquée qu'à `PHASE_ENTIERE`, et le test censé la couvrir citait le CA en docstring puis
+    n'exerçait que le cas qui passait déjà. Le paramètre `nb_tours`, présent dans la signature et
+    inutilisé, était la trace de la règle lue puis perdue. C'est exactement le mode de défaillance
+    que la règle 9 vise — un test rédigé d'après l'implémentation entérine le malentendu.
+    """
+    assert libelle_de_tour(unite, 1, 1) == attendu
 
 
 def test_une_phase_entiere_n_annonce_aucun_libelle_de_tour() -> None:

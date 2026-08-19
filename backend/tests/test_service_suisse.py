@@ -41,7 +41,7 @@ from domain.politiques import (
     SeedingSerpent,
     registre_par_defaut,
 )
-from domain.suisse import ConfigurationSuisse
+from domain.suisse import ConfigurationSuisse, rondes_maximales
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -760,3 +760,61 @@ def test_un_plan_pose_sur_un_effectif_plus_petit_est_rapporte() -> None:
 
     assert etat.effectif == 6
     assert [c.raison.value for c in etat.conflits] == ["non_posee"]
+
+
+# --- Où en est cette phase ? — port `LecteurAvancementDePhase` (E05US032, ADR-0090) -------------
+
+
+def test_l_avancement_compte_les_rondes_que_l_effectif_autorise() -> None:
+    """CA d'E05US032 — « le nombre de tours est **dérivé** quand la structure le détermine ».
+
+    Pour un système suisse, la structure c'est le réglage **borné par l'effectif du jour** : un
+    suisse réglé à 7 rondes n'en apparie que ce que le plateau permet sans ré-affrontement. C'est la
+    borne qui fait foi, pas le réglage — l'atelier l'affiche déjà en clair pour cette raison
+    (E05US030), et le suivi doit dire la même chose.
+
+    ⚠️ Ce test naît d'un relevé de revue : la réalisation du port n'était éprouvée que par une
+    **doublure** qui rendait ce qu'on lui donnait, donc aucune des trois dérivations réelles n'était
+    gardée par quoi que ce soit.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=7))
+
+    avancement = monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id)
+
+    assert avancement is not None
+    assert avancement.nb_tours == rondes_maximales(4)
+    assert avancement.tour_courant == 1
+
+
+def test_l_avancement_avance_d_une_ronde_quand_la_precedente_est_close() -> None:
+    """Le tour courant est la première ronde **non close** — celle que la salle tire."""
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    for numero in (1, 2):
+        _gagner(service, monde, numero, le_bas=False)
+
+    avancement = service.avancement_de_phase(monde.tournoi_id, monde.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 2
+
+
+def test_une_phase_suisse_sans_population_ne_rend_pas_zero_tour() -> None:
+    """Défaut trouvé en revue (axes B et C1) : le port répondait **zéro tour**.
+
+    `_photo` rend délibérément `rondes_maximales=0` sous deux tireurs, et c'est un cas **normal** :
+    une phase de suisse se règle à l'atelier bien avant que sa source amont ait classé qui que ce
+    soit. Le `min(nb_rondes, rondes_maximales)` donnait alors `0` — soit exactement le « zéro tour »
+    que l'US existe pour supprimer, réintroduit par la seule branche que rien n'exerçait.
+
+    Ne rien savoir se dit `None` : le domaine replie alors sur le plancher d'un tour, comme pour
+    n'importe quel type sans lecteur.
+    """
+    monde = _Monde()
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+
+    assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None

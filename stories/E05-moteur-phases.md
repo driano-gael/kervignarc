@@ -1386,6 +1386,16 @@ pose le concept dont il aura besoin, et qui manque de toute façon au suivi.
   Complète [ADR-0083](../docs/adr/0083-le-contrat-de-phase-jouable.md) — le contrat de phase est
   l'endroit où chaque format répond aux questions « comment on me joue », et « en combien de tours,
   sous quel nom » en est une.
+- ✅ **Arbitrages rendus en revue, le 19/08/2026** *(reversés ici dans le même commit, règle 9)* :
+  - **le CA fait foi sur la portée** — le tour s'affiche pour **chaque** phase démarrée et sur les
+    **deux** écrans (pilotage et salle). La divergence relevée par l'axe C1 est tranchée en faveur
+    de `stories/` : le libellé descend dans le composant partagé `SchemaBraquets`, et non dans la
+    seule phrase d'en-tête du suivi — c'est le composant que monte l'écran de salle, la surface que
+    l'US invoque. `docs/fonctionnel/` a été aligné, qui rétrécissait à « seule la phrase d'état
+    change » ;
+  - **une phase à un seul tour n'annonce rien**, y compris en poules, en suisse et en Big Shoot Off
+    — le code ne l'appliquait qu'à la qualification et à l'échauffement. Le tableau garde son
+    exception : son tour unique s'appelle « Finale », qui est un **nom**, pas un numéro.
 - **Dépend de** : rien · **Jalon** : J3 · **Origine** : cadrage du 18/08/2026 (recadrage de l'US
   « L'organisateur ouvre la ronde suivante », dont la seconde moitié devient `E05US033`)
 
@@ -1436,6 +1446,21 @@ s'interrompre pour le repas, une réorganisation de salle, une annonce.
   donc pas s'arrêter en cours de route.
 - **CA — la pause se voit du public et de l'écran de salle.** Sans mention explicite, un spectateur
   lira l'arrêt comme une panne.
+- **CA — un refus dit ce qui manque** *(CA **récupéré** de l'ancienne `E05US032`)* : quelles
+  rencontres ne sont pas validées, et lesquelles ne sont pas encore saisies. Le refus muet actuel
+  (`ConfigurationSuisseInvalide`) n'est pas un message d'écran.
+- **CA — l'état d'un tour devient lisible en tant que tel** *(CA **récupéré** de l'ancienne
+  `E05US032`)*, et non déduit du compte de résultats.
+  ⚠️ **Ce CA est partiellement rouvert par `E05US032`, qui a tranché dans l'autre sens sans le
+  dire** : `ServiceSuisse.avancement_de_phase` *dérive* précisément l'état de ronde du compte de
+  résultats relu, et l'ADR-0090 a conservé la **dérivation à la lecture** — c'est une décision, pas
+  un non-choix. Reste donc à trancher ici, sur preuve d'usage : ce que le pilotage exige de plus
+  qu'un numéro de tour lisible (une clôture persistée ? un simple message circonstancié ?).
+- ⚠️ **Ces deux CA avaient disparu sans trace au recadrage du 18/08/2026** — le bloc supprimé en
+  portait **trois**, et un seul (« la ronde suivante ne s'ouvre que sur décision de l'organisateur »)
+  a été explicitement révoqué. Rattrapé par l'axe adversarial de `/revue-us`. C'est pire qu'un CA
+  périmé, que la règle 9 sait détecter : un CA **effacé** ne s'écrit pas de travers, il ne s'écrit
+  plus du tout. Leçon à retenir pour tout recadrage : **compter les puces avant et après**.
 - ⚠️ **Deux pièges à vérifier avant de coder.** `EN_PAUSE` **gèle la validation des scores** : à un
   arrêt programmé tout est validé, donc c'est cohérent, mais il faut s'assurer qu'une **correction**
   reste possible pendant la pause — sinon on crée un cul-de-sac en salle. Et le **routage** doit dire

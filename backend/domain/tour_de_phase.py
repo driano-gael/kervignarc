@@ -24,7 +24,10 @@ from domain.contrat_phase import TypePhase, UniteDeTour, contrat_de
 from domain.plage import Plage
 from domain.tableau import libelle_tour
 
-__all__ = ["UniteDeTour", "libelle_de_tour", "unite_de_tour"]
+# ⚠️ `UniteDeTour` n'est **pas** ré-exporté : il vit dans `domain.contrat_phase`, et deux chemins
+# d'import pour un même type sont l'amorce exacte de la divergence que ce module combat par ailleurs
+# (`DETTE-020`). Relevé en revue par deux axes.
+__all__ = ["libelle_de_tour", "unite_de_tour"]
 
 _MOT_DE_LA_SALLE: dict[UniteDeTour, str] = {
     UniteDeTour.TOUR: "Tour",
@@ -56,6 +59,14 @@ def libelle_de_tour(
     « Qualification », jamais « Qualification — tour 1 sur 1 ». L'appelant décide de n'afficher
     rien, et un `None` explicite l'empêche de concaténer un séparateur orphelin.
 
+    ⚠️ **La même clause vaut pour toute phase à un seul tour**, pas seulement pour `PHASE_ENTIERE` :
+    une poule de deux archers, un système suisse dont l'effectif n'autorise qu'une ronde, un Big
+    Shoot Off à manche unique n'annoncent **rien**. C'est la lettre du CA (« il n'y a rien à
+    distinguer »), et la première rédaction ne l'appliquait qu'au premier cas — relevé en revue
+    (axe B), avec la précision qui compte : le test censé couvrir ce CA n'exerçait que le cas qui
+    passait déjà. Le **tableau** fait exception et n'a pas besoin de la garde : son tour unique
+    s'appelle « Finale », qui est un nom.
+
     ⚠️ **`TOUR_DE_TABLEAU` délègue, il ne recalcule pas.** `DETTE-020` compte déjà **deux**
     domiciles pour le libellé de tour d'un arbre (`domain.tableau.libelle_tour` et le front
     `saisie-duels/duel.ts`), et `E07US005` a failli en ouvrir un troisième avant de le refermer en
@@ -70,5 +81,9 @@ def libelle_de_tour(
     if unite is UniteDeTour.PHASE_ENTIERE:
         return None
     if unite is UniteDeTour.TOUR_DE_TABLEAU:
+        # Pas de garde `nb_tours <= 1` ici : le tour unique d'un tableau de 2 s'appelle
+        # « Finale » — un **nom**, pas un numéro. La clause du CA vise les numéros nus.
         return libelle_tour(tour, nb_tours, place_en_jeu, plage)
+    if nb_tours <= 1:
+        return None
     return f"{_MOT_DE_LA_SALLE[unite]} {tour}"

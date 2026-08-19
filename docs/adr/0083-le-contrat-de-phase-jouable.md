@@ -56,6 +56,13 @@ structurel est justifié par le code d'aujourd'hui, pas par une évolution suppo
 Ce qu'une phase doit savoir répondre pour être jouable tient en six questions — celles que les dix
 tables ci-dessus posaient chacune dans son coin :
 
+> 🔄 **Une 7ᵉ question s'est ajoutée le 18/08/2026** — *en combien de tours, et sous quel nom ?*
+> (`ContratDePhase.unite_de_tour`, [ADR-0090](0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md)).
+> Elle est décrite là-bas et n'est pas reprise ici, mais **ce paragraphe ne dit plus six sans le
+> dire** : un lecteur qui arrive par cet ADR pour ajouter un type de phase en oublierait une. C'est
+> exactement le mode de défaillance que les deux encarts ⚠️ de cet ADR documentent déjà — un
+> paragraphe qui porte l'affirmation inverse du code livré. Relevé en revue d'E05US032 (axe C2).
+
 1. **Qui entre dedans ?** — générique depuis [ADR-0068](0068-le-moteur-consomme-les-prelevements-declares.md)/E05US024, aucune reprise nécessaire.
 2. **Qu'est-ce qu'on saisit ?** — le *décor* : un arbre de duels, des rencontres en groupes, une
    volée collective.
@@ -214,6 +221,13 @@ des duellistes ([ADR-0049](0049-saisie-et-scoring-des-duels.md) §4).
 > volontairement pas été fait. C'est le régime que la règle de `CLAUDE.md` cherche : un ADR dont la
 > section décrit un code vérifiable, jamais une intention.
 >
+> 🔄 **Re-vérifiée le 18/08/2026**, l'ADR étant rouvert par E05US032 (sa section *Décision* §1 gagne
+> une **7ᵉ question**). Le champ ajouté est `ContratDePhase.unite_de_tour` — `domain/contrat_phase.py`,
+> avec l'énumération `UniteDeTour` et une valeur renseignée pour six des neuf types du registre, les
+> trois autres tenant le défaut prudent. Sa **résolution en libellé** vit dans
+> `domain/tour_de_phase.py` (`unite_de_tour`, `libelle_de_tour`), qui délègue à
+> `domain.tableau.libelle_tour` pour l'arbre. Cf. [ADR-0090](0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md).
+>
 > 🔄 **Re-vérifiée le 14/08/2026**, l'ADR étant rouvert par E05US028 (sa section *Décision* §2 a
 > reçu le verdict du pari, et une capacité a été renommée).
 >
@@ -344,7 +358,8 @@ ajouter un — `deroule._TYPES_DEROULES = TYPES_DEROULES` devient un alias local
 `TYPES_SIGNALES_EN_ECART` en a un, et il dérive, donc il suit sans être touché). Aucune migration :
 c'est du vocabulaire de code, rien n'en est persisté.
 
-**Ce qui n'a pas bougé, et qui était le vrai pari** : les **six questions**, `DecorDeSaisie`
+**Ce qui n'a pas bougé, et qui était le vrai pari** *(à la date d'E05US028 ; une **7ᵉ** question est
+arrivée en E05US032, cf. l'encart du §1)* : les **six questions**, `DecorDeSaisie`
 (`VOLEE_COLLECTIVE` existait déjà), `PlanDeCibles`, et le grain — `FIN_DE_SERIE` était admis pour ce
 type depuis E05US015. Le §2 pariait qu'un contrat taillé sur le format le plus riche accueillerait
 le plus pauvre au prix d'un assouplissement ; le prix s'est révélé être **un mot**, pas une

@@ -249,9 +249,19 @@ class ServiceSuisse:
         ne tourne, même si la phase n'est pas clôturée — c'est exactement l'état où `E05US033`
         proposera de lancer la suite.
 
+        ⚠️ **Rend `None` — et non « zéro tour » — quand la borne vaut 0** (correctif de revue, axes
+        B et C1). `_photo` rend délibérément `rondes_maximales=0` sous deux tireurs (« aucune ronde
+        n'est appariable »), cas **normal et durable** d'une phase réglée à l'atelier dont la source
+        amont n'a encore classé personne. Le `min` donnait alors `0`, exactement le « zéro tour »
+        que cette US existe pour supprimer — et le plancher du domaine ne rattrapait pas, puisqu'il
+        ne joue que si le lecteur est *absent*, pas s'il répond `0`. Ne rien savoir se dit `None`,
+        comme chez les deux jumeaux sur une phase vide.
+
         [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
         """
         etat = self.etat(tournoi_id, phase_id)
+        if etat.rondes_maximales == 0:
+            return None
         ouverte = next((ronde for ronde in etat.rondes if not ronde.close), None)
         return AvancementDePhase(
             nb_tours=min(etat.nb_rondes, etat.rondes_maximales),

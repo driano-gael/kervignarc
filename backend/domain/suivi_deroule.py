@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from domain.deroule import TourBraquet
 from domain.phase import StatutPhase
 
-_STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
+STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
 """Les statuts où un « tour en cours » a un sens.
 
 Une phase **à venir** n'en a pas encore ; une phase **terminée** n'en a plus, même si des duels
@@ -132,6 +132,19 @@ def avancement_bloc(
     ⚠️ **Le braquet prime sur le lu quand il existe**, et ce n'est pas arbitraire : la règle des
     braquets connaît le détail (« ce tour est terminé quand ses N duels sont tranchés ») là où un
     service ne rend qu'un numéro. Les deux ne se contredisent pas, l'un est plus fin.
+
+    **`nb_tours` ne descend jamais sous 1, `tour_courant` est filtré par le statut.** Les deux
+    asymétries sont voulues et se lisent ensemble : un *compte* de tours est **structurel** — une
+    phase à venir en compte déjà autant qu'elle en comptera —, tandis qu'un *tour courant* est la
+    conséquence d'un geste de l'organisateur. Le plancher à 1 est une ceinture : un lecteur qui
+    répondrait `0` (le suisse le faisait, sous deux tireurs) ferait réapparaître le « zéro tour »
+    que cette US supprime, et le repli `else 1` ne joue que quand le lecteur est **absent**. Les
+    deux gardes ont été posées sur relevé de revue (axes B, C1).
+
+    ⚠️ **Limite connue** : une phase **en tableau** dont la tranche d'entrée est indéterminable
+    (plusieurs sources) ne produit aucun braquet et retombe donc sur `1`, ce qui est faux — elle en
+    compte autant que son arbre. Sans effet visible aujourd'hui (`nb_tours` n'est rendu par aucun
+    écran), mais `E05US033` consommera ce champ : à reprendre là-bas, où le besoin le nommera.
     """
     remplis = tuple(
         AvancementTour(
@@ -141,7 +154,7 @@ def avancement_bloc(
         )
         for braquet in tours
     )
-    demarree = statut in _STATUTS_DEMARRES
+    demarree = statut in STATUTS_DEMARRES
     lu = avancement_lu if demarree else None
     return AvancementBloc(
         ordre=ordre,
@@ -155,7 +168,7 @@ def avancement_bloc(
         nb_tours=(
             len(remplis)
             if remplis
-            else (avancement_lu.nb_tours if avancement_lu is not None else 1)
+            else max(1, avancement_lu.nb_tours if avancement_lu is not None else 1)
         ),
         duels_joues=sum(t.duels_joues for t in remplis),
         duels_attendus=sum(t.duels_attendus for t in remplis),
@@ -170,7 +183,7 @@ def tour_courant(statut: StatutPhase, tours: Sequence[AvancementTour]) -> int | 
     lancer. Rend `None` quand tous les duels sont tranchés : plus rien ne tourne, même si la phase
     n'est pas encore clôturée.
     """
-    if statut not in _STATUTS_DEMARRES:
+    if statut not in STATUTS_DEMARRES:
         return None
     for tour in tours:
         if not tour.est_termine:
@@ -198,6 +211,6 @@ class AvancementDeroule:
         celle qui doit se refermer d'abord.
         """
         for bloc in self.blocs:
-            if bloc.statut in _STATUTS_DEMARRES:
+            if bloc.statut in STATUTS_DEMARRES:
                 return bloc.ordre
         return None

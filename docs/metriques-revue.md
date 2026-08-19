@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-19 | `E05US032` | 26 | +1456/−113 | ~15 min | ~35 min | D (00:20→00:47) | majeur:2 mineur:4 suggestion:2 | majeur:5 mineur:6 | majeur:6 mineur:4 suggestion:2 | majeur:3 mineur:5 suggestion:3 | majeur:5 mineur:6 suggestion:2 | **aucun bloquant** — 5 majeurs de conjonction trouvés par D et C1 seuls | 1 |
 | 2026-08-18 | `E05US031` | 43 | +3064/−177 | ~10 min | ~45 min | D (16:12→16:57) | majeur:2 mineur:2 suggestion:2 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | majeur:2 mineur:3 suggestion:2 | majeur:4 mineur:2 suggestion:1 | C1 | 1 |
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
 
@@ -63,3 +64,41 @@ ligne.
 demandé une heure de plus que la revue elle-même, l'essentiel étant les **trois fichiers de tests de
 montage** qui manquaient (+26 cas). C'est la contrepartie honnête d'un axe B qui fait son travail :
 il ne coûte rien à la revue et beaucoup à la correction.
+
+---
+
+### Passe `E05US032` (19/08/2026) — zéro bloquant, et pourtant la passe la plus corrective
+
+**Ce que cette ligne apprend, et qui contredit une lecture naïve du tableau** : *aucun* axe n'a rendu
+de bloquant, et c'est pourtant la passe qui a demandé le plus de correctifs de code — cinq défauts de
+correction réels, dont un qui faisait se contredire deux écrans du produit. « Zéro bloquant » ne veut
+pas dire « peu à corriger » : la sévérité mesure ce qui empêche de merger, pas ce qui est faux.
+
+**Convergence et complémentarité, mesurées** :
+
+- **`DETTE-031` aggravée sans que le registre bouge** a été trouvée par les **cinq** axes. C'est le
+  score le plus élevé jamais observé sur une remarque, et il dit quelque chose de désagréable : ce
+  n'est pas la détection qui manque, c'est le réflexe d'écriture. La ligne du registre portait déjà
+  « 3ᵉ récidive » ; c'était la 4ᵉ.
+- **Le filet trop étroit et muet** (`except` sans `KeyError`, sans log) : cinq axes également.
+- **Trois majeurs n'ont eu qu'un seul trouveur**, et tous trois étaient des bugs :
+  - *poules : le tour avance avant validation* — **D seul** (adversarial) ;
+  - *« Finale » annoncée sur un tableau de placement* — **D seul** ; c'était nommément le « risque
+    assumé » que l'ADR demandait à la revue de vérifier, et aucun axe de grille ne l'a vu ;
+  - *le CA « une phase à un seul tour n'annonce pas de numéro » non appliqué, et le test réécrit pour
+    coller au code* — **B seul**. C'est la raison d'être de la règle 9, prise en flagrant délit.
+- **Deux CA effacés sans trace au recadrage** — **D seul**. Le bloc de CA supprimé en portait trois,
+  un seul avait été explicitement révoqué. La règle 9 sait détecter un CA *périmé* ; elle ne voit pas
+  un CA *effacé*.
+
+**L'enseignement de procédure** : l'axe adversarial a produit **trois** des cinq majeurs uniques.
+Sur une US qui pose une abstraction neuve, il ne double pas la grille — il regarde ailleurs. La
+décision d'ADR-0013 de le rendre *requis* sur les changements structurels est confirmée par les
+chiffres, pour la deuxième passe consécutive.
+
+**Un cas nouveau, à retenir** : l'axe C2 a montré qu'un **encart rédactionnel placé dans la section
+« Porté dans le code par » d'un ADR neutralisait le contrôle `portage-symbole-absent` de l'atlas** —
+en citant un fichier non lisible symbole par symbole, le parseur y rattachait toute la liste. Un
+garde-fou désarmé par la mise en forme, invisible au vert. C'est la première fois qu'une revue trouve
+un garde-fou neutralisé *sans* qu'aucun fichier de configuration soit touché.
+

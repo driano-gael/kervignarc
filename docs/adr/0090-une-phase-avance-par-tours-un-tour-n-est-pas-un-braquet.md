@@ -104,9 +104,19 @@ les autres formats, ni le nombre ni le tour courant ne se déduisent sans donné
 réglé à 7 rondes n'en joue que 5 si l'effectif ne permet pas plus, et « quelle ronde tourne » dépend
 de ce qui est validé. Les **deux** nombres viennent donc du service qui déroule la phase.
 
-Plutôt qu'un second mécanisme, cet ADR **reprend à la lettre** le patron d'[ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md) :
+Plutôt qu'un second mécanisme, cet ADR **reprend le patron** d'[ADR-0084](0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md) :
 un port étroit, réalisé par les services de format, **branché par type au composition root**
-(règle 8), et consommé par le seul service qui pose la question. Le suivi ne connaît aucun service de
+(règle 8), et consommé par le seul service qui pose la question.
+
+⚠️ **Il ne le reprend pas *à la lettre*, et l'écart a un coût connu.** Le port jumeau porte un
+`resolveur` en paramètre, précisément pour partager la descente de chaîne amont — sa docstring dit
+« en laisser le service de format fabriquer un neuf ferait payer deux fois un tableau amont partagé
+(`DETTE-031`) ». Celui-ci ne le porte pas : un déroulé qualif → poules → suisse refait une descente
+complète **par phase**. La première rédaction de cet ADR revendiquait « à la lettre » ; c'était
+inexact, relevé en revue (axe C1), et l'écart est inscrit à [`DETTE-031`](../dette.md) avec son
+remède — porter le résolveur au port, à traiter avec `E05US033` qui rouvrira ces réalisations. Le
+lecteur n'est par ailleurs interrogé que pour une phase **démarrée**, ce qui borne le surcoût aux
+une ou deux phases qui tournent réellement. Le suivi ne connaît aucun service de
 format : il connaît **cette question**, et `bootstrap/` dit qui y répond.
 
 Une phase dont aucun lecteur n'est branché rend son **nombre** de tours (structurel) sans tour
@@ -128,6 +138,19 @@ personne devant : une phase muette y coûte une ligne incomplète, une exception
 - **Le branchement est tardif et visible**, comme pour ADR-0084 : un service de format est construit
   puis enregistré auprès du suivi. Un cycle qu'on ne voit pas est un cycle qu'on réintroduit — donc
   il est explicite dans `bootstrap/`, jamais derrière un import paresseux.
+- **Ce module ne calcule pas le nombre de tours.** Il vit là où vit la donnée qui le détermine :
+  les braquets pour un tableau, l'état du service pour un suisse ou des poules. La première
+  rédaction de cet ADR annonçait le contraire, en nommant dans sa section de portage une classe qui
+  n'a jamais été écrite — exactement ce que `CLAUDE.md` met en garde (« nommer un module vide
+  reproduit le défaut d'ADR-0017 »), et c'est le contrôle `portage-symbole-absent` de l'atlas qui
+  l'a rattrapé.
+  ⚠️ **Cette note a d'abord été écrite *dans* la section de portage, et elle y désarmait le contrôle
+  qui venait de rendre service** : en citant `CLAUDE.md` à l'intérieur d'un bullet de portage, le
+  parseur de l'atlas rattachait toute la liste de symboles à ce fichier — qu'il ne sait pas lire
+  symbole par symbole — et dégradait un `portage-symbole-absent` (précis) en `portage-non-verifiable`
+  (flou). Relevé par trois axes de revue. Un garde-fou neutralisé par la façon d'écrire n'est pas
+  vert, et le cas mérite d'être retenu : **la section de portage n'accueille que des symboles réels,
+  jamais un récit.**
 - **Risque assumé** : le libellé générique devient un point de passage obligé. S'il se met à
   réimplémenter ce que `domain/tableau.py` sait déjà faire, `DETTE-020` gagne un troisième domicile
   au lieu d'en perdre un. La revue doit le vérifier explicitement.
@@ -139,12 +162,6 @@ personne devant : une phase muette y coûte une ligne incomplète, une exception
   module qui l'importe.
 - `backend/domain/tour_de_phase.py` — `unite_de_tour`, `libelle_de_tour` : la résolution en mot de la
   salle, qui **délègue** à `domain.tableau.libelle_tour` pour l'arbre.
-  ⚠️ **Ce module ne calcule pas le nombre de tours**, contrairement à ce que la première rédaction de
-  cet ADR annonçait (une classe `ToursDePhase` y était nommée avant d'être écrite — exactement le
-  défaut que `CLAUDE.md` met en garde : *« nommer un module vide reproduit le défaut d'ADR-0017 »*,
-  et c'est le contrôle de l'atlas qui l'a rattrapé). Le nombre vit là où vit la donnée qui le
-  détermine : les braquets pour un tableau, `EtatSuisse` pour un suisse, `EtatPoules` pour des
-  poules.
 - `backend/domain/suivi_deroule.py` — `AvancementBloc` porte désormais un tour courant **générique**,
   découplé de `TourBraquet` ; c'est ici que la séparation « avancer ≠ classer » est tenue.
 - `backend/application/suivi_deroule.py` — `LecteurAvancementDePhase` (le port) et sa consommation

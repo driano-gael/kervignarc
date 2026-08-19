@@ -264,10 +264,17 @@ class ServicePoules:
         des poules d'effectifs inégaux n'ont pas le même nombre de tours, et la phase avance au
         rythme de la plus longue.
 
-        Le tour courant est le **premier tour incomplet** — celui dont une rencontre n'a pas encore
-        de vainqueur. Même convention que les braquets d'un tableau (`domain.suivi_deroule`) :
-        « non terminé » et non « entamé », pour que l'organisateur lise « on attaque le tour 3 »
-        entre deux tours plutôt que « rien en cours ».
+        Le tour courant est le **premier tour incomplet** — celui dont une rencontre n'est pas
+        encore **validée**. « Non terminé » et non « entamé », pour que l'organisateur lise « on
+        attaque le tour 3 » entre deux tours plutôt que « rien en cours ».
+
+        ⚠️ **`verrouille`, et surtout pas `vainqueur`** (correctif de revue, axe adversarial). Un
+        `Duel` désigne son vainqueur **dès que le seuil de sets est atteint**, donc avant que le
+        scoreur valide : la première rédaction faisait afficher « Tour 2 » au suivi pendant que
+        `rencontres_a_tirer` et `_resultat_de` — qui lisent tous deux `verrouille` — envoyaient
+        encore la salle sur le tour 1. Deux écrans du même produit se contredisaient sur l'état du
+        pas de tir. Les deux formats jumeaux livrés dans le même diff utilisaient déjà la notion
+        validée (`ronde.close`, `manche.jouee`) ; c'est cette réalisation-ci qui divergeait.
 
         [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
         """
@@ -278,7 +285,7 @@ class ServicePoules:
         inacheves = {
             rencontre.tour
             for rencontre in rencontres
-            if rencontre.duel is None or rencontre.duel.vainqueur is None
+            if rencontre.duel is None or not rencontre.duel.verrouille
         }
         return AvancementDePhase(
             nb_tours=max(rencontre.tour for rencontre in rencontres),

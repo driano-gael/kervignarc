@@ -130,12 +130,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0086"
   },
   {
-   "code": "portage-non-verifiable",
-   "message": "annonce unite_de_tour, libelle_de_tour, domain.tableau.libelle_tour, ToursDePhase, EtatSuisse, EtatPoules dans « CLAUDE.md », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
-   "severite": "signal",
-   "sujet": "ADR-0090"
-  },
-  {
    "code": "portage-symbole-absent",
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
@@ -198,6 +192,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 32
+  "signaux": 31
  }
 };

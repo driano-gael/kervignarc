@@ -1124,13 +1124,22 @@ def create_app(
     # délibérément le patron d'[ADR-0084] repris à la lettre, plutôt qu'un second mécanisme de
     # résolution qui aurait été la 4ᵉ occurrence de la même idée.
     #
-    # Ce qui manque ici se lit en creux : la qualification, l'échauffement, le barrage et le
-    # placement n'ont **aucun** lecteur, et c'est correct — ils comptent un tour (ADR-0090 §3),
-    # donc il n'y a rien à demander à personne. Le suivi rendra `nb_tours=1` sans tour courant.
+    # Ce qui manque ici se lit en creux, et l'énumération doit être **complète** sous peine de se
+    # lire comme une garantie (relevé en revue par trois axes) : la qualification, l'échauffement,
+    # le barrage et le placement n'ont aucun lecteur, et c'est **correct** — ils comptent un tour
+    # (ADR-0090 §3). L'élimination directe non plus, et c'est correct aussi : ses tours se lisent
+    # dans les braquets de la projection, sans passer par un service.
     #
-    # Variables **annotées**, même raison qu'aux branchements de classement plus haut :
-    # `app.state.*` rend `Any`, donc passer l'attribut directement ferait sauter la vérification
-    # du Protocol.
+    # ⚠️ **La colline est le seul cas où le silence est faux.** Elle est déclarée
+    # `UniteDeTour.RONDE` et l'ADR §3 lui promet « nombre de rondes réglé », mais aucun
+    # `ServiceColline` n'existe encore (`DETTE-028`, volet colline, `E05US027`) : elle retombera
+    # donc sur « un tour, aucun tour courant ». Manque assumé et nommé, pas un branchement oublié.
+    #
+    # Variables **annotées** : cela type le **paramètre passé** à `brancher_lecteur_avancement` et
+    # documente l'intention. ⚠️ Cela ne **prouve** rien — mypy accepte silencieusement d'affecter
+    # une expression `Any` (`app.state.*`) à une variable annotée. La conformité au Protocol et
+    # l'appariement type→service sont garantis par le test de composition, pas par le typage ;
+    # le commentaire d'origine affirmait le contraire (relevé en revue, axe A).
     #
     # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
     avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules

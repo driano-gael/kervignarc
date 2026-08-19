@@ -184,6 +184,10 @@ def test_le_tour_lu_ne_survit_pas_a_une_phase_non_demarree() -> None:
     )
 
     assert bloc.tour_courant is None
+    # ⚠️ Mais le **compte** survit, lui : un compte de tours est structurel — une phase à venir en
+    # compte déjà autant qu'elle en comptera. L'asymétrie est voulue et n'était gardée nulle part
+    # (relevé en revue par trois axes) : un refactor qui « harmoniserait » les deux lignes passait.
+    assert bloc.nb_tours == 5
 
 
 def test_une_phase_en_pause_garde_le_tour_lu_a_son_format() -> None:

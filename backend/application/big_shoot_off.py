@@ -298,15 +298,23 @@ class ServiceBigShootOff:
         Off qui a désigné son vainqueur n'a plus de tour en cours, et sa liste de sortants s'écourte
         d'elle-même (`manches_ignorees`).
 
+        ⚠️ **Un barrage suspend la phase, donc plus aucun tour ne tourne** (correctif de revue, axes
+        C1 et adversarial). `_photo` porte déjà cette règle — « `None` quand la phase est finie **ou
+        suspendue par un barrage** : dans les deux cas il n'y a rien à saisir » — et la première
+        rédaction n'en reprenait que la moitié, annonçant « Manche 3 » pendant que l'écran de saisie
+        disait qu'il n'y avait rien à tirer. Deux définitions de « la manche qui tourne » dans le
+        même service.
+
         [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
         """
         etat = self.etat(tournoi_id, phase_id)
         if not etat.manches:
             return None
         ouverte = next((manche for manche in etat.manches if not manche.jouee), None)
+        suspendue = bool(etat.barrage_entre)
         return AvancementDePhase(
             nb_tours=len(etat.manches),
-            tour_courant=None if etat.termine or ouverte is None else ouverte.numero,
+            tour_courant=(None if etat.termine or suspendue or ouverte is None else ouverte.numero),
         )
 
     def classement_de_phase(

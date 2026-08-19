@@ -297,7 +297,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 82,
+   "occurrences": 83,
    "source": "api"
   },
   {
@@ -511,7 +511,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 78,
+   "occurrences": 79,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -2683,8 +2683,8 @@ window.ATLAS.carte = {
   "aretes_front": 148,
   "enchevetrements": 3,
   "features": 46,
-  "imports": 832,
-  "imports_entre_couches": 705,
+  "imports": 833,
+  "imports_entre_couches": 706,
   "plus_gros_noeud": 23,
   "ports": 61,
   "ports_hors_domaine": 21,

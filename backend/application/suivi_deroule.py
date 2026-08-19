@@ -6,7 +6,10 @@ Compose deux choses qui existent déjà, sans en recalculer aucune :
   schéma à braquets* qu'à l'atelier — le mot « même » est dans le CA, et il est contraignant : si
   le suivi redessinait, l'organisateur ne reconnaîtrait pas ce qu'il a composé ;
 - l'**avancement** (`domain.suivi_deroule`), c'est-à-dire ce qui est joué, dénombré ici depuis les
-  tableaux reconstruits.
+  tableaux reconstruits — et, depuis E05US032, **demandé au service du format** pour les phases qui
+  ne se dessinent pas en braquets (port `LecteurAvancementDePhase`, ADR-0090 §5). Le module compose
+  donc toujours sans recalculer de règle métier, mais il **fait recomposer** : c'est le coût inscrit
+  à `DETTE-031`.
 
 **Un exempt (bye) n'est pas un duel joué.** C'est le piège central de la composition : dans un
 tableau incomplet, les exempts sont gagnés d'office dès la construction. Les compter afficherait
@@ -25,6 +28,7 @@ Lecture seule et synchrone hors boucle événementielle (règle 7).
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -41,9 +45,16 @@ from domain.ports import (
     PhaseRepository,
     TournoiRepository,
 )
-from domain.suivi_deroule import AvancementDePhase, AvancementDeroule, avancement_bloc
+from domain.suivi_deroule import (
+    STATUTS_DEMARRES,
+    AvancementDePhase,
+    AvancementDeroule,
+    avancement_bloc,
+)
 from domain.tableau import Match, Tableau
 from domain.tournoi import TournoiId
+
+_logger = logging.getLogger(__name__)
 
 
 class LecteurAvancementDePhase(Protocol):
@@ -249,8 +260,10 @@ class ServiceSuiviDeroule:
         Un créneau **sans phase** rend un suivi vide plutôt qu'une erreur : avant qu'un format soit
         appliqué, l'écran doit afficher « rien à suivre », pas une page cassée.
 
-        # DETTE-031 : tout est **recalculé à chaque appel** — le compte des engagés, et surtout la
-        # reconstruction de chaque phase en tableau (qui rejoue le classement complet du départ).
+        # DETTE-031 : tout est **recalculé à chaque appel** — le compte des engagés, la
+        # reconstruction de chaque phase en tableau (qui rejoue le classement complet du départ), et
+        # depuis E05US032 la recomposition de chaque phase **déroulée par un service de format**
+        # (poules, suisse, Big Shoot Off) qui tourne, cf. `_avancement_lu`.
         # Endpoint public, pollé toutes les 10 s par deux surfaces. Assumé au contexte mono-club et
         # local ; le remède est borné (mémoïsation par version, invalidée par donnees_modifiees),
         # mais aucune mesure ne le réclame aujourd'hui. Cf. docs/dette.md.
@@ -287,16 +300,41 @@ class ServiceSuiviDeroule:
         10 s par l'écran de salle et par l'appli du public. Une phase mal réglée — cas courant en
         cours de composition — ferait tomber tout le schéma au lieu d'une ligne.
 
+        Le tuple rattrapé **inclut `KeyError`**, comme `_duels_tranches` et comme
+        `tableaux_publics` : `contrat_de` le lève par conception, et les `etat()` traversent des
+        tables indexées. La première rédaction promettait « aucune exception » avec un tuple plus
+        étroit que celui dont elle se réclamait — cinq axes de revue l'ont relevé.
+
+        **Et chaque cas est journalisé**, pour la raison écrite dans `tableaux_publics` : un
+        branchement type→service erroné au composition root lèverait une `ApplicationError` avalée
+        en silence, et la phase afficherait « 1 tour » pour toujours. Le jour J, « pourquoi la ronde
+        ne s'affiche pas ? » serait indébogable. `info` pour un refus attendu du service, `warning`
+        pour un `KeyError` — qui est un défaut de programmation, pas une donnée douteuse.
+
+        # DETTE-031 : cette lecture appelle `ServicePoules.etat` / `ServiceSuisse.etat` /
+        # `ServiceBigShootOff.etat`, qui recomposent **intégralement** leur phase, chaîne de sources
+        # amont comprise, à chaque appel — sur une route publique pollée toutes les 10 s. La garde
+        # de statut ci-dessous borne le surcoût aux seules phases qui tournent (une ou deux par
+        # créneau, contre toutes) ; il n'y a pas de mémoïsation par requête, et le port n'a pas le
+        # `resolveur` partagé de son jumeau (ADR-0084) qui éviterait de repayer une chaîne amont
+        # commune. Cf. docs/dette.md.
+
         Un type sans lecteur branché rend `None` sans rien tenter : c'est le cas de la
-        qualification, de l'échauffement, du barrage et du placement, qui comptent un tour et n'ont
-        donc rien à faire dire à personne (ADR-0090 §3).
+        qualification, de l'échauffement, du barrage, du placement — qui comptent un tour et n'ont
+        rien à faire dire à personne (ADR-0090 §3) — **et de la colline**, qui en compterait
+        plusieurs mais qu'aucun service ne déroule encore (`DETTE-028`). Cette dernière est le seul
+        cas où le repli à 1 est faux, et c'est pour ça qu'elle est nommée ici.
         """
         lecteur = self._avancements.get(phase.type)
-        if lecteur is None or phase.id is None:
+        if lecteur is None or phase.id is None or phase.statut not in STATUTS_DEMARRES:
             return None
         try:
             return lecteur.avancement_de_phase(tournoi_id, phase.id)
-        except (DomainError, ApplicationError):
+        except (ApplicationError, DomainError) as exc:
+            _logger.info("Avancement de la phase %s non lisible : %s", phase.id, exc)
+            return None
+        except KeyError as exc:
+            _logger.warning("Défaut interne sur la phase %s, avancement écarté : %r", phase.id, exc)
             return None
 
     def _duels_tranches(
