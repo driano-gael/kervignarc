@@ -34,7 +34,11 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.contrat_phase import UniteDeTour
 from domain.depart import DepartId
-from domain.erreurs import ConfigurationBigShootOffInvalide, ConfigurationSuisseInvalide
+from domain.erreurs import (
+    ConfigurationBigShootOffInvalide,
+    ConfigurationSuisseInvalide,
+    DecoupageEnToursInvalide,
+)
 from domain.grain_validation import GrainValidation
 from domain.phase import (
     Phase,
@@ -91,8 +95,8 @@ class EtapeDeroule:
     """Le réglage d'une phase de **poules** — taille visée, barème, régime d'ex æquo (E05US023).
 
     ⚠️ **Porté par l'étape, donc par le tournoi, et non par la phase d'un départ** (ADR-0076) : une
-    taille de poule est une propriété du *format*, pas de l'avancement d'un créneau. Deux départs
-    du même tournoi jouent donc des poules de la même taille — l'inverse serait une divergence de
+    taille de poule est une propriété du *format*, pas de l'avancement d'un créneau. Deux départs du
+    même tournoi jouent donc des poules de la même taille — l'inverse serait une divergence de
     définition, exactement ce qu'ADR-0076 a rendu impossible.
 
     `None` sur tout autre type, et sur une phase de poules pas encore réglée : le type se choisit
@@ -157,18 +161,29 @@ class EtapeDeroule:
 
         ⚠️ **Il n'est connu que pour les types que l'organisateur règle** — la qualification et
         l'échauffement, dont le découpage *est* la source. Partout ailleurs le nombre de tours se
-        lit
-        du terrain le jour J (braquets projetés, round-robin, rondes appariables selon l'effectif,
-        manches d'un Big Shoot Off) et l'atelier ne peut pas le juger : on passe alors `None`, et
-        seul le doublon est refusé. C'est la doctrine déjà tenue par les deux vérifications voisines
-        — « on ne refuse pas ce qu'on ne peut pas juger » —, et la reprendre évite d'inventer une
-        seconde règle de silence.
+        lit du terrain le jour J (braquets projetés, round-robin, rondes appariables selon
+        l'effectif, manches d'un Big Shoot Off) et l'atelier ne peut pas le juger : on passe alors
+        `None`, et seul le doublon est refusé. C'est la doctrine déjà tenue par les deux
+        vérifications voisines — « on ne refuse pas ce qu'on ne peut pas juger » —, et la reprendre
+        évite d'inventer une seconde règle de silence.
 
         Le cas utile de ce refus est le plus courant de tous : un arrêt posé sur une qualification
         **non découpée**. Elle ne compte qu'un tour, donc « après le tour 1 » tombe après la fin —
         l'arrêt serait inerte, et l'organisateur le découvrirait le jour J en constatant que sa
         pause repas n'a jamais eu lieu.
         """
+        # ⚠️ **Le découpage se refuse ICI aussi, pas seulement sur `Phase`** (correctif de revue,
+        # axe C1). La garde de type ne vivait que sur `Phase.__post_init__`, et
+        # `ServicePhases.modifier` n'instancie **aucune phase** : un `PUT` `{"type": "suisse",
+        # "decoupage": {"nb_tours": 3}}` répondait donc **200** et persistait l'étape. Ensuite,
+        # chaque lecture de phase passe par `etape.instancier(...)`, qui lève — et le suivi, le
+        # pilotage et l'affichage public d'un créneau tombaient tous les trois en 422. Un tournoi
+        # rendu illisible par une entrée client qu'aucun agrégat porteur ne jugeait.
+        if self.decoupage is not None and self.type is not TypePhase.QUALIFICATION:
+            raise DecoupageEnToursInvalide(
+                f"Une étape de type « {self.type.value} » ne se découpe pas en tours : seule une "
+                "qualification porte ce réglage."
+            )
         if not self.arrets:
             return
         connu = unite_de_tour(self.type) is UniteDeTour.PHASE_ENTIERE

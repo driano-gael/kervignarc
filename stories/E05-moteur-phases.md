@@ -1452,9 +1452,24 @@ qu'`E05US032` a laissée derrière elle en effaçant deux CA sans trace (cf. `E0
 - **CA — pendant la pause, le routage dit « en attente » à l'archer.** L'issue `EN_ATTENTE` existe
   depuis `E05US030` : elle se réutilise plutôt que de s'inventer. *(Même promotion : c'était une
   note.)*
-- **CA — la qualification et l'échauffement deviennent divisibles en tours** (« 20 volées en 2 tours
-  de 10 »), réglage reporté d'`E05US032` — sans lui, ces deux types n'ont qu'un tour et ne peuvent
-  donc pas s'arrêter en cours de route.
+- **CA — la qualification devient divisible en tours** (« 20 volées en 2 tours de 10 »), réglage
+  reporté d'`E05US032` — sans lui, elle n'a qu'un tour et ne peut donc pas s'arrêter en cours de
+  route.
+  ⚠️ **CA amputé à la revue du 19/08/2026 : l'échauffement en est retiré, faute de matière.** Le CA
+  d'origine nommait « la qualification **et** l'échauffement ». Or son contrat de phase le déclare
+  sans décor de saisie ni plan de cibles : il n'a **ni barème ni feuille de marque**, donc il n'existe
+  *rien* dont dériver un tour, et aucun lecteur d'avancement ne peut exister pour lui. Un découpage y
+  aurait été accepté à l'atelier et définitivement inerte le jour J. Ce n'est pas un manque
+  d'implémentation mais une **absence de donnée** — d'où le retrait plutôt qu'un report. Le besoin
+  repart en `E05US034` s'il se confirme : il faudra alors décider de quoi un échauffement tire son
+  avancement (une horloge ? un geste d'organisateur ?), ce qui est un choix métier, pas de la
+  plomberie. *(Le **barrage** est exclu pour une autre raison, purement technique : son contrat vaut
+  aussi `PHASE_ENTIERE`, si bien que la garde écrite sur le contrat le laissait passer.)*
+  ⚠️ **Le réglage avait été livré INERTE**, et c'est le bloquant central relevé par les cinq axes de
+  revue : rien ne le lisait. Il est désormais branché — `ServiceSaisie` réalise le port d'avancement
+  pour la qualification, le tour se dérivant des volées **validées** de l'archer le **moins** avancé
+  (une phase avance au rythme du dernier, pas du premier). Cf.
+  [ADR-0091](../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md) §8.
 - ⚠️ **ADR requis** : portée et sémantique de l'arrêt programmé (ce qu'il gèle, ce qu'il laisse
   finir, ce que « toutes les phases » recouvre, et où s'insère le déclencheur dans le contrat de
   phase d'ADR-0083).
@@ -1509,6 +1524,10 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
   C'est pire qu'un CA périmé, que la règle 9 sait détecter : un CA **effacé** ne s'écrit pas de
   travers, il ne s'écrit plus du tout. Leçon à retenir pour tout recadrage : **compter les puces
   avant et après**.
+- 🔭 **Hérité de l'amputation d'`E05US033`** : si le commanditaire veut qu'un **échauffement** puisse
+  porter une pause, il faut d'abord décider de quoi il tire son avancement — il n'a ni barème ni
+  feuille de marque, donc aucune donnée existante ne dit où il en est. Choix métier à trancher, pas
+  un reste de plomberie.
 - ⚠️ **Bloquante avant déploiement réel des pauses** — cf. l'angle mort assumé d'`E05US033`. Ne pas
   la laisser dériver dans la file sous prétexte qu'elle « n'ajoute que de l'affichage » : c'est le
   filet de sécurité de la capacité précédente.

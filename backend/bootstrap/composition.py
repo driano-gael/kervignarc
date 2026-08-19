@@ -263,6 +263,15 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # ⚠️ **La saisie se construit avant le placement** depuis E05US024 : le plan de cibles lui
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas — c'est le typage qui l'a dit.
+    # ⚠️ **Aucun évaluateur d'arrêts n'est branché sur ce harnais, et c'est voulu** (E05US033,
+    # remarque de revue, axe A). Un bot de simulation ne doit pas se mettre en pause : la session
+    # est éphémère, il n'y a pas d'organisateur pour relancer, et une phase arrêtée bloquerait le
+    # scénario sans qu'aucun écran ne le dise.
+    #
+    # Conséquence à connaître, puisque le mode de panne « non branché = inerte » est réel
+    # (`DETTE-028`) : **une simulation d'un format à pauses ne reproduit pas le comportement de la
+    # salle**. Elle joue le déroulé d'un bout à l'autre. Ce n'est pas un oubli de câblage — et
+    # c'est écrit ici précisément pour qu'un futur lecteur ne le prenne pas pour tel.
     saisie_duels = ServiceSaisieDuels(
         tournois,
         phases,

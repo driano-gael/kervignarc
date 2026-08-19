@@ -1,14 +1,14 @@
 """Fixtures et doublures partagées des tests backend.
 
-`connecter_admin` : ouvre un accès admin (POST `/api/v1/auth/configurer`, E10US002) sur un client
-de test et pose l'en-tête `Authorization: Bearer <jeton>` par défaut, pour que les appels suivants
-vers les routes admin (ex. création de tournoi) soient autorisés. Suppose que le fichier `.env`
-de l'app pointe vers un chemin jetable (voir les fixtures d'app qui passent `admin_env_path`).
+`connecter_admin` : ouvre un accès admin (POST `/api/v1/auth/configurer`, E10US002) sur un client de
+test et pose l'en-tête `Authorization: Bearer <jeton>` par défaut, pour que les appels suivants vers
+les routes admin (ex. création de tournoi) soient autorisés. Suppose que le fichier `.env` de l'app
+pointe vers un chemin jetable (voir les fixtures d'app qui passent `admin_env_path`).
 
-**Doctrine des doublures** : un faux repository consommé par **≥ 2 modules** de test vit ici ;
-celui qui n'a qu'un consommateur reste dans son module (`FauxScoreRepository` reste dans
-`test_service_archers`). Depuis E02US001, `FauxClubRepository` et `FauxArcherRepository` servent
-**à la fois** aux tests de `ServiceClubs` (qui refuse de supprimer un club utilisé) et à ceux de
+**Doctrine des doublures** : un faux repository consommé par **≥ 2 modules** de test vit ici ; celui
+qui n'a qu'un consommateur reste dans son module (`FauxScoreRepository` reste dans
+`test_service_archers`). Depuis E02US001, `FauxClubRepository` et `FauxArcherRepository` servent **à
+la fois** aux tests de `ServiceClubs` (qui refuse de supprimer un club utilisé) et à ceux de
 `ServiceArchers` (qui valide le club de rattachement) — les héberger dans l'un des deux modules
 ferait importer l'autre en retour, jusqu'au **cycle d'imports**.
 
@@ -30,9 +30,9 @@ niveau du repository (`test_inscription_repository`).
 > `FauxTournoiRepository` est, lui, recopié dans trois modules. On le laisse : cette US n'en ajoute
 > pas d'usage, et on ne réécrit pas ce qu'on n'aggrave pas.
 
-Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
-reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
-pytest avec pytest pour seule dépendance — d'où aussi `fastapi` sous `TYPE_CHECKING` ci-dessous.
+Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest reste
+importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute pytest
+avec pytest pour seule dépendance — d'où aussi `fastapi` sous `TYPE_CHECKING` ci-dessous.
 """
 
 from __future__ import annotations
@@ -64,11 +64,11 @@ from domain.tournoi import TournoiId
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
-# Alias de type en **forward-ref** (chaîne) : `conftest.py` reste importable sans `fastapi`
-# installé — nécessaire au hook pre-commit `domain-isolation`, qui exécute pytest dans un
-# environnement minimal (pytest seul) et charge malgré tout ce conftest. Au runtime, les
-# annotations sont différées (`from __future__ import annotations`), donc `fastapi` n'est
-# jamais requis ici ; les tests qui s'en servent créent leur `TestClient` ailleurs.
+# Alias de type en **forward-ref** (chaîne) : `conftest.py` reste importable sans `fastapi` installé
+# — nécessaire au hook pre-commit `domain-isolation`, qui exécute pytest dans un environnement
+# minimal (pytest seul) et charge malgré tout ce conftest. Au runtime, les annotations sont
+# différées (`from __future__ import annotations`), donc `fastapi` n'est jamais requis ici ; les
+# tests qui s'en servent créent leur `TestClient` ailleurs.
 ConnecterAdmin = Callable[["TestClient"], None]
 
 
@@ -76,8 +76,8 @@ class HorlogeFigee:
     """Horloge déterministe conforme au port `Horloge` (règle 9) : toujours le même instant.
 
     Partagée par les tests de service qui **datent** un acte (paiement, remboursement,
-    désinscription
-    payée) : un instant UTC figé rend la trace et les dates d'ouverture/traitement reproductibles,
+    désinscription payée) : un instant UTC figé rend la trace et les dates d'ouverture/traitement
+    reproductibles,
     sans horloge système. (`test_service_paiements` garde sa propre copie locale, historique.)
     """
 
@@ -91,9 +91,9 @@ class HorlogeFigee:
 class FauxClubRepository:
     """Repository en mémoire conforme au port `ClubRepository`.
 
-    `par_nom` applique `cle_nom`, **la fonction de production** — pas une réimplémentation : un
-    faux qui recoderait la règle de comparaison ferait passer les tests de service quoi qu'il
-    arrive à l'adapter réel.
+    `par_nom` applique `cle_nom`, **la fonction de production** — pas une réimplémentation : un faux
+    qui recoderait la règle de comparaison ferait passer les tests de service quoi qu'il arrive à
+    l'adapter réel.
     """
 
     def __init__(self) -> None:
@@ -186,9 +186,9 @@ class FauxCategorieRepository:
         return self._categories.get(categorie_id)
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Categorie]:
-        # Le filtre sur `tournoi_id` est ce qui rend testable le refus d'une catégorie
-        # **étrangère au tournoi** (`CategorieHorsTournoi`, E02US002) : un faux qui renverrait
-        # tout ferait passer au vert un service incapable de cloisonner les tournois.
+        # Le filtre sur `tournoi_id` est ce qui rend testable le refus d'une catégorie **étrangère
+        # au tournoi** (`CategorieHorsTournoi`, E02US002) : un faux qui renverrait tout ferait
+        # passer au vert un service incapable de cloisonner les tournois.
         return [c for c in self._categories.values() if c.tournoi_id == tournoi_id]
 
     def par_bibliotheque(self) -> list[Categorie]:
@@ -277,9 +277,8 @@ class FauxInscriptionRepository:
         # *quelle* trace le service a construite (auteur, action, avant/après). L'**atomicité**
         # acte↔trace, elle, est un contrat d'adapter, prouvé au niveau du repository.
         self.traces: list[EntreeAudit] = []
-        # Remboursements ouverts par `supprimer_avec_remboursement` (désinscription payée,
-        # E08US005) :
-        # le test de service y lit *quel* poste le service a construit. Atomicité = contrat
+        # Remboursements ouverts par `supprimer_avec_remboursement` (désinscription payée, E08US005)
+        # : le test de service y lit *quel* poste le service a construit. Atomicité = contrat
         # d'adapter.
         self.remboursements: list[Remboursement] = []
 
@@ -491,19 +490,19 @@ class FauxPhaseRepository:
         self._phases: dict[int, Phase] = {}
         # ⚠️ **La séquence ne démarre pas à 0** (correctif de revue E05US025). `TournoiId`,
         # `DepartId` et `PhaseId` sont trois alias d'`int` (`DETTE-044`) : un décor où la première
-        # phase reçoit l'identifiant 1, comme le tournoi, rend **vert par coïncidence** tout
-        # service qui confondrait les deux — c'est exactement ce qui a laissé passer le bloquant
-        # d'E05US025 (la feuille de marque lue au tournoi là où le port attend la phase). Décaler
-        # la séquence fait échouer la confusion au lieu de la couvrir ; c'est la discipline que
+        # phase reçoit l'identifiant 1, comme le tournoi, rend **vert par coïncidence** tout service
+        # qui confondrait les deux — c'est exactement ce qui a laissé passer le bloquant d'E05US025
+        # (la feuille de marque lue au tournoi là où le port attend la phase). Décaler la séquence
+        # fait échouer la confusion au lieu de la couvrir ; c'est la discipline que
         # `test_domain_serie.py` s'imposait déjà localement (`_PHASE = 4`), généralisée.
         self._sequence = 100
         self._departs = departs
         # ⚠️ **Câblé, cette doublure `assemble` comme les deux adapters de production** (ADR-0076) :
         # la définition rendue vient de l'étape de même rang, pas de ce qui dort dans le magasin.
-        # Sans lui, elle reste en **mode indulgent** et rend la phase telle qu'elle a été posée —
-        # ce qui suffit aux décors qui ne lisent que des statuts, mais **ment** dès qu'un test
-        # édite une définition : il verrait l'ancienne valeur et conclurait à un bug qui n'existe
-        # que dans son décor.
+        # Sans lui, elle reste en **mode indulgent** et rend la phase telle qu'elle a été posée — ce
+        # qui suffit aux décors qui ne lisent que des statuts, mais **ment** dès qu'un test édite
+        # une définition : il verrait l'ancienne valeur et conclurait à un bug qui n'existe que dans
+        # son décor.
         self._deroules = deroules
 
     def _assembler(self, phases: list[Phase]) -> list[Phase]:
@@ -693,14 +692,17 @@ def poser_phase_factice(
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
-                # ⚠️ **4ᵉ et 5ᵉ occurrences, E05US033** (`DETTE-064`, élargie et non contournée) :
-                # le découpage en tours **et** les arrêts programmés. Le premier suit le patron des
-                # quatre réglages ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut
-                # donc pas être recopié depuis elle — il se pose sur l'étape, ce que les décors
-                # d'arrêts font directement. Le recopiage champ par champ reste ce qu'il était :
-                # rien ne rougit quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est
-                # identifié et **hors périmètre ici** — un remède structurel se traite en ADR + US
-                # dédiée, pas en douce dans l'US courante (§ Dette).
+                # ⚠️ **4ᵉ occurrence, E05US033** (`DETTE-064`, élargie et non contournée) : le
+                # découpage en tours. Les **arrêts**, eux, ne sont pas recopiables depuis une
+                # `Phase` — elle ne porte pas ce champ — et se posent directement sur l'étape : ce
+                # n'est donc pas une 5ᵉ occurrence du même piège, comme la première rédaction le
+                # comptait (relevé en revue, axe A). Le premier suit le patron des quatre réglages
+                # ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut donc pas être
+                # recopié depuis elle — il se pose sur l'étape, ce que les décors d'arrêts font
+                # directement. Le recopiage champ par champ reste ce qu'il était : rien ne rougit
+                # quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est identifié et **hors
+                # périmètre ici** — un remède structurel se traite en ADR + US dédiée, pas en douce
+                # dans l'US courante (§ Dette).
                 decoupage=phase.decoupage,
             )
         )
@@ -772,14 +774,17 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
-                # ⚠️ **4ᵉ et 5ᵉ occurrences, E05US033** (`DETTE-064`, élargie et non contournée) :
-                # le découpage en tours **et** les arrêts programmés. Le premier suit le patron des
-                # quatre réglages ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut
-                # donc pas être recopié depuis elle — il se pose sur l'étape, ce que les décors
-                # d'arrêts font directement. Le recopiage champ par champ reste ce qu'il était :
-                # rien ne rougit quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est
-                # identifié et **hors périmètre ici** — un remède structurel se traite en ADR + US
-                # dédiée, pas en douce dans l'US courante (§ Dette).
+                # ⚠️ **4ᵉ occurrence, E05US033** (`DETTE-064`, élargie et non contournée) : le
+                # découpage en tours. Les **arrêts**, eux, ne sont pas recopiables depuis une
+                # `Phase` — elle ne porte pas ce champ — et se posent directement sur l'étape : ce
+                # n'est donc pas une 5ᵉ occurrence du même piège, comme la première rédaction le
+                # comptait (relevé en revue, axe A). Le premier suit le patron des quatre réglages
+                # ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut donc pas être
+                # recopié depuis elle — il se pose sur l'étape, ce que les décors d'arrêts font
+                # directement. Le recopiage champ par champ reste ce qu'il était : rien ne rougit
+                # quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est identifié et **hors
+                # périmètre ici** — un remède structurel se traite en ADR + US dédiée, pas en douce
+                # dans l'US courante (§ Dette).
                 decoupage=phase.decoupage,
             )
         )
@@ -792,9 +797,8 @@ class FauxDuelRepository:
     """Double de `DuelRepository` : ne garde que le **tir** ; réinjecte le contexte à `charger`.
 
     Hissé ici depuis `test_service_saisie_duels.py` par **E05US024** : le test du plan de cibles en
-    a
-    désormais besoin lui aussi (le plan emprunte la résolution de classement amont de la saisie), et
-    l'importer d'un module de test qui importe déjà celui du placement aurait fait un cycle.
+    a désormais besoin lui aussi (le plan emprunte la résolution de classement amont de la saisie),
+    et l'importer d'un module de test qui importe déjà celui du placement aurait fait un cycle.
     """
 
     def __init__(self) -> None:
@@ -823,12 +827,12 @@ def qualification_de_secours(
 
     Échafaudage introduit par **E05US025** (ADR-0082). Une feuille de marque pend désormais à sa
     phase (`serie.phase_id`, `NOT NULL`) : un décor qui sème des scores « directement par le
-    repository » — parce que dérouler la chorégraphie HTTP de saisie serait hors sujet pour ce
-    qu'il éprouve — doit donc disposer d'une phase réelle, ce que plusieurs n'avaient pas.
+    repository » — parce que dérouler la chorégraphie HTTP de saisie serait hors sujet pour ce qu'il
+    éprouve — doit donc disposer d'une phase réelle, ce que plusieurs n'avaient pas.
 
-    Le helper est **idempotent** : il réutilise la qualification si le créneau en porte déjà une,
-    et n'en pose une (ordre 1, barème minimal) que sinon. Il lève si le tournoi n'a aucun créneau —
-    un décor sans départ ne peut de toute façon rien classer depuis ADR-0075, et un échec net vaut
+    Le helper est **idempotent** : il réutilise la qualification si le créneau en porte déjà une, et
+    n'en pose une (ordre 1, barème minimal) que sinon. Il lève si le tournoi n'a aucun créneau — un
+    décor sans départ ne peut de toute façon rien classer depuis ADR-0075, et un échec net vaut
     mieux qu'une phase fabriquée sur un tournoi vide.
     """
     from domain.bareme import BaremeQualification

@@ -80,7 +80,11 @@ export interface EtapeDeroule {
 // par le serveur (le repository la joint depuis l'étape de même rang), plus ce qui n'appartient
 // qu'au créneau : `depart_id`, `statut`, et son propre `id` — celui auquel s'adressent les
 // transitions de cycle de vie.
-export interface Phase extends Omit<EtapeDeroule, 'tournoi_id'> {
+// ⚠️ **`arrets` est retiré du type, et pas seulement commenté** (correctif de revue, axe C1). Le
+// serveur ne remplit ce champ que sur `EtapeReponse` : sur une `Phase`, il vaut `undefined` à
+// l'exécution pendant que TS garantissait un tableau. Un commentaire n'est pas un type, et
+// `E05US034` touchera précisément ces écrans.
+export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets'> {
   depart_id: number
   statut: StatutPhase
 }

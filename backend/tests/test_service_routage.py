@@ -4,9 +4,9 @@ Ici vit la règle métier du **panneau de routage** : « où est-ce que je tire 
 dérivent du CA d'E04US018 (`stories/E04-saisie-scores.md`) — écrits **avant** l'implémentation
 (règle 9) :
 
-- « pour **chaque** archer de la cible, sa **prochaine affectation** (cible, position, tour) » ;
-- « ou son **rang final** s'il est éliminé » ;
-- « l'affichage est **instantané** — **rien n'est calculé à cet instant** » (`D-08`) : le routage
+- « pour **chaque** archer de la cible, sa **prochaine affectation** (cible, position, tour) » ; - «
+ou son **rang final** s'il est éliminé » ; - « l'affichage est **instantané** — **rien n'est calculé
+à cet instant** » (`D-08`) : le routage
   est une **lecture pure**, il ne place pas, ne trace pas, n'écrit rien ;
 - et, arbitré au cadrage du 30/07/2026, **ce qui n'est pas encore connu est nommé** plutôt que
   masqué (`P-3`, comme le `blocage` du feu vert d'E12US002) : la cible d'un tour ≥ 2 (E05US010 non
@@ -19,6 +19,7 @@ que le pilotage lit (le tableau reconstruit + le plan de duels persisté).
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import replace
 
@@ -107,20 +108,18 @@ class _Monde:
         profondeur: ProfondeurClassement | None = _PODIUM,
     ) -> None:
         self.routing = routing
-        # Injectable pour la même raison que `routing` : la **profondeur** décide s'il y a un
-        # match pour la 3ᵉ place (E06US004 s'en sert pour montrer qu'un tournoi sans petite
-        # finale n'a pas de bronze). Depuis E06US006 elle est portée **par la phase** et non plus
-        # par le service : le décor la pose donc sur la phase de tableau qu'il crée.
-        #
-        # `None` est une valeur **utile** et non un défaut : elle laisse la phase **non réglée**,
-        # seul moyen d'exercer de bout en bout le repli sur le preset du type (ADR-0070 §3).
+        # Injectable pour la même raison que `routing` : la **profondeur** décide s'il y a un match
+        # pour la 3ᵉ place (E06US004 s'en sert pour montrer qu'un tournoi sans petite finale n'a pas
+        # de bronze). Depuis E06US006 elle est portée **par la phase** et non plus par le service :
+        # le décor la pose donc sur la phase de tableau qu'il crée. `None` est une valeur **utile**
+        # et non un défaut : elle laisse la phase **non réglée**, seul moyen d'exercer de bout en
+        # bout le repli sur le preset du type (ADR-0070 §3).
         self.profondeur = profondeur
         self.tournoi_id = 1
         self.tournois = FauxTournoiRepository({1})
-        # Créneau et inscriptions : le classement dont dérive ce décor est celui d'un départ.
-        #
-        # ⚠️ **Deux créneaux, à identifiants distincts de celui du tournoi.** Ce décor posait un
-        # seul départ *puis* écrasait son identifiant par `self.depart_id = 1` — soit exactement
+        # Créneau et inscriptions : le classement dont dérive ce décor est celui d'un départ. ⚠️
+        # **Deux créneaux, à identifiants distincts de celui du tournoi.** Ce décor posait un seul
+        # départ *puis* écrasait son identifiant par `self.depart_id = 1` — soit exactement
         # `tournoi_id`. Toute confusion des deux mailles restait donc verte par coïncidence
         # numérique (`DETTE-044` : même type pour mypy), et c'est ce qui a laissé passer le routage
         # à la maille tournoi. Le second créneau, lui, rend le bug *observable* : sans lui, « les
@@ -675,8 +674,8 @@ def test_pose_perimee_par_un_reclassement_est_signalee() -> None:
 def test_pose_perimee_meme_quand_les_deux_restent_sur_la_meme_cible() -> None:
     """Le cas que la comparaison « même index de cible » ratait — et c'est la disposition **la plus
     courante** (une cible de salle porte les quatre archers). Après reclassement, les deux
-    duellistes
-    sont toujours sur la même butte mais **plus côte à côte** : la position annoncée est périmée,
+    duellistes sont toujours sur la même butte mais **plus côte à côte** : la position annoncée est
+    périmée,
     l'archer se rangerait à côté du mauvais adversaire. Le signal du domaine, lui, le voit."""
     monde = _Monde(capacites=(4,))  # les quatre sur une seule cible
     archers = _quatre(monde)
@@ -744,10 +743,10 @@ def test_phase_imposee_d_un_autre_creneau_est_refusee() -> None:
     """La moitié la plus sensible de la garde : la route est **publique et non authentifiée**, un
     `phase_id` d'ailleurs ne doit pas ouvrir son arbre par l'URL de ce créneau.
 
-    ⚠️ La garde s'est **resserrée** avec la maille (ADR-0075) : elle portait sur « un autre
-    tournoi », elle porte désormais sur « un autre **créneau** » — donc *a fortiori* sur un autre
-    tournoi, dont les phases pendent forcément à d'autres départs. C'est le cloisonnement le plus
-    étroit des deux, et celui que le moteur exige.
+    ⚠️ La garde s'est **resserrée** avec la maille (ADR-0075) : elle portait sur « un autre tournoi
+    », elle porte désormais sur « un autre **créneau** » — donc *a fortiori* sur un autre tournoi,
+    dont les phases pendent forcément à d'autres départs. C'est le cloisonnement le plus étroit des
+    deux, et celui que le moteur exige.
     """
     monde = _Monde()
     archers = _quatre(monde)
@@ -832,12 +831,10 @@ def test_un_archer_disqualifie_garde_son_nom() -> None:
     archers = _quatre(monde)
     monde.placer()
     # La qualification pend au **créneau** (ADR-0075) : passer `tournoi_id` ici posait une phase
-    # orpheline, que l'assemblage écarte — le forfait ne s'appliquait alors à rien.
-    #
-    # E05US025 : on **réutilise** celle du décor. Depuis qu'un déroulé peut porter plusieurs
-    # qualifications (ADR-0082), en poser une seconde ne lève plus d'anomalie : le forfait
-    # s'accrochait à celle-ci pendant que le classement lisait l'autre, et la DSQ ne sortait
-    # silencieusement plus personne.
+    # orpheline, que l'assemblage écarte — le forfait ne s'appliquait alors à rien. E05US025 : on
+    # **réutilise** celle du décor. Depuis qu'un déroulé peut porter plusieurs qualifications
+    # (ADR-0082), en poser une seconde ne lève plus d'anomalie : le forfait s'accrochait à celle-ci
+    # pendant que le classement lisait l'autre, et la DSQ ne sortait silencieusement plus personne.
     qualif_id = monde.qualif_id
     monde.forfaits.semer(
         Forfait.creer(
@@ -893,7 +890,6 @@ def test_le_routage_est_une_lecture_pure() -> None:
 
 
 # --- CA « le panneau distingue "il a fini" de "rien à tirer pour l'instant" » (E05US030) --------
-#
 # Ces trois cas dérivent du CA d'`E05US030` (`stories/E05-moteur-phases.md`), écrits **avant**
 # l'implémentation (règle 9). Ils exercent `_sans_rencontre`, le seul chemin du routage que rien ne
 # couvrait au niveau service : `E05US026` l'a livré et testé **côté port** (les trois champs de
@@ -982,8 +978,8 @@ def test_l_archer_sans_rencontre_appariee_est_en_attente_pas_termine() -> None:
 def test_la_phase_epuisee_dit_termine_et_non_en_attente() -> None:
     """Le miroir du cas précédent : le seul cas où « rangez votre arc » est vrai.
 
-    Sans cette assertion, `EN_ATTENTE` pourrait absorber `TERMINE` — on ne dirait plus « terminé »
-    à tort, on dirait « attends » à qui peut partir. C'est le défaut exact qu'`E05US026` a relevé en
+    Sans cette assertion, `EN_ATTENTE` pourrait absorber `TERMINE` — on ne dirait plus « terminé » à
+    tort, on dirait « attends » à qui peut partir. C'est le défaut exact qu'`E05US026` a relevé en
     revue, dans l'autre sens.
     """
     assert _router_sans_rencontre(membre=True, epuisee=True).issue is IssueRoutage.TERMINE
@@ -1005,3 +1001,80 @@ def test_l_archer_etranger_a_la_phase_reste_indisponible() -> None:
     que l'emprunt d'`E05US026` brouillait.
     """
     assert _router_sans_rencontre(membre=False, epuisee=False).issue is IssueRoutage.INDISPONIBLE
+
+
+# ───────────────── E05US033 : ce que la pause change pour l'archer ───────────────── ⚠️ **Ce CA a
+# été promu de « note » à CA dans `stories/` précisément parce qu'« un piège vérifié sans oracle ne
+# laisse aucune trace exécutable » — et il était resté sans oracle.** Relevé par l'axe B de la
+# revue. Rien n'aurait rougi si `_en_pause` disparaissait, ou si l'issue retombait à `INDISPONIBLE`
+# : le panneau dirait alors « ce n'est pas pour vous » à un archer qui doit simplement attendre.
+# C'est la différence entre « partez » et « restez à disposition ».
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Fait passer la phase de tableau du monde en pause, comme le ferait un arrêt programmé."""
+    assert monde.phase_id is not None
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_une_phase_en_pause_route_l_archer_en_attente() -> None:
+    """CA E05US033 — *« pendant la pause, le routage dit "en attente" à l'archer »*.
+
+    L'issue `EN_ATTENTE` est **réutilisée** (E05US030) plutôt qu'une issue neuve : côté tablette, «
+    rien à tirer pour l'instant » est déjà rendu, et un état de plus aurait demandé un écran de plus
+    pour la même chose.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    _mettre_en_pause(monde)
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    for ligne in routage.archers:
+        assert ligne.issue is IssueRoutage.EN_ATTENTE
+        assert ligne.motif is not None and "pause" in ligne.motif.lower()
+        # Le panneau reste **nominatif** même dégradé : quatre lignes anonymes seraient illisibles.
+        assert ligne.nom
+
+
+def test_une_phase_en_pause_ne_fait_pas_tomber_le_routage_sur_une_autre_phase() -> None:
+    """Corollaire, et c'est le point délicat du correctif : l'archer reste rattaché à **sa** phase.
+
+    ⚠️ La garde est posée **après** la résolution de la phase, pas dans la sélection. Écarter les
+    phases en pause de la sélection aurait fait tomber le routage sur une *autre* phase du créneau —
+    ou sur `tableaux[-1]` — donc envoyé l'archer tirer ailleurs au lieu de lui dire d'attendre : un
+    défaut pire que celui qu'on corrige. La sélection dit *de quoi on parle*, pas *si ça tourne*.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    phase_en_pause = monde.phase_id
+    _mettre_en_pause(monde)
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    assert routage.phase_id == phase_en_pause
+
+
+def test_une_phase_en_cours_route_normalement_apres_la_reprise() -> None:
+    """Non-régression du couple : la garde ne doit pas survivre à la reprise.
+
+    Sans ce test, une garde écrite sur le mauvais statut (ou un `is not EN_COURS` au lieu d'un `is
+    EN_PAUSE`) resterait verte sur le test précédent tout en cassant tout le reste de la journée.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    _mettre_en_pause(monde)
+    assert monde.phase_id is not None
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_COURS))
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    for ligne in routage.archers:
+        assert ligne.issue is IssueRoutage.PROCHAIN_DUEL

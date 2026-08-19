@@ -139,8 +139,10 @@ Le fait 3 obligeait à trancher. Périmètre arbitré par le commanditaire le 19
 
 | Geste | Pendant `StatutPhase.EN_PAUSE` | Pourquoi |
 |---|---|---|
-| Saisir une volée, valider une série | **refusé** (`PhaseEnPause`, 409) | c'est ce qui ferait avancer le tour |
-| Saisir une manche, un barrage, valider un duel | **refusé** (409) | idem |
+| Saisir une volée, valider une série (qualification) | **refusé** (`PhaseEnPause`, 409) | c'est ce qui ferait avancer le tour |
+| Valider un duel (élimination directe) | **refusé** (409) | seule la validation fait avancer un braquet |
+| Saisir ou rééditer une **manche**, un **barrage** | **autorisé** | un duel du tour suivant peut être **déjà engagé** — cf. l'encart ci-dessous |
+| Valider une rencontre de **poules**, de **suisse**, une **manche de Big Shoot Off** | **refusé** (409) | trois chemins d'écriture à part entière, oubliés à la première livraison |
 | **Corriger** un score déjà saisi | **autorisé** | CA explicite — voir ci-dessous |
 | Router un archer | issue **`EN_ATTENTE`** (réutilisée d'E05US030) | « rien à tirer pour l'instant » est déjà rendu par la tablette |
 | **Lire** un tableau, un état, le suivi | **autorisé** | le pilotage doit voir où il en est *pendant* la pause |
@@ -172,10 +174,30 @@ pendant une pause, **sans dire qu'il y a pause**. Ce n'est pas un trou de cette 
 exactement l'angle mort déclaré en § *Conséquences* — la mention publique de la pause est le CA
 d'`E05US034`. Le distinguer d'un oubli est le seul objet de ce tableau.
 
-⚠️ **Les duels n'ont aucun chemin de correction** (à la différence de la qualification). Le CA de la
-correction est donc sans objet pour eux. C'est un manque **préexistant** — un duel validé de travers
-ne se rectifie nulle part aujourd'hui —, ni introduit ni aggravé ici, signalé plutôt que passé sous
-silence.
+⚠️ **La garde des duels ne porte que sur `valider`, et c'est un correctif de revue.** La première
+rédaction gardait aussi `saisir_manche` et `saisir_barrage` — ce qui coupait **en plein tir** un duel
+du tour suivant déjà engagé : `_match_saisissable` rend un match jouable dès que ses deux occupants
+sont connus, donc des quarts se tirent pendant que les derniers huitièmes finissent. Quand le dernier
+huitième était validé, l'arrêt figeait la phase et le scoreur ne pouvait **ni finir ni rectifier** le
+quart en cours. Deux CA violés d'un coup : « personne n'est coupé en plein tir » — qui ne vaut pas que
+pour la portée départ — et « la correction reste possible ». La justification d'alors était fausse en
+plus d'être trop large (« les duels n'ont aucun chemin de correction ») : `saisir_manche` se documente
+« Saisit **ou réédite** une manche ». Relevé par l'axe adversarial.
+
+⚠️ **Cinq chemins d'écriture, pas deux — et c'était le second bloquant de l'US.** Le gel et le
+déclencheur n'étaient posés que sur la qualification et l'élimination directe. `ServicePoules.valider`,
+`ServiceSuisse.valider` et `ServiceBigShootOff.valider_manche` sont trois écritures à part entière :
+un arrêt programmé sur une phase de poules ou de suisse ne se déclenchait donc **jamais** (ces phases
+tournent seules, aucune validation n'atteignait le déclencheur), et une phase mise en pause y restait
+entièrement saisissable — l'archer lisait « en attente » pendant que le scoreur écrivait. C'est le
+défaut que `DETTE-073` constate à la maille tournoi, reproduit sur trois formats **en écrivant ici
+qu'il est refermé**. Relevé par les quatre axes.
+
+Pour éviter cinq copies du même trio, `application/gel_de_pause.py` — module **neutre**, sans
+dépendance de service — porte le port `EvaluateurArrets`, le collaborateur `DeclencheurArrets` et la
+garde `refuser_si_en_pause`. Le patron existait déjà dans le dépôt (`application/prelevement.py`
+héberge `LecteurPopulationPhase`, port à deux consommateurs, exactement pour éviter qu'un service de
+saisie importe l'autre).
 
 ### 7. Le déclencheur est un service, appelé après chaque validation
 
@@ -199,14 +221,64 @@ root : la saisie n'a pas à connaître les arrêts, seulement à signaler qu'un 
 **Non branché, toute l'US est inerte** — mode de panne de `DETTE-028` (six moteurs livrés, aucun
 appelé), d'où deux lignes explicitement commentées dans `bootstrap/`.
 
+⚠️ **Le déclencheur sort AVANT la lecture lourde quand il n'y a rien à faire**, et c'est un correctif
+de revue (axe adversarial). Il payait la recomposition intégrale du créneau — engagés, projection,
+reconstruction de chaque tableau, `etat()` de chaque phase déroulée — **avant** de savoir s'il existe
+un seul arrêt programmé. Cela contredisait à la lettre la promesse « une phase sans arrêt se comporte
+exactement comme avant » : le comportement fonctionnel était bien identique, le **coût** ne l'était
+pas. Aggravant, et c'est ce qui rend la garde non négociable : `evaluer` est appelé **depuis une
+commande de la file d'écriture**, donc cette lecture occupait le **writer unique** qui sérialise toutes
+les écritures de l'application (règle 7 : « pas de logique métier longue »). Deux requêtes légères — le
+déroulé du tournoi, les franchissements du créneau — remplacent désormais la recomposition dans le cas
+normal du dépôt, qui est « aucun arrêt nulle part ».
+
+⚠️ **La résolution des arrêts armés boucle, et la boucle est bornée.** Mettre une phase en pause peut
+**débloquer** un arrêt armé qui l'attendait : deux arrêts de portée départ dus au même appel
+s'attendaient mutuellement et restaient tous deux `ARME` — donc absents de la liste de relance, donc la
+salle arrêtée **sans aucun bouton pour la repartir**. Une seule passe ne suffit pas, l'ordre
+d'itération décidant qui voit quoi. La borne est le nombre de phases : chaque tour supplémentaire met
+au moins une phase en pause.
+
+⚠️ **Le statut d'une phase est relu au dépôt, jamais lu dans un cliché.** `evaluer` prend son cliché
+une fois, mais la première passe **change des statuts en base** avant que la seconde ne les relise :
+une phase mise en pause par un arrêt de départ y apparaissait encore `EN_COURS`, et si elle portait son
+propre arrêt dû au même tour, `mettre_en_pause` levait `TransitionStatutInvalide`. Ce que ça coûtait est
+pire que l'exception : elle était **avalée** par le rattrapage du signalement et **abandonnait la
+boucle**, si bien que l'arrêt non tracé se redéclenchait à la relance — « l'organisateur perd la main »,
+que tout cet ADR est construit pour empêcher. Le cliché est aussi **rafraîchi** : relire ne suffit pas
+si l'appelant continue de décider sur du périmé.
+
 Une exception levée par le déclencheur **ne remonte pas au scoreur** : la validation, elle, a réussi et
 est persistée. La laisser remonter rendrait un 500 à un archer qui a bien tiré, qui ressaisirait alors
 une volée déjà enregistrée. On journalise ; la validation suivante réévaluera.
 
-### 8. La qualification et l'échauffement deviennent divisibles en tours
+### 8. La **qualification** devient divisible en tours
 
-`DecoupageEnTours(nb_tours)`, réglage d'organisateur : « 20 volées en 2 tours de 10 ». Sans lui ces deux
-types n'ont qu'un tour, et un arrêt « après le tour n » n'a nulle part où se poser.
+`DecoupageEnTours(nb_tours)`, réglage d'organisateur : « 20 volées en 2 tours de 10 ». Sans lui elle
+n'a qu'un tour, et un arrêt « après le tour n » n'a nulle part où se poser.
+
+⚠️ **Le CA nommait « la qualification **et** l'échauffement » ; l'échauffement est retiré, faute de
+matière.** Son contrat de phase le déclare sans décor de saisie ni plan de cibles : il n'a ni barème
+ni feuille de marque, donc il n'existe **rien** dont dériver un tour, et aucun
+`LecteurAvancementDePhase` ne peut exister pour lui. Un découpage y aurait été accepté à l'atelier et
+définitivement inerte le jour J. Ce n'est pas un manque d'implémentation mais une absence de donnée ;
+`stories/` est aligné, et le besoin repart en `E05US034` s'il se confirme. Le **barrage** est exclu
+pour une autre raison : son contrat vaut aussi `PHASE_ENTIERE`, si bien que la première garde — écrite
+sur le contrat — le laissait passer alors que six docstrings de l'US l'excluaient.
+
+⚠️ **Le réglage doit être LU, et il ne l'était pas.** À la première livraison,
+`unite_de_tour_effective` n'avait **aucun appelant de production** : le découpage était écrit, validé,
+sérialisé, exposé en DTO, éditable dans deux écrans — et inerte. C'est le mode de panne `DETTE-028`
+(« six moteurs livrés, aucun appelé ») reproduit dans l'US qui le cite en garde-fou, et il a été relevé
+par les quatre axes de revue. `ServiceSaisie` réalise donc désormais `LecteurAvancementDePhase` pour la
+qualification : le tour se dérive des volées **validées** de l'archer le **moins** avancé — une phase
+avance au rythme du dernier, pas du premier.
+
+⚠️ **Et l'unité affichée se résout sur le nombre de tours OBSERVÉ, pas sur le réglage.** La première
+rédaction passait le `DecoupageEnTours` à `unite_de_tour_effective`, si bien que l'affichage jugeait sur
+le *réglage* pendant que le déclencheur jugeait sur l'*avancement lu* : **deux sources pour le même
+nombre**, exactement ce que la docstring de cette fonction jurait ne jamais se produire. Elles peuvent
+diverger — un suisse réglé à 9 rondes n'en apparie que 5. Une seule source, celle du terrain.
 
 Ce réglage **précise** le contrat de phase, il ne le contredit pas : `PHASE_ENTIERE` signifie
 littéralement « rien dans la structure de ce format ne dit combien de tours » (ADR-0090). Quand
@@ -253,18 +325,28 @@ la propriété de toujours rendre une réponse.
 
 ⚠️ Section écrite en **vérifiant dans le code du jour**, pas en déduisant de la décision.
 
+⚠️ **Trois lignes de la première rédaction affirmaient plus que ce que le code portait**, et une
+colonne « Vérifié : oui » se lit comme une preuve — c'est pire qu'une absence. Les axes C2 et
+adversarial les ont recoupées une à une : §8 nommait `unite_de_tour_effective`, qui n'avait aucun
+appelant ; §7 disait « branchement au composition root » là où deux services sur cinq l'étaient ; §6
+promettait un refus que trois formats n'appliquaient pas. C'est le défaut d'ADR-0017 — « nommer un
+module vide » — et le tableau ci-dessous a été refait **après** correction du code, module par module.
+
 | Décision | Module qui l'applique | Vérifié |
 |---|---|---|
 | §1 arrêt après un tour, invariants | `backend/domain/arret_programme.py` (`ArretProgramme`, `verifier_arrets`, `arrets_atteints`) | oui — `tests/test_domain_arret_programme.py` |
-| §2 définition sur l'étape | `backend/domain/deroule_etape.py` (`EtapeDeroule.arrets`, `.decoupage`, `_verifier_arrets_applicables`) ; JSON dans `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, `_lire_arrets`, `_lire_decoupage`) | oui |
-| §2 pas de miroir sur `Phase` | `backend/domain/phase.py` (`Phase.decoupage` et sa docstring) ; `EtapeDeroule.instancier` | oui — l'absence est commentée aux deux endroits |
-| §3 franchissement persisté, cycle monotone | `backend/domain/arret_programme.py` (`FranchissementArret`, `EtatFranchissement`) ; `backend/infrastructure/db/models.py` (`FranchissementArretORM`) ; `migrations/versions/0048_franchissement_arret.py` | oui |
-| §4 chaque phase finit son tour | `backend/domain/arret_programme.py` (`phases_a_arreter`) ; `backend/application/arrets_programmes.py` (`_armer_sur_le_depart`, `_resoudre_les_arrets_armes`) | oui — `tests/test_service_arrets_programmes.py` |
-| §5 reprise d'un seul geste | `backend/application/arrets_programmes.py` (`lever`) ; `backend/api/v1/phases.py` (`relancer_arret`) ; `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`RelanceDesArrets`) | oui |
-| §6 gel de la saisie | `backend/application/saisie.py` (`_refuser_si_en_pause`), `backend/application/saisie_duels.py` (idem) | oui — `tests/test_service_saisie.py` § E05US033 |
-| §6 gel du routage | `backend/application/routage.py` (`_en_pause`, appelé aux **deux** résolutions de `routage()` — `affectations()` ne l'est pas, cf. le tableau du §6) | oui — les trois points de résolution comptés à la main |
-| §6 correction non gelée | `backend/application/saisie.py` (`corriger_volee`, **sans** garde — délibéré) | oui — oracle de non-garde dans `test_service_saisie.py` |
-| §7 déclencheur idempotent | `backend/application/arrets_programmes.py` (`evaluer`) ; couture `backend/application/suivi_deroule.py` (`avancement_par_phase`) ; branchement `backend/bootstrap/composition.py` | oui |
-| §8 découpage en tours | `backend/domain/tour_de_phase.py` (`DecoupageEnTours`, `unite_de_tour_effective`, `nb_tours_regles`) ; garde de type dans `backend/domain/phase.py` | oui |
+| §2 définition sur l'étape | `backend/domain/deroule_etape.py` (`EtapeDeroule.arrets`, `.decoupage`, `_verifier_arrets_applicables`) ; JSON dans `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, `_lire_arrets`, `_lire_decoupage`) | oui — round-trip par l'API dans `tests/test_arrets_api.py` |
+| §2 pas de miroir sur `Phase` | `backend/domain/phase.py` (`Phase.decoupage` et sa docstring) ; `EtapeDeroule.instancier` | oui — l'absence est commentée aux deux endroits, et le type front l'exclut désormais (`Omit<…, 'arrets'>`) |
 | §2 conservation à la promotion | `backend/domain/format_tournoi.py` (`ModelePhase.arrets`, `.decoupage`, `pour_tournoi`, `d_etape`) | oui |
-| Atelier (les deux éditeurs) | `frontend/src/shared/phases/ReglageArrets.tsx` + `arrets.ts`, montés par `features/phases/Phases.tsx` et `features/deroule/Deroule.tsx` | oui |
+| §3 franchissement persisté, cycle monotone | `backend/domain/arret_programme.py` (`FranchissementArret`, `EtatFranchissement`) ; `backend/infrastructure/db/models.py` (`FranchissementArretORM`) ; `migrations/versions/0048_franchissement_arret.py` | oui — aller-retour et unicité dans `tests/test_arrets_api.py` |
+| §4 chaque phase finit son tour | `backend/domain/arret_programme.py` (`phases_a_arreter`) ; `backend/application/arrets_programmes.py` (`_armer_sur_le_depart`, `_resoudre_les_arrets_armes`, `_avancement_connu`) | oui — dont l'oracle « une phase au tour inconnu n'est pas coupée » |
+| §5 reprise d'un seul geste | `backend/application/arrets_programmes.py` (`lever`) ; `backend/api/v1/phases.py` (`relancer_arret`) ; `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`RelanceDesArrets`) | oui — 404 sur arrêt armé / déjà levé, testé |
+| §6 gel de la saisie, **les cinq chemins** | `application/gel_de_pause.py` (`refuser_si_en_pause`), appelé par `saisie.py`, `saisie_duels.py`, `poules.py`, `suisse.py`, `big_shoot_off.py` | oui — les cinq appels comptés à la main ; oracles pour la qualification et les duels |
+| §6 correction et duel engagé non gelés | `application/saisie.py` (`corriger_volee`, **sans** garde) ; `application/saisie_duels.py` (`saisir_manche`, `saisir_barrage`, **sans** garde) | oui — trois oracles de **non-garde**, dont « le tableau reste lisible » |
+| §6 gel du routage | `backend/application/routage.py` (`_en_pause`, aux **deux** résolutions de `routage()` ; `affectations()` porte un commentaire disant pourquoi elle n'est pas gardée) | oui — trois oracles dans `tests/test_service_routage.py` |
+| §7 déclencheur idempotent, garde bon marché | `backend/application/arrets_programmes.py` (`evaluer`) ; couture `backend/application/suivi_deroule.py` (`avancement_par_phase`) | oui — dont « sans arrêt, l'avancement n'est même pas lu » |
+| §7 branchement des **cinq** services | `backend/bootstrap/composition.py` (une boucle nommant les cinq) | oui — `tests/test_arrets_api.py` assère les cinq, et **rien d'autre** ne le ferait |
+| §8 découpage lu par un lecteur d'avancement | `backend/application/saisie.py` (`avancement_de_phase`) ; branché pour `QUALIFICATION` au composition root ; unité résolue par `domain/tour_de_phase.unite_de_tour_effective` depuis `api/v1/suivi_deroule.py` | oui — l'échauffement est **explicitement** hors registre, et un test l'assère |
+| §8 découpage refusé ailleurs | `backend/domain/phase.py` et `backend/domain/deroule_etape.py` (garde sur `TypePhase.QUALIFICATION`) | oui — la garde manquait à l'étape, ce qui rendait un créneau illisible ; testée par l'API |
+| Atelier (les deux éditeurs) | `frontend/src/shared/phases/ReglageArrets.tsx` + `arrets.ts`, montés par `features/phases/Phases.tsx` et `features/deroule/Deroule.tsx` ; `ReglageBarrage` réémet `arrets` et `decoupage` | oui — le PUT total effaçait le planning, corrigé |
+| Pilotage (relance, et son rafraîchissement) | `frontend/src/features/suivi-deroule/{PilotageCreneau.tsx,hooks.ts}` (invalide suivi **et** avancement, poll sur la liste de phases) | oui |

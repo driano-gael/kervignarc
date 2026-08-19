@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 1 |
 | 2026-08-19 | `E05US032` | 26 | +1456/−113 | ~15 min | ~35 min | D (00:20→00:47) | majeur:2 mineur:4 suggestion:2 | majeur:5 mineur:6 | majeur:6 mineur:4 suggestion:2 | majeur:3 mineur:5 suggestion:3 | majeur:5 mineur:6 suggestion:2 | **aucun bloquant** — 5 majeurs de conjonction trouvés par D et C1 seuls | 1 |
 | 2026-08-18 | `E05US031` | 43 | +3064/−177 | ~10 min | ~45 min | D (16:12→16:57) | majeur:2 mineur:2 suggestion:2 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | majeur:2 mineur:3 suggestion:2 | majeur:4 mineur:2 suggestion:1 | C1 | 1 |
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
@@ -102,3 +103,40 @@ en citant un fichier non lisible symbole par symbole, le parseur y rattachait to
 garde-fou désarmé par la mise en forme, invisible au vert. C'est la première fois qu'une revue trouve
 un garde-fou neutralisé *sans* qu'aucun fichier de configuration soit touché.
 
+**Lecture de la ligne E05US033 — la passe la plus lourde à ce jour, et celle qui renverse deux
+présomptions.**
+
+**1. Pour la première fois, les quatre axes de grille convergent sur les mêmes bloquants.** A, B, C1 et
+C2 ont trouvé *indépendamment* les deux mêmes : le `None` polysémique du déclencheur, et le gel posé sur
+2 des 5 chemins d'écriture. Les trois passes précédentes montraient l'inverse — des bloquants trouvés
+par **un seul** axe. L'explication tient à la nature du défaut : ce ne sont pas des défauts de
+conjonction subtils mais des **capacités non branchées**, visibles depuis n'importe quel angle dès qu'on
+compte les surfaces. Enseignement : la convergence n'est pas un gâchis, c'est le signal qu'un défaut est
+grossier — et qu'il aurait dû être vu par l'auteur.
+
+**2. L'axe adversarial reste indispensable, mais son apport a changé de nature.** Pour la quatrième
+passe consécutive, D trouve ce que les grilles ne voient pas — sauf que cette fois il l'a trouvé **contre
+un correctif en vol**. L'auteur avait commencé à réparer le bloquant n°1 pendant la revue ; D a
+démontré, en le reproduisant, que le correctif **ne fermait rien** (le discriminant choisi ne
+discriminait pas). Aucune grille n'aurait pu le voir : le code committé était faux d'une façon, l'arbre
+de travail d'une autre. C'est le premier cas où l'axe adversarial relit **le correctif** plutôt que la
+livraison, et c'est ce qui a évité de livrer une réparation cosmétique.
+
+**3. Le vrai enseignement est sur les doublures, pas sur les axes.** Les trois bloquants sont passés au
+travers de **3453 tests verts**, et les cinq axes ont convergé sur la même cause : la doublure
+d'avancement des tests de service codait `nb_tours=9` en dur. Elle **rendait la borne intestable** — le
+cas qui casse n'était pas exprimable dans le décor. Ce n'est pas un défaut de couverture (le CA était
+couvert) mais un défaut de **doublure**, et aucune métrique de couverture ne l'aurait montré. À
+retenir : quand un test passe par un double, se demander *quelles valeurs le double ne peut pas
+produire* — c'est là que vivent les bloquants.
+
+**4. Un fait à noter sur l'auteur.** Trois manques ont été trouvés par **auto-contrôle avant** le
+lancement des axes (fiche fonctionnelle absente, marqueur de dette non posé, affirmation d'ADR
+imprécise). Ils ne figurent pas dans les colonnes ci-dessus, et c'est volontaire : ce ne sont pas des
+trouvailles de revue. Mais ils disent quelque chose d'utile — l'étape 0 de la procédure, qui force à
+recenser le périmètre et à relire le log, produit des détections *par elle-même*.
+
+**5. Durée porte : 7 min, et elle a servi deux fois.** Verte au premier passage, elle a permis de
+lancer les cinq axes sans attendre. Repassée **entière** après correctifs (décision 1 d'ADR-0013), elle
+a coûté 3 min de plus — sur une passe où le code de production a été profondément remanié, c'est le
+seul contrôle qui garantissait que les 28 oracles neufs ne masquaient pas une régression ailleurs.

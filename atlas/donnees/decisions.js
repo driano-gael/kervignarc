@@ -6003,6 +6003,7 @@ window.ATLAS.decisions = {
       "phases_a_arreter",
       "_armer_sur_le_depart",
       "_resoudre_les_arrets_armes",
+      "_avancement_connu",
       "lever",
       "relancer_arret",
       "RelanceDesArrets",
@@ -6025,17 +6026,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/saisie.py",
      "existe": true,
      "symboles": [
-      "_refuser_si_en_pause",
-      "corriger_volee"
-     ],
-     "symboles_absents": [],
-     "verifiable": true
-    },
-    {
-     "chemin": "backend/application/saisie_duels.py",
-     "existe": true,
-     "symboles": [
-      "_refuser_si_en_pause"
+      "avancement_de_phase",
+      "QUALIFICATION"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6053,10 +6045,7 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
-     "symboles": [
-      "evaluer",
-      "avancement_par_phase"
-     ],
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -6072,7 +6061,8 @@ window.ATLAS.decisions = {
       "FranchissementArretORM",
       "phases_a_arreter",
       "_armer_sur_le_depart",
-      "_resoudre_les_arrets_armes"
+      "_resoudre_les_arrets_armes",
+      "_avancement_connu"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6085,7 +6075,8 @@ window.ATLAS.decisions = {
       "_verifier_arrets_applicables",
       "_politiques_json",
       "_lire_arrets",
-      "_lire_decoupage"
+      "_lire_decoupage",
+      "TypePhase.QUALIFICATION"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6108,24 +6099,11 @@ window.ATLAS.decisions = {
       "Phase",
       "Phase.decoupage",
       "EtapeDeroule.instancier",
-      "DecoupageEnTours",
-      "unite_de_tour_effective",
-      "nb_tours_regles"
+      "TypePhase.QUALIFICATION"
      ],
      "symboles_absents": [
       "EtapeDeroule.instancier"
      ],
-     "verifiable": true
-    },
-    {
-     "chemin": "backend/domain/tour_de_phase.py",
-     "existe": true,
-     "symboles": [
-      "DecoupageEnTours",
-      "unite_de_tour_effective",
-      "nb_tours_regles"
-     ],
-     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -6164,10 +6142,24 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+     "chemin": "frontend/src/features/suivi-deroule/hooks.ts",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageBarrage",
+      "arrets",
+      "decoupage"
+     ],
+     "symboles_absents": [
+      "ReglageBarrage",
+      "decoupage"
+     ],
      "verifiable": true
     }
    ],

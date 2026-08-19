@@ -65,6 +65,7 @@ window.ATLAS.avancement = {
     "E04US015",
     "E08US005",
     "E06US003",
+    "E05US033",
     "E01US025",
     "E02US010",
     "E02US003",
@@ -2685,6 +2686,7 @@ window.ATLAS.avancement = {
     "0091"
    ],
    "dettes_introduites": [
+    "001",
     "031",
     "054",
     "064",
