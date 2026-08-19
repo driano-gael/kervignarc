@@ -356,7 +356,23 @@ class ServiceTournois:
         raise EffectifInsuffisantPourDemarrer(exigence.message_de_refus())
 
     def mettre_en_pause(self, tournoi_id: TournoiId) -> Tournoi:
-        """Gèle un tournoi `en_cours` en `en_pause` (la saisie s'arrête jusqu'à `reprendre`)."""
+        """Fait passer un tournoi `en_cours` à `en_pause`. **N'arrête rien d'autre** (`DETTE-073`).
+
+        # DETTE-073 : cette docstring promettait « la saisie s'arrête jusqu'à `reprendre` ».
+        # C'était **faux**, et depuis toujours : aucun chemin d'écriture ne lit `StatutTournoi` —
+        # ni `ServiceSaisie.saisir_volee` / `.valider`, ni `ServiceSaisieDuels`, ni le routage, qui
+        # sélectionne ses phases sur le statut de la **phase**. Un organisateur qui suspend son
+        # tournoi croit avoir arrêté la salle ; les archers continuent de tirer.
+        #
+        # Constaté au cadrage d'E05US033 (19/08/2026) en vérifiant le postulat inverse. Le volet
+        # **phase** a été corrigé dans cette US (`PhaseEnPause`, ADR-0091 §6) parce qu'il en est le
+        # mécanisme même ; le volet **tournoi** est à une autre maille (ADR-0026 §3), n'a ni
+        # sémantique « finir le tour en cours » ni reprise partielle, et son périmètre a été
+        # explicitement borné par le commanditaire. La promesse est donc **retirée** ici — coût nul,
+        # et un lecteur du code n'est plus induit en erreur — mais la **capacité reste absente** :
+        # le bouton de l'écran d'administration continue, lui, de laisser croire le contraire à
+        # l'organisateur. C'est ce qui garde la dette **majeure**. Cf. docs/dette.md.
+        """
         return self._transition(
             tournoi_id,
             {StatutTournoi.EN_COURS},
