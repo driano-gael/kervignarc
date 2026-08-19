@@ -1,11 +1,11 @@
 """Composition root — câblage explicite de l'application (guide §2.2, ADR-0003).
 
-Point **unique et lisible** où sont assemblés adapters, services applicatifs et routers, **sans
-conteneur DI**. `create_app()` construit l'instance FastAPI et branche ses dépendances ; tout ce qui
-est câblé est visible ici, en un seul endroit.
+Point **unique et lisible** où sont assemblés adapters, services applicatifs et routers,
+**sans conteneur DI**. `create_app()` construit l'instance FastAPI et branche ses dépendances ;
+tout ce qui est câblé est visible ici, en un seul endroit.
 
-Les services applicatifs sont **injectés** dans les routers via `app.state` (pas d'accès global, pas
-de magie DI) ; les erreurs typées sont traduites à la frontière API.
+Les services applicatifs sont **injectés** dans les routers via `app.state` (pas d'accès
+global, pas de magie DI) ; les erreurs typées sont traduites à la frontière API.
 """
 
 import asyncio
@@ -235,8 +235,8 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     blasons = InMemoryBlasonRepository()
     gabarits = InMemoryGabaritSalleRepository()
     inscriptions = InMemoryInscriptionRepository()
-    # Les créneaux du harnais (E01US025, ADR-0075) : la portée sportive étant le départ, le magasin
-    # de phases a besoin d'eux pour sa lecture transverse `par_tournoi`.
+    # Les créneaux du harnais (E01US025, ADR-0075) : la portée sportive étant le départ, le
+    # magasin de phases a besoin d'eux pour sa lecture transverse `par_tournoi`.
     departs = InMemoryDepartRepository()
     # Le déroulé du tournoi simulé (ADR-0076) : le magasin de phases s'en sert pour **assembler**
     # définition et avancement, exactement comme l'adapter SQL.
@@ -253,9 +253,9 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # lue sur chaque phase, et deux catalogues distincts laisseraient croire qu'ils divergent.
     registre = registre_par_defaut()
     # Le harnais n'a pas de palmarès : on résout quand même la politique **par le registre** plutôt
-    # que de l'instancier en dur, pour que le harnais reste le miroir du câblage de production (cf.
-    # le commentaire de `create_app`). Un premier jet affirmait ici un partage d'instance avec un
-    # service que cette fonction ne construit pas.
+    # que de l'instancier en dur, pour que le harnais reste le miroir du câblage de production
+    # (cf. le commentaire de `create_app`). Un premier jet affirmait ici un partage d'instance avec
+    # un service que cette fonction ne construit pas.
     aggregation_simulation = cast(
         "Aggregation",
         registre.resoudre(FamillePolitique.AGGREGATION, "par_qualification", {}),
@@ -264,14 +264,15 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas — c'est le typage qui l'a dit.
     # ⚠️ **Aucun évaluateur d'arrêts n'est branché sur ce harnais, et c'est voulu** (E05US033,
-    # remarque de revue, axe A). Un bot de simulation ne doit pas se mettre en pause : la session
-    # est éphémère, il n'y a pas d'organisateur pour relancer, et une phase arrêtée bloquerait le
+    # remarque de revue, axe A). Un bot de simulation ne doit pas se mettre en pause : la
+    # session est éphémère, il n'y a pas d'organisateur pour relancer, et une phase arrêtée
+    # bloquerait le
     # scénario sans qu'aucun écran ne le dise.
     #
     # Conséquence à connaître, puisque le mode de panne « non branché = inerte » est réel
     # (`DETTE-028`) : **une simulation d'un format à pauses ne reproduit pas le comportement de la
-    # salle**. Elle joue le déroulé d'un bout à l'autre. Ce n'est pas un oubli de câblage — et
-    # c'est écrit ici précisément pour qu'un futur lecteur ne le prenne pas pour tel.
+    # salle** — elle joue le déroulé d'un bout à l'autre. Ce n'est pas un oubli de câblage, et c'est
+    # écrit ici précisément pour qu'un futur lecteur ne le prenne pas pour tel.
     saisie_duels = ServiceSaisieDuels(
         tournois,
         phases,
@@ -328,38 +329,38 @@ def create_app(
 ) -> FastAPI:
     """Assemble et renvoie l'application FastAPI entièrement câblée.
 
-    `database_url` : surcharge l'URL de la base (tests) ; sinon configuration applicative (variable
-    d'environnement KERVIGNARC_DATABASE_URL, sinon défaut local). `frontend_dist` : surcharge le
-    répertoire du build front à servir (tests) ; sinon résolu par défaut (`frontend/dist/`). Non
-    monté s'il n'existe pas (E00US012). `admin_env_path` : surcharge le fichier `.env` des
-    identifiants admin (tests) ; sinon résolu par défaut (variable KERVIGNARC_ENV_FILE, sinon `.env`
-    local) (E10US002).
+    `database_url` : surcharge l'URL de la base (tests) ; sinon configuration applicative
+    (variable d'environnement KERVIGNARC_DATABASE_URL, sinon défaut local).
+    `frontend_dist` : surcharge le répertoire du build front à servir (tests) ; sinon
+    résolu par défaut (`frontend/dist/`). Non monté s'il n'existe pas (E00US012).
+    `admin_env_path` : surcharge le fichier `.env` des identifiants admin (tests) ; sinon
+    résolu par défaut (variable KERVIGNARC_ENV_FILE, sinon `.env` local) (E10US002).
     """
-    # --- Adapters sortants (infrastructure) : connexion SQLite WAL (E00US006). --- Les repositories
-    # (E00US009) consommeront ce Database pour leurs lectures.
+    # --- Adapters sortants (infrastructure) : connexion SQLite WAL (E00US006). ---
+    # Les repositories (E00US009) consommeront ce Database pour leurs lectures.
     database = Database(database_url or default_database_url())
 
-    # File d'écriture (E00US007) : sérialise les écritures via un writer unique (ADR-0005) ;
-    # démarrée/arrêtée avec le cycle de vie de l'app (lifespan ci-dessous).
+    # File d'écriture (E00US007) : sérialise les écritures via un writer unique
+    # (ADR-0005) ; démarrée/arrêtée avec le cycle de vie de l'app (lifespan ci-dessous).
     write_queue = WriteQueue()
 
-    # Diffusion temps réel (E00US008) : hub d'abonnés WebSocket. La diffusion est déclenchée
-    # **depuis le writer** — un listener post-commit publie tout LiveEvent renvoyé par une commande
-    # d'écriture réussie (point de passage unique, ADR-0005).
+    # Diffusion temps réel (E00US008) : hub d'abonnés WebSocket. La diffusion est
+    # déclenchée **depuis le writer** — un listener post-commit publie tout LiveEvent
+    # renvoyé par une commande d'écriture réussie (point de passage unique, ADR-0005).
     broadcaster = Broadcaster()
 
     # Canal de diffusion **isolé** de la simulation (E15US003, ADR-0055 §5) : un second hub,
-    # distinct du temps réel réel, servi par `/ws/simulation`. Aucune écriture simulée ne passe par
-    # la file, donc le canal réel reste muet pendant une simulation, et réciproquement — l'isolement
-    # est structurel (deux hubs), pas un filtrage sur un canal partagé.
+    # distinct du temps réel réel, servi par `/ws/simulation`. Aucune écriture simulée ne passe
+    # par la file, donc le canal réel reste muet pendant une simulation, et réciproquement —
+    # l'isolement est structurel (deux hubs), pas un filtrage sur un canal partagé.
     broadcaster_simulation = Broadcaster()
 
     def _diffuser_apres_ecriture(result: object) -> None:
-        # Walking skeleton (E00US011) : diffusion à **gros grain**. Une commande peut renvoyer un
-        # LiveEvent typé (diffusé tel quel) ; à défaut, toute écriture réussie émet un événement
-        # générique « données modifiées » invitant les clients à se resynchroniser (le front
-        # invalide alors ses requêtes React Query). Les US métier affineront en événements ciblés
-        # par sujet/tournoi (CDC §6.2).
+        # Walking skeleton (E00US011) : diffusion à **gros grain**. Une commande peut
+        # renvoyer un LiveEvent typé (diffusé tel quel) ; à défaut, toute écriture réussie
+        # émet un événement générique « données modifiées » invitant les clients à se
+        # resynchroniser (le front invalide alors ses requêtes React Query). Les US métier
+        # affineront en événements ciblés par sujet/tournoi (CDC §6.2).
         if isinstance(result, LiveEvent):
             broadcaster.publish(result)
         else:
@@ -419,8 +420,8 @@ def create_app(
     app.state.broadcaster_simulation = broadcaster_simulation
 
     # --- Services applicatifs (E00US009) : repository (adapter) → service, injectés via state. ---
-    # Le repository lit via les sessions courtes du Database ; les écritures du service passent par
-    # la file d'écriture (routage assuré côté router API).
+    # Le repository lit via les sessions courtes du Database ; les écritures du service passent
+    # par la file d'écriture (routage assuré côté router API).
     tournoi_repository = TournoiRepositorySQL(database.session_factory)
     categorie_repository = CategorieRepositorySQL(database.session_factory)
     blason_repository = BlasonRepositorySQL(database.session_factory)
@@ -441,9 +442,10 @@ def create_app(
     inscription_repository = InscriptionRepositorySQL(database.session_factory, audit_repository)
     # Registre de remboursements (E08US005, ADR-0057) : le traitement (marquer remboursé/reporté)
     # co-écrit sa trace `REMBOURSEMENT` dans une seule transaction (ADR-0035) — d'où
-    # l'`audit_repository` (concret) injecté, couplage **infra → infra** comme l'inscription et le
-    # placement. La *création* d'un poste, elle, se fait à la suppression d'une inscription payée
-    # (via les repos ci-dessus).
+    # l'`audit_repository`
+    # (concret) injecté, couplage **infra → infra** comme l'inscription et le placement. La
+    # *création*
+    # d'un poste, elle, se fait à la suppression d'une inscription payée (via les repos ci-dessus).
     remboursement_repository = RemboursementRepositorySQL(
         database.session_factory, audit_repository
     )
@@ -453,13 +455,13 @@ def create_app(
     placement_repository = PlacementRepositorySQL(database.session_factory, audit_repository)
     placement_tableau_repository = PlacementTableauRepositorySQL(database.session_factory)
     duel_repository = DuelRepositorySQL(database.session_factory)
-    # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais «
-    # archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
+    # Plan de poules (E05US023, migration 0045) : « poule → plage de couloirs contigus », jamais
+    # « archer → couloir » — le membre au repos change à chaque tour, donc l'archer serait une
     # information *fausse*, pas seulement incomplète (ADR-0083 §3).
     placement_par_bloc_repository = PlacementParBlocRepositorySQL(database.session_factory)
     # Forfaits — abandon / DSQ (E04US015, ADR-0050) : co-écrivent leur trace d'audit `FORFAIT` dans
-    # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage infra
-    # → infra, comme la série, l'inscription et le placement.
+    # une seule transaction (ADR-0035), d'où l'`audit_repository` (concret) injecté — couplage
+    # infra → infra, comme la série, l'inscription et le placement.
     forfait_repository = ForfaitRepositorySQL(database.session_factory, audit_repository)
     # La série de saisie co-écrit son entrée d'audit dans **une seule transaction** (ADR-0035) :
     # l'adapter reçoit l'`audit_repository` (concret) pour appeler `consigner_dans` sur la session
@@ -476,17 +478,18 @@ def create_app(
     # `ServiceTournois` lit aussi les **départs** (port `depart_repository`) : le passage à `prêt`
     # exige au moins un créneau (garde `TournoiSansDepart`, E02US010). Depuis E05US021 il lit en
     # plus le **déroulé** et les **engagés** : démarrer exige assez d'inscrits pour que le déroulé
-    # composé puisse se dérouler ([ADR-0069]). ⚠️ `deroule_repository` et non `phase_repository`
-    # (E01US025, ADR-0076) : l'exigence se déduit de la **définition** — unique au tournoi —, pas
-    # des N copies d'avancement des créneaux, dont la concaténation faussait le plancher.
+    # composé puisse se dérouler ([ADR-0069]).
+    # ⚠️ `deroule_repository` et non `phase_repository` (E01US025, ADR-0076) : l'exigence se déduit
+    # de la **définition** — unique au tournoi —, pas des N copies d'avancement des créneaux, dont
+    # la concaténation faussait le plancher.
     app.state.service_tournois = ServiceTournois(
         tournoi_repository, depart_repository, deroule_repository, compteur_engages
     )
     # `service_departs` est câblé **plus bas**, après `service_completude` : son garde-fou de cycle
     # (E12US008) dépend du port étroit `LecteurAvancementDepart`, que réalise `ServiceCompletude`.
-    # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son blason
-    # par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne dépend que
-    # des **ports** repository (pas de l'autre service).
+    # Catégories ↔ blasons se référencent mutuellement (E01US006) : la catégorie valide son
+    # blason par défaut, le blason refuse sa suppression s'il est référencé. Chaque service ne
+    # dépend que des **ports** repository (pas de l'autre service).
     app.state.service_categories = ServiceCategories(
         tournoi_repository, categorie_repository, blason_repository
     )
@@ -495,30 +498,30 @@ def create_app(
     )
     # Référentiel des clubs (E02US001) : **global**, réutilisé d'une compétition à l'autre — seul
     # service à ne dépendre d'aucun tournoi. Clubs ↔ archers se référencent mutuellement, comme
-    # catégories ↔ blasons : l'archer valide son club de rattachement, le club refuse sa suppression
-    # s'il est référencé. Chaque service ne dépend que des **ports** repository (jamais de l'autre
-    # service) — pas de cycle entre services.
+    # catégories ↔ blasons : l'archer valide son club de rattachement, le club refuse sa
+    # suppression s'il est référencé. Chaque service ne dépend que des **ports** repository (jamais
+    # de l'autre service) — pas de cycle entre services.
     app.state.service_clubs = ServiceClubs(club_repository, archer_repository)
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
     # Patrimoine du club (E01US023, ADR-0060) : la **bibliothèque** de briques hors tournoi,
     # l'assemblage d'un tournoi (copie) et la promotion (retour). Service **distinct** de
-    # `service_categories` / `service_blasons`, qui restent cantonnés au périmètre d'un tournoi :
-    # copier une catégorie exige de réattacher son `blason_id` à la copie du blason du même tournoi
-    # — une règle qui traverse les **deux** collections, qu'aucun des deux services existants ne
-    # voit en entier.
+    # `service_categories` / `service_blasons`, qui restent cantonnés au périmètre d'un
+    # tournoi : copier une catégorie exige de réattacher son `blason_id` à la copie du blason
+    # du même tournoi — une règle qui traverse les **deux** collections, qu'aucun des deux
+    # services existants ne voit en entier.
     app.state.service_patrimoine = ServicePatrimoine(
         tournoi_repository, categorie_repository, blason_repository
     )
-    # Formats de tournoi (E01US023, ADR-0060 §5) : la brique « déroulé ». Traverse deux ports — le
-    # sien et celui des **phases** — parce que la copie d'un format dans un tournoi n'est pas un
-    # format rattaché, ce sont ses phases. `forfait_repository` **et**
-    # `placement_tableau_repository` : la garde d'application d'un format regarde ce qui **pend**
-    # aux phases, pas seulement leur statut. Un forfait déclaré au pointage et un plan de duels
-    # ajusté à la main vivent tous deux sur des phases encore `à venir`, et les deux FK sont en `ON
-    # DELETE CASCADE` — le remplacement les détruisait en silence (revue E01US023, démontré à
-    # l'exécution).
+    # Formats de tournoi (E01US023, ADR-0060 §5) : la brique « déroulé ». Traverse deux ports
+    # — le sien et celui des **phases** — parce que la copie d'un format dans un tournoi n'est
+    # pas un format rattaché, ce sont ses phases.
+    # `forfait_repository` **et** `placement_tableau_repository` : la garde d'application d'un
+    # format regarde ce qui **pend** aux phases, pas seulement leur statut. Un forfait déclaré au
+    # pointage et un plan de duels ajusté à la main vivent tous deux sur des phases encore
+    # `à venir`, et les deux FK sont en `ON DELETE CASCADE` — le remplacement les détruisait en
+    # silence (revue E01US023, démontré à l'exécution).
     app.state.service_formats = ServiceFormats(
         tournoi_repository,
         format_repository,
@@ -533,11 +536,11 @@ def create_app(
     app.state.service_bareme_qualification = ServiceBaremeQualification(
         tournoi_repository, phase_repository, depart_repository, deroule_repository
     )
-    # Grain de validation (E01US015, `D-11`) : porté par la même **étape de déroulé** que le barème,
-    # à la racine de sa `config` (`config.validation`) — ce n'est pas une politique de moteur, il
-    # reste hors `config.policies` où E05US003 a rangé le barème (ADR-0046), sans changement de
-    # schéma. Le port injecté est le **déroulé** et non les phases : depuis ADR-0076, écrire une
-    # définition par `PhaseRepository` ne déplacerait rien.
+    # Grain de validation (E01US015, `D-11`) : porté par la même **étape de déroulé** que le
+    # barème, à la racine de sa `config` (`config.validation`) — ce n'est pas une politique de
+    # moteur, il reste hors `config.policies` où E05US003 a rangé le barème (ADR-0046), sans
+    # changement de schéma. Le port injecté est le **déroulé** et non les phases : depuis ADR-0076,
+    # écrire une définition par `PhaseRepository` ne déplacerait rien.
     app.state.service_grain_validation = ServiceGrainValidation(
         tournoi_repository, deroule_repository
     )
@@ -548,22 +551,22 @@ def create_app(
     app.state.service_phases = ServicePhases(
         tournoi_repository, phase_repository, depart_repository, deroule_repository
     )
-    # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue nom →
-    # implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
+    # Registre des politiques injectables (E05US003, ADR-0004/ADR-0046) : le catalogue
+    # nom → implémentation par famille (routing/scoring/seeding/byes/tiebreak/depth), peuplé **ici**
     # (règle 2 : le domaine définit les stratégies, la composition root les assemble). C'est le
     # socle qu'`assembler_politiques` consomme pour résoudre la `config.policies` d'une phase ; le
-    # **moteur** qui l'exploite (dimensionnement/génération d'arbre) arrive en E05US005/E05US010. On
-    # pourrait enregistrer ici des implémentations supplémentaires sans toucher au domaine.
+    # **moteur** qui l'exploite (dimensionnement/génération d'arbre) arrive en E05US005/E05US010.
+    # On pourrait enregistrer ici des implémentations supplémentaires sans toucher au domaine.
     app.state.registre_politiques = registre_par_defaut()
     # Inscription d'un archer (E02US002) : le service valide le tournoi, sa **catégorie** (qui doit
     # être du même tournoi) et son club de rattachement s'il est fourni — d'où quatre ports pour un
-    # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non. Le port
-    # inscription est injecté pour l'« engagé » élargi (E02US009) : un archer inscrit sur au moins
-    # un départ est engagé, sa suppression se signale et efface ses inscriptions. `serie_repository`
-    # porte « l'archer a-t-il tiré ? » (DETTE-013) : les gardes d'engagement (suppression,
-    # changement de catégorie) dérivent de la vraie saisie (`Serie`, E04US002), plus de l'agrégat
-    # `Score` que plus aucun flux produit n'alimente. `score_repository` ne sert plus qu'au
-    # `saisir_score` du walking skeleton (endpoint sans appelant produit — DETTE-011).
+    # seul agrégat. Le club reste facultatif (`NULL` = inconnu, ADR-0014), la catégorie non.
+    # Le port inscription est injecté pour l'« engagé » élargi (E02US009) : un archer inscrit sur au
+    # moins un départ est engagé, sa suppression se signale et efface ses inscriptions.
+    # `serie_repository` porte « l'archer a-t-il tiré ? » (DETTE-013) : les gardes d'engagement
+    # (suppression, changement de catégorie) dérivent de la vraie saisie (`Serie`, E04US002), plus
+    # de l'agrégat `Score` que plus aucun flux produit n'alimente. `score_repository` ne sert plus
+    # qu'au `saisir_score` du walking skeleton (endpoint sans appelant produit — DETTE-011).
     app.state.service_archers = ServiceArchers(
         tournoi_repository,
         archer_repository,
@@ -575,13 +578,13 @@ def create_app(
     )
     # Classement de qualification (E06US001) : lit les **séries** de saisie (E04US002), plus les
     # catégories pour libeller/segmenter — le walking skeleton `Score` ne portait pas le détail
-    # flèche par flèche qu'exige le départage FFTA (nombre de 10 puis de 9). E04US015 (ADR-0050) :
-    # le classement lit les forfaits **de la phase de qualification** — un abandon y est
-    # **relégué**, une DSQ **exclue** (rang `None`), leurs flèches préservées. D'où le port `phase`
-    # (résoudre la phase de qualif) et le port `forfait`. E06US003 (ADR-0066) : le classement résout
-    # sa politique de départage **par le registre** (seuil de barrage lu dans
-    # `config.policies.tiebreak`) et applique les verdicts des barrages déjà tirés. Sans seuil
-    # réglé, il retombe mot pour mot sur E06US001 — ex æquo partagés.
+    # flèche par flèche qu'exige le départage FFTA (nombre de 10 puis de 9).
+    # E04US015 (ADR-0050) : le classement lit les forfaits **de la phase de qualification** — un
+    # abandon y est **relégué**, une DSQ **exclue** (rang `None`), leurs flèches préservées. D'où le
+    # port `phase` (résoudre la phase de qualif) et le port `forfait`.
+    # E06US003 (ADR-0066) : le classement résout sa politique de départage **par le registre**
+    # (seuil de barrage lu dans `config.policies.tiebreak`) et applique les verdicts des barrages
+    # déjà tirés. Sans seuil réglé, il retombe mot pour mot sur E06US001 — ex æquo partagés.
     barrage_repository = BarrageRepositorySQL(database.session_factory)
     app.state.service_classement = ServiceClassement(
         tournoi_repository,
@@ -618,8 +621,9 @@ def create_app(
         inscription_repository, archer_repository, depart_repository, HorlogeSysteme()
     )
     # Traitement des remboursements (E08US005, ADR-0057) : lister les postes à traiter et les
-    # marquer remboursé/reporté (audité, `Horloge` date la trace `REMBOURSEMENT`). La création vit
-    # ailleurs (suppression d'inscription payée) — ce service ne fait que consulter et clore.
+    # marquer
+    # remboursé/reporté (audité, `Horloge` date la trace `REMBOURSEMENT`). La création vit ailleurs
+    # (suppression d'inscription payée) — ce service ne fait que consulter et clore.
     app.state.service_remboursements = ServiceRemboursements(
         remboursement_repository, tournoi_repository, HorlogeSysteme()
     )
@@ -641,9 +645,9 @@ def create_app(
     # joint archer → catégorie → blason par défaut pour nourrir le moteur pur (`domain/placement`),
     # d'où sept ports de jointure/gardes, **plus** le port `placement` qui persiste le plan
     # (matérialisé, ajustable au glisser-déposer). Les écritures (régénérer/déplacer/échanger/placer
-    # les restants) passent par la file (routage API). E12US007 (ADR-0040) : `serie_repository`
-    # alimente le **calcul d'impact** (« quelles cibles ont des scores ») et `HorlogeSysteme`
-    # **date** la trace d'audit d'une régénération massive.
+    # les restants) passent par la file (routage API).
+    # E12US007 (ADR-0040) : `serie_repository` alimente le **calcul d'impact** (« quelles cibles ont
+    # des scores ») et `HorlogeSysteme` **date** la trace d'audit d'une régénération massive.
     app.state.service_placement = ServicePlacement(
         tournoi_repository,
         depart_repository,
@@ -660,38 +664,44 @@ def create_app(
     # matérialisé par phase et ajustable au glisser-déposer. Assemble le classement (recalculé) →
     # l'arbre (`construire_tableau`, politiques par défaut : serpent / byes aux mieux classés /
     # placement en cascade) → les paires du 1er tour → le placement réordonné pour l'adjacence.
-    # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ). ⚠️
-    # **`PlacementEnCascade` et non `EliminationSeche`** (E05US010, ADR-0061), malgré le nom : le
-    # format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est pas
-    # une élimination sèche mais un placement **tronqué au rang 4**. C'est la paire
+    # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ).
+    #
+    # ⚠️ **`PlacementEnCascade` et non `EliminationSeche`** (E05US010, ADR-0061), malgré le nom :
+    # le format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est
+    # pas une élimination sèche mais un placement **tronqué au rang 4**. C'est la paire
     # `PlacementEnCascade` + `ProfondeurPodium()` qui le dit, et les deux sont injectées **ici** :
     # le `routing` décide *où* descend un perdant, la `depth` *jusqu'où* l'on descend. L'arbre
     # produit est **identique** à celui d'avant l'US ; c'est le vocabulaire qui se met en accord
-    # avec le comportement. ⚠️ **La profondeur n'est plus injectée ici depuis E06US006**
-    # ([ADR-0070]). Elle était figée à `ProfondeurPodium()` sur cette ligne, en attendant « le
-    # levier qu'E01US024 exposera à l'organisateur phase par phase » — E01US024 a livré le composeur
-    # de déroulé sans lui, et E06US006 hérite donc de la promesse. Chaque phase porte désormais sa
-    # profondeur (`Phase.profondeur`), résolue **par le registre** (`profondeur_de`) ; ce qui
-    # s'injecte ici est le **catalogue**, pas le choix. Une phase qui ne règle rien retombe sur le
-    # preset de son type, le podium — soit exactement ce que cette ligne câblait, pour que rien de
-    # déjà joué ne bouge. [ADR-0070]:
-    # ../../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md Saisie en duels (E04US013,
-    # ADR-0049) : reconstruit le même arbre (classement → tableau) et **rejoue** les duels validés
-    # pour la progression. Le barème est résolu par arme via le résolveur FFTA par défaut (cumul en
-    # poulies, sets sinon) — E01US011 le remplacera par un résolveur configuré au même point
-    # d'injection (règle 2). Mêmes politiques de tableau (MVP). E04US015 (ADR-0050) : le port
-    # `forfait` fait **passer l'adversaire** d'un duelliste déclaré forfait dans la phase de tableau
-    # (walkover à la reconstruction) ; les forfaits de qualif sont, eux, exclus à l'ensemencement
-    # (via le classement). ⚠️ **Construit avant le plan de cibles** depuis E05US024 : celui-ci lui
-    # emprunte sa résolution de classement amont (`resolveur_de_classement`), pour ensemencer
-    # exactement la population que l'arbre fera jouer. Deux résolutions distinctes rouvriraient
-    # l'écart mesuré à la revue d'E05US020 — plan de 8 placements pour un tableau de 4. ⚠️ **Une
-    # seule instance d'`aggregation` pour la saisie ET le palmarès** (correctif de revue, relevé par
-    # les quatre axes). Elle ferme les fourchettes *ex æquo* d'un tableau — côté saisie pour décider
-    # qui entre dans la consolante, côté palmarès pour l'afficher au mur. Les faire diverger, c'est
-    # un archer qui entre par un ordre que l'écran voisin contredit le même jour. Un premier jet ne
-    # la câblait **pas** à la saisie, qui retombait sur une stratégie instanciée en dur : les deux
-    # coïncidaient par accident de valeur, pas par construction.
+    # avec le comportement.
+    #
+    # ⚠️ **La profondeur n'est plus injectée ici depuis E06US006** ([ADR-0070]). Elle était figée à
+    # `ProfondeurPodium()` sur cette ligne, en attendant « le levier qu'E01US024 exposera à
+    # l'organisateur phase par phase » — E01US024 a livré le composeur de déroulé sans lui, et
+    # E06US006 hérite donc de la promesse. Chaque phase porte désormais sa profondeur
+    # (`Phase.profondeur`), résolue **par le registre** (`profondeur_de`) ; ce qui s'injecte ici est
+    # le **catalogue**, pas le choix. Une phase qui ne règle rien retombe sur le preset de son type,
+    # le podium — soit exactement ce que cette ligne câblait, pour que rien de déjà joué ne bouge.
+    #
+    # [ADR-0070]: ../../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md
+    # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
+    # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
+    # résolveur FFTA par défaut (cumul en poulies, sets sinon) — E01US011 le remplacera par un
+    # résolveur configuré au même point d'injection (règle 2). Mêmes politiques de tableau (MVP).
+    # E04US015 (ADR-0050) : le port `forfait` fait **passer l'adversaire** d'un duelliste déclaré
+    # forfait dans la phase de tableau (walkover à la reconstruction) ; les forfaits de qualif sont,
+    # eux, exclus à l'ensemencement (via le classement).
+    #
+    # ⚠️ **Construit avant le plan de cibles** depuis E05US024 : celui-ci lui emprunte sa résolution
+    # de classement amont (`resolveur_de_classement`), pour ensemencer exactement la population que
+    # l'arbre fera jouer. Deux résolutions distinctes rouvriraient l'écart mesuré à la revue
+    # d'E05US020 — plan de 8 placements pour un tableau de 4.
+    #
+    # ⚠️ **Une seule instance d'`aggregation` pour la saisie ET le palmarès** (correctif de revue,
+    # relevé par les quatre axes). Elle ferme les fourchettes *ex æquo* d'un tableau — côté saisie
+    # pour décider qui entre dans la consolante, côté palmarès pour l'afficher au mur. Les faire
+    # diverger, c'est un archer qui entre par un ordre que l'écran voisin contredit le même jour.
+    # Un premier jet ne la câblait **pas** à la saisie, qui retombait sur une stratégie instanciée
+    # en dur : les deux coïncidaient par accident de valeur, pas par construction.
     aggregation = cast(
         "Aggregation",
         app.state.registre_politiques.resoudre(
@@ -713,12 +723,12 @@ def create_app(
         app.state.registre_politiques,
         aggregation,
     )
-    # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*`
-    # rend `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui
-    # attendent un `LecteurPopulationPhase` fait **sauter** la vérification du Protocol par mypy —
-    # seule la doublure de test serait alors typée-vérifiée, pas l'implémentation réelle. Sur une US
-    # dont la thèse est « ne pas parier sur une garantie de compilation qui n'existe pas », c'était
-    # la même erreur un cran plus loin.
+    # ⚠️ **Variable annotée, et ce n'est pas cosmétique** (2ᵉ correctif de revue). `app.state.*` rend
+    # `Any` : passer `app.state.service_saisie_duels` directement aux constructeurs qui attendent un
+    # `LecteurPopulationPhase` fait **sauter** la vérification du Protocol par mypy — seule la
+    # doublure de test serait alors typée-vérifiée, pas l'implémentation réelle. Sur une US dont la
+    # thèse est « ne pas parier sur une garantie de compilation qui n'existe pas », c'était la même
+    # erreur un cran plus loin.
     populations: LecteurPopulationPhase = app.state.service_saisie_duels
     app.state.service_placement_duels = ServicePlacementDuels(
         tournoi_repository,
@@ -759,9 +769,12 @@ def create_app(
     # la saisie a besoin du classement du format pour honorer un prélèvement qui vise ce type. Aucun
     # ordre de construction ne satisfait les deux — le port `LecteurClassementDePhase` casse le
     # cycle ([ADR-0084]), et le `setter` le rend explicite plutôt que caché derrière un import
-    # paresseux. ⚠️ Variable **annotée**, même raison qu'au-dessus : `app.state.*` rend `Any`, donc
-    # passer `app.state.service_poules` directement ferait sauter la vérification du Protocol par
-    # mypy. [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+    # paresseux.
+    #
+    # ⚠️ Variable **annotée**, même raison qu'au-dessus : `app.state.*` rend `Any`, donc passer
+    # `app.state.service_poules` directement ferait sauter la vérification du Protocol par mypy.
+    #
+    # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
     classements_de_poules: LecteurClassementDePhase = app.state.service_poules
     app.state.service_saisie_duels.brancher_lecteur(TypePhase.POULES, classements_de_poules)
 
@@ -904,11 +917,11 @@ def create_app(
     # `aggregation` — qui départage les archers sortis au même tour, qu'aucun match n'a séparés —
     # est **injectée ici**, au défaut `par_qualification` (usage World Archery), résolu **par le
     # registre** : la contourner en instanciant la stratégie à la main ferait de la politique une
-    # décoration (même parti que le `tiebreak` du classement, ADR-0066). ⚠️ Variable **annotée**,
-    # comme les branchements de classement ci-dessus et pour la même raison : `app.state.*` rend
-    # `Any`, donc un littéral passé cru ferait sauter la vérification du Protocol par mypy. La
-    # signature de `rencontres_a_tirer` a justement changé dans cette US — sans cette annotation,
-    # une réalisation qui divergerait demain ne casserait rien ici.
+    # décoration (même parti que le `tiebreak` du classement, ADR-0066).
+    # ⚠️ Variable **annotée**, comme les branchements de classement ci-dessus et pour la même
+    # raison : `app.state.*` rend `Any`, donc un littéral passé cru ferait sauter la vérification du
+    # Protocol par mypy. La signature de `rencontres_a_tirer` a justement changé dans cette US —
+    # sans cette annotation, une réalisation qui divergerait demain ne casserait rien ici.
     rencontres_a_router: dict[TypePhase, LecteurRencontresARouter] = {
         TypePhase.SUISSE: app.state.service_suisse,
         TypePhase.POULES: app.state.service_poules,
@@ -922,8 +935,8 @@ def create_app(
         GenerateurPalmaresPdf(),
         depart_repository,
         aggregation,
-        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès
-        # et le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
+        # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès et
+        # le Big Shoot Off, donc rien ne justifie d'échanger un contrôle du compilateur contre un
         # test de câblage. C'est la différence avec les deux branchements tardifs ci-dessus.
         app.state.service_big_shoot_off,
         # E05US026 : de quoi savoir si une phase **à rencontres** est allée à son terme. Le **même**
@@ -947,8 +960,8 @@ def create_app(
         HorlogeSysteme(),
     )
 
-    # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons de
-    # session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
+    # --- Accès administrateur (E10US002) : identifiants dans un fichier `.env` local + jetons
+    # de session en mémoire. Auth = concern technique (pas de domaine) ; la dépendance API
     # `exiger_admin` protège les routes admin (ici, la création de tournoi). ---
     credentials_store = AdminCredentialsStore(admin_env_path or default_env_path())
     session_store = SessionStore()
@@ -967,11 +980,13 @@ def create_app(
     # --- Postes de cible (E04US001, ADR-0029) : préparation des codes (admin) + session de poste
     # (rattacher une tablette à sa cible). Troisième mode d'identité (`D-13`, le **lieu**), à côté
     # du scoreur (la personne) et de l'admin (un secret). Store de sessions en mémoire (jeton →
-    # poste) et générateur de code injecté (déterminisme des tests, règle 9) ; le service lit le
-    # plan de salle (gabarit) pour émettre un code par cible. La dépendance API `exiger_poste`
-    # protégera la saisie (E04US002) et gardera « le poste ne saisit que pour SA cible » (E10US007).
-    # --- E07US004 élargit ce service aux **écrans de salle** : le CA en fait des postes, rattachés
-    # par le même jeton, avec le même code — d'où la création/le réglage/la suppression d'écrans ici
+    # poste)
+    # et générateur de code injecté (déterminisme des tests, règle 9) ; le service lit le plan de
+    # salle (gabarit) pour émettre un code par cible. La dépendance API `exiger_poste` protégera la
+    # saisie (E04US002) et gardera « le poste ne saisit que pour SA cible » (E10US007). ---
+    #
+    # E07US004 élargit ce service aux **écrans de salle** : le CA en fait des postes, rattachés par
+    # le même jeton, avec le même code — d'où la création/le réglage/la suppression d'écrans ici
     # plutôt que dans un service parallèle (`ServicePostes` possède déjà l'allocation de code). Il
     # reçoit pour cela le registre de consignes : supprimer un écran doit **aussi** retirer sa
     # consigne, sinon SQLite réattribuerait l'identifiant à un futur écran qui en hériterait. ---
@@ -1007,9 +1022,9 @@ def create_app(
 
     # --- Journal d'audit métier (E10US005, socle) : trace les actes sensibles (qui/quand/
     # avant-après) pour gérer les litiges. Les producteurs sont **livrés** : validation/correction
-    # (E04US002), forfait (E04US015 / ADR-0050, ex-E12US004), paiement, replacement, remboursement —
-    # tous écrivent leur trace **atomiquement avec leur agrégat** (`*_avec_trace`). `consigner` est
-    # la primitive pour le seul cas sans agrégat, le lancement de tour (E12US002) ; voir
+    # (E04US002), forfait (E04US015 / ADR-0050, ex-E12US004), paiement, replacement, remboursement
+    # — tous écrivent leur trace **atomiquement avec leur agrégat** (`*_avec_trace`). `consigner`
+    # est la primitive pour le seul cas sans agrégat, le lancement de tour (E12US002) ; voir
     # `application/audit.py`. La consultation admin (`GET .../audit`) est livrée. L'horodatage passe
     # par le port `Horloge` (adapter système UTC), injecté pour des cas d'usage déterministes. ---
     app.state.service_audit = ServiceAudit(audit_repository, tournoi_repository, HorlogeSysteme())
@@ -1018,9 +1033,9 @@ def create_app(
     # duels **déjà câblés** — `service_saisie_duels` (reconstruction de l'arbre + noms),
     # `service_placement_duels` (le plan → la cible de chaque duelliste) — et `service_audit` (la
     # trace `LANCEMENT`). Aucun repo neuf : le feu vert **lit** le tableau reconstruit + le plan
-    # persisté ; le lancement est un **événement** (aucun statut posé sur le tableau). Le geste
-    # passe par la file et renvoie un `LiveEvent("tour_lance")` diffusé par le listener post-commit
-    # — le point de branchement des 4 canaux (leurs récepteurs sont séquencés). ---
+    # persisté ; le lancement est un **événement** (aucun statut posé sur le tableau). Le
+    # geste passe par la file et renvoie un `LiveEvent("tour_lance")` diffusé par le listener
+    # post-commit — le point de branchement des 4 canaux (leurs récepteurs sont séquencés). ---
     app.state.service_pilotage_tour = ServicePilotageTour(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
@@ -1032,17 +1047,18 @@ def create_app(
     # de rien : il lit le tableau reconstruit (où va l'archer) et le plan de duels persisté (sur
     # quelle cible), et résout lui-même la phase de tableau (`phase_repository`) puisque la tablette
     # de qualification ne la connaît pas. Aucun repo neuf, aucune écriture (`D-08` : rien n'est
-    # calculé au moment de la bascule). --- ⚠️ `depart_repository` depuis E01US025 : les quatre
-    # canaux de routage entrent par le **créneau** (ADR-0075) — « le tableau qui vient » n'a de sens
-    # que dans une séquence, et la vue transverse `par_tournoi` en concatène N. ⚠️
-    # `service_big_shoot_off` depuis E05US028 : sans lui, `_routage_big_shoot_off` prend la branche
-    # « montage sans Big Shoot Off » et rend INDISPONIBLE sur les quatre canaux. Le paramètre est
-    # optionnel (aucun cycle, cf. son commentaire au constructeur), donc **rien ne rougissait**
-    # quand il manquait : la ligne `route_l_archer=True` du registre de contrats se justifiait par
-    # une méthode morte en production, pendant que les tests montaient leur propre `ServiceRoutage`
-    # avec le port. C'est le mode de défaillance d'ADR-0017 — une capacité déclarée dont le porteur
-    # nommé ne porte rien — et c'est `test_composition_routage_big_shoot_off` qui l'ancre désormais,
-    # en interrogeant le service **tel que `create_app` le câble**.
+    # calculé au moment de la bascule). ---
+    # ⚠️ `depart_repository` depuis E01US025 : les quatre canaux de routage entrent par le
+    # **créneau** (ADR-0075) — « le tableau qui vient » n'a de sens que dans une séquence, et la
+    # vue transverse `par_tournoi` en concatène N.
+    # ⚠️ `service_big_shoot_off` depuis E05US028 : sans lui, `_routage_big_shoot_off` prend la
+    # branche « montage sans Big Shoot Off » et rend INDISPONIBLE sur les quatre canaux. Le
+    # paramètre est optionnel (aucun cycle, cf. son commentaire au constructeur), donc **rien ne
+    # rougissait** quand il manquait : la ligne `route_l_archer=True` du registre de contrats se
+    # justifiait par une méthode morte en production, pendant que les tests montaient leur propre
+    # `ServiceRoutage` avec le port. C'est le mode de défaillance d'ADR-0017 — une capacité déclarée
+    # dont le porteur nommé ne porte rien — et c'est `test_composition_routage_big_shoot_off` qui
+    # l'ancre désormais, en interrogeant le service **tel que `create_app` le câble**.
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,
@@ -1051,8 +1067,8 @@ def create_app(
         depart_repository,
         app.state.service_big_shoot_off,
         # E05US026 : les deux formats à **rencontres** — suisse et poules — routent par le même
-        # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non chez
-        # l'un des deux réalisateurs : ils sont deux, la question se pose ici.
+        # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non
+        # chez l'un des deux réalisateurs : ils sont deux, la question se pose ici.
         rencontres_a_router[TypePhase.SUISSE],
         rencontres_a_router[TypePhase.POULES],
     )
@@ -1106,9 +1122,9 @@ def create_app(
     # **rempli par la réalité**. Ne recalcule rien : `domain.deroule.projeter` pour le dessin,
     # `ServiceSaisieDuels.reconstruire` pour les duels tranchés (une seule source de vérité de la
     # progression, déjà partagée par la saisie, le placement et le feu vert). L'effectif est le
-    # nombre d'engagés — l'équivalent live du « je simule à N archers » de l'atelier. --- ⚠️
-    # `depart_repository` depuis E01US025 : le suivi se lit **par créneau** (ADR-0075), il lui faut
-    # donc résoudre le départ (garde 404) et remonter à son tournoi pour la reconstruction.
+    # nombre d'engagés — l'équivalent live du « je simule à N archers » de l'atelier. ---
+    # ⚠️ `depart_repository` depuis E01US025 : le suivi se lit **par créneau** (ADR-0075), il lui
+    # faut donc résoudre le départ (garde 404) et remonter à son tournoi pour la reconstruction.
     app.state.service_suivi_deroule = ServiceSuiviDeroule(
         tournoi_repository,
         depart_repository,
@@ -1116,24 +1132,31 @@ def create_app(
         compteur_engages,
         app.state.service_saisie_duels,
     )
-    # ⚠️ **Trois branchements tardifs de plus** (E05US032, [ADR-0090] §5) — « où en est cette phase
-    # ? », résolu par type. Même port, même méthode, une ligne par format : c'est délibérément le
-    # patron d'[ADR-0084] repris à la lettre, plutôt qu'un second mécanisme de résolution qui aurait
-    # été la 4ᵉ occurrence de la même idée. Ce qui manque ici se lit en creux, et l'énumération doit
-    # être **complète** sous peine de se lire comme une garantie (relevé en revue par trois axes) :
-    # la qualification, l'échauffement, le barrage et le placement n'ont aucun lecteur, et c'est
-    # **correct** — ils comptent un tour (ADR-0090 §3). L'élimination directe non plus, et c'est
-    # correct aussi : ses tours se lisent dans les braquets de la projection, sans passer par un
-    # service. ⚠️ **La colline est le seul cas où le silence est faux.** Elle est déclarée
+    # ⚠️ **Trois branchements tardifs de plus** (E05US032, [ADR-0090] §5) — « où en est cette
+    # phase ? », résolu par type. Même port, même méthode, une ligne par format : c'est
+    # délibérément le patron d'[ADR-0084] repris à la lettre, plutôt qu'un second mécanisme de
+    # résolution qui aurait été la 4ᵉ occurrence de la même idée.
+    #
+    # Ce qui manque ici se lit en creux, et l'énumération doit être **complète** sous peine de se
+    # lire comme une garantie (relevé en revue par trois axes) : la qualification, l'échauffement,
+    # le barrage et le placement n'ont aucun lecteur, et c'est **correct** — ils comptent un tour
+    # (ADR-0090 §3). L'élimination directe non plus, et c'est correct aussi : ses tours se lisent
+    # dans les braquets de la projection, sans passer par un service.
+    #
+    # ⚠️ **La colline est le seul cas où le silence est faux.** Elle est déclarée
     # `UniteDeTour.RONDE` et l'ADR §3 lui promet « nombre de rondes réglé », mais aucun
     # `ServiceColline` n'existe encore (`DETTE-028`, volet colline, `E05US027`) : elle retombera
     # donc sur « un tour, aucun tour courant ». Manque assumé et nommé, pas un branchement oublié.
+    #
     # Variables **annotées** : cela type le **paramètre passé** à `brancher_lecteur_avancement` et
     # documente l'intention. ⚠️ Cela ne **prouve** rien — mypy accepte silencieusement d'affecter
     # une expression `Any` (`app.state.*`) à une variable annotée. La conformité au Protocol et
-    # l'appariement type→service sont garantis par le test de composition, pas par le typage ; le
-    # commentaire d'origine affirmait le contraire (relevé en revue, axe A). [ADR-0090]:
-    # ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    # l'appariement type→service sont garantis par le test de composition, pas par le typage ;
+    # le commentaire d'origine affirmait le contraire (relevé en revue, axe A).
+    #
+    # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    # [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
+    # [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
     avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules
     avancement_de_suisse: LecteurAvancementDePhase = app.state.service_suisse
     avancement_de_big_shoot_off: LecteurAvancementDePhase = app.state.service_big_shoot_off
@@ -1146,24 +1169,21 @@ def create_app(
     app.state.service_suivi_deroule.brancher_lecteur_avancement(
         TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
     )
-    # E05US033 : la **qualification** entre au registre. Sans elle, son `tour_courant` restait
-    # `None` pour toujours, le déclencheur d'arrêt lisait ce `None` comme « tout est joué », et une
-    # pause « après le tour 1 » tombait à la première série validée. Bloquant relevé par les quatre
-    # axes. ⚠️ L'**échauffement** reste hors registre, et ce n'est pas un oubli : il n'a ni barème
-    # ni série (`ContratDePhase` : décor et plan de cibles à `AUCUN`), donc il n'existe rien dont
-    # dériver un tour. L'atelier refuse désormais d'y poser un découpage.
-    avancement_de_qualification: LecteurAvancementDePhase = app.state.service_saisie
-    app.state.service_suivi_deroule.brancher_lecteur_avancement(
-        TypePhase.QUALIFICATION, avancement_de_qualification
-    )
 
-    # --- Arrêts programmés (E05US033, ADR-0091) : « la salle s'arrête après ce tour, et repart
-    # quand je le dis ». Trois branchements, et l'ordre compte. --- 1. Le service se monte **après**
-    # `service_suivi_deroule`, dont il consomme la couture d'avancement
-    # (`LecteurAvancementDuDepart`) : c'est le seul endroit qui sache répondre « quel tour tourne »
-    # pour **tous** les formats, tableau compris. Il compose aussi `service_phases` plutôt que de
-    # muter les statuts lui-même — `mettre_en_pause` / `reprendre` sont les transitions gardées
-    # d'ADR-0045, et un automate en double finit toujours par diverger.
+    # --- Arrêts programmés (E05US033, [ADR-0091]) : « la salle s'arrête après ce tour, et repart
+    # quand je le dis ». Deux temps, et l'ordre compte.
+    #
+    # 1. Le service se monte **après** `service_suivi_deroule`, dont il consomme la couture
+    # d'avancement (`LecteurAvancementDuDepart`) : c'est le seul endroit qui sache répondre « quel
+    # tour tourne » pour tous les formats qui déclarent le leur. Il compose aussi `service_phases`
+    # plutôt que de muter les statuts lui-même — `mettre_en_pause` / `reprendre` sont les
+    # transitions gardées d'[ADR-0045], et un automate en double finit toujours par diverger.
+    #
+    # ⚠️ **Variables annotées, pas `app.state.*` passé directement** (correctif de revue, axe A).
+    # `app.state.*` rend `Any`, donc mypy n'apparie **rien** : la conformité au Protocol
+    # n'aurait été vérifiée par personne. C'est mot pour mot le défaut que le bloc précédent
+    # documente pour
+    # `LecteurAvancementDePhase`.
     franchissement_arret_repository = FranchissementArretRepositorySQL(database.session_factory)
     suivi_du_depart: LecteurAvancementDuDepart = app.state.service_suivi_deroule
     cycle_de_vie_des_phases: ServicePhases = app.state.service_phases
@@ -1172,31 +1192,28 @@ def create_app(
         deroules=deroule_repository,
         departs=depart_repository,
         franchissements=franchissement_arret_repository,
-        # ⚠️ **Variables annotées, pas `app.state.*` directement** (correctif de revue, axe A).
-        # `app.state.*` rend `Any`, donc mypy n'apparie **rien** : le Protocol n'aurait été vérifié
-        # par personne. C'est mot pour mot le défaut que ce fichier documente déjà 400 lignes plus
-        # haut pour `LecteurPopulationPhase` — l'auteur l'avait appliqué à `evaluateur` et l'avait
-        # oublié pour ses deux voisins.
         suivi=suivi_du_depart,
         cycle_de_vie=cycle_de_vie_des_phases,
     )
-    # 2. Le **déclencheur** se branche tardivement sur les deux services de saisie, sur le patron de
-    # `brancher_lecteur_avancement` juste au-dessus : eux seuls savent qu'un résultat vient d'être
-    # écrit, et ils sont construits avant celui-ci. Le branchement tardif rend le cycle **visible**
-    # ici plutôt que de le refermer en douce dans un constructeur. ⚠️ **Sans ces deux lignes, l'US
-    # est inerte** : les arrêts se programmeraient, se liraient, se relanceraient — et ne se
-    # déclencheraient jamais, faute d'un seul appel. C'est exactement le mode de panne de
-    # `DETTE-028` (six moteurs livrés, aucun appelé), d'où le test de composition qui exige la
-    # présence du branchement.
+    # 2. Le **déclencheur** se branche tardivement sur les services qui écrivent un résultat, sur le
+    # patron de `brancher_lecteur_avancement` juste au-dessus : eux seuls savent qu'un résultat
+    # vient d'être écrit, et ils sont construits avant celui-ci. Le branchement tardif rend le
+    # cycle
+    # **visible** ici plutôt que de le refermer en douce dans un constructeur.
+    #
+    # ⚠️ **Sans cette boucle, l'US est inerte** : les arrêts se programmeraient, se liraient, se
+    # relanceraient — et ne se déclencheraient jamais, faute d'un seul appel. C'est exactement le
+    # mode de panne de `DETTE-028` (six moteurs livrés, aucun appelé), d'où le test de composition
+    # de `tests/test_arrets_api.py`.
+    #
+    # ⚠️ **CINQ services, et pas deux.** La première rédaction ne branchait que la qualification et
+    # l'élimination directe, si bien qu'un arrêt posé sur des poules, un système suisse ou un Big
+    # Shoot Off ne se déclenchait **jamais** : ces phases tournent seules, donc aucune validation
+    # n'atteignait le déclencheur. Bloquant relevé par les quatre axes de revue, sur les formats
+    # mêmes que le CA vise (« une phase qui dure des heures »). Il n'existe aucun garde-fou
+    # automatique contre l'oubli d'un sixième — `DETTE-028` encore — c'est pourquoi le test nomme
+    # les cinq un par un.
     evaluateur: EvaluateurArrets = app.state.service_arrets_programmes
-    # ⚠️ **Les CINQ services qui écrivent un résultat**, et pas deux. La première livraison n'en
-    # branchait que deux — la qualification et l'élimination directe — si bien qu'un arrêt programmé
-    # sur une phase de poules, de suisse ou de Big Shoot Off ne se déclenchait **jamais** : ces
-    # phases tournent seules, donc aucune validation n'atteignait le déclencheur. Bloquant relevé
-    # par les quatre axes de revue, sur les formats mêmes que le CA vise (« une phase qui dure des
-    # heures »). Il n'existe aucun garde-fou automatique contre l'oubli d'une sixième : c'est
-    # `DETTE-028` (six moteurs livrés, aucun appelé), et c'est pourquoi le test de composition
-    # `tests/test_arrets_api.py` assère nommément que les cinq sont branchés.
     for service_ecrivant in (
         app.state.service_saisie,
         app.state.service_saisie_duels,
@@ -1207,13 +1224,13 @@ def create_app(
         service_ecrivant.brancher_evaluateur_arrets(evaluateur)
 
     # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de
-    # salle. Lecture pure, **sans authentification**, montée sur le même `ServiceSaisieDuels` que le
-    # routage, le palmarès et le suivi du déroulé — une seule source de vérité de la progression.
-    # Service **distinct** de `ServiceSaisieDuels` (qui est celui du scoreur, protégé par
-    # `exiger_scoreur`) : ce sont deux audiences, et la restriction de contenu se fait au DTO de
-    # `api/v1/tableaux.py` (règle 6). Aucun repo neuf, aucune écriture. --- ⚠️ `depart_repository`
-    # remplace `tournoi_repository` (E01US025, ADR-0075) : la lecture est celle d'un **créneau**, et
-    # la garde 404 porte sur lui.
+    # salle. Lecture pure, **sans authentification**, montée sur le même `ServiceSaisieDuels` que
+    # le routage, le palmarès et le suivi du déroulé — une seule source de vérité de la
+    # progression. Service **distinct** de `ServiceSaisieDuels` (qui est celui du scoreur, protégé
+    # par `exiger_scoreur`) : ce sont deux audiences, et la restriction de contenu se fait au DTO
+    # de `api/v1/tableaux.py` (règle 6). Aucun repo neuf, aucune écriture. ---
+    # ⚠️ `depart_repository` remplace `tournoi_repository` (E01US025, ADR-0075) : la lecture est
+    # celle d'un **créneau**, et la garde 404 porte sur lui.
     app.state.service_tableaux_publics = ServiceTableauxPublics(
         depart_repository,
         phase_repository,
@@ -1256,8 +1273,8 @@ def create_app(
         app.state.service_completude,
         archer_repository,
         HorlogeSysteme(),
-        # Un créneau ouvert après la composition **rejoue le déroulé** du tournoi (ADR-0076) : sans
-        # ces deux ports, il naissait sans aucune phase, donc impilotable.
+        # Un créneau ouvert après la composition **rejoue le déroulé** du tournoi (ADR-0076) :
+        # sans ces deux ports, il naissait sans aucune phase, donc impilotable.
         deroule_repository,
         phase_repository,
     )
@@ -1349,8 +1366,8 @@ def create_app(
     app.include_router(palmares_router)
     app.include_router(archive_router)
 
-    # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement s'il
-    # existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---
+    # --- Service du build front (E00US012) : monté EN DERNIER (racine `/`), et seulement
+    # s'il existe, pour ne jamais masquer les routes API/WS/health ci-dessus. ---
     dist = frontend_dist if frontend_dist is not None else frontend_dist_dir()
     if dist.is_dir():
         monter_spa(app, dist)

@@ -35,9 +35,13 @@ pour rectifier une flèche, puis à l'arrêter de nouveau.
 **Une phase sans pause programmée se comporte exactement comme avant.** Rien ne change pour un tournoi
 qui n'en veut pas — c'est ce qui rend la nouveauté sans risque.
 
-Au passage, une qualification peut être **découpée en tours** (« 20 volées en 2 tours de 10 »), ce qui
-lui permet d'accueillir une pause en cours de route. Sans ce réglage, une qualification ne compte qu'un
-seul tour et n'a nulle part où s'arrêter.
+**Les pauses se posent là où l'application sait compter les tours** : les tableaux d'élimination
+directe, les poules, le système suisse, le Big Shoot Off. Ailleurs — une qualification, un échauffement,
+un barrage —, l'écran l'annonce et n'offre pas le réglage : l'application ne saurait pas à quel moment
+déclencher la pause, et mieux vaut le dire à l'atelier que de laisser l'organisateur découvrir le jour J
+que sa pause repas n'a jamais eu lieu. La **qualification** rejoindra la liste tout de suite après
+(`E05US034`) : il faut d'abord que l'application sache dire à quelle volée le pas de tir en est, ce qui
+demande de savoir qui tire vraiment cette phase, sur quelles cibles, et qui a déclaré forfait.
 
 ## Un défaut ancien trouvé au passage
 

@@ -34,7 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 1 |
+| 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 2 |
+| 2026-08-19 | `E05US033` (2ᵉ passe, sur les correctifs) | 74 | +5188/−404 | ~6 min | ~45 min | D | **bloquant:0** majeur:4 mineur:6 | **bloquant:1** majeur:7 mineur:4 | **bloquant:2** majeur:5 mineur:5 suggestion:2 | **bloquant:1** majeur:9 mineur:4 | **bloquant:2** majeur:7 mineur:14 | **C1** (1) + **C2** (1) + **D** (2) + **B** (1), 1 partagé | — |
 | 2026-08-19 | `E05US032` | 26 | +1456/−113 | ~15 min | ~35 min | D (00:20→00:47) | majeur:2 mineur:4 suggestion:2 | majeur:5 mineur:6 | majeur:6 mineur:4 suggestion:2 | majeur:3 mineur:5 suggestion:3 | majeur:5 mineur:6 suggestion:2 | **aucun bloquant** — 5 majeurs de conjonction trouvés par D et C1 seuls | 1 |
 | 2026-08-18 | `E05US031` | 43 | +3064/−177 | ~10 min | ~45 min | D (16:12→16:57) | majeur:2 mineur:2 suggestion:2 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | majeur:2 mineur:3 suggestion:2 | majeur:4 mineur:2 suggestion:1 | C1 | 1 |
 | 2026-08-16 | — (`chore/agents-dedies-revue`) | 13 | +719/−133 | ~1 min | ~12 min | C2 | bloquant:2 majeur:6 mineur:4 | majeur:5 mineur:5 | majeur:6 mineur:5 | majeur:9 mineur:5 | bloquant:3 majeur:6 mineur:3 | **A (2), D (3)** | 2 |
@@ -140,3 +141,41 @@ recenser le périmètre et à relire le log, produit des détections *par elle-m
 lancer les cinq axes sans attendre. Repassée **entière** après correctifs (décision 1 d'ADR-0013), elle
 a coûté 3 min de plus — sur une passe où le code de production a été profondément remanié, c'est le
 seul contrôle qui garantissait que les 28 oracles neufs ne masquaient pas une régression ailleurs.
+
+**6. La 2ᵉ passe a trouvé six bloquants de plus, et c'est le fait le plus instructif de la ligne.**
+Une seconde passe complète a été lancée **sur les correctifs** de la première, ce qui n'était pas
+arrivé jusqu'ici. Elle n'a pas rendu un rapport résiduel : elle a trouvé **six** bloquants neufs, tous
+introduits ou révélés par les correctifs eux-mêmes — dont deux d'un genre qu'aucune première passe ne
+pouvait produire :
+
+- une garde de gel posée par recherche de motif dans le **mauvais** corps de méthode
+  (`ServiceBigShootOff.projection`, une **lecture**, au lieu de `saisir_volee`) : les deux premières
+  lignes se ressemblaient. Un correctif appliqué par script sur une ancre non unique ;
+- un ordre d'écriture (trace puis pause) qui, inversé, laissait une phase `EN_PAUSE` **sans bouton de
+  relance** si la seconde écriture échouait — c'est-à-dire le mode de panne exact que l'ADR est écrit
+  pour empêcher, atteint par la porte de l'`except`.
+
+Enseignement : **un correctif de revue est du code neuf, et il n'a été relu par personne.** Le tenir
+pour acquis parce qu'il répond à une remarque est l'angle mort de la procédure. Contrepartie honnête :
+la 2ᵉ passe coûte presque autant que la première, donc elle ne se justifie que quand la 1ʳᵉ a produit
+des correctifs **structurels** — ce qui était le cas ici (une frontière de couche, cinq points
+d'écriture, un prédicat de domaine réécrit).
+
+**7. Deux défauts sur six venaient d'un outil, pas d'un raisonnement.** Un script de re-justification
+de commentaires, lancé pour tenir la limite de 100 colonnes, a fusionné des blocs de définitions de
+liens Markdown dans la prose qui les précédait — créant **trois références mortes** — et transformé
+neuf titres `## X` en `# # X`. Il a aussi produit ~540 lignes de diff sans contenu dans un commit de
+correctifs, ce qui rend la relecture humaine du diff impraticable. Les axes C1, C2 et D l'ont relevé
+ensemble. Enseignement : **ne pas reformer un paragraphe entier pour rentrer une ligne.** Le correctif
+retenu est mécanique et local — un mot rejeté sur la ligne suivante — et les fichiers abîmés ont été
+**repris depuis `main`** puis re-patchés à la main, hunk par hunk, ce qui a ramené le diff de
+`composition.py` de 247/206 à **65/0**.
+
+**8. Le périmètre a été redécoupé en fin de revue, et c'est un résultat de la revue.** Quatre des six
+bloquants de la 2ᵉ passe vivaient dans le même volet : le lecteur d'avancement de la qualification et
+son réglage « découper en x tours ». En les instruisant, il est apparu que dériver le tour d'une
+qualification demande trois choses non budgétées — la population réelle de la phase (ADR-0082), le
+plan de cibles, les forfaits. Le commanditaire a arbitré leur sortie vers `E05US034`, l'arrêt étant
+désormais **refusé** sur tout type dont l'application ne lit pas le tour. Enseignement : une revue ne
+rend pas seulement une liste de correctifs — elle peut établir qu'une **tranche était mal découpée**,
+et c'est une information plus utile que les correctifs eux-mêmes.

@@ -34,7 +34,7 @@ from domain.deroule import BlocDeroule, Flux, TourBraquet
 from domain.phase import TypePhase
 from domain.plage import Plage
 from domain.suivi_deroule import AvancementBloc, AvancementTour
-from domain.tour_de_phase import libelle_de_tour, unite_de_tour_effective
+from domain.tour_de_phase import libelle_de_tour, unite_de_tour
 
 router = APIRouter(prefix="/api/v1/departs/{depart_id}", tags=["suivi"])
 
@@ -190,7 +190,7 @@ class AvancementBlocReponse(BaseModel):
             nb_tours=bloc.nb_tours,
             libelle_tour_courant=(
                 libelle_de_tour(
-                    unite_de_tour_effective(type_phase, bloc.nb_tours),
+                    unite_de_tour(type_phase),
                     bloc.tour_courant,
                     bloc.nb_tours,
                     plage=Plage(*tranche) if tranche is not None and tranche[0] > 1 else None,

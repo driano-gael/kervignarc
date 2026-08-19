@@ -99,6 +99,11 @@ def _avancement_connu(avancement: AvancementDePhase) -> bool:
     laissait `EN_COURS` une phase dont tout est joué. Les trois sont documentées ici parce que
     chacune paraissait juste en la lisant.
     """
+    # `# DETTE-074` — c'est **ici** que la limite de `avancement_bloc` produit son effet. Une phase
+    # en tableau à sources multiples ne projette aucun braquet, retombe sur `(nb_tours=1,
+    # tour_courant=None)`, et ce prédicat la déclare donc *inconnue* : son arrêt ne se déclenche
+    # jamais. Le repli est sûr — on ne coupe pas au mauvais moment — mais silencieux. Cf.
+    # `docs/dette.md`, `DETTE-074`, qui porte les deux voies de résorption.
     return avancement.tour_courant is not None or avancement.nb_tours > 1
 
 
@@ -188,9 +193,16 @@ class ServiceArretsProgrammes:
         # : `evaluer` est appelé **depuis une commande de la file d'écriture**, donc cette lecture
         # occupait le **writer unique** qui sérialise toutes les écritures de l'application (règle 7
         # : « pas de logique métier longue »). Avec ~30 tablettes, chaque validation retardait
-        # toutes les autres. Deux requêtes légères (le déroulé du tournoi, les franchissements du
-        # créneau) contre une recomposition complète : le cas « aucun arrêt nulle part » est le cas
-        # normal du dépôt.
+        # toutes les autres.
+        #
+        # ⚠️ **Le prix de la garde, compté honnêtement** (correctif de 2ᵉ passe, axe
+        # adversarial — une rédaction antérieure annonçait « deux requêtes légères ») : le
+        # chemin court fait **quatre** lectures, et non deux — les phases du créneau, le
+        # créneau lui-même, le déroulé de son tournoi, les franchissements du créneau. Quatre
+        # `SELECT` indexés contre une recomposition complète de chaque phase qui tourne : le
+        # rapport reste largement favorable, et « aucun arrêt nulle part » est le cas normal du
+        # dépôt. Mais annoncer un chiffre faux dans le commentaire qui justifie une
+        # optimisation, c'est retirer au lecteur suivant le moyen de la remettre en cause.
         etapes = self._etapes_du_depart(depart_id)
         franchissements = self._franchissements.par_depart(depart_id)
         aucun_arret = not any(etape.arrets for etape in etapes.values())
@@ -336,10 +348,31 @@ class ServiceArretsProgrammes:
         reprise, et l'organisateur devrait relancer trois fois pour une seule coupe. Ils sont donc
         marqués `LEVE` sans avoir rien arrêté, et **journalisés** : une pause manquée est un fait
         d'exploitation, pas un détail. La rendre visible à l'écran est le périmètre d'`E05US034`.
+
+        ⚠️ **Un arrêt de portée phase sur une phase dont tout est tiré est consommé de la même
+        façon** — voir le commentaire ci-dessous. C'est le second chemin vers « pause manquée », et
+        il se traite comme le premier plutôt que d'inventer un troisième état.
         """
         applique, *manques = dus
         arretees: list[PhaseId] = []
-        if applique.portee is PorteeArret.PHASE:
+        # ⚠️ **Une phase dont tout est tiré ne se met pas en pause** (correctif de 2ᵉ passe, axe
+        # adversarial). La branche « tout est joué » de `_tour_acheve` crédite l'arrêt le plus
+        # tardif réellement atteint : c'est ce qu'il faut pour qu'un arrêt de portée **départ**
+        # arrête bien
+        # les autres phases. Mais appliqué à la phase déclenchante elle-même, quand elle n'a plus
+        # rien en cours, cela la figeait en `EN_PAUSE` alors qu'il ne restait **rien à interrompre**
+        # — et l'organisateur devait la relancer pour pouvoir la clôturer. Une pause qui ne suspend
+        # rien et ajoute un geste obligatoire est une régression, pas un service.
+        #
+        # Le cas se produit quand le déclencheur n'a **pas vu** la frontière de tour : évaluation
+        # sautée (le signalement avale ses exceptions), lot de validations, reprise après incident.
+        # L'arrêt est alors traité comme un **manqué** — tracé `LEVE`, journalisé, jamais réarmé —
+        # ce qui est exactement sa nature : la pause n'a pas eu lieu.
+        avancement = avancements.get(phase_id)
+        plus_rien_en_cours = avancement is not None and avancement.tour_courant is None
+        if applique.portee is PorteeArret.PHASE and plus_rien_en_cours:
+            manques = [applique, *manques]
+        elif applique.portee is PorteeArret.PHASE:
             # ⚠️ **La trace AVANT la pause, et l'ordre compte** (correctif de 2ᵉ passe, axe C2).
             # Les deux écritures sont dans des transactions distinctes : si le franchissement
             # échouait après la mise en pause (SQLite occupé, conflit d'unicité), l'exception était
@@ -366,8 +399,8 @@ class ServiceArretsProgrammes:
             )
         for manque in manques:
             _logger.warning(
-                "Arrêt programmé après le tour %s de la phase %s manqué : l'avancement l'a "
-                "dépassé avant évaluation, il est consommé sans mise en pause.",
+                "Arrêt programmé après le tour %s de la phase %s manqué : la phase l'a dépassé "
+                "(avancement sauté, ou tout est déjà tiré), il est consommé sans mise en pause.",
                 manque.apres_tour,
                 phase_id,
             )

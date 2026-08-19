@@ -25,6 +25,7 @@ from application.erreurs import (
     ArcherDejaSorti,
     ArcherHorsBigShootOff,
     MancheIntrouvable,
+    PhaseEnPause,
     PhasePasReglee,
     PhasePasUnBigShootOff,
 )
@@ -42,7 +43,7 @@ from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.inscription import Inscription
 from domain.participant import Participant
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -950,3 +951,79 @@ def test_un_big_shoot_off_sans_finaliste_ne_dit_rien() -> None:
     monde.regler(ConfigurationBigShootOff(eliminations=(1,)))
 
     assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None
+
+
+# ───────────────────────── E05US033 : le gel d'une phase en pause ─────────────────────────
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Met la phase de Big Shoot Off en pause, comme le ferait un arrêt programmé."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_saisir_une_volee_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la pause **arrête le tir**, y compris sur ce format.
+
+    ⚠️ **Cette garde manquait à la première livraison**, et son absence n'était pas visible : la
+    pause restait cosmétique sur le Big Shoot Off — l'archer lisait « en attente » pendant que le
+    scoreur continuait de valider. Bloquant relevé par les quatre axes de revue. Le format est
+    précisément celui que le CA vise (« une phase qui dure des heures ») : sans oracle, un futur
+    refactor peut retirer la garde sans rien faire rougir.
+    """
+    monde = _Monde()
+    archers = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2,)))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    with pytest.raises(PhaseEnPause):
+        service.saisir_volee(
+            monde.tournoi_id,
+            monde.phase_id,
+            archers[0],
+            1,
+            (ZoneScore("10"), ZoneScore("10"), ZoneScore("10")),
+        )
+
+
+def test_valider_une_manche_pendant_la_pause_est_refuse() -> None:
+    """La validation non plus : c'est elle qui fait avancer la manche, donc le tour."""
+    monde = _Monde()
+    archers = monde.inscrire(4)
+    monde.regler(ConfigurationBigShootOff(eliminations=(2,)))
+    service = monde.service()
+    for archer_id in archers:
+        service.saisir_volee(
+            monde.tournoi_id,
+            monde.phase_id,
+            archer_id,
+            1,
+            (ZoneScore("9"), ZoneScore("9"), ZoneScore("9")),
+        )
+    _mettre_en_pause(monde)
+
+    with pytest.raises(PhaseEnPause):
+        service.valider_manche(monde.tournoi_id, monde.phase_id, archers[0], "DURAND")
+
+
+def test_la_projection_reste_lisible_pendant_la_pause() -> None:
+    """⚠️ **La lecture N'EST PAS gelée**, et c'est la moitié du CA qu'on oublie le plus vite.
+
+    Un correctif de 2ᵉ passe avait posé le refus dans `projection` — une méthode dont la docstring
+    dit « sans rien écrire » — sur le seul critère de la ressemblance de ses deux premières lignes
+    avec celles de `saisir_volee`. L'organisateur ne pouvait plus consulter sa projection pendant
+    une pause, alors que c'est exactement le moment où il la regarde pour décider de la suite.
+    """
+    monde = _Monde()
+    monde.inscrire(12)
+    monde.regler(ConfigurationBigShootOff(eliminations=(4, 2, 1)))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    projection = service.projection(monde.tournoi_id, monde.phase_id)
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+
+    assert projection.paliers == (8, 6, 5)
+    assert len(etat.tireurs) == 12

@@ -700,8 +700,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   possible pendant la pause** : c'est justement le moment où l'on relit les feuilles et où l'on
   découvre un 9 pris pour un 10 ; l'interdire aurait obligé à relancer toute la salle pour rectifier
   une flèche. Et **une phase sans pause programmée se comporte exactement comme avant** — rien ne
-  change pour un tournoi qui n'en veut pas. Au passage, une qualification peut être **découpée en
-  tours** (« 20 volées en 2 tours de 10 »), ce qui lui permet d'accueillir une pause en cours de route.
+  change pour un tournoi qui n'en veut pas. Enfin, **les pauses se posent là où l'application sait
+  compter les tours** — tableaux d'élimination directe, poules, système suisse, Big Shoot Off : ailleurs
+  l'écran l'annonce et n'offre pas le réglage, plutôt que d'accepter une pause qui ne partirait jamais.
   ⚠️ **Un défaut ancien a été trouvé en préparant cette US, et il valait d'être dit** : le bouton
   « mettre en pause » d'une phase existait depuis longtemps et **n'arrêtait rien du tout** — les
   archers continuaient de tirer, les scoreurs de valider. La pause n'était qu'un mot affiché. C'est
@@ -709,7 +710,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   c'est inscrit au registre des points à traiter. ⚠️ **Ce qui manque encore, et qui est prévu tout de
   suite après** : ni le public ni l'écran de salle ne *disent* qu'il s'agit d'une pause (un spectateur
   pourrait la lire comme une panne), et rien ne rappelle à l'organisateur qu'une phase attend sa
-  relance. C'est `E05US034`, à livrer **avant** de se servir des pauses un jour de compétition.
+  relance. La **qualification** ne peut pas encore porter de pause non plus. C'est `E05US034`, à livrer
+  **avant** de se servir des pauses un jour de compétition.
   Décision d'architecture :
   [ADR-0091](../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md).
 - **Chaque phase dit où elle en est (18/08/2026, E05US032).** L'écran de suivi annonçait « on

@@ -7,10 +7,10 @@
 // ⚠️ **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006, reprise telle quelle) :
 // monté sous condition, un état dérivé d'une prop diverge dès que la condition bascule.
 //
-// **Deux réglages sur la même fiche, et c'est délibéré** : le découpage en tours n'a d'existence que
-// pour permettre les arrêts (« sans lui, une qualification n'a qu'un tour et ne peut pas s'arrêter en
-// cours de route » — CA). Les séparer en deux fieldsets ferait chercher à l'organisateur pourquoi son
-// arrêt sur la qualification est refusé, alors que la réponse est juste au-dessus.
+// ⚠️ **La fiche est montée sur TOUS les types, y compris ceux qui n'admettent pas d'arrêt.** Elle
+// n'offre alors aucun champ, mais elle **dit pourquoi** — c'est le tout l'intérêt de la monter quand
+// même. La cacher laisserait l'organisateur chercher un réglage qu'il a vu sur la phase voisine, sans
+// jamais apprendre qu'il n'existe pas ici.
 
 import type { EtatArrets, LigneArret, PorteeArret } from './arrets'
 import { TOURS_MAX_REGLABLES, decrire, ligneNeuve, toursEnDoublon, versArrets } from './arrets'
@@ -18,20 +18,19 @@ import { TOURS_MAX_REGLABLES, decrire, ligneNeuve, toursEnDoublon, versArrets } 
 /**
  * Rend la fiche des pauses programmées. Aucun état : l'unique source est `etat`, détenu par le parent.
  *
- * `decoupable` dit si le **type** de cette étape tire ses tours d'un réglage d'organisateur — la
- * qualification et l'échauffement — plutôt que de sa structure. C'est le parent qui le sait (il
- * connaît le type choisi), et le champ de découpage disparaît quand c'est faux : l'API le **refuse**
- * sur les autres types (`DecoupageEnToursInvalide`, 422), donc l'offrir serait proposer un geste qui
- * échoue.
+ * `arretable` dit si le **type** de cette étape annonce ses tours, donc si une pause peut s'y poser
+ * (`TYPES_ARRETABLES`). C'est le parent qui le sait — il connaît le type choisi. Quand c'est faux, la
+ * fiche n'offre aucun champ et explique le refus : l'API rejette l'arrêt (`ArretProgrammeInvalide`,
+ * 422) et, le `PUT` étant une édition **totale**, c'est l'étape entière qui serait refusée.
  */
 export function ReglageArrets({
   etat,
   surChangement,
-  decoupable,
+  arretable,
 }: {
   etat: EtatArrets
   surChangement: (etat: EtatArrets) => void
-  decoupable: boolean
+  arretable: boolean
 }) {
   const doublons = toursEnDoublon(etat)
   const illisible = versArrets(etat) === undefined
@@ -57,28 +56,16 @@ export function ReglageArrets({
         geste, et la phase repart en automatique jusqu’à la pause suivante.
       </p>
 
-      {/* CA — « la qualification et l'échauffement deviennent divisibles en tours ». Le champ n'est
-          offert que là où il a un sens : ailleurs, le nombre de tours vient de la structure du format
-          (braquets, round-robin, rondes réglées, manches) et l'API refuse un second réglage. */}
-      {decoupable && (
-        <>
-          <label className="formulaire__libelle">
-            Découper en combien de tours&nbsp;?
-            <input
-              inputMode="numeric"
-              placeholder="1"
-              value={etat.tours}
-              onChange={(e) => surChangement({ ...etat, tours: e.target.value })}
-            />
-          </label>
-          <p className="carte__aide">
-            Laissez vide pour une phase d’un seul tenant. «&nbsp;2&nbsp;» découpe par exemple 20
-            volées en deux tours de 10 — ce qui permet d’y poser une pause.
-          </p>
-        </>
-      )}
-
-      {etat.lignes.length === 0 ? (
+      {/* Le type ne dit pas ses tours : aucun champ, mais le motif. Écrit en clair et **sans**
+          `role="status"` — c'est une explication statique, pas l'annonce d'un changement (même
+          raison que le paragraphe « aucune pause programmée » ci-dessous). */}
+      {!arretable ? (
+        <p className="carte__aide">
+          Ce type de phase n’annonce pas ses tours&nbsp;: l’application ne saurait pas à quel moment
+          y appliquer la pause. Les pauses se programment sur une élimination directe, des poules,
+          un système suisse ou un Big Shoot Off.
+        </p>
+      ) : etat.lignes.length === 0 ? (
         /* ⚠️ **Pas de `role="status"` ici**, à la différence des deux alertes en bas de fiche. Ce
            texte est **statique** : il décrit le défaut, il n'annonce aucun changement. Le lui donner
            a fait tomber deux tests de `Profondeur.test.tsx`, qui gardent l'invariant « bouton bloqué
@@ -131,13 +118,15 @@ export function ReglageArrets({
         </ul>
       )}
 
-      <button
-        type="button"
-        className="bouton bouton--discret"
-        onClick={() => surChangement({ ...etat, lignes: [...etat.lignes, ligneNeuve()] })}
-      >
-        Ajouter une pause
-      </button>
+      {arretable && (
+        <button
+          type="button"
+          className="bouton bouton--discret"
+          onClick={() => surChangement({ ...etat, lignes: [...etat.lignes, ligneNeuve()] })}
+        >
+          Ajouter une pause
+        </button>
+      )}
 
       {doublons.length > 0 && (
         <span className="carte__etat carte__etat--alerte" role="status">

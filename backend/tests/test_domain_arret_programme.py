@@ -19,9 +19,8 @@ Deux gardes portent l'essentiel et méritent d'être lues avant les autres :
   commanditaire du 18/08/2026 : un arrêt de départ n'est **pas simultané**. C'est la raison d'être
   de l'état `ARME`, que rien d'autre ne justifierait.
 
-⚠️ **Ce fichier ne teste pas le libellé du tour** (`test_domain_tour_de_phase.py` le fait déjà),
-sauf pour le seul point qu'E05US033 y ajoute : une qualification **découpée** cesse d'être une phase
-entière, donc elle annonce enfin un numéro de tour.
+⚠️ **Ce fichier ne teste pas le libellé du tour** — `test_domain_tour_de_phase.py` le fait déjà, et
+E05US033 n'y touche pas : le périmètre final ne change rien à la résolution du libellé.
 
 ⚠️ **Il ne teste pas non plus le gel lui-même** — ce que `EN_PAUSE` refuse et ce qu'il laisse passer
 (la correction d'un score déjà saisi, CA du 19/08/2026) n'est pas une règle de ce module mais une
@@ -45,15 +44,36 @@ from domain.arret_programme import (
     phases_a_arreter,
     verifier_arrets,
 )
-from domain.contrat_phase import TypePhase, UniteDeTour
-from domain.erreurs import ArretProgrammeInvalide, DecoupageEnToursInvalide
-from domain.phase import Phase, PhaseId
-from domain.tour_de_phase import (
-    DecoupageEnTours,
-    libelle_de_tour,
-    nb_tours_regles,
-    unite_de_tour_effective,
-)
+from domain.bareme import BaremeQualification
+from domain.contrat_phase import TypePhase
+from domain.deroule_etape import EtapeDeroule
+from domain.erreurs import ArretProgrammeInvalide
+from domain.grain_validation import GrainValidation, TypeGrain
+from domain.phase import PhaseId
+
+
+def _etape(type_phase: TypePhase, arrets: tuple[ArretProgramme, ...] = ()) -> EtapeDeroule:
+    """Une étape de déroulé **valide** du type demandé — le décor des invariants de définition.
+
+    ⚠️ **Barème et grain ne sont donnés qu'à la qualification**, et il faut les deux moitiés de
+    cette clause. Sans eux, `PhaseQualificationIncomplete` tombe **avant** la garde des arrêts et
+    masque ce qu'on veut lire ; avec eux partout, c'est `GrainIncompatibleAvecTypePhase` qui tombe
+    sur les autres types. Les deux vérifications sont voisines de celle qu'on exerce, et
+    aucune n'est l'objet de ce fichier : le décor les satisfait, il ne les teste pas.
+
+    Les réglages propres à un format (poules, Big Shoot Off, suisse) restent à `None` : aucun n'est
+    exigé pour composer.
+    """
+    qualification = type_phase is TypePhase.QUALIFICATION
+    return EtapeDeroule(
+        tournoi_id=1,
+        ordre=1,
+        type=type_phase,
+        bareme=BaremeQualification.creer(10, 3) if qualification else None,
+        validation=GrainValidation(type=TypeGrain.FIN_DE_SERIE) if qualification else None,
+        arrets=arrets,
+    )
+
 
 # ─────────────────────────── CA : l'automatique reste le défaut ───────────────────────────
 
@@ -335,107 +355,74 @@ def test_un_arret_apres_le_dernier_tour_est_refuse_quand_le_nombre_de_tours_est_
         verifier_arrets((ArretProgramme(apres_tour=5),), nb_tours=5)
 
 
-# ─────────────────── CA : la qualification et l'échauffement divisibles ───────────────────
+# ──────────────── CA : un arrêt ne se pose que là où l'application lit le tour ────────────────
 
 
-def test_une_qualification_non_decoupee_reste_une_phase_entiere() -> None:
-    """CA — le défaut ne change pas : *« 1 tour est vrai, pas un trou »* (E05US032).
+def test_un_arret_se_pose_sur_les_types_qui_annoncent_leurs_tours() -> None:
+    """CA — *« l'organisateur programme les pauses du déroulé »*, sur les formats qui les admettent.
 
-    Garde la compatibilité avec l'US précédente : sans réglage, rien ne bouge.
-
-    ⚠️ **`unite_de_tour_effective` prend le nombre de tours OBSERVÉ, pas le réglage** (correctif de
-    revue). Faire juger l'affichage sur le réglage pendant que le déclencheur juge sur l'avancement
-    lu créait deux sources pour le même nombre — et elles peuvent diverger (un suisse réglé à 9
-    rondes n'en apparie que 5). C'est le nombre du terrain qui fait foi.
+    Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour courant au
+    service qui déroule la phase. Les quatre types que `TYPES_DEROULES` recense en ont un ; c'est
+    exactement le périmètre où une pause est autre chose qu'une intention.
     """
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 1) is UniteDeTour.PHASE_ENTIERE
-    assert nb_tours_regles(TypePhase.QUALIFICATION, None) == 1
+    for type_phase in (
+        TypePhase.ELIMINATION_DIRECTE,
+        TypePhase.POULES,
+        TypePhase.SUISSE,
+        TypePhase.BIG_SHOOT_OFF,
+    ):
+        etape = _etape(type_phase, arrets=(ArretProgramme(apres_tour=2),))
+
+        assert etape.arrets == (ArretProgramme(apres_tour=2, portee=PorteeArret.PHASE),)
 
 
-def test_une_qualification_decoupee_avance_par_tours() -> None:
-    """CA — *« la qualification et l'échauffement deviennent divisibles en tours »*.
+def test_un_arret_est_refuse_sur_un_type_qui_n_annonce_pas_ses_tours() -> None:
+    """Le refus, plutôt qu'un réglage inerte — arbitrage du commanditaire du 19/08/2026.
 
-    C'est le réglage reporté d'`E05US032`, qui n'avait pas d'emploi avant celui-ci : sans lui, ces
-    deux types n'ont qu'un tour, et un arrêt « après le tour n » n'a nulle part où se poser.
+    Ces cinq types n'ont **aucun** tour observable : aucun service ne les déroule (la qualification,
+    l'échauffement, le barrage, le placement, la colline). Un arrêt posé dessus serait accepté à
+    l'atelier et définitivement inerte le jour J — l'organisateur découvrirait le jour de la
+    compétition que sa pause repas n'a jamais eu lieu. C'est le mode de panne que `DETTE-028`
+    nomme, et le refus est le seul verdict honnête.
 
-    ⚠️ Le découpage **précise** le contrat, il ne le contredit pas : `PHASE_ENTIERE` signifie
-    littéralement « rien dans la structure du format ne dit combien de tours » (ADR-0090). Quand
-    l'organisateur le dit, la source existe enfin — et elle est de la configuration, pas du code
-    (règle 2).
+    ⚠️ **La qualification en fait partie, et c'est le périmètre de la tranche, pas une limite du
+    besoin.** Dériver le tour d'une qualification demande de résoudre sa population réelle (deux
+    qualifications peuvent coexister dans un créneau, ADR-0082), le plan de cibles et les forfaits.
+    `E05US034` s'en charge avec son budget propre.
     """
-    decoupage = DecoupageEnTours(nb_tours=2)
+    for type_phase in (
+        TypePhase.QUALIFICATION,
+        TypePhase.ECHAUFFEMENT,
+        TypePhase.BARRAGE,
+        TypePhase.PLACEMENT,
+        TypePhase.COLLINE,
+    ):
+        with pytest.raises(ArretProgrammeInvalide):
+            _etape(type_phase, arrets=(ArretProgramme(apres_tour=2),))
 
-    # Le réglage dit combien de tours la phase comptera…
-    assert nb_tours_regles(TypePhase.QUALIFICATION, decoupage) == 2
-    # … et c'est ce nombre-là, une fois **observé** par le suivi, qui donne l'unité affichée.
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 2) is UniteDeTour.TOUR
 
+def test_le_refus_nomme_le_type_et_dit_ou_les_pauses_se_posent() -> None:
+    """Un refus qui ne dit pas quoi faire à la place est un cul-de-sac (`P-3`).
 
-def test_une_qualification_decoupee_annonce_enfin_un_numero_de_tour() -> None:
-    """CA d'E05US032 — *« le libellé affiché est le mot du métier »* — appliqué au cas neuf.
-
-    Une qualification entière ne dit rien (« Qualification », jamais « Qualification — tour 1 sur 1
-    ») ; découpée en deux, elle dit « Tour 2 ». C'est le seul point où E05US033 touche au libellé,
-    et il passe par la fonction **existante** : ouvrir un domicile de plus au libellé de tour est ce
-    que `DETTE-020` interdit.
+    Le message part au client tel quel (`ArretProgrammeInvalide` → 422, règle 5 : c'est un message
+    **écrit pour l'utilisateur**, pas un détail interne qui fuit). L'organisateur doit y lire les
+    deux choses qui lui manquent : pourquoi ici non, et où oui.
     """
-    assert libelle_de_tour(UniteDeTour.PHASE_ENTIERE, tour=1, nb_tours=1) is None
-    assert libelle_de_tour(UniteDeTour.TOUR, tour=2, nb_tours=2) == "Tour 2"
+    with pytest.raises(ArretProgrammeInvalide) as refus:
+        _etape(TypePhase.QUALIFICATION, arrets=(ArretProgramme(apres_tour=2),))
+
+    message = str(refus.value)
+    assert "qualification" in message
+    assert "poules" in message
 
 
-def test_un_decoupage_en_un_seul_tour_reste_une_phase_entiere() -> None:
-    """Cas limite : « découpée en 1 tour » est le défaut écrit en clair, pas un découpage.
+def test_une_etape_sans_arret_reste_composable_sur_tout_type() -> None:
+    """Le refus vise l'**arrêt**, pas le type : composer une qualification n'a pas changé d'un iota.
 
-    Sans cette clause, une qualification réglée à 1 tour annoncerait « Tour 1 » — exactement le «
-    Qualification — tour 1 sur 1 » que le CA d'E05US032 refuse, réintroduit par la porte du réglage.
+    Sans cette garde, la vérification aurait fait échouer toute composition de qualification — un
+    refus qui déborde de son objet est pire qu'un réglage inerte : il casse ce qui marchait.
     """
-    decoupage = DecoupageEnTours(nb_tours=1)
+    for type_phase in TypePhase:
+        etape = _etape(type_phase)
 
-    assert nb_tours_regles(TypePhase.QUALIFICATION, decoupage) == 1
-    assert unite_de_tour_effective(TypePhase.QUALIFICATION, 1) is UniteDeTour.PHASE_ENTIERE
-
-
-def test_seule_une_qualification_se_decoupe_en_tours() -> None:
-    """Le découpage est refusé ailleurs — **y compris sur l'échauffement** (correctif de revue).
-
-    Le CA nommait « la qualification **et** l'échauffement ». La revue a montré que l'échauffement
-    n'a ni barème ni série (`ContratDePhase` : décor et plan de cibles à `AUCUN`), donc **aucune
-    donnée** dont dériver un tour : aucun lecteur d'avancement ne peut exister pour lui, et un
-    découpage y serait accepté à l'atelier puis définitivement inerte le jour J. Le CA est amputé de
-    cette moitié — reversé dans `stories/`, et reporté à `E05US034` si le besoin se confirme.
-
-    Le **barrage** tombait dans le même trou pour une autre raison : son contrat vaut aussi
-    `PHASE_ENTIERE`, donc la première garde, écrite sur le contrat, le laissait passer alors que six
-    docstrings de l'US l'excluaient.
-    """
-    for type_phase in (TypePhase.ECHAUFFEMENT, TypePhase.BARRAGE, TypePhase.SUISSE):
-        with pytest.raises(DecoupageEnToursInvalide):
-            Phase(depart_id=1, ordre=1, type=type_phase, decoupage=DecoupageEnTours(2))
-
-
-def test_un_decoupage_ne_se_regle_pas_a_zero_tour() -> None:
-    """Invariant : une phase compte au moins un tour (CA d'E05US032, « aucun type exclu »)."""
-    for nb_tours in (0, -3):
-        with pytest.raises(DecoupageEnToursInvalide):
-            DecoupageEnTours(nb_tours=nb_tours)
-
-
-def test_un_decoupage_ne_change_rien_a_un_format_qui_compte_deja_ses_tours() -> None:
-    """Le découpage ne s'applique qu'aux types dont la structure ne détermine pas les tours.
-
-    Un système suisse tire son nombre de rondes de son réglage, une poule de son round-robin, un
-    tableau de ses braquets : leur imposer un découpage d'organisateur créerait **deux** sources
-    pour le même nombre, soit la divergence silencieuse qu'ADR-0076 a rendue impossible ailleurs.
-
-    ⚠️ **Deux niveaux, et il faut les distinguer pour lire ce test.** L'**agrégat** (`Phase`,
-    `EtapeDeroule`) *refuse* un découpage sur un tel type — c'est le patron déjà suivi par `poules`,
-    `big_shoot_off` et `suisse`, dont la justification tient : « un réglage que rien ne lit est
-    invisible et faux ». Le **résolveur** testé ici reste au contraire **total** : il ignore le
-    réglage plutôt que de lever. Ce n'est pas une redondance molle mais la division du travail
-    habituelle du domaine — l'agrégat garde la cohérence de la donnée, la fonction pure garde la
-    propriété de rendre toujours une réponse. Un résolveur qui lèverait obligerait chaque écran de
-    lecture à gérer une exception sur une donnée déjà validée à l'écriture.
-    """
-    assert unite_de_tour_effective(TypePhase.SUISSE, 4) is UniteDeTour.RONDE
-    assert unite_de_tour_effective(TypePhase.POULES, 4) is UniteDeTour.TOUR
-    assert unite_de_tour_effective(TypePhase.ELIMINATION_DIRECTE, 1) is UniteDeTour.TOUR_DE_TABLEAU
+        assert etape.arrets == ()

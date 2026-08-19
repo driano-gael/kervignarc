@@ -25,6 +25,7 @@ import {
   LIBELLE_TYPE,
   MOTEUR_SAIT_JOUER,
   TOUS_LES_TYPES,
+  TYPES_ARRETABLES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
   TYPES_SIGNALES_EN_ECART,
@@ -64,7 +65,6 @@ import {
   depuisEtape as depuisArrets,
   estValide as arretsValides,
   versArrets,
-  versDecoupage,
 } from '../../shared/phases/arrets'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
@@ -704,7 +704,7 @@ export function FormulaireEtape({
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
-  const [arrets, setArrets] = useState(depuisArrets(etape?.arrets, etape?.decoupage))
+  const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -722,15 +722,9 @@ export function FormulaireEtape({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
-  // E05US033 : les deux seuls types dont la structure ne dit pas combien de tours ils comptent —
-  // le contrat de phase les déclare `PHASE_ENTIERE` (ADR-0090). Miroir assumé et court, comme
-  // dans l'écran des phases.
-  // ⚠️ **La qualification SEULE**, et c'est un correctif de 2ᵉ passe relevé par trois axes.
-  // Le serveur refuse désormais le découpage sur tout autre type — l'échauffement compris,
-  // faute de barème et de feuille de marque dont dériver un tour. L'offrir revenait à
-  // proposer un geste qui échoue en 422, et comme le `PUT` est une édition **totale**, c'est
-  // l'étape entière qui était refusée.
-  const decoupable = type === 'qualification'
+  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
+  // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
+  const arretable = TYPES_ARRETABLES.has(type)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
@@ -741,8 +735,8 @@ export function FormulaireEtape({
     (estPoules && !poulesValides(poules)) ||
     (estBigShootOff && !bsoValide(bigShootOff)) ||
     (estSuisse && !suisseValide(suisse)) ||
-    // E05US033 : sans condition de type — toute phase avance par tours, donc toute phase peut
-    // porter une pause.
+    // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
+    // une liste vide, quoi qu'il reste dans l'état d'édition.
     !arretsValides(arrets)
 
   const construire = (): Etape => ({
@@ -771,11 +765,9 @@ export function FormulaireEtape({
     // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
     // 422. Retyper la phase l'**efface** donc, au lieu de l'envoyer se faire recaler.
     suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
-    // E05US033. Le **découpage** suit la garde de type des quatre réglages ci-dessus (le serveur
-    // le refuse ailleurs) ; les **arrêts**, non : toute phase avance par tours (ADR-0090), donc
-    // ils survivent à un retypage. Les effacer aurait détruit du planning sans le dire.
-    decoupage: decoupable ? (versDecoupage(arrets) ?? null) : null,
-    arrets: versArrets(arrets) ?? [],
+    // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
+    // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
+    arrets: arretable ? (versArrets(arrets) ?? []) : [],
   })
 
   return (
@@ -886,10 +878,10 @@ export function FormulaireEtape({
         />
       )}
 
-      {/* E05US033 — montée **sans condition de type**, à la différence des fiches ci-dessus : toute
-          phase avance par tours (ADR-0090), donc toute phase peut porter une pause. Seul le champ de
-          découpage, à l'intérieur, dépend du type. */}
-      <ReglageArrets etat={arrets} surChangement={setArrets} decoupable={decoupable} />
+      {/* E05US033 — montée **sans condition de type**, à la différence des fiches ci-dessus, mais
+          pour une autre raison : sur un type non arrêtable la fiche n'offre aucun champ et **dit
+          pourquoi**. */}
+      <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

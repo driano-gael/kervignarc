@@ -268,16 +268,30 @@ def test_un_arret_ne_coupe_rien_avant_que_son_tour_soit_fini(decor: Decor) -> No
     assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
 
 
-def test_une_phase_dont_tout_est_joue_franchit_son_dernier_arret(decor: Decor) -> None:
+def test_une_phase_dont_tout_est_joue_consomme_son_arret_sans_se_mettre_en_pause(
+    decor: Decor,
+) -> None:
     """Cas limite : `tour_courant is None` signifie *« plus rien ne tourne »* (ADR-0090).
 
-    Le tour achevé est alors le **dernier**, et un arrêt posé avant lui est dû. Sans cette lecture,
-    un arrêt après l'avant-dernier tour ne se déclencherait jamais si la phase finit d'un bloc.
+    L'arrêt est bien **dû** — la frontière de tour a été franchie, le déclencheur ne l'a simplement
+    pas vue passer (évaluation sautée, lot de validations, reprise après incident). Mais il n'y a
+    plus rien à interrompre : mettre la phase en pause la figerait alors que tout est tiré, et
+    l'organisateur devrait la relancer **pour pouvoir la clôturer**. Une pause qui ne suspend
+    rien et ajoute un geste obligatoire est une régression, pas un service.
+
+    L'arrêt est donc traité comme un **manqué** : tracé, jamais réarmé, journalisé — ce qui est
+    exactement sa nature. Correctif de 2ᵉ passe, axe adversarial : la première rédaction mettait la
+    phase en pause, et un test consacrait ce comportement.
     """
     phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=8),), tour_courant=None)
 
-    assert decor.service.evaluer(decor.depart_id) == (phase_id,)
-    assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
+    assert decor.service.evaluer(decor.depart_id) == ()
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS
+    # Tracé quand même : sans quoi il se redéclencherait à chaque validation suivante.
+    trace = decor.franchissements.items
+    assert [(f.apres_tour, f.etat) for f in trace] == [(8, EtatFranchissement.LEVE)]
+    # Et il ne réapparaît pas dans la liste de relance : il n'y a aucun bouton à offrir.
+    assert decor.service.en_attente_de_relance(decor.depart_id) == ()
 
 
 # ────────────────────────── CA : la portée, et le tour qu'on laisse finir

@@ -278,12 +278,12 @@ class ServiceBigShootOff:
         salle. Même découpe que `ServicePoules.repartition`, et pour la même raison.
         """
         phase, participants = self._population(tournoi_id, phase_id)
-        # E05US033 — **le gel d'un résultat neuf**, par symétrie avec la qualification (correctif de
-        # 2ᵉ passe, axe adversarial). Une volée de Big Shoot Off est un **résultat neuf** pour un
-        # archer, comme une volée de qualification : la doctrine de `refuser_si_en_pause` la gèle.
-        # Ce qu'elle ne gèle pas, c'est la **poursuite d'une rencontre engagée** — un duel, une
-        # manche de poule —, ce qui n'existe pas ici : le Big Shoot Off tire par feuille.
-        refuser_si_en_pause(phase)
+        # ⚠️ **Aucune garde de pause ici, et c'est le point** : `projection` est une **lecture** —
+        # « ce que la liste de sortants donne sur l'effectif réel, sans rien écrire ». Un correctif
+        # de 2ᵉ passe y avait posé le refus par erreur, sur le seul critère de la ressemblance des
+        # deux premières lignes : l'organisateur ne pouvait plus consulter sa projection pendant une
+        # pause, alors que c'est exactement le moment où il la regarde. Le gel est aux **écritures**
+        # (`saisir_volee`, `valider_manche`), et nulle part ailleurs — ADR-0091 §6.
         return self._projection(phase, len(participants))
 
     def etat(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatBigShootOffAffiche:
@@ -405,6 +405,11 @@ class ServiceBigShootOff:
         pour tout le monde.
         """
         phase, participants = self._population(tournoi_id, phase_id)
+        # E05US033 — **le gel d'un résultat neuf**, par symétrie avec la qualification. Une volée de
+        # Big Shoot Off est un résultat neuf pour un archer : la doctrine de `refuser_si_en_pause`
+        # la gèle. Ce qu'elle ne gèle pas, c'est la **poursuite d'une rencontre engagée** — un duel,
+        # une manche de poule —, ce qui n'existe pas ici : le Big Shoot Off tire par feuille.
+        refuser_si_en_pause(phase)
         configuration = self._configuration(phase)
         photo = self._photo(phase, participants)
         self._exiger_en_lice(photo, archer_id)

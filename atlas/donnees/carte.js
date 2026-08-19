@@ -249,7 +249,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 336,
+   "occurrences": 333,
    "source": "application"
   },
   {
@@ -273,7 +273,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 84,
+   "occurrences": 83,
    "source": "infrastructure"
   },
   {
@@ -297,7 +297,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 87,
+   "occurrences": 85,
    "source": "api"
   },
   {
@@ -511,7 +511,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 83,
+   "occurrences": 81,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -713,7 +713,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 322,
+   "occurrences": 319,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -951,7 +951,7 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "domain",
-   "occurrences": 33,
+   "occurrences": 32,
    "origines": [
     "backend/domain/anomalie.py",
     "backend/domain/archer.py",
@@ -984,7 +984,6 @@ window.ATLAS.carte = {
     "backend/domain/serie.py",
     "backend/domain/suisse.py",
     "backend/domain/tableau.py",
-    "backend/domain/tour_de_phase.py",
     "backend/domain/tournoi.py"
    ],
    "source": "domain"
@@ -1016,7 +1015,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 51,
+   "occurrences": 50,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/exploitation.py",
@@ -1881,10 +1880,6 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/application/poules.py",
      "nom": "ServicePoules"
-    },
-    {
-     "fichier": "backend/application/saisie.py",
-     "nom": "ServiceSaisie"
     },
     {
      "fichier": "backend/application/suisse.py",
@@ -2772,8 +2767,8 @@ window.ATLAS.carte = {
   "aretes_front": 148,
   "enchevetrements": 3,
   "features": 46,
-  "imports": 858,
-  "imports_entre_couches": 727,
+  "imports": 851,
+  "imports_entre_couches": 721,
   "plus_gros_noeud": 23,
   "ports": 64,
   "ports_hors_domaine": 23,

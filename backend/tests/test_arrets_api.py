@@ -33,7 +33,7 @@ from domain.arret_programme import (
     FranchissementArret,
     PorteeArret,
 )
-from domain.phase import PhaseId, TypePhase
+from domain.phase import PhaseId, StatutPhase, TypePhase
 from infrastructure.db import FranchissementArretRepositorySQL, PhaseRepositorySQL
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
@@ -129,20 +129,25 @@ def test_le_service_d_arrets_lit_l_avancement_par_le_suivi(app_session: FastAPI)
     assert service._suivi is app_session.state.service_suivi_deroule
 
 
-def test_la_qualification_a_desormais_un_lecteur_d_avancement(app_session: FastAPI) -> None:
-    """Sans lui, une pause sur une qualification se déclenchait avant la première flèche.
+def test_aucun_lecteur_d_avancement_n_est_ajoute_par_cette_tranche(app_session: FastAPI) -> None:
+    """Le registre d'avancement est **inchangé** — et c'est ce qui borne le périmètre des arrêts.
 
-    Le doublon avec `test_suivi_deroule_api.py` est voulu : là-bas on garde le **registre** complet
-    (les quatre types branchés et pas un de plus), ici on garde la **raison** pour laquelle E05US033
-    a dû l'ajouter. Les deux tests tomberaient ensemble, mais leurs messages ne diraient pas la même
-    chose au relecteur.
+    Les quatre types branchés sont ceux d'E05US032 (poules, suisse, Big Shoot Off ; l'élimination
+    directe lit ses tours de sa projection, sans lecteur). Cette tranche n'en ajoute aucun : dériver
+    le tour d'une qualification demande de résoudre sa population réelle (deux qualifications
+    peuvent coexister dans un créneau, ADR-0082), le plan de cibles et les forfaits — repris par
+    `E05US034`.
+
+    ⚠️ **Ce test est le pendant du refus par type.** Tant que la qualification n'a pas de lecteur, un
+    arrêt posé dessus serait inerte, d'où le 422 de `EtapeDeroule`. Le jour où `E05US034` la
+    branchera, **les deux devront bouger ensemble** : ce test tombera, et il faudra retirer la
+    qualification de `TYPES_DEROULES` côté refus. Les faire tomber ensemble est l'intérêt de les
+    écrire tous les deux.
     """
     branches = app_session.state.service_suivi_deroule._avancements
 
-    assert branches[TypePhase.QUALIFICATION] is app_session.state.service_saisie
-    assert (
-        TypePhase.ECHAUFFEMENT not in branches
-    ), "l'échauffement n'a ni barème ni feuille : rien dont dériver un tour"
+    assert TypePhase.QUALIFICATION not in branches
+    assert TypePhase.ECHAUFFEMENT not in branches
 
 
 # ─────────────────────────── Les routes (règle 6) ───────────────────────────
@@ -265,16 +270,18 @@ def test_deux_arrets_apres_le_meme_tour_sont_refuses_par_l_api(
         assert reponse.json()["code"] == "arret_programme_invalide"
 
 
-def test_un_decoupage_sur_un_type_qui_compte_ses_tours_est_refuse(
+def test_un_arret_sur_un_type_sans_tour_observable_est_refuse_a_la_frontiere(
     app_session: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """**Correctif de revue** : ce corps répondait 200 et rendait le créneau illisible.
+    """Le refus par type, jusqu'au client — et **sur la route de composition**, pas à la lecture.
 
-    ⚠️ La garde de type ne vivait que sur `Phase.__post_init__`, et `ServicePhases.modifier`
-    n'instancie aucune phase — l'étape était donc **persistée**. Ensuite, chaque lecture de phase
-    passe par `etape.instancier(...)`, qui lève : le suivi, le pilotage et l'affichage public du
-    créneau tombaient tous les trois en 422. Une entrée client qu'aucun agrégat porteur ne jugeait,
-    sur une route admin, avec pour rayon d'explosion « tournoi illisible ». Relevé par l'axe C1.
+    ⚠️ La garde vit sur `EtapeDeroule` et non sur `Phase` seule, parce que `ServicePhases.modifier`
+    n'instancie **aucune phase** : posée là, l'étape aurait été persistée, puis chaque lecture
+    (suivi, pilotage, affichage public) serait tombée en 422 à l'`instancier`. Une entrée client
+    qu'aucun agrégat porteur ne juge, avec pour rayon d'explosion « créneau illisible ». Relevé par
+    l'axe C1 de la revue.
+
+    Le message part au client : l'organisateur doit lire pourquoi ici non, et où oui.
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
@@ -282,11 +289,70 @@ def test_un_decoupage_sur_un_type_qui_compte_ses_tours_est_refuse(
 
         reponse = client.post(
             f"/api/v1/tournois/{tournoi_id}/phases",
-            json={"type": "suisse", "decoupage": {"nb_tours": 3}},
+            json={
+                "type": "barrage",
+                "arrets": [{"apres_tour": 2, "portee": "phase"}],
+            },
         )
 
         assert reponse.status_code == 422, reponse.text
-        assert reponse.json()["code"] == "decoupage_en_tours_invalide"
+        assert reponse.json()["code"] == "arret_programme_invalide"
+        assert "barrage" in reponse.json()["message"]
+
+
+def test_relancer_un_arret_franchi_rend_200_et_les_phases_reveillees(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le **chemin heureux** de la route de relance — le seul geste que l'US demande à l'admin.
+
+    ⚠️ **Il manquait**, et c'est ce qui rendait la couverture trompeuse : trois tests gardaient les
+    refus (401, 401, 404) et aucun le succès. Une route qui refuse correctement tout ce qu'elle doit
+    refuser mais ne relance rien passe cette batterie sans broncher. Relevé en revue, axe B.
+
+    Le franchissement est **posé directement en base** plutôt que déclenché par du tir : conduire un
+    système suisse jusqu'à une frontière de tour par l'API demanderait un plan de cibles, quatre
+    inscriptions et trois manches par rencontre. Le déclenchement a ses propres oracles au
+    niveau du service (`test_service_arrets_programmes.py`) ; ce test-ci ne parle que de la
+    **frontière API**.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        creation = client.post(f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "suisse"})
+        assert creation.status_code == 201, creation.text
+
+        depot_phases, depot = _depots(app_session)
+        phases = [p for p in depot_phases.par_depart(depart_id) if p.id]
+        phase_id = phases[0].id
+        assert phase_id is not None
+        # La phase est **réellement** en pause : la relance doit la rendre à `EN_COURS`, pas
+        # seulement marquer le franchissement.
+        depot_phases.enregistrer(dataclasses.replace(phases[0], statut=StatutPhase.EN_PAUSE))
+        pose = depot.ajouter(
+            FranchissementArret(
+                phase_id=phase_id,
+                apres_tour=2,
+                etat=EtatFranchissement.FRANCHI,
+                phases_arretees=(phase_id,),
+            )
+        )
+        assert pose.id is not None
+
+        # L'arrêt est bien offert à la relance…
+        en_attente = client.get(f"/api/v1/departs/{depart_id}/arrets/en-attente")
+        assert en_attente.status_code == 200, en_attente.text
+        assert [a["id"] for a in en_attente.json()] == [pose.id]
+
+        # … et le geste rend la salle à la marche, en nommant ce qu'il a réveillé.
+        reponse = client.post(f"/api/v1/departs/{depart_id}/arrets/{pose.id}/relancer")
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json() == [phase_id]
+        relue = depot_phases.par_id(phase_id)
+        assert relue is not None
+        assert relue.statut is StatutPhase.EN_COURS
+        # Idempotence de fait : l'arrêt levé n'est plus relançable, donc aucun bouton en double.
+        assert client.get(f"/api/v1/departs/{depart_id}/arrets/en-attente").json() == []
 
 
 def test_un_franchissement_fait_l_aller_retour_par_sa_table(

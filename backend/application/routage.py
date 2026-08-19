@@ -785,16 +785,17 @@ class ServiceRoutage:
         try:
             etat = self._big_shoot_off.etat(tournoi_id, phase.id)
         except ApplicationError:
-            # ⚠️ **Le panneau dégrade, il ne tombe pas** (revue d'E05US028) — même point de
-            # tolérance que `_grille`, dont le commentaire dit : « sans cet élargissement, la
-            # nouvelle exception traversait ce point de tolérance et faisait échouer en bloc ce que
-            # le site s'engage à dégrader ». Un Big Shoot Off **composé mais pas encore réglé** est
-            # un état parfaitement licite (le brouillon d'ADR-0063, et l'état de toute phase
-            # composée avant cette US, où `EtapeDeroule.big_shoot_off` vaut `None`) : `etat()` y
-            # lève `PhasePasReglee`. Sans cette garde, c'est une **route publique non authentifiée**
-            # qui rendait 4xx — et pas seulement pour les finalistes, cf. `_phase_de_tableau`. Le
-            # motif est **écrit ici**, pas repris de l'exception : `P-3` demande de nommer ce qui
-            # n'est pas connu, et la règle 5 interdit qu'un message interne parte au client.
+            # ⚠️ **Le panneau dégrade, il ne tombe pas** (revue d'E05US028) — même point de tolérance
+            # que `_grille`, dont le commentaire dit : « sans cet élargissement, la nouvelle
+            # exception traversait ce point de tolérance et faisait échouer en bloc ce que le site
+            # s'engage à dégrader ». Un Big Shoot Off **composé mais pas encore réglé** est un état
+            # parfaitement licite (le brouillon d'ADR-0063, et l'état de toute phase composée avant
+            # cette US, où `EtapeDeroule.big_shoot_off` vaut `None`) : `etat()` y lève
+            # `PhasePasReglee`. Sans cette garde, c'est une **route publique non authentifiée** qui
+            # rendait 4xx — et pas seulement pour les finalistes, cf. `_phase_de_tableau`.
+            #
+            # Le motif est **écrit ici**, pas repris de l'exception : `P-3` demande de nommer ce
+            # qui n'est pas connu, et la règle 5 interdit qu'un message interne parte au client.
             return self._tous_indisponibles(
                 tournoi_id,
                 phase.id,

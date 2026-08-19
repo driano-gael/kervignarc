@@ -6008,7 +6008,8 @@ window.ATLAS.decisions = {
       "relancer_arret",
       "RelanceDesArrets",
       "evaluer",
-      "avancement_par_phase"
+      "avancement_par_phase",
+      "_appliquer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6057,20 +6058,21 @@ window.ATLAS.decisions = {
       "corriger_volee",
       "saisir_manche",
       "saisir_barrage",
-      "avancement_de_phase",
-      "QUALIFICATION"
+      "projection",
+      "etat"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "saisir_manche",
+      "saisir_barrage",
+      "projection"
+     ],
      "verifiable": true
     },
     {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
-      "refuser_si_en_pause",
-      "corriger_volee",
-      "saisir_manche",
-      "saisir_barrage"
+      "refuser_si_en_pause"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6127,11 +6129,11 @@ window.ATLAS.decisions = {
       "_verifier_arrets_applicables",
       "_politiques_json",
       "_lire_arrets",
-      "_lire_decoupage",
       "Phase",
-      "Phase.decoupage",
       "EtapeDeroule.instancier",
-      "TypePhase.QUALIFICATION"
+      "TYPES_DEROULES",
+      "TYPES_ARRETABLES",
+      "ServicePhases.modifier"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6143,18 +6145,6 @@ window.ATLAS.decisions = {
       "ModelePhase.arrets",
       "pour_tournoi",
       "d_etape"
-     ],
-     "symboles_absents": [],
-     "verifiable": true
-    },
-    {
-     "chemin": "backend/domain/phase.py",
-     "existe": true,
-     "symboles": [
-      "Phase",
-      "Phase.decoupage",
-      "EtapeDeroule.instancier",
-      "TypePhase.QUALIFICATION"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6177,8 +6167,7 @@ window.ATLAS.decisions = {
       "EtapeDeroule.arrets",
       "_verifier_arrets_applicables",
       "_politiques_json",
-      "_lire_arrets",
-      "_lire_decoupage"
+      "_lire_arrets"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6187,7 +6176,23 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/deroule/Deroule.tsx",
      "existe": true,
      "symboles": [
-      "ReglageBarrage"
+      "ReglageBarrage",
+      "PUT"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/Arrets.test.tsx",
+     "existe": true,
+     "symboles": [
+      "_verifier_arrets_applicables",
+      "TYPES_DEROULES",
+      "TYPES_ARRETABLES",
+      "Phase",
+      "ServicePhases.modifier",
+      "ReglageBarrage",
+      "PUT"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6196,7 +6201,8 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/phases/Phases.tsx",
      "existe": true,
      "symboles": [
-      "ReglageBarrage"
+      "ReglageBarrage",
+      "PUT"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6223,7 +6229,8 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
      "existe": true,
      "symboles": [
-      "ReglageBarrage"
+      "ReglageBarrage",
+      "PUT"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6232,7 +6239,21 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/shared/phases/arrets.ts",
      "existe": true,
      "symboles": [
-      "ReglageBarrage"
+      "ReglageBarrage",
+      "PUT"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/catalogue.ts",
+     "existe": true,
+     "symboles": [
+      "_verifier_arrets_applicables",
+      "TYPES_DEROULES",
+      "TYPES_ARRETABLES",
+      "Phase",
+      "ServicePhases.modifier"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6244,6 +6265,7 @@ window.ATLAS.decisions = {
    "titre": "Un arrêt programmé coupe le déroulé à la fin d'un tour",
    "us": [
     "E05US030",
+    "E05US032",
     "E05US033",
     "E05US034",
     "E07US008"

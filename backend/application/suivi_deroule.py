@@ -246,9 +246,8 @@ class ServiceSuiviDeroule:
     def pour_depart(self, depart_id: DepartId) -> SuiviDeroule:
         """Le suivi complet d'un **créneau**. `DepartIntrouvable` si le créneau n'existe pas.
 
-        ⚠️ **La maille est le départ, pas le tournoi** (E01US025, ADR-0075). Cette méthode
-        s'appelait `pour_tournoi` et lisait `PhaseRepository.par_tournoi`, dont la docstring dit
-        pourtant « ce
+        ⚠️ **La maille est le départ, pas le tournoi** (E01US025, ADR-0075). Cette méthode s'appelait
+        `pour_tournoi` et lisait `PhaseRepository.par_tournoi`, dont la docstring dit pourtant « ce
         n'est **pas** une séquence : c'est la concaténation de N suites 1..M ». Sur deux créneaux,
         cela produisait quatre défauts d'un coup : le déroulé dessiné **en double**, l'avancement
         du dernier créneau **écrasant** celui des autres (`{phase.ordre: phase}`), l'effectif

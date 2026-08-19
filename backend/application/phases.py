@@ -63,7 +63,6 @@ from domain.ports import (
 )
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse
-from domain.tour_de_phase import DecoupageEnTours
 from domain.tournoi import TournoiId
 
 
@@ -132,7 +131,6 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
-        decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
@@ -175,7 +173,6 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
-            decoupage=decoupage,
             arrets=arrets,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
@@ -197,7 +194,6 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
-        decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
@@ -230,7 +226,6 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
-            decoupage=decoupage,
             arrets=arrets,
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]

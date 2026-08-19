@@ -27,6 +27,7 @@ import {
 import {
   AIDE_TYPE,
   LIBELLE_TYPE,
+  TYPES_ARRETABLES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
 } from '../../shared/phases/catalogue'
@@ -38,7 +39,6 @@ import {
   depuisEtape as depuisArrets,
   estValide as arretsValides,
   versArrets,
-  versDecoupage,
 } from '../../shared/phases/arrets'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
@@ -405,7 +405,7 @@ export function FormulairePhase({
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
-  const [arrets, setArrets] = useState(depuisArrets(phase?.arrets, phase?.decoupage))
+  const [arrets, setArrets] = useState(depuisArrets(phase?.arrets))
   // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
   // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
   // le seul écran où « l'effectif du jour » du CA existe vraiment. Et comme `ServiceSuisse.etat`
@@ -489,16 +489,11 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
-  // E05US033 : les deux seuls types dont la **structure** ne dit pas combien de tours ils
-  // comptent — le contrat de phase les déclare `PHASE_ENTIERE` (ADR-0090). Miroir assumé de
-  // `domain/contrat_phase.py` : la liste est courte, stable, et sa dérive ne produirait qu'un
-  // champ offert en trop (refusé en 422) ou manquant — jamais un tournoi faux.
-  // ⚠️ **La qualification SEULE**, et c'est un correctif de 2ᵉ passe relevé par trois axes.
-  // Le serveur refuse désormais le découpage sur tout autre type — l'échauffement compris,
-  // faute de barème et de feuille de marque dont dériver un tour. L'offrir revenait à
-  // proposer un geste qui échoue en 422, et comme le `PUT` est une édition **totale**, c'est
-  // l'étape entière qui était refusée.
-  const decoupable = type === 'qualification'
+  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
+  // se poser (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine). Le serveur refuse
+  // l'arrêt ailleurs (`ArretProgrammeInvalide`, 422) — et comme le `PUT` est une édition **totale**,
+  // c'est l'étape entière qui serait refusée, pas seulement le champ.
+  const arretable = TYPES_ARRETABLES.has(type)
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
@@ -506,8 +501,9 @@ export function FormulairePhase({
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
     !(estSuisse && !suisseValide(suisse)) &&
-    // E05US033 : sans condition de type — les arrêts valent pour toute phase.
-    arretsValides(arrets)
+    // E05US033 : le contenu ne se juge que là où il est offert — une phase non arrêtable
+    // soumet une liste vide, quoi qu'il reste dans l'état d'édition.
+    !(arretable && !arretsValides(arrets))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -533,15 +529,13 @@ export function FormulairePhase({
       // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
       // 422 `configuration_suisse_invalide`.
       suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
-      // E05US033. Deux régimes différents dans la même ligne, et il faut les distinguer :
-      // — le **découpage** n'a de sens que sur un type que l'organisateur règle (qualification,
-      //   échauffement) ; ailleurs le serveur le refuse en 422, donc on l'efface au retypage,
-      //   exactement comme les quatre réglages ci-dessus ;
-      // — les **arrêts**, eux, valent pour **tous** les types : toute phase avance par tours
-      //   (ADR-0090). Ils ne s'effacent donc jamais sur un changement de type. Les traiter comme
-      //   les autres réglages aurait détruit du planning d'organisateur sans le dire.
-      decoupage: decoupable ? (versDecoupage(arrets) ?? null) : null,
-      arrets: versArrets(arrets) ?? [],
+      // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
+      // refusé en 422 `arret_programme_invalide`. Retyper la phase l'**efface** donc, comme les
+      // quatre réglages ci-dessus. ⚠️ C'est une **perte de planning assumée** : l'organisateur qui
+      // retype une phase de poules en qualification perd ses pauses. L'alternative — les conserver
+      // — ferait échouer l'enregistrement entier avec un message que l'écran ne sait pas rattacher
+      // au bon champ, ce qui est pire : il ne pourrait plus enregistrer du tout.
+      arrets: arretable ? (versArrets(arrets) ?? []) : [],
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -635,9 +629,10 @@ export function FormulairePhase({
           />
         )}
         {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
-            ci-dessus : toute phase avance par tours (ADR-0090), donc toute phase peut porter une
-            pause. Seul le champ de découpage, à l'intérieur, dépend du type. */}
-        <ReglageArrets etat={arrets} surChangement={setArrets} decoupable={decoupable} />
+            ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun
+            champ et **dit pourquoi**. La cacher laisserait chercher un réglage vu sur la phase
+            voisine sans jamais apprendre qu'il n'existe pas ici. */}
+        <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
         <label className="formulaire__tranche">
           <input
             type="checkbox"
@@ -747,7 +742,6 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         // C'est la leçon de `barrage_jusqu_au` rejouée dans le widget dont le commentaire ci-dessus
         // la raconte, et elle contredisait la promesse écrite dans le DTO côté serveur (« l'écran
         // doit toujours renvoyer la liste complète, jamais un delta »).
-        decoupage: phase.decoupage,
         arrets: phase.arrets,
         // Trou **préexistant** fermé au passage : inoffensif sur la qualification (qui ne porte
         // jamais de réglage de suisse), mais c'était le dernier champ non réémis de ce chemin.

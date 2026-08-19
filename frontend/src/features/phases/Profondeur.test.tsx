@@ -46,7 +46,6 @@ const PHASE: EtapeDeroule = {
   big_shoot_off: null,
   suisse: null,
   // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
-  decoupage: null,
   arrets: [],
 }
 

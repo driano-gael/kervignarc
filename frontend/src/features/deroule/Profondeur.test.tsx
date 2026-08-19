@@ -40,7 +40,6 @@ function poser(type: 'elimination_directe' | 'poules' | 'placement' = 'eliminati
         effectif: null,
         profondeur: null,
         // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
-        decoupage: null,
         arrets: [],
       }}
       etapesAmont={[]}

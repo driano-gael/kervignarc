@@ -32,12 +32,12 @@ from dataclasses import dataclass, replace
 from domain.arret_programme import ArretProgramme, verifier_arrets
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
-from domain.contrat_phase import UniteDeTour
+from domain.contrat_phase import TYPES_DEROULES
 from domain.depart import DepartId
 from domain.erreurs import (
+    ArretProgrammeInvalide,
     ConfigurationBigShootOffInvalide,
     ConfigurationSuisseInvalide,
-    DecoupageEnToursInvalide,
 )
 from domain.grain_validation import GrainValidation
 from domain.phase import (
@@ -50,7 +50,6 @@ from domain.phase import (
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse, rondes_maximales
-from domain.tour_de_phase import DecoupageEnTours, nb_tours_regles, unite_de_tour
 from domain.tournoi import TournoiId
 
 EtapeDerouleId = int
@@ -95,8 +94,8 @@ class EtapeDeroule:
     """Le réglage d'une phase de **poules** — taille visée, barème, régime d'ex æquo (E05US023).
 
     ⚠️ **Porté par l'étape, donc par le tournoi, et non par la phase d'un départ** (ADR-0076) : une
-    taille de poule est une propriété du *format*, pas de l'avancement d'un créneau. Deux départs du
-    même tournoi jouent donc des poules de la même taille — l'inverse serait une divergence de
+    taille de poule est une propriété du *format*, pas de l'avancement d'un créneau. Deux départs
+    du même tournoi jouent donc des poules de la même taille — l'inverse serait une divergence de
     définition, exactement ce qu'ADR-0076 a rendu impossible.
 
     `None` sur tout autre type, et sur une phase de poules pas encore réglée : le type se choisit
@@ -116,18 +115,6 @@ class EtapeDeroule:
     différence des poules : un nombre de rondes se décide à la composition, il ne dépend pas de
     l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
     (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
-
-    decoupage: DecoupageEnTours | None = None
-    """En combien de tours l'organisateur découpe cette étape (E05US033, [ADR-0091]).
-
-    Même régime que `poules`, `big_shoot_off` et `suisse` : porté par l'étape donc par le tournoi
-    (ADR-0076), et `None` tant que le type est choisi sans ses paramètres. Ne concerne que la
-    qualification et l'échauffement — les types que le contrat déclare `PHASE_ENTIERE`, faute que
-    leur structure dise combien de tours ils comptent. Le refus sur un autre type vit sur `Phase`,
-    avec ses trois jumeaux.
-
-    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-    """
 
     arrets: tuple[ArretProgramme, ...] = ()
     """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033).
@@ -156,41 +143,48 @@ class EtapeDeroule:
         """Les arrêts programmés décrivent-ils des coupes que cette étape peut appliquer (E05US033).
 
         **Même place et même raison que les deux vérifications ci-dessus** : un arrêt seul se juge à
-        son `__post_init__` (le tour 0 n'existe pas), mais un arrêt **face au nombre de tours** est
-        une propriété du couple, et le nombre de tours n'est connu qu'ici.
+        son `__post_init__` (le tour 0 n'existe pas), mais un arrêt **face au type de la phase** est
+        une propriété du couple, et le type n'est connu qu'ici.
 
-        ⚠️ **Il n'est connu que pour les types que l'organisateur règle** — la qualification et
-        l'échauffement, dont le découpage *est* la source. Partout ailleurs le nombre de tours se
-        lit du terrain le jour J (braquets projetés, round-robin, rondes appariables selon
-        l'effectif, manches d'un Big Shoot Off) et l'atelier ne peut pas le juger : on passe alors
-        `None`, et seul le doublon est refusé. C'est la doctrine déjà tenue par les deux
-        vérifications voisines — « on ne refuse pas ce qu'on ne peut pas juger » —, et la reprendre
-        évite d'inventer une seconde règle de silence.
-
-        Le cas utile de ce refus est le plus courant de tous : un arrêt posé sur une qualification
-        **non découpée**. Elle ne compte qu'un tour, donc « après le tour 1 » tombe après la fin —
-        l'arrêt serait inerte, et l'organisateur le découvrirait le jour J en constatant que sa
-        pause repas n'a jamais eu lieu.
+        ⚠️ **Le nombre de tours, lui, n'est jamais connu à la composition** : il se lit du
+        terrain le jour J (braquets projetés, round-robin, rondes appariables selon
+        l'effectif, manches d'un Big Shoot Off). On passe donc `None` à `verifier_arrets`,
+        qui ne refuse alors que le doublon.
+        C'est la doctrine déjà tenue par les deux vérifications voisines — « on ne refuse pas ce
+        qu'on ne peut pas juger » —, et la reprendre évite d'inventer une seconde règle de silence.
         """
-        # ⚠️ **Le découpage se refuse ICI aussi, pas seulement sur `Phase`** (correctif de revue,
-        # axe C1). La garde de type ne vivait que sur `Phase.__post_init__`, et
-        # `ServicePhases.modifier` n'instancie **aucune phase** : un `PUT` `{"type": "suisse",
-        # "decoupage": {"nb_tours": 3}}` répondait donc **200** et persistait l'étape. Ensuite,
-        # chaque lecture de phase passe par `etape.instancier(...)`, qui lève — et le suivi, le
-        # pilotage et l'affichage public d'un créneau tombaient tous les trois en 422. Un tournoi
-        # rendu illisible par une entrée client qu'aucun agrégat porteur ne jugeait.
-        if self.decoupage is not None and self.type is not TypePhase.QUALIFICATION:
-            raise DecoupageEnToursInvalide(
-                f"Une étape de type « {self.type.value} » ne se découpe pas en tours : seule une "
-                "qualification porte ce réglage."
-            )
+        # ⚠️ **Le refus vit ICI, pas seulement sur `Phase`** (correctif de revue, axe C1) :
+        # `ServicePhases.modifier` n'instancie **aucune phase**, si bien qu'un `PUT` posant un arrêt
+        # sur un type qui ne l'admet pas répondait **200** et persistait l'étape. Ensuite, chaque
+        # lecture de phase passe par `etape.instancier(...)`, qui lève — et le suivi, le pilotage et
+        # l'affichage public du créneau tombaient tous les trois en 422. Un tournoi rendu illisible
+        # par une entrée client qu'aucun agrégat porteur ne jugeait.
         if not self.arrets:
             return
-        connu = unite_de_tour(self.type) is UniteDeTour.PHASE_ENTIERE
-        verifier_arrets(
-            self.arrets,
-            nb_tours=nb_tours_regles(self.type, self.decoupage) if connu else None,
-        )
+        # ⚠️ **Un arrêt n'est licite que sur un type dont l'application sait LIRE le tour** — c'est
+        # le périmètre arrêté par le commanditaire le 19/08/2026, en fin de revue.
+        #
+        # Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour
+        # courant au service qui déroule la phase. Les types qu'aucun service ne déroule — la
+        # qualification, l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à
+        # observer, et un arrêt posé dessus serait **accepté à l'atelier puis définitivement
+        # inerte le jour J** : l'organisateur découvrirait le jour de la compétition que sa
+        # pause repas n'a jamais eu lieu.
+        #
+        # ⚠️ **La qualification en faisait partie jusqu'en fin de revue**, avec un réglage « découper
+        # en x tours ». Les deux sont **sortis de la tranche** : dériver le tour d'une qualification
+        # demande de résoudre sa population réelle (deux qualifications peuvent coexister dans un
+        # créneau, ADR-0082), le plan de cibles et les forfaits — trois sujets que la tranche
+        # n'avait pas budgétés, et qui ont produit quatre bloquants de revue à eux seuls.
+        # Repris par
+        # `E05US034`. Un **refus explicite** vaut mieux qu'un réglage inerte.
+        if self.type not in TYPES_DEROULES:
+            raise ArretProgrammeInvalide(
+                f"Une phase de type « {self.type.value} » n'annonce pas ses tours : l'application "
+                "ne saurait pas quand y appliquer une pause. Les pauses se posent sur une "
+                "élimination directe, des poules, un système suisse ou un Big Shoot Off."
+            )
+        verifier_arrets(self.arrets, nb_tours=None)
 
     def _verifier_rondes_appariables(self) -> None:
         """À N participants, on ne peut pas apparier plus de N-1 rondes sans ré-affrontement.
@@ -274,7 +268,6 @@ class EtapeDeroule:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
-            decoupage=self.decoupage,
             statut=StatutPhase.A_VENIR,
         )
 

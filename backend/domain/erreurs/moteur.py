@@ -449,13 +449,3 @@ class ArretProgrammeInvalide(DomainError):
     """
 
     code = "arret_programme_invalide"
-
-
-class DecoupageEnToursInvalide(DomainError):
-    """Le **découpage en tours** d'une qualification ou d'un échauffement est incohérent (E05US033).
-
-    Nombre de tours < 1 : toute phase compte au moins un tour (CA d'E05US032 — « aucun type n'en est
-    exclu »), et « 1 tour » est la valeur **vraie** par défaut, pas un trou à combler.
-    """
-
-    code = "decoupage_en_tours_invalide"

@@ -21,7 +21,7 @@ from dataclasses import replace
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import PhasePasDesPoules, PhasePasReglee
+from application.erreurs import PhaseEnPause, PhasePasDesPoules, PhasePasReglee
 from application.poules import ServicePoules
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import Archer
@@ -33,7 +33,7 @@ from domain.duel import ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.participant import Participant
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -985,3 +985,66 @@ def test_une_phase_de_poules_sans_rencontre_ne_dit_rien() -> None:
     monde.regler(ReglageDePoules(taille_visee=4))
 
     assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None
+
+
+# ───────────────────────── E05US033 : le gel d'une phase en pause ─────────────────────────
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Met la phase de poules en pause, comme le ferait un arrêt programmé."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_valider_une_rencontre_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la pause **arrête ce qui avance**, et c'est la validation qui avance un tour.
+
+    ⚠️ **Cette garde manquait à la première livraison**, et son absence n'était pas visible : la
+    pause restait cosmétique sur les poules — le scoreur continuait de valider pendant que l'archer
+    lisait « en attente ». Bloquant relevé par les quatre axes de revue, sur un format que le CA
+    vise nommément (« une phase qui dure des heures »).
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+    for manche in (1, 2, 3):
+        service.saisir_manche(
+            monde.tournoi_id,
+            phase_id,
+            1,
+            manche,
+            (ZoneScore("10"), ZoneScore("10"), ZoneScore("10")),
+            (ZoneScore("6"), ZoneScore("6"), ZoneScore("6")),
+        )
+    _mettre_en_pause(monde)
+
+    with pytest.raises(PhaseEnPause):
+        service.valider(monde.tournoi_id, phase_id, 1, "DURAND")
+
+
+def test_rectifier_une_manche_pendant_la_pause_reste_possible() -> None:
+    """⚠️ **L'autre moitié du CA** : *« la correction reste possible pendant la pause »*.
+
+    La garde est sur `valider` **seulement**, pas dans `_ecrire` — le tronc commun des trois
+    écritures. L'y poser gelait aussi la rectification d'une rencontre engagée, ce qui enferme le
+    scoreur : il ne peut ni finir, ni réparer. Correctif de 2ᵉ passe relevé par trois axes,
+    après que l'axe adversarial ait déjà fait corriger le même excès sur les duels de tableau.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ReglageDePoules(taille_visee=4))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    rencontre = service.saisir_manche(
+        monde.tournoi_id,
+        phase_id,
+        1,
+        1,
+        (ZoneScore("10"), ZoneScore("10"), ZoneScore("10")),
+        (ZoneScore("6"), ZoneScore("6"), ZoneScore("6")),
+    )
+
+    assert rencontre.duel is not None

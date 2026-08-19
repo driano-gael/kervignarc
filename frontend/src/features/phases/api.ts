@@ -5,7 +5,7 @@ import { fetchJson } from '../../shared/api/client'
 import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/catalogue'
 import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
-import type { ArretProgramme, Decoupage } from '../../shared/phases/arrets'
+import type { ArretProgramme } from '../../shared/phases/arrets'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
 import type { Profondeur } from '../patrimoine/api'
 
@@ -63,9 +63,6 @@ export interface EtapeDeroule {
   // Le réglage d'un **système suisse** (E05US030) — le nombre de rondes. Même régime que les deux
   // ci-dessus : `null` = non réglé, et le `PUT` étant une édition totale, l'omettre l'**efface**.
   suisse: ReglageSuisse | null
-  // Le découpage en tours d'une qualification ou d'un échauffement (E05US033) — `null` = non
-  // découpée, donc la phase entière, ce qui est la valeur **vraie** par défaut (E05US032).
-  decoupage: Decoupage | null
   // Les **pauses programmées** de cette étape (E05US033, ADR-0091) — `[]` = aucune, et c'est le
   // défaut : la salle enchaîne les tours toute seule.
   //
@@ -108,8 +105,6 @@ export interface ConfigPhase {
   big_shoot_off?: ReglageBigShootOff | null
   // Même règle d'édition totale : omis, le réglage du système suisse est **effacé** côté serveur.
   suisse?: ReglageSuisse | null
-  // Même règle d'édition totale : omis, le découpage en tours est **effacé** côté serveur.
-  decoupage?: Decoupage | null
   // ⚠️ **Même règle, et c'est ici qu'elle coûte le plus cher** : une liste omise ou vide **supprime**
   // toutes les pauses programmées. Ce n'est pas un paramètre qu'on retrouve d'un coup d'œil mais un
   // planning de journée saisi ligne à ligne. L'écran renvoie donc toujours la liste complète.

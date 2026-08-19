@@ -53,7 +53,6 @@ from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
 from domain.suisse import ConfigurationSuisse
-from domain.tour_de_phase import DecoupageEnTours
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
     DepartORM,
@@ -128,7 +127,6 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         poules = _lire_reglage_poules(config)
         big_shoot_off = _lire_reglage_big_shoot_off(config)
         suisse = _lire_reglage_suisse(config)
-        decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
     except (
         json.JSONDecodeError,
@@ -153,7 +151,6 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
-            decoupage=decoupage,
             arrets=arrets,
             id=ligne.id,
         )
@@ -299,7 +296,6 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.poules,
             etape.big_shoot_off,
             etape.suisse,
-            etape.decoupage,
             etape.arrets,
         )
     )
@@ -315,7 +311,6 @@ def _politiques_json(
     poules: ReglageDePoules | None = None,
     big_shoot_off: ConfigurationBigShootOff | None = None,
     suisse: ConfigurationSuisse | None = None,
-    decoupage: DecoupageEnTours | None = None,
     arrets: tuple[ArretProgramme, ...] = (),
     *,
     marquer_absences: bool = False,
@@ -445,12 +440,6 @@ def _politiques_json(
         # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
         # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
         config["suisse"] = {"rondes": suisse.nb_rondes}
-    if decoupage is not None:
-        # Même domicile et même raison que ses quatre voisins : racine du `config`, pas
-        # `policies` (catalogue fermé des familles injectables). Aucune migration : ADR-0046
-        # laisse le document libre à la racine — c'est ce qui permet à cette US de n'en
-        # demander une que pour le **franchissement**, qui est de l'avancement.
-        config["decoupage"] = {"tours": decoupage.nb_tours}
     if arrets:
         # Une **liste**, et non un objet : c'est la lettre du CA (« plusieurs par phase »).
         # `portee` s'écrit toujours, y compris pour le défaut : ce n'est pas une option qu'on
@@ -570,30 +559,6 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
         # chose d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return ConfigurationSuisse(nb_rondes=int(rondes))
-
-
-def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
-    """Le découpage en tours d'une étape, lu **à la racine** du `config` (E05US033).
-
-    Même domicile et même régime d'absence que ses quatre voisins : absence = **non découpée**, ce
-    qui est licite et signifie « un seul tour, la phase entière » — la valeur vraie par défaut
-    (E05US032), pas un trou.
-
-    ⚠️ **On relit par la fabrique du domaine**, comme les autres : un nombre de tours nul ou négatif
-    est une chose que le repository n'écrit jamais, l'agrégat le refusant en amont. Le trouver ici
-    signifie que la base a été altérée, et `DecoupageEnToursInvalide` remonte alors en
-    « configuration illisible » (ADR-0007), ce qui est exact.
-    """
-    souffle = config.get("decoupage")
-    if not isinstance(souffle, dict):
-        return None
-    tours = souffle.get("tours")
-    if tours is None:
-        # Erreur **typée** plutôt que `None`, même raisonnement que le nombre de rondes absent d'un
-        # réglage de suisse : « pas de nombre de tours » se lirait « non découpée », et un arrêt
-        # programmé dessus deviendrait silencieusement inerte.
-        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
-    return DecoupageEnTours(nb_tours=int(tours))
 
 
 def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
@@ -761,7 +726,6 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         # l'oubli — un champ ajouté à l'agrégat mais absent de sa sérialisation
                         # rouvre exactement le défaut que l'ajout prétendait fermer, déplacé de
                         # l'agrégat à sa persistance, et il détruit de la donnée d'organisateur.
-                        decoupage=etape.decoupage,
                         arrets=etape.arrets,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
@@ -860,7 +824,6 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         poules=_lire_reglage_poules(brute),
         big_shoot_off=_lire_reglage_big_shoot_off(brute),
         suisse=_lire_reglage_suisse(brute),
-        decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
     )
 
@@ -1489,14 +1452,15 @@ class PhaseRepositorySQL:
                     statut=phase.statut.value,
                 )
                 session.add(ligne)
-                # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025, axe B).
-                # Committer d'abord laissait la ligne orpheline **en base** quand l'exception
-                # partait : invisible à toute lecture (l'assemblage l'écarte), mais occupant le
-                # couple `(depart_id, ordre)` de `uq_phase_depart_ordre` — si bien que le jour où le
-                # déroulé gagnait ce rang, l'instanciation légitime butait sur l'unicité, sans
-                # recours par l'écran. Le `flush` donne l'identifiant sans rien acter ; sortir du
-                # `with` sans commit annule tout. L'adapter en mémoire fait déjà ce choix (il retire
-                # l'entrée avant de lever) : les deux ne doivent pas diverger.
+                # ⚠️ **`flush` et non `commit` avant le contrôle** (revue E01US025, axe B). Committer
+                # d'abord laissait la ligne orpheline **en base** quand l'exception partait :
+                # invisible à toute lecture (l'assemblage l'écarte), mais occupant le couple
+                # `(depart_id, ordre)` de `uq_phase_depart_ordre` — si bien que le jour où le
+                # déroulé
+                # gagnait ce rang, l'instanciation légitime butait sur l'unicité, sans recours par
+                # l'écran. Le `flush` donne l'identifiant sans rien acter ; sortir du `with` sans
+                # commit annule tout. L'adapter en mémoire fait déjà ce choix (il retire l'entrée
+                # avant de lever) : les deux ne doivent pas diverger.
                 session.flush()
                 assemblees = self._assembler(session, [ligne])
                 if not assemblees:

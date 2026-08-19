@@ -1,4 +1,4 @@
-// Le **modèle** des arrêts programmés et du découpage en tours (E05US033, ADR-0091) — logique pure.
+// Le **modèle** des arrêts programmés (E05US033, ADR-0091) — logique pure.
 //
 // Séparé du composant pour la raison habituelle (`suisse.ts`, `poules.ts`, `bigShootOff.ts`) :
 // `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, et la conversion
@@ -6,8 +6,8 @@
 //
 // ⚠️ **Aucun miroir de règle serveur ici**, à la différence de `suisse.ts` (qui recopie
 // `rondes_maximales`). La validité d'un arrêt dépend du **nombre de tours** de la phase, que seul le
-// serveur connaît — il varie avec l'effectif (rondes appariables), avec la projection (braquets d'un
-// tableau) et avec le réglage. Ce module ne juge donc que ce qui se juge sans rien savoir : un entier
+// serveur connaît — il varie avec l'effectif (rondes appariables) et avec la projection (braquets
+// d'un tableau). Ce module ne juge donc que ce qui se juge sans rien savoir : un entier
 // positif, et pas deux arrêts au même endroit. Le reste est un refus serveur (`ArretProgrammeInvalide`,
 // 422), qui est le seul verdict honnête.
 
@@ -18,11 +18,6 @@ export type PorteeArret = 'phase' | 'depart'
 export interface ArretProgramme {
   apres_tour: number
   portee: PorteeArret
-}
-
-/** Le découpage tel que l'API le transporte, miroir de `DecoupageDTO`. */
-export interface Decoupage {
-  nb_tours: number
 }
 
 /**
@@ -43,16 +38,14 @@ export interface LigneArret {
 
 /** Ce que l'organisateur a choisi à l'écran, pour une étape donnée. */
 export interface EtatArrets {
-  /** Le découpage en tours — chaîne vide = non découpée, donc la phase entière. */
-  tours: string
   lignes: LigneArret[]
 }
 
-/** Le plafond accepté par l'API (`ArretProgrammeDTO.apres_tour` et `DecoupageDTO.nb_tours`, `le=64`). */
+/** Le plafond accepté par l'API (`ArretProgrammeDTO.apres_tour`, `le=64`). */
 export const TOURS_MAX_REGLABLES = 64
 
-/** L'état de départ : aucun arrêt, aucun découpage — l'enchaînement automatique, qui est le défaut. */
-export const ARRETS_PAR_DEFAUT: EtatArrets = { tours: '', lignes: [] }
+/** L'état de départ : aucun arrêt — l'enchaînement automatique d'un tour au suivant, le défaut. */
+export const ARRETS_PAR_DEFAUT: EtatArrets = { lignes: [] }
 
 /**
  * Fabrique une clé d'affichage pour une ligne neuve.
@@ -75,12 +68,8 @@ export function ligneNeuve(): LigneArret {
 }
 
 /** Reconstruit l'état d'édition depuis ce que porte l'étape. */
-export function depuisEtape(
-  arrets: ArretProgramme[] | null | undefined,
-  decoupage: Decoupage | null | undefined,
-): EtatArrets {
+export function depuisEtape(arrets: ArretProgramme[] | null | undefined): EtatArrets {
   return {
-    tours: decoupage == null ? '' : String(decoupage.nb_tours),
     lignes: (arrets ?? []).map((arret) => ({
       cle: cleNeuve(),
       apresTour: String(arret.apres_tour),
@@ -94,20 +83,6 @@ function versEntier(brut: string): number | undefined {
   if (brut.trim() === '' || !Number.isInteger(nombre)) return undefined
   if (nombre < 1 || nombre > TOURS_MAX_REGLABLES) return undefined
   return nombre
-}
-
-/**
- * Ce qui part au serveur pour le découpage — `null` quand la phase n'est pas découpée.
- *
- * ⚠️ **`null` et `undefined` ne disent pas la même chose ici**, et la distinction porte tout le
- * comportement : `null` signifie « efface le réglage » (l'édition est **totale** côté API, cf.
- * `ConfigPhaseRequete`), `undefined` signifie « la saisie est illisible, ne soumets pas ». Les
- * confondre effacerait le découpage d'un organisateur en train de retaper son champ.
- */
-export function versDecoupage(etat: EtatArrets): Decoupage | null | undefined {
-  if (etat.tours.trim() === '') return null
-  const nombre = versEntier(etat.tours)
-  return nombre === undefined ? undefined : { nb_tours: nombre }
 }
 
 /**
@@ -147,9 +122,8 @@ export function toursEnDoublon(etat: EtatArrets): number[] {
     .sort((a, b) => a - b)
 }
 
-/** Vrai si l'état est soumettable : chaque ligne lisible, aucun doublon, découpage lisible. */
+/** Vrai si l'état est soumettable : chaque ligne lisible et aucun doublon. */
 export function estValide(etat: EtatArrets): boolean {
-  if (versDecoupage(etat) === undefined) return false
   if (versArrets(etat) === undefined) return false
   return toursEnDoublon(etat).length === 0
 }

@@ -38,7 +38,6 @@ from domain.phase import (
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
 from domain.suisse import ConfigurationSuisse
-from domain.tour_de_phase import DecoupageEnTours
 from infrastructure.db import WriteQueue
 
 router = APIRouter(prefix="/api/v1", tags=["phases"])
@@ -200,8 +199,7 @@ class ReglageBigShootOffDTO(BaseModel):
     effectifs qu'il ignore, et « on joue tant que la manche est possible ». L'écran montre la
     projection (`/api/v1/big-shoot-off/projection/…`) avant que l'organisateur compose.
 
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 4ᵉ paire,
-    `DETTE-054`.
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 4ᵉ paire, `DETTE-054`.
     """
 
     # ⚠️ Bornes ajoutées à la revue d'E05US028. Les **valeurs** restent libres (`paliers_pour`
@@ -259,8 +257,7 @@ class ReglageSuisseDTO(BaseModel):
     Le plafond posé ici (`le=64`) n'est donc pas la règle du suisse : c'est la garde de frontière
     habituelle contre une saisie qui a dérapé, au même titre que `ConfigPhaseRequete.sources`.
 
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 5ᵉ paire,
-    `DETTE-054`.
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 5ᵉ paire, `DETTE-054`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -273,31 +270,6 @@ class ReglageSuisseDTO(BaseModel):
     @staticmethod
     def de_agregat(reglage: ConfigurationSuisse) -> ReglageSuisseDTO:
         return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
-
-
-class DecoupageDTO(BaseModel):
-    """En combien de tours l'organisateur découpe une qualification ou un échauffement (E05US033).
-
-    « 20 volées en 2 tours de 10 » : rien dans la structure de ces deux types ne dit combien de
-    tours ils comptent, donc c'est un **choix**. Partout ailleurs le nombre de tours se lit de la
-    donnée qui le détermine (braquets, round-robin, rondes réglées, manches) et ce réglage est
-    refusé par l'agrégat — un réglage que rien ne lit est invisible et faux.
-
-    `nb_tours=1` est le défaut écrit en clair : il ne découpe rien.
-
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — `DETTE-054`, élargie.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    nb_tours: int = Field(default=1, ge=1, le=64)
-
-    def vers_agregat(self) -> DecoupageEnTours:
-        return DecoupageEnTours(nb_tours=self.nb_tours)
-
-    @staticmethod
-    def de_agregat(reglage: DecoupageEnTours) -> DecoupageDTO:
-        return DecoupageDTO(nb_tours=reglage.nb_tours)
 
 
 class ArretProgrammeDTO(BaseModel):
@@ -390,16 +362,6 @@ class ConfigPhaseRequete(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
-    decoupage: DecoupageDTO | None = None
-    """Le découpage en tours d'une qualification ou d'un échauffement (E05US033).
-
-    `null` = non découpée. Même régime d'édition **totale** que ses voisins : omettre le champ au
-    `PUT` **efface** le réglage,
-    et la phase retombe sur « un seul tour, la phase entière » — la valeur vraie par défaut
-    (E05US032).
-    Posé sur un type qui compte ses tours par sa structure, il lève
-    `DecoupageEnToursInvalide` (422)."""
-
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033, ADR-0091) — liste vide = aucune.
 
@@ -464,16 +426,6 @@ class PhaseReponse(BaseModel):
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
 
-    decoupage: DecoupageDTO | None = None
-    """Le découpage en tours (E05US033) — `null` = non découpée, donc la phase entière.
-
-    ⚠️ **Cette docstring a été rattachée au mauvais champ à la première rédaction** : insérer
-    `decoupage` entre `suisse` et son littéral faisait documenter le découpage par le texte du
-    système suisse, et publiait donc une description **fausse** au schéma OpenAPI. C'est exactement
-    ce que le commentaire de `DETTE-054` de ce fichier prédit (« le bloc avait glissé d'un cran à
-    chaque réglage inséré ») — reproduit une fois de plus, relevé par deux axes de revue.
-    """
-
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -497,9 +449,6 @@ class PhaseReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(phase.big_shoot_off)
             ),
             suisse=(None if phase.suisse is None else ReglageSuisseDTO.de_agregat(phase.suisse)),
-            decoupage=(
-                None if phase.decoupage is None else DecoupageDTO.de_agregat(phase.decoupage)
-            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -523,9 +472,6 @@ class EtapeReponse(BaseModel):
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
-
-    decoupage: DecoupageDTO | None = None
-    """Le découpage en tours (E05US033) — `null` = non découpée, donc la phase entière."""
 
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les pauses programmées de cette étape (E05US033) — **rendues au complet**.
@@ -556,9 +502,6 @@ class EtapeReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
-            decoupage=(
-                None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
-            ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
@@ -621,7 +564,6 @@ async def ajouter_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
-                None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )
@@ -654,7 +596,6 @@ async def modifier_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
-                None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )

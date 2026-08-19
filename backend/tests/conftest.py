@@ -685,26 +685,18 @@ def poser_phase_factice(
                 # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
                 # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
                 big_shoot_off=phase.big_shoot_off,
-                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot
-                # pour mot : le réglage du système suisse a été oublié ici, et quatre tests d'API
-                # ont échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du «
-                # remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
+                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
+                # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
+                # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
+                # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
                 # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
-                # ⚠️ **4ᵉ occurrence, E05US033** (`DETTE-064`, élargie et non contournée) : le
-                # découpage en tours. Les **arrêts** ne sont pas recopiables depuis une `Phase`
-                # — elle ne porte pas ce champ — et se posent directement sur l'étape : ce n'est
-                # donc pas une 5ᵉ occurrence du même piège, comme la première rédaction le
-                # comptait (relevé en revue, axe A). Le premier suit le patron des
-                # quatre réglages ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut
-                # donc pas être recopié depuis elle — il se pose sur l'étape, ce que les décors
-                # d'arrêts font directement. Le recopiage champ par champ reste ce qu'il était :
-                # rien ne rougit quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est
-                # identifié et **hors périmètre ici** — un remède structurel se traite en ADR + US
-                # dédiée, pas en douce dans l'US courante (§ Dette).
-                decoupage=phase.decoupage,
+                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
     return phases.ajouter(
@@ -767,26 +759,18 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # oublie un), et il le sera à chaque réglage neuf. Le remède serait de dériver
                 # l'étape de la phase par une fabrique unique, côté domaine ; il vaut une US.
                 big_shoot_off=phase.big_shoot_off,
-                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot
-                # pour mot : le réglage du système suisse a été oublié ici, et quatre tests d'API
-                # ont échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du «
-                # remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
+                # ⚠️ **3ᵉ occurrence, E05US026** — et la prédiction ci-dessus s'est vérifiée mot pour
+                # mot : le réglage du système suisse a été oublié ici, et quatre tests d'API ont
+                # échoué en `phase_pas_reglee` sur une phase parfaitement réglée. Le seuil du
+                # « remède structurel » de `CLAUDE.md` est atteint **sur preuve**, et la dette est
                 # désormais **tracée** (`DETTE-064`) au lieu de ne vivre qu'en commentaire — c'est
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
-                # ⚠️ **4ᵉ occurrence, E05US033** (`DETTE-064`, élargie et non contournée) : le
-                # découpage en tours. Les **arrêts** ne sont pas recopiables depuis une `Phase`
-                # — elle ne porte pas ce champ — et se posent directement sur l'étape : ce n'est
-                # donc pas une 5ᵉ occurrence du même piège, comme la première rédaction le
-                # comptait (relevé en revue, axe A). Le premier suit le patron des
-                # quatre réglages ci-dessus ; le second n'a **pas** de miroir sur `Phase` et ne peut
-                # donc pas être recopié depuis elle — il se pose sur l'étape, ce que les décors
-                # d'arrêts font directement. Le recopiage champ par champ reste ce qu'il était :
-                # rien ne rougit quand on en oublie un. Le remède (`EtapeDeroule.de_phase`) est
-                # identifié et **hors périmètre ici** — un remède structurel se traite en ADR + US
-                # dédiée, pas en douce dans l'US courante (§ Dette).
-                decoupage=phase.decoupage,
+                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
     return PhaseRepositorySQL(session_factory).ajouter(

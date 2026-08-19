@@ -2,9 +2,9 @@
 
 Ce qui se vérifie ici est propre à la frontière :
 
-- la **lecture est publique** (l'écran de salle est public, il ne porte aucun jeton admin) ; - rien
-de sensible ne transite (ni nom, ni code de poste, ni donnée de paiement) ; - la forme des blocs est
-**celle du diagnostic d'atelier** (E01US024), plus un calque `avancement` —
+- la **lecture est publique** (l'écran de salle est public, il ne porte aucun jeton admin) ;
+- rien de sensible ne transite (ni nom, ni code de poste, ni donnée de paiement) ;
+- la forme des blocs est **celle du diagnostic d'atelier** (E01US024), plus un calque `avancement` —
   c'est ce qui permet au front de n'avoir qu'un seul composant de dessin ;
 - un tournoi sans phase répond, il ne casse pas.
 """
@@ -159,8 +159,10 @@ def test_une_phase_sans_braquet_compte_un_tour_plutot_que_zero(
     """E05US032 — une qualification **avance** elle aussi, même si elle ne classe qu'à la fin.
 
     C'est le défaut que l'US corrige : `nb_tours` se dérivait des braquets, donc toute phase hors
-    tableau s'affichait à zéro tour. Un est **vrai** — la phase entière en est un — et le réglage «
-    diviser en x tours » arrive avec `E05US033`, là où il sert.
+    tableau s'affichait à zéro tour. Un est **vrai** — la phase entière en est un — et le réglage
+    « diviser en x tours » arrive avec `E05US034` (annoncé pour `E05US033`, reporté d'une tranche le
+    19/08/2026 : lire l'avancement réel d'une qualification demande sa population, son plan de
+    cibles et ses forfaits).
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
@@ -279,21 +281,6 @@ def test_chaque_lecteur_d_avancement_est_branche_sur_le_service_de_son_format(
     assert branches[TypePhase.POULES] is app_session.state.service_poules
     assert branches[TypePhase.SUISSE] is app_session.state.service_suisse
     assert branches[TypePhase.BIG_SHOOT_OFF] is app_session.state.service_big_shoot_off
-    # ⚠️ **E05US033 ajoute la QUALIFICATION**, portée par `ServiceSaisie` — le service qui détient
-    # les feuilles de marque, donc le seul qui puisse dire à quelle volée le plateau en est. Sans ce
-    # lecteur, son `tour_courant` restait `None` pour toujours, le déclencheur d'arrêt lisait ce
-    # `None` comme « tout est joué », et une pause « après le tour 1 » tombait à la **première**
-    # série validée. Bloquant relevé par les quatre axes de revue de l'US.
-    assert branches[TypePhase.QUALIFICATION] is app_session.state.service_saisie
     # Le reste du catalogue n'a **aucun** lecteur, et c'est le contrat d'ADR-0090 §3 : ces types
-    # comptent un tour, sauf la colline dont le manque est assumé (`DETTE-028`). ⚠️ **L'ÉCHAUFFEMENT
-    # reste dehors, et ce n'est pas un oubli** : son contrat de phase le déclare sans décor de
-    # saisie ni plan de cibles, donc il n'a ni barème ni feuille de marque — il n'existe **rien**
-    # dont dériver un tour. Le CA d'E05US033 nommait « la qualification et l'échauffement » ; il est
-    # amputé de cette moitié faute de matière, et `stories/` est aligné.
-    assert set(branches) == {
-        TypePhase.QUALIFICATION,
-        TypePhase.POULES,
-        TypePhase.SUISSE,
-        TypePhase.BIG_SHOOT_OFF,
-    }
+    # comptent un tour, sauf la colline dont le manque est assumé (`DETTE-028`).
+    assert set(branches) == {TypePhase.POULES, TypePhase.SUISSE, TypePhase.BIG_SHOOT_OFF}

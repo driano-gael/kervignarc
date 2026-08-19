@@ -51,7 +51,6 @@ from domain.phase import (
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
 from domain.suisse import ConfigurationSuisse
-from domain.tour_de_phase import DecoupageEnTours
 from domain.tournoi import TournoiId
 
 FormatTournoiId = int
@@ -124,13 +123,6 @@ class ModelePhase:
     juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
     de bibliothèque."""
 
-    decoupage: DecoupageEnTours | None = None
-    """En combien de tours cette étape se joue, quand sa structure ne le dit pas (E05US033).
-
-    Même régime de brouillon que ses voisins : un découpage posé sur un système suisse est un modèle
-    **licite** qui refusera de s'appliquer (`DecoupageEnToursInvalide` à la construction de la
-    `Phase`)."""
-
     arrets: tuple[ArretProgramme, ...] = ()
     """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033, [ADR-0091]).
 
@@ -191,7 +183,6 @@ class ModelePhase:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
-            decoupage=self.decoupage,
             arrets=self.arrets,
         )
 
@@ -219,7 +210,6 @@ class ModelePhase:
             poules=etape.poules,
             big_shoot_off=etape.big_shoot_off,
             suisse=etape.suisse,
-            decoupage=etape.decoupage,
             arrets=etape.arrets,
         )
 
