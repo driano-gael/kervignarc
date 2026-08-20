@@ -63,6 +63,7 @@ from domain.ports import (
     SerieRepository,
 )
 from domain.serie import Serie
+from domain.suivi_deroule import AvancementDePhase, avancement_de_qualification
 from domain.tournoi import TournoiId
 
 _logger = logging.getLogger(__name__)
@@ -271,6 +272,74 @@ class ServiceSaisie:
         return AvancementCible(
             volee_courante=volee_courante, nb_volees=nb_volees, derniere_saisie=derniere
         )
+
+    def avancement_de_phase(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> AvancementDePhase | None:
+        """*Où en est cette qualification ?* — réalisation du port `LecteurAvancementDePhase`.
+
+        C'est ce que les pauses programmées attendaient depuis trois tranches (E05US033 →
+        E05US034 → E05US035) : un arrêt ne coupe qu'à une frontière de tour **observée**, et la
+        qualification était jusqu'ici le seul format joué dont personne ne savait dire le tour.
+
+        ⚠️ **Tout le travail est de compter la bonne population, et il y a trois façons de la
+        compter faux** — chacune fait avancer le tour au mauvais moment, donc couper la salle
+        pendant que le pas de tir tire (ou ne jamais la couper) :
+
+        1. **Le créneau n'est pas la phase** ([ADR-0082]). Deux qualifications peuvent coexister
+           dans un même départ — la fourche *haute*/*basse* d'E05US025 —, et leurs archers sont
+           placés sur les **mêmes cibles**. On filtre donc par `_admet`, la résolution déjà
+           utilisée par le chemin d'écriture : deux façons de dire « cet archer est à moi »
+           remettraient un archer dans une phase dont la feuille le croit ailleurs.
+        2. **Le plan de cibles décide qui tire** (ADR-0033). Un inscrit en **réserve** n'a aucune
+           affectation, donc aucune volée à tirer ; le compter figerait la phase à zéro pour la
+           journée entière.
+        3. **Les forfaits ne tireront plus** (E04US015). Même effet, et c'est le plus discret des
+           trois : rien à l'écran ne signale que la phase est retenue par quelqu'un de parti.
+
+        On lit les forfaits **par cette phase** (`par_phase`) et non par `_forfaits_qualif`, qui
+        résout « la » qualification du tournoi : sur un créneau qui en porte plusieurs, ce raccourci
+        rendrait les forfaits d'une phase pour une autre. Ce n'est donc pas une 5ᵉ occurrence de
+        `DETTE-022` — c'est le chemin que cette dette devra rejoindre.
+
+        Rend `None` quand ce lecteur n'a rien à dire : phase inconnue, d'un autre type, ou
+        qualification pas encore configurée (barème absent — robustesse jour J, même parti que
+        `avancement_cible`). Le suivi affiche alors « avancement inconnu » plutôt que de tomber.
+        """
+        phase = self._phases.par_id(phase_id)
+        if phase is None or phase.type is not TypePhase.QUALIFICATION or phase.bareme is None:
+            return None
+        volees = self._volees_du_plus_lent(tournoi_id, phase)
+        if volees is None:
+            return None
+        return avancement_de_qualification(volees, phase.bareme, phase.decoupage)
+
+    def _volees_du_plus_lent(self, tournoi_id: TournoiId, phase: Phase) -> int | None:
+        """Le compte de volées **saisies** de l'archer le moins avancé de cette phase.
+
+        `None` quand la phase n'a personne à faire tirer — plateau vide, tout le monde forfait, ou
+        aucun archer placé. « Zéro volée » et « personne » ne sont pas la même chose : le premier
+        maintient la phase au tour 1, le second n'a aucun tour à annoncer, et les confondre ferait
+        annoncer « tour 1 » à une phase que rien ne joue.
+        """
+        assert phase.id is not None
+        forfaits = frozenset(f.archer_id for f in self._forfaits.par_phase(phase.id))
+        inscriptions = {i.id: i for i in self._inscriptions.par_depart(phase.depart_id)}
+        # ⚠️ **Un seul résolveur pour toute la phase**, comme `avancement_cible` : en construire un
+        # par archer repartirait d'un cache vide à chaque fois, et le suivi est sondé en boucle par
+        # le pilotage. C'est le correctif de 2ᵉ passe d'E05US025, à ne pas rejouer ici.
+        resolveur = self._populations.resolveur_de_classement(tournoi_id, phase.depart_id)
+        comptes: list[int] = []
+        for affectation in self._placements.par_depart(phase.depart_id):
+            inscription = inscriptions.get(affectation.inscription_id)
+            if inscription is None:
+                continue  # défensif : affectation sans inscription correspondante
+            archer_id = inscription.archer_id
+            if archer_id in forfaits or not self._admet(phase, archer_id, resolveur):
+                continue
+            serie = self._series.par_archer(phase.id, archer_id)
+            comptes.append(len(serie.volees) if serie is not None else 0)
+        return min(comptes) if comptes else None
 
     def etat_serie(
         self,

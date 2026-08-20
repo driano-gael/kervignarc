@@ -306,6 +306,7 @@ function FormulaireFormat() {
       poules: null,
       big_shoot_off: null,
       suisse: null,
+      decoupage: null,
       // Une qualification n'a pas de profondeur à régler : elle classe toujours tout le monde.
       profondeur: null,
       // E05US033 : aucune pause programmée, le défaut — la salle enchaîne les tours.

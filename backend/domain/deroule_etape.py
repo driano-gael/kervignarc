@@ -51,6 +51,7 @@ from domain.phase import (
 )
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.qualification import DecoupageEnTours, verifier_decoupage_applicable
 from domain.suisse import ConfigurationSuisse, rondes_maximales
 from domain.tournoi import TournoiId
 
@@ -118,6 +119,23 @@ class EtapeDeroule:
     l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
     (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
 
+    decoupage: DecoupageEnTours | None = None
+    """Le découpage d'une **qualification** en tours — « 20 volées en 2 tours de 10 » (E05US035).
+
+    Même régime que `poules`, `big_shoot_off` et `suisse` ci-dessus : porté par l'étape donc par le
+    tournoi (ADR-0076), `None` sur tout autre type et sur une qualification non découpée — auquel
+    cas la phase **est** son tour, ce qui reste vrai.
+
+    ⚠️ **Ce n'est pas du barème**, et l'y ranger aurait été le raccourci naturel : `nb_volees` vit
+    sur `BaremeQualification`, `nb_tours` semblait sa voisine. Mais un barème dit comment on
+    **classe** (le cumul, le total), un découpage dit comment on **avance** — l'invariant
+    *avancer ≠ classer* d'ADR-0090, posé par le commanditaire. Les mêler aurait fait croire qu'un
+    tour de qualification produit un classement intermédiaire, qu'aucune règle FFTA ne prévoit.
+
+    Le seul usage est de rendre la qualification **arrêtable** (ADR-0093) : sans découpage, une
+    pause n'a aucune frontière de tour où tomber.
+    """
+
     arrets: tuple[ArretProgramme, ...] = ()
     """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033).
 
@@ -137,6 +155,7 @@ class EtapeDeroule:
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
+        verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         self._verifier_convergence_du_big_shoot_off()
         self._verifier_rondes_appariables()
         self._verifier_arrets_applicables()
@@ -253,8 +272,13 @@ class EtapeDeroule:
         obtenue est l'objet du moteur — elle porte la définition **recopiée en mémoire**, jamais
         persistée en double (ADR-0076).
 
-        ⚠️ **`arrets` n'est délibérément pas recopié**, et ce n'est pas un oubli : `Phase` ne porte
-        pas ce champ. Les arrêts programmés ne sont lus que par `ServiceArretsProgrammes`, qui
+        ⚠️ **`decoupage` est recopié, `arrets` ne l'est pas**, et l'asymétrie est le sujet. Le
+        découpage décide de l'avancement que le moteur **lit sur la phase** — `ServiceSaisie`
+        reçoit un `phase_id`, pas une étape — donc il doit voyager. Les arrêts, eux, ne sont lus
+        que par `ServiceArretsProgrammes`, qui adresse le déroulé par rang.
+
+        ⚠️ **`arrets` n'est donc délibérément pas recopié**, et ce n'est pas un oubli : `Phase` ne
+        porte pas ce champ. Les arrêts programmés ne sont lus que par `ServiceArretsProgrammes`, qui
         adresse le déroulé par rang ; les faire voyager ici ajouterait un champ que personne ne lit
         et fermerait un cycle d'import (`phase` → `arret_programme` → `phase`). Le raisonnement
         complet est sur `Phase.decoupage`, qui est le champ voisin ayant fait le choix inverse.
@@ -272,6 +296,7 @@ class EtapeDeroule:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            decoupage=self.decoupage,
             statut=StatutPhase.A_VENIR,
         )
 

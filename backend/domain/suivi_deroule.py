@@ -20,8 +20,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from domain.bareme import BaremeQualification
 from domain.deroule import TourBraquet
 from domain.phase import StatutPhase
+from domain.qualification import DecoupageEnTours, volees_par_tour
 
 STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
 """Les statuts où un « tour en cours » a un sens.
@@ -77,6 +79,34 @@ class AvancementDePhase:
 
     nb_tours: int
     tour_courant: int | None
+
+
+def avancement_de_qualification(
+    volees_du_plus_lent: int,
+    bareme: BaremeQualification,
+    decoupage: DecoupageEnTours | None,
+) -> AvancementDePhase:
+    """*Où en est cette qualification ?* — sa réponse au port `LecteurAvancementDePhase`.
+
+    `volees_du_plus_lent` est le nombre de volées **saisies** par l'archer le moins avancé du
+    plateau. Saisies, et non validées : un tour est fini quand la salle a **tiré**, pas quand le
+    scoreur a signé. Prendre la validation ferait attendre au déclencheur d'arrêt un geste
+    administratif — et sur une validation en file hors-ligne (`E04US009`), la pause tomberait avec
+    plusieurs volées de retard. C'est déjà l'oracle d'`avancement_cible`, qui compte les mêmes
+    volées pour la console de supervision ; deux comptes du même rythme divergeraient.
+
+    Le tour courant vaut `None` quand tout est tiré — convention d'`AvancementDePhase`, la même que
+    les trois autres lecteurs.
+    """
+    par_tour = volees_par_tour(bareme, decoupage)
+    nb_tours = decoupage.nb_tours if decoupage is not None else 1
+    if par_tour < 1:
+        # Défensif : `verifier_decoupage` interdit ce cas à la composition, mais un barème relu
+        # d'une base plus ancienne que le réglage pourrait le produire. Un lecteur muet vaut mieux
+        # qu'une division par zéro dans le suivi du jour J.
+        return AvancementDePhase(nb_tours=nb_tours, tour_courant=None)
+    tour = volees_du_plus_lent // par_tour + 1
+    return AvancementDePhase(nb_tours=nb_tours, tour_courant=tour if tour <= nb_tours else None)
 
 
 @dataclass(frozen=True)

@@ -61,7 +61,11 @@ def test_l_echauffement_qui_ne_classe_rien_avance_quand_meme_par_tours() -> None
 
 
 _UNITES_ATTENDUES = [
-    pytest.param(TypePhase.QUALIFICATION, UniteDeTour.PHASE_ENTIERE),
+    # ⚠️ **`TOUR` depuis E05US035** (ADR-0093) : « 20 volées en 2 tours de 10 » est le mot que la
+    # salle emploie, et le réglage qui le rend vrai existe désormais. Une qualification **non
+    # découpée** compte alors un seul tour, ce qui reste vrai — la phase *est* son tour —, et
+    # `libelle_de_tour` n'annonce rien à `nb_tours == 1` (test juste au-dessus).
+    pytest.param(TypePhase.QUALIFICATION, UniteDeTour.TOUR),
     pytest.param(TypePhase.ECHAUFFEMENT, UniteDeTour.PHASE_ENTIERE),
     # `BARRAGE` est le seul type dont le diff d'E05US032 ne touche pas le contrat : il hérite du
     # défaut. C'est donc précisément celui qu'un tableau de vocabulaire doit épingler — son absence

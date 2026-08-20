@@ -78,6 +78,7 @@ from domain.erreurs import (
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.politiques import RANGS_DU_PODIUM, ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.qualification import DecoupageEnTours, verifier_decoupage_applicable
 from domain.suisse import ConfigurationSuisse
 
 PhaseId = int
@@ -462,6 +463,23 @@ class Phase:
     **borne** appariable sans ré-affrontement (`suisse.rondes_maximales`), affichée à l'atelier et
     vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici."""
 
+    decoupage: DecoupageEnTours | None = None
+    """Le découpage d'une **qualification** en tours — « 20 volées en 2 tours de 10 » (E05US035).
+
+    Même régime que `poules`, `big_shoot_off` et `suisse` ci-dessus : porté par l'étape donc par le
+    tournoi (ADR-0076), `None` sur tout autre type et sur une qualification non découpée — auquel
+    cas la phase **est** son tour, ce qui reste vrai.
+
+    ⚠️ **Ce n'est pas du barème**, et l'y ranger aurait été le raccourci naturel : `nb_volees` vit
+    sur `BaremeQualification`, `nb_tours` semblait sa voisine. Mais un barème dit comment on
+    **classe** (le cumul, le total), un découpage dit comment on **avance** — l'invariant
+    *avancer ≠ classer* d'ADR-0090, posé par le commanditaire. Les mêler aurait fait croire qu'un
+    tour de qualification produit un classement intermédiaire, qu'aucune règle FFTA ne prévoit.
+
+    Le seul usage est de rendre la qualification **arrêtable** (ADR-0093) : sans découpage, une
+    pause n'a aucune frontière de tour où tomber.
+    """
+
     statut: StatutPhase = StatutPhase.A_VENIR
     id: PhaseId | None = None
 
@@ -469,6 +487,7 @@ class Phase:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (fabriques **et**
         `replace()`, qui repasse par ici)."""
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
+        verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         if self.profondeur is not None and self.type not in TYPES_EN_TABLEAU:
             raise ProfondeurInvalide(
                 f"Une phase de type « {self.type.value} » ne monte aucun tableau : elle n'a pas "

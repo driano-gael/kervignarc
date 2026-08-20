@@ -35,6 +35,7 @@ from domain.arret_programme import (
     FranchissementArret,
     PorteeArret,
 )
+from domain.contrat_phase import TYPES_ARRETABLES
 from domain.erreurs import ArretProgrammeInvalide
 from domain.phase import PhaseId, StatutPhase, TypePhase
 from infrastructure.db import (
@@ -136,25 +137,62 @@ def test_le_service_d_arrets_lit_l_avancement_par_le_suivi(app_session: FastAPI)
     assert service._suivi is app_session.state.service_suivi_deroule
 
 
-def test_aucun_lecteur_d_avancement_n_est_ajoute_par_cette_tranche(app_session: FastAPI) -> None:
-    """Le registre d'avancement est **inchangé** — et c'est ce qui borne le périmètre des arrêts.
+def test_le_registre_d_avancement_et_la_table_de_refus_disent_la_meme_chose(
+    app_session: FastAPI,
+) -> None:
+    """Les **deux oracles en vis-à-vis** : ce qu'on sait lire, et ce qu'on accepte d'arrêter.
 
-    Les quatre types branchés sont ceux d'E05US032 (poules, suisse, Big Shoot Off ; l'élimination
-    directe lit ses tours de sa projection, sans lecteur). Cette tranche n'en ajoute aucun : dériver
-    le tour d'une qualification demande de résoudre sa population réelle (deux qualifications
-    peuvent coexister dans un créneau, ADR-0082), le plan de cibles et les forfaits — repris par
-    `E05US034`.
+    ⚠️ **C'est le test que la tranche précédente avait écrit pour tomber aujourd'hui.** Il affirmait
+    « aucun lecteur n'est ajouté par cette tranche » et annonçait : *« le jour où E05US035 branchera
+    la qualification, les deux devront bouger ensemble »*. Il a tenu sa promesse — d'où sa
+    réécriture ici, dans le sens qui vaut désormais.
 
-    ⚠️ **Ce test est le pendant du refus par type.** Tant que la qualification n'a pas de lecteur, un
-    arrêt posé dessus serait inerte, d'où le 422 de `EtapeDeroule`. Le jour où `E05US035` la
-    branchera, **les deux devront bouger ensemble** : ce test tombera, et il faudra retirer la
-    qualification de `TYPES_DEROULES` côté refus. Les faire tomber ensemble est l'intérêt de les
-    écrire tous les deux.
+    Les deux tables ne peuvent pas diverger sans casser quelque chose de silencieux :
+    - un type **arrêtable sans lecteur** rend le réglage acceptable à l'atelier et **définitivement
+      inerte** le jour J (l'organisateur découvre que sa pause repas n'a jamais eu lieu) ;
+    - un type **avec lecteur mais non arrêtable** rend inaccessible un réglage qui marcherait.
+
+    L'élimination directe est l'exception **assumée** et documentée (ADR-0091 §7) : elle est
+    arrêtable sans lecteur branché, son avancement étant reconstruit des braquets projetés par
+    `ServiceSuiviDeroule` lui-même. C'est pourquoi l'égalité se vérifie dans **un seul sens** —
+    « tout ce qui est branché est arrêtable » — et que l'écart est nommé plutôt que toléré en bloc.
+    """
+    branches = set(app_session.state.service_suivi_deroule._avancements)
+
+    assert (
+        branches <= TYPES_ARRETABLES
+    ), "Un lecteur branché sur un type que la table refuse rend le réglage inaccessible."
+    assert TYPES_ARRETABLES - branches == {TypePhase.ELIMINATION_DIRECTE}, (
+        "Seule l'élimination directe est arrêtable sans lecteur branché (ADR-0091 §7) ; tout autre "
+        "écart est un arrêt qui ne partira jamais."
+    )
+
+
+def test_la_qualification_est_branchee_et_arretable(app_session: FastAPI) -> None:
+    """CA E05US035 — « la table de refus cesse d'écarter la qualification ».
+
+    Les deux moitiés du couple, nommées ensemble : le lecteur au composition root
+    (`ServiceSaisie`) **et** la table de refus. Le test ci-dessus les compare ; celui-ci dit ce
+    qu'on attend, pour qu'un retrait produise un échec qui se lit.
     """
     branches = app_session.state.service_suivi_deroule._avancements
 
-    assert TypePhase.QUALIFICATION not in branches
+    assert TypePhase.QUALIFICATION in branches
+    assert branches[TypePhase.QUALIFICATION] is app_session.state.service_saisie
+    assert TypePhase.QUALIFICATION in TYPES_ARRETABLES
+
+
+def test_les_types_sans_avancement_lisible_restent_hors_du_mecanisme(app_session: FastAPI) -> None:
+    """La coupe de périmètre tient : l'échauffement n'a ni lecteur ni droit d'arrêt.
+
+    Il n'a ni barème ni feuille de marque — aucune donnée existante ne dit où il en est. Lui ouvrir
+    la table demanderait de **décider** de quoi il tire son avancement : un choix métier, pas un
+    reste de plomberie.
+    """
+    branches = app_session.state.service_suivi_deroule._avancements
+
     assert TypePhase.ECHAUFFEMENT not in branches
+    assert TypePhase.ECHAUFFEMENT not in TYPES_ARRETABLES
 
 
 # ─────────────────────────── Les routes (règle 6) ───────────────────────────
@@ -548,16 +586,20 @@ def test_poser_un_arret_sur_un_type_sans_tour_observable_rend_422(
 ) -> None:
     """La **seconde porte d'entrée** applique la règle de l'atelier — c'est le point du test.
 
-    `E05US033` refuse déjà d'enregistrer un arrêt sur une qualification à la composition. Cette
-    US ouvre un second chemin ; s'il ne consultait pas la même table de types, l'organisateur
-    pourrait poser depuis le pilotage exactement le réglage inerte que l'atelier lui refuse — et le
-    découvrir le jour J, ce que le refus existe pour empêcher.
+    `E05US033` refuse déjà d'enregistrer un arrêt à la composition sur un type dont personne ne lit
+    le tour. Cette US ouvre un second chemin ; s'il ne consultait pas la même table de types,
+    l'organisateur pourrait poser depuis le pilotage exactement le réglage inerte que l'atelier lui
+    refuse — et le découvrir le jour J, ce que le refus existe pour empêcher.
+
+    ⚠️ **Le cas de garde était la qualification jusqu'à E05US035**, qui l'a rendue arrêtable
+    (ADR-0093). L'échauffement prend sa place et devrait la garder longtemps : il n'a ni barème ni
+    feuille de marque, donc aucune donnée existante ne dit où il en est.
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)
         depart_id = _depart(client, tournoi_id)
         creation = client.post(
-            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "qualification"}
+            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "echauffement"}
         )
         assert creation.status_code == 201, creation.text
 

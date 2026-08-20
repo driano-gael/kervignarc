@@ -50,6 +50,7 @@ from domain.phase import (
 )
 from domain.politiques import ProfondeurClassement
 from domain.poule import ReglageDePoules
+from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
 
@@ -123,6 +124,21 @@ class ModelePhase:
     juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
     de bibliothèque."""
 
+    decoupage: DecoupageEnTours | None = None
+    """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]).
+
+    ⚠️ **Présent ici pour la même raison que `arrets` juste en dessous** : capturer un tournoi en
+    format perdrait son découpage en silence, et le format réappliqué rendrait sa qualification
+    **non arrêtable** — donc toutes les pauses posées dessus, refusées. Le dépôt a payé cette leçon
+    deux fois (`barrage_jusqu_au`, puis `arrets`) ; on ne la repaie pas une troisième.
+
+    Même régime de brouillon : « 2 tours » est applicable à un barème de 20 volées et ne l'est pas
+    à un de 15, et un format s'écrit sans connaître le barème du tournoi qui l'appliquera. La
+    divisibilité se juge donc sur l'**étape**, jamais sur la brique de bibliothèque.
+
+    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    """
+
     arrets: tuple[ArretProgramme, ...] = ()
     """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033, [ADR-0091]).
 
@@ -183,6 +199,7 @@ class ModelePhase:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            decoupage=self.decoupage,
             arrets=self.arrets,
         )
 
@@ -210,6 +227,7 @@ class ModelePhase:
             poules=etape.poules,
             big_shoot_off=etape.big_shoot_off,
             suisse=etape.suisse,
+            decoupage=etape.decoupage,
             arrets=etape.arrets,
         )
 

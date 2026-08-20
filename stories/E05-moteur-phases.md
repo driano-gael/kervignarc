@@ -1616,6 +1616,21 @@ n'a pas changé d'un iota : dériver le tour d'une qualification n'est pas un re
 
 - **CA — une qualification se règle en `n` tours** à l'atelier, et son avancement se lit tour par
   tour comme celui des quatre formats déroulés.
+  ✅ **Tranché au cadrage du 20/08/2026 — l'organisateur saisit un *nombre de tours*, et les tours
+  sont *égaux*.** Le moteur déduit la longueur (« 20 volées en 2 tours » → 10 par tour) et **refuse
+  à la composition** un nombre qui ne divise pas le barème. Les deux alternatives ont été écartées :
+  saisir « x volées par tour » (même expressivité, mais tolère un dernier tour court) et composer
+  une liste de longueurs libres (plus expressif, mais un champ liste à valider pour un besoin non
+  exprimé). Le motif du refus est le même dans les trois cas : avec 7/7/6, « après le tour 2 » ne
+  désigne plus le même instant selon l'archer — donc une pause qui ne tombe pas au même endroit
+  pour tout le monde.
+  ✅ **Le réglage est un réglage de déroulé, pas de barème.** C'était le raccourci naturel
+  (`nb_volees` vit sur `BaremeQualification`) et il aurait été faux : un barème dit comment on
+  **classe**, un découpage comment on **avance** — l'invariant *avancer ≠ classer* d'ADR-0090. Les
+  mêler aurait laissé croire qu'un tour de qualification produit un classement intermédiaire.
+  ✅ **Le tour se dérive des volées *saisies*, pas *validées*** : un tour est fini quand la salle a
+  tiré, pas quand le scoreur a signé. Sur une validation en file hors-ligne (E04US009), attendre la
+  signature ferait tomber la pause plusieurs volées trop tard.
 - **CA — un arrêt programmé se pose sur une qualification**, et coupe à la fin du tour demandé. La
   table de refus par type cesse alors de l'écarter.
   ⚠️ **Deux choses doivent bouger ensemble** : le registre d'avancement du suivi (un lecteur pour
@@ -1639,4 +1654,14 @@ n'a pas changé d'un iota : dériver le tour d'une qualification n'est pas un re
   L'échauffement n'a ni barème ni feuille de marque, donc aucune donnée existante ne dit où il en
   est — choix métier à trancher, pas de la plomberie. Les trois autres ne sont déroulés par aucun
   service (`DETTE-028`).
-- **Dépend de** : `E05US034` · **Jalon** : J3 · **Origine** : cadrage du 20/08/2026
+- ⚠️ **Un troisième obstacle, découvert en implémentant et non prévu par la fiche** : lever le
+  refus supposait d'ajouter la qualification à `TYPES_DEROULES`, que lisait
+  `verifier_type_arretable`. Or cette table répond à une **autre** question — « le moteur *fait-il
+  jouer* ce type ? » —, et c'est elle qui décide si le rang de départ d'une phase **relève le
+  plancher d'inscrits** (E05US021). Y verser la qualification aurait fait refuser le démarrage d'un
+  tournoi à qualification prélevée, en échange d'un réglage d'affichage. D'où une **capacité
+  distincte** au registre de phase (`avancement_lisible`) et une table `TYPES_ARRETABLES` qui en
+  dérive : [ADR-0093](../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md).
+- **Dépend de** : `E05US034` · **Jalon** : J3 · **Origine** : cadrage du 20/08/2026 · **Livrée le
+  20/08/2026** — [ADR-0093](../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md),
+  **aucune migration** (le découpage s'écrit à la racine du `config` JSON de l'étape)

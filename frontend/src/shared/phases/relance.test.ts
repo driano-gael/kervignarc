@@ -157,9 +157,20 @@ describe('peutPoserUnePause — quand offrir « bloquer dans x tours »', () => 
   })
 
   it('ne l’offre pas sur un type dont l’application ne lit pas le tour', () => {
-    // Miroir de `TYPES_DEROULES` côté domaine : ailleurs l'arrêt serait accepté puis **inerte**, et
-    // l'organisateur le découvrirait le jour J — ce que le refus existe pour empêcher.
-    expect(peutPoserUnePause(phase({ type: 'qualification' }))).toBe(false)
+    // Miroir de `TYPES_ARRETABLES` côté domaine : ailleurs l'arrêt serait accepté puis **inerte**,
+    // et l'organisateur le découvrirait le jour J — ce que le refus existe pour empêcher.
+    //
+    // ⚠️ **Le cas de garde était la qualification jusqu'à E05US035**, qui l'a rendue arrêtable en
+    // lui donnant un découpage en tours et un lecteur d'avancement (ADR-0093). L'échauffement prend
+    // sa place, et il n'est pas près de la quitter : il n'a ni barème ni feuille de marque, donc
+    // aucune donnée existante ne dit où il en est.
+    expect(peutPoserUnePause(phase({ type: 'echauffement' }))).toBe(false)
+  })
+
+  it('l’offre désormais sur une qualification', () => {
+    // CA E05US035 : le format que tout le monde tire cesse d'être le seul sur lequel on ne peut pas
+    // programmer de pause.
+    expect(peutPoserUnePause(phase({ type: 'qualification' }))).toBe(true)
   })
 
   it('ne l’offre pas quand le tour courant est inconnu', () => {

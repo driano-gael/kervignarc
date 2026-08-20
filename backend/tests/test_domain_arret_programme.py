@@ -382,19 +382,18 @@ def test_un_arret_se_pose_sur_les_types_qui_annoncent_leurs_tours() -> None:
 def test_un_arret_est_refuse_sur_un_type_qui_n_annonce_pas_ses_tours() -> None:
     """Le refus, plutôt qu'un réglage inerte — arbitrage du commanditaire du 19/08/2026.
 
-    Ces cinq types n'ont **aucun** tour observable : aucun service ne les déroule (la qualification,
-    l'échauffement, le barrage, le placement, la colline). Un arrêt posé dessus serait accepté à
-    l'atelier et définitivement inerte le jour J — l'organisateur découvrirait le jour de la
-    compétition que sa pause repas n'a jamais eu lieu. C'est le mode de panne que `DETTE-028`
-    nomme, et le refus est le seul verdict honnête.
+    Ces quatre types n'ont **aucun** tour observable : l'échauffement, le barrage, le placement, la
+    colline. Un arrêt posé dessus serait accepté à l'atelier et définitivement inerte le jour J —
+    l'organisateur découvrirait le jour de la compétition que sa pause repas n'a jamais eu lieu.
+    C'est le mode de panne que `DETTE-028` nomme, et le refus est le seul verdict honnête.
 
-    ⚠️ **La qualification en fait partie, et c'est le périmètre de la tranche, pas une limite du
-    besoin.** Dériver le tour d'une qualification demande de résoudre sa population réelle (deux
-    qualifications peuvent coexister dans un créneau, ADR-0082), le plan de cibles et les forfaits.
-    `E05US035` s'en charge avec son budget propre (reportée une seconde fois le 20/08/2026).
+    ⚠️ **La qualification en faisait partie jusqu'à E05US035**, qui l'en a sortie en lui donnant un
+    découpage en tours et un lecteur d'avancement (ADR-0093). Les quatre qui restent ne sont pas un
+    reste de plomberie : l'échauffement n'a ni barème ni feuille de marque — aucune donnée existante
+    ne dit où il en est —, et les trois autres ne sont déroulés par aucun service (`DETTE-028`).
+    Leur ouvrir la table demanderait de **décider** de quoi ils tirent leur avancement.
     """
     for type_phase in (
-        TypePhase.QUALIFICATION,
         TypePhase.ECHAUFFEMENT,
         TypePhase.BARRAGE,
         TypePhase.PLACEMENT,
@@ -412,11 +411,14 @@ def test_le_refus_nomme_le_type_et_dit_ou_les_pauses_se_posent() -> None:
     deux choses qui lui manquent : pourquoi ici non, et où oui.
     """
     with pytest.raises(ArretProgrammeInvalide) as refus:
-        _etape(TypePhase.QUALIFICATION, arrets=(ArretProgramme(apres_tour=2),))
+        _etape(TypePhase.ECHAUFFEMENT, arrets=(ArretProgramme(apres_tour=2),))
 
     message = str(refus.value)
-    assert "qualification" in message
+    assert "echauffement" in message
     assert "poules" in message
+    # E05US035 : le message dit désormais aussi la qualification, qui est devenue le cas le plus
+    # probable — c'est le format que tout le monde tire.
+    assert "qualification" in message
 
 
 def test_une_etape_sans_arret_reste_composable_sur_tout_type() -> None:

@@ -34,6 +34,7 @@ from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
 from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
 from domain.placement import Affectation
+from domain.qualification import DecoupageEnTours
 from domain.serie import Serie
 from domain.tournoi import TournoiId
 from tests.conftest import (
@@ -850,3 +851,155 @@ def test_corriger_une_volee_pendant_la_pause_reste_possible() -> None:
     )
 
     assert serie.volees[0].valeurs == _v("10", "10", "10")
+
+
+# --- E05US035 : l'avancement d'une qualification, tour par tour ----------------------------------
+#
+# Dérivés du **CA** (règle 9), écrits avant l'implémentation. Ce que l'arithmétique du découpage
+# décide est prouvé en domaine (`test_domain_qualification`) ; ce qui se joue **ici** est le *qui* —
+# et c'est la raison des trois reports de ce CA : le tour ne se dérive pas des seules volées, il se
+# dérive des volées **de la bonne population**. Trois façons de la compter faux, trois tests.
+
+
+def _decouper(m: Montage, nb_tours: int) -> None:
+    """Règle la qualification du montage en `nb_tours` tours (le geste de l'atelier)."""
+    phase = m.phases.par_id(m.phase_id)
+    assert phase is not None
+    m.phases.enregistrer(dataclasses.replace(phase, decoupage=DecoupageEnTours(nb_tours=nb_tours)))
+
+
+def test_l_avancement_d_une_qualification_se_lit_tour_par_tour() -> None:
+    """CA — « son avancement se lit tour par tour comme celui des quatre formats déroulés »."""
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    _saisir_volees(m, m.archer_id, 12)
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
+
+    assert avancement is not None
+    assert (avancement.nb_tours, avancement.tour_courant) == (2, 2)
+
+
+def test_l_avancement_suit_le_plus_lent_du_plateau() -> None:
+    """Une phase avance au rythme du **dernier** archer : sinon on coupe la salle en plein tir."""
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    autre = m.nouvel_archer("MARTIN")
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(autre, _DEPART, cible_index=1, position="B")
+    _saisir_volees(m, m.archer_id, 12)
+    _saisir_volees(m, autre, 8)  # le plus lent n'a pas fini le tour 1
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 1, "min(12, 8) = 8 < 10 : le premier tour tourne encore."
+
+
+def test_un_forfait_ne_retient_pas_le_tour() -> None:
+    """⚠️ « soustraire les forfaits de la phase » — sans quoi la phase n'avance **jamais**.
+
+    Un archer déclaré forfait ne tirera plus une flèche : le compter dans le plus lent gèle la
+    qualification à son tour courant pour toute la journée, et l'arrêt programmé ne partirait
+    jamais. C'est le mode de panne le plus discret des trois, parce que rien ne le signale.
+    """
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    absent = m.nouvel_archer("MARTIN")
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    m.placer(absent, _DEPART, cible_index=1, position="B")
+    _saisir_volees(m, m.archer_id, 12)  # `absent` n'a aucune série
+    m.forfaits.semer(
+        Forfait.creer(
+            tournoi_id=m.tournoi_id,
+            archer_id=absent,
+            phase_id=m.phase_id,
+            nature=NatureForfait.ABANDON,
+            declare_par="DURAND",
+            declare_le=_QUAND,
+        )
+    )
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 2, "Le forfait sort du plateau : le plus lent est à 12."
+
+
+def test_un_archer_en_reserve_ne_retient_pas_le_tour() -> None:
+    """⚠️ « tenir compte du plan de cibles » : un inscrit sans affectation ne tire pas.
+
+    Il est au créneau, il n'est sur aucune cible (ADR-0033) — donc il n'a aucune volée à tirer, et
+    l'y compter gèlerait la phase exactement comme un forfait oublié.
+    """
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    reserviste = m.nouvel_archer("MARTIN")
+    m.inscriptions.ajouter(Inscription.creer(reserviste, _DEPART))  # inscrit, jamais placé
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    _saisir_volees(m, m.archer_id, 12)
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 2
+
+
+def test_chaque_qualification_du_creneau_avance_sur_sa_propre_population() -> None:
+    """⚠️ La raison des trois reports : « les archers de cette phase » ≠ « les inscrits du créneau ».
+
+    Deux qualifications coexistent dans le créneau (ADR-0082, la fourche *haute*/*basse*), et leurs
+    archers sont **placés sur la même cible**. Compter le créneau entier ferait avancer la *haute*
+    au rythme d'archers qui tirent la *basse* — donc couper une salle qui n'a pas fini.
+    """
+    m = Montage(nb_volees=20)
+    haute, basse, autre = _monter_la_fourche(m)
+    for phase_id in (haute, basse):
+        phase = m.phases.par_id(phase_id)
+        assert phase is not None
+        m.phases.enregistrer(
+            dataclasses.replace(
+                phase,
+                bareme=BaremeQualification.creer(20, 3),
+                decoupage=DecoupageEnTours(nb_tours=2),
+            )
+        )
+    _saisir_volees(m, m.archer_id, 12)  # la *haute* a bouclé son premier tour
+    _saisir_volees(m, autre, 4)  # la *basse* en est loin
+
+    avancement_haute = m.service.avancement_de_phase(m.tournoi_id, haute)
+    avancement_basse = m.service.avancement_de_phase(m.tournoi_id, basse)
+
+    assert avancement_haute is not None and avancement_basse is not None
+    assert avancement_haute.tour_courant == 2
+    assert avancement_basse.tour_courant == 1
+
+
+def test_l_avancement_d_une_phase_qui_n_est_pas_une_qualification_est_muet() -> None:
+    """Le service de saisie ne prétend pas savoir dérouler un tableau : il rend `None`.
+
+    C'est ce que le port `LecteurAvancementDePhase` attend d'un lecteur qui ne sait pas répondre —
+    et le registre du suivi ne lui adresse de toute façon que des qualifications.
+    """
+    m = Montage(nb_volees=20)
+    tableau = m.phases.ajouter(
+        Phase(depart_id=_DEPART, ordre=2, type=TypePhase.ELIMINATION_DIRECTE, effectif=8)
+    )
+    assert tableau.id is not None
+
+    assert m.service.avancement_de_phase(m.tournoi_id, tableau.id) is None
+
+
+def test_l_avancement_d_une_phase_inconnue_est_muet() -> None:
+    """Robustesse jour J : le suivi ne tombe pas en 500 sur une phase disparue.
+
+    ⚠️ **Ce test remplace un « sans barème » que le domaine rend inatteignable** :
+    `PhaseQualificationIncomplete` refuse une qualification sans barème **ni** grain, quelle que
+    soit la porte d'entrée. L'affinement `phase.bareme is None` du service subsiste — mypy l'exige
+    sur un `BaremeQualification | None` —, mais c'est une garde de typage, pas un cas métier : lui
+    écrire un test aurait donné une couverture de façade sur une branche morte.
+    """
+    m = Montage()
+
+    assert m.service.avancement_de_phase(m.tournoi_id, 999_999) is None

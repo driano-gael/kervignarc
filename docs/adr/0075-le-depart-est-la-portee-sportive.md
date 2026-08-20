@@ -200,7 +200,8 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`, `0084`, `0085`, `0090`, `0091`, `0092`. La liste dérive à chaque US qui crée ou rouvre
+`0082`, `0083`, `0084`, `0085`, `0090`, `0091`, `0092`, `0093`. La liste dérive à chaque US qui crée ou
+rouvre
 un ADR structurant — c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
 
 ⚠️ **`0090` y a été oublié à son tour**, et rattrapé en revue d'E05US032 (axe C2) — soit la
@@ -216,6 +217,13 @@ ailleurs, et rien dans le dépôt ne le réclame : ni le hook, ni la CI, ni l'at
 sections **existantes**, pas leur inscription ici). Tant qu'aucun contrôle ne l'exige, l'inscription
 restera un oubli par défaut plutôt qu'un réflexe — **le rendre vérifiable est une US, pas une note**
 (candidat naturel pour la tranche d'atlas `E00US021` ou un contrôle voisin).
+
+✅ **`0093` (E05US035, 20/08/2026) est inscrit du premier coup**, sans passer par la revue — la
+série de quatre omissions s'arrête là. Ce n'est pas une réfutation du constat ci-dessus mais sa
+confirmation par l'autre bout : l'inscription a tenu parce que l'US **précédente** venait de la
+manquer et l'avait écrit ici. Autrement dit, le rappel a fonctionné une fois, sur la seule US qui
+suivait immédiatement le constat — ce qu'aucun contrôle automatique n'a encore remplacé. La
+conclusion reste entière : **le rendre vérifiable est une US.**
 
 ⚠️ **`0084` y avait été oublié à sa création, et `0085` a failli l'être** (relevé en revue
 d'E05US026, deux fois). Deux omissions de suite sur le registre qui existe pour empêcher

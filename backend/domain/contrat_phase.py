@@ -244,6 +244,29 @@ class ContratDePhase:
     Distinct de `produit_un_classement` : une poule *produisait* un classement depuis E05US015
     sans que rien ne sache le *lire*, et un prélèvement la visant restait inerte."""
 
+    avancement_lisible: bool = False
+    """Un service sait dire **où en est** cette phase, tour par tour, aujourd'hui (E05US035).
+
+    ⚠️ **À ne pas confondre avec `deroule_par_un_service`**, et la nuance décide de refus d'arrêt :
+    celle-là répond « le moteur *fait jouer* cette phase ? » — donc si son prélèvement sera honoré,
+    donc si son rang de départ **relève le plancher d'inscrits** (E05US021) —, celle-ci « sait-on
+    *observer son tour* ? ». Les deux ensembles ne coïncident pas : la **qualification** s'observe
+    (`ServiceSaisie.avancement_de_phase` compte les volées du plus lent) sans être « montée » par
+    personne — elle n'a aucune opposition à monter. C'est exactement la raison pour laquelle
+    `classement_lisible` est déjà une capacité distincte plutôt qu'un alias, et l'élargir en
+    réutilisant `deroule_par_un_service` aurait fait réclamer un plancher par rangs à toute
+    qualification prélevée : un refus de démarrage, le jour J, pour un réglage d'affichage.
+
+    C'est de cette table que dérive `TYPES_ARRETABLES` — un arrêt programmé ne coupe qu'à une
+    frontière de tour **observée** ([ADR-0091], [ADR-0093]).
+
+    ⚠️ Se vérifie dans le code, jamais par l'intention : la mettre à `True` « puisque le format
+    existe » reproduirait `DETTE-028`.
+
+    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    """
+
     unite_de_tour: UniteDeTour = UniteDeTour.PHASE_ENTIERE
     """Dans quelle unité cette phase **avance**, et sous quel mot la salle la nomme ([ADR-0090]).
 
@@ -288,12 +311,23 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # L'archer tire **seul** sa série : un participant suffit à ce qu'elle ait un sens.
         oppose_des_tireurs=False,
         classement_lisible=True,
+        # E05US035 : la qualification **s'observe** — `ServiceSaisie.avancement_de_phase` compte
+        # les volées du plus lent de sa population — sans être « déroulée » au sens du
+        # prélèvement, qu'elle n'a pas à monter. Elle reste donc `deroule_par_un_service=False`.
+        avancement_lisible=True,
+        # `TOUR` et non `PHASE_ENTIERE` depuis E05US035 : « 20 volées en 2 tours de 10 » est le
+        # mot que la salle emploie, et le réglage qui le rend vrai existe désormais. La docstring
+        # de `PHASE_ENTIERE` annonçait exactement ce changement (« ce réglage arrive avec les
+        # pauses programmées, là où il sert »). Une qualification **non découpée** compte alors un
+        # seul tour, ce qui reste vrai — la phase *est* son tour.
+        unite_de_tour=UniteDeTour.TOUR,
     ),
     TypePhase.ELIMINATION_DIRECTE: ContratDePhase(
         decor=DecorDeSaisie.ARBRE_DE_DUELS,
         plan_de_cibles=PlanDeCibles.PAR_DUEL,
         unite_de_tour=UniteDeTour.TOUR_DE_TABLEAU,
         deroule_par_un_service=True,
+        avancement_lisible=True,
         classement_lisible=True,
         route_l_archer=True,
     ),
@@ -328,6 +362,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
         unite_de_tour=UniteDeTour.TOUR,
         deroule_par_un_service=True,
+        avancement_lisible=True,
         # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
         # fois le code écrit. Ce qui l'autorise, module par module :
         # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
@@ -364,6 +399,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
         # (`route_l_archer`).
         deroule_par_un_service=True,
+        avancement_lisible=True,
         classement_lisible=True,
         route_l_archer=True,
         # ⚠️ **La seule phase du registre à population restreinte** : les finalistes, pas le
@@ -392,6 +428,7 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # que le prélèvement est réellement honoré — un `True` posé par anticipation aurait exigé
         # des inscrits pour une source que rien n'honore.
         deroule_par_un_service=True,
+        avancement_lisible=True,
         classement_lisible=True,
         # ✅ **`route_l_archer` bascule ici aussi**, par le même chemin
         # (`ServiceRoutage._routage_par_rencontres`) : une rencontre de ronde **est** un duel, avec
@@ -447,6 +484,28 @@ qu'un Big Shoot Off n'a pas. Le verbe « dérouler » est celui qu'emploie déj�
 Répond à « le moteur va-t-il seulement monter cette phase ? ». C'est cette table qui décide si le
 prélèvement d'une phase sera honoré, donc si son rang de départ **relève le plancher d'inscrits**
 (E05US021)."""
+
+TYPES_ARRETABLES: frozenset[TypePhase] = frozenset(
+    type_phase for type_phase, contrat in _CONTRATS.items() if contrat.avancement_lisible
+)
+"""Les types sur lesquels une **pause programmée** peut se poser (E05US035, [ADR-0093]).
+
+Répond à « sait-on *observer* le tour de cette phase ? », et c'est la seule question qui décide :
+le déclencheur ne coupe qu'à une frontière de tour observée, donc un arrêt posé sur un type qu'on
+ne sait pas lire serait accepté à l'atelier puis **définitivement inerte** le jour J.
+
+⚠️ **Ce n'est pas `TYPES_DEROULES`**, bien que les deux aient coïncidé jusqu'à E05US035 — et c'est
+la qualification qui les sépare : on sait dire où elle en est sans qu'aucun service ne la *monte*.
+Le refus lisait `TYPES_DEROULES` tant qu'ils coïncidaient ; l'y laisser aurait obligé à mentir sur
+l'autre capacité pour lever ce refus-ci, donc à réclamer un plancher d'inscrits par rangs à toute
+qualification prélevée (E05US021). Deux questions, deux tables.
+
+Miroir du registre `ServiceSuiviDeroule._avancements`, à l'élimination directe près — dont le
+suivi reconstruit l'avancement des braquets projetés sans passer par le port. Le vis-à-vis des deux
+oracles est tenu par `backend/tests/test_arrets_api.py`.
+
+[ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+"""
 
 TYPES_CLASSANTS_LUS: frozenset[TypePhase] = frozenset(
     type_phase for type_phase, contrat in _CONTRATS.items() if contrat.classement_lisible

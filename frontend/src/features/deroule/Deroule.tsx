@@ -66,6 +66,12 @@ import {
   estValide as arretsValides,
   versArrets,
 } from '../../shared/phases/arrets'
+import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
+import {
+  depuisDecoupage,
+  estValide as decoupageValide,
+  versDecoupage,
+} from '../../shared/phases/decoupage'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -704,6 +710,8 @@ export function FormulaireEtape({
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
+  // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
   const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
 
   const volees = lireEntier(nbVolees)
@@ -722,6 +730,9 @@ export function FormulaireEtape({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
+  // dont le nombre de tours n'est pas déjà porté par sa structure.
+  const estQualification = type === 'qualification'
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
   // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
   const arretable = TYPES_ARRETABLES.has(type)
@@ -735,6 +746,7 @@ export function FormulaireEtape({
     (estPoules && !poulesValides(poules)) ||
     (estBigShootOff && !bsoValide(bigShootOff)) ||
     (estSuisse && !suisseValide(suisse)) ||
+    (estQualification && !decoupageValide(decoupage)) ||
     // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
     // une liste vide, quoi qu'il reste dans l'état d'édition.
     !arretsValides(arrets)
@@ -767,6 +779,9 @@ export function FormulaireEtape({
     suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
     // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
     // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
+    // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
+    // Retyper l'étape l'**efface** donc, comme ses voisins.
+    decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
     arrets: arretable ? (versArrets(arrets) ?? []) : [],
   })
 
@@ -875,6 +890,19 @@ export function FormulaireEtape({
           etat={suisse}
           surChangement={setSuisse}
           effectif={effectifLu ?? effectifSimule}
+        />
+      )}
+
+      {estQualification && (
+        // ⚠️ **Le barème SAISI ici, pas celui d'un tournoi** : l'atelier compose un format de
+        // bibliothèque, et ce formulaire porte lui-même les volées. On lui passe donc ce qui est en
+        // train d'être tapé — un brouillon sans volées lisibles rend `null`, et la fiche annonce
+        // alors que la longueur dépendra du tournoi plutôt que d'inventer un dénominateur. C'est le
+        // pendant exact de l'effectif pour le suisse juste au-dessus.
+        <ReglageDecoupage
+          etat={decoupage}
+          surChangement={setDecoupage}
+          nbVolees={baremeSaisi?.nb_volees ?? null}
         />
       )}
 

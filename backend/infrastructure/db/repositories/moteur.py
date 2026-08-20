@@ -55,6 +55,7 @@ from domain.placement import Affectation
 from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
@@ -131,6 +132,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         poules = _lire_reglage_poules(config)
         big_shoot_off = _lire_reglage_big_shoot_off(config)
         suisse = _lire_reglage_suisse(config)
+        decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
     except (
         json.JSONDecodeError,
@@ -155,6 +157,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            decoupage=decoupage,
             arrets=arrets,
             id=ligne.id,
         )
@@ -300,6 +303,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.poules,
             etape.big_shoot_off,
             etape.suisse,
+            etape.decoupage,
             etape.arrets,
         )
     )
@@ -315,6 +319,7 @@ def _politiques_json(
     poules: ReglageDePoules | None = None,
     big_shoot_off: ConfigurationBigShootOff | None = None,
     suisse: ConfigurationSuisse | None = None,
+    decoupage: DecoupageEnTours | None = None,
     arrets: tuple[ArretProgramme, ...] = (),
     *,
     marquer_absences: bool = False,
@@ -444,6 +449,12 @@ def _politiques_json(
         # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
         # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
         config["suisse"] = {"rondes": suisse.nb_rondes}
+    if decoupage is not None:
+        # Même domicile et même raison que ses trois voisins : racine du `config`, hors `policies`
+        # (catalogue fermé des familles injectables). **Aucune migration** — ADR-0046 laisse le
+        # document libre à la racine, et une étape écrite avant E05US035 se relit « non découpée »,
+        # soit exactement son comportement d'avant.
+        config["decoupage"] = {"tours": decoupage.nb_tours}
     if arrets:
         # Une **liste**, et non un objet : c'est la lettre du CA (« plusieurs par phase »).
         # `portee` s'écrit toujours, y compris pour le défaut : ce n'est pas une option qu'on
@@ -563,6 +574,26 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
         # chose d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return ConfigurationSuisse(nb_rondes=int(rondes))
+
+
+def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
+    """Le découpage en tours d'une qualification, lu **à la racine** du `config` (E05US035).
+
+    Absence = **pas de découpage**, donc la phase est son tour — le comportement de toute étape
+    écrite avant cette US. C'est ce qui rend la livraison sûre sans toucher au schéma.
+
+    ⚠️ **Un nombre de tours illisible fait échouer la relecture**, à la différence d'une portée
+    d'arrêt absente qui, elle, se replie sur son défaut. L'asymétrie est voulue : un défaut de
+    portée coupe *moins* que prévu, alors qu'un découpage deviné coupe la salle **au mauvais
+    endroit** — et personne ne s'en apercevrait avant le jour J. Quand on ne sait pas, on refuse
+    de relire plutôt que d'inventer un déroulé.
+    """
+    souffle = config.get("decoupage")
+    if souffle is None:
+        return None
+    if not isinstance(souffle, dict) or souffle.get("tours") is None:
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    return DecoupageEnTours(nb_tours=int(souffle["tours"]))
 
 
 def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
@@ -725,6 +756,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
                         suisse=etape.suisse,
+                        decoupage=etape.decoupage,
                         # E05US033 : câblés dès l'ajout du champ, et non « plus tard ». Le
                         # commentaire de `barrage_jusqu_au` juste au-dessus dit ce que coûte
                         # l'oubli — un champ ajouté à l'agrégat mais absent de sa sérialisation
@@ -828,6 +860,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         poules=_lire_reglage_poules(brute),
         big_shoot_off=_lire_reglage_big_shoot_off(brute),
         suisse=_lire_reglage_suisse(brute),
+        decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
     )
 

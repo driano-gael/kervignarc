@@ -40,6 +40,12 @@ import {
   estValide as arretsValides,
   versArrets,
 } from '../../shared/phases/arrets'
+import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
+import {
+  depuisDecoupage,
+  estValide as decoupageValide,
+  versDecoupage,
+} from '../../shared/phases/decoupage'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -405,6 +411,8 @@ export function FormulairePhase({
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
+  // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [decoupage, setDecoupage] = useState(depuisDecoupage(phase?.decoupage ?? null))
   const [arrets, setArrets] = useState(depuisArrets(phase?.arrets))
   // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
   // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
@@ -489,6 +497,9 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
+  // dont le nombre de tours n'est pas déjà porté par sa structure.
+  const estQualification = type === 'qualification'
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
   // se poser (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine). Le serveur refuse
   // l'arrêt ailleurs (`ArretProgrammeInvalide`, 422) — et comme le `PUT` est une édition **totale**,
@@ -501,6 +512,7 @@ export function FormulairePhase({
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
     !(estSuisse && !suisseValide(suisse)) &&
+    !(estQualification && !decoupageValide(decoupage)) &&
     // E05US033 : le contenu ne se juge que là où il est offert — une phase non arrêtable
     // soumet une liste vide, quoi qu'il reste dans l'état d'édition.
     !(arretable && !arretsValides(arrets))
@@ -535,6 +547,11 @@ export function FormulairePhase({
       // retype une phase de poules en qualification perd ses pauses. L'alternative — les conserver
       // — ferait échouer l'enregistrement entier avec un message que l'écran ne sait pas rattacher
       // au bon champ, ce qui est pire : il ne pourrait plus enregistrer du tout.
+      // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422
+      // `decoupage_en_tours_invalide`. Retyper la phase l'**efface** donc, comme ses voisins.
+      // ⚠️ `versDecoupage` rend déjà `null` pour un seul tour — « non découpée » est l'état par
+      // défaut, et persister `{ nb_tours: 1 }` ferait apparaître un réglage jamais posé.
+      decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
       arrets: arretable ? (versArrets(arrets) ?? []) : [],
     }
     if (enEdition) {
@@ -626,6 +643,17 @@ export function FormulairePhase({
             // lot venait de poser. Dans l'atelier, au contraire, aucune phase n'existe : le miroir
             // y est le seul recours, et c'est ce qui le justifie.
             maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
+          />
+        )}
+        {/* E05US035 — montée sous condition de type, comme ses quatre voisines : hors
+            qualification, il n'y a aucun tour à découper (les autres formats portent le leur dans
+            leur structure). Le barème est celui de la phase — c'est lui qui décide si le découpage
+            tombe juste. */}
+        {estQualification && (
+          <ReglageDecoupage
+            etat={decoupage}
+            surChangement={setDecoupage}
+            nbVolees={phase?.nb_volees ?? null}
           />
         )}
         {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
