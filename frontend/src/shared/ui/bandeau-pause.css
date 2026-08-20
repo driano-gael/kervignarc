@@ -1,0 +1,21 @@
+/* L'annonce de pause, commune à l'onglet public et à l'écran projeté (E05US034).
+
+   ⚠️ **Ambre et non rouge** : `--danger` porte ici « attention, quelque chose est suspendu », pas
+   « erreur ». Le jeton vaut de l'ambre dans les deux thèmes — vérifié en revue.
+
+   La taille est en `em` et non en `px` : sur l'écran de salle, le conteneur agrandit tout, donc le
+   bandeau suit sans réglage propre. C'est ce qui le rend lisible « depuis les gradins » sans une
+   seconde règle à maintenir en parallèle. */
+.bandeau-pause {
+  margin: 0 0 1em;
+  padding: 0.6em 0.8em;
+  border-left: 4px solid var(--danger);
+  font-size: 1.1em;
+  color: var(--text);
+}
+
+/* Sur l'écran de salle, le bandeau coiffe la **scène** quelle que soit la vue en rotation : il ne
+   doit donc pas être avalé par la marge de la vue qui le suit. */
+.salle__pause {
+  margin: 0 0 0.6em;
+}

@@ -19,6 +19,7 @@ première livraison n'en branchait que **deux sur cinq**, et rien ne l'a dit.
 from __future__ import annotations
 
 import dataclasses
+import datetime
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,13 +29,19 @@ from fastapi.testclient import TestClient
 
 from bootstrap.composition import create_app
 from domain.arret_programme import (
+    ArretDeCirconstance,
     ArretProgramme,
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
 )
+from domain.erreurs import ArretProgrammeInvalide
 from domain.phase import PhaseId, StatutPhase, TypePhase
-from infrastructure.db import FranchissementArretRepositorySQL, PhaseRepositorySQL
+from infrastructure.db import (
+    ArretDeCirconstanceRepositorySQL,
+    FranchissementArretRepositorySQL,
+    PhaseRepositorySQL,
+)
 from infrastructure.erreurs import InfrastructureError
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
@@ -139,7 +146,7 @@ def test_aucun_lecteur_d_avancement_n_est_ajoute_par_cette_tranche(app_session: 
     `E05US034`.
 
     ⚠️ **Ce test est le pendant du refus par type.** Tant que la qualification n'a pas de lecteur, un
-    arrêt posé dessus serait inerte, d'où le 422 de `EtapeDeroule`. Le jour où `E05US034` la
+    arrêt posé dessus serait inerte, d'où le 422 de `EtapeDeroule`. Le jour où `E05US035` la
     branchera, **les deux devront bouger ensemble** : ce test tombera, et il faudra retirer la
     qualification de `TYPES_DEROULES` côté refus. Les faire tomber ensemble est l'intérêt de les
     écrire tous les deux.
@@ -474,3 +481,247 @@ def test_un_arret_programme_se_lit_et_s_ecrit_par_le_meme_dto() -> None:
     agregat = ArretProgramme(apres_tour=5, portee=PorteeArret.DEPART)
 
     assert ArretProgrammeDTO.de_agregat(agregat).vers_agregat() == agregat
+
+
+# ══════════════════════ E05US034 — poser une pause le jour J, à la frontière ══════════════════════
+#
+# Tests écrits **après** l'implémentation (règle 9) : à cette couche il n'y a pas d'oracle métier en
+# jeu — la règle « quand couper » vit au domaine et au service, avec ses propres tests dérivés du
+# CA. Ce fichier garde la **frontière** : qui a le droit, quel code de retour, et ce que la base
+# retient.
+
+
+def _depot_circonstance(app: FastAPI) -> ArretDeCirconstanceRepositorySQL:
+    return ArretDeCirconstanceRepositorySQL(app.state.database.session_factory)
+
+
+def test_poser_un_arret_relatif_exige_un_admin(app_session: FastAPI) -> None:
+    """La route est une **commande de pilotage** : un anonyme ne suspend pas la salle.
+
+    Même garde que les deux routes voisines. Le dire par un test plutôt que de s'en remettre au
+    `Depends` : c'est une ligne de décorateur, donc une ligne qui s'oublie en copiant la voisine.
+    """
+    with TestClient(app_session) as client:
+        reponse = client.post("/api/v1/departs/1/phases/1/arrets", json={"dans_x_tours": 2})
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_poser_un_arret_sur_une_phase_d_un_autre_creneau_rend_404(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le créneau de l'URL et celui de la phase doivent concorder — sinon on pilote chez le voisin.
+
+    ⚠️ Le mode de panne visé n'est pas l'attaque mais l'**onglet resté ouvert** : le sélecteur de
+    créneau du pilotage a changé, la page pas. Sans ce contrôle, un clic arrêterait le départ du
+    matin depuis l'écran de celui de l'après-midi.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        assert (
+            client.post(
+                f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "suisse"}
+            ).status_code
+            == 201
+        )
+        autre = client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"numero": 2, "tarif_centimes": 800, "horaire": "14:00"},
+        )
+        assert autre.status_code == 201, autre.text
+
+        depot_phases, _ = _depots(app_session)
+        phase_id = depot_phases.par_depart(depart_id)[0].id
+        assert phase_id is not None
+
+        reponse = client.post(
+            f"/api/v1/departs/{autre.json()['id']}/phases/{phase_id}/arrets",
+            json={"dans_x_tours": 1},
+        )
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_poser_un_arret_sur_un_type_sans_tour_observable_rend_422(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La **seconde porte d'entrée** applique la règle de l'atelier — c'est le point du test.
+
+    `E05US033` refuse déjà d'enregistrer un arrêt sur une qualification à la composition. Cette
+    US ouvre un second chemin ; s'il ne consultait pas la même table de types, l'organisateur
+    pourrait poser depuis le pilotage exactement le réglage inerte que l'atelier lui refuse — et le
+    découvrir le jour J, ce que le refus existe pour empêcher.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        creation = client.post(
+            f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "qualification"}
+        )
+        assert creation.status_code == 201, creation.text
+
+        depot_phases, _ = _depots(app_session)
+        phase_id = depot_phases.par_depart(depart_id)[0].id
+        assert phase_id is not None
+
+        reponse = client.post(
+            f"/api/v1/departs/{depart_id}/phases/{phase_id}/arrets", json={"dans_x_tours": 1}
+        )
+
+    assert reponse.status_code == 422, reponse.text
+    assert "tours" in reponse.json()["message"]
+
+
+def test_poser_zero_tour_est_refuse_par_le_dto(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`ge=1` : le mécanisme coupe à la fin d'un tour, jamais au milieu (ADR-0091).
+
+    Refusé **au DTO** et non au domaine seulement, parce que c'est une borne d'entrée client : la
+    faire remonter jusqu'au service coûterait deux lectures pour un refus que la forme suffit à
+    prononcer.
+
+    ⚠️ **400 et non 422**, et la nuance n'est pas cosmétique : ce projet range les refus de *forme*
+    (`requete_invalide`, Pydantic) en 400 et les refus **métier** en 422. Le domaine refuserait
+    aussi ce 0 — avec un message qui dit où aller (« mettez la phase en pause ») —, mais il ne sera
+    jamais atteint. C'est un arbitrage de coût assumé : deux lectures en base pour un refus que la
+    forme prononce seule.
+    """
+    with TestClient(app_session) as client:
+        _tournoi(client, connecter_admin)
+        reponse = client.post("/api/v1/departs/1/phases/1/arrets", json={"dans_x_tours": 0})
+
+    assert reponse.status_code == 400, reponse.text
+
+
+def test_un_arret_de_circonstance_fait_l_aller_retour_par_sa_table(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La table `arret_de_circonstance` : le créneau, la phase, le tour résolu, la portée.
+
+    ⚠️ **Le `where` sur `depart_id` est l'oracle réel de ce test** — c'est la propriété qui
+    distingue un arrêt de circonstance d'un arrêt de déroulé (ADR-0092). Un adapter qui rendrait
+    tout le tournoi ferait s'arrêter le créneau du soir pour une décision du matin, et **aucun autre
+    test ne le verrait** : le service, lui, reçoit une liste déjà filtrée.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        assert (
+            client.post(
+                f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "suisse"}
+            ).status_code
+            == 201
+        )
+        autre = client.post(
+            f"/api/v1/tournois/{tournoi_id}/departs",
+            json={"numero": 2, "tarif_centimes": 800, "horaire": "14:00"},
+        )
+        assert autre.status_code == 201, autre.text
+
+    depot_phases, _ = _depots(app_session)
+    depot = _depot_circonstance(app_session)
+    phase_id = depot_phases.par_depart(depart_id)[0].id
+    assert phase_id is not None
+
+    pose = depot.ajouter(
+        ArretDeCirconstance(
+            depart_id=depart_id,
+            phase_id=phase_id,
+            apres_tour=4,
+            portee=PorteeArret.DEPART,
+        )
+    )
+    assert pose.id is not None
+
+    (relu,) = depot.par_depart(depart_id)
+    assert relu.apres_tour == 4
+    assert relu.portee is PorteeArret.DEPART
+    assert relu.phase_id == phase_id
+    assert depot.par_depart(int(autre.json()["id"])) == []
+
+
+def test_la_meme_pause_ne_se_pose_pas_deux_fois(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'unicité `(depart_id, phase_id, apres_tour)` tenue par le **schéma**, pas par le service.
+
+    Le service refuse déjà le doublon qu'il **voit** ; cette contrainte ferme la course que sa
+    lecture ne peut pas fermer — deux postes d'admin qui cliquent dans la même seconde, ou le
+    double-clic d'un seul, ce qui est un geste ordinaire du jour J sur une tablette.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        assert (
+            client.post(
+                f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "suisse"}
+            ).status_code
+            == 201
+        )
+
+    depot_phases, _ = _depots(app_session)
+    depot = _depot_circonstance(app_session)
+    phase_id = depot_phases.par_depart(depart_id)[0].id
+    assert phase_id is not None
+    arret = ArretDeCirconstance(depart_id=depart_id, phase_id=phase_id, apres_tour=3)
+    depot.ajouter(arret)
+
+    # ⚠️ **`ArretProgrammeInvalide`, et le type importe autant que le refus** (correctif de revue,
+    # axe A). L'oracle attendait `InfrastructureError`, que la frontière mappe en **500 générique**
+    # — l'organisateur qui double-clique dans son écran de pilotage recevait « erreur interne du
+    # serveur » pour un geste ordinaire du jour J. Le refus est désormais **métier** (422), avec le
+    # même message que celui que le service prononce en amont pour le doublon qu'il voit. Asserter
+    # le type, c'est asserter le **code HTTP** que l'organisateur recevra.
+    with pytest.raises(ArretProgrammeInvalide):
+        depot.ajouter(arret)
+
+
+def test_l_heure_de_coupe_fait_l_aller_retour_et_remonte_a_l_api(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`arrete_depuis` : ce que la pastille du tableau de bord décompte (« depuis 14 min »).
+
+    Deux choses en un aller-retour, parce qu'elles tombent ensemble ou pas du tout : la colonne
+    doit **survivre** à l'écriture (une donnée d'affichage est le genre de champ qu'on oublie de
+    recopier dans `enregistrer`) et le DTO doit la **rendre**. Sans le second, la colonne serait
+    juste et l'écran resterait muet.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        depart_id = _depart(client, tournoi_id)
+        assert (
+            client.post(
+                f"/api/v1/tournois/{tournoi_id}/phases", json={"type": "suisse"}
+            ).status_code
+            == 201
+        )
+
+        depot_phases, depot = _depots(app_session)
+        phases = [p for p in depot_phases.par_depart(depart_id) if p.id]
+        phase_id = phases[0].id
+        assert phase_id is not None
+        depot_phases.enregistrer(dataclasses.replace(phases[0], statut=StatutPhase.EN_PAUSE))
+        coupe = datetime.datetime(2026, 3, 14, 12, 45, tzinfo=datetime.UTC)
+        pose = depot.ajouter(
+            FranchissementArret(
+                phase_id=phase_id,
+                apres_tour=2,
+                etat=EtatFranchissement.FRANCHI,
+                phases_arretees=(phase_id,),
+                arrete_depuis=coupe,
+            )
+        )
+        assert pose.id is not None
+        assert pose.arrete_depuis is not None
+
+        (rendu,) = client.get(f"/api/v1/departs/{depart_id}/arrets/en-attente").json()
+
+    assert rendu["arrete_depuis"] is not None
+    # L'oracle est « le client relit **l'instant** écrit », pas « l'heure murale est 12 ». La
+    # nuance décide de tout : SQLite rend un `datetime` *naive*, dont l'heure murale est la seule
+    # propriété que la perte de fuseau **conserve**. Une égalité d'instants, elle, exige l'offset
+    # dans la charge utile — donc elle retombe si le réattachement UTC saute (revue E05US034).
+    assert datetime.datetime.fromisoformat(rendu["arrete_depuis"]) == coupe
+    assert datetime.datetime.fromisoformat(rendu["arrete_depuis"]).tzinfo is not None

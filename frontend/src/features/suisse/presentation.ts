@@ -95,3 +95,76 @@ export function nomDeLArcher(rondes: readonly RondeLisible[], archerId: number):
   }
   return `#${archerId}`
 }
+
+/** Ce qui **manque** dans une ronde en cours, nommé (CA E05US034).
+ *
+ * ⚠️ **Deux listes et pas une**, et c'est la lettre du CA : *« quelles rencontres ne sont pas
+ * validées, et lesquelles ne sont pas encore saisies »*. La distinction décide de qui doit agir —
+ * une rencontre non saisie attend le **scoreur de sa cible**, une rencontre saisie et non validée
+ * attend un **geste de validation**. Les confondre dans un seul « il manque 3 rencontres » renvoie
+ * l'organisateur chercher partout, ce que le refus existe précisément pour éviter (`P-3` : un refus
+ * qui ne dit pas quoi faire est un cul-de-sac).
+ *
+ * L'ancien message ne comptait que : *« la ronde en cours n'est pas entièrement saisie »*. Vrai, et
+ * inutilisable le jour J dans un gymnase où quatorze rencontres se jouent en parallèle.
+ *
+ * Une rencontre **désynchronisée** est rangée à part : elle n'attend ni saisie ni validation mais
+ * un rétablissement de population (ADR-0049 §4), et l'annoncer comme « à saisir » enverrait le
+ * scoreur buter sur un tir que le serveur refuse d'écraser.
+ */
+export interface CeQuiManque {
+  aSaisir: string[]
+  aValider: string[]
+  /** Validées **localement**, en attente de synchronisation (`E04US009`). Personne n'a de geste à
+   * faire : elles attendent le réseau. Elles ont leur propre liste au lieu d'être écartées, sinon
+   * le résumé devient **vide** sous une phrase d'attente — le cul-de-sac que ce CA ferme. */
+  enFile: string[]
+  bloquees: string[]
+}
+
+export function ceQuiManque(rencontres: readonly RencontreSuisse[]): CeQuiManque {
+  const manque: CeQuiManque = { aSaisir: [], aValider: [], enFile: [], bloquees: [] }
+  for (const rencontre of rencontres) {
+    const nom = nommerRencontre(rencontre)
+    if (rencontre.desynchronisee) {
+      manque.bloquees.push(nom)
+      continue
+    }
+    const duel = rencontre.duel
+    if (duel.validee_par !== null) continue
+    // ⚠️ **Une validation en file hors-ligne a sa propre ligne** (arbitrage de revue E05US034,
+    // repris en 2ᵉ passe). `etatRencontre` la distingue (« validation en attente », E04US009) ;
+    // la ranger dans `aValider` faisait dire deux choses contraires à deux phrases du même écran,
+    // et envoyait réclamer un geste déjà posé.
+    //
+    // ⚠️ **Mais l'écarter purement était pire, et c'est la correction de 2ᵉ passe.** Deux raisons.
+    // (1) `validation_en_attente` est **purement local** — le serveur ne renvoie jamais ce champ :
+    // seule la tablette qui a mis en file le voit, donc l'argument « ça n'appelle personne » ne
+    // vaut pas pour l'organisateur, qui ne voit rien du tout. (2) Si c'était la dernière rencontre,
+    // le résumé devenait **vide** sous la phrase « la ronde suivante sera appariée quand celle-ci
+    // sera saisie et validée » : plus rien n'expliquait l'attente, ce qui est exactement le
+    // cul-de-sac (`P-3`) que ce CA existe pour fermer. Elle est donc **nommée**, avec ce qu'elle
+    // attend vraiment — le réseau, pas une personne.
+    if (duel.validation_en_attente === true) {
+      manque.enFile.push(nom)
+      continue
+    }
+    // ⚠️ **`resultat.termine` et non `manches.length > 0`** : une rencontre à demi tirée n'est pas
+    // « à valider », elle est encore à saisir. Le classement de `etatRencontre` juste au-dessus
+    // fait la même lecture, et la refaire autrement ici ferait diverger deux phrases du même écran.
+    if (duel.resultat?.termine === true) manque.aValider.push(nom)
+    else manque.aSaisir.push(nom)
+  }
+  return manque
+}
+
+/** « MARTIN Jean – LE GOFF Yann », ou `?` si un côté manque (bye tardif, population mouvante).
+ *
+ * ⚠️ Le nom est rendu **en entier**, comme `nomDeLArcher` : la JSDoc annonçait une forme abrégée
+ * (« Martin D. ») que la fonction n'a jamais produite — corrigé en revue, la fiche de recette
+ * portait la même erreur au même moment. */
+function nommerRencontre(rencontre: RencontreSuisse): string {
+  const cote = (duelliste: Duelliste | null) =>
+    duelliste === null ? '?' : `${duelliste.nom} ${duelliste.prenom}`
+  return `${cote(rencontre.haut)} – ${cote(rencontre.bas)}`
+}

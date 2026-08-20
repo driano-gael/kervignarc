@@ -21,7 +21,10 @@ import { useEffect, useState } from 'react'
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { VueClassement } from '../competition/VueClassement'
+import { phasesSuspendues } from '../../shared/phases/relance'
+import { BandeauDePause } from '../../shared/ui/BandeauDePause'
 import { useDeparts } from '../departs/hooks'
+import { useAvancementPhases } from '../phases/hooks'
 import { LIBELLE_VUE, type VueEcran } from '../ecrans/api'
 import { useAffichageEcran } from '../ecrans/hooks'
 import { PlanCiblesDeSalle } from '../placement/PlanCiblesPublic'
@@ -126,6 +129,16 @@ export function EcranSalle({
           onConfirmer={onDecrocher}
         />
       )}
+      {/* ⚠️ **Hors de la rotation, et c'est tout l'intérêt** (correctif de bloquant de revue,
+          axes C2 et adversarial). Le bandeau de pause vit dans `VueEnCours`, or `EN_COURS` **n'est
+          pas** au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut` : classement, plan
+          de cibles, suivi) — l'annonce ne s'affichait donc *pas une fois de la journée* sur un
+          écran branché sans configuration, c'est-à-dire le cas nominal que sa propre docstring
+          décrit (« on le branche, il tourne »). C'était le CA qui justifie l'US, manqué sur la
+          seule surface sans personne devant elle pour changer de vue.
+          L'ajouter à la séquence par défaut n'aurait pas suffi : la pause serait restée invisible
+          trois quarts du temps. Monté ici, il coiffe la scène **quelle que soit** la vue. */}
+      <MentionDePause tournoiId={tournoiId} />
       <div className="salle__scene">
         {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
             message d'attente vaut mieux qu'un classement vide qui ressemblerait à un classement. */}
@@ -212,6 +225,41 @@ function SuiviDeSalle({ tournoiId }: { tournoiId: number }) {
       habillage="identite"
       messageVide="Le déroulé de ce tournoi n’est pas encore composé."
     />
+  )
+}
+
+/** L'annonce de pause, **permanente et hors rotation** (CA E05US034).
+ *
+ * Même composant que l'onglet public (`shared/ui/BandeauDePause`), pour que les deux surfaces ne
+ * divergent pas — c'est la moitié du CA. L'autre moitié est le **point de montage** : dans
+ * `VueEnCours`, l'annonce dépendait de la vue en rotation, donc de la configuration de l'écran.
+ *
+ * **Lecture choisie : `useAvancementPhases`, pas `useSuiviDeroule`.** Les deux diraient qu'une
+ * phase est en pause, mais le second reconstruit tous les tableaux du créneau — l'endpoint le plus
+ * coûteux du serveur, que `SuiviDeSalle` prend soin de ne monter que quand sa vue est affichée.
+ * Ici la lecture est **permanente** : elle doit rester la moins chère possible. `getAvancement`
+ * rend les phases du créneau avec leur statut, sur une route publique déjà consommée par cet écran
+ * depuis E05US031, et sa clé de cache est partagée avec le reste de l'application.
+ *
+ * Comme `SuiviDeSalle` : le créneau est celui qu'on est en train de tirer (`departDeSalle`), un
+ * écran de salle n'ayant personne pour en choisir un. */
+function MentionDePause({ tournoiId }: { tournoiId: number }) {
+  const departs = useDeparts(tournoiId)
+  const departId = departDeSalle(departs.data ?? [])?.id ?? null
+  const avancement = useAvancementPhases(departId)
+  // ⚠️ **La règle du grain vit dans `phasesSuspendues`, pas ici** (correctif de bloquant de 2ᵉ
+  // passe, axe B). Une première version testait `some(en_pause)` : sur un créneau à deux phases
+  // actives, l'écran projeté annonçait au gymnase entier une suspension générale pendant que
+  // l'autre phase tirait. Sur une surface collective, une annonce non qualifiée fait arrêter des
+  // archers que ça ne concerne pas.
+  const suspendu = phasesSuspendues(avancement.data ?? [])
+  if (suspendu === null) {
+    return null
+  }
+  return (
+    <div className="salle__pause">
+      <BandeauDePause suspendu={suspendu} />
+    </div>
   )
 }
 

@@ -168,6 +168,50 @@ describe('VueEnCours — l’aiguillage par format', () => {
   })
 })
 
+describe('VueEnCours — l’annonce de pause (CA E05US034)', () => {
+  // Le CA : « un spectateur qui voit la salle immobile et un écran qui n'annonce rien conclut à une
+  // panne ». La règle est un rendu conditionnel, donc invisible à tout test qui ne monte pas le
+  // composant — le trou relevé sur ce fichier même en revue d'E05US031, et re-relevé ici (axe B).
+
+  it('annonce la pause quand la phase en cours est arrêtée', async () => {
+    vi.mocked(getAvancement).mockResolvedValue([
+      phase({ id: 12, ordre: 1, type: 'suisse', statut: 'en_pause' }),
+    ])
+
+    monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} />)
+
+    expect(await screen.findByText(/le tir est suspendu par l’organisation/i)).toBeInTheDocument()
+  })
+
+  it('laisse l’écran projeté annoncer la pause lui-même, sans doubler le bandeau', async () => {
+    // ⚠️ Correctif de 2ᵉ passe : l'écran de salle porte un bandeau **permanent**, hors de sa
+    // rotation de vues. Si son déroulé contient « En cours », les deux bandeaux s'empilaient — sur
+    // un projecteur, en 1,1 em. `interactif={false}` est la marque de cette surface : elle a déjà
+    // son annonce.
+    vi.mocked(getAvancement).mockResolvedValue([
+      phase({ id: 12, ordre: 1, type: 'suisse', statut: 'en_pause' }),
+    ])
+
+    monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} interactif={false} />)
+
+    expect(await screen.findByTestId('suisse')).toBeInTheDocument()
+    expect(screen.queryByText(/le tir est suspendu par l’organisation/i)).toBeNull()
+  })
+
+  it('n’annonce rien quand la salle tire', async () => {
+    // ⚠️ Le cas adverse porte l'essentiel : sans lui, un bandeau rendu **inconditionnellement**
+    // passerait au vert et annoncerait une pause sur une salle qui tire — pire que pas d'annonce.
+    vi.mocked(getAvancement).mockResolvedValue([
+      phase({ id: 12, ordre: 1, type: 'suisse', statut: 'en_cours' }),
+    ])
+
+    monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} />)
+
+    expect(await screen.findByTestId('suisse')).toBeInTheDocument()
+    expect(screen.queryByText(/le tir est suspendu par l’organisation/i)).toBeNull()
+  })
+})
+
 describe('VueEnCours — le fil du déroulé', () => {
   it('atterrit sur la phase en cours et laisse remonter aux précédentes', async () => {
     // Le CA du 18/08/2026 : « l'écran se place sur la phase en cours », **avec** remontée de

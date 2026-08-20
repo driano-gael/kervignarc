@@ -23,4 +23,5 @@
 @import '../features/palmares/palmares.css';
 @import '../features/tableaux/tableaux.css';
 @import '../shared/duels/rencontre.css';
+@import '../shared/ui/bandeau-pause.css';
 @import '../features/en-cours/en-cours.css';

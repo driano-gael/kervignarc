@@ -9,7 +9,10 @@
 
 import { describe, expect, it } from 'vitest'
 
+import type { Duel, Duelliste } from '../saisie-duels/api'
+import type { RencontreSuisse } from './api'
 import {
+  ceQuiManque,
   decrirePlaces,
   decrirePoints,
   etatRencontre,
@@ -167,5 +170,94 @@ describe('etatRencontre', () => {
     // pas s'annoncer « validée » — c'est ce libellé qui explique pourquoi la ligne est bloquée.
     const bloquee = rencontre({ desynchronisee: true, duel: { validee_par: 'Camille' } })
     expect(etatRencontre(bloquee)).toBe('tir mis de côté — population à rétablir')
+  })
+})
+
+describe('ceQuiManque — le refus circonstancié (E05US034)', () => {
+  // Tests écrits **depuis le CA** : *« un refus dit ce qui manque : quelles rencontres ne sont pas
+  // validées, et lesquelles ne sont pas encore saisies »* (stories/E05-moteur-phases.md § E05US034,
+  // CA récupéré de l'ancienne E05US032).
+  //
+  // ⚠️ L'oracle **n'est pas** le message existant. Celui-ci comptait — « la ronde en cours n'est pas
+  // entièrement saisie » — ce qui est vrai et inutilisable dans un gymnase où quatorze rencontres se
+  // jouent en parallèle. Le CA demande des **noms**, et la distinction entre deux attentes qui
+  // n'appellent pas le même geste.
+
+  function duelliste(nom: string): Duelliste {
+    return { archer_id: nom.length, nom, prenom: 'X', club: null, categorie: null } as Duelliste
+  }
+
+  function rencontre(nom: string, duel: Partial<Duel>, desynchronisee = false): RencontreSuisse {
+    return {
+      numero: 1,
+      ronde: 1,
+      couloirs: null,
+      haut: duelliste(nom),
+      bas: duelliste('Adverse'),
+      desynchronisee,
+      duel: { validee_par: null, manches: [], resultat: null, ...duel } as Duel,
+    } as RencontreSuisse
+  }
+
+  it('sépare ce qui attend une saisie de ce qui attend une validation', () => {
+    // La distinction décide **de qui doit agir** : le scoreur de la cible, ou l'organisateur.
+    const manque = ceQuiManque([
+      rencontre('Pastir', {}),
+      rencontre('Avalider', { resultat: { termine: true } as Duel['resultat'] }),
+    ])
+
+    expect(manque.aSaisir).toEqual(['Pastir X – Adverse X'])
+    expect(manque.aValider).toEqual(['Avalider X – Adverse X'])
+  })
+
+  it('ne réclame rien d’une rencontre déjà validée', () => {
+    const manque = ceQuiManque([rencontre('Finie', { validee_par: 'Camille' })])
+
+    expect(manque).toEqual({ aSaisir: [], aValider: [], enFile: [], bloquees: [] })
+  })
+
+  it('range à part une validation posée mais restée en file hors-ligne', () => {
+    // ⚠️ Arbitrage de revue (E05US034) : `etatRencontre` distingue « validation en attente »
+    // (E04US009) ; sans ce cas, la même rencontre s'annonçait « validation en attente » dans la
+    // liste et « il manque une validation » dans le résumé. Ce résumé répond à **qui aller
+    // chercher** : une validation en file ne demande personne, elle attend le réseau.
+    const manque = ceQuiManque([
+      rencontre('Enfile', {
+        resultat: { termine: true } as Duel['resultat'],
+        validation_en_attente: true,
+      }),
+    ])
+
+    expect(manque.aValider).toEqual([])
+    // ⚠️ **Nommée, pas écartée** (correction de 2ᵉ passe). L'écarter rendait le résumé **vide** sous
+    // la phrase « la ronde suivante sera appariée quand celle-ci sera saisie et validée » : plus
+    // rien n'expliquait l'attente, soit le cul-de-sac que ce CA ferme. Et `validation_en_attente`
+    // est purement **local** — l'organisateur ne le voit jamais, donc « ça n'appelle personne » ne
+    // justifiait pas de le taire.
+    expect(manque.enFile).toEqual(['Enfile X – Adverse X'])
+  })
+
+  it('compte une rencontre à demi tirée comme « à saisir », pas « à valider »', () => {
+    // ⚠️ Le piège : `manches.length > 0` ferait passer une rencontre en cours pour finie, donc
+    // enverrait chercher une validation que personne ne peut donner. C'est `resultat.termine` qui
+    // tranche — la même lecture qu'`etatRencontre`, pour que deux phrases du même écran s'accordent.
+    const manque = ceQuiManque([
+      rencontre('Encours', {
+        manches: [{}] as Duel['manches'],
+        resultat: { termine: false } as Duel['resultat'],
+      }),
+    ])
+
+    expect(manque.aSaisir).toEqual(['Encours X – Adverse X'])
+    expect(manque.aValider).toEqual([])
+  })
+
+  it('range à part une rencontre désynchronisée', () => {
+    // Elle n'attend ni saisie ni validation mais un rétablissement de population (ADR-0049 §4) :
+    // l'annoncer « à saisir » enverrait le scoreur buter sur un tir que le serveur refuse d'écraser.
+    const manque = ceQuiManque([rencontre('Bloquee', {}, true)])
+
+    expect(manque.bloquees).toEqual(['Bloquee X – Adverse X'])
+    expect(manque.aSaisir).toEqual([])
   })
 })

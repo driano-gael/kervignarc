@@ -15,6 +15,7 @@ remonte en 422 ; les conflits d'état (transition illégale, suppression d'une s
 from __future__ import annotations
 
 import asyncio
+import datetime
 from enum import Enum
 
 from fastapi import APIRouter, Depends, Request
@@ -24,7 +25,12 @@ from starlette.concurrency import run_in_threadpool
 from api.dependances import exiger_admin
 from application.arrets_programmes import ServiceArretsProgrammes
 from application.phases import ServicePhases
-from domain.arret_programme import ArretProgramme, FranchissementArret, PorteeArret
+from domain.arret_programme import (
+    ArretDeCirconstance,
+    ArretProgramme,
+    FranchissementArret,
+    PorteeArret,
+)
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
@@ -682,6 +688,16 @@ class ArretFranchiReponse(BaseModel):
     portee: PorteeArret
     phases_arretees: list[int]
 
+    arrete_depuis: datetime.datetime | None = None
+    """L'instant où cet arrêt a éteint sa **première** phase (E05US034), en UTC — ou `None` s'il
+    n'a encore rien éteint (arrêt de créneau armé, phase qui finit son tour).
+
+    ⚠️ **Le serveur rend un instant, pas une durée.** Un « depuis 14 min » calculé ici serait périmé
+    à l'affichage : la route est pollée toutes les 10 s, mais le rendu vit entre deux réponses. Le
+    client soustrait de son horloge — l'écart de fuseau est nul (UTC des deux côtés) et l'écart de
+    quelques secondes entre deux machines du réseau local est sans effet sur une durée affichée à la
+    minute."""
+
     @staticmethod
     def de_agregat(franchissement: FranchissementArret) -> ArretFranchiReponse:
         assert (
@@ -697,6 +713,7 @@ class ArretFranchiReponse(BaseModel):
             # définition dit déjà (`deroule_etape.config`), avec la divergence qui va avec.
             portee=PorteeArret.DEPART if franchissement.tours_a_finir else PorteeArret.PHASE,
             phases_arretees=list(franchissement.phases_arretees),
+            arrete_depuis=franchissement.arrete_depuis,
         )
 
 
@@ -743,3 +760,86 @@ async def relancer_arret(depart_id: int, arret_id: int, request: Request) -> lis
         write_queue.submit(lambda: service.lever(depart_id, arret_id))
     )
     return list(relancees)
+
+
+# ─────────────────── Arrêts : la pause posée le jour J (E05US034) ───────────────────
+
+
+class PoserArretRelatifRequete(BaseModel):
+    """« Bloque-moi dans x tours » — la pause décidée pendant que la salle tire (E05US034).
+
+    ⚠️ **Trois DTO d'arrêt, et ce n'est pas une redondance** : `ArretProgrammeDTO` décrit une
+    *définition de déroulé* (posée à l'atelier, rejouée par tous les créneaux),
+    `ArretFranchiReponse` un *fait d'exploitation*, et celui-ci une *commande*. Les deux premiers
+    portent `apres_tour` —
+    un numéro absolu — quand celui-ci porte `dans_x_tours`, un **relatif**. Les confondre serait le
+    piège du jour J : l'organisateur lit « tour 3 sur 5 » à l'écran et pense « encore deux », pas
+    « après le tour 4 ». La conversion est faite par le domaine (`tour_d_un_arret_relatif`), pas au
+    client — le tour courant est une donnée serveur, et un client qui la calculerait couperait au
+    mauvais endroit dès qu'il aurait dix secondes de retard.
+    """
+
+    dans_x_tours: int = Field(ge=1, le=64)
+    """Combien de tours se jouent encore, **celui en cours compris**. `ge=1` : le mécanisme coupe à
+    la fin d'un tour, jamais au milieu (ADR-0091). `le=64` borne l'entrée, comme `arrets` borne sa
+    liste — aucun format du catalogue n'approche cet ordre de grandeur."""
+
+    portee: PorteeArret = PorteeArret.PHASE
+    """Cette phase seule, ou tout ce qui tire dans le créneau. Défaut le plus étroit : un arrêt de
+    créneau posé par mégarde éteindrait la salle entière."""
+
+
+class ArretDeCirconstanceReponse(BaseModel):
+    """La pause qui vient d'être posée, telle que le pilotage doit la relire (E05US034).
+
+    Rend `apres_tour` **résolu** et non le relatif reçu : c'est ce que l'organisateur doit pouvoir
+    vérifier (« j'ai demandé dans 2 tours, ça coupe après le tour 4 »), et c'est aussi ce qui rend
+    la réponse comparable aux arrêts programmés affichés à côté.
+    """
+
+    id: int
+    phase_id: int
+    apres_tour: int
+    portee: PorteeArret
+
+    @staticmethod
+    def de_agregat(arret: ArretDeCirconstance) -> ArretDeCirconstanceReponse:
+        assert arret.id is not None, "un arrêt relu du dépôt porte un identifiant."
+        return ArretDeCirconstanceReponse(
+            id=arret.id,
+            phase_id=arret.phase_id,
+            apres_tour=arret.apres_tour,
+            portee=arret.portee,
+        )
+
+
+@router.post(
+    "/departs/{depart_id}/phases/{phase_id}/arrets",
+    response_model=ArretDeCirconstanceReponse,
+    status_code=201,
+    dependencies=[Depends(exiger_admin)],
+)
+async def poser_arret_relatif(
+    depart_id: int, phase_id: int, requete: PoserArretRelatifRequete, request: Request
+) -> ArretDeCirconstanceReponse:
+    """Pose une pause **dans ce créneau seul**, à partir du tour en cours (**action admin**).
+
+    ⚠️ **Adressée par créneau et par phase, et pas par étape** — c'est la route qui *dit* ce que
+    l'ADR décide. Poser un arrêt à l'atelier se fait sur le déroulé du tournoi
+    (`PUT /tournois/{id}/deroule`), et tous les créneaux le rejouent (ADR-0076 §4). Ici on agit sur
+    ce qui tire **maintenant** (§5) : le créneau du soir ne saura rien de cette pause.
+
+    Refus possibles : `ArretIntrouvable` (404) si la phase n'est pas de ce créneau,
+    `ArretProgrammeInvalide` (422) si le type n'annonce pas ses tours, si le tour courant n'est pas
+    lisible, si un arrêt occupe déjà ce tour, ou si le tour visé dépasse la phase.
+    """
+    service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
+    write_queue: WriteQueue = request.app.state.write_queue
+    arret = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.poser_arret_relatif(
+                depart_id, phase_id, requete.dans_x_tours, requete.portee
+            )
+        )
+    )
+    return ArretDeCirconstanceReponse.de_agregat(arret)

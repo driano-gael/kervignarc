@@ -200,12 +200,22 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`, `0084`, `0085`, `0090`. La liste dérive à chaque US qui crée ou rouvre un ADR
-structurant — c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
+`0082`, `0083`, `0084`, `0085`, `0090`, `0091`, `0092`. La liste dérive à chaque US qui crée ou rouvre
+un ADR structurant — c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
 
 ⚠️ **`0090` y a été oublié à son tour**, et rattrapé en revue d'E05US032 (axe C2) — soit la
 **troisième** omission consécutive sur cette liste. Le constat ci-dessous n'a donc rien perdu de son
 actualité, et il faut le lire comme une mesure : le réflexe n'est pas acquis, seule la revue le tient.
+
+⚠️ **`0091` a été oublié à son tour** — **quatrième** omission consécutive, constatée en écrivant
+`0092` (E05US034, 20/08/2026), donc cette fois *hors revue*. Les deux sont ajoutés ci-dessus. Le
+point mérite d'être dit sans détour : quatre fois sur quatre, l'ADR neuf **portait** sa section
+« Porté dans le code par » — c'est bien cette **liste** qui n'est pas tenue, pas la règle qu'elle
+borne. Le geste manquant est de deux mots dans un fichier qu'on n'ouvre pas en créant un ADR
+ailleurs, et rien dans le dépôt ne le réclame : ni le hook, ni la CI, ni l'atlas (qui vérifie les
+sections **existantes**, pas leur inscription ici). Tant qu'aucun contrôle ne l'exige, l'inscription
+restera un oubli par défaut plutôt qu'un réflexe — **le rendre vérifiable est une US, pas une note**
+(candidat naturel pour la tranche d'atlas `E00US021` ou un contrôle voisin).
 
 ⚠️ **`0084` y avait été oublié à sa création, et `0085` a failli l'être** (relevé en revue
 d'E05US026, deux fois). Deux omissions de suite sur le registre qui existe pour empêcher

@@ -12,6 +12,7 @@
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'
+import { useMaintenant } from '../../shared/ui/useMaintenant'
 import type { LigneCompletude } from '../completude/api'
 import { useCompletude } from '../completude/hooks'
 import { afficheEtat, detailLigne } from '../completude/presentation'
@@ -20,6 +21,11 @@ import { usePaiementsArchers } from '../paiements/hooks'
 import type { Supervision } from '../supervision/api'
 import { useSupervision } from '../supervision/hooks'
 import { BadgeStatut } from '../competition/BadgeStatut'
+import { useQueries } from '@tanstack/react-query'
+import { phraseDeRelance, resumeDeRelance } from '../../shared/phases/relance'
+import { useDeparts } from '../departs/hooks'
+import { getArretsEnAttente } from '../suivi-deroule/api'
+import { INTERVALLE_POLL_MS, RACINE_ARRETS } from '../suivi-deroule/hooks'
 import { FriseCycleDeVie } from './FriseCycleDeVie'
 
 export function Accueil({ tournoi }: { tournoi: Tournoi }) {
@@ -49,6 +55,10 @@ export function Accueil({ tournoi }: { tournoi: Tournoi }) {
         <h2 className="carte__titre">{tournoi.nom}</h2>
         <BadgeStatut statut={tournoi.statut} />
       </div>
+
+      {/* E05US034 — **avant** la frise et les chiffres : quand la salle attend, c'est le seul fait
+          qui compte, et le mettre sous une checklist de dix lignes revient à ne pas le mettre. */}
+      <PastilleDeRelance tournoiId={tournoi.id} />
 
       <FriseCycleDeVie tournoi={tournoi} />
 
@@ -149,4 +159,52 @@ function construireAlertes(lignes: LigneCompletude[], supervision?: Supervision)
     })
   }
   return alertes
+}
+
+/**
+ * La **pastille de rappel** : « 2 phases attendent votre relance depuis 14 min » (CA E05US034).
+ *
+ * ⚠️ **C'est le filet de sécurité de la capacité livrée par E05US033**, pas un ornement. Une pause
+ * programmée éteint une phase toute seule, à la faveur d'une validation faite par un scoreur ailleurs
+ * dans le gymnase. Sans ce rappel, l'organisateur n'apprend qu'une salle attend qu'en ouvrant le
+ * pilotage — et rien, nulle part, n'a l'air anormal. C'est un **mode de panne neuf** : la salle
+ * attend, personne ne sait pourquoi.
+ *
+ * ⚠️ **Une lecture par créneau, et aucune route neuve.** Le tableau de bord est au tournoi, la
+ * relance est au créneau (ADR-0075) : il faut donc balayer les départs. `useQueries` sur la route
+ * que le pilotage polle **déjà** partage son cache — même clé, donc l'écran ouvert à côté ne double
+ * pas le trafic. Une route « arrêts du tournoi » aurait été une seconde façon de poser la même
+ * question, avec la divergence qui va avec, pour économiser trois requêtes indexées sur un réseau
+ * local.
+ *
+ * **Ne rend rien quand il n'y a rien à relancer** — même parti que le panneau de pilotage : une
+ * ligne vide qui ne bouge jamais cesse d'être lue, et c'est exactement celle qu'on veut voir le jour
+ * où elle apparaît.
+ */
+function PastilleDeRelance({ tournoiId }: { tournoiId: number }) {
+  const departs = useDeparts(tournoiId)
+  // Battement à la minute — le grain affiché. Cf. `useMaintenant` : lire l'horloge pendant le rendu
+  // est une impureté, et le compteur resterait figé tant que le serveur renvoie la même réponse.
+  const maintenant = useMaintenant(60000)
+  const parCreneau = useQueries({
+    queries: (departs.data ?? []).map((depart) => ({
+      queryKey: [...RACINE_ARRETS, depart.id] as const,
+      queryFn: () => getArretsEnAttente(depart.id),
+      // Même cadence que `useArretsEnAttente`, dont on partage la clé de cache : recopier la
+      // valeur à la main les aurait fait diverger au premier ajustement (revue E05US034).
+      refetchInterval: INTERVALLE_POLL_MS,
+      staleTime: 0,
+    })),
+  })
+
+  const arrets = parCreneau.flatMap((resultat) => resultat.data ?? [])
+  const resume = resumeDeRelance(arrets, maintenant)
+  if (resume === null) return null
+
+  return (
+    <p className="carte__etat carte__etat--alerte" role="status">
+      <strong>{phraseDeRelance(resume)}</strong> Le tir est suspendu&nbsp;: relancez depuis
+      «&nbsp;Suivi du déroulé&nbsp;».
+    </p>
+  )
 }

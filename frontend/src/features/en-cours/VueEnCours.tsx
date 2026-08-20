@@ -31,6 +31,7 @@ import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import { VueBigShootOffPublique } from '../big-shoot-off/VueBigShootOffPublique'
 import { useDeparts } from '../departs/hooks'
+import { BandeauDePause } from '../../shared/ui/BandeauDePause'
 import { useAvancementPhases } from '../phases/hooks'
 import { VuePoulesPublique } from '../poules/VuePoulesPublique'
 import { departDeSalle } from '../salle/rotation'
@@ -124,6 +125,22 @@ export function VueEnCours({
         {phase.statut === 'en_pause' && <span className="encours__statut"> · en pause</span>}
         {phase.statut === 'terminee' && <span className="encours__statut"> · terminée</span>}
       </h3>
+
+      {/* CA E05US034 — **la pause se voit**, et se distingue d'un simple délai.
+          ⚠️ Le « · en pause » ci-dessus ne suffisait pas, et c'est le mode de panne que cette US
+          existe pour fermer : un spectateur qui voit la salle immobile et un écran qui n'annonce
+          rien conclut à une **panne**. Un suffixe de titre en petits caractères se lit à un mètre,
+          pas depuis les gradins ni sur l'écran projeté au fond du gymnase (≥ 1920 px, vu de loin,
+          E07US004).
+          La phrase vit dans `shared/ui/BandeauDePause` — **le même composant que l'écran de
+          salle**, qui le monte hors de sa rotation de vues (correctif de revue : voir l'en-tête
+          du composant).
+          ⚠️ **`interactif` discrimine les deux surfaces**, et c'est un correctif de 2ᵉ passe : un
+          écran de salle dont le déroulé **contient** la vue « En cours » empilait deux bandeaux
+          identiques — celui, permanent, de `MentionDePause`, et celui-ci. Sur un projecteur en
+          1,1 em, ce doublon n'est pas discret. L'écran de salle passe déjà `interactif={false}` :
+          il garde le bandeau permanent, l'onglet public garde le sien. */}
+      {interactif && phase.statut === 'en_pause' && <BandeauDePause />}
 
       {/* ⚠️ `key={phase.id}` : **remonte** le composant de format à chaque changement de phase
           (correctif de revue, axe C1). Sans elle, React réconcilie en place quand le type est

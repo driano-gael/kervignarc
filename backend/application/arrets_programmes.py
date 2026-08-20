@@ -10,6 +10,9 @@ Trois cas d'usage, et un seul écrit :
 - **`en_attente_de_relance`** — la lecture que le pilotage affiche : les arrêts franchis et pas
 encore
   levés.
+- **`poser_arret_relatif`** — le geste **du jour J** (E05US034, [ADR-0092]) : « bloque-moi dans deux
+  tours ». Il écrit un `ArretDeCirconstance`, qui appartient au **créneau** et n'est rejoué par
+  aucun autre — à la différence d'un arrêt posé à l'atelier, qui est du déroulé.
 
 **Pourquoi un service et non un automate.** Le projet ne persiste pas l'avancement : chaque service
 de format le **recalcule à la lecture** (ADR-0090 §5), et le lancement d'un tour est un *événement*,
@@ -32,31 +35,40 @@ conséquence — le marqueur est posé au point d'appel, pas ici.
 [ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md
 [ADR-0090]: ../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
 [ADR-0091]: ../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+[ADR-0092]: ../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import replace
 from typing import Protocol
 
 from application.erreurs import ArretIntrouvable
 from application.phases import ServicePhases
 from domain.arret_programme import (
+    ArretDeCirconstance,
     ArretProgramme,
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
+    arrets_applicables,
     arrets_atteints,
     phases_a_arreter,
+    tour_d_un_arret_relatif,
+    verifier_arrets,
+    verifier_type_arretable,
 )
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import Phase, PhaseId, StatutPhase
 from domain.ports import (
+    ArretDeCirconstanceRepository,
     DepartRepository,
     DerouleRepository,
     FranchissementArretRepository,
+    Horloge,
     PhaseRepository,
 )
 from domain.suivi_deroule import AvancementDePhase
@@ -107,6 +119,22 @@ def _avancement_connu(avancement: AvancementDePhase) -> bool:
     return avancement.tour_courant is not None or avancement.nb_tours > 1
 
 
+def _par_phase(
+    arrets: Sequence[ArretDeCirconstance],
+) -> dict[PhaseId, tuple[ArretDeCirconstance, ...]]:
+    """Indexe par phase des arrêts de circonstance **déjà lus**.
+
+    Pure et sans dépôt, délibérément : la lecture appartient à `evaluer`, qui en a besoin de toute
+    façon pour sa garde de chemin court. La version antérieure était une méthode qui relisait le
+    dépôt, et sa docstring promettait « une seule lecture » — vrai d'elle, faux du parcours, qui en
+    faisait deux par validation de score sur le thread du writer unique (correctif de revue).
+    """
+    par_phase: dict[PhaseId, list[ArretDeCirconstance]] = {}
+    for arret in arrets:
+        par_phase.setdefault(arret.phase_id, []).append(arret)
+    return {phase_id: tuple(liste) for phase_id, liste in par_phase.items()}
+
+
 class ServiceArretsProgrammes:
     """Cas d'usage : « la salle s'arrête après ce tour, et repart quand je le dis »."""
 
@@ -116,14 +144,22 @@ class ServiceArretsProgrammes:
         deroules: DerouleRepository,
         departs: DepartRepository,
         franchissements: FranchissementArretRepository,
+        arrets_de_circonstance: ArretDeCirconstanceRepository,
         suivi: LecteurAvancementDuDepart,
         cycle_de_vie: ServicePhases,
+        horloge: Horloge,
     ) -> None:
         self._phases = phases
         self._deroules = deroules
         self._departs = departs
         self._franchissements = franchissements
+        self._arrets_de_circonstance = arrets_de_circonstance
         self._suivi = suivi
+        # L'heure passe par un port (règle 2) : un `datetime.now()` ici rendrait non déterministe
+        # tout test qui lit `arrete_depuis` (règle 9). Le service ne s'en sert qu'à un endroit —
+        # `_horodate` —, et jamais pour décider : l'instant est une **donnée d'affichage**, aucune
+        # règle du mécanisme n'en dépend.
+        self._horloge = horloge
         # ⚠️ **Le cycle de vie n'est pas réimplémenté ici** : `mettre_en_pause` et `reprendre` sont
         # les transitions gardées d'ADR-0045, et ce service les **appelle** (service→service, sur le
         # précédent de `ServicePilotageTour`). Muter le statut à la main dupliquerait l'automate, et
@@ -155,13 +191,145 @@ class ServiceArretsProgrammes:
         `phases_arretees`, donc ne sont pas touchées.
 
         Reste dehors : un `ARME` qui n'a **rien** arrêté (la coupe est décidée, pas encore faite —
-        annoncer une relance ferait cliquer sur un bouton sans effet) et les `LEVE`, consommés.
+        annoncer une relance ferait cliquer sur un bouton sans effet), les `LEVE`, consommés, et
+        — troisième catégorie, **correctif de bloquant de revue E05US034** (axe adversarial) —
+        ceux dont **aucune phase arrêtée n'est encore en pause**.
+
+        ⚠️ **Pourquoi cette troisième catégorie, et pourquoi maintenant.** Le pilotage offre, sur
+        la ligne d'une phase en pause, le bouton **« Reprendre »** du cycle de vie à côté de
+        « Relancer ». Le premier remet la phase `EN_COURS` sans jamais marquer le franchissement
+        `LEVE` : l'arrêt restait donc « en attente de relance » **pour toujours**, sur une salle
+        qui tire. Le trou existait depuis E05US033, confiné au panneau de pilotage, à côté de la
+        phase, là où la contradiction se voyait ; cette US le **hisse au tableau de bord** avec un
+        chrono croissant (« Une phase attend votre relance depuis 47 min »). Un rappel qu'on ne
+        peut pas éteindre est pire que pas de rappel : c'est le filet de sécurité qui devient la
+        source de fatigue d'alarme, et il aurait usé la vigilance sur *tous* les autres.
+
+        Le critère est **l'état réel de la salle**, pas l'état du franchissement : si plus rien
+        n'est éteint, il n'y a plus de geste à réclamer — quel que soit le chemin par lequel la
+        phase est repartie.
+
+        ⚠️ **`phases_arretees` est PROJETÉ sur ce qui est encore éteint** (2ᵉ correctif, axe
+        adversarial), et c'est la moitié du geste précédent. Ne filtrer que l'appartenance à la
+        liste déplaçait le trou de l'allumage vers le **comptage** : `phases_arretees` est la trace
+        **historique** — jamais élaguée, et délibérément (`_resoudre_les_arrets_armes` l'écrit
+        exprès pour ne pas la perdre). Sur un arrêt de créneau qui a éteint deux phases dont une a
+        été reprise à la main, le tableau de bord annonçait donc « **2 phases** attendent votre
+        relance », le pilotage « tout le créneau (2 phases) », et `lever` n'en repartait qu'une.
+        Un chiffre faux dans le sens qui **alarme** — exactement ce que `resumeDeRelance` s'interdit
+        dans sa propre docstring, et qui use la vigilance le plus vite.
+
+        ⚠️ **Ce que cette projection oblige, et qu'il ne faut pas défaire** : `lever` ne peut plus
+        prendre son franchissement ici. Il le **relit au dépôt**, sinon il repersisterait une trace
+        amputée — la mémoire anti-redéclenchement (`_traites_par_phase`) s'en sert.
         """
-        return tuple(
-            franchissement
-            for franchissement in self._franchissements.par_depart(depart_id)
-            if franchissement.etat is EtatFranchissement.FRANCHI
-            or (franchissement.etat is EtatFranchissement.ARME and franchissement.phases_arretees)
+        statuts = {
+            phase.id: phase.statut
+            for phase in self._phases.par_depart(depart_id)
+            if phase.id is not None
+        }
+        en_attente: list[FranchissementArret] = []
+        for franchissement in self._franchissements.par_depart(depart_id):
+            if franchissement.etat is EtatFranchissement.LEVE:
+                continue
+            if (
+                franchissement.etat is EtatFranchissement.ARME
+                and not franchissement.phases_arretees
+            ):
+                continue
+            eteintes = tuple(
+                phase_id
+                for phase_id in franchissement.phases_arretees
+                if statuts.get(phase_id) is StatutPhase.EN_PAUSE
+            )
+            if not eteintes:
+                continue
+            en_attente.append(replace(franchissement, phases_arretees=eteintes))
+        return tuple(en_attente)
+
+    # --- Le geste du jour J -------------------------------------------------------------------
+
+    def poser_arret_relatif(
+        self,
+        depart_id: DepartId,
+        phase_id: PhaseId,
+        dans_x_tours: int,
+        portee: PorteeArret = PorteeArret.PHASE,
+    ) -> ArretDeCirconstance:
+        """« Bloque-moi dans x tours » — l'arrêt posé **pendant** que la salle tire (E05US034).
+
+        Le geste appartient au **créneau** et à lui seul ([ADR-0092]) : ce que l'organisateur décide
+        à 14 h pour une panne de chauffage n'a aucune raison d'être rejoué par le départ du soir.
+        C'est ce qui interdit d'écrire ici dans l'`EtapeDeroule` — ce serait éditer le déroulé du
+        tournoi, donc **propager** une décision locale (ADR-0076 §4 contre §5).
+
+        Quatre refus, et chacun ferme un mode de panne distinct :
+
+        1. **la phase n'est pas de ce créneau** → `ArretIntrouvable` (404). Sans ce contrôle, une
+           route de pilotage laisserait poser un arrêt sur le créneau du voisin ;
+        2. **le type n'annonce pas ses tours** → même règle qu'à l'atelier, et c'est *la même
+           fonction* (`verifier_type_arretable`) : deux copies auraient divergé ;
+        3. **le tour courant n'est pas lisible** → « dans x tours » n'a pas d'origine. Deviner
+           couperait la salle au mauvais endroit (cf. `tour_d_un_arret_relatif`) ;
+        4. **un arrêt occupe déjà ce tour**, ou **le tour visé dépasse la phase** →
+           `verifier_arrets`, deux fois, **et la séparation est le correctif d'un bloquant de
+           revue** (E05US034, trois axes) :
+           - la **collision** se juge sur l'**union** des deux natures — c'est le seul endroit où
+             on connaît les deux, et le seul moment où l'on a quelqu'un à qui répondre ;
+           - l'**inertie** (`tour >= nb_tours`) se juge sur le **seul arrêt demandé**, avec le
+             `nb_tours` du jour.
+
+           ⚠️ **Passer le `nb_tours` du jour à l'union était un cul-de-sac.** Les arrêts de
+           l'étape ont été composés avec `nb_tours=None` — la docstring de `verifier_arrets` dit
+           pourquoi : « un système suisse réglé à 7 rondes n'en joue que 5 si l'effectif ne permet
+           pas plus ». Un arrêt d'atelier après le tour 6 sur une phase qui n'en joue que 5 est
+           donc **légitime et inerte**, et il faisait échouer **toute** pose du jour J sur cette
+           phase, avec un message nommant un tour que l'organisateur n'a pas demandé et qu'il ne
+           peut pas retirer depuis le pilotage (l'éditer irait dans le déroulé du **tournoi**,
+           donc dans tous les créneaux — ce qu'ADR-0092 interdit). Le geste central de l'US
+           mourait sur un réglage de la veille.
+
+        ⚠️ **Strict ici, tolérant au déclencheur**, et l'asymétrie est voulue : `arrets_applicables`
+        fusionne une collision au lieu de lever, parce qu'elle peut naître **après** la pose — un
+        arrêt ajouté au déroulé du tournoi pendant que le créneau tourne, ce que l'atelier ne peut
+        pas voir (ADR-0076 le lui interdit). Lever à l'évaluation gèlerait tout le mécanisme du
+        créneau ; refuser ici ne coûte qu'un message à quelqu'un qui a l'écran devant lui.
+
+        [ADR-0092]: ../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+        """
+        phase = self._phases.par_id(phase_id)
+        if phase is None or phase.depart_id != depart_id:
+            raise ArretIntrouvable(
+                f"Aucune phase {phase_id} dans ce créneau : impossible d'y poser une pause."
+            )
+        verifier_type_arretable(phase.type)
+        # DETTE-031 : la lecture lourde, ici **sur le thread du writer unique** (la commande passe
+        # par la file d'écriture). Le coût est accepté : c'est un geste humain, quelques fois par
+        # jour, et lire hors de la file ouvrirait un TOCTOU sur le tour courant — « dans 1 tour »
+        # se compterait depuis un tour déjà terminé. Le marqueur est posé au **point d'appel**,
+        # convention du module (ajouté en revue : la ligne du registre ne citait que le
+        # déclencheur). Cf. docs/dette.md.
+        avancement = self._suivi.avancement_par_phase(depart_id).get(phase_id)
+        apres_tour = tour_d_un_arret_relatif(
+            avancement.tour_courant if avancement is not None else None, dans_x_tours
+        )
+        etape = self._etapes_du_depart(depart_id).get(phase.ordre)
+        voulu = ArretProgramme(apres_tour=apres_tour, portee=portee)
+        verifier_arrets(
+            (
+                *(etape.arrets if etape is not None else ()),
+                *(arret.definition() for arret in self._circonstance_de(depart_id, phase_id)),
+                voulu,
+            )
+        )
+        verifier_arrets((voulu,), nb_tours=avancement.nb_tours if avancement is not None else None)
+        return self._arrets_de_circonstance.ajouter(
+            ArretDeCirconstance(
+                depart_id=depart_id,
+                phase_id=phase_id,
+                apres_tour=apres_tour,
+                portee=portee,
+            )
         )
 
     # --- Le déclencheur -----------------------------------------------------------------------
@@ -205,7 +373,20 @@ class ServiceArretsProgrammes:
         # optimisation, c'est retirer au lecteur suivant le moyen de la remettre en cause.
         etapes = self._etapes_du_depart(depart_id)
         franchissements = self._franchissements.par_depart(depart_id)
-        aucun_arret = not any(etape.arrets for etape in etapes.values())
+        # ⚠️ **La garde compte les deux natures d'arrêt** (E05US034). Ne regarder que celles de
+        # l'étape rendrait tout arrêt posé le jour J **inerte** : le chemin court sortirait avant
+        # de lire l'avancement, donc avant de pouvoir constater quoi que ce soit. C'est le mode de
+        # panne le plus vicieux du mécanisme — la pose répond 200, l'écran affiche l'arrêt, et
+        # l'heure passe sans que rien ne coupe. Une cinquième lecture au chemin court : le rapport
+        # reste celui qu'établit le commentaire ci-dessus.
+        #
+        # ⚠️ **Lue une fois, puis passée en aval** (correctif de revue, axes A et C1). La première
+        # rédaction relisait `par_depart` dans `_circonstance_par_phase`, soit **deux** `SELECT`
+        # identiques par validation de score sur le thread du writer unique — pendant que la
+        # docstring de ce helper annonçait « une seule lecture », vraie de la fonction et fausse du
+        # parcours. C'est le même écart de comptage que la garde ci-dessus a déjà eu à corriger.
+        circonstance = self._arrets_de_circonstance.par_depart(depart_id)
+        aucun_arret = not any(etape.arrets for etape in etapes.values()) and not circonstance
         aucun_arme = not any(f.etat is EtatFranchissement.ARME for f in franchissements)
         if aucun_arret and aucun_arme:
             return ()
@@ -230,7 +411,9 @@ class ServiceArretsProgrammes:
         avancements = self._suivi.avancement_par_phase(depart_id)
         arretees: list[PhaseId] = []
         arretees.extend(self._resoudre_les_arrets_armes(depart_id, phases, avancements))
-        arretees.extend(self._declencher_les_arrets_atteints(depart_id, phases, avancements))
+        arretees.extend(
+            self._declencher_les_arrets_atteints(depart_id, phases, avancements, circonstance)
+        )
         # ⚠️ **Une seconde résolution, et une boucle bornée** (correctif de revue, axe C1 §5 puis
         # test de non-régression). Mettre une phase en pause peut **débloquer** un arrêt armé qui
         # l'attendait : deux arrêts de portée départ dus au même appel s'attendaient mutuellement,
@@ -286,19 +469,24 @@ class ServiceArretsProgrammes:
                     arretees.append(phase_id)
                 deja_en_pause.append(phase_id)
             if len(finies) == len(attendues):
-                self._franchissements.enregistrer(franchissement.franchir(deja_en_pause))
+                self._franchissements.enregistrer(
+                    self._horodate(franchissement.franchir(deja_en_pause))
+                )
             elif deja_en_pause != list(franchissement.phases_arretees):
                 # Encore armé, mais on retient déjà ce qui est arrêté : sans cette écriture
                 # intermédiaire, une phase arrêtée puis reprise à la main sortirait de la liste de
                 # relance, et le geste d'admin ne la rendrait jamais.
                 self._franchissements.enregistrer(
-                    FranchissementArret(
-                        phase_id=franchissement.phase_id,
-                        apres_tour=franchissement.apres_tour,
-                        etat=EtatFranchissement.ARME,
-                        tours_a_finir=franchissement.tours_a_finir,
-                        phases_arretees=tuple(deja_en_pause),
-                        id=franchissement.id,
+                    self._horodate(
+                        FranchissementArret(
+                            phase_id=franchissement.phase_id,
+                            apres_tour=franchissement.apres_tour,
+                            etat=EtatFranchissement.ARME,
+                            tours_a_finir=franchissement.tours_a_finir,
+                            phases_arretees=tuple(deja_en_pause),
+                            arrete_depuis=franchissement.arrete_depuis,
+                            id=franchissement.id,
+                        )
                     )
                 )
         return arretees
@@ -308,21 +496,43 @@ class ServiceArretsProgrammes:
         depart_id: DepartId,
         phases: dict[PhaseId, Phase],
         avancements: dict[PhaseId, AvancementDePhase],
+        arrets_de_circonstance: Sequence[ArretDeCirconstance],
     ) -> list[PhaseId]:
-        """Repère les arrêts que l'avancement vient d'atteindre, et les applique."""
+        """Repère les arrêts que l'avancement vient d'atteindre, et les applique.
+
+        `arrets_de_circonstance` est **passé** et non relu : `evaluer` en a déjà besoin pour sa
+        garde de chemin court, et la relecture faisait deux `SELECT` identiques par validation de
+        score (correctif de revue).
+        """
         etapes = self._etapes_du_depart(depart_id)
         deja = self._traites_par_phase(depart_id)
+        circonstance = _par_phase(arrets_de_circonstance)
         arretees: list[PhaseId] = []
         for phase_id, phase in phases.items():
             if phase.statut is not StatutPhase.EN_COURS:
                 continue
             etape = etapes.get(phase.ordre)
-            if etape is None or not etape.arrets:
+            # ⚠️ **Les deux natures d'arrêt se lisent ensemble** (E05US034) : celles de l'étape, que
+            # tous les créneaux rejouent, et celles que le pilotage a posées **dans ce créneau-ci**.
+            # Les traiter en deux passes aurait ouvert un second chemin de déclenchement, donc une
+            # seconde occasion de diverger sur la question la plus délicate du module (« ce tour
+            # est-il fini ? ») — celle qui a produit trois bloquants en revue d'`E05US033`.
+            # ⚠️ **`etape is None` ne fait plus sortir** (correctif de revue, axe C1). L'asymétrie
+            # était réelle : `poser_arret_relatif` accepte une phase sans étape et persiste
+            # l'arrêt, tandis qu'ici le `continue` l'aurait rendu **inerte** — posé, répondu 201,
+            # affiché, et sans effet. Le cas est aujourd'hui inatteignable (`ServicePhases`
+            # supprime la phase avec son étape), d'où une suggestion et non un bloquant ; le rendre
+            # robuste coûte une ligne, et la garde `if not arrets` juste en dessous fait déjà le
+            # travail que faisait le `continue`.
+            arrets = arrets_applicables(
+                etape.arrets if etape is not None else (), circonstance.get(phase_id, ())
+            )
+            if not arrets:
                 continue
-            tour_acheve = self._tour_acheve(avancements.get(phase_id), etape)
+            tour_acheve = self._tour_acheve(avancements.get(phase_id), arrets)
             if tour_acheve is None:
                 continue
-            dus = arrets_atteints(etape.arrets, tour_acheve, deja.get(phase_id, ()))
+            dus = arrets_atteints(arrets, tour_acheve, deja.get(phase_id, ()))
             if not dus:
                 continue
             arretees.extend(self._appliquer(depart_id, phase_id, phases, avancements, dus))
@@ -347,7 +557,11 @@ class ServiceArretsProgrammes:
         Les laisser en attente serait le piège : ils se déclencheraient l'un après l'autre à chaque
         reprise, et l'organisateur devrait relancer trois fois pour une seule coupe. Ils sont donc
         marqués `LEVE` sans avoir rien arrêté, et **journalisés** : une pause manquée est un fait
-        d'exploitation, pas un détail. La rendre visible à l'écran est le périmètre d'`E05US034`.
+        d'exploitation, pas un détail.
+        ⚠️ **Toujours pas visible à l'écran**, et E05US034 ne l'a pas repris : cette tranche
+        rend visible la pause **qui a eu lieu**, pas celle qui a été *manquée*. Une pause
+        manquée reste donc un fait de journal — acceptable parce qu'elle ne bloque personne
+        (rien n'a été arrêté), mais à ne pas confondre avec « c'est traité ».
 
         ⚠️ **Un arrêt de portée phase sur une phase dont tout est tiré est consommé de la même
         façon** — voir le commentaire ci-dessous. C'est le second chemin vers « pause manquée », et
@@ -384,11 +598,13 @@ class ServiceArretsProgrammes:
             # un bouton qui ne trouve aucune phase `EN_PAUSE` à rendre (`lever` les ignore déjà),
             # et le déclencheur suivant remettra la phase en pause, l'arrêt étant tracé.
             self._franchissements.ajouter(
-                FranchissementArret(
-                    phase_id=phase_id,
-                    apres_tour=applique.apres_tour,
-                    etat=EtatFranchissement.FRANCHI,
-                    phases_arretees=(phase_id,),
+                self._horodate(
+                    FranchissementArret(
+                        phase_id=phase_id,
+                        apres_tour=applique.apres_tour,
+                        etat=EtatFranchissement.FRANCHI,
+                        phases_arretees=(phase_id,),
+                    )
                 )
             )
             if self._mettre_en_pause(depart_id, phase_id, phases):
@@ -500,12 +716,25 @@ class ServiceArretsProgrammes:
 
         Ne relance que les phases **effectivement en pause** : une phase clôturée entre-temps ne
         redémarre pas, et `reprendre` la refuserait de toute façon (ADR-0045).
+
+        ⚠️ **La source est le dépôt, pas `en_attente_de_relance`** (correctif de revue, axe
+        adversarial). Deux raisons, et la seconde est un piège :
+        1. cette lecture **projette** `phases_arretees` sur ce qui est encore éteint ; repersister
+           l'objet qu'elle rend amputerait la trace en base, dont `_traites_par_phase` se sert
+           comme mémoire anti-redéclenchement ;
+        2. elle écarte aussi les arrêts dont plus rien n'est en pause — un organisateur qui clique
+           « Relancer » sur une liste vieille de dix secondes, après avoir repris la dernière phase
+           à la main, recevait un **404** alors que les quatre cas énumérés ci-dessus étaient les
+           seuls prévus. Il n'y a rien à relancer, mais ce n'est pas « introuvable » : `lever`
+           consomme l'arrêt et rend une relance vide.
         """
         franchissement = next(
             (
                 item
-                for item in self.en_attente_de_relance(depart_id)
+                for item in self._franchissements.par_depart(depart_id)
                 if item.id == franchissement_id
+                and item.etat is not EtatFranchissement.LEVE
+                and not (item.etat is EtatFranchissement.ARME and not item.phases_arretees)
             ),
             None,
         )
@@ -561,6 +790,33 @@ class ServiceArretsProgrammes:
             phases[phase_id] = replace(phases[phase_id], statut=StatutPhase.EN_PAUSE)
         return True
 
+    def _circonstance_de(
+        self, depart_id: DepartId, phase_id: PhaseId
+    ) -> tuple[ArretDeCirconstance, ...]:
+        """Les arrêts posés le jour J **sur cette phase**, dans ce créneau."""
+        return tuple(
+            arret
+            for arret in self._arrets_de_circonstance.par_depart(depart_id)
+            if arret.phase_id == phase_id
+        )
+
+    def _horodate(self, franchissement: FranchissementArret) -> FranchissementArret:
+        """Date la **première** extinction d'un arrêt, et une seule fois (E05US034).
+
+        Deux conditions, et il faut les deux : quelque chose est éteint (`phases_arretees`), et rien
+        n'a encore été daté (`arrete_depuis is None`). La seconde est ce qui empêche la pastille de
+        **rajeunir** quand un arrêt de créneau coupe une seconde phase dix minutes plus tard — elle
+        annoncerait alors « depuis 1 min » sur une salle arrêtée depuis vingt, c'est-à-dire qu'elle
+        mentirait dans le sens qui endort la vigilance.
+
+        La première interdit de dater un arrêt **manqué** : la trace d'une pause consommée sans
+        mise en pause (avancement sauté, phase déjà tout tirée) n'a éteint personne, et lui donner
+        une heure ferait apparaître une attente qui n'a jamais existé.
+        """
+        if franchissement.phases_arretees and franchissement.arrete_depuis is None:
+            return replace(franchissement, arrete_depuis=self._horloge.maintenant())
+        return franchissement
+
     def _etapes_du_depart(self, depart_id: DepartId) -> dict[int, EtapeDeroule]:
         """Le déroulé du tournoi de ce créneau, indexé par rang (ADR-0076)."""
         depart = self._departs.par_id(depart_id)
@@ -580,7 +836,9 @@ class ServiceArretsProgrammes:
         return {phase_id: tuple(tours) for phase_id, tours in traites.items()}
 
     @staticmethod
-    def _tour_acheve(avancement: AvancementDePhase | None, etape: EtapeDeroule) -> int | None:
+    def _tour_acheve(
+        avancement: AvancementDePhase | None, arrets: Sequence[ArretProgramme]
+    ) -> int | None:
         """Quel tour vient de s'achever pour cette phase. `None` si aucun, ou si on ne sait pas.
 
         ⚠️ **C'est ici que se jouait le bloquant central de l'US**, relevé par les quatre axes de
@@ -620,11 +878,17 @@ class ServiceArretsProgrammes:
         pouvoir la clôturer.
 
         Au tour 1 en cours, aucun tour n'est achevé : la phase vient de démarrer.
+
+        ⚠️ **Reçoit les arrêts, plus l'étape** (E05US034). La branche « tout est joué » se borne au
+        plus tardif des arrêts *applicables* : lui passer `etape.arrets` ignorait ceux posés le jour
+        J, si bien qu'une phase terminée créditait la pause de l'atelier et **jamais** celle que
+        l'organisateur venait de poser. Le paramètre dit maintenant ce dont la fonction a besoin —
+        un jeu d'arrêts —, pas d'où il vient.
         """
         if avancement is None or not _avancement_connu(avancement):
             return None
         if avancement.tour_courant is None:
-            return min(avancement.nb_tours, max(arret.apres_tour for arret in etape.arrets))
+            return min(avancement.nb_tours, max(arret.apres_tour for arret in arrets))
         if avancement.tour_courant <= 1:
             return None
         return avancement.tour_courant - 1

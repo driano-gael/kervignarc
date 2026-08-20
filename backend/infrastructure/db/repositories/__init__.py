@@ -22,6 +22,7 @@ from infrastructure.db.repositories.exploitation import (
     ScoreurRepositorySQL,
 )
 from infrastructure.db.repositories.moteur import (
+    ArretDeCirconstanceRepositorySQL,
     DerouleEtapeRepositorySQL,
     FormatTournoiRepositorySQL,
     FranchissementArretRepositorySQL,
@@ -51,6 +52,7 @@ from infrastructure.db.repositories.tir import (
 
 __all__ = [
     "ArcherRepositorySQL",
+    "ArretDeCirconstanceRepositorySQL",
     "AuditRepositorySQL",
     "BarrageRepositorySQL",
     "BlasonRepositorySQL",

@@ -29,13 +29,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from domain.arret_programme import ArretProgramme, verifier_arrets
+from domain.arret_programme import (
+    ArretProgramme,
+    verifier_arrets,
+    verifier_type_arretable,
+)
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
-from domain.contrat_phase import TYPES_DEROULES
 from domain.depart import DepartId
 from domain.erreurs import (
-    ArretProgrammeInvalide,
     ConfigurationBigShootOffInvalide,
     ConfigurationSuisseInvalide,
 )
@@ -177,13 +179,15 @@ class EtapeDeroule:
         # créneau, ADR-0082), le plan de cibles et les forfaits — trois sujets que la tranche
         # n'avait pas budgétés, et qui ont produit quatre bloquants de revue à eux seuls.
         # Repris par
-        # `E05US034`. Un **refus explicite** vaut mieux qu'un réglage inerte.
-        if self.type not in TYPES_DEROULES:
-            raise ArretProgrammeInvalide(
-                f"Une phase de type « {self.type.value} » n'annonce pas ses tours : l'application "
-                "ne saurait pas quand y appliquer une pause. Les pauses se posent sur une "
-                "élimination directe, des poules, un système suisse ou un Big Shoot Off."
-            )
+        # `E05US035` (reportée une seconde fois au cadrage du 20/08/2026 : `E05US034` mêlait
+        # cinq CA d'IHM et ce chantier moteur). Un **refus explicite** vaut mieux qu'un
+        # réglage inerte.
+        #
+        # ⚠️ **Le refus lui-même a été hissé au module d'arrêt en E05US034** : le pilotage ouvre une
+        # seconde porte (poser un arrêt le jour J), et deux copies d'une même règle divergent —
+        # c'est celle écrite en second qui rate le cas nouveau. Ce qui reste ici est le *moment* de
+        # la vérification, qui est bien une propriété de l'étape.
+        verifier_type_arretable(self.type)
         verifier_arrets(self.arrets, nb_tours=None)
 
     def _verifier_rondes_appariables(self) -> None:
