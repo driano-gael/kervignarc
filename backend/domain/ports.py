@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
+from domain.arret_programme import FranchissementArret
 from domain.barrage import BarrageDePlaces, BarrageId, TirBarrage
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
@@ -1350,4 +1351,37 @@ class BarrageRepository(Protocol):
 
     def rouvrir(self, barrage_id: BarrageId) -> BarrageDePlaces:
         """Lève la clôture — une manche vient d'être saisie, le verdict acté n'est plus le bon."""
+        ...
+
+
+class FranchissementArretRepository(Protocol):
+    """Port de persistance des **franchissements d'arrêt** — ce qu'un arrêt a coupé (E05US033).
+
+    ⚠️ **Ce port ne persiste pas les arrêts eux-mêmes**, et la séparation est le cœur d'[ADR-0091].
+    La *définition* d'un arrêt (« après le tour 3, portée départ ») vit sur l'`EtapeDeroule` du
+    tournoi, dans sa `config` JSON, servie par `DerouleRepository` : c'est du déroulé, défini une
+    fois et rejoué par chaque créneau (ADR-0076). Ce port-ci ne porte que l'**avancement** : cet
+    arrêt-là a-t-il coupé, dans ce créneau-ci, et l'admin l'a-t-il relevé.
+
+    C'est le seul état **persisté** du mécanisme, tout le reste étant dérivé à la lecture (ADR-0090
+    §5). La raison est écrite en tête de `domain.arret_programme` : la condition de déclenchement
+    est monotone, donc un déclencheur sans mémoire remettrait la phase en pause à chaque reprise.
+
+    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    """
+
+    def par_depart(self, depart_id: DepartId) -> list[FranchissementArret]:
+        """Tous les franchissements du créneau, quel qu'en soit l'état (liste possiblement vide)."""
+        ...
+
+    def par_id(self, franchissement_id: int) -> FranchissementArret | None:
+        """Le franchissement d'identifiant donné, ou `None` s'il n'existe pas."""
+        ...
+
+    def ajouter(self, franchissement: FranchissementArret) -> FranchissementArret:
+        """Persiste un franchissement et le renvoie avec son identifiant attribué."""
+        ...
+
+    def enregistrer(self, franchissement: FranchissementArret) -> FranchissementArret:
+        """Réécrit un franchissement existant (existence garantie par l'appelant)."""
         ...

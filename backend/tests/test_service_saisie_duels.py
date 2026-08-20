@@ -12,6 +12,7 @@ séries semées) pour un ensemencement réaliste et déterministe. On réutilise
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import replace
 
@@ -21,6 +22,7 @@ from application.classements import ServiceClassement
 from application.erreurs import (
     DerouleCyclique,
     DuelDesynchronise,
+    PhaseEnPause,
     PhaseIntrouvable,
     PhasePasUnTableau,
 )
@@ -35,7 +37,7 @@ from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.erreurs import EffectifTableauInvalide, MatchNonJouable
 from domain.forfait import Forfait, NatureForfait
 from domain.inscription import Inscription
-from domain.phase import IssueTour, Phase, SourcePhase, TypePhase
+from domain.phase import IssueTour, Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -752,3 +754,99 @@ def test_brancher_un_lecteur_pour_un_type_non_delegue_est_refuse() -> None:
     # y brancher un lecteur serait tout aussi mort, et le message doit le dire.
     with pytest.raises(ValueError, match="n'attend aucun lecteur"):
         service.brancher_lecteur(TypePhase.ELIMINATION_DIRECTE, _LecteurMuet())  # type: ignore[arg-type]
+
+
+# ─────────────── E05US033 : le gel d'une phase de tableau en pause ─────────────── ⚠️ **Le gel des
+# duels n'avait aucun oracle** à la première livraison, alors que l'élimination directe est le
+# format le plus courant d'un tournoi de salle — seule la qualification était testée (relevé par
+# l'axe B). Et la garde d'origine était **trop large** : elle coupait un duel du tour suivant déjà
+# engagé, ce que l'axe adversarial a relevé.
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Fait passer le tableau du monde en pause, comme le ferait un arrêt programmé."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_valider_un_duel_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la validation fait avancer le braquet, donc le tour : elle est gelée.
+
+    C'est le geste qui, seul, franchit une frontière de tour (`AvancementTour` ne compte que les
+    duels tranchés **et** validés). Le geler suffit à arrêter la progression de la phase.
+    """
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("10", "10", "9"))
+    monde.inscrire_classe(("10", "9", "9"))
+    monde.inscrire_classe(("9", "9", "9"))
+    service = monde.service()
+    for manche in (1, 2, 3):
+        service.saisir_manche(
+            monde.tournoi_id,
+            monde.phase_id,
+            1,
+            manche,
+            tuple(ZoneScore(v) for v in ("10", "10", "10")),
+            tuple(ZoneScore(v) for v in ("6", "6", "6")),
+        )
+    _mettre_en_pause(monde)
+
+    with pytest.raises(PhaseEnPause):
+        service.valider(monde.tournoi_id, monde.phase_id, 1, "DURAND")
+
+
+def test_saisir_une_manche_d_un_duel_engage_reste_possible_pendant_la_pause() -> None:
+    """CA E05US033 — *« personne n'est coupé en plein tir »*, et pas seulement pour le créneau.
+
+    ⚠️ **Oracle de non-garde, né d'un correctif de revue** (axe adversarial). La première rédaction
+    gardait aussi `saisir_manche` : or `_match_saisissable` rend un match jouable dès que ses deux
+    occupants sont connus, donc des quarts se tirent pendant que les derniers huitièmes finissent.
+    Quand le dernier huitième était validé, l'arrêt figeait la phase et le scoreur ne pouvait **ni
+    finir ni rectifier** le quart en cours.
+
+    La justification d'origine était fausse en plus d'être trop large : elle disait « les duels
+    n'ont aucun chemin de correction », alors que `saisir_manche` se documente « Saisit (**ou
+    réédite**) une manche ». C'en est un.
+    """
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("10", "10", "9"))
+    monde.inscrire_classe(("10", "9", "9"))
+    monde.inscrire_classe(("9", "9", "9"))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    etat = service.saisir_manche(
+        monde.tournoi_id,
+        monde.phase_id,
+        1,
+        1,
+        tuple(ZoneScore(v) for v in ("10", "10", "10")),
+        tuple(ZoneScore(v) for v in ("6", "6", "6")),
+    )
+
+    assert etat is not None, "un duel engagé doit pouvoir aller à son terme"
+
+
+def test_le_tableau_reste_lisible_pendant_la_pause() -> None:
+    """Oracle de non-garde : la pause gèle l'écriture, **jamais** la lecture.
+
+    ⚠️ C'est la raison pour laquelle la garde n'est pas dans `_decor`, qui est le passage obligé des
+    écritures **et** des sept lectures. L'y poser — la simplification tentante — rendrait le tableau
+    illisible pendant la pause : le pilotage, l'écran de salle et l'affichage public tomberaient
+    tous les trois, au moment précis où l'organisateur a besoin de voir où il en est. Ce test
+    l'interdit.
+    """
+    monde = _Monde()
+    monde.inscrire_classe(("10", "10", "10"))
+    monde.inscrire_classe(("10", "10", "9"))
+    monde.inscrire_classe(("10", "9", "9"))
+    monde.inscrire_classe(("9", "9", "9"))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    etat = service.etat_tableau(monde.tournoi_id, monde.phase_id)
+
+    assert etat.duels, "le tableau doit rester consultable pendant la pause"

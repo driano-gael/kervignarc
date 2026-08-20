@@ -141,10 +141,19 @@ def avancement_bloc(
     que cette US supprime, et le repli `else 1` ne joue que quand le lecteur est **absent**. Les
     deux gardes ont été posées sur relevé de revue (axes B, C1).
 
-    ⚠️ **Limite connue** : une phase **en tableau** dont la tranche d'entrée est indéterminable
-    (plusieurs sources) ne produit aucun braquet et retombe donc sur `1`, ce qui est faux — elle en
-    compte autant que son arbre. Sans effet visible aujourd'hui (`nb_tours` n'est rendu par aucun
-    écran), mais `E05US033` consommera ce champ : à reprendre là-bas, où le besoin le nommera.
+    ⚠️ **`# DETTE-074` — limite connue, et elle a désormais un effet.** Une phase **en tableau**
+    dont la tranche d'entrée est indéterminable (plusieurs sources, ADR-0061) ne produit aucun
+    braquet et retombe donc sur `1`, ce qui est faux : elle en compte autant que son arbre.
+    E05US032 notait ici « sans effet visible aujourd'hui » et déléguait la reprise à
+    `E05US033`. Cette US-là a bien consommé le champ — le déclencheur d'arrêt lit ce couple
+    `(1, None)` comme « avancement inconnu » et refuse de couper — mais **ne l'a pas
+    reprise** : un arrêt programmé sur un tel tableau est donc accepté à l'atelier et jamais
+    déclenché. Le repli reste **sûr** (on ne coupe pas au mauvais moment) mais il est
+    **silencieux**, et c'est ce qui en fait une dette majeure.
+
+    ⚠️ **Le lieu compte** : cette limite a vécu dans cette seule docstring, déléguée d'une US à
+    la suivante, et personne ne l'a reprise — une dette qui n'est pas au registre n'a aucun
+    porteur. Elle y est maintenant : cf. `docs/dette.md`, `DETTE-074`.
     """
     remplis = tuple(
         AvancementTour(

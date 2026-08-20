@@ -472,6 +472,59 @@ class DerouleEtapeORM(Base):
     config: Mapped[str] = mapped_column(nullable=False)
 
 
+class FranchissementArretORM(Base):
+    """Table `franchissement_arret` — ce qu'un **arrêt programmé** a coupé (E05US033, [ADR-0091]).
+
+    ⚠️ **Cette table ne porte pas les arrêts eux-mêmes**, et la séparation est le cœur de l'ADR. La
+    *définition* d'un arrêt (« après le tour 3, portée départ ») vit dans `deroule_etape.config`, en
+    JSON, donc **sans migration de schéma** (ADR-0046) : c'est du déroulé, défini une fois par
+    tournoi et rejoué par chaque créneau (ADR-0076). Ici ne vit que l'**avancement** : cet arrêt-là
+    a-t-il coupé, dans ce créneau-ci, et l'admin l'a-t-il relevé.
+
+    C'est le **seul état persisté** du mécanisme — tout le reste de l'avancement étant recalculé à
+    la lecture (ADR-0090 §5) — et il faut dire pourquoi celui-ci fait exception : la condition de
+    déclenchement est **monotone**. Une fois le tour 2 achevé, « le tour 2 est achevé et un arrêt
+    est posé après le tour 2 » reste vrai indéfiniment ; un déclencheur qui la relirait sans mémoire
+    remettrait la phase en pause à chaque reprise, et l'organisateur perdrait la main
+    définitivement.
+
+    `phase_id` est la phase **déclenchante**, et `apres_tour` désigne l'arrêt dans la définition de
+    son étape : le couple porte donc l'unicité. `phases_arretees` est un tableau JSON d'identifiants
+    de phases — celles que cet arrêt a effectivement mises en pause, et donc celles que le geste de
+    relance rendra. Les déduire à la reprise (« toutes les phases en pause du créneau ») relancerait
+    aussi une phase suspendue à la main pour une autre raison.
+
+    `tours_a_finir` est la photo, prise à l'armement d'un arrêt de portée **départ**, du tour que
+    chaque autre phase avait en cours — c'est ce qui permet à chacune de *finir son tour* avant de
+    s'arrêter (arbitrage du commanditaire, 18/08/2026).
+
+    [ADR-0091]: ../../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    """
+
+    __tablename__ = "franchissement_arret"
+    # Un arrêt ne se franchit qu'une fois par créneau : c'est l'idempotence du déclencheur, tenue
+    # par le schéma et pas seulement par le service. Deux tablettes qui valident dans la même
+    # seconde ne peuvent donc pas produire deux franchissements du même arrêt.
+    __table_args__ = (
+        UniqueConstraint("phase_id", "apres_tour", name="uq_franchissement_phase_tour"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 : FK sans ON DELETE CASCADE — descendant du départ par la phase, même politique de
+    # suppression non tranchée que le reste de la descendance du tournoi ; ne pas contourner ici.
+    phase_id: Mapped[int] = mapped_column(ForeignKey("phase.id"), nullable=False)
+    apres_tour: Mapped[int] = mapped_column(nullable=False)
+    etat: Mapped[str] = mapped_column(nullable=False)
+    # Deux documents JSON plutôt que deux tables d'association : les volumes sont de l'ordre de
+    # quelques lignes par créneau, rien ne les interroge autrement que « pour cet arrêt », et la
+    # règle 12 (« l'infra reste simple : mono-club, local ») dit où mettre la rigueur.
+    # `server_default` et non `default` : c'est la convention du fichier partout où la migration en
+    # pose un, et l'écart faisait diverger le schéma des métadonnées de celui que produit Alembic
+    # (`0048` déclare bien `server_default`). Relevé en revue (axe A).
+    tours_a_finir: Mapped[str] = mapped_column(nullable=False, server_default="{}")
+    phases_arretees: Mapped[str] = mapped_column(nullable=False, server_default="[]")
+
+
 class ScoreurORM(Base):
     """Table `scoreur` — persistance de l'agrégat `Scoreur` (E10US003).
 

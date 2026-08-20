@@ -160,7 +160,9 @@ def test_une_phase_sans_braquet_compte_un_tour_plutot_que_zero(
 
     C'est le défaut que l'US corrige : `nb_tours` se dérivait des braquets, donc toute phase hors
     tableau s'affichait à zéro tour. Un est **vrai** — la phase entière en est un — et le réglage
-    « diviser en x tours » arrive avec `E05US033`, là où il sert.
+    « diviser en x tours » arrive avec `E05US034` (annoncé pour `E05US033`, reporté d'une tranche le
+    19/08/2026 : lire l'avancement réel d'une qualification demande sa population, son plan de
+    cibles et ses forfaits).
     """
     with TestClient(app_session) as client:
         tournoi_id = _tournoi(client, connecter_admin)

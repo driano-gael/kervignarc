@@ -33,6 +33,11 @@ from application.erreurs import (
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
+)
 from application.portee import (
     la_plus_avancee,
     la_plus_courante,
@@ -173,6 +178,10 @@ class ServiceSaisie:
         self._forfaits = forfaits
         self._horloge = horloge
         self._populations = populations
+        # E05US033 : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # (`application.gel_de_pause`). Construit sans argument et **inerte** tant que le
+        # composition root n'y a rien branché — donc les décors de test existants sont inchangés.
+        self._arrets = DeclencheurArrets()
 
     def archers_du_poste(
         self, tournoi_id: TournoiId, cible_index: int, depart_id: DepartId
@@ -341,6 +350,7 @@ class ServiceSaisie:
         archer = self._charger_archer(tournoi_id, archer_id, contexte)
         zones = self._zones_du_blason(archer)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
         assert phase.bareme is not None, "Une qualification porte toujours un barème (ADR-0045 §2)."
         serie = self._feuille(tournoi_id, archer_id, phase)
         serie = serie.saisir_volee(
@@ -374,6 +384,7 @@ class ServiceSaisie:
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
+        refuser_si_en_pause(phase)
         assert (
             phase.bareme is not None and phase.validation is not None
         ), "Une qualification porte toujours barème et grain (ADR-0045 §2)."
@@ -388,7 +399,10 @@ class ServiceSaisie:
             horodatage=self._horloge.maintenant(),
             objet=f"série de qualification de l'archer {archer_id}",
         )
-        return self._series.enregistrer_avec_trace(serie, entree)
+        enregistree = self._series.enregistrer_avec_trace(serie, entree)
+        # Le résultat est **écrit** : c'est maintenant qu'un tour peut être achevé (E05US033).
+        self._arrets.signaler(phase.depart_id)
+        return enregistree
 
     def corriger_volee(
         self,
@@ -428,6 +442,10 @@ class ServiceSaisie:
             apres=_valeurs_lisibles(serie, numero),
         )
         return self._series.enregistrer_avec_trace(serie, entree)
+
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
+        self._arrets.brancher(evaluateur)
 
     def _charger_archer(
         self, tournoi_id: TournoiId, archer_id: ArcherId, contexte: ContexteSaisie | None

@@ -48,6 +48,12 @@ export function useAvancementPhases(departId: number | null) {
     queryKey: cleAvancement(departId ?? 0),
     queryFn: () => getAvancement(departId as number),
     enabled: departId !== null,
+    // ⚠️ **Poll ajouté par E05US033** (correctif de revue, axe C1). Depuis cette US, le statut d'une
+    // phase change **sans geste d'admin** : un arrêt programmé la met en pause à la faveur d'une
+    // validation faite ailleurs, par un scoreur, sur une tablette. Sans poll, le pilotage continuait
+    // d'afficher « En cours » et de proposer « Mettre en pause » sur une phase déjà arrêtée. Même
+    // cadence que le suivi et les arrêts, pour la même raison.
+    refetchInterval: 10000,
   })
 }
 

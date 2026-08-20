@@ -292,6 +292,47 @@ class ServiceSuiviDeroule:
             avancement=AvancementDeroule(blocs=blocs),
         )
 
+    def avancement_par_phase(self, depart_id: DepartId) -> dict[PhaseId, AvancementDePhase]:
+        """Où en est chaque phase de ce créneau, **par identifiant de phase** (E05US033).
+
+        Réalise le port `LecteurAvancementDuDepart` d'`application.arrets_programmes`. Deux raisons
+        pour que cette couture vive **ici** plutôt que dans le service qui la consomme :
+
+        - c'est le seul endroit du projet qui sait répondre pour **tous** les formats. Les poules,
+        le
+          suisse et le Big Shoot Off répondent par le port `LecteurAvancementDePhase` ;
+          l'élimination directe — le format le plus courant d'un tournoi de salle — n'a **aucun**
+          lecteur branché et voit son avancement reconstruit sur place à partir des braquets
+          (`_duels_tranches`). Un consommateur qui interrogerait le port par phase laisserait donc
+          les tableaux hors du mécanisme d'arrêt, sans que rien ne rougisse ;
+        - `avancement_bloc` réconcilie déjà les deux sources et porte la règle « `nb_tours` n'est
+        pas
+          `len(tours)` » (ADR-0090). La refaire ailleurs ouvrirait un second calcul du tour courant.
+
+        ⚠️ **La clé change de nature au passage** : `AvancementBloc` est indexé par `ordre` (le rang
+        dans la séquence), qui n'a de sens qu'à l'intérieur d'un créneau ; les arrêts, eux,
+        s'attachent à des `PhaseId`. La jointure se fait ici, une fois, plutôt que chez chaque
+        appelant — trois alias d'`int` (`DETTE-044`) rendent cette confusion parfaitement
+        silencieuse.
+
+        Une phase sans identifiant persisté est écartée : elle n'existe pas encore pour un arrêt.
+        """
+        suivi = self.pour_depart(depart_id)
+        par_ordre = {
+            phase.ordre: phase.id
+            for phase in self._phases.par_depart(depart_id)
+            if phase.id is not None
+        }
+        avancements: dict[PhaseId, AvancementDePhase] = {}
+        for bloc in suivi.avancement.blocs:
+            phase_id = par_ordre.get(bloc.ordre)
+            if phase_id is None:
+                continue
+            avancements[phase_id] = AvancementDePhase(
+                nb_tours=bloc.nb_tours, tour_courant=bloc.tour_courant
+            )
+        return avancements
+
     def _avancement_lu(self, tournoi_id: TournoiId, phase: Phase) -> AvancementDePhase | None:
         """Ce que le service du format dit de l'avancement de cette phase, ou `None`.
 

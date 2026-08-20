@@ -544,9 +544,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **116 US livrées** sur `main` (mergées, revues, CI verte) à la date du 18/08/2026, la dernière
-  étant `E05US032` — **chaque phase dit où elle en est**, dans le mot de son format (« Demi-finale »,
-  « Ronde 3 », « Manche 2 »), là où le suivi ne savait le dire que d'un tableau. **`SUIVI-US.md` fait
+- **117 US livrées** sur `main` (mergées, revues, CI verte) à la date du 19/08/2026, la dernière
+  étant `E05US033` — **la salle peut s'arrêter** : l'organisateur programme ses pauses à l'atelier,
+  et un bouton relance tout ce qu'une pause a coupé. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -685,6 +685,35 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **La salle peut s'arrêter, et repartir d'un bouton (19/08/2026, E05US033).** Une phase de tournoi
+  peut durer des heures, et jusqu'ici elle enchaînait ses tours toute seule jusqu'au bout : pour
+  couper — le repas, une réorganisation de salle, une annonce —, il n'y avait aucun geste prévu.
+  L'organisateur prépare désormais **son planning de journée à l'atelier** : « pause après le tour 2,
+  pause après le tour 5 », autant qu'il en veut, sur chaque phase. Chaque pause porte une **portée** :
+  *cette phase seule*, ou *tout le créneau*. Le moment venu, la salle s'arrête **d'elle-même** — les
+  archers concernés lisent « en attente » sur leur tablette au lieu de recevoir une cible — et un
+  administrateur la relance **d'un seul bouton**, qui rend d'un coup toutes les phases qu'une même
+  pause avait coupées. Ensuite, tout repart en automatique jusqu'à la pause suivante.
+  Trois points méritent d'être connus. **Une pause de créneau ne coupe personne en plein tir** :
+  chaque phase finit d'abord le tour qu'elle a en cours, si bien que la salle s'éteint en quelques
+  minutes plutôt que d'un coup — personne ne se retrouve l'arc levé. **Corriger un score reste
+  possible pendant la pause** : c'est justement le moment où l'on relit les feuilles et où l'on
+  découvre un 9 pris pour un 10 ; l'interdire aurait obligé à relancer toute la salle pour rectifier
+  une flèche. Et **une phase sans pause programmée se comporte exactement comme avant** — rien ne
+  change pour un tournoi qui n'en veut pas. Enfin, **les pauses se posent là où l'application sait
+  compter les tours** — tableaux d'élimination directe, poules, système suisse, Big Shoot Off : ailleurs
+  l'écran l'annonce et n'offre pas le réglage, plutôt que d'accepter une pause qui ne partirait jamais.
+  ⚠️ **Un défaut ancien a été trouvé en préparant cette US, et il valait d'être dit** : le bouton
+  « mettre en pause » d'une phase existait depuis longtemps et **n'arrêtait rien du tout** — les
+  archers continuaient de tirer, les scoreurs de valider. La pause n'était qu'un mot affiché. C'est
+  désormais réparé pour une phase ; le même bouton **au niveau du tournoi** reste, lui, décoratif, et
+  c'est inscrit au registre des points à traiter. ⚠️ **Ce qui manque encore, et qui est prévu tout de
+  suite après** : ni le public ni l'écran de salle ne *disent* qu'il s'agit d'une pause (un spectateur
+  pourrait la lire comme une panne), et rien ne rappelle à l'organisateur qu'une phase attend sa
+  relance. La **qualification** ne peut pas encore porter de pause non plus. C'est `E05US034`, à livrer
+  **avant** de se servir des pauses un jour de compétition.
+  Décision d'architecture :
+  [ADR-0091](../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md).
 - **Chaque phase dit où elle en est (18/08/2026, E05US032).** L'écran de suivi annonçait « on
   attaque les quarts » sur un tableau d'élimination directe, et **rien** sur tout le reste — une
   qualification, des poules, un système suisse, un Big Shoot Off apparaissaient avec leur état mais
@@ -694,7 +723,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   **avancer** et **classer**, comptant les tours d'une phase à partir des rangs que chaque tour
   distribue — ce qui ne marche que pour un tableau. Première moitié d'une demande du jour même :
   décider quand la salle repart plutôt que la voir enchaîner seule pendant des heures ; la seconde
-  (programmer les pauses, relancer d'un bouton) est `E05US033`. Décision d'architecture :
+  (programmer les pauses, relancer d'un bouton) a été livrée le lendemain par `E05US033`. Décision d'architecture :
   [ADR-0090](../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md).
 - **Le public voit ce qui se joue, quel que soit le format (18/08/2026, E05US031).** Trois formats
   — les poules, le Big Shoot Off et le système suisse — étaient jouables de bout en bout depuis des

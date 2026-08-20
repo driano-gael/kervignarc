@@ -140,6 +140,27 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
   'suisse',
 ])
 
+// Les types sur lesquels une **pause programmée** peut se poser (E05US033, ADR-0091). Miroir de
+// `TYPES_DEROULES` côté domaine (`domain/contrat_phase.py`), dérivée là-bas du contrat de phase.
+//
+// Un arrêt coupe le déroulé à une frontière de tour **observée** : le déclencheur demande le tour
+// courant au service qui déroule la phase. Les types qu'aucun service ne déroule — la qualification,
+// l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à observer, et le serveur
+// **refuse** l'arrêt (`ArretProgrammeInvalide`, 422). L'écran évite donc de le proposer, et dit
+// pourquoi plutôt que de laisser l'organisateur buter sur un refus à la soumission.
+//
+// ⚠️ **Écrite en positif**, comme `MOTEUR_SAIT_JOUER` et pour la même raison : cette liste ne fait
+// que **s'allonger** (E05US034 y ajoutera la qualification). Un oubli d'ajout prive l'organisateur
+// d'un réglage que le serveur accepterait — pessimiste, donc rattrapable ; l'écrire en négatif
+// aurait fait offrir un réglage que le serveur refuse, ce qui casse la soumission entière (le `PUT`
+// est une édition **totale**).
+export const TYPES_ARRETABLES: ReadonlySet<TypePhase> = new Set([
+  'elimination_directe',
+  'poules',
+  'big_shoot_off',
+  'suisse',
+])
+
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).
 //
 // `un_vers_n` joue **tous** les rangs (placement intégral) ; `top_n` s'arrête au `jusqu_au`-ième,

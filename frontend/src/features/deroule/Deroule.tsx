@@ -25,6 +25,7 @@ import {
   LIBELLE_TYPE,
   MOTEUR_SAIT_JOUER,
   TOUS_LES_TYPES,
+  TYPES_ARRETABLES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
   TYPES_SIGNALES_EN_ECART,
@@ -59,6 +60,12 @@ import {
   versReglage as versReglageBso,
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
+import { ReglageArrets } from '../../shared/phases/ReglageArrets'
+import {
+  depuisEtape as depuisArrets,
+  estValide as arretsValides,
+  versArrets,
+} from '../../shared/phases/arrets'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -696,6 +703,8 @@ export function FormulaireEtape({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(etape?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
+  // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -713,6 +722,9 @@ export function FormulaireEtape({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
+  // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
+  const arretable = TYPES_ARRETABLES.has(type)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
@@ -722,7 +734,10 @@ export function FormulaireEtape({
     (enTableau && !estValide(profondeur)) ||
     (estPoules && !poulesValides(poules)) ||
     (estBigShootOff && !bsoValide(bigShootOff)) ||
-    (estSuisse && !suisseValide(suisse))
+    (estSuisse && !suisseValide(suisse)) ||
+    // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
+    // une liste vide, quoi qu'il reste dans l'état d'édition.
+    !arretsValides(arrets)
 
   const construire = (): Etape => ({
     ordre: etape?.ordre ?? etapesAmont.length + 1,
@@ -750,6 +765,9 @@ export function FormulaireEtape({
     // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
     // 422. Retyper la phase l'**efface** donc, au lieu de l'envoyer se faire recaler.
     suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+    // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
+    // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
+    arrets: arretable ? (versArrets(arrets) ?? []) : [],
   })
 
   return (
@@ -859,6 +877,11 @@ export function FormulaireEtape({
           effectif={effectifLu ?? effectifSimule}
         />
       )}
+
+      {/* E05US033 — montée **sans condition de type**, à la différence des fiches ci-dessus, mais
+          pour une autre raison : sur un type non arrêtable la fiche n'offre aucun champ et **dit
+          pourquoi**. */}
+      <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

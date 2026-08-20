@@ -72,6 +72,7 @@ from api.v1.tableaux import router as tableaux_router
 from api.v1.tournois import router as tournois_router
 from application.archers import ServiceArchers
 from application.archive import ServiceArchive
+from application.arrets_programmes import LecteurAvancementDuDepart, ServiceArretsProgrammes
 from application.audit import ServiceAudit
 from application.auth import ServiceAuth
 from application.bareme_qualification import ServiceBaremeQualification
@@ -89,6 +90,7 @@ from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
 from application.formats import ServiceFormats
 from application.gabarits import ServiceGabarits
+from application.gel_de_pause import EvaluateurArrets
 from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
@@ -158,6 +160,7 @@ from infrastructure.db import (
     DuelRepositorySQL,
     ForfaitRepositorySQL,
     FormatTournoiRepositorySQL,
+    FranchissementArretRepositorySQL,
     GabaritSalleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
@@ -260,6 +263,16 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
     # ⚠️ **La saisie se construit avant le placement** depuis E05US024 : le plan de cibles lui
     # emprunte sa résolution de classement amont, pour ensemencer exactement la population que
     # l'arbre fera jouer. L'ordre inverse ne compilait pas — c'est le typage qui l'a dit.
+    # ⚠️ **Aucun évaluateur d'arrêts n'est branché sur ce harnais, et c'est voulu** (E05US033,
+    # remarque de revue, axe A). Un bot de simulation ne doit pas se mettre en pause : la
+    # session est éphémère, il n'y a pas d'organisateur pour relancer, et une phase arrêtée
+    # bloquerait le
+    # scénario sans qu'aucun écran ne le dise.
+    #
+    # Conséquence à connaître, puisque le mode de panne « non branché = inerte » est réel
+    # (`DETTE-028`) : **une simulation d'un format à pauses ne reproduit pas le comportement de la
+    # salle** — elle joue le déroulé d'un bout à l'autre. Ce n'est pas un oubli de câblage, et c'est
+    # écrit ici précisément pour qu'un futur lecteur ne le prenne pas pour tel.
     saisie_duels = ServiceSaisieDuels(
         tournois,
         phases,
@@ -1142,6 +1155,8 @@ def create_app(
     # le commentaire d'origine affirmait le contraire (relevé en revue, axe A).
     #
     # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    # [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
+    # [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
     avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules
     avancement_de_suisse: LecteurAvancementDePhase = app.state.service_suisse
     avancement_de_big_shoot_off: LecteurAvancementDePhase = app.state.service_big_shoot_off
@@ -1154,6 +1169,59 @@ def create_app(
     app.state.service_suivi_deroule.brancher_lecteur_avancement(
         TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
     )
+
+    # --- Arrêts programmés (E05US033, [ADR-0091]) : « la salle s'arrête après ce tour, et repart
+    # quand je le dis ». Deux temps, et l'ordre compte.
+    #
+    # 1. Le service se monte **après** `service_suivi_deroule`, dont il consomme la couture
+    # d'avancement (`LecteurAvancementDuDepart`) : c'est le seul endroit qui sache répondre « quel
+    # tour tourne » pour tous les formats qui déclarent le leur. Il compose aussi `service_phases`
+    # plutôt que de muter les statuts lui-même — `mettre_en_pause` / `reprendre` sont les
+    # transitions gardées d'[ADR-0045], et un automate en double finit toujours par diverger.
+    #
+    # ⚠️ **Variables annotées, pas `app.state.*` passé directement** (correctif de revue, axe A).
+    # `app.state.*` rend `Any`, donc mypy n'apparie **rien** : la conformité au Protocol
+    # n'aurait été vérifiée par personne. C'est mot pour mot le défaut que le bloc précédent
+    # documente pour
+    # `LecteurAvancementDePhase`.
+    franchissement_arret_repository = FranchissementArretRepositorySQL(database.session_factory)
+    suivi_du_depart: LecteurAvancementDuDepart = app.state.service_suivi_deroule
+    cycle_de_vie_des_phases: ServicePhases = app.state.service_phases
+    app.state.service_arrets_programmes = ServiceArretsProgrammes(
+        phases=phase_repository,
+        deroules=deroule_repository,
+        departs=depart_repository,
+        franchissements=franchissement_arret_repository,
+        suivi=suivi_du_depart,
+        cycle_de_vie=cycle_de_vie_des_phases,
+    )
+    # 2. Le **déclencheur** se branche tardivement sur les services qui écrivent un résultat, sur le
+    # patron de `brancher_lecteur_avancement` juste au-dessus : eux seuls savent qu'un résultat
+    # vient d'être écrit, et ils sont construits avant celui-ci. Le branchement tardif rend le
+    # cycle
+    # **visible** ici plutôt que de le refermer en douce dans un constructeur.
+    #
+    # ⚠️ **Sans cette boucle, l'US est inerte** : les arrêts se programmeraient, se liraient, se
+    # relanceraient — et ne se déclencheraient jamais, faute d'un seul appel. C'est exactement le
+    # mode de panne de `DETTE-028` (six moteurs livrés, aucun appelé), d'où le test de composition
+    # de `tests/test_arrets_api.py`.
+    #
+    # ⚠️ **CINQ services, et pas deux.** La première rédaction ne branchait que la qualification et
+    # l'élimination directe, si bien qu'un arrêt posé sur des poules, un système suisse ou un Big
+    # Shoot Off ne se déclenchait **jamais** : ces phases tournent seules, donc aucune validation
+    # n'atteignait le déclencheur. Bloquant relevé par les quatre axes de revue, sur les formats
+    # mêmes que le CA vise (« une phase qui dure des heures »). Il n'existe aucun garde-fou
+    # automatique contre l'oubli d'un sixième — `DETTE-028` encore — c'est pourquoi le test nomme
+    # les cinq un par un.
+    evaluateur: EvaluateurArrets = app.state.service_arrets_programmes
+    for service_ecrivant in (
+        app.state.service_saisie,
+        app.state.service_saisie_duels,
+        app.state.service_poules,
+        app.state.service_suisse,
+        app.state.service_big_shoot_off,
+    ):
+        service_ecrivant.brancher_evaluateur_arrets(evaluateur)
 
     # --- Tableaux publics (E07US005) : « voir les arbres en direct », appli publique + écran de
     # salle. Lecture pure, **sans authentification**, montée sur le même `ServiceSaisieDuels` que

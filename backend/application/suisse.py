@@ -52,6 +52,11 @@ from application.erreurs import (
     RencontreIntrouvable,
     TournoiIntrouvable,
 )
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
+)
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
 from application.routage import RencontreARouter, RencontresARouter
@@ -220,6 +225,10 @@ class ServiceSuisse:
         # résolution de pavé (barème par arme, zones du blason). Même parti que `ServicePoules`, et
         # le sens de dépendance est sûr : `saisie_duels` ne connaît pas le suisse.
         self._saisie_duels = saisie_duels
+
+        # E05US033 : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # (`application.gel_de_pause`), inerte tant que le composition root n'y a rien branché.
+        self._arrets = DeclencheurArrets()
 
     # --- Lecture ---------------------------------------------------------------------------------
 
@@ -683,9 +692,40 @@ class ServiceSuisse:
         d'apparier par-dessus : c'est voulu, et c'est la règle de la reconstruction d'un tableau,
         qui ne rejoue lui aussi que les duels validés.
         """
-        return self._ecrire(
+        # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** : c'est
+        # un correctif de 2ᵉ passe de revue, relevé par trois axes au même endroit.
+        #
+        # `_ecrire` est le tronc commun des **trois** écritures. Y poser la garde gelait aussi
+        # `saisir_manche` et `saisir_barrage`, donc la **rectification** d'une rencontre engagée
+        # pendant la pause — le cul-de-sac que le contrat de `refuser_si_en_pause` interdit, et que
+        # l'axe adversarial avait déjà fait corriger sur les duels. Le CA est net : la pause gèle ce
+        # qui *avance*, jamais ce qui *répare*.
+        #
+        # Y poser le **signalement** faisait en outre payer la recomposition intégrale du
+        # créneau à chaque manche et chaque barrage, sur le thread du writer unique
+        # (règle 7, `DETTE-031`), pour
+        # un résultat structurellement identique : un tour n'avance que sur des rencontres
+        # **validées**. C'est l'erreur que la docstring de `ServiceSaisieDuels.valider` explique
+        # avoir évitée.
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is not None:
+            refuser_si_en_pause(phase)
+        rencontre = self._ecrire(
             tournoi_id, phase_id, numero, lambda duel, _bareme, _zones: duel.valider(scoreur)
         )
+        if phase is not None:
+            self._arrets.signaler(phase.depart_id)
+        return rencontre
+
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
+
+        ⚠️ **Ce branchement manquait à la première livraison**, et c'était un bloquant : le
+        déclencheur n'était appelé que depuis la qualification et l'élimination directe, si bien
+        qu'un arrêt programmé sur ce format ne se déclenchait **jamais** — la phase tournant seule,
+        aucune validation n'atteignait le déclencheur. Relevé par les quatre axes de revue.
+        """
+        self._arrets.brancher(evaluateur)
 
     def _ecrire(
         self,

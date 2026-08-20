@@ -19,10 +19,12 @@ oublierait de consommer les résultats rendrait le même appariement qu'à la ro
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from application.classements import ServiceClassement
-from application.erreurs import PhasePasReglee, PhasePasUnSuisse
+from application.erreurs import PhaseEnPause, PhasePasReglee, PhasePasUnSuisse
 from application.saisie_duels import ServiceSaisieDuels
 from application.suisse import ServiceSuisse
 from domain.archer import Archer
@@ -33,7 +35,7 @@ from domain.duel import ResolveurBaremeDuelFfta
 from domain.erreurs import DuelIncomplet
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -818,3 +820,60 @@ def test_une_phase_suisse_sans_population_ne_rend_pas_zero_tour() -> None:
     monde.regler(ConfigurationSuisse(nb_rondes=3))
 
     assert monde.service().avancement_de_phase(monde.tournoi_id, monde.phase_id) is None
+
+
+# ───────────────────────── E05US033 : le gel d'une phase en pause ─────────────────────────
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Met la phase au système suisse en pause, comme le ferait un arrêt programmé."""
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_valider_une_rencontre_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la pause **arrête ce qui avance** : ici, l'appariement de la ronde suivante.
+
+    ⚠️ **Cette garde manquait à la première livraison.** Le suisse est le format où la pause compte
+    le plus : la ronde suivante se **calcule** des résultats de la précédente, donc une validation
+    passée pendant la pause fait apparier une ronde que personne n'a demandée. Bloquant relevé par
+    les quatre axes de revue.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    for manche in (1, 2, 3):
+        service.saisir_manche(
+            monde.tournoi_id,
+            monde.phase_id,
+            1,
+            manche,
+            (ZoneScore("10"),) * 3,
+            (ZoneScore("6"),) * 3,
+        )
+    _mettre_en_pause(monde)
+
+    with pytest.raises(PhaseEnPause):
+        service.valider(monde.tournoi_id, monde.phase_id, 1, "scoreur")
+
+
+def test_rectifier_une_manche_pendant_la_pause_reste_possible() -> None:
+    """⚠️ **L'autre moitié du CA** : *« la correction reste possible pendant la pause »*."""
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationSuisse(nb_rondes=3))
+    service = monde.service()
+    _mettre_en_pause(monde)
+
+    rencontre = service.saisir_manche(
+        monde.tournoi_id,
+        monde.phase_id,
+        1,
+        1,
+        (ZoneScore("10"),) * 3,
+        (ZoneScore("6"),) * 3,
+    )
+
+    assert rencontre.duel is not None

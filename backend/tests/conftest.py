@@ -693,6 +693,10 @@ def poser_phase_factice(
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
+                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
     return phases.ajouter(
@@ -763,6 +767,10 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
+                # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
+                # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
+                # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
+                # décor d'arrêts écrit l'étape lui-même. Ne pas « réparer » cette absence.
             )
         )
     return PhaseRepositorySQL(session_factory).ajouter(

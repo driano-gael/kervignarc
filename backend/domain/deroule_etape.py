@@ -29,10 +29,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from domain.arret_programme import ArretProgramme, verifier_arrets
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.contrat_phase import TYPES_DEROULES
 from domain.depart import DepartId
-from domain.erreurs import ConfigurationBigShootOffInvalide, ConfigurationSuisseInvalide
+from domain.erreurs import (
+    ArretProgrammeInvalide,
+    ConfigurationBigShootOffInvalide,
+    ConfigurationSuisseInvalide,
+)
 from domain.grain_validation import GrainValidation
 from domain.phase import (
     Phase,
@@ -110,6 +116,20 @@ class EtapeDeroule:
     l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
     (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
 
+    arrets: tuple[ArretProgramme, ...] = ()
+    """Les **pauses programmées** de cette étape — après quel tour, jusqu'où (E05US033).
+
+    ⚠️ **Porté par l'étape, donc par le tournoi**, et la conséquence mérite d'être dite en clair :
+    **tous les départs du tournoi rejouent les mêmes arrêts.** C'est voulu, et c'est même le sens
+    d'ADR-0076 — un planning de journée est une propriété du *déroulé*, et deux créneaux libres de
+    diverger sur leurs pauses seraient exactement la divergence silencieuse que cet ADR a rendue
+    impossible. La conséquence pratique est bénigne : les créneaux d'un tournoi de salle enchaînent
+    le même programme, et la pause repas tombe au même endroit du déroulé pour chacun.
+
+    Ce qui **avance** — l'arrêt a-t-il coupé, l'admin l'a-t-il relevé — n'est pas ici : c'est un
+    `FranchissementArret`, propre au créneau, dans sa propre table (`domain.arret_programme`).
+    """
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
@@ -117,6 +137,54 @@ class EtapeDeroule:
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         self._verifier_convergence_du_big_shoot_off()
         self._verifier_rondes_appariables()
+        self._verifier_arrets_applicables()
+
+    def _verifier_arrets_applicables(self) -> None:
+        """Les arrêts programmés décrivent-ils des coupes que cette étape peut appliquer (E05US033).
+
+        **Même place et même raison que les deux vérifications ci-dessus** : un arrêt seul se juge à
+        son `__post_init__` (le tour 0 n'existe pas), mais un arrêt **face au type de la phase** est
+        une propriété du couple, et le type n'est connu qu'ici.
+
+        ⚠️ **Le nombre de tours, lui, n'est jamais connu à la composition** : il se lit du
+        terrain le jour J (braquets projetés, round-robin, rondes appariables selon
+        l'effectif, manches d'un Big Shoot Off). On passe donc `None` à `verifier_arrets`,
+        qui ne refuse alors que le doublon.
+        C'est la doctrine déjà tenue par les deux vérifications voisines — « on ne refuse pas ce
+        qu'on ne peut pas juger » —, et la reprendre évite d'inventer une seconde règle de silence.
+        """
+        # ⚠️ **Le refus vit ICI, pas seulement sur `Phase`** (correctif de revue, axe C1) :
+        # `ServicePhases.modifier` n'instancie **aucune phase**, si bien qu'un `PUT` posant un arrêt
+        # sur un type qui ne l'admet pas répondait **200** et persistait l'étape. Ensuite, chaque
+        # lecture de phase passe par `etape.instancier(...)`, qui lève — et le suivi, le pilotage et
+        # l'affichage public du créneau tombaient tous les trois en 422. Un tournoi rendu illisible
+        # par une entrée client qu'aucun agrégat porteur ne jugeait.
+        if not self.arrets:
+            return
+        # ⚠️ **Un arrêt n'est licite que sur un type dont l'application sait LIRE le tour** — c'est
+        # le périmètre arrêté par le commanditaire le 19/08/2026, en fin de revue.
+        #
+        # Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour
+        # courant au service qui déroule la phase. Les types qu'aucun service ne déroule — la
+        # qualification, l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à
+        # observer, et un arrêt posé dessus serait **accepté à l'atelier puis définitivement
+        # inerte le jour J** : l'organisateur découvrirait le jour de la compétition que sa
+        # pause repas n'a jamais eu lieu.
+        #
+        # ⚠️ **La qualification en faisait partie jusqu'en fin de revue**, avec un réglage « découper
+        # en x tours ». Les deux sont **sortis de la tranche** : dériver le tour d'une qualification
+        # demande de résoudre sa population réelle (deux qualifications peuvent coexister dans un
+        # créneau, ADR-0082), le plan de cibles et les forfaits — trois sujets que la tranche
+        # n'avait pas budgétés, et qui ont produit quatre bloquants de revue à eux seuls.
+        # Repris par
+        # `E05US034`. Un **refus explicite** vaut mieux qu'un réglage inerte.
+        if self.type not in TYPES_DEROULES:
+            raise ArretProgrammeInvalide(
+                f"Une phase de type « {self.type.value} » n'annonce pas ses tours : l'application "
+                "ne saurait pas quand y appliquer une pause. Les pauses se posent sur une "
+                "élimination directe, des poules, un système suisse ou un Big Shoot Off."
+            )
+        verifier_arrets(self.arrets, nb_tours=None)
 
     def _verifier_rondes_appariables(self) -> None:
         """À N participants, on ne peut pas apparier plus de N-1 rondes sans ré-affrontement.
@@ -180,6 +248,12 @@ class EtapeDeroule:
         C'est ici que `depart_id` et `statut` naissent : l'étape ne les portait pas. La phase
         obtenue est l'objet du moteur — elle porte la définition **recopiée en mémoire**, jamais
         persistée en double (ADR-0076).
+
+        ⚠️ **`arrets` n'est délibérément pas recopié**, et ce n'est pas un oubli : `Phase` ne porte
+        pas ce champ. Les arrêts programmés ne sont lus que par `ServiceArretsProgrammes`, qui
+        adresse le déroulé par rang ; les faire voyager ici ajouterait un champ que personne ne lit
+        et fermerait un cycle d'import (`phase` → `arret_programme` → `phase`). Le raisonnement
+        complet est sur `Phase.decoupage`, qui est le champ voisin ayant fait le choix inverse.
         """
         return Phase(
             depart_id=depart_id,

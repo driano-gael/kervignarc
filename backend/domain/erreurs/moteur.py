@@ -427,3 +427,25 @@ class PhaseSansSource(DomainError):
     """
 
     code = "phase_sans_source"
+
+
+class ArretProgrammeInvalide(DomainError):
+    """Un **arrêt programmé** ne décrit pas une coupe applicable (E05US033, ADR-0091).
+
+    Trois motifs, tous constatables à la composition :
+
+    - `apres_tour` < 1 — un arrêt « après le tour 0 » couperait la phase avant son premier tir ;
+      ce n'est pas une pause mais un refus de démarrer, qui a déjà son geste (ne pas la démarrer) ;
+    - deux arrêts après le **même** tour — le second est inapplicable, la phase étant déjà en
+      pause, et la portée ne les désambiguïse pas (le geste large contient le geste étroit) ;
+    - `apres_tour` ≥ le nombre de tours **quand celui-ci est connu** — l'arrêt est inerte, la phase
+      étant finie. Silencieux quand il ne l'est pas : un suisse réglé à 7 rondes n'en joue que 5 si
+      l'effectif ne permet pas plus, et l'atelier ne connaît pas toujours l'effectif. Même doctrine
+      qu'`EtapeDeroule._verifier_rondes_appariables` — on ne refuse pas ce qu'on ne peut pas juger.
+
+    Sert aussi de refus au **franchissement** qui reculerait (`ARME → FRANCHI → LEVE` est monotone,
+    comme le cycle de vie d'une phase, ADR-0045) : un franchissement réversible ferait de chaque
+    évaluation du déclencheur un tirage au sort.
+    """
+
+    code = "arret_programme_invalide"

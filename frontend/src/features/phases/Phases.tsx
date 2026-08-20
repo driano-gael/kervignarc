@@ -27,11 +27,19 @@ import {
 import {
   AIDE_TYPE,
   LIBELLE_TYPE,
+  TYPES_ARRETABLES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ReglageArrets } from '../../shared/phases/ReglageArrets'
+import {
+  ARRETS_PAR_DEFAUT,
+  depuisEtape as depuisArrets,
+  estValide as arretsValides,
+  versArrets,
+} from '../../shared/phases/arrets'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -394,6 +402,10 @@ export function FormulairePhase({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
+  // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
+  // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
+  // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
+  const [arrets, setArrets] = useState(depuisArrets(phase?.arrets))
   // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
   // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
   // le seul écran où « l'effectif du jour » du CA existe vraiment. Et comme `ServiceSuisse.etat`
@@ -477,13 +489,21 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
+  // se poser (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine). Le serveur refuse
+  // l'arrêt ailleurs (`ArretProgrammeInvalide`, 422) — et comme le `PUT` est une édition **totale**,
+  // c'est l'étape entière qui serait refusée, pas seulement le champ.
+  const arretable = TYPES_ARRETABLES.has(type)
   const soumissionPossible =
     sources !== 'invalide' &&
     !effectifInvalide &&
     !(enTableau && !estValide(profondeur)) &&
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
-    !(estSuisse && !suisseValide(suisse))
+    !(estSuisse && !suisseValide(suisse)) &&
+    // E05US033 : le contenu ne se juge que là où il est offert — une phase non arrêtable
+    // soumet une liste vide, quoi qu'il reste dans l'état d'édition.
+    !(arretable && !arretsValides(arrets))
 
   const soumettre = (evenement: React.FormEvent) => {
     evenement.preventDefault()
@@ -509,6 +529,13 @@ export function FormulairePhase({
       // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
       // 422 `configuration_suisse_invalide`.
       suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+      // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
+      // refusé en 422 `arret_programme_invalide`. Retyper la phase l'**efface** donc, comme les
+      // quatre réglages ci-dessus. ⚠️ C'est une **perte de planning assumée** : l'organisateur qui
+      // retype une phase de poules en qualification perd ses pauses. L'alternative — les conserver
+      // — ferait échouer l'enregistrement entier avec un message que l'écran ne sait pas rattacher
+      // au bon champ, ce qui est pire : il ne pourrait plus enregistrer du tout.
+      arrets: arretable ? (versArrets(arrets) ?? []) : [],
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -525,6 +552,7 @@ export function FormulairePhase({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
           setRangDebut('1')
@@ -600,6 +628,11 @@ export function FormulairePhase({
             maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
           />
         )}
+        {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
+            ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun
+            champ et **dit pourquoi**. La cacher laisserait chercher un réglage vu sur la phase
+            voisine sans jamais apprendre qu'il n'existe pas ici. */}
+        <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
         <label className="formulaire__tranche">
           <input
             type="checkbox"
@@ -700,6 +733,19 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         profondeur: phase.profondeur,
         // Même raison encore : réémis pour ne pas être effacé par une édition **totale**.
         poules: phase.poules,
+        // ⚠️ **E05US033, et c'est un bloquant que la revue a trouvé** (axe adversarial). Ce widget
+        // n'est rendu **que sur la qualification** — c'est-à-dire exactement le seul type dont le
+        // découpage est licite, et celui que la recette demande de doter d'une pause. Sans ces deux
+        // lignes, renseigner « barrage jusqu'au rang 8 » **effaçait tout le planning de journée** de
+        // l'étape, sans message et avec un `PUT` qui réussit.
+        //
+        // C'est la leçon de `barrage_jusqu_au` rejouée dans le widget dont le commentaire ci-dessus
+        // la raconte, et elle contredisait la promesse écrite dans le DTO côté serveur (« l'écran
+        // doit toujours renvoyer la liste complète, jamais un delta »).
+        arrets: phase.arrets,
+        // Trou **préexistant** fermé au passage : inoffensif sur la qualification (qui ne porte
+        // jamais de réglage de suisse), mais c'était le dernier champ non réémis de ce chemin.
+        suisse: phase.suisse,
       },
     })
   }

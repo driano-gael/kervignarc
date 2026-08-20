@@ -19,6 +19,7 @@ que le pilotage lit (le tableau reconstruit + le plan de duels persisté).
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import replace
 
@@ -1005,3 +1006,83 @@ def test_l_archer_etranger_a_la_phase_reste_indisponible() -> None:
     que l'emprunt d'`E05US026` brouillait.
     """
     assert _router_sans_rencontre(membre=False, epuisee=False).issue is IssueRoutage.INDISPONIBLE
+
+
+# ───────────────── E05US033 : ce que la pause change pour l'archer ─────────────────
+#
+# ⚠️ **Ce CA a été promu de « note » à CA dans `stories/` précisément parce qu'« un piège vérifié
+# sans oracle ne laisse aucune trace exécutable » — et il était resté sans oracle.** Relevé par
+# l'axe B de la revue.
+#
+# Rien n'aurait rougi si `_en_pause` disparaissait, ou si l'issue retombait à `INDISPONIBLE` : le
+# panneau dirait alors « ce n'est pas pour vous » à un archer qui doit simplement attendre. C'est la
+# différence entre « partez » et « restez à disposition ».
+
+
+def _mettre_en_pause(monde: _Monde) -> None:
+    """Fait passer la phase de tableau du monde en pause, comme le ferait un arrêt programmé."""
+    assert monde.phase_id is not None
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_une_phase_en_pause_route_l_archer_en_attente() -> None:
+    """CA E05US033 — *« pendant la pause, le routage dit "en attente" à l'archer »*.
+
+    L'issue `EN_ATTENTE` est **réutilisée** (E05US030) plutôt qu'une issue neuve : côté tablette, «
+    rien à tirer pour l'instant » est déjà rendu, et un état de plus aurait demandé un écran de plus
+    pour la même chose.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    _mettre_en_pause(monde)
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    for ligne in routage.archers:
+        assert ligne.issue is IssueRoutage.EN_ATTENTE
+        assert ligne.motif is not None and "pause" in ligne.motif.lower()
+        # Le panneau reste **nominatif** même dégradé : quatre lignes anonymes seraient illisibles.
+        assert ligne.nom
+
+
+def test_une_phase_en_pause_ne_fait_pas_tomber_le_routage_sur_une_autre_phase() -> None:
+    """Corollaire, et c'est le point délicat du correctif : l'archer reste rattaché à **sa** phase.
+
+    ⚠️ La garde est posée **après** la résolution de la phase, pas dans la sélection. Écarter les
+    phases en pause de la sélection aurait fait tomber le routage sur une *autre* phase du créneau —
+    ou sur `tableaux[-1]` — donc envoyé l'archer tirer ailleurs au lieu de lui dire d'attendre : un
+    défaut pire que celui qu'on corrige. La sélection dit *de quoi on parle*, pas *si ça tourne*.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    phase_en_pause = monde.phase_id
+    _mettre_en_pause(monde)
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    assert routage.phase_id == phase_en_pause
+
+
+def test_une_phase_en_cours_route_normalement_apres_la_reprise() -> None:
+    """Non-régression du couple : la garde ne doit pas survivre à la reprise.
+
+    Sans ce test, une garde écrite sur le mauvais statut (ou un `is not EN_COURS` au lieu d'un `is
+    EN_PAUSE`) resterait verte sur le test précédent tout en cassant tout le reste de la journée.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    _mettre_en_pause(monde)
+    assert monde.phase_id is not None
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_COURS))
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    for ligne in routage.archers:
+        assert ligne.issue is IssueRoutage.PROCHAIN_DUEL

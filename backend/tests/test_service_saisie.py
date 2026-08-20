@@ -17,6 +17,7 @@ import pytest
 from application.erreurs import (
     ArcherIntrouvable,
     BlasonIntrouvable,
+    PhaseEnPause,
     PhaseQualificationAbsente,
     SaisieHorsCible,
 )
@@ -31,7 +32,7 @@ from domain.erreurs import NumeroVoleeInvalide, ValeurHorsBlason
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
+from domain.phase import Phase, PhaseId, SourcePhase, StatutPhase, TypePhase
 from domain.placement import Affectation
 from domain.serie import Serie
 from domain.tournoi import TournoiId
@@ -786,3 +787,66 @@ def test_la_fourche_ne_retombe_pas_dans_le_premier_tour_reste_ouvert() -> None:
     assert m.series.par_archer(basse, autre) is not None
     assert m.series.par_archer(tete.id, m.archer_id) is None, "Rien n'atterrit dans le 1er tour."
     assert m.series.par_archer(tete.id, autre) is None
+
+
+# ─────────────── E05US033 : ce que la pause d'une phase gèle, et ce qu'elle laisse ───────────────
+
+
+def _mettre_la_phase_en_pause(montage: Montage) -> None:
+    """Met la qualification du montage en pause, comme le ferait un arrêt programmé."""
+    phase = montage.phases.par_id(montage.phase_id)
+    assert phase is not None
+    montage.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+
+def test_saisir_une_volee_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la pause **arrête le tir** : plus de résultat neuf sur cette phase.
+
+    ⚠️ **C'est un comportement neuf, pas une garde qui existait déjà.** Avant cette US,
+    `StatutPhase.EN_PAUSE` ne gelait rien : ce service ne regardait pas le statut de la phase,
+    et une phase « en pause » se saisissait exactement comme une phase en cours. La pause était un
+    libellé dans le suivi. Sans ce test, l'US aurait pu livrer un arrêt programmé qui n'arrête
+    personne.
+    """
+    montage = Montage()
+    _mettre_la_phase_en_pause(montage)
+
+    with pytest.raises(PhaseEnPause):
+        montage.service.saisir_volee(
+            montage.tournoi_id, montage.archer_id, 1, _v("10", "9", "8"), "DURAND"
+        )
+
+
+def test_valider_pendant_la_pause_est_refuse() -> None:
+    """CA E05US033 — la validation non plus : c'est elle qui ferait avancer le tour."""
+    montage = Montage()
+    montage.saisir_serie_complete()
+    _mettre_la_phase_en_pause(montage)
+
+    with pytest.raises(PhaseEnPause):
+        montage.service.valider(montage.tournoi_id, montage.archer_id, "MARTIN")
+
+
+def test_corriger_une_volee_pendant_la_pause_reste_possible() -> None:
+    """CA E05US033 — *« une correction de score reste possible pendant la pause »*.
+
+    ⚠️ **Arbitrage explicite du commanditaire (19/08/2026), et le test qui empêche le cul-de-sac.**
+    La pause gèle ce qui *avance*, jamais ce qui *répare* : c'est précisément quand la salle souffle
+    que l'on relit les feuilles et que l'on découvre un 9 pris pour un 10. Geler la correction
+    obligerait l'organisateur à relancer toute la salle pour corriger une flèche — puis à la
+    re-arrêter.
+
+    Le test est un **oracle de non-garde** : il échouerait si quelqu'un « harmonisait » les trois
+    écritures en posant le refus dans `_phase_qualification`, ce qui est exactement la
+    simplification tentante et fausse.
+    """
+    montage = Montage()
+    montage.saisir_serie_complete()
+    montage.service.valider(montage.tournoi_id, montage.archer_id, "MARTIN")
+    _mettre_la_phase_en_pause(montage)
+
+    serie = montage.service.corriger_volee(
+        montage.tournoi_id, montage.archer_id, 1, _v("10", "10", "10"), "ADMIN"
+    )
+
+    assert serie.volees[0].valeurs == _v("10", "10", "10")

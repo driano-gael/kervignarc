@@ -43,6 +43,8 @@ const PHASE: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: { nb_rondes: 5 },
+  // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
+  arrets: [],
 }
 
 /** Monte le formulaire avec l'état de la phase **déjà en cache** — c'est ce que fait l'écran réel,

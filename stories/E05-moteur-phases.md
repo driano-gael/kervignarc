@@ -1371,8 +1371,10 @@ pose le concept dont il aura besoin, et qui manque de toute façon au suivi.
 - **CA — le nombre de tours est dérivé quand la structure le détermine, et vaut 1 sinon.** Dérivé :
   élimination directe (braquets), poules (round-robin), suisse et colline (rondes réglées), Big Shoot
   Off (manches). **1 tour** : qualification et échauffement — rien dans « 20 volées » ne dit s'il y a
-  un ou quatre tours, c'est un **choix** de l'organisateur, et ce réglage est reporté à `E05US033`,
-  là où il sert. « 1 tour » est **vrai**, pas un trou : la phase entière est un tour.
+  un ou quatre tours, c'est un **choix** de l'organisateur, et ce réglage est reporté à `E05US034`
+  *(d'abord à `E05US033`, puis reporté d'une tranche le 19/08/2026 : le découper suppose de savoir lire
+  l'avancement réel d'une qualification, ce qui demande sa population, son plan de cibles et ses
+  forfaits)*. « 1 tour » est **vrai**, pas un trou : la phase entière est un tour.
 - **CA — le libellé affiché est le mot du métier, résolu par le type de phase.** « Demi-finale »
   (tableau), « Tour 3 » (poules), « Ronde 3 » (suisse, colline), « Manche 2 » (Big Shoot Off). Une
   phase à **un seul** tour n'annonce pas de numéro : il n'y a rien à distinguer.
@@ -1403,13 +1405,25 @@ pose le concept dont il aura besoin, et qui manque de toute façon au suivi.
 
 ### E05US033 — L'organisateur programme les pauses du déroulé
 
-*En tant qu'*organisateur, *je veux* prévoir à l'atelier — et ajuster le jour J — les moments où la
-salle s'arrête, *afin de* garder la main sur une phase qui dure plusieurs heures au lieu de la voir
-enchaîner toute seule jusqu'au bout.
+*En tant qu'*organisateur, *je veux* prévoir à l'atelier les moments où la salle s'arrête, *afin de*
+garder la main sur une phase qui dure plusieurs heures au lieu de la voir enchaîner toute seule
+jusqu'au bout.
 
 Origine : **cadrage du 18/08/2026**, seconde moitié de l'ancienne `E05US032`. Le besoin énoncé n'est
 pas « déclencher chaque tour à la main » mais « **pouvoir couper** » : une phase longue doit pouvoir
 s'interrompre pour le repas, une réorganisation de salle, une annonce.
+
+⚠️ **Périmètre réduit au cadrage du 19/08/2026 : cette US est la tranche A d'un découpage en deux.**
+La fiche portait **13 CA** traversant modèle persisté, migration, moteur d'avancement, routes admin,
+atelier, pilotage, tableau de bord et écran public — trop pour une branche (maille INVEST,
+§ Workflow). Le commanditaire a arbitré la coupe. Cette tranche livre **le mécanisme** : *la salle
+peut s'arrêter et se relancer*. La tranche B (`E05US034`) livre **la lisibilité** : *personne ne
+reste dans le noir*. Aucun CA n'a été supprimé — chacun est reversé dans l'une des deux fiches, et le
+compte se vérifie **puce par puce** : 10 ici, 6 là, 16 pour 13 d'origine — les trois de plus sont
+deux notes « piège à vérifier » promues en CA, plus le CA du découpage passé de A à B **en fin de
+revue** (l'un remplacé ici par le refus par type, l'autre ajouté là-bas). Ce recomptage n'est pas un
+ornement : c'est la leçon qu'`E05US032` a laissée derrière elle en effaçant deux CA sans trace
+(cf. `E05US034`).
 
 - **CA — l'enchaînement automatique reste le défaut.** Une phase sans arrêt programmé se comporte
   **exactement** comme aujourd'hui. C'est ce qui rend la livraison sûre : aucune phase en cours le
@@ -1425,8 +1439,6 @@ s'interrompre pour le repas, une réorganisation de salle, une annonce.
   **pas simultané** : si l'arrêt tombe à la fin du tour 3 des poules, la qualification finit ses
   volées en cours et le duel engagé va à son terme. Personne n'est coupé en plein tir ; la salle
   s'éteint en quelques minutes, pas d'un coup. *(Arbitrage du commanditaire, 18/08/2026.)*
-- **CA — le jour J, l'organisateur pose un arrêt relatif** depuis le pilotage : « bloquer dans
-  x tours ». Il s'ajoute aux arrêts programmés, il ne les remplace pas.
 - **CA — un arrêt atteint met la phase en pause toute seule**, sur le statut **existant**
   `StatutPhase.EN_PAUSE` ([ADR-0045](../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md) §1).
   On n'invente pas une notion parallèle d'« arrêtée » à côté du cycle de vie : c'est le déclencheur
@@ -1434,18 +1446,88 @@ s'interrompre pour le repas, une réorganisation de salle, une annonce.
 - **CA — la reprise est un geste manuel d'un admin**, et un arrêt de portée « départ » se relance
   **d'un seul geste** pour toutes les phases qu'il a arrêtées. Quatre boutons pour un seul arrêt
   créerait exactement le piège qu'on cherche à éviter — en oublier une.
-- **CA — après reprise, la phase repart en automatique jusqu'au prochain arrêt**, programmé ou posé
-  en cours de journée. Le pilotage tour par tour reste donc possible sans second mode : il suffit de
-  programmer un arrêt à chaque tour.
+- **CA — après reprise, la phase repart en automatique jusqu'au prochain arrêt.** Le pilotage tour
+  par tour reste donc possible sans second mode : il suffit de programmer un arrêt à chaque tour.
+- **CA — une correction de score reste possible pendant la pause.** `EN_PAUSE` gèle la **validation**
+  d'une rencontre nouvelle ; il ne doit pas geler la **rectification** d'un score déjà saisi, sinon
+  la pause devient un cul-de-sac en salle — précisément le moment où l'on découvre les erreurs.
+  *(Était une note « piège à vérifier » ; promue en CA, parce qu'un piège vérifié sans oracle ne
+  laisse aucune trace exécutable.)*
+- **CA — pendant la pause, le routage dit « en attente » à l'archer.** L'issue `EN_ATTENTE` existe
+  depuis `E05US030` : elle se réutilise plutôt que de s'inventer. *(Même promotion : c'était une
+  note.)*
+- **CA — un arrêt ne se pose que sur un type dont l'application sait lire le tour** : élimination
+  directe, poules, système suisse, Big Shoot Off. Ailleurs — qualification, échauffement, barrage,
+  placement, colline — l'atelier **refuse** l'arrêt en disant pourquoi et où les pauses se posent.
+  ⚠️ **CA né de l'arbitrage du 19/08/2026, en fin de revue**, et il remplace « la qualification
+  devient divisible en tours » (avec son réglage « 20 volées en 2 tours de 10 »), qui part en
+  `E05US034`. La raison n'est **pas** un renoncement au besoin mais un budget de tranche : dériver le
+  tour d'une qualification demande de résoudre sa **population réelle** — deux qualifications peuvent
+  coexister dans un créneau (la « fourche », [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md)),
+  donc « les archers de cette phase » n'est pas « les inscrits du créneau » —, puis le **plan de
+  cibles** et les **forfaits**. Trois sujets non budgétés, qui ont produit à eux seuls quatre des six
+  bloquants de la seconde passe de revue.
+  ⚠️ **Ce que la première livraison a appris, et qui vaut d'être gardé** : le réglage de découpage
+  avait été livré **inerte** — écrit, validé, sérialisé, exposé en DTO, éditable dans deux écrans, et
+  lu par personne. C'est le mode de panne `DETTE-028` reproduit dans l'US qui le cite en garde-fou,
+  relevé par les cinq axes de revue. Un **refus explicite** vaut mieux qu'un réglage inerte : c'est le
+  principe que ce CA applique.
+  ⚠️ **L'échauffement, lui, ne revient pas par ce report.** Son contrat de phase le déclare sans décor
+  de saisie ni plan de cibles : il n'a **ni barème ni feuille de marque**, donc il n'existe *rien* dont
+  dériver un tour. Ce n'est pas un manque d'implémentation mais une **absence de donnée**, et il
+  faudra un choix métier (une horloge ? un geste d'organisateur ?) avant toute plomberie.
+- ⚠️ **ADR requis** : portée et sémantique de l'arrêt programmé (ce qu'il gèle, ce qu'il laisse
+  finir, ce que « toutes les phases » recouvre, et où s'insère le déclencheur dans le contrat de
+  phase d'ADR-0083).
+- ⚠️ **Angle mort assumé de la tranche A livrée seule** : l'organisateur peut arrêter la salle, mais
+  ni le public ni l'écran de salle ne **disent** que c'est une pause, et rien ne lui rappelle qu'une
+  phase attend sa relance. C'est tolérable parce qu'il vient lui-même de programmer l'arrêt et se
+  tient devant le pilotage — ce n'est **pas** tolérable le jour J. `E05US034` doit donc être livrée
+  **avant tout déploiement réel** de cette capacité. À ne pas laisser filer dans la file.
+- 🔭 **Évolution prévue, hors périmètre : le planning horaire de journée** (« pause repas
+  12h–13h30 », l'application calculant quel tour tombe avant). Le commanditaire l'annonce comme
+  besoin **futur** — le besoin d'aujourd'hui s'arrête à « après le tour n ». **On ne généralise donc
+  pas le déclencheur maintenant** : un déclencheur polymorphe posé sur une évolution *supposée* est
+  exactement ce que le § *Dette* interdit (remède structurel sur preuve dans le code du jour, 3ᵉ
+  occurrence réelle — ici il y en a **une**). L'ADR de cette US **nomme** l'évolution pour que le
+  jour où elle arrive, on sache que le point d'extension attendu est le **déclencheur**, et non la
+  portée ni l'effet.
+- **Dépend de** : `E05US032` · **Jalon** : J3 · **Origine** : cadrage du 18/08/2026 ·
+  **Périmètre arrêté** : cadrage du 19/08/2026
+
+---
+
+### E05US034 — La pause se voit, et se pose en cours de journée
+
+*En tant qu'*organisateur *et* spectateur, *je veux* que l'arrêt de la salle soit **annoncé** et que
+je puisse en poser un sans avoir tout prévu à l'atelier, *afin de* ne jamais laisser croire à une
+panne ni oublier une phase en attente.
+
+Origine : **cadrage du 19/08/2026**, tranche B du découpage d'`E05US033`. Elle ne rouvre pas le
+mécanisme : elle le rend **lisible** et **ajustable le jour J**.
+
+- **CA — le jour J, l'organisateur pose un arrêt relatif** depuis le pilotage : « bloquer dans
+  x tours ». Il s'ajoute aux arrêts programmés, il ne les remplace pas.
 - **CA — l'application rappelle qu'une phase attend sa relance.** Pastille au tableau de bord
-  (« 2 phases attendent votre relance depuis 14 min »). Sans ce filet, la capacité crée un **mode de
-  panne neuf** : la salle attend, personne ne sait pourquoi, et rien n'a l'air anormal.
-  *(Explicitement demandé dans cette tranche au cadrage, et non reporté.)*
-- **CA — la qualification et l'échauffement deviennent divisibles en tours** (« 20 volées en 2 tours
-  de 10 »), réglage reporté d'`E05US032` — sans lui, ces deux types n'ont qu'un tour et ne peuvent
-  donc pas s'arrêter en cours de route.
+  (« 2 phases attendent votre relance depuis 14 min »). Sans ce filet, la capacité livrée en
+  `E05US033` crée un **mode de panne neuf** : la salle attend, personne ne sait pourquoi, et rien
+  n'a l'air anormal.
 - **CA — la pause se voit du public et de l'écran de salle.** Sans mention explicite, un spectateur
   lira l'arrêt comme une panne.
+- **CA — la qualification devient divisible en tours** (« 20 volées en 2 tours de 10 »), *afin de*
+  pouvoir y poser une pause : sans découpage elle n'a qu'un tour, et un arrêt « après le tour n » n'a
+  nulle part où se poser. **Reversé de la tranche A le 19/08/2026**, en fin de revue de `E05US033`.
+  ⚠️ **Ce qu'il faut livrer avec, et qui est la raison du report** : le tour d'une qualification ne se
+  dérive pas des seules volées validées. Il faut résoudre sa **population réelle** — deux
+  qualifications peuvent coexister dans un créneau ([ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md)),
+  donc « les archers de cette phase » n'est pas « les inscrits du créneau » —, tenir compte du **plan
+  de cibles** et **soustraire les forfaits de la phase**. Une phase avance au rythme du **dernier**
+  archer, pas du premier : compter faux la population fait avancer le tour trop tôt, donc couper la
+  salle avant que le pas de tir ait fini.
+  ⚠️ **Deux choses devront bouger ensemble** : le registre d'avancement du suivi (un lecteur pour
+  `QUALIFICATION`) **et** la table de refus par type livrée en `E05US033` (`TYPES_DEROULES` côté
+  domaine, `TYPES_ARRETABLES` côté front). `tests/test_arrets_api.py` porte les deux oracles en
+  vis-à-vis pour qu'ils tombent ensemble.
 - **CA — un refus dit ce qui manque** *(CA **récupéré** de l'ancienne `E05US032`)* : quelles
   rencontres ne sont pas validées, et lesquelles ne sont pas encore saisies. Le refus muet actuel
   (`ConfigurationSuisseInvalide`) n'est pas un message d'écran.
@@ -1456,16 +1538,19 @@ s'interrompre pour le repas, une réorganisation de salle, une annonce.
   résultats relu, et l'ADR-0090 a conservé la **dérivation à la lecture** — c'est une décision, pas
   un non-choix. Reste donc à trancher ici, sur preuve d'usage : ce que le pilotage exige de plus
   qu'un numéro de tour lisible (une clôture persistée ? un simple message circonstancié ?).
-- ⚠️ **Ces deux CA avaient disparu sans trace au recadrage du 18/08/2026** — le bloc supprimé en
-  portait **trois**, et un seul (« la ronde suivante ne s'ouvre que sur décision de l'organisateur »)
-  a été explicitement révoqué. Rattrapé par l'axe adversarial de `/revue-us`. C'est pire qu'un CA
-  périmé, que la règle 9 sait détecter : un CA **effacé** ne s'écrit pas de travers, il ne s'écrit
-  plus du tout. Leçon à retenir pour tout recadrage : **compter les puces avant et après**.
-- ⚠️ **Deux pièges à vérifier avant de coder.** `EN_PAUSE` **gèle la validation des scores** : à un
-  arrêt programmé tout est validé, donc c'est cohérent, mais il faut s'assurer qu'une **correction**
-  reste possible pendant la pause — sinon on crée un cul-de-sac en salle. Et le **routage** doit dire
-  « en attente » à l'archer pendant la pause : l'issue `EN_ATTENTE` existe depuis `E05US030`, elle se
-  réutilise plutôt que de s'inventer.
-- ⚠️ **ADR probable** : portée et sémantique de l'arrêt programmé (ce qu'il gèle, ce qu'il laisse
-  finir, ce que « toutes les phases » recouvre).
-- **Dépend de** : `E05US032` · **Jalon** : J3 · **Origine** : cadrage du 18/08/2026
+- ⚠️ **Ces deux derniers CA avaient disparu sans trace au recadrage du 18/08/2026** — le bloc
+  supprimé en portait **trois**, et un seul (« la ronde suivante ne s'ouvre que sur décision de
+  l'organisateur ») a été explicitement révoqué. Rattrapé par l'axe adversarial de `/revue-us`.
+  C'est pire qu'un CA périmé, que la règle 9 sait détecter : un CA **effacé** ne s'écrit pas de
+  travers, il ne s'écrit plus du tout. Leçon à retenir pour tout recadrage : **compter les puces
+  avant et après**.
+- 🔭 **Hors périmètre, même après le CA ci-dessus** : si le commanditaire veut qu'un **échauffement**
+  puisse porter une pause, il faut d'abord décider de quoi il tire son avancement — il n'a ni barème
+  ni feuille de marque, donc aucune donnée existante ne dit où il en est. Choix métier à trancher, pas
+  un reste de plomberie. Idem pour le **barrage**, le **placement** et la **colline**, qu'aucun
+  service ne déroule aujourd'hui (`DETTE-028`).
+- ⚠️ **Bloquante avant déploiement réel des pauses** — cf. l'angle mort assumé d'`E05US033`. Ne pas
+  la laisser dériver dans la file sous prétexte qu'elle « n'ajoute que de l'affichage » : c'est le
+  filet de sécurité de la capacité précédente.
+- **Dépend de** : `E05US033` · **Jalon** : J3 · **Origine** : cadrage du 19/08/2026 (tranche B du
+  découpage d'`E05US033`)

@@ -34,6 +34,7 @@ from application.simulation_format import (
     ServiceSimulationFormat,
 )
 from domain.anomalie import Anomalie, Gravite
+from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
@@ -275,6 +276,34 @@ class ReglagePoulesDTO(BaseModel):
         )
 
 
+class ArretProgrammeDTO(BaseModel):
+    """Une **pause programmée** d'une étape de format (E05US033, ADR-0091).
+
+    Jumeau assumé de `api/v1/phases.ArretProgrammeDTO` — `DETTE-054`, élargie.
+
+    ⚠️ **Régime brouillon, et il porte tout son sens ici** : « après le tour 5 » est applicable à un
+    suisse de 7 rondes et **inerte** à un suisse de 5. Comme le nombre de rondes appariables, la
+    validité dépend d'un nombre de tours qu'un format de bibliothèque ne connaît pas au moment où on
+    l'écrit. Le refus tombe sur l'`EtapeDeroule` d'un tournoi, là où l'effectif est déclaré.
+
+    ⚠️ **Présent ici parce que son absence rejouerait le défaut de `barrage_jusqu_au`** : capturer
+    un tournoi en format perdrait ses pauses **en silence** (cf. `ModelePhase.barrage_jusqu_au`,
+    dont la docstring raconte l'épisode). Le dépôt a déjà payé cette leçon une fois.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    apres_tour: int = Field(ge=1, le=64)
+    portee: PorteeArret = PorteeArret.PHASE
+
+    def vers_agregat(self) -> ArretProgramme:
+        return ArretProgramme(apres_tour=self.apres_tour, portee=self.portee)
+
+    @staticmethod
+    def de_agregat(arret: ArretProgramme) -> ArretProgrammeDTO:
+        return ArretProgrammeDTO(apres_tour=arret.apres_tour, portee=arret.portee)
+
+
 class EtapeDTO(BaseModel):
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
@@ -324,6 +353,9 @@ class EtapeDTO(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
+    """Les **pauses programmées** de cette étape (E05US033) — liste vide = aucune, le défaut."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
@@ -358,6 +390,7 @@ class EtapeDTO(BaseModel):
                 None if self.big_shoot_off is None else self.big_shoot_off.vers_agregat()
             ),
             suisse=(None if self.suisse is None else self.suisse.vers_agregat()),
+            arrets=tuple(arret.vers_agregat() for arret in self.arrets),
         )
 
     @staticmethod
@@ -390,6 +423,7 @@ class EtapeDTO(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
         )
 
 

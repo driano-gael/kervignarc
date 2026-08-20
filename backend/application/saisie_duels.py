@@ -18,6 +18,7 @@ Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field, replace
 
 from application.classements import ServiceClassement
@@ -28,6 +29,11 @@ from application.erreurs import (
     PhaseIntrouvable,
     PhasePasUnTableau,
     TournoiIntrouvable,
+)
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
 )
 from application.portee import phase_du_tournoi
 from application.prelevement import (
@@ -83,7 +89,11 @@ TYPES_DELEGUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS - _TYPES_RESOLUS_SUR_
 lecteur — le test de câblage le vérifie. C'est la promesse d'ADR-0083 appliquée à ce site-ci.
 
 [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+[ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
 """
+
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -218,6 +228,9 @@ class ServiceSaisieDuels:
         #
         # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
         self._lecteurs: dict[TypePhase, LecteurClassementDePhase] = {}
+        # E05US033 : collaborateur **partagé** par les cinq services d'écriture
+        # (`application.gel_de_pause`), inerte tant que rien n'y est branché.
+        self._arrets = DeclencheurArrets()
 
     def brancher_lecteur(self, type_phase: TypePhase, lecteur: LecteurClassementDePhase) -> None:
         """Donne à ce service de quoi lire le classement d'un type de phase ([ADR-0084]).
@@ -346,13 +359,78 @@ class ServiceSaisieDuels:
         self, tournoi_id: TournoiId, phase_id: PhaseId, match_numero: int, scoreur: str
     ) -> EtatDuel:
         """Valide un match **tranché** au nom du scoreur : son vainqueur avancera le tableau."""
+        self._refuser_si_en_pause(tournoi_id, phase_id)
         tableau, lignes = self._decor(tournoi_id, phase_id)
         match, haut, bas = self._match_saisissable(tableau, match_numero)
         bareme = self._bareme_du(haut, lignes)
         duel = self._duel_courant(phase_id, match_numero, bareme, haut, bas)
         duel = duel.valider(scoreur)
         self._duels.enregistrer(phase_id, match_numero, duel)
+        # Le duel est **écrit** : c'est maintenant qu'un tour de tableau peut s'achever
+        # (E05US033).
+        #
+        # ⚠️ Ici et non dans `saisir_manche` / `saisir_barrage` : un braquet n'avance que sur des
+        # duels **tranchés et validés** (`AvancementTour`, ADR-0090), donc une manche saisie ne
+        # franchit aucune frontière de tour. Y appeler le déclencheur aurait payé la
+        # recomposition du créneau à chaque volée de duel pour un résultat toujours identique
+        # (`DETTE-031`).
+        #
+        # ⚠️ **La résolution de la phase est passée DANS le bloc protégé** (correctif de revue, axe
+        # adversarial) : elle était ici, donc **hors** du `except`, et une `InfrastructureError` sur
+        # cette lecture aurait rendu un 500 au scoreur après un duel déjà persisté — exactement ce
+        # que la promesse « le déclencheur ne peut pas faire échouer une validation » exclut.
+        self._signaler_validation_de(tournoi_id, phase_id)
         return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
+
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
+        self._arrets.brancher(evaluateur)
+
+    def _signaler_validation_de(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
+        """Résout le créneau **dans** le bloc protégé, puis signale (E05US033).
+
+        La résolution est une lecture de dépôt : la laisser chez l'appelant la mettait hors du
+        `except`, donc une base occupée transformait une validation réussie en 500 pour le scoreur.
+        Relevé par l'axe adversarial de la revue.
+        """
+        try:
+            phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        except Exception as exc:
+            _logger.warning("Créneau non résolu après validation du duel : %r", exc)
+            return
+        if phase is not None:
+            self._arrets.signaler(phase.depart_id)
+
+    def _refuser_si_en_pause(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
+        """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.
+
+        ⚠️ **La garde est sur `valider`, pas dans `_decor`**, et c'est le point à ne pas simplifier.
+        `_decor` est le passage obligé des écritures **et** des lectures (sept appels, dont l'état
+        d'un match, la grille et la reconstruction récursive d'une phase amont) : y poser le refus
+        rendrait le tableau **illisible** pendant la pause — le pilotage, l'écran de salle et
+        l'affichage public tomberaient tous les trois, au moment précis où l'organisateur a besoin
+        de voir où il en est.
+
+        ⚠️ **Posée sur `valider` SEULEMENT**, et c'est un correctif de revue (axe adversarial). La
+        première rédaction gardait aussi `saisir_manche` et `saisir_barrage` — ce qui coupait **en
+        plein tir** un duel du tour suivant déjà engagé : `_match_saisissable` rend un match jouable
+        dès que ses deux occupants sont connus, donc des quarts se tirent pendant que les derniers
+        huitièmes finissent. Quand le dernier huitième était validé, l'arrêt « après ce tour »
+        figeait la phase et le scoreur ne pouvait plus **ni finir ni rectifier** le quart en cours.
+        Deux CA violés d'un coup — « personne n'est coupé en plein tir », qui ne vaut pas que
+        pour la portée départ, et « la correction reste possible ».
+
+        Le CA « une correction reste possible pendant la pause » est donc **tenu** ici, et par la
+        même mécanique que pour la qualification : `saisir_manche` se documente « Saisit (**ou
+        réédite**) une manche d'un match », c'est le chemin de correction du duel, et il reste
+        ouvert. Seule la **validation** — le geste qui fait avancer le braquet, donc le tour — est
+        refusée. Une rédaction antérieure affirmait le contraire (« les duels n'ont aucun chemin de
+        correction ») : c'était faux, et le refus large qu'elle justifiait est celui qui vient
+        d'être retiré.
+        """
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is not None:
+            refuser_si_en_pause(phase)
 
     # --- Interne : reconstruction du décor (classement → arbre → rejeu des duels validés) -------
 

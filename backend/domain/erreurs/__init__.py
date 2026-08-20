@@ -34,6 +34,7 @@ from domain.erreurs.exploitation import (
     SequenceVuesVide,
 )
 from domain.erreurs.moteur import (
+    ArretProgrammeInvalide,
     CadenceValidationSuperieureAuBareme,
     ChocDePoulePossible,
     EffectifIncompatible,
@@ -128,6 +129,7 @@ from domain.erreurs.tir import (
 
 __all__ = [
     "AppariementImpossible",
+    "ArretProgrammeInvalide",
     "AuteurAuditInvalide",
     "BaremeDuelInvalide",
     "BarrageIndecis",

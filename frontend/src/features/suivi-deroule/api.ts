@@ -29,3 +29,38 @@ export interface SuiviDeroule {
 export function getSuiviDeroule(departId: number): Promise<SuiviDeroule> {
   return fetchJson<SuiviDeroule>(`/api/v1/departs/${departId}/suivi-deroule`, undefined, 'aucune')
 }
+
+// --- Arrêts programmés : la relance (E05US033, ADR-0091) ----------------------------------------
+//
+// ⚠️ **Portée `'admin'`, à la différence du suivi ci-dessus.** Le suivi est public parce que l'écran
+// de salle n'a pas de jeton ; relancer la salle est au contraire un **geste d'organisateur**, gardé
+// par `exiger_admin` côté serveur. Les deux vivent dans le même module de feature parce qu'ils
+// s'affichent au même endroit, pas parce qu'ils ont la même audience.
+
+/** Un arrêt **franchi** qui attend un geste, miroir d'`ArretFranchiReponse`. */
+export interface ArretEnAttente {
+  id: number
+  /** La phase **déclenchante** — celle dont le tour s'est achevé, pas forcément la seule arrêtée. */
+  phase_id: number
+  apres_tour: number
+  portee: 'phase' | 'depart'
+  /** Toutes les phases que cet arrêt a mises en pause : ce que la relance rendra d'un seul geste. */
+  phases_arretees: number[]
+}
+
+export function getArretsEnAttente(departId: number): Promise<ArretEnAttente[]> {
+  return fetchJson<ArretEnAttente[]>(
+    `/api/v1/departs/${departId}/arrets/en-attente`,
+    undefined,
+    'admin',
+  )
+}
+
+/** Relance la salle. Rend les identifiants des phases effectivement reparties. */
+export function relancerArret(departId: number, arretId: number): Promise<number[]> {
+  return fetchJson<number[]>(
+    `/api/v1/departs/${departId}/arrets/${arretId}/relancer`,
+    { method: 'POST' },
+    'admin',
+  )
+}

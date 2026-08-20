@@ -45,6 +45,8 @@ const PHASE: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: null,
+  // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
+  arrets: [],
 }
 
 function poser(phase: EtapeDeroule = PHASE) {

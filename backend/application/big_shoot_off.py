@@ -75,6 +75,11 @@ from application.erreurs import (
     PhasePasUnBigShootOff,
     TournoiIntrouvable,
 )
+from application.gel_de_pause import (
+    DeclencheurArrets,
+    EvaluateurArrets,
+    refuser_si_en_pause,
+)
 from application.portee import phase_du_tournoi
 from application.prelevement import ResolveurClassement, preleves, tranche
 from application.saisie_duels import Duelliste, ServiceSaisieDuels
@@ -259,6 +264,10 @@ class ServiceBigShootOff:
         # qu'`application/prelevement.py` existe pour empêcher.
         self._saisie_duels = saisie_duels
 
+        # E05US033 : collaborateur **partagé** par les cinq services qui écrivent un résultat
+        # (`application.gel_de_pause`), inerte tant que le composition root n'y a rien branché.
+        self._arrets = DeclencheurArrets()
+
     # --- Lecture ---------------------------------------------------------------------------------
 
     def projection(self, tournoi_id: TournoiId, phase_id: PhaseId) -> ProjectionBigShootOff:
@@ -269,6 +278,12 @@ class ServiceBigShootOff:
         salle. Même découpe que `ServicePoules.repartition`, et pour la même raison.
         """
         phase, participants = self._population(tournoi_id, phase_id)
+        # ⚠️ **Aucune garde de pause ici, et c'est le point** : `projection` est une **lecture** —
+        # « ce que la liste de sortants donne sur l'effectif réel, sans rien écrire ». Un correctif
+        # de 2ᵉ passe y avait posé le refus par erreur, sur le seul critère de la ressemblance des
+        # deux premières lignes : l'organisateur ne pouvait plus consulter sa projection pendant une
+        # pause, alors que c'est exactement le moment où il la regarde. Le gel est aux **écritures**
+        # (`saisir_volee`, `valider_manche`), et nulle part ailleurs — ADR-0091 §6.
         return self._projection(phase, len(participants))
 
     def etat(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatBigShootOffAffiche:
@@ -362,6 +377,16 @@ class ServiceBigShootOff:
 
     # --- Écriture (via la file) ------------------------------------------------------------------
 
+    def brancher_evaluateur_arrets(self, evaluateur: EvaluateurArrets) -> None:
+        """Dit à qui signaler qu'un résultat vient d'être validé (E05US033, ADR-0091).
+
+        ⚠️ **Ce branchement manquait à la première livraison**, et c'était un bloquant : le
+        déclencheur n'était appelé que depuis la qualification et l'élimination directe, si bien
+        qu'un arrêt programmé sur ce format ne se déclenchait **jamais** — la phase tournant seule,
+        aucune validation n'atteignait le déclencheur. Relevé par les quatre axes de revue.
+        """
+        self._arrets.brancher(evaluateur)
+
     def saisir_volee(
         self,
         tournoi_id: TournoiId,
@@ -380,6 +405,11 @@ class ServiceBigShootOff:
         pour tout le monde.
         """
         phase, participants = self._population(tournoi_id, phase_id)
+        # E05US033 — **le gel d'un résultat neuf**, par symétrie avec la qualification. Une volée de
+        # Big Shoot Off est un résultat neuf pour un archer : la doctrine de `refuser_si_en_pause`
+        # la gèle. Ce qu'elle ne gèle pas, c'est la **poursuite d'une rencontre engagée** — un duel,
+        # une manche de poule —, ce qui n'existe pas ici : le Big Shoot Off tire par feuille.
+        refuser_si_en_pause(phase)
         configuration = self._configuration(phase)
         photo = self._photo(phase, participants)
         self._exiger_en_lice(photo, archer_id)
@@ -414,6 +444,10 @@ class ServiceBigShootOff:
         note de module (`# DETTE-058`).
         """
         phase, _participants = self._population(tournoi_id, phase_id)
+        # E05US033 — **le gel**. Cette garde manquait à la première livraison : la pause restait
+        # **cosmétique** sur ce format, l'archer lisait « en attente » pendant que le scoreur
+        # continuait de valider. Relevé par les quatre axes de revue.
+        refuser_si_en_pause(phase)
         configuration = self._configuration(phase)
         serie = self._feuille(tournoi_id, phase, archer_id)
         self._series.enregistrer(
@@ -423,6 +457,9 @@ class ServiceBigShootOff:
                 nb_volees_bareme=_nb_volees(configuration),
             )
         )
+        # E05US033 — **le signalement**, après l'écriture : une manche s'achève sur la validation de
+        # la dernière feuille, et c'est ici que le déclencheur peut le constater.
+        self._arrets.signaler(phase.depart_id)
         return self.etat(tournoi_id, phase_id)
 
     # --- Rouages ---------------------------------------------------------------------------------

@@ -40,6 +40,7 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.portee import phase_du_depart
+from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.depart import DepartId
@@ -130,6 +131,7 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
+        arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
@@ -171,6 +173,7 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            arrets=arrets,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence([*existantes, nouvelle])
@@ -191,6 +194,7 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
+        arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
         séquence — `ordre` et barème/grain sont préservés).
@@ -222,6 +226,7 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            arrets=arrets,
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]
         verifier_sequence([*autres, modifiee])

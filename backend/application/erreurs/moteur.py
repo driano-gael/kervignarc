@@ -388,3 +388,23 @@ class FormatNonSimulable(ApplicationError):
     """
 
     code = "format_non_simulable"
+
+
+class ArretIntrouvable(ApplicationError):
+    """Aucun arrêt **relançable** ne correspond à cet identifiant dans ce créneau (E05US033) → 404.
+
+    Couvre trois cas, réunis parce qu'ils appellent le même geste — recharger l'écran :
+
+    - l'identifiant est inconnu ;
+    - l'arrêt appartient à un **autre** créneau (même parti que `PhaseIntrouvable` : du point de vue
+      du départ de l'URL, il n'existe pas davantage qu'un identifiant inventé) ;
+    - l'arrêt a **déjà été levé**. C'est le cas courant en salle : deux organisateurs devant deux
+      tablettes, ou un double-clic. Le confondre avec « inconnu » est délibéré côté API — mais le
+      motif du refus compte, car relancer deux fois relancerait des phases que quelqu'un a pu
+      suspendre à la main entre les deux clics, un geste que personne n'a demandé.
+
+    ⚠️ **Un arrêt encore `ARME` est également introuvable** au sens de ce refus : la coupe est
+    décidée mais pas faite (une phase finit son tour), il n'y a donc rien à relancer.
+    """
+
+    code = "arret_introuvable"

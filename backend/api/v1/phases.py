@@ -22,7 +22,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
+from application.arrets_programmes import ServiceArretsProgrammes
 from application.phases import ServicePhases
+from domain.arret_programme import ArretProgramme, FranchissementArret, PorteeArret
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
@@ -270,6 +272,37 @@ class ReglageSuisseDTO(BaseModel):
         return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
 
 
+class ArretProgrammeDTO(BaseModel):
+    """Une **pause programmée** : après quel tour la salle s'arrête (E05US033, ADR-0091).
+
+    `portee` vaut `phase` (défaut, le moins intrusif : couper une phase n'éteint pas la salle) ou
+    `depart` — toutes les phases du créneau, chacune **finissant son tour en cours**.
+
+    ⚠️ **Ce DTO ne porte aucun état de franchissement**, et c'est délibéré : il décrit une
+    *définition*,
+    éditable à l'atelier et rejouée par chaque créneau (ADR-0076). Savoir si l'arrêt a déjà coupé
+    relève de l'avancement, et se lit par la route de relance — mêler les deux dans un même document
+    laisserait un client réécrire un état d'exploitation en éditant un déroulé.
+
+    La borne haute d'`apres_tour` n'est pas ici : « après le tour 5 » est applicable à un suisse de
+    7 rondes et inerte à un suisse de 5, donc elle dépend du nombre de tours, que ce DTO ne connaît
+    pas. `EtapeDeroule` la vérifie là où l'information existe. Le plafond posé (`le=64`) est la
+    garde de frontière habituelle contre une saisie qui a dérapé, comme celui de `ReglageSuisseDTO`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    apres_tour: int = Field(ge=1, le=64)
+    portee: PorteeArret = PorteeArret.PHASE
+
+    def vers_agregat(self) -> ArretProgramme:
+        return ArretProgramme(apres_tour=self.apres_tour, portee=self.portee)
+
+    @staticmethod
+    def de_agregat(arret: ArretProgramme) -> ArretProgrammeDTO:
+        return ArretProgrammeDTO(apres_tour=arret.apres_tour, portee=arret.portee)
+
+
 class ConfigPhaseRequete(BaseModel):
     """Config de séquence d'une phase : son type, ses sources (facultatives, **plusieurs** possibles
     depuis E05US010) et son effectif attendu (facultatif). Sert à l'ajout comme à l'édition.
@@ -328,6 +361,23 @@ class ConfigPhaseRequete(BaseModel):
     Python, un littéral documente l'attribut qui le **précède**, et le bloc « poules » avait glissé
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
+
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
+    """Les **pauses programmées** de cette étape (E05US033, ADR-0091) — liste vide = aucune.
+
+    ⚠️ Une **liste**, parce que c'est la lettre du CA : l'organisateur prépare sa journée (« pause
+    après le tour 2, pause après le tour 5 »), pas un arrêt unique.
+
+    ⚠️ Même régime d'édition **totale** : envoyer une liste vide au `PUT` **supprime** tous les
+    arrêts. C'est cohérent avec `sources`, `poules` et les autres, et c'est ce que le
+    `extra="forbid"` rend lisible — mais la conséquence mérite d'être dite, car ici l'effacement
+    porte sur du **planning de journée** que l'organisateur a saisi ligne à ligne, non sur un
+    paramètre qu'il retrouvera d'un coup d'œil. L'écran doit donc toujours renvoyer la liste
+    complète, jamais un delta.
+
+    Deux arrêts après le même tour, ou un arrêt au-delà du dernier tour connu, lèvent
+    `ArretProgrammeInvalide` (422) — le refus vit sur l'étape, là où le nombre de tours est
+    connu."""
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
@@ -423,6 +473,13 @@ class EtapeReponse(BaseModel):
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
 
+    arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
+    """Les pauses programmées de cette étape (E05US033) — **rendues au complet**.
+
+    L'édition étant totale, l'écran d'atelier doit renvoyer la liste entière au `PUT` : c'est
+    pourquoi elle est servie ici sans pagination ni delta.
+    """
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -445,6 +502,7 @@ class EtapeReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
 
@@ -506,6 +564,7 @@ async def ajouter_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )
     )
@@ -537,6 +596,7 @@ async def modifier_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )
     )
@@ -596,3 +656,90 @@ async def changer_statut(
     action = transitions[requete.transition]
     phase = await asyncio.wrap_future(write_queue.submit(lambda: action(depart_id, phase_id)))
     return PhaseReponse.de_agregat(phase)
+
+
+# ─────────────────────── Arrêts programmés : la relance (E05US033) ───────────────────────
+
+
+class ArretFranchiReponse(BaseModel):
+    """Un arrêt **franchi** qui attend un geste de relance (E05US033, ADR-0091).
+
+    Distinct d'`ArretProgrammeDTO`, qui décrit la *définition* : celui-ci décrit un **fait
+    d'exploitation**. Les mêler dans un même document laisserait un client réécrire un état
+    d'exploitation en éditant un déroulé, et ferait passer `id` — l'identité d'un franchissement —
+    pour un attribut de planning.
+
+    `phases_arretees` porte **toutes** les phases que cet arrêt a coupées : c'est ce que la relance
+    rendra d'un seul geste, et c'est pourquoi l'écran affiche un bouton par arrêt et non par phase.
+    """
+
+    id: int
+    phase_id: int
+    """La phase **déclenchante** — celle dont le tour s'est achevé, pas nécessairement la seule
+    arrêtée."""
+
+    apres_tour: int
+    portee: PorteeArret
+    phases_arretees: list[int]
+
+    @staticmethod
+    def de_agregat(franchissement: FranchissementArret) -> ArretFranchiReponse:
+        assert (
+            franchissement.id is not None
+        ), "un franchissement relu du dépôt porte un identifiant."
+        return ArretFranchiReponse(
+            id=franchissement.id,
+            phase_id=franchissement.phase_id,
+            apres_tour=franchissement.apres_tour,
+            # La portée se **déduit** de la forme du franchissement plutôt que d'être recopiée : un
+            # arrêt de portée « départ » est le seul à prendre une photo des tours à finir. Stocker
+            # la portée en double dans la table aurait ouvert une seconde source pour ce que la
+            # définition dit déjà (`deroule_etape.config`), avec la divergence qui va avec.
+            portee=PorteeArret.DEPART if franchissement.tours_a_finir else PorteeArret.PHASE,
+            phases_arretees=list(franchissement.phases_arretees),
+        )
+
+
+@router.get(
+    "/departs/{depart_id}/arrets/en-attente",
+    response_model=list[ArretFranchiReponse],
+    dependencies=[Depends(exiger_admin)],
+)
+async def lister_arrets_en_attente(depart_id: int, request: Request) -> list[ArretFranchiReponse]:
+    """Les arrêts qui **attendent une relance** dans ce créneau (**lecture admin**).
+
+    Ni les arrêts armés — la coupe est décidée mais une phase finit son tour, il n'y a rien à
+    relancer — ni les arrêts déjà levés.
+    """
+    service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
+    # ⚠️ **`run_in_threadpool`, comme les deux `GET` voisins de ce fichier** (règle 7 : lectures
+    # synchrones **hors** boucle événementielle). La première rédaction appelait le service
+    # directement dans la coroutine, alors qu'il fait un `SELECT` avec jointure — et que le pilotage
+    # polle cette route toutes les 10 s, par client. Relevé en revue (axe A).
+    franchissements = await run_in_threadpool(service.en_attente_de_relance, depart_id)
+    return [ArretFranchiReponse.de_agregat(f) for f in franchissements]
+
+
+@router.post(
+    "/departs/{depart_id}/arrets/{arret_id}/relancer",
+    response_model=list[int],
+    dependencies=[Depends(exiger_admin)],
+)
+async def relancer_arret(depart_id: int, arret_id: int, request: Request) -> list[int]:
+    """Relance la salle : **toutes** les phases coupées par cet arrêt repartent (**action admin**).
+
+    Rend la liste des phases effectivement relancées. `ArretIntrouvable` (404) si l'identifiant est
+    inconnu, s'il relève d'un autre créneau, s'il est encore armé, ou s'il a **déjà été levé** — un
+    double-clic ne relance pas deux fois.
+
+    ⚠️ **Un seul geste pour tout l'arrêt**, et c'est un CA : « quatre boutons pour un seul arrêt
+    créerait exactement le piège qu'on cherche à éviter — en oublier une ». D'où une route adressée
+    par **arrêt** et non par phase, là où la reprise manuelle d'une phase seule garde la sienne
+    (`POST /departs/{id}/phases/{id}/statut`).
+    """
+    service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
+    write_queue: WriteQueue = request.app.state.write_queue
+    relancees = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.lever(depart_id, arret_id))
+    )
+    return list(relancees)
