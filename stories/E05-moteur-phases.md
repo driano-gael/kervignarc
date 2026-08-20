@@ -1518,10 +1518,28 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
   ⚠️ **Pas d'annulation d'un arrêt posé** (écarté explicitement) : le CA n'en demande pas, et le coût
   d'une erreur est d'un clic — l'arrêt tombe, l'organisateur relance. Si l'usage la réclame, c'est
   une US, pas un ajout en douce.
+  ✅ **Tranché en revue le 20/08/2026 — le geste n'est pas offert au dernier tour d'une phase.** Le
+  serveur pose `apres_tour = tour_courant + x − 1` et refuse un arrêt qui ne couperait rien : à la
+  ronde 5 sur 5, **aucune** valeur saisie n'est acceptable. Le formulaire s'ouvrait quand même, une
+  fois par phase, pour ne rendre qu'un 422. Le champ est en outre **borné à ce qui reste** de la
+  phase, la même règle dite là où l'organisateur la lit.
+  ✅ **Tranché en revue — un arrêt d'atelier inerte n'interdit pas de poser une pause.** Un suisse
+  réglé à 7 rondes n'en joue que 5 si l'effectif ne le permet pas : l'arrêt composé « après le tour
+  6 » est alors légitime et sans effet. Le refus « ce tour dépasse la phase » ne porte donc que sur
+  l'arrêt **demandé**, jamais sur ceux qui préexistent — sans quoi un réglage de la veille fermait
+  le geste du jour J pour toute la journée, en nommant un tour que l'organisateur ne peut pas
+  retirer depuis le pilotage.
 - **CA — l'application rappelle qu'une phase attend sa relance.** Pastille au tableau de bord
   (« 2 phases attendent votre relance depuis 14 min »). Sans ce filet, la capacité livrée en
   `E05US033` crée un **mode de panne neuf** : la salle attend, personne ne sait pourquoi, et rien
   n'a l'air anormal.
+  ✅ **Tranché en revue le 20/08/2026 — le rappel se lit sur l'état réel de la salle, pas sur l'état
+  de l'arrêt.** Le pilotage offre « Reprendre » (cycle de vie) **à côté** de « Relancer » : prendre
+  le premier remettait la phase en cours sans jamais consommer l'arrêt, et le rappel restait allumé
+  **pour toujours**, avec un compteur croissant, sur une salle qui tire. Un rappel qu'on ne peut pas
+  éteindre use la vigilance sur tous les autres. Un arrêt dont plus **aucune** phase n'est en pause
+  sort donc de la liste, quel que soit le chemin par lequel la salle est repartie ; tant qu'**une**
+  phase reste éteinte, il y demeure — et la relance ne touche qu'elle.
 - **CA — la pause se voit du public et de l'écran de salle.** Sans mention explicite, un spectateur
   lira l'arrêt comme une panne.
   ⚠️ **Ambition arrêtée au cadrage du 20/08/2026 : mention sobre.** Pas de motif libre saisi par
@@ -1530,6 +1548,16 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
   n'a **aucune** heure à tenir — l'arrêt se lève d'un geste, quand l'organisateur le décide.
   Afficher « reprise à 14 h 30 » serait une promesse que rien ne fait respecter, donc la façon la
   plus sûre de transformer une pause maîtrisée en incident.
+  ✅ **Tranché en revue le 20/08/2026 — l'annonce est hors du défilé de vues, et elle nomme ce
+  qu'elle suspend.** Deux points, découverts dans cet ordre. (1) Un écran de salle branché sans
+  réglage ne passe **jamais** par la vue « En cours » : attacher l'annonce à cette vue revenait à ne
+  jamais l'afficher, sur la seule surface qui n'a personne devant elle pour changer de page. Le
+  bandeau coiffe donc la scène quelle que soit la vue. (2) La portée par défaut d'un arrêt est **la
+  phase seule**, et deux phases peuvent tourner en parallèle : une annonce non qualifiée aurait fait
+  arrêter des archers que ça ne concernait pas. L'écran de salle dit donc « le tir est suspendu
+  **pour : système suisse** » tant qu'autre chose tire, et la phrase générale seulement quand plus
+  rien ne tire. L'onglet public, lui, garde la phrase sans qualificatif : le bandeau y est sous le
+  titre de la phase regardée, le contexte est donné par la page.
 - ~~**CA — la qualification devient divisible en tours**~~ — ⚠️ **sorti du périmètre au cadrage du
   20/08/2026 : devient `E05US035`.** Arbitrage du commanditaire : cette tranche mêlait cinq CA d'IHM
   et **un chantier moteur** (population réelle d'une qualification, plan de cibles, forfaits), soit
@@ -1540,6 +1568,12 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
 - **CA — un refus dit ce qui manque** *(CA **récupéré** de l'ancienne `E05US032`)* : quelles
   rencontres ne sont pas validées, et lesquelles ne sont pas encore saisies. Le refus muet actuel
   (`ConfigurationSuisseInvalide`) n'est pas un message d'écran.
+  ✅ **Tranché en revue le 20/08/2026 — une validation en file hors-ligne compte comme faite.** Le
+  résumé répond à une seule question : **qui dois-je aller chercher ?** Une validation déjà posée
+  par le scoreur et en attente de réseau (`validation_en_attente`, `E04US009`) ne demande personne.
+  La ranger parmi les manquantes envoyait l'organisateur réclamer un geste déjà fait, et faisait
+  dire à la liste (« validation en attente ») et au résumé (« il manque une validation ») deux
+  choses contraires sur la même rencontre.
 - **CA — l'état d'un tour devient lisible en tant que tel** *(CA **récupéré** de l'ancienne
   `E05US032`)*, et non déduit du compte de résultats.
   ⚠️ **Ce CA était partiellement rouvert par `E05US032`, qui avait tranché dans l'autre sens sans le

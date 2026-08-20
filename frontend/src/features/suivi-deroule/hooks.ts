@@ -15,7 +15,7 @@ import { getArretsEnAttente, getSuiviDeroule, poserArretRelatif, relancerArret }
 
 /** ~10 s : le suivi est au grain du **tour**, pas de la flèche — il n'a pas besoin d'être nerveux,
  * et chaque tick reconstruit les tableaux des phases en tableau côté serveur. */
-const INTERVALLE_POLL_MS = 10000
+export const INTERVALLE_POLL_MS = 10000
 
 export const RACINE_SUIVI = ['suivi-deroule'] as const
 const cleSuivi = (departId: number | null) => [...RACINE_SUIVI, departId] as const
@@ -83,20 +83,24 @@ export function useRelancerArret(departId: number | null) {
 /**
  * Pose une pause **dans ce créneau**, comptée depuis le tour en cours (E05US034, ADR-0092).
  *
- * ⚠️ **Invalide `RACINE_ARRETS` et `RACINE_SUIVI`, mais pas `RACINE_AVANCEMENT`** — et l'asymétrie
- * avec `useRelancerArret` juste au-dessus est voulue : poser un arrêt ne change **aucun statut de
- * phase**. La coupe viendra plus tard, quand un tour s'achèvera. Invalider l'avancement ici
- * relancerait la reconstruction de toutes les phases du créneau pour rien — la lecture la plus
- * chère du projet (`DETTE-031`), déclenchée par un geste qui ne modifie rien de ce qu'elle rend.
+ * ⚠️ **N'invalide rien, et c'est le fait notable** (correctif de revue, axe adversarial). Poser un
+ * arrêt ne change **aucune lecture existante** : la coupe viendra plus tard, quand un tour
+ * s'achèvera. `RACINE_ARRETS` ne sert que les **franchissements** — aucun n'est créé ici ;
+ * `RACINE_SUIVI` ne porte pas les arrêts de circonstance ; `RACINE_AVANCEMENT` porte les statuts,
+ * qui ne bougent pas non plus.
+ *
+ * La première rédaction invalidait les deux premières et argumentait longuement de ne pas toucher
+ * à `RACINE_AVANCEMENT` (« la lecture la plus chère du projet », `DETTE-031`) — raisonnement juste
+ * appliqué à la mauvaise cible : `RACINE_SUIVI` est la reconstruction de **tous les tableaux** du
+ * créneau, que l'écran de salle prend soin de ne pas solliciter hors de sa vue. On payait donc le
+ * plus cher des trois pour ne rafraîchir aucune donnée modifiée.
+ *
+ * ⚠️ **Ce qui devra changer avec `DETTE-075`** : le jour où les arrêts posés deviennent relisibles,
+ * c'est **cette lecture-là** qu'il faudra invalider ici — et elle seule.
  */
 export function usePoserArretRelatif(departId: number | null) {
-  const client = useQueryClient()
   return useMutation({
     mutationFn: (commande: { phaseId: number; dansXTours: number; portee: PorteeArret }) =>
       poserArretRelatif(departId as number, commande.phaseId, commande.dansXTours, commande.portee),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: RACINE_ARRETS })
-      void client.invalidateQueries({ queryKey: RACINE_SUIVI })
-    },
   })
 }

@@ -25,7 +25,7 @@ import { useQueries } from '@tanstack/react-query'
 import { phraseDeRelance, resumeDeRelance } from '../../shared/phases/relance'
 import { useDeparts } from '../departs/hooks'
 import { getArretsEnAttente } from '../suivi-deroule/api'
-import { RACINE_ARRETS } from '../suivi-deroule/hooks'
+import { INTERVALLE_POLL_MS, RACINE_ARRETS } from '../suivi-deroule/hooks'
 import { FriseCycleDeVie } from './FriseCycleDeVie'
 
 export function Accueil({ tournoi }: { tournoi: Tournoi }) {
@@ -190,7 +190,9 @@ function PastilleDeRelance({ tournoiId }: { tournoiId: number }) {
     queries: (departs.data ?? []).map((depart) => ({
       queryKey: [...RACINE_ARRETS, depart.id] as const,
       queryFn: () => getArretsEnAttente(depart.id),
-      refetchInterval: 10000,
+      // Même cadence que `useArretsEnAttente`, dont on partage la clé de cache : recopier la
+      // valeur à la main les aurait fait diverger au premier ajustement (revue E05US034).
+      refetchInterval: INTERVALLE_POLL_MS,
       staleTime: 0,
     })),
   })

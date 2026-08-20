@@ -97,6 +97,28 @@ Départ  ──► FranchissementArret      AVANCEMENT  — ce qu'un arrêt a co
   clic : l'arrêt tombe, l'organisateur relance. Une porte de plus à garder, et celle-là capable
   d'annuler une pause que la salle attend déjà. *(Si l'usage le réclame, c'est une US, pas un
   ajout en douce.)*
+- **Traduire la violation d'unicité en erreur d'infrastructure.** C'est ce que faisait la première
+  écriture, et c'était faux **pour l'organisateur** : `InfrastructureError` est mappée en **500
+  générique** à la frontière, si bien qu'un double-clic dans l'écran de pilotage — un geste ordinaire
+  du jour J sur une tablette — répondait « erreur interne du serveur ». L'adapter lève donc
+  `ArretProgrammeInvalide`, c'est-à-dire l'erreur **du domaine**, avec le message que compose
+  `doublon_d_arret` : le service refuse le doublon qu'il *voit*, la contrainte ferme la **course**
+  que sa lecture ne peut pas fermer, et les deux refus sont le **même** refus — même texte, même 422.
+  ⚠️ **C'est le seul adapter du dépôt qui lève une erreur du domaine, donc un précédent**, et il est
+  assumé ici plutôt que dans un commentaire : un adapter **implémente un port du domaine**, son
+  contrat d'erreur est donc celui du port (règle 2), et la docstring d'`ArretDeCirconstanceRepository.
+  ajouter` l'énonce — sans quoi aucune doublure de test n'aurait de raison de l'honorer, et le
+  chemin de course n'aurait d'oracle nulle part au-dessus de l'adapter. Le message n'est **pas**
+  recopié : il vient de `doublon_d_arret`, au domaine. *(Relevé en revue, axe adversarial : les deux
+  exemplaires coïncidaient au singulier et auraient divergé à la première retouche.)*
+- **Une lecture des arrêts posés — et cette ligne manquait, ce qui rendait la liste trompeuse**
+  (ajoutée en revue). `par_depart` n'a qu'un appelant, le service : aucune route ne rend les arrêts
+  **armés**, et `GET …/arrets/en-attente` ne sert que des `FranchissementArret`, donc des arrêts qui
+  ont **déjà coupé**. Un arrêt posé est donc invisible jusqu'à ce qu'il tombe — l'organisateur qui
+  recharge sa page ne peut plus vérifier ce qu'il a demandé, et découvre l'existence de sa pause par
+  le refus 422 s'il la repose. Rien n'est cassé, mais l'énumération ci-dessus était soigneuse et
+  cette absence-là n'y figurait pas : un lecteur en concluait l'inverse. Inscrit à `DETTE-075` avec
+  ses deux voies de résorption, plutôt que traité en douce dans l'US.
 
 ## Conséquences
 
@@ -132,20 +154,20 @@ ADR-0017, dont c'est la leçon, et ADR-0091, dont trois lignes affirmaient plus 
 | Décision | Module qui l'applique | Vérifié |
 |---|---|---|
 | §1 nature distincte, portée par le créneau | `backend/domain/arret_programme.py` (`ArretDeCirconstance`, `definition()`) | oui — `tests/test_domain_arret_programme.py` (section E05US034) |
-| §1 table à part, unicité par le schéma | `backend/infrastructure/db/models.py` (`ArretDeCirconstanceORM`) ; `backend/migrations/versions/0049_arret_de_circonstance.py` | oui — aller-retour **et** double-pose refusée dans `tests/test_arrets_api.py` |
+| §1 table à part, unicité par le schéma | `backend/infrastructure/db/models.py` (`ArretDeCirconstanceORM`) ; `backend/migrations/versions/0049_arret_de_circonstance.py` ; `moteur.py` (`ArretDeCirconstanceRepositorySQL.ajouter`, qui traduit l'`IntegrityError` en `doublon_d_arret` — refus **métier**, 422) | oui — aller-retour **et** double-pose refusée dans `tests/test_arrets_api.py`, l'oracle asserte le **type** de refus donc le code HTTP rendu |
 | §1 lecture cloisonnée par créneau | `backend/domain/ports.py` (`ArretDeCirconstanceRepository`) ; `backend/infrastructure/db/repositories/moteur.py` (`ArretDeCirconstanceRepositorySQL.par_depart`, `where depart_id`) | oui — l'oracle vérifie qu'un second créneau du **même tournoi** ne voit rien |
 | §2 conversion « dans x tours » au serveur | `backend/domain/arret_programme.py` (`tour_d_un_arret_relatif`) ; `backend/application/arrets_programmes.py` (`poser_arret_relatif`) ; `backend/api/v1/phases.py` (`poser_arret_relatif`, `PoserArretRelatifRequete`) | oui — dont le décalage d'une unité (`x = 1` → tour courant) et le refus sur tour illisible |
-| §3 les deux natures fondues à l'évaluation | `backend/domain/arret_programme.py` (`arrets_applicables`) ; `backend/application/arrets_programmes.py` (`_declencher_les_arrets_atteints`, `_circonstance_par_phase`, `_tour_acheve` qui reçoit désormais les arrêts et non l'étape) | oui — dont « l'arrêt du jour J s'ajoute aux programmés » (deux coupes, une relance entre les deux) |
+| §3 les deux natures fondues à l'évaluation | `backend/domain/arret_programme.py` (`arrets_applicables`) ; `backend/application/arrets_programmes.py` (`_declencher_les_arrets_atteints`, `_par_phase`, `_tour_acheve` qui reçoit désormais les arrêts et non l'étape) | oui — dont « l'arrêt du jour J s'ajoute aux programmés » (deux coupes, une relance entre les deux) |
 | §3 le chemin court voit les deux natures | `backend/application/arrets_programmes.py` (`evaluer`, garde `aucun_arret`) | oui — `test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve` échoue si la garde ignore les arrêts de circonstance |
-| §4 strict à la pose, tolérant à l'évaluation | `backend/application/arrets_programmes.py` (`poser_arret_relatif`, `verifier_arrets` sur l'union) ; `backend/domain/arret_programme.py` (`arrets_applicables`, fusion + portée la plus large) | oui — les deux moitiés ont leur oracle, et le test de fusion dit pourquoi elles diffèrent |
+| §4 strict à la pose, tolérant à l'évaluation | `backend/application/arrets_programmes.py` (`poser_arret_relatif` — `verifier_arrets` **deux fois** : la collision sur l'union, l'inertie sur le seul arrêt demandé, cf. correctif de revue) ; `backend/domain/arret_programme.py` (`arrets_applicables`, fusion + portée la plus large) | oui — les deux moitiés ont leur oracle, et le test de fusion dit pourquoi elles diffèrent |
 | §5 une règle de type, deux portes | `backend/domain/arret_programme.py` (`verifier_type_arretable`) ; appelée par `backend/domain/deroule_etape.py` (`_verifier_arrets_applicables`) **et** `backend/application/arrets_programmes.py` (`poser_arret_relatif`) | oui — 422 sur la route de pose (`tests/test_arrets_api.py`), refus de composition inchangé |
 | §6 horodatage de la première coupe | `backend/domain/arret_programme.py` (`FranchissementArret.arrete_depuis`) ; `backend/application/arrets_programmes.py` (`_horodate`, port `Horloge`) ; `backend/bootstrap/composition.py` (`HorlogeSysteme`) | oui — dont « l'instant ne rajeunit pas quand une seconde phase s'éteint douze minutes plus tard » |
-| §6 le serveur rend un instant, le client une durée | `backend/api/v1/phases.py` (`ArretFranchiReponse.arrete_depuis`) ; `frontend/src/shared/phases/relance.ts` (`resumeDeRelance`, `phraseDeRelance`) | oui — `frontend/src/shared/phases/relance.test.ts` (12 oracles, dont horloge en avance et date illisible) |
+| §6 le serveur rend un instant, le client une durée | `backend/api/v1/phases.py` (`ArretFranchiReponse.arrete_depuis`) ; `frontend/src/shared/phases/relance.ts` (`resumeDeRelance`, `phraseDeRelance`) | oui — `frontend/src/shared/phases/relance.test.ts` (13 oracles pour `resumeDeRelance`/`phraseDeRelance`, dont horloge en avance, date illisible, et la forme **avec offset** que le serveur émet réellement) |
 | CA pastille de rappel | `frontend/src/features/accueil/Accueil.tsx` (`PastilleDeRelance`, `useQueries` sur la route déjà pollée) ; `frontend/src/shared/ui/useMaintenant.ts` | oui pour la **phrase** et le **résumé** (tests) ; le montage à l'écran se vérifie à l'œil, comme le reste de l'accueil |
-| CA pose depuis le pilotage | `frontend/src/features/suivi-deroule/{api.ts,hooks.ts}` (`poserArretRelatif`, `usePoserArretRelatif`) ; `PilotageCreneau.tsx` (`PoserUnePause`) | oui pour la **règle d'offre** (`peutPoserUnePause`, 6 oracles) ; le formulaire se vérifie à l'œil |
-| CA état de tour lisible | `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`EtatDuTour`), alimenté par `useSuiviDeroule` (même clé de requête que le schéma, donc aucun appel de plus) | oui — **aucune** clôture persistée n'a été ajoutée : ADR-0090 §5 (dérivation à la lecture) est inchangé |
+| CA pose depuis le pilotage | `frontend/src/features/suivi-deroule/{api.ts,hooks.ts}` (`poserArretRelatif`, `usePoserArretRelatif`) ; `PilotageCreneau.tsx` (`PoserUnePause`) | oui pour la **règle d'offre** (`peutPoserUnePause`, 8 oracles) et pour la **borne de saisie** (`toursBloquablesRestants`, 4 oracles, tenue en vis-à-vis du refus serveur) ; le formulaire se vérifie à l'œil |
+| CA état de tour lisible | `frontend/src/shared/phases/relance.ts` (`libelleEtatDuTour`) ; monté par `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`EtatDuTour`), alimenté par `useSuiviDeroule` (même clé de requête que le schéma, donc aucun appel de plus) | oui — 5 oracles depuis que la règle a été **extraite du JSX** en revue (elle n'en avait aucun, et portait un repli mort). **Aucune** clôture persistée n'a été ajoutée : ADR-0090 §5 (dérivation à la lecture) est inchangé |
 | CA refus circonstancié | `frontend/src/features/suisse/presentation.ts` (`ceQuiManque`) ; `SaisieSuisse.tsx` (`CeQuiManqueEncore`) | oui — `frontend/src/features/suisse/presentation.test.ts`, dont la distinction *pas saisie* / *pas validée* et le cas désynchronisé |
-| CA pause visible du public et de la salle | `frontend/src/features/en-cours/VueEnCours.tsx` (bandeau `encours__pause`) + `en-cours.css` ; l'écran de salle **compose** `VueEnCours` (`frontend/src/features/salle/EcranSalle.tsx`) | partiellement — le bandeau est vérifié à l'œil ; il est rendu par le **même** composant sur les deux surfaces, ce qui est ce qui garantit qu'elles ne divergent pas |
+| CA pause visible du public et de la salle | `frontend/src/shared/ui/BandeauDePause.tsx` + `bandeau-pause.css` — **le même composant sur les deux surfaces** ; monté par `frontend/src/features/en-cours/VueEnCours.tsx` (onglet public) et par `frontend/src/features/salle/EcranSalle.tsx` (`MentionDePause`, **hors de la rotation de vues**) | oui — `VueEnCours.test.tsx` et `EcranSalle.test.tsx`, chacun avec son cas adverse. ⚠️ **Cette ligne disait « partiellement » et le motif invoqué (« même composant ») masquait le vrai défaut** : le bandeau ne vivait que dans `VueEnCours`, or `EN_COURS` n'est **pas** au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut`) — l'annonce ne s'affichait donc jamais sur un écran branché sans configuration. Bloquant de revue (axes C2 et adversarial) : le montage a été sorti de la rotation, et `EcranSalle.test.tsx` existe pour que ça ne se re-défasse pas |
 
 ⚠️ **Ce que cet ADR ne porte pas.** La **qualification** reste hors du mécanisme : elle n'annonce
 qu'un tour, donc aucune pause ne peut s'y poser. La rendre divisible en tours demande de résoudre sa

@@ -31,6 +31,7 @@ import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
 import { VueBigShootOffPublique } from '../big-shoot-off/VueBigShootOffPublique'
 import { useDeparts } from '../departs/hooks'
+import { BandeauDePause } from '../../shared/ui/BandeauDePause'
 import { useAvancementPhases } from '../phases/hooks'
 import { VuePoulesPublique } from '../poules/VuePoulesPublique'
 import { departDeSalle } from '../salle/rotation'
@@ -131,16 +132,15 @@ export function VueEnCours({
           rien conclut à une **panne**. Un suffixe de titre en petits caractères se lit à un mètre,
           pas depuis les gradins ni sur l'écran projeté au fond du gymnase (≥ 1920 px, vu de loin,
           E07US004).
-          **Sobre, et sans promesse d'horaire** : le serveur n'a aucune heure de reprise à tenir —
-          l'arrêt se lève d'un geste d'organisateur, quand il le décide. Annoncer « reprise à
-          14 h 30 » serait une promesse que rien ne fait respecter, donc la façon la plus sûre de
-          transformer une pause maîtrisée en incident. */}
-      {phase.statut === 'en_pause' && (
-        <p className="encours__pause" role="status">
-          <strong>Pause</strong> — le tir est suspendu par l’organisation. La reprise sera annoncée
-          en salle&nbsp;; il n’y a rien à faire en attendant.
-        </p>
-      )}
+          La phrase vit dans `shared/ui/BandeauDePause` — **le même composant que l'écran de
+          salle**, qui le monte hors de sa rotation de vues (correctif de revue : voir l'en-tête
+          du composant).
+          ⚠️ **`interactif` discrimine les deux surfaces**, et c'est un correctif de 2ᵉ passe : un
+          écran de salle dont le déroulé **contient** la vue « En cours » empilait deux bandeaux
+          identiques — celui, permanent, de `MentionDePause`, et celui-ci. Sur un projecteur en
+          1,1 em, ce doublon n'est pas discret. L'écran de salle passe déjà `interactif={false}` :
+          il garde le bandeau permanent, l'onglet public garde le sien. */}
+      {interactif && phase.statut === 'en_pause' && <BandeauDePause />}
 
       {/* ⚠️ `key={phase.id}` : **remonte** le composant de format à chaque changement de phase
           (correctif de revue, axe C1). Sans elle, React réconcilie en place quand le type est

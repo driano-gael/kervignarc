@@ -41,20 +41,6 @@
   margin: 0 0 0.8em;
 }
 
-/* La **pause annoncée** (E05US034). Volontairement plus grosse que le reste de l'en-tête : l'onglet
-   public se lit sur une tablette tenue à bout de bras, et le même composant est projeté sur l'écran
-   de salle (≥ 1920 px, vu de loin, E07US004). Un suffixe de titre en 0,9 em y serait invisible —
-   c'est précisément ce qui laissait lire une pause comme une panne.
-   Ambre et non rouge : la pause appelle l'attention sans être une anomalie (`DV-03` — sur
-   l'anthracite le rouge ne signale rien, et dramatiser une pause repas serait faux). */
-.encours__pause {
-  margin: 0 0 1em;
-  padding: 0.6em 0.8em;
-  border-left: 4px solid var(--danger);
-  font-size: 1.1em;
-  color: var(--text);
-}
-
 .encours__bloc {
   margin-bottom: 1.4em;
 }

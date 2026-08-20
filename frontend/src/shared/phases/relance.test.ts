@@ -13,7 +13,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  libelleEtatDuTour,
   peutPoserUnePause,
+  phasesSuspendues,
+  toursBloquablesRestants,
   phraseDeRelance,
   resumeDeRelance,
   type ArretQuiAttend,
@@ -62,6 +65,18 @@ describe('resumeDeRelance', () => {
       [arret([7], '2026-03-14T11:35:00Z'), arret([8], '2026-03-14T11:58:00Z')],
       MIDI,
     )
+
+    expect(resume?.minutes).toBe(25)
+  })
+
+  it('lit l’horodatage tel que le serveur le sérialise, offset explicite compris', () => {
+    // ⚠️ Ce cas existe parce que les autres fixtures écrivent un `Z`, **forme que Pydantic n'émet
+    // pas** : il rend `+00:00`. Une revue (E05US034) a montré que le vrai risque est en amont —
+    // l'adapter SQLite rendait un `datetime` *naive*, donc une chaîne **sans offset**, que
+    // `Date.parse` lit en **heure locale** : « depuis 120 min » sur une salle arrêtée depuis une
+    // minute. Le garde-fou vit côté serveur (`test_arrets_api.py`) ; ici on épingle que la forme
+    // réellement transmise est comprise, et que les deux notations donnent le même instant.
+    const resume = resumeDeRelance([arret([7], '2026-03-14T11:35:00+00:00')], MIDI)
 
     expect(resume?.minutes).toBe(25)
   })
@@ -152,9 +167,163 @@ describe('peutPoserUnePause — quand offrir « bloquer dans x tours »', () => 
     expect(peutPoserUnePause(phase({ tourCourant: null }))).toBe(false)
   })
 
+  it('ne l’offre pas au dernier tour de la phase', () => {
+    // `apres_tour = tourCourant + x - 1`, et le serveur refuse `apres_tour >= nbTours` : à la
+    // ronde 5 sur 5, **aucune** valeur saisie n'est acceptable. Offrir le formulaire garantissait
+    // donc un 422, une fois par phase, sur toutes les phases (revue E05US034).
+    expect(peutPoserUnePause(phase({ tourCourant: 5, nbTours: 5 }))).toBe(false)
+  })
+
+  it('l’offre encore à l’avant-dernier tour, où « dans 1 tour » reste jouable', () => {
+    // Le cas adverse du précédent : sans lui, une condition trop stricte (`<` devenu `<=`)
+    // fermerait le geste un tour trop tôt sans qu'aucun test ne rougisse.
+    expect(peutPoserUnePause(phase({ tourCourant: 4, nbTours: 5 }))).toBe(true)
+  })
+
   it('ne l’offre pas sur une phase d’un seul tour', () => {
     // `nb_tours <= 1` est la signature du repli d'`avancement_bloc` (« je ne sais pas »), et une
     // phase d'un seul tour n'a de toute façon aucune frontière intérieure où couper.
     expect(peutPoserUnePause(phase({ nbTours: 1 }))).toBe(false)
+  })
+})
+
+describe('libelleEtatDuTour — « où en est cette phase »', () => {
+  // Le CA était laissé ouvert par la fiche (« sur preuve d'usage ») et a été tranché dans l'US :
+  // message circonstancié, aucune clôture persistée. Tranché ne veut pas dire testé — il ne l'était
+  // pas, la règle vivant en conditions JSX (relevé en revue, axe B).
+
+  it('dit l’unité du format et la position dans la phase', () => {
+    expect(
+      libelleEtatDuTour({ tour_courant: 3, nb_tours: 5, libelle_tour_courant: 'Ronde 3' }),
+    ).toBe('Ronde 3 — tour 3 sur 5')
+  })
+
+  it('se tait sur une phase d’un seul tour', () => {
+    // Une qualification est *une* étape : « tour 1 sur 1 » n'apprend rien et occupe une ligne.
+    // `nb_tours <= 1` est aussi la signature du repli d'`avancement_bloc` (« je ne sais pas »).
+    expect(
+      libelleEtatDuTour({ tour_courant: 1, nb_tours: 1, libelle_tour_courant: 'Qualification' }),
+    ).toBeNull()
+  })
+
+  it('se tait quand le tour n’est pas lisible', () => {
+    expect(
+      libelleEtatDuTour({ tour_courant: null, nb_tours: 5, libelle_tour_courant: null }),
+    ).toBeNull()
+  })
+
+  it('dit la position sans inventer de préfixe quand le libellé manque', () => {
+    // ⚠️ Le cas qui a motivé l'extraction : la version JSX repliait sur `Tour ${tour_courant}`, donc
+    // rendait « Tour 3 — tour 3 sur 5 », le mot du repli redoublant la phrase qui suit.
+    // ⚠️ Un premier correctif l'avait déclaré **mort**, ce qui était faux : `libelle_de_tour` rend
+    // `null` pour toute unité `PHASE_ENTIERE`, pas seulement quand le tour est illisible (relevé en
+    // 2ᵉ passe). Supprimer la phrase sur une hypothèse fausse l'aurait fait disparaître en silence
+    // le jour où un tel type annoncerait plusieurs tours. On garde donc la position seule.
+    expect(libelleEtatDuTour({ tour_courant: 3, nb_tours: 5, libelle_tour_courant: null })).toBe(
+      'tour 3 sur 5',
+    )
+  })
+
+  it('se tait quand il n’y a pas d’avancement du tout', () => {
+    expect(libelleEtatDuTour(null)).toBeNull()
+  })
+})
+
+describe('phasesSuspendues — ce que l’écran de salle doit annoncer', () => {
+  // ⚠️ Cette suite existe à cause d'un bloquant de 2ᵉ passe. Le premier correctif annonçait « le tir
+  // est suspendu » dès qu'une phase du créneau était en pause — sur une surface qui s'adresse au
+  // gymnase entier, alors que la portée par défaut d'un arrêt est **la phase seule**. Les tests
+  // d'alors ne pouvaient pas le voir : ils montaient un créneau à une seule phase, où « une phase
+  // est en pause » et « la salle est arrêtée » sont indiscernables.
+
+  it('se tait quand rien n’est en pause', () => {
+    expect(
+      phasesSuspendues([
+        { statut: 'en_cours', type: 'suisse' },
+        { statut: 'terminee', type: 'qualification' },
+      ]),
+    ).toBeNull()
+  })
+
+  it('annonce sans qualifier quand plus rien ne tire', () => {
+    // La phrase générale est alors **vraie** : la salle est arrêtée.
+    expect(
+      phasesSuspendues([
+        { statut: 'en_pause', type: 'suisse' },
+        { statut: 'terminee', type: 'qualification' },
+      ]),
+    ).toEqual([])
+  })
+
+  it('nomme ce qui est suspendu quand une autre phase tire encore', () => {
+    // **Le cas du bloquant.** Sans cette distinction, l'écran projeté faisait arrêter les archers du
+    // tableau, qui n'étaient pas concernés.
+    expect(
+      phasesSuspendues([
+        { statut: 'en_pause', type: 'suisse' },
+        { statut: 'en_cours', type: 'elimination_directe' },
+      ]),
+    ).toEqual(['Système suisse'])
+  })
+
+  it('nomme les deux quand deux phases sont suspendues et qu’une troisième tire', () => {
+    expect(
+      phasesSuspendues([
+        { statut: 'en_pause', type: 'suisse' },
+        { statut: 'en_pause', type: 'poules' },
+        { statut: 'en_cours', type: 'elimination_directe' },
+      ]),
+    ).toHaveLength(2)
+  })
+
+  it('ne compte pas une phase à venir comme du tir en cours', () => {
+    // Sinon un déroulé normal — une phase arrêtée, les suivantes pas encore lancées — basculerait en
+    // forme nominative alors que la salle est bel et bien à l'arrêt.
+    expect(
+      phasesSuspendues([
+        { statut: 'en_pause', type: 'suisse' },
+        { statut: 'a_venir', type: 'elimination_directe' },
+      ]),
+    ).toEqual([])
+  })
+})
+
+describe('toursBloquablesRestants — la borne du champ de saisie', () => {
+  // Elle doit valoir exactement `nb_tours - tour_courant`, parce que le serveur pose
+  // `apres_tour = tour_courant + x - 1` et refuse `apres_tour >= nb_tours`. Écrite en dur dans le
+  // JSX, cette coïncidence n'avait aucun oracle (relevé en revue).
+
+  it('laisse bloquer jusqu’au dernier tour de la phase', () => {
+    expect(
+      toursBloquablesRestants({ statut: 'en_cours', type: 'suisse', tourCourant: 2, nbTours: 5 }),
+    ).toBe(3)
+  })
+
+  it('n’en laisse qu’un à l’avant-dernier tour', () => {
+    expect(
+      toursBloquablesRestants({ statut: 'en_cours', type: 'suisse', tourCourant: 4, nbTours: 5 }),
+    ).toBe(1)
+  })
+
+  it('n’en laisse aucun au dernier tour', () => {
+    // Cohérent avec `peutPoserUnePause`, qui n'offre alors plus le formulaire : les deux règles
+    // doivent tomber ensemble, sans quoi l'écran offrirait un champ borné à zéro.
+    expect(
+      toursBloquablesRestants({ statut: 'en_cours', type: 'suisse', tourCourant: 5, nbTours: 5 }),
+    ).toBe(0)
+    expect(
+      peutPoserUnePause({ statut: 'en_cours', type: 'suisse', tourCourant: 5, nbTours: 5 }),
+    ).toBe(false)
+  })
+
+  it('rend zéro plutôt qu’un nombre inventé quand le tour est illisible', () => {
+    expect(
+      toursBloquablesRestants({
+        statut: 'en_cours',
+        type: 'suisse',
+        tourCourant: null,
+        nbTours: 5,
+      }),
+    ).toBe(0)
   })
 })

@@ -538,9 +538,17 @@ class ServiceRoutage:
         # points de résolution). `affectations` est une **lecture publique**
         # (`VueEcran.AFFECTATIONS`, E07US008), pas un ordre de tir : le CA veut qu'on puisse voir où
         # en est la salle *pendant* la pause. Conséquence assumée et **détectable depuis ici**
-        # (l'axe A la voulait tracée) : l'écran de salle continue d'afficher des affectations sans
-        # dire qu'il y a pause. La mention publique de la pause est **livrée** par E05US034
-        # (bandeau de `VueEnCours`, rendu aussi sur l'écran de salle).
+        # (l'axe A la voulait tracée) : cette lecture-ci ne dit rien de la pause, et n'a pas à le
+        # faire.
+        #
+        # ⚠️ **La mention publique est livrée par E05US034, mais pas ici — et la première rédaction
+        # de ce commentaire a failli le faire oublier.** Elle annonçait la pause « rendue aussi sur
+        # l'écran de salle », ce qui était faux : le bandeau vivait dans `VueEnCours`, et `EN_COURS`
+        # n'est pas au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut`). Le trou que
+        # ce commentaire existait pour **tracer** a donc été déclaré clos par le commentaire
+        # lui-même — relevé en revue par deux axes. Le bandeau est désormais monté **hors de la
+        # rotation** (`EcranSalle.MentionDePause`), donc visible quelle que soit la vue affichée, y
+        # compris celle que cette méthode alimente.
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return Routage(phase_id=None, archers=())

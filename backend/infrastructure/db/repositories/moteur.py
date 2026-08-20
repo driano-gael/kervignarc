@@ -14,6 +14,7 @@ voit jamais d'exception brute."""
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 from collections.abc import Sequence
 from typing import Any
@@ -28,6 +29,7 @@ from domain.arret_programme import (
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
+    doublon_d_arret,
 )
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
@@ -1382,17 +1384,32 @@ def _tours_a_finir_json(tours: tuple[tuple[PhaseId, int | None], ...]) -> str:
 
 
 def _vers_franchissement(ligne: FranchissementArretORM) -> FranchissementArret:
-    """Relit un franchissement. Une ligne illisible est une base altérée, pas un doute."""
+    """Relit un franchissement. Une ligne illisible est une base altérée, pas un doute.
+
+    SQLite stocke un `DateTime` **sans fuseau** : la valeur relue est *naive*. On lui **réattache
+    UTC**, car le service n'écrit jamais que de l'UTC (port `Horloge`) — même geste, et pour la
+    même raison, que `_vers_entree_audit` (`exploitation.py`) et les relectures de `referentiel.py`
+    et `tir.py`.
+
+    ⚠️ **Ce n'est pas cosmétique, et l'omission ne se voyait pas côté serveur** (relevé en revue,
+    quatre axes) : sans fuseau, Pydantic sérialise `"2026-03-14T12:45:00"` **sans offset**, et
+    `Date.parse` d'une forme date-heure sans offset est lue par ECMAScript en **heure locale**. Le
+    « depuis N min » du tableau de bord annonçait donc `+120` sur une salle arrêtée depuis une
+    minute — un chiffre faux dans le sens qui **alarme**, sur le CA même de l'US.
+    """
     try:
         tours = json.loads(ligne.tours_a_finir)
         arretees = json.loads(ligne.phases_arretees)
+        arrete_depuis = ligne.arrete_depuis
+        if arrete_depuis is not None and arrete_depuis.tzinfo is None:
+            arrete_depuis = arrete_depuis.replace(tzinfo=datetime.UTC)
         return FranchissementArret(
             phase_id=ligne.phase_id,
             apres_tour=ligne.apres_tour,
             etat=EtatFranchissement(ligne.etat),
             tours_a_finir=tuple((int(clef), valeur) for clef, valeur in tours.items()),
             phases_arretees=tuple(int(phase_id) for phase_id in arretees),
-            arrete_depuis=ligne.arrete_depuis,
+            arrete_depuis=arrete_depuis,
             id=ligne.id,
         )
     except (json.JSONDecodeError, AttributeError, TypeError, ValueError) as exc:
@@ -1454,7 +1471,27 @@ class ArretDeCirconstanceRepositorySQL:
             # L'unicité a parlé : deux poses du même arrêt. Le service refuse déjà le doublon qu'il
             # peut voir ; celle-ci ferme la **course** — deux postes d'admin qui cliquent dans la
             # même seconde, ou le double-clic d'un seul.
-            raise InfrastructureError("Cette pause est déjà posée sur cette phase.") from exc
+            #
+            # ⚠️ **`ArretProgrammeInvalide` et non `InfrastructureError`** (correctif de revue,
+            # axe A). Le second est mappé en **500 générique** par la frontière API : l'organisateur
+            # qui double-clique dans son écran de pilotage, en plein tournoi, recevait « erreur
+            # interne du serveur » pour un geste ordinaire du jour J. C'est ce que le précédent de
+            # `FranchissementArretRepositorySQL.ajouter` ci-dessus laisse passer sans dommage —
+            # mais ce chemin-là est **serveur**, personne ne le regarde ; celui-ci est déclenché
+            # par un bouton.
+            #
+            # Le franchissement de couche est assumé et il est le bon sens de lecture : cet adapter
+            # **implémente un port du domaine**, donc son contrat d'erreur est celui du domaine
+            # (règle 2). La sémantique est identique à celle que le service prononce en amont pour
+            # le doublon qu'il voit — même refus, même message, 422 dans les deux cas. Rendre la
+            # pose idempotente aurait été l'autre option ; elle a été écartée parce qu'une course
+            # sur le **même tour avec une portée différente** aurait alors renvoyé silencieusement
+            # un arrêt qui n'est pas celui demandé.
+            #
+            # Le message vient du **domaine** (`doublon_d_arret`) et n'est pas recopié : les deux
+            # exemplaires coïncidaient au singulier et auraient divergé à la première retouche
+            # (correctif de 2ᵉ passe, axe adversarial).
+            raise doublon_d_arret([arret.apres_tour]) from exc
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec d'enregistrement d'une pause.") from exc
 

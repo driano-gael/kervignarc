@@ -15,7 +15,10 @@ Ce qui change :
 
 - **le public et l'écran de salle annoncent la pause** — un bandeau lisible de loin, « le tir est
   suspendu par l'organisation ; la reprise sera annoncée en salle », à la place du discret « en
-  pause » en petits caractères ;
+  pause » en petits caractères. Sur l'écran projeté, l'annonce reste affichée **quelle que soit la
+  page en train de défiler**, et elle **nomme** ce qui est suspendu quand une autre phase tire
+  encore : un écran qui s'adresse au gymnase entier ne doit pas faire arrêter des archers que la
+  pause ne concerne pas ;
 - **le tableau de bord rappelle qu'on attend** : « 2 phases attendent votre relance depuis 14 min »,
   tout en haut de l'écran d'accueil. Il se tait dès que tout est reparti — une ligne qui ne bouge
   jamais cesse d'être lue, et c'est précisément celle qu'on veut voir le jour où elle apparaît ;
@@ -24,8 +27,9 @@ Ce qui change :
 - **le pilotage dit où en est chaque phase** — « Ronde 3 — tour 3 sur 5 ». Il n'affichait que le
   statut : on ne demande pas à quelqu'un de compter des tours sans lui dire où il en est ;
 - **l'écran de saisie du système suisse nomme ce qui manque** pour que la ronde suivante existe, en
-  séparant les rencontres *pas encore saisies* de celles *saisies mais pas validées*. Deux attentes
-  qui n'appellent pas la même personne : le scoreur d'une cible, ou celui qui valide.
+  séparant les rencontres *pas encore saisies*, celles *saisies mais pas validées*, et celles dont
+  la validation est *partie mais attend le réseau*. Trois attentes qui n'appellent pas la même
+  personne — le scoreur d'une cible, celui qui valide, ou personne du tout.
 
 **Un point invisible qui compte.** Une pause posée en cours de journée ne concerne **que le créneau
 où on la pose**. C'est la différence avec une pause préparée à l'atelier, qui fait partie du déroulé
@@ -37,5 +41,11 @@ qu'un seul tour, donc un arrêt « après le tour n » n'a nulle part où se pos
 (« 20 volées en 2 tours de 10 ») suppose de savoir exactement quels archers la composent — c'est un
 chantier à part, `E05US035`. En attendant, l'écran le **dit** plutôt que d'offrir un réglage qui ne
 partirait jamais.
+
+**Une limite à connaître.** Une pause posée en cours de journée **ne se relit pas** : la
+confirmation reste à l'écran, mais elle disparaît si l'on change de page. Si l'on repose la même par
+précaution, l'application refuse en disant qu'un arrêt occupe déjà ce tour — c'est aujourd'hui la
+seule façon dont elle rappelle qu'une pause est armée. Rien n'est perdu, la pause tombera bien ; la
+liste des pauses en attente reste à écrire.
 
 *Fiche de recette : [`docs/fonctionnel/E05US034.md`](../docs/fonctionnel/E05US034.md).*

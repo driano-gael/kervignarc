@@ -20,7 +20,13 @@ import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useMaintenant } from '../../shared/ui/useMaintenant'
 import { LIBELLE_TYPE } from '../../shared/phases/catalogue'
-import { peutPoserUnePause, phraseDeRelance, resumeDeRelance } from '../../shared/phases/relance'
+import {
+  libelleEtatDuTour,
+  peutPoserUnePause,
+  phraseDeRelance,
+  resumeDeRelance,
+  toursBloquablesRestants,
+} from '../../shared/phases/relance'
 import type { PorteeArret } from '../../shared/phases/arrets'
 import type { AvancementBloc } from '../../shared/schema-braquets/modele'
 import type { Phase, StatutPhase, TransitionPhase } from '../phases/api'
@@ -171,22 +177,15 @@ function LignePilotage({
  * celui qu'ADR-0090 §5 dérive à la lecture — deux sources pour une même vérité, exactement ce que
  * cet ADR a supprimé.
  *
- * `libelle_tour_courant` est **servi par le serveur**, jamais recomposé ici : la règle « à rebours
- * de la finale » a déjà deux domiciles (`DETTE-020`), et E05US032 interdit nommément d'en dériver un
- * troisième.
- *
- * Muet quand la phase n'annonce pas de tour — une qualification est *une* étape, elle ne se dit pas
- * « tour 1 sur 1 ». Se taire vaut mieux qu'afficher un compteur qui ne veut rien dire.
+ * ⚠️ **La règle elle-même vit dans `shared/phases/relance.ts`** (`libelleEtatDuTour`), pas ici —
+ * correctif de revue, même motif que `peutPoserUnePause` deux fonctions plus bas : écrite en
+ * conditions JSX, elle était invisible au test, et son repli mort n'a été vu que par lecture. Ce
+ * composant n'est plus que le point de montage.
  */
 function EtatDuTour({ avancement }: { avancement: AvancementBloc | null }) {
-  if (avancement === null || avancement.tour_courant === null) return null
-  if (avancement.nb_tours <= 1) return null
-  return (
-    <span className="carte__aide">
-      {avancement.libelle_tour_courant ?? `Tour ${avancement.tour_courant}`} — tour{' '}
-      {avancement.tour_courant} sur {avancement.nb_tours}
-    </span>
-  )
+  const libelle = libelleEtatDuTour(avancement)
+  if (libelle === null) return null
+  return <span className="carte__aide">{libelle}</span>
 }
 
 /**
@@ -202,7 +201,7 @@ function EtatDuTour({ avancement }: { avancement: AvancementBloc | null }) {
  * qui le calculerait couperait au mauvais endroit dès qu'il aurait dix secondes de retard.
  *
  * **Ne s'affiche pas** sur une phase qui n'est pas en cours, sur un type dont l'application ne lit
- * pas le tour (`TYPES_ARRETABLES`), ou tant que le tour n'est pas lisible : dans les trois cas le
+ * pas le tour (`TYPES_ARRETABLES`), ou tant que le tour n'est pas lisible : dans les quatre cas le
  * serveur refuserait, et offrir un geste dont on sait déjà qu'il sera refusé est ce que la table de
  * transitions ci-dessus évite déjà pour le cycle de vie.
  */
@@ -215,7 +214,7 @@ function PoserUnePause({
   phase: Phase
   avancement: AvancementBloc | null
 }) {
-  const [tours, setTours] = useState(1)
+  const [tours, setTours] = useState('1')
   const [portee, setPortee] = useState<PorteeArret>('phase')
   const poser = usePoserArretRelatif(departId)
 
@@ -228,26 +227,54 @@ function PoserUnePause({
     nbTours: avancement?.nb_tours ?? 0,
   })
   if (!posable) return null
+  // La borne vient de `toursBloquablesRestants` et non d'une soustraction écrite ici (correctif de
+  // revue) : c'est elle qui est tenue en vis-à-vis du refus serveur par un test. `posable` implique
+  // un tour courant lisible et strictement inférieur à `nb_tours`, donc un résultat d'au moins 1.
+  const restant = toursBloquablesRestants({
+    statut: phase.statut,
+    type: phase.type,
+    tourCourant: avancement?.tour_courant ?? null,
+    nbTours: avancement?.nb_tours ?? 0,
+  })
 
   return (
     <form
       className="phase__actions"
       onSubmit={(evenement) => {
         evenement.preventDefault()
-        poser.mutate({ phaseId: phase.id, dansXTours: tours, portee })
+        // Conversion **au moment du geste**, pas à la frappe : la saisie reste effaçable (voir le
+        // commentaire du champ). Un champ vide ou illisible retombe sur 1 — la valeur que le
+        // formulaire propose d'emblée, donc jamais une surprise.
+        const demande = Number.parseInt(tours, 10)
+        poser.mutate({
+          phaseId: phase.id,
+          dansXTours: Number.isNaN(demande) ? 1 : demande,
+          portee,
+        })
       }}
     >
       <label>
         Bloquer dans{' '}
+        {/* ⚠️ **`max` borné par ce qui reste de la phase, pas par le plafond du DTO** (correctif de
+            revue) : au-delà, le serveur refuse (« ne couperait rien »), et la même règle doit se
+            lire là où l'organisateur saisit. `peutPoserUnePause` garantit ici `tourCourant !== null`
+            et `tourCourant < nbTours`, donc le calcul vaut au moins 1.
+            ⚠️ **La saisie est gardée en chaîne**, et convertie seulement à la soumission (correctif
+            de 2ᵉ passe). Un champ contrôlé par un nombre ne peut pas être **vidé** : `Number('')`
+            valait `0`, et le repli `|| 1` ne faisait que réafficher « 1 » — pire, effacer puis
+            taper « 3 » produisait « 13 », donc une pause dans treize tours au lieu de trois, sur un
+            geste dont le seul retour est un message transitoire (`DETTE-075`). Au doigt, en pleine
+            salle, c'est ce genre de détail qui fait renoncer. */}
         <input
           type="number"
           min={1}
-          max={64}
+          max={restant}
           inputMode="numeric"
           value={tours}
-          onChange={(evenement) => setTours(Number(evenement.target.value))}
+          onFocus={(evenement) => evenement.target.select()}
+          onChange={(evenement) => setTours(evenement.target.value)}
         />{' '}
-        tour{tours > 1 ? 's' : ''}
+        tour{Number.parseInt(tours, 10) > 1 ? 's' : ''}
       </label>
       <label>
         <span className="carte__aide">Portée</span>{' '}
@@ -262,6 +289,11 @@ function PoserUnePause({
       <button type="submit" className="bouton--discret" disabled={poser.isPending}>
         Programmer la pause
       </button>
+      {/* `# DETTE-075` — **c'est le seul retour sur une pause posée**, et il est transitoire : il
+          disparaît au changement d'onglet ou au rechargement. Aucune lecture ne rend les arrêts de
+          circonstance **armés** (le port a `par_depart`, mais aucune route ne l'expose). Relevé par
+          quatre axes de revue ; assumé plutôt que résorbé ici, parce que la lecture est une tranche
+          d'IHM à part entière et non un correctif. Cf. `docs/dette.md`. */}
       {poser.isSuccess && poser.data !== undefined && (
         <span className="carte__aide" role="status">
           Pause posée : la salle s’arrêtera après le tour {poser.data.apres_tour}.
@@ -303,9 +335,14 @@ function RelanceDesArrets({ departId }: { departId: number }) {
         {/* E05US034 — la phrase compte les **phases éteintes** et dit **depuis quand**, au lieu de
             compter les arrêts. Un arrêt de créneau en éteint plusieurs d'un coup : « 1 pause »
             minimisait ce qu'il y a à rallumer. Mutualisée avec la pastille du tableau de bord —
-            deux formulations pour un même fait, c'est une divergence en attente. */}
+            deux formulations pour un même fait, c'est une divergence en attente.
+            ⚠️ **Le repli compte, il ne suppose pas** (correctif de revue) : `resumeDeRelance` rend
+            `null` quand aucun arrêt listé n'a de phase éteinte, et le singulier codé en dur
+            titrait « Une pause attend » au-dessus de trois boutons de relance. Depuis que
+            `en_attente_de_relance` écarte les arrêts dont plus rien n'est en pause, ce chemin ne
+            devrait plus être atteint — raison de plus pour qu'il ne mente pas s'il l'était. */}
         <strong>
-          {resume === null ? 'Une pause attend votre relance.' : phraseDeRelance(resume)}
+          {phraseDeRelance(resume ?? { nbPhases: arrets.data.length, minutes: null })}
         </strong>{' '}
         Le tir est suspendu&nbsp;: les archers concernés lisent «&nbsp;en attente&nbsp;».
       </p>

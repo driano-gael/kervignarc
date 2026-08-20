@@ -210,6 +210,27 @@ def verifier_type_arretable(type_phase: TypePhase) -> None:
         )
 
 
+def doublon_d_arret(tours: Sequence[int]) -> ArretProgrammeInvalide:
+    """Le refus « deux arrêts au même endroit », **composé une seule fois** dans le projet.
+
+    ⚠️ **Extrait en revue** (axe adversarial) parce qu'un second exemplaire venait d'apparaître :
+    l'adapter SQLite le recopiait à la main pour traduire la violation d'unicité
+    `(depart_id, phase_id, apres_tour)` que la **course** déclenche — deux postes d'admin, ou le
+    double-clic d'un seul. Les deux textes coïncidaient au singulier et auraient divergé à la
+    première retouche, celle qui diverge étant toujours la seconde copie. C'est mot pour mot ce que
+    `verifier_type_arretable` interdit deux cents lignes plus haut, et pour la même raison.
+
+    Rend l'exception au lieu de la lever : l'appelant écrit `raise doublon_d_arret(...)`, ce qui
+    garde la levée visible à l'endroit où elle se produit.
+    """
+    pluriel = "s" if len(tours) > 1 else ""
+    liste = ", ".join(str(tour) for tour in tours)
+    return ArretProgrammeInvalide(
+        f"deux arrêts sont posés après le{pluriel} même{pluriel} tour{pluriel} {liste} : "
+        "la phase ne peut pas être mise en pause deux fois au même endroit"
+    )
+
+
 def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = None) -> None:
     """Vérifie qu'une **liste** d'arrêts est applicable. Lève `ArretProgrammeInvalide` sinon.
 
@@ -225,12 +246,7 @@ def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = Non
     tours = [arret.apres_tour for arret in arrets]
     doublons = {tour for tour in tours if tours.count(tour) > 1}
     if doublons:
-        pluriel = "s" if len(doublons) > 1 else ""
-        liste = ", ".join(str(tour) for tour in sorted(doublons))
-        raise ArretProgrammeInvalide(
-            f"deux arrêts sont posés après le{pluriel} même{pluriel} tour{pluriel} {liste} : "
-            "la phase ne peut pas être mise en pause deux fois au même endroit"
-        )
+        raise doublon_d_arret(sorted(doublons))
     if nb_tours is None:
         return
     inertes = sorted(tour for tour in tours if tour >= nb_tours)

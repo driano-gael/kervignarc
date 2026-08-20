@@ -245,7 +245,14 @@ function CeQuiManqueEncore({ rondes, courante }: { rondes: Ronde[]; courante: nu
   const ronde = rondes.find((r) => r.numero === courante)
   if (ronde === undefined) return null
   const manque = ceQuiManque(ronde.rencontres)
-  if (manque.aSaisir.length + manque.aValider.length + manque.bloquees.length === 0) return null
+  if (
+    manque.aSaisir.length +
+      manque.aValider.length +
+      manque.enFile.length +
+      manque.bloquees.length ===
+    0
+  )
+    return null
 
   return (
     <div className="carte__etat" role="status">
@@ -259,6 +266,15 @@ function CeQuiManqueEncore({ rondes, courante }: { rondes: Ronde[]; courante: nu
         <p>
           <strong>Saisies, pas encore validées</strong> ({manque.aValider.length})&nbsp;:{' '}
           {manque.aValider.join(' · ')}
+        </p>
+      )}
+      {manque.enFile.length > 0 && (
+        <p>
+          {/* Le geste est **fait**, il attend le réseau : la nommer autrement enverrait réclamer une
+              validation déjà posée. La taire serait pire — si c'est la dernière rencontre, le
+              résumé devient vide sous une phrase d'attente (correctif de revue, axe adversarial). */}
+          <strong>Validées, en attente de réseau</strong> ({manque.enFile.length})&nbsp;:{' '}
+          {manque.enFile.join(' · ')}
         </p>
       )}
       {manque.bloquees.length > 0 && (

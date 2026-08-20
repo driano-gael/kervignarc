@@ -213,7 +213,28 @@ describe('ceQuiManque — le refus circonstancié (E05US034)', () => {
   it('ne réclame rien d’une rencontre déjà validée', () => {
     const manque = ceQuiManque([rencontre('Finie', { validee_par: 'Camille' })])
 
-    expect(manque).toEqual({ aSaisir: [], aValider: [], bloquees: [] })
+    expect(manque).toEqual({ aSaisir: [], aValider: [], enFile: [], bloquees: [] })
+  })
+
+  it('range à part une validation posée mais restée en file hors-ligne', () => {
+    // ⚠️ Arbitrage de revue (E05US034) : `etatRencontre` distingue « validation en attente »
+    // (E04US009) ; sans ce cas, la même rencontre s'annonçait « validation en attente » dans la
+    // liste et « il manque une validation » dans le résumé. Ce résumé répond à **qui aller
+    // chercher** : une validation en file ne demande personne, elle attend le réseau.
+    const manque = ceQuiManque([
+      rencontre('Enfile', {
+        resultat: { termine: true } as Duel['resultat'],
+        validation_en_attente: true,
+      }),
+    ])
+
+    expect(manque.aValider).toEqual([])
+    // ⚠️ **Nommée, pas écartée** (correction de 2ᵉ passe). L'écarter rendait le résumé **vide** sous
+    // la phrase « la ronde suivante sera appariée quand celle-ci sera saisie et validée » : plus
+    // rien n'expliquait l'attente, soit le cul-de-sac que ce CA ferme. Et `validation_en_attente`
+    // est purement **local** — l'organisateur ne le voit jamais, donc « ça n'appelle personne » ne
+    // justifiait pas de le taire.
+    expect(manque.enFile).toEqual(['Enfile X – Adverse X'])
   })
 
   it('compte une rencontre à demi tirée comme « à saisir », pas « à valider »', () => {

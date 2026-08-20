@@ -13,8 +13,9 @@
 // horloges sont en UTC et sur le même réseau local ; l'écart entre elles est sans effet sur une
 // durée affichée à la minute.
 
-import { TYPES_ARRETABLES } from './catalogue'
+import { nommerType, TYPES_ARRETABLES } from './catalogue'
 import type { TypePhase } from './catalogue'
+import type { StatutPhase } from '../schema-braquets/modele'
 
 /** La forme minimale dont ce module a besoin — un sous-ensemble d'`ArretEnAttente`.
  *
@@ -92,9 +93,14 @@ export function phraseDeRelance(resume: ResumeDeRelance): string {
 }
 
 /** Ce qu'il faut savoir d'une phase pour décider si on peut y poser une pause. Sous-ensemble de
- * `Phase` + `AvancementBloc`, pour que `shared/` ne dépende d'aucune feature. */
+ * `Phase` + `AvancementBloc`, pour que `shared/` ne dépende d'aucune feature.
+ *
+ * `statut` est typé `StatutPhase` — déclaré dans `shared/`, donc sans créer la dépendance que ce
+ * module évite. Le laisser en `string` (première écriture) faisait compiler `'en-cours'` avec un
+ * tiret : la fonction aurait rendu `false` en silence et le formulaire aurait disparu sans un
+ * signe (revue E05US034). */
 export interface PhasePosable {
-  statut: string
+  statut: StatutPhase
   type: TypePhase
   tourCourant: number | null
   nbTours: number
@@ -103,7 +109,7 @@ export interface PhasePosable {
 /**
  * Peut-on proposer « bloquer dans x tours » sur cette phase ? (CA E05US034)
  *
- * ⚠️ **Extraite du JSX parce que c'est une règle, pas de la mise en page.** Trois conditions, et
+ * ⚠️ **Extraite du JSX parce que c'est une règle, pas de la mise en page.** Quatre conditions, et
  * chacune correspond à un refus que le serveur prononcerait — offrir un geste dont on sait déjà
  * qu'il sera refusé est ce que la table des transitions de cycle de vie évite déjà par ailleurs.
  * Écrite dans une condition JSX, elle serait invisible au test, et c'est exactement le manque qui a
@@ -114,7 +120,12 @@ export interface PhasePosable {
  * 2. **le type annonce ses tours** (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine) —
  *    ailleurs l'arrêt serait accepté puis inerte, et l'organisateur le découvrirait le jour J ;
  * 3. **le tour courant est lisible** — sans origine, « dans x tours » ne se compte pas. Deviner
- *    couperait la salle au mauvais endroit.
+ *    couperait la salle au mauvais endroit ;
+ * 4. **il reste un tour après celui qui tourne** — au dernier tour d'une phase (ronde 5 sur 5,
+ *    la finale d'un tableau), `apres_tour = tourCourant + x - 1 >= nbTours` **quelle que soit** la
+ *    valeur saisie, donc le serveur refuse à coup sûr (« ne couperait rien »). Sans cette
+ *    condition, le formulaire s'ouvrait une fois par phase pour ne rendre qu'un 422 (revue
+ *    E05US034).
  *
  * ⚠️ **`nbTours <= 1` compte comme non posable**, et il faut le dire : c'est la signature du repli
  * d'`avancement_bloc` (« je ne sais pas »), et une phase d'un seul tour n'a de toute façon aucune
@@ -125,6 +136,99 @@ export function peutPoserUnePause(phase: PhasePosable): boolean {
     phase.statut === 'en_cours' &&
     TYPES_ARRETABLES.has(phase.type) &&
     phase.tourCourant !== null &&
-    phase.nbTours > 1
+    phase.nbTours > 1 &&
+    phase.tourCourant < phase.nbTours
   )
+}
+
+/** Ce qu'il faut savoir d'une phase pour dire où en est son tour. Sous-ensemble d'`AvancementBloc`,
+ * même raison que `PhasePosable` : `shared/` ne dépend d'aucune feature. */
+export interface TourLisible {
+  tour_courant: number | null
+  nb_tours: number
+  libelle_tour_courant: string | null
+}
+
+/**
+ * « Ronde 3 — tour 3 sur 5 » : le tour en cours, **lisible en tant que tel** (CA E05US034).
+ *
+ * ⚠️ **Extraite du JSX en revue, et le test a immédiatement servi.** Écrite en conditions de rendu,
+ * la règle n'avait aucun oracle — et elle portait un repli qui affichait « **Tour 3** — tour 3 sur
+ * 5 », le mot du repli redoublant la phrase qui le suit.
+ *
+ * ⚠️ **Ce repli n'était pas mort, contrairement à ce qu'un premier correctif a écrit** (rectifié en
+ * 2ᵉ passe, axe adversarial). `libelle_de_tour` (`domain/tour_de_phase.py`) rend `null` pour toute
+ * unité `PHASE_ENTIERE`, que le tour courant soit lisible ou non — pas seulement quand
+ * `tour_courant` est `null`. Le cas est aujourd'hui inatteignable pour une autre raison (ces types
+ * n'annoncent qu'un tour, donc `nbTours <= 1` les écarte une ligne plus haut), mais s'appuyer sur
+ * une hypothèse fausse pour **supprimer** un repli aurait fait disparaître la ligne en silence le
+ * jour où un tel type annoncerait plusieurs tours. On garde donc une phrase — sans préfixe
+ * inventé : « tour 3 sur 5 » se lit très bien seul.
+ *
+ * `libelle_tour_courant` est **servi par le serveur**, jamais recomposé ici : la règle « à rebours
+ * de la finale » a déjà deux domiciles (`DETTE-020`), et E05US032 interdit nommément d'en dériver un
+ * troisième.
+ *
+ * Rend `null` — donc ne dit rien — quand la phase n'annonce pas de tour : une qualification est
+ * *une* étape, elle ne se dit pas « tour 1 sur 1 ». Se taire vaut mieux qu'un compteur qui ne veut
+ * rien dire. `nb_tours <= 1` couvre aussi la signature du repli d'`avancement_bloc` (« je ne sais
+ * pas »).
+ */
+export function libelleEtatDuTour(avancement: TourLisible | null): string | null {
+  if (avancement === null || avancement.tour_courant === null) return null
+  if (avancement.nb_tours <= 1) return null
+  const position = `tour ${avancement.tour_courant} sur ${avancement.nb_tours}`
+  if (avancement.libelle_tour_courant === null) return position
+  return `${avancement.libelle_tour_courant} — ${position}`
+}
+
+/** Ce qu'il faut savoir d'une phase pour décider ce que la salle doit lire. */
+export interface PhaseAffichable {
+  statut: StatutPhase
+  type: TypePhase
+}
+
+/**
+ * Ce que l'**écran de salle** doit annoncer d'une pause — ou rien du tout (CA E05US034).
+ *
+ * ⚠️ **Cette règle est née d'un bloquant de 2ᵉ passe, et le piège vaut d'être dit.** Le premier
+ * correctif annonçait « le tir est suspendu » dès qu'**une** phase du créneau était en pause. Or la
+ * portée par défaut d'un arrêt est **la phase seule**, et rien n'interdit deux phases en cours en
+ * parallèle : l'écran projeté aurait donc annoncé au gymnase entier une suspension générale pendant
+ * que le tableau d'à côté tirait. Sur une surface collective, une annonce non qualifiée fait
+ * arrêter des gens que ça ne concerne pas — c'est pire que l'absence d'annonce qu'on venait de
+ * corriger.
+ *
+ * Trois réponses, et une seule est « ne rien dire » :
+ * - `null` — **aucune** phase en pause : l'écran se tait ;
+ * - `[]` — plus rien ne tire : la salle est arrêtée, la phrase générale est vraie ;
+ * - `['système suisse', …]` — il reste du tir en cours : on **nomme** ce qui est suspendu.
+ *
+ * Les phases `à venir` et `terminée` ne comptent dans aucun sens : elles ne tirent pas, donc leur
+ * présence ne doit ni déclencher l'annonce ni empêcher la forme générale.
+ */
+export function phasesSuspendues(phases: readonly PhaseAffichable[]): string[] | null {
+  const enPause = phases.filter((phase) => phase.statut === 'en_pause')
+  if (enPause.length === 0) return null
+  const tireEncore = phases.some((phase) => phase.statut === 'en_cours')
+  if (!tireEncore) return []
+  return enPause.map((phase) => nommerType(phase.type))
+}
+
+/**
+ * Combien de tours on peut encore « bloquer d'avance » sur cette phase (CA E05US034).
+ *
+ * ⚠️ **Extraite pour être tenue en vis-à-vis du refus serveur** (correctif de revue, axe B). Le
+ * serveur pose `apres_tour = tour_courant + x - 1` et refuse `apres_tour >= nb_tours` : la borne
+ * du champ de saisie vaut donc exactement `nb_tours - tour_courant`. Écrite en dur dans le JSX,
+ * cette coïncidence n'avait aucun oracle — et c'est la seule chose qui empêche les deux bornes de
+ * diverger à la prochaine US, auquel cas l'écran offrirait un geste que le serveur refuse (ou
+ * l'inverse, plus discret encore : il en interdirait un qui passe).
+ *
+ * N'a de sens que sur une phase que `peutPoserUnePause` accepte — qui garantit `tourCourant`
+ * lisible et strictement inférieur à `nbTours`, donc un résultat d'au moins 1.
+ */
+export function toursBloquablesRestants(phase: PhasePosable): number {
+  if (phase.tourCourant === null) return 0
+  return Math.max(0, phase.nbTours - phase.tourCourant)
 }

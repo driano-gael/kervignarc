@@ -43,9 +43,10 @@ from domain.arret_programme import (
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
+    doublon_d_arret,
 )
 from domain.bareme import BaremeQualification
-from domain.depart import Depart
+from domain.depart import Depart, DepartId
 from domain.erreurs import ArretProgrammeInvalide
 from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
@@ -123,13 +124,22 @@ class FauxSuivi:
         # revue ont relevé que c'est exactement ce que la doublure masquait : trois bloquants sont
         # passés au travers de 3453 tests verts parce que la borne n'était pas atteignable.
         self.nb_tours: dict[PhaseId, int] = {}
+        # Le créneau de chaque phase, alimenté par `Decor.poser` — voir `avancement_par_phase`.
+        self.creneaux: dict[PhaseId, int] = {}
         self.appels = 0
 
     def avancement_par_phase(self, depart_id: int) -> dict[PhaseId, AvancementDePhase]:
+        # ⚠️ **Cloisonne par créneau, et ne le faisait pas** (correctif de revue, axe B). La doublure
+        # rendait **toutes** les phases enregistrées, quel que soit le créneau demandé. C'était
+        # neutre tant que le décor n'en avait qu'un ; depuis que `Decor.poser(depart_id=…)` existe,
+        # un service qui itérerait sur `avancements` au lieu de `phases` fuirait d'un créneau à
+        # l'autre et resterait **vert** — sur le test dont c'est précisément le sujet. Même défaut
+        # de doublure trop généreuse que celui documenté sur `nb_tours` juste au-dessus.
         self.appels += 1
         return {
             phase_id: AvancementDePhase(nb_tours=self.nb_tours.get(phase_id, 9), tour_courant=tour)
             for phase_id, tour in self.tours.items()
+            if self.creneaux.get(phase_id, depart_id) == depart_id
         }
 
 
@@ -180,6 +190,17 @@ class FauxArretsDeCirconstance:
         return [item for item in self.items if item.depart_id == depart_id]
 
     def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
+        # ⚠️ **Honore l'unicité que le schéma tient** (correctif de revue, axe adversarial). Le
+        # contrat du port lève `ArretProgrammeInvalide` quand un arrêt occupe déjà ce tour ; une
+        # doublure permissive laissait le chemin de **course** — celui que la contrainte SQL ferme,
+        # double-clic ou deux postes d'admin — sans oracle nulle part au-dessus de l'adapter.
+        if any(
+            item.depart_id == arret.depart_id
+            and item.phase_id == arret.phase_id
+            and item.apres_tour == arret.apres_tour
+            for item in self.items
+        ):
+            raise doublon_d_arret([arret.apres_tour])
         self._sequence += 1
         persiste = dataclasses.replace(arret, id=self._sequence)
         self.items.append(persiste)
@@ -247,9 +268,26 @@ class Decor:
         statut: StatutPhase = StatutPhase.EN_COURS,
         arrets: tuple[ArretProgramme, ...] = (),
         tour_courant: int | None = 1,
+        nb_tours: int | None = None,
+        depart_id: DepartId | None = None,
     ) -> PhaseId:
-        """Pose une phase démarrée, son étape, ses arrêts, et son tour courant dans le suivi."""
-        reglage = ConfigurationSuisse(nb_rondes=9) if type_phase is TypePhase.SUISSE else None
+        """Pose une phase démarrée, son étape, ses arrêts, et son tour courant dans le suivi.
+
+        ⚠️ **`nb_tours` est un paramètre du décor, et il ne l'était pas** (correctif de revue,
+        axe B). `FauxSuivi` repliait sur `9`, et tous les tests posaient des arrêts aux tours 2 à
+        5 : la borne `apres_tour >= nb_tours` n'était **jamais atteinte** par un arrêt existant,
+        donc deux refus documentés n'avaient aucun oracle. Une doublure trop généreuse est un
+        trou de couverture invisible — le même défaut que celui qui a rendu `nb_tours` pilotable,
+        un cran plus loin.
+        """
+        # ⚠️ Le réglage suit `nb_tours` quand il est piloté : un suisse « réglé à 9 rondes » dont le
+        # suivi annonce 5 tours est un état que le serveur ne peut pas produire, et c'est le genre
+        # de fixture qui rendrait vert un futur code lisant `phase.suisse.nb_rondes` (revue, axe B).
+        reglage = (
+            ConfigurationSuisse(nb_rondes=nb_tours if nb_tours is not None else 9)
+            if type_phase is TypePhase.SUISSE
+            else None
+        )
         # ⚠️ **Barème et grain ne sont donnés qu'à la qualification**, comme dans le décor du fichier
         # de domaine. Sans eux, `PhaseQualificationIncomplete` tombe **avant** la garde qu'on veut
         # lire ; avec eux partout, c'est `GrainIncompatibleAvecTypePhase` qui tombe sur les autres.
@@ -261,7 +299,7 @@ class Decor:
             self.phases,
             dataclasses.replace(
                 Phase(
-                    depart_id=self.depart_id,
+                    depart_id=depart_id if depart_id is not None else self.depart_id,
                     ordre=ordre,
                     type=type_phase,
                     suisse=reglage,
@@ -278,6 +316,9 @@ class Decor:
             etape = next(e for e in self.deroules.par_tournoi(self.tournoi_id) if e.ordre == ordre)
             self.deroules.enregistrer(dataclasses.replace(etape, arrets=arrets))
         self.suivi.tours[phase.id] = tour_courant
+        self.suivi.creneaux[phase.id] = depart_id if depart_id is not None else self.depart_id
+        if nb_tours is not None:
+            self.suivi.nb_tours[phase.id] = nb_tours
         return phase.id
 
     def statut(self, phase_id: PhaseId) -> StatutPhase:
@@ -620,6 +661,120 @@ def test_les_arrets_en_attente_se_lisent_pour_le_pilotage(decor: Decor) -> None:
     assert decor.service.en_attente_de_relance(decor.depart_id) == ()
 
 
+def test_une_phase_reprise_a_la_main_sort_du_rappel_de_relance(decor: Decor) -> None:
+    """Le rappel s'éteint aussi quand l'organisateur prend l'autre bouton (revue, axe adversarial).
+
+    ⚠️ **Le pilotage offre deux gestes côte à côte** sur une phase en pause : « Relancer » (qui lève
+    le franchissement) et « Reprendre » (la transition de cycle de vie). Le second ne marquait rien
+    du côté des arrêts : le franchissement restait « en attente de relance » **pour toujours**, sur
+    une salle qui tire.
+
+    Le trou datait d'`E05US033` mais restait confiné au panneau de pilotage, à côté de la phase, là
+    où la contradiction se voyait. `E05US034` le **hisse au tableau de bord** avec un compteur
+    croissant (« Une phase attend votre relance depuis 47 min ») : un rappel qu'on ne peut pas
+    éteindre use la vigilance sur tous les autres — le filet de sécurité devenu source de fatigue
+    d'alarme.
+
+    Le critère est donc l'état **réel de la salle** : si plus rien n'est éteint, il n'y a plus de
+    geste à réclamer, quel que soit le chemin par lequel la phase est repartie.
+    """
+    phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=2),), tour_courant=3)
+    decor.service.evaluer(decor.depart_id)
+    assert len(decor.service.en_attente_de_relance(decor.depart_id)) == 1
+    assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
+
+    decor.service_phases.reprendre(decor.depart_id, phase_id)
+
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS
+    assert decor.service.en_attente_de_relance(decor.depart_id) == ()
+
+
+def test_un_arret_de_creneau_reste_relancable_tant_qu_une_phase_est_eteinte(decor: Decor) -> None:
+    """Le cas adverse du test précédent, et il porte le vrai risque (revue de 2ᵉ passe, axe B).
+
+    ⚠️ **Le filtre est un `any`, pas un `all`, et la différence est un bouton perdu.** Un arrêt de
+    portée créneau éteint plusieurs phases d'un coup ; si l'organisateur en reprend **une** à la
+    main, les autres restent noires. Un critère « toutes les phases sont reparties » ferait alors
+    sortir l'arrêt de la liste de relance — donc plus aucun bouton pour rallumer ce qui est encore
+    éteint, sur une salle à moitié arrêtée. C'est le mode de panne que `en_attente_de_relance`
+    existe pour empêcher, et que le correctif de la 1ʳᵉ passe pouvait rouvrir en le refermant.
+    """
+    premiere = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),)
+    )
+    seconde = decor.poser(ordre=2)
+    decor.suivi.tours[premiere] = 3
+    decor.suivi.tours[seconde] = 3
+    decor.service.evaluer(decor.depart_id)
+    decor.suivi.tours[seconde] = 4
+    decor.service.evaluer(decor.depart_id)
+    assert decor.statut(premiere) is StatutPhase.EN_PAUSE
+    assert decor.statut(seconde) is StatutPhase.EN_PAUSE
+
+    decor.service_phases.reprendre(decor.depart_id, premiere)
+
+    # Une phase repartie, l'autre toujours éteinte : le bouton doit rester.
+    (encore,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert encore.id is not None
+    decor.service.lever(decor.depart_id, encore.id)
+    assert decor.statut(seconde) is StatutPhase.EN_COURS
+
+
+def test_le_rappel_ne_compte_que_les_phases_encore_eteintes(decor: Decor) -> None:
+    """Le **chiffre** suit l'état de la salle, pas l'historique (2ᵉ passe, axe adversarial).
+
+    ⚠️ **Le premier correctif avait déplacé le trou plutôt que de le fermer.** Filtrer sur « une
+    phase est encore en pause » éteignait bien le rappel quand tout était reparti, mais laissait
+    `phases_arretees` — la trace **historique**, jamais élaguée — servir de compteur. Sur un arrêt
+    de créneau qui a éteint deux phases dont une a été reprise à la main, le tableau de bord
+    annonçait donc « **2 phases** attendent votre relance » quand une seule était noire, et le clic
+    n'en repartait qu'une : l'écran promettait deux, le serveur en rendait une.
+
+    Un chiffre faux dans le sens qui **alarme** est celui qui use la vigilance le plus vite — c'est
+    ce que `resumeDeRelance` s'interdit dans sa propre docstring, et le compteur qui l'alimente
+    vient d'ici.
+    """
+    premiere = decor.poser(
+        ordre=1, arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),)
+    )
+    seconde = decor.poser(ordre=2)
+    decor.suivi.tours[premiere] = 3
+    decor.suivi.tours[seconde] = 3
+    decor.service.evaluer(decor.depart_id)
+    decor.suivi.tours[seconde] = 4
+    decor.service.evaluer(decor.depart_id)
+    (avant,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert len(avant.phases_arretees) == 2
+
+    decor.service_phases.reprendre(decor.depart_id, premiere)
+
+    (apres,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert apres.phases_arretees == (seconde,)
+    # Et la relance rend bien ce que l'écran a annoncé — ni plus, ni moins.
+    assert apres.id is not None
+    assert decor.service.lever(decor.depart_id, apres.id) == (seconde,)
+
+
+def test_relancer_apres_une_reprise_manuelle_consomme_l_arret_sans_404(decor: Decor) -> None:
+    """Un bouton vu il y a dix secondes ne doit pas répondre « introuvable » (revue, axe D).
+
+    ⚠️ `lever` prenait sa source dans `en_attente_de_relance`, donc héritait de son filtre : un
+    arrêt dont la **dernière** phase venait d'être reprise à la main devenait introuvable, et
+    l'organisateur recevait un 404 sur un bouton encore affiché (le poll est à 10 s). Or les quatre
+    cas que la docstring de `lever` énumère sont les seuls qui méritent un 404. Il n'y a plus rien
+    à relancer — ce n'est pas la même chose qu'un identifiant inconnu : l'arrêt est **consommé**,
+    la relance est vide, et le rappel disparaît comme il le devait.
+    """
+    phase_id = decor.poser(ordre=1, arrets=(ArretProgramme(apres_tour=2),), tour_courant=3)
+    decor.service.evaluer(decor.depart_id)
+    (arret,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert arret.id is not None
+    decor.service_phases.reprendre(decor.depart_id, phase_id)
+
+    assert decor.service.lever(decor.depart_id, arret.id) == ()
+    assert decor.service.en_attente_de_relance(decor.depart_id) == ()
+
+
 # ───────────── Ce que la revue a trouvé, et qu'aucun test n'attrapait ───────────── Cette section
 # est née des quatre axes de `/revue-us`. Chacun de ces tests correspond à un défaut **reproduit**
 # sur le code livré, et chacun était invisible parce que la doublure d'avancement ne produisait
@@ -898,11 +1053,25 @@ def test_un_arret_relatif_n_est_rejoue_par_aucun_autre_creneau() -> None:
     """
     decor, autre_depart = _decor_a_deux_creneaux()
     phase_id = decor.poser(ordre=1, tour_courant=3)
+    # Le second créneau rejoue **la même étape** (ADR-0076 §4) : c'est ce partage qui rend la
+    # propriété non triviale — si l'arrêt vivait dans le déroulé, cette phase-ci s'arrêterait aussi.
+    autre_phase = decor.poser(ordre=1, tour_courant=3, depart_id=autre_depart)
 
     decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
 
-    assert decor.arrets_de_circonstance.par_depart(decor.depart_id) != []
-    assert decor.arrets_de_circonstance.par_depart(autre_depart) == []
+    # ⚠️ **L'oracle porte sur le mécanisme, pas sur la doublure** (correctif de revue, axe B). La
+    # première rédaction assertait sur `FauxArretsDeCirconstance.par_depart`, dont le filtre par
+    # créneau est écrit trois cents lignes plus haut : elle vérifiait le décor, pas le service. On
+    # fait donc **avancer le second créneau au-delà du tour visé** et on constate qu'il ne s'arrête
+    # pas — la seule formulation qui rougirait si l'arrêt était rejoué.
+    decor.suivi.tours[autre_phase] = 5
+    assert decor.service.evaluer(autre_depart) == ()
+    assert decor.statut(autre_phase) is StatutPhase.EN_COURS
+
+    # Et le créneau du matin, lui, coupe bien : sans cette moitié, un service qui n'arrête *jamais*
+    # rien passerait le test.
+    decor.suivi.tours[phase_id] = 4
+    assert decor.service.evaluer(decor.depart_id) == (phase_id,)
 
 
 # ─────────── Ce que la pose refuse, et pourquoi elle le dit ───────────
@@ -960,6 +1129,48 @@ def test_poser_deux_fois_le_meme_arret_relatif_est_refuse(decor: Decor) -> None:
 
     with pytest.raises(ArretProgrammeInvalide):
         decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=2)
+
+
+def test_poser_un_arret_relatif_au_dela_de_la_phase_est_refuse(decor: Decor) -> None:
+    """Le quatrième refus documenté, qui n'avait **aucun** oracle (correctif de revue, axe B).
+
+    Demander « dans 9 tours » sur une phase qui n'en compte que 5, c'est programmer une coupe pour
+    un moment où la salle sera éteinte. Le refus existait, la fiche de recette le promettait, et
+    rien ne le vérifiait : la doublure repliait `nb_tours` sur 9, donc la borne était inatteignable.
+    Si l'implémentation avait passé `nb_tours=None`, toute la suite serait restée verte.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=2, nb_tours=5)
+
+    with pytest.raises(ArretProgrammeInvalide):
+        decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=9)
+
+
+def test_un_arret_d_atelier_hors_de_portee_n_interdit_pas_de_poser_une_pause(
+    decor: Decor,
+) -> None:
+    """Le geste du jour J ne meurt pas sur un réglage de la veille (correctif de bloquant, 3 axes).
+
+    ⚠️ **Le cas est banal, pas tordu.** Un suisse réglé à 7 rondes n'en joue que 5 si l'effectif ne
+    le permet pas — `verifier_arrets` le dit mot pour mot pour justifier son `nb_tours=None` à la
+    composition. L'arrêt d'atelier après le tour 6 est donc **légitime et inerte**, et l'atelier ne
+    pouvait pas le savoir.
+
+    La première rédaction validait l'**union** (arrêts d'étape + circonstance + voulu) avec le
+    `nb_tours` du jour : elle refusait alors **toute** pose sur cette phase, pour toute la journée,
+    en nommant un tour que l'organisateur n'a pas demandé et qu'il ne peut pas retirer depuis le
+    pilotage — l'éditer irait dans le déroulé du **tournoi**, donc dans tous les créneaux, ce
+    qu'ADR-0092 interdit précisément. Un cul-de-sac (`P-3`) sur le CA central de l'US.
+
+    L'inertie se juge donc sur le **seul arrêt demandé** ; la collision, elle, reste jugée sur
+    l'union — c'est l'objet du test précédent.
+    """
+    phase_id = decor.poser(
+        ordre=1, tour_courant=2, nb_tours=5, arrets=(ArretProgramme(apres_tour=6),)
+    )
+
+    pose = decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
+
+    assert pose.apres_tour == 2
 
 
 # ─────────── CA : « l'application rappelle qu'une phase attend sa relance » ───────────

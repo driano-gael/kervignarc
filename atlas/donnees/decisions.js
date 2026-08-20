@@ -6330,7 +6330,7 @@ window.ATLAS.decisions = {
       "PoserArretRelatifRequete",
       "arrets_applicables",
       "_declencher_les_arrets_atteints",
-      "_circonstance_par_phase",
+      "_par_phase",
       "_tour_acheve",
       "evaluer",
       "aucun_arret",
@@ -6370,7 +6370,7 @@ window.ATLAS.decisions = {
       "PoserArretRelatifRequete",
       "arrets_applicables",
       "_declencher_les_arrets_atteints",
-      "_circonstance_par_phase",
+      "_par_phase",
       "_tour_acheve",
       "verifier_arrets",
       "verifier_type_arretable",
@@ -6408,9 +6408,15 @@ window.ATLAS.decisions = {
      "chemin": "backend/infrastructure/db/models.py",
      "existe": true,
      "symboles": [
-      "ArretDeCirconstanceORM"
+      "ArretDeCirconstanceORM",
+      "ArretDeCirconstanceRepositorySQL.ajouter",
+      "IntegrityError",
+      "doublon_d_arret"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "IntegrityError",
+      "doublon_d_arret"
+     ],
      "verifiable": true
     },
     {
@@ -6427,9 +6433,15 @@ window.ATLAS.decisions = {
      "chemin": "backend/migrations/versions/0049_arret_de_circonstance.py",
      "existe": true,
      "symboles": [
-      "ArretDeCirconstanceORM"
+      "ArretDeCirconstanceORM",
+      "ArretDeCirconstanceRepositorySQL.ajouter",
+      "IntegrityError",
+      "doublon_d_arret"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "IntegrityError",
+      "doublon_d_arret"
+     ],
      "verifiable": true
     },
     {
@@ -6446,8 +6458,10 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/en-cours/VueEnCours.tsx",
      "existe": true,
      "symboles": [
-      "encours__pause",
-      "VueEnCours"
+      "MentionDePause",
+      "VueEnCours",
+      "EN_COURS",
+      "SequenceVues.par_defaut"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6456,8 +6470,10 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/salle/EcranSalle.tsx",
      "existe": true,
      "symboles": [
-      "encours__pause",
-      "VueEnCours"
+      "MentionDePause",
+      "VueEnCours",
+      "EN_COURS",
+      "SequenceVues.par_defaut"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6490,6 +6506,7 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
      "existe": true,
      "symboles": [
+      "libelleEtatDuTour",
       "EtatDuTour",
       "useSuiviDeroule"
      ],
@@ -6503,11 +6520,13 @@ window.ATLAS.decisions = {
       "poserArretRelatif",
       "usePoserArretRelatif",
       "PoserUnePause",
-      "peutPoserUnePause"
+      "peutPoserUnePause",
+      "toursBloquablesRestants"
      ],
      "symboles_absents": [
       "PoserUnePause",
-      "peutPoserUnePause"
+      "peutPoserUnePause",
+      "toursBloquablesRestants"
      ],
      "verifiable": true
     },
@@ -6518,11 +6537,13 @@ window.ATLAS.decisions = {
       "poserArretRelatif",
       "usePoserArretRelatif",
       "PoserUnePause",
-      "peutPoserUnePause"
+      "peutPoserUnePause",
+      "toursBloquablesRestants"
      ],
      "symboles_absents": [
       "PoserUnePause",
-      "peutPoserUnePause"
+      "peutPoserUnePause",
+      "toursBloquablesRestants"
      ],
      "verifiable": true
     },
@@ -6543,7 +6564,22 @@ window.ATLAS.decisions = {
      "symboles": [
       "ArretFranchiReponse.arrete_depuis",
       "resumeDeRelance",
-      "phraseDeRelance"
+      "phraseDeRelance",
+      "libelleEtatDuTour",
+      "EtatDuTour",
+      "useSuiviDeroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/BandeauDePause.tsx",
+     "existe": true,
+     "symboles": [
+      "MentionDePause",
+      "VueEnCours",
+      "EN_COURS",
+      "SequenceVues.par_defaut"
      ],
      "symboles_absents": [],
      "verifiable": true

@@ -34,6 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-20 | `E05US034` | 41 | +3310/−147 | ~7 min | ~24 min | D (11:47→12:02) | **bloquant:1** majeur:2 mineur:2 suggestion:1 | **bloquant:1** majeur:3 mineur:5 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:2 | **bloquant:2** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur le fuseau (1 convergent) + **C2 et D seuls** sur l'écran de salle (1) ; **D seul** sur le rappel indélébile (majeur) | 2 |
+| 2026-08-20 | `E05US034` (2ᵉ passe, sur les correctifs) | 26 | — | ~8 min | ~30 min | D (14:05→14:31) | — | **bloquant:1** majeur:3 mineur:6 suggestion:3 | — | — | bloquant:0 majeur:3 mineur:7 suggestion:1 | **B seul** (1 bloquant : le grain de l'annonce de salle) ; **D seul** (2 majeurs : le comptage des phases, le refus dupliqué) | — |
 | 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 2 |
 | 2026-08-19 | `E05US033` (2ᵉ passe, sur les correctifs) | 74 | +5188/−404 | ~6 min | ~45 min | D | **bloquant:0** majeur:4 mineur:6 | **bloquant:1** majeur:7 mineur:4 | **bloquant:2** majeur:5 mineur:5 suggestion:2 | **bloquant:1** majeur:9 mineur:4 | **bloquant:2** majeur:7 mineur:14 | **C1** (1) + **C2** (1) + **D** (2) + **B** (1), 1 partagé | — |
 | 2026-08-19 | `E05US032` | 26 | +1456/−113 | ~15 min | ~35 min | D (00:20→00:47) | majeur:2 mineur:4 suggestion:2 | majeur:5 mineur:6 | majeur:6 mineur:4 suggestion:2 | majeur:3 mineur:5 suggestion:3 | majeur:5 mineur:6 suggestion:2 | **aucun bloquant** — 5 majeurs de conjonction trouvés par D et C1 seuls | 1 |
@@ -179,3 +181,51 @@ plan de cibles, les forfaits. Le commanditaire a arbitré leur sortie vers `E05U
 désormais **refusé** sur tout type dont l'application ne lit pas le tour. Enseignement : une revue ne
 rend pas seulement une liste de correctifs — elle peut établir qu'une **tranche était mal découpée**,
 et c'est une information plus utile que les correctifs eux-mêmes.
+
+**9. Un défaut de *point de montage* est invisible à tous les tests de logique pure.** Le bloquant le
+plus grave d'`E05US034` n'était dans aucune fonction : `resumeDeRelance`, `peutPoserUnePause` et
+`libelleEtatDuTour` étaient justes, et 88 tests étaient verts. Le bandeau de pause vivait simplement
+dans `VueEnCours`, alors que `EN_COURS` n'est pas au déroulé par défaut d'un écran de salle — donc
+l'annonce ne s'affichait *jamais* sur la seule surface qui n'a personne devant elle pour changer de
+vue. Deux axes seulement l'ont vu (C2 et adversarial), et tous deux en **lisant le domaine du
+serveur** (`SequenceVues.par_defaut`) depuis un défaut du front. Enseignement : quand un CA nomme
+une **surface**, l'oracle doit monter cette surface — et la couvrir dans l'état où elle est livrée,
+pas dans celui qui arrange le test. `EcranSalle.test.tsx` est né de là.
+
+**10. Quatre documents affirmaient la couverture que le code n'avait pas.** Le même diff qui laissait
+le trou ci-dessus remplaçait le commentaire de `routage.py` qui le **traçait** (« conséquence assumée
+et détectable depuis ici ») par « est **livrée** par E05US034 », et l'affirmait encore dans la section
+*Porté dans le code par* d'ADR-0092, dans la fiche de recette et dans le journal. C'est exactement le
+défaut qu'ADR-0075 a créé sa règle pour empêcher — un ADR qui nomme un module ne prouve rien si l'on
+n'a pas vérifié dans le code du jour — reproduit à l'intérieur même d'un ADR qui porte l'avertissement
+en tête de section. Enseignement : **ce qui déclare un trou fermé mérite plus de suspicion que ce qui
+le laisse ouvert**, parce que le premier retire la détection en plus du défaut.
+
+**11. Un seul axe a trouvé un majeur que quatre autres ont manqué.** L'axe adversarial est le seul à
+avoir remarqué que le pilotage offre « Reprendre » (cycle de vie) *à côté* de « Relancer », et que le
+premier laisse le rappel de relance allumé pour toujours — trou hérité d'`E05US033`, mais qu'`E05US034`
+hisse au tableau de bord avec un compteur croissant. Aucune grille ne contient « regarder le bouton
+d'à côté ». La colonne « bloquants par » commence à dire ce qu'ADR-0013 espérait qu'elle dise : sur
+cinq passes, l'axe D a trouvé seul au moins un défaut à chaque fois.
+
+**12. Corriger un bloquant en introduit un autre — et la 2ᵉ passe n'est pas facultative.** Le
+correctif de l'écran de salle (n° 9 ci-dessus) a fermé le trou en en ouvrant un symétrique : il
+allumait le bandeau dès qu'**une** phase du créneau était en pause, alors que la portée par défaut
+d'un arrêt est *la phase seule*. L'écran projeté aurait donc annoncé une suspension générale pendant
+qu'une autre phase tirait — ce que le test frère de `VueEnCours` qualifie lui-même de « pire que pas
+d'annonce ». Deux tests neufs l'accompagnaient et **ne pouvaient pas le voir** : à créneau
+mono-phase, « une phase est en pause » et « la salle est arrêtée » sont indiscernables. Même motif
+sur le rappel de relance : filtrer l'**allumage** sur l'état réel des phases laissait le **comptage**
+sur la liste historique, si bien que le tableau de bord annonçait « 2 phases attendent » quand une
+seule était éteinte. Enseignement : un correctif de bloquant mérite la même défiance que le code
+qu'il remplace, et le décor d'un test de correctif doit contenir **au moins deux** exemplaires de ce
+que la règle discrimine — sinon il vérifie une tautologie.
+
+**13. La 2ᵉ passe cadrée a été réduite à deux axes pour raison de coût, et cela doit se lire.** Cinq
+relecteurs à modèle fort sur un diff de 3300 lignes ont épuisé la limite de session en une passe. La
+seconde n'a donc lancé que **B** (obligatoire : les correctifs touchent du code de production, et la
+règle 9 détecte une absence) et **D** (le plus productif empiriquement). **C2 n'a pas relu** la
+création de `DETTE-075`, l'élargissement de `DETTE-001`/`DETTE-031` ni l'amendement d'ADR-0092 —
+c'est un angle non couvert, pas un angle vérifié, et il est signalé comme tel dans le corps de la PR.
+Enseignement pratique : sur une US de cette taille, lancer la 2ᵉ passe **après** confirmation de la
+porte verte, jamais en parallèle — sinon on paie deux fois quand la porte rougit.

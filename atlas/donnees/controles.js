@@ -215,13 +215,25 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce PoserUnePause, peutPoserUnePause dans « frontend/src/features/suivi-deroule/api.ts » — introuvable(s) dans le fichier.",
+   "message": "annonce IntegrityError, doublon_d_arret dans « backend/infrastructure/db/models.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce PoserUnePause, peutPoserUnePause dans « frontend/src/features/suivi-deroule/hooks.ts » — introuvable(s) dans le fichier.",
+   "message": "annonce IntegrityError, doublon_d_arret dans « backend/migrations/versions/0049_arret_de_circonstance.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce PoserUnePause, peutPoserUnePause, toursBloquablesRestants dans « frontend/src/features/suivi-deroule/api.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce PoserUnePause, peutPoserUnePause, toursBloquablesRestants dans « frontend/src/features/suivi-deroule/hooks.ts » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
   },
@@ -234,6 +246,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 38
+  "signaux": 40
  }
 };

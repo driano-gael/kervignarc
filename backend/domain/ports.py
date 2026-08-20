@@ -1406,6 +1406,13 @@ class ArretDeCirconstanceRepository(Protocol):
     l'arrêt tombe, l'organisateur relance. En ajouter un « au cas où » serait une porte de plus à
     garder — et, celle-là, capable d'annuler une pause que la salle attend déjà.
 
+    ⚠️ **`# DETTE-075` — `par_depart` n'a qu'un seul appelant, et c'est le service.** Aucune route
+    ne rend les arrêts **posés** : `GET …/arrets/en-attente` ne sert que des `FranchissementArret`,
+    donc des arrêts qui ont **déjà coupé**. Un arrêt armé est ainsi invisible jusqu'à ce qu'il
+    tombe, et l'organisateur qui recharge sa page ne peut plus vérifier ce qu'il a posé. Relevé par
+    quatre axes de revue ; rien n'est cassé (l'arrêt coupera), mais c'est le seul angle mort de
+    l'US « rendre la pause visible ». Cf. `docs/dette.md`.
+
     [ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
     """
 
@@ -1418,5 +1425,19 @@ class ArretDeCirconstanceRepository(Protocol):
         ...
 
     def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
-        """Persiste un arrêt de circonstance et le renvoie avec son identifiant attribué."""
+        """Persiste un arrêt de circonstance et le renvoie avec son identifiant attribué.
+
+        ⚠️ **Lève `ArretProgrammeInvalide` (domaine) si un arrêt occupe déjà ce tour**, et cela fait
+        partie du contrat — pas d'un détail d'implémentation. L'unicité `(depart_id, phase_id,
+        apres_tour)` est tenue par le **schéma** parce que la pose est concurrente : le service
+        refuse le doublon qu'il *voit*, la contrainte ferme la **course** que sa lecture ne peut pas
+        fermer (double-clic, deux postes d'admin). Le refus est donc **métier** dans les deux cas —
+        même message (`doublon_d_arret`), même 422 — et non une panne d'infrastructure : rendre un
+        500 générique sur un geste ordinaire du jour J serait faux pour l'organisateur qui a l'écran
+        devant lui.
+
+        ⚠️ **Une doublure de test doit honorer ce `raise`**, sinon le chemin de course n'a d'oracle
+        nulle part au-dessus de l'adapter (précisé en revue : le contrat était muet, et la doublure
+        en mémoire n'avait aucune raison de le deviner).
+        """
         ...

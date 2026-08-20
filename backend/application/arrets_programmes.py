@@ -119,6 +119,22 @@ def _avancement_connu(avancement: AvancementDePhase) -> bool:
     return avancement.tour_courant is not None or avancement.nb_tours > 1
 
 
+def _par_phase(
+    arrets: Sequence[ArretDeCirconstance],
+) -> dict[PhaseId, tuple[ArretDeCirconstance, ...]]:
+    """Indexe par phase des arrêts de circonstance **déjà lus**.
+
+    Pure et sans dépôt, délibérément : la lecture appartient à `evaluer`, qui en a besoin de toute
+    façon pour sa garde de chemin court. La version antérieure était une méthode qui relisait le
+    dépôt, et sa docstring promettait « une seule lecture » — vrai d'elle, faux du parcours, qui en
+    faisait deux par validation de score sur le thread du writer unique (correctif de revue).
+    """
+    par_phase: dict[PhaseId, list[ArretDeCirconstance]] = {}
+    for arret in arrets:
+        par_phase.setdefault(arret.phase_id, []).append(arret)
+    return {phase_id: tuple(liste) for phase_id, liste in par_phase.items()}
+
+
 class ServiceArretsProgrammes:
     """Cas d'usage : « la salle s'arrête après ce tour, et repart quand je le dis »."""
 
@@ -175,14 +191,61 @@ class ServiceArretsProgrammes:
         `phases_arretees`, donc ne sont pas touchées.
 
         Reste dehors : un `ARME` qui n'a **rien** arrêté (la coupe est décidée, pas encore faite —
-        annoncer une relance ferait cliquer sur un bouton sans effet) et les `LEVE`, consommés.
+        annoncer une relance ferait cliquer sur un bouton sans effet), les `LEVE`, consommés, et
+        — troisième catégorie, **correctif de bloquant de revue E05US034** (axe adversarial) —
+        ceux dont **aucune phase arrêtée n'est encore en pause**.
+
+        ⚠️ **Pourquoi cette troisième catégorie, et pourquoi maintenant.** Le pilotage offre, sur
+        la ligne d'une phase en pause, le bouton **« Reprendre »** du cycle de vie à côté de
+        « Relancer ». Le premier remet la phase `EN_COURS` sans jamais marquer le franchissement
+        `LEVE` : l'arrêt restait donc « en attente de relance » **pour toujours**, sur une salle
+        qui tire. Le trou existait depuis E05US033, confiné au panneau de pilotage, à côté de la
+        phase, là où la contradiction se voyait ; cette US le **hisse au tableau de bord** avec un
+        chrono croissant (« Une phase attend votre relance depuis 47 min »). Un rappel qu'on ne
+        peut pas éteindre est pire que pas de rappel : c'est le filet de sécurité qui devient la
+        source de fatigue d'alarme, et il aurait usé la vigilance sur *tous* les autres.
+
+        Le critère est **l'état réel de la salle**, pas l'état du franchissement : si plus rien
+        n'est éteint, il n'y a plus de geste à réclamer — quel que soit le chemin par lequel la
+        phase est repartie.
+
+        ⚠️ **`phases_arretees` est PROJETÉ sur ce qui est encore éteint** (2ᵉ correctif, axe
+        adversarial), et c'est la moitié du geste précédent. Ne filtrer que l'appartenance à la
+        liste déplaçait le trou de l'allumage vers le **comptage** : `phases_arretees` est la trace
+        **historique** — jamais élaguée, et délibérément (`_resoudre_les_arrets_armes` l'écrit
+        exprès pour ne pas la perdre). Sur un arrêt de créneau qui a éteint deux phases dont une a
+        été reprise à la main, le tableau de bord annonçait donc « **2 phases** attendent votre
+        relance », le pilotage « tout le créneau (2 phases) », et `lever` n'en repartait qu'une.
+        Un chiffre faux dans le sens qui **alarme** — exactement ce que `resumeDeRelance` s'interdit
+        dans sa propre docstring, et qui use la vigilance le plus vite.
+
+        ⚠️ **Ce que cette projection oblige, et qu'il ne faut pas défaire** : `lever` ne peut plus
+        prendre son franchissement ici. Il le **relit au dépôt**, sinon il repersisterait une trace
+        amputée — la mémoire anti-redéclenchement (`_traites_par_phase`) s'en sert.
         """
-        return tuple(
-            franchissement
-            for franchissement in self._franchissements.par_depart(depart_id)
-            if franchissement.etat is EtatFranchissement.FRANCHI
-            or (franchissement.etat is EtatFranchissement.ARME and franchissement.phases_arretees)
-        )
+        statuts = {
+            phase.id: phase.statut
+            for phase in self._phases.par_depart(depart_id)
+            if phase.id is not None
+        }
+        en_attente: list[FranchissementArret] = []
+        for franchissement in self._franchissements.par_depart(depart_id):
+            if franchissement.etat is EtatFranchissement.LEVE:
+                continue
+            if (
+                franchissement.etat is EtatFranchissement.ARME
+                and not franchissement.phases_arretees
+            ):
+                continue
+            eteintes = tuple(
+                phase_id
+                for phase_id in franchissement.phases_arretees
+                if statuts.get(phase_id) is StatutPhase.EN_PAUSE
+            )
+            if not eteintes:
+                continue
+            en_attente.append(replace(franchissement, phases_arretees=eteintes))
+        return tuple(en_attente)
 
     # --- Le geste du jour J -------------------------------------------------------------------
 
@@ -209,9 +272,22 @@ class ServiceArretsProgrammes:
         3. **le tour courant n'est pas lisible** → « dans x tours » n'a pas d'origine. Deviner
            couperait la salle au mauvais endroit (cf. `tour_d_un_arret_relatif`) ;
         4. **un arrêt occupe déjà ce tour**, ou **le tour visé dépasse la phase** →
-           `verifier_arrets` sur l'**union** des deux natures, avec le `nb_tours` du jour. C'est
-           le seul endroit où on
-           connaît les deux, et le seul moment où l'on a quelqu'un à qui répondre.
+           `verifier_arrets`, deux fois, **et la séparation est le correctif d'un bloquant de
+           revue** (E05US034, trois axes) :
+           - la **collision** se juge sur l'**union** des deux natures — c'est le seul endroit où
+             on connaît les deux, et le seul moment où l'on a quelqu'un à qui répondre ;
+           - l'**inertie** (`tour >= nb_tours`) se juge sur le **seul arrêt demandé**, avec le
+             `nb_tours` du jour.
+
+           ⚠️ **Passer le `nb_tours` du jour à l'union était un cul-de-sac.** Les arrêts de
+           l'étape ont été composés avec `nb_tours=None` — la docstring de `verifier_arrets` dit
+           pourquoi : « un système suisse réglé à 7 rondes n'en joue que 5 si l'effectif ne permet
+           pas plus ». Un arrêt d'atelier après le tour 6 sur une phase qui n'en joue que 5 est
+           donc **légitime et inerte**, et il faisait échouer **toute** pose du jour J sur cette
+           phase, avec un message nommant un tour que l'organisateur n'a pas demandé et qu'il ne
+           peut pas retirer depuis le pilotage (l'éditer irait dans le déroulé du **tournoi**,
+           donc dans tous les créneaux — ce qu'ADR-0092 interdit). Le geste central de l'US
+           mourait sur un réglage de la veille.
 
         ⚠️ **Strict ici, tolérant au déclencheur**, et l'asymétrie est voulue : `arrets_applicables`
         fusionne une collision au lieu de lever, parce qu'elle peut naître **après** la pose — un
@@ -227,6 +303,12 @@ class ServiceArretsProgrammes:
                 f"Aucune phase {phase_id} dans ce créneau : impossible d'y poser une pause."
             )
         verifier_type_arretable(phase.type)
+        # DETTE-031 : la lecture lourde, ici **sur le thread du writer unique** (la commande passe
+        # par la file d'écriture). Le coût est accepté : c'est un geste humain, quelques fois par
+        # jour, et lire hors de la file ouvrirait un TOCTOU sur le tour courant — « dans 1 tour »
+        # se compterait depuis un tour déjà terminé. Le marqueur est posé au **point d'appel**,
+        # convention du module (ajouté en revue : la ligne du registre ne citait que le
+        # déclencheur). Cf. docs/dette.md.
         avancement = self._suivi.avancement_par_phase(depart_id).get(phase_id)
         apres_tour = tour_d_un_arret_relatif(
             avancement.tour_courant if avancement is not None else None, dans_x_tours
@@ -238,9 +320,9 @@ class ServiceArretsProgrammes:
                 *(etape.arrets if etape is not None else ()),
                 *(arret.definition() for arret in self._circonstance_de(depart_id, phase_id)),
                 voulu,
-            ),
-            nb_tours=avancement.nb_tours if avancement is not None else None,
+            )
         )
+        verifier_arrets((voulu,), nb_tours=avancement.nb_tours if avancement is not None else None)
         return self._arrets_de_circonstance.ajouter(
             ArretDeCirconstance(
                 depart_id=depart_id,
@@ -297,9 +379,14 @@ class ServiceArretsProgrammes:
         # panne le plus vicieux du mécanisme — la pose répond 200, l'écran affiche l'arrêt, et
         # l'heure passe sans que rien ne coupe. Une cinquième lecture au chemin court : le rapport
         # reste celui qu'établit le commentaire ci-dessus.
-        aucun_arret = not any(etape.arrets for etape in etapes.values()) and not (
-            self._arrets_de_circonstance.par_depart(depart_id)
-        )
+        #
+        # ⚠️ **Lue une fois, puis passée en aval** (correctif de revue, axes A et C1). La première
+        # rédaction relisait `par_depart` dans `_circonstance_par_phase`, soit **deux** `SELECT`
+        # identiques par validation de score sur le thread du writer unique — pendant que la
+        # docstring de ce helper annonçait « une seule lecture », vraie de la fonction et fausse du
+        # parcours. C'est le même écart de comptage que la garde ci-dessus a déjà eu à corriger.
+        circonstance = self._arrets_de_circonstance.par_depart(depart_id)
+        aucun_arret = not any(etape.arrets for etape in etapes.values()) and not circonstance
         aucun_arme = not any(f.etat is EtatFranchissement.ARME for f in franchissements)
         if aucun_arret and aucun_arme:
             return ()
@@ -324,7 +411,9 @@ class ServiceArretsProgrammes:
         avancements = self._suivi.avancement_par_phase(depart_id)
         arretees: list[PhaseId] = []
         arretees.extend(self._resoudre_les_arrets_armes(depart_id, phases, avancements))
-        arretees.extend(self._declencher_les_arrets_atteints(depart_id, phases, avancements))
+        arretees.extend(
+            self._declencher_les_arrets_atteints(depart_id, phases, avancements, circonstance)
+        )
         # ⚠️ **Une seconde résolution, et une boucle bornée** (correctif de revue, axe C1 §5 puis
         # test de non-régression). Mettre une phase en pause peut **débloquer** un arrêt armé qui
         # l'attendait : deux arrêts de portée départ dus au même appel s'attendaient mutuellement,
@@ -407,24 +496,37 @@ class ServiceArretsProgrammes:
         depart_id: DepartId,
         phases: dict[PhaseId, Phase],
         avancements: dict[PhaseId, AvancementDePhase],
+        arrets_de_circonstance: Sequence[ArretDeCirconstance],
     ) -> list[PhaseId]:
-        """Repère les arrêts que l'avancement vient d'atteindre, et les applique."""
+        """Repère les arrêts que l'avancement vient d'atteindre, et les applique.
+
+        `arrets_de_circonstance` est **passé** et non relu : `evaluer` en a déjà besoin pour sa
+        garde de chemin court, et la relecture faisait deux `SELECT` identiques par validation de
+        score (correctif de revue).
+        """
         etapes = self._etapes_du_depart(depart_id)
         deja = self._traites_par_phase(depart_id)
-        circonstance = self._circonstance_par_phase(depart_id)
+        circonstance = _par_phase(arrets_de_circonstance)
         arretees: list[PhaseId] = []
         for phase_id, phase in phases.items():
             if phase.statut is not StatutPhase.EN_COURS:
                 continue
             etape = etapes.get(phase.ordre)
-            if etape is None:
-                continue
             # ⚠️ **Les deux natures d'arrêt se lisent ensemble** (E05US034) : celles de l'étape, que
             # tous les créneaux rejouent, et celles que le pilotage a posées **dans ce créneau-ci**.
             # Les traiter en deux passes aurait ouvert un second chemin de déclenchement, donc une
             # seconde occasion de diverger sur la question la plus délicate du module (« ce tour
             # est-il fini ? ») — celle qui a produit trois bloquants en revue d'`E05US033`.
-            arrets = arrets_applicables(etape.arrets, circonstance.get(phase_id, ()))
+            # ⚠️ **`etape is None` ne fait plus sortir** (correctif de revue, axe C1). L'asymétrie
+            # était réelle : `poser_arret_relatif` accepte une phase sans étape et persiste
+            # l'arrêt, tandis qu'ici le `continue` l'aurait rendu **inerte** — posé, répondu 201,
+            # affiché, et sans effet. Le cas est aujourd'hui inatteignable (`ServicePhases`
+            # supprime la phase avec son étape), d'où une suggestion et non un bloquant ; le rendre
+            # robuste coûte une ligne, et la garde `if not arrets` juste en dessous fait déjà le
+            # travail que faisait le `continue`.
+            arrets = arrets_applicables(
+                etape.arrets if etape is not None else (), circonstance.get(phase_id, ())
+            )
             if not arrets:
                 continue
             tour_acheve = self._tour_acheve(avancements.get(phase_id), arrets)
@@ -614,12 +716,25 @@ class ServiceArretsProgrammes:
 
         Ne relance que les phases **effectivement en pause** : une phase clôturée entre-temps ne
         redémarre pas, et `reprendre` la refuserait de toute façon (ADR-0045).
+
+        ⚠️ **La source est le dépôt, pas `en_attente_de_relance`** (correctif de revue, axe
+        adversarial). Deux raisons, et la seconde est un piège :
+        1. cette lecture **projette** `phases_arretees` sur ce qui est encore éteint ; repersister
+           l'objet qu'elle rend amputerait la trace en base, dont `_traites_par_phase` se sert
+           comme mémoire anti-redéclenchement ;
+        2. elle écarte aussi les arrêts dont plus rien n'est en pause — un organisateur qui clique
+           « Relancer » sur une liste vieille de dix secondes, après avoir repris la dernière phase
+           à la main, recevait un **404** alors que les quatre cas énumérés ci-dessus étaient les
+           seuls prévus. Il n'y a rien à relancer, mais ce n'est pas « introuvable » : `lever`
+           consomme l'arrêt et rend une relance vide.
         """
         franchissement = next(
             (
                 item
-                for item in self.en_attente_de_relance(depart_id)
+                for item in self._franchissements.par_depart(depart_id)
                 if item.id == franchissement_id
+                and item.etat is not EtatFranchissement.LEVE
+                and not (item.etat is EtatFranchissement.ARME and not item.phases_arretees)
             ),
             None,
         )
@@ -684,21 +799,6 @@ class ServiceArretsProgrammes:
             for arret in self._arrets_de_circonstance.par_depart(depart_id)
             if arret.phase_id == phase_id
         )
-
-    def _circonstance_par_phase(
-        self, depart_id: DepartId
-    ) -> dict[PhaseId, tuple[ArretDeCirconstance, ...]]:
-        """Les arrêts posés le jour J dans ce créneau, indexés par phase — **une seule lecture**.
-
-        Le déclencheur tourne après *chaque* validation de score, sur ~30 tablettes : une lecture
-        par phase du créneau y ferait six requêtes là où une suffit. Même parti que
-        `_traites_par_phase` juste au-dessus, et même raison — `DETTE-031` est déjà élargie par ce
-        service, on ne l'aggrave pas d'un facteur six pour économiser trois lignes.
-        """
-        par_phase: dict[PhaseId, list[ArretDeCirconstance]] = {}
-        for arret in self._arrets_de_circonstance.par_depart(depart_id):
-            par_phase.setdefault(arret.phase_id, []).append(arret)
-        return {phase_id: tuple(arrets) for phase_id, arrets in par_phase.items()}
 
     def _horodate(self, franchissement: FranchissementArret) -> FranchissementArret:
         """Date la **première** extinction d'un arrêt, et une seule fois (E05US034).

@@ -4,6 +4,15 @@ window.ATLAS = window.ATLAS || {};
 window.ATLAS.avancement = {
  "dettes": [
   {
+   "identifiant": "075",
+   "introduite_par": [
+    "E05US034"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "074",
    "introduite_par": [
     "E05US032",
@@ -80,6 +89,7 @@ window.ATLAS.avancement = {
     "E08US005",
     "E06US003",
     "E05US033",
+    "E05US034",
     "E01US025",
     "E02US010",
     "E02US003",
@@ -302,7 +312,8 @@ window.ATLAS.avancement = {
    "resorption_us": [
     "E05US031",
     "E05US032",
-    "E05US033"
+    "E05US033",
+    "E05US034"
    ],
    "severite": "mineur"
   },
@@ -2736,9 +2747,12 @@ window.ATLAS.avancement = {
     "0092"
    ],
    "dettes_introduites": [
-    "031"
+    "001",
+    "031",
+    "075"
    ],
    "dettes_resorbees": [
+    "031",
     "074"
    ],
    "epic": "05",

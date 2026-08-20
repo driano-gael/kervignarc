@@ -692,7 +692,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   ne découvrait qu'une phase attendait sa relance qu'en ouvrant l'écran de pilotage. C'est réparé sur
   quatre points. Le **public et l'écran de salle** annoncent la pause par un bandeau lisible de loin
   (« le tir est suspendu par l'organisation ; la reprise sera annoncée en salle »), au lieu du
-  discret « en pause » en petits caractères. Le **tableau de bord d'accueil** affiche, tout en haut,
+  discret « en pause » en petits caractères — sur l'écran projeté, l'annonce tient **quelle que soit
+  la page en train de défiler**, et elle nomme ce qui est suspendu si une autre phase tire encore. Le **tableau de bord d'accueil** affiche, tout en haut,
   « 2 phases attendent votre relance depuis 14 min » — et se tait dès que tout est reparti, pour que
   la ligne garde sa valeur d'alerte le jour où elle apparaît. L'**écran de pilotage** dit désormais
   où en est chaque phase (« Ronde 3 — tour 3 sur 5 ») et permet d'y **poser une pause sans l'avoir

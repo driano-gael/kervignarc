@@ -35,6 +35,7 @@ from domain.arret_programme import (
     FranchissementArret,
     PorteeArret,
 )
+from domain.erreurs import ArretProgrammeInvalide
 from domain.phase import PhaseId, StatutPhase, TypePhase
 from infrastructure.db import (
     ArretDeCirconstanceRepositorySQL,
@@ -667,7 +668,13 @@ def test_la_meme_pause_ne_se_pose_pas_deux_fois(
     arret = ArretDeCirconstance(depart_id=depart_id, phase_id=phase_id, apres_tour=3)
     depot.ajouter(arret)
 
-    with pytest.raises(InfrastructureError):
+    # ⚠️ **`ArretProgrammeInvalide`, et le type importe autant que le refus** (correctif de revue,
+    # axe A). L'oracle attendait `InfrastructureError`, que la frontière mappe en **500 générique**
+    # — l'organisateur qui double-clique dans son écran de pilotage recevait « erreur interne du
+    # serveur » pour un geste ordinaire du jour J. Le refus est désormais **métier** (422), avec le
+    # même message que celui que le service prononce en amont pour le doublon qu'il voit. Asserter
+    # le type, c'est asserter le **code HTTP** que l'organisateur recevra.
+    with pytest.raises(ArretProgrammeInvalide):
         depot.ajouter(arret)
 
 
@@ -712,4 +719,9 @@ def test_l_heure_de_coupe_fait_l_aller_retour_et_remonte_a_l_api(
         (rendu,) = client.get(f"/api/v1/departs/{depart_id}/arrets/en-attente").json()
 
     assert rendu["arrete_depuis"] is not None
-    assert datetime.datetime.fromisoformat(rendu["arrete_depuis"]).hour == 12
+    # L'oracle est « le client relit **l'instant** écrit », pas « l'heure murale est 12 ». La
+    # nuance décide de tout : SQLite rend un `datetime` *naive*, dont l'heure murale est la seule
+    # propriété que la perte de fuseau **conserve**. Une égalité d'instants, elle, exige l'offset
+    # dans la charge utile — donc elle retombe si le réattachement UTC saute (revue E05US034).
+    assert datetime.datetime.fromisoformat(rendu["arrete_depuis"]) == coupe
+    assert datetime.datetime.fromisoformat(rendu["arrete_depuis"]).tzinfo is not None
