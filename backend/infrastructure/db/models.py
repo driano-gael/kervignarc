@@ -523,6 +523,49 @@ class FranchissementArretORM(Base):
     # (`0048` déclare bien `server_default`). Relevé en revue (axe A).
     tours_a_finir: Mapped[str] = mapped_column(nullable=False, server_default="{}")
     phases_arretees: Mapped[str] = mapped_column(nullable=False, server_default="[]")
+    # `arrete_depuis` — quand cet arrêt a éteint sa **première** phase (E05US034). Nullable, et le
+    # `NULL` a un sens : cet arrêt n'a encore rien éteint (arrêt de créneau armé, ou pause manquée).
+    # C'est ce que la pastille du tableau de bord décompte ; aucune règle du mécanisme n'en dépend,
+    # ce qui est la raison pour laquelle un `NULL` y est inoffensif.
+    arrete_depuis: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
+
+
+class ArretDeCirconstanceORM(Base):
+    """Table `arret_de_circonstance` — une pause décidée **le jour J** (E05US034, [ADR-0092]).
+
+    ⚠️ **Troisième rangement du mécanisme, et la frontière est celle d'ADR-0076.** Un arrêt posé à
+    l'atelier est de la *composition* : il vit dans `deroule_etape.config`, en JSON, et **tous les
+    créneaux du tournoi le rejouent** (§4). Un arrêt posé pendant que la salle tire est de la
+    *conduite* : il vit ici, il porte un `depart_id`, et **personne ne le rejoue** (§5). Les ranger
+    ensemble ferait s'arrêter le créneau de l'après-midi pour une panne de chauffage du matin.
+
+    ⚠️ **Une table plutôt qu'une colonne JSON sur `depart`**, contrairement au parti pris pour la
+    définition. Deux raisons, et la seconde est la vraie : l'unicité `(depart_id, phase_id,
+    apres_tour)` doit être tenue par le schéma — la pose est concurrente, ~30 tablettes valident
+    pendant que l'organisateur clique — et un document JSON ne sait pas la tenir. Le volume est le
+    même dans les deux cas (quelques lignes par créneau), donc ce n'est pas lui qui tranche.
+
+    `portee` reprend `PorteeArret` : cette phase seule, ou tout ce qui tire dans le créneau.
+
+    [ADR-0092]: ../../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    """
+
+    __tablename__ = "arret_de_circonstance"
+    # Deux fois le même arrêt sur la même phase ne coupe qu'une fois : le dire au schéma, et pas
+    # seulement au service, ferme le double-clic de deux tablettes d'admin dans la même seconde.
+    __table_args__ = (
+        UniqueConstraint(
+            "depart_id", "phase_id", "apres_tour", name="uq_arret_circonstance_phase_tour"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # DETTE-001 : FK sans ON DELETE CASCADE — descendance du tournoi, même politique de suppression
+    # non tranchée que le reste ; ne pas contourner ici.
+    depart_id: Mapped[int] = mapped_column(ForeignKey("depart.id"), nullable=False)
+    phase_id: Mapped[int] = mapped_column(ForeignKey("phase.id"), nullable=False)
+    apres_tour: Mapped[int] = mapped_column(nullable=False)
+    portee: Mapped[str] = mapped_column(nullable=False)
 
 
 class ScoreurORM(Base):

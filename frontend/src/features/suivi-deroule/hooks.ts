@@ -10,7 +10,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { RACINE_AVANCEMENT } from '../phases/hooks'
-import { getArretsEnAttente, getSuiviDeroule, relancerArret } from './api'
+import type { PorteeArret } from '../../shared/phases/arrets'
+import { getArretsEnAttente, getSuiviDeroule, poserArretRelatif, relancerArret } from './api'
 
 /** ~10 s : le suivi est au grain du **tour**, pas de la flèche — il n'a pas besoin d'être nerveux,
  * et chaque tick reconstruit les tableaux des phases en tableau côté serveur. */
@@ -75,6 +76,27 @@ export function useRelancerArret(departId: number | null) {
       // rechargement de la page, et le clic rendait un 409. C'est mot pour mot le défaut que la
       // docstring de ce hook annonçait éviter (« l'organisateur cliquerait deux fois »).
       void client.invalidateQueries({ queryKey: RACINE_AVANCEMENT })
+    },
+  })
+}
+
+/**
+ * Pose une pause **dans ce créneau**, comptée depuis le tour en cours (E05US034, ADR-0092).
+ *
+ * ⚠️ **Invalide `RACINE_ARRETS` et `RACINE_SUIVI`, mais pas `RACINE_AVANCEMENT`** — et l'asymétrie
+ * avec `useRelancerArret` juste au-dessus est voulue : poser un arrêt ne change **aucun statut de
+ * phase**. La coupe viendra plus tard, quand un tour s'achèvera. Invalider l'avancement ici
+ * relancerait la reconstruction de toutes les phases du créneau pour rien — la lecture la plus
+ * chère du projet (`DETTE-031`), déclenchée par un geste qui ne modifie rien de ce qu'elle rend.
+ */
+export function usePoserArretRelatif(departId: number | null) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (commande: { phaseId: number; dansXTours: number; portee: PorteeArret }) =>
+      poserArretRelatif(departId as number, commande.phaseId, commande.dansXTours, commande.portee),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: RACINE_ARRETS })
+      void client.invalidateQueries({ queryKey: RACINE_SUIVI })
     },
   })
 }

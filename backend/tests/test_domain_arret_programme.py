@@ -36,12 +36,15 @@ from __future__ import annotations
 import pytest
 
 from domain.arret_programme import (
+    ArretDeCirconstance,
     ArretProgramme,
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
+    arrets_applicables,
     arrets_atteints,
     phases_a_arreter,
+    tour_d_un_arret_relatif,
     verifier_arrets,
 )
 from domain.bareme import BaremeQualification
@@ -388,7 +391,7 @@ def test_un_arret_est_refuse_sur_un_type_qui_n_annonce_pas_ses_tours() -> None:
     ⚠️ **La qualification en fait partie, et c'est le périmètre de la tranche, pas une limite du
     besoin.** Dériver le tour d'une qualification demande de résoudre sa population réelle (deux
     qualifications peuvent coexister dans un créneau, ADR-0082), le plan de cibles et les forfaits.
-    `E05US034` s'en charge avec son budget propre.
+    `E05US035` s'en charge avec son budget propre (reportée une seconde fois le 20/08/2026).
     """
     for type_phase in (
         TypePhase.QUALIFICATION,
@@ -426,3 +429,178 @@ def test_une_etape_sans_arret_reste_composable_sur_tout_type() -> None:
         etape = _etape(type_phase)
 
         assert etape.arrets == ()
+
+
+# ══════════════════════ E05US034 — l'arrêt posé le jour J ══════════════════════
+#
+# Tests écrits **depuis le CA** d'`E05US034`, avant l'implémentation (règle 9). L'oracle est la
+# fiche `stories/E05-moteur-phases.md` § E05US034, puce *« le jour J, l'organisateur pose un arrêt
+# relatif depuis le pilotage : "bloquer dans x tours". Il s'ajoute aux arrêts programmés, il ne les
+# remplace pas »*.
+#
+# ⚠️ **Pourquoi un concept de plus et non un `ArretProgramme` de plus.** Un arrêt posé à l'atelier
+# est de la **composition** : ADR-0076 §4 le place au tournoi, et *tous* les créneaux le rejouent.
+# Un arrêt posé à 14 h parce que le chauffage est tombé est de la **conduite** : ADR-0076 §5 place
+# le geste au départ, et le créneau de l'après-midi n'a aucune raison de le rejouer. Les deux
+# natures ne peuvent donc pas partager un rangement — d'où [ADR-0092].
+#
+# [ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+
+
+def _circonstance(apres_tour: int, portee: PorteeArret = PorteeArret.PHASE) -> ArretDeCirconstance:
+    """Un arrêt de circonstance du créneau 7 sur la phase 3 — le décor par défaut de la section."""
+    return ArretDeCirconstance(
+        depart_id=7, phase_id=PhaseId(3), apres_tour=apres_tour, portee=portee
+    )
+
+
+# ────────────── CA : « bloquer dans x tours » se traduit en « après le tour n » ──────────────
+
+
+def test_bloquer_dans_un_tour_coupe_a_la_fin_du_tour_en_cours() -> None:
+    """CA — *« bloquer dans x tours »*, cas x = 1 : le tour en cours finit, puis la salle s'arrête.
+
+    C'est la valeur la plus demandée le jour J (« on s'arrête après celui-là ») et c'est aussi la
+    borne basse : il n'existe pas d'arrêt « tout de suite », le mécanisme coupe **à la fin d'un
+    tour** (ADR-0091) et jamais au milieu.
+    """
+    assert tour_d_un_arret_relatif(tour_courant=3, dans_x_tours=1) == 3
+
+
+def test_bloquer_dans_deux_tours_laisse_jouer_le_tour_en_cours_et_le_suivant() -> None:
+    """CA — cas x = 2 : *deux* tours se jouent encore, donc la coupe tombe après le second.
+
+    ⚠️ **C'est ici que se joue l'erreur de décalage d'une unité**, et elle n'est pas rattrapable en
+    aval : `tour_courant + x` couperait après un tour de trop, soit — sur un système suisse de cinq
+    rondes — une pause qui tombe une demi-heure après le repas. Le tour courant **compte** dans les
+    « x tours », parce que c'est ce que l'organisateur voit à l'écran au moment où il clique.
+    """
+    assert tour_d_un_arret_relatif(tour_courant=3, dans_x_tours=2) == 4
+
+
+def test_bloquer_dans_zero_tour_est_refuse() -> None:
+    """Un arrêt qui ne laisse finir aucun tour n'existe pas : ce serait couper en plein tir.
+
+    Le refus est **explicite** plutôt qu'un repli silencieux sur 1 : l'organisateur qui a tapé 0
+    voulait probablement « maintenant », et lui répondre « d'accord, après ce tour » sans le dire
+    lui ferait croire que le geste « arrêter tout de suite » existe.
+    """
+    with pytest.raises(ArretProgrammeInvalide):
+        tour_d_un_arret_relatif(tour_courant=3, dans_x_tours=0)
+
+
+def test_un_arret_relatif_ne_se_pose_pas_sur_une_phase_dont_le_tour_est_inconnu() -> None:
+    """Sans tour courant lisible, « dans x tours » n'a pas d'origine — donc pas de sens.
+
+    `tour_courant is None` a au moins cinq provenances (cf. `ServiceArretsProgrammes._tour_acheve`),
+    dont « tout est joué » et « aucun lecteur pour ce type ». Aucune n'autorise à deviner un point
+    de départ : poser l'arrêt après le tour 1 « par défaut » couperait une phase déjà finie, ou
+    couperait la salle au premier tour d'une phase qu'on croyait à son cinquième.
+    """
+    with pytest.raises(ArretProgrammeInvalide):
+        tour_d_un_arret_relatif(tour_courant=None, dans_x_tours=2)
+
+
+# ────────── CA : « il s'ajoute aux arrêts programmés, il ne les remplace pas » ──────────
+
+
+def test_les_deux_natures_d_arret_sont_appliquees_ensemble() -> None:
+    """CA — l'arrêt du jour J **s'ajoute** : le déclencheur voit les deux sources en un seul jeu.
+
+    L'organisateur a programmé le repas après le tour 2 à l'atelier ; il ajoute « dans un tour »
+    à 14 h alors que le tour 4 tourne. Les deux coupes doivent tomber.
+    """
+    applicables = arrets_applicables(
+        arrets_de_l_etape=(ArretProgramme(apres_tour=2),),
+        arrets_de_circonstance=(_circonstance(apres_tour=4),),
+    )
+
+    assert tuple(arret.apres_tour for arret in applicables) == (2, 4)
+
+
+def test_les_arrets_applicables_sont_rendus_du_plus_ancien_au_plus_recent() -> None:
+    """L'ordre est celui du déroulé, quelle que soit la source — l'aval en dépend.
+
+    `arrets_atteints` rend les arrêts triés et `_appliquer` n'applique que le **plus ancien** dû ;
+    lui livrer un jeu désordonné ferait consommer la mauvaise pause quand deux tours ont été
+    franchis entre deux évaluations.
+    """
+    applicables = arrets_applicables(
+        arrets_de_l_etape=(ArretProgramme(apres_tour=5), ArretProgramme(apres_tour=1)),
+        arrets_de_circonstance=(_circonstance(apres_tour=3),),
+    )
+
+    assert tuple(arret.apres_tour for arret in applicables) == (1, 3, 5)
+
+
+def test_deux_arrets_sur_le_meme_tour_fusionnent_au_lieu_de_couper_deux_fois() -> None:
+    """Le déclencheur est **tolérant** là où la pose est stricte : ce n'est pas une inconséquence.
+
+    Poser un arrêt de circonstance sur un tour déjà pris est refusé à l'organisateur, qui a l'écran
+    devant lui. Mais la collision peut naître **après coup**, sans que personne ne mente : l'atelier
+    ajoute un arrêt après le tour 4 au déroulé du tournoi pendant qu'un créneau porte déjà un arrêt
+    de circonstance après le tour 4. L'atelier ne connaît pas les arrêts de circonstance — ADR-0076
+    lui interdit même de les voir. Lever une exception à l'évaluation gèlerait alors le déclencheur
+    du créneau : plus aucune pause ne tomberait, pour aucune phase.
+
+    ⚠️ Fusionner est aussi ce qui garde l'unicité `(phase_id, apres_tour)` du franchissement vraie :
+    une seule coupe, une seule trace, un seul bouton de relance.
+    """
+    applicables = arrets_applicables(
+        arrets_de_l_etape=(ArretProgramme(apres_tour=4),),
+        arrets_de_circonstance=(_circonstance(apres_tour=4),),
+    )
+
+    assert tuple(arret.apres_tour for arret in applicables) == (4,)
+
+
+def test_la_fusion_retient_la_portee_la_plus_large() -> None:
+    """Quand les deux natures se rencontrent sur un tour, c'est la **plus large** qui l'emporte.
+
+    Arbitrer dans l'autre sens laisserait tirer une salle que l'un des deux arrêts voulait éteindre
+    entièrement — un arrêt de créneau *contient* un arrêt de phase, donc l'appliquer honore les
+    deux. L'inverse n'est pas vrai.
+    """
+    applicables = arrets_applicables(
+        arrets_de_l_etape=(ArretProgramme(apres_tour=4, portee=PorteeArret.PHASE),),
+        arrets_de_circonstance=(_circonstance(apres_tour=4, portee=PorteeArret.DEPART),),
+    )
+
+    assert applicables[0].portee is PorteeArret.DEPART
+
+
+def test_sans_arret_de_circonstance_le_jeu_applicable_est_celui_de_l_etape() -> None:
+    """Non-régression d'`E05US033` : un créneau où personne n'a rien posé se comporte à l'identique.
+
+    C'est le pendant de `test_une_phase_sans_arret_programme_ne_declenche_jamais_rien` pour cette
+    tranche — la garantie que la capacité neuve ne change rien tant qu'on ne s'en sert pas.
+    """
+    etape = (ArretProgramme(apres_tour=2), ArretProgramme(apres_tour=5))
+
+    assert arrets_applicables(etape, ()) == etape
+
+
+# ────────────── Invariants de l'arrêt de circonstance lui-même ──────────────
+
+
+def test_un_arret_de_circonstance_se_pose_apres_un_tour_existant() -> None:
+    """Même invariant qu'`ArretProgramme`, tenu à la construction — `replace()` compris.
+
+    Le redire ici plutôt que de s'en remettre à la conversion : les deux types sont construits par
+    des chemins différents (l'un par le JSON d'étape, l'autre par une route de pilotage), et un
+    invariant qui ne vaut que sur l'une des deux portes n'est pas un invariant.
+    """
+    with pytest.raises(ArretProgrammeInvalide):
+        _circonstance(apres_tour=0)
+
+
+def test_un_arret_de_circonstance_appartient_a_un_creneau() -> None:
+    """Le `depart_id` est ce qui distingue les deux natures — il n'est pas décoratif (ADR-0092).
+
+    Sans lui, l'arrêt serait rejoué par tous les créneaux du tournoi, ce qui est exactement la
+    propriété qu'on refuse : la panne de chauffage du matin n'arrête pas l'après-midi.
+    """
+    arret = _circonstance(apres_tour=2)
+
+    assert arret.depart_id == 7
+    assert arret.definition() == ArretProgramme(apres_tour=2, portee=PorteeArret.PHASE)

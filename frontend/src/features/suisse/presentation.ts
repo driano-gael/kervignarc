@@ -95,3 +95,51 @@ export function nomDeLArcher(rondes: readonly RondeLisible[], archerId: number):
   }
   return `#${archerId}`
 }
+
+/** Ce qui **manque** dans une ronde en cours, nommé (CA E05US034).
+ *
+ * ⚠️ **Deux listes et pas une**, et c'est la lettre du CA : *« quelles rencontres ne sont pas
+ * validées, et lesquelles ne sont pas encore saisies »*. La distinction décide de qui doit agir —
+ * une rencontre non saisie attend le **scoreur de sa cible**, une rencontre saisie et non validée
+ * attend un **geste de validation**. Les confondre dans un seul « il manque 3 rencontres » renvoie
+ * l'organisateur chercher partout, ce que le refus existe précisément pour éviter (`P-3` : un refus
+ * qui ne dit pas quoi faire est un cul-de-sac).
+ *
+ * L'ancien message ne comptait que : *« la ronde en cours n'est pas entièrement saisie »*. Vrai, et
+ * inutilisable le jour J dans un gymnase où quatorze rencontres se jouent en parallèle.
+ *
+ * Une rencontre **désynchronisée** est rangée à part : elle n'attend ni saisie ni validation mais
+ * un rétablissement de population (ADR-0049 §4), et l'annoncer comme « à saisir » enverrait le
+ * scoreur buter sur un tir que le serveur refuse d'écraser.
+ */
+export interface CeQuiManque {
+  aSaisir: string[]
+  aValider: string[]
+  bloquees: string[]
+}
+
+export function ceQuiManque(rencontres: readonly RencontreSuisse[]): CeQuiManque {
+  const manque: CeQuiManque = { aSaisir: [], aValider: [], bloquees: [] }
+  for (const rencontre of rencontres) {
+    const nom = nommerRencontre(rencontre)
+    if (rencontre.desynchronisee) {
+      manque.bloquees.push(nom)
+      continue
+    }
+    const duel = rencontre.duel
+    if (duel.validee_par !== null) continue
+    // ⚠️ **`resultat.termine` et non `manches.length > 0`** : une rencontre à demi tirée n'est pas
+    // « à valider », elle est encore à saisir. Le classement de `etatRencontre` juste au-dessus
+    // fait la même lecture, et la refaire autrement ici ferait diverger deux phrases du même écran.
+    if (duel.resultat?.termine === true) manque.aValider.push(nom)
+    else manque.aSaisir.push(nom)
+  }
+  return manque
+}
+
+/** « Martin D. – Le Goff Y. », ou la place de tir si un côté manque (bye tardif, population mouvante). */
+function nommerRencontre(rencontre: RencontreSuisse): string {
+  const cote = (duelliste: Duelliste | null) =>
+    duelliste === null ? '?' : `${duelliste.nom} ${duelliste.prenom}`
+  return `${cote(rencontre.haut)} – ${cote(rencontre.bas)}`
+}

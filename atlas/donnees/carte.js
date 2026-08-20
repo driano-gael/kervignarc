@@ -51,7 +51,7 @@ window.ATLAS.carte = {
     "feature": "competition"
    },
    {
-    "clientes": 16,
+    "clientes": 17,
     "feature": "departs"
    },
    {
@@ -99,6 +99,10 @@ window.ATLAS.carte = {
     "feature": "suisse"
    },
    {
+    "clientes": 4,
+    "feature": "suivi-deroule"
+   },
+   {
     "clientes": 3,
     "feature": "clubs"
    },
@@ -117,10 +121,6 @@ window.ATLAS.carte = {
    {
     "clientes": 3,
     "feature": "suivi"
-   },
-   {
-    "clientes": 3,
-    "feature": "suivi-deroule"
    },
    {
     "clientes": 2,
@@ -1217,6 +1217,43 @@ window.ATLAS.carte = {
     "supprimer"
    ],
    "nom": "ArcherRepository",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "ArretDeCirconstanceRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "FranchissementArretRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/moteur.py",
+     "nom": "PhaseRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/db/repositories/referentiel.py",
+     "nom": "InscriptionRepositorySQL"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryInscriptionRepository"
+    },
+    {
+     "fichier": "backend/infrastructure/memory/repositories.py",
+     "nom": "InMemoryPhaseRepository"
+    }
+   ],
+   "couche": "domain",
+   "fichier": "backend/domain/ports.py",
+   "hors_domaine": false,
+   "methodes": [
+    "ajouter",
+    "par_depart"
+   ],
+   "nom": "ArretDeCirconstanceRepository",
    "sans_adapter": false
   },
   {
@@ -2764,13 +2801,13 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 148,
+  "aretes_front": 150,
   "enchevetrements": 3,
   "features": 46,
   "imports": 851,
   "imports_entre_couches": 721,
   "plus_gros_noeud": 23,
-  "ports": 64,
+  "ports": 65,
   "ports_hors_domaine": 23,
   "ports_sans_adapter": 0,
   "violations": 0

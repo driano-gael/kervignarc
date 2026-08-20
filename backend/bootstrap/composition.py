@@ -149,6 +149,7 @@ from infrastructure.backup.config import (
 from infrastructure.backup.sauvegarde import SauvegardeSQLite
 from infrastructure.db import (
     ArcherRepositorySQL,
+    ArretDeCirconstanceRepositorySQL,
     AuditRepositorySQL,
     BarrageRepositorySQL,
     BlasonRepositorySQL,
@@ -1185,6 +1186,10 @@ def create_app(
     # documente pour
     # `LecteurAvancementDePhase`.
     franchissement_arret_repository = FranchissementArretRepositorySQL(database.session_factory)
+    # E05US034 — le **troisième** rangement du mécanisme : les arrêts posés le jour J, propres au
+    # créneau (ADR-0092). Distinct de `deroule_repository`, qui sert ceux de l'atelier : les ranger
+    # ensemble ferait rejouer par le créneau du soir une pause décidée le matin.
+    arret_de_circonstance_repository = ArretDeCirconstanceRepositorySQL(database.session_factory)
     suivi_du_depart: LecteurAvancementDuDepart = app.state.service_suivi_deroule
     cycle_de_vie_des_phases: ServicePhases = app.state.service_phases
     app.state.service_arrets_programmes = ServiceArretsProgrammes(
@@ -1192,8 +1197,13 @@ def create_app(
         deroules=deroule_repository,
         departs=depart_repository,
         franchissements=franchissement_arret_repository,
+        arrets_de_circonstance=arret_de_circonstance_repository,
         suivi=suivi_du_depart,
         cycle_de_vie=cycle_de_vie_des_phases,
+        # L'`Horloge` date la coupe (`arrete_depuis`), et **rien d'autre** : aucune règle du
+        # mécanisme ne dépend de l'heure. C'est ce qui permet à la pastille de compter « depuis
+        # 14 min » sans qu'une dérive d'horloge puisse arrêter ou relancer quoi que ce soit.
+        horloge=HorlogeSysteme(),
     )
     # 2. Le **déclencheur** se branche tardivement sur les services qui écrivent un résultat, sur le
     # patron de `brancher_lecteur_avancement` juste au-dessus : eux seuls savent qu'un résultat

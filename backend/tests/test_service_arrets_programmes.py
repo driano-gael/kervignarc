@@ -38,12 +38,16 @@ import pytest
 from application.arrets_programmes import ServiceArretsProgrammes
 from application.erreurs import ArretIntrouvable
 from domain.arret_programme import (
+    ArretDeCirconstance,
     ArretProgramme,
     EtatFranchissement,
     FranchissementArret,
     PorteeArret,
 )
+from domain.bareme import BaremeQualification
 from domain.depart import Depart
+from domain.erreurs import ArretProgrammeInvalide
+from domain.grain_validation import GrainValidation, TypeGrain
 from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.suisse import ConfigurationSuisse
 from domain.suivi_deroule import AvancementDePhase
@@ -157,6 +161,49 @@ class FauxFranchissements:
         return next((item for item in self.items if item.id == franchissement_id), None)
 
 
+class FauxArretsDeCirconstance:
+    """Arrêts de circonstance en mémoire, conformes au port `ArretDeCirconstanceRepository`.
+
+    ⚠️ **Elle filtre réellement par créneau**, et ce n'est pas de la coquetterie : c'est la propriété
+    que le concept existe pour tenir (ADR-0092). Une doublure qui rendrait tout, comme le fait
+    `FauxFranchissements.par_depart` — légitimement, celle-là n'ayant qu'un créneau à servir —
+    rendrait vert un service qui aurait rangé l'arrêt au tournoi.
+    """
+
+    def __init__(self) -> None:
+        self.items: list[ArretDeCirconstance] = []
+        # Séquence décalée, comme les autres doublures du fichier : trois alias d'`int`
+        # (`DETTE-044`) rendent vert par coïncidence tout service qui confondrait deux identifiants.
+        self._sequence = 700
+
+    def par_depart(self, depart_id: int) -> list[ArretDeCirconstance]:
+        return [item for item in self.items if item.depart_id == depart_id]
+
+    def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
+        self._sequence += 1
+        persiste = dataclasses.replace(arret, id=self._sequence)
+        self.items.append(persiste)
+        return persiste
+
+
+class FauxHorloge:
+    """Horloge **figée** conforme au port `Horloge` — règle 9 : pas d'horloge non maîtrisée.
+
+    `avancer` sert au seul test qui a besoin de deux instants distincts (la pastille ne doit pas
+    rajeunir). Partout ailleurs, l'intérêt est qu'elle ne bouge pas : l'oracle peut alors comparer à
+    `horloge.instant` au lieu d'un intervalle, et le test dit ce qu'il veut dire.
+    """
+
+    def __init__(self) -> None:
+        self.instant = datetime.datetime(2026, 11, 14, 10, 30, tzinfo=datetime.UTC)
+
+    def maintenant(self) -> datetime.datetime:
+        return self.instant
+
+    def avancer(self, duree: datetime.timedelta) -> None:
+        self.instant = self.instant + duree
+
+
 class Decor:
     """Un tournoi, un créneau, et de quoi poser des phases et des arrêts sans base ni horloge."""
 
@@ -178,6 +225,8 @@ class Decor:
         self.deroules = FauxDerouleRepository()
         self.phases = FauxPhaseRepository(self.departs, self.deroules)
         self.franchissements = FauxFranchissements()
+        self.arrets_de_circonstance = FauxArretsDeCirconstance()
+        self.horloge = FauxHorloge()
         self.suivi = FauxSuivi()
         self.service_phases = ServicePhases(self.tournois, self.phases, self.departs, self.deroules)
         self.service = ServiceArretsProgrammes(
@@ -185,8 +234,10 @@ class Decor:
             deroules=self.deroules,
             departs=self.departs,
             franchissements=self.franchissements,
+            arrets_de_circonstance=self.arrets_de_circonstance,
             suivi=self.suivi,
             cycle_de_vie=self.service_phases,
+            horloge=self.horloge,
         )
 
     def poser(
@@ -199,6 +250,11 @@ class Decor:
     ) -> PhaseId:
         """Pose une phase démarrée, son étape, ses arrêts, et son tour courant dans le suivi."""
         reglage = ConfigurationSuisse(nb_rondes=9) if type_phase is TypePhase.SUISSE else None
+        # ⚠️ **Barème et grain ne sont donnés qu'à la qualification**, comme dans le décor du fichier
+        # de domaine. Sans eux, `PhaseQualificationIncomplete` tombe **avant** la garde qu'on veut
+        # lire ; avec eux partout, c'est `GrainIncompatibleAvecTypePhase` qui tombe sur les autres.
+        # Le décor satisfait ces deux vérifications voisines, il ne les teste pas.
+        qualification = type_phase is TypePhase.QUALIFICATION
         phase = poser_phase_factice(
             self.departs,
             self.deroules,
@@ -209,6 +265,10 @@ class Decor:
                     ordre=ordre,
                     type=type_phase,
                     suisse=reglage,
+                    bareme=BaremeQualification.creer(10, 3) if qualification else None,
+                    validation=(
+                        GrainValidation(type=TypeGrain.FIN_DE_SERIE) if qualification else None
+                    ),
                 ),
                 statut=statut,
             ),
@@ -717,3 +777,254 @@ def test_un_arret_au_dela_du_dernier_tour_joue_ne_coupe_pas_une_phase_finie(deco
 
     assert decor.service.evaluer(decor.depart_id) == ()
     assert decor.statut(phase_id) is StatutPhase.EN_COURS
+
+
+# ══════════ E05US034 — poser un arrêt le jour J, et voir qu'on attend ══════════
+#
+# Tests écrits **depuis le CA** d'`E05US034`, avant l'implémentation (règle 9). Deux CA sont en jeu
+# ici — les trois autres sont du front :
+#
+# - *« le jour J, l'organisateur pose un arrêt relatif depuis le pilotage : bloquer dans x tours. Il
+#   s'ajoute aux arrêts programmés, il ne les remplace pas »* ;
+# - *« l'application rappelle qu'une phase attend sa relance »* — la pastille « depuis 14 min »,
+#   donc un instant à lire, donc un horodatage à écrire.
+#
+# ⚠️ **L'oracle du cloisonnement par créneau ne vient pas du code mais d'ADR-0076 §5.** Le code
+# d'`E05US033` ne connaît que des arrêts de tournoi ; en dériver un test aurait conclu qu'un arrêt
+# est forcément rejoué par tous les créneaux — exactement la propriété que ce CA refuse.
+
+
+def _decor_a_deux_creneaux() -> tuple[Decor, int]:
+    """Le décor ordinaire, plus un **second créneau** dans le même tournoi.
+
+    Nécessaire parce que la propriété centrale de l'arrêt de circonstance — *il n'est rejoué par
+    personne* — ne s'observe pas sur un créneau unique. Rendre l'identifiant du second départ plutôt
+    que de l'exposer sur `Decor` : un seul test s'en sert, et le décor commun n'a pas à porter le
+    coût d'un créneau que personne d'autre ne regarde.
+    """
+    decor = Decor()
+    autre = decor.departs.ajouter(
+        Depart.creer(tournoi_id=decor.tournoi_id, numero=2, tarif_centimes=800, horaire="14:00")
+    )
+    assert autre.id is not None
+    return decor, autre.id
+
+
+# ─────────── CA : « bloquer dans x tours », posé depuis le pilotage ───────────
+
+
+def test_poser_un_arret_relatif_le_traduit_en_arret_apres_le_tour_courant(decor: Decor) -> None:
+    """CA — *« bloquer dans x tours »* : « dans 1 tour » coupe à la fin du tour qui tourne.
+
+    Le service ne fait pas l'arithmétique lui-même — c'est `tour_d_un_arret_relatif`, au domaine —
+    mais c'est lui qui va **chercher** le tour courant dans le suivi. Le test tient cette couture :
+    poser depuis le pilotage, c'est poser *par rapport à ce que l'écran montre*.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=3)
+
+    arret = decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
+
+    assert arret.apres_tour == 3
+    assert arret.depart_id == decor.depart_id
+    assert arret.portee is PorteeArret.PHASE
+
+
+def test_un_arret_relatif_peut_couper_tout_le_creneau(decor: Decor) -> None:
+    """La portée est un **choix** au moment de poser, comme à l'atelier (ADR-0091).
+
+    Le cas d'usage du jour J est même plus souvent celui-là que l'autre : on arrête *la salle* pour
+    une annonce, pas une phase en particulier.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=2)
+
+    arret = decor.service.poser_arret_relatif(
+        decor.depart_id, phase_id, dans_x_tours=1, portee=PorteeArret.DEPART
+    )
+
+    assert arret.portee is PorteeArret.DEPART
+
+
+def test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve(decor: Decor) -> None:
+    """CA — l'arrêt posé le jour J **coupe vraiment** : c'est le même déclencheur, pas un doublon.
+
+    Le test est écrit en deux temps délibérément — évaluer *avant* que le tour ait avancé, puis
+    après. Sans le premier temps, un service qui couperait dès la pose passerait au vert alors qu'il
+    interromprait la salle en plein tir.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=3)
+    decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
+
+    decor.service.evaluer(decor.depart_id)
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS
+
+    decor.suivi.tours[phase_id] = 4
+    decor.service.evaluer(decor.depart_id)
+
+    assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
+
+
+def test_un_arret_relatif_s_ajoute_aux_arrets_programmes(decor: Decor) -> None:
+    """CA — *« il s'ajoute aux arrêts programmés, il ne les remplace pas »*.
+
+    L'étape porte une pause repas après le tour 2 ; l'organisateur en ajoute une après le tour 4. Le
+    créneau doit s'arrêter **deux fois**, et le test le vérifie en relançant entre les deux — sans
+    quoi la seconde coupe serait indiscernable d'une première qui n'a jamais été levée.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=2, arrets=(ArretProgramme(apres_tour=2),))
+    decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=3)
+
+    decor.suivi.tours[phase_id] = 3
+    decor.service.evaluer(decor.depart_id)
+    assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
+
+    en_attente = decor.service.en_attente_de_relance(decor.depart_id)
+    assert len(en_attente) == 1
+    assert en_attente[0].id is not None
+    decor.service.lever(decor.depart_id, en_attente[0].id)
+    assert decor.statut(phase_id) is StatutPhase.EN_COURS
+
+    decor.suivi.tours[phase_id] = 5
+    decor.service.evaluer(decor.depart_id)
+
+    assert decor.statut(phase_id) is StatutPhase.EN_PAUSE
+
+
+def test_un_arret_relatif_n_est_rejoue_par_aucun_autre_creneau() -> None:
+    """**Le CA qui justifie le concept** (ADR-0092) : la panne du matin n'arrête pas l'après-midi.
+
+    C'est la différence entre poser un arrêt et *éditer le déroulé*. Un `ArretProgramme` ajouté à
+    l'`EtapeDeroule` serait rejoué par tous les créneaux (ADR-0076 §4) — donc le créneau de
+    l'après-midi s'arrêterait au même tour, pour une raison qui n'existe plus.
+    """
+    decor, autre_depart = _decor_a_deux_creneaux()
+    phase_id = decor.poser(ordre=1, tour_courant=3)
+
+    decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
+
+    assert decor.arrets_de_circonstance.par_depart(decor.depart_id) != []
+    assert decor.arrets_de_circonstance.par_depart(autre_depart) == []
+
+
+# ─────────── Ce que la pose refuse, et pourquoi elle le dit ───────────
+
+
+def test_poser_un_arret_relatif_est_refuse_sur_un_type_qui_ne_lit_pas_son_tour(
+    decor: Decor,
+) -> None:
+    """Même refus qu'à l'atelier, et c'est **une seule règle** appliquée à deux portes d'entrée.
+
+    `E05US033` a livré la table des types dont l'application lit le tour. Une seconde porte qui ne
+    la consulterait pas laisserait poser, depuis le pilotage, un arrêt qui ne partirait jamais —
+    précisément le réglage inerte que l'atelier refuse d'enregistrer.
+    """
+    phase_id = decor.poser(ordre=1, type_phase=TypePhase.QUALIFICATION, tour_courant=1)
+
+    with pytest.raises(ArretProgrammeInvalide):
+        decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)
+
+
+def test_poser_un_arret_relatif_est_refuse_quand_le_tour_courant_est_inconnu(decor: Decor) -> None:
+    """Sans origine, « dans x tours » ne se compte pas — et deviner couperait au mauvais endroit.
+
+    Le refus remonte du domaine (`tour_d_un_arret_relatif`) ; ce qu'on tient ici est que le service
+    **lit** bien le suivi au lieu de se rabattre sur une valeur par défaut.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=None)
+
+    with pytest.raises(ArretProgrammeInvalide):
+        decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=2)
+
+
+def test_poser_un_arret_relatif_sur_un_tour_deja_pris_est_refuse(decor: Decor) -> None:
+    """Deux arrêts au même endroit ne coupent qu'une fois : le dire au lieu de l'absorber.
+
+    ⚠️ **C'est la moitié stricte de l'asymétrie** décrite par `arrets_applicables` : le déclencheur
+    fusionne (il n'a personne à qui parler), la pose refuse (l'organisateur est devant l'écran).
+    Absorber ici laisserait croire qu'une seconde pause a été programmée.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=1, arrets=(ArretProgramme(apres_tour=3),))
+
+    with pytest.raises(ArretProgrammeInvalide):
+        decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=3)
+
+
+def test_poser_deux_fois_le_meme_arret_relatif_est_refuse(decor: Decor) -> None:
+    """Le double-clic est un geste du jour J, pas un cas limite de laboratoire.
+
+    Sans ce refus, deux lignes identiques cohabiteraient et la seconde deviendrait une pause
+    fantôme : consommée « manquée » au premier franchissement, journalisée en avertissement, pour
+    un geste que l'organisateur croyait unique.
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=2)
+    decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=2)
+
+    with pytest.raises(ArretProgrammeInvalide):
+        decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=2)
+
+
+# ─────────── CA : « l'application rappelle qu'une phase attend sa relance » ───────────
+
+
+def test_un_arret_qui_a_coupe_porte_l_instant_de_la_coupe(decor: Decor) -> None:
+    """CA — la pastille annonce « depuis 14 min » : il faut donc un instant, et il faut l'écrire.
+
+    Seul état **daté** du mécanisme, et il ne se dérive de rien : ni le statut de phase ni le
+    franchissement ne portent d'heure, et l'avancement est recalculé à chaque lecture (ADR-0090 §5).
+    L'horloge passe par le port `Horloge` (règle 2) — un `datetime.now()` dans le service rendrait
+    ce test non déterministe (règle 9).
+    """
+    phase_id = decor.poser(ordre=1, tour_courant=2, arrets=(ArretProgramme(apres_tour=2),))
+    decor.suivi.tours[phase_id] = 3
+
+    decor.service.evaluer(decor.depart_id)
+
+    (arret,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert arret.arrete_depuis == decor.horloge.instant
+
+
+def test_l_instant_de_coupe_est_celui_de_la_premiere_phase_eteinte(decor: Decor) -> None:
+    """Un arrêt de créneau s'éteint en plusieurs minutes : la pastille compte la **première**.
+
+    ⚠️ **C'est ce que le CA demande, et c'est le contraire du réflexe d'implémentation** — mettre à
+    jour l'horodatage à chaque phase coupée serait plus simple et ferait mentir la pastille dans le
+    sens dangereux : elle rajeunirait à chaque nouvelle extinction, donc annoncerait « depuis
+    1 min » sur une salle éteinte depuis vingt.
+    """
+    premiere = decor.poser(
+        ordre=1,
+        tour_courant=2,
+        arrets=(ArretProgramme(apres_tour=2, portee=PorteeArret.DEPART),),
+    )
+    tardive = decor.poser(ordre=2, tour_courant=5)
+
+    decor.suivi.tours[premiere] = 3
+    decor.service.evaluer(decor.depart_id)
+    coupe = decor.horloge.instant
+
+    decor.horloge.avancer(datetime.timedelta(minutes=12))
+    decor.suivi.tours[tardive] = 6
+    decor.service.evaluer(decor.depart_id)
+
+    (arret,) = decor.service.en_attente_de_relance(decor.depart_id)
+    assert arret.arrete_depuis == coupe
+
+
+def test_un_arret_manque_n_est_pas_date_puisqu_il_n_a_rien_eteint(decor: Decor) -> None:
+    """Pas de coupe, pas d'horloge : la pastille ne décompte pas une attente qui n'existe pas.
+
+    Une phase dont **tout est tiré** consomme son arrêt sans se mettre en pause (`E05US033`) : la
+    trace est écrite `LEVE`, sans phase arrêtée. La dater ferait apparaître un instant sur un fait
+    qui n'a jamais eu lieu — et l'horodatage est précisément ce que la pastille lit.
+
+    ⚠️ Le test vise l'invariant « seule une coupe réelle est datée » plutôt que l'écran : il tient
+    aussi pour les traces qui ne remontent pas au pilotage aujourd'hui, et c'est ce qui le rend
+    utile le jour où une autre lecture s'y branchera.
+    """
+    decor.poser(ordre=1, tour_courant=None, arrets=(ArretProgramme(apres_tour=2),))
+
+    decor.service.evaluer(decor.depart_id)
+
+    assert decor.franchissements.items != []
+    for franchissement in decor.franchissements.items:
+        assert franchissement.phases_arretees == ()
+        assert franchissement.arrete_depuis is None

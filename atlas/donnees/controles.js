@@ -76,8 +76,14 @@ window.ATLAS.controles = {
    "sujet": "ADR-0083"
   },
   {
+   "code": "date-non-canonique",
+   "message": "date « 20/08/2026 » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
    "code": "etat-contradictoire",
-   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (20/23)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (21/24)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
    "severite": "signal",
    "sujet": "E05US023"
   },
@@ -194,10 +200,40 @@ window.ATLAS.controles = {
    "message": "annonce saisir_manche, saisir_barrage, projection dans « backend/application/saisie.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0091"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce CeQuiManqueEncore dans « frontend/src/features/suisse/presentation.test.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce CeQuiManqueEncore dans « frontend/src/features/suisse/presentation.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce PoserUnePause, peutPoserUnePause dans « frontend/src/features/suivi-deroule/api.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce PoserUnePause, peutPoserUnePause dans « frontend/src/features/suivi-deroule/hooks.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0092"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 32
+  "signaux": 38
  }
 };

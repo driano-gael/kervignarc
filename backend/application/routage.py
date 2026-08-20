@@ -539,7 +539,8 @@ class ServiceRoutage:
         # (`VueEcran.AFFECTATIONS`, E07US008), pas un ordre de tir : le CA veut qu'on puisse voir où
         # en est la salle *pendant* la pause. Conséquence assumée et **détectable depuis ici**
         # (l'axe A la voulait tracée) : l'écran de salle continue d'afficher des affectations sans
-        # dire qu'il y a pause. La mention publique de la pause est le CA d'`E05US034`.
+        # dire qu'il y a pause. La mention publique de la pause est **livrée** par E05US034
+        # (bandeau de `VueEnCours`, rendu aussi sur l'écran de salle).
         phase = self._phase_de_tableau(depart_id, phase_id)
         if phase is None or phase.id is None:
             return Routage(phase_id=None, archers=())

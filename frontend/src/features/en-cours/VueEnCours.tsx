@@ -125,6 +125,23 @@ export function VueEnCours({
         {phase.statut === 'terminee' && <span className="encours__statut"> · terminée</span>}
       </h3>
 
+      {/* CA E05US034 — **la pause se voit**, et se distingue d'un simple délai.
+          ⚠️ Le « · en pause » ci-dessus ne suffisait pas, et c'est le mode de panne que cette US
+          existe pour fermer : un spectateur qui voit la salle immobile et un écran qui n'annonce
+          rien conclut à une **panne**. Un suffixe de titre en petits caractères se lit à un mètre,
+          pas depuis les gradins ni sur l'écran projeté au fond du gymnase (≥ 1920 px, vu de loin,
+          E07US004).
+          **Sobre, et sans promesse d'horaire** : le serveur n'a aucune heure de reprise à tenir —
+          l'arrêt se lève d'un geste d'organisateur, quand il le décide. Annoncer « reprise à
+          14 h 30 » serait une promesse que rien ne fait respecter, donc la façon la plus sûre de
+          transformer une pause maîtrisée en incident. */}
+      {phase.statut === 'en_pause' && (
+        <p className="encours__pause" role="status">
+          <strong>Pause</strong> — le tir est suspendu par l’organisation. La reprise sera annoncée
+          en salle&nbsp;; il n’y a rien à faire en attendant.
+        </p>
+      )}
+
       {/* ⚠️ `key={phase.id}` : **remonte** le composant de format à chaque changement de phase
           (correctif de revue, axe C1). Sans elle, React réconcilie en place quand le type est
           identique, et l'état local du format survit — sur un départ à deux phases suisse, on

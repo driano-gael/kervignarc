@@ -36,6 +36,7 @@ from infrastructure.db.models import (
 )
 from infrastructure.db.repositories import (
     ArcherRepositorySQL,
+    ArretDeCirconstanceRepositorySQL,
     AuditRepositorySQL,
     BarrageRepositorySQL,
     BlasonRepositorySQL,
@@ -71,6 +72,7 @@ __all__ = [
     "DEFAULT_DATABASE_URL",
     "ArcherORM",
     "ArcherRepositorySQL",
+    "ArretDeCirconstanceRepositorySQL",
     "AuditRepositorySQL",
     "BarrageORM",
     "BarrageRepositorySQL",

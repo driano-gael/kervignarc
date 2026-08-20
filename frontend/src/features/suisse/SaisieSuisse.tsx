@@ -22,7 +22,7 @@ import { DuelCharge } from '../saisie-duels/SaisieDuels'
 import type { Ronde } from './api'
 import { ClassementSuisse } from './ClassementSuisse'
 import { decrireBorneConnue } from '../../shared/phases/suisse'
-import { decrirePlaces, etatRencontre, motDeLaFin } from './presentation'
+import { ceQuiManque, decrirePlaces, etatRencontre, motDeLaFin } from './presentation'
 import { useEtatSuisseSaisie } from './hooks'
 
 export function SaisieSuisse({
@@ -158,11 +158,20 @@ function PhaseSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numbe
           La condition vit dans `presentation.ts` — trois états, et le troisième (« se taire ») est
           celui qu'une condition écrite dans le JSX rend invisible au test. */}
       {mot?.etat === 'attente' && (
-        <p className="carte__etat" role="status">
-          La ronde {mot.suivante} sera appariée quand la ronde {mot.courante} sera{' '}
-          <strong>entièrement</strong> saisie et validée : les adversaires se choisissent au
-          classement du moment, donc ils ne peuvent pas être connus avant.
-        </p>
+        <>
+          <p className="carte__etat" role="status">
+            La ronde {mot.suivante} sera appariée quand la ronde {mot.courante} sera{' '}
+            <strong>entièrement</strong> saisie et validée : les adversaires se choisissent au
+            classement du moment, donc ils ne peuvent pas être connus avant.
+          </p>
+          {/* CA E05US034 — **un refus dit ce qui manque**. La phrase ci-dessus explique la règle ;
+              celle-ci nomme les rencontres, et distingue les deux attentes — une rencontre non
+              saisie attend le scoreur de sa cible, une rencontre saisie et non validée attend un
+              geste de validation. Les confondre renvoie chercher partout dans un gymnase où
+              quatorze rencontres se jouent en parallèle (`P-3` : un refus sans issue est un
+              cul-de-sac). */}
+          <CeQuiManqueEncore rondes={etat.data.rondes} courante={mot.courante} />
+        </>
       )}
       {mot?.etat === 'fini' && (
         <p className="carte__etat" role="status">
@@ -222,5 +231,45 @@ function GroupeDeRonde({ ronde, onOuvrir }: { ronde: Ronde; onOuvrir: (numero: n
         ))}
       </ul>
     </section>
+  )
+}
+
+/**
+ * Ce qui empêche la ronde suivante d'exister, **nommé** (CA E05US034).
+ *
+ * ⚠️ **Ne rend rien quand rien ne manque** : la ronde peut être complète et close à la seconde où
+ * l'écran se rafraîchit. Une liste vide sous une phrase d'attente serait contradictoire, et le
+ * scoreur croirait à un bug de l'écran plutôt qu'à un décalage de dix secondes.
+ */
+function CeQuiManqueEncore({ rondes, courante }: { rondes: Ronde[]; courante: number }) {
+  const ronde = rondes.find((r) => r.numero === courante)
+  if (ronde === undefined) return null
+  const manque = ceQuiManque(ronde.rencontres)
+  if (manque.aSaisir.length + manque.aValider.length + manque.bloquees.length === 0) return null
+
+  return (
+    <div className="carte__etat" role="status">
+      {manque.aSaisir.length > 0 && (
+        <p>
+          <strong>Pas encore saisies</strong> ({manque.aSaisir.length})&nbsp;:{' '}
+          {manque.aSaisir.join(' · ')}
+        </p>
+      )}
+      {manque.aValider.length > 0 && (
+        <p>
+          <strong>Saisies, pas encore validées</strong> ({manque.aValider.length})&nbsp;:{' '}
+          {manque.aValider.join(' · ')}
+        </p>
+      )}
+      {manque.bloquees.length > 0 && (
+        <p>
+          {/* Ni saisie ni validation ne débloqueront celles-ci : le tir existe mais oppose d'autres
+              duellistes (ADR-0049 §4). Les ranger avec les autres enverrait le scoreur buter sur un
+              pavé que le serveur refuse d'écraser. */}
+          <strong>Bloquées — population à rétablir</strong> ({manque.bloquees.length})&nbsp;:{' '}
+          {manque.bloquees.join(' · ')}
+        </p>
+      )}
+    </div>
   )
 }

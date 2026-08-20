@@ -9,6 +9,7 @@
 // `shared/schema-braquets/modele`, la source unique du modèle de schéma côté front.
 
 import { fetchJson } from '../../shared/api/client'
+import type { PorteeArret } from '../../shared/phases/arrets'
 import type { AvancementBloc, Bloc } from '../../shared/schema-braquets/modele'
 
 export interface SuiviDeroule {
@@ -43,9 +44,17 @@ export interface ArretEnAttente {
   /** La phase **déclenchante** — celle dont le tour s'est achevé, pas forcément la seule arrêtée. */
   phase_id: number
   apres_tour: number
-  portee: 'phase' | 'depart'
+  portee: PorteeArret
   /** Toutes les phases que cet arrêt a mises en pause : ce que la relance rendra d'un seul geste. */
   phases_arretees: number[]
+  /** L'instant (ISO 8601, UTC) où cet arrêt a éteint sa **première** phase — `null` si rien encore
+   * (E05US034).
+   *
+   * ⚠️ **Un instant, pas une durée**, et le serveur ne peut pas faire autrement : la route est
+   * pollée toutes les 10 s mais le rendu vit *entre* deux réponses, si bien qu'un « depuis 14 min »
+   * calculé là-bas resterait à 14 pendant dix secondes de plus. La conversion vit dans
+   * `shared/phases/relance.ts`, avec ses tests. */
+  arrete_depuis: string | null
 }
 
 export function getArretsEnAttente(departId: number): Promise<ArretEnAttente[]> {
@@ -61,6 +70,49 @@ export function relancerArret(departId: number, arretId: number): Promise<number
   return fetchJson<number[]>(
     `/api/v1/departs/${departId}/arrets/${arretId}/relancer`,
     { method: 'POST' },
+    'admin',
+  )
+}
+
+// --- Arrêts posés le jour J (E05US034, ADR-0092) -------------------------------------------------
+
+/** Ce que la pose renvoie : le tour **résolu**, pas le relatif envoyé.
+ *
+ * C'est ce que l'organisateur doit pouvoir vérifier — « j'ai demandé dans 2 tours, ça coupe après
+ * le tour 4 » —, et c'est ce qui rend la réponse comparable aux arrêts programmés affichés à côté. */
+export interface ArretDeCirconstance {
+  id: number
+  phase_id: number
+  apres_tour: number
+  portee: PorteeArret
+}
+
+/**
+ * Pose une pause **dans ce créneau seul**, comptée depuis le tour en cours.
+ *
+ * ⚠️ **La route est adressée par créneau et par phase, et c'est ce qui la distingue de l'atelier.**
+ * Poser un arrêt à l'atelier édite le déroulé du **tournoi** (`PUT /tournois/{id}/deroule`), que
+ * tous les créneaux rejouent (ADR-0076 §4). Ici on agit sur ce qui tire **maintenant** (§5) : le
+ * créneau du soir ne saura rien de cette pause.
+ *
+ * `dansXTours` compte le tour **en cours** : « 1 » veut dire « celui-là finit, puis on s'arrête ».
+ * La conversion en numéro absolu est faite par le serveur — le tour courant est une donnée serveur,
+ * et un client qui le calculerait couperait au mauvais endroit dès qu'il aurait dix secondes de
+ * retard.
+ */
+export function poserArretRelatif(
+  departId: number,
+  phaseId: number,
+  dansXTours: number,
+  portee: PorteeArret,
+): Promise<ArretDeCirconstance> {
+  return fetchJson<ArretDeCirconstance>(
+    `/api/v1/departs/${departId}/phases/${phaseId}/arrets`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dans_x_tours: dansXTours, portee }),
+    },
     'admin',
   )
 }

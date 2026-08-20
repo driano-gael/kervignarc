@@ -1508,36 +1508,51 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
 
 - **CA — le jour J, l'organisateur pose un arrêt relatif** depuis le pilotage : « bloquer dans
   x tours ». Il s'ajoute aux arrêts programmés, il ne les remplace pas.
+  ⚠️ **Précisé le 20/08/2026, et c'est ce qui a produit [ADR-0092](../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md)** :
+  un arrêt posé le jour J appartient **au créneau**, pas au déroulé. La solution évidente —
+  l'ajouter à l'`EtapeDeroule` — le ferait rejouer par le créneau de l'après-midi, qui n'a aucune
+  raison de s'arrêter pour une panne de chauffage réparée depuis deux heures. ADR-0076 avait déjà
+  tranché sans qu'on ait eu à y revenir : composer se fait au tournoi (§4), **faire vivre se fait au
+  départ** (§5). Le « dans x tours » compte le tour **en cours** (« dans 1 tour » = celui-là finit,
+  puis on s'arrête), et la conversion en numéro absolu est faite par le **serveur**.
+  ⚠️ **Pas d'annulation d'un arrêt posé** (écarté explicitement) : le CA n'en demande pas, et le coût
+  d'une erreur est d'un clic — l'arrêt tombe, l'organisateur relance. Si l'usage la réclame, c'est
+  une US, pas un ajout en douce.
 - **CA — l'application rappelle qu'une phase attend sa relance.** Pastille au tableau de bord
   (« 2 phases attendent votre relance depuis 14 min »). Sans ce filet, la capacité livrée en
   `E05US033` crée un **mode de panne neuf** : la salle attend, personne ne sait pourquoi, et rien
   n'a l'air anormal.
 - **CA — la pause se voit du public et de l'écran de salle.** Sans mention explicite, un spectateur
   lira l'arrêt comme une panne.
-- **CA — la qualification devient divisible en tours** (« 20 volées en 2 tours de 10 »), *afin de*
-  pouvoir y poser une pause : sans découpage elle n'a qu'un tour, et un arrêt « après le tour n » n'a
-  nulle part où se poser. **Reversé de la tranche A le 19/08/2026**, en fin de revue de `E05US033`.
-  ⚠️ **Ce qu'il faut livrer avec, et qui est la raison du report** : le tour d'une qualification ne se
-  dérive pas des seules volées validées. Il faut résoudre sa **population réelle** — deux
-  qualifications peuvent coexister dans un créneau ([ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md)),
-  donc « les archers de cette phase » n'est pas « les inscrits du créneau » —, tenir compte du **plan
-  de cibles** et **soustraire les forfaits de la phase**. Une phase avance au rythme du **dernier**
-  archer, pas du premier : compter faux la population fait avancer le tour trop tôt, donc couper la
-  salle avant que le pas de tir ait fini.
-  ⚠️ **Deux choses devront bouger ensemble** : le registre d'avancement du suivi (un lecteur pour
-  `QUALIFICATION`) **et** la table de refus par type livrée en `E05US033` (`TYPES_DEROULES` côté
-  domaine, `TYPES_ARRETABLES` côté front). `tests/test_arrets_api.py` porte les deux oracles en
-  vis-à-vis pour qu'ils tombent ensemble.
+  ⚠️ **Ambition arrêtée au cadrage du 20/08/2026 : mention sobre.** Pas de motif libre saisi par
+  l'organisateur (champ persisté, donc migration, que la tranche A avait su éviter), pas d'heure de
+  reprise annoncée. Cette dernière a été écartée pour une raison de fond et pas de coût : le serveur
+  n'a **aucune** heure à tenir — l'arrêt se lève d'un geste, quand l'organisateur le décide.
+  Afficher « reprise à 14 h 30 » serait une promesse que rien ne fait respecter, donc la façon la
+  plus sûre de transformer une pause maîtrisée en incident.
+- ~~**CA — la qualification devient divisible en tours**~~ — ⚠️ **sorti du périmètre au cadrage du
+  20/08/2026 : devient `E05US035`.** Arbitrage du commanditaire : cette tranche mêlait cinq CA d'IHM
+  et **un chantier moteur** (population réelle d'une qualification, plan de cibles, forfaits), soit
+  le profil exact qui avait déjà fait couper `E05US033` en deux. Le raisonnement de la coupe : ce qui
+  **bloque le déploiement**, c'est « personne ne sait pourquoi la salle attend » — pas « on ne peut
+  pas mettre une qualification en pause ». Tant que la qualification est **refusée explicitement**
+  par la table de types, l'US suivante peut attendre sans créer de mode de panne.
 - **CA — un refus dit ce qui manque** *(CA **récupéré** de l'ancienne `E05US032`)* : quelles
   rencontres ne sont pas validées, et lesquelles ne sont pas encore saisies. Le refus muet actuel
   (`ConfigurationSuisseInvalide`) n'est pas un message d'écran.
 - **CA — l'état d'un tour devient lisible en tant que tel** *(CA **récupéré** de l'ancienne
   `E05US032`)*, et non déduit du compte de résultats.
-  ⚠️ **Ce CA est partiellement rouvert par `E05US032`, qui a tranché dans l'autre sens sans le
+  ⚠️ **Ce CA était partiellement rouvert par `E05US032`, qui avait tranché dans l'autre sens sans le
   dire** : `ServiceSuisse.avancement_de_phase` *dérive* précisément l'état de ronde du compte de
   résultats relu, et l'ADR-0090 a conservé la **dérivation à la lecture** — c'est une décision, pas
-  un non-choix. Reste donc à trancher ici, sur preuve d'usage : ce que le pilotage exige de plus
-  qu'un numéro de tour lisible (une clôture persistée ? un simple message circonstancié ?).
+  un non-choix. Il restait à trancher ici, sur preuve d'usage.
+  ✅ **Tranché le 20/08/2026 : message circonstancié, aucune clôture persistée.** La preuve d'usage
+  est le pilotage lui-même — il n'affichait que le **statut** d'une phase, ce qui suffisait tant
+  qu'aucun geste ne s'y référait ; « bloquer dans x tours » change cela, puisqu'on ne demande pas à
+  quelqu'un de compter des tours sans lui dire où il en est. Ce dont le pilotage a besoin est donc de
+  **dire** le tour (`EtatDuTour`), pas de le figer. Persister une clôture aurait écrit un second
+  avancement à côté de celui qu'ADR-0090 §5 dérive — deux sources pour une même vérité, exactement
+  ce que cet ADR a supprimé.
 - ⚠️ **Ces deux derniers CA avaient disparu sans trace au recadrage du 18/08/2026** — le bloc
   supprimé en portait **trois**, et un seul (« la ronde suivante ne s'ouvre que sur décision de
   l'organisateur ») a été explicitement révoqué. Rattrapé par l'axe adversarial de `/revue-us`.
@@ -1553,4 +1568,41 @@ mécanisme : elle le rend **lisible** et **ajustable le jour J**.
   la laisser dériver dans la file sous prétexte qu'elle « n'ajoute que de l'affichage » : c'est le
   filet de sécurité de la capacité précédente.
 - **Dépend de** : `E05US033` · **Jalon** : J3 · **Origine** : cadrage du 19/08/2026 (tranche B du
-  découpage d'`E05US033`)
+  découpage d'`E05US033`) · **Livrée le 20/08/2026** —
+  [ADR-0092](../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md), migration `0049`
+
+### E05US035 — La qualification se découpe en tours
+
+*En tant qu'*organisateur, *je veux* pouvoir découper une qualification en tours (« 20 volées en
+2 tours de 10 »), *afin de* pouvoir y programmer une pause comme sur les quatre autres formats.
+
+Origine : **cadrage du 20/08/2026**, sorti du périmètre d'`E05US034` — qui mêlait cinq CA d'IHM et ce
+chantier moteur. C'est le **troisième** report de ce CA (`E05US033` → `E05US034` → ici), et le motif
+n'a pas changé d'un iota : dériver le tour d'une qualification n'est pas un reste de plomberie.
+
+- **CA — une qualification se règle en `n` tours** à l'atelier, et son avancement se lit tour par
+  tour comme celui des quatre formats déroulés.
+- **CA — un arrêt programmé se pose sur une qualification**, et coupe à la fin du tour demandé. La
+  table de refus par type cesse alors de l'écarter.
+  ⚠️ **Deux choses doivent bouger ensemble** : le registre d'avancement du suivi (un lecteur pour
+  `QUALIFICATION`, port `LecteurAvancementDePhase`) **et** la table de refus (`TYPES_DEROULES` côté
+  domaine, `TYPES_ARRETABLES` côté front). `backend/tests/test_arrets_api.py` porte les deux oracles
+  **en vis-à-vis** pour qu'ils tombent ensemble — un refus levé sans lecteur rendrait le réglage
+  acceptable et inerte, un lecteur sans refus levé le rendrait inaccessible.
+- ⚠️ **Ce qu'il faut livrer avec, et qui est la raison des trois reports** : le tour d'une
+  qualification ne se dérive pas des seules volées validées. Il faut résoudre sa **population
+  réelle** — deux qualifications peuvent coexister dans un créneau
+  ([ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md)), donc « les archers
+  de cette phase » n'est pas « les inscrits du créneau » —, tenir compte du **plan de cibles** et
+  **soustraire les forfaits de la phase**. Une phase avance au rythme du **dernier** archer, pas du
+  premier : compter faux la population fait avancer le tour trop tôt, donc couper la salle avant que
+  le pas de tir ait fini.
+- ⚠️ **Un piège déjà identifié, à ne pas redécouvrir** : le tour d'une qualification peut **reculer**
+  (un archer qui commence en retard fait baisser le minimum du plateau). `phases_a_arreter` le sait
+  déjà — sa comparaison est `>` et non `!=`, correctif de 2ᵉ passe d'`E05US033` — mais tout calcul
+  neuf d'avancement doit être écrit en le sachant.
+- 🔭 **Hors périmètre** : l'**échauffement**, le **barrage**, le **placement** et la **colline**.
+  L'échauffement n'a ni barème ni feuille de marque, donc aucune donnée existante ne dit où il en
+  est — choix métier à trancher, pas de la plomberie. Les trois autres ne sont déroulés par aucun
+  service (`DETTE-028`).
+- **Dépend de** : `E05US034` · **Jalon** : J3 · **Origine** : cadrage du 20/08/2026

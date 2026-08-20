@@ -544,9 +544,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **117 US livrées** sur `main` (mergées, revues, CI verte) à la date du 19/08/2026, la dernière
-  étant `E05US033` — **la salle peut s'arrêter** : l'organisateur programme ses pauses à l'atelier,
-  et un bouton relance tout ce qu'une pause a coupé. **`SUIVI-US.md` fait
+- **118 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/08/2026, la dernière
+  étant `E05US034` — **la pause se voit, et se pose en cours de journée** : le public et l'écran de
+  salle l'annoncent, le tableau de bord rappelle qu'une salle attend sa relance, et l'organisateur
+  peut décider d'un arrêt sans l'avoir prévu la veille. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -685,6 +686,31 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **La pause se voit, et se pose en cours de journée (20/08/2026, E05US034).** La veille,
+  l'application avait appris à arrêter la salle. Il lui manquait de le **dire** : une compétition
+  immobile et un écran muet, vus des gradins, ressemblent exactement à une panne — et l'organisateur
+  ne découvrait qu'une phase attendait sa relance qu'en ouvrant l'écran de pilotage. C'est réparé sur
+  quatre points. Le **public et l'écran de salle** annoncent la pause par un bandeau lisible de loin
+  (« le tir est suspendu par l'organisation ; la reprise sera annoncée en salle »), au lieu du
+  discret « en pause » en petits caractères. Le **tableau de bord d'accueil** affiche, tout en haut,
+  « 2 phases attendent votre relance depuis 14 min » — et se tait dès que tout est reparti, pour que
+  la ligne garde sa valeur d'alerte le jour où elle apparaît. L'**écran de pilotage** dit désormais
+  où en est chaque phase (« Ronde 3 — tour 3 sur 5 ») et permet d'y **poser une pause sans l'avoir
+  prévue** : « bloquer dans 2 tours ». Enfin, l'**écran de saisie du système suisse** ne se contente
+  plus de dire que la ronde n'est pas finie : il **nomme** les rencontres qui manquent, en séparant
+  celles qui ne sont pas encore saisies de celles qui attendent une validation — deux attentes qui
+  n'appellent pas la même personne.
+  Un point mérite d'être connu, parce qu'il est invisible et qu'il compte : **une pause posée en
+  cours de journée ne concerne que le créneau où on la pose**. C'est la différence avec une pause
+  préparée à l'atelier, qui fait partie du déroulé et que *tous* les créneaux rejouent. Une panne de
+  chauffage à 14 h n'a aucune raison d'arrêter le départ du soir.
+  ⚠️ **Ce qui manque encore** : la **qualification** ne peut toujours pas porter de pause — elle ne
+  compte qu'un seul tour, donc un arrêt « après le tour n » n'a nulle part où se poser. La rendre
+  divisible (« 20 volées en 2 tours de 10 ») demande de savoir exactement quels archers la
+  composent, ce qui est un chantier à part entière : c'est `E05US035`. En attendant, l'écran le
+  **dit** plutôt que d'offrir un réglage qui ne partirait jamais. Une pause posée par erreur ne
+  s'annule pas non plus : elle tombe, et on relance — un clic. Décision d'architecture :
+  [ADR-0092](../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md).
 - **La salle peut s'arrêter, et repartir d'un bouton (19/08/2026, E05US033).** Une phase de tournoi
   peut durer des heures, et jusqu'ici elle enchaînait ses tours toute seule jusqu'au bout : pour
   couper — le repas, une réorganisation de salle, une annonce —, il n'y avait aucun geste prévu.
@@ -707,11 +733,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   « mettre en pause » d'une phase existait depuis longtemps et **n'arrêtait rien du tout** — les
   archers continuaient de tirer, les scoreurs de valider. La pause n'était qu'un mot affiché. C'est
   désormais réparé pour une phase ; le même bouton **au niveau du tournoi** reste, lui, décoratif, et
-  c'est inscrit au registre des points à traiter. ⚠️ **Ce qui manque encore, et qui est prévu tout de
-  suite après** : ni le public ni l'écran de salle ne *disent* qu'il s'agit d'une pause (un spectateur
-  pourrait la lire comme une panne), et rien ne rappelle à l'organisateur qu'une phase attend sa
-  relance. La **qualification** ne peut pas encore porter de pause non plus. C'est `E05US034`, à livrer
-  **avant** de se servir des pauses un jour de compétition.
+  c'est inscrit au registre des points à traiter. ✅ **Les manques annoncés ici ont été levés le
+  lendemain par `E05US034`** (entrée suivante) : la pause s'annonce au public et à l'écran de salle,
+  et le tableau de bord rappelle qu'une salle attend. La **qualification** ne peut toujours pas
+  porter de pause — c'est `E05US035`.
   Décision d'architecture :
   [ADR-0091](../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md).
 - **Chaque phase dit où elle en est (18/08/2026, E05US032).** L'écran de suivi annonçait « on

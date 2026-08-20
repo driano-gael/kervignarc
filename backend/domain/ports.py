@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from domain.archer import Archer, ArcherId
-from domain.arret_programme import FranchissementArret
+from domain.arret_programme import ArretDeCirconstance, FranchissementArret
 from domain.barrage import BarrageDePlaces, BarrageId, TirBarrage
 from domain.blason import Blason, BlasonId
 from domain.categorie import Categorie, CategorieId
@@ -1384,4 +1384,39 @@ class FranchissementArretRepository(Protocol):
 
     def enregistrer(self, franchissement: FranchissementArret) -> FranchissementArret:
         """Réécrit un franchissement existant (existence garantie par l'appelant)."""
+        ...
+
+
+class ArretDeCirconstanceRepository(Protocol):
+    """Port de persistance des **arrêts posés le jour J**, propres à un créneau (E05US034).
+
+    ⚠️ **Troisième port du mécanisme, et le partage n'est pas arbitraire** ([ADR-0092]) :
+
+    - `DerouleRepository` sert les arrêts **programmés à l'atelier** — de la définition, portée par
+      le tournoi et rejouée par tous ses créneaux (ADR-0076 §4) ;
+    - **ce port-ci** sert les arrêts **décidés en cours de journée** — de la conduite, portée par le
+      départ (ADR-0076 §5), rejouée par personne ;
+    - `FranchissementArretRepository` sert l'**avancement** — ce qu'un arrêt a effectivement coupé.
+
+    Ranger les deux premiers ensemble aurait fait rejouer par le créneau de l'après-midi une pause
+    décidée le matin pour une panne de chauffage : la propagation silencieuse est le symétrique
+    exact de la divergence silencieuse qu'ADR-0076 a supprimée.
+
+    **Pas de `retirer`.** Le CA n'en demande pas, et le coût d'une erreur de saisie est d'un clic :
+    l'arrêt tombe, l'organisateur relance. En ajouter un « au cas où » serait une porte de plus à
+    garder — et, celle-là, capable d'annuler une pause que la salle attend déjà.
+
+    [ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    """
+
+    def par_depart(self, depart_id: DepartId) -> list[ArretDeCirconstance]:
+        """Les arrêts de circonstance de **ce créneau seul** (liste possiblement vide).
+
+        Le filtrage par créneau est la propriété que ce port existe pour tenir : un adapter qui
+        rendrait tout le tournoi rendrait le concept indistinguable d'un arrêt programmé.
+        """
+        ...
+
+    def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
+        """Persiste un arrêt de circonstance et le renvoie avec son identifiant attribué."""
         ...

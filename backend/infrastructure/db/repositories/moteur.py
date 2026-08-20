@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.arret_programme import (
+    ArretDeCirconstance,
     ArretProgramme,
     EtatFranchissement,
     FranchissementArret,
@@ -55,6 +56,7 @@ from domain.poule import BaremePoule, ReglageDePoules
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
 from infrastructure.db.models import (
+    ArretDeCirconstanceORM,
     DepartORM,
     DerouleEtapeORM,
     FormatTournoiORM,
@@ -1342,6 +1344,7 @@ class FranchissementArretRepositorySQL:
                     etat=franchissement.etat.value,
                     tours_a_finir=_tours_a_finir_json(franchissement.tours_a_finir),
                     phases_arretees=json.dumps(list(franchissement.phases_arretees)),
+                    arrete_depuis=franchissement.arrete_depuis,
                 )
                 session.add(ligne)
                 session.commit()
@@ -1365,6 +1368,7 @@ class FranchissementArretRepositorySQL:
                 ligne.etat = franchissement.etat.value
                 ligne.tours_a_finir = _tours_a_finir_json(franchissement.tours_a_finir)
                 ligne.phases_arretees = json.dumps(list(franchissement.phases_arretees))
+                ligne.arrete_depuis = franchissement.arrete_depuis
                 session.commit()
                 session.refresh(ligne)
                 return _vers_franchissement(ligne)
@@ -1388,10 +1392,85 @@ def _vers_franchissement(ligne: FranchissementArretORM) -> FranchissementArret:
             etat=EtatFranchissement(ligne.etat),
             tours_a_finir=tuple((int(clef), valeur) for clef, valeur in tours.items()),
             phases_arretees=tuple(int(phase_id) for phase_id in arretees),
+            arrete_depuis=ligne.arrete_depuis,
             id=ligne.id,
         )
     except (json.JSONDecodeError, AttributeError, TypeError, ValueError) as exc:
         raise InfrastructureError("Arrêt programmé illisible en base.") from exc
+
+
+class ArretDeCirconstanceRepositorySQL:
+    """Adapter SQLite du port `ArretDeCirconstanceRepository` (E05US034, [ADR-0092]).
+
+    Ne persiste que les arrêts **posés le jour J**. Ceux de l'atelier vivent dans
+    `deroule_etape.config` et se lisent par `DerouleRepository` : ce sont deux natures, pas deux
+    tables pour la même chose (ADR-0076 §4 contre §5).
+
+    ⚠️ **La lecture est par créneau, et la table porte `depart_id` — contrairement à sa voisine.**
+    `FranchissementArretRepositorySQL` passe par une jointure sur `phase` parce que le créneau y est
+    déductible ; ici il ne l'est pas : le `depart_id` **est** ce qui distingue cet arrêt d'un arrêt
+    de déroulé. Ce n'est donc pas une seconde source pour ce que la phase dirait déjà (DETTE-026),
+    c'est la donnée elle-même.
+
+    [ADR-0092]: ../../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def par_depart(self, depart_id: DepartId) -> list[ArretDeCirconstance]:
+        """Les arrêts de circonstance de **ce créneau seul**, du plus ancien tour au plus tardif."""
+        try:
+            with self._session_factory() as session:
+                lignes = (
+                    session.execute(
+                        select(ArretDeCirconstanceORM)
+                        .where(ArretDeCirconstanceORM.depart_id == depart_id)
+                        .order_by(ArretDeCirconstanceORM.apres_tour)
+                    )
+                    .scalars()
+                    .all()
+                )
+                return [_vers_arret_de_circonstance(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError(
+                "Échec de lecture des pauses posées en cours de tournoi."
+            ) from exc
+
+    def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
+        try:
+            with self._session_factory() as session:
+                ligne = ArretDeCirconstanceORM(
+                    depart_id=arret.depart_id,
+                    phase_id=arret.phase_id,
+                    apres_tour=arret.apres_tour,
+                    portee=arret.portee.value,
+                )
+                session.add(ligne)
+                session.commit()
+                session.refresh(ligne)
+                return _vers_arret_de_circonstance(ligne)
+        except IntegrityError as exc:
+            # L'unicité a parlé : deux poses du même arrêt. Le service refuse déjà le doublon qu'il
+            # peut voir ; celle-ci ferme la **course** — deux postes d'admin qui cliquent dans la
+            # même seconde, ou le double-clic d'un seul.
+            raise InfrastructureError("Cette pause est déjà posée sur cette phase.") from exc
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement d'une pause.") from exc
+
+
+def _vers_arret_de_circonstance(ligne: ArretDeCirconstanceORM) -> ArretDeCirconstance:
+    """Relit un arrêt de circonstance. Une ligne illisible est une base altérée, pas un doute."""
+    try:
+        return ArretDeCirconstance(
+            depart_id=ligne.depart_id,
+            phase_id=ligne.phase_id,
+            apres_tour=ligne.apres_tour,
+            portee=PorteeArret(ligne.portee),
+            id=ligne.id,
+        )
+    except ValueError as exc:
+        raise InfrastructureError("Pause posée illisible en base.") from exc
 
 
 class PhaseRepositorySQL:

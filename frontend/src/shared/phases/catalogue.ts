@@ -150,7 +150,8 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
 // pourquoi plutôt que de laisser l'organisateur buter sur un refus à la soumission.
 //
 // ⚠️ **Écrite en positif**, comme `MOTEUR_SAIT_JOUER` et pour la même raison : cette liste ne fait
-// que **s'allonger** (E05US034 y ajoutera la qualification). Un oubli d'ajout prive l'organisateur
+// que **s'allonger** (`E05US035` y ajoutera la qualification — reportée d'`E05US034` au cadrage du
+// 20/08/2026 : la rendre divisible en tours est un chantier moteur, pas un ajout à cette table). Un oubli d'ajout prive l'organisateur
 // d'un réglage que le serveur accepterait — pessimiste, donc rattrapable ; l'écrire en négatif
 // aurait fait offrir un réglage que le serveur refuse, ce qui casse la soumission entière (le `PUT`
 // est une édition **totale**).

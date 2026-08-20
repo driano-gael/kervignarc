@@ -3641,9 +3641,11 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Le départ est la portée sportive, pas seulement un créneau logistique",
    "us": [
+    "E00US021",
     "E01US025",
     "E05US026",
-    "E05US032"
+    "E05US032",
+    "E05US034"
    ]
   },
   {
@@ -6269,6 +6271,302 @@ window.ATLAS.decisions = {
     "E05US033",
     "E05US034",
     "E07US008"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-20",
+   "date_brute": "20/08/2026",
+   "extrait": "Un arrêt décidé pendant que la salle tire est un objet distinct, porté par le départ, et rejoué par personne. Le mécanisme se lit désormais en trois natures, là où ADR-0091 en distinguait deux : Tournoi ──► EtapeDeroule.arrets DÉFINITION — posée à l'atelier, rejouée par TOUS les créneaux Départ ──► ArretDeCirconstance CONDUITE — posée au pilotage, rejouée par PERSONNE Départ ──► FranchissementArret AVANCEMENT — ce qu'un arrêt a coupé, ici, et son relèvement 1. ArretDeCirconstance (domain/arret_programme.py) porte depart_id, phase_id, apres_tour, portee. Il a une table à lui (arret_de_circonstance, migration 0049), et non un document JSON : l'unicité (depart_id, phase_id, apres_tour) doit […]",
+   "fichier": "docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md",
+   "identifiant": "0092",
+   "liens": [
+    {
+     "cible": "E05US034",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E05US033",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0091",
+     "libelle": "Complète",
+     "sens": "sortant",
+     "type": "complete"
+    },
+    {
+     "cible": "0076",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "tour_d_un_arret_relatif",
+      "poser_arret_relatif",
+      "PoserArretRelatifRequete",
+      "ArretFranchiReponse.arrete_depuis",
+      "resumeDeRelance",
+      "phraseDeRelance"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/arrets_programmes.py",
+     "existe": true,
+     "symboles": [
+      "tour_d_un_arret_relatif",
+      "poser_arret_relatif",
+      "PoserArretRelatifRequete",
+      "arrets_applicables",
+      "_declencher_les_arrets_atteints",
+      "_circonstance_par_phase",
+      "_tour_acheve",
+      "evaluer",
+      "aucun_arret",
+      "test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve",
+      "verifier_arrets",
+      "verifier_type_arretable",
+      "_verifier_arrets_applicables",
+      "FranchissementArret.arrete_depuis",
+      "_horodate",
+      "Horloge",
+      "HorlogeSysteme"
+     ],
+     "symboles_absents": [
+      "test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "FranchissementArret.arrete_depuis",
+      "_horodate",
+      "Horloge",
+      "HorlogeSysteme"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/arret_programme.py",
+     "existe": true,
+     "symboles": [
+      "ArretDeCirconstance",
+      "tour_d_un_arret_relatif",
+      "poser_arret_relatif",
+      "PoserArretRelatifRequete",
+      "arrets_applicables",
+      "_declencher_les_arrets_atteints",
+      "_circonstance_par_phase",
+      "_tour_acheve",
+      "verifier_arrets",
+      "verifier_type_arretable",
+      "_verifier_arrets_applicables",
+      "FranchissementArret.arrete_depuis",
+      "_horodate",
+      "Horloge",
+      "HorlogeSysteme"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "verifier_type_arretable",
+      "_verifier_arrets_applicables",
+      "poser_arret_relatif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "ArretDeCirconstanceRepository",
+      "ArretDeCirconstanceRepositorySQL.par_depart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "ArretDeCirconstanceORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "ArretDeCirconstanceRepository",
+      "ArretDeCirconstanceRepositorySQL.par_depart"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0049_arret_de_circonstance.py",
+     "existe": true,
+     "symboles": [
+      "ArretDeCirconstanceORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/accueil/Accueil.tsx",
+     "existe": true,
+     "symboles": [
+      "PastilleDeRelance",
+      "useQueries"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/en-cours/VueEnCours.tsx",
+     "existe": true,
+     "symboles": [
+      "encours__pause",
+      "VueEnCours"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.tsx",
+     "existe": true,
+     "symboles": [
+      "encours__pause",
+      "VueEnCours"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/presentation.test.ts",
+     "existe": true,
+     "symboles": [
+      "ceQuiManque",
+      "CeQuiManqueEncore"
+     ],
+     "symboles_absents": [
+      "CeQuiManqueEncore"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suisse/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "ceQuiManque",
+      "CeQuiManqueEncore"
+     ],
+     "symboles_absents": [
+      "CeQuiManqueEncore"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
+     "existe": true,
+     "symboles": [
+      "EtatDuTour",
+      "useSuiviDeroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi-deroule/api.ts",
+     "existe": true,
+     "symboles": [
+      "poserArretRelatif",
+      "usePoserArretRelatif",
+      "PoserUnePause",
+      "peutPoserUnePause"
+     ],
+     "symboles_absents": [
+      "PoserUnePause",
+      "peutPoserUnePause"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi-deroule/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "poserArretRelatif",
+      "usePoserArretRelatif",
+      "PoserUnePause",
+      "peutPoserUnePause"
+     ],
+     "symboles_absents": [
+      "PoserUnePause",
+      "peutPoserUnePause"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/relance.test.ts",
+     "existe": true,
+     "symboles": [
+      "ArretFranchiReponse.arrete_depuis",
+      "resumeDeRelance",
+      "phraseDeRelance"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/relance.ts",
+     "existe": true,
+     "symboles": [
+      "ArretFranchiReponse.arrete_depuis",
+      "resumeDeRelance",
+      "phraseDeRelance"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/useMaintenant.ts",
+     "existe": true,
+     "symboles": [
+      "PastilleDeRelance",
+      "useQueries"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un arrêt posé le jour J appartient au créneau, pas au déroulé",
+   "us": [
+    "E05US033",
+    "E05US034",
+    "E05US035"
    ]
   }
  ]
