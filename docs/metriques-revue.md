@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-21 | `E05US035` | 53 | +1892/−147 | ~14 min | ~32 min | D (09:12→09:44) | **bloquant:1** majeur:4 mineur:1 | **bloquant:2** majeur:3 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:3 | **bloquant:3** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur l'arrêt inerte (1 convergent, le seul de l'histoire de ce registre à être trouvé par les cinq) ; **D seul** sur les deux autres — le réglage monté dans une **branche morte** et le filtre forfait aveugle hors du premier créneau (`DETTE-047`) ; **B seul** sur la fiche fonctionnelle absente ; **l'auteur** sur un 5ᵉ, trouvé en corrigeant (`ReglageBarrage` n'aurait pas réémis `decoupage`, donc régler un barrage l'effaçait) | 1 |
 | 2026-08-20 | `E05US034` | 41 | +3310/−147 | ~7 min | ~24 min | D (11:47→12:02) | **bloquant:1** majeur:2 mineur:2 suggestion:1 | **bloquant:1** majeur:3 mineur:5 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:2 | **bloquant:2** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur le fuseau (1 convergent) + **C2 et D seuls** sur l'écran de salle (1) ; **D seul** sur le rappel indélébile (majeur) | 2 |
 | 2026-08-20 | `E05US034` (2ᵉ passe, sur les correctifs) | 26 | — | ~8 min | ~30 min | D (14:05→14:31) | — | **bloquant:1** majeur:3 mineur:6 suggestion:3 | — | — | bloquant:0 majeur:3 mineur:7 suggestion:1 | **B seul** (1 bloquant : le grain de l'annonce de salle) ; **D seul** (2 majeurs : le comptage des phases, le refus dupliqué) | — |
 | 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 2 |
@@ -229,3 +230,28 @@ création de `DETTE-075`, l'élargissement de `DETTE-001`/`DETTE-031` ni l'amend
 c'est un angle non couvert, pas un angle vérifié, et il est signalé comme tel dans le corps de la PR.
 Enseignement pratique : sur une US de cette taille, lancer la 2ᵉ passe **après** confirmation de la
 porte verte, jamais en parallèle — sinon on paie deux fois quand la porte rougit.
+
+**14. La convergence de cinq axes ne dit rien sur ce que les autres n'ont pas vu — et c'est le
+contraire de rassurant.** Les cinq relecteurs ont trouvé le **même** bloquant (`nb_tours=None` passé
+à `verifier_arrets`), première fois dans ce registre. La tentation est d'y lire une revue solide ;
+la lecture juste est l'inverse. Ce bloquant-là était **inscrit dans le diff** — un `None` passé à un
+paramètre que l'US venait de rendre calculable —, donc visible de n'importe quel angle. Les deux
+bloquants qui **n'ont été vus que par D** ne l'étaient pas : l'un demandait de vérifier qu'une
+branche JSX est **atteignable** (`TYPES_AJOUTABLES` + `gereeAilleurs`, deux verrous à soixante lignes
+du code ajouté), l'autre de remonter la chaîne d'**écriture** d'un forfait pour découvrir que
+`par_phase` ne trouve jamais rien hors du premier créneau (`DETTE-047`). Aucune grille ne demande
+ça ; c'est exactement la mission de l'axe adversarial. **Sur cette passe, D a doublé la détection de
+bloquants à lui seul** — et la colonne « bloquants par » interdit désormais de le raccourcir, comme
+sa définition l'annonçait.
+
+**15. Un correctif de bloquant en révèle un autre, et l'auteur est bien placé pour le voir.** En
+appliquant le remède déjà validé pour le barrage (le contrôle dédié hors du formulaire mort),
+l'auteur a lu le code de `ReglageBarrage` — qui réémet **tous** les champs parce que le `PUT` est une
+édition totale — et constaté qu'il ne réémettait pas `decoupage`. Régler un barrage aurait donc
+effacé le découpage, donc rendu inertes toutes les pauses posées dessus. Aucun axe ne l'avait relevé,
+et c'est logique : ce chemin n'est pas dans le diff de l'US, il est dans le code **qu'elle rend
+faux**. Le commentaire de cette fonction raconte pourtant la même leçon **deux fois** (pour
+`barrage_jusqu_au` en E06US003, pour `arrets` en E05US033) — troisième occurrence en un an, au même
+endroit. Enseignement : quand un diff ajoute un champ à un agrégat édité en **totalité**, la question
+« qui d'autre écrit cet agrégat sans passer par mon formulaire ? » mérite un `grep` systématique, et
+elle n'est dans aucune grille.

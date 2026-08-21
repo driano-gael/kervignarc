@@ -79,13 +79,37 @@ Le découpage est recopié dans `Phase` par `instancier`, à la différence des 
 moteur qui lit l'avancement **sur la phase** (`ServiceSaisie` reçoit un `phase_id`), donc il doit
 voyager.
 
+**Corollaire, et il a coûté un bloquant de revue : une pause ne se pose que sur une qualification
+DÉCOUPÉE.** Non découpée, elle compte **un** tour — donc « après le tour 1 » y est inerte, accepté à
+l'atelier et jamais déclenché. C'est le mode de panne exact que `verifier_type_arretable` existe pour
+fermer, et la première rédaction l'a rouvert par la porte qu'elle venait d'ouvrir : le refus par
+**type** passait (la qualification est arrêtable), et `EtapeDeroule` continuait de passer
+`nb_tours=None` à `verifier_arrets` en invoquant une prémisse devenue fausse — « le nombre de tours
+n'est jamais connu à la composition ». Il l'est, pour elle seule, puisque c'est un réglage porté par
+la même étape.
+
+Deux refus sont donc nécessaires, et **aucun ne remplace l'autre** : un refus par *type*
+(`TYPES_ARRETABLES`, la table) et un refus par *nombre de tours* (`verifier_arrets`, nourri par
+`EtapeDeroule._nb_tours_a_la_composition`). C'est la première fois qu'un type du catalogue voit son
+arrêtabilité dépendre d'un **réglage d'instance** et non de son seul type — la table reste par type,
+la condition d'instance vit là où le réglage vit. Les deux écrans de composition portent le miroir.
+
 **2. Le tour se dérive du plus lent d'une population résolue en trois filtres.** Les archers
 **placés** du créneau (plan de cibles, ADR-0033), **admis** par cette phase (la résolution déjà
 utilisée par le chemin d'écriture — `ServiceSaisie._admet` —, jamais une seconde), **moins les
-forfaits de cette phase**. Le compte retenu est celui des volées **saisies**, non validées : un tour
-est fini quand la salle a tiré, pas quand le scoreur a signé — sans quoi une validation en file
-hors-ligne (E04US009) ferait tomber la pause plusieurs volées trop tard. C'est déjà l'oracle
-d'`avancement_cible`, qui compte les mêmes volées pour la console de supervision.
+forfaits**, lus par les **deux** chemins tant que `DETTE-047` range l'écriture au mauvais endroit
+(voir *Conséquences*).
+
+Le compte retenu est celui des volées **saisies**, non validées : un tour est fini quand la salle a
+tiré, pas quand le scoreur a signé — sans quoi une validation en file hors-ligne (E04US009) ferait
+tomber la pause plusieurs volées trop tard. **Saisies et *enchaînées*** : c'est le **préfixe
+contigu** qui compte, pas le cardinal. `Serie.saisir_volee` accepte n'importe quel rang, donc un
+scoreur qui rattrape une feuille papier en commençant par la dernière volée notée produit une série
+`{1..9, 20}` — dix au cardinal, neuf réellement tirées. Compter le cardinal ferait franchir la
+frontière de tour **avant** que la volée manquante soit tirée, donc couper pendant le tir : la seule
+direction dangereuse, alors qu'un préfixe contigu ne se trompe que dans le sens prudent. *(Le
+cardinal est ce que compte `avancement_cible` depuis E12US001 ; là-bas il ne décale qu'un affichage
+de supervision, ici il déclencherait un arrêt.)*
 
 **Le tour peut reculer**, et le calcul l'assume sans mémoire : un archer qui commence en retard fait
 baisser le minimum. C'est `phases_a_arreter` qui absorbe le recul (comparaison `>` et non `!=`,
@@ -142,10 +166,29 @@ par aucun service (`DETTE-028`). Les quatre restent **explicitement refusés** �
 qu'un réglage inerte, et `test_domain_qualification` garde cette coupe.
 
 **`DETTE-054` s'élargit d'une paire** de DTO jumeaux (`DecoupageDTO` dans les deux routeurs de
-composition), et **`DETTE-022`** — la résolution « phase de qualif → forfaits », écrite quatre fois —
-gagne un cinquième site qui, lui, fait le geste **juste** (`forfaits.par_phase(phase.id)` plutôt que
-« la » qualification du tournoi). C'est le chemin que cette dette devra rejoindre, pas une occurrence
-de plus.
+composition), et **`DETTE-031`** d'un lecteur — la qualification est la phase la plus peuplée et la
+plus longue du créneau, et son avancement est lu après chaque validation de score.
+
+**`DETTE-022` n'est pas aggravée, mais `DETTE-047` devient bloquante pour ce chemin**, et c'est un
+constat de revue qui a renversé la première rédaction de cet ADR. Elle disait que le nouveau site
+faisait « le geste juste » en lisant `forfaits.par_phase(phase.id)` plutôt que « la » qualification
+du tournoi. C'est vrai en principe et **faux en pratique** : `ServiceForfait.declarer_en_qualification`
+écrit **tous** les forfaits de qualification sur la phase du **premier** créneau (`DETTE-047`), si
+bien que `par_phase` rendait une liste **vide** pour toute qualification hors de ce créneau — donc
+pour le départ de l'après-midi, et pour la *haute*/*basse* d'ADR-0082 que l'argument croyait servir.
+Un archer abandonnant à sa 4ᵉ volée y gelait la phase au tour 1 pour la journée. Le code lit
+désormais les **deux** chemins, avec le marqueur `# DETTE-047` : `par_phase` reste le geste vers
+lequel la résorption devra converger, `_forfaits_qualif` rattrape ce que l'écriture range au mauvais
+endroit. Tant que `DETTE-047` n'est pas résorbée, l'union est le seul filet correct.
+
+**Le retour arrière n'est pas neutre, et ce n'est pas le découpage qui coûte.** La clé `decoupage`
+est simplement **ignorée** par la version précédente (elle vit hors du `policies` fermé), donc
+redescendre la perd en silence — comportement sûr. Ce qui casse est l'autre moitié de l'US : une
+étape portant un **arrêt sur une qualification** est illisible par la version précédente, dont
+`verifier_type_arretable` lisait `TYPES_DEROULES` et lève — donc **chaque lecture** de l'étape tombe,
+suivi et affichage public compris. C'est nommément le mode de panne qu'E05US033 avait corrigé
+(« `PUT` 200 puis chaque lecture en 422 »), rejoué par la porte du temps. **Retirer les pauses de
+qualification avant de redescendre.**
 
 ## Porté dans le code par
 
@@ -167,4 +210,7 @@ de plus.
 | Conséquence — aucune migration, écriture à la racine du `config` | `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, `_lire_decoupage`) | oui |
 | Conséquence — le format capturé conserve le découpage | `backend/domain/format_tournoi.py` (`ModelePhase.decoupage`, `pour_tournoi`, `d_etape`) | oui |
 | Conséquence — le vis-à-vis des deux tables | `backend/tests/test_arrets_api.py` | oui |
-| §1 — le réglage se pose à l'atelier | `frontend/src/shared/phases/decoupage.ts` · `frontend/src/shared/phases/ReglageDecoupage.tsx` · montés par `features/phases/Phases.tsx` et `features/deroule/Deroule.tsx` | oui |
+| §1 — le réglage se pose à l'atelier | `frontend/src/shared/phases/decoupage.ts` · `ReglageDecoupage.tsx` · monté par `features/deroule/Deroule.tsx` (bibliothèque) et par `features/phases/Phases.tsx` **via `ReglageDecoupageDePhase`**, à côté de la carte et non dans `FormulairePhase` | oui |
+| §1 — le refus d'une pause sur une qualification **non découpée** | `backend/domain/deroule_etape.py` (`_nb_tours_a_la_composition`, passé à `verifier_arrets`) · miroir front : `arretable` dans `Phases.tsx` et `Deroule.tsx` | oui |
+| §2 — les forfaits sont lus par les **deux** chemins (`DETTE-047`) | `backend/application/saisie.py` (`_volees_du_plus_lent`, union `par_phase` ∪ `_forfaits_qualif`) | oui |
+| §2 — le compte est un **préfixe contigu**, pas un cardinal | `backend/application/saisie.py` (`_volees_enchainees`) | oui |

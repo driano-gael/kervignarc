@@ -242,10 +242,16 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce ReglageDecoupageDePhase, FormulairePhase dans « frontend/src/shared/phases/decoupage.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0093"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 40
+  "signaux": 41
  }
 };

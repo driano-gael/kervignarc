@@ -117,7 +117,8 @@ export interface PhasePosable {
  *
  * 1. **la phase est en cours** — une phase à venir n'a pas de tour d'où compter, une phase déjà en
  *    pause n'a rien à interrompre, une phase terminée non plus ;
- * 2. **le type annonce ses tours** (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine) —
+ * 2. **le type annonce ses tours** (`TYPES_ARRETABLES`, miroir de la table de **même nom** côté domaine — elle a cessé
+// de dériver de `TYPES_DEROULES` en E05US035, ADR-0093) —
  *    ailleurs l'arrêt serait accepté puis inerte, et l'organisateur le découvrirait le jour J ;
  * 3. **le tour courant est lisible** — sans origine, « dans x tours » ne se compte pas. Deviner
  *    couperait la salle au mauvais endroit ;

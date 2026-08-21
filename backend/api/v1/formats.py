@@ -217,7 +217,7 @@ class ReglageBigShootOffDTO(BaseModel):
 class DecoupageDTO(BaseModel):
     """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]) — « 20 volées en 2 ».
 
-    Jumeau assumé de `api/v1/phases.DecoupageDTO` — **6ᵉ** paire, `DETTE-054`.
+    Jumeau assumé de `api/v1/phases.DecoupageDTO` — **7ᵉ** paire, `DETTE-054`.
 
     Aucune vérification de divisibilité ici, et pour la raison qui vaut déjà pour le suisse et le
     Big Shoot Off : un format de bibliothèque s'écrit **sans connaître le barème** du tournoi qui

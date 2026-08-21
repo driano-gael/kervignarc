@@ -239,7 +239,12 @@ def doublon_d_arret(tours: Sequence[int]) -> ArretProgrammeInvalide:
     )
 
 
-def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = None) -> None:
+def verifier_arrets(
+    arrets: Sequence[ArretProgramme],
+    nb_tours: int | None = None,
+    *,
+    geste_reparateur: str | None = None,
+) -> None:
     """Vérifie qu'une **liste** d'arrêts est applicable. Lève `ArretProgrammeInvalide` sinon.
 
     Les invariants d'un arrêt seul sont à son `__post_init__` ; ceux du **couple** (deux arrêts
@@ -250,6 +255,12 @@ def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = Non
     `nb_tours=None` signifie « inconnu » et ne déclenche aucun refus : un système suisse réglé à
     7 rondes n'en joue que 5 si l'effectif ne permet pas plus, et l'atelier ne connaît pas toujours
     l'effectif. On ne refuse pas ce qu'on ne peut pas juger.
+
+    ⚠️ **`geste_reparateur` existe parce qu'un refus sans issue est un cul-de-sac** (`P-3`). Le
+    message générique dit *pourquoi* c'est refusé ; sur une qualification non découpée il ne dit
+    pas *quoi faire*, et « la phase n'en compte que 1 » laisse l'organisateur sans prise — il n'a
+    aucune raison de deviner qu'un réglage de découpage existe deux blocs plus haut. L'appelant qui
+    connaît le geste le fournit ; les autres gardent le message d'origine.
     """
     tours = [arret.apres_tour for arret in arrets]
     doublons = {tour for tour in tours if tours.count(tour) > 1}
@@ -260,9 +271,10 @@ def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = Non
     inertes = sorted(tour for tour in tours if tour >= nb_tours)
     if inertes:
         liste = ", ".join(str(tour) for tour in inertes)
+        issue = f" {geste_reparateur}" if geste_reparateur else ""
         raise ArretProgrammeInvalide(
             f"un arrêt posé après le tour {liste} ne couperait rien : la phase n'en compte que "
-            f"{nb_tours}, elle est terminée à ce moment-là"
+            f"{nb_tours}, elle est terminée à ce moment-là.{issue}"
         )
 
 

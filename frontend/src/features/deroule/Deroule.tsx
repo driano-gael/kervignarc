@@ -735,7 +735,21 @@ export function FormulaireEtape({
   const estQualification = type === 'qualification'
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
   // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
-  const arretable = TYPES_ARRETABLES.has(type)
+  // ⚠️ **Pour une qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** (correctif de
+  // revue, E05US035, quatre axes). `TYPES_ARRETABLES` répond « on sait observer son tour » ; une
+  // qualification non découpée n'en compte qu'**un**, donc aucune pause n'y a de frontière où
+  // tomber — le serveur la refuse désormais, et offrir le champ ferait échouer la soumission
+  // **entière** (le `PUT` est une édition totale), ce que cette table est justement écrite « en
+  // positif » pour éviter. C'est aussi ce que la fiche de découpage affiche deux blocs plus haut :
+  // sans cette ligne, l'écran se contredisait lui-même.
+  //
+  // ⚠️ Ici le découpage est **en cours de saisie**, donc on lit l'état du formulaire et non une
+  // phase persistée : cocher « 2 tours » doit ouvrir la fiche d'arrêts immédiatement, sans passer
+  // par un enregistrement. `versDecoupage` rend `null` pour un seul tour, `undefined` si illisible
+  // — les deux ferment la fiche, ce qui est le repli prudent.
+  const arretable =
+    TYPES_ARRETABLES.has(type) &&
+    (type !== 'qualification' || (versDecoupage(decoupage) ?? null) !== null)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce

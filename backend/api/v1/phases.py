@@ -263,7 +263,7 @@ class DecoupageDTO(BaseModel):
     partage que `ReglageSuisseDTO` avec l'effectif — le plafond posé ici (`le=64`) est la garde de
     frontière habituelle, pas la règle du format.
 
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 6ᵉ paire,
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 7ᵉ paire,
     `DETTE-054`.
 
     [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md

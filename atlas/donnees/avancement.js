@@ -314,7 +314,9 @@ window.ATLAS.avancement = {
     "E05US031",
     "E05US032",
     "E05US033",
-    "E05US034"
+    "E05US034",
+    "E05US035",
+    "E05US025"
    ],
    "severite": "mineur"
   },
@@ -2560,6 +2562,7 @@ window.ATLAS.avancement = {
     "053"
    ],
    "dettes_resorbees": [
+    "031",
     "046"
    ],
    "epic": "05",
@@ -2782,6 +2785,7 @@ window.ATLAS.avancement = {
     "054"
    ],
    "dettes_resorbees": [
+    "031",
     "074"
    ],
    "epic": "05",
@@ -3405,7 +3409,8 @@ window.ATLAS.avancement = {
     "0029",
     "0038",
     "0040",
-    "0052"
+    "0052",
+    "0093"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],

@@ -991,6 +991,94 @@ def test_l_avancement_d_une_phase_qui_n_est_pas_une_qualification_est_muet() -> 
     assert m.service.avancement_de_phase(m.tournoi_id, tableau.id) is None
 
 
+def test_un_forfait_declare_par_le_geste_reel_ne_retient_pas_le_tour() -> None:
+    """⚠️ **Bloquant de revue (axe adversarial)** : le filtre forfait lisait au mauvais endroit.
+
+    Le test frère ci-dessus **sème** le forfait avec `phase_id=m.phase_id`, sur un montage
+    mono-départ : il décrit l'implémentation, pas le geste. Or `ServiceForfait` écrit **tous** les
+    forfaits de qualification sur la phase du **premier** créneau, quel que soit celui où l'archer
+    tire (`# DETTE-047`, explicite dans `application/forfaits.py`). Lire la seule phase courante
+    rendait donc une liste **vide** pour la qualification de l'après-midi — et un archer abandonnant
+    à sa 4ᵉ volée y gelait le tour **pour la journée**, sans que rien ne le signale.
+
+    Ce décor reproduit le rangement réel : deux créneaux, deux qualifications, le forfait écrit sur
+    celle du **premier**, l'avancement lu sur celle du **second**.
+    """
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    soir = m.departs.ajouter(
+        dataclasses.replace(
+            Depart.creer(tournoi_id=1, numero=2, tarif_centimes=800, horaire="14:00"),
+            id=_DEPART + 1,
+        )
+    )
+    assert soir.id is not None
+    qualif_du_soir = m.phases.ajouter(
+        Phase.qualification(
+            depart_id=soir.id,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+    )
+    assert qualif_du_soir.id is not None
+    m.phases.enregistrer(
+        dataclasses.replace(qualif_du_soir, decoupage=DecoupageEnTours(nb_tours=2))
+    )
+    tireur = m.nouvel_archer("MARTIN")
+    absent = m.nouvel_archer("BERNARD")
+    m.placer(tireur, soir.id, cible_index=1, position="A")
+    m.placer(absent, soir.id, cible_index=1, position="B")
+    for numero in range(1, 13):
+        m.service.saisir_volee(
+            m.tournoi_id,
+            tireur,
+            numero,
+            _v("10", "9", "8"),
+            "DURAND",
+            contexte=ContexteSaisie(cible_index=1, depart_id=soir.id),
+        )
+    # Le geste réel : le forfait atterrit sur la qualification du **premier** créneau (DETTE-047).
+    m.forfaits.semer(
+        Forfait.creer(
+            tournoi_id=m.tournoi_id,
+            archer_id=absent,
+            phase_id=m.phase_id,
+            nature=NatureForfait.ABANDON,
+            declare_par="DURAND",
+            declare_le=_QUAND,
+        )
+    )
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, qualif_du_soir.id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 2, (
+        "Le forfait rangé sur le premier créneau doit tout de même sortir l'archer du plateau "
+        "du second — sinon la phase du soir n'avance jamais."
+    )
+
+
+def test_une_volee_saisie_hors_ordre_ne_fait_pas_franchir_le_tour() -> None:
+    """⚠️ **Majeur de revue (axe adversarial)** : `len(volees)` n'est pas « volées tirées ».
+
+    `Serie.saisir_volee` accepte n'importe quel rang : un scoreur qui rattrape une feuille papier
+    et saisit d'abord la dernière volée notée produit une série `{1..9, 20}` — dix au cardinal,
+    neuf réellement enchaînées. Compter le cardinal ferait franchir la frontière de tour **avant**
+    que la volée manquante soit tirée, donc couper la salle **pendant** le tir : la seule direction
+    dangereuse, celle contre laquelle toute cette US est construite.
+    """
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    m.placer(m.archer_id, _DEPART, cible_index=1, position="A")
+    _saisir_volees(m, m.archer_id, 9)
+    m.service.saisir_volee(m.tournoi_id, m.archer_id, 20, _v("10", "9", "8"), "DURAND")
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, m.phase_id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 1, "Neuf volées enchaînées : le tour 1 n'est pas fini."
+
+
 def test_l_avancement_d_une_phase_inconnue_est_muet() -> None:
     """Robustesse jour J : le suivi ne tombe pas en 500 sur une phase disparue.
 

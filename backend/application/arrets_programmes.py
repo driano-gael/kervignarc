@@ -849,8 +849,8 @@ class ServiceArretsProgrammes:
         1. *tout est joué* — la convention d'`AvancementDePhase` (ADR-0090). La seule qui autorise à
            couper ;
         2. *aucun lecteur branché pour ce type* — `ServiceSuiviDeroule._avancement_lu` le rend sans
-           rien tenter, et sa docstring nomme les cas : qualification, échauffement, barrage,
-           placement, colline ;
+           rien tenter, et sa docstring nomme les cas : échauffement, barrage, placement, colline
+           (la **qualification** en est sortie en E05US035, elle a désormais son lecteur) ;
         3. *le service du format a refusé* — `PhasePasReglee`, `KeyError` : journalisés puis avalés,
            donc indistinguables d'un succès ;
         4. *rien n'est encore composé* — un suisse dont l'amont n'a classé personne
@@ -870,6 +870,14 @@ class ServiceArretsProgrammes:
           d'`avancement_bloc` (cas 5) et de tout format à un seul tour dont on n'a rien lu. On ne
           coupe pas non plus : un arrêt sur une phase d'un seul tour est de toute façon refusé à la
           composition, donc il n'y a rien à y déclencher.
+
+          ⚠️ **Cette dernière phrase a été FAUSSE le temps d'une revue**, et elle sert de prémisse
+          de sûreté à toute la branche : E05US035 a rendu la qualification arrêtable **par type**
+          alors que son nombre de tours est un réglage d'instance, si bien qu'une qualification non
+          découpée — un seul tour — pouvait porter un arrêt accepté à l'atelier. Le refus est
+          rétabli à la composition (`EtapeDeroule._nb_tours_a_la_composition`), donc la phrase
+          redevient exacte. Le noter parce que le prochain qui lira cette branche pourrait la
+          croire morte et la supprimer : elle ne l'est pas, elle est **gardée en amont**.
 
         Le `min(nb_tours, …)` de la branche « tout est joué » évite de créditer un arrêt posé
         au-delà du dernier tour **réellement joué** : un suisse réglé à 9 rondes qui n'en apparie

@@ -104,7 +104,14 @@ def avancement_de_qualification(
         # Défensif : `verifier_decoupage` interdit ce cas à la composition, mais un barème relu
         # d'une base plus ancienne que le réglage pourrait le produire. Un lecteur muet vaut mieux
         # qu'une division par zéro dans le suivi du jour J.
-        return AvancementDePhase(nb_tours=nb_tours, tour_courant=None)
+        #
+        # ⚠️ **`nb_tours=1` et non `decoupage.nb_tours`** — correctif de revue, et la nuance décide
+        # de couper la salle. `(nb_tours > 1, tour_courant=None)` est lu par
+        # `ServiceArretsProgrammes._avancement_connu` comme **« je sais, et tout est joué »** : les
+        # arrêts seraient alors crédités puis consommés en « manqués » sur une phase que personne
+        # n'a tirée. `(1, None)` est la signature exacte de « je ne sais pas », celle du repli
+        # d'`avancement_bloc` — la seule qui rende ce lecteur réellement muet.
+        return AvancementDePhase(nb_tours=1, tour_courant=None)
     tour = volees_du_plus_lent // par_tour + 1
     return AvancementDePhase(nb_tours=nb_tours, tour_courant=tour if tour <= nb_tours else None)
 

@@ -6657,7 +6657,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "ServiceSaisie.avancement_de_phase",
-      "_volees_du_plus_lent"
+      "_volees_du_plus_lent",
+      "par_phase",
+      "_forfaits_qualif",
+      "_volees_enchainees"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6706,7 +6709,10 @@ window.ATLAS.decisions = {
      "symboles": [
       "decoupage",
       "__post_init__",
-      "instancier"
+      "instancier",
+      "_nb_tours_a_la_composition",
+      "verifier_arrets",
+      "arretable"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -6780,13 +6786,6 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "frontend/src/shared/phases/ReglageDecoupage.tsx",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": [],
-     "verifiable": true
-    },
-    {
      "chemin": "frontend/src/shared/phases/catalogue.ts",
      "existe": true,
      "symboles": [
@@ -6798,8 +6797,14 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/shared/phases/decoupage.ts",
      "existe": true,
-     "symboles": [],
-     "symboles_absents": [],
+     "symboles": [
+      "ReglageDecoupageDePhase",
+      "FormulairePhase"
+     ],
+     "symboles_absents": [
+      "ReglageDecoupageDePhase",
+      "FormulairePhase"
+     ],
      "verifiable": true
     }
    ],
@@ -6812,7 +6817,8 @@ window.ATLAS.decisions = {
     "E05US021",
     "E05US033",
     "E05US034",
-    "E05US035"
+    "E05US035",
+    "E12US001"
    ]
   }
  ]

@@ -721,7 +721,13 @@ objet **`{"nom": <implémentation>, …paramètres}`** — un **nom** (l'implém
 registre) **et** ses paramètres (le barème se paramètre, il ne se choisit pas dans un catalogue
 fermé). Seules les **six familles d'ADR-0004** (`routing/scoring/seeding/byes/tiebreak/depth`) vivent
 sous `policies` ; le grain de `validation`, les `sources` de peuplement, l'`effectif` et les réglages
-de `poules`, `big_shoot_off` **et `suisse`** (E05US026 — `{"suisse": {"rondes": 5}}`) restent **à
+de `poules`, `big_shoot_off`, `suisse` (E05US026 — `{"suisse": {"rondes": 5}}`) **et `decoupage`**
+(E05US035 — `{"decoupage": {"tours": 2}}`, le découpage d'une qualification en tours ; clé **omise**
+quand elle n'est pas découpée, si bien qu'une config d'avant l'US et une config non découpée sont le
+**même** document — c'est ce qui rend la livraison sûre sans migration. ⚠️ Relecture **stricte** : un
+`tours` illisible fait échouer la relecture au lieu de se replier sur un défaut, à la différence de la
+portée d'un arrêt — un découpage deviné couperait la salle au mauvais endroit, et personne ne s'en
+apercevrait avant le jour J) restent **à
 la racine** : ce ne sont pas des politiques de moteur mais des **paramètres de phase**. Exemples :
 
 > ⚠️ **`poules` est à la racine, et c'est un correctif.** E05US023 l'avait d'abord écrit sous

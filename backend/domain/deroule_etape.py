@@ -167,12 +167,21 @@ class EtapeDeroule:
         son `__post_init__` (le tour 0 n'existe pas), mais un arrêt **face au type de la phase** est
         une propriété du couple, et le type n'est connu qu'ici.
 
-        ⚠️ **Le nombre de tours, lui, n'est jamais connu à la composition** : il se lit du
-        terrain le jour J (braquets projetés, round-robin, rondes appariables selon
-        l'effectif, manches d'un Big Shoot Off). On passe donc `None` à `verifier_arrets`,
-        qui ne refuse alors que le doublon.
-        C'est la doctrine déjà tenue par les deux vérifications voisines — « on ne refuse pas ce
-        qu'on ne peut pas juger » —, et la reprendre évite d'inventer une seconde règle de silence.
+        ⚠️ **Le nombre de tours n'est connu à la composition que pour la qualification**, et cette
+        exception est née avec E05US035. Pour les quatre autres formats il se lit du terrain le
+        jour J (braquets projetés, round-robin, rondes appariables selon l'effectif, manches d'un
+        Big Shoot Off) : on passe `None`, et `verifier_arrets` ne refuse alors que le doublon —
+        « on ne refuse pas ce qu'on ne peut pas juger », la doctrine des deux vérifications
+        voisines.
+
+        ⚠️ **Une qualification, elle, tire son nombre de tours d'un réglage posé sur cette même
+        étape** (`decoupage`), donc il est connu ici. Continuer à passer `None` rouvrait très
+        exactement le mode de panne que `verifier_type_arretable` existe pour fermer, et par le
+        chemin **par défaut** : une qualification non découpée compte **un** tour, un arrêt « après
+        le tour 1 » y est donc inerte — accepté à l'atelier, jamais déclenché le jour J, découvert
+        à midi. Le message de refus de `verifier_type_arretable` promet d'ailleurs cette
+        contrainte (« une **qualification découpée en tours** ») ; il fallait que le code la tienne.
+        *(Relevé par les cinq axes de revue d'E05US035, dont trois l'ont trouvé indépendamment.)*
         """
         # ⚠️ **Le refus vit ICI, pas seulement sur `Phase`** (correctif de revue, axe C1) :
         # `ServicePhases.modifier` n'instancie **aucune phase**, si bien qu'un `PUT` posant un arrêt
@@ -186,28 +195,48 @@ class EtapeDeroule:
         # le périmètre arrêté par le commanditaire le 19/08/2026, en fin de revue.
         #
         # Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour
-        # courant au service qui déroule la phase. Les types qu'aucun service ne déroule — la
-        # qualification, l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à
-        # observer, et un arrêt posé dessus serait **accepté à l'atelier puis définitivement
-        # inerte le jour J** : l'organisateur découvrirait le jour de la compétition que sa
-        # pause repas n'a jamais eu lieu.
+        # courant au service qui observe la phase. Les types dont personne ne lit l'avancement —
+        # l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à observer, et un
+        # arrêt posé dessus serait **accepté à l'atelier puis définitivement inerte le jour J** :
+        # l'organisateur découvrirait le jour de la compétition que sa pause repas n'a jamais eu
+        # lieu.
         #
-        # ⚠️ **La qualification en faisait partie jusqu'en fin de revue**, avec un réglage « découper
-        # en x tours ». Les deux sont **sortis de la tranche** : dériver le tour d'une qualification
-        # demande de résoudre sa population réelle (deux qualifications peuvent coexister dans un
-        # créneau, ADR-0082), le plan de cibles et les forfaits — trois sujets que la tranche
-        # n'avait pas budgétés, et qui ont produit quatre bloquants de revue à eux seuls.
-        # Repris par
-        # `E05US035` (reportée une seconde fois au cadrage du 20/08/2026 : `E05US034` mêlait
-        # cinq CA d'IHM et ce chantier moteur). Un **refus explicite** vaut mieux qu'un
-        # réglage inerte.
+        # ⚠️ **La qualification en est sortie en E05US035** (ADR-0093) : `ServiceSaisie` lit son
+        # avancement, tour par tour, une fois résolus sa population réelle (deux qualifications
+        # peuvent coexister dans un créneau, ADR-0082), son plan de cibles et ses forfaits.
+        #
+        # ⚠️ **Mais le type ne suffit plus à décider, et c'est la leçon de la revue d'E05US035** :
+        # pour elle seule, l'arrêtabilité dépend d'un **réglage d'instance** (le découpage), pas du
+        # type. `verifier_type_arretable` ne voit que le type ; c'est `verifier_arrets`, nourri par
+        # `_nb_tours_a_la_composition`, qui ferme le cas d'une qualification non découpée. Les deux
+        # refus sont nécessaires, et aucun ne remplace l'autre.
         #
         # ⚠️ **Le refus lui-même a été hissé au module d'arrêt en E05US034** : le pilotage ouvre une
         # seconde porte (poser un arrêt le jour J), et deux copies d'une même règle divergent —
         # c'est celle écrite en second qui rate le cas nouveau. Ce qui reste ici est le *moment* de
         # la vérification, qui est bien une propriété de l'étape.
         verifier_type_arretable(self.type)
-        verifier_arrets(self.arrets, nb_tours=None)
+        verifier_arrets(
+            self.arrets,
+            nb_tours=self._nb_tours_a_la_composition(),
+            geste_reparateur=(
+                "Découpez d'abord la qualification en tours pour qu'une pause ait où tomber."
+                if self.type is TypePhase.QUALIFICATION
+                else None
+            ),
+        )
+
+    def _nb_tours_a_la_composition(self) -> int | None:
+        """Combien de tours cette étape comptera, **quand on peut le savoir sans le terrain**.
+
+        `None` = inconnu, et c'est le cas des quatre formats dont l'avancement se lit le jour J.
+        Une **qualification** fait exception depuis E05US035 : son découpage est un réglage de
+        composition, porté par cette étape. Non découpée, elle compte **un** tour — ce n'est pas un
+        cas dégénéré, c'est la vérité qui rend tout arrêt inerte, et c'est pourquoi on la dit.
+        """
+        if self.type is not TypePhase.QUALIFICATION:
+            return None
+        return self.decoupage.nb_tours if self.decoupage is not None else 1
 
     def _verifier_rondes_appariables(self) -> None:
         """À N participants, on ne peut pas apparier plus de N-1 rondes sans ré-affrontement.

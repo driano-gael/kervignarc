@@ -22,8 +22,13 @@ import pytest
 from domain.arret_programme import ArretProgramme, PorteeArret, verifier_type_arretable
 from domain.bareme import BaremeQualification
 from domain.contrat_phase import TYPES_ARRETABLES, TypePhase
+from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import ArretProgrammeInvalide, DecoupageEnToursInvalide
+from domain.format_tournoi import ModelePhase
+from domain.grain_validation import GrainValidation
+from domain.phase import Phase
 from domain.qualification import DecoupageEnTours, verifier_decoupage
+from domain.suisse import ConfigurationSuisse
 from domain.suivi_deroule import avancement_de_qualification
 
 _BAREME_18M = BaremeQualification.creer(20, 3)
@@ -122,10 +127,129 @@ def test_la_qualification_est_desormais_arretable() -> None:
     verifier_type_arretable(TypePhase.QUALIFICATION)
 
 
+def _qualification(
+    *, nb_tours: int | None, arrets: tuple[ArretProgramme, ...] = ()
+) -> EtapeDeroule:
+    """Une étape de qualification composée à l'atelier, découpée ou non."""
+    return EtapeDeroule(
+        tournoi_id=1,
+        ordre=1,
+        type=TypePhase.QUALIFICATION,
+        bareme=_BAREME_18M,
+        validation=GrainValidation.fin_de_serie(),
+        decoupage=None if nb_tours is None else DecoupageEnTours(nb_tours=nb_tours),
+        arrets=arrets,
+    )
+
+
 def test_un_arret_se_pose_sur_une_qualification_decoupee() -> None:
-    """Le geste complet du CA : « la salle s'arrête après le premier tour de qualification »."""
-    arret = ArretProgramme(apres_tour=1, portee=PorteeArret.PHASE)
-    assert arret.apres_tour == 1
+    """Le geste complet du CA : « la salle s'arrête après le premier tour de qualification ».
+
+    ⚠️ **Ce test montait un `ArretProgramme` nu et relisait son propre champ** — il serait passé à
+    l'identique si l'US entière avait été annulée, et c'est ce trou qui a laissé passer le bloquant
+    ci-dessous (relevé par les cinq axes de revue). Il compose désormais l'**étape**, seule porte
+    où le refus vit.
+    """
+    etape = _qualification(nb_tours=2, arrets=(ArretProgramme(apres_tour=1),))
+
+    assert etape.arrets == (ArretProgramme(apres_tour=1, portee=PorteeArret.PHASE),)
+
+
+def test_un_arret_sur_une_qualification_non_decoupee_est_refuse() -> None:
+    """⚠️ **Bloquant de revue — le mode de panne que tout le mécanisme existe pour interdire.**
+
+    Une qualification non découpée compte **un** tour : « après le tour 1 » y est inerte. Le refus
+    par *type* passe (elle est arrêtable), mais l'arrêtabilité réelle dépend ici d'un **réglage
+    d'instance** — et le nombre de tours, contrairement aux quatre autres formats, est connu dès la
+    composition. Sans ce refus, l'organisateur enregistrait sa pause repas, recevait un 201, et
+    découvrait à midi qu'elle n'était jamais partie.
+
+    C'est aussi ce que le message de `verifier_type_arretable` promet en toutes lettres (« une
+    qualification **découpée en tours** ») : le code doit tenir la phrase qu'il affiche.
+    """
+    with pytest.raises(ArretProgrammeInvalide):
+        _qualification(nb_tours=None, arrets=(ArretProgramme(apres_tour=1),))
+
+
+def test_le_refus_d_une_qualification_non_decoupee_dit_quoi_faire() -> None:
+    """Un refus sans issue est un cul-de-sac (`P-3`) : il doit nommer le geste réparateur.
+
+    « La phase n'en compte que 1 » explique le *pourquoi* ; l'organisateur n'a aucune raison de
+    deviner qu'un réglage de découpage existe deux blocs plus haut.
+    """
+    with pytest.raises(ArretProgrammeInvalide) as refus:
+        _qualification(nb_tours=None, arrets=(ArretProgramme(apres_tour=1),))
+
+    assert "Découpez" in str(refus.value)
+
+
+def test_un_arret_apres_le_dernier_tour_est_refuse() -> None:
+    """« Après le tour 2 » sur une phase de 2 tours ne coupe rien — elle est finie à ce moment-là.
+
+    Le cas est banal, pas tordu : `n` est petit (2 ou 4) et saisi à la main. Sans ce refus, l'arrêt
+    se déclenchait par la branche « tout est joué » et mettait en pause une phase **entièrement
+    tirée**, qu'il fallait relancer pour pouvoir la clôturer.
+    """
+    with pytest.raises(ArretProgrammeInvalide):
+        _qualification(nb_tours=2, arrets=(ArretProgramme(apres_tour=2),))
+
+
+def test_les_autres_formats_gardent_leur_nombre_de_tours_inconnu() -> None:
+    """La correction ne doit pas déborder : hors qualification, le nombre de tours se lit le jour J.
+
+    Un système suisse réglé à 7 rondes n'en joue que 5 si l'effectif ne le permet pas — refuser
+    « après le tour 6 » à la composition serait le refus abusif que la doctrine « on ne refuse pas
+    ce qu'on ne peut pas juger » interdit.
+    """
+    etape = EtapeDeroule(
+        tournoi_id=1,
+        ordre=2,
+        type=TypePhase.SUISSE,
+        suisse=ConfigurationSuisse(nb_rondes=5),
+        arrets=(ArretProgramme(apres_tour=9),),
+    )
+
+    assert etape.arrets[0].apres_tour == 9
+
+
+def test_un_decoupage_sur_un_type_qui_n_est_pas_une_qualification_est_refuse() -> None:
+    """La garde de réglage fantôme, revendiquée par trois docstrings de DTO et testée par aucune.
+
+    Retyper une phase sans nettoyer son réglage laisserait derrière une valeur que rien ne lit —
+    invisible et fausse. Même garde que `poules`, `big_shoot_off` et `suisse` sur `Phase`.
+    """
+    with pytest.raises(DecoupageEnToursInvalide):
+        Phase(depart_id=7, ordre=2, type=TypePhase.POULES, decoupage=DecoupageEnTours(nb_tours=2))
+    with pytest.raises(DecoupageEnToursInvalide):
+        EtapeDeroule(
+            tournoi_id=1, ordre=2, type=TypePhase.POULES, decoupage=DecoupageEnTours(nb_tours=2)
+        )
+
+
+def test_le_decoupage_voyage_de_l_etape_a_la_phase() -> None:
+    """`instancier` recopie le découpage : sans lui, le lecteur d'avancement verrait `None`.
+
+    Conséquence si la recopie manquait — `nb_tours=1`, donc **aucune pause ne partirait jamais**,
+    et rien ne le signalerait. C'est le pendant du défaut `barrage_jusqu_au` d'ADR-0076.
+    """
+    etape = _qualification(nb_tours=2)
+
+    assert etape.instancier(depart_id=7).decoupage == DecoupageEnTours(nb_tours=2)
+
+
+def test_le_decoupage_survit_a_la_capture_en_format_et_a_sa_reapplication() -> None:
+    """Aller-retour `EtapeDeroule` → `ModelePhase` → `EtapeDeroule` (ADR-0093 § Conséquences).
+
+    Sans ce voyage, capturer un tournoi en format perdrait son découpage **en silence**, et le
+    format réappliqué rendrait sa qualification non arrêtable — donc toutes les pauses posées
+    dessus, refusées. Le dépôt a déjà payé cette leçon deux fois (`barrage_jusqu_au`, puis
+    `arrets`) ; ce test est ce qui empêche la troisième.
+    """
+    etape = _qualification(nb_tours=2)
+
+    rejouee = ModelePhase.d_etape(etape).pour_tournoi(tournoi_id=2)
+
+    assert rejouee.decoupage == DecoupageEnTours(nb_tours=2)
 
 
 @pytest.mark.parametrize(
