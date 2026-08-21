@@ -219,11 +219,26 @@ class EtapeDeroule:
         verifier_arrets(
             self.arrets,
             nb_tours=self._nb_tours_a_la_composition(),
-            geste_reparateur=(
-                "Découpez d'abord la qualification en tours pour qu'une pause ait où tomber."
-                if self.type is TypePhase.QUALIFICATION
-                else None
-            ),
+            geste_reparateur=self._geste_reparateur_d_un_arret(),
+        )
+
+    def _geste_reparateur_d_un_arret(self) -> str | None:
+        """Que faire quand un arrêt est refusé — et **ça dépend de l'état, pas du type**.
+
+        ⚠️ **Un premier jet conditionnait ce texte au seul type**, si bien qu'une qualification
+        **déjà découpée** en 4 tours portant un arrêt « après le tour 4 » s'entendait répondre
+        « Découpez d'abord la qualification en tours ». L'organisateur serait allé chercher un
+        réglage déjà fait et aurait conclu que l'application est cassée : c'est pire qu'un refus
+        muet — `P-3` demandait de supprimer un cul-de-sac, ce texte en fléchait un vers le mur.
+        *(Relevé par l'axe adversarial en 2ᵉ passe, sur le correctif d'un bloquant de 1ʳᵉ passe.)*
+        """
+        if self.type is not TypePhase.QUALIFICATION:
+            return None
+        if self.decoupage is None:
+            return "Découpez d'abord la qualification en tours pour qu'une pause ait où tomber."
+        return (
+            "Retirez cette pause, ou augmentez le nombre de tours du découpage : une pause posée "
+            "après le dernier tour ne coupe rien."
         )
 
     def _nb_tours_a_la_composition(self) -> int | None:
@@ -234,6 +249,11 @@ class EtapeDeroule:
         composition, porté par cette étape. Non découpée, elle compte **un** tour — ce n'est pas un
         cas dégénéré, c'est la vérité qui rend tout arrêt inerte, et c'est pourquoi on la dit.
         """
+        # DETTE-062 : rien n'interdit de changer ce nombre sur une phase **en cours**, et le
+        # changer déplace les frontières de tour — une pause non encore atteinte peut devenir
+        # immédiatement due, ou passer pour manquée. Aucun score n'est re-partitionné (le découpage
+        # vit hors du barème), et la recette dit de régler avant de démarrer : c'est une consigne,
+        # pas un garde-fou.
         if self.type is not TypePhase.QUALIFICATION:
             return None
         return self.decoupage.nb_tours if self.decoupage is not None else 1

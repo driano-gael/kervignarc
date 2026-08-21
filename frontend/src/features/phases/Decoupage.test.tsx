@@ -51,7 +51,11 @@ const QUALIFICATION: EtapeDeroule = {
 }
 
 function monter(phase: EtapeDeroule) {
-  vi.mocked(getPhases).mockResolvedValue([phase])
+  monterPlusieurs([phase])
+}
+
+function monterPlusieurs(phases: EtapeDeroule[]) {
+  vi.mocked(getPhases).mockResolvedValue(phases)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -83,6 +87,39 @@ describe('le découpage en tours sur l’écran des phases', () => {
     expect(
       await screen.findByText(/20 volées ne se découpent pas en 3 tours égaux/),
     ).toBeInTheDocument()
+  })
+
+  it('porte la fiche de pauses dès que la qualification est découpée', async () => {
+    // ⚠️ **Bloquant de 2ᵉ passe** : le premier correctif avait fermé la moitié `decoupage` du trou
+    // de câblage et laissé la moitié `arrets` ouverte — `ReglageArrets` n'était monté que dans
+    // `FormulairePhase`, que la qualification n'ouvre jamais. On pouvait donc découper la
+    // qualification sans pouvoir y poser la pause, c'est-à-dire que l'US restait inerte sur le geste
+    // même pour lequel le découpage existe.
+    monter({ ...QUALIFICATION, decoupage: { nb_tours: 2 } })
+
+    expect(await screen.findByText(/Pauses programmées/)).toBeInTheDocument()
+    expect(screen.queryByText(/Découpez-la d’abord en tours/)).not.toBeInTheDocument()
+  })
+
+  it('refuse la pause en nommant le geste, tant que la qualification n’est pas découpée', async () => {
+    // Le motif doit être **circonstancié** : dire « ce type de phase n'annonce pas ses tours »
+    // serait faux deux fois — le type l'annonce depuis cette US, et la qualification manquerait à
+    // l'énumération des types arrêtables. Surtout, le geste réparateur est deux blocs plus haut.
+    monter(QUALIFICATION)
+
+    expect(await screen.findByText(/Découpez-la d’abord en tours/)).toBeInTheDocument()
+  })
+
+  it('n’expose le réglage que sur la qualification, pas sur ses voisines', async () => {
+    // ⚠️ Décor à **deux** exemplaires (correctif de 2ᵉ passe) : avec une seule phase, les tests
+    // ci-dessus prouvaient « atteignable », pas « atteignable **là et seulement là** » — ils
+    // seraient restés verts si le bloc avait été monté sans condition de type.
+    monterPlusieurs([
+      QUALIFICATION,
+      { ...QUALIFICATION, id: 8, ordre: 2, type: 'suisse', nb_volees: null },
+    ])
+
+    expect(await screen.findAllByText(/Découpage en tours/)).toHaveLength(1)
   })
 
   it('dit qu’aucune pause ne peut se poser tant que la qualification n’est pas découpée', async () => {

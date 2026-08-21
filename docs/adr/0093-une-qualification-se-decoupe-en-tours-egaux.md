@@ -153,11 +153,21 @@ lecteur sans refus levé le rendrait inaccessible. Le vis-à-vis est tenu par
 `backend/tests/test_arrets_api.py`, qui oppose le registre `_avancements` à la table — c'est un
 test, pas une contrainte structurelle, et c'est la limite assumée de ce montage.
 
-**Changer `nb_tours` en cours de phase déplace les frontières de tours.** Un arrêt déjà franchi ne
-rejoue pas (le `FranchissementArret` est persisté au créneau), mais un arrêt non encore atteint
-tombera au nouvel endroit. C'est le comportement voulu — et surtout, contrairement au format du tir
-d'un Big Shoot Off (`DETTE-062`), **aucun score n'est re-partitionné** : le découpage ne touche que
-l'avancement, jamais le classement. C'est le bénéfice concret de l'avoir tenu hors du barème.
+**Changer `nb_tours` en cours de phase déplace les frontières de tours, et ce n'est pas anodin.**
+Un arrêt déjà franchi ne rejoue pas (le `FranchissementArret` est persisté au créneau), mais un arrêt
+non encore atteint tombera au nouvel endroit — et l'écart peut être brutal : passer de 2 à 4 tours
+alors que le plateau en est à sa 6ᵉ volée rend une pause « après le tour 1 » **immédiatement due**,
+donc coupe la salle sur la volée en cours ; un écart plus grand fait consommer plusieurs pauses en
+« manquées » sans qu'aucune n'ait coupé. Rien ne l'interdit aujourd'hui — `ServicePhases.modifier`
+n'a aucune garde de statut — et la recette dit désormais de régler le découpage **avant** de démarrer
+la phase.
+
+C'est la classe de risque de `DETTE-062`, dont le texte affirmait jusqu'ici que « la qualification
+n'a aucun regroupement dérivé » : cette phrase est devenue fausse avec cette US, et la dette est
+élargie en conséquence. **Deux différences la rendent moins grave** : aucun score n'est
+re-partitionné — le découpage ne touche que l'avancement, jamais le classement, bénéfice concret de
+l'avoir tenu hors du barème — et un franchissement déjà écrit ne se rejoue pas. *(Relevé par l'axe
+adversarial en 2ᵉ passe, qui a noté que la recette **recommandait activement** le geste.)*
 
 **Ce qui reste hors périmètre, et pourquoi.** L'**échauffement** n'a ni barème ni feuille de marque :
 aucune donnée existante ne dit où il en est, et lui inventer un avancement est un choix métier à
@@ -210,7 +220,11 @@ qualification avant de redescendre.**
 | Conséquence — aucune migration, écriture à la racine du `config` | `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, `_lire_decoupage`) | oui |
 | Conséquence — le format capturé conserve le découpage | `backend/domain/format_tournoi.py` (`ModelePhase.decoupage`, `pour_tournoi`, `d_etape`) | oui |
 | Conséquence — le vis-à-vis des deux tables | `backend/tests/test_arrets_api.py` | oui |
-| §1 — le réglage se pose à l'atelier | `frontend/src/shared/phases/decoupage.ts` · `ReglageDecoupage.tsx` · monté par `features/deroule/Deroule.tsx` (bibliothèque) et par `features/phases/Phases.tsx` **via `ReglageDecoupageDePhase`**, à côté de la carte et non dans `FormulairePhase` | oui |
+| §1 — la conversion écran ↔ serveur et la phrase annoncée | `frontend/src/shared/phases/decoupage.ts` (`versDecoupage`, `depuisDecoupage`, `decrireDecoupage`) | oui |
+| §1 — la fiche de réglage, partagée par les deux écrans | `frontend/src/shared/phases/ReglageDecoupage.tsx` (`ReglageDecoupage`) | oui |
+| §1 — le réglage se pose sur un **tournoi** | `frontend/src/features/phases/Phases.tsx` (`ReglageDecoupageDePhase`, monté à côté de la carte et **non** dans `FormulairePhase`, que la qualification n'ouvre jamais) | oui |
+| §1 — le réglage se compose en **bibliothèque** | `frontend/src/features/deroule/Deroule.tsx` (`FormulaireEtape`) | oui |
+| §1 — la pause se pose **au même endroit que le découpage** | `frontend/src/features/phases/Phases.tsx` (`ReglageDecoupageDePhase` porte aussi `ReglageArrets`) · `frontend/src/shared/phases/ReglageArrets.tsx` (`motif`) | oui |
 | §1 — le refus d'une pause sur une qualification **non découpée** | `backend/domain/deroule_etape.py` (`_nb_tours_a_la_composition`, passé à `verifier_arrets`) · miroir front : `arretable` dans `Phases.tsx` et `Deroule.tsx` | oui |
 | §2 — les forfaits sont lus par les **deux** chemins (`DETTE-047`) | `backend/application/saisie.py` (`_volees_du_plus_lent`, union `par_phase` ∪ `_forfaits_qualif`) | oui |
 | §2 — le compte est un **préfixe contigu**, pas un cardinal | `backend/application/saisie.py` (`_volees_enchainees`) | oui |

@@ -923,7 +923,16 @@ export function FormulaireEtape({
       {/* E05US033 — montée **sans condition de type**, à la différence des fiches ci-dessus, mais
           pour une autre raison : sur un type non arrêtable la fiche n'offre aucun champ et **dit
           pourquoi**. */}
-      <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
+      {/* ⚠️ **Le motif du refus est circonstancié** (correctif de 2ᵉ passe de revue) : sur une
+          qualification non découpée, dire « ce type de phase n'annonce pas ses tours » serait faux
+          deux fois — le type les annonce depuis E05US035, et la qualification manquerait à
+          l'énumération. Surtout, le geste réparateur est le champ juste au-dessus. */}
+      <ReglageArrets
+        etat={arrets}
+        surChangement={setArrets}
+        arretable={arretable}
+        motif={estQualification ? 'non-decoupee' : 'type'}
+      />
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

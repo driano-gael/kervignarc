@@ -92,8 +92,15 @@ def avancement_de_qualification(
     plateau. Saisies, et non validées : un tour est fini quand la salle a **tiré**, pas quand le
     scoreur a signé. Prendre la validation ferait attendre au déclencheur d'arrêt un geste
     administratif — et sur une validation en file hors-ligne (`E04US009`), la pause tomberait avec
-    plusieurs volées de retard. C'est déjà l'oracle d'`avancement_cible`, qui compte les mêmes
-    volées pour la console de supervision ; deux comptes du même rythme divergeraient.
+    plusieurs volées de retard.
+
+    ⚠️ **Ce compte DIVERGE de celui d'`avancement_cible` depuis E05US035, et c'est assumé.** La
+    console de supervision compte le **cardinal** (`len(serie.volees)`) ; ce lecteur reçoit le
+    **préfixe contigu** (`ServiceSaisie._volees_enchainees`), parce qu'une volée saisie hors d'ordre
+    ferait sinon franchir une frontière de tour avant que la volée manquante soit tirée — là-bas la
+    divergence décale un affichage, ici elle déclencherait un arrêt. Une première rédaction
+    affirmait l'inverse (« deux comptes du même rythme divergeraient ») : c'était la justification
+    d'une règle que le code venait de cesser d'appliquer. *(Axe adversarial, 2ᵉ passe.)*
 
     Le tour courant vaut `None` quand tout est tiré — convention d'`AvancementDePhase`, la même que
     les trois autres lecteurs.

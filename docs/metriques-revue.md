@@ -34,7 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-08-21 | `E05US035` | 53 | +1892/−147 | ~14 min | ~32 min | D (09:12→09:44) | **bloquant:1** majeur:4 mineur:1 | **bloquant:2** majeur:3 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:3 | **bloquant:3** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur l'arrêt inerte (1 convergent, le seul de l'histoire de ce registre à être trouvé par les cinq) ; **D seul** sur les deux autres — le réglage monté dans une **branche morte** et le filtre forfait aveugle hors du premier créneau (`DETTE-047`) ; **B seul** sur la fiche fonctionnelle absente ; **l'auteur** sur un 5ᵉ, trouvé en corrigeant (`ReglageBarrage` n'aurait pas réémis `decoupage`, donc régler un barrage l'effaçait) | 1 |
+| 2026-08-21 | `E05US035` | 53 | +1892/−147 | ~14 min | ~32 min | D (09:12→09:44) | **bloquant:1** majeur:4 mineur:1 | **bloquant:2** majeur:3 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:3 | **bloquant:3** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur l'arrêt inerte (1 convergent, le seul de l'histoire de ce registre à être trouvé par les cinq) ; **D seul** sur les deux autres — le réglage monté dans une **branche morte** et le filtre forfait aveugle hors du premier créneau (`DETTE-047`) ; **B seul** sur la fiche fonctionnelle absente ; **l'auteur** sur un 5ᵉ, trouvé en corrigeant (`ReglageBarrage` n'aurait pas réémis `decoupage`, donc régler un barrage l'effaçait) | 2 |
+| 2026-08-21 | `E05US035` (2ᵉ passe, sur les correctifs) | 28 | +1029/−105 | ~4 min | ~36 min | C1 (09:44→10:20) | — | **bloquant:1** majeur:5 mineur:7 suggestion:2 | **bloquant:1** majeur:2 mineur:7 suggestion:1 | — | *(voir note)* | **B et C1, convergents** : le correctif du bloquant front avait fermé la moitié `decoupage` du trou de câblage et laissé la moitié `arrets` ouverte — on pouvait découper la qualification sans pouvoir y poser la pause, donc l'US restait inerte sur le geste même pour lequel le découpage existe. Le **même défaut, déplacé d'un cran** | — |
 | 2026-08-20 | `E05US034` | 41 | +3310/−147 | ~7 min | ~24 min | D (11:47→12:02) | **bloquant:1** majeur:2 mineur:2 suggestion:1 | **bloquant:1** majeur:3 mineur:5 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:2 | **bloquant:2** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur le fuseau (1 convergent) + **C2 et D seuls** sur l'écran de salle (1) ; **D seul** sur le rappel indélébile (majeur) | 2 |
 | 2026-08-20 | `E05US034` (2ᵉ passe, sur les correctifs) | 26 | — | ~8 min | ~30 min | D (14:05→14:31) | — | **bloquant:1** majeur:3 mineur:6 suggestion:3 | — | — | bloquant:0 majeur:3 mineur:7 suggestion:1 | **B seul** (1 bloquant : le grain de l'annonce de salle) ; **D seul** (2 majeurs : le comptage des phases, le refus dupliqué) | — |
 | 2026-08-19 | `E05US033` | 61 | +4966/−161 | ~7 min | ~50 min | D (11:52→12:39) | **bloquant:2** majeur:6 mineur:4 suggestion:2 | **bloquant:4** majeur:4 mineur:3 | **bloquant:4** majeur:4 mineur:2 suggestion:1 | **bloquant:2** majeur:3 mineur:3 suggestion:2 | **bloquant:3** majeur:4 mineur:4 | **les 4 axes de grille** (2 convergents) + **D seul** (1) | 2 |
@@ -255,3 +256,24 @@ faux**. Le commentaire de cette fonction raconte pourtant la même leçon **deux
 endroit. Enseignement : quand un diff ajoute un champ à un agrégat édité en **totalité**, la question
 « qui d'autre écrit cet agrégat sans passer par mon formulaire ? » mérite un `grep` systématique, et
 elle n'est dans aucune grille.
+
+**16. Un correctif de bloquant ferme le trou qu'on lui montre, pas la classe de trous.** Les cinq
+axes avaient nommé un défaut de câblage : `ReglageDecoupage` monté dans une branche morte. Le
+correctif a déplacé ce contrôle-là au bon endroit — et laissé `ReglageArrets`, son jumeau
+indispensable, dans la branche morte. Résultat : on pouvait découper la qualification mais pas y
+poser la pause, c'est-à-dire que l'US restait inerte **sur le geste même pour lequel le découpage
+existe**. La 2ᵉ passe l'a trouvé par deux axes convergents, et le mot juste est celui du rapport :
+« le même défaut, déplacé d'un cran ».
+
+Ce qui aurait évité le second tour : après un bloquant d'atteignabilité, ne pas se demander « ce
+contrôle est-il atteignable ? » mais **« le geste complet du CA est-il exécutable de bout en bout,
+écran par écran ? »**. La fiche fonctionnelle écrite dans le même commit décrivait d'ailleurs le
+geste impossible — un scénario de recette qu'on ne peut pas jouer est un signal, et il était sous
+les yeux de l'auteur.
+
+**17. Réduire la 2ᵉ passe à trois axes se paie, et il faut le dire.** A et C2 n'ont pas relu les
+correctifs (choix de coût, cf. enseignement 13). Deux de leurs angles ont dû être rattrapés par B et
+C1, qui les ont trouvés hors grille : un registre de dette devenu **faux dans le commit qui le
+rendait faux** (`DETTE-022`, l'union des forfaits contredisant la note écrite trois heures plus tôt)
+et un **signal d'atlas neuf** introduit par une ligne d'ADR agrégeant quatre fichiers. Les deux
+relèvent de C2. Ils ont été vus ; rien ne dit que le troisième l'aurait été.

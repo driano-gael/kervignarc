@@ -1058,6 +1058,76 @@ def test_un_forfait_declare_par_le_geste_reel_ne_retient_pas_le_tour() -> None:
     )
 
 
+def test_un_archer_double_engage_forfait_sur_un_creneau_sort_de_l_autre_plateau() -> None:
+    """⚠️ **Oracle du DÉFAUT, pas du comportement voulu** — `DETTE-047`, relevé en 2ᵉ passe de revue.
+
+    L'union des deux lectures de forfaits (nécessaire, voir `_volees_du_plus_lent`) importe le
+    second effet de `DETTE-047` : un archer engagé sur **deux** créneaux et déclaré forfait sur
+    l'un est retiré du plateau de **l'autre**, où il tire réellement. La phase avance alors **trop
+    tôt** — la direction dangereuse.
+
+    Ce test **fige le défaut** plutôt que de le taire : le jour où `DETTE-047` sera résorbée (un
+    `depart_id` porté jusqu'au forfait), il tombera, et c'est précisément le signal qu'on veut. Il
+    n'y a pas de correctif à faire ici : lire uniquement `par_phase` rouvrirait le défaut opposé et
+    plus fréquent — tout forfait hors du premier créneau invisible, donc la phase gelée pour la
+    journée par un seul abandon.
+    """
+    m = Montage(nb_volees=20)
+    _decouper(m, nb_tours=2)
+    soir = m.departs.ajouter(
+        dataclasses.replace(
+            Depart.creer(tournoi_id=1, numero=2, tarif_centimes=800, horaire="14:00"),
+            id=_DEPART + 1,
+        )
+    )
+    assert soir.id is not None
+    qualif_du_soir = m.phases.ajouter(
+        Phase.qualification(
+            depart_id=soir.id,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+    )
+    assert qualif_du_soir.id is not None
+    m.phases.enregistrer(
+        dataclasses.replace(qualif_du_soir, decoupage=DecoupageEnTours(nb_tours=2))
+    )
+    rapide = m.nouvel_archer("MARTIN")
+    double = m.nouvel_archer("BERNARD")
+    m.placer(rapide, soir.id, cible_index=1, position="A")
+    m.placer(double, soir.id, cible_index=1, position="B")
+    for archer, combien in ((rapide, 12), (double, 3)):
+        for numero in range(1, combien + 1):
+            m.service.saisir_volee(
+                m.tournoi_id,
+                archer,
+                numero,
+                _v("10", "9", "8"),
+                "DURAND",
+                contexte=ContexteSaisie(cible_index=1, depart_id=soir.id),
+            )
+    # Forfait déclaré sur le créneau du MATIN (la phase du montage) — le geste réel range tout là.
+    m.forfaits.semer(
+        Forfait.creer(
+            tournoi_id=m.tournoi_id,
+            archer_id=double,
+            phase_id=m.phase_id,
+            nature=NatureForfait.ABANDON,
+            declare_par="DURAND",
+            declare_le=_QUAND,
+        )
+    )
+
+    avancement = m.service.avancement_de_phase(m.tournoi_id, qualif_du_soir.id)
+
+    assert avancement is not None
+    assert avancement.tour_courant == 2, (
+        "DÉFAUT FIGÉ (DETTE-047) : l'archer tire encore le soir (3 volées), mais son forfait du "
+        "matin le sort du plateau, donc la phase avance sur les 12 volées du plus rapide. Quand "
+        "DETTE-047 sera résorbée, ce test tombera et devra attendre `tour_courant == 1`."
+    )
+
+
 def test_une_volee_saisie_hors_ordre_ne_fait_pas_franchir_le_tour() -> None:
     """⚠️ **Majeur de revue (axe adversarial)** : `len(volees)` n'est pas « volées tirées ».
 

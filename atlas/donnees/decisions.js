@@ -6786,6 +6786,47 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/deroule/Deroule.tsx",
+     "existe": true,
+     "symboles": [
+      "FormulaireEtape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/Phases.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupageDePhase",
+      "FormulairePhase",
+      "ReglageArrets",
+      "motif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupageDePhase",
+      "ReglageArrets",
+      "motif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageDecoupage.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/shared/phases/catalogue.ts",
      "existe": true,
      "symboles": [
@@ -6798,13 +6839,11 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/shared/phases/decoupage.ts",
      "existe": true,
      "symboles": [
-      "ReglageDecoupageDePhase",
-      "FormulairePhase"
+      "versDecoupage",
+      "depuisDecoupage",
+      "decrireDecoupage"
      ],
-     "symboles_absents": [
-      "ReglageDecoupageDePhase",
-      "FormulairePhase"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],

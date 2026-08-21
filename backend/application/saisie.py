@@ -337,9 +337,21 @@ class ServiceSaisie:
         la phase au tour 1 **pour la journée**, et l'arrêt programmé ne partait jamais : la panne
         n° 3 ci-dessus, celle dont on dit qu'elle ne se signale pas.
 
-        L'union est le seul filet correct tant que `DETTE-047` n'est pas résorbée. Elle n'ajoute
-        pas de 5ᵉ occurrence de `DETTE-022` : `par_phase(phase.id)` est le geste **juste**, celui
-        vers lequel la résorption devra converger, et `_forfaits_qualif` n'est là que pour
+        L'union est le moins mauvais filet tant que `DETTE-047` n'est pas résorbée, et **il faut
+        dire ce qu'elle coûte** (relevé en 2ᵉ passe de revue) : elle importe le second effet de
+        cette dette — un archer engagé sur **deux** créneaux et déclaré forfait sur l'un est retiré
+        du plateau de **l'autre**, où il tire réellement. Le plus lent devient alors quelqu'un
+        d'autre et la phase avance **trop tôt**, donc la pause peut tomber pendant qu'il tire. C'est
+        la direction dangereuse, celle contre laquelle tout le reste de cette méthode est construit.
+
+        On l'accepte parce que l'alternative est pire et plus fréquente : sans l'union, **tout**
+        forfait hors du premier créneau est invisible, et un seul abandon gèle la phase pour la
+        journée. Un archer double-engagé est rare ; un abandon ne l'est pas. `DETTE-047` porte les
+        deux effets, et sa résorption — porter un `depart_id` jusqu'au forfait — ferme les deux d'un
+        coup ; c'est alors seulement que `par_phase` seul deviendra correct.
+
+        Sur `DETTE-022`, la lecture reste utile à la résorption : `par_phase(phase.id)` est le geste
+        **juste**, celui vers lequel elle devra converger ; `_forfaits_qualif` n'est là que pour
         rattraper ce que l'écriture range au mauvais endroit.
 
         Rend `None` quand ce lecteur n'a rien à dire : phase inconnue, d'un autre type, ou
@@ -375,9 +387,16 @@ class ServiceSaisie:
         # pollée toutes les 10 s. Un `par_archer` par archer placé, c'est ~120 requêtes par volée
         # validée sur un plateau de qualification — la phase la plus peuplée et la plus longue du
         # créneau. `par_phase` fait le même travail en une requête, et le port l'offrait déjà.
-        volees_par_archer = {
-            serie.archer_id: _volees_enchainees(serie) for serie in self._series.par_phase(phase.id)
-        }
+        volees_par_archer: dict[ArcherId, int] = {}
+        # ⚠️ Les séries **trouées** sont journalisées : un archer dont la volée 1 manque reste à
+        # zéro quel que soit ce qu'il tire ensuite, et gèlerait la phase s'il en est le plus lent
+        # (cf. `_volees_enchainees`). Le compte reste prudent, mais le gel cesse d'être invisible.
+        trouees: list[ArcherId] = []
+        for serie in self._series.par_phase(phase.id):
+            enchainees = _volees_enchainees(serie)
+            volees_par_archer[serie.archer_id] = enchainees
+            if enchainees < len(serie.volees):
+                trouees.append(serie.archer_id)
         # ⚠️ **Un seul résolveur pour toute la phase**, comme `avancement_cible` : en construire un
         # par archer repartirait d'un cache vide à chaque fois, et le suivi est sondé en boucle par
         # le pilotage. C'est le correctif de 2ᵉ passe d'E05US025, à ne pas rejouer ici.
@@ -386,8 +405,12 @@ class ServiceSaisie:
         # `LecteurAvancementDePhase` n'a pas le `resolveur` partagé de son jumeau, ADR-0084), et la
         # qualification y entre comme la phase la plus peuplée et la plus longue du créneau.
         resolveur = self._populations.resolveur_de_classement(tournoi_id, phase.depart_id)
+        # Une seule lecture, réutilisée par la garde de journalisation plus bas : ce chemin tourne
+        # dans la file du writer après chaque validation de série, et le N+1 qu'on vient de fermer
+        # deux lignes plus haut n'a pas à être rouvert à moitié (relevé en 2ᵉ passe).
+        placements = list(self._placements.par_depart(phase.depart_id))
         comptes: list[int] = []
-        for affectation in self._placements.par_depart(phase.depart_id):
+        for affectation in placements:
             inscription = inscriptions.get(affectation.inscription_id)
             if inscription is None:
                 continue  # défensif : affectation sans inscription correspondante
@@ -395,12 +418,21 @@ class ServiceSaisie:
             if archer_id in forfaits or not self._admet(phase, archer_id, resolveur):
                 continue
             comptes.append(volees_par_archer.get(archer_id, 0))
+        if trouees:
+            _logger.info(
+                "Phase %s : %d série(s) à volées non enchaînées (archers %s). L'avancement compte "
+                "le préfixe contigu ; une volée manquante à bas rang y fige l'archer, et peut "
+                "retenir la phase si c'est le plus lent.",
+                phase.id,
+                len(trouees),
+                ", ".join(str(a) for a in sorted(trouees)),
+            )
         if not comptes:
             # Best-effort, mais pas muet : un plateau vide **alors que des archers sont placés**
             # signale un amont indécis (`_admet` rend `False` sur toute erreur de lecture) ou une
             # catégorie entièrement forfait. Dans les deux cas la phase n'annoncera plus de tour,
             # et rien ne le dirait sans cette ligne (correctif de revue, axe adversarial).
-            if self._placements.par_depart(phase.depart_id):
+            if placements:
                 _logger.info(
                     "Aucun archer ne compte pour l'avancement de la phase %s du créneau %s "
                     "(tous forfaits, ou population illisible) : aucun tour ne sera annoncé.",

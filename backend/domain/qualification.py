@@ -89,6 +89,13 @@ def verifier_decoupage(
     court — et le refus est **réparable d'un geste** à l'atelier, là où le découvrir le jour J ne
     l'est pas.
 
+    ⚠️ **Le message nomme le LIEU du geste, et pas seulement la règle** (`P-3`, correctif de 2ᵉ
+    passe de revue). Ce refus ne vient pas que de l'écran qui porte le découpage : changer le
+    **barème** d'une qualification déjà découpée passe par `ServiceBaremeQualification`, donc par
+    `replace(etape, bareme=…)`, donc par ici — et l'organisateur reçoit alors un 422 sur l'écran
+    « Barème & validation », qui ne porte aucun réglage de tours. Sans l'indication, il ne peut pas
+    savoir où aller.
+
     **Silencieux quand le barème manque** : une étape en cours de composition n'en a pas encore
     (le brouillon d'ADR-0063). C'est la doctrine déjà tenue par les vérifications voisines d'étape
     — « on ne refuse pas ce qu'on ne peut pas juger » —, et en inventer une seconde ferait diverger
@@ -99,7 +106,8 @@ def verifier_decoupage(
     if bareme.nb_volees % decoupage.nb_tours != 0:
         raise DecoupageEnToursInvalide(
             f"{bareme.nb_volees} volées ne se découpent pas en {decoupage.nb_tours} tours égaux. "
-            "Choisissez un nombre de tours qui divise le nombre de volées."
+            "Choisissez un nombre de tours qui divise le nombre de volées, dans le bloc "
+            "« Découpage en tours » de l'écran Phases."
         )
 
 
