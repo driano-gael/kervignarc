@@ -15,11 +15,25 @@
 // présence ou l'absence de `nb_qualifies` — mais l'écran doit le **poser en question** plutôt que
 // de laisser l'organisateur deviner qu'un champ vide veut dire « la poule classe ».
 
-import type { EtatPoules } from './poules'
+import type { EtatPoules, ModeDeComposition } from './poules'
 import { decrireRepartition, estValide, repartition } from './poules'
 
 // Ce que chaque régime d'ex æquo implique, énoncé sous le choix (exigence `P-4` : chiffrer au
 // moment du choix, pas le découvrir à 10 h).
+// Ce que chaque mode de composition fait, dit au moment du choix (même exigence `P-4` que
+// l'aide ci-dessous). Le point à faire passer n'est pas « comment ça marche » mais **quand c'est
+// le bon réglage** : le serpent quand les niveaux sont inconnus, le niveau quand ils viennent
+// d'être établis par la phase précédente.
+const AIDE_MODE: Record<ModeDeComposition, string> = {
+  serpent:
+    'Les groupes sont équilibrés : le 1ᵉʳ, le 6ᵉ et le 7ᵉ ne se retrouvent pas ensemble. C’est le ' +
+    'bon réglage quand personne ne connaît encore les niveaux — une première phase de poules.',
+  par_niveau:
+    'Chaque groupe réunit une tranche de rangs : les 6 premiers ensemble, puis les 6 suivants. ' +
+    'C’est le bon réglage pour une phase qui affine un classement déjà établi — le vainqueur du ' +
+    'groupe des 31ᵉ-36ᵉ reste 31ᵉ, il ne devient pas 1ᵉʳ.',
+}
+
 const AIDE_PRODUIT: Record<EtatPoules['produit'], string> = {
   classement:
     'La poule classe ses membres, et ce classement est le livrable : tout ex æquo que les cinq ' +
@@ -47,7 +61,7 @@ export function ReglagePoules({
   effectif: number | null
 }) {
   const changer = (champ: Partial<EtatPoules>) => surChangement({ ...etat, ...champ })
-  const tailles = effectif === null ? [] : repartition(effectif, Number(etat.taille))
+  const tailles = effectif === null ? [] : repartition(effectif, Number(etat.taille), etat.mode)
 
   return (
     <fieldset className="deroule__sources">
@@ -66,8 +80,45 @@ export function ReglagePoules({
           poules de 4 → une poule de 7, que l'organisateur voit et corrige s'il n'en veut pas). */}
       {tailles.length > 0 && (
         <p className="carte__aide" role="status">
-          À {effectif} archers : {decrireRepartition(tailles)}.
+          À {effectif} archers : {decrireRepartition(tailles, etat.mode)}.
         </p>
+      )}
+
+      {/* CA — « le mode de composition est un réglage, pas un type de phase neuf ». Il est placé
+          juste sous la taille parce qu'il change ce que l'aperçu ci-dessus **signifie** : les
+          mêmes tailles décrivent des groupes équilibrés ou des tranches de rangs. */}
+      <label className="formulaire__libelle">
+        Composition des groupes
+        <select
+          value={etat.mode}
+          onChange={(e) => changer({ mode: e.target.value as ModeDeComposition })}
+        >
+          <option value="serpent">Équilibrée (serpent)</option>
+          <option value="par_niveau">Par niveau (tranches de rangs)</option>
+        </select>
+      </label>
+      <p className="carte__aide">{AIDE_MODE[etat.mode]}</p>
+
+      {/* La dérogation au refus « 2ᵉ phase de poules au serpent » (E05US029). Elle n'est offerte
+          que **sous le serpent** : par niveau, il n'y a rien à assumer. Elle reste visible même
+          quand le déroulé ne déclenche pas le refus — l'écran de réglage ne connaît pas les
+          sources de la phase, c'est la projection du déroulé qui les juge. */}
+      {etat.mode === 'serpent' && (
+        <>
+          <label className="formulaire__libelle formulaire__libelle--choix">
+            <input
+              type="checkbox"
+              checked={etat.serpentAssume}
+              onChange={(e) => changer({ serpentAssume: e.target.checked })}
+            />
+            Je compose au serpent volontairement, après une autre phase de poules
+          </label>
+          <p className="carte__aide">
+            À cocher seulement si l’outil refuse ce réglage : une phase nourrie par d’autres poules
+            connaît déjà les niveaux, les rééquilibrer est presque toujours une erreur. Rebrasser
+            volontairement les groupes reste possible — c’est ce que cette case déclare.
+          </p>
+        </>
       )}
 
       <label className="formulaire__libelle">

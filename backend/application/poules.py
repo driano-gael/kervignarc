@@ -94,6 +94,7 @@ from domain.ports import (
 )
 from domain.poule import (
     ConfigurationPoules,
+    ModeDeComposition,
     Poule,
     RangPoule,
     ReglageDePoules,
@@ -119,11 +120,18 @@ class RepartitionPoules:
     deux de 5, et l'organisateur le voit avant de valider. C'est aussi ce qui rend inoffensif le cas
     extrême — 7 archers en poules de 4 donnent **une** poule de 7, que l'écran montre et qu'il
     corrige s'il n'en veut pas (`nb_poules_pour`).
+
+    `mode` dit **comment** ces groupes seront composés (E05US029). Il change ce que la répartition
+    signifie pour l'organisateur, sans changer sa forme : sous `PAR_NIVEAU`, les tailles décrivent
+    des **tranches de rangs contiguës**, et l'écran les nomme (« rangs 1-6, 7-12, … »). Les bornes
+    ne sont pas portées ici — elles se déduisent du cumul des tailles, et les transporter ferait
+    une seconde vérité pour la même information.
     """
 
     effectif: int
     taille_visee: int
     tailles: tuple[int, ...]
+    mode: ModeDeComposition = ModeDeComposition.SERPENT
 
     @property
     def nb_poules(self) -> int:
@@ -317,6 +325,12 @@ class ServicePoules:
         d'organisateur, pas une politique du moteur, donc `TiebreakPoules` n'est instancié que
         lorsqu'il est demandé.
 
+        ⚠️ **Sauf en poules de niveau, où l'ordre s'inverse** (E05US029, ADR-0094). Le `mode` du
+        réglage voyage donc jusqu'ici : composer par tranches de rangs et lire « par rang de poule
+        d'abord » produirait un classement bien formé et faux — le vainqueur du groupe des
+        31ᵉ-36ᵉ annoncé 1ᵉʳ du tournoi. Les deux versants du mode sont indissociables, et c'est
+        **le même réglage** qui les commande, lu une seule fois.
+
         `rang_premier` est posé ici, avec le **même** résolveur que celui qui a servi à prélever :
         deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
         distincts, ce qui est exactement `DETTE-034` (cf. `_classement_de_l_ordre`).
@@ -330,6 +344,7 @@ class ServicePoules:
                 [poule.classement for poule in photo.poules],
                 {ligne.archer_id: ligne for ligne in participants},
                 departage=TiebreakPoules() if reglage.departage_inter_poules else None,
+                mode=reglage.mode,
             ),
             rang_premier=tranche(phase, resolveur),
         )
@@ -783,13 +798,18 @@ class ServicePoules:
             # qu'il « n'exige ni gabarit, ni plan posé, ni le moindre tir », et exiger au moins un
             # inscrit sans le dire est la même promesse rompue. Zéro poule est la réponse juste.
             return RepartitionPoules(
-                effectif=0, taille_visee=reglage_declare.taille_visee, tailles=()
+                effectif=0,
+                taille_visee=reglage_declare.taille_visee,
+                tailles=(),
+                mode=reglage_declare.mode,
             )
         configuration = self._configuration(phase, effectif)
-        # On compte les tailles **par le serpent lui-même** plutôt que par une division : c'est le
-        # même code qui répartira le jour J, donc l'écran ne peut pas annoncer autre chose que ce
-        # qui sera joué. Refaire l'arithmétique ici serait une seconde vérité, et c'est exactement
-        # ce genre de doublon qui a produit les dix filtres d'ADR-0083.
+        # On compte les tailles **par la composition elle-même** plutôt que par une division :
+        # c'est le même code qui répartira le jour J, donc l'écran ne peut pas annoncer autre chose
+        # que ce qui sera joué. Refaire l'arithmétique ici serait une seconde vérité, et c'est
+        # exactement ce genre de doublon qui a produit les dix filtres d'ADR-0083. La propriété
+        # vaut pour les deux modes depuis E05US029 — y compris pour le gonflement par le bas, dont
+        # l'écran hérite sans qu'une ligne d'aperçu ait à le connaître.
         poules = composer_poules(
             [Participant.individuel(rang) for rang in range(1, effectif + 1)], configuration
         )
@@ -797,6 +817,7 @@ class ServicePoules:
             effectif=effectif,
             taille_visee=reglage_declare.taille_visee,
             tailles=tuple(len(poule.membres) for poule in poules),
+            mode=reglage_declare.mode,
         )
 
     def _reglage(self, phase: Phase) -> ReglageDePoules:

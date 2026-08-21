@@ -236,6 +236,34 @@ class ChocDePoulePossible(DomainError):
     code = "choc_de_poule_possible"
 
 
+class SerpentApresDesPoules(DomainError):
+    """Une phase de poules prélève dans une autre phase de poules et compose au **serpent**
+    (E05US029).
+
+    Le serpent **équilibre** les groupes, ce qui est juste tant que personne ne connaît les
+    niveaux — c'est pourquoi il est le défaut depuis le 31/07/2026. Mais une phase nourrie par
+    d'autres poules dispose déjà d'un classement de niveau : composer au serpent y éparpille les
+    six têtes de série dans les six groupes, soit l'inverse exact de ce que l'organisateur croit
+    régler en enchaînant deux phases de poules.
+
+    **Bloquant, et c'est un arbitrage** (cadrage du 21/08/2026). Le défaut ne produit ni erreur ni
+    incohérence : il monte un tournoi parfaitement jouable, simplement dépourvu de l'intérêt
+    sportif visé — et cela ne se voit qu'en salle, une fois les groupes affichés. Un avertissement
+    qu'on peut ignorer arriverait donc toujours trop tard.
+
+    `ReglageDePoules.serpent_assume` lève le refus. Rebrasser volontairement les groupes reste
+    légitime ; ce que la dérogation apporte est la **trace** que le choix a été posé, sans quoi
+    « voulu » et « pas vu » sont indiscernables.
+
+    ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé.** Une phase de poules
+    sans source déclarée est alimentée par le classement du départ (ADR-0068), donc par la
+    qualification — les niveaux n'en viennent pas, et le serpent y reste légitime même si des
+    poules la précèdent dans le déroulé.
+    """
+
+    code = "serpent_apres_des_poules"
+
+
 class PolitiqueInconnue(DomainError):
     """Une politique de phase désigne une implémentation non enregistrée (E05US003, ADR-0004).
 

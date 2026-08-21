@@ -3644,6 +3644,7 @@ window.ATLAS.decisions = {
     "E00US021",
     "E01US025",
     "E05US026",
+    "E05US029",
     "E05US032",
     "E05US034",
     "E05US035"
@@ -6858,6 +6859,232 @@ window.ATLAS.decisions = {
     "E05US034",
     "E05US035",
     "E12US001"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-21",
+   "date_brute": "2026-08-21",
+   "extrait": "### §1 — Le mode de composition est un réglage, pas un type de phase ReglageDePoules gagne mode: ModeDeComposition — SERPENT (défaut) ou PAR_NIVEAU. TypePhase.POULES ne se dédouble pas : un format de tournoi est de la configuration, pas du code (règle 2). Les deux modes appellent le même moteur — mêmes rencontres, même barème, même départage — et ne diffèrent que sur qui joue avec qui. PAR_NIVEAU découpe le classement source en tranches de rangs contiguës, un groupe par tranche. ### §2 — Le mode commande aussi la lecture du classement de phase, et c'est ce qui remplace le décalage par groupe C'est le cœur de cet ADR. Sous SERPENT, le classement de phase se lit « par rang de poule d'abord » […]",
+   "fichier": "docs/adr/0094-le-mode-de-composition-d-une-poule-commande-aussi-la-lecture-de-son-classement.md",
+   "identifiant": "0094",
+   "liens": [
+    {
+     "cible": "E05US029",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0083",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0080",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0081",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0068",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0075",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePoulesDTO.mode",
+      "RepartitionReponse.mode"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePoulesDTO.mode",
+      "RepartitionReponse.mode"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/poules.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePoulesDTO.mode",
+      "RepartitionReponse.mode"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/poules.py",
+     "existe": true,
+     "symboles": [
+      "ServicePoules.classement_de_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/prelevement.py",
+     "existe": true,
+     "symboles": [
+      "rang_premier",
+      "ResultatPhase.rang_premier",
+      "tranche"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/classement_de_poules.py",
+     "existe": true,
+     "symboles": [
+      "_par_groupe",
+      "_en_classement"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "ModeDeComposition",
+      "ReglageDePoules.mode",
+      "ConfigurationPoules.mode",
+      "pour_effectif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule.py",
+     "existe": true,
+     "symboles": [
+      "_anomalies_serpent_apres_poules",
+      "_anomalies_structurelles",
+      "SerpentApresDesPoules",
+      "ReglageDePoules.serpent_assume"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/erreurs/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_anomalies_serpent_apres_poules",
+      "_anomalies_structurelles",
+      "SerpentApresDesPoules",
+      "ReglageDePoules.serpent_assume"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/palmares.py",
+     "existe": true,
+     "symboles": [
+      "rang_premier",
+      "ResultatPhase.rang_premier",
+      "tranche"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/poule.py",
+     "existe": true,
+     "symboles": [
+      "ModeDeComposition",
+      "ReglageDePoules.mode",
+      "ConfigurationPoules.mode",
+      "pour_effectif",
+      "composer_poules",
+      "_tranches_de_niveau",
+      "_serpent",
+      "repartition",
+      "_anomalies_serpent_apres_poules",
+      "_anomalies_structurelles",
+      "SerpentApresDesPoules",
+      "ReglageDePoules.serpent_assume"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "config",
+      "_lire_reglage_poules",
+      "_mode_de_composition",
+      "_politiques_json"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_poules_en_cascade.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglagePoules.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/poules.ts",
+     "existe": true,
+     "symboles": [
+      "_tranches_de_niveau",
+      "repartition",
+      "ModeDeComposition",
+      "tranchesDeRangs",
+      "decrireRepartition",
+      "versReglage",
+      "depuisReglage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le mode de composition d'une poule commande aussi la lecture de son classement",
+   "us": [
+    "E05US023",
+    "E05US026",
+    "E05US029",
+    "E05US035"
    ]
   }
  ]

@@ -1180,10 +1180,19 @@ obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cos
 2. **L'espace de rangs est porté par la *phase*, pas par la *poule*.** `ResultatPhase.rang_premier`
    (« le premier rang du tournoi que cette phase dispute », [ADR-0068](../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md) §5)
    vaut pour l'étape entière. Six poules de niveau dans **une** étape disputent six espaces distincts
-   (1-6, 7-12, …) ; sans décalage par groupe, le classement de phase se re-rangerait par blocs et
-   annoncerait le vainqueur de la poule F — composée des 31ᵉ-36ᵉ — « 1ᵉʳ-6ᵉ du tournoi ». Un
-   classement bien formé, plausible, et faux : la classe de défaut qu'[ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
+   (1-6, 7-12, …) ; le classement de phase se re-rangerait par blocs et annoncerait le vainqueur de
+   la poule F — composée des 31ᵉ-36ᵉ — « 1ᵉʳ-6ᵉ du tournoi ». Un classement bien formé, plausible,
+   et faux : la classe de défaut qu'[ADR-0081](../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)
    nomme.
+
+   ⚠️ **Le remède que cette fiche annonçait — « porter le décalage au groupe » — était le mauvais**,
+   et c'est la vérification dans le code qui l'a montré (E05US029, 21/08/2026). Il suffit que le
+   **classement de phase se lise groupe par groupe** : chaque poule occupe alors sa tranche à
+   l'intérieur du classement, et le `rang_premier` **unique** de la phase décale l'ensemble comme
+   avant. Un `rang_premier` par groupe aurait fait deux mécanismes prétendant situer le même archer
+   dans l'espace de rangs du tournoi — une seconde vérité, exactement ce que `DETTE-034` documente.
+   Le vrai travail est donc que **le mode commande aussi la lecture**, pas seulement la composition :
+   [ADR-0094](../docs/adr/0094-le-mode-de-composition-d-une-poule-commande-aussi-la-lecture-de-son-classement.md).
 
 - **CA — une étape « poules de niveau » se déplie en groupes** : l'organisateur déclare une seule
   étape, sa taille de poule et sa source ; l'outil en dérive les groupes **par tranches de rangs
@@ -1199,6 +1208,28 @@ obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cos
 - **CA — l'organisateur est averti s'il compose une 2ᵉ phase de poules au serpent**, cas où le réglage
   par défaut est très probablement le mauvais. C'est le seul garde-fou du lot qui vaut **avant** cette
   US, et il est tracé à ce titre (`DETTE-062`).
+  ⚠️ **Fermeté tranchée au cadrage du 21/08/2026 : c'est un REFUS, pas un bandeau** — levé par une
+  dérogation à cocher (`serpent_assume`). Motif : le défaut ne produit ni erreur ni incohérence, il
+  monte un tournoi parfaitement jouable mais dépourvu de l'intérêt visé, et cela ne se voit qu'en
+  salle une fois les groupes affichés ; un avertissement ignorable arriverait toujours trop tard.
+  ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé** : une phase de poules sans
+  source déclarée est nourrie par le classement du départ, ses niveaux viennent de la qualification,
+  et le serpent y reste légitime même si des poules la précèdent.
+- **CA — quand l'effectif ne tombe pas juste, les groupes du BAS gonflent** *(arbitrage du cadrage
+  du 21/08/2026)*. 34 archers en poules de 6 donnent 5 groupes, soit 4 archers à replacer : ce sont
+  les **dernières** tranches qui prennent l'unité supplémentaire. Les tranches du haut restent à la
+  taille visée — le haut du classement, celui qui a le plus d'enjeu, tire dans les conditions
+  annoncées. ⚠️ La question **ne se posait pas au serpent** (les groupes y sont équilibrés par
+  construction, donc lequel gonfle est sans conséquence sportive) ; c'est pourquoi elle n'avait
+  jamais été tranchée.
+- **CA — la cascade à resserrement tient de bout en bout** *(entrée au périmètre au cadrage du
+  21/08/2026)*. La variante citée plus haut — « 3 qualifiés par poule, plusieurs phases enchaînées »
+  — n'est pas seulement composable en théorie : elle est **éprouvée** (`test_service_poules_en_cascade.py`).
+  ⚠️ Elle tient **sans départage inter-poules** pour une raison qui mérite d'être dite : « 3 qualifiés »
+  sur 6 poules prélève 18 archers, soit **trois blocs entiers** du classement de phase — le
+  prélèvement ne coupe aucun bloc, donc ADR-0081 ne le refuse pas. La propriété tient parce que le
+  nombre de qualifiés est **uniforme** ; un resserrement qui couperait un bloc serait refusé et
+  annoncé, ce qui est le comportement voulu.
 - **Dépend de** : `E05US026` (le palmarès d'une phase terminale de poules — sans lui la cascade
   s'arrête sans classement final publiable) · **Jalon** : J3 · **Origine** : cadrage d'`E05US026`,
   15/08/2026

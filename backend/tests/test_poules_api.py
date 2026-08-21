@@ -170,6 +170,10 @@ def test_la_repartition_se_lit_sans_salle_ni_plan(app_poules: FastAPI) -> None:
         "taille_visee": 3,
         "nb_poules": 2,
         "tailles": [3, 3],
+        # E05US029 — la répartition dit **ce que ses tailles signifient** : des groupes équilibrés
+        # ici, des tranches de rangs sous « par niveau ». L'égalité stricte est volontaire — elle
+        # fait tomber ce test à tout ajout au contrat, ce qui est le but.
+        "mode": "serpent",
     }
 
 
@@ -337,6 +341,11 @@ def test_un_reglage_de_poules_se_compose_et_se_relit_par_lapi(
         "nb_qualifies": 2,
         "rencontres_par_archer": None,
         "departage_inter_poules": True,
+        # E05US029 — les deux champs du mode de composition, à leur **défaut** : un réglage qui ne
+        # les mentionne pas compose au serpent et n'assume aucune dérogation, c'est-à-dire
+        # exactement ce que faisait un réglage écrit avant cette US.
+        "mode": "serpent",
+        "serpent_assume": False,
     }
 
 

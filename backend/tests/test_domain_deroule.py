@@ -23,7 +23,7 @@ from domain.bareme import BaremeQualification
 from domain.deroule import projeter
 from domain.format_tournoi import ModelePhase
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
-from domain.poule import ReglageDePoules
+from domain.poule import ModeDeComposition, ReglageDePoules
 
 
 def _qualification(ordre: int = 1, effectif: int | None = None) -> ModelePhase:
@@ -608,3 +608,141 @@ def test_la_phase_de_poules_elle_meme_nest_pas_signalee() -> None:
         for anomalie in projection.anomalies
         if anomalie.code == "choc_de_poule_possible"
     ] == [3]
+
+
+# --- E05US029 : « averti s'il compose une 2ᵉ phase de poules au serpent » -------------------------
+#
+# Tests écrits depuis le CA, avant l'implémentation (règle 9). L'oracle est la puce « **CA —
+# l'organisateur est averti s'il compose une 2ᵉ phase de poules au serpent** » de
+# `stories/E05-moteur-phases.md` § E05US029, et l'arbitrage du cadrage du 21/08/2026 qui a tranché
+# la **fermeté** : refus, levé par une dérogation explicite — et non simple bandeau.
+
+
+def _poules_de_niveau(
+    ordre: int,
+    sources: tuple[SourcePhase, ...] = (),
+    effectif: int | None = None,
+    taille_visee: int = 4,
+) -> ModelePhase:
+    """Une phase de poules composée **par niveau** — le mode que cette US ouvre."""
+    return ModelePhase(
+        ordre=ordre,
+        type=TypePhase.POULES,
+        sources=sources,
+        effectif=effectif,
+        poules=ReglageDePoules(
+            taille_visee=taille_visee, nb_qualifies=4, mode=ModeDeComposition.PAR_NIVEAU
+        ),
+    )
+
+
+def test_une_deuxieme_phase_de_poules_au_serpent_est_refusee() -> None:
+    """Le cas où le défaut est presque sûrement le mauvais choix.
+
+    Une phase de poules qui prélève dans une **autre phase de poules** dispose déjà des niveaux :
+    les composer au serpent éparpillerait les six têtes dans les six groupes, soit l'inverse exact
+    de ce que l'organisateur croit régler. Le refus est **bloquant** — arbitrage du cadrage — parce
+    que le défaut ne se voit qu'en salle, une fois les groupes affichés.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "serpent_apres_des_poules" in _codes(projection.anomalies)
+    assert not projection.est_applicable
+
+
+def test_le_refus_se_colle_a_la_phase_mal_reglee() -> None:
+    """C'est la phase **avale** que l'organisateur doit retoucher, pas sa source : le mode est un
+    réglage de la phase qui compose. L'accrocher à la phase 2 enverrait corriger au mauvais
+    endroit — le même soin que `choc_de_poule_possible` prend déjà."""
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert [
+        anomalie.ordre
+        for anomalie in projection.anomalies
+        if anomalie.code == "serpent_apres_des_poules"
+    ] == [3]
+
+
+def test_la_derogation_leve_le_refus() -> None:
+    """« Refus avec dérogation à cocher » : le serpent en 2ᵉ phase reste **légitime** quand il est
+    voulu — rebrasser volontairement les groupes est un choix d'organisateur, pas une faute.
+
+    Ce que la dérogation achète n'est pas le droit de se tromper : c'est la preuve que le choix a
+    été posé. Sans elle, on ne peut pas distinguer « voulu » de « pas vu ».
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        ModelePhase(
+            ordre=3,
+            type=TypePhase.POULES,
+            sources=(SourcePhase.par_rangs(2, 1, 36),),
+            effectif=36,
+            poules=ReglageDePoules(taille_visee=6, nb_qualifies=4, serpent_assume=True),
+        ),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "serpent_apres_des_poules" not in _codes(projection.anomalies)
+    assert projection.est_applicable
+
+
+def test_des_poules_de_niveau_ne_declenchent_aucun_refus() -> None:
+    """Le chemin nominal du format visé : la 2ᵉ phase est composée **par niveau**, donc le
+    garde-fou n'a rien à dire. C'est même tout son objet — il pousse vers ce réglage-là."""
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules_de_niveau(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=36, taille_visee=6),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "serpent_apres_des_poules" not in _codes(projection.anomalies)
+    assert projection.est_applicable
+
+
+def test_une_premiere_phase_de_poules_au_serpent_ne_declenche_rien() -> None:
+    """⚠️ Le prédicat porte sur la **source**, pas sur la position dans le déroulé.
+
+    Le serpent est *juste* quand personne ne connaît encore les niveaux — c'est l'arbitrage du
+    31/07/2026 qui l'a mis par défaut. Une phase de poules nourrie par la qualification est dans ce
+    cas, qu'elle soit la 1ʳᵉ ou la 5ᵉ étape du déroulé : ce qui compte est d'où viennent les
+    niveaux, pas le numéro d'ordre.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+    ]
+
+    assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_une_phase_de_poules_sans_source_declaree_ne_declenche_rien() -> None:
+    """Le même prédicat, sur le cas qui aurait pu passer au travers d'une lecture « 2ᵉ phase de
+    poules du déroulé ».
+
+    Sans source déclarée, une phase est alimentée par le classement du **départ** (ADR-0068) — donc
+    par la qualification, et non par les poules qui la précèdent dans le déroulé. Les niveaux n'en
+    viennent pas : le serpent y reste légitime, et refuser serait un faux positif systématique.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, effectif=36, taille_visee=6),
+    ]
+
+    assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)

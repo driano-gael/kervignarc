@@ -10,6 +10,7 @@ import {
   decrireRepartition,
   depuisReglage,
   estValide,
+  motDeGroupe,
   POULES_PAR_DEFAUT,
   repartition,
   versReglage,
@@ -112,9 +113,78 @@ describe('depuisReglage', () => {
       nul: '1',
       defaite: '0',
       departage: true,
+      mode: 'par_niveau' as const,
+      serpentAssume: false,
     }
     const reglage = versReglage(etat)
     expect(reglage).toBeDefined()
     expect(depuisReglage(reglage!)).toEqual(etat)
+  })
+
+  it('lit « serpent » d’une étape enregistrée avant que le mode existe', () => {
+    // Le backend n'écrit la clé qu'au mode non-défaut (c'est ce qui évite une migration) : une
+    // étape d'avant E05US029 arrive donc sans elle, et le serpent est ce qu'elle jouait.
+    const ancien = {
+      taille_visee: 4,
+      bareme: null,
+      nb_qualifies: null,
+      rencontres_par_archer: null,
+      departage_inter_poules: false,
+    } as unknown as Parameters<typeof depuisReglage>[0]
+    expect(depuisReglage(ancien)).toMatchObject({ mode: 'serpent', serpentAssume: false })
+  })
+
+  it('n’envoie pas la dérogation depuis un réglage par niveau', () => {
+    // Sinon une case armée sous le serpent, puis abandonnée en basculant le mode, ressusciterait
+    // au retour — en levant un refus que plus personne n'a assumé.
+    const reglage = versReglage({
+      ...POULES_PAR_DEFAUT,
+      mode: 'par_niveau',
+      serpentAssume: true,
+    })
+    expect(reglage?.serpent_assume).toBe(false)
+  })
+})
+
+// --- E05US029 : la répartition par niveau, miroir de `_tranches_de_niveau` ------------------------
+//
+// L'oracle est le CA (« 36 archers → 6 poules de niveau : rangs 1-6, 7-12, 13-18, 19-24, 25-30,
+// 31-36 ») et l'arbitrage du cadrage du 21/08/2026 sur le gonflement par le bas.
+
+describe('répartition par niveau', () => {
+  it('découpe l’effectif en tranches de rangs contiguës', () => {
+    expect(decrireRepartition(repartition(36, 6, 'par_niveau'), 'par_niveau')).toBe(
+      '6 poules de niveau : rangs 1-6, 7-12, 13-18, 19-24, 25-30, 31-36',
+    )
+  })
+
+  it('gonfle les groupes du bas quand l’effectif ne tombe pas juste', () => {
+    // 34 archers en poules de 6 → 5 groupes, 4 archers à replacer : les tranches du haut restent à
+    // la taille visée. C'est la **même** règle que le domaine, recopiée et non supposée.
+    expect(repartition(34, 6, 'par_niveau')).toEqual([6, 7, 7, 7, 7])
+  })
+
+  it('laisse le serpent inchangé', () => {
+    expect(repartition(30, 4)).toEqual(repartition(30, 4, 'serpent'))
+    expect(decrireRepartition(repartition(30, 4))).toBe('7 poules : 2 de 5, 5 de 4')
+  })
+
+  it('dit une poule de niveau au singulier', () => {
+    expect(decrireRepartition(repartition(7, 4, 'par_niveau'), 'par_niveau')).toBe(
+      '1 poule de niveau : rangs 1-7',
+    )
+  })
+})
+
+describe('motDeGroupe', () => {
+  it('nomme les poules de niveau, et seulement elles', () => {
+    expect(motDeGroupe('par_niveau')).toBe('poules de niveau')
+    expect(motDeGroupe('serpent')).toBe('poules')
+  })
+
+  it('dit « poules » quand le mode est absent', () => {
+    // Une réponse d'API d'avant E05US029 ne porte pas le champ, et le serpent est ce qu'elle
+    // décrivait : le mot est alors exact, pas un repli par défaut.
+    expect(motDeGroupe(undefined)).toBe('poules')
   })
 })

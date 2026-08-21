@@ -46,6 +46,7 @@ from domain.erreurs import (
     PhaseSansSource,
     PrelevementVide,
     RangsSourceInexistants,
+    SerpentApresDesPoules,
     SourcesQuiSeRecoupent,
 )
 from domain.grain_validation import GrainValidation
@@ -60,7 +61,7 @@ from domain.phase import (
     anomalies_sequence,
 )
 from domain.plage import Plage
-from domain.poule import ReglageDePoules, nb_poules_pour
+from domain.poule import ModeDeComposition, ReglageDePoules, nb_poules_pour
 
 _TYPES_SANS_OPPOSITION = TYPES_SANS_OPPOSITION
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
@@ -574,6 +575,54 @@ def _anomalies_structurelles(etapes: Sequence[EtapeProjetable]) -> Iterator[Anom
         )
     yield from anomalies_sequence(etapes)
     yield from _anomalies_blocs_orphelins(etapes)
+    yield from _anomalies_serpent_apres_poules(etapes)
+
+
+def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
+    """Une phase de poules qui prélève dans des poules et compose au **serpent** (E05US029).
+
+    **Structurel, donc bloquant** — et les deux vont ensemble, c'est la ligne de partage d'ADR-0063
+    (« ce qui est faux quel que soit l'effectif bloque »). Le défaut ne dépend d'aucun effectif :
+    équilibrer des groupes dont les niveaux sont déjà connus est l'inverse de ce que
+    l'enchaînement de deux phases de poules cherche à faire, à 12 archers comme à 120.
+
+    ⚠️ **Le prédicat porte sur la source, pas sur le rang dans le déroulé.** Une phase de poules
+    sans source déclarée est alimentée par le classement du départ (ADR-0068) : ses niveaux
+    viennent de la qualification, pas des poules qui la précèdent, et le serpent y reste le bon
+    réglage. Lire « la 2ᵉ phase de poules du déroulé » aurait produit un faux positif systématique
+    sur ce cas — et manqué celui d'une phase de poules prélevant dans une phase de poules **non
+    adjacente**.
+
+    ⚠️ **On ne cite que les sources réellement en cause**, comme `_anomalies_choc_de_poule` a appris
+    à le faire : nommer une source de qualification à côté d'une source de poules enverrait
+    l'organisateur corriger un prélèvement qui n'a rien à se reprocher.
+    """
+    par_ordre = {etape.ordre: etape for etape in etapes}
+    for etape in etapes:
+        reglage = etape.poules
+        if etape.type is not TypePhase.POULES or reglage is None:
+            continue
+        if reglage.mode is not ModeDeComposition.SERPENT or reglage.serpent_assume:
+            continue
+        sources_de_poules = sorted(
+            {
+                source.ordre_source
+                for source in etape.sources
+                if par_ordre.get(source.ordre_source) is not None
+                and par_ordre[source.ordre_source].type is TypePhase.POULES
+            }
+        )
+        if not sources_de_poules:
+            continue
+        citees = ", ".join(str(ordre) for ordre in sources_de_poules)
+        yield Anomalie(
+            SerpentApresDesPoules(
+                f"La phase {etape.ordre} prélève dans la phase {citees} (poules) et compose ses "
+                "groupes au serpent : les niveaux déjà établis y seraient éparpillés. Choisissez "
+                "« par niveau », ou assumez le serpent explicitement."
+            ),
+            etape.ordre,
+        )
 
 
 def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:

@@ -35,10 +35,38 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 
 from domain.erreurs import BarrageRequisAvantQualification, ConfigurationPouleInvalide
 from domain.participant import Participant
 from domain.politiques import DecompteDepartage, Tiebreak, TiebreakPoules
+
+
+class ModeDeComposition(Enum):
+    """Comment une phase de poules **répartit** son classement source en groupes (E05US029).
+
+    C'est un **réglage**, pas un type de phase : `TypePhase.POULES` ne se dédouble pas, parce qu'un
+    format de tournoi est de la configuration (règle 2). Les deux modes appellent le même moteur —
+    mêmes rencontres, même barème, même départage — et ne diffèrent que sur *qui joue avec qui*.
+
+    - `SERPENT` — le défaut, et le comportement de toujours (arbitrage du 31/07/2026) : 1→A, 2→B,
+      3→C, 4→C, 5→B, 6→A. Il **équilibre la force des groupes**, ce qui est juste quand personne ne
+      connaît encore les niveaux — typiquement une première phase de poules.
+    - `PAR_NIVEAU` — un groupe par **tranche de rangs contiguë** : les rangs 1-6 ensemble, puis
+      7-12, etc. C'est l'inverse assumé du serpent, et c'est le format club en cascade décrit par
+      le commanditaire le 15/08/2026 : une deuxième phase dont tout l'intérêt est que la poule A
+      soit celle des meilleurs.
+
+    ⚠️ **Le mode ne décide pas que de la composition, il décide aussi de la LECTURE du classement
+    de phase** (`domain/classement_de_poules.py`). Au serpent, les vainqueurs des `P` groupes sont
+    les `P` meilleurs, donc le classement se lit « par rang de poule d'abord » (ADR-0083 §6). Par
+    niveau, cet ordre serait faux — il annoncerait le vainqueur du groupe des 31ᵉ-36ᵉ « 1ᵉʳ du
+    tournoi ». Les deux versants sont indissociables : n'en porter qu'un produit un classement bien
+    formé, plausible, et faux (la classe de défaut d'ADR-0081).
+    """
+
+    SERPENT = "serpent"
+    PAR_NIVEAU = "par_niveau"
 
 
 @dataclass(frozen=True)
@@ -100,6 +128,8 @@ class ConfigurationPoules:
     bareme: BaremePoule = field(default_factory=BaremePoule)
     nb_qualifies: int | None = None
     rencontres_par_archer: int | None = None
+    mode: ModeDeComposition = ModeDeComposition.SERPENT
+    """Comment répartir le classement source en groupes (E05US029) — serpent par défaut."""
 
     def __post_init__(self) -> None:
         if self.nb_poules < 1:
@@ -159,7 +189,33 @@ class ReglageDePoules:
 
     ⚠️ Elle ne ferme **que** ce que le décompte sépare : deux décomptes identiques restent ex æquo,
     et un ex æquo *interne* à une poule reste irréductible quoi qu'on active
-    (`domain/classement_de_poules.py`)."""
+    (`domain/classement_de_poules.py`).
+
+    ⚠️ **Sans objet en mode `PAR_NIVEAU`** : il n'y a alors aucun bloc inter-poules à départager,
+    chaque groupe occupant sa propre tranche de rangs. Le champ est ignoré plutôt que refusé — un
+    organisateur qui bascule un réglage existant du serpent vers le niveau ne doit pas se voir
+    opposer un 422 sur une case qu'il n'a pas touchée."""
+
+    mode: ModeDeComposition = ModeDeComposition.SERPENT
+    """Comment les groupes sont composés — serpent (défaut) ou par niveau (E05US029).
+
+    Le défaut est le comportement de toujours : aucun tournoi déjà réglé ne change de composition
+    du fait de cette US, et une configuration relue sans ce champ compose au serpent.
+    """
+
+    serpent_assume: bool = False
+    """L'organisateur **assume** le serpent là où le niveau serait attendu (E05US029).
+
+    Une phase de poules qui prélève dans une autre phase de poules dispose déjà des niveaux : la
+    composer au serpent est presque toujours une erreur, et `domain/deroule.py` la **refuse**
+    (arbitrage du cadrage du 21/08/2026 — refus, pas simple bandeau, parce que le défaut ne se voit
+    qu'en salle une fois les groupes affichés). Cette case lève le refus.
+
+    ⚠️ **Ce qu'elle achète n'est pas le droit de se tromper**, c'est la trace que le choix a été
+    posé : rebrasser volontairement les groupes reste légitime, et sans cette case rien ne permet
+    de distinguer « voulu » de « pas vu ». Elle n'a d'effet **que** sous `SERPENT` — en mode
+    `PAR_NIVEAU` il n'y a rien à assumer.
+    """
 
     def __post_init__(self) -> None:
         if self.taille_visee < 2:
@@ -205,6 +261,7 @@ class ReglageDePoules:
             bareme=self.bareme,
             nb_qualifies=self.nb_qualifies,
             rencontres_par_archer=self.rencontres_par_archer,
+            mode=self.mode,
         )
 
 
@@ -343,13 +400,18 @@ class RangPoule:
 def composer_poules(
     participants: Sequence[Participant], configuration: ConfigurationPoules
 ) -> tuple[Poule, ...]:
-    """Répartit les participants **classés** en poules, selon le **serpent** (arbitrage 31/07/2026).
+    """Répartit les participants **classés** en poules, selon le mode réglé (E05US023, E05US029).
 
-    `participants` arrive **ordonné par rang** de la phase source (indice 0 = premier). Le serpent
-    distribue 1→A, 2→B, 3→C, puis repart en sens inverse (4→C, 5→B, 6→A) : c'est ce qui équilibre
-    la force des groupes, exactement comme le seeding serpent équilibre un arbre. Une distribution
-    naïve (les 6 premiers dans la poule A) mettrait tous les favoris ensemble et en éliminerait la
-    moitié au premier tour.
+    `participants` arrive **ordonné par rang** de la phase source (indice 0 = premier). Deux modes,
+    et le choix entre eux est un réglage d'organisateur, pas une politique du moteur :
+
+    - `SERPENT` (défaut) — 1→A, 2→B, 3→C, puis retour 4→C, 5→B, 6→A. C'est ce qui **équilibre la
+      force des groupes**, exactement comme le seeding serpent équilibre un arbre : une
+      distribution naïve mettrait tous les favoris ensemble et en éliminerait la moitié au premier
+      tour (arbitrage du 31/07/2026).
+    - `PAR_NIVEAU` — un groupe par **tranche de rangs contiguë** : 1-6 dans la poule A, 7-12 dans
+      la B. C'est exactement ce que le serpent existe pour éviter, et c'est voulu — la phase amont
+      a déjà établi les niveaux, cette phase-ci les affine (E05US029).
 
     Les poules peuvent être de **tailles inégales** d'une unité quand l'effectif ne divise pas —
     c'est inévitable et sans conséquence sur le classement, chaque poule étant classée séparément.
@@ -359,15 +421,56 @@ def composer_poules(
             f"{configuration.nb_poules} poules pour {len(participants)} participants : "
             "une poule resterait vide."
         )
-    groupes: list[list[Participant]] = [[] for _ in range(configuration.nb_poules)]
-    for index, participant in enumerate(participants):
-        passage, position = divmod(index, configuration.nb_poules)
-        # Un passage sur deux se fait à l'envers : c'est tout le serpent.
-        numero = position if passage % 2 == 0 else configuration.nb_poules - 1 - position
-        groupes[numero].append(participant)
+    groupes = (
+        _tranches_de_niveau(participants, configuration.nb_poules)
+        if configuration.mode is ModeDeComposition.PAR_NIVEAU
+        else _serpent(participants, configuration.nb_poules)
+    )
     return tuple(
         Poule(numero=numero + 1, membres=tuple(membres)) for numero, membres in enumerate(groupes)
     )
+
+
+def _serpent(participants: Sequence[Participant], nb_poules: int) -> list[list[Participant]]:
+    """La distribution en serpentin — inchangée depuis E05US015, extraite pour la bifurcation."""
+    groupes: list[list[Participant]] = [[] for _ in range(nb_poules)]
+    for index, participant in enumerate(participants):
+        passage, position = divmod(index, nb_poules)
+        # Un passage sur deux se fait à l'envers : c'est tout le serpent.
+        numero = position if passage % 2 == 0 else nb_poules - 1 - position
+        groupes[numero].append(participant)
+    return groupes
+
+
+def _tranches_de_niveau(
+    participants: Sequence[Participant], nb_poules: int
+) -> list[list[Participant]]:
+    """Un groupe par tranche de rangs **contiguë**, le surplus au **bas** (E05US029).
+
+    Deux propriétés, et les deux comptent :
+
+    1. **Contiguïté.** Un groupe est un intervalle de rangs, jamais un peigne. C'est ce qui fait le
+       format : si une tranche sautait un rang, deux archers de niveaux voisins joueraient dans des
+       groupes disputant des espaces de rangs différents.
+    2. **Le surplus va aux groupes du bas** (arbitrage du cadrage du 21/08/2026). Quand l'effectif
+       ne tombe pas juste — 34 archers en poules de 6 donnent 5 groupes, soit 4 archers à
+       replacer —, ce sont les **dernières** tranches qui gonflent d'une unité. Les tranches du
+       haut restent à la taille visée : le haut du classement, celui qui a le plus d'enjeu, tire
+       dans les conditions annoncées plutôt que d'hériter d'un adversaire de plus.
+
+    ⚠️ **La question ne se pose pas au serpent**, et c'est pourquoi elle n'avait jamais été
+    tranchée : les groupes y sont équilibrés par construction, donc *lequel* gonfle est sans
+    conséquence sportive. Par niveau, c'en est une.
+    """
+    base, surplus = divmod(len(participants), nb_poules)
+    # Les `surplus` **derniers** groupes prennent un membre de plus — le bas gonfle.
+    tailles = [base + (1 if numero >= nb_poules - surplus else 0) for numero in range(nb_poules)]
+    groupes: list[list[Participant]] = []
+    debut = 0
+    for taille in tailles:
+        groupes.append(list(participants[debut : debut + taille]))
+        debut += taille
+    return groupes
 
 
 def rencontres_de_poule(
