@@ -34,6 +34,7 @@ const AIDE_MODE: Record<ModeDeComposition, string> = {
     'groupe des 31ᵉ-36ᵉ reste 31ᵉ, il ne devient pas 1ᵉʳ.',
 }
 
+// Ce que chaque régime d'ex æquo implique, énoncé sous le choix (même exigence `P-4`).
 const AIDE_PRODUIT: Record<EtatPoules['produit'], string> = {
   classement:
     'La poule classe ses membres, et ce classement est le livrable : tout ex æquo que les cinq ' +
@@ -121,17 +122,29 @@ export function ReglagePoules({
         </>
       )}
 
-      <label className="formulaire__libelle">
-        Ce que la poule produit
-        <select
-          value={etat.produit}
-          onChange={(e) => changer({ produit: e.target.value as EtatPoules['produit'] })}
-        >
-          <option value="classement">Un classement</option>
-          <option value="qualifies">Un nombre de qualifiés</option>
-        </select>
-      </label>
-      {etat.produit === 'qualifies' && (
+      {/* ⚠️ Sous « par niveau », la phase **classe** — le domaine refuse `nb_qualifies` (ADR-0094
+          §2), les qualifiés y formant un peigne de rangs qu'aucun prélèvement ne sait désigner. On
+          ne propose donc pas un choix qui finirait en 422 : exigence `P-4`, chiffrer au moment du
+          choix plutôt que le découvrir à l'enregistrement (correctif de revue, quatre axes). */}
+      {etat.mode === 'par_niveau' ? (
+        <p className="carte__aide">
+          <strong>Cette phase produit un classement.</strong> Des poules de niveau ne désignent pas
+          un nombre de qualifiés : chaque groupe dispute déjà sa propre tranche de rangs. Pour
+          resserrer, faites prélever à la phase suivante des groupes entiers (« les rangs 1 à 18 »).
+        </p>
+      ) : (
+        <label className="formulaire__libelle">
+          Ce que la poule produit
+          <select
+            value={etat.produit}
+            onChange={(e) => changer({ produit: e.target.value as EtatPoules['produit'] })}
+          >
+            <option value="classement">Un classement</option>
+            <option value="qualifies">Un nombre de qualifiés</option>
+          </select>
+        </label>
+      )}
+      {etat.mode !== 'par_niveau' && etat.produit === 'qualifies' && (
         <label className="formulaire__libelle">
           Qualifiés par poule
           <input
@@ -141,7 +154,7 @@ export function ReglagePoules({
           />
         </label>
       )}
-      <p className="carte__aide">{AIDE_PRODUIT[etat.produit]}</p>
+      {etat.mode !== 'par_niveau' && <p className="carte__aide">{AIDE_PRODUIT[etat.produit]}</p>}
 
       <div className="reglage-poules__bareme">
         <label className="formulaire__libelle">

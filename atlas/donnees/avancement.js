@@ -507,6 +507,15 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "077",
+   "introduite_par": [
+    "E05US029"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "062",
    "introduite_par": [
     "E05US028"
@@ -2663,7 +2672,8 @@ window.ATLAS.avancement = {
    ],
    "dettes_introduites": [
     "054",
-    "076"
+    "076",
+    "077"
    ],
    "dettes_resorbees": [],
    "epic": "05",

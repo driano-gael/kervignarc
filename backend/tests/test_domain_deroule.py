@@ -856,3 +856,90 @@ def test_un_tableau_nourri_par_des_poules_de_niveau_avertit_du_choc() -> None:
     ]
 
     assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+# --- Correctifs de 2ᵉ passe : ce que la garde « un seul groupe » avait ouvert ---------------------
+
+
+def test_un_brouillon_a_effectif_nul_se_diagnostique_au_lieu_de_lever() -> None:
+    """⚠️ **Régression introduite par le correctif de 1ʳᵉ passe** (relevée par A, C1 et D).
+
+    `nb_poules_pour` refuse `effectif < 1`, et un `ModelePhase` de brouillon accepte `0` — c'est le
+    régime d'ADR-0063 : « l'enregistrement accepte le brouillon, le diagnostic dit pourquoi ». La
+    garde « un seul groupe » l'appelait sans protection, si bien qu'une `DomainError` s'échappait du
+    générateur d'anomalies : le diagnostic répondait **422** au lieu de lister le défaut qu'il sait
+    produire. Le voisin `_motif_de_choc` portait cette précaution depuis toujours.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, 36),), effectif=0, taille_visee=6),
+    ]
+
+    codes = _codes(projeter(etapes, effectif=120).anomalies)
+
+    assert "effectif_phase_invalide" in codes, "le brouillon se diagnostique, il ne casse pas"
+
+
+def test_un_effectif_declare_ne_couvre_pas_une_fenetre_a_fin_ouverte() -> None:
+    """⚠️ **Faux négatif introduit par le correctif de 1ʳᵉ passe** (relevé par C1 et D).
+
+    L'effectif déclaré court-circuitait la lecture des fenêtres — or ce n'est qu'une
+    **déclaration**, jamais opposable : au tournoi c'est `len(participants)` qui compose. Une
+    phase déclarant « 6 »
+    avec une source « à partir du rang 1 » recevait en réalité 36 archers, composait six poules au
+    serpent après des poules, et le refus que toute cette US existe pour poser ne tombait pas.
+
+    On ne se tait donc que si **aucun** signal déclarable n'annonce plus d'un groupe.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, None),), effectif=6, taille_visee=6),
+    ]
+
+    assert "serpent_apres_des_poules" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_un_tableau_qui_preleve_des_groupes_de_niveau_entiers_n_avertit_pas() -> None:
+    """⚠️ **Faux positif du correctif de 1ʳᵉ passe** — mesuré à **25 %** par l'axe adversarial.
+
+    Le motif était rendu *inconditionnellement*, sous l'affirmation « c'est exact plutôt que
+    prudent ». C'était faux, et sur le geste que l'US **recommande** : prélever des groupes entiers.
+    32 archers en 4 poules de niveau de 8, tableau de 16 sur les rangs 1-16 → le tableau apparie
+    systématiquement le groupe A (rangs 1-8) contre le groupe B (rangs 9-16), donc ne réunit
+    personne.
+
+    Un avertissement de trop n'est pas neutre : c'est le bruit qui fait ignorer les vrais signaux —
+    l'argument que cette fonction oppose déjà à l'un de ses oracles passés.
+    """
+    etapes = [
+        _qualification(),
+        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 32),), effectif=32, taille_visee=8),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 16),)),
+    ]
+
+    assert "choc_de_poule_possible" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_le_choc_par_niveau_nomme_les_deux_rangs_en_cause() -> None:
+    """Le pendant du test ci-dessus : quand le choc est réel, le message le **situe**.
+
+    Le prédicat est exact et vérifiable à la main — les tranches étant contiguës, il suffit de
+    regarder si une paire `(r, M+1-r)` du tableau tombe deux fois dans la même tranche. Nommer les
+    rangs plutôt que d'énoncer une généralité, c'est ce qui permet à l'organisateur de juger.
+    """
+    etapes = [
+        _qualification(),
+        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 32),)),
+    ]
+
+    messages = [
+        anomalie.message
+        for anomalie in projeter(etapes, effectif=120).anomalies
+        if anomalie.code == "choc_de_poule_possible"
+    ]
+
+    assert len(messages) == 1
+    assert "rangs 15 et 18" in messages[0]

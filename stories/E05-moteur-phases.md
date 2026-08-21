@@ -1222,11 +1222,16 @@ obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cos
   vaut **avant** cette US.
   ⚠️ *(La fiche citait `DETTE-062` comme traçant ce garde-fou : c'était faux — cette dette traite du
   re-partitionnement d'un tir déjà validé. Rien ne le traçait, et l'US le livre. Corrigé en revue.)*
-  ⚠️ **Trois bornes au prédicat, toutes relevées en revue** : il ne regarde que les sources
-  **`RANGS`** (`le_reste` et `issue_de_tour` sont inertes, donc la phase est peuplée du départ), il
+  ⚠️ **Quatre bornes au prédicat, toutes relevées en revue.** Il ne regarde que les sources
+  **`RANGS`** (`le_reste` et `issue_de_tour` sont inertes, donc la phase est peuplée du départ) ; il
   se tait sur une phase qui ne peut composer qu'**un seul groupe** (serpent et niveau y donnent la
-  même poule), et il est **borné aux sources de type poules** — le suisse pose la même question et
-  n'est pas couvert, faute d'arbitrage.
+  même poule) ; il est **borné aux sources de type poules** — le suisse pose la même question et
+  n'est pas couvert, faute d'arbitrage ; et surtout il ne vaut que sur un **déroulé projeté**.
+  ⚠️ **Cette dernière borne réduit la portée du mot « REFUSER » et doit être lue** : le refus bloque
+  l'**application d'un format** et la simulation, et s'affiche au suivi du déroulé — il ne bloque
+  **pas** l'édition directe d'une phase sur l'écran « Phases » d'un tournoi, qui ne passe pas par la
+  projection. L'élargir demande de faire entrer le réglage de poules dans le contrat de séquence :
+  décision de contrat, à trancher, pas correctif de revue.
   ⚠️ **Fermeté tranchée au cadrage du 21/08/2026 : c'est un REFUS, pas un bandeau** — levé par une
   dérogation à cocher (`serpent_assume`). Motif : le défaut ne produit ni erreur ni incohérence, il
   monte un tournoi parfaitement jouable mais dépourvu de l'intérêt visé, et cela ne se voit qu'en

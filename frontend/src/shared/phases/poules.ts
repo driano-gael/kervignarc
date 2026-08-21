@@ -139,7 +139,11 @@ export function versReglage(etat: EtatPoules): ReglagePoules | undefined {
   return {
     taille_visee: taille,
     bareme: { victoire, nul, defaite },
-    nb_qualifies: qualifies,
+    // ⚠️ Miroir exact de `serpent_assume` ci-dessous, et pour la même raison (correctif de
+    // 2ᵉ passe, relevé par quatre axes) : le domaine **refuse** `nb_qualifies` sous « par niveau »
+    // — les qualifiés y formeraient un peigne de rangs qu'aucun prélèvement ne sait désigner.
+    // L'émettre quand même faisait répondre 422 à un formulaire que l'écran déclarait valide.
+    nb_qualifies: etat.mode === 'par_niveau' ? null : qualifies,
     rencontres_par_archer: null,
     departage_inter_poules: etat.departage,
     mode: etat.mode,

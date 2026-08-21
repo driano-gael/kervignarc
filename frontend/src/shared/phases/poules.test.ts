@@ -112,7 +112,7 @@ describe('depuisReglage', () => {
       nul: '1',
       defaite: '0',
       departage: true,
-      mode: 'par_niveau' as const,
+      mode: 'serpent' as const,
       serpentAssume: false,
     }
     const reglage = versReglage(etat)
@@ -131,6 +131,39 @@ describe('depuisReglage', () => {
       departage_inter_poules: false,
     }
     expect(depuisReglage(ancien)).toMatchObject({ mode: 'serpent', serpentAssume: false })
+  })
+
+  it('fait l’aller-retour d’un réglage par niveau', () => {
+    // Le pendant du test ci-dessus sur l'autre mode. ⚠️ `produit: 'classement'` : le domaine
+    // **refuse** un nombre de qualifiés sous « par niveau », et un test qui épinglerait le couple
+    // interdit comme cas nominal consacrerait un réglage que le serveur recale en 422.
+    const etat = {
+      taille: '6',
+      produit: 'classement' as const,
+      qualifies: '2',
+      victoire: '3',
+      nul: '1',
+      defaite: '0',
+      departage: false,
+      mode: 'par_niveau' as const,
+      serpentAssume: false,
+    }
+    const reglage = versReglage(etat)
+    expect(reglage).toBeDefined()
+    expect(depuisReglage(reglage!)).toEqual(etat)
+  })
+
+  it('n’envoie pas de qualifiés depuis un réglage par niveau', () => {
+    // Correctif de revue (quatre axes) : l'écran ne propose plus le choix, mais la conversion doit
+    // le garantir aussi — c'est elle qui parle au serveur, et un réglage hérité d'un passage au
+    // serpent porterait encore `produit: 'qualifies'`.
+    const reglage = versReglage({
+      ...POULES_PAR_DEFAUT,
+      mode: 'par_niveau',
+      produit: 'qualifies',
+      qualifies: '3',
+    })
+    expect(reglage?.nb_qualifies).toBeNull()
   })
 
   it('n’envoie pas la dérogation depuis un réglage par niveau', () => {

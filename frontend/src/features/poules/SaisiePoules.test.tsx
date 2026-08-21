@@ -16,7 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { EtatPoulesSaisie } from './api'
 import { SaisiePoules } from './SaisiePoules'
@@ -45,10 +45,14 @@ vi.mock('../saisie-duels/hooks', () => ({
 }))
 
 vi.mock('./hooks', () => ({
-  useEtatPoulesSaisie: () => ({ isPending: false, isError: false, data: ETAT, error: null }),
+  useEtatPoulesSaisie: () => ({ isPending: false, isError: false, data: etatRendu, error: null }),
 }))
 
 const MUTATION = { mutate: vi.fn(), isPending: false, isError: false, error: null }
+
+// Ce que le hook mocké rend — réassignable par un test qui veut un autre décor, et remis à
+// `ETAT` avant chacun. Le mock le lit **au rendu**, donc après l'initialisation du module.
+let etatRendu: EtatPoulesSaisie
 
 function duel(numero: number, hautNom: string, basNom: string) {
   return {
@@ -139,6 +143,10 @@ const ETAT: EtatPoulesSaisie = {
   conflits: [],
 }
 
+beforeEach(() => {
+  etatRendu = ETAT
+})
+
 function monter() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Enveloppe({ children }: { children: ReactNode }) {
@@ -162,6 +170,40 @@ describe('SaisiePoules', () => {
     // Ni la qualification (ordre 1) ni le tableau (ordre 3) : le serveur les refuserait en 409, et
     // y arriver par mégarde n'apporte qu'un message d'erreur à un scoreur qui n'y peut rien.
     expect(proposees).toEqual(['Choisir une phase…', 'Phase 2 — poules'])
+  })
+
+  it('dit au scoreur les tranches de rangs d’une phase composée par niveau', async () => {
+    // ⚠️ Couverture **rétablie** : le correctif de 1ʳᵉ passe a remplacé le libellé (`motDeGroupe`
+    // → `decrireRepartition`) et supprimé au passage les deux seuls tests qui exerçaient cette
+    // branche — un correctif de revue qui retire de la couverture sur du code de production est
+    // exactement ce que la règle 9 existe pour attraper (relevé par l'axe B).
+    //
+    // Sur une phase de niveau les groupes ne sont **pas** équilibrés : un scoreur qui verrait la
+    // poule A aligner les meilleurs sans explication pourrait croire à une composition ratée. Les
+    // rangs sont ceux **de la phase**, pas du tournoi — d'où le suffixe.
+    etatRendu = {
+      ...ETAT,
+      repartition: {
+        effectif: 12,
+        taille_visee: 6,
+        nb_poules: 2,
+        tailles: [6, 6],
+        mode: 'par_niveau',
+      },
+    }
+
+    await choisirLaPhase()
+
+    expect(document.body.textContent).toContain(
+      '12 archers, 2 poules de niveau : rangs 1-6, 7-12 de la phase.',
+    )
+  })
+
+  it('garde le libellé de tailles sur une phase composée au serpent', async () => {
+    // Le contre-test : la branche par défaut ne doit pas hériter du libellé de niveau.
+    await choisirLaPhase()
+
+    expect(document.body.textContent).toContain('poules de 3 visés')
   })
 
   it('présente les rencontres groupées par tour', async () => {

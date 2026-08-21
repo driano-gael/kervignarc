@@ -129,6 +129,16 @@ poule et sa tranche. (3) Le prédicat est **borné aux sources de type poules** 
 vaudrait pour un suisse ou une élimination directe, tous deux classants, mais l'élargir demande un
 arbitrage du commanditaire.
 
+⚠️ **Quatrième borne, et c'est la plus large : le refus ne vaut que sur un DÉROULÉ PROJETÉ.**
+`_anomalies_serpent_apres_poules` vit dans `_anomalies_structurelles`, donc n'est atteinte que par
+`projeter` — elle bloque `FormatTournoi.appliquer` et la simulation, et s'affiche au suivi du
+déroulé. Elle ne bloque **pas** l'édition directe d'une phase de tournoi
+(`POST /api/v1/tournois/{id}/phases`), qui passe par `anomalies_sequence` — lequel ne regarde ni le
+type ni le réglage des poules. L'organisateur qui compose à la main sur l'écran « Phases » n'est
+donc ni refusé ni averti, et peut ensuite promouvoir un format qui, lui, ne sera plus applicable.
+Élargir demanderait de faire entrer `poules` dans `EtapeSequencee` : c'est une décision de contrat,
+pas un correctif de revue. *(Relevé en 2ᵉ passe par les axes C1 et D.)*
+
 ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé.** Une phase de poules sans
 source déclarée est alimentée par le classement du départ (ADR-0068) : ses niveaux viennent de la
 qualification, pas des poules qui la précèdent, et le serpent y reste le bon réglage. Lire « la 2ᵉ
@@ -150,7 +160,7 @@ est faux à 12 archers comme à 120.
   retomber sur le serpent : elle ne peut venir que d'une écriture à la main ou d'un retour arrière
   de version, et composer « par prudence » y monterait silencieusement un tournoi que personne n'a
   réglé.
-- **La cascade à resserrement tient sans réglage supplémentaire**, et pour une raison qui mérite
+- **Au serpent, la cascade à resserrement tient sans réglage supplémentaire**, et pour une raison qui mérite
   d'être dite : « 3 qualifiés par poule » sur 6 poules prélève 18 archers, soit **trois blocs
   entiers** du classement de phase — le prélèvement ne coupe aucun bloc, donc ADR-0081 ne le refuse
   pas et le départage inter-poules n'est pas requis. Cette propriété tient parce que le nombre de
@@ -203,7 +213,10 @@ est faux à 12 archers comme à 120.
 | §2 — le mode voyage du réglage jusqu'à la lecture | `backend/application/poules.py` (`ServicePoules.classement_de_phase`) | oui |
 | §2 — aucun `rang_premier` par groupe | `backend/domain/palmares.py` (`ResultatPhase.rang_premier`) et `backend/application/prelevement.py` (`tranche`) **inchangés** — c'est la vérification | oui |
 | §3 — le surplus va aux groupes du bas | `backend/domain/poule.py` (`_tranches_de_niveau`) · miroir `frontend/src/shared/phases/poules.ts` (`repartition`) | oui |
-| §4 — le refus, et sa dérogation | `backend/domain/deroule.py` (`_anomalies_serpent_apres_poules`, appelée par `_anomalies_structurelles`) · `backend/domain/erreurs/moteur.py` (`SerpentApresDesPoules`) · `backend/domain/poule.py` (`ReglageDePoules.serpent_assume`) | oui |
+| §2 corollaire — `nb_qualifies` **refusé** sous `PAR_NIVEAU` | `backend/domain/poule.py` (`ReglageDePoules.__post_init__` **et** `ConfigurationPoules.__post_init__`, levant `ConfigurationPouleInvalide`) · miroir front `frontend/src/shared/phases/poules.ts` (`versReglage`) et `ReglagePoules.tsx` (le choix n'est pas offert) | oui |
+| Conséquence — la preuve du choc de poule est **révoquée**, et recalculée | `backend/domain/deroule.py` (`_motif_de_choc` écarte le mode en tête, `_choc_entre_tranches` calcule le prédicat exact) · `backend/domain/erreurs/moteur.py` (`ChocDePoulePossible`, docstring bornée au serpent) | oui |
+| §3 — la règle du gonflement a un **domicile unique** | `backend/domain/poule.py` (`tailles_de_niveau`), consommée par `_tranches_de_niveau` **et** par `_choc_entre_tranches` | oui |
+| §4 — le refus, et sa dérogation | `backend/domain/deroule.py` (`_anomalies_serpent_apres_poules`, appelée par `_anomalies_structurelles` ; `_ne_donne_qu_un_groupe` porte la borne « un seul groupe ») · `backend/domain/erreurs/moteur.py` (`SerpentApresDesPoules`) · `backend/domain/poule.py` (`ReglageDePoules.serpent_assume`) | oui |
 | Conséquence — aucune migration, lecture/écriture au `config` JSON | `backend/infrastructure/db/repositories/moteur.py` (`_lire_reglage_poules`, `_mode_de_composition`, écriture dans `_politiques_json`) | oui |
 | Conséquence — la frontière API | `backend/api/v1/phases.py` et `backend/api/v1/formats.py` (`ReglagePoulesDTO.mode`, `.serpent_assume`) · `backend/api/v1/poules.py` (`RepartitionReponse.mode`) | oui |
 | §1/§3 — la conversion écran ↔ serveur et l'aperçu | `frontend/src/shared/phases/poules.ts` (`ModeDeComposition`, `repartition`, `tranchesDeRangs`, `decrireRepartition`, `versReglage`, `depuisReglage`) | oui |

@@ -146,10 +146,15 @@ class ConfigurationPoules:
                 f"Un archer dispute au moins une rencontre, ou toutes si le nombre n'est pas "
                 f"déclaré (reçu {self.rencontres_par_archer})."
             )
-        # Le même invariant qu'au réglage, sur l'objet que le **moteur** consomme réellement : c'est
-        # `ConfigurationPoules.nb_qualifies` que lit `qualifies_de_poule`, et `pour_effectif` n'est
-        # pas la seule porte d'entrée. Le redoubler ici n'est pas une duplication d'invariant mais
-        # sa pose à la frontière effective — voir la justification longue sur `ReglageDePoules`.
+        # ⚠️ **Ce n'est pas une duplication d'invariant, c'est l'invariant DE CET OBJET.**
+        # `ConfigurationPoules` porte elle-même `nb_qualifies` **et** `mode` : un value object qui
+        # refuse son propre état incohérent est à sa place, et c'est `nb_qualifies` d'ici que lit
+        # `qualifies_de_poule`. Le réglage le redouble uniquement pour **ajouter le conseil de
+        # remédiation** (« faites prélever des groupes entiers »), qui n'aurait aucun sens ici.
+        #
+        # *(Correctif de revue : une version antérieure de ce commentaire justifiait la pose par une
+        # pluralité de portes d'entrée — `pour_effectif` est en réalité le seul constructeur de
+        # production. La pose reste juste, la raison invoquée était fausse.)*
         if self.nb_qualifies is not None and self.mode is ModeDeComposition.PAR_NIVEAU:
             raise ConfigurationPouleInvalide(
                 "Des poules de niveau ne désignent pas un nombre de qualifiés par poule : chaque "
@@ -225,6 +230,17 @@ class ReglageDePoules:
     de distinguer « voulu » de « pas vu ». Elle n'a d'effet **que** sous `SERPENT` — en mode
     `PAR_NIVEAU` il n'y a rien à assumer, et `__post_init__` la **remet à `False`** plutôt que de
     laisser la propriété au bon vouloir des appelants (correctif de revue, axes C1 et D).
+
+    ⚠️ **Pourquoi effacer ici, alors que `departage_inter_poules` est seulement ignoré ?**
+    L'asymétrie est voulue et tient à ce que chaque champ **fait** : une dérogation *lève un refus*,
+    un départage n'en lève aucun. Un départage dormant sous `PAR_NIVEAU` ne peut rien produire au
+    retour au serpent — il retrouve simplement la case telle qu'elle était, ce que l'organisateur
+    attend. Une dérogation dormante, elle, **désarmerait un garde-fou** sans que personne ne l'ait
+    assumée pour ce réglage-là. On efface donc l'une et on conserve l'autre.
+
+    *(On ne **refuse** pas pour autant, contrairement à `SourcePhase`, qui traite un champ étranger
+    à sa nature en `SourceMalFormee` : cocher la case puis changer de mode n'est pas une faute de
+    l'organisateur, c'est un geste ordinaire d'écran.)*
 
     ⚠️ **La normalisation vit ici et non côté écran.** Le front la faisait déjà (`versReglage`),
     mais il n'est qu'une des portes : l'API en direct, la promotion d'un format, un import de
@@ -486,6 +502,22 @@ def _serpent(participants: Sequence[Participant], nb_poules: int) -> list[list[P
     return groupes
 
 
+def tailles_de_niveau(effectif: int, nb_poules: int) -> list[int]:
+    """Les effectifs des tranches d'une composition **par niveau**, dans l'ordre (E05US029).
+
+    **Domicile unique de la règle du gonflement.** Les `surplus` **derniers** groupes prennent un
+    membre de plus — le bas absorbe le reste (arbitrage du cadrage du 21/08/2026).
+
+    Publique et partagée : `_tranches_de_niveau` la consomme pour composer, et
+    `domain/deroule.py` pour savoir **quels rangs occupe un groupe** — c'est ce qui lui permet de
+    dire si un tableau peut apparier deux membres d'une même poule sans réinventer l'arithmétique
+    (correctif de revue, axe D). La recopier là-bas aurait été la duplication d'invariant que le
+    registre proscrit, sur la propriété même qui définit le format.
+    """
+    base, surplus = divmod(effectif, nb_poules)
+    return [base + (1 if numero >= nb_poules - surplus else 0) for numero in range(nb_poules)]
+
+
 def _tranches_de_niveau(
     participants: Sequence[Participant], nb_poules: int
 ) -> list[list[Participant]]:
@@ -506,7 +538,7 @@ def _tranches_de_niveau(
     tranchée : les groupes y sont équilibrés par construction, donc *lequel* gonfle est sans
     conséquence sportive. Par niveau, c'en est une.
 
-    ⚠️ **Limite connue — les sources multiples** (relevée en revue, axe D, non corrigée ici).
+    ⚠️ **Limite connue — les sources multiples** (`# DETTE-077`, relevée en revue, axe D).
     `preleves` range son résultat par `(ordre_source, rang)`. Une phase de niveau qui prélève dans
     **deux** phases parallèles reçoit donc « tous ceux de la source A, puis tous ceux de la source
     B » et compose des groupes qui reflètent l'**ordre des sources**, pas les niveaux. Le classement
@@ -516,9 +548,7 @@ def _tranches_de_niveau(
     d'ensemencement existe déjà, mais la lecture par blocs n'*affirmait* pas un ordre de
     niveau — ici, si.
     """
-    base, surplus = divmod(len(participants), nb_poules)
-    # Les `surplus` **derniers** groupes prennent un membre de plus — le bas gonfle.
-    tailles = [base + (1 if numero >= nb_poules - surplus else 0) for numero in range(nb_poules)]
+    tailles = tailles_de_niveau(len(participants), nb_poules)
     groupes: list[list[Participant]] = []
     debut = 0
     for taille in tailles:

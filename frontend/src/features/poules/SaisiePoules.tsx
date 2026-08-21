@@ -139,8 +139,8 @@ function PhaseDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: num
             sont pas équilibrés, et un scoreur qui verrait la poule A aligner les six meilleurs
             sans explication pourrait croire à une composition ratée. */}
         {etat.data.repartition.effectif} archers,{' '}
-        {etat.data.repartition.mode === 'par_niveau'
-          ? decrireRepartition(etat.data.repartition.tailles, 'par_niveau')
+        {etat.data.repartition.mode === 'par_niveau' && etat.data.repartition.tailles.length > 0
+          ? `${decrireRepartition(etat.data.repartition.tailles, 'par_niveau')} de la phase`
           : `${etat.data.repartition.nb_poules} poules de ${etat.data.repartition.taille_visee} visés`}
         .
       </p>

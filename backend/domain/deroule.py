@@ -61,7 +61,12 @@ from domain.phase import (
     anomalies_sequence,
 )
 from domain.plage import Plage
-from domain.poule import ModeDeComposition, ReglageDePoules, nb_poules_pour
+from domain.poule import (
+    ModeDeComposition,
+    ReglageDePoules,
+    nb_poules_pour,
+    tailles_de_niveau,
+)
 
 _TYPES_SANS_OPPOSITION = TYPES_SANS_OPPOSITION
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
@@ -653,21 +658,41 @@ def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterat
 
 
 def _ne_donne_qu_un_groupe(etape: EtapeProjetable, reglage: ReglageDePoules) -> bool:
-    """L'étape ne peut-elle composer qu'**une** poule, d'après ce qu'elle déclare (E05US029) ?
+    """L'étape ne peut-elle composer qu'**une** poule, d'après tout ce qu'elle déclare (E05US029) ?
 
-    On lit l'effectif **déclaré** — celui de l'étape, sinon la largeur cumulée de ses fenêtres —
-    et non un effectif de tournoi : le contrôle reste ainsi vrai à tout effectif, donc structurel,
-    ce qui est la condition de la gravité bloquante (ADR-0063).
+    On lit l'effectif **déclaré** — celui de l'étape *et* la largeur cumulée de ses fenêtres — et
+    non un effectif de tournoi : le contrôle reste ainsi vrai à tout effectif, donc structurel, ce
+    qui est la condition de la gravité bloquante (ADR-0063).
 
-    Rend `False` dès que le compte n'est pas déclarable (fenêtre à fin ouverte) : on ne se tait
-    que sur ce qu'on **sait** être un groupe unique — « on ne refuse pas ce qu'on ne peut pas
-    juger » vaut dans les deux sens.
+    ⚠️ **Les deux évidences doivent concorder, et la première version ne le faisait pas**
+    (correctif de 2ᵉ passe, axes C1 et D). L'effectif déclaré court-circuitait la lecture des
+    fenêtres — or ce n'est qu'une *déclaration*, jamais opposable : au tournoi c'est
+    `len(participants)` qui compose. Une phase déclarant « 6 » avec une source « à partir du rang
+    1 » recevait 36 archers, composait 6 poules au serpent après des poules, et le refus ne tombait
+    pas. On ne se tait donc que si **aucun** signal déclarable n'annonce plus d'un groupe.
+
+    ⚠️ **Un effectif déclaré invalide ne fait pas lever ici** (même correctif, axes A, C1 et D).
+    `nb_poules_pour` refuse `effectif < 1`, et un `ModelePhase` de brouillon accepte `0` — c'est le
+    régime d'ADR-0063, « l'enregistrement accepte le brouillon, le diagnostic dit pourquoi ». Sans
+    cette garde, une `DomainError` s'échappait du générateur d'anomalies et le diagnostic répondait
+    **422** au lieu de lister le défaut qu'`anomalies_etape` produit déjà. Le voisin
+    `_motif_de_choc` portait cette précaution depuis toujours ; la fonction neuve ne l'avait pas.
     """
     if etape.effectif is not None:
-        return nb_poules_pour(etape.effectif, reglage.taille_visee) == 1
+        if etape.effectif < 1:
+            # Effectif de brouillon : `anomalies_etape` le signale, on ne conclut rien ici.
+            return False
+        if nb_poules_pour(etape.effectif, reglage.taille_visee) > 1:
+            return False
     largeurs = [_largeur(source) for source in etape.sources if source.nature is NatureSource.RANGS]
     if not largeurs or any(largeur == sys.maxsize for largeur in largeurs):
-        return False
+        # Fenêtre à fin ouverte : le compte n'est pas déclarable, donc on ne peut pas certifier le
+        # groupe unique — « on ne refuse pas ce qu'on ne peut pas juger » vaut dans les deux sens.
+        return (
+            etape.effectif is not None
+            and nb_poules_pour(etape.effectif, reglage.taille_visee) == 1
+            and not largeurs
+        )
     return nb_poules_pour(sum(largeurs), reglage.taille_visee) == 1
 
 
@@ -841,6 +866,12 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
 
     Dans ces trois cas on **signale** : l'innocuité n'est pas démontrable, et un avertissement de
     trop coûte une lecture là où un avertissement manquant coûte un tournoi mal apparié.
+
+    4. le mode **`PAR_NIVEAU`** (E05US029) casse l'hypothèse d'une **quatrième** façon, et c'est la
+       seule qui ne mène pas à « signaler faute de savoir » : les membres d'une poule y occupent des
+       rangs **contigus**, donc l'appariement se **calcule** exactement
+       (`_choc_entre_tranches`) au lieu de se supposer. Ce cas ne passe jamais par l'arithmétique
+       d'espacement ci-dessous — il en sort avant.
     """
     reglage = source.poules
     effectif = effectif_resolu if effectif_resolu is not None else source.effectif
@@ -854,17 +885,16 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
         # revue). Tout ce qui suit repose sur « le membre `k` occupe les rangs `k, k+P, k+2P…` » —
         # c'est la lecture **au serpent**. Par niveau, `classement_de_poules` range groupe par
         # groupe : les membres d'une poule occupent des rangs **contigus**, et le prédicat validé
-        # sur 9945 configurations ne décrit plus rien. Mesuré : 36 archers en 6 poules de niveau,
-        # tableau de 32 → le serpent apparie (32, 33) et (31, 34), tous du même groupe, et l'ancien
-        # code se taisait parce que `P` était pair.
+        # sur 9945 configurations ne décrit plus rien.
         #
-        # Le motif est rendu **inconditionnellement** : par niveau, un prélèvement en tête reprend
-        # des groupes entiers, donc des membres d'une même poule se croisent dans le tableau dès
-        # que celui-ci les apparie. C'est exact plutôt que prudent.
-        return (
-            "les groupes sont composés par niveau, donc les membres d'une poule occupent des "
-            "rangs contigus au lieu d'être régulièrement espacés"
-        )
+        # ⚠️ **On calcule le prédicat exact plutôt que de signaler par prudence** (2ᵉ correctif de
+        # revue). Une première version rendait le motif **inconditionnellement**, en affirmant que
+        # c'était « exact plutôt que prudent » : mesuré, c'était faux **une fois sur quatre**
+        # (25,1 % de faux positifs sur 89 408 configurations, axe D). Or les tranches étant
+        # **contiguës et dérivables**, l'appariement se vérifie directement — et un avertissement
+        # systématique sur un format nominal est le bruit qui fait ignorer les vrais signaux,
+        # exactement l'argument que cette fonction oppose déjà à l'un de ses oracles passés.
+        return _choc_entre_tranches(effectif, resolu, reglage.taille_visee)
     if reglage.departage_inter_poules:
         return (
             "le départage inter-poules réordonne chaque bloc de rangs, donc les membres d'une "
@@ -882,6 +912,41 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
     taille_tableau = _puissance_de_deux_au_moins(resolu)
     if nb_poules % 2 == 1 and (taille_tableau + 1 + nb_poules) // 2 <= resolu:
         return f"le nombre de poules ({nb_poules}) est impair, donc le serpent ne les sépare pas"
+    return None
+
+
+def _choc_entre_tranches(effectif: int, resolu: int, taille_visee: int) -> str | None:
+    """Le tableau apparie-t-il deux membres d'une **même tranche de niveau** au premier tour ?
+
+    Exact, et vérifiable à la main : les groupes sont des intervalles de rangs (`tailles_de_niveau`,
+    domicile unique de la règle), et le tableau oppose le rang `r` au rang `M+1-r` où `M` est sa
+    taille — la puissance de 2 au moins égale au prélèvement. Il y a choc dès qu'une de ces paires
+    tombe deux fois dans la même tranche.
+
+    Rend `None` — donc *pas* d'avertissement — dans le cas nominal que le format vise : un
+    prélèvement de **groupes entiers** (« les rangs 1 à 16 » sur des groupes de 8) apparie
+    systématiquement le groupe A contre le groupe B, et ne réunit personne.
+    """
+    try:
+        nb_poules = nb_poules_pour(effectif, taille_visee)
+    except ConfigurationPouleInvalide:
+        return "le réglage de poules est incohérent, donc l'appariement n'est pas calculable"
+    groupe_du_rang: dict[int, int] = {}
+    rang = 1
+    for numero, taille in enumerate(tailles_de_niveau(effectif, nb_poules)):
+        for _ in range(taille):
+            groupe_du_rang[rang] = numero
+            rang += 1
+    taille_tableau = _puissance_de_deux_au_moins(resolu)
+    for rang in range(1, resolu + 1):
+        adverse = taille_tableau + 1 - rang
+        if adverse <= rang or adverse > resolu:
+            continue
+        if groupe_du_rang.get(rang) == groupe_du_rang.get(adverse):
+            return (
+                f"les groupes sont composés par niveau, donc contigus, et le tableau apparie les "
+                f"rangs {rang} et {adverse} — tous deux de la même poule"
+            )
     return None
 
 

@@ -977,3 +977,48 @@ def test_simuler_un_format_sans_qualification_est_refuse_en_400(
 
         assert refus.status_code == 400
         assert refus.json()["code"] == "format_non_simulable"
+
+
+def test_un_reglage_de_poules_par_niveau_survit_a_l_aller_retour_de_bibliotheque(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Le DTO jumeau de `formats.py` n'était éprouvé par rien** (relevé en revue, E05US029).
+
+    `ReglagePoulesDTO` est écrit **deux fois** — une par routeur de composition (`DETTE-054`) —, et
+    E05US029 ajoute `mode` / `serpent_assume` aux deux. Un test d'aller-retour existait côté
+    *tournoi*, aucun côté *bibliothèque* : si `vers_agregat` ou `de_agregat` d'un des deux jumeaux
+    avait oublié un champ, la porte serait restée verte à l'identique.
+
+    Ce n'est pas théorique — c'est l'angle mort que `DETTE-054` décrit mot pour mot (« une copie qui
+    oublierait un champ ne ferait rougir personne »), et la route concernée sert l'atelier
+    « Composer un déroulé », que la fiche de recette désigne comme **le** seul écran portant
+    l'aperçu et le verdict. Le mode y retomberait au serpent au rechargement, en silence.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        cree = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Cascade club",
+                "etapes": [
+                    _QUALIFICATION,
+                    {
+                        "ordre": 2,
+                        "type": "poules",
+                        "sources": [{"nature": "rangs", "ordre_source": 1, "rang_debut": 1}],
+                        "poules": {"taille_visee": 6, "mode": "par_niveau"},
+                    },
+                ],
+            },
+        )
+        assert cree.status_code == 201, cree.text
+
+        # Pas de `GET /formats/{id}` au routeur : la bibliothèque se relit par sa liste.
+        relu = client.get("/api/v1/formats")
+
+    assert relu.status_code == 200, relu.text
+    format_relu = next(f for f in relu.json() if f["id"] == cree.json()["id"])
+    etape = next(e for e in format_relu["etapes"] if e["ordre"] == 2)
+    assert etape["poules"]["mode"] == "par_niveau"
+    assert etape["poules"]["serpent_assume"] is False
