@@ -593,6 +593,29 @@ def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterat
     sur ce cas — et manqué celui d'une phase de poules prélevant dans une phase de poules **non
     adjacente**.
 
+    ⚠️ **Seules les sources `RANGS` comptent** (correctif de revue, axe D, bloquant). `preleves`
+    n'honore que celles-là : `le_reste` et `issue_de_tour` sont **inertes** (`DETTE-033`), et une
+    phase dont toutes les sources le sont retombe sur le classement du **départ** — donc le cas que
+    le paragraphe ci-dessus déclare légitime, atteint par une autre porte. Sans ce filtre, un
+    format « la phase 3 prend *le reste* de la phase 2 » — geste offert par l'atelier — devenait
+    **inapplicable** après mise à jour, et son message invitait à composer par niveau une phase
+    peuplée du plateau entier en ordre de qualification. C'est le précédent qu'énonce
+    `_anomalies_blocs_orphelins` : « un format du club qui cesse de fonctionner ».
+
+    ⚠️ **Une phase qui ne peut donner qu'UN groupe n'est jamais en cause** (correctif de revue, axe
+    C2). À un seul groupe, serpent et niveau composent la **même** poule : rien n'est éparpillé, et
+    exiger un geste qui ne change rien est un refus non justifiable. Le cas n'a rien de théorique —
+    c'est la façon dont ce format se composait **avant** cette US, une étape par niveau portant une
+    poule et sa tranche (« les rangs 1 à 6 »). Sans cette garde, six étapes de ce genre rendaient
+    six anomalies bloquantes et le format entier basculait non applicable. Le test reste
+    **structurel** (il lit l'effectif *déclaré*, pas un effectif de tournoi), donc la gravité
+    bloquante d'ADR-0063 reste justifiée.
+
+    ⚠️ **Borné aux sources de type POULES par le CA d'E05US029.** Le motif — « la source établit
+    déjà des niveaux » — vaudrait identiquement pour un système suisse ou une élimination directe,
+    tous deux `classement_lisible`. Ce n'est pas un oubli mais un périmètre : l'élargir demande un
+    arbitrage du commanditaire, pas une extension de prédicat en douce.
+
     ⚠️ **On ne cite que les sources réellement en cause**, comme `_anomalies_choc_de_poule` a appris
     à le faire : nommer une source de qualification à côté d'une source de poules enverrait
     l'organisateur corriger un prélèvement qui n'a rien à se reprocher.
@@ -608,21 +631,44 @@ def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterat
             {
                 source.ordre_source
                 for source in etape.sources
-                if par_ordre.get(source.ordre_source) is not None
-                and par_ordre[source.ordre_source].type is TypePhase.POULES
+                if source.nature is NatureSource.RANGS
+                and (amont := par_ordre.get(source.ordre_source)) is not None
+                and amont.type is TypePhase.POULES
             }
         )
         if not sources_de_poules:
             continue
+        if _ne_donne_qu_un_groupe(etape, reglage):
+            continue
+        pluriel = "les phases" if len(sources_de_poules) > 1 else "la phase"
         citees = ", ".join(str(ordre) for ordre in sources_de_poules)
         yield Anomalie(
             SerpentApresDesPoules(
-                f"La phase {etape.ordre} prélève dans la phase {citees} (poules) et compose ses "
+                f"La phase {etape.ordre} prélève dans {pluriel} {citees} (poules) et compose ses "
                 "groupes au serpent : les niveaux déjà établis y seraient éparpillés. Choisissez "
                 "« par niveau », ou assumez le serpent explicitement."
             ),
             etape.ordre,
         )
+
+
+def _ne_donne_qu_un_groupe(etape: EtapeProjetable, reglage: ReglageDePoules) -> bool:
+    """L'étape ne peut-elle composer qu'**une** poule, d'après ce qu'elle déclare (E05US029) ?
+
+    On lit l'effectif **déclaré** — celui de l'étape, sinon la largeur cumulée de ses fenêtres —
+    et non un effectif de tournoi : le contrôle reste ainsi vrai à tout effectif, donc structurel,
+    ce qui est la condition de la gravité bloquante (ADR-0063).
+
+    Rend `False` dès que le compte n'est pas déclarable (fenêtre à fin ouverte) : on ne se tait
+    que sur ce qu'on **sait** être un groupe unique — « on ne refuse pas ce qu'on ne peut pas
+    juger » vaut dans les deux sens.
+    """
+    if etape.effectif is not None:
+        return nb_poules_pour(etape.effectif, reglage.taille_visee) == 1
+    largeurs = [_largeur(source) for source in etape.sources if source.nature is NatureSource.RANGS]
+    if not largeurs or any(largeur == sys.maxsize for largeur in largeurs):
+        return False
+    return nb_poules_pour(sum(largeurs), reglage.taille_visee) == 1
 
 
 def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
@@ -720,9 +766,12 @@ def _anomalies_choc_de_poule(
     **byes**, ce qui est un faux positif systématique à `P` pair, et se taisait sur des réglages où
     l'arithmétique ne s'applique tout simplement pas.
 
-    Le prédicat retenu est exact, et il l'est au sens strict : `P impair ET (M+1+P)//2 <= N`, où
+    Le prédicat retenu est exact **au serpent**, et il l'est au sens strict : `P impair ET
+    (M+1+P)//2 <= N`, où
     `M` est la puissance de 2 **supérieure ou égale** à `N`. Confronté à l'appariement réel du
     serpent sur `P = 2..39` croisé avec `N = 2..256` — 9945 configurations —, **zéro désaccord**.
+    ⚠️ Cette mesure ne dit **rien** du mode `PAR_NIVEAU`, qui révoque l'hypothèse d'espacement
+    elle-même (E05US029) : ce cas est écarté en tête de `_motif_de_choc`, avant tout calcul.
 
     Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
     règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
@@ -777,7 +826,7 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
     """Pourquoi le serpent peut réunir deux membres d'une poule — ou `None` s'il ne le peut pas.
 
     Le raisonnement ne vaut que sous une hypothèse : **le membre `k` d'une poule occupe les rangs
-    `k, k+P, k+2P…`** du classement de phase. Trois choses la cassent, et chacune est vérifiée ici
+    `k, k+P, k+2P…`** du classement de phase. Quatre choses la cassent, et chacune est vérifiée ici
     plutôt que supposée — c'est ce qui a manqué à la version précédente :
 
     1. le **départage inter-poules** : `classement_de_poules` trie alors chaque bloc de niveau
@@ -799,6 +848,22 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
         return (
             "le nombre de poules ne se déduit pas de ce schéma (phase non réglée, ou effectif "
             "inconnu), donc l'appariement ne peut pas être prouvé sûr"
+        )
+    if reglage.mode is ModeDeComposition.PAR_NIVEAU:
+        # ⚠️ **La 4ᵉ chose qui casse l'hypothèse d'espacement** (E05US029, relevée par trois axes de
+        # revue). Tout ce qui suit repose sur « le membre `k` occupe les rangs `k, k+P, k+2P…` » —
+        # c'est la lecture **au serpent**. Par niveau, `classement_de_poules` range groupe par
+        # groupe : les membres d'une poule occupent des rangs **contigus**, et le prédicat validé
+        # sur 9945 configurations ne décrit plus rien. Mesuré : 36 archers en 6 poules de niveau,
+        # tableau de 32 → le serpent apparie (32, 33) et (31, 34), tous du même groupe, et l'ancien
+        # code se taisait parce que `P` était pair.
+        #
+        # Le motif est rendu **inconditionnellement** : par niveau, un prélèvement en tête reprend
+        # des groupes entiers, donc des membres d'une même poule se croisent dans le tableau dès
+        # que celui-ci les apparie. C'est exact plutôt que prudent.
+        return (
+            "les groupes sont composés par niveau, donc les membres d'une poule occupent des "
+            "rangs contigus au lieu d'être régulièrement espacés"
         )
     if reglage.departage_inter_poules:
         return (

@@ -146,6 +146,15 @@ class ConfigurationPoules:
                 f"Un archer dispute au moins une rencontre, ou toutes si le nombre n'est pas "
                 f"déclaré (reçu {self.rencontres_par_archer})."
             )
+        # Le même invariant qu'au réglage, sur l'objet que le **moteur** consomme réellement : c'est
+        # `ConfigurationPoules.nb_qualifies` que lit `qualifies_de_poule`, et `pour_effectif` n'est
+        # pas la seule porte d'entrée. Le redoubler ici n'est pas une duplication d'invariant mais
+        # sa pose à la frontière effective — voir la justification longue sur `ReglageDePoules`.
+        if self.nb_qualifies is not None and self.mode is ModeDeComposition.PAR_NIVEAU:
+            raise ConfigurationPouleInvalide(
+                "Des poules de niveau ne désignent pas un nombre de qualifiés par poule : chaque "
+                "groupe dispute sa propre tranche de rangs."
+            )
 
 
 @dataclass(frozen=True)
@@ -214,7 +223,14 @@ class ReglageDePoules:
     ⚠️ **Ce qu'elle achète n'est pas le droit de se tromper**, c'est la trace que le choix a été
     posé : rebrasser volontairement les groupes reste légitime, et sans cette case rien ne permet
     de distinguer « voulu » de « pas vu ». Elle n'a d'effet **que** sous `SERPENT` — en mode
-    `PAR_NIVEAU` il n'y a rien à assumer.
+    `PAR_NIVEAU` il n'y a rien à assumer, et `__post_init__` la **remet à `False`** plutôt que de
+    laisser la propriété au bon vouloir des appelants (correctif de revue, axes C1 et D).
+
+    ⚠️ **La normalisation vit ici et non côté écran.** Le front la faisait déjà (`versReglage`),
+    mais il n'est qu'une des portes : l'API en direct, la promotion d'un format, un import de
+    bibliothèque passent à côté. Une dérogation persistée sous `PAR_NIVEAU` restait **armée à
+    froid** et levait le refus au retour au serpent — donc « voulu » et « pas vu » redevenaient
+    indiscernables, exactement ce que ce champ existe pour empêcher.
     """
 
     def __post_init__(self) -> None:
@@ -243,6 +259,34 @@ class ReglageDePoules:
                 f"Un archer dispute au moins une rencontre, ou toutes si le nombre n'est pas "
                 f"déclaré (reçu {self.rencontres_par_archer})."
             )
+        # ⚠️ **« k qualifiés par poule » n'est pas exprimable en poules de niveau** (relevé en revue,
+        # axe C1, bloquant). Sous `SERPENT`, les `k` premiers de chaque groupe occupent les rangs
+        # `1..k*P` du classement de phase — une fenêtre **contiguë**, que la phase avale prélève par
+        # rangs. Sous `PAR_NIVEAU` ce n'est plus vrai : sur 4 groupes de 4 qualifiant 2, les
+        # qualifiés sont les rangs {1,2, 5,6, 9,10, 13,14}, un **peigne** qu'aucun prélèvement par
+        # rangs ne désigne. La fenêtre « rangs 1-8 » rendrait les groupes A et B entiers — un autre
+        # ensemble, de même cardinal, donc plausible et faux.
+        #
+        # Trois conséquences suivaient, toutes atteignables : la vue publique annonçait des
+        # qualifiés que le moteur ne prélevait pas, ADR-0081 ne pouvait plus refuser une fenêtre qui
+        # coupe un groupe (`_par_groupe` ne produit aucun bloc indécis), et un barrage était réclamé
+        # — donc des flèches tirées en salle — pour départager une barre que personne ne consomme.
+        #
+        # On refuse **le réglage** plutôt que d'inventer une sémantique : une phase de niveau qui
+        # doit resserrer se prélève par **groupes entiers** (« les rangs 1 à 18 » = les trois
+        # premiers groupes), ce qui est exact et déjà composable. Aucun réglage existant n'est
+        # concerné — `PAR_NIVEAU` naît avec cette US.
+        if self.nb_qualifies is not None and self.mode is ModeDeComposition.PAR_NIVEAU:
+            raise ConfigurationPouleInvalide(
+                "Des poules de niveau ne désignent pas un nombre de qualifiés par poule : chaque "
+                "groupe dispute sa propre tranche de rangs. Pour resserrer, faites prélever à la "
+                "phase suivante des groupes entiers (« les rangs 1 à 18 »)."
+            )
+        # La dérogation est **normalisée**, pas refusée : la porter à `True` sous `PAR_NIVEAU` n'est
+        # pas une faute de l'organisateur (il a pu cocher la case, puis changer de mode), mais la
+        # laisser persister arme un levier que personne ne réassumera au retour au serpent.
+        if self.serpent_assume and self.mode is not ModeDeComposition.SERPENT:
+            object.__setattr__(self, "serpent_assume", False)
 
     @property
     def produit_des_qualifies(self) -> bool:
@@ -461,6 +505,16 @@ def _tranches_de_niveau(
     ⚠️ **La question ne se pose pas au serpent**, et c'est pourquoi elle n'avait jamais été
     tranchée : les groupes y sont équilibrés par construction, donc *lequel* gonfle est sans
     conséquence sportive. Par niveau, c'en est une.
+
+    ⚠️ **Limite connue — les sources multiples** (relevée en revue, axe D, non corrigée ici).
+    `preleves` range son résultat par `(ordre_source, rang)`. Une phase de niveau qui prélève dans
+    **deux** phases parallèles reçoit donc « tous ceux de la source A, puis tous ceux de la source
+    B » et compose des groupes qui reflètent l'**ordre des sources**, pas les niveaux. Le classement
+    annoncerait le vainqueur de B derrière le dernier de A, au seul motif que B porte un ordre plus
+    grand. Le cas n'est ni refusé ni signalé : il demanderait de savoir fusionner deux classements
+    de phases parallèles, ce qu'aucun CA ne demande aujourd'hui. Au serpent, le défaut
+    d'ensemencement existe déjà, mais la lecture par blocs n'*affirmait* pas un ordre de
+    niveau — ici, si.
     """
     base, surplus = divmod(len(participants), nb_poules)
     # Les `surplus` **derniers** groupes prennent un membre de plus — le bas gonfle.

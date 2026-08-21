@@ -79,7 +79,7 @@ def classement_de_poules(
     lignes: Mapping[ArcherId, LigneClassement],
     *,
     departage: Tiebreak | None = None,
-    mode: ModeDeComposition = ModeDeComposition.SERPENT,
+    mode: ModeDeComposition,
 ) -> ClassementSource:
     """Le classement de la phase, blocs de rang concaténés, et ce qu'il a d'encore indécis.
 
@@ -97,9 +97,16 @@ def classement_de_poules(
     que seul le service qui remonte la chaîne connaît (`application/prelevement.py:tranche`).
 
     `mode` dit **comment les groupes ont été composés**, et c'est ce qui décide de l'ordre rendu
-    (E05US029). Sous `SERPENT` — le défaut, et tout ce que ce module a fait jusqu'ici — l'ordre est
-    celui décrit ci-dessus. Sous `PAR_NIVEAU`, il est **groupe par groupe** : voir
-    `_par_groupe` pour le raisonnement, qui est l'exact inverse de celui du préambule.
+    (E05US029). Sous `SERPENT`, l'ordre est celui décrit ci-dessus ; sous `PAR_NIVEAU`, il est
+    **groupe par groupe** — voir `_par_groupe`, dont le raisonnement est l'exact inverse de celui
+    du préambule.
+
+    ⚠️ **Sans valeur par défaut, délibérément** (correctif de revue, axe C1). Les deux versants du
+    mode sont indissociables (ADR-0094 §2) : un défaut rendrait l'oubli **silencieux** et donnerait
+    le mauvais ordre, ce qui est très exactement la classe de panne que cet ADR existe pour fermer.
+    L'appelant de production résout le mode depuis le réglage de la phase ; les tests qui décrivent
+    l'ordre historique passent `SERPENT` explicitement, et c'est plus honnête ainsi — cet ordre
+    est **un** des deux, pas la norme dont l'autre dévie.
 
     Les participants **équipe** sont écartés (leur `ref_id` n'est pas un archer, ADR-0028), comme le
     fait déjà `classement_de_tableau` ; la résolution viendra avec les équipes (E13US002).

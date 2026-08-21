@@ -349,6 +349,104 @@ def test_un_reglage_de_poules_se_compose_et_se_relit_par_lapi(
     }
 
 
+def test_un_reglage_par_niveau_survit_a_l_aller_retour(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Majeur relevé en revue (axe B) : la persistance du mode non-défaut n'était pas prouvée.**
+
+    Le test voisin ne pose que les **défauts** — il passerait à l'identique si les deux `if`
+    d'écriture de `_politiques_json` disparaissaient, c'est-à-dire si le « par niveau » choisi par
+    l'organisateur retombait silencieusement au serpent au rechargement de la page. Or le CA « le
+    mode de composition est un réglage » n'est tenu que si le réglage **survit** à l'aller-retour ;
+    et une composition qui change en silence est exactement la panne bien formée, plausible et
+    fausse qu'ADR-0094 existe pour fermer.
+
+    Un seul test couvre les deux mailles : `_politiques_json` / `_lire_reglage_poules` servent
+    aussi la bibliothèque de formats.
+
+    ⚠️ **Sans `nb_qualifies`** : le réglage le refuse sous `par_niveau` (voir le bloquant du même
+    lot) — une phase de niveau classe, elle ne qualifie pas.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        connecter_admin(client)
+
+        ajout = client.post(
+            f"/api/v1/tournois/{scn.tournoi_id}/phases",
+            json={
+                "type": "poules",
+                "sources": [],
+                "poules": {"taille_visee": 6, "mode": "par_niveau"},
+            },
+        )
+        assert ajout.status_code == 201, ajout.text
+
+        relu = client.get(f"/api/v1/tournois/{scn.tournoi_id}/phases")
+
+    assert relu.status_code == 200, relu.text
+    etape = next(e for e in relu.json() if e["id"] == ajout.json()["id"])
+    assert etape["poules"]["mode"] == "par_niveau"
+    assert etape["poules"]["serpent_assume"] is False
+
+
+def test_une_derogation_au_serpent_survit_a_l_aller_retour(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le pendant du test ci-dessus sur l'autre champ neuf : une dérogation posée doit se relire.
+
+    C'est elle qui lève le refus « 2ᵉ phase de poules au serpent » ; perdue au rechargement,
+    l'organisateur se verrait re-refuser un déroulé qu'il a explicitement assumé.
+    """
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        connecter_admin(client)
+
+        ajout = client.post(
+            f"/api/v1/tournois/{scn.tournoi_id}/phases",
+            json={
+                "type": "poules",
+                "sources": [],
+                "poules": {"taille_visee": 6, "serpent_assume": True},
+            },
+        )
+        assert ajout.status_code == 201, ajout.text
+
+        relu = client.get(f"/api/v1/tournois/{scn.tournoi_id}/phases")
+
+    etape = next(e for e in relu.json() if e["id"] == ajout.json()["id"])
+    assert etape["poules"] == {
+        "taille_visee": 6,
+        "bareme": {"victoire": 3, "nul": 1, "defaite": 0},
+        "nb_qualifies": None,
+        "rencontres_par_archer": None,
+        "departage_inter_poules": False,
+        "mode": "serpent",
+        "serpent_assume": True,
+    }
+
+
+def test_des_poules_de_niveau_qui_qualifient_sont_refusees_a_la_frontiere(
+    app_poules: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le bloquant de revue, vu du client : « k qualifiés par poule » n'est pas exprimable par
+    niveau, et le refus doit se voir à la frontière plutôt qu'au montage des groupes le jour J."""
+    with TestClient(app_poules) as client:
+        scn = Scenario(app_poules)
+        connecter_admin(client)
+
+        ajout = client.post(
+            f"/api/v1/tournois/{scn.tournoi_id}/phases",
+            json={
+                "type": "poules",
+                "sources": [],
+                "poules": {"taille_visee": 6, "mode": "par_niveau", "nb_qualifies": 3},
+            },
+        )
+
+    assert ajout.status_code == 422, ajout.text
+    assert ajout.json()["code"] == "configuration_poule_invalide"
+
+
 def test_un_reglage_de_poules_sur_un_autre_type_est_refuse(
     app_poules: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:

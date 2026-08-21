@@ -76,6 +76,18 @@ de poule d'abord » annoncerait le vainqueur du groupe des 31ᵉ-36ᵉ « 1ᵉʳ
 bien formé, plausible, et faux — la classe de défaut d'ADR-0081. C'est pourquoi le mode voyage
 jusqu'à `classement_de_poules` et n'est **pas** consommé seulement à la composition.
 
+**Corollaire — `nb_qualifies` devient sans objet, et il est REFUSÉ.** *(Ajouté après revue —
+c'était le bloquant du lot.)* « k qualifiés par poule » n'est **pas exprimable** sous ce mode : au
+serpent les `k` premiers de chaque groupe occupent les rangs `1..k*P`, une fenêtre contiguë que la
+phase avale prélève par rangs ; par niveau ils forment un **peigne** ({1,2, 5,6, 9,10, 13,14} sur
+4 groupes de 4 qualifiant 2), qu'aucun prélèvement par rangs ne désigne. « Les rangs 1 à 8 »
+rendrait les groupes A et B entiers — un autre ensemble, de même cardinal, donc plausible et faux.
+Trois conséquences suivaient : la vue publique annonçait des qualifiés que le moteur ne prélevait
+pas, le corollaire ci-dessous **désarmait** ADR-0081 sur ce chemin, et un barrage était réclamé —
+donc des flèches tirées en salle — pour une barre que personne ne consomme. `ReglageDePoules` et
+`ConfigurationPoules` refusent donc le couple : une phase de niveau **classe**, et se resserre par
+**groupes entiers**.
+
 **Corollaire — plus aucun bloc indécis inter-poules.** Chaque groupe ayant sa tranche, il n'y a plus
 rien à départager *entre* groupes. `departage_inter_poules` devient sans objet sous `PAR_NIVEAU` ; il
 est **ignoré, non refusé** — un organisateur qui bascule un réglage existant ne doit pas se voir
@@ -106,6 +118,16 @@ de l'intérêt sportif visé, et cela ne se voit qu'en salle une fois les groupe
 avertissement qu'on peut ignorer arriverait toujours trop tard. Ce que la dérogation achète n'est pas
 le droit de se tromper mais la **trace** que le choix a été posé : rebrasser volontairement les
 groupes reste légitime, et sans elle « voulu » et « pas vu » sont indiscernables.
+
+⚠️ **Trois bornes au prédicat, toutes posées après revue.** (1) Seules les sources **`RANGS`**
+comptent : `le_reste` et `issue_de_tour` sont inertes (`DETTE-033`), et une phase dont toutes les
+sources le sont retombe sur le classement du départ — sans ce filtre, un format « la phase 3 prend
+*le reste* de la phase 2 » devenait **inapplicable**. (2) Une phase qui ne peut composer qu'**un
+seul groupe** n'est jamais en cause : les deux modes y donnent la même poule, et c'est très
+exactement la façon dont ce format se composait avant cette US — une étape par niveau, portant une
+poule et sa tranche. (3) Le prédicat est **borné aux sources de type poules** par le CA : le motif
+vaudrait pour un suisse ou une élimination directe, tous deux classants, mais l'élargir demande un
+arbitrage du commanditaire.
 
 ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé.** Une phase de poules sans
 source déclarée est alimentée par le classement du départ (ADR-0068) : ses niveaux viennent de la
@@ -142,9 +164,30 @@ est faux à 12 archers comme à 120.
 - **`DETTE-054` s'élargit d'un cran** : les deux `ReglagePoulesDTO` jumeaux (`api/v1/phases.py` et
   `api/v1/formats.py`) gagnent chacun les deux mêmes champs. C'est la paire déjà inscrite, pas une
   neuve — la ligne existante est élargie plutôt qu'une dette locale inventée.
-- **Ce que cet ADR ne décide pas** : rien sur le croisement des groupes en phase avale
-  (`ChocDePoulePossible` reste un avertissement sur les tableaux, inchangé), et rien sur une
-  troisième façon de composer. Une politique de composition **injectable** au sens de la règle 2
+- **`ChocDePoulePossible` devait être rouvert, et il l'a été.** *(Corrigé après revue — trois axes
+  l'ont relevé indépendamment.)* Une première rédaction disait ce détecteur « inchangé » : le
+  **mécanisme** l'est, sa **justesse** ne l'était pas. Sa preuve — validée sur 9945 configurations —
+  repose sur l'hypothèse « le membre `k` occupe les rangs `k, k+P, k+2P…` », qui **est** la lecture
+  au serpent que §2 révoque. Mesuré : 36 archers en 6 poules de niveau puis un tableau de 32 → le
+  serpent apparie (32, 33) et (31, 34), tous du même groupe, et l'ancien code se taisait parce que
+  `P` était pair. `_motif_de_choc` écarte donc `PAR_NIVEAU` en tête, avec un motif rendu
+  inconditionnellement. **La leçon dépasse ce cas** : un mode qui change l'ordre d'un classement
+  invalide toute preuve écrite contre l'ordre précédent, où qu'elle vive.
+- **Un format enregistré peut devenir refusé**, et l'affirmation « aucun tournoi déjà réglé ne
+  change » doit se lire précisément : elle vaut de la **composition** (aucun groupe ne bouge), pas
+  du **verdict**. Un format enchaînant deux phases de poules par rangs, à deux groupes ou plus,
+  devra cocher la dérogation ou passer par niveau avant d'être appliqué de nouveau.
+- **`ReglageDePoules.mode` rejoint les leviers qui re-partitionnent une phase en cours** —
+  `DETTE-057` est élargie de « population » à « population **ou** composition ». Le mode
+  d'aggravation y est le plus discret : à effectif divisible, le nombre de groupes et les tailles
+  sont **identiques** avant et après, donc l'aperçu ne montre rien. Atténué par `DuelDesynchronise`
+  et par la réversibilité du geste.
+- **Le miroir front est inscrit au registre** (`DETTE-076`), après avoir vécu deux US en simple
+  commentaire — l'aveu en ADR ne remplace pas la ligne.
+- **Ce que cet ADR ne décide pas** : rien sur une troisième façon de composer ; rien sur une phase
+  de niveau à **sources multiples**, où l'ordre de niveau affiché découle de l'ordre des sources
+  (`preleves` range par `(ordre_source, rang)`) et n'a donc pas de sens sportif — le cas n'est ni
+  refusé ni signalé aujourd'hui ; et rien sur l'élargissement du refus aux autres types classants. Une politique de composition **injectable** au sens de la règle 2
   n'est pas justifiée aujourd'hui : il y a deux modes, tous deux réclamés par le commanditaire, et
   aucun troisième en vue — la 3ᵉ occurrence n'existe pas.
 

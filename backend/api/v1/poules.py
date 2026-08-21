@@ -76,7 +76,11 @@ class RepartitionReponse(BaseModel):
     taille_visee: int
     nb_poules: int
     tailles: list[int]
-    mode: ModeDeComposition = ModeDeComposition.SERPENT
+    mode: ModeDeComposition
+    """Sans défaut : DTO **calculé**, jamais désérialisé d'une entrée client.
+
+    Un défaut n'achèterait aucune compatibilité — il laisserait seulement une construction
+    future annoncer « poules » sur une phase composée par niveau (correctif de revue)."""
 
     @staticmethod
     def de_repartition(repartition: RepartitionPoules) -> RepartitionReponse:

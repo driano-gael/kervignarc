@@ -36,8 +36,17 @@ export interface ReglagePoules {
   nb_qualifies: number | null
   rencontres_par_archer: number | null
   departage_inter_poules: boolean
-  mode: ModeDeComposition
-  serpent_assume: boolean
+  /**
+   * ⚠️ **Optionnels, et c'est le type qui doit le dire** (correctif de revue, axes B, C1 et C2).
+   *
+   * Les déclarer requis obligeait `depuisReglage` à se défendre d'une absence que le type disait
+   * impossible (`reglage.mode ?? 'serpent'` était mort au sens des types), et le test de ce repli
+   * devait fabriquer un objet illégal par `as unknown as` — un double cast ne prouve rien, il
+   * empêche seulement `tsc` de dire que le cas ne peut pas se produire. Même geste que
+   * `Repartition.mode?` côté `features/poules/api.ts`.
+   */
+  mode?: ModeDeComposition
+  serpent_assume?: boolean
 }
 
 /**
@@ -163,6 +172,9 @@ export function estValide(etat: EtatPoules): boolean {
  *
  * Rend `[]` sur un effectif ou une taille illisible : l'écran n'affiche alors rien plutôt qu'un
  * aperçu inventé.
+ *
+ * ⚠️ `// DETTE-076` — ce miroir est **inscrit au registre** depuis E05US029 : trois règles du
+ * domaine recopiées ici, sans test de contrat qui empêche les deux copies de diverger.
  */
 export function repartition(
   effectif: number,
@@ -233,15 +245,4 @@ export function decrireRepartition(tailles: number[], mode: ModeDeComposition = 
     .join(', ')
   const pluriel = tailles.length > 1 ? 'poules' : 'poule'
   return `${tailles.length} ${pluriel} : ${groupes}`
-}
-
-/**
- * Le mot à employer pour les groupes d'une phase — « poules » ou « poules de niveau ».
- *
- * Extrait plutôt que rendu en ternaire dans le JSX (E05US029) : c'est du **vocabulaire**, il doit
- * être dit d'une seule façon partout et se tester sans monter de DOM. Le mode est optionnel parce
- * qu'une réponse d'API d'avant cette US ne le porte pas — et « poules » est alors exact.
- */
-export function motDeGroupe(mode: ModeDeComposition | undefined): string {
-  return mode === 'par_niveau' ? 'poules de niveau' : 'poules'
 }

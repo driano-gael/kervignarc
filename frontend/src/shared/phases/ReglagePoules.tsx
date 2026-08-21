@@ -186,10 +186,15 @@ export function ReglagePoules({
         />
         Départager les archers de même rang de poule
       </label>
+      {/* ⚠️ Sous « par niveau », ce réglage est **sans objet** — le domaine l'ignore (ADR-0094
+          §2) : chaque groupe dispute déjà sa propre tranche, il n'existe plus de bloc de
+          vainqueurs à départager. On le **dit** plutôt que de laisser cocher une case qui ne fera
+          rien (correctif de revue, axe B). La valeur n'est pas effacée pour autant : un retour au
+          serpent doit retrouver la case telle qu'elle était. */}
       <p className="carte__aide">
-        Sans départage, les vainqueurs de poule sont à égalité entre eux : une phase suivante peut
-        les prendre <em>tous</em>, mais pas en choisir une partie. Cochez si vous devez prélever à
-        l’intérieur d’un rang — l’outil vous le dira le cas échéant.
+        {etat.mode === 'par_niveau'
+          ? 'Sans objet en composition par niveau : chaque groupe dispute déjà sa propre tranche de rangs, il n’y a plus de rang partagé entre poules.'
+          : 'Sans départage, les vainqueurs de poule sont à égalité entre eux : une phase suivante peut les prendre tous, mais pas en choisir une partie. Cochez si vous devez prélever à l’intérieur d’un rang — l’outil vous le dira le cas échéant.'}
       </p>
 
       {!estValide(etat) && (

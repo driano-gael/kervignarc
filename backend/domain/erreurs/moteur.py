@@ -214,6 +214,11 @@ class PrelevementVide(DomainError):
 class ChocDePoulePossible(DomainError):
     """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
 
+    ⚠️ **Tout ce qui suit vaut au serpent seulement.** En composition `PAR_NIVEAU` (E05US029),
+    les membres d'une poule occupent des rangs **contigus** et non régulièrement espacés : le
+    raisonnement sur la parité de `P` ne s'y applique pas, et `_motif_de_choc` écarte ce mode en
+    tête plutôt que de lui appliquer une arithmétique qui ne le décrit pas.
+
     Le serpent sépare les membres d'une poule quand leur nombre `P` est **pair** : le tableau
     apparie les rangs `r` et `M+1-r` (`M` = taille du tableau, une puissance de 2), donc l'écart
     entre deux adversaires est **impair** et n'est jamais divisible par un `P` pair. À `P` impair il

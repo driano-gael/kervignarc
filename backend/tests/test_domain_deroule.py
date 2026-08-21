@@ -624,15 +624,19 @@ def _poules_de_niveau(
     effectif: int | None = None,
     taille_visee: int = 4,
 ) -> ModelePhase:
-    """Une phase de poules composée **par niveau** — le mode que cette US ouvre."""
+    """Une phase de poules composée **par niveau** — le mode que cette US ouvre.
+
+    ⚠️ **Sans `nb_qualifies`**, contrairement à `_poules` : le réglage le refuse sous `PAR_NIVEAU`
+    (correctif de revue). « k qualifiés par poule » y désignerait un **peigne** de rangs
+    ({1,2, 5,6, 9,10…}) qu'aucun prélèvement par fenêtre ne sait exprimer ; une phase de niveau se
+    prélève par groupes entiers. Ce helper l'a appris en tombant.
+    """
     return ModelePhase(
         ordre=ordre,
         type=TypePhase.POULES,
         sources=sources,
         effectif=effectif,
-        poules=ReglageDePoules(
-            taille_visee=taille_visee, nb_qualifies=4, mode=ModeDeComposition.PAR_NIVEAU
-        ),
+        poules=ReglageDePoules(taille_visee=taille_visee, mode=ModeDeComposition.PAR_NIVEAU),
     )
 
 
@@ -746,3 +750,109 @@ def test_une_phase_de_poules_sans_source_declaree_ne_declenche_rien() -> None:
     ]
 
     assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+# --- Correctifs de revue E05US029 : ce que le refus ne doit PAS attraper --------------------------
+
+
+def test_une_source_inerte_ne_declenche_pas_le_refus() -> None:
+    """⚠️ **Bloquant relevé en revue (axe D).** Le prédicat ignorait la **nature** de la source.
+
+    `preleves` n'honore que les sources `RANGS` : `le_reste` et `issue_de_tour` sont inertes
+    (`DETTE-033`), et une phase dont toutes les sources le sont retombe sur le classement du
+    **départ** — donc ses niveaux viennent de la qualification, pas des poules amont. C'est le cas
+    que la docstring déclare légitime, atteint par une autre porte.
+
+    Sans ce filtre, un format « la phase 3 prend *le reste* de la phase 2 » — geste offert par
+    l'atelier — devenait **inapplicable** après mise à jour, et son message invitait à composer par
+    niveau une phase peuplée du plateau entier en ordre de qualification.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.le_reste(2),), effectif=36, taille_visee=6),
+    ]
+
+    assert "serpent_apres_des_poules" not in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_une_phase_qui_ne_compose_qu_un_groupe_ne_declenche_pas_le_refus() -> None:
+    """⚠️ **Majeur relevé en revue (axe C2).** À un seul groupe, les deux modes composent la **même**
+    poule : rien n'est éparpillé, et exiger un geste qui ne change rien est un refus injustifiable.
+
+    Le cas n'a rien de théorique : c'est la façon dont ce format se composait **avant** cette US —
+    une étape par niveau, portant une poule et sa tranche (« les rangs 1 à 6 »). Sans cette garde,
+    six étapes de ce genre rendaient six anomalies bloquantes et le format entier basculait non
+    applicable, alors qu'il se joue parfaitement.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, 6),), taille_visee=6),
+    ]
+
+    projection = projeter(etapes, effectif=120)
+
+    assert "serpent_apres_des_poules" not in _codes(projection.anomalies)
+    assert projection.est_applicable
+
+
+def test_deux_groupes_declenchent_toujours_le_refus() -> None:
+    """Le contre-test de la garde ci-dessus : elle ne doit pas devenir une échappatoire générale.
+
+    Douze archers en poules de 6 font **deux** groupes — le serpent y éparpille bel et bien les
+    niveaux, et le refus doit tenir.
+    """
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(2, 1, 12),), taille_visee=6),
+    ]
+
+    assert "serpent_apres_des_poules" in _codes(projeter(etapes, effectif=120).anomalies)
+
+
+def test_le_refus_accorde_son_message_au_nombre_de_sources() -> None:
+    """« prélève dans **la phase 2, 3** » se lisait mal — et c'est dans le cas à plusieurs sources
+    que l'organisateur a le plus besoin de savoir quoi corriger (exigence `P-4`)."""
+    etapes = [
+        _qualification(),
+        _poules(2, (SourcePhase.par_rangs(1, 1, 18),), effectif=18, taille_visee=6),
+        _poules(3, (SourcePhase.par_rangs(1, 19, 36),), effectif=18, taille_visee=6),
+        _poules(
+            4,
+            (SourcePhase.par_rangs(2, 1, 18), SourcePhase.par_rangs(3, 1, 18)),
+            effectif=36,
+            taille_visee=6,
+        ),
+    ]
+
+    messages = [
+        anomalie.message
+        for anomalie in projeter(etapes, effectif=120).anomalies
+        if anomalie.code == "serpent_apres_des_poules"
+    ]
+
+    assert len(messages) == 1
+    assert "les phases 2, 3 (poules)" in messages[0]
+
+
+def test_un_tableau_nourri_par_des_poules_de_niveau_avertit_du_choc() -> None:
+    """⚠️ **Majeur relevé par TROIS axes (A, C2, D).** Le mode révoque l'hypothèse du détecteur.
+
+    `_motif_de_choc` prouve l'innocuité d'un prélèvement sous l'hypothèse « le membre `k` d'une
+    poule occupe les rangs `k, k+P, k+2P…` » — la lecture **au serpent**. Par niveau, les membres
+    d'un groupe sont **contigus**, et le prédicat validé sur 9945 configurations ne décrit plus
+    rien : à 6 poules (P **pair**), l'ancien code se taisait alors que le tableau apparie (32, 33)
+    et (31, 34), tous du même groupe.
+
+    Un avertissement, pas un refus : le format reste applicable, c'est la **détection** qui était
+    perdue.
+    """
+    etapes = [
+        _qualification(),
+        _poules_de_niveau(2, (SourcePhase.par_rangs(1, 1, 36),), effectif=36, taille_visee=6),
+        _tableau(3, (SourcePhase.par_rangs(2, 1, 32),)),
+    ]
+
+    assert "choc_de_poule_possible" in _codes(projeter(etapes, effectif=120).anomalies)

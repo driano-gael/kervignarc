@@ -1201,13 +1201,32 @@ obstacles s'y opposent dans le modèle du jour, tous deux structurels et non cos
   le choix « serpent » (défaut, comportement d'aujourd'hui) ou « par niveau ». Un format de tournoi
   est de la **configuration** (règle 2) ; `TypePhase.POULES` ne se dédouble pas.
 - **CA — chaque groupe dispute son propre espace de rangs**, et le classement de l'étape le respecte :
-  le vainqueur du groupe des 31ᵉ-36ᵉ est **31ᵉ**, jamais 1ᵉʳ. C'est le point qui demande de porter le
-  décalage **au groupe** et non à l'étape.
+  le vainqueur du groupe des 31ᵉ-36ᵉ est **31ᵉ**, jamais 1ᵉʳ. C'est le point qui demande que la
+  **lecture** du classement de phase suive le mode — groupe par groupe au lieu de « par rang de poule
+  d'abord » ([ADR-0094](../docs/adr/0094-le-mode-de-composition-d-une-poule-commande-aussi-la-lecture-de-son-classement.md) §2).
+  Le `rang_premier` reste **unique et porté par la phase** : chaque groupe occupe déjà sa tranche à
+  l'intérieur du classement.
+  ⚠️ **Cette puce prescrivait « porter le décalage au groupe » jusqu'au 21/08/2026** — c'était le
+  mauvais remède, corrigé en revue de l'US qui l'a implémentée. Un décalage par groupe aurait fait
+  **deux** mécanismes pour situer un même archer dans l'espace de rangs du tournoi (`DETTE-034`).
+- **CA — une phase de niveau CLASSE, elle ne qualifie pas** *(relevé en revue le 21/08/2026, règle 9)*.
+  « k qualifiés par poule » n'est **pas exprimable** sous ce mode : les qualifiés y forment un peigne
+  de rangs ({1,2, 5,6, 9,10…}) qu'aucun prélèvement par fenêtre ne désigne, alors qu'au serpent ils
+  occupent les rangs contigus `1..k*P`. `ReglageDePoules` **refuse** donc `nb_qualifies` sous
+  « par niveau » ; une phase de niveau qui doit resserrer se prélève par **groupes entiers**
+  (« les rangs 1 à 18 »).
 - **CA — l'atelier montre la répartition avant validation**, patron `RepartitionPoules` d'`E05US023` :
   « 36 archers → 6 poules de niveau : rangs 1-6, 7-12, 13-18, 19-24, 25-30, 31-36 ».
-- **CA — l'organisateur est averti s'il compose une 2ᵉ phase de poules au serpent**, cas où le réglage
-  par défaut est très probablement le mauvais. C'est le seul garde-fou du lot qui vaut **avant** cette
-  US, et il est tracé à ce titre (`DETTE-062`).
+- **CA — l'organisateur se voit REFUSER une 2ᵉ phase de poules au serpent**, sauf dérogation cochée —
+  cas où le réglage par défaut est très probablement le mauvais. C'est le seul garde-fou du lot qui
+  vaut **avant** cette US.
+  ⚠️ *(La fiche citait `DETTE-062` comme traçant ce garde-fou : c'était faux — cette dette traite du
+  re-partitionnement d'un tir déjà validé. Rien ne le traçait, et l'US le livre. Corrigé en revue.)*
+  ⚠️ **Trois bornes au prédicat, toutes relevées en revue** : il ne regarde que les sources
+  **`RANGS`** (`le_reste` et `issue_de_tour` sont inertes, donc la phase est peuplée du départ), il
+  se tait sur une phase qui ne peut composer qu'**un seul groupe** (serpent et niveau y donnent la
+  même poule), et il est **borné aux sources de type poules** — le suisse pose la même question et
+  n'est pas couvert, faute d'arbitrage.
   ⚠️ **Fermeté tranchée au cadrage du 21/08/2026 : c'est un REFUS, pas un bandeau** — levé par une
   dérogation à cocher (`serpent_assume`). Motif : le défaut ne produit ni erreur ni incohérence, il
   monte un tournoi parfaitement jouable mais dépourvu de l'intérêt visé, et cela ne se voit qu'en

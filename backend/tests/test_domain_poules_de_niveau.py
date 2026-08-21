@@ -25,15 +25,19 @@ Les quatre propriétés que le CA impose :
 
 from __future__ import annotations
 
+import pytest
+
 from domain.classement import LigneClassement
 from domain.classement_de_poules import classement_de_poules
+from domain.erreurs import ConfigurationPouleInvalide
 from domain.participant import Participant
-from domain.politiques import DecompteDepartage
+from domain.politiques import DecompteDepartage, TiebreakPoules
 from domain.poule import (
     ConfigurationPoules,
     ModeDeComposition,
     Poule,
     RangPoule,
+    ReglageDePoules,
     composer_poules,
 )
 
@@ -71,6 +75,20 @@ def _poule(*archers_de_la_poule: int) -> tuple[RangPoule, ...]:
             decompte=DecompteDepartage(nb_dix=0, nb_neuf=0, points_match=total - index),
         )
         for index, archer in enumerate(archers_de_la_poule, start=1)
+    )
+
+
+def _ex_aequo_au_rang_deux(*archers_de_la_poule: int) -> tuple[RangPoule, ...]:
+    """Un groupe dont les 2ᵉ et 3ᵉ partagent le rang 2 — l'ex æquo irréductible du §10.1."""
+    rangs = (1, 2, 2)
+    return tuple(
+        RangPoule(
+            rang=rang,
+            participant=Participant.individuel(archer),
+            decompte=DecompteDepartage(nb_dix=0, nb_neuf=0, points_match=10 - rang),
+            ex_aequo=rangs.count(rang) > 1,
+        )
+        for archer, rang in zip(archers_de_la_poule, rangs, strict=True)
     )
 
 
@@ -192,6 +210,7 @@ def test_le_classement_au_serpent_reste_par_rang_de_poule() -> None:
     resultat = classement_de_poules(
         [_poule(1, 2, 3), _poule(4, 5, 6), _poule(7, 8, 9)],
         {archer: _ligne(archer) for archer in range(1, 10)},
+        mode=ModeDeComposition.SERPENT,
     )
     assert [ligne.archer_id for ligne in resultat.classement.lignes] == [1, 4, 7, 2, 5, 8, 3, 6, 9]
 
@@ -211,3 +230,93 @@ def test_par_niveau_ne_produit_aucun_bloc_indecis_inter_poules() -> None:
         mode=ModeDeComposition.PAR_NIVEAU,
     )
     assert resultat.plages_indecises == ()
+
+
+# --- Correctifs de revue E05US029 ----------------------------------------------------------------
+#
+# Chaque test ci-dessous verrouille une remarque de `/revue-us`. L'oracle reste le CA — ces cas
+# sont ceux que le CA impliquait sans que personne les ait écrits, pas des descriptions du
+# correctif : c'est la distinction qui décide si un test après coup vaut quelque chose.
+
+
+def test_des_poules_de_niveau_ne_designent_pas_de_qualifies() -> None:
+    """⚠️ **Bloquant relevé en revue (axe C1).** « k qualifiés par poule » n'est pas exprimable.
+
+    Sous `SERPENT`, les `k` premiers de chaque groupe occupent les rangs `1..k*P` — une fenêtre
+    **contiguë**, que la phase avale prélève par rangs. Sous `PAR_NIVEAU` les qualifiés forment un
+    **peigne** ({1,2, 5,6, 9,10, 13,14} sur 4 groupes de 4 qualifiant 2), qu'aucun prélèvement par
+    fenêtre ne désigne : « les rangs 1 à 8 » rendrait les groupes A et B entiers, un autre ensemble
+    de même cardinal — plausible et faux.
+    """
+    with pytest.raises(ConfigurationPouleInvalide):
+        ReglageDePoules(taille_visee=6, nb_qualifies=3, mode=ModeDeComposition.PAR_NIVEAU)
+
+
+def test_le_moteur_refuse_aussi_la_configuration_qui_qualifie_par_niveau() -> None:
+    """Le même invariant sur l'objet que le **moteur** consomme, `pour_effectif` n'étant pas la
+    seule porte d'entrée de `qualifies_de_poule`."""
+    with pytest.raises(ConfigurationPouleInvalide):
+        ConfigurationPoules(nb_poules=6, nb_qualifies=3, mode=ModeDeComposition.PAR_NIVEAU)
+
+
+def test_des_poules_de_niveau_qui_classent_restent_licites() -> None:
+    """Le contre-test qui empêche le refus d'être trop large : une phase de niveau **classe**, et
+    c'est son cas nominal — elle décerne le classement final du tournoi."""
+    reglage = ReglageDePoules(taille_visee=6, mode=ModeDeComposition.PAR_NIVEAU)
+    assert reglage.produit_un_classement
+
+
+def test_la_derogation_ne_survit_pas_au_passage_par_niveau() -> None:
+    """⚠️ **Majeur relevé en revue (axes C1 et D).** L'invariant n'était tenu que par le front.
+
+    Une dérogation persistée sous `PAR_NIVEAU` restait **armée à froid** : au retour au serpent,
+    elle levait le refus sans que personne ne l'ait assumée pour ce réglage-là — « voulu » et
+    « pas vu » redevenaient indiscernables, ce que ce champ existe précisément pour empêcher.
+
+    Normalisée et non refusée : cocher la case puis changer de mode n'est pas une faute.
+    """
+    reglage = ReglageDePoules(
+        taille_visee=6, mode=ModeDeComposition.PAR_NIVEAU, serpent_assume=True
+    )
+    assert reglage.serpent_assume is False
+
+
+def test_la_derogation_est_conservee_sous_le_serpent() -> None:
+    """Le contre-test : c'est bien le **couple** qui est normalisé, pas la case elle-même."""
+    reglage = ReglageDePoules(taille_visee=6, serpent_assume=True)
+    assert reglage.serpent_assume is True
+
+
+def test_le_departage_inter_poules_est_ignore_par_niveau() -> None:
+    """⚠️ **Trou de couverture relevé en revue (axes B et D).** La docstring de `_par_groupe`
+    promet que le départage est *sans objet* sous `PAR_NIVEAU` ; rien ne l'épinglait.
+
+    Sans ce test, une branche `PAR_NIVEAU` placée un jour **après** le tri réordonnerait les
+    groupes sans que personne ne le voie — et le réglage reste atteignable, `application/poules.py`
+    construisant bien un `TiebreakPoules()` quand la case est restée cochée d'un passage au serpent.
+    """
+    resultat = classement_de_poules(
+        [_poule(1, 2, 3), _poule(4, 5, 6)],
+        {archer: _ligne(archer) for archer in range(1, 7)},
+        departage=TiebreakPoules(),
+        mode=ModeDeComposition.PAR_NIVEAU,
+    )
+    assert [ligne.archer_id for ligne in resultat.classement.lignes] == [1, 2, 3, 4, 5, 6]
+    assert resultat.plages_indecises == ()
+
+
+def test_un_ex_aequo_interne_reste_indecis_sans_contaminer_le_groupe_suivant() -> None:
+    """⚠️ **Trou de couverture relevé en revue (axes B et D).** Le seul test d'indécision employait
+    des poules **sans ex æquo** : il aurait passé si `_par_groupe` rendait `[]` en dur.
+
+    Deux archers que le §10.1 n'a pas séparés occupent deux rangs consécutifs de la phase, et cette
+    paire — elle seule — reste indécise. La table `positions` a désormais **deux** producteurs
+    (`_par_groupe` et la boucle par blocs) pour un unique consommateur, `_liaisons_internes` : c'est
+    la couture que ce test surveille.
+    """
+    resultat = classement_de_poules(
+        [_poule(1, 2, 3), _ex_aequo_au_rang_deux(4, 5, 6), _poule(7, 8, 9)],
+        {archer: _ligne(archer) for archer in range(1, 10)},
+        mode=ModeDeComposition.PAR_NIVEAU,
+    )
+    assert resultat.plages_indecises == ((5, 6),)

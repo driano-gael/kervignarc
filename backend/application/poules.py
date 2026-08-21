@@ -131,7 +131,15 @@ class RepartitionPoules:
     effectif: int
     taille_visee: int
     tailles: tuple[int, ...]
-    mode: ModeDeComposition = ModeDeComposition.SERPENT
+    mode: ModeDeComposition
+    """⚠️ **Sans défaut, délibérément** (correctif de revue, axe A).
+
+    C'est un objet **calculé** : ses deux sites de construction sont dans ce fichier et passent
+    tous deux le mode du réglage. Un défaut n'achèterait aucune compatibilité — il ouvrirait
+    seulement la porte à une construction future qui l'oublierait et annoncerait « poules »
+    (équilibrées) sur une phase composée par niveau, en silence. À distinguer de
+    `ReglageDePoules.mode`, où le défaut est **indispensable** : il relit un document écrit avant
+    cette US, et c'est lui qui évite la migration."""
 
     @property
     def nb_poules(self) -> int:

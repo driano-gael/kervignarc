@@ -10,7 +10,6 @@ import {
   decrireRepartition,
   depuisReglage,
   estValide,
-  motDeGroupe,
   POULES_PAR_DEFAUT,
   repartition,
   versReglage,
@@ -130,7 +129,7 @@ describe('depuisReglage', () => {
       nb_qualifies: null,
       rencontres_par_archer: null,
       departage_inter_poules: false,
-    } as unknown as Parameters<typeof depuisReglage>[0]
+    }
     expect(depuisReglage(ancien)).toMatchObject({ mode: 'serpent', serpentAssume: false })
   })
 
@@ -173,18 +172,5 @@ describe('répartition par niveau', () => {
     expect(decrireRepartition(repartition(7, 4, 'par_niveau'), 'par_niveau')).toBe(
       '1 poule de niveau : rangs 1-7',
     )
-  })
-})
-
-describe('motDeGroupe', () => {
-  it('nomme les poules de niveau, et seulement elles', () => {
-    expect(motDeGroupe('par_niveau')).toBe('poules de niveau')
-    expect(motDeGroupe('serpent')).toBe('poules')
-  })
-
-  it('dit « poules » quand le mode est absent', () => {
-    // Une réponse d'API d'avant E05US029 ne porte pas le champ, et le serpent est ce qu'elle
-    // décrivait : le mot est alors exact, pas un repli par défaut.
-    expect(motDeGroupe(undefined)).toBe('poules')
   })
 })

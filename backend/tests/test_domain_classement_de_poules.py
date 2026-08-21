@@ -31,7 +31,7 @@ from domain.classement_de_poules import classement_de_poules
 from domain.classement_de_tableau import ClassementSource
 from domain.participant import Participant
 from domain.politiques import DecompteDepartage, TiebreakPoules
-from domain.poule import RangPoule
+from domain.poule import ModeDeComposition, RangPoule
 
 
 def _ligne(archer_id: int) -> LigneClassement:
@@ -107,7 +107,9 @@ def test_les_vainqueurs_de_poule_occupent_les_premiers_rangs() -> None:
         _poule(3, 7, 11),
         _poule(4, 8, 12),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 13)))
+    source = classement_de_poules(
+        classements, _lignes(*range(1, 13)), mode=ModeDeComposition.SERPENT
+    )
 
     assert _rangs(source) == [(rang, rang) for rang in range(1, 13)]
 
@@ -118,7 +120,11 @@ def test_les_poules_se_jouent_en_parallele_donc_aucune_ne_precede_une_autre() ->
     Contre-oracle explicite : concaténer poule après poule (1,2,3 puis 4,5,6) est **la** faute que
     ce CA interdit. Le 2ᵉ de la poule 1 ne doit pas devancer le vainqueur de la poule 2.
     """
-    source = classement_de_poules([_poule(1, 2, 3), _poule(4, 5, 6)], _lignes(1, 2, 3, 4, 5, 6))
+    source = classement_de_poules(
+        [_poule(1, 2, 3), _poule(4, 5, 6)],
+        _lignes(1, 2, 3, 4, 5, 6),
+        mode=ModeDeComposition.SERPENT,
+    )
 
     assert _ordre(source) == [1, 4, 2, 5, 3, 6]
 
@@ -139,7 +145,9 @@ def test_le_classement_porte_aussi_les_archers_sous_la_barre_de_qualification() 
         _poule(3, 7, 11, 15),
         _poule(4, 8, 12, 16),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 17)))
+    source = classement_de_poules(
+        classements, _lignes(*range(1, 17)), mode=ModeDeComposition.SERPENT
+    )
 
     assert len(source.classement.lignes) == 16
     assert [archer for rang, archer in _rangs(source) if rang is not None and 9 <= rang <= 12] == [
@@ -168,7 +176,9 @@ def test_le_dernier_bloc_peut_etre_incomplet_et_les_surnumeraires_vont_en_dernie
         _poule(2, 5, 8),
         _poule(3, 6, 9, 10),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 11)))
+    source = classement_de_poules(
+        classements, _lignes(*range(1, 11)), mode=ModeDeComposition.SERPENT
+    )
 
     assert _ordre(source) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     assert _rangs(source)[-1] == (10, 10)
@@ -190,7 +200,9 @@ def test_chaque_bloc_est_indecis_par_defaut() -> None:
         _poule(3, 7),
         _poule(4, 8),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 9)))
+    source = classement_de_poules(
+        classements, _lignes(*range(1, 9)), mode=ModeDeComposition.SERPENT
+    )
 
     assert source.plages_indecises == ((1, 4), (5, 8))
     assert source.coupe(1, 4) is None
@@ -203,7 +215,9 @@ def test_un_bloc_a_un_seul_occupant_nest_pas_indecis() -> None:
     Le classement de la phase *est* celui de la poule, rang par rang — aucune fenêtre n'y coupe
     quoi que ce soit.
     """
-    source = classement_de_poules([_poule(1, 2, 3)], _lignes(1, 2, 3))
+    source = classement_de_poules(
+        [_poule(1, 2, 3)], _lignes(1, 2, 3), mode=ModeDeComposition.SERPENT
+    )
 
     assert source.plages_indecises == ()
     assert source.coupe(1, 1) is None
@@ -221,7 +235,9 @@ def test_le_departage_optionnel_referme_les_blocs_par_le_decompte() -> None:
         _poule(1, 3, decomptes=(7, 2)),
         _poule(2, 4, decomptes=(9, 1)),
     ]
-    source = classement_de_poules(classements, _lignes(1, 2, 3, 4), departage=TiebreakPoules())
+    source = classement_de_poules(
+        classements, _lignes(1, 2, 3, 4), departage=TiebreakPoules(), mode=ModeDeComposition.SERPENT
+    )
 
     assert _ordre(source) == [2, 1, 3, 4]
     assert source.plages_indecises == ()
@@ -241,7 +257,10 @@ def test_le_departage_ne_ferme_pas_ce_que_le_decompte_ne_separe_pas() -> None:
         _poule(3, 6, decomptes=(7, 1)),
     ]
     source = classement_de_poules(
-        classements, _lignes(1, 2, 3, 4, 5, 6), departage=TiebreakPoules()
+        classements,
+        _lignes(1, 2, 3, 4, 5, 6),
+        departage=TiebreakPoules(),
+        mode=ModeDeComposition.SERPENT,
     )
 
     assert source.plages_indecises == ((1, 2), (4, 6))
@@ -265,7 +284,12 @@ def test_un_ex_aequo_interne_a_une_poule_lie_les_blocs_quil_enjambe() -> None:
         _ex_aequo(1, 3, 5, 7, rangs=(1, 2, 3, 3)),
         _poule(2, 4, 6, 8),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 9)), departage=TiebreakPoules())
+    source = classement_de_poules(
+        classements,
+        _lignes(*range(1, 9)),
+        departage=TiebreakPoules(),
+        mode=ModeDeComposition.SERPENT,
+    )
 
     assert source.plages_indecises == ((5, 7),)
     assert source.coupe(5, 6) == (5, 7)
@@ -286,7 +310,9 @@ def test_sans_departage_lex_aequo_interne_soude_les_deux_blocs_entiers() -> None
         _ex_aequo(1, 3, 5, 7, rangs=(1, 2, 3, 3)),
         _poule(2, 4, 6, 8),
     ]
-    source = classement_de_poules(classements, _lignes(*range(1, 9)))
+    source = classement_de_poules(
+        classements, _lignes(*range(1, 9)), mode=ModeDeComposition.SERPENT
+    )
 
     assert source.plages_indecises == ((1, 2), (3, 4), (5, 8))
     assert source.coupe(5, 6) == (5, 8)
@@ -302,14 +328,16 @@ def test_un_archer_sans_ligne_de_classement_est_ecarte_sans_trouer_les_rangs() -
     classement, et les rangs se renumérotent **sans trou** : `preleves` lit `rang_scratch`, une
     numérotation trouée y ferait manquer des archers à une fenêtre par ailleurs correcte.
     """
-    source = classement_de_poules([_poule(1, 3), _poule(2, 4)], _lignes(1, 2, 4))
+    source = classement_de_poules(
+        [_poule(1, 3), _poule(2, 4)], _lignes(1, 2, 4), mode=ModeDeComposition.SERPENT
+    )
 
     assert _rangs(source) == [(1, 1), (2, 2), (3, 4)]
 
 
 def test_une_phase_sans_aucun_participant_rend_un_classement_vide() -> None:
     """Aucune poule composée : rien à classer, et surtout aucune plage à déclarer indécise."""
-    source = classement_de_poules([], {})
+    source = classement_de_poules([], {}, mode=ModeDeComposition.SERPENT)
 
     assert source.classement.lignes == ()
     assert source.plages_indecises == ()
@@ -324,7 +352,7 @@ def test_le_statut_est_remis_en_lice_comme_pour_un_tableau() -> None:
     """
     lignes = _lignes(1, 2)
     lignes[2] = replace(lignes[2], statut=StatutClassement.ABANDON)
-    source = classement_de_poules([_poule(1), _poule(2)], lignes)
+    source = classement_de_poules([_poule(1), _poule(2)], lignes, mode=ModeDeComposition.SERPENT)
 
     assert [ligne.statut for ligne in source.classement.lignes] == [
         StatutClassement.EN_LICE,
