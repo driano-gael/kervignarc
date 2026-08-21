@@ -68,7 +68,7 @@ from domain.classement import Classement, LigneClassement
 from domain.classement_de_tableau import ClassementSource, situee_au_rang
 from domain.participant import GenreParticipant
 from domain.politiques import Tiebreak
-from domain.poule import RangPoule
+from domain.poule import ModeDeComposition, RangPoule
 
 if TYPE_CHECKING:  # pragma: no cover — le protocole de tri de la stdlib, invisible à l'exécution
     from _typeshed import SupportsRichComparison
@@ -79,6 +79,7 @@ def classement_de_poules(
     lignes: Mapping[ArcherId, LigneClassement],
     *,
     departage: Tiebreak | None = None,
+    mode: ModeDeComposition,
 ) -> ClassementSource:
     """Le classement de la phase, blocs de rang concaténés, et ce qu'il a d'encore indécis.
 
@@ -95,10 +96,25 @@ def classement_de_poules(
     pas quelle tranche du tournoi elle dispute — c'est une propriété de sa place dans le déroulé,
     que seul le service qui remonte la chaîne connaît (`application/prelevement.py:tranche`).
 
+    `mode` dit **comment les groupes ont été composés**, et c'est ce qui décide de l'ordre rendu
+    (E05US029). Sous `SERPENT`, l'ordre est celui décrit ci-dessus ; sous `PAR_NIVEAU`, il est
+    **groupe par groupe** — voir `_par_groupe`, dont le raisonnement est l'exact inverse de celui
+    du préambule.
+
+    ⚠️ **Sans valeur par défaut, délibérément** (correctif de revue, axe C1). Les deux versants du
+    mode sont indissociables (ADR-0094 §2) : un défaut rendrait l'oubli **silencieux** et donnerait
+    le mauvais ordre, ce qui est très exactement la classe de panne que cet ADR existe pour fermer.
+    L'appelant de production résout le mode depuis le réglage de la phase ; les tests qui décrivent
+    l'ordre historique passent `SERPENT` explicitement, et c'est plus honnête ainsi — cet ordre
+    est **un** des deux, pas la norme dont l'autre dévie.
+
     Les participants **équipe** sont écartés (leur `ref_id` n'est pas un archer, ADR-0028), comme le
     fait déjà `classement_de_tableau` ; la résolution viendra avec les équipes (E13US002).
     """
     retenus = [_retenus(classement, lignes) for classement in classements]
+    if mode is ModeDeComposition.PAR_NIVEAU:
+        par_groupe, liaisons = _par_groupe(retenus)
+        return _en_classement(par_groupe, liaisons, lignes)
     hauteur = max((len(classement) for classement in retenus), default=0)
 
     ordonnes: list[ArcherId] = []
@@ -126,6 +142,20 @@ def classement_de_poules(
         plages.extend(_indecises_du_bloc([ligne for _, ligne in bloc], debut, departage))
 
     plages.extend(_liaisons_internes(retenus, positions))
+    return _en_classement(ordonnes, plages, lignes)
+
+
+def _en_classement(
+    ordonnes: Sequence[ArcherId],
+    plages: Sequence[tuple[int, int]],
+    lignes: Mapping[ArcherId, LigneClassement],
+) -> ClassementSource:
+    """Le `ClassementSource` d'un ordre déjà arrêté — commun aux deux modes de composition.
+
+    Extrait en E05US029 : les deux ordres diffèrent, leur mise en forme non. La partager garantit
+    surtout que `rang_scratch` est renuméroté **au même endroit** — c'est lui que `preleves` lit,
+    et deux numérotations concurrentes seraient exactement la seconde vérité qu'ADR-0081 traque.
+    """
     return ClassementSource(
         classement=Classement(
             lignes=tuple(
@@ -135,6 +165,41 @@ def classement_de_poules(
         ),
         plages_indecises=_fusionner(plages),
     )
+
+
+def _par_groupe(
+    retenus: Sequence[Sequence[RangPoule]],
+) -> tuple[list[ArcherId], list[tuple[int, int]]]:
+    """L'ordre d'une phase de **poules de niveau** : chaque groupe en entier, l'un après l'autre.
+
+    ⚠️ **C'est l'exact inverse du raisonnement du préambule de ce module, et c'est voulu.** L'ordre
+    « par rang de poule d'abord » repose sur une prémisse — *rien ne rend la poule 1 plus relevée
+    que la poule 2* — que le mode `PAR_NIVEAU` **révoque par construction** : la poule A y réunit
+    les rangs 1-6 de la phase source, la poule F les rangs 31-36. Concaténer les blocs y placerait
+    le vainqueur du groupe des 31ᵉ-36ᵉ au 6ᵉ rang de la phase, aux côtés des cinq autres vainqueurs.
+
+    C'est cette lecture, et elle seule, qui donne à chaque groupe **son propre espace de rangs**
+    (le CA d'E05US029). Aucun décalage n'a à être porté par le groupe : la poule A occupe
+    naturellement les rangs 1-6 de la phase, la B les 7-12, et le `rang_premier` **unique** de la
+    phase (`application/prelevement.py:tranche`) décale ensuite l'ensemble dans l'espace du
+    tournoi. Un `rang_premier` par groupe aurait été la seconde vérité de trop.
+
+    **Aucun bloc indécis inter-poules** : la question ne se pose plus, chaque groupe ayant sa
+    tranche. Ne subsistent que les ex æquo **internes** à une poule, que `_liaisons_internes`
+    calcule à l'identique — deux archers que le §10.1 n'a pas séparés occupent deux rangs
+    consécutifs de la phase, et cette paire reste indécise.
+
+    Le `departage` inter-poules est donc **sans objet** ici : il ordonne un bloc, et il n'y a plus
+    de bloc. L'ignorer plutôt que le refuser est délibéré — un réglage hérité d'un passage au
+    serpent ne doit pas opposer un 422 à l'organisateur qui bascule le mode.
+    """
+    ordonnes: list[ArcherId] = []
+    positions: dict[tuple[int, int], int] = {}
+    for index, classement in enumerate(retenus):
+        for niveau, ligne in enumerate(classement):
+            ordonnes.append(ligne.participant.ref_id)
+            positions[(index, niveau)] = len(ordonnes)
+    return ordonnes, _liaisons_internes(retenus, positions)
 
 
 def _comparateur(departage: Tiebreak) -> Callable[[tuple[int, RangPoule]], SupportsRichComparison]:

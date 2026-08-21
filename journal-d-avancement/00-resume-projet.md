@@ -544,10 +544,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **119 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/08/2026, la dernière
-  étant `E05US035` — **la qualification se découpe en tours** : l'organisateur règle « 20 volées en
-  2 tours de 10 » à l'atelier, le suivi dit où en est la phase, et une **pause peut enfin s'y
-  programmer** — sur le format que tout le monde tire. **`SUIVI-US.md` fait
+- **120 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/08/2026, la dernière
+  étant `E05US029` — **les poules de niveau en une seule étape** : une phase de poules peut composer
+  ses groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au lieu de les équilibrer, ce qui
+  monte un tournoi club **en cascade** — 36 archers, une phase pour estimer les niveaux, une seconde
+  pour les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une

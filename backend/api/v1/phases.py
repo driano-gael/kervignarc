@@ -42,7 +42,7 @@ from domain.phase import (
     TypePhase,
 )
 from domain.politiques import NomProfondeur, ProfondeurClassement
-from domain.poule import BaremePoule, ReglageDePoules
+from domain.poule import BaremePoule, ModeDeComposition, ReglageDePoules
 from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from infrastructure.db import WriteQueue
@@ -170,6 +170,12 @@ class ReglagePoulesDTO(BaseModel):
     departage_inter_poules: bool = False
     """Départager les archers d'un même rang de poule par leur décompte (§10.1, ADR-0083 §6)."""
 
+    mode: ModeDeComposition = ModeDeComposition.SERPENT
+    """Comment composer les groupes : `serpent` (défaut) ou `par_niveau` (E05US029)."""
+
+    serpent_assume: bool = False
+    """La dérogation qui lève le refus « 2ᵉ phase de poules au serpent » (E05US029)."""
+
     def vers_agregat(self) -> ReglageDePoules:
         return ReglageDePoules(
             taille_visee=self.taille_visee,
@@ -177,6 +183,8 @@ class ReglagePoulesDTO(BaseModel):
             nb_qualifies=self.nb_qualifies,
             rencontres_par_archer=self.rencontres_par_archer,
             departage_inter_poules=self.departage_inter_poules,
+            mode=self.mode,
+            serpent_assume=self.serpent_assume,
         )
 
     @staticmethod
@@ -187,6 +195,8 @@ class ReglagePoulesDTO(BaseModel):
             nb_qualifies=reglage.nb_qualifies,
             rencontres_par_archer=reglage.rencontres_par_archer,
             departage_inter_poules=reglage.departage_inter_poules,
+            mode=reglage.mode,
+            serpent_assume=reglage.serpent_assume,
         )
 
 

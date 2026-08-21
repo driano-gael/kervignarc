@@ -47,6 +47,7 @@ from application.poules import (
 from application.saisie_duels import Duelliste, EtatDuel
 from domain.blason import ZoneScore
 from domain.duel import Cote
+from domain.poule import ModeDeComposition
 from domain.scoreur import Scoreur
 from infrastructure.db import WriteQueue
 from infrastructure.idempotence import RegistreIdempotence
@@ -64,12 +65,22 @@ class RepartitionReponse(BaseModel):
     plutôt que surprenant (30 archers en poules de 4 → sept groupes, cinq de 4 et deux de 5) et ce
     qui rend inoffensif le cas extrême (7 archers en poules de 4 → **une** poule de 7, que
     l'organisateur voit et corrige s'il n'en veut pas).
+
+    `mode` dit **ce que ces tailles signifient** (E05US029) : sous `serpent` ce sont des groupes
+    équilibrés, sous `par_niveau` des **tranches de rangs contiguës** — l'écran les nomme alors
+    (« rangs 1-6, 7-12, … »). Les bornes ne sont pas transportées : elles se déduisent du cumul des
+    tailles, et les envoyer ferait une seconde vérité pour la même information.
     """
 
     effectif: int
     taille_visee: int
     nb_poules: int
     tailles: list[int]
+    mode: ModeDeComposition
+    """Sans défaut : DTO **calculé**, jamais désérialisé d'une entrée client.
+
+    Un défaut n'achèterait aucune compatibilité — il laisserait seulement une construction
+    future annoncer « poules » sur une phase composée par niveau (correctif de revue)."""
 
     @staticmethod
     def de_repartition(repartition: RepartitionPoules) -> RepartitionReponse:
@@ -78,6 +89,7 @@ class RepartitionReponse(BaseModel):
             taille_visee=repartition.taille_visee,
             nb_poules=repartition.nb_poules,
             tailles=list(repartition.tailles),
+            mode=repartition.mode,
         )
 
 

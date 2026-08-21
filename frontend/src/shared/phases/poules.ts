@@ -20,6 +20,15 @@ export interface BaremePoule {
   defaite: number
 }
 
+/**
+ * Comment les groupes sont composés (E05US029) — miroir de `domain.poule.ModeDeComposition`.
+ *
+ * `serpent` équilibre la force des groupes (1→A, 2→B, 3→C, 4→C…), ce qui est juste quand personne
+ * ne connaît encore les niveaux. `par_niveau` fait l'inverse et c'est voulu : un groupe par tranche
+ * de rangs contiguë, la poule A réunissant les meilleurs — le format club en cascade.
+ */
+export type ModeDeComposition = 'serpent' | 'par_niveau'
+
 /** Le réglage tel que l'API le transporte, miroir de `ReglagePoulesDTO`. */
 export interface ReglagePoules {
   taille_visee: number
@@ -27,6 +36,17 @@ export interface ReglagePoules {
   nb_qualifies: number | null
   rencontres_par_archer: number | null
   departage_inter_poules: boolean
+  /**
+   * ⚠️ **Optionnels, et c'est le type qui doit le dire** (correctif de revue, axes B, C1 et C2).
+   *
+   * Les déclarer requis obligeait `depuisReglage` à se défendre d'une absence que le type disait
+   * impossible (`reglage.mode ?? 'serpent'` était mort au sens des types), et le test de ce repli
+   * devait fabriquer un objet illégal par `as unknown as` — un double cast ne prouve rien, il
+   * empêche seulement `tsc` de dire que le cas ne peut pas se produire. Même geste que
+   * `Repartition.mode?` côté `features/poules/api.ts`.
+   */
+  mode?: ModeDeComposition
+  serpent_assume?: boolean
 }
 
 /**
@@ -50,6 +70,8 @@ export interface EtatPoules {
   nul: string
   defaite: string
   departage: boolean
+  mode: ModeDeComposition
+  serpentAssume: boolean
 }
 
 /** Le réglage de départ d'une phase de poules neuve : des poules de 4, barème 3 / 1 / 0. */
@@ -61,6 +83,8 @@ export const POULES_PAR_DEFAUT: EtatPoules = {
   nul: '1',
   defaite: '0',
   departage: false,
+  mode: 'serpent',
+  serpentAssume: false,
 }
 
 /** Reconstruit l'état d'édition depuis ce que porte l'étape (ou la phase). */
@@ -75,6 +99,11 @@ export function depuisReglage(reglage: ReglagePoules | null): EtatPoules {
     nul: String(bareme?.nul ?? POULES_PAR_DEFAUT.nul),
     defaite: String(bareme?.defaite ?? POULES_PAR_DEFAUT.defaite),
     departage: reglage.departage_inter_poules,
+    // ⚠️ `?? 'serpent'` plutôt qu'un accès direct : une étape enregistrée avant E05US029 n'a pas
+    // la clé (le backend ne l'écrit qu'au mode non-défaut, pour éviter une migration), et le
+    // serpent est très exactement ce qu'elle jouait.
+    mode: reglage.mode ?? 'serpent',
+    serpentAssume: reglage.serpent_assume ?? false,
   }
 }
 
@@ -110,9 +139,18 @@ export function versReglage(etat: EtatPoules): ReglagePoules | undefined {
   return {
     taille_visee: taille,
     bareme: { victoire, nul, defaite },
-    nb_qualifies: qualifies,
+    // ⚠️ Miroir exact de `serpent_assume` ci-dessous, et pour la même raison (correctif de
+    // 2ᵉ passe, relevé par quatre axes) : le domaine **refuse** `nb_qualifies` sous « par niveau »
+    // — les qualifiés y formeraient un peigne de rangs qu'aucun prélèvement ne sait désigner.
+    // L'émettre quand même faisait répondre 422 à un formulaire que l'écran déclarait valide.
+    nb_qualifies: etat.mode === 'par_niveau' ? null : qualifies,
     rencontres_par_archer: null,
     departage_inter_poules: etat.departage,
+    mode: etat.mode,
+    // La dérogation n'a de sens **que** sous le serpent : l'envoyer depuis un réglage par niveau
+    // laisserait une case armée qui ressusciterait au retour au serpent, sans que personne ne
+    // l'ait cochée pour ce réglage-là.
+    serpent_assume: etat.mode === 'serpent' && etat.serpentAssume,
   }
 }
 
@@ -138,11 +176,28 @@ export function estValide(etat: EtatPoules): boolean {
  *
  * Rend `[]` sur un effectif ou une taille illisible : l'écran n'affiche alors rien plutôt qu'un
  * aperçu inventé.
+ *
+ * ⚠️ `// DETTE-076` — ce miroir est **inscrit au registre** depuis E05US029 : trois règles du
+ * domaine recopiées ici, sans test de contrat qui empêche les deux copies de diverger.
  */
-export function repartition(effectif: number, taille: number): number[] {
+export function repartition(
+  effectif: number,
+  taille: number,
+  mode: ModeDeComposition = 'serpent',
+): number[] {
   if (!Number.isInteger(effectif) || effectif < 1) return []
   if (!Number.isInteger(taille) || taille < 2) return []
   const groupes = Math.max(1, Math.floor(effectif / taille))
+  if (mode === 'par_niveau') {
+    // Les `surplus` **derniers** groupes gonflent d'une unité — le bas absorbe le reste (arbitrage
+    // du cadrage du 21/08/2026). On recopie la règle du domaine (`_tranches_de_niveau`), pas son
+    // résultat supposé, exactement comme la boucle du serpent ci-dessous.
+    const base = Math.floor(effectif / groupes)
+    const surplus = effectif % groupes
+    return Array.from({ length: groupes }, (_, numero) =>
+      numero >= groupes - surplus ? base + 1 : base,
+    )
+  }
   const tailles = Array.from({ length: groupes }, () => 0)
   for (let index = 0; index < effectif; index += 1) {
     const passage = Math.floor(index / groupes)
@@ -153,9 +208,39 @@ export function repartition(effectif: number, taille: number): number[] {
   return tailles
 }
 
-/** Dit une répartition en clair — « 7 poules : deux de 5, cinq de 4 ». */
-export function decrireRepartition(tailles: number[]): string {
+/**
+ * Les **tranches de rangs** que des poules de niveau disputent — « 1-6, 7-12, 13-18 ».
+ *
+ * Dérivées du cumul des `tailles`, jamais transportées par l'API : ce sont deux façons de dire la
+ * même chose, et en envoyer une seconde depuis le serveur créerait la divergence que le miroir de
+ * ce module prend soin d'éviter (une répartition affichée qui ne serait pas celle jouée).
+ */
+export function tranchesDeRangs(tailles: number[]): Array<[number, number]> {
+  const tranches: Array<[number, number]> = []
+  let debut = 1
+  for (const taille of tailles) {
+    tranches.push([debut, debut + taille - 1])
+    debut += taille
+  }
+  return tranches
+}
+
+/**
+ * Dit une répartition en clair — « 7 poules : deux de 5, cinq de 4 ».
+ *
+ * Par niveau, ce ne sont pas les *tailles* qui renseignent l'organisateur mais les **rangs** que
+ * chaque groupe dispute : « 6 poules de niveau : rangs 1-6, 7-12, … » (le CA le formule ainsi
+ * verbatim). Les tailles y restent lisibles — la tranche les donne par ses bornes.
+ */
+export function decrireRepartition(tailles: number[], mode: ModeDeComposition = 'serpent'): string {
   if (tailles.length === 0) return ''
+  if (mode === 'par_niveau') {
+    const rangs = tranchesDeRangs(tailles)
+      .map(([debut, fin]) => `${debut}-${fin}`)
+      .join(', ')
+    const pluriel = tailles.length > 1 ? 'poules de niveau' : 'poule de niveau'
+    return `${tailles.length} ${pluriel} : rangs ${rangs}`
+  }
   const parTaille = new Map<number, number>()
   for (const taille of tailles) parTaille.set(taille, (parTaille.get(taille) ?? 0) + 1)
   const groupes = [...parTaille.entries()]

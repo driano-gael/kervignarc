@@ -214,6 +214,11 @@ class PrelevementVide(DomainError):
 class ChocDePoulePossible(DomainError):
     """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
 
+    ⚠️ **Tout ce qui suit vaut au serpent seulement.** En composition `PAR_NIVEAU` (E05US029),
+    les membres d'une poule occupent des rangs **contigus** et non régulièrement espacés : le
+    raisonnement sur la parité de `P` ne s'y applique pas, et `_motif_de_choc` écarte ce mode en
+    tête plutôt que de lui appliquer une arithmétique qui ne le décrit pas.
+
     Le serpent sépare les membres d'une poule quand leur nombre `P` est **pair** : le tableau
     apparie les rangs `r` et `M+1-r` (`M` = taille du tableau, une puissance de 2), donc l'écart
     entre deux adversaires est **impair** et n'est jamais divisible par un `P` pair. À `P` impair il
@@ -234,6 +239,34 @@ class ChocDePoulePossible(DomainError):
     """
 
     code = "choc_de_poule_possible"
+
+
+class SerpentApresDesPoules(DomainError):
+    """Une phase de poules prélève dans une autre phase de poules et compose au **serpent**
+    (E05US029).
+
+    Le serpent **équilibre** les groupes, ce qui est juste tant que personne ne connaît les
+    niveaux — c'est pourquoi il est le défaut depuis le 31/07/2026. Mais une phase nourrie par
+    d'autres poules dispose déjà d'un classement de niveau : composer au serpent y éparpille les
+    six têtes de série dans les six groupes, soit l'inverse exact de ce que l'organisateur croit
+    régler en enchaînant deux phases de poules.
+
+    **Bloquant, et c'est un arbitrage** (cadrage du 21/08/2026). Le défaut ne produit ni erreur ni
+    incohérence : il monte un tournoi parfaitement jouable, simplement dépourvu de l'intérêt
+    sportif visé — et cela ne se voit qu'en salle, une fois les groupes affichés. Un avertissement
+    qu'on peut ignorer arriverait donc toujours trop tard.
+
+    `ReglageDePoules.serpent_assume` lève le refus. Rebrasser volontairement les groupes reste
+    légitime ; ce que la dérogation apporte est la **trace** que le choix a été posé, sans quoi
+    « voulu » et « pas vu » sont indiscernables.
+
+    ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé.** Une phase de poules
+    sans source déclarée est alimentée par le classement du départ (ADR-0068), donc par la
+    qualification — les niveaux n'en viennent pas, et le serpent y reste légitime même si des
+    poules la précèdent dans le déroulé.
+    """
+
+    code = "serpent_apres_des_poules"
 
 
 class PolitiqueInconnue(DomainError):

@@ -46,6 +46,7 @@ from domain.erreurs import (
     PhaseSansSource,
     PrelevementVide,
     RangsSourceInexistants,
+    SerpentApresDesPoules,
     SourcesQuiSeRecoupent,
 )
 from domain.grain_validation import GrainValidation
@@ -60,7 +61,12 @@ from domain.phase import (
     anomalies_sequence,
 )
 from domain.plage import Plage
-from domain.poule import ReglageDePoules, nb_poules_pour
+from domain.poule import (
+    ModeDeComposition,
+    ReglageDePoules,
+    nb_poules_pour,
+    tailles_de_niveau,
+)
 
 _TYPES_SANS_OPPOSITION = TYPES_SANS_OPPOSITION
 """Les types où l'archer tire **seul** : un participant leur suffit (E05US021).
@@ -574,6 +580,120 @@ def _anomalies_structurelles(etapes: Sequence[EtapeProjetable]) -> Iterator[Anom
         )
     yield from anomalies_sequence(etapes)
     yield from _anomalies_blocs_orphelins(etapes)
+    yield from _anomalies_serpent_apres_poules(etapes)
+
+
+def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
+    """Une phase de poules qui prélève dans des poules et compose au **serpent** (E05US029).
+
+    **Structurel, donc bloquant** — et les deux vont ensemble, c'est la ligne de partage d'ADR-0063
+    (« ce qui est faux quel que soit l'effectif bloque »). Le défaut ne dépend d'aucun effectif :
+    équilibrer des groupes dont les niveaux sont déjà connus est l'inverse de ce que
+    l'enchaînement de deux phases de poules cherche à faire, à 12 archers comme à 120.
+
+    ⚠️ **Le prédicat porte sur la source, pas sur le rang dans le déroulé.** Une phase de poules
+    sans source déclarée est alimentée par le classement du départ (ADR-0068) : ses niveaux
+    viennent de la qualification, pas des poules qui la précèdent, et le serpent y reste le bon
+    réglage. Lire « la 2ᵉ phase de poules du déroulé » aurait produit un faux positif systématique
+    sur ce cas — et manqué celui d'une phase de poules prélevant dans une phase de poules **non
+    adjacente**.
+
+    ⚠️ **Seules les sources `RANGS` comptent** (correctif de revue, axe D, bloquant). `preleves`
+    n'honore que celles-là : `le_reste` et `issue_de_tour` sont **inertes** (`DETTE-033`), et une
+    phase dont toutes les sources le sont retombe sur le classement du **départ** — donc le cas que
+    le paragraphe ci-dessus déclare légitime, atteint par une autre porte. Sans ce filtre, un
+    format « la phase 3 prend *le reste* de la phase 2 » — geste offert par l'atelier — devenait
+    **inapplicable** après mise à jour, et son message invitait à composer par niveau une phase
+    peuplée du plateau entier en ordre de qualification. C'est le précédent qu'énonce
+    `_anomalies_blocs_orphelins` : « un format du club qui cesse de fonctionner ».
+
+    ⚠️ **Une phase qui ne peut donner qu'UN groupe n'est jamais en cause** (correctif de revue, axe
+    C2). À un seul groupe, serpent et niveau composent la **même** poule : rien n'est éparpillé, et
+    exiger un geste qui ne change rien est un refus non justifiable. Le cas n'a rien de théorique —
+    c'est la façon dont ce format se composait **avant** cette US, une étape par niveau portant une
+    poule et sa tranche (« les rangs 1 à 6 »). Sans cette garde, six étapes de ce genre rendaient
+    six anomalies bloquantes et le format entier basculait non applicable. Le test reste
+    **structurel** (il lit l'effectif *déclaré*, pas un effectif de tournoi), donc la gravité
+    bloquante d'ADR-0063 reste justifiée.
+
+    ⚠️ **Borné aux sources de type POULES par le CA d'E05US029.** Le motif — « la source établit
+    déjà des niveaux » — vaudrait identiquement pour un système suisse ou une élimination directe,
+    tous deux `classement_lisible`. Ce n'est pas un oubli mais un périmètre : l'élargir demande un
+    arbitrage du commanditaire, pas une extension de prédicat en douce.
+
+    ⚠️ **On ne cite que les sources réellement en cause**, comme `_anomalies_choc_de_poule` a appris
+    à le faire : nommer une source de qualification à côté d'une source de poules enverrait
+    l'organisateur corriger un prélèvement qui n'a rien à se reprocher.
+    """
+    par_ordre = {etape.ordre: etape for etape in etapes}
+    for etape in etapes:
+        reglage = etape.poules
+        if etape.type is not TypePhase.POULES or reglage is None:
+            continue
+        if reglage.mode is not ModeDeComposition.SERPENT or reglage.serpent_assume:
+            continue
+        sources_de_poules = sorted(
+            {
+                source.ordre_source
+                for source in etape.sources
+                if source.nature is NatureSource.RANGS
+                and (amont := par_ordre.get(source.ordre_source)) is not None
+                and amont.type is TypePhase.POULES
+            }
+        )
+        if not sources_de_poules:
+            continue
+        if _ne_donne_qu_un_groupe(etape, reglage):
+            continue
+        pluriel = "les phases" if len(sources_de_poules) > 1 else "la phase"
+        citees = ", ".join(str(ordre) for ordre in sources_de_poules)
+        yield Anomalie(
+            SerpentApresDesPoules(
+                f"La phase {etape.ordre} prélève dans {pluriel} {citees} (poules) et compose ses "
+                "groupes au serpent : les niveaux déjà établis y seraient éparpillés. Choisissez "
+                "« par niveau », ou assumez le serpent explicitement."
+            ),
+            etape.ordre,
+        )
+
+
+def _ne_donne_qu_un_groupe(etape: EtapeProjetable, reglage: ReglageDePoules) -> bool:
+    """L'étape ne peut-elle composer qu'**une** poule, d'après tout ce qu'elle déclare (E05US029) ?
+
+    On lit l'effectif **déclaré** — celui de l'étape *et* la largeur cumulée de ses fenêtres — et
+    non un effectif de tournoi : le contrôle reste ainsi vrai à tout effectif, donc structurel, ce
+    qui est la condition de la gravité bloquante (ADR-0063).
+
+    ⚠️ **Les deux évidences doivent concorder, et la première version ne le faisait pas**
+    (correctif de 2ᵉ passe, axes C1 et D). L'effectif déclaré court-circuitait la lecture des
+    fenêtres — or ce n'est qu'une *déclaration*, jamais opposable : au tournoi c'est
+    `len(participants)` qui compose. Une phase déclarant « 6 » avec une source « à partir du rang
+    1 » recevait 36 archers, composait 6 poules au serpent après des poules, et le refus ne tombait
+    pas. On ne se tait donc que si **aucun** signal déclarable n'annonce plus d'un groupe.
+
+    ⚠️ **Un effectif déclaré invalide ne fait pas lever ici** (même correctif, axes A, C1 et D).
+    `nb_poules_pour` refuse `effectif < 1`, et un `ModelePhase` de brouillon accepte `0` — c'est le
+    régime d'ADR-0063, « l'enregistrement accepte le brouillon, le diagnostic dit pourquoi ». Sans
+    cette garde, une `DomainError` s'échappait du générateur d'anomalies et le diagnostic répondait
+    **422** au lieu de lister le défaut qu'`anomalies_etape` produit déjà. Le voisin
+    `_motif_de_choc` portait cette précaution depuis toujours ; la fonction neuve ne l'avait pas.
+    """
+    if etape.effectif is not None:
+        if etape.effectif < 1:
+            # Effectif de brouillon : `anomalies_etape` le signale, on ne conclut rien ici.
+            return False
+        if nb_poules_pour(etape.effectif, reglage.taille_visee) > 1:
+            return False
+    largeurs = [_largeur(source) for source in etape.sources if source.nature is NatureSource.RANGS]
+    if not largeurs or any(largeur == sys.maxsize for largeur in largeurs):
+        # Fenêtre à fin ouverte : le compte n'est pas déclarable, donc on ne peut pas certifier le
+        # groupe unique — « on ne refuse pas ce qu'on ne peut pas juger » vaut dans les deux sens.
+        return (
+            etape.effectif is not None
+            and nb_poules_pour(etape.effectif, reglage.taille_visee) == 1
+            and not largeurs
+        )
+    return nb_poules_pour(sum(largeurs), reglage.taille_visee) == 1
 
 
 def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
@@ -671,9 +791,12 @@ def _anomalies_choc_de_poule(
     **byes**, ce qui est un faux positif systématique à `P` pair, et se taisait sur des réglages où
     l'arithmétique ne s'applique tout simplement pas.
 
-    Le prédicat retenu est exact, et il l'est au sens strict : `P impair ET (M+1+P)//2 <= N`, où
+    Le prédicat retenu est exact **au serpent**, et il l'est au sens strict : `P impair ET
+    (M+1+P)//2 <= N`, où
     `M` est la puissance de 2 **supérieure ou égale** à `N`. Confronté à l'appariement réel du
     serpent sur `P = 2..39` croisé avec `N = 2..256` — 9945 configurations —, **zéro désaccord**.
+    ⚠️ Cette mesure ne dit **rien** du mode `PAR_NIVEAU`, qui révoque l'hypothèse d'espacement
+    elle-même (E05US029) : ce cas est écarté en tête de `_motif_de_choc`, avant tout calcul.
 
     Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
     règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
@@ -728,7 +851,7 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
     """Pourquoi le serpent peut réunir deux membres d'une poule — ou `None` s'il ne le peut pas.
 
     Le raisonnement ne vaut que sous une hypothèse : **le membre `k` d'une poule occupe les rangs
-    `k, k+P, k+2P…`** du classement de phase. Trois choses la cassent, et chacune est vérifiée ici
+    `k, k+P, k+2P…`** du classement de phase. Quatre choses la cassent, et chacune est vérifiée ici
     plutôt que supposée — c'est ce qui a manqué à la version précédente :
 
     1. le **départage inter-poules** : `classement_de_poules` trie alors chaque bloc de niveau
@@ -743,6 +866,12 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
 
     Dans ces trois cas on **signale** : l'innocuité n'est pas démontrable, et un avertissement de
     trop coûte une lecture là où un avertissement manquant coûte un tournoi mal apparié.
+
+    4. le mode **`PAR_NIVEAU`** (E05US029) casse l'hypothèse d'une **quatrième** façon, et c'est la
+       seule qui ne mène pas à « signaler faute de savoir » : les membres d'une poule y occupent des
+       rangs **contigus**, donc l'appariement se **calcule** exactement
+       (`_choc_entre_tranches`) au lieu de se supposer. Ce cas ne passe jamais par l'arithmétique
+       d'espacement ci-dessous — il en sort avant.
     """
     reglage = source.poules
     effectif = effectif_resolu if effectif_resolu is not None else source.effectif
@@ -751,6 +880,21 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
             "le nombre de poules ne se déduit pas de ce schéma (phase non réglée, ou effectif "
             "inconnu), donc l'appariement ne peut pas être prouvé sûr"
         )
+    if reglage.mode is ModeDeComposition.PAR_NIVEAU:
+        # ⚠️ **La 4ᵉ chose qui casse l'hypothèse d'espacement** (E05US029, relevée par trois axes de
+        # revue). Tout ce qui suit repose sur « le membre `k` occupe les rangs `k, k+P, k+2P…` » —
+        # c'est la lecture **au serpent**. Par niveau, `classement_de_poules` range groupe par
+        # groupe : les membres d'une poule occupent des rangs **contigus**, et le prédicat validé
+        # sur 9945 configurations ne décrit plus rien.
+        #
+        # ⚠️ **On calcule le prédicat exact plutôt que de signaler par prudence** (2ᵉ correctif de
+        # revue). Une première version rendait le motif **inconditionnellement**, en affirmant que
+        # c'était « exact plutôt que prudent » : mesuré, c'était faux **une fois sur quatre**
+        # (25,1 % de faux positifs sur 89 408 configurations, axe D). Or les tranches étant
+        # **contiguës et dérivables**, l'appariement se vérifie directement — et un avertissement
+        # systématique sur un format nominal est le bruit qui fait ignorer les vrais signaux,
+        # exactement l'argument que cette fonction oppose déjà à l'un de ses oracles passés.
+        return _choc_entre_tranches(effectif, resolu, reglage.taille_visee)
     if reglage.departage_inter_poules:
         return (
             "le départage inter-poules réordonne chaque bloc de rangs, donc les membres d'une "
@@ -768,6 +912,41 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
     taille_tableau = _puissance_de_deux_au_moins(resolu)
     if nb_poules % 2 == 1 and (taille_tableau + 1 + nb_poules) // 2 <= resolu:
         return f"le nombre de poules ({nb_poules}) est impair, donc le serpent ne les sépare pas"
+    return None
+
+
+def _choc_entre_tranches(effectif: int, resolu: int, taille_visee: int) -> str | None:
+    """Le tableau apparie-t-il deux membres d'une **même tranche de niveau** au premier tour ?
+
+    Exact, et vérifiable à la main : les groupes sont des intervalles de rangs (`tailles_de_niveau`,
+    domicile unique de la règle), et le tableau oppose le rang `r` au rang `M+1-r` où `M` est sa
+    taille — la puissance de 2 au moins égale au prélèvement. Il y a choc dès qu'une de ces paires
+    tombe deux fois dans la même tranche.
+
+    Rend `None` — donc *pas* d'avertissement — dans le cas nominal que le format vise : un
+    prélèvement de **groupes entiers** (« les rangs 1 à 16 » sur des groupes de 8) apparie
+    systématiquement le groupe A contre le groupe B, et ne réunit personne.
+    """
+    try:
+        nb_poules = nb_poules_pour(effectif, taille_visee)
+    except ConfigurationPouleInvalide:
+        return "le réglage de poules est incohérent, donc l'appariement n'est pas calculable"
+    groupe_du_rang: dict[int, int] = {}
+    rang = 1
+    for numero, taille in enumerate(tailles_de_niveau(effectif, nb_poules)):
+        for _ in range(taille):
+            groupe_du_rang[rang] = numero
+            rang += 1
+    taille_tableau = _puissance_de_deux_au_moins(resolu)
+    for rang in range(1, resolu + 1):
+        adverse = taille_tableau + 1 - rang
+        if adverse <= rang or adverse > resolu:
+            continue
+        if groupe_du_rang.get(rang) == groupe_du_rang.get(adverse):
+            return (
+                f"les groupes sont composés par niveau, donc contigus, et le tableau apparie les "
+                f"rangs {rang} et {adverse} — tous deux de la même poule"
+            )
     return None
 
 

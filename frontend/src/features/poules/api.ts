@@ -21,6 +21,7 @@ import type { Duel, Duelliste } from '../saisie-duels/api'
 // besoin, et une feature n'importe pas d'une feature sœur (règle 10). Ré-exportée ici pour ne
 // casser aucun import existant.
 import type { Place } from '../../shared/salle/place'
+import type { ModeDeComposition } from '../../shared/phases/poules'
 
 export type { Place }
 
@@ -30,6 +31,8 @@ export interface Repartition {
   taille_visee: number
   nb_poules: number
   tailles: number[]
+  /** Comment les groupes ont été composés (E05US029) — absent des réponses d'avant cette US. */
+  mode?: ModeDeComposition
 }
 
 /** Une rencontre, prête pour le pavé de saisie de duel. `couloirs` est `null` si le plan manque. */

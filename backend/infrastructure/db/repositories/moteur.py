@@ -54,7 +54,7 @@ from domain.phase import (
 from domain.placement import Affectation
 from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import NomProfondeur, ProfondeurClassement
-from domain.poule import BaremePoule, ReglageDePoules
+from domain.poule import BaremePoule, ModeDeComposition, ReglageDePoules
 from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import TournoiId
@@ -424,6 +424,13 @@ def _politiques_json(
         # plus et ferait diverger deux documents équivalents.
         if poules.departage_inter_poules:
             reglage["departage"] = True
+        # Même règle encore, et c'est elle qui évite la migration (E05US029) : le **serpent** étant
+        # le défaut et le comportement de toujours, ne rien écrire dit exactement ce que disent les
+        # documents déjà en base. Seul `par_niveau` s'inscrit, et la dérogation avec lui.
+        if poules.mode is not ModeDeComposition.SERPENT:
+            reglage["mode"] = poules.mode.value
+        if poules.serpent_assume:
+            reglage["serpent_assume"] = True
         config["poules"] = reglage
     if big_shoot_off is not None:
         # Même domicile et même raison que `poules` : racine du `config`, pas `policies` — c'est un
@@ -690,7 +697,30 @@ def _lire_reglage_poules(config: Any) -> ReglageDePoules | None:
         nb_qualifies=None if qualifies is None else int(qualifies),
         rencontres_par_archer=None if rencontres is None else int(rencontres),
         departage_inter_poules=poules.get("departage") is True,
+        mode=_mode_de_composition(poules.get("mode")),
+        serpent_assume=poules.get("serpent_assume") is True,
     )
+
+
+def _mode_de_composition(valeur: object) -> ModeDeComposition:
+    """Le mode de composition écrit au JSON, ou le **serpent** (E05US029).
+
+    ⚠️ **Aucune migration**, et c'est la même propriété qui l'a permis pour le découpage en tours
+    d'E05US035 : le réglage de poules vit dans le `config` JSON de l'étape, pas dans une colonne.
+    Un document écrit avant cette US n'a pas la clé — il compose au serpent, ce qui est
+    **exactement** ce qu'il faisait. Aucun tournoi déjà réglé ne change de composition.
+
+    Une valeur **inconnue** remonte en « configuration illisible » (ADR-0007) plutôt que de retomber
+    sur le défaut : un `mode` que la base porte et que le code ne connaît pas ne peut venir que
+    d'une ligne écrite à la main ou d'un retour arrière de version, et composer au serpent « par
+    prudence » y monterait silencieusement un tournoi que personne n'a réglé.
+    """
+    if valeur is None:
+        return ModeDeComposition.SERPENT
+    try:
+        return ModeDeComposition(valeur)
+    except ValueError as erreur:
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.") from erreur
 
 
 def _source_json(source: SourcePhase) -> dict[str, object]:
