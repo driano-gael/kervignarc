@@ -79,8 +79,11 @@ function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'st
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    decoupage: null,
     // ⚠️ E05US033 : `arrets` n'est **pas** ici, et c'est voulu — une `Phase` ne les porte pas, le
     // serveur ne les remplit que sur une étape de déroulé (le type l'exclut explicitement).
+    // ⚠️ E05US035 : `nb_volees` non plus, et pour la même raison — il n'est servi que sur une
+    // étape, le barème se lisant par sa propre ressource.
     ...patch,
   }
 }

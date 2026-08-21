@@ -18,19 +18,30 @@ import { TOURS_MAX_REGLABLES, decrire, ligneNeuve, toursEnDoublon, versArrets } 
 /**
  * Rend la fiche des pauses programmées. Aucun état : l'unique source est `etat`, détenu par le parent.
  *
- * `arretable` dit si le **type** de cette étape annonce ses tours, donc si une pause peut s'y poser
- * (`TYPES_ARRETABLES`). C'est le parent qui le sait — il connaît le type choisi. Quand c'est faux, la
- * fiche n'offre aucun champ et explique le refus : l'API rejette l'arrêt (`ArretProgrammeInvalide`,
- * 422) et, le `PUT` étant une édition **totale**, c'est l'étape entière qui serait refusée.
+ * `arretable` dit si une pause peut se poser sur cette étape. C'est le parent qui le sait — il
+ * connaît le type choisi **et** son découpage. Quand c'est faux, la fiche n'offre aucun champ et
+ * explique le refus : l'API rejette l'arrêt (`ArretProgrammeInvalide`, 422) et, le `PUT` étant une
+ * édition **totale**, c'est l'étape entière qui serait refusée.
+ *
+ * ⚠️ **`motif` existe parce que le refus a cessé d'avoir une seule cause** (E05US035, correctif de
+ * 2ᵉ passe de revue). Jusque-là, « pas arrêtable » voulait dire « ce **type** n'annonce pas ses
+ * tours », et la fiche pouvait énumérer les types qui les annoncent. Depuis qu'une **qualification**
+ * est arrêtable une fois **découpée**, la même phrase serait fausse deux fois : elle dirait au
+ * lecteur que son type ne le permet pas — alors que si —, et elle omettrait la qualification de la
+ * liste, alors qu'elle vient d'y entrer. Surtout, elle ne nommerait pas le geste réparateur, qui est
+ * à deux blocs de là sur le même écran (`P-3` : un refus sans issue est un cul-de-sac).
  */
 export function ReglageArrets({
   etat,
   surChangement,
   arretable,
+  motif = 'type',
 }: {
   etat: EtatArrets
   surChangement: (etat: EtatArrets) => void
   arretable: boolean
+  /** Pourquoi la pause est refusée, quand `arretable` est faux. Voir l'entête. */
+  motif?: 'type' | 'non-decoupee'
 }) {
   const doublons = toursEnDoublon(etat)
   const illisible = versArrets(etat) === undefined
@@ -60,11 +71,19 @@ export function ReglageArrets({
           `role="status"` — c'est une explication statique, pas l'annonce d'un changement (même
           raison que le paragraphe « aucune pause programmée » ci-dessous). */}
       {!arretable ? (
-        <p className="carte__aide">
-          Ce type de phase n’annonce pas ses tours&nbsp;: l’application ne saurait pas à quel moment
-          y appliquer la pause. Les pauses se programment sur une élimination directe, des poules,
-          un système suisse ou un Big Shoot Off.
-        </p>
+        motif === 'non-decoupee' ? (
+          <p className="carte__aide">
+            Cette qualification se tire d’un seul bloc, donc une pause n’aurait aucune frontière de
+            tour où tomber. <strong>Découpez-la d’abord en tours</strong> (juste au-dessus)&nbsp;:
+            «&nbsp;20 volées en 2 tours de 10&nbsp;» permet d’arrêter la salle après le premier.
+          </p>
+        ) : (
+          <p className="carte__aide">
+            Ce type de phase n’annonce pas ses tours&nbsp;: l’application ne saurait pas à quel
+            moment y appliquer la pause. Les pauses se programment sur une qualification découpée en
+            tours, une élimination directe, des poules, un système suisse ou un Big Shoot Off.
+          </p>
+        )
       ) : etat.lignes.length === 0 ? (
         /* ⚠️ **Pas de `role="status"` ici**, à la différence des deux alertes en bas de fiche. Ce
            texte est **statique** : il décrit le défaut, il n'annonce aucun changement. Le lui donner

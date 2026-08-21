@@ -46,6 +46,8 @@ const PHASE: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: { nb_rondes: 5 },
+  decoupage: null,
+  nb_volees: null,
   arrets: [
     { apres_tour: 2, portee: 'phase' },
     { apres_tour: 4, portee: 'depart' },

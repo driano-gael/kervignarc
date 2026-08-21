@@ -43,6 +43,7 @@ from domain.phase import (
 )
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from infrastructure.db import WriteQueue
 
@@ -247,6 +248,39 @@ class ReglageBigShootOffDTO(BaseModel):
         )
 
 
+class DecoupageDTO(BaseModel):
+    """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]) — « 20 volées en 2 ».
+
+    Un seul champ : l'organisateur saisit un **nombre de tours**, et le moteur en déduit la
+    longueur. Le découpage ne change **rien** au score — la qualification se classe toujours au
+    total (`avancer ≠ classer`, ADR-0090) —, il n'existe que pour donner à une **pause programmée**
+    une frontière où tomber.
+
+    ⚠️ **La divisibilité n'est pas ici**, et ce n'est pas un oubli : « 2 tours » est licite sur un
+    barème de 20 volées et ne l'est pas sur un de 15. Elle dépend donc du **barème**, que ce DTO ne
+    connaît pas et qu'un format de bibliothèque ne connaîtra jamais. `EtapeDeroule` la vérifie là
+    où le barème est déclaré, et l'atelier affiche la longueur obtenue sous le champ. C'est le même
+    partage que `ReglageSuisseDTO` avec l'effectif — le plafond posé ici (`le=64`) est la garde de
+    frontière habituelle, pas la règle du format.
+
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 7ᵉ paire,
+    `DETTE-054`.
+
+    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_tours: int = Field(default=1, ge=1, le=64)
+
+    def vers_agregat(self) -> DecoupageEnTours:
+        return DecoupageEnTours(nb_tours=self.nb_tours)
+
+    @staticmethod
+    def de_agregat(decoupage: DecoupageEnTours) -> DecoupageDTO:
+        return DecoupageDTO(nb_tours=decoupage.nb_tours)
+
+
 class ReglageSuisseDTO(BaseModel):
     """Le réglage d'une phase au **système suisse** (E05US026) — le nombre de rondes.
 
@@ -368,6 +402,12 @@ class ConfigPhaseRequete(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
+    decoupage: DecoupageDTO | None = None
+    """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `qualification`, il lève `DecoupageEnToursInvalide` (422)."""
+
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033, ADR-0091) — liste vide = aucune.
 
@@ -432,6 +472,12 @@ class PhaseReponse(BaseModel):
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
 
+    decoupage: DecoupageDTO | None = None
+    """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `qualification`, il lève `DecoupageEnToursInvalide` (422)."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -455,6 +501,9 @@ class PhaseReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(phase.big_shoot_off)
             ),
             suisse=(None if phase.suisse is None else ReglageSuisseDTO.de_agregat(phase.suisse)),
+            decoupage=(
+                None if phase.decoupage is None else DecoupageDTO.de_agregat(phase.decoupage)
+            ),
             barrage_jusqu_au=phase.barrage_jusqu_au,
         )
 
@@ -478,6 +527,25 @@ class EtapeReponse(BaseModel):
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
+    decoupage: DecoupageDTO | None = None
+    """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `qualification`, il lève `DecoupageEnToursInvalide` (422)."""
+
+    nb_volees: int | None = None
+    """Le nombre de volées du barème de cette étape — **lecture seule** (E05US035).
+
+    ⚠️ **Ce n'est pas « le barème exposé »**, et la distinction est volontaire : le barème se règle
+    par sa propre ressource (`/bareme-qualification`), et l'y dupliquer en écriture ouvrirait deux
+    chemins pour une même donnée. Ce qui est servi ici est le seul chiffre dont l'écran d'atelier a
+    besoin pour **dire ce que le découpage donne** (« 2 tours de 10 volées ») et nommer le refus à
+    venir quand il ne tombe pas juste. Sans lui, la fiche de découpage ne pourrait qu'annoncer
+    « la longueur dépend du barème » sur un tournoi où le barème est pourtant connu.
+
+    `null` sur tout type sans barème — donc partout sauf la qualification.
+    """
 
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les pauses programmées de cette étape (E05US033) — **rendues au complet**.
@@ -508,7 +576,11 @@ class EtapeReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            decoupage=(
+                None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
+            ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
+            nb_volees=None if etape.bareme is None else etape.bareme.nb_volees,
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
 
@@ -570,6 +642,7 @@ async def ajouter_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )
@@ -602,6 +675,7 @@ async def modifier_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )
         )

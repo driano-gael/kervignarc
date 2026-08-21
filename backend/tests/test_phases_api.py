@@ -586,3 +586,111 @@ def test_profondeur_rang_zero_422(app_phases: FastAPI, connecter_admin: Connecte
         )
         assert reponse.status_code == 422, reponse.text
         assert reponse.json()["code"] == "profondeur_invalide"
+
+
+# --- E05US035 : le découpage d'une qualification traverse la frontière API -----------------------
+
+
+def test_le_decoupage_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`decoupage` s'envoie au `PUT` et se relit au `GET`, avec le `nb_volees` qui l'accompagne.
+
+    ⚠️ **Ce test manquait à la livraison d'E05US035** (relevé en revue, axe B). Deux choses s'y
+    jouent, et aucune n'était couverte : le réglage traverse-t-il la frontière (DTO ↔ agrégat), et
+    `nb_volees` — champ **lecture seule** ajouté à `EtapeReponse` pour que l'atelier puisse dire
+    « 2 tours de 10 volées » — arrive-t-il vraiment ? Sans lui, la fiche affiche « la longueur
+    dépend du barème du tournoi qui appliquera ce format » sur un tournoi où le barème est connu,
+    et tout reste vert.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(base, json={"type": "qualification"})
+        assert creation.status_code == 201, creation.text
+        etape_id = creation.json()["id"]
+        # Le preset FFTA 18 m est posé d'office à la création (20 volées de 3).
+        assert creation.json()["nb_volees"] == 20
+        assert creation.json()["decoupage"] is None
+
+        modif = client.put(
+            f"{base}/{etape_id}",
+            json={"type": "qualification", "sources": [], "decoupage": {"nb_tours": 2}},
+        )
+        assert modif.status_code == 200, modif.text
+
+        relue = client.get(base).json()[0]
+        assert relue["decoupage"] == {"nb_tours": 2}
+        assert relue["nb_volees"] == 20
+
+
+def test_un_decoupage_qui_ne_tombe_pas_juste_est_refuse_en_422(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """20 volées en 3 tours : le refus du domaine remonte bien en 422 à la frontière (règle 5)."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        etape_id = client.post(base, json={"type": "qualification"}).json()["id"]
+
+        refus = client.put(
+            f"{base}/{etape_id}",
+            json={"type": "qualification", "sources": [], "decoupage": {"nb_tours": 3}},
+        )
+
+        assert refus.status_code == 422, refus.text
+        assert refus.json()["code"] == "decoupage_en_tours_invalide"
+
+
+def test_une_pause_sur_une_qualification_non_decoupee_est_refusee_en_422(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Le bloquant de revue, vu de la frontière** — cinq axes l'ont trouvé.
+
+    L'atelier acceptait une pause sur une qualification laissée en un bloc, et elle ne partait
+    jamais. Le refus doit être visible **là où l'organisateur agit**, pas seulement au domaine.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        etape_id = client.post(base, json={"type": "qualification"}).json()["id"]
+
+        refus = client.put(
+            f"{base}/{etape_id}",
+            json={
+                "type": "qualification",
+                "sources": [],
+                "arrets": [{"apres_tour": 1, "portee": "phase"}],
+            },
+        )
+
+        assert refus.status_code == 422, refus.text
+        assert "Découpez" in refus.json()["message"]
+
+
+def test_une_pause_sur_une_qualification_decoupee_est_acceptee(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le geste que l'US livre, de bout en bout : découper, puis poser la pause."""
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+        etape_id = client.post(base, json={"type": "qualification"}).json()["id"]
+
+        pose = client.put(
+            f"{base}/{etape_id}",
+            json={
+                "type": "qualification",
+                "sources": [],
+                "decoupage": {"nb_tours": 2},
+                "arrets": [{"apres_tour": 1, "portee": "phase"}],
+            },
+        )
+
+        assert pose.status_code == 200, pose.text
+        assert pose.json()["arrets"] == [{"apres_tour": 1, "portee": "phase"}]

@@ -221,6 +221,18 @@ class ConfigurationSuisseInvalide(DomainError):
     code = "configuration_suisse_invalide"
 
 
+class DecoupageEnToursInvalide(DomainError):
+    """Le découpage d'une **qualification en tours** ne décrit pas des tours égaux (E05US035).
+
+    Nombre de tours < 1, ou qui ne divise pas le nombre de volées du barème : 20 volées en 3 tours
+    donneraient 7/7/6, et « après le tour 2 » ne désignerait plus le même instant selon l'archer —
+    donc une pause qui ne tombe pas au même endroit pour tout le monde. On le dit à la composition,
+    où le réglage se répare d'un geste, plutôt que le jour J où il ne se répare plus.
+    """
+
+    code = "decoupage_en_tours_invalide"
+
+
 class ConfigurationCollineInvalide(DomainError):
     """Les paramètres d'une phase de **colline** (King of the Hill / Ladder) sont incohérents
     (E05US015).

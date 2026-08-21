@@ -141,21 +141,34 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
 ])
 
 // Les types sur lesquels une **pause programmée** peut se poser (E05US033, ADR-0091). Miroir de
-// `TYPES_DEROULES` côté domaine (`domain/contrat_phase.py`), dérivée là-bas du contrat de phase.
+// `TYPES_ARRETABLES` côté domaine (`domain/contrat_phase.py`), dérivée là-bas de la capacité
+// `avancement_lisible` du contrat de phase — et **plus** de `TYPES_DEROULES`, dont elle s'est
+// séparée en E05US035 (ADR-0093 : « observer son tour » n'est pas « faire jouer ce type »).
 //
 // Un arrêt coupe le déroulé à une frontière de tour **observée** : le déclencheur demande le tour
-// courant au service qui déroule la phase. Les types qu'aucun service ne déroule — la qualification,
+// courant au service qui observe la phase. Les types dont personne ne lit l'avancement —
 // l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à observer, et le serveur
 // **refuse** l'arrêt (`ArretProgrammeInvalide`, 422). L'écran évite donc de le proposer, et dit
 // pourquoi plutôt que de laisser l'organisateur buter sur un refus à la soumission.
 //
+// ⚠️ **Pour la qualification, le type ne suffit pas** : elle n'est arrêtable qu'une fois
+// **découpée en tours**. Non découpée, elle n'en compte qu'un, et toute pause y serait inerte — le
+// serveur la refuse à la composition. Cette table reste donc par type, et les deux écrans qui
+// composent des phases y ajoutent la condition d'instance (`Phases.tsx`, `Deroule.tsx`).
+//
 // ⚠️ **Écrite en positif**, comme `MOTEUR_SAIT_JOUER` et pour la même raison : cette liste ne fait
-// que **s'allonger** (`E05US035` y ajoutera la qualification — reportée d'`E05US034` au cadrage du
-// 20/08/2026 : la rendre divisible en tours est un chantier moteur, pas un ajout à cette table). Un oubli d'ajout prive l'organisateur
-// d'un réglage que le serveur accepterait — pessimiste, donc rattrapable ; l'écrire en négatif
-// aurait fait offrir un réglage que le serveur refuse, ce qui casse la soumission entière (le `PUT`
-// est une édition **totale**).
+// que **s'allonger**. Un oubli d'ajout prive l'organisateur d'un réglage que le serveur
+// accepterait — pessimiste, donc rattrapable ; l'écrire en négatif aurait fait offrir un réglage
+// que le serveur refuse, ce qui casse la soumission entière (le `PUT` est une édition **totale**).
+//
+// ⚠️ **La qualification y entre en `E05US035`, et elle n'y entre pas seule** : elle n'est arrêtable
+// que parce que `ServiceSaisie.avancement_de_phase` sait désormais dire où elle en est. Le miroir
+// serveur est `TYPES_ARRETABLES` (domaine), qui a cessé d'être `TYPES_DEROULES` à cette occasion —
+// la qualification s'**observe** sans être *montée* par personne (ADR-0093). Ajouter un type ici
+// sans lecteur d'avancement en face offrirait un réglage inerte, ce que la table sert justement à
+// éviter.
 export const TYPES_ARRETABLES: ReadonlySet<TypePhase> = new Set([
+  'qualification',
   'elimination_directe',
   'poules',
   'big_shoot_off',

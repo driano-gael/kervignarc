@@ -29,6 +29,7 @@ function poser(effectifSimule: number | null) {
         poules: null,
         big_shoot_off: null,
         suisse: { nb_rondes: 5 },
+        decoupage: null,
         sources: [],
         effectif: null,
         profondeur: null,

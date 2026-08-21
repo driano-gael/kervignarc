@@ -1085,8 +1085,12 @@ def test_poser_un_arret_relatif_est_refuse_sur_un_type_qui_ne_lit_pas_son_tour(
     `E05US033` a livré la table des types dont l'application lit le tour. Une seconde porte qui ne
     la consulterait pas laisserait poser, depuis le pilotage, un arrêt qui ne partirait jamais —
     précisément le réglage inerte que l'atelier refuse d'enregistrer.
+
+    ⚠️ **Le cas de garde était la qualification jusqu'à E05US035**, qui l'a rendue arrêtable
+    (ADR-0093). L'échauffement prend sa place : il n'a ni barème ni feuille de marque, donc aucune
+    donnée existante ne dit où il en est.
     """
-    phase_id = decor.poser(ordre=1, type_phase=TypePhase.QUALIFICATION, tour_courant=1)
+    phase_id = decor.poser(ordre=1, type_phase=TypePhase.ECHAUFFEMENT, tour_courant=1)
 
     with pytest.raises(ArretProgrammeInvalide):
         decor.service.poser_arret_relatif(decor.depart_id, phase_id, dans_x_tours=1)

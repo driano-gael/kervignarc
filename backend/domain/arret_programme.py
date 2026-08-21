@@ -52,7 +52,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from domain.contrat_phase import TYPES_DEROULES, TypePhase
+from domain.contrat_phase import TYPES_ARRETABLES, TypePhase
 from domain.depart import DepartId
 from domain.erreurs import ArretProgrammeInvalide
 from domain.phase import PhaseId
@@ -196,17 +196,25 @@ def verifier_type_arretable(type_phase: TypePhase) -> None:
     réécrire le test de type. Deux copies d'un même refus divergent, et celle qui diverge est
     toujours celle qu'on a écrite en second.
 
-    Le déclencheur ne coupe qu'à une frontière de tour **observée**. Les types qu'aucun service ne
-    déroule — qualification, échauffement, barrage, placement, colline — n'ont aucun tour à
-    observer : l'arrêt y serait accepté puis définitivement inerte, et l'organisateur découvrirait
-    le jour J que sa pause repas n'a jamais eu lieu. Un refus explicite vaut mieux qu'un réglage
-    mort, et il dit **où** poser la pause (`P-3` : un refus sans issue est un cul-de-sac).
+    Le déclencheur ne coupe qu'à une frontière de tour **observée**. Les types dont aucun service
+    ne lit l'avancement — échauffement, barrage, placement, colline — n'ont aucun tour à observer :
+    l'arrêt y serait accepté puis définitivement inerte, et l'organisateur découvrirait le jour J
+    que sa pause repas n'a jamais eu lieu. Un refus explicite vaut mieux qu'un réglage mort, et il
+    dit **où** poser la pause (`P-3` : un refus sans issue est un cul-de-sac).
+
+    ⚠️ **L'oracle est `TYPES_ARRETABLES`, et non `TYPES_DEROULES` comme jusqu'à E05US035.** Les
+    deux tables coïncidaient, ce qui rendait la confusion invisible ; la **qualification** les
+    sépare — on sait désormais dire où elle en est (`ServiceSaisie.avancement_de_phase`) sans
+    qu'aucun service ne la monte. Lever le refus en basculant l'autre capacité aurait fait réclamer
+    un plancher d'inscrits par rangs à toute qualification prélevée (E05US021), soit un refus de
+    démarrage le jour J pour un réglage d'affichage.
     """
-    if type_phase not in TYPES_DEROULES:
+    if type_phase not in TYPES_ARRETABLES:
         raise ArretProgrammeInvalide(
             f"Une phase de type « {type_phase.value} » n'annonce pas ses tours : l'application "
             "ne saurait pas quand y appliquer une pause. Les pauses se posent sur une "
-            "élimination directe, des poules, un système suisse ou un Big Shoot Off."
+            "qualification découpée en tours, une élimination directe, des poules, un système "
+            "suisse ou un Big Shoot Off."
         )
 
 
@@ -231,7 +239,12 @@ def doublon_d_arret(tours: Sequence[int]) -> ArretProgrammeInvalide:
     )
 
 
-def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = None) -> None:
+def verifier_arrets(
+    arrets: Sequence[ArretProgramme],
+    nb_tours: int | None = None,
+    *,
+    geste_reparateur: str | None = None,
+) -> None:
     """Vérifie qu'une **liste** d'arrêts est applicable. Lève `ArretProgrammeInvalide` sinon.
 
     Les invariants d'un arrêt seul sont à son `__post_init__` ; ceux du **couple** (deux arrêts
@@ -242,6 +255,12 @@ def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = Non
     `nb_tours=None` signifie « inconnu » et ne déclenche aucun refus : un système suisse réglé à
     7 rondes n'en joue que 5 si l'effectif ne permet pas plus, et l'atelier ne connaît pas toujours
     l'effectif. On ne refuse pas ce qu'on ne peut pas juger.
+
+    ⚠️ **`geste_reparateur` existe parce qu'un refus sans issue est un cul-de-sac** (`P-3`). Le
+    message générique dit *pourquoi* c'est refusé ; sur une qualification non découpée il ne dit
+    pas *quoi faire*, et « la phase n'en compte que 1 » laisse l'organisateur sans prise — il n'a
+    aucune raison de deviner qu'un réglage de découpage existe deux blocs plus haut. L'appelant qui
+    connaît le geste le fournit ; les autres gardent le message d'origine.
     """
     tours = [arret.apres_tour for arret in arrets]
     doublons = {tour for tour in tours if tours.count(tour) > 1}
@@ -252,9 +271,10 @@ def verifier_arrets(arrets: Sequence[ArretProgramme], nb_tours: int | None = Non
     inertes = sorted(tour for tour in tours if tour >= nb_tours)
     if inertes:
         liste = ", ".join(str(tour) for tour in inertes)
+        issue = f" {geste_reparateur}" if geste_reparateur else ""
         raise ArretProgrammeInvalide(
             f"un arrêt posé après le tour {liste} ne couperait rien : la phase n'en compte que "
-            f"{nb_tours}, elle est terminée à ce moment-là"
+            f"{nb_tours}, elle est terminée à ce moment-là.{issue}"
         )
 
 

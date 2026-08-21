@@ -6,6 +6,7 @@ import type { IssueTour, NatureSource, TypePhase } from '../../shared/phases/cat
 import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
 import type { ArretProgramme } from '../../shared/phases/arrets'
+import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
 import type { Profondeur } from '../patrimoine/api'
 
@@ -63,6 +64,16 @@ export interface EtapeDeroule {
   // Le réglage d'un **système suisse** (E05US030) — le nombre de rondes. Même régime que les deux
   // ci-dessus : `null` = non réglé, et le `PUT` étant une édition totale, l'omettre l'**efface**.
   suisse: ReglageSuisse | null
+  // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
+  // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
+  // totale que ses voisins.
+  decoupage: Decoupage | null
+
+  // Le nombre de volées du barème de l'étape — **lecture seule** (E05US035). Sert à la fiche de
+  // découpage, qui annonce ce que le réglage donne (« 2 tours de 10 volées ») et nomme le refus à
+  // venir quand il ne tombe pas juste. `null` hors qualification. Le barème lui-même se règle par
+  // sa propre ressource : ce champ ne part jamais au `PUT`.
+  nb_volees: number | null
   // Les **pauses programmées** de cette étape (E05US033, ADR-0091) — `[]` = aucune, et c'est le
   // défaut : la salle enchaîne les tours toute seule.
   //
@@ -81,7 +92,12 @@ export interface EtapeDeroule {
 // serveur ne remplit ce champ que sur `EtapeReponse` : sur une `Phase`, il vaut `undefined` à
 // l'exécution pendant que TS garantissait un tableau. Un commentaire n'est pas un type, et
 // `E05US034` touchera précisément ces écrans.
-export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets'> {
+//
+// ⚠️ **`nb_volees` est retiré pour la même raison** (E05US035) : le serveur ne le sert que sur
+// `EtapeReponse`, parce que le barème se lit par sa propre ressource. Le laisser fuir par le `Omit`
+// aurait rejoué le défaut d'`arrets` un an après l'avoir corrigé — un champ garanti par TS et
+// `undefined` à l'exécution.
+export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets' | 'nb_volees'> {
   depart_id: number
   statut: StatutPhase
 }
@@ -105,6 +121,10 @@ export interface ConfigPhase {
   big_shoot_off?: ReglageBigShootOff | null
   // Même règle d'édition totale : omis, le réglage du système suisse est **effacé** côté serveur.
   suisse?: ReglageSuisse | null
+  // Même règle d'édition totale : omis, le découpage de la qualification est **effacé** côté
+  // serveur. C'est ce qui permet de retyper une qualification découpée sans se faire refuser
+  // l'édition — le serveur lève sinon `DecoupageEnToursInvalide` sur un réglage devenu fantôme.
+  decoupage?: Decoupage | null
   // ⚠️ **Même règle, et c'est ici qu'elle coûte le plus cher** : une liste omise ou vide **supprime**
   // toutes les pauses programmées. Ce n'est pas un paramètre qu'on retrouve d'un coup d'œil mais un
   // planning de journée saisi ligne à ligne. L'écran renvoie donc toujours la liste complète.

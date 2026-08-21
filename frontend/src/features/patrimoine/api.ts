@@ -173,6 +173,7 @@ export type { Profondeur } from '../../shared/phases/catalogue'
 export type { BaremePoule, ReglagePoules } from '../../shared/phases/poules'
 import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
+import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
@@ -197,6 +198,10 @@ export interface Etape {
   // depuis E05US026 (`ReglageSuisseDTO`) ; le front l'ignorait, donc composer un format au suisse
   // envoyait `suisse: null` et l'étape restait non réglée sans que rien ne le dise.
   suisse: ReglageSuisse | null
+  // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
+  // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
+  // totale que ses voisins.
+  decoupage: Decoupage | null
   // Les **pauses programmées** de cette étape (E05US033, ADR-0091) — `[]` = aucune, le défaut.
   //
   // ⚠️ **Présent sur un format de bibliothèque, et pas seulement sur le déroulé d'un tournoi.** Son

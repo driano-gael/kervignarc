@@ -40,6 +40,8 @@ import {
   estValide as arretsValides,
   versArrets,
 } from '../../shared/phases/arrets'
+import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
+import { depuisDecoupage, versDecoupage } from '../../shared/phases/decoupage'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -327,6 +329,9 @@ function LignePhase({
           ↓
         </button>
         {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
+        {/* E05US035 — même place et même raison que le barrage juste au-dessus : la qualification
+            n'ouvre jamais `FormulairePhase`, donc un réglage qui n'est pas ici n'est nulle part. */}
+        {gereeAilleurs && <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />}
         {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
         {phase.type === 'suisse' && <PlanDeSuisse tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
@@ -489,10 +494,25 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
+  // dont le nombre de tours n'est pas déjà porté par sa structure.
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
-  // se poser (`TYPES_ARRETABLES`, miroir de `TYPES_DEROULES` côté domaine). Le serveur refuse
+  // se poser (`TYPES_ARRETABLES`, miroir de la table de **même nom** côté domaine — elle a cessé
+  // de dériver de `TYPES_DEROULES` en E05US035, ADR-0093). Le serveur refuse
   // l'arrêt ailleurs (`ArretProgrammeInvalide`, 422) — et comme le `PUT` est une édition **totale**,
   // c'est l'étape entière qui serait refusée, pas seulement le champ.
+  // ⚠️ **Pour une qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** (correctif de
+  // revue, E05US035, quatre axes). `TYPES_ARRETABLES` répond « on sait observer son tour » ; une
+  // qualification non découpée n'en compte qu'**un**, donc aucune pause n'y a de frontière où
+  // tomber — le serveur la refuse désormais, et offrir le champ ferait échouer la soumission
+  // **entière** (le `PUT` est une édition totale), ce que cette table est justement écrite « en
+  // positif » pour éviter. C'est aussi ce que la fiche de découpage affiche deux blocs plus haut :
+  // sans cette ligne, l'écran se contredisait lui-même.
+  // ⚠️ **Pas de condition sur le découpage ici, et c'est voulu** : ce formulaire ne voit jamais de
+  // qualification (« gérée ailleurs », absente de `TYPES_AJOUTABLES`), donc l'y écrire serait du
+  // code mort — la garde d'instance vit dans `ReglageDecoupageDePhase`, le seul écran qui compose
+  // les réglages d'une qualification de tournoi. Relevé en 2ᵉ passe de revue : le premier correctif
+  // l'avait posée ici, où elle ne pouvait jamais s'évaluer.
   const arretable = TYPES_ARRETABLES.has(type)
   const soumissionPossible =
     sources !== 'invalide' &&
@@ -535,6 +555,22 @@ export function FormulairePhase({
       // retype une phase de poules en qualification perd ses pauses. L'alternative — les conserver
       // — ferait échouer l'enregistrement entier avec un message que l'écran ne sait pas rattacher
       // au bon champ, ce qui est pire : il ne pourrait plus enregistrer du tout.
+      // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422
+      // `decoupage_en_tours_invalide`. Retyper la phase l'**efface** donc, comme ses voisins.
+      // ⚠️ `versDecoupage` rend déjà `null` pour un seul tour — « non découpée » est l'état par
+      // défaut, et persister `{ nb_tours: 1 }` ferait apparaître un réglage jamais posé.
+      // ⚠️ **`null` dans tous les cas atteignables aujourd'hui, mais écrit défensivement**
+      // (correctif de 2ᵉ passe de revue). Ce formulaire ne voit jamais de qualification — elle est
+      // « gérée ailleurs » (`gereeAilleurs`), absente de `TYPES_AJOUTABLES` —, donc un découpage
+      // n'a ici aucun sens et `null` est la valeur **exacte**, pas un effacement. Le vrai réglage
+      // vit dans `ReglageDecoupageDePhase`, plus bas.
+      //
+      // Le `null` **en dur** a pourtant été écarté : le `<select>` de ce formulaire accepte
+      // explicitement un type hors catalogue (`typesProposes` le réinjecte), donc le jour où la
+      // qualification y deviendrait éditable, la constante effacerait son découpage en silence —
+      // et rendrait inertes toutes les pauses posées dessus. Ce serait la **4ᵉ** occurrence de la
+      // leçon que ce fichier raconte déjà trois fois. Deux caractères l'empêchent.
+      decoupage: type === 'qualification' ? (phase?.decoupage ?? null) : null,
       arrets: arretable ? (versArrets(arrets) ?? []) : [],
     }
     if (enEdition) {
@@ -743,9 +779,22 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
         // la raconte, et elle contredisait la promesse écrite dans le DTO côté serveur (« l'écran
         // doit toujours renvoyer la liste complète, jamais un delta »).
         arrets: phase.arrets,
-        // Trou **préexistant** fermé au passage : inoffensif sur la qualification (qui ne porte
-        // jamais de réglage de suisse), mais c'était le dernier champ non réémis de ce chemin.
+        // Trous **préexistants** fermés au passage : inoffensifs sur la qualification (qui ne porte
+        // jamais de réglage de suisse ni de Big Shoot Off), mais c'étaient les derniers champs non
+        // réémis de ce chemin. ⚠️ `big_shoot_off` manquait encore après E05US035 — relevé en 2ᵉ
+        // passe, alors que le commentaire d'à côté affirmait `suisse` « dernier champ non réémis ».
+        // Une affirmation de complétude fausse est ce qui empêche de la revérifier.
         suisse: phase.suisse,
+        big_shoot_off: phase.big_shoot_off,
+        // ⚠️ **E05US035, et c'est la TROISIÈME fois que ce widget rejoue la même leçon.** Le
+        // commentaire de `barrage_jusqu_au` plus haut la raconte, celui d'`arrets` la raconte une
+        // deuxième fois — et `decoupage` est exactement le champ le plus exposé : il ne vit que sur
+        // la qualification, c'est-à-dire le seul type que ce widget rend. Sans cette ligne,
+        // renseigner « barrage jusqu'au rang 8 » **effaçait le découpage en tours**, donc rendait
+        // du même coup inertes toutes les pauses posées dessus — sans message, avec un `PUT` qui
+        // réussit. Relevé en me corrigeant, pas par un axe : la revue avait signalé la branche
+        // morte, ce chemin-ci était encore un cran plus loin.
+        decoupage: phase.decoupage,
       },
     })
   }
@@ -779,6 +828,105 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
           Un entier ≥ 1, ou vide (aucun barrage).
         </span>
       )}
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut. */}
+      {modifier.isError && (
+        <span className="carte__etat carte__etat--erreur" role="alert">
+          {modifier.error.message}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Réglage du **découpage en tours** sur la phase de qualification (E05US035, ADR-0093).
+ *
+ * ⚠️ **Il vit ici et non dans `FormulairePhase`, et c'est un correctif de revue (axe adversarial).**
+ * Le champ y avait d'abord été ajouté sous `{estQualification && …}` — une branche **morte** : la
+ * qualification n'ouvre jamais ce formulaire (`gereeAilleurs`) et n'est pas dans `TYPES_AJOUTABLES`.
+ * Le réglage central de l'US n'était donc atteignable par **aucun** écran de tournoi : l'organisateur
+ * ne pouvait pas découper sa qualification, donc pas y poser de pause, sauf à recomposer tout son
+ * déroulé depuis un format de bibliothèque. L'US était inerte là où elle sert.
+ *
+ * C'est **mot pour mot** le défaut que le commentaire de `ReglageBarrage` juste au-dessus raconte
+ * pour E06US003 (« Le trou avait été déplacé, pas fermé ») — rejoué un an après, dans le même
+ * fichier, à soixante lignes de son propre récit. Le remède est donc le même, à dessein.
+ *
+ * Contrôle **réduit au seul découpage** : le `PUT` de phase est une édition totale, donc on réémet
+ * tous les autres champs tels que la phase les porte. Rouvrir le formulaire complet sur la
+ * qualification risquerait d'écraser son barème par surprise — la raison même pour laquelle elle
+ * est « gérée ailleurs ».
+ */
+function ReglageDecoupageDePhase({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
+  const [etat, setEtat] = useState(depuisDecoupage(phase.decoupage))
+  const [arrets, setArrets] = useState(depuisArrets(phase.arrets))
+  const modifier = useModifierPhase(tournoiId)
+  const decoupage = versDecoupage(etat)
+  // Une pause ne peut se poser que sur une qualification **découpée**, et la condition se lit sur
+  // l'état en cours de saisie : taper « 2 » doit ouvrir la fiche immédiatement, sans enregistrer.
+  const arretable = decoupage !== undefined && decoupage !== null
+  const pausesPerdues = !arretable ? arrets.lignes.length : 0
+
+  const enregistrer = () => {
+    if (decoupage === undefined || (arretable && !arretsValides(arrets))) return
+    modifier.mutate({
+      phaseId: phase.id,
+      config: {
+        // Édition **totale** : tout ce qu'on ne réémet pas est effacé. Même liste que
+        // `ReglageBarrage`, pour la même raison, et `arrets` en tête — c'est le champ dont
+        // l'effacement silencieux coûte le plus cher (un planning de journée saisi ligne à ligne).
+        type: phase.type,
+        sources: phase.sources,
+        effectif: phase.effectif,
+        barrage_jusqu_au: phase.barrage_jusqu_au,
+        profondeur: phase.profondeur,
+        poules: phase.poules,
+        big_shoot_off: phase.big_shoot_off,
+        suisse: phase.suisse,
+        // ⚠️ **Les pauses suivent le découpage, et ce n'est pas un choix esthétique** (correctif de
+        // 2ᵉ passe de revue). Réémettre `phase.arrets` tels quels en ramenant le découpage à 1 tour
+        // faisait **refuser l'enregistrement en 422**, avec un message qui conseille exactement
+        // l'inverse du geste en cours (« Découpez d'abord la qualification… ») : un cul-de-sac,
+        // puisque c'est le seul écran d'où l'organisateur peut agir. L'effacement est donc explicite
+        // — et **annoncé avant** le clic, parce qu'un planning de journée saisi ligne à ligne ne
+        // disparaît pas en silence (c'est ce que le DTO serveur exige de cet écran).
+        arrets: arretable ? (versArrets(arrets) ?? []) : [],
+        decoupage,
+      },
+    })
+  }
+
+  return (
+    <div className="phase__barrage">
+      <ReglageDecoupage etat={etat} surChangement={setEtat} nbVolees={phase.nb_volees} />
+      {/* ⚠️ **Montée ICI et pas dans `FormulairePhase`, pour la même raison que le découpage
+          lui-même** — et c'est un bloquant de 2ᵉ passe : le premier correctif avait fermé la moitié
+          `decoupage` du trou de câblage et laissé la moitié `arrets` ouverte. La qualification
+          pouvait donc être découpée mais ne pouvait porter aucune pause, c'est-à-dire que l'US
+          restait inerte sur le geste même pour lequel le découpage existe. Les deux réglages vont
+          ensemble : le découpage n'a pas d'autre raison d'être. */}
+      <ReglageArrets
+        etat={arrets}
+        surChangement={setArrets}
+        arretable={arretable}
+        motif="non-decoupee"
+      />
+      {pausesPerdues > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          Ramener cette qualification à un seul tour supprimera{' '}
+          {pausesPerdues > 1 ? `les ${pausesPerdues} pauses programmées` : 'la pause programmée'} de
+          cette phase.
+        </span>
+      )}
+      <button
+        type="button"
+        className="bouton--discret"
+        onClick={enregistrer}
+        disabled={
+          decoupage === undefined || (arretable && !arretsValides(arrets)) || modifier.isPending
+        }
+      >
+        Enregistrer le découpage
+      </button>
       {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur` — `error.message` brut. */}
       {modifier.isError && (
         <span className="carte__etat carte__etat--erreur" role="alert">

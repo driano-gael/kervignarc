@@ -360,11 +360,15 @@ class ServiceSuiviDeroule:
         # `resolveur` partagé de son jumeau (ADR-0084) qui éviterait de repayer une chaîne amont
         # commune. Cf. docs/dette.md.
 
-        Un type sans lecteur branché rend `None` sans rien tenter : c'est le cas de la
-        qualification, de l'échauffement, du barrage, du placement — qui comptent un tour et n'ont
-        rien à faire dire à personne (ADR-0090 §3) — **et de la colline**, qui en compterait
-        plusieurs mais qu'aucun service ne déroule encore (`DETTE-028`). Cette dernière est le seul
-        cas où le repli à 1 est faux, et c'est pour ça qu'elle est nommée ici.
+        Un type sans lecteur branché rend `None` sans rien tenter : c'est le cas de l'échauffement,
+        du barrage et du placement — qui comptent un tour et n'ont rien à faire dire à personne
+        (ADR-0090 §3) — **et de la colline**, qui en compterait plusieurs mais qu'aucun service ne
+        déroule encore (`DETTE-028`). Cette dernière est le seul cas où le repli à 1 est faux, et
+        c'est pour ça qu'elle est nommée ici.
+
+        ⚠️ **La qualification a quitté cette liste en E05US035** : `ServiceSaisie` réalise désormais
+        le port et rend son avancement tour par tour (ADR-0093). Elle est donc le cinquième type
+        branché, et non plus un cas de repli.
         """
         lecteur = self._avancements.get(phase.type)
         if lecteur is None or phase.id is None or phase.statut not in STATUTS_DEMARRES:

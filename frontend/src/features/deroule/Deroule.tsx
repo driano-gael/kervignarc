@@ -66,6 +66,12 @@ import {
   estValide as arretsValides,
   versArrets,
 } from '../../shared/phases/arrets'
+import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
+import {
+  depuisDecoupage,
+  estValide as decoupageValide,
+  versDecoupage,
+} from '../../shared/phases/decoupage'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -704,6 +710,8 @@ export function FormulaireEtape({
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
+  // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
   const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
 
   const volees = lireEntier(nbVolees)
@@ -722,9 +730,26 @@ export function FormulaireEtape({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
+  // dont le nombre de tours n'est pas déjà porté par sa structure.
+  const estQualification = type === 'qualification'
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
   // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
-  const arretable = TYPES_ARRETABLES.has(type)
+  // ⚠️ **Pour une qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** (correctif de
+  // revue, E05US035, quatre axes). `TYPES_ARRETABLES` répond « on sait observer son tour » ; une
+  // qualification non découpée n'en compte qu'**un**, donc aucune pause n'y a de frontière où
+  // tomber — le serveur la refuse désormais, et offrir le champ ferait échouer la soumission
+  // **entière** (le `PUT` est une édition totale), ce que cette table est justement écrite « en
+  // positif » pour éviter. C'est aussi ce que la fiche de découpage affiche deux blocs plus haut :
+  // sans cette ligne, l'écran se contredisait lui-même.
+  //
+  // ⚠️ Ici le découpage est **en cours de saisie**, donc on lit l'état du formulaire et non une
+  // phase persistée : cocher « 2 tours » doit ouvrir la fiche d'arrêts immédiatement, sans passer
+  // par un enregistrement. `versDecoupage` rend `null` pour un seul tour, `undefined` si illisible
+  // — les deux ferment la fiche, ce qui est le repli prudent.
+  const arretable =
+    TYPES_ARRETABLES.has(type) &&
+    (type !== 'qualification' || (versDecoupage(decoupage) ?? null) !== null)
   const saisieInvalide = volees === undefined || fleches === undefined || effectifLu === undefined
   // Deux conditions de blocage, **un message chacune**. Les fondre ferait afficher au seuil vide le
   // conseil générique « laissez le champ vide pour ne rien déclarer » — l'exact contraire de ce
@@ -735,6 +760,7 @@ export function FormulaireEtape({
     (estPoules && !poulesValides(poules)) ||
     (estBigShootOff && !bsoValide(bigShootOff)) ||
     (estSuisse && !suisseValide(suisse)) ||
+    (estQualification && !decoupageValide(decoupage)) ||
     // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
     // une liste vide, quoi qu'il reste dans l'état d'édition.
     !arretsValides(arrets)
@@ -767,6 +793,9 @@ export function FormulaireEtape({
     suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
     // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
     // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
+    // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
+    // Retyper l'étape l'**efface** donc, comme ses voisins.
+    decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
     arrets: arretable ? (versArrets(arrets) ?? []) : [],
   })
 
@@ -878,10 +907,32 @@ export function FormulaireEtape({
         />
       )}
 
+      {estQualification && (
+        // ⚠️ **Le barème SAISI ici, pas celui d'un tournoi** : l'atelier compose un format de
+        // bibliothèque, et ce formulaire porte lui-même les volées. On lui passe donc ce qui est en
+        // train d'être tapé — un brouillon sans volées lisibles rend `null`, et la fiche annonce
+        // alors que la longueur dépendra du tournoi plutôt que d'inventer un dénominateur. C'est le
+        // pendant exact de l'effectif pour le suisse juste au-dessus.
+        <ReglageDecoupage
+          etat={decoupage}
+          surChangement={setDecoupage}
+          nbVolees={baremeSaisi?.nb_volees ?? null}
+        />
+      )}
+
       {/* E05US033 — montée **sans condition de type**, à la différence des fiches ci-dessus, mais
           pour une autre raison : sur un type non arrêtable la fiche n'offre aucun champ et **dit
           pourquoi**. */}
-      <ReglageArrets etat={arrets} surChangement={setArrets} arretable={arretable} />
+      {/* ⚠️ **Le motif du refus est circonstancié** (correctif de 2ᵉ passe de revue) : sur une
+          qualification non découpée, dire « ce type de phase n'annonce pas ses tours » serait faux
+          deux fois — le type les annonce depuis E05US035, et la qualification manquerait à
+          l'énumération. Surtout, le geste réparateur est le champ juste au-dessus. */}
+      <ReglageArrets
+        etat={arrets}
+        surChangement={setArrets}
+        arretable={arretable}
+        motif={estQualification ? 'non-decoupee' : 'type'}
+      />
 
       <EditeurSources etapesAmont={etapesAmont} sources={sources} surSources={setSources} />
 

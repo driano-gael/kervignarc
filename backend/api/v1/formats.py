@@ -44,6 +44,7 @@ from domain.patrimoine import OrigineBrique
 from domain.phase import IssueTour, NatureSource, SourcePhase, TypePhase
 from domain.politiques import NomProfondeur, ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from infrastructure.db import WriteQueue
 
@@ -213,6 +214,31 @@ class ReglageBigShootOffDTO(BaseModel):
         )
 
 
+class DecoupageDTO(BaseModel):
+    """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]) — « 20 volées en 2 ».
+
+    Jumeau assumé de `api/v1/phases.DecoupageDTO` — **7ᵉ** paire, `DETTE-054`.
+
+    Aucune vérification de divisibilité ici, et pour la raison qui vaut déjà pour le suisse et le
+    Big Shoot Off : un format de bibliothèque s'écrit **sans connaître le barème** du tournoi qui
+    l'appliquera. « 2 tours » est licite sur 20 volées et ne l'est pas sur 15 ; le refus se pose sur
+    l'étape d'un tournoi, jamais sur la brique réutilisable.
+
+    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_tours: int = Field(default=1, ge=1, le=64)
+
+    def vers_agregat(self) -> DecoupageEnTours:
+        return DecoupageEnTours(nb_tours=self.nb_tours)
+
+    @staticmethod
+    def de_agregat(decoupage: DecoupageEnTours) -> DecoupageDTO:
+        return DecoupageDTO(nb_tours=decoupage.nb_tours)
+
+
 class ReglageSuisseDTO(BaseModel):
     """Le réglage d'une étape au **système suisse** dans un format (E05US026) — le nombre de rondes.
 
@@ -353,6 +379,12 @@ class EtapeDTO(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
+    decoupage: DecoupageDTO | None = None
+    """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `qualification`, il lève `DecoupageEnToursInvalide` (422)."""
+
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033) — liste vide = aucune, le défaut."""
 
@@ -390,6 +422,7 @@ class EtapeDTO(BaseModel):
                 None if self.big_shoot_off is None else self.big_shoot_off.vers_agregat()
             ),
             suisse=(None if self.suisse is None else self.suisse.vers_agregat()),
+            decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
         )
 
@@ -423,6 +456,9 @@ class EtapeDTO(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            decoupage=(
+                None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
+            ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
         )
 

@@ -20,8 +20,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from domain.bareme import BaremeQualification
 from domain.deroule import TourBraquet
 from domain.phase import StatutPhase
+from domain.qualification import DecoupageEnTours, volees_par_tour
 
 STATUTS_DEMARRES = frozenset({StatutPhase.EN_COURS, StatutPhase.EN_PAUSE})
 """Les statuts où un « tour en cours » a un sens.
@@ -77,6 +79,48 @@ class AvancementDePhase:
 
     nb_tours: int
     tour_courant: int | None
+
+
+def avancement_de_qualification(
+    volees_du_plus_lent: int,
+    bareme: BaremeQualification,
+    decoupage: DecoupageEnTours | None,
+) -> AvancementDePhase:
+    """*Où en est cette qualification ?* — sa réponse au port `LecteurAvancementDePhase`.
+
+    `volees_du_plus_lent` est le nombre de volées **saisies** par l'archer le moins avancé du
+    plateau. Saisies, et non validées : un tour est fini quand la salle a **tiré**, pas quand le
+    scoreur a signé. Prendre la validation ferait attendre au déclencheur d'arrêt un geste
+    administratif — et sur une validation en file hors-ligne (`E04US009`), la pause tomberait avec
+    plusieurs volées de retard.
+
+    ⚠️ **Ce compte DIVERGE de celui d'`avancement_cible` depuis E05US035, et c'est assumé.** La
+    console de supervision compte le **cardinal** (`len(serie.volees)`) ; ce lecteur reçoit le
+    **préfixe contigu** (`ServiceSaisie._volees_enchainees`), parce qu'une volée saisie hors d'ordre
+    ferait sinon franchir une frontière de tour avant que la volée manquante soit tirée — là-bas la
+    divergence décale un affichage, ici elle déclencherait un arrêt. Une première rédaction
+    affirmait l'inverse (« deux comptes du même rythme divergeraient ») : c'était la justification
+    d'une règle que le code venait de cesser d'appliquer. *(Axe adversarial, 2ᵉ passe.)*
+
+    Le tour courant vaut `None` quand tout est tiré — convention d'`AvancementDePhase`, la même que
+    les trois autres lecteurs.
+    """
+    par_tour = volees_par_tour(bareme, decoupage)
+    nb_tours = decoupage.nb_tours if decoupage is not None else 1
+    if par_tour < 1:
+        # Défensif : `verifier_decoupage` interdit ce cas à la composition, mais un barème relu
+        # d'une base plus ancienne que le réglage pourrait le produire. Un lecteur muet vaut mieux
+        # qu'une division par zéro dans le suivi du jour J.
+        #
+        # ⚠️ **`nb_tours=1` et non `decoupage.nb_tours`** — correctif de revue, et la nuance décide
+        # de couper la salle. `(nb_tours > 1, tour_courant=None)` est lu par
+        # `ServiceArretsProgrammes._avancement_connu` comme **« je sais, et tout est joué »** : les
+        # arrêts seraient alors crédités puis consommés en « manqués » sur une phase que personne
+        # n'a tirée. `(1, None)` est la signature exacte de « je ne sais pas », celle du repli
+        # d'`avancement_bloc` — la seule qui rende ce lecteur réellement muet.
+        return AvancementDePhase(nb_tours=1, tour_courant=None)
+    tour = volees_du_plus_lent // par_tour + 1
+    return AvancementDePhase(nb_tours=nb_tours, tour_courant=tour if tour <= nb_tours else None)
 
 
 @dataclass(frozen=True)

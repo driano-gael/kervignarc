@@ -39,6 +39,7 @@ from domain.patrimoine import OrigineBrique
 from domain.phase import Phase, SourcePhase, StatutPhase, TypePhase
 from domain.politiques import ProfondeurClassement
 from domain.poule import BaremePoule, ReglageDePoules
+from domain.qualification import DecoupageEnTours
 from domain.suisse import ConfigurationSuisse
 from domain.tournoi import Tournoi, TournoiId, TypeTournoi
 from infrastructure.db import (
@@ -1184,6 +1185,68 @@ def test_un_format_conserve_le_reglage_de_poules_et_le_seuil_de_barrage(tmp_path
 
         assert relu is not None
         assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()
+
+
+# --- E05US035 : le découpage d'une qualification en tours, même domicile et même mécanisme -------
+
+
+def test_le_decoupage_de_qualification_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.decoupage` s'écrit et se relit à l'identique — **sans migration**.
+
+    Quatrième réglage à emprunter ce chemin, après `poules`, `big_shoot_off` et `suisse`, et pour
+    la même raison : un nombre de tours est de la **configuration**, il tient dans le JSON existant.
+    À la racine, jamais sous `policies`.
+
+    ⚠️ **Ce test manquait à la livraison d'E05US035** (relevé en revue, axe B) : une faute de clé
+    (`"decoupage"` / `"tours"`) faisait disparaître le découpage à **chaque relecture**, donc
+    rendait inertes toutes les pauses de qualification — sans un signe. E05US026 avait livré trois
+    tests de round-trip pour un réglage rigoureusement analogue.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        reglage = DecoupageEnTours(nb_tours=2)
+
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+            decoupage=reglage,
+        )
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.decoupage == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_une_qualification_sans_decoupage_se_relit_non_decoupee(tmp_path: Path) -> None:
+    """Absence de clé = **non découpée**, donc l'état de toute étape écrite avant E05US035.
+
+    C'est ce qui rend la livraison sûre sans toucher au schéma : une base existante se relit en
+    comportement inchangé, et une config d'avant l'US est **le même document** qu'une config non
+    découpée.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.creer(20, 3),
+            validation=GrainValidation.fin_de_serie(),
+        )
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.decoupage is None
     finally:
         db.engine.dispose()
 

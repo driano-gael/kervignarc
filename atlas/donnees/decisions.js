@@ -3645,7 +3645,8 @@ window.ATLAS.decisions = {
     "E01US025",
     "E05US026",
     "E05US032",
-    "E05US034"
+    "E05US034",
+    "E05US035"
    ]
   },
   {
@@ -6603,6 +6604,260 @@ window.ATLAS.decisions = {
     "E05US033",
     "E05US034",
     "E05US035"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-20",
+   "date_brute": "2026-08-20",
+   "extrait": "1. Une qualification se règle en n tours égaux, et le découpage est un réglage de déroulé, pas de barème. L'organisateur saisit un nombre de tours ; le moteur en déduit la longueur et refuse à la composition un nombre qui ne divise pas les volées. 20 volées en 3 tours donneraient 7/7/6, et « après le tour 2 » ne désignerait plus le même instant selon l'archer — donc une pause qui ne tombe pas au même endroit pour tout le monde. Le refus est réparable d'un geste à l'atelier ; le découvrir le jour J ne l'est pas. Le champ vit sur EtapeDeroule (donc au tournoi, ADR-0076) aux côtés de poules, big_shoot_off et suisse, pas sur BaremeQualification. C'était le raccourci naturel — nb_volees y vit […]",
+   "fichier": "docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md",
+   "identifiant": "0093",
+   "liens": [
+    {
+     "cible": "E05US035",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0090",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0091",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0082",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0083",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0076",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/application/saisie.py",
+     "existe": true,
+     "symboles": [
+      "ServiceSaisie.avancement_de_phase",
+      "_volees_du_plus_lent",
+      "par_phase",
+      "_forfaits_qualif",
+      "_volees_enchainees"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/arret_programme.py",
+     "existe": true,
+     "symboles": [
+      "phases_a_arreter",
+      "verifier_type_arretable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/bareme.py",
+     "existe": true,
+     "symboles": [
+      "BaremeQualification",
+      "nb_volees",
+      "nb_fleches_par_volee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/contrat_phase.py",
+     "existe": true,
+     "symboles": [
+      "ContratDePhase.avancement_lisible",
+      "TYPES_ARRETABLES"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "decoupage",
+      "__post_init__",
+      "instancier",
+      "_nb_tours_a_la_composition",
+      "verifier_arrets",
+      "arretable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.decoupage",
+      "pour_tournoi",
+      "d_etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "decoupage",
+      "__post_init__",
+      "instancier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/qualification.py",
+     "existe": true,
+     "symboles": [
+      "DecoupageEnTours",
+      "verifier_decoupage",
+      "verifier_decoupage_applicable",
+      "volees_par_tour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/suivi_deroule.py",
+     "existe": true,
+     "symboles": [
+      "avancement_de_qualification"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tour_de_phase.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "config",
+      "_politiques_json",
+      "_lire_decoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_arrets_api.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/deroule/Deroule.tsx",
+     "existe": true,
+     "symboles": [
+      "FormulaireEtape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/Phases.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupageDePhase",
+      "FormulairePhase",
+      "ReglageArrets",
+      "motif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageArrets.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupageDePhase",
+      "ReglageArrets",
+      "motif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ReglageDecoupage.tsx",
+     "existe": true,
+     "symboles": [
+      "ReglageDecoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/catalogue.ts",
+     "existe": true,
+     "symboles": [
+      "TYPES_ARRETABLES"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/decoupage.ts",
+     "existe": true,
+     "symboles": [
+      "versDecoupage",
+      "depuisDecoupage",
+      "decrireDecoupage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une qualification se découpe en tours égaux, et « arrêtable » cesse d'être « déroulé »",
+   "us": [
+    "E04US009",
+    "E05US021",
+    "E05US033",
+    "E05US034",
+    "E05US035",
+    "E12US001"
    ]
   }
  ]

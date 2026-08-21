@@ -281,6 +281,14 @@ def test_chaque_lecteur_d_avancement_est_branche_sur_le_service_de_son_format(
     assert branches[TypePhase.POULES] is app_session.state.service_poules
     assert branches[TypePhase.SUISSE] is app_session.state.service_suisse
     assert branches[TypePhase.BIG_SHOOT_OFF] is app_session.state.service_big_shoot_off
+    # E05US035 : la **qualification** rejoint la table, portée par le service qui la fait jouer —
+    # `ServiceSaisie`, comme `ServicePoules` porte les poules (ADR-0093).
+    assert branches[TypePhase.QUALIFICATION] is app_session.state.service_saisie
     # Le reste du catalogue n'a **aucun** lecteur, et c'est le contrat d'ADR-0090 §3 : ces types
     # comptent un tour, sauf la colline dont le manque est assumé (`DETTE-028`).
-    assert set(branches) == {TypePhase.POULES, TypePhase.SUISSE, TypePhase.BIG_SHOOT_OFF}
+    assert set(branches) == {
+        TypePhase.QUALIFICATION,
+        TypePhase.POULES,
+        TypePhase.SUISSE,
+        TypePhase.BIG_SHOOT_OFF,
+    }

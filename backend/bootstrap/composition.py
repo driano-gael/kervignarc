@@ -1158,6 +1158,17 @@ def create_app(
     # [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
     # [ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
     # [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    # E05US035 : la **qualification** rejoint les lecteurs, et c'est `ServiceSaisie` qui la porte —
+    # le service qui la fait jouer, comme `ServicePoules` porte les poules. Ce branchement est la
+    # moitié d'un couple : sans lui, `TYPES_ARRETABLES` accepterait un arrêt sur qualification que
+    # rien ne déclencherait jamais ([ADR-0093]). Les deux oracles sont tenus en vis-à-vis par
+    # `tests/test_arrets_api.py`, précisément pour qu'ils ne puissent pas diverger.
+    #
+    # [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    avancement_de_qualification: LecteurAvancementDePhase = app.state.service_saisie
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.QUALIFICATION, avancement_de_qualification
+    )
     avancement_de_poules: LecteurAvancementDePhase = app.state.service_poules
     avancement_de_suisse: LecteurAvancementDePhase = app.state.service_suisse
     avancement_de_big_shoot_off: LecteurAvancementDePhase = app.state.service_big_shoot_off

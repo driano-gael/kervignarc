@@ -544,10 +544,10 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **118 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/08/2026, la dernière
-  étant `E05US034` — **la pause se voit, et se pose en cours de journée** : le public et l'écran de
-  salle l'annoncent, le tableau de bord rappelle qu'une salle attend sa relance, et l'organisateur
-  peut décider d'un arrêt sans l'avoir prévu la veille. **`SUIVI-US.md` fait
+- **119 US livrées** sur `main` (mergées, revues, CI verte) à la date du 20/08/2026, la dernière
+  étant `E05US035` — **la qualification se découpe en tours** : l'organisateur règle « 20 volées en
+  2 tours de 10 » à l'atelier, le suivi dit où en est la phase, et une **pause peut enfin s'y
+  programmer** — sur le format que tout le monde tire. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -686,6 +686,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   flèches, sa seconde feuille écrasant la première. ⚠️ Le **plan de cibles reste commun** aux tours :
   les archers ne changent pas de cible entre le premier et le second. Décision d'architecture :
   [ADR-0082](../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md).
+- **La qualification se découpe en tours (20/08/2026, E05US035).** La salle savait s'arrêter
+  depuis la veille, et le dire depuis le matin — mais **pas sur la qualification**, c'est-à-dire pas
+  sur le format que tout le monde tire, celui qui occupe la matinée entière. La raison n'était pas un
+  oubli : « 60 flèches en 20 volées » ne dit nulle part où sont les points de coupe. L'organisateur
+  découpe donc désormais sa qualification à l'atelier — il saisit « 2 tours », l'écran lui répond
+  « 2 tours de 10 volées », et lui refuse « 3 » en disant pourquoi **avant** qu'il ne valide (des
+  tours égaux, ou pas de découpage : avec 7/7/6, « après le tour 2 » ne tomberait pas au même moment
+  pour tout le monde). Une pause peut alors s'y poser comme sur les quatre autres formats, et le
+  suivi annonce « Qualification — tour 1 sur 2 » là où il ne disait rien. ⚠️ **Le découpage ne change
+  rien au classement** — la qualification se compte toujours au total, un tour ne décerne aucun rang
+  intermédiaire —, ce qui permet de le modifier en cours de journée sans qu'aucun score déjà tiré ne
+  bouge. ⚠️ **Le point qui avait fait reporter ce chantier trois fois** : une phase avance au rythme
+  du **dernier** archer, et savoir de qui l'on parle n'a rien d'évident — un même créneau peut faire
+  tirer deux qualifications différentes sur les mêmes cibles, un inscrit sans place attribuée ne tire
+  pas, et un archer parti à midi retiendrait la phase toute la journée. Compter faux ne produit pas
+  un message d'erreur mais une salle coupée trop tôt, ou une phase qui n'avance jamais.
 - **La pause se voit, et se pose en cours de journée (20/08/2026, E05US034).** La veille,
   l'application avait appris à arrêter la salle. Il lui manquait de le **dire** : une compétition
   immobile et un écran muet, vus des gradins, ressemblent exactement à une panne — et l'organisateur
