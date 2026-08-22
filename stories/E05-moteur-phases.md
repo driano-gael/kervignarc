@@ -390,11 +390,17 @@ existent depuis E05US003 (✅) ; cette US en peuple le catalogue.
   une fin **dans un tournoi** ; le classement permanent de club reste un autre produit ; (b)
   mécanique **« deux voisins s'affrontent »**, la seconde des deux que la règle du King of the Hill
   propose, retenue parce qu'elle fait jouer **tout le monde** à chaque manche.
-  ⚠️ **Écart consigné, à confirmer à la recette** : l'exemple chiffré du Ladder contredit sa propre
-  règle — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8`,
-  soit le n°6 en **5ᵉ** position, alors que « le gagnant monte, le perdant descend » mène à la 4ᵉ.
-  **Le moteur applique la règle**, et un test fige l'arbitrage pour qu'un changement futur soit une
-  décision et non un glissement.
+  ✅ **Écart TRANCHÉ le 22/08/2026 (E05US027) : c'est la RÈGLE qui fait foi.** L'exemple chiffré du
+  Ladder la contredisait — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donnait
+  `1 2 3 5 6 4 7 8`, soit le n°6 en **5ᵉ** position, alors que « le gagnant monte, le perdant
+  descend » mène à la **4ᵉ** : les deux archers échangent leurs places. **Le moteur applique la
+  règle**, l'arbitrage confirme donc son comportement au lieu de le changer, et un test le fige pour
+  qu'un changement futur soit une décision et non un glissement. Reversé au référentiel §10.1, à
+  `docs/fonctionnel/E05US015.md` et à [ADR-0062].
+  ⚠️ *Cette puce est restée « à confirmer » un commit de trop, alors que les trois autres sources
+  étaient à jour — relevé en 2ᵉ passe de revue. C'est pourtant **la** source dont l'US suivante
+  dérive ses tests (règle 9) : un CA périmé ne se voit pas, puisqu'il s'écrit sans effort ; il est
+  simplement faux.*
 - **CA — finale spectacle** : règle fournie le 31/07/2026 — après les qualifications, top 8 → quarts
   → demies → petite finale → grande finale, pour créer une montée en intensité ; duels au **système
   de sets** (premier à 6) en arc classique, au **cumul sur 15 flèches** en poulies, barrage à

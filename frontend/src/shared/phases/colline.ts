@@ -102,7 +102,7 @@ export function porteeMaximale(effectif: number): number {
  * à la lecture, il ne lève pas). Un écran qui montre la borne vaut mieux qu'un écran qui refuse.
  */
 export function decrireBorne(effectif: number, portee: number): string {
-  return decrireBorneConnue(effectif, portee, porteeMaximale(effectif))
+  return decrireBorneConnue(effectif, portee, porteeMaximale(effectif), 'refuse')
 }
 
 /**
@@ -114,7 +114,14 @@ export function decrireBorne(effectif: number, portee: number): string {
  * la main plutôt que la partager est ce qui avait produit un texte faux au cas limite chez le
  * suisse (« 1 archers »).
  */
-export function decrireBorneConnue(effectif: number, portee: number, maximum: number): string {
+export type RegimeDeBorne = 'borne' | 'refuse'
+
+export function decrireBorneConnue(
+  effectif: number,
+  portee: number,
+  maximum: number,
+  regime: RegimeDeBorne = 'borne',
+): string {
   if (maximum === 0) {
     const archers = effectif > 1 ? 'archers' : 'archer'
     return `${effectif} ${archers} : aucun défi n’est appariable (il en faut au moins deux).`
@@ -122,6 +129,21 @@ export function decrireBorneConnue(effectif: number, portee: number, maximum: nu
   const rangs = maximum > 1 ? 'rangs' : 'rang'
   const borne = `${effectif} archers : un défi porte au plus sur ${maximum} ${rangs}.`
   if (portee <= maximum) return borne
+  // ⚠️ **Les deux régimes ne disent PAS la même chose, et un correctif de revue les avait
+  // inversés.** Ce qui se passe au-delà de la borne dépend d'où vient l'effectif :
+  //
+  // - `'borne'` — effectif **réel** du créneau, lu du serveur : `ServiceColline` **borne à la
+  //   lecture** et ne lève pas (« un écran qui refuse de s'ouvrir vaut moins qu'un écran qui montre
+  //   la borne »). Le réglage excédentaire est donc réellement joué, en plus court ;
+  // - `'refuse'` — effectif **déclaré** dans le formulaire : `EtapeDeroule._verifier_portee_de_defi`
+  //   **lève** `ConfigurationCollineInvalide`, et l'enregistrement rend 422.
+  //
+  // Dire « seront appliqués » dans le second cas, c'est promettre à l'organisateur que son réglage
+  // passera alors qu'il sera refusé deux secondes plus tard — un feu vert suivi d'un mur, très
+  // exactement le parcours que le CA « borne affichée en clair » existe pour supprimer.
+  if (regime === 'refuse') {
+    return `${borne} Vous avez réglé ${portee} : réduisez la portée, sinon l’enregistrement sera refusé.`
+  }
   const applique = maximum > 1 ? `${maximum} rangs seront appliqués` : 'un seul rang sera appliqué'
   return `${borne} Vous avez réglé ${portee} : ${applique}.`
 }

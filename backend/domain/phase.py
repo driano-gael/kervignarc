@@ -518,6 +518,17 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
+        # DETTE-078
+        # ⚠️ **Ces gardes-ci arrivent APRÈS la persistance de l'étape, et c'est la dette.** Elles
+        # vivent sur `Phase`, donc à `instancier()` — or `ServicePhases.ajouter` fait rejoindre
+        # l'étape au déroulé **avant** d'instancier. Une requête refusée en 422 laisse donc derrière
+        # elle une étape orpheline qui brûle un `ordre` : le déroulé se troue du fait d'une entrée
+        # que le serveur a rejetée.
+        #
+        # Seule `colline` est fermée (E05US027) : sa garde jumelle vit dans
+        # `EtapeDeroule.__post_init__`, donc antérieure à toute écriture. Les quatre autres sont
+        # **héritées** — les hisser touche quatre invariants de composition et leurs tests, ce
+        # qu'une US de format n'a pas à faire. Résorption en US `refactor/` dédiée.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le

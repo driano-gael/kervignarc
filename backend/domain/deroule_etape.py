@@ -211,10 +211,16 @@ class EtapeDeroule:
         #
         # Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour
         # courant au service qui observe la phase. Les types dont personne ne lit l'avancement —
-        # l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à observer, et un
-        # arrêt posé dessus serait **accepté à l'atelier puis définitivement inerte le jour J** :
+        # l'échauffement, le barrage, le placement — n'ont aucun tour à observer, et un arrêt posé
+        # dessus serait **accepté à l'atelier puis définitivement inerte le jour J** :
         # l'organisateur découvrirait le jour de la compétition que sa pause repas n'a jamais eu
         # lieu.
+        #
+        # ⚠️ **La colline en est sortie en E05US027**, et ce commentaire la citait encore après le
+        # correctif qui l'en fait sortir — relevé par deux axes en 2ᵉ passe. Le miroir front
+        # (`catalogue.ts`) et le glossaire avaient été corrigés, le domaine non : c'est mot pour mot
+        # le défaut que `TYPES_SIGNALES_EN_ECART` dénonce dans le même diff — une table dérivée
+        # n'est jamais fausse, seule sa description l'est, et rien ne rougit quand elle dérive.
         #
         # ⚠️ **La qualification en est sortie en E05US035** (ADR-0093) : `ServiceSaisie` lit son
         # avancement, tour par tour, une fois résolus sa population réelle (deux qualifications
@@ -344,6 +350,7 @@ class EtapeDeroule:
         **borne** au lieu de lever, pour qu'un écran s'ouvre toujours.
         """
         if self.colline is not None and self.type is not TypePhase.COLLINE:
+            # DETTE-078
             # ⚠️ **Le refus existait déjà, mais UN CRAN TROP TARD** (relevé par l'axe adversarial,
             # qui l'a reproduit par exécution). Il vivait dans `Phase.__post_init__`, donc à
             # `instancier()` — c'est-à-dire **après** que l'étape a rejoint le déroulé. Une entrée
@@ -354,7 +361,7 @@ class EtapeDeroule:
             #
             # Les quatre réglages voisins (`poules`, `big_shoot_off`, `suisse`, `decoupage`)
             # partagent ce défaut, hérité et non introduit ici ; il est inscrit au registre plutôt
-            # que corrigé en douce dans cette US (`DETTE-078`). Le champ neuf, lui, n'a aucune
+            # que corrigé en douce dans cette US. Le champ neuf, lui, n'a aucune
             # raison de naître troué.
             raise ConfigurationCollineInvalide(
                 "Un réglage de colline ne se pose que sur une phase de type « colline »."

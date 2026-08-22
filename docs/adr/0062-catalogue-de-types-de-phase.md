@@ -234,6 +234,9 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
   `docs/referentiel-ffta.md` §10.1 et `docs/fonctionnel/E05US015.md`. ⚠️ **Cette mention est restée
   « à confirmer » alors que les trois autres sources étaient à jour** (relevé en revue) : c'est
   pourtant ici que la question a été *posée*, donc le premier endroit où un lecteur va la chercher.
+  ⚠️ *La puce **CA** de `stories/E05-moteur-phases.md` était, elle aussi, restée « à confirmer »
+  — corrigée en 2ᵉ passe. C'est la source dont l'US suivante dérive ses tests (règle 9), donc la
+  seule des quatre dont l'oubli se propage.*
   Un point tranché qu'on laisse ouvert se fait ré-instruire ; c'est la même famille de défaut qu'un
   CA périmé, qui « s'écrit sans effort, et il est faux ».
 - **Les défauts « faute de précision »** (composition serpent des poules, barème 3/1/0, remise à zéro
@@ -286,5 +289,13 @@ jour**, jamais en relisant l'ADR.
 > — et `echauffement` et `barrage`, qui n'ont simplement rien à y faire. Les **quatre** ci-dessus
 > sont les types qui ont un moteur et devraient être jouables ; le refus de `_decor`, lui, est plus
 > large. *(Précision ajoutée le 08/08/2026 en revue : le lecteur de l'ADR retenait 4, le registre de
-> dette en dit 5.)* La règle d'ADR-0045 §2 (« pas de type sans moteur ») est donc respectée à la lettre et
-enfreinte dans son intention : le moteur existe, mais rien ne l'appelle.
+> dette en dit 5.)*
+
+La règle d'ADR-0045 §2 (« pas de type sans moteur ») est désormais tenue **à la lettre et dans son
+intention** : chacun des quatre a son moteur *et* son appelant de production.
+
+⚠️ **Cette phrase concluait auparavant « le moteur existe, mais rien ne l'appelle », et elle est
+restée sous le ✅ qui la contredit** — relevé en 2ᵉ passe de revue d'E05US027. Corriger le haut d'une
+section en laissant sa chute intacte produit un texte qui se dément dans le même écran, et c'est la
+chute que retient un lecteur pressé. Le même diff avait aussi soudé ce paragraphe au blockquote qui
+le précède, faute d'une ligne vide.

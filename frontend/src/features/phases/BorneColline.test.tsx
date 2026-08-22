@@ -119,4 +119,21 @@ describe('la borne de portée sur l’écran des phases', () => {
     ).toBeInTheDocument()
     expect(screen.queryByText(/8 archers/)).toBeNull()
   })
+
+  it('annonce un REFUS et éteint le bouton, au lieu de promettre un raccourcissement', async () => {
+    // ⚠️ **Le cas que la 1ʳᵉ version de ce fichier ne voyait pas** (relevé en 2ᵉ passe, axe C1) :
+    // elle n'assertait que la première phrase, jamais la seconde ni l'état du bouton. Or le premier
+    // correctif avait **inversé les deux régimes** — avec un effectif déclaré, il annonçait
+    // « 3 rangs seront appliqués » alors que `_verifier_portee_de_defi` **lève** un 422. Le feu vert
+    // avait changé de place, il ne s'était pas éteint.
+    poser()
+    await screen.findByText(/8 archers/)
+
+    await userEvent.type(screen.getByLabelText(/Effectif/i), '4')
+
+    expect(await screen.findByText(/l’enregistrement sera refusé/)).toBeInTheDocument()
+    expect(screen.queryByText(/seront appliqués/)).toBeNull()
+    // La moitié qui compte vraiment : le geste doit être **impossible**, pas seulement déconseillé.
+    expect(screen.getByRole('button', { name: /Enregistrer|Valider/ })).toBeDisabled()
+  })
 })

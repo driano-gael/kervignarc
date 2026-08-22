@@ -1,8 +1,8 @@
-// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisieSuisse`,
-// `SaisiePoules`), à l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux
-// autres, et **rien ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà
-// voyagé à la main d'un écran à l'autre. Le remède retenu est « rien » — la liste des formats à
-// rencontres est close (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
+// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisiePoules`, `SaisieSuisse`), à
+// l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux autres, et **rien
+// ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà voyagé à la main d'un
+// écran à l'autre. Le remède retenu est « rien » — la liste des formats à rencontres est close
+// (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
 // Écran de saisie de la **colline** (E05US027, ADR-0083) — surface **scoreur**.
 //
 // Jumeau de `SaisieSuisse` par la coquille et **identique** par le pavé : un défi *est* un duel

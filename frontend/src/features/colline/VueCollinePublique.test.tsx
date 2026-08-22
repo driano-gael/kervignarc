@@ -185,7 +185,12 @@ describe('la vue publique de la colline', () => {
 
     monter(<VueCollinePublique tournoiId={1} phaseId={9} />)
 
-    expect(await screen.findByText(/Le plan de cibles n’est pas encore posé/)).toBeInTheDocument()
+    // ⚠️ Et le message **n'affirme pas la cause** (correctif de 2ᵉ passe) : `_PLAN_A_REPOSER`
+    // couvre « jamais posé » ET « posé mais devenu trop court ». L'assertion porte donc sur le
+    // constat et sur le fait que les deux causes sont nommées, jamais sur une seule d'entre elles —
+    // sans quoi elle figerait un message qui envoie l'organisateur refaire un geste déjà fait.
+    expect(await screen.findByText(/n’ont pas encore de cible/)).toBeInTheDocument()
+    expect(screen.getByText(/le plan n’est pas posé, ou il ne couvre plus/)).toBeInTheDocument()
     expect(screen.queryByText(/^Un défi/)).toBeNull()
   })
 

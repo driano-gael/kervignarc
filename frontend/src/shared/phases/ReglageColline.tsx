@@ -97,6 +97,9 @@ export function ReglageColline({
           borne à la lecture plutôt que de refuser d'ouvrir l'écran. */}
       {effectif !== null && reglage !== undefined && (
         <p className="carte__aide" role="status">
+          {/* `maximum === null` ⇒ l'effectif vient du **formulaire**, donc le serveur REFUSERA
+              au-delà de la borne ; sinon il vient de la phase, et le service **borne à la
+              lecture**. `decrireBorne` porte déjà le régime `'refuse'`, cf. `colline.ts`. */}
           {maximum === null
             ? decrireBorne(effectif, reglage.portee_de_defi)
             : decrireBorneConnue(effectif, reglage.portee_de_defi, maximum)}

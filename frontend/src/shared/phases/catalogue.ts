@@ -150,7 +150,30 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
   // n'avait pas suivi : l'atelier affichait donc « le moteur ne sait pas encore dérouler ce type de
   // phase » sur le format que l'US venait précisément de rendre jouable. Exactement le défaut
   // corrigé en revue d'E05US028, rejoué un format plus loin — et le seul des deux signaux qui
-  // trompe. Le garde-fou est désormais `Deroule.test.tsx`, pas ce commentaire.
+  // trompe. Le garde-fou est désormais `features/deroule/MessageDuBot.test.tsx`, pas ce
+  // commentaire — et il garde les **quatre types d'aujourd'hui**, pas un cinquième à venir.
+  'colline',
+])
+
+// Les types dont les archers sont placés **par bloc de couloirs**, et qui offrent donc un geste de
+// pose de plan de cibles à l'organisateur. Miroir de `ContratDePhase.plan_de_cibles ==
+// PlanDeCibles.PAR_BLOC_DE_COULOIRS` côté domaine (`domain/contrat_phase.py`).
+//
+// ⚠️ **Cette table existe pour rendre un garde-fou VRAI, pas pour factoriser trois lignes.** Le
+// même défaut s'est produit trois fois — E05US023 (poules), E05US030 (suisse), E05US027 (colline) :
+// le hook, la route et le service existaient, et l'appelant manquait, si bien qu'aucun plan n'était
+// jamais posé et que **personne ne savait sur quelle cible tirer**. Le test écrit en 1ʳᵉ passe de
+// revue promettait par écrit d'attraper la 4ᵉ occurrence ; il ne le pouvait pas, son décor étant
+// une liste de trois types **en dur** — une fausse assurance à l'endroit exact où le prochain
+// implémenteur irait vérifier s'il doit se méfier (relevé par l'axe adversarial en 2ᵉ passe).
+//
+// En dérivant le montage ET le test de cette table, la récidive se déplace du montage vers la
+// table : un type ajouté ici sans être monté fait rougir `PlansDeCibles.test.tsx`, et un type qui
+// gagne un plan par blocs côté serveur sans être ajouté ici se voit à la lecture d'un seul endroit.
+// C'est un progrès réel, pas une garantie totale — rien ne compare mécaniquement les deux tables.
+export const TYPES_A_PLAN_PAR_BLOCS: ReadonlySet<TypePhase> = new Set([
+  'poules',
+  'suisse',
   'colline',
 ])
 

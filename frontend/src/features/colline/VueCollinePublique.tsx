@@ -81,10 +81,16 @@ export function VueCollinePublique({
           pas encore de cibles » — désignait un défi isolé alors que **tous** les défis de la phase
           sont sans couloir. Le message comptait des défis quand la donnée compte des blocs ; l'un
           des deux lecteurs de cet écran est l'organisateur, et c'est lui qui doit comprendre qu'il
-          a un plan à générer. */}
+          a un plan à générer.
+
+          ⚠️ **Et il n'AFFIRME pas la cause** (correctif de 2ᵉ passe) : `_PLAN_A_REPOSER` couvre
+          deux situations — plan jamais posé, *et* plan posé mais devenu trop court (salle trop
+          petite, ou archer inscrit après la pose). Dire « le plan n'est pas posé » à un
+          organisateur qui vient de le générer l'enverrait refaire un geste déjà fait. */}
       {donnees.conflits.length > 0 && (
         <p className="carte__etat">
-          Le plan de cibles n’est pas encore posé : les défis s’afficheront sans cible.
+          Les défis n’ont pas encore de cible : le plan n’est pas posé, ou il ne couvre plus tout le
+          plateau.
         </p>
       )}
 
@@ -137,11 +143,19 @@ function BlocManche({
       ? manche.defis.filter((d) => participants(d).some((id) => suivis.includes(id)))
       : manche.defis
   const auReposSuivis = manche.au_repos.filter((qui) => suivis.includes(qui.archer_id))
-  // La liste réellement **rendue**, calculée une fois : elle sert au rendu ET à l'accord du verbe.
-  // Les recalculer séparément est ce qui avait fait diverger les deux (correctif de revue).
+  // La liste réellement **rendue**, calculée une fois : elle sert au rendu, à l'accord du verbe ET
+  // à la sortie anticipée ci-dessous. Les recalculer séparément est ce qui les avait fait diverger,
+  // deux fois de suite (correctifs de 1ʳᵉ et 2ᵉ passe de revue).
   const auReposAffiches = mode === 'suivis' ? auReposSuivis : manche.au_repos
 
-  if (retenus.length === 0 && !(mode === 'suivis' && auReposSuivis.length > 0)) {
+  // ⚠️ **La sortie anticipée se juge sur `auReposAffiches`, pas sur `auReposSuivis`** (relevé en
+  // 2ᵉ passe). Hisser la liste rendue avait laissé cette condition asymétrique : en mode « tout le
+  // tournoi », une manche **sans défi mais avec des archers au repos** — atteignable dès 2 archers
+  // à portée 1, où la manche paire n'apparie rien — rendait « Cette manche n'a aucun défi » et
+  // **perdait la ligne des archers au repos**, alors que le mode « mes archers » la gardait. C'est
+  // le CA « l'archer au repos est dit en attente, jamais terminé » qui tombait, sur la surface
+  // publique, et c'est le correctif lui-même qui avait créé l'asymétrie.
+  if (retenus.length === 0 && auReposAffiches.length === 0) {
     if (mode === 'suivis') {
       // ⚠️ **Aucun de vos archers ici ≠ manche vide** (ADR-0079) : un archer suivi peut fort bien
       // tirer dans une autre phase, ou se reposer — cas traité juste au-dessus.

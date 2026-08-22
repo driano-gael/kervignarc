@@ -463,7 +463,8 @@ window.ATLAS.avancement = {
   {
    "identifiant": "057",
    "introduite_par": [
-    "E05US023"
+    "E05US023",
+    "E05US027"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -2655,12 +2656,14 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0062",
+    "0081",
     "0084",
     "0087",
     "0089"
    ],
    "dettes_introduites": [
     "054",
+    "057",
     "064",
     "065",
     "066",

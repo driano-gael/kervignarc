@@ -75,11 +75,18 @@ def test_le_classement_de_phase_suit_l_ordre_final_de_la_colline() -> None:
     assert [ligne.rang_scratch for ligne in source.classement.lignes] == [1, 2, 3]
 
 
-def test_une_colline_ne_declare_aucune_plage_indecise() -> None:
+def test_une_colline_ne_declare_aucun_ex_aequo() -> None:
     """Aucun ex æquo n'est possible : deux archers n'occupent jamais la même position.
 
-    C'est ce qui garantit qu'un prélèvement visant une colline n'est jamais retenu par le refus
-    d'ADR-0081 — il n'y a rien à départager.
+    C'est ce qui garantit qu'un prélèvement visant une colline n'est jamais retenu par une
+    **égalité** — il n'y a rien à départager.
+
+    ⚠️ **Ce test s'appelait `…_ne_declare_aucune_plage_indecise`, et le nom promettait trop**
+    (relevé en 2ᵉ passe de revue). Il porte sur ce que le **domaine** rend, or le service surcharge
+    ce champ depuis E05US027 : une colline inachevée déclare bien une plage indécise, par
+    **inachèvement** et non par égalité. Le test restait vert tout en gardant une affirmation
+    devenue fausse du comportement observable — un garde-fou nommé qui ne garde pas ce que son nom
+    dit. Le renommer était le correctif, pas le supprimer : ce qu'il vérifie reste vrai et utile.
     """
     source = classement_de_colline(_colline(3, 1, 2), _lignes(3))
 

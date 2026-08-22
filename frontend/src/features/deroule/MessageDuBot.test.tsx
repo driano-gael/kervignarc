@@ -17,6 +17,12 @@
 //
 // Le garde-fou serveur (`test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas`) ne
 // peut structurellement pas voir ce défaut : il ne connaît pas la table TypeScript.
+//
+// ⚠️ **Ce que ce fichier NE garde PAS, et il vaut mieux l'écrire que le laisser croire** : il fige
+// les **quatre types d'aujourd'hui**, en dur. Un cinquième format rendu jouable et oublié dans
+// `MOTEUR_SAIT_JOUER` le laisserait vert. Il attrape une *régression* (retirer un type de la table
+// fait rougir), pas la prochaine *récidive*. Rien ne compare mécaniquement `_TYPES_DEROULABLES`
+// (serveur) et `MOTEUR_SAIT_JOUER` (front) — c'est la limite réelle, dite plutôt que promise.
 
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

@@ -22,12 +22,21 @@ ordonnées, deux d'entre eux n'en occupent jamais la même, et l'ordre final est
 lui-même — c'est tout l'intérêt du format, dont le classement est lisible à tout instant sans
 attendre une fin de phase.
 
-⚠️ **`plages_indecises` est donc toujours vide, et c'est une propriété, pas une commodité.** Une
-plage indécise déclenche le refus d'ADR-0081 (« une phase attend que sa source ait départagé les
+⚠️ **`plages_indecises` est donc toujours vide ICI, et c'est une propriété, pas une commodité.**
+Une plage indécise déclenche le refus d'ADR-0081 (« une phase attend que sa source ait départagé les
 places qu'elle prélève ») : qu'il n'y en ait jamais signifie qu'un prélèvement dans une colline
-n'est jamais retenu par une égalité. `test_une_colline_ne_declare_aucune_plage_indecise` garde
+n'est jamais retenu par une **égalité**. `test_une_colline_ne_declare_aucun_ex_aequo` garde
 l'affirmation vérifiée si le format évoluait — une variante autorisant deux archers à la même
 position rendrait ce module faux, pas seulement incomplet.
+
+⚠️ **Mais « ICI » n'est pas « nulle part », et la nuance a coûté un majeur en revue.**
+`ServiceColline.classement_de_phase` **surcharge** ce champ tant que la phase n'est pas achevée. Ce
+module ne peut pas le savoir — il ne voit qu'un ordre, pas un avancement —, et il aurait tort de
+prétendre le contraire : *l'indécision par inachèvement n'est pas visible d'ici*. Lire la phrase
+ci-dessus comme « un prélèvement dans une colline n'est jamais retenu » serait donc faux, et c'est
+exactement ce qu'elle laissait croire. Deux causes d'indécision cohabitent désormais — l'**égalité**
+(que ce module tranche, et il n'y en a jamais) et l'**inachèvement** (que seul le service voit) —
+cf. [ADR-0081] § « Deux causes d'indécision ».
 
 ## Position sportive et indice de fenêtre coïncident ici
 

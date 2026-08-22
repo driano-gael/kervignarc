@@ -25,23 +25,37 @@ from __future__ import annotations
 
 import pytest
 
+from domain.arret_programme import ArretProgramme
 from domain.colline import ConfigurationColline, portee_maximale
 from domain.deroule_etape import EtapeDeroule
-from domain.erreurs import ConfigurationCollineInvalide
+from domain.erreurs import ArretProgrammeInvalide, ConfigurationCollineInvalide
 from domain.format_tournoi import ModelePhase
 from domain.phase import Phase, StatutPhase, TypePhase
 
+#: Le réglage par défaut du décor — **immuable**, donc partageable entre appels (`frozen`).
+_KING_OF_THE_HILL = ConfigurationColline(nb_manches=3, portee_de_defi=1)
 
-def _etape(**champs: object) -> EtapeDeroule:
-    """Une étape de colline, réglée en King of the Hill sur 3 manches sauf mention contraire."""
-    defauts: dict[str, object] = {
-        "tournoi_id": 1,
-        "ordre": 1,
-        "type": TypePhase.COLLINE,
-        "colline": ConfigurationColline(nb_manches=3, portee_de_defi=1),
-    }
-    defauts.update(champs)
-    return EtapeDeroule(**defauts)  # type: ignore[arg-type]
+
+def _etape(
+    *,
+    type: TypePhase = TypePhase.COLLINE,
+    colline: ConfigurationColline | None = _KING_OF_THE_HILL,
+    effectif: int | None = None,
+    arrets: tuple[ArretProgramme, ...] = (),
+) -> EtapeDeroule:
+    """Une étape de colline, réglée en King of the Hill sur 3 manches sauf mention contraire.
+
+    ⚠️ **Signature nommée, et non `**champs: object` avec un `# type: ignore`** (correctif de 2ᵉ
+    passe, trois axes). Le jumeau `test_domain_reglage_suisse.py` emploie le splat, mais le style
+    existant n'est pas une justification : ce que l'`ignore` désactivait, c'est la vérification que
+    le décor construit une `EtapeDeroule` **valide** — exactement le mécanisme de `DETTE-064`, où
+    un décor pose une phase non réglée là où le test croit en poser une réglée, rejoué dans un
+    fichier neuf. Le commit qui a créé ce fichier affirmait par ailleurs avoir arbitré « les trois
+    `# type: ignore` » : il y en avait quatre, et le quatrième était celui-ci — muet.
+    """
+    return EtapeDeroule(
+        tournoi_id=1, ordre=1, type=type, colline=colline, effectif=effectif, arrets=arrets
+    )
 
 
 def test_le_reglage_se_pose_sur_l_etape_et_descend_dans_chaque_creneau() -> None:
@@ -166,9 +180,6 @@ def test_une_pause_posee_apres_la_derniere_manche_est_refusee() -> None:
     est-il un réglage porté par l'étape, ou une conséquence du terrain ?* Pour la colline, c'est un
     réglage — `nb_manches` — au même titre que le découpage d'une qualification.
     """
-    from domain.arret_programme import ArretProgramme
-    from domain.erreurs import ArretProgrammeInvalide
-
     # Une pause entre les manches 1 et 2 : légitime, elle coupe quelque chose.
     _etape(arrets=(ArretProgramme(apres_tour=1),))
 
@@ -188,8 +199,6 @@ def test_une_colline_non_reglee_ne_borne_aucune_pause() -> None:
     serait deviner. Le réglage manquant est déjà refusé ailleurs, au démarrage de la phase — c'est
     une autre porte, et elle reste fermée.
     """
-    from domain.arret_programme import ArretProgramme
-
     etape = _etape(colline=None, arrets=(ArretProgramme(apres_tour=99),))
 
     assert etape.colline is None

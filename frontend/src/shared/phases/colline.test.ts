@@ -85,12 +85,17 @@ describe('la borne de portée', () => {
     expect(decrireBorne(8, 2)).toBe('8 archers : un défi porte au plus sur 7 rangs.')
   })
 
-  it('nomme l’écart quand le réglage dépasse la borne', () => {
-    // C'est l'objet du CA : sans cette phrase, l'organisateur ne l'apprend ni à l'enregistrement
-    // (le serveur borne à la lecture, il ne lève pas) ni le jour J — il voit simplement des défis
-    // plus courts que prévu.
+  it('nomme l’écart quand le réglage dépasse la borne, et annonce un REFUS', () => {
+    // C'est l'objet du CA : sans cette phrase, l'organisateur ne l'apprend qu'au refus.
+    //
+    // ⚠️ **Cette assertion attendait « 3 rangs seront appliqués », et c'était le message qui
+    // mentait** (correctif de 2ᵉ passe de revue). `decrireBorne` calcule la borne depuis un
+    // effectif **déclaré** — et dans ce régime `EtapeDeroule._verifier_portee_de_defi` **lève** un
+    // 422 : le réglage n'est pas raccourci, il est refusé. Promettre qu'il « sera appliqué »
+    // donnait un feu vert suivi d'un mur, exactement le parcours que le CA existe pour supprimer.
     expect(decrireBorne(4, 5)).toContain('Vous avez réglé 5')
-    expect(decrireBorne(4, 5)).toContain('3 rangs seront appliqués')
+    expect(decrireBorne(4, 5)).toContain('l’enregistrement sera refusé')
+    expect(decrireBorne(4, 5)).not.toContain('seront appliqués')
   })
 
   it('accorde le singulier sur une colline de deux archers', () => {
@@ -108,12 +113,18 @@ describe('la borne de portée', () => {
     expect(decrireBorne(0, 1)).toContain('0 archer :')
   })
 
-  it('rend la même phrase sur une borne fournie par le serveur', () => {
+  it('rend la même phrase sur une borne fournie par le serveur — à régime égal', () => {
     // ⚠️ Cette variante existe pour que l'écran de saisie **n'ait pas à recalculer** : il reçoit
     // `portee_maximale` dans sa réponse d'état, et deux arithmétiques pour une même règle divergent
     // tôt ou tard. Le test vérifie que les deux chemins écrivent bien la même chose.
     expect(decrireBorneConnue(8, 2, porteeMaximale(8))).toBe(decrireBorne(8, 2))
-    expect(decrireBorneConnue(4, 5, porteeMaximale(4))).toBe(decrireBorne(4, 5))
+    // ⚠️ **Au-delà de la borne, les deux chemins divergent VOLONTAIREMENT** (correctif de 2ᵉ passe)
+    // — et l'égalité stricte qui était asserée ici masquait le défaut. `decrireBorne` part d'un
+    // effectif **déclaré**, donc le serveur **refuse** ; `decrireBorneConnue` sans régime part de
+    // l'effectif **réel**, donc le service **borne à la lecture**. Deux régimes, deux phrases. Le
+    // partage de formule reste vérifié en passant le régime explicitement.
+    expect(decrireBorneConnue(4, 5, porteeMaximale(4), 'refuse')).toBe(decrireBorne(4, 5))
+    expect(decrireBorneConnue(4, 5, porteeMaximale(4))).toContain('3 rangs seront appliqués')
   })
 
   it('suit la borne du serveur même quand elle diverge du miroir', () => {

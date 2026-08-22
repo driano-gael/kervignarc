@@ -425,8 +425,11 @@ def test_une_inscription_tardive_desynchronise_la_colline_entiere(
     # c'est *cela* que ce test garde : le jour où l'un des deux chemins « réparerait » la situation
     # en reconstruisant un duel vierge, des scores validés disparaîtraient sans trace, et
     # l'assertion deviendrait un 200.
-    assert rejeu.status_code in (409, 422), rejeu.text
-    assert rejeu.json()["code"] in {"duel_desynchronise", "duel_verrouille"}
+    # Le scénario est **déterministe** (4 archers + 1 retardataire, `numero=1` fixe), donc l'issue
+    # l'est aussi : on épingle celle qui tombe, et non une disjonction qui laisserait une bascule
+    # 409 ↔ 422 — un changement de contrat visible du client — passer sans rougir.
+    assert rejeu.status_code == 422, rejeu.text
+    assert rejeu.json()["code"] == "duel_verrouille"
 
 
 def test_un_reglage_de_colline_sur_un_autre_type_ne_persiste_rien(

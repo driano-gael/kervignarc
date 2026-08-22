@@ -583,6 +583,68 @@ def test_une_colline_en_cours_retient_les_prelevements_de_ses_phases_avales() ->
     assert source.plages_indecises == ()
 
 
+def test_une_colline_terminee_avant_son_terme_libere_quand_meme_son_aval() -> None:
+    """**La porte de sortie du frein** — sans elle, on ferme un défaut en en ouvrant un pire.
+
+    ⚠️ **Relevé par l'axe adversarial en 2ᵉ passe, sur le correctif d'un majeur de 1ʳᵉ passe.** Le
+    frein de `classement_de_phase` ne regardait que « toutes les manches réglées sont-elles
+    closes ». Rien d'autre ne pouvait lever la condition — ni le statut, ni un geste d'organisateur.
+
+    Le cas du jour J : colline réglée à 5 manches, on n'en joue que 4 faute de temps, et on termine
+    la phase. La phase avale levait alors `PrelevementEnAttente` **indéfiniment**, le palmarès
+    gardait tout le monde `en_lice` sans jamais décerner un rang, et le seul geste de sortie était
+    de rééditer `nb_manches` à la baisse — que rien n'indique et que `DETTE-062` déconseille sur une
+    phase en cours.
+
+    « Ensemencé trop tôt » se voit et se corrige ; « jamais ensemencé » immobilise le tournoi. Le
+    second est donc le pire des deux, et c'est celui qu'on aurait installé en croyant fermer le
+    premier. `ServiceRoutage` savait déjà écarter une phase terminée ; le prélèvement, non.
+
+    **Terminer une phase est un geste explicite d'organisateur** : il vaut décision que ce qui est
+    joué l'est. C'est ce que le statut veut dire, et c'est pourquoi il fait autorité ici sur le
+    compte des manches.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    phase_id = monde.regler(ConfigurationColline(nb_manches=5, portee_de_defi=1))
+    service = monde.service()
+    resolveur = service._saisie_duels.resolveur_de_classement(monde.tournoi_id, monde.depart_id)
+
+    _jouer_la_manche_ouverte(service, monde)
+
+    # Quatre manches restent dues : le frein tient, et c'est bien ce qu'on veut ici.
+    assert service.classement_de_phase(monde.tournoi_id, phase_id, resolveur).plages_indecises == (
+        (1, 4),
+    )
+
+    phase = monde.phases.par_id(phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(replace(phase, statut=StatutPhase.TERMINEE))
+
+    # L'organisateur a tranché : le classement produit est celui-là, et l'aval peut s'ensemencer.
+    assert service.classement_de_phase(monde.tournoi_id, phase_id, resolveur).plages_indecises == ()
+
+
+def test_une_colline_sans_participant_ne_declare_pas_une_plage_a_l_envers() -> None:
+    """`(1, 0)` est un intervalle dont le début dépasse la fin — une valeur malformée.
+
+    Bornes **incluses** au contrat de `ClassementSource`. Inoffensif par accident aujourd'hui (ni
+    `coupe` ni `_borne` ne s'y déclenchent), mais servi à un type partagé : rien ne garantit qu'un
+    futur lecteur ne l'affichera pas telle quelle — « places 1 à 0 en attente ». Relevé par deux
+    axes, et non couvert jusque-là : les tests de phase vide portaient tous sur `etat()`, jamais
+    sur `classement_de_phase`, c'est-à-dire la moitié où la valeur dégénérée apparaissait.
+    """
+    monde = _Monde()
+    phase_id = monde.regler(ConfigurationColline(nb_manches=3, portee_de_defi=1))
+    service = monde.service()
+    resolveur = service._saisie_duels.resolveur_de_classement(monde.tournoi_id, monde.depart_id)
+
+    source = service.classement_de_phase(monde.tournoi_id, phase_id, resolveur)
+
+    assert source.classement.lignes == ()
+    assert source.plages_indecises == ()
+
+
 def test_l_avancement_de_phase_se_lit_manche_par_manche() -> None:
     """Le port `LecteurAvancementDePhase` (ADR-0090 §5) — « Manche 2 sur 3 ».
 

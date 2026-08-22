@@ -134,7 +134,16 @@ describe('les pauses programmées sur les phases d’un tournoi', () => {
 
     // L'invariant que `Profondeur.test.tsx` garde aussi : bouton bloqué ⟺ un message dit pourquoi.
     expect(screen.getByRole('button', { name: /Enregistrer|Valider/ })).toBeDisabled()
-    expect(screen.getByRole('status').textContent).toMatch(/même tour/)
+    // ⚠️ `getAllByRole` et non `getByRole` : depuis le correctif de revue d'E05US027, la **borne
+    // d'effectif** du système suisse s'affiche elle aussi en `role="status"` dès qu'un effectif est
+    // déclaré — ce que le CA demande et qui n'arrivait pas jusque-là. Deux messages de statut
+    // cohabitent donc légitimement ; on cible celui qu'on teste.
+    expect(
+      screen
+        .getAllByRole('status')
+        .map((noeud) => noeud.textContent)
+        .join(' '),
+    ).toMatch(/même tour/)
   })
 
   it('refuse le réglage sur un type qui n’annonce pas ses tours, et dit où les pauses se posent', async () => {

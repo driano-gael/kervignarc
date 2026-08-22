@@ -92,7 +92,7 @@ from domain.colline import (
 )
 from domain.duel import BaremeDuel, Cote, Duel
 from domain.participant import Participant
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
 from domain.placement_par_bloc import (
     BlocDeCouloirs,
     ConflitDeBloc,
@@ -174,7 +174,14 @@ class RangColline:
 
     Aucun ex æquo n'est possible : deux participants n'occupent jamais la même position. C'est ce
     qui rend `classement_de_colline` si court, et ce qui fait qu'un prélèvement dans une colline
-    n'est jamais retenu par le refus d'ADR-0081.
+    n'est jamais retenu par une **égalité**.
+
+    ⚠️ **Il l'est en revanche tant que la phase n'est pas ACHEVÉE** — ne pas lire la phrase
+    ci-dessus comme « un prélèvement dans une colline n'est jamais retenu », ce qu'elle affirmait
+    jusqu'à la revue d'E05US027. Ce sont deux causes distinctes d'indécision, et la colline n'en a
+    qu'une : `ServiceColline.classement_de_phase` déclare la plage entière indécise tant que
+    `_achevee` est faux, parce qu'un classement de colline **complet et parfaitement ordonné** peut
+    n'être que le classement amont recopié, avant qu'une flèche soit tirée.
     """
 
     position: int
@@ -236,6 +243,34 @@ def _toutes_manches_closes(etat: EtatColline) -> bool:
     premier cas limite.
     """
     return len(etat.manches) >= etat.nb_manches and all(m.close for m in etat.manches)
+
+
+def _achevee(phase: Phase, etat: EtatColline) -> bool:
+    """La colline a-t-elle **fini de produire son classement** — pour le prélèvement d'ADR-0081.
+
+    Deux façons d'avoir fini, et la seconde a été oubliée en 1ʳᵉ rédaction (relevé par l'axe
+    adversarial) :
+
+    1. **toutes les manches réglées sont closes** — le cas nominal ;
+    2. **l'organisateur a terminé la phase** — le cas réel du jour J.
+
+    ⚠️ **Sans le point 2, le frein n'avait aucune porte de sortie.** Une colline réglée à 5 manches
+    dont on n'en joue que 4, faute de temps, puis qu'on passe à `TERMINEE`, bloquait sa phase avale
+    **indéfiniment** : `PrelevementEnAttente` à chaque lecture, aucun rang jamais décerné au
+    palmarès, et pour seul geste de sortie une réédition de `nb_manches` à la baisse — que rien
+    n'indique et que `DETTE-062` déconseille sur une phase en cours. On aurait fermé « ensemencé
+    trop tôt » en ouvrant « jamais ensemencé », ce qui est pire : le premier se voit et se corrige,
+    le second immobilise le tournoi.
+
+    C'est le mode de panne que `EtapeDeroule._verifier_convergence_du_big_shoot_off` documente déjà
+    (« bloquée en `PrelevementEnAttente` **pour toujours** — plus aucune flèche à tirer pour lever
+    l'attente »). `ServiceRoutage` savait déjà écarter une phase terminée ; le prélèvement, non.
+
+    Terminer une phase est un **geste explicite d'organisateur** : il vaut décision que ce qui est
+    joué l'est. C'est exactement ce que le statut veut dire, et c'est pourquoi il fait autorité ici
+    sur le compte des manches.
+    """
+    return phase.statut is StatutPhase.TERMINEE or _toutes_manches_closes(etat)
 
 
 def _plan_suffisant(bloc: BlocDeCouloirs | None, effectif: int) -> bool:
@@ -343,6 +378,16 @@ class ServiceColline:
         ⚠️ **4ᵉ occurrence du port unifié d'ADR-0084, et aucune duplication à écrire.** C'était la
         promesse faite en fondant les deux ports jumeaux ; elle est tenue.
 
+        ⚠️ **`plages_indecises` a DEUX consommateurs, et le second surprend** (relevé en revue).
+        Outre le prélèvement (`preleves.coupe`), c'est `_borne` au palmarès qui le lit : tant que la
+        colline n'est pas achevée, ses N archers reçoivent donc tous la même fourchette `1..N` et
+        s'affichent en **un seul paquet** « 1ᵉʳ à Nᵉ » sur l'écran public et le PDF. C'est le régime
+        normal d'une phase en cours — mais la colline est le seul format dont la fourchette ne se
+        resserre *jamais* avant la fin, puisqu'elle n'a pas d'ex æquo à départager progressivement.
+        Le classement vivant reste lisible sur l'écran de la colline elle-même, qui est sa surface
+        propre. Épinglé par un test au palmarès, pour qu'un futur correctif ne le défasse pas en
+        croyant réparer un bug d'affichage.
+
         `rang_premier` est posé ici avec le **même** résolveur que celui qui a servi à prélever :
         deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
         distincts, ce qui est exactement `DETTE-034`.
@@ -373,7 +418,14 @@ class ServiceColline:
             # n'avoir aucune égalité, en était dépourvue — le garde-fou d'ADR-0081 ne tenait chez
             # les voisins que par un effet de bord de leur mode de classement.
             plages_indecises=(
-                () if _toutes_manches_closes(photo) else ((1, len(source.classement.lignes)),)
+                ()
+                if _achevee(phase, photo) or not source.classement.lignes
+                # Bornes **incluses** (contrat de `ClassementSource`) : sans la garde ci-dessus, une
+                # phase sans participant rendait `(1, 0)`, un intervalle dont le début dépasse la
+                # fin. Inoffensif par accident aujourd'hui — `coupe` et `_borne` ne s'y déclenchent
+                # pas — mais c'est une valeur malformée servie à un type partagé, et rien ne dit
+                # qu'un futur lecteur ne l'affichera pas telle quelle (« places 1 à 0 en attente »).
+                else ((1, len(source.classement.lignes)),)
             ),
             rang_premier=tranche(phase, resolveur),
         )

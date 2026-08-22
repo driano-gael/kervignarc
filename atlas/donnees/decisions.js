@@ -4136,6 +4136,16 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/application/colline.py",
+     "existe": true,
+     "symboles": [
+      "_achevee",
+      "classement_de_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/application/erreurs/moteur.py",
      "existe": true,
      "symboles": [
@@ -4201,6 +4211,13 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/classement_de_colline.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/classement_de_tableau.py",
      "existe": true,
      "symboles": [
@@ -4224,7 +4241,8 @@ window.ATLAS.decisions = {
    "titre": "une phase attend que sa source ait départagé les places qu'elle prélève",
    "us": [
     "E05US020",
-    "E05US024"
+    "E05US024",
+    "E05US027"
    ]
   },
   {
