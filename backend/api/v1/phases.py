@@ -32,6 +32,7 @@ from domain.arret_programme import (
     PorteeArret,
 )
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.deroule_etape import EtapeDeroule
 from domain.phase import (
     IssueTour,
@@ -322,6 +323,43 @@ class ReglageSuisseDTO(BaseModel):
         return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
 
 
+class ReglageCollineDTO(BaseModel):
+    """Le réglage d'une phase de **colline** (E05US027) — manches et portée de défi.
+
+    **Deux champs, là où ses trois voisins n'en ont qu'un**, et l'asymétrie porte une information :
+    `portee_de_defi` est ce qui distingue le **King of the Hill** (1 — on défie son voisin immédiat)
+    du **Ladder** (2+ — « le n°6 peut défier le 5 ou le 4 »). Le référentiel §10.1 les présente
+    comme deux formats ; ce sont deux **réglages d'un même format** (règle 2 : un format de tournoi
+    est de la configuration, pas du code), d'où un seul `TypePhase.COLLINE` au catalogue.
+
+    ⚠️ **La borne haute de la portée n'est pas ici**, et ce n'est pas un oubli — même raisonnement
+    que `ReglageSuisseDTO` : une portée doit rester strictement inférieure à l'effectif, faute de
+    quoi « chacun défie n'importe qui » et ce n'est plus un format. Cette borne dépend de
+    l'**effectif**, que ce DTO ne connaît pas et qu'un format de bibliothèque ne connaîtra jamais.
+    Elle est vérifiée par `EtapeDeroule`, là où l'effectif est déclaré, et l'atelier affiche le
+    maximum atteignable sous le champ.
+
+    Le plafond posé ici (`le=64`) n'est donc pas la règle de la colline : c'est la garde de
+    frontière habituelle contre une saisie qui a dérapé.
+
+    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 8ᵉ paire, `DETTE-054`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_manches: int = Field(default=5, ge=1, le=64)
+    portee_de_defi: int = Field(default=1, ge=1, le=64)
+
+    def vers_agregat(self) -> ConfigurationColline:
+        return ConfigurationColline(nb_manches=self.nb_manches, portee_de_defi=self.portee_de_defi)
+
+    @staticmethod
+    def de_agregat(reglage: ConfigurationColline) -> ReglageCollineDTO:
+        return ReglageCollineDTO(
+            nb_manches=reglage.nb_manches, portee_de_defi=reglage.portee_de_defi
+        )
+
+
 class ArretProgrammeDTO(BaseModel):
     """Une **pause programmée** : après quel tour la salle s'arrête (E05US033, ADR-0091).
 
@@ -412,6 +450,12 @@ class ConfigPhaseRequete(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
+    colline: ReglageCollineDTO | None = None
+    """Le réglage d'une phase de **colline** (E05US027) — `null` = non réglée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `colline`, il lève `ConfigurationCollineInvalide` (422)."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -482,6 +526,12 @@ class PhaseReponse(BaseModel):
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
 
+    colline: ReglageCollineDTO | None = None
+    """Le réglage d'une phase de **colline** (E05US027) — `null` = non réglée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `colline`, il lève `ConfigurationCollineInvalide` (422)."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -511,6 +561,9 @@ class PhaseReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(phase.big_shoot_off)
             ),
             suisse=(None if phase.suisse is None else ReglageSuisseDTO.de_agregat(phase.suisse)),
+            colline=(
+                None if phase.colline is None else ReglageCollineDTO.de_agregat(phase.colline)
+            ),
             decoupage=(
                 None if phase.decoupage is None else DecoupageDTO.de_agregat(phase.decoupage)
             ),
@@ -537,6 +590,12 @@ class EtapeReponse(BaseModel):
     big_shoot_off: ReglageBigShootOffDTO | None = None
     suisse: ReglageSuisseDTO | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — `null` = non réglée."""
+
+    colline: ReglageCollineDTO | None = None
+    """Le réglage d'une phase de **colline** (E05US027) — `null` = non réglée.
+
+    Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` efface le réglage.
+    Posé sur un type qui n'est pas `colline`, il lève `ConfigurationCollineInvalide` (422)."""
 
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
@@ -586,6 +645,9 @@ class EtapeReponse(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            colline=(
+                None if etape.colline is None else ReglageCollineDTO.de_agregat(etape.colline)
+            ),
             decoupage=(
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
             ),
@@ -652,6 +714,7 @@ async def ajouter_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                None if requete.colline is None else requete.colline.vers_agregat(),
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )
@@ -685,6 +748,7 @@ async def modifier_phase(
                 None if requete.poules is None else requete.poules.vers_agregat(),
                 None if requete.big_shoot_off is None else requete.big_shoot_off.vers_agregat(),
                 None if requete.suisse is None else requete.suisse.vers_agregat(),
+                None if requete.colline is None else requete.colline.vers_agregat(),
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
             )

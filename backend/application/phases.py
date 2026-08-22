@@ -43,6 +43,7 @@ from application.portee import phase_du_depart
 from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.phase import (
@@ -132,6 +133,7 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
+        colline: ConfigurationColline | None = None,
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
@@ -175,6 +177,7 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            colline=colline,
             decoupage=decoupage,
             arrets=arrets,
         )
@@ -197,6 +200,7 @@ class ServicePhases:
         poules: ReglageDePoules | None = None,
         big_shoot_off: ConfigurationBigShootOff | None = None,
         suisse: ConfigurationSuisse | None = None,
+        colline: ConfigurationColline | None = None,
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
     ) -> EtapeDeroule:
@@ -230,6 +234,8 @@ class ServicePhases:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            # E05US027 : passé explicitement lui aussi, pour la raison dite juste en dessous.
+            colline=colline,
             # ⚠️ **Passé explicitement, comme ses trois voisins** : `replace` conserve ce qu'on ne
             # lui donne pas, et un découpage survivant à un retypage ferait lever
             # `DecoupageEnToursInvalide` sur une édition par ailleurs licite — l'organisateur ne

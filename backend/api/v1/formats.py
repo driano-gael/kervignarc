@@ -37,6 +37,7 @@ from domain.anomalie import Anomalie, Gravite
 from domain.arret_programme import ArretProgramme, PorteeArret
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.deroule import BlocDeroule, Flux, ProjectionDeroule, TourBraquet
 from domain.format_tournoi import FormatTournoi, ModelePhase
 from domain.grain_validation import GrainValidation, TypeGrain
@@ -262,6 +263,33 @@ class ReglageSuisseDTO(BaseModel):
         return ReglageSuisseDTO(nb_rondes=reglage.nb_rondes)
 
 
+class ReglageCollineDTO(BaseModel):
+    """Le réglage d'une étape de **colline** dans un format (E05US027) — manches et portée.
+
+    Jumeau assumé de `api/v1/phases.ReglageCollineDTO` — **8ᵉ** paire, `DETTE-054`.
+
+    ⚠️ **Régime brouillon** (ADR-0063), et il porte ici le même sens que chez le suisse : un format
+    de bibliothèque s'écrit sans connaître l'effectif, or c'est l'effectif qui borne la portée de
+    défi (elle doit rester strictement inférieure au nombre d'archers, sans quoi « chacun défie
+    n'importe qui »). « Portée 3 » est donc un modèle **licite** qui refusera de s'appliquer à un
+    tournoi de 3 archers — le refus tombe à l'étape, jamais sur la brique.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nb_manches: int = Field(default=5, ge=1, le=64)
+    portee_de_defi: int = Field(default=1, ge=1, le=64)
+
+    def vers_agregat(self) -> ConfigurationColline:
+        return ConfigurationColline(nb_manches=self.nb_manches, portee_de_defi=self.portee_de_defi)
+
+    @staticmethod
+    def de_agregat(reglage: ConfigurationColline) -> ReglageCollineDTO:
+        return ReglageCollineDTO(
+            nb_manches=reglage.nb_manches, portee_de_defi=reglage.portee_de_defi
+        )
+
+
 class ReglagePoulesDTO(BaseModel):
     """Le réglage d'une étape de **poules** dans un format (E05US023, ADR-0083 §4).
 
@@ -389,6 +417,9 @@ class EtapeDTO(BaseModel):
     d'un cran à chaque réglage inséré — jusqu'à devenir une expression morte sous `suisse` (relevé
     en revue). C'est l'angle mort que `DETTE-054` désigne, vu de l'autre côté."""
 
+    colline: ReglageCollineDTO | None = None
+    """Le réglage d'une étape de **colline** (E05US027) — `null` = non réglée."""
+
     decoupage: DecoupageDTO | None = None
     """Le découpage d'une **qualification** en tours (E05US035) — `null` = non découpée.
 
@@ -432,6 +463,7 @@ class EtapeDTO(BaseModel):
                 None if self.big_shoot_off is None else self.big_shoot_off.vers_agregat()
             ),
             suisse=(None if self.suisse is None else self.suisse.vers_agregat()),
+            colline=(None if self.colline is None else self.colline.vers_agregat()),
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
         )
@@ -466,6 +498,9 @@ class EtapeDTO(BaseModel):
                 else ReglageBigShootOffDTO.de_agregat(etape.big_shoot_off)
             ),
             suisse=(None if etape.suisse is None else ReglageSuisseDTO.de_agregat(etape.suisse)),
+            colline=(
+                None if etape.colline is None else ReglageCollineDTO.de_agregat(etape.colline)
+            ),
             decoupage=(
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
             ),
