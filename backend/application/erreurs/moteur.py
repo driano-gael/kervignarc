@@ -194,6 +194,27 @@ class PhasePasUnSuisse(ApplicationError):
     code = "phase_pas_un_suisse"
 
 
+class PhasePasUneColline(ApplicationError):
+    """La phase existe mais n'est **pas** une colline (E05US027) → 409.
+
+    Cinquième et **dernier** jumeau de `PhasePasUnTableau` : la colline est le dernier des formats
+    d'E05US015 à recevoir son service, donc cette famille est close. La justification donnée à
+    `PhasePasUnBigShootOff` vaut telle quelle — ce qui serait fâcheux à dupliquer, c'est la
+    **table** des types admis, et elle est dérivée du registre de contrat depuis E05US023. Il ne
+    reste ici qu'un nom d'erreur par décor, et c'est ce qui permet à l'organisateur de lire « cette
+    phase n'est pas une colline » plutôt qu'un « type de phase incorrect » qui ne l'aide en rien.
+
+    ⚠️ **Cinq jumeaux ne déclenchent pas le seuil du remède structurel**, et il faut le dire
+    explicitement puisque le § *Dette* de `CLAUDE.md` fixe ce seuil à la 3ᵉ occurrence. Le critère
+    y est « **invariant déjà dupliqué** » : ici, aucun invariant ne l'est. Chaque classe ne porte
+    qu'un `code` et un texte — la logique commune (le refus lui-même) vit déjà en un seul endroit,
+    dans la table dérivée du registre. Les fondre rendrait le message générique sans supprimer une
+    seule ligne de règle.
+    """
+
+    code = "phase_pas_une_colline"
+
+
 class MancheIntrouvable(ApplicationError):
     """Aucune manche de ce numéro dans ce Big Shoot Off (E05US028) → 404.
 

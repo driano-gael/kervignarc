@@ -31,6 +31,7 @@ from sqlalchemy import text
 
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.depart import Depart, DepartId
 from domain.deroule_etape import EtapeDeroule
 from domain.format_tournoi import FormatTournoi, ModelePhase
@@ -1189,6 +1190,45 @@ def test_un_format_conserve_le_reglage_de_poules_et_le_seuil_de_barrage(tmp_path
         db.engine.dispose()
 
 
+def test_un_format_conserve_le_reglage_de_colline(tmp_path: Path) -> None:
+    """Le **format capturé** garde son King of the Hill — sinon il se rejouerait non réglé.
+
+    ⚠️ **Ce test manquait, et son absence était le mode de panne exact du voisin ci-dessus**
+    (relevé en revue). `barrage_jusqu_au` avait été perdu **en silence** par ce même chemin : le
+    champ vivait dans l'agrégat et disparaissait à la sérialisation, parce que le seul test
+    d'aller-retour de format n'exerçait que les poules. Les trois tests de colline ajoutés par
+    E05US027 couvrent la persistance d'**étape** — c'est une autre table et un autre code.
+
+    Ce que ça coûterait ici : promouvoir en format un tournoi dont une phase est un King of the Hill
+    rendrait une brique de bibliothèque « colline non réglée ». Rejouée, elle refuserait de démarrer
+    — et l'organisateur, qui a capturé un format *qui marchait*, n'aurait aucune piste.
+
+    Égalité d'étapes entière, et non deux champs isolés, pour la même raison que le voisin : sinon
+    le prochain réglage ajouté se perdra de la même façon.
+    """
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1,
+            type=TypePhase.COLLINE,
+            # Un Ladder, délibérément : à `portee_de_defi=1`, une portée effacée par la
+            # sérialisation se relirait au défaut et le test passerait sur un bug.
+            colline=ConfigurationColline(nb_manches=6, portee_de_defi=2),
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Ladder 6 manches", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()
+
+
 # --- E05US035 : le découpage d'une qualification en tours, même domicile et même mécanisme -------
 
 
@@ -1319,6 +1359,114 @@ def _suisse_brut(db: Database, depart_id: DepartId, config: str) -> None:
         assert depart is not None, "Le décor doit avoir créé le créneau."
         session.add(
             DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="suisse", config=config)
+        )
+        session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
+        session.commit()
+
+
+# --- E05US027 : le réglage de la colline, même domicile et même mécanisme -------------------------
+
+
+def test_le_reglage_de_colline_fait_l_aller_retour(tmp_path: Path) -> None:
+    """`config.colline` s'écrit et se relit à l'identique — **sans migration**.
+
+    Quatrième réglage de format à emprunter ce chemin, après `poules` (E05US023),
+    `big_shoot_off` (E05US028) et `suisse` (E05US026), et pour la même raison qu'eux : un nombre de
+    manches et une portée de défi sont de la **configuration**, ils tiennent dans le JSON existant.
+    À la racine, jamais sous `policies` — ce ne sont pas des stratégies injectables mais des
+    paramètres de phase.
+
+    ⚠️ **Le premier de la famille à porter DEUX champs**, et c'est ce que ce test garde : une
+    relecture qui perdrait `portee` rendrait un King of the Hill là où la base dit Ladder, donc un
+    **autre format** — les défis ne porteraient plus sur les mêmes archers.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        reglage = ConfigurationColline(nb_manches=6, portee_de_defi=2)
+
+        _poser(db, depart_id, ordre=1, type=TypePhase.COLLINE, colline=reglage)
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.colline == reglage
+    finally:
+        db.engine.dispose()
+
+
+def test_la_portee_par_defaut_se_relit_explicitement(tmp_path: Path) -> None:
+    """La portée s'écrit **toujours**, y compris à sa valeur par défaut de 1.
+
+    C'est le raisonnement de la `portee` d'un arrêt programmé, pas celui du `cumul` d'un Big Shoot
+    Off : la portée n'est pas une option qu'on active mais un **choix parmi deux formats** — 1 =
+    King of the Hill, 2+ = Ladder. L'omettre à 1 ferait disparaître de la base l'information
+    « l'organisateur a choisi le King of the Hill », et rendrait le document ambigu le jour où le
+    défaut changerait.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+
+        _poser(
+            db,
+            depart_id,
+            ordre=1,
+            type=TypePhase.COLLINE,
+            colline=ConfigurationColline(nb_manches=3, portee_de_defi=1),
+        )
+        with db.session_factory() as session:
+            etape = session.query(DerouleEtapeORM).one()
+            config = json.loads(etape.config or "{}")
+
+        assert config["colline"] == {"manches": 3, "portee": 1}
+    finally:
+        db.engine.dispose()
+
+
+def test_une_colline_non_reglee_se_relit_sans_reglage(tmp_path: Path) -> None:
+    """Absence = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
+
+    C'est aussi ce qui rend la livraison sûre sans toucher au schéma : une étape écrite avant
+    E05US027 se relit « non réglée », soit exactement son état d'avant — le type était composable,
+    aucun service ne le déroulait.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _poser(db, depart_id, ordre=1, type=TypePhase.COLLINE)
+
+        relue = PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))[0]
+
+        assert relue.colline is None
+    finally:
+        db.engine.dispose()
+
+
+def test_un_reglage_de_colline_sans_portee_remonte_en_erreur_typee(tmp_path: Path) -> None:
+    """Une portée absente ne se replie **pas** sur 1 — on refuse de relire.
+
+    L'asymétrie avec la `portee` d'un arrêt (qui, elle, se replie sur son défaut) est voulue et joue
+    à plein ici : deviner « King of the Hill » sur un document qui disait « Ladder » ne produirait
+    pas une phase un peu différente mais **un autre format**. Quand on ne sait pas, on refuse de
+    relire plutôt que d'inventer un déroulé.
+    """
+    db = _base(tmp_path)
+    try:
+        depart_id = _depart(db)
+        _colline_brute(db, depart_id, json.dumps({"colline": {"manches": 3}}))
+
+        with pytest.raises(InfrastructureError):
+            PhaseRepositorySQL(db.session_factory).par_tournoi(_tournoi_du(db, depart_id))
+    finally:
+        db.engine.dispose()
+
+
+def _colline_brute(db: Database, depart_id: DepartId, config: str) -> None:
+    """Jumeau de `_suisse_brut` pour une étape de type **colline**, config imposée."""
+    with db.session_factory() as session:
+        depart = session.get(DepartORM, depart_id)
+        assert depart is not None, "Le décor doit avoir créé le créneau."
+        session.add(
+            DerouleEtapeORM(tournoi_id=depart.tournoi_id, ordre=1, type="colline", config=config)
         )
         session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
         session.commit()

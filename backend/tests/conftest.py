@@ -693,6 +693,16 @@ def poser_phase_factice(
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
+                # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
+                # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
+                # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
+                # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
+                # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
+                # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
+                # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
+                # élargie d'autant ; remède inchangé : une fabrique unique du domaine
+                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+                colline=phase.colline,
                 # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
                 # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
                 # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un
@@ -767,6 +777,16 @@ def poser_phase_sql(session_factory: Any, phase: Phase) -> Phase:
                 # ce qui manquait pour qu'elle soit prise. Remède : une fabrique unique du domaine
                 # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
                 suisse=phase.suisse,
+                # ⚠️ **4ᵉ occurrence, E05US027** — le réglage de la colline a été oublié ici lui
+                # aussi, et **onze** tests d'API ont échoué en `phase_pas_reglee` sur une phase
+                # parfaitement réglée. C'est en cherchant la cause qu'on est retombé sur le
+                # commentaire ci-dessus, qui l'annonçait. La prédiction de la 2ᵉ occurrence (« il le
+                # sera à chaque réglage neuf ») est désormais vérifiée **quatre fois de suite, sans
+                # exception** : aucun réglage n'a jamais été ajouté ici du premier coup, et c'est
+                # toujours un test d'API — jamais une relecture — qui l'a rattrapé. `DETTE-064` est
+                # élargie d'autant ; remède inchangé : une fabrique unique du domaine
+                # (`EtapeDeroule.de_phase(phase)`), en US dédiée.
+                colline=phase.colline,
                 # ⚠️ **Les arrêts programmés d'E05US033 ne figurent PAS ici, et ce n'est pas un
                 # oubli** : `Phase` ne porte pas ce champ (ADR-0091 §2 — personne ne le lit depuis
                 # une phase, et l'import fermerait un cycle). Il n'y a donc rien à recopier, et un

@@ -82,10 +82,10 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
-   "code": "etat-contradictoire",
-   "message": "porte deux états différents selon la section : ✅ dans « J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (23/25)** » · ⬜ dans « Résorptions de dette planifiées (arbitrages du 07/08/2026) ».",
+   "code": "derniere-us-orpheline",
+   "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0045, ADR-0082, ADR-0091, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
    "severite": "signal",
-   "sujet": "E05US023"
+   "sujet": "E05US027"
   },
   {
    "code": "features-enchevetrees",
@@ -95,7 +95,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
-   "message": "et 22 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, competition, departs, duels, en-cours, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "message": "et 23 autre(s) feature(s) s'importent mutuellement (archers, big-shoot-off, blasons, categories, colline, competition, departs, duels, en-cours, forfaits, inscriptions, palmares, patrimoine, phases, placement, poules, routage, saisie, saisie-duels, salle, suisse, suivi, suivi-deroule, tableaux) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "archers"
   },

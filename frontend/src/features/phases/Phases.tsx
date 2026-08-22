@@ -27,6 +27,7 @@ import {
 import {
   AIDE_TYPE,
   LIBELLE_TYPE,
+  TYPES_A_PLAN_PAR_BLOCS,
   TYPES_ARRETABLES,
   TYPES_EN_TABLEAU,
   TYPES_SANS_CLASSEMENT,
@@ -42,6 +43,13 @@ import {
 } from '../../shared/phases/arrets'
 import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
 import { depuisDecoupage, versDecoupage } from '../../shared/phases/decoupage'
+import { ReglageColline } from '../../shared/phases/ReglageColline'
+import {
+  depuisReglage as depuisReglageColline,
+  estValide as collineValide,
+  porteeMaximale,
+  versReglage as versReglageColline,
+} from '../../shared/phases/colline'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -57,6 +65,8 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
+import { useEtatColline, useRegenererPlanColline } from '../colline/hooks'
+import { ClassementColline } from '../colline/ClassementColline'
 import { useEtatSuisse, useRegenererPlanSuisse } from '../suisse/hooks'
 import { ClassementSuisse } from '../suisse/ClassementSuisse'
 import {
@@ -218,6 +228,63 @@ function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
   )
 }
 
+/** Le plan de cibles d'une colline, et la colline elle-même — **côté organisateur**.
+ *
+ * ⚠️ **Ce composant a manqué à la première livraison d'E05US027, et son absence rendait le format
+ * injouable** (relevé en revue). `useRegenererPlanColline` existait, la route `POST /colline/plan`
+ * existait, `ServiceColline.regenerer_plan` existait — et rien ne les appelait. Sans pose de plan,
+ * `_plan_suffisant` rend `False` en permanence, tous les `couloirs` valent `null`, et l'écran du
+ * scoreur réclame en boucle une action que l'application n'offrait nulle part : **personne ne
+ * savait sur quelle cible tirer**. La fiche de recette de l'US (§ scénario 2) était elle-même
+ * inexécutable.
+ *
+ * ⚠️ **3ᵉ récidive du même défaut** — E05US023 (poules), puis le commentaire de `PlanDePoules`
+ * ci-dessus écrit pour ne pas le rejouer, puis celui de `PlanDeSuisse`. Le commentaire a tenu pour
+ * le suisse et n'a pas tenu pour la colline : un avertissement en prose ne se déclenche pas. Le
+ * garde-fou réel est le test de rendu qui accompagne ce composant.
+ *
+ * Comme le suisse : **un seul bloc**, donc `decrireConflits(..., 'Bloc')` — sans ce second
+ * argument, une colline lirait « Poule(s) 1 sans couloirs » alors qu'elle n'a aucune poule.
+ */
+function PlanDeColline({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatColline(tournoiId, phaseId)
+  const regenerer = useRegenererPlanColline(tournoiId, phaseId)
+
+  // Même garde que chez le suisse : une phase sans participant n'a ni défi ni conflit, et
+  // « Régénérer » y serait un contresens.
+  const defis = (etat.data?.manches ?? []).flatMap((manche) => manche.defis)
+  const planVide = defis.length === 0 || defis.every((defi) => defi.couloirs === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {decrireConflits(
+            conflits.map((c) => ({ poule: c.groupe, raison: c.raison })),
+            'Bloc',
+          )}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+      {/* La colline **est** le classement : l'organisateur le lit ici sans un appel de plus, la
+          donnée étant déjà chargée pour le bouton ci-dessus. Même geste qu'`ClassementSuisse`. */}
+      <ClassementColline
+        classement={etat.data?.classement ?? []}
+        manches={etat.data?.manches ?? []}
+      />
+    </>
+  )
+}
+
 /** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
  *
  * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
@@ -226,6 +293,28 @@ function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
  * salle est trop petite » — la première version confondait les deux et invitait l'organisateur à
  * regénérer indéfiniment une salle qui ne pouvait pas grandir.
  */
+/** Aiguille vers le panneau de plan du format — un seul point d'entrée, dérivé de la table.
+ *
+ * Les trois panneaux restent distincts (`DETTE-079` en trace la duplication) ; ce qui est
+ * centralisé ici, c'est le **fait qu'un type en ait un**, seule chose que le garde-fou peut
+ * vérifier mécaniquement.
+ */
+function PlanParBlocs({
+  type,
+  tournoiId,
+  phaseId,
+}: {
+  type: TypePhase
+  tournoiId: number
+  phaseId: number
+}) {
+  if (type === 'poules') return <PlanDePoules tournoiId={tournoiId} phaseId={phaseId} />
+  if (type === 'suisse') return <PlanDeSuisse tournoiId={tournoiId} phaseId={phaseId} />
+  if (type === 'colline') return <PlanDeColline tournoiId={tournoiId} phaseId={phaseId} />
+  // Un type entré dans `TYPES_A_PLAN_PAR_BLOCS` sans panneau : le test le voit, l'écran ne ment pas.
+  return null
+}
+
 function decrireConflits(
   conflits: { poule: number; raison: string }[],
   // Le nom du groupe est **paramétrable** depuis E05US030 : le système suisse n'a pas de poules,
@@ -332,8 +421,14 @@ function LignePhase({
         {/* E05US035 — même place et même raison que le barrage juste au-dessus : la qualification
             n'ouvre jamais `FormulairePhase`, donc un réglage qui n'est pas ici n'est nulle part. */}
         {gereeAilleurs && <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />}
-        {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
-        {phase.type === 'suisse' && <PlanDeSuisse tournoiId={tournoiId} phaseId={phase.id} />}
+        {/* ⚠️ **Le montage dérive de `TYPES_A_PLAN_PAR_BLOCS`, et ce n'est pas cosmétique.** Trois
+            fois de suite, un format a gagné son plan de cibles côté serveur sans que personne ne
+            monte l'appelant ici — et le format devenait injouable, faute de couloirs. Passer par la
+            table déplace la récidive du montage vers la table : un type ajouté là-bas et absent de
+            ce `switch` fait rougir `PlansDeCibles.test.tsx`, qui itère sur la même table. */}
+        {TYPES_A_PLAN_PAR_BLOCS.has(phase.type) && (
+          <PlanParBlocs type={phase.type} tournoiId={tournoiId} phaseId={phase.id} />
+        )}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -407,6 +502,8 @@ export function FormulairePhase({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
+  // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [colline, setColline] = useState(depuisReglageColline(phase?.colline ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
@@ -423,6 +520,15 @@ export function FormulairePhase({
   const etatSuisseDeLaPhase = useEtatSuisse(
     tournoiId,
     phase !== undefined && phase.type === 'suisse' ? phase.id : null,
+  )
+  // ⚠️ **Même geste que pour le suisse juste au-dessus, et pour la même raison** : l'effectif réel
+  // du créneau est le seul endroit où « l'effectif du jour » du CA existe vraiment, et le service
+  // **borne silencieusement à la lecture** — sans cette annonce, l'organisateur qui règle une
+  // portée trop grande ne l'apprend ni à l'enregistrement ni le jour J, il voit simplement des
+  // défis plus courts que prévu.
+  const etatCollineDeLaPhase = useEtatColline(
+    tournoiId,
+    phase !== undefined && phase.type === 'colline' ? phase.id : null,
   )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
@@ -494,6 +600,7 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  const estColline = type === 'colline'
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
@@ -513,6 +620,14 @@ export function FormulairePhase({
   // code mort — la garde d'instance vit dans `ReglageDecoupageDePhase`, le seul écran qui compose
   // les réglages d'une qualification de tournoi. Relevé en 2ᵉ passe de revue : le premier correctif
   // l'avait posée ici, où elle ne pouvait jamais s'évaluer.
+  // L'effectif **déclaré** utilisable : `null` tant qu'il est vide ou illisible.
+  //
+  // ⚠️ **`Number('4a')` rend `NaN`, et `??` ne le filtre pas** (relevé par trois axes) : le champ
+  // est un `<input inputMode="numeric">`, pas un `type="number"`, donc du texte libre y passe. Sans
+  // cette normalisation, la fiche affichait « **NaN** archer : aucun défi n'est appariable ». Le
+  // jumeau invoqué en modèle (`Deroule.tsx`) n'a pas ce défaut parce qu'il passe par `lireEntier`,
+  // qui rend `null` : le premier correctif avait repris l'intention du jumeau, pas son geste.
+  const effectifRetenu = effectifInvalide ? null : effectifAnalyse
   const arretable = TYPES_ARRETABLES.has(type)
   const soumissionPossible =
     sources !== 'invalide' &&
@@ -521,6 +636,17 @@ export function FormulairePhase({
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
     !(estSuisse && !suisseValide(suisse)) &&
+    !(estColline && !collineValide(colline)) &&
+    // ⚠️ **La borne d'effectif est OPPOSABLE, donc elle doit désactiver le bouton** (correctif de
+    // 2ᵉ passe). `collineValide` ne juge que les bornes absolues du réglage (1..64) ; la borne qui
+    // dépend de l'effectif déclaré, elle, est celle que `EtapeDeroule._verifier_portee_de_defi`
+    // **refuse** en 422. Sans cette ligne, l'écran disait la borne, laissait « Enregistrer » actif,
+    // et le serveur refusait — la moitié du parcours que le CA veut supprimer restait ouverte.
+    !(
+      estColline &&
+      effectifRetenu !== null &&
+      (versReglageColline(colline)?.portee_de_defi ?? 0) > porteeMaximale(effectifRetenu)
+    ) &&
     // E05US033 : le contenu ne se juge que là où il est offert — une phase non arrêtable
     // soumet une liste vide, quoi qu'il reste dans l'état d'édition.
     !(arretable && !arretsValides(arrets))
@@ -549,6 +675,9 @@ export function FormulairePhase({
       // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
       // 422 `configuration_suisse_invalide`.
       suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+      // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé
+      // en 422 `configuration_colline_invalide`. Retyper la phase l'**efface** donc.
+      colline: estColline ? (versReglageColline(colline) ?? null) : null,
       // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
       // refusé en 422 `arret_programme_invalide`. Retyper la phase l'**efface** donc, comme les
       // quatre réglages ci-dessus. ⚠️ C'est une **perte de planning assumée** : l'organisateur qui
@@ -588,6 +717,10 @@ export function FormulairePhase({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          // Relevé en 2ᵉ passe de revue : la colline manquait à cette liste, à rebours du
+          // raisonnement ci-dessus — un Ladder portée 4 sur 8 manches se serait reporté en silence
+          // sur la phase suivante, alors que c'est un choix de format, pas une préférence.
+          setColline(depuisReglageColline(null))
           setArrets(ARRETS_PAR_DEFAUT)
           setAvecSource(false)
           setOrdreSource('')
@@ -655,16 +788,45 @@ export function FormulairePhase({
           <ReglageSuisse
             etat={suisse}
             surChangement={setSuisse}
-            effectif={etatSuisseDeLaPhase.data?.effectif ?? null}
+            // ⚠️ **Même geste que la colline dix lignes plus bas, et il manquait ici** (relevé
+            // en 2ᵉ passe). `EtapeDeroule._verifier_rondes_appariables` juge lui aussi contre
+            // `self.effectif`, c'est-à-dire le champ saisi sur cet écran. Corriger la colline en
+            // laissant le suisse aurait été un trou **déplacé** — exactement ce que la 1ʳᵉ passe
+            // avait relevé trois fois, reproduit dans le commit qui prétendait le fermer.
+            effectif={effectifRetenu ?? etatSuisseDeLaPhase.data?.effectif ?? null}
             // ⚠️ **La borne vient du serveur ici, pas du miroir** (correctif de 2ᵉ tour) : l'état de
             // la phase la porte déjà (`rondes_maximales`), et `decrireBorneConnue` a été écrite
             // dans ce même lot pour ce cas — recalculer côté client aurait enfreint la règle que le
             // lot venait de poser. Dans l'atelier, au contraire, aucune phase n'existe : le miroir
             // y est le seul recours, et c'est ce qui le justifie.
-            maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
+            maximum={
+              effectifRetenu !== null ? null : (etatSuisseDeLaPhase.data?.rondes_maximales ?? null)
+            }
           />
         )}
-        {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
+        {estColline && (
+          <ReglageColline
+            etat={colline}
+            surChangement={setColline}
+            // ⚠️ **L'effectif DÉCLARÉ d'abord, le prélevé en repli** (correctif de revue). Le
+            // jumeau de `Deroule.tsx` porte déjà ce raisonnement ; il n'avait pas été repris ici,
+            // sur le seul écran où l'effectif est **éditable**. La borne annoncée doit être celle
+            // que le serveur **oppose** : `EtapeDeroule._verifier_portee_de_defi` refuse l'étape
+            // contre `self.effectif`, c'est-à-dire le champ saisi trois blocs plus haut et envoyé
+            // dans la même requête — pas contre la population déjà prélevée. Sans ça : 40 inscrits,
+            // phase déclarée à 4, portée 5 → la fiche annonçait « 40 archers : au plus 39 rangs »,
+            // feu vert, et l'enregistrement rendait 422. Exactement le parcours que le CA
+            // supprime.
+            effectif={effectifRetenu ?? etatCollineDeLaPhase.data?.effectif ?? null}
+            // La borne serveur ne vaut que tant qu'aucun effectif n'est déclaré : sinon elle
+            // écraserait la borne de l'effectif saisi, ce qui rouvrirait le défaut ci-dessus par
+            // l'autre bout. `ReglageColline` retombe alors sur `effectif`.
+            maximum={
+              effectifRetenu !== null ? null : (etatCollineDeLaPhase.data?.portee_maximale ?? null)
+            }
+          />
+        )}
+        {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches
             ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun
             champ et **dit pourquoi**. La cacher laisserait chercher un réglage vu sur la phase
             voisine sans jamais apprendre qu'il n'existe pas ici. */}

@@ -186,6 +186,13 @@ const ROUTES: Record<FamilleDuel, { manches: string; barrages: string; validatio
     barrages: '/api/v1/suisse/barrages',
     validations: '/api/v1/suisse/validations',
   },
+  // E05US027 : un défi de colline est lui aussi un duel ordinaire, sur sa propre ressource. Rien de
+  // neuf dans les corps — c'est tout l'intérêt d'avoir gardé un seul pavé de saisie (ADR-0083 §7).
+  colline: {
+    manches: '/api/v1/colline/manches',
+    barrages: '/api/v1/colline/barrages',
+    validations: '/api/v1/colline/validations',
+  },
 }
 
 // La réponse d'une route de poule enveloppe le duel dans sa rencontre (numéro, poule, tour,

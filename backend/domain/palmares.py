@@ -24,8 +24,16 @@ La fourchette n'est **pas** une approximation : dans un tableau tronqué au podi
 l'on emprunte un ordre à la qualification (défaut, usage World Archery) ou si l'on publie l'ex æquo.
 
 ⚠️ **Portée : tout ce qui décerne un rang.** La qualification, les phases à tableau, le Big Shoot
-Off (E05US028) et — depuis E05US026 — les **poules** et le **système suisse**, par leur
-classement de phase. Seule la `colline` reste dehors, faute de service (`# DETTE-028`).
+Off (E05US028), les **poules** et le **système suisse** (E05US026) et — depuis E05US027 — la
+**colline**, par leur classement de phase. Les six y sont : plus aucun type classant n'attend son
+service.
+
+⚠️ **La colline y est entrée sans qu'aucune ligne de ce module change**, et c'est ce que la ligne
+suivante annonçait — mais l'effet mérite d'être dit, parce qu'il n'a été relevé qu'en revue :
+`classement_lisible=True` fait entrer `COLLINE` dans `TYPES_CLASSANTS_LUS`, donc dans
+`_TYPES_CLASSANTS_AU_PALMARES`. **Une colline décerne donc ses rangs au palmarès et au PDF**, ce
+qui est correct et voulu, mais découle d'une bascule de contrat à distance — pas d'une ligne écrite
+ici.
 
 La promesse de ce module s'est vérifiée : il n'a **pas** eu à changer pour les accueillir — il ne
 connaît que des positions acquises, pas la structure qui les a produites. Ce qui décide *quand* une

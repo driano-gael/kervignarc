@@ -34,6 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-22 | `E05US027` | 76 | +5909/−237 | ~23 min | ~76 min | D (15:41→16:24) | **bloquant:1** majeur:0 mineur:3 | bloquant:0 **majeur:6** mineur:8 suggestion:3 | bloquant:0 **majeur:2** mineur:5 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | bloquant:0 **majeur:5** mineur:4 suggestion:1 | **A et C2, un chacun et disjoints** — C2 : `useRegenererPlanColline` sans appelant, donc plan de cibles inatteignable et **format injouable** (3ᵉ récidive du défaut d'E05US023) ; A : `test_arrets_api.py` non élargi au 6ᵉ service, alors que le composition root affirmait l'inverse. ⚠️ **Trois majeurs sont des trous *déplacés*** — `_nb_tours_a_la_composition` (E05US035), `MOTEUR_SAIT_JOUER` (E05US028), le montage du plan (E05US023) : le raisonnement avait été tenu et tranché sur le format précédent, jamais rejoué sur le format neuf | 2 |
+| 2026-08-22 | `E05US027` (2ᵉ passe, sur les correctifs) | 34 | +1512/−161 | ~14 min | ~31 min | D (16:58→17:19) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:1** mineur:5 suggestion:2 | bloquant:0 **majeur:1** mineur:6 suggestion:2 | bloquant:0 **majeur:10** mineur:5 suggestion:2 | bloquant:0 **majeur:2** mineur:6 suggestion:2 | **aucun bloquant** — mais quatre majeurs décrivent des défauts *introduits par les correctifs eux-mêmes* : un frein sans porte de sortie (D), les deux régimes de borne inversés (C1), un test anti-récidive qui promettait par écrit ce qu'il ne faisait pas (D), et le jumeau suisse laissé cassé sur l'écran que le correctif venait d'ouvrir (B). C2 a rendu 10 majeurs, dont 5 « traces fausses qui se lisent comme des preuves » | 2 |
 | 2026-08-21 | `E05US029` | 33 | +1878/−121 | ~10 min | ~52 min | D (13:12→14:04) | bloquant:0 **majeur:1** mineur:1 | bloquant:0 **majeur:2** mineur:6 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:2 | bloquant:0 **majeur:4** mineur:1 suggestion:1 | **bloquant:1** majeur:1 mineur:6 | **C1 et D, un chacun et disjoints** — C1 : `nb_qualifies` désigne un peigne de rangs qu'aucun prélèvement ne sait exprimer ; D : le refus neuf ignorait la **nature** des sources, donc bloquait un format valide. Aucun des deux n'était atteignable par une grille : l'un naît d'une **conjonction** (code juste, CA juste, rencontre fausse), l'autre d'un **voisin non rejoué**. ⚠️ Le majeur `_motif_de_choc` a été trouvé **par trois axes indépendamment** (A, C2, D) — première convergence à trois du registre | 2 (en cours) |
 | 2026-08-21 | `E05US029` (2ᵉ passe, sur les correctifs) | 20 | +721/−91 | ~9 min | ~43 min | D (14:12→14:55) | bloquant:0 majeur:2 mineur:3 | bloquant:0 **majeur:3** mineur:4 suggestion:1 | bloquant:0 **majeur:3** mineur:6 suggestion:2 | bloquant:0 majeur:2 mineur:4 | bloquant:0 **majeur:5** mineur:3 | **aucun bloquant** — les deux de la 1ʳᵉ passe sont fermés, et C1 comme D l'ont vérifié en cherchant un chemin qui les rouvre (aucun). ⚠️ **Trois des cinq majeurs de D étaient dans le code neuf des correctifs**, dont deux **trous déplacés** au sens strict : une garde `effectif < 1` que l'auteur applique 180 lignes plus bas, et une aide « sans objet » ajoutée au champ *ignoré* en oubliant le champ *refusé*. Un 3ᵉ défaut est une **affirmation d'exactitude mesurée fausse** (25 % de faux positifs) — inscrite en docstring et en ADR, c'est-à-dire au seul endroit où le dépôt garde ses preuves | 2 (close) |
 | 2026-08-21 | `E05US035` | 53 | +1892/−147 | ~14 min | ~32 min | D (09:12→09:44) | **bloquant:1** majeur:4 mineur:1 | **bloquant:2** majeur:3 mineur:3 suggestion:3 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:3 | **bloquant:3** majeur:2 mineur:4 suggestion:2 | **les 5 axes** sur l'arrêt inerte (1 convergent, le seul de l'histoire de ce registre à être trouvé par les cinq) ; **D seul** sur les deux autres — le réglage monté dans une **branche morte** et le filtre forfait aveugle hors du premier créneau (`DETTE-047`) ; **B seul** sur la fiche fonctionnelle absente ; **l'auteur** sur un 5ᵉ, trouvé en corrigeant (`ReglageBarrage` n'aurait pas réémis `decoupage`, donc régler un barrage l'effaçait) | 2 |
@@ -279,3 +281,32 @@ C1, qui les ont trouvés hors grille : un registre de dette devenu **faux dans l
 rendait faux** (`DETTE-022`, l'union des forfaits contredisant la note écrite trois heures plus tôt)
 et un **signal d'atlas neuf** introduit par une ligne d'ADR agrégeant quatre fichiers. Les deux
 relèvent de C2. Ils ont été vus ; rien ne dit que le troisième l'aurait été.
+
+**18. La 2ᵉ passe a trouvé ses majeurs dans les PHRASES DE CLÔTURE, pas dans le code.** C'est le
+constat le plus net de cette US, et l'axe adversarial l'a formulé lui-même : « les deux majeurs sont
+dans les phrases où l'auteur déclare le problème résolu. Sur ce commit-ci, ce sont les affirmations
+de clôture qui ont le plus mal vieilli, pas le code. » Les quatre correctifs de fond ont résisté à
+l'attaque ; ce qui a cédé, ce sont « ce frein n'a aucun effet de bord » (faux : pas de porte de
+sortie), « un type ajouté demain fera tomber le dernier cas » (faux : décor en dur), « les trois
+autres sources étaient à jour » (faux : la puce CA), et « le troisième `ignore` » (il y en avait
+quatre). **Une affirmation de clôture est une assertion non testée** : elle mérite la même méfiance
+qu'un test qu'on n'a pas vu rougir.
+
+**19. Corriger un défaut chez un format et pas chez son jumeau *aggrave* le jumeau.** La 1ʳᵉ passe
+avait relevé trois « trous déplacés » — un raisonnement tenu sur le format précédent, jamais rejoué
+sur le neuf. Le commit qui les ferme en a créé un quatrième, à l'identique : la borne d'effectif
+corrigée sur la colline, laissée en l'état sur le suisse, **vingt lignes plus haut dans le même
+fichier**. C1 l'avait pourtant signalé en 1ʳᵉ passe (« le même geste vaut pour `ReglageSuisse`, mais
+je le laisse hors périmètre »), et cette phrase a été lue comme une dispense. Elle ne l'était pas :
+le correctif installe la **preuve que le raisonnement était connu**, ce qui rend l'omission voisine
+plus difficile à défendre qu'avant. Règle pratique : quand un correctif touche une famille de
+jumeaux, soit on les traite tous, soit on inscrit les autres au registre — jamais « on verra ».
+
+**20. Un garde-fou qui *promet* est plus dangereux qu'un garde-fou absent.** `PlansDeCibles.test.tsx`
+a été écrit en 1ʳᵉ passe pour fermer une récidive vécue trois fois, et son en-tête annonçait couvrir
+la quatrième. Son décor était une liste de trois types en dur : il ne pouvait structurellement pas
+voir un quatrième. Le prochain implémenteur y aurait lu qu'il était couvert. Le correctif ne consiste
+pas à retirer la phrase mais à **rendre la promesse vraie** — dériver décor, montage et test d'une
+même table (`TYPES_A_PLAN_PAR_BLOCS`), puis vérifier en ajoutant un type qu'il rougit bien. La
+vérification compte autant que le correctif : sans elle, on remplace une fausse assurance par une
+autre.

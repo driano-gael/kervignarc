@@ -96,6 +96,51 @@ reste donc prélevable en aval. C'est une **règle de compétition** à trancher
 au registre en `DETTE-051` plutôt que devinée ici — même parti qu'ADR-0065 §3 pour
 `par_issue_de_tour`.
 
+## Deux causes d'indécision : l'égalité, et l'inachèvement
+
+*Ajouté le 22/08/2026, en 2ᵉ passe de revue d'E05US027 (axe C2).*
+
+Cet ADR a été écrit sur une seule cause, et son titre la nomme : une phase attend que sa source ait
+**départagé** les places. Les trois premiers formats classants la remplissent tous par une
+**égalité** — deux archers au même rang, un bloc de poules qu'aucun critère ne sépare, des rescapés
+de Big Shoot Off qui partagent le rang 1.
+
+**La colline a révélé qu'il y en avait une seconde**, et qu'on ne s'en était pas aperçu parce que la
+première la couvrait par accident. Une colline **n'a jamais d'ex æquo** : son classement est un ordre
+total, à tout instant, y compris avant la première flèche — il vaut alors le classement amont
+recopié. Elle déclarait donc `plages_indecises=()` dès la composition, et une phase avale s'y
+ensemençait aussitôt, sur un ordre qui n'avait rien décidé.
+
+Ce qui manquait n'est pas une égalité, c'est un **achèvement** :
+
+| Cause | Question posée | Qui la voit |
+|---|---|---|
+| **Égalité** | « ces places sont-elles départagées ? » | le **domaine** — `classement_de_*`, qui compare des rangs |
+| **Inachèvement** | « ces places sont-elles **acquises** ? » | le **service** — seul à connaître l'avancement de la phase |
+
+La distinction n'est pas cosmétique : le domaine ne *peut pas* voir la seconde, puisqu'il ne reçoit
+qu'un ordre, jamais un avancement. C'est pourquoi `ServiceColline.classement_de_phase` **surcharge**
+le champ rendu par `classement_de_colline` au lieu de le corriger à la source — et pourquoi la
+docstring du module domaine dit désormais « toujours vide **ici** ».
+
+⚠️ **Les trois autres formats tiennent l'invariant par effet de bord, et c'est le vrai enseignement.**
+Chez eux, une phase non commencée met tout le monde à égalité, donc leur calcul d'ex æquo remplit la
+plage — le frein d'achèvement existe sans avoir été voulu. Un format sans ex æquo l'a mis à nu.
+Constater qu'un invariant transverse n'était tenu que par accident chez trois services sur quatre
+est exactement ce qu'un ADR enregistre ; le laisser dans un commentaire de service aurait garanti
+qu'un 5ᵉ format le redécouvre.
+
+**Achever, c'est aussi un geste d'organisateur.** Une phase passée à `TERMINEE` est achevée même si
+son compte de tours ne l'est pas : terminer vaut décision que ce qui est joué l'est. Sans cette
+porte de sortie, le frein fermerait « ensemencé trop tôt » en ouvrant « **jamais** ensemencé » — une
+colline réglée à 5 manches dont on n'en joue que 4 bloquerait son aval indéfiniment. Le premier
+défaut se voit et se corrige ; le second immobilise le tournoi.
+
+**Ce que ce paragraphe ne tranche pas** : les trois autres services n'ont **pas** été rendus
+explicites sur l'achèvement. Ils restent corrects par effet de bord. Les aligner demanderait de
+rouvrir trois moteurs pour un comportement inchangé — un remède sur une évolution supposée, ce que
+le § Dette de `CLAUDE.md` proscrit. À rejouer si un format sans ex æquo s'ajoute.
+
 ## Porté dans le code par
 
 | Module | Ce qu'il applique |
@@ -109,6 +154,8 @@ au registre en `DETTE-051` plutôt que devinée ici — même parti qu'ADR-0065 
 | `backend/api/v1/tableaux.py` | `TableauPublicReponse.en_attente_de` et la branche « pas d'arbre » |
 | `backend/application/placement_duels.py` | `_charger` retombe sur le plan vide au lieu de lever |
 | `backend/application/simulation.py`, `pilotage_simulation.py`, `routage.py`, `pilotage_tour.py` | traitent l'attente comme « phase pas encore jouable » |
+| `backend/application/colline.py` | `_achevee` + `classement_de_phase` — **l'indécision par inachèvement** (§ ci-dessus) : la plage entière tant que les manches réglées ne sont pas closes **et** que l'organisateur n'a pas terminé la phase |
+| `backend/domain/classement_de_colline.py` | le versant domaine : aucun ex æquo possible, donc aucune plage **de ce côté-là** — la docstring dit explicitement que le service surcharge |
 | `backend/application/erreurs/moteur.py` | `DerouleCyclique` (409), introduit par le même lot pour que le refus de cycle cesse d'être un 404 avalé par le palmarès |
 | `frontend/src/features/tableaux/VueTableaux.tsx` | le rendu « en attente du tableau *n* » |
 
@@ -121,6 +168,12 @@ au registre en `DETTE-051` plutôt que devinée ici — même parti qu'ADR-0065 
   `test_l_ecran_public_annonce_la_phase_en_attente_au_lieu_de_la_retirer`,
   `test_le_dto_public_expose_l_attente_et_ne_ment_pas_sur_les_dimensions`
 - `frontend/src/features/tableaux/VueTableaux.test.tsx` — le rendu et l'absence d'arbre
+- `backend/tests/test_service_colline.py` — l'**indécision par inachèvement** (§ « Deux causes ») :
+  `test_une_colline_en_cours_retient_les_prelevements_de_ses_phases_avales`,
+  `test_une_colline_terminee_avant_son_terme_libere_quand_meme_son_aval` (la porte de sortie),
+  `test_une_colline_sans_participant_ne_declare_pas_une_plage_a_l_envers`
+- `backend/tests/test_domain_classement_de_colline.py` — `test_une_colline_ne_declare_aucun_ex_aequo`,
+  qui garde le versant **domaine** : aucune égalité, donc aucune plage de ce côté-là
 
 ⚠️ **Les trois derniers tests backend ont été ajoutés en 2ᵉ passe, sur relevé adversarial**, et une
 version antérieure de cette section citait à leur place `test_tableaux_api.py` — qui ne fait que

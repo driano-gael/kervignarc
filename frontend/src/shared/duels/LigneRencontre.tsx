@@ -24,17 +24,29 @@ export function LigneRencontre({
   rencontre,
   places,
   souligne = false,
+  prefixe,
 }: {
   rencontre: RencontreLisible
   /** Les places de tir de la rencontre, déjà rédigées — `null` si le plan n'est pas posé. */
   places?: string | null
   /** Met la ligne en avant : un archer suivi y tire (ADR-0079). */
   souligne?: boolean
+  /**
+   * Ce que la rencontre est, **avant** de dire qui s'y oppose — « le 6 défie le 4 » (E05US027).
+   *
+   * ⚠️ Ajouté pour la colline, et seulement parce que ce format en a réellement besoin : ses
+   * positions **sont** l'information que le public suit, et une ligne « MARTIN vs DURAND » perdrait
+   * qui défie qui. Les trois autres formats l'omettent — une rencontre de poule ou de ronde
+   * n'oppose aucune hiérarchie préalable, et leur ajouter un préfixe vide serait du bruit sur un
+   * écran projeté, où la place lisible se paie.
+   */
+  prefixe?: string
 }) {
   const score = scoreRencontre(rencontre)
   const gagnant = gagnantAffiche(rencontre)
   return (
     <li className={souligne ? 'encours__ligne encours__ligne--suivi' : 'encours__ligne'}>
+      {prefixe != null && <span className="encours__places">{prefixe}</span>}
       <span className={gagnant === 'haut' ? 'encours__gagnant' : undefined}>
         {rencontre.haut === null ? '—' : nomComplet(rencontre.haut)}
       </span>

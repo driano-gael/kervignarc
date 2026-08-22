@@ -33,6 +33,7 @@ from domain.anomalie import Anomalie, Gravite
 from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
 from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import (
@@ -124,6 +125,14 @@ class ModelePhase:
     juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
     de bibliothèque."""
 
+    colline: ConfigurationColline | None = None
+    """Le réglage d'une **colline** — nombre de manches et portée de défi (E05US027).
+
+    Même régime de brouillon, et **exactement la même raison** que ses deux voisins ci-dessus de ne
+    rien vérifier ici : une portée de 3 est jouable à 12 archers et ne l'est pas à 3. La borne se
+    juge sur le couple (réglage, effectif), donc sur l'**étape** d'un tournoi, jamais sur la brique
+    de bibliothèque."""
+
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]).
 
@@ -199,6 +208,7 @@ class ModelePhase:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            colline=self.colline,
             decoupage=self.decoupage,
             arrets=self.arrets,
         )
@@ -227,6 +237,7 @@ class ModelePhase:
             poules=etape.poules,
             big_shoot_off=etape.big_shoot_off,
             suisse=etape.suisse,
+            colline=etape.colline,
             decoupage=etape.decoupage,
             arrets=etape.arrets,
         )

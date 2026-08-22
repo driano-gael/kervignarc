@@ -82,6 +82,18 @@ _TYPES_DEROULABLES = TYPES_JOUES - {
     # « un service de production le déroule-t-il ? ». Inscrite au registre (`DETTE-066`), à traiter
     # en US dédiée — la colline en fera un 4ᵉ retrait sinon.
     TypePhase.SUISSE,
+    # DETTE-066 — ⚠️ **4ᵉ retrait, et il était annoncé nommément par le commentaire ci-dessus.**
+    # E05US027 rend la colline jouable en production, donc `COLLINE` entre dans `TYPES_JOUES` ;
+    # `fabriquer_harnais_simulation` ne construit toujours **aucun** `ServiceColline`.
+    #
+    # ⚠️ **Cette fois l'oubli n'était pas possible** : le garde-fou posé en E05US035
+    # (`test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas`) est **tombé** dès la
+    # bascule du registre, avant qu'une seule ligne de simulation soit touchée. C'est la
+    # démonstration que le remède attendu — une capacité *simulable* au registre de contrat — n'a
+    # pas besoin d'être improvisé ici : le test rend le retrait manuel **visible et daté**, ce qui
+    # était tout ce qui manquait. La dette reste ouverte et s'élargit d'un 4ᵉ terme ; elle ne
+    # s'aggrave pas d'un cran de risque.
+    TypePhase.COLLINE,
 }
 """Les types que **le bot de simulation** sait réellement jouer aujourd'hui.
 

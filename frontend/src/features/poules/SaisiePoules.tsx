@@ -1,3 +1,8 @@
+// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisieSuisse`, `SaisieColline`), à
+// l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux autres, et **rien
+// ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà voyagé à la main d'un
+// écran à l'autre. Le remède retenu est « rien » — la liste des formats à rencontres est close
+// (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
 // Écran de saisie des **rencontres de poule** (E05US023, ADR-0083) — surface **scoreur**.
 //
 // Jumeau de `SaisieDuels` par la coquille (choisir un créneau, puis une phase), et **identique** par
@@ -16,7 +21,10 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
 import { decrirePlaces } from '../../shared/salle/place'
-import type { Poule, Rencontre } from './api'
+// E05US027 : la fonction vivait ici, à l'identique de celle du suisse. La colline en faisait la
+// 3ᵉ occurrence, donc elle est remontée en `shared/` — le rendez-vous posé par la revue d'E05US030.
+import { etatRencontreDeSaisie as etatRencontre } from '../../shared/duels/etatDeSaisie'
+import type { Poule } from './api'
 import { useEtatPoulesSaisie } from './hooks'
 import { decrireRepartition } from '../../shared/phases/poules'
 
@@ -261,15 +269,4 @@ function rangsExAequo(poule: Poule): number[] {
   return [...new Set(poule.classement.filter((l) => l.ex_aequo).map((l) => l.rang))].sort(
     (a, b) => a - b,
   )
-}
-
-/** L'état d'une rencontre en un mot — le même vocabulaire que la liste des duels d'un tableau. */
-function etatRencontre(rencontre: Rencontre): string {
-  if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'
-  const duel = rencontre.duel
-  if (duel.validee_par !== null) return 'validée'
-  if (duel.validation_en_attente === true) return 'validation en attente'
-  if (duel.resultat?.termine === true) return 'à valider'
-  if (duel.manches.length > 0) return 'en cours'
-  return 'à tirer'
 }

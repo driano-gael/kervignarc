@@ -16,6 +16,7 @@ window.ATLAS.carte = {
     "big-shoot-off",
     "blasons",
     "categories",
+    "colline",
     "competition",
     "departs",
     "duels",
@@ -67,6 +68,10 @@ window.ATLAS.carte = {
     "feature": "placement"
    },
    {
+    "clientes": 6,
+    "feature": "saisie-duels"
+   },
+   {
     "clientes": 5,
     "feature": "archers"
    },
@@ -83,12 +88,12 @@ window.ATLAS.carte = {
     "feature": "routage"
    },
    {
-    "clientes": 5,
-    "feature": "saisie-duels"
+    "clientes": 4,
+    "feature": "blasons"
    },
    {
     "clientes": 4,
-    "feature": "blasons"
+    "feature": "colline"
    },
    {
     "clientes": 4,
@@ -219,7 +224,7 @@ window.ATLAS.carte = {
     "feature": "simulation"
    }
   ],
-  "features": 46
+  "features": 47
  },
  "matrice": [
   {
@@ -249,7 +254,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 335,
+   "occurrences": 348,
    "source": "application"
   },
   {
@@ -273,7 +278,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 84,
+   "occurrences": 85,
    "source": "infrastructure"
   },
   {
@@ -297,19 +302,19 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 88,
+   "occurrences": 93,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 64,
+   "occurrences": 67,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "infrastructure",
-   "occurrences": 39,
+   "occurrences": 41,
    "source": "api"
   },
   {
@@ -327,7 +332,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 49,
+   "occurrences": 50,
    "source": "bootstrap"
   },
   {
@@ -339,7 +344,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "api",
-   "occurrences": 52,
+   "occurrences": 53,
    "source": "bootstrap"
   }
  ],
@@ -349,7 +354,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 38,
+   "occurrences": 39,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -360,6 +365,7 @@ window.ATLAS.carte = {
     "backend/api/v1/blasons.py",
     "backend/api/v1/categories.py",
     "backend/api/v1/clubs.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/competition.py",
     "backend/api/v1/completude.py",
     "backend/api/v1/departs.py",
@@ -420,7 +426,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 53,
+   "occurrences": 55,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -431,6 +437,7 @@ window.ATLAS.carte = {
     "backend/api/v1/blasons.py",
     "backend/api/v1/categories.py",
     "backend/api/v1/clubs.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/competition.py",
     "backend/api/v1/completude.py",
     "backend/api/v1/departs.py",
@@ -473,9 +480,10 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 6,
+   "occurrences": 7,
    "origines": [
     "backend/api/v1/big_shoot_off.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/forfaits.py",
     "backend/api/v1/poules.py",
     "backend/api/v1/saisie.py",
@@ -511,7 +519,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 84,
+   "occurrences": 89,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -520,6 +528,7 @@ window.ATLAS.carte = {
     "backend/api/v1/blasons.py",
     "backend/api/v1/categories.py",
     "backend/api/v1/clubs.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/competition.py",
     "backend/api/v1/completude.py",
     "backend/api/v1/departs.py",
@@ -589,9 +598,10 @@ window.ATLAS.carte = {
    "cible": "infrastructure",
    "couche_cible": "infrastructure",
    "couche_source": "api",
-   "occurrences": 6,
+   "occurrences": 7,
    "origines": [
     "backend/api/v1/big_shoot_off.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/forfaits.py",
     "backend/api/v1/poules.py",
     "backend/api/v1/saisie.py",
@@ -605,7 +615,7 @@ window.ATLAS.carte = {
    "cible": "infrastructure/db",
    "couche_cible": "infrastructure",
    "couche_source": "api",
-   "occurrences": 29,
+   "occurrences": 30,
    "origines": [
     "backend/api/v1/bareme_qualification.py",
     "backend/api/v1/barrages.py",
@@ -613,6 +623,7 @@ window.ATLAS.carte = {
     "backend/api/v1/blasons.py",
     "backend/api/v1/categories.py",
     "backend/api/v1/clubs.py",
+    "backend/api/v1/colline.py",
     "backend/api/v1/competition.py",
     "backend/api/v1/departs.py",
     "backend/api/v1/ecrans.py",
@@ -655,7 +666,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 48,
+   "occurrences": 49,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -669,6 +680,7 @@ window.ATLAS.carte = {
     "backend/application/categories.py",
     "backend/application/classements.py",
     "backend/application/clubs.py",
+    "backend/application/colline.py",
     "backend/application/completude.py",
     "backend/application/departs.py",
     "backend/application/documents_salle.py",
@@ -713,7 +725,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 321,
+   "occurrences": 334,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -726,6 +738,7 @@ window.ATLAS.carte = {
     "backend/application/categories.py",
     "backend/application/classements.py",
     "backend/application/clubs.py",
+    "backend/application/colline.py",
     "backend/application/completude.py",
     "backend/application/departs.py",
     "backend/application/documents_salle.py",
@@ -808,7 +821,7 @@ window.ATLAS.carte = {
    "cible": "api/v1",
    "couche_cible": "api",
    "couche_source": "bootstrap",
-   "occurrences": 47,
+   "occurrences": 48,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -819,7 +832,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 49,
+   "occurrences": 50,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1016,7 +1029,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 51,
+   "occurrences": 52,
    "origines": [
     "backend/infrastructure/db/repositories/_mapping.py",
     "backend/infrastructure/db/repositories/exploitation.py",
@@ -1916,6 +1929,10 @@ window.ATLAS.carte = {
      "nom": "ServiceBigShootOff"
     },
     {
+     "fichier": "backend/application/colline.py",
+     "nom": "ServiceColline"
+    },
+    {
      "fichier": "backend/application/poules.py",
      "nom": "ServicePoules"
     },
@@ -1974,6 +1991,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/application/big_shoot_off.py",
      "nom": "ServiceBigShootOff"
+    },
+    {
+     "fichier": "backend/application/colline.py",
+     "nom": "ServiceColline"
     },
     {
      "fichier": "backend/application/poules.py",
@@ -2160,6 +2181,10 @@ window.ATLAS.carte = {
      "nom": "ServiceBigShootOff"
     },
     {
+     "fichier": "backend/application/colline.py",
+     "nom": "ServiceColline"
+    },
+    {
      "fichier": "backend/application/departs.py",
      "nom": "ServiceDeparts"
     },
@@ -2287,6 +2312,10 @@ window.ATLAS.carte = {
   },
   {
    "adapters": [
+    {
+     "fichier": "backend/application/colline.py",
+     "nom": "ServiceColline"
+    },
     {
      "fichier": "backend/application/poules.py",
      "nom": "ServicePoules"
@@ -2806,12 +2835,12 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 151,
+  "aretes_front": 156,
   "enchevetrements": 3,
-  "features": 46,
-  "imports": 858,
-  "imports_entre_couches": 727,
-  "plus_gros_noeud": 23,
+  "features": 47,
+  "imports": 886,
+  "imports_entre_couches": 753,
+  "plus_gros_noeud": 24,
   "ports": 65,
   "ports_hors_domaine": 23,
   "ports_sans_adapter": 0,

@@ -49,6 +49,7 @@ from typing import Protocol
 from domain.anomalie import Anomalie
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.contrat_phase import TYPES_EN_TABLEAU as TYPES_EN_TABLEAU
 from domain.contrat_phase import TYPES_SANS_CLASSEMENT as TYPES_SANS_CLASSEMENT
 from domain.contrat_phase import TypePhase as TypePhase
@@ -57,6 +58,7 @@ from domain.depart import DepartId
 from domain.erreurs import (
     CadenceValidationSuperieureAuBareme,
     ConfigurationBigShootOffInvalide,
+    ConfigurationCollineInvalide,
     ConfigurationSuisseInvalide,
     EffectifIncompatible,
     EffectifPhaseInvalide,
@@ -463,6 +465,21 @@ class Phase:
     **borne** appariable sans ré-affrontement (`suisse.rondes_maximales`), affichée à l'atelier et
     vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici."""
 
+    colline: ConfigurationColline | None = None
+    """Le réglage d'une phase de **colline** (E05US027) — nombre de manches et portée de défi.
+
+    Même régime que les trois réglages ci-dessus, et **une seule classe** pour la même raison : ni
+    le nombre de manches ni la portée ne dépendent de l'effectif. Ce qui en dépend est la **borne**
+    de portée (`portee_de_defi` doit rester strictement inférieure à l'effectif, faute de quoi
+    « chacun défie n'importe qui » et ce n'est plus un King of the Hill), affichée à l'atelier et
+    vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici.
+
+    ⚠️ **Deux champs pour un seul réglage, là où les trois voisins n'en portent qu'un** : c'est la
+    portée qui distingue le **King of the Hill** (défier son voisin immédiat) du **Ladder** (« le
+    n°6 peut défier le 5 ou le 4 »). Le référentiel §10.1 les donne comme deux formats ; ce sont
+    deux **réglages d'un même format** (règle 2 : un format de tournoi est de la configuration, pas
+    du code), et c'est pourquoi le catalogue n'a qu'un `TypePhase.COLLINE`."""
+
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours — « 20 volées en 2 tours de 10 » (E05US035).
 
@@ -501,6 +518,17 @@ class Phase:
                 f"Une phase de type « {self.type.value} » n'est pas une phase de poules : elle n'a "
                 "pas de taille de poule à régler."
             )
+        # DETTE-078
+        # ⚠️ **Ces gardes-ci arrivent APRÈS la persistance de l'étape, et c'est la dette.** Elles
+        # vivent sur `Phase`, donc à `instancier()` — or `ServicePhases.ajouter` fait rejoindre
+        # l'étape au déroulé **avant** d'instancier. Une requête refusée en 422 laisse donc derrière
+        # elle une étape orpheline qui brûle un `ordre` : le déroulé se troue du fait d'une entrée
+        # que le serveur a rejetée.
+        #
+        # Seule `colline` est fermée (E05US027) : sa garde jumelle vit dans
+        # `EtapeDeroule.__post_init__`, donc antérieure à toute écriture. Les quatre autres sont
+        # **héritées** — les hisser touche quatre invariants de composition et leurs tests, ce
+        # qu'une US de format n'a pas à faire. Résorption en US `refactor/` dédiée.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le
@@ -516,6 +544,14 @@ class Phase:
             raise ConfigurationSuisseInvalide(
                 f"Une phase de type « {self.type.value} » n'est pas un système suisse : elle n'a "
                 "pas de nombre de rondes à régler."
+            )
+        if self.colline is not None and self.type is not TypePhase.COLLINE:
+            # Même garde que les trois précédentes, cinquième et dernière de la famille. Un réglage
+            # de colline oublié sur une phase retypée porte deux valeurs que rien ne lirait — dont
+            # la portée de défi, qui décide **qui rencontre qui**. Invisible et faux.
+            raise ConfigurationCollineInvalide(
+                f"Une phase de type « {self.type.value} » n'est pas une colline : elle n'a pas de "
+                "nombre de manches ni de portée de défi à régler."
             )
         if self.barrage_jusqu_au is not None and self.barrage_jusqu_au < 1:
             raise SeuilDeBarrageInvalide(

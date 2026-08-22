@@ -412,6 +412,7 @@ class ServiceRoutage:
         big_shoot_off: LecteurEtatBigShootOff | None = None,
         suisse: LecteurRencontresARouter | None = None,
         poules: LecteurRencontresARouter | None = None,
+        colline: LecteurRencontresARouter | None = None,
     ) -> None:
         # E05US028 : de quoi router un finaliste de Big Shoot Off. Au **constructeur** et non par un
         # `brancher_…` : il n'y a aucun cycle (`big_shoot_off` n'importe pas `routage`), donc rien
@@ -426,6 +427,21 @@ class ServiceRoutage:
         # `manque` reste `None`. C'est ce que `DETTE-059` attend encore pour la finale.
         self._suisse = suisse
         self._poules = poules
+        # E05US027 : la colline, 3ᵉ format à rencontres. Même régime — au constructeur, aucun cycle,
+        # `None` licite pour un montage sans ce format, et sa cible est connue (elle déclare elle
+        # aussi `PAR_BLOC_DE_COULOIRS`).
+        self._colline = colline
+        # ⚠️ **La table remplace un ternaire**, et c'est le moment où il fallait la faire : à deux
+        # formats, `a if type is X else b` restait lisible ; à trois, il devient un `elif` déguisé
+        # dont l'oubli d'une branche est silencieux (le format tomberait sur le lecteur d'un autre,
+        # donc sur `PhasePasUn…` attrapé plus bas — un « ce montage ne sait pas dérouler ce
+        # format » parfaitement trompeur). Une table se lit d'un coup d'œil et se complète sans
+        # relire la condition.
+        self._lecteurs_par_rencontres: dict[TypePhase, LecteurRencontresARouter | None] = {
+            TypePhase.SUISSE: suisse,
+            TypePhase.POULES: poules,
+            TypePhase.COLLINE: colline,
+        }
         self._saisie_duels = saisie_duels
         self._placement_duels = placement_duels
         self._archers = archers
@@ -504,8 +520,9 @@ class ServiceRoutage:
             # Bifurcation **avant** `_grille` : un Big Shoot Off n'a pas d'arbre à reconstruire, et
             # l'y envoyer léverait `PhasePasUnTableau` sur un panneau qui doit rester consultable.
             return self._routage_big_shoot_off(tournoi_id, phase, archer_ids)
-        if phase.type in (TypePhase.SUISSE, TypePhase.POULES):
-            # Même bifurcation, et même motif : ni l'un ni l'autre n'a d'arbre (E05US026).
+        if phase.type in self._lecteurs_par_rencontres:
+            # Même bifurcation, et même motif : aucun de ces trois formats n'a d'arbre (E05US026,
+            # la colline s'y ajoutant en E05US027).
             return self._routage_par_rencontres(tournoi_id, phase, archer_ids)
         grille = self._grille(tournoi_id, phase, phase.id)
         if grille is None:
@@ -555,7 +572,7 @@ class ServiceRoutage:
         if phase.type is TypePhase.BIG_SHOOT_OFF:
             # `affectations` ne reçoit **aucun** identifiant : la population est celle de la phase.
             return self._routage_big_shoot_off(tournoi_id, phase, archer_ids=None)
-        if phase.type in (TypePhase.SUISSE, TypePhase.POULES):
+        if phase.type in self._lecteurs_par_rencontres:
             # ⚠️ **Bifurcation jumelle de celle de `routage()`, et son absence était un bloquant.**
             # Faire entrer ces deux types dans `TYPES_ROUTES` les rend cibles implicites de
             # `_phase_de_tableau` : sans cette ligne, `affectations` tombait dans `_grille` et
@@ -608,9 +625,13 @@ class ServiceRoutage:
     def _routage_par_rencontres(
         self, tournoi_id: TournoiId, phase: Phase, archer_ids: tuple[int, ...] | None
     ) -> Routage:
-        """Route un tireur de **ronde** (suisse) ou de **groupe** (poules) — E05US026.
+        """Route un tireur de **ronde** (suisse), de **groupe** (poules) ou de **manche** (colline).
 
-        Les deux formats partagent ce chemin parce qu'ils partagent ce qui compte ici : leurs
+        E05US026 pour les deux premiers, E05US027 pour le troisième — et **pas une ligne de routage
+        neuve** pour ce dernier, ce qui est la vérification à l'usage que ce chemin était le bon
+        découpage.
+
+        Les trois formats partagent ce chemin parce qu'ils partagent ce qui compte ici : leurs
         rencontres **sont des duels** (ADR-0083 §7), avec deux adversaires nommés et deux couloirs
         contigus. `ProchainDuel` convient donc tel quel — il n'a pas fallu d'issue neuve, à la
         différence du Big Shoot Off dont la manche collective n'oppose personne.
@@ -626,6 +647,8 @@ class ServiceRoutage:
         - **`TERMINE`** — il n'a plus rien à tirer dans cette phase ;
         - **`EN_ATTENTE`** — il y est et il est en course, mais rien n'est appariée pour lui à cet
           instant (bye de la ronde, ou rencontre validée pendant que la ronde s'achève — E05US030) ;
+          ⚠️ **c'est le régime ordinaire de la colline**, et non son cas limite : à portée 1 les
+          deux extrémités se reposent une manche sur deux, quel que soit l'effectif ;
         - **`INDISPONIBLE`** — il n'y figure pas, ou le service n'est pas câblé.
 
         Le panneau **dégrade, il ne tombe pas** : une phase composée mais pas encore réglée est un
@@ -637,7 +660,7 @@ class ServiceRoutage:
         # comprise, à **chaque** poll du panneau. Le routage passe donc d'une reconstruction par
         # tableau à une reconstruction par phase à rencontres.
         assert phase.id is not None, "L'appelant a déjà refusé une phase sans identité."
-        lecteur = self._suisse if phase.type is TypePhase.SUISSE else self._poules
+        lecteur = self._lecteurs_par_rencontres.get(phase.type)
         if lecteur is None:
             return self._tous_indisponibles(
                 tournoi_id,

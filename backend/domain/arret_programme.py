@@ -211,10 +211,15 @@ def verifier_type_arretable(type_phase: TypePhase) -> None:
     """
     if type_phase not in TYPES_ARRETABLES:
         raise ArretProgrammeInvalide(
+            # ⚠️ **L'énumération est un texte d'UTILISATEUR : elle doit suivre `TYPES_ARRETABLES`
+            # à chaque US qui l'élargit.** Elle omettait la colline après E05US027, si bien qu'un
+            # organisateur se voyant refuser une pause lisait une liste où le format qu'il venait
+            # de régler ne figurait pas — un refus qui désigne un cul-de-sac au lieu d'une issue
+            # (`P-3`). Relevé par l'axe adversarial en 2ᵉ passe.
             f"Une phase de type « {type_phase.value} » n'annonce pas ses tours : l'application "
             "ne saurait pas quand y appliquer une pause. Les pauses se posent sur une "
             "qualification découpée en tours, une élimination directe, des poules, un système "
-            "suisse ou un Big Shoot Off."
+            "suisse, un Big Shoot Off ou une colline."
         )
 
 

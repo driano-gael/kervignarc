@@ -175,6 +175,7 @@ import type { ReglagePoules } from '../../shared/phases/poules'
 import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
 import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
+import type { ReglageColline } from '../../shared/phases/colline'
 
 // Une étape d'un format : tout ce qu'une phase porte, **sauf** son tournoi et son statut — ils
 // n'existent pas sur le modèle et naissent à l'application (ADR-0060 §5).
@@ -198,6 +199,11 @@ export interface Etape {
   // depuis E05US026 (`ReglageSuisseDTO`) ; le front l'ignorait, donc composer un format au suisse
   // envoyait `suisse: null` et l'étape restait non réglée sans que rien ne le dise.
   suisse: ReglageSuisse | null
+  // Le réglage d'une **colline** (E05US027) — nombre de manches et portée de défi. Câblé **dès**
+  // l'US qui l'introduit, précisément parce que le suisse ne l'avait pas été : le serveur portait
+  // `ReglageSuisseDTO` depuis E05US026 et le front l'ignorait, si bien que composer un format au
+  // suisse envoyait `suisse: null` et laissait l'étape non réglée sans que rien ne le dise.
+  colline: ReglageColline | null
   // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
   // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
   // totale que ses voisins.

@@ -167,10 +167,15 @@ def test_le_classement_dune_poule_est_lisible_par_une_phase_avale() -> None:
         # E05US026 : `ServiceSuisse.classement_de_phase` rend le sien par le **même** port — c'est
         # la 3ᵉ occurrence qui a justifié de fondre les ports jumeaux (ADR-0084).
         TypePhase.SUISSE,
+        # E05US027 : `ServiceColline.classement_de_phase` rend le sien par ce même port — **4ᵉ
+        # occurrence, et aucune duplication à écrire**, ce qui est la preuve à l'usage qu'ADR-0084
+        # a fondu les bons ports. `classement_de_colline` est le plus court des quatre : une
+        # colline **est** son classement, elle n'a rien à inventer.
+        TypePhase.COLLINE,
     } == TYPES_CLASSANTS_LUS
 
 
-def test_les_quatre_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None:
+def test_les_cinq_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None:
     """⚠️ La capacité qu'il aurait été le plus tentant de mentir (ADR-0083, 5ᵉ question).
 
     **Ce test a changé de camp deux fois, et chaque fois pour la bonne raison.** Il vérifiait
@@ -182,6 +187,11 @@ def test_les_quatre_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None
     les poules en **E05US026** (`_routage_par_rencontres`, qui sert les deux : une rencontre de
     ronde comme de groupe *est* un duel, avec deux adversaires et deux couloirs).
 
+    La **colline** y est entrée en **E05US027**, par le même `_routage_par_rencontres` que ses deux
+    voisins et sans une ligne de routage neuve — un défi *est* un duel. Elle en avait d'autant plus
+    besoin que son régime d'attente n'est pas un cas limite : à portée 1, les deux extrémités de la
+    colline se reposent une manche sur deux, **quel que soit** l'effectif.
+
     Il ne reste donc dehors que ce qui n'est pas joué — et le test le dit en négatif, pour qu'un
     format rendu jouable sans son routage se voie immédiatement.
     """
@@ -190,6 +200,7 @@ def test_les_quatre_formats_joues_savent_dire_ou_l_archer_tire_ensuite() -> None
         TypePhase.BIG_SHOOT_OFF,
         TypePhase.POULES,
         TypePhase.SUISSE,
+        TypePhase.COLLINE,
     } == TYPES_ROUTES
     # Tout type **joué** est routé : c'est l'invariant que les trois US successives ont installé.
     assert {t for t in TYPES_DEROULES if t is not TypePhase.PLACEMENT} <= TYPES_ROUTES
@@ -217,10 +228,10 @@ def test_le_placement_a_un_arbre_mais_aucun_service_pour_le_monter() -> None:
 
 @pytest.mark.parametrize(
     "type_sans_service",
-    [TypePhase.COLLINE, TypePhase.BARRAGE],
+    [TypePhase.BARRAGE],
 )
 def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: TypePhase) -> None:
-    """`DETTE-028` **rétrécit sans se refermer** — et le registre doit le dire.
+    """`DETTE-028` est **refermée sur son volet « moteurs sans appelant »** — et le registre le dit.
 
     Ceux-là ont un moteur de domaine depuis E05US015 et **aucun appelant de production**. Les
     déclarer jouables parce que d'autres le sont devenus serait exactement la faute qu'ADR-0083 se
@@ -231,10 +242,16 @@ def test_les_formats_restants_ne_sont_toujours_pas_joues(type_sans_service: Type
     **Big Shoot Off en est sorti le 14/08/2026** (E05US028) : `ServiceBigShootOff` le déroule, son
     classement est lu par une phase avale, et le routage sait dire quelle manche vient. Le
     **système suisse en est sorti le 15/08/2026** (E05US026) : `ServiceSuisse` rejoue ses rondes des
-    duels validés et `classement_de_suisse` rend son classement de phase.
+    duels validés et `classement_de_suisse` rend son classement de phase. La **colline en est
+    sortie le 22/08/2026** (`E05US027`, 4ᵉ et dernière tranche) : `ServiceColline` rejoue ses
+    manches et `classement_de_colline` rend son classement de phase.
 
-    Il ne reste donc que la **colline** (`E05US027`, qui refermera la ligne) et le **barrage**, dont
-    le cas est différent et permanent : c'est un départage, pas un format qu'on déroule.
+    ⚠️ **Il ne reste donc que le barrage, et son cas est différent et permanent** : c'est un
+    **départage**, pas un format qu'on déroule. Ce test ne se videra jamais — il ne garde plus
+    l'avancement d'un chantier, il garde une **distinction de nature**. Le renommer « les formats
+    restants » serait désormais trompeur si un jour on croyait devoir le faire disparaître : le
+    barrage a un moteur, un appelant (`config.policies.tiebreak` depuis E06US003) et aucun déroulé,
+    et c'est exact.
     """
     contrat = contrat_de(type_sans_service)
 
@@ -289,8 +306,14 @@ def test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas() -> Non
     l'atelier annonçait `joue=True, 0 tour, 0 duel` — des zéros lus comme un constat — en perdant le
     bandeau « le moteur ne sait pas encore dérouler ce type ».
 
-    Ce test est le garde-fou qui manquait : il tombe au 4ᵉ oubli, que `DETTE-066` annonce pour la
-    colline. Il vit ici et non dans les tests de simulation parce que ce qu'il garde est la
+    ✅ **Le garde-fou a servi dès l'US suivante, et exactement comme prévu** : il est tombé en
+    E05US027 à la seconde où le registre a déclaré la colline jouable, **avant** qu'une ligne de
+    `simulation_format.py` ait été touchée. Le 4ᵉ retrait a donc été posé en connaissance de cause
+    plutôt que découvert en salle. C'est la valeur d'un test qui garde une **divergence entre deux
+    tables** : il ne dit pas que le code est faux, il dit qu'une décision est due.
+
+    Ce test est le garde-fou qui manquait : il tombe à chaque oubli, que `DETTE-066` annonçait pour
+    la colline. Il vit ici et non dans les tests de simulation parce que ce qu'il garde est la
     **divergence entre deux tables**, pas le comportement de l'atelier.
     """
     from application.simulation_format import _TYPES_DEROULABLES
@@ -304,4 +327,6 @@ def test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas() -> Non
         TypePhase.POULES,
         TypePhase.BIG_SHOOT_OFF,
         TypePhase.SUISSE,
+        # E05US027 — 4ᵉ retrait, posé le jour où ce test est tombé (voir la docstring).
+        TypePhase.COLLINE,
     } == TYPES_JOUES - _TYPES_DEROULABLES

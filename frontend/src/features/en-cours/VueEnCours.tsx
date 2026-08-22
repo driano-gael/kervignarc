@@ -35,6 +35,7 @@ import { BandeauDePause } from '../../shared/ui/BandeauDePause'
 import { useAvancementPhases } from '../phases/hooks'
 import { VuePoulesPublique } from '../poules/VuePoulesPublique'
 import { departDeSalle } from '../salle/rotation'
+import { VueCollinePublique } from '../colline/VueCollinePublique'
 import { VueSuissePublique } from '../suisse/VueSuissePublique'
 import { VueTableaux } from '../tableaux/VueTableaux'
 import { phaseAAtterrir, type PhaseLisible } from './presentation'
@@ -245,13 +246,17 @@ function Format({
           Barrage de départage : le détail se lit sur l’écran d’organisation.
         </p>
       )
+    // E05US027 : la branche de repli « pas encore jouable » qui vivait ici a fait son temps. Elle
+    // avait été écrite en annonçant sa propre disparition ; c'est cette US-là.
     case 'colline':
-      // Le moteur ne sait pas encore jouer la colline (E05US027 reste à livrer). Le dire vaut mieux
-      // que de laisser croire à une panne — et cette branche disparaîtra avec l'US en question.
       return (
-        <p className="carte__etat">
-          Ce format ne s’affiche pas encore ici — il n’est pas jouable dans l’outil pour l’instant.
-        </p>
+        <VueCollinePublique
+          tournoiId={tournoiId}
+          phaseId={phase.id}
+          interactif={interactif}
+          mode={mode}
+          suivis={suivis}
+        />
       )
     default: {
       // ⚠️ **Double garde, et les deux servent.** L'affectation à `never` rend **non compilable**

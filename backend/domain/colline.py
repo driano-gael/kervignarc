@@ -20,12 +20,19 @@ paramètre, pas un second moteur : la règle 2 en fait de la configuration.
    commanditaire : elle fait jouer tout le monde à chaque manche, là où défier le King n'occupe que
    deux archers.
 
-⚠️ **Écart signalé, non arbitré seul.** L'exemple chiffré du Ladder ne concorde pas avec sa propre
-règle : partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8`,
-c'est-à-dire le n°6 en **5ᵉ** position et le n°4 en **6ᵉ** — alors que gagner un défi contre le 4
-devrait mener à la 4ᵉ. Ce module applique la **règle** (« le gagnant monte, le perdant descend » :
-les deux positions s'échangent), pas l'exemple. À confirmer à la recette — c'est consigné dans
-`stories/E05-moteur-phases.md` et dans `docs/fonctionnel/E05US015.md`.
+✅ **Écart tranché le 22/08/2026 (E05US027) : c'est la RÈGLE qui fait foi.** L'exemple chiffré du
+Ladder ne concordait pas avec elle — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y
+donnait `1 2 3 5 6 4 7 8`, c'est-à-dire le n°6 en **5ᵉ** position, alors que gagner un défi contre
+le
+4 mène à la **4ᵉ**. Ce module applique la règle (« le gagnant monte, le perdant descend » : les deux
+positions s'échangent), et l'arbitrage **confirme** ce comportement au lieu de le changer.
+
+Reversé dans les quatre sources : `stories/E05-moteur-phases.md`, `docs/referentiel-ffta.md` §10.1,
+`docs/fonctionnel/E05US015.md` et [ADR-0062] § « Ce que cet ADR ne tranche pas ».
+
+⚠️ **Cette docstring est restée « à confirmer à la recette » alors que les autres sources étaient à
+jour** (relevé par l'axe adversarial) : le module qui *applique* la règle est le dernier endroit où
+un point tranché devrait rester ouvert — c'est celui qu'on ouvre pour savoir ce que le code fait.
 
 Domaine **pur** (règle 1).
 
@@ -78,6 +85,21 @@ class ConfigurationColline:
     def ladder(nb_manches: int) -> ConfigurationColline:
         """Défis **encadrés** à deux rangs, comme le décrit la règle du Ladder."""
         return ConfigurationColline(nb_manches=nb_manches, portee_de_defi=2)
+
+
+def portee_maximale(effectif: int) -> int:
+    """La portée de défi la plus grande qu'un effectif autorise (E05US027).
+
+    Jumelle de `suisse.rondes_maximales`, et pour le même usage : `EtapeDeroule` s'en sert pour
+    refuser un réglage impossible **à la composition**, et l'atelier pour afficher la borne en
+    clair sous le champ. `defis_de_la_manche` refuse `portee >= effectif` — « chacun défie
+    n'importe qui » n'est plus un format —, donc la borne est `effectif - 1`.
+
+    **Zéro sous deux participants** : à un archer (ou aucun), aucun défi n'est appariable. Le dire
+    par un zéro plutôt que par un nombre négatif évite qu'un appelant compare une portée à une
+    borne absurde — même parti que `rondes_maximales`.
+    """
+    return max(0, effectif - 1)
 
 
 @dataclass(frozen=True)

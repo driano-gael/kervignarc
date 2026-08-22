@@ -45,6 +45,7 @@ const QUALIFICATION: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: null,
+  colline: null,
   decoupage: null,
   nb_volees: 20,
   arrets: [],

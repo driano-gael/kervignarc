@@ -36,16 +36,15 @@ export function decrirePoints(doubles: number): string {
   return doubles % 2 === 0 ? String(doubles / 2) : `${Math.floor(doubles / 2)},5`
 }
 
-/** L'état d'une rencontre en un mot — le même vocabulaire que les duels et les poules. */
-export function etatRencontre(rencontre: RencontreSuisse): string {
-  if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'
-  const duel = rencontre.duel
-  if (duel.validee_par !== null) return 'validée'
-  if (duel.validation_en_attente === true) return 'validation en attente'
-  if (duel.resultat?.termine === true) return 'à valider'
-  if (duel.manches.length > 0) return 'en cours'
-  return 'à tirer'
-}
+/** L'état d'une rencontre en un mot — le même vocabulaire que les duels, les poules et la colline.
+ *
+ * ⚠️ **Domiciliée dans `shared/duels/etatDeSaisie.ts` depuis E05US027**, sous le nom
+ * `etatRencontreDeSaisie` — la colline en était la 3ᵉ occurrence, et c'est le rendez-vous que la
+ * revue de cette US-ci avait posé. Ré-exportée ici sous son ancien nom pour qu'aucun import
+ * existant ne casse ; les appelants neufs prennent le chemin `shared/`. Même geste que
+ * `decrirePlaces` juste en dessous.
+ */
+export { etatRencontreDeSaisie as etatRencontre } from '../../shared/duels/etatDeSaisie'
 
 /** Des places de tir en toutes lettres, **groupées par cible**.
  *

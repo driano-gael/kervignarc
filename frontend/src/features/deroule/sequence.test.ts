@@ -24,6 +24,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    colline: null,
     decoupage: null,
     sources,
     effectif: null,
@@ -162,6 +163,7 @@ describe('decrireEtape', () => {
       poules: null,
       big_shoot_off: null,
       suisse: null,
+      colline: null,
       decoupage: null,
       // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
       arrets: [],

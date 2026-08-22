@@ -254,15 +254,24 @@ def test_le_decoupage_survit_a_la_capture_en_format_et_a_sa_reapplication() -> N
 
 @pytest.mark.parametrize(
     "type_phase",
-    [TypePhase.ECHAUFFEMENT, TypePhase.BARRAGE, TypePhase.PLACEMENT, TypePhase.COLLINE],
+    [TypePhase.ECHAUFFEMENT, TypePhase.BARRAGE, TypePhase.PLACEMENT],
 )
 def test_les_types_hors_perimetre_restent_refuses(type_phase: TypePhase) -> None:
     """🔭 Hors périmètre, et le refus doit le **rester** : un réglage inerte est pire qu'un refus.
 
     L'échauffement n'a ni barème ni feuille de marque — aucune donnée existante ne dit où il en
-    est. Les trois autres ne sont déroulés par aucun service (`DETTE-028`). Ce test est le
-    garde-fou de la coupe : élargir la table sans lecteur d'avancement rendrait le réglage
-    acceptable à l'atelier et **définitivement muet** le jour J.
+    est. Les deux autres ne sont déroulés par aucun service, et ne le seront pas : le `placement`
+    n'a jamais eu de service pour monter son arbre, le `barrage` est un **départage**.
+
+    Ce test est le garde-fou de la coupe : élargir la table sans lecteur d'avancement rendrait le
+    réglage acceptable à l'atelier et **définitivement muet** le jour J.
+
+    ⚠️ **La colline en est sortie le 22/08/2026** (E05US027), et par le chemin exact qu'ADR-0093 a
+    dessiné : elle n'a pas été ajoutée à la main à une table d'arrêtables, elle a gagné
+    `avancement_lisible` au registre de contrat — parce que `ServiceColline.avancement_de_phase`
+    existe — et `TYPES_ARRETABLES` en **dérive**. C'est la vérification à l'usage de la séparation
+    posée par cet ADR : la capacité *avancement lisible* et la capacité *déroulé* sont deux
+    questions distinctes, et c'est la première qui commande l'arrêt.
     """
     with pytest.raises(ArretProgrammeInvalide):
         verifier_type_arretable(type_phase)

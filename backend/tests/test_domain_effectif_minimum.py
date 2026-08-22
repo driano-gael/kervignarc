@@ -235,7 +235,7 @@ def _avec_prelevement_haut(type_phase: TypePhase) -> list[ModelePhase]:
 
 @pytest.mark.parametrize(
     "type_deroule",
-    [TypePhase.ELIMINATION_DIRECTE, TypePhase.POULES, TypePhase.SUISSE],
+    [TypePhase.ELIMINATION_DIRECTE, TypePhase.POULES, TypePhase.SUISSE, TypePhase.COLLINE],
 )
 def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: TypePhase) -> None:
     """Le plancher n'a de sens que si le moteur va réellement monter la phase — c'est le cas ici.
@@ -254,7 +254,6 @@ def test_un_type_que_le_moteur_deroule_reclame_ses_34_inscrits(type_deroule: Typ
     "type_sans_moteur",
     [
         TypePhase.PLACEMENT,
-        TypePhase.COLLINE,
         TypePhase.BARRAGE,
     ],
 )
@@ -276,9 +275,15 @@ def test_un_type_sans_consommateur_ne_bloque_pas_le_lancement(type_sans_moteur: 
 
     Le jour où l'un de ces types gagne son service, il entre dans `TYPES_DEROULES` et ce test change
     de camp — c'est le signal attendu, pas une régression. **C'est arrivé au Big Shoot Off le
-    14/08/2026** (E05US028) puis au **système suisse le 15/08/2026** (E05US026) : tous deux ont
-    quitté cette liste pour celle du test précédent, et le plancher de 34 leur est désormais
-    réclamé — légitimement, puisque leur prélèvement est réellement honoré.
+    14/08/2026** (E05US028), au **système suisse le 15/08/2026** (E05US026), puis à la **colline le
+    22/08/2026** (E05US027) : tous trois ont quitté cette liste pour celle du test précédent, et le
+    plancher de 34 leur est désormais réclamé — légitimement, puisque leur prélèvement est
+    réellement honoré.
+
+    ⚠️ **Il ne reste ici que deux cas, et ni l'un ni l'autre n'est un chantier en attente.** Le
+    `placement` a un décor d'arbre sans service pour le monter (E06US006, tranché par ADR-0083), et
+    le `barrage` est un **départage**, pas un format qu'on déroule. Cette liste ne se videra donc
+    pas : elle a cessé d'être le reliquat de `DETTE-028` pour devenir une distinction de nature.
     """
     assert effectif_minimum(_avec_prelevement_haut(type_sans_moteur)) == 2
 
@@ -534,15 +539,21 @@ def test_un_prelevement_dans_un_type_non_lisible_ne_fixe_pas_de_plancher() -> No
     Vérifié par mutation en revue : élargir la table laissait **99 tests verts**. Ce test-ci passe
     à 34 si on l'élargit, et c'est tout son objet.
 
-    ⚠️ **La garde a déjà changé de sujet deux fois, et c'est le signe qu'elle vise le mécanisme et
-    non un type.** Elle portait sur les poules jusqu'à E05US023, puis sur le **système suisse**
-    jusqu'à E05US026 — les deux sont devenus lisibles. Elle vise désormais la **colline**, dernier
-    format non lu et sans service (`E05US027` la déplacera une fois de plus, et il faudra alors la
-    poser sur `PLACEMENT`, qui restera durablement dans ce cas).
+    ⚠️ **La garde a changé de sujet trois fois, et c'est le signe qu'elle vise le mécanisme et non
+    un type.** Elle portait sur les poules jusqu'à E05US023, sur le **système suisse** jusqu'à
+    E05US026, sur la **colline** jusqu'à E05US027 — les trois sont devenues lisibles. Elle vise
+    désormais le **placement**, et c'est le déplacement que la version précédente de cette docstring
+    avait elle-même annoncé.
+
+    ✅ **Et elle cesse ici de se déplacer.** Le placement a un décor d'arbre sans service pour le
+    monter (E06US006, tranché par ADR-0083) : ce n'est pas un chantier en attente mais un état
+    stable, donc la garde a enfin un porteur durable. Elle avait jusqu'ici l'inconvénient de suivre
+    le dernier format non livré — ce qui la faisait ressembler à un compteur d'avancement plutôt
+    qu'à ce qu'elle est : le verrou du sens dangereux de la table.
     """
     etapes = [
         _qualification(1),
-        ModelePhase(ordre=2, type=TypePhase.COLLINE),
+        ModelePhase(ordre=2, type=TypePhase.PLACEMENT),
         _tableau(3, SourcePhase.par_rangs(ordre_source=2, rang_debut=33, rang_fin=None)),
     ]
 

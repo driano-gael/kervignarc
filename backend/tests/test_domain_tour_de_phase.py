@@ -75,7 +75,16 @@ _UNITES_ATTENDUES = [
     pytest.param(TypePhase.PLACEMENT, UniteDeTour.TOUR_DE_TABLEAU),
     pytest.param(TypePhase.POULES, UniteDeTour.TOUR),
     pytest.param(TypePhase.SUISSE, UniteDeTour.RONDE),
-    pytest.param(TypePhase.COLLINE, UniteDeTour.RONDE),
+    # ⚠️ **`MANCHE` depuis E05US027, et cette ligne disait `RONDE` — à tort.** Le référentiel §10.1,
+    # qui fait foi ici, écrit « après plusieurs **manches** » et « nombre de **manches** réglé à la
+    # composition » ; le réglage s'appelle `nb_manches`, l'écran de saisie et l'écran public disent
+    # « Manche 2 sur 3 ». Le contrat, lui, avait hérité de `RONDE` d'E05US015 — sans conséquence
+    # tant que la colline n'était pas `avancement_lisible`, puisque le mot n'atteignait aucun écran.
+    # L'US qui l'y expose a rendu la divergence visible : la même phase annonçait « Manche 2 sur 3 »
+    # au scoreur et « Ronde 2 » au suivi du déroulé et sur le bandeau de pause, lui aussi public.
+    # Trois axes de revue l'ont relevée. C'est exactement l'inversion silencieuse entre deux formats
+    # que ce tableau existe pour attraper — il l'a attrapée, une fois le registre corrigé.
+    pytest.param(TypePhase.COLLINE, UniteDeTour.MANCHE),
     pytest.param(TypePhase.BIG_SHOOT_OFF, UniteDeTour.MANCHE),
 ]
 

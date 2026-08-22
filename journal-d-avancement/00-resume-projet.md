@@ -544,11 +544,15 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **120 US livrées** sur `main` (mergées, revues, CI verte) à la date du 21/08/2026, la dernière
-  étant `E05US029` — **les poules de niveau en une seule étape** : une phase de poules peut composer
-  ses groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au lieu de les équilibrer, ce qui
-  monte un tournoi club **en cascade** — 36 archers, une phase pour estimer les niveaux, une seconde
-  pour les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
+- **121 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/08/2026, la dernière
+  étant `E05US027` — **la colline jouable** : le format à défis du club (*King of the Hill* /
+  *Ladder*) se règle, se joue et s'affiche de bout en bout, alors qu'il n'existait jusqu'ici que
+  sous forme de moteur sans écran. C'est la **dernière des quatre tranches** qui rendaient jouables
+  les formats livrés en juillet : il n'en reste **aucun** en attente. La précédente était
+  `E05US029` — **les poules de niveau en une seule étape** : une phase de poules peut composer ses
+  groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au lieu de les équilibrer, ce qui monte
+  un tournoi club **en cascade** — 36 archers, une phase pour estimer les niveaux, une seconde pour
+  les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -665,10 +669,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   consolante composée le matin affiche « les places disputées ici ne sont pas encore connues »
   plutôt qu'une liste d'archers plausible et fausse — le défaut le plus dangereux qu'ait trouvé la
   relecture de cette US, le tableau affiché ayant le bon nombre d'archers et des noms crédibles.
-  ⚠️ La **colline** reste hors du dispositif : son moteur existe mais rien ne l'appelle encore
-  (E05US027). ✅ Les **poules** y sont entrées le jour même, le **Big Shoot Off** le 14/08/2026, et
-  le **système suisse** le 16/08/2026 (moteur par `E05US026`, écrans par `E05US030`) — voir
-  ci-dessous. ✅ La limite « une seule qualification par tournoi »,
+  ✅ **Les quatre formats y sont désormais** : les **poules** le jour même, le **Big Shoot Off** le
+  14/08/2026, le **système suisse** le 16/08/2026 (moteur par `E05US026`, écrans par `E05US030`) et
+  la **colline** le 22/08/2026 (`E05US027`, moteur et écrans dans la même branche) — voir
+  ci-dessous. Il ne reste hors du dispositif que le *placement* et le *barrage*, dont le cas est
+  d'une autre nature : le premier n'a jamais eu de moteur pour monter son arbre, le second est un
+  **départage** et non un format qu'on déroule. ✅ La limite « une seule qualification par tournoi »,
   qui restait volontairement en place à cette date, **a été levée le lendemain par `E05US025`** (voir
   ci-dessous). Décision d'architecture :
   [ADR-0080](../docs/adr/0080-un-prelevement-lit-le-classement-de-sa-phase-source.md).

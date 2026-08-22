@@ -140,10 +140,25 @@ class UniteDeTour(str, Enum):
     """Un tour de round-robin : les poules."""
 
     RONDE = "ronde"
-    """Une ronde appariée : le système suisse et la colline (référentiel §10.1)."""
+    """Une ronde appariée : le système suisse."""
 
     MANCHE = "manche"
-    """Une manche collective : le Big Shoot Off — tous les finalistes tirent en parallèle."""
+    """Une manche : le Big Shoot Off — tous les finalistes tirent en parallèle — et la **colline**.
+
+    ⚠️ **La colline a porté `RONDE` jusqu'à E05US027, et c'était invisible** : tant qu'elle n'était
+    pas `avancement_lisible`, le libellé n'atteignait aucun écran. L'US qui l'y expose a révélé la
+    divergence — la même phase annonçait « Manche 2 sur 3 » à la saisie et au public, « **Ronde** 2
+    »
+    au suivi du déroulé et sur le bandeau de pause, lui aussi public. Trois axes de revue l'ont
+    relevée indépendamment.
+
+    Le mot du métier est ici « manche », sans ambiguïté : `nb_manches` au réglage, `MancheAffichee`
+    au service, et le référentiel §10.1 lui-même — « après plusieurs **manches** » — que la
+    docstring de `RONDE` citait pourtant à l'appui du contraire. Que le Big Shoot Off tire une
+    manche *collective* et la colline une manche *appariée* ne change rien : l'unité est le **mot de
+    la salle**, pas une forme technique, et c'est exactement le cas prévu deux paragraphes plus
+    haut — deux formats qui avancent différemment peuvent porter la même unité si le métier les
+    nomme pareil (règle 3)."""
 
 
 class DecorDeSaisie(str, Enum):
@@ -444,8 +459,51 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     ),
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
-        unite_de_tour=UniteDeTour.RONDE,
-        plan_de_cibles=PlanDeCibles.AUCUN,
+        # ⚠️ **`MANCHE` et non `RONDE`** (correctif de revue, trois axes) : le décor est bien celui
+        # du suisse — on saisit des rencontres appariées — mais l'unité est le mot de la salle, et
+        # la salle dit « manche ». Les deux champs répondent à deux questions différentes du
+        # contrat, et c'est précisément pourquoi ils ne se déduisent pas l'un de l'autre.
+        unite_de_tour=UniteDeTour.MANCHE,
+        # ✅ **Bascule en fin d'E05US027**, une fois `ServiceColline.regenerer_plan` écrit — et
+        # `AUCUN` jusque-là, ce qui était exact tant que rien ne faisait tirer ce format.
+        #
+        # Même raisonnement que le suisse, et pour une raison **plus forte encore** : les défis
+        # d'une manche ne changent pas seulement de composition, ils changent de **nombre**. À
+        # portée 1 les extrémités se reposent une manche sur deux, et à portée 2 la distance tourne
+        # — une manche à 4 archers apparie deux défis, la suivante un seul. « Archer → couloir »
+        # serait donc une information non seulement fausse mais **instable**. C'est le bloc qui est
+        # persisté (ADR-0083 §3), les couloirs de chaque défi s'y dérivant manche par manche.
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
+        # ✅ Les quatre capacités basculent **en fin de tranche E05US027**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023, E05US026 et E05US028. Ce qui les autorise,
+        # module par module : `application/colline.py` rejoue la phase des duels validés, manche
+        # après manche, en appliquant `appliquer_manche` à chaque manche close, et rend son état
+        # (`deroule_par_un_service`) ; `ServiceColline.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementDePhase`, via `domain/classement_de_colline.py`
+        # (`classement_lisible`) ; `ServiceColline.avancement_de_phase` répond au port
+        # `LecteurAvancementDePhase` (`avancement_lisible`, ADR-0090) ; et
+        # `ServiceRoutage._routage_par_rencontres` dit à un archer quel défi il tire
+        # (`route_l_archer`).
+        #
+        # ⚠️ **`avancement_lisible` est aussi ce qui rend la colline arrêtable** : `TYPES_ARRETABLES`
+        # en dérive (ADR-0093). Une pause programmée peut donc se poser sur ce format dès cette US,
+        # sans que rien n'ait à être ajouté du côté d'`ArretProgramme`.
+        #
+        # ⚠️ **`classement_lisible` a un effet mesurable** : elle fait réclamer le plancher
+        # d'inscrits (E05US021) pour un prélèvement visant une colline. Elle n'est légitime que
+        # parce que le prélèvement est réellement honoré — un `True` posé par anticipation aurait
+        # exigé des inscrits pour une source que rien n'honore.
+        deroule_par_un_service=True,
+        avancement_lisible=True,
+        classement_lisible=True,
+        # ✅ Par le même chemin que le suisse (`_routage_par_rencontres`) : un défi **est** un duel,
+        # avec deux adversaires nommés et deux couloirs. L'issue `EN_ATTENTE` (ADR-0087) y est déjà,
+        # et la colline en a besoin pour la même raison de **rythme** que le suisse — l'archer au
+        # repos d'une manche est en course sans rien à tirer à cet instant. Ici ce n'est même pas le
+        # cas limite du bye à effectif impair : à portée 1, les deux extrémités se reposent une
+        # manche sur deux, **quel que soit** l'effectif.
+        route_l_archer=True,
     ),
 }
 
@@ -588,9 +646,16 @@ TYPES_SIGNALES_EN_ECART: frozenset[TypePhase] = frozenset(
 """Les types que l'atelier signale comme **composables mais pas jouables** (E01US024).
 
 Un type non joué **et** non classant n'y figure pas : l'échauffement ne produit rien *par
-définition*, donc annoncer un écart à son sujet serait un faux positif. Le signal doit cesser de
-viser les poules et **continuer de viser** le suisse, la colline, le Big Shoot Off, le barrage
-autonome et le placement — sans quoi il mentirait pour ceux qui restent (CA d'E05US023)."""
+définition*, donc annoncer un écart à son sujet serait un faux positif. Le signal doit **continuer
+de viser** le barrage autonome et le placement — sans quoi il mentirait pour ceux qui restent
+(CA d'E05US023).
+
+⚠️ **Cette phrase a énuméré cinq types jusqu'à E05US027, et la table n'en contient plus que deux**
+(relevé en revue par deux axes). Les poules en sont sorties à E05US023, le suisse à E05US026, le Big
+Shoot Off à E05US028, la colline ici même : chacun a gagné son service, donc rejoint `TYPES_JOUES`.
+La table, elle, est **dérivée** — c'est une compréhension sur `_CONTRATS` — donc elle n'a jamais été
+fausse ; seule sa description l'était. C'est le piège propre aux ensembles calculés : rien ne rougit
+quand le commentaire qui les explique cesse de correspondre à ce qu'ils contiennent."""
 
 
 def produit_un_classement(type_phase: TypePhase) -> bool:

@@ -284,11 +284,18 @@ def test_chaque_lecteur_d_avancement_est_branche_sur_le_service_de_son_format(
     # E05US035 : la **qualification** rejoint la table, portée par le service qui la fait jouer —
     # `ServiceSaisie`, comme `ServicePoules` porte les poules (ADR-0093).
     assert branches[TypePhase.QUALIFICATION] is app_session.state.service_saisie
+    # E05US027 : la **colline**, dernier format d'E05US015 à recevoir son service. C'est ce
+    # branchement-ci qui la rend réellement **arrêtable** — `TYPES_ARRETABLES` dérive
+    # d'`avancement_lisible` (ADR-0093), donc l'atelier accepte désormais d'y poser une pause, qui
+    # serait définitivement muette si la ligne manquait.
+    assert branches[TypePhase.COLLINE] is app_session.state.service_colline
     # Le reste du catalogue n'a **aucun** lecteur, et c'est le contrat d'ADR-0090 §3 : ces types
-    # comptent un tour, sauf la colline dont le manque est assumé (`DETTE-028`).
+    # comptent un tour. ✅ **Le manque assumé de la colline (`DETTE-028`) est comblé** — l'ensemble
+    # ci-dessous est désormais exact sans exception à signaler.
     assert set(branches) == {
         TypePhase.QUALIFICATION,
         TypePhase.POULES,
         TypePhase.SUISSE,
         TypePhase.BIG_SHOOT_OFF,
+        TypePhase.COLLINE,
     }
