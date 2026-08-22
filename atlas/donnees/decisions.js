@@ -7129,6 +7129,193 @@ window.ATLAS.decisions = {
     "E05US029",
     "E05US035"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-22",
+   "date_brute": "2026-08-22",
+   "extrait": "### §1 — Le titre est un libellé, pas une identité EtapeDeroule et ModelePhase gagnent un champ titre: str | None. Ce qu'il n'est pas : - pas une clé — l'identité d'une étape reste son id et son rang dans la séquence 1..N (ADR-0045 §3). Deux étapes du même déroulé peuvent porter le même titre. Imposer l'unicité aurait fait échouer la composition sur une gêne d'affichage, et déplacé dans le domaine une règle qu'aucun besoin métier ne réclame ; - pas obligatoire — None est l'état de tous les déroulés déjà composés. L'exiger aurait invalidé l'existant à la première lecture, c'est-à-dire converti un libellé en migration de données ; - pas propre à un type — à la différence des cinq réglages […]",
+   "fichier": "docs/adr/0095-un-titre-de-phase-est-un-libelle-pas-une-identite.md",
+   "identifiant": "0095",
+   "liens": [
+    {
+     "cible": "E16US002",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0076",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0060",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0045",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0046",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0073",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/formats.py",
+     "existe": true,
+     "symboles": [
+      "ConfigPhaseRequete.titre",
+      "EtapeDTO.titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/phases.py",
+     "existe": true,
+     "symboles": [
+      "ConfigPhaseRequete.titre",
+      "EtapeDTO.titre",
+      "Phase",
+      "titre",
+      "PhaseReponse",
+      "EtapeReponse.titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/deroule_etape.py",
+     "existe": true,
+     "symboles": [
+      "titre",
+      "_titre_normalise",
+      "__post_init__"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/format_tournoi.py",
+     "existe": true,
+     "symboles": [
+      "ModelePhase.titre",
+      "pour_tournoi",
+      "d_etape"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/phase.py",
+     "existe": true,
+     "symboles": [
+      "verifier_coherence_etape",
+      "Phase",
+      "titre",
+      "PhaseReponse",
+      "EtapeReponse.titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "_politiques_json",
+      "_lire_titre",
+      "_vers_etape",
+      "_vers_modele_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/CoquilleAdmin.tsx",
+     "existe": true,
+     "symboles": [
+      "phases",
+      "deroule"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/deroule/Deroule.tsx",
+     "existe": true,
+     "symboles": [
+      "Etape.titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/patrimoine/api.ts",
+     "existe": true,
+     "symboles": [
+      "Etape.titre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/Phases.tsx",
+     "existe": true,
+     "symboles": [
+      "LignePhase",
+      "ficheOuverte",
+      "ReglageTitre",
+      "ReglageBarrage",
+      "ReglageDecoupageDePhase",
+      "PlanParBlocs",
+      "phase__actions",
+      "configInchangee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/phases/api.ts",
+     "existe": true,
+     "symboles": [
+      "undefined"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un titre de phase est un libellé, et chaque écran de composition porte le mot de sa portée",
+   "us": [
+    "E05US023",
+    "E05US024",
+    "E05US025",
+    "E05US026",
+    "E05US029",
+    "E05US030",
+    "E05US033",
+    "E05US035",
+    "E16US002"
+   ]
   }
  ]
 };

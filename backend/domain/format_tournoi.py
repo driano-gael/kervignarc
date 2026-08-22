@@ -164,6 +164,13 @@ class ModelePhase:
     [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
     """
 
+    titre: str | None = None
+    """Le **libellé** de cette étape dans le format — voir `EtapeDeroule.titre` (E16US002).
+
+    Porté par le modèle **et** par l'étape : c'est ce qui fait qu'un format rejoué d'une année sur
+    l'autre remonte avec ses titres. Un champ présent d'un seul côté de la traversée est le défaut
+    `barrage_jusqu_au` qu'ADR-0076 a fermé."""
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -211,6 +218,7 @@ class ModelePhase:
             colline=self.colline,
             decoupage=self.decoupage,
             arrets=self.arrets,
+            titre=self.titre,
         )
 
     @staticmethod
@@ -240,6 +248,7 @@ class ModelePhase:
             colline=etape.colline,
             decoupage=etape.decoupage,
             arrets=etape.arrets,
+            titre=etape.titre,
         )
 
 

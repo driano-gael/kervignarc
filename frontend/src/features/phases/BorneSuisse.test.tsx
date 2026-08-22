@@ -45,6 +45,7 @@ const PHASE: EtapeDeroule = {
   suisse: { nb_rondes: 5 },
   colline: null,
   decoupage: null,
+  titre: null,
   nb_volees: null,
   // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
   arrets: [],

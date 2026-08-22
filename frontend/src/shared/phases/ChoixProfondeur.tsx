@@ -1,6 +1,6 @@
 // Le réglage « jusqu'où classer » d'une phase en tableau (E06US006, ADR-0070).
 //
-// Partagé par les **deux** écrans qui composent des phases — « Composer un déroulé » (un modèle de
+// Partagé par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
 // bibliothèque) et « Phases » (les phases d'un tournoi). Ce n'est pas un pattern introduit par
 // anticipation : les deux sites existent aujourd'hui, et ils portent le même tri-état délicat.
 //

@@ -13,9 +13,18 @@
 // Un test de formatage ne voit pas un défaut de câblage ; seul un test qui monte **l'écran** le
 // voit. C'est pourquoi celui-ci monte `Phases` en entier, et non le contrôle isolé : ce qu'on
 // garde ici n'est pas « le composant sait afficher », c'est « l'organisateur peut l'atteindre ».
+//
+// ⚠️ **Le GESTE a changé en E16US002, l'INTENTION est intacte.** Les réglages de la qualification
+// vivaient à plat dans la barre d'actions ; ils sont désormais dans **sa fiche**, qu'on ouvre
+// depuis sa ligne (c'est le CA d'A07 : « sur chaque ligne on peut ouvrir une fiche de la phase »).
+// Ces tests ouvrent donc la fiche avant de chercher le réglage. Ce que le garde-fou empêche n'a
+// pas bougé d'un pouce : un réglage recâblé sous une condition que la qualification ne satisfait
+// jamais ferait échouer le clic sur un écran réellement monté, exactement comme avant. Ce qui
+// n'est **plus** garanti, et il faut le dire : le réglage n'est plus visible **sans clic**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -47,12 +56,44 @@ const QUALIFICATION: EtapeDeroule = {
   suisse: null,
   colline: null,
   decoupage: null,
+  titre: null,
   nb_volees: 20,
   arrets: [],
 }
 
 function monter(phase: EtapeDeroule) {
   monterPlusieurs([phase])
+}
+
+/** Ouvre la fiche de la première (ou n-ième) phase listée — le geste du CA d'A07.
+ *
+ * Passe par un vrai clic sur un vrai bouton : c'est ce qui fait que le garde-fou de câblage tient
+ * toujours. Un réglage monté sous une condition inatteignable ne s'afficherait pas davantage
+ * après ce clic qu'avant.
+ */
+/** Les requêtes **portées à la ligne de phase**, et non à l'écran entier.
+ *
+ * ⚠️ **Ce cadrage manquait, et il rendait ces tests plus faibles que leur nom** (constaté en
+ * E16US002). L'écran monte en permanence un formulaire **d'ajout** en tête, qui affiche lui aussi
+ * « Pauses programmées ». `findByText` résolvant à la **première** correspondance — et le
+ * formulaire d'ajout étant rendu avant que React Query n'ait servi la liste —, l'assertion
+ * matchait le formulaire d'ajout, pas la fiche de la qualification. Elle serait restée verte avec
+ * le réglage de la qualification entièrement décâblé : exactement le défaut que ce fichier existe
+ * pour empêcher. Porter la requête à la ligne le referme.
+ */
+function ligne(index = 0) {
+  const element = screen.getAllByRole('listitem')[index]
+  if (element === undefined) throw new Error(`Aucune ligne de phase au rang ${index}.`)
+  return within(element)
+}
+
+async function ouvrirLaFiche(index = 0) {
+  // ⚠️ **Le bouton se cherche DANS sa ligne, pas dans la liste globale.** Une fois une fiche
+  // ouverte, son bouton devient « Fermer la fiche » : la liste des « Ouvrir la fiche » se décale,
+  // et viser le n-ième élément de cette liste désigne la mauvaise ligne — ou aucune. Un premier
+  // jet le faisait, et le clic partait dans le vide sans que l'assertion s'en aperçoive.
+  await screen.findAllByRole('listitem')
+  await userEvent.click(ligne(index).getByRole('button', { name: 'Ouvrir la fiche' }))
 }
 
 function monterPlusieurs(phases: EtapeDeroule[]) {
@@ -69,8 +110,9 @@ describe('le découpage en tours sur l’écran des phases', () => {
     // LE test du bloquant : la qualification est « gérée ailleurs », donc son réglage doit vivre
     // à côté de la carte, comme le barrage — et non dans un formulaire qu'elle n'ouvre jamais.
     monter(QUALIFICATION)
+    await ouvrirLaFiche()
 
-    expect(await screen.findByText(/Découpage en tours/)).toBeInTheDocument()
+    expect(ligne().getByText(/Découpage en tours/)).toBeInTheDocument()
   })
 
   it('annonce ce que le découpage donne, sur le barème RÉEL du tournoi', async () => {
@@ -78,12 +120,14 @@ describe('le découpage en tours sur l’écran des phases', () => {
     // afficherait « la longueur dépend du barème du tournoi qui appliquera ce format » — phrase de
     // l'atelier de bibliothèque, absurde ici — et tout resterait vert.
     monter({ ...QUALIFICATION, decoupage: { nb_tours: 2 } })
+    await ouvrirLaFiche()
 
-    expect(await screen.findByText(/2 tours de 10 volées/)).toBeInTheDocument()
+    expect(ligne().getByText(/2 tours de 10 volées/)).toBeInTheDocument()
   })
 
   it('nomme le refus à venir quand le découpage ne tombe pas juste', async () => {
     monter({ ...QUALIFICATION, decoupage: { nb_tours: 3 } })
+    await ouvrirLaFiche()
 
     expect(
       await screen.findByText(/20 volées ne se découpent pas en 3 tours égaux/),
@@ -97,9 +141,10 @@ describe('le découpage en tours sur l’écran des phases', () => {
     // qualification sans pouvoir y poser la pause, c'est-à-dire que l'US restait inerte sur le geste
     // même pour lequel le découpage existe.
     monter({ ...QUALIFICATION, decoupage: { nb_tours: 2 } })
+    await ouvrirLaFiche()
 
-    expect(await screen.findByText(/Pauses programmées/)).toBeInTheDocument()
-    expect(screen.queryByText(/Découpez-la d’abord en tours/)).not.toBeInTheDocument()
+    expect(ligne().getByText(/Pauses programmées/)).toBeInTheDocument()
+    expect(ligne().queryByText(/Découpez-la d’abord en tours/)).not.toBeInTheDocument()
   })
 
   it('refuse la pause en nommant le geste, tant que la qualification n’est pas découpée', async () => {
@@ -107,6 +152,7 @@ describe('le découpage en tours sur l’écran des phases', () => {
     // serait faux deux fois — le type l'annonce depuis cette US, et la qualification manquerait à
     // l'énumération des types arrêtables. Surtout, le geste réparateur est deux blocs plus haut.
     monter(QUALIFICATION)
+    await ouvrirLaFiche()
 
     expect(await screen.findByText(/Découpez-la d’abord en tours/)).toBeInTheDocument()
   })
@@ -119,15 +165,21 @@ describe('le découpage en tours sur l’écran des phases', () => {
       QUALIFICATION,
       { ...QUALIFICATION, id: 8, ordre: 2, type: 'suisse', nb_volees: null },
     ])
+    // Les **deux** fiches sont ouvertes : sinon la longueur de 1 ne prouverait rien de plus que
+    // « une seule fiche est ouverte ». C'est la version E16US002 du correctif de 2ᵉ passe rappelé
+    // ci-dessus — le décor à deux exemplaires perdrait tout son sens si l'on n'en dépliait qu'un.
+    await ouvrirLaFiche(0)
+    await ouvrirLaFiche(1)
 
-    expect(await screen.findAllByText(/Découpage en tours/)).toHaveLength(1)
+    expect(screen.getAllByText(/Découpage en tours/)).toHaveLength(1)
   })
 
   it('dit qu’aucune pause ne peut se poser tant que la qualification n’est pas découpée', async () => {
     // La phrase doit être vraie : c'est le pendant visible du refus serveur. Avant le correctif,
     // l'écran l'affichait tout en offrant, deux blocs plus bas, un formulaire de pause.
     monter(QUALIFICATION)
+    await ouvrirLaFiche()
 
-    expect(await screen.findByText(/La qualification se tire d’un seul bloc/)).toBeInTheDocument()
+    expect(ligne().getByText(/La qualification se tire d’un seul bloc/)).toBeInTheDocument()
   })
 })

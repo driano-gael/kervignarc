@@ -1,4 +1,4 @@
-// Écran « Composer un déroulé » (E01US024, ADR-0063) — axe **atelier**, sans tournoi.
+// Écran « Composer un format » (E01US024, ADR-0063 ; renommé par E16US002) — axe **atelier**, sans tournoi.
 //
 // Il livre les cinq promesses du CA : composer une séquence complète en **brouillon**, la **voir**
 // (schéma à braquets), savoir si elle **tient debout** (anomalies rattachées aux blocs), la
@@ -726,6 +726,13 @@ export function FormulaireEtape({
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
   const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
+  // E16US002 — le libellé libre de l'étape. Pas de normalisation ici : le domaine strippe et ramène
+  // le blanc à `null`, et le faire aussi côté client ferait deux règles pour une même donnée.
+  // DETTE-080 — versant jumeau du marqueur posé dans `features/phases/Phases.tsx` : même état, même
+  // garde, même reset, écrits une seconde fois. ⚠️ Ce formulaire-ci ne réinitialise historiquement
+  // **aucun** champ à l'ajout (« l'asymétrie est constatée, pas voulue ») ; `titre` y est reset,
+  // donc il **réduit** l'écart plutôt que de le creuser — mais il ne le referme pas.
+  const [titre, setTitre] = useState(etape?.titre ?? '')
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -815,6 +822,10 @@ export function FormulaireEtape({
     // Retyper l'étape l'**efface** donc, comme ses voisins.
     decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
     arrets: arretable ? (versArrets(arrets) ?? []) : [],
+    // E16US002 — vidé = titre **retiré**. ⚠️ **Aucune garde de type ici**, à la différence des cinq
+    // réglages ci-dessus : un titre n'appartient à aucun type, et « Tableau des jeunes » reste
+    // juste si l'étape devient des poules. Le serveur ne le refuse sur aucun type.
+    titre: titre.trim() === '' ? null : titre,
   })
 
   return (
@@ -836,9 +847,29 @@ export function FormulaireEtape({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          // E16US002, même raison que ses voisins : sans ce reset, « Tableau des jeunes » se
+          // reporterait sur l'étape suivante — et un titre reporté est pire qu'un réglage reporté,
+          // puisqu'il **désigne** une phase précise.
+          setTitre('')
         }
       }}
     >
+      <div className="formulaire__champ">
+        {/* E16US002 — en tête, comme sur l'écran des phases d'un tournoi : c'est le champ qui
+            identifie l'étape pour l'organisateur, là où le type ne fait que la classer. Présent ici
+            **et** là-bas parce que le format est ce qui se rejoue d'une année sur l'autre
+            (ADR-0060 §5) : un format dont les étapes ne peuvent pas être nommées ne remonterait
+            titré que par promotion depuis un tournoi. */}
+        <label className="formulaire__libelle">
+          Titre de l&apos;étape (facultatif)
+          <input value={titre} maxLength={80} onChange={(e) => setTitre(e.target.value)} />
+        </label>
+        <p className="carte__aide">
+          Vide = le type sert de libellé. Utile quand le format enchaîne plusieurs phases du même
+          type.
+        </p>
+      </div>
+
       <div className="formulaire__champ">
         {/* Le libellé **enveloppe** son `<select>` (corrigé en E06US006) : il flottait à côté sans
             `htmlFor` ni imbrication, donc ne labellisait rien — un lecteur d'écran annonçait une

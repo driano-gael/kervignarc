@@ -232,10 +232,15 @@ function Coquille() {
     },
     {
       id: 'deroule',
-      libelle: 'Composer un déroulé',
+      libelle: 'Composer un format',
       // L'atelier de composition (E01US024, ADR-0063) : là où un format se **fabrique**, se
       // **regarde** et se **fait tourner**, alors que « Formats » n'en gère que la bibliothèque.
       // Sans tournoi, comme tout l'axe atelier.
+      //
+      // ⚠️ **Renommé par E16US002, versant miroir de « Phases du tournoi ».** Le libellé disait
+      // « Composer un déroulé » alors qu'on n'y compose aucun déroulé : ADR-0076 réserve ce mot au
+      // plan composé **une fois, sur un tournoi**, et l'atelier travaille précisément hors tournoi.
+      // Ce qu'on y fabrique est un **format** (ADR-0060 §5), ce que « Formats » range ensuite.
       rendu: () => <Deroule />,
     },
     {
@@ -281,10 +286,18 @@ function Coquille() {
     },
     {
       id: 'phases',
-      libelle: 'Phases (format)',
+      libelle: 'Phases du tournoi',
       // Séquence des phases du moteur (E05US001, ADR-0045) : élimination directe / placement après
       // la qualification. Juste après « Barème & validation » — c'est la suite de la définition du
-      // format (la qualification, elle, se règle sur cet écran-là).
+      // déroulé (la qualification, elle, se règle sur cet écran-là).
+      //
+      // ⚠️ **Renommé par E16US002 : le libellé disait « Phases (format) », et c'était faux depuis
+      // ADR-0076.** Cet écran compose le **déroulé d'un tournoi concret** — son `<h3>` le dit déjà
+      // (« Phases (déroulé du tournoi) ») —, alors qu'un *format* est la brique de bibliothèque
+      // d'ADR-0060, composée à l'atelier et sans tournoi. Les deux libellés étaient **croisés** :
+      // celui-ci portait le mot de son voisin « Composer un déroulé », qui fabrique un format.
+      // Deux mots pour deux choses différentes, à un clic l'un de l'autre : c'est le motif exact du
+      // refus d'A10, qu'ADR-0073 a fait lever sur le plan de salle.
       rendu: () => courant && <Phases tournoiId={courant.id} />,
     },
     {

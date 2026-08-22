@@ -479,6 +479,20 @@ class ConfigPhaseRequete(BaseModel):
     `ArretProgrammeInvalide` (422) — le refus vit sur l'étape, là où le nombre de tours est
     connu."""
 
+    titre: str | None = Field(default=None, max_length=80)
+    """Le **libellé** que l'organisateur donne à cette étape (E16US002) — `null` = aucun.
+
+    ⚠️ Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` **efface** le
+    titre et fait retomber l'écran sur le libellé du type. C'est le geste par lequel on *retire*
+    un titre, et il n'y en a pas d'autre.
+
+    **Borné à 80 caractères à la frontière, pas dans le domaine.** Le domaine n'a aucune règle
+    métier sur la longueur d'un libellé — inventer un maximum sportif serait faux. Ce qu'il faut
+    borner est l'**entrée** : une chaîne non bornée à la frontière gonfle le `config` JSON de la
+    table et ouvre la porte au déni de service, même garde que `sources` (16) et `arrets` (64).
+    Un blanc ou une chaîne vide passent : le domaine les ramène à « pas de titre ».
+    """
+
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
     """Rang jusqu'auquel les ex æquo se départagent **au tir** (E06US003, ADR-0066).
 
@@ -623,6 +637,12 @@ class EtapeReponse(BaseModel):
     pourquoi elle est servie ici sans pagination ni delta.
     """
 
+    titre: str | None = None
+    """Le **libellé** de cette étape (E16US002) — `null` = aucun, l'écran retombe sur le type.
+
+    Servi **normalisé** par le domaine (espaces de bord retirés, blanc ramené à `null`) : le client
+    n'a donc rien à nettoyer, et deux clients ne peuvent pas normaliser différemment."""
+
     barrage_jusqu_au: int | None = None
 
     @staticmethod
@@ -652,6 +672,7 @@ class EtapeReponse(BaseModel):
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
+            titre=etape.titre,
             nb_volees=None if etape.bareme is None else etape.bareme.nb_volees,
             barrage_jusqu_au=etape.barrage_jusqu_au,
         )
@@ -717,6 +738,7 @@ async def ajouter_phase(
                 None if requete.colline is None else requete.colline.vers_agregat(),
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
+                titre=requete.titre,
             )
         )
     )
@@ -751,6 +773,7 @@ async def modifier_phase(
                 None if requete.colline is None else requete.colline.vers_agregat(),
                 None if requete.decoupage is None else requete.decoupage.vers_agregat(),
                 tuple(arret.vers_agregat() for arret in requete.arrets),
+                titre=requete.titre,
             )
         )
     )

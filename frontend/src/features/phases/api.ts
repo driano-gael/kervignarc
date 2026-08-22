@@ -87,6 +87,15 @@ export interface EtapeDeroule {
   // sur `EtapeReponse` — un `Phase` le rend toujours vide, puisque l'agrégat `Phase` ne le porte pas.
   // Ne pas s'en servir depuis une phase : l'écran d'atelier lit l'étape.
   arrets: ArretProgramme[]
+
+  // Le **libellé** que l'organisateur donne à cette étape (E16US002) — `null` = aucun, l'écran
+  // retombe alors sur le libellé du type. C'est ce qui rend deux qualifications distinguables à
+  // l'œil une fois qu'E05US024/E05US025 les ont rendues composables.
+  //
+  // Servi **normalisé** par le serveur (espaces de bord retirés, blanc ramené à `null`) : le client
+  // n'a rien à nettoyer. ⚠️ Comme ses voisins, l'édition est **totale** — omis au `PUT`, il est
+  // effacé, et c'est le seul geste par lequel on retire un titre.
+  titre: string | null
 }
 
 // La **phase** : l'avancement de cette étape dans un créneau. Elle porte la définition **assemblée**
@@ -102,7 +111,13 @@ export interface EtapeDeroule {
 // `EtapeReponse`, parce que le barème se lit par sa propre ressource. Le laisser fuir par le `Omit`
 // aurait rejoué le défaut d'`arrets` un an après l'avoir corrigé — un champ garanti par TS et
 // `undefined` à l'exécution.
-export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets' | 'nb_volees'> {
+//
+// ⚠️ **`titre` est retiré pour la troisième fois la même raison** (E16US002) : le serveur ne le
+// sert que sur `EtapeReponse`, parce qu'il décrit la **composition** et non l'avancement — l'agrégat
+// `Phase` ne le porte pas, exactement comme `arrets`. Le laisser fuir par le `Omit` aurait rejoué,
+// un an après, le défaut que les deux paragraphes ci-dessus racontent. Le typecheck l'a attrapé au
+// premier essai : c'est le `Omit` explicite qui rend la couture visible, et il gagne à le rester.
+export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets' | 'nb_volees' | 'titre'> {
   depart_id: number
   statut: StatutPhase
 }
@@ -136,6 +151,10 @@ export interface ConfigPhase {
   // toutes les pauses programmées. Ce n'est pas un paramètre qu'on retrouve d'un coup d'œil mais un
   // planning de journée saisi ligne à ligne. L'écran renvoie donc toujours la liste complète.
   arrets?: ArretProgramme[]
+  // Même règle d'édition totale : omis, le titre est **effacé** côté serveur (E16US002). Voir
+  // `configInchangee` dans `Phases.tsx` — les widgets qui n'éditent qu'un champ doivent réémettre
+  // celui-ci, faute de quoi régler un barrage renomme la phase en silence.
+  titre?: string | null
 }
 
 // --- Composition : le déroulé du tournoi (atelier) ----------------------------------------------

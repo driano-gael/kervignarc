@@ -1,6 +1,6 @@
 // La fiche des **pauses programmées** d'une étape (E05US033, ADR-0091).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un déroulé » (un modèle de
+// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
 // bibliothèque) et « Phases » (le déroulé d'un tournoi) —, comme `ReglageSuisse`, `ReglagePoules` et
 // `ReglageBigShootOff` avant elle.
 //

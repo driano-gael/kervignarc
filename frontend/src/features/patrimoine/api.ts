@@ -215,6 +215,15 @@ export interface Etape {
   // pauses **en silence**, et le format réappliqué n'en aurait plus. Le dépôt a déjà payé cette
   // leçon une fois (cf. `ModelePhase.barrage_jusqu_au`, côté serveur).
   arrets: ArretProgramme[]
+
+  // Le **libellé** de cette étape (E16US002) — `null` = aucun, l'écran retombe sur le type.
+  //
+  // ⚠️ **Présent ici pour la raison que le bloc `suisse` ci-dessus raconte** : le serveur porte le
+  // champ (`EtapeDTO.titre`), et un front qui l'ignorerait enverrait `titre: null` à chaque
+  // enregistrement. La conséquence serait pire que « non réglé » : l'atelier `PUT` le format
+  // **entier**, donc éditer un format promu depuis un tournoi titré **effacerait tous ses titres**
+  // en silence.
+  titre: string | null
 }
 
 export interface FormatTournoi {

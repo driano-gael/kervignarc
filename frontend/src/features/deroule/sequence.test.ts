@@ -31,6 +31,7 @@ function etape(ordre: number, sources: Source[] = []): Etape {
     profondeur: null,
     // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
     arrets: [],
+    titre: null,
   }
 }
 
@@ -167,6 +168,7 @@ describe('decrireEtape', () => {
       decoupage: null,
       // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
       arrets: [],
+      titre: null,
       effectif: 32,
     }
 

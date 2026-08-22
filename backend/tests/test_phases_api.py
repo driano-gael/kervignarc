@@ -694,3 +694,65 @@ def test_une_pause_sur_une_qualification_decoupee_est_acceptee(
 
         assert pose.status_code == 200, pose.text
         assert pose.json()["arrets"] == [{"apres_tour": 1, "portee": "phase"}]
+
+
+def test_le_titre_fait_l_aller_retour_http(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US002 — le titre s'envoie à l'ajout, se relit au `GET`, et s'édite au `PUT`.
+
+    Trois choses s'y jouent, et c'est la couture que le domaine ne peut pas garder : le champ
+    traverse-t-il la frontière dans les deux sens (DTO ↔ agrégat), la **normalisation** du domaine
+    est-elle bien servie au client (espaces de bord retirés), et l'édition **totale** efface-t-elle
+    le titre quand le client l'omet — le seul geste par lequel on retire un titre.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        creation = client.post(base, json={"type": "elimination_directe", "titre": "  Jeunes  "})
+        assert creation.status_code == 201, creation.text
+        etape_id = creation.json()["id"]
+        # Servi normalisé : le client n'a rien à nettoyer, et deux clients ne peuvent pas
+        # normaliser différemment.
+        assert creation.json()["titre"] == "Jeunes"
+        assert client.get(base).json()[0]["titre"] == "Jeunes"
+
+        renomme = client.put(
+            f"{base}/{etape_id}",
+            json={"type": "elimination_directe", "sources": [], "titre": "Tableau des jeunes"},
+        )
+        assert renomme.status_code == 200, renomme.text
+        assert client.get(base).json()[0]["titre"] == "Tableau des jeunes"
+
+        # Édition **totale** : le titre omis est effacé, pas conservé.
+        efface = client.put(
+            f"{base}/{etape_id}", json={"type": "elimination_directe", "sources": []}
+        )
+        assert efface.status_code == 200, efface.text
+        assert client.get(base).json()[0]["titre"] is None
+
+
+def test_un_titre_trop_long_est_refuse_a_la_frontiere(
+    app_phases: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La borne de 80 caractères vit **à la frontière** (règle 6), pas dans le domaine.
+
+    Le métier n'a aucune règle sur la longueur d'un libellé ; ce qu'il faut borner est l'entrée,
+    qui gonflerait sinon le `config` JSON de la table — même garde que `sources` (16) et `arrets`
+    (64). Le test fixe la borne pour qu'on ne la desserre pas par accident.
+
+    ⚠️ **400, et non 422** : le refus vient de Pydantic (`requete_invalide`), pas du domaine. La
+    distinction est celle de la règle 5 — un `422` signale une règle **métier** violée, un `400`
+    une requête qui n'a même pas la forme attendue. La première rédaction de ce test attendait
+    422 : c'est le test qui avait tort, pas le mapping.
+    """
+    with TestClient(app_phases) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        base = f"/api/v1/tournois/{tournoi_id}/phases"
+
+        refus = client.post(base, json={"type": "elimination_directe", "titre": "x" * 81})
+
+        assert refus.status_code == 400, refus.text

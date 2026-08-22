@@ -672,3 +672,25 @@ def test_promouvoir_transporte_la_profondeur_des_phases(ctx: Contexte) -> None:
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé du jour")
 
     assert promu.etapes[0].profondeur == ProfondeurClassement.integrale()
+
+
+def test_promouvoir_capture_le_titre_des_etapes_et_le_rend_a_lapplication(ctx: Contexte) -> None:
+    """E16US002 — CA « réutilisable d'une année sur l'autre » : le titre survit à l'aller-retour.
+
+    Ce qui se range en bibliothèque est le **format** (ADR-0060 §5) : un titre perdu à la
+    promotion ferait remonter, l'année suivante, des phases anonymes — et c'est exactement le
+    défaut `barrage_jusqu_au` qu'ADR-0076 a fermé, un champ présent d'un côté de la traversée et
+    absent de l'autre. Le test couvre les **deux** sens, parce qu'un seul serait vert avec la
+    moitié du câblage.
+    """
+    (etape,) = ctx.deroules.par_tournoi(ctx.tournoi_id) or (None,)
+    if etape is None:
+        _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.creer(12, 3)))
+        (etape,) = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    ctx.deroules.enregistrer(dataclasses.replace(etape, titre="Qualification des jeunes"))
+
+    promu = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
+
+    assert promu.etapes[0].titre == "Qualification des jeunes"
+    # L'autre sens : rejoué sur un tournoi, le format rend son titre.
+    assert promu.etapes[0].pour_tournoi(ctx.tournoi_id).titre == "Qualification des jeunes"

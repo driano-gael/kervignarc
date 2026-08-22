@@ -155,7 +155,7 @@ function LigneFormat({ format }: { format: FormatTournoi }) {
               {
                 id: format.id,
                 // ⚠️ Le `PUT` est une édition **totale** : omettre ce champ effacerait la règle de
-                // club posée depuis « Composer un déroulé ». Cet écran ne la modifie pas, il la
+                // club posée depuis « Composer un format ». Cet écran ne la modifie pas, il la
                 // **fait suivre** (défaut relevé en revue — la perte était silencieuse).
                 entree: { nom, etapes, effectif_minimum_exige: format.effectif_minimum_exige },
               },
@@ -312,6 +312,7 @@ function FormulaireFormat() {
       profondeur: null,
       // E05US033 : aucune pause programmée, le défaut — la salle enchaîne les tours.
       arrets: [],
+      titre: null,
     }
     creer.mutate(
       { nom, etapes: [etape], effectif_minimum_exige: null },

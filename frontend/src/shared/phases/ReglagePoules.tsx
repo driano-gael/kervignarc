@@ -1,6 +1,6 @@
 // La fiche de réglages d'une phase de **poules** (E05US023, ADR-0083).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un déroulé » (un modèle de
+// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
 // bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ChoixProfondeur` avant elle. Les
 // deux sites existent aujourd'hui : ce n'est pas un pattern posé par anticipation.
 //

@@ -17,8 +17,8 @@ questions ciblées et corrections de vocabulaire. C'est le retour le plus large 
 du projet, et il porte sur **toutes les surfaces à la fois** — admin, public, écran de salle, poste
 de cible, scoreur.
 
-Quatre écrans avaient été **refusés en l'état** (🔴 « à refaire ») ; **il en reste deux** : `A07` phases, ~~`A10` plan de salle~~ (**levé le 05/08/2026 par E16US001**, ADR-0073 — le refus ne portait que sur le vocabulaire), ~~`A14`
-complétude~~ (**levé le 07/08/2026 par E16US003** — le refus portait sur le **mélange à l'écran** : le sportif est resté au pilotage sous « Prêt à terminer ? », l'administratif est parti sur l'axe gestion) — plus `P03` classements publics. Vingt sont validés **avec réserves** (🟡). Le reste est
+Quatre écrans avaient été **refusés en l'état** (🔴 « à refaire ») ; **il n'en reste aucun** : ~~`A07` phases~~ (**levé le 22/08/2026 par E16US002**, [ADR-0095](../docs/adr/0095-un-titre-de-phase-est-un-libelle-pas-une-identite.md) — titre de phase, fiche dépliable par ligne, et les deux destinations de composition renommées, chacune portant jusque-là le mot de l'autre), ~~`A10` plan de salle~~ (**levé le 05/08/2026 par E16US001**, ADR-0073 — le refus ne portait que sur le vocabulaire), ~~`A14`
+complétude~~ (**levé le 07/08/2026 par E16US003** — le refus portait sur le **mélange à l'écran** : le sportif est resté au pilotage sous « Prêt à terminer ? », l'administratif est parti sur l'axe gestion) — plus ~~`P03` classements publics~~ (**levé le 08/08/2026 par E16US004**, ADR-0079). ⚠️ **Cette phrase annonçait « il en reste deux » alors que `P03` était levé depuis le 08/08** : corrigé le 22/08/2026, en même temps que le dernier refus. Vingt sont validés **avec réserves** (🟡). Le reste est
 validé tel quel.
 
 L'objectif de cet épic est de **traiter ces retours jusqu'au bout**, sans en perdre en route : c'est

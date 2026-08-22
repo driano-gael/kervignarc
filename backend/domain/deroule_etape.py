@@ -164,10 +164,29 @@ class EtapeDeroule:
     `FranchissementArret`, propre au créneau, dans sa propre table (`domain.arret_programme`).
     """
 
+    titre: str | None = None
+    """Le **libellé** que l'organisateur donne à cette étape — « Tableau des jeunes » (E16US002).
+
+    ⚠️ **Un libellé, pas une identité.** L'étape reste adressée par son `id` et située par son
+    `ordre` dans la séquence 1..N (ADR-0045 §3) ; deux étapes du même déroulé peuvent donc porter
+    le même titre. Imposer l'unicité aurait fait échouer la composition sur une gêne d'affichage.
+
+    `None` quand l'organisateur n'en a pas donné — et c'est le cas de **tous les déroulés déjà
+    composés**. L'écran retombe alors sur le libellé du type, comme avant. Rendre le titre
+    obligatoire aurait invalidé l'existant à la première lecture.
+
+    ⚠️ **Reste sur l'étape, absent de `Phase`.** Le titre décrit la *composition* — il est lu par
+    l'écran qui lit des étapes (`GET /tournois/{id}/phases`). C'est le régime déjà retenu pour
+    `arrets` (E05US033), et non l'écart de champs qu'ADR-0076 a fermé sur `barrage_jusqu_au` :
+    celui-là opposait deux représentations de la **même** définition, alors qu'ici il n'y en a
+    qu'une, l'étape, et que `Phase` ne porte que ce dont le moteur a besoin pour avancer.
+    """
+
     id: EtapeDerouleId | None = None
 
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
+        object.__setattr__(self, "titre", _titre_normalise(self.titre))
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         self._verifier_convergence_du_big_shoot_off()
@@ -448,3 +467,23 @@ class EtapeDeroule:
     def avec_sources(self, sources: tuple[SourcePhase, ...]) -> EtapeDeroule:
         """Renvoie une copie aux prélèvements remplacés."""
         return replace(self, sources=sources)
+
+
+def _titre_normalise(titre: str | None) -> str | None:
+    """Retire les espaces de bord ; un titre blanc **vaut absence de titre**, jamais une erreur.
+
+    Effacer le champ est le geste par lequel l'organisateur *retire* un titre : le refuser lui
+    interdirait de revenir au libellé automatique sans supprimer la phase. La normalisation est
+    alignée sur `Tournoi._nom_valide`, qui strippe déjà nom et lieu — deux conventions pour deux
+    libellés saisis au clavier auraient été une incohérence gratuite.
+
+    ⚠️ **Appelée depuis `__post_init__`, donc par `object.__setattr__`** — premier usage du geste
+    dans le domaine. La convention du dépôt normalise plutôt en fabrique (`Tournoi.creer`), mais
+    `EtapeDeroule` n'en a pas : elle promet dans sa docstring de tenir la cohérence « quelle que
+    soit la porte d'entrée, `replace()` compris ». Normaliser en amont aurait laissé passer un
+    `replace(etape, titre="  x  ")` — soit exactement la porte que cette promesse ferme.
+    """
+    if titre is None:
+        return None
+    normalise = titre.strip()
+    return normalise or None

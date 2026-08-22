@@ -356,7 +356,12 @@ function LignePhase({
   premier: boolean
   dernier: boolean
 }) {
-  const [edition, setEdition] = useState(false)
+  // ⚠️ **Une seule bascule par ligne, pour tous les types** (E16US002). L'écran offrait avant un
+  // « Éditer » réservé aux types composables, et posait les réglages de la qualification (barrage,
+  // découpage) **à plat dans la barre d'actions** — d'où le refus A07 (« la gestion d'une phase
+  // demande des écrans plus détaillés »). La fiche est désormais le seul endroit où l'on règle une
+  // phase, quel que soit son type.
+  const [ficheOuverte, setFicheOuverte] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const reordonner = useReordonnerPhases(tournoiId)
   const supprimer = useSupprimerPhase(tournoiId)
@@ -370,25 +375,18 @@ function LignePhase({
   // de la supprimer (ce serait perdre son barème par surprise). Elle reste réordonnable.
   const gereeAilleurs = phase.type === 'qualification'
 
-  if (edition) {
-    return (
-      <li className="phase">
-        <FormulairePhase
-          tournoiId={tournoiId}
-          phases={phases}
-          phase={phase}
-          onTermine={() => setEdition(false)}
-        />
-      </li>
-    )
-  }
-
   return (
     <li className="phase">
       <div className="phase__ligne">
         <span className="phase__ordre">{phase.ordre}</span>
-        <span className="phase__type">{LIBELLE_TYPE[phase.type]}</span>
+        {/* Le **titre** identifie la phase, le type la classe : quand l'organisateur a nommé sa
+            phase, c'est son nom qu'il cherche du regard. Sans titre, le libellé du type reprend
+            exactement la place qu'il occupait — aucun déroulé existant ne change d'aspect. */}
+        <span className="phase__type">{phase.titre ?? LIBELLE_TYPE[phase.type]}</span>
         <span className="phase__details">
+          {/* Le type n'est jamais perdu : il redevient un détail, il ne disparaît pas. Sans lui,
+              deux phases nommées ne diraient plus ce qu'elles font. */}
+          {phase.titre !== null && `${LIBELLE_TYPE[phase.type]} · `}
           {decrireSources(phase.sources)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
           {/* Parité avec l'écran de composition, qui l'affiche déjà : sur un tournoi réel, le
@@ -417,10 +415,6 @@ function LignePhase({
         >
           ↓
         </button>
-        {gereeAilleurs && <ReglageBarrage tournoiId={tournoiId} phase={phase} />}
-        {/* E05US035 — même place et même raison que le barrage juste au-dessus : la qualification
-            n'ouvre jamais `FormulairePhase`, donc un réglage qui n'est pas ici n'est nulle part. */}
-        {gereeAilleurs && <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />}
         {/* ⚠️ **Le montage dérive de `TYPES_A_PLAN_PAR_BLOCS`, et ce n'est pas cosmétique.** Trois
             fois de suite, un format a gagné son plan de cibles côté serveur sans que personne ne
             monte l'appelant ici — et le format devenait injouable, faute de couloirs. Passer par la
@@ -429,16 +423,17 @@ function LignePhase({
         {TYPES_A_PLAN_PAR_BLOCS.has(phase.type) && (
           <PlanParBlocs type={phase.type} tournoiId={tournoiId} phaseId={phase.id} />
         )}
-        {!gereeAilleurs &&
-          (editableIci(phase.sources) ? (
-            <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
-              Éditer
-            </button>
-          ) : (
-            <span className="carte__etat" role="note">
-              Composition avancée : éditable depuis l'écran de composition du déroulé.
-            </span>
-          ))}
+        {/* ⚠️ **Offerte même sur la qualification**, qui n'avait aucune bascule : ses réglages
+            traînaient dans cette barre d'actions. Le refus « composition avancée » ne porte, lui,
+            que sur l'**édition de séquence** — pas sur la fiche, dont le titre reste réglable. */}
+        <button
+          type="button"
+          className="bouton--discret"
+          aria-expanded={ficheOuverte}
+          onClick={() => setFicheOuverte((ouverte) => !ouverte)}
+        >
+          {ficheOuverte ? 'Fermer la fiche' : 'Ouvrir la fiche'}
+        </button>
         {!gereeAilleurs &&
           (confirmationSuppression ? (
             <>
@@ -468,6 +463,47 @@ function LignePhase({
             </button>
           ))}
       </div>
+      {ficheOuverte && (
+        <div className="phase__fiche">
+          {gereeAilleurs ? (
+            <>
+              {/* La qualification n'ouvre jamais `FormulairePhase` — son barème se règle sur
+                  « Barème & validation », et l'éditer ici le perdrait par surprise. Sa fiche est
+                  donc composée de ses réglages propres, réunis au même endroit que ceux des
+                  autres types au lieu d'être dispersés dans la barre d'actions. */}
+              <ReglageTitre tournoiId={tournoiId} phase={phase} />
+              <ReglageBarrage tournoiId={tournoiId} phase={phase} />
+              <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />
+            </>
+          ) : editableIci(phase.sources) ? (
+            <FormulairePhase
+              tournoiId={tournoiId}
+              phases={phases}
+              phase={phase}
+              onTermine={() => setFicheOuverte(false)}
+            />
+          ) : (
+            <>
+              {/* Composition avancée : la **séquence** ne s'édite pas ici (plusieurs sources, ou
+                  une source que ce formulaire ne sait pas exprimer). Le **titre**, lui, n'a rien à
+                  voir avec la séquence — le refuser aussi rendrait ces phases-là impossibles à
+                  nommer, alors que ce sont justement les déroulés les plus fournis. */}
+              <ReglageTitre tournoiId={tournoiId} phase={phase} />
+              {/* ⚠️ **Message corrigé au passage (E16US002), il était trompeur.** Il disait
+                  « éditable depuis l'écran de composition du déroulé » et désignait l'atelier —
+                  qui ne travaille sur **aucun tournoi** (ADR-0063) et ne pouvait donc pas éditer
+                  cette phase-ci. Le renommage des deux destinations l'a mis à nu : recopier
+                  l'ancienne phrase avec le nouveau nom aurait conservé le cul-de-sac. Le vrai
+                  chemin passe par un format, puis par son assemblage sur le tournoi. */}
+              <span className="carte__etat" role="note">
+                Composition avancée : cette phase porte plusieurs prélèvements, que ce formulaire ne
+                sait pas éditer. Pour la recomposer, préparez un format (« Composer un format »)
+                puis appliquez-le depuis « Assemblage ».
+              </span>
+            </>
+          )}
+        </div>
+      )}
       <MessageErreur erreur={reordonner.error} />
       <MessageErreur erreur={supprimer.error} />
     </li>
@@ -490,10 +526,17 @@ export function FormulairePhase({
 }) {
   const enEdition = phase !== undefined
   const [type, setType] = useState<TypePhase>(phase?.type ?? 'elimination_directe')
+  // E16US002 — le libellé libre de l'étape. Pas de normalisation ici : le domaine strippe et ramène
+  // le blanc à `null` (`_titre_normalise`), et normaliser aussi côté client ferait deux règles pour
+  // une même donnée — à faire diverger au premier ajustement.
+  // DETTE-080 — 10ᵉ réglage dont l'état, la garde de type et le reset sont écrits **deux fois**,
+  // ici et dans le formulaire jumeau de « Composer un format ». Les contrôles, eux, sont partagés
+  // (`shared/phases/`) : c'est la plomberie autour d'eux qui se recopie.
+  const [titre, setTitre] = useState(phase?.titre ?? '')
   const [effectif, setEffectif] = useState(phase?.effectif != null ? String(phase.effectif) : '')
   // **Source unique** du réglage de profondeur (E06US006), détenue ici et non dans le contrôle :
   // celui-ci est monté sous condition, donc une copie interne divergerait au premier aller-retour
-  // de type. Le contrôle est partagé avec « Composer un déroulé » — le réglage y a le même sens.
+  // de type. Le contrôle est partagé avec « Composer un format » — le réglage y a le même sens.
   const [profondeur, setProfondeur] = useState(depuisProfondeur(phase?.profondeur ?? null))
   // Même parti, même raison (E05US023) : `ReglagePoules` est monté sous condition, donc l'état vit
   // ici. L'écran ne simule aucun effectif — le tournoi a de vrais inscrits, et c'est
@@ -701,6 +744,10 @@ export function FormulairePhase({
       // leçon que ce fichier raconte déjà trois fois. Deux caractères l'empêchent.
       decoupage: type === 'qualification' ? (phase?.decoupage ?? null) : null,
       arrets: arretable ? (versArrets(arrets) ?? []) : [],
+      // E16US002 : vidé = titre **retiré**, l'écran retombe sur le libellé du type. Contrairement
+      // aux cinq réglages ci-dessus, il n'est **pas** effacé par un retypage : un titre n'appartient
+      // à aucun type, et « Tableau des jeunes » reste juste si la phase devient des poules.
+      titre: titre.trim() === '' ? null : titre,
     }
     if (enEdition) {
       modifier.mutate({ phaseId: phase.id, config }, { onSuccess: onTermine })
@@ -708,10 +755,11 @@ export function FormulairePhase({
       ajouter.mutate(config, {
         onSuccess: () => {
           setEffectif('')
+          setTitre('')
           // La profondeur se remet au preset comme les autres champs de ce formulaire :
           // « classement intégral » est le réglage le plus coûteux de la journée, il ne doit pas
           // se reporter en silence d'une phase à la suivante. ⚠️ Le formulaire d'ajout de
-          // « Composer un déroulé » ne réinitialise, lui, **aucun** champ (comportement antérieur
+          // « Composer un format » ne réinitialise, lui, **aucun** champ (comportement antérieur
           // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
@@ -735,6 +783,19 @@ export function FormulairePhase({
     <div>
       {enEdition && <h4 className="carte__soustitre">Modifier la phase {phase.ordre}</h4>}
       <form className="formulaire formulaire--colonne" onSubmit={soumettre}>
+        {/* En tête de fiche parce que c'est ce que le CA nomme en premier (« sa fiche, qui reprend
+            son titre et ses réglages ») — et parce que c'est le champ qui identifie la phase pour
+            l'organisateur, là où le type ne fait que la classer. */}
+        <label className="formulaire__libelle">
+          Titre de la phase (facultatif)
+          <input
+            className="formulaire__champ"
+            value={titre}
+            maxLength={80}
+            onChange={(e) => setTitre(e.target.value)}
+            placeholder={LIBELLE_TYPE[type]}
+          />
+        </label>
         <select
           className="formulaire__champ"
           value={type}
@@ -908,6 +969,89 @@ export function FormulairePhase({
  * qualification risquerait au contraire d'écraser son barème par surprise — la raison même pour
  * laquelle elle est « gérée ailleurs ».
  */
+/** La config **complète et inchangée** d'une étape, à surcharger par le seul champ qu'on édite.
+ *
+ * ⚠️ **Extrait sur preuve, pas par principe** (règle « remède structurel »). Le `PUT` est une
+ * édition **totale** : tout champ non réémis est effacé côté serveur. Les widgets qui n'éditent
+ * qu'un réglage recopiaient donc la liste entière à la main — et ce fichier raconte **deux bugs**
+ * nés d'un oubli dans cette recopie : `ReglageBarrage` effaçait le `decoupage` (donc rendait
+ * inertes les pauses posées dessus), et le couple découpage/arrêts se faisait refuser en 422.
+ *
+ * `titre` en aurait été le **troisième** : sans cette fonction, régler un barrage renommait la
+ * phase en silence. Trois occurrences réelles dans le code d'aujourd'hui — c'est le seuil, et la
+ * portée reste locale (une fonction, un fichier), donc pas d'ADR.
+ *
+ * ⚠️ **`nb_volees` est délibérément absent** : c'est un champ de **lecture seule** d'`EtapeReponse`
+ * (le barème se règle par sa propre ressource). L'inclure enverrait au serveur un champ que
+ * `ConfigPhaseRequete` refuse — le routeur des phases est le seul du projet en `extra="forbid"`.
+ */
+function configInchangee(phase: EtapeDeroule): ConfigPhase {
+  return {
+    type: phase.type,
+    sources: phase.sources,
+    effectif: phase.effectif,
+    barrage_jusqu_au: phase.barrage_jusqu_au,
+    profondeur: phase.profondeur,
+    poules: phase.poules,
+    big_shoot_off: phase.big_shoot_off,
+    suisse: phase.suisse,
+    colline: phase.colline,
+    decoupage: phase.decoupage,
+    arrets: phase.arrets,
+    titre: phase.titre,
+  }
+}
+
+/** Édite le seul **titre** d'une étape (E16US002), sans toucher au reste de sa définition.
+ *
+ * Monté dans la fiche de la **qualification**, qui n'ouvre jamais `FormulairePhase` : son barème se
+ * règle ailleurs, et l'y éditer le ferait perdre par surprise (`gereeAilleurs`). Sans ce widget, la
+ * qualification serait le seul type impossible à nommer — précisément celui dont le CA dit qu'on
+ * peut en avoir plusieurs.
+ */
+function ReglageTitre({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
+  const [valeur, setValeur] = useState(phase.titre ?? '')
+  const modifier = useModifierPhase(tournoiId)
+
+  return (
+    <div className="phase__barrage">
+      <label className="formulaire__libelle">
+        Titre de la phase (facultatif)
+        <input
+          className="formulaire__champ"
+          value={valeur}
+          maxLength={80}
+          onChange={(e) => setValeur(e.target.value)}
+          placeholder={LIBELLE_TYPE[phase.type]}
+        />
+      </label>
+      <button
+        type="button"
+        className="bouton--discret"
+        disabled={modifier.isPending}
+        onClick={() =>
+          modifier.mutate({
+            phaseId: phase.id,
+            // Vidé = titre retiré : c'est le geste par lequel on revient au libellé du type.
+            config: { ...configInchangee(phase), titre: valeur.trim() === '' ? null : valeur },
+          })
+        }
+      >
+        Enregistrer
+      </button>
+      <span className="carte__aide">
+        Vide = le type sert de libellé. Utile quand le déroulé porte plusieurs phases du même type.
+      </span>
+      {/* DETTE-050 : rendu ad hoc non rallié à `shared/ui/texteErreur`, comme ses voisins. */}
+      {modifier.isError && (
+        <span className="carte__etat carte__etat--erreur" role="alert">
+          {modifier.error.message}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
   const [valeur, setValeur] = useState(
     phase.barrage_jusqu_au != null ? String(phase.barrage_jusqu_au) : '',
@@ -921,42 +1065,11 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
     modifier.mutate({
       phaseId: phase.id,
       config: {
-        type: phase.type,
-        sources: phase.sources,
-        effectif: phase.effectif,
+        // Édition **totale** : tout champ non réémis est effacé. `configInchangee` porte la liste
+        // et la raison — deux bugs sont nés de la recopie à la main qui vivait ici, dont
+        // l'effacement du `decoupage` (et l'inertie des pauses posées dessus) par ce widget même.
+        ...configInchangee(phase),
         barrage_jusqu_au: analyse,
-        // Réémise pour la même raison que le reste : le `PUT` est **total**. Inoffensif aujourd'hui
-        // (ce widget n'est rendu que sur la qualification, qui ne porte jamais de profondeur), mais
-        // c'était le seul chemin d'appel non audité par l'US — relevé en revue, fermé à une ligne.
-        profondeur: phase.profondeur,
-        // Même raison encore : réémis pour ne pas être effacé par une édition **totale**.
-        poules: phase.poules,
-        // ⚠️ **E05US033, et c'est un bloquant que la revue a trouvé** (axe adversarial). Ce widget
-        // n'est rendu **que sur la qualification** — c'est-à-dire exactement le seul type dont le
-        // découpage est licite, et celui que la recette demande de doter d'une pause. Sans ces deux
-        // lignes, renseigner « barrage jusqu'au rang 8 » **effaçait tout le planning de journée** de
-        // l'étape, sans message et avec un `PUT` qui réussit.
-        //
-        // C'est la leçon de `barrage_jusqu_au` rejouée dans le widget dont le commentaire ci-dessus
-        // la raconte, et elle contredisait la promesse écrite dans le DTO côté serveur (« l'écran
-        // doit toujours renvoyer la liste complète, jamais un delta »).
-        arrets: phase.arrets,
-        // Trous **préexistants** fermés au passage : inoffensifs sur la qualification (qui ne porte
-        // jamais de réglage de suisse ni de Big Shoot Off), mais c'étaient les derniers champs non
-        // réémis de ce chemin. ⚠️ `big_shoot_off` manquait encore après E05US035 — relevé en 2ᵉ
-        // passe, alors que le commentaire d'à côté affirmait `suisse` « dernier champ non réémis ».
-        // Une affirmation de complétude fausse est ce qui empêche de la revérifier.
-        suisse: phase.suisse,
-        big_shoot_off: phase.big_shoot_off,
-        // ⚠️ **E05US035, et c'est la TROISIÈME fois que ce widget rejoue la même leçon.** Le
-        // commentaire de `barrage_jusqu_au` plus haut la raconte, celui d'`arrets` la raconte une
-        // deuxième fois — et `decoupage` est exactement le champ le plus exposé : il ne vit que sur
-        // la qualification, c'est-à-dire le seul type que ce widget rend. Sans cette ligne,
-        // renseigner « barrage jusqu'au rang 8 » **effaçait le découpage en tours**, donc rendait
-        // du même coup inertes toutes les pauses posées dessus — sans message, avec un `PUT` qui
-        // réussit. Relevé en me corrigeant, pas par un axe : la revue avait signalé la branche
-        // morte, ce chemin-ci était encore un cran plus loin.
-        decoupage: phase.decoupage,
       },
     })
   }
@@ -1033,17 +1146,7 @@ function ReglageDecoupageDePhase({ tournoiId, phase }: { tournoiId: number; phas
     modifier.mutate({
       phaseId: phase.id,
       config: {
-        // Édition **totale** : tout ce qu'on ne réémet pas est effacé. Même liste que
-        // `ReglageBarrage`, pour la même raison, et `arrets` en tête — c'est le champ dont
-        // l'effacement silencieux coûte le plus cher (un planning de journée saisi ligne à ligne).
-        type: phase.type,
-        sources: phase.sources,
-        effectif: phase.effectif,
-        barrage_jusqu_au: phase.barrage_jusqu_au,
-        profondeur: phase.profondeur,
-        poules: phase.poules,
-        big_shoot_off: phase.big_shoot_off,
-        suisse: phase.suisse,
+        ...configInchangee(phase),
         // ⚠️ **Les pauses suivent le découpage, et ce n'est pas un choix esthétique** (correctif de
         // 2ᵉ passe de revue). Réémettre `phase.arrets` tels quels en ramenant le découpage à 1 tour
         // faisait **refuser l'enregistrement en 422**, avec un message qui conseille exactement

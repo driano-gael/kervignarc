@@ -65,6 +65,7 @@ describe('decrireEtape', () => {
       profondeur: null,
       // E05US033 : les deux réglages neufs, au défaut d'avant l'US.
       arrets: [],
+      titre: null,
       poules: null,
       sources: [],
       effectif: null,

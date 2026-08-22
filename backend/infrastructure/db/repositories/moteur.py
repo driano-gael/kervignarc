@@ -136,6 +136,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         colline = _lire_reglage_colline(config)
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
+        titre = _lire_titre(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -162,6 +163,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             colline=colline,
             decoupage=decoupage,
             arrets=arrets,
+            titre=titre,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -309,6 +311,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.colline,
             etape.decoupage,
             etape.arrets,
+            etape.titre,
         )
     )
 
@@ -326,6 +329,7 @@ def _politiques_json(
     colline: ConfigurationColline | None = None,
     decoupage: DecoupageEnTours | None = None,
     arrets: tuple[ArretProgramme, ...] = (),
+    titre: str | None = None,
     *,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
@@ -492,6 +496,14 @@ def _politiques_json(
         config["arrets"] = [
             {"apres_tour": arret.apres_tour, "portee": arret.portee.value} for arret in arrets
         ]
+    if titre is not None:
+        # Racine du `config`, hors `policies` — même domicile et même raison que `decoupage` et
+        # `arrets` : un titre n'est pas une politique injectable (règle 2), c'est un libellé.
+        # **Aucune migration** : une étape écrite avant E16US002 se relit sans titre, soit
+        # exactement son comportement d'avant. Écrit **seulement s'il existe** — `None` et clé
+        # absente disent la même chose ici (« pas de titre »), à la différence de `validation`
+        # où la présence à `null` porte un sens.
+        config["titre"] = titre
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -654,6 +666,22 @@ def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
     if not isinstance(souffle, dict) or souffle.get("tours") is None:
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return DecoupageEnTours(nb_tours=int(souffle["tours"]))
+
+
+def _lire_titre(config: Any) -> str | None:
+    """Relit le libellé d'une étape (E16US002) ; absent sur tout document antérieur.
+
+    Aucune tolérance de forme à prévoir : un titre est une chaîne, et `EtapeDeroule` normalise
+    déjà les espaces de bord et ramène le blanc à `None`. Ce qui n'est pas une chaîne est laissé
+    remonter en `TypeError` — `_vers_etape` l'attrape et rend « configuration illisible », le
+    régime de tous ses voisins : la base a été altérée, ce n'est pas un cas à deviner.
+    """
+    souffle = config.get("titre")
+    if souffle is None:
+        return None
+    if not isinstance(souffle, str):
+        raise TypeError("Le titre d'une étape doit être une chaîne.")
+    return souffle
 
 
 def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
@@ -953,6 +981,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         colline=_lire_reglage_colline(brute),
         decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
+        titre=_lire_titre(brute),
     )
 
 

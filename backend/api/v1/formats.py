@@ -429,6 +429,16 @@ class EtapeDTO(BaseModel):
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033) — liste vide = aucune, le défaut."""
 
+    titre: str | None = Field(default=None, max_length=80)
+    """Le **libellé** de cette étape (E16US002) — `null` = aucun.
+
+    ⚠️ **Présent ici pour la même raison qu'`arrets` juste au-dessus** : sans lui, promouvoir un
+    déroulé en format perdrait ses titres **en silence**, et le format rejoué l'année suivante
+    remonterait des phases anonymes. C'est le défaut `barrage_jusqu_au` que ce fichier documente
+    déjà deux fois — la troisième aurait été gratuite.
+
+    Borné à 80 comme son jumeau de `api/v1/phases` (`DETTE-054`, élargie d'une paire de plus)."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
@@ -466,6 +476,7 @@ class EtapeDTO(BaseModel):
             colline=(None if self.colline is None else self.colline.vers_agregat()),
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
+            titre=self.titre,
         )
 
     @staticmethod
@@ -505,6 +516,7 @@ class EtapeDTO(BaseModel):
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
+            titre=etape.titre,
         )
 
 
