@@ -477,6 +477,11 @@ def titre_normalise(titre: str | None) -> str | None:
     alignée sur `Tournoi._nom_valide`, qui strippe déjà nom et lieu — deux conventions pour deux
     libellés saisis au clavier auraient été une incohérence gratuite.
 
+    ⚠️ **Publique depuis E16US002** (correctif de revue) : `ModelePhase.__post_init__` l'appelle
+    aussi, pour que la même saisie ait la même valeur des **deux** côtés de la traversée
+    format ↔ étape. Sans cela, un titre posté sur un format traversait sans strip, et `"  Jeunes  "`
+    y était stocké tel quel pendant que le même texte revenait normalisé côté tournoi.
+
     ⚠️ **Appelée depuis `__post_init__`, donc par `object.__setattr__`** — premier usage du geste
     dans le domaine. La convention du dépôt normalise plutôt en fabrique (`Tournoi.creer`), mais
     `EtapeDeroule` n'en a pas : elle promet dans sa docstring de tenir la cohérence « quelle que

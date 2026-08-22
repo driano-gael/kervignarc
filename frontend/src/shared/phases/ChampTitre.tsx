@@ -11,9 +11,9 @@
 // DTO — était recopié trois fois : desserrer la borne serveur demandait trois éditions front, et
 // rien n'aurait rougi si l'on n'en faisait que deux.
 //
-// Ce n'est **pas** un remède structurel au sens de la règle 16 : `shared/phases/` porte déjà six
-// contrôles partagés dont les en-têtes disent tous « partagée par les deux écrans qui composent des
-// phases ». C'est le 7ᵉ exemplaire d'un pattern établi, donc de la conformité à une convention —
+// Ce n'est **pas** un remède structurel au sens de la règle 16 : `shared/phases/` porte déjà **sept**
+// contrôles partagés (six `Reglage*` plus `ChoixProfondeur`) dont les en-têtes disent tous « partagée par les deux écrans qui composent des
+// phases ». C'est le 8ᵉ exemplaire d'un pattern établi, donc de la conformité à une convention —
 // pas l'introduction d'un pattern, qui demanderait un ADR et une US dédiée.
 //
 // ⚠️ **Ce composant ne détient AUCUN état** — même convention que `ReglageDecoupage` et ses

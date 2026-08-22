@@ -18,9 +18,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ConfigPhase, EtapeDeroule } from './api'
+import { LONGUEUR_MAX_TITRE } from '../../shared/phases/ChampTitre'
 import { getPhases, modifierPhase } from './api'
 import { Phases } from './Phases'
 
@@ -61,6 +62,10 @@ const QUALIFICATION: EtapeDeroule = {
   nb_volees: 20,
 }
 
+beforeEach(() => {
+  vi.mocked(modifierPhase).mockClear()
+})
+
 function monter(phases: EtapeDeroule[]) {
   vi.mocked(getPhases).mockResolvedValue(phases)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -82,15 +87,16 @@ function ligne(index = 0) {
   return within(element)
 }
 
-/** La config effectivement envoyée au serveur par le **dernier** `PUT`.
+/** La config effectivement envoyée au serveur par le `PUT`.
  *
- * ⚠️ `calls.at(-1)` et non `calls[0]` : les mocks ne sont pas réinitialisés entre les tests d'un
- * même fichier, donc lire le premier appel renvoie celui du test précédent — deux de ces
- * assertions passaient ainsi sur la charge utile d'un voisin.
+ * `calls[0]` est sûr grâce au `beforeEach` ci-dessus, qui **ferme** le piège au lieu de le
+ * contourner : `vite.config.ts` ne pose ni `clearMocks` ni `restoreMocks`, donc sans lui un test
+ * dont le geste n'émettrait **aucun** `PUT` lirait la charge utile du test précédent et passerait
+ * au vert. Une première rédaction lisait `calls.at(-1)`, ce qui déplaçait le piège d'un cran et
+ * divergeait de la convention des fichiers voisins (`Arrets.test.tsx`, `Profondeur.test.tsx`).
  */
 function configEnvoyee(): ConfigPhase {
-  const appel = vi.mocked(modifierPhase).mock.calls.at(-1) as
-    [number, number, ConfigPhase] | undefined
+  const appel = vi.mocked(modifierPhase).mock.calls[0]
   if (appel === undefined) throw new Error('aucun PUT de phase n’a été émis')
   return appel[2]
 }
@@ -247,5 +253,46 @@ describe('la charge utile envoyée au serveur', () => {
     expect(configEnvoyee().barrage_jusqu_au).toBe(4)
     expect(configEnvoyee().titre).toBe('Qualification jeunes')
     expect(configEnvoyee().decoupage).toEqual({ nb_tours: 2 })
+  })
+})
+
+describe('le titre face au retypage', () => {
+  // ⚠️ **Ce cas de CA n'était gardé par rien de pertinent** (relevé en 2ᵉ passe). Un test de
+  // domaine existait, mais il passait par `dataclasses.replace` — une construction **absente du
+  // chemin réel**. Ce qui tient le CA « le titre survit à un retypage », c'est UNE ligne de ce
+  // formulaire : `titre: titre.trim() === '' ? null : titre`, non gatée par le type, à la
+  // différence des six lignes qui la précèdent. Un futur « aligner `titre` sur ses voisins »
+  // supprimerait la propriété sans qu'aucune porte ne bronche.
+
+  it('retyper une phase ne la débaptise pas, alors que ses réglages sont effacés', async () => {
+    // Les deux régimes dans la MÊME charge utile : c'est exactement ce que le CA oppose — un
+    // réglage appartient à un type, un libellé n'appartient à aucun.
+    monter([
+      { ...TABLEAU, titre: 'Tableau des jeunes', profondeur: { nom: 'un_vers_n', jusqu_au: null } },
+    ])
+    await ouvrirLaFiche()
+
+    await userEvent.selectOptions(ligne().getByLabelText(/Type de la phase/), 'poules')
+    await userEvent.click(ligne().getByRole('button', { name: 'Enregistrer' }))
+
+    expect(configEnvoyee().titre).toBe('Tableau des jeunes')
+    expect(configEnvoyee().profondeur).toBeNull()
+  })
+})
+
+describe('la borne de saisie', () => {
+  it('est celle que le composant partagé déclare, et une seule fois', async () => {
+    // ⚠️ `LONGUEUR_MAX_TITRE` était exportée « pour qu'un test puisse la confronter au serveur » —
+    // et aucun test ne l'importait (relevé par trois axes). L'affirmation était donc du même type
+    // que celles que cette revue sanctionne. Ce test ne prouve pas la parité avec le
+    // `Field(max_length=80)` du serveur — le front ne peut pas la lire — mais il prouve que les
+    // trois champs de titre tirent bien leur borne de la constante unique, au lieu de la recopier.
+    monter([TABLEAU])
+    await ouvrirLaFiche()
+
+    expect(ligne().getByLabelText(/Titre de la phase/)).toHaveAttribute(
+      'maxlength',
+      String(LONGUEUR_MAX_TITRE),
+    )
   })
 })

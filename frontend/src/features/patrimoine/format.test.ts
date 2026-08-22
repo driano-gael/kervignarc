@@ -73,6 +73,15 @@ describe('decrireEtape', () => {
     }
   }
 
+  it('une étape nommée porte son titre, le type restant entre parenthèses', () => {
+    // ⚠️ **Ce cas manquait** (relevé en 2ᵉ passe) : la fabrique pose `titre: null`, donc seule
+    // l'ancienne branche était exercée alors que le même commit changeait la sortie visible de
+    // cette fonction — consommée par la bibliothèque de formats et par l'assemblage.
+    expect(
+      decrireEtape(etape({ type: 'elimination_directe', titre: 'Tableau des jeunes' })),
+    ).toContain('Tableau des jeunes (Élimination directe)')
+  })
+
   it('qualification avec barème et effectif', () => {
     const texte = decrireEtape(
       etape({ bareme: { nb_volees: 20, nb_fleches_par_volee: 3 }, effectif: 16 }),

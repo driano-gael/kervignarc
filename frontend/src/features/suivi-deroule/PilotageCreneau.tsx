@@ -30,6 +30,7 @@ import {
 import type { PorteeArret } from '../../shared/phases/arrets'
 import type { AvancementBloc } from '../../shared/schema-braquets/modele'
 import type { Phase, StatutPhase, TransitionPhase } from '../phases/api'
+import { titresParOrdre } from './titres'
 import { usePhases, useAvancementPhases, useChangerStatutPhase } from '../phases/hooks'
 import {
   useArretsEnAttente,
@@ -93,9 +94,14 @@ export function PilotageCreneau({
   // La jointure se fait par `ordre`, qui est la clé partagée entre une étape et ses instances
   // (ADR-0076 §3 : les instances d'un départ héritent de l'ordre des étapes). Aucun appel de plus
   // en pratique : `usePhases` est déjà monté par l'écran des phases et par l'assemblage, React
-  // Query sert le cache partagé sur la même clé.
+  // ⚠️ **Coût réel, corrigé après revue** : une première rédaction annonçait « aucun appel de plus,
+  // React Query sert le cache partagé ». C'est faux — « Suivi du déroulé » et « Phases du tournoi »
+  // sont deux destinations **distinctes** du menu, donc l'organisateur qui vient droit au pilotage
+  // paie **un `GET` au montage**, et un de plus au retour passé les 30 s de `staleTime`. Aucun
+  // `refetchInterval` n'est armé : rien à ajouter à `DETTE-031`, mais une justification fausse
+  // empêche de compter ce qu'elle nie.
   const etapes = usePhases(tournoiId)
-  const titreParOrdre = new Map((etapes.data ?? []).map((etape) => [etape.ordre, etape.titre]))
+  const titreParOrdre = titresParOrdre(etapes.data)
 
   return (
     <section className="carte">

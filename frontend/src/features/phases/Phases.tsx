@@ -701,7 +701,12 @@ export function FormulairePhase({
     // ⚠️ `barrage_jusqu_au` est **réémis tel quel** : le `PUT` est une édition **totale**, donc
     // l'omettre effacerait le seuil dès qu'on corrige un effectif. Il ne se **règle** pas ici (voir
     // `ReglageBarrage`, sur la qualification), il se **préserve**.
-    const config: ConfigPhase = {
+    // ⚠️ **`Required` ici aussi, et c'est le chemin MAJORITAIRE** (relevé en 2ᵉ passe). Le
+    // garde-fou avait d'abord été posé sur `configInchangee`, qui ne sert que les widgets à champ
+    // unique, en laissant sans garde le formulaire qui écrit toute création de phase et toute
+    // édition d'un type composable. Le trou n'était pas fermé, il était déplacé vers l'écrivain
+    // le plus fréquent.
+    const config: Required<ConfigPhase> = {
       type,
       sources,
       effectif: effectifAnalyse,
@@ -759,9 +764,13 @@ export function FormulairePhase({
           setTitre('')
           // La profondeur se remet au preset comme les autres champs de ce formulaire :
           // « classement intégral » est le réglage le plus coûteux de la journée, il ne doit pas
-          // se reporter en silence d'une phase à la suivante. ⚠️ Le formulaire d'ajout de
-          // « Composer un format » ne réinitialise, lui, **aucun** champ (comportement antérieur
-          // à cette US, type et effectif compris) : l'asymétrie est constatée, pas voulue.
+          // se reporter en silence d'une phase à la suivante.
+          //
+          // ⚠️ **Ce commentaire disait « le formulaire de "Composer un format" ne réinitialise
+          // AUCUN champ », et c'était périmé depuis E06US006** (relevé en 2ᵉ passe d'E16US002) :
+          // l'atelier en réinitialise **sept**. Il lui manque `colline`, `arrets`, `decoupage`,
+          // `type` et le barème. L'asymétrie est réelle mais partielle — et un registre de dette
+          // s'était sourcé sur cette phrase plutôt que sur le code (`DETTE-080`).
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
@@ -993,6 +1002,10 @@ export function FormulairePhase({
  * `ConfigPhaseRequete` refuse — le routeur des phases est le seul du projet en `extra="forbid"`.
  */
 function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
+  // DETTE-080 — la config est recopiée depuis la **prop**, qui reste périmée jusqu'au refetch de
+  // React Query. Trois widgets d'édition totale cohabitent dans la fiche : enregistrer deux d'entre
+  // eux coup sur coup peut réécrire la valeur du premier. Assumé (fenêtre d'un aller-retour LAN),
+  // inscrit au registre avec son remède borné.
   return {
     type: phase.type,
     sources: phase.sources,

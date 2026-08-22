@@ -236,28 +236,10 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce Omit dans « backend/api/v1/phases.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0095"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce Omit dans « backend/domain/phase.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0095"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce _titre_normalise dans « backend/domain/deroule_etape.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0095"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 42
+  "signaux": 39
  }
 };

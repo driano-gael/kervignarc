@@ -369,6 +369,12 @@ class ArretProgrammeDTO(BaseModel):
 
 
 class EtapeDTO(BaseModel):
+    # DETTE-081 — ce DTO ne déclare **pas** `barrage_jusqu_au`, que `ModelePhase` porte pourtant et
+    # que le repository persiste. Le `PUT` étant une édition **totale**, éditer un format **efface**
+    # le seuil de barrage qu'il portait, en 200 et sans un mot. Antérieur à E16US002, découvert par
+    # l'axe adversarial de sa revue et reproduit par exécution. ⚠️ Le mode de panne est structurel :
+    # tout champ de `ModelePhase` absent d'ici subit le même sort — la résorption commence par un
+    # inventaire des deux listes, pas par l'ajout d'un champ.
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
     L'absence de ces deux champs n'est pas un oubli du DTO : ils n'existent pas sur le modèle, et
@@ -450,9 +456,13 @@ class EtapeDTO(BaseModel):
 
         ⚠️ **Aucun invariant d'étape n'est revérifié ici depuis E01US024** (ADR-0063). Cette
         docstring promettait l'inverse — « une étape incohérente lève une `DomainError` → 422 » —
-        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase.__post_init__` n'existe
-        plus. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit ce qui cloche
-        et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux, leurs
+        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase` n'a plus
+        aucun **invariant** à la construction. ⚠️ Il porte depuis E16US002 un `__post_init__`, mais
+        qui **normalise sans valider** (le seul titre) — ne pas y glisser de garde en croyant être
+        le premier : une première rédaction de cette docstring disait « n'existe plus » et le
+        laissait croire. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit
+        ce qui cloche et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux,
+        leurs
         invariants (`BaremeQualification.creer`, `GrainValidation.creer`, `SourcePhase`) : une
         donnée **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """

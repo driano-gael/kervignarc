@@ -36,7 +36,7 @@ export function decrireEtape(etape: Etape): string {
   // E16US002 : le titre prime, le type reste lisible entre parenthèses — sans quoi la bibliothèque
   // décrivait « Élimination directe » pour une étape que l'organisateur avait nommée.
   const nom =
-    etape.titre === null ? LIBELLE_TYPE[etape.type] : `${etape.titre} (${LIBELLE_TYPE[etape.type]})`
+    etape.titre == null ? LIBELLE_TYPE[etape.type] : `${etape.titre} (${LIBELLE_TYPE[etape.type]})`
   const bareme =
     etape.bareme === null ? '' : ` ${etape.bareme.nb_volees}×${etape.bareme.nb_fleches_par_volee}`
   const effectif = etape.effectif === null ? '' : ` (${etape.effectif} archers)`

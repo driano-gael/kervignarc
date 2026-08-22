@@ -1674,6 +1674,20 @@ button:disabled {
   margin-top: 8px;
 }
 
+/* ⚠️ **Ces deux règles étaient PERDUES au renommage** (relevé par trois axes) : `.phase__barrage`
+   portait `input { width: 8ch; min-height: 40px }`, et seul le conteneur avait été repris. Les
+   champs des trois réglages tombaient sous la cible tactile de 40 px — règle 10, l'ergonomie
+   tactile est prioritaire — et le champ de rang perdait sa largeur de 8 caractères.
+   La largeur est **scopée au champ numérique** : non scopée, elle réduirait le champ *titre* à
+   8 caractères. */
+.phase__reglage input {
+  min-height: 40px;
+}
+
+.phase__reglage input[inputmode='numeric'] {
+  width: 8ch;
+}
+
 /* Tableau de classement. */
 .table {
   width: 100%;

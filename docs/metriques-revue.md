@@ -34,7 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-08-22 | `E16US002` | 48 | +1579/−161 | ~18 min | ~20 min | D (21:19→21:39) | **bloquant:1** mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:2 | majeur:6 mineur:7 suggestion:2 | **bloquant:2** majeur:6 mineur:3 | **A, B, C1, D** (le même, quatre fois) | 1 |
+| 2026-08-22 | `E16US002` (2ᵉ passe, sur les correctifs) | 43 | +718/−128 | ~25 min | ~21 min | D (22:39→22:58) | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:4 suggestion:1 | majeur:3 mineur:4 suggestion:1 | majeur:2 mineur:6 suggestion:2 | majeur:7 mineur:5 suggestion:1 | **bloquant:0** — les deux de la 1ʳᵉ passe fermés et vérifiés par exécution | 2 |
+| 2026-08-22 | `E16US002` | 48 | +1579/−161 | ~18 min | ~20 min | D (21:19→21:39) | **bloquant:1** mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:2 | majeur:6 mineur:7 suggestion:2 | **bloquant:2** majeur:6 mineur:3 | **A, B, C1, D** (le même bloquant, quatre fois) **+ D seul** (le 2ᵉ : un ADR attestant « vérifié » une traversée inexistante) | 2 |
 | 2026-08-22 | `E05US027` | 76 | +5909/−237 | ~23 min | ~76 min | D (15:41→16:24) | **bloquant:1** majeur:0 mineur:3 | bloquant:0 **majeur:6** mineur:8 suggestion:3 | bloquant:0 **majeur:2** mineur:5 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | bloquant:0 **majeur:5** mineur:4 suggestion:1 | **A et C2, un chacun et disjoints** — C2 : `useRegenererPlanColline` sans appelant, donc plan de cibles inatteignable et **format injouable** (3ᵉ récidive du défaut d'E05US023) ; A : `test_arrets_api.py` non élargi au 6ᵉ service, alors que le composition root affirmait l'inverse. ⚠️ **Trois majeurs sont des trous *déplacés*** — `_nb_tours_a_la_composition` (E05US035), `MOTEUR_SAIT_JOUER` (E05US028), le montage du plan (E05US023) : le raisonnement avait été tenu et tranché sur le format précédent, jamais rejoué sur le format neuf | 2 |
 | 2026-08-22 | `E05US027` (2ᵉ passe, sur les correctifs) | 34 | +1512/−161 | ~14 min | ~31 min | D (16:58→17:19) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:1** mineur:5 suggestion:2 | bloquant:0 **majeur:1** mineur:6 suggestion:2 | bloquant:0 **majeur:10** mineur:5 suggestion:2 | bloquant:0 **majeur:2** mineur:6 suggestion:2 | **aucun bloquant** — mais quatre majeurs décrivent des défauts *introduits par les correctifs eux-mêmes* : un frein sans porte de sortie (D), les deux régimes de borne inversés (C1), un test anti-récidive qui promettait par écrit ce qu'il ne faisait pas (D), et le jumeau suisse laissé cassé sur l'écran que le correctif venait d'ouvrir (B). C2 a rendu 10 majeurs, dont 5 « traces fausses qui se lisent comme des preuves » | 2 |
 | 2026-08-21 | `E05US029` | 33 | +1878/−121 | ~10 min | ~52 min | D (13:12→14:04) | bloquant:0 **majeur:1** mineur:1 | bloquant:0 **majeur:2** mineur:6 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:2 | bloquant:0 **majeur:4** mineur:1 suggestion:1 | **bloquant:1** majeur:1 mineur:6 | **C1 et D, un chacun et disjoints** — C1 : `nb_qualifies` désigne un peigne de rangs qu'aucun prélèvement ne sait exprimer ; D : le refus neuf ignorait la **nature** des sources, donc bloquait un format valide. Aucun des deux n'était atteignable par une grille : l'un naît d'une **conjonction** (code juste, CA juste, rencontre fausse), l'autre d'un **voisin non rejoué**. ⚠️ Le majeur `_motif_de_choc` a été trouvé **par trois axes indépendamment** (A, C2, D) — première convergence à trois du registre | 2 (en cours) |
@@ -339,3 +340,31 @@ la sérialisation où le câblage manquait précisément. Trois axes l'ont relev
 un test de **service** sur dépôt factice garde la logique d'orchestration ; seul un test de
 **repository** ou d'**API** garde une traversée. Écrire « aller-retour » dans une docstring de test
 de service devrait déclencher la question « lequel, et jusqu'où ? ».
+
+**24. Corriger un renommage, c'est greper le GESTE, pas seulement le NOM.** E16US002 a renommé deux
+destinations et balayé 14 fiches de recette sur les deux libellés de menu — en laissant intactes
+trois fiches qui demandent de cliquer un bouton (« Éditer ») que la même US **supprime**. Le
+raisonnement qui justifiait le premier balayage (« une recette qui nomme un bouton absent est
+inexécutable par son destinataire ») s'appliquait mot pour mot au second, et il n'a pas été fait :
+la substitution mécanique ne relit pas ce qui l'entoure. Règle pratique : lister d'abord **tout ce
+que l'US retire de l'écran** — libellés, boutons, emplacements de réglage — puis greper chaque
+élément séparément.
+
+**25. Un correctif de revue déplace le trou aussi souvent qu'il le ferme.** Cinq des sept majeurs de
+la 2ᵉ passe d'E16US002 étaient des trous *déplacés* : le garde-fou de type posé sur le petit
+écrivain et pas sur le grand ; le mécanisme de `_politiques_json` laissé intact derrière un 4ᵉ
+commentaire ; un `decrireEtape` corrigé sur le mauvais des deux homonymes ; une classe CSS renommée
+qui a perdu une de ses deux déclarations. Aucun n'aurait été vu par une relecture du seul correctif —
+il fallait relire ce que le correctif **touche**, pas ce qu'il **répare**. C'est la justification
+empirique de la règle « si les correctifs ont débordé des fichiers déjà relus, tous les axes se
+rejouent » : ici ils avaient débordé, et la 2ᵉ passe complète a rendu sept majeurs.
+
+**26. Une affirmation écrite sous pression est un défaut à part entière, et elle se loge dans les
+registres.** Cette US a produit, dans ses *correctifs*, quatre énoncés faux : un ADR nommant un
+symbole que le même commit venait de renommer ; une docstring affirmant l'absence d'une porte que le
+même commit venait de créer ; une ligne de registre disant « aucun champ réinitialisé » là où il y
+en avait sept ; un export justifié par un test qui n'existait pas. Aucun ne casse un cas utilisateur,
+et c'est précisément le danger — ils se lisent comme des preuves, et les US suivantes en dérivent
+leurs tests. Deux garde-fous mécaniques ont attrapé le premier (l'atlas, en passant de 39 à 42
+signaux) ; **le compteur de signaux avait été lu et ignoré**, parce que « 0 écart bloquant » suffisait
+à la porte. Un compteur qui monte est une information, pas de la décoration.

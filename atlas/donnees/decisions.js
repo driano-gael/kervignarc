@@ -7195,12 +7195,9 @@ window.ATLAS.decisions = {
       "EtapeDTO.titre",
       "Phase",
       "titre",
-      "PhaseReponse",
-      "Omit"
+      "PhaseReponse"
      ],
-     "symboles_absents": [
-      "Omit"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7208,18 +7205,18 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "titre",
-      "_titre_normalise",
-      "__post_init__"
+      "titre_normalise",
+      "ModelePhase.__post_init__"
      ],
-     "symboles_absents": [
-      "_titre_normalise"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/domain/format_tournoi.py",
      "existe": true,
      "symboles": [
+      "titre_normalise",
+      "ModelePhase.__post_init__",
       "ModelePhase.titre",
       "pour_tournoi",
       "d_etape"
@@ -7233,12 +7230,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "Phase",
       "titre",
-      "PhaseReponse",
-      "Omit"
+      "PhaseReponse"
      ],
-     "symboles_absents": [
-      "Omit"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7260,7 +7254,10 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/tests/test_domain_titre_de_phase.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "titre_normalise",
+      "ModelePhase.__post_init__"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },

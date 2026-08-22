@@ -154,7 +154,7 @@ export function Deroule() {
 
       {choisi === null ? (
         <p className="carte__etat" role="note">
-          Aucun format dans la bibliothèque du club : créez-en un pour composer son déroulé.
+          Aucun format dans la bibliothèque du club : créez-en un pour composer ses étapes.
         </p>
       ) : (
         // `key` : changer de format **remonte** le composant, donc réinitialise son brouillon
@@ -445,7 +445,7 @@ function PanneauSimulation({
       : !applicable
         ? 'On ne simule pas un déroulé qu’aucun tournoi ne pourrait recevoir : corrigez d’abord les points bloquants.'
         : !aUneQualification
-          ? 'Ce déroulé ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
+          ? 'Ce format ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
           : !effectifValide
             ? `Indiquez un effectif entre 2 et ${EFFECTIF_MAX} archers pour lancer la simulation.`
             : null
@@ -640,7 +640,16 @@ function EditeurSequence({
                     validait, et la ligne rendait « Élimination directe ». Symétrie exacte de
                     `features/phases/Phases.tsx`, où le type redevient un détail sans disparaître. */}
                 <span className="phase__type">{etape.titre ?? LIBELLE_TYPE[etape.type]}</span>
-                <span className="phase__details">{decrireEtape(etape)}</span>
+                <span className="phase__details">
+                  {/* ⚠️ **Le type doit être réémis ici, et il l'avait été oublié** (relevé en 2ᵉ
+                      passe). `decrireEtape` vient de `./sequence`, qui n'imprime **pas** le type —
+                      à la différence de son homonyme de `patrimoine/format.ts`, doté du type entre
+                      parenthèses dans ce même commit. Les deux ont été confondus, et c'est celui
+                      sans type qui reçoit le titre : une étape nommée perdait donc toute mention
+                      de ce qu'elle **fait**, sur l'écran où l'on compose la séquence. */}
+                  {etape.titre != null && `${LIBELLE_TYPE[etape.type]} · `}
+                  {decrireEtape(etape)}
+                </span>
                 <span className="phase__actions">
                   <button
                     type="button"

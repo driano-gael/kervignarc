@@ -141,13 +141,20 @@ menu**, plus deux libellés qui les contredisaient à l'intérieur même de l'at
 « Nom du déroulé » sous un label « Nouveau format », et un titre de section « Faire tourner le
 déroulé » sur un écran qui ne fait tourner aucun tournoi.
 
-⚠️ **Les autres occurrences de « déroulé » sur cet écran sont CORRECTES, et un relecteur les a
-comptées comme une dérive.** Vérification faite au glossaire : *Déroulé projeté* y est une entrée à
-part entière (`ProjectionDeroule`, « ce qu'un **format** produit à un effectif donné »). « Ce déroulé
-tient debout », « voir le déroulé se dessiner », « Calcul du déroulé… » désignent donc la
-**projection**, pas le plan d'un tournoi. Les renommer en « format » aurait effacé une distinction
-que le glossaire porte depuis E01US024. C'est le seul point de cette revue où le rapport d'un axe a
-été écarté sur preuve plutôt que suivi.
+⚠️ **La PLUPART des occurrences de « déroulé » restantes sur cet écran sont CORRECTES**, et un
+relecteur les avait toutes comptées comme une dérive. Vérification faite au glossaire : *Déroulé
+projeté* y est une entrée à part entière (`ProjectionDeroule`, « ce qu'un **format** produit à un
+effectif donné »). « Ce déroulé tient debout », « voir le déroulé se dessiner », « Calcul du
+déroulé… » désignent donc la **projection**, pas le plan d'un tournoi ; les renommer en « format »
+aurait effacé une distinction que le glossaire porte depuis E01US024. L'axe concerné a accepté
+l'écart (« *j'ai compté des mots au lieu de lire l'entrée* »).
+
+⚠️ **Mais « les autres sont correctes » était faux de DEUX chaînes**, trouvées à la 2ᵉ passe par
+deux axes — et cette formulation absolue aurait **gelé** la question, nul ne rouvrant un point
+qu'un ADR déclare vérifié. Corrigées : « créez-en un pour composer son déroulé » (aucune projection
+n'existe quand la bibliothèque est vide) et « **Ce déroulé** ne décrit aucune qualification […] **Le
+format** reste applicable » — un même objet, deux mots, une phrase. La leçon vaut au-delà du cas :
+un écart motivé se rédige **par énumération de ce qui est vérifié**, jamais par « le reste va bien ».
 
 ⚠️ **Un message d'un troisième écran renvoyait à la destination renommée** (`features/duels`,
 « ajoutez-en une dans « Phases (format) » ») : corrigé en revue. Le renommage était mécaniquement
@@ -199,7 +206,7 @@ aurait rejoué ce risque.
 - **Le champ de saisie a été extrait en revue, sur constat.** Il était écrit **trois fois** et les
   trois copies **divergeaient déjà** dans le commit qui les créait — libellé, classe, placeholder,
   et surtout la borne de 80 recopiée trois fois face à un serveur qui la déclare une fois.
-  `shared/phases/ChampTitre.tsx` est le **7ᵉ** exemplaire d'un pattern déjà établi dans ce dossier :
+  `shared/phases/ChampTitre.tsx` est le **8ᵉ** exemplaire d'un pattern déjà établi dans ce dossier (sept contrôles y vivaient déjà — décompte corrigé en 2ᵉ passe, il disait « 7ᵉ ») :
   c'est de la conformité à une convention, pas l'introduction d'un pattern — donc ni ADR ni US
   dédiée. La divergence de mot (« phase » côté tournoi, « étape » côté atelier) est **conservée et
   assumée** : chaque écran garde le registre qu'il emploie partout ailleurs (règle 3, la pluralité
@@ -225,14 +232,14 @@ aurait rejoué ce risque.
 | Décision | Module qui l'applique | Vérifié |
 |---|---|---|
 | §1 — le titre est un champ d'étape, facultatif | `backend/domain/deroule_etape.py` (champ `titre`) | oui |
-| §1 — blanc ramené à l'absence, espaces de bord retirés, sur **toute** porte d'entrée | `backend/domain/deroule_etape.py` (`_titre_normalise`, appelé depuis `__post_init__`) | oui |
+| §1 — blanc ramené à l'absence, espaces de bord retirés, sur **toute** porte d'entrée | `backend/domain/deroule_etape.py` (`titre_normalise`) · `backend/domain/format_tournoi.py` (`ModelePhase.__post_init__`) — gardés par `backend/tests/test_domain_titre_de_phase.py`, cas *le titre est normalisé* et *un modèle de format normalise son titre comme une étape* | oui, la **2ᵉ porte** ajoutée en revue |
 | §1 — aucune unicité, aucune garde de type | `backend/tests/test_domain_titre_de_phase.py` — les cas *deux étapes du même déroulé peuvent porter le même titre* et *le titre survit à un retypage* | oui |
 | §1 — la borne de longueur vit à la frontière | `backend/api/v1/phases.py` (`ConfigPhaseRequete.titre`, `max_length=80`) · `backend/api/v1/formats.py` (`EtapeDTO.titre`, idem) | oui |
 | §2 — la traversée format ↔ étape, dans les deux sens | `backend/domain/format_tournoi.py` (`ModelePhase.titre`, `pour_tournoi`, `d_etape`) | oui |
 | §2 — l'aller-retour persistant, table `deroule_etape` | `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, **`_config_etape`**, `_lire_titre`, `_vers_etape`) | oui |
 | §2 — l'aller-retour persistant, `config` d'un **format** | `backend/infrastructure/db/repositories/moteur.py` (**`_config_format`**, `_vers_modele_phase`) — gardé par `backend/tests/test_phase_repository.py` (cas *un format conserve le titre de ses étapes*) et `backend/tests/test_patrimoine_api.py` (aller-retour HTTP) | oui, **après correctif de revue** |
 | §2 — le câblage front de l'atelier, sans lequel un format promu perdrait ses titres | `frontend/src/features/patrimoine/api.ts` (`Etape.titre`) · `frontend/src/features/deroule/Deroule.tsx` (état, champ, charge utile, reset) | oui |
-| §3 — le titre reste sur l'étape, absent de `Phase` | `backend/domain/phase.py` **inchangé** (aucun champ `titre`) · `backend/api/v1/phases.py` (`PhaseReponse` **inchangée**) ⚠️ **instantané, pas garde-fou** : rien ne rougirait si une US ajoutait `titre` à `Phase`. Le versant front, lui, est gardé par le typecheck (`Omit`) | oui |
+| §3 — le titre reste sur l'étape, absent de `Phase` | `backend/domain/phase.py` **inchangé** (aucun champ `titre`) · `backend/api/v1/phases.py` (`PhaseReponse` **inchangée**) ⚠️ **instantané, pas garde-fou** : rien ne rougirait si une US ajoutait `titre` à `Phase`. Le versant front, lui, est gardé par le typecheck — voir la ligne suivante | oui |
 | §3 — le retrait explicite côté front, pour ne pas garantir un `undefined` | `frontend/src/features/phases/api.ts` (`Omit<EtapeDeroule, … 'titre'>`) | oui |
 | §4 — chaque destination porte le mot de sa portée | `frontend/src/features/admin/CoquilleAdmin.tsx` (libellés `phases` et `deroule`) | oui |
 | §5 — une bascule de fiche par ligne, tous types confondus | `frontend/src/features/phases/Phases.tsx` (`LignePhase`, état `ficheOuverte`, bouton « Ouvrir la fiche ») | oui |
