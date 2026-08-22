@@ -115,11 +115,18 @@ export const TYPES_EN_TABLEAU: TypePhase[] = ['elimination_directe', 'placement'
 // à ignorer le signal.
 //
 // ⚠️ **Les poules en sont sorties en E05US023**, qui les rend jouables de bout en bout, le **Big
-// Shoot Off en E05US028**, et le **système suisse en E05US030** — son moteur était livré par
-// E05US026, mais tant qu'aucun écran ne le réglait ni ne le saisissait, le signal restait vrai. Le
-// CA l'exige explicitement à chaque fois : le signal doit cesser de viser le format que l'US rend
-// jouable **et continuer de viser** les autres, sans quoi il mentirait pour ceux qui restent.
-export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage', 'colline']
+// Shoot Off en E05US028**, le **système suisse en E05US030** — son moteur était livré par E05US026,
+// mais tant qu'aucun écran ne le réglait ni ne le saisissait, le signal restait vrai — et la
+// **colline en E05US027**, livrée de bout en bout en une seule branche. Le CA l'exige explicitement
+// à chaque fois : le signal doit cesser de viser le format que l'US rend jouable **et continuer de
+// viser** les autres, sans quoi il mentirait pour ceux qui restent.
+//
+// ⚠️ **Les deux qui restent n'attendent aucune US**, et c'est un changement de nature de cette
+// liste : le `placement` a un décor d'arbre mais aucun service pour le monter (E06US006, tranché
+// par ADR-0083), et le `barrage` est un **départage**, pas un format qu'on déroule. Elle a cessé
+// d'être le reliquat de `DETTE-028` — refermée sur ce volet par E05US027 — pour devenir une
+// distinction de nature, donc elle ne se videra pas.
+export const TYPES_SIGNALES_EN_ECART: TypePhase[] = ['placement', 'barrage']
 
 // Les types que **le moteur** sait dérouler mais que le **bot de simulation** ne sait pas jouer.
 //
@@ -173,6 +180,10 @@ export const TYPES_ARRETABLES: ReadonlySet<TypePhase> = new Set([
   'poules',
   'big_shoot_off',
   'suisse',
+  // E05US027 : la colline y entre parce que `ServiceColline.avancement_de_phase` sait désormais
+  // dire où elle en est — pas parce qu'elle est « jouable ». C'est la distinction qu'ADR-0093 a
+  // posée et que le miroir serveur (`TYPES_ARRETABLES`, dérivée d'`avancement_lisible`) applique.
+  'colline',
 ])
 
 // Jusqu'où une phase en tableau départage ses participants (E06US006, ADR-0070).

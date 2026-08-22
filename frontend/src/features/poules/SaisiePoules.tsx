@@ -16,7 +16,10 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { usePhases } from '../saisie-duels/hooks'
 import { DuelCharge } from '../saisie-duels/SaisieDuels'
 import { decrirePlaces } from '../../shared/salle/place'
-import type { Poule, Rencontre } from './api'
+// E05US027 : la fonction vivait ici, à l'identique de celle du suisse. La colline en faisait la
+// 3ᵉ occurrence, donc elle est remontée en `shared/` — le rendez-vous posé par la revue d'E05US030.
+import { etatRencontreDeSaisie as etatRencontre } from '../../shared/duels/etatDeSaisie'
+import type { Poule } from './api'
 import { useEtatPoulesSaisie } from './hooks'
 import { decrireRepartition } from '../../shared/phases/poules'
 
@@ -261,15 +264,4 @@ function rangsExAequo(poule: Poule): number[] {
   return [...new Set(poule.classement.filter((l) => l.ex_aequo).map((l) => l.rang))].sort(
     (a, b) => a - b,
   )
-}
-
-/** L'état d'une rencontre en un mot — le même vocabulaire que la liste des duels d'un tableau. */
-function etatRencontre(rencontre: Rencontre): string {
-  if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'
-  const duel = rencontre.duel
-  if (duel.validee_par !== null) return 'validée'
-  if (duel.validation_en_attente === true) return 'validation en attente'
-  if (duel.resultat?.termine === true) return 'à valider'
-  if (duel.manches.length > 0) return 'en cours'
-  return 'à tirer'
 }

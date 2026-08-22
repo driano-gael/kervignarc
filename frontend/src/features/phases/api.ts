@@ -8,6 +8,7 @@ import type { ReglageBigShootOff } from '../../shared/phases/bigShootOff'
 import type { ArretProgramme } from '../../shared/phases/arrets'
 import type { Decoupage } from '../../shared/phases/decoupage'
 import type { ReglageSuisse } from '../../shared/phases/suisse'
+import type { ReglageColline } from '../../shared/phases/colline'
 import type { Profondeur } from '../patrimoine/api'
 
 // Types de phase, natures de prélèvement et issues de tour : **ré-exportés** du catalogue partagé
@@ -64,6 +65,10 @@ export interface EtapeDeroule {
   // Le réglage d'un **système suisse** (E05US030) — le nombre de rondes. Même régime que les deux
   // ci-dessus : `null` = non réglé, et le `PUT` étant une édition totale, l'omettre l'**efface**.
   suisse: ReglageSuisse | null
+  // Le réglage d'une **colline** (E05US027) — nombre de manches et portée de défi. Même régime que
+  // les trois ci-dessus. ⚠️ **Deux champs pour un seul réglage** : la portée distingue le King of
+  // the Hill (1) du Ladder (2+), deux formats du référentiel §10.1 que la règle 2 range en un seul.
+  colline: ReglageColline | null
   // Le **découpage d'une qualification en tours** (E05US035, ADR-0093) — « 20 volées en 2 tours de
   // 10 ». `null` = non découpée, l'état de toute qualification existante. Même régime d'édition
   // totale que ses voisins.
@@ -121,6 +126,8 @@ export interface ConfigPhase {
   big_shoot_off?: ReglageBigShootOff | null
   // Même règle d'édition totale : omis, le réglage du système suisse est **effacé** côté serveur.
   suisse?: ReglageSuisse | null
+  // Même règle d'édition totale : omis, le réglage de la colline est **effacé** côté serveur.
+  colline?: ReglageColline | null
   // Même règle d'édition totale : omis, le découpage de la qualification est **effacé** côté
   // serveur. C'est ce qui permet de retyper une qualification découpée sans se faire refuser
   // l'édition — le serveur lève sinon `DecoupageEnToursInvalide` sur un réglage devenu fantôme.

@@ -26,6 +26,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
+import type { TypePhase } from '../../shared/phases/catalogue'
 import type { Phase } from '../phases/api'
 import { getAvancement } from '../phases/api'
 import { VueEnCours } from './VueEnCours'
@@ -55,6 +56,9 @@ vi.mock('../suisse/VueSuissePublique', () => ({
 vi.mock('../big-shoot-off/VueBigShootOffPublique', () => ({
   VueBigShootOffPublique: (p: Temoin) => temoin('big-shoot-off', p),
 }))
+vi.mock('../colline/VueCollinePublique', () => ({
+  VueCollinePublique: (p: Temoin) => temoin('colline', p),
+}))
 vi.mock('../tableaux/VueTableaux', () => ({
   VueTableaux: (p: Temoin) => temoin('tableaux', p),
 }))
@@ -79,6 +83,7 @@ function phase(patch: Partial<Phase> & Pick<Phase, 'id' | 'ordre' | 'type' | 'st
     poules: null,
     big_shoot_off: null,
     suisse: null,
+    colline: null,
     decoupage: null,
     // ⚠️ E05US033 : `arrets` n'est **pas** ici, et c'est voulu — une `Phase` ne les porte pas, le
     // serveur ne les remplit que sur une étape de déroulé (le type l'exclut explicitement).
@@ -158,16 +163,47 @@ describe('VueEnCours — l’aiguillage par format', () => {
     expect(await screen.findByText(/Le résultat se lit sur/)).toBeInTheDocument()
   })
 
-  it('nomme un format qu’il ne sait pas encore dessiner au lieu de rendre une page blanche', async () => {
-    // La colline (E05US027 reste à livrer). Un écran de salle n'a personne devant lui pour
-    // comprendre ce qui manque : le silence y est indétectable.
+  it('nomme un format que cette version ne sait pas dessiner au lieu de rendre une page blanche', async () => {
+    // ⚠️ **Ce test a changé de cible en E05US027**, et le changement est instructif. Il visait la
+    // colline, seul format encore dépourvu de vue ; celle-ci étant désormais livrée, **plus aucun
+    // `TypePhase` connu du bundle** ne tombe dans le repli — le `switch` est exhaustif et le
+    // compilateur l'impose (`const inconnu: never`).
+    //
+    // Le cas que le rendu couvre reste pourtant réel, et c'est le seul que le compilateur ne peut
+    // pas voir : un **serveur plus récent** que ce bundle, l'appli publique restant ouverte des
+    // heures sur un téléphone. On le simule donc par un type que TypeScript ne connaît pas — le
+    // `as` est ici la **seule** façon d'exercer la branche, et non un contournement de typage.
+    //
+    // Un écran de salle n'a personne devant lui pour comprendre ce qui manque : le silence y est
+    // indétectable, et c'est pourquoi cette branche existe.
+    vi.mocked(getAvancement).mockResolvedValue([
+      phase({
+        id: 14,
+        ordre: 1,
+        type: 'format_du_futur' as unknown as TypePhase,
+        statut: 'en_cours',
+      }),
+    ])
+
+    monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} />)
+
+    expect(await screen.findByText(/n’a pas de rendu dans cette version/)).toBeInTheDocument()
+  })
+
+  it('aiguille vers la vue de la colline, jouable depuis E05US027', async () => {
+    // La contrepartie du test ci-dessus : le format que le repli citait a désormais sa vue. Sans ce
+    // cas, retirer la branche du `switch` ferait retomber la colline dans le repli sans que rien ne
+    // rougisse — le bandeau « pas de rendu dans cette version » est plausible, et faux.
+    //
+    // Comme ses trois voisins, ce test éprouve l'**aiguillage** et non le rendu : la vue est mockée
+    // ici, et son contenu est éprouvé dans `VueCollinePublique.test.tsx`.
     vi.mocked(getAvancement).mockResolvedValue([
       phase({ id: 14, ordre: 1, type: 'colline', statut: 'en_cours' }),
     ])
 
     monter(<VueEnCours tournoiId={1} mode="tout" suivis={[]} />)
 
-    expect(await screen.findByText(/ne s’affiche pas encore ici/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('colline')).toHaveTextContent('phase=14'))
   })
 })
 

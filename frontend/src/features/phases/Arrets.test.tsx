@@ -46,6 +46,7 @@ const PHASE: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: { nb_rondes: 5 },
+  colline: null,
   decoupage: null,
   nb_volees: null,
   arrets: [
@@ -137,9 +138,13 @@ describe('les pauses programmées sur les phases d’un tournoi', () => {
   })
 
   it('refuse le réglage sur un type qui n’annonce pas ses tours, et dit où les pauses se posent', async () => {
+    // ⚠️ **Le témoin est passé de `colline` à `barrage` en E05US027** : la colline est devenue
+    // arrêtable (son service sait dire où elle en est, ADR-0093), donc elle ne pouvait plus servir
+    // d'exemple. Le `barrage` est un porteur **durable** — c'est un départage, pas un format qu'on
+    // déroule, et il n'a aucun tour à observer par nature.
     poser()
 
-    await userEvent.selectOptions(screen.getByLabelText(/Type de la phase/), 'colline')
+    await userEvent.selectOptions(screen.getByLabelText(/Type de la phase/), 'barrage')
 
     // Aucun champ offert — le serveur refuserait l'arrêt (422) et, le `PUT` étant total, c'est
     // l'étape entière qui serait recalée.
@@ -154,7 +159,7 @@ describe('les pauses programmées sur les phases d’un tournoi', () => {
     vi.mocked(modifierPhase).mockResolvedValue(PHASE)
     poser()
 
-    await userEvent.selectOptions(screen.getByLabelText(/Type de la phase/), 'colline')
+    await userEvent.selectOptions(screen.getByLabelText(/Type de la phase/), 'barrage')
     await userEvent.click(screen.getByRole('button', { name: /Enregistrer|Valider/ }))
 
     await waitFor(() => expect(modifierPhase).toHaveBeenCalled())

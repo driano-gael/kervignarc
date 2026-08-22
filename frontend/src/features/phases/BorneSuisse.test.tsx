@@ -43,6 +43,7 @@ const PHASE: EtapeDeroule = {
   poules: null,
   big_shoot_off: null,
   suisse: { nb_rondes: 5 },
+  colline: null,
   decoupage: null,
   nb_volees: null,
   // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.

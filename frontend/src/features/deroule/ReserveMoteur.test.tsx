@@ -84,27 +84,45 @@ describe('ReserveMoteur', () => {
     // Le cas que la première version du correctif avait perdu : un prélèvement par rangs, mais un
     // type dont le moteur ne sait rien faire (DETTE-028).
     //
-    // ⚠️ **Ce cas a déjà changé de type deux fois** : les poules jusqu'à E05US023, le système
-    // suisse jusqu'à E05US030 — chaque US rendant jouable le format qu'il citait. Il vise donc
-    // désormais la **colline**, dernier format que le moteur ne déroule pas (`E05US027`). Le
-    // déplacement n'affaiblit rien : ce qui est testé est le mécanisme, pas l'identité du type — et
-    // chaque type sorti de la liste gagne son propre test « ne prévient plus », ci-dessous, qui est
-    // la moitié utile du changement.
+    // ⚠️ **Ce cas a changé de type trois fois** : les poules jusqu'à E05US023, le système suisse
+    // jusqu'à E05US030, la colline jusqu'à E05US027 — chaque US rendant jouable le format qu'il
+    // citait. Il vise donc désormais le **placement**. Le déplacement n'affaiblit rien : ce qui est
+    // testé est le mécanisme, pas l'identité du type — et chaque type sorti de la liste gagne son
+    // propre test « ne prévient plus », ci-dessous, qui est la moitié utile du changement.
+    //
+    // ✅ **Et il cesse ici de se déplacer.** Le `placement` a un décor d'arbre mais aucun service
+    // pour le monter (E06US006, tranché par ADR-0083) : ce n'est pas un chantier en attente mais un
+    // état stable, donc ce test a enfin un porteur durable. Il suivait jusqu'ici le dernier format
+    // non livré, ce qui le faisait ressembler à un compteur d'avancement plutôt qu'au garde-fou
+    // d'un mécanisme.
+    render(
+      <ReserveMoteur
+        diagnostic={diagnostic([bloc('qualification'), bloc('placement', [flux('rangs')])])}
+      />,
+    )
+
+    expect(bandeau()).not.toBeNull()
+    // Le libellé du catalogue, pas la valeur d'énumération : c'est ce que l'organisateur lit.
+    expect(bandeau()?.textContent).toContain('Placement')
+  })
+
+  it('ne prévient plus pour une colline, que le moteur déroule depuis E05US027', () => {
+    // Le dernier des quatre formats d'E05US015 à être livré, et celui qui referme `DETTE-028` sur
+    // son volet « moteurs sans appelant ». Même exigence que ses trois prédécesseurs : le signal
+    // doit cesser de viser le format que l'US rend jouable, sans quoi il apprend à être ignoré.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('colline', [flux('rangs')])])}
       />,
     )
 
-    expect(bandeau()).not.toBeNull()
-    // Le libellé du catalogue, pas la valeur d'énumération : c'est ce que l'organisateur lit.
-    expect(bandeau()?.textContent).toContain('Colline')
+    expect(bandeau()).toBeNull()
   })
 
   it('ne prévient plus pour un système suisse, que le moteur déroule depuis E05US030', () => {
     // Même exigence qu'E05US023 pour les poules, un format plus loin : le moteur du suisse est
     // livré (E05US026) **et** ses écrans le sont (E05US030), donc l'avertissement mentirait. La
-    // colline, elle, reste visée — c'est le test ci-dessus.
+    // Le placement, lui, reste visé — c'est le test ci-dessus.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('suisse', [flux('rangs')])])}
@@ -115,9 +133,11 @@ describe('ReserveMoteur', () => {
   })
 
   it('ne prévient plus pour des poules, que le moteur déroule depuis E05US023', () => {
-    // Le CA d'E05US023 l'exige nommément : le signal doit cesser de viser les poules **et
-    // continuer de viser** le suisse, la colline et le Big Shoot Off — sans quoi il mentirait pour
-    // ceux qui restent. Un avertissement qui survit à ce qu'il annonçait apprend à être ignoré.
+    // Le CA d'E05US023 l'exigeait nommément : le signal doit cesser de viser les poules **et
+    // continuer de viser** ce qui n'est pas joué — sans quoi il mentirait pour ceux qui restent. Un
+    // avertissement qui survit à ce qu'il annonçait apprend à être ignoré. ⚠️ Les trois formats
+    // qu'il citait alors (suisse, colline, Big Shoot Off) sont **tous livrés** depuis ; ce qui reste
+    // visé est le placement et le barrage, dont le cas est d'une autre nature.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('poules', [flux('rangs')])])}

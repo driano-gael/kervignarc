@@ -26,6 +26,7 @@ const QUALIFICATION: Etape = {
   poules: null,
   big_shoot_off: null,
   suisse: null,
+  colline: null,
   decoupage: null,
   sources: [],
   effectif: null,

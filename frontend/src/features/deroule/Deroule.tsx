@@ -72,6 +72,12 @@ import {
   estValide as decoupageValide,
   versDecoupage,
 } from '../../shared/phases/decoupage'
+import { ReglageColline } from '../../shared/phases/ReglageColline'
+import {
+  depuisReglage as depuisReglageColline,
+  estValide as collineValide,
+  versReglage as versReglageColline,
+} from '../../shared/phases/colline'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -709,6 +715,8 @@ export function FormulaireEtape({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(etape?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit **ici**, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(etape?.suisse ?? null))
+  // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [colline, setColline] = useState(depuisReglageColline(etape?.colline ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le rendre.
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
@@ -730,6 +738,7 @@ export function FormulaireEtape({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  const estColline = type === 'colline'
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   const estQualification = type === 'qualification'
@@ -760,6 +769,7 @@ export function FormulaireEtape({
     (estPoules && !poulesValides(poules)) ||
     (estBigShootOff && !bsoValide(bigShootOff)) ||
     (estSuisse && !suisseValide(suisse)) ||
+    (estColline && !collineValide(colline)) ||
     (estQualification && !decoupageValide(decoupage)) ||
     // E05US033 : le contenu ne se juge que là où il est offert — une étape non arrêtable soumet
     // une liste vide, quoi qu'il reste dans l'état d'édition.
@@ -791,6 +801,9 @@ export function FormulaireEtape({
     // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
     // 422. Retyper la phase l'**efface** donc, au lieu de l'envoyer se faire recaler.
     suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+    // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé en
+    // 422. Retyper l'étape l'**efface** donc, au lieu de l'envoyer se faire recaler.
+    colline: estColline ? (versReglageColline(colline) ?? null) : null,
     // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
     // refusé en 422. Retyper l'étape l'**efface** donc, comme les quatre réglages ci-dessus.
     // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422.
@@ -903,6 +916,20 @@ export function FormulaireEtape({
         <ReglageSuisse
           etat={suisse}
           surChangement={setSuisse}
+          effectif={effectifLu ?? effectifSimule}
+        />
+      )}
+
+      {estColline && (
+        // ⚠️ **L'effectif DE L'ÉTAPE d'abord, la simulation en repli** — même correctif que le
+        // suisse juste au-dessus, et pour la même raison : la borne de portée est **opposable**
+        // (`EtapeDeroule._verifier_portee_de_defi` refuse l'étape) et se vérifie contre `effectif`,
+        // le champ que ce formulaire envoie juste à côté — jamais contre la simulation. Simuler 120
+        // archers puis déclarer une étape à 4 afficherait sinon « portée 119 au maximum », feu vert,
+        // et l'enregistrement rendrait 422.
+        <ReglageColline
+          etat={colline}
+          surChangement={setColline}
           effectif={effectifLu ?? effectifSimule}
         />
       )}

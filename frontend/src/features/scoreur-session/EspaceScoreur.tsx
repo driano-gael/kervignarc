@@ -15,6 +15,7 @@ import {
 import { SaisieDuels } from '../saisie-duels/SaisieDuels'
 import { SaisiePoules } from '../poules/SaisiePoules'
 import { SaisieBigShootOff } from '../big-shoot-off/SaisieBigShootOff'
+import { SaisieColline } from '../colline/SaisieColline'
 import { SaisieSuisse } from '../suisse/SaisieSuisse'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
@@ -119,6 +120,10 @@ function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
       {/* Saisie du système suisse (E05US030) : même pavé encore, et l'entrée se fait par la
        **ronde** — le décor `RONDES_APPARIEES` du contrat de phase (ADR-0083 §1). */}
       <SaisieSuisse tournoiId={scoreur.tournoi_id} departId={departId} />
+      {/* Saisie de la colline (E05US027) : même pavé toujours, et l'entrée se fait par la
+          **manche** — même décor `RONDES_APPARIEES` que le suisse. Chaque panneau filtre lui-même
+          sur le créneau choisi en tête, il n'y a donc pas de sélecteur à compléter (`DETTE-056`). */}
+      <SaisieColline tournoiId={scoreur.tournoi_id} departId={departId} />
     </div>
   )
 }

@@ -29,6 +29,7 @@ import {
   validerDuel,
 } from './api'
 import type { EtatPoulesSaisie } from '../poules/api'
+import type { EtatCollineSaisie } from '../colline/api'
 import type { EtatSuisseSaisie } from '../suisse/api'
 import { injecterBarrage, injecterManche } from './duel'
 import { estDejaHorsLigne, estRefusServeur } from './horsLigne'
@@ -75,6 +76,16 @@ export const cleSuisseSaisie: CleDe<EtatSuisseSaisie> = (tournoiId: number, phas
   [...cleSuisse(tournoiId, phaseId), 'saisie'] as const
 export const cleSuissePublique = (tournoiId: number, phaseId: number) =>
   [...cleSuisse(tournoiId, phaseId), 'publique'] as const
+
+// La **colline** (E05US027) reprend le même dessin, à l'identique : deux entrées distinctes pour
+// deux contenus distincts (rédigé / saisie), et la clé vit ici parce que c'est l'écriture qui
+// l'invalide — une clé écrite à deux endroits est une clé qui divergera.
+export const cleColline = (tournoiId: number, phaseId: number) =>
+  ['colline-etat', tournoiId, phaseId] as const
+export const cleCollineSaisie: CleDe<EtatCollineSaisie> = (tournoiId: number, phaseId: number) =>
+  [...cleColline(tournoiId, phaseId), 'saisie'] as const
+export const cleCollinePublique = (tournoiId: number, phaseId: number) =>
+  [...cleColline(tournoiId, phaseId), 'publique'] as const
 
 // `departId` peut être `null` le temps que la liste des créneaux arrive : la requête est alors
 // désactivée plutôt que lancée sur un identifiant inventé (convention de `phases/hooks.ts`).
@@ -145,6 +156,7 @@ const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => rea
   tableau: cleTableau,
   poule: clePoules,
   suisse: cleSuisse,
+  colline: cleColline,
 }
 
 /** Une clé de cache **marquée par le DTO qu'elle porte** — le marqueur n'existe qu'à la compilation.
@@ -213,6 +225,18 @@ const PHOTO: Record<FamilleDuel, PhotoDeSaisie<unknown> | null> = {
         rencontres: ronde.rencontres.map((rencontre) =>
           rencontre.numero === matchNumero ? { ...rencontre, duel } : rencontre,
         ),
+      })),
+    }),
+  }),
+  // E05US027 : même forme à un niveau intermédiaire près — la **manche** au lieu de la ronde.
+  colline: photoDe<EtatCollineSaisie>({
+    cle: cleCollineSaisie,
+    rencontres: (etat) => etat.manches.flatMap((manche) => manche.defis),
+    remplacer: (etat, matchNumero, duel) => ({
+      ...etat,
+      manches: etat.manches.map((manche) => ({
+        ...manche,
+        defis: manche.defis.map((defi) => (defi.numero === matchNumero ? { ...defi, duel } : defi)),
       })),
     }),
   }),

@@ -29,7 +29,7 @@ import { persist } from 'zustand/middleware'
  * ⚠️ **Optionnelle, et absente vaut `tableau`.** La file est persistée dans le `localStorage` : une
  * tablette qui a des actes en attente au moment du déploiement les a écrits sans ce champ. Les lire
  * comme des actes de tableau est exact — c'est tout ce qui existait. */
-export type FamilleDuel = 'tableau' | 'poule' | 'suisse'
+export type FamilleDuel = 'tableau' | 'poule' | 'suisse' | 'colline'
 
 export interface MancheEnFile {
   type: 'manche'

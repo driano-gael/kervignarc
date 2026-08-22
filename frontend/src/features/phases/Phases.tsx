@@ -42,6 +42,12 @@ import {
 } from '../../shared/phases/arrets'
 import { ReglageDecoupage } from '../../shared/phases/ReglageDecoupage'
 import { depuisDecoupage, versDecoupage } from '../../shared/phases/decoupage'
+import { ReglageColline } from '../../shared/phases/ReglageColline'
+import {
+  depuisReglage as depuisReglageColline,
+  estValide as collineValide,
+  versReglage as versReglageColline,
+} from '../../shared/phases/colline'
 import { ReglageSuisse } from '../../shared/phases/ReglageSuisse'
 import {
   depuisReglage as depuisReglageSuisse,
@@ -57,6 +63,7 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
+import { useEtatColline } from '../colline/hooks'
 import { useEtatSuisse, useRegenererPlanSuisse } from '../suisse/hooks'
 import { ClassementSuisse } from '../suisse/ClassementSuisse'
 import {
@@ -407,6 +414,8 @@ export function FormulairePhase({
   const [bigShootOff, setBigShootOff] = useState(depuisReglageBso(phase?.big_shoot_off ?? null))
   // E05US030, même parti que les deux précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [suisse, setSuisse] = useState(depuisReglageSuisse(phase?.suisse ?? null))
+  // E05US027, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
+  const [colline, setColline] = useState(depuisReglageColline(phase?.colline ?? null))
   // E05US033, même parti que les quatre précédents : l'état vit ici, la fiche ne fait que le
   // rendre. ⚠️ Les arrêts se lisent sur l'**étape** et non sur une `Phase` : ils sont de la
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
@@ -423,6 +432,15 @@ export function FormulairePhase({
   const etatSuisseDeLaPhase = useEtatSuisse(
     tournoiId,
     phase !== undefined && phase.type === 'suisse' ? phase.id : null,
+  )
+  // ⚠️ **Même geste que pour le suisse juste au-dessus, et pour la même raison** : l'effectif réel
+  // du créneau est le seul endroit où « l'effectif du jour » du CA existe vraiment, et le service
+  // **borne silencieusement à la lecture** — sans cette annonce, l'organisateur qui règle une
+  // portée trop grande ne l'apprend ni à l'enregistrement ni le jour J, il voit simplement des
+  // défis plus courts que prévu.
+  const etatCollineDeLaPhase = useEtatColline(
+    tournoiId,
+    phase !== undefined && phase.type === 'colline' ? phase.id : null,
   )
   const premiereSource = phase?.sources?.[0] ?? null
   const [avecSource, setAvecSource] = useState(premiereSource != null)
@@ -494,6 +512,7 @@ export function FormulairePhase({
   // E05US028, même parti que les poules ligne au-dessus : l'état vit **ici**, pas dans la fiche.
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
+  const estColline = type === 'colline'
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
@@ -521,6 +540,7 @@ export function FormulairePhase({
     !(estPoules && !poulesValides(poules)) &&
     !(estBigShootOff && !bsoValide(bigShootOff)) &&
     !(estSuisse && !suisseValide(suisse)) &&
+    !(estColline && !collineValide(colline)) &&
     // E05US033 : le contenu ne se juge que là où il est offert — une phase non arrêtable
     // soumet une liste vide, quoi qu'il reste dans l'état d'édition.
     !(arretable && !arretsValides(arrets))
@@ -549,6 +569,9 @@ export function FormulairePhase({
       // Même garde encore (E05US030) : un nombre de rondes porté par un autre type serait refusé en
       // 422 `configuration_suisse_invalide`.
       suisse: estSuisse ? (versReglageSuisse(suisse) ?? null) : null,
+      // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé
+      // en 422 `configuration_colline_invalide`. Retyper la phase l'**efface** donc.
+      colline: estColline ? (versReglageColline(colline) ?? null) : null,
       // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
       // refusé en 422 `arret_programme_invalide`. Retyper la phase l'**efface** donc, comme les
       // quatre réglages ci-dessus. ⚠️ C'est une **perte de planning assumée** : l'organisateur qui
@@ -664,7 +687,18 @@ export function FormulairePhase({
             maximum={etatSuisseDeLaPhase.data?.rondes_maximales ?? null}
           />
         )}
-        {/* E05US033 — montée **sans condition de type**, à la différence des quatre fiches
+        {estColline && (
+          <ReglageColline
+            etat={colline}
+            surChangement={setColline}
+            effectif={etatCollineDeLaPhase.data?.effectif ?? null}
+            // La borne vient du **serveur** ici, comme pour le suisse : l'état de la phase porte
+            // déjà `portee_maximale`, et la recalculer côté client entretiendrait deux
+            // arithmétiques pour une même règle.
+            maximum={etatCollineDeLaPhase.data?.portee_maximale ?? null}
+          />
+        )}
+        {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches
             ci-dessus, mais pour une autre raison : sur un type non arrêtable la fiche n'offre aucun
             champ et **dit pourquoi**. La cacher laisserait chercher un réglage vu sur la phase
             voisine sans jamais apprendre qu'il n'existe pas ici. */}
