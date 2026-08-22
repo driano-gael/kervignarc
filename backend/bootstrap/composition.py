@@ -32,6 +32,7 @@ from api.v1.big_shoot_off import router as big_shoot_off_router
 from api.v1.blasons import router as blasons_router
 from api.v1.categories import router as categories_router
 from api.v1.clubs import router as clubs_router
+from api.v1.colline import router as colline_router
 from api.v1.competition import router as competition_router
 from api.v1.completude import router as completude_router
 from api.v1.departs import router as departs_router
@@ -82,6 +83,7 @@ from application.blasons import ServiceBlasons
 from application.categories import ServiceCategories
 from application.classements import ServiceClassement
 from application.clubs import ServiceClubs
+from application.colline import ServiceColline
 from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
@@ -817,6 +819,25 @@ def create_app(
     classements_de_suisse: LecteurClassementDePhase = app.state.service_suisse
     app.state.service_saisie_duels.brancher_lecteur(TypePhase.SUISSE, classements_de_suisse)
 
+    # Colline (E05US027) : le **dernier** moteur d'E05US015 à recevoir son consommateur de
+    # production — `DETTE-028` se referme ici sur son volet « moteurs sans appelant ». Comme les
+    # rencontres de poule et de ronde, un défi **est** un duel ordinaire : il vit dans la table
+    # `duel`, sans table propre ni migration (ADR-0083 §7).
+    app.state.service_colline = ServiceColline(
+        tournoi_repository,
+        phase_repository,
+        gabarit_repository,
+        placement_par_bloc_repository,
+        duel_repository,
+        app.state.service_classement,
+        app.state.service_saisie_duels,
+    )
+    # Quatrième branchement tardif, et toujours **une seule ligne**. [ADR-0084] avait annoncé que
+    # « ajouter un format ne touche plus ni le port, ni le service » ; c'est la 4ᵉ occurrence qui le
+    # vérifie, et la première écrite sans qu'aucune duplication ait dû être fondue au passage.
+    classements_de_colline: LecteurClassementDePhase = app.state.service_colline
+    app.state.service_saisie_duels.brancher_lecteur(TypePhase.COLLINE, classements_de_colline)
+
     # Simulation éphémère (E15US002, ADR-0054) : rejoue le moteur (qualif → duels → classement) d'un
     # tournoi **avant démarrage** sur des adapters **in-memory**, sans rien persister ni diffuser.
     # L'usine `fabriquer_harnais_simulation` (module, ci-dessus) est le **seul** point qui connaît
@@ -926,6 +947,9 @@ def create_app(
     rencontres_a_router: dict[TypePhase, LecteurRencontresARouter] = {
         TypePhase.SUISSE: app.state.service_suisse,
         TypePhase.POULES: app.state.service_poules,
+        # E05US027 : 3ᵉ format à rencontres. Une manche de colline apparie des défis, qui sont des
+        # duels à deux adversaires et deux couloirs — rien de neuf côté routage.
+        TypePhase.COLLINE: app.state.service_colline,
     }
     app.state.service_palmares = ServicePalmares(
         tournoi_repository,
@@ -1067,11 +1091,13 @@ def create_app(
         phase_repository,
         depart_repository,
         app.state.service_big_shoot_off,
-        # E05US026 : les deux formats à **rencontres** — suisse et poules — routent par le même
-        # chemin. Le port est déclaré chez le consommateur (`LecteurRencontresARouter`), et non
-        # chez l'un des deux réalisateurs : ils sont deux, la question se pose ici.
+        # E05US026 : les formats à **rencontres** — suisse et poules, rejoints par la colline en
+        # E05US027 — routent par le même chemin. Le port est déclaré chez le consommateur
+        # (`LecteurRencontresARouter`), et non chez l'un des réalisateurs : ils sont plusieurs, la
+        # question se pose ici.
         rencontres_a_router[TypePhase.SUISSE],
         rencontres_a_router[TypePhase.POULES],
+        rencontres_a_router[TypePhase.COLLINE],
     )
 
     # --- Saisie de qualification (E04US002) : moteur métier `Serie`/`Volee` persisté. Le service
@@ -1144,10 +1170,11 @@ def create_app(
     # (ADR-0090 §3). L'élimination directe non plus, et c'est correct aussi : ses tours se lisent
     # dans les braquets de la projection, sans passer par un service.
     #
-    # ⚠️ **La colline est le seul cas où le silence est faux.** Elle est déclarée
-    # `UniteDeTour.RONDE` et l'ADR §3 lui promet « nombre de rondes réglé », mais aucun
-    # `ServiceColline` n'existe encore (`DETTE-028`, volet colline, `E05US027`) : elle retombera
-    # donc sur « un tour, aucun tour courant ». Manque assumé et nommé, pas un branchement oublié.
+    # ✅ **Le seul manque que ce commentaire signalait est comblé** : la colline est déclarée
+    # `UniteDeTour.RONDE` et l'ADR §3 lui promet « nombre de rondes réglé » ; elle retombait sur
+    # « un tour, aucun tour courant » faute de `ServiceColline` (`DETTE-028`, volet colline).
+    # E05US027 l'écrit et le branche ci-dessous. L'énumération en creux est donc désormais **close
+    # et exacte** : ce qui n'a pas de lecteur n'en a pas besoin.
     #
     # Variables **annotées** : cela type le **paramètre passé** à `brancher_lecteur_avancement` et
     # documente l'intention. ⚠️ Cela ne **prouve** rien — mypy accepte silencieusement d'affecter
@@ -1180,6 +1207,15 @@ def create_app(
     )
     app.state.service_suivi_deroule.brancher_lecteur_avancement(
         TypePhase.BIG_SHOOT_OFF, avancement_de_big_shoot_off
+    )
+    # E05US027 — ⚠️ **et ce branchement fait plus qu'afficher « Manche 2 sur 3 »** : c'est lui qui
+    # rend la colline réellement **arrêtable**. `TYPES_ARRETABLES` dérive d'`avancement_lisible`
+    # (ADR-0093), donc l'atelier accepte désormais d'y poser une pause programmée — laquelle serait
+    # définitivement muette si le lecteur manquait ici. Déclarer la capacité au registre sans la
+    # brancher reproduirait `DETTE-028` à l'échelle d'une capacité.
+    avancement_de_colline: LecteurAvancementDePhase = app.state.service_colline
+    app.state.service_suivi_deroule.brancher_lecteur_avancement(
+        TypePhase.COLLINE, avancement_de_colline
     )
 
     # --- Arrêts programmés (E05US033, [ADR-0091]) : « la salle s'arrête après ce tour, et repart
@@ -1227,13 +1263,18 @@ def create_app(
     # mode de panne de `DETTE-028` (six moteurs livrés, aucun appelé), d'où le test de composition
     # de `tests/test_arrets_api.py`.
     #
-    # ⚠️ **CINQ services, et pas deux.** La première rédaction ne branchait que la qualification et
+    # ⚠️ **SIX services, et pas deux.** La première rédaction ne branchait que la qualification et
     # l'élimination directe, si bien qu'un arrêt posé sur des poules, un système suisse ou un Big
     # Shoot Off ne se déclenchait **jamais** : ces phases tournent seules, donc aucune validation
     # n'atteignait le déclencheur. Bloquant relevé par les quatre axes de revue, sur les formats
     # mêmes que le CA vise (« une phase qui dure des heures »). Il n'existe aucun garde-fou
-    # automatique contre l'oubli d'un sixième — `DETTE-028` encore — c'est pourquoi le test nomme
-    # les cinq un par un.
+    # automatique contre l'oubli d'un septième — `DETTE-028` encore — c'est pourquoi le test nomme
+    # les six un par un.
+    #
+    # ⚠️ **Le sixième, c'est la colline (E05US027), et l'oubli était exactement à portée** : elle
+    # devient arrêtable dans cette même US, par la seule bascule d'`avancement_lisible` au registre.
+    # Rien dans le code n'aurait signalé qu'il manquait ici un `brancher_evaluateur_arrets` — le
+    # réglage aurait été accepté à l'atelier et la salle ne se serait jamais arrêtée.
     evaluateur: EvaluateurArrets = app.state.service_arrets_programmes
     for service_ecrivant in (
         app.state.service_saisie,
@@ -1241,6 +1282,7 @@ def create_app(
         app.state.service_poules,
         app.state.service_suisse,
         app.state.service_big_shoot_off,
+        app.state.service_colline,
     ):
         service_ecrivant.brancher_evaluateur_arrets(evaluateur)
 
@@ -1375,6 +1417,7 @@ def create_app(
     app.include_router(saisie_duels_router)
     app.include_router(poules_router)
     app.include_router(suisse_router)
+    app.include_router(colline_router)
     app.include_router(big_shoot_off_router)
     app.include_router(pilotage_router)
     app.include_router(routage_router)

@@ -33,6 +33,7 @@ from domain.arret_programme import (
 )
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline
 from domain.depart import DepartId
 from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.entree_audit import EntreeAudit
@@ -132,6 +133,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         poules = _lire_reglage_poules(config)
         big_shoot_off = _lire_reglage_big_shoot_off(config)
         suisse = _lire_reglage_suisse(config)
+        colline = _lire_reglage_colline(config)
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
     except (
@@ -157,6 +159,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             poules=poules,
             big_shoot_off=big_shoot_off,
             suisse=suisse,
+            colline=colline,
             decoupage=decoupage,
             arrets=arrets,
             id=ligne.id,
@@ -303,6 +306,7 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.poules,
             etape.big_shoot_off,
             etape.suisse,
+            etape.colline,
             etape.decoupage,
             etape.arrets,
         )
@@ -319,6 +323,7 @@ def _politiques_json(
     poules: ReglageDePoules | None = None,
     big_shoot_off: ConfigurationBigShootOff | None = None,
     suisse: ConfigurationSuisse | None = None,
+    colline: ConfigurationColline | None = None,
     decoupage: DecoupageEnTours | None = None,
     arrets: tuple[ArretProgramme, ...] = (),
     *,
@@ -456,6 +461,22 @@ def _politiques_json(
         # des familles injectables (`assembler_politiques` refuse toute clé hors énumération).
         # Aucune migration, donc : ADR-0046 laisse le document libre à la racine.
         config["suisse"] = {"rondes": suisse.nb_rondes}
+    if colline is not None:
+        # Même domicile et même raison que ses trois voisins : racine du `config`, hors `policies`
+        # (catalogue fermé des familles injectables). Aucune migration — ADR-0046 laisse le document
+        # libre à la racine, et une étape écrite avant E05US027 se relit « non réglée », ce qui est
+        # exactement son état d'avant : le type était composable, aucun service ne le déroulait.
+        #
+        # ⚠️ **Les DEUX champs s'écrivent toujours, `portee` comprise même à sa valeur par défaut.**
+        # C'est le raisonnement de la `portee` d'un arrêt programmé, pas celui du `cumul` d'un Big
+        # Shoot Off : la portée n'est pas une option qu'on active mais un **choix parmi deux
+        # formats** — 1 = King of the Hill, 2+ = Ladder. L'omettre à 1 rendrait un document relu
+        # ambigu le jour où le défaut changerait, et surtout ferait disparaître de la base
+        # l'information « l'organisateur a choisi le King of the Hill ».
+        config["colline"] = {
+            "manches": colline.nb_manches,
+            "portee": colline.portee_de_defi,
+        }
     if decoupage is not None:
         # Même domicile et même raison que ses trois voisins : racine du `config`, hors `policies`
         # (catalogue fermé des familles injectables). **Aucune migration** — ADR-0046 laisse le
@@ -581,6 +602,38 @@ def _lire_reglage_suisse(config: Any) -> ConfigurationSuisse | None:
         # chose d'incohérent. Même raisonnement que la `taille` absente d'un réglage de poules.
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return ConfigurationSuisse(nb_rondes=int(rondes))
+
+
+def _lire_reglage_colline(config: Any) -> ConfigurationColline | None:
+    """Le réglage d'une phase de colline, lu **à la racine** du `config` (E05US027).
+
+    Même domicile et même régime d'absence que ses trois voisins : racine plutôt que `policies`
+    (ce sont des paramètres de phase, pas des stratégies injectables), et absence = **non réglée**,
+    ce qui est licite — le type se choisit avant ses paramètres.
+
+    ⚠️ **On relit par la fabrique du domaine**, jamais en construisant à la main : un nombre de
+    manches nul ou une portée nulle sont des choses que le repository n'écrit jamais, l'agrégat les
+    refusant en amont. Les trouver ici signifie que la base a été altérée, et
+    `ConfigurationCollineInvalide` remonte alors en « configuration illisible » (ADR-0007), ce qui
+    est exact.
+
+    ⚠️ **Une portée absente fait échouer la relecture** — elle ne se replie **pas** sur 1. C'est
+    l'asymétrie qu'`_lire_decoupage` explique, et elle joue à plein ici : deviner « King of the
+    Hill » sur un document qui disait « Ladder » ne produirait pas une phase un peu différente, mais
+    **un autre format** — les défis ne porteraient plus sur les mêmes archers. Quand on ne sait pas,
+    on refuse de relire plutôt que d'inventer un déroulé.
+    """
+    souffle = config.get("colline")
+    if not isinstance(souffle, dict):
+        return None
+    manches = souffle.get("manches")
+    portee = souffle.get("portee")
+    if manches is None or portee is None:
+        # Erreur **typée** plutôt que `None` : « pas de réglage » se lirait « phase non réglée », et
+        # la composition du jour J inventerait un déroulé là où la base dit quelque chose
+        # d'incohérent. Même raisonnement que le nombre de rondes absent d'un suisse.
+        raise InfrastructureError("Configuration d'étape de déroulé illisible.")
+    return ConfigurationColline(nb_manches=int(manches), portee_de_defi=int(portee))
 
 
 def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
@@ -786,6 +839,13 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
                         suisse=etape.suisse,
+                        # E05US027 : câblé dès l'ajout du champ, comme `arrets` ci-dessous et pour
+                        # la raison que le commentaire de `barrage_jusqu_au` porte — un champ ajouté
+                        # à l'agrégat mais absent de sa sérialisation rouvre le défaut que l'ajout
+                        # prétendait fermer, et détruit de la donnée d'organisateur. Ici il ferait
+                        # perdre au **format capturé** son King of the Hill, qui se rejouerait non
+                        # réglé.
+                        colline=etape.colline,
                         decoupage=etape.decoupage,
                         # E05US033 : câblés dès l'ajout du champ, et non « plus tard ». Le
                         # commentaire de `barrage_jusqu_au` juste au-dessus dit ce que coûte
@@ -890,6 +950,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         poules=_lire_reglage_poules(brute),
         big_shoot_off=_lire_reglage_big_shoot_off(brute),
         suisse=_lire_reglage_suisse(brute),
+        colline=_lire_reglage_colline(brute),
         decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
     )

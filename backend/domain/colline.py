@@ -80,6 +80,21 @@ class ConfigurationColline:
         return ConfigurationColline(nb_manches=nb_manches, portee_de_defi=2)
 
 
+def portee_maximale(effectif: int) -> int:
+    """La portée de défi la plus grande qu'un effectif autorise (E05US027).
+
+    Jumelle de `suisse.rondes_maximales`, et pour le même usage : `EtapeDeroule` s'en sert pour
+    refuser un réglage impossible **à la composition**, et l'atelier pour afficher la borne en
+    clair sous le champ. `defis_de_la_manche` refuse `portee >= effectif` — « chacun défie
+    n'importe qui » n'est plus un format —, donc la borne est `effectif - 1`.
+
+    **Zéro sous deux participants** : à un archer (ou aucun), aucun défi n'est appariable. Le dire
+    par un zéro plutôt que par un nombre négatif évite qu'un appelant compare une portée à une
+    borne absurde — même parti que `rondes_maximales`.
+    """
+    return max(0, effectif - 1)
+
+
 @dataclass(frozen=True)
 class DefiColline:
     """Un défi d'une manche : le `challenger` (position basse) affronte le `defie` (position haute).

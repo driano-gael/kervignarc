@@ -445,7 +445,46 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
     TypePhase.COLLINE: ContratDePhase(
         decor=DecorDeSaisie.RONDES_APPARIEES,
         unite_de_tour=UniteDeTour.RONDE,
-        plan_de_cibles=PlanDeCibles.AUCUN,
+        # ✅ **Bascule en fin d'E05US027**, une fois `ServiceColline.regenerer_plan` écrit — et
+        # `AUCUN` jusque-là, ce qui était exact tant que rien ne faisait tirer ce format.
+        #
+        # Même raisonnement que le suisse, et pour une raison **plus forte encore** : les défis
+        # d'une manche ne changent pas seulement de composition, ils changent de **nombre**. À
+        # portée 1 les extrémités se reposent une manche sur deux, et à portée 2 la distance tourne
+        # — une manche à 4 archers apparie deux défis, la suivante un seul. « Archer → couloir »
+        # serait donc une information non seulement fausse mais **instable**. C'est le bloc qui est
+        # persisté (ADR-0083 §3), les couloirs de chaque défi s'y dérivant manche par manche.
+        plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
+        # ✅ Les quatre capacités basculent **en fin de tranche E05US027**, et seulement une fois le
+        # code écrit — même discipline qu'E05US023, E05US026 et E05US028. Ce qui les autorise,
+        # module par module : `application/colline.py` rejoue la phase des duels validés, manche
+        # après manche, en appliquant `appliquer_manche` à chaque manche close, et rend son état
+        # (`deroule_par_un_service`) ; `ServiceColline.classement_de_phase` rend le
+        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
+        # `LecteurClassementDePhase`, via `domain/classement_de_colline.py`
+        # (`classement_lisible`) ; `ServiceColline.avancement_de_phase` répond au port
+        # `LecteurAvancementDePhase` (`avancement_lisible`, ADR-0090) ; et
+        # `ServiceRoutage._routage_par_rencontres` dit à un archer quel défi il tire
+        # (`route_l_archer`).
+        #
+        # ⚠️ **`avancement_lisible` est aussi ce qui rend la colline arrêtable** : `TYPES_ARRETABLES`
+        # en dérive (ADR-0093). Une pause programmée peut donc se poser sur ce format dès cette US,
+        # sans que rien n'ait à être ajouté du côté d'`ArretProgramme`.
+        #
+        # ⚠️ **`classement_lisible` a un effet mesurable** : elle fait réclamer le plancher
+        # d'inscrits (E05US021) pour un prélèvement visant une colline. Elle n'est légitime que
+        # parce que le prélèvement est réellement honoré — un `True` posé par anticipation aurait
+        # exigé des inscrits pour une source que rien n'honore.
+        deroule_par_un_service=True,
+        avancement_lisible=True,
+        classement_lisible=True,
+        # ✅ Par le même chemin que le suisse (`_routage_par_rencontres`) : un défi **est** un duel,
+        # avec deux adversaires nommés et deux couloirs. L'issue `EN_ATTENTE` (ADR-0087) y est déjà,
+        # et la colline en a besoin pour la même raison de **rythme** que le suisse — l'archer au
+        # repos d'une manche est en course sans rien à tirer à cet instant. Ici ce n'est même pas le
+        # cas limite du bye à effectif impair : à portée 1, les deux extrémités se reposent une
+        # manche sur deux, **quel que soit** l'effectif.
+        route_l_archer=True,
     ),
 }
 

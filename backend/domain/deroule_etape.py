@@ -36,9 +36,11 @@ from domain.arret_programme import (
 )
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
+from domain.colline import ConfigurationColline, portee_maximale
 from domain.depart import DepartId
 from domain.erreurs import (
     ConfigurationBigShootOffInvalide,
+    ConfigurationCollineInvalide,
     ConfigurationSuisseInvalide,
 )
 from domain.grain_validation import GrainValidation
@@ -119,6 +121,18 @@ class EtapeDeroule:
     l'effectif. Ce dont l'effectif décide est le **maximum** appariable sans ré-affrontement
     (`rondes_maximales`), qui est une *borne* affichée à l'atelier, pas un paramètre à stocker."""
 
+    colline: ConfigurationColline | None = None
+    """Le réglage d'une **colline** — nombre de manches et portée de défi (E05US027).
+
+    Même régime que les trois ci-dessus. **Une seule classe**, comme le Big Shoot Off et le suisse :
+    ni le nombre de manches ni la portée ne dépendent de l'effectif. Ce dont l'effectif décide est
+    la **borne** de portée (`portee_maximale`), une *borne* affichée à l'atelier et vérifiée par
+    `_verifier_portee_de_defi`, pas un paramètre à stocker.
+
+    ⚠️ **Deux champs pour un seul réglage** : la portée distingue le King of the Hill du Ladder,
+    que le référentiel §10.1 présente comme deux formats et que la règle 2 range en **un** format à
+    deux réglages."""
+
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours — « 20 volées en 2 tours de 10 » (E05US035).
 
@@ -158,6 +172,7 @@ class EtapeDeroule:
         verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         self._verifier_convergence_du_big_shoot_off()
         self._verifier_rondes_appariables()
+        self._verifier_portee_de_defi()
         self._verifier_arrets_applicables()
 
     def _verifier_arrets_applicables(self) -> None:
@@ -285,6 +300,34 @@ class EtapeDeroule:
                 f"ré-affrontement ; {self.suisse.nb_rondes} en sont demandées."
             )
 
+    def _verifier_portee_de_defi(self) -> None:
+        """Une portée ≥ à l'effectif n'est plus ni un King of the Hill ni un Ladder (E05US027).
+
+        **Troisième vérification de la même famille, même place et même raison** que les deux
+        ci-dessus : c'est une propriété du **couple** (portée, effectif), pas du réglage seul.
+        `ConfigurationColline` refuse par contrat toute validation dépendant de l'effectif — c'est
+        ce qui rend un format de bibliothèque réutilisable d'un tournoi à l'autre (règle 2) — et le
+        refus vit ici, là où l'effectif est déclaré.
+
+        ⚠️ **Le dire à la composition, c'est éviter de le découvrir en salle.**
+        `defis_de_la_manche` lève déjà `ConfigurationCollineInvalide` sur ce motif, mais il le lève
+        au moment d'apparier, la phase déjà lancée : le format y perd son sens (« chacun défie
+        n'importe qui ») et l'organisateur n'a plus de geste de rattrapage.
+
+        Silencieux quand l'effectif n'est **pas** déclaré : on ne refuse pas ce qu'on ne peut pas
+        juger. L'atelier montre alors la borne atteignable et l'organisateur décide — et le service
+        **borne** au lieu de lever, pour qu'un écran s'ouvre toujours.
+        """
+        if self.colline is None or self.effectif is None:
+            return
+        maximum = portee_maximale(self.effectif)
+        if self.colline.portee_de_defi > maximum:
+            raise ConfigurationCollineInvalide(
+                f"À {self.effectif} archers, un défi porte au plus sur {maximum} rang(s) ; "
+                f"une portée de {self.colline.portee_de_defi} laisserait chacun défier n'importe "
+                "qui, ce qui n'est plus ni un King of the Hill ni un Ladder."
+            )
+
     def _verifier_convergence_du_big_shoot_off(self) -> None:
         """Une finale doit désigner **un** vainqueur : la liste doit converger sur cet effectif.
 
@@ -345,6 +388,7 @@ class EtapeDeroule:
             poules=self.poules,
             big_shoot_off=self.big_shoot_off,
             suisse=self.suisse,
+            colline=self.colline,
             decoupage=self.decoupage,
             statut=StatutPhase.A_VENIR,
         )
