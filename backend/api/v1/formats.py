@@ -369,6 +369,12 @@ class ArretProgrammeDTO(BaseModel):
 
 
 class EtapeDTO(BaseModel):
+    # DETTE-081 — ce DTO ne déclare **pas** `barrage_jusqu_au`, que `ModelePhase` porte pourtant et
+    # que le repository persiste. Le `PUT` étant une édition **totale**, éditer un format **efface**
+    # le seuil de barrage qu'il portait, en 200 et sans un mot. Antérieur à E16US002, découvert par
+    # l'axe adversarial de sa revue et reproduit par exécution. ⚠️ Le mode de panne est structurel :
+    # tout champ de `ModelePhase` absent d'ici subit le même sort — la résorption commence par un
+    # inventaire des deux listes, pas par l'ajout d'un champ.
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
     L'absence de ces deux champs n'est pas un oubli du DTO : ils n'existent pas sur le modèle, et
@@ -429,14 +435,34 @@ class EtapeDTO(BaseModel):
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033) — liste vide = aucune, le défaut."""
 
+    titre: str | None = Field(default=None, max_length=80)
+    """Le **libellé** de cette étape (E16US002) — `null` = aucun.
+
+    ⚠️ **Présent ici pour la même raison qu'`arrets` juste au-dessus** : sans lui, promouvoir un
+    déroulé en format perdrait ses titres **en silence**, et le format rejoué l'année suivante
+    remonterait des phases anonymes. C'est le défaut `barrage_jusqu_au` que ce fichier documente
+    déjà deux fois — la troisième aurait été gratuite.
+
+    Borné à 80 comme son jumeau de `api/v1/phases`. ⚠️ **Ce n'est PAS une paire de plus au sens de
+    `DETTE-054`**, et une première rédaction l'affirmait à tort (relevé par deux axes de revue) :
+    `titre` est un champ ajouté aux deux `EtapeDTO` **racines**, que cette dette exclut nommément de
+    son remède (« ne pas fusionner les deux `EtapeDTO` : ce sont les **feuilles** qui sont
+    identiques, pas les racines »). Un marqueur qui annonce un élargissement absent du registre
+    pousse au mauvais geste — c'est le défaut que `DETTE-054` consigne déjà, en sens inverse, pour
+    E05US028."""
+
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
         ⚠️ **Aucun invariant d'étape n'est revérifié ici depuis E01US024** (ADR-0063). Cette
         docstring promettait l'inverse — « une étape incohérente lève une `DomainError` → 422 » —
-        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase.__post_init__` n'existe
-        plus. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit ce qui cloche
-        et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux, leurs
+        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase` n'a plus
+        aucun **invariant** à la construction. ⚠️ Il porte depuis E16US002 un `__post_init__`, mais
+        qui **normalise sans valider** (le seul titre) — ne pas y glisser de garde en croyant être
+        le premier : une première rédaction de cette docstring disait « n'existe plus » et le
+        laissait croire. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit
+        ce qui cloche et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux,
+        leurs
         invariants (`BaremeQualification.creer`, `GrainValidation.creer`, `SourcePhase`) : une
         donnée **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """
@@ -466,6 +492,7 @@ class EtapeDTO(BaseModel):
             colline=(None if self.colline is None else self.colline.vers_agregat()),
             decoupage=(None if self.decoupage is None else self.decoupage.vers_agregat()),
             arrets=tuple(arret.vers_agregat() for arret in self.arrets),
+            titre=self.titre,
         )
 
     @staticmethod
@@ -505,6 +532,7 @@ class EtapeDTO(BaseModel):
                 None if etape.decoupage is None else DecoupageDTO.de_agregat(etape.decoupage)
             ),
             arrets=[ArretProgrammeDTO.de_agregat(arret) for arret in etape.arrets],
+            titre=etape.titre,
         )
 
 

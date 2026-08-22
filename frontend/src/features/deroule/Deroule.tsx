@@ -1,4 +1,4 @@
-// Écran « Composer un déroulé » (E01US024, ADR-0063) — axe **atelier**, sans tournoi.
+// Écran « Composer un format » (E01US024, ADR-0063 ; renommé par E16US002) — axe **atelier**, sans tournoi.
 //
 // Il livre les cinq promesses du CA : composer une séquence complète en **brouillon**, la **voir**
 // (schéma à braquets), savoir si elle **tient debout** (anomalies rattachées aux blocs), la
@@ -60,6 +60,7 @@ import {
   versReglage as versReglageBso,
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
+import { ChampTitre } from '../../shared/phases/ChampTitre'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
   depuisEtape as depuisArrets,
@@ -153,7 +154,7 @@ export function Deroule() {
 
       {choisi === null ? (
         <p className="carte__etat" role="note">
-          Aucun format dans la bibliothèque du club : créez-en un pour composer son déroulé.
+          Aucun format dans la bibliothèque du club : créez-en un pour composer ses étapes.
         </p>
       ) : (
         // `key` : changer de format **remonte** le composant, donc réinitialise son brouillon
@@ -444,13 +445,15 @@ function PanneauSimulation({
       : !applicable
         ? 'On ne simule pas un déroulé qu’aucun tournoi ne pourrait recevoir : corrigez d’abord les points bloquants.'
         : !aUneQualification
-          ? 'Ce déroulé ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
+          ? 'Ce format ne décrit aucune qualification : la simulation n’a alors aucun barème d’où tirer des scores. Le format reste applicable à un tournoi.'
           : !effectifValide
             ? `Indiquez un effectif entre 2 et ${EFFECTIF_MAX} archers pour lancer la simulation.`
             : null
   return (
     <div className="carte carte--large">
-      <h3 className="carte__titre">Faire tourner le déroulé</h3>
+      {/* E16US002 : « déroulé » est réservé au plan composé sur un tournoi (ADR-0076) ; cet
+          écran-ci fait tourner un **format**, hors tournoi. Le mot était celui du voisin. */}
+      <h3 className="carte__titre">Faire tourner le format</h3>
       <p className="carte__aide">
         Joue le format sur des archers fictifs et rend ce qu'il produit : la charge réelle en duels,
         les tours par phase, et le classement 1→N. Rien n'est enregistré.
@@ -632,8 +635,21 @@ function EditeurSequence({
             ) : (
               <div className="phase__ligne">
                 <span className="phase__ordre">{index + 1}</span>
-                <span className="phase__type">{LIBELLE_TYPE[etape.type]}</span>
-                <span className="phase__details">{decrireEtape(etape)}</span>
+                {/* E16US002, correctif de revue (deux axes) : cet écran **saisissait** un titre
+                    que sa propre liste n'affichait pas — on tapait « Tableau des jeunes », on
+                    validait, et la ligne rendait « Élimination directe ». Symétrie exacte de
+                    `features/phases/Phases.tsx`, où le type redevient un détail sans disparaître. */}
+                <span className="phase__type">{etape.titre ?? LIBELLE_TYPE[etape.type]}</span>
+                <span className="phase__details">
+                  {/* ⚠️ **Le type doit être réémis ici, et il l'avait été oublié** (relevé en 2ᵉ
+                      passe). `decrireEtape` vient de `./sequence`, qui n'imprime **pas** le type —
+                      à la différence de son homonyme de `patrimoine/format.ts`, doté du type entre
+                      parenthèses dans ce même commit. Les deux ont été confondus, et c'est celui
+                      sans type qui reçoit le titre : une étape nommée perdait donc toute mention
+                      de ce qu'elle **fait**, sur l'écran où l'on compose la séquence. */}
+                  {etape.titre != null && `${LIBELLE_TYPE[etape.type]} · `}
+                  {decrireEtape(etape)}
+                </span>
                 <span className="phase__actions">
                   <button
                     type="button"
@@ -726,6 +742,13 @@ export function FormulaireEtape({
   // E05US035, même parti que les précédents : l'état vit ici, la fiche ne fait que le rendre.
   const [decoupage, setDecoupage] = useState(depuisDecoupage(etape?.decoupage ?? null))
   const [arrets, setArrets] = useState(depuisArrets(etape?.arrets))
+  // E16US002 — le libellé libre de l'étape. Pas de normalisation ici : le domaine strippe et ramène
+  // le blanc à `null`, et le faire aussi côté client ferait deux règles pour une même donnée.
+  // DETTE-080 — versant jumeau du marqueur posé dans `features/phases/Phases.tsx` : même état, même
+  // garde, même reset, écrits une seconde fois. ⚠️ Ce formulaire-ci ne réinitialise historiquement
+  // **aucun** champ à l'ajout (« l'asymétrie est constatée, pas voulue ») ; `titre` y est reset,
+  // donc il **réduit** l'écart plutôt que de le creuser — mais il ne le referme pas.
+  const [titre, setTitre] = useState(etape?.titre ?? '')
 
   const volees = lireEntier(nbVolees)
   const fleches = lireEntier(nbFleches)
@@ -815,6 +838,10 @@ export function FormulaireEtape({
     // Retyper l'étape l'**efface** donc, comme ses voisins.
     decoupage: estQualification ? (versDecoupage(decoupage) ?? null) : null,
     arrets: arretable ? (versArrets(arrets) ?? []) : [],
+    // E16US002 — vidé = titre **retiré**. ⚠️ **Aucune garde de type ici**, à la différence des cinq
+    // réglages ci-dessus : un titre n'appartient à aucun type, et « Tableau des jeunes » reste
+    // juste si l'étape devient des poules. Le serveur ne le refuse sur aucun type.
+    titre: titre.trim() === '' ? null : titre,
   })
 
   return (
@@ -836,9 +863,31 @@ export function FormulaireEtape({
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
           setSuisse(SUISSE_PAR_DEFAUT)
+          // E16US002, même raison que ses voisins : sans ce reset, « Tableau des jeunes » se
+          // reporterait sur l'étape suivante — et un titre reporté est pire qu'un réglage reporté,
+          // puisqu'il **désigne** une phase précise.
+          setTitre('')
         }
       }}
     >
+      <div className="formulaire__champ">
+        {/* E16US002 — en tête, comme sur l'écran des phases d'un tournoi : c'est le champ qui
+            identifie l'étape pour l'organisateur, là où le type ne fait que la classer. Présent ici
+            **et** là-bas parce que le format est ce qui se rejoue d'une année sur l'autre
+            (ADR-0060 §5) : un format dont les étapes ne peuvent pas être nommées ne remonterait
+            titré que par promotion depuis un tournoi. */}
+        <ChampTitre
+          valeur={titre}
+          surChangement={setTitre}
+          libelle="Titre de l'étape (facultatif)"
+          placeholder={LIBELLE_TYPE[type]}
+        />
+        <p className="carte__aide">
+          Vide = le type sert de libellé. Utile quand le format enchaîne plusieurs phases du même
+          type.
+        </p>
+      </div>
+
       <div className="formulaire__champ">
         {/* Le libellé **enveloppe** son `<select>` (corrigé en E06US006) : il flottait à côté sans
             `htmlFor` ni imbrication, donc ne labellisait rien — un lecteur d'écran annonçait une
@@ -1087,7 +1136,10 @@ function EditeurSources({
             <option value="">Phase…</option>
             {amontEligibles.map((etape) => (
               <option key={etape.ordre} value={etape.ordre}>
-                {etape.ordre}. {LIBELLE_TYPE[etape.type]}
+                {/* Sans le titre, composer un format à trois qualifications donnait un menu
+                    « 1. Qualification / 2. Qualification / 3. Qualification » — le problème exact
+                    que cette US existe pour résoudre, sur l'écran qui vient d'acquérir le champ. */}
+                {etape.ordre}. {etape.titre ?? LIBELLE_TYPE[etape.type]}
               </option>
             ))}
           </select>
@@ -1167,7 +1219,7 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
     >
       <label className="formulaire__libelle">
         Nouveau format
-        <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du déroulé" />
+        <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du format" />
       </label>
       <button type="submit" className="bouton--discret" disabled={creer.isPending}>
         Créer

@@ -136,6 +136,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
         colline = _lire_reglage_colline(config)
         decoupage = _lire_decoupage(config)
         arrets = _lire_arrets(config)
+        titre = _lire_titre(config)
     except (
         json.JSONDecodeError,
         AttributeError,
@@ -162,6 +163,7 @@ def _vers_etape(ligne: DerouleEtapeORM) -> EtapeDeroule:
             colline=colline,
             decoupage=decoupage,
             arrets=arrets,
+            titre=titre,
             id=ligne.id,
         )
     except DomainError as exc:
@@ -301,14 +303,15 @@ def _config_etape(etape: EtapeDeroule) -> str:
             etape.validation,
             etape.sources,
             etape.effectif,
-            etape.barrage_jusqu_au,
-            etape.profondeur,
-            etape.poules,
-            etape.big_shoot_off,
-            etape.suisse,
-            etape.colline,
-            etape.decoupage,
-            etape.arrets,
+            barrage_jusqu_au=etape.barrage_jusqu_au,
+            profondeur=etape.profondeur,
+            poules=etape.poules,
+            big_shoot_off=etape.big_shoot_off,
+            suisse=etape.suisse,
+            colline=etape.colline,
+            decoupage=etape.decoupage,
+            arrets=etape.arrets,
+            titre=etape.titre,
         )
     )
 
@@ -318,19 +321,32 @@ def _politiques_json(
     validation: GrainValidation | None,
     sources: tuple[SourcePhase, ...],
     effectif: int | None,
-    barrage_jusqu_au: int | None = None,
-    profondeur: ProfondeurClassement | None = None,
-    poules: ReglageDePoules | None = None,
-    big_shoot_off: ConfigurationBigShootOff | None = None,
-    suisse: ConfigurationSuisse | None = None,
-    colline: ConfigurationColline | None = None,
-    decoupage: DecoupageEnTours | None = None,
-    arrets: tuple[ArretProgramme, ...] = (),
     *,
+    barrage_jusqu_au: int | None,
+    profondeur: ProfondeurClassement | None,
+    poules: ReglageDePoules | None,
+    big_shoot_off: ConfigurationBigShootOff | None,
+    suisse: ConfigurationSuisse | None,
+    colline: ConfigurationColline | None,
+    decoupage: DecoupageEnTours | None,
+    arrets: tuple[ArretProgramme, ...],
+    titre: str | None,
     marquer_absences: bool = False,
     porte_un_bareme: bool = False,
 ) -> dict[str, object]:
     """Corps commun d'une **étape** — une phase de tournoi ou un modèle d'étape d'un format.
+
+    ⚠️ **Les champs de composition sont keyword-only et SANS DÉFAUT, et c'est le garde-fou.**
+    Cette fonction a **deux** appelants — `_config_etape` (table `deroule_etape`) et
+    `_config_format` (colonne `config` d'un format) — et le dépôt a payé **trois** fois l'oubli
+    d'un champ sur l'un des deux : `barrage_jusqu_au` (E01US024), `colline` (E05US027), `titre`
+    (E16US002, relevé par
+    quatre axes de revue). Tant que ces paramètres avaient un défaut, l'oubli **compilait, passait
+    mypy et passait les tests d'aller-retour** — un `ModelePhase` de fixture laissant le champ neuf
+    à son défaut, l'égalité d'étapes comparait `None` à `None`.
+
+    Sans défaut, mypy refuse l'appel incomplet : le 4ᵉ exemplaire ne peut plus s'écrire en silence.
+    Un commentaire de plus ne l'aurait pas empêché — les trois précédents ne l'ont pas fait.
 
     Extrait de `_config_phase` par E01US023 : `format_tournoi.config` stocke une **séquence** de ces
     objets (ADR-0060 §5), et recopier la forme aurait garanti qu'elles divergent au premier ajout de
@@ -492,6 +508,14 @@ def _politiques_json(
         config["arrets"] = [
             {"apres_tour": arret.apres_tour, "portee": arret.portee.value} for arret in arrets
         ]
+    if titre is not None:
+        # Racine du `config`, hors `policies` — même domicile et même raison que `decoupage` et
+        # `arrets` : un titre n'est pas une politique injectable (règle 2), c'est un libellé.
+        # **Aucune migration** : une étape écrite avant E16US002 se relit sans titre, soit
+        # exactement son comportement d'avant. Écrit **seulement s'il existe** — `None` et clé
+        # absente disent la même chose ici (« pas de titre »), à la différence de `validation`
+        # où la présence à `null` porte un sens.
+        config["titre"] = titre
     if sources:
         config["sources"] = [_source_json(source) for source in sources]
     if effectif is not None:
@@ -654,6 +678,24 @@ def _lire_decoupage(config: Any) -> DecoupageEnTours | None:
     if not isinstance(souffle, dict) or souffle.get("tours") is None:
         raise InfrastructureError("Configuration d'étape de déroulé illisible.")
     return DecoupageEnTours(nb_tours=int(souffle["tours"]))
+
+
+def _lire_titre(config: Any) -> str | None:
+    """Relit le libellé d'une étape (E16US002) ; absent sur tout document antérieur.
+
+    Aucune tolérance de forme à prévoir : un titre est une chaîne, et les **deux** agrégats qui le
+    portent (`EtapeDeroule` et `ModelePhase`) normalisent les espaces de bord et ramènent le blanc à
+    `None` — c'est ce qui rend la relecture d'un `config` écrit avant ce correctif auto-réparatrice.
+    Ce qui n'est pas une chaîne est laissé
+    remonter en `TypeError` — `_vers_etape` l'attrape et rend « configuration illisible », le
+    régime de tous ses voisins : la base a été altérée, ce n'est pas un cas à deviner.
+    """
+    souffle = config.get("titre")
+    if souffle is None:
+        return None
+    if not isinstance(souffle, str):
+        raise TypeError("Le titre d'une étape doit être une chaîne.")
+    return souffle
 
 
 def _lire_arrets(config: Any) -> tuple[ArretProgramme, ...]:
@@ -834,7 +876,7 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         # sérialisation. Constaté en câblant `poules` par le même chemin ; corrigé
                         # ici plutôt que consigné, parce qu'il coûte un argument et qu'il détruit
                         # de la donnée d'organisateur (règle « un bug corrigeable dans l'US »).
-                        etape.barrage_jusqu_au,
+                        barrage_jusqu_au=etape.barrage_jusqu_au,
                         profondeur=etape.profondeur,
                         poules=etape.poules,
                         big_shoot_off=etape.big_shoot_off,
@@ -853,6 +895,14 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         # rouvre exactement le défaut que l'ajout prétendait fermer, déplacé de
                         # l'agrégat à sa persistance, et il détruit de la donnée d'organisateur.
                         arrets=etape.arrets,
+                        # E16US002 : **le défaut que les trois commentaires ci-dessus racontent a
+                        # été rejoué ici même**, et quatre axes de revue l'ont relevé. `titre` avait
+                        # été câblé sur `_config_etape` (la table `deroule_etape`) et **oublié sur
+                        # cet appelant-ci** : un format perdait donc TOUS ses titres à l'écriture,
+                        # le champ de « Composer un format » était inerte, et `promouvoir` faisait
+                        # remonter un format anonyme l'année suivante. `_politiques_json` a **deux**
+                        # appelants ; en câbler un seul est le mode de panne de ce fichier.
+                        titre=etape.titre,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),
@@ -953,6 +1003,7 @@ def _vers_modele_phase(brute: Any) -> ModelePhase:
         colline=_lire_reglage_colline(brute),
         decoupage=_lire_decoupage(brute),
         arrets=_lire_arrets(brute),
+        titre=_lire_titre(brute),
     )
 
 

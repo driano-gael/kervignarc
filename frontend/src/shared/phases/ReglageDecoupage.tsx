@@ -1,6 +1,6 @@
 // La fiche de réglages du **découpage d'une qualification en tours** (E05US035, ADR-0093).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un déroulé » (un modèle de
+// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
 // bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ReglageSuisse` avant elle.
 //
 // ⚠️ **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006, reprise telle quelle) :

@@ -1,6 +1,6 @@
 // La fiche de réglages d'un **système suisse** (E05US030).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un déroulé » (un modèle de
+// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
 // bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ReglagePoules` et
 // `ReglageBigShootOff` avant elle.
 //

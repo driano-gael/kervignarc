@@ -1,7 +1,7 @@
 // Le réglage « jusqu'où classer » sur les phases d'un **tournoi réel** (E06US006, ADR-0070).
 //
 // Ce fichier n'existait pas, et c'est ce que la revue a relevé : le CA exige le réglage « depuis
-// « Composer un déroulé » **et** depuis les phases d'un tournoi », mais seul le premier écran était
+// « Composer un format » **et** depuis les phases d'un tournoi », mais seul le premier écran était
 // testé — alors que celui-ci est le seul des deux à écrire dans une base.
 //
 // Il porte en outre le piège que l'ADR qualifie de plus coûteux : l'édition d'une phase est un
@@ -47,6 +47,7 @@ const PHASE: EtapeDeroule = {
   suisse: null,
   colline: null,
   decoupage: null,
+  titre: null,
   nb_volees: null,
   // E05US033 : les deux réglages neufs. `null` / `[]` = le comportement d'avant l'US.
   arrets: [],

@@ -42,7 +42,34 @@
 *En tant qu'*organisateur, *je veux* **lister mes phases, en ajouter depuis un gabarit et ouvrir la fiche de réglages de chacune**, *afin de* pouvoir avoir plusieurs qualifications ou plusieurs tableaux aux réglages différents dans le même tournoi.
 - **Contexte** : A07 est refusé (🔴). *« La création/gestion d'une phase est assez compliquée et demande des écrans plus détaillés. Je voudrais une liste des phases dans un écran, avec la possibilité d'en ajouter de nouvelles à partir d'un gabarit de phase. Par exemple je peux avoir plusieurs phases de type qualification, ou duel, qui n'ont pas les mêmes réglages. Sur chaque ligne du tableau on peut ouvrir une fiche de la phase, qui reprend son titre et ses réglages (nb de séries, volées, flèches, sets… suivant le type de phases). »* Et : *« chaque phase reste une brique qui peut servir d'une année sur l'autre, donc il peut y avoir plusieurs phases de même type mais avec des réglages différents. »*
 - **CA — liste** : un écran liste les phases du tournoi (titre, type, rang, état), une ligne par phase, avec ajout depuis un **gabarit de phase**.
+  - **✅ LIVRÉ le 22/08/2026, et la liste existait déjà.** Vérification faite avant de coder : `Phases.tsx` rendait
+    déjà une ligne par phase (rang, type, sources, effectif, profondeur). Ce qui manquait était le **titre** —
+    la ligne affiche désormais `titre ?? libellé du type`, le type restant lisible en détail. « Ajout depuis un
+    gabarit » reste ce qu'ADR-0060 §5 en a fait : un **préréglage** par type au moment d'ajouter (déjà en place),
+    pas une bibliothèque de phases autonomes. L'**état** n'est **pas** sur cette ligne, et c'est ADR-0076 :
+    une étape de déroulé n'a pas de statut, l'avancement est par créneau et vit dans « Suivi du déroulé ».
+    Ce mot du CA est donc **périmé depuis le 07/08/2026**, pas non tenu.
 - **CA — fiche** : ouvrir une ligne ouvre la fiche de la phase — son **titre** et ses **réglages propres au type** (nombre de séries, de volées, de flèches, de sets…).
+  - **✅ LIVRÉ le 22/08/2026** ([ADR-0095](../docs/adr/0095-un-titre-de-phase-est-un-libelle-pas-une-identite.md) §5).
+    Une bascule « Ouvrir la fiche » par ligne, **pour tous les types**. ⚠️ **C'est la qualification qui portait le
+    défaut** : « gérée ailleurs » (son barème se règle sur « Barème & validation »), elle n'ouvrait **aucun**
+    formulaire, et ses réglages propres — barrage, découpage, arrêts — traînaient à plat dans la barre d'actions.
+    Elle était donc le seul type impossible à nommer, précisément celui dont ce CA dit qu'on peut en avoir plusieurs.
+  - **⚠️ Trois points que le CA ne disait pas, tranchés ici** (ADR-0095 §1) : *(a)* un **titre blanc vaut absence
+    de titre**, jamais un refus — c'est le geste par lequel on *retire* un titre et on revient au libellé
+    automatique ; *(b)* **aucune unicité** — deux phases du même déroulé peuvent porter le même titre, l'identité
+    restant l'`id` et le rang (ADR-0045 §3) ; *(c)* le titre **survit à un retypage**, à la différence des cinq
+    réglages voisins : il n'appartient à aucun type.
+  - **⚠️ Ce qui reste HORS de la fiche** : la génération du **plan de cibles**, qui est une *action* et non un
+    réglage. Le dépôt s'est brûlé trois fois sur des plans inatteignables (E05US023, E05US026, E05US030) ; la
+    replier derrière un clic aurait rejoué ce risque.
+  - **⚠️ Contrepartie assumée** : les réglages de la qualification ne sont **plus visibles sans clic**. Le CA
+    demande une fiche qu'on ouvre, pas un mur qu'on parcourt — mais le garde-fou d'E05US035 a dû changer de geste,
+    et il faut le savoir.
+  - **⚠️ Aucune migration.** Le titre vit à la racine du `config` JSON de l'étape (ADR-0046), comme le découpage
+    d'E05US035. La ligne du tracker annonçait « champ neuf → **migration** » : c'était **faux**, vérification faite
+    — `deroule_etape` n'a que quatre colonnes (`id`, `tournoi_id`, `ordre`, `type`), *tous* les champs de définition
+    vivent dans le JSON. Une colonne pour le seul titre aurait été l'exception, pas la règle.
 - **CA — plusieurs phases de même type** : deux qualifications aux réglages différents coexistent dans un même tournoi sans se marcher dessus.
   - **✅ ARBITRÉ le 08/08/2026 — ce CA sort du périmètre d'E16US002 et devient `E05US024` + `E05US025`.**
     Le cadrage a montré que la question n'est **pas** un problème d'écran. Deux constats, vérifiés
@@ -69,7 +96,33 @@
     crée pas de bibliothèque de phases autonomes. Les deux motifs d'ADR-0060 §5 tiennent toujours —
     le barème n'est pas une entité (il vit dans la définition de l'étape), et une phase hors tournoi
     porterait un `ordre` en collision qui casserait l'invariant de séquence 1..N.
+- **CA — vocabulaire des deux écrans de composition** *(ajouté au cadrage du 22/08/2026, arbitrage du commanditaire)* :
+  les deux destinations qui composent des phases portaient **chacune le mot de l'autre** — « Phases (**format**) »
+  composait le déroulé d'un tournoi, « Composer un **déroulé** » fabrique un format de bibliothèque. Elles disent
+  désormais ce qu'elles font : **« Phases du tournoi »** et **« Composer un format »**
+  ([ADR-0095](../docs/adr/0095-un-titre-de-phase-est-un-libelle-pas-une-identite.md) §4). ⚠️ **Ce n'est pas
+  cosmétique** : c'est le motif exact du refus d'A10 qu'ADR-0073 a fait lever, et il portait sur les deux écrans
+  les plus proches l'un de l'autre du parcours. ⚠️ **Un message trompeur est tombé avec** : « composition avancée :
+  éditable depuis l'écran de composition du déroulé » désignait l'atelier, qui ne travaille sur **aucun tournoi**
+  — un cul-de-sac, antérieur à cette US et mis à nu par le renommage.
+- **CA — chiffrage `P-4` de la planche : ❌ HORS PÉRIMÈTRE** *(arbitrage du commanditaire, cadrage du 22/08/2026)*.
+  La planche A07 exigeait de « chiffrer la conséquence **au moment du choix** » — un tableau de 120 passe de 128
+  à 436 duels selon la profondeur. C'est [`DETTE-035`](../docs/dette.md), qui reste **ouverte** : son remède touche
+  la politique `Depth` côté domaine, soit un chantier moteur dans une US déjà large côté IHM. L'écran énonce déjà
+  la conséquence en clair, et la simulation (E15US002) en rend le compte exact.
 - **Notes** : touche le **domaine et l'API** — aujourd'hui les réglages de qualification vivent sur le barème du tournoi (`bareme`), pas sur la phase. Relire [ADR-0062](../docs/adr/0062-catalogue-de-types-de-phase.md) (catalogue de onze types) et [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) avant de cadrer. **ADR probable**. **Redécoupable** (liste seule / fiche / gabarits) — probablement trop large pour une branche.
+  - **✅ Livrée d'un bloc le 22/08/2026, sans redécoupage** — et le pronostic « trop large » était juste **au
+    moment où il a été écrit**. Ce qui l'a désamorcé : deux des trois CA étaient sortis du périmètre dès le
+    08/08/2026, et les six US de formats (E05US023 → E05US029) avaient livré entre-temps **cinq fiches de réglages**
+    plus les arrêts. Il ne restait donc ni moteur ni catalogue à inventer — le titre, la fiche, le vocabulaire.
+  - **✅ « ADR probable » confirmé** : [ADR-0095](../docs/adr/0095-un-titre-de-phase-est-un-libelle-pas-une-identite.md).
+  - **⚠️ La note « les réglages de qualification vivent sur le barème du tournoi » reste vraie et n'a pas été
+    touchée** : le barème se règle par sa propre ressource, et l'exposer une seconde fois dans la fiche aurait
+    ouvert deux chemins d'écriture pour une même donnée. La fiche de la qualification lit `nb_volees` en **lecture
+    seule**, ce qu'E05US035 avait déjà posé.
+  - **⚠️ `DETTE-080` inscrite** : la plomberie d'état des **deux** formulaires de composition est écrite deux fois,
+    et le titre en est le 10ᵉ réglage. Antérieure à cette US, aggravée par elle. Une duplication a en revanche été
+    **fermée** sur preuve (`configInchangee`, trois occurrences et deux bugs déjà payés).
 - **Dépend de** : E05US015, E01US023, E01US024 · **Jalon** : J2 · **Origine** : questionnaire A07, 04/08/2026
 
 ---

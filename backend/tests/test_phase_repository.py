@@ -1470,3 +1470,47 @@ def _colline_brute(db: Database, depart_id: DepartId, config: str) -> None:
         )
         session.add(PhaseORM(depart_id=depart_id, ordre=1, statut="a_venir"))
         session.commit()
+
+
+def test_un_format_conserve_le_titre_de_ses_etapes(tmp_path: Path) -> None:
+    """Le **format capturé** garde les titres de ses étapes — sinon il remonte anonyme.
+
+    ⚠️ **Ce test manquait à la livraison d'E16US002, et son absence a laissé passer un bloquant**
+    relevé par quatre axes de revue. `_politiques_json` a **deux** appelants — `_config_etape`
+    (table `deroule_etape`) et `_config_format` (colonne `config` d'un format) — et seul le premier
+    avait reçu `titre`. Le champ vivait donc dans l'agrégat, traversait le DTO, s'affichait à
+    l'écran… et disparaissait à la sérialisation d'un format.
+
+    C'est le **troisième** exemplaire du même accident sur cette même fonction : `barrage_jusqu_au`
+    (E01US024), `colline` (E05US027), et maintenant `titre`. Les deux tests voisins existent
+    précisément pour ça, et ils sont restés verts parce qu'aucun de leurs `ModelePhase` ne porte de
+    titre : `None == None`.
+
+    Ce que ça coûtait : le champ « Titre de l'étape » de « Composer un format » était **inerte**
+    (saisi, envoyé, jeté), et `promouvoir` rendait une brique de bibliothèque aux phases anonymes —
+    c'est-à-dire le CA « réutilisable d'une année sur l'autre », qui est le motif même pour lequel
+    `ModelePhase` porte ce champ.
+
+    Égalité d'étapes entière, et non le seul titre, pour la raison que ses deux voisins donnent :
+    sinon le prochain champ ajouté se perdra de la même façon.
+    """
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            titre="Tableau des jeunes",
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Format titré", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
+        assert relu.etapes[0].titre == "Tableau des jeunes"
+    finally:
+        db.engine.dispose()

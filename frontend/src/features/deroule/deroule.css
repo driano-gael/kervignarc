@@ -5,7 +5,7 @@
    ⚠️ Ré-importé depuis `App.css`, **à sa place d'origine** : le CSS est global et sa
    cascade dépend de l'ordre. Les règles n'ont pas bougé d'un caractère. */
 
-/* --- Composer un déroulé (E01US024, ADR-0063) -------------------------------------------------
+/* --- Composer un format (E01US024, ADR-0063 ; renommé par E16US002) -------------------------------------------------
    L'écran de composition d'un format : l'éditeur de séquence à gauche, le schéma à braquets et la
    simulation à droite. Tout passe par les tokens (`--brand-*`, `--danger`, `--success`, `--surface-1`)
    pour que le thème clair/sombre suive sans code conditionnel — le SVG compris, ce qui est

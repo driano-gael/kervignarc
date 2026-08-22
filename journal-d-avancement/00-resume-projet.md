@@ -544,15 +544,19 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **121 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/08/2026, la dernière
-  étant `E05US027` — **la colline jouable** : le format à défis du club (*King of the Hill* /
-  *Ladder*) se règle, se joue et s'affiche de bout en bout, alors qu'il n'existait jusqu'ici que
-  sous forme de moteur sans écran. C'est la **dernière des quatre tranches** qui rendaient jouables
-  les formats livrés en juillet : il n'en reste **aucun** en attente. La précédente était
-  `E05US029` — **les poules de niveau en une seule étape** : une phase de poules peut composer ses
-  groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au lieu de les équilibrer, ce qui monte
-  un tournoi club **en cascade** — 36 archers, une phase pour estimer les niveaux, une seconde pour
-  les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
+- **122 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/08/2026, la dernière
+  étant `E16US002` — **nommer ses phases** : une phase du déroulé peut porter un titre
+  (« Tableau des jeunes »), chaque ligne ouvre **sa** fiche au lieu d'empiler tous les réglages à
+  l'écran, et les deux menus de composition cessent de porter chacun le nom de l'autre
+  (« Phases du tournoi » / « Composer un format »). C'est le **dernier des quatre écrans refusés**
+  au questionnaire de maquettes du 04/08/2026 : il n'en reste **aucun**. La précédente était
+  `E05US027` — **la colline jouable** : le format à défis du club (*King of the Hill* / *Ladder*)
+  se règle, se joue et s'affiche de bout en bout, alors qu'il n'existait jusqu'ici que sous forme de
+  moteur sans écran ; c'était la **dernière des quatre tranches** qui rendaient jouables les formats
+  livrés en juillet. Avant elle, `E05US029` — **les poules de niveau en une seule étape** : une
+  phase de poules peut composer ses groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au
+  lieu de les équilibrer, ce qui monte un tournoi club **en cascade** — 36 archers, une phase pour
+  estimer les niveaux, une seconde pour les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
@@ -592,8 +596,12 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   salle)**, par E16US001 — le refus ne portait que sur le **vocabulaire**, désormais arbitré. **A14
   (complétude) a été levé le 07/08/2026** par E16US003, et **P03 (classements publics) le 08/08/2026**
   par E16US004 — la bascule « mes archers / tout » qu'il réclamait vaut désormais pour tout l'onglet
-  public, pas seulement pour le classement. Reste **un** écran refusé : A07 (phases), à recadrer avant
-  d'être pris (ADR-0076 en a changé la nature).
+  public, pas seulement pour le classement. **A07 (phases) a été levé le 22/08/2026** par E16US002 :
+  **plus aucun écran refusé**. Une phase peut désormais porter un titre, chaque ligne ouvre **sa**
+  fiche au lieu d'empiler tous les réglages, et les deux menus de composition cessent de porter
+  chacun le nom de l'autre. Le recadrage annoncé a bien eu lieu et il a **réduit** l'US : ADR-0076
+  avait changé la nature de l'écran, et les six US de formats livrées depuis avaient déjà posé cinq
+  fiches de réglages — il restait le titre, la fiche et le vocabulaire.
 - **Les maquettes montrent désormais l'écran entier (05/08/2026)** — **hors US numérotée**, support de
   conception, compte d'US inchangé. Le commanditaire ne voyait *« que des composants de pages »* :
   chaque planche était bornée à 430 px et **aucune ossature n'était dessinée** (ni navigation, ni

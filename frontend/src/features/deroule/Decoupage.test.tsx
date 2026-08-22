@@ -1,4 +1,4 @@
-// Le **découpage en tours** d'une qualification, sur l'atelier « Composer un déroulé » (E05US035).
+// Le **découpage en tours** d'une qualification, sur l'atelier « Composer un format » (E05US035).
 //
 // ⚠️ **Ce fichier existe parce que la 2ᵉ passe de revue a montré que le seul écran portant le geste
 // du CA n'avait aucun oracle.** L'écran des phases a le sien (`features/phases/Decoupage.test.tsx`),
@@ -32,6 +32,7 @@ const QUALIFICATION: Etape = {
   effectif: null,
   profondeur: null,
   arrets: [],
+  titre: null,
 }
 
 function poser(etape: Etape = QUALIFICATION) {

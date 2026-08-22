@@ -672,3 +672,31 @@ def test_promouvoir_transporte_la_profondeur_des_phases(ctx: Contexte) -> None:
     promu = ctx.service.promouvoir(ctx.tournoi_id, "Déroulé du jour")
 
     assert promu.etapes[0].profondeur == ProfondeurClassement.integrale()
+
+
+def test_promouvoir_capture_le_titre_des_etapes_et_le_rend_a_lapplication(ctx: Contexte) -> None:
+    """E16US002 — le titre traverse l'agrégat dans les deux sens (`d_etape` ↔ `pour_tournoi`).
+
+    Ce qui se range en bibliothèque est le **format** (ADR-0060 §5) : un titre perdu à la promotion
+    ferait remonter, l'année suivante, des phases anonymes.
+
+    ⚠️ **Ce test ne prouve PAS l'aller-retour persistant, et sa première docstring le prétendait**
+    (relevé par trois axes de revue). `ctx` monte un `FauxFormatTournoiRepository` en mémoire : rien
+    ici n'atteint `_config_format`, où le titre était **effectivement** perdu à l'écriture. Le test
+    était vert pendant que la propriété qu'il annonçait était absente — le mode de panne exact que
+    la règle 9 vise. La traversée **persistante** est gardée par
+    `test_phase_repository.py::test_un_format_conserve_le_titre_de_ses_etapes`, seul endroit où elle
+    se vérifie.
+    """
+    # Décor posé explicitement : la fixture `ctx` ne pose aucune étape. Une première rédaction
+    # portait un `or (None,)` défensif dont la branche « déjà posée » était **morte** — elle faisait
+    # croire au lecteur que le décor pouvait déjà porter une étape (relevé en revue).
+    _poser(ctx, Phase.qualification(ctx.depart_id, BaremeQualification.creer(12, 3)))
+    (etape,) = ctx.deroules.par_tournoi(ctx.tournoi_id)
+    ctx.deroules.enregistrer(dataclasses.replace(etape, titre="Qualification des jeunes"))
+
+    promu = ctx.service.promouvoir(ctx.tournoi_id, "Le format 2026")
+
+    assert promu.etapes[0].titre == "Qualification des jeunes"
+    # L'autre sens : rejoué sur un tournoi, le format rend son titre.
+    assert promu.etapes[0].pour_tournoi(ctx.tournoi_id).titre == "Qualification des jeunes"

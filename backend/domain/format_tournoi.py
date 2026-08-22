@@ -35,7 +35,7 @@ from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
 from domain.colline import ConfigurationColline
 from domain.deroule import ProjectionDeroule, effectif_minimum, projeter
-from domain.deroule_etape import EtapeDeroule
+from domain.deroule_etape import EtapeDeroule, titre_normalise
 from domain.erreurs import (
     EffectifMinimumIncoherent,
     ExigenceEffectifInvalide,
@@ -164,6 +164,30 @@ class ModelePhase:
     [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
     """
 
+    titre: str | None = None
+    """Le **libellé** de cette étape dans le format — voir `EtapeDeroule.titre` (E16US002).
+
+    Porté par le modèle **et** par l'étape : c'est ce qui fait qu'un format rejoué d'une année sur
+    l'autre remonte avec ses titres. Un champ présent d'un seul côté de la traversée est le défaut
+    `barrage_jusqu_au` qu'ADR-0076 a fermé."""
+
+    def __post_init__(self) -> None:
+        """Normalise le titre — **sans rien valider** (E16US002, correctif de revue).
+
+        ⚠️ **`ModelePhase` est l'AUTRE porte d'entrée du titre, et elle était ouverte.** La première
+        livraison ne normalisait que dans `EtapeDeroule`, si bien qu'un titre posté sur un *format*
+        (`EtapeDTO.titre`) traversait sans strip : `"  Jeunes  "` était stocké et resservi tel quel,
+        et `"   "` devenait un titre non vide qui masquait le libellé du type. La même saisie avait
+        donc **deux valeurs selon l'écran** — exactement ce que `EtapeReponse.titre` promet
+        d'empêcher (« deux clients ne peuvent pas normaliser différemment »). Relevé en revue.
+
+        ⚠️ **Ce `__post_init__` normalise, il ne VALIDE pas** — et c'est la distinction qui compte
+        ici : `ModelePhase` n'a délibérément aucun invariant depuis E01US024 (ADR-0063), parce qu'un
+        format est un **brouillon** qui s'enregistre incomplet. Ajouter une garde rouvrirait ce
+        débat ; retirer des espaces ne le touche pas.
+        """
+        object.__setattr__(self, "titre", titre_normalise(self.titre))
+
     @staticmethod
     def qualification(
         bareme: BaremeQualification,
@@ -211,6 +235,7 @@ class ModelePhase:
             colline=self.colline,
             decoupage=self.decoupage,
             arrets=self.arrets,
+            titre=self.titre,
         )
 
     @staticmethod
@@ -240,6 +265,7 @@ class ModelePhase:
             colline=etape.colline,
             decoupage=etape.decoupage,
             arrets=etape.arrets,
+            titre=etape.titre,
         )
 
 

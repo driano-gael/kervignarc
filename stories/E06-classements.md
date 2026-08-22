@@ -134,7 +134,7 @@
 - **CA — profondeur configurable (ex-007)** : mode 1→N OU top N + regroupement du reliquat ;
   politique `depth`, réglée **phase par phase** (cadrage du 04/08/2026 : le déroulé se compose déjà
   à cette maille, et un tournoi peut jouer un tableau principal intégral avec une consolante
-  tronquée). Réglable depuis « Composer un déroulé » **et** depuis les phases d'un tournoi.
+  tronquée). Réglable depuis « Composer un format » (renommé par E16US002) **et** depuis les phases d'un tournoi.
 - **CA — le preset d'une phase non réglée est le podium** *(arbitrage du 04/08/2026, reversé ici)*.
   Le CA d'origine disait « mode 1→N (**défaut**) », repris d'[ADR-0004](../docs/adr/0004-moteur-de-phases-politiques.md).
   C'est vrai du **catalogue**, faux du **preset d'une phase déjà en base** : jusqu'à cette US, toutes

@@ -136,6 +136,7 @@ class ServicePhases:
         colline: ConfigurationColline | None = None,
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
+        titre: str | None = None,
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
@@ -180,6 +181,7 @@ class ServicePhases:
             colline=colline,
             decoupage=decoupage,
             arrets=arrets,
+            titre=titre,
         )
         # Valide la séquence complète (la nouvelle incluse) avant d'écrire.
         verifier_sequence([*existantes, nouvelle])
@@ -203,6 +205,7 @@ class ServicePhases:
         colline: ConfigurationColline | None = None,
         decoupage: DecoupageEnTours | None = None,
         arrets: tuple[ArretProgramme, ...] = (),
+        titre: str | None = None,
     ) -> EtapeDeroule:
         """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
         séquence — `ordre` et barème/grain sont préservés).
@@ -242,6 +245,11 @@ class ServicePhases:
             # pourrait plus transformer sa qualification découpée en autre chose. L'édition est
             # **totale** : ce que le client omet est effacé.
             decoupage=decoupage,
+            # E16US002 : passé explicitement lui aussi. Même motif que ses voisins — l'édition est
+            # **totale**, donc un titre que le client omet est **effacé**, et non conservé par la
+            # grâce de `replace`. Sans cette ligne, retirer un titre serait impossible depuis
+            # l'écran : le champ vidé reviendrait rempli au rechargement.
+            titre=titre,
             arrets=arrets,
         )
         autres = [e for e in self._deroules.par_tournoi(tournoi_id) if e.id != etape_id]

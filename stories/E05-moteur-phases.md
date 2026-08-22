@@ -533,7 +533,7 @@ format ; le logiciel doit connaître la fourchette basse et avertir l'admin avan
   le refus au clic, ce qui n'apprend rien tant qu'on ne clique pas. La restriction « pas lancé » a
   été tranchée à la revue : rappeler le manque sur un tournoi en cours serait un reproche sans
   action possible.)*
-- **CA — visible à la composition** : l'écran « Composer un déroulé » annonce le minimum du format,
+- **CA — visible à la composition** : l'écran « Composer un format » (renommé par E16US002) annonce le minimum du format,
   qu'un effectif soit simulé ou non.
 - **Notes** : le moteur refuse déjà de monter un tableau vide (E05US020, `EffectifTableauInvalide`) —
   c'est le **dernier** garde-fou, pas le bon endroit : il s'exprime sur la tablette, en compétition.

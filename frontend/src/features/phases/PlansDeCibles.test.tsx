@@ -72,6 +72,7 @@ function etape(
     decoupage: null,
     nb_volees: null,
     arrets: [],
+    titre: null,
     ...reglage,
   }
 }

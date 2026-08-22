@@ -136,15 +136,6 @@
 /* Réglage du barrage sur la ligne de la phase de qualification (E06US003). Il vit ici parce que la
    qualification n'ouvre pas le formulaire d'édition complet — l'y mettre laissait le seuil
    inatteignable, correctif de revue. */
-.phase__barrage {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.phase__barrage input {
-  width: 8ch;
-  min-height: 40px;
-}
+/* `.phase__barrage` a été retirée par E16US002 : ses trois consommateurs sont passés à
+   `.phase__reglage` (dans `app/App.css`), un widget de titre n'ayant rien à faire dans la
+   feuille de style des barrages (règle 10). Le bloc laissé ici était du CSS mort. */

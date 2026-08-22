@@ -71,7 +71,7 @@ export function Duels({ tournoiId }: { tournoiId: number }) {
       {phases.isSuccess && tableaux.length === 0 && (
         <p className="carte__etat">
           Aucune phase de tableau (élimination directe) dans ce tournoi : ajoutez-en une dans «
-          Phases (format) » avant de placer les duellistes.
+          Phases du tournoi » avant de placer les duellistes.
         </p>
       )}
       {tableaux.length > 0 && (
