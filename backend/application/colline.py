@@ -1,8 +1,13 @@
 """Service applicatif de la **colline** (E05US027) — habiter le contrat de phase jouable.
 
 Le moteur (`domain/colline.py`) est livré depuis E05US015 et n'avait **aucun appelant de
-production** : c'est le dernier volet de `DETTE-028`, que cette US referme. Ce service est cet
-appelant.
+production** : c'est le dernier volet **« moteurs de formats »** de `DETTE-028`, et ce service est
+cet appelant.
+
+⚠️ **Ce volet-là se referme, pas la dette entière** — la nuance compte pour qui lira ce module en
+croyant le sujet clos. `ScoreAvecHandicap` et `RoutingRepechage` restent **inertes** (aucun
+`config.policies` ne les porte) et `domain/classement.py` ne passe toujours pas par la famille
+`scoring`. Ce qui subsiste est le volet **politiques**, et il n'a aucune US inscrite.
 
 ## Ce qui est partagé, et ce qui ne l'est pas
 
@@ -270,6 +275,9 @@ class ServiceColline:
 
         Lève `TournoiIntrouvable` / `PhaseIntrouvable` (404), `PhasePasUneColline` ou
         `PhasePasReglee` (409).
+
+        `# DETTE-031` — recomposée **intégralement** à chaque lecture, chaîne de sources amont
+        comprise, sans mémoïsation transverse aux requêtes. Même régime que les trois jumeaux.
         """
         phase, participants = self._population(tournoi_id, phase_id)
         return self._photo(phase, participants)

@@ -1064,10 +1064,34 @@ Origine : 3ᵉ tranche du découpage d'`E05US023` (09/08/2026). Moteur complet (
 > il n'y aura rien à inventer, mais il faudra la **brancher des deux côtés dans la même US**, la
 > sûreté du contrat venant du déploiement conjoint et non d'un mécanisme de typage.
 
+> ✅ **Arbitrage du commanditaire, 22/08/2026 (cadrage) — l'écart du Ladder est tranché.** Le
+> référentiel §10.1 signalait depuis le 31/07/2026 que l'**exemple chiffré** du Ladder contredit sa
+> propre règle, et le laissait « à confirmer à la recette ». Confirmé : **c'est la règle qui fait
+> foi**. Partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » donne `1 2 3 6 5 4 7 8` — les
+> deux archers **échangent** leurs places, et le n°5, qui n'a pas tiré, ne bouge pas. L'exemple
+> décrivait une *insertion en cascade* : mécanique différente, non retenue.
+>
+> Le moteur livré en `E05US015` appliquait déjà la règle ; l'arbitrage **confirme** ce comportement
+> au lieu de le changer. Il est reversé ici, au référentiel §10.1 et à `docs/fonctionnel/E05US015.md`
+> pour que le point cesse d'être marqué « en attente » — un CA laissé ouvert alors qu'il est tranché
+> se relit sans effort et **faux**.
+>
+> ✅ **Périmètre confirmé au même cadrage : de bout en bout** (backend **et** front), à la différence
+> d'`E05US026` qui avait dû être coupée en deux. Cette US referme `DETTE-028`.
+
 - **CA — habiter le contrat de phase jouable**, mêmes termes qu'`E05US026`.
-- **CA — réglages à l'atelier** : portée de défi et nombre de manches (`ConfigurationColline`).
+- **CA — réglages à l'atelier** : portée de défi et nombre de manches (`ConfigurationColline`),
+  avec la **portée maximale que l'effectif autorise affichée en clair** — jumelle de la borne de
+  rondes du suisse, et même motif : au-delà de `effectif - 1`, « chacun défie n'importe qui » n'est
+  plus un format. ⚠️ Le service **borne** à la lecture au lieu de refuser d'ouvrir l'écran.
 - **CA — les manches s'enchaînent** et le classement se lit de l'ordre final de la colline.
 - **CA — le signal d'écart d'E01US024 cesse de viser la colline**, et elle seule.
+- **CA — l'archer au repos est dit « en attente »**, jamais « terminé ». ⚠️ *Ajouté au cadrage du
+  22/08/2026, et ce n'est pas un cas limite* : à portée 1 les **deux extrémités** de la colline se
+  reposent une manche sur deux, quel que soit l'effectif — là où un suisse ne met un archer en
+  attente qu'à effectif impair. Sans cela, la moitié du plateau passe pour sortie à chaque manche.
+  L'issue existe (`EN_ATTENTE`, ADR-0087) ; c'est le **déploiement conjoint** des deux côtés qui est
+  au CA.
 - **Dépend de** : `E05US023` · **Jalon** : J3 · **Résorbe** : `DETTE-028` (volet colline)
 
 ---

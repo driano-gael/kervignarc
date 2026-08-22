@@ -354,9 +354,17 @@ club décrit par la règle (« évolue toute l'année ») n'est pas une phase de
 deux mécaniques que la règle du King of the Hill propose, on retient **« deux voisins s'affrontent »**
 plutôt que « tous défient le King », parce qu'elle fait jouer tout le monde à chaque manche.
 
-⚠️ **L'exemple chiffré du Ladder contredit sa propre règle** et reste **à confirmer** : partant de
-`1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8` — le n°6 en 5ᵉ position,
-alors que « le gagnant monte » mène à la 4ᵉ. L'application suit la **règle**.
+⚠️ **L'exemple chiffré du Ladder contredit sa propre règle**, et l'écart est **tranché depuis le
+22/08/2026** (arbitrage du commanditaire, cadrage d'`E05US027`) : partant de `1 2 3 4 5 6 7 8`,
+« le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8` — le n°6 en 5ᵉ position, alors que « le
+gagnant monte » mène à la 4ᵉ. **C'est la règle qui fait foi, pas l'exemple** : les deux positions
+s'**échangent** (`1 2 3 6 5 4 7 8`), et les positions intermédiaires ne bougent pas puisqu'elles
+n'ont pas joué. L'exemple décrivait une **insertion en cascade**, mécanique différente qui n'est pas
+retenue.
+
+Cet écart était marqué « à confirmer à la recette » depuis le 31/07/2026 ; il a été confirmé au
+moment où la colline est devenue réellement jouable (`E05US027`), c'est-à-dire au premier moment où
+la réponse changeait quelque chose pour un archer.
 
 **Handicap** — `❌ hors FFTA` · règle donnée le **31/07/2026**.
 > Chaque archer possède un handicap calculé à partir de ses performances précédentes. Le score final
