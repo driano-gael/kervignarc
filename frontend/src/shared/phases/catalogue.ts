@@ -145,6 +145,13 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
   'poules',
   'big_shoot_off',
   'suisse',
+  // ⚠️ **Oubliée à la livraison d'E05US027, relevée par l'axe adversarial.** Le backend avait bien
+  // retiré la colline de `_TYPES_DEROULABLES` (le bot ne sait pas la simuler), mais ce miroir-ci
+  // n'avait pas suivi : l'atelier affichait donc « le moteur ne sait pas encore dérouler ce type de
+  // phase » sur le format que l'US venait précisément de rendre jouable. Exactement le défaut
+  // corrigé en revue d'E05US028, rejoué un format plus loin — et le seul des deux signaux qui
+  // trompe. Le garde-fou est désormais `Deroule.test.tsx`, pas ce commentaire.
+  'colline',
 ])
 
 // Les types sur lesquels une **pause programmée** peut se poser (E05US033, ADR-0091). Miroir de
@@ -154,7 +161,7 @@ export const MOTEUR_SAIT_JOUER: ReadonlySet<TypePhase> = new Set([
 //
 // Un arrêt coupe le déroulé à une frontière de tour **observée** : le déclencheur demande le tour
 // courant au service qui observe la phase. Les types dont personne ne lit l'avancement —
-// l'échauffement, le barrage, le placement, la colline — n'ont aucun tour à observer, et le serveur
+// l'échauffement, le barrage, le placement — n'ont aucun tour à observer, et le serveur
 // **refuse** l'arrêt (`ArretProgrammeInvalide`, 422). L'écran évite donc de le proposer, et dit
 // pourquoi plutôt que de laisser l'organisateur buter sur un refus à la soumission.
 //

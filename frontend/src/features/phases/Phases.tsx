@@ -63,7 +63,8 @@ import {
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
 import { useEtatPoules, useRegenererPlanPoules } from '../poules/hooks'
-import { useEtatColline } from '../colline/hooks'
+import { useEtatColline, useRegenererPlanColline } from '../colline/hooks'
+import { ClassementColline } from '../colline/ClassementColline'
 import { useEtatSuisse, useRegenererPlanSuisse } from '../suisse/hooks'
 import { ClassementSuisse } from '../suisse/ClassementSuisse'
 import {
@@ -225,6 +226,63 @@ function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
   )
 }
 
+/** Le plan de cibles d'une colline, et la colline elle-même — **côté organisateur**.
+ *
+ * ⚠️ **Ce composant a manqué à la première livraison d'E05US027, et son absence rendait le format
+ * injouable** (relevé en revue). `useRegenererPlanColline` existait, la route `POST /colline/plan`
+ * existait, `ServiceColline.regenerer_plan` existait — et rien ne les appelait. Sans pose de plan,
+ * `_plan_suffisant` rend `False` en permanence, tous les `couloirs` valent `null`, et l'écran du
+ * scoreur réclame en boucle une action que l'application n'offrait nulle part : **personne ne
+ * savait sur quelle cible tirer**. La fiche de recette de l'US (§ scénario 2) était elle-même
+ * inexécutable.
+ *
+ * ⚠️ **3ᵉ récidive du même défaut** — E05US023 (poules), puis le commentaire de `PlanDePoules`
+ * ci-dessus écrit pour ne pas le rejouer, puis celui de `PlanDeSuisse`. Le commentaire a tenu pour
+ * le suisse et n'a pas tenu pour la colline : un avertissement en prose ne se déclenche pas. Le
+ * garde-fou réel est le test de rendu qui accompagne ce composant.
+ *
+ * Comme le suisse : **un seul bloc**, donc `decrireConflits(..., 'Bloc')` — sans ce second
+ * argument, une colline lirait « Poule(s) 1 sans couloirs » alors qu'elle n'a aucune poule.
+ */
+function PlanDeColline({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
+  const etat = useEtatColline(tournoiId, phaseId)
+  const regenerer = useRegenererPlanColline(tournoiId, phaseId)
+
+  // Même garde que chez le suisse : une phase sans participant n'a ni défi ni conflit, et
+  // « Régénérer » y serait un contresens.
+  const defis = (etat.data?.manches ?? []).flatMap((manche) => manche.defis)
+  const planVide = defis.length === 0 || defis.every((defi) => defi.couloirs === null)
+  const conflits = etat.data?.conflits ?? []
+
+  return (
+    <>
+      <button
+        type="button"
+        className={planVide ? undefined : 'bouton--discret'}
+        disabled={regenerer.isPending || etat.isPending}
+        onClick={() => regenerer.mutate()}
+      >
+        {planVide ? 'Générer le plan' : 'Régénérer le plan'}
+      </button>
+      {conflits.length > 0 && (
+        <span className="carte__etat carte__etat--alerte" role="status">
+          {decrireConflits(
+            conflits.map((c) => ({ poule: c.groupe, raison: c.raison })),
+            'Bloc',
+          )}
+        </span>
+      )}
+      <MessageErreur erreur={regenerer.error} />
+      {/* La colline **est** le classement : l'organisateur le lit ici sans un appel de plus, la
+          donnée étant déjà chargée pour le bouton ci-dessus. Même geste qu'`ClassementSuisse`. */}
+      <ClassementColline
+        classement={etat.data?.classement ?? []}
+        manches={etat.data?.manches ?? []}
+      />
+    </>
+  )
+}
+
 /** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
  *
  * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
@@ -341,6 +399,7 @@ function LignePhase({
         {gereeAilleurs && <ReglageDecoupageDePhase tournoiId={tournoiId} phase={phase} />}
         {phase.type === 'poules' && <PlanDePoules tournoiId={tournoiId} phaseId={phase.id} />}
         {phase.type === 'suisse' && <PlanDeSuisse tournoiId={tournoiId} phaseId={phase.id} />}
+        {phase.type === 'colline' && <PlanDeColline tournoiId={tournoiId} phaseId={phase.id} />}
         {!gereeAilleurs &&
           (editableIci(phase.sources) ? (
             <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
@@ -691,11 +750,22 @@ export function FormulairePhase({
           <ReglageColline
             etat={colline}
             surChangement={setColline}
-            effectif={etatCollineDeLaPhase.data?.effectif ?? null}
-            // La borne vient du **serveur** ici, comme pour le suisse : l'état de la phase porte
-            // déjà `portee_maximale`, et la recalculer côté client entretiendrait deux
-            // arithmétiques pour une même règle.
-            maximum={etatCollineDeLaPhase.data?.portee_maximale ?? null}
+            // ⚠️ **L'effectif DÉCLARÉ d'abord, le prélevé en repli** (correctif de revue). Le
+            // jumeau de `Deroule.tsx` porte déjà ce raisonnement ; il n'avait pas été repris ici,
+            // sur le seul écran où l'effectif est **éditable**. La borne annoncée doit être celle
+            // que le serveur **oppose** : `EtapeDeroule._verifier_portee_de_defi` refuse l'étape
+            // contre `self.effectif`, c'est-à-dire le champ saisi trois blocs plus haut et envoyé
+            // dans la même requête — pas contre la population déjà prélevée. Sans ça : 40 inscrits,
+            // phase déclarée à 4, portée 5 → la fiche annonçait « 40 archers : au plus 39 rangs »,
+            // feu vert, et l'enregistrement rendait 422. Exactement le parcours que le CA
+            // supprime.
+            effectif={effectifAnalyse ?? etatCollineDeLaPhase.data?.effectif ?? null}
+            // La borne serveur ne vaut que tant qu'aucun effectif n'est déclaré : sinon elle
+            // écraserait la borne de l'effectif saisi, ce qui rouvrirait le défaut ci-dessus par
+            // l'autre bout. `ReglageColline` retombe alors sur `effectif`.
+            maximum={
+              effectifAnalyse !== null ? null : (etatCollineDeLaPhase.data?.portee_maximale ?? null)
+            }
           />
         )}
         {/* E05US033 — montée **sans condition de type**, à la différence des cinq fiches

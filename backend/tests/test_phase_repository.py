@@ -1190,6 +1190,45 @@ def test_un_format_conserve_le_reglage_de_poules_et_le_seuil_de_barrage(tmp_path
         db.engine.dispose()
 
 
+def test_un_format_conserve_le_reglage_de_colline(tmp_path: Path) -> None:
+    """Le **format capturé** garde son King of the Hill — sinon il se rejouerait non réglé.
+
+    ⚠️ **Ce test manquait, et son absence était le mode de panne exact du voisin ci-dessus**
+    (relevé en revue). `barrage_jusqu_au` avait été perdu **en silence** par ce même chemin : le
+    champ vivait dans l'agrégat et disparaissait à la sérialisation, parce que le seul test
+    d'aller-retour de format n'exerçait que les poules. Les trois tests de colline ajoutés par
+    E05US027 couvrent la persistance d'**étape** — c'est une autre table et un autre code.
+
+    Ce que ça coûterait ici : promouvoir en format un tournoi dont une phase est un King of the Hill
+    rendrait une brique de bibliothèque « colline non réglée ». Rejouée, elle refuserait de démarrer
+    — et l'organisateur, qui a capturé un format *qui marchait*, n'aurait aucune piste.
+
+    Égalité d'étapes entière, et non deux champs isolés, pour la même raison que le voisin : sinon
+    le prochain réglage ajouté se perdra de la même façon.
+    """
+    db = _base(tmp_path)
+    try:
+        modele = ModelePhase(
+            ordre=1,
+            type=TypePhase.COLLINE,
+            # Un Ladder, délibérément : à `portee_de_defi=1`, une portée effacée par la
+            # sérialisation se relirait au défaut et le test passerait sur un bug.
+            colline=ConfigurationColline(nb_manches=6, portee_de_defi=2),
+        )
+        repository = FormatTournoiRepositorySQL(db.session_factory)
+
+        cree = repository.ajouter(
+            FormatTournoi.creer("Ladder 6 manches", [modele], OrigineBrique.UTILISATEUR)
+        )
+        assert cree.id is not None
+        relu = repository.par_id(cree.id)
+
+        assert relu is not None
+        assert relu.etapes == (modele,)
+    finally:
+        db.engine.dispose()
+
+
 # --- E05US035 : le découpage d'une qualification en tours, même domicile et même mécanisme -------
 
 

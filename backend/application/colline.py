@@ -220,6 +220,24 @@ _PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
 """Le seul conflit qu'une **relecture** sait rapporter : le plan ne couvre pas le plateau."""
 
 
+def _toutes_manches_closes(etat: EtatColline) -> bool:
+    """La phase est-elle **allée au bout** — toutes les manches réglées jouées et closes.
+
+    ⚠️ **Ce n'est pas « le classement est-il départagé ? »**, et confondre les deux a coûté un
+    majeur en revue. Une colline n'a jamais d'ex æquo : son classement est *toujours* départagé, dès
+    la première lecture, y compris avant qu'une seule flèche soit tirée — il vaut alors le
+    classement
+    amont recopié. Ce qui décide qu'on peut prélever dedans, c'est **l'achèvement**, pas l'absence
+    d'égalité.
+
+    Deux appelants, et c'est voulu : `rencontres_a_tirer` (une phase épuisée ne route plus personne)
+    et `classement_de_phase` (une phase inachevée retient les prélèvements, ADR-0081). Écrite une
+    fois plutôt que deux — les deux questions sont la même, et deux copies auraient divergé au
+    premier cas limite.
+    """
+    return len(etat.manches) >= etat.nb_manches and all(m.close for m in etat.manches)
+
+
 def _plan_suffisant(bloc: BlocDeCouloirs | None, effectif: int) -> bool:
     """Le bloc posé couvre-t-il **le plateau d'aujourd'hui** ?
 
@@ -336,8 +354,27 @@ class ServiceColline:
             (Participant.individuel(rang.duelliste.archer_id), rang.position)
             for rang in photo.classement
         )
+        source = classement_de_colline(colline, lignes)
         return replace(
-            classement_de_colline(colline, lignes),
+            source,
+            # ⚠️ **Tant que toutes les manches ne sont pas closes, ces positions ne sont pas
+            # décidées — elles vont encore bouger** (relevé en revue). `classement_de_colline` rend
+            # `plages_indecises=()`, et il a raison : une colline n'a jamais d'ex æquo. Mais
+            # « personne n'est à égalité » n'est **pas** « tout est joué », et c'est la seconde
+            # question que pose ADR-0081. Sans ce frein, une colline dont aucune manche n'est close
+            # rendait un classement complet et parfaitement départagé — qui n'est que le classement
+            # **amont** recopié — et une phase avale s'y ensemençait sans que rien ne dise
+            # « en attente » : l'organisateur posait son tableau et son plan de cibles pendant que
+            # la colline tournait, puis voyait l'ensemencement changer à chaque manche validée et
+            # les duels déjà tirés basculer en `desynchronisee`.
+            #
+            # Les trois autres formats ont ce frein **par accident** : une phase non commencée y met
+            # tout le monde à égalité, donc `_indecises` remplit la plage. La colline, seule à
+            # n'avoir aucune égalité, en était dépourvue — le garde-fou d'ADR-0081 ne tenait chez
+            # les voisins que par un effet de bord de leur mode de classement.
+            plages_indecises=(
+                () if _toutes_manches_closes(photo) else ((1, len(source.classement.lignes)),)
+            ),
             rang_premier=tranche(phase, resolveur),
         )
 
@@ -359,6 +396,19 @@ class ServiceColline:
         #
         # `maximum == 0` couvre l'effectif 0 **et** l'effectif 1 : dans les deux cas aucun défi
         # n'est appariable, et `defis_de_la_manche` lèverait.
+        #
+        # ⚠️ **Mais ne pas apparier de défi n'est pas ne classer personne** (correctif de revue,
+        # axe A). Le classement était rendu vide dans les deux cas, et à effectif 1 c'était faux
+        # dans un sens observable : l'unique archer prélevé **existe** et occupe la position 1. Le
+        # taire le faisait disparaître du classement public (une colline vide alors qu'un archer y
+        # est), des `participants` du panneau de routage — donc rendu `INDISPONIBLE`, « il n'y
+        # figure pas », au lieu d'`EN_ATTENTE` — et du `ClassementSource` servi à une phase avale,
+        # qui recevait une source vide au lieu d'un rang.
+        #
+        # Le cas n'est pas théorique : il est **atteignable dès la composition**, avant que la
+        # source amont ait classé du monde, et c'est le régime que `avancement_de_phase` qualifie
+        # elle-même de « normal et durable ». À effectif 0, la boucle ci-dessous ne produit rien —
+        # une phase vide reste une photo vide, sans porte spéciale.
         if maximum == 0:
             return EtatColline(
                 phase_id=phase_id,
@@ -367,7 +417,13 @@ class ServiceColline:
                 portee_maximale=0,
                 effectif=len(participants),
                 manches=(),
-                classement=(),
+                classement=tuple(
+                    RangColline(
+                        position=position,
+                        duelliste=self._duelliste(Participant.individuel(ligne.archer_id), lignes),
+                    )
+                    for position, ligne in enumerate(participants, start=1)
+                ),
             )
         tireurs = [Participant.individuel(ligne.archer_id) for ligne in participants]
         # ⚠️ **On borne ici, on ne lève pas** — la leçon du suisse, où l'inverse a été un bloquant
@@ -569,10 +625,9 @@ class ServiceColline:
         manches réglées sont closes.
         """
         etat = self.etat(tournoi_id, phase_id)
-        epuisee = len(etat.manches) >= etat.nb_manches and all(m.close for m in etat.manches)
         return RencontresARouter(
             participants=tuple(rang.duelliste.archer_id for rang in etat.classement),
-            epuisee=epuisee,
+            epuisee=_toutes_manches_closes(etat),
             rencontres=tuple(
                 RencontreARouter(
                     numero=defi.numero,

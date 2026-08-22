@@ -507,6 +507,24 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "078",
+   "introduite_par": [
+    "E05US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "079",
+   "introduite_par": [
+    "E05US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "majeur"
+  },
+  {
    "identifiant": "077",
    "introduite_par": [
     "E05US029"
@@ -2603,6 +2621,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0062",
     "0075",
     "0083",
     "0084",
@@ -2635,6 +2654,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0062",
     "0084",
     "0087",
     "0089"
@@ -2643,7 +2663,9 @@ window.ATLAS.avancement = {
     "054",
     "064",
     "065",
-    "066"
+    "066",
+    "078",
+    "079"
    ],
    "dettes_resorbees": [
     "028",
@@ -2664,6 +2686,7 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0013",
+    "0062",
     "0065",
     "0083",
     "0084",

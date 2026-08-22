@@ -519,7 +519,10 @@ function ResultatSimulation({ resultat }: { resultat: SimulationFormat }) {
   )
 }
 
-function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
+/** Exporté **pour le test seul** : le message d'honnêteté du bot est un texte que seul un rendu
+ * peut vérifier, et son défaut (une entrée manquante à `MOTEUR_SAIT_JOUER`) s'est produit deux fois
+ * — E05US028, puis E05US027. Même parti que `ReserveMoteur` juste au-dessus. */
+export function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
   return (
     <tr className={phase.ecart ? 'deroule__ligne--ecart' : undefined}>
       <th scope="row">
@@ -527,8 +530,10 @@ function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
       </th>
       <td>
         {phase.joue ? phase.effectif : '—'}
-        {/* Honnêteté d'outil : le moteur ne sait dérouler ni les poules, ni le suisse, ni la
-            colline (DETTE-028), et n'honore pas les prélèvements « le reste » / « issue de tour »
+        {/* Honnêteté d'outil : le **bot de simulation** ne sait dérouler aucun des quatre formats
+            à rencontres — poules, Big Shoot Off, suisse, colline (`_TYPES_DEROULABLES`, DETTE-066) —
+            alors que le **moteur**, lui, les joue tous depuis E05US027 ; et il n'honore pas les
+            prélèvements « le reste » / « issue de tour »
             (ADR-0068 §3). Plutôt que de servir un chiffre faux et muet à qui dimensionne ses
             scoreurs, on montre l'écart avec ce que le schéma annonçait — et on dit quand le moteur
             n'a rien joué du tout. Les prélèvements **par rangs** sont désormais honorés (E05US020),

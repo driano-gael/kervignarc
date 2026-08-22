@@ -247,6 +247,11 @@ class EtapeDeroule:
         muet — `P-3` demandait de supprimer un cul-de-sac, ce texte en fléchait un vers le mur.
         *(Relevé par l'axe adversarial en 2ᵉ passe, sur le correctif d'un bloquant de 1ʳᵉ passe.)*
         """
+        if self.type is TypePhase.COLLINE:
+            return (
+                "Retirez cette pause, ou augmentez le nombre de manches de la colline : une pause "
+                "posée après la dernière manche ne coupe rien."
+            )
         if self.type is not TypePhase.QUALIFICATION:
             return None
         if self.decoupage is None:
@@ -259,16 +264,36 @@ class EtapeDeroule:
     def _nb_tours_a_la_composition(self) -> int | None:
         """Combien de tours cette étape comptera, **quand on peut le savoir sans le terrain**.
 
-        `None` = inconnu, et c'est le cas des quatre formats dont l'avancement se lit le jour J.
-        Une **qualification** fait exception depuis E05US035 : son découpage est un réglage de
-        composition, porté par cette étape. Non découpée, elle compte **un** tour — ce n'est pas un
-        cas dégénéré, c'est la vérité qui rend tout arrêt inerte, et c'est pourquoi on la dit.
+        `None` = inconnu, et c'est le cas des formats dont l'avancement se lit le jour J : braquets
+        projetés, round-robin, rondes appariables selon l'effectif, manches d'un Big Shoot Off.
+        **Deux** formats font exception, et la question à leur poser est toujours la même — *le
+        nombre de tours est-il un réglage porté par cette étape, ou une conséquence du terrain ?*
+
+        - la **qualification** depuis E05US035 : son découpage est un réglage de composition. Non
+          découpée, elle compte **un** tour — ce n'est pas un cas dégénéré, c'est la vérité qui
+          rend tout arrêt inerte, et c'est pourquoi on la dit ;
+        - la **colline** depuis E05US027 : `nb_manches` est réglé à la composition, exactement comme
+          `decoupage.nb_tours`. `ServiceColline.avancement_de_phase` le confirme — il rend le
+          réglage brut, « sans borne à appliquer », une colline n'ayant pas d'équivalent de
+          `rondes_maximales`.
+
+        ⚠️ **La colline a été oubliée ici à sa livraison, et relevée en revue par deux axes.**
+        Rendue arrêtable par la seule bascule d'`avancement_lisible`, elle acceptait une pause
+        « après la manche 7 » sur une phase réglée à 3 manches : `verifier_arrets` ne refuse rien
+        quand `nb_tours is None`, donc la pause était **acceptée à l'atelier et définitivement
+        inerte**. C'est mot pour mot le mode de panne qu'E05US035 avait fermé pour la
+        qualification — un trou *déplacé*, pas ouvert : le raisonnement ci-dessus n'avait pas été
+        rejoué sur le format neuf. Il est à rejouer pour **tout** type ajouté à `TYPES_ARRETABLES`.
         """
         # DETTE-062 : rien n'interdit de changer ce nombre sur une phase **en cours**, et le
         # changer déplace les frontières de tour — une pause non encore atteinte peut devenir
         # immédiatement due, ou passer pour manquée. Aucun score n'est re-partitionné (le découpage
         # vit hors du barème), et la recette dit de régler avant de démarrer : c'est une consigne,
         # pas un garde-fou.
+        if self.type is TypePhase.COLLINE:
+            # `None` sur une colline non réglée : on ne borne pas ce qu'on ne peut pas juger — le
+            # réglage manquant est déjà refusé ailleurs, au démarrage de la phase.
+            return self.colline.nb_manches if self.colline is not None else None
         if self.type is not TypePhase.QUALIFICATION:
             return None
         return self.decoupage.nb_tours if self.decoupage is not None else 1
@@ -318,6 +343,22 @@ class EtapeDeroule:
         juger. L'atelier montre alors la borne atteignable et l'organisateur décide — et le service
         **borne** au lieu de lever, pour qu'un écran s'ouvre toujours.
         """
+        if self.colline is not None and self.type is not TypePhase.COLLINE:
+            # ⚠️ **Le refus existait déjà, mais UN CRAN TROP TARD** (relevé par l'axe adversarial,
+            # qui l'a reproduit par exécution). Il vivait dans `Phase.__post_init__`, donc à
+            # `instancier()` — c'est-à-dire **après** que l'étape a rejoint le déroulé. Une entrée
+            # client refusée en 422 laissait derrière elle une étape sans aucune instance de phase,
+            # occupant un rang que l'ajout suivant ne réutilise pas : le déroulé du tournoi
+            # devenait troué par une requête *invalide*. Le refuser ici le rend antérieur à toute
+            # écriture.
+            #
+            # Les quatre réglages voisins (`poules`, `big_shoot_off`, `suisse`, `decoupage`)
+            # partagent ce défaut, hérité et non introduit ici ; il est inscrit au registre plutôt
+            # que corrigé en douce dans cette US (`DETTE-078`). Le champ neuf, lui, n'a aucune
+            # raison de naître troué.
+            raise ConfigurationCollineInvalide(
+                "Un réglage de colline ne se pose que sur une phase de type « colline »."
+            )
         if self.colline is None or self.effectif is None:
             return
         maximum = portee_maximale(self.effectif)

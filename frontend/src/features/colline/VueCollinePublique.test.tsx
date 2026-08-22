@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DefiPublic, EtatCollinePublique, manchePublique } from './api'
+import type { DefiPublic, EtatCollinePublique, ManchePublique } from './api'
 import { getEtatColline } from './api'
 import { VueCollinePublique } from './VueCollinePublique'
 
@@ -45,7 +45,7 @@ function defi(patch: Partial<DefiPublic> & Pick<DefiPublic, 'numero' | 'manche'>
   }
 }
 
-function manche(patch: Partial<manchePublique> & Pick<manchePublique, 'numero'>): manchePublique {
+function manche(patch: Partial<ManchePublique> & Pick<ManchePublique, 'numero'>): ManchePublique {
   return {
     defis: [defi({ numero: patch.numero, manche: patch.numero })],
     au_repos: [],
@@ -137,6 +137,31 @@ describe('la vue publique de la colline', () => {
     expect(screen.queryByText(/PETIT/)).toBeNull()
   })
 
+  it('accorde le verbe sur les archers RÉELLEMENT affichés, pas sur la liste entière', async () => {
+    // ⚠️ **Quatre axes de revue ont trouvé ce défaut indépendamment, et aucune fixture existante ne
+    // pouvait l'atteindre** : le test ci-dessus n'a qu'un seul archer au repos, et sa liste filtrée
+    // est vide — le bloc n'est donc même pas rendu. Il faut deux archers au repos dont **un seul**
+    // suivi pour que l'écart se voie, et c'est le régime ordinaire du format : à portée 1, les deux
+    // extrémités se reposent une manche sur deux. L'accord se lisait sur `manche.au_repos` (deux
+    // noms) alors que le rendu ne montrait que `auReposSuivis` (un nom) → « PETIT Jo ne tire**nt**
+    // pas cette manche ».
+    vi.mocked(getEtatColline).mockResolvedValue(
+      etat({ manches: [manche({ numero: 1, au_repos: [PETIT, DURAND] })] }),
+    )
+
+    monter(<VueCollinePublique tournoiId={1} phaseId={9} mode="suivis" suivis={[2]} />)
+
+    // La ligne « au repos » est ciblée par sa classe : DURAND figure aussi dans un défi du décor,
+    // et une recherche par texte sur toute la page ramènerait les deux.
+    const auRepos = await screen.findByText(/ne tire/)
+
+    expect(auRepos).toHaveTextContent(/DURAND/)
+    expect(auRepos).not.toHaveTextContent(/PETIT/)
+    // L'assertion qui porte le correctif : singulier, parce qu'UN seul nom est affiché.
+    expect(auRepos).toHaveTextContent(/ne tire pas cette manche/)
+    expect(auRepos).not.toHaveTextContent(/ne tirent pas/)
+  })
+
   it('dit qu’aucun archer suivi ne tire ici plutôt que de rendre une manche vide', async () => {
     // ⚠️ « Aucun de vos archers ici » ≠ « manche vide » (ADR-0079) : l'archer suivi peut tirer dans
     // une autre phase, ou se reposer.
@@ -148,13 +173,20 @@ describe('la vue publique de la colline', () => {
   it('annonce les cibles manquantes au lieu de les taire', async () => {
     // Le second défaut trouvé en revue sur le suisse : les défis s'affichaient sans cible et le
     // spectateur croyait à un oubli. On **rapporte**, on ne comble pas (ADR-0083 §3).
+    //
+    // ⚠️ **L'assertion porte sur le SUJET de la phrase, et pas seulement sur sa fin** (correctif de
+    // revue, deux axes). Elle disait `/pas encore de cibles attribuées/` — une regex qui ne touchait
+    // pas le début du message, donc restait verte sur « **Un défi** n'a pas encore de cibles » alors
+    // qu'une colline pose **un bloc unique pour toute la phase** : quand il manque, ce sont tous les
+    // défis qui sont sans couloir, et l'organisateur doit comprendre qu'il a un plan à générer.
     vi.mocked(getEtatColline).mockResolvedValue(
       etat({ conflits: [{ groupe: 1, raison: 'non_posee' }] }),
     )
 
     monter(<VueCollinePublique tournoiId={1} phaseId={9} />)
 
-    expect(await screen.findByText(/pas encore de cibles attribuées/)).toBeInTheDocument()
+    expect(await screen.findByText(/Le plan de cibles n’est pas encore posé/)).toBeInTheDocument()
+    expect(screen.queryByText(/^Un défi/)).toBeNull()
   })
 
   it('laisse remonter l’historique des manches', async () => {

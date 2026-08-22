@@ -93,18 +93,26 @@ def _depots(app: FastAPI) -> tuple[PhaseRepositorySQL, FranchissementArretReposi
 # ─────────────────────────── Le câblage (règle 8) ───────────────────────────
 
 
-def test_les_cinq_services_qui_ecrivent_un_resultat_signalent_les_arrets(
+def test_les_six_services_qui_ecrivent_un_resultat_signalent_les_arrets(
     app_session: FastAPI,
 ) -> None:
-    """Le branchement du déclencheur sur les **cinq** chemins d'écriture, prouvé.
+    """Le branchement du déclencheur sur les **six** chemins d'écriture, prouvé.
 
     ⚠️ **C'est le test que le composition root annonçait sans qu'il existe.** La première livraison
     ne branchait que la qualification et l'élimination directe : un arrêt programmé sur une phase de
     poules, de suisse ou de Big Shoot Off ne se déclenchait **jamais**, puisque ces phases tournent
     seules et qu'aucune validation n'atteignait le déclencheur. Bloquant relevé par les quatre axes.
 
-    Rien ne protège automatiquement contre l'oubli d'un sixième format : ce test **est** le
+    Rien ne protège automatiquement contre l'oubli d'un **septième** format : ce test **est** le
     garde-fou, et son échec sera le seul signal.
+
+    ⚠️ **La colline est le sixième, et elle a failli manquer** (E05US027, relevé en revue par deux
+    axes). Elle devient arrêtable par la seule bascule d'`avancement_lisible` — `TYPES_ARRETABLES`
+    en dérive (ADR-0093) — donc **rien du côté du domaine ne réclame le branchement** : il s'ajoute
+    à la main au composition root, et son oubli n'aurait rougi nulle part. Le mode de panne est
+    connu et déjà vécu sur le suisse : arrêt accepté à l'atelier, salle qui ne s'arrête jamais.
+    Ce n'est donc pas une liste à rallonge, c'est **la seule preuve** que le format neuf est
+    branché.
 
     Il touche un attribut privé, comme son voisin d'E05US032 sur les lecteurs d'avancement, et pour
     la même raison : le composition root n'expose pas ce qu'il a branché, et c'est précisément ce
@@ -116,6 +124,7 @@ def test_les_cinq_services_qui_ecrivent_un_resultat_signalent_les_arrets(
         app_session.state.service_poules,
         app_session.state.service_suisse,
         app_session.state.service_big_shoot_off,
+        app_session.state.service_colline,
     )
     attendu = app_session.state.service_arrets_programmes
 

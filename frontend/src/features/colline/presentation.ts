@@ -71,6 +71,13 @@ export function motDeLaFin(manches: readonly MancheLisible[], manchesDues: numbe
       ? { etat: 'attente', courante: derniere.numero, suivante: derniere.numero + 1 }
       : null
   }
+  // ⚠️ **Ce repli n'est PAS mort, mais il ne se déclenche pas contre notre serveur** (relevé en
+  // revue). `_rejouer` ne s'arrête que sur une manche non close, donc une dernière manche close
+  // implique que toutes les manches dues l'ont été : `manches.length >= manchesDues` est vrai à ce
+  // point, dans toute réponse cohérente. Il est gardé parce qu'il **couvre une réponse serveur
+  // incohérente** — le jour où le rejeu changerait de règle d'arrêt, dire « fini » sur une phase
+  // qui ne l'est pas serait pire que se taire. Ne pas le simplifier en `{ etat: 'fini' }` sans
+  // avoir rouvert `ServiceColline._rejouer` : c'est là qu'est l'invariant, pas ici.
   return manches.length >= manchesDues ? { etat: 'fini' } : null
 }
 

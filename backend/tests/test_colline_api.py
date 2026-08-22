@@ -125,6 +125,41 @@ class Scenario:
         )
         assert phase.id is not None
         self.phase_id = phase.id
+        self._db = db
+        self._categorie_id = categorie.id
+
+    def inscrire_en_retard(self, app: FastAPI, *, score: str = "7") -> int:
+        """Un archer arrive et tire sa qualification **après** que la colline a commencé.
+
+        Ce n'est pas un cas tordu : c'est l'événement le plus banal d'un jour de tournoi (un
+        retardataire, une inscription sur place). Il change la **population** de la phase, donc
+        l'ordre initial de la colline, donc tout ce qui s'en déduit.
+        """
+        db = self._db
+        archer = ArcherRepositorySQL(db.session_factory).ajouter(
+            Archer(
+                nom="RETARD",
+                prenom="P",
+                tournoi_id=self.tournoi_id,
+                categorie_id=self._categorie_id,
+            )
+        )
+        assert archer.id is not None
+        SerieRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory), HorlogeSysteme()
+        ).enregistrer(
+            Serie(
+                tournoi_id=self.tournoi_id,
+                archer_id=archer.id,
+                volees=(Volee(numero=1, valeurs=(ZoneScore(score),) * 3, validee_par="S"),),
+                phase_id=self.qualif_id,
+            )
+        )
+        InscriptionRepositorySQL(
+            db.session_factory, AuditRepositorySQL(db.session_factory)
+        ).ajouter(Inscription.creer(archer.id, self.depart_id))
+        self.archers.append(archer.id)
+        return archer.id
 
 
 @pytest.fixture
@@ -338,6 +373,99 @@ def test_la_pose_du_plan_est_reservee_a_l_admin(app_colline: FastAPI) -> None:
     assert reponse.status_code in (401, 403), reponse.text
 
 
+def test_une_inscription_tardive_desynchronise_la_colline_entiere(
+    app_colline: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le régime d'ADR-0049 §4 sur ce format, **épinglé** — parce qu'il surprend en salle.
+
+    ⚠️ **Ce test ne corrige rien : il constate, et c'est délibéré** (relevé par l'axe adversarial,
+    reproduit par exécution). Changer la **population** d'une phase en cours invalide tout ce qui en
+    dérive — c'est le parti du projet, partagé avec les poules et le système suisse, et le
+    redessiner serait une autre US. Mais sur la colline la conséquence est **maximale**, parce que
+    l'ordre initial *est* le classement amont : un archer de plus renumérote toutes les positions,
+    donc réapparie toutes les manches, donc désynchronise les défis déjà tirés.
+
+    Concrètement, après l'arrivée d'un retardataire : les tirs validés sont masqués, la phase repart
+    visuellement à zéro, toute écriture est refusée en 409, et la phase n'est jamais `epuisee` —
+    donc le routage renvoie `EN_ATTENTE` à tout le plateau, indéfiniment. **Le seul geste de sortie
+    est de retirer l'inscription arrivée en cours de phase**, et rien à l'écran ne le dit : c'est
+    pourquoi il est nommé au § « ce que cette US ne livre pas » de la fiche de recette.
+
+    Ce que ce test garde, c'est que le comportement reste **un refus franc** et non un écrasement
+    silencieux : le jour où quelqu'un « réparerait » la désynchronisation en reconstruisant un duel
+    vierge, des scores validés disparaîtraient sans trace. Le 409 est la protection.
+    """
+    with TestClient(app_colline) as client:
+        scn = Scenario(app_colline, statut=StatutPhase.EN_COURS)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+
+        _gagner(client, entetes, scn, 1, le_bas=True)
+        avant = client.get(f"/api/v1/colline/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+
+        scn.inscrire_en_retard(app_colline)
+
+        apres = client.get(f"/api/v1/colline/etat/{scn.tournoi_id}/{scn.phase_id}").json()
+        rejeu = client.post(
+            "/api/v1/colline/validations",
+            json={"tournoi_id": scn.tournoi_id, "phase_id": scn.phase_id, "numero": 1},
+            headers=entetes,
+        )
+
+    assert avant["effectif"] == 4
+    assert apres["effectif"] == 5
+    # La phase repart de l'ordre amont : plus aucune manche close, tout est à retirer.
+    assert all(not manche["close"] for manche in apres["manches"])
+    # Et l'écriture est **refusée**, pas silencieusement rejouée sur un duel neuf.
+    #
+    # ⚠️ **Deux gardes distinctes protègent, et laquelle tombe dépend du défi visé** — c'est une
+    # observation, pas une approximation. Un numéro que la nouvelle numérotation réattribue à un
+    # duel déjà validé bute sur `duel_verrouille` (la garde du duel, 422) ; un numéro dont la
+    # composition a changé bute sur `duel_desynchronise` (la garde de la colline, 409). Les deux
+    # disent la même chose à l'organisateur — « cette phase n'accepte plus rien en l'état » — et
+    # c'est *cela* que ce test garde : le jour où l'un des deux chemins « réparerait » la situation
+    # en reconstruisant un duel vierge, des scores validés disparaîtraient sans trace, et
+    # l'assertion deviendrait un 200.
+    assert rejeu.status_code in (409, 422), rejeu.text
+    assert rejeu.json()["code"] in {"duel_desynchronise", "duel_verrouille"}
+
+
+def test_un_reglage_de_colline_sur_un_autre_type_ne_persiste_rien(
+    app_colline: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une entrée client **refusée** ne doit rien laisser derrière elle — pas même un rang occupé.
+
+    ⚠️ **Reproduit par exécution par l'axe adversarial.** Le refus (422
+    `configuration_colline_invalide`)
+    sortait bien, mais il vivait sur `Phase`, donc à `instancier()` — c'est-à-dire **après** que
+    l'étape a rejoint le déroulé. Résultat : une requête invalide laissait une étape **orpheline**,
+    sans aucune instance de phase, occupant un `ordre` que l'ajout suivant ne réutilisait pas. Le
+    déroulé du tournoi se retrouvait troué (rangs 1, 2, 4) par une requête que le serveur avait
+    pourtant rejetée.
+
+    Le refus est désormais porté par `EtapeDeroule.__post_init__`, donc antérieur à toute écriture.
+    Ce test garde les **deux** conséquences : le refus lui-même, et l'absence de trace.
+    """
+    with TestClient(app_colline) as client:
+        scn = Scenario(app_colline)
+        connecter_admin(client)
+
+        avant = client.get(f"/api/v1/tournois/{scn.tournoi_id}/phases").json()
+        refus = client.post(
+            f"/api/v1/tournois/{scn.tournoi_id}/phases",
+            json={
+                "type": "elimination_directe",
+                "colline": {"nb_manches": 3, "portee_de_defi": 1},
+            },
+        )
+        apres = client.get(f"/api/v1/tournois/{scn.tournoi_id}/phases").json()
+
+    assert refus.status_code == 422, refus.text
+    assert refus.json()["code"] == "configuration_colline_invalide"
+    # L'assertion qui compte : le déroulé est **inchangé**. Une étape orpheline s'y verrait comme
+    # une entrée de plus, et un rang brûlé comme un trou dans la suite des `ordre`.
+    assert [etape["ordre"] for etape in apres] == [etape["ordre"] for etape in avant]
+
+
 def test_le_panneau_de_routage_annonce_le_defi_et_sa_cible(
     app_colline: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -447,9 +575,18 @@ def test_le_suivi_du_deroule_annonce_la_manche_courante(
     avancement = {bloc["ordre"]: bloc for bloc in reponse.json()["avancement"]}[2]
     assert avancement["nb_tours"] == 3
     assert avancement["tour_courant"] == 2
-    # Le **mot du métier** vient du contrat de phase (`UniteDeTour.RONDE`), pas d'un littéral :
+    # Le **mot du métier** vient du contrat de phase (`UniteDeTour.MANCHE`), pas d'un littéral :
     # c'est ADR-0090 qui sépare l'unité d'avancement générique de son nom à l'écran.
-    assert avancement["libelle_tour_courant"] == "Ronde 2"
+    #
+    # ⚠️ **Cette assertion disait « Ronde 2 » et c'était un défaut de méthode, pas une coquille**
+    # (relevé en revue par trois axes). Le nom de ce test et sa docstring disaient déjà « manche » —
+    # ils dérivent du CA ; l'assertion, elle, a été écrite en lisant ce que le code rendait. Le
+    # contrat portait `UniteDeTour.RONDE`, hérité d'E05US015 où aucun écran ne lisait ce mot, et le
+    # test a **entériné** la divergence au lieu de l'attraper : la même phase annonçait « Manche 2
+    # sur 3 » au scoreur et au public, « Ronde 2 » au suivi du déroulé et sur le bandeau de pause.
+    # C'est exactement le piège que la règle 9 décrit — un test rédigé d'après l'implémentation ne
+    # fait que décrire l'implémentation.
+    assert avancement["libelle_tour_courant"] == "Manche 2"
 
 
 def test_l_etat_public_ne_sert_pas_le_pave_de_saisie(app_colline: FastAPI) -> None:
@@ -497,10 +634,29 @@ def test_le_pave_de_saisie_reste_accessible_au_scoreur(
         reponse = client.get(
             f"/api/v1/colline/saisie/{scn.tournoi_id}/{scn.phase_id}", headers=entetes
         )
+        base = {"tournoi_id": scn.tournoi_id, "phase_id": scn.phase_id, "numero": 1}
+        anonymes = {
+            "manches": client.post(
+                "/api/v1/colline/manches",
+                json={**base, "manche": 1, "valeurs_haut": ["6"], "valeurs_bas": ["10"]},
+            ).status_code,
+            "barrages": client.post(
+                "/api/v1/colline/barrages",
+                json={**base, "valeur_haut": "6", "valeur_bas": "10"},
+            ).status_code,
+            "validations": client.post("/api/v1/colline/validations", json=base).status_code,
+        }
 
     assert anonyme.status_code in (401, 403), anonyme.text
     assert reponse.status_code == 200, reponse.text
     assert "duel" in reponse.json()["manches"][0]["defis"][0]
+    # ⚠️ **Les trois ÉCRITURES aussi** (relevé en revue, axe B) : ce test ne couvrait que la
+    # lecture, et le seul autre cas d'autorisation portait sur un scoreur du *mauvais* tournoi.
+    # Aucun ne postait sans jeton. Le `Depends(exiger_scoreur)` est bien déclaré sur les trois
+    # routes — il n'y a donc pas de trou aujourd'hui — mais **la garde n'était pas gardée** : le
+    # retirer d'une seule des trois n'aurait fait rougir personne. Le suisse a ce test.
+    for route, sans_jeton in anonymes.items():
+        assert sans_jeton in (401, 403), f"POST /colline/{route} est ouvert à un anonyme !"
 
 
 def test_un_defi_dune_manche_non_appariee_est_introuvable(

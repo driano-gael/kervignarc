@@ -228,7 +228,14 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
   4 et gagne » donne `1 2 3 5 6 4 7 8` dans l'exemple fourni — soit le n°6 en **5ᵉ** position, alors
   que la règle (« le gagnant monte, le perdant descend ») mène à la 4ᵉ. **Le moteur applique la
   règle**, et un test fige cet arbitrage pour qu'un changement futur soit une décision et non un
-  glissement. À confirmer à la recette.
+  glissement. ✅ **Tranché le 22/08/2026** (E05US027) : c'est la **règle** qui fait foi, les deux
+  archers échangent leurs places — le n°6 arrive en 4ᵉ. L'arbitrage confirme donc le comportement du
+  moteur au lieu de le changer, et il est reversé dans `stories/E05-moteur-phases.md`,
+  `docs/referentiel-ffta.md` §10.1 et `docs/fonctionnel/E05US015.md`. ⚠️ **Cette mention est restée
+  « à confirmer » alors que les trois autres sources étaient à jour** (relevé en revue) : c'est
+  pourtant ici que la question a été *posée*, donc le premier endroit où un lecteur va la chercher.
+  Un point tranché qu'on laisse ouvert se fait ré-instruire ; c'est la même famille de défaut qu'un
+  CA périmé, qui « s'écrit sans effort, et il est faux ».
 - **Les défauts « faute de précision »** (composition serpent des poules, barème 3/1/0, remise à zéro
   entre manches de BSO, 5 rondes au suisse, appariement fort-contre-faible de la ronde 1, Buchholz)
   sont tous des **politiques ou des paramètres** : chacun se corrige par configuration, aucun ne
@@ -259,10 +266,20 @@ SQLite et remontait en **500** au lieu d'un 422 typé.
   `ScoreAvecHandicap` (avec `ContexteScore`), et la finale spectacle qui n'est qu'un assemblage
   d'`elimination_directe` + barème de duel, donc **aucun module**.
 
-🔴 **Écart connu et suivi : quatre types du catalogue ne sont pas jouables.** `poules`, `suisse`,
-`colline` et `big_shoot_off` ont leur moteur de domaine, testé, mais **aucun consommateur de
-production** — `ServiceSaisieDuels._decor` les refuse. C'est `DETTE-028`, et c'est `E05US023` qui la
-solde.
+✅ **Écart refermé le 22/08/2026 : les quatre types ont désormais leur consommateur de
+production.** `poules` (`ServicePoules`, E05US023), `big_shoot_off` (`ServiceBigShootOff`, E05US028),
+`suisse` (`ServiceSuisse`, E05US026) et `colline` (`ServiceColline`, E05US027) sont chacun instanciés
+au composition root et branchés sur les ports du contrat de phase jouable (ADR-0083). `DETTE-028`
+reste **ouverte sur son seul volet « politiques »** — `ScoreAvecHandicap` et `RoutingRepechage` sont
+toujours inertes, et `classement.py` ne passe pas par la famille `scoring`.
+
+⚠️ **Ce paragraphe a affirmé le contraire pendant trois US**, et c'est la revue d'E05US027 qui l'a
+relevé : il annonçait encore un écart 🔴 et désignait `E05US023` comme l'US qui le solderait, alors
+que trois des quatre types étaient déjà joués. C'est le mode de panne d'ADR-0017 par l'autre bout —
+non pas une capacité déclarée dont le porteur ne porte rien, mais un **manque déclaré qui n'existe
+plus** : il se lit comme la preuve qu'un travail reste à faire, et le registre de dette, lui, disait
+déjà le contraire. D'où la consigne de `CLAUDE.md` : cette section se vérifie **dans le code du
+jour**, jamais en relisant l'ADR.
 > ⚠️ **Ne pas lire `_decor` comme la liste des quatre.** La garde est écrite
 > `if phase.type is not TypePhase.ELIMINATION_DIRECTE` : elle refuse **tout** ce qui n'est pas un
 > tableau, donc aussi `placement` — que `DETTE-028` documente séparément comme « omise sans mention »

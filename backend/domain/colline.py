@@ -20,12 +20,19 @@ paramètre, pas un second moteur : la règle 2 en fait de la configuration.
    commanditaire : elle fait jouer tout le monde à chaque manche, là où défier le King n'occupe que
    deux archers.
 
-⚠️ **Écart signalé, non arbitré seul.** L'exemple chiffré du Ladder ne concorde pas avec sa propre
-règle : partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y donne `1 2 3 5 6 4 7 8`,
-c'est-à-dire le n°6 en **5ᵉ** position et le n°4 en **6ᵉ** — alors que gagner un défi contre le 4
-devrait mener à la 4ᵉ. Ce module applique la **règle** (« le gagnant monte, le perdant descend » :
-les deux positions s'échangent), pas l'exemple. À confirmer à la recette — c'est consigné dans
-`stories/E05-moteur-phases.md` et dans `docs/fonctionnel/E05US015.md`.
+✅ **Écart tranché le 22/08/2026 (E05US027) : c'est la RÈGLE qui fait foi.** L'exemple chiffré du
+Ladder ne concordait pas avec elle — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y
+donnait `1 2 3 5 6 4 7 8`, c'est-à-dire le n°6 en **5ᵉ** position, alors que gagner un défi contre
+le
+4 mène à la **4ᵉ**. Ce module applique la règle (« le gagnant monte, le perdant descend » : les deux
+positions s'échangent), et l'arbitrage **confirme** ce comportement au lieu de le changer.
+
+Reversé dans les quatre sources : `stories/E05-moteur-phases.md`, `docs/referentiel-ffta.md` §10.1,
+`docs/fonctionnel/E05US015.md` et [ADR-0062] § « Ce que cet ADR ne tranche pas ».
+
+⚠️ **Cette docstring est restée « à confirmer à la recette » alors que les autres sources étaient à
+jour** (relevé par l'axe adversarial) : le module qui *applique* la règle est le dernier endroit où
+un point tranché devrait rester ouvert — c'est celui qu'on ouvre pour savoir ce que le code fait.
 
 Domaine **pur** (règle 1).
 

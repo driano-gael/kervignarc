@@ -31,13 +31,31 @@ function manche(numero: number, close: boolean, auRepos: Duelliste[] = []): Manc
   }
 }
 
+// ⚠️ **Décor typé, sans `as unknown as`** (correctif de revue, axe B). Le double cast fabriquait un
+// objet **incomplet** en affirmant qu'il était un `Duel`. Ça ne coûtait rien tant que les fonctions
+// testées ne lisent que trois champs — mais le jour où `Duel` gagne un champ requis qu'elles lisent,
+// ces tests restent verts sur une fixture **illégale**, et c'est le défaut qu'`EcranSalle.test.tsx`
+// a déjà fait corriger ici (« la fixture était objectivement fausse »). Écrire le duel en entier
+// coûte douze lignes une fois ; les valeurs neutres disent au lecteur ce qui ne joue aucun rôle.
 function duel(patch: Partial<Duel> = {}): Duel {
   return {
-    manches: [],
-    resultat: null,
+    numero: 1,
+    tour: 1,
+    place_en_jeu: null,
+    haut: null,
+    bas: null,
+    est_bye: false,
+    mode: null,
+    nb_manches: null,
+    nb_fleches_par_volee: null,
+    points_pour_gagner: null,
+    zones: [],
     validee_par: null,
+    manches: [],
+    barrage: null,
+    resultat: null,
     ...patch,
-  } as unknown as Duel
+  }
 }
 
 function defi(numero: number, patch: Partial<Defi> = {}): Defi {

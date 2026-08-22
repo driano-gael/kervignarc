@@ -20,6 +20,7 @@ tests capables d'échouer.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
 
 import pytest
@@ -37,7 +38,8 @@ from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, StatutPhase, TypePhase
+from domain.phase import Phase, PhaseId, StatutPhase, TypePhase
+from domain.placement_par_bloc import BlocDeCouloirs
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -45,6 +47,7 @@ from domain.politiques import (
     SeedingSerpent,
     registre_par_defaut,
 )
+from domain.tournoi import TournoiId
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -63,16 +66,29 @@ from tests.test_service_saisie_duels import ZONES_TRIPLE
 
 
 class _FauxPlacementParBlocRepository:
-    """Double du port `PlacementParBlocRepository` — deux gestes, comme le port."""
+    """Double du port `PlacementParBlocRepository` — deux gestes, comme le port.
+
+    ⚠️ **Typé sur le port, sans `# type: ignore`** (correctif de revue, axe A). Les deux jumeaux
+    (`test_service_suisse.py`, `test_service_poules.py`) typent leurs doubles en `object` et
+    réduisent au silence les erreurs qui en découlent. Ça marche, et c'est précisément le problème :
+    ce que mypy cesse alors de prouver, c'est que **le double satisfait le port** — or c'est la
+    seule
+    chose qu'un double de port doit garantir. Le jour où `PlacementParBlocRepository` change de
+    signature, un double typé `object` continue de compiler contre l'ancienne, et les tests restent
+    verts sur un service qui ne pourrait plus tourner en production.
+
+    Un outil contourné n'est jamais « vert » : ici il n'y avait pas à le contourner, les vrais types
+    marchent tels quels. Les deux jumeaux sont **hérités** et ne sont pas rouverts par cette US.
+    """
 
     def __init__(self) -> None:
-        self._plans: dict[int, list[object]] = {}
+        self._plans: dict[PhaseId, list[BlocDeCouloirs]] = {}
 
-    def par_phase(self, phase_id: int) -> list[object]:
+    def par_phase(self, phase_id: PhaseId) -> list[BlocDeCouloirs]:
         return list(self._plans.get(phase_id, []))
 
-    def definir_plan(self, phase_id: int, blocs: object) -> None:
-        self._plans[phase_id] = list(blocs)  # type: ignore[call-overload]
+    def definir_plan(self, phase_id: PhaseId, blocs: Sequence[BlocDeCouloirs]) -> None:
+        self._plans[phase_id] = list(blocs)
 
 
 class _FauxGabaritRepository:
@@ -81,7 +97,7 @@ class _FauxGabaritRepository:
     def __init__(self, nb_cibles: int = 8, couloirs: int = 4) -> None:
         self._gabarit = GabaritSalle.creer("Salle", nb_cibles=nb_cibles, capacite=couloirs)
 
-    def par_tournoi(self, tournoi_id: int) -> GabaritSalle:
+    def par_tournoi(self, tournoi_id: TournoiId) -> GabaritSalle | None:
         return self._gabarit
 
 
@@ -194,8 +210,16 @@ class _Monde:
         return ServiceColline(
             self.tournois,
             self.phases,
+            # ⚠️ **Cet `ignore`-ci reste, et il est le SEUL des trois** (arbitrage de revue) :
+            # `_FauxGabaritRepository` est délibérément **partiel** — il sert une méthode sur les
+            # six
+            # du port, parce que `ServiceColline` n'en consomme qu'une. Le compléter serait cinq
+            # stubs de bruit. Les deux autres `ignore` (le double de plan par blocs) ont été retirés
+            # :
+            # là, les vrais types du port marchaient tels quels, et ce que mypy cessait de prouver
+            # était justement que le double satisfait le port.
             self.gabarits,  # type: ignore[arg-type]
-            self.placements,  # type: ignore[arg-type]
+            self.placements,
             self.duels,
             classement,
             saisie,
@@ -220,6 +244,20 @@ def _gagner(service: ServiceColline, monde: _Monde, numero: int, *, le_bas: bool
             fort if le_bas else faible,
         )
     service.valider(monde.tournoi_id, monde.phase_id, numero, "scoreur")
+
+
+def _jouer_la_manche_ouverte(service: ServiceColline, monde: _Monde) -> None:
+    """Clôt la première manche non close, quels que soient les numéros de ses défis.
+
+    ⚠️ **Les numéros ne se devinent pas d'une manche à l'autre** : à portée 1 et à 4 archers, la
+    manche 1 apparie deux défis et la manche 2 un seul (les extrémités se reposent). Un test qui
+    rejouerait « le défi 1 puis le défi 2 » à chaque manche taperait donc à côté — c'est exactement
+    le régime ordinaire du format, pas un cas limite.
+    """
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+    ouverte = next(manche for manche in etat.manches if not manche.close)
+    for defi in ouverte.defis:
+        _gagner(service, monde, defi.numero, le_bas=True)
 
 
 def _manches(service: ServiceColline, monde: _Monde) -> tuple[tuple[tuple[int, int], ...], ...]:
@@ -440,6 +478,36 @@ def test_une_phase_vide_est_une_photo_vide_et_non_une_erreur() -> None:
     assert etat.effectif == 0
     assert etat.manches == ()
     assert etat.portee_maximale == 0
+    assert etat.classement == ()
+
+
+def test_un_archer_seul_occupe_la_position_1_meme_sans_defi_appariable() -> None:
+    """Ne pas apparier de défi **n'est pas** ne classer personne (correctif de revue, axe A).
+
+    À un archer, `portee_maximale` vaut 0 : aucun défi n'existe, et c'est exact. Mais l'archer
+    prélevé, lui, **existe** et occupe la position 1. Le classement était rendu vide dans ce cas,
+    ce qui se voyait à trois endroits : une colline **vide** sur l'écran public alors qu'un archer y
+    est, un `INDISPONIBLE` au panneau de routage — « il n'y figure pas » — au lieu d'`EN_ATTENTE`,
+    et une source **vide** servie à une phase avale au lieu d'un rang.
+
+    Le cas est atteignable **dès la composition**, avant que la source amont ait classé du monde :
+    c'est le régime que la docstring d'`avancement_de_phase` qualifie de « normal et durable », pas
+    un cas tordu. La contrepartie est le test ci-dessus : à effectif **0**, le classement reste
+    vide.
+    """
+    monde = _Monde()
+    archers = monde.inscrire(1)
+    monde.regler(ConfigurationColline(nb_manches=3, portee_de_defi=1))
+    service = monde.service()
+
+    etat = service.etat(monde.tournoi_id, monde.phase_id)
+
+    assert etat.effectif == 1
+    assert etat.portee_maximale == 0
+    assert etat.manches == ()
+    assert [(rang.position, rang.duelliste.archer_id) for rang in etat.classement] == [
+        (1, archers[0])
+    ]
 
 
 # --- CA « habiter le contrat de phase jouable » ---------------------------------------------------
@@ -470,6 +538,49 @@ def test_le_classement_de_phase_est_l_ordre_final_de_la_colline() -> None:
         archers[2],
     ]
     assert [ligne.rang_scratch for ligne in source.classement.lignes] == [1, 2, 3, 4]
+    # Toutes les manches réglées sont closes : la colline a **fini**, donc plus rien ne retient un
+    # prélèvement (cf. le test suivant, qui garde l'autre moitié).
+    assert source.plages_indecises == ()
+
+
+def test_une_colline_en_cours_retient_les_prelevements_de_ses_phases_avales() -> None:
+    """ADR-0081 : « une phase attend que sa source ait départagé les places qu'elle prélève ».
+
+    ⚠️ **La colline en était dépourvue, et elle est le seul format dans ce cas** (relevé en revue).
+    Le domaine a raison de rendre `plages_indecises=()` : une colline n'a **jamais** d'ex æquo, deux
+    archers n'occupant jamais la même position. Mais « personne n'est à égalité » n'est pas « tout
+    est joué » — et c'est la seconde question que pose ADR-0081.
+
+    Sans ce frein, une colline dont **aucune** manche n'est close rendait un classement complet et
+    parfaitement départagé… qui n'est que le classement **amont** recopié. Une phase avale s'y
+    ensemençait donc sans que rien ne dise « en attente » : l'organisateur posait son tableau et son
+    plan de cibles pendant que la colline tournait, puis voyait l'ensemencement changer à chaque
+    manche validée et les duels déjà tirés basculer en `desynchronisee`.
+
+    Les trois autres formats ont ce frein **par accident** : une phase non commencée y met tout le
+    monde à égalité, donc leur calcul d'ex æquo remplit la plage. Le garde-fou d'ADR-0081 ne tenait
+    chez eux que par un effet de bord de leur mode de classement, ce que la colline a révélé en
+    n'ayant pas cet effet de bord.
+    """
+    monde = _Monde()
+    monde.inscrire(4)
+    monde.regler(ConfigurationColline(nb_manches=2, portee_de_defi=1))
+    service = monde.service()
+    resolveur = service._saisie_duels.resolveur_de_classement(monde.tournoi_id, monde.depart_id)
+
+    # Rien de tiré : le classement rendu **est** l'ordre amont, et il n'a rien décidé.
+    source = service.classement_de_phase(monde.tournoi_id, monde.phase_id, resolveur)
+    assert source.plages_indecises == ((1, 4),)
+
+    # Première manche close, la seconde reste à jouer : les positions vont encore bouger.
+    _jouer_la_manche_ouverte(service, monde)
+    source = service.classement_de_phase(monde.tournoi_id, monde.phase_id, resolveur)
+    assert source.plages_indecises == ((1, 4),)
+
+    # Les deux manches closes : la colline a fini, le prélèvement passe.
+    _jouer_la_manche_ouverte(service, monde)
+    source = service.classement_de_phase(monde.tournoi_id, monde.phase_id, resolveur)
+    assert source.plages_indecises == ()
 
 
 def test_l_avancement_de_phase_se_lit_manche_par_manche() -> None:

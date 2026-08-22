@@ -79,7 +79,7 @@ export interface Manche {
 }
 
 /** La même manche **en consultation**. */
-export interface manchePublique extends Omit<Manche, 'defis'> {
+export interface ManchePublique extends Omit<Manche, 'defis'> {
   defis: DefiPublic[]
 }
 
@@ -110,7 +110,7 @@ export interface EtatCollineSaisie {
 
 /** La même photo **rédigée** — écran d'organisation, salle, public. */
 export interface EtatCollinePublique extends Omit<EtatCollineSaisie, 'manches'> {
-  manches: manchePublique[]
+  manches: ManchePublique[]
 }
 
 export function getEtatColline(tournoiId: number, phaseId: number): Promise<EtatCollinePublique> {

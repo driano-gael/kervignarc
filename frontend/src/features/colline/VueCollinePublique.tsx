@@ -19,7 +19,7 @@ import { participants } from '../../shared/duels/rencontre'
 import { decrirePlaces } from '../../shared/salle/place'
 import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
-import type { manchePublique } from './api'
+import type { ManchePublique } from './api'
 import { ClassementColline } from './ClassementColline'
 import { useEtatColline } from './hooks'
 import { decrireDefi, motDeLaFin, nommerAuRepos, nommerFormat } from './presentation'
@@ -75,11 +75,16 @@ export function VueCollinePublique({
       {/* Une manche qu'aucun bloc de couloirs ne porte : plan non posé, ou salle trop petite. On le
           **dit**, sinon les défis s'affichent sans cible et le spectateur croit à un oubli. C'est le
           correctif que la revue d'E05US031 a dû faire sur le suisse, repris ici d'emblée. */}
+      {/* ⚠️ **Un seul message, et il parle du PLAN, pas d'un nombre de défis** (relevé par deux
+          axes). Une colline pose **un bloc unique pour toute la phase** : `conflits` vaut donc
+          toujours 0 ou 1 élément, la branche plurielle était morte, et le singulier — « Un défi n'a
+          pas encore de cibles » — désignait un défi isolé alors que **tous** les défis de la phase
+          sont sans couloir. Le message comptait des défis quand la donnée compte des blocs ; l'un
+          des deux lecteurs de cet écran est l'organisateur, et c'est lui qui doit comprendre qu'il
+          a un plan à générer. */}
       {donnees.conflits.length > 0 && (
         <p className="carte__etat">
-          {donnees.conflits.length === 1
-            ? 'Un défi n’a pas encore de cibles attribuées.'
-            : `${donnees.conflits.length} défis n’ont pas encore de cibles attribuées.`}
+          Le plan de cibles n’est pas encore posé : les défis s’afficheront sans cible.
         </p>
       )}
 
@@ -123,7 +128,7 @@ function BlocManche({
   mode,
   suivis,
 }: {
-  manche: manchePublique
+  manche: ManchePublique
   mode: ModeAffichage
   suivis: readonly number[]
 }) {
@@ -132,6 +137,9 @@ function BlocManche({
       ? manche.defis.filter((d) => participants(d).some((id) => suivis.includes(id)))
       : manche.defis
   const auReposSuivis = manche.au_repos.filter((qui) => suivis.includes(qui.archer_id))
+  // La liste réellement **rendue**, calculée une fois : elle sert au rendu ET à l'accord du verbe.
+  // Les recalculer séparément est ce qui avait fait diverger les deux (correctif de revue).
+  const auReposAffiches = mode === 'suivis' ? auReposSuivis : manche.au_repos
 
   if (retenus.length === 0 && !(mode === 'suivis' && auReposSuivis.length > 0)) {
     if (mode === 'suivis') {
@@ -167,12 +175,15 @@ function BlocManche({
           ⚠️ **Ils passent par le filtre comme le reste** : c'est le correctif que la revue
           d'E05US031 a dû faire sur le bye du suisse, rendu inconditionnellement alors que
           l'interrupteur d'ADR-0079 vaut « sans exception ». */}
-      {(mode !== 'suivis' ? manche.au_repos : auReposSuivis).length > 0 && (
+      {auReposAffiches.length > 0 && (
         <p className="encours__bye">
-          {nommerAuRepos(mode !== 'suivis' ? manche : { ...manche, au_repos: auReposSuivis }).join(
-            ' · ',
-          )}{' '}
-          ne tire{manche.au_repos.length > 1 ? 'nt' : ''} pas cette manche : personne ne marque et
+          {nommerAuRepos({ ...manche, au_repos: auReposAffiches }).join(' · ')}{' '}
+          {/* ⚠️ **L'accord se calcule sur la liste AFFICHÉE, pas sur `manche.au_repos`** (relevé
+              par quatre axes de revue, indépendamment). En mode « mes archers », deux archers au
+              repos dont un seul suivi donnaient « MARTIN Jean ne tire**nt** pas cette manche ». Ce
+              n'est pas un cas tordu : à portée 1, les deux extrémités se reposent une manche sur
+              deux, donc la situation se produit dès le premier usage du filtre. */}
+          ne tire{auReposAffiches.length > 1 ? 'nt' : ''} pas cette manche : personne ne marque et
           personne ne change de position.
         </p>
       )}

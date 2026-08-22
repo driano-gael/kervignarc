@@ -20,8 +20,14 @@ inutilisables.
 
 **Ce que ce module ne prétend pas savoir.** Le nombre de tours n'est calculé que pour les phases
 **en tableau** (élimination directe, placement), où il se déduit de l'effectif. Poules, système
-suisse, colline le tirent d'une configuration que le domaine ne modélise pas encore (`# DETTE-028`)
-— la projection rend alors un bloc sans tours plutôt qu'un chiffre inventé.
+suisse et colline le tirent d'une configuration que **ce module** ne lit pas — la projection rend
+alors un bloc sans tours plutôt qu'un chiffre inventé.
+
+⚠️ **La formulation d'origine disait « que le domaine ne modélise pas encore » (`# DETTE-028`), et
+c'est faux depuis E05US026** (relevé en revue d'E05US027, qui la périme pour le troisième format) :
+`ConfigurationSuisse` et `ConfigurationColline` sont portées par `EtapeDeroule` et `ModelePhase`. Ce
+qui reste vrai est plus étroit et plus utile : la projection **ne les consulte pas**, faute de quoi
+elle annoncerait un nombre de tours que l'effectif du jour peut réduire.
 """
 
 from __future__ import annotations

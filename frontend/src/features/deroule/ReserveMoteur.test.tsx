@@ -121,7 +121,7 @@ describe('ReserveMoteur', () => {
 
   it('ne prévient plus pour un système suisse, que le moteur déroule depuis E05US030', () => {
     // Même exigence qu'E05US023 pour les poules, un format plus loin : le moteur du suisse est
-    // livré (E05US026) **et** ses écrans le sont (E05US030), donc l'avertissement mentirait. La
+    // livré (E05US026) **et** ses écrans le sont (E05US030), donc l'avertissement mentirait.
     // Le placement, lui, reste visé — c'est le test ci-dessus.
     render(
       <ReserveMoteur
