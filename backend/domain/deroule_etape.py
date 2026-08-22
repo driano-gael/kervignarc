@@ -186,7 +186,7 @@ class EtapeDeroule:
 
     def __post_init__(self) -> None:
         """Fait respecter la cohérence quelle que soit la porte d'entrée (`replace()` compris)."""
-        object.__setattr__(self, "titre", _titre_normalise(self.titre))
+        object.__setattr__(self, "titre", titre_normalise(self.titre))
         verifier_coherence_etape(self.type, self.bareme, self.validation, self.effectif)
         verifier_decoupage_applicable(self.type, self.bareme, self.decoupage)
         self._verifier_convergence_du_big_shoot_off()
@@ -469,7 +469,7 @@ class EtapeDeroule:
         return replace(self, sources=sources)
 
 
-def _titre_normalise(titre: str | None) -> str | None:
+def titre_normalise(titre: str | None) -> str | None:
     """Retire les espaces de bord ; un titre blanc **vaut absence de titre**, jamais une erreur.
 
     Effacer le champ est le geste par lequel l'organisateur *retire* un titre : le refuser lui

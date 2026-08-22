@@ -225,6 +225,15 @@ manquer et l'avait écrit ici. Autrement dit, le rappel a fonctionné une fois, 
 suivait immédiatement le constat — ce qu'aucun contrôle automatique n'a encore remplacé. La
 conclusion reste entière : **le rendre vérifiable est une US.**
 
+⚠️ **`0095` (E16US002, 22/08/2026) n'y figure PAS, et c'est volontaire.** Il est de **vocabulaire et
+d'IHM** — un titre de phase est un libellé que le moteur ne lit jamais (ADR-0095 §3), et le reste de
+la décision porte sur des libellés de menu et une bascule d'écran. Le critère de `CLAUDE.md` exclut
+nommément les ADR d'outillage, d'UI, de procédure et de convention documentaire ; les précédents
+existent (`0086`, `0088`). Il porte en revanche sa section « Porté dans le code par », exigée de
+**tout** ADR neuf sans condition. *C'est noté ici parce que cette section documente quatre omissions
+consécutives, chacune rationalisée après coup : un trou non commenté dans cette liste est
+précisément ce qui produit la cinquième — un lecteur qui audite verrait « …0093, 0094 » puis rien.*
+
 ✅ **`0094` (E05US029, 21/08/2026) est inscrit du premier coup**, lui aussi hors revue — deux US
 d'affilée, cette fois sans que la précédente ait eu à manquer quoi que ce soit. C'est le premier
 signe que le réflexe tient de lui-même ; deux points ne font pas une tendance, et le constat

@@ -1022,3 +1022,55 @@ def test_un_reglage_de_poules_par_niveau_survit_a_l_aller_retour_de_bibliotheque
     etape = next(e for e in format_relu["etapes"] if e["ordre"] == 2)
     assert etape["poules"]["mode"] == "par_niveau"
     assert etape["poules"]["serpent_assume"] is False
+
+
+def test_le_titre_dune_etape_survit_a_l_aller_retour_de_bibliotheque(
+    app_patrimoine: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US002 — le titre traverse `EtapeDTO` **et** la persistance d'un format, de bout en bout.
+
+    ⚠️ **Ce test manquait, et son absence a laissé passer un bloquant** : `_config_format` ne
+    passait pas `titre` à `_politiques_json`, si bien qu'un format perdait **tous** ses titres à
+    l'écriture. Le champ de « Composer un format » était inerte et `promouvoir` rendait une brique
+    de bibliothèque anonyme — c'est-à-dire le CA « réutilisable d'une année sur l'autre », motif
+    même pour lequel `ModelePhase` porte ce champ.
+
+    C'est le pendant exact du voisin ci-dessus, écrit pour la même raison une US plus tôt : un test
+    d'aller-retour existait côté *tournoi* (`test_phases_api.py`), aucun côté *bibliothèque*. La
+    porte restait verte à l'identique.
+
+    Le test couvre les **deux** maillons que le côté tournoi ne touche pas : `EtapeDTO.titre`
+    (`vers_modele` / `de_modele`) et la sérialisation du format. Le versant persistance seul est
+    par ailleurs gardé au repository ; ici c'est la frontière HTTP.
+    """
+    with TestClient(app_patrimoine) as client:
+        connecter_admin(client)
+
+        cree = client.post(
+            "/api/v1/formats",
+            json={
+                "nom": "Format titré",
+                "etapes": [
+                    _QUALIFICATION,
+                    {
+                        "ordre": 2,
+                        "type": "elimination_directe",
+                        "sources": [{"nature": "rangs", "ordre_source": 1, "rang_debut": 1}],
+                        # Espaces de bord délibérés : le domaine les retire des **deux** côtés
+                        # depuis le correctif de revue. Sans normalisation sur `ModelePhase`, la
+                        # bibliothèque resservait « ␣Tableau des jeunes␣ » là où le même texte
+                        # posté sur un tournoi revenait strippé — une saisie, deux valeurs.
+                        "titre": "  Tableau des jeunes  ",
+                    },
+                ],
+            },
+        )
+        assert cree.status_code == 201, cree.text
+
+        # Pas de `GET /formats/{id}` au routeur : la bibliothèque se relit par sa liste.
+        relu = client.get("/api/v1/formats")
+
+    assert relu.status_code == 200, relu.text
+    format_relu = next(f for f in relu.json() if f["id"] == cree.json()["id"])
+    etape = next(e for e in format_relu["etapes"] if e["ordre"] == 2)
+    assert etape["titre"] == "Tableau des jeunes"

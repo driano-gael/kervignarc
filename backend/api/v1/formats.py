@@ -437,7 +437,13 @@ class EtapeDTO(BaseModel):
     remonterait des phases anonymes. C'est le défaut `barrage_jusqu_au` que ce fichier documente
     déjà deux fois — la troisième aurait été gratuite.
 
-    Borné à 80 comme son jumeau de `api/v1/phases` (`DETTE-054`, élargie d'une paire de plus)."""
+    Borné à 80 comme son jumeau de `api/v1/phases`. ⚠️ **Ce n'est PAS une paire de plus au sens de
+    `DETTE-054`**, et une première rédaction l'affirmait à tort (relevé par deux axes de revue) :
+    `titre` est un champ ajouté aux deux `EtapeDTO` **racines**, que cette dette exclut nommément de
+    son remède (« ne pas fusionner les deux `EtapeDTO` : ce sont les **feuilles** qui sont
+    identiques, pas les racines »). Un marqueur qui annonce un élargissement absent du registre
+    pousse au mauvais geste — c'est le défaut que `DETTE-054` consigne déjà, en sens inverse, pour
+    E05US028."""
 
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.

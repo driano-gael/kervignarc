@@ -881,6 +881,14 @@ def _config_format(format_tournoi: FormatTournoi) -> str:
                         # rouvre exactement le défaut que l'ajout prétendait fermer, déplacé de
                         # l'agrégat à sa persistance, et il détruit de la donnée d'organisateur.
                         arrets=etape.arrets,
+                        # E16US002 : **le défaut que les trois commentaires ci-dessus racontent a
+                        # été rejoué ici même**, et quatre axes de revue l'ont relevé. `titre` avait
+                        # été câblé sur `_config_etape` (la table `deroule_etape`) et **oublié sur
+                        # cet appelant-ci** : un format perdait donc TOUS ses titres à l'écriture,
+                        # le champ de « Composer un format » était inerte, et `promouvoir` faisait
+                        # remonter un format anonyme l'année suivante. `_politiques_json` a **deux**
+                        # appelants ; en câbler un seul est le mode de panne de ce fichier.
+                        titre=etape.titre,
                         marquer_absences=True,
                         porte_un_bareme=etape.type is TypePhase.QUALIFICATION,
                     ),

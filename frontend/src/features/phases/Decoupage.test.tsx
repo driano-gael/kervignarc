@@ -82,7 +82,11 @@ function monter(phase: EtapeDeroule) {
  * pour empêcher. Porter la requête à la ligne le referme.
  */
 function ligne(index = 0) {
-  const element = screen.getAllByRole('listitem')[index]
+  // Filtré sur `.phase` : `ReglageArrets` rend un `<li>` par pause à l'intérieur d'une fiche, donc
+  // indexer tous les `listitem` du document décalerait les rangs dès qu'une fixture porte un arrêt.
+  const element = screen.getAllByRole('listitem').filter((el) => el.classList.contains('phase'))[
+    index
+  ]
   if (element === undefined) throw new Error(`Aucune ligne de phase au rang ${index}.`)
   return within(element)
 }
@@ -129,9 +133,7 @@ describe('le découpage en tours sur l’écran des phases', () => {
     monter({ ...QUALIFICATION, decoupage: { nb_tours: 3 } })
     await ouvrirLaFiche()
 
-    expect(
-      await screen.findByText(/20 volées ne se découpent pas en 3 tours égaux/),
-    ).toBeInTheDocument()
+    expect(ligne().getByText(/20 volées ne se découpent pas en 3 tours égaux/)).toBeInTheDocument()
   })
 
   it('porte la fiche de pauses dès que la qualification est découpée', async () => {
@@ -154,7 +156,7 @@ describe('le découpage en tours sur l’écran des phases', () => {
     monter(QUALIFICATION)
     await ouvrirLaFiche()
 
-    expect(await screen.findByText(/Découpez-la d’abord en tours/)).toBeInTheDocument()
+    expect(ligne().getByText(/Découpez-la d’abord en tours/)).toBeInTheDocument()
   })
 
   it('n’expose le réglage que sur la qualification, pas sur ses voisines', async () => {

@@ -30,7 +30,7 @@ import {
 import type { PorteeArret } from '../../shared/phases/arrets'
 import type { AvancementBloc } from '../../shared/schema-braquets/modele'
 import type { Phase, StatutPhase, TransitionPhase } from '../phases/api'
-import { useAvancementPhases, useChangerStatutPhase } from '../phases/hooks'
+import { usePhases, useAvancementPhases, useChangerStatutPhase } from '../phases/hooks'
 import {
   useArretsEnAttente,
   usePoserArretRelatif,
@@ -80,6 +80,22 @@ export function PilotageCreneau({
   const avancementParOrdre = new Map(
     (suivi.data?.avancement ?? []).map((bloc) => [bloc.ordre, bloc]),
   )
+  // E16US002, correctif de revue (axe adversarial) — **le titre des étapes, joint par `ordre`.**
+  //
+  // ⚠️ `Phase` (l'avancement dans un créneau) ne porte délibérément pas le titre : il décrit la
+  // composition, et le serveur ne le sert que sur `EtapeReponse` (ADR-0095 §3). Mais le laisser
+  // hors de CET écran-ci était un défaut, pas une conséquence : c'est ici qu'on **démarre** et
+  // qu'on **termine** une phase, donc le seul endroit où confondre deux qualifications homonymes
+  // coûte réellement quelque chose — publier le mauvais classement. Livrer « vous pouvez nommer vos
+  // phases » en laissant anonyme l'écran du geste, c'était la capacité livrée mais inutilisable que
+  // cette US existe pour fermer.
+  //
+  // La jointure se fait par `ordre`, qui est la clé partagée entre une étape et ses instances
+  // (ADR-0076 §3 : les instances d'un départ héritent de l'ordre des étapes). Aucun appel de plus
+  // en pratique : `usePhases` est déjà monté par l'écran des phases et par l'assemblage, React
+  // Query sert le cache partagé sur la même clé.
+  const etapes = usePhases(tournoiId)
+  const titreParOrdre = new Map((etapes.data ?? []).map((etape) => [etape.ordre, etape.titre]))
 
   return (
     <section className="carte">
@@ -101,7 +117,7 @@ export function PilotageCreneau({
       {departId !== null && phases.isPending && <p className="carte__etat">Chargement…</p>}
       {phases.data?.length === 0 && (
         <p className="carte__etat">
-          Ce créneau ne joue encore aucune phase : composez le déroulé depuis « Phases ».
+          Ce créneau ne joue encore aucune phase : composez le déroulé depuis « Phases du tournoi ».
         </p>
       )}
       {phases.data !== undefined && phases.data.length > 0 && departId !== null && (
@@ -112,6 +128,7 @@ export function PilotageCreneau({
               tournoiId={tournoiId}
               departId={departId}
               phase={phase}
+              titre={titreParOrdre.get(phase.ordre) ?? null}
               avancement={avancementParOrdre.get(phase.ordre) ?? null}
             />
           ))}
@@ -125,11 +142,16 @@ function LignePilotage({
   tournoiId,
   departId,
   phase,
+  titre,
   avancement,
 }: {
   tournoiId: number
   departId: number
   phase: Phase
+  /** Le libellé de l'étape correspondante — `null` si l'organisateur ne l'a pas nommée (E16US002).
+   *
+   * Vient de l'**étape**, pas de la phase : c'est la composition qui porte le titre. */
+  titre: string | null
   /** Où en est cette phase — `null` si le suivi n'a rien à dire d'elle (E05US034). */
   avancement: AvancementBloc | null
 }) {
@@ -139,7 +161,10 @@ function LignePilotage({
     <li className="phase">
       <div className="phase__ligne">
         <span className="phase__ordre">{phase.ordre}</span>
-        <span className="phase__type">{LIBELLE_TYPE[phase.type]}</span>
+        {/* Le titre prime, le type reste lisible : c'est la lecture de l'écran des phases, portée
+            ici pour que la même phase se reconnaisse des deux côtés. */}
+        <span className="phase__type">{titre ?? LIBELLE_TYPE[phase.type]}</span>
+        {titre !== null && <span className="phase__details">{LIBELLE_TYPE[phase.type]}</span>}
         <span className={`badge badge--${phase.statut.replace('_', '-')}`}>
           {LIBELLE_STATUT[phase.statut]}
         </span>

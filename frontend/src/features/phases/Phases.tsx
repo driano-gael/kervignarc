@@ -34,6 +34,7 @@ import {
 } from '../../shared/phases/catalogue'
 import { ChoixProfondeur } from '../../shared/phases/ChoixProfondeur'
 import { ReglagePoules } from '../../shared/phases/ReglagePoules'
+import { ChampTitre } from '../../shared/phases/ChampTitre'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
   ARRETS_PAR_DEFAUT,
@@ -386,7 +387,7 @@ function LignePhase({
         <span className="phase__details">
           {/* Le type n'est jamais perdu : il redevient un détail, il ne disparaît pas. Sans lui,
               deux phases nommées ne diraient plus ce qu'elles font. */}
-          {phase.titre !== null && `${LIBELLE_TYPE[phase.type]} · `}
+          {phase.titre != null && `${LIBELLE_TYPE[phase.type]} · `}
           {decrireSources(phase.sources)}
           {phase.effectif !== null && ` · ${phase.effectif} participants`}
           {/* Parité avec l'écran de composition, qui l'affiche déjà : sur un tournoi réel, le
@@ -786,16 +787,12 @@ export function FormulairePhase({
         {/* En tête de fiche parce que c'est ce que le CA nomme en premier (« sa fiche, qui reprend
             son titre et ses réglages ») — et parce que c'est le champ qui identifie la phase pour
             l'organisateur, là où le type ne fait que la classer. */}
-        <label className="formulaire__libelle">
-          Titre de la phase (facultatif)
-          <input
-            className="formulaire__champ"
-            value={titre}
-            maxLength={80}
-            onChange={(e) => setTitre(e.target.value)}
-            placeholder={LIBELLE_TYPE[type]}
-          />
-        </label>
+        <ChampTitre
+          valeur={titre}
+          surChangement={setTitre}
+          libelle="Titre de la phase (facultatif)"
+          placeholder={LIBELLE_TYPE[type]}
+        />
         <select
           className="formulaire__champ"
           value={type}
@@ -913,7 +910,10 @@ export function FormulairePhase({
               <option value="">Phase source…</option>
               {sourcesPossibles.map((p) => (
                 <option key={p.id} value={String(p.ordre)}>
-                  Phase {p.ordre} — {LIBELLE_TYPE[p.type]}
+                  {/* Le sélecteur restait anonyme alors que la ligne juste au-dessus est titrée
+                      (correctif de revue) : choisir sa source parmi trois « Qualification » est le
+                      geste que le titre doit précisément rendre possible. */}
+                  Phase {p.ordre} — {p.titre ?? LIBELLE_TYPE[p.type]}
                 </option>
               ))}
             </select>
@@ -981,11 +981,18 @@ export function FormulairePhase({
  * phase en silence. Trois occurrences réelles dans le code d'aujourd'hui — c'est le seuil, et la
  * portée reste locale (une fonction, un fichier), donc pas d'ADR.
  *
+ * ⚠️ **Le type de retour est `Required<ConfigPhase>`, et c'est lui le garde-fou** (correctif de
+ * revue, deux axes). Tous les champs de `ConfigPhase` sauf `type` sont optionnels : sans cette
+ * contrainte, ajouter demain un 13ᵉ réglage sans le reporter ici **compilerait sans un mot**, et
+ * l'effacement silencieux repartirait pour un tour — cette fois depuis les trois widgets d'un
+ * coup. La fonction cesse ainsi de reposer sur la vigilance : le typecheck, déjà dans la porte,
+ * refuse la clé manquante.
+ *
  * ⚠️ **`nb_volees` est délibérément absent** : c'est un champ de **lecture seule** d'`EtapeReponse`
  * (le barème se règle par sa propre ressource). L'inclure enverrait au serveur un champ que
  * `ConfigPhaseRequete` refuse — le routeur des phases est le seul du projet en `extra="forbid"`.
  */
-function configInchangee(phase: EtapeDeroule): ConfigPhase {
+function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
   return {
     type: phase.type,
     sources: phase.sources,
@@ -1014,17 +1021,13 @@ function ReglageTitre({ tournoiId, phase }: { tournoiId: number; phase: EtapeDer
   const modifier = useModifierPhase(tournoiId)
 
   return (
-    <div className="phase__barrage">
-      <label className="formulaire__libelle">
-        Titre de la phase (facultatif)
-        <input
-          className="formulaire__champ"
-          value={valeur}
-          maxLength={80}
-          onChange={(e) => setValeur(e.target.value)}
-          placeholder={LIBELLE_TYPE[phase.type]}
-        />
-      </label>
+    <div className="phase__reglage">
+      <ChampTitre
+        valeur={valeur}
+        surChangement={setValeur}
+        libelle="Titre de la phase (facultatif)"
+        placeholder={LIBELLE_TYPE[phase.type]}
+      />
       <button
         type="button"
         className="bouton--discret"
@@ -1075,7 +1078,7 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
   }
 
   return (
-    <div className="phase__barrage">
+    <div className="phase__reglage">
       <label>
         Barrage jusqu&apos;au rang{' '}
         <input
@@ -1161,7 +1164,7 @@ function ReglageDecoupageDePhase({ tournoiId, phase }: { tournoiId: number; phas
   }
 
   return (
-    <div className="phase__barrage">
+    <div className="phase__reglage">
       <ReglageDecoupage etat={etat} surChangement={setEtat} nbVolees={phase.nb_volees} />
       {/* ⚠️ **Montée ICI et pas dans `FormulairePhase`, pour la même raison que le découpage
           lui-même** — et c'est un bloquant de 2ᵉ passe : le premier correctif avait fermé la moitié

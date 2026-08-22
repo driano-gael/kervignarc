@@ -20,8 +20,8 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { EtapeDeroule } from './api'
-import { getPhases } from './api'
+import type { ConfigPhase, EtapeDeroule } from './api'
+import { getPhases, modifierPhase } from './api'
 import { Phases } from './Phases'
 
 vi.mock('./api', () => ({
@@ -71,9 +71,28 @@ function monter(phases: EtapeDeroule[]) {
 }
 
 function ligne(index = 0) {
-  const element = screen.getAllByRole('listitem')[index]
+  // ⚠️ **Filtré sur `.phase`, et ce n'est pas cosmétique** : `shared/phases/ReglageArrets` rend un
+  // `<li>` **par pause programmée**, à l'intérieur d'une fiche. Indexer tous les `listitem` du
+  // document est vert tant qu'aucune fixture ne porte d'arrêt — puis `ligne(1)` désignerait une
+  // ligne de pause. C'est le piège que `ouvrirLaFiche` documente, déplacé d'un cran (relevé en revue).
+  const element = screen.getAllByRole('listitem').filter((el) => el.classList.contains('phase'))[
+    index
+  ]
   if (element === undefined) throw new Error(`Aucune ligne de phase au rang ${index}.`)
   return within(element)
+}
+
+/** La config effectivement envoyée au serveur par le **dernier** `PUT`.
+ *
+ * ⚠️ `calls.at(-1)` et non `calls[0]` : les mocks ne sont pas réinitialisés entre les tests d'un
+ * même fichier, donc lire le premier appel renvoie celui du test précédent — deux de ces
+ * assertions passaient ainsi sur la charge utile d'un voisin.
+ */
+function configEnvoyee(): ConfigPhase {
+  const appel = vi.mocked(modifierPhase).mock.calls.at(-1) as
+    [number, number, ConfigPhase] | undefined
+  if (appel === undefined) throw new Error('aucun PUT de phase n’a été émis')
+  return appel[2]
 }
 
 async function ouvrirLaFiche(index = 0) {
@@ -133,10 +152,17 @@ describe('la fiche d’une phase', () => {
   })
 
   it('porte le titre et les réglages du type une fois ouverte', async () => {
+    // ⚠️ **La seconde assertion manquait** (relevé en revue) : le test ne gardait que la moitié
+    // « titre » du CA, alors que la bascule est désormais l'**unique** chemin vers
+    // `FormulairePhase` — le bouton « Éditer » a disparu. `Profondeur.test.tsx` et
+    // `Arrets.test.tsx` montent le formulaire **directement**, donc aucun test ne gardait ce
+    // chemin : pour tout type non-qualification, rien ne prouvait que la fiche expose ses réglages.
+    // C'est la classe « composant livré, appelant non monté » que ce dossier a déjà payée trois fois.
     monter([TABLEAU])
     await ouvrirLaFiche()
 
     expect(ligne().getByLabelText(/Titre de la phase/)).toBeInTheDocument()
+    expect(ligne().getByText(/Pauses programmées/)).toBeInTheDocument()
   })
 
   it('s’ouvre aussi sur la qualification, qui n’en avait aucune', async () => {
@@ -161,5 +187,65 @@ describe('la fiche d’une phase', () => {
 
     expect(ligne(0).getByLabelText(/Titre de la phase/)).toBeInTheDocument()
     expect(ligne(1).queryByLabelText(/Titre de la phase/)).not.toBeInTheDocument()
+  })
+})
+
+describe('la charge utile envoyée au serveur', () => {
+  // ⚠️ **Ces trois tests manquaient à la première livraison, et trois axes de revue l'ont relevé.**
+  // `configInchangee` a été extraite avec, en argument, « `titre` en aurait été le TROISIÈME bug :
+  // sans cette fonction, régler un barrage renommait la phase en silence » — et rien ne l'exerçait.
+  // Toutes les fixtures portaient `titre: null`, donc la borne n'était jamais atteinte : une
+  // régression qui perdrait le titre serait restée verte des deux côtés.
+  //
+  // Le `PUT` est une édition **totale** : ce qui n'est pas réémis est effacé. C'est exactement la
+  // classe de bug que ce fichier a déjà payée deux fois (le barrage effaçait le découpage ; le
+  // couple découpage/arrêts partait en 422).
+
+  const QUALIFICATION_REGLEE: EtapeDeroule = {
+    ...QUALIFICATION,
+    titre: 'Qualification jeunes',
+    decoupage: { nb_tours: 2 },
+    barrage_jusqu_au: 8,
+  }
+
+  it('renommer une phase n’efface ni son découpage ni son barrage', async () => {
+    monter([QUALIFICATION_REGLEE])
+    await ouvrirLaFiche()
+
+    const champ = ligne().getByLabelText(/Titre de la phase/)
+    await userEvent.clear(champ)
+    await userEvent.type(champ, 'Qualification adultes')
+    await userEvent.click(ligne().getAllByRole('button', { name: 'Enregistrer' })[0]!)
+
+    expect(configEnvoyee().titre).toBe('Qualification adultes')
+    expect(configEnvoyee().decoupage).toEqual({ nb_tours: 2 })
+    expect(configEnvoyee().barrage_jusqu_au).toBe(8)
+  })
+
+  it('vider le champ retire le titre, ce qui est le seul geste pour y revenir', async () => {
+    monter([QUALIFICATION_REGLEE])
+    await ouvrirLaFiche()
+
+    await userEvent.clear(ligne().getByLabelText(/Titre de la phase/))
+    await userEvent.click(ligne().getAllByRole('button', { name: 'Enregistrer' })[0]!)
+
+    expect(configEnvoyee().titre).toBeNull()
+  })
+
+  it('régler le barrage ne renomme pas la phase — la 3ᵉ occurrence annoncée', async () => {
+    // Le sens inverse du premier test, et c'est celui que la docstring de `configInchangee`
+    // désigne nommément : un widget à champ unique qui oublierait de réémettre le titre
+    // l'effacerait, avec un `PUT` qui réussit et aucun message.
+    monter([QUALIFICATION_REGLEE])
+    await ouvrirLaFiche()
+
+    const rang = ligne().getByLabelText(/Barrage jusqu.au rang/)
+    await userEvent.clear(rang)
+    await userEvent.type(rang, '4')
+    await userEvent.click(ligne().getAllByRole('button', { name: 'Enregistrer' })[1]!)
+
+    expect(configEnvoyee().barrage_jusqu_au).toBe(4)
+    expect(configEnvoyee().titre).toBe('Qualification jeunes')
+    expect(configEnvoyee().decoupage).toEqual({ nb_tours: 2 })
   })
 })

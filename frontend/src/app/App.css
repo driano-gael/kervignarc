@@ -1651,6 +1651,29 @@ button:disabled {
   font-size: 13px;
 }
 
+/* La **fiche** d'une phase, dépliée sous sa ligne (E16US002).
+   ⚠️ La classe était posée sans aucune règle à la première livraison — relevé par quatre axes : la
+   fiche s'ouvrait collée à la barre d'actions, sans séparateur ni retrait, alors que tout le propos
+   du dépliage est que « la liste reste une liste ». Une classe nommée mais vide se lit comme un
+   style existant. */
+.phase__fiche {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Un réglage isolé dans une fiche (titre, barrage, découpage).
+   ⚠️ Remplace l'emprunt de `.phase__barrage`, définie dans `features/competition/barrages.css` :
+   une classe d'une **autre feature**, dont le nom disait « barrage » pour un champ de titre
+   (règle 10 — organisation par features). */
+.phase__reglage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* Tableau de classement. */
 .table {
   width: 100%;

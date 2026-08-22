@@ -341,7 +341,8 @@ window.ATLAS.avancement = {
   {
    "identifiant": "035",
    "introduite_par": [
-    "E06US006"
+    "E06US006",
+    "E16US002"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -394,7 +395,8 @@ window.ATLAS.avancement = {
     "E05US027",
     "E05US033",
     "E05US035",
-    "E05US029"
+    "E05US029",
+    "E16US002"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -1756,7 +1758,8 @@ window.ATLAS.avancement = {
     "0068",
     "0070",
     "0080",
-    "0083"
+    "0083",
+    "0095"
    ],
    "dettes_introduites": [
     "028",
@@ -2838,8 +2841,7 @@ window.ATLAS.avancement = {
     "0090",
     "0091",
     "0092",
-    "0093",
-    "0095"
+    "0093"
    ],
    "dettes_introduites": [
     "001",
@@ -3881,10 +3883,13 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0060",
+    "0075",
     "0080",
     "0095"
    ],
    "dettes_introduites": [
+    "035",
+    "054",
     "080"
    ],
    "dettes_resorbees": [],

@@ -60,6 +60,7 @@ import {
   versReglage as versReglageBso,
   BIG_SHOOT_OFF_PAR_DEFAUT,
 } from '../../shared/phases/bigShootOff'
+import { ChampTitre } from '../../shared/phases/ChampTitre'
 import { ReglageArrets } from '../../shared/phases/ReglageArrets'
 import {
   depuisEtape as depuisArrets,
@@ -450,7 +451,9 @@ function PanneauSimulation({
             : null
   return (
     <div className="carte carte--large">
-      <h3 className="carte__titre">Faire tourner le déroulé</h3>
+      {/* E16US002 : « déroulé » est réservé au plan composé sur un tournoi (ADR-0076) ; cet
+          écran-ci fait tourner un **format**, hors tournoi. Le mot était celui du voisin. */}
+      <h3 className="carte__titre">Faire tourner le format</h3>
       <p className="carte__aide">
         Joue le format sur des archers fictifs et rend ce qu'il produit : la charge réelle en duels,
         les tours par phase, et le classement 1→N. Rien n'est enregistré.
@@ -632,7 +635,11 @@ function EditeurSequence({
             ) : (
               <div className="phase__ligne">
                 <span className="phase__ordre">{index + 1}</span>
-                <span className="phase__type">{LIBELLE_TYPE[etape.type]}</span>
+                {/* E16US002, correctif de revue (deux axes) : cet écran **saisissait** un titre
+                    que sa propre liste n'affichait pas — on tapait « Tableau des jeunes », on
+                    validait, et la ligne rendait « Élimination directe ». Symétrie exacte de
+                    `features/phases/Phases.tsx`, où le type redevient un détail sans disparaître. */}
+                <span className="phase__type">{etape.titre ?? LIBELLE_TYPE[etape.type]}</span>
                 <span className="phase__details">{decrireEtape(etape)}</span>
                 <span className="phase__actions">
                   <button
@@ -860,10 +867,12 @@ export function FormulaireEtape({
             **et** là-bas parce que le format est ce qui se rejoue d'une année sur l'autre
             (ADR-0060 §5) : un format dont les étapes ne peuvent pas être nommées ne remonterait
             titré que par promotion depuis un tournoi. */}
-        <label className="formulaire__libelle">
-          Titre de l&apos;étape (facultatif)
-          <input value={titre} maxLength={80} onChange={(e) => setTitre(e.target.value)} />
-        </label>
+        <ChampTitre
+          valeur={titre}
+          surChangement={setTitre}
+          libelle="Titre de l'étape (facultatif)"
+          placeholder={LIBELLE_TYPE[type]}
+        />
         <p className="carte__aide">
           Vide = le type sert de libellé. Utile quand le format enchaîne plusieurs phases du même
           type.
@@ -1118,7 +1127,10 @@ function EditeurSources({
             <option value="">Phase…</option>
             {amontEligibles.map((etape) => (
               <option key={etape.ordre} value={etape.ordre}>
-                {etape.ordre}. {LIBELLE_TYPE[etape.type]}
+                {/* Sans le titre, composer un format à trois qualifications donnait un menu
+                    « 1. Qualification / 2. Qualification / 3. Qualification » — le problème exact
+                    que cette US existe pour résoudre, sur l'écran qui vient d'acquérir le champ. */}
+                {etape.ordre}. {etape.titre ?? LIBELLE_TYPE[etape.type]}
               </option>
             ))}
           </select>
@@ -1198,7 +1210,7 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
     >
       <label className="formulaire__libelle">
         Nouveau format
-        <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du déroulé" />
+        <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du format" />
       </label>
       <button type="submit" className="bouton--discret" disabled={creer.isPending}>
         Créer

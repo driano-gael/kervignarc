@@ -105,8 +105,23 @@ n'omettrait pas le titre — il **effacerait** ceux d'un format promu depuis un 
 `EtapeReponse`).
 
 Ce n'est pas l'écart de champs que §2 proscrit : celui-là opposait deux représentations de la **même**
-définition, alors qu'ici il n'y en a qu'une — l'étape. C'est le régime déjà retenu pour `arrets`
-(E05US033). Côté front, `Phase` étant dérivée d'`EtapeDeroule` par `Omit`, `titre` **doit** y être
+définition, alors qu'ici il n'y en a qu'une — l'étape.
+
+⚠️ **Une première rédaction invoquait ici « le régime déjà retenu pour `arrets` » : l'analogie est
+fausse, et la revue l'a démontrée.** `arrets` n'est pas absent de `Phase` par choix de modèle mais
+par contrainte **technique** — un cycle d'import du domaine, documenté par ADR-0091 §2 et repris mot
+pour mot par `DETTE-064`. Aucune contrainte de ce genre ne pèse sur un `str | None`. Le §3 est donc
+une décision de **périmètre**, et la présenter comme une nécessité était une rationalisation.
+
+**Ce que la décision de périmètre implique, et qui a été corrigé en revue** : l'écran de **pilotage**
+(« Suivi du déroulé ») est le seul endroit où l'on *démarre* et où l'on *termine* une phase — donc le
+seul où confondre deux qualifications homonymes coûte réellement quelque chose, publier le mauvais
+classement. Y laisser le libellé du type aurait livré « vous pouvez nommer vos phases » en laissant
+anonyme l'écran du geste : la capacité livrée mais inutilisable que cette US existe précisément pour
+fermer. `PilotageCreneau` **joint donc le titre par `ordre`**, clé partagée entre une étape et ses
+instances (ADR-0076 §3), sans que `Phase` ait à porter le champ.
+
+Côté front, `Phase` étant dérivée d'`EtapeDeroule` par `Omit`, `titre` **doit** y être
 retiré explicitement, faute de quoi TypeScript garantirait un champ `undefined` à l'exécution — le
 défaut exact que le même `Omit` a dû absorber pour `arrets` puis `nb_volees`.
 
@@ -120,6 +135,24 @@ défaut exact que le même `Omit` a dû absorber pour `arrets` puis `nb_volees`.
 Les deux libellés étaient **croisés** : chacun portait le mot de son voisin. Le corriger n'est pas
 cosmétique — c'est le motif exact du refus d'A10, qu'ADR-0073 a fait lever sur le plan de salle, et
 il portait ici sur les deux écrans les plus proches l'un de l'autre du parcours de composition.
+
+**Portée exacte de ce §, et ce qu'il ne couvre pas.** La décision porte sur les **deux entrées de
+menu**, plus deux libellés qui les contredisaient à l'intérieur même de l'atelier : un `placeholder`
+« Nom du déroulé » sous un label « Nouveau format », et un titre de section « Faire tourner le
+déroulé » sur un écran qui ne fait tourner aucun tournoi.
+
+⚠️ **Les autres occurrences de « déroulé » sur cet écran sont CORRECTES, et un relecteur les a
+comptées comme une dérive.** Vérification faite au glossaire : *Déroulé projeté* y est une entrée à
+part entière (`ProjectionDeroule`, « ce qu'un **format** produit à un effectif donné »). « Ce déroulé
+tient debout », « voir le déroulé se dessiner », « Calcul du déroulé… » désignent donc la
+**projection**, pas le plan d'un tournoi. Les renommer en « format » aurait effacé une distinction
+que le glossaire porte depuis E01US024. C'est le seul point de cette revue où le rapport d'un axe a
+été écarté sur preuve plutôt que suivi.
+
+⚠️ **Un message d'un troisième écran renvoyait à la destination renommée** (`features/duels`,
+« ajoutez-en une dans « Phases (format) » ») : corrigé en revue. Le renommage était mécaniquement
+traçable par `grep`, et ne pas l'avoir fait rejouait le défaut que la Conséquence n°2 ci-dessous se
+félicite d'avoir fermé.
 
 ### §5 — Une **fiche par ligne**, la même bascule pour tous les types
 
@@ -160,7 +193,17 @@ aurait rejoué ce risque.
   **deux bugs déjà payés** — `ReglageBarrage` effaçait le `decoupage` (rendant inertes les pauses
   posées dessus), et le couple découpage/arrêts partait en 422. Le `titre` en aurait été le
   troisième : sans cette fonction, régler un barrage renommait la phase en silence. Portée locale
-  (une fonction, un fichier), donc pas de remède structurel ni d'ADR pour elle-même.
+  (une fonction, un fichier), donc pas de remède structurel ni d'ADR pour elle-même. Son type de
+  retour est `Required<ConfigPhase>` — c'est **le typecheck** qui garde l'exhaustivité, et non la
+  vigilance : un 13ᵉ réglage oublié devient une erreur de compilation (correctif de revue).
+- **Le champ de saisie a été extrait en revue, sur constat.** Il était écrit **trois fois** et les
+  trois copies **divergeaient déjà** dans le commit qui les créait — libellé, classe, placeholder,
+  et surtout la borne de 80 recopiée trois fois face à un serveur qui la déclare une fois.
+  `shared/phases/ChampTitre.tsx` est le **7ᵉ** exemplaire d'un pattern déjà établi dans ce dossier :
+  c'est de la conformité à une convention, pas l'introduction d'un pattern — donc ni ADR ni US
+  dédiée. La divergence de mot (« phase » côté tournoi, « étape » côté atelier) est **conservée et
+  assumée** : chaque écran garde le registre qu'il emploie partout ailleurs (règle 3, la pluralité
+  est légitime à l'écran), et le composant l'expose en `prop` plutôt que de le figer.
 - **Un garde-fou de test a changé de geste, et un autre était plus faible que son nom.** Les tests
   d'E05US035 cherchaient les réglages de la qualification à l'écran ; ils ouvrent désormais sa fiche.
   Ce faisant, on a découvert qu'ils **portaient leurs requêtes à l'écran entier** alors que le
@@ -183,15 +226,18 @@ aurait rejoué ce risque.
 |---|---|---|
 | §1 — le titre est un champ d'étape, facultatif | `backend/domain/deroule_etape.py` (champ `titre`) | oui |
 | §1 — blanc ramené à l'absence, espaces de bord retirés, sur **toute** porte d'entrée | `backend/domain/deroule_etape.py` (`_titre_normalise`, appelé depuis `__post_init__`) | oui |
-| §1 — aucune unicité, aucune garde de type | `backend/domain/phase.py` (`verifier_coherence_etape`) **inchangé** — c'est la vérification : rien n'y regarde le titre | oui |
+| §1 — aucune unicité, aucune garde de type | `backend/tests/test_domain_titre_de_phase.py` — les cas *deux étapes du même déroulé peuvent porter le même titre* et *le titre survit à un retypage* | oui |
 | §1 — la borne de longueur vit à la frontière | `backend/api/v1/phases.py` (`ConfigPhaseRequete.titre`, `max_length=80`) · `backend/api/v1/formats.py` (`EtapeDTO.titre`, idem) | oui |
 | §2 — la traversée format ↔ étape, dans les deux sens | `backend/domain/format_tournoi.py` (`ModelePhase.titre`, `pour_tournoi`, `d_etape`) | oui |
-| §2 — l'aller-retour persistant, pour les **deux** tables | `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, `_lire_titre`, `_vers_etape`, `_vers_modele_phase`) | oui |
+| §2 — l'aller-retour persistant, table `deroule_etape` | `backend/infrastructure/db/repositories/moteur.py` (`_politiques_json`, **`_config_etape`**, `_lire_titre`, `_vers_etape`) | oui |
+| §2 — l'aller-retour persistant, `config` d'un **format** | `backend/infrastructure/db/repositories/moteur.py` (**`_config_format`**, `_vers_modele_phase`) — gardé par `backend/tests/test_phase_repository.py` (cas *un format conserve le titre de ses étapes*) et `backend/tests/test_patrimoine_api.py` (aller-retour HTTP) | oui, **après correctif de revue** |
 | §2 — le câblage front de l'atelier, sans lequel un format promu perdrait ses titres | `frontend/src/features/patrimoine/api.ts` (`Etape.titre`) · `frontend/src/features/deroule/Deroule.tsx` (état, champ, charge utile, reset) | oui |
-| §3 — le titre reste sur l'étape, absent de `Phase` | `backend/domain/phase.py` **inchangé** (aucun champ `titre`) · `backend/api/v1/phases.py` (`PhaseReponse` **inchangée**, `EtapeReponse.titre` ajouté) | oui |
+| §3 — le titre reste sur l'étape, absent de `Phase` | `backend/domain/phase.py` **inchangé** (aucun champ `titre`) · `backend/api/v1/phases.py` (`PhaseReponse` **inchangée**) ⚠️ **instantané, pas garde-fou** : rien ne rougirait si une US ajoutait `titre` à `Phase`. Le versant front, lui, est gardé par le typecheck (`Omit`) | oui |
 | §3 — le retrait explicite côté front, pour ne pas garantir un `undefined` | `frontend/src/features/phases/api.ts` (`Omit<EtapeDeroule, … 'titre'>`) | oui |
 | §4 — chaque destination porte le mot de sa portée | `frontend/src/features/admin/CoquilleAdmin.tsx` (libellés `phases` et `deroule`) | oui |
 | §5 — une bascule de fiche par ligne, tous types confondus | `frontend/src/features/phases/Phases.tsx` (`LignePhase`, état `ficheOuverte`, bouton « Ouvrir la fiche ») | oui |
 | §5 — la fiche de la qualification réunit ses réglages propres | `frontend/src/features/phases/Phases.tsx` (`ReglageTitre`, `ReglageBarrage`, `ReglageDecoupageDePhase` montés dans la fiche) | oui |
+| §3 — le titre **joint** au pilotage, sans que `Phase` le porte | `frontend/src/features/suivi-deroule/PilotageCreneau.tsx` (`usePhases` + jointure par `ordre`) | oui, **ajouté en revue** |
+| §1 — le champ de saisie, **une seule fois** | `frontend/src/shared/phases/ChampTitre.tsx` (`LONGUEUR_MAX_TITRE`, miroir unique du `max_length=80` des deux DTO), monté par les trois sites | oui, **après correctif de revue** |
 | §5 — le plan de cibles reste une **action**, hors de la fiche | `frontend/src/features/phases/Phases.tsx` (`PlanParBlocs`, toujours dans `phase__actions`) | oui |
 | Conséquence — la recopie de config est centralisée | `frontend/src/features/phases/Phases.tsx` (`configInchangee`, consommée par les trois widgets à champ unique) | oui |

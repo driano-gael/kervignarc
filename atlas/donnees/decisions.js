@@ -3650,7 +3650,8 @@ window.ATLAS.decisions = {
     "E05US029",
     "E05US032",
     "E05US034",
-    "E05US035"
+    "E05US035",
+    "E16US002"
    ]
   },
   {
@@ -7195,9 +7196,11 @@ window.ATLAS.decisions = {
       "Phase",
       "titre",
       "PhaseReponse",
-      "EtapeReponse.titre"
+      "Omit"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "Omit"
+     ],
      "verifiable": true
     },
     {
@@ -7208,7 +7211,9 @@ window.ATLAS.decisions = {
       "_titre_normalise",
       "__post_init__"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_titre_normalise"
+     ],
      "verifiable": true
     },
     {
@@ -7226,22 +7231,56 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/phase.py",
      "existe": true,
      "symboles": [
-      "verifier_coherence_etape",
       "Phase",
       "titre",
       "PhaseReponse",
-      "EtapeReponse.titre"
+      "Omit"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "Omit"
+     ],
      "verifiable": true
     },
     {
      "chemin": "backend/infrastructure/db/repositories/moteur.py",
      "existe": true,
      "symboles": [
+      "deroule_etape",
       "_politiques_json",
+      "_config_etape",
       "_lire_titre",
       "_vers_etape",
+      "config",
+      "_config_format",
+      "_vers_modele_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_titre_de_phase.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_patrimoine_api.py",
+     "existe": true,
+     "symboles": [
+      "config",
+      "_config_format",
+      "_vers_modele_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_phase_repository.py",
+     "existe": true,
+     "symboles": [
+      "config",
+      "_config_format",
       "_vers_modele_phase"
      ],
      "symboles_absents": [],
@@ -7299,6 +7338,26 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [],
      "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/suivi-deroule/PilotageCreneau.tsx",
+     "existe": true,
+     "symboles": [
+      "Phase",
+      "usePhases",
+      "ordre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/ChampTitre.tsx",
+     "existe": true,
+     "symboles": [
+      "LONGUEUR_MAX_TITRE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
     }
    ],
    "remplace_par": "",
@@ -7306,13 +7365,13 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Un titre de phase est un libellé, et chaque écran de composition porte le mot de sa portée",
    "us": [
+    "E01US024",
     "E05US023",
     "E05US024",
     "E05US025",
     "E05US026",
     "E05US029",
     "E05US030",
-    "E05US033",
     "E05US035",
     "E16US002"
    ]
