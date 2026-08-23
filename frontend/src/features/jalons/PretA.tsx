@@ -18,6 +18,11 @@
 // serveur (`D-15`). Un front qui grise le bouton se met à décider d'une garde — et devient la
 // seconde source que le CA interdit.
 
+// ⚠️ `DETTE-083` — ces deux imports **ferment un cycle** : `completude/Completude.tsx` importe cette
+// coquille, qui réimporte `completude`. Réutiliser le rendu plutôt que le dupliquer est le bon geste
+// (`DETTE-065`), mais la coquille de la famille dépend ainsi d'un de ses membres. Résorption :
+// remonter `SectionCompletude`, `LigneCompletude`, `afficheEtat` et `detailLigne` dans `shared/` —
+// rangement transverse, donc US dédiée (règle 16), à traiter avec les autres cycles du dépôt.
 import type { ReactNode } from 'react'
 import type { LigneCompletude } from '../completude/api'
 import { SectionCompletude } from '../completude/SectionCompletude'
@@ -30,6 +35,9 @@ export function PretA({
   lignes,
   pret,
   bloquant,
+  moment,
+  detail = null,
+  complet,
   chargement = false,
   erreur = null,
   children,
@@ -42,6 +50,19 @@ export function PretA({
   lignes: LigneCompletude[] | null
   pret: boolean
   bloquant: boolean
+  // *Quand* le refus tombe — « au démarrage ». Cf. `verdict` : sans ce mot, la phrase se lit comme
+  // un refus immédiat, que l'action offerte dément parfois.
+  moment?: string
+  // La **cause chiffrée** du blocage, telle que le serveur la rend. Jamais rédigée ici : c'est la
+  // phrase du refus lui-même, pour que l'avertissement ne dise pas autre chose que le 409.
+  detail?: string | null
+  // Le badge « complet / incomplet » de la section. **Distinct de `pret`** : `pret` dit *si
+  // l'action passera*, ce badge dit *si la liste est finie*, et les deux se séparent dès qu'une
+  // ligne manque sans bloquer (le déroulé non composé). Les confondre affichait « Avant de démarrer
+  // — complet » au-dessus d'une ligne « En attente » (relevé en revue par trois axes). Omis, le
+  // badge ne s'affiche pas : c'est le défaut du membre *démarrer*, dont le verdict en tête répond
+  // déjà à la question binaire.
+  complet?: boolean
   chargement?: boolean
   erreur?: ReactNode
   // Le pied de l'écran : ce que l'action implique, puis l'action elle-même. Hors de la garde
@@ -49,7 +70,7 @@ export function PretA({
   // verrouiller l'action.
   children?: ReactNode
 }) {
-  const { ton, texte } = verdict(pret, bloquant)
+  const { ton, texte } = verdict(pret, bloquant, moment)
   return (
     <section className="carte carte--large">
       <h2 className="carte__titre">{question}</h2>
@@ -67,7 +88,12 @@ export function PretA({
             <span className="indicateur__pastille" aria-hidden="true" />
             {texte}
           </p>
-          <SectionCompletude titre={titreSection} complet={pret} lignes={lignes} />
+          {/* La cause, sous le verdict : « 8 archer(s) inscrit(s) sur le départ 2 pour 34 requis ».
+              `D-16` / `P-4` — une alerte qui ne chiffre pas son impact est un clic de plus, pas une
+              protection ; sur un tournoi à deux créneaux, « 8/34 » seul semble contredire le total
+              affiché ailleurs (relevé en revue, axe D). */}
+          {detail !== null && <p className="completude__implication">{detail}</p>}
+          <SectionCompletude titre={titreSection} complet={complet} lignes={lignes} />
         </>
       )}
 

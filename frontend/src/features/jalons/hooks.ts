@@ -16,11 +16,16 @@ const INTERVALLE_POLL_MS = 5000
 export const clePreparationJalon = (tournoiId: number, jalon: Jalon) =>
   ['jalon', tournoiId, jalon] as const
 
-export function usePreparationJalon(tournoiId: number, jalon: Jalon) {
+// `actif` **coupe le poll** quand la question ne se pose plus (tournoi déjà lancé, annulé) : sans
+// lui, chaque tablette laissée sur l'écran interrogeait le serveur toutes les 5 s pour une réponse
+// dont plus rien n'était affiché (relevé en revue). Le défaut est `true` : un jalon se lit en
+// continu, c'est le cas nominal.
+export function usePreparationJalon(tournoiId: number, jalon: Jalon, actif = true) {
   return useQuery({
     queryKey: clePreparationJalon(tournoiId, jalon),
     queryFn: () => getPreparationJalon(tournoiId, jalon),
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
+    enabled: actif,
   })
 }

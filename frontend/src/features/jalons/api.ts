@@ -24,6 +24,10 @@ export interface PreparationJalon {
   // À `false`, l'action passe **quand même** malgré `pret: false` (`D-15`). Ne sert jamais à
   // désactiver un bouton — cf. `PretA.tsx`.
   bloquant: boolean
+  // La **cause chiffrée** du blocage (« 8 archer(s) inscrit(s) sur le départ 2 pour 34 requis… »),
+  // `null` s'il n'y en a pas. C'est la phrase du refus serveur lui-même : l'avertissement d'avant
+  // le clic et le 409 d'après ne peuvent pas énoncer deux causes différentes.
+  detail: string | null
 }
 
 export function getPreparationJalon(tournoiId: number, jalon: Jalon): Promise<PreparationJalon> {

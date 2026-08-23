@@ -23,9 +23,17 @@ l'action passera*. Les deux se séparent parce que `D-15` (« l'appli n'empêche
 autorise des manquements qui ne bloquent pas — un tournoi sans déroulé composé démarre. Les
 confondre ferait dire à l'écran « vous ne pouvez pas » là où le serveur accepte.
 
-**`bloquant` porte l'asymétrie de la famille.** *Démarrer* a des gardes dures ; *terminer* n'en a
-aucune (`sportif_complet` choisit le libellé de la confirmation, il ne garde rien — E12US005). Sans
-ce drapeau, la forme unique dirait la même chose des deux, donc serait fausse sur l'un des deux.
+**`bloquant` porte l'asymétrie de la famille.** *Démarrer* a des gardes de **contenu** (créneaux,
+effectif) ; *terminer* n'en a aucune — `sportif_complet` choisit le libellé de la confirmation, il
+ne garde rien (E12US005). Sans ce drapeau, la forme unique dirait la même chose des deux, donc
+serait fausse sur l'un des deux.
+
+⚠️ **La garde de statut, elle, est commune aux trois membres qui gardent une transition** — et elle
+manquait à la première version de ce module, relevée en revue (axe D). `ServiceTournois` la lève
+avant toute autre (`TransitionStatutInvalide`) : *démarrer* n'est atteignable que depuis *brouillon*
+ou *prêt*, *terminer* que depuis *en cours*. Un jalon qui l'ignorait répondait « prêt, et l'action
+passera » sur un tournoi déjà lancé — le 200 rassurant et faux que l'ADR interdit ailleurs, et le
+piège tendu à `ARCHIVER`, dont le **statut est la seule garde**.
 
 Les lignes réutilisent `LigneCompletude` / `EtatSection` de `domain.completude` : c'est déjà le
 vocabulaire de `D-17` / `D-18` (liste d'états, jamais une barre de progression), et le jalon
@@ -39,12 +47,20 @@ from dataclasses import dataclass
 from enum import Enum
 
 from domain.completude import Completude, EtatSection, LigneCompletude
+from domain.tournoi import StatutTournoi
 
 # Clés **stables** des lignes de « prêt à démarrer » (contrat avec le front, comme celles de la
 # complétude). Le libellé lisible voyage dans la ligne ; la clé est ce sur quoi le front s'appuie.
 CLE_CRENEAUX = "creneaux"
 CLE_EFFECTIF = "effectif"
 CLE_DEROULE = "deroule"
+
+# D'où la question « prêt à démarrer ? » se pose encore. Au-delà, le tournoi est parti (ou ne
+# partira pas) : la transition n'est plus atteignable, et le dire `pret` serait un mensonge.
+_AVANT_LE_DEPART = (StatutTournoi.BROUILLON, StatutTournoi.PRET)
+
+# Le seul statut d'où `ServiceTournois.terminer` accepte (`{StatutTournoi.EN_COURS}`).
+_PENDANT_LE_TOURNOI = StatutTournoi.EN_COURS
 
 
 class Jalon(str, Enum):
@@ -89,7 +105,15 @@ class PreparationJalon:
 
     - `lignes` : *ce qui manque*, en états (`D-17`) — jamais un pourcentage ;
     - `pret` : la réponse **binaire** à « puis-je passer à l'étape suivante ? » ;
-    - `bloquant` : à `False`, l'action passe **quand même** malgré `pret is False` (`D-15`).
+    - `bloquant` : à `False`, l'action passe **quand même** malgré `pret is False` (`D-15`) ;
+    - `detail` : la **cause chiffrée** du blocage, quand elle existe — « 8 archer(s) inscrit(s) sur
+      le départ 2 pour 34 requis… ». Une ligne dit *quoi* (« Inscrits · 8/34 ») ; `detail` dit
+      *pourquoi ce chiffre-là* (`D-16` / `P-4` : « une alerte qui ne chiffre pas son impact est un
+      clic de plus, pas une protection »). Sur un tournoi à deux créneaux de 40 et 8, « 8/34 » seul
+      contredit le total affiché ailleurs — c'est le défaut qu'ADR-0075 a coûté cher à trouver. La
+      phrase n'est **pas rédigée ici** : elle vient de `ExigenceEffectifTournoi.message_de_refus`,
+      celle-là même que la garde met dans son refus, pour que l'avertissement et le refus ne
+      puissent pas diverger.
 
     ⚠️ **Aucun bouton n'est jamais désactivé sur la foi de ces champs.** E05US021 avait déjà tranché
     ce point pour le démarrage : l'avertissement se lit avant le clic, le refus remonte du serveur.
@@ -101,32 +125,50 @@ class PreparationJalon:
     lignes: tuple[LigneCompletude, ...]
     pret: bool
     bloquant: bool
+    detail: str | None = None
 
 
 def evaluer_demarrer(
     *,
+    statut: StatutTournoi,
     nb_creneaux: int,
     nb_etapes_deroule: int,
+    effectif_suffisant: bool,
     inscrits: int,
     minimum: int,
+    cause_effectif: str | None = None,
 ) -> PreparationJalon:
-    """« Prêt à démarrer ? » — les deux gardes du feu vert, plus un avertissement qui ne bloque pas.
+    """« Prêt à démarrer ? » — les trois gardes du feu vert, plus un avertissement sans effet.
 
+    - **Statut** (`statut`) : garde de `vers_pret` **et** de `demarrer` — la question ne se pose
+      qu'avant le départ (`brouillon`, `prêt`). Elle ne produit **pas de ligne** : « ce qui manque »
+      n'a pas de sens pour un tournoi déjà lancé, il n'y a simplement plus rien à préparer.
     - **Créneaux** (`nb_creneaux`) : garde de `vers_pret` (E02US010) — sans départ, pas de feu
       vert. `EN_ATTENTE` plutôt qu'`ALERTE` : rien n'est commencé, il n'y a pas d'écart à chiffrer.
-    - **Inscrits** (`inscrits` / `minimum`) : garde de `demarrer` (E05US021), chiffrée « 28/34 ».
-      `minimum == 0` signifie *rien n'est prélevé, donc rien n'est exigé* — la ligne est alors `OK`
-      et ne s'alarme pas sur un plancher qui n'existe pas.
+    - **Inscrits** (`effectif_suffisant`) : garde de `demarrer` (E05US021), chiffrée « 28/34 ».
+      ⚠️ Le **verdict est reçu, pas recalculé** : c'est `ExigenceEffectifTournoi.suffisant`, le
+      champ exact que `_exiger_un_effectif_suffisant` lit pour refuser. La première version
+      comparait `inscrits >= minimum` ici — vrai aujourd'hui, faux au premier assouplissement de
+      `exigence_effectif`, et **aucun test ne l'aurait vu** puisque les deux formules coïncidaient
+      (relevé par quatre axes de revue). `inscrits`/`minimum` ne servent donc plus qu'à **chiffrer**
+      la ligne. `minimum == 0` (rien n'est prélevé, rien n'est exigé) ne porte alors aucun décompte.
     - **Déroulé composé** (`nb_etapes_deroule`) : **avertissement seul**. Le service laisse démarrer
       un tournoi sans déroulé ; le dire bloquant ferait mentir l'écran. Que ce soit *souhaitable*
       est une autre question — elle est ouverte à l'ADR, pas tranchée ici.
 
-    `pret` ne retient donc que les deux gardes dures. `bloquant` est `True` : le serveur refuse
+    `pret` ne retient donc que les gardes dures. `bloquant` est `True` : le serveur refuse
     réellement, et l'écran doit annoncer un refus, pas une simple gêne.
+
+    ⚠️ **`pret` répond de l'étape, pas du prochain clic.** Depuis *brouillon*, l'action offerte est
+    `vers-pret`, qui n'exige que les créneaux : un tournoi à 28 inscrits sur 34 y passera « prêt »
+    alors que ce jalon dit déjà `pret is False`. Ce n'est pas une contradiction, c'est **tout
+    l'objet de l'US** — annoncer l'effectif *avant* le premier clic plutôt qu'au second. C'est en
+    revanche ce qui oblige l'écran à dire *quand* le refus tombe (« sera refusé **au démarrage** »)
+    et non « sera refusé », qui se lirait comme un refus immédiat (relevé en revue, axe D).
     """
+    encore_a_lancer = statut in _AVANT_LE_DEPART
     etat_creneaux = EtatSection.OK if nb_creneaux > 0 else EtatSection.EN_ATTENTE
-    effectif_ok = minimum == 0 or inscrits >= minimum
-    etat_effectif = EtatSection.OK if effectif_ok else EtatSection.ALERTE
+    etat_effectif = _etat_effectif(effectif_suffisant, inscrits)
     etat_deroule = EtatSection.OK if nb_etapes_deroule > 0 else EtatSection.EN_ATTENTE
 
     lignes = (
@@ -144,12 +186,37 @@ def evaluer_demarrer(
     return PreparationJalon(
         jalon=Jalon.DEMARRER,
         lignes=lignes,
-        pret=etat_creneaux is EtatSection.OK and effectif_ok,
+        pret=encore_a_lancer and etat_creneaux is EtatSection.OK and effectif_suffisant,
         bloquant=True,
+        detail=_detail_demarrer(encore_a_lancer, effectif_suffisant, cause_effectif),
     )
 
 
-def evaluer_terminer(completude: Completude) -> PreparationJalon:
+def _etat_effectif(suffisant: bool, inscrits: int) -> EtatSection:
+    """L'état de la ligne « Inscrits » — trois cas, et pas deux.
+
+    ⚠️ **Zéro inscrit n'est pas « terminé »**, même quand rien n'est exigé (aucun déroulé composé,
+    donc aucun prélèvement à honorer). La première version rendait alors `OK`, que le front affiche
+    « Inscrits · **Terminé** » sur un tournoi tout juste créé — lisible comme « les inscriptions
+    sont closes » (relevé en revue, axe C1). `EN_ATTENTE` est la définition même du cas : « rien
+    encore d'exploitable » (`domain.completude.EtatSection`). Cela ne change **pas** `pret` : un
+    tournoi sans exigence démarre, c'est `D-15`.
+    """
+    if not suffisant:
+        return EtatSection.ALERTE
+    return EtatSection.OK if inscrits > 0 else EtatSection.EN_ATTENTE
+
+
+def _detail_demarrer(
+    encore_a_lancer: bool, effectif_suffisant: bool, cause_effectif: str | None
+) -> str | None:
+    """La phrase qui explique le blocage — jamais un doublon de la ligne qu'elle accompagne."""
+    if not encore_a_lancer:
+        return "Ce tournoi est déjà lancé : il n'y a plus rien à préparer avant son démarrage."
+    return None if effectif_suffisant else cause_effectif
+
+
+def evaluer_terminer(completude: Completude, statut: StatutTournoi) -> PreparationJalon:
     """« Prêt à terminer ? » — la complétude **sportive**, relue telle quelle.
 
     Aucun calcul propre : les lignes *sont* `completude.sportif` et `pret` *est*
@@ -157,16 +224,25 @@ def evaluer_terminer(completude: Completude) -> PreparationJalon:
     lettre — un second calcul finirait par contredire le premier, et l'écran des paiements
     (`CompletudeAdministrative`, E16US003) lit déjà la même réponse serveur.
 
-    `bloquant` est `False` : terminer n'a **aucune** garde dure. L'incomplétude change le libellé de
-    la confirmation (« Terminer quand même ? »), jamais le droit de terminer — une garde ici
-    empêcherait de clore un tournoi pour une cible abandonnée, le contraire de `D-15`.
+    `bloquant` est `False` **pendant le tournoi** : terminer n'a aucune garde de *contenu*.
+    L'incomplétude change le libellé de la confirmation (« Terminer quand même ? »), jamais le droit
+    de terminer — une garde ici empêcherait de clore un tournoi pour une cible abandonnée, le
+    contraire de `D-15`.
+
+    ⚠️ **Hors *en cours*, il en a une** — et la première version disait « aucune », ce qui était
+    faux (relevé en revue). `ServiceTournois.terminer` n'accepte que `{EN_COURS}` : sur un tournoi
+    **en pause** (la pause déjeuner du jour J), terminer est refusé tant qu'on n'a pas repris.
+    Répondre `bloquant=False` y aurait fait dire à l'écran « l'application ne vous en empêchera
+    pas » juste avant un 409.
 
     L'administratif reste **hors** de ce jalon (retour A14, E16US003) : les paiements ne bloquent
     pas la clôture sportive et se suivent sur l'axe Gestion.
     """
+    en_cours = statut is _PENDANT_LE_TOURNOI
     return PreparationJalon(
         jalon=Jalon.TERMINER,
         lignes=completude.sportif,
-        pret=completude.sportif_complet,
-        bloquant=False,
+        pret=en_cours and completude.sportif_complet,
+        bloquant=not en_cours,
+        detail=None if en_cours else "Seul un tournoi en cours peut être terminé.",
     )

@@ -52,6 +52,7 @@
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { texteErreur } from '../../shared/ui/texteErreur'
+// ⚠️ `DETTE-083` — l'autre moitié du cycle : `jalons/PretA` réimporte `completude`.
 import { PretA } from '../jalons/PretA'
 import type { StatutTournoi } from '../competition/api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
@@ -81,6 +82,11 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       titreSection="Sportif"
       lignes={completude.data?.sportif ?? null}
       pret={completude.data?.sportif_complet ?? false}
+      // Le badge « complet / incomplet » de la section, tel qu'il était avant la migration. Il se
+      // passe **à part** de `pret` depuis la revue : sur cet écran les deux valent `sportif_complet`
+      // et le rendu ne change pas, mais sur *démarrer* ils diffèrent — `pret` peut être faux avec
+      // toutes les lignes vertes sauf un avertissement qui ne bloque pas.
+      complet={completude.data?.sportif_complet ?? false}
       // Terminer n'a **aucune garde dure** : l'incomplétude change le libellé de la confirmation,
       // jamais le droit de terminer (`D-15`). C'est l'asymétrie que `bloquant` porte, cf. ADR-0096.
       bloquant={false}

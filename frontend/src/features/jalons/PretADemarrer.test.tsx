@@ -50,6 +50,7 @@ const RIEN_NE_MANQUE: PreparationJalon = {
   ],
   pret: true,
   bloquant: true,
+  detail: null,
 }
 
 // Les **deux** gardes manquent en même temps : c'est le cas que les exceptions ne savaient pas
@@ -64,6 +65,8 @@ const DEUX_MANQUES: PreparationJalon = {
   ],
   pret: false,
   bloquant: true,
+  // La cause chiffrée, telle que le serveur la rend — c'est la phrase du refus lui-même.
+  detail: 'Ce tournoi ne peut pas démarrer : 28 archer(s) inscrit(s) pour 34 requis.',
 }
 
 const DEMARRER: Transition = { nom: 'demarrer', libelle: 'Démarrer', vers: 'en_cours' }
@@ -152,6 +155,61 @@ describe('Prêt à démarrer ?', () => {
 
     expect(await screen.findByText(/déjà lancé/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Démarrer' })).toBeNull()
+  })
+
+  it('CA — dit **quand** le refus tombera, pas seulement qu’il tombera', async () => {
+    // Depuis *brouillon*, l'action offerte est « Marquer prêt », qui n'exige que les créneaux : un
+    // tournoi à 28/34 la passe sans broncher. « Ce qui manque sera refusé » se lisait donc comme un
+    // refus **immédiat**, démenti par le clic suivant (relevé en revue, axe D).
+    vi.mocked(getPreparationJalon).mockResolvedValue(DEUX_MANQUES)
+    vi.mocked(getTransitions).mockResolvedValue([VERS_PRET])
+    monter(<PretADemarrer tournoiId={1} statut="brouillon" />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('sera refusé au démarrage')
+  })
+
+  it('CA — chiffre la **cause** du blocage, pas seulement le manque', async () => {
+    // `D-16` / `P-4` : une alerte qui ne chiffre pas son impact est un clic de plus, pas une
+    // protection. Sur un tournoi à deux créneaux, « 8/34 » seul contredit le total affiché ailleurs
+    // — la phrase du serveur nomme le créneau.
+    vi.mocked(getPreparationJalon).mockResolvedValue(DEUX_MANQUES)
+    monter(<PretADemarrer tournoiId={1} statut="brouillon" />)
+
+    expect(
+      await screen.findByText(/28 archer\(s\) inscrit\(s\) pour 34 requis/),
+    ).toBeInTheDocument()
+  })
+
+  it('la question affichée vient du **serveur**, pas d’une table locale de libellés', async () => {
+    // ADR-0096 §2. Le champ était rendu et jamais lu : l'ADR promettait une dérivation que le code
+    // ne faisait pas, et le 3ᵉ membre aurait recopié un 3ᵉ littéral (relevé en revue par trois axes).
+    vi.mocked(getPreparationJalon).mockResolvedValue({
+      ...RIEN_NE_MANQUE,
+      question: 'Prêt à décoller ?',
+    })
+    monter(<PretADemarrer tournoiId={1} statut="pret" />)
+
+    expect(await screen.findByRole('heading', { name: 'Prêt à décoller ?' })).toBeInTheDocument()
+  })
+
+  it('un tournoi **annulé** n’est pas dit « déjà lancé »', async () => {
+    // `_TRANSITIONS` autorise `brouillon → annule` : un tournoi annulé depuis le brouillon n'a
+    // jamais démarré, et cette phrase est la seule que l'organisateur lit sur cet écran.
+    monter(<PretADemarrer tournoiId={1} statut="annule" />)
+
+    expect(await screen.findByText(/annulé/)).toBeInTheDocument()
+    expect(screen.queryByText(/déjà lancé/)).toBeNull()
+  })
+
+  it('un tournoi parti n’affiche plus de verdict — et cesse d’interroger le serveur', async () => {
+    // L'écran affichait « Oui — rien ne s'y oppose » juste au-dessus de « ce tournoi est déjà
+    // lancé », deux phrases qui se contredisent ; et il continuait de poller toutes les 5 s par
+    // tablette pour une réponse dont plus rien n'était affiché.
+    monter(<PretADemarrer tournoiId={1} statut="termine" />)
+
+    expect(await screen.findByText(/déjà lancé/)).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(getPreparationJalon).not.toHaveBeenCalled()
   })
 
   it('une lecture injoignable n’efface pas l’action (`P-3`)', async () => {

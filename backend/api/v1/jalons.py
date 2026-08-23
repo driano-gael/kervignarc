@@ -37,7 +37,10 @@ class PreparationJalonReponse(BaseModel):
       tenir sa propre table de libellés (elle divergerait au premier membre ajouté) ;
     - `lignes` : ce qui manque, en états (`D-17`) — jamais un pourcentage ;
     - `pret` : la réponse binaire ;
-    - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`).
+    - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`) ;
+    - `detail` : la **cause chiffrée** du blocage quand il y en a une (« 8 archer(s) inscrit(s) sur
+      le départ 2 pour 34 requis… »), `null` sinon. C'est la phrase que la garde met dans son
+      refus : l'avertissement et le refus ne peuvent donc pas énoncer deux causes différentes.
 
     ⚠️ `bloquant` ne sert **pas** à désactiver un bouton : il choisit ce que l'écran annonce (un
     refus à venir, ou une simple gêne). E05US021 avait déjà tranché — le refus remonte du serveur,
@@ -49,6 +52,7 @@ class PreparationJalonReponse(BaseModel):
     lignes: list[LigneCompletudeReponse]
     pret: bool
     bloquant: bool
+    detail: str | None
 
     @staticmethod
     def de_preparation(preparation: PreparationJalon) -> PreparationJalonReponse:
@@ -59,6 +63,7 @@ class PreparationJalonReponse(BaseModel):
             lignes=[LigneCompletudeReponse.de_ligne(ligne) for ligne in preparation.lignes],
             pret=preparation.pret,
             bloquant=preparation.bloquant,
+            detail=preparation.detail,
         )
 
 
@@ -76,6 +81,14 @@ async def preparation_jalon(
     `exporter`). `400` si le segment n'est pas un membre de la famille : l'énumération du domaine
     sert de validation de chemin, et le projet remappe `RequestValidationError` en 400
     (`api/erreurs.py`).
+
+    ⚠️ **`Jalon` (domaine) sert de type de chemin, et c'est délibéré** — la revue a proposé de le
+    recopier à la frontière au nom de la règle 6. Écarté : la règle vise les **DTO de corps**, dont
+    la structure ne doit pas fuir (c'est fait, `PreparationJalonReponse` est distinct), tandis que
+    dupliquer ici la liste des quatre membres rouvrirait exactement la divergence que l'US ferme —
+    un membre ajouté au domaine et oublié dans la copie deviendrait un 400 silencieux. Le risque
+    inverse (renommer un membre du domaine casse l'URL sans rien faire rougir) est couvert : les
+    tests d'API demandent les segments **littéraux** `demarrer` / `terminer` / `archiver`.
 
     Lecture pure (départs, déroulé, séries, plan en base) : hors file d'écriture, dans le
     threadpool.

@@ -46,6 +46,24 @@ il n'est pas cosmétique : **les gardes du cycle de vie ne sont lisibles qu'en �
 |---|---|---|
 | « au moins un créneau » (E02US010) | `ServiceTournois.vers_pret` | `TournoiSansDepart` → 409, **au clic** |
 | « assez d'inscrits » (E05US021) | `ServiceTournois.demarrer` | `EffectifInsuffisantPourDemarrer` → 409, **au clic** |
+| « le tournoi est-il dans l'état d'où l'on part ? » (ADR-0026 §2) | `ServiceTournois.vers_pret`, `demarrer`, `terminer`, `archiver`… | `TransitionStatutInvalide` → 409, **au clic** |
+
+⚠️ **La troisième ligne a été ajoutée en revue, et son oubli n'était pas anodin.** La première
+version de ce tableau — donc de l'implémentation qu'il décrit — ne comptait que **deux** gardes. Or
+la garde de statut est la seule **universelle** : `ServiceTournois` la lève *avant* toutes les
+autres. Trois conséquences, toutes vérifiées dans le code livré et toutes corrigées depuis :
+
+1. `/jalons/demarrer` répondait `pret: true` sur un tournoi **déjà en cours**, alors que `demarrer`
+   y lève à coup sûr. Seul le front masquait le mensonge, en n'affichant plus l'écran ;
+2. `evaluer_terminer` documentait « terminer n'a **aucune** garde dure » et posait `bloquant=false`
+   sur cette base. Faux : `terminer` n'accepte que `EN_COURS`, donc un tournoi **en pause** (la
+   pause déjeuner du jour J) s'entendait dire « rien ne vous en empêchera » juste avant un 409 ;
+3. surtout, **`ARCHIVER` — le membre que cet ADR promet de laisser « se brancher » — n'a QUE cette
+   garde.** Sans elle, la forme livrée ne lui offrait rien à énumérer : liste vide et `pret` toujours
+   vrai, c'est-à-dire exactement le « 200 rassurant et faux » que le §5 interdit par ailleurs.
+
+C'est le mode de défaillance qu'ADR-0017 avait produit treize mois durant : une décision juste,
+portée à moitié, et rien pour le signaler.
 
 Une exception ne rend **qu'un** manquement : le premier rencontré. L'organisateur ajoute un créneau,
 reclique, découvre alors l'effectif. Le jour J, devant la salle, ce sont deux allers-retours dont le
@@ -143,7 +161,10 @@ existait déjà sous un autre chemin (`/completude`). L'écran « Prêt à termi
 `/completude`** — les deux rendent la même chose, mais sa confirmation a besoin en plus du volet
 administratif pour chiffrer les impayés, et basculer sa liste sur le jalon aurait ajouté un **second
 poll de 5 s par tablette** pour une réponse identique. Que les deux ne divergent pas n'est pas laissé
-à la vigilance : `test_jalons_api.py` épingle `/jalons/terminer` ≡ `/completude.sportif`.
+à la vigilance : `test_jalons_api.py` épingle `/jalons/terminer` ≡ `/completude.sportif` — **sur un
+tournoi en cours**, seule fenêtre où terminer est offert (cf. la garde de statut ci-dessus). Le
+membre `terminer` du jalon n'a donc **aucun client front aujourd'hui** : il existe pour la forme,
+pour l'épinglage, et comme couture du jour où l'écran migrera. C'est un choix relu, pas un oubli.
 
 **Aucune migration.** Tout est de la lecture dérivée : rien n'est persisté.
 
@@ -160,7 +181,17 @@ topologie serveur — mais l'organisateur dispose désormais de **deux** endroit
 tournoi : la frise (action nue) et le jalon (action expliquée). Les fondre relèverait de la refonte
 de navigation complète que la fiche annonçait ; ce n'est pas fait ici, et c'est à instruire quand
 `ARCHIVER` rejoindra la famille — c'est là que la question se posera pour de bon, la frise portant
-aussi ce bouton.
+aussi ce bouton. ⚠️ **Inscrit au registre en revue** (`DETTE-082`) : un angle mort qui ne vit que
+dans une section *Conséquences* n'apparaît à aucun tri de dette, donc n'est jamais repris. La règle
+du projet demande la ligne **plus** le marqueur à l'endroit du raccourci ; ils y sont désormais.
+
+**Une dette de conception livrée avec, et tracée elle aussi** (`DETTE-083`) : la coquille commune
+`jalons/PretA` importe `completude/SectionCompletude`, pendant que `completude/Completude` importe
+la coquille — un **cycle d'imports** entre deux features, que l'atlas de ce dépôt signale. La sortir
+suppose de remonter `SectionCompletude`, `LigneCompletude`, `afficheEtat` et `detailLigne` dans
+`shared/`, soit un rangement transverse qui n'a rien à faire dans une branche fonctionnelle
+(règle 16 : un remède structurel se traite en US dédiée, jamais en douce). Le registre porte le
+constat et le remède.
 
 ## Porté dans le code par
 
@@ -169,17 +200,21 @@ aussi ce bouton.
 | Décision | Module qui l'applique | Vérifié |
 |---|---|---|
 | §1 — un jalon est un état consultable | `backend/domain/jalon.py` (`PreparationJalon`, `evaluer_demarrer`, `evaluer_terminer`) | oui |
-| §1 — les gardes ne sont pas réécrites : l'effectif vient de la méthode que la garde exécute | `backend/application/jalons.py` (`ServiceJalons._demarrer` → `LecteurExigenceEffectif.exigence_effectif`, réalisé par `ServiceTournois`) | oui |
-| §1 — l'accord jalon ↔ garde est épinglé, pas espéré | `backend/tests/test_service_jalons.py` — les quatre cas de la section « Cohérence jalon ↔ garde », qui exercent les **mêmes dépôts** des deux côtés | oui |
+| §1 — les gardes ne sont pas réécrites : le **verdict** vient de la méthode que la garde exécute | `backend/application/jalons.py` (`ServiceJalons._demarrer` passe `exigence.suffisant` — le champ exact que `_exiger_un_effectif_suffisant` lit — et non `inscrits`/`minimum` à recomparer) · `backend/domain/jalon.py` (`evaluer_demarrer(effectif_suffisant=…)`) — gardé par `backend/tests/test_domain_jalon.py` (`test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas`) | oui — ⚠️ **corrigé en revue** : la 1ʳᵉ version recomparait `inscrits >= minimum` au domaine. Vrai ce jour-là, faux au premier assouplissement de `exigence_effectif`, et **invisible aux tests** puisque les deux formules coïncidaient |
+| §1 — l'accord jalon ↔ garde est épinglé, pas espéré | `backend/tests/test_service_jalons.py`, section « Cohérence jalon ↔ garde » — les mêmes dépôts des deux côtés, **dans les deux sens**, et depuis la revue : le **multi-créneaux** (`test_le_jalon_chiffre_l_effectif_du_creneau_le_moins_garni`, la règle d'ADR-0075 qui n'était pas exercée), la **borne d'égalité** `inscrits == minimum`, et la **garde de statut** (`test_un_tournoi_deja_lance_n_annonce_pas_qu_il_peut_demarrer`) | oui — la 1ʳᵉ version n'avait qu'**un** créneau et ne quittait jamais `brouillon → prêt → en cours` |
 | §1 — le sens **inverse** (jalon optimiste ↔ serveur qui refuse) est gardé lui aussi | `backend/tests/test_service_jalons.py` (`test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer`) | oui — c'est le sens qui coûte le plus cher s'il casse |
 | §2 — une route unique paramétrée | `backend/api/v1/jalons.py` (`GET /jalons/{jalon}`, `jalon: Jalon` en segment) | oui |
-| §2 — la question se dérive du membre, côté serveur | `backend/domain/jalon.py` (`question`, `_VERBE`) · `backend/api/v1/jalons.py` (`PreparationJalonReponse.question`) — gardé par `backend/tests/test_domain_jalon.py` (`test_chaque_membre_pose_sa_question_sous_la_meme_forme`) | oui |
-| §2 — une coquille front unique, montée par les **deux** membres livrés | `frontend/src/features/jalons/PretA.tsx`, montée par `PretADemarrer.tsx` **et** `completude/Completude.tsx` | oui — deux occurrences réelles, pas une abstraction sur pari |
+| §2 — la question se dérive du membre, côté serveur **et le front la consomme** | `backend/domain/jalon.py` (`question`, `_VERBE`) · `backend/api/v1/jalons.py` (`PreparationJalonReponse.question`) — gardé par `backend/tests/test_domain_jalon.py` (`test_chaque_membre_pose_sa_question_sous_la_meme_forme`) | oui |
+| §2 — une coquille front unique, montée par les **deux** membres livrés | `frontend/src/features/jalons/PretA.tsx`, montée par `frontend/src/features/jalons/PretADemarrer.tsx` **et** `frontend/src/features/completude/Completude.tsx` | oui — deux occurrences réelles, pas une abstraction sur pari |
 | §2 — le DTO de ligne est **réutilisé**, pas recopié | `backend/api/v1/jalons.py` importe `LigneCompletudeReponse` de `api/v1/completude.py` | oui |
-| §3 — `pret` ≠ « toutes les lignes vertes » | `backend/domain/jalon.py` (`evaluer_demarrer`, `pret=` ne retient que les deux gardes dures) — gardé par `test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart` | oui |
+| §3 — `pret` ≠ « toutes les lignes vertes » | `backend/domain/jalon.py` (`evaluer_demarrer` : `pret=` ne retient que le statut, les créneaux et l'effectif — jamais le déroulé) — gardé par `test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart` (`backend/tests/test_domain_jalon.py`) | oui |
 | §3 — `bloquant` porte l'asymétrie | `backend/domain/jalon.py` (`bloquant=True` / `False`) · `frontend/src/features/jalons/presentation.ts` (`verdict`, **trois** cas) | oui |
 | §3 — aucun bouton n'est grisé par un manque | `frontend/src/features/jalons/PretADemarrer.tsx` (`disabled` sur la seule mutation en cours) — gardé par `PretADemarrer.test.tsx` (`le bouton reste cliquable même quand rien n'est prêt`) | oui |
-| §3 — l'écran *terminer* reste du bon côté de l'asymétrie | `frontend/src/features/completude/Completude.tsx` (`bloquant={false}`) — gardé par `Completude.test.tsx` (`le verdict avertit sans annoncer de refus`) ⚠️ un booléen inversé ne se verrait **que** là, `tsc` n'en dit rien | oui, **garde ajoutée avec l'US** |
+| §3 — l'écran *terminer* reste du bon côté de l'asymétrie | `frontend/src/features/completude/Completude.tsx` (`bloquant={false}`) — gardé par `Completude.test.tsx` (`le verdict avertit sans annoncer de refus`) ⚠️ un booléen inversé ne se verrait **que** là — le typage n'en dit rien | oui, **garde ajoutée avec l'US** |
 | §4 — l'action offerte est lue du serveur, jamais déduite du statut | `frontend/src/features/jalons/PretADemarrer.tsx` (`useTransitions` + `VERS_LE_DEPART`) — gardé par `PretADemarrer.test.tsx` (`porte l'action que le serveur offre`) | oui |
 | §4 — la famille traverse les axes sans les contredire | `frontend/src/features/admin/axes.ts` (`pret-demarrer: 'pilotage'`, voisin de `completude`) — gardé par `axes.test.ts` (comptage exhaustif des destinations) | oui, pour les **deux** membres livrés |
+| §3 — le badge « complet » de la section **n'est pas** `pret` | `frontend/src/features/jalons/PretA.tsx` (prop `complet` distincte, que l'écran *démarrer* n'utilise pas) · `frontend/src/features/completude/Completude.tsx` (`complet={sportif_complet}`, rendu inchangé) | oui — ⚠️ **corrigé en revue** : `complet={pret}` affichait « Avant de démarrer — complet » au-dessus d'une ligne « En attente » |
+| §3 — le verdict dit **quand** le refus tombe | `frontend/src/features/jalons/presentation.ts` (`verdict(pret, bloquant, moment)`) · `PretADemarrer.tsx` (`moment="au démarrage"`) — gardé par `presentation.test.ts` | oui — ⚠️ **ajouté en revue** : un jalon répond de l'**étape**, et « sera refusé » se lisait comme un refus au clic suivant, que `vers-pret` dément |
+| §3 — la cause du blocage est **chiffrée**, avec la phrase du refus lui-même | `backend/application/jalons.py` (`cause_effectif=exigence.message_de_refus()`) · `backend/domain/jalon.py` (`PreparationJalon.detail`) · `frontend/src/features/jalons/PretA.tsx` | oui — ⚠️ **ajouté en revue** : « 8/34 » sans nommer le créneau contredit le total affiché ailleurs (`D-16` / `P-4`) |
+| **la garde de statut** — commune aux trois membres qui gardent une transition | `backend/domain/jalon.py` (`_AVANT_LE_DEPART`, `_PENDANT_LE_TOURNOI`) · `backend/application/jalons.py` (le tournoi relu une fois porte l'existence **et** le statut) — gardé au domaine, au service et à l'API | oui — ⚠️ **absente de la 1ʳᵉ version**, c'est le bloquant de la revue ; sans elle `ARCHIVER` n'aurait rien à énumérer |
 | §5 — un membre non instruit répond 404 | `backend/application/jalons.py` (`JalonNonInstruit`) · `backend/application/erreurs/referentiel.py` · `backend/api/erreurs.py` (chaîne `isinstance` du 404 — **le mapping est une liste écrite à la main**, cf. le précédent `MancheIntrouvable`) — gardé par `test_jalons_api.py` | oui |

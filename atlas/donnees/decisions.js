@@ -7453,8 +7453,16 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "ServiceJalons._demarrer",
-      "LecteurExigenceEffectif.exigence_effectif",
-      "ServiceTournois",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
+      "PreparationJalon.detail",
+      "_AVANT_LE_DEPART",
+      "_PENDANT_LE_TOURNOI",
+      "ARCHIVER",
       "JalonNonInstruit",
       "isinstance",
       "MancheIntrouvable"
@@ -7469,6 +7477,13 @@ window.ATLAS.decisions = {
       "PreparationJalon",
       "evaluer_demarrer",
       "evaluer_terminer",
+      "ServiceJalons._demarrer",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
       "question",
       "_VERBE",
       "PreparationJalonReponse.question",
@@ -7477,21 +7492,33 @@ window.ATLAS.decisions = {
       "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart",
       "bloquant",
       "False",
-      "verdict"
+      "verdict",
+      "PreparationJalon.detail",
+      "_AVANT_LE_DEPART",
+      "_PENDANT_LE_TOURNOI",
+      "ARCHIVER"
      ],
-     "symboles_absents": [
-      "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/tests/test_domain_jalon.py",
      "existe": true,
      "symboles": [
+      "ServiceJalons._demarrer",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
       "question",
       "_VERBE",
       "PreparationJalonReponse.question",
-      "test_chaque_membre_pose_sa_question_sous_la_meme_forme"
+      "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
+      "pret",
+      "evaluer_demarrer",
+      "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7500,6 +7527,8 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/test_service_jalons.py",
      "existe": true,
      "symboles": [
+      "test_le_jalon_chiffre_l_effectif_du_creneau_le_moins_garni",
+      "test_un_tournoi_deja_lance_n_annonce_pas_qu_il_peut_demarrer",
       "test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer"
      ],
      "symboles_absents": [],
@@ -7518,17 +7547,20 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/completude/Completude.tsx",
      "existe": true,
      "symboles": [
-      "tsc"
+      "pret",
+      "complet"
      ],
-     "symboles_absents": [
-      "tsc"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/jalons/PretA.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "pret",
+      "complet",
+      "PreparationJalon.detail"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },

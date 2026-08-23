@@ -39,6 +39,21 @@ def _creer_tournoi(client: TestClient, connecter_admin: ConnecterAdmin) -> int:
     return int(reponse.json()["id"])
 
 
+def _lancer(client: TestClient, tournoi_id: int) -> None:
+    """Amène le tournoi jusqu'à *en cours* — le seul statut d'où « terminer » est offert.
+
+    Sans créneau, `vers_pret` refuse (E02US010) : c'est la garde que le jalon *démarrer* énumère,
+    et elle sert ici de décor. Aucun déroulé composé, donc aucun effectif exigé.
+    """
+    pose = client.post(
+        f"/api/v1/tournois/{tournoi_id}/departs",
+        json={"numero": 1, "distance_cm": 1800, "horaire": "09:00", "tarif_centimes": 1200},
+    )
+    assert pose.status_code == 201, pose.text
+    assert client.post(f"/api/v1/tournois/{tournoi_id}/vers-pret").status_code == 200
+    assert client.post(f"/api/v1/tournois/{tournoi_id}/demarrer").status_code == 200
+
+
 def test_le_jalon_demarrer_liste_ce_qui_manque_avant_le_clic(
     app_session: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -68,6 +83,7 @@ def test_le_jalon_terminer_rend_la_completude_sportive(
     """
     with TestClient(app_session) as client:
         tournoi_id = _creer_tournoi(client, connecter_admin)
+        _lancer(client, tournoi_id)
 
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/terminer").json()
         completude = client.get(f"/api/v1/tournois/{tournoi_id}/completude").json()
@@ -77,17 +93,52 @@ def test_le_jalon_terminer_rend_la_completude_sportive(
         assert corps["pret"] == completude["sportif_complet"]
 
 
-def test_terminer_n_est_jamais_bloquant(
+def test_terminer_n_est_jamais_bloquant_pendant_le_tournoi(
     app_session: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """`D-15` au contrat : incomplet, mais l'action passe quand même."""
+    """`D-15` au contrat : incomplet, mais l'action passe quand même.
+
+    ⚠️ **Sur un tournoi en cours.** La première version posait la question sur un tournoi en
+    *brouillon*, où terminer est en réalité refusé (`TransitionStatutInvalide`) : le test épinglait
+    donc un « rien ne vous en empêchera » faux (relevé en revue, axe D).
+    """
     with TestClient(app_session) as client:
         tournoi_id = _creer_tournoi(client, connecter_admin)
+        _lancer(client, tournoi_id)
 
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/terminer").json()
 
         assert corps["pret"] is False
         assert corps["bloquant"] is False
+
+
+def test_terminer_hors_du_tournoi_en_cours_annonce_le_refus(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La garde de statut au contrat : sur un brouillon, terminer **sera** refusé."""
+    with TestClient(app_session) as client:
+        tournoi_id = _creer_tournoi(client, connecter_admin)
+
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/terminer").json()
+
+        assert corps["bloquant"] is True
+        assert corps["detail"] is not None
+
+
+def test_un_tournoi_deja_lance_ne_dit_pas_qu_il_peut_demarrer(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le **bloquant** de la revue, épinglé au contrat : c'est ce que liront `E16US007` et
+    `E16US008`, qui n'auront pas le garde-fou que le front s'était donné."""
+    with TestClient(app_session) as client:
+        tournoi_id = _creer_tournoi(client, connecter_admin)
+        _lancer(client, tournoi_id)
+
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/demarrer").json()
+
+        assert corps["pret"] is False
+        assert corps["detail"] is not None
+        assert client.post(f"/api/v1/tournois/{tournoi_id}/demarrer").status_code == 409
 
 
 @pytest.mark.parametrize("jalon", ["archiver", "exporter"])

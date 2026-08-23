@@ -31,6 +31,21 @@ describe('verdict d’un jalon', () => {
     expect(verdict(false, false).ton).toBe('alerte')
   })
 
+  it('CA — dit **quand** le refus tombera quand l’écran le précise', () => {
+    // Un jalon répond de l'**étape**, pas du prochain clic : depuis *brouillon*, « Marquer prêt »
+    // passe alors que le jalon dit déjà non. Sans ce mot, la phrase se lit comme un refus immédiat
+    // que le clic suivant dément (relevé en revue, axe D).
+    expect(verdict(false, true, 'au démarrage').texte).toBe(
+      'Pas encore — ce qui manque ci-dessous sera refusé au démarrage.',
+    )
+  })
+
+  it('le moment ne s’ajoute jamais à un verdict qui n’annonce pas de refus', () => {
+    // `D-15` : sur *terminer*, il n'y a pas de refus à situer dans le temps.
+    expect(verdict(false, false, 'au démarrage').texte).not.toContain('démarrage')
+    expect(verdict(true, true, 'au démarrage').texte).not.toContain('démarrage')
+  })
+
   it('le texte ne nomme aucun verbe de jalon', () => {
     // C'est ce qui permettra à `archiver` et `exporter` de se brancher sans le réécrire : le verbe
     // vit dans le titre de l'écran, pas dans le verdict. Sans cette contrainte, la « forme unique »

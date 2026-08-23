@@ -22,19 +22,21 @@ from application.erreurs import (
     JalonNonInstruit,
     TournoiIntrouvable,
     TournoiSansDepart,
+    TransitionStatutInvalide,
 )
 from application.jalons import ServiceJalons
 from application.tournois import ServiceTournois
 from domain.completude import Completude, EtatSection, evaluer_completude
 from domain.depart import Depart
 from domain.jalon import CLE_CRENEAUX, CLE_DEROULE, CLE_EFFECTIF, Jalon
-from domain.tournoi import TournoiId
-from tests.conftest import FauxDepartRepository, FauxDerouleRepository
-from tests.test_service_tournois import (
-    _DATE,
+from domain.tournoi import StatutTournoi, TournoiId
+from tests.conftest import (
+    DATE_TOURNOI,
     FauxCompteurEngages,
+    FauxDepartRepository,
+    FauxDerouleRepository,
     FauxTournoiRepository,
-    _deroule_120,
+    deroule_120,
 )
 
 
@@ -59,11 +61,16 @@ def _attelage(
     avec_creneau: bool = True,
     avec_deroule: bool = False,
     completude: Completude | None = None,
+    creneaux: tuple[int, ...] = (),
 ) -> tuple[ServiceJalons, ServiceTournois, int]:
     """Un tournoi et les deux services qui le regardent — jalons et cycle de vie.
 
     Les **mêmes** dépôts alimentent les deux : c'est la condition du test de cohérence. Deux jeux de
     faux distincts le rendraient vert sans rien garantir.
+
+    `creneaux` pose **plusieurs** départs avec leurs effectifs respectifs — ex. `(40, 8)`. Sans lui,
+    l'attelage n'avait qu'un créneau, et la règle « l'exigence se juge sur le moins garni »
+    (ADR-0075, treize mois de bug) n'était donc **jamais** exercée côté jalon (relevé en revue).
     """
     tournois = FauxTournoiRepository()
     departs = FauxDepartRepository()
@@ -71,12 +78,17 @@ def _attelage(
     engages = FauxCompteurEngages(inscrits)
     service_tournois = ServiceTournois(tournois, departs, deroules, engages)
 
-    cree = service_tournois.creer("Trophée", _DATE)
+    cree = service_tournois.creer("Trophée", DATE_TOURNOI)
     assert cree.id is not None
-    if avec_creneau:
+    if creneaux:
+        for numero, effectif in enumerate(creneaux, start=1):
+            pose = departs.ajouter(Depart.creer(cree.id, numero, 810, f"{8 + numero:02d}:00"))
+            assert pose.id is not None
+            engages.regler(pose.id, effectif)
+    elif avec_creneau:
         departs.ajouter(Depart.creer(cree.id, 1, 810, "09:00"))
     if avec_deroule:
-        for etape in _deroule_120(cree.id):
+        for etape in deroule_120(cree.id):
             deroules.ajouter(etape)
 
     service_jalons = ServiceJalons(
@@ -149,7 +161,13 @@ def test_effectif_insuffisant_le_jalon_annonce_ce_que_la_garde_refusera() -> Non
     jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=28)
 
     assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
-    tournois.vers_pret(tid)
+    # ⚠️ `vers_pret` **passe** : depuis *brouillon*, la seule garde est « ≥ 1 créneau ». Le jalon
+    # répond de l'**étape** (arriver à `en_cours`), pas du prochain clic — c'est tout l'objet de
+    # l'US, annoncer l'effectif avant le premier clic plutôt qu'au second. Cette ligne n'avait
+    # aucune assertion et laissait donc croire que le refus tombait ici (relevé en revue, axe D) ;
+    # c'est ce décalage que l'écran nomme désormais (« sera refusé **au démarrage** »).
+    assert tournois.vers_pret(tid).statut is StatutTournoi.PRET
+    assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
     with pytest.raises(EffectifInsuffisantPourDemarrer):
         tournois.demarrer(tid)
 
@@ -182,6 +200,92 @@ def test_un_deroule_vide_ne_bloque_ni_le_jalon_ni_la_garde() -> None:
     assert _ligne_etat(jalons, tid, CLE_DEROULE) is EtatSection.EN_ATTENTE
     tournois.vers_pret(tid)
     assert tournois.demarrer(tid).id == tid
+
+
+def test_le_jalon_chiffre_l_effectif_du_creneau_le_moins_garni() -> None:
+    """ADR-0075/0076 : chaque départ **rejoue le tournoi en entier**, donc l'exigence se juge sur le
+    maillon faible — jamais sur la somme.
+
+    Le test manquait, et c'est le trou qui compte le plus : le bug d'origine (deux créneaux à 40 et
+    8, tournoi démarré puis bloqué en salle sur le second) a coûté treize mois. Un jalon qui
+    sommerait les créneaux annoncerait « 48 inscrits, allez-y » là où la garde refuse.
+    """
+    jalons, tournois, tid = _attelage(avec_deroule=True, creneaux=(40, 8))
+
+    preparation = jalons.preparation(tid, Jalon.DEMARRER)
+    ligne = next(ligne for ligne in preparation.lignes if ligne.cle == CLE_EFFECTIF)
+    assert (ligne.fait, ligne.total) == (8, 34)
+    assert preparation.pret is False
+    # La cause **nomme le créneau** : « 8/34 » seul contredit le total affiché ailleurs.
+    assert preparation.detail is not None
+    assert "départ 2" in preparation.detail
+    tournois.vers_pret(tid)
+    with pytest.raises(EffectifInsuffisantPourDemarrer):
+        tournois.demarrer(tid)
+
+
+def test_l_effectif_juste_atteint_passe_des_deux_cotes() -> None:
+    """La **borne** d'égalité, `inscrits == minimum` — le point exact où un `>` mis pour un `>=`
+    séparerait l'écran de la garde sans qu'aucun autre test ne bouge (relevé en revue, axe B).
+
+    Elle ne peut plus diverger depuis que le verdict est transporté et non recalculé ; ce test
+    épingle **que ce soit toujours le cas**.
+    """
+    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=34)
+
+    assert jalons.preparation(tid, Jalon.DEMARRER).pret is True
+    tournois.vers_pret(tid)
+    assert tournois.demarrer(tid).id == tid
+
+
+def test_un_tournoi_deja_lance_n_annonce_pas_qu_il_peut_demarrer() -> None:
+    """La garde de statut, vue depuis le service — le **bloquant** de la revue.
+
+    Sur un tournoi `en_cours`, `demarrer` lève `TransitionStatutInvalide` ; le jalon répondait
+    pourtant « prêt, et l'action passera ». Seul le front masquait le mensonge, et `E16US007` /
+    `E16US008`, qui consommeront ce contrat, n'auraient pas eu ce garde-fou.
+    """
+    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=40)
+    tournois.vers_pret(tid)
+    tournois.demarrer(tid)
+
+    assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
+    with pytest.raises(TransitionStatutInvalide):
+        tournois.demarrer(tid)
+
+
+def test_terminer_hors_du_tournoi_en_cours_annonce_ce_que_la_garde_refusera() -> None:
+    """Symétrique, sur l'autre membre : `terminer` n'accepte que `{EN_COURS}`.
+
+    Un tournoi encore en *brouillon* — ou **en pause**, la pause déjeuner du jour J — ne peut pas
+    être terminé. Le CA disait « terminer n'a aucune garde dure » : vrai du contenu, faux du statut.
+    """
+    complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
+    jalons, tournois, tid = _attelage(completude=complet)
+
+    preparation = jalons.preparation(tid, Jalon.TERMINER)
+    assert preparation.pret is False
+    assert preparation.bloquant is True
+    with pytest.raises(TransitionStatutInvalide):
+        tournois.terminer(tid)
+
+
+def test_le_jalon_terminer_egale_la_completude_sportive_pendant_le_tournoi() -> None:
+    """L'équivalence que l'écran « Prêt à terminer ? » consomme **par l'autre route**
+    (`/completude`) : tant qu'elle tient, migrer l'écran sur le jalon ne changerait rien à
+    ce qu'il affiche.
+
+    Elle vaut **pendant le tournoi**, seule fenêtre où terminer est offert — c'est la précision que
+    la garde de statut a rendue nécessaire.
+    """
+    completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
+    jalons, tournois, tid = _attelage(completude=completude, inscrits=40, avec_deroule=True)
+    tournois.vers_pret(tid)
+    tournois.demarrer(tid)
+
+    preparation = jalons.preparation(tid, Jalon.TERMINER)
+    assert preparation.lignes == completude.sportif
+    assert preparation.pret == completude.sportif_complet
 
 
 # --- Bornes -------------------------------------------------------------------------------------

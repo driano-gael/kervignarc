@@ -20,12 +20,18 @@ export interface Verdict {
 // Annoncer un refus là où l'appli accepte ferait un écran plus sévère que le produit ; annoncer
 // « allez-y » là où le serveur refuse enverrait l'organisateur au 409, le jour J, devant la salle.
 //
-// Le texte reste **générique** : il ne nomme pas le verbe du jalon, pour qu'`archiver` et
-// `exporter` se branchent sans le réécrire — c'est le titre de l'écran qui porte le verbe.
-export function verdict(pret: boolean, bloquant: boolean): Verdict {
+// **`moment` dit *quand* le refus tombe, et il n'est pas décoratif.** Un jalon répond de
+// l'**étape**, pas du prochain clic : depuis *brouillon*, l'action offerte est « Marquer prêt », qui
+// n'exige que les créneaux — un tournoi à 28 inscrits sur 34 la passera sans broncher pendant que le
+// jalon dit déjà « pas prêt ». « Ce qui manque sera refusé » se lisait alors comme un refus
+// **immédiat**, démenti par le clic suivant : l'écran se contredisait à deux lignes d'intervalle
+// (relevé en revue, axe D). Nommer le moment (« sera refusé **au démarrage** ») rend la phrase vraie
+// dans les deux cas, et reste générique — le mot vient du jalon, pas d'une table d'écrans.
+export function verdict(pret: boolean, bloquant: boolean, moment?: string): Verdict {
   if (pret) return { ton: 'ok', texte: 'Oui — rien ne s’y oppose.' }
   if (bloquant) {
-    return { ton: 'alerte', texte: 'Pas encore — ce qui manque ci-dessous sera refusé.' }
+    const quand = moment === undefined ? '' : ` ${moment}`
+    return { ton: 'alerte', texte: `Pas encore — ce qui manque ci-dessous sera refusé${quand}.` }
   }
   return {
     ton: 'alerte',

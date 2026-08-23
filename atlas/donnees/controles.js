@@ -242,22 +242,10 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart dans « backend/domain/jalon.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0096"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce tsc dans « frontend/src/features/completude/Completude.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0096"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 42
+  "signaux": 40
  }
 };

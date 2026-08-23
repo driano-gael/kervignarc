@@ -45,7 +45,12 @@ class EtatSection(str, Enum):
 
 @dataclass(frozen=True)
 class LigneCompletude:
-    """Une ligne du tableau : un jalon, son `etat`, et son décompte `fait/total` s'il en a un.
+    """Une ligne du tableau : un **libellé**, son `etat`, et son décompte `fait/total` s'il en a un.
+
+    ⚠️ Cette ligne disait « un jalon » jusqu'à E16US012, qui a donné au mot un sens plus haut :
+    un **jalon** est désormais une question posée avant une étape (« prêt à démarrer ? »), et une
+    ligne en est un *élément*. Deux sens pour un mot, dans deux modules qui s'importent, c'est ce
+    que la règle 3 et `docs/glossaire.md` existent pour empêcher (relevé en revue).
 
     `fait`/`total` sont `None` pour les lignes **sans décompte** (phases à venir, classement prêt/en
     attente) : leur information est dans `etat`. Le front rend « fait/total <unité> » selon la `cle`

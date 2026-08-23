@@ -17,7 +17,14 @@ Deux allers-retours, alors que l'application connaissait les deux manques dès l
 répondait qu'à la première objection venue.
 
 Le nouvel écran les affiche **toutes ensemble**, avant le moindre clic, et met en tête la réponse en
-une phrase : « **Oui — rien ne s'y oppose** » ou « **Pas encore** ». La liste dit ensuite pourquoi.
+une phrase : « **Oui — rien ne s'y oppose** » ou « **Pas encore — ce qui manque ci-dessous sera
+refusé au démarrage** ». La liste dit ensuite pourquoi.
+
+Et quand il manque des inscrits, l'écran ne se contente pas du chiffre : il reprend **la phrase
+exacte** que vous liriez en cas de refus — quel créneau est concerné, et quelle partie du programme
+réclame ces archers. Un tournoi de 48 archers répartis en deux créneaux de 40 et 8 affiche « 8 sur
+34 » : sans préciser qu'il s'agit du deuxième créneau, le chiffre paraîtrait faux. C'est le créneau
+le moins rempli qui commande, puisque le programme se rejoue entièrement dans chacun.
 
 ## Ce qui manque n'est pas toujours ce qui bloque
 
@@ -29,6 +36,11 @@ sans lui, et l'écran ne doit pas prétendre le contraire.
 Un écran plus sévère que l'application ferait renoncer un organisateur qui avait le droit de
 continuer. C'est pourquoi **aucun bouton n'est jamais grisé** : l'écran vous prévient, il ne vous
 verrouille pas. S'il y a un vrai refus, il arrive au clic, comme avant.
+
+Enfin, **un tournoi déjà lancé — ou annulé — n'affiche plus rien à préparer.** L'écran le dit en une
+phrase, adaptée au cas : « déjà lancé » pour un tournoi parti, « annulé » pour un tournoi abandonné
+avant même d'avoir commencé. Il cesse aussi d'interroger le serveur, ce qui évite d'occuper le réseau
+pour une question qui ne se pose plus.
 
 ## Une famille, pas un écran de plus
 

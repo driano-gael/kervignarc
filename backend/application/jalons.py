@@ -14,6 +14,11 @@ l'endroit où il se joue :
 - l'effectif vient de `ServiceTournois.exigence_effectif` — **la méthode que la garde de démarrage
   exécute elle-même** (`_exiger_un_effectif_suffisant`). Un second calcul aurait dérivé au premier
   changement d'ADR-0075 (« l'exigence se juge sur le créneau le moins garni, pas sur la somme ») ;
+  ⚠️ et c'est le **verdict** (`suffisant`) qui est transmis, pas ses ingrédients : la première
+  version passait `inscrits`/`minimum` et laissait le domaine refaire la comparaison, ce qui
+  rouvrait par la fenêtre la duplication sortie par la porte (relevé par quatre axes de revue) ;
+- le **statut** vient du tournoi déjà relu pour contrôler son existence : c'est la garde que
+  `ServiceTournois` lève avant toutes les autres (`TransitionStatutInvalide`), et elle manquait ;
 - les créneaux viennent du **même** `DepartRepository.par_tournoi` que la garde de `vers_pret` ;
 - « prêt à terminer » relit `ServiceCompletude.pour_tournoi` sans y toucher.
 
@@ -37,7 +42,7 @@ from application.tournois import ExigenceEffectifTournoi, LecteurDerouleDuTourno
 from domain.completude import Completude
 from domain.jalon import Jalon, PreparationJalon, evaluer_demarrer, evaluer_terminer
 from domain.ports import DepartRepository, TournoiRepository
-from domain.tournoi import TournoiId
+from domain.tournoi import StatutTournoi, TournoiId
 
 
 class LecteurExigenceEffectif(Protocol):
@@ -90,29 +95,38 @@ class ServiceJalons:
         la même raison : rendre « rien ne manque » sur une ressource inexistante serait un 200
         rassurant et faux. Lève `JalonNonInstruit` (→ 404) pour les deux membres pas encore
         spécifiés.
+
+        Le tournoi est relu **une fois** : son existence est la garde d'entrée, et son `statut` est
+        la garde que toutes les transitions partagent. Les deux membres instruits le reçoivent.
         """
-        if self._tournois.par_id(tournoi_id) is None:
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         if jalon is Jalon.DEMARRER:
-            return self._demarrer(tournoi_id)
+            return self._demarrer(tournoi_id, tournoi.statut)
         if jalon is Jalon.TERMINER:
-            return evaluer_terminer(self._completudes.pour_tournoi(tournoi_id))
-        raise JalonNonInstruit(
-            f"Le jalon « {jalon.value} » n'a pas encore d'écran ; il sera instruit par son US."
-        )
+            return evaluer_terminer(self._completudes.pour_tournoi(tournoi_id), tournoi.statut)
+        raise JalonNonInstruit(f"Il n'y a pas encore d'écran « prêt à {jalon.value} ».")
 
-    def _demarrer(self, tournoi_id: TournoiId) -> PreparationJalon:
-        """Rassemble ce que les deux gardes du feu vert vérifient, **sans les exécuter**.
+    def _demarrer(self, tournoi_id: TournoiId, statut: StatutTournoi) -> PreparationJalon:
+        """Rassemble ce que les gardes du feu vert vérifient, **sans les exécuter**.
 
         ⚠️ `exigence_effectif` lève `TournoiIntrouvable` — déjà écarté par l'appelant, donc sans
         effet ici, mais c'est la raison pour laquelle l'existence est contrôlée **avant** et non
         laissée à cet appel : le jalon doit répondre 404 quel que soit le membre demandé, y compris
         ceux qui ne touchent pas à l'effectif.
+
+        `message_de_refus()` est passé **tel quel** : c'est la phrase que la garde met dans son
+        `EffectifInsuffisantPourDemarrer`, et la rédiger une seconde fois ici pour l'avertissement
+        aurait laissé l'avertissement et le refus dire deux choses différentes du même manque.
         """
         exigence = self._exigences.exigence_effectif(tournoi_id)
         return evaluer_demarrer(
+            statut=statut,
             nb_creneaux=len(self._departs.par_tournoi(tournoi_id)),
             nb_etapes_deroule=len(self._deroules.par_tournoi(tournoi_id)),
+            effectif_suffisant=exigence.suffisant,
             inscrits=exigence.inscrits,
             minimum=exigence.minimum,
+            cause_effectif=None if exigence.suffisant else exigence.message_de_refus(),
         )
