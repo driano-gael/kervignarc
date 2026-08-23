@@ -35,12 +35,21 @@ class PreparationJalonReponse(BaseModel):
 
     - `question` : « Prêt à démarrer ? » — **dérivée** du jalon, pour que le front n'ait pas à
       tenir sa propre table de libellés (elle divergerait au premier membre ajouté) ;
-    - `lignes` : ce qui manque, en états (`D-17`) — jamais un pourcentage ;
+    - `lignes` : ce qui manque, en états (`D-17`) — jamais un pourcentage. ⚠️ **Une liste vide ne
+      veut pas dire « rien ne manque »** : elle veut dire *il n'y a plus rien à préparer* — la
+      transition n'est plus atteignable (tournoi déjà lancé, annulé, archivé, ou terminé pour le
+      membre *terminer*). Elle s'accompagne alors de `pret: false`, `bloquant: true`, et c'est
+      `detail` qui dit pourquoi. Un client qui la lirait « tout est bon » commettrait exactement le
+      contresens que cette US existe pour supprimer ; c'est sur cette convention que le front se
+      dispense de connaître le statut ;
     - `pret` : la réponse binaire ;
     - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage quand il y en a une (« 8 archer(s) inscrit(s) sur
       le départ 2 pour 34 requis… »), `null` sinon. C'est la phrase que la garde met dans son
-      refus : l'avertissement et le refus ne peuvent donc pas énoncer deux causes différentes ;
+      refus : l'avertissement et le refus ne peuvent donc pas énoncer deux causes différentes.
+      ⚠️ **Une exception, assumée** : la garde de **statut de *démarrer***, où le jalon rédige une
+      explication propre à chaque statut terminal (« annulé », « archivé », « déjà lancé »), quand
+      le refus serveur, lui, n'en distingue aucun (« Seul un tournoi prêt peut être démarré. ») ;
     - `moment` : **quand** ce refus tombera (« au démarrage »), `null` s'il n'y a rien à refuser.
       Les deux gardes de *démarrer* ne tombent pas au même clic — les créneaux dès « Marquer prêt ».
 

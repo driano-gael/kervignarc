@@ -73,7 +73,7 @@ def test_le_jalon_demarrer_liste_ce_qui_manque_avant_le_clic(
         assert corps["bloquant"] is True
         # Le refus tombera **dès** « Marquer prêt » : c'est la garde des créneaux qui manque.
         assert corps["moment"] == "dès le passage en « prêt »"
-        assert corps["detail"] is not None
+        assert "aucun départ" in corps["detail"]
 
 
 def test_le_jalon_terminer_rend_la_completude_sportive(
@@ -125,7 +125,10 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_le_refus(
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/terminer").json()
 
         assert corps["bloquant"] is True
-        assert corps["detail"] is not None
+        # Contenu, pas simple présence : c'est le contrat que liront `E16US007` et `E16US008`.
+        assert corps["detail"] == "Seul un tournoi en cours peut être terminé."
+        # Et la liste est **vide** — la question ne se pose plus, comme pour *démarrer*.
+        assert corps["lignes"] == []
 
 
 def test_un_tournoi_deja_lance_ne_dit_pas_qu_il_peut_demarrer(

@@ -29,9 +29,10 @@ niveau du repository (`test_inscription_repository`).
 
 > `FauxTournoiRepository` **vit ici depuis E16US012** (2 consommateurs : `test_service_tournois` et
 > `test_service_jalons`). ⚠️ **25 autres modules en gardent une copie locale** — chiffre relevé dans
-> le dépôt, pas déduit : `grep -rl "class FauxTournoiRepository" backend/tests`. On ne les rapatrie
-> pas ici : c'est un rangement transverse, pas le travail d'une branche fonctionnelle, et cette US
-> n'aggrave pas la duplication (elle en retire une et en installe une partagée — solde nul).
+> le dépôt, pas déduit : `grep -rl --include='*.py' "class FauxTournoiRepository"
+> backend/tests` rend 26 lignes, dont ce fichier. On ne les rapatrie pas ici : c'est un rangement
+> transverse, pas le travail d'une branche fonctionnelle, et cette US n'aggrave pas la
+> duplication (elle en retire une et en installe une partagée — solde nul).
 
 Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
 reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute

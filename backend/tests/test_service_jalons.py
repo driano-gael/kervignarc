@@ -155,8 +155,13 @@ def test_le_jalon_demarrer_chiffre_l_effectif_depuis_l_exigence_du_service() -> 
 
 
 def test_le_jalon_terminer_relit_la_completude_sans_la_recalculer() -> None:
+    """⚠️ **Sur un tournoi en cours** : c'est la seule fenêtre où la question « prêt à terminer ? »
+    se pose, donc la seule où le jalon liste ce qui manque. Ailleurs il rend une liste vide et la
+    raison — même règle que *démarrer*.
+    """
     completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
-    jalons, _, tid = _attelage(completude=completude)
+    jalons, tournois, tid = _attelage(completude=completude, inscrits=40, avec_deroule=True)
+    _amener_a(tournois, tid, StatutTournoi.EN_COURS)
 
     preparation = jalons.preparation(tid, Jalon.TERMINER)
     assert preparation.lignes == completude.sportif
@@ -197,10 +202,16 @@ def test_effectif_insuffisant_le_jalon_annonce_ce_que_la_garde_refusera() -> Non
     # aucune assertion et laissait donc croire que le refus tombait ici (relevé en revue, axe D) ;
     # c'est ce décalage que l'écran nomme désormais (« sera refusé **au démarrage** »).
     assert tournois.vers_pret(tid).statut is StatutTournoi.PRET
-    assert preparation.pret is False
+    # ⚠️ On **réinterroge** le jalon : c'est la seule façon de prouver qu'il dit toujours non depuis
+    # *prêt*. La 2ᵉ correction avait factorisé cette ligne en relecture d'une variable déjà assertée
+    # plus haut — l'appel au service disparaissait, et le statut *prêt* n'était plus couvert du tout
+    # (3ᵉ passe de revue, axes B et C1). Une assertion qui ne peut plus échouer n'est pas verte.
+    apres = jalons.preparation(tid, Jalon.DEMARRER)
+    assert apres.pret is False
+    assert apres.moment == "au démarrage"
     with pytest.raises(EffectifInsuffisantPourDemarrer) as refus:
         tournois.demarrer(tid)
-    assert preparation.detail == str(refus.value)
+    assert apres.detail == str(refus.value)
 
 
 def test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer() -> None:
@@ -327,8 +338,14 @@ def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() 
     Ce test est ce qui rend la dérivation vérifiable : pour **chacun** des sept statuts, « le jalon
     annonce un blocage » doit valoir exactement « le service refuse ». La 1ʳᵉ correction portait
     `(BROUILLON, PRET)` et `EN_COURS` en dur — un second encodage de la table, dans le commit même
-    qui érigeait le transport du verdict en doctrine (2ᵉ passe, axes A et C2). Le jour où `terminer`
-    sera accepté depuis *en pause*, ce test dira si les deux versants ont bougé ensemble.
+    qui érigeait le transport du verdict en doctrine (2ᵉ passe, axes A et C2).
+
+    ⚠️ **Le refus est provoqué, pas déduit.** La 2ᵉ correction comparait `bloquant` à
+    `tournois.transitions_possibles(tid)`, qui délègue à la **même** fonction que le jalon : les
+    deux membres de l'assertion étaient le même appel, et le test ne pouvait pas échouer (3ᵉ passe,
+    quatre axes). On exécute donc `terminer` pour de bon. Le jour où il sera accepté depuis *en
+    pause*, ce test dira si les deux versants ont bougé ensemble — ce que l'ancienne forme ne
+    pouvait pas faire.
     """
     complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
 
@@ -337,8 +354,14 @@ def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() 
         _amener_a(tournois, tid, statut)
 
         preparation = jalons.preparation(tid, Jalon.TERMINER)
-        refuse = "terminer" not in {t.nom for t in tournois.transitions_possibles(tid)}
+        try:
+            tournois.terminer(tid)
+            refuse = False
+        except TransitionStatutInvalide:
+            refuse = True
         assert preparation.bloquant is refuse, f"désaccord sur {statut.value}"
+        # Et la contrepartie du bloquant : plus rien n'est à préparer, donc plus rien à lister.
+        assert (preparation.lignes == ()) is refuse, f"lignes incohérentes sur {statut.value}"
 
 
 # --- Bornes -------------------------------------------------------------------------------------

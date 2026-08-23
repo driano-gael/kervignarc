@@ -245,10 +245,34 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // `/jalons/terminer` (ADR-0096 § Conséquences : un second poll de 5 s par tablette).
     monter(<Completude tournoiId={1} statut="en_pause" />)
 
-    const verdict = await screen.findByRole('status')
-    expect(verdict).toHaveTextContent('sera refusé')
-    expect(verdict).not.toHaveTextContent('ne vous en empêchera pas')
-    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
+    ).toBeInTheDocument()
+    // Ni verdict ni section : la question ne se pose pas, donc l'écran n'y répond pas. Un verdict
+    // « ce qui manque **ci-dessous** sera refusé » accuserait la liste, alors que terminer n'a
+    // aucune garde de contenu — c'est la raison de statut qui bloque, et elle est écrite en clair.
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText('Qualification')).toBeNull()
+  })
+
+  it('E16US012 — en pause **avec le sportif complet**, l’écran n’accuse pas la liste', async () => {
+    // Le cas qui rend la contradiction visible, et qu'aucun test ne montait : sportif à 30/30, donc
+    // rien ne manque, et pourtant terminer est refusé. L'écran affichait « Pas encore — ce qui
+    // manque ci-dessous sera refusé à la clôture » au-dessus de trois lignes vertes et d'un badge
+    // « complet » (3ᵉ passe de revue, axes C1 et D).
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="en_pause" />)
+
+    expect(
+      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText(/ci-dessous/)).toBeNull()
   })
 
   it('E16US012 — un tournoi terminé ne s’entend pas dire que rien ne s’y oppose', async () => {
@@ -264,7 +288,13 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     })
     monter(<Completude tournoiId={1} statut="termine" />)
 
-    expect(await screen.findByRole('status')).not.toHaveTextContent('rien ne s’y oppose')
+    // Assertion **positive** : la précédente ne vérifiait que l'absence de l'ancienne phrase fausse,
+    // donc elle passait sur la nouvelle, tout aussi fausse (3ᵉ passe, axes B, C1 et D).
+    expect(
+      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByText(/le sportif est figé/)).toBeInTheDocument()
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {

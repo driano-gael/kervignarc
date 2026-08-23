@@ -81,7 +81,11 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       question="Prêt à terminer ?"
       intro={INTRO}
       titreSection="Sportif"
-      lignes={completude.data?.sportif ?? null}
+      // Vides hors « en cours », comme le rend `evaluer_terminer` : la question ne se pose plus,
+      // donc la coquille ne rend ni verdict ni section — seulement la raison. Les garder affichait
+      // « Pas encore — ce qui manque ci-dessous sera refusé » au-dessus de trois lignes vertes, sur
+      // un tournoi terminé (3ᵉ passe de revue, axes C1 et D).
+      lignes={enCours ? (completude.data?.sportif ?? null) : []}
       pret={enCours && (completude.data?.sportif_complet ?? false)}
       // Le badge « complet / incomplet » de la section, tel qu'il était avant la migration. Il se
       // passe **à part** de `pret` depuis la revue : sur cet écran les deux valent `sportif_complet`
@@ -103,8 +107,16 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       // ajouterait un **second poll de 5 s par tablette** pour la même liste — ce qu'ADR-0096 a
       // explicitement écarté. La contrepartie de cet arbitrage, c'est ce miroir d'
       // `domain.jalon.evaluer_terminer`, et les tests qui l'épinglent hors `en_cours`.
+      //
+      // DETTE-084 — c'est la **seule** garde encore redéduite côté front du lot, et elle est
+      // inscrite au registre plutôt que laissée en commentaire : un angle mort qui ne vit qu'en
+      // section « Conséquences » d'un ADR n'apparaît à aucun tri de dette. C'est le motif même de
+      // DETTE-082, que cette US venait d'écrire sans se l'appliquer (3ᵉ passe, axes A, C2 et D).
       bloquant={!enCours}
-      moment="à la clôture"
+      // ⚠️ Pas de `moment` : le domaine n'en produit pas pour ce membre, et « à la clôture » — écrit
+      // ici le temps d'une passe — datait un refus pour une action que l'écran ne propose même pas.
+      // DETTE-084 : cette phrase est une **copie** de `MESSAGE_TERMINER_HORS_EN_COURS`, que le front
+      // ne peut pas importer ; elle vaut tant que cet écran lit `/completude` et non le jalon.
       detail={enCours ? null : 'Seul un tournoi en cours peut être terminé.'}
       chargement={completude.isPending}
       erreur={

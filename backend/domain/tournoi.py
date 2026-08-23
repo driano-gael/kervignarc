@@ -214,9 +214,6 @@ class TransitionTournoi:
     vers: StatutTournoi
 
 
-# Topologie du cycle de vie ([ADR-0026] §2), source **unique** côté lecture. Les *gardes* (qui peut
-# passer de quoi à quoi, complétude du passage à `prêt`…) restent dans `ServiceTournois`
-# (ADR-0026 §4) ; un test de cohérence recoupe cette table avec la légalité effective du service.
 # Le refus de `ServiceTournois.terminer`, **rédigé une seule fois**. Il vit ici et non dans le
 # service parce que deux modules en ont besoin : celui qui **lève** le refus au clic, et
 # `domain.jalon`, qui l'**annonce** avant. Les deux le recopiaient — la duplication que l'US
@@ -231,6 +228,9 @@ MESSAGE_SANS_DEPART = (
     "Ce tournoi n'a aucun départ ; ajoutez au moins un créneau avant de le passer prêt."
 )
 
+# Topologie du cycle de vie ([ADR-0026] §2), source **unique** côté lecture. Les *gardes* (qui peut
+# passer de quoi à quoi, complétude du passage à `prêt`…) restent dans `ServiceTournois`
+# (ADR-0026 §4) ; un test de cohérence recoupe cette table avec la légalité effective du service.
 
 _TRANSITIONS: dict[StatutTournoi, tuple[TransitionTournoi, ...]] = {
     StatutTournoi.BROUILLON: (

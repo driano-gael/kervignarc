@@ -103,6 +103,12 @@ def question(jalon: Jalon) -> str:
 _TRANSITIONS_DU_JALON: dict[Jalon, tuple[str, ...]] = {
     Jalon.DEMARRER: ("vers-pret", "demarrer"),
     Jalon.TERMINER: ("terminer",),
+    Jalon.ARCHIVER: ("archiver",),
+    # `EXPORTER` garde un **geste répétable**, pas une transition (ADR-0096 §4) : aucun statut à
+    # franchir, donc aucun nom à chercher dans la table. Le tuple vide est la bonne réponse — et il
+    # est **déclaré**, pas obtenu par un `.get(…, ())` qui aurait fait répondre « bloqué partout »
+    # à un membre simplement oublié.
+    Jalon.EXPORTER: (),
 }
 
 
@@ -112,8 +118,12 @@ def transition_offerte(statut: StatutTournoi, jalon: Jalon) -> bool:
     ⚠️ **Dérivé, jamais recopié.** La première version portait `(BROUILLON, PRET)` et `EN_COURS` en
     dur — un **second encodage** de la table que ce module importe déjà, dans le commit même qui
     érigeait le transport du verdict en doctrine (relevé en 2ᵉ passe par les axes A et C2). Le jour
-    où `terminer` sera accepté depuis *en pause*, ou `ARCHIVER` ajouté, la table bouge et le jalon
-    suit — sans quoi il annoncerait un refus que le serveur ne prononce plus.
+    où `terminer` sera accepté depuis *en pause*, la table bouge et le jalon suit — sans quoi il
+    annoncerait un refus que le serveur ne prononce plus.
+
+    ⚠️ `_TRANSITIONS_DU_JALON` doit rester **totale** sur `Jalon` : un membre ajouté à la famille
+    sans sa ligne ici lève un `KeyError` (donc un 500), et non un refus typé. Les quatre membres y
+    sont, `EXPORTER` avec un tuple vide puisqu'il ne garde aucune transition.
     """
     noms = _TRANSITIONS_DU_JALON[jalon]
     return any(transition.nom in noms for transition in transitions_possibles(statut))
@@ -205,7 +215,7 @@ def evaluer_demarrer(
         )
 
     etat_creneaux = EtatSection.OK if nb_creneaux > 0 else EtatSection.EN_ATTENTE
-    etat_effectif = _etat_effectif(effectif_suffisant, inscrits, minimum)
+    etat_effectif = _etat_effectif(effectif_suffisant, minimum)
     etat_deroule = EtatSection.OK if nb_etapes_deroule > 0 else EtatSection.EN_ATTENTE
     creneaux_ok = etat_creneaux is EtatSection.OK
 
@@ -231,7 +241,7 @@ def evaluer_demarrer(
     )
 
 
-def _etat_effectif(suffisant: bool, inscrits: int, minimum: int) -> EtatSection:
+def _etat_effectif(suffisant: bool, minimum: int) -> EtatSection:
     """L'état de la ligne « Inscrits » — trois cas, et pas deux.
 
     ⚠️ **Zéro inscrit n'est pas « terminé »**, même quand rien n'est exigé (aucun déroulé composé,
@@ -311,7 +321,12 @@ def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> Prepar
     offert = transition_offerte(statut, Jalon.TERMINER)
     return PreparationJalon(
         jalon=Jalon.TERMINER,
-        lignes=completude.sportif,
+        # ⚠️ **Vides quand la transition n'est plus offerte**, exactement comme `evaluer_demarrer`.
+        # La 2ᵉ correction ne l'avait fait que sur *démarrer* : `terminer` gardait ses lignes, et la
+        # coquille rendait alors « Pas encore — ce qui **manque ci-dessous** sera refusé » au-dessus
+        # de trois lignes vertes, sur un tournoi terminé au sportif complet. Deux membres de la
+        # « forme unique » ne peuvent pas répondre différemment au même cas (3ᵉ passe, C1 et D).
+        lignes=completude.sportif if offert else (),
         pret=offert and completude.sportif_complet,
         bloquant=not offert,
         # La phrase du refus lui-même (`domain.tournoi`), pas une seconde rédaction : la 1ʳᵉ

@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (3ᵉ passe, sur les correctifs) | 27 | +613/-186 | ~2 min | ~20 min | D (13:52→14:10) | majeur:2 mineur:4 suggestion:1 | majeur:5 mineur:3 suggestion:1 | majeur:4 mineur:4 | majeur:5 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:4 suggestion:1 | **D (1)** | 4 |
 | 2026-08-23 | `E16US012` (2ᵉ passe, sur les correctifs) | 27 | +1025/-230 | ~5 min | ~37 min | D (12:41→13:18) | majeur:3 mineur:4 | majeur:2 mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:4 | **D (1)** | 3 |
 | 2026-08-23 | `E16US012` | 35 | +2385/−119 | ~22 min | ~28 min | D (12:12→12:20) | majeur:1 mineur:2 | majeur:2 mineur:3 suggestion:2 | mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:2 | **bloquant:1** majeur:6 mineur:5 suggestion:2 | **D (1)** | 2 |
 | 2026-08-22 | `E16US002` (2ᵉ passe, sur les correctifs) | 43 | +718/−128 | ~25 min | ~21 min | D (22:39→22:58) | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:4 suggestion:1 | majeur:3 mineur:4 suggestion:1 | majeur:2 mineur:6 suggestion:2 | majeur:7 mineur:5 suggestion:1 | **bloquant:0** — les deux de la 1ʳᵉ passe fermés et vérifiés par exécution | 2 |
@@ -370,3 +371,26 @@ et c'est précisément le danger — ils se lisent comme des preuves, et les US 
 leurs tests. Deux garde-fous mécaniques ont attrapé le premier (l'atlas, en passant de 39 à 42
 signaux) ; **le compteur de signaux avait été lu et ignoré**, parce que « 0 écart bloquant » suffisait
 à la porte. Un compteur qui monte est une information, pas de la décoration.
+
+**27. Un compteur de signaux relevé en cours de correction compte ceux que la correction vient de
+créer.** E16US012 a annoncé « zéro `portage-symbole-absent` contre **quatre** avant » : il y en avait
+**deux** au commit d'origine, les deux autres ayant été introduits — puis refermés — par les
+correctifs eux-mêmes, entre deux régénérations de l'atlas. Un compteur ne veut rien dire s'il n'est
+pas mesuré contre `origin/main` : c'est la seule borne qui ne bouge pas pendant qu'on travaille.
+
+**28. « L'axe X a dit que » n'est pas un fait — et un axe se trompe aussi.** La 1ʳᵉ passe a affirmé
+que le module de test en cause était « le **seul** du dépôt à importer des symboles privés d'un
+autre module de test ». L'auteur l'a recopié dans un commentaire de `conftest.py`, à l'endroit exact
+où se décide « faut-il factoriser ? ». Ils sont **25** à le faire. Le geste restait bon, sa
+justification était fausse, et c'est la 2ᵉ passe qui l'a relevée. Une affirmation chiffrée venant
+d'un rapport de revue se re-vérifie avant d'être gravée dans le dépôt, exactement comme celles qui
+viennent de l'auteur.
+
+**29. Sur une famille, le correctif doit être rejoué sur chaque membre — sinon il *déplace* le
+défaut d'un membre à l'autre.** E16US012 livre deux écrans « prêt à… » partageant une coquille. À
+chacune des trois passes, la correction a été menée à fond sur le membre qui venait d'être relevé et
+pas sur son voisin : la garde de statut fermée au domaine et pas sur l'écran *terminer* (2ᵉ passe,
+bloquant) ; puis la liste vidée sur *démarrer* et pas sur *terminer*, le moment dérivé sur l'un et
+écrit en dur sur l'autre (3ᵉ passe, bloquant). Le mécanisme est structurel, pas de l'inattention :
+on corrige là où le rapport pointe. Sur une abstraction partagée, le réflexe doit être « et l'autre
+membre ? » avant de repasser la porte.

@@ -7432,7 +7432,13 @@ window.ATLAS.decisions = {
       "_VERBE",
       "PreparationJalonReponse.question",
       "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
-      "LigneCompletudeReponse"
+      "LigneCompletudeReponse",
+      "evaluer_demarrer",
+      "evaluer_terminer",
+      "transition_offerte",
+      "PreparationJalonReponse",
+      "lignes",
+      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7494,14 +7500,17 @@ window.ATLAS.decisions = {
       "bloquant",
       "False",
       "verdict",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
       "PreparationJalon.detail",
       "transition_offerte",
       "_TRANSITIONS_DU_JALON",
       "test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts",
       "ARCHIVER",
-      "_moment_du_refus",
       "moment",
-      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
+      "PreparationJalonReponse",
+      "lignes",
+      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7537,8 +7546,13 @@ window.ATLAS.decisions = {
       "evaluer_demarrer",
       "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart",
       "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
       "moment",
-      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
+      "evaluer_terminer",
+      "transition_offerte",
+      "PreparationJalonReponse",
+      "lignes",
+      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7590,7 +7604,13 @@ window.ATLAS.decisions = {
       "PreparationJalon.detail",
       "_moment_du_refus",
       "moment",
-      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
+      "evaluer_demarrer",
+      "evaluer_terminer",
+      "transition_offerte",
+      "PreparationJalonReponse",
+      "lignes",
+      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7605,7 +7625,9 @@ window.ATLAS.decisions = {
       "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
       "disabled",
       "useTransitions",
-      "VERS_LE_DEPART"
+      "VERS_LE_DEPART",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7616,7 +7638,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "bloquant",
       "False",
-      "verdict"
+      "verdict",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
      ],
      "symboles_absents": [],
      "verifiable": true

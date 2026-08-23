@@ -93,10 +93,6 @@ export function PretA({
             <span className="indicateur__pastille" aria-hidden="true" />
             {texte}
           </p>
-          {/* La cause, sous le verdict : « 8 archer(s) inscrit(s) sur le départ 2 pour 34 requis ».
-              `D-16` / `P-4` — une alerte qui ne chiffre pas son impact est un clic de plus, pas une
-              protection ; sur un tournoi à deux créneaux, « 8/34 » seul semble contredire le total
-              affiché ailleurs (relevé en revue, axe D). */}
           <SectionCompletude titre={titreSection} complet={complet} lignes={lignes} />
         </>
       )}
@@ -104,7 +100,7 @@ export function PretA({
       {/* La cause, hors de la garde sur la liste : elle porte aussi le cas « plus rien à préparer »,
           où il n'y a précisément aucune ligne à montrer. `D-16` / `P-4` — une alerte qui ne chiffre
           pas son impact est un clic de plus, pas une protection. */}
-      {detail !== null && <p className="completude__implication">{detail}</p>}
+      {detail ? <p className="completude__implication">{detail}</p> : null}
 
       {children}
     </section>
