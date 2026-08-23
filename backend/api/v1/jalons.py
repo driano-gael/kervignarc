@@ -50,6 +50,11 @@ class PreparationJalonReponse(BaseModel):
       qui viderait cet écran hors *en cours* retirerait ce que l'organisateur vient y chercher
       pendant la pause ;
     - `pret` : la réponse binaire ;
+    - `question_posee` : la question a-t-elle encore un objet depuis le statut courant ? À `false`,
+      l'écran ne rend **pas** de verdict et se contente de `detail`. ⚠️ **Ne le déduisez pas de
+      `lignes`** : c'était vrai tant que les deux membres vidaient leur liste, ça ne l'est plus —
+      *terminer* rend la sienne à tout statut (voir ci-dessus). C'est le seul champ qui porte cette
+      information, et il est là pour que les membres suivants n'aient pas à la deviner ;
     - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage quand il y en a une (« 8 archer(s) inscrit(s) sur
       le départ 2 pour 34 requis… »), `null` sinon. C'est la phrase que la garde met dans son
@@ -64,7 +69,7 @@ class PreparationJalonReponse(BaseModel):
       ⚠️ `null` veut dire **deux** choses : il n'y a rien à refuser (`bloquant: false` ou `pret:
       true`), **ou** la transition n'est plus offerte du tout — le refus existe alors
       (`bloquant: true`) mais ne tombe à aucun clic, l'action n'étant plus proposée. `moment` ne se
-      lit donc jamais seul : toujours avec `bloquant` et `lignes`.
+      lit donc jamais seul : toujours avec `bloquant` et `question_posee`.
 
     ⚠️ `bloquant` ne sert **pas** à désactiver un bouton : il choisit ce que l'écran annonce (un
     refus à venir, ou une simple gêne). E05US021 avait déjà tranché — le refus remonte du serveur,
@@ -76,6 +81,7 @@ class PreparationJalonReponse(BaseModel):
     lignes: list[LigneCompletudeReponse]
     pret: bool
     bloquant: bool
+    question_posee: bool
     detail: str | None
     moment: str | None
 
@@ -88,6 +94,7 @@ class PreparationJalonReponse(BaseModel):
             lignes=[LigneCompletudeReponse.de_ligne(ligne) for ligne in preparation.lignes],
             pret=preparation.pret,
             bloquant=preparation.bloquant,
+            question_posee=preparation.question_posee,
             detail=preparation.detail,
             moment=preparation.moment,
         )

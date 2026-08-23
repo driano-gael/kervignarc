@@ -945,12 +945,11 @@ class FauxLecteurPopulations:
 #
 # ⚠️ **Ce qui suit était faux et a été corrigé en 2ᵉ passe de revue** (axes A, C1, C2 et D) : la
 # première rédaction justifiait le déplacement en affirmant que `test_service_jalons` était le
-# **seul** module du dépôt à importer depuis un autre module de test. Ils sont **une dizaine** à le
-# faire — c'est une pratique courante ici, pas une anomalie. ⚠️ Chiffre volontairement donné en ordre
-# de grandeur : trois relectures successives en ont produit trois valeurs différentes selon la
-# définition retenue (avec ou sans imports parenthésés, symboles privés seuls ou tous). Ce qui
-# compte pour décider « faut-il factoriser ? » est l'ordre de grandeur, pas la décimale ; la mesure
-# se refait au besoin par `rg '^from tests\.test_' backend/tests`. Le geste
+# **seul** module du dépôt à importer depuis un autre module de test. Ils sont **~25** à le faire —
+# `grep -rl "^from tests\.test_" backend/tests` — dont **une douzaine** sur un symbole privé. C'est
+# une pratique courante ici, pas une anomalie. ⚠️ Deux mesures, deux commandes : les confondre est
+# ce qui a produit quatre chiffres faux d'affilée à cet endroit, qui est justement celui où se
+# décide « faut-il factoriser ? ». Le geste
 # reste bon, sa justification était fausse ; et un chiffre faux écrit à l'endroit exact où se
 # décide « faut-il factoriser ? » fait prendre la mauvaise décision à qui le lira.
 

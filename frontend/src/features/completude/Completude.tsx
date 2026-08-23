@@ -82,9 +82,9 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
   const terminer = useTerminerDepuisCompletude(tournoiId)
   // DETTE-084 — ⚠️ **le raccourci est ici.** Ce booléen redéduit côté front la garde de statut de
   // `terminer` (`domain.jalon.evaluer_terminer`), faute pour cet écran de lire `/jalons/terminer` :
-  // il pilote le verdict, la raison et le bloc d'actions. Et le `statut` dont il dépend vient de
-  // `useTournois()`, qui n'est rafraîchi par **aucun** poll ni événement — sur un second poste, il
-  // peut rester périmé toute une pause déjeuner. Voir le registre pour le scénario et la résorption.
+  // il pilote le verdict, la raison et le bloc d'actions. Le `statut` vient de `useTournois()`,
+  // **pollé à 5 s sous la coquille admin** depuis la 5ᵉ passe (`competition/hooks.ts`) : la
+  // péremption est fermée, il reste la **copie** de la garde et de sa phrase. Voir le registre.
   const enCours = statut === 'en_cours'
 
   // Contrôle en amont (`P-4`) : la confirmation **chiffre** ce qui reste et dit ce que terminer

@@ -7433,12 +7433,11 @@ window.ATLAS.decisions = {
       "PreparationJalonReponse.question",
       "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
       "LigneCompletudeReponse",
-      "evaluer_demarrer",
-      "evaluer_terminer",
-      "transition_offerte",
-      "PreparationJalonReponse",
-      "lignes",
-      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7508,9 +7507,10 @@ window.ATLAS.decisions = {
       "test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts",
       "ARCHIVER",
       "moment",
-      "PreparationJalonReponse",
-      "lignes",
-      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7548,11 +7548,11 @@ window.ATLAS.decisions = {
       "_moment_du_refus",
       "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
       "moment",
-      "evaluer_terminer",
-      "transition_offerte",
-      "PreparationJalonReponse",
-      "lignes",
-      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7610,12 +7610,10 @@ window.ATLAS.decisions = {
       "_moment_du_refus",
       "moment",
       "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
-      "evaluer_demarrer",
-      "evaluer_terminer",
-      "transition_offerte",
-      "PreparationJalonReponse",
-      "lignes",
-      "test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper"
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "tsc",
+      "evaluer_terminer"
      ],
      "symboles_absents": [],
      "verifiable": true

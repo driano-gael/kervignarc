@@ -143,6 +143,15 @@ class PreparationJalon:
 
     - `lignes` : *ce qui manque*, en états (`D-17`) — jamais un pourcentage ;
     - `pret` : la réponse **binaire** à « puis-je passer à l'étape suivante ? » ;
+    - `question_posee` : la question a-t-elle encore un objet ? À `False`, l'étape n'est plus
+      atteignable depuis le statut courant, et l'écran ne rend **pas** de verdict — seulement la
+      raison (`detail`). ⚠️ **Ce champ existe parce que la liste ne peut plus le dire.** Tant que
+      les deux membres vidaient leurs lignes hors transition offerte, `lignes == ()` **était** le
+      signal ; il a cessé de l'être quand *terminer* a gardé les siennes, et n'a d'abord été
+      remplacé que par un commentaire. Un écran neuf recopiant le patron aurait alors annoncé « ce
+      qui manque ci-dessous sera refusé » au-dessus de trois lignes vertes — le défaut qu'une passe
+      entière avait servi à fermer (6ᵉ passe de revue, axes C1 et D).
+
     - `bloquant` : à `False`, l'action passe **quand même** malgré `pret is False` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage, quand elle existe — « 8 archer(s) inscrit(s) sur
       le départ 2 pour 34 requis… ». Une ligne dit *quoi* (« Inscrits · 8/34 ») ; `detail` dit
@@ -168,6 +177,7 @@ class PreparationJalon:
     lignes: tuple[LigneCompletude, ...]
     pret: bool
     bloquant: bool
+    question_posee: bool = True
     detail: str | None = None
     moment: str | None = None
 
@@ -219,6 +229,7 @@ def evaluer_demarrer(
             lignes=(),
             pret=False,
             bloquant=True,
+            question_posee=False,
             detail=_pourquoi_plus_a_lancer(statut),
         )
 
@@ -244,6 +255,7 @@ def evaluer_demarrer(
         lignes=lignes,
         pret=creneaux_ok and effectif_suffisant,
         bloquant=True,
+        question_posee=True,
         detail=_cause_demarrer(creneaux_ok, effectif_suffisant, cause_effectif),
         moment=_moment_du_refus(creneaux_ok, effectif_suffisant),
     )
@@ -345,6 +357,7 @@ def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> Prepar
         lignes=completude.sportif,
         pret=offert and completude.sportif_complet,
         bloquant=not offert,
+        question_posee=offert,
         # La phrase du refus lui-même (`domain.tournoi`), pas une seconde rédaction : la 1ʳᵉ
         # correction la recopiait mot pour mot depuis `ServiceTournois.terminer` — la duplication
         # que ce même travail dénonçait pour l'effectif (2ᵉ passe, axes A, C2 et D).

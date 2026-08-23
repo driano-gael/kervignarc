@@ -264,6 +264,8 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // manque **ci-dessous** sera refusé » accuserait la liste, alors que terminer n'a aucune garde
     // de contenu — c'est la raison de statut qui bloque, et elle est écrite en clair.
     expect(screen.queryByRole('status')).toBeNull()
+    // Le bouton non plus : terminer est refusé tant qu'on n'a pas repris.
+    expect(screen.queryByRole('button', { name: 'Terminer le tournoi' })).toBeNull()
     // ⚠️ **La liste, elle, reste** (attendue ci-dessus) : c'est le comportement d'avant l'US, et la
     // vider a été une sur-correction — pendant la pause déjeuner, l'organisateur ouvre cet écran
     // précisément pour voir où en est la qualification (4ᵉ passe, axe C1). Le couple
@@ -318,11 +320,34 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // phrases adjacentes, l'une au futur, l'autre au passé, sur tous les tournois de la veille. Ce
     // test montait déjà ce cas exact et ne regardait pas ce paragraphe.
     expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
+    // ⚠️ **La 4ᵉ garde de cet écran**, que le balayage anti-prop-inerte avait oubliée : le bloc
+    // d'actions. Sans cette assertion, retirer `enCours &&` de la ligne du bouton laissait les 1101
+    // tests verts — et « Terminer » serait apparu sur un tournoi terminé, annulé ou archivé
+    // (6ᵉ passe de revue, axe D).
+    expect(screen.queryByRole('button', { name: 'Terminer le tournoi' })).toBeNull()
     // ⚠️ **Le bloquant de la 5ᵉ passe**, à l'autre bout du même écran : l'intro disait « ce qui
     // reste à jouer **avant de pouvoir terminer** » sur un tournoi déjà terminé, trois lignes
     // au-dessus de « le sportif est figé ». Même contradiction de temps que l'implication en pied.
     expect(screen.queryByText(/avant de pouvoir terminer/)).toBeNull()
     expect(screen.getByText(/Où en est le sportif/)).toBeInTheDocument()
+  })
+
+  it('E16US012 — en cours et sportif complet : « Oui », et la section reste « complet »', async () => {
+    // ⚠️ Les deux **props de données** de cet écran n'étaient observables nulle part : aucun test ne
+    // le montait avec `sportif_complet: true` ET `statut="en_cours"`. Les figer à `false` laissait
+    // tout le fichier vert — alors que c'est le cas de **fin de journée**, le plus fréquent, et que
+    // la recette en fait un résultat attendu (6ᵉ passe, axe B). Constat 30 appliqué aux props que
+    // le balayage précédent n'avait pas énumérées.
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="en_cours" />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('rien ne s’y oppose')
+    expect(screen.getByText('complet')).toBeInTheDocument()
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {

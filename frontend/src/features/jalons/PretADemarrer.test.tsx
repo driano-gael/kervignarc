@@ -50,6 +50,7 @@ const RIEN_NE_MANQUE: PreparationJalon = {
   ],
   pret: true,
   bloquant: true,
+  question_posee: true,
   detail: null,
   moment: null,
 }
@@ -66,6 +67,7 @@ const DEUX_MANQUES: PreparationJalon = {
   ],
   pret: false,
   bloquant: true,
+  question_posee: true,
   // La cause chiffrée, telle que le serveur la rend — c'est la phrase du refus lui-même.
   detail: 'Ce tournoi ne peut pas démarrer : 28 archer(s) inscrit(s) pour 34 requis.',
   // Et **quand** ce refus tombera : les créneaux sont déjà là, seul l'effectif manque.
@@ -80,6 +82,8 @@ const PLUS_RIEN_A_PREPARER: PreparationJalon = {
   lignes: [],
   pret: false,
   bloquant: true,
+  // La question ne se pose plus : c'est **ce champ** qui le dit, plus la liste vide.
+  question_posee: false,
   detail: 'Ce tournoi est déjà lancé : il n’y a plus rien à préparer avant son démarrage.',
   moment: null,
 }

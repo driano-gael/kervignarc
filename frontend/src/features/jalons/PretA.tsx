@@ -41,7 +41,7 @@ export function PretA({
   moment,
   detail = null,
   complet,
-  questionPosee = true,
+  questionPosee,
   chargement = false,
   erreur = null,
   children,
@@ -86,7 +86,11 @@ export function PretA({
   // affichage livré** — l'écran « Prêt à terminer ? » ne montrait plus où en est la qualification sur
   // un tournoi en pause, c'est-à-dire pendant la pause déjeuner du jour J (4ᵉ passe, axe C1). Le
   // verdict et la liste répondent à deux questions différentes : ils se gardent séparément.
-  questionPosee?: boolean
+  // ⚠️ **Obligatoire, sans valeur par défaut.** Elle en a eu une (`true`) le temps d'une passe, et
+  // c'est ce qui rendait le piège invisible : un écran neuf qui l'oubliait obtenait un verdict rendu
+  // sur un jalon dont la question ne se pose plus. `tsc` force désormais chaque membre à trancher —
+  // une garde mécanique plutôt qu'un commentaire d'avertissement (6ᵉ passe, axes C1 et D).
+  questionPosee: boolean
   chargement?: boolean
   erreur?: ReactNode
   // Le pied de l'écran : ce que l'action implique, puis l'action elle-même. Hors de la garde

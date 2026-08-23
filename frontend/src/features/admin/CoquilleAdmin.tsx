@@ -145,7 +145,9 @@ export function CoquilleAdmin() {
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
 function Coquille() {
-  const tournois = useTournois()
+  // `live` : le statut pilote ici le verdict, la raison et le bouton de « Prêt à terminer ? ». Il
+  // doit donc suivre les transitions faites depuis un autre poste — cf. `useTournois`.
+  const tournois = useTournois({ live: true })
   // **Le tournoi, l'axe et la destination vivent tous les trois dans l'adresse** (E14US003) :
   // `/admin` = l'accueil qui choisit l'axe, `/admin/12/pilotage/supervision` = un écran précis sur un
   // tournoi précis. **Rien n'est dupliqué en état local** — c'est ce qui fait qu'un `F5` revient

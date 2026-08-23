@@ -21,6 +21,10 @@ export interface PreparationJalon {
   lignes: LigneCompletude[]
   // La réponse binaire : l'action passera-t-elle ?
   pret: boolean
+  // La question a-t-elle encore un objet depuis le statut courant ? À `false`, l'écran ne rend pas
+  // de verdict — seulement la raison. ⚠️ **Ne pas le déduire de `lignes`** : le membre *terminer*
+  // rend sa liste à tout statut, c'est ce champ qui porte l'information.
+  question_posee: boolean
   // À `false`, l'action passe **quand même** malgré `pret: false` (`D-15`). Ne sert jamais à
   // désactiver un bouton — cf. `PretA.tsx`.
   bloquant: boolean

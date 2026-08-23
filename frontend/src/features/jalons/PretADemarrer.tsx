@@ -68,6 +68,8 @@ export function PretADemarrer({ tournoiId }: { tournoiId: number }) {
       lignes={preparation.data?.lignes ?? null}
       pret={preparation.data?.pret ?? false}
       bloquant={preparation.data?.bloquant ?? true}
+      // Du serveur, comme le reste : cet écran ne déduit rien du statut, il ne le connaît même pas.
+      questionPosee={preparation.data?.question_posee ?? true}
       moment={preparation.data?.moment ?? null}
       detail={preparation.data?.detail ?? null}
       chargement={preparation.isPending}

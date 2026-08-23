@@ -147,8 +147,9 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
     'jouer — cibles de qualification non terminées, phases, classement. Pendant le tournoi, rien ne ' +
     'vous empêche de terminer malgré un manque : l’écran avertit, il ne bloque pas. Hors tournoi en ' +
-    'cours, terminer est refusé : en pause, il faut d’abord reprendre ; une fois terminé, annulé ou ' +
-    'archivé, la question ne se pose plus. ' +
+    'cours, terminer est refusé : avant le lancement — brouillon, prêt — la question ne se pose pas ' +
+    'encore ; en pause, il faut d’abord reprendre ; une fois terminé, annulé ou archivé, elle ne se ' +
+    'pose plus. ' +
     'Terminer fige le sportif — les ' +
     'inscriptions et les paiements, eux, se suivent sur l’axe Gestion et restent modifiables après.',
   classement:

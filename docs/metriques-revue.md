@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
 | 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
 | 2026-08-23 | `E16US012` (4ᵉ passe, sur les correctifs) | 17 | +260/-61 | ~2 min | ~40 min | D (19:12→19:52) | **OK** mineur:5 suggestion:1 | majeur:1 mineur:5 suggestion:4 | majeur:1 mineur:5 | majeur:3 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:1 | **D (1)** | 5 |
 | 2026-08-23 | `E16US012` (3ᵉ passe, sur les correctifs) | 27 | +613/-186 | ~2 min | ~20 min | D (13:52→14:10) | majeur:2 mineur:4 suggestion:1 | majeur:5 mineur:3 suggestion:1 | majeur:4 mineur:4 | majeur:5 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:4 suggestion:1 | **D (1)** | 4 |
@@ -420,3 +421,12 @@ retrouvée dans sa **tête** au tour suivant, sur le même statut. Un écran a t
 de texte — intro, verdict, liste, pied — plus son aide contextuelle, qui vit dans un autre fichier
 et qu'aucune recette n'ouvre. Les cinq se relisent ensemble, ou le défaut se déplace de l'une à
 l'autre au rythme d'une par passe.
+
+**32. Avant d'armer un effet global, compter les consommateurs — la commande, pas la mémoire.**
+E16US012 a ajouté un `refetchInterval` à `useTournois()` en justifiant : « deux consommateurs, tous
+deux des écrans d'administration ». Ils sont trois, et le troisième est la **porte publique**, qui
+monte le même composant sans condition : chaque téléphone de spectateur se serait mis à interroger le
+serveur toutes les 5 s, jour J, sur le LAN — contre une doctrine que le dépôt écrit noir sur blanc
+pour les routes ouvertes. L'inventaire tenait en un `grep`. C'est la même classe d'erreur que les
+chiffres du constat 28, appliquée non plus à une phrase de doc mais à une **décision d'architecture**,
+et son coût n'est pas documentaire.
