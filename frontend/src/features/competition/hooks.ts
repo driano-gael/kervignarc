@@ -64,8 +64,25 @@ export function useClassement(tournoiId: number, departId: number | null, catego
   })
 }
 
+// ⚠️ **Pollé**, et pas seulement pour le confort. Le `statut` qui en sort pilote des écrans entiers
+// de l'administration — depuis E16US012, « Prêt à terminer ? » y prend son verdict, sa raison **et**
+// la présence de son bouton. Sans rafraîchissement (le `staleTime` global est de 30 s,
+// `refetchOnWindowFocus` est désactivé, et aucune transition de cycle de vie ne diffuse d'événement
+// WebSocket), un second poste restait sur un statut périmé indéfiniment : le PC reprend le tournoi,
+// la tablette continue de croire à la pause et **fait disparaître le bouton « Terminer »**. L'appli
+// empêchait alors sans rien dire — l'inverse de `D-15` / `P-3`, et sans 409 pour détromper
+// l'organisateur (relevé en 5ᵉ passe de revue, axe D).
+//
+// Deux consommateurs, tous deux des écrans d'administration (`CoquilleAdmin`, `Tournois`) : le coût
+// est celui d'une lecture légère toutes les 5 s, l'intervalle déjà retenu pour la complétude, les
+// jalons et la supervision.
 export function useTournois() {
-  return useQuery({ queryKey: CLE_TOURNOIS, queryFn: getTournois })
+  return useQuery({
+    queryKey: CLE_TOURNOIS,
+    queryFn: getTournois,
+    refetchInterval: 5000,
+    staleTime: 0,
+  })
 }
 
 export function useCreerTournoi() {

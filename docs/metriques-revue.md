@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
 | 2026-08-23 | `E16US012` (4ᵉ passe, sur les correctifs) | 17 | +260/-61 | ~2 min | ~40 min | D (19:12→19:52) | **OK** mineur:5 suggestion:1 | majeur:1 mineur:5 suggestion:4 | majeur:1 mineur:5 | majeur:3 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:1 | **D (1)** | 5 |
 | 2026-08-23 | `E16US012` (3ᵉ passe, sur les correctifs) | 27 | +613/-186 | ~2 min | ~20 min | D (13:52→14:10) | majeur:2 mineur:4 suggestion:1 | majeur:5 mineur:3 suggestion:1 | majeur:4 mineur:4 | majeur:5 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:4 suggestion:1 | **D (1)** | 4 |
 | 2026-08-23 | `E16US012` (2ᵉ passe, sur les correctifs) | 27 | +1025/-230 | ~5 min | ~37 min | D (12:41→13:18) | majeur:3 mineur:4 | majeur:2 mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:4 | **D (1)** | 3 |
@@ -382,15 +383,17 @@ pas mesuré contre `origin/main` : c'est la seule borne qui ne bouge pas pendant
 **28. « L'axe X a dit que » n'est pas un fait — et un axe se trompe aussi.** La 1ʳᵉ passe a affirmé
 que le module de test en cause était « le **seul** du dépôt à importer des symboles privés d'un
 autre module de test ». L'auteur l'a recopié dans un commentaire de `conftest.py`, à l'endroit exact
-où se décide « faut-il factoriser ? ». **Deux mesures distinctes** : ils sont au moins **13** à
-importer un symbole privé d'un autre module de test (15 lignes d'import), et **25** à garder une
-copie locale de `FauxTournoiRepository` — le commentaire de `conftest.py` répondait à la seconde
-question en croyant répondre à la première. Le geste restait bon, sa justification était fausse.
+où se décide « faut-il factoriser ? ». **Deux mesures distinctes** avaient été confondues : les
+modules qui **importent** un symbole privé d'un autre module de test, et ceux qui **gardent une
+copie locale** de `FauxTournoiRepository` (~25). Le commentaire répondait à la seconde question en
+croyant répondre à la première.
 
-⚠️ **Et la correction elle-même a d'abord regravé un chiffre non vérifié** : la 3ᵉ passe a inscrit
-ici « ils sont 25 à le faire », en recopiant le décompte des copies. C'est la 4ᵉ passe qui l'a
-relevé. Une affirmation chiffrée se re-vérifie avant d'être gravée — qu'elle vienne d'un rapport de
-revue **ou du constat qui reproche justement de ne pas l'avoir fait**.
+⚠️ **Et il a fallu trois passes de plus pour arrêter de se tromper de chiffre.** La 3ᵉ a regravé le
+décompte des copies ; la 4ᵉ l'a corrigé en « 13 » ; la 5ᵉ a produit une troisième valeur, parce que
+la mesure elle-même est ambiguë (imports parenthésés, symboles privés seuls ou non). La leçon n'est
+donc pas seulement « re-vérifier » : **un chiffre dont la définition n'est pas évidente ne se grave
+pas**. On écrit l'ordre de grandeur et la commande qui le reproduit — un ordre de grandeur ne se
+périme pas, et il suffit à décider s'il faut factoriser.
 
 **29. Sur une famille, le correctif doit être rejoué sur chaque membre — sinon il *déplace* le
 défaut d'un membre à l'autre.** E16US012 livre deux écrans « prêt à… » partageant une coquille. À
@@ -400,3 +403,20 @@ bloquant) ; puis la liste vidée sur *démarrer* et pas sur *terminer*, le momen
 écrit en dur sur l'autre (3ᵉ passe, bloquant). Le mécanisme est structurel, pas de l'inattention :
 on corrige là où le rapport pointe. Sur une abstraction partagée, le réflexe doit être « et l'autre
 membre ? » avant de repasser la porte.
+
+**30. Une prop, un champ ou une garde qui ne peut plus être observé n'est pas neutre : il se lit
+comme une preuve.** E16US012 a livré successivement trois conditions inertes — `bloquant={!enCours}`
+puis `pret={enCours && …}` sur le même appel, et un `moment` que le domaine ne produisait pas. Aucune
+ne changeait le rendu ; toutes étaient citées, en revue ou dans la section « Porté dans le code par »
+de l'ADR, comme portant la décision. Le test qui « les garde » passe alors quoi qu'on fasse. Le
+symptôme se détecte en une minute par mutation : si remplacer la condition par une constante laisse
+la suite verte, elle ne porte rien — et il faut soit la retirer, soit cesser de l'invoquer comme
+garantie.
+
+**31. Sur un écran, le correctif se rejoue sur chaque bloc qui rend du texte.** Le constat 29 disait
+« et l'autre membre ? ». Trois passes de plus ont montré la variante intra-écran : la même
+contradiction de temps (« figera » / « est figé ») a été corrigée dans le **pied** d'un écran, puis
+retrouvée dans sa **tête** au tour suivant, sur le même statut. Un écran a typiquement quatre zones
+de texte — intro, verdict, liste, pied — plus son aide contextuelle, qui vit dans un autre fichier
+et qu'aucune recette n'ouvre. Les cinq se relisent ensemble, ou le défaut se déplace de l'une à
+l'autre au rythme d'une par passe.

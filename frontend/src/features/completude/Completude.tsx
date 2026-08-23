@@ -58,10 +58,22 @@ import type { StatutTournoi } from '../competition/api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
 import { IMPLICATION_TERMINER, messageConfirmationTerminer } from './presentation'
 
-const INTRO = (
+// Deux intros, et non une. ⚠️ **Une intro est lue en premier et toujours** — c'est la doctrine que
+// l'US a écrite pour l'écran voisin sans se l'appliquer ici : « Ce qui reste à jouer **avant de
+// pouvoir terminer** » s'affichait sur un tournoi **déjà terminé**, trois lignes au-dessus de « le
+// sportif **est figé** ». Même contradiction de temps que l'implication en pied, corrigée un commit
+// plus tôt, à l'autre bout du même écran (5ᵉ passe de revue, axe D).
+const INTRO_EN_COURS = (
   <>
     Ce qui reste à jouer avant de pouvoir terminer ce tournoi. Les inscriptions et les paiements se
     suivent sur l’axe <strong>Gestion</strong> : ils ne bloquent pas la clôture sportive.
+  </>
+)
+
+const INTRO_HORS_EN_COURS = (
+  <>
+    Où en est le sportif de ce tournoi. Les inscriptions et les paiements se suivent sur l’axe{' '}
+    <strong>Gestion</strong>.
   </>
 )
 
@@ -84,7 +96,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
   return (
     <PretA
       question="Prêt à terminer ?"
-      intro={INTRO}
+      intro={enCours ? INTRO_EN_COURS : INTRO_HORS_EN_COURS}
       titreSection="Sportif"
       // ⚠️ **La liste reste rendue quel que soit le statut** — c'est le comportement d'avant l'US, et
       // le vider a été une sur-correction : l'organisateur qui ouvre cet écran **pendant la pause
@@ -94,7 +106,10 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       // `questionPosee` qui le porte, pas `lignes`.
       lignes={completude.data?.sportif ?? null}
       questionPosee={enCours}
-      pret={enCours && (completude.data?.sportif_complet ?? false)}
+      // Sans `enCours &&` : `pret` n'est lu que par le verdict, déjà gardé par `questionPosee`. Le
+      // conjoint était **inerte** — exactement ce qui a fait retirer `!enCours` de `bloquant` un
+      // commit plus tôt, non rejoué sur la prop voisine du même appel (5ᵉ passe, trois axes).
+      pret={completude.data?.sportif_complet ?? false}
       // Le badge « complet / incomplet » de la section, tel qu'il était avant la migration. Il se
       // passe **à part** de `pret` depuis la revue : sur cet écran les deux valent `sportif_complet`
       // et le rendu ne change pas, mais sur *démarrer* ils diffèrent — `pret` peut être faux avec

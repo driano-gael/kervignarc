@@ -7593,7 +7593,8 @@ window.ATLAS.decisions = {
       "pret",
       "complet",
       "detail",
-      "true"
+      "enCours",
+      "bloquant"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7609,8 +7610,6 @@ window.ATLAS.decisions = {
       "_moment_du_refus",
       "moment",
       "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
-      "detail",
-      "true",
       "evaluer_demarrer",
       "evaluer_terminer",
       "transition_offerte",

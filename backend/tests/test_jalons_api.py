@@ -127,8 +127,14 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_le_refus(
         assert corps["bloquant"] is True
         # Contenu, pas simple présence : c'est le contrat que liront `E16US007` et `E16US008`.
         assert corps["detail"] == "Seul un tournoi en cours peut être terminé."
-        # Et la liste est **vide** — la question ne se pose plus, comme pour *démarrer*.
-        assert corps["lignes"] == []
+        # ⚠️ Et la liste **reste**, contrairement à *démarrer* : elle porte l'état sportif, pas la
+        # préparation. C'est ce qui rend la migration de l'écran sur ce jalon possible sans perdre
+        # ce que l'organisateur vient y lire pendant la pause (5ᵉ passe de revue).
+        assert [ligne["cle"] for ligne in corps["lignes"]] == [
+            "qualification",
+            "phases_eliminatoires",
+            "classement",
+        ]
 
 
 def test_un_tournoi_deja_lance_ne_dit_pas_qu_il_peut_demarrer(

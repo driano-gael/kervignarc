@@ -28,11 +28,11 @@ les tests de service ne vérifient pas la purge en cascade — c'est un contrat 
 niveau du repository (`test_inscription_repository`).
 
 > `FauxTournoiRepository` **vit ici depuis E16US012** (2 consommateurs : `test_service_tournois` et
-> `test_service_jalons`). ⚠️ **25 autres modules en gardent une copie locale** — chiffre relevé dans
-> le dépôt, pas déduit : `grep -rl --include='*.py' "class FauxTournoiRepository"
-> backend/tests` rend 26 lignes, dont ce fichier. On ne les rapatrie pas ici : c'est un rangement
-> transverse, pas le travail d'une branche fonctionnelle, et cette US n'aggrave pas la
-> duplication (elle en retire une et en installe une partagée — solde nul).
+> `test_service_jalons`). ⚠️ **~25 autres modules en gardent une copie locale** — mesure :
+> `grep -rl --include='*.py' "class FauxTournoiRepository" backend/tests` (ce fichier compris). On
+> ne les rapatrie pas ici : c'est un rangement transverse, pas le travail d'une branche
+> fonctionnelle, et cette US n'aggrave pas la duplication (elle en retire une et en installe une
+> partagée — solde nul).
 
 Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
 reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
@@ -945,8 +945,12 @@ class FauxLecteurPopulations:
 #
 # ⚠️ **Ce qui suit était faux et a été corrigé en 2ᵉ passe de revue** (axes A, C1, C2 et D) : la
 # première rédaction justifiait le déplacement en affirmant que `test_service_jalons` était le
-# **seul** module du dépôt à importer depuis un autre module de test. Ils sont **25** à le faire,
-# dont 21 sur des symboles privés — c'est une pratique courante ici, pas une anomalie. Le geste
+# **seul** module du dépôt à importer depuis un autre module de test. Ils sont **une dizaine** à le
+# faire — c'est une pratique courante ici, pas une anomalie. ⚠️ Chiffre volontairement donné en ordre
+# de grandeur : trois relectures successives en ont produit trois valeurs différentes selon la
+# définition retenue (avec ou sans imports parenthésés, symboles privés seuls ou tous). Ce qui
+# compte pour décider « faut-il factoriser ? » est l'ordre de grandeur, pas la décimale ; la mesure
+# se refait au besoin par `rg '^from tests\.test_' backend/tests`. Le geste
 # reste bon, sa justification était fausse ; et un chiffre faux écrit à l'endroit exact où se
 # décide « faut-il factoriser ? » fait prendre la mauvaise décision à qui le lira.
 

@@ -37,13 +37,18 @@ class PreparationJalonReponse(BaseModel):
       tenir sa propre table de libellés (elle divergerait au premier membre ajouté) ;
     - `lignes` : ce qui manque, en états (`D-17`) — jamais un pourcentage. ⚠️ **Une liste vide ne
       veut pas dire « rien ne manque »** : elle veut dire *il n'y a plus rien à préparer* — la
-      transition n'est plus offerte **depuis le statut courant** — pour *démarrer* : tournoi déjà
-      lancé, annulé ou archivé ; pour *terminer* : tout statut autre qu'*en cours*, **y compris
-      *en pause***, d'où l'on peut encore revenir. Elle s'accompagne alors de `pret: false`,
-      `bloquant: true`, et c'est
+      transition n'est plus offerte **depuis le statut courant** — tournoi déjà lancé, annulé ou
+      archivé. Elle s'accompagne alors de `pret: false`, `bloquant: true`, et c'est
       `detail` qui dit pourquoi. Un client qui la lirait « tout est bon » commettrait exactement le
       contresens que cette US existe pour supprimer ; c'est sur cette convention que le front se
-      dispense de connaître le statut ;
+      dispense de connaître le statut.
+
+      ⚠️ **Cela vaut pour *démarrer*, pas pour *terminer*** — asymétrie assumée. Chez *démarrer*, la
+      liste **est** la préparation : plus rien à préparer, plus rien à lister. Chez *terminer*, elle
+      **est l'état sportif**, qui existe à tout statut : ce membre rend donc toujours ses lignes, et
+      c'est le couple `bloquant: true` + `detail` qui dit que la question ne se pose plus. Un client
+      qui viderait cet écran hors *en cours* retirerait ce que l'organisateur vient y chercher
+      pendant la pause ;
     - `pret` : la réponse binaire ;
     - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage quand il y en a une (« 8 archer(s) inscrit(s) sur

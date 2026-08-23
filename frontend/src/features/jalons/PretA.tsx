@@ -56,6 +56,11 @@ export function PretA({
   // préparer — un tournoi déjà lancé, annulé, archivé. On ne rend alors ni verdict ni section, mais
   // on rend le `detail`, qui dit pourquoi. C'est ce qui dispense l'écran de redéduire la garde du
   // statut (2ᵉ passe de revue, axe D).
+  //
+  // ⚠️⚠️ **Cela vaut pour les membres dont la liste EST la préparation** — `démarrer` aujourd'hui.
+  // Le membre `terminer` rend toujours son état sportif, à tout statut : c'est `questionPosee` qui
+  // y coupe le verdict, pas la liste. Ne pas déduire « la question se pose » de `lignes.length > 0`
+  // dans un écran neuf sans vérifier de quel côté tombe son membre (5ᵉ passe, quatre axes).
   lignes: LigneCompletude[] | null
   pret: boolean
   bloquant: boolean

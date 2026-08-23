@@ -329,12 +329,20 @@ def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> Prepar
     offert = transition_offerte(statut, Jalon.TERMINER)
     return PreparationJalon(
         jalon=Jalon.TERMINER,
-        # ⚠️ **Vides quand la transition n'est plus offerte**, exactement comme `evaluer_demarrer`.
-        # La 2ᵉ correction ne l'avait fait que sur *démarrer* : `terminer` gardait ses lignes, et la
-        # coquille rendait alors « Pas encore — ce qui **manque ci-dessous** sera refusé » au-dessus
-        # de trois lignes vertes, sur un tournoi terminé au sportif complet. Deux membres de la
-        # « forme unique » ne peuvent pas répondre différemment au même cas (3ᵉ passe, C1 et D).
-        lignes=completude.sportif if offert else (),
+        # ⚠️ **Toujours rendues, quel que soit le statut** — asymétrie **assumée** avec
+        # `evaluer_demarrer`, pas un oubli. Chez *démarrer*, la liste **est** la préparation : un
+        # tournoi déjà lancé n'a plus rien à préparer, donc rien à lister. Chez *terminer*, elle
+        # **est l'état sportif** : « où en est la qualification » a du sens à tout statut, et c'est
+        # ce que l'organisateur vient voir pendant la pause déjeuner.
+        #
+        # La vider ici fut une **sur-correction** : elle visait un verdict qui accusait des lignes
+        # vertes (3ᵉ passe), alors que c'était le **verdict** qu'il fallait couper. La 4ᵉ passe l'a
+        # corrigé à l'écran et pas ici — les deux versants du même membre répondaient donc
+        # différemment au même cas, et la résorption inscrite à `DETTE-084` (« migrer l'écran sur
+        # `/jalons/terminer` ») aurait **rétabli** la régression (5ᵉ passe, quatre axes).
+        #
+        # Ce qui porte la garde de statut, c'est `pret`, `bloquant` et `detail`.
+        lignes=completude.sportif,
         pret=offert and completude.sportif_complet,
         bloquant=not offert,
         # La phrase du refus lui-même (`domain.tournoi`), pas une seconde rédaction : la 1ʳᵉ

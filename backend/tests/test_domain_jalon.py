@@ -393,10 +393,11 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_un_refus() -> None:
 
     assert preparation.pret is False
     assert preparation.bloquant is True
-    # ⚠️ La règle centrale du correctif, épinglée **là où elle vit**. Elle ne l'était qu'au service
-    # et à l'API : une mutation qui rendait `completude.sportif` ici laissait tout le module vert
-    # (4ᵉ passe de revue, axe D, vérifié par mutation).
-    assert preparation.lignes == ()
+    # ⚠️ **Mais la liste reste** — asymétrie assumée avec *démarrer*, et corrigée en 5ᵉ passe. Chez
+    # *terminer* la liste **est l'état sportif** : « où en est la qualification » a du sens à tout
+    # statut, et c'est ce que l'organisateur vient voir pendant la pause. La vider était une
+    # sur-correction, et l'assertion inverse écrite ici dérivait du code, pas du CA (règle 9).
+    assert preparation.lignes == complet.sportif
 
 
 # --- CA « sans doublonner ce qui existe » : le verdict d'effectif est REÇU, pas refait -----------

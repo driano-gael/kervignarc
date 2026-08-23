@@ -231,6 +231,16 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     const verdict = await screen.findByRole('status')
     expect(verdict).toHaveTextContent('ne vous en empêchera pas')
     expect(verdict).not.toHaveTextContent('refusé')
+    // ⚠️ Les **contreparties positives** des deux gardes conditionnelles de cet écran. Sans elles,
+    // supprimer purement l'implication ou l'intro laisserait toute la suite verte : les assertions
+    // qui les concernent ailleurs sont toutes négatives (5ᵉ passe, axes C1 et D).
+    // `getAllByText` : la phrase vit aussi dans le détail du dialogue de confirmation, qui partage
+    // volontairement la même source (`IMPLICATION_TERMINER`) — c'est le paragraphe de l'écran qu'on
+    // veut ici, et il porte la classe `completude__implication`.
+    expect(document.querySelector('.completude__implication')).toHaveTextContent(
+      /Terminer figera le sportif/,
+    )
+    expect(screen.getByText(/avant de pouvoir terminer/)).toBeInTheDocument()
   })
 
   it('E16US012 — hors du tournoi en cours, le verdict n’affirme pas que rien n’empêche', async () => {
@@ -308,6 +318,11 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // phrases adjacentes, l'une au futur, l'autre au passé, sur tous les tournois de la veille. Ce
     // test montait déjà ce cas exact et ne regardait pas ce paragraphe.
     expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
+    // ⚠️ **Le bloquant de la 5ᵉ passe**, à l'autre bout du même écran : l'intro disait « ce qui
+    // reste à jouer **avant de pouvoir terminer** » sur un tournoi déjà terminé, trois lignes
+    // au-dessus de « le sportif est figé ». Même contradiction de temps que l'implication en pied.
+    expect(screen.queryByText(/avant de pouvoir terminer/)).toBeNull()
+    expect(screen.getByText(/Où en est le sportif/)).toBeInTheDocument()
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {
