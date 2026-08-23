@@ -231,7 +231,6 @@ MESSAGE_SANS_DEPART = (
 # Topologie du cycle de vie ([ADR-0026] §2), source **unique** côté lecture. Les *gardes* (qui peut
 # passer de quoi à quoi, complétude du passage à `prêt`…) restent dans `ServiceTournois`
 # (ADR-0026 §4) ; un test de cohérence recoupe cette table avec la légalité effective du service.
-
 _TRANSITIONS: dict[StatutTournoi, tuple[TransitionTournoi, ...]] = {
     StatutTournoi.BROUILLON: (
         TransitionTournoi("vers-pret", "Marquer prêt", StatutTournoi.PRET),

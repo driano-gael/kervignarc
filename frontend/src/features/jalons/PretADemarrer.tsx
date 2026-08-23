@@ -32,15 +32,16 @@ import { PretA } from './PretA'
 // celles qui concernent cet écran.
 const VERS_LE_DEPART = ['vers-pret', 'demarrer']
 
-// ⚠️ **L'intro ne date aucun refus et ne nomme aucun état.** Elle l'a fait — « seront refusés au
-// démarrage », « les manques marqués en attente ou à finir » — et les deux sont devenus faux le jour
-// où le serveur s'est mis à dériver le moment (les créneaux sont refusés dès « Marquer prêt ») et
-// où la ligne « Inscrits » a pu être « en attente » sans rien bloquer. L'intro se contredisait alors
-// avec le verdict deux lignes plus bas (3ᵉ passe de revue, axes B, C1 et C2). Ce qui bloque et
-// quand, c'est le verdict qui le dit — lui seul le tient du serveur.
+// ⚠️ **L'intro ne date aucun refus, ne nomme aucun état, et ne renvoie à aucun autre élément.**
+// Elle a fait les trois, et les trois sont devenus faux : « seront refusés au démarrage » l'est dès
+// que le serveur dérive le moment (les créneaux sont refusés **dès « Marquer prêt »**) ; « les
+// manques marqués en attente » l'est depuis que la ligne « Inscrits » peut être en attente sans
+// rien bloquer ; et « la phrase en tête dit… » renvoyait à un verdict **qui n'est pas rendu** quand
+// il n'y a plus rien à préparer (3ᵉ puis 4ᵉ passe de revue, quatre axes). Une intro est lue en
+// premier et toujours : elle doit se suffire à elle-même.
 const INTRO =
-  'Ce qui doit être en place avant de lancer le tournoi. La phrase en tête dit ce qui bloque et à ' +
-  'quel moment le refus tombera ; le déroulé composé, lui, n’est qu’un conseil.'
+  'Ce qui doit être en place avant de lancer le tournoi ; le déroulé composé, lui, n’est qu’un ' +
+  'conseil.'
 
 export function PretADemarrer({ tournoiId }: { tournoiId: number }) {
   // ⚠️ **Ce composant ne connaît pas le statut, et c'est délibéré.** Il l'a connu le temps d'une

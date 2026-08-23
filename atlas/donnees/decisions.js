@@ -7589,8 +7589,11 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/completude/Completude.tsx",
      "existe": true,
      "symboles": [
+      "questionPosee",
       "pret",
-      "complet"
+      "complet",
+      "detail",
+      "true"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7599,12 +7602,15 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/jalons/PretA.tsx",
      "existe": true,
      "symboles": [
+      "questionPosee",
       "pret",
       "complet",
       "PreparationJalon.detail",
       "_moment_du_refus",
       "moment",
       "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
+      "detail",
+      "true",
       "evaluer_demarrer",
       "evaluer_terminer",
       "transition_offerte",

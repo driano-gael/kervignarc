@@ -100,15 +100,18 @@ def question(jalon: Jalon) -> str:
 # Les transitions que chaque jalon garde, **par leur nom** — ceux de `domain.tournoi._TRANSITIONS`.
 # `DEMARRER` en garde deux : « prêt à démarrer ? » répond de l'**étape** (arriver à *en cours*), pas
 # du prochain clic, et deux transitions y mènent.
-_TRANSITIONS_DU_JALON: dict[Jalon, tuple[str, ...]] = {
+# `None` — et **surtout pas** un tuple vide — pour `EXPORTER` : il garde un **geste répétable**, pas
+# une transition (ADR-0096 §4). Un tuple vide se lit `any(nom in ())` → `False` **sur les sept
+# statuts**, c'est-à-dire « la question ne se pose jamais » : l'export serait annoncé impossible y
+# compris sur un tournoi *archivé*, l'état qu'ADR-0026 définit précisément comme « verrou total,
+# après export ». C'était un piège armé pour `E16US007`, à qui cet ADR promet qu'elle « n'a plus de
+# forme à inventer » : elle aurait recopié le patron des deux membres livrés et obtenu un écran
+# bloqué partout (4ᵉ passe de revue, axe D). `None` dit « rien à garder », donc « toujours posée ».
+_TRANSITIONS_DU_JALON: dict[Jalon, tuple[str, ...] | None] = {
     Jalon.DEMARRER: ("vers-pret", "demarrer"),
     Jalon.TERMINER: ("terminer",),
     Jalon.ARCHIVER: ("archiver",),
-    # `EXPORTER` garde un **geste répétable**, pas une transition (ADR-0096 §4) : aucun statut à
-    # franchir, donc aucun nom à chercher dans la table. Le tuple vide est la bonne réponse — et il
-    # est **déclaré**, pas obtenu par un `.get(…, ())` qui aurait fait répondre « bloqué partout »
-    # à un membre simplement oublié.
-    Jalon.EXPORTER: (),
+    Jalon.EXPORTER: None,
 }
 
 
@@ -122,10 +125,15 @@ def transition_offerte(statut: StatutTournoi, jalon: Jalon) -> bool:
     annoncerait un refus que le serveur ne prononce plus.
 
     ⚠️ `_TRANSITIONS_DU_JALON` doit rester **totale** sur `Jalon` : un membre ajouté à la famille
-    sans sa ligne ici lève un `KeyError` (donc un 500), et non un refus typé. Les quatre membres y
-    sont, `EXPORTER` avec un tuple vide puisqu'il ne garde aucune transition.
+    sans sa ligne ici lève un `KeyError` (donc un 500), et non un refus typé. Un test paramétré sur
+    `list(Jalon)` le garde — la règle ne vit plus seulement dans ce commentaire.
+
+    Un membre à `None` ne garde **aucune** transition : la question se pose alors toujours (`True`),
+    quel que soit le statut. Ne pas confondre avec « aucune transition offerte » (`False`).
     """
     noms = _TRANSITIONS_DU_JALON[jalon]
+    if noms is None:
+        return True
     return any(transition.nom in noms for transition in transitions_possibles(statut))
 
 

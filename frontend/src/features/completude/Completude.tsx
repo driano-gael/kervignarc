@@ -68,6 +68,11 @@ const INTRO = (
 export function Completude({ tournoiId, statut }: { tournoiId: number; statut: StatutTournoi }) {
   const completude = useCompletude(tournoiId)
   const terminer = useTerminerDepuisCompletude(tournoiId)
+  // DETTE-084 — ⚠️ **le raccourci est ici.** Ce booléen redéduit côté front la garde de statut de
+  // `terminer` (`domain.jalon.evaluer_terminer`), faute pour cet écran de lire `/jalons/terminer` :
+  // il pilote le verdict, la raison et le bloc d'actions. Et le `statut` dont il dépend vient de
+  // `useTournois()`, qui n'est rafraîchi par **aucun** poll ni événement — sur un second poste, il
+  // peut rester périmé toute une pause déjeuner. Voir le registre pour le scénario et la résorption.
   const enCours = statut === 'en_cours'
 
   // Contrôle en amont (`P-4`) : la confirmation **chiffre** ce qui reste et dit ce que terminer
@@ -81,11 +86,14 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       question="Prêt à terminer ?"
       intro={INTRO}
       titreSection="Sportif"
-      // Vides hors « en cours », comme le rend `evaluer_terminer` : la question ne se pose plus,
-      // donc la coquille ne rend ni verdict ni section — seulement la raison. Les garder affichait
-      // « Pas encore — ce qui manque ci-dessous sera refusé » au-dessus de trois lignes vertes, sur
-      // un tournoi terminé (3ᵉ passe de revue, axes C1 et D).
-      lignes={enCours ? (completude.data?.sportif ?? null) : []}
+      // ⚠️ **La liste reste rendue quel que soit le statut** — c'est le comportement d'avant l'US, et
+      // le vider a été une sur-correction : l'organisateur qui ouvre cet écran **pendant la pause
+      // déjeuner** veut justement voir où en est la qualification (4ᵉ passe de revue, axe C1). Ce
+      // qu'il fallait retirer hors « en cours », c'est le **verdict** — il accusait la liste (« ce
+      // qui manque ci-dessous ») alors que terminer n'a aucune garde de contenu. C'est
+      // `questionPosee` qui le porte, pas `lignes`.
+      lignes={completude.data?.sportif ?? null}
+      questionPosee={enCours}
       pret={enCours && (completude.data?.sportif_complet ?? false)}
       // Le badge « complet / incomplet » de la section, tel qu'il était avant la migration. Il se
       // passe **à part** de `pret` depuis la revue : sur cet écran les deux valent `sportif_complet`
@@ -112,7 +120,11 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       // inscrite au registre plutôt que laissée en commentaire : un angle mort qui ne vit qu'en
       // section « Conséquences » d'un ADR n'apparaît à aucun tri de dette. C'est le motif même de
       // DETTE-082, que cette US venait d'écrire sans se l'appliquer (3ᵉ passe, axes A, C2 et D).
-      bloquant={!enCours}
+      // `false`, et non `!enCours` : hors « en cours » le verdict n'est pas rendu du tout, donc la
+      // valeur ne serait **jamais lue** — une prop inerte se lit comme une preuve et n'en est pas
+      // une (4ᵉ passe, axe C2). Ce que ce drapeau dit, c'est : *quand la question se pose*, terminer
+      // passe malgré les manques. La garde de statut, elle, est portée par `questionPosee`.
+      bloquant={false}
       // ⚠️ Pas de `moment` : le domaine n'en produit pas pour ce membre, et « à la clôture » — écrit
       // ici le temps d'une passe — datait un refus pour une action que l'écran ne propose même pas.
       // DETTE-084 : cette phrase est une **copie** de `MESSAGE_TERMINER_HORS_EN_COURS`, que le front
@@ -129,7 +141,9 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
     >
       {/* Ce que « terminer » implique (`D-17`) : source unique `IMPLICATION_TERMINER`, partagée
           avec le message de confirmation — les deux ne peuvent plus diverger. */}
-      {completude.data && <p className="completude__implication">{IMPLICATION_TERMINER}</p>}
+      {enCours && completude.data && (
+        <p className="completude__implication">{IMPLICATION_TERMINER}</p>
+      )}
 
       {/* ⚠️ Les actions sont **hors** de la garde `completude.data`. Elles y étaient, et c'était une
           contradiction avec `D-15` relevée en revue : si la lecture de la complétude échouait (LAN

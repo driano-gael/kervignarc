@@ -245,14 +245,22 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // `/jalons/terminer` (ADR-0096 § Conséquences : un second poll de 5 s par tablette).
     monter(<Completude tournoiId={1} statut="en_pause" />)
 
-    expect(
-      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
-    ).toBeInTheDocument()
-    // Ni verdict ni section : la question ne se pose pas, donc l'écran n'y répond pas. Un verdict
-    // « ce qui manque **ci-dessous** sera refusé » accuserait la liste, alors que terminer n'a
-    // aucune garde de contenu — c'est la raison de statut qui bloque, et elle est écrite en clair.
+    // ⚠️ On attend la **liste**, pas la raison : cette dernière ne dépend pas de la réponse serveur
+    // (elle est dérivée du seul statut), donc s'y ancrer n'attendait rien et les assertions
+    // suivantes portaient sur un écran encore vide (relevé en 4ᵉ passe, axe B).
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+    // Pas de verdict : la question ne se pose pas, donc l'écran n'y répond pas. Un verdict « ce qui
+    // manque **ci-dessous** sera refusé » accuserait la liste, alors que terminer n'a aucune garde
+    // de contenu — c'est la raison de statut qui bloque, et elle est écrite en clair.
     expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.queryByText('Qualification')).toBeNull()
+    // ⚠️ **La liste, elle, reste** (attendue ci-dessus) : c'est le comportement d'avant l'US, et la
+    // vider a été une sur-correction — pendant la pause déjeuner, l'organisateur ouvre cet écran
+    // précisément pour voir où en est la qualification (4ᵉ passe, axe C1). Le couple
+    // « liste présente + verdict absent » est ce qui distingue les deux défauts, l'un de l'autre.
+    // Et l'implication n'a rien à faire là : « Terminer **figera** le sportif » annonce au futur un
+    // geste que l'écran ne propose pas.
+    expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
   })
 
   it('E16US012 — en pause **avec le sportif complet**, l’écran n’accuse pas la liste', async () => {
@@ -268,9 +276,10 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     })
     monter(<Completude tournoiId={1} statut="en_pause" />)
 
-    expect(
-      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
-    ).toBeInTheDocument()
+    // La liste complète est bien rendue — c'est justement ce qu'on vient regarder, et c'est le seul
+    // élément qui atteste que la réponse est arrivée.
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByText(/ci-dessous/)).toBeNull()
   })
@@ -290,11 +299,15 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
 
     // Assertion **positive** : la précédente ne vérifiait que l'absence de l'ancienne phrase fausse,
     // donc elle passait sur la nouvelle, tout aussi fausse (3ᵉ passe, axes B, C1 et D).
-    expect(
-      await screen.findByText(/Seul un tournoi en cours peut être terminé/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByText(/le sportif est figé/)).toBeInTheDocument()
+    // ⚠️ **Le bloquant de la 4ᵉ passe** : « Terminer **figera** le sportif (…) Les paiements
+    // **resteront** modifiables » s'affichait juste au-dessus de « le sportif **est figé** ». Deux
+    // phrases adjacentes, l'une au futur, l'autre au passé, sur tous les tournois de la veille. Ce
+    // test montait déjà ce cas exact et ne regardait pas ce paragraphe.
+    expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {

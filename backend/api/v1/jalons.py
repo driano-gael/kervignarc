@@ -37,8 +37,10 @@ class PreparationJalonReponse(BaseModel):
       tenir sa propre table de libellés (elle divergerait au premier membre ajouté) ;
     - `lignes` : ce qui manque, en états (`D-17`) — jamais un pourcentage. ⚠️ **Une liste vide ne
       veut pas dire « rien ne manque »** : elle veut dire *il n'y a plus rien à préparer* — la
-      transition n'est plus atteignable (tournoi déjà lancé, annulé, archivé, ou terminé pour le
-      membre *terminer*). Elle s'accompagne alors de `pret: false`, `bloquant: true`, et c'est
+      transition n'est plus offerte **depuis le statut courant** — pour *démarrer* : tournoi déjà
+      lancé, annulé ou archivé ; pour *terminer* : tout statut autre qu'*en cours*, **y compris
+      *en pause***, d'où l'on peut encore revenir. Elle s'accompagne alors de `pret: false`,
+      `bloquant: true`, et c'est
       `detail` qui dit pourquoi. Un client qui la lirait « tout est bon » commettrait exactement le
       contresens que cette US existe pour supprimer ; c'est sur cette convention que le front se
       dispense de connaître le statut ;
@@ -50,8 +52,14 @@ class PreparationJalonReponse(BaseModel):
       ⚠️ **Une exception, assumée** : la garde de **statut de *démarrer***, où le jalon rédige une
       explication propre à chaque statut terminal (« annulé », « archivé », « déjà lancé »), quand
       le refus serveur, lui, n'en distingue aucun (« Seul un tournoi prêt peut être démarré. ») ;
-    - `moment` : **quand** ce refus tombera (« au démarrage »), `null` s'il n'y a rien à refuser.
-      Les deux gardes de *démarrer* ne tombent pas au même clic — les créneaux dès « Marquer prêt ».
+    - `moment` : **quand** tombera le *premier* refus (« au démarrage », « dès le passage en
+      « prêt » »). Les gardes d'un même jalon ne tombent pas toutes au même clic — les créneaux dès
+      « Marquer prêt », l'effectif au démarrage — et c'est celle qui bloque en premier qui
+      commande.
+      ⚠️ `null` veut dire **deux** choses : il n'y a rien à refuser (`bloquant: false` ou `pret:
+      true`), **ou** la transition n'est plus offerte du tout — le refus existe alors
+      (`bloquant: true`) mais ne tombe à aucun clic, l'action n'étant plus proposée. `moment` ne se
+      lit donc jamais seul : toujours avec `bloquant` et `lignes`.
 
     ⚠️ `bloquant` ne sert **pas** à désactiver un bouton : il choisit ce que l'écran annonce (un
     refus à venir, ou une simple gêne). E05US021 avait déjà tranché — le refus remonte du serveur,

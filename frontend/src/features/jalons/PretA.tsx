@@ -21,8 +21,11 @@
 // DETTE-083 — ⚠️ ces deux imports **ferment un cycle** : `completude/Completude.tsx` importe cette
 // coquille, qui réimporte `completude`. Réutiliser le rendu plutôt que le dupliquer est le bon geste
 // (`DETTE-065`), mais la coquille de la famille dépend ainsi d'un de ses membres. Résorption :
-// remonter `SectionCompletude`, `LigneCompletude`, `afficheEtat` et `detailLigne` dans `shared/` —
-// rangement transverse, donc US dédiée (règle 16), à traiter avec les autres cycles du dépôt.
+// remonter **`PretA` elle-même** dans `shared/`, avec ce qu'elle traîne (`SectionCompletude`, le type
+// `LigneCompletude`, `afficheEtat`/`detailLigne`). ⚠️ Remonter la seule `SectionCompletude` — ce que
+// ce marqueur a d'abord annoncé — **ne casse pas la composante** : `completude → jalons → accueil →
+// completude` resterait. C'est l'arête `completude → jalons` qu'il faut couper. Rangement
+// transverse, donc US dédiée (règle 16), à traiter avec les autres cycles du dépôt.
 import type { ReactNode } from 'react'
 import type { LigneCompletude } from '../completude/api'
 import { SectionCompletude } from '../completude/SectionCompletude'
@@ -38,6 +41,7 @@ export function PretA({
   moment,
   detail = null,
   complet,
+  questionPosee = true,
   chargement = false,
   erreur = null,
   children,
@@ -68,6 +72,16 @@ export function PretA({
   // badge ne s'affiche pas : c'est le défaut du membre *démarrer*, dont le verdict en tête répond
   // déjà à la question binaire.
   complet?: boolean
+  // La question « prêt à… ? » se pose-t-elle encore ? À `false`, **le verdict n'est pas rendu** — la
+  // liste, elle, peut très bien l'être.
+  //
+  // ⚠️ **C'est la distinction qui manquait**, et son absence a coûté deux défauts opposés. Piloter le
+  // verdict par `lignes.length > 0` a d'abord fait dire « ce qui manque **ci-dessous** sera refusé »
+  // au-dessus de lignes vertes (3ᵉ passe) ; puis, en vidant la liste pour l'éviter, a **supprimé un
+  // affichage livré** — l'écran « Prêt à terminer ? » ne montrait plus où en est la qualification sur
+  // un tournoi en pause, c'est-à-dire pendant la pause déjeuner du jour J (4ᵉ passe, axe C1). Le
+  // verdict et la liste répondent à deux questions différentes : ils se gardent séparément.
+  questionPosee?: boolean
   chargement?: boolean
   erreur?: ReactNode
   // Le pied de l'écran : ce que l'action implique, puis l'action elle-même. Hors de la garde
@@ -84,17 +98,18 @@ export function PretA({
       {chargement && <p className="carte__etat">Chargement…</p>}
       {erreur}
 
+      {/* Le verdict d'abord, la liste ensuite : la question est binaire, la liste dit *pourquoi*.
+          `role="status"` parce qu'il change sous le poll sans action de l'utilisateur. La couleur
+          n'est jamais seule (pastille + texte, `DV-03`). */}
+      {questionPosee && lignes !== null && lignes.length > 0 && (
+        <p className={`completude__verdict completude__verdict--${ton}`} role="status">
+          <span className="indicateur__pastille" aria-hidden="true" />
+          {texte}
+        </p>
+      )}
+
       {lignes !== null && lignes.length > 0 && (
-        <>
-          {/* Le verdict d'abord, la liste ensuite : la question est binaire, la liste dit
-              *pourquoi*. `role="status"` parce qu'il change sous le poll sans action de
-              l'utilisateur. La couleur n'est jamais seule (pastille + texte, `DV-03`). */}
-          <p className={`completude__verdict completude__verdict--${ton}`} role="status">
-            <span className="indicateur__pastille" aria-hidden="true" />
-            {texte}
-          </p>
-          <SectionCompletude titre={titreSection} complet={complet} lignes={lignes} />
-        </>
+        <SectionCompletude titre={titreSection} complet={complet} lignes={lignes} />
       )}
 
       {/* La cause, hors de la garde sur la liste : elle porte aussi le cas « plus rien à préparer »,

@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (4ᵉ passe, sur les correctifs) | 17 | +260/-61 | ~2 min | ~40 min | D (19:12→19:52) | **OK** mineur:5 suggestion:1 | majeur:1 mineur:5 suggestion:4 | majeur:1 mineur:5 | majeur:3 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:1 | **D (1)** | 5 |
 | 2026-08-23 | `E16US012` (3ᵉ passe, sur les correctifs) | 27 | +613/-186 | ~2 min | ~20 min | D (13:52→14:10) | majeur:2 mineur:4 suggestion:1 | majeur:5 mineur:3 suggestion:1 | majeur:4 mineur:4 | majeur:5 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:4 suggestion:1 | **D (1)** | 4 |
 | 2026-08-23 | `E16US012` (2ᵉ passe, sur les correctifs) | 27 | +1025/-230 | ~5 min | ~37 min | D (12:41→13:18) | majeur:3 mineur:4 | majeur:2 mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:4 | **D (1)** | 3 |
 | 2026-08-23 | `E16US012` | 35 | +2385/−119 | ~22 min | ~28 min | D (12:12→12:20) | majeur:1 mineur:2 | majeur:2 mineur:3 suggestion:2 | mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:2 | **bloquant:1** majeur:6 mineur:5 suggestion:2 | **D (1)** | 2 |
@@ -381,10 +382,15 @@ pas mesuré contre `origin/main` : c'est la seule borne qui ne bouge pas pendant
 **28. « L'axe X a dit que » n'est pas un fait — et un axe se trompe aussi.** La 1ʳᵉ passe a affirmé
 que le module de test en cause était « le **seul** du dépôt à importer des symboles privés d'un
 autre module de test ». L'auteur l'a recopié dans un commentaire de `conftest.py`, à l'endroit exact
-où se décide « faut-il factoriser ? ». Ils sont **25** à le faire. Le geste restait bon, sa
-justification était fausse, et c'est la 2ᵉ passe qui l'a relevée. Une affirmation chiffrée venant
-d'un rapport de revue se re-vérifie avant d'être gravée dans le dépôt, exactement comme celles qui
-viennent de l'auteur.
+où se décide « faut-il factoriser ? ». **Deux mesures distinctes** : ils sont au moins **13** à
+importer un symbole privé d'un autre module de test (15 lignes d'import), et **25** à garder une
+copie locale de `FauxTournoiRepository` — le commentaire de `conftest.py` répondait à la seconde
+question en croyant répondre à la première. Le geste restait bon, sa justification était fausse.
+
+⚠️ **Et la correction elle-même a d'abord regravé un chiffre non vérifié** : la 3ᵉ passe a inscrit
+ici « ils sont 25 à le faire », en recopiant le décompte des copies. C'est la 4ᵉ passe qui l'a
+relevé. Une affirmation chiffrée se re-vérifie avant d'être gravée — qu'elle vienne d'un rapport de
+revue **ou du constat qui reproche justement de ne pas l'avoir fait**.
 
 **29. Sur une famille, le correctif doit être rejoué sur chaque membre — sinon il *déplace* le
 défaut d'un membre à l'autre.** E16US012 livre deux écrans « prêt à… » partageant une coquille. À

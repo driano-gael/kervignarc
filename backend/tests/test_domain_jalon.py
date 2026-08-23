@@ -31,6 +31,7 @@ from domain.jalon import (
     evaluer_demarrer,
     evaluer_terminer,
     question,
+    transition_offerte,
 )
 from domain.tournoi import (
     MESSAGE_SANS_DEPART,
@@ -355,6 +356,30 @@ def test_la_question_se_pose_avant_le_depart_depuis_les_deux_statuts(
     assert preparation.detail is None
 
 
+@pytest.mark.parametrize("jalon", list(Jalon))
+def test_la_table_des_transitions_couvre_toute_la_famille(jalon: Jalon) -> None:
+    """La table du jalon doit rester **totale** sur `Jalon` — sinon `KeyError`, donc 500.
+
+    La règle ne vivait qu'en commentaire, alors que sa jumelle `_VERBE` est gardée juste au-dessus
+    par le même patron (4ᵉ passe de revue, quatre axes). Un 5ᵉ membre ajouté à la famille sans sa
+    ligne rouvrirait le 500 en silence : `ARCHIVER` et `EXPORTER` ne sont atteints par aucun autre
+    test, le service les arrêtant à `JalonNonInstruit` bien avant le domaine.
+    """
+    assert transition_offerte(StatutTournoi.BROUILLON, jalon) in (True, False)
+
+
+def test_exporter_ne_garde_aucune_transition_donc_la_question_se_pose_toujours() -> None:
+    """`EXPORTER` garde un **geste répétable**, pas une transition (ADR-0096 §4).
+
+    Le distinguer de « aucune transition offerte » n'est pas cosmétique : un tuple vide aurait rendu
+    `False` sur les sept statuts, donc « prêt à exporter ? » bloqué **y compris sur un tournoi
+    archivé** — l'état qu'ADR-0026 définit comme le verrou *après export*. C'était le piège tendu à
+    `E16US007`, à qui l'ADR promet qu'elle n'a « plus de forme à inventer ».
+    """
+    for statut in StatutTournoi:
+        assert transition_offerte(statut, Jalon.EXPORTER) is True
+
+
 def test_terminer_hors_du_tournoi_en_cours_annonce_un_refus() -> None:
     """`ServiceTournois.terminer` n'accepte que `{EN_COURS}` : un tournoi **en pause** (la pause
     déjeuner du jour J) ne peut pas être terminé tant qu'on n'a pas repris.
@@ -368,6 +393,10 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_un_refus() -> None:
 
     assert preparation.pret is False
     assert preparation.bloquant is True
+    # ⚠️ La règle centrale du correctif, épinglée **là où elle vit**. Elle ne l'était qu'au service
+    # et à l'API : une mutation qui rendait `completude.sportif` ici laissait tout le module vert
+    # (4ᵉ passe de revue, axe D, vérifié par mutation).
+    assert preparation.lignes == ()
 
 
 # --- CA « sans doublonner ce qui existe » : le verdict d'effectif est REÇU, pas refait -----------
@@ -482,3 +511,16 @@ def test_le_refus_de_terminer_hors_en_cours_est_celui_du_service_mot_pour_mot() 
     preparation = evaluer_terminer(completude=complet, statut=StatutTournoi.EN_PAUSE)
 
     assert preparation.detail == MESSAGE_TERMINER_HORS_EN_COURS
+
+
+def test_pendant_le_tournoi_terminer_liste_bien_ce_qui_reste() -> None:
+    """La contrepartie **positive** du cas précédent : sans elle, un `lignes=()` inconditionnel — la
+    sur-correction symétrique — ne serait attrapé par aucun test du domaine.
+    """
+    completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
+
+    preparation = evaluer_terminer(completude=completude, statut=StatutTournoi.EN_COURS)
+
+    assert preparation.lignes == completude.sportif
+    assert preparation.bloquant is False
+    assert preparation.detail is None

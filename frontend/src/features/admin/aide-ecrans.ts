@@ -139,13 +139,16 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   'pret-demarrer':
     'Répond à une seule question : peut-on lancer ce tournoi ? La liste montre ce qui doit être en ' +
     'place — au moins un créneau, assez d’inscrits pour ce que le déroulé prélève, et le déroulé ' +
-    'lui-même. Les deux premiers seront refusés au démarrage ; le troisième n’est qu’un conseil. ' +
+    'lui-même. Les deux premiers sont exigés — le créneau dès « Marquer prêt », l’effectif au ' +
+    'démarrage ; le troisième n’est qu’un conseil. ' +
     'Tout est affiché d’un coup, pour ne pas découvrir le second manque après avoir corrigé le ' +
     'premier. Le bouton reste cliquable : l’écran annonce, c’est le serveur qui refuse.',
   completude:
     'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
-    'jouer — cibles de qualification non terminées, phases, classement. Rien ne vous empêche de ' +
-    'terminer malgré un manque : l’écran avertit, il ne bloque pas. Terminer fige le sportif — les ' +
+    'jouer — cibles de qualification non terminées, phases, classement. Pendant le tournoi, rien ne ' +
+    'vous empêche de terminer malgré un manque : l’écran avertit, il ne bloque pas. Hors tournoi en ' +
+    'cours — en pause, déjà terminé — terminer est refusé tant qu’on n’a pas repris. ' +
+    'Terminer fige le sportif — les ' +
     'inscriptions et les paiements, eux, se suivent sur l’axe Gestion et restent modifiables après.',
   classement:
     'Consultez le classement, mis à jour en direct au fil de la saisie. C’est une vue de lecture : ' +
