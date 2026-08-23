@@ -46,6 +46,7 @@ export type DestinationAdminId =
   | 'supervision'
   | 'ecrans'
   | 'suivi-deroule'
+  | 'pret-demarrer'
   | 'completude'
   | 'classement'
   | 'palmares'
@@ -135,6 +136,12 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Voyez le tournoi se dérouler : quelles phases sont terminées, laquelle tourne, quel tour est en ' +
     'cours et combien de duels restent à jouer. C’est le même schéma que celui composé à l’atelier, ' +
     'rempli par la réalité.',
+  'pret-demarrer':
+    'Répond à une seule question : peut-on lancer ce tournoi ? La liste montre ce qui doit être en ' +
+    'place — au moins un créneau, assez d’inscrits pour ce que le déroulé prélève, et le déroulé ' +
+    'lui-même. Les deux premiers seront refusés au démarrage ; le troisième n’est qu’un conseil. ' +
+    'Tout est affiché d’un coup, pour ne pas découvrir le second manque après avoir corrigé le ' +
+    'premier. Le bouton reste cliquable : l’écran annonce, c’est le serveur qui refuse.',
   completude:
     'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
     'jouer — cibles de qualification non terminées, phases, classement. Rien ne vous empêche de ' +

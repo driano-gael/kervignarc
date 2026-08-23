@@ -81,6 +81,10 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   ecrans: 'pilotage',
   'suivi-deroule': 'pilotage',
   'feu-vert': 'pilotage',
+  // Les deux membres livrés de la famille « prêt à… » (E16US012) sont **voisins** dans la
+  // sidebar : c'est leur adjacence qui les fait lire comme une famille plutôt que comme deux
+  // écrans qui se ressemblent.
+  'pret-demarrer': 'pilotage',
   completude: 'pilotage',
   classement: 'pilotage',
   // Le palmarès se **consulte** pendant que le tournoi tourne (les podiums se remplissent au fil
@@ -130,6 +134,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   ecrans: true,
   'suivi-deroule': true,
   'feu-vert': true,
+  'pret-demarrer': true,
   completude: true,
   classement: true,
   palmares: true,

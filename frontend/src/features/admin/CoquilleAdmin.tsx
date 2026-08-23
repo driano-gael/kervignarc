@@ -56,6 +56,7 @@ import { Blasons } from '../blasons/Blasons'
 import { Categories } from '../categories/Categories'
 import { Clubs } from '../clubs/Clubs'
 import { Completude } from '../completude/Completude'
+import { PretADemarrer } from '../jalons/PretADemarrer'
 import type { Tournoi } from '../competition/api'
 import { useTournois } from '../competition/hooks'
 import { VueClassement } from '../competition/VueClassement'
@@ -416,6 +417,17 @@ function Coquille() {
       id: 'feu-vert',
       libelle: 'Feu vert',
       rendu: () => courant && <FeuVert tournoiId={courant.id} />,
+    },
+    {
+      // Premier membre neuf de la famille « prêt à… » (E16US012, ADR-0096), **voisin immédiat** de
+      // « Prêt à terminer ? » : les deux posent la même question à deux moments de la journée, et
+      // c'est leur adjacence qui les fait lire comme une famille. Les deux membres restants
+      // (archiver, exporter) se brancheront ici même.
+      id: 'pret-demarrer',
+      libelle: 'Prêt à démarrer ?',
+      // Les deux gardes du feu vert, énumérées **avant** le clic au lieu d'être découvertes une par
+      // une en échouant. Le statut pilote ce que porte le pied de l'écran.
+      rendu: () => courant && <PretADemarrer tournoiId={courant.id} statut={courant.statut} />,
     },
     {
       id: 'completude',

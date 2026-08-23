@@ -47,6 +47,23 @@ class EffectifInsuffisantPourDemarrer(ApplicationError):
     code = "effectif_insuffisant_pour_demarrer"
 
 
+class JalonNonInstruit(ApplicationError):
+    """Jalon « prêt à… » demandé mais **pas encore spécifié** (E16US012) → 404.
+
+    La famille compte quatre membres (démarrer · terminer · archiver · exporter) ; deux seulement
+    ont une règle aujourd'hui. Les deux autres **existent** dans l'énumération — la forme est posée,
+    leur question se dérive — mais n'ont aucun contenu : `E16US007` (exports) et l'US d'archivage
+    les brancheront.
+
+    **404 et non 501** : côté client, le geste utile est le même que pour un identifiant inconnu —
+    cet écran n'existe pas. Et surtout, rendre `200` avec une liste vide se lirait « rien ne
+    manque, vous pouvez exporter », soit exactement le mensonge que la famille est censée
+    supprimer.
+    """
+
+    code = "jalon_non_instruit"
+
+
 class TournoiEnCoursNonSupprimable(ApplicationError):
     """Suppression refusée : le tournoi est `en_cours` ou `en_pause` (E01US002, E01US017) → 409.
 

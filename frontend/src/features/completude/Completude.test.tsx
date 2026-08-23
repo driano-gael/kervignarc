@@ -216,6 +216,21 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     expect(screen.getByRole('button', { name: 'Terminer le tournoi' })).toBeEnabled()
   })
 
+  it('E16US012 `D-15` — le verdict avertit sans annoncer de refus', async () => {
+    // L'écran a migré sur la coquille commune de la famille « prêt à… » (ADR-0096), qui lui ajoute
+    // un verdict en tête. Ce verdict doit rester du **bon côté de l'asymétrie** : terminer n'a
+    // aucune garde dure, donc l'écran ne doit jamais annoncer un refus qui n'arrivera pas.
+    //
+    // C'est la contrepartie du `bloquant={false}` passé par cet écran : si quelqu'un le passait à
+    // `true` « par symétrie » avec l'écran de démarrage, ce test tomberait — et c'est le seul
+    // endroit où cette erreur-là se verrait, `tsc` ne voyant rien d'un booléen inversé.
+    monter(<Completude tournoiId={1} statut="en_cours" />)
+
+    const verdict = await screen.findByRole('status')
+    expect(verdict).toHaveTextContent('ne vous en empêchera pas')
+    expect(verdict).not.toHaveTextContent('refusé')
+  })
+
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {
     // L'autre moitié de `D-15`, et celle qui manquait : le bouton vivait **dans** la garde
     // `completude.data`, donc une lecture en échec le faisait disparaître — l'appli empêchait au lieu

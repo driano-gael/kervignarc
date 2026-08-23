@@ -46,6 +46,7 @@ from api.v1.formats import router as formats_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.jalons import router as jalons_router
 from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
@@ -96,6 +97,7 @@ from application.gel_de_pause import EvaluateurArrets
 from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
 from application.inscriptions import ServiceInscriptions
+from application.jalons import ServiceJalons
 from application.jeu_essai import ServiceJeuEssai
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
@@ -1320,6 +1322,24 @@ def create_app(
         populations,
     )
 
+    # --- Jalons « prêt à… » (E16US012, ADR-0096) : « puis-je passer à l'étape suivante, et sinon
+    # qu'est-ce qui manque ? ». Foyer **unique** de la famille (démarrer · terminer · archiver ·
+    # exporter), dont deux membres sont instruits. Lecture pure.
+    #
+    # ⚠️ Câblé **après** `service_completude` et `service_tournois`, qu'il consomme par deux ports
+    # **étroits** (`LecteurCompletude`, `LecteurExigenceEffectif`) : le jalon n'a aucune raison de
+    # pouvoir démarrer ou terminer un tournoi, et l'étroitesse le dit dans le type plutôt que dans
+    # un commentaire. C'est aussi ce qui garantit le CA « sans doublonner » — l'effectif affiché
+    # avant le clic sort de `exigence_effectif`, **la méthode que la garde de démarrage exécute
+    # elle-même**, jamais d'un second calcul. ---
+    app.state.service_jalons = ServiceJalons(
+        tournoi_repository,
+        depart_repository,
+        deroule_repository,
+        app.state.service_tournois,
+        app.state.service_completude,
+    )
+
     # Départs (créneaux) d'un tournoi (E02US004, ADR-0017) : le service vérifie l'existence du
     # tournoi (port tournoi), attribue le numéro du créneau, et dépend du port inscription pour le
     # garde-fou « supprimer un départ qui porte des inscriptions » (E02US009). Câblé **ici**, après
@@ -1410,6 +1430,7 @@ def create_app(
     app.include_router(phases_router)
     app.include_router(competition_router)
     app.include_router(completude_router)
+    app.include_router(jalons_router)
     app.include_router(saisie_router)
     app.include_router(deroule_router)
     app.include_router(placement_router)

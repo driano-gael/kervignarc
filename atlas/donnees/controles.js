@@ -83,6 +83,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
+   "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "accueil"
+  },
+  {
+   "code": "features-enchevetrees",
    "message": "et 1 autre(s) feature(s) s'importent mutuellement (admin, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "admin"
@@ -101,7 +107,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 23 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 25 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application"
   },
@@ -236,10 +242,22 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart dans « backend/domain/jalon.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0096"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce tsc dans « frontend/src/features/completude/Completude.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0096"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 39
+  "signaux": 42
  }
 };
