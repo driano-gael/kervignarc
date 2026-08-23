@@ -221,14 +221,50 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     // un verdict en tête. Ce verdict doit rester du **bon côté de l'asymétrie** : terminer n'a
     // aucune garde dure, donc l'écran ne doit jamais annoncer un refus qui n'arrivera pas.
     //
-    // C'est la contrepartie du `bloquant={false}` passé par cet écran : si quelqu'un le passait à
-    // `true` « par symétrie » avec l'écran de démarrage, ce test tomberait — et c'est le seul
-    // endroit où cette erreur-là se verrait, `tsc` ne voyant rien d'un booléen inversé.
+    // C'est la contrepartie du `bloquant` passé par cet écran : si quelqu'un le mettait à `true`
+    // « par symétrie » avec l'écran de démarrage, ce test tomberait — et c'est le seul endroit où
+    // cette erreur-là se verrait, le typage ne disant rien d'un booléen inversé.
+    //
+    // ⚠️ **Pendant le tournoi**, et c'est le sujet des deux tests suivants.
     monter(<Completude tournoiId={1} statut="en_cours" />)
 
     const verdict = await screen.findByRole('status')
     expect(verdict).toHaveTextContent('ne vous en empêchera pas')
     expect(verdict).not.toHaveTextContent('refusé')
+  })
+
+  it('E16US012 — hors du tournoi en cours, le verdict n’affirme pas que rien n’empêche', async () => {
+    // **Le bloquant de la 2ᵉ passe de revue.** `ServiceTournois.terminer` n'accepte que `en_cours`
+    // (`{StatutTournoi.EN_COURS}`) : sur un tournoi **en pause** — la pause déjeuner du jour J —
+    // terminer est refusé tant qu'on n'a pas repris. Avec `bloquant={false}` figé, l'écran
+    // affichait « l'application ne vous en empêchera pas » juste avant un 409, c'est-à-dire la
+    // phrase même que cette US déclarait avoir supprimée, sur le membre voisin de la famille.
+    //
+    // Ce test est le miroir de `domain.jalon.evaluer_terminer` : il tombe si l'un des deux bouge
+    // sans l'autre. C'est le prix assumé de laisser cet écran lire `/completude` plutôt que
+    // `/jalons/terminer` (ADR-0096 § Conséquences : un second poll de 5 s par tablette).
+    monter(<Completude tournoiId={1} statut="en_pause" />)
+
+    const verdict = await screen.findByRole('status')
+    expect(verdict).toHaveTextContent('sera refusé')
+    expect(verdict).not.toHaveTextContent('ne vous en empêchera pas')
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+  })
+
+  it('E16US012 — un tournoi terminé ne s’entend pas dire que rien ne s’y oppose', async () => {
+    // L'autre moitié du même défaut : avec le sportif complet, `pret` valait `true` quel que soit
+    // le statut, donc « Oui — rien ne s'y oppose » s'affichait deux lignes au-dessus de « Ce
+    // tournoi est terminé : le sportif est figé. » — la contradiction que l'écran de démarrage
+    // venait précisément de fermer.
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="termine" />)
+
+    expect(await screen.findByRole('status')).not.toHaveTextContent('rien ne s’y oppose')
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {

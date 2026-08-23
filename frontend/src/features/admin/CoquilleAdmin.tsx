@@ -427,7 +427,7 @@ function Coquille() {
       libelle: 'Prêt à démarrer ?',
       // Les deux gardes du feu vert, énumérées **avant** le clic au lieu d'être découvertes une par
       // une en échouant. Le statut pilote ce que porte le pied de l'écran.
-      rendu: () => courant && <PretADemarrer tournoiId={courant.id} statut={courant.statut} />,
+      rendu: () => courant && <PretADemarrer tournoiId={courant.id} />,
     },
     {
       id: 'completude',

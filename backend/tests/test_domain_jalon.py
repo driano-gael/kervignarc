@@ -32,7 +32,11 @@ from domain.jalon import (
     evaluer_terminer,
     question,
 )
-from domain.tournoi import StatutTournoi
+from domain.tournoi import (
+    MESSAGE_SANS_DEPART,
+    MESSAGE_TERMINER_HORS_EN_COURS,
+    StatutTournoi,
+)
 
 
 def _ligne(preparation: PreparationJalon, cle: str) -> LigneCompletude:
@@ -49,6 +53,7 @@ def _demarrer_pret() -> PreparationJalon:
         effectif_suffisant=True,
         inscrits=40,
         minimum=34,
+        cause_effectif=None,
     )
 
 
@@ -82,7 +87,8 @@ def test_les_deux_membres_livres_rendent_la_meme_structure() -> None:
     """
     demarrer = _demarrer_pret()
     terminer = evaluer_terminer(
-        evaluer_completude(qualif=(30, 30), paiements=(120, 120)), StatutTournoi.EN_COURS
+        completude=evaluer_completude(qualif=(30, 30), paiements=(120, 120)),
+        statut=StatutTournoi.EN_COURS,
     )
 
     assert isinstance(demarrer, PreparationJalon)
@@ -104,6 +110,7 @@ def test_la_reponse_liste_des_etats_et_jamais_une_progression() -> None:
         effectif_suffisant=True,
         inscrits=0,
         minimum=0,
+        cause_effectif=None,
     )
 
     assert preparation.lignes  # il y a toujours quelque chose à dire
@@ -133,6 +140,7 @@ def test_sans_aucun_creneau_le_tournoi_n_est_pas_pret_a_demarrer() -> None:
         effectif_suffisant=True,
         inscrits=40,
         minimum=34,
+        cause_effectif=None,
     )
 
     assert preparation.pret is False
@@ -148,6 +156,7 @@ def test_un_effectif_insuffisant_chiffre_le_manque_et_empeche_le_depart() -> Non
         effectif_suffisant=False,
         inscrits=28,
         minimum=34,
+        cause_effectif=None,
     )
 
     ligne = _ligne(preparation, CLE_EFFECTIF)
@@ -167,6 +176,7 @@ def test_les_deux_manquements_se_lisent_ensemble_et_non_l_un_apres_l_autre() -> 
         effectif_suffisant=False,
         inscrits=28,
         minimum=34,
+        cause_effectif=None,
     )
 
     assert preparation.pret is False
@@ -192,6 +202,7 @@ def test_sans_deroule_compose_aucun_effectif_n_est_exige() -> None:
         effectif_suffisant=True,
         inscrits=0,
         minimum=0,
+        cause_effectif=None,
     )
 
     assert _ligne(preparation, CLE_EFFECTIF).etat is EtatSection.EN_ATTENTE
@@ -214,10 +225,15 @@ def test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart() -> None:
         effectif_suffisant=True,
         inscrits=12,
         minimum=0,
+        cause_effectif=None,
     )
 
     assert _ligne(preparation, CLE_DEROULE).etat is EtatSection.EN_ATTENTE
     assert preparation.pret is True
+    # ⚠️ Et l'effectif non plus n'est pas « terminé » : sans exigence, **aucun** compte ne clôt la
+    # ligne. La 1ʳᵉ correction ne traitait que `inscrits == 0` et laissait « Terminé » sur le cas
+    # le plus courant — un tournoi qui se remplit avant que le format soit composé (2ᵉ passe, C1).
+    assert _ligne(preparation, CLE_EFFECTIF).etat is EtatSection.EN_ATTENTE
 
 
 def test_terminer_n_est_jamais_bloquant_meme_incomplet() -> None:
@@ -228,7 +244,8 @@ def test_terminer_n_est_jamais_bloquant_meme_incomplet() -> None:
     bas) : c'est la précision que le CA d'origine n'avait pas et que la revue a rendue nécessaire.
     """
     preparation = evaluer_terminer(
-        evaluer_completude(qualif=(28, 30), paiements=(0, 12)), StatutTournoi.EN_COURS
+        completude=evaluer_completude(qualif=(28, 30), paiements=(0, 12)),
+        statut=StatutTournoi.EN_COURS,
     )
 
     assert preparation.pret is False
@@ -253,7 +270,7 @@ def test_le_jalon_terminer_reprend_la_completude_sportive_sans_la_recalculer() -
     on ne la réécrit pas : deux calculs se contrediraient au premier écart.
     """
     completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
-    preparation = evaluer_terminer(completude, StatutTournoi.EN_COURS)
+    preparation = evaluer_terminer(completude=completude, statut=StatutTournoi.EN_COURS)
 
     assert preparation.lignes == completude.sportif
     assert preparation.pret is completude.sportif_complet
@@ -264,7 +281,7 @@ def test_le_jalon_terminer_ignore_l_administratif() -> None:
     Les paiements ne sont pas une ligne de « prêt à terminer ».
     """
     completude = evaluer_completude(qualif=(30, 30), paiements=(0, 120))
-    preparation = evaluer_terminer(completude, StatutTournoi.EN_COURS)
+    preparation = evaluer_terminer(completude=completude, statut=StatutTournoi.EN_COURS)
 
     assert preparation.pret is True
     assert all(ligne not in completude.hors_sportif for ligne in preparation.lignes)
@@ -279,20 +296,24 @@ def test_le_jalon_terminer_ignore_l_administratif() -> None:
 
 
 @pytest.mark.parametrize(
-    "statut",
+    ("statut", "attendu"),
     [
-        StatutTournoi.EN_COURS,
-        StatutTournoi.EN_PAUSE,
-        StatutTournoi.TERMINE,
-        StatutTournoi.ARCHIVE,
-        StatutTournoi.ANNULE,
+        (StatutTournoi.EN_COURS, "déjà lancé"),
+        (StatutTournoi.EN_PAUSE, "déjà lancé"),
+        (StatutTournoi.TERMINE, "déjà lancé"),
+        (StatutTournoi.ARCHIVE, "archivé"),
+        (StatutTournoi.ANNULE, "annulé"),
     ],
 )
-def test_un_tournoi_qui_n_est_plus_a_lancer_n_annonce_pas_qu_il_peut_demarrer(
-    statut: StatutTournoi,
+def test_un_tournoi_qui_n_est_plus_a_lancer_dit_pourquoi_sans_se_tromper(
+    statut: StatutTournoi, attendu: str
 ) -> None:
-    """`demarrer` n'est atteignable que depuis *brouillon* ou *prêt*. Tout le reste — y compris le
-    tournoi **annulé**, qui n'a jamais démarré — doit répondre non.
+    """`demarrer` n'est atteignable que depuis *brouillon* ou *prêt*. Tout le reste répond non — et
+    **pas avec la même phrase** : un tournoi annulé depuis le brouillon n'a jamais démarré.
+
+    ⚠️ La 1ʳᵉ correction n'assertait ici que `detail is not None`. Elle passait donc sur un contrat
+    qui disait « déjà lancé » d'un tournoi annulé — un test écrit pour passer, pas pour vérifier
+    (2ᵉ passe de revue, quatre axes). C'est le contrat que liront `E16US007` et `E16US008`.
     """
     preparation = evaluer_demarrer(
         statut=statut,
@@ -301,10 +322,16 @@ def test_un_tournoi_qui_n_est_plus_a_lancer_n_annonce_pas_qu_il_peut_demarrer(
         effectif_suffisant=True,
         inscrits=40,
         minimum=34,
+        cause_effectif=None,
     )
 
     assert preparation.pret is False
+    assert preparation.bloquant is True
     assert preparation.detail is not None
+    assert attendu in preparation.detail
+    # **Aucune ligne** : « ce qui manque » n'a pas de sens ici, et les rendre obligeait le front à
+    # les masquer lui-même — donc à recopier la garde.
+    assert preparation.lignes == ()
 
 
 @pytest.mark.parametrize("statut", [StatutTournoi.BROUILLON, StatutTournoi.PRET])
@@ -321,6 +348,7 @@ def test_la_question_se_pose_avant_le_depart_depuis_les_deux_statuts(
         effectif_suffisant=True,
         inscrits=40,
         minimum=34,
+        cause_effectif=None,
     )
 
     assert preparation.pret is True
@@ -336,7 +364,7 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_un_refus() -> None:
     """
     complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
 
-    preparation = evaluer_terminer(complet, StatutTournoi.EN_PAUSE)
+    preparation = evaluer_terminer(completude=complet, statut=StatutTournoi.EN_PAUSE)
 
     assert preparation.pret is False
     assert preparation.bloquant is True
@@ -360,6 +388,7 @@ def test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas() -> None
         effectif_suffisant=True,
         inscrits=28,
         minimum=34,
+        cause_effectif=None,
     )
 
     assert preparation.pret is True
@@ -390,3 +419,66 @@ def test_la_cause_chiffree_du_blocage_est_celle_du_refus_serveur() -> None:
     )
 
     assert preparation.detail == cause
+
+
+# --- CA « un jalon répond de l'ÉTAPE, pas du prochain clic » ------------------------------------
+#
+# Ajouté en 2ᵉ passe (axe C1). Les deux gardes de *démarrer* ne tombent pas au même clic : les
+# créneaux au passage en *prêt* (`vers_pret`), l'effectif au démarrage. Annoncer « au démarrage »
+# dans les deux cas rendait la phrase fausse sur l'état initial de tout tournoi neuf.
+
+
+def test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret() -> None:
+    """`vers_pret` lève `TournoiSansDepart` : le refus tombe **dès** « Marquer prêt »."""
+    preparation = evaluer_demarrer(
+        statut=StatutTournoi.BROUILLON,
+        nb_creneaux=0,
+        nb_etapes_deroule=3,
+        effectif_suffisant=False,
+        inscrits=28,
+        minimum=34,
+        cause_effectif="peu importe : ce n'est pas encore cette garde-là qui refusera",
+    )
+
+    assert preparation.moment == "dès le passage en « prêt »"
+    # Et la cause affichée est celle de la garde qui refusera **la première**, pas de l'autre.
+    assert preparation.detail == MESSAGE_SANS_DEPART
+
+
+def test_avec_les_creneaux_le_refus_est_annonce_pour_le_demarrage() -> None:
+    """Les créneaux sont là : la prochaine garde à refuser est celle de l'effectif."""
+    cause = "Ce tournoi ne peut pas démarrer : 28 archer(s) inscrit(s) pour 34 requis."
+
+    preparation = evaluer_demarrer(
+        statut=StatutTournoi.PRET,
+        nb_creneaux=1,
+        nb_etapes_deroule=3,
+        effectif_suffisant=False,
+        inscrits=28,
+        minimum=34,
+        cause_effectif=cause,
+    )
+
+    assert preparation.moment == "au démarrage"
+    assert preparation.detail == cause
+
+
+def test_rien_ne_bloque_donc_aucun_moment_n_est_annonce() -> None:
+    """Pas de refus à venir, pas de moment à nommer — sinon l'écran daterait un événement fictif."""
+    preparation = _demarrer_pret()
+
+    assert preparation.moment is None
+    assert preparation.detail is None
+
+
+def test_le_refus_de_terminer_hors_en_cours_est_celui_du_service_mot_pour_mot() -> None:
+    """La phrase vient de `domain.tournoi`, que `ServiceTournois.terminer` utilise aussi.
+
+    La 1ʳᵉ correction la recopiait ici en littéral — la duplication que cette US dénonce pour
+    l'effectif, reproduite sur la garde de statut (2ᵉ passe, axes A, C2 et D).
+    """
+    complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
+
+    preparation = evaluer_terminer(completude=complet, statut=StatutTournoi.EN_PAUSE)
+
+    assert preparation.detail == MESSAGE_TERMINER_HORS_EN_COURS

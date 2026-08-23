@@ -40,7 +40,9 @@ class PreparationJalonReponse(BaseModel):
     - `bloquant` : à `false`, l'action passe **quand même** malgré `pret: false` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage quand il y en a une (« 8 archer(s) inscrit(s) sur
       le départ 2 pour 34 requis… »), `null` sinon. C'est la phrase que la garde met dans son
-      refus : l'avertissement et le refus ne peuvent donc pas énoncer deux causes différentes.
+      refus : l'avertissement et le refus ne peuvent donc pas énoncer deux causes différentes ;
+    - `moment` : **quand** ce refus tombera (« au démarrage »), `null` s'il n'y a rien à refuser.
+      Les deux gardes de *démarrer* ne tombent pas au même clic — les créneaux dès « Marquer prêt ».
 
     ⚠️ `bloquant` ne sert **pas** à désactiver un bouton : il choisit ce que l'écran annonce (un
     refus à venir, ou une simple gêne). E05US021 avait déjà tranché — le refus remonte du serveur,
@@ -53,6 +55,7 @@ class PreparationJalonReponse(BaseModel):
     pret: bool
     bloquant: bool
     detail: str | None
+    moment: str | None
 
     @staticmethod
     def de_preparation(preparation: PreparationJalon) -> PreparationJalonReponse:
@@ -64,6 +67,7 @@ class PreparationJalonReponse(BaseModel):
             pret=preparation.pret,
             bloquant=preparation.bloquant,
             detail=preparation.detail,
+            moment=preparation.moment,
         )
 
 

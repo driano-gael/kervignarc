@@ -101,6 +101,25 @@ def _attelage(
     return service_jalons, service_tournois, cree.id
 
 
+def _amener_a(tournois: ServiceTournois, tournoi_id: int, statut: StatutTournoi) -> None:
+    """Conduit un tournoi jusqu'au statut voulu, par les transitions réelles du service.
+
+    Poser le statut à la main court-circuiterait la machine à états — donc la chose même que le
+    test veut confronter au jalon.
+    """
+    chemins: dict[StatutTournoi, tuple[str, ...]] = {
+        StatutTournoi.BROUILLON: (),
+        StatutTournoi.PRET: ("vers_pret",),
+        StatutTournoi.EN_COURS: ("vers_pret", "demarrer"),
+        StatutTournoi.EN_PAUSE: ("vers_pret", "demarrer", "mettre_en_pause"),
+        StatutTournoi.TERMINE: ("vers_pret", "demarrer", "terminer"),
+        StatutTournoi.ARCHIVE: ("vers_pret", "demarrer", "terminer", "archiver"),
+        StatutTournoi.ANNULE: ("annuler",),
+    }
+    for etape in chemins[statut]:
+        getattr(tournois, etape)(tournoi_id)
+
+
 def _ligne_etat(service: ServiceJalons, tournoi_id: int, cle: str) -> EtatSection:
     """L'état d'une ligne de « prêt à démarrer »."""
     preparation = service.preparation(tournoi_id, Jalon.DEMARRER)
@@ -148,28 +167,40 @@ def test_le_jalon_terminer_relit_la_completude_sans_la_recalculer() -> None:
 
 
 def test_sans_creneau_le_jalon_annonce_ce_que_la_garde_refusera() -> None:
-    """`pret is False` **et** `vers_pret` lève : l'écran et le clic disent la même chose."""
+    """`pret is False` **et** `vers_pret` lève : l'écran et le clic disent la même chose.
+
+    ⚠️ « La même chose » au sens **littéral** : on compare la phrase annoncée avant le clic à celle
+    que le refus porte. Se contenter des deux verdicts laissait les deux textes diverger en silence
+    au premier reformulage (2ᵉ passe de revue, axes A, C2 et D).
+    """
     jalons, tournois, tid = _attelage(avec_creneau=False)
 
-    assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
-    with pytest.raises(TournoiSansDepart):
+    preparation = jalons.preparation(tid, Jalon.DEMARRER)
+    assert preparation.pret is False
+    # Le refus tombe **dès** « Marquer prêt », pas au démarrage : c'est cette garde-ci.
+    assert preparation.moment == "dès le passage en « prêt »"
+    with pytest.raises(TournoiSansDepart) as refus:
         tournois.vers_pret(tid)
+    assert preparation.detail == str(refus.value)
 
 
 def test_effectif_insuffisant_le_jalon_annonce_ce_que_la_garde_refusera() -> None:
     """Second versant du même accord, sur l'autre garde (E05US021)."""
     jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=28)
 
-    assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
+    preparation = jalons.preparation(tid, Jalon.DEMARRER)
+    assert preparation.pret is False
+    assert preparation.moment == "au démarrage"
     # ⚠️ `vers_pret` **passe** : depuis *brouillon*, la seule garde est « ≥ 1 créneau ». Le jalon
     # répond de l'**étape** (arriver à `en_cours`), pas du prochain clic — c'est tout l'objet de
     # l'US, annoncer l'effectif avant le premier clic plutôt qu'au second. Cette ligne n'avait
     # aucune assertion et laissait donc croire que le refus tombait ici (relevé en revue, axe D) ;
     # c'est ce décalage que l'écran nomme désormais (« sera refusé **au démarrage** »).
     assert tournois.vers_pret(tid).statut is StatutTournoi.PRET
-    assert jalons.preparation(tid, Jalon.DEMARRER).pret is False
-    with pytest.raises(EffectifInsuffisantPourDemarrer):
+    assert preparation.pret is False
+    with pytest.raises(EffectifInsuffisantPourDemarrer) as refus:
         tournois.demarrer(tid)
+    assert preparation.detail == str(refus.value)
 
 
 def test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer() -> None:
@@ -266,8 +297,10 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_ce_que_la_garde_refusera() ->
     preparation = jalons.preparation(tid, Jalon.TERMINER)
     assert preparation.pret is False
     assert preparation.bloquant is True
-    with pytest.raises(TransitionStatutInvalide):
+    with pytest.raises(TransitionStatutInvalide) as refus:
         tournois.terminer(tid)
+    # Même exigence littérale que pour les créneaux : une seule rédaction pour les deux versants.
+    assert preparation.detail == str(refus.value)
 
 
 def test_le_jalon_terminer_egale_la_completude_sportive_pendant_le_tournoi() -> None:
@@ -286,6 +319,26 @@ def test_le_jalon_terminer_egale_la_completude_sportive_pendant_le_tournoi() -> 
     preparation = jalons.preparation(tid, Jalon.TERMINER)
     assert preparation.lignes == completude.sportif
     assert preparation.pret == completude.sportif_complet
+
+
+def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() -> None:
+    """Le jalon **dérive** la garde de statut de `_TRANSITIONS`, il ne la recopie pas.
+
+    Ce test est ce qui rend la dérivation vérifiable : pour **chacun** des sept statuts, « le jalon
+    annonce un blocage » doit valoir exactement « le service refuse ». La 1ʳᵉ correction portait
+    `(BROUILLON, PRET)` et `EN_COURS` en dur — un second encodage de la table, dans le commit même
+    qui érigeait le transport du verdict en doctrine (2ᵉ passe, axes A et C2). Le jour où `terminer`
+    sera accepté depuis *en pause*, ce test dira si les deux versants ont bougé ensemble.
+    """
+    complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
+
+    for statut in StatutTournoi:
+        jalons, tournois, tid = _attelage(completude=complet, inscrits=40, avec_deroule=True)
+        _amener_a(tournois, tid, statut)
+
+        preparation = jalons.preparation(tid, Jalon.TERMINER)
+        refuse = "terminer" not in {t.nom for t in tournois.transitions_possibles(tid)}
+        assert preparation.bloquant is refuse, f"désaccord sur {statut.value}"
 
 
 # --- Bornes -------------------------------------------------------------------------------------

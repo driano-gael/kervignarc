@@ -47,20 +47,18 @@ from dataclasses import dataclass
 from enum import Enum
 
 from domain.completude import Completude, EtatSection, LigneCompletude
-from domain.tournoi import StatutTournoi
+from domain.tournoi import (
+    MESSAGE_SANS_DEPART,
+    MESSAGE_TERMINER_HORS_EN_COURS,
+    StatutTournoi,
+    transitions_possibles,
+)
 
 # Clés **stables** des lignes de « prêt à démarrer » (contrat avec le front, comme celles de la
 # complétude). Le libellé lisible voyage dans la ligne ; la clé est ce sur quoi le front s'appuie.
 CLE_CRENEAUX = "creneaux"
 CLE_EFFECTIF = "effectif"
 CLE_DEROULE = "deroule"
-
-# D'où la question « prêt à démarrer ? » se pose encore. Au-delà, le tournoi est parti (ou ne
-# partira pas) : la transition n'est plus atteignable, et le dire `pret` serait un mensonge.
-_AVANT_LE_DEPART = (StatutTournoi.BROUILLON, StatutTournoi.PRET)
-
-# Le seul statut d'où `ServiceTournois.terminer` accepte (`{StatutTournoi.EN_COURS}`).
-_PENDANT_LE_TOURNOI = StatutTournoi.EN_COURS
 
 
 class Jalon(str, Enum):
@@ -99,6 +97,28 @@ def question(jalon: Jalon) -> str:
     return f"Prêt à {_VERBE[jalon]} ?"
 
 
+# Les transitions que chaque jalon garde, **par leur nom** — ceux de `domain.tournoi._TRANSITIONS`.
+# `DEMARRER` en garde deux : « prêt à démarrer ? » répond de l'**étape** (arriver à *en cours*), pas
+# du prochain clic, et deux transitions y mènent.
+_TRANSITIONS_DU_JALON: dict[Jalon, tuple[str, ...]] = {
+    Jalon.DEMARRER: ("vers-pret", "demarrer"),
+    Jalon.TERMINER: ("terminer",),
+}
+
+
+def transition_offerte(statut: StatutTournoi, jalon: Jalon) -> bool:
+    """Le statut offre-t-il encore une transition de ce jalon ?
+
+    ⚠️ **Dérivé, jamais recopié.** La première version portait `(BROUILLON, PRET)` et `EN_COURS` en
+    dur — un **second encodage** de la table que ce module importe déjà, dans le commit même qui
+    érigeait le transport du verdict en doctrine (relevé en 2ᵉ passe par les axes A et C2). Le jour
+    où `terminer` sera accepté depuis *en pause*, ou `ARCHIVER` ajouté, la table bouge et le jalon
+    suit — sans quoi il annoncerait un refus que le serveur ne prononce plus.
+    """
+    noms = _TRANSITIONS_DU_JALON[jalon]
+    return any(transition.nom in noms for transition in transitions_possibles(statut))
+
+
 @dataclass(frozen=True)
 class PreparationJalon:
     """La réponse d'un jalon : ce qui manque, et si l'action passera.
@@ -113,7 +133,12 @@ class PreparationJalon:
       contredit le total affiché ailleurs — c'est le défaut qu'ADR-0075 a coûté cher à trouver. La
       phrase n'est **pas rédigée ici** : elle vient de `ExigenceEffectifTournoi.message_de_refus`,
       celle-là même que la garde met dans son refus, pour que l'avertissement et le refus ne
-      puissent pas diverger.
+      puissent pas diverger ;
+    - `moment` : **quand** le refus tombera — « au démarrage », « dès le passage en « prêt » ».
+      Dérivé de la garde qui bloque en **premier**, jamais du jalon : les deux gardes de *démarrer*
+      ne tombent pas au même clic (les créneaux au passage en *prêt*, l'effectif au démarrage). Le
+      front l'écrivait en dur, donc juste pour l'effectif et **faux** pour les créneaux — sur
+      l'état initial de tout tournoi neuf (relevé en 2ᵉ passe de revue, axe C1).
 
     ⚠️ **Aucun bouton n'est jamais désactivé sur la foi de ces champs.** E05US021 avait déjà tranché
     ce point pour le démarrage : l'avertissement se lit avant le clic, le refus remonte du serveur.
@@ -126,6 +151,7 @@ class PreparationJalon:
     pret: bool
     bloquant: bool
     detail: str | None = None
+    moment: str | None = None
 
 
 def evaluer_demarrer(
@@ -136,7 +162,7 @@ def evaluer_demarrer(
     effectif_suffisant: bool,
     inscrits: int,
     minimum: int,
-    cause_effectif: str | None = None,
+    cause_effectif: str | None,
 ) -> PreparationJalon:
     """« Prêt à démarrer ? » — les trois gardes du feu vert, plus un avertissement sans effet.
 
@@ -166,10 +192,22 @@ def evaluer_demarrer(
     revanche ce qui oblige l'écran à dire *quand* le refus tombe (« sera refusé **au démarrage** »)
     et non « sera refusé », qui se lirait comme un refus immédiat (relevé en revue, axe D).
     """
-    encore_a_lancer = statut in _AVANT_LE_DEPART
+    if not transition_offerte(statut, Jalon.DEMARRER):
+        # **Aucune ligne** : « ce qui manque » n'a pas de sens pour un tournoi qui ne partira plus.
+        # Les rendre quand même — ce que faisait la 1ʳᵉ correction, contre sa propre docstring —
+        # obligeait le front à les masquer lui-même, donc à recopier la garde (axes B et D).
+        return PreparationJalon(
+            jalon=Jalon.DEMARRER,
+            lignes=(),
+            pret=False,
+            bloquant=True,
+            detail=_pourquoi_plus_a_lancer(statut),
+        )
+
     etat_creneaux = EtatSection.OK if nb_creneaux > 0 else EtatSection.EN_ATTENTE
-    etat_effectif = _etat_effectif(effectif_suffisant, inscrits)
+    etat_effectif = _etat_effectif(effectif_suffisant, inscrits, minimum)
     etat_deroule = EtatSection.OK if nb_etapes_deroule > 0 else EtatSection.EN_ATTENTE
+    creneaux_ok = etat_creneaux is EtatSection.OK
 
     lignes = (
         LigneCompletude(cle=CLE_CRENEAUX, libelle="Créneaux", etat=etat_creneaux),
@@ -186,13 +224,14 @@ def evaluer_demarrer(
     return PreparationJalon(
         jalon=Jalon.DEMARRER,
         lignes=lignes,
-        pret=encore_a_lancer and etat_creneaux is EtatSection.OK and effectif_suffisant,
+        pret=creneaux_ok and effectif_suffisant,
         bloquant=True,
-        detail=_detail_demarrer(encore_a_lancer, effectif_suffisant, cause_effectif),
+        detail=_cause_demarrer(creneaux_ok, effectif_suffisant, cause_effectif),
+        moment=_moment_du_refus(creneaux_ok, effectif_suffisant),
     )
 
 
-def _etat_effectif(suffisant: bool, inscrits: int) -> EtatSection:
+def _etat_effectif(suffisant: bool, inscrits: int, minimum: int) -> EtatSection:
     """L'état de la ligne « Inscrits » — trois cas, et pas deux.
 
     ⚠️ **Zéro inscrit n'est pas « terminé »**, même quand rien n'est exigé (aucun déroulé composé,
@@ -204,19 +243,50 @@ def _etat_effectif(suffisant: bool, inscrits: int) -> EtatSection:
     """
     if not suffisant:
         return EtatSection.ALERTE
-    return EtatSection.OK if inscrits > 0 else EtatSection.EN_ATTENTE
+    return EtatSection.OK if minimum > 0 else EtatSection.EN_ATTENTE
 
 
-def _detail_demarrer(
-    encore_a_lancer: bool, effectif_suffisant: bool, cause_effectif: str | None
+def _pourquoi_plus_a_lancer(statut: StatutTournoi) -> str:
+    """Pourquoi la question ne se pose plus — et **pas** « déjà lancé » pour tout le monde.
+
+    Un tournoi **annulé** depuis le brouillon n'a jamais démarré (`brouillon → annule` existe). La
+    1ʳᵉ correction l'avait corrigé côté écran et laissé faux au **contrat** — celui-là même dont
+    l'argument était que `E16US007` et `E16US008` le liront sans le garde-fou du front (relevé en
+    2ᵉ passe de revue par quatre axes).
+    """
+    if statut is StatutTournoi.ANNULE:
+        return "Ce tournoi est annulé : il ne sera pas lancé."
+    if statut is StatutTournoi.ARCHIVE:
+        return "Ce tournoi est archivé : il est en lecture seule."
+    return "Ce tournoi est déjà lancé : il n'y a plus rien à préparer avant son démarrage."
+
+
+def _cause_demarrer(
+    creneaux_ok: bool, effectif_suffisant: bool, cause_effectif: str | None
 ) -> str | None:
-    """La phrase qui explique le blocage — jamais un doublon de la ligne qu'elle accompagne."""
-    if not encore_a_lancer:
-        return "Ce tournoi est déjà lancé : il n'y a plus rien à préparer avant son démarrage."
+    """La phrase qui explique le blocage — celle du refus, jamais une seconde rédaction.
+
+    L'ordre suit celui des gardes : sans créneau, c'est `vers_pret` qui refusera d'abord, et c'est
+    donc **son** message qu'il faut afficher.
+    """
+    if not creneaux_ok:
+        return MESSAGE_SANS_DEPART
     return None if effectif_suffisant else cause_effectif
 
 
-def evaluer_terminer(completude: Completude, statut: StatutTournoi) -> PreparationJalon:
+def _moment_du_refus(creneaux_ok: bool, effectif_suffisant: bool) -> str | None:
+    """Au clic de quelle action le refus tombera — les deux gardes ne tombent pas au même.
+
+    Sans créneau, c'est `vers_pret` qui refuse (`TournoiSansDepart`), donc **dès** « Marquer
+    prêt » ; l'effectif, lui, n'est vérifié qu'au démarrage. Annoncer « au démarrage » dans les
+    deux cas rendait la phrase fausse sur l'état initial de tout tournoi neuf.
+    """
+    if not creneaux_ok:
+        return "dès le passage en « prêt »"
+    return None if effectif_suffisant else "au démarrage"
+
+
+def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> PreparationJalon:
     """« Prêt à terminer ? » — la complétude **sportive**, relue telle quelle.
 
     Aucun calcul propre : les lignes *sont* `completude.sportif` et `pret` *est*
@@ -238,11 +308,14 @@ def evaluer_terminer(completude: Completude, statut: StatutTournoi) -> Preparati
     L'administratif reste **hors** de ce jalon (retour A14, E16US003) : les paiements ne bloquent
     pas la clôture sportive et se suivent sur l'axe Gestion.
     """
-    en_cours = statut is _PENDANT_LE_TOURNOI
+    offert = transition_offerte(statut, Jalon.TERMINER)
     return PreparationJalon(
         jalon=Jalon.TERMINER,
         lignes=completude.sportif,
-        pret=en_cours and completude.sportif_complet,
-        bloquant=not en_cours,
-        detail=None if en_cours else "Seul un tournoi en cours peut être terminé.",
+        pret=offert and completude.sportif_complet,
+        bloquant=not offert,
+        # La phrase du refus lui-même (`domain.tournoi`), pas une seconde rédaction : la 1ʳᵉ
+        # correction la recopiait mot pour mot depuis `ServiceTournois.terminer` — la duplication
+        # que ce même travail dénonçait pour l'effectif (2ᵉ passe, axes A, C2 et D).
+        detail=None if offert else MESSAGE_TERMINER_HORS_EN_COURS,
     )

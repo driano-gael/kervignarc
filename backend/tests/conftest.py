@@ -27,8 +27,11 @@ simple magasin, **sans** couplage à l'archer (au contraire de `FauxScoreReposit
 les tests de service ne vérifient pas la purge en cascade — c'est un contrat d'adapter, prouvé au
 niveau du repository (`test_inscription_repository`).
 
-> `FauxTournoiRepository` est, lui, recopié dans trois modules. On le laisse : cette US n'en ajoute
-> pas d'usage, et on ne réécrit pas ce qu'on n'aggrave pas.
+> `FauxTournoiRepository` **vit ici depuis E16US012** (2 consommateurs : `test_service_tournois` et
+> `test_service_jalons`). ⚠️ **25 autres modules en gardent une copie locale** — chiffre relevé dans
+> le dépôt, pas déduit : `grep -rl "class FauxTournoiRepository" backend/tests`. On ne les rapatrie
+> pas ici : c'est un rangement transverse, pas le travail d'une branche fonctionnelle, et cette US
+> n'aggrave pas la duplication (elle en retire une et en installe une partagée — solde nul).
 
 Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
 reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
@@ -934,14 +937,17 @@ class FauxLecteurPopulations:
 
 # --- Décor du cycle de vie d'un tournoi (remonté ici en E16US012) ------------------------
 #
-# `test_service_jalons` était le **seul** module du dépôt à importer des symboles — dont deux
-# privés — depuis un autre module de test (`test_service_tournois`). Un renommage local y aurait
-# cassé un module voisin sans que rien ne signale la dépendance (relevé en revue, axe B). Ces
-# quatre-là ont désormais deux consommateurs : c'est le seuil que la doctrine ci-dessus fixe.
+# Ces quatre-là ont désormais **deux** consommateurs (`test_service_tournois` et
+# `test_service_jalons`) : c'est le seuil que la doctrine ci-dessus fixe, et le motif suffisant du
+# déplacement. Un renommage
+# local dans l'un cassait l'autre sans que rien ne signale la dépendance.
 #
-# ⚠️ Les **deux autres copies** de `FauxTournoiRepository` (cf. la note ci-dessus) restent où
-# elles sont : cette US ne les aggrave pas, et les rapatrier serait un rangement de tests qui
-# n'a rien à faire dans une branche fonctionnelle.
+# ⚠️ **Ce qui suit était faux et a été corrigé en 2ᵉ passe de revue** (axes A, C1, C2 et D) : la
+# première rédaction justifiait le déplacement en affirmant que `test_service_jalons` était le
+# **seul** module du dépôt à importer depuis un autre module de test. Ils sont **25** à le faire,
+# dont 21 sur des symboles privés — c'est une pratique courante ici, pas une anomalie. Le geste
+# reste bon, sa justification était fausse ; et un chiffre faux écrit à l'endroit exact où se
+# décide « faut-il factoriser ? » fait prendre la mauvaise décision à qui le lira.
 
 DATE_TOURNOI = datetime.date(2026, 3, 14)
 

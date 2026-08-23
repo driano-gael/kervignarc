@@ -54,7 +54,7 @@ window.ATLAS.carte = {
   ],
   "fan_in": [
    {
-    "clientes": 19,
+    "clientes": 18,
     "feature": "competition"
    },
    {
@@ -2902,7 +2902,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 161,
+  "aretes_front": 160,
   "enchevetrements": 4,
   "features": 48,
   "imports": 896,

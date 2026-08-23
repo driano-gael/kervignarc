@@ -52,7 +52,7 @@
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { texteErreur } from '../../shared/ui/texteErreur'
-// ⚠️ `DETTE-083` — l'autre moitié du cycle : `jalons/PretA` réimporte `completude`.
+// DETTE-083 — ⚠️ l'autre moitié du cycle : `jalons/PretA` réimporte `completude`.
 import { PretA } from '../jalons/PretA'
 import type { StatutTournoi } from '../competition/api'
 import { useCompletude, useTerminerDepuisCompletude } from './hooks'
@@ -68,6 +68,7 @@ const INTRO = (
 export function Completude({ tournoiId, statut }: { tournoiId: number; statut: StatutTournoi }) {
   const completude = useCompletude(tournoiId)
   const terminer = useTerminerDepuisCompletude(tournoiId)
+  const enCours = statut === 'en_cours'
 
   // Contrôle en amont (`P-4`) : la confirmation **chiffre** ce qui reste et dit ce que terminer
   // fige, avant de laisser passer. Le « geste délibéré » des actions massives (taper un mot) relève
@@ -81,15 +82,30 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       intro={INTRO}
       titreSection="Sportif"
       lignes={completude.data?.sportif ?? null}
-      pret={completude.data?.sportif_complet ?? false}
+      pret={enCours && (completude.data?.sportif_complet ?? false)}
       // Le badge « complet / incomplet » de la section, tel qu'il était avant la migration. Il se
       // passe **à part** de `pret` depuis la revue : sur cet écran les deux valent `sportif_complet`
       // et le rendu ne change pas, mais sur *démarrer* ils diffèrent — `pret` peut être faux avec
       // toutes les lignes vertes sauf un avertissement qui ne bloque pas.
       complet={completude.data?.sportif_complet ?? false}
-      // Terminer n'a **aucune garde dure** : l'incomplétude change le libellé de la confirmation,
-      // jamais le droit de terminer (`D-15`). C'est l'asymétrie que `bloquant` porte, cf. ADR-0096.
-      bloquant={false}
+      // Terminer n'a aucune garde **de contenu** : l'incomplétude change le libellé de la
+      // confirmation, jamais le droit de terminer (`D-15`). C'est l'asymétrie que `bloquant` porte.
+      //
+      // ⚠️ **Mais il a une garde de statut**, et cet écran la redéduit — seul endroit du lot où
+      // c'est encore le cas. `ServiceTournois.terminer` n'accepte que `en_cours` ; avec
+      // `bloquant={false}` en dur, un tournoi **en pause** (la pause déjeuner du jour J) s'entendait
+      // dire « l'application ne vous en empêchera pas » juste avant un 409, et un tournoi terminé
+      // lisait « Oui — rien ne s'y oppose » au-dessus de « ce tournoi est terminé ». C'était le
+      // bloquant de la 2ᵉ passe de revue.
+      //
+      // Pourquoi une déduction locale ici, alors que `PretADemarrer` n'en fait aucune : cet écran
+      // lit `/completude`, qui ne porte pas de statut, et le brancher sur `/jalons/terminer`
+      // ajouterait un **second poll de 5 s par tablette** pour la même liste — ce qu'ADR-0096 a
+      // explicitement écarté. La contrepartie de cet arbitrage, c'est ce miroir d'
+      // `domain.jalon.evaluer_terminer`, et les tests qui l'épinglent hors `en_cours`.
+      bloquant={!enCours}
+      moment="à la clôture"
+      detail={enCours ? null : 'Seul un tournoi en cours peut être terminé.'}
       chargement={completude.isPending}
       erreur={
         completude.isError && (
@@ -109,7 +125,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
           empêchait, au lieu d'avertir. On dégrade comme le fait déjà `FriseCycleDeVie` (`P-3`) : on
           dit qu'on n'a pas pu vérifier ce qui reste, et on laisse passer. Le manque d'information
           ne doit jamais verrouiller la seule action irréversible du produit. */}
-      {statut === 'en_cours' && !completude.isPending && (
+      {enCours && !completude.isPending && (
         <div className="completude__actions">
           <BoutonConfirme
             libelle="Terminer le tournoi"

@@ -12,7 +12,7 @@
 // transitions mènent au départ (`vers-pret` depuis *brouillon*, `demarrer` depuis *prêt*) : on
 // propose celle que le serveur offre, quelle qu'elle soit.
 //
-// ⚠️ **Deux endroits pour le même geste** — `DETTE-082`. La frise du cycle de vie (`FriseCycleDeVie`,
+// DETTE-082 — ⚠️ **deux endroits pour le même geste.** La frise du cycle de vie (`FriseCycleDeVie`,
 // accueil admin) porte toujours son propre bouton « Démarrer », action **nue** ; celui-ci est l'action
 // **expliquée**. Rien n'est incohérent (même topologie serveur, même transition, même garde), mais
 // qui part de la frise ne voit pas ce qui manque. À instruire quand `ARCHIVER` rejoindra la famille.
@@ -24,7 +24,6 @@
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'
 import { useTransitionnerTournoi, useTransitions } from '../accueil/hooks'
-import type { StatutTournoi } from '../competition/api'
 import { usePreparationJalon } from './hooks'
 import { PretA } from './PretA'
 
@@ -33,20 +32,18 @@ import { PretA } from './PretA'
 // celles qui concernent cet écran.
 const VERS_LE_DEPART = ['vers-pret', 'demarrer']
 
-const PARTI = 'Ce tournoi est déjà lancé : il n’y a plus rien à préparer ici.'
-const ANNULE = 'Ce tournoi est annulé : il ne sera pas lancé.'
-
 const INTRO =
   'Ce qui doit être en place avant de lancer le tournoi. Les manques marqués « en attente » ou ' +
   '« à finir » seront refusés au démarrage — sauf le déroulé, qui n’est qu’un conseil.'
 
-export function PretADemarrer({ tournoiId, statut }: { tournoiId: number; statut: StatutTournoi }) {
-  // ⚠️ **La question ne se pose plus une fois le tournoi parti**, et on cesse alors de la poser au
-  // serveur : `enabled: false` coupe le poll de 5 s par tablette (relevé en revue) et, surtout,
-  // l'écran n'affiche plus ni verdict ni liste — il affichait « Oui — rien ne s'y oppose »
-  // juste au-dessus de « ce tournoi est déjà lancé », deux phrases qui se contredisent.
-  const aPreparer = statut === 'brouillon' || statut === 'pret'
-  const preparation = usePreparationJalon(tournoiId, 'demarrer', aPreparer)
+export function PretADemarrer({ tournoiId }: { tournoiId: number }) {
+  // ⚠️ **Ce composant ne connaît pas le statut, et c'est délibéré.** Il l'a connu le temps d'une
+  // passe de revue, sous la forme d'un `statut === 'brouillon' || statut === 'pret'` — soit un
+  // second encodage TypeScript de `domain.jalon`, qui commandait l'affichage entier. Le serveur
+  // rend désormais une **liste vide** et un `detail` quand il n'y a plus rien à préparer : l'écran
+  // n'a plus rien à déduire, et la copie ne peut plus diverger de la table des transitions (2ᵉ
+  // passe de revue, axe D).
+  const preparation = usePreparationJalon(tournoiId, 'demarrer')
   const transitions = useTransitions(tournoiId)
   const transitionner = useTransitionnerTournoi(tournoiId)
 
@@ -61,14 +58,13 @@ export function PretADemarrer({ tournoiId, statut }: { tournoiId: number; statut
       question={preparation.data?.question ?? 'Prêt à démarrer ?'}
       intro={INTRO}
       titreSection="Avant de démarrer"
-      lignes={aPreparer ? (preparation.data?.lignes ?? null) : null}
+      lignes={preparation.data?.lignes ?? null}
       pret={preparation.data?.pret ?? false}
       bloquant={preparation.data?.bloquant ?? true}
-      moment="au démarrage"
+      moment={preparation.data?.moment ?? null}
       detail={preparation.data?.detail ?? null}
-      chargement={aPreparer && preparation.isPending}
+      chargement={preparation.isPending}
       erreur={
-        aPreparer &&
         preparation.isError && (
           <p className="carte__etat carte__etat--erreur" role="alert">
             Préparation injoignable — {texteErreur(preparation.error)}
@@ -79,25 +75,19 @@ export function PretADemarrer({ tournoiId, statut }: { tournoiId: number; statut
       {/* Hors de la garde sur les données : si la lecture échoue (LAN coupé à l'ouverture de
           l'écran), l'action doit rester accessible. C'est le correctif de revue d'E16US003 sur
           l'écran jumeau — le manque d'information ne verrouille jamais l'action. */}
-      {!aPreparer ? (
-        // « Déjà lancé » serait **faux** pour un tournoi annulé depuis le brouillon, qui n'a jamais
-        // démarré (`_TRANSITIONS` autorise `brouillon → annule`) — relevé en revue par trois axes.
-        <p className="completude__implication">{statut === 'annule' ? ANNULE : PARTI}</p>
-      ) : (
-        offerte && (
-          <div className="completude__actions">
-            {/* Sans classe de ton, comme les transitions de la frise : c'est l'action nominale
-                de l'écran, pas une action destructrice. */}
-            <button
-              type="button"
-              disabled={transitionner.isPending}
-              onClick={() => transitionner.mutate(offerte.nom)}
-            >
-              {transitionner.isPending ? 'En cours…' : offerte.libelle}
-            </button>
-            <MessageErreur erreur={transitionner.error} />
-          </div>
-        )
+      {offerte && (
+        <div className="completude__actions">
+          {/* Sans classe de ton, comme les transitions de la frise : c'est l'action nominale
+              de l'écran, pas une action destructrice. */}
+          <button
+            type="button"
+            disabled={transitionner.isPending}
+            onClick={() => transitionner.mutate(offerte.nom)}
+          >
+            {transitionner.isPending ? 'En cours…' : offerte.libelle}
+          </button>
+          <MessageErreur erreur={transitionner.error} />
+        </div>
       )}
     </PretA>
   )

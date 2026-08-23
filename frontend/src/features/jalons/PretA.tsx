@@ -18,7 +18,7 @@
 // serveur (`D-15`). Un front qui grise le bouton se met à décider d'une garde — et devient la
 // seconde source que le CA interdit.
 
-// ⚠️ `DETTE-083` — ces deux imports **ferment un cycle** : `completude/Completude.tsx` importe cette
+// DETTE-083 — ⚠️ ces deux imports **ferment un cycle** : `completude/Completude.tsx` importe cette
 // coquille, qui réimporte `completude`. Réutiliser le rendu plutôt que le dupliquer est le bon geste
 // (`DETTE-065`), mais la coquille de la famille dépend ainsi d'un de ses membres. Résorption :
 // remonter `SectionCompletude`, `LigneCompletude`, `afficheEtat` et `detailLigne` dans `shared/` —
@@ -47,12 +47,17 @@ export function PretA({
   titreSection: string
   // `null` tant que la réponse n'est pas là : l'écran dit qu'il n'a pas pu vérifier, il n'invente
   // pas une liste vide (qui se lirait « rien ne manque »).
+  //
+  // ⚠️ Une liste **vide** est autre chose encore : le serveur a répondu, et il n'y a rien à
+  // préparer — un tournoi déjà lancé, annulé, archivé. On ne rend alors ni verdict ni section, mais
+  // on rend le `detail`, qui dit pourquoi. C'est ce qui dispense l'écran de redéduire la garde du
+  // statut (2ᵉ passe de revue, axe D).
   lignes: LigneCompletude[] | null
   pret: boolean
   bloquant: boolean
   // *Quand* le refus tombe — « au démarrage ». Cf. `verdict` : sans ce mot, la phrase se lit comme
   // un refus immédiat, que l'action offerte dément parfois.
-  moment?: string
+  moment?: string | null
   // La **cause chiffrée** du blocage, telle que le serveur la rend. Jamais rédigée ici : c'est la
   // phrase du refus lui-même, pour que l'avertissement ne dise pas autre chose que le 409.
   detail?: string | null
@@ -79,7 +84,7 @@ export function PretA({
       {chargement && <p className="carte__etat">Chargement…</p>}
       {erreur}
 
-      {lignes !== null && (
+      {lignes !== null && lignes.length > 0 && (
         <>
           {/* Le verdict d'abord, la liste ensuite : la question est binaire, la liste dit
               *pourquoi*. `role="status"` parce qu'il change sous le poll sans action de
@@ -92,10 +97,14 @@ export function PretA({
               `D-16` / `P-4` — une alerte qui ne chiffre pas son impact est un clic de plus, pas une
               protection ; sur un tournoi à deux créneaux, « 8/34 » seul semble contredire le total
               affiché ailleurs (relevé en revue, axe D). */}
-          {detail !== null && <p className="completude__implication">{detail}</p>}
           <SectionCompletude titre={titreSection} complet={complet} lignes={lignes} />
         </>
       )}
+
+      {/* La cause, hors de la garde sur la liste : elle porte aussi le cas « plus rien à préparer »,
+          où il n'y a précisément aucune ligne à montrer. `D-16` / `P-4` — une alerte qui ne chiffre
+          pas son impact est un clic de plus, pas une protection. */}
+      {detail !== null && <p className="completude__implication">{detail}</p>}
 
       {children}
     </section>

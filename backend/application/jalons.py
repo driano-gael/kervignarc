@@ -105,7 +105,9 @@ class ServiceJalons:
         if jalon is Jalon.DEMARRER:
             return self._demarrer(tournoi_id, tournoi.statut)
         if jalon is Jalon.TERMINER:
-            return evaluer_terminer(self._completudes.pour_tournoi(tournoi_id), tournoi.statut)
+            return evaluer_terminer(
+                completude=self._completudes.pour_tournoi(tournoi_id), statut=tournoi.statut
+            )
         raise JalonNonInstruit(f"Il n'y a pas encore d'écran « prêt à {jalon.value} ».")
 
     def _demarrer(self, tournoi_id: TournoiId, statut: StatutTournoi) -> PreparationJalon:

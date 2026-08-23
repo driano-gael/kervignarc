@@ -27,10 +27,10 @@ export interface Verdict {
 // **immédiat**, démenti par le clic suivant : l'écran se contredisait à deux lignes d'intervalle
 // (relevé en revue, axe D). Nommer le moment (« sera refusé **au démarrage** ») rend la phrase vraie
 // dans les deux cas, et reste générique — le mot vient du jalon, pas d'une table d'écrans.
-export function verdict(pret: boolean, bloquant: boolean, moment?: string): Verdict {
+export function verdict(pret: boolean, bloquant: boolean, moment?: string | null): Verdict {
   if (pret) return { ton: 'ok', texte: 'Oui — rien ne s’y oppose.' }
   if (bloquant) {
-    const quand = moment === undefined ? '' : ` ${moment}`
+    const quand = moment ? ` ${moment}` : ''
     return { ton: 'alerte', texte: `Pas encore — ce qui manque ci-dessous sera refusé${quand}.` }
   }
   return {

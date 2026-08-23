@@ -16,16 +16,17 @@ const INTERVALLE_POLL_MS = 5000
 export const clePreparationJalon = (tournoiId: number, jalon: Jalon) =>
   ['jalon', tournoiId, jalon] as const
 
-// `actif` **coupe le poll** quand la question ne se pose plus (tournoi déjà lancé, annulé) : sans
-// lui, chaque tablette laissée sur l'écran interrogeait le serveur toutes les 5 s pour une réponse
-// dont plus rien n'était affiché (relevé en revue). Le défaut est `true` : un jalon se lit en
-// continu, c'est le cas nominal.
-export function usePreparationJalon(tournoiId: number, jalon: Jalon, actif = true) {
+// ⚠️ **Le poll ne se coupe pas selon le statut**, et c'est un retour assumé sur un correctif de la
+// 1ʳᵉ passe de revue. Le couper supposait de savoir, côté front, quand la question cesse de se
+// poser — donc d'y recopier la table des transitions, ce qui a produit un défaut plus grave que
+// celui que la coupure évitait (2ᵉ passe, axe D). C'est désormais la **réponse** qui dit qu'il n'y
+// a plus rien à préparer, et elle continue donc de servir. Le coût réel est nul : un écran
+// d'administration, ouvert par une personne, sur un tournoi déjà lancé.
+export function usePreparationJalon(tournoiId: number, jalon: Jalon) {
   return useQuery({
     queryKey: clePreparationJalon(tournoiId, jalon),
     queryFn: () => getPreparationJalon(tournoiId, jalon),
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
-    enabled: actif,
   })
 }

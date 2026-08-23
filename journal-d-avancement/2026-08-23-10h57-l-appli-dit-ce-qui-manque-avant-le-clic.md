@@ -51,7 +51,8 @@ Vous aviez demandé, en relisant les maquettes, quatre écrans de cette sorte : 
 **Une seule forme déclinée** — c'est ce qui a été retenu. Concrètement : les quatre écrans partagent
 le même squelette, la même façon de poser la question et la même façon de lister ce qui manque. Les
 deux membres livrés aujourd'hui (démarrer, terminer) le prouvent déjà : « Prêt à terminer ? » a été
-rebâti sur ce squelette commun sans que rien ne change à l'écran.
+rebâti sur ce squelette commun sans rien perdre au passage — il y gagne même la phrase de verdict en
+tête, comme son nouveau voisin.
 
 L'intérêt est de calendrier autant que de cohérence : deux mises à jour à venir — les exports et le
 feu vert — s'apprêtaient à inventer chacune sa propre version de « puis-je passer à la suite ». Elles

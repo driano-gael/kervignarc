@@ -71,6 +71,9 @@ def test_le_jalon_demarrer_liste_ce_qui_manque_avant_le_clic(
         assert [ligne["cle"] for ligne in corps["lignes"]] == ["creneaux", "effectif", "deroule"]
         assert corps["pret"] is False
         assert corps["bloquant"] is True
+        # Le refus tombera **dès** « Marquer prêt » : c'est la garde des créneaux qui manque.
+        assert corps["moment"] == "dès le passage en « prêt »"
+        assert corps["detail"] is not None
 
 
 def test_le_jalon_terminer_rend_la_completude_sportive(
@@ -137,7 +140,10 @@ def test_un_tournoi_deja_lance_ne_dit_pas_qu_il_peut_demarrer(
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/jalons/demarrer").json()
 
         assert corps["pret"] is False
-        assert corps["detail"] is not None
+        # Ni liste, ni moment : il n'y a plus rien à préparer, donc rien à dater.
+        assert corps["lignes"] == []
+        assert corps["moment"] is None
+        assert "déjà lancé" in corps["detail"]
         assert client.post(f"/api/v1/tournois/{tournoi_id}/demarrer").status_code == 409
 
 

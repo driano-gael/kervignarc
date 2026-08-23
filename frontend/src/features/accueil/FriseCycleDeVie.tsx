@@ -6,7 +6,7 @@
 // de la topologie — la frise ne décide rien, règle 1). Les transitions qui **figent** ou sont
 // terminales sont confirmées ; `terminer` réutilise le message chiffré de la complétude (E12US005).
 
-// ⚠️ `DETTE-082` — cette frise porte les boutons « Démarrer » / « Terminer » **nus**, pendant que la
+// DETTE-082 — ⚠️ cette frise porte les boutons « Démarrer » / « Terminer » **nus**, pendant que la
 // famille « prêt à… » (E16US012) porte les mêmes actions **expliquées** par ce qui manque. Deux
 // endroits pour le même geste : à instruire quand `ARCHIVER` rejoindra la famille, la frise portant
 // aussi ce bouton. Ne pas ajouter un 3ᵉ chemin d'action sans trancher celui-ci.

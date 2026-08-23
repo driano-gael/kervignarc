@@ -28,6 +28,10 @@ export interface PreparationJalon {
   // `null` s'il n'y en a pas. C'est la phrase du refus serveur lui-même : l'avertissement d'avant
   // le clic et le 409 d'après ne peuvent pas énoncer deux causes différentes.
   detail: string | null
+  // **Quand** ce refus tombera (« au démarrage », « dès le passage en « prêt » »), `null` s'il n'y
+  // a rien à refuser. Dérivé côté serveur de la garde qui bloque en premier : les deux gardes de
+  // *démarrer* ne tombent pas au même clic, et l'écran ne doit pas le deviner.
+  moment: string | null
 }
 
 export function getPreparationJalon(tournoiId: number, jalon: Jalon): Promise<PreparationJalon> {
