@@ -360,6 +360,8 @@ def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() 
         except TransitionStatutInvalide:
             refuse = True
         assert preparation.bloquant is refuse, f"désaccord sur {statut.value}"
+        # Le champ qui porte la garde suit la même table, sur les sept statuts.
+        assert preparation.question_posee is not refuse, f"question_posee sur {statut.value}"
         # ⚠️ Et la liste, elle, ne suit **pas** le blocage : « où en est le sportif » se lit à tout
         # statut. C'est l'asymétrie avec *démarrer*, dont la liste est la préparation. L'assertion
         # inverse — écrite en 4ᵉ passe — gravait une sur-correction que l'écran avait déjà annulée.

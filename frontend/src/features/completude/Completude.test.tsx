@@ -348,6 +348,11 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('rien ne s’y oppose')
     expect(screen.getByText('complet')).toBeInTheDocument()
+    // Les deux dernières conditionnelles de l'écran, qui n'avaient que des assertions positives :
+    // rendues inconditionnelles, elles afficheraient « Seul un tournoi en cours peut être terminé »
+    // sous « Oui — rien ne s'y oppose », et « ce tournoi est terminé » pendant le tournoi.
+    expect(screen.queryByText(/Seul un tournoi en cours/)).toBeNull()
+    expect(screen.queryByText(/le sportif est figé/)).toBeNull()
   })
 
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {

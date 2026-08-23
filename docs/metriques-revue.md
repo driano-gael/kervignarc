@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (7ᵉ passe, ciblée B+D) | 17 | +143/-52 | ~2 min | ~13 min | D (21:59→22:11) | — | majeur:3 mineur:5 suggestion:1 | — | — | **bloquant:0** majeur:3 mineur:3 suggestion:2 | **aucun bloquant** | 7 (sortie) |
 | 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
 | 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
 | 2026-08-23 | `E16US012` (4ᵉ passe, sur les correctifs) | 17 | +260/-61 | ~2 min | ~40 min | D (19:12→19:52) | **OK** mineur:5 suggestion:1 | majeur:1 mineur:5 suggestion:4 | majeur:1 mineur:5 | majeur:3 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:1 | **D (1)** | 5 |
@@ -430,3 +431,11 @@ serveur toutes les 5 s, jour J, sur le LAN — contre une doctrine que le dépô
 pour les routes ouvertes. L'inventaire tenait en un `grep`. C'est la même classe d'erreur que les
 chiffres du constat 28, appliquée non plus à une phrase de doc mais à une **décision d'architecture**,
 et son coût n'est pas documentaire.
+
+**33. Remplacer un commentaire par un champ ne garde rien de plus si le champ n'est pas asserté.**
+E16US012 a constaté qu'une convention ne vivait qu'en commentaire d'avertissement, et l'a remplacée
+par un champ de contrat — geste juste. Mais le champ est parti en production avec **zéro assertion**
+dans le dépôt, une valeur par défaut côté serveur, et une ligne d'ADR affirmant qu'il était gardé.
+Le déplacement d'une promesse d'un support à un autre ne devient une garantie qu'au moment où une
+mutation la fait rougir. Le réflexe : après avoir ajouté un champ ou une prop qui « porte » une
+règle, le figer et relancer — s'il ne tombe rien, on a déplacé le commentaire, pas fermé le trou.

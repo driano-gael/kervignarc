@@ -232,6 +232,20 @@ describe('Prêt à démarrer ?', () => {
     expect(await screen.findByRole('heading', { name: 'Prêt à décoller ?' })).toBeInTheDocument()
   })
 
+  it('la question fermée coupe le verdict, même quand la liste est pleine', async () => {
+    // Le cas du membre *terminer*, que la coquille doit savoir rendre — et que la fixture « plus
+    // rien à préparer » ne couvre pas, puisqu'elle a **aussi** la liste vide. Sans ce test, la prop
+    // n'était tenue que par sa présence (`tsc`), jamais par sa valeur (7ᵉ passe, axe B).
+    vi.mocked(getPreparationJalon).mockResolvedValue({
+      ...DEUX_MANQUES,
+      question_posee: false,
+    })
+    monter(<PretADemarrer tournoiId={1} />)
+
+    expect(await screen.findByText('Créneaux')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('un tournoi parti n’affiche ni verdict ni liste, et dit pourquoi', async () => {
     // L'écran affichait « Oui — rien ne s'y oppose » juste au-dessus de « ce tournoi est déjà
     // lancé », deux phrases qui se contredisent. La raison vient du **serveur** : l'écran ne sait

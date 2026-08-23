@@ -353,6 +353,7 @@ def test_la_question_se_pose_avant_le_depart_depuis_les_deux_statuts(
     )
 
     assert preparation.pret is True
+    assert preparation.question_posee is True
     assert preparation.detail is None
 
 
@@ -393,6 +394,9 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_un_refus() -> None:
 
     assert preparation.pret is False
     assert preparation.bloquant is True
+    # ⚠️ **Le cas discriminant** : liste **pleine** et question **fermée**. C'est exactement la
+    # combinaison que `lignes` ne sait plus exprimer, donc la raison d'être du champ.
+    assert preparation.question_posee is False
     # ⚠️ **Mais la liste reste** — asymétrie assumée avec *démarrer*, et corrigée en 5ᵉ passe. Chez
     # *terminer* la liste **est l'état sportif** : « où en est la qualification » a du sens à tout
     # statut, et c'est ce que l'organisateur vient voir pendant la pause. La vider était une
@@ -524,4 +528,5 @@ def test_pendant_le_tournoi_terminer_liste_bien_ce_qui_reste() -> None:
 
     assert preparation.lignes == completude.sportif
     assert preparation.bloquant is False
+    assert preparation.question_posee is True
     assert preparation.detail is None

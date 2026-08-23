@@ -142,7 +142,9 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'lui-même. Les deux premiers sont exigés — le créneau dès « Marquer prêt », l’effectif au ' +
     'démarrage ; le troisième n’est qu’un conseil. ' +
     'Tout est affiché d’un coup, pour ne pas découvrir le second manque après avoir corrigé le ' +
-    'premier. Le bouton reste cliquable : l’écran annonce, c’est le serveur qui refuse.',
+    'premier. Le bouton reste cliquable : l’écran annonce, c’est le serveur qui refuse. Une fois le ' +
+    'tournoi lancé, annulé ou archivé, la question ne se pose plus : l’écran dit alors seulement ' +
+    'pourquoi.',
   completude:
     'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
     'jouer — cibles de qualification non terminées, phases, classement. Pendant le tournoi, rien ne ' +

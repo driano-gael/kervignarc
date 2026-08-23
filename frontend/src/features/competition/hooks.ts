@@ -50,9 +50,9 @@ export const cleClassementDepart = (tournoiId: number, departId: number, categor
 // fois**, ici où vit la requête, pour ne pas diverger d'un littéral `['tournois']` recopié ailleurs.
 export const CLE_TOURNOIS = ['tournois'] as const
 
-// Le pas de rafraîchissement des lectures « vivantes » du dépôt (complétude, jalons, supervision,
-// suivi du déroulé…). Nommé plutôt qu'en littéral : la parité avec les autres polls était affirmée
-// en commentaire et non portée par le code (6ᵉ passe de revue).
+// Le pas de rafraîchissement de cette lecture. Chaque feature déclare le sien — 5 s ici comme pour
+// la complétude, les jalons et la supervision ; 10 s pour le suivi du déroulé, davantage ailleurs :
+// il n'y a pas de parité générale à revendiquer, seulement une constante nommée par module.
 const INTERVALLE_POLL_MS = 5000
 
 // Le classement **d'un créneau** (ADR-0075). `categorieId` optionnel : filtre l'affichage à une

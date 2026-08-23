@@ -43,6 +43,11 @@ const INTRO =
   'Ce qui doit être en place avant de lancer le tournoi ; le déroulé composé, lui, n’est qu’un ' +
   'conseil.'
 
+// Une fois le tournoi parti, l'écran ne rend plus de liste : l'intro doit cesser d'en annoncer une.
+// Le membre voisin a reçu deux intros pour cette raison exacte (bloquant de la 5ᵉ passe) ; c'est le
+// constat 31 — les cinq zones de texte d'un écran se relisent ensemble.
+const INTRO_PLUS_A_PREPARER = 'Ce tournoi n’est plus en préparation.'
+
 export function PretADemarrer({ tournoiId }: { tournoiId: number }) {
   // ⚠️ **Ce composant ne connaît pas le statut, et c'est délibéré.** Il l'a connu le temps d'une
   // passe de revue, sous la forme d'un `statut === 'brouillon' || statut === 'pret'` — soit un
@@ -63,13 +68,15 @@ export function PretADemarrer({ tournoiId }: { tournoiId: number }) {
       // (ADR-0096 §2). Le champ était rendu et jamais lu — l'ADR promettait donc une dérivation que
       // le code ne faisait pas (relevé en revue par trois axes).
       question={preparation.data?.question ?? 'Prêt à démarrer ?'}
-      intro={INTRO}
+      intro={preparation.data?.question_posee === false ? INTRO_PLUS_A_PREPARER : INTRO}
       titreSection="Avant de démarrer"
       lignes={preparation.data?.lignes ?? null}
       pret={preparation.data?.pret ?? false}
       bloquant={preparation.data?.bloquant ?? true}
       // Du serveur, comme le reste : cet écran ne déduit rien du statut, il ne le connaît même pas.
-      questionPosee={preparation.data?.question_posee ?? true}
+      // Repli **fermant** le temps du chargement : c'est le seul endroit du lot où l'absence
+      // d'information pourrait faire dire « la question se pose », et on ne l'affirme pas à vide.
+      questionPosee={preparation.data?.question_posee ?? false}
       moment={preparation.data?.moment ?? null}
       detail={preparation.data?.detail ?? null}
       chargement={preparation.isPending}

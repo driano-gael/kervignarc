@@ -7558,6 +7558,19 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/tests/test_jalons_api.py",
+     "existe": true,
+     "symboles": [
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/tests/test_service_jalons.py",
      "existe": true,
      "symboles": [
@@ -7571,7 +7584,12 @@ window.ATLAS.decisions = {
       "MESSAGE_SANS_DEPART",
       "MESSAGE_TERMINER_HORS_EN_COURS",
       "ServiceTournois",
-      "preparation.detail"
+      "preparation.detail",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
      ],
      "symboles_absents": [],
      "verifiable": true

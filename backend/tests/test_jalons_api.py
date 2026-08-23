@@ -71,6 +71,7 @@ def test_le_jalon_demarrer_liste_ce_qui_manque_avant_le_clic(
         assert [ligne["cle"] for ligne in corps["lignes"]] == ["creneaux", "effectif", "deroule"]
         assert corps["pret"] is False
         assert corps["bloquant"] is True
+        assert corps["question_posee"] is True
         # Le refus tombera **dès** « Marquer prêt » : c'est la garde des créneaux qui manque.
         assert corps["moment"] == "dès le passage en « prêt »"
         assert "aucun départ" in corps["detail"]
@@ -127,6 +128,9 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_le_refus(
         assert corps["bloquant"] is True
         # Contenu, pas simple présence : c'est le contrat que liront `E16US007` et `E16US008`.
         assert corps["detail"] == "Seul un tournoi en cours peut être terminé."
+        # ⚠️ **Au contrat**, le couple qui dit tout : la question est fermée **et** la liste est
+        # pleine. C'est ce que liront `E16US007` et `E16US008` ; le déduire de `lignes` serait faux.
+        assert corps["question_posee"] is False
         # ⚠️ Et la liste **reste**, contrairement à *démarrer* : elle porte l'état sportif, pas la
         # préparation. C'est ce qui rend la migration de l'écran sur ce jalon possible sans perdre
         # ce que l'organisateur vient y lire pendant la pause (5ᵉ passe de revue).
@@ -150,6 +154,7 @@ def test_un_tournoi_deja_lance_ne_dit_pas_qu_il_peut_demarrer(
 
         assert corps["pret"] is False
         # Ni liste, ni moment : il n'y a plus rien à préparer, donc rien à dater.
+        assert corps["question_posee"] is False
         assert corps["lignes"] == []
         assert corps["moment"] is None
         assert "déjà lancé" in corps["detail"]

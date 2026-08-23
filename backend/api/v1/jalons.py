@@ -46,7 +46,8 @@ class PreparationJalonReponse(BaseModel):
       ⚠️ **Cela vaut pour *démarrer*, pas pour *terminer*** — asymétrie assumée. Chez *démarrer*, la
       liste **est** la préparation : plus rien à préparer, plus rien à lister. Chez *terminer*, elle
       **est l'état sportif**, qui existe à tout statut : ce membre rend donc toujours ses lignes, et
-      c'est le couple `bloquant: true` + `detail` qui dit que la question ne se pose plus. Un client
+      c'est **`question_posee`** (ci-dessous) qui dit que la question ne se pose plus, accompagné de
+      `bloquant` et `detail`. Un client
       qui viderait cet écran hors *en cours* retirerait ce que l'organisateur vient y chercher
       pendant la pause ;
     - `pret` : la réponse binaire ;

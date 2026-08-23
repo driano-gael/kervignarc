@@ -150,7 +150,10 @@ class PreparationJalon:
       signal ; il a cessé de l'être quand *terminer* a gardé les siennes, et n'a d'abord été
       remplacé que par un commentaire. Un écran neuf recopiant le patron aurait alors annoncé « ce
       qui manque ci-dessous sera refusé » au-dessus de trois lignes vertes — le défaut qu'une passe
-      entière avait servi à fermer (6ᵉ passe de revue, axes C1 et D).
+      entière avait servi à fermer (6ᵉ passe de revue, axes C1 et D). ⚠️ **Sans valeur par
+      défaut** : la prop TS jumelle est obligatoire pour la même raison, et l'oublier ici serait
+      pire — `ARCHIVER` a le **statut pour seule garde**, donc un membre neuf qui ne renseigne pas
+      ce champ répondrait « la question se pose » sur un tournoi archivé, en silence (7ᵉ passe).
 
     - `bloquant` : à `False`, l'action passe **quand même** malgré `pret is False` (`D-15`) ;
     - `detail` : la **cause chiffrée** du blocage, quand elle existe — « 8 archer(s) inscrit(s) sur
@@ -177,7 +180,7 @@ class PreparationJalon:
     lignes: tuple[LigneCompletude, ...]
     pret: bool
     bloquant: bool
-    question_posee: bool = True
+    question_posee: bool
     detail: str | None = None
     moment: str | None = None
 
@@ -353,7 +356,8 @@ def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> Prepar
         # différemment au même cas, et la résorption inscrite à `DETTE-084` (« migrer l'écran sur
         # `/jalons/terminer` ») aurait **rétabli** la régression (5ᵉ passe, quatre axes).
         #
-        # Ce qui porte la garde de statut, c'est `pret`, `bloquant` et `detail`.
+        # Ce qui porte la garde de statut, c'est `question_posee` — plus `pret`, `bloquant` et
+        # `detail`. Jamais la liste.
         lignes=completude.sportif,
         pret=offert and completude.sportif_complet,
         bloquant=not offert,

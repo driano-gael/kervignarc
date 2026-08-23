@@ -109,8 +109,16 @@ export function PretA({
 
       {/* Le verdict d'abord, la liste ensuite : la question est binaire, la liste dit *pourquoi*.
           `role="status"` parce qu'il change sous le poll sans action de l'utilisateur. La couleur
-          n'est jamais seule (pastille + texte, `DV-03`). */}
-      {questionPosee && lignes !== null && lignes.length > 0 && (
+          n'est jamais seule (pastille + texte, `DV-03`).
+
+          ⚠️ Gardé par `questionPosee` **seul** — plus par `lignes.length > 0`. Ce conjoint était le
+          dernier endroit où la coquille déduisait de la liste ce que le champ porte, et il piégeait
+          les membres à venir : `archiver` n'a que le **statut** pour garde, donc sur un tournoi
+          terminé il répond `question_posee: true`, `pret: true` et **aucune ligne** — l'écran
+          n'aurait pas affiché son verdict au moment exact où la réponse est « oui » (7ᵉ passe de
+          revue, axe D). La section, elle, garde bien `lignes.length > 0` : une liste vide n'a rien
+          à montrer. */}
+      {questionPosee && lignes !== null && (
         <p className={`completude__verdict completude__verdict--${ton}`} role="status">
           <span className="indicateur__pastille" aria-hidden="true" />
           {texte}
