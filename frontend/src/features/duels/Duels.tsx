@@ -36,20 +36,15 @@ import {
   usePlanDeDuels,
   useRegenererDuels,
 } from './hooks'
-import type { ReferentielsDuPlan } from '../placement/presentation'
+import type { LignesDeReperes, ReferentielsDuPlan } from '../placement/presentation'
 import {
   LIBELLE_RAISON,
   RAISON_ANOMALIE,
-  reperesArcher,
+  POSITIONS,
+  lignesDeReperes,
   resumeCloisonnementNonRespecte,
 } from '../placement/presentation'
 import { resumeAdjacenceNonGarantie } from './presentation'
-
-// Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
-// DETTE-010 : le plafond `A`→`D` est écrit ici en dur, comme dans l'écran jumeau et les deux écrans
-// de gabarit. E01US019 le délestera. C'est **cette liste** — et non la grille CSS — qui borne le
-// nombre de couloirs réellement rendus, d'où le `Math.min` du calcul de `couloirs`.
-const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
   // Créneau **figé une fois résolu** (cf. `useCreneauDesDuels`) : recalculé à chaque rendu, il
@@ -197,7 +192,7 @@ function PlanCharge({
     const archer = archerParId.get(archerId)
     return {
       nom: archer ? nomComplet(archer) : `Archer #${archerId}`,
-      reperes: reperesArcher(archer, blasonId, referentiels),
+      lignes: lignesDeReperes(archer, blasonId, referentiels),
       inscriptionId,
     }
   }
@@ -306,7 +301,7 @@ function PlanCharge({
 // E03US009. E16US005 a dû appliquer deux fois le même changement de mise en page — c'est la preuve
 // qui manquait au registre. Remède prévu : les remonter dans `shared/plan-de-cibles/`, badges
 // passés en `ReactNode` (US de rangement dédiée, avec DETTE-083).
-type Jeton = { nom: string; reperes: string[]; inscriptionId: number }
+type Jeton = { nom: string; lignes: LignesDeReperes; inscriptionId: number }
 
 function Cible({
   cible,
@@ -428,7 +423,9 @@ function JetonArcher({
       // conditionnelle la faisait disparaître dès qu'un archer avait un club — c'est-à-dire
       // toujours —, sur un écran dont le glisser-déposer est le geste central. Deux jetons voisins
       // n'avaient alors pas le même contrat d'infobulle.
-      title={[...jeton.reperes, 'glisser pour déplacer'].join(' · ')}
+      title={[jeton.lignes.club, ...jeton.lignes.cloisonnement, 'glisser pour déplacer']
+        .filter((part): part is string => part !== null)
+        .join(' · ')}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
@@ -436,11 +433,18 @@ function JetonArcher({
       }}
     >
       <span className="jeton__nom">{jeton.nom}</span>
-      {/* Les repères (E16US005), sur deux lignes comme sur le plan de cibles : le club, puis la
-          catégorie et le blason. Une ligne unique tronquée ne rendait jamais la seconde moitié. */}
-      {jeton.reperes.length > 0 && <span className="jeton__reperes">{jeton.reperes[0]}</span>}
-      {jeton.reperes.length > 1 && (
-        <span className="jeton__reperes">{jeton.reperes.slice(1).join(' · ')}</span>
+      {/* Les repères (E16US005) : ce sur quoi portent les deux badges de la cible. **Deux lignes de
+          nature différente**, et c'est ce qui décide de ce qu'on lit — le club est un bloc
+          insécable qu'on tronque, « catégorie · blason » se coupe aux espaces et ne doit **pas**
+          l'être : sous les réglages `blason` et `blason_et_categorie`, le blason est le seul repère
+          qui explique le cloisonnement, et c'est le dernier de la chaîne. Le découpage vient de
+          `lignesDeReperes` et non d'un index : rien ne garantit que le club soit le premier élément
+          d'une liste plate (les trois référentiels sont trois requêtes). */}
+      {jeton.lignes.club !== null && (
+        <span className="jeton__reperes jeton__reperes--club">{jeton.lignes.club}</span>
+      )}
+      {jeton.lignes.cloisonnement.length > 0 && (
+        <span className="jeton__reperes">{jeton.lignes.cloisonnement.join(' · ')}</span>
       )}
     </span>
   )

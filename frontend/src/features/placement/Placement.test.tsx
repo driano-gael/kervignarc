@@ -19,7 +19,7 @@
 // archers sur ce qu'il lit.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Blason } from '../blasons/api'
@@ -171,6 +171,16 @@ describe('Placement — le jeton porte les repères d’arbitrage (E16US005)', (
     )
   })
 
+  it('la lettre du couloir est rendue sur une case occupée', async () => {
+    // Gardée côté duels depuis la 2ᵉ passe, mais pas ici — alors que `docs/dette.md` annonçait un
+    // test « par écran » couvrant la lettre de couloir. Le registre promettait plus que le code.
+    monter(<Placement tournoiId={1} />)
+    await choisirLeDepart()
+
+    const couloirA = await screen.findByLabelText('Couloir de tir A')
+    expect(within(couloirA).getByText('A')).toHaveClass('case__position')
+  })
+
   it('un club non renseigné se dit « club inconnu » (ADR-0014)', async () => {
     // C'est **la cause** du badge de mixité que le serveur pose : le serveur traite `NULL` comme
     // *indécidable*, l'écran doit le dire dans les mêmes termes. « Aucun club » serait faux — en
@@ -237,12 +247,18 @@ describe('Placement — le puits de réserve (E16US005, CA repris d’E03US004)'
     monter(<Placement tournoiId={1} />)
     await choisirLeDepart()
 
-    // ⚠️ Dans la **réserve**, les repères ne sont pas tronqués : c'est une colonne verticale, pas un
-    // couloir étroit. Y appliquer l'ellipse des cases coupait la catégorie — précisément ce qu'un
-    // « sans blason » oblige à lire pour savoir quelle catégorie n'a pas de carton à sa hauteur.
     expect(await screen.findByText('Arc Club de Kervignarc')).toBeInTheDocument()
     expect(await screen.findByText('Senior 1 Femme')).toBeInTheDocument()
     expect(screen.queryByText(/Triple 40/)).toBeNull()
+    // ⚠️ **Ce que cette assertion garde, et pourquoi les deux précédentes ne gardaient rien.**
+    // La troncature est portée par `.cible .jeton__reperes--club` : jsdom n'applique aucune feuille
+    // de style et `text-overflow` ne change pas le `textContent`, donc chercher le texte prouvait
+    // exactement autant avec ou sans le scoping. Ce qui est vérifiable en jsdom, c'est la
+    // **structure** dont dépend le sélecteur : un jeton de réserve n'est pas dans une `.cible`.
+    // Retirer le descendant du CSS — le geste le plus banal d'un nettoyage — recouperait la
+    // catégorie en réserve sans que rien ne rougisse.
+    const jetonReserve = screen.getByText('Arc Club de Kervignarc').closest('.jeton')
+    expect(jetonReserve?.closest('.cible')).toBeNull()
   })
 })
 

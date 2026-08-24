@@ -8,6 +8,7 @@ import type { ReferentielsDuPlan } from './presentation'
 import {
   LIBELLE_CLOISONNEMENT,
   compterMixiteNonGarantie,
+  lignesDeReperes,
   reperesArcher,
   resumeCloisonnementNonRespecte,
   resumeMixiteNonGarantie,
@@ -145,5 +146,39 @@ describe('reperesArcher', () => {
       'Arc Club de Kervignarc',
       'Senior 1 Femme',
     ])
+  })
+})
+
+describe('lignesDeReperes', () => {
+  it('sépare le club — insécable, donc tronqué — de ce qui explique le cloisonnement', () => {
+    // La séparation n'est pas cosmétique : la ligne du club porte une ellipse, l'autre non, parce
+    // que le blason est le seul repère qui explique le cloisonnement sous les réglages `blason` et
+    // `blason_et_categorie` — et il est en fin de chaîne, donc le premier effacé par une troncature.
+    expect(lignesDeReperes({ club_id: 7, categorie_id: 3 }, 9, REFERENTIELS)).toEqual({
+      club: 'Arc Club de Kervignarc',
+      cloisonnement: ['Senior 1 Femme', 'Triple 40'],
+    })
+  })
+
+  it('⚠️ le club manquant ne fait PAS remonter la catégorie sur sa ligne', () => {
+    // **Le cas qui a motivé cette fonction.** `useClubs`, `useCategories` et `useBlasons` sont trois
+    // requêtes distinctes : si celle des clubs arrive en retard ou échoue seule, une liste plate
+    // commence par la catégorie, et un découpage `reperes[0]` l'affichait comme s'il s'agissait du
+    // club. Ici la ligne du club est simplement absente.
+    const sansClubs: ReferentielsDuPlan = { ...REFERENTIELS, clubs: new Map() }
+    expect(lignesDeReperes({ club_id: 7, categorie_id: 3 }, 9, sansClubs)).toEqual({
+      club: null,
+      cloisonnement: ['Senior 1 Femme', 'Triple 40'],
+    })
+  })
+
+  it('un club non renseigné occupe bien sa ligne (ADR-0014)', () => {
+    expect(lignesDeReperes({ club_id: null, categorie_id: 3 }, 9, REFERENTIELS).club).toBe(
+      'club inconnu',
+    )
+  })
+
+  it('sans archer connu, aucune ligne', () => {
+    expect(lignesDeReperes(undefined, 9, REFERENTIELS)).toEqual({ club: null, cloisonnement: [] })
   })
 })

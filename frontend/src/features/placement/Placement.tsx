@@ -41,22 +41,17 @@ import {
   useRegenerer,
   useReglerCloisonnement,
 } from './hooks'
-import type { ReferentielsDuPlan } from './presentation'
+import type { LignesDeReperes, ReferentielsDuPlan } from './presentation'
 import {
   LIBELLE_CLOISONNEMENT,
   LIBELLE_RAISON,
   RAISON_ANOMALIE,
   VALEURS_CLOISONNEMENT,
-  reperesArcher,
+  POSITIONS,
+  lignesDeReperes,
   resumeCloisonnementNonRespecte,
   resumeMixiteNonGarantie,
 } from './presentation'
-
-// Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
-// DETTE-010 : le plafond `A`→`D` est écrit ici en dur, comme dans l'écran jumeau et les deux écrans
-// de gabarit. E01US019 le délestera. C'est **cette liste** — et non la grille CSS — qui borne le
-// nombre de couloirs réellement rendus, d'où le `Math.min` du calcul de `couloirs`.
-const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Placement({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
@@ -242,7 +237,7 @@ function PlanCharge({
     const archer = archerParId.get(archerId)
     return {
       nom: archer ? nomComplet(archer) : `Archer #${archerId}`,
-      reperes: reperesArcher(archer, blasonId, referentiels),
+      lignes: lignesDeReperes(archer, blasonId, referentiels),
       inscriptionId,
     }
   }
@@ -438,7 +433,7 @@ function PlanCharge({
 // E16US005 est le premier changement à devoir toucher les deux : elle inscrit la dette au registre
 // plutôt que de remonter les composants dans `shared/`, ce qui serait un remède structurel introduit
 // en douce (§ Dette). À traiter avec DETTE-083, même geste et même destination.
-type Jeton = { nom: string; reperes: string[]; inscriptionId: number }
+type Jeton = { nom: string; lignes: LignesDeReperes; inscriptionId: number }
 
 function Cible({
   cible,
@@ -561,7 +556,9 @@ function JetonArcher({
       // conditionnelle la faisait disparaître dès qu'un archer avait un club — c'est-à-dire
       // toujours —, sur un écran dont le glisser-déposer est le geste central. Deux jetons voisins
       // n'avaient alors pas le même contrat d'infobulle.
-      title={[...jeton.reperes, 'glisser pour déplacer'].join(' · ')}
+      title={[jeton.lignes.club, ...jeton.lignes.cloisonnement, 'glisser pour déplacer']
+        .filter((part): part is string => part !== null)
+        .join(' · ')}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
@@ -569,16 +566,18 @@ function JetonArcher({
       }}
     >
       <span className="jeton__nom">{jeton.nom}</span>
-      {/* Les repères (E16US005) : club, catégorie, blason — ce sur quoi portent les deux badges de
-          la cible. Rien n'est affiché quand ils manquent : une ligne secondaire vide vaut mieux
-          qu'un « Club #7 » répété quarante fois.
-          **Deux lignes, et c'est ce qui décide de ce qu'on lit** : sur une seule ligne tronquée, un
-          couloir de ~100 px ne rendait que le club — donc la mixité (RG-3) mais jamais le
-          cloisonnement (RG-4), qui se lit sur la catégorie et le blason. Le premier repère est le
-          club (ou « club inconnu ») ; les suivants tiennent la seconde ligne. */}
-      {jeton.reperes.length > 0 && <span className="jeton__reperes">{jeton.reperes[0]}</span>}
-      {jeton.reperes.length > 1 && (
-        <span className="jeton__reperes">{jeton.reperes.slice(1).join(' · ')}</span>
+      {/* Les repères (E16US005) : ce sur quoi portent les deux badges de la cible. **Deux lignes de
+          nature différente**, et c'est ce qui décide de ce qu'on lit — le club est un bloc
+          insécable qu'on tronque, « catégorie · blason » se coupe aux espaces et ne doit **pas**
+          l'être : sous les réglages `blason` et `blason_et_categorie`, le blason est le seul repère
+          qui explique le cloisonnement, et c'est le dernier de la chaîne. Le découpage vient de
+          `lignesDeReperes` et non d'un index : rien ne garantit que le club soit le premier élément
+          d'une liste plate (les trois référentiels sont trois requêtes). */}
+      {jeton.lignes.club !== null && (
+        <span className="jeton__reperes jeton__reperes--club">{jeton.lignes.club}</span>
+      )}
+      {jeton.lignes.cloisonnement.length > 0 && (
+        <span className="jeton__reperes">{jeton.lignes.cloisonnement.join(' · ')}</span>
       )}
     </span>
   )

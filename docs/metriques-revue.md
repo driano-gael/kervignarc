@@ -34,8 +34,9 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-08-24 | `E16US005` (1ʳᵉ passe) | 14 | +1089/−161 | ~14 min | ~12 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 2 |
-| 2026-08-24 | `E16US005` (2ᵉ passe, sur les correctifs) | 11 | +449/−10 | ~13 min | ~15 min | D (18:32→18:47) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:4** mineur:4 suggestion:2 | **bloquant:1** majeur:1 mineur:4 suggestion:2 | bloquant:0 **majeur:1** mineur:7 suggestion:1 | **bloquant:1** majeur:4 mineur:6 suggestion:1 | **C1 et D** (1 bloquant convergent : la troncature efface la catégorie et le blason, donc la moitié RG-4 du CA — B l'avait gradé majeur en annonçant l'escalade si la mesure confirmait ; elle a confirmé). **D seul** : le seuil corrigé n'a pas franchi son propre critère (96 px à 1366 contre 125 avant l'US) et crée une falaise au point de bascule | 2 |
+| 2026-08-24 | `E16US005` (1ʳᵉ passe) | 14 | +1089/−161 | ~14 min | ~12 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 3 |
+| 2026-08-24 | `E16US005` (2ᵉ passe, sur les correctifs) | 11 | +533/−94 | ~13 min | ~15 min | D (18:32→18:47) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:4** mineur:4 suggestion:2 | **bloquant:1** majeur:1 mineur:4 suggestion:2 | bloquant:0 **majeur:1** mineur:7 suggestion:1 | **bloquant:1** majeur:4 mineur:6 suggestion:1 | **C1 et D** (1 bloquant convergent : la troncature efface la catégorie et le blason, donc la moitié RG-4 du CA — B l'avait gradé majeur en annonçant l'escalade si la mesure confirmait ; elle a confirmé). **D seul** : le seuil corrigé n'a pas franchi son propre critère (96 px à 1366 contre 125 avant l'US) et crée une falaise au point de bascule | 3 |
+| 2026-08-24 | `E16US005` (3ᵉ passe, sur les correctifs) | 11 | +618/−188 | ~11 min | ~19 min | D (19:12→19:31) | *non lancé* (front seul, règles 1-8 sans objet) | bloquant:0 **majeur:3** mineur:5 suggestion:3 | bloquant:0 **majeur:3** mineur:4 suggestion:2 | bloquant:0 **majeur:3** mineur:5 | **bloquant:2** majeur:3 mineur:7 suggestion:2 | **D seul** pour les deux bloquants : la bande [1249, 1377] px *toujours* pire qu'avant l'US (le même bloquant qu'en 2ᵉ passe, déclaré clos et non clos), et le `min-height` posé en correctif de 2ᵉ passe qui régressait **23 écrans hors périmètre**. Convergence des quatre axes sur le blason encore illisible et sur les chiffres faux du tracker | 3 (sortie) |
 | 2026-08-23 | `E16US012` (7ᵉ passe, ciblée B+D) | 17 | +143/-52 | ~2 min | ~13 min | D (21:59→22:11) | — | majeur:3 mineur:5 suggestion:1 | — | — | **bloquant:0** majeur:3 mineur:3 suggestion:2 | **aucun bloquant** | 7 (sortie) |
 | 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
 | 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
@@ -488,4 +489,24 @@ ce constat. **La leçon complète n'est donc pas « ne pas nommer une US en exem
 aucune US, quel que soit le rôle qu'on lui prête » — et vérifier la donnée générée, pas le texte
 source.** Le contrôle qui manque est décrit dans `DETTE-085`, avec la raison pour laquelle le
 prédicat évident ne convient pas.
+
+**36. Trois passes sur la même US, trois bloquants du même type : le dispositif ne converge pas
+quand l'oracle manque.**
+E16US005 a produit 2 bloquants en 1ʳᵉ passe, 1 en 2ᵉ (visant le correctif de la 1ʳᵉ), 2 en 3ᵉ (dont
+**le même** qu'en 2ᵉ, déclaré clos, plus un défaut **neuf créé par un correctif de revue** : un
+`min-height` qui régressait 23 écrans hors périmètre). Signature commune : **du CSS corrigé par
+arithmétique, jamais par observation.**
+
+Ce que la série démontre, et qui vaut au-delà de cette US : **une revue multi-axes ne remplace pas un
+oracle.** Quatre relecteurs à modèle fort ont refait le même calcul que l'auteur — ils ont donc
+trouvé ses erreurs de calcul, ce qui est déjà beaucoup, mais aucun n'a pu voir l'écran. Là où le
+dépôt a un oracle (les 4 800 tests), la revue arbitre des jugements ; là où il n'en a pas, elle
+**recalcule**, et un recalcul juste sur une prémisse invérifiable reste invérifiable.
+
+Le geste correct n'est pas une 4ᵉ passe : c'est de **nommer l'absence d'oracle comme une dette**,
+avec un critère de fin observable (`DETTE-086` : trois captures annexées à la fiche de recette). Un
+aveu en prose dans un tracker ne survit ni à un `/compact`, ni à un merge, ni à un `grep` ; une ligne
+de registre avec marqueur dans le fichier concerné, si. Corollaire de pilotage : **avant d'ouvrir une
+US dont le livrable est visuel, vérifier qu'on peut le rendre** — c'est un prérequis de poste, au
+même titre qu'un venv qui marche.
 
