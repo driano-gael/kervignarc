@@ -22,7 +22,10 @@ public le consulte en direct sans compte — jusqu'à suivre un archer et voir s
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
 dû, par archer et par club) est en place — et une somme déjà encaissée ne disparaît plus en silence :
 annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
-remboursé ou reporté. Deux écrans **« prêt à… »** disent d'un coup d'œil ce qui manque
+remboursé ou reporté. L'écran de **placement sur les cibles** se lit désormais sur toute la largeur d'un PC — une cible
+par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
+main — de sorte qu'ajuster un plan ne demande plus de quitter l'écran pour savoir qui cause un
+signalement. Deux écrans **« prêt à… »** disent d'un coup d'œil ce qui manque
 avant de **lancer** puis avant de **terminer** le tournoi — tous les manques ensemble, avant le
 clic, et sans jamais verrouiller le bouton —, une **recherche d'archer** permanente répond à « je tire
 où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
@@ -545,8 +548,14 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **123 US livrées** sur `main` (mergées, revues, CI verte) à la date du 23/08/2026, la dernière
-  étant `E16US012` — **l'application dit ce qui manque avant le clic** : un écran
+- **124 US livrées** sur `main` (mergées, revues, CI verte) à la date du 24/08/2026, la dernière
+  étant `E16US005` — **le plan de cibles tient enfin sur la largeur d'un PC** : une cible par ligne
+  au lieu d'une mosaïque de vignettes, chaque archer affichant son **club**, sa **catégorie** et son
+  **blason** sous son nom — soit exactement ce sur quoi l'organisateur arbitre quand l'écran
+  signale « mixité non garantie » ou « cloisonnement non respecté » —, et la **réserve** devenue un
+  panneau latéral qui reste sous la main pendant qu'on fait défiler quarante cibles. Le **plan de
+  duels** suit le même gabarit. La précédente était
+  `E16US012` — **l'application dit ce qui manque avant le clic** : un écran
   « **Prêt à démarrer ?** » liste **d'un coup** tout ce qui retient le lancement (créneaux,
   inscrits, programme composé), là où l'application ne refusait qu'un manque à la fois, **au clic**.
   Il inaugure la **famille des écrans « prêt à… »** — une forme unique déclinée par jalon, sur
@@ -556,11 +565,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   (« Tableau des jeunes »), chaque ligne ouvre **sa** fiche au lieu d'empiler tous les réglages à
   l'écran, et les deux menus de composition cessent de porter chacun le nom de l'autre
   (« Phases du tournoi » / « Composer un format ») — c'était le **dernier des quatre écrans refusés**
-  au questionnaire de maquettes du 04/08/2026, il n'en reste **aucun**. Avant elle,
-  `E05US027` — **la colline jouable** : le format à défis du club (*King of the Hill* / *Ladder*)
-  se règle, se joue et s'affiche de bout en bout, alors qu'il n'existait jusqu'ici que sous forme de
-  moteur sans écran ; c'était la **dernière des quatre tranches** qui rendaient jouables les formats
-  livrés en juillet. **`SUIVI-US.md` fait
+  au questionnaire de maquettes du 04/08/2026, il n'en reste **aucun**. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une

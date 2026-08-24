@@ -168,18 +168,72 @@
 
 ---
 
-### E16US005 — Placement : la largeur d'un PC, et un puits de réserve
+### E16US005 — Placement : la largeur d'un PC, et un puits de réserve ✅
 *En tant qu'*organisateur, *je veux* placer les archers **une cible par ligne** sur toute la largeur de l'écran, et pouvoir **sortir un archer du plan sans le placer ailleurs**, *afin de* ne pas être obligé d'inverser deux archers à chaque ajustement.
 - **Contexte** : A11 est validé avec réserves. *« Trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un écran PC »*, *« une cible par ligne me paraît plus adaptée »*, *« je ne vois pas de puits de réserve pour déplacer des archers sans les positionner, ce qui évite de toujours faire une inversion entre 2 archers »*. Travail **sur PC uniquement** (question 1). Le recalcul après ajout d'un retardataire **préserve les placements manuels** (question 2 : *« oui »*). Contraintes : *« toutes les contraintes déjà énoncées, dans la mesure du possible »*.
 - **CA — une cible par ligne**, exploitant la largeur disponible (les jetons `--largeur-app` sont posés depuis le lot front du 04/08).
+  - ✅ **Tranché au cadrage du 24/08/2026** : la largeur gagnée ne sert pas qu'à aérer — chaque jeton
+    porte, sous le nom, les **repères sur lesquels l'organisateur arbitre** : **club** (mixité, RG-3),
+    **catégorie** et **blason** (cloisonnement, RG-4). Sans eux, les deux badges déjà posés par le
+    serveur au niveau **cible** (« mixité de club non garantie », « cloisonnement non respecté »)
+    désignent un problème sans jamais dire **lequel** des quatre occupants le cause. Un club non
+    renseigné se dit « **club inconnu** », jamais « aucun club » ([ADR-0014](../docs/adr/0014-club-inconnu-plutot-que-club-sentinelle.md)),
+    et un référentiel non chargé **n'affiche rien** plutôt qu'un « Club #7 ».
+  - ✅ **Le plan de duels est aligné dans le même diff** (arbitrage du commanditaire, cadrage du
+    24/08/2026). Le refus A11 ne visait que la qualification, mais `duels/Duels.tsx` partage la
+    classe `.placement__cibles`, le même utilisateur et le même PC : n'en corriger qu'un aurait
+    laissé deux écrans jumeaux devenus dissemblables. Coût constaté : le changement s'écrit **deux
+    fois** — d'où [`DETTE-085`](../docs/dette.md).
+  - **Colonnes alignées d'une cible à l'autre** : le nombre de couloirs est **dérivé de la capacité
+    maximale du plan**, jamais écrit en dur. ⚠️ Il est cependant **borné par `POSITIONS`**
+    (`Math.min`) : la grille n'est pas le porteur du plafond `A`→`D`, c'est `POSITIONS` qui l'est
+    côté front et `CAPACITE_CIBLE_MAX` côté domaine (`DETTE-010`, marqueurs posés par cette US).
+    Le `min` protège d'un désaccord front/serveur, pas d'un cas courant — le serveur refuse déjà
+    toute capacité hors `[1, 4]`.
+  - **Repères sur deux lignes** (club, puis catégorie et blason), tronqués **dans une case** et
+    entiers dans la réserve. ⚠️ Tranché en 2ᵉ passe de revue : une ligne unique tronquée ne rendait
+    que le club à 1366 px, donc la **mixité** (RG-3) sans jamais le **cloisonnement** (RG-4) — la
+    moitié du CA.
+- **CA — la réserve est un panneau collant**, à droite du plan, ✅ **ajouté au cadrage du
+  24/08/2026** : le glisser-déposer HTML5 natif **ne fait pas défiler la page**, donc une réserve en
+  pied d'écran rend « sortir un archer de la cible 37 » impraticable — soit exactement le geste que
+  le questionnaire demandait de simplifier. Une cible par ligne allonge le plan, et aurait donc
+  **aggravé** ce défaut si la réserve était restée en bas. Sous **78 rem** de fenêtre (~880 px de
+  colonne réelle : une *media query* mesure le viewport, la coquille admin en retranche 368 px), elle
+  repasse sous le plan ; sous 62 rem, les couloirs passent à deux par ligne. La bande
+  une-cible-par-ligne, elle, ne cède **jamais** — c'est le CA. *(Seuil corrigé en 2ᵉ passe de revue :
+  la 1ʳᵉ version mesurait le viewport comme s'il était la colonne de contenu, et ne basculait donc
+  jamais assez tôt.)*
 - **CA — puits de réserve** : une zone où déposer un archer retiré du plan, d'où on le replace ensuite. Un archer en réserve n'est **pas** placé — il doit se distinguer d'un archer sans cible.
+  - ✅ **Constat de cadrage du 24/08/2026 : ce CA était DÉJÀ TENU, au-delà de sa lettre.** Non
+    seulement la zone existe (E03US004), mais la distinction demandée est **explicite** dans le code
+    depuis E03US007 : `presentation.ts` sépare `en_reserve` (« en attente », ton neutre) des trois
+    anomalies `sans_blason` / `non_place` / `cloisonnement` (ambre, `DV-03`). L'US n'y a donc rien
+    ajouté — elle a **posé un test de non-régression** dessus (`Placement.test.tsx`), puisque rien
+    ne gardait cette distinction jusqu'ici.
   - ⚠️ **Ce CA recoupe `E03US004`, livrée** (« CA — réserve » : *une zone **réserve** (banc, sans
     capacité) reçoit les archers non posés* ; le placement auto y range les non-plaçables **avec leur
     raison**, et « Plan final = réserve vide » est déjà un critère). **Ne pas la respécifier** : lire
     le CA d'`E03US004` en premier et n'écrire ici que l'**écart**. Renvoi mutuel posé le 08/08/2026.
 - **CA — préservation** : un recalcul après ajout ne défait pas les placements manuels.
-- **⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))** : cette US rouvre des écrans dont la maquette dit encore « position » pour la place d'un archer. **Corriger le mot en « couloir de tir » dans le même diff** — maquette et écran. Le laisser filer rejouerait le refus d'A10 sur un autre écran.
+  - ✅ **Également déjà tenu** (constat du 24/08/2026) : c'est le bouton « **Placer les restants** »
+    (E03US004), qui complète les trous **sans déplacer** les archers posés — et un retardataire
+    inscrit après coup apparaît de lui-même en réserve, une inscription sans ligne d'affectation
+    valant réserve ([ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md)). La
+    régénération complète, elle, écrase bien les ajustements : c'est voulu, et confirmée par la
+    fenêtre d'impact chiffrée d'E12US007.
+- ~~**⚠️ Vocabulaire (E16US001, [ADR-0073](../docs/adr/0073-pas-de-tir-groupe-de-cibles-couloir-de-tir-place-d-archer.md))**~~ — ✅ **vérifié le 24/08/2026 : le reliquat n'existe pas.** `maquettes/a11-placement.html` — la planche de **cette** US — ne contient pas une seule occurrence de « position » au sens de la place d'un archer (seulement « proposition »), et les deux écrans rouverts exposent déjà `aria-label="Couloir de tir A"`. Les identifiants de code (`POSITIONS`, `place.position`, `case__position`) restent, mais ils ne sont **pas visibles par l'utilisateur** et relèvent de [`DETTE-042`](../docs/dette.md), qui assume explicitement cet écart jusqu'à E01US019. Même cas de figure qu'`E16US004`, dont la liste de maquettes était fausse pour la même raison : le balayage avait déjà eu lieu. L'avertissement reste **vif** sur `E16US010` et `E16US011`, où il n'a pas été vérifié.
+  - ⚠️ **Cette puce a d'abord été barrée dans le bloc d'`E16US004`** (relevé par trois axes de revue le 24/08/2026) : le texte de l'avertissement est identique dans **deux** blocs (`E16US004` et celui-ci ; deux autres en portent une variante voisine), et un remplacement de la première occurrence a visé la mauvaise. Une collision à deux suffit — c'est même le cas le plus traître, puisqu'on ne s'en méfie pas. Une US livrée s'est ainsi retrouvée annotée d'une vérification portant sur une planche qui n'est pas la sienne, pendant que `E16US005` sortait avec un ⚠️ ouvert que le tracker déclarait fermé.
 - **Notes** : ~~vérifier si « en réserve » se représente côté serveur (`cible = null` suffit-il ?) ou seulement à l'écran ; la réponse décide si l'US est front seul.~~ **Question fermée le 08/08/2026, sans code à écrire** : la réserve **existe déjà côté serveur** depuis `E03US004` — le modèle de persistance d'[ADR-0024](../docs/adr/0024-plan-de-cibles-materialise-ajustable.md) est *une affectation par inscription, **sans ligne = réserve***. L'US est donc **front seul** sur ce point : ce qui manque est la **zone à l'écran**, pas sa représentation. Le glisser-déposer existe (variante A retenue).
+- **Notes de livraison (24/08/2026)** : **front seul, aucune ligne de backend, aucune migration.**
+  Deux des trois CA étant déjà tenus (voir ci-dessus), le livrable réel est la **mise en page** et
+  ce qu'elle permet d'afficher. `club_id` et `categorie_id` vivent déjà sur `Archer`, `blason_id`
+  sur `Placement` : les trois référentiels se lisent par leurs hooks existants (`useClubs`,
+  `useCategories`, `useBlasons`), aucun DTO n'a été touché. La traduction des identifiants en clair
+  est une fonction **pure** (`reperesArcher`), posée dans `placement/presentation.ts` — le module
+  que les duels importent déjà — et non recopiée dans les deux écrans : une seconde copie est
+  exactement ce qui a produit le défaut d'E03US007. Le **rendu**, lui, reste double :
+  [`DETTE-085`](../docs/dette.md), inscrite ici et à résorber avec `DETTE-083`.
 - **Dépend de** : E03US011, E05US010 · **Jalon** : J2 · **Origine** : questionnaire A11, 04/08/2026
 
 ---

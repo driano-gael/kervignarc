@@ -12,11 +12,19 @@
 //    en revanche le **cloisonnement** (E03US007) vaut ici aussi : c'est la même salle, réglée une
 //    fois pour le tournoi — d'où les libellés de réserve et la bannière importés de `placement` ;
 //  - **aucune** confirmation d'impact (E12US007) : la régénération est **directe** (ADR-0048).
+//
+// La **mise en page** est alignée sur celle du plan de cibles (E16US005) : une cible par ligne,
+// couloirs alignés en colonnes, repères sous le nom, réserve en panneau collant. Le refus A11 ne
+// visait que le plan de qualification, mais les deux écrans ont le même défaut, le même utilisateur
+// et le même PC — arbitrage du commanditaire au cadrage du 24/08/2026.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useArchers } from '../archers/hooks'
+import { useBlasons } from '../blasons/hooks'
+import { useCategories } from '../categories/hooks'
+import { useClubs } from '../clubs/hooks'
 import type { Archer } from '../competition/api'
 import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
@@ -28,15 +36,15 @@ import {
   usePlanDeDuels,
   useRegenererDuels,
 } from './hooks'
+import type { LignesDeReperes, ReferentielsDuPlan } from '../placement/presentation'
 import {
   LIBELLE_RAISON,
   RAISON_ANOMALIE,
+  POSITIONS,
+  lignesDeReperes,
   resumeCloisonnementNonRespecte,
 } from '../placement/presentation'
 import { resumeAdjacenceNonGarantie } from './presentation'
-
-// Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
-const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
   // Créneau **figé une fois résolu** (cf. `useCreneauDesDuels`) : recalculé à chaque rendu, il
@@ -127,12 +135,29 @@ function PlanCharge({
 }) {
   // Noms des archers (une requête, partagée). L'`inscription_id` — cible du déplacement — vient
   // directement du plan (chaque placement et chaque conflit le porte), rien à reconstituer.
+  //
+  // On garde l'archer **entier** (E16US005) : le jeton porte aussi son club et sa catégorie.
   const archers = useArchers(tournoiId)
-  const nomParArcher = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const archer of archers.data ?? []) map.set(archer.id, nomComplet(archer))
+  const archerParId = useMemo(() => {
+    const map = new Map<number, Archer>()
+    for (const archer of archers.data ?? []) map.set(archer.id, archer)
     return map
   }, [archers.data])
+
+  // Les trois référentiels que les repères traduisent en clair (E16US005), comme sur le plan de
+  // cibles — au plus trois GET au montage, servis par le cache de 30 s quand on vient de l'atelier.
+  // Le cloisonnement vaut ici aussi : c'est la même salle, réglée une fois pour le tournoi.
+  const clubs = useClubs()
+  const categories = useCategories(tournoiId)
+  const blasons = useBlasons(tournoiId)
+  const referentiels = useMemo<ReferentielsDuPlan>(
+    () => ({
+      clubs: new Map((clubs.data ?? []).map((club) => [club.id, club.nom])),
+      categories: new Map((categories.data ?? []).map((c) => [c.id, c.libelle])),
+      blasons: new Map((blasons.data ?? []).map((blason) => [blason.id, blason.nom])),
+    }),
+    [blasons.data, categories.data, clubs.data],
+  )
 
   const regenerer = useRegenererDuels(tournoiId, phaseId)
   const deplacer = useDeplacerDuelliste(tournoiId, phaseId)
@@ -161,10 +186,31 @@ function PlanCharge({
   // Cibles du plan de duels qui violent le cloisonnement demandé (E03US007).
   const resumeCloisonnement = resumeCloisonnementNonRespecte(plan.cibles)
 
-  const jeton = (archerId: number, inscriptionId: number): Jeton => ({
-    nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
-    inscriptionId,
-  })
+  // `blasonId` vient du **placement** (le carton sur lequel le duelliste tire ici) ; un duelliste en
+  // réserve n'en a pas encore.
+  const jeton = (archerId: number, inscriptionId: number, blasonId: number | null): Jeton => {
+    const archer = archerParId.get(archerId)
+    return {
+      nom: archer ? nomComplet(archer) : `Archer #${archerId}`,
+      lignes: lignesDeReperes(archer, blasonId, referentiels),
+      inscriptionId,
+    }
+  }
+
+  // Nombre de colonnes de couloirs, **dérivé du plan** : les cibles n'ont pas toutes la même
+  // capacité, et les aligner d'une bande à l'autre demande une grille commune — une cible à 2
+  // places occupe alors les colonnes A et B, les deux suivantes restant vides. C'est le seul
+  // service que rend ce calcul, et c'est un vrai service.
+  //
+  // ⚠️ Le `Math.min` n'est pas décoratif : sans lui, une capacité serveur > 4 ouvrirait N colonnes
+  // sur **toutes** les bandes du plan, en n'en remplissant que 4 (`POSITIONS.slice`) — donc une
+  // colonne fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond :
+  // c'est `POSITIONS` qui le porte (`DETTE-010`), et le `Math.min` fait que le rendu reste cohérent
+  // en attendant E01US019.
+  const couloirs = Math.max(
+    1,
+    ...plan.cibles.map((cible) => Math.min(cible.capacite, POSITIONS.length)),
+  )
 
   return (
     <div className="placement">
@@ -219,33 +265,43 @@ function PlanCharge({
         </p>
       )}
 
-      <div className="placement__cibles">
-        {plan.cibles.map((cible) => (
-          <Cible
-            key={cible.index}
-            cible={cible}
-            jeton={jeton}
-            survol={survol}
-            setSurvol={setSurvol}
-            onGlisser={setInscriptionGlissee}
-            onDeposer={deposer}
-          />
-        ))}
-      </div>
+      {/* Le plan et son puits (E16US005) : deux colonnes, la reserve **collante** a droite. */}
+      <div className="placement__plan">
+        <div className="placement__cibles" style={{ '--couloirs': couloirs } as CSSProperties}>
+          {plan.cibles.map((cible) => (
+            <Cible
+              key={cible.index}
+              cible={cible}
+              jeton={jeton}
+              survol={survol}
+              setSurvol={setSurvol}
+              onGlisser={setInscriptionGlissee}
+              onDeposer={deposer}
+            />
+          ))}
+        </div>
 
-      <Reserve
-        conflits={plan.conflits}
-        jeton={jeton}
-        survole={survol === 'reserve'}
-        setSurvol={setSurvol}
-        onGlisser={setInscriptionGlissee}
-        onDeposer={() => deposer({ cible_index: null, position: null })}
-      />
+        <Reserve
+          conflits={plan.conflits}
+          jeton={jeton}
+          survole={survol === 'reserve'}
+          setSurvol={setSurvol}
+          onGlisser={setInscriptionGlissee}
+          onDeposer={() => deposer({ cible_index: null, position: null })}
+        />
+      </div>
     </div>
   )
 }
 
-type Jeton = { nom: string; inscriptionId: number }
+// `reperes` : club, catégorie, blason déjà traduits en clair (cf. `placement/presentation.ts`).
+//
+// DETTE-085 : ce type et les quatre composants qui suivent (`Cible`, `Case`, `JetonArcher`,
+// `Reserve`) sont la **copie** de ceux de `placement/Placement.tsx`, dont cet écran a été cloné à
+// E03US009. E16US005 a dû appliquer deux fois le même changement de mise en page — c'est la preuve
+// qui manquait au registre. Remède prévu : les remonter dans `shared/plan-de-cibles/`, badges
+// passés en `ReactNode` (US de rangement dédiée, avec DETTE-083).
+type Jeton = { nom: string; lignes: LignesDeReperes; inscriptionId: number }
 
 function Cible({
   cible,
@@ -256,7 +312,7 @@ function Cible({
   onDeposer,
 }: {
   cible: CiblePlaceeDuel
-  jeton: (archerId: number, inscriptionId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number, blasonId: number | null) => Jeton
   survol: string | null
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -266,18 +322,21 @@ function Cible({
 
   return (
     <div className="cible">
-      <span className="cible__titre">Cible {cible.index}</span>
-      {/* Adjacence non garantie sur cette cible (E03US009) : badge ambre discret, l'admin décide
+      {/* En-tête de la bande (E16US005) : numéro et signaux à gauche, couloirs sur le reste. */}
+      <div className="cible__entete">
+        <span className="cible__titre">Cible {cible.index}</span>
+        {/* Adjacence non garantie sur cette cible (E03US009) : badge ambre discret, l'admin décide
           s'il ajuste. Pas de badge quand les duels sont bien côte à côte. */}
-      {cible.adjacence_non_garantie && (
-        <span className="cible__adjacence">duel non côte à côte</span>
-      )}
-      {/* Cette cible mêle ce que le cloisonnement du tournoi sépare (E03US007) : plan posé avant
+        {cible.adjacence_non_garantie && (
+          <span className="cible__adjacence">duel non côte à côte</span>
+        )}
+        {/* Cette cible mêle ce que le cloisonnement du tournoi sépare (E03US007) : plan posé avant
           l'activation du réglage — le placement auto ne peut pas le produire. Même badge ambre
           qu'en qualification. */}
-      {cible.cloisonnement_non_respecte && (
-        <span className="cible__mixite">cloisonnement non respecté</span>
-      )}
+        {cible.cloisonnement_non_respecte && (
+          <span className="cible__mixite">cloisonnement non respecté</span>
+        )}
+      </div>
       <div className="cible__cases">
         {positions.map((position) => {
           const place = cible.placements.find((p) => p.position === position)
@@ -291,10 +350,17 @@ function Cible({
               onDeposer={() => onDeposer({ cible_index: cible.index, position })}
             >
               {place ? (
-                <JetonArcher
-                  jeton={jeton(place.archer_id, place.inscription_id)}
-                  onGlisser={onGlisser}
-                />
+                <>
+                  {/* La lettre du couloir sur une case **occupée** (E16US005) : le placement la
+                      rendait déjà (E03US011), pas les duels — or la fiche de recette annonce
+                      « exactement la même présentation ». En bandes, c'est elle qui rattache un
+                      jeton à sa colonne quand les capacités diffèrent d'une cible à l'autre. */}
+                  <span className="case__position">{position}</span>
+                  <JetonArcher
+                    jeton={jeton(place.archer_id, place.inscription_id, place.blason_id)}
+                    onGlisser={onGlisser}
+                  />
+                </>
               ) : (
                 <span className="case__libre">{position}</span>
               )}
@@ -351,14 +417,35 @@ function JetonArcher({
     <span
       className="jeton"
       draggable
-      title="Glisser pour déplacer"
+      // Les repères sont **tronqués** dans une case (`.cible .jeton__reperes`) : le titre porte le
+      // texte entier, sinon un couloir étroit les rendrait illisibles sans recours.
+      // ⚠️ L'affordance du geste est **toujours** présente, jamais remplacée : la version
+      // conditionnelle la faisait disparaître dès qu'un archer avait un club — c'est-à-dire
+      // toujours —, sur un écran dont le glisser-déposer est le geste central. Deux jetons voisins
+      // n'avaient alors pas le même contrat d'infobulle.
+      title={[jeton.lignes.club, ...jeton.lignes.cloisonnement, 'glisser pour déplacer']
+        .filter((part): part is string => part !== null)
+        .join(' · ')}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
         onGlisser(jeton.inscriptionId)
       }}
     >
-      {jeton.nom}
+      <span className="jeton__nom">{jeton.nom}</span>
+      {/* Les repères (E16US005) : ce sur quoi portent les deux badges de la cible. **Deux lignes de
+          nature différente**, et c'est ce qui décide de ce qu'on lit — le club est un bloc
+          insécable qu'on tronque, « catégorie · blason » se coupe aux espaces et ne doit **pas**
+          l'être : sous les réglages `blason` et `blason_et_categorie`, le blason est le seul repère
+          qui explique le cloisonnement, et c'est le dernier de la chaîne. Le découpage vient de
+          `lignesDeReperes` et non d'un index : rien ne garantit que le club soit le premier élément
+          d'une liste plate (les trois référentiels sont trois requêtes). */}
+      {jeton.lignes.club !== null && (
+        <span className="jeton__reperes jeton__reperes--club">{jeton.lignes.club}</span>
+      )}
+      {jeton.lignes.cloisonnement.length > 0 && (
+        <span className="jeton__reperes">{jeton.lignes.cloisonnement.join(' · ')}</span>
+      )}
     </span>
   )
 }
@@ -372,7 +459,7 @@ function Reserve({
   onDeposer,
 }: {
   conflits: Conflit[]
-  jeton: (archerId: number, inscriptionId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number, blasonId: number | null) => Jeton
   survole: boolean
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -399,8 +486,9 @@ function Reserve({
         <ul className="reserve__liste">
           {conflits.map((conflit) => (
             <li key={conflit.archer_id} className="reserve__item">
+              {/* Pas de blason en réserve : le duelliste n'est posé nulle part. */}
               <JetonArcher
-                jeton={jeton(conflit.archer_id, conflit.inscription_id)}
+                jeton={jeton(conflit.archer_id, conflit.inscription_id, null)}
                 onGlisser={onGlisser}
               />
               <span

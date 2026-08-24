@@ -70,6 +70,14 @@ window.ATLAS.carte = {
     "feature": "phases"
    },
    {
+    "clientes": 7,
+    "feature": "categories"
+   },
+   {
+    "clientes": 6,
+    "feature": "blasons"
+   },
+   {
     "clientes": 6,
     "feature": "placement"
    },
@@ -83,7 +91,7 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 5,
-    "feature": "categories"
+    "feature": "clubs"
    },
    {
     "clientes": 5,
@@ -92,10 +100,6 @@ window.ATLAS.carte = {
    {
     "clientes": 5,
     "feature": "routage"
-   },
-   {
-    "clientes": 4,
-    "feature": "blasons"
    },
    {
     "clientes": 4,
@@ -120,10 +124,6 @@ window.ATLAS.carte = {
    {
     "clientes": 3,
     "feature": "accueil"
-   },
-   {
-    "clientes": 3,
-    "feature": "clubs"
    },
    {
     "clientes": 3,
@@ -2902,7 +2902,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 160,
+  "aretes_front": 166,
   "enchevetrements": 4,
   "features": 48,
   "imports": 896,

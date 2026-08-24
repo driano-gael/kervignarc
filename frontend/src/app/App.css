@@ -294,7 +294,17 @@
   font-weight: 600;
 }
 
+/* `--hauteur-bandeau` : hauteur **réservée** sous `.bandeau-contexte` par tout ce qui se cale en
+   dessous de lui — aujourd'hui la réserve collante du plan de cibles (E16US005). Elle vit ici, sur
+   l'ancêtre commun, et non sur `.bandeau-contexte` : une propriété personnalisée n'est héritée que
+   par les **descendants**, or ce qui la consomme en est le **frère**.
+   Pourquoi 5,5 rem et non la hauteur nominale (~3 rem) : le bandeau est en `flex-wrap: wrap` et
+   porte jusqu'à cinq éléments, donc il passe à deux lignes dès qu'un nom de tournoi est long. Comme
+   il gagne la superposition (`z-index: 2`), une valeur sous-estimée lui fait recouvrir **en
+   silence** l'en-tête de ce qui le suit. On provisionne les deux lignes : le coût d'une marge un
+   peu large est nul, celui d'un titre masqué ne se voit qu'en salle. */
 .coquille__contenu {
+  --hauteur-bandeau: 5.5rem;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -305,6 +315,14 @@
    « Sur quel tournoi on est et quel départ. » Il se lit **sans être cherché**, donc il est collant :
    descendre dans un tableau de 200 inscrits ne doit pas faire perdre le sujet. Fond de surface et
    filet bas pour qu'il se détache du contenu sans se faire passer pour une carte. */
+/* ⚠️ **Ne pas poser ici de `min-height` adossée à `--hauteur-bandeau`.** Essayé puis retiré en revue
+   (E16US005) : ce bandeau est rendu sur **toutes** les destinations de la coquille qui travaillent
+   sur un tournoi, et un plancher à 5,5 rem lui ajoutait ~24 px de vide sur vingt-trois écrans qui
+   n'avaient rien demandé — sur l'axe même (la place à l'écran) qu'`EPIC-16` existe pour corriger.
+   Il gardait de surcroît **du mauvais côté** : le cas nuisible est que ce bandeau *dépasse* la
+   hauteur provisionnée et recouvre ce qui se cale dessous (il a `z-index: 2`) ; un plancher
+   n'interdit que le cas inoffensif, un simple interstice. `--hauteur-bandeau` reste donc une
+   **provision généreuse**, ce que son commentaire dit — pas une contrainte. */
 .bandeau-contexte {
   position: sticky;
   top: 0;
@@ -2125,39 +2143,107 @@ button:disabled {
   gap: 8px;
 }
 
-.placement__cibles {
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Plan de cibles et plan de duels — une cible par ligne (E16US005, retour A11 du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   DETTE-086 : ⚠️ **toutes les largeurs de cette section sont CALCULÉES, aucune n'est mesurée.**
+   L'US qui l'a écrite n'a jamais pu afficher l'écran (pas de rendu possible sur le poste). Trois
+   passes de revue ont trouvé trois bloquants de mise en page, chacun par recalcul et aucun par les
+   ~4 800 tests du dépôt — jsdom ne calcule ni grille, ni `sticky`, ni `text-overflow`. Avant de
+   toucher une valeur ici, lire l'entrée de registre : elle porte le résidu connu (la bande
+   [1249, 1377] px, moins lisible qu'avant l'US) et l'arbitrage de seuil qui reste suspendu à une
+   capture d'écran.
+   « Trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un écran PC ; une cible par ligne
+   me paraît plus adaptée. » L'ancienne grille `auto-fill minmax(160px, 1fr)` empilait les couloirs
+   **verticalement** dans des vignettes étroites : le nom d'un archer y tenait à peine, et rien
+   n'alignait la cible 3 sur la cible 4.
+
+   Ces règles servent **les deux plans** — qualification (`placement/Placement.tsx`) et duels
+   (`duels/Duels.tsx`). Ils ont le même défaut, le même utilisateur et le même PC : les laisser
+   diverger créerait un écart à rattraper (arbitrage du commanditaire, cadrage du 24/08/2026). */
+
+/* Le plan et son puits, côte à côte. La réserve **reste sous la main** pendant qu'on fait défiler
+   les cibles : le glisser-déposer HTML5 natif ne fait pas défiler la page toute seule, donc une
+   réserve en pied d'écran devient inatteignable dès qu'un départ compte vingt cibles — le geste
+   même que le questionnaire réclamait (« sortir un archer sans le positionner ailleurs »). */
+/* ⚠️ **La largeur disponible n'est PAS celle de la fenêtre.** Sous la coquille admin, il faut
+   retrancher 368 px avant que le plan voie un pixel : `.coquille__nav` (17rem = 272), le `gap` de
+   `.coquille` (32) et les deux `padding` de `.app` (2 × 32). Une fenêtre de 1366 px ne laisse donc
+   que **998 px**. Toutes les largeurs ci-dessous — et le point de bascule plus bas — sont calibrées
+   sur cette valeur, pas sur le viewport. Première version de cette US : réserve à `20rem` et
+   en-tête à `11rem`, ce qui ne laissait que **52 px de texte** par couloir à 1366 px, contre 123 px
+   *avant* l'US — elle rendait donc l'écran plus tassé que ce qu'elle prétendait corriger. */
+.placement__plan {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 13rem);
+  gap: var(--respiration);
+  align-items: start;
   margin: 8px 0;
 }
 
+/* Une cible par ligne : la pile, pas la grille. */
+.placement__cibles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* La bande : identité à gauche (largeur fixe, pour que les couloirs s'alignent d'une ligne à
+   l'autre), couloirs sur tout le reste. `7rem` et non `11rem` : « Cible 12 » tient dans 5 rem, et
+   les badges d'alerte se replient sur plusieurs lignes — chaque rem pris ici est un rem rendu aux
+   quatre couloirs, multiplié par le nombre de bandes. */
 .cible {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--surface-1);
-  padding: 8px;
+  padding: 8px 10px;
+}
+
+.cible__entete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .cible__titre {
   display: block;
-  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 
+/* `--couloirs` est posé par le composant, **dérivé de la capacité maximale du plan** : c'est ce qui
+   aligne les colonnes d'une bande à l'autre quand les cibles n'ont pas toutes la même capacité, sans
+   réécrire ici un plafond à 4 (ce serait une quatrième copie de `DETTE-010`). Le repli à 4 ne sert
+   que si la propriété manque. */
 .cible__cases {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(var(--couloirs, 4), minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
 }
 
-/* Case = zone de dépôt. Hauteur ≥ 44 px (cible tactile AA, la config se fait aussi sur tablette). */
+/* Case = zone de dépôt. `min-height: 52px` reste le plancher **tactile** (AA) et ne borne plus que
+   les cases **libres** : un jeton occupé porte trois lignes (nom, club, catégorie · blason) et
+   mesure ~70 px. `min-width: 0` : sans lui, un nom long ferait déborder la colonne de grille au lieu
+   de s'y couper.
+   ⚠️ **Coût vertical assumé** : une bande passe d'environ 81 à 96 px, ~119 px si elle porte deux
+   badges d'alerte — soit 4 à 5 cibles visibles sur un écran de 768 px de haut, contre une dizaine
+   avant l'US. C'est la contrepartie directe du CA « montrer sur quoi on arbitre » : l'information
+   ajoutée occupe de la place. Elle est chiffrée ici parce qu'elle ne l'était nulle part. */
 .case {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  gap: 4px;
+  min-height: 52px;
+  min-width: 0;
   padding: 2px;
   border: 1px dashed var(--border-subtle);
   border-radius: 8px;
@@ -2180,19 +2266,22 @@ button:disabled {
    jeton, cohérente avec la vue publique. */
 .case__position {
   flex: 0 0 auto;
-  width: 1.4em;
-  padding-left: 8px;
+  width: 1.2em;
+  padding-left: 2px;
   font-size: 12px;
   font-weight: 600;
   color: var(--brand-text);
 }
 
-/* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC). */
+/* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC).
+   Deux lignes depuis E16US005 : le nom, puis les repères d'arbitrage. */
 .jeton {
+  display: flex;
   flex: 1;
-  padding: 8px 10px;
-  font-size: 13px;
-  font-weight: 500;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 8px;
   color: var(--text);
   background: var(--surface-0);
   border: 1px solid var(--border-subtle);
@@ -2205,18 +2294,78 @@ button:disabled {
   cursor: grabbing;
 }
 
-/* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. */
+.jeton__nom {
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Club · catégorie · blason (E16US005) — la **cause** des badges portés par la cible (mixité RG-3,
+   cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas.
+   Rendus sur **deux lignes** : le club d'abord, puis catégorie et blason. Ce n'est pas cosmétique —
+   c'est ce qui décide de ce qu'on lit. Les trois repères sur **une** ligne tronquée (2ᵉ version de
+   cette US) faisaient ~250 px de long naturel pour une colonne qui en offre ~100 à 1366 px : on
+   lisait « Arc Club de Kervi… » et **jamais** la catégorie ni le blason. Or le club ne discrimine
+   que la **mixité** (RG-3) ; le **cloisonnement** (RG-4), qui est l'autre moitié du CA, se lit sur
+   la catégorie et le blason. Tronquer une chaîne unique revenait donc à ne rendre que la moitié de
+   ce que l'US existe pour ajouter. Deux lignes coûtent ~14 px de hauteur par jeton et rendent la
+   seconde moitié. */
+.jeton__reperes {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+/* **Tronqués dans une case, jamais dans la réserve.** Dans une bande, la colonne est étroite et une
+   coupure `overflow-wrap: anywhere` produisait cinq lignes brisées au milieu des mots (1ʳᵉ version
+   de cette US) : l'ellipse laisse lire le début et le `title` du jeton porte le texte entier.
+   La **réserve**, elle, est une colonne verticale de ~200 px qui n'a aucun problème de largeur : y
+   appliquer la même troncature coupait la catégorie — précisément ce qu'un archer « sans blason »
+   oblige à lire pour savoir quelle catégorie n'a pas de carton. Elle enveloppe donc normalement. */
+/* ⚠️ **Seule la ligne du club est tronquée, et c'est le point du raisonnement qui avait été manqué
+   deux fois.** Un nom de club est un bloc qu'on ne peut pas casser utilement : l'ellipse y est le
+   bon geste. « catégorie · blason », en revanche, se coupe **aux espaces** sans jamais briser un
+   mot — le désastre des « cinq lignes illisibles » venait d'`overflow-wrap: anywhere`, pas du
+   retour à la ligne normal. Et c'est la ligne qu'il ne faut surtout pas tronquer : sous les
+   réglages `blason` et `blason_et_categorie`, le **blason** est le seul repère qui explique le badge
+   de cloisonnement, et il est en fin de chaîne — donc le premier effacé. Tronquer les deux lignes
+   revenait à rendre la moitié du CA, un cran plus à droite qu'à la version précédente. */
+.cible .jeton__reperes--club {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. **Collante** depuis E16US005 —
+   c'est ce qui en fait un « puits » utilisable sur un plan de quarante cibles plutôt qu'une liste
+   qu'il faut aller chercher en bas. `top` la pose sous le bandeau de contexte, lui-même collant à
+   `top: 0` avec `z-index: 2` ; on reste en dessous pour ne pas le recouvrir.
+   `max-height` + `overflow-y` : une réserve de 60 archers ne doit pas dépasser l'écran, sinon son
+   propre bas redevient inatteignable — le défaut qu'on vient de corriger, un cran plus bas.
+   `--hauteur-bandeau` est déclarée sur `.coquille__contenu` (le repli `5.5rem` ne sert que hors
+   coquille) : le couplage est ainsi **nommé aux deux bouts** plutôt que deviné ici. */
 .reserve {
-  margin-top: 8px;
+  position: sticky;
+  top: var(--hauteur-bandeau, 5.5rem);
+  z-index: 1;
+  align-self: start;
+  max-height: calc(100vh - var(--hauteur-bandeau, 5.5rem) - 1.5rem);
+  overflow-y: auto;
   padding: 10px;
+  background: var(--surface-1);
   border: 1px dashed var(--border-subtle);
   border-radius: 10px;
 }
 
+/* ⚠️ Le mélange se fait sur `--surface-1`, **pas sur `transparent`** (E16US005). Tant que la réserve
+   était dans le flux, rien ne passait derrière elle et un aplat à 88 % de transparence ne se voyait
+   pas. Devenue **collante**, elle se superpose aux bandes qui défilent — et cet état-là n'est actif
+   que pendant le `dragover`, c'est-à-dire pendant le geste même que l'US existe pour rendre
+   praticable : on aurait vu le plan défiler au travers du panneau en visant sa cible de dépôt. */
 .reserve--survol {
   border-color: var(--brand-text);
   border-style: solid;
-  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
+  background: color-mix(in srgb, var(--brand-surface) 12%, var(--surface-1));
 }
 
 .reserve__titre {
@@ -2227,19 +2376,23 @@ button:disabled {
   color: var(--text);
 }
 
+/* En colonne depuis E16US005 : le puits est une **colonne étroite**, pas un bandeau. Un `wrap`
+   horizontal y produisait une ligne par archer de toute façon, mais avec la raison rejetée hors
+   cadre. */
 .reserve__liste {
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
 }
 
 .reserve__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
 }
 
 .reserve__raison {
@@ -2252,13 +2405,58 @@ button:disabled {
   color: var(--danger);
 }
 
+/* L'admin travaille sur PC (A00, question 3), mais rien n'empêche d'ouvrir l'écran plus étroit — et
+   deux colonnes y rendraient les couloirs illisibles. On repasse alors à une seule colonne, réserve
+   en dessous et non collante : sur un écran de cette taille, elle n'est plus le panneau latéral
+   qu'on garde sous la main mais la fin de la page. La bande, elle, **reste** une cible par ligne :
+   c'est le CA, pas une commodité de largeur.
+
+   ⚠️ **`78rem` (1248 px) et non `64rem`, et le chiffre n'est pas rond par hasard** : une media query
+   mesure le **viewport**, alors que la contrainte est la **colonne de contenu**, plus étroite de
+   368 px sous la coquille admin (cf. `.placement__plan`). 78rem de fenêtre = ~880 px de contenu,
+   seuil en dessous duquel quatre couloirs plus une réserve ne tiennent plus. Écrire `64rem` — la
+   valeur de la première version — revenait à basculer à 656 px de contenu, c'est-à-dire jamais
+   assez tôt. La vraie réponse serait une *container query* sur `.coquille__contenu` ; elle
+   toucherait les 24 destinations de la coquille, donc elle relève d'une US d'outillage front, pas
+   d'ici. */
+@media (max-width: 78rem) {
+  .placement__plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reserve {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .cible {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+/* Plus étroit encore : ce n'est plus la réserve qui étouffe l'écran, c'est la sidebar à 17rem, qui
+   ne se replie qu'à 45rem. On passe alors à deux couloirs par ligne : l'alignement d'une bande à
+   l'autre est conservé (c'est le CA), seule la forme de la grille change.
+   ⚠️ **Le seuil est confortable, pas dérivé** — et la 1ʳᵉ rédaction prétendait le contraire
+   (« quatre couloirs retombent sous 60 px »), ce qui est faux : à 62 rem ils en offrent encore
+   ~100, et les 60 px ne sont atteints qu'à ~52 rem. On bascule donc **avant** que ce soit nécessaire,
+   délibérément. ⚠️ **Contrepartie à connaître** : sous ce seuil, une cible à 2 places remplit son
+   rang au lieu de laisser deux colonnes vides — l'alignement colonne à colonne subsiste, la lecture
+   « il manque deux places ici » non. */
+@media (max-width: 62rem) {
+  .cible__cases {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--danger`),
    jamais rouge — l'objectif « ≥ 2 clubs par cible » n'est pas atteignable ici (un seul club, ou club
    inconnu). Signal, pas erreur bloquante : l'admin peut ajuster à la main. Badge par cible + bannière
    récapitulative dans le même registre. */
 .cible__mixite {
   display: block;
-  margin-bottom: 6px;
   font-size: 12px;
   color: var(--danger);
 }
@@ -2290,7 +2488,6 @@ button:disabled {
    cible, dans le même style discret que `.cible__mixite`. */
 .cible__adjacence {
   display: block;
-  margin-bottom: 6px;
   font-size: 12px;
   color: var(--danger);
 }
