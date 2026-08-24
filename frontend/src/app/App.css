@@ -2125,39 +2125,86 @@ button:disabled {
   gap: 8px;
 }
 
-.placement__cibles {
+/* ————————————————————————————————————————————————————————————————————————————————————————————————
+   Plan de cibles et plan de duels — une cible par ligne (E16US005, retour A11 du 04/08/2026)
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   « Trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un écran PC ; une cible par ligne
+   me paraît plus adaptée. » L'ancienne grille `auto-fill minmax(160px, 1fr)` empilait les couloirs
+   **verticalement** dans des vignettes étroites : le nom d'un archer y tenait à peine, et rien
+   n'alignait la cible 3 sur la cible 4.
+
+   Ces règles servent **les deux plans** — qualification (`placement/Placement.tsx`) et duels
+   (`duels/Duels.tsx`). Ils ont le même défaut, le même utilisateur et le même PC : les laisser
+   diverger créerait un écart à rattraper (arbitrage du commanditaire, cadrage du 24/08/2026). */
+
+/* Le plan et son puits, côte à côte. La réserve **reste sous la main** pendant qu'on fait défiler
+   les cibles : le glisser-déposer HTML5 natif ne fait pas défiler la page toute seule, donc une
+   réserve en pied d'écran devient inatteignable dès qu'un départ compte vingt cibles — le geste
+   même que le questionnaire réclamait (« sortir un archer sans le positionner ailleurs »). */
+.placement__plan {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+  gap: var(--respiration);
+  align-items: start;
   margin: 8px 0;
 }
 
+/* Une cible par ligne : la pile, pas la grille. */
+.placement__cibles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* La bande : identité à gauche (largeur fixe, pour que les couloirs s'alignent d'une ligne à
+   l'autre), couloirs sur tout le reste. */
 .cible {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   background: var(--surface-1);
-  padding: 8px;
+  padding: 8px 10px;
+}
+
+.cible__entete {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
 }
 
 .cible__titre {
   display: block;
-  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 
+/* `--couloirs` est posé par le composant, **dérivé de la capacité maximale du plan** : c'est ce qui
+   aligne les colonnes d'une bande à l'autre quand les cibles n'ont pas toutes la même capacité, sans
+   réécrire ici un plafond à 4 (ce serait une quatrième copie de `DETTE-010`). Le repli à 4 ne sert
+   que si la propriété manque. */
 .cible__cases {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(var(--couloirs, 4), minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
 }
 
-/* Case = zone de dépôt. Hauteur ≥ 44 px (cible tactile AA, la config se fait aussi sur tablette). */
+/* Case = zone de dépôt. Hauteur ≥ 44 px (cible tactile AA, la config se fait aussi sur tablette) ;
+   le jeton porte désormais deux lignes (nom + repères), d'où le plancher relevé. `min-width: 0` :
+   sans lui, un nom long ferait déborder la colonne de grille au lieu de s'y couper. */
 .case {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  gap: 4px;
+  min-height: 52px;
+  min-width: 0;
   padding: 2px;
   border: 1px dashed var(--border-subtle);
   border-radius: 8px;
@@ -2187,12 +2234,15 @@ button:disabled {
   color: var(--brand-text);
 }
 
-/* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC). */
+/* Jeton d'archer déplaçable. `grab`/`grabbing` signalent l'affordance de drag à la souris (PC).
+   Deux lignes depuis E16US005 : le nom, puis les repères d'arbitrage. */
 .jeton {
+  display: flex;
   flex: 1;
-  padding: 8px 10px;
-  font-size: 13px;
-  font-weight: 500;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 8px;
   color: var(--text);
   background: var(--surface-0);
   border: 1px solid var(--border-subtle);
@@ -2205,10 +2255,36 @@ button:disabled {
   cursor: grabbing;
 }
 
-/* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. */
+.jeton__nom {
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Club · catégorie · blason (E16US005) — la **cause** des badges portés par la cible (mixité RG-3,
+   cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas. */
+.jeton__reperes {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. **Collante** depuis E16US005 —
+   c'est ce qui en fait un « puits » utilisable sur un plan de quarante cibles plutôt qu'une liste
+   qu'il faut aller chercher en bas. `top` la pose sous le bandeau de contexte, lui-même collant à
+   `top: 0` avec `z-index: 2` ; on reste en dessous pour ne pas le recouvrir.
+   `max-height` + `overflow-y` : une réserve de 60 archers ne doit pas dépasser l'écran, sinon son
+   propre bas redevient inatteignable — le défaut qu'on vient de corriger, un cran plus bas. */
 .reserve {
-  margin-top: 8px;
+  position: sticky;
+  top: 3.5rem;
+  z-index: 1;
+  align-self: start;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
   padding: 10px;
+  background: var(--surface-1);
   border: 1px dashed var(--border-subtle);
   border-radius: 10px;
 }
@@ -2219,6 +2295,28 @@ button:disabled {
   background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
 }
 
+/* L'admin travaille sur PC (A00, question 3), mais rien n'empêche d'ouvrir l'écran plus étroit — et
+   deux colonnes dans 700 px rendraient les couloirs illisibles. On repasse alors à une seule
+   colonne, réserve en dessous et non collante : sur un écran de cette taille, elle n'est plus le
+   panneau latéral qu'on garde sous la main mais la fin de la page. La bande, elle, **reste** une
+   cible par ligne : c'est le CA, pas une commodité de largeur. */
+@media (max-width: 64rem) {
+  .placement__plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reserve {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .cible {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
 .reserve__titre {
   display: block;
   margin-bottom: 6px;
@@ -2227,19 +2325,23 @@ button:disabled {
   color: var(--text);
 }
 
+/* En colonne depuis E16US005 : le puits est une **colonne étroite**, pas un bandeau. Un `wrap`
+   horizontal y produisait une ligne par archer de toute façon, mais avec la raison rejetée hors
+   cadre. */
 .reserve__liste {
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
 }
 
 .reserve__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
 }
 
 .reserve__raison {

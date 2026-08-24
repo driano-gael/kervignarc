@@ -85,3 +85,51 @@ export const RAISON_ANOMALIE: Record<RaisonConflit, boolean> = {
   cloisonnement: true,
   en_reserve: false,
 }
+
+// --- Repères d'un archer sur son jeton (E16US005) ------------------------------------------------
+//
+// L'écran signale au niveau **cible** que la mixité n'est pas garantie ou que le cloisonnement n'est
+// pas respecté — mais il ne disait pas **qui** le cause : il fallait quitter le plan pour retrouver
+// le club d'un archer ou son blason. Une cible par ligne libère la largeur qu'il faut pour porter,
+// sous le nom, les trois attributs **sur lesquels l'organisateur arbitre justement** : le club
+// (mixité, RG-3), la catégorie et le blason (cloisonnement, RG-4).
+//
+// Fonction **pure**, posée ici et non dans un composant : les deux plans — cibles et duels — la
+// partagent, comme ils partagent déjà `LIBELLE_RAISON` et la bannière de cloisonnement. Un second
+// exemplaire est exactement ce qui a produit le défaut d'E03US007 (cf. plus haut).
+export interface ReferentielsDuPlan {
+  clubs: Map<number, string>
+  categories: Map<number, string>
+  blasons: Map<number, string>
+}
+
+// Les repères, dans l'ordre d'affichage. Liste **éventuellement vide** — jamais de trou ni de
+// libellé bouche-trou :
+//
+//  - `archer` absent (la liste des inscrits n'est pas encore là) → aucun repère, le nom suffit ;
+//  - `club_id === null` → « club inconnu », **jamais** « aucun club » : en FFTA tout licencié a un
+//    club (ADR-0014), et c'est précisément ce cas que le serveur traite comme *indécidable* pour la
+//    mixité. Le taire priverait l'organisateur de la cause du badge ambre qu'il a sous les yeux ;
+//  - identifiant renseigné mais introuvable au référentiel (pas encore chargé, ou brique retirée du
+//    tournoi) → on **omet** le repère. « Club #7 » n'apprend rien à personne et fait du bruit sur
+//    quarante lignes ; le nom de l'archer, lui, reste toujours lisible.
+export function reperesArcher(
+  archer: { club_id: number | null; categorie_id: number } | undefined,
+  blasonId: number | null,
+  referentiels: ReferentielsDuPlan,
+): string[] {
+  if (archer === undefined) return []
+  const reperes: string[] = []
+  if (archer.club_id === null) reperes.push('club inconnu')
+  else {
+    const club = referentiels.clubs.get(archer.club_id)
+    if (club !== undefined) reperes.push(club)
+  }
+  const categorie = referentiels.categories.get(archer.categorie_id)
+  if (categorie !== undefined) reperes.push(categorie)
+  if (blasonId !== null) {
+    const blason = referentiels.blasons.get(blasonId)
+    if (blason !== undefined) reperes.push(blason)
+  }
+  return reperes
+}

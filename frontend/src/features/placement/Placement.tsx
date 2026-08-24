@@ -5,12 +5,23 @@
 // (échange), ou vers la **réserve** (mise à l'écart). Le serveur reste l'autorité : chaque geste est
 // un PUT, et un refus (`409 deplacement_invalide`) laisse le plan inchangé — on affiche l'alerte et
 // on refetch. Drag & drop **HTML5 natif** (à la souris, écran admin sur PC) : aucune dépendance.
+//
+// **Mise en page (E16US005, retour A11)** : *« trop tassé, une cible par ligne me paraît plus
+// adaptée »*. Le plan est donc une **pile de bandes** pleine largeur — une cible par ligne, ses
+// couloirs alignés en colonnes d'une ligne à l'autre — et non plus une grille de vignettes de
+// 160 px. La largeur ainsi gagnée porte, sous chaque nom, les repères sur lesquels l'organisateur
+// arbitre (club, catégorie, blason). La **réserve** passe en panneau collant à droite : le
+// glisser-déposer HTML5 natif ne fait pas défiler la page, donc une réserve en pied d'écran devient
+// inatteignable dès qu'un départ compte vingt cibles.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { ConfirmationChiffree } from '../../shared/confirmation/ConfirmationChiffree'
 import { useArchers } from '../archers/hooks'
+import { useBlasons } from '../blasons/hooks'
+import { useCategories } from '../categories/hooks'
+import { useClubs } from '../clubs/hooks'
 import type { Archer } from '../competition/api'
 import { useDeparts } from '../departs/hooks'
 import type {
@@ -30,11 +41,13 @@ import {
   useRegenerer,
   useReglerCloisonnement,
 } from './hooks'
+import type { ReferentielsDuPlan } from './presentation'
 import {
   LIBELLE_CLOISONNEMENT,
   LIBELLE_RAISON,
   RAISON_ANOMALIE,
   VALEURS_CLOISONNEMENT,
+  reperesArcher,
   resumeCloisonnementNonRespecte,
   resumeMixiteNonGarantie,
 } from './presentation'
@@ -149,14 +162,32 @@ function PlanCharge({
   departId: number
   plan: PlanDeCibles
 }) {
-  // Noms des archers (une requête, partagée). L'`inscription_id` — cible du déplacement — vient
+  // Archers du tournoi (une requête, partagée). L'`inscription_id` — cible du déplacement — vient
   // directement du plan (chaque placement et chaque conflit le porte), rien à reconstituer.
+  //
+  // On garde l'**archer entier** et non son seul nom (E16US005) : le jeton porte désormais aussi son
+  // club et sa catégorie, qui vivent sur le même objet. Une seconde table n'aurait rien économisé.
   const archers = useArchers(tournoiId)
-  const nomParArcher = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const archer of archers.data ?? []) map.set(archer.id, nomComplet(archer))
+  const archerParId = useMemo(() => {
+    const map = new Map<number, Archer>()
+    for (const archer of archers.data ?? []) map.set(archer.id, archer)
     return map
   }, [archers.data])
+
+  // Les trois référentiels que les repères traduisent en clair. Ce sont des lectures **déjà en
+  // cache** pour l'admin (l'atelier et les inscriptions les ont chargées) : aucune requête de plus
+  // en pratique, et l'écran reste lisible si l'une d'elles manque (cf. `reperesArcher`).
+  const clubs = useClubs()
+  const categories = useCategories(tournoiId)
+  const blasons = useBlasons(tournoiId)
+  const referentiels = useMemo<ReferentielsDuPlan>(
+    () => ({
+      clubs: new Map((clubs.data ?? []).map((club) => [club.id, club.nom])),
+      categories: new Map((categories.data ?? []).map((c) => [c.id, c.libelle])),
+      blasons: new Map((blasons.data ?? []).map((blason) => [blason.id, blason.nom])),
+    }),
+    [blasons.data, categories.data, clubs.data],
+  )
 
   const regenerer = useRegenerer(tournoiId, departId)
   const deplacer = useDeplacer(tournoiId, departId)
@@ -198,10 +229,23 @@ function PlanCharge({
   // Cibles qui violent le cloisonnement demandé (E03US007) — plan antérieur au réglage.
   const resumeCloisonnement = resumeCloisonnementNonRespecte(plan.cibles)
 
-  const jeton = (archerId: number, inscriptionId: number): Jeton => ({
-    nom: nomParArcher.get(archerId) ?? `Archer #${archerId}`,
-    inscriptionId,
-  })
+  // `blasonId` vient du **placement** et non de l'archer : c'est le blason sur lequel il tire ici.
+  // Un archer en réserve n'en a pas encore (`null`) — la fabrique le sait, l'appelant n'a rien à
+  // deviner.
+  const jeton = (archerId: number, inscriptionId: number, blasonId: number | null): Jeton => {
+    const archer = archerParId.get(archerId)
+    return {
+      nom: archer ? nomComplet(archer) : `Archer #${archerId}`,
+      reperes: reperesArcher(archer, blasonId, referentiels),
+      inscriptionId,
+    }
+  }
+
+  // Nombre de colonnes de couloirs, **dérivé du plan** et non écrit en dur : les cibles n'ont pas
+  // toutes la même capacité, et les aligner d'une ligne à l'autre demande une grille commune. Le
+  // dériver évite d'ajouter une quatrième copie du plafond `A`→`D` (`DETTE-010`) : le jour où la
+  // capacité dépasse 4, cette grille suit sans qu'on y touche.
+  const couloirs = Math.max(1, ...plan.cibles.map((cible) => cible.capacite))
 
   return (
     <div className="placement">
@@ -339,33 +383,47 @@ function PlanCharge({
         </p>
       )}
 
-      <div className="placement__cibles">
-        {plan.cibles.map((cible) => (
-          <Cible
-            key={cible.index}
-            cible={cible}
-            jeton={jeton}
-            survol={survol}
-            setSurvol={setSurvol}
-            onGlisser={setInscriptionGlissee}
-            onDeposer={deposer}
-          />
-        ))}
-      </div>
+      {/* Le plan et son puits (E16US005) : deux colonnes, la réserve **collante** à droite. Les
+          garder l'un sous l'autre rendait la mise à l'écart impraticable dès vingt cibles — le
+          glisser-déposer natif ne fait pas défiler la page pendant qu'on tient un jeton. */}
+      <div className="placement__plan">
+        <div className="placement__cibles" style={{ '--couloirs': couloirs } as CSSProperties}>
+          {plan.cibles.map((cible) => (
+            <Cible
+              key={cible.index}
+              cible={cible}
+              jeton={jeton}
+              survol={survol}
+              setSurvol={setSurvol}
+              onGlisser={setInscriptionGlissee}
+              onDeposer={deposer}
+            />
+          ))}
+        </div>
 
-      <Reserve
-        conflits={plan.conflits}
-        jeton={jeton}
-        survole={survol === 'reserve'}
-        setSurvol={setSurvol}
-        onGlisser={setInscriptionGlissee}
-        onDeposer={() => deposer({ cible_index: null, position: null })}
-      />
+        <Reserve
+          conflits={plan.conflits}
+          jeton={jeton}
+          survole={survol === 'reserve'}
+          setSurvol={setSurvol}
+          onGlisser={setInscriptionGlissee}
+          onDeposer={() => deposer({ cible_index: null, position: null })}
+        />
+      </div>
     </div>
   )
 }
 
-type Jeton = { nom: string; inscriptionId: number }
+// `reperes` : les attributs d'arbitrage affichés sous le nom (club, catégorie, blason), déjà
+// traduits en clair et éventuellement vides — le jeton ne consulte aucun référentiel lui-même.
+//
+// DETTE-085 : ce type et les quatre composants qui suivent (`Cible`, `Case`, `JetonArcher`,
+// `Reserve`) sont **recopiés à l'identique** dans `duels/Duels.tsx`, cloné d'ici à E03US009. Le
+// vocabulaire métier, lui, est mutualisé dans `presentation.ts` — c'est le rendu qui reste double.
+// E16US005 est le premier changement à devoir toucher les deux : elle inscrit la dette au registre
+// plutôt que de remonter les composants dans `shared/`, ce qui serait un remède structurel introduit
+// en douce (§ Dette). À traiter avec DETTE-083, même geste et même destination.
+type Jeton = { nom: string; reperes: string[]; inscriptionId: number }
 
 function Cible({
   cible,
@@ -376,7 +434,7 @@ function Cible({
   onDeposer,
 }: {
   cible: CiblePlacee
-  jeton: (archerId: number, inscriptionId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number, blasonId: number | null) => Jeton
   survol: string | null
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -386,17 +444,23 @@ function Cible({
 
   return (
     <div className="cible">
-      <span className="cible__titre">Cible {cible.index}</span>
-      {/* Objectif de mixité ≥ 2 clubs non atteint sur cette cible (E03US006) : badge ambre discret,
-          l'admin décide s'il ajuste. Pas de badge quand la mixité est garantie ou sans objet. */}
-      {cible.mixite_non_garantie && (
-        <span className="cible__mixite">mixité de club non garantie</span>
-      )}
-      {/* Cette cible mêle ce que le réglage sépare (E03US007) : badge ambre, même registre que la
-          mixité. Le placement auto ne peut pas la produire — c'est un plan à régénérer. */}
-      {cible.cloisonnement_non_respecte && (
-        <span className="cible__mixite">cloisonnement non respecté</span>
-      )}
+      {/* En-tête de la bande (E16US005) : le numéro et ses signaux tiennent dans une colonne à
+          gauche, les couloirs occupent le reste de la largeur. Les badges passent **sous** le
+          titre plutôt qu'à sa suite — en pleine largeur, une file horizontale les éloignait des
+          jetons qu'ils qualifient. */}
+      <div className="cible__entete">
+        <span className="cible__titre">Cible {cible.index}</span>
+        {/* Objectif de mixité ≥ 2 clubs non atteint sur cette cible (E03US006) : badge ambre discret,
+            l'admin décide s'il ajuste. Pas de badge quand la mixité est garantie ou sans objet. */}
+        {cible.mixite_non_garantie && (
+          <span className="cible__mixite">mixité de club non garantie</span>
+        )}
+        {/* Cette cible mêle ce que le réglage sépare (E03US007) : badge ambre, même registre que la
+            mixité. Le placement auto ne peut pas la produire — c'est un plan à régénérer. */}
+        {cible.cloisonnement_non_respecte && (
+          <span className="cible__mixite">cloisonnement non respecté</span>
+        )}
+      </div>
       <div className="cible__cases">
         {positions.map((position) => {
           const place = cible.placements.find((p) => p.position === position)
@@ -416,7 +480,7 @@ function Cible({
                       sienne. Badge accent, même parti pris que `plan-public__position`. */}
                   <span className="case__position">{position}</span>
                   <JetonArcher
-                    jeton={jeton(place.archer_id, place.inscription_id)}
+                    jeton={jeton(place.archer_id, place.inscription_id, place.blason_id)}
                     onGlisser={onGlisser}
                   />
                 </>
@@ -483,7 +547,13 @@ function JetonArcher({
         onGlisser(jeton.inscriptionId)
       }}
     >
-      {jeton.nom}
+      <span className="jeton__nom">{jeton.nom}</span>
+      {/* Les repères (E16US005) : club, catégorie, blason — ce sur quoi portent les deux badges de
+          la cible. Rien n'est affiché quand ils manquent : une ligne secondaire vide vaut mieux
+          qu'un « Club #7 » répété quarante fois. */}
+      {jeton.reperes.length > 0 && (
+        <span className="jeton__reperes">{jeton.reperes.join(' · ')}</span>
+      )}
     </span>
   )
 }
@@ -497,7 +567,7 @@ function Reserve({
   onDeposer,
 }: {
   conflits: Conflit[]
-  jeton: (archerId: number, inscriptionId: number) => Jeton
+  jeton: (archerId: number, inscriptionId: number, blasonId: number | null) => Jeton
   survole: boolean
   setSurvol: (cle: string | null) => void
   onGlisser: (inscriptionId: number) => void
@@ -524,8 +594,11 @@ function Reserve({
         <ul className="reserve__liste">
           {conflits.map((conflit) => (
             <li key={conflit.archer_id} className="reserve__item">
+              {/* Pas de blason en réserve : l'archer n'est posé nulle part, donc il ne tire encore
+                  sur aucun carton. Ses deux autres repères restent utiles — « sans blason » plus la
+                  catégorie dit **laquelle** n'a pas de carton à sa hauteur. */}
               <JetonArcher
-                jeton={jeton(conflit.archer_id, conflit.inscription_id)}
+                jeton={jeton(conflit.archer_id, conflit.inscription_id, null)}
                 onGlisser={onGlisser}
               />
               <span

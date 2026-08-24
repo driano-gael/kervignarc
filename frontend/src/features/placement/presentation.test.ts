@@ -4,9 +4,11 @@
 
 import { describe, expect, it } from 'vitest'
 import type { CiblePlacee } from './api'
+import type { ReferentielsDuPlan } from './presentation'
 import {
   LIBELLE_CLOISONNEMENT,
   compterMixiteNonGarantie,
+  reperesArcher,
   resumeCloisonnementNonRespecte,
   resumeMixiteNonGarantie,
 } from './presentation'
@@ -88,6 +90,60 @@ describe('LIBELLE_CLOISONNEMENT', () => {
       'categorie',
       'blason',
       'blason_et_categorie',
+    ])
+  })
+})
+
+// --- Repères d'un archer sur son jeton (E16US005) ------------------------------------------------
+//
+// Ce que ces tests gardent : les repères servent à **expliquer les badges** de la cible (mixité,
+// cloisonnement). Un repère faux ou bouche-trou serait pire que pas de repère du tout — l'organisateur
+// déplacerait un archer sur une information inventée.
+
+const REFERENTIELS: ReferentielsDuPlan = {
+  clubs: new Map([[7, 'Arc Club de Kervignarc']]),
+  categories: new Map([[3, 'Senior 1 Femme']]),
+  blasons: new Map([[9, 'Triple 40']]),
+}
+
+describe('reperesArcher', () => {
+  it('CA — porte le club, la catégorie et le blason, dans cet ordre', () => {
+    // L'ordre n'est pas cosmétique : il va du plus large (le club, RG-3) au plus fin (le blason,
+    // RG-4), donc dans le sens où l'organisateur lit un conflit de cloisonnement.
+    expect(reperesArcher({ club_id: 7, categorie_id: 3 }, 9, REFERENTIELS)).toEqual([
+      'Arc Club de Kervignarc',
+      'Senior 1 Femme',
+      'Triple 40',
+    ])
+  })
+
+  it('un club non renseigné se dit « club inconnu », jamais « aucun club » (ADR-0014)', () => {
+    // C'est **la cause** du badge « mixité non garantie » que le serveur pose sur la cible : la
+    // taire laisserait l'organisateur devant un reproche sans explication.
+    expect(reperesArcher({ club_id: null, categorie_id: 3 }, 9, REFERENTIELS)).toEqual([
+      'club inconnu',
+      'Senior 1 Femme',
+      'Triple 40',
+    ])
+  })
+
+  it('un identifiant introuvable est omis, jamais rendu en « #7 »', () => {
+    // Cas réel du premier rendu : les trois référentiels arrivent **après** le plan. Afficher
+    // « Club #7 » puis le vrai nom ferait clignoter quarante lignes ; l'omission ne coûte rien.
+    const vide: ReferentielsDuPlan = { clubs: new Map(), categories: new Map(), blasons: new Map() }
+    expect(reperesArcher({ club_id: 7, categorie_id: 3 }, 9, vide)).toEqual([])
+  })
+
+  it('sans archer connu, aucun repère — le nom seul suffit', () => {
+    expect(reperesArcher(undefined, 9, REFERENTIELS)).toEqual([])
+  })
+
+  it('sans blason (un archer en réserve), les deux autres repères tiennent', () => {
+    // La réserve ne porte pas de blason : `Conflit` n'a que l'archer et la raison. Les repères y
+    // restent utiles — « sans blason » + la catégorie dit **quelle** catégorie n'a pas de carton.
+    expect(reperesArcher({ club_id: 7, categorie_id: 3 }, null, REFERENTIELS)).toEqual([
+      'Arc Club de Kervignarc',
+      'Senior 1 Femme',
     ])
   })
 })
