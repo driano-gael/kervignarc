@@ -543,9 +543,9 @@ window.ATLAS.avancement = {
    ],
    "ouverte": true,
    "resorption_us": [
-    "E05US027"
+    "E16US005"
    ],
-   "severite": "mineur"
+   "severite": "majeur"
   },
   {
    "identifiant": "084",
@@ -2743,8 +2743,7 @@ window.ATLAS.avancement = {
     "028",
     "063",
     "064",
-    "083",
-    "085"
+    "083"
    ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
@@ -4013,7 +4012,9 @@ window.ATLAS.avancement = {
    "dettes_introduites": [
     "085"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "085"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "✅",

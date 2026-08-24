@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-24 | `E16US005` | 14 | +1089/−161 | ~14 min | ~22 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 2 |
 | 2026-08-23 | `E16US012` (7ᵉ passe, ciblée B+D) | 17 | +143/-52 | ~2 min | ~13 min | D (21:59→22:11) | — | majeur:3 mineur:5 suggestion:1 | — | — | **bloquant:0** majeur:3 mineur:3 suggestion:2 | **aucun bloquant** | 7 (sortie) |
 | 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
 | 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
@@ -439,3 +440,40 @@ dans le dépôt, une valeur par défaut côté serveur, et une ligne d'ADR affir
 Le déplacement d'une promesse d'un support à un autre ne devient une garantie qu'au moment où une
 mutation la fait rougir. Le réflexe : après avoir ajouté un champ ou une prop qui « porte » une
 règle, le figer et relancer — s'il ne tombe rien, on a déplacé le commentaire, pas fermé le trou.
+
+**34. Une mise en page qu'aucun test ne prouve ne se livre pas sans l'avoir regardée — et si on ne
+peut pas la regarder, il faut la rendre robuste plutôt que juste.**
+E16US005 a produit **deux bloquants de même racine**, et aucun n'était atteignable par la relecture
+d'un diff. Le premier est un *non-changement* : le hunk manquant côté `Duels.tsx` n'apparaît nulle
+part dans le diff, par définition. Le second est une **erreur d'arithmétique** — un point de bascule
+`@media` mesuré sur le viewport alors que la contrainte était la colonne de contenu, 368 px plus
+étroite sous la coquille : l'US divisait par deux la largeur de texte utile *tout en la doublant en
+quantité*, donc rendait l'écran plus tassé que ce qu'elle prétendait corriger. Les deux se voyaient
+en trente secondes d'application lancée.
+
+La leçon utile n'est pas « lancer l'app » — le contrôle visuel s'est révélé **impossible sur ce
+poste** (extension navigateur non connectée), et un banc d'essai statique reproduisant le DOM n'a pas
+pu être ouvert non plus. C'est : **quand on ne peut pas mesurer, on choisit le réglage qui ne dépend
+pas de la mesure.** Le correctif décisif n'a pas été de retoucher le seuil, mais de tronquer les
+repères avec une bulle au lieu de les laisser se casser — une mise en page robuste à la largeur, au
+lieu d'une mise en page accordée à une fenêtre supposée. Le seuil, lui, reste un pari, mais un pari
+**commenté avec son offset**, donc réfutable.
+
+**35. Un `replace(texte, 1)` sur un texte qui n'est pas unique produit un défaut de traçabilité
+silencieux — et l'`assert` qui l'accompagne ne protège de rien.**
+Deux défauts de cette US viennent du même geste. La puce « vocabulaire vérifié » a été barrée dans le
+bloc d'`E16US004` au lieu d'`E16US005` : l'avertissement est rédigé **à l'identique dans quatre blocs
+d'US**, et le script a patché la première occurrence. L'`assert avant in s` passait, évidemment — il
+prouve la *présence*, jamais l'*unicité*. Résultat : une US déjà mergée annotée d'une vérification
+portant sur la planche d'une autre, et l'US courante livrée avec un ⚠️ ouvert que son propre tracker
+déclarait fermé. Le réflexe : sur un fichier de backlog où les puces se répètent d'une US à l'autre,
+**compter les occurrences avant de remplacer** (`s.count(avant) == 1`), ou ancrer le remplacement sur
+les bornes du bloc visé.
+
+La seconde occurrence du même geste est plus retorse : la cellule *Résorption* de `DETTE-085` citait
+`E05US027` comme **précédent** de refactor. Or l'atlas extrait `resorption_us` de cette cellule par
+expression régulière — il a donc déclaré une dette du 24/08 **résorbée** par une US mergée le 22/08,
+sans qu'aucun contrôle bronche (`controles.py` ne signale que les US *non spécifiées*). Nommer une US
+dans cette colonne, fût-ce en exemple, la désigne comme résorbante. `DETTE-083` porte déjà le même
+artefact sur `main`.
+

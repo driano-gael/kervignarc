@@ -235,3 +235,74 @@ describe('Placement — le puits de réserve (E16US005, CA repris d’E03US004)'
     expect(screen.queryByText(/Triple 40/)).toBeNull()
   })
 })
+
+describe('Placement — les colonnes de couloirs s’alignent d’une bande à l’autre (E16US005)', () => {
+  // ⚠️ Ce que ces trois cas gardent n'est **pas** la mise en page (jsdom ne calcule aucune grille) :
+  // c'est le **nombre** que le composant calcule et pose dans l'attribut `style`. C'est du
+  // TypeScript, donc c'est testable — l'argument « le CSS n'est pas prouvable » ne couvrait pas ce
+  // CA, et il servait à confier à la recette manuelle ce qu'une machine sait faire. Précédent du
+  // dépôt : `gabarits/PlanDeSalle.test.tsx` teste déjà en jsdom qu'une cible à 2 couloirs éteint
+  // C et D.
+
+  // Le conteneur porte la propriété ; on le lit par son enfant, la grille n'ayant pas de rôle ARIA.
+  const grille = () => document.querySelector('.placement__cibles')
+
+  it('CA — la grille suit la capacité **maximale** du plan, et les petites cibles laissent des trous', async () => {
+    // Le cas qui prouve l'alignement : une cible à 2 places sous une cible à 4 doit occuper les
+    // colonnes A et B, pas s'étirer sur toute la largeur. Les deux assertions vont ensemble — la
+    // propriété seule ne dirait pas que la petite bande rend moins de cases.
+    vi.mocked(getPlanDeCibles).mockResolvedValue({
+      ...PLAN,
+      cibles: [CIBLE, { ...CIBLE, index: 2, capacite: 2, placements: [] }],
+    })
+    monter(<Placement tournoiId={1} />)
+    await choisirLeDepart()
+
+    await screen.findByText('Cible 2')
+    expect(grille()?.getAttribute('style')).toContain('--couloirs: 4')
+    // La bande à 2 places n'expose que A et B : 4 + 2 couloirs au total sur l'écran.
+    expect(screen.getAllByLabelText(/^Couloir de tir /)).toHaveLength(6)
+  })
+
+  it('un plan homogène à 2 places ne réserve pas 4 colonnes', async () => {
+    // C'est ce cas, et lui seul, qui distingue « dérivé du plan » de « écrit en dur à 4 ».
+    vi.mocked(getPlanDeCibles).mockResolvedValue({
+      ...PLAN,
+      cibles: [{ ...CIBLE, capacite: 2, placements: [] }],
+    })
+    monter(<Placement tournoiId={1} />)
+    await choisirLeDepart()
+
+    await screen.findByText('Cible 1')
+    expect(grille()?.getAttribute('style')).toContain('--couloirs: 2')
+  })
+
+  it('un plan sans cible vaut 1 colonne, jamais `-Infinity`', async () => {
+    // `Math.max()` sans argument rend `-Infinity`, ce qui produirait `repeat(-Infinity, …)` — une
+    // déclaration invalide qui fait retomber la grille sur son défaut sans rien signaler. Le
+    // `Math.max(1, …)` est là pour ça, et rien ne le gardait.
+    vi.mocked(getPlanDeCibles).mockResolvedValue({ ...PLAN, cibles: [] })
+    monter(<Placement tournoiId={1} />)
+    await choisirLeDepart()
+
+    await screen.findByText(/Aucun archer en attente/)
+    expect(grille()?.getAttribute('style')).toContain('--couloirs: 1')
+  })
+
+  it('une capacité serveur au-delà du plafond `A`→`D` n’ouvre pas de colonne fantôme', async () => {
+    // `POSITIONS` plafonne les cases rendues à 4 (`DETTE-010`). Sans le `Math.min`, une capacité de
+    // 6 poserait 6 colonnes sur **toutes** les bandes en n'en remplissant que 4 : deux colonnes
+    // vides qui rétrécissent les autres, soit l'inverse de l'alignement recherché. Ce test tombera
+    // le jour où E01US019 délestera le plafond — c'est voulu : il faudra alors le retourner.
+    vi.mocked(getPlanDeCibles).mockResolvedValue({
+      ...PLAN,
+      cibles: [{ ...CIBLE, capacite: 6 }],
+    })
+    monter(<Placement tournoiId={1} />)
+    await choisirLeDepart()
+
+    await screen.findByText('Cible 1')
+    expect(grille()?.getAttribute('style')).toContain('--couloirs: 4')
+    expect(screen.getAllByLabelText(/^Couloir de tir /)).toHaveLength(4)
+  })
+})

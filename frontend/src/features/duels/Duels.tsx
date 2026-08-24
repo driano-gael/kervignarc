@@ -46,6 +46,9 @@ import {
 import { resumeAdjacenceNonGarantie } from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
+// DETTE-010 : le plafond `A`→`D` est écrit ici en dur, comme dans l'écran jumeau et les deux écrans
+// de gabarit. E01US019 le délestera. C'est **cette liste** — et non la grille CSS — qui borne le
+// nombre de couloirs réellement rendus, d'où le `Math.min` du calcul de `couloirs`.
 const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Duels({ tournoiId }: { tournoiId: number }) {
@@ -147,7 +150,8 @@ function PlanCharge({
   }, [archers.data])
 
   // Les trois référentiels que les repères traduisent en clair (E16US005), comme sur le plan de
-  // cibles. Le cloisonnement vaut ici aussi : c'est la même salle, réglée une fois pour le tournoi.
+  // cibles — au plus trois GET au montage, servis par le cache de 30 s quand on vient de l'atelier.
+  // Le cloisonnement vaut ici aussi : c'est la même salle, réglée une fois pour le tournoi.
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
   const blasons = useBlasons(tournoiId)
@@ -198,9 +202,20 @@ function PlanCharge({
     }
   }
 
-  // Colonnes de couloirs **dérivées du plan** (cf. `placement/Placement.tsx`) : pas de quatrième
-  // copie du plafond `A`→`D` (`DETTE-010`).
-  const couloirs = Math.max(1, ...plan.cibles.map((cible) => cible.capacite))
+  // Nombre de colonnes de couloirs, **dérivé du plan** : les cibles n'ont pas toutes la même
+  // capacité, et les aligner d'une bande à l'autre demande une grille commune — une cible à 2
+  // places occupe alors les colonnes A et B, les deux suivantes restant vides. C'est le seul
+  // service que rend ce calcul, et c'est un vrai service.
+  //
+  // ⚠️ Le `Math.min` n'est pas décoratif : sans lui, une capacité serveur > 4 ouvrirait N colonnes
+  // sur **toutes** les bandes du plan, en n'en remplissant que 4 (`POSITIONS.slice`) — donc une
+  // colonne fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond :
+  // c'est `POSITIONS` qui le porte (`DETTE-010`), et le `Math.min` fait que le rendu reste cohérent
+  // en attendant E01US019.
+  const couloirs = Math.max(
+    1,
+    ...plan.cibles.map((cible) => Math.min(cible.capacite, POSITIONS.length)),
+  )
 
   return (
     <div className="placement">
@@ -340,10 +355,17 @@ function Cible({
               onDeposer={() => onDeposer({ cible_index: cible.index, position })}
             >
               {place ? (
-                <JetonArcher
-                  jeton={jeton(place.archer_id, place.inscription_id, place.blason_id)}
-                  onGlisser={onGlisser}
-                />
+                <>
+                  {/* La lettre du couloir sur une case **occupée** (E16US005) : le placement la
+                      rendait déjà (E03US011), pas les duels — or la fiche de recette annonce
+                      « exactement la même présentation ». En bandes, c'est elle qui rattache un
+                      jeton à sa colonne quand les capacités diffèrent d'une cible à l'autre. */}
+                  <span className="case__position">{position}</span>
+                  <JetonArcher
+                    jeton={jeton(place.archer_id, place.inscription_id, place.blason_id)}
+                    onGlisser={onGlisser}
+                  />
+                </>
               ) : (
                 <span className="case__libre">{position}</span>
               )}
@@ -400,14 +422,21 @@ function JetonArcher({
     <span
       className="jeton"
       draggable
-      title="Glisser pour déplacer"
+      // Les repères sont **tronqués** à l'affichage (`.jeton__reperes`) : le titre porte le texte
+      // entier, sinon un couloir étroit les rendrait illisibles sans recours.
+      title={jeton.reperes.length > 0 ? jeton.reperes.join(' · ') : 'Glisser pour déplacer'}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
         onGlisser(jeton.inscriptionId)
       }}
     >
-      {jeton.nom}
+      <span className="jeton__nom">{jeton.nom}</span>
+      {/* Les repères (E16US005) : club, catégorie, blason — ce sur quoi portent les badges de la
+          cible. Rien n'est affiché quand ils manquent. */}
+      {jeton.reperes.length > 0 && (
+        <span className="jeton__reperes">{jeton.reperes.join(' · ')}</span>
+      )}
     </span>
   )
 }

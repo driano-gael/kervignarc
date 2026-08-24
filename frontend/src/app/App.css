@@ -294,7 +294,17 @@
   font-weight: 600;
 }
 
+/* `--hauteur-bandeau` : hauteur **réservée** sous `.bandeau-contexte` par tout ce qui se cale en
+   dessous de lui — aujourd'hui la réserve collante du plan de cibles (E16US005). Elle vit ici, sur
+   l'ancêtre commun, et non sur `.bandeau-contexte` : une propriété personnalisée n'est héritée que
+   par les **descendants**, or ce qui la consomme en est le **frère**.
+   Pourquoi 5,5 rem et non la hauteur nominale (~3 rem) : le bandeau est en `flex-wrap: wrap` et
+   porte jusqu'à cinq éléments, donc il passe à deux lignes dès qu'un nom de tournoi est long. Comme
+   il gagne la superposition (`z-index: 2`), une valeur sous-estimée lui fait recouvrir **en
+   silence** l'en-tête de ce qui le suit. On provisionne les deux lignes : le coût d'une marge un
+   peu large est nul, celui d'un titre masqué ne se voit qu'en salle. */
 .coquille__contenu {
+  --hauteur-bandeau: 5.5rem;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -2141,9 +2151,16 @@ button:disabled {
    les cibles : le glisser-déposer HTML5 natif ne fait pas défiler la page toute seule, donc une
    réserve en pied d'écran devient inatteignable dès qu'un départ compte vingt cibles — le geste
    même que le questionnaire réclamait (« sortir un archer sans le positionner ailleurs »). */
+/* ⚠️ **La largeur disponible n'est PAS celle de la fenêtre.** Sous la coquille admin, il faut
+   retrancher 368 px avant que le plan voie un pixel : `.coquille__nav` (17rem = 272), le `gap` de
+   `.coquille` (32) et les deux `padding` de `.app` (2 × 32). Une fenêtre de 1366 px ne laisse donc
+   que **998 px**. Toutes les largeurs ci-dessous — et le point de bascule plus bas — sont calibrées
+   sur cette valeur, pas sur le viewport. Première version de cette US : réserve à `20rem` et
+   en-tête à `11rem`, ce qui ne laissait que **52 px de texte** par couloir à 1366 px, contre 123 px
+   *avant* l'US — elle rendait donc l'écran plus tassé que ce qu'elle prétendait corriger. */
 .placement__plan {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 15rem);
   gap: var(--respiration);
   align-items: start;
   margin: 8px 0;
@@ -2158,10 +2175,12 @@ button:disabled {
 }
 
 /* La bande : identité à gauche (largeur fixe, pour que les couloirs s'alignent d'une ligne à
-   l'autre), couloirs sur tout le reste. */
+   l'autre), couloirs sur tout le reste. `7rem` et non `11rem` : « Cible 12 » tient dans 5 rem, et
+   les badges d'alerte se replient sur plusieurs lignes — chaque rem pris ici est un rem rendu aux
+   quatre couloirs, multiplié par le nombre de bandes. */
 .cible {
   display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
+  grid-template-columns: 7rem minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border: 1px solid var(--border-subtle);
@@ -2262,12 +2281,20 @@ button:disabled {
 }
 
 /* Club · catégorie · blason (E16US005) — la **cause** des badges portés par la cible (mixité RG-3,
-   cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas. */
+   cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas.
+   **Tronqués, jamais cassés.** Ces trois repères font ~250 px de long naturel pour une colonne qui
+   en fait ~140 : avec `overflow-wrap: anywhere` (première version de cette US), ils partaient sur
+   cinq lignes coupées au milieu des mots — illisibles, et chaque bande devenait haute comme un
+   paragraphe. Une ellipse laisse lire le début, qui est la partie discriminante (le club), et le
+   `title` du jeton porte le texte entier. C'est ce qui rend la mise en page **robuste à la
+   largeur** au lieu d'être accordée à une fenêtre supposée. */
 .jeton__reperes {
   font-size: 11px;
   line-height: 1.3;
   color: var(--text-secondary);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Réserve (banc) : zone de dépôt pour mettre un archer à l'écart. **Collante** depuis E16US005 —
@@ -2275,13 +2302,15 @@ button:disabled {
    qu'il faut aller chercher en bas. `top` la pose sous le bandeau de contexte, lui-même collant à
    `top: 0` avec `z-index: 2` ; on reste en dessous pour ne pas le recouvrir.
    `max-height` + `overflow-y` : une réserve de 60 archers ne doit pas dépasser l'écran, sinon son
-   propre bas redevient inatteignable — le défaut qu'on vient de corriger, un cran plus bas. */
+   propre bas redevient inatteignable — le défaut qu'on vient de corriger, un cran plus bas.
+   `--hauteur-bandeau` est déclarée sur `.coquille__contenu` (le repli `5.5rem` ne sert que hors
+   coquille) : le couplage est ainsi **nommé aux deux bouts** plutôt que deviné ici. */
 .reserve {
   position: sticky;
-  top: 3.5rem;
+  top: var(--hauteur-bandeau, 5.5rem);
   z-index: 1;
   align-self: start;
-  max-height: calc(100vh - 5rem);
+  max-height: calc(100vh - var(--hauteur-bandeau, 5.5rem) - 1.5rem);
   overflow-y: auto;
   padding: 10px;
   background: var(--surface-1);
@@ -2289,32 +2318,15 @@ button:disabled {
   border-radius: 10px;
 }
 
+/* ⚠️ Le mélange se fait sur `--surface-1`, **pas sur `transparent`** (E16US005). Tant que la réserve
+   était dans le flux, rien ne passait derrière elle et un aplat à 88 % de transparence ne se voyait
+   pas. Devenue **collante**, elle se superpose aux bandes qui défilent — et cet état-là n'est actif
+   que pendant le `dragover`, c'est-à-dire pendant le geste même que l'US existe pour rendre
+   praticable : on aurait vu le plan défiler au travers du panneau en visant sa cible de dépôt. */
 .reserve--survol {
   border-color: var(--brand-text);
   border-style: solid;
-  background: color-mix(in srgb, var(--brand-surface) 12%, transparent);
-}
-
-/* L'admin travaille sur PC (A00, question 3), mais rien n'empêche d'ouvrir l'écran plus étroit — et
-   deux colonnes dans 700 px rendraient les couloirs illisibles. On repasse alors à une seule
-   colonne, réserve en dessous et non collante : sur un écran de cette taille, elle n'est plus le
-   panneau latéral qu'on garde sous la main mais la fin de la page. La bande, elle, **reste** une
-   cible par ligne : c'est le CA, pas une commodité de largeur. */
-@media (max-width: 64rem) {
-  .placement__plan {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .reserve {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
-
-  .cible {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-  }
+  background: color-mix(in srgb, var(--brand-surface) 12%, var(--surface-1));
 }
 
 .reserve__titre {
@@ -2354,13 +2366,43 @@ button:disabled {
   color: var(--danger);
 }
 
+/* L'admin travaille sur PC (A00, question 3), mais rien n'empêche d'ouvrir l'écran plus étroit — et
+   deux colonnes y rendraient les couloirs illisibles. On repasse alors à une seule colonne, réserve
+   en dessous et non collante : sur un écran de cette taille, elle n'est plus le panneau latéral
+   qu'on garde sous la main mais la fin de la page. La bande, elle, **reste** une cible par ligne :
+   c'est le CA, pas une commodité de largeur.
+
+   ⚠️ **`78rem` (1248 px) et non `64rem`, et le chiffre n'est pas rond par hasard** : une media query
+   mesure le **viewport**, alors que la contrainte est la **colonne de contenu**, plus étroite de
+   368 px sous la coquille admin (cf. `.placement__plan`). 78rem de fenêtre = ~880 px de contenu,
+   seuil en dessous duquel quatre couloirs plus une réserve ne tiennent plus. Écrire `64rem` — la
+   valeur de la première version — revenait à basculer à 656 px de contenu, c'est-à-dire jamais
+   assez tôt. La vraie réponse serait une *container query* sur `.coquille__contenu` ; elle
+   toucherait les 24 destinations de la coquille, donc elle relève d'une US d'outillage front, pas
+   d'ici. */
+@media (max-width: 78rem) {
+  .placement__plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reserve {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .cible {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
 /* Mixité de club non garantie (E03US006, RG-3) : avertissement d'équité **ambre** (DV-03, `--danger`),
    jamais rouge — l'objectif « ≥ 2 clubs par cible » n'est pas atteignable ici (un seul club, ou club
    inconnu). Signal, pas erreur bloquante : l'admin peut ajuster à la main. Badge par cible + bannière
    récapitulative dans le même registre. */
 .cible__mixite {
   display: block;
-  margin-bottom: 6px;
   font-size: 12px;
   color: var(--danger);
 }
@@ -2392,7 +2434,6 @@ button:disabled {
    cible, dans le même style discret que `.cible__mixite`. */
 .cible__adjacence {
   display: block;
-  margin-bottom: 6px;
   font-size: 12px;
   color: var(--danger);
 }

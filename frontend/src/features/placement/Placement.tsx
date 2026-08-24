@@ -53,6 +53,9 @@ import {
 } from './presentation'
 
 // Les positions d'une cible sont des lettres ; une cible de capacité N expose les N premières.
+// DETTE-010 : le plafond `A`→`D` est écrit ici en dur, comme dans l'écran jumeau et les deux écrans
+// de gabarit. E01US019 le délestera. C'est **cette liste** — et non la grille CSS — qui borne le
+// nombre de couloirs réellement rendus, d'où le `Math.min` du calcul de `couloirs`.
 const POSITIONS = ['A', 'B', 'C', 'D']
 
 export function Placement({ tournoiId }: { tournoiId: number }) {
@@ -174,9 +177,12 @@ function PlanCharge({
     return map
   }, [archers.data])
 
-  // Les trois référentiels que les repères traduisent en clair. Ce sont des lectures **déjà en
-  // cache** pour l'admin (l'atelier et les inscriptions les ont chargées) : aucune requête de plus
-  // en pratique, et l'écran reste lisible si l'une d'elles manque (cf. `reperesArcher`).
+  // Les trois référentiels que les repères traduisent en clair. Au plus **trois GET** au montage,
+  // servis par le cache de React Query (`staleTime` global de 30 s, `app/queryClient.ts`) dès qu'on
+  // arrive de l'atelier ou des inscriptions — mais bien trois requêtes pour qui ouvre l'écran
+  // directement, ou y revient après la fenêtre de fraîcheur. Négligeable sur le LAN ; ce qui ne le
+  // serait pas, c'est de laisser croire que c'est gratuit. L'écran reste lisible si l'une d'elles
+  // manque (cf. `reperesArcher`).
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
   const blasons = useBlasons(tournoiId)
@@ -241,11 +247,20 @@ function PlanCharge({
     }
   }
 
-  // Nombre de colonnes de couloirs, **dérivé du plan** et non écrit en dur : les cibles n'ont pas
-  // toutes la même capacité, et les aligner d'une ligne à l'autre demande une grille commune. Le
-  // dériver évite d'ajouter une quatrième copie du plafond `A`→`D` (`DETTE-010`) : le jour où la
-  // capacité dépasse 4, cette grille suit sans qu'on y touche.
-  const couloirs = Math.max(1, ...plan.cibles.map((cible) => cible.capacite))
+  // Nombre de colonnes de couloirs, **dérivé du plan** : les cibles n'ont pas toutes la même
+  // capacité, et les aligner d'une bande à l'autre demande une grille commune — une cible à 2
+  // places occupe alors les colonnes A et B, les deux suivantes restant vides. C'est le seul
+  // service que rend ce calcul, et c'est un vrai service.
+  //
+  // ⚠️ Le `Math.min` n'est pas décoratif : sans lui, une capacité serveur > 4 ouvrirait N colonnes
+  // sur **toutes** les bandes du plan, en n'en remplissant que 4 (`POSITIONS.slice`) — donc une
+  // colonne fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond :
+  // c'est `POSITIONS` qui le porte (`DETTE-010`), et le `Math.min` fait que le rendu reste cohérent
+  // en attendant E01US019.
+  const couloirs = Math.max(
+    1,
+    ...plan.cibles.map((cible) => Math.min(cible.capacite, POSITIONS.length)),
+  )
 
   return (
     <div className="placement">
@@ -540,7 +555,9 @@ function JetonArcher({
     <span
       className="jeton"
       draggable
-      title="Glisser pour déplacer"
+      // Les repères sont **tronqués** à l'affichage (`.jeton__reperes`) : le titre porte le texte
+      // entier, sinon un couloir étroit les rendrait illisibles sans recours.
+      title={jeton.reperes.length > 0 ? jeton.reperes.join(' · ') : 'Glisser pour déplacer'}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
