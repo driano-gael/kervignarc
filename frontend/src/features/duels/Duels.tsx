@@ -422,9 +422,13 @@ function JetonArcher({
     <span
       className="jeton"
       draggable
-      // Les repères sont **tronqués** à l'affichage (`.jeton__reperes`) : le titre porte le texte
-      // entier, sinon un couloir étroit les rendrait illisibles sans recours.
-      title={jeton.reperes.length > 0 ? jeton.reperes.join(' · ') : 'Glisser pour déplacer'}
+      // Les repères sont **tronqués** dans une case (`.cible .jeton__reperes`) : le titre porte le
+      // texte entier, sinon un couloir étroit les rendrait illisibles sans recours.
+      // ⚠️ L'affordance du geste est **toujours** présente, jamais remplacée : la version
+      // conditionnelle la faisait disparaître dès qu'un archer avait un club — c'est-à-dire
+      // toujours —, sur un écran dont le glisser-déposer est le geste central. Deux jetons voisins
+      // n'avaient alors pas le même contrat d'infobulle.
+      title={[...jeton.reperes, 'glisser pour déplacer'].join(' · ')}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
@@ -432,10 +436,11 @@ function JetonArcher({
       }}
     >
       <span className="jeton__nom">{jeton.nom}</span>
-      {/* Les repères (E16US005) : club, catégorie, blason — ce sur quoi portent les badges de la
-          cible. Rien n'est affiché quand ils manquent. */}
-      {jeton.reperes.length > 0 && (
-        <span className="jeton__reperes">{jeton.reperes.join(' · ')}</span>
+      {/* Les repères (E16US005), sur deux lignes comme sur le plan de cibles : le club, puis la
+          catégorie et le blason. Une ligne unique tronquée ne rendait jamais la seconde moitié. */}
+      {jeton.reperes.length > 0 && <span className="jeton__reperes">{jeton.reperes[0]}</span>}
+      {jeton.reperes.length > 1 && (
+        <span className="jeton__reperes">{jeton.reperes.slice(1).join(' · ')}</span>
       )}
     </span>
   )

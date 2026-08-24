@@ -159,10 +159,16 @@ describe('Placement — le jeton porte les repères d’arbitrage (E16US005)', (
     monter(<Placement tournoiId={1} />)
     await choisirLeDepart()
 
-    expect(await screen.findByText('Marie Dupont')).toBeInTheDocument()
-    expect(
-      await screen.findByText('Arc Club de Kervignarc · Senior 1 Femme · Triple 40'),
-    ).toBeInTheDocument()
+    // Deux lignes de repères : le club, puis catégorie et blason. Une ligne unique tronquée ne
+    // rendait jamais la seconde — donc jamais le cloisonnement (RG-4), moitié du CA.
+    expect(await screen.findByText('Marie Dupont')).toHaveClass('jeton__nom')
+    expect(await screen.findByText('Arc Club de Kervignarc')).toHaveClass('jeton__reperes')
+    expect(await screen.findByText('Senior 1 Femme · Triple 40')).toHaveClass('jeton__reperes')
+    // Le texte entier reste joignable au survol, **et** l'affordance du geste n'est pas effacée.
+    expect(screen.getByText('Marie Dupont').closest('.jeton')).toHaveAttribute(
+      'title',
+      'Arc Club de Kervignarc · Senior 1 Femme · Triple 40 · glisser pour déplacer',
+    )
   })
 
   it('un club non renseigné se dit « club inconnu » (ADR-0014)', async () => {
@@ -231,13 +237,17 @@ describe('Placement — le puits de réserve (E16US005, CA repris d’E03US004)'
     monter(<Placement tournoiId={1} />)
     await choisirLeDepart()
 
-    expect(await screen.findByText('Arc Club de Kervignarc · Senior 1 Femme')).toBeInTheDocument()
+    // ⚠️ Dans la **réserve**, les repères ne sont pas tronqués : c'est une colonne verticale, pas un
+    // couloir étroit. Y appliquer l'ellipse des cases coupait la catégorie — précisément ce qu'un
+    // « sans blason » oblige à lire pour savoir quelle catégorie n'a pas de carton à sa hauteur.
+    expect(await screen.findByText('Arc Club de Kervignarc')).toBeInTheDocument()
+    expect(await screen.findByText('Senior 1 Femme')).toBeInTheDocument()
     expect(screen.queryByText(/Triple 40/)).toBeNull()
   })
 })
 
 describe('Placement — les colonnes de couloirs s’alignent d’une bande à l’autre (E16US005)', () => {
-  // ⚠️ Ce que ces trois cas gardent n'est **pas** la mise en page (jsdom ne calcule aucune grille) :
+  // ⚠️ Ce que ces quatre cas gardent n'est **pas** la mise en page (jsdom ne calcule aucune grille) :
   // c'est le **nombre** que le composant calcule et pose dans l'attribut `style`. C'est du
   // TypeScript, donc c'est testable — l'argument « le CSS n'est pas prouvable » ne couvrait pas ce
   // CA, et il servait à confier à la recette manuelle ce qu'une machine sait faire. Précédent du
@@ -245,7 +255,13 @@ describe('Placement — les colonnes de couloirs s’alignent d’une bande à l
   // C et D.
 
   // Le conteneur porte la propriété ; on le lit par son enfant, la grille n'ayant pas de rôle ARIA.
-  const grille = () => document.querySelector('.placement__cibles')
+  // ⚠️ `toContain('--couloirs: 4')` passerait sur `--couloirs: 40` : on lit la **valeur**, pas la
+  // sous-chaîne. (Le couplage au nom de classe reste un coût de maintenance assumé, mais il ne peut
+  // pas produire de faux vert : `getPropertyValue` sur `null` lève.)
+  const couloirsRendus = () =>
+    (document.querySelector('.placement__cibles') as HTMLElement).style.getPropertyValue(
+      '--couloirs',
+    )
 
   it('CA — la grille suit la capacité **maximale** du plan, et les petites cibles laissent des trous', async () => {
     // Le cas qui prouve l'alignement : une cible à 2 places sous une cible à 4 doit occuper les
@@ -259,7 +275,7 @@ describe('Placement — les colonnes de couloirs s’alignent d’une bande à l
     await choisirLeDepart()
 
     await screen.findByText('Cible 2')
-    expect(grille()?.getAttribute('style')).toContain('--couloirs: 4')
+    expect(couloirsRendus()).toBe('4')
     // La bande à 2 places n'expose que A et B : 4 + 2 couloirs au total sur l'écran.
     expect(screen.getAllByLabelText(/^Couloir de tir /)).toHaveLength(6)
   })
@@ -274,7 +290,7 @@ describe('Placement — les colonnes de couloirs s’alignent d’une bande à l
     await choisirLeDepart()
 
     await screen.findByText('Cible 1')
-    expect(grille()?.getAttribute('style')).toContain('--couloirs: 2')
+    expect(couloirsRendus()).toBe('2')
   })
 
   it('un plan sans cible vaut 1 colonne, jamais `-Infinity`', async () => {
@@ -286,14 +302,17 @@ describe('Placement — les colonnes de couloirs s’alignent d’une bande à l
     await choisirLeDepart()
 
     await screen.findByText(/Aucun archer en attente/)
-    expect(grille()?.getAttribute('style')).toContain('--couloirs: 1')
+    expect(couloirsRendus()).toBe('1')
   })
 
-  it('une capacité serveur au-delà du plafond `A`→`D` n’ouvre pas de colonne fantôme', async () => {
-    // `POSITIONS` plafonne les cases rendues à 4 (`DETTE-010`). Sans le `Math.min`, une capacité de
-    // 6 poserait 6 colonnes sur **toutes** les bandes en n'en remplissant que 4 : deux colonnes
-    // vides qui rétrécissent les autres, soit l'inverse de l'alignement recherché. Ce test tombera
-    // le jour où E01US019 délestera le plafond — c'est voulu : il faudra alors le retourner.
+  it('un désaccord front/serveur sur le plafond n’ouvre pas de colonne fantôme', async () => {
+    // ⚠️ Le serveur **ne peut pas** émettre cette capacité aujourd'hui : `gabarit_salle.py` pose
+    // `CAPACITE_CIBLE_MAX = len(POSITIONS)` = 4 et refuse au-delà. Ce test ne couvre donc pas un cas
+    // courant mais un **désaccord front/serveur** — défense en profondeur. Sans le `Math.min`, une
+    // capacité de 6 poserait 6 colonnes sur toutes les bandes en n'en remplissant que 4 : deux
+    // colonnes vides qui rétrécissent les autres, l'inverse de l'alignement recherché. Ce qui
+    // bougera en premier à E01US019, c'est `CAPACITE_CIBLE_MAX` côté domaine ; il faudra alors
+    // retourner ce test.
     vi.mocked(getPlanDeCibles).mockResolvedValue({
       ...PLAN,
       cibles: [{ ...CIBLE, capacite: 6 }],
@@ -302,7 +321,7 @@ describe('Placement — les colonnes de couloirs s’alignent d’une bande à l
     await choisirLeDepart()
 
     await screen.findByText('Cible 1')
-    expect(grille()?.getAttribute('style')).toContain('--couloirs: 4')
+    expect(couloirsRendus()).toBe('4')
     expect(screen.getAllByLabelText(/^Couloir de tir /)).toHaveLength(4)
   })
 })

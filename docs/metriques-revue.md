@@ -34,7 +34,8 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-08-24 | `E16US005` | 14 | +1089/−161 | ~14 min | ~22 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 2 |
+| 2026-08-24 | `E16US005` (1ʳᵉ passe) | 14 | +1089/−161 | ~14 min | ~12 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 2 |
+| 2026-08-24 | `E16US005` (2ᵉ passe, sur les correctifs) | 11 | +449/−10 | ~13 min | ~15 min | D (18:32→18:47) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:4** mineur:4 suggestion:2 | **bloquant:1** majeur:1 mineur:4 suggestion:2 | bloquant:0 **majeur:1** mineur:7 suggestion:1 | **bloquant:1** majeur:4 mineur:6 suggestion:1 | **C1 et D** (1 bloquant convergent : la troncature efface la catégorie et le blason, donc la moitié RG-4 du CA — B l'avait gradé majeur en annonçant l'escalade si la mesure confirmait ; elle a confirmé). **D seul** : le seuil corrigé n'a pas franchi son propre critère (96 px à 1366 contre 125 avant l'US) et crée une falaise au point de bascule | 2 |
 | 2026-08-23 | `E16US012` (7ᵉ passe, ciblée B+D) | 17 | +143/-52 | ~2 min | ~13 min | D (21:59→22:11) | — | majeur:3 mineur:5 suggestion:1 | — | — | **bloquant:0** majeur:3 mineur:3 suggestion:2 | **aucun bloquant** | 7 (sortie) |
 | 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
 | 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
@@ -462,8 +463,11 @@ lieu d'une mise en page accordée à une fenêtre supposée. Le seuil, lui, rest
 **35. Un `replace(texte, 1)` sur un texte qui n'est pas unique produit un défaut de traçabilité
 silencieux — et l'`assert` qui l'accompagne ne protège de rien.**
 Deux défauts de cette US viennent du même geste. La puce « vocabulaire vérifié » a été barrée dans le
-bloc d'`E16US004` au lieu d'`E16US005` : l'avertissement est rédigé **à l'identique dans quatre blocs
-d'US**, et le script a patché la première occurrence. L'`assert avant in s` passait, évidemment — il
+bloc d'`E16US004` au lieu d'`E16US005` : l'avertissement est rédigé **à l'identique dans deux blocs**
+(`E16US004` et `E16US005` — deux autres en portent une variante voisine), et le script a patché la
+première occurrence. *(La 1ʳᵉ rédaction de ce constat disait « quatre blocs identiques » : faux d'un
+facteur deux, relevé en 2ᵉ passe. Une collision **à deux** suffit — c'est même le cas le plus
+traître, puisqu'on ne se méfie pas.)* L'`assert avant in s` passait, évidemment — il
 prouve la *présence*, jamais l'*unicité*. Résultat : une US déjà mergée annotée d'une vérification
 portant sur la planche d'une autre, et l'US courante livrée avec un ⚠️ ouvert que son propre tracker
 déclarait fermé. Le réflexe : sur un fichier de backlog où les puces se répètent d'une US à l'autre,
@@ -474,6 +478,14 @@ La seconde occurrence du même geste est plus retorse : la cellule *Résorption*
 `E05US027` comme **précédent** de refactor. Or l'atlas extrait `resorption_us` de cette cellule par
 expression régulière — il a donc déclaré une dette du 24/08 **résorbée** par une US mergée le 22/08,
 sans qu'aucun contrôle bronche (`controles.py` ne signale que les US *non spécifiées*). Nommer une US
-dans cette colonne, fût-ce en exemple, la désigne comme résorbante. `DETTE-083` porte déjà le même
-artefact sur `main`.
+dans cette colonne, fût-ce en exemple, la désigne comme résorbante.
+
+⚠️ **Et la correction a rejoué le piège, dans le commit même qui écrivait ce constat.** L'identifiant
+retiré a été remplacé par « garde-fou posé en attendant (E16US005) » — dans la même cellule. L'atlas
+publiait alors une US qui *introduit* et *résorbe* la même dette : donnée parfaitement plausible,
+donc plus dangereuse que l'absurdité de départ. Trois écrits du commit affirmaient l'inverse, dont
+ce constat. **La leçon complète n'est donc pas « ne pas nommer une US en exemple » mais « ne nommer
+aucune US, quel que soit le rôle qu'on lui prête » — et vérifier la donnée générée, pas le texte
+source.** Le contrôle qui manque est décrit dans `DETTE-085`, avec la raison pour laquelle le
+prédicat évident ne convient pas.
 

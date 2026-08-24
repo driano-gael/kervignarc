@@ -12,10 +12,11 @@
 //
 // Le garde-fou est **proportionné à la dette assumée** : on ne remonte pas les composants dans
 // `shared/` (ce serait un remède structurel en douce, cf. `DETTE-085`), on rend la divergence
-// **détectable**. Deux cas suffisent : ce que l'US ajoute, et la non-régression historique.
+// **détectable**. Quatre cas : ce que l'US ajoute (repères, lettre de couloir, grille dérivée) et
+// la non-régression historique de la réserve.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -171,10 +172,48 @@ describe('Plan de duels — alignement sur le plan de cibles (E16US005)', () => 
     monter(<Duels tournoiId={1} />)
     await choisirLaPhase()
 
-    expect(await screen.findByText('Marie Dupont')).toBeInTheDocument()
+    // ⚠️ Les assertions portent sur les **classes**, pas seulement sur la présence du texte. Le
+    // défaut d'origine avait deux moitiés — repères absents *et* typographie du nom perdue (le
+    // `<span className="jeton__nom">` non émis) —, et une assertion `toBeInTheDocument()` seule
+    // passait sur la seconde : elle rend le nœud porteur du texte, enveloppé ou non.
+    expect(await screen.findByText('Marie Dupont')).toHaveClass('jeton__nom')
+    expect(await screen.findByText('Arc Club de Kervignarc')).toHaveClass('jeton__reperes')
+    expect(await screen.findByText('Senior 1 Femme · Triple 40')).toHaveClass('jeton__reperes')
+    expect(screen.getByText('Marie Dupont').closest('.jeton')).toHaveAttribute(
+      'title',
+      'Arc Club de Kervignarc · Senior 1 Femme · Triple 40 · glisser pour déplacer',
+    )
+  })
+
+  it('la lettre du couloir est rendue sur une case occupée, comme en qualification', async () => {
+    // Ajoutée aux duels par cette US (le placement la rendait depuis E03US011). En bandes, c'est
+    // elle qui rattache un jeton à sa colonne quand les capacités diffèrent — et la fiche de
+    // recette en fait un point à vérifier. Rien ne la gardait.
+    monter(<Duels tournoiId={1} />)
+    await choisirLaPhase()
+
+    const couloirA = await screen.findByLabelText('Couloir de tir A')
+    expect(within(couloirA).getByText('A')).toHaveClass('case__position')
+  })
+
+  it('la grille de couloirs est dérivée du plan, ici aussi', async () => {
+    // ⚠️ **Le miroir du garde-fou de `Placement.test.tsx`.** `couloirs` et son `Math.min` sont
+    // recopiés dans les deux écrans (`DETTE-085`). Ne les tester que d'un côté, c'est reproduire
+    // dans le garde-fou même le mécanisme qu'il ferme : E01US019 retournera les cas du placement,
+    // touchera un fichier, et laissera le plan de duels plafonné à 4 en silence.
+    vi.mocked(getPlanDeDuels).mockResolvedValue({
+      ...PLAN,
+      cibles: [{ ...CIBLE, capacite: 2, placements: [] }],
+    })
+    monter(<Duels tournoiId={1} />)
+    await choisirLaPhase()
+
+    await screen.findByText('Cible 1')
     expect(
-      await screen.findByText('Arc Club de Kervignarc · Senior 1 Femme · Triple 40'),
-    ).toBeInTheDocument()
+      (document.querySelector('.placement__cibles') as HTMLElement).style.getPropertyValue(
+        '--couloirs',
+      ),
+    ).toBe('2')
   })
 
   it('la réserve des duels distingue une mise à l’écart d’une anomalie', async () => {

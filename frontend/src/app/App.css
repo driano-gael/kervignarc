@@ -315,7 +315,13 @@
    « Sur quel tournoi on est et quel départ. » Il se lit **sans être cherché**, donc il est collant :
    descendre dans un tableau de 200 inscrits ne doit pas faire perdre le sujet. Fond de surface et
    filet bas pour qu'il se détache du contenu sans se faire passer pour une carte. */
+/* `min-height` adossée à `--hauteur-bandeau` : c'est ce qui fait de la variable une **contrainte**
+   et non une estimation. Sans elle, seul le consommateur (`.reserve`) nommait le couplage ; changer
+   le `padding` ou la `font-size` d'ici décalait le panneau collant sans que rien ne le signale — la
+   panne silencieuse que la variable est censée prévenir. Le `- 16px` retranche la `margin-bottom`,
+   qui n'appartient pas à la boîte. */
 .bandeau-contexte {
+  min-height: calc(var(--hauteur-bandeau, 5.5rem) - 16px);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -2160,7 +2166,7 @@ button:disabled {
    *avant* l'US — elle rendait donc l'écran plus tassé que ce qu'elle prétendait corriger. */
 .placement__plan {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 15rem);
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 13rem);
   gap: var(--respiration);
   align-items: start;
   margin: 8px 0;
@@ -2246,8 +2252,8 @@ button:disabled {
    jeton, cohérente avec la vue publique. */
 .case__position {
   flex: 0 0 auto;
-  width: 1.4em;
-  padding-left: 8px;
+  width: 1.2em;
+  padding-left: 2px;
   font-size: 12px;
   font-weight: 600;
   color: var(--brand-text);
@@ -2282,16 +2288,27 @@ button:disabled {
 
 /* Club · catégorie · blason (E16US005) — la **cause** des badges portés par la cible (mixité RG-3,
    cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas.
-   **Tronqués, jamais cassés.** Ces trois repères font ~250 px de long naturel pour une colonne qui
-   en fait ~140 : avec `overflow-wrap: anywhere` (première version de cette US), ils partaient sur
-   cinq lignes coupées au milieu des mots — illisibles, et chaque bande devenait haute comme un
-   paragraphe. Une ellipse laisse lire le début, qui est la partie discriminante (le club), et le
-   `title` du jeton porte le texte entier. C'est ce qui rend la mise en page **robuste à la
-   largeur** au lieu d'être accordée à une fenêtre supposée. */
+   Rendus sur **deux lignes** : le club d'abord, puis catégorie et blason. Ce n'est pas cosmétique —
+   c'est ce qui décide de ce qu'on lit. Les trois repères sur **une** ligne tronquée (2ᵉ version de
+   cette US) faisaient ~250 px de long naturel pour une colonne qui en offre ~100 à 1366 px : on
+   lisait « Arc Club de Kervi… » et **jamais** la catégorie ni le blason. Or le club ne discrimine
+   que la **mixité** (RG-3) ; le **cloisonnement** (RG-4), qui est l'autre moitié du CA, se lit sur
+   la catégorie et le blason. Tronquer une chaîne unique revenait donc à ne rendre que la moitié de
+   ce que l'US existe pour ajouter. Deux lignes coûtent ~14 px de hauteur par jeton et rendent la
+   seconde moitié. */
 .jeton__reperes {
   font-size: 11px;
   line-height: 1.3;
   color: var(--text-secondary);
+}
+
+/* **Tronqués dans une case, jamais dans la réserve.** Dans une bande, la colonne est étroite et une
+   coupure `overflow-wrap: anywhere` produisait cinq lignes brisées au milieu des mots (1ʳᵉ version
+   de cette US) : l'ellipse laisse lire le début et le `title` du jeton porte le texte entier.
+   La **réserve**, elle, est une colonne verticale de ~200 px qui n'a aucun problème de largeur : y
+   appliquer la même troncature coupait la catégorie — précisément ce qu'un archer « sans blason »
+   oblige à lire pour savoir quelle catégorie n'a pas de carton. Elle enveloppe donc normalement. */
+.cible .jeton__reperes {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2307,10 +2324,10 @@ button:disabled {
    coquille) : le couplage est ainsi **nommé aux deux bouts** plutôt que deviné ici. */
 .reserve {
   position: sticky;
-  top: var(--hauteur-bandeau, 5.5rem);
+  top: var(--hauteur-bandeau);
   z-index: 1;
   align-self: start;
-  max-height: calc(100vh - var(--hauteur-bandeau, 5.5rem) - 1.5rem);
+  max-height: calc(100vh - var(--hauteur-bandeau) - 1.5rem);
   overflow-y: auto;
   padding: 10px;
   background: var(--surface-1);
@@ -2394,6 +2411,17 @@ button:disabled {
   .cible {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+}
+
+/* Plus étroit encore : ce n'est plus la réserve qui étouffe l'écran, c'est la sidebar à 17rem, qui
+   ne se replie qu'à 45rem. Entre les deux, quatre couloirs sur une ligne retombent sous 60 px de
+   texte — pire que ce que cette US a été écrite pour corriger. On passe alors à deux couloirs par
+   ligne : l'alignement d'une bande à l'autre est conservé (c'est le CA), seule la forme de la
+   grille change. */
+@media (max-width: 62rem) {
+  .cible__cases {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

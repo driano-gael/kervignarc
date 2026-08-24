@@ -555,9 +555,13 @@ function JetonArcher({
     <span
       className="jeton"
       draggable
-      // Les repères sont **tronqués** à l'affichage (`.jeton__reperes`) : le titre porte le texte
-      // entier, sinon un couloir étroit les rendrait illisibles sans recours.
-      title={jeton.reperes.length > 0 ? jeton.reperes.join(' · ') : 'Glisser pour déplacer'}
+      // Les repères sont **tronqués** dans une case (`.cible .jeton__reperes`) : le titre porte le
+      // texte entier, sinon un couloir étroit les rendrait illisibles sans recours.
+      // ⚠️ L'affordance du geste est **toujours** présente, jamais remplacée : la version
+      // conditionnelle la faisait disparaître dès qu'un archer avait un club — c'est-à-dire
+      // toujours —, sur un écran dont le glisser-déposer est le geste central. Deux jetons voisins
+      // n'avaient alors pas le même contrat d'infobulle.
+      title={[...jeton.reperes, 'glisser pour déplacer'].join(' · ')}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', String(jeton.inscriptionId))
@@ -567,9 +571,14 @@ function JetonArcher({
       <span className="jeton__nom">{jeton.nom}</span>
       {/* Les repères (E16US005) : club, catégorie, blason — ce sur quoi portent les deux badges de
           la cible. Rien n'est affiché quand ils manquent : une ligne secondaire vide vaut mieux
-          qu'un « Club #7 » répété quarante fois. */}
-      {jeton.reperes.length > 0 && (
-        <span className="jeton__reperes">{jeton.reperes.join(' · ')}</span>
+          qu'un « Club #7 » répété quarante fois.
+          **Deux lignes, et c'est ce qui décide de ce qu'on lit** : sur une seule ligne tronquée, un
+          couloir de ~100 px ne rendait que le club — donc la mixité (RG-3) mais jamais le
+          cloisonnement (RG-4), qui se lit sur la catégorie et le blason. Le premier repère est le
+          club (ou « club inconnu ») ; les suivants tiennent la seconde ligne. */}
+      {jeton.reperes.length > 0 && <span className="jeton__reperes">{jeton.reperes[0]}</span>}
+      {jeton.reperes.length > 1 && (
+        <span className="jeton__reperes">{jeton.reperes.slice(1).join(' · ')}</span>
       )}
     </span>
   )
