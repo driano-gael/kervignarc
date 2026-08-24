@@ -214,6 +214,20 @@ class TransitionTournoi:
     vers: StatutTournoi
 
 
+# Le refus de `ServiceTournois.terminer`, **rédigé une seule fois**. Il vit ici et non dans le
+# service parce que deux modules en ont besoin : celui qui **lève** le refus au clic, et
+# `domain.jalon`, qui l'**annonce** avant. Les deux le recopiaient — la duplication que l'US
+# E16US012 dénonçait pour l'effectif, reproduite sur la garde de statut (relevé en 2ᵉ passe de
+# revue par trois axes). Un seul littéral : l'avertissement ne peut plus dire autre chose que
+# le 409.
+MESSAGE_TERMINER_HORS_EN_COURS = "Seul un tournoi en cours peut être terminé."
+
+# Idem pour la garde « ≥ 1 créneau » de `vers_pret` (E02US010) : c'est elle qui refuse **dès**
+# « Marquer prêt », et le jalon l'annonce avant le clic.
+MESSAGE_SANS_DEPART = (
+    "Ce tournoi n'a aucun départ ; ajoutez au moins un créneau avant de le passer prêt."
+)
+
 # Topologie du cycle de vie ([ADR-0026] §2), source **unique** côté lecture. Les *gardes* (qui peut
 # passer de quoi à quoi, complétude du passage à `prêt`…) restent dans `ServiceTournois`
 # (ADR-0026 §4) ; un test de cohérence recoupe cette table avec la légalité effective du service.

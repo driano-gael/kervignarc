@@ -216,6 +216,145 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
     expect(screen.getByRole('button', { name: 'Terminer le tournoi' })).toBeEnabled()
   })
 
+  it('E16US012 `D-15` — le verdict avertit sans annoncer de refus', async () => {
+    // L'écran a migré sur la coquille commune de la famille « prêt à… » (ADR-0096), qui lui ajoute
+    // un verdict en tête. Ce verdict doit rester du **bon côté de l'asymétrie** : terminer n'a
+    // aucune garde dure, donc l'écran ne doit jamais annoncer un refus qui n'arrivera pas.
+    //
+    // C'est la contrepartie du `bloquant` passé par cet écran : si quelqu'un le mettait à `true`
+    // « par symétrie » avec l'écran de démarrage, ce test tomberait — et c'est le seul endroit où
+    // cette erreur-là se verrait, le typage ne disant rien d'un booléen inversé.
+    //
+    // ⚠️ **Pendant le tournoi**, et c'est le sujet des deux tests suivants.
+    monter(<Completude tournoiId={1} statut="en_cours" />)
+
+    const verdict = await screen.findByRole('status')
+    expect(verdict).toHaveTextContent('ne vous en empêchera pas')
+    expect(verdict).not.toHaveTextContent('refusé')
+    // ⚠️ Les **contreparties positives** des deux gardes conditionnelles de cet écran. Sans elles,
+    // supprimer purement l'implication ou l'intro laisserait toute la suite verte : les assertions
+    // qui les concernent ailleurs sont toutes négatives (5ᵉ passe, axes C1 et D).
+    // `getAllByText` : la phrase vit aussi dans le détail du dialogue de confirmation, qui partage
+    // volontairement la même source (`IMPLICATION_TERMINER`) — c'est le paragraphe de l'écran qu'on
+    // veut ici, et il porte la classe `completude__implication`.
+    expect(document.querySelector('.completude__implication')).toHaveTextContent(
+      /Terminer figera le sportif/,
+    )
+    expect(screen.getByText(/avant de pouvoir terminer/)).toBeInTheDocument()
+  })
+
+  it('E16US012 — hors du tournoi en cours, le verdict n’affirme pas que rien n’empêche', async () => {
+    // **Le bloquant de la 2ᵉ passe de revue.** `ServiceTournois.terminer` n'accepte que `en_cours`
+    // (`{StatutTournoi.EN_COURS}`) : sur un tournoi **en pause** — la pause déjeuner du jour J —
+    // terminer est refusé tant qu'on n'a pas repris. Avec `bloquant={false}` figé, l'écran
+    // affichait « l'application ne vous en empêchera pas » juste avant un 409, c'est-à-dire la
+    // phrase même que cette US déclarait avoir supprimée, sur le membre voisin de la famille.
+    //
+    // Ce test est le miroir de `domain.jalon.evaluer_terminer` : il tombe si l'un des deux bouge
+    // sans l'autre. C'est le prix assumé de laisser cet écran lire `/completude` plutôt que
+    // `/jalons/terminer` (ADR-0096 § Conséquences : un second poll de 5 s par tablette).
+    monter(<Completude tournoiId={1} statut="en_pause" />)
+
+    // ⚠️ On attend la **liste**, pas la raison : cette dernière ne dépend pas de la réponse serveur
+    // (elle est dérivée du seul statut), donc s'y ancrer n'attendait rien et les assertions
+    // suivantes portaient sur un écran encore vide (relevé en 4ᵉ passe, axe B).
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+    // Pas de verdict : la question ne se pose pas, donc l'écran n'y répond pas. Un verdict « ce qui
+    // manque **ci-dessous** sera refusé » accuserait la liste, alors que terminer n'a aucune garde
+    // de contenu — c'est la raison de statut qui bloque, et elle est écrite en clair.
+    expect(screen.queryByRole('status')).toBeNull()
+    // Le bouton non plus : terminer est refusé tant qu'on n'a pas repris.
+    expect(screen.queryByRole('button', { name: 'Terminer le tournoi' })).toBeNull()
+    // ⚠️ **La liste, elle, reste** (attendue ci-dessus) : c'est le comportement d'avant l'US, et la
+    // vider a été une sur-correction — pendant la pause déjeuner, l'organisateur ouvre cet écran
+    // précisément pour voir où en est la qualification (4ᵉ passe, axe C1). Le couple
+    // « liste présente + verdict absent » est ce qui distingue les deux défauts, l'un de l'autre.
+    // Et l'implication n'a rien à faire là : « Terminer **figera** le sportif » annonce au futur un
+    // geste que l'écran ne propose pas.
+    expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
+  })
+
+  it('E16US012 — en pause **avec le sportif complet**, l’écran n’accuse pas la liste', async () => {
+    // Le cas qui rend la contradiction visible, et qu'aucun test ne montait : sportif à 30/30, donc
+    // rien ne manque, et pourtant terminer est refusé. L'écran affichait « Pas encore — ce qui
+    // manque ci-dessous sera refusé à la clôture » au-dessus de trois lignes vertes et d'un badge
+    // « complet » (3ᵉ passe de revue, axes C1 et D).
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="en_pause" />)
+
+    // La liste complète est bien rendue — c'est justement ce qu'on vient regarder, et c'est le seul
+    // élément qui atteste que la réponse est arrivée.
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText(/ci-dessous/)).toBeNull()
+  })
+
+  it('E16US012 — un tournoi terminé ne s’entend pas dire que rien ne s’y oppose', async () => {
+    // L'autre moitié du même défaut : avec le sportif complet, `pret` valait `true` quel que soit
+    // le statut, donc « Oui — rien ne s'y oppose » s'affichait deux lignes au-dessus de « Ce
+    // tournoi est terminé : le sportif est figé. » — la contradiction que l'écran de démarrage
+    // venait précisément de fermer.
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="termine" />)
+
+    // Assertion **positive** : la précédente ne vérifiait que l'absence de l'ancienne phrase fausse,
+    // donc elle passait sur la nouvelle, tout aussi fausse (3ᵉ passe, axes B, C1 et D).
+    expect(await screen.findByText('Qualification')).toBeInTheDocument()
+    expect(screen.getByText(/Seul un tournoi en cours peut être terminé/)).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByText(/le sportif est figé/)).toBeInTheDocument()
+    // ⚠️ **Le bloquant de la 4ᵉ passe** : « Terminer **figera** le sportif (…) Les paiements
+    // **resteront** modifiables » s'affichait juste au-dessus de « le sportif **est figé** ». Deux
+    // phrases adjacentes, l'une au futur, l'autre au passé, sur tous les tournois de la veille. Ce
+    // test montait déjà ce cas exact et ne regardait pas ce paragraphe.
+    expect(screen.queryByText(/Terminer figera le sportif/)).toBeNull()
+    // ⚠️ **La 4ᵉ garde de cet écran**, que le balayage anti-prop-inerte avait oubliée : le bloc
+    // d'actions. Sans cette assertion, retirer `enCours &&` de la ligne du bouton laissait les 1101
+    // tests verts — et « Terminer » serait apparu sur un tournoi terminé, annulé ou archivé
+    // (6ᵉ passe de revue, axe D).
+    expect(screen.queryByRole('button', { name: 'Terminer le tournoi' })).toBeNull()
+    // ⚠️ **Le bloquant de la 5ᵉ passe**, à l'autre bout du même écran : l'intro disait « ce qui
+    // reste à jouer **avant de pouvoir terminer** » sur un tournoi déjà terminé, trois lignes
+    // au-dessus de « le sportif est figé ». Même contradiction de temps que l'implication en pied.
+    expect(screen.queryByText(/avant de pouvoir terminer/)).toBeNull()
+    expect(screen.getByText(/Où en est le sportif/)).toBeInTheDocument()
+  })
+
+  it('E16US012 — en cours et sportif complet : « Oui », et la section reste « complet »', async () => {
+    // ⚠️ Les deux **props de données** de cet écran n'étaient observables nulle part : aucun test ne
+    // le montait avec `sportif_complet: true` ET `statut="en_cours"`. Les figer à `false` laissait
+    // tout le fichier vert — alors que c'est le cas de **fin de journée**, le plus fréquent, et que
+    // la recette en fait un résultat attendu (6ᵉ passe, axe B). Constat 30 appliqué aux props que
+    // le balayage précédent n'avait pas énumérées.
+    const complet = reponse()
+    vi.mocked(getCompletude).mockResolvedValue({
+      ...complet,
+      sportif: complet.sportif.map((ligne) => ({ ...ligne, etat: 'ok' as const })),
+      sportif_complet: true,
+    })
+    monter(<Completude tournoiId={1} statut="en_cours" />)
+
+    expect(await screen.findByRole('status')).toHaveTextContent('rien ne s’y oppose')
+    expect(screen.getByText('complet')).toBeInTheDocument()
+    // Les deux dernières conditionnelles de l'écran, qui n'avaient que des assertions positives :
+    // rendues inconditionnelles, elles afficheraient « Seul un tournoi en cours peut être terminé »
+    // sous « Oui — rien ne s'y oppose », et « ce tournoi est terminé » pendant le tournoi.
+    expect(screen.queryByText(/Seul un tournoi en cours/)).toBeNull()
+    expect(screen.queryByText(/le sportif est figé/)).toBeNull()
+  })
+
   it('CA `D-15` — même complétude injoignable, le bouton reste : on dégrade, on ne verrouille pas', async () => {
     // L'autre moitié de `D-15`, et celle qui manquait : le bouton vivait **dans** la garde
     // `completude.data`, donc une lecture en échec le faisait disparaître — l'appli empêchait au lieu

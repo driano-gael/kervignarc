@@ -43,6 +43,7 @@ from application.erreurs import (
     GabaritIntrouvable,
     IdentifiantsInvalides,
     InscriptionIntrouvable,
+    JalonNonInstruit,
     MancheIntrouvable,
     NonAuthentifie,
     PhaseIntrouvable,
@@ -124,7 +125,12 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         # l'arrêt encore armé et l'arrêt déjà levé : quatre situations, un seul geste utile côté
         # client — recharger l'écran. Le 404 est donc exact, et il évite d'exposer *lequel* des
         # quatre, ce qui ne changerait rien pour l'organisateur.
-        | ArretIntrouvable,
+        | ArretIntrouvable
+        # E16US012. Un jalon sans écran est « introuvable » du point de vue du client, exactement
+        # comme un identifiant inconnu : le geste utile est le même. Inscrit **ici et pas seulement
+        # en docstring** — c'est le défaut relevé sur `MancheIntrouvable` ci-dessus, ce mapping
+        # étant une liste écrite à la main que rien ne relie aux docstrings.
+        | JalonNonInstruit,
     ):
         status = 404
     else:

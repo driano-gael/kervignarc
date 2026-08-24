@@ -8,9 +8,6 @@ moins un créneau (garde `TournoiSansDepart`), d'où le dépôt de départs inje
 
 from __future__ import annotations
 
-import dataclasses
-import datetime
-
 import pytest
 
 from application.erreurs import (
@@ -23,68 +20,24 @@ from application.erreurs import (
 )
 from application.tournois import OrigineExigence, ServiceTournois
 from domain.bareme import BaremeQualification
-from domain.depart import Depart, DepartId
+from domain.depart import Depart
 from domain.deroule_etape import EtapeDeroule
 from domain.erreurs import NomTournoiInvalide
 from domain.grain_validation import GrainValidation
-from domain.phase import SourcePhase, TypePhase
+from domain.phase import TypePhase
 from domain.tournoi import (
     StatutTournoi,
-    Tournoi,
-    TournoiId,
     TypeTournoi,
     transitions_possibles,
 )
-from tests.conftest import FauxDepartRepository, FauxDerouleRepository
-
-_DATE = datetime.date(2026, 3, 14)
-
-
-class FauxTournoiRepository:
-    """Repository en mémoire conforme au port `TournoiRepository`."""
-
-    def __init__(self) -> None:
-        self._tournois: dict[int, Tournoi] = {}
-        self._sequence = 0
-
-    def ajouter(self, tournoi: Tournoi) -> Tournoi:
-        self._sequence += 1
-        persiste = dataclasses.replace(tournoi, id=self._sequence)
-        self._tournois[self._sequence] = persiste
-        return persiste
-
-    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
-        return self._tournois.get(tournoi_id)
-
-    def lister(self) -> list[Tournoi]:
-        return list(self._tournois.values())
-
-    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        assert tournoi.id in self._tournois, "Tournoi à mettre à jour absent."
-        self._tournois[tournoi.id] = tournoi
-        return tournoi
-
-    def supprimer(self, tournoi_id: TournoiId) -> None:
-        del self._tournois[tournoi_id]
-
-
-class FauxCompteurEngages:
-    """Combien d'archers sont inscrits **dans un créneau** — ce que la garde de démarrage confronte.
-
-    Le compte est par départ depuis ADR-0075 : le déroulé doit se jouer dans **chaque** créneau,
-    donc l'exigence se juge sur le moins garni. `nb` reste le réglage commun (ces tests n'ont qu'un
-    créneau) ; `regler` sert aux cas multi-créneaux.
-    """
-
-    def __init__(self, nb: int = 0) -> None:
-        self.nb = nb
-        self.par_depart: dict[int, int] = {}
-
-    def regler(self, depart_id: int, nb: int) -> None:
-        self.par_depart[depart_id] = nb
-
-    def nb_engages_du_depart(self, depart_id: DepartId) -> int:
-        return self.par_depart.get(depart_id, self.nb)
+from tests.conftest import (
+    DATE_TOURNOI,
+    FauxCompteurEngages,
+    FauxDepartRepository,
+    FauxDerouleRepository,
+    FauxTournoiRepository,
+    deroule_120,
+)
 
 
 def _service_complet() -> (
@@ -127,7 +80,7 @@ def _id_cree(service: ServiceTournois, departs: FauxDepartRepository, nom: str =
     Tous les tests de cycle de vie amènent un tournoi jusqu'à `prêt`/`en_cours`/… : sans départ, la
     garde `TournoiSansDepart` les bloquerait. Le créneau est ici un détail d'attelage, pas le sujet.
     """
-    cree = service.creer(nom, _DATE)
+    cree = service.creer(nom, DATE_TOURNOI)
     assert cree.id is not None
     departs.ajouter(Depart.creer(cree.id, 1, 810, "09:00"))
     return cree.id
@@ -136,10 +89,10 @@ def _id_cree(service: ServiceTournois, departs: FauxDepartRepository, nom: str =
 def test_creer_persiste_et_attribue_un_id() -> None:
     """`creer` délègue au repository, qui attribue l'identifiant."""
     service, _ = _service()
-    tournoi = service.creer("Salle 18m", _DATE, "Quimper", TypeTournoi.OFFICIEL)
+    tournoi = service.creer("Salle 18m", DATE_TOURNOI, "Quimper", TypeTournoi.OFFICIEL)
     assert tournoi.id == 1
     assert tournoi.nom == "Salle 18m"
-    assert tournoi.date == _DATE
+    assert tournoi.date == DATE_TOURNOI
     assert tournoi.lieu == "Quimper"
     assert tournoi.type_tournoi is TypeTournoi.OFFICIEL
 
@@ -148,13 +101,13 @@ def test_creer_propage_l_erreur_de_domaine() -> None:
     """Un nom invalide fait remonter l'erreur du domaine (non persisté)."""
     service, _ = _service()
     with pytest.raises(NomTournoiInvalide):
-        service.creer("  ", _DATE)
+        service.creer("  ", DATE_TOURNOI)
 
 
 def test_consulter_relit_un_tournoi_existant() -> None:
     """`consulter` renvoie l'agrégat persisté."""
     service, _ = _service()
-    cree = service.creer("Trophée", _DATE)
+    cree = service.creer("Trophée", DATE_TOURNOI)
     assert cree.id is not None
     assert service.consulter(cree.id) == cree
 
@@ -170,8 +123,8 @@ def test_lister_renvoie_tous_les_tournois() -> None:
     """`lister` renvoie tous les tournois créés."""
     service, _ = _service()
     assert service.lister() == []
-    service.creer("A", _DATE)
-    service.creer("B", _DATE)
+    service.creer("A", DATE_TOURNOI)
+    service.creer("B", DATE_TOURNOI)
     assert [t.nom for t in service.lister()] == ["A", "B"]
 
 
@@ -181,9 +134,9 @@ def test_lister_renvoie_tous_les_tournois() -> None:
 def test_modifier_persiste_les_metadonnees() -> None:
     """`modifier` met à jour le tournoi et conserve son identifiant."""
     service, _ = _service()
-    cree = service.creer("Ancien", _DATE)
+    cree = service.creer("Ancien", DATE_TOURNOI)
     assert cree.id is not None
-    modifie = service.modifier(cree.id, "Nouveau", _DATE, "Quimper", TypeTournoi.OFFICIEL)
+    modifie = service.modifier(cree.id, "Nouveau", DATE_TOURNOI, "Quimper", TypeTournoi.OFFICIEL)
     assert modifie.id == cree.id
     assert modifie.nom == "Nouveau"
     assert modifie.lieu == "Quimper"
@@ -195,16 +148,16 @@ def test_modifier_leve_si_introuvable() -> None:
     """`modifier` lève `TournoiIntrouvable` pour un identifiant inconnu."""
     service, _ = _service()
     with pytest.raises(TournoiIntrouvable):
-        service.modifier(404, "X", _DATE)
+        service.modifier(404, "X", DATE_TOURNOI)
 
 
 def test_modifier_propage_l_erreur_de_domaine() -> None:
     """Un nom vide fait remonter l'erreur du domaine (non persisté)."""
     service, _ = _service()
-    cree = service.creer("Trophée", _DATE)
+    cree = service.creer("Trophée", DATE_TOURNOI)
     assert cree.id is not None
     with pytest.raises(NomTournoiInvalide):
-        service.modifier(cree.id, "   ", _DATE)
+        service.modifier(cree.id, "   ", DATE_TOURNOI)
 
 
 # --- Cycle de vie enrichi (E01US017, ADR-0026 §2) : graphe des transitions ---
@@ -269,7 +222,7 @@ def test_pause_puis_reprise() -> None:
 def test_vers_pret_refuse_un_tournoi_sans_depart() -> None:
     """Un brouillon **sans départ** ne peut pas passer prêt → `TournoiSansDepart` (→ 409)."""
     service, _ = _service()
-    cree = service.creer("Sans créneau", _DATE)
+    cree = service.creer("Sans créneau", DATE_TOURNOI)
     assert cree.id is not None
     with pytest.raises(TournoiSansDepart):
         service.vers_pret(cree.id)
@@ -310,43 +263,12 @@ def test_demarrer_refuse_si_pas_pret() -> None:
 # (`EffectifTableauInvalide`, E05US020) remonte là où la décision se prend.
 
 
-def _deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
-    """Le déroulé d'ADR-0068 §6 : qualification, tableau 1-32, tableau de classement 33 et suivants.
-
-    Son minimum déduit est **34** — l'étape 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
-
-    Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
-    tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
-    """
-    return [
-        EtapeDeroule(
-            tournoi_id=tournoi_id,
-            ordre=1,
-            type=TypePhase.QUALIFICATION,
-            bareme=BaremeQualification.preset_ffta_18m(),
-            validation=GrainValidation.fin_de_serie(),
-        ),
-        EtapeDeroule(
-            tournoi_id=tournoi_id,
-            ordre=2,
-            type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, 1, 32),),
-        ),
-        EtapeDeroule(
-            tournoi_id=tournoi_id,
-            ordre=3,
-            type=TypePhase.ELIMINATION_DIRECTE,
-            sources=(SourcePhase.par_rangs(1, rang_debut=33),),
-        ),
-    ]
-
-
 def _pret_avec_deroule(inscrits: int) -> tuple[ServiceTournois, int]:
     """Un tournoi `prêt`, doté du déroulé à 34 minimum et de `inscrits` archers."""
     service, departs, deroules, engages = _service_complet()[:4]
     tid = _id_cree(service, departs)
     # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
-    for _etape in _deroule_120(tid):
+    for _etape in deroule_120(tid):
         deroules.ajouter(_etape)
     engages.nb = inscrits
     service.vers_pret(tid)
@@ -423,7 +345,7 @@ def test_lexigence_du_tournoi_prime_quand_elle_depasse_le_minimum_deduit() -> No
     service, departs, deroules, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
     # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
-    for _etape in _deroule_120(tid):
+    for _etape in deroule_120(tid):
         deroules.ajouter(_etape)
     engages.nb = 36
     _exiger(service, tournois, tid, 40)
@@ -448,7 +370,7 @@ def test_une_exigence_plus_basse_que_le_deduit_ne_labaisse_pas() -> None:
     service, departs, deroules, engages, tournois = _service_complet()
     tid = _id_cree(service, departs)
     # Le déroulé se pose **sur le tournoi** (ADR-0076) : une définition, pas N copies.
-    for _etape in _deroule_120(tid):
+    for _etape in deroule_120(tid):
         deroules.ajouter(_etape)
     engages.nb = 20
     _exiger(service, tournois, tid, 10)
@@ -535,7 +457,7 @@ def test_lexigence_se_juge_sur_le_creneau_le_moins_garni_pas_sur_la_somme() -> N
     assert matin.id is not None
     apres_midi = departs.ajouter(Depart.creer(tid, 2, 810, "14:00"))
     assert apres_midi.id is not None
-    for _etape in _deroule_120(tid):
+    for _etape in deroule_120(tid):
         deroules.ajouter(_etape)
     engages.regler(matin.id, 40)
     engages.regler(apres_midi.id, 8)
@@ -562,7 +484,7 @@ def test_lexigence_est_satisfaite_quand_tous_les_creneaux_suivent() -> None:
     tid = _id_cree(service, departs)
     apres_midi = departs.ajouter(Depart.creer(tid, 2, 810, "14:00"))
     assert apres_midi.id is not None
-    for _etape in _deroule_120(tid):
+    for _etape in deroule_120(tid):
         deroules.ajouter(_etape)
     engages.nb = 34
     service.vers_pret(tid)
@@ -693,7 +615,7 @@ def test_modifier_refuse_si_archive() -> None:
     tid = _id_cree(service, departs)
     _amener(service, tid, StatutTournoi.ARCHIVE)
     with pytest.raises(TournoiArchiveNonModifiable):
-        service.modifier(tid, "Renommé", _DATE)
+        service.modifier(tid, "Renommé", DATE_TOURNOI)
 
 
 # --- Suppression (E01US002, permissions élargies E01US017) ---

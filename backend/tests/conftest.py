@@ -27,8 +27,12 @@ simple magasin, **sans** couplage à l'archer (au contraire de `FauxScoreReposit
 les tests de service ne vérifient pas la purge en cascade — c'est un contrat d'adapter, prouvé au
 niveau du repository (`test_inscription_repository`).
 
-> `FauxTournoiRepository` est, lui, recopié dans trois modules. On le laisse : cette US n'en ajoute
-> pas d'usage, et on ne réécrit pas ce qu'on n'aggrave pas.
+> `FauxTournoiRepository` **vit ici depuis E16US012** (2 consommateurs : `test_service_tournois` et
+> `test_service_jalons`). ⚠️ **~25 autres modules en gardent une copie locale** — mesure :
+> `grep -rl --include='*.py' "class FauxTournoiRepository" backend/tests` (ce fichier compris). On
+> ne les rapatrie pas ici : c'est un rangement transverse, pas le travail d'une branche
+> fonctionnelle, et cette US n'aggrave pas la duplication (elle en retire une et en installe une
+> partagée — solde nul).
 
 Seules des dépendances **stdlib** sont ajoutées ici (`domain` est pur, règle 1) : ce conftest
 reste importable sans fastapi, comme l'exige le hook pre-commit `domain-isolation`, qui exécute
@@ -45,6 +49,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from domain.archer import Archer, ArcherId
+from domain.bareme import BaremeQualification
 from domain.blason import BlasonId
 from domain.categorie import Categorie, CategorieId
 from domain.classement import Classement, LigneClassement
@@ -55,11 +60,12 @@ from domain.deroule_etape import EtapeDeroule, EtapeDerouleId
 from domain.duel import BaremeDuel, Duel
 from domain.entree_audit import EntreeAudit
 from domain.forfait import Forfait
+from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription, InscriptionId
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId, SourcePhase, TypePhase
 from domain.placement import Affectation
 from domain.remboursement import Remboursement, RemboursementId
-from domain.tournoi import TournoiId
+from domain.tournoi import Tournoi, TournoiId
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -928,3 +934,102 @@ class FauxLecteurPopulations:
             )
 
         return resoudre
+
+
+# --- Décor du cycle de vie d'un tournoi (remonté ici en E16US012) ------------------------
+#
+# Ces quatre-là ont désormais **deux** consommateurs (`test_service_tournois` et
+# `test_service_jalons`) : c'est le seuil que la doctrine ci-dessus fixe, et le motif suffisant du
+# déplacement. Un renommage
+# local dans l'un cassait l'autre sans que rien ne signale la dépendance.
+#
+# ⚠️ **Ce qui suit était faux et a été corrigé en 2ᵉ passe de revue** (axes A, C1, C2 et D) : la
+# première rédaction justifiait le déplacement en affirmant que `test_service_jalons` était le
+# **seul** module du dépôt à importer depuis un autre module de test : ils sont **~25** à le faire.
+# C'est une pratique courante ici, pas une anomalie. ⚠️ **Un seul chiffre, une seule commande** —
+# `grep -rl "^from tests\.test_" backend/tests`. Les rédactions précédentes en avançaient deux
+# (« dont N sur un symbole privé ») sans la commande du second, et cinq relectures ont produit cinq
+# valeurs : la distinction n'entre dans aucune décision, seul l'ordre de grandeur compte pour savoir
+# s'il faut factoriser. Le geste
+# reste bon, sa justification était fausse ; et un chiffre faux écrit à l'endroit exact où se
+# décide « faut-il factoriser ? » fait prendre la mauvaise décision à qui le lira.
+
+DATE_TOURNOI = datetime.date(2026, 3, 14)
+
+
+class FauxTournoiRepository:
+    """Repository en mémoire conforme au port `TournoiRepository`."""
+
+    def __init__(self) -> None:
+        self._tournois: dict[int, Tournoi] = {}
+        self._sequence = 0
+
+    def ajouter(self, tournoi: Tournoi) -> Tournoi:
+        self._sequence += 1
+        persiste = dataclasses.replace(tournoi, id=self._sequence)
+        self._tournois[self._sequence] = persiste
+        return persiste
+
+    def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
+        return self._tournois.get(tournoi_id)
+
+    def lister(self) -> list[Tournoi]:
+        return list(self._tournois.values())
+
+    def enregistrer(self, tournoi: Tournoi) -> Tournoi:
+        assert tournoi.id in self._tournois, "Tournoi à mettre à jour absent."
+        self._tournois[tournoi.id] = tournoi
+        return tournoi
+
+    def supprimer(self, tournoi_id: TournoiId) -> None:
+        del self._tournois[tournoi_id]
+
+
+class FauxCompteurEngages:
+    """Combien d'archers sont inscrits **dans un créneau** — ce que la garde de démarrage confronte.
+
+    Le compte est par départ depuis ADR-0075 : le déroulé doit se jouer dans **chaque** créneau,
+    donc l'exigence se juge sur le moins garni. `nb` reste le réglage commun (ces tests n'ont qu'un
+    créneau) ; `regler` sert aux cas multi-créneaux.
+    """
+
+    def __init__(self, nb: int = 0) -> None:
+        self.nb = nb
+        self.par_depart: dict[int, int] = {}
+
+    def regler(self, depart_id: int, nb: int) -> None:
+        self.par_depart[depart_id] = nb
+
+    def nb_engages_du_depart(self, depart_id: DepartId) -> int:
+        return self.par_depart.get(depart_id, self.nb)
+
+
+def deroule_120(tournoi_id: int) -> list[EtapeDeroule]:
+    """Le déroulé d'ADR-0068 §6 : qualification, tableau 1-32, tableau de classement 33 et suivants.
+
+    Son minimum déduit est **34** — l'étape 3 ne monte un tableau de 2 qu'à partir du 34ᵉ classé.
+
+    Des **étapes** et non des phases (ADR-0076) : c'est une *définition*, elle appartient au
+    tournoi et s'écrit une seule fois quel que soit le nombre de créneaux.
+    """
+    return [
+        EtapeDeroule(
+            tournoi_id=tournoi_id,
+            ordre=1,
+            type=TypePhase.QUALIFICATION,
+            bareme=BaremeQualification.preset_ffta_18m(),
+            validation=GrainValidation.fin_de_serie(),
+        ),
+        EtapeDeroule(
+            tournoi_id=tournoi_id,
+            ordre=2,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_rangs(1, 1, 32),),
+        ),
+        EtapeDeroule(
+            tournoi_id=tournoi_id,
+            ordre=3,
+            type=TypePhase.ELIMINATION_DIRECTE,
+            sources=(SourcePhase.par_rangs(1, rang_debut=33),),
+        ),
+    ]

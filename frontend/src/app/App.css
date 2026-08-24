@@ -2012,6 +2012,25 @@ button:disabled {
   color: var(--text-secondary);
 }
 
+/* Verdict d'un écran « prêt à… » (E16US012) : la réponse **binaire** à la question du titre, avant
+   la liste qui dit pourquoi. Même registre que les états ci-dessus — pastille + couleur + texte,
+   jamais la couleur seule (`DV-03`) —, et l'alerte reste **ambre** (`--danger`), jamais rouge. */
+.completude__verdict {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+.completude__verdict--ok {
+  color: var(--success);
+}
+
+.completude__verdict--alerte {
+  color: var(--danger);
+}
+
 .completude__actions {
   display: flex;
   align-items: center;

@@ -38,6 +38,12 @@ window.ATLAS.carte = {
     "tableaux"
    ],
    [
+    "accueil",
+    "completude",
+    "jalons",
+    "paiements"
+   ],
+   [
     "admin",
     "tournois"
    ],
@@ -97,6 +103,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 4,
+    "feature": "completude"
+   },
+   {
+    "clientes": 4,
     "feature": "poules"
    },
    {
@@ -109,11 +119,11 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
-    "feature": "clubs"
+    "feature": "accueil"
    },
    {
     "clientes": 3,
-    "feature": "completude"
+    "feature": "clubs"
    },
    {
     "clientes": 3,
@@ -126,10 +136,6 @@ window.ATLAS.carte = {
    {
     "clientes": 3,
     "feature": "suivi"
-   },
-   {
-    "clientes": 2,
-    "feature": "accueil"
    },
    {
     "clientes": 2,
@@ -154,6 +160,10 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "grain-validation"
+   },
+   {
+    "clientes": 2,
+    "feature": "jalons"
    },
    {
     "clientes": 2,
@@ -224,7 +234,7 @@ window.ATLAS.carte = {
     "feature": "simulation"
    }
   ],
-  "features": 47
+  "features": 48
  },
  "matrice": [
   {
@@ -254,7 +264,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 348,
+   "occurrences": 352,
    "source": "application"
   },
   {
@@ -302,13 +312,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 93,
+   "occurrences": 94,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 67,
+   "occurrences": 68,
    "source": "api"
   },
   {
@@ -332,7 +342,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 50,
+   "occurrences": 51,
    "source": "bootstrap"
   },
   {
@@ -344,7 +354,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "api",
-   "occurrences": 53,
+   "occurrences": 54,
    "source": "bootstrap"
   }
  ],
@@ -354,7 +364,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 39,
+   "occurrences": 40,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -377,6 +387,7 @@ window.ATLAS.carte = {
     "backend/api/v1/gabarits.py",
     "backend/api/v1/grain_validation.py",
     "backend/api/v1/inscriptions.py",
+    "backend/api/v1/jalons.py",
     "backend/api/v1/jeu_essai.py",
     "backend/api/v1/listes_impression.py",
     "backend/api/v1/paiements.py",
@@ -426,7 +437,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 55,
+   "occurrences": 56,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -450,6 +461,7 @@ window.ATLAS.carte = {
     "backend/api/v1/gabarits.py",
     "backend/api/v1/grain_validation.py",
     "backend/api/v1/inscriptions.py",
+    "backend/api/v1/jalons.py",
     "backend/api/v1/jeu_essai.py",
     "backend/api/v1/listes_impression.py",
     "backend/api/v1/paiements.py",
@@ -519,7 +531,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 89,
+   "occurrences": 90,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -538,6 +550,7 @@ window.ATLAS.carte = {
     "backend/api/v1/formats.py",
     "backend/api/v1/gabarits.py",
     "backend/api/v1/grain_validation.py",
+    "backend/api/v1/jalons.py",
     "backend/api/v1/listes_impression.py",
     "backend/api/v1/paiements.py",
     "backend/api/v1/palmares.py",
@@ -666,7 +679,7 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "application",
-   "occurrences": 49,
+   "occurrences": 50,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -692,6 +705,7 @@ window.ATLAS.carte = {
     "backend/application/gel_de_pause.py",
     "backend/application/grain_validation.py",
     "backend/application/inscriptions.py",
+    "backend/application/jalons.py",
     "backend/application/jeu_essai.py",
     "backend/application/listes_impression.py",
     "backend/application/paiements.py",
@@ -725,7 +739,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 334,
+   "occurrences": 338,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -751,6 +765,7 @@ window.ATLAS.carte = {
     "backend/application/generateur_scores.py",
     "backend/application/grain_validation.py",
     "backend/application/inscriptions.py",
+    "backend/application/jalons.py",
     "backend/application/jeu_essai.py",
     "backend/application/listes_impression.py",
     "backend/application/paiements.py",
@@ -821,7 +836,7 @@ window.ATLAS.carte = {
    "cible": "api/v1",
    "couche_cible": "api",
    "couche_source": "bootstrap",
-   "occurrences": 48,
+   "occurrences": 49,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -832,7 +847,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 50,
+   "occurrences": 51,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -2017,6 +2032,42 @@ window.ATLAS.carte = {
   {
    "adapters": [
     {
+     "fichier": "backend/application/completude.py",
+     "nom": "ServiceCompletude"
+    },
+    {
+     "fichier": "backend/application/palmares.py",
+     "nom": "ServicePalmares"
+    },
+    {
+     "fichier": "backend/domain/blason.py",
+     "nom": "Blason"
+    },
+    {
+     "fichier": "backend/domain/categorie.py",
+     "nom": "Categorie"
+    },
+    {
+     "fichier": "backend/domain/format_tournoi.py",
+     "nom": "ModelePhase"
+    },
+    {
+     "fichier": "backend/domain/gabarit_salle.py",
+     "nom": "GabaritSalle"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/jalons.py",
+   "hors_domaine": true,
+   "methodes": [
+    "pour_tournoi"
+   ],
+   "nom": "LecteurCompletude",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
      "fichier": "backend/infrastructure/db/repositories/exploitation.py",
      "nom": "AuditRepositorySQL"
     },
@@ -2240,6 +2291,22 @@ window.ATLAS.carte = {
     "etat"
    ],
    "nom": "LecteurEtatBigShootOff",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/application/tournois.py",
+     "nom": "ServiceTournois"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/jalons.py",
+   "hors_domaine": true,
+   "methodes": [
+    "exigence_effectif"
+   ],
+   "nom": "LecteurExigenceEffectif",
    "sans_adapter": false
   },
   {
@@ -2835,14 +2902,14 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 156,
-  "enchevetrements": 3,
-  "features": 47,
-  "imports": 886,
-  "imports_entre_couches": 753,
+  "aretes_front": 160,
+  "enchevetrements": 4,
+  "features": 48,
+  "imports": 896,
+  "imports_entre_couches": 761,
   "plus_gros_noeud": 24,
-  "ports": 65,
-  "ports_hors_domaine": 23,
+  "ports": 67,
+  "ports_hors_domaine": 25,
   "ports_sans_adapter": 0,
   "violations": 0
  },

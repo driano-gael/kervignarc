@@ -46,6 +46,7 @@ export type DestinationAdminId =
   | 'supervision'
   | 'ecrans'
   | 'suivi-deroule'
+  | 'pret-demarrer'
   | 'completude'
   | 'classement'
   | 'palmares'
@@ -135,10 +136,23 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Voyez le tournoi se dérouler : quelles phases sont terminées, laquelle tourne, quel tour est en ' +
     'cours et combien de duels restent à jouer. C’est le même schéma que celui composé à l’atelier, ' +
     'rempli par la réalité.',
+  'pret-demarrer':
+    'Répond à une seule question : peut-on lancer ce tournoi ? La liste montre ce qui doit être en ' +
+    'place — au moins un créneau, assez d’inscrits pour ce que le déroulé prélève, et le déroulé ' +
+    'lui-même. Les deux premiers sont exigés — le créneau dès « Marquer prêt », l’effectif au ' +
+    'démarrage ; le troisième n’est qu’un conseil. ' +
+    'Tout est affiché d’un coup, pour ne pas découvrir le second manque après avoir corrigé le ' +
+    'premier. Le bouton reste cliquable : l’écran annonce, c’est le serveur qui refuse. Une fois le ' +
+    'tournoi lancé, annulé ou archivé, la question ne se pose plus : l’écran dit alors seulement ' +
+    'pourquoi.',
   completude:
     'Répond à une seule question : peut-on terminer ce tournoi ? La liste montre ce qui reste à ' +
-    'jouer — cibles de qualification non terminées, phases, classement. Rien ne vous empêche de ' +
-    'terminer malgré un manque : l’écran avertit, il ne bloque pas. Terminer fige le sportif — les ' +
+    'jouer — cibles de qualification non terminées, phases, classement. Pendant le tournoi, rien ne ' +
+    'vous empêche de terminer malgré un manque : l’écran avertit, il ne bloque pas. Hors tournoi en ' +
+    'cours, terminer est refusé : avant le lancement — brouillon, prêt — la question ne se pose pas ' +
+    'encore ; en pause, il faut d’abord reprendre ; une fois terminé, annulé ou archivé, elle ne se ' +
+    'pose plus. ' +
+    'Terminer fige le sportif — les ' +
     'inscriptions et les paiements, eux, se suivent sur l’axe Gestion et restent modifiables après.',
   classement:
     'Consultez le classement, mis à jour en direct au fil de la saisie. C’est une vue de lecture : ' +

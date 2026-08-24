@@ -30,6 +30,8 @@ from domain.deroule import exigence_minimale
 from domain.deroule_etape import EtapeDeroule
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import (
+    MESSAGE_SANS_DEPART,
+    MESSAGE_TERMINER_HORS_EN_COURS,
     StatutTournoi,
     Tournoi,
     TournoiId,
@@ -245,9 +247,7 @@ class ServiceTournois:
         if tournoi.statut is not StatutTournoi.BROUILLON:
             raise TransitionStatutInvalide("Seul un tournoi en brouillon peut passer prêt.")
         if not self._departs.par_tournoi(tournoi_id):
-            raise TournoiSansDepart(
-                "Ce tournoi n'a aucun départ ; ajoutez au moins un créneau avant de le passer prêt."
-            )
+            raise TournoiSansDepart(MESSAGE_SANS_DEPART)
         return self._repository.enregistrer(tournoi.vers_pret())
 
     def revenir_brouillon(self, tournoi_id: TournoiId) -> Tournoi:
@@ -395,7 +395,7 @@ class ServiceTournois:
             tournoi_id,
             {StatutTournoi.EN_COURS},
             Tournoi.terminer,
-            "Seul un tournoi en cours peut être terminé.",
+            MESSAGE_TERMINER_HORS_EN_COURS,
         )
 
     def archiver(self, tournoi_id: TournoiId) -> Tournoi:

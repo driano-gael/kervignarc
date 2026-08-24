@@ -34,6 +34,13 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-23 | `E16US012` (7ᵉ passe, ciblée B+D) | 17 | +143/-52 | ~2 min | ~13 min | D (21:59→22:11) | — | majeur:3 mineur:5 suggestion:1 | — | — | **bloquant:0** majeur:3 mineur:3 suggestion:2 | **aucun bloquant** | 7 (sortie) |
+| 2026-08-23 | `E16US012` (6ᵉ passe, sur les correctifs) | 16 | +205/-62 | ~2 min | ~26 min | D (21:10→21:36) | — | majeur:4 mineur:2 suggestion:2 | majeur:5 mineur:3 suggestion:1 | — | **bloquant:0** majeur:7 mineur:4 suggestion:1 | **aucun bloquant** | 7 |
+| 2026-08-23 | `E16US012` (5ᵉ passe, sur les correctifs) | 14 | +234/-83 | ~2 min | ~18 min | D (20:29→20:46) | — | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:3 suggestion:2 | majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **D (1)** | 6 |
+| 2026-08-23 | `E16US012` (4ᵉ passe, sur les correctifs) | 17 | +260/-61 | ~2 min | ~40 min | D (19:12→19:52) | **OK** mineur:5 suggestion:1 | majeur:1 mineur:5 suggestion:4 | majeur:1 mineur:5 | majeur:3 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:1 | **D (1)** | 5 |
+| 2026-08-23 | `E16US012` (3ᵉ passe, sur les correctifs) | 27 | +613/-186 | ~2 min | ~20 min | D (13:52→14:10) | majeur:2 mineur:4 suggestion:1 | majeur:5 mineur:3 suggestion:1 | majeur:4 mineur:4 | majeur:5 mineur:4 suggestion:1 | **bloquant:1** majeur:3 mineur:4 suggestion:1 | **D (1)** | 4 |
+| 2026-08-23 | `E16US012` (2ᵉ passe, sur les correctifs) | 27 | +1025/-230 | ~5 min | ~37 min | D (12:41→13:18) | majeur:3 mineur:4 | majeur:2 mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:4 | **D (1)** | 3 |
+| 2026-08-23 | `E16US012` | 35 | +2385/−119 | ~22 min | ~28 min | D (12:12→12:20) | majeur:1 mineur:2 | majeur:2 mineur:3 suggestion:2 | mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:2 | **bloquant:1** majeur:6 mineur:5 suggestion:2 | **D (1)** | 2 |
 | 2026-08-22 | `E16US002` (2ᵉ passe, sur les correctifs) | 43 | +718/−128 | ~25 min | ~21 min | D (22:39→22:58) | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:4 suggestion:1 | majeur:3 mineur:4 suggestion:1 | majeur:2 mineur:6 suggestion:2 | majeur:7 mineur:5 suggestion:1 | **bloquant:0** — les deux de la 1ʳᵉ passe fermés et vérifiés par exécution | 2 |
 | 2026-08-22 | `E16US002` | 48 | +1579/−161 | ~18 min | ~20 min | D (21:19→21:39) | **bloquant:1** mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:2 | majeur:6 mineur:7 suggestion:2 | **bloquant:2** majeur:6 mineur:3 | **A, B, C1, D** (le même bloquant, quatre fois) **+ D seul** (le 2ᵉ : un ADR attestant « vérifié » une traversée inexistante) | 2 |
 | 2026-08-22 | `E05US027` | 76 | +5909/−237 | ~23 min | ~76 min | D (15:41→16:24) | **bloquant:1** majeur:0 mineur:3 | bloquant:0 **majeur:6** mineur:8 suggestion:3 | bloquant:0 **majeur:2** mineur:5 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | bloquant:0 **majeur:5** mineur:4 suggestion:1 | **A et C2, un chacun et disjoints** — C2 : `useRegenererPlanColline` sans appelant, donc plan de cibles inatteignable et **format injouable** (3ᵉ récidive du défaut d'E05US023) ; A : `test_arrets_api.py` non élargi au 6ᵉ service, alors que le composition root affirmait l'inverse. ⚠️ **Trois majeurs sont des trous *déplacés*** — `_nb_tours_a_la_composition` (E05US035), `MOTEUR_SAIT_JOUER` (E05US028), le montage du plan (E05US023) : le raisonnement avait été tenu et tranché sur le format précédent, jamais rejoué sur le format neuf | 2 |
@@ -368,3 +375,67 @@ et c'est précisément le danger — ils se lisent comme des preuves, et les US 
 leurs tests. Deux garde-fous mécaniques ont attrapé le premier (l'atlas, en passant de 39 à 42
 signaux) ; **le compteur de signaux avait été lu et ignoré**, parce que « 0 écart bloquant » suffisait
 à la porte. Un compteur qui monte est une information, pas de la décoration.
+
+**27. Un compteur de signaux relevé en cours de correction compte ceux que la correction vient de
+créer.** E16US012 a annoncé « zéro `portage-symbole-absent` contre **quatre** avant » : il y en avait
+**deux** au commit d'origine, les deux autres ayant été introduits — puis refermés — par les
+correctifs eux-mêmes, entre deux régénérations de l'atlas. Un compteur ne veut rien dire s'il n'est
+pas mesuré contre `origin/main` : c'est la seule borne qui ne bouge pas pendant qu'on travaille.
+
+**28. « L'axe X a dit que » n'est pas un fait — et un axe se trompe aussi.** La 1ʳᵉ passe a affirmé
+que le module de test en cause était « le **seul** du dépôt à importer des symboles privés d'un
+autre module de test ». L'auteur l'a recopié dans un commentaire de `conftest.py`, à l'endroit exact
+où se décide « faut-il factoriser ? ». **Deux mesures distinctes** avaient été confondues : les
+modules qui **importent** un symbole privé d'un autre module de test, et ceux qui **gardent une
+copie locale** de `FauxTournoiRepository` (~25). Le commentaire répondait à la seconde question en
+croyant répondre à la première.
+
+⚠️ **Et il a fallu trois passes de plus pour arrêter de se tromper de chiffre.** La 3ᵉ a regravé le
+décompte des copies ; la 4ᵉ l'a corrigé en « 13 » ; la 5ᵉ a produit une troisième valeur, parce que
+la mesure elle-même est ambiguë (imports parenthésés, symboles privés seuls ou non). La leçon n'est
+donc pas seulement « re-vérifier » : **un chiffre dont la définition n'est pas évidente ne se grave
+pas**. On écrit l'ordre de grandeur et la commande qui le reproduit — un ordre de grandeur ne se
+périme pas, et il suffit à décider s'il faut factoriser.
+
+**29. Sur une famille, le correctif doit être rejoué sur chaque membre — sinon il *déplace* le
+défaut d'un membre à l'autre.** E16US012 livre deux écrans « prêt à… » partageant une coquille. À
+chacune des trois passes, la correction a été menée à fond sur le membre qui venait d'être relevé et
+pas sur son voisin : la garde de statut fermée au domaine et pas sur l'écran *terminer* (2ᵉ passe,
+bloquant) ; puis la liste vidée sur *démarrer* et pas sur *terminer*, le moment dérivé sur l'un et
+écrit en dur sur l'autre (3ᵉ passe, bloquant). Le mécanisme est structurel, pas de l'inattention :
+on corrige là où le rapport pointe. Sur une abstraction partagée, le réflexe doit être « et l'autre
+membre ? » avant de repasser la porte.
+
+**30. Une prop, un champ ou une garde qui ne peut plus être observé n'est pas neutre : il se lit
+comme une preuve.** E16US012 a livré successivement trois conditions inertes — `bloquant={!enCours}`
+puis `pret={enCours && …}` sur le même appel, et un `moment` que le domaine ne produisait pas. Aucune
+ne changeait le rendu ; toutes étaient citées, en revue ou dans la section « Porté dans le code par »
+de l'ADR, comme portant la décision. Le test qui « les garde » passe alors quoi qu'on fasse. Le
+symptôme se détecte en une minute par mutation : si remplacer la condition par une constante laisse
+la suite verte, elle ne porte rien — et il faut soit la retirer, soit cesser de l'invoquer comme
+garantie.
+
+**31. Sur un écran, le correctif se rejoue sur chaque bloc qui rend du texte.** Le constat 29 disait
+« et l'autre membre ? ». Trois passes de plus ont montré la variante intra-écran : la même
+contradiction de temps (« figera » / « est figé ») a été corrigée dans le **pied** d'un écran, puis
+retrouvée dans sa **tête** au tour suivant, sur le même statut. Un écran a typiquement quatre zones
+de texte — intro, verdict, liste, pied — plus son aide contextuelle, qui vit dans un autre fichier
+et qu'aucune recette n'ouvre. Les cinq se relisent ensemble, ou le défaut se déplace de l'une à
+l'autre au rythme d'une par passe.
+
+**32. Avant d'armer un effet global, compter les consommateurs — la commande, pas la mémoire.**
+E16US012 a ajouté un `refetchInterval` à `useTournois()` en justifiant : « deux consommateurs, tous
+deux des écrans d'administration ». Ils sont trois, et le troisième est la **porte publique**, qui
+monte le même composant sans condition : chaque téléphone de spectateur se serait mis à interroger le
+serveur toutes les 5 s, jour J, sur le LAN — contre une doctrine que le dépôt écrit noir sur blanc
+pour les routes ouvertes. L'inventaire tenait en un `grep`. C'est la même classe d'erreur que les
+chiffres du constat 28, appliquée non plus à une phrase de doc mais à une **décision d'architecture**,
+et son coût n'est pas documentaire.
+
+**33. Remplacer un commentaire par un champ ne garde rien de plus si le champ n'est pas asserté.**
+E16US012 a constaté qu'une convention ne vivait qu'en commentaire d'avertissement, et l'a remplacée
+par un champ de contrat — geste juste. Mais le champ est parti en production avec **zéro assertion**
+dans le dépôt, une valeur par défaut côté serveur, et une ligne d'ADR affirmant qu'il était gardé.
+Le déplacement d'une promesse d'un support à un autre ne devient une garantie qu'au moment où une
+mutation la fait rougir. Le réflexe : après avoir ajouté un champ ou une prop qui « porte » une
+règle, le figer et relancer — s'il ne tombe rien, on a déplacé le commentaire, pas fermé le trou.

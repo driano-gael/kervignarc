@@ -50,6 +50,11 @@ export const cleClassementDepart = (tournoiId: number, departId: number, categor
 // fois**, ici où vit la requête, pour ne pas diverger d'un littéral `['tournois']` recopié ailleurs.
 export const CLE_TOURNOIS = ['tournois'] as const
 
+// Le pas de rafraîchissement de cette lecture. Chaque feature déclare le sien — 5 s ici comme pour
+// la complétude, les jalons et la supervision ; 10 s pour le suivi du déroulé, davantage ailleurs :
+// il n'y a pas de parité générale à revendiquer, seulement une constante nommée par module.
+const INTERVALLE_POLL_MS = 5000
+
 // Le classement **d'un créneau** (ADR-0075). `categorieId` optionnel : filtre l'affichage à une
 // catégorie (les rangs restent ceux du classement complet du départ).
 //
@@ -64,8 +69,30 @@ export function useClassement(tournoiId: number, departId: number | null, catego
   })
 }
 
-export function useTournois() {
-  return useQuery({ queryKey: CLE_TOURNOIS, queryFn: getTournois })
+// `live` — **pollé sur demande, jamais par défaut**. Le `statut` qui sort d'ici pilote des écrans
+// entiers de l'administration : depuis E16US012, « Prêt à terminer ? » y prend son verdict, sa
+// raison **et** la présence de son bouton. Sans rafraîchissement (le `staleTime` global est de 30 s,
+// `refetchOnWindowFocus` est désactivé, et aucune transition de cycle de vie ne diffuse d'événement
+// WebSocket), un second poste restait sur un statut périmé indéfiniment : le PC reprend le tournoi,
+// la tablette continue de croire à la pause et **fait disparaître le bouton « Terminer »**. L'appli
+// empêchait alors sans rien dire — l'inverse de `D-15`/`P-3`, sans même un 409 pour détromper
+// l'organisateur (5ᵉ passe de revue, axe D).
+//
+// ⚠️ **Pourquoi une option et non un poll inconditionnel.** La 5ᵉ passe l'avait armé pour tout le
+// monde, sur un inventaire faux — « deux consommateurs, tous deux des écrans d'administration ».
+// Ils sont **trois**, et le troisième est la **porte publique** : `GestionTournois` est monté sans
+// condition par `public/AccueilPublic`. Chaque téléphone de spectateur aurait donc interrogé
+// `GET /api/v1/tournois` toutes les 5 s, jour J, sur le LAN — contre la doctrine que le dépôt écrit
+// noir sur blanc pour les routes ouvertes (`big-shoot-off/hooks.ts` : « aucun `refetchInterval` :
+// le rafraîchissement vient de l'invalidation globale de `useRealtime` »). Relevé en 6ᵉ passe par
+// deux axes. Seule la coquille admin demande donc le direct ; le public garde le comportement
+// d'avant.
+export function useTournois({ live = false }: { live?: boolean } = {}) {
+  return useQuery({
+    queryKey: CLE_TOURNOIS,
+    queryFn: getTournois,
+    ...(live ? { refetchInterval: INTERVALLE_POLL_MS, staleTime: 0 } : {}),
+  })
 }
 
 export function useCreerTournoi() {

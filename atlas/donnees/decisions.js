@@ -7372,6 +7372,315 @@ window.ATLAS.decisions = {
     "E05US035",
     "E16US002"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-23",
+   "date_brute": "2026-08-23",
+   "extrait": "### §1 — Un jalon est un état consultable, pas une exception Une préparation à un jalon (PreparationJalon) énumère ce que les gardes vérifient, sans les exécuter : une liste d'états (D-17 : jamais une barre de progression) et une réponse binaire. Tout ce qui manque se lit d'un coup. Les gardes ne sont pas réécrites — c'est le CA « sans doublonner ce qui existe ». L'effectif affiché avant le clic sort de ServiceTournois.exigence_effectif, la méthode que la garde exécute elle-même ; les créneaux du même DepartRepository.par_tournoi ; « prêt à terminer » relit ServiceCompletude sans y toucher. Là où le partage mécanique s'arrête — le jalon traduit « aucun créneau » en EN_ATTENTE, la garde le […]",
+   "fichier": "docs/adr/0096-un-jalon-enumere-ses-gardes-au-lieu-de-les-lever.md",
+   "identifiant": "0096",
+   "liens": [
+    {
+     "cible": "E16US012",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0026",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0058",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0069",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0073",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/erreurs.py",
+     "existe": true,
+     "symboles": [
+      "JalonNonInstruit",
+      "isinstance",
+      "MancheIntrouvable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/jalons.py",
+     "existe": true,
+     "symboles": [
+      "question",
+      "_VERBE",
+      "PreparationJalonReponse.question",
+      "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
+      "LigneCompletudeReponse",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/erreurs/referentiel.py",
+     "existe": true,
+     "symboles": [
+      "JalonNonInstruit",
+      "isinstance",
+      "MancheIntrouvable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/jalons.py",
+     "existe": true,
+     "symboles": [
+      "ServiceJalons._demarrer",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
+      "PreparationJalon.detail",
+      "transition_offerte",
+      "_TRANSITIONS_DU_JALON",
+      "test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts",
+      "ARCHIVER",
+      "JalonNonInstruit",
+      "isinstance",
+      "MancheIntrouvable"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/jalon.py",
+     "existe": true,
+     "symboles": [
+      "PreparationJalon",
+      "evaluer_demarrer",
+      "evaluer_terminer",
+      "ServiceJalons._demarrer",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
+      "question",
+      "_VERBE",
+      "PreparationJalonReponse.question",
+      "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
+      "pret",
+      "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart",
+      "bloquant",
+      "False",
+      "verdict",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
+      "PreparationJalon.detail",
+      "transition_offerte",
+      "_TRANSITIONS_DU_JALON",
+      "test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts",
+      "ARCHIVER",
+      "moment",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tournoi.py",
+     "existe": true,
+     "symboles": [
+      "MESSAGE_SANS_DEPART",
+      "MESSAGE_TERMINER_HORS_EN_COURS",
+      "ServiceTournois",
+      "preparation.detail"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_jalon.py",
+     "existe": true,
+     "symboles": [
+      "ServiceJalons._demarrer",
+      "exigence.suffisant",
+      "_exiger_un_effectif_suffisant",
+      "inscrits",
+      "minimum",
+      "test_l_effectif_suit_le_verdict_de_la_garde_et_ne_le_recalcule_pas",
+      "exigence_effectif",
+      "question",
+      "_VERBE",
+      "PreparationJalonReponse.question",
+      "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
+      "pret",
+      "evaluer_demarrer",
+      "test_un_deroule_vide_est_signale_mais_ne_retient_pas_le_depart",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
+      "moment",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_jalons_api.py",
+     "existe": true,
+     "symboles": [
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_service_jalons.py",
+     "existe": true,
+     "symboles": [
+      "test_le_jalon_chiffre_l_effectif_du_creneau_le_moins_garni",
+      "test_un_tournoi_deja_lance_n_annonce_pas_qu_il_peut_demarrer",
+      "test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer",
+      "transition_offerte",
+      "_TRANSITIONS_DU_JALON",
+      "test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts",
+      "ARCHIVER",
+      "MESSAGE_SANS_DEPART",
+      "MESSAGE_TERMINER_HORS_EN_COURS",
+      "ServiceTournois",
+      "preparation.detail",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "questionPosee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/axes.ts",
+     "existe": true,
+     "symboles": [
+      "completude"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/completude/Completude.tsx",
+     "existe": true,
+     "symboles": [
+      "questionPosee",
+      "pret",
+      "complet",
+      "detail",
+      "enCours",
+      "bloquant"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/jalons/PretA.tsx",
+     "existe": true,
+     "symboles": [
+      "questionPosee",
+      "pret",
+      "complet",
+      "PreparationJalon.detail",
+      "_moment_du_refus",
+      "moment",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret",
+      "question_posee",
+      "PreparationJalon.question_posee",
+      "tsc",
+      "evaluer_terminer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/jalons/PretADemarrer.tsx",
+     "existe": true,
+     "symboles": [
+      "question",
+      "_VERBE",
+      "PreparationJalonReponse.question",
+      "test_chaque_membre_pose_sa_question_sous_la_meme_forme",
+      "disabled",
+      "useTransitions",
+      "VERS_LE_DEPART",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/jalons/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "bloquant",
+      "False",
+      "verdict",
+      "_moment_du_refus",
+      "test_sans_creneau_le_refus_est_annonce_pour_le_passage_en_pret"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un jalon énumère ses gardes au lieu de les lever, et les quatre « prêt à… » partagent une forme",
+   "us": [
+    "E02US010",
+    "E05US021",
+    "E12US005",
+    "E14US001",
+    "E16US003",
+    "E16US007",
+    "E16US008",
+    "E16US012"
+   ]
   }
  ]
 };

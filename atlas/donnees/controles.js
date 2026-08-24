@@ -83,6 +83,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
+   "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "severite": "signal",
+   "sujet": "accueil"
+  },
+  {
+   "code": "features-enchevetrees",
    "message": "et 1 autre(s) feature(s) s'importent mutuellement (admin, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "admin"
@@ -101,7 +107,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 23 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 25 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application"
   },
@@ -240,6 +246,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 39
+  "signaux": 40
  }
 };

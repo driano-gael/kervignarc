@@ -22,8 +22,9 @@ public le consulte en direct sans compte — jusqu'à suivre un archer et voir s
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
 dû, par archer et par club) est en place — et une somme déjà encaissée ne disparaît plus en silence :
 annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
-remboursé ou reporté. Un écran de **complétude** dit d'un coup d'œil ce qui
-manque avant de terminer le tournoi, une **recherche d'archer** permanente répond à « je tire
+remboursé ou reporté. Deux écrans **« prêt à… »** disent d'un coup d'œil ce qui manque
+avant de **lancer** puis avant de **terminer** le tournoi — tous les manques ensemble, avant le
+clic, et sans jamais verrouiller le bouton —, une **recherche d'archer** permanente répond à « je tire
 où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
 et les **fusionne** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
@@ -544,19 +545,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **122 US livrées** sur `main` (mergées, revues, CI verte) à la date du 22/08/2026, la dernière
-  étant `E16US002` — **nommer ses phases** : une phase du déroulé peut porter un titre
+- **123 US livrées** sur `main` (mergées, revues, CI verte) à la date du 23/08/2026, la dernière
+  étant `E16US012` — **l'application dit ce qui manque avant le clic** : un écran
+  « **Prêt à démarrer ?** » liste **d'un coup** tout ce qui retient le lancement (créneaux,
+  inscrits, programme composé), là où l'application ne refusait qu'un manque à la fois, **au clic**.
+  Il inaugure la **famille des écrans « prêt à… »** — une forme unique déclinée par jalon, sur
+  laquelle « Prêt à terminer ? » a été rebâti sans changer d'apparence ; les deux membres restants
+  (archiver, exporter) ont leur place réservée. La précédente était
+  `E16US002` — **nommer ses phases** : une phase du déroulé peut porter un titre
   (« Tableau des jeunes »), chaque ligne ouvre **sa** fiche au lieu d'empiler tous les réglages à
   l'écran, et les deux menus de composition cessent de porter chacun le nom de l'autre
-  (« Phases du tournoi » / « Composer un format »). C'est le **dernier des quatre écrans refusés**
-  au questionnaire de maquettes du 04/08/2026 : il n'en reste **aucun**. La précédente était
+  (« Phases du tournoi » / « Composer un format ») — c'était le **dernier des quatre écrans refusés**
+  au questionnaire de maquettes du 04/08/2026, il n'en reste **aucun**. Avant elle,
   `E05US027` — **la colline jouable** : le format à défis du club (*King of the Hill* / *Ladder*)
   se règle, se joue et s'affiche de bout en bout, alors qu'il n'existait jusqu'ici que sous forme de
   moteur sans écran ; c'était la **dernière des quatre tranches** qui rendaient jouables les formats
-  livrés en juillet. Avant elle, `E05US029` — **les poules de niveau en une seule étape** : une
-  phase de poules peut composer ses groupes **par tranches de rangs** (« rangs 1-6, 7-12, … ») au
-  lieu de les équilibrer, ce qui monte un tournoi club **en cascade** — 36 archers, une phase pour
-  estimer les niveaux, une seconde pour les affiner — sans écrire six étapes à la main. **`SUIVI-US.md` fait
+  livrés en juillet. **`SUIVI-US.md` fait
   foi sur le compte exact** ; ce résumé le **reflète** et ne tient pas un second décompte.
   ⚠️ **Un `grep` sur `git log` ne donne pas ce chiffre**, et se tromper dans les deux sens se
   compense : `E00US016`, `E01US018` et `E01US019` ont un commit `docs(...)` dans `main` **sans une
