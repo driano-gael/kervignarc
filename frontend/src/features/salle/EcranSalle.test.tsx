@@ -15,7 +15,7 @@
 // coiffe.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +23,8 @@ import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
 import type { Phase } from '../phases/api'
 import { getAvancement } from '../phases/api'
+import type { Identite } from '../identite/api'
+import { getIdentite } from '../identite/api'
 import { EcranSalle } from './EcranSalle'
 
 vi.mock('../departs/api', async (importOriginal) => ({
@@ -61,6 +63,12 @@ vi.mock('../routage/VueAffectations', () => ({
 }))
 vi.mock('../en-cours/VueEnCours', () => ({ VueEnCours: () => <div data-testid="en-cours" /> }))
 vi.mock('../suivi-deroule/hooks', () => ({ useSuiviDeroule: () => ({ data: undefined }) }))
+// E16US006 : l'identité est une vraie requête, on la sert depuis une doublure typée plutôt que
+// de neutraliser `HabillageIdentite` — c'est **son montage** que les tests plus bas vérifient.
+vi.mock('../identite/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../identite/api')>()),
+  getIdentite: vi.fn(),
+}))
 
 // ⚠️ **Décor typé sans `as unknown as`** (correctif de revue, axe B). La première rédaction cassait
 // le type, et la fixture était objectivement fausse : sans `etat`, `departDeSalle` tombait dans son
@@ -148,3 +156,84 @@ describe('EcranSalle — l’annonce de pause est hors rotation (CA E05US034)', 
     ).toHaveTextContent(/système suisse/i)
   })
 })
+
+describe('EcranSalle — l’identité du tournoi habille la surface (CA E16US006, D-27)', () => {
+  // ⚠️ **Tests de PLACEMENT, pas de rendu de composant.** `DETTE-085` a établi le prix de la
+  // confusion : `E16US005` a livré un écran qui calculait ses repères et ne les rendait jamais, sans
+  // qu'aucun test ne bouge, parce qu'aucun ne montait cet écran. Monter `HabillageIdentite` seul
+  // prouverait qu'il sait poser des jetons ; il ne prouverait pas qu'`EcranSalle` l'appelle. Ces
+  // deux tests-ci tombent si on retire l'habillage ou les logos du bandeau.
+
+  it('pose les jetons de marque du tournoi sur la scène', async () => {
+    vi.mocked(getAvancement).mockResolvedValue([])
+    vi.mocked(getIdentite).mockResolvedValue(identiteDeTest())
+
+    const { container } = monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    await waitFor(() =>
+      expect(container.querySelector('style')?.textContent).toContain('--brand-surface:#0b6e9e'),
+    )
+    expect(container.querySelector('[data-identite="identite-1"]')).not.toBeNull()
+  })
+
+  it('affiche les DEUX logos déposés dans le bandeau', async () => {
+    // P07, question 2 : *« je n'ai pas vu le logo sur la maquette »*. Les deux marques du club —
+    // l'édition et le club — sur la surface où l'on est le plus loin de l'écran.
+    vi.mocked(getAvancement).mockResolvedValue([])
+    vi.mocked(getIdentite).mockResolvedValue({
+      ...identiteDeTest(),
+      logos: ['club', 'evenement'],
+    })
+
+    monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    expect(await screen.findByAltText(/Logo du tournoi/i)).toBeInTheDocument()
+    expect(screen.getByAltText(/Logo du club organisateur/i)).toBeInTheDocument()
+  })
+
+  it('n’affiche aucun logo quand rien n’a été déposé', async () => {
+    // Assertion **négative appariée** à la positive ci-dessus : les deux logos sont facultatifs
+    // (« bien sûr cela reste optionnel », questionnaire A05). Un cadre vide sur un vidéoprojecteur
+    // se lirait comme une image qui n'a pas chargé.
+    vi.mocked(getAvancement).mockResolvedValue([])
+    vi.mocked(getIdentite).mockResolvedValue(identiteDeTest())
+
+    monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    expect(await screen.findByTestId('classement')).toBeInTheDocument()
+    expect(screen.queryByAltText(/Logo/i)).toBeNull()
+  })
+
+  it('s’allume même si l’identité n’a pas encore répondu', async () => {
+    // Un écran de salle ne doit **jamais** attendre une couleur pour afficher un classement : sur un
+    // vidéoprojecteur, personne n'est là pour recharger. La surface porte alors les jetons du club,
+    // qui sont déjà les bons par défaut.
+    vi.mocked(getAvancement).mockResolvedValue([])
+    vi.mocked(getIdentite).mockReturnValue(new Promise(() => {}))
+
+    monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    expect(await screen.findByTestId('classement')).toBeInTheDocument()
+  })
+})
+
+/** Une identité réglée en bleu — distincte du rouge du club, pour que l'assertion prouve quelque
+ *  chose : avec les couleurs héritées, un habillage absent rendrait exactement le même écran. */
+function identiteDeTest(): Identite {
+  const jetons = { surface: '#0b6e9e', contour: '#0b6e9e', texte: '#3aa8dd', encre: '#ffffff' }
+  const accent = {
+    couleur: '#0b6e9e',
+    sombre: jetons,
+    clair: jetons,
+    contraste_sur_sombre: 4.6,
+    contraste_sur_clair: 4.6,
+  }
+  return {
+    reglee: true,
+    primaire: accent,
+    secondaire: accent,
+    logos: [],
+    seuil_contour: 3,
+    seuil_texte: 4.5,
+  }
+}

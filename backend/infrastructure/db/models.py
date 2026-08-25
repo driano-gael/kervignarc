@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint, text
+from sqlalchemy import ForeignKey, LargeBinary, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from infrastructure.db.base import Base
@@ -941,3 +941,38 @@ class BarrageTirORM(Base):
     distance_au_centre: Mapped[int | None] = mapped_column(nullable=True)
 
     __table_args__ = (UniqueConstraint("barrage_id", "manche", "archer_id", name="uq_barrage_tir"),)
+
+
+class IdentiteVisuelleORM(Base):
+    """Table `identite_tournoi` — l'identité visuelle d'un tournoi (E16US006, [ADR-0097]).
+
+    **Une table à part, pas des colonnes sur `tournoi`.** Les deux logos sont des blobs ; posés sur
+    `tournoi`, ils seraient traînés par chaque `SELECT` de la ligne — c'est-à-dire à l'ouverture de
+    la liste des tournois, du tableau de bord et de toute lecture publique. Ici, la ligne d'identité
+    n'est lue que par qui veut l'identité, et l'adapter sépare encore les **réglages** (quelques
+    octets) des **octets d'un logo**, chacun sur sa requête.
+
+    `tournoi_id` est **à la fois** clé primaire et clé étrangère : un tournoi a au plus une
+    identité, et l'unicité est tenue par le schéma plutôt que par une garde applicative.
+
+    Les accents sont **nullables** : `NULL` veut dire « rien n'a été choisi », et l'identité est
+    alors héritée du club. Une ligne peut donc exister sans aucun accent — c'est le cas d'un
+    tournoi dont on a seulement déposé le logo. Y semer un défaut le ferait passer pour *réglé*.
+    Sinon, ils portent la forme normalisée `#rrggbb` (`domain.identite.Couleur.hex`) ; le type
+    d'un logo stocke la **valeur** de `TypeLogo`, c'est-à-dire son type MIME. Un emplacement vide
+    porte `NULL` **sur les deux colonnes** du couple — c'est l'adapter qui tient cet appariement,
+    SQLite ne sachant pas exprimer « les deux ou aucune » sans `CHECK` (cf. commentaire du
+    repository).
+    """
+
+    __tablename__ = "identite_tournoi"
+
+    # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter dans la même
+    # politique de suppression, non tranchée ; ne pas la contourner ici.
+    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), primary_key=True)
+    accent_primaire: Mapped[str | None] = mapped_column(nullable=True)
+    accent_secondaire: Mapped[str | None] = mapped_column(nullable=True)
+    logo_evenement: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    logo_evenement_type: Mapped[str | None] = mapped_column(nullable=True)
+    logo_club: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    logo_club_type: Mapped[str | None] = mapped_column(nullable=True)

@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react'
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import { HabillageIdentite, LogoDuTournoi } from '../identite/HabillageIdentite'
 import { VueClassement } from '../competition/VueClassement'
 import { phasesSuspendues } from '../../shared/phases/relance'
 import { BandeauDePause } from '../../shared/ui/BandeauDePause'
@@ -103,33 +104,39 @@ export function EcranSalle({
   })
 
   return (
-    <section className="salle" aria-live="off">
-      <BandeauSalle
-        libelle={libelle}
-        vue={affiche.vue}
-        sousControle={affiche.sous_controle}
-        aJour={affichage.isError !== true}
-        rotation={rotation}
-      />
-      {onDecrocher !== undefined && (
-        // ⚠️ **Confirmé, comme les sept autres gestes destructeurs du produit.** Une première version
-        // décrochait au premier clic : sur un parc tactile il n'y a **pas de survol**, donc rien ne
-        // se révélait — le premier tap dans le coin agissait directement, et sur un PC de projection
-        // ce coin est exactement l'endroit où l'on va chercher la fermeture d'une fenêtre. Le
-        // recouvrement, lui, coûte de retaper un code à six caractères en pleine salle (revue du
-        // 05/08/2026, axes A et C1).
-        <BoutonConfirme
-          libelle="Décrocher cet écran"
-          className="salle__decrocher"
-          ton="danger"
-          titre="Décrocher cet écran ?"
-          message="Cet appareil quitte le tournoi et revient à l’écran de choix."
-          detail="Il faudra retaper son code pour le rattacher."
-          libelleConfirmer="Décrocher"
-          onConfirmer={onDecrocher}
+    // ⚠️ **L'identité du tournoi habille cette surface** (E16US006, `D-27`). C'est ici que la
+    // promesse d'`E07US004` est tenue : le commentaire de `SuiviDeSalle` disait « `DV-08` sera
+    // honoré quand E01US016 livrera les couleurs du tournoi ». L'habillage ne rend rien tant que la
+    // réponse n'est pas là — un écran de salle ne doit jamais attendre une couleur pour s'allumer.
+    <HabillageIdentite tournoiId={tournoiId}>
+      <section className="salle" aria-live="off">
+        <BandeauSalle
+          libelle={libelle}
+          tournoiId={tournoiId}
+          vue={affiche.vue}
+          sousControle={affiche.sous_controle}
+          aJour={affichage.isError !== true}
+          rotation={rotation}
         />
-      )}
-      {/* ⚠️ **Hors de la rotation, et c'est tout l'intérêt** (correctif de bloquant de revue,
+        {onDecrocher !== undefined && (
+          // ⚠️ **Confirmé, comme les sept autres gestes destructeurs du produit.** Une première version
+          // décrochait au premier clic : sur un parc tactile il n'y a **pas de survol**, donc rien ne
+          // se révélait — le premier tap dans le coin agissait directement, et sur un PC de projection
+          // ce coin est exactement l'endroit où l'on va chercher la fermeture d'une fenêtre. Le
+          // recouvrement, lui, coûte de retaper un code à six caractères en pleine salle (revue du
+          // 05/08/2026, axes A et C1).
+          <BoutonConfirme
+            libelle="Décrocher cet écran"
+            className="salle__decrocher"
+            ton="danger"
+            titre="Décrocher cet écran ?"
+            message="Cet appareil quitte le tournoi et revient à l’écran de choix."
+            detail="Il faudra retaper son code pour le rattacher."
+            libelleConfirmer="Décrocher"
+            onConfirmer={onDecrocher}
+          />
+        )}
+        {/* ⚠️ **Hors de la rotation, et c'est tout l'intérêt** (correctif de bloquant de revue,
           axes C2 et adversarial). Le bandeau de pause vit dans `VueEnCours`, or `EN_COURS` **n'est
           pas** au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut` : classement, plan
           de cibles, suivi) — l'annonce ne s'affichait donc *pas une fois de la journée* sur un
@@ -138,17 +145,18 @@ export function EcranSalle({
           seule surface sans personne devant elle pour changer de vue.
           L'ajouter à la séquence par défaut n'aurait pas suffi : la pause serait restée invisible
           trois quarts du temps. Monté ici, il coiffe la scène **quelle que soit** la vue. */}
-      <MentionDePause tournoiId={tournoiId} />
-      <div className="salle__scene">
-        {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
+        <MentionDePause tournoiId={tournoiId} />
+        <div className="salle__scene">
+          {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un
             message d'attente vaut mieux qu'un classement vide qui ressemblerait à un classement. */}
-        {affiche.vue === null ? (
-          <p className="salle__attente">Connexion à l’écran…</p>
-        ) : (
-          <VueDeSalle vue={affiche.vue} tournoiId={tournoiId} />
-        )}
-      </div>
-    </section>
+          {affiche.vue === null ? (
+            <p className="salle__attente">Connexion à l’écran…</p>
+          ) : (
+            <VueDeSalle vue={affiche.vue} tournoiId={tournoiId} />
+          )}
+        </div>
+      </section>
+    </HabillageIdentite>
   )
 }
 
@@ -277,12 +285,14 @@ function MentionDePause({ tournoiId }: { tournoiId: number }) {
  * d'ADR-0064 et n'a jamais dépendu de son affichage. */
 function BandeauSalle({
   libelle,
+  tournoiId,
   vue,
   sousControle,
   aJour,
   rotation,
 }: {
   libelle: string | null
+  tournoiId: number
   vue: VueEcran | null
   sousControle: boolean
   aJour: boolean
@@ -290,6 +300,11 @@ function BandeauSalle({
 }) {
   return (
     <header className="salle__bandeau">
+      {/* P07, question 2 : *« je n'ai pas vu le logo sur la maquette »*. Les deux marques du club —
+          l'édition et le club lui-même — en tête du bandeau, avant le lieu. Chacune est facultative
+          et ne rend rien si elle n'a pas été déposée. */}
+      <LogoDuTournoi tournoiId={tournoiId} emplacement="evenement" />
+      <LogoDuTournoi tournoiId={tournoiId} emplacement="club" />
       <span className="salle__lieu">{libelle ?? 'Écran de salle'}</span>
       <span className="salle__vue">
         {vue === null ? '—' : (LIBELLE_VUE[vue] ?? 'Vue inconnue')}

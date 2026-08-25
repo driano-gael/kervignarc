@@ -1,0 +1,182 @@
+/* Identité visuelle du tournoi (E16US006) — l'écran de préparation et l'habillage des surfaces. */
+
+/* DETTE-086 (docs/dette.md) : ⚠️ **aucune des trois surfaces livrées ici n'a été affichée.** Le
+   contrôle visuel est impossible sur le poste de développement, et les bornes de taille des logos
+   (3rem/12rem en admin, 2.4em/10em en salle) sont **choisies, pas mesurées**. Même cécité que sur
+   le plan de cibles, d'où l'élargissement de la ligne existante plutôt qu'une ligne neuve ; le
+   risque est cependant moindre — un logo mal dimensionné pousse un bandeau, il n'efface aucun CA.
+   Le remède est un fait de poste : rétablir un moyen de rendre l'application. */
+
+/* La coquille d'habillage ne doit **rien** peindre : elle ne sert qu'à porter l'attribut sur lequel
+   les jetons de marque sont scopés. Lui donner un fond ou une marge changerait la mise en page des
+   deux surfaces qu'elle enveloppe, alors que le CA ne parle que de couleurs et de logos. */
+.habillage-identite {
+  display: contents;
+}
+
+/* Un logo est fourni **déjà calibré** (arbitrage Q-UX10 du 25/08/2026) : l'application ne recadre ni
+   ne détoure. Elle borne seulement la place qu'il prend, faute de quoi un PNG de 2000 px de haut
+   pousserait le reste du bandeau hors de l'écran. `object-fit: contain` préserve les proportions —
+   déformer le logo d'un club serait pire que ne pas l'afficher. */
+.logo-tournoi {
+  max-height: 3rem;
+  max-width: 12rem;
+  object-fit: contain;
+}
+
+.salle .logo-tournoi {
+  /* Sur un vidéoprojecteur, tout est dimensionné en `em` relatifs à la scène (cf. `salle.css`) :
+     le logo suit, sinon il serait un timbre-poste au milieu d'un mur. */
+  max-height: 2.4em;
+  max-width: 10em;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————— */
+/* L'écran de préparation */
+
+.identite__paire {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.identite__accent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.identite__saisie {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Le sélecteur natif : c'est lui qui rend le geste praticable à la souris comme au doigt, et il
+   n'ajoute aucune dépendance. Le champ texte à côté reste la voie d'entrée d'une valeur **collée
+   depuis une charte**, qui est le cas réel décrit par le CDC. */
+.identite__pastille {
+  block-size: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  inline-size: 3rem;
+  padding: 0;
+}
+
+.identite__hex {
+  font-family: var(--mono);
+  inline-size: 9rem;
+  text-transform: lowercase;
+}
+
+/* Le chiffre de contraste : lisible, jamais alarmant en soi (`P-4` — l'alerte est chiffrée et **non
+   bloquante**). C'est l'ambre sémantique qui signale l'échec, pas le rouge : `DV-03`. */
+.identite__mesures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.identite__mesure {
+  color: var(--text-secondary);
+}
+
+.identite__mesure--faible {
+  color: var(--danger);
+}
+
+.identite__ratio {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+/* L'aperçu « sur les surfaces réelles » (`DV-05` : un aperçu, pas un nuancier). Deux vignettes —
+   l'écran de salle et le téléphone du spectateur —, chacune peinte avec les jetons du thème
+   correspondant, pour que l'organisateur voie ce que verra la salle. */
+.identite__apercus {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-block-start: 1rem;
+}
+
+.identite__apercu {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.identite__apercu-titre {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem 0;
+}
+
+/* ⚠️ Les deux seules règles du dépôt qui posent une couleur **littérale**, et elles sont dérogées
+   dans `charte.test.ts` avec leur raison : une vignette d'aperçu doit montrer le rendu du thème
+   qu'elle représente, pas celui du poste qui la regarde. Peindre le fond avec `var(--surface-0)`
+   ferait que l'aperçu « thème sombre » s'afficherait en blanc sur un poste en thème clair — soit
+   exactement le contraire de ce qu'un aperçu existe pour faire. Les deux valeurs sont celles de la
+   charte (`DV-02`), pas des couleurs choisies ici. */
+.identite__apercu--sombre .identite__scene {
+  background: #1d1d1b;
+  color: #ffffff;
+}
+
+.identite__apercu--clair .identite__scene {
+  background: #ffffff;
+  color: #1d1d1b;
+}
+
+.identite__scene {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.identite__bandeau-apercu {
+  border-block-end: 2px solid;
+  font-weight: 700;
+  padding-block-end: 0.35rem;
+}
+
+.identite__pastille-apercu {
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+}
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————— */
+/* Les deux logos */
+
+.identite__logos {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.identite__logo {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+/* La zone d'aperçu du logo garde sa place même vide : sans hauteur minimale, déposer un fichier
+   ferait sauter tout le reste de l'écran. */
+.identite__logo-vignette {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-block-size: 4rem;
+}
+
+.identite__logo-absent {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

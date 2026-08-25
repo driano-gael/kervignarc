@@ -27,6 +27,7 @@ from domain.feuille_marque import FeuilleDeMarque
 from domain.forfait import Forfait
 from domain.format_tournoi import FormatTournoi, FormatTournoiId
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.identite import EmplacementLogo, IdentiteVisuelle, Logo
 from domain.inscription import Inscription, InscriptionId
 from domain.listes_impression import ListeClubPaiement, ListePlacement
 from domain.palmares import Palmares
@@ -1439,5 +1440,55 @@ class ArretDeCirconstanceRepository(Protocol):
         ⚠️ **Une doublure de test doit honorer ce `raise`**, sinon le chemin de course n'a d'oracle
         nulle part au-dessus de l'adapter (précisé en revue : le contrat était muet, et la doublure
         en mémoire n'avait aucune raison de le deviner).
+        """
+        ...
+
+
+class IdentiteVisuelleRepository(Protocol):
+    """Port de persistance de l'identité visuelle d'un tournoi (E16US006, adapter en infra).
+
+    ⚠️ **Trois méthodes de lecture et non une, à dessein.** Les réglages (deux accents, la présence
+    des logos) pèsent quelques octets et sont lus à chaque affichage public ; les octets d'un logo
+    pèsent jusqu'à 512 Ko et ne sont lus que par la balise `<img>` qui l'affiche, sur sa propre
+    route et son propre cache. Un port qui rendrait tout d'un bloc obligerait le chemin chaud à
+    traîner les deux blobs pour connaître une couleur.
+
+    **L'absence de réglage est un état normal**, pas une anomalie : `reglages` renvoie une
+    `IdentiteVisuelle` dont les accents valent `None`, et c'est l'agrégat — pas l'adapter — qui sait
+    que cela veut dire « celle du club » (`IdentiteVisuelle.accents`). L'adapter ne **fabrique**
+    donc aucun défaut : sans cela, « réglé au rouge du club » et « rien choisi » deviendraient
+    indiscernables, alors que l'écran doit dire *hérité* dans un cas et *réglé* dans l'autre.
+    """
+
+    def reglages(self, tournoi_id: TournoiId) -> IdentiteVisuelle:
+        """Renvoie les accents et la présence des logos ; l'identité **vide** si rien n'existe.
+
+        **Ne lit pas les octets des logos** — seulement s'ils existent. Ne rend jamais `None` : un
+        tournoi a toujours une identité, éventuellement entièrement héritée.
+        """
+        ...
+
+    def logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> Logo | None:
+        """Renvoie les octets et le format d'un logo, ou `None` si cet emplacement est vide."""
+        ...
+
+    def enregistrer_accents(
+        self, tournoi_id: TournoiId, identite: IdentiteVisuelle
+    ) -> IdentiteVisuelle:
+        """Écrit les deux accents, en créant la ligne d'identité si elle n'existe pas.
+
+        **Ne touche à aucun logo** : régler une couleur ne doit pas effacer un fichier déposé.
+        Renvoie l'identité relue, présence des logos comprise.
+        """
+        ...
+
+    def enregistrer_logo(
+        self, tournoi_id: TournoiId, emplacement: EmplacementLogo, logo: Logo | None
+    ) -> IdentiteVisuelle:
+        """Remplace (ou efface, si `logo is None`) un emplacement, en créant la ligne au besoin.
+
+        **Ne touche ni aux accents ni à l'autre emplacement** : le CA d'E16US006 dit « un champ *de
+        plus* », donc déposer le logo du club ne remplace pas celui de l'événement. Renvoie
+        l'identité relue.
         """
         ...

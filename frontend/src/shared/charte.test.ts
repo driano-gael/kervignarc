@@ -178,6 +178,13 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
     '.qr-cible__overlay': 'voile d’agrandissement, noir transparent',
     '.dialogue': 'ombre portée, noir transparent',
     '.dialogue::backdrop': 'voile de modale, noir transparent',
+    // Raison **logique** : une vignette d'aperçu doit montrer le rendu du thème qu'elle
+    // représente, pas celui du poste qui la regarde (E16US006, `DV-05` : « aperçu sur les surfaces
+    // réelles »). Peindre avec `var(--surface-0)` ferait s'afficher l'aperçu « thème sombre » en
+    // blanc sur un poste en clair, soit l'inverse de ce qu'un aperçu existe pour faire. Les deux
+    // valeurs sont celles de la charte (`DV-02`), recopiées et non choisies.
+    '.identite__apercu--sombre .identite__scene': 'vignette figée en thème sombre',
+    '.identite__apercu--clair .identite__scene': 'vignette figée en thème clair',
   }
 
   it('aucune couleur littérale hors `index.css`, sauf les exceptions nommées', () => {
@@ -373,6 +380,81 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
           .map((jeton) => `${chemin} — ${selecteurs.join(', ')} — redéfinit ${jeton}`),
       ),
     )
+
+    expect(fautes).toEqual([])
+  })
+})
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+describe('CA — la strate « marque » est la SEULE personnalisable par tournoi (DV-06, E16US006)', () => {
+  // ⚠️ **Ce bloc ferme un trou que cette US a révélé.** Le contrôle « aucune feuille de feature ne
+  // redéfinit un jeton de la charte » est écrit pour du CSS : il découpe la source en règles
+  // `sélecteur { corps }`. Appliqué à un `.tsx` qui **fabrique** du CSS en chaîne de gabarit, il ne
+  // voit rien — les `${…}` cassent son découpage. `jetons.ts` en fabriquait donc huit sans
+  // qu'aucun test ne s'en aperçoive.
+  //
+  // La réponse n'est pas d'élargir la dérogation, c'est d'encoder la règle qui manquait. `DV-06`
+  // décrit **trois strates** : marque *personnalisable*, sémantique et structure *figées*. Le
+  // garde-fou ne connaissait que « la palette est à un seul endroit », ce qui est vrai de deux
+  // strates sur trois. On vérifie donc ici la vraie règle, sur le seul module autorisé à l'exercer.
+
+  const CHEMIN_JETONS = 'features/identite/jetons.ts'
+  const fabrique = SOURCES[CHEMIN_JETONS] ?? ''
+
+  // Les huit jetons de marque — quatre par accent. Eux seuls appartiennent à la strate
+  // personnalisable ; tout le reste de la charte est figé.
+  const JETONS_DE_MARQUE = [
+    '--brand-surface',
+    '--brand-border',
+    '--brand-text',
+    '--sur-brand',
+    '--brand-2-surface',
+    '--brand-2-border',
+    '--brand-2-text',
+    '--sur-brand-2',
+  ]
+
+  it('le mécanisme d’identité existe et pose bien des jetons', () => {
+    // Garde-fou du garde-fou : renommé ou supprimé, le fichier rendrait les assertions suivantes
+    // vraies par vacuité — exactement le mode de panne que ce fichier documente déjà deux fois.
+    expect(fabrique, `${CHEMIN_JETONS} introuvable`).not.toBe('')
+    expect(JETONS_DE_MARQUE.filter((jeton) => fabrique.includes(jeton))).toHaveLength(
+      JETONS_DE_MARQUE.length,
+    )
+  })
+
+  it('il ne pose AUCUN jeton hors de la strate marque', () => {
+    // La liste des jetons figés se dérive de la charte elle-même : un jeton ajouté demain à
+    // `index.css` entre de lui-même sous surveillance, sans qu'on ait à y penser.
+    const figes = Object.keys(declinaison("data-theme='dark'").jetons).filter(
+      (jeton) => !JETONS_DE_MARQUE.includes(jeton),
+    )
+    const fautes = figes.filter((jeton) =>
+      new RegExp(String.raw`${jeton}\s*:`).test(neutraliserCommentaires(fabrique)),
+    )
+
+    expect(
+      fautes,
+      'un tournoi ne redéfinit ni les neutres ni les sémantiques (DV-03, DV-06 verrous 1 et 2)',
+    ).toEqual([])
+  })
+
+  it('aucune AUTRE feature ne fabrique de CSS posant un jeton de la charte', () => {
+    // Le mécanisme est **un**, et il est nommé. Une seconde feature qui se mettrait à émettre des
+    // jetons rouvrirait la palette à plusieurs endroits — ce que tout ce fichier existe pour
+    // empêcher. Détecté sur le texte brut (et non par le découpage en règles CSS), précisément
+    // parce que c'est ce découpage qui ne voit pas les chaînes de gabarit.
+    const jetonsDeLaCharte = Object.keys(declinaison("data-theme='dark'").jetons)
+    const fautes = features
+      .filter(([chemin]) => chemin !== CHEMIN_JETONS && /\.tsx?$/.test(chemin))
+      .flatMap(([chemin, source]) =>
+        jetonsDeLaCharte
+          .filter((jeton) =>
+            new RegExp(String.raw`['\`"]\s*${jeton}\s*:`).test(neutraliserCommentaires(source)),
+          )
+          .map((jeton) => `${chemin} fabrique ${jeton}`),
+      )
 
     expect(fautes).toEqual([])
   })

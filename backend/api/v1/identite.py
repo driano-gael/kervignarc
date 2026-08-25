@@ -1,0 +1,305 @@
+"""Endpoints REST de l'**identité visuelle du tournoi** (`/api/v1`) — E16US006, ADR-0097.
+
+Suit le patron de bout en bout : DTO Pydantic distincts du domaine (règle 6), **écritures** par la
+file (writer unique, ADR-0005) sous `exiger_admin`, **lectures** hors boucle (threadpool), erreurs
+typées traduites à la frontière.
+
+**Deux lectures sont PUBLIQUES, et c'est délibéré** : l'identité déclinée et les octets d'un logo.
+L'écran de salle et l'appli du spectateur en vivent, et il n'y a rien à protéger dans une couleur
+projetée sur le mur d'un gymnase. Les écritures, elles, restent admin.
+
+**Un logo monte en corps brut, pas en `multipart/form-data`.** `UploadFile` exigerait
+`python-multipart`, qui n'est ni installé ni déclaré au manifeste — l'ajouter serait un arbitrage de
+dépendance (règle 11), pour un gain nul ici : on téléverse **un** fichier sans aucun champ à côté.
+Le corps est donc le fichier, et le `Content-Type` dit son format. Bonus non négligeable sur un
+réseau de gymnase : pas les ~33 % d'inflation d'un encodage base64.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+
+from fastapi import APIRouter, Depends, Request, Response
+from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+
+from api.dependances import exiger_admin
+from application.identite import AccentDecline, IdentiteDeclinee, ServiceIdentite, decliner
+from domain.erreurs import TypeDeLogoRefuse
+from domain.identite import (
+    SEUIL_CONTOUR,
+    SEUIL_TEXTE,
+    Couleur,
+    EmplacementLogo,
+    IdentiteVisuelle,
+    JetonsDeMarque,
+    TypeLogo,
+)
+from infrastructure.db import WriteQueue
+
+router = APIRouter(prefix="/api/v1", tags=["identite"])
+
+# Le corps est lu **avant** toute validation de contenu : il faut donc une borne qui ne dépende pas
+# du domaine, sinon un client hostile ferait grossir la mémoire du serveur en amont du refus. La
+# marge sur `POIDS_LOGO_MAX_OCTETS` est volontaire — c'est le domaine qui rend le message utile («
+# ce logo pèse 900 Ko, la limite est 512 Ko »), pas cette coupure de sécurité, qui doit rester
+# muette et large.
+_PLAFOND_DE_LECTURE_OCTETS = 4 * 1024 * 1024
+
+
+class JetonsReponse(BaseModel):
+    """Les quatre jetons de marque d'un accent sur un thème — valeurs `#rrggbb` prêtes à poser.
+
+    Les noms sont ceux de `frontend/src/index.css` (`--brand-surface`, `--brand-border`,
+    `--brand-text`, `--sur-brand`) : le front transcrit, il ne traduit pas.
+    """
+
+    surface: str
+    contour: str
+    texte: str
+    encre: str
+
+    @staticmethod
+    def de_jetons(jetons: JetonsDeMarque) -> JetonsReponse:
+        """Traduit les jetons du domaine en DTO."""
+        return JetonsReponse(
+            surface=jetons.surface.hex,
+            contour=jetons.contour.hex,
+            texte=jetons.texte.hex,
+            encre=jetons.encre.hex,
+        )
+
+
+class AccentReponse(BaseModel):
+    """Un accent : la couleur choisie, ses deux déclinaisons, et ses deux contrastes **mesurés**.
+
+    `contraste_sur_sombre` / `contraste_sur_clair` portent sur la couleur **brute**. C'est le
+    chiffre de `P-4` — « une alerte qui ne chiffre pas son impact est un clic de plus, pas une
+    protection » (`D-16`) : il dit à l'organisateur que *sa* couleur ne tiendrait pas en texte,
+    pendant que les variantes livrées, elles, tiennent.
+    """
+
+    couleur: str
+    sombre: JetonsReponse
+    clair: JetonsReponse
+    contraste_sur_sombre: float
+    contraste_sur_clair: float
+
+    @staticmethod
+    def de_accent(accent: AccentDecline) -> AccentReponse:
+        """Traduit un accent décliné en DTO. Les ratios sont arrondis au centième — c'est la
+        précision publiée par la charte (« 2,55:1 »), et trois décimales de plus n'apprendraient
+        rien à qui lit l'écran."""
+        return AccentReponse(
+            couleur=accent.couleur.hex,
+            sombre=JetonsReponse.de_jetons(accent.sombre),
+            clair=JetonsReponse.de_jetons(accent.clair),
+            contraste_sur_sombre=round(accent.contraste_sur_sombre, 2),
+            contraste_sur_clair=round(accent.contraste_sur_clair, 2),
+        )
+
+
+class IdentiteReponse(BaseModel):
+    """L'identité d'un tournoi, prête à appliquer.
+
+    `reglee` à `false` **n'est pas un vide** : les accents rendus sont ceux du club, et l'écran doit
+    dire « hérité de l'identité du club » plutôt que d'afficher un formulaire vierge.
+
+    `seuil_contour` / `seuil_texte` voyagent avec la réponse plutôt que d'être recopiés côté front :
+    ce sont les deux critères WCAG contre lesquels les ratios ci-dessus se lisent, et un front qui
+    porterait sa propre copie pourrait annoncer « conforme » sur un seuil que le serveur n'applique
+    plus.
+    """
+
+    reglee: bool
+    primaire: AccentReponse
+    secondaire: AccentReponse
+    logos: list[str]
+    seuil_contour: float
+    seuil_texte: float
+
+    @staticmethod
+    def de_identite(identite: IdentiteDeclinee) -> IdentiteReponse:
+        """Traduit l'identité déclinée en DTO de réponse."""
+        return IdentiteReponse(
+            reglee=identite.reglee,
+            primaire=AccentReponse.de_accent(identite.primaire),
+            secondaire=AccentReponse.de_accent(identite.secondaire),
+            # Trié pour que la réponse soit **stable** : un `frozenset` n'a pas d'ordre, et deux
+            # requêtes identiques rendant deux ordres différents casseraient le cache du client.
+            logos=sorted(emplacement.value for emplacement in identite.logos_presents),
+            seuil_contour=SEUIL_CONTOUR,
+            seuil_texte=SEUIL_TEXTE,
+        )
+
+
+class ReglerAccentsRequete(BaseModel):
+    """Corps de réglage des deux accents — des saisies, validées par le domaine (`#RRGGBB`).
+
+    `str` et non un type contraint par Pydantic : la règle de format appartient à
+    `Couleur.depuis_hex` (règle 1), et la dupliquer en contrainte de DTO créerait deux définitions
+    du mot « couleur » — dont une seule serait testée.
+    """
+
+    primaire: str
+    secondaire: str
+
+
+@router.get("/tournois/{tournoi_id}/identite", response_model=IdentiteReponse)
+async def identite_du_tournoi(tournoi_id: int, request: Request) -> IdentiteReponse:
+    """Identité déclinée d'un tournoi (**public**). `404` si le tournoi n'existe pas.
+
+    Lecture pure, hors file d'écriture : threadpool.
+    """
+    service: ServiceIdentite = request.app.state.service_identite
+    identite = await run_in_threadpool(service.pour_tournoi, tournoi_id)
+    return IdentiteReponse.de_identite(identite)
+
+
+@router.get("/identite/apercu", response_model=IdentiteReponse)
+async def apercu_d_une_identite(
+    primaire: str, secondaire: str, _: None = Depends(exiger_admin)
+) -> IdentiteReponse:
+    """Décline deux couleurs **sans les enregistrer** (**admin**) — le contrôle « à la saisie ».
+
+    C'est ce qui permet à l'écran d'identité de montrer le rendu et le chiffre de contraste pendant
+    que l'organisateur choisit, **sans** que le navigateur recalcule la dérivation. Route de calcul
+    pur : aucun accès à la base, donc ni file d'écriture ni threadpool.
+
+    ⚠️ `reglee` vaut `true` dans la réponse : les deux accents **sont** posés sur l'identité qu'on
+    décline — c'est un aperçu de ce que donnerait l'enregistrement, pas un état persisté. La route
+    ne cite aucun tournoi, ce qui suffit à dire que rien n'a été écrit.
+    """
+    identite = IdentiteVisuelle().avec_accents(
+        Couleur.depuis_hex(primaire), Couleur.depuis_hex(secondaire)
+    )
+    return IdentiteReponse.de_identite(decliner(identite))
+
+
+@router.put(
+    "/tournois/{tournoi_id}/identite",
+    response_model=IdentiteReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def regler_les_accents(
+    tournoi_id: int, requete: ReglerAccentsRequete, request: Request
+) -> IdentiteReponse:
+    """Enregistre les deux accents (**action admin**) : écriture via la file (ADR-0005).
+
+    `422` sur une couleur mal formée, `409` sur un tournoi archivé, `404` sur un tournoi inconnu.
+    **Aucun refus sur un contraste faible** (`P-4`) : le chiffre est rendu, pas opposé.
+    """
+    service: ServiceIdentite = request.app.state.service_identite
+    write_queue: WriteQueue = request.app.state.write_queue
+    identite = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.regler_accents(tournoi_id, requete.primaire, requete.secondaire)
+        )
+    )
+    return IdentiteReponse.de_identite(identite)
+
+
+@router.put(
+    "/tournois/{tournoi_id}/identite/logos/{emplacement}",
+    response_model=IdentiteReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def deposer_un_logo(
+    tournoi_id: int, emplacement: EmplacementLogo, request: Request
+) -> IdentiteReponse:
+    """Dépose ou remplace un logo (**action admin**) : le **corps est le fichier**.
+
+    Le format est lu dans l'en-tête `Content-Type` (`image/png` ou `image/svg+xml`). `422` sur un
+    format non reconnu, un contenu qui dément le format annoncé, un SVG porteur de script, ou un
+    fichier trop lourd — tous les refus viennent de `Logo.deposer`, aucun n'est réécrit ici.
+    """
+    contenu = await request.body()
+    if len(contenu) > _PLAFOND_DE_LECTURE_OCTETS:
+        # Coupure de sécurité, distincte de la règle métier : elle protège la mémoire du serveur, le
+        # domaine protège l'usage. Le message reste celui du domaine pour tout ce qui est plausible.
+        raise TypeDeLogoRefuse("Fichier hors de proportion pour un logo.")
+    service: ServiceIdentite = request.app.state.service_identite
+    write_queue: WriteQueue = request.app.state.write_queue
+    type_logo = _type_annonce(request.headers.get("content-type"))
+    identite = await asyncio.wrap_future(
+        write_queue.submit(
+            lambda: service.deposer_logo(tournoi_id, emplacement, contenu, type_logo)
+        )
+    )
+    return IdentiteReponse.de_identite(identite)
+
+
+@router.delete(
+    "/tournois/{tournoi_id}/identite/logos/{emplacement}",
+    response_model=IdentiteReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def retirer_un_logo(
+    tournoi_id: int, emplacement: EmplacementLogo, request: Request
+) -> IdentiteReponse:
+    """Vide un emplacement de logo (**action admin**). **Idempotent** : `200` même s'il était
+    vide."""
+    service: ServiceIdentite = request.app.state.service_identite
+    write_queue: WriteQueue = request.app.state.write_queue
+    identite = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.retirer_logo(tournoi_id, emplacement))
+    )
+    return IdentiteReponse.de_identite(identite)
+
+
+@router.get("/tournois/{tournoi_id}/identite/logos/{emplacement}")
+async def logo_du_tournoi(
+    tournoi_id: int, emplacement: EmplacementLogo, request: Request
+) -> Response:
+    """Sert les octets d'un logo (**public**). `404` si l'emplacement est vide.
+
+    ⚠️ **Les trois en-têtes de sûreté ne sont pas décoratifs.** Un SVG est un document : servi
+    depuis l'origine de l'application — celle qui sert aussi la SPA d'administration —, il
+    partagerait sa session. Le domaine refuse déjà ce qui exécute (`Logo.deposer`) ; ces en-têtes
+    sont la **seconde barrière**, celle qui tient si un fichier est entré par une version antérieure
+    des règles :
+
+    - `Content-Security-Policy: default-src 'none'` — le document ne peut charger ni exécuter rien ;
+    - `X-Content-Type-Options: nosniff` — le navigateur ne réinterprète pas le type annoncé ;
+    - `Content-Disposition: inline` sans nom de fichier — rien de ce qu'a saisi l'organisateur ne se
+      retrouve dans un en-tête.
+
+    L'`ETag` évite de renvoyer 512 Ko à chaque rafraîchissement de l'écran de salle. Il est calculé
+    sur le contenu (SHA-256 tronqué), donc il **change** dès qu'on remplace le logo : un
+    organisateur qui corrige son fichier le voit sans vider son cache.
+    """
+    service: ServiceIdentite = request.app.state.service_identite
+    logo = await run_in_threadpool(service.logo, tournoi_id, emplacement)
+    if logo is None:
+        return Response(status_code=404)
+
+    etag = f'"{hashlib.sha256(logo.contenu).hexdigest()[:32]}"'
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+    return Response(
+        content=logo.contenu,
+        media_type=logo.type_logo.value,
+        headers={
+            "ETag": etag,
+            "Cache-Control": "no-cache",
+            "Content-Security-Policy": "default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": "inline",
+        },
+    )
+
+
+def _type_annonce(entete: str | None) -> TypeLogo:
+    """Lit le format dans `Content-Type` ; lève `TypeDeLogoRefuse` (→ 422) sur tout autre.
+
+    Le paramétrage éventuel (`; charset=utf-8`, courant sur un SVG) est coupé : c'est le type
+    médiatique seul qui décide.
+    """
+    type_medium = (entete or "").split(";")[0].strip().lower()
+    for type_logo in TypeLogo:
+        if type_logo.value == type_medium:
+            return type_logo
+    raise TypeDeLogoRefuse(
+        f"Format « {type_medium or 'non précisé'} » non accepté : déposez un PNG ou un SVG."
+    )
