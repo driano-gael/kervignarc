@@ -71,6 +71,14 @@ _LECTURES = [
     # l'éteindrait sans faire échouer un seul autre test : c'est exactement le scénario que ce
     # verrou existe pour empêcher (ajouté sur remarque de revue).
     "/api/v1/tournois/1/suivi-deroule",
+    # Identité visuelle (E16US006) : les couleurs et les logos du tournoi. Deux destinataires sans
+    # session — l'écran de salle projeté dans le gymnase et le téléphone du spectateur —, et rien
+    # de confidentiel dans une couleur peinte sur un mur. Les protéger par mégarde (une US
+    # « restreindre l'API aux postes rattachés », par exemple) éteindrait l'habillage des deux
+    # surfaces sans faire échouer un seul autre test : c'est le scénario que ce fichier documente
+    # déjà deux fois (`poules/etat`, `suisse/etat`). Ajouté sur remarque de revue.
+    "/api/v1/tournois/1/identite",
+    "/api/v1/tournois/1/identite/logos/evenement",
     # Tableaux du tournoi (E07US005) : « voir les arbres en direct ». Deux destinataires sans
     # session — le spectateur sur son téléphone et l'écran de salle (vue `en_cours`). Le contenu
     # est restreint au DTO (`api/v1/tableaux.py`) : pas d'identité de scoreur, pas de détail

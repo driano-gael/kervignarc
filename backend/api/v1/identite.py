@@ -25,8 +25,8 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
+from application.erreurs import CorpsHorsDeProportion, LogoIntrouvable
 from application.identite import AccentDecline, IdentiteDeclinee, ServiceIdentite, decliner
-from domain.erreurs import TypeDeLogoRefuse
 from domain.identite import (
     SEUIL_CONTOUR,
     SEUIL_TEXTE,
@@ -44,7 +44,8 @@ router = APIRouter(prefix="/api/v1", tags=["identite"])
 # du domaine, sinon un client hostile ferait grossir la mémoire du serveur en amont du refus. La
 # marge sur `POIDS_LOGO_MAX_OCTETS` est volontaire — c'est le domaine qui rend le message utile («
 # ce logo pèse 900 Ko, la limite est 512 Ko »), pas cette coupure de sécurité, qui doit rester
-# muette et large.
+# muette et large. Elle est appliquée **pendant** la lecture, pas après : cf.
+# `_lire_le_corps_borne`.
 _PLAFOND_DE_LECTURE_OCTETS = 4 * 1024 * 1024
 
 
@@ -212,16 +213,14 @@ async def deposer_un_logo(
 
     Le format est lu dans l'en-tête `Content-Type` (`image/png` ou `image/svg+xml`). `422` sur un
     format non reconnu, un contenu qui dément le format annoncé, un SVG porteur de script, ou un
-    fichier trop lourd — tous les refus viennent de `Logo.deposer`, aucun n'est réécrit ici.
+    fichier trop lourd — tous les refus viennent du **domaine** (`TypeLogo.depuis_entete`,
+    `Logo.deposer`), aucun n'est réécrit ici. `413` si le corps dépasse la coupure de sécurité de la
+    frontière, qui est une autre affaire que la limite métier (cf. `_lire_le_corps_borne`).
     """
-    contenu = await request.body()
-    if len(contenu) > _PLAFOND_DE_LECTURE_OCTETS:
-        # Coupure de sécurité, distincte de la règle métier : elle protège la mémoire du serveur, le
-        # domaine protège l'usage. Le message reste celui du domaine pour tout ce qui est plausible.
-        raise TypeDeLogoRefuse("Fichier hors de proportion pour un logo.")
+    contenu = await _lire_le_corps_borne(request)
     service: ServiceIdentite = request.app.state.service_identite
     write_queue: WriteQueue = request.app.state.write_queue
-    type_logo = _type_annonce(request.headers.get("content-type"))
+    type_logo = TypeLogo.depuis_entete(request.headers.get("content-type"))
     identite = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.deposer_logo(tournoi_id, emplacement, contenu, type_logo)
@@ -272,7 +271,10 @@ async def logo_du_tournoi(
     service: ServiceIdentite = request.app.state.service_identite
     logo = await run_in_threadpool(service.logo, tournoi_id, emplacement)
     if logo is None:
-        return Response(status_code=404)
+        # Le contrat `{code, message}` (règle 5) vaut aussi ici : c'est une route **publique**, et
+        # un 404 nu était la seule réponse du module hors format. Le consommateur prévu est une
+        # balise `<img>`, qui n'en lit pas le corps — mais rien ne garantit qu'il restera le seul.
+        raise LogoIntrouvable("Aucun logo à cet emplacement.")
 
     etag = f'"{hashlib.sha256(logo.contenu).hexdigest()[:32]}"'
     if request.headers.get("if-none-match") == etag:
@@ -290,16 +292,27 @@ async def logo_du_tournoi(
     )
 
 
-def _type_annonce(entete: str | None) -> TypeLogo:
-    """Lit le format dans `Content-Type` ; lève `TypeDeLogoRefuse` (→ 422) sur tout autre.
+async def _lire_le_corps_borne(request: Request) -> bytes:
+    """Lit le corps de la requête **en s'arrêtant** au plafond, au lieu de le borner après coup.
 
-    Le paramétrage éventuel (`; charset=utf-8`, courant sur un SVG) est coupé : c'est le type
-    médiatique seul qui décide.
+    ⚠️ La première rédaction écrivait `contenu = await request.body()` *puis* comparait la longueur
+    au plafond. Or `Request.body()` accumule **tout** le flux avant de rendre la main : la borne
+    était évaluée sur un tampon déjà constitué, et un dépôt de 20 Mo était bel et bien mis en
+    mémoire avant d'être refusé (mesuré en revue adversariale). Le commentaire, lui, promettait
+    l'inverse — une fausse garantie coûte plus cher qu'une garantie absente, parce qu'elle empêche
+    le lecteur suivant de poser la vraie.
+
+    Deux contrôles et non un : `Content-Length` refuse sans lire une seule fois qu'il est annoncé,
+    et le cumul en flux couvre le transfert **chunké**, où l'en-tête est absent. La route est
+    derrière `exiger_admin`, donc seul un poste d'organisateur peut déclencher le cas — mais c'est
+    le serveur **unique** du gymnase, écrans de salle compris, qui en paierait la mémoire.
     """
-    type_medium = (entete or "").split(";")[0].strip().lower()
-    for type_logo in TypeLogo:
-        if type_logo.value == type_medium:
-            return type_logo
-    raise TypeDeLogoRefuse(
-        f"Format « {type_medium or 'non précisé'} » non accepté : déposez un PNG ou un SVG."
-    )
+    annonce = request.headers.get("content-length")
+    if annonce is not None and annonce.isdigit() and int(annonce) > _PLAFOND_DE_LECTURE_OCTETS:
+        raise CorpsHorsDeProportion("Corps de requête hors de proportion.")
+    morceaux = bytearray()
+    async for morceau in request.stream():
+        morceaux.extend(morceau)
+        if len(morceaux) > _PLAFOND_DE_LECTURE_OCTETS:
+            raise CorpsHorsDeProportion("Corps de requête hors de proportion.")
+    return bytes(morceaux)

@@ -26,6 +26,12 @@ from tests.conftest import ConnecterAdmin
 PNG = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
     b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    # Bloc de données puis marque de fin : un **vrai** PNG, pas seulement une signature. Depuis la
+    # revue, `Logo.deposer` exige la structure (`IHDR` en douzième position, `IEND` présente) — la
+    # signature seule laissait passer un polyglotte PNG/SVG porteur de script, déposé pour de vrai
+    # par le relecteur adversarial et accepté en 200.
+    b"\x00\x00\x00\nIDAT\x78\x9c\x63\x00\x01\x00\x00\x05\x00\x01"
+    b"\x0d\x0a\x2d\xb4\x00\x00\x00\x00IEND\xaeB\x60\x82"
 )
 SVG = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>'
 
@@ -403,6 +409,9 @@ def test_les_octets_d_un_logo_sont_servis_avec_leurs_gardes(
     Un test explicite parce que ce sont trois chaînes qu'aucun autre test ne regarde : les retirer
     ne casserait rien de visible, et la faille ne se révélerait que le jour où quelqu'un ouvre le
     lien du logo dans l'onglet où il est connecté en admin.
+
+    Le `Content-Type` servi est asserté **avec** elles : `nosniff` ne veut rien dire sans le type
+    qu'il interdit de réinterpréter, et le trio ne tient qu'ensemble (relevé en revue).
     """
     with TestClient(app_identite) as client:
         connecter_admin(client)
@@ -418,6 +427,7 @@ def test_les_octets_d_un_logo_sont_servis_avec_leurs_gardes(
         assert servi.headers["content-security-policy"] == "default-src 'none'"
         assert servi.headers["x-content-type-options"] == "nosniff"
         assert servi.headers["content-disposition"] == "inline"
+        assert servi.headers["content-type"] == "image/svg+xml", "le type que nosniff verrouille"
 
 
 def test_un_logo_inchange_se_revalide_en_304(
@@ -463,6 +473,108 @@ def test_deposer_un_logo_sans_session_est_refuse(app_identite: FastAPI) -> None:
             headers={"Content-Type": "image/png"},
         )
         assert refus.status_code == 401
+
+
+def test_retirer_un_logo_sans_session_est_refuse(app_identite: FastAPI) -> None:
+    """La symétrie du test précédent. Le dépôt et le retrait sont les **deux seules routes du
+    dépôt** qui écrivent des octets arbitraires en base ; le garde-fou dynamique de
+    `test_acces_public.py` les couvre déjà par énumération, mais c'est ici que le refus se lit."""
+    with TestClient(app_identite) as client:
+        assert client.delete("/api/v1/tournois/1/identite/logos/club").status_code == 401
+
+
+# ————————————————————————————————————————————————————————————————————————————————————————————————
+# Non-régression : régler l'identité ne rend pas le tournoi indéracinable
+
+
+def test_un_tournoi_dont_l_identite_est_reglee_reste_supprimable(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Ce test garde un bloquant trouvé en revue adversariale, à l'exécution.**
+
+    La ligne `identite_tournoi` naît au **premier réglage** — accents ou logo, indifféremment — et
+    rien ne la supprime jamais (`retirer_logo` vide les colonnes, il ne retire pas la ligne). Sa
+    clé étrangère ayant d'abord été posée **sans `ON DELETE`**, et `PRAGMA foreign_keys` étant à
+    `ON`, supprimer le tournoi levait une `IntegrityError` → **500**. Effleurer l'écran d'identité
+    rendait donc le tournoi *définitivement* indéracinable, alors qu'un brouillon vide se supprimait
+    jusque-là (DETTE-001 note que le 500 était déjà systématique ailleurs — c'était le dernier
+    chemin qui marchait, et cette US le fermait depuis l'écran qu'elle ajoute).
+
+    La FK porte désormais `ON DELETE CASCADE` : l'identité est un **composant strict** de l'agrégat
+    tournoi, comme `volee` l'est de la série. Ce test tient les deux moitiés — la suppression passe,
+    et la ligne d'identité part avec.
+    """
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        # Les deux gestes, parce que chacun crée la ligne à lui seul.
+        assert (
+            client.put(
+                f"/api/v1/tournois/{tournoi_id}/identite",
+                json={"primaire": "#b71918", "secondaire": "#1d1d1b"},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.put(
+                f"/api/v1/tournois/{tournoi_id}/identite/logos/club",
+                content=PNG,
+                headers={"Content-Type": "image/png"},
+            ).status_code
+            == 200
+        )
+
+        suppression = client.delete(f"/api/v1/tournois/{tournoi_id}")
+
+        assert suppression.status_code == 204, suppression.text
+        assert client.get(f"/api/v1/tournois/{tournoi_id}").status_code == 404
+        # La cascade a bien emporté les octets : recréé, un tournoi de même identifiant n'hériterait
+        # pas du logo du précédent. On le vérifie par la porte publique, seule vérité observable.
+        assert client.get(f"/api/v1/tournois/{tournoi_id}/identite").status_code == 404
+
+
+def test_un_logo_absent_repond_au_contrat_d_erreur(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le 404 d'un emplacement vide portait un corps **nu** — la seule réponse du module hors du
+    format `{code, message}` (règle 5), sur une route **publique**. Le consommateur prévu est une
+    balise `<img>`, qui n'en lit pas le corps ; rien ne garantit qu'il restera le seul."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        vide = client.get(f"/api/v1/tournois/{tournoi_id}/identite/logos/evenement")
+
+        assert vide.status_code == 404
+        assert vide.json()["code"] == "logo_introuvable"
+
+
+def test_un_corps_hors_de_proportion_est_refuse_sans_etre_ingere(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La coupure de sécurité de la frontière, **distincte** de la limite métier.
+
+    Un fichier entre 512 Ko et 4 Mo est refusé par le domaine, qui sait dire « ce logo pèse 900 Ko,
+    la limite est de 512 Ko » (422). Au-delà de 4 Mo, la frontière coupe avant de savoir de quoi il
+    s'agit : 413, message muet. La première rédaction bufferisait **tout** le corps avant de
+    comparer — 20 Mo mis en mémoire puis jetés, mesuré en revue."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        chemin = f"/api/v1/tournois/{tournoi_id}/identite/logos/club"
+
+        metier = client.put(
+            chemin, content=PNG + b"\x00" * (700 * 1024), headers={"Content-Type": "image/png"}
+        )
+        frontiere = client.put(
+            chemin, content=b"\x00" * (5 * 1024 * 1024), headers={"Content-Type": "image/png"}
+        )
+
+        assert metier.status_code == 422, "la limite métier explique la limite"
+        assert metier.json()["code"] == "logo_trop_volumineux"
+        assert frontiere.status_code == 413, "la coupure de frontière ne regarde pas le contenu"
+        assert frontiere.json()["code"] == "corps_hors_de_proportion"
 
 
 # ————————————————————————————————————————————————————————————————————————————————————————————————

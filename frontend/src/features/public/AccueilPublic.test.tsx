@@ -232,13 +232,30 @@ describe('AccueilPublic — l’identité du tournoi habille l’appli publique 
     expect(container.querySelector('[data-identite]')).toBeNull()
   })
 
-  it('affiche le logo du tournoi à côté de son nom', async () => {
+  it('affiche le logo du tournoi à côté de son nom, sans le faire dire au titre', async () => {
+    // ⚠️ **Le logo est ici DÉCORATIF, et c'est une décision, pas un oubli** (correctif de revue).
+    // Il est posé **dans** le `<h2>`, qui dit déjà le nom du tournoi ; or un `alt` s'agrège au nom
+    // accessible de son conteneur. Avec un texte alternatif, un lecteur d'écran annonçait « Logo du
+    // tournoi Logo du club organisateur Challenge des Champions » — l'information est déjà dite
+    // juste à côté, le logo n'en est que la marque visuelle. D'où `alt=""`, qui est la façon
+    // normalisée de dire « cette image n'ajoute rien à lire ».
+    //
+    // Le test tient donc les **deux** moitiés : l'image est bien rendue (sinon la fonctionnalité
+    // aurait disparu sans bruit — c'est la leçon de `DETTE-085`), et le titre ne récite pas les
+    // logos. À l'écran de salle, le logo vit dans un `<header>` et **garde** son `alt` : la
+    // distinction est le lieu, pas le composant.
     vi.mocked(getIdentite).mockResolvedValue({ ...identitePublique(), logos: ['evenement'] })
 
-    monter(<AccueilPublic />)
+    const { container } = monter(<AccueilPublic />)
     await userEvent.click(screen.getByRole('button', { name: 'Choisir le tournoi' }))
 
-    expect(await screen.findByAltText(/Logo du tournoi/i)).toBeInTheDocument()
+    const titre = await screen.findByRole('heading', { level: 2 })
+    const logo = container.querySelector('img.logo-tournoi')
+    expect(logo, 'le logo doit être rendu').not.toBeNull()
+    expect(logo?.getAttribute('src')).toContain('/identite/logos/evenement')
+    expect(logo?.getAttribute('alt'), 'décoratif dans un titre qui dit déjà le nom').toBe('')
+    expect(titre.textContent).toContain('Kervignarc 2026')
+    expect(titre.textContent, 'le titre ne récite pas les logos').not.toContain('Logo')
   })
 })
 

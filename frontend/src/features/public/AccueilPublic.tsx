@@ -115,9 +115,10 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
         </button>
         <h2 className="carte__titre">
           {/* Les deux marques, au titre du tournoi. Facultatives : rien ne s'affiche si rien n'a été
-              déposé (questionnaire A05, « bien sûr cela reste optionnel »). */}
-          <LogoDuTournoi tournoiId={tournoi.id} emplacement="evenement" />
-          <LogoDuTournoi tournoiId={tournoi.id} emplacement="club" />
+              déposé (questionnaire A05, « bien sûr cela reste optionnel »).
+              `decoratif` parce qu'elles sont **dans** le titre, qui dit déjà le nom du tournoi. */}
+          <LogoDuTournoi tournoiId={tournoi.id} emplacement="evenement" decoratif />
+          <LogoDuTournoi tournoiId={tournoi.id} emplacement="club" decoratif />
           {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
         </h2>
 

@@ -110,16 +110,19 @@ export function retirerLogo(tournoiId: number, emplacement: EmplacementLogo): Pr
 /**
  * L'adresse des octets d'un logo — à poser dans un `src`, jamais à télécharger soi-même.
  *
- * `v` porte la **version** : le navigateur cache l'image par URL, et sans ce paramètre un
- * organisateur qui corrige son fichier continuerait de voir l'ancien jusqu'à vider son cache. La
- * valeur vient du nombre d'enregistrements de la requête React Query — elle change à chaque
- * réponse fraîche, ce qui suffit ; l'`ETag` du serveur fait le reste (une revalidation à 304, pas
- * un rechargement complet).
+ * **URL stable, sans paramètre de version — et c'est le point délicat.** La première rédaction y
+ * ajoutait `?v=${dataUpdatedAt}` pour qu'un logo corrigé soit vu sans vider le cache. Mais une URL
+ * différente est un *cache miss*, pas une revalidation : le navigateur repart en requête complète
+ * **sans** présenter l'`ETag`, et le 304 que le serveur sait rendre ne se produisait jamais.
+ *
+ * Aggravant mesuré en revue : `useRealtime` invalide **toutes** les requêtes à chaque événement
+ * WebSocket (chaque volée validée), donc `dataUpdatedAt` changeait sans cesse — jusqu'à 2 × 512 Ko
+ * retéléchargés par appareil, sur le réseau d'un gymnase, pour une image qui n'avait pas bougé.
+ *
+ * Ce que la route pose déjà fait exactement le travail voulu : `Cache-Control: no-cache` impose la
+ * revalidation à chaque affichage, et l'`ETag` — calculé sur le **contenu** — rend 304 tant que le
+ * fichier est le même, et les octets neufs dès qu'il change.
  */
-export function urlDuLogo(
-  tournoiId: number,
-  emplacement: EmplacementLogo,
-  version: number,
-): string {
-  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}?v=${version}`
+export function urlDuLogo(tournoiId: number, emplacement: EmplacementLogo): string {
+  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}`
 }

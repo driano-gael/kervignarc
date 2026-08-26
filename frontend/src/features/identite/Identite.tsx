@@ -15,6 +15,8 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { AccentDecline, EmplacementLogo, Identite as IdentiteDTO, JetonsDeMarque } from './api'
 import { urlDuLogo } from './api'
 import {
+  POIDS_LOGO_MAX_OCTETS,
+  estUneCouleur,
   useApercuIdentite,
   useDeposerLogo,
   useEnregistrerAccents,
@@ -85,13 +87,22 @@ function ReglageDesAccents({ tournoiId, identite }: { tournoiId: number; identit
           onChange={setPrimaire}
           decline={affiche.primaire}
           seuilTexte={affiche.seuil_texte}
+          seuilContour={affiche.seuil_contour}
         />
+        {/* DETTE-087 : l'accent secondaire est saisi, validé, persisté, dérivé et émis en jetons
+            — mais aucune feuille ne le consomme encore hors des vignettes d'aperçu. Tant que la
+            question n'est pas tranchée, l'écran le **dit** : sans cette ligne, l'organisateur règle
+            une couleur, la voit peindre une pastille sur ce qui s'annonce comme la surface réelle,
+            et ne la retrouve nulle part. Une dette assumée ne doit pas se présenter comme une
+            fonctionnalité (relevé en revue). La ligne s'efface le jour où l'emploi est décidé. */}
         <ChampAccent
           libelle="Couleur secondaire"
           valeur={secondaire}
           onChange={setSecondaire}
           decline={affiche.secondaire}
           seuilTexte={affiche.seuil_texte}
+          seuilContour={affiche.seuil_contour}
+          aide="Enregistrée, mais elle n’habille encore aucune surface : son emploi reste à décider."
         />
       </div>
 
@@ -117,24 +128,39 @@ function ChampAccent({
   onChange,
   decline,
   seuilTexte,
+  seuilContour,
+  aide,
 }: {
   libelle: string
   valeur: string
   onChange: (valeur: string) => void
   decline: AccentDecline
   seuilTexte: number
+  seuilContour: number
+  aide?: string
 }) {
+  // La couleur **déclinée** vient du serveur, donc elle est toujours bien formée : c'est le repli
+  // naturel de la pastille pendant que le champ texte est à demi saisi. Pas d'état local de plus —
+  // il faudrait le synchroniser, et il divergerait.
+  const derniereValide = decline.couleur
+
   return (
     <div className="identite__accent">
       <label className="identite__saisie">
         <span>{libelle}</span>
         {/* Le sélecteur natif et le champ texte disent la **même** valeur : le premier sert au
             geste (souris, doigt), le second à coller une référence lue sur une charte — c'est le
-            cas réel décrit par le CDC. */}
+            cas réel décrit par le CDC.
+
+            ⚠️ Le sélecteur reçoit la dernière valeur **valide**, pas la valeur brute. Les deux
+            champs partagent l'état de frappe, et pendant qu'on tape `#b7191` la valeur est
+            transitoirement invalide : le navigateur coerce alors `type="color"` à `#000000`. La
+            pastille clignotait en noir à chaque caractère, et rouvrir le sélecteur natif le faisait
+            démarrer sur du noir plutôt que sur la couleur en cours (relevé en revue). */}
         <input
           type="color"
           className="identite__pastille"
-          value={valeur}
+          value={estUneCouleur(valeur) ? valeur : derniereValide}
           onChange={(e) => onChange(e.target.value)}
           aria-label={`${libelle} — sélecteur`}
         />
@@ -147,7 +173,8 @@ function ChampAccent({
           aria-label={`${libelle} — code hexadécimal`}
         />
       </label>
-      <Mesures decline={decline} seuilTexte={seuilTexte} />
+      <Mesures decline={decline} seuilTexte={seuilTexte} seuilContour={seuilContour} />
+      {aide !== undefined && <p className="carte__aide">{aide}</p>}
     </div>
   )
 }
@@ -160,22 +187,58 @@ function ChampAccent({
  * Sans cette seconde moitié, l'organisateur lirait une alerte sans savoir qu'elle est déjà traitée,
  * et changerait sa marque pour rien.
  */
-function Mesures({ decline, seuilTexte }: { decline: AccentDecline; seuilTexte: number }) {
+function Mesures({
+  decline,
+  seuilTexte,
+  seuilContour,
+}: {
+  decline: AccentDecline
+  seuilTexte: number
+  seuilContour: number
+}) {
   return (
     <div className="identite__mesures">
-      <Mesure libelle="sur fond sombre" ratio={decline.contraste_sur_sombre} seuil={seuilTexte} />
-      <Mesure libelle="sur fond clair" ratio={decline.contraste_sur_clair} seuil={seuilTexte} />
+      <Mesure
+        libelle="sur fond sombre"
+        ratio={decline.contraste_sur_sombre}
+        seuil={seuilTexte}
+        seuilContour={seuilContour}
+      />
+      <Mesure
+        libelle="sur fond clair"
+        ratio={decline.contraste_sur_clair}
+        seuil={seuilTexte}
+        seuilContour={seuilContour}
+      />
     </div>
   )
 }
 
-function Mesure({ libelle, ratio, seuil }: { libelle: string; ratio: number; seuil: number }) {
+function Mesure({
+  libelle,
+  ratio,
+  seuil,
+  seuilContour,
+}: {
+  libelle: string
+  ratio: number
+  seuil: number
+  seuilContour: number
+}) {
   const faible = ratio < seuil
+  // `seuil_contour` voyageait dans la réponse sans que rien ne le lise : un accent à 2,55:1 (le
+  // rouge du club — en échec des **deux** seuils, y compris pour un simple contour) et un accent à
+  // 4,0:1 (en échec du seul seuil de texte) recevaient le même message (relevé en revue). Le CA ne
+  // distingue pas, mais l'organisateur qui choisit sa charte, si : les deux situations n'appellent
+  // pas la même décision.
+  const sousLeContour = ratio < seuilContour
   return (
     <span className={`identite__mesure${faible ? ' identite__mesure--faible' : ''}`}>
       <span className="identite__ratio">{ratio.toFixed(2)}:1</span> {libelle}
       {faible
-        ? ` — trop faible pour du texte (${seuil}:1 attendu) : une variante plus claire est utilisée pour les libellés, votre couleur reste l’aplat.`
+        ? ` — trop faible pour du texte (${seuil}:1 attendu)${
+            sousLeContour ? `, ni même pour un contour (${seuilContour}:1)` : ''
+          } : une variante plus claire est utilisée pour les libellés, votre couleur reste l’aplat.`
         : ' — lisible partout.'}
     </span>
   )
@@ -268,8 +331,8 @@ function DepotDeLogo({
 }) {
   const deposer = useDeposerLogo(tournoiId)
   const retirer = useRetirerLogo(tournoiId)
+  const [refusLocal, setRefusLocal] = useState<string | null>(null)
   const present = identite.logos.includes(emplacement)
-  const identiteQuery = useIdentite(tournoiId)
 
   return (
     <div className="identite__logo">
@@ -278,7 +341,7 @@ function DepotDeLogo({
         {present ? (
           <img
             className="logo-tournoi"
-            src={urlDuLogo(tournoiId, emplacement, identiteQuery.dataUpdatedAt)}
+            src={urlDuLogo(tournoiId, emplacement)}
             alt={`${libelle} déposé`}
           />
         ) : (
@@ -299,7 +362,19 @@ function DepotDeLogo({
             // changement : sans cela, corriger le fichier sur le disque puis le rechoisir ne
             // produirait aucun événement, et l'organisateur croirait le dépôt fait.
             evenement.target.value = ''
-            if (fichier !== undefined) deposer.mutate({ emplacement, fichier })
+            if (fichier === undefined) return
+            // Pré-contrôle de **confort**, pas une garde : le serveur reste juge, et il refuse la
+            // même chose. Il évite qu'un fichier de plusieurs mégaoctets traverse le Wi-Fi d'un
+            // gymnase pour revenir en 422 — l'aide affichée juste au-dessus annonce déjà la limite.
+            if (fichier.size > POIDS_LOGO_MAX_OCTETS) {
+              setRefusLocal(
+                `Ce fichier pèse ${Math.round(fichier.size / 1024)} Ko ; la limite est de ` +
+                  `${POIDS_LOGO_MAX_OCTETS / 1024} Ko. Réduisez-le avant de le déposer.`,
+              )
+              return
+            }
+            setRefusLocal(null)
+            deposer.mutate({ emplacement, fichier })
           }}
         />
       </label>
@@ -310,6 +385,7 @@ function DepotDeLogo({
           </button>
         </p>
       )}
+      {refusLocal !== null && <p className="message-erreur">{refusLocal}</p>}
       <MessageErreur erreur={deposer.error} />
       <MessageErreur erreur={retirer.error} />
     </div>

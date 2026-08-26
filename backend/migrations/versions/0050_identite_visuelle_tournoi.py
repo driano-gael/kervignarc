@@ -25,6 +25,14 @@ du club si rien n'est fourni »). Semer une ligne par tournoi existant aurait ma
 en donnée, et rendu indiscernable « l'organisateur a choisi le rouge du club » de « il n'a rien
 choisi » — distinction dont l'écran a besoin pour dire *hérité* plutôt que *réglé*.
 
+## Supprimer le tournoi supprime son identité
+
+La clé étrangère porte `ON DELETE CASCADE`. L'identité suit le tournoi dans la tombe, sans geste
+applicatif : elle n'a pas d'existence propre, et la conserver n'aurait de sens pour personne. Ce
+choix sort explicitement `identite_tournoi` du périmètre de DETTE-001, qui décrit la descendance
+*non tranchée* — ici, elle l'est. Trouvé en revue adversariale : sans la cascade, un tournoi dont on
+avait seulement effleuré l'écran d'identité ne se supprimait plus, en 500.
+
 ## Descente
 
 `downgrade` supprime la table, donc **les deux logos déposés et les accents réglés**. La perte est
@@ -50,10 +58,25 @@ def upgrade() -> None:
     """Crée `identite_tournoi`. Aucune donnée à reprendre (cf. en-tête)."""
     op.create_table(
         "identite_tournoi",
-        # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, politique de suppression
-        # non tranchée. Clé primaire **et** étrangère : au plus une identité par tournoi, tenu par
-        # le schéma.
-        sa.Column("tournoi_id", sa.Integer(), sa.ForeignKey("tournoi.id"), primary_key=True),
+        # `ON DELETE CASCADE`, et **non** la FK nue que DETTE-001 décrit pour le reste de la
+        # descendance : l'identité n'est pas une donnée *du* tournoi, c'est un **composant strict**
+        # de son agrégat — une ligne, sans descendance, cosmétique, qui n'a aucun sens sans lui.
+        # C'est le traitement que le schéma réserve déjà à cette population (`volee.serie_id`,
+        # `placement.phase_id`), la cascade applicative restant pour ce qui se supprime pour de bon.
+        #
+        # Sans cela, `PRAGMA foreign_keys=ON` (engine.py) ferait échouer la suppression du tournoi
+        # dès qu'une identité existe — et comme la ligne naît au premier réglage et n'est jamais
+        # retirée, le tournoi devenait **définitivement** indéracinable. L'argument d'[ADR-0097]
+        # § « en base plutôt que sur le disque » (« supprimer un tournoi supprime sa descendance »)
+        # aurait alors été rendu faux par la table même qu'il justifie.
+        #
+        # Clé primaire **et** étrangère : au plus une identité par tournoi, tenu par le schéma.
+        sa.Column(
+            "tournoi_id",
+            sa.Integer(),
+            sa.ForeignKey("tournoi.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         # Forme normalisée `#rrggbb` (`domain.identite.Couleur.hex`), ou `NULL`.
         #
         # ⚠️ **Nullables, et c'est le point délicat du schéma.** Une ligne peut exister sans

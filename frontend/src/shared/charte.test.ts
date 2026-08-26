@@ -165,9 +165,13 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
   const COULEUR =
     /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\s*\(|(?<![-\w])(?:white|black|red|green|blue|gr[ae]y|orange|yellow|purple|pink|brown|cyan|magenta|silver|gold|navy|teal|olive|maroon|lime|aqua|fuchsia)(?![-\w])/i
 
-  // Les seules exceptions admises, **nommées une par une avec leur raison**. Une septième
-  // apparaîtrait en échec. Comparaison par **égalité** de sélecteur : un `includes` excusait aussi
-  // `.jauge span.plein` ou `.qr-cible__vignette-large`, c'est-à-dire des règles jamais examinées.
+  // Les seules exceptions admises, **nommées une par une avec leur raison**. Comparaison par
+  // **égalité** de sélecteur : un `includes` excusait aussi `.jauge span.plein` ou
+  // `.qr-cible__vignette-large`, c'est-à-dire des règles jamais examinées.
+  //
+  // Le compte est tenu par une assertion et non par une phrase : « une septième apparaîtrait en
+  // échec » était devenu faux dès qu'E16US006 en a ajouté deux, et dans **ce** fichier un compte
+  // faux est ce qui invite la suivante à passer sans discussion (relevé en revue).
   const COULEURS_ADMISES: Record<string, string> = {
     // Raison **physique** : un QR sur fond sombre ne se scanne pas.
     '.qr-cible__vignette': 'fond blanc obligatoire pour la lecture du QR',
@@ -186,6 +190,12 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
     '.identite__apercu--sombre .identite__scene': 'vignette figée en thème sombre',
     '.identite__apercu--clair .identite__scene': 'vignette figée en thème clair',
   }
+
+  it('la liste des dérogations n’a pas grandi sans qu’on le remarque', () => {
+    // Le seul contenu de ce test est son **chiffre**. Ajouter une dérogation devient donc un geste
+    // délibéré : il faut venir mettre ce nombre à jour, et donc lire les raisons déjà inscrites.
+    expect(Object.keys(COULEURS_ADMISES)).toHaveLength(8)
+  })
 
   it('aucune couleur littérale hors `index.css`, sauf les exceptions nommées', () => {
     const fautes = features.flatMap(([chemin, source]) =>
@@ -387,6 +397,40 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
+describe('CA — l’habillage de tournoi ne touche que le public et la salle (D-27, E16US006)', () => {
+  // ⚠️ **Ce bloc transforme une intention en décision.** `HabillageIdentite.tsx` dit de lui-même que
+  // `D-27` « n'est pas tenu par une condition mais par le **montage** » — ce qui est le bon choix de
+  // conception, mais laissait la règle sans aucun gardien : rien n'empêchait une US future
+  // d'importer l'habillage dans `CoquilleAdmin` ou dans un écran de saisie, et **aucun test
+  // n'aurait bougé**. ADR-0097 §5 était donc appliqué sans être gardé — le mode de panne exact
+  // d'ADR-0017 (treize mois), qu'ADR-0075 existe pour ne pas rejouer (relevé en revue).
+  //
+  // Il vit dans ce fichier et non dans `features/identite/` parce que la machinerie de lecture des
+  // sources y est déjà, et parce que c'est bien la même question : **qui a le droit de toucher à la
+  // marque**. Les deux blocs de ce fichier y répondent, l'un pour les jetons, l'autre pour la portée.
+
+  const HABILLEURS = ['features/salle/EcranSalle.tsx', 'features/public/AccueilPublic.tsx']
+
+  it('seuls l’écran de salle et l’appli publique importent l’habillage', () => {
+    const porteurs = features
+      .filter(([, source]) => /from '[^']*HabillageIdentite'/.test(source))
+      .map(([chemin]) => chemin)
+      .sort()
+
+    expect(porteurs, 'D-27 : l’identité du tournoi n’habille jamais l’admin ni la saisie').toEqual(
+      [...HABILLEURS].sort(),
+    )
+  })
+
+  it('les deux habilleurs existent encore sous ces noms', () => {
+    // Garde-fou du garde-fou : renommés, les deux fichiers rendraient l'assertion précédente vraie
+    // par un `[]` vide égal à un `[]` attendu — le mode de panne que ce fichier documente déjà.
+    for (const chemin of HABILLEURS) {
+      expect(SOURCES[chemin], `${chemin} introuvable`).toBeDefined()
+    }
+  })
+})
+
 describe('CA — la strate « marque » est la SEULE personnalisable par tournoi (DV-06, E16US006)', () => {
   // ⚠️ **Ce bloc ferme un trou que cette US a révélé.** Le contrôle « aucune feuille de feature ne
   // redéfinit un jeton de la charte » est écrit pour du CSS : il découpe la source en règles
@@ -445,13 +489,26 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
     // jetons rouvrirait la palette à plusieurs endroits — ce que tout ce fichier existe pour
     // empêcher. Détecté sur le texte brut (et non par le découpage en règles CSS), précisément
     // parce que c'est ce découpage qui ne voit pas les chaînes de gabarit.
+    //
+    // ⚠️ **La borne de gauche a été élargie, et c'est tout l'intérêt de ce commentaire.** La
+    // première rédaction exigeait une apostrophe, un guillemet ou un accent grave *immédiatement*
+    // devant le nom du jeton — c'est-à-dire exactement la mise en forme de `jetons.ts`, qui écrit
+    // une déclaration par chaîne. Une feature qui aurait écrit la **règle entière** dans un seul
+    // gabarit, `${porte}{--surface-0:${c}}` — la forme la plus naturelle, et celle que
+    // `cssDesJetons` emploie lui-même pour assembler ses règles — repeignait le fond du produit
+    // avec la suite au vert. Vérifié par mutation en revue adversariale : 25 tests passés.
+    //
+    // La borne actuelle accepte n'importe quel caractère non identifiant devant le jeton (ou le
+    // début de la source). Le faux positif est quasi impossible : hors fabrication de CSS, un `.ts`
+    // n'a aucune raison d'écrire `--surface-0:`, les commentaires sont déjà blanchis, et un
+    // `var(--surface-0)` n'est pas suivi d'un deux-points.
     const jetonsDeLaCharte = Object.keys(declinaison("data-theme='dark'").jetons)
     const fautes = features
       .filter(([chemin]) => chemin !== CHEMIN_JETONS && /\.tsx?$/.test(chemin))
       .flatMap(([chemin, source]) =>
         jetonsDeLaCharte
           .filter((jeton) =>
-            new RegExp(String.raw`['\`"]\s*${jeton}\s*:`).test(neutraliserCommentaires(source)),
+            new RegExp(String.raw`(^|[^\w-])${jeton}\s*:`).test(neutraliserCommentaires(source)),
           )
           .map((jeton) => `${chemin} fabrique ${jeton}`),
       )

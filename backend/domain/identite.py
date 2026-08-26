@@ -124,8 +124,20 @@ class JetonsDeMarque:
 
     Quatre jetons et non un, parce que `DV-04` a montré qu'un seul ne peut pas tenir trois usages :
     le rouge du club est **utilisable en aplat** (2,55:1 suffit à voir une surface) et
-    **inutilisable en texte** sur le même fond. Les noms sont ceux de `index.css`, pour que la
-    traduction en `--brand-*` reste une transcription et non une correspondance à retenir.
+    **inutilisable en texte** sur le même fond.
+
+    ⚠️ **La correspondance vers `index.css` est écrite ici, et une seule fois** — parce que ce n'en
+    est pas tout à fait une transcription, comme une première rédaction l'affirmait :
+
+    | ici | jeton CSS |
+    |---|---|
+    | `surface` | `--brand-surface` |
+    | `contour` | `--brand-border` |
+    | `texte` | `--brand-text` |
+    | `encre` | `--sur-brand` |
+
+    Deux des quatre changent de mot ; la déduire du code de `jetons.ts` était possible, la lire ici
+    l'est davantage (relevé en revue).
     """
 
     surface: Couleur
@@ -232,6 +244,27 @@ class TypeLogo(str, Enum):
     SVG = "image/svg+xml"
     PNG = "image/png"
 
+    @staticmethod
+    def depuis_entete(entete: str | None) -> TypeLogo:
+        """Lit le format dans un `Content-Type` ; lève `TypeDeLogoRefuse` (→ 422) sur tout autre.
+
+        Le paramétrage éventuel (`; charset=utf-8`, courant sur un SVG) est coupé : c'est le type
+        médiatique seul qui décide.
+
+        ⚠️ **Ici et non dans le routeur.** « Quels formats de logo le tournoi accepte-t-il » est une
+        règle du domaine, pas une convention HTTP — et l'API qui la portait se retrouvait à lever
+        une `DomainError` de sa propre initiative, ce que la règle 5 (« erreurs typées **par
+        couche** ») proscrit et que le reste du dépôt ne fait nulle part. Le refus de format se
+        relit maintenant d'un seul endroit, avec le refus de contenu qu'il annonce.
+        """
+        type_medium = (entete or "").split(";")[0].strip().lower()
+        for type_logo in TypeLogo:
+            if type_logo.value == type_medium:
+                return type_logo
+        raise TypeDeLogoRefuse(
+            f"Format « {type_medium or 'non précisé'} » non accepté : déposez un PNG ou un SVG."
+        )
+
 
 class EmplacementLogo(str, Enum):
     """Les deux marques d'un tournoi (questionnaire A05 : « un champ **de plus** »).
@@ -255,11 +288,40 @@ largement un SVG de charte et un PNG raisonnable, et arrêtent la photo de tél�
 
 _SIGNATURE_PNG = b"\x89PNG\r\n\x1a\n"
 
-# Ce qui, dans un SVG, **exécute**. Cherché sur le fichier replié en minuscules, et volontairement
-# large : `<script`, un gestionnaire `on…=`, une URL `javascript:`, et `<foreignObject>` qui
-# réintroduit du HTML — donc tout HTML — à l'intérieur du SVG.
+# Ce qui, dans un SVG, **exécute** — ou permet d'y amener quelque chose qui exécute.
+#
+# ⚠️ **Une denylist perd par défaut, et celle-ci le sait.** La première rédaction ne cherchait que
+# quatre formes littérales ; la revue adversariale en a fait passer trois en déposant les fichiers
+# pour de vrai : `&#106;avascript:` (référence de caractère, que le parseur XML décode *après* que
+# la recherche a eu lieu), `<set attributeName="onload" to="…">` (SMIL, qui pose un gestionnaire
+# sans jamais écrire `on…=`), et un polyglotte PNG/SVG. La barrière **porteuse** n'est donc pas ce
+# motif : ce sont les en-têtes de la route de service (`Content-Security-Policy: default-src
+# 'none'`, `nosniff`) et le rendu en `<img>`. Ce motif est la première des trois, pas la seule — et
+# la docstring de `Logo` le dit désormais au lieu de promettre l'exhaustivité.
+#
+# Ce qu'il attrape : l'exécution directe (`<script`, `on…=`, `javascript:`), le retour au HTML
+# (`<foreignObject>`), l'animation qui **écrit un attribut** (SMIL : `<set>`, `<animate>`,
+# `<animateTransform>`, `<handler>`, et l'`attributeName=` qui les accompagne toujours), et le
+# **chargement d'un document tiers** (`<use>`, `<image>`). Un logo n'a besoin d'aucun des sept :
+# c'est une forme statique, pas une scène. Le message de refus dit quoi ré-exporter.
 _MOTIF_SVG_EXECUTABLE = re.compile(
-    rb"<\s*script|<\s*foreignobject|\son[a-z]+\s*=|javascript\s*:", re.IGNORECASE
+    rb"<\s*script"
+    rb"|<\s*foreignobject"
+    rb"|<\s*(set|animate|animatetransform|handler)\b"
+    rb"|attributename\s*="
+    rb"|<\s*(use|image)\b"
+    rb"""|[\s"'<]on[a-z]+\s*="""
+    rb"|javascript\s*:",
+    re.IGNORECASE,
+)
+
+# Une entité XML autre que les cinq prédéfinies. Deux dangers d'un coup : `<!ENTITY` + `&xxe;` fait
+# lire un fichier du serveur (XXE), et `&#106;avascript:` reconstitue une URL que le motif ci-dessus
+# ne voit pas — le parseur décode **avant** d'interpréter l'attribut, une recherche sur les octets
+# bruts arrive donc toujours trop tard. Un logo n'a aucun usage d'une entité : on refuse la famille
+# entière plutôt que de courir après les encodages un par un.
+_MOTIF_ENTITE_NON_PREDEFINIE = re.compile(
+    rb"&(?!(amp|lt|gt|quot|apos);)(#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9._-]*);", re.IGNORECASE
 )
 
 
@@ -272,6 +334,14 @@ class Logo:
     compris celle d'un admin. `<img src>` neutralise bien les scripts, mais la route qui sert le
     logo reste atteignable en navigation directe : on **refuse le fichier**, plutôt que de faire
     reposer la sûreté sur la façon dont il sera affiché.
+
+    ⚠️ **Ce refus est une denylist : il attrape ce qu'il connaît, pas « tout ce qui exécute ».** La
+    formulation précédente promettait l'exhaustivité, et trois contournements l'ont démentie en
+    revue (cf. `_MOTIF_SVG_EXECUTABLE`). La barrière **porteuse** est ailleurs : les en-têtes
+    `Content-Security-Policy: default-src 'none'` et `X-Content-Type-Options: nosniff` posés par la
+    route qui sert les octets, plus le rendu en `<img>`. **Conséquence pour la suite** — le jour où
+    un logo sera rendu autrement (SVG inline pour le recolorer au jeton de marque, export PDF,
+    route de téléchargement), c'est la CSP qu'il faudra reporter, pas ce motif qu'il faudra croire.
     """
 
     contenu: bytes
@@ -307,26 +377,57 @@ class Logo:
 def _verifier_le_contenu(contenu: bytes, type_logo: TypeLogo) -> None:
     """Confronte les premiers octets au format annoncé ; lève `TypeDeLogoRefuse` en cas d'écart."""
     if type_logo is TypeLogo.PNG:
+        # La signature seule ne prouve rien : huit octets se recopient, et le reste du fichier peut
+        # être n'importe quoi — la revue adversariale a fait accepter un `\x89PNG…` suivi d'un SVG
+        # à script. On exige donc la **structure** : `IHDR` à sa position fixe (octets 12 à 16, le
+        # premier bloc d'un PNG l'est toujours) et la marque de fin `IEND` quelque part.
+        #
+        # C'est `IHDR` qui porte le refus : un document XML analysable **depuis son premier
+        # octet** ne peut pas avoir ces quatre lettres en douzième position. `IEND` n'est
+        # cherchée nulle part en particulier — l'exiger en fin de fichier aurait refusé un PNG
+        # suivi d'octets de bourrage, ce qui n'est pas un vecteur une fois `IHDR` vérifié.
         if not contenu.startswith(_SIGNATURE_PNG):
             raise TypeDeLogoRefuse(
                 "Ce fichier est annoncé PNG mais n'en porte pas la signature. "
                 "Déposez un PNG ou un SVG."
             )
+        if contenu[12:16] != b"IHDR" or b"IEND" not in contenu:
+            raise TypeDeLogoRefuse(
+                "Ce fichier porte la signature PNG mais n'en a pas la structure "
+                "(en-tête IHDR, marque de fin IEND). Ré-exportez-le depuis votre outil de dessin."
+            )
         return
 
-    # SVG : le document peut commencer par une déclaration XML, un DOCTYPE ou des commentaires —
-    # c'est même la forme la plus courante d'un export d'outil de dessin. On exige seulement qu'une
-    # balise `<svg` apparaisse dans l'en-tête, avant de chercher ce qui exécute.
-    entete = contenu[:1024].lower()
-    if b"<svg" not in entete:
+    # SVG : le document peut commencer par une déclaration XML ou des commentaires — c'est même la
+    # forme la plus courante d'un export d'outil de dessin. On cherche la balise sur **tout** le
+    # fichier : la borner à l'en-tête faisait refuser un export licite dont la bannière de licence
+    # dépassait mille octets, avec un message qui mentait (« ne contient pas de balise <svg> »).
+    replie = contenu.lower()
+    if b"<svg" not in replie:
         raise TypeDeLogoRefuse(
             "Ce fichier est annoncé SVG mais ne contient pas de balise <svg>. "
             "Déposez un SVG ou un PNG."
         )
+    if b"<!entity" in replie:
+        # `<!ENTITY` — et lui seul. Un `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" …>` nu est la
+        # forme qu'Illustrator produit depuis toujours : le refuser rendrait le format inutilisable
+        # pour la moitié des logos de club, sans rien fermer. C'est le **sous-ensemble interne**,
+        # donc `<!ENTITY`, qui fait lire un fichier du serveur (XXE) ; et la dissimulation par
+        # référence de caractère est attrapée juste en dessous, DOCTYPE ou pas.
+        raise TypeDeLogoRefuse(
+            "Ce SVG déclare une entité XML (<!ENTITY>), qui sert à faire lire des fichiers du "
+            "serveur et dont un logo n'a aucun usage. Ré-exportez-le en SVG simple."
+        )
+    if _MOTIF_ENTITE_NON_PREDEFINIE.search(contenu):
+        raise TypeDeLogoRefuse(
+            "Ce SVG contient une entité XML encodée, qui permet de dissimuler un lien exécutable. "
+            "Ré-exportez-le sans caractères échappés, ou déposez un PNG."
+        )
     if _MOTIF_SVG_EXECUTABLE.search(contenu):
         raise TypeDeLogoRefuse(
-            "Ce SVG contient du script (balise <script>, attribut on…, lien javascript: ou "
-            "<foreignObject>). Exportez-le sans interactivité, ou déposez un PNG."
+            "Ce SVG contient de quoi exécuter ou charger un document tiers (script, attribut on…, "
+            "lien javascript:, <foreignObject>, animation SMIL, <use> ou <image>). Exportez-le en "
+            "formes simples, ou déposez un PNG."
         )
 
 

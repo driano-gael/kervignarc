@@ -45,6 +45,7 @@ dit.
 | 2026-08-23 | `E16US012` (2ᵉ passe, sur les correctifs) | 27 | +1025/-230 | ~5 min | ~37 min | D (12:41→13:18) | majeur:3 mineur:4 | majeur:2 mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:4 | **D (1)** | 3 |
 | 2026-08-23 | `E16US012` | 35 | +2385/−119 | ~22 min | ~28 min | D (12:12→12:20) | majeur:1 mineur:2 | majeur:2 mineur:3 suggestion:2 | mineur:4 suggestion:1 | majeur:3 mineur:2 suggestion:2 | **bloquant:1** majeur:6 mineur:5 suggestion:2 | **D (1)** | 2 |
 | 2026-08-22 | `E16US002` (2ᵉ passe, sur les correctifs) | 43 | +718/−128 | ~25 min | ~21 min | D (22:39→22:58) | majeur:2 mineur:4 suggestion:2 | majeur:3 mineur:4 suggestion:1 | majeur:3 mineur:4 suggestion:1 | majeur:2 mineur:6 suggestion:2 | majeur:7 mineur:5 suggestion:1 | **bloquant:0** — les deux de la 1ʳᵉ passe fermés et vérifiés par exécution | 2 |
+| 2026-08-26 | `E16US006` (absorbe `E01US016`) | 43 | +4619/−220 | ~10 min | ~32 min | D (11:26→11:58) | bloquant:0 majeur:2 mineur:7 suggestion:1 | bloquant:0 majeur:3 mineur:7 suggestion:3 | bloquant:0 majeur:2 mineur:5 suggestion:6 | bloquant:0 majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:6 mineur:4 | **D seul** — et c'est le fait de la passe : les **quatre axes de grille ont rendu zéro bloquant**. D a trouvé qu'un tournoi dont on avait effleuré l'écran d'identité devenait *définitivement* indéracinable (500), en **exécutant** `POST` → `PUT identité` → `DELETE` avec la baseline 204 sur le même code. Les quatre autres avaient lu la FK nue **et son marqueur `DETTE-001`**, et conclu à une aggravation régulière | 1 |
 | 2026-08-22 | `E16US002` | 48 | +1579/−161 | ~18 min | ~20 min | D (21:19→21:39) | **bloquant:1** mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:5 suggestion:1 | **bloquant:1** majeur:2 mineur:4 suggestion:2 | majeur:6 mineur:7 suggestion:2 | **bloquant:2** majeur:6 mineur:3 | **A, B, C1, D** (le même bloquant, quatre fois) **+ D seul** (le 2ᵉ : un ADR attestant « vérifié » une traversée inexistante) | 2 |
 | 2026-08-22 | `E05US027` | 76 | +5909/−237 | ~23 min | ~76 min | D (15:41→16:24) | **bloquant:1** majeur:0 mineur:3 | bloquant:0 **majeur:6** mineur:8 suggestion:3 | bloquant:0 **majeur:2** mineur:5 suggestion:2 | **bloquant:1** majeur:3 mineur:5 suggestion:3 | bloquant:0 **majeur:5** mineur:4 suggestion:1 | **A et C2, un chacun et disjoints** — C2 : `useRegenererPlanColline` sans appelant, donc plan de cibles inatteignable et **format injouable** (3ᵉ récidive du défaut d'E05US023) ; A : `test_arrets_api.py` non élargi au 6ᵉ service, alors que le composition root affirmait l'inverse. ⚠️ **Trois majeurs sont des trous *déplacés*** — `_nb_tours_a_la_composition` (E05US035), `MOTEUR_SAIT_JOUER` (E05US028), le montage du plan (E05US023) : le raisonnement avait été tenu et tranché sur le format précédent, jamais rejoué sur le format neuf | 2 |
 | 2026-08-22 | `E05US027` (2ᵉ passe, sur les correctifs) | 34 | +1512/−161 | ~14 min | ~31 min | D (16:58→17:19) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:1** mineur:5 suggestion:2 | bloquant:0 **majeur:1** mineur:6 suggestion:2 | bloquant:0 **majeur:10** mineur:5 suggestion:2 | bloquant:0 **majeur:2** mineur:6 suggestion:2 | **aucun bloquant** — mais quatre majeurs décrivent des défauts *introduits par les correctifs eux-mêmes* : un frein sans porte de sortie (D), les deux régimes de borne inversés (C1), un test anti-récidive qui promettait par écrit ce qu'il ne faisait pas (D), et le jumeau suisse laissé cassé sur l'écran que le correctif venait d'ouvrir (B). C2 a rendu 10 majeurs, dont 5 « traces fausses qui se lisent comme des preuves » | 2 |
@@ -510,3 +511,26 @@ de registre avec marqueur dans le fichier concerné, si. Corollaire de pilotage 
 US dont le livrable est visuel, vérifier qu'on peut le rendre** — c'est un prérequis de poste, au
 même titre qu'un venv qui marche.
 
+**37. Un marqueur de dette peut faire passer un bloquant pour une aggravation réglementaire.**
+E16US006 a posé une clé étrangère **nue** vers `tournoi.id`, commentée `# DETTE-001` aux deux bons
+endroits — application impeccable de la procédure d'aggravation du registre. Les quatre axes de
+grille l'ont lue ainsi et n'ont rien relevé de bloquant ; l'un d'eux a même relevé, à juste titre,
+que la **ligne du registre** n'avait pas été élargie. Aucun n'a demandé si la FK devait être nue.
+
+Le mécanisme est intéressant parce qu'il n'a rien d'une inattention : le marqueur **répond d'avance**
+à la question « pourquoi ce raccourci ? », et un relecteur qui trouve une réponse cohérente à
+l'endroit prévu passe à la suite. La dette assumée est un dispositif de confiance ; ce qui a manqué
+ici, c'est que la table en question — une ligne, sans descendance, créée au premier réglage et jamais
+retirée — n'était pas de la même famille que la descendance non tranchée du registre, et que le
+raccourci **cassait un cas utilisateur maintenant** (`CLAUDE.md` § Dette : ce n'est alors plus de la
+dette, c'est un bloquant).
+
+Ce qui l'a trouvé : l'axe adversarial, **à l'exécution**, avec une baseline sur le même code (`DELETE`
+d'un brouillon sans identité → 204 ; avec identité → 500). Aucune lecture ne l'aurait produit, parce
+que la lecture menait au marqueur et que le marqueur était bien écrit.
+
+Deux conséquences déjà portées : la section *Détail* de `DETTE-001` dit désormais que la procédure
+d'aggravation « dit quoi faire d'une FK qu'on **choisit** de laisser nue, et ne dispense pas de se
+demander si on doit la laisser nue » ; et la revue confirme, pour la deuxième fois consécutive
+(cf. n° 36), que **l'axe D ne se raccourcit pas** — 4 axes de grille, 10 majeurs pertinents, zéro
+bloquant.

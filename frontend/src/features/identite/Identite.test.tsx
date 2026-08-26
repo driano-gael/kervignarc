@@ -17,7 +17,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Identite as IdentiteDTO } from './api'
-import { apercuIdentite, enregistrerAccents, getIdentite } from './api'
+import { apercuIdentite, deposerLogo, enregistrerAccents, getIdentite, retirerLogo } from './api'
 import { cssDesJetons } from './jetons'
 import { Identite } from './Identite'
 
@@ -229,6 +229,54 @@ describe('CA — les deux logos', () => {
     )
     // Apparié : l'emplacement resté vide dit toujours son absence.
     expect(screen.getAllByText(/Aucun logo/i)).toHaveLength(1)
+  })
+
+  it('dépose le fichier sur l’emplacement de son libellé', async () => {
+    // ⚠️ **Le geste central de l'écran n'était exercé par aucun test.** `deposerLogo` était mocké
+    // et personne ne vérifiait qu'il soit appelé, ni avec quel emplacement : échanger
+    // `emplacement="evenement"` et `emplacement="club"` entre les deux `<DepotDeLogo>` laissait
+    // **toute la suite verte** en envoyant chaque fichier au mauvais endroit — c'est-à-dire le CA
+    // « déposer l'un ne remplace pas l'autre » cassé, sans un test rouge (relevé en revue).
+    //
+    // `emplacement` et `libelle` sont deux props indépendantes : c'est leur **appariement** que ce
+    // test tient, en partant du libellé que l'organisateur lit à l'écran.
+    vi.mocked(deposerLogo).mockResolvedValue({ ...IDENTITE_HERITEE, logos: ['club'] })
+    harnais(<Identite tournoiId={7} />)
+    const fichier = new File(['x'], 'club.png', { type: 'image/png' })
+
+    await userEvent.upload(
+      await screen.findByLabelText(/Logo du club organisateur — choisir un fichier/i),
+      fichier,
+    )
+
+    await waitFor(() => expect(vi.mocked(deposerLogo)).toHaveBeenCalledWith(7, 'club', fichier))
+  })
+
+  it('n’envoie pas au serveur un fichier que la limite affichée exclut', async () => {
+    // Pré-contrôle de **confort** : le serveur reste juge et refuse la même chose. Sans lui, un
+    // fichier de plusieurs mégaoctets traverse le Wi-Fi du gymnase pour revenir en 422, alors que
+    // l'écran annonce la limite deux lignes plus haut.
+    vi.mocked(deposerLogo).mockClear()
+    harnais(<Identite tournoiId={7} />)
+    const trop_lourd = new File([new Uint8Array(600 * 1024)], 'gros.png', { type: 'image/png' })
+
+    await userEvent.upload(
+      await screen.findByLabelText(/Logo du tournoi — choisir un fichier/i),
+      trop_lourd,
+    )
+
+    expect(await screen.findByText(/la limite est de 512 Ko/i)).toBeInTheDocument()
+    expect(vi.mocked(deposerLogo)).not.toHaveBeenCalled()
+  })
+
+  it('retire le logo de l’emplacement pourvu', async () => {
+    vi.mocked(getIdentite).mockResolvedValue({ ...IDENTITE_HERITEE, logos: ['club'] })
+    vi.mocked(retirerLogo).mockResolvedValue(IDENTITE_HERITEE)
+    harnais(<Identite tournoiId={7} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /Retirer ce logo/i }))
+
+    await waitFor(() => expect(vi.mocked(retirerLogo)).toHaveBeenCalledWith(7, 'club'))
   })
 
   it('annonce le format et le poids acceptés', async () => {

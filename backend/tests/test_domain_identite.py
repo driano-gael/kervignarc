@@ -17,6 +17,8 @@ avant elle**, ce qui en fait un oracle externe et non une description de mon pro
 
 from __future__ import annotations
 
+import colorsys
+
 import pytest
 
 from domain.erreurs import CouleurInvalide, LogoTropVolumineux, TypeDeLogoRefuse
@@ -215,10 +217,20 @@ class TestDerivationDeLaMarque:
         est donc mesuré sur la couleur arrondie, celle qui part vraiment dans le CSS.
         """
         surface = FOND_SOMBRE if fond == "sombre" else FOND_CLAIR
-        jetons = deriver_marque(Couleur.depuis_hex(accent), surface)
+        depart = Couleur.depuis_hex(accent)
+        jetons = deriver_marque(depart, surface)
 
         assert contraste(jetons.contour, surface) >= SEUIL_CONTOUR
         assert contraste(jetons.texte, surface) >= SEUIL_TEXTE
+
+        # Et **pas davantage** : `DV-05` dit « ajustée **jusqu'au** seuil », et non
+        # « jusqu'à confort ».
+        # Sans cette moitié, une dérivation qui prendrait dix crans de marge sur toutes les couleurs
+        # resterait verte partout — la conservation de teinte ne l'attraperait pas, un
+        # éclaircissement en HLS conserve la teinte. Seul le rouge du club était pincé par le bas,
+        # via l'oracle d'`index.css` ; la propriété, elle, ne l'était nulle part (relevé en revue).
+        _exiger_la_minimalite(depart, jetons.contour, surface, SEUIL_CONTOUR)
+        _exiger_la_minimalite(depart, jetons.texte, surface, SEUIL_TEXTE)
 
     @pytest.mark.parametrize("accent", ["#b71918", "#ffd400", "#0b6e9e", "#00ff00"])
     @pytest.mark.parametrize("fond", ["sombre", "clair"])
@@ -264,12 +276,18 @@ class TestDerivationDeLaMarque:
 
     def test_l_encre_de_l_aplat_est_elle_aussi_lisible(self) -> None:
         """La propriété derrière le cas d'école : quoi qu'on fournisse, le texte posé sur l'aplat
-        atteint le seuil de texte. Le pire cas théorique est un gris moyen, où ni le noir ni le
-        blanc ne brillent — d'où sa présence explicite dans la liste."""
+        atteint le seuil de **texte**. Le pire cas théorique est un gris moyen, où ni le noir ni le
+        blanc ne brillent — d'où sa présence explicite dans la liste.
+
+        ⚠️ L'assertion comparait à `SEUIL_CONTOUR` (3,0) alors que la docstring promettait le seuil
+        de texte, et la promesse forte est bien tenue : au pire, `max(blanc, noir)` sur un ton moyen
+        rend 4,58:1. À 3,0 le test laissait passer une comparaison d'encre **inversée** sur les tons
+        moyens, où le mauvais choix rend exactement 3,0:1 (relevé en revue).
+        """
         for accent in ("#b71918", "#ffd400", "#00ff00", "#767676", "#1d1d1b", "#ffffff"):
             jetons = deriver_marque(Couleur.depuis_hex(accent), FOND_SOMBRE)
             assert (
-                contraste(jetons.encre, jetons.surface) >= SEUIL_CONTOUR
+                contraste(jetons.encre, jetons.surface) >= SEUIL_TEXTE
             ), f"rien ne s'écrit lisiblement sur {accent}"
 
 
@@ -383,8 +401,42 @@ class TestIdentiteVisuelle:
 PNG_MINIMAL = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
     b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    # Bloc de données puis marque de fin : un **vrai** PNG, pas seulement une signature. Depuis la
+    # revue, `Logo.deposer` exige la structure (`IHDR` en douzième position, `IEND` présente) — la
+    # signature seule laissait passer un polyglotte PNG/SVG porteur de script, déposé pour de vrai
+    # par le relecteur adversarial et accepté en 200.
+    b"\x00\x00\x00\nIDAT\x78\x9c\x63\x00\x01\x00\x00\x05\x00\x01"
+    b"\x0d\x0a\x2d\xb4\x00\x00\x00\x00IEND\xaeB\x60\x82"
 )
 SVG_MINIMAL = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>'
+
+
+def _exiger_la_minimalite(depart: Couleur, derivee: Couleur, fond: Couleur, seuil: float) -> None:
+    """Vérifie qu'aucune clarté **entre** l'accent d'origine et la variante ne tenait déjà le seuil.
+
+    Formulée en boîte noire : on ne relit pas le pas de recherche du module, on prend la clarté
+    **médiane** entre le départ et la variante et on exige qu'elle échoue. Si la dérivation prenait
+    de la marge, cette médiane la tiendrait — c'est exactement ce qu'on veut voir rougir.
+
+    Deux échappatoires légitimes, et elles sont nommées plutôt que tolérées en silence :
+    l'accent déjà conforme (la variante **est** l'accent, il n'y a rien à minimiser) et la médiane
+    qui, arrondie sur huit bits, retombe sur la variante elle-même (il n'existait alors aucune
+    couleur intermédiaire à tester).
+    """
+    if derivee == depart:
+        return
+    h_depart, l_depart, s_depart = colorsys.rgb_to_hls(
+        depart.r / 255, depart.g / 255, depart.b / 255
+    )
+    _, l_derivee, _ = colorsys.rgb_to_hls(derivee.r / 255, derivee.g / 255, derivee.b / 255)
+    r, g, b = colorsys.hls_to_rgb(h_depart, (l_depart + l_derivee) / 2, s_depart)
+    mediane = Couleur(r=round(r * 255), g=round(g * 255), b=round(b * 255))
+    if mediane == derivee:
+        return
+    assert contraste(mediane, fond) < seuil, (
+        f"la dérivation de {depart.hex} vers {derivee.hex} prend de la marge : "
+        f"{mediane.hex} tenait déjà {seuil}:1"
+    )
 
 
 class TestLogo:
@@ -440,6 +492,96 @@ class TestLogo:
         que la balise donnerait un garde-fou qui **rassure sans protéger**."""
         with pytest.raises(TypeDeLogoRefuse):
             Logo.deposer(hostile, TypeLogo.SVG)
+
+    @pytest.mark.parametrize(
+        ("vecteur", "hostile"),
+        [
+            (
+                "référence de caractère dans un lien",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<a xlink:href="&#106;avascript:alert(1)">x</a></svg>',
+            ),
+            (
+                "référence hexadécimale",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<a href="&#x6a;avascript:alert(1)">x</a></svg>',
+            ),
+            (
+                "entité déclarée (XXE)",
+                b'<!DOCTYPE svg [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+                b'<svg xmlns="http://www.w3.org/2000/svg"><text>&xxe;</text></svg>',
+            ),
+            (
+                "gestionnaire posé par SMIL",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<set attributeName="onload" to="alert(1)"/></svg>',
+            ),
+            (
+                "animation d'un lien",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<animate attributeName="href" values="javascript:alert(1)"/></svg>',
+            ),
+            (
+                "document tiers par <use>",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<use href="data:image/svg+xml;base64,AAAA"/></svg>',
+            ),
+            (
+                "document tiers par <image>",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<image href="https://exemple.test/x.svg"/></svg>',
+            ),
+        ],
+    )
+    def test_le_corpus_d_attaques_reelles_est_refuse(self, vecteur: str, hostile: bytes) -> None:
+        """⚠️ **Ce corpus ne dérive pas du filtre, il dérive de l'attaque.** Le test précédent
+        n'exerçait que les trois formes littérales que la regex reconnaissait déjà : il décrivait
+        l'implémentation au lieu de l'éprouver. Les sept cas ci-dessous ont été **déposés pour de
+        vrai** par le relecteur adversarial et **acceptés en 200** par la première rédaction.
+
+        Deux familles, deux raisons :
+
+        - **l'encodage** — le parseur XML décode les références de caractère *avant* d'interpréter
+          un attribut, donc une recherche sur les octets bruts arrive toujours trop tard. On refuse
+          la famille entière plutôt que de la poursuivre encodage par encodage ;
+        - **l'indirection** — SMIL (`<set>`, `<animate>`) *écrit* un attribut sans jamais en porter
+          la syntaxe, et `<use>`/`<image>` chargent un document tiers. Aucun logo n'en a besoin.
+
+        Honnêteté sur la portée : ce refus reste une **denylist**, la barrière porteuse est la CSP
+        de la route de service (cf. `Logo`). Ce corpus rend la première barrière non vide, il ne la
+        rend pas exhaustive.
+        """
+        with pytest.raises(TypeDeLogoRefuse):
+            Logo.deposer(hostile, TypeLogo.SVG)
+
+    def test_un_doctype_nu_reste_accepte(self) -> None:
+        """La contrepartie du cas « entité déclarée » ci-dessus : c'est `<!ENTITY` qui est refusée,
+        pas la ligne `<!DOCTYPE>`. Illustrator en produit une depuis toujours ; la refuser aurait
+        rendu le format inutilisable pour la moitié des logos de club, sans rien fermer."""
+        doctype = b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+        doctype += b'"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">'
+        assert Logo.deposer(doctype + SVG_MINIMAL, TypeLogo.SVG).type_logo is TypeLogo.SVG
+
+    def test_un_polyglotte_png_svg_est_refuse(self) -> None:
+        """La signature PNG fait huit octets, et huit octets se recopient. Le relecteur adversarial
+        a fait accepter — puis **servir** — un fichier annoncé `image/png` qui commençait par
+        `\x89PNG` et continuait en SVG porteur de script.
+
+        On exige donc la **structure** : `IHDR` en douzième position. Un document XML analysable
+        depuis son premier octet ne peut pas porter ces quatre lettres à cet endroit."""
+        polyglotte = (
+            b"\x89PNG\r\n\x1a\n"
+            b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+        )
+        with pytest.raises(TypeDeLogoRefuse):
+            Logo.deposer(polyglotte, TypeLogo.PNG)
+
+    def test_un_svg_dont_l_entete_depasse_mille_octets_est_accepte(self) -> None:
+        """La balise `<svg` n'était cherchée que dans les 1 024 premiers octets : un export licite
+        précédé d'une longue bannière de licence était refusé, avec un message qui **mentait** («
+        ne contient pas de balise <svg> »). Elle est désormais cherchée sur tout le fichier."""
+        banniere = b"<!-- " + b"licence " * 200 + b"-->"
+        assert Logo.deposer(banniere + SVG_MINIMAL, TypeLogo.SVG).type_logo is TypeLogo.SVG
 
     def test_un_fichier_vide_est_refuse(self) -> None:
         with pytest.raises(TypeDeLogoRefuse):

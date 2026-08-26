@@ -167,16 +167,37 @@ tient à ce que l'identité **est** ce qui distingue une édition.
   réserve près (l'usage de l'accent secondaire, ci-dessus).
 - **`Q-UX10` est fermée** (§2). **`Q-UX11`** (« une archive fige-t-elle son identité ? ») l'est **par
   construction** : les octets vivent dans la ligne du tournoi, et `archivé` refuse toute écriture.
+- **L'argument « supprimer un tournoi supprime sa descendance » (§1) est tenu par une cascade
+  explicite, pas par la promesse d'ADR-0077.** C'est une correction de revue, et elle est
+  structurante : la table avait d'abord été posée avec une clé étrangère **nue**, marquée
+  `DETTE-001` par application mécanique de la procédure d'aggravation de ce registre. Mais la ligne
+  d'identité naît au premier réglage et n'est jamais retirée : sous `PRAGMA foreign_keys=ON`, le
+  tournoi devenait **définitivement** indéracinable (500), et l'argument central de cet ADR se
+  trouvait démenti par la table qu'il justifie. `identite_tournoi` est un **composant strict** de
+  l'agrégat — une ligne, sans descendance, cosmétique — donc du même genre que `volee` et
+  `placement`, qui cascadent déjà et sont hors DETTE-001. Cf. la section de détail de DETTE-001
+  dans [`docs/dette.md`](../dette.md), qui porte la leçon de méthode.
 
 ## Porté dans le code par
+
+⚠️ **Deux lignes de ce tableau ont été corrigées en revue, et la raison mérite d'être lue** : la
+première rédaction attribuait §5 (la portée) à `HabillageIdentite.tsx`. Or ce module est ce **qui
+est monté**, pas ce **qui décide où** : le montage vit chez ses appelants, et rien n'empêchait une
+US future de l'importer dans l'admin — la décision était appliquée sans être gardée, exactement le
+mode de panne d'ADR-0017 qu'[ADR-0075](0075-le-depart-est-la-portee-sportive.md) existe pour ne pas
+rejouer. Le garde-fou manquant a été écrit dans le même mouvement. La leçon est celle qu'ADR-0075
+inscrit déjà : **cette section s'écrit en vérifiant dans le code du jour, pas en déduisant de
+l'ADR** — nommer un module qui « devrait » porter la décision reproduit le défaut au lieu de le
+prévenir.
 
 | Module | Ce qu'il tient de cet ADR |
 |---|---|
 | [`backend/domain/identite.py`](../../backend/domain/identite.py) | §3 la dérivation (pure, teinte et saturation conservées) et ses deux seuils WCAG ; §2 le refus de contenu d'un logo ; §4 `IdentiteVisuelle` à accents facultatifs et `reglee` dérivé |
-| [`backend/application/identite.py`](../../backend/application/identite.py) | §5 aucune garde de statut hors `archivé` (ADR-0026 §1) ; le contrôle de contraste comme **calcul**, jamais comme refus (`P-4`) |
+| [`backend/application/identite.py`](../../backend/application/identite.py) | §3 (`P-4`) le contrôle de contraste comme **calcul**, jamais comme refus ; aucune garde de statut hors `archivé`, verrou qui vient d'**ADR-0026 §1** et non de cet ADR |
 | [`backend/api/v1/identite.py`](../../backend/api/v1/identite.py) | §1 la route qui sert les octets ; §2 les trois en-têtes de sûreté et le corps brut ; §5 les deux lectures publiques |
 | [`backend/infrastructure/db/repositories/referentiel.py`](../../backend/infrastructure/db/repositories/referentiel.py) (`IdentiteVisuelleRepositorySQL`) | §1 la projection **sans blob** des réglages, et l'invariant « les deux colonnes d'un logo, ou aucune » |
-| [`backend/migrations/versions/0050_identite_visuelle_tournoi.py`](../../backend/migrations/versions/0050_identite_visuelle_tournoi.py) | §1 la table à part ; §4 les accents nullables et l'absence de peuplement |
+| [`backend/migrations/versions/0050_identite_visuelle_tournoi.py`](../../backend/migrations/versions/0050_identite_visuelle_tournoi.py) | §1 la table à part **et sa cascade** (`ON DELETE CASCADE`, sans laquelle l'argument « supprimer un tournoi supprime sa descendance » du §1 serait faux) ; §4 les accents nullables et l'absence de peuplement |
 | [`frontend/src/features/identite/jetons.ts`](../../frontend/src/features/identite/jetons.ts) | §3 les seuls jetons de **marque** émis, dans les trois déclinaisons de thème |
-| [`frontend/src/features/identite/HabillageIdentite.tsx`](../../frontend/src/features/identite/HabillageIdentite.tsx) | §5 la portée par le **montage**, et le rendu facultatif des deux logos |
-| [`frontend/src/shared/charte.test.ts`](../../frontend/src/shared/charte.test.ts) | §3 le garde-fou des trois strates — c'est lui qui **vérifie** que cet ADR est tenu |
+| [`frontend/src/features/identite/HabillageIdentite.tsx`](../../frontend/src/features/identite/HabillageIdentite.tsx) | le mécanisme d'habillage lui-même : pose les jetons, rend les deux logos facultatifs |
+| [`frontend/src/features/salle/EcranSalle.tsx`](../../frontend/src/features/salle/EcranSalle.tsx) et [`frontend/src/features/public/AccueilPublic.tsx`](../../frontend/src/features/public/AccueilPublic.tsx) | §5 la portée, qui tient à leur **montage** — ce sont eux qui l'appliquent, et eux seuls |
+| [`frontend/src/shared/charte.test.ts`](../../frontend/src/shared/charte.test.ts) | §3 le garde-fou des trois strates **et** §5 celui de la portée (les seuls importateurs autorisés de l'habillage) — c'est lui qui **vérifie** que cet ADR est tenu |

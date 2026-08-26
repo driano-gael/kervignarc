@@ -316,13 +316,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 96,
+   "occurrences": 95,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 69,
+   "occurrences": 70,
    "source": "api"
   },
   {
@@ -498,11 +498,12 @@ window.ATLAS.carte = {
    "cible": "application/erreurs",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 7,
+   "occurrences": 8,
    "origines": [
     "backend/api/v1/big_shoot_off.py",
     "backend/api/v1/colline.py",
     "backend/api/v1/forfaits.py",
+    "backend/api/v1/identite.py",
     "backend/api/v1/poules.py",
     "backend/api/v1/saisie.py",
     "backend/api/v1/saisie_duels.py",
@@ -584,10 +585,9 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 2,
+   "occurrences": 1,
    "origines": [
-    "backend/api/v1/barrages.py",
-    "backend/api/v1/identite.py"
+    "backend/api/v1/barrages.py"
    ],
    "source": "api/v1"
   },

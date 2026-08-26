@@ -14,7 +14,12 @@ tournoi ; il ne calcule rien — la dérivation des jetons est une règle pure, 
 2. **Aucune garde de statut, sauf l'archive.** `P-3` dit « modifiable à tout moment, y compris
    tournoi en cours » : changer un logo ne touche aucun score. Un tournoi **archivé** est une autre
    affaire — c'est le seul refus, et il vient d'ADR-0026 §1 (« lecture seule totale »), pas de cette
-   US.
+   US. L'erreur correspondante est **celle du registre applicatif**
+   (`application.erreurs.TournoiArchiveNonModifiable`), pas une classe locale : la première
+   rédaction en avait redéclaré une seconde, de même nom et de même `code`, que le `else: 409` du
+   mapping rendait indétectable en HTTP — deux types disjoints sous un nom identique, qu'aucun
+   `except` ni aucune branche `isinstance` n'aurait rattrapés ensemble (relevé par trois axes de
+   revue).
 3. **Le contrôle de contraste est un CALCUL, pas une garde.** `P-4` : « alerte chiffrée et **non
    bloquante** ». `regler_accents` n'a donc aucun `raise` sur le contraste — il rend le chiffre, et
    l'organisateur décide. Refuser ici retirerait sa marque à qui a une charte faible, ce que `DV-05`
@@ -25,7 +30,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from application.erreurs import ApplicationError, TournoiIntrouvable
+from application.erreurs import TournoiArchiveNonModifiable, TournoiIntrouvable
 from domain.identite import (
     FOND_CLAIR,
     FOND_SOMBRE,
@@ -40,16 +45,6 @@ from domain.identite import (
 )
 from domain.ports import IdentiteVisuelleRepository, TournoiRepository
 from domain.tournoi import StatutTournoi, TournoiId
-
-
-class TournoiArchiveNonModifiable(ApplicationError):
-    """Un tournoi archivé est en lecture seule totale (ADR-0026 §1).
-
-    Vit ici et non dans le domaine parce que c'est une règle du **cycle de vie applicatif** : le
-    verrou d'archive est arbitré par le service (ADR-0026 §4), comme toutes les autres transitions.
-    """
-
-    code = "tournoi_archive_non_modifiable"
 
 
 @dataclass(frozen=True)

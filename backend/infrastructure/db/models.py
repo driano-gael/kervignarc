@@ -967,9 +967,14 @@ class IdentiteVisuelleORM(Base):
 
     __tablename__ = "identite_tournoi"
 
-    # DETTE-001 : FK sans ON DELETE CASCADE — enfant direct du tournoi, à traiter dans la même
-    # politique de suppression, non tranchée ; ne pas la contourner ici.
-    tournoi_id: Mapped[int] = mapped_column(ForeignKey("tournoi.id"), primary_key=True)
+    # `ON DELETE CASCADE` : composant **strict** de l'agrégat tournoi (une ligne, sans descendance,
+    # cosmétique), au même titre que `volee.serie_id` — et non la descendance non tranchée de
+    # DETTE-001. Sans cela, la ligne d'identité — qui naît au premier réglage et n'est jamais
+    # retirée — rendait le tournoi définitivement indéracinable (`PRAGMA foreign_keys=ON`).
+    # Clé primaire **et** étrangère : au plus une identité par tournoi, tenu par le schéma.
+    tournoi_id: Mapped[int] = mapped_column(
+        ForeignKey("tournoi.id", ondelete="CASCADE"), primary_key=True
+    )
     accent_primaire: Mapped[str | None] = mapped_column(nullable=True)
     accent_secondaire: Mapped[str | None] = mapped_column(nullable=True)
     logo_evenement: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)

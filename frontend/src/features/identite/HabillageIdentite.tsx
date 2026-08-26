@@ -61,10 +61,20 @@ export function LogoDuTournoi({
   tournoiId,
   emplacement,
   className,
+  decoratif = false,
 }: {
   tournoiId: number
   emplacement: EmplacementLogo
   className?: string
+  /**
+   * `true` quand le logo est posé **à l'intérieur** d'un élément qui porte déjà le nom du tournoi.
+   *
+   * Un `alt` s'agrège au nom accessible de son conteneur : deux logos dans un `<h2>` faisaient
+   * annoncer « Logo du tournoi Logo du club organisateur Challenge des Champions » au lecteur
+   * d'écran (relevé en revue). L'information est alors **déjà dite** juste à côté, le logo n'est
+   * que sa marque visuelle — c'est la définition d'une image décorative, donc `alt=""`.
+   */
+  decoratif?: boolean
 }) {
   const identite = useIdentite(tournoiId)
   if (identite.data === undefined || !identite.data.logos.includes(emplacement)) return null
@@ -72,8 +82,10 @@ export function LogoDuTournoi({
   return (
     <img
       className={className ?? 'logo-tournoi'}
-      src={urlDuLogo(tournoiId, emplacement, identite.dataUpdatedAt)}
-      alt={emplacement === 'club' ? 'Logo du club organisateur' : 'Logo du tournoi'}
+      src={urlDuLogo(tournoiId, emplacement)}
+      alt={
+        decoratif ? '' : emplacement === 'club' ? 'Logo du club organisateur' : 'Logo du tournoi'
+      }
     />
   )
 }
