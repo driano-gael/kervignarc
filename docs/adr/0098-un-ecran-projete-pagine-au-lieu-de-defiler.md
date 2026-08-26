@@ -1,7 +1,7 @@
 # ADR-0098 — Un écran projeté **pagine**, il ne défile pas
 
 - **Statut** : Accepté
-- **Date** : 26/08/2026
+- **Date** : 2026-08-26
 - **US** : `E16US009`
 - **Amende** : [ADR-0064](0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) (écran de salle piloté par état lu)
 
@@ -54,6 +54,25 @@ cadre à ascenseur.** Concrètement :
    tablette —, où l'ascenseur est le bon geste.
 4. **La cadence et la taille d'une page se règlent par écran**, servies par le serveur avec
    l'affichage (cf. § suivant). Le « (réglable) » de P06 est ainsi tenu, et `DETTE-039` refermée.
+5. **Le réglage compte des NOMS, pas des lignes — chaque vue le convertit selon sa densité.**
+   `noms_par_page` s'entend tel que la page d'affectations dispose ses noms : sur **trois colonnes**
+   CSS (`.salle-pages__noms { columns: 3 22ch }`), où 40 noms tiennent sur ~14 lignes de haut. Le
+   classement, lui, est un tableau **mono-colonne** : une ligne pleine largeur par archer. Une page
+   de classement porte donc `ceil(noms_par_page / 3)` lignes.
+
+   ⚠️ **Ce point est né d'un bloquant de revue, et il n'est pas cosmétique.** Appliquer la valeur
+   brute à un tableau produisait, *au réglage livré par défaut*, une page trois fois plus haute que
+   l'écran — et comme le §3 interdit précisément tout ascenseur ici, le bas de chaque page n'était
+   pas « mal lu », il n'était **jamais montré**. La fenêtre avançant ensuite du même pas, les
+   archers concernés ne seraient jamais sortis de la journée : le défaut exact que cette US existe
+   pour corriger, réintroduit par son propre correctif. Deux axes l'ont calculé séparément depuis le
+   CSS du dépôt.
+
+   Le ratio n'est donc **pas un goût** : c'est le nombre de colonnes de la liste projetée, et il est
+   nommé (`NOMS_PAR_LIGNE_PROJETEE`) à côté de la règle CSS qui le fonde. Un troisième champ
+   persisté (`lignes_par_page_classement`) a été écarté : migration, DTO et champ de formulaire de
+   plus pour un écran que personne n'a encore vu, alors qu'une conversion dérivée suffit et se
+   prouve (règle 16).
 
 ## Pourquoi la pagination plutôt qu'un défilé continu
 
@@ -102,7 +121,8 @@ montre*, jamais *comment une liste se lit de loin*.
 - Le module de pagination et l'en-tête de page **quittent `features/routage/`** pour `shared/ui/` :
   deux consommateurs réels dans deux features, donc une remontée sur preuve, pas une abstraction sur
   pari (même geste qu'`etatRencontre` en `E05US027`). Sans cela, `competition → routage` aurait
-  ajouté une arête d'enchevêtrement que la carte du code mesure (`DETTE-067`).
+  ajouté une arête d'enchevêtrement que la carte du code mesure (`DETTE-083`, signal
+  `features-enchevetrees`).
 - ⚠️ **Le cumul du temps d'affichage devient indexé par vue.** Il tenait un compteur unique au
   module, sous le postulat « une seule surface projetée par onglet, donc pas de collision
   possible » — vrai tant qu'**une** vue paginait. Avec deux, les pages du classement avançaient
@@ -118,13 +138,17 @@ montre*, jamais *comment une liste se lit de loin*.
 
 | Décision | Module qui l'applique | Vérifié |
 |---|---|---|
-| §1 — tête figée à 3 sur l'écran projeté | `frontend/src/features/competition/VueClassement.tsx` (`teteFigee`, fonction pure exportée) — gardée par `VueClassement.test.tsx` | oui |
-| §2 — le lien tête figée ↔ pagination est **mécanique** : sans réglage, la tête retombe à zéro | `frontend/src/features/competition/VueClassement.tsx` (`teteFigee(filtrable, mode, pagination)` — le cas `!filtrable && pagination === undefined` rend `0`) | oui — c'est le garde-fou contre la régression « 3 lignes et rien d'autre » |
-| §1 et §3 — le reste tourne page par page, sans aucune propriété de défilement | `frontend/src/features/competition/TableClassement.tsx` (`ResteProjete`) · `frontend/src/app/App.css` (`.classement__pages`, volontairement sans `overflow-y`) | oui |
+| §1 — tête figée à 3 sur l'écran projeté | `frontend/src/features/competition/teteFigee.ts` (`teteFigee`, fonction pure), **appelée depuis** `frontend/src/features/competition/VueClassement.tsx` — gardée par `frontend/src/features/competition/teteFigee.test.ts` | oui |
+| §2 — le lien tête figée ↔ pagination est **mécanique** : sans réglage, la tête retombe à zéro | `frontend/src/features/competition/teteFigee.ts` (`teteFigee(filtrable, mode, pagination)` — le cas `!filtrable && pagination === undefined` rend `0`) — gardé **des deux côtés** : `frontend/src/features/competition/teteFigee.test.ts` pour la règle, `frontend/src/features/competition/VueClassement.test.tsx` pour le fait que la valeur atteigne réellement la table | oui — c'est le garde-fou contre la régression « 3 lignes et rien d'autre » |
+| §1 et §3 — le reste tourne page par page, sans aucune propriété de défilement | `frontend/src/features/competition/TableClassement.tsx` (`ResteProjete`, `NOMS_PAR_LIGNE_PROJETEE`) | oui |
+| §3 — la feuille de style ne réintroduit aucun ascenseur sur la surface projetée | `frontend/src/app/App.css` (`.classement__pages`, volontairement sans `overflow-y`) | oui — vérifié à la lecture de la règle, non contrôlable symbole par symbole |
 | §3 — un seul mécanisme, partagé par les deux vues | `frontend/src/shared/ui/pagination.ts` (`nombreDePages`, `pageCourante`, `trancheDePage`, `rateauDePage`) · `frontend/src/shared/ui/EnteteDePage.tsx`, consommés par `TableClassement.tsx` **et** `features/routage/VueAffectations.tsx` | oui — deux consommateurs réels |
 | §3 — le cadre à ascenseur subsiste sur les surfaces manipulables | `frontend/src/features/competition/TableClassement.tsx` (branche `pagination === undefined`) · `.classement__defilement` | oui — inchangé par cette US |
 | §4 — le réglage est **par écran**, persisté | `backend/domain/ecran.py` (`ReglagePages`, bornes et défaut) · `backend/domain/poste.py` (`pages`, `avec_pages`, `pages_effectives`) · `backend/migrations/versions/0051_reglage_pages_ecran.py` | oui |
-| §4 — servi comme **état lu**, avec l'affichage, y compris sous contrôle | `backend/application/ecrans.py` (`AffichageEcran.pages`, renseigné dans les deux branches) · `backend/api/v1/ecrans.py` (`AffichageReponse.pages`) — gardé par `test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages` | oui |
-| §4 — geste d'admin **distinct** du déroulé | `backend/api/v1/ecrans.py` (`PUT …/ecrans/{poste_id}/pages`) · `backend/application/postes.py` (`regler_pages_ecran`) · `frontend/src/features/ecrans/Ecrans.tsx` (`ReglagePagesProjetees`) — gardé par `test_regler_les_pages_ne_touche_pas_au_deroule` | oui |
-| Le défaut front et le défaut serveur ne peuvent pas diverger | `frontend/src/shared/ui/pagination.test.ts` (« les défauts du module et ceux du serveur ») · `backend/tests/test_domain_ecran.py` (`test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler`) | oui — deux tests appariés, un de chaque côté |
-| Le cumul de temps d'affichage est **indexé par vue** | `frontend/src/shared/ui/pagination.ts` (`useSecondesDAffichage(cle)`, `Map<string, number>`) — clés `'classement'` et `'affectations'` | oui |
+| §4 — servi comme **état lu**, avec l'affichage, y compris sous contrôle | `backend/application/ecrans.py` (`AffichageEcran.pages`, renseigné dans les deux branches) · `backend/api/v1/ecrans.py` (`AffichageReponse.pages`) — gardé par `backend/tests/test_ecrans_api.py` (`test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages`) | oui |
+| §4 — geste d'admin **distinct** du déroulé | `backend/api/v1/ecrans.py` (`PUT …/ecrans/{poste_id}/pages`) · `backend/application/postes.py` (`regler_pages_ecran`) · `frontend/src/features/ecrans/Ecrans.tsx` (`ReglagePagesProjetees`) — gardé par `backend/tests/test_ecrans_api.py` (`test_regler_les_pages_ne_touche_pas_au_deroule`) | oui |
+| Le défaut front et le défaut serveur sont **épinglés chacun de son côté** | `frontend/src/shared/ui/pagination.test.ts` (« les défauts du module et ceux du serveur ») · `backend/tests/test_domain_ecran.py` (`test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler`) | oui — mais ⚠️ **ce sont deux littéraux indépendants qui s'entre-citent, pas une contrainte de compilation** : changer le défaut serveur *et* son propre test laisse le test front vert. Le garde-fou est de **lecture** ; le dire est le prix de la crédibilité de cette ligne (correctif de revue) |
+| Le cumul de temps d'affichage est **indexé par vue** | `frontend/src/shared/ui/pagination.ts` (`useSecondesDAffichage(cle: CleDePage)`, `Map<string, number>`) — clés `'classement'` et `'affectations'`, **énumérées par le type** `CleDePage` pour qu'une 3ᵉ vue ne puisse pas réutiliser une clé prise par copier-coller | oui |
+| §5 — le réglage compte des **noms de liste**, converti en **lignes de tableau** pour le classement | `frontend/src/features/competition/TableClassement.tsx` (`NOMS_PAR_LIGNE_PROJETEE`, `parPage`) — gardé par `frontend/src/features/competition/TableClassement.test.tsx` (« convertit les NOMS réglés en LIGNES de tableau ») | oui |
+| Le câblage `affichage.pages` → vue projetée est **épinglé à chaque étage** | `frontend/src/features/salle/EcranSalle.test.tsx` (le témoin de `VueClassement` recopie sa prop) · `frontend/src/features/competition/VueClassement.test.tsx` | oui — les deux vérifiés **en réintroduisant le défaut**, pas seulement au vert |
+| Les bornes du formulaire d'admin et celles du domaine sont épinglées | `frontend/src/features/ecrans/api.test.ts` · `backend/tests/test_domain_ecran.py` (`test_les_bornes_du_reglage_de_pages_sont_inclusives`) | oui — même réserve d'honnêteté que pour les défauts : garde-fou de lecture, pas de compilation |

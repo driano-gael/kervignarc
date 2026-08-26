@@ -134,6 +134,12 @@
   height: 100%;
 }
 
+/* « Mettre le maximum d'archers sur une page quand même » : colonnes CSS plutôt qu'une grille figée
+   — le nombre de colonnes s'ajuste à la largeur réelle du vidéoprojecteur, et une page de 40 noms
+   remplit l'écran sans qu'aucun nombre de colonnes n'ait été codé en dur.
+   ⚠️ Ces **trois colonnes** sont l'unité dans laquelle se compte `noms_par_page` : le classement
+   projeté, qui est un tableau mono-colonne, divise le réglage par autant (`NOMS_PAR_LIGNE_PROJETEE`
+   dans `TableClassement.tsx`). Changer ce nombre ici oblige à l'y changer aussi. */
 .salle-pages__noms {
   flex: 1;
   margin: 0;

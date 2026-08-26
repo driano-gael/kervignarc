@@ -39,4 +39,10 @@ Le jour de votre premier essai : allez au fond de la salle, regardez l'écran, e
 champs jusqu'à ce que les noms se lisent de là où vous êtes. Notez les valeurs qui marchent — elles
 serviront de point de départ pour les tournois suivants.
 
+Un repère utile pour ce réglage : « noms par page » se compte sur la **liste d'affectations**, qui
+range ses noms sur trois colonnes. Le classement, lui, met **un archer par ligne** avec ses scores :
+il en affiche donc environ **trois fois moins** par page. C'est voulu — sans cela, une page de
+classement serait plus haute que l'écran et sa moitié basse ne s'afficherait jamais. Réglez en
+regardant la liste de noms, le classement suivra.
+
 Le scénario de test complet est dans `docs/fonctionnel/E16US009.md`.

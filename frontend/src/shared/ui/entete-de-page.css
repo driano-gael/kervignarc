@@ -1,3 +1,9 @@
+/* ⚠️ Le bloc BEM `salle-pages__` est **coupé en deux couches** : l'en-tête de page (titre, compteur,
+   râteau) vit ici, en `shared/ui/`, parce que deux features s'en servent ; la mise en page de la
+   liste de noms elle-même (`.salle-pages__noms`, `__nom*`) est restée dans
+   `features/salle/salle.css`, qui est sa seule consommatrice. Qui cherche `salle-pages__` doit
+   regarder les deux fichiers (relevé en revue : le déplacement avait laissé un commentaire ici et
+   sa règle là-bas). */
 /* En-tête d'une page projetée (P06, retour maquettes du 04/08/2026).
    ————————————————————————————————————————————————————————————————————————————————————————————————
    Déplacé de `features/salle/salle.css` par E16US009, avec le composant `EnteteDePage` qu'il
@@ -42,7 +48,3 @@
   font-size: 0.55em;
   color: var(--text-secondary);
 }
-
-/* « Mettre le maximum d'archers sur une page quand même » : colonnes CSS plutôt qu'une grille figée
-   — le nombre de colonnes s'ajuste à la largeur réelle du vidéoprojecteur, et une page de 40 noms
-   remplit l'écran sans qu'aucun nombre de colonnes n'ait été codé en dur. */

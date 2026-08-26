@@ -134,14 +134,14 @@ describe('useSecondesDAffichage — un cumul PAR vue', () => {
   })
 
   it('ne reporte PAS le temps d’une vue sur celui d’une autre', () => {
-    const premiere = renderHook(() => useSecondesDAffichage('vue-a'))
+    const premiere = renderHook(() => useSecondesDAffichage('classement'))
     act(() => {
       vi.advanceTimersByTime(30_000)
     })
     expect(premiere.result.current).toBeGreaterThan(0)
     premiere.unmount()
 
-    const autre = renderHook(() => useSecondesDAffichage('vue-b'))
+    const autre = renderHook(() => useSecondesDAffichage('affectations'))
 
     // La seconde vue démarre à zéro : elle n'a jamais été affichée.
     expect(autre.result.current).toBe(0)
@@ -152,13 +152,13 @@ describe('useSecondesDAffichage — un cumul PAR vue', () => {
     // L'autre moitié de la propriété : le temps d'affichage se **cumule** d'un passage à l'autre,
     // sans quoi la séquence de pages repartirait de la page 1 à chaque tour du déroulé et les
     // dernières pages ne sortiraient jamais.
-    const premier = renderHook(() => useSecondesDAffichage('vue-c'))
+    const premier = renderHook(() => useSecondesDAffichage('test'))
     act(() => {
       vi.advanceTimersByTime(20_000)
     })
     premier.unmount()
 
-    const second = renderHook(() => useSecondesDAffichage('vue-c'))
+    const second = renderHook(() => useSecondesDAffichage('test'))
     act(() => {
       vi.advanceTimersByTime(1_000)
     })

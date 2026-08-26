@@ -238,6 +238,28 @@ def test_le_reglage_de_pages_est_independant_de_la_cadence_de_vue() -> None:
     l'autre, et le domaine ne l'impose pas.
     """
     vue = VueProgrammee(VueEcran.CLASSEMENT, 30)
-    pages = ReglagePages(noms_par_page=40, cadence_page_s=45)
 
-    assert pages.cadence_page_s > vue.cadence_s
+    # ⚠️ Ce qui est réellement en jeu est une **absence de contrainte croisée** : construire une
+    # cadence de page plus longue que celle de la vue ne lève pas. Comparer les deux littéraux
+    # entre eux — ce que faisait la première rédaction — ne pouvait pas échouer, quoi qu'il
+    # advienne du code (relevé par deux axes de revue).
+    pages = ReglagePages(noms_par_page=40, cadence_page_s=vue.cadence_s + 15)
+
+    assert pages.cadence_page_s == 45
+
+
+def test_les_bornes_du_reglage_de_pages_sont_inclusives() -> None:
+    """Les valeurs **annoncées** aux deux bouts doivent être acceptées, pas seulement approchées.
+
+    ⚠️ Les tests de refus ci-dessus sont paramétrés par `NOMS_PAR_PAGE_MIN`/`MAX` : ils suivent donc
+    mécaniquement toute modification des constantes et ne prouvent rien sur les bornes elles-mêmes.
+    Si `__post_init__` s'écrivait `MIN < x < MAX`, toute la suite resterait verte alors que le
+    formulaire d'admin (`<input min={5} max={100}>`) proposerait des valeurs refusées en 422.
+    D'où des **littéraux** ici, et leur miroir front dans
+    `frontend/src/features/ecrans/api.test.ts`.
+    Correctif de revue (axe B).
+    """
+    assert ReglagePages(noms_par_page=5, cadence_page_s=5).noms_par_page == 5
+    assert ReglagePages(noms_par_page=100, cadence_page_s=300).noms_par_page == 100
+    assert ReglagePages(noms_par_page=40, cadence_page_s=5).cadence_page_s == 5
+    assert ReglagePages(noms_par_page=40, cadence_page_s=300).cadence_page_s == 300

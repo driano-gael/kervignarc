@@ -160,8 +160,16 @@ function CarteEcran({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
  * ⚠️ **Deux durées coexistent sur cette carte, et l'écran doit le dire.** Juste au-dessus, la
  * cadence d'une *vue* : combien de temps l'écran reste sur le classement. Ici, la cadence d'une
  * *page* : à quel rythme la liste tourne **à l'intérieur** de cette vue, quand elle ne tient pas
- * d'un coup. Les libellés portent donc chacun leur objet — « Cadence de la vue » / « Durée d'une
- * page » — parce que « cadence », seul, désignerait indifféremment les deux.
+ * d'un coup. Le libellé visible porte donc ici son objet — « **Durée d'une page** » — parce que
+ * « cadence », seul, désignerait indifféremment les deux.
+ *
+ * ⚠️ **La symétrie n'est pas parfaite, et il ne faut pas la promettre** : côté déroulé, le libellé
+ * « Cadence de la vue N » est `sr-only` (une rangée compacte par étape), donc **seul un lecteur
+ * d'écran l'entend** ; un organisateur voyant lit le sous-titre « Déroulé » et un champ de secondes
+ * nu. C'est le bloc entier qui désambiguïse pour lui, pas un libellé. *(La première rédaction
+ * affirmait deux libellés visibles se faisant face — relevé par l'axe adversarial. Rendre celui du
+ * déroulé visible ferait le meilleur écran, mais c'est une retouche de l'existant, donc une autre
+ * US.)*
  *
  * **Deux valeurs et un seul bouton** : `ReglagePages` est indivisible côté serveur (une route, un
  * corps), et un enregistrement partiel obligerait la frontière à décider quoi faire de la moitié
@@ -205,7 +213,9 @@ function ReglagePagesProjetees({ ecran, tournoiId }: { ecran: Ecran; tournoiId: 
           moitié est le geste d'aller voir au fond de la salle. */}
       <p className="carte__aide">
         À ajuster en regardant l’écran depuis le fond de la salle : ces valeurs dépendent du
-        projecteur, de la distance et de la longueur des noms.
+        projecteur, de la distance et de la longueur des noms. « Noms par page » se compte sur la
+        liste d’affectations, qui s’affiche sur trois colonnes ; le classement, à un archer par
+        ligne, en montre environ trois fois moins par page.
       </p>
       <button
         type="button"

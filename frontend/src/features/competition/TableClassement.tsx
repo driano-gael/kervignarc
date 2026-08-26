@@ -189,10 +189,21 @@ export function TableClassement({
  * qui suffit ici (correctif de revue, sans pattern : les trois listes restent côte à côte). */
 const NB_COLONNES_LECTURE = 8
 
-/** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
- * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
- * ne peut plus décaler l'une par rapport à l'autre. ⚠️ Toute colonne ajoutée ici se compte aussi
- * dans `NB_COLONNES_LECTURE` et se dessine dans `Colonnes`. */
+/** Combien de **noms** de liste projetée valent une **ligne** de classement, en hauteur d'écran.
+ *
+ * Le réglage de l'écran compte des noms tels que la page d'affectations les dispose :
+ * `.salle-pages__noms { columns: 3 22ch }`, donc trois colonnes — 40 noms y tiennent sur ~14 lignes.
+ * Le classement, lui, est un tableau **mono-colonne** : une ligne par archer, pleine largeur. À
+ * valeur égale, une page de classement serait donc ~3 fois plus haute que la page de noms pour
+ * laquelle le réglage a été calibré, et `.classement__pages` n'a **aucun ascenseur** (choix
+ * d'ADR-0098 : personne ne fait défiler un vidéoprojecteur). Ce qui déborde n'est pas « mal lu »,
+ * il n'est **jamais montré** — et comme la fenêtre avance ensuite du même pas, les archers du bas
+ * de chaque page ne sortiraient jamais de la journée.
+ *
+ * Le ratio vient donc du CSS, pas d'un goût : c'est le nombre de colonnes de `.salle-pages__noms`.
+ * Bloquant trouvé en revue (deux axes, arithmétiques indépendantes) — E16US009. */
+const NOMS_PAR_LIGNE_PROJETEE = 3
+
 /** Le reste du classement **projeté**, page après page (E16US009).
  *
  * Distinct du cadre défilant, et rendu par un composant à part pour une raison mécanique : il tient
@@ -216,9 +227,12 @@ function ResteProjete({
   corps: (source: LigneClassement[]) => ReactElement
 }) {
   const secondes = useSecondesDAffichage('classement')
-  const total = nombreDePages(lignes.length, pagination.noms_par_page)
+  // Le réglage compte des noms sur trois colonnes ; ici chaque archer prend une ligne pleine
+  // largeur. Sans cette conversion, le bas de chaque page tomberait sous le bord de l'image.
+  const parPage = Math.max(1, Math.ceil(pagination.noms_par_page / NOMS_PAR_LIGNE_PROJETEE))
+  const total = nombreDePages(lignes.length, parPage)
   const index = pageCourante(total, secondes, pagination.cadence_page_s)
-  const page = trancheDePage(lignes, index, pagination.noms_par_page)
+  const page = trancheDePage(lignes, index, parPage)
   // Le râteau se calcule sur les **noms**, comme pour les affectations : c'est lui qui répond à
   // « mon nom est-il sur cette page ». Le classement est trié par rang, pas par nom — le râteau
   // n'est donc pas un intervalle alphabétique ici, et l'afficher tromperait. On ne le passe pas.
@@ -238,6 +252,10 @@ function ResteProjete({
   )
 }
 
+/** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
+ * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
+ * ne peut plus décaler l'une par rapport à l'autre. ⚠️ Toute colonne ajoutée ici se compte aussi
+ * dans `NB_COLONNES_LECTURE` et se dessine dans `Colonnes`. */
 function EnTetes({ admin }: { admin: boolean }) {
   return (
     <tr>

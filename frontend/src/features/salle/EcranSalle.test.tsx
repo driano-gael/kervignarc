@@ -37,6 +37,9 @@ vi.mock('../phases/api', async (importOriginal) => ({
 }))
 // Le déroulé de l'écran : on impose une rotation qui ne passe **jamais** par `en_cours`, c'est-à-dire
 // exactement le déroulé par défaut d'un écran neuf.
+// ⚠️ `pages` fait partie du décor **depuis E16US009** : sans lui, la doublure servait un affichage
+// dépourvu du réglage, donc l'écran empruntait la branche d'avant l'US et le câblage neuf n'était
+// épinglé nulle part (correctif de revue, trois axes).
 vi.mock('../ecrans/hooks', () => ({
   useAffichageEcran: () => ({
     data: {
@@ -45,14 +48,21 @@ vi.mock('../ecrans/hooks', () => ({
       vues: [{ vue: 'classement', cadence_s: 30 }],
       deroule_repli: [{ vue: 'classement', cadence_s: 30 }],
       reste_s: null,
+      pages: { noms_par_page: 40, cadence_page_s: 20 },
     },
     dataUpdatedAt: 0,
     isError: false,
   }),
 }))
 // Témoins : ces vues font leurs propres requêtes, hors sujet ici.
+//
+// ⚠️ Celui-ci **recopie sa prop `pagination`** au lieu de la jeter. Un témoin muet laisserait passer
+// la suppression de `pagination={pages}` dans `EcranSalle.tsx` : `tsc` ne voit pas une propriété
+// fournie et jamais consommée, et la salle retomberait sans bruit sur le rendu d'avant l'US.
 vi.mock('../competition/VueClassement', () => ({
-  VueClassement: () => <div data-testid="classement" />,
+  VueClassement: (props: { pagination?: unknown }) => (
+    <div data-testid="classement" data-pagination={JSON.stringify(props.pagination ?? null)} />
+  ),
 }))
 vi.mock('../placement/PlanCiblesPublic', () => ({
   PlanCiblesDeSalle: () => <div data-testid="plan-cibles" />,
@@ -154,6 +164,26 @@ describe('EcranSalle — l’annonce de pause est hors rotation (CA E05US034)', 
     expect(
       await screen.findByText(/le tir est suspendu par l’organisation pour/i),
     ).toHaveTextContent(/système suisse/i)
+  })
+})
+
+describe('EcranSalle — le réglage de pages descend jusqu’aux vues (CA E16US009)', () => {
+  it('transmet `pages` de l’affichage servi à la vue projetée', async () => {
+    // ⚠️ **Le maillon que la première rédaction d'E16US009 n'épinglait pas** (correctif de revue).
+    // Le réglage traverse `EcranSalle` → `VueDeSalle` → `VueClassement` → `TableClassement` ; les
+    // deux extrémités étaient testées, ce point de montage-ci ne l'était pas. Retirer
+    // `pagination={pages}` d'`EcranSalle.tsx` laissait toute la suite verte, et l'écran de salle
+    // revenait sans bruit au rendu d'avant l'US — le mode de défaillance de `DETTE-085`.
+    vi.mocked(getDeparts).mockResolvedValue([CRENEAU])
+    vi.mocked(getAvancement).mockResolvedValue([])
+
+    monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    const vue = await screen.findByTestId('classement')
+    expect(JSON.parse(vue.dataset.pagination ?? 'null')).toEqual({
+      noms_par_page: 40,
+      cadence_page_s: 20,
+    })
   })
 })
 

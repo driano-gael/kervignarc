@@ -3652,7 +3652,8 @@ window.ATLAS.decisions = {
     "E05US032",
     "E05US034",
     "E05US035",
-    "E16US002"
+    "E16US002",
+    "E16US009"
    ]
   },
   {
@@ -7823,7 +7824,7 @@ window.ATLAS.decisions = {
   {
    "amende_par": [],
    "date": "2026-08-26",
-   "date_brute": "26/08/2026",
+   "date_brute": "2026-08-26",
    "extrait": "Sur une surface projetée, « défiler » se réalise par une pagination temporelle — jamais par un cadre à ascenseur. Concrètement : 1. La tête figée passe à 3 sur l'écran de salle (P07 au mot près), et le reste du classement tourne page par page, exactement comme les listes de noms d'affectations depuis E07US008. 2. Le lien est mécanique : la tête figée n'est portée à 3 que si un réglage de pages est fourni. Sans lui, elle retombe à zéro et l'écran rend le classement entier. On ne peut donc pas livrer par inadvertance « 3 lignes et rien d'autre », qui est la régression que E16US005 avait refusée. 3. Un seul mécanisme de lecture longue sur cette surface : le module de pagination, ses fonctions […]",
    "fichier": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
    "identifiant": "0098",
@@ -7853,10 +7854,7 @@ window.ATLAS.decisions = {
       "ReglagePagesProjetees",
       "test_regler_les_pages_ne_touche_pas_au_deroule"
      ],
-     "symboles_absents": [
-      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages",
-      "test_regler_les_pages_ne_touche_pas_au_deroule"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7867,9 +7865,7 @@ window.ATLAS.decisions = {
       "AffichageReponse.pages",
       "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages"
      ],
-     "symboles_absents": [
-      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7880,9 +7876,7 @@ window.ATLAS.decisions = {
       "ReglagePagesProjetees",
       "test_regler_les_pages_ne_touche_pas_au_deroule"
      ],
-     "symboles_absents": [
-      "test_regler_les_pages_ne_touche_pas_au_deroule"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7925,7 +7919,22 @@ window.ATLAS.decisions = {
      "chemin": "backend/tests/test_domain_ecran.py",
      "existe": true,
      "symboles": [
-      "test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler"
+      "test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler",
+      "test_les_bornes_du_reglage_de_pages_sont_inclusives"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_ecrans_api.py",
+     "existe": true,
+     "symboles": [
+      "AffichageEcran.pages",
+      "AffichageReponse.pages",
+      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages",
+      "regler_pages_ecran",
+      "ReglagePagesProjetees",
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7933,23 +7942,61 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/app/App.css",
      "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/TableClassement.test.tsx",
+     "existe": true,
      "symboles": [
-      "ResteProjete"
+      "NOMS_PAR_LIGNE_PROJETEE",
+      "parPage"
      ],
      "symboles_absents": [],
-     "verifiable": false
+     "verifiable": true
     },
     {
      "chemin": "frontend/src/features/competition/TableClassement.tsx",
      "existe": true,
      "symboles": [
-      "ResteProjete"
+      "ResteProjete",
+      "NOMS_PAR_LIGNE_PROJETEE",
+      "parPage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/VueClassement.test.tsx",
+     "existe": true,
+     "symboles": [
+      "affichage.pages",
+      "VueClassement"
      ],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/competition/VueClassement.tsx",
+     "existe": true,
+     "symboles": [
+      "teteFigee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/teteFigee.test.ts",
+     "existe": true,
+     "symboles": [
+      "teteFigee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/teteFigee.ts",
      "existe": true,
      "symboles": [
       "teteFigee"
@@ -7965,9 +8012,26 @@ window.ATLAS.decisions = {
       "ReglagePagesProjetees",
       "test_regler_les_pages_ne_touche_pas_au_deroule"
      ],
-     "symboles_absents": [
-      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/ecrans/api.test.ts",
+     "existe": true,
+     "symboles": [
+      "test_les_bornes_du_reglage_de_pages_sont_inclusives"
      ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.test.tsx",
+     "existe": true,
+     "symboles": [
+      "affichage.pages",
+      "VueClassement"
+     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -7998,7 +8062,8 @@ window.ATLAS.decisions = {
       "nombreDePages",
       "pageCourante",
       "trancheDePage",
-      "rateauDePage"
+      "rateauDePage",
+      "CleDePage"
      ],
      "symboles_absents": [],
      "verifiable": true

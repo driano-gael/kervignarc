@@ -3,7 +3,8 @@
 // ⚠️ **Ce module vivait dans `features/routage/` jusqu'à E16US009.** Il en est sorti quand une
 // **deuxième** feature s'est mise à paginer (`competition`, le classement projeté) : le laisser où
 // il était aurait créé une arête `competition → routage` — une dépendance entre features que rien
-// ne justifie, et exactement ce que la carte du code mesure (`DETTE-067`). Deux consommateurs
+// ne justifie, et exactement ce que la carte du code mesure (`DETTE-083`, signal
+// `features-enchevetrees`). Deux consommateurs
 // réels, donc `shared/`, comme `etatRencontre` en E05US027 ; pas une abstraction sur pari.
 //
 // **Ceci ferme une question que le code disait ouverte.** `VueAffectations` porte cet avertissement
@@ -33,7 +34,7 @@ import { useEffect, useState } from 'react'
  * Le type vit ici et non dans `features/ecrans/api.ts` — dont il est pourtant le miroir d'un DTO —
  * parce que ses **consommateurs** sont les deux vues paginées, dans deux features distinctes. L'y
  * laisser aurait fait importer `features/ecrans` par `features/competition` et `features/routage` :
- * deux arêtes entre features pour un type de deux entiers (cf. `DETTE-067`). */
+ * deux arêtes entre features pour un type de deux entiers (cf. `DETTE-083`). */
 export interface ReglagePages {
   noms_par_page: number
   cadence_page_s: number
@@ -144,7 +145,26 @@ export function rateauDePage(noms: readonly string[]): { debut: string; fin: str
  */
 const secondesAffichees = new Map<string, number>()
 
-export function useSecondesDAffichage(cle: string): number {
+/** Les vues projetées qui paginent, **énumérées** plutôt que nommées par une chaîne libre.
+ *
+ * Une faute de frappe ou un copier-coller qui réutiliserait `'classement'` pour une troisième vue
+ * réintroduirait en silence le défaut que cette US vient de corriger — deux vues qui font avancer
+ * les pages l'une de l'autre. Rien, ni `tsc` ni un test, ne l'aurait vu sur un `string`.
+ * `'test'` est là pour les tests du module, qui doivent pouvoir isoler des cumuls sans mentir sur
+ * les clés réelles (correctif de revue, axes C1 et C2). */
+export type CleDePage = 'classement' | 'affectations' | 'test'
+
+/** ⚠️ **`cle` est lue au montage pour l'état initial, et suivie ensuite par l'effet seul.**
+ *
+ * Un appelant qui changerait de clé **sans démonter** repartirait donc du cumul de la vue
+ * précédente. Aucun ne le fait aujourd'hui — les deux clés sont des littéraux, dans deux composants
+ * distincts, et l'écran de salle démonte la vue à chaque bascule —, et la parade est chez
+ * l'appelant : un `key={cle}` force le remontage.
+ *
+ * *(Une revue a suggéré de resynchroniser l'état en tête d'effet ; c'est un `setState` synchrone
+ * dans un effet, que `react-hooks/set-state-in-effect` refuse — à raison : il déclenche un rendu en
+ * cascade pour un cas que personne n'atteint. La note vaut mieux que le correctif.)* */
+export function useSecondesDAffichage(cle: CleDePage): number {
   const [ecoulees, setEcoulees] = useState(() => secondesAffichees.get(cle) ?? 0)
   useEffect(() => {
     const debut = Date.now() / 1000

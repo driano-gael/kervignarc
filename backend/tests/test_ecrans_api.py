@@ -550,12 +550,38 @@ def test_l_affichage_sans_jeton_est_refuse(app_session: FastAPI) -> None:
 
 
 def test_le_pilotage_est_reserve_a_l_admin(app_session: FastAPI) -> None:
+    """⚠️ **Cette énumération est à élargir par toute US qui ajoute une route de pilotage.**
+
+    Un test qui liste des routes ne voit pas celles qu'on vient d'écrire : il reste vert par
+    construction, ce qui en fait le pire des garde-fous — il donne l'air d'avoir vérifié. E16US009 a
+    ajouté `PUT …/pages` sans l'y inscrire (relevé en revue, axe B) ; `PUT …/deroule` y manquait
+    depuis E07US004. Les deux sont ci-dessous.
+
+    *(Le filet mécanique reste `test_acces_public.py`, dont
+    `test_toutes_les_ecritures_exigent_une_session` énumère les écritures depuis le schéma OpenAPI :
+    lui n'oublie rien. Ce test-ci vaut pour la lecture — il dit noir sur blanc quelles routes du
+    pilotage sont fermées.)*
+    """
     with TestClient(app_session) as client:
         assert client.get("/api/v1/tournois/1/ecrans").status_code == 401
         assert client.post("/api/v1/tournois/1/ecrans", json={"libelle": "X"}).status_code == 401
         assert (
             client.post(
                 "/api/v1/tournois/1/ecrans/1/controle", json={"vue": "classement"}
+            ).status_code
+            == 401
+        )
+        assert (
+            client.put(
+                "/api/v1/tournois/1/ecrans/1/deroule",
+                json={"deroule": {"vues": [{"vue": "classement", "cadence_s": 30}]}},
+            ).status_code
+            == 401
+        )
+        assert (
+            client.put(
+                "/api/v1/tournois/1/ecrans/1/pages",
+                json={"pages": {"noms_par_page": 40, "cadence_page_s": 20}},
             ).status_code
             == 401
         )

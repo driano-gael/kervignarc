@@ -19,7 +19,7 @@ import pytest
 from application.ecrans import ServiceEcrans
 from application.erreurs import PosteIntrouvable, PosteNEstPasUnEcran, SaisieHorsCible
 from application.postes import ServicePostes
-from domain.ecran import Consigne, SequenceVues, VueEcran, VueProgrammee
+from domain.ecran import Consigne, ReglagePages, SequenceVues, VueEcran, VueProgrammee
 from domain.poste import Poste, PosteId, TypePoste
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from infrastructure.postes.consignes import RegistreConsignesMemoire
@@ -229,6 +229,12 @@ def test_un_ecran_d_un_autre_tournoi_n_existe_pas(ctx: Contexte) -> None:
         ctx.service.prendre_le_controle(
             autre.id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
         )
+
+    # ⚠️ **Le scoping vaut pour CHAQUE geste de pilotage, pas seulement la prise de contrôle.**
+    # E16US009 ajoute `regler_pages_ecran` : sans cette assertion, un admin d'un tournoi voisin
+    # aurait pu régler l'écran d'un autre sans qu'aucun test ne le voie (relevé en revue, axe B).
+    with pytest.raises(PosteIntrouvable):
+        ctx.service_postes.regler_pages_ecran(autre.id, ecran.id, ReglagePages.par_defaut())
 
 
 def test_un_ecran_se_supprime(ctx: Contexte) -> None:

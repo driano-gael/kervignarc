@@ -19,7 +19,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
 import { TableClassement } from './TableClassement'
@@ -207,7 +207,21 @@ describe('TableClassement — le reste projeté', () => {
   const DIX = Array.from({ length: 10 }, (_, i) =>
     ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 600 - i }),
   )
-  const REGLAGE = { noms_par_page: 4, cadence_page_s: 20 }
+  // ⚠️ **12 noms réglés donnent 4 LIGNES par page**, pas 12 : le réglage compte des noms tels que la
+  // page d'affectations les dispose — sur trois colonnes CSS — et le classement est un tableau
+  // mono-colonne. Bloquant de revue : à valeur brute, le bas de chaque page tombait sous le bord de
+  // l'image, sur un écran où personne ne peut faire défiler.
+  const REGLAGE = { noms_par_page: 12, cadence_page_s: 20 }
+
+  // Le cumul de `useSecondesDAffichage` lit `Date.now()` et vit **au module**, donc il persiste
+  // d'un test à l'autre dans ce fichier : sans horloge figée, ces assertions vérifieraient surtout
+  // que la suite tourne vite. Oracle maîtrisé (règle 9) — relevé en revue.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   it('rend UNE page du reste, avec son compteur, et laisse la suite hors écran', () => {
     const { container } = render(
@@ -233,6 +247,39 @@ describe('TableClassement — le reste projeté', () => {
     expect(container.textContent).not.toContain('ARCHER7 ')
     // Le compteur de pages, que P06 demande explicitement (« oui pour le compteur de pages »).
     expect(container.querySelector('.salle-pages__compteur')).not.toBeNull()
+  })
+
+  it('convertit les NOMS réglés en LIGNES de tableau, sans quoi la page déborde de l’écran', () => {
+    // ⚠️ **Le bloquant de la revue d'E16US009**, et il tombait au réglage livré par défaut.
+    // `noms_par_page` compte des noms tels que `.salle-pages__noms { columns: 3 22ch }` les
+    // dispose — trois colonnes, donc ~14 lignes de haut pour 40 noms. Le classement est un tableau
+    // mono-colonne : 40 noms y feraient 40 lignes, soit environ trois fois la hauteur disponible
+    // sur un 1920x1080, et `.classement__pages` n'a **aucun ascenseur** (ADR-0098 §3 : personne ne
+    // fait défiler un vidéoprojecteur). Le bas de chaque page n'aurait pas été « mal lu », il
+    // n'aurait **jamais été montré** — et la fenêtre avançant du même pas, les archers concernés ne
+    // seraient jamais sortis de la journée. C'est le défaut que l'US existe pour corriger.
+    //
+    // Ce test est l'oracle du ratio : 12 noms réglés → 4 lignes par page. Sans la conversion,
+    // `nombreDePages(7, 12)` vaudrait 1 — donc page unique, aucun compteur, ARCHER7 à l'écran.
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    // 7 lignes de reste découpées par 4 → deux pages, donc un compteur « 1/2 ».
+    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toContain('2')
+    // La 4ᵉ ligne du reste est la dernière de la page 1 ; la 5ᵉ attend son tour.
+    expect(container.textContent).toContain('ARCHER6 ')
+    expect(container.textContent).not.toContain('ARCHER7 ')
   })
 
   it('n’enferme JAMAIS le reste dans un cadre à ascenseur quand il est projeté', () => {

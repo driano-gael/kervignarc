@@ -234,6 +234,15 @@ existent (`0086`, `0088`). Il porte en revanche sa section « Porté dans le cod
 consécutives, chacune rationalisée après coup : un trou non commenté dans cette liste est
 précisément ce qui produit la cinquième — un lecteur qui audite verrait « …0093, 0094 » puis rien.*
 
+⚠️ **`0098` (E16US009, 2026-08-26) n'y figure PAS non plus, et c'est volontaire.** Même motif que
+`0095` : il est d'**IHM** — un écran de salle *montre* un classement, il n'en produit aucun ; le
+moteur sportif ne lit rien du réglage de pages, aucune portée ne change, aucune politique injectable
+n'est en jeu. Il porte sa section « Porté dans le code par », exigée sans condition. *La liste des
+ADR **hors critère** est donc, à ce jour : `0086`, `0088`, `0095`, `0096`, `0098` — écrite ici et
+pas seulement dans chaque ADR concerné, pour la raison même que cette section documente : un trou
+non commenté dans l'énumération se lit comme un oubli, et c'est ainsi qu'on en produit un vrai.*
+*(Inscription réclamée en revue d'E16US009, axe C2 : l'ADR expliquait son exclusion chez lui, pas ici.)*
+
 ✅ **`0094` (E05US029, 21/08/2026) est inscrit du premier coup**, lui aussi hors revue — deux US
 d'affilée, cette fois sans que la précédente ait eu à manquer quoi que ce soit. C'est le premier
 signe que le réflexe tient de lui-même ; deux points ne font pas une tendance, et le constat
