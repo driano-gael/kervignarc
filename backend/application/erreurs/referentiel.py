@@ -75,6 +75,17 @@ class TournoiEnCoursNonSupprimable(ApplicationError):
     code = "tournoi_en_cours_non_supprimable"
 
 
+class LogoIntrouvable(ApplicationError):
+    """Aucun logo à l'emplacement demandé (E16US006) → 404.
+
+    Le consommateur prévu est une balise `<img>`, qui ne lit pas le corps de la réponse : l'intérêt
+    n'est pas le message mais le **contrat** — `{code, message}` (règle 5) sur toutes les réponses,
+    y compris celles dont on croit connaître le seul lecteur.
+    """
+
+    code = "logo_introuvable"
+
+
 class TournoiArchiveNonModifiable(ApplicationError):
     """Écriture refusée sur un tournoi `archivé` — lecture seule définitive (E01US017) → 409.
 

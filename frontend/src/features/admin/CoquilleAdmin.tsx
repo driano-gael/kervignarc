@@ -66,6 +66,7 @@ import { Duels } from '../duels/Duels'
 import { Ecrans } from '../ecrans/Ecrans'
 import { Exports } from '../exports/Exports'
 import { Gabarits } from '../gabarits/Gabarits'
+import { Identite } from '../identite/Identite'
 import { Assemblage } from '../patrimoine/Assemblage'
 import { BlasonsBibliotheque, CategoriesBibliotheque } from '../patrimoine/Bibliotheque'
 import { Deroule } from '../deroule/Deroule'
@@ -286,6 +287,13 @@ function Coquille() {
             <GrainValidation tournoiId={courant.id} />
           </>
         ),
+    },
+    {
+      id: 'identite',
+      libelle: 'Identité visuelle',
+      // « L'identité est une **destination de préparation** » (`D-28`, `P-6`). Placée après
+      // « Barème & validation » : on règle d'abord ce qui se tire, ensuite ce qui s'affiche.
+      rendu: () => courant && <Identite tournoiId={courant.id} />,
     },
     {
       id: 'phases',

@@ -23,3 +23,20 @@ class DepartCourantNonDefini(ApplicationError):
     """
 
     code = "depart_courant_non_defini"
+
+
+class CorpsHorsDeProportion(ApplicationError):
+    """Le corps d'une requête dépasse la coupure de sécurité de la frontière → **413**.
+
+    ⚠️ **Ce n'est pas la règle métier.** Un logo trop lourd, c'est `LogoTropVolumineux` (domaine,
+    422), qui sait dire « ce logo pèse 900 Ko, la limite est de 512 Ko ». Cette erreur-ci est la
+    coupure **en amont** : elle borne ce que le serveur accepte de mettre en mémoire avant même de
+    savoir de quoi il s'agit, et son message reste volontairement muet.
+
+    Vit ici plutôt que dans un module thématique parce qu'elle ne parle d'aucun thème : elle parle
+    de la frontière. Le projet n'a pas de famille `ApiError` distincte (règle 5 la nomme, le code ne
+    l'a jamais matérialisée) et tous les routeurs qui lèvent lèvent des `ApplicationError` — on suit
+    le précédent plutôt que d'ouvrir une taxinomie pour une classe.
+    """
+
+    code = "corps_hors_de_proportion"

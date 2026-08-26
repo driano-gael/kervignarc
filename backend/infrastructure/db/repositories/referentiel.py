@@ -17,11 +17,13 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Sequence
+from typing import assert_never
 
 from sqlalchemy import delete, select, update
 from sqlalchemy import true as sa_true
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from domain.archer import Archer, ArcherId
 from domain.blason import Blason, BlasonId, valider_zones
@@ -32,6 +34,7 @@ from domain.depart import Depart, DepartId
 from domain.entree_audit import EntreeAudit
 from domain.erreurs import DomainError
 from domain.gabarit_salle import GabaritSalle, GabaritSalleId
+from domain.identite import Couleur, EmplacementLogo, IdentiteVisuelle, Logo, TypeLogo
 from domain.inscription import Inscription, InscriptionId
 from domain.patrimoine import OrigineBrique
 from domain.remboursement import (
@@ -51,6 +54,7 @@ from infrastructure.db.models import (
     DepartORM,
     ForfaitORM,
     GabaritSalleORM,
+    IdentiteVisuelleORM,
     InscriptionORM,
     PhaseORM,
     RemboursementORM,
@@ -1468,3 +1472,248 @@ def _supprimer_si_illisible(session: Session, barrage_id: int) -> None:
     except DomainError:
         session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id == barrage_id))
         session.execute(delete(BarrageORM).where(BarrageORM.id == barrage_id))
+
+
+class IdentiteVisuelleRepositorySQL:
+    """Adapter SQLite du port `IdentiteVisuelleRepository` (E16US006, ADR-0097).
+
+    ⚠️ **Les colonnes de blob ne sont jamais chargées par `reglages`.** La projection y est écrite
+    colonne par colonne plutôt que sur l'entité : `session.get(IdentiteVisuelleORM, …)` aurait
+    ramené jusqu'à un mégaoctet d'octets pour répondre « quelle est la couleur d'accent ? », à
+    chaque affichage public. C'est la raison d'être de la table séparée ; la perdre ici l'annulerait
+    silencieusement, sans qu'aucun test fonctionnel ne bouge.
+    """
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def reglages(self, tournoi_id: TournoiId) -> IdentiteVisuelle:
+        """Relit accents et présence des logos, sans charger un seul octet de fichier."""
+        try:
+            with self._session_factory() as session:
+                return _lire_reglages_identite(session, tournoi_id)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de l'identité visuelle.") from exc
+
+    def logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> Logo | None:
+        """Relit les octets d'**un** logo (l'autre emplacement n'est pas chargé)."""
+        colonne_octets, colonne_type = _colonnes_du_logo(emplacement)
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(colonne_octets, colonne_type).where(
+                        IdentiteVisuelleORM.tournoi_id == tournoi_id
+                    )
+                ).one_or_none()
+                if ligne is None:
+                    return None
+                octets, type_mime = ligne
+                if octets is None or type_mime is None:
+                    return None
+                # `TypeLogo(...)` lève une `ValueError` — pas une `SQLAlchemyError` — si la colonne
+                # porte un type inconnu : elle traverserait l'adapter et sortirait en 500 non typé.
+                # Le partage du fichier (cf. `_vers_tournoi`) veut qu'une ligne que le domaine
+                # refuse soit une incohérence **technique**.
+                try:
+                    format_du_logo = TypeLogo(type_mime)
+                except ValueError as exc:
+                    raise InfrastructureError("Type de logo illisible en base.") from exc
+                # Reconstruction **directe**, sans repasser par `Logo.deposer` : les octets ont déjà
+                # été validés au dépôt, et les revalider ici transformerait une base écrite sous une
+                # version antérieure des règles en erreur 500 à la lecture. Le domaine valide ce qui
+                # **entre**, l'adapter relit ce qui est **déjà entré** — même partage que partout
+                # ailleurs dans ce fichier.
+                return Logo(contenu=octets, type_logo=format_du_logo)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture du logo.") from exc
+
+    def empreinte_du_logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> str | None:
+        """Relit la seule empreinte — **aucun octet ne remonte** (cf. port)."""
+        colonne = _colonne_d_empreinte(emplacement)
+        try:
+            with self._session_factory() as session:
+                ligne = session.execute(
+                    select(colonne).where(IdentiteVisuelleORM.tournoi_id == tournoi_id)
+                ).one_or_none()
+                return None if ligne is None else ligne[0]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture de l'empreinte du logo.") from exc
+
+    def enregistrer_accents(
+        self, tournoi_id: TournoiId, identite: IdentiteVisuelle
+    ) -> IdentiteVisuelle:
+        """Écrit les deux accents ; crée la ligne au besoin, **sans toucher aux logos**.
+
+        ⚠️ Écrit `accent_primaire` / `accent_secondaire` — les accents **choisis** — et non
+        `identite.accents`, qui est la propriété *effective* : celle-ci retombe sur les couleurs du
+        club quand rien n'a été choisi, si bien qu'`enregistrer_accents(id, IdentiteVisuelle())`
+        aurait persisté `#b71918` / `#1d1d1b` et fait basculer `reglee` à `true` sans que personne
+        n'ait rien réglé. C'était, un étage plus bas, exactement le défaut que cette US a chassé du
+        service — inatteignable par les appelants du jour, armé pour le premier « revenir aux
+        couleurs du club ». Le défaut appartient à l'agrégat, et à lui seul (cf. port).
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = _ligne_identite_ou_creation(session, tournoi_id)
+                ligne.accent_primaire = _hex_ou_rien(identite.accent_primaire)
+                ligne.accent_secondaire = _hex_ou_rien(identite.accent_secondaire)
+                session.commit()
+                return _lire_reglages_identite(session, tournoi_id)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement des accents.") from exc
+
+    def enregistrer_logo(
+        self, tournoi_id: TournoiId, emplacement: EmplacementLogo, logo: Logo | None
+    ) -> IdentiteVisuelle:
+        """Remplace ou efface **un** emplacement ; l'autre et les accents ne bougent pas.
+
+        Les trois colonnes du triplet sont écrites **ensemble** — octets, type MIME et empreinte —
+        dans les deux sens. C'est ici, et uniquement ici, que tient l'invariant « les trois `NULL`,
+        ou aucune » que le schéma ne pose pas.
+        """
+        try:
+            with self._session_factory() as session:
+                ligne = _ligne_identite_ou_creation(session, tournoi_id)
+                _ecrire_le_logo(ligne, emplacement, logo)
+                session.commit()
+                return _lire_reglages_identite(session, tournoi_id)
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec d'enregistrement du logo.") from exc
+
+
+def _ligne_identite_ou_creation(session: Session, tournoi_id: TournoiId) -> IdentiteVisuelleORM:
+    """Renvoie la ligne d'identité du tournoi, en la créant **sans accents** si besoin.
+
+    La création à la volée permet de déposer un logo **sans avoir réglé de couleur** : les deux
+    gestes sont indépendants à l'écran, ils doivent l'être en base. Et la ligne naît avec ses
+    accents à `NULL`, jamais avec ceux du club — y semer un défaut ferait qu'un tournoi dont on a
+    seulement déposé le logo se présenterait comme « réglé ». C'est exactement le défaut qu'un test
+    d'API a relevé sur la première rédaction.
+    """
+    ligne = session.get(IdentiteVisuelleORM, tournoi_id)
+    if ligne is None:
+        ligne = IdentiteVisuelleORM(tournoi_id=tournoi_id)
+        session.add(ligne)
+    return ligne
+
+
+def _lire_reglages_identite(session: Session, tournoi_id: TournoiId) -> IdentiteVisuelle:
+    """Projection **sans blob** : les accents éventuels, et la seule *présence* de chaque logo.
+
+    On projette les **empreintes** — de courtes chaînes — plus un `IS NOT NULL` sur chaque blob,
+    évalué par SQLite : la présence se lit des unes, la version des autres, et aucun octet ne
+    remonte
+    jusqu'à Python. Un `len(...) > 0` côté Python les aurait tous chargés pour n'en garder qu'un
+    booléen.
+
+    Aucune ligne rend l'identité **vide** — pas `None` : un tournoi a toujours une identité, elle
+    est simplement entièrement héritée. C'est l'agrégat qui porte ce défaut
+    (`IdentiteVisuelle.accents`), pas cet adapter.
+    """
+    ligne = session.execute(
+        select(
+            IdentiteVisuelleORM.accent_primaire,
+            IdentiteVisuelleORM.accent_secondaire,
+            IdentiteVisuelleORM.logo_evenement_empreinte,
+            IdentiteVisuelleORM.logo_club_empreinte,
+            # Toujours **sans** blob : `is_not(None)` s'évalue dans SQLite, les octets ne remontent
+            # pas. Sert uniquement à confronter les deux lectures de « y a-t-il un logo ? ».
+            IdentiteVisuelleORM.logo_evenement.is_not(None),
+            IdentiteVisuelleORM.logo_club.is_not(None),
+        ).where(IdentiteVisuelleORM.tournoi_id == tournoi_id)
+    ).one_or_none()
+    if ligne is None:
+        return IdentiteVisuelle()
+    primaire, secondaire, empreinte_evenement, empreinte_club, a_evenement, a_club = ligne
+    # ⚠️ Deux lectures pour un même fait, depuis que l'empreinte existe : cette projection déduit la
+    # présence de l'empreinte, la route des octets la déduit du blob. Une ligne où elles divergent
+    # ferait dire « aucun logo » à `/identite` pendant que `/identite/logos/{…}` en sert un — sur la
+    # seule paire de routes que l'écran de salle appelle ensemble. SQLite ne sait pas exprimer
+    # l'invariant (pas de `CHECK` posé) ; on le vérifie donc ici, au seul endroit qui voit les deux.
+    for empreinte, present in ((empreinte_evenement, a_evenement), (empreinte_club, a_club)):
+        if (empreinte is None) != (not present):
+            raise InfrastructureError("Identité visuelle incohérente en base.")
+    # `Couleur.depuis_hex` lève une `DomainError` : sur une valeur écrite hors du chemin normal
+    # (édition manuelle, restauration partielle), elle traverserait l'infra et sortirait en **422**
+    # sur une lecture **publique** — en recopiant au passage la valeur de base dans le message
+    # rendu au client. C'est une incohérence technique, donc un 500 typé : même partage que
+    # `_vers_tournoi` en tête de ce module, qui documente déjà ce piège pour `GET /tournois`.
+    try:
+        accent_primaire = None if primaire is None else Couleur.depuis_hex(primaire)
+        accent_secondaire = None if secondaire is None else Couleur.depuis_hex(secondaire)
+    except DomainError as exc:
+        raise InfrastructureError("Identité visuelle illisible en base.") from exc
+    return IdentiteVisuelle(
+        accent_primaire=accent_primaire,
+        accent_secondaire=accent_secondaire,
+        empreintes={
+            emplacement: empreinte
+            for emplacement, empreinte in (
+                (EmplacementLogo.EVENEMENT, empreinte_evenement),
+                (EmplacementLogo.CLUB, empreinte_club),
+            )
+            if empreinte is not None
+        },
+    )
+
+
+def _hex_ou_rien(couleur: Couleur | None) -> str | None:
+    """Forme persistée d'un accent **choisi** : sa notation `#rrggbb`, ou `NULL` s'il n'y en a pas.
+
+    Une fonction plutôt qu'un ternaire écrit deux fois, pour que « absent en base = rien de choisi »
+    n'ait qu'une seule écriture.
+    """
+    return None if couleur is None else couleur.hex
+
+
+def _ecrire_le_logo(
+    ligne: IdentiteVisuelleORM, emplacement: EmplacementLogo, logo: Logo | None
+) -> None:
+    """Écrit le triplet (octets, type MIME, empreinte) : les trois ensemble, ou trois `NULL`.
+
+    ⚠️ Nommément, et non par `setattr(ligne, colonne.key, …)`. La clé y était une `str` : ni le nom
+    de la colonne ni le type de la valeur n'étaient vérifiés, si bien que l'invariant le plus
+    fragile du schéma — « les deux `NULL`, ou aucune », que SQLite ne sait pas exprimer — était
+    précisément le seul endroit du module hors de portée de `mypy --strict` (relevé en revue).
+    L'appariement reste écrit d'un seul endroit, ce qui était l'argument de la version d'origine.
+    """
+    octets = None if logo is None else logo.contenu
+    type_mime = None if logo is None else logo.type_logo.value
+    empreinte = None if logo is None else logo.empreinte
+    if emplacement is EmplacementLogo.EVENEMENT:
+        ligne.logo_evenement = octets
+        ligne.logo_evenement_type = type_mime
+        ligne.logo_evenement_empreinte = empreinte
+    elif emplacement is EmplacementLogo.CLUB:
+        ligne.logo_club = octets
+        ligne.logo_club_type = type_mime
+        ligne.logo_club_empreinte = empreinte
+    else:  # pragma: no cover — `assert_never` fait de l'oubli une erreur de typage
+        assert_never(emplacement)
+
+
+def _colonne_d_empreinte(emplacement: EmplacementLogo) -> InstrumentedAttribute[str | None]:
+    """La colonne d'empreinte d'un emplacement — pour la lire **seule**, sans son blob."""
+    if emplacement is EmplacementLogo.EVENEMENT:
+        return IdentiteVisuelleORM.logo_evenement_empreinte
+    if emplacement is EmplacementLogo.CLUB:
+        return IdentiteVisuelleORM.logo_club_empreinte
+    assert_never(emplacement)
+
+
+def _colonnes_du_logo(
+    emplacement: EmplacementLogo,
+) -> tuple[InstrumentedAttribute[bytes | None], InstrumentedAttribute[str | None]]:
+    """Le couple (octets, type MIME) de l'emplacement, **pour la lecture** (`select`).
+
+    L'écriture passe par `_ecrire_le_logo`, qui nomme les colonnes : ici, ce sont les attributs
+    eux-mêmes qu'il faut, pour construire une projection sans charger les octets.
+    """
+    if emplacement is EmplacementLogo.EVENEMENT:
+        return IdentiteVisuelleORM.logo_evenement, IdentiteVisuelleORM.logo_evenement_type
+    if emplacement is EmplacementLogo.CLUB:
+        return IdentiteVisuelleORM.logo_club, IdentiteVisuelleORM.logo_club_type
+    # `assert_never` comme sur le chemin d'écriture : un `return` de repli lisait silencieusement
+    # les colonnes du club pour un troisième emplacement, alors que mypy voyait l'oubli à
+    # l'écriture.
+    assert_never(emplacement)

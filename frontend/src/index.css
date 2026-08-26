@@ -42,6 +42,15 @@
   --brand-border: #cc1c1b; /* 3,01:1  dérivée DV-05             */
   --brand-text: #e84e4d; /* 4,52:1  dérivée DV-05             */
 
+  /* Marque **secondaire** — `accent-2` du CDC design §3.6 (« Rouge club #B71918 + anthracite »).
+     Posée par E16US006 : jusque-là, un seul accent existait alors que la charte en décrit deux, si
+     bien qu'un tournoi n'avait aucune couleur d'appoint à régler. Mêmes trois usages que la marque
+     primaire, mêmes seuils — l'anthracite du club **est** le fond du thème sombre, d'où un contour
+     et un texte forcément dérivés (contraste 1:1 avec `--surface-0` sans cela). */
+  --brand-2-surface: #1d1d1b; /* charte — APLAT SEULEMENT (1:1 sur le fond) */
+  --brand-2-border: #686860; /* 3,00:1  dérivée DV-05             */
+  --brand-2-text: #85857c; /* 4,54:1  dérivée DV-05             */
+
   /* États — l'alerte est ambre (`DV-03`), jamais rouge. */
   --danger: #ffb000; /* 9,22:1  */
   --danger-strong: #ffd400; /* 11,79:1 */
@@ -52,6 +61,7 @@
      marque — c'est ce que faisait le produit (`color: var(--bg)` sur `background: var(--accent)`),
      et `maquettes/assets/systeme.css` le signalait comme une divergence assumée. */
   --sur-brand: #ffffff;
+  --sur-brand-2: #ffffff;
   --sur-danger: #1d1d1b;
   --sur-success: #0a2a22;
 
@@ -76,12 +86,19 @@
   --brand-border: #b71918;
   --brand-text: #b71918;
 
+  /* Marque secondaire — en clair, l'anthracite tient partout (16,88:1) : les trois se confondent,
+     exactement comme le rouge du club plus haut. */
+  --brand-2-surface: #1d1d1b;
+  --brand-2-border: #1d1d1b;
+  --brand-2-text: #1d1d1b;
+
   --danger: #9f6d00; /* 4,50:1 — l'ambre du sombre tombe à 1,83:1 ici */
   --danger-strong: #7a5400;
   --success: #0c7a61; /* ⟦DÉRIVÉ⟧ absent du CDC design §3.3.4 — adopté par ADR-0074 */
   --info: #0b6e9e; /* ⟦DÉRIVÉ⟧ absent du CDC design §3.3.4 — adopté par ADR-0074 */
 
   --sur-brand: #ffffff;
+  --sur-brand-2: #ffffff;
   --sur-danger: #ffffff;
   --sur-success: #ffffff;
 
@@ -110,12 +127,17 @@
     --brand-border: #b71918;
     --brand-text: #b71918;
 
+    --brand-2-surface: #1d1d1b;
+    --brand-2-border: #1d1d1b;
+    --brand-2-text: #1d1d1b;
+
     --danger: #9f6d00;
     --danger-strong: #7a5400;
     --success: #0c7a61;
     --info: #0b6e9e;
 
     --sur-brand: #ffffff;
+    --sur-brand-2: #ffffff;
     --sur-danger: #ffffff;
     --sur-success: #ffffff;
 

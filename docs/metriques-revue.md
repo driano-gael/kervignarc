@@ -34,6 +34,9 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-26 | `E16US006` (3ᵉ passe, sur les correctifs) | 23 | +1102/−211 | ~10 min | ~46 min | B (14:11→14:38) | bloquant:0 **majeur:3** mineur:4 suggestion:2 | bloquant:0 **majeur:4** mineur:6 suggestion:3 | — *(non rejoué : ses deux majeurs de la 2ᵉ passe étaient partagés avec D, et le remède qu'il préconisait est celui qui a été implémenté ; A, B et C2 étaient, eux, rendus obligatoires par la procédure)* | bloquant:0 **majeur:3** mineur:8 suggestion:2 | bloquant:0 **majeur:6** mineur:5 suggestion:4 | **aucun bloquant** — mais **A et D trouvent, chacun à l'exécution et indépendamment, que le durcissement de la 2ᵉ passe est encore écrit contre les exemples du rapport** : `_PREFIXE_XML` exigeait `[a-z]`, donc `<_x:script>` franchissait *tout*, y compris ce que la 1ʳᵉ rédaction attrapait. D montre en plus un **rétrécissement net** — les entités internes ne sont plus refusées mais toujours pas développées, donc une charge coupée en deux entités passe là où la 2ᵉ rédaction la bloquait. B ajoute le manquement que personne n'avait vu : les arbitrages tranchés en cours d'US n'étaient **pas reversés dans `stories/`** (règle 9) | 3 |
+| 2026-08-26 | `E16US006` (2ᵉ passe, sur les correctifs) | 29 | +1105/−123 | ~11 min | ~33 min | D (12:56→13:19) | bloquant:0 majeur:0 mineur:3 suggestion:3 | bloquant:0 majeur:3 mineur:8 suggestion:5 | bloquant:0 majeur:2 mineur:6 suggestion:2 | bloquant:0 majeur:3 mineur:4 suggestion:2 | bloquant:0 **majeur:8** mineur:5 | **aucun bloquant** — mais **cinq des huit majeurs de D sont des trous DÉPLACÉS par les correctifs eux-mêmes** : la denylist SVG élargie tombait entièrement sur un préfixe de namespace (`<svg:script>` franchissait *aussi* les quatre formes que la 1ʳᵉ rédaction attrapait), le contrôle PNG avait été **relâché pour accommoder un test** de bourrage, et les deux garde-fous front réécrits restaient franchissables par la forme la plus idiomatique de leur cible (`setProperty`, `lazy(() => import(…))`). Trois autres remarques — dont une de chaque axe de grille — visaient des **assertions qui annonçaient plus qu'elles ne prouvaient** (la cascade, la minimalité, le nom accessible) | 2 |
+| 2026-08-26 | `E16US006` (absorbe `E01US016`) | 43 | +4619/−220 | ~10 min | ~32 min | D (11:26→11:58) | bloquant:0 majeur:2 mineur:7 suggestion:1 | bloquant:0 majeur:3 mineur:7 suggestion:3 | bloquant:0 majeur:2 mineur:5 suggestion:6 | bloquant:0 majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:6 mineur:4 | **D seul** — et c'est le fait de la passe : les **quatre axes de grille ont rendu zéro bloquant**. D a trouvé qu'un tournoi dont on avait effleuré l'écran d'identité devenait *définitivement* indéracinable (500), en **exécutant** `POST` → `PUT identité` → `DELETE` avec la baseline 204 sur le même code. Les quatre autres avaient lu la FK nue **et son marqueur `DETTE-001`**, et conclu à une aggravation régulière | 1 |
 | 2026-08-24 | `E16US005` (1ʳᵉ passe) | 14 | +1089/−161 | ~14 min | ~12 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 3 |
 | 2026-08-24 | `E16US005` (2ᵉ passe, sur les correctifs) | 11 | +533/−94 | ~13 min | ~15 min | D (18:32→18:47) | *non rejoué* (aucun fichier de porte touché) | bloquant:0 **majeur:4** mineur:4 suggestion:2 | **bloquant:1** majeur:1 mineur:4 suggestion:2 | bloquant:0 **majeur:1** mineur:7 suggestion:1 | **bloquant:1** majeur:4 mineur:6 suggestion:1 | **C1 et D** (1 bloquant convergent : la troncature efface la catégorie et le blason, donc la moitié RG-4 du CA — B l'avait gradé majeur en annonçant l'escalade si la mesure confirmait ; elle a confirmé). **D seul** : le seuil corrigé n'a pas franchi son propre critère (96 px à 1366 contre 125 avant l'US) et crée une falaise au point de bascule | 3 |
 | 2026-08-24 | `E16US005` (3ᵉ passe, sur les correctifs) | 11 | +618/−188 | ~11 min | ~19 min | D (19:12→19:31) | *non lancé* (front seul, règles 1-8 sans objet) | bloquant:0 **majeur:3** mineur:5 suggestion:3 | bloquant:0 **majeur:3** mineur:4 suggestion:2 | bloquant:0 **majeur:3** mineur:5 | **bloquant:2** majeur:3 mineur:7 suggestion:2 | **D seul** pour les deux bloquants : la bande [1249, 1377] px *toujours* pire qu'avant l'US (le même bloquant qu'en 2ᵉ passe, déclaré clos et non clos), et le `min-height` posé en correctif de 2ᵉ passe qui régressait **23 écrans hors périmètre**. Convergence des quatre axes sur le blason encore illisible et sur les chiffres faux du tracker | 3 (sortie) |
@@ -510,3 +513,87 @@ de registre avec marqueur dans le fichier concerné, si. Corollaire de pilotage 
 US dont le livrable est visuel, vérifier qu'on peut le rendre** — c'est un prérequis de poste, au
 même titre qu'un venv qui marche.
 
+**37. Un marqueur de dette peut faire passer un bloquant pour une aggravation réglementaire.**
+E16US006 a posé une clé étrangère **nue** vers `tournoi.id`, commentée `# DETTE-001` aux deux bons
+endroits — application impeccable de la procédure d'aggravation du registre. Les quatre axes de
+grille l'ont lue ainsi et n'ont rien relevé de bloquant ; l'un d'eux a même relevé, à juste titre,
+que la **ligne du registre** n'avait pas été élargie. Aucun n'a demandé si la FK devait être nue.
+
+Le mécanisme est intéressant parce qu'il n'a rien d'une inattention : le marqueur **répond d'avance**
+à la question « pourquoi ce raccourci ? », et un relecteur qui trouve une réponse cohérente à
+l'endroit prévu passe à la suite. La dette assumée est un dispositif de confiance ; ce qui a manqué
+ici, c'est que la table en question — une ligne, sans descendance, créée au premier réglage et jamais
+retirée — n'était pas de la même famille que la descendance non tranchée du registre, et que le
+raccourci **cassait un cas utilisateur maintenant** (`CLAUDE.md` § Dette : ce n'est alors plus de la
+dette, c'est un bloquant).
+
+Ce qui l'a trouvé : l'axe adversarial, **à l'exécution**, avec une baseline sur le même code (`DELETE`
+d'un brouillon sans identité → 204 ; avec identité → 500). Aucune lecture ne l'aurait produit, parce
+que la lecture menait au marqueur et que le marqueur était bien écrit.
+
+Deux conséquences déjà portées : la section *Détail* de `DETTE-001` dit désormais que la procédure
+d'aggravation « dit quoi faire d'une FK qu'on **choisit** de laisser nue, et ne dispense pas de se
+demander si on doit la laisser nue » ; et la revue confirme, pour la deuxième fois consécutive
+(cf. n° 36), que **l'axe D ne se raccourcit pas** — 4 axes de grille, 10 majeurs pertinents, zéro
+bloquant.
+
+**38. Un durcissement qui n'est pas attaqué déplace le trou au lieu de le fermer.**
+La 2ᵉ passe d'E16US006 a rendu **zéro bloquant et seize majeurs — treize distincts** une fois les
+convergences fusionnées —, dont cinq portaient sur des correctifs de la 1ʳᵉ. Le motif est constant : chaque durcissement avait été écrit **contre les
+exemples du rapport précédent**, donc il fermait exactement ces exemples-là et rien d'autre. La
+denylist SVG en est le cas d'école — élargie à SMIL, aux entités et aux références externes, elle
+restait écrite sur des balises **non préfixées**, si bien que `<svg:script>` franchissait le tout,
+*y compris les quatre formes que la toute première rédaction attrapait déjà*. Le durcissement avait
+mathématiquement **réduit** la couverture réelle.
+
+Ce qui distingue les remarques qui ont tenu de celles qui se sont effondrées n'est ni l'axe ni la
+sévérité : c'est **l'exécution**. Les huit majeurs de l'axe D ont tous été obtenus en déposant des
+fichiers, en instrumentant `setAttribute`, en posant des mutants — jamais en lisant. Les axes de
+grille, qui lisaient, ont trouvé les défauts *documentaires* (une ligne d'ADR fausse, un marqueur non
+inscrit, une procédure commentée au lieu d'être amendée) et les ont trouvés très bien ; aucun n'a vu
+qu'un préfixe de deux caractères annulait la barrière.
+
+Trois gestes en sont tirés, tous portés dans le dépôt plutôt qu'en prose :
+- **tout durcissement porte désormais son corpus d'ACCEPTATION**, pas seulement son corpus
+  d'attaque. La 2ᵉ rédaction refusait un texte accentué échappé, une bannière `&copy;`, un
+  `<use href="#symbole">` et — comble — le bloc `<!ENTITY ns_extend>` qu'Illustrator écrit dans le
+  `<!DOCTYPE>` qu'on venait d'accepter *au motif qu'Illustrator le produit*. Un refus injustifié
+  casse le CA aussi sûrement qu'une acceptation de trop ;
+- **on n'ajuste jamais un contrôle pour accommoder un test.** `IEND` avait cessé d'être exigée en
+  fin de fichier parce qu'un test de poids bourrait *après* la fin ; vingt octets suffisaient alors
+  à reconstruire un polyglotte. Le bourrage a été déplacé, la contrainte rendue au code ;
+- **une assertion qui décrit une preuve doit être exécutée pour la prouver.** Trois assertions de la
+  1ʳᵉ correction ne pouvaient pas échouer — un 404 rendu par la disparition du tournoi et non par la
+  cascade, une médiane de clarté qui ne détectait qu'un dépassement de 100 %, un `textContent` qui
+  n'inclut jamais un `alt`. Les trois étaient écrites en toutes lettres comme la moitié qui compte.
+
+**39. Trois passes, trois rédactions du même contrôle, et deux d'entre elles ont RÉDUIT la
+couverture — le seul geste qui ait jamais fermé un trou est l'exécution.**
+La denylist SVG d'E16US006 a été écrite quatre fois. À chaque passe, la rédaction suivante était
+composée **en lisant le rapport précédent**, donc contre ses exemples : la 2ᵉ a fermé `<script>` et
+`javascript:` littéraux mais restait aveugle aux préfixes de namespace, si bien qu'elle couvrait
+*moins* que la 1ʳᵉ ; la 3ᵉ a fermé `<svg:script>` mais a exigé `[a-z]` en tête de préfixe, laissant
+passer `<_x:script>`, et a cessé de refuser les entités sans se mettre à les développer — deuxième
+rétrécissement. Deux fois sur trois, « durcir » a diminué la protection.
+
+Ce qui a fini par fonctionner n'est pas une meilleure regex, c'est un **changement de méthode**, et
+il tient en trois gestes, tous portés dans le dépôt :
+- **écrire le motif contre la grammaire, pas contre les exemples.** `_PREFIXE_XML` ne dit plus quels
+  caractères un préfixe peut porter, il dit « tout ce qui précède un `:` » ; la clause de référence
+  externe ne s'ancre plus sur `<use>`/`<image>` mais sur **toute valeur d'`href`**. Un motif qui
+  énumère se trompera encore ; un motif qui délègue au nom **local** ne peut plus être contourné par
+  un préfixe ;
+- **balayer toutes les lectures du fichier**, pas ses octets. Entités et références de caractère sont
+  deux façons d'écrire la même chaîne, elles se combinent, et le parseur les résout toutes avant
+  d'interpréter quoi que ce soit. `_lectures_possibles` matérialise cela ;
+- **tout durcissement porte son corpus d'acceptation**, exécuté sur des exports réels — les trois SVG
+  du dépôt compris.
+
+Corollaire de pilotage, à lire avec la leçon n° 38 : **le nombre de passes n'est pas la mesure de la
+qualité d'une revue ; la proportion de remarques obtenues par exécution l'est.** Sur les trois passes,
+tous les défauts structurels — le bloquant, les cinq trous déplacés de la 2ᵉ, les six de la 3ᵉ — ont
+été trouvés en déposant des fichiers, en instrumentant `setAttribute`, en posant des mutants ou en
+forçant une sonde SQL. Aucun ne l'a été en lisant. Les axes de grille, eux, ont trouvé ce que
+l'exécution ne montre pas : une ligne d'ADR fausse trois fois de suite, un marqueur de dette non
+inscrit, une procédure commentée au lieu d'être amendée, et un CA qui ne disait plus ce que le code
+faisait. **Les deux moitiés sont nécessaires, et elles ne se remplacent pas.**

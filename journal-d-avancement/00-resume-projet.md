@@ -22,7 +22,10 @@ public le consulte en direct sans compte — jusqu'à suivre un archer et voir s
 remplir volée par volée. Côté organisateur, le **suivi des paiements** (qui a réglé, combien reste-t-il
 dû, par archer et par club) est en place — et une somme déjà encaissée ne disparaît plus en silence :
 annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
-remboursé ou reporté. L'écran de **placement sur les cibles** se lit désormais sur toute la largeur d'un PC — une cible
+remboursé ou reporté. Un tournoi porte enfin **son identité visuelle** : deux logos — celui de l'édition, celui du club
+organisateur — et deux couleurs, dont l'application dérive seule les nuances lisibles, sur l'écran de
+salle et l'appli du public (jamais sur l'outil des bénévoles). L'écran de **placement sur les cibles**
+se lit désormais sur toute la largeur d'un PC — une cible
 par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
 main — de sorte qu'ajuster un plan ne demande plus de quitter l'écran pour savoir qui cause un
 signalement. Deux écrans **« prêt à… »** disent d'un coup d'œil ce qui manque
@@ -536,7 +539,8 @@ Dans l'ordre de valeur prévu par le backlog :
    **lance le tour**, et l'archer voit sa destination — sur la tablette de sa cible s'il est encore
    là, sur son téléphone s'il est parti.*
 3. **Le placement intégral 1→N** (le grand format du classeur 120) est **fait** ; l'**écran de salle**
-   aussi — reste à l'habiller de l'**identité visuelle du tournoi** (E01US016).
+   aussi, et il porte désormais l'**identité visuelle du tournoi** — logos et couleurs (`E01US016`,
+   livrée le 25/08/2026 **sous le numéro `E16US006`**, qui l'a absorbée).
 4. **Confort et robustesse** : import inscript'arc, presets de barèmes, déroulé horaire, sauvegarde
    et restauration.
 
@@ -548,8 +552,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **124 US livrées** sur `main` (mergées, revues, CI verte) à la date du 24/08/2026, la dernière
-  étant `E16US005` — **le plan de cibles tient enfin sur la largeur d'un PC** : une cible par ligne
+- **126 US livrées** sur `main` (mergées, revues, CI verte) à la date du 25/08/2026 — dont deux
+  fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
+  autorité sur le compte) —, la dernière
+  étant `E16US006` — **le tournoi porte ses couleurs et ses logos** : deux logos facultatifs
+  (l'édition, le club organisateur) et deux couleurs, dont l'application **dérive seule** les
+  nuances lisibles en thème sombre comme en thème clair. Elle habille l'écran de salle et l'appli
+  du public, **jamais** l'administration ni la saisie — le jour J, un bénévole n'a pas le temps de
+  réapprendre des repères visuels. Cette US en **absorbe une autre**, `E01US016` (l'identité
+  visuelle), qui n'avait jamais été livrée : réclamer « un second logo » supposait que le premier
+  existe. La précédente était
+  `E16US005` — **le plan de cibles tient enfin sur la largeur d'un PC** : une cible par ligne
   au lieu d'une mosaïque de vignettes, chaque archer affichant son **club**, sa **catégorie** et son
   **blason** sous son nom — soit exactement ce sur quoi l'organisateur arbitre quand l'écran
   signale « mixité non garantie » ou « cloisonnement non respecté » —, et la **réserve** devenue un

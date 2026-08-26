@@ -165,9 +165,13 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
   const COULEUR =
     /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\s*\(|(?<![-\w])(?:white|black|red|green|blue|gr[ae]y|orange|yellow|purple|pink|brown|cyan|magenta|silver|gold|navy|teal|olive|maroon|lime|aqua|fuchsia)(?![-\w])/i
 
-  // Les seules exceptions admises, **nommées une par une avec leur raison**. Une septième
-  // apparaîtrait en échec. Comparaison par **égalité** de sélecteur : un `includes` excusait aussi
-  // `.jauge span.plein` ou `.qr-cible__vignette-large`, c'est-à-dire des règles jamais examinées.
+  // Les seules exceptions admises, **nommées une par une avec leur raison**. Comparaison par
+  // **égalité** de sélecteur : un `includes` excusait aussi `.jauge span.plein` ou
+  // `.qr-cible__vignette-large`, c'est-à-dire des règles jamais examinées.
+  //
+  // Le compte est tenu par une assertion et non par une phrase : « une septième apparaîtrait en
+  // échec » était devenu faux dès qu'E16US006 en a ajouté deux, et dans **ce** fichier un compte
+  // faux est ce qui invite la suivante à passer sans discussion (relevé en revue).
   const COULEURS_ADMISES: Record<string, string> = {
     // Raison **physique** : un QR sur fond sombre ne se scanne pas.
     '.qr-cible__vignette': 'fond blanc obligatoire pour la lecture du QR',
@@ -178,7 +182,20 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
     '.qr-cible__overlay': 'voile d’agrandissement, noir transparent',
     '.dialogue': 'ombre portée, noir transparent',
     '.dialogue::backdrop': 'voile de modale, noir transparent',
+    // Raison **logique** : une vignette d'aperçu doit montrer le rendu du thème qu'elle
+    // représente, pas celui du poste qui la regarde (E16US006, `DV-05` : « aperçu sur les surfaces
+    // réelles »). Peindre avec `var(--surface-0)` ferait s'afficher l'aperçu « thème sombre » en
+    // blanc sur un poste en clair, soit l'inverse de ce qu'un aperçu existe pour faire. Les deux
+    // valeurs sont celles de la charte (`DV-02`), recopiées et non choisies.
+    '.identite__apercu--sombre .identite__scene': 'vignette figée en thème sombre',
+    '.identite__apercu--clair .identite__scene': 'vignette figée en thème clair',
   }
+
+  it('la liste des dérogations n’a pas grandi sans qu’on le remarque', () => {
+    // Le seul contenu de ce test est son **chiffre**. Ajouter une dérogation devient donc un geste
+    // délibéré : il faut venir mettre ce nombre à jour, et donc lire les raisons déjà inscrites.
+    expect(Object.keys(COULEURS_ADMISES)).toHaveLength(8)
+  })
 
   it('aucune couleur littérale hors `index.css`, sauf les exceptions nommées', () => {
     const fautes = features.flatMap(([chemin, source]) =>
@@ -373,6 +390,177 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
           .map((jeton) => `${chemin} — ${selecteurs.join(', ')} — redéfinit ${jeton}`),
       ),
     )
+
+    expect(fautes).toEqual([])
+  })
+})
+
+// ————————————————————————————————————————————————————————————————————————————————————————————————
+
+describe('CA — l’habillage de tournoi ne touche que le public et la salle (D-27, E16US006)', () => {
+  // ⚠️ **Ce bloc transforme une intention en décision.** `HabillageIdentite.tsx` dit de lui-même que
+  // `D-27` « n'est pas tenu par une condition mais par le **montage** » — ce qui est le bon choix de
+  // conception, mais laissait la règle sans aucun gardien : rien n'empêchait une US future
+  // d'importer l'habillage dans `CoquilleAdmin` ou dans un écran de saisie, et **aucun test
+  // n'aurait bougé**. ADR-0097 §5 était donc appliqué sans être gardé — le mode de panne exact
+  // d'ADR-0017 (treize mois), qu'ADR-0075 existe pour ne pas rejouer (relevé en revue).
+  //
+  // Il vit dans ce fichier et non dans `features/identite/` parce que la machinerie de lecture des
+  // sources y est déjà, et parce que c'est bien la même question : **qui a le droit de toucher à la
+  // marque**. Les deux blocs de ce fichier y répondent, l'un pour les jetons, l'autre pour la portée.
+
+  const HABILLEURS = ['features/salle/EcranSalle.tsx', 'features/public/AccueilPublic.tsx']
+
+  // Un seul module a le droit de fabriquer le CSS de marque : l'habillage lui-même, qui EST ce
+  // mécanisme. Les deux habilleurs, eux, passent par lui et n'importent pas `jetons` directement.
+  const PORTEURS_DE_JETONS = ['features/identite/HabillageIdentite.tsx']
+
+  it('seuls l’écran de salle et l’appli publique importent l’habillage', () => {
+    // ⚠️ **Le motif ne s'arrête pas à `from '…'`.** La rédaction précédente exigeait un import
+    // statique, en quotes simples, se terminant exactement par le nom du module : un
+    // `lazy(() => import('../identite/HabillageIdentite'))` — la façon normale de monter un écran
+    // dans une coquille d'admin qu'on veut découper — passait au vert, tout comme des guillemets
+    // doubles ou une extension explicite. Chercher le nom **suivi de sa quote fermante** couvre les
+    // cinq formes, statiques et dynamiques.
+    // ⚠️ **On cherche le NOM, pas le chemin.** Le contrôle demandait « qui importe ce module »,
+    // ce qu'un porteur autorisé peut contourner en le **ré-exportant** : deux lignes
+    // (`export { HabillageIdentite } from '…'` dans l'écran de salle, puis un import depuis l'admin)
+    // habillaient l'admin avec les 29 tests au vert — mutation faite en revue. Un `.js` en fin de
+    // spécificateur ou un alias de chemin suffisaient aussi. L'identifiant nu, lui, apparaît quelle
+    // que soit la route empruntée ; le module qui le définit entre donc dans la liste attendue.
+    const porteurs = features
+      .filter(([, source]) => /\bHabillageIdentite\b/.test(neutraliserCommentaires(source)))
+      .map(([chemin]) => chemin)
+      .sort()
+
+    expect(porteurs, 'D-27 : l’identité du tournoi n’habille jamais l’admin ni la saisie').toEqual(
+      ['features/identite/HabillageIdentite.tsx', ...HABILLEURS].sort(),
+    )
+  })
+
+  it('aucune feature ne court-circuite l’habillage en posant les jetons elle-même', () => {
+    // Le point d'étranglement était à un module de profondeur : `cssDesJetons` suffit à peindre un
+    // conteneur, sans jamais toucher `HabillageIdentite`. Un écran d'admin qui l'importerait
+    // habillerait l'admin avec le contrôle précédent au vert — le garde-fou répondait à « qui monte
+    // l'habillage », pas à la question que ce bloc pose lui-même : **qui a le droit de toucher à la
+    // marque**.
+    // `[^'"]*` et non `[.\w/]*` : un alias de chemin (`@/features/identite/jetons`) franchissait
+    // le second. Aucun alias n'est configuré aujourd'hui — durcissement, pas trou vivant.
+    const porteurs = features
+      .filter(([, source]) =>
+        /['"][^'"]*\/jetons(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
+      )
+      .map(([chemin]) => chemin)
+      .sort()
+
+    expect(porteurs, 'D-27 : les jetons de marque ne se posent qu’en salle et en public').toEqual(
+      [...PORTEURS_DE_JETONS].sort(),
+    )
+  })
+
+  it('les deux habilleurs existent encore sous ces noms', () => {
+    // Garde-fou du garde-fou : renommés, les deux fichiers rendraient l'assertion précédente vraie
+    // par un `[]` vide égal à un `[]` attendu — le mode de panne que ce fichier documente déjà.
+    for (const chemin of HABILLEURS) {
+      expect(SOURCES[chemin], `${chemin} introuvable`).toBeDefined()
+    }
+  })
+})
+
+describe('CA — la strate « marque » est la SEULE personnalisable par tournoi (DV-06, E16US006)', () => {
+  // ⚠️ **Ce bloc ferme un trou que cette US a révélé.** Le contrôle « aucune feuille de feature ne
+  // redéfinit un jeton de la charte » est écrit pour du CSS : il découpe la source en règles
+  // `sélecteur { corps }`. Appliqué à un `.tsx` qui **fabrique** du CSS en chaîne de gabarit, il ne
+  // voit rien — les `${…}` cassent son découpage. `jetons.ts` en fabriquait donc huit sans
+  // qu'aucun test ne s'en aperçoive.
+  //
+  // La réponse n'est pas d'élargir la dérogation, c'est d'encoder la règle qui manquait. `DV-06`
+  // décrit **trois strates** : marque *personnalisable*, sémantique et structure *figées*. Le
+  // garde-fou ne connaissait que « la palette est à un seul endroit », ce qui est vrai de deux
+  // strates sur trois. On vérifie donc ici la vraie règle, sur le seul module autorisé à l'exercer.
+
+  const CHEMIN_JETONS = 'features/identite/jetons.ts'
+  const fabrique = SOURCES[CHEMIN_JETONS] ?? ''
+
+  /**
+   * Une source pose-t-elle ce jeton ? Trois formes, parce qu'il y a trois façons d'écrire une
+   * variable CSS depuis React : `{--x:${c}}` (deux-points collé), `{'--x': c}` (une quote
+   * s'intercale) et `setProperty('--x', c)` (pas de deux-points du tout).
+   *
+   * ⚠️ **Écrit d'un seul endroit, et c'est le correctif.** Le motif avait été élargi pour surveiller
+   * les *autres* features, mais le contrôle qui porte sur `jetons.ts` — le module dont ce bloc dit
+   * qu'il est le seul autorisé à toucher la marque — gardait l'ancienne version étroite. Le trou
+   * n'avait pas été fermé, il avait été déplacé sur le fichier le plus exposé (relevé en revue).
+   */
+  const poseLeJeton = (jeton: string, source: string) =>
+    new RegExp(
+      String.raw`(^|[^\w-])${jeton}\s*['"\`]?\s*:` +
+        '|' +
+        String.raw`setProperty\(\s*['"\`]${jeton}\b`,
+    ).test(neutraliserCommentaires(source))
+
+  // Les huit jetons de marque — quatre par accent. Eux seuls appartiennent à la strate
+  // personnalisable ; tout le reste de la charte est figé.
+  const JETONS_DE_MARQUE = [
+    '--brand-surface',
+    '--brand-border',
+    '--brand-text',
+    '--sur-brand',
+    '--brand-2-surface',
+    '--brand-2-border',
+    '--brand-2-text',
+    '--sur-brand-2',
+  ]
+
+  it('le mécanisme d’identité existe et pose bien des jetons', () => {
+    // Garde-fou du garde-fou : renommé ou supprimé, le fichier rendrait les assertions suivantes
+    // vraies par vacuité — exactement le mode de panne que ce fichier documente déjà deux fois.
+    expect(fabrique, `${CHEMIN_JETONS} introuvable`).not.toBe('')
+    expect(JETONS_DE_MARQUE.filter((jeton) => fabrique.includes(jeton))).toHaveLength(
+      JETONS_DE_MARQUE.length,
+    )
+  })
+
+  it('il ne pose AUCUN jeton hors de la strate marque', () => {
+    // La liste des jetons figés se dérive de la charte elle-même : un jeton ajouté demain à
+    // `index.css` entre de lui-même sous surveillance, sans qu'on ait à y penser.
+    const figes = Object.keys(declinaison("data-theme='dark'").jetons).filter(
+      (jeton) => !JETONS_DE_MARQUE.includes(jeton),
+    )
+    const fautes = figes.filter((jeton) => poseLeJeton(jeton, fabrique))
+
+    expect(
+      fautes,
+      'un tournoi ne redéfinit ni les neutres ni les sémantiques (DV-03, DV-06 verrous 1 et 2)',
+    ).toEqual([])
+  })
+
+  it('aucune AUTRE feature ne fabrique de CSS posant un jeton de la charte', () => {
+    // Le mécanisme est **un**, et il est nommé. Une seconde feature qui se mettrait à émettre des
+    // jetons rouvrirait la palette à plusieurs endroits — ce que tout ce fichier existe pour
+    // empêcher. Détecté sur le texte brut (et non par le découpage en règles CSS), précisément
+    // parce que c'est ce découpage qui ne voit pas les chaînes de gabarit.
+    //
+    // ⚠️ **La borne de gauche a été élargie, et c'est tout l'intérêt de ce commentaire.** La
+    // première rédaction exigeait une apostrophe, un guillemet ou un accent grave *immédiatement*
+    // devant le nom du jeton — c'est-à-dire exactement la mise en forme de `jetons.ts`, qui écrit
+    // une déclaration par chaîne. Une feature qui aurait écrit la **règle entière** dans un seul
+    // gabarit, `${porte}{--surface-0:${c}}` — la forme la plus naturelle, et celle que
+    // `cssDesJetons` emploie lui-même pour assembler ses règles — repeignait le fond du produit
+    // avec la suite au vert. Vérifié par mutation en revue adversariale : 25 tests passés.
+    //
+    // La borne actuelle accepte n'importe quel caractère non identifiant devant le jeton (ou le
+    // début de la source). Le faux positif est quasi impossible : hors fabrication de CSS, un `.ts`
+    // n'a aucune raison d'écrire `--surface-0:`, les commentaires sont déjà blanchis, et un
+    // `var(--surface-0)` n'est pas suivi d'un deux-points.
+    const jetonsDeLaCharte = Object.keys(declinaison("data-theme='dark'").jetons)
+    const fautes = features
+      .filter(([chemin]) => chemin !== CHEMIN_JETONS && /\.tsx?$/.test(chemin))
+      .flatMap(([chemin, source]) =>
+        jetonsDeLaCharte
+          .filter((jeton) => poseLeJeton(jeton, source))
+          .map((jeton) => `${chemin} fabrique ${jeton}`),
+      )
 
     expect(fautes).toEqual([])
   })

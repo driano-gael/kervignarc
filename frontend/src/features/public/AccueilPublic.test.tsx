@@ -24,10 +24,14 @@
 //  3. **L'interrupteur ne doit pas s'afficher là où il n'agit pas** — l'onglet « Suivi », qui est
 //     précisément celui d'atterrissage.
 
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
+import type { Identite } from '../identite/api'
+import { getIdentite } from '../identite/api'
 import { AccueilPublic } from './AccueilPublic'
 
 // ⚠️ Les factories de `vi.mock` sont **hoistées** en tête de fichier : elles ne peuvent référencer
@@ -82,10 +86,29 @@ vi.mock('../placement/PlanCiblesPublic', () => ({
   PlanCiblesPublic: (p: ProprietesTemoin) => rendu('plan', p),
 }))
 vi.mock('../competition/BadgeStatut', () => ({ BadgeStatut: () => null }))
+// E16US006 : l'identité est servie par une doublure typée plutôt que par la neutralisation de
+// `HabillageIdentite` — c'est **son montage** que le dernier bloc vérifie.
+vi.mock('../identite/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../identite/api')>()),
+  getIdentite: vi.fn(),
+}))
+
+/**
+ * ⚠️ **Le `QueryClientProvider` est arrivé avec E16US006**, et son absence était un faux confort.
+ *
+ * Jusqu'ici ce fichier montait `AccueilPublic` sans client : toutes les vues étaient réduites à des
+ * témoins, donc plus rien n'interrogeait le serveur. L'habillage d'identité, lui, est un vrai
+ * consommateur de React Query — comme l'application réelle, qui pose ce provider dans
+ * `app/providers.tsx`. Le harnais rejoint donc la réalité au lieu de s'en écarter.
+ */
+function monter(noeud: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(<QueryClientProvider client={client}>{noeud}</QueryClientProvider>)
+}
 
 async function ouvrirLeTournoi() {
   const utilisateur = userEvent.setup()
-  render(<AccueilPublic />)
+  monter(<AccueilPublic />)
   await utilisateur.click(screen.getByRole('button', { name: 'Choisir le tournoi' }))
   return utilisateur
 }
@@ -176,3 +199,92 @@ describe('AccueilPublic — interrupteur « mes archers / tout »', () => {
     expect(screen.getByTestId('en-cours')).toHaveTextContent('suivis=7,8')
   })
 })
+
+describe('AccueilPublic — l’identité du tournoi habille l’appli publique (CA E16US006, D-27)', () => {
+  // ⚠️ **Test de PLACEMENT** (cf. `DETTE-085`) : monter `HabillageIdentite` seul prouverait qu'il
+  // sait poser des jetons, pas que l'appli publique l'appelle. Ce bloc tombe si on retire
+  // l'habillage ou le logo des vues d'un tournoi.
+
+  beforeEach(() => {
+    useSessionSuivisStore.setState(useSessionSuivisStore.getInitialState())
+    vi.mocked(getIdentite).mockResolvedValue(identitePublique())
+  })
+
+  it('pose les jetons du tournoi une fois un tournoi choisi', async () => {
+    const { container } = monter(<AccueilPublic />)
+    await userEvent.click(screen.getByRole('button', { name: 'Choisir le tournoi' }))
+
+    await waitFor(() =>
+      expect(container.querySelector('style')?.textContent).toContain('--brand-surface:#0b6e9e'),
+    )
+    expect(container.querySelector('[data-identite="identite-1"]')).not.toBeNull()
+  })
+
+  it('n’habille PAS la liste des tournois', async () => {
+    // ⚠️ La liste n'appartient à aucune édition : l'habiller aux couleurs de la première la ferait
+    // mentir. Assertion négative **appariée** à la positive ci-dessus, qui prouve que l'habillage
+    // existe bel et bien une fois un tournoi ouvert.
+    const { container } = monter(<AccueilPublic />)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Choisir le tournoi' })).toBeInTheDocument(),
+    )
+    expect(container.querySelector('[data-identite]')).toBeNull()
+  })
+
+  it('affiche le logo du tournoi à côté de son nom, sans le faire dire au titre', async () => {
+    // ⚠️ **Le logo est ici DÉCORATIF, et c'est une décision, pas un oubli** (correctif de revue).
+    // Il est posé **dans** le `<h2>`, qui dit déjà le nom du tournoi ; or un `alt` s'agrège au nom
+    // accessible de son conteneur. Avec un texte alternatif, un lecteur d'écran annonçait « Logo du
+    // tournoi Logo du club organisateur Challenge des Champions » — l'information est déjà dite
+    // juste à côté, le logo n'en est que la marque visuelle. D'où `alt=""`, qui est la façon
+    // normalisée de dire « cette image n'ajoute rien à lire ».
+    //
+    // Le test tient donc les **deux** moitiés : l'image est bien rendue (sinon la fonctionnalité
+    // aurait disparu sans bruit — c'est la leçon de `DETTE-085`), et le titre ne récite pas les
+    // logos. À l'écran de salle, le logo vit dans un `<header>` et **garde** son `alt` : la
+    // distinction est le lieu, pas le composant.
+    vi.mocked(getIdentite).mockResolvedValue({
+      ...identitePublique(),
+      logos: [{ emplacement: 'evenement', empreinte: 'v1' }],
+    })
+
+    const { container } = monter(<AccueilPublic />)
+    await userEvent.click(screen.getByRole('button', { name: 'Choisir le tournoi' }))
+
+    const titre = await screen.findByRole('heading', { level: 2 })
+    const logo = container.querySelector('img.logo-tournoi')
+    expect(logo, 'le logo doit être rendu').not.toBeNull()
+    // Le segment de version fait partie du contrat : `LogoDuTournoi` est un **second** site
+    // d'appel de `urlDuLogo`, distinct de celui de l'admin. Sans cette assertion, lui passer une
+    // URL stable ne ferait rougir aucun test — sur l'écran que la correction invoque précisément.
+    expect(logo?.getAttribute('src')).toContain('/identite/logos/evenement?v=v1')
+    // ⚠️ Le **nom accessible**, pas `textContent` : celui-ci n'inclut jamais un attribut `alt`, si
+    // bien que l'assertion précédente (`not.toContain('Logo')`) passait déjà AVANT le correctif,
+    // avec `alt="Logo du tournoi"` — une assertion vide, présentée comme la moitié qui compte.
+    // `toHaveAccessibleName` agrège les `alt` : elle rougit au retour en arrière.
+    expect(titre, 'le titre ne récite pas les logos').toHaveAccessibleName('Kervignarc 2026')
+  })
+})
+
+/** Une identité réglée en bleu, distincte du rouge du club : avec les couleurs héritées, un
+ *  habillage absent rendrait exactement le même écran et l'assertion ne prouverait rien. */
+function identitePublique(): Identite {
+  const jetons = { surface: '#0b6e9e', contour: '#0b6e9e', texte: '#3aa8dd', encre: '#ffffff' }
+  const accent = {
+    couleur: '#0b6e9e',
+    sombre: jetons,
+    clair: jetons,
+    contraste_sur_sombre: 4.6,
+    contraste_sur_clair: 4.6,
+  }
+  return {
+    reglee: true,
+    primaire: accent,
+    secondaire: accent,
+    logos: [],
+    seuil_contour: 3,
+    seuil_texte: 4.5,
+    poids_logo_max_octets: 512 * 1024,
+  }
+}

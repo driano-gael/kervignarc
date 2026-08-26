@@ -238,14 +238,36 @@
 
 ---
 
-### E16US006 — Patrimoine : distinguer l'officiel FFTA du local, et porter le logo du club
-*En tant qu'*organisateur, *je veux* voir d'un coup d'œil ce qui vient de la **FFTA** et ce que **j'ai créé**, *afin de* ne pas modifier par erreur une référence officielle.
-- **Contexte** : A06, deux fois la même phrase (critique **et** évolution) : *« une séparation visible des unités officielles FFTA de celles créées par l'administrateur »*. A05 : *« ajouter un champ de plus pour le logo du club qui organise le tournoi, en plus du logo du tournoi ; bien sûr cela reste optionnel »*.
-- **CA — origine visible** : catégories, blasons, clubs et barèmes portent une **origine** (officielle / locale), affichée et filtrable.
-- **CA — logo du club** : un second logo, **facultatif**, distinct du logo d'événement.
-- **CA — question restée sans réponse, à reposer** : *« l'import depuis un fichier (catégories FFTA, liste de clubs) est-il nécessaire ? »* — il conditionne la façon dont l'origine « officielle » est alimentée.
-- **Notes** : demande un **champ de données** sur les référentiels et sur l'identité — donc migration Alembic. Rattaché à E01US016 pour le logo. Relire [ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) : la notion de bibliothèque existe déjà, l'origine s'y ajoute.
-- **Dépend de** : E01US023, E01US016 · **Jalon** : J2 · **Origine** : questionnaires A05, A06, 04/08/2026
+### E16US006 — L'identité visuelle du tournoi : deux logos, deux couleurs
+*En tant qu'*organisateur, *je veux* déposer **le logo de mon tournoi, celui de mon club et mes deux couleurs**, *afin que* l'écran de salle et le téléphone des archers affichent **ma compétition**, pas un logiciel.
+
+> ⚠️ **Fiche recadrée le 25/08/2026 au cadrage, et le recadrage l'a presque entièrement réécrite.**
+> Ce qui suit remplace la version d'origine (« Patrimoine : distinguer l'officiel FFTA du local, et
+> porter le logo du club »), dont **trois CA sur quatre étaient caducs ou déjà livrés** — constat
+> fait en vérifiant dans le code du jour, pas en relisant la fiche. Le détail est en « Ce que le
+> cadrage a démenti », plus bas : c'est la partie qui vaut d'être lue.
+
+- **Contexte** : A05 : *« ajouter un champ de plus pour le logo du club qui organise le tournoi, en plus du logo du tournoi ; bien sûr cela reste optionnel »*. Le premier logo n'existait pas — `E01US016` (identité visuelle) était ⬜ —, d'où la **fusion des deux US** décidée par le commanditaire : livrer « un second logo » sans le premier n'a pas de sens. `DV-06` ferme `Q-D8` : *« identité par tournoi = logo + 2 accents, le système dérive tout le reste »*.
+- **CA — deux logos, tous deux facultatifs** : celui de l'**édition** et celui du **club organisateur**, distincts ; déposer l'un ne remplace pas l'autre. SVG ou PNG, 512 Ko au plus, **utilisés tels quels**.
+- **CA — deux couleurs d'accent, et rien d'autre** : le système **dérive** aplat, contour et variantes de texte, en thème **sombre et clair** — teinte et saturation conservées, clarté ajustée jusqu'au seuil AA (`DV-05`).
+- **CA — contrôle de contraste chiffré et non bloquant** (`P-4`) : la couleur exacte est **acceptée** en aplat, une variante AA est dérivée pour texte et bordure. **Rien n'est jamais refusé** sur un contraste faible — le refuser retirerait sa marque à un club dont la charte est faible. Le message distingue **deux niveaux** *(tranché en cours d'US, reversé ici le 26/08/2026)* : « trop faible pour du texte » quand seul le seuil de 4,5:1 est manqué, « ni même pour un contour » quand celui de 3:1 l'est aussi. Le CA d'origine ne distinguait pas ; l'organisateur qui choisit sa charte, si — les deux situations n'appellent pas la même décision.
+- **CA — un logo corrigé se voit tout de suite** *(tranché en cours d'US, reversé ici le 26/08/2026)* : redéposer un fichier par-dessus un logo existant met la vignette à jour **sans rechargement de page ni vidage de cache**, sur l'écran de préparation comme sur les surfaces déjà ouvertes (`P-3` : modifiable tournoi en cours). L'adresse d'un logo est versionnée par l'**empreinte de son contenu** — cf. [ADR-0097](../docs/adr/0097-un-logo-de-tournoi-vit-en-base-avec-lui.md) § Conséquences.
+- **CA — un logo doit se suffire à lui-même** *(tranché en cours d'US, reversé ici le 26/08/2026)* : « utilisés tels quels » ne veut pas dire « acceptés tels quels ». Un fichier est **refusé, en le disant**, s'il porte de quoi **exécuter** (script, gestionnaire `on…`, lien `javascript:`, `<foreignObject>`, animation SMIL, `@import`) ou d'**aller chercher un document ailleurs** (`<use>`/`<image>`/`url()` pointant hors du fichier, entité ou DTD externe), et si un PNG n'a pas la structure d'un PNG. Restent **acceptées** les formes normales d'un export vectoriel : réutilisation locale (`<use href="#symbole">`), raster embarqué (`data:image/png…`), `<!DOCTYPE PUBLIC>` et entités littérales d'Illustrator, texte accentué échappé. ⚠️ Le refus au dépôt est la **première** des trois barrières, jamais la seule : les en-têtes de la route (`CSP: default-src 'none'`, `nosniff`) et le rendu en `<img>` portent le reste — cf. [ADR-0097](../docs/adr/0097-un-logo-de-tournoi-vit-en-base-avec-lui.md) §2.
+- **CA — les couleurs sémantiques ne sont jamais personnalisables** (`DV-03`) : alerte, succès, info appartiennent au produit. Ni les neutres (verrou 2 de `DV-06`).
+- **CA — défaut = identité du club si rien n'est fourni**, et **« hérité » se distingue de « choisi »** : un tournoi dont on a seulement déposé le logo ne se présente pas comme configuré.
+- **CA — portée : le public et l'écran de salle uniquement** (`D-27`) — jamais l'admin ni la saisie.
+- **CA — aperçu sur les surfaces réelles**, pas un nuancier (`DV-05`), et **modifiable à tout moment**, tournoi en cours compris (`P-3`).
+- **Arbitrages du commanditaire, 25/08/2026** (tous reversés ici) :
+  - **`Q-UX10` fermée** — le logo est fourni **déjà calibré**. L'application ne recadre, ne détoure ni ne redimensionne : elle **refuse en le disant**. Donc aucune dépendance de traitement d'image (règle 11).
+  - **Stockage en base** (blob), pas sur le disque — [ADR-0097](../docs/adr/0097-un-logo-de-tournoi-vit-en-base-avec-lui.md) §1. Ferme `Q-UX11` par construction.
+  - **Pas d'import de fichier** pour alimenter un référentiel « officiel » (question A06 restée ouverte) : hors périmètre.
+- **Ce que le cadrage a démenti** — les quatre CA d'origine, vérifiés dans le code :
+  - ⚠️ **« origine officielle FFTA / locale » était DÉJÀ LIVRÉ** par `E01US023` : `domain/patrimoine.py` porte l'enum `OrigineBrique`, `Categorie` et `Blason` la portent en champ, l'origine **suit** à la copie et à la promotion, et `Bibliotheque.tsx` rend déjà **deux listes séparées** avec la réserve d'[ADR-0060](../docs/adr/0060-briques-du-patrimoine-du-club-bibliotheque-copie-promotion.md) §4 écrite en clair. `FormatTournoi` la porte aussi, sans que le CA l'ait demandé.
+  - ⚠️ **« les clubs portent une origine » n'a pas de porteur.** Un `Club` n'a **pas** de `tournoi_id` : portée globale, aucune bibliothèque, ce n'est pas une brique au sens d'ADR-0060. Un import en masse existe (coller une liste), mais tout ce qui y entre est indifférencié — et sans import FFTA (écarté ci-dessus), **rien ne peut alimenter l'« officiel »**. CA **caduc**.
+  - ⚠️ **« les barèmes portent une origine » n'a pas de porteur non plus.** `BaremeQualification` est un **value object** (`nb_volees` × `nb_fleches_par_volee`), réglé par phase, sans identité ni persistance propre : il n'existe aucune liste de barèmes à afficher ou filtrer. Ce que le questionnaire visait est très probablement le **format de tournoi**, qui porte déjà l'origine. CA **caduc**.
+  - **Reliquat non pris, à instruire si le besoin se confirme** : sur les écrans **par tournoi** (`Categories.tsx`), `origine` est dans le DTO mais **n'est pas rendue** — seule la bibliothèque l'affiche. Personne ne l'a demandé ; c'est noté pour ne pas se reperdre.
+- **Notes** : migration Alembic `0050` (table `identite_tournoi`). ⚠️ **L'accent secondaire est posé mais son usage reste mince** — aucune planche ne dit encore ce qu'il doit peindre, et l'inventer aurait été du design (cf. ADR-0097 § Conséquences).
+- **Dépend de** : ~~E01US023~~ (constat : rien à en tirer), **E01US016 — absorbée** · **Jalon** : J2 · **Origine** : questionnaires A05, A06, 04/08/2026 · **ADR** : [0097](../docs/adr/0097-un-logo-de-tournoi-vit-en-base-avec-lui.md)
 
 ---
 

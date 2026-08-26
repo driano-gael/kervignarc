@@ -34,6 +34,7 @@ from application.erreurs import (
     ClubIntrouvable,
     CodePosteInconnu,
     CodeScoreurInconnu,
+    CorpsHorsDeProportion,
     DepartIntrouvable,
     EffectifSimulationInvalide,
     ForfaitIntrouvable,
@@ -44,6 +45,7 @@ from application.erreurs import (
     IdentifiantsInvalides,
     InscriptionIntrouvable,
     JalonNonInstruit,
+    LogoIntrouvable,
     MancheIntrouvable,
     NonAuthentifie,
     PhaseIntrouvable,
@@ -88,6 +90,10 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         # serait faux — 300 archers ne deviendront jamais simulables, et un format sans
         # qualification ne le devient pas davantage en changeant d'état (E01US024).
         status = 400
+    elif isinstance(exc, CorpsHorsDeProportion):
+        # 413 : le serveur refuse d'ingérer le corps, indépendamment de ce qu'il contient. Un 422
+        # dirait « votre fichier est invalide », ce qui serait faux — il n'a pas été regardé.
+        status = 413
     elif isinstance(exc, SaisieHorsCible | ScoreurHorsTournoi):
         # 403 : l'identité est établie (jeton de poste/scoreur valide) mais elle n'autorise pas
         # **cette** ressource — la cible (poste, E10US007) ou le tournoi (scoreur, E04US002). À
@@ -130,7 +136,10 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         # comme un identifiant inconnu : le geste utile est le même. Inscrit **ici et pas seulement
         # en docstring** — c'est le défaut relevé sur `MancheIntrouvable` ci-dessus, ce mapping
         # étant une liste écrite à la main que rien ne relie aux docstrings.
-        | JalonNonInstruit,
+        | JalonNonInstruit
+        # E16US006. Emplacement de logo vide. Inscrite **ici** et non seulement en docstring — cf.
+        # les deux commentaires ci-dessus, ce mapping étant une liste écrite à la main.
+        | LogoIntrouvable,
     ):
         status = 404
     else:

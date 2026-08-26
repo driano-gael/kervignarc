@@ -24,6 +24,7 @@ import { VueAffectations } from '../routage/VueAffectations'
 import { VueSuivi } from '../suivi/VueSuivi'
 import { VueEnCours } from '../en-cours/VueEnCours'
 import { BadgeStatut } from '../competition/BadgeStatut'
+import { HabillageIdentite, LogoDuTournoi } from '../identite/HabillageIdentite'
 import { GestionTournois } from '../tournois/Tournois'
 
 // Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : l'écran de salle (E07US004)
@@ -103,67 +104,78 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
   const [vue, setVue] = useState<Vue>(suivisIci.length > 0 ? 'suivi' : 'classement')
 
   return (
-    <section className="carte carte--large">
-      <button type="button" className="lien" onClick={onFermer}>
-        ← Tous les tournois
-      </button>
-      <h2 className="carte__titre">
-        {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
-      </h2>
+    // ⚠️ **L'identité du tournoi habille l'appli publique** (E16US006, `D-27`) — et elle est posée
+    // **ici**, sur les vues d'un tournoi choisi, plutôt qu'à la racine de la coquille : la liste des
+    // tournois n'appartient à aucune édition, l'habiller aux couleurs de la première l'aurait fait
+    // mentir. Changer de tournoi change donc d'identité, ce qui est exactement l'intention.
+    <HabillageIdentite tournoiId={tournoi.id}>
+      <section className="carte carte--large">
+        <button type="button" className="lien" onClick={onFermer}>
+          ← Tous les tournois
+        </button>
+        <h2 className="carte__titre">
+          {/* Les deux marques, au titre du tournoi. Facultatives : rien ne s'affiche si rien n'a été
+              déposé (questionnaire A05, « bien sûr cela reste optionnel »).
+              `decoratif` parce qu'elles sont **dans** le titre, qui dit déjà le nom du tournoi. */}
+          <LogoDuTournoi tournoiId={tournoi.id} emplacement="evenement" decoratif />
+          <LogoDuTournoi tournoiId={tournoi.id} emplacement="club" decoratif />
+          {tournoi.nom} <BadgeStatut statut={tournoi.statut} />
+        </h2>
 
-      {/* L'interrupteur ne s'affiche que s'il y a quelque chose à centrer : proposer « mes archers »
+        {/* L'interrupteur ne s'affiche que s'il y a quelque chose à centrer : proposer « mes archers »
           à qui n'en suit aucun offrirait un bouton dont le seul effet serait de vider l'écran. Le
           geste manquant se fait dans l'onglet « Suivi », et c'est là qu'on l'apprend.
           ⚠️ **Masqué sur l'onglet « Suivi »** (correctif de revue) : cette vue *est* déjà « mes
           archers », elle ne lit donc pas le mode. Or « Suivi » est l'onglet d'atterrissage dès
           qu'on suit quelqu'un — le tout premier geste d'un spectateur était d'actionner un réglage
           qui ne changeait rien sous ses yeux, ce qui fait douter du reste de l'écran. */}
-      {suivisIci.length > 0 && vue !== 'suivi' && (
-        <BasculeAffichage
-          mode={mode}
-          nbSuivis={suivisIci.length}
-          onChanger={(m) => centrer(m === 'suivis')}
-        />
-      )}
+        {suivisIci.length > 0 && vue !== 'suivi' && (
+          <BasculeAffichage
+            mode={mode}
+            nbSuivis={suivisIci.length}
+            onChanger={(m) => centrer(m === 'suivis')}
+          />
+        )}
 
-      <nav className="onglets" aria-label="Vues publiques du tournoi">
-        {VUES.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            className={v.id === vue ? 'onglet onglet--actif' : 'onglet'}
-            aria-current={v.id === vue ? 'page' : undefined}
-            onClick={() => setVue(v.id)}
-          >
-            {v.libelle}
-          </button>
-        ))}
-      </nav>
+        <nav className="onglets" aria-label="Vues publiques du tournoi">
+          {VUES.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={v.id === vue ? 'onglet onglet--actif' : 'onglet'}
+              aria-current={v.id === vue ? 'page' : undefined}
+              onClick={() => setVue(v.id)}
+            >
+              {v.libelle}
+            </button>
+          ))}
+        </nav>
 
-      {/* Le mode descend en **prop explicite**, jamais lu depuis le store par les vues elles-mêmes :
+        {/* Le mode descend en **prop explicite**, jamais lu depuis le store par les vues elles-mêmes :
           `VueClassement`, `VueTableaux` et `VueAffectations` servent aussi la coquille admin et
           l'écran de salle, où ce filtre n'a rien à faire (même précaution que `filtrable` et
           `interactif`). */}
-      {vue === 'suivi' ? (
-        <VueSuivi tournoiId={tournoi.id} />
-      ) : vue === 'affectations' ? (
-        <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
-      ) : vue === 'en_cours' ? (
-        <VueEnCours tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
-      ) : vue === 'classement' ? (
-        <VueClassement
-          tournoiId={tournoi.id}
-          admin={false}
-          mode={mode}
-          suivis={suivisIci}
-          detailFleches
-        />
-      ) : vue === 'palmares' ? (
-        <VuePalmares tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
-      ) : (
-        <PlanCiblesPublic tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
-      )}
-    </section>
+        {vue === 'suivi' ? (
+          <VueSuivi tournoiId={tournoi.id} />
+        ) : vue === 'affectations' ? (
+          <VueAffectations tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+        ) : vue === 'en_cours' ? (
+          <VueEnCours tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+        ) : vue === 'classement' ? (
+          <VueClassement
+            tournoiId={tournoi.id}
+            admin={false}
+            mode={mode}
+            suivis={suivisIci}
+            detailFleches
+          />
+        ) : vue === 'palmares' ? (
+          <VuePalmares tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+        ) : (
+          <PlanCiblesPublic tournoiId={tournoi.id} mode={mode} suivis={suivisIci} />
+        )}
+      </section>
+    </HabillageIdentite>
   )
 }
 

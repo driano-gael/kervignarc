@@ -33,6 +33,7 @@ export type DestinationAdminId =
   | 'assemblage'
   | 'plan'
   | 'bareme'
+  | 'identite'
   | 'phases'
   | 'departs'
   | 'clubs'
@@ -92,6 +93,10 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   bareme:
     'Fixez le barème de qualification (nombre de volées et de flèches) et le grain de validation (à ' +
     'quel moment un score est verrouillé). C’est ce qui cadre la saisie et le calcul du classement.',
+  identite:
+    'Donnez au tournoi ses couleurs et ses logos. Deux couleurs suffisent : les nuances de texte ' +
+    'et de bordure sont calculées pour rester lisibles, en thème sombre comme en thème clair. ' +
+    'Cette identité habille l’écran de salle et l’appli du public — jamais l’administration.',
   phases:
     'Définissez l’enchaînement des phases après la qualification (élimination directe, placement…). ' +
     'La séquence décrit le format du tournoi et pilote la génération des duels.',

@@ -18,6 +18,29 @@ class NomTournoiInvalide(DomainError):
     code = "nom_tournoi_invalide"
 
 
+class CouleurInvalide(DomainError):
+    """Une couleur d'accent n'est pas au format `#RRGGBB` (E16US006)."""
+
+    code = "couleur_invalide"
+
+
+class TypeDeLogoRefuse(DomainError):
+    """Un logo déposé n'est ni un PNG ni un SVG sûr (E16US006).
+
+    Couvre les quatre refus de contenu — vide, signature démentant le format annoncé, absence de
+    balise `<svg>`, SVG porteur de script. Un seul code : de la place de l'organisateur c'est le
+    même geste — le fichier n'est pas acceptable, le message dit lequel des quatre cas.
+    """
+
+    code = "type_de_logo_refuse"
+
+
+class LogoTropVolumineux(DomainError):
+    """Un logo dépasse `POIDS_LOGO_MAX_OCTETS` (E16US006)."""
+
+    code = "logo_trop_volumineux"
+
+
 class NomArcherInvalide(DomainError):
     """Le nom d'un archer est vide (après normalisation)."""
 

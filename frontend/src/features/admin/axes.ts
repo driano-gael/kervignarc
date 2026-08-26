@@ -73,6 +73,10 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   assemblage: 'pilotage',
   bareme: 'pilotage',
   phases: 'pilotage',
+  // L'identité règle **cette** édition (un logo d'événement change à chaque année), pas le
+  // patrimoine du club : elle est au pilotage comme `bareme` et `phases`, et non à l'atelier —
+  // qui n'a pas de sélecteur de tournoi.
+  identite: 'pilotage',
   // `simulation` **rejoue le tournoi courant** : elle exige donc une édition, exactement comme
   // `bareme` et `phases`. La laisser à l'atelier rouvrait l'impasse de DETTE-023 — « choisissez un
   // tournoi ci-dessus » sur un axe qui n'a pas de sélecteur (relevé par trois axes de revue).
@@ -128,6 +132,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   accueil: true,
   assemblage: true,
   bareme: true,
+  identite: true,
   phases: true,
   simulation: true,
   supervision: true,

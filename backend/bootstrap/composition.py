@@ -45,6 +45,7 @@ from api.v1.forfaits import router as forfaits_router
 from api.v1.formats import router as formats_router
 from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
+from api.v1.identite import router as identite_router
 from api.v1.inscriptions import router as inscriptions_router
 from api.v1.jalons import router as jalons_router
 from api.v1.jeu_essai import router as jeu_essai_router
@@ -96,6 +97,7 @@ from application.gabarits import ServiceGabarits
 from application.gel_de_pause import EvaluateurArrets
 from application.generateur_scores import GenerateurScoresPlausibles
 from application.grain_validation import ServiceGrainValidation
+from application.identite import ServiceIdentite
 from application.inscriptions import ServiceInscriptions
 from application.jalons import ServiceJalons
 from application.jeu_essai import ServiceJeuEssai
@@ -167,6 +169,7 @@ from infrastructure.db import (
     FormatTournoiRepositorySQL,
     FranchissementArretRepositorySQL,
     GabaritSalleRepositorySQL,
+    IdentiteVisuelleRepositorySQL,
     InscriptionRepositorySQL,
     PhaseRepositorySQL,
     PlacementParBlocRepositorySQL,
@@ -432,6 +435,7 @@ def create_app(
     blason_repository = BlasonRepositorySQL(database.session_factory)
     club_repository = ClubRepositorySQL(database.session_factory)
     gabarit_repository = GabaritSalleRepositorySQL(database.session_factory)
+    identite_repository = IdentiteVisuelleRepositorySQL(database.session_factory)
     format_repository = FormatTournoiRepositorySQL(database.session_factory)
     deroule_repository = DerouleEtapeRepositorySQL(database.session_factory)
     phase_repository = PhaseRepositorySQL(database.session_factory)
@@ -510,6 +514,10 @@ def create_app(
     # Gabarits de salle : bibliothèque de modèles (E01US007) + application à un tournoi (E01US008,
     # copie ajustable). Le service vérifie l'existence du tournoi (dépend du port tournoi).
     app.state.service_gabarits = ServiceGabarits(tournoi_repository, gabarit_repository)
+    # Identité visuelle du tournoi (E16US006, ADR-0097) : deux accents et deux logos, déclinés
+    # par le domaine. Le service ne dépend que de son propre port et du port tournoi (existence
+    # + verrou d'archive) : la dérivation des jetons étant pure, il n'a personne d'autre à lire.
+    app.state.service_identite = ServiceIdentite(identite_repository, tournoi_repository)
     # Patrimoine du club (E01US023, ADR-0060) : la **bibliothèque** de briques hors tournoi,
     # l'assemblage d'un tournoi (copie) et la promotion (retour). Service **distinct** de
     # `service_categories` / `service_blasons`, qui restent cantonnés au périmètre d'un
@@ -1425,6 +1433,7 @@ def create_app(
     app.include_router(patrimoine_router)
     app.include_router(formats_router)
     app.include_router(gabarits_router)
+    app.include_router(identite_router)
     app.include_router(bareme_qualification_router)
     app.include_router(grain_validation_router)
     app.include_router(phases_router)

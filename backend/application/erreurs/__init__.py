@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from application.erreurs.base import ApplicationError
 from application.erreurs.communs import (
+    CorpsHorsDeProportion,
     DepartCourantNonDefini,
 )
 from application.erreurs.exploitation import (
@@ -87,6 +88,7 @@ from application.erreurs.referentiel import (
     HomonymeArcher,
     InscriptionPayeeARembourser,
     JalonNonInstruit,
+    LogoIntrouvable,
     NomBriqueDejaPris,
     NomClubDejaPris,
     NomFormatDejaPris,
@@ -140,6 +142,7 @@ __all__ = [
     "ClubReference",
     "CodePosteInconnu",
     "CodeScoreurInconnu",
+    "CorpsHorsDeProportion",
     "DejaInscrit",
     "DepartAvecInscriptions",
     "DepartComplet",
@@ -167,6 +170,7 @@ __all__ = [
     "InscriptionIntrouvable",
     "InscriptionPayeeARembourser",
     "JalonNonInstruit",
+    "LogoIntrouvable",
     "MancheIntrouvable",
     "NomBriqueDejaPris",
     "NomClubDejaPris",

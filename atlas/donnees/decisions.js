@@ -7681,6 +7681,143 @@ window.ATLAS.decisions = {
     "E16US008",
     "E16US012"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-25",
+   "date_brute": "2026-08-25",
+   "extrait": "### 1. Les octets d'un logo vivent en base, dans une table à part Le fichier est stocké en blob dans identite_tournoi, servi par une route dédiée. L'alternative — un répertoire d'actifs sur le disque, chemin en base — a été écartée sur trois conséquences concrètes, pas sur une préférence : - sauvegarder, le jour J, c'est copier le .db. Un logo sur le disque en sortirait, et la sauvegarde deviendrait deux gestes dont l'un s'oublie ; - supprimer un tournoi supprime sa descendance. Un fichier orphelin, non ; - EPIC-11 promet une archive en lecture seule. Un fichier reste remplaçable sous les pieds du tournoi archivé ; une ligne de base, non. Le prix est réel et assumé : des octets passent par […]",
+   "fichier": "docs/adr/0097-un-logo-de-tournoi-vit-en-base-avec-lui.md",
+   "identifiant": "0097",
+   "liens": [
+    {
+     "cible": "E16US006",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E01US016",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0074",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0026",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0060",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/identite.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/identite.py",
+     "existe": true,
+     "symboles": [
+      "decliner"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/identite.py",
+     "existe": true,
+     "symboles": [
+      "IdentiteVisuelle",
+      "reglee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/referentiel.py",
+     "existe": true,
+     "symboles": [
+      "IdentiteVisuelleRepositorySQL"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0050_identite_visuelle_tournoi.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/identite/HabillageIdentite.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/identite/api.ts",
+     "existe": true,
+     "symboles": [
+      "urlDuLogo"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/identite/jetons.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/public/AccueilPublic.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/salle/EcranSalle.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/charte.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un logo de tournoi vit en base avec lui, et deux accents suffisent à en dériver le chrome",
+   "us": [
+    "E01US016",
+    "E16US006",
+    "E17US001"
+   ]
   }
  ]
 };
