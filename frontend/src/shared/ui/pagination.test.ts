@@ -11,6 +11,7 @@ import {
   pageCourante,
   rateauDePage,
   trancheDePage,
+  reinitialiserCumulsDePage,
   useSecondesDAffichage,
 } from './pagination'
 
@@ -128,6 +129,9 @@ describe('useSecondesDAffichage — un cumul PAR vue', () => {
   // jamais sortir — exactement le défaut qu'E07US008 avait déjà payé une fois.
   beforeEach(() => {
     vi.useFakeTimers()
+    // ⚠️ Le cumul vit **au module** et survit au démontage : sans cette remise à zéro, ces tests
+    // dépendraient de leur ordre d'exécution (2ᵉ passe de revue, axe D).
+    reinitialiserCumulsDePage()
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -152,13 +156,13 @@ describe('useSecondesDAffichage — un cumul PAR vue', () => {
     // L'autre moitié de la propriété : le temps d'affichage se **cumule** d'un passage à l'autre,
     // sans quoi la séquence de pages repartirait de la page 1 à chaque tour du déroulé et les
     // dernières pages ne sortiraient jamais.
-    const premier = renderHook(() => useSecondesDAffichage('test'))
+    const premier = renderHook(() => useSecondesDAffichage('affectations'))
     act(() => {
       vi.advanceTimersByTime(20_000)
     })
     premier.unmount()
 
-    const second = renderHook(() => useSecondesDAffichage('test'))
+    const second = renderHook(() => useSecondesDAffichage('affectations'))
     act(() => {
       vi.advanceTimersByTime(1_000)
     })

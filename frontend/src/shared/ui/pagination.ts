@@ -143,16 +143,30 @@ export function rateauDePage(noms: readonly string[]): { debut: string; fin: str
  * les pages du classement avançaient pendant que l'écran montrait les affectations — et
  * réciproquement. Chaque vue paginée passe donc sa propre clé.
  */
-const secondesAffichees = new Map<string, number>()
+const secondesAffichees = new Map<CleDePage, number>()
+
+/** Vide les cumuls. **Réservé aux tests de ce module** — la `Map` vit au module précisément pour
+ * survivre au démontage d'une vue, donc rien en production n'a de raison de l'effacer.
+ *
+ * Sans cette porte, les tests dépendaient de leur **ordre** : le premier laissait 30 s sur
+ * `'classement'`, et un test ajouté après lui aurait échoué là où le même test placé avant passait
+ * — pour un diagnostic bien plus coûteux que la fonction (relevé en 2ᵉ passe, axe D). */
+export function reinitialiserCumulsDePage(): void {
+  secondesAffichees.clear()
+}
 
 /** Les vues projetées qui paginent, **énumérées** plutôt que nommées par une chaîne libre.
  *
- * Une faute de frappe ou un copier-coller qui réutiliserait `'classement'` pour une troisième vue
- * réintroduirait en silence le défaut que cette US vient de corriger — deux vues qui font avancer
- * les pages l'une de l'autre. Rien, ni `tsc` ni un test, ne l'aurait vu sur un `string`.
- * `'test'` est là pour les tests du module, qui doivent pouvoir isoler des cumuls sans mentir sur
- * les clés réelles (correctif de revue, axes C1 et C2). */
-export type CleDePage = 'classement' | 'affectations' | 'test'
+ * ⚠️ **Ce que le type ferme, et ce qu'il ne ferme pas** — la première rédaction promettait trop
+ * (relevé par trois axes en 2ᵉ passe). Il refuse à la compilation une clé **inventée** (`'clasement'`,
+ * `'palmares'`) ; il ne peut rien contre une clé **réemployée** — `'classement'` reste une valeur
+ * légale, qu'un copier-coller peut poser dans une troisième vue. Fermer le réemploi demanderait une
+ * clé dérivée du composant, ce qui est un autre sujet.
+ *
+ * L'union ne porte **que des clés de production** : y ajouter un membre `'test'` aurait rouvert, pour
+ * de vrai, la chaîne libre que ce type existe pour fermer — n'importe quel composant aurait pu la
+ * prendre. Les tests isolent leurs cumuls par `reinitialiserCumulsDePage()`. */
+export type CleDePage = 'classement' | 'affectations'
 
 /** ⚠️ **`cle` est lue au montage pour l'état initial, et suivie ensuite par l'effet seul.**
  *

@@ -230,9 +230,11 @@ def test_un_ecran_d_un_autre_tournoi_n_existe_pas(ctx: Contexte) -> None:
             autre.id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
         )
 
-    # ⚠️ **Le scoping vaut pour CHAQUE geste de pilotage, pas seulement la prise de contrôle.**
-    # E16US009 ajoute `regler_pages_ecran` : sans cette assertion, un admin d'un tournoi voisin
-    # aurait pu régler l'écran d'un autre sans qu'aucun test ne le voie (relevé en revue, axe B).
+    # ⚠️ **La propriété est portée par le point de passage unique `ServicePostes._exiger_ecran`**,
+    # que les cinq gestes de pilotage traversent — on l'exerce donc ici sur deux d'entre eux, sans
+    # prétendre à une énumération. *(La 1ʳᵉ rédaction annonçait « CHAQUE geste » et en citait deux
+    # sur cinq : c'est le défaut que ce même commit dénonce dans `test_ecrans_api.py`, une
+    # énumération qui se donne pour exhaustive — relevé en 2ᵉ passe, axe adversarial.)*
     with pytest.raises(PosteIntrouvable):
         ctx.service_postes.regler_pages_ecran(autre.id, ecran.id, ReglagePages.par_defaut())
 

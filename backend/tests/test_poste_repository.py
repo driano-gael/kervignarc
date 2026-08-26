@@ -180,3 +180,28 @@ def test_une_paire_de_colonnes_incomplete_est_un_defaut_d_infrastructure(tmp_pat
             repository.par_code("ECR789")
     finally:
         db.engine.dispose()
+
+
+def test_une_ecriture_sur_une_ligne_abimee_ne_fuit_pas_en_422(tmp_path: Path) -> None:
+    """L'enveloppement d'erreur vaut aussi pour les **écritures**, pas seulement les lectures.
+
+    ⚠️ `creer` et `enregistrer` relisaient la ligne par `_vers_poste` **nu** : leur
+    `except SQLAlchemyError` n'attrape ni `ValueError` ni `DomainError`, si bien qu'une ligne
+    abîmée relue **après le commit** serait remontée en 422 métier sur une écriture — le client
+    aurait cru sa requête fautive alors que la base l'est. Relevé en revue, corrigé en faisant
+    passer les deux retours par `_relire_poste` ; ce test est ce qui empêche le retour en arrière.
+
+    Le `type` est choisi comme corruption parce qu'`enregistrer` ne le réécrit pas : la relecture
+    post-commit lève donc bien, ce qui est le chemin qu'on veut exercer.
+    """
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = PosteRepositorySQL(db.session_factory)
+        ecran = repository.ajouter(Poste.creer_ecran(tournoi_id, "Hall", "ECR790"))
+        with db.engine.begin() as conn:
+            conn.execute(sa.text("UPDATE poste SET type = 'zorglub' WHERE code = 'ECR790'"))
+
+        with pytest.raises(InfrastructureError):
+            repository.enregistrer(ecran.avec_pages(ReglagePages.par_defaut()))
+    finally:
+        db.engine.dispose()

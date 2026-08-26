@@ -204,6 +204,27 @@ const NB_COLONNES_LECTURE = 8
  * Bloquant trouvé en revue (deux axes, arithmétiques indépendantes) — E16US009. */
 const NOMS_PAR_LIGNE_PROJETEE = 3
 
+/** Le plafond de lignes d'une page projetée, **quel que soit le réglage**.
+ *
+ * ⚠️ **Le ratio ci-dessus ne suffit pas, et trois axes de revue l'ont montré séparément.** Il ferme
+ * le facteur multiplicatif, pas les deux termes qui restent :
+ *
+ *  - un **chrome fixe** que la page de noms n'a pas — la tête figée (3 lignes) et la rangée
+ *    d'en-têtes vivent dans la même scène, et quatre lignes ne se divisent par rien ;
+ *  - une **hauteur de ligne différente** : `.table td { padding: 8px 6px }` est en **pixels**,
+ *    `.salle-pages__nom { padding: 0.15em 0 }` est en **em**. Le résidu vaut donc ~1,28 à 1080p et
+ *    ~1,45 à 720p — il *croît* quand l'écran rétrécit.
+ *
+ * D'où un plafond, calculé au cas le plus contraint (1280×720, un projecteur de gymnase courant :
+ * scène ~617 px, ligne ~36 px, chrome ~144 px, soit ~13 lignes utiles). **12 tient partout.**
+ *
+ * ⚠️ **Ce nombre est CALCULÉ depuis le CSS, pas mesuré** — l'écran n'a toujours pas été vu sur un
+ * vidéoprojecteur (angle mort assumé d'ADR-0098). Ce que le plafond garantit n'est donc pas la
+ * justesse de la valeur, c'est la **direction de l'erreur** : trop bas, on obtient plus de pages et
+ * tout finit par passer à l'écran ; trop haut, le bas de page n'est **jamais montré** et les
+ * archers concernés ne sortent jamais de la journée. Entre les deux, il n'y a pas d'hésitation. */
+const LIGNES_PROJETEES_MAX = 12
+
 /** Le reste du classement **projeté**, page après page (E16US009).
  *
  * Distinct du cadre défilant, et rendu par un composant à part pour une raison mécanique : il tient
@@ -228,11 +249,15 @@ function ResteProjete({
 }) {
   const secondes = useSecondesDAffichage('classement')
   // Le réglage compte des noms sur trois colonnes ; ici chaque archer prend une ligne pleine
-  // largeur. Sans cette conversion, le bas de chaque page tomberait sous le bord de l'image.
-  const parPage = Math.max(1, Math.ceil(pagination.noms_par_page / NOMS_PAR_LIGNE_PROJETEE))
-  const total = nombreDePages(lignes.length, parPage)
+  // largeur. Sans cette conversion, le bas de chaque page tomberait sous le bord de l'image — et
+  // le plafond tient le reste, que le ratio seul ne couvre pas (cf. les deux constantes).
+  const lignesParPage = Math.min(
+    Math.max(1, Math.ceil(pagination.noms_par_page / NOMS_PAR_LIGNE_PROJETEE)),
+    LIGNES_PROJETEES_MAX,
+  )
+  const total = nombreDePages(lignes.length, lignesParPage)
   const index = pageCourante(total, secondes, pagination.cadence_page_s)
-  const page = trancheDePage(lignes, index, parPage)
+  const page = trancheDePage(lignes, index, lignesParPage)
   // Le râteau se calcule sur les **noms**, comme pour les affectations : c'est lui qui répond à
   // « mon nom est-il sur cette page ». Le classement est trié par rang, pas par nom — le râteau
   // n'est donc pas un intervalle alphabétique ici, et l'afficher tromperait. On ne le passe pas.

@@ -7951,7 +7951,8 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "NOMS_PAR_LIGNE_PROJETEE",
-      "parPage"
+      "lignesParPage",
+      "LIGNES_PROJETEES_MAX"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7962,7 +7963,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "ResteProjete",
       "NOMS_PAR_LIGNE_PROJETEE",
-      "parPage"
+      "lignesParPage",
+      "LIGNES_PROJETEES_MAX"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -7972,7 +7974,8 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "affichage.pages",
-      "VueClassement"
+      "VueClassement",
+      "VueAffectations"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8029,7 +8032,8 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "affichage.pages",
-      "VueClassement"
+      "VueClassement",
+      "VueAffectations"
      ],
      "symboles_absents": [],
      "verifiable": true

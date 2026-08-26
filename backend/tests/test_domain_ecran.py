@@ -239,13 +239,18 @@ def test_le_reglage_de_pages_est_independant_de_la_cadence_de_vue() -> None:
     """
     vue = VueProgrammee(VueEcran.CLASSEMENT, 30)
 
-    # ⚠️ Ce qui est réellement en jeu est une **absence de contrainte croisée** : construire une
-    # cadence de page plus longue que celle de la vue ne lève pas. Comparer les deux littéraux
-    # entre eux — ce que faisait la première rédaction — ne pouvait pas échouer, quoi qu'il
-    # advienne du code (relevé par deux axes de revue).
-    pages = ReglagePages(noms_par_page=40, cadence_page_s=vue.cadence_s + 15)
+    # ⚠️ **L'oracle de ce test est l'ABSENCE D'EXCEPTION**, et il est porté par les trois
+    # constructions ci-dessous, pas par une assertion. Le dire plutôt que de le laisser deviner :
+    # deux rédactions successives ont mis ici un `assert` tautologique (`45 > 30`, puis « la
+    # dataclass a stocké ce qu'on lui a passé »), et la seconde prétendait corriger la première —
+    # relevé deux fois, par deux axes, en deux passes.
+    for cadence in (vue.cadence_s - 25, vue.cadence_s, vue.cadence_s + 15):
+        ReglagePages(noms_par_page=40, cadence_page_s=cadence)  # aucune contrainte croisée
 
-    assert pages.cadence_page_s == 45
+    # L'assertion appariée, elle, discrimine : le domaine borne bien la cadence de page **pour
+    # elle-même**, indépendamment de toute cadence de vue.
+    with pytest.raises(CadenceDePageInvalide):
+        ReglagePages(noms_par_page=40, cadence_page_s=CADENCE_PAGE_MAX_S + 1)
 
 
 def test_les_bornes_du_reglage_de_pages_sont_inclusives() -> None:

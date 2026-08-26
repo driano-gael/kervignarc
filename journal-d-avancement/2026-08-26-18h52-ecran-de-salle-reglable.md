@@ -41,8 +41,12 @@ serviront de point de départ pour les tournois suivants.
 
 Un repère utile pour ce réglage : « noms par page » se compte sur la **liste d'affectations**, qui
 range ses noms sur trois colonnes. Le classement, lui, met **un archer par ligne** avec ses scores :
-il en affiche donc environ **trois fois moins** par page. C'est voulu — sans cela, une page de
-classement serait plus haute que l'écran et sa moitié basse ne s'afficherait jamais. Réglez en
-regardant la liste de noms, le classement suivra.
+il en affiche donc **trois fois moins** par page, et **jamais plus de douze**. C'est voulu — sans
+cela, une page de classement serait plus haute que l'écran, et sa partie basse ne s'afficherait
+jamais.
+
+Réglez en regardant le **classement** : c'est la vue la plus dense, donc celle qui déborde la
+première — et un débordement ne se voit pas, puisque ce qui ne tient pas n'est simplement pas
+affiché. La liste de noms, elle, suivra toujours ; au pire un peu aérée, ce qui ne coûte rien.
 
 Le scénario de test complet est dans `docs/fonctionnel/E16US009.md`.

@@ -16,7 +16,7 @@
 // l'affichage**. `lignes` dit ce qu'on montre, `lignesCompletes` dit sur quoi l'on raisonne.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -276,10 +276,91 @@ describe('TableClassement — le reste projeté', () => {
     )
 
     // 7 lignes de reste découpées par 4 → deux pages, donc un compteur « 1/2 ».
-    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toContain('2')
+    // `toBe` et non `toContain` : ce dernier acceptait aussi « /12 », « /20 », « /25 ».
+    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toBe('/2')
     // La 4ᵉ ligne du reste est la dernière de la page 1 ; la 5ᵉ attend son tour.
     expect(container.textContent).toContain('ARCHER6 ')
     expect(container.textContent).not.toContain('ARCHER7 ')
+  })
+
+  it.each([
+    // [noms réglés, lignes attendues par page] — les deux bornes du domaine et le défaut livré.
+    [5, 2], // plancher : `ceil(5/3)` = 2, et non 1 — c'est `ceil` qui est prouvé ici, pas `floor`
+    [12, 4], // le point nominal des tests voisins
+    [40, 12], // ⚠️ le DÉFAUT LIVRÉ : `ceil(40/3)` = 14, plafonné à `LIGNES_PROJETEES_MAX`
+    [100, 12], // plafond du domaine : idem, le plafond d'affichage tient
+  ])('découpe %i noms réglés en pages de %i lignes', (noms, lignesAttendues) => {
+    // ⚠️ **Le résidu que la 2ᵉ passe de revue a trouvé, et pourquoi il y a DEUX constantes.** Le
+    // ratio ferme le facteur ×3 ; il laisse ouverts un chrome fixe (tête figée + en-têtes, qui ne
+    // se divise pas) et un écart de hauteur de ligne (`padding` en px dans `.table`, en em dans
+    // `.salle-pages__nom`) qui *croît* quand l'écran rétrécit. Trois axes l'ont calculé
+    // séparément : à 1280×720, le défaut livré débordait encore de deux lignes.
+    //
+    // Le plafond ne rend pas la valeur juste — rien n'a encore été mesuré sur un vidéoprojecteur.
+    // Il rend la **direction de l'erreur** sûre : trop de pages plutôt que des archers jamais
+    // montrés. C'est ce que ces quatre cas épinglent, aux deux bornes du réglage.
+    const TRENTE = Array.from({ length: 30 }, (_, i) =>
+      ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 700 - i }),
+    )
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={TRENTE}
+            admin={false}
+            teteFigee={3}
+            pagination={{ noms_par_page: noms, cadence_page_s: 20 }}
+          />
+        }
+      />,
+    )
+
+    // 27 lignes de reste : le compteur dit le découpage sans qu'on ait à compter les rangées.
+    const attendu = Math.ceil(27 / lignesAttendues)
+    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toBe(`/${attendu}`)
+  })
+
+  it('tourne au rythme RÉGLÉ, et non au défaut du module', () => {
+    // ⚠️ **La moitié « cadence » du CA n'était prouvée par aucun test** (relevé en 2ᵉ passe, axe B) :
+    // toutes les fixtures valaient 20, c'est-à-dire `SECONDES_PAR_PAGE`. Remplacer
+    // `pagination.cadence_page_s` par la constante du module laissait la suite entière verte —
+    // alors que « 20 s **(réglable)** » est la demande même du questionnaire P06.
+    const REGLAGE_RAPIDE = { noms_par_page: 12, cadence_page_s: 5 }
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE_RAPIDE}
+          />
+        }
+      />,
+    )
+
+    // Sous la cadence réglée : encore en page 1. (Assertion appariée — sans elle, le cas suivant
+    // passerait aussi avec un composant qui tourne à chaque battement.)
+    act(() => {
+      vi.advanceTimersByTime(4_000)
+    })
+    expect(container.textContent).toContain('ARCHER3 ')
+    expect(container.textContent).not.toContain('ARCHER7 ')
+
+    // Passé la cadence réglée : page 2. Avec 20 s en dur, rien n'aurait bougé.
+    act(() => {
+      vi.advanceTimersByTime(2_000)
+    })
+    expect(container.textContent).toContain('ARCHER7 ')
+    expect(container.textContent).not.toContain('ARCHER3 ')
+
+    // Et la séquence **boucle** : c'est la promesse « tout archer finit par apparaître ».
+    act(() => {
+      vi.advanceTimersByTime(5_000)
+    })
+    expect(container.textContent).toContain('ARCHER3 ')
   })
 
   it('n’enferme JAMAIS le reste dans un cadre à ascenseur quand il est projeté', () => {

@@ -238,7 +238,10 @@ précisément ce qui produit la cinquième — un lecteur qui audite verrait « 
 `0095` : il est d'**IHM** — un écran de salle *montre* un classement, il n'en produit aucun ; le
 moteur sportif ne lit rien du réglage de pages, aucune portée ne change, aucune politique injectable
 n'est en jeu. Il porte sa section « Porté dans le code par », exigée sans condition. *La liste des
-ADR **hors critère** est donc, à ce jour : `0086`, `0088`, `0095`, `0096`, `0098` — écrite ici et
+ADR **hors critère** est donc, à ce jour : `0086`, `0088`, `0095`, `0096`, **`0097`**, `0098` —
+⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
+l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
+(rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et
 pas seulement dans chaque ADR concerné, pour la raison même que cette section documente : un trou
 non commenté dans l'énumération se lit comme un oubli, et c'est ainsi qu'on en produit un vrai.*
 *(Inscription réclamée en revue d'E16US009, axe C2 : l'ADR expliquait son exclusion chez lui, pas ici.)*

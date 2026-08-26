@@ -17,7 +17,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
@@ -40,15 +40,28 @@ vi.mock('../phases/api', async (importOriginal) => ({
 // ⚠️ `pages` fait partie du décor **depuis E16US009** : sans lui, la doublure servait un affichage
 // dépourvu du réglage, donc l'écran empruntait la branche d'avant l'US et le câblage neuf n'était
 // épinglé nulle part (correctif de revue, trois axes).
+//
+// ⚠️ **Les valeurs ne sont PAS celles du défaut** (40/20) : à l'identique, le test n'aurait pas
+// distingué « la prop traverse » de « quelqu'un a recâblé sur les constantes du module », qui est
+// la régression la plus plausible sur une surface où ce défaut existe déjà (2ᵉ passe, axe B).
+//
+// Le décor est **mutable** (`vi.hoisted`) pour qu'un test puisse changer la vue projetée : le
+// déroulé était figé sur « classement », donc la branche `affectations` — qui reçoit le **même**
+// réglage — n'était jamais exercée.
+const decor = vi.hoisted(() => ({
+  vues: [{ vue: 'classement', cadence_s: 30 }] as { vue: string; cadence_s: number }[],
+  pages: { noms_par_page: 24, cadence_page_s: 12 },
+}))
+
 vi.mock('../ecrans/hooks', () => ({
   useAffichageEcran: () => ({
     data: {
       sous_controle: false,
       vue_figee: null,
-      vues: [{ vue: 'classement', cadence_s: 30 }],
-      deroule_repli: [{ vue: 'classement', cadence_s: 30 }],
+      vues: decor.vues,
+      deroule_repli: decor.vues,
       reste_s: null,
-      pages: { noms_par_page: 40, cadence_page_s: 20 },
+      pages: decor.pages,
     },
     dataUpdatedAt: 0,
     isError: false,
@@ -56,9 +69,12 @@ vi.mock('../ecrans/hooks', () => ({
 }))
 // Témoins : ces vues font leurs propres requêtes, hors sujet ici.
 //
-// ⚠️ Celui-ci **recopie sa prop `pagination`** au lieu de la jeter. Un témoin muet laisserait passer
-// la suppression de `pagination={pages}` dans `EcranSalle.tsx` : `tsc` ne voit pas une propriété
-// fournie et jamais consommée, et la salle retomberait sans bruit sur le rendu d'avant l'US.
+// ⚠️ Ces deux-ci **recopient leur prop `pagination`** au lieu de la jeter. Un témoin muet laisserait
+// passer la suppression de `pagination={pages}` dans `EcranSalle.tsx` : `tsc` ne voit pas une
+// propriété fournie et jamais consommée, et la salle retomberait sans bruit sur le rendu d'avant
+// l'US. ⚠️ **Les DEUX branches de `VueDeSalle` sont instrumentées** : la 1ʳᵉ rédaction du correctif
+// n'avait fait parler que le classement, à quarante lignes de la branche affectations qui reçoit le
+// même réglage — le raisonnement appliqué à une moitié seulement (relevé en 2ᵉ passe, axe D).
 vi.mock('../competition/VueClassement', () => ({
   VueClassement: (props: { pagination?: unknown }) => (
     <div data-testid="classement" data-pagination={JSON.stringify(props.pagination ?? null)} />
@@ -69,7 +85,9 @@ vi.mock('../placement/PlanCiblesPublic', () => ({
 }))
 vi.mock('../palmares/VuePalmares', () => ({ VuePalmares: () => <div data-testid="palmares" /> }))
 vi.mock('../routage/VueAffectations', () => ({
-  VueAffectations: () => <div data-testid="affectations" />,
+  VueAffectations: (props: { pagination?: unknown }) => (
+    <div data-testid="affectations" data-pagination={JSON.stringify(props.pagination ?? null)} />
+  ),
 }))
 vi.mock('../en-cours/VueEnCours', () => ({ VueEnCours: () => <div data-testid="en-cours" /> }))
 vi.mock('../suivi-deroule/hooks', () => ({ useSuiviDeroule: () => ({ data: undefined }) }))
@@ -168,6 +186,11 @@ describe('EcranSalle — l’annonce de pause est hors rotation (CA E05US034)', 
 })
 
 describe('EcranSalle — le réglage de pages descend jusqu’aux vues (CA E16US009)', () => {
+  afterEach(() => {
+    // Le décor est partagé : une vue imposée par un test ne doit pas fuir sur le suivant.
+    decor.vues = [{ vue: 'classement', cadence_s: 30 }]
+  })
+
   it('transmet `pages` de l’affichage servi à la vue projetée', async () => {
     // ⚠️ **Le maillon que la première rédaction d'E16US009 n'épinglait pas** (correctif de revue).
     // Le réglage traverse `EcranSalle` → `VueDeSalle` → `VueClassement` → `TableClassement` ; les
@@ -180,10 +203,22 @@ describe('EcranSalle — le réglage de pages descend jusqu’aux vues (CA E16US
     monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
 
     const vue = await screen.findByTestId('classement')
-    expect(JSON.parse(vue.dataset.pagination ?? 'null')).toEqual({
-      noms_par_page: 40,
-      cadence_page_s: 20,
-    })
+    expect(JSON.parse(vue.dataset.pagination ?? 'null')).toEqual(decor.pages)
+  })
+
+  it('le transmet AUSSI à la liste d’affectations, l’autre vue paginée', async () => {
+    // ⚠️ **La branche que la 1ʳᵉ rédaction du correctif avait laissée nue** (2ᵉ passe, axe D).
+    // `VueDeSalle` passe le même réglage aux deux vues, à quarante lignes d'intervalle ; seule la
+    // première était épinglée. Un refactor du type « `pagination` ne sert qu'au classement » aurait
+    // laissé toute la suite verte tout en faisant retomber la liste de noms projetée sur les
+    // constantes du module — c'est-à-dire la moitié « réglable » du CA, perdue sans un seul signal.
+    decor.vues = [{ vue: 'affectations', cadence_s: 30 }]
+    vi.mocked(getAvancement).mockResolvedValue([])
+
+    monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
+
+    const vue = await screen.findByTestId('affectations')
+    expect(JSON.parse(vue.dataset.pagination ?? 'null')).toEqual(decor.pages)
   })
 })
 

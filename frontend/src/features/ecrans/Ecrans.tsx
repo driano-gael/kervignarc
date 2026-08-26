@@ -215,7 +215,9 @@ function ReglagePagesProjetees({ ecran, tournoiId }: { ecran: Ecran; tournoiId: 
         À ajuster en regardant l’écran depuis le fond de la salle : ces valeurs dépendent du
         projecteur, de la distance et de la longueur des noms. « Noms par page » se compte sur la
         liste d’affectations, qui s’affiche sur trois colonnes ; le classement, à un archer par
-        ligne, en montre environ trois fois moins par page.
+        ligne, en montre trois fois moins par page — et jamais plus de douze. Réglez en regardant le{' '}
+        <strong>classement</strong> : c’est la vue la plus dense, donc celle qui déborde en premier,
+        et ce qui déborde n’est pas affiché du tout.
       </p>
       <button
         type="button"
