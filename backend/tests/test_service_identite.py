@@ -45,12 +45,21 @@ class FauxIdentites:
     def __init__(self) -> None:
         self.ecritures: list[str] = []
         self.identite = IdentiteVisuelle()
+        self.fichiers: dict[EmplacementLogo, Logo] = {}
 
     def reglages(self, tournoi_id: TournoiId) -> IdentiteVisuelle:
         return self.identite
 
     def logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> Logo | None:
-        return None
+        # ⚠️ Rendait `None` en dur, alors que les deux méthodes d'écriture venaient d'être rendues
+        # fidèles au port. Conséquence : la moitié « et ses logos » du test d'archive n'était
+        # exercée par rien, et une garde de statut ajoutée par distraction à `ServiceIdentite.logo`
+        # aurait éteint les logos d'un tournoi archivé sans faire rougir personne (relevé en revue).
+        return self.fichiers.get(emplacement)
+
+    def empreinte_du_logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> str | None:
+        fichier = self.fichiers.get(emplacement)
+        return None if fichier is None else fichier.empreinte
 
     def enregistrer_accents(
         self, tournoi_id: TournoiId, identite: IdentiteVisuelle
@@ -71,11 +80,12 @@ class FauxIdentites:
     ) -> IdentiteVisuelle:
         """Écrit **un** emplacement ; les accents et l'autre emplacement ne bougent pas."""
         self.ecritures.append(f"logo:{emplacement.value}")
-        self.identite = (
-            self.identite.sans_logo(emplacement)
-            if logo is None
-            else self.identite.avec_logo(emplacement, logo.empreinte)
-        )
+        if logo is None:
+            self.fichiers.pop(emplacement, None)
+            self.identite = self.identite.sans_logo(emplacement)
+        else:
+            self.fichiers[emplacement] = logo
+            self.identite = self.identite.avec_logo(emplacement, logo.empreinte)
         return self.identite
 
 
@@ -174,12 +184,16 @@ def test_un_tournoi_archive_garde_ses_couleurs_et_les_sert() -> None:
     identites.identite = IdentiteVisuelle().avec_accents(
         Couleur.depuis_hex("#0b6e9e"), Couleur.depuis_hex("#ffd400")
     )
+    identites.fichiers[EmplacementLogo.CLUB] = Logo.deposer(PNG, TypeLogo.PNG)
 
     identite = service.pour_tournoi(1)
 
     assert identite.reglee is True
     assert identite.primaire.couleur.hex == "#0b6e9e", "l'archive garde SES couleurs"
     assert identite.secondaire.couleur.hex == "#ffd400"
+    # « et ses logos » : la seconde moitié de la promesse, qu'aucune assertion ne tenait.
+    assert service.logo(1, EmplacementLogo.CLUB) is not None, "l'archive sert encore son logo"
+    assert service.empreinte_du_logo(1, EmplacementLogo.CLUB) is not None
 
 
 def test_un_tournoi_archive_sans_identite_herite_comme_les_autres() -> None:

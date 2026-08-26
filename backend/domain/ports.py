@@ -1472,6 +1472,23 @@ class IdentiteVisuelleRepository(Protocol):
         """Renvoie les octets et le format d'un logo, ou `None` si cet emplacement est vide."""
         ...
 
+    def empreinte_du_logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> str | None:
+        """Renvoie la seule **empreinte** d'un logo, ou `None` si l'emplacement est vide.
+
+        ⚠️ **Une quatrième méthode, et elle a une raison précise.** La route qui sert les octets
+        répond `304` la plupart du temps — `Cache-Control: no-cache` impose une revalidation à
+        chaque affichage, et l'écran de salle plus une trentaine de tablettes la déclenchent en
+        boucle. Sans cette lecture, répondre « rien de neuf » obligeait à **charger les 512 Ko**
+        pour
+        en calculer l'`ETag` : la projection sans blob, raison d'être de la table séparée, était
+        annulée sur la route la plus chaude (relevé par trois axes de revue, mesuré).
+
+        C'est aussi ce qui fait de l'empreinte **persistée** la seule source de la version :
+        l'`ETag`
+        servi et le segment `?v=` posé par le front sortent désormais de la même colonne.
+        """
+        ...
+
     def enregistrer_accents(
         self, tournoi_id: TournoiId, identite: IdentiteVisuelle
     ) -> IdentiteVisuelle:

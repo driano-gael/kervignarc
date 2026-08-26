@@ -84,13 +84,28 @@ def test_l_empreinte_est_persistee_avec_les_octets(
     """La projection des réglages ne charge **aucun** octet : c'est la raison d'être de la table
     séparée. L'empreinte est donc **stockée**, pas recalculée — sinon connaître le numéro de version
     d'un logo obligerait à relire 512 Ko à chaque affichage public."""
-    adapter, _, tournoi_id = depot
+    adapter, db, tournoi_id = depot
     logo = Logo.deposer(PNG, TypeLogo.PNG)
-
     adapter.enregistrer_logo(tournoi_id, EmplacementLogo.CLUB, logo)
 
-    reglages = adapter.reglages(tournoi_id)
-    assert reglages.empreintes == {EmplacementLogo.CLUB: logo.empreinte}
+    assert adapter.reglages(tournoi_id).empreintes == {EmplacementLogo.CLUB: logo.empreinte}
+
+    # ⚠️ **La moitié qui prouve.** L'assertion ci-dessus passe que la valeur vienne de la colonne ou
+    # d'un hachage à la relecture : elle ne distingue pas les deux, alors que la docstring promet
+    # « stockée, pas recalculée ». On force donc un témoin en base — seule une lecture de la colonne
+    # peut le rendre (relevé par deux axes de revue).
+    with db.engine.begin() as cnx:
+        cnx.execute(
+            text(
+                "UPDATE identite_tournoi SET logo_club_empreinte = 'temoin' WHERE tournoi_id = :id"
+            ),
+            {"id": tournoi_id},
+        )
+
+    assert adapter.reglages(tournoi_id).empreintes == {EmplacementLogo.CLUB: "temoin"}
+    assert (
+        adapter.empreinte_du_logo(tournoi_id, EmplacementLogo.CLUB) == "temoin"
+    ), "la route des octets lit la MÊME colonne : une seule source pour la version"
 
 
 def test_retirer_un_logo_efface_le_triplet_entier(
@@ -114,6 +129,42 @@ def test_retirer_un_logo_efface_le_triplet_entier(
             {"id": tournoi_id},
         ).one()
     assert restes == (None, None, None), "les trois colonnes partent ensemble"
+
+
+def test_l_empreinte_stockee_est_bien_celle_du_contenu(
+    depot: tuple[IdentiteVisuelleRepositorySQL, Database, int],
+) -> None:
+    """L'invariant que la persistance de l'empreinte met en jeu : une valeur dérivée que l'on stocke
+    peut **diverger** de ce dont elle dérive. Ici l'adapter est le seul écrivain, et ce test fixe le
+    contrat — ce qui est en colonne est l'empreinte des octets qui sont à côté."""
+    adapter, _, tournoi_id = depot
+    logo = Logo.deposer(PNG, TypeLogo.PNG)
+
+    adapter.enregistrer_logo(tournoi_id, EmplacementLogo.CLUB, logo)
+
+    relu = adapter.logo(tournoi_id, EmplacementLogo.CLUB)
+    assert relu is not None
+    assert adapter.empreinte_du_logo(tournoi_id, EmplacementLogo.CLUB) == relu.empreinte
+
+
+def test_une_ligne_incoherente_est_une_erreur_technique(
+    depot: tuple[IdentiteVisuelleRepositorySQL, Database, int],
+) -> None:
+    """Depuis l'empreinte, « y a-t-il un logo ? » a **deux** lectures : la projection la déduit de
+    l'empreinte, la route des octets du blob. Une ligne où elles divergent ferait dire « aucun logo
+    »
+    à `/identite` pendant que `/identite/logos/{…}` en sert un — sur la seule paire de routes que
+    l'écran de salle appelle ensemble. SQLite ne sait pas l'exprimer ; l'adapter le refuse."""
+    adapter, db, tournoi_id = depot
+    adapter.enregistrer_logo(tournoi_id, EmplacementLogo.CLUB, Logo.deposer(PNG, TypeLogo.PNG))
+    with db.engine.begin() as cnx:
+        cnx.execute(
+            text("UPDATE identite_tournoi SET logo_club_empreinte = NULL WHERE tournoi_id = :id"),
+            {"id": tournoi_id},
+        )
+
+    with pytest.raises(InfrastructureError):
+        adapter.reglages(tournoi_id)
 
 
 # ————————————————————————————————————————————————————————————————————————————————————————————————

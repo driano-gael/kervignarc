@@ -1916,6 +1916,7 @@ window.ATLAS.carte = {
    "fichier": "backend/domain/ports.py",
    "hors_domaine": false,
    "methodes": [
+    "empreinte_du_logo",
     "enregistrer_accents",
     "enregistrer_logo",
     "logo",

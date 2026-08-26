@@ -299,24 +299,29 @@ async def logo_du_tournoi(
     - `Content-Disposition: inline` sans nom de fichier — rien de ce qu'a saisi l'organisateur ne se
       retrouve dans un en-tête.
 
-    L'`ETag` évite de renvoyer 512 Ko à chaque rafraîchissement de l'écran de salle. Il est calculé
-    sur le contenu (SHA-256 tronqué), donc il **change** dès qu'on remplace le logo : un
-    organisateur qui corrige son fichier le voit sans vider son cache.
+    ⚠️ **L'empreinte est lue AVANT les octets, et c'est le point délicat.** `Cache-Control:
+    no-cache` impose une revalidation à chaque affichage ; sur l'écran de salle ouvert toute la
+    journée et une trentaine de tablettes, la réponse la plus fréquente est un `304`. Charger le
+    blob pour en calculer l'`ETag` annulait donc, sur la route la plus chaude, la projection sans
+    blob qui est la raison d'être de la table séparée — relevé par trois axes de revue, et démontré
+    par sonde : l'`ETag` servi était **recalculé** et pouvait diverger de l'empreinte persistée que
+    le front pose dans l'URL. Une seule source désormais : la colonne.
     """
     service: ServiceIdentite = request.app.state.service_identite
-    logo = await run_in_threadpool(service.logo, tournoi_id, emplacement)
-    if logo is None:
+    empreinte = await run_in_threadpool(service.empreinte_du_logo, tournoi_id, emplacement)
+    if empreinte is None:
         # Le contrat `{code, message}` (règle 5) vaut aussi ici : c'est une route **publique**, et
         # un 404 nu était la seule réponse du module hors format. Le consommateur prévu est une
         # balise `<img>`, qui n'en lit pas le corps — mais rien ne garantit qu'il restera le seul.
         raise LogoIntrouvable("Aucun logo à cet emplacement.")
 
-    # L'empreinte est celle du domaine, la même que celle servie dans `/identite` : les deux
-    # bouts de la chaîne de cache parlent donc de la même valeur, et le front peut construire une
-    # URL qui change exactement quand l'`ETag` change.
-    etag = f'"{logo.empreinte}"'
+    etag = f'"{empreinte}"'
     if _etag_deja_connu(request.headers.get("if-none-match"), etag):
         return Response(status_code=304, headers=_entetes_du_logo(etag))
+
+    logo = await run_in_threadpool(service.logo, tournoi_id, emplacement)
+    if logo is None:  # pragma: no cover — l'empreinte vient d'attester la présence du logo
+        raise LogoIntrouvable("Aucun logo à cet emplacement.")
     return Response(
         content=logo.contenu,
         media_type=logo.type_logo.value,

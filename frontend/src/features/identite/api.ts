@@ -156,5 +156,9 @@ export function urlDuLogo(
   emplacement: EmplacementLogo,
   empreinte: string,
 ): string {
-  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}?v=${empreinte}`
+  // `encodeURIComponent` par principe, pas par nécessité : l'empreinte est aujourd'hui produite
+  // par le serveur (32 caractères hexadécimaux). C'est la seule des trois colonnes du triplet qui
+  // finisse dans une URL, et le module d'adapter enveloppe déjà les deux autres à la relecture —
+  // on ne fait pas confiance à la base sur les deux tiers d'un invariant seulement.
+  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}?v=${encodeURIComponent(empreinte)}`
 }

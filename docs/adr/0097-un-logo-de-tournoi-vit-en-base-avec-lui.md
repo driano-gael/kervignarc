@@ -165,6 +165,23 @@ tient à ce que l'identité **est** ce qui distingue une édition.
   qui manquait — les **trois strates** de `DV-06` —, vérifiée par mutation dans les deux sens.
 - **`E01US016` est absorbée** : elle disparaît du reliquat et son CA est livré ici en entier, à une
   réserve près (l'usage de l'accent secondaire, ci-dessus).
+- **L'empreinte du contenu de chaque logo est PERSISTÉE, et elle adresse l'image.** Décision prise
+  en revue, après deux rédactions cassées. Le besoin : rendre un logo **remplacé** visible sans
+  rechargement. Une URL stable ne provoque aucune requête sur une image déjà montée (React ne
+  réécrit pas un attribut inchangé, donc `Cache-Control: no-cache` ne s'applique à rien) ; une URL
+  versionnée par l'horodatage de la requête change à **chaque** événement WebSocket et retélécharge
+  512 Ko pour rien. Seule une valeur qui suit les **octets** tient les deux bouts.
+
+  Elle est **stockée** (deux colonnes) plutôt que recalculée, parce que l'argument du §1 vaut ici :
+  hacher 512 Ko pour connaître un numéro de version annulerait la projection sans blob que la table
+  séparée existe pour permettre — sur la route la plus chaude, où le `304` est la réponse ordinaire.
+  Elle sert donc à la fois d'`ETag` et de segment `?v=`, lus de la **même** colonne : une seule
+  source pour la version.
+
+  **Prix assumé** : une valeur dérivée en base, dont l'adapter est le seul écrivain, et un invariant
+  qui passe de deux à trois colonnes que SQLite ne sait pas exprimer. Les deux sont tenus par
+  `IdentiteVisuelleRepositorySQL` et vérifiés par `test_identite_repository.py`, qui refuse une
+  ligne où présence et empreinte divergent.
 - **`Q-UX10` est fermée** (§2). **`Q-UX11`** (« une archive fige-t-elle son identité ? ») l'est **par
   construction** : les octets vivent dans la ligne du tournoi, et `archivé` refuse toute écriture.
 - **L'argument « supprimer un tournoi supprime sa descendance » (§1) est tenu par une cascade
@@ -180,27 +197,37 @@ tient à ce que l'identité **est** ce qui distingue une édition.
 
 ## Porté dans le code par
 
-⚠️ **Ce tableau a été corrigé à DEUX passes de revue, et la récidive est plus instructive que le
-défaut.** La première rédaction attribuait §5 (la portée) à `HabillageIdentite.tsx` ; la correction
-a rendu la ligne de `application/identite.py` fausse à son tour, en la faisant renvoyer à un
-« §3 (`P-4`) » — alors que `P-4` n'apparaît nulle part dans cet ADR et que §3 ne décide rien sur le
-caractère non bloquant du contraste. Le même défaut, dans la même table, dans le commit qui prétendait
-le réparer. Ce qui manquait était identique les deux fois : **relire la section citée**, et pas
-seulement le module. Détail de la première correction : Or ce module est ce **qui
-est monté**, pas ce **qui décide où** : le montage vit chez ses appelants, et rien n'empêchait une
-US future de l'importer dans l'admin — la décision était appliquée sans être gardée, exactement le
-mode de panne d'ADR-0017 qu'[ADR-0075](0075-le-depart-est-la-portee-sportive.md) existe pour ne pas
-rejouer. Le garde-fou manquant a été écrit dans le même mouvement. La leçon est celle qu'ADR-0075
+⚠️ **Ce tableau a été corrigé à TROIS passes de revue, et la récidive est plus instructive que le
+défaut.**
+
+1. La première rédaction attribuait §5 (la portée) à `HabillageIdentite.tsx`. Or ce module est ce
+   **qui est monté**, pas ce **qui décide où** : le montage vit chez ses appelants, et rien
+   n'empêchait une US future de l'importer dans l'admin — la décision était appliquée sans être
+   gardée, exactement le mode de panne d'ADR-0017
+   qu'[ADR-0075](0075-le-depart-est-la-portee-sportive.md) existe pour ne pas rejouer.
+2. La correction a rendu la ligne de `application/identite.py` fausse à son tour, en la faisant
+   renvoyer à un « §3 (`P-4`) » — alors que `P-4` n'apparaît nulle part dans cet ADR et que §3 ne
+   décide rien sur le caractère non bloquant du contraste.
+3. Et la suivante a laissé la ligne du repository attester l'invariant « les **deux** colonnes d'un
+   logo » que le même commit venait de porter à trois.
+
+Trois fois le même défaut, dans la même table, chaque fois dans le commit qui prétendait le réparer.
+Ce qui manquait n'est pas l'attention : c'est un **geste**, et il tient en une phrase — *rouvrir
+cette table, c'est relire chacune de ses lignes contre le diff du jour*, la section citée comprise,
+pas seulement celle qu'on vient de corriger.
+
+Le garde-fou de portée manquant a été écrit dans le même mouvement. La leçon est celle qu'ADR-0075
 inscrit déjà : **cette section s'écrit en vérifiant dans le code du jour, pas en déduisant de
 l'ADR** — nommer un module qui « devrait » porter la décision reproduit le défaut au lieu de le
 prévenir.
 
 | Module | Ce qu'il tient de cet ADR |
 |---|---|
+| [`frontend/src/features/identite/api.ts`](../../frontend/src/features/identite/api.ts) (`urlDuLogo`) | § Conséquences l'adresse d'un logo versionnée par l'**empreinte de son contenu** — ni URL stable (aucune requête sur une image déjà montée), ni horodatage de cache (une URL neuve à chaque événement WebSocket) |
 | [`backend/domain/identite.py`](../../backend/domain/identite.py) | §3 la dérivation (pure, teinte et saturation conservées) et ses deux seuils WCAG ; §2 le refus de contenu d'un logo ; §4 `IdentiteVisuelle` à accents facultatifs et `reglee` dérivé |
 | [`backend/application/identite.py`](../../backend/application/identite.py) | §3 la **déclinaison servie prête à poser** — les deux thèmes calculés côté serveur (`decliner`), le front ne recalcule rien. *(Deux autres décisions passent par ce module sans venir de cet ADR : le contraste rendu comme chiffre et non opposé comme refus vient de `P-4` ; le verrou d'archive, d'ADR-0026 §1.)* |
 | [`backend/api/v1/identite.py`](../../backend/api/v1/identite.py) | §1 la route qui sert les octets ; §2 les trois en-têtes de sûreté et le corps brut ; §5 les deux lectures publiques |
-| [`backend/infrastructure/db/repositories/referentiel.py`](../../backend/infrastructure/db/repositories/referentiel.py) (`IdentiteVisuelleRepositorySQL`) | §1 la projection **sans blob** des réglages, et l'invariant « les deux colonnes d'un logo, ou aucune » |
+| [`backend/infrastructure/db/repositories/referentiel.py`](../../backend/infrastructure/db/repositories/referentiel.py) (`IdentiteVisuelleRepositorySQL`) | §1 la projection **sans blob** des réglages (empreintes + présence, jamais les octets), l'invariant « les **trois** colonnes d'un logo — octets, type, empreinte — ou aucune », et la lecture de la seule empreinte qui permet à la route des octets de répondre `304` sans les charger |
 | [`backend/migrations/versions/0050_identite_visuelle_tournoi.py`](../../backend/migrations/versions/0050_identite_visuelle_tournoi.py) | §1 la table à part **et sa cascade** (`ON DELETE CASCADE`, sans laquelle l'argument « supprimer un tournoi supprime sa descendance » du §1 serait faux) ; §4 les accents nullables et l'absence de peuplement |
 | [`frontend/src/features/identite/jetons.ts`](../../frontend/src/features/identite/jetons.ts) | §3 les seuls jetons de **marque** émis, dans les trois déclinaisons de thème |
 | [`frontend/src/features/identite/HabillageIdentite.tsx`](../../frontend/src/features/identite/HabillageIdentite.tsx) | le mécanisme d'habillage lui-même : pose les jetons, rend les deux logos facultatifs |

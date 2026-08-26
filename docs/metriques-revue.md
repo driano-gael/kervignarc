@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-26 | `E16US006` (3ᵉ passe, sur les correctifs) | 23 | +1102/−211 | ~10 min | ~46 min | B (14:11→14:38) | bloquant:0 **majeur:3** mineur:4 suggestion:2 | bloquant:0 **majeur:4** mineur:6 suggestion:3 | — *(non rejoué : ses deux majeurs de la 2ᵉ passe étaient partagés avec D, et le remède qu'il préconisait est celui qui a été implémenté ; A, B et C2 étaient, eux, rendus obligatoires par la procédure)* | bloquant:0 **majeur:3** mineur:8 suggestion:2 | bloquant:0 **majeur:6** mineur:5 suggestion:4 | **aucun bloquant** — mais **A et D trouvent, chacun à l'exécution et indépendamment, que le durcissement de la 2ᵉ passe est encore écrit contre les exemples du rapport** : `_PREFIXE_XML` exigeait `[a-z]`, donc `<_x:script>` franchissait *tout*, y compris ce que la 1ʳᵉ rédaction attrapait. D montre en plus un **rétrécissement net** — les entités internes ne sont plus refusées mais toujours pas développées, donc une charge coupée en deux entités passe là où la 2ᵉ rédaction la bloquait. B ajoute le manquement que personne n'avait vu : les arbitrages tranchés en cours d'US n'étaient **pas reversés dans `stories/`** (règle 9) | 3 |
 | 2026-08-26 | `E16US006` (2ᵉ passe, sur les correctifs) | 29 | +1105/−123 | ~11 min | ~33 min | D (12:56→13:19) | bloquant:0 majeur:0 mineur:3 suggestion:3 | bloquant:0 majeur:3 mineur:8 suggestion:5 | bloquant:0 majeur:2 mineur:6 suggestion:2 | bloquant:0 majeur:3 mineur:4 suggestion:2 | bloquant:0 **majeur:8** mineur:5 | **aucun bloquant** — mais **cinq des huit majeurs de D sont des trous DÉPLACÉS par les correctifs eux-mêmes** : la denylist SVG élargie tombait entièrement sur un préfixe de namespace (`<svg:script>` franchissait *aussi* les quatre formes que la 1ʳᵉ rédaction attrapait), le contrôle PNG avait été **relâché pour accommoder un test** de bourrage, et les deux garde-fous front réécrits restaient franchissables par la forme la plus idiomatique de leur cible (`setProperty`, `lazy(() => import(…))`). Trois autres remarques — dont une de chaque axe de grille — visaient des **assertions qui annonçaient plus qu'elles ne prouvaient** (la cascade, la minimalité, le nom accessible) | 2 |
 | 2026-08-26 | `E16US006` (absorbe `E01US016`) | 43 | +4619/−220 | ~10 min | ~32 min | D (11:26→11:58) | bloquant:0 majeur:2 mineur:7 suggestion:1 | bloquant:0 majeur:3 mineur:7 suggestion:3 | bloquant:0 majeur:2 mineur:5 suggestion:6 | bloquant:0 majeur:3 mineur:4 suggestion:1 | **bloquant:1** majeur:6 mineur:4 | **D seul** — et c'est le fait de la passe : les **quatre axes de grille ont rendu zéro bloquant**. D a trouvé qu'un tournoi dont on avait effleuré l'écran d'identité devenait *définitivement* indéracinable (500), en **exécutant** `POST` → `PUT identité` → `DELETE` avec la baseline 204 sur le même code. Les quatre autres avaient lu la FK nue **et son marqueur `DETTE-001`**, et conclu à une aggravation régulière | 1 |
 | 2026-08-24 | `E16US005` (1ʳᵉ passe) | 14 | +1089/−161 | ~14 min | ~12 min | D (17:36→17:48) | bloquant:0 majeur:0 mineur:2 suggestion:1 | **bloquant:1** majeur:2 mineur:3 suggestion:2 | **bloquant:1** majeur:1 mineur:3 suggestion:2 | **bloquant:1** majeur:2 mineur:2 suggestion:3 | **bloquant:2** majeur:2 mineur:4 suggestion:1 | **B, C1, C2 et D convergents** (1 bloquant : le jumeau des duels non aligné) ; **D seul** pour le 2ᵉ (l'arithmétique de largeur : l'US rendait l'écran plus tassé qu'avant) et pour le fond transparent de la réserve collante | 3 |
@@ -537,8 +538,8 @@ demander si on doit la laisser nue » ; et la revue confirme, pour la deuxième 
 bloquant.
 
 **38. Un durcissement qui n'est pas attaqué déplace le trou au lieu de le fermer.**
-La 2ᵉ passe d'E16US006 a rendu **zéro bloquant et treize majeurs**, dont cinq portaient sur des
-correctifs de la 1ʳᵉ. Le motif est constant : chaque durcissement avait été écrit **contre les
+La 2ᵉ passe d'E16US006 a rendu **zéro bloquant et seize majeurs — treize distincts** une fois les
+convergences fusionnées —, dont cinq portaient sur des correctifs de la 1ʳᵉ. Le motif est constant : chaque durcissement avait été écrit **contre les
 exemples du rapport précédent**, donc il fermait exactement ces exemples-là et rien d'autre. La
 denylist SVG en est le cas d'école — élargie à SMIL, aux entités et aux références externes, elle
 restait écrite sur des balises **non préfixées**, si bien que `<svg:script>` franchissait le tout,
@@ -565,3 +566,34 @@ Trois gestes en sont tirés, tous portés dans le dépôt plutôt qu'en prose :
   1ʳᵉ correction ne pouvaient pas échouer — un 404 rendu par la disparition du tournoi et non par la
   cascade, une médiane de clarté qui ne détectait qu'un dépassement de 100 %, un `textContent` qui
   n'inclut jamais un `alt`. Les trois étaient écrites en toutes lettres comme la moitié qui compte.
+
+**39. Trois passes, trois rédactions du même contrôle, et deux d'entre elles ont RÉDUIT la
+couverture — le seul geste qui ait jamais fermé un trou est l'exécution.**
+La denylist SVG d'E16US006 a été écrite quatre fois. À chaque passe, la rédaction suivante était
+composée **en lisant le rapport précédent**, donc contre ses exemples : la 2ᵉ a fermé `<script>` et
+`javascript:` littéraux mais restait aveugle aux préfixes de namespace, si bien qu'elle couvrait
+*moins* que la 1ʳᵉ ; la 3ᵉ a fermé `<svg:script>` mais a exigé `[a-z]` en tête de préfixe, laissant
+passer `<_x:script>`, et a cessé de refuser les entités sans se mettre à les développer — deuxième
+rétrécissement. Deux fois sur trois, « durcir » a diminué la protection.
+
+Ce qui a fini par fonctionner n'est pas une meilleure regex, c'est un **changement de méthode**, et
+il tient en trois gestes, tous portés dans le dépôt :
+- **écrire le motif contre la grammaire, pas contre les exemples.** `_PREFIXE_XML` ne dit plus quels
+  caractères un préfixe peut porter, il dit « tout ce qui précède un `:` » ; la clause de référence
+  externe ne s'ancre plus sur `<use>`/`<image>` mais sur **toute valeur d'`href`**. Un motif qui
+  énumère se trompera encore ; un motif qui délègue au nom **local** ne peut plus être contourné par
+  un préfixe ;
+- **balayer toutes les lectures du fichier**, pas ses octets. Entités et références de caractère sont
+  deux façons d'écrire la même chaîne, elles se combinent, et le parseur les résout toutes avant
+  d'interpréter quoi que ce soit. `_lectures_possibles` matérialise cela ;
+- **tout durcissement porte son corpus d'acceptation**, exécuté sur des exports réels — les trois SVG
+  du dépôt compris.
+
+Corollaire de pilotage, à lire avec la leçon n° 38 : **le nombre de passes n'est pas la mesure de la
+qualité d'une revue ; la proportion de remarques obtenues par exécution l'est.** Sur les trois passes,
+tous les défauts structurels — le bloquant, les cinq trous déplacés de la 2ᵉ, les six de la 3ᵉ — ont
+été trouvés en déposant des fichiers, en instrumentant `setAttribute`, en posant des mutants ou en
+forçant une sonde SQL. Aucun ne l'a été en lisant. Les axes de grille, eux, ont trouvé ce que
+l'exécution ne montre pas : une ligne d'ADR fausse trois fois de suite, un marqueur de dette non
+inscrit, une procédure commentée au lieu d'être amendée, et un CA qui ne disait plus ce que le code
+faisait. **Les deux moitiés sont nécessaires, et elles ne se remplacent pas.**

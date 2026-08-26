@@ -7772,6 +7772,15 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/identite/api.ts",
+     "existe": true,
+     "symboles": [
+      "urlDuLogo"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/identite/jetons.ts",
      "existe": true,
      "symboles": [],

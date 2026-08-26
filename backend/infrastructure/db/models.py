@@ -981,7 +981,9 @@ class IdentiteVisuelleORM(Base):
     # geste par l'adapter. L'empreinte est stockée et non recalculée : la projection des réglages
     # est faite colonne par colonne **sans charger un octet** (c'est la raison d'être de cette
     # table), et hacher pour connaître un numéro de version aurait annulé ce gain à chaque affichage
-    # public. Elle sert aussi d'`ETag` sur la route qui sert les octets — un seul calcul, au dépôt.
+    # public. La route qui sert les octets la lit **seule** pour répondre 304 (`empreinte_du_logo`),
+    # de sorte que la version servie et la version persistée sont la même valeur — un seul calcul,
+    # au dépôt.
     logo_evenement: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     logo_evenement_type: Mapped[str | None] = mapped_column(nullable=True)
     logo_evenement_empreinte: Mapped[str | None] = mapped_column(nullable=True)

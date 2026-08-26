@@ -72,15 +72,17 @@ function harnais(noeud: ReactNode) {
 }
 
 beforeEach(() => {
-  // ⚠️ **Remise à zéro explicite.** La configuration vitest du dépôt ne pose ni `clearMocks` ni
-  // `restoreMocks`, et ce `beforeEach` ne réinitialisait que trois des cinq doublures : un
-  // `not.toHaveBeenCalled()` sur `deposerLogo` comptait donc les appels du test précédent, et n'a
-  // été rendu déterministe qu'à la main, test par test. Nettoyer ici vaut mieux qu'un pansement
-  // local — c'est ce qui rend l'ordre des tests indifférent.
-  vi.clearAllMocks()
+  // ⚠️ **`reset`, pas `clear`, et les CINQ doublures.** La configuration vitest du dépôt ne pose ni
+  // `clearMocks` ni `restoreMocks`. `clearAllMocks` n'efface que le journal des appels : ni les
+  // implémentations, ni la file des `mockResolvedValueOnce` — le commentaire précédent promettait
+  // donc « l'ordre des tests indifférent » sans le tenir, et deux doublures restaient sans valeur
+  // par défaut. `resetAllMocks` remet tout à plat, et les cinq sont restubées ici.
+  vi.resetAllMocks()
   vi.mocked(getIdentite).mockResolvedValue(IDENTITE_HERITEE)
   vi.mocked(apercuIdentite).mockResolvedValue(IDENTITE_HERITEE)
   vi.mocked(enregistrerAccents).mockResolvedValue({ ...IDENTITE_HERITEE, reglee: true })
+  vi.mocked(deposerLogo).mockResolvedValue(IDENTITE_HERITEE)
+  vi.mocked(retirerLogo).mockResolvedValue(IDENTITE_HERITEE)
 })
 
 // ————————————————————————————————————————————————————————————————————————————————————————————————

@@ -255,7 +255,10 @@ describe('AccueilPublic — l’identité du tournoi habille l’appli publique 
     const titre = await screen.findByRole('heading', { level: 2 })
     const logo = container.querySelector('img.logo-tournoi')
     expect(logo, 'le logo doit être rendu').not.toBeNull()
-    expect(logo?.getAttribute('src')).toContain('/identite/logos/evenement')
+    // Le segment de version fait partie du contrat : `LogoDuTournoi` est un **second** site
+    // d'appel de `urlDuLogo`, distinct de celui de l'admin. Sans cette assertion, lui passer une
+    // URL stable ne ferait rougir aucun test — sur l'écran que la correction invoque précisément.
+    expect(logo?.getAttribute('src')).toContain('/identite/logos/evenement?v=v1')
     // ⚠️ Le **nom accessible**, pas `textContent` : celui-ci n'inclut jamais un attribut `alt`, si
     // bien que l'assertion précédente (`not.toContain('Logo')`) passait déjà AVANT le correctif,
     // avec `alt="Logo du tournoi"` — une assertion vide, présentée comme la moitié qui compte.

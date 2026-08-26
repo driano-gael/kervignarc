@@ -1402,9 +1402,14 @@ reviendrait à la trancher par accident.
 **Aggravation.** Chaque US qui ajoute une table **ou une FK** à la descendance de `tournoi` élargit
 la dette sans la créer. Une telle US doit :
 
-0. **d'abord se demander si la FK doit être nue.** Une table dont la ligne est un **composant strict**
-   de l'agrégat parent — une ligne, aucune descendance, aucun sens hors du parent : `placement`,
-   `volee`, `identite_tournoi` — porte `ON DELETE CASCADE` et **n'entre pas** dans cette dette. Et si
+0. **d'abord se demander si la FK doit être nue — et le vérifier.** Une table dont les lignes sont
+   des **composants stricts** de l'agrégat parent — **feuilles** (aucune table ne pend à elles),
+   sans aucun sens hors du parent : `placement`, `volee`, `identite_tournoi` — porte
+   `ON DELETE CASCADE` et **n'entre pas** dans cette dette. ⚠️ Le critère n'est **pas** la
+   cardinalité : `placement` et `volee` ont N lignes par parent, et écrire « une ligne » exposait le
+   geste à être écarté par la lettre dès son premier usage. C'est « feuille, et sans existence
+   propre ». Et *vérifier* veut dire l'**exécuter** : créer une ligne dans la table neuve, puis
+   supprimer le tournoi. C'est ce geste — pas la lecture — qui a trouvé le défaut d'E16US006. Et si
    laisser la FK nue casse un cas utilisateur **maintenant**, ce n'est pas de la dette : c'est un
    **bloquant** (`CLAUDE.md` § Dette). ⚠️ Ce geste a été ajouté après E16US006, où les trois suivants
    avaient été appliqués sans faute sur une FK qui n'aurait pas dû être nue — cf. l'encadré « ce que

@@ -436,7 +436,8 @@ SVG_ENTETE = b'<svg xmlns="http://www.w3.org/2000/svg">'
 
 
 def png_de(poids: int) -> bytes:
-    """Un PNG **structurellement valide** du poids demandé — bourrage inséré AVANT le bloc `IEND`.
+    """Un PNG du poids demandé, **valide au regard du contrôle de structure** — bourrage inséré
+    AVANT le bloc `IEND`.
 
     ⚠️ Ce détail a coûté une passe de revue. La version précédente ajoutait les octets de bourrage
     **après** `IEND`, ce qui n'est pas un PNG ; pour ne pas la casser, le contrôle de structure
@@ -615,6 +616,52 @@ class TestLogo:
                 b'<!DOCTYPE svg SYSTEM "http://exemple.test/x.dtd">'
                 b'<svg xmlns="http://www.w3.org/2000/svg"/>',
             ),
+            # ————— Trouvés à la 3ᵉ passe, déposés ET servis. Les trois premiers ont la même cause
+            # que ceux de la 2ᵉ : un motif écrit contre les exemples du rapport plutôt que contre la
+            # règle. Le quatrième est un RÉTRÉCISSEMENT — la rédaction précédente refusait toute
+            # entité, celle d'après ne refusait plus que les externes sans développer les internes.
+            (
+                "préfixe commençant par un souligné",
+                b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:_x="http://www.w3.org/2000/svg">'
+                b"<_x:script>alert(1)</_x:script></svg>",
+            ),
+            (
+                "préfixe non ASCII",
+                '<svg xmlns="http://www.w3.org/2000/svg" '
+                'xmlns:é="http://www.w3.org/2000/svg"><é:script>alert(1)</é:script></svg>'.encode(),
+            ),
+            (
+                "chevron licite dans une valeur d'attribut",
+                b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                b'<use aria-label="a>b" xlink:href="http://exemple.test/x.svg#p"/></svg>',
+            ),
+            (
+                "charge répartie sur deux entités littérales",
+                b'<!DOCTYPE svg [<!ENTITY a "java"><!ENTITY b "script:alert(1)">]>'
+                b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                b'<a xlink:href="&a;&b;">x</a></svg>',
+            ),
+            (
+                "entité dont la valeur porte une référence numérique",
+                b'<!DOCTYPE svg [<!ENTITY z "&#58;alert(1)">]>'
+                b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                b'<a xlink:href="javascript&z;">x</a></svg>',
+            ),
+            (
+                "animateMotion, qui échappait au mot-frontière",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<animateMotion attributeName="x" to="1"/></svg>',
+            ),
+            (
+                "feuille de style tierce par url()",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<style>rect{fill:url("http://exemple.test/x.svg#g")}</style></svg>',
+            ),
+            (
+                "data: qui n'est pas un raster",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<image href="data:image/svg+xml;base64,PHN2Zz48c2NyaXB0Pg=="/></svg>',
+            ),
         ],
     )
     def test_le_corpus_d_attaques_reelles_est_refuse(self, vecteur: str, hostile: bytes) -> None:
@@ -657,6 +704,19 @@ class TestLogo:
             (
                 "raster embarqué en data:",
                 SVG_ENTETE + b'<image href="data:image/png;base64,iVBORw0KGgo="/></svg>',
+            ),
+            (
+                "fragment local précédé d'un espace de mise en forme",
+                SVG_ENTETE + b'<defs><path id="p" d="M0 0h1v1z"/></defs>'
+                b'<use xlink:href=" #p"/></svg>',
+            ),
+            (
+                "raster embarqué précédé d'un espace",
+                SVG_ENTETE + b'<image href=" data:image/png;base64,iVBORw0KGgo="/></svg>',
+            ),
+            (
+                "dégradé référencé par url(#…)",
+                SVG_ENTETE + b'<defs><linearGradient id="g"/></defs><rect fill="url(#g)"/></svg>',
             ),
             (
                 "entité littérale d'Illustrator dans le DOCTYPE",

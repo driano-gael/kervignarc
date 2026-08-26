@@ -165,6 +165,16 @@ class ServiceIdentite:
         """
         return self._identites.logo(tournoi_id, emplacement)
 
+    def empreinte_du_logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> str | None:
+        """Rend la version d'un logo sans en charger les octets — `None` si l'emplacement est vide.
+
+        Même contrat que `logo` : **ne vérifie pas** l'existence du tournoi. C'est ce qui permet à
+        la
+        route publique de répondre `304` sans toucher au blob, sur la seule route que trente
+        tablettes et un vidéoprojecteur appellent ensemble.
+        """
+        return self._identites.empreinte_du_logo(tournoi_id, emplacement)
+
     def _apres_ecriture_de_logo(
         self, tournoi_id: TournoiId, emplacement: EmplacementLogo, logo: Logo | None
     ) -> IdentiteDeclinee:

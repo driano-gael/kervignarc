@@ -422,15 +422,19 @@ describe('CA — l’habillage de tournoi ne touche que le public et la salle (D
     // dans une coquille d'admin qu'on veut découper — passait au vert, tout comme des guillemets
     // doubles ou une extension explicite. Chercher le nom **suivi de sa quote fermante** couvre les
     // cinq formes, statiques et dynamiques.
+    // ⚠️ **On cherche le NOM, pas le chemin.** Le contrôle demandait « qui importe ce module »,
+    // ce qu'un porteur autorisé peut contourner en le **ré-exportant** : deux lignes
+    // (`export { HabillageIdentite } from '…'` dans l'écran de salle, puis un import depuis l'admin)
+    // habillaient l'admin avec les 29 tests au vert — mutation faite en revue. Un `.js` en fin de
+    // spécificateur ou un alias de chemin suffisaient aussi. L'identifiant nu, lui, apparaît quelle
+    // que soit la route empruntée ; le module qui le définit entre donc dans la liste attendue.
     const porteurs = features
-      .filter(([, source]) =>
-        /HabillageIdentite(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
-      )
+      .filter(([, source]) => /\bHabillageIdentite\b/.test(neutraliserCommentaires(source)))
       .map(([chemin]) => chemin)
       .sort()
 
     expect(porteurs, 'D-27 : l’identité du tournoi n’habille jamais l’admin ni la saisie').toEqual(
-      [...HABILLEURS].sort(),
+      ['features/identite/HabillageIdentite.tsx', ...HABILLEURS].sort(),
     )
   })
 
@@ -440,9 +444,11 @@ describe('CA — l’habillage de tournoi ne touche que le public et la salle (D
     // habillerait l'admin avec le contrôle précédent au vert — le garde-fou répondait à « qui monte
     // l'habillage », pas à la question que ce bloc pose lui-même : **qui a le droit de toucher à la
     // marque**.
+    // `[^'"]*` et non `[.\w/]*` : un alias de chemin (`@/features/identite/jetons`) franchissait
+    // le second. Aucun alias n'est configuré aujourd'hui — durcissement, pas trou vivant.
     const porteurs = features
       .filter(([, source]) =>
-        /['"][.\w/]*\/jetons(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
+        /['"][^'"]*\/jetons(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
       )
       .map(([chemin]) => chemin)
       .sort()
@@ -476,6 +482,23 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
   const CHEMIN_JETONS = 'features/identite/jetons.ts'
   const fabrique = SOURCES[CHEMIN_JETONS] ?? ''
 
+  /**
+   * Une source pose-t-elle ce jeton ? Trois formes, parce qu'il y a trois façons d'écrire une
+   * variable CSS depuis React : `{--x:${c}}` (deux-points collé), `{'--x': c}` (une quote
+   * s'intercale) et `setProperty('--x', c)` (pas de deux-points du tout).
+   *
+   * ⚠️ **Écrit d'un seul endroit, et c'est le correctif.** Le motif avait été élargi pour surveiller
+   * les *autres* features, mais le contrôle qui porte sur `jetons.ts` — le module dont ce bloc dit
+   * qu'il est le seul autorisé à toucher la marque — gardait l'ancienne version étroite. Le trou
+   * n'avait pas été fermé, il avait été déplacé sur le fichier le plus exposé (relevé en revue).
+   */
+  const poseLeJeton = (jeton: string, source: string) =>
+    new RegExp(
+      String.raw`(^|[^\w-])${jeton}\s*['"\`]?\s*:` +
+        '|' +
+        String.raw`setProperty\(\s*['"\`]${jeton}\b`,
+    ).test(neutraliserCommentaires(source))
+
   // Les huit jetons de marque — quatre par accent. Eux seuls appartiennent à la strate
   // personnalisable ; tout le reste de la charte est figé.
   const JETONS_DE_MARQUE = [
@@ -504,9 +527,7 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
     const figes = Object.keys(declinaison("data-theme='dark'").jetons).filter(
       (jeton) => !JETONS_DE_MARQUE.includes(jeton),
     )
-    const fautes = figes.filter((jeton) =>
-      new RegExp(String.raw`${jeton}\s*:`).test(neutraliserCommentaires(fabrique)),
-    )
+    const fautes = figes.filter((jeton) => poseLeJeton(jeton, fabrique))
 
     expect(
       fautes,
@@ -537,19 +558,7 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
       .filter(([chemin]) => chemin !== CHEMIN_JETONS && /\.tsx?$/.test(chemin))
       .flatMap(([chemin, source]) =>
         jetonsDeLaCharte
-          .filter((jeton) =>
-            // Trois formes, parce que trois façons de poser une variable CSS depuis React :
-            //   `${porte}{--surface-0:${c}}`         → le jeton précède un deux-points
-            //   <div style={{ '--surface-0': c }}>   → une quote s'intercale avant le deux-points
-            //   el.style.setProperty('--surface-0', c) → il n'y a **pas** de deux-points du tout
-            // La rédaction précédente n'attrapait que la première ; `setProperty` est pourtant le
-            // moyen le plus direct de repeindre le fond du produit, et il passait au vert.
-            new RegExp(
-              String.raw`(^|[^\w-])${jeton}\s*['"\`]?\s*:` +
-                '|' +
-                String.raw`setProperty\(\s*['"\`]${jeton}\b`,
-            ).test(neutraliserCommentaires(source)),
-          )
+          .filter((jeton) => poseLeJeton(jeton, source))
           .map((jeton) => `${chemin} fabrique ${jeton}`),
       )
 

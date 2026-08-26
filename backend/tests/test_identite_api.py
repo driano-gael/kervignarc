@@ -446,6 +446,69 @@ def test_les_octets_d_un_logo_sont_servis_avec_leurs_gardes(
         assert servi.headers["cache-control"] == "no-cache"
 
 
+def test_la_reponse_sert_la_borne_de_poids_au_lieu_de_la_faire_recopier(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ Un champ de contrat que **rien** n'assertait, et dont l'absence s'éteint en silence.
+
+    Le front a perdu sa copie en dur de la limite dans le même commit qui a ajouté ce champ : il lit
+    `identite.poids_logo_max_octets` pour refuser un fichier hors limite **avant** de le faire
+    traverser le Wi-Fi du gymnase. Si le champ est renommé ou disparaît, `fichier.size > undefined`
+    vaut `false` — le pré-contrôle s'éteint, la fiche de recette ment (« immédiat, sans attente »),
+    et aucun test ne rougit nulle part."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        identite = client.get(f"/api/v1/tournois/{tournoi_id}/identite").json()
+
+        assert identite["poids_logo_max_octets"] == POIDS_LOGO_MAX_OCTETS
+        assert identite["seuil_contour"] == 3.0
+        assert identite["seuil_texte"] == 4.5
+
+
+@pytest.mark.parametrize(
+    ("entete", "attendu"),
+    [
+        ("exact", 304),
+        ("faible", 304),
+        ("liste", 304),
+        ("joker", 304),
+        ("autre", 200),
+    ],
+)
+def test_la_revalidation_accepte_les_formes_conformes_d_if_none_match(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin, entete: str, attendu: int
+) -> None:
+    """⚠️ `_etag_deja_connu` est un durcissement dont **rien** n'exerçait la partie neuve.
+
+    `If-None-Match` porte une **liste**, et ses entrées peuvent être faibles (`W/"…"`) ou valoir
+    `*` — trois formes conformes que l'égalité stricte d'avant faisait retomber en 200 complet, soit
+    jusqu'à 512 Ko de plus par tablette pour un fichier déjà en cache. Le seul test 304 renvoyait
+    l'`ETag` exact, qui passait déjà : supprimer la fonction laissait la suite verte.
+
+    Le cas `autre` est celui qui compte autant que les quatre premiers : il interdit à la fonction
+    de
+    dégénérer en « toujours 304 »."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        chemin = f"/api/v1/tournois/{tournoi_id}/identite/logos/evenement"
+        client.put(chemin, content=PNG, headers={"Content-Type": "image/png"})
+        etag = client.get(chemin).headers["etag"]
+        propose = {
+            "exact": etag,
+            "faible": f"W/{etag}",
+            "liste": f'"deja-vu", {etag}',
+            "joker": "*",
+            "autre": '"deja-vu"',
+        }[entete]
+
+        reponse = client.get(chemin, headers={"If-None-Match": propose})
+
+        assert reponse.status_code == attendu
+
+
 def test_un_logo_inchange_se_revalide_en_304(
     app_identite: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
@@ -601,7 +664,7 @@ def test_un_corps_hors_de_proportion_est_refuse_sans_etre_ingere(
         assert frontiere.json()["code"] == "corps_hors_de_proportion"
 
 
-def test_un_corps_chunke_hors_de_proportion_est_coupe_en_cours_de_lecture(
+def test_un_corps_chunke_hors_de_proportion_est_refuse_sans_content_length(
     app_identite: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
     """⚠️ **La moitié de la garde que le test précédent n'exerce pas.**
@@ -612,6 +675,12 @@ def test_un_corps_chunke_hors_de_proportion_est_coupe_en_cours_de_lecture(
     revue : en retirant entièrement le cumul, la suite restait verte.
 
     Passer un itérateur fait basculer httpx en `Transfer-Encoding: chunked`.
+
+    ⚠️ **Ce que ce test ne prouve PAS**, et le nom a été corrigé pour cesser de le promettre : le
+    harnais de `TestClient` joint le générateur avant que l'application n'en voie un octet, donc la
+    coupure n'a pas lieu « en cours de lecture ». Il prouve la **branche**, pas la propriété de
+    mémoire bornée — laquelle demanderait une `Request` fabriquée à la main comptant ses appels à
+    `receive`.
     """
 
     def flux() -> Iterator[bytes]:
