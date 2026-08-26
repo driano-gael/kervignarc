@@ -34,7 +34,14 @@ from dataclasses import dataclass
 
 from application.erreurs import NonAuthentifie, PosteIntrouvable, TournoiIntrouvable
 from application.postes import StoreSessionsPoste, exiger_ecran
-from domain.ecran import Consigne, PriseDeControle, SequenceVues, VueEcran, reste_secondes
+from domain.ecran import (
+    Consigne,
+    PriseDeControle,
+    ReglagePages,
+    SequenceVues,
+    VueEcran,
+    reste_secondes,
+)
 from domain.ports import Horloge, PosteRepository, RegistreConsignes, TournoiRepository
 from domain.poste import Poste, PosteId, TypePoste
 from domain.tournoi import TournoiId
@@ -63,6 +70,12 @@ class AffichageEcran:
 
     `reste_s` alimente son compte à rebours ; `None` signifie soit « pas sous contrôle », soit
     « sous contrôle sans échéance », que `sous_controle` permet de distinguer.
+
+    `pages` accompagne **toujours** l'affichage (E16US009) : c'est le réglage de l'écran, donc il
+    vaut sous contrôle comme hors contrôle — une prise de contrôle change *ce qu'on montre*, jamais
+    *comment une liste se lit à dix mètres*. Et il est **résolu** (`pages_effectives`) : l'écran ne
+    reçoit jamais « rien réglé », il n'a donc aucun défaut à retenir de son côté — c'est ce qui a
+    permis à `DETTE-039` d'exister.
     """
 
     sequence: SequenceVues | None
@@ -70,6 +83,7 @@ class AffichageEcran:
     vue_figee: VueEcran | None
     sous_controle: bool
     reste_s: float | None
+    pages: ReglagePages
 
 
 @dataclass(frozen=True)
@@ -122,6 +136,7 @@ class ServiceEcrans:
         ecran = exiger_ecran(poste)
         prise = self._prise_en_vigueur(poste_id)
         repli = ecran.deroule_effectif
+        pages = ecran.pages_effectives
         if prise is None:
             return AffichageEcran(
                 sequence=repli,
@@ -129,6 +144,7 @@ class ServiceEcrans:
                 vue_figee=None,
                 sous_controle=False,
                 reste_s=None,
+                pages=pages,
             )
         return AffichageEcran(
             # Ce qui tourne maintenant : la séquence imposée s'il y en a une, sinon le déroulé
@@ -141,6 +157,9 @@ class ServiceEcrans:
             vue_figee=prise.consigne.vue,
             sous_controle=True,
             reste_s=self._reste(prise),
+            # Le réglage de l'écran survit à la prise de contrôle : elle impose une *vue*, pas une
+            # façon de lire une liste.
+            pages=pages,
         )
 
     # --- Côté admin ---

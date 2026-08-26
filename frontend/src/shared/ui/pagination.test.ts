@@ -1,13 +1,17 @@
 // Tests de la pagination de salle (retour maquettes du 04/08/2026, P06).
+// Déplacés de `features/routage/` vers `shared/ui/` par E16US009, avec le module qu'ils couvrent.
 // Les cas dérivent des phrases du questionnaire, citées dans `pagination.ts`.
 
-import { describe, expect, it } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   NOMS_PAR_PAGE,
+  SECONDES_PAR_PAGE,
   nombreDePages,
   pageCourante,
   rateauDePage,
   trancheDePage,
+  useSecondesDAffichage,
 } from './pagination'
 
 describe('nombreDePages', () => {
@@ -100,5 +104,66 @@ describe('rateauDePage', () => {
 
   it('une page vide n’a pas de râteau', () => {
     expect(rateauDePage([])).toBeNull()
+  })
+})
+
+describe('les défauts du module et ceux du serveur', () => {
+  it('valent exactement `ReglagePages.par_defaut()` côté serveur', () => {
+    // ⚠️ **Garde-fou de la résorption de `DETTE-039`.** Le réglage vit désormais en base, mais un
+    // écran non réglé retombe sur ces deux constantes : si elles divergeaient du défaut serveur,
+    // le même écran s'afficherait différemment selon qu'il a reçu sa configuration ou non — et
+    // personne dans la salle ne pourrait le diagnostiquer. Les deux valeurs sont épinglées ici et
+    // dans `test_domain_ecran.py` (`test_le_reglage_de_pages_par_defaut_...`).
+    expect(NOMS_PAR_PAGE).toBe(40)
+    expect(SECONDES_PAR_PAGE).toBe(20)
+  })
+})
+
+describe('useSecondesDAffichage — un cumul PAR vue', () => {
+  // ⚠️ **Le défaut que ce test interdit est celui qu'E16US009 a trouvé en cours de route.** Le
+  // cumul tenait au module, en une seule variable, sous ce commentaire : « une seule surface
+  // projetée par onglet, donc pas de collision possible ». Vrai tant qu'**une** vue paginait. Dès
+  // que le classement s'y est mis, les deux vues se partageaient le compteur : les pages du
+  // classement avançaient pendant que l'écran montrait les affectations, et une page pouvait ne
+  // jamais sortir — exactement le défaut qu'E07US008 avait déjà payé une fois.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('ne reporte PAS le temps d’une vue sur celui d’une autre', () => {
+    const premiere = renderHook(() => useSecondesDAffichage('vue-a'))
+    act(() => {
+      vi.advanceTimersByTime(30_000)
+    })
+    expect(premiere.result.current).toBeGreaterThan(0)
+    premiere.unmount()
+
+    const autre = renderHook(() => useSecondesDAffichage('vue-b'))
+
+    // La seconde vue démarre à zéro : elle n'a jamais été affichée.
+    expect(autre.result.current).toBe(0)
+    autre.unmount()
+  })
+
+  it('reprend le cumul de SA vue là où il s’était arrêté', () => {
+    // L'autre moitié de la propriété : le temps d'affichage se **cumule** d'un passage à l'autre,
+    // sans quoi la séquence de pages repartirait de la page 1 à chaque tour du déroulé et les
+    // dernières pages ne sortiraient jamais.
+    const premier = renderHook(() => useSecondesDAffichage('vue-c'))
+    act(() => {
+      vi.advanceTimersByTime(20_000)
+    })
+    premier.unmount()
+
+    const second = renderHook(() => useSecondesDAffichage('vue-c'))
+    act(() => {
+      vi.advanceTimersByTime(1_000)
+    })
+
+    expect(second.result.current).toBeGreaterThanOrEqual(20)
+    second.unmount()
   })
 })

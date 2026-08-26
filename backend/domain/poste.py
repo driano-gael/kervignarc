@@ -35,7 +35,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from domain.ecran import SequenceVues
+from domain.ecran import ReglagePages, SequenceVues
 from domain.erreurs import (
     CibleInvalide,
     CodePosteInvalide,
@@ -95,6 +95,9 @@ class Poste:
     type: TypePoste = TypePoste.CIBLE
     libelle: str | None = None
     deroule: SequenceVues | None = None
+    # Réglage des listes projetées (E16US009). Facultatif comme `deroule` et pour la même raison :
+    # un écran doit tourner sans configuration — le défaut se résout dans `pages_effectives`.
+    pages: ReglagePages | None = None
     id: PosteId | None = None
 
     @staticmethod
@@ -145,6 +148,16 @@ class Poste:
             raise PosteSansEcran("Seul un écran de salle porte un déroulé de vues.")
         return replace(self, deroule=deroule)
 
+    def avec_pages(self, pages: ReglagePages) -> Poste:
+        """Rend une copie de cet écran avec un autre réglage de pages (agrégat immuable, règle 4).
+
+        Même garde de nature que `avec_deroule` : une tablette de cible ne projette rien, lui régler
+        des pages n'a aucun sens.
+        """
+        if self.type is not TypePoste.ECRAN:
+            raise PosteSansEcran("Seul un écran de salle porte un réglage de pages.")
+        return replace(self, pages=pages)
+
     def avec_libelle(self, libelle: str) -> Poste:
         """Rend une copie de cet écran renommé (l'écran déménage dans le gymnase)."""
         if self.type is not TypePoste.ECRAN:
@@ -161,6 +174,19 @@ class Poste:
         if self.type is not TypePoste.ECRAN:
             raise PosteSansEcran("Seul un écran de salle joue un déroulé de vues.")
         return self.deroule if self.deroule is not None else SequenceVues.par_defaut()
+
+    @property
+    def pages_effectives(self) -> ReglagePages:
+        """Le réglage de pages que cet écran applique — le sien, ou celui **par défaut**.
+
+        Jumeau exact de `deroule_effectif`, et pour la même raison : résoudre le défaut ici garantit
+        qu'aucune surface ne peut recevoir « pas de réglage » et avoir à en réinventer un. C'est ce
+        qui a permis à `DETTE-039` d'exister — la valeur par défaut vivait dans le composant qui
+        s'en servait, donc hors de portée de tout réglage.
+        """
+        if self.type is not TypePoste.ECRAN:
+            raise PosteSansEcran("Seul un écran de salle projette des listes paginées.")
+        return self.pages if self.pages is not None else ReglagePages.par_defaut()
 
     def cible(self) -> int:
         """L'index de cible de ce poste ; lève `PosteSansCible` si ce n'en est pas un.

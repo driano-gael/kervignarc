@@ -194,3 +194,81 @@ describe('TableClassement — détail des flèches (CA racine E16US004)', () => 
     expect(screen.queryByRole('button', { name: /MARTIN/ })).toBeNull()
   })
 })
+
+// --- Le classement projeté, page après page (E16US009, ADR-0098) --------------------------------
+//
+// ⚠️ **Un test de rendu par écran** — la leçon de `DETTE-085`, apprise à ses dépens dans l'US
+// précédente : `tsc` ne voit pas une propriété fournie et jamais consommée, et aucun test ne montait
+// l'écran concerné. Le composant calculait ses repères et ne les rendait pas. Ces deux tests-ci
+// tombent si `pagination` cesse d'être honorée, dans un sens comme dans l'autre.
+
+describe('TableClassement — le reste projeté', () => {
+  // Dix archers : trois en tête figée, sept dans le reste, découpé en pages de quatre → deux pages.
+  const DIX = Array.from({ length: 10 }, (_, i) =>
+    ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 600 - i }),
+  )
+  const REGLAGE = { noms_par_page: 4, cadence_page_s: 20 }
+
+  it('rend UNE page du reste, avec son compteur, et laisse la suite hors écran', () => {
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    // La tête : toujours là, quelle que soit la page.
+    expect(container.textContent).toContain('ARCHER0 ')
+    // Page 1 du reste : les archers 3 à 6.
+    expect(container.textContent).toContain('ARCHER3 ')
+    expect(container.textContent).toContain('ARCHER6 ')
+    // Page 2 : pas encore à l'écran — c'est ce qui distingue une pagination d'un rendu complet.
+    expect(container.textContent).not.toContain('ARCHER7 ')
+    // Le compteur de pages, que P06 demande explicitement (« oui pour le compteur de pages »).
+    expect(container.querySelector('.salle-pages__compteur')).not.toBeNull()
+  })
+
+  it('n’enferme JAMAIS le reste dans un cadre à ascenseur quand il est projeté', () => {
+    // ⚠️ Le cœur d'ADR-0098 : sur un vidéoprojecteur, `overflow-y: auto` produit un cadre que
+    // personne ne peut actionner. Ce test tombe si quelqu'un « simplifie » en réunifiant les deux
+    // branches de rendu — et la salle perdrait alors tout ce qui suit la 3ᵉ ligne.
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    expect(container.querySelector('.classement__defilement')).toBeNull()
+    expect(container.querySelector('.classement__pages')).not.toBeNull()
+  })
+
+  it('garde le cadre à ascenseur sur une surface qu’on manipule', () => {
+    // L'assertion **appariée** de la précédente : sans réglage de pages, rien ne change pour le PC
+    // d'organisation — l'ascenseur y est le bon geste, et cette US ne devait rien y toucher.
+    const { container } = render(
+      <Cadre
+        enfants={<TableClassement tournoiId={1} lignes={DIX} admin={false} teteFigee={3} />}
+      />,
+    )
+
+    expect(container.querySelector('.classement__defilement')).not.toBeNull()
+    expect(container.querySelector('.classement__pages')).toBeNull()
+    // Et **tout le monde** est rendu : le cadre défile, il ne tronque pas.
+    expect(container.textContent).toContain('ARCHER9 ')
+  })
+})

@@ -82,6 +82,12 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
+   "code": "date-non-canonique",
+   "message": "date « 26/08/2026 » hors du format ISO utilisé par le reste du registre (AAAA-MM-JJ).",
+   "severite": "signal",
+   "sujet": "ADR-0098"
+  },
+  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -134,6 +140,12 @@ window.ATLAS.controles = {
    "message": "annonce Pages.carte dans « atlas/statique/pages.js », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
    "severite": "signal",
    "sujet": "ADR-0086"
+  },
+  {
+   "code": "portage-non-verifiable",
+   "message": "annonce ResteProjete dans « frontend/src/app/App.css », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0098"
   },
   {
    "code": "portage-symbole-absent",
@@ -242,10 +254,34 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_regler_les_pages_ne_touche_pas_au_deroule dans « backend/application/postes.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0098"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_regler_les_pages_ne_touche_pas_au_deroule dans « frontend/src/features/ecrans/Ecrans.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0098"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages dans « backend/application/ecrans.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0098"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages, test_regler_les_pages_ne_touche_pas_au_deroule dans « backend/api/v1/ecrans.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0098"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 40
+  "signaux": 46
  }
 };

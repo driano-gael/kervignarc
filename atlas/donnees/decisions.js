@@ -2861,7 +2861,8 @@ window.ATLAS.decisions = {
   },
   {
    "amende_par": [
-    "0089"
+    "0089",
+    "0098"
    ],
    "date": "2026-08-01",
    "date_brute": "01/08/2026",
@@ -7817,6 +7818,202 @@ window.ATLAS.decisions = {
     "E01US016",
     "E16US006",
     "E17US001"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-26",
+   "date_brute": "26/08/2026",
+   "extrait": "Sur une surface projetée, « défiler » se réalise par une pagination temporelle — jamais par un cadre à ascenseur. Concrètement : 1. La tête figée passe à 3 sur l'écran de salle (P07 au mot près), et le reste du classement tourne page par page, exactement comme les listes de noms d'affectations depuis E07US008. 2. Le lien est mécanique : la tête figée n'est portée à 3 que si un réglage de pages est fourni. Sans lui, elle retombe à zéro et l'écran rend le classement entier. On ne peut donc pas livrer par inadvertance « 3 lignes et rien d'autre », qui est la régression que E16US005 avait refusée. 3. Un seul mécanisme de lecture longue sur cette surface : le module de pagination, ses fonctions […]",
+   "fichier": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
+   "identifiant": "0098",
+   "liens": [
+    {
+     "cible": "E16US009",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0064",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/ecrans.py",
+     "existe": true,
+     "symboles": [
+      "AffichageEcran.pages",
+      "AffichageReponse.pages",
+      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages",
+      "regler_pages_ecran",
+      "ReglagePagesProjetees",
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "symboles_absents": [
+      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages",
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/ecrans.py",
+     "existe": true,
+     "symboles": [
+      "AffichageEcran.pages",
+      "AffichageReponse.pages",
+      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages"
+     ],
+     "symboles_absents": [
+      "test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/postes.py",
+     "existe": true,
+     "symboles": [
+      "regler_pages_ecran",
+      "ReglagePagesProjetees",
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "symboles_absents": [
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ecran.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePages",
+      "pages",
+      "avec_pages",
+      "pages_effectives"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/poste.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePages",
+      "pages",
+      "avec_pages",
+      "pages_effectives"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0051_reglage_pages_ecran.py",
+     "existe": true,
+     "symboles": [
+      "ReglagePages",
+      "pages",
+      "avec_pages",
+      "pages_effectives"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_domain_ecran.py",
+     "existe": true,
+     "symboles": [
+      "test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/app/App.css",
+     "existe": true,
+     "symboles": [
+      "ResteProjete"
+     ],
+     "symboles_absents": [],
+     "verifiable": false
+    },
+    {
+     "chemin": "frontend/src/features/competition/TableClassement.tsx",
+     "existe": true,
+     "symboles": [
+      "ResteProjete"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/VueClassement.tsx",
+     "existe": true,
+     "symboles": [
+      "teteFigee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/ecrans/Ecrans.tsx",
+     "existe": true,
+     "symboles": [
+      "regler_pages_ecran",
+      "ReglagePagesProjetees",
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "symboles_absents": [
+      "test_regler_les_pages_ne_touche_pas_au_deroule"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/EnteteDePage.tsx",
+     "existe": true,
+     "symboles": [
+      "nombreDePages",
+      "pageCourante",
+      "trancheDePage",
+      "rateauDePage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/pagination.test.ts",
+     "existe": true,
+     "symboles": [
+      "test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/pagination.ts",
+     "existe": true,
+     "symboles": [
+      "nombreDePages",
+      "pageCourante",
+      "trancheDePage",
+      "rateauDePage"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un écran projeté **pagine**, il ne défile pas",
+   "us": [
+    "E05US027",
+    "E07US004",
+    "E07US008",
+    "E16US005",
+    "E16US009"
    ]
   }
  ]

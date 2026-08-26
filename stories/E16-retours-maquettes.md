@@ -295,14 +295,40 @@
 
 ---
 
-### E16US009 — Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas
+### E16US009 — Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas ✅
 *En tant qu'*organisateur, *je veux* **régler la durée d'une page** projetée et voir les archers **défiler sous le podium**, *afin d'*adapter l'écran à ma salle sans toucher au code.
 - **Contexte** : P06, question 2 : *« on peut dire que 20 s (réglable) par écran de liste de noms est correct »* — la pagination est livrée, la **durée est figée à 20 s dans le code**. P07 : *« ok pour les 3 premiers toujours visible, mais défilement de tous les autres archers dessous »* ; le classement projeté montre aujourd'hui une tête figée mais ne fait pas défiler la suite. P07, question 2 : *« je n'ai pas vu le logo sur la maquette »* — l'identité du tournoi n'est pas encore posée sur l'écran de salle.
-- **CA — durée réglable** : la cadence d'une page de noms se règle par écran, à côté du déroulé de vues déjà configurable.
-- **CA — défilement sous la tête figée** : les archers hors des trois premiers défilent d'eux-mêmes.
-- **CA — nombre de noms par page** : `NOMS_PAR_PAGE = 40` est un choix à confirmer **sur le vidéoprojecteur réel** ; le rendre réglable ou le mesurer.
-- **CA — logo** : l'identité (événement + club, cf. E16US006) apparaît sur l'écran de salle.
+- **CA — durée réglable** ✅ : la cadence d'une page de noms se règle par écran, à côté du déroulé de vues déjà configurable.
+- **CA — défilement sous la tête figée** ✅ : les archers hors des trois premiers défilent d'eux-mêmes.
+  ⚠️ **Arbitrage tranché en cours d'US, le 26/08/2026 — « défiler » se réalise par une PAGINATION**
+  ([ADR-0098](../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md)). Un cadre à ascenseur
+  sur un vidéoprojecteur est un cadre que **personne ne peut actionner** (« aucune interaction »,
+  CA E07US004) — c'est pour cela que `E16US005` avait laissé la tête figée **à zéro** sur cette
+  surface. La forme retenue est celle que le questionnaire **P06 accepte déjà** pour une liste de
+  noms projetée, compteur de pages compris. **Le lien est mécanique** : la tête figée ne passe à 3
+  que si un réglage de pages est fourni, sinon elle retombe à zéro — on ne peut donc pas livrer
+  « 3 lignes et rien d'autre ».
+- **CA — nombre de noms par page** ✅ : `NOMS_PAR_PAGE = 40` est un choix à confirmer **sur le vidéoprojecteur réel** ; le rendre réglable ou le mesurer.
+  ⚠️ **L'alternative est tranchée : réglable, pas mesuré.** Mesurer suppose un vidéoprojecteur, une
+  salle et une distance — c'est un geste d'**exploitation**, pas de code. L'US rend donc la valeur
+  corrigeable sans recompiler et **le dit à l'organisateur sous les deux champs** ; l'incertitude,
+  elle, **reste ouverte** (`docs/dette.md`, section DETTE-039 conservée).
+- **CA — logo** ✅ : l'identité (événement + club, cf. E16US006) apparaît sur l'écran de salle.
+  ⚠️ **Déjà livré la veille par `E16US006`** (`EcranSalle.tsx`, deux logos dans le bandeau, deux
+  tests) — constat fait au cadrage du 26/08/2026, dans le code. Ce CA n'a rien coûté à cette US.
 - **Notes** : la durée réglable demande un champ sur la configuration d'écran (API `ecrans`). Le défilement est front. Relire [ADR-0064](../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) : tout y est piloté par **état lu**, un réglage local contredirait le principe.
+  ✅ **ADR-0064 est respecté** : le réglage est persisté sur le **poste** (migration `0051`) et servi
+  **avec l'affichage** que l'écran répète — jamais un réglage local, jamais un ordre poussé. Il
+  accompagne aussi les prises de contrôle : une prise change *ce qu'on montre*, pas *comment une
+  liste se lit de loin*.
+  ⚠️ **Un piège découvert en implémentant, absent de la fiche** : le cumul du temps d'affichage
+  d'une vue vivait dans **une seule** variable de module, sous le postulat « une seule surface
+  projetée par onglet ». Ce postulat tombe dès qu'une **deuxième** vue pagine — les pages du
+  classement avançaient pendant que l'écran montrait les affectations. Le compteur est désormais
+  **indexé par vue**, avec un test qui le garde.
+  ⚠️ **Le réglage appartient à l'ÉCRAN, pas à la vue** : les deux valeurs dépendent de la diagonale
+  du projecteur, de la distance de lecture et de la longueur des noms du club — trois propriétés du
+  **lieu**. Les porter sur `VueProgrammee` aurait obligé à les répéter à chaque étape du déroulé.
 - **Dépend de** : E07US004, E07US008, E01US016 · **Jalon** : J3 · **Origine** : questionnaires P06, P07, 04/08/2026
 
 ---

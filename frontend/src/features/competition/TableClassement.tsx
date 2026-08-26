@@ -11,7 +11,15 @@
 // Le club encore inconnu y est signalé (E02US002, ADR-0014) : le classement est la surface qu'on
 // regarde toute la journée, c'est là que l'anomalie se remarque ; l'écran d'admin la répare.
 
-import { useState } from 'react'
+import { type ReactElement, useState } from 'react'
+import { EnteteDePage } from '../../shared/ui/EnteteDePage'
+import {
+  type ReglagePages,
+  nombreDePages,
+  pageCourante,
+  trancheDePage,
+  useSecondesDAffichage,
+} from '../../shared/ui/pagination'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
 import { estExAequo, totauxExAequo } from './departage'
@@ -55,6 +63,25 @@ interface TableClassementProps {
    * interaction » (CA E07US004).
    */
   detailFleches?: boolean
+  /**
+   * Fait **défiler** le reste au lieu de l'enfermer dans un cadre à ascenseur (E16US009, P07 :
+   * *« ok pour les 3 premiers toujours visible, mais défilement de tous les autres archers
+   * dessous »*).
+   *
+   * ⚠️ **« Défilement » se lit ici comme une pagination, et c'est un arbitrage** — [ADR-0098]. Un
+   * cadre `overflow-y: auto` sur un vidéoprojecteur est un cadre que **personne ne peut faire
+   * défiler** : ni souris, ni doigt, « aucune interaction » (CA E07US004). Le commanditaire a par
+   * ailleurs accepté la pagination pour les listes de noms projetées dans le même questionnaire
+   * (P06, *« 20 s (réglable) par écran de liste de noms est correct »*) : c'est donc la forme qu'il
+   * connaît déjà, et elle a l'avantage d'être **déterministe et testable**, là où une animation
+   * continue ne se prouve pas.
+   *
+   * Absent = comportement d'avant, le cadre défilant des surfaces qu'on **manipule** (PC, tablette),
+   * où l'ascenseur est le bon geste.
+   *
+   * [ADR-0098]: ../../../../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md
+   */
+  pagination?: ReglagePages
 }
 
 export function TableClassement({
@@ -64,6 +91,7 @@ export function TableClassement({
   admin,
   teteFigee = 0,
   detailFleches = false,
+  pagination,
 }: TableClassementProps) {
   if (lignes.length === 0) {
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
@@ -119,7 +147,11 @@ export function TableClassement({
           ligne) — le calage aurait été juste jusqu'au premier cas réel. `table-layout: fixed` et un
           `<colgroup>` **partagé** (cf. `Colonnes`) garantissent l'alignement des colonnes entre les
           deux tables, sans mesure ni JavaScript. */}
-      {separer && (
+      {separer && pagination !== undefined && (
+        <ResteProjete lignes={reste} pagination={pagination} admin={admin} corps={corps} />
+      )}
+
+      {separer && pagination === undefined && (
         <div className="classement__defilement">
           <table className="table">
             <Colonnes admin={admin} />
@@ -161,6 +193,51 @@ const NB_COLONNES_LECTURE = 8
  * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
  * ne peut plus décaler l'une par rapport à l'autre. ⚠️ Toute colonne ajoutée ici se compte aussi
  * dans `NB_COLONNES_LECTURE` et se dessine dans `Colonnes`. */
+/** Le reste du classement **projeté**, page après page (E16US009).
+ *
+ * Distinct du cadre défilant, et rendu par un composant à part pour une raison mécanique : il tient
+ * un minuteur (`useSecondesDAffichage`), et `TableClassement` est monté sur trois surfaces dont deux
+ * n'ont rien à faire d'une horloge qui bat à la seconde. Un hook appelé en tête du composant parent
+ * aurait fait battre l'appli publique et l'écran d'admin pour rien.
+ *
+ * ⚠️ **La clé du cumul est propre à cette vue.** Le compteur de `useSecondesDAffichage` est indexé
+ * depuis cette US : partagé avec les affectations, il faisait avancer les pages du classement
+ * pendant que l'écran montrait autre chose.
+ */
+function ResteProjete({
+  lignes,
+  pagination,
+  admin,
+  corps,
+}: {
+  lignes: LigneClassement[]
+  pagination: ReglagePages
+  admin: boolean
+  corps: (source: LigneClassement[]) => ReactElement
+}) {
+  const secondes = useSecondesDAffichage('classement')
+  const total = nombreDePages(lignes.length, pagination.noms_par_page)
+  const index = pageCourante(total, secondes, pagination.cadence_page_s)
+  const page = trancheDePage(lignes, index, pagination.noms_par_page)
+  // Le râteau se calcule sur les **noms**, comme pour les affectations : c'est lui qui répond à
+  // « mon nom est-il sur cette page ». Le classement est trié par rang, pas par nom — le râteau
+  // n'est donc pas un intervalle alphabétique ici, et l'afficher tromperait. On ne le passe pas.
+  return (
+    <div className="classement__pages">
+      <EnteteDePage numero={index + 1} total={total} titre="Suite du classement" rateau={null} />
+      <table className="table">
+        <Colonnes admin={admin} />
+        {/* En-têtes **répétés et masqués visuellement**, même raison que le cadre défilant : sans
+            eux, les lignes hors de la tête figée perdent l'association `scope="col"`. */}
+        <thead className="sr-only">
+          <EnTetes admin={admin} />
+        </thead>
+        {corps(page)}
+      </table>
+    </div>
+  )
+}
+
 function EnTetes({ admin }: { admin: boolean }) {
   return (
     <tr>

@@ -169,6 +169,167 @@ def test_regler_le_deroule_d_une_cible_est_un_conflit(
         assert reponse.json()["code"] == "poste_n_est_pas_un_ecran"
 
 
+# --- Réglage des pages projetées (E16US009) -------------------------------------------------------
+
+
+def test_un_ecran_neuf_annonce_le_reglage_de_pages_par_defaut(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même contrat que le déroulé : la réponse est **toujours** remplie, jamais « rien réglé ».
+
+    Les valeurs sont celles que le front tenait en dur avant l'US (`DETTE-039`) — c'est ce qui rend
+    le déploiement invisible pour un écran déjà installé.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+
+        ecran = _creer_ecran(client, tournoi_id)
+
+        assert ecran["pages"] == {"noms_par_page": 40, "cadence_page_s": 20}
+
+
+def test_le_reglage_de_pages_se_pose_et_se_relit(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """CA : « la cadence d'une page de noms se règle **par écran** »."""
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+
+        reponse = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/pages",
+            json={"pages": {"noms_par_page": 24, "cadence_page_s": 12}},
+        )
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["pages"] == {"noms_par_page": 24, "cadence_page_s": 12}
+        relu = client.get(f"/api/v1/tournois/{tournoi_id}/ecrans").json()[0]
+        assert relu["pages"] == {"noms_par_page": 24, "cadence_page_s": 12}
+
+
+def test_regler_les_pages_ne_touche_pas_au_deroule(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le motif même de la route séparée : corriger une cadence de page ne doit pas obliger à
+    renvoyer la séquence de vues, donc ne peut pas l'écraser par inadvertance."""
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/deroule",
+            json={"vues": [{"vue": "affectations", "cadence_s": 45}]},
+        )
+
+        reponse = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/pages",
+            json={"pages": {"noms_par_page": 24, "cadence_page_s": 12}},
+        )
+
+        assert reponse.json()["deroule"] == [{"vue": "affectations", "cadence_s": 45}]
+
+
+def test_deux_ecrans_du_meme_tournoi_ont_des_reglages_de_pages_distincts(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """« Par écran » : le vidéoprojecteur du fond de salle et l'écran d'accueil n'ont ni la même
+    diagonale ni la même distance de lecture."""
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        fond = _creer_ecran(client, tournoi_id, "Fond de salle")
+        accueil = _creer_ecran(client, tournoi_id, "Accueil")
+
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{fond['id']}/pages",
+            json={"pages": {"noms_par_page": 20, "cadence_page_s": 25}},
+        )
+
+        assert _affichage(client, _rattacher(client, str(fond["code"]))[0])["pages"] == {
+            "noms_par_page": 20,
+            "cadence_page_s": 25,
+        }
+        assert _affichage(client, _rattacher(client, str(accueil["code"]))[0])["pages"] == {
+            "noms_par_page": 40,
+            "cadence_page_s": 20,
+        }
+
+
+@pytest.mark.parametrize(
+    ("corps", "code"),
+    [
+        ({"noms_par_page": 1, "cadence_page_s": 20}, "nombre_de_noms_par_page_invalide"),
+        ({"noms_par_page": 400, "cadence_page_s": 20}, "nombre_de_noms_par_page_invalide"),
+        ({"noms_par_page": 40, "cadence_page_s": 1}, "cadence_de_page_invalide"),
+        ({"noms_par_page": 40, "cadence_page_s": 3600}, "cadence_de_page_invalide"),
+    ],
+)
+def test_un_reglage_de_pages_hors_bornes_est_refuse_avec_le_champ_fautif(
+    app_session: FastAPI,
+    connecter_admin: ConnecterAdmin,
+    corps: dict[str, int],
+    code: str,
+) -> None:
+    """Deux codes distincts, et c'est la raison de ne pas borner en `Field(ge=…, le=…)` : un 400
+    générique ne dirait pas **lequel** des deux champs le formulaire doit corriger."""
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+
+        reponse = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/pages",
+            json={"pages": corps},
+        )
+
+        assert reponse.status_code == 422, reponse.text
+        assert reponse.json()["code"] == code
+
+
+def test_regler_les_pages_d_une_cible_est_un_conflit(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même garde que le déroulé : une tablette ne projette rien."""
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        database: Database = app_session.state.database
+        modele = GabaritSalle.creer("Plan", nb_cibles=2)
+        GabaritSalleRepositorySQL(database.session_factory).ajouter(modele.pour_tournoi(tournoi_id))
+        cible = client.post(f"/api/v1/tournois/{tournoi_id}/postes").json()[0]
+
+        reponse = client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{cible['id']}/pages",
+            json={"pages": {"noms_par_page": 24, "cadence_page_s": 12}},
+        )
+
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "poste_n_est_pas_un_ecran"
+
+
+def test_une_prise_de_controle_ne_change_pas_le_reglage_de_pages(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Une prise impose **ce qu'on montre**, jamais **comment une liste se lit à dix mètres**.
+
+    Le cas est réel : l'organisateur fige le classement sur l'écran du fond pour l'annonce des
+    résultats — la liste doit continuer de tourner au rythme réglé pour cette salle.
+    """
+    with TestClient(app_session) as client:
+        tournoi_id = _tournoi(client, connecter_admin)
+        ecran = _creer_ecran(client, tournoi_id)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/pages",
+            json={"pages": {"noms_par_page": 24, "cadence_page_s": 12}},
+        )
+        jeton, _ = _rattacher(client, str(ecran["code"]))
+
+        client.post(
+            f"/api/v1/tournois/{tournoi_id}/ecrans/{ecran['id']}/controle",
+            json={"vue": "classement", "duree_s": 600},
+        )
+
+        affichage = _affichage(client, jeton)
+        assert affichage["sous_controle"] is True
+        assert affichage["pages"] == {"noms_par_page": 24, "cadence_page_s": 12}
+
+
 # --- Pilotage admin -------------------------------------------------------------------------------
 
 

@@ -617,6 +617,13 @@ class PosteORM(Base):
     (migration 0036) : un tableau JSON `[{"vue": …, "cadence_s": …}]`. Nul pour une cible, et nul
     aussi pour un écran qui n'a rien réglé — il joue alors `SequenceVues.par_defaut()`, ce que le CA
     appelle le « déroulé par défaut ».
+
+    `noms_par_page` et `cadence_page_s` portent le `ReglagePages` d'un écran (E16US009, migration
+    0051) : deux **colonnes** plutôt qu'un troisième JSON, parce que ce sont deux entiers scalaires
+    dont le nombre ne bougera pas — la raison qui justifiait `deroule_json` (une **liste** ordonnée
+    de longueur libre) ne s'applique pas ici. Nuls pour une cible, et nuls aussi pour un écran qui
+    n'a rien réglé : il joue alors `ReglagePages.par_defaut()`, ce qui est **exactement** ce que le
+    front tenait en dur avant cette US (`DETTE-039`). La migration n'écrit donc aucune donnée.
     """
 
     __tablename__ = "poste"
@@ -630,6 +637,8 @@ class PosteORM(Base):
     type: Mapped[str] = mapped_column(nullable=False, server_default="cible")
     libelle: Mapped[str | None] = mapped_column(nullable=True)
     deroule_json: Mapped[str | None] = mapped_column(nullable=True)
+    noms_par_page: Mapped[int | None] = mapped_column(nullable=True)
+    cadence_page_s: Mapped[int | None] = mapped_column(nullable=True)
 
     __table_args__ = (UniqueConstraint("tournoi_id", "cible_index", name="uq_poste_tournoi_cible"),)
 

@@ -17,6 +17,8 @@ import { creneauRetenu } from '../departs/libelle'
 import { useDeparts } from '../departs/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
+import type { ReglagePages } from '../../shared/ui/pagination'
+import { teteFigee } from './teteFigee'
 import { useClassement } from './hooks'
 import { DepartageManuel, PanneauBarrages } from './PanneauBarrages'
 import { TableClassement } from './TableClassement'
@@ -28,6 +30,7 @@ export function VueClassement({
   mode = 'tout',
   suivis = [],
   detailFleches = false,
+  pagination,
 }: {
   tournoiId: number
   admin: boolean
@@ -51,6 +54,10 @@ export function VueClassement({
    * des autres : oui »*). Réservé à la surface publique : l'admin a son écran de saisie, et la
    * salle n'a « aucune interaction » (CA E07US004). */
   detailFleches?: boolean
+  /** Le réglage de pages de **cet écran de salle** (E16US009), servi par le serveur. Sa présence
+   * bascule le reste du classement en **pages qui tournent** au lieu d'un cadre à ascenseur.
+   * Absent sur les surfaces qu'on manipule, où l'ascenseur est le bon geste. */
+  pagination?: ReglagePages
 }) {
   const [categorieId, setCategorieId] = useState<number | undefined>(undefined)
   const [choixDepart, setChoixDepart] = useState<number | null>(null)
@@ -143,14 +150,16 @@ export function VueClassement({
               a un défilé jusqu'à n »*. Huit sur les surfaces qu'on **manipule** : on y suit le haut
               d'une catégorie, pas seulement le podium, et huit lignes tiennent sans écraser le cadre
               défilant.
-              ⚠️ **Zéro sur l'écran de salle** (`filtrable === false`), et c'est délibéré. P07 demande
-              bien « les 3 premiers toujours visibles, mais **défilement** de tous les autres archers
-              dessous » — mais un cadre `overflow-y: auto` sur un vidéoprojecteur est un cadre que
-              **personne ne peut faire défiler** : ni souris, ni doigt, « aucune interaction » (CA
-              E07US004). Livrer la tête figée sans le défilement automatique aurait réduit un
-              classement de 40 archers à 3 lignes — une **régression** de ce que la salle affichait
-              avant ce lot (revue du 05/08/2026, axe B). Le défilement automatique est spécifié en
-              `E16US009` ; jusque-là, la salle rend le classement entier, comme avant. */}
+              ✅ **Trois sur l'écran de salle depuis E16US009** — P07 : *« ok pour les 3 premiers
+              toujours visible, mais défilement de tous les autres archers dessous »*. La valeur
+              restait à **zéro** jusqu'ici, délibérément : livrer la tête figée sans le défilement
+              aurait réduit un classement de 40 archers à 3 lignes, soit une **régression** de ce
+              que la salle affichait (revue du 05/08/2026, axe B). C'est `pagination` qui lève le
+              verrou — le reste **tourne** page par page au lieu de s'enfermer dans un cadre à
+              ascenseur que personne, dans un gymnase, ne peut actionner (ADR-0098).
+              ⚠️ Le lien est **mécanique et non cosmétique** : sans réglage de pages, la tête figée
+              retombe à zéro. Un appelant qui passerait `filtrable={false}` sans `pagination`
+              retrouverait donc le classement entier d'avant l'US, jamais les 3 lignes seules. */}
           <TableClassement
             tournoiId={tournoiId}
             lignes={lignesAffichees}
@@ -160,7 +169,8 @@ export function VueClassement({
             admin={admin}
             // Centré sur ses archers, la liste est courte : figer une tête de 8 sur 3 lignes
             // n'encadre plus rien (même raison que `separer` dans `TableClassement`).
-            teteFigee={filtrable && mode === 'tout' ? 8 : 0}
+            teteFigee={teteFigee(filtrable, mode, pagination)}
+            pagination={pagination}
             detailFleches={detailFleches}
           />
         </div>

@@ -17,9 +17,11 @@ import {
   getEcrans,
   prendreLeControle,
   reglerDeroule,
+  reglerPages,
   rendreLaMain,
   renommerEcran,
   supprimerEcran,
+  type ReglagePages,
   type VueEcran,
   type VueProgrammee,
 } from './api'
@@ -69,6 +71,15 @@ export function useReglerDeroule(tournoiId: number) {
   return useMutation({
     mutationFn: ({ posteId, vues }: { posteId: number; vues: VueProgrammee[] }) =>
       reglerDeroule(tournoiId, posteId, vues),
+    onSuccess: () => invalider(queryClient, tournoiId),
+  })
+}
+
+export function useReglerPages(tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ posteId, pages }: { posteId: number; pages: ReglagePages }) =>
+      reglerPages(tournoiId, posteId, pages),
     onSuccess: () => invalider(queryClient, tournoiId),
   })
 }

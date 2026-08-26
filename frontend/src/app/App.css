@@ -2988,6 +2988,25 @@ button:disabled {
   border-radius: 0 0 8px 8px;
 }
 
+/* Le reste du classement **projeté**, page après page (E16US009, ADR-0098).
+   ————————————————————————————————————————————————————————————————————————————————————————————————
+   Jumeau de `.classement__defilement` pour la même portion de tableau, et volontairement **sans
+   aucune propriété de défilement** : c'est tout le sujet. `max-height` + `overflow-y: auto` sur un
+   vidéoprojecteur produit un cadre que personne ne peut actionner — ni souris, ni doigt, « aucune
+   interaction » (CA E07US004). Ici, la page entière est rendue et c'est le **temps** qui tourne.
+
+   Pas de `scrollbar-gutter` non plus : aucune gouttière à réserver puisqu'aucun ascenseur
+   n'apparaît, et en réserver une décalerait la table du bas par rapport à la tête figée — soit
+   exactement le défaut que la gouttière corrige dans le cas manipulable. */
+.classement__pages {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.8vw, 16px);
+  border: 1px solid var(--border-subtle);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
 /* Largeurs de colonnes — nécessaires dès lors que `table-layout` est `fixed` : sans elles, les huit
    colonnes se partageraient la largeur à parts égales et le nom d'archer, seul contenu long,
    serait le plus serré. Le nom n'a **pas** de largeur : il prend ce qui reste. */

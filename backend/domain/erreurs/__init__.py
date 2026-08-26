@@ -19,6 +19,7 @@ from __future__ import annotations
 from domain.erreurs.base import DomainError
 from domain.erreurs.exploitation import (
     AuteurAuditInvalide,
+    CadenceDePageInvalide,
     CadenceEcranInvalide,
     CodePosteInvalide,
     CodeScoreurInvalide,
@@ -26,6 +27,7 @@ from domain.erreurs.exploitation import (
     DureePriseDeControleInvalide,
     HorodatageAuditInvalide,
     LibelleEcranInvalide,
+    NombreDeNomsParPageInvalide,
     NomScoreurInvalide,
     ObjetAuditInvalide,
     PosteSansCible,
@@ -140,6 +142,7 @@ __all__ = [
     "BarrageIndecis",
     "BarrageNonRequis",
     "BarrageRequisAvantQualification",
+    "CadenceDePageInvalide",
     "CadenceEcranInvalide",
     "CadenceValidationSuperieureAuBareme",
     "CapaciteBlasonInvalide",
@@ -190,6 +193,7 @@ __all__ = [
     "NomScoreurInvalide",
     "NomTournoiInvalide",
     "NombreCiblesInvalide",
+    "NombreDeNomsParPageInvalide",
     "NombreFlechesParVoleeInvalide",
     "NombreFlechesVoleeInvalide",
     "NombreVoleesInvalide",

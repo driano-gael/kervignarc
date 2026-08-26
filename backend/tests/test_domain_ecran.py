@@ -20,16 +20,23 @@ import pytest
 from domain.ecran import (
     CADENCE_MAX_S,
     CADENCE_MIN_S,
+    CADENCE_PAGE_MAX_S,
+    CADENCE_PAGE_MIN_S,
+    NOMS_PAR_PAGE_MAX,
+    NOMS_PAR_PAGE_MIN,
     Consigne,
+    ReglagePages,
     SequenceVues,
     VueEcran,
     VueProgrammee,
     reste_secondes,
 )
 from domain.erreurs import (
+    CadenceDePageInvalide,
     CadenceEcranInvalide,
     ConsigneEcranInvalide,
     DureePriseDeControleInvalide,
+    NombreDeNomsParPageInvalide,
     SequenceVuesVide,
 )
 
@@ -169,3 +176,68 @@ def test_le_reste_est_inconnu_sans_duree() -> None:
     consigne = Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=None)
 
     assert reste_secondes(consigne, secondes_ecoulees=42) is None
+
+
+# --- Le réglage des pages projetées (E16US009) ---------------------------------------------------
+#
+# CA : « la **cadence d'une page de noms** se règle **par écran**, à côté du déroulé de vues déjà
+# configurable » et « `NOMS_PAR_PAGE = 40` est un choix à confirmer sur le vidéoprojecteur réel ;
+# **le rendre réglable** ou le mesurer ».
+#
+# Le second CA offre une alternative — régler ou mesurer. Mesurer suppose un vidéoprojecteur, une
+# salle et une distance ; c'est un geste d'exploitation, pas de code. C'est donc « réglable » qui
+# est implémenté, et la mesure devient ce que l'organisateur fait **avec** le réglage.
+
+
+def test_un_reglage_de_pages_porte_les_deux_valeurs_du_ca() -> None:
+    reglage = ReglagePages(noms_par_page=25, cadence_page_s=15)
+
+    assert reglage.noms_par_page == 25
+    assert reglage.cadence_page_s == 15
+
+
+def test_le_reglage_de_pages_par_defaut_est_utilisable_sans_rien_regler() -> None:
+    """Même exigence que `SequenceVues.par_defaut` : un écran neuf doit informer sans configuration.
+
+    Les valeurs du défaut sont celles que le front tenait en dur jusqu'ici (`DETTE-039`) — 40 noms,
+    20 s —, pour qu'aucun écran déjà installé ne change de comportement au déploiement de cette US.
+    """
+    defaut = ReglagePages.par_defaut()
+
+    assert defaut.noms_par_page == 40
+    assert defaut.cadence_page_s == 20
+
+
+@pytest.mark.parametrize("noms", [0, -1, NOMS_PAR_PAGE_MIN - 1, NOMS_PAR_PAGE_MAX + 1])
+def test_un_nombre_de_noms_par_page_hors_bornes_est_refuse(noms: int) -> None:
+    """« Réglable » n'est pas « quelconque » — même parti que la cadence de vue.
+
+    Sous le plancher, le nombre de pages explose : à 2 noms par page, 200 archers font 100 pages,
+    soit plus d'une demi-heure avant de revoir la sienne. Au-dessus du plafond, la hauteur de ligne
+    tombe sous ce qui se lit **à dix mètres**, ce qui est la raison d'être de la pagination.
+    """
+    with pytest.raises(NombreDeNomsParPageInvalide):
+        ReglagePages(noms_par_page=noms, cadence_page_s=20)
+
+
+@pytest.mark.parametrize("cadence", [0, -1, CADENCE_PAGE_MIN_S - 1, CADENCE_PAGE_MAX_S + 1])
+def test_une_cadence_de_page_hors_bornes_est_refusee(cadence: int) -> None:
+    """Sous le plancher la page clignote (même jugement que `CADENCE_MIN_S`) ; au-dessus du plafond
+    la pagination cesse d'être un défilement — cinq minutes par page, c'est une vue figée."""
+    with pytest.raises(CadenceDePageInvalide):
+        ReglagePages(noms_par_page=40, cadence_page_s=cadence)
+
+
+def test_le_reglage_de_pages_est_independant_de_la_cadence_de_vue() -> None:
+    """Deux durées **distinctes**, et c'est le point d'attention de l'US.
+
+    `cadence_s` d'une `VueProgrammee` dit combien de temps l'écran reste sur *la vue* ; le réglage
+    de pages dit à quel rythme la *liste* tourne **à l'intérieur** de la vue. Une page peut donc
+    durer plus longtemps que la vue : la séquence de pages reprend où elle s'était arrêtée au
+    passage suivant (cf. `pagination.ts`, `secondes_ecoulees` cumulé). Rien n'exige que l'une divise
+    l'autre, et le domaine ne l'impose pas.
+    """
+    vue = VueProgrammee(VueEcran.CLASSEMENT, 30)
+    pages = ReglagePages(noms_par_page=40, cadence_page_s=45)
+
+    assert pages.cadence_page_s > vue.cadence_s

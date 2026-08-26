@@ -24,4 +24,5 @@
 @import '../features/tableaux/tableaux.css';
 @import '../shared/duels/rencontre.css';
 @import '../shared/ui/bandeau-pause.css';
+@import '../shared/ui/entete-de-page.css';
 @import '../features/en-cours/en-cours.css';

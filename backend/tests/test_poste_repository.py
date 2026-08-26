@@ -13,7 +13,9 @@ import datetime
 from pathlib import Path
 
 import pytest
+import sqlalchemy as sa
 
+from domain.ecran import ReglagePages
 from domain.poste import Poste
 from domain.tournoi import Tournoi
 from infrastructure.db import Database, PosteRepositorySQL, TournoiRepositorySQL
@@ -122,5 +124,59 @@ def test_meme_cible_dans_deux_tournois(tmp_path: Path) -> None:
 
         assert [p.cible_index for p in repository.par_tournoi(tournoi_id)] == [1]
         assert [p.cible_index for p in repository.par_tournoi(autre.id)] == [1]
+    finally:
+        db.engine.dispose()
+
+
+# --- Réglage des pages projetées (E16US009) -------------------------------------------------------
+
+
+def test_le_reglage_de_pages_fait_l_aller_retour(tmp_path: Path) -> None:
+    """Deux colonnes scalaires, un value object : la traduction se vérifie sur une vraie base."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = PosteRepositorySQL(db.session_factory)
+        ecran = repository.ajouter(Poste.creer_ecran(tournoi_id, "Hall", "ECR123"))
+
+        repository.enregistrer(ecran.avec_pages(ReglagePages(noms_par_page=24, cadence_page_s=12)))
+
+        relu = repository.par_code("ECR123")
+        assert relu is not None
+        assert relu.pages == ReglagePages(noms_par_page=24, cadence_page_s=12)
+    finally:
+        db.engine.dispose()
+
+
+def test_un_ecran_sans_reglage_se_relit_sans_reglage(tmp_path: Path) -> None:
+    """`None` n'est pas une anomalie : c'est un écran qui joue le défaut (cf. `deroule_json`)."""
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = PosteRepositorySQL(db.session_factory)
+        repository.ajouter(Poste.creer_ecran(tournoi_id, "Buvette", "ECR456"))
+
+        relu = repository.par_code("ECR456")
+        assert relu is not None
+        assert relu.pages is None
+    finally:
+        db.engine.dispose()
+
+
+def test_une_paire_de_colonnes_incomplete_est_un_defaut_d_infrastructure(tmp_path: Path) -> None:
+    """Les deux colonnes vont **par paire** : n'en trouver qu'une est une base abîmée.
+
+    On refuse plutôt que de compléter en silence avec la moitié du défaut — un écran qui
+    projetterait 40 noms toutes les 5 s sans que personne ne l'ait demandé serait indétectable
+    depuis la salle. `InfrastructureError`, et non un 422 métier : ce n'est pas la requête du client
+    qui est fautive.
+    """
+    db, tournoi_id = _base_avec_tournoi(tmp_path)
+    try:
+        repository = PosteRepositorySQL(db.session_factory)
+        repository.ajouter(Poste.creer_ecran(tournoi_id, "Hall", "ECR789"))
+        with db.engine.begin() as conn:
+            conn.execute(sa.text("UPDATE poste SET noms_par_page = 24 WHERE code = 'ECR789'"))
+
+        with pytest.raises(InfrastructureError):
+            repository.par_code("ECR789")
     finally:
         db.engine.dispose()

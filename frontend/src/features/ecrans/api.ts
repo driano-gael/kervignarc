@@ -8,6 +8,7 @@
 //   **même** mécanisme que la tablette de cible, pas un chemin parallèle.
 
 import { fetchJson } from '../../shared/api/client'
+import type { ReglagePages } from '../../shared/ui/pagination'
 
 /** Les vues qu'un écran sait afficher. Miroir de `domain.ecran.VueEcran`, qui **couvre désormais le
  * CA d'E07US004 en entier** : le catalogue s'est élargi trois fois — palmarès (E06US004),
@@ -57,6 +58,19 @@ export interface VueProgrammee {
   cadence_s: number
 }
 
+/** Bornes du réglage de pages — miroir de `domain.ecran` (E16US009). Même parti que les bornes de
+ * cadence ci-dessus : le serveur reste l'autorité (422 `nombre_de_noms_par_page_invalide` /
+ * `cadence_de_page_invalide`), le front s'en sert pour ne pas offrir un réglage voué au refus. */
+export const NOMS_PAR_PAGE_MIN = 5
+export const NOMS_PAR_PAGE_MAX = 100
+export const CADENCE_PAGE_MIN_S = 5
+export const CADENCE_PAGE_MAX_S = 300
+
+/** Miroir du DTO `ReglagePagesDTO`. **Défini dans `shared/ui/pagination.ts`** et ré-exporté ici :
+ * ses consommateurs sont les deux vues paginées, dans deux features distinctes, et le définir dans
+ * cette feature-ci aurait créé deux arêtes entre features pour un type de deux entiers. */
+export type { ReglagePages }
+
 export interface Ecran {
   id: number
   tournoi_id: number
@@ -65,6 +79,9 @@ export interface Ecran {
   /** **Toujours** rempli : le serveur résout le déroulé par défaut, le front n'a donc jamais à
    * connaître l'existence d'un défaut ni à afficher « aucune vue ». */
   deroule: VueProgrammee[]
+  /** **Toujours** rempli aussi (`pages_effectives`) : c'est ce qui a résorbé `DETTE-039` — le
+   * défaut vivait dans le composant qui s'en servait, donc hors de portée de tout réglage. */
+  pages: ReglagePages
 }
 
 /** Ce que l'écran doit montrer maintenant. **Exactement l'un** de `vues` ou `vue_figee` est
@@ -81,6 +98,9 @@ export interface Affichage {
    * **en local** à partir de là — la reprise ne dépend donc d'aucun message serveur, ce qui la rend
    * insensible à une coupure réseau (ADR-0064). */
   reste_s: number | null
+  /** Le réglage de pages de **cet** écran, résolu par le serveur. Il vaut sous contrôle comme hors
+   * contrôle : une prise change *ce qu'on montre*, jamais *comment une liste se lit de loin*. */
+  pages: ReglagePages
 }
 
 export interface Prise {
@@ -117,6 +137,21 @@ export function reglerDeroule(
   return fetchJson<Ecran>(`/api/v1/tournois/${tournoiId}/ecrans/${posteId}/deroule`, {
     method: 'PUT',
     body: JSON.stringify({ vues }),
+  })
+}
+
+/** Fixe le découpage et la cadence des listes projetées par un écran (E16US009).
+ *
+ * Route **distincte** du déroulé : corriger une cadence de page ne doit pas obliger à renvoyer la
+ * séquence de vues entière, donc ne peut pas l'écraser par inadvertance. */
+export function reglerPages(
+  tournoiId: number,
+  posteId: number,
+  pages: ReglagePages,
+): Promise<Ecran> {
+  return fetchJson<Ecran>(`/api/v1/tournois/${tournoiId}/ecrans/${posteId}/pages`, {
+    method: 'PUT',
+    body: JSON.stringify({ pages }),
   })
 }
 
