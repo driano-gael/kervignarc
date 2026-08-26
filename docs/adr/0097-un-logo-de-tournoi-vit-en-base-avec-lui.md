@@ -180,8 +180,13 @@ tient à ce que l'identité **est** ce qui distingue une édition.
 
 ## Porté dans le code par
 
-⚠️ **Deux lignes de ce tableau ont été corrigées en revue, et la raison mérite d'être lue** : la
-première rédaction attribuait §5 (la portée) à `HabillageIdentite.tsx`. Or ce module est ce **qui
+⚠️ **Ce tableau a été corrigé à DEUX passes de revue, et la récidive est plus instructive que le
+défaut.** La première rédaction attribuait §5 (la portée) à `HabillageIdentite.tsx` ; la correction
+a rendu la ligne de `application/identite.py` fausse à son tour, en la faisant renvoyer à un
+« §3 (`P-4`) » — alors que `P-4` n'apparaît nulle part dans cet ADR et que §3 ne décide rien sur le
+caractère non bloquant du contraste. Le même défaut, dans la même table, dans le commit qui prétendait
+le réparer. Ce qui manquait était identique les deux fois : **relire la section citée**, et pas
+seulement le module. Détail de la première correction : Or ce module est ce **qui
 est monté**, pas ce **qui décide où** : le montage vit chez ses appelants, et rien n'empêchait une
 US future de l'importer dans l'admin — la décision était appliquée sans être gardée, exactement le
 mode de panne d'ADR-0017 qu'[ADR-0075](0075-le-depart-est-la-portee-sportive.md) existe pour ne pas
@@ -193,7 +198,7 @@ prévenir.
 | Module | Ce qu'il tient de cet ADR |
 |---|---|
 | [`backend/domain/identite.py`](../../backend/domain/identite.py) | §3 la dérivation (pure, teinte et saturation conservées) et ses deux seuils WCAG ; §2 le refus de contenu d'un logo ; §4 `IdentiteVisuelle` à accents facultatifs et `reglee` dérivé |
-| [`backend/application/identite.py`](../../backend/application/identite.py) | §3 (`P-4`) le contrôle de contraste comme **calcul**, jamais comme refus ; aucune garde de statut hors `archivé`, verrou qui vient d'**ADR-0026 §1** et non de cet ADR |
+| [`backend/application/identite.py`](../../backend/application/identite.py) | §3 la **déclinaison servie prête à poser** — les deux thèmes calculés côté serveur (`decliner`), le front ne recalcule rien. *(Deux autres décisions passent par ce module sans venir de cet ADR : le contraste rendu comme chiffre et non opposé comme refus vient de `P-4` ; le verrou d'archive, d'ADR-0026 §1.)* |
 | [`backend/api/v1/identite.py`](../../backend/api/v1/identite.py) | §1 la route qui sert les octets ; §2 les trois en-têtes de sûreté et le corps brut ; §5 les deux lectures publiques |
 | [`backend/infrastructure/db/repositories/referentiel.py`](../../backend/infrastructure/db/repositories/referentiel.py) (`IdentiteVisuelleRepositorySQL`) | §1 la projection **sans blob** des réglages, et l'invariant « les deux colonnes d'un logo, ou aucune » |
 | [`backend/migrations/versions/0050_identite_visuelle_tournoi.py`](../../backend/migrations/versions/0050_identite_visuelle_tournoi.py) | §1 la table à part **et sa cascade** (`ON DELETE CASCADE`, sans laquelle l'argument « supprimer un tournoi supprime sa descendance » du §1 serait faux) ; §4 les accents nullables et l'absence de peuplement |

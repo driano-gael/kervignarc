@@ -16,9 +16,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Identite as IdentiteDTO } from './api'
+import type { EmplacementLogo, Identite as IdentiteDTO } from './api'
 import { apercuIdentite, deposerLogo, enregistrerAccents, getIdentite, retirerLogo } from './api'
 import { cssDesJetons } from './jetons'
+
+/** Un emplacement pourvu, dans la forme du DTO : l'empreinte est le numéro de version du contenu. */
+const pourvu = (emplacement: EmplacementLogo, empreinte = 'v1') => ({ emplacement, empreinte })
 import { Identite } from './Identite'
 
 vi.mock('./api', async (importOriginal) => ({
@@ -60,6 +63,7 @@ const IDENTITE_HERITEE: IdentiteDTO = {
   logos: [],
   seuil_contour: 3.0,
   seuil_texte: 4.5,
+  poids_logo_max_octets: 512 * 1024,
 }
 
 function harnais(noeud: ReactNode) {
@@ -68,6 +72,12 @@ function harnais(noeud: ReactNode) {
 }
 
 beforeEach(() => {
+  // ⚠️ **Remise à zéro explicite.** La configuration vitest du dépôt ne pose ni `clearMocks` ni
+  // `restoreMocks`, et ce `beforeEach` ne réinitialisait que trois des cinq doublures : un
+  // `not.toHaveBeenCalled()` sur `deposerLogo` comptait donc les appels du test précédent, et n'a
+  // été rendu déterministe qu'à la main, test par test. Nettoyer ici vaut mieux qu'un pansement
+  // local — c'est ce qui rend l'ordre des tests indifférent.
+  vi.clearAllMocks()
   vi.mocked(getIdentite).mockResolvedValue(IDENTITE_HERITEE)
   vi.mocked(apercuIdentite).mockResolvedValue(IDENTITE_HERITEE)
   vi.mocked(enregistrerAccents).mockResolvedValue({ ...IDENTITE_HERITEE, reglee: true })
@@ -214,6 +224,24 @@ describe('CA — les deux logos', () => {
     ).toBeInTheDocument()
   })
 
+  it('distingue « pas assez pour du texte » de « pas même pour un contour »', async () => {
+    // ⚠️ Le correctif visible le plus riche de la passe précédente n'était tenu par **aucun** test :
+    // `seuil_contour` pouvait disparaître de bout en bout sans rougir, alors que
+    // `docs/fonctionnel/E16US006.md` promet la phrase au recetteur, mot pour mot.
+    //
+    // La fixture héritée ne suffisait pas à le prouver : ses deux accents sont sous 3:1 sur fond
+    // sombre, donc les deux porteraient l'incise et rien ne montrerait qu'elle est **absente**
+    // quand elle doit l'être. On pose donc un secondaire à 4,0:1 — en échec du seul seuil de texte.
+    vi.mocked(getIdentite).mockResolvedValue({
+      ...IDENTITE_HERITEE,
+      secondaire: { ...IDENTITE_HERITEE.secondaire, contraste_sur_sombre: 4.0 },
+    })
+    harnais(<Identite tournoiId={7} />)
+
+    expect(await screen.findAllByText(/ni même pour un contour \(3:1\)/)).toHaveLength(1)
+    expect(screen.getAllByText(/trop faible pour du texte \(4\.5:1 attendu\)/)).toHaveLength(2)
+  })
+
   it('dit « aucun logo » plutôt que d’afficher un cadre vide', async () => {
     harnais(<Identite tournoiId={7} />)
 
@@ -221,7 +249,7 @@ describe('CA — les deux logos', () => {
   })
 
   it('n’offre le retrait que sur un emplacement pourvu', async () => {
-    vi.mocked(getIdentite).mockResolvedValue({ ...IDENTITE_HERITEE, logos: ['club'] })
+    vi.mocked(getIdentite).mockResolvedValue({ ...IDENTITE_HERITEE, logos: [pourvu('club')] })
     harnais(<Identite tournoiId={7} />)
 
     await waitFor(() =>
@@ -240,7 +268,7 @@ describe('CA — les deux logos', () => {
     //
     // `emplacement` et `libelle` sont deux props indépendantes : c'est leur **appariement** que ce
     // test tient, en partant du libellé que l'organisateur lit à l'écran.
-    vi.mocked(deposerLogo).mockResolvedValue({ ...IDENTITE_HERITEE, logos: ['club'] })
+    vi.mocked(deposerLogo).mockResolvedValue({ ...IDENTITE_HERITEE, logos: [pourvu('club')] })
     harnais(<Identite tournoiId={7} />)
     const fichier = new File(['x'], 'club.png', { type: 'image/png' })
 
@@ -256,21 +284,57 @@ describe('CA — les deux logos', () => {
     // Pré-contrôle de **confort** : le serveur reste juge et refuse la même chose. Sans lui, un
     // fichier de plusieurs mégaoctets traverse le Wi-Fi du gymnase pour revenir en 422, alors que
     // l'écran annonce la limite deux lignes plus haut.
-    vi.mocked(deposerLogo).mockClear()
     harnais(<Identite tournoiId={7} />)
-    const trop_lourd = new File([new Uint8Array(600 * 1024)], 'gros.png', { type: 'image/png' })
+    const tropLourd = new File([new Uint8Array(600 * 1024)], 'gros.png', { type: 'image/png' })
 
     await userEvent.upload(
       await screen.findByLabelText(/Logo du tournoi — choisir un fichier/i),
-      trop_lourd,
+      tropLourd,
     )
 
     expect(await screen.findByText(/la limite est de 512 Ko/i)).toBeInTheDocument()
     expect(vi.mocked(deposerLogo)).not.toHaveBeenCalled()
   })
 
+  it('montre le fichier remplacé, sans rechargement de page', async () => {
+    // ⚠️ **Le geste que la passe précédente avait cassé en croyant l'améliorer.**
+    //
+    // L'URL d'un logo était versionnée par l'horodatage React Query — qui change à chaque événement
+    // WebSocket, donc retéléchargeait 512 Ko pour rien. Le correctif a retiré le paramètre… et une
+    // URL **stable** ne provoque plus aucune requête sur une image déjà montée : React ne réécrit
+    // pas un attribut inchangé, le navigateur ne consulte même pas son cache, et
+    // `Cache-Control: no-cache` ne s'applique à rien. Remplacer un logo ne changeait plus rien à
+    // l'écran (mesuré en revue, `setAttribute` instrumenté).
+    //
+    // Le test suit le **geste réel** — déposer un fichier par-dessus un logo existant — plutôt que
+    // de forcer un re-rendu : c'est la chaîne entière qui doit tenir (mutation → invalidation →
+    // relecture → nouvelle empreinte → nouvel attribut `src`).
+    vi.mocked(getIdentite)
+      .mockResolvedValueOnce({ ...IDENTITE_HERITEE, logos: [pourvu('club', 'avant')] })
+      .mockResolvedValue({ ...IDENTITE_HERITEE, logos: [pourvu('club', 'apres')] })
+    vi.mocked(deposerLogo).mockResolvedValue({
+      ...IDENTITE_HERITEE,
+      logos: [pourvu('club', 'apres')],
+    })
+    harnais(<Identite tournoiId={7} />)
+    const avant = await screen.findByRole('img', { name: /Logo du club organisateur déposé/i })
+    expect(avant.getAttribute('src')).toContain('v=avant')
+
+    await userEvent.upload(
+      screen.getByLabelText(/Logo du club organisateur — choisir un fichier/i),
+      new File(['neuf'], 'club.png', { type: 'image/png' }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: /Logo du club organisateur déposé/i }).getAttribute('src'),
+        'un contenu neuf donne une URL neuve — sinon l’image affichée ne bouge jamais',
+      ).toContain('v=apres'),
+    )
+  })
+
   it('retire le logo de l’emplacement pourvu', async () => {
-    vi.mocked(getIdentite).mockResolvedValue({ ...IDENTITE_HERITEE, logos: ['club'] })
+    vi.mocked(getIdentite).mockResolvedValue({ ...IDENTITE_HERITEE, logos: [pourvu('club')] })
     vi.mocked(retirerLogo).mockResolvedValue(IDENTITE_HERITEE)
     harnais(<Identite tournoiId={7} />)
 

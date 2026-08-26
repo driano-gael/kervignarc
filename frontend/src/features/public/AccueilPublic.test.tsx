@@ -244,7 +244,10 @@ describe('AccueilPublic — l’identité du tournoi habille l’appli publique 
     // aurait disparu sans bruit — c'est la leçon de `DETTE-085`), et le titre ne récite pas les
     // logos. À l'écran de salle, le logo vit dans un `<header>` et **garde** son `alt` : la
     // distinction est le lieu, pas le composant.
-    vi.mocked(getIdentite).mockResolvedValue({ ...identitePublique(), logos: ['evenement'] })
+    vi.mocked(getIdentite).mockResolvedValue({
+      ...identitePublique(),
+      logos: [{ emplacement: 'evenement', empreinte: 'v1' }],
+    })
 
     const { container } = monter(<AccueilPublic />)
     await userEvent.click(screen.getByRole('button', { name: 'Choisir le tournoi' }))
@@ -253,9 +256,11 @@ describe('AccueilPublic — l’identité du tournoi habille l’appli publique 
     const logo = container.querySelector('img.logo-tournoi')
     expect(logo, 'le logo doit être rendu').not.toBeNull()
     expect(logo?.getAttribute('src')).toContain('/identite/logos/evenement')
-    expect(logo?.getAttribute('alt'), 'décoratif dans un titre qui dit déjà le nom').toBe('')
-    expect(titre.textContent).toContain('Kervignarc 2026')
-    expect(titre.textContent, 'le titre ne récite pas les logos').not.toContain('Logo')
+    // ⚠️ Le **nom accessible**, pas `textContent` : celui-ci n'inclut jamais un attribut `alt`, si
+    // bien que l'assertion précédente (`not.toContain('Logo')`) passait déjà AVANT le correctif,
+    // avec `alt="Logo du tournoi"` — une assertion vide, présentée comme la moitié qui compte.
+    // `toHaveAccessibleName` agrège les `alt` : elle rougit au retour en arrière.
+    expect(titre, 'le titre ne récite pas les logos').toHaveAccessibleName('Kervignarc 2026')
   })
 })
 
@@ -277,5 +282,6 @@ function identitePublique(): Identite {
     logos: [],
     seuil_contour: 3,
     seuil_texte: 4.5,
+    poids_logo_max_octets: 512 * 1024,
   }
 }

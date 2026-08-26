@@ -7732,7 +7732,9 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/application/identite.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "decliner"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },

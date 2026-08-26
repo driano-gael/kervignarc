@@ -17,7 +17,7 @@
 
 import { useIdentite } from './hooks'
 import type { EmplacementLogo } from './api'
-import { urlDuLogo } from './api'
+import { empreinteDuLogo, urlDuLogo } from './api'
 import { cssDesJetons } from './jetons'
 import './identite.css'
 
@@ -77,12 +77,14 @@ export function LogoDuTournoi({
   decoratif?: boolean
 }) {
   const identite = useIdentite(tournoiId)
-  if (identite.data === undefined || !identite.data.logos.includes(emplacement)) return null
+  const empreinte =
+    identite.data === undefined ? undefined : empreinteDuLogo(identite.data, emplacement)
+  if (empreinte === undefined) return null
 
   return (
     <img
       className={className ?? 'logo-tournoi'}
-      src={urlDuLogo(tournoiId, emplacement)}
+      src={urlDuLogo(tournoiId, emplacement, empreinte)}
       alt={
         decoratif ? '' : emplacement === 'club' ? 'Logo du club organisateur' : 'Logo du tournoi'
       }

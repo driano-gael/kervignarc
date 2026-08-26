@@ -18,16 +18,6 @@ import {
 
 const cleIdentite = (tournoiId: number) => ['identite', tournoiId] as const
 
-/**
- * La limite de poids d'un logo, **recopiée** de `domain.identite.POIDS_LOGO_MAX_OCTETS`.
- *
- * Duplication assumée et bornée, du même genre qu'`estUneCouleur` : elle ne décide de rien — le
- * refus reste au serveur — elle évite seulement qu'un fichier de plusieurs mégaoctets traverse le
- * Wi-Fi d'un gymnase pour revenir en 422. Une divergence serait **bruyante** (le serveur refuse ce
- * que l'écran a laissé passer), jamais silencieuse.
- */
-export const POIDS_LOGO_MAX_OCTETS = 512 * 1024
-
 export function useIdentite(tournoiId: number) {
   return useQuery({
     queryKey: cleIdentite(tournoiId),

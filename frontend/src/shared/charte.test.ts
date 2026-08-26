@@ -411,14 +411,44 @@ describe('CA — l’habillage de tournoi ne touche que le public et la salle (D
 
   const HABILLEURS = ['features/salle/EcranSalle.tsx', 'features/public/AccueilPublic.tsx']
 
+  // Un seul module a le droit de fabriquer le CSS de marque : l'habillage lui-même, qui EST ce
+  // mécanisme. Les deux habilleurs, eux, passent par lui et n'importent pas `jetons` directement.
+  const PORTEURS_DE_JETONS = ['features/identite/HabillageIdentite.tsx']
+
   it('seuls l’écran de salle et l’appli publique importent l’habillage', () => {
+    // ⚠️ **Le motif ne s'arrête pas à `from '…'`.** La rédaction précédente exigeait un import
+    // statique, en quotes simples, se terminant exactement par le nom du module : un
+    // `lazy(() => import('../identite/HabillageIdentite'))` — la façon normale de monter un écran
+    // dans une coquille d'admin qu'on veut découper — passait au vert, tout comme des guillemets
+    // doubles ou une extension explicite. Chercher le nom **suivi de sa quote fermante** couvre les
+    // cinq formes, statiques et dynamiques.
     const porteurs = features
-      .filter(([, source]) => /from '[^']*HabillageIdentite'/.test(source))
+      .filter(([, source]) =>
+        /HabillageIdentite(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
+      )
       .map(([chemin]) => chemin)
       .sort()
 
     expect(porteurs, 'D-27 : l’identité du tournoi n’habille jamais l’admin ni la saisie').toEqual(
       [...HABILLEURS].sort(),
+    )
+  })
+
+  it('aucune feature ne court-circuite l’habillage en posant les jetons elle-même', () => {
+    // Le point d'étranglement était à un module de profondeur : `cssDesJetons` suffit à peindre un
+    // conteneur, sans jamais toucher `HabillageIdentite`. Un écran d'admin qui l'importerait
+    // habillerait l'admin avec le contrôle précédent au vert — le garde-fou répondait à « qui monte
+    // l'habillage », pas à la question que ce bloc pose lui-même : **qui a le droit de toucher à la
+    // marque**.
+    const porteurs = features
+      .filter(([, source]) =>
+        /['"][.\w/]*\/jetons(\.tsx?)?['"]/.test(neutraliserCommentaires(source)),
+      )
+      .map(([chemin]) => chemin)
+      .sort()
+
+    expect(porteurs, 'D-27 : les jetons de marque ne se posent qu’en salle et en public').toEqual(
+      [...PORTEURS_DE_JETONS].sort(),
     )
   })
 
@@ -508,7 +538,17 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
       .flatMap(([chemin, source]) =>
         jetonsDeLaCharte
           .filter((jeton) =>
-            new RegExp(String.raw`(^|[^\w-])${jeton}\s*:`).test(neutraliserCommentaires(source)),
+            // Trois formes, parce que trois façons de poser une variable CSS depuis React :
+            //   `${porte}{--surface-0:${c}}`         → le jeton précède un deux-points
+            //   <div style={{ '--surface-0': c }}>   → une quote s'intercale avant le deux-points
+            //   el.style.setProperty('--surface-0', c) → il n'y a **pas** de deux-points du tout
+            // La rédaction précédente n'attrapait que la première ; `setProperty` est pourtant le
+            // moyen le plus direct de repeindre le fond du produit, et il passait au vert.
+            new RegExp(
+              String.raw`(^|[^\w-])${jeton}\s*['"\`]?\s*:` +
+                '|' +
+                String.raw`setProperty\(\s*['"\`]${jeton}\b`,
+            ).test(neutraliserCommentaires(source)),
           )
           .map((jeton) => `${chemin} fabrique ${jeton}`),
       )

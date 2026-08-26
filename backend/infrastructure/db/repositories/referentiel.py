@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime
 import json
 from collections.abc import Sequence
+from typing import assert_never
 
 from sqlalchemy import delete, select, update
 from sqlalchemy import true as sa_true
@@ -1599,13 +1600,13 @@ def _lire_reglages_identite(session: Session, tournoi_id: TournoiId) -> Identite
         select(
             IdentiteVisuelleORM.accent_primaire,
             IdentiteVisuelleORM.accent_secondaire,
-            IdentiteVisuelleORM.logo_evenement.is_not(None),
-            IdentiteVisuelleORM.logo_club.is_not(None),
+            IdentiteVisuelleORM.logo_evenement_empreinte,
+            IdentiteVisuelleORM.logo_club_empreinte,
         ).where(IdentiteVisuelleORM.tournoi_id == tournoi_id)
     ).one_or_none()
     if ligne is None:
         return IdentiteVisuelle()
-    primaire, secondaire, a_evenement, a_club = ligne
+    primaire, secondaire, empreinte_evenement, empreinte_club = ligne
     # `Couleur.depuis_hex` lève une `DomainError` : sur une valeur écrite hors du chemin normal
     # (édition manuelle, restauration partielle), elle traverserait l'infra et sortirait en **422**
     # sur une lecture **publique** — en recopiant au passage la valeur de base dans le message
@@ -1619,14 +1620,14 @@ def _lire_reglages_identite(session: Session, tournoi_id: TournoiId) -> Identite
     return IdentiteVisuelle(
         accent_primaire=accent_primaire,
         accent_secondaire=accent_secondaire,
-        logos_presents=frozenset(
-            emplacement
-            for emplacement, present in (
-                (EmplacementLogo.EVENEMENT, a_evenement),
-                (EmplacementLogo.CLUB, a_club),
+        empreintes={
+            emplacement: empreinte
+            for emplacement, empreinte in (
+                (EmplacementLogo.EVENEMENT, empreinte_evenement),
+                (EmplacementLogo.CLUB, empreinte_club),
             )
-            if present
-        ),
+            if empreinte is not None
+        },
     )
 
 
@@ -1642,7 +1643,7 @@ def _hex_ou_rien(couleur: Couleur | None) -> str | None:
 def _ecrire_le_logo(
     ligne: IdentiteVisuelleORM, emplacement: EmplacementLogo, logo: Logo | None
 ) -> None:
-    """Écrit le couple (octets, type MIME) d'un emplacement : les deux, ou les deux à `NULL`.
+    """Écrit le triplet (octets, type MIME, empreinte) : les trois ensemble, ou trois `NULL`.
 
     ⚠️ Nommément, et non par `setattr(ligne, colonne.key, …)`. La clé y était une `str` : ni le nom
     de la colonne ni le type de la valeur n'étaient vérifiés, si bien que l'invariant le plus
@@ -1652,12 +1653,17 @@ def _ecrire_le_logo(
     """
     octets = None if logo is None else logo.contenu
     type_mime = None if logo is None else logo.type_logo.value
+    empreinte = None if logo is None else logo.empreinte
     if emplacement is EmplacementLogo.EVENEMENT:
         ligne.logo_evenement = octets
         ligne.logo_evenement_type = type_mime
-    else:
+        ligne.logo_evenement_empreinte = empreinte
+    elif emplacement is EmplacementLogo.CLUB:
         ligne.logo_club = octets
         ligne.logo_club_type = type_mime
+        ligne.logo_club_empreinte = empreinte
+    else:  # pragma: no cover — `assert_never` fait de l'oubli une erreur de typage
+        assert_never(emplacement)
 
 
 def _colonnes_du_logo(

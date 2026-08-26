@@ -86,14 +86,20 @@ def upgrade() -> None:
         # besoin, et que le CA impose (« défaut = identité du club **si rien n'est fourni** »).
         sa.Column("accent_primaire", sa.String(), nullable=True),
         sa.Column("accent_secondaire", sa.String(), nullable=True),
-        # Chaque logo est un couple (octets, type MIME) : les deux `NULL` ensemble, ou aucun. Le
+        # Chaque logo est un triplet (octets, type MIME, empreinte) : tous `NULL` ensemble, ou
+        # aucun. Le
         # `CHECK` correspondant n'est pas posé — SQLite l'accepterait, mais l'invariant est déjà
         # tenu d'un seul endroit (l'adapter écrit toujours le couple), et une contrainte de plus ne
         # protégerait que d'un écrivain qui n'existe pas.
         sa.Column("logo_evenement", sa.LargeBinary(), nullable=True),
         sa.Column("logo_evenement_type", sa.String(), nullable=True),
+        # L'empreinte du contenu, **stockée** : la projection des réglages se fait sans charger un
+        # octet, et hacher 512 Ko à chaque affichage public pour connaître un numéro de version
+        # aurait annulé la raison d'être de cette table. Elle sert aussi d'`ETag`.
+        sa.Column("logo_evenement_empreinte", sa.String(), nullable=True),
         sa.Column("logo_club", sa.LargeBinary(), nullable=True),
         sa.Column("logo_club_type", sa.String(), nullable=True),
+        sa.Column("logo_club_empreinte", sa.String(), nullable=True),
     )
 
 

@@ -18,7 +18,6 @@ réseau de gymnase : pas les ~33 % d'inflation d'un encodage base64.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
@@ -28,6 +27,7 @@ from api.dependances import exiger_admin
 from application.erreurs import CorpsHorsDeProportion, LogoIntrouvable
 from application.identite import AccentDecline, IdentiteDeclinee, ServiceIdentite, decliner
 from domain.identite import (
+    POIDS_LOGO_MAX_OCTETS,
     SEUIL_CONTOUR,
     SEUIL_TEXTE,
     Couleur,
@@ -101,6 +101,21 @@ class AccentReponse(BaseModel):
         )
 
 
+class LogoPresentReponse(BaseModel):
+    """Un emplacement pourvu, et l'**empreinte** de ce qu'il contient.
+
+    ⚠️ L'empreinte n'est pas décorative : c'est le segment de version que le front pose dans l'URL
+    du logo. Une URL stable ne provoque aucune requête sur une image déjà montée — le navigateur ne
+    consulte même pas son cache, donc `Cache-Control: no-cache` ne s'applique à rien — et un
+    organisateur qui corrige son fichier ne le voyait jamais (relevé en revue, mesuré). Versionner
+    par l'horloge de la requête, à l'inverse, retéléchargeait 512 Ko à chaque événement WebSocket.
+    L'empreinte du **contenu** est la seule valeur qui tienne les deux bouts.
+    """
+
+    emplacement: str
+    empreinte: str
+
+
 class IdentiteReponse(BaseModel):
     """L'identité d'un tournoi, prête à appliquer.
 
@@ -116,9 +131,16 @@ class IdentiteReponse(BaseModel):
     reglee: bool
     primaire: AccentReponse
     secondaire: AccentReponse
-    logos: list[str]
+    logos: list[LogoPresentReponse]
     seuil_contour: float
     seuil_texte: float
+    poids_logo_max_octets: int
+    """La limite de poids, servie plutôt que recopiée — même argument que les deux seuils.
+
+    Le front s'en sert pour refuser un fichier hors limite **avant** de le faire traverser le Wi-Fi
+    du gymnase. Une copie en dur y aurait annoncé une limite que le serveur n'applique plus, et dans
+    le mauvais sens (copie trop petite) elle aurait interdit un dépôt que le serveur acceptait.
+    """
 
     @staticmethod
     def de_identite(identite: IdentiteDeclinee) -> IdentiteReponse:
@@ -127,11 +149,18 @@ class IdentiteReponse(BaseModel):
             reglee=identite.reglee,
             primaire=AccentReponse.de_accent(identite.primaire),
             secondaire=AccentReponse.de_accent(identite.secondaire),
-            # Trié pour que la réponse soit **stable** : un `frozenset` n'a pas d'ordre, et deux
-            # requêtes identiques rendant deux ordres différents casseraient le cache du client.
-            logos=sorted(emplacement.value for emplacement in identite.logos_presents),
+            # Trié pour que la réponse soit **stable** : un mappage n'a pas d'ordre garanti, et
+            # deux requêtes identiques rendant deux ordres différents casseraient le cache
+            # du client.
+            logos=[
+                LogoPresentReponse(emplacement=emplacement.value, empreinte=empreinte)
+                for emplacement, empreinte in sorted(
+                    identite.empreintes.items(), key=lambda paire: paire[0].value
+                )
+            ],
             seuil_contour=SEUIL_CONTOUR,
             seuil_texte=SEUIL_TEXTE,
+            poids_logo_max_octets=POIDS_LOGO_MAX_OCTETS,
         )
 
 
@@ -217,10 +246,16 @@ async def deposer_un_logo(
     `Logo.deposer`), aucun n'est réécrit ici. `413` si le corps dépasse la coupure de sécurité de la
     frontière, qui est une autre affaire que la limite métier (cf. `_lire_le_corps_borne`).
     """
+    # ⚠️ Le **type d'abord**, le corps ensuite. L'ordre inverse — celui de la rédaction
+    # précédente — accumulait jusqu'à 4 Mo en mémoire pour refuser sur un en-tête qui était lisible
+    # gratuitement. C'est la même famille de défaut que celle qu'on venait de corriger un cran plus
+    # haut (« la borne s'appliquait après l'ingestion »), appliquée à moitié. Effet voulu : un gros
+    # corps de format non reconnu rend 422 (le format *est* invalide, on l'a su sans rien lire) au
+    # lieu de 413.
+    type_logo = TypeLogo.depuis_entete(request.headers.get("content-type"))
     contenu = await _lire_le_corps_borne(request)
     service: ServiceIdentite = request.app.state.service_identite
     write_queue: WriteQueue = request.app.state.write_queue
-    type_logo = TypeLogo.depuis_entete(request.headers.get("content-type"))
     identite = await asyncio.wrap_future(
         write_queue.submit(
             lambda: service.deposer_logo(tournoi_id, emplacement, contenu, type_logo)
@@ -276,20 +311,47 @@ async def logo_du_tournoi(
         # balise `<img>`, qui n'en lit pas le corps — mais rien ne garantit qu'il restera le seul.
         raise LogoIntrouvable("Aucun logo à cet emplacement.")
 
-    etag = f'"{hashlib.sha256(logo.contenu).hexdigest()[:32]}"'
-    if request.headers.get("if-none-match") == etag:
-        return Response(status_code=304, headers={"ETag": etag})
+    # L'empreinte est celle du domaine, la même que celle servie dans `/identite` : les deux
+    # bouts de la chaîne de cache parlent donc de la même valeur, et le front peut construire une
+    # URL qui change exactement quand l'`ETag` change.
+    etag = f'"{logo.empreinte}"'
+    if _etag_deja_connu(request.headers.get("if-none-match"), etag):
+        return Response(status_code=304, headers=_entetes_du_logo(etag))
     return Response(
         content=logo.contenu,
         media_type=logo.type_logo.value,
-        headers={
-            "ETag": etag,
-            "Cache-Control": "no-cache",
-            "Content-Security-Policy": "default-src 'none'",
-            "X-Content-Type-Options": "nosniff",
-            "Content-Disposition": "inline",
-        },
+        headers=_entetes_du_logo(etag),
     )
+
+
+def _entetes_du_logo(etag: str) -> dict[str, str]:
+    """Les gardes posées sur **toute** réponse de la route, 304 compris.
+
+    Écrites d'un seul endroit plutôt que sur la seule réponse complète : le 304 en sortait nu, et si
+    la RFC 9111 §4.3.4 fait bien conserver au cache les champs qu'un 304 ne remplace pas — donc pas
+    de fenêtre réelle —, le raisonnement n'était écrit nulle part et la seule réponse du module à
+    sortir sans le trio était justement celle que sa docstring déclare « pas décoratif ».
+    """
+    return {
+        "ETag": etag,
+        "Cache-Control": "no-cache",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": "inline",
+    }
+
+
+def _etag_deja_connu(entete: str | None, etag: str) -> bool:
+    """`If-None-Match` porte une **liste**, et ses entrées peuvent être faibles (`W/"…"`).
+
+    Une égalité stricte sur la chaîne entière — la rédaction précédente — retombait en 200 complet
+    dès qu'un intermédiaire ajoutait une entrée ou préfixait la validation : jusqu'à 512 Ko de plus
+    par tablette, pour un fichier que le client avait déjà.
+    """
+    if entete is None:
+        return False
+    proposees = {valeur.strip().removeprefix("W/") for valeur in entete.split(",")}
+    return etag in proposees or "*" in proposees
 
 
 async def _lire_le_corps_borne(request: Request) -> bytes:

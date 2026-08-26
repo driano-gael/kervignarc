@@ -977,7 +977,14 @@ class IdentiteVisuelleORM(Base):
     )
     accent_primaire: Mapped[str | None] = mapped_column(nullable=True)
     accent_secondaire: Mapped[str | None] = mapped_column(nullable=True)
+    # Chaque logo est un **triplet** (octets, type MIME, empreinte du contenu), écrit d'un seul
+    # geste par l'adapter. L'empreinte est stockée et non recalculée : la projection des réglages
+    # est faite colonne par colonne **sans charger un octet** (c'est la raison d'être de cette
+    # table), et hacher pour connaître un numéro de version aurait annulé ce gain à chaque affichage
+    # public. Elle sert aussi d'`ETag` sur la route qui sert les octets — un seul calcul, au dépôt.
     logo_evenement: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     logo_evenement_type: Mapped[str | None] = mapped_column(nullable=True)
+    logo_evenement_empreinte: Mapped[str | None] = mapped_column(nullable=True)
     logo_club: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     logo_club_type: Mapped[str | None] = mapped_column(nullable=True)
+    logo_club_empreinte: Mapped[str | None] = mapped_column(nullable=True)

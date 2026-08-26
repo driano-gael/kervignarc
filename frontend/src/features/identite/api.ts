@@ -41,11 +41,35 @@ export interface Identite {
   reglee: boolean
   primaire: AccentDecline
   secondaire: AccentDecline
-  /** Les emplacements **pourvus**, triés — jamais les octets. */
-  logos: EmplacementLogo[]
+  /** Les emplacements **pourvus**, triés, avec l'empreinte de leur contenu — jamais les octets. */
+  logos: LogoPresent[]
   /** Seuils WCAG servis par le serveur, pour que le front n'en tienne pas sa propre copie. */
   seuil_contour: number
   seuil_texte: number
+  /** La limite de poids d'un logo, servie par le serveur — même argument que les deux seuils. */
+  poids_logo_max_octets: number
+}
+
+export interface LogoPresent {
+  emplacement: EmplacementLogo
+  /**
+   * L'empreinte du **contenu** — le numéro de version que `urlDuLogo` pose dans l'URL.
+   *
+   * ⚠️ Sans elle, une URL stable ne provoque **aucune** requête sur une image déjà montée : React
+   * ne réécrit pas un attribut inchangé, le navigateur ne consulte même pas son cache, et
+   * `Cache-Control: no-cache` ne s'applique à rien. Un organisateur qui corrigeait son logo ne le
+   * voyait jamais. Versionner par l'horloge de la requête faisait l'inverse — l'URL changeait à
+   * chaque événement WebSocket et retéléchargeait 512 Ko pour rien.
+   */
+  empreinte: string
+}
+
+/** L'empreinte d'un emplacement pourvu, ou `undefined` s'il est vide. */
+export function empreinteDuLogo(
+  identite: Identite,
+  emplacement: EmplacementLogo,
+): string | undefined {
+  return identite.logos.find((logo) => logo.emplacement === emplacement)?.empreinte
 }
 
 export interface AccentsAEnregistrer {
@@ -110,19 +134,27 @@ export function retirerLogo(tournoiId: number, emplacement: EmplacementLogo): Pr
 /**
  * L'adresse des octets d'un logo — à poser dans un `src`, jamais à télécharger soi-même.
  *
- * **URL stable, sans paramètre de version — et c'est le point délicat.** La première rédaction y
- * ajoutait `?v=${dataUpdatedAt}` pour qu'un logo corrigé soit vu sans vider le cache. Mais une URL
- * différente est un *cache miss*, pas une revalidation : le navigateur repart en requête complète
- * **sans** présenter l'`ETag`, et le 304 que le serveur sait rendre ne se produisait jamais.
+ * **Versionnée par le CONTENU, et il a fallu deux rédactions pour y arriver.**
  *
- * Aggravant mesuré en revue : `useRealtime` invalide **toutes** les requêtes à chaque événement
- * WebSocket (chaque volée validée), donc `dataUpdatedAt` changeait sans cesse — jusqu'à 2 × 512 Ko
- * retéléchargés par appareil, sur le réseau d'un gymnase, pour une image qui n'avait pas bougé.
+ * 1. La première posait `?v=${dataUpdatedAt}`, l'horodatage React Query. Il change à **chaque**
+ *    refetch, y compris quand la réponse est identique — et `useRealtime` invalide toutes les
+ *    requêtes à chaque événement WebSocket (chaque volée validée). Résultat : une URL neuve en
+ *    permanence, donc un *cache miss* permanent, donc jusqu'à 2 × 512 Ko retéléchargés par
+ *    appareil, sur le réseau d'un gymnase, pour une image qui n'avait pas bougé.
+ * 2. La deuxième retirait le paramètre. Le diagnostic réseau était juste, la conclusion fausse :
+ *    avec une URL **stable**, React ne réécrit pas l'attribut `src` d'une image déjà montée, donc
+ *    aucune requête ne part, donc `Cache-Control: no-cache` ne s'applique à rien. Remplacer un
+ *    logo ne changeait plus rien à l'écran — ni sur l'admin, ni sur l'écran de salle ouvert toute
+ *    la journée (mesuré en revue, `setAttribute` instrumenté).
  *
- * Ce que la route pose déjà fait exactement le travail voulu : `Cache-Control: no-cache` impose la
- * revalidation à chaque affichage, et l'`ETag` — calculé sur le **contenu** — rend 304 tant que le
- * fichier est le même, et les octets neufs dès qu'il change.
+ * L'empreinte du contenu tient les deux bouts : elle ne bouge **que** quand les octets bougent. Le
+ * *cache miss* devient alors légitime et rare, et c'est la même valeur que l'`ETag` servi par la
+ * route — les deux moitiés de la chaîne de cache parlent enfin de la même chose.
  */
-export function urlDuLogo(tournoiId: number, emplacement: EmplacementLogo): string {
-  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}`
+export function urlDuLogo(
+  tournoiId: number,
+  emplacement: EmplacementLogo,
+  empreinte: string,
+): string {
+  return `/api/v1/tournois/${tournoiId}/identite/logos/${emplacement}?v=${empreinte}`
 }

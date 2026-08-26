@@ -28,6 +28,7 @@ tournoi ; il ne calcule rien — la dérivation des jetons est une règle pure, 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from application.erreurs import TournoiArchiveNonModifiable, TournoiIntrouvable
@@ -80,7 +81,13 @@ class IdentiteDeclinee:
 
     primaire: AccentDecline
     secondaire: AccentDecline
-    logos_presents: frozenset[EmplacementLogo]
+    empreintes: Mapping[EmplacementLogo, str]
+    """Emplacement pourvu → empreinte de son contenu. Les absents n'y sont pas.
+
+    L'empreinte descend jusqu'au DTO parce qu'elle **est** le numéro de version que le front pose
+    dans l'URL du logo : sans elle, une image déjà montée ne se redemande jamais, et un logo corrigé
+    reste invisible jusqu'au rechargement de la page (relevé en revue, mesuré).
+    """
 
 
 class ServiceIdentite:
@@ -192,7 +199,7 @@ def decliner(identite: IdentiteVisuelle) -> IdentiteDeclinee:
         reglee=identite.reglee,
         primaire=_decliner_un_accent(primaire),
         secondaire=_decliner_un_accent(secondaire),
-        logos_presents=identite.logos_presents,
+        empreintes=identite.empreintes,
     )
 
 

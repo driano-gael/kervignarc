@@ -182,7 +182,10 @@ describe('EcranSalle — l’identité du tournoi habille la surface (CA E16US00
     vi.mocked(getAvancement).mockResolvedValue([])
     vi.mocked(getIdentite).mockResolvedValue({
       ...identiteDeTest(),
-      logos: ['club', 'evenement'],
+      logos: [
+        { emplacement: 'club', empreinte: 'v1' },
+        { emplacement: 'evenement', empreinte: 'v1' },
+      ],
     })
 
     monter(<EcranSalle libelle="Gymnase" tournoiId={1} />)
@@ -235,5 +238,6 @@ function identiteDeTest(): Identite {
     logos: [],
     seuil_contour: 3,
     seuil_texte: 4.5,
+    poids_logo_max_octets: 512 * 1024,
   }
 }

@@ -17,12 +17,13 @@ recetteur, message d'erreur compris. Une garde documentée que rien n'exerce est
 from __future__ import annotations
 
 import datetime
+from dataclasses import replace
 
 import pytest
 
 from application.erreurs import TournoiArchiveNonModifiable, TournoiIntrouvable
 from application.identite import ServiceIdentite
-from domain.identite import EmplacementLogo, IdentiteVisuelle, Logo, TypeLogo
+from domain.identite import Couleur, EmplacementLogo, IdentiteVisuelle, Logo, TypeLogo
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from tests.conftest import FauxTournoiRepository
 
@@ -54,14 +55,27 @@ class FauxIdentites:
     def enregistrer_accents(
         self, tournoi_id: TournoiId, identite: IdentiteVisuelle
     ) -> IdentiteVisuelle:
+        # ⚠️ Le port dit « écrit les deux accents, **sans toucher aux logos** » et rend l'identité
+        # relue, présence des logos comprise. Un faux qui écraserait tout serait vrai par vacuité
+        # dès la première assertion sur `logos_presents` — et « régler une couleur n'efface pas un
+        # logo » est un CA. Un faux qui ment sur son port ne teste que lui-même (relevé en revue).
         self.ecritures.append("accents")
-        self.identite = identite
-        return identite
+        self.identite = replace(
+            identite,
+            empreintes=dict(self.identite.empreintes),
+        )
+        return self.identite
 
     def enregistrer_logo(
         self, tournoi_id: TournoiId, emplacement: EmplacementLogo, logo: Logo | None
     ) -> IdentiteVisuelle:
+        """Écrit **un** emplacement ; les accents et l'autre emplacement ne bougent pas."""
         self.ecritures.append(f"logo:{emplacement.value}")
+        self.identite = (
+            self.identite.sans_logo(emplacement)
+            if logo is None
+            else self.identite.avec_logo(emplacement, logo.empreinte)
+        )
         return self.identite
 
 
@@ -91,19 +105,18 @@ def _service(statut: StatutTournoi | None) -> tuple[ServiceIdentite, FauxIdentit
 
 
 @pytest.mark.parametrize(
-    "statut",
-    [
-        StatutTournoi.BROUILLON,
-        StatutTournoi.PRET,
-        StatutTournoi.EN_COURS,
-        StatutTournoi.EN_PAUSE,
-        StatutTournoi.TERMINE,
-    ],
+    "statut", [statut for statut in StatutTournoi if statut is not StatutTournoi.ARCHIVE]
 )
 def test_l_identite_se_regle_a_tout_moment(statut: StatutTournoi) -> None:
     """`P-3`. Changer une couleur ou un logo ne touche **aucun score** : rien ne justifie de geler
     l'identité parce que les archers tirent. C'est le CA, et c'est aussi ce qui rend l'écran utile —
-    un logo oublié se rattrape le matin même, pas la veille."""
+    un logo oublié se rattrape le matin même, pas la veille.
+
+    ⚠️ **Dérivé de l'enum, et non énuméré à la main.** La première rédaction listait cinq statuts et
+    oubliait `annulé` — précisément le membre ambigu du lot (terminal, mais « conserve la trace »),
+    donc celui qu'un test dérivé du CA aurait dû forcer à trancher. Écrit ainsi, le jour où un
+    huitième statut apparaît, ce test **exige** qu'on décide s'il accepte l'écriture, au lieu de le
+    laisser hors du champ en silence."""
     service, identites = _service(statut)
 
     service.regler_accents(1, "#b71918", "#1d1d1b")
@@ -149,16 +162,47 @@ def test_un_tournoi_archive_refuse_le_retrait_d_un_logo() -> None:
     assert identites.ecritures == []
 
 
-def test_un_tournoi_archive_se_lit_normalement() -> None:
+def test_un_tournoi_archive_garde_ses_couleurs_et_les_sert() -> None:
     """Lecture seule veut dire **lecture**, justement : une archive garde ses couleurs et ses logos,
     et l'appli publique doit continuer de les servir. Sans ce test, resserrer la garde d'écriture
-    d'un cran de trop éteindrait l'affichage d'un tournoi passé sans faire rougir personne."""
+    d'un cran de trop éteindrait l'affichage d'un tournoi passé sans faire rougir personne.
+
+    ⚠️ La première rédaction lisait une archive **sans identité** et vérifiait qu'elle rendait le
+    rouge du club : elle prouvait seulement que `pour_tournoi` ne lève pas sur `ARCHIVE`, jamais la
+    conservation qu'elle annonçait — le défaut hérité est ce que le faux rend de toute façon."""
+    service, identites = _service(StatutTournoi.ARCHIVE)
+    identites.identite = IdentiteVisuelle().avec_accents(
+        Couleur.depuis_hex("#0b6e9e"), Couleur.depuis_hex("#ffd400")
+    )
+
+    identite = service.pour_tournoi(1)
+
+    assert identite.reglee is True
+    assert identite.primaire.couleur.hex == "#0b6e9e", "l'archive garde SES couleurs"
+    assert identite.secondaire.couleur.hex == "#ffd400"
+
+
+def test_un_tournoi_archive_sans_identite_herite_comme_les_autres() -> None:
+    """Le cas apparié : l'archive n'est pas un état particulier pour la lecture, seulement pour
+    l'écriture. Un tournoi passé qui n'avait rien réglé hérite du club, comme un tournoi neuf."""
     service, _ = _service(StatutTournoi.ARCHIVE)
 
     identite = service.pour_tournoi(1)
 
     assert identite.reglee is False
     assert identite.primaire.couleur.hex == "#b71918", "le rouge du club, hérité"
+
+
+def test_regler_les_accents_n_efface_pas_un_logo_deja_depose() -> None:
+    """CA : les deux gestes sont indépendants. Ce test ne vaut que parce que `FauxIdentites`
+    respecte le contrat du port — un faux qui écraserait tout le rendrait vrai par vacuité."""
+    service, identites = _service(StatutTournoi.BROUILLON)
+    service.deposer_logo(1, EmplacementLogo.CLUB, PNG, TypeLogo.PNG)
+
+    apres = service.regler_accents(1, "#0b6e9e", "#ffd400")
+
+    assert apres.reglee is True
+    assert set(apres.empreintes) == {EmplacementLogo.CLUB}, "le logo a survécu au réglage"
 
 
 def test_un_tournoi_inconnu_est_introuvable_avant_toute_garde_de_statut() -> None:

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -46,6 +47,17 @@ def app_identite(tmp_path: Path) -> Iterator[FastAPI]:
         yield app
     finally:
         app.state.database.engine.dispose()
+
+
+def _emplacements(identite: dict[str, Any]) -> list[str]:
+    """Les emplacements pourvus d'une réponse d'identité, triés.
+
+    Le DTO porte, pour chaque logo, l'emplacement **et** l'empreinte de son contenu (le numéro de
+    version que le front pose dans l'URL). La plupart des tests ne s'intéressent qu'aux
+    emplacements : les lire d'ici évite de recopier la forme du DTO sept fois, et laisse
+    `test_l_empreinte_servie_change_avec_le_contenu` être le seul à regarder l'empreinte.
+    """
+    return [logo["emplacement"] for logo in identite["logos"]]
 
 
 def _creer_tournoi(client: TestClient, nom: str = "Challenge des Champions") -> int:
@@ -83,7 +95,7 @@ def test_un_tournoi_neuf_herite_de_l_identite_du_club(
         assert identite["reglee"] is False
         assert identite["primaire"]["couleur"] == "#b71918", "le rouge du club"
         assert identite["secondaire"]["couleur"] == "#1d1d1b", "l'anthracite du club"
-        assert identite["logos"] == []
+        assert _emplacements(identite) == []
 
 
 def test_la_reponse_porte_les_jetons_derives_des_deux_themes(
@@ -246,7 +258,7 @@ def test_deposer_puis_servir_un_png(app_identite: FastAPI, connecter_admin: Conn
         )
 
         assert depot.status_code == 200, depot.text
-        assert depot.json()["logos"] == ["evenement"]
+        assert _emplacements(depot.json()) == ["evenement"]
 
         servi = client.get(f"/api/v1/tournois/{tournoi_id}/identite/logos/evenement")
         assert servi.status_code == 200
@@ -272,10 +284,10 @@ def test_les_deux_emplacements_sont_independants(
         apres_second = client.put(
             f"{base}/club", content=SVG, headers={"Content-Type": "image/svg+xml"}
         )
-        assert apres_second.json()["logos"] == ["club", "evenement"]
+        assert _emplacements(apres_second.json()) == ["club", "evenement"]
 
         apres_retrait = client.delete(f"{base}/evenement")
-        assert apres_retrait.json()["logos"] == ["club"], "le logo du club a survécu"
+        assert _emplacements(apres_retrait.json()) == ["club"], "le logo du club a survécu"
         assert client.get(f"{base}/club").content == SVG
 
 
@@ -295,7 +307,7 @@ def test_deposer_un_logo_ne_pretend_pas_que_les_couleurs_sont_reglees(
         )
 
         relecture = client.get(f"/api/v1/tournois/{tournoi_id}/identite").json()
-        assert relecture["logos"] == ["club"]
+        assert _emplacements(relecture) == ["club"]
         assert relecture["reglee"] is False, "un logo n'est pas un choix de couleurs"
         assert relecture["primaire"]["couleur"] == "#b71918"
 
@@ -318,7 +330,7 @@ def test_regler_les_accents_n_efface_pas_un_logo_deja_depose(
             json={"primaire": "#0b6e9e", "secondaire": "#ffd400"},
         )
 
-        assert apres.json()["logos"] == ["club"]
+        assert _emplacements(apres.json()) == ["club"]
         assert apres.json()["reglee"] is True
 
 
@@ -343,7 +355,7 @@ def test_retirer_un_logo_absent_est_idempotent(
         retrait = client.delete(f"/api/v1/tournois/{tournoi_id}/identite/logos/club")
 
         assert retrait.status_code == 200, retrait.text
-        assert retrait.json()["logos"] == []
+        assert _emplacements(retrait.json()) == []
 
 
 def test_un_svg_porteur_de_script_est_refuse_par_l_api(
@@ -428,6 +440,10 @@ def test_les_octets_d_un_logo_sont_servis_avec_leurs_gardes(
         assert servi.headers["x-content-type-options"] == "nosniff"
         assert servi.headers["content-disposition"] == "inline"
         assert servi.headers["content-type"] == "image/svg+xml", "le type que nosniff verrouille"
+        # ⚠️ `Cache-Control` porte désormais la correction du cache : l'URL d'un logo ne change
+        # qu'avec son **contenu** (l'empreinte), et c'est cet en-tête qui impose la revalidation.
+        # Le retirer rendrait un logo corrigé invisible jusqu'au vidage du cache, sans rougir.
+        assert servi.headers["cache-control"] == "no-cache"
 
 
 def test_un_logo_inchange_se_revalide_en_304(
@@ -529,9 +545,17 @@ def test_un_tournoi_dont_l_identite_est_reglee_reste_supprimable(
 
         assert suppression.status_code == 204, suppression.text
         assert client.get(f"/api/v1/tournois/{tournoi_id}").status_code == 404
-        # La cascade a bien emporté les octets : recréé, un tournoi de même identifiant n'hériterait
-        # pas du logo du précédent. On le vérifie par la porte publique, seule vérité observable.
-        assert client.get(f"/api/v1/tournois/{tournoi_id}/identite").status_code == 404
+
+        # ⚠️ **C'est cette assertion-ci qui prouve la cascade, et la précédente rédaction ne
+        # l'avait pas.** Elle interrogeait `/identite`, qui rend 404 parce que le *tournoi* a
+        # disparu — que la ligne d'identité ait survécu ou non : une tautologie présentée comme une
+        # preuve. La route des **octets**, elle, ne vérifie pas l'existence du tournoi (c'est écrit
+        # dans `ServiceIdentite.logo` : distinguer coûterait une requête sur la seule route que
+        # trente tablettes appellent ensemble). Elle sert donc encore le logo d'un tournoi supprimé
+        # si la ligne est restée orpheline — démontré en revue, `PRAGMA foreign_keys=OFF` à
+        # l'appui. C'est la seule porte qui voie la différence.
+        orphelin = client.get(f"/api/v1/tournois/{tournoi_id}/identite/logos/club")
+        assert orphelin.status_code == 404, "la ligne d'identité doit être partie avec le tournoi"
 
 
 def test_un_logo_absent_repond_au_contrat_d_erreur(
@@ -575,6 +599,81 @@ def test_un_corps_hors_de_proportion_est_refuse_sans_etre_ingere(
         assert metier.json()["code"] == "logo_trop_volumineux"
         assert frontiere.status_code == 413, "la coupure de frontière ne regarde pas le contenu"
         assert frontiere.json()["code"] == "corps_hors_de_proportion"
+
+
+def test_un_corps_chunke_hors_de_proportion_est_coupe_en_cours_de_lecture(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **La moitié de la garde que le test précédent n'exerce pas.**
+
+    Envoyer des octets fait poser un `Content-Length` par le client : seule la première branche
+    joue. Or `_lire_le_corps_borne` en a **deux**, et la seconde — le cumul en flux — existe
+    précisément parce qu'un transfert **chunké** n'a pas d'en-tête de longueur. Mutation faite en
+    revue : en retirant entièrement le cumul, la suite restait verte.
+
+    Passer un itérateur fait basculer httpx en `Transfer-Encoding: chunked`.
+    """
+
+    def flux() -> Iterator[bytes]:
+        for _ in range(80):
+            yield b"\x00" * 65536
+
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        refus = client.put(
+            f"/api/v1/tournois/{tournoi_id}/identite/logos/club",
+            content=flux(),
+            headers={"Content-Type": "image/png"},
+        )
+
+        assert refus.status_code == 413, "sans Content-Length, c'est le cumul en flux qui coupe"
+        assert refus.json()["code"] == "corps_hors_de_proportion"
+
+
+def test_un_format_non_reconnu_est_refuse_sans_lire_le_corps(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le `Content-Type` se lit gratuitement : un corps hors de proportion **et** de format inconnu
+    doit sortir en 422 (le format), pas en 413 (la taille) — preuve que le refus est arrivé avant
+    l'ingestion."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+
+        refus = client.put(
+            f"/api/v1/tournois/{tournoi_id}/identite/logos/club",
+            content=b"\x00" * (5 * 1024 * 1024),
+            headers={"Content-Type": "image/jpeg"},
+        )
+
+        assert refus.status_code == 422, "le format décide avant que la taille n'ait à décider"
+        assert refus.json()["code"] == "type_de_logo_refuse"
+
+
+def test_l_empreinte_servie_change_avec_le_contenu(
+    app_identite: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Le bout de chaîne qui rend un logo remplacé visible.**
+
+    Le front pose l'empreinte dans l'URL du logo : elle doit donc être **la même** que l'`ETag`
+    servi par la route des octets (sinon les deux moitiés du cache parlent de valeurs différentes)
+    et changer **exactement** quand le fichier change."""
+    with TestClient(app_identite) as client:
+        connecter_admin(client)
+        tournoi_id = _creer_tournoi(client)
+        chemin = f"/api/v1/tournois/{tournoi_id}/identite/logos/club"
+
+        premier = client.put(chemin, content=PNG, headers={"Content-Type": "image/png"})
+        empreinte_premier = premier.json()["logos"][0]["empreinte"]
+        etag = client.get(chemin).headers["etag"]
+
+        remplace = client.put(chemin, content=SVG, headers={"Content-Type": "image/svg+xml"})
+        empreinte_remplace = remplace.json()["logos"][0]["empreinte"]
+
+        assert etag == f'"{empreinte_premier}"', "l'ETag et l'URL disent la même version"
+        assert empreinte_remplace != empreinte_premier, "remplacer le fichier change la version"
 
 
 # ————————————————————————————————————————————————————————————————————————————————————————————————

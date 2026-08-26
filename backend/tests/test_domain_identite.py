@@ -17,8 +17,6 @@ avant elle**, ce qui en fait un oracle externe et non une description de mon pro
 
 from __future__ import annotations
 
-import colorsys
-
 import pytest
 
 from domain.erreurs import CouleurInvalide, LogoTropVolumineux, TypeDeLogoRefuse
@@ -332,10 +330,31 @@ class TestIdentiteVisuelle:
         déduisait « réglée », si bien qu'un tournoi dont on avait seulement déposé le logo se
         présentait comme configuré. `reglee` se lit sur les **accents**, jamais sur l'existence
         d'un enregistrement."""
-        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.CLUB)
+        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.CLUB, "abc")
 
         assert identite.logos_presents == frozenset({EmplacementLogo.CLUB})
         assert identite.reglee is False
+
+    def test_l_empreinte_d_un_logo_suit_son_contenu(self) -> None:
+        """⚠️ **C'est cette propriété qui rend un logo remplacé visible à l'écran.**
+
+        Le front pose l'empreinte dans l'URL du logo. Une URL stable ne provoque aucune requête sur
+        une image déjà montée — React ne réécrit pas un attribut inchangé, donc le navigateur ne
+        consulte même pas son cache, et `Cache-Control: no-cache` ne s'applique à rien : un
+        organisateur qui corrigeait son fichier ne le voyait jamais (mesuré en revue).
+        Versionner par
+        l'horloge de la requête faisait l'inverse — l'URL changeait à chaque événement WebSocket, et
+        512 Ko repartaient pour rien.
+
+        L'empreinte doit donc **bouger avec les octets, et seulement avec eux**."""
+        autre = png_de(len(PNG_MINIMAL) + 1)
+
+        assert Logo.deposer(PNG_MINIMAL, TypeLogo.PNG).empreinte == (
+            Logo.deposer(PNG_MINIMAL, TypeLogo.PNG).empreinte
+        ), "deux dépôts du même fichier donnent la même version"
+        assert Logo.deposer(autre, TypeLogo.PNG).empreinte != (
+            Logo.deposer(PNG_MINIMAL, TypeLogo.PNG).empreinte
+        ), "un contenu différent donne une version différente"
 
     def test_les_deux_logos_sont_facultatifs_et_absents_par_defaut(self) -> None:
         """« bien sûr cela reste optionnel » (questionnaire A05). Un tournoi sans logo est un état
@@ -346,7 +365,7 @@ class TestIdentiteVisuelle:
     def test_les_deux_emplacements_sont_distincts(self) -> None:
         """Le CA d'E16US006 dit « un champ **de plus** » : déposer le logo du club ne remplace pas
         celui de l'événement. Deux emplacements nommés, pas une liste."""
-        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.CLUB)
+        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.CLUB, "abc")
 
         assert identite.logos_presents == frozenset({EmplacementLogo.CLUB})
         assert EmplacementLogo.EVENEMENT not in identite.logos_presents
@@ -354,20 +373,24 @@ class TestIdentiteVisuelle:
     def test_deposer_puis_retirer_un_logo_ne_touche_pas_l_autre(self) -> None:
         identite = (
             IdentiteVisuelle()
-            .avec_logo(EmplacementLogo.CLUB)
-            .avec_logo(EmplacementLogo.EVENEMENT)
+            .avec_logo(EmplacementLogo.CLUB, "club-v1")
+            .avec_logo(EmplacementLogo.EVENEMENT, "evt-v1")
             .sans_logo(EmplacementLogo.EVENEMENT)
         )
 
         assert identite.logos_presents == frozenset({EmplacementLogo.CLUB})
+        assert identite.empreintes == {
+            EmplacementLogo.CLUB: "club-v1"
+        }, "retirer un logo emporte son empreinte : rien ne doit survivre au contenu"
 
     def test_regler_les_accents_ne_touche_pas_aux_logos(self) -> None:
         """Symétrique du précédent : les deux gestes sont indépendants **dans les deux sens**."""
-        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.EVENEMENT)
+        identite = IdentiteVisuelle().avec_logo(EmplacementLogo.EVENEMENT, "evt-v1")
 
         apres = identite.avec_accents(Couleur.depuis_hex("#0b6e9e"), Couleur.depuis_hex("#ffd400"))
 
         assert apres.logos_presents == frozenset({EmplacementLogo.EVENEMENT})
+        assert apres.empreintes[EmplacementLogo.EVENEMENT] == "evt-v1"
 
     def test_changer_un_accent_renvoie_une_copie(self) -> None:
         """Agrégat **immuable** (règle 4) : `P-3` dit « modifiable à tout moment, y compris tournoi
@@ -409,33 +432,53 @@ PNG_MINIMAL = (
     b"\x0d\x0a\x2d\xb4\x00\x00\x00\x00IEND\xaeB\x60\x82"
 )
 SVG_MINIMAL = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>'
+SVG_ENTETE = b'<svg xmlns="http://www.w3.org/2000/svg">'
+
+
+def png_de(poids: int) -> bytes:
+    """Un PNG **structurellement valide** du poids demandé — bourrage inséré AVANT le bloc `IEND`.
+
+    ⚠️ Ce détail a coûté une passe de revue. La version précédente ajoutait les octets de bourrage
+    **après** `IEND`, ce qui n'est pas un PNG ; pour ne pas la casser, le contrôle de structure
+    avait
+    été relâché à « `IEND` quelque part », et vingt octets suffisaient alors à reconstruire un
+    polyglotte PNG/SVG. C'est l'ordre inverse du bon : on ajuste le test au format, pas le contrôle
+    au test.
+    """
+    bourrage = poids - len(PNG_MINIMAL)
+    assert bourrage >= 0, "PNG_MINIMAL pèse déjà plus que le poids demandé"
+    return PNG_MINIMAL[:-12] + b"\x00" * bourrage + PNG_MINIMAL[-12:]
+
+
+# La dérivation avance par pas de 1/1024 de clarté et s'arrête au **premier** pas conforme :
+# le ratio
+# livré dépasse donc son seuil d'un cheveu. Mesuré sur les huit accents du paramétrage et les deux
+# fonds, le dépassement relatif maximal vaut **1,12 %** ; à cinq crans de marge il monte à 3,5 %, à
+# dix crans à 7,2 %. Deux pour cent laissent donc passer l'implémentation juste, et rougissent dès
+# trois crans de complaisance.
+_MARGE_TOLEREE = 1.02
 
 
 def _exiger_la_minimalite(depart: Couleur, derivee: Couleur, fond: Couleur, seuil: float) -> None:
-    """Vérifie qu'aucune clarté **entre** l'accent d'origine et la variante ne tenait déjà le seuil.
+    """Vérifie que la variante s'arrête **au** seuil, pas au-delà (`DV-05` : « ajustée jusqu'au »).
 
-    Formulée en boîte noire : on ne relit pas le pas de recherche du module, on prend la clarté
-    **médiane** entre le départ et la variante et on exige qu'elle échoue. Si la dérivation prenait
-    de la marge, cette médiane la tiendrait — c'est exactement ce qu'on veut voir rougir.
+    ⚠️ **Deuxième rédaction, et la première était une leçon.** Elle comparait la clarté **médiane**
+    entre l'accent et la variante, en exigeant que cette médiane échoue au seuil : formulation
+    élégante, sensibilité fausse. Si la dérivation dépasse de `k` crans au-delà du minimum `j`, la
+    médiane tombe à `(j+k)/2`, donc encore sous le seuil tant que `k < j` — la sonde ne détectait
+    qu'un dépassement **supérieur à 100 %**. Mutation faite en revue : une marge de dix crans (le
+    chiffre que le commit annonçait attraper) passait au vert, et quarante aussi.
 
-    Deux échappatoires légitimes, et elles sont nommées plutôt que tolérées en silence :
-    l'accent déjà conforme (la variante **est** l'accent, il n'y a rien à minimiser) et la médiane
-    qui, arrondie sur huit bits, retombe sur la variante elle-même (il n'existait alors aucune
-    couleur intermédiaire à tester).
+    On mesure donc directement ce qui compte — le ratio livré — au lieu de raisonner sur une couleur
+    intermédiaire. Une seule échappatoire, nommée : l'accent déjà conforme, où la variante **est**
+    l'accent et où il n'y a rien à minimiser.
     """
     if derivee == depart:
         return
-    h_depart, l_depart, s_depart = colorsys.rgb_to_hls(
-        depart.r / 255, depart.g / 255, depart.b / 255
-    )
-    _, l_derivee, _ = colorsys.rgb_to_hls(derivee.r / 255, derivee.g / 255, derivee.b / 255)
-    r, g, b = colorsys.hls_to_rgb(h_depart, (l_depart + l_derivee) / 2, s_depart)
-    mediane = Couleur(r=round(r * 255), g=round(g * 255), b=round(b * 255))
-    if mediane == derivee:
-        return
-    assert contraste(mediane, fond) < seuil, (
-        f"la dérivation de {depart.hex} vers {derivee.hex} prend de la marge : "
-        f"{mediane.hex} tenait déjà {seuil}:1"
+    obtenu = contraste(derivee, fond)
+    assert obtenu <= seuil * _MARGE_TOLEREE, (
+        f"la derivation de {depart.hex} vers {derivee.hex} prend de la marge : "
+        f"{obtenu:.3f}:1 pour un seuil de {seuil}:1"
     )
 
 
@@ -531,6 +574,47 @@ class TestLogo:
                 b'<svg xmlns="http://www.w3.org/2000/svg">'
                 b'<image href="https://exemple.test/x.svg"/></svg>',
             ),
+            # ————— Trouvés à la 2ᵉ passe, en déposant les fichiers pour de vrai. Les six premiers
+            # partagent une seule cause : les motifs étaient écrits sur des balises NON PRÉFIXÉES,
+            # et un préfixe de namespace désigne le même élément aux yeux d'un parseur XML. Ils
+            # franchissaient donc AUSSI les quatre formes que la toute première rédaction attrapait.
+            (
+                "script sous préfixe de namespace",
+                b'<svg xmlns:svg="http://www.w3.org/2000/svg">'
+                b"<svg:script>alert(1)</svg:script></svg>",
+            ),
+            (
+                "préfixe arbitraire sur l'élément racine",
+                b'<x:script xmlns:x="http://www.w3.org/2000/svg">alert(1)</x:script>',
+            ),
+            (
+                "foreignObject sous préfixe",
+                b'<svg xmlns:svg="http://www.w3.org/2000/svg"><svg:foreignObject/></svg>',
+            ),
+            (
+                "image externe sous préfixe",
+                b'<svg xmlns:svg="http://www.w3.org/2000/svg">'
+                b'<svg:image href="http://exemple.test/y.png"/></svg>',
+            ),
+            (
+                "javascript: coupé par un caractère de contrôle",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<a xlink:href="java\nscript:alert(1)">x</a></svg>',
+            ),
+            (
+                "gestionnaire collé à la barre de fermeture",
+                b'<svg/onload="alert(1)" xmlns="http://www.w3.org/2000/svg"></svg>',
+            ),
+            (
+                "feuille de style tierce par @import",
+                b'<svg xmlns="http://www.w3.org/2000/svg">'
+                b'<style>@import url("http://exemple.test/x.css")</style></svg>',
+            ),
+            (
+                "DTD externe",
+                b'<!DOCTYPE svg SYSTEM "http://exemple.test/x.dtd">'
+                b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+            ),
         ],
     )
     def test_le_corpus_d_attaques_reelles_est_refuse(self, vecteur: str, hostile: bytes) -> None:
@@ -554,6 +638,53 @@ class TestLogo:
         with pytest.raises(TypeDeLogoRefuse):
             Logo.deposer(hostile, TypeLogo.SVG)
 
+    @pytest.mark.parametrize(
+        ("forme", "licite"),
+        [
+            (
+                "texte accentué échappé",
+                SVG_ENTETE + b"<text>Kervignac &#233;t&#233; 2026</text></svg>",
+            ),
+            (
+                "bannière de licence portant &#169;",
+                SVG_ENTETE + b'<!-- Copyright &#169; 2026 --><path d="M0 0h1v1z"/></svg>',
+            ),
+            (
+                "réutilisation d'un symbole local",
+                SVG_ENTETE + b'<defs><path id="p" d="M0 0h1v1z"/></defs>'
+                b'<use xlink:href="#p"/></svg>',
+            ),
+            (
+                "raster embarqué en data:",
+                SVG_ENTETE + b'<image href="data:image/png;base64,iVBORw0KGgo="/></svg>',
+            ),
+            (
+                "entité littérale d'Illustrator dans le DOCTYPE",
+                b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+                b'"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" '
+                b'[<!ENTITY ns_extend "http://ns.adobe.com/Extensibility/1.0/">]>'
+                + SVG_ENTETE
+                + b"</svg>",
+            ),
+        ],
+    )
+    def test_les_exports_legitimes_restent_acceptes(self, forme: str, licite: bytes) -> None:
+        """⚠️ **La contrepartie du corpus d'attaque, et elle manquait entièrement.**
+
+        La 2ᵉ rédaction s'était durcie sans un seul test d'acceptation en face : elle refusait ces
+        cinq formes, toutes produites par des outils de dessin courants, avec des messages qui
+        accusaient l'organisateur de vouloir « faire lire des fichiers du serveur ». Le dernier cas
+        est le plus instructif — le `<!DOCTYPE>` nu avait été explicitement autorisé *au motif
+        qu'Illustrator le produit*, et le bloc `<!ENTITY ns_extend>` qu'Illustrator écrit **dans ce
+        même DOCTYPE** était refusé.
+
+        Un durcissement sans contre-test ne déplace pas le risque, il en ajoute un second :
+        le CA dit
+        « SVG ou PNG, utilisés **tels quels** », et un refus injustifié casse le geste central de
+        l'US aussi sûrement qu'une acceptation de trop.
+        """
+        assert Logo.deposer(licite, TypeLogo.SVG).type_logo is TypeLogo.SVG
+
     def test_un_doctype_nu_reste_accepte(self) -> None:
         """La contrepartie du cas « entité déclarée » ci-dessus : c'est `<!ENTITY` qui est refusée,
         pas la ligne `<!DOCTYPE>`. Illustrator en produit une depuis toujours ; la refuser aurait
@@ -576,6 +707,22 @@ class TestLogo:
         with pytest.raises(TypeDeLogoRefuse):
             Logo.deposer(polyglotte, TypeLogo.PNG)
 
+    def test_un_polyglotte_qui_imite_les_deux_extremites_est_refuse_aussi(self) -> None:
+        """⚠️ Le test ci-dessus ne prouvait qu'**une chaîne d'octets**, pas une classe.
+
+        Vingt octets suffisaient à la satisfaire tant que `IEND` n'était cherchée que « quelque
+        part » : signature, `IHDR` en douzième position, un `IEND` au milieu, puis le SVG. C'est ce
+        fichier-ci, déposé **et servi** en 200 par le relecteur adversarial. Le contrôle exige
+        désormais que `IEND` **termine** le fichier."""
+        polyglotte = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR"
+            + b"\x00" * 17
+            + b"IEND\xaeB\x60\x82"
+            + b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+        )
+        with pytest.raises(TypeDeLogoRefuse):
+            Logo.deposer(polyglotte, TypeLogo.PNG)
+
     def test_un_svg_dont_l_entete_depasse_mille_octets_est_accepte(self) -> None:
         """La balise `<svg` n'était cherchée que dans les 1 024 premiers octets : un export licite
         précédé d'une longue bannière de licence était refusé, avec un message qui **mentait** («
@@ -592,12 +739,11 @@ class TestLogo:
         par la file d'écriture unique (règle 7) et voyage dans chaque sauvegarde. Le borner n'est
         pas une coquetterie ; le refus **dit** la limite, il ne tronque pas en silence."""
         with pytest.raises(LogoTropVolumineux):
-            Logo.deposer(PNG_MINIMAL + b"\x00" * POIDS_LOGO_MAX_OCTETS, TypeLogo.PNG)
+            Logo.deposer(png_de(POIDS_LOGO_MAX_OCTETS + 1), TypeLogo.PNG)
 
     def test_un_fichier_juste_sous_la_limite_passe(self) -> None:
         """La borne est **inclusive** : sans ce test, une comparaison stricte d'un côté ou de
         l'autre passerait inaperçue, et l'écran annoncerait une limite que le serveur refuse."""
-        bourrage = POIDS_LOGO_MAX_OCTETS - len(PNG_MINIMAL)
-        assert Logo.deposer(PNG_MINIMAL + b"\x00" * bourrage, TypeLogo.PNG).poids_octets == (
+        assert Logo.deposer(png_de(POIDS_LOGO_MAX_OCTETS), TypeLogo.PNG).poids_octets == (
             POIDS_LOGO_MAX_OCTETS
         )

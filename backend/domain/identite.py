@@ -27,8 +27,10 @@ la règle que ce module automatise. `test_domain_identite.py` exige qu'il la rep
 from __future__ import annotations
 
 import colorsys
+import hashlib
 import re
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from domain.erreurs import CouleurInvalide, LogoTropVolumineux, TypeDeLogoRefuse
@@ -287,42 +289,86 @@ largement un SVG de charte et un PNG raisonnable, et arrêtent la photo de tél�
 """
 
 _SIGNATURE_PNG = b"\x89PNG\r\n\x1a\n"
+# Le bloc de fin d'un PNG : longueur nulle, type `IEND`, CRC constant (le bloc est vide).
+_FIN_PNG = b"\x00\x00\x00\x00IEND\xaeB\x60\x82"
 
+# ————————————————————————————————————————————————————————————————————————————————————————————————
 # Ce qui, dans un SVG, **exécute** — ou permet d'y amener quelque chose qui exécute.
 #
-# ⚠️ **Une denylist perd par défaut, et celle-ci le sait.** La première rédaction ne cherchait que
-# quatre formes littérales ; la revue adversariale en a fait passer trois en déposant les fichiers
-# pour de vrai : `&#106;avascript:` (référence de caractère, que le parseur XML décode *après* que
-# la recherche a eu lieu), `<set attributeName="onload" to="…">` (SMIL, qui pose un gestionnaire
-# sans jamais écrire `on…=`), et un polyglotte PNG/SVG. La barrière **porteuse** n'est donc pas ce
-# motif : ce sont les en-têtes de la route de service (`Content-Security-Policy: default-src
-# 'none'`, `nosniff`) et le rendu en `<img>`. Ce motif est la première des trois, pas la seule — et
-# la docstring de `Logo` le dit désormais au lieu de promettre l'exhaustivité.
+# ⚠️ **Une denylist perd par défaut, et celle-ci l'a perdu deux fois.** Les motifs ci-dessous sont
+# la TROISIÈME rédaction. La première ne cherchait que quatre formes littérales ; la deuxième les a
+# élargies mais restait écrite sur des balises **non préfixées**, si bien que `<svg:script>` —
+# strictement le même élément aux yeux d'un parseur XML, à deux caractères près — franchissait
+# l'ensemble, y compris les quatre formes que la première version attrapait déjà. Sept charges
+# construites ainsi ont été déposées ET servies en 200 par le relecteur adversarial.
 #
-# Ce qu'il attrape : l'exécution directe (`<script`, `on…=`, `javascript:`), le retour au HTML
-# (`<foreignObject>`), l'animation qui **écrit un attribut** (SMIL : `<set>`, `<animate>`,
-# `<animateTransform>`, `<handler>`, et l'`attributeName=` qui les accompagne toujours), et le
-# **chargement d'un document tiers** (`<use>`, `<image>`). Un logo n'a besoin d'aucun des sept :
-# c'est une forme statique, pas une scène. Le message de refus dit quoi ré-exporter.
+# La leçon vaut plus que les motifs : **un durcissement qui n'est pas attaqué déplace le trou au
+# lieu de le fermer.** Ce qui a manqué aux deux premières rédactions n'est pas de l'attention, c'est
+# une exécution.
+#
+# La barrière **porteuse** reste ailleurs : les en-têtes de la route de service
+# (`Content-Security-Policy: default-src 'none'`, `nosniff`) et le rendu en `<img>`. Ces motifs sont
+# la première des trois, jamais la seule.
+#
+# ⚠️ **Et ils ne doivent pas refuser un logo honnête.** La deuxième rédaction s'était durcie sans
+# contre-test d'acceptation : elle refusait un texte accentué échappé (`&#233;`), une bannière de
+# licence portant `&copy;`, un `<use href="#symbole">` (ce que produisent SVGO et Illustrator en
+# masse) et — comble — le bloc `<!ENTITY ns_extend …>` qu'Illustrator écrit dans le `<!DOCTYPE>`
+# même qu'on venait d'accepter *au motif qu'Illustrator le produit*. Chaque clause ci-dessous a
+# donc son contre-exemple **accepté** dans `test_domain_identite.py`.
+
+# Un nom d'élément peut porter n'importe quel préfixe de namespace : c'est le nom **local** qui
+# décide. Sans ce préfixe optionnel, tout ce qui suit se contourne en écrivant `<svg:…>`.
+_PREFIXE_XML = rb"(?:[a-z][\w.-]*:)?"
+
 _MOTIF_SVG_EXECUTABLE = re.compile(
-    rb"<\s*script"
-    rb"|<\s*foreignobject"
-    rb"|<\s*(set|animate|animatetransform|handler)\b"
+    # Exécution directe, retour au HTML, et animation SMIL qui **écrit** un attribut sans jamais en
+    # porter la syntaxe (`<set attributeName="onload" to="…">`).
+    rb"<\s*" + _PREFIXE_XML + rb"(?:script|foreignobject|set|animate|animatetransform|handler)\b"
+    # Un gestionnaire d'événement. Borne gauche « tout caractère non identifiant » et non une liste
+    # de trois : `<svg/onload="…">` est valide en XML et passait la liste.
+    rb"|[^\w-]on[a-z]+\s*="
     rb"|attributename\s*="
-    rb"|<\s*(use|image)\b"
-    rb"""|[\s"'<]on[a-z]+\s*="""
-    rb"|javascript\s*:",
+    # `@import` dans un `<style>` charge une feuille tierce sans balise suspecte.
+    rb"|@\s*import"
+    # `javascript:` — les caractères de contrôle intercalés sont retirés par l'analyseur d'URL du
+    # navigateur, donc `java\nscript:` s'exécute et `javascript\s*:` ne le voyait pas.
+    rb"|j[\s\x00-\x20]*a[\s\x00-\x20]*v[\s\x00-\x20]*a[\s\x00-\x20]*s"
+    rb"[\s\x00-\x20]*c[\s\x00-\x20]*r[\s\x00-\x20]*i[\s\x00-\x20]*p[\s\x00-\x20]*t[\s\x00-\x20]*:",
     re.IGNORECASE,
 )
 
-# Une entité XML autre que les cinq prédéfinies. Deux dangers d'un coup : `<!ENTITY` + `&xxe;` fait
-# lire un fichier du serveur (XXE), et `&#106;avascript:` reconstitue une URL que le motif ci-dessus
-# ne voit pas — le parseur décode **avant** d'interpréter l'attribut, une recherche sur les octets
-# bruts arrive donc toujours trop tard. Un logo n'a aucun usage d'une entité : on refuse la famille
-# entière plutôt que de courir après les encodages un par un.
-_MOTIF_ENTITE_NON_PREDEFINIE = re.compile(
-    rb"&(?!(amp|lt|gt|quot|apos);)(#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9._-]*);", re.IGNORECASE
+# `<use>` ne doit référencer qu'un **fragment local** : `<use href="data:image/svg+xml;base64,…">`
+# charge un document entier. La réutilisation interne, elle, est le cas normal d'un export
+# vectoriel.
+_MOTIF_USE_EXTERNE = re.compile(
+    rb"<\s*" + _PREFIXE_XML + rb"use\b[^>]*?(?:xlink:)?href\s*=\s*[\"']\s*(?!#)",
+    re.IGNORECASE,
 )
+
+# `<image>` a le droit d'embarquer un raster en `data:` — c'est un logo vectoriel qui enveloppe un
+# bitmap, cas courant — mais pas d'aller chercher une ressource sur le réseau.
+_MOTIF_IMAGE_EXTERNE = re.compile(
+    rb"<\s*" + _PREFIXE_XML + rb"image\b[^>]*?(?:xlink:)?href\s*=\s*[\"']\s*"
+    rb"(?!#)(?!data:image/(?:png|jpe?g|gif|webp|bmp)[;,])",
+    re.IGNORECASE,
+)
+
+# Une **référence de caractère** numérique. On ne les refuse pas — un projet français en produit
+# légitimement — on les DÉCODE avant de rechercher ce qui exécute : le parseur XML fait exactement
+# cela, et une recherche sur les octets bruts arrivait donc toujours trop tard.
+_MOTIF_REFERENCE_NUMERIQUE = re.compile(rb"&#(x[0-9a-f]+|[0-9]+);", re.IGNORECASE)
+
+# Le vecteur XXE est l'identifiant **externe** : `<!ENTITY xxe SYSTEM "file:///etc/passwd">` fait
+# lire un fichier du serveur. Une entité déclarée avec une valeur littérale, elle, est inoffensive —
+# et c'est celle qu'Illustrator écrit (`<!ENTITY ns_extend "http://ns.adobe.com/…">`). Si sa valeur
+# porte quelque chose d'exécutable, `_MOTIF_SVG_EXECUTABLE` la voit : elle est écrite en clair.
+_MOTIF_ENTITE_EXTERNE = re.compile(rb"<!\s*ENTITY\b[^>]*\b(?:SYSTEM|PUBLIC)\b", re.IGNORECASE)
+
+# Un `<!DOCTYPE … SYSTEM "http://…">` fait charger une DTD tierce. Le `PUBLIC "-//W3C//DTD SVG
+# 1.1//EN" "…"` d'Illustrator, lui, reste accepté : c'est la forme normalisée, et son identifiant
+# système n'est utilisé qu'à défaut du public.
+_MOTIF_DOCTYPE_EXTERNE = re.compile(rb"<!\s*DOCTYPE\b[^>\[]*\bSYSTEM\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -373,62 +419,106 @@ class Logo:
         """Taille du fichier — ce que l'écran annonce, et ce que la borne compare."""
         return len(self.contenu)
 
+    @property
+    def empreinte(self) -> str:
+        """Empreinte du **contenu** — l'identité des octets, pas celle de l'emplacement.
+
+        Elle sert deux choses qui n'en font qu'une : l'`ETag` de la route qui sert les octets, et le
+        segment de version de l'URL que le front pose dans un `src`.
+
+        ⚠️ **C'est ce qui rend un logo remplacé visible.** Une URL stable ne provoque *aucune*
+        requête sur une image déjà montée — React ne réécrit pas un attribut inchangé, donc le
+        navigateur ne consulte même pas son cache et `Cache-Control: no-cache` ne s'applique à rien.
+        Versionner par l'**horloge** de la requête (la rédaction d'avant) faisait l'inverse : l'URL
+        changeait à chaque événement WebSocket et retéléchargeait 512 Ko pour rien. L'empreinte ne
+        bouge que quand les octets bougent — c'est la seule valeur qui tienne les deux bouts.
+
+        Tronquée à 32 caractères : 128 bits suffisent très largement à distinguer deux versions d'un
+        logo, et l'`ETag` voyage sur chaque réponse.
+        """
+        return hashlib.sha256(self.contenu).hexdigest()[:32]
+
+
+def _decoder_les_references_numeriques(contenu: bytes) -> bytes:
+    """Remplace `&#106;` / `&#x6a;` par le caractère correspondant, comme le ferait un parseur XML.
+
+    Sert à chercher ce qui exécute **sur le texte tel que le navigateur le lira**, plutôt qu'à
+    refuser toute référence — ce que la rédaction précédente faisait, au prix d'un refus des textes
+    accentués échappés, courants dans un export français.
+
+    Une référence hors plage ou mal formée est laissée telle quelle : le but est de révéler une
+    dissimulation, pas de valider du XML.
+    """
+
+    def _remplacer(trouve: re.Match[bytes]) -> bytes:
+        chiffres = trouve.group(1)
+        try:
+            point = int(chiffres[1:], 16) if chiffres[:1] in (b"x", b"X") else int(chiffres)
+        except ValueError:  # pragma: no cover — le motif n'admet que des chiffres
+            return trouve.group(0)
+        if point > 0x10FFFF:
+            return trouve.group(0)
+        return chr(point).encode("utf-8", "replace")
+
+    return _MOTIF_REFERENCE_NUMERIQUE.sub(_remplacer, contenu)
+
 
 def _verifier_le_contenu(contenu: bytes, type_logo: TypeLogo) -> None:
     """Confronte les premiers octets au format annoncé ; lève `TypeDeLogoRefuse` en cas d'écart."""
     if type_logo is TypeLogo.PNG:
-        # La signature seule ne prouve rien : huit octets se recopient, et le reste du fichier peut
-        # être n'importe quoi — la revue adversariale a fait accepter un `\x89PNG…` suivi d'un SVG
-        # à script. On exige donc la **structure** : `IHDR` à sa position fixe (octets 12 à 16, le
-        # premier bloc d'un PNG l'est toujours) et la marque de fin `IEND` quelque part.
+        # ⚠️ La signature seule ne prouve rien : huit octets se recopient, et la revue adversariale
+        # a fait accepter — puis **servir** — un `\x89PNG…` suivi d'un SVG à script. On encadre donc
+        # le fichier par ses deux extrémités obligatoires : `IHDR` est toujours le premier bloc
+        # (octets 12 à 16) et `IEND` **termine** toujours le fichier, CRC compris (quatre octets
+        # constants, le bloc étant vide).
         #
-        # C'est `IHDR` qui porte le refus : un document XML analysable **depuis son premier
-        # octet** ne peut pas avoir ces quatre lettres en douzième position. `IEND` n'est
-        # cherchée nulle part en particulier — l'exiger en fin de fichier aurait refusé un PNG
-        # suivi d'octets de bourrage, ce qui n'est pas un vecteur une fois `IHDR` vérifié.
+        # La deuxième rédaction n'exigeait `IEND` que « quelque part », pour ne pas casser un test
+        # de poids qui bourrait le fichier **après** la fin — un contrôle relâché pour accommoder un
+        # test, ce qui est l'ordre inverse du bon. Vingt octets suffisaient alors à reconstruire un
+        # polyglotte. Le test bourre désormais avant `IEND`, et la contrainte est rendue au code.
         if not contenu.startswith(_SIGNATURE_PNG):
             raise TypeDeLogoRefuse(
                 "Ce fichier est annoncé PNG mais n'en porte pas la signature. "
                 "Déposez un PNG ou un SVG."
             )
-        if contenu[12:16] != b"IHDR" or b"IEND" not in contenu:
+        if contenu[12:16] != b"IHDR" or not contenu.endswith(_FIN_PNG):
             raise TypeDeLogoRefuse(
                 "Ce fichier porte la signature PNG mais n'en a pas la structure "
-                "(en-tête IHDR, marque de fin IEND). Ré-exportez-le depuis votre outil de dessin."
+                "(en-tête IHDR, bloc de fin IEND). Ré-exportez-le depuis votre outil de dessin."
             )
         return
 
-    # SVG : le document peut commencer par une déclaration XML ou des commentaires — c'est même la
-    # forme la plus courante d'un export d'outil de dessin. On cherche la balise sur **tout** le
-    # fichier : la borner à l'en-tête faisait refuser un export licite dont la bannière de licence
-    # dépassait mille octets, avec un message qui mentait (« ne contient pas de balise <svg> »).
+    # SVG : le document peut commencer par une déclaration XML, un DOCTYPE ou des commentaires —
+    # c'est même la forme la plus courante d'un export d'outil de dessin. On cherche la balise sur
+    # **tout** le fichier : la borner à l'en-tête faisait refuser un export licite dont la bannière
+    # de licence dépassait mille octets, avec un message qui mentait.
     replie = contenu.lower()
     if b"<svg" not in replie:
         raise TypeDeLogoRefuse(
             "Ce fichier est annoncé SVG mais ne contient pas de balise <svg>. "
             "Déposez un SVG ou un PNG."
         )
-    if b"<!entity" in replie:
-        # `<!ENTITY` — et lui seul. Un `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" …>` nu est la
-        # forme qu'Illustrator produit depuis toujours : le refuser rendrait le format inutilisable
-        # pour la moitié des logos de club, sans rien fermer. C'est le **sous-ensemble interne**,
-        # donc `<!ENTITY`, qui fait lire un fichier du serveur (XXE) ; et la dissimulation par
-        # référence de caractère est attrapée juste en dessous, DOCTYPE ou pas.
+    if _MOTIF_ENTITE_EXTERNE.search(contenu) or _MOTIF_DOCTYPE_EXTERNE.search(contenu):
         raise TypeDeLogoRefuse(
-            "Ce SVG déclare une entité XML (<!ENTITY>), qui sert à faire lire des fichiers du "
-            "serveur et dont un logo n'a aucun usage. Ré-exportez-le en SVG simple."
+            "Ce SVG déclare une entité ou une DTD **externe**, qui sert à faire lire des fichiers "
+            "du serveur et dont un logo n'a aucun usage. Ré-exportez-le en SVG simple."
         )
-    if _MOTIF_ENTITE_NON_PREDEFINIE.search(contenu):
+    if _MOTIF_USE_EXTERNE.search(contenu) or _MOTIF_IMAGE_EXTERNE.search(contenu):
         raise TypeDeLogoRefuse(
-            "Ce SVG contient une entité XML encodée, qui permet de dissimuler un lien exécutable. "
-            "Ré-exportez-le sans caractères échappés, ou déposez un PNG."
+            "Ce SVG va chercher un document ou une image ailleurs (<use> ou <image> pointant hors "
+            "du fichier). Aplatissez-le à l'export, ou déposez un PNG."
         )
-    if _MOTIF_SVG_EXECUTABLE.search(contenu):
-        raise TypeDeLogoRefuse(
-            "Ce SVG contient de quoi exécuter ou charger un document tiers (script, attribut on…, "
-            "lien javascript:, <foreignObject>, animation SMIL, <use> ou <image>). Exportez-le en "
-            "formes simples, ou déposez un PNG."
-        )
+    # Le parseur XML décode les références de caractère **avant** d'interpréter un attribut : on
+    # cherche donc ce qui exécute sur les deux textes, brut et décodé. C'est strictement plus
+    # couvrant que refuser la famille des références — et cela laisse passer `&#233;`, qu'un projet
+    # français produit sans arrière-pensée.
+    for texte in (contenu, _decoder_les_references_numeriques(contenu)):
+        if _MOTIF_SVG_EXECUTABLE.search(texte):
+            raise TypeDeLogoRefuse(
+                "Ce SVG contient de quoi exécuter (balise <script>, attribut on…, lien "
+                "javascript:, <foreignObject>, animation SMIL ou @import). Exportez-le en formes "
+                "simples, ou déposez un PNG."
+            )
 
 
 # ————————————————————————————————————————————————————————————————————————————————————————————————
@@ -469,7 +559,19 @@ class IdentiteVisuelle:
 
     accent_primaire: Couleur | None = None
     accent_secondaire: Couleur | None = None
-    logos_presents: frozenset[EmplacementLogo] = frozenset()
+    empreintes: Mapping[EmplacementLogo, str] = field(default_factory=dict)
+    """Empreinte du contenu de chaque logo **présent** — les absents n'y figurent pas.
+
+    ⚠️ **Une seule source pour deux faits.** « Quels emplacements sont pourvus » se lit des clés
+    (`logos_presents`), « quelle version » se lit des valeurs. Porter les deux séparément aurait
+    rejoué le défaut que cet agrégat a déjà corrigé une fois avec `reglee` : deux champs disant la
+    même chose, dont l'un se réécrit à la main.
+    """
+
+    @property
+    def logos_presents(self) -> frozenset[EmplacementLogo]:
+        """Les emplacements pourvus — **dérivés** des empreintes, jamais stockés à côté."""
+        return frozenset(self.empreintes)
 
     @property
     def reglee(self) -> bool:
@@ -500,13 +602,15 @@ class IdentiteVisuelle:
         compris — la garde de statut, s'il en fallait une, serait au service, pas ici)."""
         return replace(self, accent_primaire=primaire, accent_secondaire=secondaire)
 
-    def avec_logo(self, emplacement: EmplacementLogo) -> IdentiteVisuelle:
-        """Renvoie une copie marquant `emplacement` comme pourvu — l'autre est inchangé."""
-        return replace(self, logos_presents=self.logos_presents | {emplacement})
+    def avec_logo(self, emplacement: EmplacementLogo, empreinte: str) -> IdentiteVisuelle:
+        """Renvoie une copie où `emplacement` porte ce contenu — l'autre est inchangé."""
+        return replace(self, empreintes={**self.empreintes, emplacement: empreinte})
 
     def sans_logo(self, emplacement: EmplacementLogo) -> IdentiteVisuelle:
         """Renvoie une copie marquant `emplacement` comme vide — l'autre est inchangé."""
-        return replace(self, logos_presents=self.logos_presents - {emplacement})
+        return replace(
+            self, empreintes={lieu: c for lieu, c in self.empreintes.items() if lieu != emplacement}
+        )
 
     def marque(self, fond: Couleur) -> tuple[JetonsDeMarque, JetonsDeMarque]:
         """Décline les deux accents effectifs sur un fond — dans l'ordre (primaire, secondaire)."""

@@ -13,9 +13,8 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { AccentDecline, EmplacementLogo, Identite as IdentiteDTO, JetonsDeMarque } from './api'
-import { urlDuLogo } from './api'
+import { empreinteDuLogo, urlDuLogo } from './api'
 import {
-  POIDS_LOGO_MAX_OCTETS,
   estUneCouleur,
   useApercuIdentite,
   useDeposerLogo,
@@ -160,7 +159,7 @@ function ChampAccent({
         <input
           type="color"
           className="identite__pastille"
-          value={estUneCouleur(valeur) ? valeur : derniereValide}
+          value={estUneCouleur(valeur) ? valeur.trim() : derniereValide}
           onChange={(e) => onChange(e.target.value)}
           aria-label={`${libelle} — sélecteur`}
         />
@@ -238,7 +237,7 @@ function Mesure({
       {faible
         ? ` — trop faible pour du texte (${seuil}:1 attendu)${
             sousLeContour ? `, ni même pour un contour (${seuilContour}:1)` : ''
-          } : une variante plus claire est utilisée pour les libellés, votre couleur reste l’aplat.`
+          } : une variante ajustée est utilisée pour les libellés et les contours, votre couleur reste l’aplat.`
         : ' — lisible partout.'}
     </span>
   )
@@ -332,16 +331,17 @@ function DepotDeLogo({
   const deposer = useDeposerLogo(tournoiId)
   const retirer = useRetirerLogo(tournoiId)
   const [refusLocal, setRefusLocal] = useState<string | null>(null)
-  const present = identite.logos.includes(emplacement)
+  const empreinte = empreinteDuLogo(identite, emplacement)
+  const present = empreinte !== undefined
 
   return (
     <div className="identite__logo">
       <strong>{libelle}</strong>
       <div className="identite__logo-vignette">
-        {present ? (
+        {empreinte !== undefined ? (
           <img
             className="logo-tournoi"
-            src={urlDuLogo(tournoiId, emplacement)}
+            src={urlDuLogo(tournoiId, emplacement, empreinte)}
             alt={`${libelle} déposé`}
           />
         ) : (
@@ -366,10 +366,14 @@ function DepotDeLogo({
             // Pré-contrôle de **confort**, pas une garde : le serveur reste juge, et il refuse la
             // même chose. Il évite qu'un fichier de plusieurs mégaoctets traverse le Wi-Fi d'un
             // gymnase pour revenir en 422 — l'aide affichée juste au-dessus annonce déjà la limite.
-            if (fichier.size > POIDS_LOGO_MAX_OCTETS) {
+            if (fichier.size > identite.poids_logo_max_octets) {
+              // Même phrase et même arrondi que le refus du serveur (`LogoTropVolumineux`) : deux
+              // formulations pour un même refus feraient annoncer deux nombres différents sur un
+              // fichier de 512,6 Ko, selon qui répond.
               setRefusLocal(
-                `Ce fichier pèse ${Math.round(fichier.size / 1024)} Ko ; la limite est de ` +
-                  `${POIDS_LOGO_MAX_OCTETS / 1024} Ko. Réduisez-le avant de le déposer.`,
+                `Ce logo pèse ${Math.floor(fichier.size / 1024)} Ko ; la limite est de ` +
+                  `${identite.poids_logo_max_octets / 1024} Ko. ` +
+                  `Réduisez le fichier avant de le déposer.`,
               )
               return
             }
