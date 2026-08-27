@@ -1,44 +1,28 @@
-"""Les **jalons « prêt à… »** (E16US012) — « puis-je passer à l'étape suivante, et sinon quoi ? ».
+"""Les **jalons « prêt à… »** — « puis-je passer à l'étape suivante, et sinon quoi ? ».
 
-Politique **pure** (aucune I/O, aucun framework — règle 1). Elle donne à quatre écrans une **forme
-unique paramétrée** par le jalon, plutôt que quatre écrans jumeaux qui divergeraient : c'est
-l'arbitrage du commanditaire du 23/08/2026, et la raison pour laquelle cette US devait être
-instruite **avant** `E16US007` (exports) et `E16US008` (feu vert), qui allaient chacune figer sa
-propre variante (ADR-0096).
+Politique **pure** : aucune I/O, aucun framework (règle 1). Une forme unique paramétrée par le
+jalon, décidée par ADR-0096.
 
-**Ce que l'US corrige.** Les gardes du cycle de vie existent déjà, mais elles ne sont lisibles
-**qu'en échouant** : `ServiceTournois.vers_pret` lève `TournoiSansDepart`, `demarrer` lève
-`EffectifInsuffisantPourDemarrer`. Une exception ne rend que le **premier** manquement rencontré —
-l'organisateur règle les créneaux, reclique, et découvre alors l'effectif. Un jalon **énumère** ce
-que les gardes vérifient, sans les exécuter.
+⚠️ **`pret` n'est PAS « toutes les lignes vertes ».** Une ligne dit *ce qui manque* ; `pret` dit *si
+l'action passera*. `D-15` (« l'appli n'empêche pas, elle avertit ») autorise des manquements qui ne
+bloquent pas — un tournoi sans déroulé composé démarre. Les confondre ferait dire à l'écran « vous
+ne pouvez pas » là où le serveur accepte.
 
-**Ce que la forme unique paramètre, et ce qu'elle ne fusionne pas.** Elle unifie la *réponse*
-(`PreparationJalon`) et la *question* (`question`), pas les *règles* : chaque membre a ses propres
-entrées, donc sa propre politique. Fusionner les règles dans une fonction unique aurait demandé
-l'union de toutes leurs entrées — et aurait reconstruit, à l'intérieur, les quatre variantes qu'on
-cherche à éviter.
+⚠️ **`bloquant` porte une asymétrie réelle de la famille** : *démarrer* a des gardes de contenu
+(créneaux, effectif), *terminer* n'en a aucune — `sportif_complet` choisit un libellé de
+confirmation, il ne garde rien. Sans ce drapeau, la forme unique serait fausse sur l'un des deux.
 
-**`pret` n'est pas « toutes les lignes vertes ».** Une ligne dit *ce qui manque* ; `pret` dit *si
-l'action passera*. Les deux se séparent parce que `D-15` (« l'appli n'empêche pas, elle avertit »)
-autorise des manquements qui ne bloquent pas — un tournoi sans déroulé composé démarre. Les
-confondre ferait dire à l'écran « vous ne pouvez pas » là où le serveur accepte.
+⚠️ **La garde de STATUT est commune aux trois membres qui gardent une transition, et elle manque
+facilement** (elle manquait ici, relevé en revue) : `ServiceTournois` la lève avant toute autre.
+Un jalon qui l'ignore répond « prêt, et l'action passera » sur un tournoi déjà lancé — et le piège
+vise surtout `ARCHIVER`, dont le statut est la **seule** garde.
 
-**`bloquant` porte l'asymétrie de la famille.** *Démarrer* a des gardes de **contenu** (créneaux,
-effectif) ; *terminer* n'en a aucune — `sportif_complet` choisit le libellé de la confirmation, il
-ne garde rien (E12US005). Sans ce drapeau, la forme unique dirait la même chose des deux, donc
-serait fausse sur l'un des deux.
+⚠️ **Ne pas fusionner les règles des quatre membres** : chaque jalon a ses propres entrées. Une
+fonction unique demanderait l'union de toutes, et reconstruirait à l'intérieur les quatre variantes
+que la forme unique existe pour éviter.
 
-⚠️ **La garde de statut, elle, est commune aux trois membres qui gardent une transition** — et elle
-manquait à la première version de ce module, relevée en revue (axe D). `ServiceTournois` la lève
-avant toute autre (`TransitionStatutInvalide`) : *démarrer* n'est atteignable que depuis *brouillon*
-ou *prêt*, *terminer* que depuis *en cours*. Un jalon qui l'ignorait répondait « prêt, et l'action
-passera » sur un tournoi déjà lancé — le 200 rassurant et faux que l'ADR interdit ailleurs, et le
-piège tendu à `ARCHIVER`, dont le **statut est la seule garde**.
-
-Les lignes réutilisent `LigneCompletude` / `EtatSection` de `domain.completude` : c'est déjà le
-vocabulaire de `D-17` / `D-18` (liste d'états, jamais une barre de progression), et le jalon
-*terminer* **est** la complétude sportive — la relire plutôt que la réécrire est le CA « sans
-doublonner ce qui existe ».
+Les lignes réutilisent `LigneCompletude` / `EtatSection` de `domain.completude` — le jalon
+*terminer* **est** la complétude sportive : la relire, ne pas la réécrire.
 """
 
 from __future__ import annotations

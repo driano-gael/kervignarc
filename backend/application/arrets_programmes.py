@@ -1,41 +1,34 @@
-"""Service applicatif **Arrêts programmés** — la salle peut s'arrêter (E05US033, [ADR-0091]).
+"""Service applicatif **Arrêts programmés** — la salle peut s'arrêter ([ADR-0091], [ADR-0092]).
 
-Trois cas d'usage, et un seul écrit :
+Quatre gestes, un seul écrit :
 
-- **`evaluer`** — le **déclencheur**. Appelé après chaque validation de score, il regarde où en est
-  chaque phase du créneau et met en pause celles dont un arrêt programmé vient d'être atteint.
-  Idempotent : rappelé sans que rien n'ait changé, il ne fait rien.
-- **`lever`** — le **geste de l'admin**. La salle repart, et un arrêt de portée départ relance
-  **toutes** les phases qu'il a coupées d'un seul geste.
-- **`en_attente_de_relance`** — la lecture que le pilotage affiche : les arrêts franchis et pas
-encore
-  levés.
-- **`poser_arret_relatif`** — le geste **du jour J** (E05US034, [ADR-0092]) : « bloque-moi dans deux
-  tours ». Il écrit un `ArretDeCirconstance`, qui appartient au **créneau** et n'est rejoué par
-  aucun autre — à la différence d'un arrêt posé à l'atelier, qui est du déroulé.
+- **`evaluer`** — le **déclencheur**, appelé après chaque validation de score : il met en pause les
+  phases dont un arrêt vient d'être atteint. **Idempotent** — rappelé sans changement, il ne fait
+  rien.
+- **`lever`** — le geste de l'admin : un arrêt de portée départ relance **toutes** les phases qu'il
+  a coupées, d'un seul geste.
+- **`en_attente_de_relance`** — la lecture qu'affiche le pilotage.
+- **`poser_arret_relatif`** — le geste du jour J (« bloque-moi dans deux tours »). Il écrit un
+  `ArretDeCirconstance`, qui appartient au **créneau** et n'est rejoué par aucun autre — à la
+  différence d'un arrêt d'atelier, qui est du déroulé.
 
-**Pourquoi un service et non un automate.** Le projet ne persiste pas l'avancement : chaque service
-de format le **recalcule à la lecture** (ADR-0090 §5), et le lancement d'un tour est un *événement*,
-pas un état (ADR-0056). Il n'existe donc aucun endroit où l'on pourrait accrocher « le tour vient de
-se terminer ». Ce service **constate** au lieu d'écouter : il compare le tour courant de chaque
-phase à ce que les arrêts attendent, et n'écrit que la trace du franchissement.
+⚠️ **Ce service CONSTATE, il n'écoute pas.** Le projet ne persiste aucun avancement — chaque service
+de format le recalcule à la lecture (ADR-0090 §5) et le lancement d'un tour est un *événement*, pas
+un état (ADR-0056) : il n'existe nulle part où accrocher « le tour vient de se terminer ». D'où la
+comparaison à chaque appel plutôt qu'une réaction.
 
-⚠️ **La couture d'avancement passe par `ServiceSuiviDeroule`, délibérément.** C'est le seul endroit
-du projet qui sait répondre « quel tour tourne » pour **tous** les formats : les poules, le suisse
-et le Big Shoot Off répondent par le port `LecteurAvancementDePhase`, mais l'élimination directe —
-le format le plus courant — n'a pas de lecteur et voit son avancement reconstruit sur place à partir
-des braquets. Tenir ici un second registre par type aurait donc, d'une part, laissé le tableau hors
-du mécanisme, et d'autre part été la **quatrième** occurrence d'une résolution par type — ce dont la
-docstring du port met explicitement en garde.
+⚠️ **Passer par `ServiceSuiviDeroule` pour l'avancement, jamais par un registre local.** C'est le
+seul endroit qui sait répondre « quel tour tourne » pour **tous** les formats : poules, suisse et
+Big Shoot Off répondent par le port `LecteurAvancementDePhase`, mais l'élimination directe — le
+format le plus courant — n'en a pas et voit son avancement reconstruit depuis les braquets. Un
+second registre par type laisserait donc le tableau hors du mécanisme, et serait la **quatrième**
+résolution par type du dépôt.
 
-**Coût de lecture assumé, et tracé** : la couture d'avancement recompose chaque phase qui tourne à
-chaque appel, et ce service l'appelle après chaque validation de score. `DETTE-031` est élargie en
-conséquence — le marqueur est posé au point d'appel, pas ici.
+**Coût de lecture assumé** : la couture recompose chaque phase qui tourne à chaque validation de
+score — `DETTE-031`, marqueur au point d'appel.
 
-[ADR-0056]: ../docs/adr/0056-le-lancement-est-un-evenement-pas-un-etat.md
-[ADR-0090]: ../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
-[ADR-0091]: ../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-[ADR-0092]: ../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+[ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+[ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
 """
 
 from __future__ import annotations
