@@ -1,68 +1,10 @@
-"""Politiques injectables du moteur de phases (E05US003, [ADR-0004] / [ADR-0046]).
+"""Politiques injectables du moteur — sept familles (ADR-0004 § « Catalogue livré », ADR-0046).
 
-Un **format** de phase de tableau n'est pas du code mais un **assemblage de stratégies** (règle 2) :
-comment on route le perdant, comment on score, comment on ensemence l'arbre, à qui vont les byes,
-comment on départage, jusqu'où on classe. ADR-0004 en faisait **six familles** de politiques —
-E06US004 en ajoute une **septième**, `aggregation` ([ADR-0067]) — chacune une interface du domaine
-(`Protocol`) avec au moins une implémentation :
+Un format de phase est un assemblage de stratégies, pas du code (règle 2).
 
-| Famille       | Rôle                        | Implémentations livrées |
-|---------------|-----------------------------|-------------------------|
-| `routing`     | où va le perdant            | `EliminationSeche`, `PlacementEnCascade`, |
-|               |                             | `RoutingRepechage` |
-| `scoring`     | calcul du score             | `ScoreCumul`, `ScoreAvecHandicap` |
-| `seeding`     | composition de l'arbre      | `SeedingSerpent` |
-| `byes`        | exempts si effectif ≠ 2^k   | `ByesAuxMieuxClasses` |
-| `tiebreak`    | départage des égalités      | `TiebreakFftaDefaut`, `TiebreakPoules` |
-| `depth`       | jusqu'où classer            | `ProfondeurUnVersN`, `ProfondeurPodium`, |
-|               |                             | `AucunClassement` |
-| `aggregation` | départage des sortis        | `AggregationParQualification`, |
-|               | au même tour                | `AggregationExAequo` |
-
-**E05US015 peuple ce catalogue** ([ADR-0062]) : le **repêchage** et le **handicap**, que le cahier
-des charges rangeait parmi les « types de tournoi » à livrer, ne sont pas des types de phase mais
-des **politiques** — le premier décide où va un perdant, le second comment se calcule un score. Ni
-l'un ni l'autre n'a de structure propre, donc leur donner une `TypePhase` aurait été une erreur de
-maille : c'est l'apport de conception de l'US, pas un détail d'implémentation.
-
-**Portée E05US003.** Ce module livre les **interfaces**, une implémentation **pure et testable**
-par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`PolitiquesPhase`) via un
-`RegistrePolitiques` que la **composition root** peuple (CA « assemblage »). Le *tableau* qui
-orchestre ces stratégies (dimensionnement 2^k, génération, progression, podium) est **E05US005**
-(élimination directe) et **E05US010** (placement intégral, routing en cascade) : ils **consomment**
-ces politiques déjà éprouvées. Les stratégies couplées à la structure d'arbre exposent donc ici leur
-méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices la **ressignent**
-au fil de leurs besoins. **E05US010 a exercé cette clause** sur le `routing` :
-`destination_du_perdant()` est devenue `route(contexte)` (ADR-0061), la rupture ayant coûté un
-appelant de production et deux
-doubles de test — exactement le pari annoncé ici. Le barème par sets fera de même sur le `scoring`.
-Ce sont des **ruptures de contrat**, bon marché tant qu'il n'y a **qu'un implémenteur et aucun
-consommateur** par famille. C'est le sur-gel prématuré que
-DETTE-003 mettait en garde d'éviter — singulièrement pour le `scoring` : on livre étroit et honnête
-plutôt que de figer une signature spéculative.
-
-**Forme de la config (ADR-0046, résorbe DETTE-003).** Chaque politique vit sous `config.policies`,
-désignée par un objet `{"nom": <implémentation>, …paramètres}` — un **nom** (l'implémentation
-résolue par le registre) **et** des paramètres (le barème de qualif se *paramètre*, il ne se choisit
-pas dans un catalogue fermé). Le grain de `validation` **n'est pas** une politique de moteur : il
-reste **hors** `policies` (ADR-0046). Agrégats/stratégies de domaine **purs** — immuables, sans
-dépendance framework (règle 1).
-
-# DETTE-028 (../../docs/dette.md) — **rétréci par E06US003 (02/08/2026)**, ne pas le relire au
-# passé : la famille `tiebreak` a désormais un appelant de production
-# (`ServiceClassement._tiebreak`, résolu **par le registre** depuis `config.policies.tiebreak`),
-# et `domain/classement.py` ne
-# réimplémente plus §8.1 à la main. Ce qui reste vrai, et seul : la famille **`scoring`** n'a
-# toujours aucun appelant — le classement calcule son cumul hors politique, donc
-# `ScoreAvecHandicap` reste inerte bien que le handicap soit stocké, exposé et affiché — et les
-# moteurs `poule`, `big_shoot_off`, `suisse`, `colline` (ainsi que `TiebreakPoules` et
-# `RoutingRepechage`) n'en ont pas davantage. Résorption : US dédiée du chantier moteur, la couture
-# `tiebreak` montrant désormais comment s'y prendre.
-
-[ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
-[ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md
-[ADR-0067]: ../../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ Une famille **sans appelant de production est inerte, et rien ne le signale** — c'est le cas de
+`scoring`, donc de `ScoreAvecHandicap` (`DETTE-028`). Vérifier qu'une politique est résolue par le
+registre avant de la croire active.
 """
 
 from __future__ import annotations

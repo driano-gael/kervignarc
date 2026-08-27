@@ -1,29 +1,10 @@
 """Lectures **transverses** d'un tournoi, alors que la portée sportive est le départ (ADR-0075).
 
-Un tournoi n'a plus de phases en propre — il en a une séquence par départ. Ces réglages-ci sont
-pourtant réellement communs : ils vivent sur l'`EtapeDeroule`, définie **une fois** pour le tournoi
-(ADR-0076), que le repository assemble sur la phase de chaque créneau. La divergence entre deux
-départs n'est donc pas improbable, elle est **impossible**.
+Ces réglages-ci sont réellement communs : ils vivent sur l'`EtapeDeroule`, définie une fois pour le
+tournoi (ADR-0076), que le repository assemble sur la phase de chaque créneau.
 
-⚠️ **Ces lectures sont des raccourcis assumés, pas la vérité du moteur.** Le moteur raisonne
-toujours dans un départ (`PhaseRepository.par_depart`) : quiconque a un `depart_id` sous la main
-doit l'utiliser — passer par ici perdrait la distinction qu'ADR-0075 rétablit.
-
-⚠️ **`qualification_du_tournoi` rend LA PREMIÈRE qualification**, un déroulé pouvant en porter
-plusieurs (ADR-0082). Ses appelants subsistants relèvent de deux cas, tous deux au registre : la
-famille `DETTE-047` — le forfait s'**écrit** sur la phase rendue ici et se **lit** par le même
-chemin, si bien que corriger la seule lecture rendrait les forfaits *invisibles* au lieu de justes —
-et un repli assumé là où aucun créneau n'est résoluble.
-
-⚠️ **Ne jamais énumérer les appelants ici sans les recompter par `grep`.** Une rédaction précédente
-en annonçait six, en comptant `forfaits` deux fois et en oubliant `feuille_de_marque` — qui
-imprimait donc une grille de 20 volées pour un tour qui s'en tire 15. Une énumération fausse est
-pire qu'absente : la prochaine US s'y fiera.
-
-⚠️ **Ce module n'est ni testé ni surveillé** (`DETTE-048`) : aucun test ne l'importe, et le garde-fou
-`tests/test_portee_sportive.py` le manque par construction — son balayage AST reconnaît des *noms de
-variables*, pas un `tournoi_id` reçu en **paramètre**, qui est la forme d'ici. Avant d'ajouter un
-dixième appelant, lire le registre.
+⚠️ **Raccourcis assumés, pas la vérité du moteur** : qui a un `depart_id` sous la main doit
+l'utiliser. Ce module n'est ni testé ni couvert par le garde-fou de portée — `DETTE-048`.
 """
 
 from __future__ import annotations

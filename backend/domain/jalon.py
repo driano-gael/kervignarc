@@ -1,28 +1,10 @@
-"""Les **jalons « prêt à… »** — « puis-je passer à l'étape suivante, et sinon quoi ? ».
+"""Les **jalons « prêt à… »** — « puis-je passer à l'étape suivante, et sinon quoi ? » (ADR-0096).
 
-Politique **pure** : aucune I/O, aucun framework (règle 1). Une forme unique paramétrée par le
-jalon, décidée par ADR-0096.
+Politique pure : aucune I/O, aucun framework (règle 1).
 
-⚠️ **`pret` n'est PAS « toutes les lignes vertes ».** Une ligne dit *ce qui manque* ; `pret` dit *si
-l'action passera*. `D-15` (« l'appli n'empêche pas, elle avertit ») autorise des manquements qui ne
-bloquent pas — un tournoi sans déroulé composé démarre. Les confondre ferait dire à l'écran « vous
-ne pouvez pas » là où le serveur accepte.
-
-⚠️ **`bloquant` porte une asymétrie réelle de la famille** : *démarrer* a des gardes de contenu
-(créneaux, effectif), *terminer* n'en a aucune — `sportif_complet` choisit un libellé de
-confirmation, il ne garde rien. Sans ce drapeau, la forme unique serait fausse sur l'un des deux.
-
-⚠️ **La garde de STATUT est commune aux trois membres qui gardent une transition, et elle manque
-facilement** (elle manquait ici, relevé en revue) : `ServiceTournois` la lève avant toute autre.
-Un jalon qui l'ignore répond « prêt, et l'action passera » sur un tournoi déjà lancé — et le piège
-vise surtout `ARCHIVER`, dont le statut est la **seule** garde.
-
-⚠️ **Ne pas fusionner les règles des quatre membres** : chaque jalon a ses propres entrées. Une
-fonction unique demanderait l'union de toutes, et reconstruirait à l'intérieur les quatre variantes
-que la forme unique existe pour éviter.
-
-Les lignes réutilisent `LigneCompletude` / `EtatSection` de `domain.completude` — le jalon
-*terminer* **est** la complétude sportive : la relire, ne pas la réécrire.
+⚠️ **Ne pas fusionner les règles des quatre membres** : chacun a ses propres entrées, et une
+fonction unique reconstruirait à l'intérieur les quatre variantes que la forme unique évite. Les
+lignes réutilisent `LigneCompletude` — le jalon *terminer* **est** la complétude sportive.
 """
 
 from __future__ import annotations

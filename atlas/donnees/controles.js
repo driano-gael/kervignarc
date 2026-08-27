@@ -167,6 +167,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce forfaits, feuille_de_marque dans « backend/application/portee.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0082"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce DecorDeSaisie.VOLEE_COLLECTIVE dans « frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -246,6 +252,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 40
+  "signaux": 41
  }
 };

@@ -1371,6 +1371,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0004",
     "0099"
    ],
    "dettes_introduites": [],
@@ -3023,6 +3024,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0004",
     "0049",
     "0066",
     "0070"

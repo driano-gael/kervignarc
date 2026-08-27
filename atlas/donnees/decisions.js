@@ -121,7 +121,9 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Moteur de phases à politiques injectables",
    "us": [
-    "E05US003"
+    "E00US027",
+    "E05US003",
+    "E06US003"
    ]
   },
   {
@@ -4373,7 +4375,10 @@ window.ATLAS.decisions = {
       "forfaits",
       "feuille_de_marque"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "forfaits",
+      "feuille_de_marque"
+     ],
      "verifiable": true
     },
     {

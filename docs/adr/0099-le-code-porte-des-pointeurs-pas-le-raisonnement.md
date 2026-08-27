@@ -73,6 +73,41 @@ survit que s'il satisfait **au moins un** de ces trois tests :
 Tout le reste sort : historique de revue, citations de CA, justification d'existence, paraphrase du
 code, narration de processus.
 
+### Amendement du 27/08/2026 — trois contraintes de forme, parce que le jugement seul ne suffit pas
+
+Les trois tests ci-dessus reposent sur une appréciation, donc **rien ne les contrôle**. Mesuré sur
+trois vagues et onze fichiers : **122 lignes retirées sur 39 206, soit 0,3 %** — le pourcentage
+global n'a pas bougé d'un point. Le tri sémantique plafonne, parce que l'essentiel du volume est
+fait d'avertissements et de contrats que la règle protège à raison.
+
+S'y ajoutent donc trois contraintes de **forme**, qui priment sur le jugement :
+
+1. **Huit lignes au plus par bloc de commentaire.** Au-delà, ce n'est plus un avertissement mais un
+   raisonnement : il part en ADR, en story ou au registre, et le code garde **un renvoi**. Huit
+   lignes suffisent à énoncer un piège ; elles ne suffisent pas à le justifier — et c'est
+   exactement la frontière qu'on cherche.
+2. **Aucune docstring tautologique.** Si elle ne dit rien de plus que la signature, elle disparaît.
+3. **Un seul avertissement par bloc.** Trois ⚠️ empilés signalent soit un module qui fait trop de
+   choses, soit un raisonnement à sortir.
+
+**Pourquoi le plafond, et pas une quatrième règle de jugement** — c'est le point de cet amendement.
+Le plafond est la **seule règle de commentaire du projet qui se compte**. Elle peut donc devenir un
+test, appliqué aux fichiers d'un diff, au même titre que le garde-fou d'isolation du domaine ou les
+contrôles d'atlas. Tout ce que cette US a appris tient dans cette phrase : **ce qui est vérifié ne
+diverge pas** — et le commentaire n'avait, jusqu'ici, aucun garde-fou d'aucune sorte.
+
+Gisement mesuré au moment de l'amendement, côté backend (28 006 lignes de commentaire, 4 370 blocs) :
+
+| Plafond | Blocs au-dessus | Lignes en excédent | Part du commentaire |
+|---|---|---|---|
+| 12 lignes | 610 | 4 985 | 18 % |
+| **8 lignes** *(retenu)* | **1 051** | **8 469** | **30 %** |
+| 5 lignes | 1 934 | 13 116 | 47 % |
+
+⚠️ **Le plafond DÉPLACE, il ne supprime pas.** Ce qui sort d'un bloc trop long doit atterrir quelque
+part — la règle de sécurité ci-dessous ne souffre aucune exception, et elle coûte plus cher à
+appliquer qu'à écrire. Un plafond tenu en jetant du savoir serait pire que pas de plafond.
+
 ### La règle de sécurité, qui prime sur tout le reste
 
 ⚠️ **On ne coupe que ce qui existe ailleurs.** Avant de retirer une phrase, on vérifie qu'elle est

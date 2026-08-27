@@ -156,6 +156,15 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     ⚠️ La maxime « un code commenté se lit mal » vaut pour le *quoi* et le *comment*, **pas pour le
     pourquoi** : aucun nommage ne dit qu'une constante dérive d'une règle CSS d'une autre feature.
     Le corps de commit, lui, reste long — il est immuable, donc il ne diverge pas.
+    **Trois contraintes de forme, qui priment sur le jugement** (ADR-0099, amendé le 27/08/2026 —
+    la version « trois tests » seule n'avait retiré que **0,3 %** du volume en trois vagues) :
+    **(i) huit lignes au plus par bloc.** Au-delà, ce n'est plus un avertissement mais un
+    raisonnement : il part en ADR et le code garde un renvoi. Seule règle de commentaire du projet
+    qui soit **mesurable**, donc la seule qui ne dérivera pas.
+    **(ii) aucune docstring tautologique** — si elle ne dit rien de plus que la signature, elle
+    disparaît (`par_club(club_id) -> list[Archer]` n'a pas besoin de « renvoie les archers du club »).
+    **(iii) un seul avertissement par bloc.** Trois ⚠️ empilés signalent soit un module qui fait trop
+    de choses, soit un raisonnement à sortir.
 
 ## Dette
 

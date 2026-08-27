@@ -88,3 +88,31 @@ cet ADR :
 
 Sept familles existent aujourd'hui, contre six au tableau : `aggregation` s'est ajoutée
 ([ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md)).
+
+## Catalogue livré — état au 27/08/2026
+
+*Déplacé depuis la docstring de `backend/domain/politiques.py` par `E00US027` (ADR-0099, règle du
+plafond) : un tableau de quatorze lignes est un raisonnement, pas un avertissement — sa place est
+ici, et le module garde un renvoi.*
+
+| Famille | Rôle | Implémentations livrées |
+|---|---|---|
+| `routing` | où va le perdant | `EliminationSeche`, `PlacementEnCascade`, `RoutingRepechage` |
+| `scoring` | calcul du score | `ScoreCumul`, `ScoreAvecHandicap` |
+| `seeding` | composition de l'arbre | `SeedingSerpent` |
+| `byes` | exempts si effectif ≠ 2^k | `ByesAuxMieuxClasses` |
+| `tiebreak` | départage des égalités | `TiebreakFftaDefaut`, `TiebreakPoules` |
+| `depth` | jusqu'où classer | `ProfondeurUnVersN`, `ProfondeurPodium`, `AucunClassement` |
+| `aggregation` | départage des sortis au même tour | `AggregationParQualification`, `AggregationExAequo` |
+
+⚠️ **Le repêchage et le handicap sont des POLITIQUES, pas des types de phase** ([ADR-0062](0062-catalogue-de-types-de-phase.md)).
+Le cahier des charges les rangeait parmi les « types de tournoi » à livrer ; ni l'un ni l'autre n'a
+de structure propre — le premier décide où va un perdant, le second comment se calcule un score.
+Leur donner une `TypePhase` aurait été une erreur de maille.
+
+⚠️ **Une famille sans appelant reste inerte, et ça ne se voit pas** (`DETTE-028`, rétrécie par
+E06US003). `tiebreak` a désormais un appelant de production résolu par le registre. `scoring` n'en
+a **toujours aucun** : le classement calcule son cumul hors politique, si bien que
+`ScoreAvecHandicap` ne s'exécute jamais, alors que le handicap est stocké, exposé et affiché. Les
+moteurs `poule`, `big_shoot_off`, `suisse` et `colline` n'ont pas davantage d'appelant, pas plus que
+`TiebreakPoules` et `RoutingRepechage`.
