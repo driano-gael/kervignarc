@@ -1,28 +1,9 @@
-"""Endpoints REST des **poules** (E05US023, [ADR-0083]) — l'atelier règle, la salle fait tirer.
+"""Routeur **poules** — une rencontre *est* un duel ordinaire ; seule la navigation diffère.
+`numero` est **dérivé** de la composition, jamais stocké ; un tir dont les duellistes ne
+correspondent plus rend `duel: null` plutôt que d'être ré-attribué (ADR-0049 §4, ADR-0083 §7).
 
-Expose `ServicePoules` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **l'atelier** (admin) lit la **répartition** que le réglage produit sur l'effectif réel (« 30
-  archers → 7 poules : cinq de 4, deux de 5 ») et **pose le plan** de couloirs ;
-- **la salle** (scoreur) lit l'**état** de la phase — groupes, blocs de couloirs, rencontres par
-  tour, classements — et **saisit** les rencontres avec le pavé de duel d'E04US013.
-
-⚠️ **Une rencontre de poule *est* un duel ordinaire** (ADR-0083 §7), et ce routeur le montre : les
-trois écritures de tir sont les jumelles de celles de `api/v1/saisie_duels.py`, au même corps près,
-et écrivent dans la même table `duel`. Ce qui diffère est la **navigation** — on entre par la poule
-et le tour, pas par le numéro de match d'un arbre. C'est le `decor` du contrat de phase, et c'est
-tout ce que la duplication porte.
-
-`numero` est le `match_numero` de la table `duel`, **dérivé** de la composition et jamais stocké :
-poules dans l'ordre, rencontres dans l'ordre du cercle, numérotation continue depuis 1. Un tir dont
-les duellistes ne correspondent plus à la composition recalculée s'affiche « non tiré » plutôt que
-d'être ré-attribué (ADR-0049 §4) — d'où `duel: null` sur une rencontre qui a pourtant une ligne.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036) pour les trois actes du scoreur. La pose du plan, elle, est un geste **admin** et
-non idempotent par nature : elle **remplace** le plan existant, comme `plan-de-duels/regenerer`.
-
-[ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **La pose du plan n'est PAS idempotente**, contrairement aux trois actes du scoreur : c'est un
+geste admin qui **remplace** le plan existant, comme `plan-de-duels/regenerer`.
 """
 
 from __future__ import annotations

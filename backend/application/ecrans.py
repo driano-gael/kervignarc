@@ -1,31 +1,10 @@
-"""Service applicatif des **écrans de salle** (E07US004, ADR-0064) — que montre cet écran, et
-qui décide.
+"""Service des **écrans de salle** — le pilotage est un état **lu**, jamais un ordre poussé
+(ADR-0064).
 
-Deux cas d'usage, deux publics :
-
-- **l'écran** demande `affichage(jeton)` : ce qu'il doit montrer *maintenant* — son déroulé, ou la
-  consigne que l'admin lui a imposée, avec le temps restant ;
-- **l'admin** pose (`prendre_le_controle`) et retire (`rendre_la_main`) des consignes, et lit
-  `prises` pour sa console.
-
-**Le pilotage est un état lu, pas un ordre poussé** — la décision centrale d'ADR-0064. Deux raisons,
-la seconde suffirait :
-
-1. Le hub temps réel est **mono-canal** (`infrastructure.realtime.broadcaster`) : il diffuse à tous
-   les abonnés, sans ciblage par destinataire. Pousser un ordre à *un* écran demanderait
-   l'abonnement par sujet, qui n'existe pas.
-2. Surtout, la **fin** d'une prise de contrôle naît du **temps qui passe** — et aucun événement
-   serveur ne peut pousser le temps qui passe. C'est mot pour mot le raisonnement d'ADR-0038 §4 sur
-   le passage hors-ligne d'un poste, qui a valu à la supervision d'être en *poll* plutôt qu'en
-   WebSocket. Une prise « podium 10 min » se termine donc **sans que rien ne soit envoyé**.
-
-Conséquence pratique : la reprise du déroulé ne dépend d'aucun message. Un écran qui perd le réseau
-pendant la prise reprend quand même à l'heure — il connaît le début et la durée, il décompte en
-local (`domain.ecran.reste_secondes`).
-
-Lecture synchrone hors boucle événementielle (règle 7) : le registre de consignes est en mémoire,
-les postes en base (lectures courtes). Aucune écriture en file — poser une consigne ne touche que
-de l'état volatil.
+⚠️ **La fin d'une prise de contrôle naît du TEMPS QUI PASSE**, et aucun événement serveur ne peut
+pousser le temps. Une prise « podium 10 min » se termine donc sans que rien ne soit envoyé — et un
+écran qui perd le réseau pendant la prise reprend quand même à l'heure, puisqu'il décompte en local.
+Le hub temps réel est par ailleurs mono-canal : cibler un écran n'est pas possible.
 """
 
 from __future__ import annotations

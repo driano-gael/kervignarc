@@ -1,29 +1,9 @@
-"""Service applicatif **Identité visuelle du tournoi** (E16US006, absorbe E01US016).
+"""Service de l'**identité visuelle** — un logo ne touche aucun score (`P-3`, ADR-0097).
 
-Cas d'usage de configuration : lire, régler, déposer, retirer. Le service **orchestre** et garde le
-tournoi ; il ne calcule rien — la dérivation des jetons est une règle pure, elle vit dans
-`domain.identite` (règle 1), et ce module ne fait que l'appeler.
-
-**Trois choses que ce service décide, et qui ne sont pas dans le domaine :**
-
-1. **Rien.** Le défaut « identité du club » **n'est pas ici** : il vit dans l'agrégat
-   (`IdentiteVisuelle.accents`), et `reglee` s'en dérive. Première rédaction : le service portait un
-   booléen `reglee` qu'il passait à `decliner` — un test d'API l'a démentie, déposer un logo créait
-   la ligne et l'identité se déclarait « réglée » sans qu'aucune couleur ait été choisie. Deux
-   sources pour un même fait, dont l'une réécrite à la main à chaque appel. Il n'en reste qu'une.
-2. **Aucune garde de statut, sauf l'archive.** `P-3` dit « modifiable à tout moment, y compris
-   tournoi en cours » : changer un logo ne touche aucun score. Un tournoi **archivé** est une autre
-   affaire — c'est le seul refus, et il vient d'ADR-0026 §1 (« lecture seule totale »), pas de cette
-   US. L'erreur correspondante est **celle du registre applicatif**
-   (`application.erreurs.TournoiArchiveNonModifiable`), pas une classe locale : la première
-   rédaction en avait redéclaré une seconde, de même nom et de même `code`, que le `else: 409` du
-   mapping rendait indétectable en HTTP — deux types disjoints sous un nom identique, qu'aucun
-   `except` ni aucune branche `isinstance` n'aurait rattrapés ensemble (relevé par trois axes de
-   revue).
-3. **Le contrôle de contraste est un CALCUL, pas une garde.** `P-4` : « alerte chiffrée et **non
-   bloquante** ». `regler_accents` n'a donc aucun `raise` sur le contraste — il rend le chiffre, et
-   l'organisateur décide. Refuser ici retirerait sa marque à qui a une charte faible, ce que `DV-05`
-   interdit explicitement.
+⚠️ **Le contrôle de contraste est un CALCUL, pas une garde** (`P-4`) : aucun `raise`, on rend le
+chiffre et l'organisateur décide. Refuser retirerait sa marque à qui a une charte faible, ce que
+`DV-05` interdit. Seul refus : un tournoi **archivé** (ADR-0026 §1) — et l'erreur est celle du
+registre applicatif, jamais une classe locale de même nom.
 """
 
 from __future__ import annotations

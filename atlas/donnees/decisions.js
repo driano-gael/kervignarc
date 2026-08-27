@@ -2576,7 +2576,9 @@ window.ATLAS.decisions = {
      "symboles": [
       "tournoi_id"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "tournoi_id"
+     ],
      "verifiable": true
     },
     {

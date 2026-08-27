@@ -1,28 +1,10 @@
-"""Agrégat `EtapeDeroule` — la **définition** d'une étape, portée par le tournoi (ADR-0076).
+"""L'**étape de déroulé** — la définition, commune au tournoi ; l'avancement reste au départ
+(ADR-0076). Avec une définition unique, la divergence entre créneaux n'est plus improbable : elle
+est **impossible**.
 
-Le déroulé d'un tournoi est défini **une fois** ; chaque départ le **rejoue**. Cette étape porte
-donc tout ce qui *décrit* une phase — type, barème, grain de validation, prélèvements, effectif,
-profondeur, seuil de barrage — et **rien** de ce qui *avance* : ni statut, ni départ. L'avancement
-est l'affaire de `Phase`, une par créneau.
-
-**Pourquoi séparer** (ADR-0076). Jusqu'au 07/08/2026, appliquer un format créait **N copies
-complètes** de chaque phase, une par départ. Trois défauts en découlaient :
-
-1. **les copies pouvaient diverger en silence** — au point que `application/portee.py` a dû
-   documenter que sa lecture transverse ne rendait qu'« une approximation d'affichage, jamais une
-   base de calcul » ;
-2. **éditer devenait une écriture en éventail**, et « la phase 2 » désignait N objets aux N
-   identifiants — d'où une question d'adressage insoluble, née du modèle et non de l'API ;
-3. **`Phase` mêlait deux natures** : sa définition (commune au tournoi) et son avancement (propre au
-   créneau).
-
-Avec une définition unique, la divergence n'est plus improbable : elle est **impossible**.
-
-⚠️ **`Phase` reste l'objet du moteur.** Elle porte toujours sa définition **en mémoire** — le
-repository l'assemble depuis l'étape de même `ordre`. Les modules qui lisent `phase.bareme` ne
-connaissent pas cette couture, et c'est voulu : la jointure est l'affaire de l'adapter (ADR-0003).
-
-Agrégat de domaine **pur** (immuable, sans dépendance framework), validé à la construction.
+⚠️ **`Phase` reste l'objet du moteur** et porte toujours sa définition **en mémoire** : le
+repository l'assemble depuis l'étape de même `ordre`. Les modules qui lisent `phase.bareme`
+ignorent cette couture, et c'est voulu — la jointure est l'affaire de l'adapter (ADR-0003).
 """
 
 from __future__ import annotations

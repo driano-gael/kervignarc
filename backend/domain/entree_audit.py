@@ -1,29 +1,8 @@
-"""Agrégat `EntreeAudit` — une entrée du **journal d'audit métier** (E10US005).
+"""Trace d'audit — **qui / quand / avant-après** (`D-04`), en **ajout seul** et immuable.
 
-Le jour J, des actes **sensibles** sont posés : un scoreur **valide** une série (elle se
-verrouille), un rôle habilité **corrige** un score verrouillé, un archer est déclaré en **forfait**.
-En cas
-de litige (« qui a validé ma série à 8, pas à 9 ? »), il faut pouvoir répondre. Chaque entrée fige
-donc les quatre invariants d'une trace utile — **qui / quand / avant-après** (CDC UX `D-04`) —, plus
-l'**objet** sur lequel l'action a porté et sa **nature** (`ActionAuditee`).
-
-Trace en **ajout seul** (cf. port `AuditRepository`) : une entrée ne se modifie pas — la corriger la
-viderait de sa valeur de preuve. D'où un agrégat **immuable** (`frozen`).
-
-L'`auteur` est le **nom** de qui a agi (un scoreur, l'admin), **pas une clé étrangère** : la trace
-d'une validation doit survivre à la **suppression** du scoreur (E10US003) — un scoreur qui ne vient
-plus est retiré, ses validations passées restent lisibles. Stocker son `id` casserait à sa
-suppression ; on fige donc le nom au moment de l'acte.
-
-**Socle E10US005** : cet agrégat est ce que les producteurs construisent pour laisser leur trace.
-**Ils existent tous** — la validation et la correction (E04US002), le forfait (E04US015 / ADR-0050,
-ex-E12US004), le paiement (E08US002), le replacement (E12US007), le remboursement (E08US005), le
-lancement de tour (E12US002) —, et ils écrivent leur `EntreeAudit` **dans la même commande de file**
-que l'acte qu'elle décrit : le plus souvent **atomiquement avec leur agrégat** (`*_avec_trace` du
-repository), sinon par `ServiceAudit.consigner`. Voir `application/audit.py` pour le pourquoi des
-deux formes. La surface de **consultation** admin (`lister` + endpoint `GET`) est livrée elle aussi.
-
-*(Rectifié le 08/08/2026 : ce paragraphe disait que les producteurs « n'existent pas encore ».)*
+⚠️ **L'`auteur` est le NOM, jamais une clé étrangère** : la trace d'une validation doit survivre à
+la **suppression** du scoreur qui l'a faite. Stocker son `id` casserait à sa suppression ; on fige
+donc le nom au moment de l'acte — même parti que le registre des remboursements.
 """
 
 from __future__ import annotations

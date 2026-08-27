@@ -1,27 +1,9 @@
-"""Vocabulaire commun du **patrimoine du club** — les briques réutilisables (E01US023, ADR-0060).
+"""Patrimoine — une brique de bibliothèque se **copie** dans un tournoi, elle ne s'y référence pas.
 
-Une **brique** (catégorie, blason, gabarit de salle…) existe sous deux formes, distinguées par son
-`tournoi_id` :
-
-- `tournoi_id is None` — c'est un **modèle de bibliothèque**, patrimoine du club. Il vit d'année en
-  année et n'appartient à aucune édition ;
-- `tournoi_id` renseigné — c'est la **copie** d'un tournoi, ajustable **sans altérer le modèle**.
-
-Ce n'est pas un patron neuf : `gabarit_salle` l'applique depuis E01US007/E01US008 (« appliquer un
-modèle (copie), lire et ajuster la copie sans altérer le modèle »). E01US023 le **généralise** aux
-catégories et aux blasons, qui portaient jusqu'ici un `tournoi_id` obligatoire — d'où l'atelier qui
-promettait « hors tournoi » sans pouvoir le tenir (DETTE-023).
-
-**Pourquoi copier plutôt que référencer** — arbitrage du commanditaire, 30/07/2026. Si un tarif ou
-un barème change en 2027, le tournoi 2026 **archivé ne doit pas bouger** : une brique référencée
-réécrirait l'histoire, ce que l'archive en lecture seule (EPIC-11) et le journal d'audit
-interdisent. Contrepartie assumée : un brouillon ne bénéficie pas d'une correction faite ensuite
-dans la bibliothèque.
-
-**Et la remontée** : « si les modifications sont permanentes, on doit pouvoir le dire — cela
-modifiera la brique de base de l'atelier ». Une modification locale déclarée **permanente** est
-**promue** dans la bibliothèque. Elle ne réécrit pas l'histoire pour autant : les tournois déjà
-assemblés gardent leur copie, seuls les **prochains** assemblages héritent de la correction.
+⚠️ **Copier, parce qu'un tournoi archivé ne doit pas bouger** : si un tarif change en 2027, une
+brique référencée réécrirait l'histoire du tournoi 2026 (arbitrage du 30/07/2026). Contrepartie
+assumée — un brouillon ne bénéficie pas d'une correction faite ensuite. Une modification locale
+déclarée **permanente** est promue dans la bibliothèque, sans toucher les tournois déjà assemblés.
 """
 
 from __future__ import annotations

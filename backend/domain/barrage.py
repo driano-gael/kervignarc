@@ -1,30 +1,9 @@
-"""Moteur du **tir de barrage** (shoot-off) — art. B.6.5.2, [référentiel §8.2] (E05US015).
+"""Barrage FFTA §8.2 — **un moteur, trois usages** : phase autonome, Big Shoot Off, poules.
 
-Contrairement aux autres formats de cette US, la règle du barrage **n'a pas eu à être demandée** :
-elle est entièrement écrite au règlement fédéral.
-
-> - **Individuel** : **1 flèche**, le plus haut score gagne. Si l'égalité subsiste, on **répète au
->   plus près du centre** jusqu'à résolution. Tiré sur la cible centrale du triple vertical.
-> - **Équipe** : une volée de **3 flèches** (1 par archer), plus haut total ; répété si nécessaire.
-> - Le barrage **ne prend pas en compte** le nombre de 10/9 (B.6.5.2).
-> - Un archer **absent** au barrage annoncé est déclaré **perdant** (B.6.5.2.4).
-
-**Deux règles qui surprennent, et que le CA demandait de ne pas rater.** Le barrage est le **seul**
-endroit du produit où le nombre de 10/9 ne départage pas — partout ailleurs (§8.1, poules) c'est un
-critère. Et l'absence n'y est pas un forfait à instruire : elle **tranche**, immédiatement.
-
-**Un moteur, trois usages.** Ce module sert (1) la phase de **barrage autonome** — départager des ex
-æquo *avant* de monter un tableau, le CA de cette US —, (2) l'égalité au plus faible d'un **Big
-Shoot Off**, (3) l'ex æquo d'un **classement de poule** (« barrage si nécessaire »). Les trois
-appellent `resoudre_barrage` et appliquent son verdict ; aucun ne le réimplémente. C'est ce qui
-justifiait de le sortir en module plutôt que de l'enfouir dans le premier des trois.
-
-⚠️ **Un barrage n'est pas un duel.** `domain/duel.py` traite le barrage *interne* à un duel nul
-(égalité de sets), qui oppose exactement deux camps sur un format connu. Ici on départage **N**
-participants d'un coup — trois archers ex æquo au rang 8 tirent ensemble, ils ne s'affrontent pas
-deux à deux. Domaine **pur** (règle 1).
-
-[référentiel §8.2]: ../../docs/referentiel-ffta.md
+⚠️ **Deux règles qui surprennent** : le barrage est le **seul** endroit du produit où le nombre de
+10/9 ne départage pas (B.6.5.2), et l'absence n'y est pas un forfait à instruire — elle **tranche**,
+immédiatement. ⚠️ Un barrage **n'est pas un duel** : on départage N participants d'un coup, trois ex
+æquo au rang 8 tirant ensemble, alors que `domain/duel.py` oppose exactement deux camps.
 """
 
 from __future__ import annotations

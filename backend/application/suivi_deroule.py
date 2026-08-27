@@ -1,29 +1,10 @@
-"""Service applicatif du **suivi du déroulé** (E07US004, ADR-0064) — le plan rempli par la réalité.
+"""Suivi du déroulé — compose le **plan** et l'**avancement** sans recalculer aucune règle.
 
-Compose deux choses qui existent déjà, sans en recalculer aucune :
-
-- la **projection** du format appliqué au tournoi (`domain.deroule.projeter`), c'est-à-dire *le même
-  schéma à braquets* qu'à l'atelier — le mot « même » est dans le CA, et il est contraignant : si
-  le suivi redessinait, l'organisateur ne reconnaîtrait pas ce qu'il a composé ;
-- l'**avancement** (`domain.suivi_deroule`), c'est-à-dire ce qui est joué, dénombré ici depuis les
-  tableaux reconstruits — et, depuis E05US032, **demandé au service du format** pour les phases qui
-  ne se dessinent pas en braquets (port `LecteurAvancementDePhase`, ADR-0090 §5). Le module compose
-  donc toujours sans recalculer de règle métier, mais il **fait recomposer** : c'est le coût inscrit
-  à `DETTE-031`.
-
-**Un exempt (bye) n'est pas un duel joué.** C'est le piège central de la composition : dans un
-tableau incomplet, les exempts sont gagnés d'office dès la construction. Les compter afficherait
-« premier tour terminé » avant que quiconque ait tiré — et surtout, la projection ne les compte pas
-non plus (`domain.deroule._braquets` : *« 24 duellistes dans un tableau de 32 → 8 duels, 8
-exemptés »*). Les deux comptes doivent parler de la même chose, sans quoi le rapport « joués /
-attendus » est faux des deux côtés.
-
-**Robustesse jour J.** Un tableau qu'on ne sait pas reconstruire — format retouché en cours de
-route, phase mal câblée — laisse un bloc à zéro joué plutôt qu'une page d'erreur. L'écran de salle
-tourne en permanence, souvent sans personne devant pour le relancer : une exception y coûte
-l'affichage de toute la journée, un compteur à zéro coûte une ligne inexacte.
-
-Lecture seule et synchrone hors boucle événementielle (règle 7).
+⚠️ **Un exempt (bye) n'est PAS un duel joué**, et c'est le piège central : dans un tableau
+incomplet, les exempts sont gagnés d'office dès la construction. Les compter afficherait « premier
+tour terminé » avant que quiconque ait tiré — et la projection ne les compte pas non plus. Un
+tableau qu'on ne sait pas reconstruire laisse un bloc à zéro plutôt qu'une page d'erreur : l'écran
+de salle tourne sans personne devant. Coût de recomposition : `DETTE-031`.
 """
 
 from __future__ import annotations

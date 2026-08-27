@@ -1,28 +1,10 @@
-"""Service applicatif Phases — compose et fait vivre la séquence de phases d'un tournoi (E05US001).
+"""Service des **phases** — la cohérence de la séquence est au domaine, les conflits d'état ici.
 
-Use cases : lister, ajouter, éditer (type/source/effectif), réordonner, supprimer, et faire
-avancer le **cycle de vie** de chaque phase (`a_venir → en_cours ⇄ en_pause → terminee`).
+`SequencePhases` rejette une séquence incohérente à la **construction** (422) ; le service n'en
+réimplémente rien et arbitre les transitions illégales (409/404).
 
-Répartition des responsabilités (ADR-0045, ADR-0007) :
-
-- **La cohérence de la séquence** (ordres contigus, sources bien formées : source vide / rangs
-  inexistants / effectif incompatible) est une **règle du domaine** : le service assemble les phases
-  en `SequencePhases`, dont la **construction** rejette une séquence incohérente (→ `DomainError`,
-  traduite en 422). Le service n'en réimplémente rien.
-- **Les conflits d'état** (transition de statut illégale, suppression d'une phase qui en alimente
-  une autre, existence d'une phase dans *ce* tournoi) sont arbitrés **ici** (`ApplicationError`,
-  409/404), comme `ServiceTournois` pour le cycle de vie du tournoi.
-
-Le service ignore HTTP, SQL et la file d'écriture (sérialisation assurée en amont, côté API) : il
-reste synchrone et pur d'infrastructure.
-
-**Le peuplement admet plusieurs sources** depuis E05US010 (ADR-0061) : une phase se compose de
-prélèvements de natures mêlées (rangs, issue de tour, « le reste »), éventuellement relatifs à
-l'effectif réel. DETTE-015 est résorbée.
-Le réordonnancement et la suppression **remappent** les références de source (portées par l'`ordre`
-de la phase source) pour qu'elles suivent la phase qu'elles désignaient. Cet **ancrage par `ordre`**
-— plutôt que par identité — survit à E05US010, qui l'a seulement généralisé à N sources : c'est
-`# DETTE-026`, la seule facette de DETTE-015 qui n'ait pas été résorbée.
+⚠️ **Le réordonnancement et la suppression REMAPPENT les références de source**, ancrées par
+l'`ordre` de la phase amont et non par son identité. C'est `DETTE-026`.
 """
 
 from __future__ import annotations

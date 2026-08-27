@@ -1,32 +1,10 @@
-"""Endpoints REST du **système suisse** (E05US026, [ADR-0083]) — régler, puis faire tirer.
+"""Routeur **suisse** — une rencontre *est* un duel ordinaire ; seule la navigation diffère.
+`numero` est **dérivé** du rejeu, jamais stocké ; un tir dont les duellistes ne correspondent plus
+s'affiche « non tiré » plutôt que d'être ré-attribué (ADR-0049 §4, ADR-0083 §7).
 
-Expose `ServiceSuisse` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **la salle et le public** lisent l'**état** de la phase — rondes appariées, rencontres, porteur de
-  bye, classement — ainsi que la **borne** de rondes que l'effectif du jour autorise ;
-- **le scoreur** saisit les rencontres avec le pavé de duel d'E04US013.
-
-⚠️ **Une rencontre de ronde *est* un duel ordinaire** (ADR-0083 §7), et ce routeur le montre : les
-trois écritures de tir sont les jumelles de celles de `api/v1/poules.py` et de
-`api/v1/saisie_duels.py`, et écrivent dans la même table `duel`. Ce qui diffère est la
-**navigation** — on entre par la **ronde**, pas par la poule ni par le numéro de match d'un arbre.
-C'est le `decor` du contrat (`RONDES_APPARIEES`), et c'est tout ce que la duplication porte.
-
-`numero` est le `match_numero` de la table `duel`, **dérivé** du rejeu et jamais stocké : rondes
-dans l'ordre, rencontres dans l'ordre de l'appariement, numérotation continue depuis 1 sur toute
-la phase. Un tir dont les duellistes ne correspondent plus à l'appariement recalculé s'affiche « non
-tiré » plutôt que d'être ré-attribué (ADR-0049 §4) — la rencontre rend alors un pavé **vierge** et
-lève `desynchronisee`, plutôt que de prêter un score au mauvais couple.
-
-⚠️ **Il n'y a pas de route « ronde suivante »**, et c'est structurel : les rondes ne se déclenchent
-pas, elles se **déduisent**. La ronde `n+1` apparaît dans l'état dès que la ronde `n` est close,
-c'est-à-dire dès que sa dernière rencontre est validée. Exposer un geste « apparier la ronde
-suivante » aurait laissé croire à une décision d'organisateur là où il n'y a qu'une conséquence.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036), comme les deux autres décors.
-
-[ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Il n'y a pas de route « ronde suivante », et c'est structurel** : les rondes ne se déclenchent
+pas, elles se **déduisent** — la ronde `n+1` apparaît dès que la dernière rencontre de `n` est
+validée. Un tel geste laisserait croire à une décision là où il n'y a qu'une conséquence.
 """
 
 from __future__ import annotations

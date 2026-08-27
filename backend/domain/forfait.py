@@ -1,29 +1,10 @@
-"""Agrégat `Forfait` — un archer **abandonne** ou est **disqualifié** (E04US015, ADR-0016/0050).
+"""Forfait — **daté, attribué, réversible**, et scopé à une **phase** (ADR-0050).
 
-Le jour J, un archer peut cesser de concourir : il **abandonne** (blessure, départ anticipé) ou il
-est **disqualifié** par le jury (DSQ). Dans les deux cas, ses **flèches déjà tirées sont
-préservées** — c'est *ce qui distingue* le forfait de la **suppression** d'archer (E02US003), qui,
-elle, détruit les résultats (ADR-0016). Un forfait qui effacerait les résultats rendrait cet ADR
-faux.
-
-Le forfait est **daté**, **attribué** (le nom de qui l'a déclaré, comme l'audit), porteur d'un
-**motif** optionnel et **réversible** (le service l'annule tant que le tournoi n'est pas terminé,
-`D-15`). L'agrégat est **immuable** (`frozen`), pur et déterministe : le « quand » lui est **donné**
-par l'appelant via le port `Horloge` (jamais lu ici — même contrat que `EntreeAudit`).
-
-**Scopé à une phase** (`phase_id`) — c'est la clé de la fusion d'E04US015 (qualification) et de
-l'ex-E12US004 (duels), **absorbée** par elle le 27/07/2026 :
-[ADR-0050](../../docs/adr/0050-forfait-abandon-et-disqualification.md). Un abandon **en
-qualification** relègue/exclut l'archer du **classement de qualification** (`domain.classement`) ;
-un forfait **en duels** ne touche **pas** le classement de qualif (l'archer avait bien qualifié) —
-il fait **passer l'adversaire** dans le tableau. Sans ce scope, un abandon en duels reléguerait à
-tort le rang de qualif d'un archer qui l'avait pourtant mérité.
-
-`nature` porte l'effet sur le **classement** (Q2/Q3 du cadrage E04US015, reversées en `stories/`) :
-- **abandon** : l'archer **reste classé**, mais **relégué en fin** (celui qui n'a pas terminé passe
-  derrière tous ceux qui ont fini, quel que soit son score partiel — usage FFTA) ;
-- **disqualification** : l'archer est **sorti du classement** (pas de rang), ses flèches restant
-  conservées en base et à l'audit — on ne détruit rien, on l'exclut du décompte.
+⚠️ **Le scope par phase est la clé** : un abandon en qualification relègue l'archer du classement de
+qualification ; un forfait en duels n'y touche **pas** — il fait passer l'adversaire. Sans lui, un
+abandon en duels reléguerait le rang d'un archer qui avait pourtant qualifié. `nature` porte l'effet
+sur le classement : **abandon** = relégué en fin, **disqualification** = sorti du classement, les
+flèches restant conservées.
 """
 
 from __future__ import annotations
