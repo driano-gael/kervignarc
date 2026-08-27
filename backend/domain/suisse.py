@@ -1,50 +1,9 @@
-"""Moteur du **système suisse** — classer sans éliminer (E05US015, [ADR-0062]).
+"""**Système suisse** — personne n'est éliminé ; les quatre points ouverts de la règle (rondes,
+ronde 1, ré-affrontement, Buchholz) sont tranchés dans `stories/E05-moteur-phases.md`.
 
-Règle **fournie par le commanditaire le 31/07/2026**, reproduite au [référentiel §10.1] :
-
-> **Objectif** — classer beaucoup de participants sans éliminer personne.
-> **Fonctionnement** — manche 1, les rencontres sont aléatoires (ou par classement) ; manche 2, les
-> vainqueurs rencontrent les vainqueurs et les perdants rencontrent les perdants ; même principe
-> ensuite. Au fil des manches, les meilleurs jouent les meilleurs et les moins forts des adversaires
-> de leur niveau. Après 5 à 7 rondes, on obtient un classement très fiable sans avoir éliminé
-> personne.
-
-**Quatre points que la règle laisse ouverts**, tranchés au cadrage du 31/07/2026 avec le
-commanditaire et reversés dans `stories/E05-moteur-phases.md` :
-
-1. **Nombre de rondes** : paramètre, **défaut 5** (la règle dit « 5 à 7 »).
-2. **Appariement de la ronde 1** : **par classement source**, jamais aléatoire. La règle proposait
-   les deux ; l'aléatoire est écarté parce que la **règle 9 du projet** interdit l'aléa non maîtrisé
-   — un tournoi doit se rejouer à l'identique, et un appariement tiré au sort rendrait tout test de
-   non-régression impossible. Ce n'est pas une préférence esthétique : c'est ce qui permet de
-   reconstruire une phase après un incident le jour J.
-3. **Pas de ré-affrontement** : deux participants ne se rencontrent **jamais deux fois**. La règle
-   ne le dit pas, mais l'omettre dégrade le format — le système suisse tire sa précision du fait que
-   chaque ronde apporte une *information nouvelle*.
-4. **Départage final** : points, puis **Buchholz** (somme des points des adversaires rencontrés),
-   puis les critères FFTA (10 puis 9, §8.1). Le Buchholz mesure la difficulté du parcours : deux
-   archers à 3 victoires ne valent pas la même chose si l'un a battu les trois meilleurs.
-
-**Effectif impair** : un participant reçoit un **bye** (victoire d'office), attribué au **moins bien
-classé n'en ayant pas encore eu** — un bye est un cadeau, il ne doit pas revenir deux fois à la même
-personne ni au mieux classé.
-
-⚠️ **L'appariement procède par essais successifs avec retour arrière**, et non en glouton. Il
-parcourt l'ordre trié par score et essaie, pour chaque participant, ses adversaires du plus proche
-au plus lointain — ce qui préserve « les vainqueurs rencontrent les vainqueurs » —, en revenant sur
-ses pas dès qu'une branche mène à un cul-de-sac. `AppariementImpossible` n'est donc levée que si
-**aucun** appariement sans ré-affrontement n'existe, jamais parce que l'algorithme a mal choisi.
-
-Ce n'est pas de la sophistication gratuite : le premier jet était glouton, et sa dette assumait un
-impact « faible ». Mesure faite en revue sur 500 tournois simulés — **16 archers, 5 rondes**, le
-réglage **par défaut** — : le glouton se bloquait **53 % du temps**, le plus souvent à la dernière
-ronde. Le format était inutilisable au réglage nominal (cf. [DETTE-027](../../docs/dette.md),
-requalifiée).
-
-Domaine **pur** (règle 1).
-
-[référentiel §10.1]: ../../docs/referentiel-ffta.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ **L'appariement procède par ESSAIS AVEC RETOUR ARRIÈRE, jamais en glouton.** Mesuré en revue sur
+500 tournois au réglage par défaut (16 archers, 5 rondes) : le glouton se bloquait **53 %** du
+temps. `AppariementImpossible` ne se lève donc que si aucune solution n'existe (`DETTE-027`).
 """
 
 from __future__ import annotations

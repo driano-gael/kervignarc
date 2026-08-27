@@ -1,63 +1,9 @@
-"""Moteur de placement des archers sur les cibles (E03US001) — domaine **pur**.
+"""Moteur de placement des archers sur les cibles — domaine **pur** (ADR-0022, ADR-0023).
 
-Répartit les archers d'un départ sur les cibles d'un gabarit de salle et produit le **plan de
-cibles** (qui tire où), en signalant les archers qu'aucune cible ne peut accueillir. Aucune
-dépendance framework ni persistance : le service applicatif (`application/placement.py`) reconstitue
-la jointure archer → catégorie → blason depuis les ports, construit la liste des `ArcherAPlacer` et
-appelle `placer` ; ici on ne manipule que des valeurs.
-
-**Trois budgets par cible** (CA « capacité & fraction », clarifié depuis le prototype `cible.py`) :
-
-- **espace** : la somme des `taille` (fractions de place, `]0, 1]`) des cartons posés sur une cible
-  ne dépasse pas **1,0** — une cible est une face physique unitaire ;
-- **positions** : le nombre d'archers d'une cible ne dépasse pas `Cible.capacite` (les lettres
-  A/B/C/D) ;
-- **partage de carton** : plusieurs archers d'un **même blason** partagent un carton tant que sa
-  `capacite` le permet (un triple accueille 3 tireurs sur un seul carton).
-
-**Quatrième contrainte, de 1er rang** (ex-DETTE-002,
-[ADR-0022](../../docs/adr/0022-hauteur-de-centre-sur-la-categorie.md)) : tous les archers d'une
-**même cible** tirent à la **même hauteur de centre** — une butte n'a qu'une hauteur de montage. Un
-U11 (110 cm) ne partage donc jamais une cible avec un adulte (130 cm), quelle que soit la place
-restante.
-
-**Stratégie : glouton, cible par cible, sur une liste triée**
-([ADR-0023](../../docs/adr/0023-moteur-de-placement-glouton-deterministe.md)). Les archers sont
-ordonnés par
-`(hauteur, blason, id)`, ce qui rend contigus les tireurs d'une même hauteur puis d'un même blason ;
-on remplit la cible courante tant que les budgets tiennent, et l'on passe à la **suivante** dès
-qu'un archer n'entre plus (place, position ou hauteur). Un archer qui n'entre nulle part — plus
-aucune cible libre — ressort en **conflit** (`RaisonConflit.NON_PLACE`), jamais en échec silencieux
-(CA « conflits »). Le résultat est **déterministe** (tri stable, pas d'aléa) — exigence de test
-(règle 9). Ce glouton peut laisser de l'espace perdu sur une cible plutôt que de revenir en
-arrière : c'est un compromis assumé du MVP, l'ajustement manuel (E03US004) rattrape les cas limites.
-
-**Mixité ≥ 2 clubs** (E03US006, RG-3,
-[ADR-0047](../../docs/adr/0047-mixite-clubs-par-reordonnancement-et-signal-derive.md)) : contrainte
-**molle**, priorité la plus basse. Elle n'est **pas** câblée dans le glouton — celui-ci reste
-inchangé — mais obtenue en **ré-ordonnant l'entrée** : à l'intérieur de chaque groupe
-`(hauteur, blason)`, où tous les archers sont interchangeables pour les budgets (même fraction, même
-carton, même hauteur), les clubs sont **entrelacés en round-robin** (`_ordonner_pour_mixite`). Une
-cible qui puise dans ce groupe reçoit des clubs variés quand ils existent, sans menacer un budget.
-Quand la mixité **ne peut pas** être garantie (un seul club, ou clubs inconnus —
-`club_id NULL`, *indécidable*, ADR-0014), la cible est **signalée** via `mixite_non_garantie`
-(propriété dérivée du prédicat pur `cible_mixite_non_garantie`), jamais un échec.
-
-**Cloisonnement catégorie/blason** (E03US007, RG-4,
-[ADR-0071](../../docs/adr/0071-cloisonnement-categorie-blason-active-et-dur.md)) : contrainte
-**activable** à quatre positions (`aucun` — défaut, `categorie`, `blason`, `blason_et_categorie`) et
-**dure** quand elle est active — au contraire de la mixité, qui est une préférence. Elle se câble
-donc *dans* le glouton (`_CibleEnCours`), pas dans l'ordre d'entrée ; l'ordre, lui, groupe en plus
-par catégorie quand le réglage la sépare, sans quoi le glouton — qui ne revient jamais en arrière
-(ADR-0023) — fermerait une cible à chaque alternance de catégorie. Un archer qu'aucune cible ne peut
-accueillir sous cette contrainte ressort en conflit, jamais en silence ; et une cible d'un plan
-**déjà posé** qui viole le réglage nouvellement activé est signalée par `cloisonnement_non_respecte`
-— dérivée, jamais persistée, même régime que la mixité.
-
-**Ordre de priorité des contraintes** (question ouverte d'EPIC-03, tranchée ici) :
-`capacité / espace / hauteur` (dures, structurelles) > `cloisonnement` (dure, mais **réglable**) >
-`mixité de club` (molle) > `adjacence des duellistes` (molle). Le cloisonnement ne peut donc que
-**retirer** des cohabitations, jamais en autoriser une.
+⚠️ **Ordre de priorité des contraintes**, qui gouverne tout le module : capacité / espace / hauteur
+(dures) > cloisonnement (dur mais réglable, ADR-0071) > mixité de club (molle, ADR-0047) >
+adjacence des duellistes. Le glouton **ne revient jamais en arrière** : ce qui ne se câble pas dans
+les budgets se joue sur l'**ordre d'entrée**, jamais dans la boucle.
 """
 
 from __future__ import annotations

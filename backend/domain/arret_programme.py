@@ -1,48 +1,10 @@
-"""L'**arrêt programmé** — couper le déroulé à la fin d'un tour ([ADR-0091], E05US033).
+"""Arrêts du déroulé — trois natures séparées (ADR-0076, ADR-0091, ADR-0092) : `ArretProgramme`
+est une **définition** que tous les départs rejouent, `ArretDeCirconstance` une **décision de
+conduite** propre à un créneau, `FranchissementArret` un **état** persisté.
 
-Le besoin du commanditaire n'est pas « déclencher chaque tour à la main » mais « **pouvoir
-couper** » : une phase qui dure des heures doit pouvoir s'interrompre pour le repas, une
-réorganisation de salle, une annonce. L'enchaînement **automatique reste donc le défaut** — une
-phase sans arrêt programmé se comporte exactement comme avant cette US.
-
-**Trois natures, délibérément séparées** ([ADR-0076] appliqué à la lettre) :
-
-- `ArretProgramme` est une **définition** : « après le tour 3, portée départ ». Elle se pose à
-  l'atelier, elle vit sur l'`EtapeDeroule` du tournoi comme le réglage de poules ou de suisse, et
-  **tous les départs du tournoi la rejouent**. C'est le sens d'ADR-0076 : le déroulé se définit une
-  fois, chaque créneau le rejoue — deux départs qui pourraient diverger sur leurs pauses seraient
-  exactement la divergence silencieuse que cet ADR a rendue impossible.
-- `ArretDeCirconstance` est une **décision de conduite** : « bloque-moi dans deux tours », posée
-  au pilotage pendant que la salle tire (E05US034, [ADR-0092]). Elle appartient au **départ**
-  (ADR-0076 §5, *faire vivre se fait au créneau*) et n'est rejouée par personne : la panne de
-  chauffage du matin n'arrête pas l'après-midi.
-- `FranchissementArret` est un **état d'avancement** : « cet arrêt-ci a coupé cette phase-là, et
-  l'admin l'a relevé ». Il est propre au créneau, il vit dans sa propre table, et il est
-  **persisté** — pas dérivé.
-
-⚠️ **Pourquoi le franchissement doit être persisté**, alors que tout le reste de l'avancement est
-dérivé à la lecture ([ADR-0090] §5) : parce que la condition de déclenchement est **monotone**. Une
-fois le tour 2 achevé, « le tour 2 est achevé et un arrêt est posé après le tour 2 » reste vrai pour
-toujours. Un déclencheur qui relirait cette condition sans mémoire remettrait la phase en pause à la
-seconde suivant chaque reprise : l'organisateur perdrait la main **définitivement**, et la salle ne
-repartirait jamais. La trace n'est donc pas un confort d'implémentation, c'est ce qui rend la
-reprise possible.
-
-**Pourquoi un état `ARME` intermédiaire.** Un arrêt de portée départ *« laisse chaque phase finir
-son tour en cours »* (arbitrage du commanditaire, 18/08/2026) : il n'est **pas simultané**. Il faut
-donc un moment où l'arrêt est décidé sans être encore appliqué partout — la salle s'éteint en
-quelques minutes, pas d'un coup. Et comme aucun événement « tour fini » n'est écrit nulle part, on
-note à l'armement le tour que chaque phase a en cours, et l'on constate qu'il est fini quand il a
-**changé**. C'est la seule formulation compatible avec un avancement dérivé.
-
-Module **pur et synchrone** (règle 1) : aucune lecture, aucun état, aucune horloge — un
-franchissement **porte** l'instant de sa coupe (`arrete_depuis`, E05US034), mais c'est le service
-qui le lui donne, par le port `Horloge`.
-
-[ADR-0076]: ../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
-[ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
-[ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-[ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+⚠️ **Le franchissement doit être PERSISTÉ**, contrairement au reste de l'avancement (ADR-0090 §5) :
+la condition est **monotone**. Un déclencheur sans mémoire remettrait la phase en pause à chaque
+reprise, et la salle ne repartirait jamais.
 """
 
 from __future__ import annotations

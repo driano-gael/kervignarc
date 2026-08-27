@@ -1,56 +1,10 @@
-"""Service applicatif de la **colline** (E05US027) — habiter le contrat de phase jouable.
+"""Service **Colline** — un défi est un duel ordinaire ; seule la navigation diffère (ADR-0083 §7).
 
-Le moteur (`domain/colline.py`) est livré depuis E05US015 et n'avait **aucun appelant de
-production** : c'est le dernier volet **« moteurs de formats »** de `DETTE-028`, et ce service est
-cet appelant.
+Rien n'est persisté de l'ordre ni des manches : tout se rejoue des duels validés (ADR-0090 §5).
 
-⚠️ **Ce volet-là se referme, pas la dette entière** — la nuance compte pour qui lira ce module en
-croyant le sujet clos. `ScoreAvecHandicap` et `RoutingRepechage` restent **inertes** (aucun
-`config.policies` ne les porte) et `domain/classement.py` ne passe toujours pas par la famille
-`scoring`. Ce qui subsiste est le volet **politiques**, et il n'a aucune US inscrite.
-
-## Ce qui est partagé, et ce qui ne l'est pas
-
-Comme pour les poules ([ADR-0083](../../docs/adr/0083-le-contrat-de-phase-jouable.md) §7), le
-suisse et le Big Shoot Off, ce qui est partagé avec `ServiceSaisieDuels` l'est **réellement** :
-l'agrégat `Duel`, le pavé de saisie (`bareme_de` / `zones_de`) et la table `duel`. Un défi de
-colline **est** un duel ordinaire, et le faire écrire autrement créerait une énième façon de saisir
-un tir — l'exacte duplication qu'ADR-0083 se donne pour objet de fermer.
-
-Ce qui diffère est la **navigation**, c'est-à-dire le `decor` du contrat : là-bas on retrouve un
-match dans un arbre, en poules une rencontre dans un groupe, au suisse une rencontre dans une ronde,
-ici un **défi dans une manche**. C'est tout ce que ce module réimplémente.
-
-## Le rejeu, et ce qui le rend plus contraint qu'ailleurs
-
-Une phase de colline ne persiste **ni ses défis, ni ses manches, ni l'ordre courant de la
-colline** :
-elle rejoue tout des duels validés. L'ordre initial est le classement amont (référentiel §10.1,
-« version de journée »), et chaque manche close l'échange par `appliquer_manche`.
-
-⚠️ **Ne rien persister de l'ordre est une décision, et c'est la même qu'ADR-0090 §5** (« l'avancement
-se dérive à la lecture »). Persister la colline aurait donné **deux** sources pour une même vérité —
-l'ordre stocké et l'ordre rejouable — qui divergent à la première correction de score. Le rejeu est
-reproductible parce que `defis_de_la_manche` et `appliquer_manche` sont déterministes à donnée
-constante (règle 9) : aucun aléa, aucune horloge.
-
-⚠️ **Le rejeu s'arrête à la première manche incomplète, et ici ce n'est pas une précaution mais une
-nécessité de fond.** Chez le suisse, apparier par-dessus une ronde ouverte fausserait le bye ; ici,
-c'est l'**ordre de la colline lui-même** qui n'existe pas encore — chaque défi non tranché est un
-échange de positions en suspens, et les défis de la manche suivante se calculent sur ces positions.
-Apparier par-dessus ne donnerait pas un appariement approximatif : il en donnerait un **faux**, qui
-changerait sous les yeux du juge à chaque validation. L'état rendu le **dit** (`close`), ce qui
-permet à l'écran de nommer l'attente au lieu d'afficher un bouton inerte.
-
-## Personne n'a de bye, mais tout le monde se repose
-
-Un système suisse donne un **bye** à effectif impair — un archer désigné, qui gagne d'office. Une
-colline n'a pas de bye : elle a des archers **au repos**, qui ne marquent rien et ne bougent pas.
-À portée 1 les extrémités se reposent une manche sur deux **quel que soit** l'effectif, et à portée
-2 la distance tourne, donc le nombre de défis change d'une manche à l'autre. C'est ce qui rend
-l'issue `EN_ATTENTE` ([ADR-0087](../../docs/adr/0087-une-attente-n-est-pas-une-indisponibilite.md))
-indispensable ici, et non pas seulement utile : sans elle, la moitié du plateau passerait pour
-« terminée » à chaque manche.
+⚠️ **Le rejeu s'arrête à la première manche incomplète, par nécessité** : chaque défi non tranché
+est un échange de positions en suspens, et la manche suivante se calcule dessus. Apparier par-dessus
+donnerait un appariement **faux**, qui changerait à chaque validation.
 """
 
 from __future__ import annotations

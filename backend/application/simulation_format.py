@@ -1,44 +1,9 @@
-"""Service applicatif Simulation de format — « le format tient-il à N archers ? » (E01US024).
+"""Simule un format sur le moteur **réel**, sur un tournoi qui n'existe nulle part (ADR-0063).
+L'isolation tient au passage par `ouvrir_sur_harnais`, pas à l'absence de repository.
 
-Le CA : *« je veux être sûr de pouvoir lancer une simulation du format du tournoi une fois les
-phases et le nombre d'inscrits donnés »*. La simulation révèle ce qu'aucune relecture ne donne — le
-format **tient-il** à cet effectif, **combien de duels au total** (donc quelle charge pour les
-scoreurs et les cibles), combien de tours, et le **classement 1→N effectivement produit**.
-
-**Aucun moteur n'est écrit ici.** Tout existe déjà : `fabriquer_harnais_simulation` (E15US002,
-ADR-0054) fournit le substrat in-memory, `ServicePilotageSimulation` (E15US003, ADR-0055) fournit le
-bot qui joue les volées et tranche les duels. Ce service **compose** les deux sur un tournoi qui
-n'existe nulle part.
-
-⚠️ **Ce que la simulation mesure vraiment — et sa limite d'aujourd'hui.** Elle joue le format sur le
-moteur **réel**, celui du jour J. ⚠️ **Depuis E05US020 il honore les prélèvements par rangs**
-(ADR-0068) ; ce qui suit ne vaut donc plus que pour `le_reste`, `par_issue_de_tour` et les types
-qu'aucun service ne déroule. Le moteur **n'a pas de consommateur** de ces sources-là
-côté duels : `ServiceSaisieDuels._decor` ensemence chaque tableau avec **tous** les archers en lice,
-sans regarder le prélèvement déclaré. Un format qui dit « les rangs 1 à 8 au tableau » se joue donc
-aujourd'hui à 12 si 12 archers sont classés. C'est `# DETTE-028` — le catalogue de types et le
-routing sont livrés sans consommateur —, et cette US ne la résorbe pas : elle la **rend visible**.
-Chaque `ToursPhase` porte donc l'effectif **projeté** à côté de l'effectif **constaté**, et l'écran
-signale l'écart. Taire la divergence donnerait un chiffre de duels faux à qui dimensionne ses
-scoreurs ; l'afficher dit exactement ce que l'outil sait et ce qu'il ne sait pas encore.
-
-**Pourquoi le garde-fou d'ADR-0054 §4 ne s'applique pas ici.** Il interdit de simuler un tournoi
-déjà démarré, pour ne pas interférer avec une compétition. Il n'y a ici **aucun tournoi réel** : le
-tournoi simulé naît dans le harnais et meurt avec lui. La non-persistance reste structurelle — ce
-service ne reçoit aucun repository SQL en propre, seulement la bibliothèque de formats, en
-**lecture**. Nuance à ne pas surestimer : `ServicePilotageSimulation`, qu'il compose, **détient**
-des repositories SQL — ils ne sont lus que par `demarrer`, que ce chemin n'emprunte pas. L'isolation
-tient donc parce qu'on appelle `ouvrir_sur_harnais`, pas parce que le chemin SQL serait absent.
-
-**Pourquoi `ServiceJeuEssai` n'est pas réutilisé pour les archers fictifs.** La note de l'US le
-prévoyait (« il n'y a qu'à composer les deux ») ; le code ne s'y prête pas. `ServiceJeuEssai` pilote
-des **services** (`ServiceTournois`, `ServiceDeparts`, `ServiceClubs`, `ServiceInscriptions`…), pas
-des repositories : le brancher sur le harnais supposerait d'élargir `HarnaisSimulation` de trois
-magasins (clubs, départs, inscriptions) et d'instancier six services — pour obtenir des noms. Or un
-format ne connaît ni départs ni clubs ni quotas : ces règles n'ont rien à valider ici. La génération
-locale (`_peupler`) tient en une vingtaine de lignes, reste déterministe (`random.Random(graine)`,
-règle 9) et n'emprunte aucune règle métier à qui que ce soit. Arbitrage tranché en cours d'US et
-consigné à l'ADR-0063 §5.
+⚠️ **La simulation RÉVÈLE un écart qu'elle ne corrige pas** : le moteur de duels ensemence avec tous
+les archers en lice sans lire le prélèvement déclaré (`DETTE-028`). D'où l'effectif **projeté** à
+côté du **constaté** sur chaque `ToursPhase`.
 """
 
 from __future__ import annotations

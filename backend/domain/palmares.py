@@ -1,47 +1,10 @@
-"""Palmarès du tournoi (E06US004) — fusion des rangs décernés par les phases.
+"""Fusion des rangs décernés par les phases — **ne rejoue aucun tableau** (ADR-0067, ADR-0085).
 
-Le classement de qualification (E06US001) dit qui a le mieux tiré ; le tableau (E05US005) dit qui a
-gagné. Le **palmarès** est le classement final du tournoi : un rang par archer, par catégorie, où
-les archers passés par les duels prennent les premiers rangs — dans l'ordre que les duels ont
-décidé — et où ceux qui n'y sont pas entrés suivent dans l'ordre de la qualification.
+Rang **exact** (match terminal), **fourchette** (la plage du match perdu, ADR-0065) et **départage**
+(politique `aggregation`) sont trois notions distinctes : la fourchette n'est pas une approximation.
 
-**Ce module ne rejoue aucun tableau.** Il reçoit ce que chaque phase a **décidé** (`ResultatPhase`,
-une position acquise par archer) et applique la règle de fusion. Reconstruire l'arbre est le travail
-du service (`application/palmares.py`), lire une position acquise celui du domaine `tableau.py`
-(`Tableau.positions_acquises`). La séparation n'est pas cosmétique : elle est ce qui rend la règle
-de fusion testable sans monter un tournoi.
-
-**Trois notions à ne pas confondre** :
-
-| Notion | Qui décide | Exemple |
-|---|---|---|
-| rang **exact** | un match terminal (*Règle T*) | le vainqueur de la petite finale est 3ᵉ |
-| **fourchette** | la plage du match perdu (*Règle R*, ADR-0065) | le battu d'un quart est 5ᵉ-8ᵉ |
-| **départage** | la politique `aggregation` ([ADR-0067]) | qui, des quatre, est 5ᵉ ? |
-
-La fourchette n'est **pas** une approximation : dans un tableau tronqué au podium, aucun match n'a
-été joué pour départager les quatre battus des quarts. La politique `aggregation` décide alors si
-l'on emprunte un ordre à la qualification (défaut, usage World Archery) ou si l'on publie l'ex æquo.
-
-⚠️ **Portée : tout ce qui décerne un rang.** La qualification, les phases à tableau, le Big Shoot
-Off (E05US028), les **poules** et le **système suisse** (E05US026) et — depuis E05US027 — la
-**colline**, par leur classement de phase. Les six y sont : plus aucun type classant n'attend son
-service.
-
-⚠️ **La colline y est entrée sans qu'aucune ligne de ce module change**, et c'est ce que la ligne
-suivante annonçait — mais l'effet mérite d'être dit, parce qu'il n'a été relevé qu'en revue :
-`classement_lisible=True` fait entrer `COLLINE` dans `TYPES_CLASSANTS_LUS`, donc dans
-`_TYPES_CLASSANTS_AU_PALMARES`. **Une colline décerne donc ses rangs au palmarès et au PDF**, ce
-qui est correct et voulu, mais découle d'une bascule de contrat à distance — pas d'une ligne écrite
-ici.
-
-La promesse de ce module s'est vérifiée : il n'a **pas** eu à changer pour les accueillir — il ne
-connaît que des positions acquises, pas la structure qui les a produites. Ce qui décide *quand* une
-phase décerne est tranché par [ADR-0085], hors du domaine.
-
-[ADR-0085]: ../../docs/adr/0085-une-phase-decerne-ses-rangs-si-rien-ne-preleve-dedans.md
-
-[ADR-0067]: ../../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md
+⚠️ **Un type entre au palmarès sans qu'une ligne d'ici ne change** : `classement_lisible=True` le
+fait entrer dans `TYPES_CLASSANTS_LUS`, donc au palmarès et au PDF. Bascule à distance.
 """
 
 from __future__ import annotations

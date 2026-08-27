@@ -1,46 +1,10 @@
-"""Le **classement d'une phase au système suisse** (E05US026), prêt à être prélevé.
+"""Classement de phase d'un système suisse — l'ordre est déjà **total** (ADR-0083). Deux gestes :
+renuméroter, et déclarer les ex æquo irréductibles.
 
-Troisième jumeau de [`classement_de_tableau`](classement_de_tableau.py) et
-[`classement_de_poules`](classement_de_poules.py), et pour la même raison : une phase aval prélève
-« les rangs 1 à 8 » sans avoir à savoir de quel **type** de phase ces rangs viennent.
-`application/prelevement.py` consomme un `ClassementSource` ; ce module en fabrique un à partir de
-ce que `suisse.classement_suisse` produit.
-
-## Pourquoi il est plus court que celui des poules
-
-Une phase de poules doit **inventer** un ordre de phase : rien ne compare le vainqueur de la poule
-1 à celui de la poule 2, d'où le rangement « par rang de poule d'abord », les blocs, et leur
-indécision par défaut. Un système suisse n'a pas ce problème — tout le monde joue dans le **même
-vivier**, et `classement_suisse` rend déjà un ordre **total** : points, Buchholz, critères FFTA.
-
-Il ne reste donc ici que deux gestes :
-
-1. **renuméroter** — `preleves` lit `rang_scratch`, qui doit être la *position* dans le classement
-   de phase, de 1 à N sans trou ;
-2. **déclarer les ex æquo irréductibles** — ceux que même les critères FFTA ne séparent pas.
-
-## Position et rang sportif ne sont pas la même chose
-
-`classement_suisse` applique la convention **« 1224 »** : deux ex æquo au rang 2 laissent le rang 3
-vacant, et le suivant est 4ᵉ. C'est le rang **sportif**, celui qu'on affiche.
-
-`rang_scratch`, lui, est un **indice de fenêtre** : « les rangs 1 à 3 » désigne les trois premières
-places du classement. Y recopier le rang sportif ferait disparaître la 3ᵉ position, et cette fenêtre
-ne prendrait que deux archers — un prélèvement bien formé, plausible, et faux.
-
-Les deux coexistent donc : le rang sportif reste lisible sur `RangSuisse`, la position sert au
-prélèvement, et c'est la **plage indécise** qui porte l'information « ces deux-là sont à égalité »
-([ADR-0081](../../docs/adr/0081-une-phase-attend-que-sa-source-ait-departage-les-places-qu-elle-preleve.md)).
-Départager sur le rang de qualification serait exactement la faute qu'ADR-0081 nomme.
-
-⚠️ **`rang_premier` n'est pas posé ici**, comme chez les deux autres : une phase ne sait pas quelle
-tranche du tournoi elle dispute — c'est une propriété de sa place dans le déroulé, que seul le
-service qui remonte la chaîne connaît (`application/prelevement.py:tranche`). Le poser ici lui
-donnerait une valeur qu'elle ne peut pas vérifier, c'est-à-dire `DETTE-034` rouverte.
-
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Position et rang sportif ne sont PAS la même chose.** Le rang sportif suit « 1224 » (rang 3
+vacant après deux ex æquo) ; `rang_scratch` est un **indice de fenêtre**, de 1 à N sans trou. Y
+recopier le rang sportif ferait qu'un prélèvement « rangs 1 à 3 » n'en prendrait que deux — bien
+formé, plausible, et faux (ADR-0081). `rang_premier` n'est pas posé ici.
 """
 
 from __future__ import annotations

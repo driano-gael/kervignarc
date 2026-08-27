@@ -1,63 +1,10 @@
-"""Service applicatif **Big Shoot Off** — composer, faire tirer, éliminer, classer (E05US028).
+"""Service **Big Shoot Off** — la structure se recalcule, le tir se persiste (ADR-0084).
 
-C'est le consommateur de production qui manquait à `domain/big_shoot_off.py` depuis E05US015 : le
-moteur existait, testé, et **personne ne l'appelait** (`DETTE-028`). Ce service assemble ce que le
-domaine tient séparé — le **prélèvement** (`application/prelevement.py`), la **mécanique
-d'élimination** (`demarrer` / `jouer_manche` / `eliminer_apres_barrage`), le **tir**
-(`domain/serie.py`) et le **barrage** (`domain/barrage.py`, portée `BIG_SHOOT_OFF`).
+Persisté : les volées, dans `serie`/`volee`. Recalculé : qui sort, à quelle manche, à quel rang.
 
-## Ce qui est recalculé, ce qui est persisté
-
-Le parti est celui des poules (ADR-0083) et du tableau (ADR-0023/0048), pour la même raison : **la
-structure se recalcule, le tir se persiste**.
-
-- **Persisté** : les **volées** de chaque archer, dans la table `serie`/`volee` — *sans table ni
-  migration neuve*. C'est le pendant exact d'ADR-0083 §7, où une rencontre de poule réutilise la
-  table `duel` : `Serie` est keyée `(phase_id, archer_id)` depuis E05US025 (ADR-0082), donc les V
-  volées de chaque manche tiennent dans **une** feuille par archer.
-- **Recalculé à chaque lecture** : qui est éliminé, à quelle manche, avec quel rang. Rien de tout
-  cela n'est stocké — c'est une fonction déterministe des volées validées et du réglage. Le
-  persister créerait une **seconde vérité**, périmée dès qu'une flèche mal saisie est corrigée.
-
-⚠️ **Le second point est ce qui *rendra* une correction possible en salle.** Si « éliminé à la
-manche 2 » était une ligne en base, corriger une volée de la manche 1 laisserait l'élimination en
-place : le classement dirait une chose, les scores une autre. Ici la correction remonterait d'elle-
-même toute la chaîne — au prix d'un rejeu complet à chaque lecture (`# DETTE-031`).
-
-⚠️ **Mais aucun chemin de correction n'existe encore** (`# DETTE-061`), et cette note affirmait
-le contraire au présent jusqu'au 15/08/2026 : « ici la correction remonte d'elle-même ». Le rejeu
-est bien correct ; c'est le **geste d'entrée** qui manque. `saisir_volee` passe par
-`Serie.saisir_volee`, qui refuse une volée verrouillée, et le seul appelant de `corriger_volee`
-résout sa feuille
-par `_phase_qualification` — jamais celle d'une finale. Une flèche mal saisie et **validée** en Big
-Shoot Off est donc définitive, l'élimination qu'elle a produite avec elle. Dette assumée par le
-commanditaire le 15/08/2026 ; correction livrée en US dédiée. La promesse au présent est corrigée
-ici plutôt que supprimée : c'est elle qui a fait croire la capacité livrée, dans l'US **et** dans la
-fiche de recette.
-
-## La numérotation des volées, et son ancrage
-
-Une manche est un **bloc de V volées consécutives** : la manche *m* occupe les volées
-`(m-1)·V + 1 … m·V`. Le nombre total de volées d'un archer est donc `len(eliminations) · V` — le
-« barème » au sens de `Serie`, qui borne la saisie.
-
-La numérotation est **continue et dérivée**, jamais stockée : elle se recalcule du réglage. Un
-archer éliminé à la manche 2 n'a simplement pas de volées au-delà — l'absence *est* l'information,
-comme pour la réserve d'un plan de cibles (ADR-0024).
-
-## Le grain de validation, et pourquoi le service ne lit pas `phase.validation`
-
-Une manche se valide d'un bloc, et `Serie.valider` sait déjà le faire : `toutes_les_n_volees(V)`
-verrouille « le prochain lot de V volées non validées », ce qui **est** la manche courante. Le grain
-est donc dérivé du réglage (`configuration.volees`) plutôt que lu sur la phase.
-
-⚠️ **C'est un écart assumé, et il est tracé** (`# DETTE-058`). `phase.validation` reste réglable à
-l'atelier pour ce type (`_GRAINS_ADMIS` y admet `FIN_DE_SERIE` et `TOUTES_LES_N_VOLEES`), mais un
-Big Shoot Off validé « en fin de série » serait injouable : on ne saurait qui est éliminé qu'après
-la dernière manche, c'est-à-dire jamais, puisque la dernière manche dépend des précédentes. Le
-service impose donc le seul grain cohérent au lieu d'honorer un réglage qui bloquerait la salle.
-Le remède propre — retirer `FIN_DE_SERIE` des grains admis pour ce type — touche un invariant de
-`domain/phase.py` partagé avec la qualification ; il vaut une US, pas un cavalier ici.
+⚠️ **Aucun chemin de correction n'existe** (`DETTE-061`) : une volée validée est définitive, et
+l'élimination qu'elle a produite avec elle. Le rejeu est correct — c'est le geste d'entrée qui
+manque, et la fiche de recette a cru la capacité livrée.
 """
 
 from __future__ import annotations

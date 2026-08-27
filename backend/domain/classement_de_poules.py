@@ -1,60 +1,10 @@
-"""Le **classement d'une phase de poules** — « par rang de poule d'abord » (E05US023).
+"""Classement de phase à partir de poules jouées **en parallèle** (ADR-0083, ADR-0081).
 
-ADR-0083 §6.
+Les rangs vont par **blocs** : sur `P` poules, `1..P` sont les vainqueurs, `P+1..2P` les deuxièmes.
 
-Jumeau de [`classement_de_tableau`](classement_de_tableau.py), et pour la même raison : une phase
-aval prélève « les rangs 1 à 8 » sans avoir à savoir de quel **type** de phase ces rangs viennent.
-`application/prelevement.py` consomme un `ClassementSource` ; ce module en fabrique un à partir de
-ce que le moteur de poule produit — un classement **par groupe** (`classement_de_poule`), pas un
-classement de phase.
-
-## La règle, et pourquoi elle n'est pas « poule après poule »
-
-Les poules se jouent **en parallèle** : elles commencent et finissent ensemble, et rien ne rend la
-poule 1 plus relevée que la poule 2. Concaténer les groupes (les trois de la poule 1, puis les trois
-de la poule 2) placerait donc le **2ᵉ** d'un groupe devant le **vainqueur** du suivant, ce qu'aucune
-compétition ne fait. L'ordre est celui du CA, arbitré le 09/08/2026 : sur `P` poules, les rangs
-`1..P` sont les vainqueurs, `P+1..2P` les deuxièmes, et ainsi de suite. On appelle **bloc** chacune
-de ces tranches.
-
-Deux conséquences du CA, toutes deux voulues :
-
-- **le classement porte tout le monde**, pas seulement les qualifiés — c'est le *prélèvement* qui
-  sélectionne, ce qui rend une consolante « les rangs 9 à 16 » composable sans réglage neuf ;
-- **le dernier bloc peut être incomplet** (7 poules dont deux de 5 → deux occupants au 5ᵉ bloc), et
-  les surnuméraires vont **en dernier**.
-
-## Ce que ce module refuse de prétendre savoir
-
-À l'intérieur d'un bloc, **les archers sont ex æquo**. Les ordonner par numéro de poule donnerait au
-vainqueur de la poule 1 la tête de série n°1, au seul motif que sa poule porte le n°1 — c'est
-exactement la faute que `qualifies_de_poule` refuse déjà (« qualifier sur l'ordre d'affichage »).
-Les blocs sont donc déclarés **indécis** (ADR-0081), ce qui fait refuser une fenêtre qui les coupe
-(« les rangs 1 à 2 » sur 4 poules) et honorer celle qui les contient (« les rangs 1 à 4 »).
-
-Le **départage optionnel** (`departage`, les cinq critères du référentiel §10.1) referme les blocs
-quand l'organisateur le demande. Il est optionnel parce que comparer des décomptes obtenus **contre
-des adversaires différents** n'a de valeur que si l'on en a besoin ; ADR-0081 rend l'option
-auto-régulée — elle n'est nécessaire que quand la phase avale prélève *à l'intérieur* d'un bloc, et
-l'outil le dit au lieu de qualifier en silence.
-
-⚠️ **Un ex æquo *interne* à une poule enjambe deux blocs, et les lie.** Deux archers que les cinq
-critères ne séparent pas aux 3ᵉ et 4ᵉ places de leur groupe occupent le 3ᵉ et le 4ᵉ bloc — mais on
-ne sait pas lequel est où. Les deux blocs deviennent alors **indécis ensemble**, sur la seule plage
-que l'égalité enjambe. Sans cette liaison, « les rangs 5 à 6 » passerait en prenant un archer pour
-un 3ᵉ avéré : une population bien formée, plausible, et fausse — la classe de défaut qu'ADR-0081
-existe pour fermer. La liaison est **locale** : elle ne contamine pas les blocs que l'égalité
-n'enjambe pas, sans quoi un ex æquo de fond de poule rendrait toute la phase illisible.
-
-**Pourquoi le domaine.** La fonction croise des `RangPoule`, un `LigneClassement` et une politique
-`Tiebreak` — trois notions du domaine, aucune infrastructure, aucun repository. C'est l'argument
-exact de `classement_de_tableau`, et il n'y a aucune raison que les deux jumeaux vivent dans deux
-couches. *(ADR-0083 plaçait d'abord cette fonction en `application/poules.py` ; elle
-descend ici pour cette raison, et l'ADR est corrigé en conséquence.)*
-
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Dans un bloc les archers sont EX ÆQUO**, et un ex æquo interne à une poule **lie deux blocs**
+sur la plage qu'il enjambe. Sans cette liaison, « les rangs 5 à 6 » prendrait un archer pour un 3ᵉ
+avéré : bien formé, plausible, et faux.
 """
 
 from __future__ import annotations

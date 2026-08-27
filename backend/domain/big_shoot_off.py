@@ -1,54 +1,10 @@
-"""Moteur du **Big Shoot Off** — finale à N archers en parallèle (E05US015, [ADR-0062]).
+"""**Big Shoot Off** — type de phase à N participants, pas un barème de duel (ADR-0062).
 
-Règle **fournie par le commanditaire le 31/07/2026**, qui **ferme la question Q9** du cahier des
-charges — bloquante depuis l'origine du projet — puis **élargie par lui le 14/08/2026** au cadrage
-d'E05US028. Les deux états sont reproduits au [référentiel §10.1] ; le second fait foi :
+Deux barrages : à la barre (toujours, §8.2, seuls les ex æquo de la frontière tirent) et entre
+sortants (au choix — un barrage immobilise le pas de tir).
 
-> Une phase finale qui reçoit N archers. Ils tirent en parallèle, par tours ; à chaque tour chacun
-> tire V volées de F flèches, et **les plus faibles sont éliminés** — l'organisateur dit, **tour par
-> tour, combien sortent**.
-
-⚠️ **Ce n'est pas un barème de duel mais un type de phase à N participants.** Le « Big » désigne le
-**nombre d'archers**, pas le nombre de flèches. Le cadrage a levé ainsi une tension du cahier des
-charges, qui le rangeait tantôt en barème (EF-1.5, EF-5.2) tantôt en type de phase (EF-3.2) : c'est
-bien un type, et c'est pourquoi il a son moteur plutôt qu'une ligne dans `BaremeDuel`.
-
-## Ce que l'élargissement du 14/08/2026 a changé, et pourquoi
-
-La première règle éliminait **un** archer par tour, et `restants` (K) disait où s'arrêter. Deux
-paramètres pour une même information — combien de monde sort, et jusqu'où — qui pouvaient se
-contredire : `demarrer` devait refuser `K >= N`. Le commanditaire a demandé de pouvoir sortir
-**plusieurs** archers par tour (le rythme d'une finale spectacle : 12 → 8 → 4 → 2), ce qui rend le
-compte par tour explicite et **fait disparaître K** — il ne reste que ce qu'on n'a pas éliminé.
-
-⚠️ **`eliminations` est une liste écrite par l'organisateur, pas une progression déduite.** Une case
-par manche, « combien sortent à ce tour ». Rien n'impose qu'elle décroisse ni qu'elle soit
-régulière : `(2, 2, 2, 2)`, `(4, 2, 1)` et `(1, 5)` sont également valides. *(Le mot « suite » a été
-écarté au cadrage : il faisait entendre une règle imposée par l'outil.)*
-
-**On joue tant que la manche est possible.** Une liste n'est jamais refusée, elle s'écourte : un
-format est de la **configuration** (règle 2) : il part au patrimoine et se réutilise sur des
-effectifs qu'il ne connaît pas. Refuser aurait obligé à ressaisir la liste le jour J — au moment
-où il a le moins de temps, et sur une phase **avale** dont l'effectif dépend de qui a survécu au
-tableau. `paliers_pour` existe pour que l'atelier **montre** ce que la liste donne sur l'effectif du
-jour, avant de composer : on montre, on ne décide pas à sa place.
-
-## Les égalités, et les deux barrages qu'elles déclenchent
-
-- **À la barre** — la frontière entre sortants et rescapés. Elle décide *qui continue*, donc elle se
-  tire toujours (§8.2). Seuls les ex æquo **de la frontière** tirent : un archer déjà condamné, ou
-  déjà sauvé, ne monte pas sur le pas de tir.
-- **Entre sortants** — deux éliminés au même score ne diffèrent que par leur *numéro de rang*. Les
-  départager est un **choix d'organisateur** (`departage_les_sortants`, demandé le 14/08), pas une
-  règle : c'est le jumeau exact de `ReglageDePoules.departage_inter_poules`, et pour la même raison
-  un barrage immobilise le pas de tir et le juge, donc on ne le déclenche pas pour une distinction
-  que personne n'utilisera.
-
-⚠️ **Ce module ne fait pas tirer.** Il reçoit les scores d'une manche et dit qui sort ; c'est une
-mécanique d'élimination, pas une saisie. Domaine **pur** (règle 1).
-
-[référentiel §10.1]: ../../docs/referentiel-ffta.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ **`eliminations` est ÉCRITE par l'organisateur, pas déduite** : rien n'impose qu'elle décroisse.
+Jamais refusée, elle s'**écourte** — un format se réutilise sur des effectifs inconnus (règle 2).
 """
 
 from __future__ import annotations

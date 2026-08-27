@@ -4,7 +4,6 @@
 # CLIQUET : un chiffre ne se releve JAMAIS. Toute US qui touche un fichier fait baisser le
 # sien ; un fichier absent d'ici n'a droit a aucun bloc long. Quand un chiffre atteint 0,
 # retirer sa ligne.
-
 api/dependances.py 4
 api/erreurs.py 2
 api/realtime.py 2
@@ -61,11 +60,11 @@ application/audit.py 1
 application/auth.py 1
 application/bareme_qualification.py 4
 application/barrages.py 9
-application/big_shoot_off.py 17
+application/big_shoot_off.py 16
 application/categories.py 3
 application/classements.py 4
 application/clubs.py 2
-application/colline.py 22
+application/colline.py 21
 application/completude.py 4
 application/departs.py 7
 application/documents_salle.py 1
@@ -98,7 +97,7 @@ application/placement.py 6
 application/placement_duels.py 3
 application/portee.py 4
 application/postes.py 6
-application/poules.py 19
+application/poules.py 18
 application/prelevement.py 8
 application/referentiel_ffta.py 2
 application/remboursements.py 2
@@ -107,7 +106,7 @@ application/saisie.py 13
 application/saisie_duels.py 15
 application/scoreurs.py 1
 application/simulation.py 2
-application/simulation_format.py 9
+application/simulation_format.py 8
 application/suisse.py 16
 application/suivi_deroule.py 10
 application/supervision.py 3
@@ -116,22 +115,22 @@ application/tournois.py 7
 bootstrap/composition.py 17
 domain/anomalie.py 2
 domain/archer.py 5
-domain/arret_programme.py 12
+domain/arret_programme.py 11
 domain/bareme.py 1
 domain/barrage.py 11
-domain/big_shoot_off.py 9
+domain/big_shoot_off.py 8
 domain/blason.py 6
 domain/categorie.py 5
 domain/classement.py 8
-domain/classement_de_colline.py 3
-domain/classement_de_poules.py 3
-domain/classement_de_suisse.py 4
+domain/classement_de_colline.py 2
+domain/classement_de_poules.py 2
+domain/classement_de_suisse.py 3
 domain/classement_de_tableau.py 5
 domain/cloisonnement.py 2
 domain/club.py 2
-domain/colline.py 5
+domain/colline.py 4
 domain/completude.py 3
-domain/contrat_phase.py 20
+domain/contrat_phase.py 19
 domain/cycle_depart.py 4
 domain/depart.py 3
 domain/deroule.py 20
@@ -156,11 +155,11 @@ domain/inscription.py 1
 domain/jalon.py 7
 domain/listes_impression.py 1
 domain/paiement.py 1
-domain/palmares.py 10
+domain/palmares.py 9
 domain/participant.py 1
 domain/patrimoine.py 2
 domain/phase.py 22
-domain/placement.py 14
+domain/placement.py 13
 domain/placement_par_bloc.py 4
 domain/plage.py 1
 domain/politiques.py 18
@@ -171,7 +170,7 @@ domain/qualification.py 4
 domain/remboursement.py 1
 domain/scoreur.py 1
 domain/serie.py 7
-domain/suisse.py 9
+domain/suisse.py 8
 domain/suivi_deroule.py 7
 domain/supervision.py 2
 domain/tableau.py 11

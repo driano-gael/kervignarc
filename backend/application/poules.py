@@ -1,45 +1,9 @@
-"""Service applicatif **Poules** — composer, poser, faire tirer et classer (E05US023, [ADR-0083]).
+"""Service **Poules** — la structure se recalcule, le tir se persiste (ADR-0083 §7). Recalculé :
+composition, rencontres, couloirs, classement. Persisté : le bloc de couloirs et le tir.
 
-C'est le consommateur de production qui manquait à `domain/poule.py` depuis E05US015 : le moteur
-existait, testé, et **personne ne l'appelait** (`DETTE-028`). Ce service assemble ce que le domaine
-tient séparé — le **classement source** (`application/prelevement.py`), la **composition** en
-groupes (`composer_poules`), le **placement** en blocs de couloirs (`placer_les_blocs`), les
-**rencontres** (`rencontres_de_poule`), le **classement de poule** (`classement_de_poule`) et le
-**barrage** (`domain/barrage.py`, déjà opérationnel en portée `poule` depuis E06US003).
-
-## Ce qui est recalculé, ce qui est persisté
-
-Le parti est celui du tableau (ADR-0023/0048), et pour la même raison : **la structure se recalcule,
-le tir se persiste**.
-
-- **Recalculé à chaque lecture** : la composition (qui est dans quelle poule), les rencontres et
-  leur ordre, les couloirs de chaque rencontre tour par tour, le classement de poule. Tout cela est
-  une fonction déterministe du classement source et du réglage — le persister créerait une seconde
-  vérité, périmée dès qu'une volée en retard est validée.
-- **Persisté** : le **bloc de couloirs** de chaque poule (`placement_poule`, migration 0045) et le
-  **tir** de chaque rencontre (table `duel`, sans table ni migration neuve — ADR-0083 §7).
-
-## La numérotation des rencontres, et son ancrage
-
-Une rencontre est un **duel ordinaire** : elle se saisit avec le pavé d'E04US013 et se range dans
-`duel`, keyée `(phase_id, match_numero)`. Le `match_numero` est attribué **déterministe** — poules
-dans l'ordre, rencontres dans l'ordre que la méthode du cercle produit, numérotation continue depuis
-1. Même hypothèse que l'arbre d'un tableau, et **le même garde-fou** : le tir enregistre l'identité
-de ses deux duellistes, si bien qu'une composition changée (un forfait, une volée validée en retard)
-fait **détecter** la divergence au lieu de ré-attribuer un score à d'autres (ADR-0049 §4).
-
-⚠️ **Ce garde-fou masque, il ne répare pas.** Un score dont les duellistes ne correspondent plus
-s'affiche « non tiré » — ce qui est le comportement voulu, mais qui reste une perte visible pour le
-scoreur. En salle, recomposer une phase de poules déjà entamée n'est donc pas une opération
-anodine ; le CA ne l'offre pas, et rien ici ne la facilite.
-
-## Coût d'exécution
-
-La composition relit le classement source, donc hérite de `DETTE-031` (reconstruction non
-mémoïsée). La mémoïsation **à l'intérieur d'un appel** suit le parti d'E05US024 — le cache est créé
-au sommet et descendu — ; le cache transverse aux requêtes n'est pas rouvert ici.
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Le garde-fou d'identité des duellistes MASQUE, il ne répare pas** : un score dont les
+duellistes ne correspondent plus s'affiche « non tiré ». Recomposer une phase de poules entamée
+n'est donc pas anodin — le CA ne l'offre pas, et rien ici ne la facilite.
 """
 
 from __future__ import annotations

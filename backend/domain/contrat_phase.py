@@ -1,55 +1,10 @@
-"""Le **contrat de phase jouable** — ce qu'un type de phase doit savoir répondre ([ADR-0083]).
+"""Le **contrat de phase jouable** — une source unique par capacité (ADR-0083 §1).
 
-**Pourquoi ce module existe.** Au 09/08/2026, **dix** endroits du code filtraient sur
-`TypePhase.ELIMINATION_DIRECTE`, chacun répondant à une question légèrement différente : « monte-
-t-elle un arbre ? », « le moteur va-t-il la monter ? », « sait-on lire ce qu'elle a classé ? »,
-« peut-on y saisir un tir ? », « a-t-elle un plan de cibles ? »… Le code documentait lui-même que
-ces tables « ne se recoupent que par coïncidence », et **deux divergences réelles** y étaient déjà
-consignées. Ajouter les poules à dix tables indépendamment, puis le suisse, puis la colline,
-garantissait la 3ᵉ, 4ᵉ et 5ᵉ : **la 3ᵉ occurrence réelle était atteinte**, donc le remède structurel
-est justifié par le code d'aujourd'hui et non par une évolution supposée (règle « remède
-structurel » de `CLAUDE.md`).
+Les tables historiques en sont **dérivées** : un type s'ajoute à un seul endroit, et une table qui
+diverge devient impossible. Catalogue de capacités, pas un moteur.
 
-**Ce que le module fait, et ce qu'il ne fait pas.** Il ne supprime aucune des tables existantes —
-leurs noms sont lus par une centaine de sites — il en fait des **dérivées** d'une source unique
-*par capacité*. Ajouter un type se règle ici, à un seul endroit ; une table qui diverge devient
-**impossible** plutôt qu'improbable. Il ne décide rien du **déroulé** : c'est un catalogue de
-capacités, pas un moteur.
-
-**Les six questions du contrat** (ADR-0083 §1) et où chacune est portée :
-
-1. *Qui entre dedans ?* — générique depuis [ADR-0068] / E05US024 (`application/prelevement.py`),
-   aucune capacité à déclarer ici.
-2. *Qu'est-ce qu'on saisit ?* — `decor` (`DecorDeSaisie`).
-3. *Quand est-ce validé ?* — le **grain**, déjà porté par `phase._GRAINS_ADMIS` : source unique
-   depuis E05US015, donc rien à reprendre.
-4. *Qui est classé, et dans quel ordre ?* — `produit_un_classement` et `classement_lisible`.
-5. *Où l'archer tire-t-il ensuite ?* — `route_l_archer`.
-6. *Combien de couloirs, et comment ?* — `plan_de_cibles` (`PlanDeCibles`).
-
-Deux capacités s'y ajoutent, qu'aucune des six ne recouvre mais que le code posait déjà :
-`oppose_des_tireurs` (le plancher d'inscrits d'E05US021) et `deroule_par_un_service` (« un service
-de production **exécute** ce type aujourd'hui »).
-
-⚠️ **`deroule_par_un_service` décrit le code du jour, pas l'intention.** C'est la capacité la plus
-facile à mentir : elle vaut `True` seulement si un service de production fait réellement jouer ce
-type. `PLACEMENT` y vaut donc `False` — aucun service ne monte son tableau, ce que `phase.py`
-consignait déjà (`# DETTE-028`) pendant que `deroule._TYPES_DEROULES` affirmait le contraire. C'est
-l'une des deux divergences que ce module ferme.
-
-⚠️ **Elle s'appelait `monte_les_oppositions` jusqu'à E05US028**, et le renommage est le premier
-endroit où ce contrat a cédé — exactement là où [ADR-0083] §2 annonçait qu'il céderait. Le Big Shoot
-Off n'a **ni matchs ni groupes** : il fait tirer une volée collective. La mettre à `True` pour lui
-aurait été faux au sens de sa **propre définition**, et la laisser à `False` aurait fait mentir le
-signal d'écart de l'atelier sur un format désormais jouable. Aucune des deux réponses n'était juste,
-ce qui est la signature d'un nom trop étroit et non d'un cas particulier : la capacité a toujours
-répondu « un service exécute-t-il ce type ? », c'est son nom qui décrivait *comment*. Les tables
-dérivées ont suivi (`TYPES_MONTES` → `TYPES_DEROULES`).
-
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
-[ADR-0068]: ../../docs/adr/0068-le-moteur-consomme-les-prelevements-declares.md
+⚠️ **`deroule_par_un_service` décrit le CODE DU JOUR, pas l'intention** — la capacité la plus facile
+à mentir. `True` seulement si un service de production joue ce type ; `PLACEMENT` vaut `False`.
 """
 
 from __future__ import annotations

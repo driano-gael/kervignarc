@@ -1,43 +1,10 @@
-"""Moteur de **colline** — King of the Hill et Ladder (E05US015, [ADR-0062]).
+"""Moteur de **colline** — King of the Hill et Ladder, une seule mécanique (ADR-0062).
 
-Règles **fournies par le commanditaire le 31/07/2026**, reproduites au [référentiel §10.1]. Les deux
-formats y sont décrits séparément, mais ils partagent **une seule mécanique** : les participants
-occupent des positions ordonnées, on en fait s'affronter certains, **le gagnant monte et le perdant
-descend**. Ce qui les sépare est la **portée du défi** — un rang au-dessus (voisins) pour le King of
-the Hill, deux pour le Ladder (« le n°6 peut seulement défier le 5 ou le 4 »). C'est donc un
-paramètre, pas un second moteur : la règle 2 en fait de la configuration.
+Le gagnant monte, le perdant descend ; seule la **portée du défi** sépare les deux formats — un
+paramètre, pas un second moteur (règle 2). Variante de **journée**, référentiel §10.1.
 
-**Deux arbitrages qu'il faut connaître pour lire ce module.**
-
-1. **Version « journée », pas classement permanent.** Les règles données décrivent un classement qui
-   « évolue toute l'année » et des défis lancés au fil de l'eau — ce qui ne se modélise pas en
-   `Phase` (une phase a des sources, un effectif, un début et une fin dans un tournoi). Arbitré avec
-   le commanditaire au cadrage du 31/07/2026 : on retient la **variante de journée** — ordre initial
-   donné par le classement source, `nb_manches` réglé à la composition, classement final = la
-   colline à la fin. Le classement permanent de club reste un autre produit.
-2. **La mécanique retenue est « deux voisins s'affrontent »**, la seconde des deux que la règle du
-   King of the Hill propose (l'autre étant « tous peuvent défier le King »). Choisi par le
-   commanditaire : elle fait jouer tout le monde à chaque manche, là où défier le King n'occupe que
-   deux archers.
-
-✅ **Écart tranché le 22/08/2026 (E05US027) : c'est la RÈGLE qui fait foi.** L'exemple chiffré du
-Ladder ne concordait pas avec elle — partant de `1 2 3 4 5 6 7 8`, « le n°6 défie le 4 et gagne » y
-donnait `1 2 3 5 6 4 7 8`, c'est-à-dire le n°6 en **5ᵉ** position, alors que gagner un défi contre
-le
-4 mène à la **4ᵉ**. Ce module applique la règle (« le gagnant monte, le perdant descend » : les deux
-positions s'échangent), et l'arbitrage **confirme** ce comportement au lieu de le changer.
-
-Reversé dans les quatre sources : `stories/E05-moteur-phases.md`, `docs/referentiel-ffta.md` §10.1,
-`docs/fonctionnel/E05US015.md` et [ADR-0062] § « Ce que cet ADR ne tranche pas ».
-
-⚠️ **Cette docstring est restée « à confirmer à la recette » alors que les autres sources étaient à
-jour** (relevé par l'axe adversarial) : le module qui *applique* la règle est le dernier endroit où
-un point tranché devrait rester ouvert — c'est celui qu'on ouvre pour savoir ce que le code fait.
-
-Domaine **pur** (règle 1).
-
-[référentiel §10.1]: ../../docs/referentiel-ffta.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ **Personne n'a de bye ici, mais tout le monde se repose** : à portée 1 les extrémités se reposent
+une manche sur deux, quel que soit l'effectif — d'où l'issue `EN_ATTENTE` (ADR-0087).
 """
 
 from __future__ import annotations
