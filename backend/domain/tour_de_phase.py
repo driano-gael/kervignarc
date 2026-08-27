@@ -44,28 +44,11 @@ def libelle_de_tour(
 ) -> str | None:
     """Le nom que la salle donne à ce tour, ou `None` si elle n'en donne aucun.
 
-    `None` plutôt qu'une chaîne vide pour `PHASE_ENTIERE` : une qualification en cours se lit
-    « Qualification », jamais « Qualification — tour 1 sur 1 ». L'appelant décide de n'afficher
-    rien, et un `None` explicite l'empêche de concaténer un séparateur orphelin.
-
-    ⚠️ **La même clause vaut pour toute phase à un seul tour**, pas seulement pour `PHASE_ENTIERE` :
-    une poule de deux archers, un système suisse dont l'effectif n'autorise qu'une ronde, un Big
-    Shoot Off à manche unique n'annoncent **rien**. C'est la lettre du CA (« il n'y a rien à
-    distinguer »), et la première rédaction ne l'appliquait qu'au premier cas — relevé en revue
-    (axe B), avec la précision qui compte : le test censé couvrir ce CA n'exerçait que le cas qui
-    passait déjà. Le **tableau** fait exception et n'a pas besoin de la garde : son tour unique
-    s'appelle « Finale », qui est un nom.
-
-    ⚠️ **`TOUR_DE_TABLEAU` délègue, il ne recalcule pas.** `DETTE-020` compte déjà **deux**
-    domiciles pour le libellé de tour d'un arbre (`domain.tableau.libelle_tour` et le front
-    `saisie-duels/duel.ts`), et `E07US005` a failli en ouvrir un troisième avant de le refermer en
-    servant le libellé du domaine au DTO. Réimplémenter « à rebours de la finale » ici en ouvrirait
-    un quatrième — et surtout perdrait les deux règles que la fonction du tableau porte et qu'un
-    générique ne devinerait pas : la petite finale se dispute **au même tour** que la finale, et un
-    match de placement se nomme par sa **plage** et non par sa distance au titre.
-
-    `place_en_jeu` et `plage` ne concernent donc que le tableau ; les autres unités les ignorent,
-    n'ayant pas d'arbre où se perdre.
+    `None` plutôt qu'une chaîne vide : une qualification se lit « Qualification », jamais «
+    Qualification — tour 1 sur 1 » ; un `None` explicite empêche un séparateur orphelin. ⚠️ **La
+    clause vaut pour toute phase à un seul tour**, pas seulement `PHASE_ENTIERE` ; le **tableau**
+    fait exception, son tour unique s'appelant « Finale ». ⚠️ **`TOUR_DE_TABLEAU` délègue, il ne
+    recalcule pas** : `DETTE-020` compte deux domiciles, et un générique perdrait la petite finale.
     """
     if unite is UniteDeTour.PHASE_ENTIERE:
         return None

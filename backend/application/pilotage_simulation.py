@@ -556,13 +556,13 @@ class ServicePilotageSimulation:
         """Pose une volée **validée** (verrouillée) dans la série de l'archer, et compte l'unité.
 
         Court-circuite délibérément le workflow de validation par grain d'E04US002 (ADR-0055 §3) :
-        produire une donnée plausible n'est pas rejouer la cérémonie de saisie. Le `_avec_volee`
-        local duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
+        produire une donnée plausible n'est pas rejouer la cérémonie de saisie. `_avec_volee`
+        duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
         """
+
         # E05US025 : la feuille se résout par `(phase, archer)`. La session porte déjà l'identifiant
-        # de la qualification qu'elle simule (`phase_qualif_id`, posé à l'ouverture) — le harnais ne
-        # simule qu'un déroulé mono-qualification, mais il écrit désormais **dans** cette phase et
-        # non « dans le tournoi », ce qui le rend juste si un scénario multi-qualifications arrive.
+        # de la qualification qu'elle simule (`phase_qualif_id`) — le harnais ne simule qu'un
+        # déroulé mono-qualification, mais il écrit **dans** cette phase et non « dans le tournoi ».
         serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
             serie = Serie.vide(session.tournoi_id, archer_id, session.phase_qualif_id)
@@ -580,14 +580,12 @@ class ServicePilotageSimulation:
         gagnant: Cote,
         auteur: str,
     ) -> None:
-        """Score un duel jusqu'au vainqueur `gagnant`, le valide (le tableau avance ensuite,
-        ADR-0049).
+        """Score un duel jusqu'au vainqueur `gagnant`, puis le valide (ADR-0049).
 
         Scores **décisifs** (gagnant au maximum, perdant strictement en dessous) : le duel se
-        tranche toujours par les manches, sans barrage. Le barrage reste géré par sécurité (ne
-        devrait pas se déclencher). Vaut en `sets` comme en `cumul` : la condition d'arrêt
-        `resultat.termine` n'est vraie avant la dernière manche qu'en sets (en cumul, on saisit
-        toutes les manches).
+        tranche toujours par les manches, sans barrage — celui-ci reste géré par sécurité. Vaut en
+        `sets` comme en `cumul` : la condition d'arrêt `resultat.termine` n'est vraie avant la
+        dernière manche qu'en sets (en cumul, on saisit toutes les manches).
         """
         tid = session.tournoi_id
         n = etat_duel.numero

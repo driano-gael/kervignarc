@@ -29,12 +29,10 @@ class Anomalie:
     """Un défaut constaté, **localisé** sur la phase qu'il concerne.
 
     `ordre` vaut `None` quand le défaut porte sur la séquence entière (des ordres non contigus ne
-    désignent aucune phase en particulier) — c'est ce qui permet au front de coller le défaut sur le
-    bon bloc du schéma plutôt que de l'afficher en message abstrait, comme le CA l'exige.
-
-    L'erreur est **portée**, pas levée : `Anomalie` n'hérite pas de `DomainError` et ne se `raise`
-    pas. Les enveloppes levantes font `raise anomalie.erreur`, de sorte que le type d'exception vu
-    par l'API — et donc son code HTTP — reste **exactement** celui d'avant l'US.
+    désignent aucune phase) — c'est ce qui permet au front de coller le défaut sur le bon bloc du
+    schéma, comme le CA l'exige. ⚠️ L'erreur est **portée, pas levée** : `Anomalie` n'hérite pas de
+    `DomainError` ; les enveloppes font `raise anomalie.erreur`, de sorte que le code HTTP reste
+    exactement celui d'avant l'US.
     """
 
     erreur: DomainError

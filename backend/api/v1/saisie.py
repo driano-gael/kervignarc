@@ -60,13 +60,11 @@ class DepartCourantReponse(BaseModel):
 class ArcherGrilleReponse(BaseModel):
     """Une ligne de la grille : position A..D, archer, et son **pavé** (zones légales du blason).
 
-    `zones` porte le pavé de saisie **déduit du blason tiré** (CA « pavé ») dans l'ordre canonique
-    centre→extérieur : sur un triple 40 les touches basses en sont **absentes**. Le front l'affiche
-    tel quel — le serveur reste l'autorité du barème. `[]` = blason indéterminable (pavé indispo.).
-
-    `forfait` dit que l'archer a abandonné ou été disqualifié en qualification (E04US015) : il reste
-    dans la grille, mais sa série **ne sera jamais complétée**. Sans ce signal, un client qui attend
-    « toutes les séries closes » attendrait pour toujours (E04US018).
+    `zones` porte le pavé **déduit du blason tiré**, dans l'ordre canonique centre→extérieur : sur
+    un triple 40 les touches basses en sont **absentes**. Le serveur reste l'autorité du barème ;
+    `[]` = blason indéterminable. ⚠️ `forfait` dit que l'archer a abandonné ou été disqualifié
+    (E04US015) : sa série **ne sera jamais complétée**, et sans ce signal un client qui attend «
+    toutes les séries closes » attendrait pour toujours (E04US018).
     """
 
     position: str

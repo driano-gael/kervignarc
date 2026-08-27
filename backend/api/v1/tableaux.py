@@ -50,21 +50,11 @@ class DuellisteReponse(BaseModel):
 class DuelPublicReponse(BaseModel):
     """Un match de l'arbre, vu du public.
 
-    ⚠️ **`libelle` vient du domaine, il n'est pas recalculé côté client.** Nommer un match est du
-    **vocabulaire métier** (règle 3) : `domain.tableau.libelle_tour` en est le domicile, et le
-    servir ici évite d'en ouvrir un troisième (`DETTE-020` en compte déjà deux). Un premier jet de
-    cette US le recalculait en TypeScript et produisait **« Demi-finales » sur un match des places
-    5-8** — le mot faux, sur la vue publique, au moment où le tournoi descend sous le podium.
-
-    `place_en_jeu` ne dit **pas** tout, et c'est la leçon de cette US : il n'existe que sur les
-    matchs **terminaux**. `plage` est la **branche** (`[5, 8]` pour le sous-tableau de placement),
-    disponible dès le premier tour — c'est elle qui permet de grouper l'affichage par branche et
-    non par numéro de tour, deux branches partageant le même tour.
-
-    `termine` et `validee` disent deux choses différentes, et les confondre afficherait un
-    vainqueur qui n'en est pas encore un : `termine` = le tir est allé au bout ; `validee` = le
-    scoreur a scellé, et c'est **seulement** à partir de là que l'arbre avance. Le public voit donc
-    « en attente de validation » entre les deux — même vocabulaire qu'E07US009 (livrée).
+    ⚠️ **`libelle` vient du domaine, il n'est pas recalculé côté client** : nommer un match est du
+    **vocabulaire métier** (règle 3, `domain.tableau.libelle_tour`) — recalculé en TypeScript, il
+    affichait « Demi-finales » sur un match des places 5-8. `place_en_jeu` n'existe que sur les
+    matchs **terminaux** ; `plage` est la **branche**, disponible dès le premier tour. `termine`
+    (le tir est allé au bout) ≠ `validee` (le scoreur a scellé, et l'arbre avance seulement là).
     """
 
     numero: int
@@ -112,18 +102,11 @@ class PlaceReponse(BaseModel):
 class TableauPublicReponse(BaseModel):
     """Un arbre du tournoi : de quelle phase il relève, ses dimensions, ses matchs, son podium.
 
-    `ordre` et `type` plutôt qu'un libellé tout fait : le front tient déjà le catalogue des types
-    (`shared/phases/catalogue.ts`) et le traduit une fois pour toutes (règle 3).
-
-    ⚠️ **Une phase peut être présente sans arbre** (E05US024, ADR-0081). `en_attente_de` porte
-    l'`ordre` de la phase source dont les places ne sont pas encore attribuées ; les champs de
-    dimensions valent alors 0 et les listes sont vides. Le front affiche « en attente de la phase
-    *n* » plutôt qu'un bracket — avant cette US, la phase **disparaissait** de la liste, et un
-    tableau à venir était indiscernable d'un tableau cassé.
-
-    Les zéros sont un **choix de forme** : garder les champs obligatoires évite de rendre
-    optionnelle toute la charge utile pour un cas de bord, et `en_attente_de` est le seul
-    discriminant que le front doit lire. Il est **non nul si et seulement si** il n'y a pas d'arbre.
+    `ordre` et `type` plutôt qu'un libellé : le front tient le catalogue des types (règle 3). ⚠️
+    **Une phase peut être présente sans arbre** (ADR-0081) : `en_attente_de` porte l'ordre de la
+    source dont les places ne sont pas attribuées — avant cette US la phase **disparaissait**, et
+    un tableau à venir était indiscernable d'un tableau cassé. Les zéros sont un choix de forme ;
+    `en_attente_de` est non nul **si et seulement si** il n'y a pas d'arbre.
     """
 
     phase_id: int
@@ -195,12 +178,9 @@ async def lire_tableaux(depart_id: int, request: Request) -> TableauxReponse:
 
     Lecture **synchrone hors boucle événementielle** (règle 7) : la reconstruction est du calcul
     pur mais lourd, elle n'a rien à faire dans l'`event loop` d'un serveur qui sert aussi des
-    WebSockets.
-
-    Aucun plafond, comme `/routage/{id}/affectations` et pour la même raison : le client ne demande
-    rien, la taille de la réponse est celle des tableaux du tournoi. Le coût dominant reste la
-    **reconstruction**, payée une fois par phase et par appel — c'est le régime de `# DETTE-031`,
-    que cette US élargit (une route publique de plus, et une surface de polling par spectateur).
+    WebSockets. Aucun plafond, comme `/routage/{id}/affectations` : le client ne demande rien. Le
+    coût dominant reste la reconstruction, payée par phase et par appel — `# DETTE-031`, que cette
+    US élargit (une route publique de plus, une surface de polling par spectateur).
     """
     service: ServiceTableauxPublics = request.app.state.service_tableaux_publics
     tableaux = await run_in_threadpool(service.pour_depart, depart_id)

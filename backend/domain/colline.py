@@ -20,13 +20,11 @@ from domain.participant import Participant
 class ConfigurationColline:
     """Le réglage d'une phase de colline.
 
-    `portee_de_defi` **est** ce qui distingue les deux formats du catalogue : 1 = King of the Hill
-    (on défie son voisin immédiat), 2 = Ladder (« le n°6 peut défier le 5 ou le 4 »). Rien d'autre
-    ne change, ce qui est la meilleure preuve qu'il ne fallait pas deux moteurs.
-
-    Une portée ≥ à l'effectif transformerait le format en « n'importe qui défie n'importe qui »,
-    qui n'est plus ni un King of the Hill ni un Ladder — d'où le refus, contrôlé au démarrage
-    puisqu'il dépend de l'effectif.
+    `portee_de_defi` **est** ce qui distingue les deux formats du catalogue : 1 = King of the Hill,
+    2 = Ladder (« le n°6 peut défier le 5 ou le 4 »). Rien d'autre ne change — la meilleure preuve
+    qu'il ne fallait pas deux moteurs. ⚠️ Une portée ≥ à l'effectif ferait « n'importe qui défie
+    n'importe qui », ni KotH ni Ladder : refus contrôlé au démarrage, puisqu'il dépend de
+    l'effectif.
     """
 
     nb_manches: int
@@ -57,14 +55,11 @@ class ConfigurationColline:
 def portee_maximale(effectif: int) -> int:
     """La portée de défi la plus grande qu'un effectif autorise (E05US027).
 
-    Jumelle de `suisse.rondes_maximales`, et pour le même usage : `EtapeDeroule` s'en sert pour
-    refuser un réglage impossible **à la composition**, et l'atelier pour afficher la borne en
-    clair sous le champ. `defis_de_la_manche` refuse `portee >= effectif` — « chacun défie
-    n'importe qui » n'est plus un format —, donc la borne est `effectif - 1`.
-
-    **Zéro sous deux participants** : à un archer (ou aucun), aucun défi n'est appariable. Le dire
-    par un zéro plutôt que par un nombre négatif évite qu'un appelant compare une portée à une
-    borne absurde — même parti que `rondes_maximales`.
+    Jumelle de `suisse.rondes_maximales` : `EtapeDeroule` s'en sert pour refuser un réglage
+    impossible **à la composition**, l'atelier pour afficher la borne sous le champ.
+    `defis_de_la_manche` refuse `portee >= effectif`, donc la borne est `effectif - 1`. ⚠️ **Zéro
+    sous deux participants** plutôt qu'un négatif — sans quoi un appelant comparerait une portée à
+    une borne absurde (même parti que `rondes_maximales`).
     """
     return max(0, effectif - 1)
 
@@ -97,20 +92,11 @@ def defis_de_la_manche(
 ) -> tuple[DefiColline, ...]:
     """Les défis **sans recouvrement** de la manche `manche` (1-indexée).
 
-    ⚠️ **`portee_de_defi` est une distance MAXIMALE, pas une distance exacte** — « le n°6 peut
-    défier le 5 **ou** le 4 » énonce un choix. La distance effective **tourne** d'une manche à
-    l'autre (`1 + (manche-1) % portee`), et le découpage en blocs tourne avec elle.
-
-    **C'est ce qui rend le Ladder capable de classer, et un premier jet de cette US l'avait raté.**
-    En figeant la distance à `portee`, tout échange se faisait à distance 2 : la **parité** de la
-    position devenait un invariant, la colline se scindait en deux moitiés étanches, et l'archer
-    parti en position 2 ne pouvait **jamais** atteindre la position 1. Vérifié à l'époque : une
-    colline inversée où le meilleur gagne toujours se stabilisait sur `2 1 4 3 6 5 8 7` — faux, et
-    faux pour toujours. Les manches à distance 1 sont exactement ce qui brise cette parité.
-
-    À portée 1, c'est l'alternance pair/impair : manche 1 → (1,2)(3,4)(5,6), manche 2 →
-    (2,3)(4,5)(6,7). Les extrémités se reposent une manche sur deux — inévitable, et sans effet sur
-    le classement puisqu'elles rejouent la manche suivante.
+    ⚠️ **`portee_de_defi` est une distance MAXIMALE, pas exacte** : la distance effective
+    **tourne** d'une manche à l'autre (`1 + (manche-1) % portee`), et le découpage en blocs avec
+    elle. C'est ce qui rend le Ladder capable de classer — à distance figée, la **parité** de la
+    position devenait un invariant, la colline se scindait en deux moitiés étanches et l'archer
+    parti en position 2 n'atteignait **jamais** la 1. À portée 1, alternance pair/impair.
     """
     if manche < 1:
         raise ConfigurationCollineInvalide(
@@ -161,15 +147,11 @@ def appliquer_manche(
 ) -> tuple[Participant, ...]:
     """Applique les issues d'une manche : **le gagnant monte, le perdant descend**.
 
-    Les deux positions du défi s'**échangent** quand le challenger l'emporte, et restent en place
-    sinon. Les positions intermédiaires (à portée > 1) ne bougent pas : elles n'ont pas participé,
-    rien ne justifie de les déplacer — c'est le point sur lequel l'exemple chiffré du Ladder diverge
-    de sa règle (voir l'en-tête du module).
-
-    ⚠️ Les défis d'une même manche étant **sans recouvrement** par construction, l'ordre
-    d'application n'a aucune importance : deux échanges ne peuvent pas se marcher dessus. Si un jour
-    une variante autorisait le recouvrement, ce ne serait plus vrai et il faudrait ordonner —
-    raison pour laquelle `defis_de_la_manche` garantit la propriété plutôt que de la supposer.
+    Les deux positions du défi s'**échangent** quand le challenger l'emporte. Les positions
+    intermédiaires (à portée > 1) ne bougent pas : elles n'ont pas participé — c'est là que
+    l'exemple chiffré du Ladder diverge de sa règle. ⚠️ Les défis d'une manche étant **sans
+    recouvrement** par construction, l'ordre d'application est indifférent ; une variante
+    autorisant le recouvrement casserait cette propriété, que `defis_de_la_manche` garantit.
     """
     nouvelle = list(colline)
     for issue in issues:

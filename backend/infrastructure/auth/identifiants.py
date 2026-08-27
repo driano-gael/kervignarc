@@ -104,16 +104,13 @@ class AdminCredentialsStore:
         self._ecrire_atomiquement(contenu)
 
     def _ecrire_atomiquement(self, contenu: str) -> None:
-        """Remplace `.env` de façon **atomique** : écrire un fichier temporaire voisin puis
-        `os.replace`.
+        """Remplace `.env` de façon **atomique** : fichier temporaire voisin puis `os.replace`.
 
-        `.env` est la **porte de secours** de l'accès admin (docstring du module) : un
-        `write_text` direct tronque d'abord puis réécrit, si bien qu'un crash entre les deux —
-        ou deux écritures concurrentes — laisserait un `.env` **tronqué**, verrouillant l'admin
-        hors de sa propre appli. `os.replace` d'un fichier complet est atomique sur le même volume
-        (POSIX **et** Windows, où il écrase la cible existante) : le lecteur ne voit jamais qu'un
-        `.env` entier — l'ancien ou le nouveau, jamais un moitié-écrit. Le temporaire est un voisin
-        (même dossier ⇒ même système de fichiers, condition de l'atomicité de `os.replace`).
+        ⚠️ `.env` est la **porte de secours** de l'accès admin : un `write_text` direct tronque
+        puis réécrit, donc un crash entre les deux — ou deux écritures concurrentes — laisserait un
+        `.env` tronqué, verrouillant l'admin hors de sa propre appli. `os.replace` d'un fichier
+        complet est atomique sur le même volume (POSIX **et** Windows) ; le temporaire est un
+        voisin pour rester sur le même système de fichiers.
         """
         temporaire = self._env_path.with_name(self._env_path.name + ".tmp")
         try:

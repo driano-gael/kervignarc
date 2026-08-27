@@ -59,12 +59,11 @@ from infrastructure.erreurs import InfrastructureError
 def _vers_volee(ligne: VoleeORM) -> Volee:
     """Traduit une ligne ORM en value object de domaine `Volee` (E04US002).
 
-    `valeurs` est écrit par le repository comme un tableau JSON de codes de zone (« ["10","9"] »,
-    même procédé que `BlasonORM.zones`). Un contenu illisible **ou** un code hors `ZoneScore` est
-    une **incohérence technique** (le repository en est le seul rédacteur et n'écrit que des zones
-    valides) → enveloppée en `InfrastructureError` (ADR-0007), jamais laissée fuir en value object
-    silencieusement invalide. Le verrou n'est pas une colonne : `validee_par` non `NULL` **est** le
-    verrou (cf. `domain.serie.Volee.verrouillee`).
+    `valeurs` est écrit comme un tableau JSON de codes de zone (même procédé que
+    `BlasonORM.zones`). Un contenu illisible **ou** un code hors `ZoneScore` est une **incohérence
+    technique** — le repository en est le seul rédacteur — donc enveloppée en `InfrastructureError`
+    (ADR-0007), jamais laissée fuir en value object invalide. ⚠️ Le verrou n'est pas une colonne :
+    `validee_par` non `NULL` **est** le verrou (`domain.serie.Volee.verrouillee`).
     """
     try:
         valeurs = tuple(ZoneScore(v) for v in json.loads(ligne.valeurs))
@@ -224,24 +223,11 @@ class ScoreRepositorySQL:
 class SerieRepositorySQL:
     """Adapter SQLite du port `SerieRepository` (E04US002) — série + volées enfants.
 
-    Une série est un agrégat parent (`serie`) + ses volées (`volee`, table enfant). La saisie
-    réécrit **toute** la série à chaque opération : le service charge l'agrégat, le mute (une volée
-    ajoutée/validée/corrigée) et le repasse en entier — comme `PlacementRepositorySQL.definir_plan`,
-    l'écriture est un **purge + réinsertion** des volées, la série étant la source de vérité (les
-    volées sont des value objects sans identité propre côté domaine).
-
-    `enregistrer_avec_trace` réalise la **couture de session partagée** (ADR-0035) : la série **et**
-    son entrée d'audit s'écrivent dans **une seule session, un seul `commit`** (tout ou rien). D'où
-    l'`AuditRepositorySQL` injecté au constructeur — collaboration **infra → infra** (le port du
-    domaine `SerieRepository` ignore cette couture ; `enregistrer_avec_trace(serie, entree)` ne
-    mentionne aucune session). L'entrée arrive **déjà construite et datée** par le service (via
-    `Horloge`) : le repository ne construit ni ne date **le contenu** (série, trace).
-
-    Il date en revanche une **métadonnée de persistance** : le `created_at` d'une volée (le
-    « quand » de la saisie, ex-017), posé via le port `Horloge` — comme il attribue l'`id`. Il est
-    **préservé par numéro** au travers du purge + réinsertion : réécrire une série (upsert) ne
-    réinitialise pas l'horodatage de ses volées déjà saisies, seules les volées **nouvelles** sont
-    datées de l'instant courant.
+    La saisie réécrit **toute** la série à chaque opération : l'écriture est un **purge +
+    réinsertion** des volées, la série étant la source de vérité. `enregistrer_avec_trace` réalise
+    la **couture de session partagée** (ADR-0035) : série et entrée d'audit dans **un seul
+    `commit`**, d'où l'`AuditRepositorySQL` injecté — collaboration infra → infra que le port du
+    domaine ignore. ⚠️ Le `created_at` d'une volée est **préservé par numéro** (ex-017).
     """
 
     def __init__(
@@ -379,15 +365,11 @@ class SerieRepositorySQL:
     def _poser_serie(self, session: Session, serie: Serie) -> SerieORM:
         """Upsert le parent `serie` (clé métier `phase_id, archer_id`) et réécrit ses volées.
 
-        Ne commit pas — l'appelant tient la transaction (une seule, éventuellement partagée avec
-        l'audit). Renvoie la ligne parente (id attribué). Les volées sont **purgées puis
-        réinsérées** (la série passée est la source de vérité) ; `flush` attribue l'id d'une série
-        nouvelle avant de rattacher ses volées.
-
+        Ne commit pas — l'appelant tient la transaction. Les volées sont **purgées puis
+        réinsérées** ; `flush` attribue l'id d'une série nouvelle avant de rattacher ses volées. ⚠️
         Le `created_at` de chaque volée est **préservé par numéro** : on relit les horodatages
-        existants **avant** la purge et on les réapplique aux volées de même numéro ; une volée
-        **nouvelle** (numéro absent) est datée de l'instant courant (`Horloge`). Sans quoi le purge
-        + réinsertion réinitialiserait le « quand » à chaque sauvegarde (ex-017).
+        avant la purge et on les réapplique, sans quoi le « quand » serait réinitialisé à chaque
+        sauvegarde (ex-017). Une volée nouvelle est datée de l'instant courant (`Horloge`).
         """
         ligne = self._ligne_serie(session, serie)
         horodatages = {v.numero: v.created_at for v in self._volees(session, ligne.id)}
@@ -409,18 +391,11 @@ class SerieRepositorySQL:
     def _ligne_serie(self, session: Session, serie: Serie) -> SerieORM:
         """Retrouve la ligne parente **par sa clé métier** `(phase_id, archer_id)`, ou la crée.
 
-        L'identité d'une feuille **est** son couple `(phase, archer)` — « une série par phase et par
-        archer » (port `SerieRepository`, garanti par `uq_serie_phase_archer`). On ne cherche donc
-        **pas** par `serie.id` : ce lookup PK n'était qu'une micro-optimisation, ouvrant une surface
-        de corruption silencieuse (un `id` incohérent avec la clé métier — venu d'un futur appelant
-        —
-        aurait fait réécrire les volées sur la **mauvaise** série). La clé métier est la requête
-        d'identité canonique (celle de `par_archer`). `flush` attribue l'id d'une série nouvelle
-        avant qu'on lui rattache ses volées.
-
-        ⚠️ **La clé est descendue du tournoi à la phase** (E05US025, ADR-0082). Sous l'ancienne clé,
-        un archer engagé dans deux qualifications aurait vu sa seconde saisie **réécrire les volées
-        de la première** — c'est exactement l'upsert de cette méthode qui l'aurait fait, en silence.
+        L'identité d'une feuille **est** son couple `(phase, archer)` (`uq_serie_phase_archer`). On
+        ne cherche **pas** par `serie.id` : cette micro-optimisation ouvrait une corruption
+        silencieuse — un `id` incohérent avec la clé métier aurait fait réécrire les volées sur la
+        **mauvaise** série. ⚠️ **La clé est descendue du tournoi à la phase** (E05US025, ADR-0082)
+        : sous l'ancienne, une seconde qualification réécrivait les volées de la première.
         """
         ligne = session.execute(
             select(SerieORM).where(
@@ -630,12 +605,9 @@ class BarrageRepositorySQL:
     """Adapter SQLite du port `BarrageRepository` (E06US003, ADR-0066).
 
     Le grain d'écriture est la **manche** : `enregistrer_manche` remplace en bloc les tirs d'un
-    numéro donné, ce qui fait de la ressaisie le mode de **correction** d'une flèche mal notée.
-    Suppression puis insertion dans **une seule transaction** — un remplacement à moitié appliqué
-    laisserait une manche mêlant anciennes et nouvelles flèches, donc un verdict faux et plausible.
-
-    ⚠️ **Le verdict n'est jamais persisté** : il se recalcule depuis les tirs. C'est pourquoi aucune
-    méthode d'écriture ne le prend en argument.
+    numéro, ce qui fait de la ressaisie le mode de **correction**. Suppression puis insertion dans
+    **une seule transaction** — un remplacement à moitié appliqué donnerait un verdict faux et
+    plausible. ⚠️ **Le verdict n'est jamais persisté** : il se recalcule depuis les tirs.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:

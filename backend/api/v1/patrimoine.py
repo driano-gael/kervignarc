@@ -54,11 +54,10 @@ class DupliquerBriqueRequete(BaseModel):
     """Corps d'une duplication de brique : le nom sous lequel ranger la copie.
 
     Borné comme les deux autres corps de cette US : l'écriture passe par le writer unique, et un
-    champ non borné y fait une tâche de durée non bornée (règle 7).
-
-    Seconde issue du CA « modifier un officiel » — « en faire une **copie** pour garder les deux
-    modèles » — face à `PUT /categories/{id}`, qui modifie l'officiel **sur place** et le laisse
-    officiel (le règlement évolue, ADR-0060 §4). Sans elle, le CA n'était tenu que pour les formats.
+    champ non borné y fait une tâche de durée non bornée (règle 7). Seconde issue du CA « modifier
+    un officiel » — en faire une **copie** — face à `PUT /categories/{id}`, qui le modifie **sur
+    place** en le laissant officiel (ADR-0060 §4). Sans elle, le CA n'était tenu que pour les
+    formats.
     """
 
     nom: str = Field(min_length=1, max_length=200)

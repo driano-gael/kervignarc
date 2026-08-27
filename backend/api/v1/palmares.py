@@ -28,21 +28,10 @@ class LignePalmaresReponse(BaseModel):
     """Une ligne du palmarès renvoyée au client (E06US004).
 
     Les rangs sont des **fourchettes** : `rang_min == rang_max` = rang décerné ; `5`/`8` = *ex
-    æquo* 5ᵉ-8ᵉ, que rien n'a départagé (tableau tronqué au podium) ou que la finale doit encore
-    trancher. Les deux bornes sont `null` pour un archer **hors classement** (disqualifié,
-    ADR-0050), comme le classement de qualification les rend `null`.
-
-    `decerne` dit qu'un **match** a décidé ce rang — la seule forme qui vaut une
-    médaille. Il ne se déduit **pas** de `rang_min == rang_max` : la renumérotation
-    rend un rang exact dès qu'un archer est seul de son groupe, ce qui arrive au
-    vainqueur d'une demi-finale avant la finale. `en_lice` dit, lui, que ce qui reste
-    ouvert le sera **au tir** — à distinguer d'un *ex æquo* définitif, que plus aucun
-    match ne départagera. Sans ces deux drapeaux, l'écran décernait l'or avant la
-    finale et disait « à départager » à deux finalistes (défauts trouvés en revue).
-
-    `origine` (`duels` / `qualification`) dit **d'où vient** le rang : « 9ᵉ » n'a pas le même sens
-    selon qu'un duel perdu l'a décidé ou que l'archer n'a jamais quitté la qualification. Sans lui,
-    l'écran laisserait croire à une élimination.
+    æquo* 5ᵉ-8ᵉ. Les deux bornes sont `null` hors classement (disqualifié, ADR-0050). ⚠️ `decerne`
+    ne se déduit **pas** de `rang_min == rang_max` — la renumérotation rend un rang exact dès qu'un
+    archer est seul de son groupe, donc au vainqueur d'une demi-finale avant la finale ; `en_lice`
+    dit que l'ouverture se tranchera **au tir**. `origine` dit **d'où vient** le rang.
     """
 
     rang_min: int | None

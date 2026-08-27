@@ -146,12 +146,10 @@ async def importer_clubs(
 ) -> RapportImportClubsReponse:
     """Alimente le référentiel **en masse** (**action admin**, E01US023) : écriture via la file.
 
-    Une **seule** soumission à la file pour tout le lot : découper en une écriture par ligne
-    ferait passer un collage de 200 clubs pour 200 transactions, là où l'opération est un geste
-    unique de l'organisateur (transactions courtes, règle 7).
-
-    Ne lève pas sur une ligne vide — elle est comptée. À ne pas confondre avec l'import des
-    **inscrits** depuis un fichier fédéral (E02US007), qui reste entier.
+    ⚠️ Une **seule** soumission à la file pour tout le lot : découper en une écriture par ligne
+    ferait passer un collage de 200 clubs pour 200 transactions, là où c'est un geste unique
+    (transactions courtes, règle 7). Ne lève pas sur une ligne vide — elle est comptée. À ne pas
+    confondre avec l'import des **inscrits** depuis un fichier fédéral (E02US007).
     """
     service: ServiceClubs = request.app.state.service_clubs
     write_queue: WriteQueue = request.app.state.write_queue

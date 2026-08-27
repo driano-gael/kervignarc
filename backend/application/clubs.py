@@ -61,21 +61,11 @@ class ServiceClubs:
     def importer(self, lignes: str) -> RapportImportClubs:
         """Alimente le référentiel **en masse** depuis une liste collée — une ligne, un club.
 
-        Sert le patrimoine du club (E01US023) : les clubs voisins reviennent d'une compétition à
-        l'autre, et les saisir un à un est la corvée que le référentiel existe pour supprimer.
-
-        **Ne pas confondre avec E02US007**, l'import des *inscrits* depuis un fichier fédéral :
-        celui-là crée archers, clubs et départs **d'un tournoi**, avec ses propres pièges (quota
-        d'un départ, homonymes, licence). Ici il n'y a qu'un référentiel global à peupler.
-
-        Le doublon s'entend au sens de `domain.club.cle_nom` — casse, accents et espaces de bord
-        repliés — **comme la saisie unitaire** : un import ne doit pas ouvrir une porte que le
-        formulaire ferme, sinon c'est par lui qu'entreront les « Élan de Fougères » / « elan de
-        fougeres » que `creer` refuse. La déduplication couvre aussi les répétitions **internes** au
-        collage, qui sont le cas le plus fréquent quand on colle deux listes bout à bout.
-
-        Ne lève pas sur une ligne fautive : une ligne vide est **comptée**, pas fatale. C'est la
-        promesse « aucun import partiel silencieux » — on va au bout et on rend le compte-rendu.
+        Sert le patrimoine du club (E01US023). **Ne pas confondre avec E02US007**, l'import des
+        *inscrits* depuis un fichier fédéral, qui crée archers, clubs et départs d'un tournoi. ⚠️
+        Le doublon s'entend au sens de `domain.club.cle_nom` — **comme la saisie unitaire** : un
+        import ne doit pas ouvrir une porte que le formulaire ferme. La déduplication couvre aussi
+        les répétitions **internes** au collage. Une ligne fautive est **comptée**, jamais fatale.
         """
         crees: list[str] = []
         doublons: list[str] = []

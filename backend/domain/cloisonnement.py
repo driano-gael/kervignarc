@@ -12,24 +12,11 @@ from enum import Enum
 class Cloisonnement(str, Enum):
     """Ce qu'une cible n'a pas le droit de mêler (réglage **de tournoi**, RG-4).
 
-    Quatre positions, du plus permissif au plus strict :
-
-    - `AUCUN` (défaut) : aucune séparation — comportement d'E03US001, une cible mêle ce que ses
-      budgets permettent ;
-    - `CATEGORIE` : une cible ne porte qu'une seule catégorie ;
-    - `BLASON` : une cible ne porte qu'un seul blason (deux catégories tirant le **même** carton y
-      restent donc ensemble) ;
-    - `BLASON_ET_CATEGORIE` : conjonction des deux — séparation dès qu'une des deux grandeurs
-      diffère.
-
-    ⚠️ **Aujourd'hui `CATEGORIE` implique `BLASON`** : le blason d'un archer est celui de sa
-    catégorie (`Categorie.blason_id`, cf. `application/placement._archer_a_placer`), donc deux
-    archers de même catégorie ont forcément le même blason, et `BLASON_ET_CATEGORIE` rend le même
-    plan que `CATEGORIE`. Les deux positions se distingueront le jour où une **phase pourra
-    surcharger le blason** (cahier des charges EF-1.4, « toutes les finales sur triples ») : le
-    couple (catégorie, blason) cessera alors d'être fonctionnel. Le réglage est livré à quatre
-    positions par choix du commanditaire, en connaissance de cette redondance temporaire
-    (ADR-0071 §3).
+    Quatre positions : `AUCUN` (défaut, comportement d'E03US001), `CATEGORIE`, `BLASON` (deux
+    catégories tirant le même carton restent ensemble), `BLASON_ET_CATEGORIE`. ⚠️ **Aujourd'hui
+    `CATEGORIE` implique `BLASON`** — le blason d'un archer est celui de sa catégorie —, donc les
+    deux dernières positions rendent le même plan ; elles se distingueront quand une phase pourra
+    **surcharger le blason** (EF-1.4). Redondance temporaire assumée (ADR-0071 §3).
     """
 
     AUCUN = "aucun"

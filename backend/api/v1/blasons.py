@@ -24,12 +24,10 @@ router = APIRouter(prefix="/api/v1", tags=["blasons"])
 class CreerBlasonRequete(BaseModel):
     """Corps de création d'un blason (nom, taille dans `]0, 1]`, capacité `>= 1`).
 
-    `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (le jeu complet
-    d'un blason simple). Le **vocabulaire** est fermé par `ZoneScore` : une valeur hors des onze
-    zones FFTA fait rejeter la requête en **400** à la frontière, avant que le domaine ne la voie
-    (règle 6) — même régime qu'`ages`, cf. ADR-0019.
-    Les règles **structurelles** (M obligatoire, au moins une zone marquante, pas de doublon)
-    restent au domaine et sortent en 422.
+    `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (jeu complet d'un
+    blason simple). Le **vocabulaire** est fermé par `ZoneScore` — une valeur hors des onze zones
+    FFTA est rejetée en **400** à la frontière, avant le domaine (règle 6, même régime qu'`ages`,
+    ADR-0019). Les règles **structurelles** restent au domaine et sortent en 422.
     """
 
     nom: str

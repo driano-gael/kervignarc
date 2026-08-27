@@ -36,23 +36,11 @@ Au-delà, le handicap ne corrige plus une différence de niveau — il **remplac
 def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:
     """Clé d'homonymie : deux archers de **même clé** sont vraisemblablement le même (E02US002).
 
-    « Vraisemblablement » et non « certainement » : deux archers **réels** peuvent partager cette
-    clé — un père et son fils, mêmes nom, prénom et club, arrivent en compétition de club. La clé
-    sert donc à **signaler** un doublon probable à la saisie, pas à le refuser ; c'est l'admin qui
-    tranche (`ServiceArchers.ajouter(autoriser_homonyme=True)`). C'est aussi pourquoi aucune
-    contrainte `UNIQUE` ne la double en base : elle rejetterait le fils.
-
-    Replie la casse et les accents du nom et du prénom via `cle_nom` — « Lefèvre Rémi » saisi
-    « LEFEVRE remi » sur une tablette est le doublon le plus probable, et c'est exactement le repli
-    que le référentiel des clubs applique déjà (E02US001). On **réutilise** `domain.club.cle_nom`
-    plutôt que de le recopier : deux règles de repli qui divergent, c'est un doublon accepté ici et
-    refusé là. C'est son **1ᵉʳ usage hors du concept « club »** (le 3ᵉ en tout — cf. sa docstring) ;
-    à un 2ᵉ hors club, l'extraire dans un module de texte se justifiera, en US dédiée.
-
-    `club_id` entre dans la clé **brut** : deux homonymes de clubs différents sont deux archers
-    distincts. Et comme `None` signifie « club inconnu » (jamais « aucun club »), un archer sans
-    club n'est **pas** l'homonyme d'un archer rattaché : les rapprocher supposerait de savoir ce
-    qu'on ignore justement. Ce rapprochement-là relève de E02US005 (détecter et fusionner).
+    « Vraisemblablement » : un père et son fils partagent nom, prénom et club. La clé **signale**,
+    elle ne refuse pas (`autoriser_homonyme`) — d'où l'absence de contrainte `UNIQUE` en base, qui
+    rejetterait le fils. Replie casse et accents via `domain.club.cle_nom`, **réutilisé** plutôt
+    que recopié. ⚠️ `club_id` entre **brut** : `None` = « club inconnu », jamais « aucun club »,
+    donc un archer sans club n'est l'homonyme de personne (rapprochement = E02US005).
     """
     return (cle_nom(nom), cle_nom(prenom), club_id)
 
@@ -61,11 +49,9 @@ def cle_identite(nom: str, prenom: str, club_id: ClubId | None) -> CleIdentite:
 class Archer:
     """Un archer inscrit à un tournoi. `id` vaut `None` tant qu'il n'est pas persisté.
 
-    `cible` vaut `None` tant que l'archer n'est pas placé (E00US011 : un simple numéro).
-    `club_id` vaut `None` tant que son club n'est pas **connu** (cf. docstring du module).
-
-    **Handicap (E05US015)** — deux valeurs, jamais une seule, et c'est la demande explicite du
-    commanditaire (31/07/2026) : un handicap « enregistré comme officiel » **et** une mécanique de
+    `cible` vaut `None` tant que l'archer n'est pas placé ; `club_id` vaut `None` tant que son club
+    n'est pas **connu** (cf. docstring du module). **Handicap (E05US015)** — deux valeurs, jamais
+    une seule, demande explicite du commanditaire (31/07/2026) : un handicap officiel **et** une
     **surcharge** par archer. Voir `handicap`.
     """
 
@@ -97,16 +83,11 @@ class Archer:
     def __post_init__(self) -> None:
         """Un handicap s'**ajoute** au score : il est positif ou nul, et **borné** par le haut.
 
-        Une valeur négative retrancherait des points — ce n'est pas le système décrit, et surtout
-        elle passerait inaperçue au classement, où elle ressemblerait à une contre-performance.
-
-        ⚠️ **La borne haute n'est pas une précaution technique, c'est la même règle métier.** Un
-        handicap ajouté au score doit rester du même ordre de grandeur que lui, faute de quoi il ne
-        corrige plus une différence de niveau : il **remplace** le tir. `HANDICAP_MAXIMUM` vaut le
-        score parfait d'une qualification FFTA (20 volées de 3 flèches à 10), au-delà duquel le
-        handicap pèserait plus que tout ce qu'un archer peut réaliser. Effet de bord utile : une
-        valeur aberrante importée en masse est refusée **à la saisie** au lieu de traverser
-        jusqu'à SQLite, où un entier hors bornes remonterait en 500 plutôt qu'en 422 typé.
+        Une valeur négative retrancherait des points et passerait inaperçue au classement, où elle
+        ressemblerait à une contre-performance. ⚠️ **La borne haute est la même règle métier, pas
+        une précaution technique** : `HANDICAP_MAXIMUM` vaut le score parfait d'une qualification
+        FFTA, au-delà duquel le handicap **remplace** le tir. Effet utile : une valeur aberrante
+        est refusée en 422 au lieu de remonter en 500 depuis SQLite.
         """
         for valeur, nom in (
             (self.handicap_officiel, "officiel"),
@@ -178,15 +159,11 @@ class Archer:
     ) -> Archer:
         """Renvoie une copie éditée (E02US003) ; mêmes contrôles de saisie que `creer`.
 
-        **Remplacement total, pas mise à jour partielle** : les quatre champs éditables sont tous
-        exigés, `club_id` compris — sans valeur par défaut, délibérément. Un `club_id: ... = None`
-        confondrait « je détache le club » et « je n'y touche pas », et c'est le premier qui est
-        demandé : l'écran d'administration propose « Club inconnu », et le choisir doit ramener
-        l'archer à l'état « club pas encore su » (ADR-0014).
-
-        `tournoi_id`, `cible` et `id` ne sont **pas** éditables et traversent la copie intacts :
-        corriger l'état civil d'un archer ne le déplace pas et ne le change pas de tournoi
-        (changer de tournoi serait une désinscription suivie d'une inscription, pas une édition).
+        **Remplacement total, pas mise à jour partielle** : les quatre champs éditables sont
+        exigés, `club_id` compris et ⚠️ **sans valeur par défaut** — un défaut à `None` confondrait
+        « je détache le club » et « je n'y touche pas », et c'est le premier qui est demandé
+        (ADR-0014). `tournoi_id`, `cible` et `id` traversent la copie intacts : éditer ne déplace
+        pas.
         """
         return replace(
             self,

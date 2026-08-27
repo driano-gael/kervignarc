@@ -66,12 +66,10 @@ class Forfait:
     ) -> Forfait:
         """Construit un forfait valide.
 
-        `declare_par` est normalisé (espaces de bord retirés) et ne peut être vide
-        (`DeclarantForfaitInvalide`) — sans lui, le forfait ne dit pas *qui* l'a prononcé, comme
-        l'audit exige un auteur. `declare_le` (« quand ») doit être un instant **UTC** *aware*
-        (`HorodatageForfaitInvalide` sinon), même contrat que `EntreeAudit` : la persistance
-        réattache UTC en aveugle à la relecture, ce qui n'est fidèle que si l'écrit était déjà UTC.
-        `motif` est normalisé : un motif vide (après strip) équivaut à « non renseigné » (`None`).
+        `declare_par` est normalisé et non vide (`DeclarantForfaitInvalide`) — sans lui, le forfait
+        ne dit pas *qui* l'a prononcé. ⚠️ `declare_le` doit être un instant **UTC** *aware*, même
+        contrat qu'`EntreeAudit` : la persistance réattache UTC en aveugle à la relecture, ce qui
+        n'est fidèle que si l'écrit l'était déjà. Un `motif` vide équivaut à `None`.
         """
         return Forfait(
             tournoi_id=tournoi_id,

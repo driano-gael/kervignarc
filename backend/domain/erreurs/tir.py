@@ -187,12 +187,10 @@ class HorodatageForfaitInvalide(DomainError):
 class ConfigurationPouleInvalide(DomainError):
     """Les paramètres d'une phase de **poules** ne décrivent pas un tournoi jouable (E05US015).
 
-    Nombre de poules < 1, plus de poules que de participants, barème de points incohérent (une
-    victoire ne peut pas rapporter moins qu'un nul), nombre de qualifiés par poule supérieur à
-    d'adversaires disponibles, rencontre fournie deux fois. Les contrôles qui ne dépendent que du
-    réglage sont faits à la **composition** ; ceux qui exigent l'effectif réel (nombre de qualifiés,
-    rencontres par archer) le sont à l'appel, faute de connaître les participants plus tôt. Dans les
-    deux cas on refuse plutôt que de produire un classement de poule indéfendable.
+    Nombre de poules < 1, plus de poules que de participants, barème incohérent (une victoire ne
+    peut rapporter moins qu'un nul), qualifiés par poule au-delà des adversaires disponibles,
+    rencontre fournie deux fois. Les contrôles qui ne dépendent que du réglage sont faits à la
+    **composition** ; ceux qui exigent l'effectif réel, à l'appel — faute de le connaître plus tôt.
     """
 
     code = "configuration_poule_invalide"
@@ -260,22 +258,11 @@ class ConfigurationBarrageInvalide(DomainError):
 class AppariementImpossible(DomainError):
     """Aucun appariement sans ré-affrontement n'a pu être composé pour cette ronde (E05US015).
 
-    **Incident de déroulé, pas défaut de configuration** — et c'est pourquoi ce code est distinct de
-    `ConfigurationSuisseInvalide` : la réaction attendue n'est pas « recompose ta phase » mais
-    « accepte de rejouer une rencontre, ou arrête-toi à cette ronde ». Les confondre obligerait le
-    client à lire le message pour savoir quoi proposer à l'organisateur.
-
-    **Cette erreur est fiable** : l'appariement du système suisse procède par **essais successifs
-    avec retour arrière** (`domain/suisse.py`), donc elle n'est levée que si **aucun** appariement
-    sans ré-affrontement n'existe — jamais parce que l'algorithme a mal choisi. Le client peut donc
-    la présenter comme un fait du tournoi, pas comme une limite de l'outil.
-
-    *(Rectifié le 08/08/2026. Ce commentaire disait « l'appariement est **glouton** (ADR-0062,
-    DETTE-027) : il peut échouer là où une solution existait » — vrai du premier jet, **faux depuis
-    le 01/08/2026**, et contredit mot pour mot par la docstring de `domain/suisse.py` ; `DETTE-027`
-    est **résorbée**. C'était la contradiction la plus coûteuse du dépôt : elle aurait fait soit
-    « corriger » un glouton qui n'existe plus, soit déclarer cette erreur peu fiable et lui ajouter
-    un contournement inutile.)*
+    **Incident de déroulé, pas défaut de configuration** — d'où un code distinct de
+    `ConfigurationSuisseInvalide` : la réaction attendue est « accepte de rejouer une rencontre »,
+    pas « recompose ta phase ». ⚠️ **Cette erreur est fiable** : l'appariement procède par **essais
+    successifs avec retour arrière** (`domain/suisse.py`), donc elle n'est levée que si aucun
+    appariement n'existe — jamais parce que l'algorithme a mal choisi (`DETTE-027` résorbée).
     """
 
     code = "appariement_impossible"

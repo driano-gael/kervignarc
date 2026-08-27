@@ -64,13 +64,10 @@ class ServiceJalons:
     def preparation(self, tournoi_id: TournoiId, jalon: Jalon) -> PreparationJalon:
         """La préparation d'un tournoi à un jalon donné.
 
-        Lève `TournoiIntrouvable` (→ 404) si le tournoi n'existe pas — comme la complétude, et pour
-        la même raison : rendre « rien ne manque » sur une ressource inexistante serait un 200
-        rassurant et faux. Lève `JalonNonInstruit` (→ 404) pour les deux membres pas encore
-        spécifiés.
-
-        Le tournoi est relu **une fois** : son existence est la garde d'entrée, et son `statut` est
-        la garde que toutes les transitions partagent. Les deux membres instruits le reçoivent.
+        Lève `TournoiIntrouvable` (404) — comme la complétude, et pour la même raison : « rien ne
+        manque » sur une ressource inexistante serait un 200 rassurant et faux. `JalonNonInstruit`
+        (404) pour les membres pas encore spécifiés. Le tournoi est relu **une fois** : son
+        existence est la garde d'entrée, son `statut` la garde partagée par toutes les transitions.
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
@@ -86,14 +83,11 @@ class ServiceJalons:
     def _demarrer(self, tournoi_id: TournoiId, statut: StatutTournoi) -> PreparationJalon:
         """Rassemble ce que les gardes du feu vert vérifient, **sans les exécuter**.
 
-        ⚠️ `exigence_effectif` lève `TournoiIntrouvable` — déjà écarté par l'appelant, donc sans
-        effet ici, mais c'est la raison pour laquelle l'existence est contrôlée **avant** et non
-        laissée à cet appel : le jalon doit répondre 404 quel que soit le membre demandé, y compris
-        ceux qui ne touchent pas à l'effectif.
-
-        `message_de_refus()` est passé **tel quel** : c'est la phrase que la garde met dans son
-        `EffectifInsuffisantPourDemarrer`, et la rédiger une seconde fois ici pour l'avertissement
-        aurait laissé l'avertissement et le refus dire deux choses différentes du même manque.
+        ⚠️ `exigence_effectif` lève `TournoiIntrouvable` — déjà écarté par l'appelant, mais c'est
+        la raison pour laquelle l'existence est contrôlée **avant** : le jalon doit répondre 404
+        quel que soit le membre, y compris ceux qui ne touchent pas à l'effectif.
+        `message_de_refus()` est passé **tel quel**, sans quoi l'avertissement et le refus diraient
+        deux choses différentes du même manque.
         """
         exigence = self._exigences.exigence_effectif(tournoi_id)
         return evaluer_demarrer(

@@ -24,14 +24,12 @@ router = APIRouter(prefix="/api/v1", tags=["placement-duels"])
 class CiblePlaceeDuelReponse(BaseModel):
     """Une cible du plan de duels : rang, plafond, duellistes posés, et le drapeau d'adjacence.
 
-    `adjacence_non_garantie` (E03US009, ADR-0048) : `true` quand la cible porte un duelliste dont
-    l'adversaire n'est **pas** côte à côte (autre cible ou position non adjacente). Le front en fait
-    un badge ambre ; l'admin peut ajuster à la main. Dérivé, jamais persisté.
-
-    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage du
-    tournoi interdit de mêler — un plan de duels **posé avant** l'activation du réglage. Même
-    régime dérivé, et même signal que sur le plan de cibles : le cloisonnement vaut pour la salle,
-    pas pour un écran."""
+    `adjacence_non_garantie` (E03US009, ADR-0048) : `true` quand un duelliste posé n'a pas son
+    adversaire côte à côte. Le front en fait un badge ambre ; dérivé, jamais persisté.
+    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage interdit
+    — un plan **posé avant** l'activation du réglage. Même régime dérivé, et même signal que sur le
+    plan de cibles : le cloisonnement vaut pour la salle, pas pour un écran.
+    """
 
     index: int
     capacite: int

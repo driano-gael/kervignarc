@@ -86,17 +86,11 @@ class Avancement:
 class LigneSupervision:
     """Une ligne de la console : un poste et tout ce qu'on en sait à cet instant.
 
-    `derniere_saisie`, `ip` et `avancement` sont `None` quand ils n'ont pas de sens (poste non
-    rattaché, ou rattaché sans départ courant fixé — pas encore en saisie). `ip` est un indice de
-    **diagnostic** (`D-06`), jamais une identité. Le **code** (credential du QR) n'est
-    volontairement **pas** exposé ici : la console est un écran admin toujours ouvert, on n'y étale
-    pas un secret de rattachement — le poste se désigne par son **numéro de cible** ou son libellé.
-
-    Deux natures depuis E07US004 (`type`) : une **cible** porte `cible_index` et un `avancement` ;
-    un **écran de salle** porte `libelle` et, s'il est sous contrôle, sa `prise`. Une seule ligne
-    pour les deux, parce que le CA veut précisément qu'ils se lisent au même endroit : *« un écran
-    figé ne se plaint pas, seule la supervision le révèle »* — le mettre dans un tableau à part
-    aurait recréé l'angle mort qu'il s'agit de fermer.
+    `derniere_saisie`, `ip` et `avancement` sont `None` quand ils n'ont pas de sens ; `ip` est un
+    indice de **diagnostic** (`D-06`), jamais une identité. ⚠️ Le **code** (credential du QR) n'est
+    volontairement **pas** exposé : la console est un écran admin toujours ouvert. Une seule ligne
+    pour les deux natures (E07US004) parce que le CA veut qu'elles se lisent au même endroit — « un
+    écran figé ne se plaint pas, seule la supervision le révèle ».
     """
 
     poste_id: PosteId
@@ -163,13 +157,11 @@ class ServiceSupervision:
     def etat(self, tournoi_id: TournoiId) -> EtatSupervision:
         """Instantané de supervision : une ligne par poste (cibles **et** écrans) + compteurs.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas (cf. `ServicePostes.lister`).
-        Les cibles viennent d'abord, triées par numéro ; les écrans ensuite (`cible_index` nul),
-        triés par identifiant — tri explicite ici (`_ordonnes`), sans dépendre de
-        l'ordre du repository. L'état de chacun est dérivé par la **politique pure** du domaine à
-        partir du rattachement (session ouverte ?) et de l'écart au dernier heartbeat (calculé ici
-        via `Horloge`, jamais dans le domaine) — **la même** pour un écran que pour une tablette :
-        c'est tout l'intérêt d'en avoir fait un poste.
+        Lève `TournoiIntrouvable`. Les cibles d'abord (par numéro), les écrans ensuite (par
+        identifiant) — tri **explicite** (`_ordonnes`), sans dépendre de l'ordre du repository.
+        L'état est dérivé par la **politique pure** du domaine depuis le rattachement et l'écart au
+        dernier heartbeat (calculé ici via `Horloge`, jamais dans le domaine) — **la même** pour un
+        écran que pour une tablette : c'est tout l'intérêt d'en avoir fait un poste.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")

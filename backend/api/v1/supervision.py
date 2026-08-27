@@ -57,14 +57,11 @@ class PriseReponse(BaseModel):
 class LigneSupervisionReponse(BaseModel):
     """Une ligne de la console : un poste (cible **ou** écran) et son état à cet instant.
 
-    `etat` ∈ `en_ligne` · `hors_ligne` · `non_rattache` (valeur de `EtatPoste`). `derniere_saisie`
-    est un horodatage ISO (le front calcule « il y a 14 mn »), `None` si rien n'a été saisi. `ip`
-    est un indice de diagnostic, `None` si le poste n'est pas rattaché. Le **code** n'est
-    pas exposé (secret de rattachement) : le poste se désigne par sa `cible_index` ou son `libelle`.
-
-    `type` ∈ `cible` · `ecran`. Une **cible** porte `cible_index` et `avancement` ; un **écran**
-    porte `libelle` et, s'il est sous contrôle, `prise`. Les deux dans le même tableau, parce que
-    c'est précisément là que le CA veut qu'on découvre un écran figé.
+    `etat` ∈ `en_ligne` · `hors_ligne` · `non_rattache`. `derniere_saisie` est un horodatage ISO
+    (le front calcule « il y a 14 mn »), `ip` un indice de diagnostic. ⚠️ Le **code** n'est pas
+    exposé (secret de rattachement) : le poste se désigne par sa `cible_index` ou son `libelle`.
+    Une **cible** porte `cible_index` et `avancement`, un **écran** `libelle` et sa `prise` — les
+    deux dans le même tableau, là où le CA veut qu'on découvre un écran figé.
     """
 
     poste_id: int

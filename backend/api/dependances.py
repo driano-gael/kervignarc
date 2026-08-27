@@ -69,15 +69,12 @@ def exiger_scoreur(request: Request) -> Scoreur:
 
 
 def exiger_poste(request: Request) -> Poste:
-    """Exige une session de poste **encore valide** et renvoie sa cible ; lève `NonAuthentifie`
-    (→ 401) sinon.
+    """Exige une session de poste **encore valide** et renvoie sa cible ; `NonAuthentifie` (401).
 
-    **Synchrone** (à dessein) : la validité d'un poste dépend du **statut de son tournoi**
-    (révocation « tournoi terminé », ADR-0029), donc `resoudre_session` relit la base — FastAPI
-    exécute une dépendance synchrone dans le threadpool, sans bloquer la boucle événementielle
-    (au contraire d'`exiger_admin`, purement en mémoire ; `exiger_scoreur` relit aussi la base
-    depuis E04US002). Renvoie le `Poste` pour que l'appelant sache **quelle cible** est servie sans
-    le redemander (E10US007, E04US002).
+    **Synchrone** à dessein : la validité d'un poste dépend du **statut de son tournoi**
+    (ADR-0029), donc `resoudre_session` relit la base — FastAPI exécute une dépendance synchrone
+    dans le threadpool, sans bloquer la boucle (au contraire d'`exiger_admin`, en mémoire). Renvoie
+    le `Poste` pour que l'appelant sache **quelle cible** est servie sans la redemander.
     """
     service: ServicePostes = request.app.state.service_postes
     poste = service.resoudre_session(extraire_jeton_poste(request))
@@ -89,16 +86,11 @@ def exiger_poste(request: Request) -> Poste:
 def exiger_poste_de_cible(request: Request) -> Poste:
     """Comme `exiger_poste`, mais **refuse un écran de salle** (E07US004, correctif de revue).
 
-    Depuis E07US004, la portée « poste » couvre **deux natures** : la tablette d'une cible et
-    l'écran de salle. Elles partagent le même en-tête, le même store de sessions et le même
-    endpoint de rattachement — c'est voulu (CA : « même mécanisme »). Mais un écran est du
-    **matériel public**, dont le code est affiché dans le gymnase : il ne doit toucher **aucune**
-    surface de saisie.
-
-    La garde vit **ici**, à la dépendance, et pas dans les services : c'est une question de
-    **portée d'identité**, pas de règle métier — d'où `SaisieHorsCible` (→ **403** « ce jeton n'a
-    pas ce droit ») et non un `DomainError` (→ 422 « ta requête est invalide »), que le front ne
-    saurait pas distinguer d'une erreur de saisie.
+    La portée « poste » couvre **deux natures** : la tablette d'une cible et l'écran de salle, qui
+    partagent en-tête, store et endpoint de rattachement (CA « même mécanisme »). ⚠️ Un écran est
+    du **matériel public**, code affiché dans le gymnase : aucune surface de saisie. La garde vit à
+    la **dépendance** — question de portée d'identité, pas de métier —, d'où `SaisieHorsCible`
+    (403) et non un `DomainError` (422) que le front confondrait avec une erreur de saisie.
     """
     poste = exiger_poste(request)
     return _refuser_ecran(poste)
@@ -114,27 +106,11 @@ def _refuser_ecran(poste: Poste) -> Poste:
 def autoriser_saisie(request: Request) -> Poste | None:
     """Autorise la **saisie** de score : admin **ou** poste de cible (E10US007).
 
-    Élargit l'autorisation d'écriture au-delà de l'admin (E10US001) au **jeton de poste**
-    (E04US001), sans jamais rouvrir la saisie au public. Renvoie :
-
-    - `None` si une session **admin** valide est présente — l'admin saisit sans contrainte ;
-    - le `Poste` si un **jeton de poste de cible** valide est présent — l'appelant (le service)
-      restreindra alors la saisie à **sa** cible (« un poste ne saisit que pour SA cible ») ;
-    - sinon `NonAuthentifie` (→ 401), comme toute écriture sans session (garde-fou
-      `test_acces_public`).
-
-    L'admin est essayé **en premier** : c'est le mode le plus large, et purement en mémoire, alors
-    que la résolution d'un poste relit la base (statut du tournoi, ADR-0029). **Synchrone** pour la
-    même raison qu'`exiger_poste` — FastAPI exécute une dépendance synchrone dans le threadpool.
-
-    ⚠️ **Un écran de salle est refusé ici** (E07US004, correctif de revue). C'est la garde qui
-    manquait : en rendant `Poste.cible_index` facultatif, E07US004 a transformé la comparaison
-    `archer.cible != poste.cible_index` du service en `None != None` — donc **fausse** — pour un
-    écran face à un archer **non placé**. La garde métier passait, et un credential d'appareil
-    public — code affiché dans le gymnase — obtenait un droit d'écriture sur les scores. Le service
-    a été durci en parallèle (`ServiceArchers._verifier_poste_sert_l_archer`) : deux barrières
-    plutôt qu'une, parce que celle-ci n'a pas de test de type et que celle-là s'était révélée
-    dépendre d'un invariant qu'on pouvait retirer ailleurs sans rien casser visiblement.
+    Renvoie `None` pour une session **admin** valide, le `Poste` pour un jeton de poste de cible
+    (le service restreindra à **sa** cible), sinon `NonAuthentifie` (401). L'admin est essayé **en
+    premier** : mode le plus large, purement en mémoire. ⚠️ **Un écran de salle est refusé ici** :
+    `Poste.cible_index` devenu facultatif transformait `archer.cible != poste.cible_index` en `None
+    != None`, donnant un droit d'écriture à un appareil public. Deux barrières, pas une.
     """
     service_auth: ServiceAuth = request.app.state.service_auth
     if service_auth.session_valide(extraire_jeton(request)):

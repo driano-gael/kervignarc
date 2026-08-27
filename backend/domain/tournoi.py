@@ -28,27 +28,13 @@ class TypeTournoi(str, Enum):
 
 
 class StatutTournoi(str, Enum):
-    """Cycle de vie d'un tournoi à **sept statuts** (E01US017, [ADR-0026]).
+    """Cycle de vie d'un tournoi à **sept statuts** (E01US017, ADR-0026).
 
-    Enrichit le cycle à trois statuts d'E01US002 (`brouillon → en_cours → terminé`) : chaque
-    statut porte un comportement distinct (règle « un statut n'existe que s'il change un
-    comportement »).
-
-    ```
-    brouillon ⇄ prêt ─(démarrer)→ en_cours ─(terminer)→ terminé ─(archiver)→ archivé
-        │        │                  ⇅ (mettre en pause / reprendre)
-        │        │                en_pause
-        └────────┴──────────────────┴──(annuler)──→ annulé   (terminal)
-    ```
-
-    - `prêt` : config **complète et validée** (feu vert au démarrage) ; suppression encore libre.
-    - `en_pause` : **gèle la saisie** de tout le tournoi sans le terminer ; reprend en `en_cours`.
-    - `archivé` : **verrou total**, lecture seule définitive (après export, EPIC-11).
-    - `annulé` : tournoi abandonné, **conserve la trace** (≠ suppression) ; terminal.
-
-    L'**enchaînement** (qui peut passer de quoi à quoi) et les **gardes** sont arbitrés par le
-    service applicatif (ADR-0007/0026 §4) : l'agrégat, lui, ne porte que la valeur et des
-    transitions **pures** (précondition garantie en amont).
+    Chaque statut porte un comportement distinct : `prêt` (config validée, suppression encore
+    libre), `en_pause` (gèle le tournoi sans le terminer), `archivé` (verrou total après export),
+    `annulé` (conserve la trace, terminal). ⚠️ L'**enchaînement** et les **gardes** sont arbitrés
+    par le service applicatif (ADR-0026 §4) — l'agrégat ne porte que la valeur et des transitions
+    **pures**, précondition garantie en amont. Le graphe vit dans `_TRANSITIONS`.
     """
 
     BROUILLON = "brouillon"
@@ -136,26 +122,20 @@ class Tournoi:
     def exiger_effectif_minimum(self, minimum: int | None) -> Tournoi:
         """Renvoie une copie au minimum d'inscrits exigé remplacé (`None` = aucune exigence).
 
-        L'invariant est tenu par `__post_init__`, que `replace` retraverse — pas ici : le vérifier
-        dans cette seule méthode laissait entrer une valeur absurde par la reconstruction du
-        repository, qui construit `Tournoi(...)` directement depuis la colonne. Asymétrie relevée en
-        revue face à `FormatTournoi`, qui validait, lui, à la construction.
-
-        Le contrôle de **cohérence** avec le déroulé (« exiger 20 quand il en faut 34 ») n'est pas
-        ici : il dépend des phases, que l'agrégat `Tournoi` ne porte pas — c'est le service qui les
-        rapproche.
+        ⚠️ L'invariant est tenu par `__post_init__`, que `replace` retraverse — **pas ici** : le
+        vérifier dans cette seule méthode laissait entrer une valeur absurde par la reconstruction
+        du repository, qui construit `Tournoi(...)` depuis la colonne. Le contrôle de **cohérence**
+        avec le déroulé dépend des phases, que l'agrégat ne porte pas : c'est le service.
         """
         return replace(self, effectif_minimum_exige=minimum)
 
     def definir_cloisonnement(self, cloisonnement: Cloisonnement) -> Tournoi:
         """Renvoie une copie au cloisonnement de cible remplacé (E03US007, RG-4).
 
-        Aucun invariant à tenir : les quatre positions sont toutes valides à tout moment, y compris
-        `AUCUN`. Changer le réglage ne **déplace personne** — le plan de cibles est matérialisé
-        (ADR-0024) : il s'applique aux prochaines générations et aux prochains gestes, et les cibles
-        déjà posées qui le violent sont **signalées** (`cloisonnement_non_respecte`). Déplacer des
-        archers en silence au changement d'un réglage serait le contraire du serveur autoritaire :
-        l'admin verrait son plan bouger sans l'avoir demandé.
+        Aucun invariant à tenir : les quatre positions sont valides à tout moment, `AUCUN` compris.
+        ⚠️ Changer le réglage ne **déplace personne** — le plan est matérialisé (ADR-0024) : il
+        s'applique aux prochains gestes, et les cibles posées qui le violent sont **signalées**.
+        Déplacer en silence serait le contraire du serveur autoritaire.
         """
         return replace(self, cloisonnement=cloisonnement)
 

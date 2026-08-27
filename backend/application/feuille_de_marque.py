@@ -91,12 +91,11 @@ class ServiceFeuilleDeMarque:
     def _bareme_du_creneau(self, depart_id: DepartId) -> BaremeQualification:
         """Le barème de la qualification **qui se tire dans ce créneau**, ou le preset FFTA 18 m.
 
-        ⚠️ **Correctif de revue E05US025.** Cette méthode lisait `qualification_du_tournoi`, qui
-        rend depuis cette US le barème de la **première** qualification — alors que `generer` tient
-        déjà le `depart_id` sous la main. Sur le déroulé de référence (3x20 puis *haute* et *basse*
-        à 3x15), on imprimait donc des feuilles à **20 volées** pour un tour qui s'en tire 15 : du
-        papier faux distribué au pas de tir, que le jour J ne rattrape pas. Le site avait échappé
-        au tri écrit en tête de `application/portee.py` — il y est désormais énuméré.
+        ⚠️ **Correctif de revue E05US025** : cette méthode lisait `qualification_du_tournoi`, qui
+        rend le barème de la **première** qualification, alors que `generer` tient déjà le
+        `depart_id`. Sur le déroulé de référence, on imprimait des feuilles à **20 volées** pour un
+        tour qui s'en tire 15 — du papier faux au pas de tir. Le site est désormais énuméré dans le
+        tri en tête d'`application/portee.py`.
         """
         phase = qualification_courante(self._phases, depart_id)
         # `bareme` est optionnel depuis E05US001 (ADR-0045 §2) mais toujours présent sur une
@@ -108,17 +107,11 @@ class ServiceFeuilleDeMarque:
     def _ligne(self, affectation: Affectation) -> LigneArcher | None:
         """Reconstitue la ligne d'un archer placé, ou `None` si la chaîne de jointure est rompue.
 
-        **Deux niveaux, à ne pas confondre.** Un **libellé** manquant (catégorie ou blason) retombe
-        sur `""` : la feuille de l'archer part quand même, un intitulé vide n'est pas un motif de la
-        lui retirer. Mais si l'**identité** manque — l'affectation pointe vers une inscription ou un
-        archer introuvable — on ne peut rien imprimer d'utile : la ligne est **omise**, et le fait
-        est **journalisé** (jamais un retrait muet — plan incohérent, pas un cas nominal).
-
-        Cette omission ne devrait **pas** se produire pour un archer réellement placé : la FK
-        `placement.inscription_id` est en `ON DELETE CASCADE` (pas de placement orphelin) et
-        `ServiceArchers.supprimer` refuse (`ArcherEngage`) ou purge le placement. La garde reste
-        défensive : le jour où l'un de ces invariants saute, l'anomalie se voit dans les logs plutôt
-        que de faire disparaître un archer de sa feuille en silence.
+        ⚠️ **Deux niveaux, à ne pas confondre** : un **libellé** manquant retombe sur `""` (la
+        feuille part quand même), mais une **identité** manquante rend la ligne **omise** et
+        **journalisée** — jamais un retrait muet. Cette omission ne devrait pas se produire (FK en
+        `ON DELETE CASCADE`, `ServiceArchers.supprimer` refuse ou purge) : garde défensive, pour
+        que l'anomalie se voie dans les logs plutôt qu'à la disparition d'un archer.
         """
         inscription = self._inscriptions.par_id(affectation.inscription_id)
         if inscription is None:

@@ -31,27 +31,14 @@ router = APIRouter(prefix="/api/v1/routage", tags=["routage"])
 IssueRoutageReponse = Literal[
     "prochain_duel", "prochaine_manche", "termine", "repeche", "en_attente", "indisponible"
 ]
-"""Les seules issues du panneau — publiées au schéma OpenAPI plutôt que laissées en `str`,
-pour que le client (qui les code en dur) voie une divergence d'énumération au lieu de la subir.
-Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6).
+"""Les seules issues du panneau, publiées au schéma OpenAPI plutôt que laissées en `str`.
 
-`repeche` est ajouté par E07US008 : **élargissement**, pas rupture — un client qui ne le connaît
-pas ne peut pas le rencontrer sur un tournoi sans repêchage, et le test miroir garantit qu'aucune
-valeur du domaine ne circule sans être déclarée ici.
-
-`en_attente` est ajouté par E05US030, et **c'est un rétrécissement d'`indisponible`, pas seulement
-un élargissement** : `E05US026` servait cette valeur-ci sous `indisponible` avec un motif, faute de
-pouvoir toucher au contrat depuis une US backend seule. Un client resté à l'ancienne union verra
-donc une valeur inconnue là où il lisait « on ne sait pas ».
-
-⚠️ **Ce que les garde-fous couvrent, exactement** (précisé en revue, la première rédaction
-promettait plus) : le test miroir (`test_issue_reponse_est_le_miroir_de_l_enumeration`) garde la
-cohérence **entre l'énumération d'application et ce DTO**, rien d'autre ; le `Record` exhaustif du
-front (`features/routage/presentation.ts`, `EN_LICE`) ne fait échouer la compilation qu'**une fois
-l'union TypeScript élargie** — il est indexé par le type du front, pas par celui du serveur. Une
-issue ajoutée **côté serveur seul** ne rougit donc nulle part : elle rendrait `EN_LICE[inconnue]`
-→ `undefined` → falsy, et l'archer partirait chez les sortis. Les deux côtés se livrent ensemble,
-c'est ce qui rend le rétrécissement sûr — pas un mécanisme."""
+Miroir fermé de `IssueRoutage`, sans exposer l'énumération d'application (règle 6) : le client les
+code en dur, il doit voir une divergence au lieu de la subir. `en_attente` (E05US030) **rétrécit**
+`indisponible`, là où `repeche` (E07US008) n'était qu'un élargissement. ⚠️ **Le test miroir ne
+garde que la cohérence énumération ↔ DTO** ; le `Record` du front ne rougit qu'une fois l'union TS
+élargie, donc une issue ajoutée **côté serveur seul** ne rougit nulle part.
+"""
 
 
 # --- DTO ---
@@ -60,18 +47,11 @@ c'est ce qui rend le rétrécissement sûr — pas un mécanisme."""
 class ProchaineMancheReponse(BaseModel):
     """Le prochain rendez-vous d'un finaliste de **Big Shoot Off** (E05US028).
 
-    ⚠️ **Un DTO distinct de `ProchainDuelReponse`, et non son élargissement.** Un Big Shoot Off
-    n'oppose personne : tous les finalistes sont sur la ligne, et c'est le classement de la manche
-    qui élimine. Réutiliser le DTO de duel aurait publié au schéma un `adversaire` toujours `null`
-    et un `numero` de match qui n'existe pas — le genre de nom trop étroit qu'ADR-0083 a dû
-    corriger côté domaine.
-
-    `elimine` dit combien d'archers sortiront à l'issue de ce tour : c'est l'information qui compte
-    pour le tireur, davantage que le numéro de la manche.
-
-    `cible`/`position` sont **toujours `null` aujourd'hui**, et `manque` le dit en clair : le
-    routage ne lit pas le plan du créneau pour cette phase (`DETTE-059`). Nommer le manque plutôt
-    que le taire est la règle `P-3` — un panneau muet se prend pour une panne réseau.
+    ⚠️ **Un DTO distinct de `ProchainDuelReponse`, et non son élargissement** : un Big Shoot Off
+    n'oppose personne, réutiliser le DTO de duel aurait publié un `adversaire` toujours `null` et
+    un `numero` de match inexistant. `elimine` dit combien d'archers sortiront à l'issue du tour.
+    ⚠️ `cible`/`position` sont **toujours `null` aujourd'hui** et `manque` le dit en clair : le
+    routage ne lit pas le plan du créneau pour cette phase (`DETTE-059`, règle `P-3`).
     """
 
     numero: int
@@ -129,21 +109,11 @@ class ProchainDuelReponse(BaseModel):
 class DestinationRepechageReponse(BaseModel):
     """La phase qui **reprend** un repêché (E07US008) : son id, son rang de séquence, son type.
 
-    Pas de libellé tout fait : le front sait déjà nommer un type de phase (`LIBELLE_TYPE`), et une
-    phase n'a pas de nom propre dans le modèle. Envoyer « 3. Élimination directe » depuis le serveur
-    dupliquerait ce vocabulaire à un deuxième endroit, où il finirait par diverger.
-
-    `type` est déclaré sur l'**énumération** `TypePhase`, comme dans `api/v1/phases.py` et
-    `api/v1/formats.py` (correctif de revue, axe A) : un `str` ouvert publiait une chaîne libre au
-    schéma OpenAPI. L'énumération fermée y rend une divergence **visible** au client au lieu de la
-    lui faire subir, exactement comme `IssueRoutageReponse` ci-dessus. La sérialisation JSON est
-    **inchangée** (`TypePhase` est un `str, Enum` : Pydantic rend `"elimination_directe"`), donc le
-    client existant ne voit aucune différence.
-
-    ⚠️ Le miroir TS reste volontairement `type: string`, et ce n'est pas un oubli (précision de
-    revue) : le front doit pouvoir nommer un type qu'un serveur **plus récent** lui enverrait, et le
-    durcir rendrait mort le repli de `nommerType` — c'est ce repli, pas cette déclaration, qui a
-    supprimé le cast côté client.
+    Pas de libellé tout fait : le front sait nommer un type (`LIBELLE_TYPE`), le dupliquer côté
+    serveur le ferait diverger. `type` est déclaré sur l'**énumération** `TypePhase` (correctif de
+    revue, axe A) — un `str` ouvert publiait une chaîne libre au schéma. ⚠️ Le miroir TS reste
+    volontairement `type: string` : le front doit pouvoir nommer un type qu'un serveur **plus
+    récent** lui enverrait, sans quoi le repli de `nommerType` est mort.
     """
 
     phase_id: int
@@ -162,21 +132,11 @@ class DestinationRepechageReponse(BaseModel):
 class RoutageArcherReponse(BaseModel):
     """La ligne d'un archer : son issue et le détail qui va avec.
 
-    `issue` est fermée (`IssueRoutageReponse`), et chacune de ses valeurs dit quel champ lire
-    ensuite : `prochain` pour `prochain_duel`, `prochaine_manche` pour `prochaine_manche`,
-    `rang_final`/`rang_min`/`rang_max` pour `termine`, `destination` pour `repeche`, `motif` pour
-    `en_attente` et pour `indisponible`.
-
-    ⚠️ **`en_attente` et `indisponible` ne se disent pas de la même façon** malgré le champ commun :
-    le premier veut dire « il est dans la phase, en course, mais rien n'est apparié pour lui à cet
-    instant » — il **compte parmi les tireurs encore en lice** ; le second, « on ne sait pas le
-    router ». Les confondre a été le défaut d'E05US026, corrigé en E05US030.
-
-    **Trois champs de rang, et ils ne se répètent pas** (E07US008) : `rang_final` est le rang
-    **exact** quand un match terminal l'a décerné ; `rang_min`/`rang_max` la **fourchette acquise**,
-    qui vaut aussi dans un tableau tronqué au podium (le battu d'un quart est 5ᵉ-8ᵉ *ex æquo*).
-    Quand le rang exact existe, la fourchette s'y referme. Un client qui n'affiche que `rang_final`
-    continue de fonctionner : il perd l'*ex æquo*, il ne lit rien de faux.
+    `issue` est fermée et chaque valeur dit quel champ lire ensuite (`prochain_duel`,
+    `prochaine_manche`, `rang_final`, `destination`, `motif`). ⚠️ **`en_attente` ≠ `indisponible`**
+    malgré le champ commun : le premier est « en course, rien d'apparié à cet instant » et **compte
+    parmi les en-lice** ; le second, « on ne sait pas router » (E05US026, corrigé en E05US030).
+    `rang_min`/`rang_max` portent la fourchette d'ex æquo, refermée quand le rang exact existe.
     """
 
     archer_id: int
@@ -248,16 +208,12 @@ class RoutageReponse(BaseModel):
 _MAX_ARCHERS = 64
 """Plafond du nombre d'archers routés en un appel — au-delà, **400** avant que le service tourne.
 
-(400 et non 422 : ce projet mappe `RequestValidationError` sur 400, le 422 étant réservé aux
-`DomainError` — cf. la table de `api/erreurs.py`.)
-
-Les deux appelants réels en demandent 4 (une cible) et 2 (un duel) ; 64 laisse une marge
-confortable. La borne est **secondaire** dans la défense : le coût dominant d'un appel est la
-reconstruction de l'arbre, payée **une fois par requête** quel que soit le nombre d'identifiants, et
-elle n'est bornée par rien. Ce plafond ne ferme donc que l'amplification requête→réponse (le
-régime
-de DETTE-008) sur une route **publique et non authentifiée** ; à ne pas lire comme une protection
-générale contre la charge."""
+400 et non 422 : ce projet mappe `RequestValidationError` sur 400, le 422 étant réservé aux
+`DomainError` (`api/erreurs.py`). Les deux appelants réels en demandent 4 et 2 ; 64 laisse de la
+marge. ⚠️ **Borne secondaire** : le coût dominant est la reconstruction de l'arbre, payée une fois
+par requête et bornée par rien — ce plafond ne ferme que l'amplification requête→réponse
+(`DETTE-008`) sur une route publique, pas la charge en général.
+"""
 
 
 # --- Lecture ---
@@ -278,12 +234,10 @@ async def lire_routage(
 ) -> RoutageReponse:
     """Où tirent ensuite ces archers. Lecture pure (`D-08`), hors boucle événementielle.
 
-    `phase_id` omis ⇒ le service vise le **tableau qui vient** — la première élimination directe
-    non terminée, sinon la dernière : la tablette de qualification ne connaît que sa cible et son
-    départ.
-    Fourni, il est **validé** (404 s'il est inconnu ou relève d'un autre tournoi). L'ordre des
-    `archer_id` est **conservé** dans la réponse — le panneau affiche A, B, C, D dans l'ordre de la
-    grille.
+    `phase_id` omis ⇒ le service vise le **tableau qui vient** (la première élimination directe non
+    terminée, sinon la dernière) : la tablette de qualification ne connaît que sa cible et son
+    départ. Fourni, il est **validé** (404 s'il est inconnu ou d'un autre tournoi). L'ordre des
+    `archer_id` est **conservé** — le panneau affiche A, B, C, D dans l'ordre de la grille.
     """
     service: ServiceRoutage = request.app.state.service_routage
     routage = await run_in_threadpool(service.routage, depart_id, tuple(archer_id or ()), phase_id)
@@ -299,21 +253,10 @@ async def lire_affectations(
     """**Toutes** les affectations du tableau, dans l'ordre du pas de tir (E07US008).
 
     Même projection et **même DTO** que la route précédente : les quatre canaux de routage doivent
-    dire la même chose, et deux formes de réponse finiraient par diverger sur la butte annoncée.
-    Seule l'entrée change — ici, aucun `archer_id` : ni l'écran de salle ni la table de
-    l'organisation ne connaissent la liste, et la leur faire reconstituer serait leur faire
-    connaître le tableau.
-
-    **Pas de plafond `_MAX_ARCHERS` ici, et ce n'est pas un oubli.** Ce plafond bornait
-    l'amplification requête→réponse (le régime de `DETTE-008`) : un client pouvait demander 64
-    lignes pour un coût de reconstruction déjà payé. Ici le client ne demande rien — la taille de la
-    réponse est celle du tableau, donc bornée par les inscrits du tournoi, pas par la requête.
-
-    Le coût dominant reste la **reconstruction de l'arbre**, payée une fois par appel, sur une route
-    publique non authentifiée : c'est le régime de **`# DETTE-031`**, que cette US **aggrave** et
-    dont elle élargit la ligne au registre (correctif de revue — trois axes ont relevé que ces
-    textes citaient `DETTE-008`, qui traite de tout autre chose : l'écho non borné de l'entrée
-    client dans une réponse 400).
+    dire la même chose. Seule l'entrée change — aucun `archer_id`, ni l'écran de salle ni la table
+    de l'organisation ne connaissant la liste. ⚠️ **Pas de plafond `_MAX_ARCHERS` ici** : le client
+    ne demande rien, la réponse est bornée par les inscrits. Le coût dominant reste la
+    reconstruction de l'arbre sur une route publique — **`# DETTE-031`**, que cette US aggrave.
     """
     service: ServiceRoutage = request.app.state.service_routage
     routage = await run_in_threadpool(service.affectations, depart_id, phase_id)

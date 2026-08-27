@@ -46,13 +46,11 @@ class Cible:
 class GabaritSalle:
     """Un gabarit de salle. `id` vaut `None` tant qu'il n'est pas persisté.
 
-    L'état porte le plafond d'archers de **chaque** cible (`capacites`, une valeur par cible) :
-    la représentation est par-cible, ce qui permet l'ajustement fin d'E01US008 (`ajuster`), même
-    si la création d'E01US007 remplit ces plafonds de façon **uniforme**.
-
-    `tournoi_id` distingue les deux natures d'un gabarit : `None` pour un **modèle** de
-    bibliothèque (réutilisable), un identifiant de tournoi pour une **instance appliquée** —
-    copie propre à ce tournoi, ajustable sans toucher au modèle.
+    L'état porte le plafond d'archers de **chaque** cible (`capacites`, une valeur par cible) : la
+    représentation est par-cible, ce qui permet l'ajustement fin d'E01US008, même si la création
+    d'E01US007 les remplit uniformément. `tournoi_id` distingue les deux natures : `None` pour un
+    **modèle** de bibliothèque, un identifiant pour une **instance appliquée** — copie propre au
+    tournoi, ajustable sans toucher au modèle.
     """
 
     nom: str

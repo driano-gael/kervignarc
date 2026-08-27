@@ -93,20 +93,11 @@ class TransitionReponse(BaseModel):
 class ExigenceEffectifReponse(BaseModel):
     """Ce que le déroulé d'un tournoi exige d'inscrits, et ce qu'il en a (E05US021).
 
-    Sert l'affichage **permanent** du CA (« 28 inscrits / 34 requis ») : l'écran s'en sert pour
-    prévenir *avant* le clic « Démarrer », que le serveur refuserait. `minimum` vaut `0` quand aucun
-    déroulé n'est composé — il n'y a alors rien à exiger.
-
-    `ordre_phase`, `rang_debut` et `ordre_source` disent **pourquoi** — « la phase 3 prélève à
-    partir du rang 5 **de la phase 2** » — et sont `None` quand le manque ne vient d'aucun
-    prélèvement en particulier (rien de composé, ou exigence propre du club). `D-16` / `P-4` : une
-    alerte qui ne chiffre pas son impact est un clic de plus, pas une protection.
-
-    ⚠️ **`ordre_source` est indispensable depuis E05US024** : le plancher remonte la chaîne des
-    sources, si bien que `rang_debut` se lit dans la phase **source** tandis que `minimum` compte
-    des **inscrits** au tournoi. Sans nommer la source, les deux chiffres ne se déduisaient plus
-    l'un de l'autre et l'alerte devenait indéchiffrable — corrigé côté 409 mais pas ici dans un
-    premier jet, alors que c'est cet écran-là que l'organisateur voit **en premier**.
+    Sert l'affichage **permanent** du CA (« 28 inscrits / 34 requis ») : prévenir *avant* le clic
+    que le serveur refuserait. `minimum` vaut `0` sans déroulé composé. `ordre_phase`, `rang_debut`
+    et `ordre_source` disent **pourquoi** (`D-16`/`P-4`). ⚠️ **`ordre_source` est indispensable
+    depuis E05US024** : `rang_debut` se lit dans la phase **source** tandis que `minimum` compte
+    des **inscrits** — sans nommer la source, l'alerte devient indéchiffrable.
     """
 
     inscrits: int

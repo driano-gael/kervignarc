@@ -21,13 +21,10 @@ def appliquer_migrations(
 ) -> None:
     """Applique toutes les migrations jusqu'à `head` (crée la base si absente).
 
-    - `migrations_dir` : dossier `migrations/` (contenant `env.py` et `versions/`).
-    - `alembic_ini` : `alembic.ini` (logging, options) — optionnel ; un `Config` sans
-      fichier suffit, `env.py` résout l'URL via `infrastructure.db.config`.
-    - `url` : surcharge explicite de l'URL SQLite ; sinon `env.py` prend le défaut
-      applicatif (variable d'env `KERVIGNARC_DATABASE_URL` ou défaut local). Réservé aux
-      tests — en production, on passe par la variable d'environnement pour que la
-      composition root vise la **même** base.
+    `migrations_dir` : dossier contenant `env.py` et `versions/`. `alembic_ini` est optionnel — un
+    `Config` sans fichier suffit, `env.py` résolvant l'URL via `infrastructure.db.config`. ⚠️ `url`
+    est **réservé aux tests** : en production on passe par `KERVIGNARC_DATABASE_URL`, pour que la
+    composition root vise la **même** base.
     """
     config = Config(str(alembic_ini)) if alembic_ini is not None else Config()
     config.set_main_option("script_location", str(migrations_dir))

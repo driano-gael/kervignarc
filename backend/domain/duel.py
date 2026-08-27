@@ -320,12 +320,10 @@ class Duel:
         """Saisit le tir de barrage (§8.2) — une flèche par camp — quand l'égalité l'exige.
 
         Refuse si le barrage n'est pas requis (`BarrageNonRequis`), sur un duel validé
-        (`DuelVerrouille`), une flèche hors blason (`ValeurHorsBlason`), ou une égalité de flèche
-        sans désignation du plus près du centre (`BarrageIndecis`). Un barrage **déjà saisi** reste
-        **ré-éditable** tant que le duel n'est pas validé — la garde se fonde sur l'égalité des
-        **manches seules** (pas sur `resultat.barrage_requis`, qui devient faux dès qu'un barrage
-        décisif est posé) : sans quoi une flèche de barrage erronée ne se corrigerait plus et
-        forcerait à valider un vainqueur faux.
+        (`DuelVerrouille`), une flèche hors blason, ou une égalité sans désignation du plus près du
+        centre (`BarrageIndecis`). ⚠️ Un barrage **déjà saisi** reste **ré-éditable** tant que le
+        duel n'est pas validé : la garde se fonde sur l'égalité des **manches seules**, sans quoi
+        une flèche de barrage erronée forcerait à valider un vainqueur faux.
         """
         if self.verrouille:
             raise DuelVerrouille("Ce duel est validé : plus aucune saisie n'est possible.")

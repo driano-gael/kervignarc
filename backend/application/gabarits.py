@@ -67,11 +67,9 @@ class ServiceGabarits:
     def appliquer(self, tournoi_id: TournoiId, modele_id: GabaritSalleId) -> GabaritSalle:
         """Applique un gabarit **modèle** à un tournoi (E01US008) : en crée/rafraîchit la copie.
 
-        La copie reprend le nom et les plafonds du modèle. Si le tournoi avait déjà une instance,
-        elle est **remplacée sur place** (même identifiant, pour ne pas casser d'éventuelles
-        références) ; sinon une nouvelle copie est persistée. Le modèle d'origine reste intact.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `GabaritIntrouvable` si
+        La copie reprend le nom et les plafonds du modèle. Une instance existante est **remplacée
+        sur place** (même identifiant, pour ne casser aucune référence) ; sinon une copie est
+        persistée. Le modèle reste intact. Lève `TournoiIntrouvable`, ou `GabaritIntrouvable` si
         `modele_id` n'est pas un modèle applicable (inconnu ou déjà rattaché à un tournoi).
         """
         self._tournoi_existant(tournoi_id)

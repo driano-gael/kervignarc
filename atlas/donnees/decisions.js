@@ -4666,7 +4666,11 @@ window.ATLAS.decisions = {
       "LecteurClassementPoules",
       "LecteurClassementBigShootOff"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "ServicePoules",
+      "LecteurClassementPoules",
+      "LecteurClassementBigShootOff"
+     ],
      "verifiable": true
     },
     {

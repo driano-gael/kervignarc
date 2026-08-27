@@ -36,15 +36,11 @@ from infrastructure.erreurs import InfrastructureError
 class _AllocateurId:
     """Attribue les identifiants auto-incrémentés, en **préservant** un `id` déjà présent.
 
-    Un `id` fourni (hydratation) est conservé et fait avancer la séquence au-delà ; un `id` absent
-    (`None`, création par le bot E15US003) reçoit le prochain entier. Ainsi un même magasin sert
-    l'hydratation (loss-less) et la création sans collision d'identifiants.
-
-    **Piège E15US003 (hors périmètre E15US002).** L'absence de collision suppose que l'hydratation
-    (qui préserve les `id`) précède **toute** création à `id=None`. Si le bot crée une entité avant
-    d'hydrater, ou dans un magasin où un `id` supérieur sera ensuite hydraté, deux entités peuvent
-    partager un `id`. En E15US002 c'est sûr : l'hydratation est complète et préalable, et le rejeu
-    ne crée rien. À revoir quand le bot écrira dans le harnais.
+    Un `id` fourni (hydratation) est conservé et fait avancer la séquence ; absent, il reçoit le
+    prochain entier — un même magasin sert donc l'hydratation et la création. ⚠️ **Piège E15US003**
+    : l'absence de collision suppose que l'hydratation précède **toute** création à `id=None`. En
+    E15US002 c'est sûr (hydratation complète et préalable, rejeu qui ne crée rien) ; à revoir quand
+    le bot écrira dans le harnais.
     """
 
     def __init__(self) -> None:
@@ -386,15 +382,11 @@ class InMemoryPhaseRepository(_AllocateurId):
     def _assemble(self) -> bool:
         """Vrai quand le magasin sait joindre `phase → départ → tournoi → étape`.
 
-        Faux, il reste en **mode indulgent** : la phase conservée porte déjà sa définition (elle y
-        a été mise à l'ajout), on la rend telle quelle. C'est ce qui permet aux décors de test qui
-        ne lisent que des statuts de rester simples, sans jamais rendre une phase amputée.
-
-        # DETTE-049 : cette indulgence fait répondre la doublure **autrement que la production**
-        # (qui, elle, câble toujours les deux magasins — cf. `bootstrap/composition.py`). Un décor
-        # ainsi monté peut donc *consacrer* un bug au lieu de l'attraper, ce qui est exactement le
-        # mode de panne rencontré deux fois pendant E01US025. Branche morte au câblage réel, d'où
-        # la sévérité mineure ; à supprimer en rendant les deux magasins obligatoires.
+        Faux, il reste en **mode indulgent** : la phase conservée porte déjà sa définition, on la
+        rend telle quelle — les décors de test qui ne lisent que des statuts restent simples. ⚠️ `#
+        DETTE-049` : cette indulgence fait répondre la doublure **autrement que la production**,
+        donc un décor peut *consacrer* un bug (rencontré deux fois en E01US025) ; à supprimer en
+        rendant les deux magasins obligatoires.
         """
         return self._departs is not None and self._deroules is not None
 

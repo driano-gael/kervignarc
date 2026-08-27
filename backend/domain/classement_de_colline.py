@@ -23,12 +23,9 @@ def classement_de_colline(
     """Le classement de la phase — la colline, dans son état final.
 
     `colline` est ce que `colline.classement_colline` rend : les participants dans l'ordre de leurs
-    positions. `lignes` porte l'identité des archers (nom, catégorie, club), reprise telle quelle —
-    un classement de colline n'est pas un objet d'une autre nature, c'est le **même** archer situé
-    autrement. Seul `rang_scratch` change.
-
-    Une colline **vide** est une réponse licite, pas une erreur : une phase avale qui prélève dans
-    une colline pas encore commencée doit lire « rien à prendre » plutôt que tomber.
+    positions. `lignes` porte l'identité des archers, reprise telle quelle — c'est le **même**
+    archer situé autrement, seul `rang_scratch` change. Une colline **vide** est une réponse licite
+    : une phase avale qui y prélève doit lire « rien à prendre » plutôt que tomber.
     """
     retenus = _retenus(colline, lignes)
     return ClassementSource(
@@ -49,12 +46,10 @@ def _retenus(
 ) -> list[Participant]:
     """Les participants dont l'archer existe au classement amont — l'ordre de la colline est gardé.
 
-    Filtrer **avant** de numéroter, et non après : `preleves` lit `rang_scratch`, donc une
-    numérotation trouée ferait manquer des archers à une fenêtre par ailleurs correcte. Même geste
-    que les trois jumeaux, et même motif.
-
-    Les participants **équipe** sont écartés (leur `ref_id` n'est pas un archer, ADR-0028), comme le
-    font déjà les trois autres classements de phase ; leur résolution viendra avec E13US002.
+    ⚠️ Filtrer **avant** de numéroter, et non après : `preleves` lit `rang_scratch`, donc une
+    numérotation trouée ferait manquer des archers à une fenêtre par ailleurs correcte (même geste
+    que les trois jumeaux). Les participants **équipe** sont écartés (ADR-0028) ; leur résolution
+    viendra avec E13US002.
     """
     return [
         participant

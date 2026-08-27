@@ -60,13 +60,11 @@ class SexeCategorie(str, Enum):
 class Categorie:
     """Une catégorie — **modèle de bibliothèque** ou copie d'un tournoi (E01US023, ADR-0060).
 
-    `tournoi_id is None` : c'est un modèle du **patrimoine du club**, réutilisable d'une année sur
-    l'autre. Renseigné : c'est la **copie** d'un tournoi, ajustable sans altérer le modèle. Même
-    patron que `gabarit_salle` depuis E01US007. `id` vaut `None` tant qu'elle n'est pas persistée.
-
-    `ages` est un **tuple** (immuable, règle 4) de tranches éligibles, vide par défaut (aucune
-    contrainte d'âge). Il représente un **ensemble** : dédoublonné et ordonné canoniquement à la
-    construction (cf. `_ages_valides`), pour que deux catégories aux mêmes tranches soient égales.
+    `tournoi_id is None` : modèle du **patrimoine du club**, réutilisable d'une année sur l'autre.
+    Renseigné : **copie** d'un tournoi, ajustable sans altérer le modèle (même patron que
+    `gabarit_salle`). `ages` est un **tuple** (règle 4) de tranches éligibles, vide par défaut, qui
+    représente un **ensemble** : dédoublonné et ordonné canoniquement (`_ages_valides`), pour que
+    deux catégories aux mêmes tranches soient égales.
     """
 
     tournoi_id: TournoiId | None
@@ -93,13 +91,11 @@ class Categorie:
     ) -> Categorie:
         """Crée une catégorie valide ; lève `LibelleCategorieInvalide` si le libellé est vide.
 
-        Le libellé et l'arme sont normalisés (espaces de bord retirés) ; une arme vide devient
-        `None`. `ages` accepte une ou plusieurs `TrancheAge`, dans n'importe quel ordre et avec
-        d'éventuels doublons — la valeur stockée est canonique (cf. `_ages_valides`). `blason_id`
-        est le blason par défaut, facultatif : `None` = aucun. L'agrégat ne **vérifie pas**
-        l'existence ni le rattachement du blason (règle inter-agrégats portée par le service).
-        `hauteur_cm` est la hauteur du centre de l'or (défaut 130, `> 0`), qui pilotera le placement
-        (E03US001) : lève `HauteurCentreInvalide` si elle n'est pas un entier strictement positif.
+        Libellé et arme normalisés (arme vide → `None`). `ages` accepte n'importe quel ordre et des
+        doublons — la valeur stockée est canonique. `blason_id` facultatif : l'agrégat ne **vérifie
+        pas** l'existence ni le rattachement du blason (règle inter-agrégats portée par le
+        service). `hauteur_cm` (centre de l'or, défaut 130) : `HauteurCentreInvalide` si non entier
+        > 0.
         """
         return Categorie(
             tournoi_id=tournoi_id,
@@ -115,13 +111,10 @@ class Categorie:
     def pour_tournoi(self, tournoi_id: TournoiId, blason_id: BlasonId | None) -> Categorie:
         """Copie ce modèle de bibliothèque en **catégorie d'un tournoi**, non persistée (E01US023).
 
-        `blason_id` est **fourni par l'appelant**, et ce n'est pas un détail : c'est une **clé
-        étrangère**, et la recopier telle quelle ferait pointer la catégorie du tournoi vers le
-        blason de la *bibliothèque*. Seul le service voit les deux collections et sait à quelle
-        copie le lien doit être réattaché — l'agrégat, lui, ne voit qu'une catégorie à la fois
-        (même partage des rôles que la garde `BlasonHorsTournoi`).
-
-        L'`id` est remis à `None` (catégorie neuve) et l'`origine` **suit** le modèle.
+        ⚠️ `blason_id` est **fourni par l'appelant** : c'est une **clé étrangère**, et la recopier
+        ferait pointer la catégorie du tournoi vers le blason de la *bibliothèque*. Seul le service
+        voit les deux collections et sait à quelle copie réattacher le lien (même partage des rôles
+        que `BlasonHorsTournoi`). L'`id` repart à `None`, l'`origine` **suit** le modèle.
         """
         return replace(self, tournoi_id=tournoi_id, blason_id=blason_id, id=None)
 
@@ -194,12 +187,10 @@ def _texte_facultatif(valeur: str | None) -> str | None:
 def _ages_valides(ages: Iterable[TrancheAge]) -> tuple[TrancheAge, ...]:
     """Renvoie les tranches **dédoublonnées et ordonnées** par âge canonique (U11 → S3).
 
-    `ages` est un **ensemble** d'éligibilité, pas une séquence significative pour l'appelant : deux
-    catégories aux mêmes tranches dans un ordre différent sont identiques. On renvoie donc une
-    représentation canonique (parcours de `TrancheAge` dans son ordre de déclaration), ce qui rend
-    l'égalité de deux `Categorie` stable et la comparaison d'ensembles (invariant d'éligibilité,
-    testé sur le référentiel) directe. Le typage `TrancheAge` ferme le vocabulaire : une valeur hors
-    des huit tranches ne peut pas atteindre le domaine (rejetée à la frontière API).
+    `ages` est un **ensemble** d'éligibilité, pas une séquence significative : deux catégories aux
+    mêmes tranches dans un ordre différent sont identiques. La représentation canonique rend
+    l'égalité de deux `Categorie` stable et la comparaison d'ensembles directe. Le typage
+    `TrancheAge` ferme le vocabulaire — une valeur hors des huit est rejetée à la frontière.
     """
     presentes = set(ages)
     return tuple(tranche for tranche in TrancheAge if tranche in presentes)

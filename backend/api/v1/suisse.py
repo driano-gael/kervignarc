@@ -92,17 +92,10 @@ class RencontrePubliqueReponse(BaseModel):
     """La **même** rencontre, vue de qui n'a pas à saisir — écran de salle, public, écran admin.
 
     ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et ce DTO est un correctif de
-    revue. `RencontreReponse` ci-dessous sert `DuelReponse` en entier : chaque flèche de chaque
-    volée, le barrage, les zones et le barème du pavé, et le **nom du bénévole qui a validé**. Rien
-    de cela n'a de raison d'être lu hors de la saisie.
-
-    La première version de ce routeur servait ce DTO-là sur une route **anonyme** — exactement ce
-    qu'`api/v1/poules.py` avait dû corriger en revue d'E05US023, et dont la docstring de son
-    `RencontrePubliqueReponse` porte le récit. Le défaut a été recopié en même temps que la
-    structure du fichier, sans la leçon qu'elle portait.
-
-    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
-    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
+    revue : `RencontreReponse` sert `DuelReponse` en entier — chaque flèche, le barrage, les zones,
+    le barème et le **nom du bénévole qui a validé**. La première version servait ce DTO-là sur une
+    route **anonyme**, défaut recopié d'`api/v1/poules.py` en même temps que la structure du
+    fichier, sans la leçon. Un DTO **distinct** et non un `exclude`.
     """
 
     numero: int
@@ -325,14 +318,11 @@ class ValiderRencontreRequete(BaseModel):
 def _en_etat_duel(rencontre: RencontreDeRonde) -> EtatDuel:
     """Projette une rencontre dans la forme que `DuelReponse` sait sérialiser.
 
-    ⚠️ **Adaptation de frontière, pas une conversion métier.** Même parti que `api/v1/poules.py` :
-    `EtatDuel` porte deux champs qu'une ronde n'a pas — `place_en_jeu` (une rencontre de ronde ne
-    décerne aucune place, c'est le classement qui le fait) et `est_bye` (le bye d'un suisse est
-    porté par la **ronde**, pas par une rencontre : personne n'y est opposé à personne).
-
-    On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second, à
-    trois champs près, obligerait le front à écrire un troisième écran de saisie — ce que toute
-    cette série de tranches s'applique à éviter.
+    ⚠️ **Adaptation de frontière, pas une conversion métier**, même parti que `api/v1/poules.py` :
+    `EtatDuel` porte deux champs qu'une ronde n'a pas — `place_en_jeu` (c'est le classement qui
+    décerne) et `est_bye` (le bye d'un suisse est porté par la **ronde**). On réutilise le DTO
+    parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second obligerait le front à un
+    troisième écran de saisie.
     """
     return EtatDuel(
         numero=rencontre.numero,

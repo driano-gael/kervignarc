@@ -67,15 +67,13 @@ class RaisonConflitBloc(str, Enum):
     """Le groupe n'apparie personne — moins de deux tireurs —, donc il n'occupe rien."""
 
     NON_POSEE = "non_posee"
-    """Aucun bloc ne porte cette poule — le plan n'a pas encore été posé, ou l'a été sur une autre
-    composition (E05US023).
+    """Aucun bloc ne porte cette poule — plan non posé, ou posé sur une autre composition.
 
     ⚠️ **Cette raison ne naît jamais de `placer_les_blocs`**, qui pose ou rapporte `SALLE_PLEINE` :
-    elle naît à la **lecture**, quand la composition du jour ne retrouve pas son bloc en base. Le
-    cas est normal avant la première pose, et il est un **signal** après : l'effectif a bougé depuis
-    que le plan a été écrit, donc il faut le reposer. Le distinguer de `SALLE_PLEINE` évite
-    d'annoncer une salle trop petite à un organisateur qui a simplement oublié de générer son
-    plan."""
+    elle naît à la **lecture**, quand la composition du jour ne retrouve pas son bloc en base
+    (E05US023). Normal avant la première pose, **signal** après (l'effectif a bougé, il faut
+    reposer). La distinguer de `SALLE_PLEINE` évite d'annoncer une salle trop petite à tort.
+    """
 
 
 @dataclass(frozen=True)
@@ -104,23 +102,11 @@ def couloirs_de_la_paire(
 ) -> tuple[tuple[int, str], tuple[int, str]] | None:
     """Les deux couloirs qu'une **rencontre** occupe — dérivés du bloc, jamais persistés.
 
-    La *n*-ième rencontre d'un tour (ou d'une ronde) prend les couloirs `2n` et `2n+1` du bloc, donc
-    les deux adversaires sont **côte à côte** : c'est l'intention d'[ADR-0048] pour un tableau,
-    obtenue ici sans réordonnancement puisque le bloc est contigu par construction.
-
-    Rend `None` si le bloc manque (plan non posé) ou s'il est trop court pour cette position — un
-    plan incomplet doit se **voir** incomplet, pas se compléter tout seul.
-
-    ⚠️ **La position se compte par tour, jamais sur le groupe entier.** Au tour 2, la première
-    rencontre doit retrouver les couloirs qu'occupait la première rencontre du tour 1 ; une position
-    cumulée ferait glisser le groupe d'un cran à chaque tour et déborder de son propre bloc.
-
-    ⚠️ **Hissée ici en E05US026**, depuis `application/poules.py` où elle vivait en fonction privée.
-    C'est une dérivation **pure** sur un value object du domaine, et le système suisse en a besoin à
-    l'identique : la laisser dans un service aurait obligé l'autre à l'importer d'un module qu'il
-    n'a aucune raison de connaître, ou à la recopier.
-
-    [ADR-0048]: ../../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md
+    La *n*-ième rencontre d'un tour prend les couloirs `2n` et `2n+1` du bloc, donc les adversaires
+    sont **côte à côte** (intention d'ADR-0048, obtenue sans réordonnancement puisque le bloc est
+    contigu). `None` si le bloc manque ou est trop court — un plan incomplet doit se **voir**. ⚠️
+    **La position se compte par tour, jamais sur le groupe entier** : cumulée, elle ferait glisser
+    le groupe d'un cran par tour et déborder de son propre bloc. Hissée ici en E05US026.
     """
     if bloc is None:
         return None
@@ -147,25 +133,11 @@ def _couloirs_du_gabarit(gabarit: GabaritSalle) -> tuple[tuple[int, str], ...]:
 def placer_les_blocs(empreintes: Sequence[int], gabarit: GabaritSalle) -> PlanDeBlocs:
     """Pose les groupes **dans l'ordre**, chacun sur un bloc de couloirs contigus.
 
-    `empreintes[i]` est le **nombre de couloirs** dont le groupe `i + 1` a besoin — son
-    parallélisme, pas son effectif. C'est l'appelant qui le calcule, parce qu'il dépend du format :
-    `poule.couloirs_occupes` pour une poule (un membre se repose à chaque tour),
-    `2 * (effectif // 2)` pour une ronde de système suisse (tout le monde tire, sauf le bye).
-
-    ⚠️ **La signature ne prend plus une `Poule`, et c'est le cœur du renommage d'E05US026.** Elle
-    n'en lisait déjà que `numero` et `len(membres)`, pour en tirer un nombre de couloirs : dépendre
-    du type entier promettait une spécialisation que le code n'avait pas, et aurait fait croire
-    qu'un second mécanisme était nécessaire pour le suisse. Le domaine gagne aussi une dépendance
-    en moins (`placement_par_bloc` n'importe plus `poule`).
-
-    ⚠️ **Au premier groupe qui ne tient pas, on s'arrête** : les suivants sont rapportés en conflit
-    même si l'un d'eux, plus petit, serait entré dans la place restante. Poser le groupe 5 dans le
-    trou laissé par le groupe 4 casserait l'ordre du plan — l'organisateur lit « le groupe *n* est à
-    tel endroit », et une salle où l'ordre saute est plus coûteuse à exploiter qu'une salle où deux
-    groupes manquent visiblement à la fin. On préfère un plan tronqué et lisible à un plan complet
-    et surprenant.
-
-    Fonction **pure et déterministe** (règle 9) : mêmes empreintes, même gabarit, même plan.
+    `empreintes[i]` est le **nombre de couloirs** du groupe `i + 1` — son parallélisme, pas son
+    effectif ; l'appelant le calcule car il dépend du format (`poule.couloirs_occupes`, ou `2 *
+    (effectif // 2)` pour une ronde suisse). ⚠️ **Au premier groupe qui ne tient pas, on s'arrête**
+    : poser le suivant dans le trou casserait l'ordre du plan, et une salle où l'ordre saute coûte
+    plus cher qu'une salle où deux groupes manquent visiblement. Pure et déterministe.
     """
     disponibles = _couloirs_du_gabarit(gabarit)
     curseur = 0

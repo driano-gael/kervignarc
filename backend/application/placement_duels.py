@@ -296,16 +296,11 @@ class ServicePlacementDuels:
     def _poses_a_jour(self, phase_id: PhaseId, contexte: _Contexte) -> list[Affectation]:
         """Lit les poses de la phase après avoir **purgé** celles devenues orphelines (ADR-0048).
 
-        L'appariement est **recalculé** à chaque opération (le classement décide qui est duelliste
-        du 1er tour), mais la pose est **persistée**. Une pose dont l'inscription n'est **plus**
-        duelliste — un archer classé plus tard décale l'arbre (byes), l'ancien duelliste en sort —
-        est **orpheline** : déjà masquée en lecture (`est_placable` l'écarte du plan rendu), elle
-        est ici, sur un **chemin d'écriture** (dans la file), **retirée pour de bon**. Sans quoi la
-        détection d'occupant d'un déplacement tomberait sur une ligne « fantôme » (case visiblement
-        vide mais présente en base) — 500 sur `_echanger`, ou double pose via `placer_les_restants`.
-        Le plan de duels fait autorité **après régénération** (qui réécrit tout) ; entre-temps,
-        l'orpheline est inerte puis purgée au premier ajustement. Arbitrage tranché à la revue
-        d'E03US009 (reversé dans `stories/`).
+        L'appariement est **recalculé** à chaque opération, mais la pose est **persistée**. Une
+        pose dont l'inscription n'est plus duelliste est **orpheline** : déjà masquée en lecture,
+        elle est ici — chemin d'**écriture**, dans la file — **retirée pour de bon**. ⚠️ Sans quoi
+        la détection d'occupant tomberait sur une ligne « fantôme » : 500 sur `_echanger`, ou
+        double pose. Arbitrage tranché à la revue d'E03US009 (reversé dans `stories/`).
         """
         a_jour: list[Affectation] = []
         for affectation in self._placements.par_phase(phase_id):
@@ -612,18 +607,13 @@ class ServicePlacementDuels:
         # Le classement **du départ de cette phase** (ADR-0075) — même ensemencement que la
         # reconstruction, donc même portée : le plan pose les duellistes que le tableau jouera.
         classement = self._classements.pour_depart(phase.depart_id)
-        # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le
-        # plan pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**,
-        # avec un commentaire affirmant leur parité ; la recopie a lâché à la première évolution —
-        # E05US020 a fait consommer les prélèvements d'un seul côté, et la revue a mesuré un plan de
-        # 8 placements pour un tableau de 4. Un archer posté sur une butte sans duel, un autre en
-        # face du mauvais adversaire, invisibles jusqu'au jour J.
-        # E05US024 : le résolveur vient de `ServiceSaisieDuels` — c'est **lui** qui sait
-        # reconstruire
-        # un tableau amont pour le lire comme un classement. Le prendre ici plutôt que de le
-        # réimplémenter est ce qui garantit que le plan pose les duellistes que l'arbre fait jouer :
-        # deux résolutions distinctes rouvriraient l'écart mesuré à E05US020 (plan de 8, tableau
-        # de 4), un cran plus loin dans la chaîne.
+        # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le plan
+        # pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**, avec
+        # un commentaire affirmant leur parité ; la recopie a lâché à la première évolution — la
+        # revue a mesuré un plan de 8 placements pour un tableau de 4, soit un archer sur une butte
+        # sans duel, invisible jusqu'au jour J. E05US024 : le résolveur vient de
+        # `ServiceSaisieDuels`, seul à savoir reconstruire un tableau amont pour le lire comme un
+        # classement ; le réimplémenter ici rouvrirait le même écart, un cran plus loin.
         try:
             participants = [
                 Participant.individuel(ligne.archer_id)

@@ -61,15 +61,11 @@ def _statut_pour(nature: NatureForfait | None) -> StatutClassement:
 class LigneClassement:
     """Une ligne de classement : les deux rangs de l'archer, son identité et son décompte.
 
-    Porte `prenom` et `club_id` depuis E02US002, pour deux raisons distinctes : le classement est
-    la surface où un archer **inscrit** apparaît, donc (a) c'est ici que se **signale** un club
-    encore inconnu (`club_id is None`), l'anomalie que le CA impose de rendre visible (ADR-0014) ;
-    et (b) deux homonymes confirmés (un père et son fils) seraient indiscernables sur le seul
-    patronyme. `club_id` et non le nom du club : le classement ne charge pas le référentiel —
-    signaler une absence ne demande pas de résoudre les présences.
-
-    `nb_dix`/`nb_neuf` rendent le départage **traçable** (CA) : on voit *pourquoi* deux archers à
-    total égal sont ordonnés ainsi, sans rejouer le calcul.
+    Porte `prenom` et `club_id` depuis E02US002 : (a) le classement est la surface où se
+    **signale** un club encore inconnu (`club_id is None`), l'anomalie que le CA impose de rendre
+    visible (ADR-0014) ; (b) deux homonymes confirmés seraient indiscernables sur le seul
+    patronyme. `club_id` et non le nom : signaler une absence ne demande pas de résoudre les
+    présences. `nb_dix`/`nb_neuf` rendent le départage **traçable** (CA), sans rejouer le calcul.
     """
 
     rang_scratch: int | None
@@ -102,16 +98,11 @@ class Classement:
     verdicts_ecartes: tuple[VerdictBarrage, ...] = ()
     """Les verdicts de barrage que ce classement **n'a pas retenus** (E06US003).
 
-    Un barrage fige ses tireurs à l'annonce ; le classement continue de vivre. Quand le groupe
-    d'ex æquo change, le verdict ne décrit plus cette égalité et il est écarté — les rangs
-    redeviennent partagés. Le dire **ici** plutôt que de le laisser deviner est ce qui permet à
-    l'écran d'avertir : sans cela il affichait « Départagé » en vert pendant que le tableau montrait
-    des rangs partagés.
-
-    ⚠️ **C'est le seul énoncé fidèle de la péremption.** Un service qui la déduirait de
-    `egalites_a_departager` construirait un *proxy* : il manquerait le groupe qui a **glissé de
-    rang**, et celui dont le rang est sorti du seuil (ou dont le seuil a été effacé) — deux cas où
-    aucune égalité n'est signalée alors que le verdict est bel et bien écarté.
+    Un barrage fige ses tireurs à l'annonce ; le classement continue de vivre — le groupe d'ex æquo
+    changé, le verdict ne décrit plus cette égalité et les rangs redeviennent partagés. ⚠️ **C'est
+    le seul énoncé fidèle de la péremption** : la déduire d'`egalites_a_departager` est un *proxy*
+    qui manque le groupe ayant **glissé de rang** et celui dont le rang est sorti du seuil — deux
+    cas sans égalité signalée où le verdict est pourtant écarté.
     """
 
 
@@ -166,16 +157,11 @@ class _Entree:
 def _comparer_classant(a: _Entree, b: _Entree, tiebreak: Tiebreak) -> int:
     """Les critères qui **rangent** — deux entrées nulles ici sont **ex æquo**.
 
-    Ordre séquentiel : le **statut** d'abord (`_RANG_STATUT` : en lice = 0, abandon = 1), donc un
-    abandon passe après tous les en-lice quel que soit son score (« relégation en fin », Q2) ; puis
-    le **total** ; puis la **politique** `tiebreak` — c'est la couture qu'E06US001 avait laissée en
-    attente et que DETTE-028 réclamait, `classement.py` ne réimplémentant plus §8.1 à la main ;
-    puis le **verdict de barrage**, qui ne joue que sur ce que la politique a laissé à égalité.
-
-    ⚠️ **Un comparateur, pas une clé de tri.** Une politique injectable rend un ordre relatif
-    (`departager`), pas une valeur ordonnable : il n'existe aucune clé qui exprimerait les cinq
-    critères de poule et les deux de la qualification sans les figer ici — c'est précisément ce que
-    l'injection sert à éviter. D'où `cmp_to_key` au moment du tri.
+    Ordre séquentiel : **statut** (`_RANG_STATUT`, un abandon passe après tous les en-lice quel que
+    soit son score, Q2), **total**, politique **`tiebreak`** (la couture réclamée par DETTE-028),
+    puis le **verdict de barrage**, qui ne joue que sur ce que la politique a laissé à égalité. ⚠️
+    **Un comparateur, pas une clé de tri** : une politique injectable rend un ordre relatif, et
+    aucune clé n'exprimerait les cinq critères de poule sans les figer ici. D'où `cmp_to_key`.
     """
     if a.statut is not b.statut:
         return _RANG_STATUT[a.statut] - _RANG_STATUT[b.statut]
@@ -207,16 +193,15 @@ def _comparer(a: _Entree, b: _Entree, tiebreak: Tiebreak) -> int:
 def _ranger(entrees_ordonnees: Sequence[_Entree], tiebreak: Tiebreak) -> dict[ArcherId, int]:
     """Attribue un rang à des entrées **déjà triées**, ex æquo partagés (ex. 1-2-2-4).
 
-    Deux entrées que `_comparer_classant` ne sépare pas gardent le même rang ; on repart du rang
-    « index + 1 » dès qu'il les sépare — d'où les sauts après un groupe d'ex æquo. Un abandon, trié
-    après les en-lice, reçoit ainsi un rang qui **continue** leur numérotation (relégation).
+    Deux entrées que `_comparer_classant` ne sépare pas gardent le même rang ; on repart du rang «
+    index + 1 » dès qu'il les sépare — d'où les sauts. Un abandon, trié après les en-lice, reçoit
+    un rang qui **continue** leur numérotation (relégation).
     """
-    # DETTE-029 (docs/dette.md) : 3ᵉ écriture de « rang partagé à critères classants égaux, avec
-    # sauts » dans le domaine (`classement._ranger`, `poule.classement_de_poule`,
-    # `suisse.classement_suisse`). E06US003 fait **diverger un axe de plus** : ce site range par
-    # **comparateur injecté**, les deux autres par **clé**. Le remède proposé au registre (fonction
-    # pure `attribuer_rangs(ordonnes, meme_rang)`, prédicat d'égalité en paramètre) accommode les
-    # deux formes — il reste valide, et l'US dédiée reste à faire.
+
+    # DETTE-029 : 3ᵉ écriture de « rang partagé à critères classants égaux, avec sauts » dans le
+    # domaine (`classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`) —
+    # E06US003 fait diverger un axe de plus, ce site rangeant par **comparateur injecté** et les
+    # deux autres par **clé**. Remède au registre : `attribuer_rangs(ordonnes, meme_rang)`.
     rangs: dict[ArcherId, int] = {}
     rang = 0
     tete: _Entree | None = None
@@ -233,21 +218,11 @@ def _verdicts_applicables(
 ) -> list[VerdictBarrage]:
     """Ne garde que les verdicts qui portent **exactement** sur une égalité encore constatée.
 
-    `rangs` est la numérotation obtenue **sans** verdict, c'est-à-dire l'état actuel des ex æquo.
-    Un verdict n'est retenu que si l'ensemble de ses tireurs est exactement le groupe qui partage
-    son rang aujourd'hui.
-
-    ⚠️ **Ce filtre est la seule protection contre le « verdict fantôme ».** Les tireurs d'un barrage
-    sont figés à l'annonce (`BarrageDePlaces.participants`) ; le classement, lui, continue de
-    vivre. Une volée validée en retard, une correction de score ou un forfait peuvent **élargir ou
-    réduire** l'égalité après le tir. Appliquer quand même le verdict donnerait à l'arrivant
-    — dont la position de barrage vaut `0`, le meilleur rang possible — la place que le barrage
-    venait de trancher,
-    et ferait taire le signalement : un classement faux, réglé en apparence, sans avertissement.
-
-    Écarter le verdict laisse l'égalité **re-signalée**, donc le barrage à refaire. C'est le bon
-    comportement métier : le groupe ayant changé, le tir précédent n'a pas départagé les bonnes
-    personnes — le règlement fait retirer, il ne recycle pas un verdict devenu sans objet.
+    `rangs` est la numérotation obtenue **sans** verdict — l'état actuel des ex æquo. ⚠️ **Seule
+    protection contre le « verdict fantôme »** : les tireurs sont figés à l'annonce, mais une volée
+    validée en retard, une correction ou un forfait peuvent **élargir ou réduire** l'égalité après
+    le tir ; appliquer quand même donnerait à l'arrivant (position de barrage `0`, la meilleure) la
+    place tranchée, en faisant taire le signalement. Écarté, le barrage est simplement à refaire.
     """
     par_rang: dict[int, set[ArcherId]] = {}
     for archer_id, rang in rangs.items():
@@ -292,25 +267,11 @@ def calculer_classement(
 ) -> Classement:
     """Construit le classement des `archers` à partir de leurs `series`, avec départage FFTA.
 
-    - `series` dont l'`archer_id` n'appartient pas au lot d'archers sont ignorées ;
-    - `categories` sert à libeller la catégorie de chaque ligne (jointure par `categorie_id`) ;
-    - `forfaits` (E04US015, ADR-0050) : les forfaits **de cette phase de qualification** (le service
-      les filtre par phase — un forfait en duels ne relègue pas le rang de qualif). Un archer
-      **abandon** est **relégué en fin** de son classement (scratch et catégorie), rangé mais après
-      tous les en-lice ; un archer **disqualifié** est **sorti** du classement (`rang_* is None`),
-      listé en dernier avec son statut et son score (ses flèches restent — Q2/Q3 du cadrage).
-
-    - `tiebreak` (E06US003) : la politique de **départage** de la phase (ADR-0004). `None` retombe
-      sur `TiebreakFftaDefaut` — §8.1, exactement la règle qu'E06US001 écrivait à la main. C'est
-      donc un changement de **plomberie**, pas de règle : la couture réclamée par DETTE-028 ;
-    - `verdicts` (E06US003) : les **barrages déjà tirés**. Ils n'interviennent que là où le
-      départage a laissé un ex æquo, et y rendent les rangs **consécutifs** — sans décaler les
-      archers suivants, un barrage éclatant un rang partagé plutôt qu'insérant quelqu'un.
-
-    Renvoie les lignes ordonnées par **rang scratch** (en lice, puis abandons relégués, puis DSQ).
-    Chaque ligne porte aussi son rang **dans sa catégorie** (repartant de 1 par catégorie, ex æquo
-    partagés avec sauts), calculé sur le même ordre restreint aux archers de la catégorie — un
-    barrage tranche donc les **deux** rangs, l'ordre étant commun.
+    Les `series` hors du lot d'archers sont ignorées ; `categories` libelle la catégorie de chaque
+    ligne. `forfaits` (ADR-0050) : un **abandon** est **relégué en fin**, un **disqualifié** est
+    **sorti** du classement (`rang_* is None`). `tiebreak` retombe sur `TiebreakFftaDefaut` (§8.1,
+    DETTE-028) ; `verdicts` n'intervient que sur les ex æquo restants et y rend les rangs
+    consécutifs. Chaque ligne porte aussi son rang **dans sa catégorie**, sur le même ordre.
     """
     departage = tiebreak if tiebreak is not None else TiebreakFftaDefaut()
     serie_par_archer = {s.archer_id: s for s in series}
@@ -405,20 +366,11 @@ def calculer_classement(
     # Les égalités se lisent sur les rangs **définitifs** : un barrage déjà tiré ne doit plus être
     # réclamé, sans quoi l'écran redemanderait éternellement ce qui vient d'être fait.
     #
-    # ⚠️ **Seuls les archers EN LICE qui ont tiré sont candidats**, et les deux conditions sont
-    # indispensables :
-    #
-    # - **avoir tiré** — sans cela, au démarrage du tournoi *tout le plateau* est à zéro, donc ex
-    #   æquo au rang 1. Or c'est exactement le moment où l'organisateur règle le seuil : il
-    #   enregistrait, revenait au classement, et lisait « 1ʳᵉ place — les 120 archers » avec un
-    #   bouton « Faire tirer ». On teste `a_tire` et non `total > 0` : un archer qui a validé une
-    #   volée entièrement manquée a bien tiré, et doit pouvoir être départagé ;
-    # - **être en lice** — on ne fait pas retirer deux personnes qui ont abandonné. Elles sont
-    #   reléguées en fin de classement, donc rarement sous le seuil, mais « rarement » n'est pas
-    #   « jamais » sur un petit effectif.
-    #
-    # Un groupe **partiellement** éligible n'est pas signalé : il y manquerait un tireur, et un
-    # barrage amputé est précisément ce que `resultat()` refuse désormais.
+    # ⚠️ **Seuls les archers EN LICE qui ont tiré sont candidats.** Sans « avoir tiré », tout le
+    # plateau est à zéro au démarrage — donc ex æquo au rang 1 — et l'écran affichait « 1ʳᵉ place —
+    # les 120 archers » au moment même où l'organisateur règle le seuil ; on teste `a_tire` et non
+    # `total > 0`, une volée entièrement manquée étant bien un tir. Sans « en lice », on ferait
+    # retirer deux abandons. Un groupe **partiellement** éligible n'est pas signalé.
     candidats = [
         entree
         for entree in ordre_classables

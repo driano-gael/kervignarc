@@ -154,17 +154,11 @@ class ServicePatrimoine:
     def precharger_ffta(self) -> RapportAssemblage:
         """Pré-charge le référentiel FFTA 18 m **dans la bibliothèque** (E01US023).
 
-        C'est la correction de fond de DETTE-023 : `ServiceCategories.precharger_ffta` recréait les
-        quatre blasons canoniques **à chaque tournoi**, faute d'un endroit où les ranger. Ici, le
-        référentiel entre au patrimoine une fois, et les tournois en reçoivent des copies.
-
-        Blasons **d'abord** — l'ordre n'est pas cosmétique : `blason_id` est une FK vers un blason
-        existant, une catégorie ne peut pas être reliée à un blason qui n'existe pas encore.
-
-        Rejouable sans doublonner (dédup par nom/libellé). Une brique déjà présente est **laissée
-        telle quelle** : on ne réaffecte pas rétroactivement un blason à une catégorie que l'admin
-        a pu personnaliser. Les briques créées sont marquées `origine = ffta` — ce qui dit d'où
-        elles viennent, **pas** qu'elles sont conformes (ADR-0060 §4).
+        Correction de fond de DETTE-023 : `precharger_ffta` recréait les quatre blasons canoniques
+        **à chaque tournoi**. ⚠️ Blasons **d'abord** — `blason_id` est une FK, une catégorie ne
+        peut pas viser un blason inexistant. Rejouable sans doublonner (dédup par nom/libellé) ;
+        une brique déjà présente est **laissée telle quelle**. `origine = ffta` dit d'où elles
+        viennent, **pas** qu'elles sont conformes (ADR-0060 §4).
         """
         blasons_par_nom = {_cle(b.nom): b for b in self._blasons.par_bibliotheque()}
         blasons_copies = 0
@@ -238,12 +232,10 @@ class ServicePatrimoine:
     def appliquer_blason(self, tournoi_id: TournoiId, blason_id: BlasonId) -> Blason:
         """Copie **un** blason de bibliothèque dans un tournoi et renvoie la copie.
 
-        Idempotent par nom : si le tournoi porte déjà un blason de ce nom, celui-ci est renvoyé
-        **tel quel** plutôt que dupliqué — un homonyme de blason dans un même tournoi serait
-        indiscernable à l'écran de saisie.
-
-        Lève `TournoiIntrouvable`, `BlasonIntrouvable`, ou `BriqueHorsBibliotheque` si l'identifiant
-        vise la copie d'un tournoi et non un modèle.
+        Idempotent par nom : un blason de ce nom déjà présent est renvoyé **tel quel** plutôt que
+        dupliqué — un homonyme serait indiscernable à l'écran de saisie. Lève `TournoiIntrouvable`,
+        `BlasonIntrouvable`, ou `BriqueHorsBibliotheque` si l'identifiant vise la copie d'un
+        tournoi.
         """
         self._tournoi_existant(tournoi_id)
         modele = self._modele_blason(blason_id)
@@ -276,13 +268,10 @@ class ServicePatrimoine:
     def promouvoir_blason(self, blason_id: BlasonId) -> Blason:
         """Fait remonter la copie d'un tournoi dans la bibliothèque (« c'est permanent »).
 
-        Si un modèle porte déjà ce nom, il est **mis à jour** (son identifiant et son origine sont
-        conservés — modifier un officiel sur place le laisse officiel, ADR-0060 §4) ; sinon un
-        modèle est créé. Les tournois **déjà assemblés gardent leur copie** : rien ici ne les
-        touche, et c'est exactement la garantie que la copie achète.
-
-        Lève `BlasonIntrouvable`, ou `BriqueDejaEnBibliotheque` si la brique visée est déjà un
-        modèle (geste sans objet).
+        Un modèle de même nom est **mis à jour** (identifiant et origine conservés — modifier un
+        officiel sur place le laisse officiel, ADR-0060 §4) ; sinon un modèle est créé. Les
+        tournois déjà assemblés **gardent leur copie** : c'est la garantie qu'achète la copie. Lève
+        `BlasonIntrouvable`, ou `BriqueDejaEnBibliotheque` (geste sans objet).
         """
         copie = self._copie_blason(blason_id)
         existant = self._modele_homonyme_blason(copie.nom)
@@ -302,12 +291,10 @@ class ServicePatrimoine:
     def promouvoir_categorie(self, categorie_id: CategorieId) -> Categorie:
         """Fait remonter la copie d'un tournoi dans la bibliothèque (« c'est permanent »).
 
-        Le `blason_id` est **retraduit** vers le blason de bibliothèque de même nom — miroir exact
-        du réattachement fait à l'assemblage. S'il n'en existe aucun, le modèle promu part sans
-        blason par défaut plutôt qu'avec une FK vers un tournoi : mieux vaut un défaut absent qu'un
-        lien qui traverse les éditions.
-
-        Lève `CategorieIntrouvable`, ou `BriqueDejaEnBibliotheque` si la brique est déjà un modèle.
+        ⚠️ Le `blason_id` est **retraduit** vers le blason de bibliothèque de même nom — miroir du
+        réattachement fait à l'assemblage. À défaut, le modèle part sans blason : mieux vaut un
+        défaut absent qu'une FK qui traverse les éditions. Lève `CategorieIntrouvable`, ou
+        `BriqueDejaEnBibliotheque`.
         """
         copie = self._copie_categorie(categorie_id)
         blason_bibliotheque = self._blason_bibliotheque_homonyme(copie.blason_id)

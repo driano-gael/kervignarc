@@ -259,16 +259,11 @@ class ServiceJeuEssai:
     ) -> list[Archer]:
         """Peuple un tournoi **existant** de `nombre` archers de test plausibles (E15US001).
 
-        Les archers sont répartis sur les catégories du tournoi (celles retenues par
-        `filtre_categorie`, ou toutes). Si le tournoi n'a **aucune** catégorie, le jeu FFTA est
-        pré-chargé au passage (`precharger_ffta`, idempotent) — sinon on puise dans les catégories
-        déjà définies, sans en ajouter.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `PeuplementTournoiDemarre` (→ 409)
-        s'il est **déjà démarré** (hors `brouillon`/`prêt`) — on ne pollue pas une compétition
-        vivante avec des inscrits de test. Génération **déterministe** pour une `graine` (règle 9).
-        Chaque archer est ajouté via `ServiceArchers.ajouter(..., autoriser_homonyme=True)` — les
-        noms tirés au hasard peuvent se répéter, deux homonymes de test n'interrompent pas le lot.
+        Les archers sont répartis sur les catégories du tournoi (celles de `filtre_categorie`, ou
+        toutes) ; sans aucune catégorie, le jeu FFTA est pré-chargé au passage (idempotent). Lève
+        `TournoiIntrouvable`, ou `PeuplementTournoiDemarre` (409) hors `brouillon`/`prêt`.
+        Génération **déterministe** pour une `graine` (règle 9) ; chaque archer passe par
+        `ajouter(..., autoriser_homonyme=True)` — deux homonymes n'interrompent pas le lot.
         """
         self._exiger_tournoi_peuplable(tournoi_id)
         alea = random.Random(graine)
@@ -296,12 +291,9 @@ class ServiceJeuEssai:
         """Instancie un scénario du catalogue : un tournoi **brouillon complet, prêt à lancer**.
 
         Crée le tournoi, pré-charge les catégories FFTA, ajoute ses créneaux, peuple ses archers et
-        les **inscrit** (répartis en tourniquet sur les créneaux). Le tournoi obtenu a au moins un
-        départ : il peut donc passer `prêt` puis démarrer (garde `TournoiSansDepart`, E02US010).
-
-        Lève `ScenarioInconnu` si l'identifiant ne correspond à aucun scénario du catalogue. `date`
-        est fournie par l'appelant (l'API la lit sur l'horloge ; les tests la fixent) : le service
-        ne lit pas l'horloge lui-même, pour rester déterministe (règle 9).
+        les **inscrit** (tourniquet sur les créneaux). Le tournoi obtenu a au moins un départ, donc
+        peut passer `prêt` puis démarrer. Lève `ScenarioInconnu`. ⚠️ `date` vient de l'appelant :
+        le service ne lit pas l'horloge, pour rester déterministe (règle 9).
         """
         scenario = _scenario_par_id(scenario_id)
         # Invariant du catalogue figé : 1 ≤ départs ≤ nombre d'horaires disponibles. Un scénario

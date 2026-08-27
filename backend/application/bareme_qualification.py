@@ -64,14 +64,12 @@ class ServiceBaremeQualification:
     def bareme_du_tournoi(self, tournoi_id: TournoiId) -> BaremeQualification | None:
         """Le barème de la **première** qualification, ou `None` si aucune n'est encore définie.
 
-        ⚠️ **Le nom ment depuis E05US025** : un barème n'appartient plus au tournoi mais à une
-        **étape** (ADR-0082), et un déroulé peut en porter plusieurs. La méthode est conservée
-        telle quelle parce que la route historique `GET /tournois/{id}/bareme-qualification` la sert
-        et que l'immense majorité des tournois n'a qu'une qualification — mais tout appelant qui
-        veut être juste sur un déroulé composé passe par `qualifications`.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas.
+        ⚠️ **Le nom ment depuis E05US025** : un barème appartient à une **étape** (ADR-0082), et un
+        déroulé peut en porter plusieurs. Conservée parce que la route historique la sert et que
+        l'immense majorité des tournois n'a qu'une qualification — pour être juste sur un déroulé
+        composé, passer par `qualifications`. Lève `TournoiIntrouvable`.
         """
+
         # Lu sur le **déroulé** (ADR-0076) : c'est là que le barème est défini. Le lire sur une
         # phase passerait par l'assemblage de l'adapter — exact, mais indirect, et surtout faux tant
         # qu'aucun créneau n'existe encore.
@@ -87,15 +85,11 @@ class ServiceBaremeQualification:
     ) -> BaremeQualification:
         """Règle le barème d'une **étape désignée** (E05US025, ADR-0082).
 
-        C'est le geste que réclame le CA « le barème se règle par qualification » : sur le déroulé
-        de référence, la qualification de tête tire 3x20 et les deux suivantes 3x15. Aucune création
-        ici — l'étape doit exister, composée à l'atelier ; ce service ne fabrique une qualification
-        que dans le chemin historique de `definir`.
-
-        Lève `TournoiIntrouvable`, `PhaseIntrouvable` si l'étape n'appartient pas à ce tournoi,
-        `PhasePasUneQualification` si elle n'en est pas une (409 : un tableau n'a pas de barème de
-        série), et `CadenceValidationSuperieureAuBareme` si le nouveau barème compte moins de volées
-        que la cadence du grain en place.
+        Le geste que réclame le CA « le barème se règle par qualification » : la tête tire 3x20,
+        les deux suivantes 3x15. **Aucune création ici** — l'étape doit exister ; seul le chemin
+        historique de `definir` fabrique une qualification. Lève `TournoiIntrouvable`,
+        `PhaseIntrouvable`, `PhasePasUneQualification` (409),
+        `CadenceValidationSuperieureAuBareme`.
         """
         self._tournoi_existant(tournoi_id)
         bareme = BaremeQualification.creer(nb_volees, nb_fleches_par_volee)
@@ -121,13 +115,9 @@ class ServiceBaremeQualification:
         """Définit (crée ou met à jour) le barème de la **première** qualification d'un tournoi.
 
         Chemin historique, et **le seul qui crée** une qualification : c'est par lui que passe la
-        configuration d'un tournoi neuf, dont le déroulé est encore vide. Une fois le déroulé
-        composé, régler une qualification **précise** passe par `definir_pour_etape` (E05US025).
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si une grandeur du
-        barème est invalide (`< 1`), et `CadenceValidationSuperieureAuBareme` (E01US015) si le
-        nouveau barème compte **moins de volées que la cadence** du grain de validation en place —
-        il faut alors élargir le grain d'abord.
+        configuration d'un tournoi neuf, dont le déroulé est vide. Une fois le déroulé composé,
+        régler une qualification précise passe par `definir_pour_etape`. Lève `TournoiIntrouvable`,
+        `DomainError` (`< 1`), et `CadenceValidationSuperieureAuBareme` — élargir le grain d'abord.
         """
         self._tournoi_existant(tournoi_id)
         bareme = BaremeQualification.creer(nb_volees, nb_fleches_par_volee)

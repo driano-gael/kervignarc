@@ -28,18 +28,10 @@ class ZoneScore(str, Enum):
     """Valeur de score admise sur un blason en salle (art. B.2.1.2).
 
     Vocabulaire **fermé** des onze valeurs marquables à 18 m (`docs/referentiel-ffta.md` §4.2) :
-    cinq couleurs divisées en deux zones (10 → 1), plus `M` (manqué, hors blanc). Même patron que
-    `TrancheAge` ([ADR-0019](../../docs/adr/0019-categorie-eligibilite-multi-tranches.md))
-    et même régime : le DTO l'expose tel quel, une valeur hors vocabulaire est donc rejetée en
-    **400** à la frontière, avant que le domaine ne la voie (règle 6).
-
-    L'**ordre de déclaration** est l'ordre canonique, du centre vers l'extérieur :
-    `ZONES_CANONIQUES` en dérive et les zones d'un blason y sont normalisées, l'ordre de saisie
-    ne portant aucune information.
-
-    La « mouche » (X) n'en fait **pas** partie : c'est le centre du 10 (§4.3 la donne comme un
-    diamètre, pas comme une valeur), elle ne vaut pas un score distinct et aucun consommateur ne la
-    demande à ce jour — le départage FFTA au nombre de X relèverait d'EPIC-06.
+    cinq couleurs en deux zones (10 → 1), plus `M`. Même régime que `TrancheAge` (ADR-0019) — le
+    DTO l'expose tel quel, une valeur hors vocabulaire est rejetée en **400** à la frontière (règle
+    6). ⚠️ L'**ordre de déclaration** est l'ordre canonique dont `ZONES_CANONIQUES` dérive. La «
+    mouche » (X) n'en fait **pas** partie : c'est le centre du 10 (§4.3), pas un score.
     """
 
     DIX = "10"
@@ -74,15 +66,10 @@ ZONES_DEFAUT: tuple[ZoneScore, ...] = (
 """Zones par défaut : le jeu complet d'un **blason simple** (10 → 1 + M).
 
 `taille` étant une *fraction de place* et non un diamètre, le domaine ne peut pas déduire s'il
-s'agit d'un triple 40 : le défaut est donc le **sur-ensemble**, que l'administrateur restreint
-explicitement pour un triple (arbitrage utilisateur du 17/07/2026 — cf. CA d'E01US014 et
-[ADR-0020](../../docs/adr/0020-blason-zones-vocabulaire-ferme-et-defaut-sur-ensemble.md)).
-
-Énuméré **en toutes lettres** plutôt qu'aliasé sur `ZONES_CANONIQUES` : les deux coïncident
-aujourd'hui, mais ce sont deux concepts distincts (le *vocabulaire* et le *jeu par défaut*).
-Ajouter une valeur au vocabulaire — X, si EPIC-06 le réclame — ne doit pas la faire entrer en
-silence dans le défaut de tous les blasons, ni la désaligner du `_ZONES_DEFAUT` gelé de la
-migration `0019`.
+s'agit d'un triple 40 : le défaut est le **sur-ensemble**, restreint par l'administrateur
+(ADR-0020). ⚠️ Énuméré **en toutes lettres** plutôt qu'aliasé sur `ZONES_CANONIQUES` — ajouter X au
+vocabulaire ne doit pas l'introduire en silence dans le défaut, ni le désaligner du `_ZONES_DEFAUT`
+gelé de la migration `0019`.
 """
 
 
@@ -118,12 +105,10 @@ class Blason:
     ) -> Blason:
         """Crée un blason valide.
 
-        Le `nom` est normalisé (espaces de bord retirés) et ne peut pas être vide ; la `taille`
-        doit être dans `]0, 1]` (fraction de place) ; la `capacite` doit être un entier `>= 1` ;
-        les `zones`, omises (**seul** sens de `None` ici), valent `ZONES_DEFAUT`.
-        `origine` marque la **provenance** (E01US023) : `utilisateur` par défaut, car une création
-        ordinaire n'est pas officielle — seul le pré-chargement du référentiel passe `FFTA`.
-        Lève l'erreur de domaine correspondante en cas de valeur invalide.
+        Le `nom` est normalisé et non vide ; la `taille` dans `]0, 1]` (fraction de place) ; la
+        `capacite` entière `>= 1` ; les `zones` omises (**seul** sens de `None` ici) valent
+        `ZONES_DEFAUT`. `origine` marque la **provenance** (E01US023) : `utilisateur` par défaut,
+        seul le pré-chargement du référentiel passant `FFTA`. Lève l'erreur de domaine adéquate.
         """
         return Blason(
             tournoi_id=tournoi_id,
@@ -205,25 +190,12 @@ def valider_zones(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
     """Valide et normalise les valeurs de score admises ; lève `ZonesBlasonInvalides`.
 
     **Publique** à dessein : le repository la rejoue à la **relecture**, pour qu'une colonne
-    corrompue remonte en `InfrastructureError` plutôt qu'en agrégat silencieusement invalide
-    (même geste que `_vers_phase`, qui repasse par `BaremeQualification.creer` — ADR-0007).
-
-    Trois règles seulement, et **aucune n'est un contrôle de conformité FFTA** : `M` est toujours
-    admis (un manqué est physiquement possible sur tout blason, le scoreur doit pouvoir le saisir),
-    au moins une zone marquante (sans quoi le blason n'existe pas), pas de doublon.
-
-    La **contiguïté** n'est délibérément pas exigée. Le motif est qu'elle ne sert **aucun
-    consommateur** : le pavé de saisie affiche ce qu'on lui donne, et EPIC-04 somme des valeurs
-    indépendantes — un jeu troué n'existe sur aucun carton réel, mais l'interdire n'apporterait
-    rien qu'une norme. RG-8 (« l'application n'impose ni ne vérifie la conformité au règlement »)
-    **confirme** ce choix, il ne le dicte pas : sous sa lecture littérale, les trois règles
-    ci-dessus seraient elles aussi de la conformité. Ce qui les distingue est l'**intégrité aval**,
-    pas le règlement.
-
-    Le vocabulaire, lui, est fermé par `ZoneScore` — normalement à la frontière (400, règle 6) ;
-    la garde ici couvre les appelants internes (import, script), pour qui le domaine reste
-    l'autorité.
+    corrompue remonte en `InfrastructureError` plutôt qu'en agrégat invalide (ADR-0007). Trois
+    règles, et **aucune n'est un contrôle de conformité FFTA** : `M` toujours admis, au moins une
+    zone marquante, pas de doublon. ⚠️ La **contiguïté** n'est délibérément pas exigée — elle ne
+    sert aucun consommateur ; ce qui distingue les trois règles est l'**intégrité aval**, pas RG-8.
     """
+
     # `str` est lui-même un `Iterable[str]` : sans cette garde, `zones="1M"` passerait en
     # `('1', 'M')` au lieu d'échouer. Inatteignable via l'API (Pydantic refuse), mais un futur
     # import CSV ou script appellerait le domaine directement.
@@ -276,18 +248,11 @@ def valider_zones(zones: Iterable[ZoneScore | str]) -> tuple[ZoneScore, ...]:
 def _extrait(valeur: object, taille_max: int = 20) -> str:
     """Rend `valeur` lisible dans un message d'erreur, **bornée** et proprement tronquée.
 
-    **L'appelant visé n'est pas le client HTTP** : depuis que le DTO porte `list[ZoneScore]`,
-    Pydantic rejette une zone hors vocabulaire en 400 et cette fonction n'est jamais atteinte par
-    une requête. Elle sert les appelants **internes** que `valider_zones` est publique pour servir
-    — import, script, réhydratation d'une colonne corrompue — dont la sortie va au **log serveur**.
-    Un jeu de 10 Mo n'y a pas plus sa place que dans une réponse.
-    *(L'amplification de l'écho dans une **réponse 400** est un autre sujet : elle vient de
-    `jsonable_encoder(exc.errors())` à la frontière, vaut pour tous les DTO du projet — `ages`
-    compris — et ne se traite pas ici.)*
-
-    Ne lève **jamais** : elle construit un message d'erreur, échouer ici masquerait l'erreur
-    d'origine. `repr()` d'un entier gigantesque lève `ValueError` (limite de conversion), et un
-    `__repr__` maison peut lever n'importe quoi — d'où le filet large.
+    ⚠️ **L'appelant visé n'est pas le client HTTP** : depuis que le DTO porte `list[ZoneScore]`,
+    Pydantic rejette en 400 avant d'arriver ici. Elle sert les appelants **internes** — import,
+    script, réhydratation d'une colonne corrompue — dont la sortie va au **log serveur**. Ne lève
+    **jamais** : échouer en construisant un message masquerait l'erreur d'origine (`repr()` d'un
+    entier gigantesque lève, un `__repr__` maison peut lever n'importe quoi) — d'où le filet large.
     """
     if isinstance(valeur, str):
         return f"{valeur[:taille_max]!r}…" if len(valeur) > taille_max else repr(valeur)

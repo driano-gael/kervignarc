@@ -82,14 +82,11 @@ class ServiceBarrage:
     def lister(self, tournoi_id: TournoiId) -> list[BarrageAffiche]:
         """Tous les barrages d'un tournoi, **clos compris**, avec leur état de péremption.
 
-        Les clos sont rendus parce que ce sont eux qui portent les verdicts acquis — et surtout
-        parce qu'ils doivent rester **corrigeables** : un verdict acté par erreur n'a aucun autre
-        chemin de réparation.
-
-        La **péremption** est calculée ici et non déduite par l'écran : elle demande le classement
-        courant, que seul le service sait obtenir. Un barrage périmé garde ses tirs et son verdict
-        recalculé, mais celui-ci sera **écarté** du classement ; l'écran doit donc le dire au lieu
-        de laisser saisir un groupe qui n'oppose plus les bonnes personnes.
+        Les clos sont rendus parce qu'ils portent les verdicts acquis — et surtout parce qu'ils
+        doivent rester **corrigeables** : un verdict acté par erreur n'a aucun autre chemin de
+        réparation. La **péremption** est calculée ici : elle demande le classement courant, que
+        seul le service sait obtenir. Un barrage périmé garde ses tirs, mais son verdict sera
+        **écarté** — l'écran doit le dire.
         """
         self._exiger_tournoi(tournoi_id)
         barrages = self._barrages.par_tournoi(tournoi_id)
@@ -115,17 +112,11 @@ class ServiceBarrage:
     def _est_perime(barrage: BarrageDePlaces, ecartes: set[frozenset[Participant]]) -> bool:
         """Ce barrage a-t-il produit un verdict que le classement **n'a pas retenu** ?
 
-        ⚠️ **On lit la réponse du domaine, on ne la recalcule pas.** Une première version comparait
-        les tireurs à l'égalité signalée au même rang : un *proxy*, qui manquait deux cas réels et
-        laissait dans les deux un « Départagé » vert au-dessus de rangs redevenus partagés — le
-        groupe qui **glisse de rang** (un archer arrive devant), et celui dont le rang **sort du
-        seuil** ou dont le seuil est effacé, où plus aucune égalité n'est signalée. `Classement`
-        expose désormais ses `verdicts_ecartes`, c'est-à-dire exactement le prédicat que
-        `_verdicts_applicables` applique.
-
-        Ne vaut que pour la **qualification** : ailleurs aucun verdict n'est reversé, donc aucun
-        n'est écarté (DETTE-028). Vaut en revanche pour un barrage **clos** : la clôture ne protège
-        de rien, le verdict n'étant jamais stocké mais recalculé.
+        ⚠️ **On lit la réponse du domaine, on ne la recalcule pas.** Comparer les tireurs à
+        l'égalité signalée au même rang manquait deux cas — le groupe qui **glisse de rang** et
+        celui dont le rang **sort du seuil** —, laissant un « Départagé » vert au-dessus de rangs
+        redevenus partagés. Ne vaut que pour la qualification (DETTE-028), et vaut pour un barrage
+        **clos** : le verdict n'est jamais stocké mais recalculé.
         """
         if barrage.portee is not PorteeBarrage.QUALIFICATION:
             return False
@@ -150,22 +141,11 @@ class ServiceBarrage:
     ) -> BarrageDePlaces:
         """Annonce un barrage. **Deux régimes, selon d'où viennent les tireurs.**
 
-        **Qualification** — les tireurs sont *dérivés* du classement : on exige que `rang` désigne
-        une égalité **actuellement signalée** par la politique. Sans ce contrôle, on ferait retirer
-        des archers que plus rien n'oppose. Le cas n'est pas théorique : entre l'affichage et le
-        clic, une volée validée en retard peut avoir défait l'égalité (`EgaliteNonDepartageable`).
-
-        **Poule et Big Shoot Off** — les tireurs sont *désignés* par l'organisateur, parce qu'il
-        n'existe aujourd'hui **aucun classement de poule ni aucun état de Big Shoot Off calculé**
-        où les lire : ni `poule.py` ni `big_shoot_off.py` n'ont de consommateur de production
-        (DETTE-028). Le barrage y est donc pleinement opérationnel — annonce, manches, verdict,
-        correction — mais son verdict ne retourne dans aucun classement, faute de classement à
-        alimenter. C'est la limite exacte, et elle disparaîtra quand le chantier moteur livrera
-        l'exécution de ces phases.
-
-        Dans les deux cas les tireurs sont **figés** à l'annonce : c'est ce qui empêche la liste de
-        changer sous les pieds du juge. Et l'annonce est **idempotente** — un double clic sur
-        « faire tirer » ne doit pas ouvrir deux barrages sur la même place.
+        **Qualification** — ils sont *dérivés* du classement : on exige que `rang` désigne une
+        égalité **actuellement signalée**, sans quoi on ferait retirer des archers que plus rien
+        n'oppose. **Poule et Big Shoot Off** — ils sont *désignés*, faute de classement calculé où
+        les lire (DETTE-028), et le verdict ne retourne alors nulle part. Dans les deux cas les
+        tireurs sont **figés**, et l'annonce est **idempotente**.
         """
         self._exiger_tournoi(tournoi_id)
         self._exiger_depart_du_tournoi(tournoi_id, depart_id)
@@ -182,17 +162,14 @@ class ServiceBarrage:
         ecartes = (
             self._verdicts_ecartes(depart_id) if portee is PorteeBarrage.QUALIFICATION else set()
         )
-        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025, axe A) : deux créneaux ayant
-        # chacun une égalité au même **rang** se voyaient comme « le même endroit », et le second se
-        # faisait refuser son barrage en `BarragePerime` — avec un message (« le classement a
-        # bougé ») désignant une cause qui n'existait pas. Une place se dispute dans le classement
-        # d'**un** départ (ADR-0075).
+        # ⚠️ **`par_depart` et non `par_tournoi`** (revue E01US025) : deux créneaux ayant
+        # chacun une égalité au même **rang** se voyaient comme « le même endroit », et le second
+        # se faisait refuser son barrage en `BarragePerime` — avec un message désignant une cause
+        # qui n'existait pas. Une place se dispute dans le classement d'**un** départ (ADR-0075).
         #
-        # ⚠️ Une première rédaction de ce commentaire affirmait que ce bloc était **le seul** resté à
-        # la portée tournoi. C'était faux, et la seconde revue l'a montré : `_participants_designes`
-        # (plus bas) et `ServiceClassement._verdicts_qualif` l'étaient aussi. Un correctif qui se
-        # déclare exhaustif ferme la recherche chez le relecteur suivant — on décrit ce qu'on a
-        # corrigé, jamais ce qui resterait.
+        # ⚠️ Une première rédaction affirmait que ce bloc était **le seul** resté à la portée
+        # tournoi. C'était faux. Un correctif qui se déclare exhaustif ferme la recherche chez le
+        # relecteur suivant — on décrit ce qu'on a corrigé, jamais ce qui resterait.
         meme_endroit = [
             barrage
             for barrage in self._barrages.par_depart(depart_id)
@@ -266,18 +243,11 @@ class ServiceBarrage:
     ) -> tuple[Participant, ...]:
         """Les tireurs **désignés** — régime poule / Big Shoot Off, avec ses gardes propres.
 
-        Aucun classement ne les valide ici : c'est donc au service de vérifier ce que le régime
+        Aucun classement ne les valide ici : c'est au service de vérifier ce que le régime
         qualification obtenait gratuitement — des archers **de ce tournoi**, distincts, au moins
-        deux, et une phase qui appartient elle aussi **à ce créneau**. Sans cela, un identifiant
-        deviné ferait tirer l'archer d'un autre tournoi (deux tournois tournent en parallèle par
-        conception).
-
-        ⚠️ **La phase se valide `par_depart`, pas `par_tournoi`** (ADR-0075). L'archer, lui, reste
-        validé au tournoi : c'est bien à cette maille qu'il est inscrit. La phase non — et accepter
-        celle d'un autre créneau ne produisait pas seulement une donnée croisée : la suppression de
-        ce créneau purge ses phases, laissant le barrage pointer une phase disparue, donc une
-        `IntegrityError` sur `DELETE /tournois/{id}/departs/{id}` — précisément ce que la purge
-        existe pour éviter.
+        deux, et une phase **de ce créneau**. ⚠️ La phase se valide `par_depart` (ADR-0075) :
+        accepter celle d'un autre créneau laissait le barrage pointer une phase que la suppression
+        du créneau purge, donc une `IntegrityError` sur la suppression du départ.
         """
         distincts: list[ArcherId] = []
         for archer_id in archer_ids:
@@ -310,23 +280,11 @@ class ServiceBarrage:
     ) -> BarrageDePlaces:
         """Saisit (ou **corrige**) une manche, puis rend le barrage rechargé.
 
-        `manche` absent = la **suivante** ; fourni, il désigne la manche à réécrire — c'est le mode
-        de correction d'une flèche mal notée, le verdict n'étant jamais stocké mais recalculé.
-
-        ⚠️ **La manche est validée AVANT d'être écrite, en rejouant le moteur sur l'agrégat
-        projeté.** C'est le correctif d'un défaut qui coûtait cher : les gardes du moteur (tireur
-        déjà départagé, groupe retiré à moitié, manche 1 incomplète, doublon) ne se déclenchaient
-        qu'au moment de **relire** le verdict, donc **après** le commit. La requête était refusée et
-        la ligne écrite ; ensuite, chaque lecture rejouait le moteur et levait — donc
-        `GET /classement`, **public et affiché en salle**, tombait en 422 pour tout le tournoi, et
-        le panneau d'organisation avec lui : plus aucun écran pour réparer. Le raisonnement initial
-        (« ne pas dupliquer une garde ») confondait *dupliquer la règle* et *la jouer avant
-        d'écrire*.
-
-        ⚠️ **Corriger une manche tronque les suivantes.** Réécrire la manche 1 change la partition,
-        donc les retirs qui en découlaient n'ont plus d'objet — les garder produirait un agrégat
-        incohérent que le moteur refuserait à la lecture. Le règlement fait retirer ; il ne recycle
-        pas un tir devenu sans objet.
+        `manche` absent = la **suivante** ; fourni, il désigne la manche à réécrire. ⚠️ **La manche
+        est validée AVANT d'être écrite** : sinon les gardes ne se déclenchaient qu'à la
+        **relecture**, donc après le commit, et `GET /classement` — public et affiché en salle —
+        tombait en 422 pour tout le tournoi. ⚠️ Corriger une manche **tronque les suivantes** : les
+        retirs qui en découlaient n'ont plus d'objet.
         """
         barrage = self._exiger_barrage(tournoi_id, barrage_id)
         numero = manche if manche is not None else len(barrage.manches) + 1
@@ -356,18 +314,11 @@ class ServiceBarrage:
     def annuler(self, tournoi_id: TournoiId, barrage_id: BarrageId) -> None:
         """Supprime un barrage annoncé par erreur, et ses tirs.
 
-        Sans cette porte de sortie, un barrage ouvert au mauvais rang était **définitif** :
-        `clore` exige un barrage résolu, et un barrage qu'on ne veut pas faire tirer ne le sera
-        jamais. Il restait affiché indéfiniment, et son rang bloquait toute nouvelle annonce.
-
-        ⚠️ **Un barrage clos s'annule aussi**, et c'est un correctif de revue, pas un confort.
-        Une première version gardait les deux portes : `saisir_manche` refusait un barrage clos en
-        renvoyant vers l'annulation, `annuler` le refusait en renvoyant vers la correction — et la
-        ré-annonce échouait *précisément parce que* le verdict faux avait éclaté l'égalité, donc
-        plus rien n'était signalé. Les trois issues étaient fermées. Un juge qui actait un verdict
-        inversé sur la dernière place qualificative envoyait le mauvais archer au tableau,
-        **définitivement**. L'argument « le verdict est acquis » était faux : le verdict n'est
-        jamais stocké, `clos` n'est qu'un drapeau qui dit « le juge a acté ».
+        Sans cette porte de sortie, un barrage ouvert au mauvais rang était **définitif** : `clore`
+        exige un barrage résolu, et un barrage qu'on ne veut pas faire tirer ne le sera jamais. ⚠️
+        **Un barrage clos s'annule aussi** : garder les deux portes fermées laissait un juge ayant
+        acté un verdict inversé sur la dernière place qualificative envoyer le mauvais archer au
+        tableau, **définitivement**. Le verdict n'est jamais stocké, `clos` dit « le juge a acté ».
         """
         barrage = self._exiger_barrage(tournoi_id, barrage_id)
         assert barrage.id is not None, "Un barrage relu est persisté."
@@ -414,13 +365,11 @@ class ServiceBarrage:
     def _exiger_depart_du_tournoi(self, tournoi_id: TournoiId, depart_id: DepartId) -> None:
         """Le créneau doit appartenir **au tournoi de la route**. `DepartIntrouvable` sinon.
 
-        ⚠️ **Garde de cloisonnement, pas de commodité** (correctif de revue E01US025). `annoncer`
-        reçoit le `tournoi_id` du chemin et le `depart_id` du **corps** : rien ne les reliait. Un
-        `depart_id` deviné ouvrait donc un barrage sur le créneau d'un **autre tournoi**, en
-        passant par l'URL de celui-ci — et deux tournois `EN_COURS` en parallèle est une capacité
-        **voulue** (intérieur et extérieur), pas un cas d'école. Le service faisait déjà ce contrôle
-        pour les barrages (`_exiger_barrage`) et pour les phases (`ServicePhases._exiger_etape`) ;
-        c'est le départ qui y échappait, faute de `DepartRepository` injecté.
+        ⚠️ **Garde de cloisonnement, pas de commodité** : `annoncer` reçoit le `tournoi_id` du
+        chemin et le `depart_id` du **corps**, sans rien qui les relie — un `depart_id` deviné
+        ouvrait un barrage sur le créneau d'un **autre tournoi**, deux tournois `EN_COURS` en
+        parallèle étant une capacité **voulue**. Le contrôle existait déjà pour les barrages et les
+        phases ; c'est le départ qui y échappait.
         """
         depart = self._departs.par_id(depart_id)
         if depart is None or depart.tournoi_id != tournoi_id:

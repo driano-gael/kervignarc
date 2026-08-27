@@ -49,20 +49,13 @@ def normaliser_code(code: str) -> str:
 
 @dataclass(frozen=True)
 class Poste:
-    """Le poste (credential) d'une cible ou d'un écran. `id` vaut `None` tant qu'il n'est pas
-    persisté.
+    """Le poste (credential) d'une cible ou d'un écran. `id` vaut `None` avant persistance.
 
-    `code` est la forme **canonique** (cf. `normaliser_code`) du code imprimé sous le QR ;
-    `cible_index` est le rang **1-based** de la cible dans le plan (`GabaritSalle.cibles`), présent
-    pour les seuls postes de type `CIBLE` ; `libelle` désigne la place d'un écran dans le gymnase,
-    présent pour les seuls postes de type `ECRAN`.
-
-    Les deux champs sont facultatifs **au type de données** et exclusifs **à l'invariant** : les
-    constructeurs nommés sont la seule voie normale de création, et `cible()` refuse le mésusage.
-
-    `deroule` est le réglage propre d'un écran (« **chacun son déroulé** », CA) — donc bien un état
-    de *cet* agrégat, et non une table satellite : l'écran **est** le poste. `None` signifie « rien
-    n'a été réglé » et se lit par `deroule_effectif`, qui rend le déroulé par défaut du CA.
+    `code` est la forme **canonique** du code imprimé sous le QR ; `cible_index` est le rang
+    **1-based** dans le plan, réservé au type `CIBLE` ; `libelle` désigne la place d'un écran,
+    réservé au type `ECRAN`. ⚠️ Les deux sont facultatifs **au type** et exclusifs **à
+    l'invariant** : les constructeurs nommés sont la seule voie normale. `deroule` est le réglage
+    propre d'un écran — l'écran **est** le poste ; `None` se lit par `deroule_effectif`.
     """
 
     tournoi_id: TournoiId
@@ -81,11 +74,9 @@ class Poste:
         """Crée le poste d'une **cible**.
 
         `cible_index` doit être un entier **strictement positif** (`CibleInvalide`). Le `code` est
-        normalisé (`normaliser_code`) et ne peut pas être vide (`CodePosteInvalide`) — il est
-        **attribué par le service** (généré), jamais saisi ici.
-
-        Le nom reste `creer` (et non `creer_cible`) : c'est le cas d'origine, appelé partout, et le
-        renommer aurait produit un diff de churn sans rien apprendre au lecteur.
+        normalisé et non vide (`CodePosteInvalide`) — il est **attribué par le service**, jamais
+        saisi ici. Le nom reste `creer` et non `creer_cible` : c'est le cas d'origine, appelé
+        partout, et le renommer aurait produit un diff de churn.
         """
         return Poste(
             tournoi_id=tournoi_id,

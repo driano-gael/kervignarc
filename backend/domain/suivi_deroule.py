@@ -29,16 +29,10 @@ le tour, et l'organisateur doit lire *où* il a suspendu.
 class AvancementTour:
     """Un braquet en train de se remplir : combien de duels y sont **joués** sur ceux **attendus**.
 
-    « Joué » signifie **disputé et tranché** — un vainqueur est désigné à l'issue d'un tir. Les
-    **exempts (byes)**, gagnés d'office dès la construction du tableau, **ne sont pas comptés** :
-    ils occupent une place du braquet, mais ce ne sont pas des duels, et la projection ne les compte
-    pas davantage (`domain.deroule._braquets` : « 24 duellistes dans un tableau de 32 → 8 duels,
-    8 exemptés »). Les deux comptes doivent parler de la même chose.
-
-    ⚠️ C'est **le** piège de ce module, et il est ici plutôt qu'au service parce que c'est ici qu'on
-    vient lire la définition de « joué ». Les compter afficherait « premier tour terminé » avant que
-    quiconque ait tiré. *(La première version de cette docstring disait l'inverse du code livré —
-    trois relecteurs l'ont relevé.)*
+    « Joué » = disputé et tranché. ⚠️ **Les exempts (byes) ne sont pas comptés** : ils occupent une
+    place du braquet mais ne sont pas des duels, et la projection ne les compte pas davantage
+    (`domain.deroule._braquets`). C'est **le** piège de ce module — les compter afficherait «
+    premier tour terminé » avant que quiconque ait tiré.
     """
 
     tour: int
@@ -53,18 +47,12 @@ class AvancementTour:
 
 @dataclass(frozen=True)
 class AvancementDePhase:
-    """*Où en est cette phase ?* — la réponse d'un service de format ([ADR-0090] §5).
+    """*Où en est cette phase ?* — la réponse d'un service de format (ADR-0090 §5).
 
-    Deux nombres, et rien d'autre : combien de tours cette phase compte **aujourd'hui** (un suisse
-    réglé à 7 rondes n'en joue que 5 si l'effectif ne permet pas plus), et lequel tourne. Le
-    **libellé** ne passe pas par ici : il se résout du type de phase (`domain.tour_de_phase`), et le
-    faire voyager obligerait chaque service à connaître le vocabulaire de la salle.
-
-    `tour_courant` vaut `None` quand plus rien ne tourne — tout est joué, même si la phase n'est pas
-    clôturée. C'est la même convention que `tour_courant()` plus bas, délibérément : deux notions de
-    « rien en cours » divergeraient au premier écran qui les mélange.
-
-    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    Deux nombres : combien de tours cette phase compte **aujourd'hui** (un suisse réglé à 7 rondes
+    n'en joue que 5 si l'effectif ne permet pas plus), et lequel tourne. Le **libellé** ne passe
+    pas par ici : il se résout du type de phase (`domain.tour_de_phase`). `tour_courant` vaut
+    `None` quand plus rien ne tourne — même convention que `tour_courant()` plus bas, délibérément.
     """
 
     nb_tours: int
@@ -78,36 +66,20 @@ def avancement_de_qualification(
 ) -> AvancementDePhase:
     """*Où en est cette qualification ?* — sa réponse au port `LecteurAvancementDePhase`.
 
-    `volees_du_plus_lent` est le nombre de volées **saisies** par l'archer le moins avancé du
-    plateau. Saisies, et non validées : un tour est fini quand la salle a **tiré**, pas quand le
-    scoreur a signé. Prendre la validation ferait attendre au déclencheur d'arrêt un geste
-    administratif — et sur une validation en file hors-ligne (`E04US009`), la pause tomberait avec
-    plusieurs volées de retard.
-
-    ⚠️ **Ce compte DIVERGE de celui d'`avancement_cible` depuis E05US035, et c'est assumé.** La
-    console de supervision compte le **cardinal** (`len(serie.volees)`) ; ce lecteur reçoit le
-    **préfixe contigu** (`ServiceSaisie._volees_enchainees`), parce qu'une volée saisie hors d'ordre
-    ferait sinon franchir une frontière de tour avant que la volée manquante soit tirée — là-bas la
-    divergence décale un affichage, ici elle déclencherait un arrêt. Une première rédaction
-    affirmait l'inverse (« deux comptes du même rythme divergeraient ») : c'était la justification
-    d'une règle que le code venait de cesser d'appliquer. *(Axe adversarial, 2ᵉ passe.)*
-
-    Le tour courant vaut `None` quand tout est tiré — convention d'`AvancementDePhase`, la même que
-    les trois autres lecteurs.
+    `volees_du_plus_lent` compte les volées **saisies** par l'archer le moins avancé, non validées
+    : un tour est fini quand la salle a **tiré**, pas quand le scoreur a signé. ⚠️ **Ce compte
+    DIVERGE de celui d'`avancement_cible` depuis E05US035, et c'est assumé** : la console compte le
+    cardinal, ce lecteur reçoit le **préfixe contigu** (`ServiceSaisie._volees_enchainees`), sans
+    quoi une volée hors d'ordre franchirait une frontière de tour et déclencherait un arrêt.
     """
     par_tour = volees_par_tour(bareme, decoupage)
     nb_tours = decoupage.nb_tours if decoupage is not None else 1
     if par_tour < 1:
         # Défensif : `verifier_decoupage` interdit ce cas à la composition, mais un barème relu
-        # d'une base plus ancienne que le réglage pourrait le produire. Un lecteur muet vaut mieux
-        # qu'une division par zéro dans le suivi du jour J.
-        #
-        # ⚠️ **`nb_tours=1` et non `decoupage.nb_tours`** — correctif de revue, et la nuance décide
-        # de couper la salle. `(nb_tours > 1, tour_courant=None)` est lu par
-        # `ServiceArretsProgrammes._avancement_connu` comme **« je sais, et tout est joué »** : les
-        # arrêts seraient alors crédités puis consommés en « manqués » sur une phase que personne
-        # n'a tirée. `(1, None)` est la signature exacte de « je ne sais pas », celle du repli
-        # d'`avancement_bloc` — la seule qui rende ce lecteur réellement muet.
+        # d'une base plus ancienne pourrait le produire. ⚠️ **`nb_tours=1` et non
+        # `decoupage.nb_tours`** — la nuance décide de couper la salle : `(nb_tours > 1,
+        # tour_courant=None)` est lu par `ServiceArretsProgrammes` comme « je sais, et tout est
+        # joué », et les arrêts seraient consommés en « manqués ». `(1, None)` = « je ne sais pas ».
         return AvancementDePhase(nb_tours=1, tour_courant=None)
     tour = volees_du_plus_lent // par_tour + 1
     return AvancementDePhase(nb_tours=nb_tours, tour_courant=tour if tour <= nb_tours else None)
@@ -117,14 +89,10 @@ def avancement_de_qualification(
 class AvancementBloc:
     """L'avancement d'une phase : son statut, ses braquets remplis, et le tour qui tourne.
 
-    ⚠️ **`nb_tours` n'est pas `len(tours)`** ([ADR-0090]). `tours` porte les **braquets** — les
-    tranches de rangs qu'un tableau attribue au fil de l'eau —, et une phase qui ne classe
-    pas au fil de l'eau n'en a aucun tout en avançant par tours : un système suisse en compte
-    cinq, une poule en compte autant que son round-robin. Dériver l'un de l'autre est ce que ce
-    module faisait jusqu'à E05US032, et c'est pourquoi toute phase hors tableau s'affichait à
-    « zéro tour ».
-
-    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    ⚠️ **`nb_tours` n'est pas `len(tours)`** (ADR-0090). `tours` porte les **braquets** — les
+    tranches de rangs qu'un tableau attribue au fil de l'eau —, et une phase qui ne classe pas au
+    fil de l'eau n'en a aucun tout en avançant par tours. Dériver l'un de l'autre est ce que ce
+    module faisait jusqu'à E05US032 : toute phase hors tableau s'affichait à « zéro tour ».
     """
 
     ordre: int
@@ -146,48 +114,11 @@ def avancement_bloc(
 ) -> AvancementBloc:
     """Superpose le réel (`joues_par_tour`) sur les braquets projetés (`tours`).
 
-    `joues_par_tour` est indexé par **numéro de tour** (1-based, celui de `TourBraquet.tour` et de
-    `Match.tour`). Deux gardes de robustesse, parce que projection et réalité peuvent diverger — un
-    format modifié en cours de route, une phase rejouée :
-
-    - un compte **supérieur** à l'attendu est **plafonné** plutôt qu'affiché tel quel (« 9 duels sur
-      8 » ferait douter du reste du schéma) ; la divergence n'est pas masquée, le tour est
-      simplement lu comme terminé ;
-    - un numéro de tour **inconnu** de la projection est **ignoré** — pas de braquet fantôme dans un
-      schéma censé être *le même* qu'à l'atelier.
-
-    **Une phase sans braquet avance quand même** ([ADR-0090], E05US032). Elle n'a pas de braquet à
-    remplir — elle ne classe pas au fil de l'eau —, mais elle a des tours, et `avancement_lu` les
-    porte : c'est ce que le service de son format a répondu au port `LecteurAvancementDePhase`. Sans
-    lecteur branché, le bloc retombe sur **un** tour, sans tour courant : dégradation lisible plutôt
-    qu'exception, parce que l'écran de salle tourne en permanence, souvent sans personne devant pour
-    le relancer.
-
-    ⚠️ **Le braquet prime sur le lu quand il existe**, et ce n'est pas arbitraire : la règle des
-    braquets connaît le détail (« ce tour est terminé quand ses N duels sont tranchés ») là où un
-    service ne rend qu'un numéro. Les deux ne se contredisent pas, l'un est plus fin.
-
-    **`nb_tours` ne descend jamais sous 1, `tour_courant` est filtré par le statut.** Les deux
-    asymétries sont voulues et se lisent ensemble : un *compte* de tours est **structurel** — une
-    phase à venir en compte déjà autant qu'elle en comptera —, tandis qu'un *tour courant* est la
-    conséquence d'un geste de l'organisateur. Le plancher à 1 est une ceinture : un lecteur qui
-    répondrait `0` (le suisse le faisait, sous deux tireurs) ferait réapparaître le « zéro tour »
-    que cette US supprime, et le repli `else 1` ne joue que quand le lecteur est **absent**. Les
-    deux gardes ont été posées sur relevé de revue (axes B, C1).
-
-    ⚠️ **`# DETTE-074` — limite connue, et elle a désormais un effet.** Une phase **en tableau**
-    dont la tranche d'entrée est indéterminable (plusieurs sources, ADR-0061) ne produit aucun
-    braquet et retombe donc sur `1`, ce qui est faux : elle en compte autant que son arbre.
-    E05US032 notait ici « sans effet visible aujourd'hui » et déléguait la reprise à
-    `E05US033`. Cette US-là a bien consommé le champ — le déclencheur d'arrêt lit ce couple
-    `(1, None)` comme « avancement inconnu » et refuse de couper — mais **ne l'a pas
-    reprise** : un arrêt programmé sur un tel tableau est donc accepté à l'atelier et jamais
-    déclenché. Le repli reste **sûr** (on ne coupe pas au mauvais moment) mais il est
-    **silencieux**, et c'est ce qui en fait une dette majeure.
-
-    ⚠️ **Le lieu compte** : cette limite a vécu dans cette seule docstring, déléguée d'une US à
-    la suivante, et personne ne l'a reprise — une dette qui n'est pas au registre n'a aucun
-    porteur. Elle y est maintenant : cf. `docs/dette.md`, `DETTE-074`.
+    `joues_par_tour` est indexé par **numéro de tour** (1-based) ; un compte supérieur à l'attendu
+    est **plafonné**, un tour inconnu de la projection **ignoré**. Une phase sans braquet avance
+    quand même (ADR-0090) — ⚠️ le braquet **prime** sur le lu quand il existe, `nb_tours` ne
+    descend jamais sous 1 et `tour_courant` est filtré par le statut. ⚠️ `# DETTE-074` : un tableau
+    à tranche d'entrée indéterminable retombe sur `(1, None)`, son arrêt programmé ne part jamais.
     """
     remplis = tuple(
         AvancementTour(

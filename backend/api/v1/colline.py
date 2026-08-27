@@ -50,12 +50,10 @@ def _couloirs(
 def _au_repos(duellistes: tuple[Duelliste, ...]) -> list[DuellisteReponse]:
     """Sérialise les archers **au repos** d'une manche.
 
-    ⚠️ **`DuellisteReponse.de_duelliste` ne convient pas ici**, et l'écart est significatif plutôt
-    qu'ennuyeux : cette fabrique accepte `None` et le propage, parce que les deux camps d'un duel
-    peuvent légitimement être vides (un bye de tableau n'oppose personne). Un archer au repos, lui,
-    est toujours **quelqu'un** — c'est un tireur nommé qui ne tire pas de cette manche. Passer par
-    la fabrique optionnelle produirait un `DuellisteReponse | None` que le typage strict refuse, et
-    surtout laisserait croire à l'écran qu'un repos peut être anonyme.
+    ⚠️ **`DuellisteReponse.de_duelliste` ne convient pas ici** : cette fabrique accepte `None` et
+    le propage, parce que les deux camps d'un duel peuvent être vides (un bye n'oppose personne).
+    Un archer au repos est toujours **quelqu'un**. Passer par la fabrique optionnelle produirait un
+    `DuellisteReponse | None` que le typage strict refuse, et laisserait croire à un repos anonyme.
     """
     return [DuellisteReponse(archer_id=d.archer_id, nom=d.nom, prenom=d.prenom) for d in duellistes]
 
@@ -127,14 +125,11 @@ class DefiReponse(BaseModel):
 class DefiPubliqueReponse(BaseModel):
     """Le **même** défi, vu de qui n'a pas à saisir — écran de salle, public, écran admin.
 
-    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et ce DTO n'est pas une précaution
-    théorique : le routeur du suisse a dû l'ajouter **en correctif de revue**, après l'avoir recopié
-    d'`api/v1/poules.py` sans la leçon qu'il portait — la forme complète, servie sur une route
-    anonyme, expose chaque flèche de chaque volée, le barrage, les zones et le barème du pavé, et le
-    **nom du bénévole qui a validé**. Rien de cela n'a de raison d'être lu hors de la saisie.
-
-    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
-    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
+    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)** : le routeur du suisse a dû
+    l'ajouter **en correctif de revue**, après avoir recopié `api/v1/poules.py` sans la leçon — la
+    forme complète expose chaque flèche, le barrage, les zones, le barème et le **nom du bénévole
+    qui a validé**. Un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
+    n'apparaît pas ici par défaut.
     """
 
     numero: int
@@ -195,13 +190,10 @@ class ManchePubliqueReponse(BaseModel):
 class MancheReponse(BaseModel):
     """Une manche : ses défis, ses archers au repos, et si elle est close.
 
-    `close` est ce dont l'écran a besoin pour savoir si la manche suivante peut exister — et c'est
-    aussi ce qui autorise le moteur à l'apparier. Une manche ouverte n'est pas une anomalie : c'est
-    le régime normal d'une manche en cours de saisie.
-
-    ⚠️ **`au_repos` n'est pas décoratif.** À portée 1 les deux extrémités de la colline ne tirent
-    pas de la manche, et l'écran doit pouvoir le **dire** — sinon ces archers disparaissent de la
-    manche sans explication, et le scoreur les cherche.
+    `close` dit à l'écran si la manche suivante peut exister, et autorise le moteur à l'apparier ;
+    une manche ouverte est le régime normal d'une saisie en cours. ⚠️ **`au_repos` n'est pas
+    décoratif** : à portée 1 les deux extrémités ne tirent pas de la manche, et sans le dire ces
+    archers en disparaissent sans explication — le scoreur les cherche.
     """
 
     numero: int
@@ -363,14 +355,11 @@ class ValiderDefiRequete(BaseModel):
 def _en_etat_duel(defi: DefiDeLaManche) -> EtatDuel:
     """Projette un défi dans la forme que `DuelReponse` sait sérialiser.
 
-    ⚠️ **Adaptation de frontière, pas une conversion métier.** Même parti que `api/v1/poules.py` et
-    `api/v1/suisse.py` : `EtatDuel` porte deux champs qu'un défi n'a pas — `place_en_jeu` (un défi
-    ne décerne aucune place, c'est la colline qui situe) et `est_bye` (une colline n'a **pas** de
-    bye ; elle a des archers **au repos**, portés par la manche et opposés à personne).
-
-    On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second, à
-    trois champs près, obligerait le front à écrire un quatrième écran de saisie — ce que toute
-    cette série de tranches s'applique à éviter.
+    ⚠️ **Adaptation de frontière, pas une conversion métier**, même parti que `poules.py` et
+    `suisse.py` : `EtatDuel` porte deux champs qu'un défi n'a pas — `place_en_jeu` (c'est la
+    colline qui situe) et `est_bye` (une colline a des archers **au repos**, opposés à personne).
+    On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second
+    obligerait le front à un quatrième écran de saisie.
     """
     return EtatDuel(
         numero=defi.numero,

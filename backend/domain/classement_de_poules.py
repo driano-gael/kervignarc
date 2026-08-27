@@ -33,33 +33,11 @@ def classement_de_poules(
 ) -> ClassementSource:
     """Le classement de la phase, blocs de rang concaténés, et ce qu'il a d'encore indécis.
 
-    `classements` porte le classement **de chaque poule**, dans l'ordre des poules ; c'est ce que
-    `classement_de_poule` rend, groupe par groupe. `lignes` porte l'identité des archers (nom,
-    catégorie, club), reprise telle quelle : un classement de poule n'est pas un objet d'une autre
-    nature, c'est le **même** archer situé autrement. Seul `rang_scratch` est réécrit — c'est ce que
-    `preleves` lit.
-
-    `departage`, s'il est fourni, ordonne l'intérieur de chaque bloc par le décompte (§10.1) et
-    referme les plages qu'il sépare. Absent, tout bloc de plus d'un occupant est indécis.
-
-    ⚠️ **`rang_premier` n'est pas posé ici**, comme pour `classement_de_tableau` : une phase ne sait
-    pas quelle tranche du tournoi elle dispute — c'est une propriété de sa place dans le déroulé,
-    que seul le service qui remonte la chaîne connaît (`application/prelevement.py:tranche`).
-
-    `mode` dit **comment les groupes ont été composés**, et c'est ce qui décide de l'ordre rendu
-    (E05US029). Sous `SERPENT`, l'ordre est celui décrit ci-dessus ; sous `PAR_NIVEAU`, il est
-    **groupe par groupe** — voir `_par_groupe`, dont le raisonnement est l'exact inverse de celui
-    du préambule.
-
-    ⚠️ **Sans valeur par défaut, délibérément** (correctif de revue, axe C1). Les deux versants du
-    mode sont indissociables (ADR-0094 §2) : un défaut rendrait l'oubli **silencieux** et donnerait
-    le mauvais ordre, ce qui est très exactement la classe de panne que cet ADR existe pour fermer.
-    L'appelant de production résout le mode depuis le réglage de la phase ; les tests qui décrivent
-    l'ordre historique passent `SERPENT` explicitement, et c'est plus honnête ainsi — cet ordre
-    est **un** des deux, pas la norme dont l'autre dévie.
-
-    Les participants **équipe** sont écartés (leur `ref_id` n'est pas un archer, ADR-0028), comme le
-    fait déjà `classement_de_tableau` ; la résolution viendra avec les équipes (E13US002).
+    `classements` porte le classement **de chaque poule** ; `lignes` l'identité des archers,
+    reprise telle quelle — seul `rang_scratch` est réécrit. `departage` ordonne l'intérieur de
+    chaque bloc (§10.1) ; absent, tout bloc de plus d'un occupant est indécis. ⚠️ `rang_premier`
+    n'est **pas** posé ici, et `mode` est **sans valeur par défaut** (ADR-0094 §2) : un défaut
+    rendrait l'oubli silencieux et donnerait le mauvais ordre. Équipes écartées (ADR-0028).
     """
     retenus = [_retenus(classement, lignes) for classement in classements]
     if mode is ModeDeComposition.PAR_NIVEAU:
@@ -122,26 +100,11 @@ def _par_groupe(
 ) -> tuple[list[ArcherId], list[tuple[int, int]]]:
     """L'ordre d'une phase de **poules de niveau** : chaque groupe en entier, l'un après l'autre.
 
-    ⚠️ **C'est l'exact inverse du raisonnement du préambule de ce module, et c'est voulu.** L'ordre
-    « par rang de poule d'abord » repose sur une prémisse — *rien ne rend la poule 1 plus relevée
-    que la poule 2* — que le mode `PAR_NIVEAU` **révoque par construction** : la poule A y réunit
-    les rangs 1-6 de la phase source, la poule F les rangs 31-36. Concaténer les blocs y placerait
-    le vainqueur du groupe des 31ᵉ-36ᵉ au 6ᵉ rang de la phase, aux côtés des cinq autres vainqueurs.
-
-    C'est cette lecture, et elle seule, qui donne à chaque groupe **son propre espace de rangs**
-    (le CA d'E05US029). Aucun décalage n'a à être porté par le groupe : la poule A occupe
-    naturellement les rangs 1-6 de la phase, la B les 7-12, et le `rang_premier` **unique** de la
-    phase (`application/prelevement.py:tranche`) décale ensuite l'ensemble dans l'espace du
-    tournoi. Un `rang_premier` par groupe aurait été la seconde vérité de trop.
-
-    **Aucun bloc indécis inter-poules** : la question ne se pose plus, chaque groupe ayant sa
-    tranche. Ne subsistent que les ex æquo **internes** à une poule, que `_liaisons_internes`
-    calcule à l'identique — deux archers que le §10.1 n'a pas séparés occupent deux rangs
-    consécutifs de la phase, et cette paire reste indécise.
-
-    Le `departage` inter-poules est donc **sans objet** ici : il ordonne un bloc, et il n'y a plus
-    de bloc. L'ignorer plutôt que le refuser est délibéré — un réglage hérité d'un passage au
-    serpent ne doit pas opposer un 422 à l'organisateur qui bascule le mode.
+    ⚠️ **C'est l'exact inverse du raisonnement du préambule de ce module, et c'est voulu** :
+    l'ordre « par rang de poule d'abord » suppose qu'aucune poule n'est plus relevée qu'une autre,
+    ce que `PAR_NIVEAU` révoque — la poule A réunit les rangs 1-6, la F les 31-36. Chaque groupe a
+    donc **son propre espace de rangs** (CA E05US029), le `rang_premier` **unique** de la phase
+    décalant l'ensemble. Aucun bloc indécis inter-poules ; le `departage` est ignoré, pas refusé.
     """
     ordonnes: list[ArcherId] = []
     positions: dict[tuple[int, int], int] = {}

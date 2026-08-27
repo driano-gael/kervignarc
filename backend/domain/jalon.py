@@ -64,15 +64,11 @@ def question(jalon: Jalon) -> str:
 
 
 # Les transitions que chaque jalon garde, **par leur nom** — ceux de `domain.tournoi._TRANSITIONS`.
-# `DEMARRER` en garde deux : « prêt à démarrer ? » répond de l'**étape** (arriver à *en cours*), pas
-# du prochain clic, et deux transitions y mènent.
-# `None` — et **surtout pas** un tuple vide — pour `EXPORTER` : il garde un **geste répétable**, pas
-# une transition (ADR-0096 §4). Un tuple vide se lit `any(nom in ())` → `False` **sur les sept
-# statuts**, c'est-à-dire « la question ne se pose jamais » : l'export serait annoncé impossible y
-# compris sur un tournoi *archivé*, l'état qu'ADR-0026 définit précisément comme « verrou total,
-# après export ». C'était un piège armé pour `E16US007`, à qui cet ADR promet qu'elle « n'a plus de
-# forme à inventer » : elle aurait recopié le patron des deux membres livrés et obtenu un écran
-# bloqué partout (4ᵉ passe de revue, axe D). `None` dit « rien à garder », donc « toujours posée ».
+# `DEMARRER` en garde deux : « prêt à démarrer ? » répond de l'**étape**, pas du prochain clic.
+# ⚠️ `None` — et **surtout pas** un tuple vide — pour `EXPORTER`, qui garde un **geste répétable**
+# (ADR-0096 §4) : `any(nom in ())` est `False` sur les **sept** statuts, donc l'export serait
+# annoncé impossible jusque sur un tournoi *archivé*, l'état qu'ADR-0026 définit comme « après
+# export ». `None` dit « rien à garder », donc « toujours posée ».
 _TRANSITIONS_DU_JALON: dict[Jalon, tuple[str, ...] | None] = {
     Jalon.DEMARRER: ("vers-pret", "demarrer"),
     Jalon.TERMINER: ("terminer",),
@@ -85,17 +81,10 @@ def transition_offerte(statut: StatutTournoi, jalon: Jalon) -> bool:
     """Le statut offre-t-il encore une transition de ce jalon ?
 
     ⚠️ **Dérivé, jamais recopié.** La première version portait `(BROUILLON, PRET)` et `EN_COURS` en
-    dur — un **second encodage** de la table que ce module importe déjà, dans le commit même qui
-    érigeait le transport du verdict en doctrine (relevé en 2ᵉ passe par les axes A et C2). Le jour
-    où `terminer` sera accepté depuis *en pause*, la table bouge et le jalon suit — sans quoi il
-    annoncerait un refus que le serveur ne prononce plus.
-
-    ⚠️ `_TRANSITIONS_DU_JALON` doit rester **totale** sur `Jalon` : un membre ajouté à la famille
-    sans sa ligne ici lève un `KeyError` (donc un 500), et non un refus typé. Un test paramétré sur
-    `list(Jalon)` le garde — la règle ne vit plus seulement dans ce commentaire.
-
-    Un membre à `None` ne garde **aucune** transition : la question se pose alors toujours (`True`),
-    quel que soit le statut. Ne pas confondre avec « aucune transition offerte » (`False`).
+    dur — un second encodage de la table que ce module importe déjà. ⚠️ `_TRANSITIONS_DU_JALON`
+    doit rester **totale** sur `Jalon` : un membre sans sa ligne lève un `KeyError` (donc un 500)
+    au lieu d'un refus typé — un test paramétré sur `list(Jalon)` le garde. `None` = aucune garde
+    (`True`).
     """
     noms = _TRANSITIONS_DU_JALON[jalon]
     if noms is None:
@@ -107,39 +96,11 @@ def transition_offerte(statut: StatutTournoi, jalon: Jalon) -> bool:
 class PreparationJalon:
     """La réponse d'un jalon : ce qui manque, et si l'action passera.
 
-    - `lignes` : *ce qui manque*, en états (`D-17`) — jamais un pourcentage ;
-    - `pret` : la réponse **binaire** à « puis-je passer à l'étape suivante ? » ;
-    - `question_posee` : la question a-t-elle encore un objet ? À `False`, l'étape n'est plus
-      atteignable depuis le statut courant, et l'écran ne rend **pas** de verdict — seulement la
-      raison (`detail`). ⚠️ **Ce champ existe parce que la liste ne peut plus le dire.** Tant que
-      les deux membres vidaient leurs lignes hors transition offerte, `lignes == ()` **était** le
-      signal ; il a cessé de l'être quand *terminer* a gardé les siennes, et n'a d'abord été
-      remplacé que par un commentaire. Un écran neuf recopiant le patron aurait alors annoncé « ce
-      qui manque ci-dessous sera refusé » au-dessus de trois lignes vertes — le défaut qu'une passe
-      entière avait servi à fermer (6ᵉ passe de revue, axes C1 et D). ⚠️ **Sans valeur par
-      défaut** : la prop TS jumelle est obligatoire pour la même raison, et l'oublier ici serait
-      pire — `ARCHIVER` a le **statut pour seule garde**, donc un membre neuf qui ne renseigne pas
-      ce champ répondrait « la question se pose » sur un tournoi archivé, en silence (7ᵉ passe).
-
-    - `bloquant` : à `False`, l'action passe **quand même** malgré `pret is False` (`D-15`) ;
-    - `detail` : la **cause chiffrée** du blocage, quand elle existe — « 8 archer(s) inscrit(s) sur
-      le départ 2 pour 34 requis… ». Une ligne dit *quoi* (« Inscrits · 8/34 ») ; `detail` dit
-      *pourquoi ce chiffre-là* (`D-16` / `P-4` : « une alerte qui ne chiffre pas son impact est un
-      clic de plus, pas une protection »). Sur un tournoi à deux créneaux de 40 et 8, « 8/34 » seul
-      contredit le total affiché ailleurs — c'est le défaut qu'ADR-0075 a coûté cher à trouver. La
-      phrase n'est **pas rédigée ici** : elle vient de `ExigenceEffectifTournoi.message_de_refus`,
-      celle-là même que la garde met dans son refus, pour que l'avertissement et le refus ne
-      puissent pas diverger ;
-    - `moment` : **quand** le refus tombera — « au démarrage », « dès le passage en « prêt » ».
-      Dérivé de la garde qui bloque en **premier**, jamais du jalon : les deux gardes de *démarrer*
-      ne tombent pas au même clic (les créneaux au passage en *prêt*, l'effectif au démarrage). Le
-      front l'écrivait en dur, donc juste pour l'effectif et **faux** pour les créneaux — sur
-      l'état initial de tout tournoi neuf (relevé en 2ᵉ passe de revue, axe C1).
-
-    ⚠️ **Aucun bouton n'est jamais désactivé sur la foi de ces champs.** E05US021 avait déjà tranché
-    ce point pour le démarrage : l'avertissement se lit avant le clic, le refus remonte du serveur.
-    Un front qui grise le bouton se met à décider d'une garde — et devient la seconde source que le
-    CA interdit.
+    `lignes` = ce qui manque, en états (`D-17`). `pret` = « puis-je passer à l'étape suivante ? ».
+    `question_posee` = la question a-t-elle un objet — ⚠️ **sans valeur par défaut**, `ARCHIVER`
+    n'ayant que le statut pour garde. `bloquant=False` = l'action passe quand même (`D-15`).
+    `detail` = la cause chiffrée, **reprise de** `ExigenceEffectifTournoi.message_de_refus`. ⚠️
+    Aucun bouton n'est grisé sur la foi de ces champs.
     """
 
     jalon: Jalon
@@ -163,31 +124,11 @@ def evaluer_demarrer(
 ) -> PreparationJalon:
     """« Prêt à démarrer ? » — les trois gardes du feu vert, plus un avertissement sans effet.
 
-    - **Statut** (`statut`) : garde de `vers_pret` **et** de `demarrer` — la question ne se pose
-      qu'avant le départ (`brouillon`, `prêt`). Elle ne produit **pas de ligne** : « ce qui manque »
-      n'a pas de sens pour un tournoi déjà lancé, il n'y a simplement plus rien à préparer.
-    - **Créneaux** (`nb_creneaux`) : garde de `vers_pret` (E02US010) — sans départ, pas de feu
-      vert. `EN_ATTENTE` plutôt qu'`ALERTE` : rien n'est commencé, il n'y a pas d'écart à chiffrer.
-    - **Inscrits** (`effectif_suffisant`) : garde de `demarrer` (E05US021), chiffrée « 28/34 ».
-      ⚠️ Le **verdict est reçu, pas recalculé** : c'est `ExigenceEffectifTournoi.suffisant`, le
-      champ exact que `_exiger_un_effectif_suffisant` lit pour refuser. La première version
-      comparait `inscrits >= minimum` ici — vrai aujourd'hui, faux au premier assouplissement de
-      `exigence_effectif`, et **aucun test ne l'aurait vu** puisque les deux formules coïncidaient
-      (relevé par quatre axes de revue). `inscrits`/`minimum` ne servent donc plus qu'à **chiffrer**
-      la ligne. `minimum == 0` (rien n'est prélevé, rien n'est exigé) ne porte alors aucun décompte.
-    - **Déroulé composé** (`nb_etapes_deroule`) : **avertissement seul**. Le service laisse démarrer
-      un tournoi sans déroulé ; le dire bloquant ferait mentir l'écran. Que ce soit *souhaitable*
-      est une autre question — elle est ouverte à l'ADR, pas tranchée ici.
-
-    `pret` ne retient donc que les gardes dures. `bloquant` est `True` : le serveur refuse
-    réellement, et l'écran doit annoncer un refus, pas une simple gêne.
-
-    ⚠️ **`pret` répond de l'étape, pas du prochain clic.** Depuis *brouillon*, l'action offerte est
-    `vers-pret`, qui n'exige que les créneaux : un tournoi à 28 inscrits sur 34 y passera « prêt »
-    alors que ce jalon dit déjà `pret is False`. Ce n'est pas une contradiction, c'est **tout
-    l'objet de l'US** — annoncer l'effectif *avant* le premier clic plutôt qu'au second. C'est en
-    revanche ce qui oblige l'écran à dire *quand* le refus tombe (« sera refusé **au démarrage** »)
-    et non « sera refusé », qui se lirait comme un refus immédiat (relevé en revue, axe D).
+    Statut (garde de `vers_pret` **et** de `demarrer`, sans ligne : rien à préparer sur un tournoi
+    lancé), créneaux (E02US010), inscrits (E05US021). ⚠️ Le **verdict est reçu, pas recalculé** :
+    `ExigenceEffectifTournoi.suffisant`, le champ que `_exiger_un_effectif_suffisant` lit. Le
+    déroulé composé n'est qu'un **avertissement**. ⚠️ `pret` répond de l'**étape**, pas du prochain
+    clic — d'où `moment`.
     """
     if not transition_offerte(statut, Jalon.DEMARRER):
         # **Aucune ligne** : « ce qui manque » n'a pas de sens pour un tournoi qui ne partira plus.
@@ -233,12 +174,10 @@ def evaluer_demarrer(
 def _etat_effectif(suffisant: bool, minimum: int) -> EtatSection:
     """L'état de la ligne « Inscrits » — trois cas, et pas deux.
 
-    ⚠️ **Zéro inscrit n'est pas « terminé »**, même quand rien n'est exigé (aucun déroulé composé,
-    donc aucun prélèvement à honorer). La première version rendait alors `OK`, que le front affiche
-    « Inscrits · **Terminé** » sur un tournoi tout juste créé — lisible comme « les inscriptions
-    sont closes » (relevé en revue, axe C1). `EN_ATTENTE` est la définition même du cas : « rien
-    encore d'exploitable » (`domain.completude.EtatSection`). Cela ne change **pas** `pret` : un
-    tournoi sans exigence démarre, c'est `D-15`.
+    ⚠️ **Zéro inscrit n'est pas « terminé »**, même quand rien n'est exigé : le front afficherait «
+    Inscrits · **Terminé** » sur un tournoi tout juste créé, lisible comme « les inscriptions sont
+    closes ». `EN_ATTENTE` est la définition même du cas (`domain.completude.EtatSection`). Cela ne
+    change **pas** `pret` : un tournoi sans exigence démarre, c'est `D-15`.
     """
     if not suffisant:
         return EtatSection.ALERTE
@@ -288,42 +227,23 @@ def _moment_du_refus(creneaux_ok: bool, effectif_suffisant: bool) -> str | None:
 def evaluer_terminer(*, completude: Completude, statut: StatutTournoi) -> PreparationJalon:
     """« Prêt à terminer ? » — la complétude **sportive**, relue telle quelle.
 
-    Aucun calcul propre : les lignes *sont* `completude.sportif` et `pret` *est*
-    `completude.sportif_complet`. C'est le CA « sans doublonner ce qui existe » pris au pied de la
-    lettre — un second calcul finirait par contredire le premier, et l'écran des paiements
-    (`CompletudeAdministrative`, E16US003) lit déjà la même réponse serveur.
-
-    `bloquant` est `False` **pendant le tournoi** : terminer n'a aucune garde de *contenu*.
-    L'incomplétude change le libellé de la confirmation (« Terminer quand même ? »), jamais le droit
-    de terminer — une garde ici empêcherait de clore un tournoi pour une cible abandonnée, le
-    contraire de `D-15`.
-
-    ⚠️ **Hors *en cours*, il en a une** — et la première version disait « aucune », ce qui était
-    faux (relevé en revue). `ServiceTournois.terminer` n'accepte que `{EN_COURS}` : sur un tournoi
-    **en pause** (la pause déjeuner du jour J), terminer est refusé tant qu'on n'a pas repris.
-    Répondre `bloquant=False` y aurait fait dire à l'écran « l'application ne vous en empêchera
-    pas » juste avant un 409.
-
-    L'administratif reste **hors** de ce jalon (retour A14, E16US003) : les paiements ne bloquent
-    pas la clôture sportive et se suivent sur l'axe Gestion.
+    Aucun calcul propre : les lignes *sont* `completude.sportif`, `pret` *est*
+    `completude.sportif_complet` — un second calcul finirait par contredire le premier. `bloquant`
+    est `False` **pendant le tournoi** (terminer n'a aucune garde de contenu, `D-15`), ⚠️ mais
+    `True` ailleurs : `ServiceTournois.terminer` n'accepte que `{EN_COURS}`, donc terminer un
+    tournoi *en pause* part en 409. L'administratif reste **hors** de ce jalon (E16US003).
     """
     offert = transition_offerte(statut, Jalon.TERMINER)
     return PreparationJalon(
         jalon=Jalon.TERMINER,
         # ⚠️ **Toujours rendues, quel que soit le statut** — asymétrie **assumée** avec
-        # `evaluer_demarrer`, pas un oubli. Chez *démarrer*, la liste **est** la préparation : un
-        # tournoi déjà lancé n'a plus rien à préparer, donc rien à lister. Chez *terminer*, elle
-        # **est l'état sportif** : « où en est la qualification » a du sens à tout statut, et c'est
-        # ce que l'organisateur vient voir pendant la pause déjeuner.
+        # `evaluer_demarrer` : là-bas la liste **est** la préparation (rien à lister sur un tournoi
+        # lancé), ici elle **est l'état sportif**, que l'organisateur vient voir pendant la pause.
+        # La vider fut une sur-correction, corrigée à l'écran seulement — les deux versants du même
+        # membre répondaient donc différemment, et la résorption de `DETTE-084` (« migrer l'écran
+        # sur `/jalons/terminer` ») aurait **rétabli** la régression.
         #
-        # La vider ici fut une **sur-correction** : elle visait un verdict qui accusait des lignes
-        # vertes (3ᵉ passe), alors que c'était le **verdict** qu'il fallait couper. La 4ᵉ passe l'a
-        # corrigé à l'écran et pas ici — les deux versants du même membre répondaient donc
-        # différemment au même cas, et la résorption inscrite à `DETTE-084` (« migrer l'écran sur
-        # `/jalons/terminer` ») aurait **rétabli** la régression (5ᵉ passe, quatre axes).
-        #
-        # Ce qui porte la garde de statut, c'est `question_posee` — plus `pret`, `bloquant` et
-        # `detail`. Jamais la liste.
+        # Ce qui porte la garde de statut, c'est `question_posee` — jamais la liste.
         lignes=completude.sportif,
         pret=offert and completude.sportif_complet,
         bloquant=not offert,

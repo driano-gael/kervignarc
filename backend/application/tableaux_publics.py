@@ -25,16 +25,11 @@ _logger = logging.getLogger(__name__)
 class TableauPublic:
     """Un arbre du tournoi : **quelle** phase (rang et type), et sa photo reconstruite.
 
-    `ordre` et `type` plutôt qu'un libellé : une phase n'a pas de nom (`domain.phase.Phase`), et
-    fabriquer « Élimination directe » ici mettrait du texte d'interface dans l'application alors que
-    le front en tient déjà le catalogue (`shared/phases/catalogue.ts`). La règle 3 veut le même
-    vocabulaire partout — le plus sûr moyen est qu'il n'existe qu'à un endroit.
-
-    ⚠️ **`etat` est facultatif depuis E05US024/ADR-0081** : une phase qui prélève des places que sa
-    source n'a pas encore attribuées n'a **pas** d'arbre à montrer, et ce n'est ni une panne ni une
-    absence. `attente` porte alors l'ordre de la phase source qu'elle attend — un fait, pas une
-    phrase : le texte reste au front (même raison que `type` ci-dessus). Les deux champs sont
-    mutuellement exclusifs, et exactement l'un des deux est renseigné.
+    `ordre` et `type` plutôt qu'un libellé : une phase n'a pas de nom, et fabriquer « Élimination
+    directe » ici mettrait du texte d'interface dans l'application alors que le front en tient le
+    catalogue (règle 3). ⚠️ **`etat` est facultatif depuis ADR-0081** : une phase qui prélève des
+    places non encore attribuées n'a pas d'arbre à montrer, `attente` portant alors l'ordre de la
+    source. Les deux champs sont mutuellement exclusifs.
     """
 
     phase_id: PhaseId
@@ -88,14 +83,11 @@ class ServiceTableauxPublics:
     def pour_depart(self, depart_id: DepartId) -> TableauxDuDepart:
         """Les arbres de ce créneau. `DepartIntrouvable` si le créneau n'existe pas.
 
-        Un créneau **sans phase en tableau** rend une liste vide plutôt qu'une erreur : l'onglet
-        s'ouvre à 8 h du matin comme à 17 h, et « pas encore de tableau » est une réponse, pas une
-        panne.
-
-        # DETTE-031 : chaque appel **reconstruit** intégralement chaque tableau (classement complet
-        # du départ, arbre rebâti, duels rejoués, forfaits appliqués) — et ici **une fois par
-        # phase**, sur un endpoint public non authentifié pollé par autant d'appareils qu'il y a de
-        # spectateurs. Régime assumé au contexte mono-club et local ; cf. docs/dette.md.
+        Un créneau **sans phase en tableau** rend une liste vide plutôt qu'une erreur : « pas
+        encore de tableau » est une réponse, pas une panne. ⚠️ `# DETTE-031` : chaque appel
+        **reconstruit** intégralement chaque tableau, **une fois par phase**, sur un endpoint
+        public non authentifié pollé par autant d'appareils qu'il y a de spectateurs. Régime assumé
+        (mono-club, local).
         """
         depart = self._departs.par_id(depart_id)
         if depart is None:
@@ -105,29 +97,14 @@ class ServiceTableauxPublics:
         for phase in phases:
             if phase.type not in TYPES_EN_TABLEAU or phase.id is None:
                 continue
-            # Trois issues, et non plus deux (E05US024, ADR-0081) : un arbre lisible, une phase
-            # **en attente** de sa source, ou un échec avalé.
-            #
-            # Le matin, un déroulé composé pour 8 archers porte des phases dont la source ne
-            # prélève encore personne : le moteur refuse à juste titre de monter un arbre de moins
-            # de deux participants. Laisser remonter l'erreur donnerait une **page blanche** — sur
-            # une surface publique et projetée, pour tout le monde, à cause d'une phase qui n'a pas
-            # commencé. On avale donc l'échec **par phase**, en le journalisant : une phase absente
-            # du palmarès le jour J serait sinon indébogable (correctif d'une revue antérieure,
-            # relevé par quatre axes ; le modèle est `ServicePalmares._resultat`).
-            #
-            # ⚠️ **La contrepartie a été réduite, pas supprimée.** Un tableau **cassé** restait
-            # indiscernable d'un tableau **à venir** — les deux disparaissaient de la liste. Le cas
-            # « à venir » le plus fréquent, celui d'une phase qui attend que sa source ait
-            # départagé les places qu'elle prélève, est désormais **dit** plutôt que tu. Restent
-            # confondus les autres échecs, ce qui est le bon arbitrage **pour le spectateur** (il
-            # n'a rien à réparer) ; le diagnostic vit à l'atelier (E01US024).
-            #
-            # `KeyError` est capturé **à part** et en `warning` : aucun code de ce chemin ne le lève
-            # délibérément (le domaine s'y refuse explicitement — `phase.py`, `politiques.py`,
-            # `poule.py` disent tous « explicite plutôt qu'un `KeyError` »). Un `KeyError` ici est
-            # un **défaut de programmation**, pas une phase à venir, et le confondre avec elle le
-            # rendrait invisible.
+            # Trois issues (E05US024, ADR-0081) : un arbre lisible, une phase **en attente** de sa
+            # source, ou un échec avalé. Le matin, une source ne prélève encore personne et le
+            # moteur refuse un arbre de moins de deux participants ; laisser remonter l'erreur
+            # donnerait une **page blanche** sur une surface publique et projetée. On avale donc
+            # l'échec **par phase, en le journalisant** — une phase absente le jour J serait sinon
+            # indébogable (modèle : `ServicePalmares._resultat`). Un tableau **cassé** reste
+            # indiscernable d'un tableau à venir, bon arbitrage pour le spectateur ; le diagnostic
+            # vit à l'atelier. `KeyError` est capturé à part, en `warning` : c'est un défaut.
             try:
                 etat = self._saisie.etat_tableau(depart.tournoi_id, phase.id)
             except PrelevementEnAttente as exc:

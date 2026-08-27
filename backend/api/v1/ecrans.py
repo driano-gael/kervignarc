@@ -33,22 +33,11 @@ session_router = APIRouter(prefix="/api/v1/ecrans/session", tags=["ecrans"])
 class VueProgrammeeDTO(BaseModel):
     """Une étape d'un déroulé : quelle vue, combien de temps.
 
-    **La vue est typée `VueEcran`, la cadence ne l'est pas** — et la distinction n'est pas un
-    caprice (correctif de revue) :
-
-    - `vue` désigne un **catalogue fermé**. Son appartenance relève du **format** de la requête, pas
-      d'une règle métier : `VueEcran` *est* le type. La typer ici fait rejeter une valeur inconnue
-      par Pydantic, en **400 `requete_invalide`** avec le champ fautif. La version d'origine
-      déclarait `vue: str` et traduisait dans le corps du handler :
-      `VueEcran("affectations")` levait
-      un `ValueError` nu, sans gestionnaire typé, qui retombait sur le filet `Exception` → **500 +
-      traceback journalisé**. Et les deux valeurs qui déclenchaient le cas — `affectations`,
-      `tableaux` — sont précisément celles que le CA nomme et que le catalogue ne livre pas encore,
-      donc les premières qu'un client enverra.
-    - `cadence_s` porte au contraire une **règle** (5 s ≤ cadence ≤ 3600 s est un jugement sur la
-      lisibilité à dix mètres). La répéter en `Field(ge=…, le=…)` la ferait vivre à deux endroits
-      (règle 2) et la dégraderait en 400 générique, là où le domaine rend un **422
-      `cadence_ecran_invalide`** exploitable. Même parti pour le libellé et la longueur de séquence.
+    ⚠️ **La vue est typée `VueEcran`, la cadence ne l'est pas.** `vue` désigne un **catalogue
+    fermé** — affaire de **format**, donc Pydantic rejette une valeur inconnue en **400** avec le
+    champ fautif ; déclarée `str`, elle levait un `ValueError` nu → **500 + traceback**, et sur les
+    deux valeurs que le CA nomme sans les livrer. `cadence_s` porte au contraire une **règle** (5 s
+    ≤ c ≤ 3600 s) : la répéter en `Field(ge=…)` la ferait vivre à deux endroits (règle 2).
     """
 
     vue: VueEcran
@@ -307,14 +296,11 @@ async def regler_pages(
 ) -> EcranReponse:
     """Fixe le découpage et la cadence des listes projetées par un écran (**admin**, via file).
 
-    **Route distincte du déroulé**, et non un champ de plus sur `PUT …/deroule` : les deux réglages
-    répondent à deux questions différentes (*quelles vues* / *comment une liste se lit de loin*) et
-    se posent à deux moments différents. Les fondre aurait obligé l'écran d'admin à renvoyer la
-    séquence de vues entière pour corriger une cadence de page — donc à pouvoir l'écraser par
-    inadvertance.
-
-    `404` / `409` comme le renommage ; `422 nombre_de_noms_par_page_invalide` ou
-    `422 cadence_de_page_invalide` si une valeur sort des bornes.
+    **Route distincte du déroulé**, et non un champ de plus sur `PUT …/deroule` : deux questions
+    différentes (*quelles vues* / *comment une liste se lit de loin*), posées à deux moments. Les
+    fondre aurait obligé l'écran d'admin à renvoyer la séquence entière pour corriger une cadence —
+    donc à pouvoir l'écraser par inadvertance. `404`/`409` comme le renommage ; `422
+    nombre_de_noms_par_page_invalide` ou `422 cadence_de_page_invalide` hors bornes.
     """
     service: ServicePostes = request.app.state.service_postes
     write_queue: WriteQueue = request.app.state.write_queue

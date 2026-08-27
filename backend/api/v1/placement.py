@@ -47,17 +47,14 @@ class PlacementReponse(BaseModel):
 
 
 class CiblePlaceeReponse(BaseModel):
-    """Une cible du plan : rang, plafond d'archers, les archers posés (vide si cible libre), et le
-    drapeau de mixité.
+    """Une cible du plan : rang, plafond, archers posés, et les deux drapeaux de signalement.
 
     `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on
-    puisse affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus). Le front en fait un
-    indicateur discret ; l'admin peut alors ajuster à la main (E03US004). Recalculé à la lecture,
-    jamais persisté (ADR-0047).
-
-    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible **mêle** ce que le réglage du
-    tournoi interdit de mêler. Impossible sur un plan fraîchement généré (la contrainte est dure) :
-    signale un plan **posé avant** l'activation du réglage, donc à régénérer. Dérivé lui aussi."""
+    puisse affirmer ≥ 2 clubs distincts. Recalculé à la lecture, jamais persisté (ADR-0047).
+    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible **mêle** ce que le réglage
+    interdit — impossible sur un plan fraîchement généré (contrainte dure), donc le signe d'un plan
+    **posé avant** l'activation du réglage, à régénérer. Dérivé lui aussi.
+    """
 
     index: int
     capacite: int

@@ -14,14 +14,11 @@ from enum import Enum
 class OrigineBrique(str, Enum):
     """D'où vient une brique — ce qui distingue le **référentiel officiel** de la création du club.
 
-    Le commanditaire veut « une liste séparée par officiel FFTA et création utilisateur », et
-    pouvoir, en modifiant un officiel, soit « en faire une copie pour garder les deux modèles »,
-    soit « l'intégrer au FFTA officiel (le règlement peut évoluer) ».
-
-    ⚠️ **Cette marque ne suffit pas à dire « conforme FFTA ».** Elle dit d'où vient la brique, pas
-    si elle a été modifiée depuis, ni contre **quelle version** du règlement elle a été établie. Le
-    référentiel versionné et le contrôle de conformité relèvent du lot suivant ; tant qu'ils
-    n'existent pas, `FFTA` signifie « issue du préchargement officiel », rien de plus.
+    Le commanditaire veut une liste séparée officiel/utilisateur, et pouvoir, en modifiant un
+    officiel, soit en faire une copie, soit l'intégrer au FFTA officiel. ⚠️ **Cette marque ne
+    suffit pas à dire « conforme FFTA »** : elle dit d'où vient la brique, pas si elle a été
+    modifiée depuis, ni contre quelle version du règlement. Tant que le référentiel versionné
+    n'existe pas, `FFTA` signifie « issue du préchargement officiel », rien de plus.
     """
 
     FFTA = "ffta"

@@ -30,15 +30,10 @@ _HAUTEUR_CENTRE_U11 = 110
 class ModeleBlasonFFTA:
     """Gabarit d'un blason FFTA à pré-charger (sans rattachement à un tournoi).
 
-    `taille` est une **fraction de place** occupée sur une cible (`]0, 1]`), **pas un diamètre** —
-    le domaine ne connaît pas les « 80/60/40 cm » (cf. `domain/blason.py`). Les fractions retenues
-    sont celles que le moteur de placement (EPIC-03) traite déjà comme canoniques : un blason 80 cm
-    remplit une butte (`1.0`), un 60 cm en occupe la moitié (`0.5`), un 40 cm (simple ou triple) un
-    quart (`0.25`) — soit 1/2/4 archers par butte. `capacite` = 1 : en qualification chaque archer
-    a **son** carton (le domaine sait partager un carton, mais le défaut FFTA ne le fait pas). Un
-    triple 40 ne se distingue **pas** par sa taille mais par ses `zones` : il exclut 5 → 1 (son
-    minimum marquable est le bleu clair = 6, référentiel §4.4). `zones=None` → jeu complet (10 → 1
-    + M), défaut du domaine pour un blason simple.
+    ⚠️ `taille` est une **fraction de place** occupée sur une cible (`]0, 1]`), **pas un diamètre**
+    : 80 cm → `1.0`, 60 cm → `0.5`, 40 cm → `0.25`, soit 1/2/4 archers par butte. `capacite = 1` :
+    en qualification chaque archer a **son** carton. ⚠️ Un triple 40 ne se distingue **pas** par sa
+    taille mais par ses `zones` — il exclut 5 → 1 (référentiel §4.4). `zones=None` → jeu complet.
     """
 
     nom: str

@@ -145,12 +145,11 @@ class ServicePilotageTour:
     ) -> ResumeLancement:
         """Fait **partir** les duels prêts (tous, ou le sous-ensemble `numeros`), et **trace**.
 
-        Le feu vert est **recalculé ici** (dans la file) et jamais cru sur parole (E12US007) : un
-        duel demandé qui n'est plus prêt (source dé-validée, cible retirée) est **écarté**. S'il ne
-        reste, net, aucun duel à lancer, l'acte est un conflit d'état (`AucunDuelALancer`, 409) —
-        rien à émettre, aucune trace. Sinon, une **entrée d'audit** `LANCEMENT` est consignée
-        (datée/attribuée) : à la frontière API, sa présence dans la file **déclenche la diffusion**
-        du `LiveEvent("tour_lance", …)` post-commit. Aucun statut n'est posé sur le tableau.
+        Le feu vert est **recalculé ici**, dans la file, jamais cru sur parole (E12US007) : un duel
+        qui n'est plus prêt est **écarté**, et s'il n'en reste aucun c'est un conflit d'état
+        (`AucunDuelALancer`, 409) — rien à émettre, aucune trace. Sinon une entrée d'audit
+        `LANCEMENT` est consignée, dont la présence dans la file **déclenche la diffusion** du
+        `LiveEvent`. Aucun statut n'est posé sur le tableau.
         """
         feu = self.feu_vert(tournoi_id, phase_id)
         a_lancer = self._a_lancer(feu, numeros)

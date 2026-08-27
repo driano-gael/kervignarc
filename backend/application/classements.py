@@ -85,19 +85,11 @@ class ServiceClassement:
     ) -> Classement:
         """Le classement de la **première** qualification d'un créneau, filtré ou non.
 
-        Lève `DepartIntrouvable` si le créneau manque. `categorie_id=None` → toutes catégories
-        (ordre scratch) ; sinon, seules les lignes de cette catégorie sont conservées, leurs rangs
-        (scratch **et** catégorie) restant ceux du classement complet.
-
-        **Le périmètre se lit sur les inscriptions**, pas sur le tournoi : un archer appartient au
-        classement de ce créneau s'il y est inscrit. C'est la seule source qui dise *qui tire quand*
-        — `Archer.tournoi_id` ne le sait pas, et c'est précisément ce raccourci qui produisait le
-        classement fusionné.
-
-        ⚠️ **« La » qualification du créneau n'existe plus** (E05US025, ADR-0082) : un déroulé peut
-        en porter plusieurs. Cette méthode désigne désormais explicitement la **première** — celle
-        que tirent tous les inscrits —, ce qui est exactement ce qu'elle rendait avant l'US. Les
-        appelants qui veulent le classement d'un **second** tour passent par `pour_phase`.
+        Lève `DepartIntrouvable`. `categorie_id=None` → toutes catégories ; sinon le filtre garde
+        les rangs du classement complet. ⚠️ **Le périmètre se lit sur les inscriptions**, pas sur
+        le tournoi : `Archer.tournoi_id` ne sait pas *qui tire quand*, et c'est ce raccourci qui
+        produisait le classement fusionné. « La » qualification n'existe plus (ADR-0082) — pour un
+        second tour, passer par `pour_phase`.
         """
         return self.pour_phase(depart_id, self._premiere_qualification(depart_id), categorie_id)
 
@@ -110,19 +102,11 @@ class ServiceClassement:
     ) -> Classement:
         """Le classement **d'une phase de qualification** donnée (E05US025, ADR-0082).
 
-        `admis` restreint la population à ceux que la phase a **prélevés** : la *haute* ne classe
-        que les 60 archers qu'elle a reçus, pas les 120 inscrits du créneau. `None` = tous les
-        inscrits, ce qui est le cas de la qualification de tête.
-
-        ⚠️ **La population vient de l'appelant, elle n'est pas résolue ici.** La calculer demanderait
-        de lire les phases sources — donc de reconstruire des tableaux amont —, ce que
-        `ServiceSaisieDuels` sait déjà faire et mémoïse (`resolveur_de_classement`). L'y appeler
-        d'ici créerait un cycle entre les deux services ; le classement reçoit sa population et se
-        contente de classer, ce qui le laisse **pur vis-à-vis du moteur de prélèvement**.
-
-        ⚠️ **Les séries se lisent par phase** (`SerieRepository.par_phase`), jamais par tournoi : les
-        3x20 du premier tour et les 3x15 de la *haute* sont des feuilles distinctes, et les
-        confondre rendrait un cumul qui n'a été tiré par personne.
+        `admis` restreint la population à ceux que la phase a **prélevés** ; `None` = tous les
+        inscrits (cas de la tête). ⚠️ **La population vient de l'appelant** : la résoudre ici
+        demanderait de reconstruire les tableaux amont et créerait un cycle avec
+        `ServiceSaisieDuels`. ⚠️ **Les séries se lisent par phase**, jamais par tournoi — confondre
+        les 3x20 et les 3x15 rendrait un cumul que personne n'a tiré.
         """
         depart = self._departs.par_id(depart_id)
         if depart is None:
@@ -198,17 +182,11 @@ class ServiceClassement:
     def _verdicts_qualif(self, depart_id: DepartId) -> list[VerdictBarrage]:
         """Les verdicts des barrages **de qualification** de ce créneau.
 
-        ⚠️ **`par_depart` et non `par_tournoi`.** Une place se dispute dans le classement d'**un**
-        départ (ADR-0075) : lire les barrages du tournoi entier faisait appliquer au créneau de
-        l'après-midi le verdict d'une égalité départagée le matin — au même rang, puisque les rangs
-        se répètent d'un créneau à l'autre. Le service des barrages avait été corrigé sur ce point
-        en revue, avec un commentaire affirmant qu'il s'agissait du dernier bloc concerné ; celui-ci
-        lui avait échappé, et c'est lui que voit le public sur le classement projeté en salle.
-
-        Les barrages **clos comme ouverts** sont lus : un barrage résolu mais non encore clos a déjà
-        un verdict exploitable, et attendre la clôture pour l'appliquer laisserait le classement
-        afficher un ex æquo que les archers viennent de départager sous les yeux du public. Un
-        barrage non résolu rend un verdict vide, donc sans effet.
+        ⚠️ **`par_depart` et non `par_tournoi`** : une place se dispute dans le classement d'**un**
+        départ (ADR-0075), et lire le tournoi entier appliquait au créneau de l'après-midi le
+        verdict d'une égalité départagée le matin, les rangs se répétant d'un créneau à l'autre.
+        Les barrages **clos comme ouverts** sont lus : un verdict acquis mais non clos est
+        exploitable, et l'attendre laisserait le public voir un ex æquo déjà départagé.
         """
         if self._barrages is None:
             return []

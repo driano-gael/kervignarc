@@ -41,19 +41,11 @@ from domain.tournoi import (
 class LecteurDerouleDuTournoi(Protocol):
     """Port **étroit** : le déroulé composé d'un tournoi, et rien d'autre (E05US021).
 
-    La garde de démarrage n'a besoin que de « quel déroulé ce tournoi a-t-il ? » — pas d'un
-    `DerouleRepository` entier (ajouter, réordonner, supprimer). Même patron que `CompteurEngages`
-    et `LecteurDonneesDePhase` (`application/formats.py`), et même bénéfice : le couplage dit
-    exactement ce qu'il est, et le faux de test se réduit à une méthode.
-
-    ⚠️ **Il lit des `EtapeDeroule`, plus des `Phase`** (E01US025, ADR-0076). Il s'appelait
-    `LecteurSequencePhases` et lisait `PhaseRepository.par_tournoi`, dont la docstring dit pourtant
-    « ce n'est **pas** une séquence ». Sur quatre créneaux, `exigence_minimale` recevait quatre
-    copies concaténées du déroulé et en déduisait un plancher faux. Le déroulé étant désormais
-    **défini une fois au tournoi**, la lecture qui en dérive une exigence est naturellement à cette
-    maille — la duplication qui faussait le calcul n'existe plus.
-
-    `DerouleRepositorySQL` le satisfait structurellement, sans rien déclarer.
+    La garde de démarrage n'a besoin que de « quel déroulé ce tournoi a-t-il ? », pas d'un
+    `DerouleRepository` entier — même patron que `CompteurEngages`. ⚠️ **Il lit des `EtapeDeroule`,
+    plus des `Phase`** (E01US025, ADR-0076) : il lisait `PhaseRepository.par_tournoi`, qui n'est
+    pas une séquence, et sur quatre créneaux `exigence_minimale` recevait quatre copies concaténées
+    du déroulé. `DerouleRepositorySQL` le satisfait structurellement, sans rien déclarer.
     """
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[EtapeDeroule]:
@@ -82,20 +74,11 @@ class OrigineExigence(str, Enum):
 class ExigenceEffectifTournoi:
     """Ce qu'un tournoi exige d'inscrits, ce qu'il en a, et pourquoi (E05US021).
 
-    Lecture d'écran **et** matière du refus : le CA demande que le manque soit visible *avant* le
-    clic (« 28 inscrits / 34 requis ») et que le refus *au* clic nomme la phase et son prélèvement.
-    Les deux disent la même chose — d'où un seul objet, calculé une fois.
-
-    `minimum` vaut `0` quand aucun déroulé n'est composé : il n'y a alors rien à exiger.
-
-    `origine` dit **d'où vient le chiffre**, et ce n'est pas décoratif : la première version le
-    déduisait de `ordre_phase is None`, ce qui faisait annoncer « ce minimum est celui exigé pour ce
-    format » — une règle de club — sur un simple plancher structurel, donc sur le format nominal du
-    projet (une qualification seule n'a aucun prélèvement par rangs). Le message inventait une
-    cause. Porter l'origine explicitement coûte un champ et supprime la classe entière d'erreurs.
-
-    `ordre_phase` et `rang_debut` restent `None` quand le manque ne vient d'aucun prélèvement en
-    particulier.
+    Lecture d'écran **et** matière du refus — les deux disent la même chose, d'où un seul objet.
+    `minimum` vaut `0` sans déroulé composé. ⚠️ `origine` dit **d'où vient le chiffre** et n'est
+    pas décoratif : le déduire de `ordre_phase is None` faisait annoncer « le minimum exigé pour ce
+    format » — une règle de club — sur un simple plancher structurel. `ordre_phase`/`rang_debut`
+    restent `None` quand le manque ne vient d'aucun prélèvement.
     """
 
     inscrits: int
@@ -118,11 +101,9 @@ class ExigenceEffectifTournoi:
         """Le message rendu à l'organisateur — **chiffré et actionnable** (`D-16` / `P-4`).
 
         « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » : on
-        nomme donc le manque *et* ce qui le cause, pour que l'organisateur sache quoi changer dans
-        son format plutôt que de rester devant un refus opaque.
-
-        Le **créneau** est nommé dès qu'on le connaît : le compte est celui du départ le moins
-        garni, et sans cette précision le chiffre semble contredire le total affiché ailleurs.
+        nomme le manque *et* sa cause. Le **créneau** est nommé dès qu'on le connaît — le compte
+        est celui du départ le moins garni, et sans cette précision le chiffre semble contredire le
+        total affiché ailleurs.
         """
         ou = "" if self.depart_numero is None else f" sur le départ {self.depart_numero}"
         manque = f"{self.inscrits} archer(s) inscrit(s){ou} pour {self.minimum} requis"
@@ -269,24 +250,13 @@ class ServiceTournois:
         return self._repository.enregistrer(tournoi.demarrer())
 
     def exigence_effectif(self, tournoi_id: TournoiId) -> ExigenceEffectifTournoi:
-        """Ce que ce tournoi exige d'inscrits, et ce qu'il en a — la lecture du CA « visible avant
-        le clic ».
+        """Ce que ce tournoi exige d'inscrits, et ce qu'il en a — « visible avant le clic ».
 
-        Aucune écriture : c'est un **état à afficher** en continu, pas un verdict à provoquer.
-        L'écran s'en sert pour montrer « 28 inscrits / 34 requis » tant que le compte n'y est pas ;
-        le refus au clic « Démarrer », lui, relève de `demarrer`.
-
-        Lève `TournoiIntrouvable` (→ 404) — la seule levée, et elle porte sur l'**existence**, pas
-        sur l'effectif. Un tournoi inconnu rendrait sinon « aucune exigence, tout va bien », un 200
-        rassurant sur une ressource qui n'existe pas.
-
-        ⚠️ **Le minimum vient du déroulé (unique, au tournoi) ; les inscrits, du créneau le moins
-        garni** (E01US025, ADR-0075/0076). Un départ **rejoue le tournoi en entier** : un déroulé
-        qui prélève 32 rangs doit les trouver dans *chaque* créneau. Confronter le plancher à la
-        **somme** des inscrits — ce que faisait `nb_engages(tournoi_id)` — laissait démarrer un
-        tournoi de deux créneaux à 40 et 8 archers, puis échouer en salle sur le second. Le créneau
-        retenu est donc le plus faible, et `depart_numero` le nomme pour que le refus soit
-        actionnable.
+        Aucune écriture : un **état à afficher**, le refus au clic relevant de `demarrer`. Lève
+        `TournoiIntrouvable` (→ 404) sur l'**existence** — sinon un tournoi inconnu rendrait «
+        aucune exigence ». ⚠️ **Le minimum vient du déroulé (unique, au tournoi) ; les inscrits, du
+        créneau le moins garni** (ADR-0075/0076) : le confronter à la **somme** laissait démarrer
+        un tournoi de deux créneaux à 40 et 8 archers.
         """
         tournoi = self.consulter(tournoi_id)
         etapes = self._deroules.par_tournoi(tournoi_id)
@@ -353,20 +323,11 @@ class ServiceTournois:
     def mettre_en_pause(self, tournoi_id: TournoiId) -> Tournoi:
         """Fait passer un tournoi `en_cours` à `en_pause`. **N'arrête rien d'autre** (`DETTE-073`).
 
-        # DETTE-073 : cette docstring promettait « la saisie s'arrête jusqu'à `reprendre` ».
-        # C'était **faux**, et depuis toujours : aucun chemin d'écriture ne lit `StatutTournoi` —
-        # ni `ServiceSaisie.saisir_volee` / `.valider`, ni `ServiceSaisieDuels`, ni le routage, qui
-        # sélectionne ses phases sur le statut de la **phase**. Un organisateur qui suspend son
-        # tournoi croit avoir arrêté la salle ; les archers continuent de tirer.
-        #
-        # Constaté au cadrage d'E05US033 (19/08/2026) en vérifiant le postulat inverse. Le volet
-        # **phase** a été corrigé dans cette US (`PhaseEnPause`, ADR-0091 §6) parce qu'il en est le
-        # mécanisme même ; le volet **tournoi** est à une autre maille (ADR-0026 §3), n'a ni
-        # sémantique « finir le tour en cours » ni reprise partielle, et son périmètre a été
-        # explicitement borné par le commanditaire. La promesse est donc **retirée** ici — coût nul,
-        # et un lecteur du code n'est plus induit en erreur — mais la **capacité reste absente** :
-        # le bouton de l'écran d'administration continue, lui, de laisser croire le contraire à
-        # l'organisateur. C'est ce qui garde la dette **majeure**. Cf. docs/dette.md.
+        ⚠️ Cette docstring promettait « la saisie s'arrête jusqu'à `reprendre` ». C'était **faux**
+        depuis toujours : aucun chemin d'écriture ne lit `StatutTournoi`. Le volet **phase** a été
+        corrigé en E05US033 (`PhaseEnPause`, ADR-0091 §6) ; le volet **tournoi** est à une autre
+        maille (ADR-0026 §3) et sa capacité **reste absente** — le bouton de l'écran d'admin laisse
+        toujours croire le contraire. Cf. docs/dette.md.
         """
         return self._transition(
             tournoi_id,
@@ -423,12 +384,11 @@ class ServiceTournois:
     def transitions_possibles(self, tournoi_id: TournoiId) -> tuple[TransitionTournoi, ...]:
         """Renvoie les transitions de cycle de vie **offertes** par le statut courant du tournoi.
 
-        Lecture pour l'accueil admin (E14US001, frise à boutons) : relit le tournoi
-        (`TournoiIntrouvable` si inconnu) et délègue la **topologie** au domaine
+        Relit le tournoi (`TournoiIntrouvable` si inconnu) et délègue la **topologie** au domaine
         (`domain.tournoi.transitions_possibles`) — pas de second encodage du graphe ici (règle 1).
-        Aucune garde n'est ré-évaluée : une arête offerte peut échouer à l'exécution (ex.
-        `vers-pret` sans départ). Le test de cohérence de `test_service_tournois` vérifie que cette
-        topologie ne diverge pas des gardes réelles.
+        ⚠️ Aucune garde n'est ré-évaluée : une arête offerte peut échouer à l'exécution
+        (`vers-pret` sans départ). `test_service_tournois` vérifie que la topologie ne diverge pas
+        des gardes.
         """
         return topologie_transitions(self.consulter(tournoi_id).statut)
 

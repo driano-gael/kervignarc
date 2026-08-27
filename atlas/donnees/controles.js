@@ -203,6 +203,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce ServicePoules, LecteurClassementPoules, LecteurClassementBigShootOff dans « backend/application/prelevement.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -276,6 +282,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 45
+  "signaux": 46
  }
 };

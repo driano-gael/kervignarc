@@ -35,15 +35,12 @@ class ServiceGrainValidation:
 
     # DETTE-053 : le nom promet un réglage de tournoi, le code rend celui de la première phase.
     def grain_du_tournoi(self, tournoi_id: TournoiId) -> GrainValidation | None:
-        """Le grain de la **première** qualification, ou `None` si la phase n'existe pas encore
-        (barème non défini).
+        """Le grain de la **première** qualification, ou `None` si le barème n'est pas défini.
 
-        ⚠️ **Le nom ment depuis E05US025**, comme celui de `bareme_du_tournoi` — et il le disait,
-        lui, alors que celui-ci ne le disait pas (relevé de revue). Un déroulé peut porter plusieurs
-        qualifications, chacune avec **son** grain : cette lecture rend celui de la première.
-        Conservée parce que la route historique la sert. `DETTE-053`.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas.
+        ⚠️ **Le nom ment depuis E05US025**, comme celui de `bareme_du_tournoi` — et lui le disait
+        (relevé de revue). Un déroulé peut porter plusieurs qualifications, chacune avec **son**
+        grain : cette lecture rend celui de la première, conservée parce que la route historique la
+        sert (`DETTE-053`). Lève `TournoiIntrouvable`.
         """
         self._tournoi_existant(tournoi_id)
         etape = self._qualification_ou_none(tournoi_id)
@@ -54,13 +51,10 @@ class ServiceGrainValidation:
     ) -> GrainValidation:
         """Définit le grain de validation de la qualification d'un tournoi.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `PhaseQualificationAbsente` si son
-        barème n'est pas encore défini, et `DomainError` si le grain est invalide (cadence `< 1` ou
-        manquante) ou incohérent avec la phase (grain hors du type, cadence au-delà du barème).
-
-        La cohérence grain ↔ barème est éprouvée par la construction de l'`EtapeDeroule` remplacée
-        (`__post_init__`), donc **avant** toute écriture : un grain plus fin que le barème est
-        refusé sans que la base ait bougé.
+        Lève `TournoiIntrouvable`, `PhaseQualificationAbsente` si le barème n'est pas défini, et
+        `DomainError` si le grain est invalide (cadence `< 1`) ou incohérent avec la phase. ⚠️ La
+        cohérence grain ↔ barème est éprouvée par la construction de l'`EtapeDeroule` remplacée
+        (`__post_init__`), donc **avant** toute écriture : refus sans que la base ait bougé.
         """
         self._tournoi_existant(tournoi_id)
         grain = GrainValidation.creer(type_grain, n_volees)
@@ -83,14 +77,10 @@ class ServiceGrainValidation:
     ) -> GrainValidation:
         """Règle le grain d'une **étape désignée** (E05US025, ADR-0082).
 
-        Pendant de `ServiceBaremeQualification.definir_pour_etape` : un déroulé peut porter
-        plusieurs qualifications, chacune avec son propre grain — rien n'oblige la *haute* à valider
-        au même rythme que le premier tour, et le CA le demande explicitement.
-
-        Lève `TournoiIntrouvable`, `PhaseIntrouvable` si l'étape n'appartient pas à ce tournoi,
-        `PhasePasUneQualification` si elle n'en est pas une, et `DomainError` si le grain est
-        invalide ou incohérent avec le barème en place — la construction de l'`EtapeDeroule`
-        remplacée l'éprouve **avant** toute écriture.
+        Pendant de `ServiceBaremeQualification.definir_pour_etape` : rien n'oblige la *haute* à
+        valider au même rythme que le premier tour, et le CA le demande explicitement. Lève
+        `TournoiIntrouvable`, `PhaseIntrouvable` (étape hors de ce tournoi),
+        `PhasePasUneQualification`, ou `DomainError` — éprouvée **avant** toute écriture.
         """
         self._tournoi_existant(tournoi_id)
         grain = GrainValidation.creer(type_grain, n_volees)

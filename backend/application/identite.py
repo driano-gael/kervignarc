@@ -96,11 +96,9 @@ class ServiceIdentite:
         """Enregistre les deux accents (saisies `#RRGGBB`) et rend l'identité déclinée.
 
         `CouleurInvalide` (domaine → 422) sur une saisie mal formée ; **aucun refus** sur un
-        contraste faible (`P-4`, cf. en-tête du module).
-
-        Part d'une identité vide plutôt que de relire l'existant : les deux accents sont écrits
-        **ensemble**, il n'y a pas d'état intermédiaire à préserver. La présence des logos, elle,
-        n'est pas touchée — c'est le port qui la conserve.
+        contraste faible (`P-4`). Part d'une identité vide plutôt que de relire l'existant : les
+        deux accents sont écrits **ensemble**, il n'y a pas d'état intermédiaire à préserver. La
+        présence des logos n'est pas touchée — c'est le port qui la conserve.
         """
         self._exiger_le_tournoi(tournoi_id, modification=True)
         identite = IdentiteVisuelle().avec_accents(

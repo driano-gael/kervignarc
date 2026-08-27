@@ -83,15 +83,12 @@ class TireurReponse(BaseModel):
     prochaine_volee: int | None = None
     """La **prochaine volée à saisir** pour cet archer, ou `null` s'il n'y a rien à tirer.
 
-    ⚠️ **Sans ce champ, l'écran de saisie devait deviner** — et il devinait « la première volée de
-    la manche », ce qui n'est juste qu'à `volees = 1`. Dès `volees = 2`, la seconde n'était jamais
-    saisissable et la finale se bloquait (revue d'E05US028). La manche *m* occupe les volées
-    `(m-1)·V+1 … m·V` : c'est une numérotation que le serveur persiste et que le front n'a pas à
-    re-dériver.
-
-    `null` a trois causes, toutes légitimes : l'archer est sorti, la phase est terminée, ou un
-    barrage la suspend. Dans les trois cas l'écran doit fermer le pavé plutôt que proposer une
-    saisie qui sera refusée."""
+    ⚠️ **Sans ce champ, l'écran devait deviner** — et il devinait « la première volée de la manche
+    », juste seulement à `volees = 1` : dès 2, la seconde n'était jamais saisissable et la finale
+    se bloquait. La manche *m* occupe les volées `(m-1)·V+1 … m·V`, numérotation que le serveur
+    persiste et que le front n'a pas à re-dériver. `null` = archer sorti, phase terminée, ou
+    barrage en cours — dans les trois cas l'écran ferme le pavé.
+    """
 
     @staticmethod
     def de_tireur(tireur: TireurAffiche) -> TireurReponse:
@@ -200,23 +197,11 @@ class FormatPubliqueReponse(BaseModel):
 class TireurPubliqueReponse(BaseModel):
     """Le **même** finaliste, vu de qui n'a pas à saisir — écran de salle, public, écran admin.
 
-    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et c'est la raison d'être de ce
-    DTO. Il retire `prochaine_volee`, qui est une **affordance de saisie** : elle dit au pavé du
-    scoreur quelle volée poser, et n'a aucun sens hors de lui.
-
-    ⚠️ **Ce qu'on croyait devoir retirer et qui n'existait pas.** L'en-tête de ce routeur justifiait
-    jusqu'ici l'accès scoreur par « l'état porte les scores manche par manche, donc ce que le
-    public n'a pas à voir **avant validation** ». Vérification faite au moment d'ouvrir la route :
-    `TireurAffiche.scores` ne porte **que** les manches entièrement validées —
-    `_scores_par_manche` s'arrête à la première manche incomplète, précisément pour ne pas faire
-    lire un total partiel. La confidentialité invoquée était donc **déjà** assurée par la couche
-    application, un cran plus bas ; l'authentification protégeait un secret qui n'était pas là. On
-    le note plutôt que de le taire : c'est la différence entre une frontière tenue et une frontière
-    crue tenue.
-
-    Comme dans `poules.py` et `suisse.py`, un DTO **distinct** et non un `exclude` : un champ ajouté
-    au DTO du scoreur n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé
-    passer le suivant.
+    ⚠️ **C'est ici que vit la restriction de contenu (règle 6)** : il retire `prochaine_volee`, une
+    **affordance de saisie** sans objet hors du pavé. ⚠️ **Ce qu'on croyait devoir retirer
+    n'existait pas** : `TireurAffiche.scores` ne porte que les manches **entièrement validées**,
+    donc la confidentialité invoquée pour l'accès scoreur était déjà assurée un cran plus bas. Un
+    DTO **distinct** et non un `exclude`, comme dans `poules.py` et `suisse.py`.
     """
 
     archer_id: int
@@ -263,15 +248,11 @@ class ManchePubliqueReponse(BaseModel):
 class EtatPubliqueReponse(BaseModel):
     """La photo d'un Big Shoot Off, **rédigée** — la forme servie aux surfaces ouvertes.
 
-    Mêmes champs de cadrage que la forme complète ; seuls les **tireurs**, les **manches** et le
-    format sont réduits. C'est le détail de saisie qui est retiré, pas la structure de la phase, que
-    l'écran de salle doit précisément montrer (même parti qu'`EtatSuissePubliqueReponse`).
-
-    `barrage` réutilise `BarrageEnAttenteReponse` **à dessein**, et c'est la seule réutilisation
-    ici : ce DTO est une feuille — des identifiants, des noms, un nombre de places — qui ne porte
-    aucun contenu de tir et ne peut donc pas en acquérir par dérive. La règle « un DTO distinct »
-    protège des DTO qui **embarquent** le détail du tir (`DuelReponse`, `prochaine_volee`) ;
-    l'appliquer ici dupliquerait trois champs sans rien fermer.
+    Mêmes champs de cadrage ; seuls les tireurs, les manches et le format sont réduits — c'est le
+    détail de saisie qui part, pas la structure de la phase. ⚠️ `barrage` réutilise
+    `BarrageEnAttenteReponse` **à dessein** : ce DTO est une feuille, sans contenu de tir, qui ne
+    peut pas en acquérir par dérive — la règle « un DTO distinct » protège de ceux qui
+    **embarquent** le tir, l'appliquer ici dupliquerait trois champs sans rien fermer.
     """
 
     phase_id: int
@@ -372,17 +353,11 @@ async def lire_projection(tournoi_id: int, phase_id: int, request: Request) -> P
 async def lire_etat(tournoi_id: int, phase_id: int, request: Request) -> EtatPubliqueReponse:
     """L'état **rédigé** — lecture ouverte : appli publique, écran de salle, écran admin.
 
-    ⚠️ **Cette route était scoreur jusqu'à E05US031**, et la lecture du scoreur a migré sur
-    `/saisie/` — c'est le couple exact que portent déjà `poules.py` et `suisse.py` (`/etat/` ouvert,
-    `/saisie/` restreint). Le Big Shoot Off était le seul des trois formats sans surface publique,
-    d'où un onglet public muet pendant une finale ; l'aligner valait mieux qu'inventer un troisième
-    nom de route pour la même idée.
-
-    **Rupture de contrat assumée** plutôt qu'un ajout à côté : `/etat/` change de forme au lieu
-    que `/public/` s'ajoute. `/api/v1` n'a qu'un seul client, livré dans le même bundle par le même
-    serveur (mono-club, réseau local, règle 12) — il n'existe aucun consommateur tiers à ménager,
-    et laisser deux routes servir la même photo aurait figé pour de bon l'asymétrie entre les trois
-    formats.
+    ⚠️ **Cette route était scoreur jusqu'à E05US031** ; la lecture du scoreur a migré sur
+    `/saisie/`, le couple exact de `poules.py` et `suisse.py`. **Rupture de contrat assumée**
+    plutôt qu'un `/public/` ajouté à côté : `/api/v1` n'a qu'un seul client, livré dans le même
+    bundle par le même serveur (règle 12), et deux routes servant la même photo auraient figé
+    l'asymétrie entre les trois formats.
     """
     service: ServiceBigShootOff = request.app.state.service_big_shoot_off
     etat = await run_in_threadpool(service.etat, tournoi_id, phase_id)

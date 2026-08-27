@@ -101,14 +101,13 @@ class ServiceRemboursements:
         remboursement_id: RemboursementId,
         cible: StatutRemboursement,
     ) -> Remboursement:
-        """Applique une transition terminale (remboursé/reporté) et co-écrit sa trace
-        `REMBOURSEMENT`.
+        """Applique une transition terminale (remboursé/reporté) et co-écrit sa trace.
 
-        Garde de **terminalité** ici (le service) : on ne clôt que ce qui est encore `à_rembourser`.
-        Le poste est **borné au tournoi** de l'URL : un `id` d'un autre tournoi est *introuvable* de
-        son point de vue (symétrique de `lister`, qui 404 sur un tournoi inconnu) — on ne traite pas
-        le poste d'un voisin par une URL mal formée. L'entité applique la transformation ; l'adapter
-        scelle statut + trace en une transaction.
+        Garde de **terminalité** ici (le service) : on ne clôt que ce qui est encore
+        `à_rembourser`. ⚠️ Le poste est **borné au tournoi** de l'URL — un `id` d'un autre tournoi
+        est *introuvable* de son point de vue : on ne traite pas le poste d'un voisin par une URL
+        mal formée. L'entité applique la transformation ; l'adapter scelle statut + trace en une
+        transaction.
         """
         remboursement = self._remboursements.par_id(remboursement_id)
         if remboursement is None or remboursement.tournoi_id != tournoi_id:

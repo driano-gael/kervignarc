@@ -35,13 +35,11 @@ class RegistreIdempotence:
     def executer(self, identifiant: str | None, commande: Callable[[], _T]) -> _T:
         """Exécute `commande` **une seule fois** par `identifiant` et renvoie son résultat.
 
-        `identifiant` vide/`None` → aucune déduplication (exécution simple) : un client qui n'en
-        fournit pas accepte le comportement par défaut. Sinon, un premier passage exécute l'acte et
-        **mémorise** son résultat ; tout rejeu du même identifiant renvoie ce résultat **sans
-        ré-exécuter** — l'acte (volée écrite, trace d'audit) n'a lieu qu'une fois.
-
-        La commande s'exécute **hors verrou** (une écriture peut être lente) : correct car ce
-        registre n'est consulté que depuis le writer unique, qui sérialise déjà les commandes.
+        `identifiant` vide/`None` → aucune déduplication. Sinon, un premier passage exécute l'acte
+        et **mémorise** son résultat ; tout rejeu renvoie ce résultat **sans ré-exécuter** — l'acte
+        (volée écrite, trace d'audit) n'a lieu qu'une fois. ⚠️ La commande s'exécute **hors
+        verrou**, ce qui est correct parce que ce registre n'est consulté que depuis le writer
+        unique.
         """
         if not identifiant:
             return commande()

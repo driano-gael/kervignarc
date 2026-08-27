@@ -48,14 +48,10 @@ technique** (`AssertionError` → 500 générique), jamais rencontrée en exploi
 def exiger_ecran(poste: Poste) -> Poste:
     """Refuse un poste de cible ; renvoie l'écran sinon (E07US004).
 
-    Garde **réellement partagée** par `ServicePostes` (préparation, réglage) et `ServiceEcrans`
-    (affichage, pilotage). Elle vit dans ce module et non dans `application.ecrans` parce que la
-    dépendance ne va que dans ce sens : `ecrans.py` importe déjà `StoreSessionsPoste` d'ici, donc
-    l'inverse serait circulaire. *(La première version la dupliquait ligne à ligne dans les deux
-    services tout en affirmant en docstring qu'elle était partagée — corrigé en revue.)*
-
-    La confusion n'est pas théorique : la console de supervision affiche cibles et écrans **côte à
-    côte**, donc l'identifiant d'une tablette est à portée de clic de celui d'un écran.
+    Garde **réellement partagée** par `ServicePostes` et `ServiceEcrans`. Elle vit ici et non dans
+    `application.ecrans` parce que la dépendance ne va que dans ce sens : `ecrans.py` importe déjà
+    `StoreSessionsPoste` d'ici, l'inverse serait circulaire. ⚠️ La confusion n'est pas théorique —
+    la console affiche cibles et écrans **côte à côte**, l'identifiant de l'un à portée de clic.
     """
     if poste.type is not TypePoste.ECRAN:
         raise PosteNEstPasUnEcran(f"Le poste {poste.id} n'est pas un écran de salle.")
@@ -183,12 +179,10 @@ class ServicePostes:
     def creer_ecran(self, tournoi_id: TournoiId, libelle: str) -> Poste:
         """Crée un écran de salle et lui alloue un code distribuable (QR ou saisie de secours).
 
-        **Création explicite**, à l'inverse des cibles (`assurer_codes`, dérivées du plan) :
-        aucun gabarit ne dit combien d'écrans le club branchera ni où. C'est aussi pourquoi le CA
-        parle de « plusieurs écrans possibles, chacun son déroulé » — la liste est ouverte.
-
-        Aucune garde de statut, comme pour les codes de cible : un écran se prépare **à l'avance**
-        (`D-07`), y compris sur un brouillon.
+        **Création explicite**, à l'inverse des cibles (`assurer_codes`, dérivées du plan) : aucun
+        gabarit ne dit combien d'écrans le club branchera ni où — d'où « plusieurs écrans, chacun
+        son déroulé », la liste étant ouverte. Aucune garde de statut, comme pour les codes de
+        cible : un écran se prépare **à l'avance** (`D-07`), y compris sur un brouillon.
         """
         self._verifier_tournoi(tournoi_id)
         return self._postes.ajouter(Poste.creer_ecran(tournoi_id, libelle, self._allouer_code()))
@@ -215,14 +209,10 @@ class ServicePostes:
         """Fixe le découpage et la cadence des listes projetées par un écran (E16US009).
 
         **Un geste distinct du déroulé**, et non un champ de plus sur `regler_deroule_ecran` : le
-        déroulé dit *quelles vues et pendant combien de temps*, celui-ci dit *comment une liste se
-        lit à dix mètres*. Ils se règlent à des moments différents (l'un à la préparation, l'autre
-        une fois le projecteur branché dans la salle) et le second se corrige seul, sans avoir à
-        renvoyer la séquence de vues entière — ce qui, à l'inverse, exposait à l'écraser par
-        inadvertance.
-
-        Persisté pour la même raison que le déroulé : le réglage doit survivre au redémarrage du
-        matin du jour J.
+        déroulé dit *quelles vues et combien de temps*, celui-ci *comment une liste se lit à dix
+        mètres*. Ils se règlent à des moments différents, et le second se corrige sans renvoyer la
+        séquence de vues entière — ce qui exposait à l'écraser par inadvertance. Persisté : le
+        réglage doit survivre au redémarrage du matin du jour J.
         """
         ecran = self._exiger_ecran(tournoi_id, poste_id)
         return self._postes.enregistrer(ecran.avec_pages(pages))
@@ -230,17 +220,11 @@ class ServicePostes:
     def supprimer_ecran(self, tournoi_id: TournoiId, poste_id: PosteId) -> None:
         """Retire un écran : sessions, consigne et présence oubliées, puis ligne supprimée.
 
-        Fermer les sessions **avant** évite qu'un appareil branché sur cet écran continue de
-        résoudre un poste disparu. Le reste n'est pas cosmétique : SQLite **réattribue** les
-        identifiants libérés, donc **tout** état volatil indexé par ce `poste_id` serait hérité par
-        le prochain poste créé — une consigne orpheline figerait un écran neuf sur un podium que
-        personne n'a demandé, une présence orpheline le ferait naître « en ligne ». Le nettoyage
-        couvre donc les **trois** registres, comme `ServiceSupervision.revoquer_poste` — que la
-        version d'origine citait en modèle tout en n'en reprenant que deux tiers (correctif de
-        revue).
-
-        La suppression est réservée aux écrans : le code d'une cible est imprimé sous un QR, le
-        supprimer invaliderait une affiche déjà posée.
+        Fermer les sessions **avant** évite qu'un appareil branché continue de résoudre un poste
+        disparu. ⚠️ SQLite **réattribue** les identifiants libérés : tout état volatil indexé par
+        ce `poste_id` serait hérité par le prochain poste créé — une consigne orpheline figerait un
+        écran neuf sur un podium, une présence orpheline le ferait naître « en ligne ». D'où les
+        **trois** registres, comme `ServiceSupervision.revoquer_poste`.
         """
         self._exiger_ecran(tournoi_id, poste_id)
         self._sessions.invalider_poste(poste_id)
@@ -288,18 +272,11 @@ class ServicePostes:
     def fixer_depart_courant(self, jeton: str | None, depart_id: DepartId) -> Depart:
         """Met le poste « en mode départ X » : fixe son départ courant (geste manuel, ADR-0034).
 
-        Primitive **un poste, un départ** qu'E12US002 (« lancer un tour ») orchestrera pour *tous*
-        les postes d'un coup — même point d'entrée, réutilisé. Auto-gardée pour rester correcte hors
-        HTTP (l'orchestrateur l'appellera sans passer par `exiger_poste`) :
-
-        - `NonAuthentifie` (→ 401) si le jeton ne résout **aucune** session de poste valide ;
-        - `DepartIntrouvable` (→ 404) si le départ n'existe pas **ou** relève d'un autre tournoi que
-          celui du poste (ADR-0034 §4 : le lien est *posé*, jamais deviné ; même parti que partout,
-          un départ d'un tournoi voisin n'existe pas plus qu'un identifiant inventé).
-
-        La légalité **fine** de la saisie (l'archer est-il affecté à `(cible, départ)` ?) n'est
-        pas vérifiée ici : elle reste au service de saisie (ADR-0033 §3). Renvoie le départ fixé
-        pour que le poste confirme *quel* créneau il sert.
+        Primitive **un poste, un départ** qu'E12US002 orchestrera pour *tous* les postes d'un coup.
+        Auto-gardée pour rester correcte hors HTTP : `NonAuthentifie` (401) si le jeton ne résout
+        aucune session ; `DepartIntrouvable` (404) si le départ n'existe pas **ou** relève d'un
+        autre tournoi que celui du poste (ADR-0034 §4 — le lien est *posé*, jamais deviné). ⚠️ La
+        légalité **fine** de la saisie reste au service de saisie (ADR-0033 §3).
         """
         poste = self.resoudre_session(jeton)
         if poste is None:

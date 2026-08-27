@@ -15,15 +15,11 @@ from enum import Enum
 class NiveauImpact(str, Enum):
     """Gravité d'une écriture — l'échelle transverse de l'alerte par calcul d'impact.
 
-    `(str, Enum)` : la valeur est un slug stable, sérialisable tel quel à la frontière API (comme
-    `StatutTournoi`, `RaisonConflit`). Trois crans, du plus anodin au plus lourd :
-
-    - `AUCUN` : rien de réel n'est touché → **aucune alerte**, l'action passe directement ;
-    - `CONFIRMATION` : impact réel mais **réversible** → alerte chiffrée, confirmation par un
-    bouton ;
-    - `MASSIF` : des **données réelles produites** sont en jeu → **geste délibéré** (taper un mot)
-    et
-      **trace d'audit**. « Une alerte qui ne chiffre pas son impact est un clic de plus » (`P-4`).
+    `(str, Enum)` : slug stable, sérialisable tel quel à la frontière API. Trois crans : `AUCUN`
+    (rien de réel n'est touché → aucune alerte), `CONFIRMATION` (impact réel mais **réversible** →
+    alerte chiffrée + bouton), `MASSIF` (**données réelles produites** → geste délibéré, taper un
+    mot, **et** trace d'audit). « Une alerte qui ne chiffre pas son impact est un clic de plus »
+    (`P-4`).
     """
 
     AUCUN = "aucun"
@@ -35,15 +31,11 @@ class NiveauImpact(str, Enum):
 class ImpactRegeneration:
     """Impact chiffré de **régénérer le plan de cibles** d'un départ (écrase le placement courant).
 
-    - `archers_deplaces` : combien d'archers sont actuellement placés — tous seront re-brassés par
-    le
-      glouton déterministe (« 156 archers perdront leur place ») ;
-    - `cibles_avec_scores` : combien de cibles du plan courant ont **au moins un archer avec une
-      série** — leurs scores sont **conservés** (la régénération ne réécrit que le placement, pas
-      les
-      séries), mais leur présence marque des **données réelles** et fait basculer en massif.
-
-    Immuable (règle 4) : une photo de l'impact au moment du calcul, jamais mutée après coup.
+    `archers_deplaces` : combien sont actuellement placés — tous seront re-brassés par le glouton
+    déterministe. `cibles_avec_scores` : combien de cibles portent **au moins un archer avec une
+    série** — leurs scores sont **conservés** (seul le placement est réécrit), mais leur présence
+    marque des **données réelles** et fait basculer en massif. Immuable (règle 4) : une photo au
+    moment du calcul.
     """
 
     archers_deplaces: int

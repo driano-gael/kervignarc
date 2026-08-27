@@ -30,31 +30,11 @@ from domain.tournoi import TournoiId
 class AffichageEcran:
     """Ce qu'un écran doit montrer à cet instant — **et sur quoi retomber**.
 
-    `vue_figee` renseigné ⇒ l'écran est figé dessus ; sinon il joue `sequence`. Il n'arbitre donc
-    jamais : la présence de `vue_figee` décide.
-
-    **Deux séquences, et la distinction est la garantie centrale d'ADR-0064** :
-
-    - `sequence` est ce que l'écran joue **maintenant** — son propre déroulé, ou celui que l'admin
-      lui impose ;
-    - `deroule_repli` est **toujours** son déroulé propre : ce sur quoi il retombe seul quand
-      `reste_s` atteint zéro, **sans rien redemander au serveur**.
-
-    ⚠️ Deux corrections successives ont été nécessaires pour que cette phrase soit vraie. La version
-    d'origine renvoyait `sequence=None` sous une vue figée : l'écran n'avait alors *rien* vers quoi
-    retomber. La deuxième repliait `sequence` sur le déroulé propre — ce qui marchait pour une vue
-    figée, mais **pas** pour une séquence imposée, où `sequence` porte déjà la consigne : à
-    l'échéance, un écran isolé continuait de jouer la séquence de l'admin **en affirmant au bandeau
-    avoir repris son déroulé**. D'où un champ **distinct**, plutôt qu'un champ à deux sens.
-
-    `reste_s` alimente son compte à rebours ; `None` signifie soit « pas sous contrôle », soit
-    « sous contrôle sans échéance », que `sous_controle` permet de distinguer.
-
-    `pages` accompagne **toujours** l'affichage (E16US009) : c'est le réglage de l'écran, donc il
-    vaut sous contrôle comme hors contrôle — une prise de contrôle change *ce qu'on montre*, jamais
-    *comment une liste se lit à dix mètres*. Et il est **résolu** (`pages_effectives`) : l'écran ne
-    reçoit jamais « rien réglé », il n'a donc aucun défaut à retenir de son côté — c'est ce qui a
-    permis à `DETTE-039` d'exister.
+    `vue_figee` renseigné ⇒ l'écran est figé dessus, sinon il joue `sequence` : il n'arbitre
+    jamais. ⚠️ **Deux séquences, garantie centrale d'ADR-0064** : `sequence` est ce qu'il joue
+    **maintenant** (le sien, ou celui que l'admin impose), `deroule_repli` est **toujours** le sien
+    — ce sur quoi il retombe seul à `reste_s == 0`, sans rien redemander. `pages` est **toujours**
+    servi et **résolu** : l'écran n'a aucun défaut à retenir (`DETTE-039`).
     """
 
     sequence: SequenceVues | None
@@ -222,18 +202,13 @@ class ServiceEcrans:
     def _ecoulees(self, prise: PriseDeControle) -> float:
         """Secondes depuis la pose, planchées à zéro.
 
-        Défense simple contre un écart **négatif** — une horloge serveur remise à l'heure en cours
-        de journée — pour qu'aucun appelant ne reçoive un temps qui recule.
-
-        ⚠️ **Ce plancher ne fait pas expirer une prise**, et une rédaction précédente le prétendait
-        (relevé en 3ᵉ passe, mesuré : avec ou sans lui, `expiree` et `reste_secondes` rendent les
-        mêmes valeurs, `reste_secondes` plafonnant déjà). Sous horloge reculée, la prise **n'expire
-        toujours pas** à l'heure nominale : côté écran, le décompte local atteint zéro, le sondage
-        suivant lui rend la durée pleine, et l'affichage **oscille**. Le vrai remède est une
-        référence **monotone** plutôt que l'heure murale — hors périmètre de cette US, et inscrit
-        au registre (`# DETTE-032`). Le cas suppose une resynchronisation NTP en pleine journée sur
-        un serveur local hors ligne : rare, mais réel.
+        Défense contre un écart **négatif** — horloge serveur remise à l'heure — pour qu'aucun
+        appelant ne reçoive un temps qui recule. ⚠️ **Ce plancher ne fait pas expirer une prise**,
+        et une rédaction précédente le prétendait : sous horloge reculée, le décompte local atteint
+        zéro, le sondage suivant rend la durée pleine, et l'affichage **oscille**. Le vrai remède
+        est une référence **monotone** (`# DETTE-032`).
         """
+
         # DETTE-032 : chronométrage sur l'heure murale ; une horloge monotone serait juste.
         return max(0.0, (self._horloge.maintenant() - prise.debut).total_seconds())
 

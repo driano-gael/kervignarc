@@ -33,13 +33,11 @@ async def live(websocket: WebSocket) -> None:
 async def pump(websocket: WebSocket, subscription: Subscription) -> None:
     """Pousse les événements vers le client ; s'arrête proprement à la déconnexion.
 
-    Deux tâches concurrentes : l'une **émet** les événements diffusés, l'autre **surveille**
-    la fermeture du socket. Dès que l'une se termine, on annule l'autre et on l'attend en
-    absorbant son exception (dont l'annulation) : aucune ne fuite au démontage.
-
-    **Helper partagé** (public, sans underscore) : le canal réel (`/ws`) **et** le canal isolé de
-    simulation (`/ws/simulation`, E15US003) réutilisent cette boucle plutôt que de dupliquer sa
-    logique d'annulation non triviale (revue axe A/C2 — un import de `_pump` privé inter-module).
+    Deux tâches concurrentes : l'une **émet** les événements diffusés, l'autre **surveille** la
+    fermeture du socket. Dès que l'une se termine, on annule l'autre et on l'attend en absorbant
+    son exception (dont l'annulation) : aucune ne fuite au démontage. **Helper partagé** (public) :
+    le canal réel et celui de simulation (E15US003) le réutilisent plutôt que de dupliquer une
+    logique d'annulation non triviale.
     """
     emettre = asyncio.create_task(_emettre(websocket, subscription))
     surveiller = asyncio.create_task(_surveiller_deconnexion(websocket))

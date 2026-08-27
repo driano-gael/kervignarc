@@ -37,15 +37,11 @@ class EtatSection(str, Enum):
 class LigneCompletude:
     """Une ligne du tableau : un **libellé**, son `etat`, et son décompte `fait/total` s'il en a un.
 
-    ⚠️ Cette ligne disait « un jalon » jusqu'à E16US012, qui a donné au mot un sens plus haut :
-    un **jalon** est désormais une question posée avant une étape (« prêt à démarrer ? »), et une
-    ligne en est un *élément*. Deux sens pour un mot, dans deux modules qui s'importent, c'est ce
-    que la règle 3 et `docs/glossaire.md` existent pour empêcher (relevé en revue).
-
-    `fait`/`total` sont `None` pour les lignes **sans décompte** (phases à venir, classement prêt/en
-    attente) : leur information est dans `etat`. Le front rend « fait/total <unité> » selon la `cle`
-    (« cibles » pour la qualification, rien pour les paiements) — le domaine ne porte pas l'unité
-    d'affichage.
+    ⚠️ Cette ligne disait « un jalon » jusqu'à E16US012, qui a donné au mot un sens plus haut : un
+    **jalon** est une question posée avant une étape, une ligne en est un *élément*. Deux sens pour
+    un mot dans deux modules qui s'importent, c'est ce que la règle 3 et `docs/glossaire.md`
+    existent pour empêcher. `fait`/`total` sont `None` pour les lignes **sans décompte** — leur
+    information est dans `etat` ; l'unité d'affichage se résout au front, depuis la `cle`.
     """
 
     cle: str
@@ -78,16 +74,11 @@ def evaluer_completude(
 ) -> Completude:
     """Assemble la complétude depuis les décomptes agrégés (politique pure, testée depuis le CA).
 
-    - `qualif` = `(cibles_terminees, cibles_total)` : une cible est *terminée* quand toutes ses
-      séries sont complètes (`Serie.est_complete`). Qualification `OK` si toutes le sont (et qu'il y
-      en a) ; `EN_ATTENTE` si aucune cible n'est encore placée (`total == 0`) ; `ALERTE` sinon.
-    - `paiements` = `(archers_regles, archers_total)` : `OK` si tous réglés (`reste == 0`), `ALERTE`
-      sinon. Aucun archer → `OK` **vacant** (rien à encaisser).
-    - **classement** : *prêt* (`OK`) dès que la qualification est complète, `EN_ATTENTE` sinon — il
-      se recalcule toujours (E06US001), mais n'est *définitif* qu'une fois toutes les séries closes.
-    - **phases éliminatoires** : `A_VENIR` (séquencé EPIC-05, cf. module).
-
-    `sportif_complet = qualification OK` (les phases à venir ne bloquent pas — cf. module).
+    `qualif = (cibles_terminees, cibles_total)` : `OK` si toutes le sont (et qu'il y en a),
+    `EN_ATTENTE` si aucune cible n'est placée, `ALERTE` sinon. `paiements` : `OK` si `reste == 0` —
+    aucun archer → `OK` **vacant**. Le **classement** est *prêt* dès que la qualification est
+    complète : il se recalcule toujours (E06US001) mais n'est *définitif* qu'une fois les séries
+    closes. Les phases éliminatoires sont `A_VENIR` et ne bloquent pas `sportif_complet`.
     """
     cibles_terminees, cibles_total = qualif
     regles, total_arch = paiements
