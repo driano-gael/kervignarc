@@ -1,14 +1,7 @@
-"""Cloisonnement catégorie/blason d'une cible (E03US007, RG-4) — value object du domaine.
+"""Value object du **cloisonnement** — une valeur de configuration, pas un morceau d'algorithme.
 
-**Pourquoi un module à part.** Deux agrégats en ont besoin : le moteur de placement
-(`domain/placement.py`), qui l'applique, et `Tournoi`, qui le **porte** — c'est un réglage de
-tournoi, activable, indépendant du type de tournoi (RG-4). Or `domain/placement` importe déjà
-`domain/archer`, qui importe `domain/tournoi` : loger l'énumération dans le moteur et l'importer
-depuis `Tournoi` fermerait un **cycle d'imports**. Un value object partagé, sans dépendance, est la
-sortie habituelle — et il dit ce qu'il est : une valeur de configuration, pas un morceau
-d'algorithme.
-
-`domain/placement` l'importe et s'en sert ; c'est ici qu'elle est **définie**.
+⚠️ **Module à part pour éviter un cycle** : `domain/placement` importe `domain/archer`, qui importe
+`domain/tournoi` — loger l'énumération dans le moteur et l'importer depuis `Tournoi` le fermerait.
 """
 
 from __future__ import annotations

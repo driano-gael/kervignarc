@@ -1,14 +1,8 @@
-"""Agrégat `Blason` — une cible en carton d'un tournoi (E01US005 ; zones : E01US014).
+"""Agrégat **Blason** — taille, capacité, et ses **zones**.
 
-Modélise l'**occupation d'une cible** : un blason porte un `nom`, une `taille` (fraction de
-place occupée sur une cible, `0 < taille <= 1`) et une `capacite` (nombre d'archers admis,
-`>= 1`). Agrégat de domaine **pur** (aucune dépendance framework, immuable), validé à la
-création/édition. Les blasons appartiennent à un tournoi ; l'association d'une **catégorie** à
-un blason par défaut est **livrée** (E01US006). Reprend et formalise le prototype `Blason`.
-
-Il porte aussi ses `zones` — les **valeurs de score admises** (E01US014) : un blason ne se
-réduit pas à sa taille, un triple 40 n'a pas les zones 5 → 1 (référentiel §4.4). C'est cette
-donnée qui permet au pavé de saisie (EPIC-04) de ne proposer que le tirable.
+⚠️ **Un blason ne se réduit pas à sa taille** : ses `zones` sont les valeurs de score admises, et un
+triple 40 n'a pas les zones 5 → 1. C'est cette donnée qui permet au pavé de saisie de ne proposer
+que le tirable.
 """
 
 from __future__ import annotations

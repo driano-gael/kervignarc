@@ -1,15 +1,9 @@
-"""Endpoints REST de la séquence de phases (`/api/v1`) — composition d'un tournoi (E05US001).
+"""Phases — ressource rattachée au **départ**, pas au tournoi : c'est le créneau qui porte une
+séquence (ADR-0075).
 
-Suit le patron de bout en bout (E00US009) : **DTO Pydantic** distincts des agrégats, **écritures**
-routées par la file (writer unique, ADR-0005) et protégées par `exiger_admin`, **lectures** hors
-boucle (threadpool), **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Ressource rattachée au **départ** : `/departs/{depart_id}/phases` (E01US025, ADR-0075 —
-c'est le créneau qui porte une séquence, pas le tournoi). Lecture ouverte (comme les autres
-consultations, E10US001) ; composition et cycle de vie réservés à l'admin. La **cohérence** de la
-séquence (source vide / rangs inexistants / effectif incompatible) est une règle du domaine → elle
-remonte en 422 ; les conflits d'état (transition illégale, suppression d'une source référencée) en
-409 (ADR-0045).
+⚠️ **La cohérence de la séquence est une règle du DOMAINE** (422) ; les conflits d'état — transition
+illégale, suppression d'une source référencée — sont applicatifs (409). Lecture ouverte, composition
+et cycle de vie réservés à l'admin.
 """
 
 from __future__ import annotations

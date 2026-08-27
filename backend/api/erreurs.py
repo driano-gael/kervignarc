@@ -1,16 +1,8 @@
-"""Traduction des erreurs typées en réponses HTTP normalisées (frontière API, ADR-0007).
+"""Mapping HTTP des erreurs typées — `DomainError` 422, `ApplicationError` 400/401/403/404/409,
+`InfrastructureError` 500 générique, `RequestValidationError` 400.
 
-Le mapping des familles d'exceptions (domaine / application / infrastructure) vers HTTP se
-fait **uniquement ici**. Format de réponse uniforme : `{ code, message, details? }`. Les
-messages techniques **ne fuient pas** : une panne d'infrastructure renvoie un message
-générique, le détail étant journalisé côté serveur.
-
-| Famille                | HTTP           |
-|------------------------|----------------|
-| `DomainError`          | 422            |
-| `ApplicationError`     | 400 (borne de service) / 401 (auth) / 403 (interdit) / 404 / 409 |
-| `InfrastructureError`  | 500 (générique)|
-| `RequestValidationError` (entrée) | 400 |
+⚠️ **Les messages techniques ne fuient JAMAIS** : une panne d'infrastructure rend un message
+générique, le détail restant journalisé côté serveur.
 """
 
 from __future__ import annotations

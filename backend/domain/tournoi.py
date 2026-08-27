@@ -1,14 +1,10 @@
-"""Agrégat `Tournoi` — contexte d'un tournoi (E01US001, E01US002).
+"""Agrégat **Tournoi** — identité et cycle de vie à sept statuts (ADR-0026).
 
-Enrichit la graine du walking skeleton (E00US009, nom seul) avec les métadonnées de
-création — **date**, **lieu** (facultatif), **type** officiel / non officiel (E01US001) — et son
-**cycle de vie** (`statut`, sept statuts — E01US002 puis E01US017/[ADR-0026]). Agrégat **pur**
-(aucune dépendance framework, immuable) : `creer`/`modifier` valident les valeurs, les transitions
-renvoient une copie. Les autres aspects de configuration (catégories, blasons, gabarit de salle,
-barème, **départs**…) vivent dans leurs propres agrégats.
+Les autres aspects de configuration (catégories, blasons, gabarit, barème, départs) vivent dans
+leurs propres agrégats.
 
-Le **tarif** n'est plus porté par le tournoi : depuis ADR-0017 (E02US004) il vit sur chaque
-`Depart` (créneau), le tournoi pouvant se jouer sur plusieurs créneaux à des prix différents.
+⚠️ **Le tarif n'est plus porté par le tournoi** : depuis ADR-0017 il vit sur chaque `Depart`, un
+tournoi pouvant se jouer sur plusieurs créneaux à des prix différents.
 """
 
 from __future__ import annotations

@@ -1,14 +1,8 @@
-"""Adapter de sauvegarde périodique de la base SQLite (E11US003, CA « sauvegarde périodique »).
+"""Sauvegardes périodiques et rétention des N plus récentes.
 
-`SauvegardeSQLite.sauvegarder()` dépose une **copie horodatée cohérente** de la base dans un
-dossier local (API `sqlite3.backup`, cf. `infrastructure/db/snapshot.py`) puis applique une
-**rétention simple** : ne garder que les N sauvegardes les plus récentes. Le nom encode
-l'instant (`kervignarc-AAAAMMJJ-HHMMSS.db`) ; comme ce format est **croissant dans l'ordre
-lexicographique**, le tri par nom suffit à ordonner du plus ancien au plus récent — pas besoin
-de lire les `mtime` (peu fiables et non déterministes en test).
-
-L'instant vient du port `Horloge` (règle 2/9 : le temps est un effet de bord derrière un port,
-injecté figé en test) — jamais `datetime.now()` en direct.
+⚠️ **Le tri par NOM suffit** : `kervignarc-AAAAMMJJ-HHMMSS.db` est croissant dans l'ordre
+lexicographique. Pas besoin des `mtime`, peu fiables et non déterministes en test. L'instant vient
+du port `Horloge`, jamais de `datetime.now()`.
 """
 
 from __future__ import annotations

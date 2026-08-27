@@ -1,15 +1,8 @@
-"""Service applicatif Classement (E06US001) — lecture du classement de qualification.
+"""Service de **classement** — délègue au domaine, s'exécute hors file (lecture concurrente).
 
-Cas d'usage de **lecture** : charge les archers, leurs **séries** de saisie (E04US002) et les
-catégories d'un tournoi via les ports, puis délègue le calcul (cumul, départage FFTA, deux rangs)
-à la fonction pure du domaine (`calculer_classement`). Sans écriture, il s'exécute hors de la file
-d'écriture (lecture concurrente, mode WAL).
-
-Le classement se calcule **toujours en entier** (rang scratch global + rang par catégorie) ; le
-paramètre `categorie_id` ne fait que **filtrer l'affichage** à une catégorie, sans recalculer : un
-archer filtré garde donc son vrai rang scratch (sa place réelle dans le tournoi) et son rang de
-catégorie. C'est le sens du CA « filtrage/segmentation par catégorie » — voir une catégorie sans
-perdre la position d'ensemble.
+⚠️ **Le classement se calcule TOUJOURS en entier** ; `categorie_id` ne fait que **filtrer
+l'affichage**, sans recalculer. Un archer filtré garde donc son vrai rang scratch — voir une
+catégorie sans perdre la position d'ensemble.
 """
 
 from __future__ import annotations

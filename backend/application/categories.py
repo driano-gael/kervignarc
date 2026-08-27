@@ -1,10 +1,7 @@
-"""Service applicatif Catégories — CRUD des catégories d'un tournoi (E01US003).
+"""Service des **catégories** — vérifie l'existence amont et la cohérence du blason par défaut.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, catégorie) et la
-cohérence du **blason par défaut** (règle inter-agrégats : même tournoi), et fait remonter des
-erreurs typées (`TournoiIntrouvable`, `CategorieIntrouvable`, `BlasonHorsTournoi`).
+⚠️ **« Même tournoi » est une règle inter-agrégats** : l'agrégat ne voit qu'une catégorie, il ne
+peut pas la vérifier seul.
 """
 
 from __future__ import annotations

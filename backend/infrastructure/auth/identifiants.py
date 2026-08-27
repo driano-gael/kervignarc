@@ -1,14 +1,8 @@
-"""Adapter : identifiants admin persistés dans un fichier `.env` local (E10US002).
+"""Identifiants admin dans un `.env` local — aussi la **porte de secours** en cas d'oubli : l'éditer
+redéclenche la définition au prochain accès. Hors versionnage.
 
-Compromis de sécurité **assumé** (outil mono-club LAN, cf. story E10US002) : le login et le
-mot de passe admin vivent en clair dans un fichier `.env` (clés `KERVIGNARC_ADMIN_LOGIN` /
-`KERVIGNARC_ADMIN_PASSWORD`), lisible/éditable sur la machine serveur. Ce fichier est aussi la
-**porte de secours** en cas d'oubli : l'éditer (ou vider les clés) redéclenche la définition au
-prochain accès. `.env` est **hors versionnage** (`.gitignore`).
-
-Lecture/écriture en **bibliothèque standard** (parcimonie, ADR-0009) : un mini-parseur
-`KEY=VALEUR` suffisant pour ces deux clés. L'écriture fait un **upsert** ligne à ligne : elle
-remplace les deux clés visées et **préserve** le reste du fichier (autres clés, commentaires).
+⚠️ **L'écriture fait un upsert ligne à ligne** : elle remplace les deux clés visées et **préserve**
+le reste du fichier (autres clés, commentaires). Mini-parseur en stdlib (ADR-0009).
 """
 
 from __future__ import annotations

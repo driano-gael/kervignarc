@@ -1,16 +1,9 @@
-"""Adapter ReportLab du port `GenerateurListesImpression` (E09US003, socle PDF ADR-0031).
+"""Rendu PDF des listes — documents **tabulaires**, le point fort de ReportLab (ADR-0031).
 
-Rend les deux listes papier d'organisation :
+L'ordre des lignes est décidé **en amont par le service**, jamais ici.
 
-- `placement` : un tableau **archer → départ / cible / couloir** (une ligne par archer placé),
-  ordonné en amont par le service (par cible ou par nom) — pour l'accueil des archers ;
-- `club_paiement` : un bloc **par club**, tableau des archers (départs, dû, payé, statut) suivi de
-  la ligne de total du club — pour l'administratif.
-
-Documents **tabulaires** : le point fort de ReportLab (`Table`/`TableStyle`), pas de mise en page
-libre (ADR-0031). Seule couche à importer ReportLab (règle 1). Toute défaillance de rendu est
-**enveloppée** en `InfrastructureError` (ADR-0007) : aucune exception de bibliothèque brute ne
-remonte ; à la frontière API elle devient un 500 au message générique.
+⚠️ **Toute défaillance de rendu est enveloppée en `InfrastructureError`** : aucune exception de
+bibliothèque brute ne remonte. Seule couche à importer ReportLab (règle 1).
 """
 
 from __future__ import annotations

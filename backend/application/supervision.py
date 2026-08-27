@@ -1,14 +1,8 @@
-"""Service applicatif de **supervision des postes** (E12US001, ADR-0038).
+"""Supervision des postes — **deux horloges, deux questions** (ADR-0038 §2) : le heartbeat dit
+*vivant / mort*, la saisie dit *avance / stagne*.
 
-Console du jour J : pour chaque poste de cible d'un tournoi, agrège son **état** (en ligne / hors
-ligne / non rattaché — politique pure `domain.supervision.etat_poste`), sa **dernière saisie** et
-son **avancement**, plus un compteur global (« 28/30 en ligne »). Deux horloges, deux questions
-(ADR-0038 §2) : le **heartbeat** (présence) dit *vivant / mort* ; la **saisie** dit *avance /
-stagne*. L'admin peut **révoquer** un poste (`D-07`).
-
-Lecture synchrone hors boucle événementielle (règle 7) : sessions et présence sont en mémoire, les
-postes et séries en base (lectures courtes). Seule écriture, la **révocation**, ne touche que des
-états de session **en mémoire** — pas la file d'écriture.
+⚠️ **La révocation ne touche que des états EN MÉMOIRE** — pas la file d'écriture. Lecture
+synchrone hors boucle : sessions et présence en mémoire, postes et séries en base.
 """
 
 from __future__ import annotations

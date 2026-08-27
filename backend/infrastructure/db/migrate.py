@@ -1,15 +1,8 @@
-"""Application programmatique des migrations Alembic (E00US006, E11US001).
+"""Migration au démarrage — `upgrade head`, y compris sur une base absente au 1er lancement.
 
-Point unique d'où l'on déclenche `alembic upgrade head` **depuis du code Python** (par
-opposition à la CLI `alembic`). Réutilisé par l'exécutable de dev (`run_dev.py`) et par le
-point d'entrée de release (`run.py`) : tous deux doivent, au démarrage, garantir que le
-schéma est à jour. Au **1er lancement**, `upgrade head` sur un fichier SQLite absent le
-crée et applique la suite complète des révisions — c'est le CA « base au 1er lancement ».
-
-Le `script_location` est **injecté** plutôt que lu depuis `alembic.ini` : sous PyInstaller,
-le dossier `migrations/` est embarqué à un chemin (`sys._MEIPASS`) sans rapport avec
-l'emplacement d'`alembic.ini` au moment du build — seul l'appelant connaît le vrai chemin
-à l'exécution.
+⚠️ **Le `script_location` est INJECTÉ, jamais lu depuis `alembic.ini`** : sous PyInstaller, le
+dossier des migrations est embarqué à un chemin sans rapport avec celui du fichier de config au
+moment du build — seul l'appelant connaît le vrai chemin à l'exécution.
 """
 
 from __future__ import annotations

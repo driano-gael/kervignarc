@@ -1,15 +1,7 @@
-"""Endpoints REST du barème de qualification (`/api/v1`) — barème d'un tournoi (E01US009).
+"""Barème de qualification — ressource rattachée au tournoi.
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Ressource rattachée au tournoi : routes sous `/tournois/{tournoi_id}/bareme-qualification`.
-Lecture publique (comme les autres consultations) ; définition réservée à l'admin. Le barème est
-porté par la phase de qualification du tournoi (ADR-0011), transparent pour le client.
+Lecture publique, définition réservée à l'admin ; le barème est porté par la phase de qualification,
+de façon transparente pour le client.
 """
 
 from __future__ import annotations

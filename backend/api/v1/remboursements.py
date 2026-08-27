@@ -1,16 +1,8 @@
-"""Endpoints REST du registre de remboursements (E08US005, ADR-0057).
+"""Remboursements — consultation et traitement, **tout réservé à l'admin** : un mouvement d'argent
+n'est pas public.
 
-Consulter les sommes encaissées à rendre d'un tournoi (à traiter d'abord, puis les plus récentes) et
-**traiter** un poste — le marquer **remboursé** (l'argent a été rendu) ou **reporté** (réaffecté à
-un
-autre créneau). Les postes ne se **créent** pas ici : ils naissent à la suppression d'une
-inscription
-payée (désinscription, suppression de départ) — voir `inscriptions.py` / `departs.py`.
-
-Suit le patron de bout en bout : DTO Pydantic distincts des agrégats ; **tout réservé à l'admin**
-(`exiger_admin`) — un mouvement d'argent n'est pas public ; traitement routé par la **file
-d'écriture** (writer unique, ADR-0005), lecture **hors boucle** (threadpool) ; erreurs typées
-traduites à la frontière (`404 remboursement_introuvable`, `409 remboursement_deja_traite`).
+⚠️ **Les postes ne se CRÉENT pas ici** : ils naissent à la suppression d'une inscription payée
+(désinscription, suppression de départ). Traitement par la file, lecture hors boucle.
 """
 
 from __future__ import annotations

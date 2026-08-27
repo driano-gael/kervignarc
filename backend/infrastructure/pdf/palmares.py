@@ -1,14 +1,8 @@
-"""Adapter ReportLab du port `GenerateurPalmares` (E06US004, socle PDF ADR-0031).
+"""Rendu PDF du palmarès — **les podiums d'abord** : sans eux, 120 lignes obligent à parcourir les
+pages pour retrouver les médaillés. Document tabulaire (ADR-0031).
 
-Le document de fin de journée : **un podium par catégorie**, puis le **classement complet**. C'est
-l'ordre de lecture réel — on cherche d'abord qui monte sur la boîte, le classement détaillé sert
-ensuite. Les podiums d'abord, aussi, parce qu'un palmarès de 120 lignes imprimé sans eux oblige à
-parcourir les pages pour retrouver les médaillés.
-
-Document **tabulaire** : le point fort de ReportLab (`Table`/`TableStyle`), pas de mise en page
-libre (ADR-0031). Seule couche à importer ReportLab (règle 1). Toute défaillance de rendu est
-**enveloppée** en `InfrastructureError` (ADR-0007) : aucune exception de bibliothèque brute ne
-remonte ; à la frontière API elle devient un 500 au message générique.
+⚠️ **Toute défaillance de rendu est enveloppée en `InfrastructureError`** : aucune exception de
+bibliothèque brute ne remonte.
 """
 
 from __future__ import annotations

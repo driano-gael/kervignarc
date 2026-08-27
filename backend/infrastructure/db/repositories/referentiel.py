@@ -1,16 +1,6 @@
-"""Adapters repository SQLAlchemy — le **patrimoine et la configuration**
-
-Tournoi, archers, clubs, départs, inscriptions, catégories, blasons, gabarits de salle,
-remboursements.
-
-Découpé de l'ancien `repositories.py` (3 378 lignes, 21 adapters) par l'action 2 de
-[l'audit de maintenabilité](../../../../docs/audit-maintenabilite.md) : le fichier unique
-figurait parmi les onze « passages obligés » du dépôt. Le contenu n'a pas bougé d'un
-caractère ; seuls les imports inutiles ont été élagués.
-
-Chaque opération ouvre une **session courte** (ADR-0005) et traduit les lignes ORM en agrégats
-de domaine. Les pannes SQLAlchemy sont **enveloppées** en `InfrastructureError` — le domaine ne
-voit jamais d'exception brute."""
+"""Adapters SQL du référentiel — session **courte** par opération, pannes SQLAlchemy **enveloppées**
+en `InfrastructureError` : le domaine ne voit jamais d'exception brute.
+"""
 
 from __future__ import annotations
 
