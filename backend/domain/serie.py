@@ -1,21 +1,10 @@
-"""Agrégats `Serie` / `Volee` — la saisie de qualification d'un archer (E04US002).
+"""Agrégat **Serie** — l'état (les volées) ; la configuration lui est **passée** par le service.
 
-Vocabulaire du glossaire : une **volée** (`Volee`) est un groupe de flèches tirées d'affilée
-(3 en salle) ; une **série** (`Serie`) est l'ensemble des volées d'un archer sur la phase, validé
-par lots ou d'un bloc. Le **score** (cumul) est le total des points des volées **validées**.
+Zones du blason, flèches par volée, grain de validation ne sont pas dupliqués dans l'agrégat : ses
+invariants sont vérifiés à chaque opération contre la config fournie.
 
-Modèle de domaine **pur** (immuable, sans dépendance framework). La **configuration** — zones
-admises du blason tiré (`Blason.zones`, E01US014), nombre de flèches par volée (barème, E01US009),
-grain de validation (`GrainValidation`, E01US015) — n'est **pas** dupliquée dans l'agrégat : elle
-est **passée aux opérations** par le service, qui la lit sur la phase et le blason. La série ne
-porte donc que son état (les volées) ; ses invariants sont vérifiés à chaque opération contre la
-config fournie.
-
-Décisions actées (cf. `stories/E04-saisie-scores.md`) :
-- La **flèche est une valeur** (`ZoneScore`), pas une entité : DETTE-011 n'est pas résorbée par
-  renommage ici (l'agrégat `Score` du walking skeleton survit pour le classement de démo).
-- Le **reliquat** de volées (< N pour un grain « toutes les N ») **est validé** en fin de barème —
-  sinon les dernières volées ne se verrouilleraient jamais (cf. `phase.py`, `_verifier_cadence`).
+⚠️ **Le reliquat de volées est VALIDÉ en fin de barème** (moins de N pour un grain « toutes les
+N ») — sinon les dernières volées ne se verrouilleraient jamais.
 """
 
 from __future__ import annotations

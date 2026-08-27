@@ -1,22 +1,9 @@
-"""Service applicatif Saisie (E04US002) — saisir, valider, corriger la qualification d'un archer.
+"""Service de **saisie** des scores de qualification.
 
-Orchestre le moteur métier `Serie`/`Volee` : il **résout la configuration** depuis la phase et le
-blason (le pavé se déduit du blason tiré — `Blason.zones` — pas du barème), pilote l'agrégat, et
-**bâtit les entrées d'audit** de validation et de correction (« qui / quand / avant-après »,
-E10US005). Le « quand » est lu via le port `Horloge` (jamais dans le domaine, resté déterministe).
-
-Frontières (cf. `stories/E04-saisie-scores.md`) :
-
-- L'**autorisation par le poste** vit **ici**, pas dans un `Depends` d'API : les méthodes d'écriture
-  reçoivent un `ContexteSaisie | None` (cible + départ courant) et cloisonnent la saisie au triplet
-  `(tournoi, cible, départ)` — `SaisieHorsCible` sinon (ADR-0033 §3). Au service car un appelant
-  **hors HTTP** (writer WS E04US009, orchestrateur E12US002) contournerait une garde d'API. Les
-  archers de la grille se reconstituent depuis les `Affectation` (`archers_du_poste`), pas depuis le
-  champ hérité `Archer.cible` (ADR-0033 §1). `contexte=None` = saisie **admin**, sans contrainte.
-- Le **nom** de qui agit (scoreur en validation, rôle habilité en correction) est **fourni** au
-  service (résolu par `exiger_scoreur` côté API) : le service reste pur, sans jeton ni session.
-- L'**atomicité acte↔trace** (validation/correction) passe par le port
-  `SerieRepository.enregistrer_avec_trace` (série + audit en une transaction, ADR-0035).
+⚠️ **L'autorisation par le poste vit ICI, jamais dans un `Depends` d'API** (ADR-0033 §3) : un
+appelant hors HTTP — le writer WebSocket, l'orchestrateur de tour — contournerait une garde d'API.
+La saisie est cloisonnée au triplet `(tournoi, cible, départ)` ; `contexte=None` vaut saisie admin.
+Les archers de la grille se reconstituent depuis les `Affectation`, pas depuis `Archer.cible`.
 """
 
 from __future__ import annotations

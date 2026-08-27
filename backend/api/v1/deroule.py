@@ -1,21 +1,9 @@
-"""Endpoint **public** du déroulé du tour (E07US009, [ADR-0039]).
+"""Déroulé d'un archer, **public** — frontière de confidentialité (règle 6, ADR-0039).
 
-Projection publique, en lecture seule et **sans authentification** (E10US001), de la feuille de
-marque d'un archer suivi (E07US006) : ses volées du jour et la volée en cours, chacune avec ses
-valeurs, son total, un **statut explicite** « en attente de validation » / « validé » (dérivé du
-verrou) et le « quand ». C'est le canal de suivi de l'appli publique — **distinct** de la projection
-poste/admin (`api/v1/saisie.py`), qui, elle, porte les marqueurs de scoreur.
+Le DTO n'expose **jamais** l'identité du scoreur, le code de cible ni l'IP.
 
-Frontière de confidentialité (règle 6, ADR-0039) : le DTO **n'expose jamais** l'identité du scoreur
-(`saisie_par` / `validee_par`), le code de cible ni l'IP — seul le `statut` filtre vers le public.
-Il expose **délibérément** des scores **provisoires** (volées non validées) : transparence assumée
-par l'organisateur, le **classement** (validé seul) restant la source de vérité des scores.
-
-Lecture directe hors boucle (`run_in_threadpool`) sur le service de saisie déjà câblé
-(`ServiceSaisie.etat_serie`) : aucun nouveau modèle. Le live passe par la diffusion générique
-post-commit (`donnees_modifiees`), qui invalide le cache front → refetch (ADR-0039 §5).
-
-[ADR-0039]: ../../../docs/adr/0039-exposition-publique-du-deroule-scores-provisoires.md
+⚠️ **Il expose délibérément des scores PROVISOIRES** (volées non validées) : transparence assumée
+par l'organisateur, le classement — validé seul — restant la source de vérité.
 """
 
 from __future__ import annotations

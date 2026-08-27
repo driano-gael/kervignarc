@@ -1,21 +1,9 @@
-"""Service applicatif Formats de tournoi — la brique « déroulé » du club (E01US023, ADR-0060 §5).
+"""Service des **formats** — un format n'a pas de « copie de tournoi » : sa copie, ce sont les
+**phases**. D'où deux ports traversés, là où l'assemblage des catégories reste dans le sien.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
-
-**Ce qui distingue ce service de `ServicePatrimoine`** : un format n'a pas de forme « copie de
-tournoi ». Sa copie, ce sont les **phases** du tournoi — d'un autre type, dans un autre dépôt. Le
-service traverse donc deux ports (`FormatTournoiRepository` et `PhaseRepository`) là où l'assemblage
-des catégories et des blasons reste dans le sien.
-
-Trois cas d'usage au-delà du CRUD :
-
-- **appliquer** — instancie le format en phases du tournoi. **Remplace** la séquence existante, et
-  refuse net si une phase est engagée (`PhasesEngagees`) : à ce stade, deviner ce que
-  l'organisateur veut garder serait plus dangereux que de lui rendre la main ;
-- **promouvoir** — capture les phases d'un tournoi en format de bibliothèque, idempotent par nom ;
-- **dupliquer** — l'issue « en faire une copie pour garder les deux modèles » du CA, face à
-  `modifier`, qui est l'issue « modifier l'officiel sur place ».
+⚠️ **`appliquer` REMPLACE la séquence et refuse net si une phase est engagée** : deviner ce que
+l'organisateur veut garder serait plus dangereux que de lui rendre la main. `dupliquer` est l'issue
+« garder les deux modèles », face à `modifier` qui touche l'officiel sur place.
 """
 
 from __future__ import annotations

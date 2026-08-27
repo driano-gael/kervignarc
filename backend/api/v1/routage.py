@@ -1,22 +1,10 @@
-"""Endpoints REST du **panneau de routage** (E04US018) — « où est-ce que je tire ensuite ? ».
+"""Panneau de routage — **lecture publique, sans authentification** (ADR-0039, E10US001).
 
-Expose `ServiceRoutage` aux deux surfaces de saisie : la tablette de **qualification** (E04US002),
-qui route ses archers A→D vers leur duel de 1ᵉʳ tour une fois les séries validées, et l'écran
-**scoreur de duels** (E04US013), qui route les deux duellistes dès le duel tranché. Une seule route
-sert les deux : c'est la même question, seul l'ensemble d'archers change.
+Rien ici n'est confidentiel : la cible d'un match est affichée en salle.
 
-**Lecture publique, sans authentification** — comme le déroulé (E07US009, ADR-0039) et conformément
-au contrat d'E10US001 (toute lecture répond sans jeton). C'est cohérent avec la destination de cette
-projection : les trois autres canaux de routage (`D-09`) sont l'appli publique (E07US008) et l'écran
-de salle (E07US004). Rien ici n'est confidentiel — la cible d'un match est affichée en salle.
-
-Aucune erreur métier propre : un archer qu'on ne sait pas router rend une ligne **motivée**
-(`indisponible`), jamais un 4xx — un panneau qui échoue en bloc parce qu'un archer sur quatre n'est
-pas au tableau serait inutilisable le jour J. Les gardes de phase (`PhaseIntrouvable` /
-`PhasePasUnTableau`) ne remontent que si le client **impose** un `phase_id`, comme partout ailleurs.
-
-DTO Pydantic distincts des dataclasses d'application (règle 6) ; on réutilise `DuellisteReponse` de
-la saisie de duels — l'adversaire s'affiche avec les mêmes noms que la grille du scoreur.
+⚠️ **Aucune erreur métier propre** : un archer qu'on ne sait pas router rend une ligne **motivée**,
+jamais un 4xx. Un panneau qui échoue en bloc parce qu'un archer sur quatre n'est pas au tableau
+serait inutilisable le jour J.
 """
 
 from __future__ import annotations

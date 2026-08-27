@@ -1,21 +1,10 @@
-"""Le **tour** — unité d'avancement générique d'une phase ([ADR-0090], E05US032).
+"""Libellé du **tour** d'une phase — un tour n'est pas un braquet (ADR-0090).
 
-Toute phase avance par tours, quel que soit son format, et **un tour n'est pas un braquet** : le
-tour dit *où on en est*, le braquet dit *quels rangs ce tour attribue*. Certaines phases classent
-au fil des tours (l'élimination directe : la *Règle R*), d'autres ne classent qu'à la fin (la
-qualification : le total, pas la volée 12). Confondre les deux est ce que le code faisait jusqu'ici
-— `domain.suivi_deroule` dérivait ses tours des braquets, d'où une qualification, une poule ou un
-système suisse en cours qui affichaient « zéro tour ».
+Ce module ne porte que la résolution en libellé : l'**unité** vit au registre de contrat, le
+**nombre** là où vit la donnée qui le détermine, le **tour courant** au service qui déroule.
 
-**Ce module ne porte que la résolution en libellé.** L'**unité** elle-même vit au registre de
-contrat (`domain.contrat_phase.UniteDeTour`), avec les six autres questions du contrat — la séparer
-d'eux obligerait le contrat à importer ce module pendant que ce module importe le contrat, soit
-exactement le cycle qu'E05US023 avait déjà eu à défaire en déplaçant `TypePhase`. Le **nombre** de
-tours se calcule là où vit la donnée qui le détermine (la projection pour un tableau, le réglage
-pour un suisse), et le **tour courant** se demande au service qui déroule la phase — port
-`LecteurAvancementDePhase`, ADR-0090 §5.
-
-Module **pur et synchrone** (règle 1) : aucune lecture, aucun état.
+⚠️ **Ne pas rapatrier l'unité ici** : le contrat devrait alors importer ce module pendant que ce
+module l'importe — le cycle qu'E05US023 avait déjà eu à défaire.
 """
 
 from __future__ import annotations

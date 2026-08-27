@@ -1,21 +1,8 @@
-"""Endpoints REST des **écrans de salle** (E07US004, ADR-0064).
+"""Écrans de salle — préparation admin, et affichage lu par l'écran rattaché.
 
-Deux routers, deux portées — le même partage que les postes de cible :
-
-- **Préparation & pilotage** (`/api/v1/tournois/{tournoi_id}/ecrans`) : réservés à l'admin. Créer,
-  renommer, régler le déroulé, supprimer, **prendre le contrôle** et **rendre la main**. Les
-  réponses portent le `code` : ce sont des secrets d'usage à imprimer, comme pour les cibles.
-- **Affichage** (`/api/v1/ecrans/session/affichage`) : ce que l'écran rattaché doit montrer
-  *maintenant*, protégé par la session de poste (`exiger_poste`) — le rattachement lui-même passe
-  par `/api/v1/postes/session`, strictement inchangé (CA : *« même mécanisme que la tablette »*).
-
-**Aucun endpoint ne pousse un ordre à un écran.** L'affichage est une **lecture** que l'écran
-répète ; la prise de contrôle est un **état** que l'admin pose. C'est la décision d'ADR-0064, et
-elle se voit ici : `prendre_le_controle` répond à l'admin, pas à l'écran.
-
-Écritures et lectures : seuls la création, le renommage, le réglage du déroulé et la suppression
-touchent la base — donc la **file** (writer unique, ADR-0005). Prendre le contrôle et rendre la main
-n'écrivent qu'en mémoire (registre de consignes) : hors file, threadpool.
+⚠️ **Aucun endpoint ne pousse un ordre à un écran** (ADR-0064) : l'affichage est une **lecture** que
+l'écran répète, la prise de contrôle un **état** que l'admin pose — `prendre_le_controle` répond à
+l'admin, pas à l'écran. Prendre le contrôle et rendre la main n'écrivent qu'en mémoire : hors file.
 """
 
 from __future__ import annotations

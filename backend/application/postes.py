@@ -1,21 +1,10 @@
-"""Service applicatif Postes (E04US001, ADR-0029) — **préparation** des codes de cible &
-**session** de poste (rattacher une tablette à sa cible).
+"""Service des **postes** — préparation idempotente des codes, puis session par lieu (`D-13`).
 
-Deux volets d'une même capacité, portés par un seul service (même parti que `ServiceScoreurs`) :
+`assurer_codes` ne change jamais un code déjà émis : les QR sont imprimés.
 
-- **Préparation** (admin, `D-07` « tout se prépare à l'avance ») : `assurer_codes` garantit **un
-  code par cible** du plan de salle du tournoi, de façon **idempotente** (les codes déjà émis ne
-  changent pas — les QR sont imprimés). C'est le contrat que E09US008 imprimera.
-- **Session** (le poste, `D-13` : identité = le *lieu*) : `rattacher` par code → jeton opaque en
-  mémoire lié à la **cible** ; `resoudre_session` le retrouve à la réouverture (« sans rien demander
-  à personne ») ; `deconnexion`. Le jeton n'est valide que tant que **son tournoi n'est pas
-  terminé** — ancrage de la révocation « nouveau tournoi force le re-rattachement », compatible avec
-  **plusieurs tournois non terminés** simultanés (intérieur + extérieur).
-
-Le code est **attribué par le service** (le domaine ne voit qu'un poste, il ne peut garantir
-l'unicité). La génération est **injectée** (`generer_code`) pour rester déterministe en test
-(règle 9) ; elle **ré-essaie** en cas de collision (pré-contrôle `par_code`), la contrainte
-`UNIQUE(code)` en base restant le garde-fou d'intégrité ultime.
+⚠️ **Un jeton n'est valide que tant que SON tournoi n'est pas terminé** — ancrage de la révocation
+« nouveau tournoi force le re-rattachement », compatible avec plusieurs tournois non terminés
+simultanés (intérieur et extérieur).
 """
 
 from __future__ import annotations

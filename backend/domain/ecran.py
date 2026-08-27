@@ -1,21 +1,9 @@
-"""Déroulé de vues d'un écran de salle et **prise de contrôle** admin (E07US004, ADR-0064).
+"""Écran de salle — `SequenceVues` (ce qu'il fait tourner) et `Consigne` (ce qu'on lui impose).
 
-Deux notions, un même module parce qu'elles répondent à la même question — *que montre cet écran,
-maintenant ?* — et que la seconde est un **remplacement temporaire** de la première.
-
-- `SequenceVues` : ce que l'écran fait tourner tout seul, « paramétré à la préparation du tournoi
-  […] avec cadence réglable » (CA). Persisté par écran : *« plusieurs écrans possibles, chacun son
-  déroulé »*.
-- `Consigne` : ce que l'admin lui **impose** depuis la console — « soit une vue figée (ex. podium),
-  soit une autre séquence » —, avec une **échéance** parce que le CA exige qu'« une prise de
-  contrôle sache se terminer » et qu'il n'y ait « jamais un état forcé qu'on oublie ».
-
-**Le domaine ne lit pas l'heure** (règle 9, déterminisme). Comme `domain.supervision.etat_poste`, il
-reçoit un **écart déjà calculé** — `secondes_ecoulees` — et rend une règle. C'est aussi ce qui rend
-l'expiration lisible **côté écran** sans aller-retour serveur : l'écran connaît le début et la
-durée, il décompte lui-même. Le point est central au choix d'architecture d'ADR-0064 : la fin d'une
-prise de contrôle **naît du temps qui passe**, or aucun événement serveur ne peut pousser le temps
-qui passe (le même raisonnement qu'ADR-0038 §4 pour le passage hors-ligne d'un poste).
+⚠️ **Le domaine ne lit pas l'heure** : il reçoit un écart déjà calculé et rend une règle. C'est ce
+qui rend l'expiration lisible **côté écran** sans aller-retour serveur, et c'est central à
+ADR-0064 — la fin d'une prise de contrôle naît du temps qui passe, or aucun événement serveur ne
+peut pousser le temps qui passe.
 """
 
 from __future__ import annotations

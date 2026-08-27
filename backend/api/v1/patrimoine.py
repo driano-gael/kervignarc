@@ -1,21 +1,9 @@
-"""Endpoints REST du patrimoine du club (`/api/v1`) — bibliothèque, assemblage, promotion.
+"""Patrimoine — bibliothèque à plat, assemblage sous le tournoi, promotion en retour (ADR-0060).
 
-E01US023 / ADR-0060. Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des
-agrégats, écriture routée par la **file** (writer unique, ADR-0005) et protégée par `exiger_admin`,
-lecture directe **hors boucle** (threadpool), erreurs typées traduites à la frontière.
-
-**Trois familles de routes**, qui sont les trois temps de la vie d'une brique :
-
-- **bibliothèque**, à plat sous `/categories` et `/blasons` — le pendant de `/gabarits` (E01US007).
-  Seules la **lecture** et la **création** sont ici : l'édition (`PUT /categories/{id}`) et la
-  suppression (`DELETE /categories/{id}`) sont **déjà** à plat depuis E01US003 et fonctionnent
-  telles quelles sur un modèle, sans qu'il faille les redéclarer. Les redoubler aurait créé deux
-  chemins pour un même geste ;
-- **assemblage** d'un tournoi, sous `/tournois/{id}/assemblage` — copie de la bibliothèque ;
-- **promotion**, sous `/categories/{id}/promotion` et `/blasons/{id}/promotion` — le retour.
-
-Les routes de bibliothèque **ne portent pas de `tournoi_id`** : c'est tout l'objet de l'US, et ce
-qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
+⚠️ **L'édition et la suppression ne sont PAS redéclarées ici** : elles sont déjà à plat depuis
+E01US003 et fonctionnent telles quelles sur un modèle. Les redoubler créerait deux chemins pour un
+même geste. Les routes de bibliothèque ne portent **pas** de `tournoi_id` — c'est tout l'objet de
+l'US (`DETTE-023`).
 """
 
 from __future__ import annotations

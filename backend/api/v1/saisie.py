@@ -1,21 +1,9 @@
-"""Endpoints REST de la saisie de qualification (E04US002) — le **poste marqueur** en action.
+"""Saisie de qualification — écritures par la **file**, dédoublonnées par identifiant (ADR-0036).
 
-Expose le moteur `Serie`/`Volee` (persisté en PR2a, gardé en PR2b) au poste de cible :
-
-- **fixer le départ courant** (« mode départ X », ADR-0034) — préalable à toute saisie : sans lui,
-  le poste connaît son lieu mais pas *qui* afficher ;
-- **lister ses archers** (la grille) — reconstitués des affectations `(cible, départ)`, ADR-0033 ;
-- **saisir une volée** — écriture routée par la **file** (writer unique, ADR-0005) et
-  **dédoublonnée** par identifiant de saisie (idempotence, ADR-0036) ; la garde « SA cible / SON
-  départ » vit **au service** (ADR-0033 §3), pas ici ;
-- **relire l'état d'une série** — volées, marqueurs, verrou, cumul, et le « quand » de chaque volée
-  (`created_at`, ex-017).
-
-Rôles (E10US007) : la saisie est ouverte à l'**admin** *ou* au **poste** (`autoriser_saisie`) ;
-départ courant et grille sont **propres au poste de cible** (`exiger_poste_de_cible` — un écran de
-salle est refusé). La **validation** (scoreur) et
-la **correction** (rôle habilité) ont leurs propres endpoints, ailleurs. DTO Pydantic distincts des
-agrégats ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+⚠️ **La garde « SA cible / SON départ » vit au SERVICE, pas ici** (ADR-0033 §3) : un appelant hors
+HTTP contournerait une garde d'API. La saisie est ouverte à l'admin **ou** au poste ; départ courant
+et grille sont propres au **poste de cible** — un écran de salle est refusé. Validation et
+correction ont leurs propres endpoints.
 """
 
 from __future__ import annotations

@@ -1,22 +1,10 @@
-"""Service d'archive de fin de tournoi (E11US003, CA « export/archive fin de tournoi »).
+"""Service d'**archive** — orchestration métier ; la mécanique est dans l'infrastructure.
 
-`ServiceArchive.composer` assemble, pour un tournoi donné et selon une **sélection** de parties
-(cases à cocher côté UI), un paquet ZIP réunissant l'instantané SQLite complet, un dump CSV de
-toute la base, les documents PDF régénérés du tournoi, et un manifeste. L'assemblage mécanique
-(snapshot, CSV, ZIP) est délégué à un adapter d'infrastructure derrière le port
-`ConstructeurArchive` — le service ne fait que l'**orchestration** métier :
+La régénération des PDF est **best-effort** : un départ sans placement ne doit pas faire échouer
+toute l'archive, le document en échec est omis.
 
-- garde 404 (`TournoiIntrouvable`) si le tournoi n'existe pas, comme les autres services ;
-- régénération des PDF via les services existants (feuille de marque par départ, listes du
-  tournoi) — **best-effort** : un départ sans placement ne doit pas faire échouer toute l'archive,
-  le document en échec est simplement omis (log serveur) ;
-- métadonnées métier du manifeste (horodatage via le port `Horloge`, identité du tournoi).
-
-**Port au niveau applicatif, pas domaine** : une archive est une préoccupation d'**exploitation**
-(export/sauvegarde), pas une règle métier — elle n'a donc pas sa place dans `domain/` (règle 12 :
-l'infra d'export reste simple, on ne pollue pas le domaine d'un concept opérationnel). Le sens des
-dépendances reste respecté (règle 2) : l'infra implémente une interface, le service dépend de
-l'abstraction.
+⚠️ **Le port est au niveau APPLICATIF, pas domaine** : une archive est une préoccupation
+d'exploitation, pas une règle métier — on ne pollue pas le domaine d'un concept opérationnel.
 """
 
 from __future__ import annotations
