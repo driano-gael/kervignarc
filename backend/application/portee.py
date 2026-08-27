@@ -1,58 +1,29 @@
-"""Lectures **transverses** d'un tournoi, depuis que la portée sportive est le départ (ADR-0075).
+"""Lectures **transverses** d'un tournoi, alors que la portée sportive est le départ (ADR-0075).
 
-Un tournoi n'a plus de phases en propre : il en a autant de séquences que de départs. Or plusieurs
-services ont besoin d'une information qui, elle, est **commune** au tournoi — combien de volées
-compte une qualification, à quel grain le scoreur valide.
+Un tournoi n'a plus de phases en propre — il en a une séquence par départ. Ces réglages-ci sont
+pourtant réellement communs : ils vivent sur l'`EtapeDeroule`, définie **une fois** pour le tournoi
+(ADR-0076), que le repository assemble sur la phase de chaque créneau. La divergence entre deux
+départs n'est donc pas improbable, elle est **impossible**.
 
-**Et elle l'est réellement depuis [ADR-0076]** : ces réglages vivent sur l'`EtapeDeroule`, définie
-**une fois** pour le tournoi, que le repository assemble sur la phase de chaque créneau. Les lire
-sur un départ ou sur un autre ne « revient au même » plus par convention — c'est la *même* donnée.
-La réserve « tant qu'ils n'ont pas divergé », que ce module portait, n'a plus d'objet : la
-divergence n'est pas improbable, elle est impossible.
+⚠️ **Ces lectures sont des raccourcis assumés, pas la vérité du moteur.** Le moteur raisonne
+toujours dans un départ (`PhaseRepository.par_depart`) : quiconque a un `depart_id` sous la main
+doit l'utiliser — passer par ici perdrait la distinction qu'ADR-0075 rétablit.
 
-[ADR-0076]: ../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
+⚠️ **`qualification_du_tournoi` rend LA PREMIÈRE qualification**, un déroulé pouvant en porter
+plusieurs (ADR-0082). Ses appelants subsistants relèvent de deux cas, tous deux au registre : la
+famille `DETTE-047` — le forfait s'**écrit** sur la phase rendue ici et se **lit** par le même
+chemin, si bien que corriger la seule lecture rendrait les forfaits *invisibles* au lieu de justes —
+et un repli assumé là où aucun créneau n'est résoluble.
 
-**Pourquoi un module et non un copier-coller de plus.** Six services faisaient déjà la même
-résolution « la qualification de ce tournoi » : `bareme_qualification`, `grain_validation`,
-`completude` (deux fois), `feuille_de_marque`, `forfaits`, `saisie` (deux fois). C'est la
-duplication que `DETTE-022` signale depuis E04US018. La règle du projet autorise un remède
-structurel sur **preuve dans le code d'aujourd'hui** (3ᵉ occurrence réelle) : il y en a six,
-toutes existantes, aucune supposée. La factorisation se fait donc ici et non « plus tard ».
+⚠️ **Ne jamais énumérer les appelants ici sans les recompter par `grep`.** Une rédaction précédente
+en annonçait six, en comptant `forfaits` deux fois et en oubliant `feuille_de_marque` — qui
+imprimait donc une grille de 20 volées pour un tour qui s'en tire 15. Une énumération fausse est
+pire qu'absente : la prochaine US s'y fiera.
 
-⚠️ **Ces lectures sont des raccourcis assumés, pas la vérité du moteur.** Le moteur, lui, raisonne
-toujours dans un départ (`PhaseRepository.par_depart`). Quiconque a un `depart_id` sous la main doit
-l'utiliser : passer par ici perdrait justement la distinction qu'ADR-0075 rétablit.
-
-# ⚠️ **E05US025 — ce qui reste de `qualification_du_tournoi`, et pourquoi.** Un déroulé peut porter
-# plusieurs qualifications (ADR-0082) : « la » qualification du tournoi n'existe donc plus en
-# général, et cette fonction rend désormais **la première**. Les appelants ont été triés un par un ;
-# les cinq qui subsistent le font pour deux raisons distinctes, à ne pas confondre :
-#
-# - **La famille `DETTE-047`** (`forfaits.declarer` — un seul site —,
-#   `classements._forfaits_qualif`, `saisie._forfaits_qualif`) : le forfait s'**écrit** sur la
-#   phase rendue ici et se **lit** par le même chemin. L'affichage est « cohérent par accident » ;
-#   ne corriger que la lecture rendrait les forfaits **invisibles** au lieu de les rendre justes.
-#   Les deux côtés se portent au départ ensemble, dans l'US de résorption — pas ici.
-# - **Le repli assumé** (`saisie._phase_qualification_ou_none`, `pilotage_simulation`) : le premier
-#   ne s'en sert que lorsqu'aucun créneau n'est résoluble (donnée incohérente), le second simule un
-#   déroulé mono-qualification. Les deux sont justes tels quels.
-#
-# Ce qui **a** été porté au créneau : `saisie.avancement_cible`, les deux comptages de `completude`,
-# et `feuille_de_marque._bareme_du_creneau` — tous trois recevaient déjà un `depart_id`, la portée
-# tournoi n'y était qu'un raccourci.
-#
-# ⚠️ **Ce tri a été faux à sa première rédaction, et le compte tombait juste par compensation** :
-# il annonçait six sites en comptant `forfaits` deux fois et en oubliant `feuille_de_marque`, qui
-# imprimait donc une grille de 20 volées pour un tour qui s'en tire 15. Recompter par `grep` avant
-# d'ajouter ou de retirer une ligne ici — une énumération fausse est pire qu'absente, la prochaine
-# US s'y fiera.
-#
-# DETTE-048 : ce module concentre la portée tournoi résiduelle, et il est le seul à n'être **ni
-# testé ni surveillé**. Aucun test ne l'importe ; et le garde-fou `tests/test_portee_sportive.py` le
-# manque par construction — son balayage AST reconnaît des *noms de variables* (`phase`, `barrage`),
-# pas un `tournoi_id` reçu en **paramètre**, qui est justement la forme d'ici. Les deux défauts de
-# portée trouvés à la 2ᵉ revue d'E01US025 en sont sortis tous les deux (DETTE-047, et les verdicts
-# de barrage corrigés dans l'US). Avant d'ajouter un dixième appelant, lire le registre.
+⚠️ **Ce module n'est ni testé ni surveillé** (`DETTE-048`) : aucun test ne l'importe, et le garde-fou
+`tests/test_portee_sportive.py` le manque par construction — son balayage AST reconnaît des *noms de
+variables*, pas un `tournoi_id` reçu en **paramètre**, qui est la forme d'ici. Avant d'ajouter un
+dixième appelant, lire le registre.
 """
 
 from __future__ import annotations

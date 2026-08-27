@@ -17,15 +17,23 @@ Le commentaire est, dans ce dépôt, le seul artefact que **rien ne vérifie** :
 `mypy`, ni `eslint`, ni un test. Une phrase fausse y survit indéfiniment, et elle est lue comme une
 preuve.
 
-Deux mesures, prises le 27/08/2026 :
+Mesure du 27/08/2026, sur le code de **production** (tests exclus) :
 
-- sur les 106 450 lignes de code de production, ~14 500 sont du commentaire — **13 %**, ce qui est
-  sain en moyenne ;
-- mais la distribution est très inégale : **45 fichiers dépassent 40 %**, et quatre dépassent **60 %**
-  (`shared/ui/pagination.ts` à 68 %, `shared/duels/etatDeSaisie.ts` à 69 %).
+| Périmètre | Lignes | Commentaire | Part | Fichiers ≥ 40 % |
+|---|---|---|---|---|
+| Backend | 68 074 | 28 085 | **41 %** | **103** |
+| Front | 40 044 | 11 121 | **28 %** | 48 |
+| **Total** | **108 118** | **39 206** | **36 %** | **151** |
 
-Ce n'est donc pas un excès général, c'est une **concentration**. Et en lisant ce que contiennent
-réellement ces fichiers, le volume ne vient pas de ce qu'on croit :
+⚠️ **Une première mesure annonçait 13 %, et elle était fausse d'un facteur trois** : elle comptait
+les lignes commençant par `#` ou `//` et ne voyait donc **aucune docstring Python** — c'est-à-dire
+la forme sous laquelle ce dépôt documente presque tout son backend. La bonne mesure passe par
+`tokenize`, pas par un `grep`. *(Le premier jet de cet ADR portait le chiffre faux ; corrigé le jour
+même, sur la question du commanditaire « je ne vois pas le nettoyage côté back ». Il avait raison :
+le backend n'avait pas été omis par choix, il n'avait jamais été mesuré.)*
+
+Ce n'est donc pas un excès marginal : **plus d'un tiers du code de production est de la prose**. Et
+en lisant ce que contiennent réellement ces fichiers, le volume ne vient pas de ce qu'on croit :
 
 | Ce qu'on y trouve | Ce que c'est | Où ça vit déjà |
 |---|---|---|
@@ -98,9 +106,16 @@ une lecture, un savoir perdu coûte une US.
 - **Supprimer tout commentaire hors JSDoc d'API publique.** Rejeté : c'est la version forte de la
   maxime, et elle jette le tiers qui est faux — les couplages invisibles disparaîtraient sans que
   personne ne s'en aperçoive avant le premier bug.
-- **Un big bang sur les 45 fichiers.** Rejeté au titre de la règle 16 (INVEST) : un diff de cette
+- **Un big bang sur les 151 fichiers.** Rejeté au titre de la règle 16 (INVEST) : un diff de cette
   taille est irrelisable, et c'est précisément ce que les trois passes d'`E16US009` ont montré. Voir
   « Conséquences ».
+- **Un nettoyage par expression régulière.** Rejeté **sur preuve**, et c'est le point de méthode le
+  plus utile de cet ADR. Un motif normalisant « (correctif de 2ᵉ passe, axe C1) » en « (correctif de
+  revue) » a été écrit, puis simulé sur les 137 fichiers concernés : il produisait des parenthèses
+  jamais refermées (la mention traversait un saut de ligne), des fragments orphelins (`(revue/C1/D)`)
+  et des phrases agrammaticales. Un premier jet fusionnait même deux lignes de commentaire, faute
+  d'avoir borné `\s*` à la ligne. **Ce nettoyage n'est pas mécanisable : c'est de la prose, elle se
+  lit.** D'où le traitement par lots, à la lecture — et non un script.
 
 ## Conséquences
 

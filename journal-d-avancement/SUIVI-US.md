@@ -21,8 +21,10 @@ des commentaires que **rien ne vérifie**. Un commentaire ne survit donc qu'à t
 ([ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md), règle 13) ; le
 reste vit déjà ailleurs. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome du
 plafond de pages, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant
-d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes) ; les 45 fichiers au-dessus de 40 % se
-traitent **au fil de l'eau**, pas en big bang. Aucune ligne exécutable modifiée.)*
+d'être retiré. Lot démonstratif de 5 fichiers ; les **151** fichiers au-dessus de 40 % — dont
+**103 côté backend** — se traitent **au fil de l'eau**, ni en big bang ni par script : un motif de
+normalisation a été écrit puis **rejeté sur simulation**, il cassait la prose multi-lignes. Aucune
+ligne exécutable modifiée.)*
 
 **Précédente : `E16US006`**
 *(**le tournoi porte ses couleurs et ses logos** — deux logos facultatifs, celui de l'**édition** et
@@ -1250,7 +1252,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
-| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes de narration, `pagination.ts` de 68 % à 55 %) ; **le reste des 45 fichiers >40 % se traite au fil de l'eau**, pas en big bang. Mesure d'entrée : 13 % de commentaire sur 106 450 lignes de production, mais 45 fichiers au-dessus de 40 %)* |
+| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes de narration, `pagination.ts` de 68 % à 55 %) ; **le reste se traite au fil de l'eau**, pas en big bang. Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 
