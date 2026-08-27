@@ -1,23 +1,9 @@
-"""Agrégat de duel `Duel` / barème de duel `BaremeDuel` — la saisie d'un match (E04US013, ADR-0049).
+"""Agrégat **Duel** — jumeau de `Serie`, mais structure distincte (ADR-0049 §1). On mutualise la
+**volée**, pas la racine : `Serie` somme les points d'un archer, un duel **oppose** deux volées
+manche par manche. Poulies au **cumul** (A.7.5.2), classique et arc nu en **sets**.
 
-Vocabulaire du glossaire : un **duel** oppose deux `Participant` sur un match du tableau ; une
-**manche** (`MancheDuel`, un « set ») oppose deux **volées** ; un **point de set** récompense la
-manche (2 au vainqueur, 1-1 à égalité, 0 au perdant, référentiel §7). Le vainqueur est le premier à
-`points_pour_gagner` (6 FFTA, 4 club) ; à égalité de sets, un **barrage** (shoot-off, §8.2) tranche.
-
-Modèle de domaine **pur** (immuable, sans dépendance framework — règle 1), jumeau de `Serie` :
-
-- La **flèche est une valeur** (`ZoneScore`) et une manche **réutilise `Volee`** (`.points`) — on
-  mutualise la volée, pas la racine : `Serie` somme les points d'**un** archer au cumul, un duel
-  **oppose** deux volées manche par manche et s'arrête à 6. Structures distinctes (ADR-0049 §1).
-- La **configuration** (barème, zones admises du blason tiré) n'est **pas** dupliquée dans
-  l'agrégat : elle est **passée aux opérations** par le service (lues sur la phase et le blason).
-- L'**arc à poulies** tire **au cumul** (A.7.5.2), sans sets : `ModeDuel.CUMUL` — le plus haut total
-  des 5 volées gagne. Classique / arc nu tirent en `ModeDuel.SETS` (§6.2, §7).
-
-Le **barème se résout par (phase, arme)** via un `ResolveurBaremeDuel` **injecté** (défaut FFTA,
-`ResolveurBaremeDuelFfta`) : c'est le point d'injection d'ADR-0004 où E01US011 branchera les
-catalogues configurables (FFTA / club) — l'agrégat n'en sait rien (règle 2).
+⚠️ **La configuration n'est PAS dans l'agrégat** : barème et zones admises lui sont **passés** par
+le service, le barème étant résolu par un `ResolveurBaremeDuel` injecté (règle 2).
 """
 
 from __future__ import annotations

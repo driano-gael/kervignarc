@@ -1,27 +1,10 @@
-"""Service applicatif Routage — « où est-ce que je tire ensuite ? » (E04US018).
+"""Panneau de **routage** — agrège en lecture, ne décide de rien (`D-08`).
 
-C'est le **canal n°1 des quatre canaux de routage** (`D-09`) : celui qui suit l'archer encore
-présent sur la cible. Il valide, range ses flèches et part — l'information doit partir avec lui. Les
-trois autres canaux (public E07US008, écran de salle E07US004, et la tablette elle-même en mode
-public) liront la **même** projection.
+Les cibles sont attribuées aux **matchs**, pas aux archers : l'affectation existe donc **avant** le
+duel, et rien n'est calculé à la bascule.
 
-**Rien n'est calculé au moment de la bascule** (`D-08`) : c'est tout l'intérêt du modèle. Les cibles
-sont attribuées aux **matchs** (positions de tableau), pas aux archers — « le match n°3 des 1/8ᵉ se
-tire sur la cible 4, quel que soit son vainqueur » — donc l'affectation existe **avant** le duel
-(E03US009). Ce service ne fait donc qu'**agréger en lecture** ce que le tableau reconstruit
-(`ServiceSaisieDuels`) et le plan de duels persisté (`ServicePlacementDuels`) tiennent déjà : aucune
-écriture, aucun placement, aucune trace d'audit — un panneau de routage ne *décide* de rien.
-
-**Ce qui n'est pas encore connu est nommé, jamais masqué** (`P-3`, arbitré au cadrage du
-30/07/2026) — même parti pris que le `blocage` du feu vert d'E12US002 : la cible d'un tour ≥ 2
-(E05US010 non livrée), l'adversaire pas encore sorti de son duel amont, le rang intermédiaire
-(E06US004 non livrée). Un blanc se lit comme une panne ; une phrase se lit comme une attente.
-
-*Jumeau assumé de `pilotage_tour.py`* (**`# DETTE-019`**) : la lecture « archer → pose du plan » et
-la règle « pas de cible au-delà du tour 1 » y existent déjà, sous un autre angle (le duel, pas
-l'archer). **2ᵉ** occurrence : on duplique et on attend la 3ᵉ pour extraire (règle « remède
-structurel sur preuve »). La garde tour-1 est celle qu'**E05US010 devra lever aux deux endroits** —
-c'est pour ça qu'elle est tracée au registre plutôt que seulement commentée.
+⚠️ **Ce qui n'est pas connu est NOMMÉ, jamais masqué** (`P-3`) : un blanc se lit comme une panne,
+une phrase se lit comme une attente. Jumeau assumé de `pilotage_tour.py` — `DETTE-019`.
 """
 
 from __future__ import annotations

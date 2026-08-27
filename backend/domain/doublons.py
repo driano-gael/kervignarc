@@ -1,26 +1,10 @@
-"""Détection de doublons d'archers (E02US005) — logique **pure** du domaine.
+"""Détection de **doublons d'archers** — la machine signale, l'admin tranche (E02US005).
 
-Deux fiches d'archer peuvent désigner **la même personne** saisie deux fois (l'erreur la plus
-banale d'une table d'inscription) sans que les données le disent : il n'y a pas de numéro de
-licence (repoussé à E02US007, ADR-0015), donc la détection est **heuristique**, jamais décidable.
-On **rapproche** des paires vraisemblables et on les classe par certitude ; c'est l'admin qui
-tranche et fusionne (`ServiceArchers.fusionner`) — la machine ne fusionne jamais d'office.
-
-Deux niveaux (CA E02US005) :
-
-- `PROBABLE` — mêmes nom et prénom (casse **et** accents repliés, `cle_nom`) **et** clubs
-  compatibles : club identique, **ou** l'un des deux « club inconnu » (`club_id is None`). Ce
-  dernier cas — le **pont** avec/sans club — est celui que la détection à l'inscription exclut
-  délibérément (`domain.archer.cle_identite`, qui renvoie explicitement ici) : à l'inscription, on
-  ne rapproche pas un archer sans club d'un archer rattaché, faute de savoir ; ici, l'admin le peut.
-- `A_VERIFIER` — rapprochement **approximatif** : faute de frappe (distance d'édition faible),
-  prénom **abrégé** (« J » / « Jean »), ou mêmes nom et prénom mais **clubs connus différents**.
-  Signalé pour confirmation, pas tenu pour acquis — ces rapprochements produisent des faux positifs
-  que l'admin écarte à l'œil (arbitrage du 22/07/2026 : le prix d'attraper plus de doublons réels).
-
-Module **pur** (règle 1) : aucune dépendance framework, aucune lecture de persistance. La distance
-d'édition est **maison** (`distance_edition`) — quelques lignes plutôt qu'une dépendance de
-fuzzy-matching (règle 11).
+`PROBABLE` : mêmes nom et prénom (casse et accents repliés) et clubs compatibles — y compris le
+**pont** avec/sans club, que la détection à l'inscription exclut délibérément faute de savoir.
+`A_VERIFIER` : rapprochement approximatif, assumé faux-positif — c'est le prix d'attraper plus de
+doublons réels (arbitrage du 22/07/2026). Distance d'édition **maison**, pas de dépendance
+(règle 11).
 """
 
 from __future__ import annotations

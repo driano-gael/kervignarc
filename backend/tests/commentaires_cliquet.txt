@@ -90,7 +90,7 @@ application/paiements.py 1
 application/palmares.py 12
 application/patrimoine.py 5
 application/phases.py 9
-application/pilotage_simulation.py 3
+application/pilotage_simulation.py 2
 application/pilotage_tour.py 1
 application/placement.py 6
 application/placement_duels.py 3
@@ -100,10 +100,9 @@ application/poules.py 18
 application/prelevement.py 7
 application/referentiel_ffta.py 1
 application/remboursements.py 2
-application/routage.py 31
+application/routage.py 30
 application/saisie.py 13
 application/saisie_duels.py 15
-application/scoreurs.py 1
 application/simulation.py 2
 application/simulation_format.py 8
 application/suisse.py 15
@@ -135,8 +134,7 @@ domain/depart.py 3
 domain/deroule.py 19
 domain/deroule_etape.py 16
 domain/documents_salle.py 1
-domain/doublons.py 1
-domain/duel.py 2
+domain/duel.py 1
 domain/ecran.py 10
 domain/entree_audit.py 3
 domain/erreurs/__init__.py 1
@@ -145,10 +143,10 @@ domain/erreurs/moteur.py 11
 domain/erreurs/tir.py 2
 domain/feuille_marque.py 1
 domain/forfait.py 1
-domain/format_tournoi.py 13
+domain/format_tournoi.py 12
 domain/gabarit_salle.py 2
 domain/grain_validation.py 1
-domain/identite.py 15
+domain/identite.py 14
 domain/impact.py 3
 domain/inscription.py 1
 domain/jalon.py 7

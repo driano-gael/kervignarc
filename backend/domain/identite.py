@@ -1,27 +1,10 @@
-"""Identité visuelle d'un tournoi — deux accents, deux logos (E16US006, absorbe E01US016).
+"""Identité visuelle — la dérivation des accents est **reproductible** (`DV-05`, ADR-0097).
+Teinte et saturation conservées, clarté ajustée jusqu'au seuil AA : donc du domaine, testable
+sans navigateur.
 
-Le club a **deux marques** : *Les Archers de Kervignac*, permanente, et l'événement — *Challenge des
-Champions* — qui change à chaque édition. L'organisateur fournit **un logo par marque et deux
-couleurs d'accent, rien d'autre** ; tout le reste du chrome est **dérivé** ici (`DV-06`).
-
-**Pourquoi la dérivation vit dans le domaine.** « Teinte et saturation conservées, clarté ajustée
-jusqu'au seuil AA » (`DV-05`) est une **règle reproductible**, pas un goût de graphiste : elle a une
-entrée, une sortie, aucune horloge et aucun aléa. C'est donc du domaine pur (règle 1), testable sans
-navigateur — et non un calcul recopié dans le front, où il aurait échappé à `mypy --strict` et
-n'aurait été vérifié par personne.
-
-**Ce que la dérivation ne touche PAS.** Les deux accents pilotent les **jetons de marque**, jamais
-le fond de page ni les couleurs sémantiques. Le CDC design §3.6 le pose en verrous : *« les neutres,
-l'échelle typographique, les espacements et les composants ne bougent pas — seul le chrome de marque
-change »* (verrou 2) et *« alerte, succès, info appartiennent au produit, pas au tournoi »* (verrou
-1, `DV-03`). Ce n'est pas de la prudence : `frontend/src/index.css` mesure **chaque** couleur contre
-`--surface-0`. Repeindre le fond par tournoi invaliderait d'un coup les vingt ratios de la charte,
-sans qu'aucun test ne bouge — le « bug de contraste silencieux » que `charte.test.ts` dit exister.
-
-**La déclinaison du club est l'oracle de ce module.** `index.css` (E17US001, ADR-0074) décline le
-rouge `#B71918` **à la main** en `#CC1C1B` (contour, 3,01:1) et `#E84E4D` (texte, 4,52:1). Ces trois
-valeurs partagent teinte et saturation à moins d'un demi-degré près : la charte avait déjà appliqué
-la règle que ce module automatise. `test_domain_identite.py` exige qu'il la reproduise.
+⚠️ **Les accents pilotent les jetons de MARQUE, jamais le fond ni le sémantique.** `index.css`
+mesure chaque couleur contre `--surface-0` : repeindre le fond par tournoi invaliderait d'un coup
+les vingt ratios de la charte, sans qu'aucun test ne bouge.
 """
 
 from __future__ import annotations

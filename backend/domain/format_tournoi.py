@@ -1,27 +1,10 @@
-"""Agrégat `FormatTournoi` — le **déroulé type** d'une compétition, brique du club (E01US023).
+"""Format de tournoi — un modèle est une **séquence** de phases, pas des phases sans tournoi.
 
-Un *format* est ce qui se réutilise d'une année sur l'autre quand on parle de phases : « FFTA
-officiel : qualification 20 volées de 3 en fin de série, puis élimination directe à 16 ». Il porte
-**séquence de modèles de phases** — et **ni statut, ni tournoi**.
-
-**Pourquoi un agrégat de plus, et pas simplement `Phase.tournoi_id` nullable** (ADR-0060 §5). C'est
-le geste qu'ont reçu `Categorie` et `Blason`, et il ne marche pas ici, pour deux raisons lues dans
-le code :
-
-1. **Le barème n'est pas une entité** — il vit dans la `config` de la phase de `qualification`
-   (`application/bareme_qualification.py`). Il n'y a aucune colonne `tournoi_id` à relâcher.
-2. **L'invariant d'une phase est collectif** — `SequencePhases` exige que les ordres forment la
-   suite contiguë 1..N (ADR-0045 §3). Des phases de bibliothèque au `tournoi_id` nul porteraient un
-   `statut = a_venir` vide de sens et des `ordre` en collision les uns avec les autres : une lecture
-   globale renverrait `[1, 1, 2, 1…]` et la première composition lèverait `SequenceOrdreInvalide`.
-   Il aurait fallu **désarmer** le garde-fou qui protège le moteur de phases.
-
-D'où la maille retenue : le modèle n'est pas une phase, c'est une **séquence** de phases. Le
-`statut` et le `tournoi_id` ne sont pas « vidés » dans le modèle — ils n'y **existent pas**, et
-**naissent** à l'application (`appliquer`). Le patron reste celui du `gabarit_salle` (modèle →
-copie → ajustement sans altérer le modèle), une maille au-dessus.
-
-Agrégats de domaine **purs** (immuables, sans dépendance framework), validés à la construction.
+⚠️ **`Phase.tournoi_id` nullable ne marche pas ici**, contrairement à `Categorie` et `Blason` :
+l'invariant d'une phase est **collectif** — `SequencePhases` exige des ordres contigus 1..N. Des
+phases de bibliothèque entreraient en collision d'`ordre` et il aurait fallu **désarmer** le
+garde-fou du moteur. `statut` et `tournoi_id` n'existent pas dans le modèle : ils **naissent** à
+l'application.
 """
 
 from __future__ import annotations
