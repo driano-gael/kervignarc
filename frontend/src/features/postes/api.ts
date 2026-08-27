@@ -23,29 +23,22 @@ export function preparerPostes(tournoiId: number): Promise<PosteAdmin[]> {
   return fetchJson<PosteAdmin[]>(`/api/v1/tournois/${tournoiId}/postes`, { method: 'POST' })
 }
 
-// Image SVG du QR de rattachement d'une cible (E11US008), affichée à l'écran pour rattacher une
-// tablette sans passer par le PDF. Chargée en **blob authentifié** (`fetchBlob`) : le Bearer admin
-// est en JS, pas un cookie — un `<img src>` direct sur la route n'emporterait pas le jeton (401).
-// Route admin, miroir du PDF `etiquettes-qr` (le QR encode le code, secret d'usage).
-//
-// Le blob SVG est converti en **data URL** autoporteuse (`data:image/svg+xml,…`) : une simple
-// chaîne, sans objectURL à révoquer — donc aucune fuite mémoire ni piège de cycle de vie sous
-// React StrictMode (où un objectURL révoqué au double-montage laisserait l'`<img>` cassé). Elle
-// s'affiche directement en `<img src>` et se met en cache tel quel par React Query.
+// Image SVG du QR de rattachement d'une cible (E11US008). Chargée en **blob authentifié**
+// (`fetchBlob`) : le Bearer admin est en JS, pas un cookie — un `<img src>` direct n'emporterait
+// pas le jeton (401). Le blob est converti en **data URL** autoporteuse : une simple chaîne, sans
+// objectURL à révoquer, donc aucune fuite mémoire ni piège de cycle de vie sous React StrictMode
+// (où un objectURL révoqué au double-montage laisserait l'`<img>` cassé).
 export async function getQrCible(tournoiId: number, cibleIndex: number): Promise<string> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/postes/${cibleIndex}/qr`)
   return svgEnDataUrl(await blob.text())
 }
 
-/**
- * Le PDF des **étiquettes de cible** — une page par cible, QR + code, à découper et à coller.
+/** Le PDF des **étiquettes de cible** — une page par cible, QR + code, à découper et à coller.
  *
- * Retour maquettes du 04/08/2026 (A12) : *« les QR peuvent être imprimés en avance et/ou affichés
- * sur l'écran à la demande »*. L'affichage à la demande existait (`getQrCible`) ; **l'impression en
- * avance, non** — la route était livrée côté serveur (E09US008) mais n'était atteignable depuis
- * aucun écran de l'application. C'était donc une fonctionnalité complète, payée, et invisible.
- *
- * `fetchBlob` et non un `<a href>` : la route est admin et le Bearer vit en JS, pas dans un cookie.
+ * Retour maquettes du 04/08/2026 (A12) : l'affichage à la demande existait, **l'impression en
+ * avance, non** — la route était livrée côté serveur (E09US008) mais atteignable depuis aucun
+ * écran. C'était une fonctionnalité complète, payée, et invisible. `fetchBlob` et non un `<a
+ * href>` : la route est admin et le Bearer vit en JS, pas dans un cookie.
  */
 export async function telechargerEtiquettesQr(tournoiId: number): Promise<void> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/postes/etiquettes-qr`)

@@ -1,27 +1,19 @@
 // « Quel départ est en train de se jouer ? » — retour maquettes du 04/08/2026 (A02).
 //
-// Le commanditaire demande un bandeau permanent : *« un bandeau en haut doit permettre de savoir sur
-// quel tournoi on est et quel départ, et suit tout le cycle de cette section »*. « Quel tournoi » est
-// déjà connu (il est dans l'adresse) ; « quel départ » ne l'était nulle part côté admin — l'écran
-// `Departs` liste les créneaux, mais aucun écran ne disait lequel **compte maintenant**.
-//
-// La réponse se déduit des états déjà rendus par le serveur (`EtatDepart`), sans nouvel endpoint :
-// c'est une règle de lecture, donc une fonction pure, donc testable (règle 9).
+// Le commanditaire demande un bandeau permanent disant sur quel tournoi et quel départ on est. «
+// Quel tournoi » est dans l'adresse ; « quel départ » ne l'était nulle part côté admin — l'écran
+// `Departs` liste les créneaux, mais aucun ne disait lequel **compte maintenant**. La réponse se
+// déduit des états déjà rendus par le serveur, sans nouvel endpoint : une règle de lecture, donc
+// une fonction pure, donc testable (règle 9).
 
 import type { Depart } from './api'
 
-/**
- * Le départ qui « compte maintenant », ou `null` si le tournoi n'a pas de créneau.
+/** Le départ qui « compte maintenant », ou `null` si le tournoi n'a pas de créneau.
  *
- * Deux cas, dans cet ordre :
- *  1. **un départ lancé** — c'est celui qui se tire, il n'y a rien à arbitrer. S'il y en a plusieurs
- *     (deux créneaux menés de front, ce que rien n'interdit), on prend le plus petit numéro : c'est
- *     le plus avancé, donc celui dont la bascule de tour arrivera en premier.
- *  2. **sinon, le prochain à ouvrir** — le plus petit numéro encore `ouvert`. Avant le premier feu
- *     vert, c'est la seule réponse utile à « on en est où ? ».
- *
- * Un tournoi dont tous les créneaux sont `clos` rend `null` : dire « départ 3 » d'une journée finie
- * serait faux, et l'appelant sait afficher « terminé » mieux que cette fonction.
+ * Deux cas dans cet ordre : **un départ lancé** — s'il y en a plusieurs (deux créneaux menés de
+ * front, rien ne l'interdit) on prend le plus petit numéro, le plus avancé ; sinon **le prochain à
+ * ouvrir**, seule réponse utile avant le premier feu vert. ⚠️ Un tournoi dont tous les créneaux
+ * sont `clos` rend `null` : dire « départ 3 » d'une journée finie serait faux.
  */
 export function departCourant(departs: readonly Depart[]): Depart | null {
   const parNumero = (a: Depart, b: Depart) => a.numero - b.numero

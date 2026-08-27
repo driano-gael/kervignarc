@@ -1,21 +1,11 @@
-// Écran « Composer un format » (E01US024, ADR-0063 ; renommé par E16US002) — axe **atelier**, sans tournoi.
+// Écran « Composer un format » (E01US024, ADR-0063 ; renommé par E16US002) — axe **atelier**.
 //
-// Il livre les cinq promesses du CA : composer une séquence complète en **brouillon**, la **voir**
-// (schéma à braquets), savoir si elle **tient debout** (anomalies rattachées aux blocs), la
-// **faire tourner** (simulation sur N archers fictifs), et **changer l'effectif** sans la retoucher.
-//
-// **Le brouillon est local, le diagnostic est serveur.** On édite une copie locale de la séquence,
-// puis on enregistre : le schéma se recalcule alors depuis le serveur. Recalculer côté client
-// obligerait à réimplémenter la *Règle R* en TypeScript — la duplication d'invariant que le
-// registre de dette proscrit (cf. `domain/deroule.py`). Le prix est un aller-retour par
-// modification ; le CA le rend indolore, puisqu'un brouillon s'enregistre à tout moment, même
-// incohérent.
-//
-// Le modèle d'éditeur est `features/phases/Phases.tsx` (E05US001). Trois différences, toutes
-// voulues : pas de **statut** (un modèle n'en a pas) ; la **qualification est éditable ici**
-// (barème + grain), alors qu'un tournoi la règle depuis « Barème & validation » ; les **ordres sont
-// dérivés de la position** dans la liste, jamais saisis — ce qui supprime par construction toute la
-// classe d'erreurs « ordres non contigus ».
+// Composer une séquence en **brouillon**, la **voir** (schéma à braquets), savoir si elle **tient
+// debout**, la **faire tourner** (simulation), et **changer l'effectif** sans la retoucher. ⚠️ **Le
+// brouillon est local, le diagnostic est serveur** : recalculer côté client obligerait à
+// réimplémenter la *Règle R* en TypeScript, la duplication d'invariant que le registre proscrit.
+// Modèle : `features/phases/Phases.tsx`, à trois différences voulues — pas de statut, qualification
+// éditable ici, et **ordres dérivés de la position** (ce qui supprime les « ordres non contigus »).
 
 import { useState } from 'react'
 
@@ -303,17 +293,12 @@ function Verdict({ diagnostic }: { diagnostic: Diagnostic }) {
   )
 }
 
-/**
- * Le plancher d'inscrits de ce format (E05US021) — annoncé **qu'un effectif soit simulé ou non**.
+/** Le plancher d'inscrits de ce format (E05US021) — annoncé **qu'un effectif soit simulé ou non**.
  *
- * Deux registres, et c'est délibéré. Tant que le compte est bon (ou qu'on ne simule rien), c'est une
- * **information** neutre : `carte__aide`, pas d'alerte — le format n'a rien de fautif, il a
- * simplement un plancher. Dès que l'effectif simulé passe dessous, ça devient un **avertissement**
- * ambre (`--danger`, `DV-03`), avec glyphe *et* mot : à cet effectif-là, le tournoi ne se lancera pas.
- *
- * Jamais bloquant : un format composé pour 120 archers reste parfaitement valide le jour où l'on en
- * simule 28 — c'est la simulation qui ne correspond pas, pas le format. Le blocage n'a lieu qu'au
- * démarrage d'un vrai tournoi, où les inscrits sont des faits et non une hypothèse.
+ * Deux registres, délibérément : information neutre tant que le compte est bon, **avertissement**
+ * ambre (`DV-03`) dès que l'effectif simulé passe dessous. ⚠️ Jamais bloquant : un format composé
+ * pour 120 archers reste valide le jour où l'on en simule 28 — c'est la simulation qui ne
+ * correspond pas, pas le format. Le blocage n'a lieu qu'au démarrage d'un vrai tournoi.
  */
 export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
   const minimum = diagnostic.effectif_minimum
@@ -337,33 +322,24 @@ export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
   )
 }
 
-/**
- * La réserve que la vue par défaut doit porter (`# DETTE-028`).
+/** La réserve que la vue par défaut doit porter (`# DETTE-028`).
  *
- * Le schéma est un **engagement dessiné** : il annonce « 32 duellistes » là où le moteur
- * d'exécution en ensemencera 120, faute de consommateur de `Phase.sources` côté duels. Sans cette
- * note, l'organisateur qui compose, voit le verdict vert, enregistre et applique — sans jamais
- * cliquer « Simuler » — repart avec un tournoi qui ne se déroulera pas comme dessiné. C'est
- * exactement le point où cette US **aggrave** la dette, et l'afficher est ce qui transforme une
- * promesse en information.
+ * Le schéma est un **engagement dessiné** : sans cette note, l'organisateur qui compose, voit le
+ * verdict vert et applique — sans jamais cliquer « Simuler » — repart avec un tournoi qui ne se
+ * déroulera pas comme dessiné. C'est le point où cette US **aggrave** la dette.
  */
-// Les types que le moteur ne sait **pas encore** exécuter — désormais domiciliés au catalogue
-// partagé (`shared/phases/catalogue.ts`), et écrits en **négatif** : cf. la note qui les porte
-// là-bas, un oubli y coûte un avertissement de trop plutôt qu'un avertissement de moins.
+// Les types que le moteur ne sait **pas encore** exécuter — domiciliés au catalogue partagé et
+// écrits en **négatif** : un oubli y coûte un avertissement de trop, jamais un de moins.
 const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
 
 export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
-  // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068). Le moteur lit désormais les
-  // prélèvements **par rangs** : « les rangs 1 à 32 » monte bien un tableau de 32. Restent inertes
-  // « le reste » et « les gagnants/perdants du tour N », dont la sémantique n'est tranchée nulle
-  // part (DETTE-033) — la réserve ne s'affiche donc que si l'un d'eux est réellement déclaré.
-  // Continuer à l'afficher sur un prélèvement par rangs aurait fait douter d'un déroulé désormais
-  // exact ; la retirer entièrement aurait laissé croire que tout est honoré.
-  // ⚠️ Deux causes distinctes d'inexactitude, et l'ancienne condition (`entrees.length > 0`) les
-  // couvrait toutes les deux **par accident**. Les séparer était nécessaire — sinon la réserve
-  // restait affichée sur un déroulé désormais exact — mais ne garder que la première aurait fait
-  // disparaître l'avertissement d'un déroulé « qualification → poules », que le moteur ne sait
-  // toujours pas dérouler du tout (relevé en contre-revue).
+  // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068) : le moteur lit les prélèvements **par
+  // rangs**, restent inertes « le reste » et « les gagnants/perdants du tour N » (DETTE-033). La
+  // réserve ne s'affiche donc que si l'un d'eux est déclaré : continuer à l'afficher aurait fait
+  // douter d'un déroulé exact, la retirer aurait laissé croire que tout est honoré. ⚠️ Deux causes
+  // distinctes d'inexactitude, que l'ancienne condition couvrait **par accident** — ne garder que
+  // la première aurait fait disparaître l'avertissement d'un « qualification → poules », que le
+  // moteur ne sait toujours pas dérouler.
   const prelevementInerte = diagnostic.blocs.some((bloc) =>
     bloc.entrees.some((flux) => flux.nature !== 'rangs'),
   )
@@ -770,20 +746,13 @@ export function FormulaireEtape({
   // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
   // dont le nombre de tours n'est pas déjà porté par sa structure.
   const estQualification = type === 'qualification'
-  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
-  // se poser (`TYPES_ARRETABLES`). Même miroir et même raison que dans l'écran des phases.
-  // ⚠️ **Pour une qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** (correctif de
-  // revue, E05US035, quatre axes). `TYPES_ARRETABLES` répond « on sait observer son tour » ; une
-  // qualification non découpée n'en compte qu'**un**, donc aucune pause n'y a de frontière où
-  // tomber — le serveur la refuse désormais, et offrir le champ ferait échouer la soumission
-  // **entière** (le `PUT` est une édition totale), ce que cette table est justement écrite « en
-  // positif » pour éviter. C'est aussi ce que la fiche de découpage affiche deux blocs plus haut :
-  // sans cette ligne, l'écran se contredisait lui-même.
-  //
-  // ⚠️ Ici le découpage est **en cours de saisie**, donc on lit l'état du formulaire et non une
-  // phase persistée : cocher « 2 tours » doit ouvrir la fiche d'arrêts immédiatement, sans passer
-  // par un enregistrement. `versDecoupage` rend `null` pour un seul tour, `undefined` si illisible
-  // — les deux ferment la fiche, ce qui est le repli prudent.
+  // E05US033 : `TYPES_ARRETABLES` — les types qui annoncent leurs tours, donc les seuls où une
+  // pause puisse se poser. Même miroir et même raison que dans l'écran des phases. ⚠️ **Pour une
+  // qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** : non découpée, elle n'a qu'un
+  // tour, aucune frontière où poser une pause, et le `PUT` étant total la soumission entière
+  // échouerait. ⚠️ Ici le découpage est **en cours de saisie** : on lit l'état du formulaire, pas
+  // une phase persistée, pour que cocher « 2 tours » ouvre la fiche d'arrêts immédiatement.
+  // `versDecoupage` rend `null` pour un seul tour et `undefined` si illisible — les deux ferment.
   const arretable =
     TYPES_ARRETABLES.has(type) &&
     (type !== 'qualification' || (versDecoupage(decoupage) ?? null) !== null)
@@ -1229,14 +1198,12 @@ function NouveauFormat({ surCreation }: { surCreation: (id: number) => void }) {
   )
 }
 
-/**
- * L'effectif simulé, borné **comme le serveur** (`EFFECTIF_MAX`).
+/** L'effectif simulé, borné **comme le serveur** (`EFFECTIF_MAX`).
  *
  * ⚠️ La borne serveur a été ajoutée sur `GET …/diagnostic` sans être propagée ici dans un premier
- * jet : saisir `300` envoyait la requête, revenait en 400 « Requête invalide. » — et faisait
- * **disparaître tout le schéma**, verdict et anomalies compris, derrière un message qui ne disait
- * même pas quelle était la borne. Avant l'ajout de la borne, ce cas rendait un diagnostic valide :
- * c'était donc une régression d'écran introduite par le correctif lui-même.
+ * jet : saisir `300` revenait en 400 « Requête invalide. » et faisait **disparaître tout le
+ * schéma**, verdict et anomalies compris, derrière un message qui ne disait pas la borne. Avant
+ * l'ajout, ce cas rendait un diagnostic valide : régression introduite par le correctif lui-même.
  */
 function analyserEffectif(saisi: string): number | null {
   const valeur = lireEntier(saisi)

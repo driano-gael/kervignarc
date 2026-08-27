@@ -1,15 +1,10 @@
 // Cockpit de simulation (E15US003) — bot pilote automatique pausable + reprise en main multi-vues.
 //
-// Rejoue le tournoi courant **sans rien enregistrer** (ADR-0054/0055) : un bot génère des scores et
-// fait avancer qualif → duels → classement. Le pilote automatique est un **ticker** qui appelle
-// « avancer » tant que la session est *en cours* (ADR-0055 §2, décision serveur : pas de boucle de
-// fond). Mettre en pause suspend le bot et **ouvre la reprise en main** : l'humain saisit une volée
-// (rôle cible) ou désigne un vainqueur (rôle scoreur) sur la **même** unité que le bot, puis rend la
-// main. Une navbar bascule entre les vues cible / archer / scoreur / public de l'état simulé.
-//
-// ⚠️ Front sans tests de rendu (story E15US003) : à vérifier à l'écran. Le canal `/ws/simulation`
-// (isolé) invalide l'état si un autre client agit ; chaque action renvoyant déjà l'état frais, il
-// n'est qu'un filet de synchronisation.
+// Rejoue le tournoi courant **sans rien enregistrer** (ADR-0054/0055). Le pilote automatique est un
+// **ticker** côté client qui appelle « avancer » tant que la session est *en cours* (ADR-0055 §2 :
+// pas de boucle de fond serveur) ; la pause **ouvre la reprise en main** sur la **même** unité que
+// le bot. ⚠️ Front sans tests de rendu (story E15US003) : à vérifier à l'écran. Le canal
+// `/ws/simulation` n'est qu'un filet de synchronisation — chaque action renvoie déjà l'état frais.
 
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'

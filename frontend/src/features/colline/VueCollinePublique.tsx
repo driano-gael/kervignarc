@@ -1,17 +1,11 @@
 // La vue **publique** d'une phase de colline (E05US027, ADR-0089).
 //
 // Un seul composant pour **deux** surfaces, comme `VueSuissePublique` : l'appli publique et l'écran
-// de salle (`interactif=false`), toutes deux montées par l'aiguilleur `features/en-cours/`.
-//
-// **Comme le suisse, ce format réclame une navigation d'historique**, et pour la même raison : une
-// colline ré-apparie à chaque manche, donc les afficher toutes donnerait une page interminable où
-// la manche en cours — la seule que la salle regarde — serait noyée. D'où l'atterrissage sur la
-// manche courante et des boutons pour remonter.
-//
-// ⚠️ **Ce que cette vue montre de plus que les autres formats : la colline elle-même.** Chez le
-// suisse, le classement se calcule et n'est qu'un tableau de plus ; ici l'ordre des positions
-// **est** le jeu, et c'est ce qu'un spectateur vient lire — qui a monté, qui a descendu. Le
-// classement n'est donc pas relégué en bas comme un récapitulatif : c'est le sujet.
+// de salle (`interactif=false`). Comme le suisse, ce format réclame une **navigation d'historique**
+// — une colline ré-apparie à chaque manche, et tout afficher noierait la manche en cours. ⚠️ **Ce
+// qu'elle montre de plus : la colline elle-même.** Chez le suisse, le classement n'est qu'un
+// tableau de plus ; ici l'ordre des positions **est** le jeu — qui a monté, qui a descendu —, donc
+// il n'est pas relégué en bas : c'est le sujet.
 
 import { useState } from 'react'
 import { LigneRencontre } from '../../shared/duels/LigneRencontre'

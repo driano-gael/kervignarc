@@ -1,14 +1,10 @@
 // Rotation du déroulé d'un écran de salle (E07US004) — logique pure, aucun React, aucun DOM.
 //
-// Convention du projet : le JSX ne se teste pas, la logique si. Ce qui se calcule ici — *quelle vue
-// à quel moment*, *combien de temps reste-t-il* — vit donc à part, et `EcranSalle.tsx` ne fait que
-// rendre le résultat.
-//
-// **La rotation se déduit du temps écoulé, elle ne s'incrémente pas.** Un `setInterval` qui ferait
-// « vue suivante » toutes les N secondes dériverait : les minuteurs de navigateur sont bridés dans
+// Convention du projet : le JSX ne se teste pas, la logique si. ⚠️ **La rotation se déduit du temps
+// écoulé, elle ne s'incrémente pas** : un `setInterval` dériverait — les minuteurs sont bridés dans
 // un onglet en arrière-plan ou sur une machine en veille, et un écran de salle tourne huit heures
-// d'affilée. En repartant à chaque tick d'un *temps écoulé* mesuré sur l'horloge, l'écran retrouve
-// toujours la bonne vue — même après un gel de deux minutes.
+// d'affilée. En repartant à chaque tick d'un temps écoulé mesuré sur l'horloge, l'écran retrouve
+// toujours la bonne vue, même après un gel de deux minutes.
 
 import type { VueEcran, VueProgrammee } from '../ecrans/api'
 
@@ -52,14 +48,12 @@ export function vueCourante(
   return premiere === undefined ? null : { index: 0, vue: premiere, reste_s: premiere.cadence_s }
 }
 
-/**
- * Le compte à rebours d'une prise de contrôle, décompté **localement**.
+/** Le compte à rebours d'une prise de contrôle, décompté **localement**.
  *
- * `reste_initial_s` vient du serveur (`Affichage.reste_s`), `secondes_depuis` est mesuré depuis sa
- * réception. C'est ce calcul local qui rend la reprise du déroulé insensible au réseau : l'écran
- * sait quand la prise finit sans avoir à le redemander (ADR-0064).
- *
- * Rend `null` quand la prise n'a pas d'échéance — « jusqu'à ce que l'admin rende la main ».
+ * `reste_initial_s` vient du serveur, `secondes_depuis` est mesuré depuis sa réception. C'est ce
+ * calcul local qui rend la reprise du déroulé insensible au réseau : l'écran sait quand la prise
+ * finit sans avoir à le redemander (ADR-0064). Rend `null` quand la prise n'a pas d'échéance — «
+ * jusqu'à ce que l'admin rende la main ».
  */
 export function resteDeLaPrise(
   reste_initial_s: number | null,
@@ -71,17 +65,11 @@ export function resteDeLaPrise(
 
 /** Ce que l'écran affiche à cet instant : quelle vue, et est-il encore sous contrôle.
  *
- * **Extrait du JSX en 2ᵉ passe de revue**, et c'est le point : cette fonction porte la garantie
- * centrale d'ADR-0064 — *une prise de contrôle se termine toute seule, même sans réseau* — et elle
- * vivait dans le rendu, donc hors de toute épreuve. Les fonctions qu'elle compose (`vueCourante`,
- * `resteDeLaPrise`) étaient testées ; leur **raison d'être** ne l'était pas.
- *
- * Trois cas, et le second est celui qui justifie tout le dispositif :
- *
- * - prise en cours (`reste > 0`, ou pas d'échéance) → la vue **figée**, `sous_controle` vrai ;
- * - prise **échue** (`reste` à 0) → on retombe sur la **rotation**, sans rien demander au serveur :
- *   c'est ce qui empêche un écran isolé de rester sur le podium à 18 h ;
- * - hors contrôle → la rotation, tout simplement.
+ * **Extrait du JSX en 2ᵉ passe de revue** : cette fonction porte la garantie centrale d'ADR-0064 —
+ * *une prise de contrôle se termine toute seule, même sans réseau* — et elle vivait dans le rendu,
+ * hors de toute épreuve. Trois cas, dont le second justifie tout le dispositif : prise en cours →
+ * vue **figée** ; prise **échue** → retour à la rotation **sans rien demander au serveur**, ce qui
+ * empêche un écran isolé de rester sur le podium à 18 h ; hors contrôle → rotation.
  */
 export function vueAAfficher(etat: {
   sous_controle: boolean
@@ -100,13 +88,11 @@ export function vueAAfficher(etat: {
 
 /** Le départ à montrer sur un écran de salle : celui qu'on est **en train de tirer**.
  *
- * Le premier `lancé` (E12US008), sinon le premier encore `ouvert`. Si **tout est clos**, on rend
- * le **dernier** — le plus récemment terminé, seul plan encore susceptible d'intéresser quelqu'un —
- * et non le premier, qui serait celui du matin. *(La première version disait « un départ clos
- * n'intéresse plus personne » puis retombait sur `departs[0]` : en fin de journée l'écran montrait
- * le plan du départ 1, terminé depuis six heures, sans rien signaler — relevé en 2ᵉ passe.)*
- *
- * Pur et testé, parce que c'est une règle de choix et non de l'affichage.
+ * Le premier `lancé` (E12US008), sinon le premier encore `ouvert`. ⚠️ Si **tout est clos**, on rend
+ * le **dernier** — le plus récemment terminé — et non le premier : la première version retombait
+ * sur `departs[0]`, si bien qu'en fin de journée l'écran montrait le plan du départ 1, terminé
+ * depuis six heures, sans rien signaler. Pur et testé : c'est une règle de choix, pas de
+ * l'affichage.
  */
 export function departDeSalle<T extends { etat: string }>(departs: readonly T[]): T | undefined {
   return (

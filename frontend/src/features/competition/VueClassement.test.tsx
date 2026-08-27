@@ -1,20 +1,11 @@
-// Test de **montage** de `VueClassement` — le maillon de câblage que l'US E16US009 avait laissé nu
-// (correctif de revue, relevé par trois axes).
+// Test de **montage** de `VueClassement` — le maillon de câblage laissé nu (E16US009, revue).
 //
-// ⚠️ **Ce qu'aucun autre test ne pouvait voir.** Le réglage de pages traverse quatre étages :
-// `EcranSalle` lit `affichage.pages` → `VueDeSalle` → `VueClassement` → `TableClassement`. Les deux
-// bouts étaient gardés (`teteFigee.test.ts` pour la règle, `TableClassement.test.tsx` pour le
-// rendu) ; le **milieu** ne l'était pas. Supprimer la ligne `pagination={pagination}` de
-// `VueClassement.tsx` — un geste plausible dans un refactor — laissait toute la suite verte tout en
-// ramenant la salle au cadre à ascenseur que personne ne peut actionner dans un gymnase : la
-// régression du 05/08/2026, celle qu'ADR-0098 §2 déclare impossible.
-//
-// Le lien §2 de l'ADR n'est en effet garanti que **dans un sens** : `teteFigee(false, 'tout',
-// pagination)` empêche « tête figée à 3 sans pagination », mais rien ne garantissait que la *même*
-// valeur atteigne la table. C'est cette moitié-là que ces tests tiennent.
-//
-// `tsc` est aveugle à ce défaut : une propriété *fournie* et jamais *consommée* n'est pas une erreur
-// de type. C'est le mode de défaillance de `DETTE-085`, ici pris par l'autre bout.
+// ⚠️ Le réglage de pages traverse quatre étages : `EcranSalle` → `VueDeSalle` → `VueClassement` →
+// `TableClassement`. Les deux bouts étaient gardés (`teteFigee.test.ts`,
+// `TableClassement.test.tsx`) ; le **milieu** ne l'était pas — retirer la prop `pagination`
+// laissait toute la suite verte et ramenait la salle au cadre à ascenseur que personne ne peut
+// actionner dans un gymnase. ADR-0098 §2 n'est garanti que **dans un sens** ; `tsc` est aveugle à
+// une propriété fournie et jamais consommée (`DETTE-085`).
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'

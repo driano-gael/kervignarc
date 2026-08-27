@@ -28,14 +28,10 @@ export function useIdentite(tournoiId: number) {
 /**
  * L'aperçu d'une saisie en cours — **le contrôle « à la saisie »**.
  *
- * `enabled` sur la validité apparente de la saisie : tant que l'organisateur tape, la valeur est
- * incomplète (`#0b6`), et interroger le serveur à chaque frappe ne produirait que des 422. On
- * n'appelle qu'une fois les six chiffres posés — c'est aussi ce qui évite de faire clignoter le
- * chiffre de contraste.
- *
- * `placeholderData` garde l'aperçu **précédent** affiché pendant le calcul du suivant : sans lui,
- * la zone d'aperçu disparaîtrait à chaque changement de couleur, soit exactement le scintillement
- * qu'un contrôle « à la saisie » doit éviter.
+ * `enabled` sur la validité apparente : tant que l'organisateur tape, la valeur est incomplète et
+ * interroger le serveur à chaque frappe ne produirait que des 422. `placeholderData` garde l'aperçu
+ * **précédent** pendant le calcul du suivant — sans lui, la zone disparaîtrait à chaque changement
+ * de couleur, soit le scintillement qu'un contrôle « à la saisie » doit éviter.
  */
 export function useApercuIdentite(accents: AccentsAEnregistrer) {
   const complet = estUneCouleur(accents.primaire) && estUneCouleur(accents.secondaire)
@@ -48,11 +44,10 @@ export function useApercuIdentite(accents: AccentsAEnregistrer) {
 }
 
 /**
- * La **même** règle de forme que `Couleur.depuis_hex` côté serveur — et c'est une duplication
- * assumée, non une seconde vérité.
+ * La **même** règle de forme que `Couleur.depuis_hex` côté serveur — duplication assumée, non une
+ * seconde vérité.
  *
- * Ce prédicat ne décide de **rien** : il ne fait qu'éviter des requêtes vouées au 422 pendant la
- * frappe. Le refus, lui, reste au serveur, et un `#zzz` qui passerait ici serait refusé là-bas. La
+ * Ce prédicat ne décide de **rien** : il évite des requêtes vouées au 422 pendant la frappe. La
  * différence avec la dérivation — qu'on ne duplique surtout pas — est qu'une divergence ici est
  * **bruyante** (une requête part et échoue), alors qu'un contraste faux serait silencieux.
  */

@@ -1,17 +1,10 @@
 // Le **modèle** du réglage de poules (E05US023, ADR-0083) — logique pure, aucun React.
 //
-// Séparé du composant pour la même raison que `profondeur.ts` : la règle `react-refresh` interdit à
-// un module de rendu d'exporter aussi des fonctions, et surtout la conversion « ce que l'écran
-// affiche ↔ ce qui part au serveur » se teste ici sans monter le moindre DOM.
-//
-// ⚠️ **`repartition` est un miroir assumé du domaine** (`domain/poule.py : nb_poules_pour` et
-// `composer_poules`). Le calcul vit **aussi** côté serveur, où il fait autorité
-// (`GET /api/v1/poules/repartition/...`) — mais cette lecture-là exige un tournoi et une phase
-// posée, alors que l'atelier compose un **format de bibliothèque**, sans tournoi. Il n'y a donc pas
-// d'appel possible, et un aller-retour par frappe serait de toute façon le mauvais outil pour une
-// aide à la saisie. Le miroir a un précédent (`EFFECTIF_MAX`, `RANGS_DU_PODIUM`) et un garde-fou :
-// il tient en deux règles, toutes deux testées ci-contre, et sa dérive ne produirait qu'un aperçu
-// faux — jamais un tournoi faux, puisque c'est le serveur qui compose le jour J.
+// Séparé du composant comme `profondeur.ts` : `react-refresh` interdit à un module de rendu
+// d'exporter aussi des fonctions, et la conversion « écran ↔ serveur » se teste sans DOM. ⚠️
+// **`repartition` est un miroir assumé du domaine** (`domain/poule.py`) : la lecture serveur exige
+// un tournoi et une phase posée, alors que l'atelier compose un **format de bibliothèque**. La
+// dérive ne produirait qu'un aperçu faux — jamais un tournoi faux, le serveur composant le jour J.
 
 /** Ce que rapporte une rencontre — victoire / nul / défaut, défaut FFTA du club : 3 / 1 / 0. */
 export interface BaremePoule {
@@ -37,30 +30,23 @@ export interface ReglagePoules {
   rencontres_par_archer: number | null
   departage_inter_poules: boolean
   /**
-   * ⚠️ **Optionnels, et c'est le type qui doit le dire** (correctif de revue, axes B, C1 et C2).
+   * ⚠️ **Optionnels, et c'est le type qui doit le dire** (correctif de revue).
    *
    * Les déclarer requis obligeait `depuisReglage` à se défendre d'une absence que le type disait
-   * impossible (`reglage.mode ?? 'serpent'` était mort au sens des types), et le test de ce repli
-   * devait fabriquer un objet illégal par `as unknown as` — un double cast ne prouve rien, il
-   * empêche seulement `tsc` de dire que le cas ne peut pas se produire. Même geste que
-   * `Repartition.mode?` côté `features/poules/api.ts`.
+   * impossible, et le test de ce repli devait fabriquer un objet illégal par `as unknown as` — un
+   * double cast ne prouve rien, il empêche seulement `tsc` de dire que le cas est impossible.
    */
   mode?: ModeDeComposition
   serpent_assume?: boolean
 }
 
-/**
- * Ce que l'organisateur a choisi à l'écran — la forme **éditable**, distincte de ce qui part au
+/** Ce que l'organisateur a choisi à l'écran — la forme **éditable**, distincte de ce qui part au
  * serveur.
  *
  * Les nombres restent des **chaînes** : un champ vidé doit pouvoir rester vide pendant qu'on le
- * retape, ce qu'un `number` piloté ferait perdre à chaque frappe (même parti que `EtatProfondeur`
- * et que le barème de qualification).
- *
- * `produit` porte le **régime d'ex æquo** (ADR-0083 §5) : « classement » (la poule classe, tout
- * ex æquo irréductible se départage au barrage) ou « qualifiés » (seule la barre compte). Ce n'est
- * pas un champ de plus en base — c'est la présence ou l'absence de `nb_qualifies` —, mais l'écran
- * doit le poser en question plutôt que de le laisser déduire d'un champ laissé vide.
+ * retape, ce qu'un `number` piloté ferait perdre à chaque frappe. `produit` porte le **régime d'ex
+ * æquo** (ADR-0083 §5) — ce n'est pas un champ de plus en base (c'est la présence de
+ * `nb_qualifies`), mais l'écran doit le poser en question plutôt que le laisser déduire d'un vide.
  */
 export interface EtatPoules {
   taille: string
@@ -113,15 +99,12 @@ function entier(valeur: string, minimum: number): number | undefined {
   return nombre
 }
 
-/**
- * Ce qui part au serveur — ou `undefined` quand la saisie n'est pas encore exploitable.
+/** Ce qui part au serveur — ou `undefined` quand la saisie n'est pas encore exploitable.
  *
- * Même convention que `versProfondeur` : `undefined` veut dire « illisible », **pas** « efface ».
- * L'appelant ne le transmet jamais tel quel, il bloque sa soumission (`estValide`).
- *
- * Les invariants **du domaine** ne sont pas recopiés ici — un barème qui récompense la défaite, plus
- * de qualifiés que de membres : `ReglageDePoules` les refuse en 422, et les redoubler à l'écran
- * donnerait deux messages pour une faute. On ne borne que ce qui empêche de **construire** l'objet.
+ * Même convention que `versProfondeur` : `undefined` veut dire « illisible », **pas** « efface » ;
+ * l'appelant bloque sa soumission (`estValide`). ⚠️ Les invariants **du domaine** ne sont pas
+ * recopiés ici — `ReglageDePoules` les refuse en 422, et les redoubler donnerait deux messages pour
+ * une faute. On ne borne que ce qui empêche de **construire** l'objet.
  */
 export function versReglage(etat: EtatPoules): ReglagePoules | undefined {
   const taille = entier(etat.taille, 2)
@@ -159,26 +142,13 @@ export function estValide(etat: EtatPoules): boolean {
   return versReglage(etat) !== undefined
 }
 
-/**
- * La répartition qu'un effectif produirait — **la même règle que le serveur**, en deux temps.
+/** La répartition qu'un effectif produirait — **la même règle que le serveur**, en deux temps.
  *
- * 1. Le nombre de groupes est `effectif ÷ taille` **arrondi vers le bas**, au moins 1
- *    (`nb_poules_pour`). C'est l'arbitrage du 09/08/2026 : aucune poule ne compte **moins** que la
- *    taille demandée, quitte à en gonfler quelques-unes. 30 archers en poules de 4 → 7 poules.
- * 2. Le reste **gonfle** quelques groupes d'une unité, et l'on rejoue le **serpent lui-même** pour
- *    savoir lesquels : 30 en 7 poules → deux de 5 (les poules 1 et 2) puis cinq de 4.
- *
- * ⚠️ **Ce ne sont pas toujours les groupes de tête**, et le supposer était faux. Le serpent
- * distribue par passages alternés (`divmod(index, nb)` puis inversion un passage sur deux) : quand
- * le dernier passage est **impair**, il repart de la fin, et ce sont les groupes de **queue** qui
- * reçoivent l'archer supplémentaire — 10 archers en poules de 3 gonflent la poule 3, pas la poule 1.
- * On recopie donc la boucle du domaine plutôt que son résultat supposé.
- *
- * Rend `[]` sur un effectif ou une taille illisible : l'écran n'affiche alors rien plutôt qu'un
- * aperçu inventé.
- *
- * ⚠️ `// DETTE-076` — ce miroir est **inscrit au registre** depuis E05US029 : trois règles du
- * domaine recopiées ici, sans test de contrat qui empêche les deux copies de diverger.
+ * Le nombre de groupes est `effectif ÷ taille` **arrondi vers le bas**, au moins 1 (arbitrage du
+ * 09/08/2026 : aucune poule ne compte moins que la taille demandée) ; le reste **gonfle** quelques
+ * groupes, et l'on rejoue le **serpent** pour savoir lesquels. ⚠️ **Ce ne sont pas toujours les
+ * groupes de tête** : quand le dernier passage est impair, le serpent repart de la fin. `[]` sur
+ * une saisie illisible. ⚠️ `// DETTE-076` — miroir inscrit au registre, sans test de contrat.
  */
 export function repartition(
   effectif: number,

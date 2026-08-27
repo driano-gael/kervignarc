@@ -1,12 +1,9 @@
 // Référentiel des clubs (E02US001) — réservé à l'admin (monté sous `estAdmin`).
 //
-// Liste + création + renommage + suppression à confirmation. Le référentiel est **global** :
-// aucun `tournoiId` en entrée, les clubs se réutilisent d'une compétition à l'autre. C'est ce
-// qui évitera de ressaisir les clubs voisins à chaque tournoi, une fois les archers rattachés
-// (E02US002).
-//
-// L'unicité du nom (casse **et accents** repliés) est vérifiée côté serveur : un doublon rend un 409, affiché
-// tel quel — le message du serveur nomme le club déjà présent.
+// Liste + création + renommage + suppression à confirmation. Le référentiel est **global** : aucun
+// `tournoiId` en entrée, les clubs se réutilisent d'une compétition à l'autre. L'unicité du nom
+// (casse **et accents** repliés) est vérifiée côté serveur : un doublon rend un 409, affiché tel
+// quel — le message du serveur nomme le club déjà présent.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

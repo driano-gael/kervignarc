@@ -1,16 +1,10 @@
 // Tests de la règle de tête figée (E16US009) — écrits **depuis les CA**.
 //
-// Deux CA se croisent ici :
-//
-//  - P07 (E16US009) : *« ok pour les 3 premiers toujours visible, mais défilement de tous les
-//    autres archers dessous »* ;
-//  - A16 (E16US005) : *« les x premiers sont toujours affichés, mais le dessous du tableau a un
-//    défilé jusqu'à n »* — huit sur les surfaces qu'on manipule.
-//
-// Et le troisième cas, celui qui n'est dans aucun questionnaire, est le **garde-fou** posé par
-// ADR-0098 §2 : projeté **sans** réglage de pages, la tête retombe à zéro. Sans lui, un écran de
-// salle afficherait trois lignes et rien d'autre — la régression que la revue du 05/08/2026 avait
-// refusée, et la raison pour laquelle cette valeur était restée à zéro pendant trois semaines.
+// Deux CA se croisent : P07 (E16US009) *« ok pour les 3 premiers toujours visible, mais défilement
+// de tous les autres archers dessous »* et A16 (E16US005) *« les x premiers sont toujours affichés
+// »* — huit sur les surfaces qu'on manipule. Le troisième cas n'est dans aucun questionnaire :
+// c'est le **garde-fou** d'ADR-0098 §2 — projeté **sans** réglage de pages, la tête retombe à zéro,
+// sans quoi un écran de salle afficherait trois lignes et rien d'autre.
 
 import { describe, expect, it } from 'vitest'
 import { teteFigee } from './teteFigee'

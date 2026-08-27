@@ -1,28 +1,11 @@
 // Recherche d'archer depuis la sidebar admin (E12US006) — le **4ᵉ canal de routage** (`D-09`).
 //
-// La table de l'organisation tape un nom → l'appli répond **immédiatement** « il tire là » :
-// départ, cible, couloir de tir, pour chaque créneau où l'archer est posé. Le champ est présent **en
-// permanence en tête de la sidebar** (`D-19`), quel que soit l'écran admin affiché, et accessible
-// **au clavier** (un simple `<input>` + liste). C'est la table d'organisation qui l'utilise, un
-// humain — pas de borne en libre-service (`D-10`), donc pas de « retour à l'accueil » comme côté
-// public.
-//
-// **Réutilise la logique pure de la feature publique « suivi »** (`filtrerArchers` / `construireJournee`) :
-// c'est le même geste (nom → place), donc une source unique, déjà **testée depuis le CA** dans
-// `suivi.test.ts` (recherche tolérante à la casse et aux accents, place = cible/couloir/départ).
-// L'alternative — dupliquer ces fonctions — divergerait ; les remonter dans `shared/` attendra un
-// 3ᵉ consommateur (discipline « attendre le 3ᵉ cas » ; `shared/` reste sans dépendance vers `features/`).
-//
-// **« Prochaine affectation » (tour/duel suivant, `D-09`) séquencée vers EPIC-05** : le moteur de
-// phases n'est pas livré (aucun agrégat `Duel`), un archer n'a aujourd'hui que ses créneaux de
-// **qualification** — la journée affichée les couvre déjà tous. La ligne « prochaine affectation »
-// s'ajoutera quand EPIC-05 livrera, comme la complétude des duels dans E12US005. Rien de perdu,
-// seulement séquencé.
-//
-// **Chargement paresseux** : la sidebar est montée sur *tout* écran admin ; on ne fetche archers /
-// départs / plans que lorsqu'un tournoi est courant **et** que l'admin a tapé quelque chose
-// (`actif`) — pas de rafale de requêtes sur un écran où personne ne cherche (idiome de
-// `useImpactRegeneration`). React Query partage les plans par `clePlan` avec les autres écrans.
+// Un nom → « il tire là » (départ, cible, couloir), pour chaque créneau. Champ présent **en
+// permanence** en tête de sidebar (`D-19`) et accessible au clavier ; la table d'organisation
+// l'utilise, pas une borne en libre-service (`D-10`). **Réutilise la logique pure de la feature «
+// suivi »** (`filtrerArchers` / `construireJournee`), déjà testée depuis le CA — la remonter dans
+// `shared/` attendra un 3ᵉ consommateur. **Chargement paresseux** : la sidebar est montée sur
+// *tout* écran admin, on ne fetche qu'avec un tournoi courant **et** une saisie (`actif`).
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'

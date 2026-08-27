@@ -1,23 +1,11 @@
 // Test de **rendu** du panneau des barrages (E06US003).
 //
-// C'est le seul test de composant de cette feature, et il est là pour une raison précise : la revue
-// a trouvé **trois fois de suite** le même mode de défaillance — une règle déplacée d'une couche
-// (service, DTO, infra) sans que la couche qui la rend *observable par l'organisateur* suive. Deux
-// bloquants sont nés exactement là :
-//
-// - un barrage **acté** disparaissait de l'écran (`filter(!clos)`), donc le correctif serveur qui
-//   le rendait corrigeable ne servait personne — le juge ayant inversé deux flèches sur la dernière
-//   place qualificative n'avait plus aucun chemin de réparation ;
-// - un barrage **périmé** (le groupe d'ex æquo a changé depuis l'annonce) restait tirable et
-//   actable : l'appli répondait « Départagé », acceptait la clôture, et le classement ne bougeait
-//   pas d'un rang, sans un mot d'explication.
-//
-// Ni `tsc`, ni `eslint`, ni les 2523 tests backend, ni un test de logique pure ne pouvaient les
-// voir : la faute est **dans le rendu**, entre un champ du DTO et ce que l'écran en fait. Tant
-// qu'aucun test ne monte ce composant avec `clos: true` ou `perime: true`, le mode de défaillance
-// reste invisible à la revue automatique — d'où ce fichier.
-//
-// On double **uniquement** les hooks de données (`./hooks`) : le JSX, lui, est celui de production.
+// Seul test de composant de cette feature, et il est là pour une raison précise : la revue a trouvé
+// **trois fois de suite** le même mode de défaillance — une règle déplacée d'une couche sans que
+// celle qui la rend *observable* suive. Deux bloquants en sont nés : un barrage **acté**
+// disparaissait de l'écran, et un barrage **périmé** restait actable sans que le classement bouge.
+// Ni `tsc`, ni `eslint`, ni les tests backend ne peuvent les voir : la faute est **dans le rendu**.
+// On double **uniquement** les hooks de données ; le JSX est celui de production.
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -188,14 +176,11 @@ describe('PanneauBarrages', () => {
 
   it('ne masque pas « Faire tirer » à cause d’un barrage d’un AUTRE CRÉNEAU au MÊME rang', () => {
     // ⚠️ Le bloquant trouvé à la seconde revue d'E01US025 (axe adversarial). Le serveur avait été
-    // passé à la portée départ ; ce composant, lui, lisait encore **tous** les barrages du tournoi.
-    // Or les rangs se répètent d'un créneau à l'autre : une égalité au rang 2 le matin **et**
-    // l'après-midi est le cas ordinaire, pas le cas tordu. `dejaOuvert` passait donc à `true` et
-    // **retirait du DOM** le seul bouton permettant de départager la dernière place qualificative
-    // de l'après-midi — alors que le serveur, lui, aurait accepté l'annonce.
-    //
-    // Le décor est celui qui rend le défaut visible : `departId={7}`, un barrage encore ouvert au
-    // même rang sur le créneau 8. Sur un tournoi mono-départ, ce test ne peut pas exister.
+    // passé à la portée départ ; ce composant lisait encore **tous** les barrages du tournoi. Or
+    // les rangs se répètent d'un créneau à l'autre : `dejaOuvert` passait à `true` et **retirait du
+    // DOM** le seul bouton permettant de départager la dernière place qualificative de
+    // l'après-midi, alors que le serveur aurait accepté l'annonce. Sur un tournoi mono-départ, ce
+    // test ne peut exister.
     afficher(
       [
         barrage({

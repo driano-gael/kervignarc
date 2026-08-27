@@ -143,13 +143,11 @@ function placeholderDuel(matchNumero: number): Duel {
 
 // --- Ce qui distingue une famille d'une autre (E05US030) -----------------------------------------
 //
-// ⚠️ **Trois tables, et non trois `if`.** Le mécanisme était binaire — « poule ou tableau » —, écrit
-// en `famille === 'poule' ? … : …` à quatre endroits. Y ajouter le système suisse par une quatrième
-// comparaison aurait fait tomber le nouveau format dans la branche **tableau** partout où l'un des
-// quatre aurait été oublié : le duel serait parti sur `/api/v1/duels/manches` avec un `match_numero`
-// que ce routeur ne connaît pas, et la photo de la phase ne se serait jamais rafraîchie hors-ligne.
-// Un `Record` exhaustif fait échouer la **compilation** au lieu de laisser le défaut sortir en
-// salle — même parti que `EN_LICE` dans `features/routage/presentation.ts`.
+// ⚠️ **Trois tables, et non trois `if`.** Le mécanisme était binaire — « poule ou tableau » —,
+// écrit en ternaire à quatre endroits. Y ajouter le système suisse par une quatrième comparaison
+// aurait fait tomber le nouveau format dans la branche **tableau** partout où l'un des quatre
+// aurait été oublié : le duel serait parti sur un routeur qui ne connaît pas son `match_numero`. Un
+// `Record` exhaustif fait échouer la **compilation** au lieu de laisser le défaut sortir en salle.
 
 /** La clé du **décor** d'une famille : ce qu'une écriture invalide en plus du duel lui-même. */
 const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => readonly unknown[]> = {
@@ -159,15 +157,12 @@ const CLE_DECOR: Record<FamilleDuel, (tournoiId: number, phaseId: number) => rea
   colline: cleColline,
 }
 
-/** Une clé de cache **marquée par le DTO qu'elle porte** — le marqueur n'existe qu'à la compilation.
+/** Une clé de cache **marquée par le DTO qu'elle porte** — marqueur de compilation seulement.
  *
- * ⚠️ Sans lui, `photoDe<E>()` ne confinait qu'à moitié (relevé au 2ᵉ tour de revue, par deux axes) :
- * les lambdas étaient bien vérifiées contre `E`, mais `cle` restait typée « une clé quelconque »,
- * si bien qu'**intervertir `clePoulesSaisie` et `cleSuisseSaisie` entre les deux entrées compilait
- * encore** — et produisait exactement le `TypeError` sur `.rondes.flatMap` que le commentaire de la
- * fabrique disait avoir supprimé. Le marquage ferme le dernier tiers, et il a été **vérifié par
- * sonde** : l'interversion rend `Type 'CleDe<EtatPoulesSaisie>' is not assignable to type
- * 'CleDe<EtatSuisseSaisie>'`. Un marqueur qu'on n'éprouve pas est un commentaire, pas un garde-fou.
+ * ⚠️ Sans lui, `photoDe<E>()` ne confinait qu'à moitié : les lambdas étaient vérifiées contre `E`,
+ * mais `cle` restait « une clé quelconque », si bien qu'**intervertir `clePoulesSaisie` et
+ * `cleSuisseSaisie` compilait encore** — et produisait le `TypeError` que la fabrique disait avoir
+ * supprimé. Vérifié **par sonde** : un marqueur qu'on n'éprouve pas est un commentaire.
  */
 type CleDe<E> = ((tournoiId: number, phaseId: number) => readonly unknown[]) & {
   readonly __dto?: E
@@ -189,12 +184,10 @@ interface PhotoDeSaisie<E> {
 
 /** Confine en **un seul point** l'assertion « cette clé porte ce DTO ».
  *
- * ⚠️ Sans cette fabrique, chaque entrée portait ses propres `as EtatXxx` sur des lambdas typées
- * `unknown` (relevé par trois axes de revue) : intervertir deux `cle` compilait, et la faute ne
- * sortait qu'en `TypeError` sur `.rondes.flatMap` — dans le chemin **optimiste hors-ligne**, celui
- * qui par construction ne lève aucune erreur visible. C'était le trou que le `Record` exhaustif
- * ferme un cran plus haut, réintroduit un cran plus bas. Ici, chaque entrée est vérifiée contre son
- * vrai DTO, et le seul cast restant est celui de l'effacement, à un endroit nommé.
+ * ⚠️ Sans cette fabrique, chaque entrée portait ses propres `as EtatXxx` sur des lambdas `unknown`
+ * : intervertir deux `cle` compilait, et la faute ne sortait qu'en `TypeError` dans le chemin
+ * **optimiste hors-ligne**, celui qui par construction ne lève aucune erreur visible — le trou que
+ * le `Record` exhaustif ferme un cran plus haut, réintroduit un cran plus bas.
  */
 function photoDe<E>(photo: PhotoDeSaisie<E>): PhotoDeSaisie<unknown> {
   return photo as PhotoDeSaisie<unknown>

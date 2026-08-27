@@ -42,16 +42,11 @@ export async function rejouerActes(
   const traites: ActeDuelEnFile[] = []
   const refuses: ActeDuelEnFile[] = []
   // ⚠️ **Un refus transitoire bloque sa rencontre, pas la tablette entière** (correctif de revue
-  // E05US023). Le rejeu s'arrêtait au **premier** acte refusé et gardait tout le reste en file. En
-  // tableau c'était supportable : un 409 y est réellement passager (`duel_desynchronise` le temps
-  // d'un re-seed). En **poules**, il ne l'est pas — le `match_numero` est un compteur qui court sur
-  // toute la phase, donc un seul archer ajouté recompose les groupes et désynchronise *toutes* les
-  // rencontres déjà tirées, définitivement. Une tablette qui avait saisi pendant une coupure ne
-  // drainait alors plus **rien**, y compris les actes des rencontres saines.
-  //
-  // On garde ce qui compte — l'ordre **par rencontre** — et on abandonne ce qui ne servait à rien :
-  // l'ordre entre rencontres distinctes, qu'aucune dépendance ne relie. Les actes bloqués restent
-  // en file, `interrompu` reste vrai, donc rien n'est perdu ni marqué traité à tort.
+  // E05US023). Le rejeu s'arrêtait au **premier** acte refusé. En tableau c'était supportable (un
+  // 409 y est passager) ; en **poules** non — le `match_numero` court sur toute la phase, donc un
+  // archer ajouté désynchronise *toutes* les rencontres déjà tirées, définitivement, et la tablette
+  // ne drainait plus **rien**. On garde l'ordre **par rencontre** et on abandonne l'ordre entre
+  // rencontres distinctes, qu'aucune dépendance ne relie.
   const bloquees = new Set<string>()
   let interrompu = false
   for (const acte of file) {

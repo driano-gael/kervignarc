@@ -1,22 +1,11 @@
 // Coquille **commune** des écrans « prêt à… » (E16US012, ADR-0096).
 //
-// Quatre écrans — prêt à démarrer / terminer / archiver / exporter — répondent à la **même**
-// question (« puis-je passer à l'étape suivante, et sinon qu'est-ce qui manque ? ») et doivent donc
-// se lire pareil. Le commanditaire a tranché le 23/08/2026 : **une forme unique paramétrée**, et
-// non quatre écrans jumeaux. C'est ce composant qui la porte.
-//
-// **Présentationnel, pas connecté.** Il reçoit ce qu'il affiche ; il ne choisit pas d'où ça vient.
-// C'est délibéré : `Prêt à démarrer ?` lit le nouvel endpoint `/jalons/demarrer`, tandis que
-// `Prêt à terminer ?` continue de lire `/completude` — la **même** réponse, dont il a en plus
-// besoin du volet administratif pour chiffrer sa confirmation (les impayés, cf. `Completude.tsx`).
-// Le brancher de force sur `/jalons/terminer` aurait ajouté un **second poll de 5 s** sur chaque
-// tablette pour une réponse identique. Que les deux ne puissent pas diverger n'est pas laissé à la
-// vigilance : `test_jalons_api.py` épingle `/jalons/terminer` ≡ `/completude.sportif`.
-//
-// ⚠️ **Aucun bouton n'est jamais désactivé ici**, ni par `pret`, ni par `bloquant`. E05US021 avait
-// déjà tranché pour le démarrage : l'avertissement se lit avant le clic, le refus remonte du
-// serveur (`D-15`). Un front qui grise le bouton se met à décider d'une garde — et devient la
-// seconde source que le CA interdit.
+// Quatre écrans répondent à la **même** question et doivent se lire pareil : le commanditaire a
+// tranché le 23/08/2026 pour **une forme unique paramétrée**. **Présentationnel, pas connecté** —
+// `Prêt à démarrer ?` lit `/jalons/demarrer`, `Prêt à terminer ?` continue de lire `/completude`
+// dont il a besoin du volet administratif ; le brancher de force aurait ajouté un **second poll de
+// 5 s** par tablette (`test_jalons_api.py` épingle l'équivalence). ⚠️ **Aucun bouton n'est jamais
+// désactivé ici** : l'avertissement se lit avant le clic, le refus remonte du serveur (`D-15`).
 
 // DETTE-083 — ⚠️ ces deux imports **ferment un cycle** : `completude/Completude.tsx` importe cette
 // coquille, qui réimporte `completude`. Réutiliser le rendu plutôt que le dupliquer est le bon geste
@@ -50,17 +39,12 @@ export function PretA({
   intro: ReactNode
   titreSection: string
   // `null` tant que la réponse n'est pas là : l'écran dit qu'il n'a pas pu vérifier, il n'invente
-  // pas une liste vide (qui se lirait « rien ne manque »).
-  //
-  // ⚠️ Une liste **vide** est autre chose encore : le serveur a répondu, et il n'y a rien à
-  // préparer — un tournoi déjà lancé, annulé, archivé. On ne rend alors ni verdict ni section, mais
-  // on rend le `detail`, qui dit pourquoi. C'est ce qui dispense l'écran de redéduire la garde du
-  // statut (2ᵉ passe de revue, axe D).
+  // pas une liste vide (qui se lirait « rien ne manque »). ⚠️ Une liste **vide** est autre chose :
+  // le serveur a répondu et il n'y a rien à préparer — on rend alors le `detail`, pas de verdict.
   //
   // ⚠️⚠️ **Cela vaut pour les membres dont la liste EST la préparation** — `démarrer` aujourd'hui.
-  // Le membre `terminer` rend toujours son état sportif, à tout statut : c'est `questionPosee` qui
-  // y coupe le verdict, pas la liste. Ne pas déduire « la question se pose » de `lignes.length > 0`
-  // dans un écran neuf sans vérifier de quel côté tombe son membre (5ᵉ passe, quatre axes).
+  // `terminer` rend toujours son état sportif : c'est `questionPosee` qui y coupe le verdict, pas
+  // la liste. Ne pas déduire « la question se pose » de `lignes.length > 0` (5ᵉ passe).
   lignes: LigneCompletude[] | null
   pret: boolean
   bloquant: boolean
@@ -77,19 +61,14 @@ export function PretA({
   // badge ne s'affiche pas : c'est le défaut du membre *démarrer*, dont le verdict en tête répond
   // déjà à la question binaire.
   complet?: boolean
-  // La question « prêt à… ? » se pose-t-elle encore ? À `false`, **le verdict n'est pas rendu** — la
-  // liste, elle, peut très bien l'être.
-  //
-  // ⚠️ **C'est la distinction qui manquait**, et son absence a coûté deux défauts opposés. Piloter le
-  // verdict par `lignes.length > 0` a d'abord fait dire « ce qui manque **ci-dessous** sera refusé »
-  // au-dessus de lignes vertes (3ᵉ passe) ; puis, en vidant la liste pour l'éviter, a **supprimé un
-  // affichage livré** — l'écran « Prêt à terminer ? » ne montrait plus où en est la qualification sur
-  // un tournoi en pause, c'est-à-dire pendant la pause déjeuner du jour J (4ᵉ passe, axe C1). Le
-  // verdict et la liste répondent à deux questions différentes : ils se gardent séparément.
-  // ⚠️ **Obligatoire, sans valeur par défaut.** Elle en a eu une (`true`) le temps d'une passe, et
-  // c'est ce qui rendait le piège invisible : un écran neuf qui l'oubliait obtenait un verdict rendu
-  // sur un jalon dont la question ne se pose plus. `tsc` force désormais chaque membre à trancher —
-  // une garde mécanique plutôt qu'un commentaire d'avertissement (6ᵉ passe, axes C1 et D).
+  // La question « prêt à… ? » se pose-t-elle encore ? À `false`, **le verdict n'est pas rendu** —
+  // la liste, elle, peut très bien l'être. ⚠️ **C'est la distinction qui manquait** : la piloter
+  // par `lignes.length > 0` a fait dire « ce qui manque ci-dessous sera refusé » au-dessus de
+  // lignes vertes (3ᵉ passe), puis, en vidant la liste pour l'éviter, a **supprimé un affichage
+  // livré** — « Prêt à terminer ? » ne montrait plus où en est la qualification pendant la pause
+  // déjeuner (4ᵉ passe). ⚠️ **Obligatoire, sans valeur par défaut** : elle en a eu une le temps
+  // d'une passe, et c'est ce qui rendait le piège invisible. `tsc` force désormais chaque membre à
+  // trancher.
   questionPosee: boolean
   chargement?: boolean
   erreur?: ReactNode

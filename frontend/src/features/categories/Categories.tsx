@@ -1,16 +1,10 @@
-// Gestion des catégories d'un tournoi (E01US003) — réservée à l'admin (montée sous `estAdmin`).
+// Gestion des catégories d'un tournoi (E01US003) — réservée à l'admin.
 //
-// Liste + création + édition des métadonnées (libellé, arme, tranches d'âge, sexe) + suppression
-// à confirmation. L'arme est en **texte libre** ; les **tranches d'âge** sont une **sélection
-// multiple** parmi les huit tranches FFTA (E01US013 — une catégorie peut en couvrir plusieurs, ex.
-// arc nu « U18 » = U15 + U18) ; le sexe est un choix facultatif (Homme / Femme / Mixte). Un bouton
-// **pré-charge le jeu de catégories FFTA salle (18 m)** officiel (E01US004) : les catégories ainsi
-// ajoutées sont ordinaires (modifiables et supprimables comme les autres).
-//
-// ⚠️ **Le bouton de pré-chargement FFTA a quitté cet écran** avec E01US023 : le référentiel fédéral
-// alimente désormais la bibliothèque du club (Atelier → Catégories), et un tournoi en reçoit une
-// copie (Pilotage → Assemblage). Les fiches de recette `docs/fonctionnel/E01US004.md` et
-// `E01US013.md` ont été mises à jour en conséquence.
+// Liste, création, édition (libellé, arme, tranches d'âge, sexe) et suppression à confirmation.
+// L'arme est en **texte libre** ; les **tranches d'âge** sont une sélection multiple parmi les huit
+// tranches FFTA (E01US013 — arc nu « U18 » = U15 + U18). ⚠️ **Le bouton de pré-chargement FFTA a
+// quitté cet écran** avec E01US023 : le référentiel alimente la bibliothèque du club, et un tournoi
+// en reçoit une copie. Les fiches de recette ont été mises à jour en conséquence.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -82,14 +76,11 @@ export function Categories({ tournoiId }: { tournoiId: number }) {
 }
 
 // Le pré-chargement FFTA **par tournoi** (E01US004) a quitté cet écran avec E01US023 : le
-// référentiel fédéral alimente désormais la **bibliothèque du club** (Atelier → Catégories), une
-// fois pour toutes, et un tournoi en reçoit une copie (Pilotage → Assemblage → « Copier les briques
-// du club »). Garder les deux boutons côte à côte mettait deux chemins concurrents sur le même
-// écran, dont celui que l'US déclare supprimé — et celui-ci créait des briques fédérales marquées
-// « création du club », ce qui salit la liste séparée demandée par le commanditaire.
-//
-// L'endpoint `POST /tournois/{id}/categories/precharger-ffta` **reste** : le jeu d'essai (E15US001)
-// s'en sert côté serveur pour peupler un tournoi sans passer par l'atelier.
+// référentiel alimente désormais la **bibliothèque du club**, une fois pour toutes. Garder les deux
+// boutons côte à côte mettait deux chemins concurrents sur le même écran, et celui-ci créait des
+// briques fédérales marquées « création du club » — ce qui salit la liste séparée demandée par le
+// commanditaire. ⚠️ L'endpoint `precharger-ffta` **reste** : le jeu d'essai (E15US001) s'en sert
+// côté serveur pour peupler un tournoi sans passer par l'atelier.
 
 function LigneCategorie({
   tournoiId,

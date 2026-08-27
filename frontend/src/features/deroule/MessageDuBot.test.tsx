@@ -1,28 +1,11 @@
 // Ce que l'atelier dit d'une phase que **le bot de simulation** n'a pas jouée (E05US027).
 //
-// ⚠️ **Ce fichier existe parce que le même message a menti deux fois, sur l'écran que
-// l'organisateur regarde la veille du tournoi.** Deux listes doivent rester d'accord :
-// `_TYPES_DEROULABLES` côté serveur (ce que le **bot** sait simuler) et `MOTEUR_SAIT_JOUER` côté
-// front (ce que le **moteur** sait jouer). Quand une US rend un format jouable, elle retire le
-// type de la première et l'ajoute à la seconde — et à deux reprises, seule la première moitié a
-// été faite :
-//
-//   1. E05US028 (poules, Big Shoot Off) — corrigé en revue ;
-//   2. E05US027 (colline) — corrigé en revue, de nouveau.
-//
-// Le symptôme est le pire des deux possibles : l'écran annonce « **le moteur** ne sait pas encore
-// dérouler ce type de phase » pour un format que l'US vient précisément de rendre jouable. Ce n'est
-// pas le moteur qui ne sait pas, c'est le bot — et l'organisateur, lui, en conclut que son tournoi
-// ne se déroulera pas.
-//
-// Le garde-fou serveur (`test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas`) ne
-// peut structurellement pas voir ce défaut : il ne connaît pas la table TypeScript.
-//
-// ⚠️ **Ce que ce fichier NE garde PAS, et il vaut mieux l'écrire que le laisser croire** : il fige
-// les **quatre types d'aujourd'hui**, en dur. Un cinquième format rendu jouable et oublié dans
-// `MOTEUR_SAIT_JOUER` le laisserait vert. Il attrape une *régression* (retirer un type de la table
-// fait rougir), pas la prochaine *récidive*. Rien ne compare mécaniquement `_TYPES_DEROULABLES`
-// (serveur) et `MOTEUR_SAIT_JOUER` (front) — c'est la limite réelle, dite plutôt que promise.
+// ⚠️ **Le même message a menti deux fois** (E05US028, E05US027, corrigés en revue) :
+// `_TYPES_DEROULABLES` (serveur, ce que le **bot** sait simuler) et `MOTEUR_SAIT_JOUER` (front, ce
+// que le **moteur** sait jouer) doivent rester d'accord, et seule la première moitié était faite —
+// l'écran annonçant « le moteur ne sait pas dérouler ce type » pour un format tout juste rendu
+// jouable. ⚠️ **Limite réelle** : ce fichier fige les quatre types du jour en dur, il attrape une
+// régression, pas la prochaine récidive.
 
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

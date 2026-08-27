@@ -1,15 +1,11 @@
 // Le **modèle** des arrêts programmés (E05US033, ADR-0091) — logique pure.
 //
-// Séparé du composant pour la raison habituelle (`suisse.ts`, `poules.ts`, `bigShootOff.ts`) :
-// `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, et la conversion
-// « ce que l'écran affiche ↔ ce qui part au serveur » se teste ici sans monter de DOM.
-//
-// ⚠️ **Aucun miroir de règle serveur ici**, à la différence de `suisse.ts` (qui recopie
-// `rondes_maximales`). La validité d'un arrêt dépend du **nombre de tours** de la phase, que seul le
-// serveur connaît — il varie avec l'effectif (rondes appariables) et avec la projection (braquets
-// d'un tableau). Ce module ne juge donc que ce qui se juge sans rien savoir : un entier
-// positif, et pas deux arrêts au même endroit. Le reste est un refus serveur (`ArretProgrammeInvalide`,
-// 422), qui est le seul verdict honnête.
+// Séparé du composant pour la raison habituelle : `react-refresh` interdit à un module de rendu
+// d'exporter aussi des fonctions, et la conversion « écran ↔ serveur » se teste ici sans DOM. ⚠️
+// **Aucun miroir de règle serveur ici**, à la différence de `suisse.ts` : la validité d'un arrêt
+// dépend du **nombre de tours**, que seul le serveur connaît (il varie avec l'effectif et la
+// projection). Ce module ne juge que ce qui se juge sans rien savoir — un entier positif, pas deux
+// arrêts au même endroit ; le reste est un refus serveur (422), le seul verdict honnête.
 
 /** La portée d'un arrêt, miroir de `PorteeArret` (domaine). */
 export type PorteeArret = 'phase' | 'depart'
@@ -20,15 +16,12 @@ export interface ArretProgramme {
   portee: PorteeArret
 }
 
-/**
- * Une ligne d'arrêt telle que l'organisateur la saisit — la forme **éditable**.
+/** Une ligne d'arrêt telle que l'organisateur la saisit — la forme **éditable**.
  *
- * `apresTour` reste une **chaîne** : un champ vidé doit pouvoir rester vide pendant qu'on le retape,
- * ce qu'un `number` piloté perdrait à chaque frappe (même parti que `EtatSuisse`).
- *
- * `cle` est une identité **d'affichage**, jamais envoyée. Sans elle, React réutiliserait les lignes
- * par index : supprimer la première ferait glisser la valeur saisie de la deuxième dans son champ,
- * et l'organisateur verrait son planning se réécrire sous ses doigts.
+ * `apresTour` reste une **chaîne** : un champ vidé doit pouvoir rester vide pendant qu'on le
+ * retape. ⚠️ `cle` est une identité **d'affichage**, jamais envoyée : sans elle React réutiliserait
+ * les lignes par index, et supprimer la première ferait glisser la valeur de la deuxième dans son
+ * champ — l'organisateur verrait son planning se réécrire sous ses doigts.
  */
 export interface LigneArret {
   cle: string
@@ -47,14 +40,12 @@ export const TOURS_MAX_REGLABLES = 64
 /** L'état de départ : aucun arrêt — l'enchaînement automatique d'un tour au suivant, le défaut. */
 export const ARRETS_PAR_DEFAUT: EtatArrets = { lignes: [] }
 
-/**
- * Fabrique une clé d'affichage pour une ligne neuve.
+/** Fabrique une clé d'affichage pour une ligne neuve.
  *
  * ⚠️ **Un compteur, pas `Date.now()` ni `Math.random()`** : deux lignes ajoutées dans la même
- * milliseconde partageraient leur clé, et le rendu de React deviendrait indéterministe — exactement
- * le défaut que la clé existe pour éviter. Le compteur est local au module, ce qui suffit : les clés
- * ne franchissent jamais la frontière réseau, donc leur unicité n'a besoin d'être vraie que dans cet
- * onglet.
+ * milliseconde partageraient leur clé, et le rendu deviendrait indéterministe — exactement le
+ * défaut que la clé existe pour éviter. Le compteur est local au module, ce qui suffit : les clés
+ * ne franchissent jamais la frontière réseau.
  */
 let compteur = 0
 export function cleNeuve(): string {

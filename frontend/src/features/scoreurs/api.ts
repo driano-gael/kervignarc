@@ -47,14 +47,12 @@ export function supprimerScoreur(tournoiId: number, scoreurId: number): Promise<
   })
 }
 
-/**
- * Le PDF des **cartes de scoreur** — une page par scoreur : son nom et son code personnel.
+/** Le PDF des **cartes de scoreur** — une page par scoreur : son nom et son code personnel.
  *
- * Retour maquettes du 04/08/2026 (A08) : *« garde quand meme la possibilite de pouvoir tous les
- * imprimer »*. Comme les etiquettes de cible, la route existait cote serveur (E09US008) sans
- * qu'aucun ecran ne l'atteigne : la fonctionnalite etait livree et invisible.
- *
- * `fetchBlob` et non un `<a href>` : route admin, Bearer en JS et non en cookie.
+ * Retour maquettes du 04/08/2026 (A08) : « garde quand meme la possibilite de pouvoir tous les
+ * imprimer ». Comme les etiquettes de cible, la route existait cote serveur (E09US008) sans
+ * qu'aucun ecran ne l'atteigne. `fetchBlob` et non un lien : route admin, Bearer en JS, pas en
+ * cookie.
  */
 export async function telechargerCartesScoreurs(tournoiId: number): Promise<void> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/scoreurs/cartes-codes`)

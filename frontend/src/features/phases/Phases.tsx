@@ -1,18 +1,11 @@
-// Séquence de phases d'un tournoi (E05US001, ADR-0045) — réservée à l'admin (montée sous `estAdmin`).
+// Séquence de phases d'un tournoi (E05US001, ADR-0045) — réservée à l'admin (`estAdmin`).
 //
-// Compose et fait vivre la suite ordonnée des phases : ajouter (élimination directe / placement),
-// typer, déclarer une **source** de peuplement (les rangs [a..b] d'une phase antérieure) et un
-// **effectif**, réordonner (monter/descendre), supprimer, et piloter le **cycle de vie** de chaque
-// phase (à venir → en cours ⇄ en pause → terminée). La cohérence (source vide / rangs inexistants /
-// effectif incompatible) est vérifiée par le serveur : ses refus s'affichent tels quels (422/409).
-//
-// La phase de **qualification** (créée via l'écran « Barème & validation ») apparaît dans la liste
-// mais ne s'ajoute pas ici : ce sont les phases du **moteur d'élimination** qu'on compose.
-//
-// Une phase porte désormais **plusieurs** prélèvements, de natures variées (E05US010). Cet écran
-// les **affiche** tous mais n'en **édite** qu'un seul, « par rangs » — la composition riche est
-// l'objet d'E01US024. Toute phase hors de ce cas est donc affichée en lecture (`editableIci`) :
-// la soumettre avec ce formulaire écraserait sa composition sans le dire.
+// Compose la suite ordonnée des phases : ajouter, typer, déclarer une **source** et un
+// **effectif**, réordonner, supprimer, piloter le cycle de vie. La cohérence est vérifiée par le
+// serveur : ses refus s'affichent tels quels (422/409). La **qualification** apparaît dans la liste
+// mais se règle ailleurs. ⚠️ Une phase porte **plusieurs** prélèvements (E05US010) : cet écran les
+// affiche tous mais n'en **édite** qu'un, « par rangs » — toute phase hors de ce cas reste en
+// lecture (`editableIci`), la soumettre écraserait sa composition sans le dire.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -134,17 +127,11 @@ export function Phases({ tournoiId }: { tournoiId: number }) {
 
 /** Le geste de **pose du plan de couloirs** d'une phase de poules — action admin.
  *
- * ⚠️ Sans ce composant, tout le placement des poules était **inatteignable depuis le produit** : le
- * domaine, le port, l'adapter, la table `placement_par_bloc` et sa migration existaient, l'endpoint
- * admin aussi, et le hook `useRegenererPlanPoules` n'avait **aucun appelant** (relevé en revue
- * d'E05US023, deux axes indépendamment). La table restait donc vide en toutes circonstances, l'écran
- * de saisie affichait en permanence « le plan n'est pas posé, l'organisateur doit le (re)générer »
- * — en désignant une action que l'application n'offrait pas —, et aucune poule n'avait de couloirs :
- * les archers ne savaient pas sur quelle cible tirer.
- *
- * Calqué sur ses deux jumeaux (`features/duels/Duels.tsx`, `features/placement/Placement.tsx`) :
- * même libellé selon que le plan est vide ou déjà posé, même ton **ambre** pour un refus non
- * bloquant.
+ * ⚠️ Sans ce composant, tout le placement des poules était **inatteignable depuis le produit** :
+ * domaine, port, adapter, table, migration et endpoint existaient, et `useRegenererPlanPoules`
+ * n'avait **aucun appelant** (relevé en revue d'E05US023). La table restait vide, l'écran de saisie
+ * réclamait une action que l'application n'offrait pas, et aucune poule n'avait de couloirs.
+ * Calqué sur ses deux jumeaux (`duels/Duels.tsx`, `placement/Placement.tsx`).
  */
 function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
   const etat = useEtatPoules(tournoiId, phaseId)
@@ -178,15 +165,11 @@ function PlanDePoules({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
 
 /** Le même geste pour une phase au **système suisse** (E05US030) — action admin.
  *
- * ⚠️ **Écrit d'emblée pour ne pas rejouer le défaut d'E05US023**, dont le récit est juste au-dessus :
- * l'endpoint, le port et le hook existaient, et rien ne les appelait — le plan restait vide en
- * toutes circonstances, l'écran de saisie réclamait une action que le produit n'offrait pas, et
- * aucun archer ne savait sur quelle cible tirer. `E05US026` a livré `POST /suisse/plan/…` ; sans ce
- * bouton, la même impasse se serait reproduite à l'identique, un format plus loin.
- *
- * Une différence de fond avec les poules : le suisse pose **un seul bloc** pour toute la phase (une
- * ronde apparie tout le plateau d'un coup), donc « le plan est vide » se lit sur les rencontres et
- * non sur des groupes.
+ * ⚠️ **Écrit d'emblée pour ne pas rejouer le défaut d'E05US023**, raconté juste au-dessus :
+ * l'endpoint, le port et le hook existaient et rien ne les appelait. Sans ce bouton, la même
+ * impasse se serait reproduite à l'identique, un format plus loin. Différence de fond avec les
+ * poules : le suisse pose **un seul bloc** pour toute la phase, donc « le plan est vide » se lit
+ * sur les rencontres et non sur des groupes.
  */
 function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
   const etat = useEtatSuisse(tournoiId, phaseId)
@@ -231,21 +214,11 @@ function PlanDeSuisse({ tournoiId, phaseId }: { tournoiId: number; phaseId: numb
 
 /** Le plan de cibles d'une colline, et la colline elle-même — **côté organisateur**.
  *
- * ⚠️ **Ce composant a manqué à la première livraison d'E05US027, et son absence rendait le format
- * injouable** (relevé en revue). `useRegenererPlanColline` existait, la route `POST /colline/plan`
- * existait, `ServiceColline.regenerer_plan` existait — et rien ne les appelait. Sans pose de plan,
- * `_plan_suffisant` rend `False` en permanence, tous les `couloirs` valent `null`, et l'écran du
- * scoreur réclame en boucle une action que l'application n'offrait nulle part : **personne ne
- * savait sur quelle cible tirer**. La fiche de recette de l'US (§ scénario 2) était elle-même
- * inexécutable.
- *
- * ⚠️ **3ᵉ récidive du même défaut** — E05US023 (poules), puis le commentaire de `PlanDePoules`
- * ci-dessus écrit pour ne pas le rejouer, puis celui de `PlanDeSuisse`. Le commentaire a tenu pour
- * le suisse et n'a pas tenu pour la colline : un avertissement en prose ne se déclenche pas. Le
- * garde-fou réel est le test de rendu qui accompagne ce composant.
- *
- * Comme le suisse : **un seul bloc**, donc `decrireConflits(..., 'Bloc')` — sans ce second
- * argument, une colline lirait « Poule(s) 1 sans couloirs » alors qu'elle n'a aucune poule.
+ * ⚠️ **3ᵉ récidive du même défaut** (E05US023 poules, puis suisse) : le hook, la route et le
+ * service existaient, et rien ne les appelait — `_plan_suffisant` rendait `False` en permanence et
+ * personne ne savait sur quelle cible tirer. Le commentaire a tenu pour le suisse et pas ici : un
+ * avertissement en prose ne se déclenche pas, le garde-fou réel est le test de rendu ci-joint.
+ * Comme le suisse : **un seul bloc**, donc `decrireConflits(..., 'Bloc')`.
  */
 function PlanDeColline({ tournoiId, phaseId }: { tournoiId: number; phaseId: number }) {
   const etat = useEtatColline(tournoiId, phaseId)
@@ -288,17 +261,16 @@ function PlanDeColline({ tournoiId, phaseId }: { tournoiId: number; phaseId: num
 
 /** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
  *
- * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose : en relecture, rien
- * n'est persisté qui dise pourquoi une poule n'a pas de bloc, et le serveur répond alors
- * `non_posee`. C'est exact, et c'est ce qui distingue « vous n'avez pas encore généré » de « votre
- * salle est trop petite » — la première version confondait les deux et invitait l'organisateur à
+ * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose ; en relecture le
+ * serveur répond `non_posee`. ⚠️ C'est ce qui distingue « vous n'avez pas encore généré » de
+ * « votre salle est trop petite » — la première version confondait les deux et invitait à
  * regénérer indéfiniment une salle qui ne pouvait pas grandir.
  */
+
 /** Aiguille vers le panneau de plan du format — un seul point d'entrée, dérivé de la table.
  *
- * Les trois panneaux restent distincts (`DETTE-079` en trace la duplication) ; ce qui est
- * centralisé ici, c'est le **fait qu'un type en ait un**, seule chose que le garde-fou peut
- * vérifier mécaniquement.
+ * Les trois panneaux restent distincts (`DETTE-079`) ; ce qui est centralisé ici, c'est le **fait
+ * qu'un type en ait un**, seule chose que le garde-fou peut vérifier mécaniquement.
  */
 function PlanParBlocs({
   type,
@@ -553,14 +525,11 @@ export function FormulairePhase({
   // définition du déroulé (ADR-0076), et `Phase` ne porte volontairement pas ce champ.
   const [arrets, setArrets] = useState(depuisArrets(phase?.arrets))
   // ⚠️ **L'effectif RÉEL du créneau, pour que la borne s'affiche là où elle compte** (correctif de
-  // revue). Cet écran passait `effectif={null}`, donc la fiche n'annonçait **aucune** borne — sur
-  // le seul écran où « l'effectif du jour » du CA existe vraiment. Et comme `ServiceSuisse.etat`
-  // **borne silencieusement à la lecture**, l'organisateur ne l'apprenait pas davantage à
-  // l'enregistrement : il voyait simplement moins de rondes le jour J.
-  //
-  // La donnée est déjà servie par la route publique que `PlanDeSuisse` interroge pour cette même
-  // phase — on la relit, on ne la recalcule pas. `null` tant qu'il n'y a pas de phase (création
-  // pure) : là, aucun effectif n'existe encore, et annoncer une borne serait l'inventer.
+  // revue). Cet écran passait `effectif={null}`, donc aucune borne n'était annoncée — sur le seul
+  // écran où « l'effectif du jour » du CA existe. Et comme `ServiceSuisse.etat` **borne
+  // silencieusement à la lecture**, l'organisateur voyait simplement moins de rondes le jour J.
+  // La donnée vient de la route publique que `PlanDeSuisse` interroge déjà ; `null` tant qu'il n'y
+  // a pas de phase — annoncer une borne y serait l'inventer.
   const etatSuisseDeLaPhase = useEtatSuisse(
     tournoiId,
     phase !== undefined && phase.type === 'suisse' ? phase.id : null,
@@ -592,17 +561,12 @@ export function FormulairePhase({
   const modifier = useModifierPhase(tournoiId)
   const mutation = enEdition ? modifier : ajouter
 
-  // Sources possibles : les phases **antérieures** (ordre strictement inférieur) **qui produisent
-  // un classement**. En ajout, la future phase prend le dernier rang, donc toutes les phases
-  // existantes sont éligibles.
-  //
-  // ⚠️ Le filtre sur les phases non classantes n'est pas cosmétique : ce formulaire ne sait
-  // exprimer que le prélèvement « par rangs », et le serveur refuse (à juste titre) de prélever des
-  // rangs dans un échauffement, qui n'en produit aucun. Sans le filtre, l'organisateur reçoit un
-  // 422 dont la consigne — « reprendre le reste de ses participants » — n'est réalisable par aucun
-  // écran : une impasse sans sortie. Le chemin réel reste ouvert (une phase peut n'avoir aucune
-  // source, et « échauffement puis qualification » se compose ainsi sans encombre) ; la saisie du
-  // prélèvement « le reste » arrive avec l'éditeur de composition (E01US024).
+  // Sources possibles : les phases **antérieures** qui produisent un classement. ⚠️ Le filtre sur
+  // les phases non classantes n'est pas cosmétique : ce formulaire ne sait exprimer que le
+  // prélèvement « par rangs », et le serveur refuse de prélever des rangs dans un échauffement.
+  // Sans lui, l'organisateur reçoit un 422 dont la consigne — « reprendre le reste » — n'est
+  // réalisable par aucun écran : une impasse sans sortie. Le chemin réel reste ouvert (une phase
+  // peut n'avoir aucune source) ; la saisie du prélèvement « le reste » arrive avec E01US024.
   const ordreCible = enEdition ? phase.ordre : phases.length + 1
   const sourcesPossibles = phases.filter(
     (p) => p.ordre < ordreCible && !TYPES_SANS_CLASSEMENT.includes(p.type),
@@ -645,32 +609,14 @@ export function FormulairePhase({
   const estBigShootOff = type === 'big_shoot_off'
   const estSuisse = type === 'suisse'
   const estColline = type === 'colline'
-  // E05US035 : le découpage en tours n'existe que pour la qualification — c'est le seul format
-  // dont le nombre de tours n'est pas déjà porté par sa structure.
-  // E05US033 : les types qui annoncent leurs tours, donc les seuls sur lesquels une pause puisse
-  // se poser (`TYPES_ARRETABLES`, miroir de la table de **même nom** côté domaine — elle a cessé
-  // de dériver de `TYPES_DEROULES` en E05US035, ADR-0093). Le serveur refuse
-  // l'arrêt ailleurs (`ArretProgrammeInvalide`, 422) — et comme le `PUT` est une édition **totale**,
-  // c'est l'étape entière qui serait refusée, pas seulement le champ.
-  // ⚠️ **Pour une qualification, l'arrêtabilité dépend du RÉGLAGE, pas du type** (correctif de
-  // revue, E05US035, quatre axes). `TYPES_ARRETABLES` répond « on sait observer son tour » ; une
-  // qualification non découpée n'en compte qu'**un**, donc aucune pause n'y a de frontière où
-  // tomber — le serveur la refuse désormais, et offrir le champ ferait échouer la soumission
-  // **entière** (le `PUT` est une édition totale), ce que cette table est justement écrite « en
-  // positif » pour éviter. C'est aussi ce que la fiche de découpage affiche deux blocs plus haut :
-  // sans cette ligne, l'écran se contredisait lui-même.
-  // ⚠️ **Pas de condition sur le découpage ici, et c'est voulu** : ce formulaire ne voit jamais de
-  // qualification (« gérée ailleurs », absente de `TYPES_AJOUTABLES`), donc l'y écrire serait du
-  // code mort — la garde d'instance vit dans `ReglageDecoupageDePhase`, le seul écran qui compose
-  // les réglages d'une qualification de tournoi. Relevé en 2ᵉ passe de revue : le premier correctif
-  // l'avait posée ici, où elle ne pouvait jamais s'évaluer.
-  // L'effectif **déclaré** utilisable : `null` tant qu'il est vide ou illisible.
-  //
-  // ⚠️ **`Number('4a')` rend `NaN`, et `??` ne le filtre pas** (relevé par trois axes) : le champ
-  // est un `<input inputMode="numeric">`, pas un `type="number"`, donc du texte libre y passe. Sans
-  // cette normalisation, la fiche affichait « **NaN** archer : aucun défi n'est appariable ». Le
-  // jumeau invoqué en modèle (`Deroule.tsx`) n'a pas ce défaut parce qu'il passe par `lireEntier`,
-  // qui rend `null` : le premier correctif avait repris l'intention du jumeau, pas son geste.
+  // E05US035 : le découpage en tours n'existe que pour la qualification. E05US033 :
+  // `TYPES_ARRETABLES` (miroir de la table de même nom côté domaine, ADR-0093) dit quels types
+  // annoncent leurs tours, donc où une pause peut se poser. ⚠️ **Pour une qualification,
+  // l'arrêtabilité dépend du RÉGLAGE, pas du type** : non découpée, elle n'a qu'un tour, aucune
+  // frontière où poser une pause, et le `PUT` étant une édition **totale** c'est la soumission
+  // entière qui échouerait. ⚠️ Pas de condition sur le découpage ici : ce formulaire ne voit jamais
+  // de qualification, la garde d'instance vit dans `ReglageDecoupageDePhase`. ⚠️ `Number('4a')`
+  // rend `NaN` et `??` ne le filtre pas — d'où la normalisation (le champ est du texte libre).
   const effectifRetenu = effectifInvalide ? null : effectifAnalyse
   const arretable = TYPES_ARRETABLES.has(type)
   const soumissionPossible =
@@ -727,27 +673,14 @@ export function FormulairePhase({
       // Même garde encore (E05US027) : un réglage de colline porté par un autre type serait refusé
       // en 422 `configuration_colline_invalide`. Retyper la phase l'**efface** donc.
       colline: estColline ? (versReglageColline(colline) ?? null) : null,
-      // Même garde encore (E05US033) : un arrêt porté par un type qui n'annonce pas ses tours est
-      // refusé en 422 `arret_programme_invalide`. Retyper la phase l'**efface** donc, comme les
-      // quatre réglages ci-dessus. ⚠️ C'est une **perte de planning assumée** : l'organisateur qui
-      // retype une phase de poules en qualification perd ses pauses. L'alternative — les conserver
-      // — ferait échouer l'enregistrement entier avec un message que l'écran ne sait pas rattacher
-      // au bon champ, ce qui est pire : il ne pourrait plus enregistrer du tout.
-      // Même garde encore (E05US035) : un découpage porté par un autre type serait refusé en 422
-      // `decoupage_en_tours_invalide`. Retyper la phase l'**efface** donc, comme ses voisins.
-      // ⚠️ `versDecoupage` rend déjà `null` pour un seul tour — « non découpée » est l'état par
-      // défaut, et persister `{ nb_tours: 1 }` ferait apparaître un réglage jamais posé.
-      // ⚠️ **`null` dans tous les cas atteignables aujourd'hui, mais écrit défensivement**
-      // (correctif de 2ᵉ passe de revue). Ce formulaire ne voit jamais de qualification — elle est
-      // « gérée ailleurs » (`gereeAilleurs`), absente de `TYPES_AJOUTABLES` —, donc un découpage
-      // n'a ici aucun sens et `null` est la valeur **exacte**, pas un effacement. Le vrai réglage
-      // vit dans `ReglageDecoupageDePhase`, plus bas.
-      //
-      // Le `null` **en dur** a pourtant été écarté : le `<select>` de ce formulaire accepte
-      // explicitement un type hors catalogue (`typesProposes` le réinjecte), donc le jour où la
-      // qualification y deviendrait éditable, la constante effacerait son découpage en silence —
-      // et rendrait inertes toutes les pauses posées dessus. Ce serait la **4ᵉ** occurrence de la
-      // leçon que ce fichier raconte déjà trois fois. Deux caractères l'empêchent.
+      // Retyper la phase **efface** l'arrêt (E05US033) et le découpage (E05US035), comme les
+      // quatre autres réglages : portés par un autre type, ils seraient refusés en 422 et le `PUT`
+      // étant total, c'est l'enregistrement entier qui échouerait. ⚠️ **Perte de planning
+      // assumée** — conserver les pauses rendrait l'écran impossible à enregistrer, ce qui est
+      // pire. ⚠️ `versDecoupage` rend déjà `null` pour un seul tour. Le `null` **en dur** a été
+      // écarté : le `<select>` accepte un type hors catalogue, donc le jour où la qualification y
+      // deviendrait éditable la constante effacerait son découpage en silence — 4ᵉ occurrence de
+      // la leçon que ce fichier raconte déjà trois fois. Deux caractères l'empêchent.
       decoupage: type === 'qualification' ? (phase?.decoupage ?? null) : null,
       arrets: arretable ? (versArrets(arrets) ?? []) : [],
       // E16US002 : vidé = titre **retiré**, l'écran retombe sur le libellé du type. Contrairement
@@ -762,15 +695,13 @@ export function FormulairePhase({
         onSuccess: () => {
           setEffectif('')
           setTitre('')
-          // La profondeur se remet au preset comme les autres champs de ce formulaire :
-          // « classement intégral » est le réglage le plus coûteux de la journée, il ne doit pas
-          // se reporter en silence d'une phase à la suivante.
+          // La profondeur se remet au preset comme les autres champs : « classement intégral »
+          // est le réglage le plus coûteux de la journée, il ne doit pas se reporter en silence
+          // d'une phase à la suivante.
           //
-          // ⚠️ **Ce commentaire disait « le formulaire de "Composer un format" ne réinitialise
-          // AUCUN champ », et c'était périmé depuis E06US006** (relevé en 2ᵉ passe d'E16US002) :
-          // l'atelier en réinitialise **sept**. Il lui manque `colline`, `arrets`, `decoupage`,
-          // `type` et le barème. L'asymétrie est réelle mais partielle — et un registre de dette
-          // s'était sourcé sur cette phrase plutôt que sur le code (`DETTE-080`).
+          // ⚠️ Ce commentaire disait « l'atelier ne réinitialise AUCUN champ » : périmé depuis
+          // E06US006 — il en réinitialise **sept**. L'asymétrie est réelle mais partielle, et
+          // `DETTE-080` s'était sourcée sur cette phrase plutôt que sur le code.
           setProfondeur(PROFONDEUR_AU_PRESET)
           setPoules(POULES_PAR_DEFAUT)
           setBigShootOff(BIG_SHOOT_OFF_PAR_DEFAUT)
@@ -875,15 +806,12 @@ export function FormulairePhase({
           <ReglageColline
             etat={colline}
             surChangement={setColline}
-            // ⚠️ **L'effectif DÉCLARÉ d'abord, le prélevé en repli** (correctif de revue). Le
-            // jumeau de `Deroule.tsx` porte déjà ce raisonnement ; il n'avait pas été repris ici,
-            // sur le seul écran où l'effectif est **éditable**. La borne annoncée doit être celle
-            // que le serveur **oppose** : `EtapeDeroule._verifier_portee_de_defi` refuse l'étape
-            // contre `self.effectif`, c'est-à-dire le champ saisi trois blocs plus haut et envoyé
-            // dans la même requête — pas contre la population déjà prélevée. Sans ça : 40 inscrits,
-            // phase déclarée à 4, portée 5 → la fiche annonçait « 40 archers : au plus 39 rangs »,
-            // feu vert, et l'enregistrement rendait 422. Exactement le parcours que le CA
-            // supprime.
+            // ⚠️ **L'effectif DÉCLARÉ d'abord, le prélevé en repli** (correctif de revue). La
+            // borne annoncée doit être celle que le serveur **oppose** :
+            // `_verifier_portee_de_defi` refuse l'étape contre `self.effectif`, le champ saisi
+            // trois blocs plus haut et envoyé dans la même requête — pas contre la population déjà
+            // prélevée. Sans ça : 40 inscrits, phase déclarée à 4, portée 5 → « 40 archers : au
+            // plus 39 rangs », feu vert, et l'enregistrement rendait 422.
             effectif={effectifRetenu ?? etatCollineDeLaPhase.data?.effectif ?? null}
             // La borne serveur ne vaut que tant qu'aucun effectif n'est déclaré : sinon elle
             // écraserait la borne de l'effectif saisi, ce qui rouvrirait le défaut ci-dessus par
@@ -968,38 +896,19 @@ export function FormulairePhase({
 
 /** Réglage du **barrage** sur la phase de qualification (E06US003, ADR-0066).
  *
- * ⚠️ **Il vit ici et nulle part ailleurs, et c'est un correctif de revue.** Le champ avait d'abord
- * été ajouté à `FormulairePhase` — que la qualification **n'ouvre jamais** (`gereeAilleurs`) : le
- * seuil restait donc réglable par aucun écran, alors que `ServiceClassement` ne le lit que sur la
- * phase de qualification. Le trou avait été déplacé, pas fermé.
- *
- * Contrôle **réduit au seul seuil** : le `PUT` de phase est une édition totale, donc on réémet
- * `type`, `sources` et `effectif` tels que la phase les porte. Rouvrir le formulaire complet sur la
- * qualification risquerait au contraire d'écraser son barème par surprise — la raison même pour
- * laquelle elle est « gérée ailleurs ».
+ * ⚠️ **Il vit ici et nulle part ailleurs, et c'est un correctif de revue** : le champ avait été
+ * ajouté à `FormulairePhase`, que la qualification **n'ouvre jamais** — le seuil restait réglable
+ * par aucun écran. Contrôle **réduit au seul seuil** : le `PUT` étant une édition totale, on
+ * réémet le reste tel quel ; rouvrir le formulaire complet risquerait d'écraser son barème.
  */
+
 /** La config **complète et inchangée** d'une étape, à surcharger par le seul champ qu'on édite.
  *
- * ⚠️ **Extrait sur preuve, pas par principe** (règle « remède structurel »). Le `PUT` est une
- * édition **totale** : tout champ non réémis est effacé côté serveur. Les widgets qui n'éditent
- * qu'un réglage recopiaient donc la liste entière à la main — et ce fichier raconte **deux bugs**
- * nés d'un oubli dans cette recopie : `ReglageBarrage` effaçait le `decoupage` (donc rendait
- * inertes les pauses posées dessus), et le couple découpage/arrêts se faisait refuser en 422.
- *
- * `titre` en aurait été le **troisième** : sans cette fonction, régler un barrage renommait la
- * phase en silence. Trois occurrences réelles dans le code d'aujourd'hui — c'est le seuil, et la
- * portée reste locale (une fonction, un fichier), donc pas d'ADR.
- *
- * ⚠️ **Le type de retour est `Required<ConfigPhase>`, et c'est lui le garde-fou** (correctif de
- * revue, deux axes). Tous les champs de `ConfigPhase` sauf `type` sont optionnels : sans cette
- * contrainte, ajouter demain un 13ᵉ réglage sans le reporter ici **compilerait sans un mot**, et
- * l'effacement silencieux repartirait pour un tour — cette fois depuis les trois widgets d'un
- * coup. La fonction cesse ainsi de reposer sur la vigilance : le typecheck, déjà dans la porte,
- * refuse la clé manquante.
- *
- * ⚠️ **`nb_volees` est délibérément absent** : c'est un champ de **lecture seule** d'`EtapeReponse`
- * (le barème se règle par sa propre ressource). L'inclure enverrait au serveur un champ que
- * `ConfigPhaseRequete` refuse — le routeur des phases est le seul du projet en `extra="forbid"`.
+ * ⚠️ **Extrait sur preuve** : le `PUT` est une édition **totale**, tout champ non réémis est
+ * effacé. Ce fichier raconte trois effacements nés d'une recopie incomplète. ⚠️ Le type de retour
+ * est `Required<ConfigPhase>`, et c'est **lui** le garde-fou : sans lui, un 13ᵉ réglage oublié ici
+ * compilerait sans un mot. ⚠️ `nb_volees` est délibérément absent — champ de lecture seule, et ce
+ * routeur est le seul du projet en `extra="forbid"`.
  */
 function configInchangee(phase: EtapeDeroule): Required<ConfigPhase> {
   // DETTE-080 — la config est recopiée depuis la **prop**, qui reste périmée jusqu'au refetch de
@@ -1131,21 +1040,11 @@ function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeD
 
 /** Réglage du **découpage en tours** sur la phase de qualification (E05US035, ADR-0093).
  *
- * ⚠️ **Il vit ici et non dans `FormulairePhase`, et c'est un correctif de revue (axe adversarial).**
- * Le champ y avait d'abord été ajouté sous `{estQualification && …}` — une branche **morte** : la
- * qualification n'ouvre jamais ce formulaire (`gereeAilleurs`) et n'est pas dans `TYPES_AJOUTABLES`.
- * Le réglage central de l'US n'était donc atteignable par **aucun** écran de tournoi : l'organisateur
- * ne pouvait pas découper sa qualification, donc pas y poser de pause, sauf à recomposer tout son
- * déroulé depuis un format de bibliothèque. L'US était inerte là où elle sert.
- *
- * C'est **mot pour mot** le défaut que le commentaire de `ReglageBarrage` juste au-dessus raconte
- * pour E06US003 (« Le trou avait été déplacé, pas fermé ») — rejoué un an après, dans le même
- * fichier, à soixante lignes de son propre récit. Le remède est donc le même, à dessein.
- *
- * Contrôle **réduit au seul découpage** : le `PUT` de phase est une édition totale, donc on réémet
- * tous les autres champs tels que la phase les porte. Rouvrir le formulaire complet sur la
- * qualification risquerait d'écraser son barème par surprise — la raison même pour laquelle elle
- * est « gérée ailleurs ».
+ * ⚠️ **Il vit ici et non dans `FormulairePhase`** (correctif de revue, axe adversarial) : le champ
+ * y était sous une branche **morte**, la qualification n'ouvrant jamais ce formulaire. Le réglage
+ * central de l'US n'était atteignable par aucun écran. C'est **mot pour mot** le défaut que
+ * `ReglageBarrage` raconte soixante lignes plus haut, rejoué un an après dans le même fichier.
+ * Contrôle **réduit au seul découpage**, pour la même raison que là-bas.
  */
 function ReglageDecoupageDePhase({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
   const [etat, setEtat] = useState(depuisDecoupage(phase.decoupage))

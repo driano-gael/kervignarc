@@ -45,13 +45,10 @@ const RANG: Record<StatutTournoi, number> = {
 
 // E05US021 — l'avertissement d'effectif, **avant** le clic « Démarrer ».
 //
-// Ambre (`--danger`), jamais rouge : ce n'est pas encore un refus, c'est ce qui l'annonce (`DV-03`).
-// Le refus, lui, remontera du serveur par `MessageErreur` (rouge, `role="alert"`). Et jamais la
-// couleur seule — glyphe **et** mot portent le sens.
-//
-// Le message **chiffre** son impact et **nomme la cause** (`D-16` / `P-4`) : « une alerte qui ne
-// chiffre pas son impact est un clic de plus, pas une protection ». Sans la phase, l'organisateur
-// saurait qu'il manque du monde sans savoir quoi corriger dans son format.
+// Ambre (`--danger`), jamais rouge : ce n'est pas encore un refus, c'est ce qui l'annonce
+// (`DV-03`), et jamais la couleur seule — glyphe **et** mot portent le sens. Le message **chiffre**
+// son impact et **nomme la cause** (`D-16` / `P-4`) : sans la phase, l'organisateur saurait qu'il
+// manque du monde sans savoir quoi corriger dans son format.
 function AvertissementEffectif({ exigence }: { exigence: ExigenceEffectif }) {
   // ⚠️ La cause se lit sur `origine`, **jamais** sur `ordre_phase === null`. Le déduire de l'absence
   // de phase faisait annoncer « ce minimum est celui exigé pour ce format » — une règle de club —
@@ -93,19 +90,13 @@ export function FriseCycleDeVie({ tournoi }: { tournoi: Tournoi }) {
     !exigence.data.suffisant &&
     (tournoi.statut === 'brouillon' || tournoi.statut === 'pret')
 
-  // Confirme avant les transitions qui figent (terminer) ou sont terminales (annuler/archiver). Pour
-  // `terminer`, on chiffre ce qui reste via la même logique que l'écran Complétude ; si sa lecture
-  // échoue, on **laisse passer** (dégradé) — ne jamais bloquer la seule action irréversible sur un
-  // hoquet réseau (`P-3`, comme l'ancien CycleDeVie).
+  // Confirme avant les transitions qui figent (terminer) ou sont terminales (annuler/archiver).
+  // Pour `terminer` on chiffre ce qui reste ; si la lecture échoue on **laisse passer** — ne jamais
+  // bloquer la seule action irréversible sur un hoquet réseau (`P-3`).
   //
-  // La confirmation passe par un **vrai dialogue** depuis le retour maquettes du 04/08/2026 (A15) :
-  // `window.confirm` bloquait le fil sur un écran temps réel et ne proposait que « OK / Annuler » —
-  // ambigu au point d'être trompeur sur la transition « annuler », où « Annuler » désignait à la
-  // fois le geste et son abandon.
-  //
-  // La transition en attente de confirmation, `null` si aucune. Elle porte **son** texte : les trois
-  // gestes qui se confirment n'ont ni le même ton ni les mêmes conséquences, et le message de
-  // « terminer » se calcule (chiffrage de ce qui reste) avant même que le dialogue s'ouvre.
+  // La confirmation passe par un **vrai dialogue** depuis A15 (04/08/2026) : `window.confirm`
+  // bloquait le fil sur un écran temps réel et ne proposait que « OK / Annuler » — ambigu au point
+  // d'être trompeur sur « annuler », où le mot désignait à la fois le geste et son abandon.
   const [aConfirmer, setAConfirmer] = useState<{
     nom: string
     titre: string

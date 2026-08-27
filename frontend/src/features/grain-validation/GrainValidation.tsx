@@ -1,14 +1,10 @@
-// Grain de validation de la qualification (E01US015, `D-11`) — réservé à l'admin (monté sous
-// `estAdmin`).
+// Grain de validation de la qualification (E01US015, `D-11`) — admin (monté sous `estAdmin`).
 //
-// Définit **quand le scoreur valide** : à la fin de la série, ou toutes les N volées. C'est une
-// politique de **phase**, réglée une fois à la configuration et jamais le jour J — elle dimensionne
-// la charge des scoreurs (à 3 scoreurs pour ~30 cibles : ~60 validations par départ en fin de
-// série, ~180 toutes les 2 volées).
-//
-// « Fin de duel » n'est pas proposé ici : la qualification se tire en séries, elle ne comporte pas
-// de duels. Le grain vit sur la phase de qualification, qui naît avec le **barème** (E01US009) :
-// tant qu'il n'est pas défini, il n'y a rien à régler.
+// Définit **quand le scoreur valide** : à la fin de la série, ou toutes les N volées. Politique de
+// **phase**, réglée à la configuration et jamais le jour J — elle dimensionne la charge des
+// scoreurs (3 scoreurs pour ~30 cibles : ~60 validations par départ en fin de série, ~180 toutes
+// les 2 volées). « Fin de duel » n'est pas proposé : la qualification se tire en séries. Le grain
+// vit sur la phase de qualification, qui naît avec le **barème** (E01US009).
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

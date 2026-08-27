@@ -1,22 +1,11 @@
 // Espace poste (E04US001 ; élargi E07US004) — l'écran d'un appareil rattaché à un lieu.
 //
-// Le bénévole **scanne le QR** de sa cible (l'URL pré-remplit le code → rattachement automatique) ou
-// **tape le code** imprimé en secours. Une session de poste s'ouvre alors, persistée localement pour
-// survivre à la fermeture de l'onglet, à une veille, à un redémarrage — la tablette **retrouve sa
-// cible sans rien redemander** (D-13). Le poste peut choisir sa **luminosité** (D-26), qui revient
-// toute seule. La **saisie** des scores relève d'E04US002 ; ici, on rattache et on détache.
-//
-// **Depuis E07US004, deux natures de poste passent par ici.** Le CA de l'écran de salle est
-// explicite : *« c'est un poste, comme une tablette de cible — même mécanisme de jeton »*. Un même
-// code, un même endpoint, un même écran de rattachement ; c'est le `type` rendu par le serveur qui
-// aiguille ensuite vers la **saisie** (cible) ou l'**affichage plein écran** (écran de salle).
-// Dupliquer le formulaire dans un monde « salle » aurait recopié le QR, le heartbeat, la
-// persistance et la révocation — pour n'en changer que la dernière ligne.
-//
-// ⚠️ L'adresse de ce monde reste `/cible` (routeur maison, `Monde = 'tablette'`), y compris pour un
-// écran de salle. C'est une imprécision **assumée** : personne ne tape cette adresse (on arrive par
-// QR ou par le menu), et renommer le monde toucherait le routeur, ses tests et la résolution de
-// rôle pour un gain purement cosmétique.
+// Le bénévole **scanne le QR** de sa cible ou **tape le code** imprimé en secours ; session
+// persistée localement, la tablette **retrouve sa cible sans rien redemander** (D-13), et sa
+// luminosité revient toute seule (D-26). **Deux natures de poste passent par ici** (E07US004 : «
+// c'est un poste, même mécanisme de jeton ») — c'est le `type` rendu par le serveur qui aiguille
+// vers la saisie ou l'affichage plein écran. ⚠️ L'adresse du monde reste `/cible` même pour un
+// écran de salle : imprécision **assumée**, on arrive par QR ou par le menu.
 
 import { useEffect, useRef, useState } from 'react'
 import { EcranSalle } from '../salle/EcranSalle'

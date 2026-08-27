@@ -1,19 +1,11 @@
 // La fiche de réglages d'une phase de **poules** (E05US023, ADR-0083).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
-// bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ChoixProfondeur` avant elle. Les
-// deux sites existent aujourd'hui : ce n'est pas un pattern posé par anticipation.
-//
-// ⚠️ **Ce composant ne détient AUCUN état**, et c'est la leçon de la revue d'E06US006 reprise telle
-// quelle : monté sous condition (`{estPoules && <ReglagePoules/>}`), un état dérivé d'une prop
-// diverge dès que la condition bascule — retyper la phase le démonte, y revenir le remonte
-// réinitialisé, pendant que le parent, lui, garde l'ancienne valeur. L'écran afficherait alors une
-// taille de poule que le formulaire n'enverrait pas.
-//
-// **Trois réglages, et un quatrième qui n'en est pas un** (ADR-0083 §5) : la taille visée, le
-// barème, et *ce que la poule produit*. Ce dernier n'est pas un champ de plus en base — c'est la
-// présence ou l'absence de `nb_qualifies` — mais l'écran doit le **poser en question** plutôt que
-// de laisser l'organisateur deviner qu'un champ vide veut dire « la poule classe ».
+// Partagée par les **deux** écrans qui composent des phases, comme `ChoixProfondeur` avant elle. ⚠️
+// **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006) : monté sous condition, un
+// état dérivé d'une prop diverge dès que la condition bascule — l'écran afficherait alors une
+// taille de poule que le formulaire n'enverrait pas. **Trois réglages, et un quatrième qui n'en est
+// pas un** (§5) : *ce que la poule produit* n'est pas un champ de plus en base — c'est la présence
+// de `nb_qualifies` —, mais l'écran doit le **poser en question**.
 
 import type { EtatPoules, ModeDeComposition } from './poules'
 import { decrireRepartition, estValide, repartition } from './poules'

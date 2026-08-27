@@ -1,17 +1,11 @@
 // La **borne de portée** d'une phase de colline, sur l'écran des phases (E05US027).
 //
-// ⚠️ **Jumeau ligne à ligne de `BorneSuisse.test.tsx`, et il existe pour la même raison.** Le
-// projet a déjà payé ce défaut une fois : `decrireBorne` était pure, testée, parfaitement verte —
-// pendant que l'écran ne lui passait **aucun** effectif, si bien que la borne ne s'affichait nulle
-// part. Un test de formatage ne voit pas un défaut de câblage ; seul un test de rendu le voit. Deux
-// fichiers `BorneSuisse.test.tsx` ont été créés après coup pour ça. La colline avait son test de
-// formatage (`shared/phases/colline.test.ts`) et aucun test de câblage : relevé en revue.
-//
-// Le troisième cas garde une seconde moitié, plus subtile et propre à cet écran : la borne annoncée
-// doit être celle que le serveur **oppose**, c'est-à-dire celle de l'effectif **déclaré** dans le
-// formulaire — pas celle de la population déjà prélevée. Les deux divergent dès qu'on déclare un
-// effectif de phase, et l'écart produit exactement le parcours que le CA veut supprimer : feu vert
-// à l'écran, 422 à l'enregistrement.
+// ⚠️ **Jumeau de `BorneSuisse.test.tsx`, pour la même raison** : `decrireBorne` était pure, testée
+// et verte pendant que l'écran ne lui passait **aucun** effectif — un test de formatage ne voit pas
+// un défaut de câblage. ⚠️ Le troisième cas garde une moitié propre à cet écran : la borne annoncée
+// doit être celle que le serveur **oppose**, donc celle de l'effectif **déclaré** dans le
+// formulaire, pas celle de la population déjà prélevée. Sinon : feu vert à l'écran, 422 à
+// l'enregistrement.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

@@ -44,16 +44,12 @@ export const AXES: { axe: Axe; libelle: string; phrase: string; besoinTournoi: b
   },
 ]
 
-/**
- * L'axe de chaque destination livrée — **source unique** de la répartition.
+/** L'axe de chaque destination livrée — **source unique** de la répartition.
  *
- * Le type `Record<Exclude<DestinationAdminId, 'tournoi'>, Axe>` est **exhaustif** : oublier une
- * destination, ou en ajouter une sans lui donner d'axe, ne compile plus. C'est ce qui remplace les 24
- * champs `axe:` recopiés à la main dans la table de `CoquilleAdmin` — une entrée mal étiquetée y
- * disparaissait **silencieusement** de la sidebar, sans que `tsc` ni aucun test ne le voie.
- *
- * `tournoi` est absente **exprès** : elle n'appartient à aucun axe, c'est l'**assemblage**, porté par
- * l'accueil de l'admin (ADR-0058).
+ * Le `Record<Exclude<DestinationAdminId, 'tournoi'>, Axe>` est **exhaustif** : oublier une
+ * destination ne compile plus. C'est ce qui remplace les 24 champs `axe:` recopiés à la main dans
+ * `CoquilleAdmin`, où une entrée mal étiquetée disparaissait **silencieusement** de la sidebar.
+ * `tournoi` est absente **exprès** : c'est l'**assemblage**, porté par l'accueil (ADR-0058).
  */
 export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>, Axe> = {
   // Atelier — fabriquer, hors tournoi. Depuis E01US023, ses destinations le sont
@@ -109,15 +105,12 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   archive: 'gestion',
 }
 
-/**
- * Quelles destinations exigent un **tournoi courant** — la donnée que `CoquilleAdmin` consomme pour
- * décider entre l'écran et le message « choisissez un tournoi ».
+/** Quelles destinations exigent un **tournoi courant** — ce que `CoquilleAdmin` consomme pour
+ * choisir entre l'écran et « choisissez un tournoi ».
  *
- * Elle vivait dans le tableau local de `CoquilleAdmin.tsx`, donc **hors de portée des tests** : le
- * garde-fou censé remplacer celui de DETTE-023 ne pouvait pas vérifier l'invariant qu'il annonçait
- * (« aucune destination de l'atelier n'exige un tournoi ») et se rabattait sur des appartenances
- * d'axe. Elle est ici, à côté d'`AXE_PAR_DESTINATION`, pour que cet invariant soit **prouvable** —
- * et le `Record` exhaustif force toute destination neuve à répondre à la question.
+ * Elle vivait dans un tableau local, donc **hors de portée des tests** : le garde-fou ne pouvait
+ * pas vérifier l'invariant qu'il annonçait et se rabattait sur des appartenances d'axe. Ici,
+ * l'invariant est **prouvable**, et le `Record` exhaustif force toute destination neuve à répondre.
  */
 export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, boolean> = {
   // Atelier — le patrimoine du club, aucune édition requise.
@@ -156,20 +149,13 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   archive: true,
 }
 
-/**
- * Destination d'ouverture d'un axe.
+/** Destination d'ouverture d'un axe.
  *
- * Pour le pilotage, c'est **l'accueil-tableau de bord** (`D-20`, E14US001) : c'est lui qui se
- * contextualise par statut, inutile donc d'aiguiller selon le statut.
- *
- * Pour l'atelier, c'est **`formats`** depuis E01US025 : le format de tournoi devient le **point
- * d'entrée** de l'axe — c'est de lui que découle un tournoi concret, les autres destinations ne
- * fabriquant que les briques qu'il assemble. Ouvrir ailleurs ferait entrer par un composant.
- *
- * C'était `categories` depuis E01US023 (les briques du club devenues modèles de bibliothèque,
- * ADR-0060), et `gabarits` avant elle, tant que quatre destinations exigeaient un tournoi que l'axe
- * ne propose pas de choisir (DETTE-023, résorbée) : ouvrir sur l'une d'elles affichait, dès le
- * premier clic, un écran vide disant « choisissez un tournoi **ci-dessus** » — sans rien au-dessus.
+ * Pilotage : l'**accueil-tableau de bord** (`D-20`), qui se contextualise par statut. Atelier :
+ * **`formats`** depuis E01US025 — c'est de lui que découle un tournoi concret, ouvrir ailleurs
+ * ferait entrer par un composant. C'était `gabarits` tant que quatre destinations exigeaient un
+ * tournoi que l'axe ne propose pas de choisir : le premier clic affichait « choisissez un tournoi
+ * **ci-dessus** » sans rien au-dessus (DETTE-023, résorbée).
  */
 export function destinationParDefaut(axe: Axe): DestinationAdminId {
   if (axe === 'pilotage') return 'accueil'
@@ -177,17 +163,12 @@ export function destinationParDefaut(axe: Axe): DestinationAdminId {
   return 'formats'
 }
 
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-// Lecture et écriture de l'adresse admin : `/admin/<tournoi?>/<axe?>/<destination?>`
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Lecture et écriture de l'adresse admin : `/admin/<tournoi?>/<axe?>/<destination?>`.
 //
 // Le **tournoi est dans l'adresse** (E14US003) : sans lui, un `F5` ou un lien partagé restaurait
-// l'écran mais pas son sujet — et 21 des 24 destinations en dépendent, donc l'utilisateur retombait
-// sur « choisissez un tournoi ». Il est placé **avant** l'axe pour qu'il survive au changement d'axe
-// et se lise dans l'ordre naturel : administration → tournoi → activité → écran.
-//
-// Il est reconnu par sa **forme** (suite de chiffres), ce qui lève toute ambiguïté : aucun axe ni
-// aucune destination n'est numérique.
+// l'écran mais pas son sujet, et 21 des 24 destinations en dépendent. Il est placé **avant** l'axe
+// pour survivre au changement d'axe et se lire dans l'ordre naturel. Il est reconnu par sa
+// **forme** (suite de chiffres) : aucun axe ni aucune destination n'est numérique.
 
 export interface RouteAdmin {
   tournoiId: number | null
@@ -234,18 +215,12 @@ export function destinationValide(
   return destinationsDeLAxe.find((d) => d === demandee) ?? null
 }
 
-/**
- * Ce sur quoi l'axe **Pilotage** travaille en ce moment — la ligne de contexte de la planche A02
- * (E17US003).
+/** Ce sur quoi l'axe **Pilotage** travaille en ce moment — la ligne de contexte d'A02 (E17US003).
  *
- * Pure et sortie du composant pour être **testable** : elle porte deux règles qui ne se voient pas en
- * lisant le rendu — un tournoi **en pause** compte comme en cours (il est lancé, il attend), et
- * « aucun tournoi en cours » rend `null` plutôt qu'une chaîne vide, pour que l'appelant n'ait pas à
- * distinguer « rien à dire » de « quelque chose à dire, mais vide ».
- *
- * La planche montre aussi le départ courant et « 28/30 postes en ligne ». Non repris : ce sont des
- * agrégats que le serveur n'expose pas, et les recomposer côté client coûterait une requête par
- * tournoi à chaque ouverture de l'accueil. Écart inscrit au relevé d'EPIC-17.
+ * Pure et sortie du composant pour être **testable** : deux règles ne se voient pas dans le rendu —
+ * un tournoi **en pause** compte comme en cours, et « aucun tournoi en cours » rend `null` plutôt
+ * qu'une chaîne vide. La planche montre aussi le départ courant et « 28/30 postes en ligne » : non
+ * repris, ce sont des agrégats que le serveur n'expose pas (écart inscrit au relevé d'EPIC-17).
  */
 export function tournoisEnCours<T extends { statut: Tournoi['statut'] }>(
   tournois: readonly T[],

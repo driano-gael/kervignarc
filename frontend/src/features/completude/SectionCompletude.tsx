@@ -1,12 +1,11 @@
-// Rendu d'une **section de complétude** — un titre, un résumé facultatif, et la liste de ses lignes.
+// Rendu d'une **section de complétude** — un titre, un résumé facultatif, et la liste de ses
+// lignes.
 //
 // Extrait de `Completude.tsx` en E16US003, quand les deux sections ont cessé de vivre sur le même
-// écran : le sportif reste au pilotage, l'administratif est parti sur l'axe gestion (A14, « je
-// n'aime pas le mélange entre le déroulé et la gestion administrative »). Le rendu, lui, ne devait
-// surtout **pas** être dupliqué — deux copies auraient divergé au premier ajustement de pastille.
-//
-// L'état se rend en **couleur + pastille + texte** (jamais la couleur seule) ; l'alerte = **ambre**,
-// jamais rouge (charte, `DV-03`).
+// écran : le sportif reste au pilotage, l'administratif est parti sur l'axe gestion (A14). Le rendu
+// ne devait surtout **pas** être dupliqué — deux copies auraient divergé au premier ajustement de
+// pastille. L'état se rend en **couleur + pastille + texte** (jamais la couleur seule) ; l'alerte
+// est **ambre**, jamais rouge (`DV-03`).
 
 import type { LigneCompletude } from './api'
 import { afficheEtat, detailLigne } from './presentation'

@@ -1,14 +1,11 @@
 // Tests de **montage** de la vue publique de la colline (E05US027, ADR-0089).
 //
 // Écrits d'emblée plutôt qu'en correctif : la revue d'E05US031 a dû les ajouter après coup au
-// suisse, et deux défauts réels y avaient échappé — le porteur du bye passait à travers le filtre
-// « mes archers », et les conflits de pose n'étaient pas annoncés alors que la vue des poules le
-// fait sur le même champ. Les deux ont leur pendant ici : les archers **au repos** et l'annonce des
-// cibles manquantes.
-//
-// ⚠️ **Ce que cette vue a de particulier, et qui justifie ses propres cas** : la colline ne montre
-// pas des rencontres mais des **positions qui bougent**. Un rendu qui perdrait « le 6 défie le 4 »
-// resterait parfaitement lisible — et vide de ce que le format apporte.
+// suisse, et deux défauts réels y avaient échappé — le porteur du bye passait à travers le filtre «
+// mes archers », les conflits de pose n'étaient pas annoncés. Les deux ont leur pendant ici : les
+// archers **au repos** et l'annonce des cibles manquantes. ⚠️ La colline ne montre pas des
+// rencontres mais des **positions qui bougent** : un rendu qui perdrait « le 6 défie le 4 »
+// resterait lisible et vide de ce que le format apporte.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

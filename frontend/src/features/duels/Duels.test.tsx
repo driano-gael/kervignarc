@@ -1,19 +1,11 @@
 // Tests de rendu du plan de duels (E16US005).
 //
-// **Pourquoi ce fichier existe, et pourquoi il n'existait pas avant.** `duels/Duels.tsx` est le
-// jumeau de `placement/Placement.tsx` — quatre composants recopiés (`DETTE-085`). Tant qu'aucun test
-// ne montait cet écran, un changement appliqué au seul plan de qualification **compilait, passait le
-// lint et passait la suite**. C'est exactement ce qui s'est produit à la première rédaction
-// d'E16US005 : la fabrique de jeton calculait les repères, les trois référentiels étaient montés, le
-// type portait le champ… et `JetonArcher` rendait toujours `{jeton.nom}` nu. `tsc` ne voit rien —
-// une propriété *fournie* et jamais *consommée* n'est pas une erreur de type — et les quatre
-// documents de suivi affirmaient l'inverse. Trois axes de revue l'ont rattrapé ; ce fichier fait
-// que la prochaine fois, c'est un test rouge.
-//
-// Le garde-fou est **proportionné à la dette assumée** : on ne remonte pas les composants dans
-// `shared/` (ce serait un remède structurel en douce, cf. `DETTE-085`), on rend la divergence
-// **détectable**. Quatre cas : ce que l'US ajoute (repères, lettre de couloir, grille dérivée) et
-// la non-régression historique de la réserve.
+// ⚠️ `duels/Duels.tsx` est le jumeau de `placement/Placement.tsx` — quatre composants recopiés
+// (`DETTE-085`) : tant qu'aucun test ne montait cet écran, un changement appliqué au seul plan de
+// qualification **compilait, passait le lint et passait la suite**. C'est ce qui s'est produit — la
+// fabrique calculait les repères, `JetonArcher` rendait toujours le nom nu : `tsc` ne voit pas une
+// propriété fournie et jamais consommée. Le garde-fou est **proportionné à la dette assumée** : on
+// rend la divergence détectable, on ne remonte rien dans `shared/`.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'

@@ -10,15 +10,14 @@
 import { fetchJson } from '../../shared/api/client'
 import type { ReglagePages } from '../../shared/ui/pagination'
 
-/** Les vues qu'un écran sait afficher. Miroir de `domain.ecran.VueEcran`, qui **couvre désormais le
- * CA d'E07US004 en entier** : le catalogue s'est élargi trois fois — palmarès (E06US004),
- * affectations (E07US008), tableaux (E07US005) — **sans une seule migration**, la valeur persistée
- * étant la chaîne et non un rang. La règle qui a tenu à chaque fois : on n'inscrit une vue qu'une
- * fois son écran capable de l'afficher, sinon le réglage programme une page vide.
+/** Les vues qu'un écran sait afficher — miroir de `domain.ecran.VueEcran`.
  *
- * ⚠️ Le quatrième mouvement, lui, **a coûté une migration** (`0047`, E05US031) : `tableaux` est
- * devenue `en_cours` en s'élargissant aux trois formats sans arbre. Persister la chaîne rend un
- * **ajout** gratuit, pas un **renommage**. */
+ * Le catalogue s'est élargi trois fois (palmarès E06US004, affectations E07US008, tableaux
+ * E07US005) **sans une seule migration**, la valeur persistée étant la chaîne et non un rang.
+ * Règle qui a tenu à chaque fois : on n'inscrit une vue qu'une fois son écran capable de
+ * l'afficher. ⚠️ Le quatrième mouvement **a coûté une migration** (`0047`, E05US031) : `tableaux`
+ * est devenue `en_cours`. Persister la chaîne rend un **ajout** gratuit, pas un **renommage**.
+ */
 export type VueEcran =
   'classement' | 'plan_cibles' | 'suivi_deroule' | 'affectations' | 'palmares' | 'en_cours'
 

@@ -8,15 +8,14 @@
 
 import { fetchJson } from '../../shared/api/client'
 
-// Pourquoi un archer est en réserve (non posé) : `sans_blason` (aucun blason pour tirer),
-// `non_place` (aucune cible ne peut l'accueillir), `cloisonnement` (c'est le **réglage** de
-// cloisonnement, et non la salle, qui l'exclut — E03US007), `en_reserve` (en attente d'un
-// placement). Vocabulaire **fermé**, miroir de l'enum `RaisonConflit` du domaine.
+// Pourquoi un archer est en réserve : `sans_blason`, `non_place`, `cloisonnement` (c'est le
+// **réglage** et non la salle qui l'exclut, E03US007), `en_reserve`. Vocabulaire **fermé**, miroir
+// de l'enum `RaisonConflit` du domaine.
 //
 // ⚠️ **Déclaré ici pour tout le front** : la feature `duels` l'importe au lieu d'en tenir une
 // copie. Elle en tenait une jusqu'à E03US007, restée à trois valeurs quand le serveur en a émis une
-// quatrième — l'écran des duels affichait alors une réserve **sans motif**, et `tsc` ne voyait rien
-// puisqu'un miroir manuel ne contraint pas la donnée reçue. Un vocabulaire fermé n'a qu'un énoncé.
+// quatrième — la réserve s'affichait alors **sans motif**, et `tsc` ne voyait rien puisqu'un miroir
+// manuel ne contraint pas la donnée reçue.
 export type RaisonConflit = 'sans_blason' | 'non_place' | 'cloisonnement' | 'en_reserve'
 
 // Ce qu'une cible n'a pas le droit de mêler (E03US007, RG-4) — réglage **du tournoi**, à quatre
@@ -35,17 +34,14 @@ export interface Placement {
   inscription_id: number
 }
 
-// Une cible du plan : son rang (`index`), son plafond d'archers (`capacite`) et les archers posés
-// (`placements`, vide si la cible est libre).
+// Une cible du plan : son rang, son plafond d'archers et les archers posés (vide si libre).
 //
-// `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on puisse
-// affirmer ≥ 2 clubs distincts (un seul club, ou clubs inconnus — le serveur traite `NULL` comme
-// *indécidable*). L'admin le voit pour ajuster à la main s'il le souhaite ; ce n'est **pas** une
-// erreur, juste un objectif d'équité non atteint. Recalculé serveur à chaque lecture (jamais persisté).
-//
-// `cloisonnement_non_respecte` (E03US007) : `true` quand la cible **mêle** ce que le réglage du
-// tournoi interdit de mêler. Le placement auto ne peut pas produire ça (contrainte dure) : c'est le
-// signe d'un plan **posé avant** l'activation du réglage, donc à régénérer.
+// `mixite_non_garantie` (RG-3, E03US006) : `true` quand la cible porte ≥ 2 archers sans qu'on
+// puisse affirmer ≥ 2 clubs distincts (le serveur traite `NULL` comme *indécidable*). Ce n'est
+// **pas** une erreur, juste un objectif d'équité non atteint ; recalculé à chaque lecture, jamais
+// persisté. `cloisonnement_non_respecte` (E03US007) : le placement auto ne peut pas le produire
+// (contrainte dure), c'est le signe d'un plan **posé avant** l'activation du réglage, donc à
+// régénérer.
 export interface CiblePlacee {
   index: number
   capacite: number

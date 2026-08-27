@@ -1,15 +1,10 @@
-// Tableau du classement de qualification (E06US001). Une ligne par archer : rang **de catégorie** et
-// rang **scratch** (global), identité, catégorie, cible, total, et le décompte de **10** et de **9**
-// qui rend le départage FFTA lisible (à total égal, plus de 10 puis de 9 — `referentiel-ffta` §8.1).
-// Il se rafraîchit tout seul à chaque saisie (invalidation via le flux temps réel).
+// Tableau du classement de qualification (E06US001) : rang de catégorie et rang scratch, identité,
+// catégorie, cible, total, et le décompte de **10** et de **9** qui rend le départage FFTA lisible
+// (`referentiel-ffta` §8.1). Il se rafraîchit seul à chaque saisie (flux temps réel).
 //
-// Surface de **lecture** : le classement sert à connaître les positions. Le placement inline reste
-// offert à l'admin (colonne « Placer ») ; la saisie des scores, elle, se fait sur l'écran de saisie
-// dédié (E04US002) — l'ancien bouton « Marquer » du walking skeleton écrivait un score que le
-// classement ne lit plus (il dérive des séries de saisie), il a donc été retiré.
-//
-// Le club encore inconnu y est signalé (E02US002, ADR-0014) : le classement est la surface qu'on
-// regarde toute la journée, c'est là que l'anomalie se remarque ; l'écran d'admin la répare.
+// Surface de **lecture** : le placement inline reste offert à l'admin, la saisie des scores se fait
+// sur l'écran dédié (E04US002). Le club encore inconnu y est **signalé** (E02US002, ADR-0014) —
+// c'est la surface qu'on regarde toute la journée, donc là que l'anomalie se remarque.
 
 import { type ReactElement, useState } from 'react'
 import { EnteteDePage } from '../../shared/ui/EnteteDePage'
@@ -29,57 +24,37 @@ interface TableClassementProps {
   tournoiId: number
   lignes: LigneClassement[]
   /**
-   * La liste **complète**, quand `lignes` en est un sous-ensemble affiché. Sert au seul calcul des
-   * ex æquo. Par défaut : `lignes` (les deux se confondent hors centrage).
-   *
-   * ⚠️ **Ne pas confondre la source du calcul et la source de l'affichage** (correctif de revue,
-   * E16US004). `totauxExAequo` cherche les totaux qui apparaissent **plusieurs fois** : le lui
-   * donner déjà filtré fait disparaître l'égalité en même temps que l'archer avec qui elle
-   * existait. Centré sur un seul archer, un 542 à égalité avec un autre 542 non suivi se
-   * présentait comme un rang acquis — alors qu'il tient à un départage au nombre de 10, voire à
-   * un barrage à venir.
+   * La liste **complète**, quand `lignes` en est un sous-ensemble affiché — sert au seul calcul des
+   * ex æquo (défaut : `lignes`). ⚠️ **Ne pas confondre la source du calcul et celle de
+   * l'affichage** : `totauxExAequo` cherche les totaux qui apparaissent **plusieurs fois**, et le
+   * lui donner filtré fait disparaître l'égalité avec l'archer qui la créait. Centré sur un archer,
+   * un 542 à égalité se présentait comme un rang acquis.
    */
   lignesCompletes?: LigneClassement[]
   admin: boolean
   /**
-   * Combien de lignes de tête restent **toujours visibles** pendant que le reste défile (A16 :
-   * *« les x premiers sont toujours affichés, mais le dessous du tableau a un défilé jusqu'à n »*).
+   * Combien de lignes de tête restent **toujours visibles** pendant que le reste défile (A16).
    *
-   * `0` = pas de séparation, le tableau se comporte comme avant. La valeur est un **paramètre** et
-   * non une constante parce que « x » n'a pas la même valeur partout : trois sur un écran de salle
-   * (P07 : *« ok pour les 3 premiers toujours visible »*), davantage sur un PC d'organisation où
-   * l'on suit le haut d'une catégorie.
+   * `0` = pas de séparation. La valeur est un **paramètre** et non une constante parce que « x »
+   * n'a pas la même valeur partout : trois sur un écran de salle (P07), davantage sur un PC
+   * d'organisation où l'on suit le haut d'une catégorie.
    */
   teteFigee?: number
   /**
    * Déplie le **détail des flèches** d'un archer au clic sur sa ligne (E16US004).
    *
-   * P03 posait la question en toutes lettres — *« le détail des flèches des autres »* — et la
-   * réponse est *« oui »*. Rien à ouvrir côté serveur : `GET …/archers/{id}/deroule` est **déjà**
-   * public et anonyme pour n'importe quel archer (ADR-0039, transparence assumée, scores
-   * provisoires signalés). Cette prop ne fait donc que câbler une surface existante.
-   *
-   * Réservé à l'appli publique : l'admin a l'écran de saisie, et l'écran de salle n'a « aucune
-   * interaction » (CA E07US004).
+   * Rien à ouvrir côté serveur : `GET …/archers/{id}/deroule` est **déjà** public et anonyme
+   * (ADR-0039). Cette prop ne fait que câbler une surface existante. Réservé à l'appli publique :
+   * l'admin a l'écran de saisie, et l'écran de salle n'a « aucune interaction » (CA E07US004).
    */
   detailFleches?: boolean
   /**
-   * Fait **défiler** le reste au lieu de l'enfermer dans un cadre à ascenseur (E16US009, P07 :
-   * *« ok pour les 3 premiers toujours visible, mais défilement de tous les autres archers
-   * dessous »*).
+   * Fait **défiler** le reste au lieu de l'enfermer dans un cadre à ascenseur (E16US009, P07).
    *
-   * ⚠️ **« Défilement » se lit ici comme une pagination, et c'est un arbitrage** — [ADR-0098]. Un
-   * cadre `overflow-y: auto` sur un vidéoprojecteur est un cadre que **personne ne peut faire
-   * défiler** : ni souris, ni doigt, « aucune interaction » (CA E07US004). Le commanditaire a par
-   * ailleurs accepté la pagination pour les listes de noms projetées dans le même questionnaire
-   * (P06, *« 20 s (réglable) par écran de liste de noms est correct »*) : c'est donc la forme qu'il
-   * connaît déjà, et elle a l'avantage d'être **déterministe et testable**, là où une animation
-   * continue ne se prouve pas.
-   *
-   * Absent = comportement d'avant, le cadre défilant des surfaces qu'on **manipule** (PC, tablette),
-   * où l'ascenseur est le bon geste.
-   *
-   * [ADR-0098]: ../../../../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md
+   * ⚠️ **« Défilement » se lit ici comme une pagination, et c'est un arbitrage** (ADR-0098) : un
+   * cadre `overflow-y: auto` sur un vidéoprojecteur ne peut être actionné par personne (CA
+   * E07US004). Le commanditaire avait déjà accepté la pagination pour les listes projetées (P06),
+   * et elle est **déterministe et testable**. Absent = le cadre défilant des surfaces manipulées.
    */
   pagination?: ReglagePages
 }
@@ -199,26 +174,21 @@ const NOMS_PAR_LIGNE_PROJETEE = 3
 
 /** Le plafond de lignes d'une page projetée, **quel que soit le réglage**.
  *
- * ⚠️ **Calculé depuis le CSS, jamais mesuré** — `DETTE-086` porte le décompte et l'incertitude. Ce
- * que le plafond garantit n'est pas la justesse de la valeur mais la **direction de l'erreur** :
- * trop bas, on fait plus de pages et tout finit par passer ; trop haut, le bas de page n'est
- * **jamais montré** (`.classement__pages` n'a aucun ascenseur — ADR-0098 §3).
- *
- * ⚠️ **Effet de bord** : au-delà de `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE` noms réglés, le
- * classement ne réagit plus au réglage — l'aide de l'écran d'admin le dit à l'organisateur, un
- * cadran bloqué ressemblant à une panne. */
+ * ⚠️ **Calculé depuis le CSS, jamais mesuré** (`DETTE-086`). Ce que le plafond garantit n'est pas
+ * la justesse de la valeur mais la **direction de l'erreur** : trop bas, on fait plus de pages ;
+ * trop haut, le bas de page n'est **jamais montré** (ADR-0098 §3). ⚠️ Au-delà de
+ * `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE` noms réglés, le classement ne réagit plus au
+ * réglage — l'aide de l'admin le dit, un cadran bloqué ressemblant à une panne.
+ */
 const LIGNES_PROJETEES_MAX = 9
 
-/** Le reste du classement **projeté**, page après page (E16US009).
+/**
+ * Le reste du classement **projeté**, page après page (E16US009).
  *
- * Distinct du cadre défilant, et rendu par un composant à part pour une raison mécanique : il tient
- * un minuteur (`useSecondesDAffichage`), et `TableClassement` est monté sur trois surfaces dont deux
- * n'ont rien à faire d'une horloge qui bat à la seconde. Un hook appelé en tête du composant parent
- * aurait fait battre l'appli publique et l'écran d'admin pour rien.
- *
- * ⚠️ **La clé du cumul est propre à cette vue.** Le compteur de `useSecondesDAffichage` est indexé
- * depuis cette US : partagé avec les affectations, il faisait avancer les pages du classement
- * pendant que l'écran montrait autre chose.
+ * Composant à part pour une raison mécanique : il tient un minuteur (`useSecondesDAffichage`), et
+ * `TableClassement` est monté sur trois surfaces dont deux n'ont rien à faire d'une horloge qui bat
+ * à la seconde. ⚠️ **La clé du cumul est propre à cette vue** : partagée avec les affectations,
+ * elle faisait avancer les pages du classement pendant que l'écran montrait autre chose.
  */
 function ResteProjete({
   lignes,
@@ -424,15 +394,13 @@ function LigneArcher({
   )
 }
 
-/** Les flèches d'un archer, dépliées sous sa ligne de classement (E16US004, P03).
+/**
+ * Les flèches d'un archer, dépliées sous sa ligne de classement (E16US004, P03).
  *
- * Même source que la carte de suivi (`useDeroule`, E07US009) — un seul appel par archer déplié,
- * mis en cache par React Query et invalidé en direct par la diffusion post-commit : le détail suit
- * la saisie sans qu'on le redemande (P03 : *« en direct, dès que les informations sont
- * disponibles »*).
- *
- * Les volées **non validées** sont montrées, marquées « en attente » : c'est la décision d'ADR-0039,
- * pas une négligence — les taire ferait un total muet pendant tout un tour.
+ * Même source que la carte de suivi (`useDeroule`) — un seul appel par archer déplié, mis en cache
+ * et invalidé en direct par la diffusion post-commit. ⚠️ Les volées **non validées** sont montrées,
+ * marquées « en attente » : décision d'ADR-0039, pas une négligence — les taire ferait un total
+ * muet pendant tout un tour.
  */
 function DetailFleches({
   tournoiId,

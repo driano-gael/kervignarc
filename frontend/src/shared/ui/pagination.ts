@@ -1,12 +1,9 @@
 // Pagination d'une liste projetée en salle. Décision : ADR-0098. CA : stories/E16 (P06, P07).
 //
 // ⚠️ **Ce module doit rester dans `shared/`** : ses deux consommateurs sont dans des features
-// distinctes (`competition`, `routage`), et le redescendre dans l'une créerait une arête
-// d'enchevêtrement que la carte du code mesure (`DETTE-083`).
-//
-// ⚠️ **La page se déduit du temps, elle ne s'incrémente pas.** Un `setInterval` dérive dans un
-// onglet en arrière-plan, et un écran de salle tourne huit heures d'affilée : on repart de
-// l'horloge à chaque battement (même parti que `salle/rotation.ts`).
+// distinctes, et le redescendre dans l'une créerait une arête d'enchevêtrement (`DETTE-083`). ⚠️
+// **La page se déduit du temps, elle ne s'incrémente pas** : un `setInterval` dérive dans un onglet
+// en arrière-plan, et un écran de salle tourne huit heures d'affilée.
 
 import { useEffect, useState } from 'react'
 
@@ -39,17 +36,12 @@ export function nombreDePages(total: number, parPage = NOMS_PAR_PAGE): number {
   return Math.max(1, Math.ceil(total / parPage))
 }
 
-/**
- * L'index (base 0) de la page à afficher après `secondes_ecoulees`.
+/** L'index (base 0) de la page à afficher après `secondes_ecoulees`.
  *
  * ⚠️ **`secondes_ecoulees` est le temps d'affichage de la vue, pas l'heure du monde.** Une première
- * version passait `Date.now()` nu, par analogie avec la rotation des vues de `salle/rotation.ts` —
- * l'analogie était fausse d'un cran : la rotation tourne en continu, cette vue non, elle n'est à
- * l'écran qu'une étape sur N du déroulé. Une page calée sur l'heure absolue n'avançait donc que par
- * sauts, et quand la période du déroulé et la cadence de page tombaient juste, **certaines pages ne
- * sortaient jamais** (vérifié : déroulé « affectations 30 s + classement 30 s », trois pages → la
- * page 2 jamais projetée de la journée). L'appelant fournit désormais le temps **cumulé
- * d'affichage** ; cf. `useSecondesDAffichage`, plus bas dans ce module.
+ * version passait `Date.now()` nu, par analogie avec `salle/rotation.ts` — fausse d'un cran : la
+ * rotation tourne en continu, cette vue n'est à l'écran qu'une étape sur N. Une page calée sur
+ * l'heure absolue n'avançait que par sauts, et **certaines pages ne sortaient jamais** (vérifié).
  */
 export function pageCourante(
   nbPages: number,
@@ -86,13 +78,11 @@ export function rateauDePage(noms: readonly string[]): { debut: string; fin: str
 
 /** Le temps pendant lequel une vue projetée a été affichée, **cumulé d'un passage à l'autre**.
  *
- * Trois contraintes, dont aucune n'est déductible du code :
- * - c'est le temps d'**affichage de la vue**, pas l'heure du monde — une page calée sur l'horloge
- *   absolue n'avance que par sauts, et certaines pages ne sortent alors **jamais** de la journée ;
- * - le cumul vit **au module**, parce que le composant est démonté à chaque bascule de vue : un
- *   état React serait perdu, or c'est précisément ce qu'on veut conserver ;
- * - il est **indexé par vue** : partagé, il faisait avancer les pages du classement pendant que
- *   l'écran montrait les affectations. */
+ * Trois contraintes, aucune déductible du code : c'est le temps d'**affichage de la vue**, pas
+ * l'heure du monde (sinon certaines pages ne sortent **jamais**) ; le cumul vit **au module**, le
+ * composant étant démonté à chaque bascule de vue ; il est **indexé par vue** — partagé, il faisait
+ * avancer les pages du classement pendant que l'écran montrait les affectations.
+ */
 const secondesAffichees = new Map<CleDePage, number>()
 
 /** Vide les cumuls. **RÉSERVÉ AUX TESTS** — sans quoi ils dépendent de leur ordre d'exécution.
@@ -106,27 +96,20 @@ export function __reinitialiserCumulsDePage_TESTS(): void {
 
 /** Les vues projetées qui paginent, **énumérées** plutôt que nommées par une chaîne libre.
  *
- * ⚠️ **Ce que le type ferme, et ce qu'il ne ferme pas** — la première rédaction promettait trop
- * (relevé par trois axes en 2ᵉ passe). Il refuse à la compilation une clé **inventée** (`'clasement'`,
- * `'palmares'`) ; il ne peut rien contre une clé **réemployée** — `'classement'` reste une valeur
- * légale, qu'un copier-coller peut poser dans une troisième vue. Fermer le réemploi demanderait une
- * clé dérivée du composant, ce qui est un autre sujet.
- *
- * L'union ne porte **que des clés de production** : y ajouter un membre `'test'` aurait rouvert, pour
- * de vrai, la chaîne libre que ce type existe pour fermer — n'importe quel composant aurait pu la
- * prendre. Les tests isolent leurs cumuls par `reinitialiserCumulsDePage()`. */
+ * ⚠️ **Ce que le type ferme, et ce qu'il ne ferme pas** : il refuse une clé **inventée**, pas une
+ * clé **réemployée** — `'classement'` reste légale, qu'un copier-coller peut poser ailleurs.
+ * L'union ne porte **que des clés de production** : un membre `'test'` aurait rouvert la chaîne
+ * libre que ce type ferme. Les tests isolent leurs cumuls par `reinitialiserCumulsDePage()`.
+ */
 export type CleDePage = 'classement' | 'affectations'
 
 /** ⚠️ **`cle` est lue au montage pour l'état initial, et suivie ensuite par l'effet seul.**
  *
- * Un appelant qui changerait de clé **sans démonter** repartirait donc du cumul de la vue
- * précédente. Aucun ne le fait aujourd'hui — les deux clés sont des littéraux, dans deux composants
- * distincts, et l'écran de salle démonte la vue à chaque bascule —, et la parade est chez
- * l'appelant : un `key={cle}` force le remontage.
- *
- * *(Une revue a suggéré de resynchroniser l'état en tête d'effet ; c'est un `setState` synchrone
- * dans un effet, que `react-hooks/set-state-in-effect` refuse — à raison : il déclenche un rendu en
- * cascade pour un cas que personne n'atteint. La note vaut mieux que le correctif.)* */
+ * Un appelant qui changerait de clé **sans démonter** repartirait du cumul de la vue précédente.
+ * Aucun ne le fait aujourd'hui, et la parade est chez l'appelant : un `key={cle}` force le
+ * remontage. *(Resynchroniser l'état en tête d'effet est un `setState` synchrone que
+ * `react-hooks/set-state-in-effect` refuse, à raison : un rendu en cascade pour un cas inatteint.)*
+ */
 export function useSecondesDAffichage(cle: CleDePage): number {
   const [ecoulees, setEcoulees] = useState(() => secondesAffichees.get(cle) ?? 0)
   useEffect(() => {

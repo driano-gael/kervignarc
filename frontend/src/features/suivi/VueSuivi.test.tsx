@@ -1,19 +1,10 @@
 // Tests de **montage** de la vue « Suivi » (E07US006, élargie par E16US004).
 //
-// Ce fichier comble un angle mort relevé en 2ᵉ et 3ᵉ passes de revue : `VueSuivi` est le composant
-// le plus modifié de l'US **et** l'onglet d'atterrissage de l'appli publique, et il n'avait aucun
-// rendu testé. Sa logique extraite l'était (`suivi.test.ts`, `tableaux/presentation.test.ts`), son
-// assemblage non.
-//
-// ⚠️ **La démonstration est arrivée d'elle-même, et vaut d'être écrite** : pendant la 3ᵉ passe, une
-// erreur de syntaxe JSX a été introduite dans ce fichier de production — et **les 740 tests sont
-// restés verts**. Rien ne montait `VueSuivi` : `AccueilPublic.test.tsx` le mocke, et aucun autre
-// test ne l'importe. Seul `tsc` l'a vu. Un composant qui ne compile pas et dont la suite ne dit
-// rien, c'est exactement la taille de l'angle mort — la même leçon que `VueTableaux.test.tsx` avait
-// tirée en son temps, sur la feature voisine.
-//
-// On mocke les hooks de données : le sujet est l'**assemblage** (la vue se monte, distribue ce
-// qu'elle a lu, et nomme ses états), pas le contenu servi par le réseau.
+// Comble un angle mort relevé en revue : `VueSuivi` est le composant le plus modifié de l'US **et**
+// l'onglet d'atterrissage de l'appli publique, sans aucun rendu testé. ⚠️ **La démonstration est
+// arrivée d'elle-même** : une erreur de syntaxe JSX introduite ici en 3ᵉ passe a laissé **les 740
+// tests verts** — rien ne montait `VueSuivi`, seul `tsc` l'a vu. On mocke les hooks de données : le
+// sujet est l'**assemblage**, pas le contenu servi par le réseau.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

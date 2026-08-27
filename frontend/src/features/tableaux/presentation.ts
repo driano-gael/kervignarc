@@ -1,32 +1,10 @@
-// Présentation des tableaux de duels (E07US005) — logique pure, testée en node (comme les autres
-// `presentation.ts` des features). Rien ici ne dépend de React : c'est la règle de lecture d'un
-// arbre, et elle doit pouvoir échouer dans un test plutôt que sur un écran projeté.
-//
-// Deux lectures, celles de la maquette P05 :
-//
-//  - **A · « Mon chemin »** (`cheminDeArcher`) — recommandée : l'arbre réduit à la trajectoire d'un
-//    archer suivi. « L'archer est le sujet, la compétition est le contexte » (`D-09`).
-//  - **B · « Arbre complet »** (`parTour`) — nécessaire en second : l'arbre en vraies branches ne
-//    tient pas sur 360 px, en **liste par branche** si. C'est la concession mobile assumée par la
-//    maquette, pas un pis-aller.
-//
-// ⚠️ **Aucun nom de match n'est calculé ici, et c'est le correctif central de la revue.** Nommer un
-// match est du **vocabulaire métier** (règle 3), dont le domicile est le domaine
-// (`domain/tableau.py::libelle_tour`) ; le serveur le sert désormais dans `DuelPublic.libelle`. Un
-// premier jet le recalculait en TypeScript et affichait **« Demi-finales » sur un match des places
-// 5-8** — parce que `place_en_jeu` n'existe que sur les matchs *terminaux*, ce que le modèle
-// mental de ce fichier ignorait. Deux fixtures de test et deux pas de la fiche de recette
-// décrivaient le même monde imaginaire et se confirmaient mutuellement : c'est pour cela que rien
-// ne l'a arrêté. Ne pas rouvrir ce domicile (`DETTE-020` en compte déjà deux).
-//
-// Le fil rouge qui reste : **ne jamais affirmer plus que ce que le serveur sait**. Trois pièges,
-// chacun verrouillé par un test :
-//  1. un duel **tiré mais pas validé** n'a pas de vainqueur acquis — l'arbre ne rejoue que le
-//     validé, donc annoncer « gagné » promettrait une qualification que la ligne suivante dément ;
-//  2. un archer **battu n'est pas forcément éliminé** — depuis E06US006, la profondeur intégrale
-//     le fait descendre dans un tableau de placement où il tire encore ;
-//  3. un **exempt n'est pas une victoire** — il n'y avait personne en face, et aucun score à
-//     chercher.
+// Présentation des tableaux de duels (E07US005) — logique pure, testée en node. Deux lectures
+// (maquette P05) : « Mon chemin » (`cheminDeArcher`), l'arbre réduit à un archer suivi, et « Arbre
+// complet » (`parTour`), en **liste par branche** faute de tenir sur 360 px. ⚠️ **Aucun nom de
+// match n'est calculé ici** : nommer un match est du vocabulaire métier (règle 3), servi par
+// `DuelPublic.libelle` — recalculé en TS, il affichait « Demi-finales » sur un match des places 5-8
+// (`DETTE-020` compte déjà deux domiciles). Fil rouge : **ne jamais affirmer plus que ce que le
+// serveur sait** — tiré ≠ validé, battu ≠ éliminé, exempt ≠ victoire.
 
 import type { DuelPublic, DuellistePublic, TableauPublic } from './api'
 
@@ -117,21 +95,10 @@ function statutDeLEtape(duel: DuelPublic, cote: Cote, adversaire: DuellistePubli
 /** Le nom d'un tour que l'archer n'a pas encore atteint — **lu** sur les matchs réels, jamais
  * calculé (le vocabulaire n'a qu'un domicile, le domaine).
  *
- * On regarde les matchs de ce tour situés dans la même branche, et l'on rend **les noms
- * possibles** : un seul s'il n'y a qu'une suite (« Demi-finale »), les deux joints s'il y en a deux
- * (« Finale ou Petite finale », « Demi-finale ou Places 5 à 8 »). Les deux sont **vrais** — c'est
- * exactement ce que l'archer peut encore atteindre —, alors que n'en nommer qu'un serait un pari.
- *
- * ⚠️ **Un premier correctif rendait `null` dès que plusieurs noms coexistaient, en présentant ce
- * cas comme l'exception. La seconde passe de revue l'a mesuré : c'était la règle.** Sous profondeur
- * podium — le réglage par défaut —, le dernier tour porte toujours la finale **et** la petite
- * finale, donc la dernière ligne de chaque chemin n'était jamais nommée ; sous profondeur
- * intégrale, aucune ligne à venir ne l'était. L'omission était plus large que le mensonge qu'elle
- * remplaçait. Joindre les noms rend la maquette P05 (« 1/2 · — · À VENIR ») honorable **et** exacte.
- *
- * Au-delà de deux noms, on ne nomme plus : à deux tours de distance les branches se multiplient
- * (quatre au tour +2 en placement intégral), et une énumération de quatre libellés n'informe plus,
- * elle encombre. La ligne dit alors simplement « à venir ».
+ * On rend **les noms possibles** : un seul s'il n'y a qu'une suite, les deux joints sinon. ⚠️ Un
+ * premier correctif rendait `null` dès que plusieurs noms coexistaient, en présentant ce cas comme
+ * l'exception : c'était **la règle** — sous profondeur podium la dernière ligne n'était jamais
+ * nommée. Au-delà de deux noms on ne nomme plus : quatre libellés encombrent au lieu d'informer.
  */
 const MAX_NOMS_JOINTS = 2
 
@@ -153,16 +120,11 @@ function libelleDuTourAVenir(
 
 /** Le chemin d'un archer dans un tableau : ses matchs, puis les tours qu'il peut encore atteindre.
  *
- * Les matchs viennent du serveur, qui les tient à jour tout seul — un vainqueur validé occupe
- * **déjà** son match du tour suivant, et un perdant que la cascade repêche occupe **déjà** le sien
- * dans le tableau de placement. Il n'y a donc rien à deviner : parcourir les matchs qui portent
- * l'archer suffit, et c'est ce qui rend le piège n°2 impossible.
- *
- * Les étapes `a_venir` ne sont ajoutées que si la dernière étape connue **laisse une suite
- * acquise** — c'est-à-dire `gagne`, `exempt`, ou un match encore à disputer. Un `perdu` ferme le
- * parcours ; un **`en_attente` aussi**, et c'est un correctif de revue : tant que le scoreur n'a
- * pas scellé, rien n'est acquis, et un archer battu 6-0 lisait « Demi-finales · À venir » puis
- * « Finale · À venir » juste sous son score. Ne rien promettre est la seule réponse honnête.
+ * Les matchs viennent du serveur, qui les tient à jour — un vainqueur validé occupe **déjà** son
+ * match suivant : il n'y a rien à deviner. ⚠️ Les étapes `a_venir` ne sont ajoutées que si la
+ * dernière étape connue laisse une suite **acquise** (`gagne`, `exempt`, ou match à disputer) ; un
+ * `perdu` ferme le parcours, et un **`en_attente` aussi** — tant que le scoreur n'a pas scellé, un
+ * archer battu 6-0 lisait « Demi-finales · À venir » juste sous son score.
  */
 export function cheminDeArcher(tableau: TableauPublic, archerId: number): EtapeChemin[] {
   const siens = tableau.duels
@@ -217,17 +179,13 @@ const ETAPES_JOUEES: ReadonlySet<StatutEtape> = new Set<StatutEtape>([
   'exempt',
 ])
 
-/** Le récapitulatif de la journée d'un archer, **toutes phases confondues** (E16US004).
+/** Le récapitulatif de la journée d'un archer, **toutes phases confondues** (E16US004, P02).
  *
- * Le questionnaire P02 le demande en ces termes : *« on doit pouvoir retrouver tous les tours de
- * toutes les phases joués »*. `cheminDeArcher` ne connaît qu'**un** tableau ; ici on parcourt tous
- * ceux du créneau, dans l'ordre des phases, et l'on ne garde que celles où l'archer a réellement
- * tiré.
- *
- * ⚠️ **Lecture rétrospective** : les étapes `a_venir` que `cheminDeArcher` ajoute pour la vue « Mon
- * chemin » sont écartées. Ce qui reste à jouer est déjà porté par le bloc « Ensuite » de la carte de
- * suivi (E07US008) — deux réponses à la même question finissent toujours par diverger, et celle
- * d'ici serait la moins bien informée (elle ignore le repêchage).
+ * `cheminDeArcher` ne connaît qu'**un** tableau ; ici on parcourt tous ceux du créneau, dans
+ * l'ordre des phases, en ne gardant que celles où l'archer a tiré. ⚠️ **Lecture rétrospective** :
+ * les étapes `a_venir` sont écartées — ce qui reste à jouer est déjà porté par le bloc « Ensuite »
+ * (E07US008), et deux réponses à la même question divergent, celle d'ici étant la moins bien
+ * informée.
  */
 export function parcoursToutesPhases(tableaux: TableauPublic[], archerId: number): ParcoursPhase[] {
   return [...tableaux]
@@ -243,18 +201,11 @@ export function parcoursToutesPhases(tableaux: TableauPublic[], archerId: number
 
 /** L'arbre complet, groupé **par branche** — variante B de la maquette.
  *
- * ⚠️ **Par libellé, pas par numéro de tour** (correctif de revue). La fonction jumelle de la saisie
- * (`features/saisie-duels/duel.ts`) porte déjà l'avertissement : grouper par tour brut range la
- * petite finale sous l'en-tête « Finale », puisqu'elles se disputent au même tour. Sous profondeur
- * intégrale c'est pire — le bloc « Demi-finales » contenait aussi les matchs des places 5-8, et le
- * bloc « Finale » en contenait quatre. Le libellé du serveur distingue déjà ces branches : il
- * suffit de s'en servir comme clé.
- *
- * Deux filtres, chacun pour une raison distincte :
- *  - les **exempts** : un bye occupe une place de l'arbre mais ne se tire pas, le lister ferait
- *    chercher une rencontre qui n'aura pas lieu ;
- *  - les matchs **sans aucun occupant** : à 9 h, tous les tours au-delà du premier en sont pleins,
- *    et l'écran projeté affichait des suites de lignes « — vs — » (relevé en revue).
+ * ⚠️ **Par libellé, pas par numéro de tour** : grouper par tour brut range la petite finale sous «
+ * Finale », et sous profondeur intégrale le bloc « Demi-finales » contenait aussi les places 5-8.
+ * Le libellé du serveur distingue déjà ces branches. Deux filtres : les **exempts** (une place de
+ * l'arbre qui ne se tire pas) et les matchs **sans aucun occupant** (à 9 h, l'écran projeté
+ * affichait des suites de « — vs — »).
  */
 export function parTour(tableau: TableauPublic): GroupeDeBranche[] {
   const groupes = new Map<string, GroupeDeBranche>()

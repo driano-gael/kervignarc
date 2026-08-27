@@ -1,15 +1,10 @@
 // Aperçu des **couloirs de tir** sur le plan de salle (E16US001).
 //
-// C'est la seule capacité nouvelle de l'US : le CA veut que l'écran « rende visible » ce qu'il
-// règle, au lieu de le laisser deviner. Deux choses s'y jouent, et aucune n'est évidente à la
-// lecture du code :
-//
-// 1. l'aperçu suit la **saisie**, pas l'état enregistré — réduire une cible doit éteindre les
-//    lettres tout de suite, sinon l'écran affiche un plan qui n'est plus celui qu'on compose ;
-// 2. l'aperçu ne doit **rien enregistrer** au passage : c'est un rendu, pas une mutation.
-//
-// On double les appels HTTP seulement ; les hooks et le `QueryClient` sont ceux de production
-// (même parti que `phases/Profondeur.test.tsx`), sans quoi le test ne dirait rien du vrai écran.
+// Seule capacité nouvelle de l'US : le CA veut que l'écran « rende visible » ce qu'il règle. Deux
+// choses s'y jouent, aucune évidente à la lecture — l'aperçu suit la **saisie**, pas l'état
+// enregistré (réduire une cible doit éteindre les lettres tout de suite, sinon l'écran montre un
+// plan qui n'est plus celui qu'on compose) ; et il ne doit **rien enregistrer** au passage. On
+// double les appels HTTP seulement ; hooks et `QueryClient` sont ceux de production.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

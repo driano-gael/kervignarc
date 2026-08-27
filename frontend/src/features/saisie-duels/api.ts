@@ -212,13 +212,11 @@ function corpsRencontre<C extends { match_numero: number }>(corps: C): Record<st
 
 /** Poste un acte de tir sur la route de sa famille, en traduisant le corps s'il va aux poules.
  *
- * ⚠️ **Générique, et c'est ce qui supprime deux casts.** Le paramètre était le contrat minimal
- * `{ match_numero: number }`, ce qui déclenchait le contrôle de propriétés excédentaires sur un
- * littéral **frais** (« ce corps, plus `manche` ») — d'où deux `as unknown as`, dont un double cast
- * que la règle de typage vise nommément, sur une **traduction de noms de champs** qu'aucun test ne
- * couvrait. Un renommage fautif ne se serait vu qu'en salle, en 422, pendant que mypy, eslint, tsc
- * et la suite restaient verts (relevé en revue). Inférer `C` de l'argument lève la contrainte sans
- * rien affaiblir : `match_numero` reste exigé.
+ * ⚠️ **Générique, et c'est ce qui supprime deux casts.** Le paramètre était le contrat minimal du
+ * numéro de match, d'où le contrôle de propriétés excédentaires sur un littéral frais, d'où deux
+ * `as unknown as` — dont un double cast que la règle 4 vise nommément — sur une **traduction de
+ * noms de champs** qu'aucun test ne couvrait : un renommage fautif ne se serait vu qu'en salle, en
+ * 422, tout étant vert. Inférer `C` de l'argument lève la contrainte sans rien affaiblir.
  */
 async function ecrire<C extends { match_numero: number }>(
   famille: FamilleDuel,

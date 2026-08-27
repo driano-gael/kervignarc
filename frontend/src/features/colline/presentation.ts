@@ -48,17 +48,12 @@ export function decrireDefi(positionHaute: number, positionBasse: number): strin
   return `le ${positionBasse} défie le ${positionHaute}`
 }
 
-/**
- * Ce que l'écran a à dire **sous** la liste des manches — le CA de l'attente nommée.
+/** Ce que l'écran a à dire **sous** la liste des manches — le CA de l'attente nommée.
  *
- * Trois états, calqués sur `motDeLaFin` du suisse et pour les mêmes raisons :
- * - `attente` — la manche en cours n'est pas close et il en reste à jouer : on dit **pourquoi** la
- *   suivante n'est pas là. Ici la raison est plus forte qu'au suisse et mérite d'être dite : les
- *   défis de la manche suivante se calculent sur les **positions** issues de celle-ci, donc tant
- *   qu'un défi n'est pas tranché, il n'y a rien à apparier ;
- * - `fini` — toutes les manches dues sont jouées et closes : la colline est définitive ;
- * - `null` — la dernière manche due est **en cours** : il n'y a pas de manche suivante à promettre,
- *   et rien n'est terminé non plus. Se taire est alors la seule réponse juste.
+ * Trois états, calqués sur `motDeLaFin` du suisse : `attente` dit **pourquoi** la manche suivante
+ * n'est pas là — et la raison est ici plus forte, les défis suivants se calculant sur les
+ * **positions** issues de la manche en cours ; `fini` dit que la colline est définitive ; `null`
+ * quand la dernière manche due est **en cours** — rien à promettre, se taire est la seule réponse.
  */
 export type MotDeLaFin =
   { etat: 'attente'; courante: number; suivante: number } | { etat: 'fini' } | null
@@ -81,16 +76,12 @@ export function motDeLaFin(manches: readonly MancheLisible[], manchesDues: numbe
   return manches.length >= manchesDues ? { etat: 'fini' } : null
 }
 
-/**
- * Les archers **au repos** d'une manche, nommés.
+/** Les archers **au repos** d'une manche, nommés.
  *
- * ⚠️ **Ce n'est pas le « bye » du suisse, et les confondre serait faux sur le fond.** Un bye est un
- * archer **désigné** qui gagne d'office et marque des points ; ici personne ne gagne rien — les
- * archers concernés n'ont simplement aucun défi cette manche-là, et leur position ne bouge pas.
- *
- * Ils sont nommés plutôt qu'omis parce que le scoreur les cherche : à portée 1, ce sont les **deux
- * extrémités** de la colline à chaque manche paire, quel que soit l'effectif — pas un cas limite
- * d'effectif impair. Une liste vide est la réponse normale des manches où tout le monde tire.
+ * ⚠️ **Ce n'est pas le « bye » du suisse, et les confondre serait faux sur le fond** : un bye est
+ * un archer **désigné** qui gagne d'office et marque des points ; ici personne ne gagne rien. Ils
+ * sont nommés plutôt qu'omis parce que le scoreur les cherche — à portée 1, ce sont les **deux
+ * extrémités** de la colline à chaque manche paire, quel que soit l'effectif.
  */
 export function nommerAuRepos(manche: MancheLisible): string[] {
   return manche.au_repos.map((qui) => `${qui.nom} ${qui.prenom}`)

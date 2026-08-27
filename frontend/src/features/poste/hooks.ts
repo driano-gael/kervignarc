@@ -35,15 +35,12 @@ export function useDeconnexionPoste() {
   })
 }
 
-/**
- * Le geste « cet appareil n'est plus ce lieu », **partagé** par le poste de cible et l'écran de salle.
+/** Le geste « cet appareil n'est plus ce lieu », **partagé** par la cible et l'écran de salle.
  *
  * Hoisté hors d'`EspacePoste` au retour maquettes du 04/08/2026 : S01 demande *« on doit pouvoir
- * décrocher un écran »*, or seule la cible avait son bouton — un écran de salle rattaché au mauvais
- * tournoi n'était récupérable qu'en allant chercher l'organisateur pour révoquer le jeton.
- *
- * ⚠️ **L'ordre des opérations est critique** et chaque ligne est justifiée : le déplacer sans le
- * comprendre rouvre la boucle « détacher me ramène au formulaire de rattachement ».
+ * décrocher un écran »*, or seule la cible avait son bouton. ⚠️ **L'ordre des opérations est
+ * critique** et chaque ligne est justifiée : le déplacer sans le comprendre rouvre la boucle «
+ * détacher me ramène au formulaire de rattachement ».
  */
 export function useDetacherPoste() {
   const deconnexion = useDeconnexionPoste()

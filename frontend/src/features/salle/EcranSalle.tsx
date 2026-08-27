@@ -1,21 +1,11 @@
 // Écran de salle (E07US004, ADR-0064) — la troisième surface, projetée dans le gymnase.
 //
 // Ses contraintes sont **opposées** à celles des deux autres : ≥ 1920 px, vu de loin, **aucune
-// interaction**, allumé huit heures d'affilée sans personne devant. Trois conséquences dans ce
-// fichier :
-//
-// 1. **Aucun élément cliquable.** Pas de sélecteur de catégorie, pas d'onglet, pas de bouton. Ce
-//    que l'écran montre vient de son déroulé ou de la consigne de l'admin — jamais d'un geste.
-// 2. **Rien ne peut le casser.** Une erreur réseau n'efface pas la vue précédente : l'écran garde
-//    ce qu'il affichait et signale discrètement qu'il n'est plus à jour. Un écran noir « ne se
-//    plaint pas » (CA) — la panne muette est le mode de défaillance à éviter avant tout.
-// 3. **La rotation se déduit du temps écoulé**, jamais d'un compteur incrémenté (cf. `rotation.ts`) :
-//    un onglet en arrière-plan voit ses minuteurs bridés, et huit heures de dérive font un écran
-//    bloqué sur une vue.
-//
-// Le compte à rebours d'une prise de contrôle se décompte **en local**, à partir du `reste_s` reçu.
-// C'est ce qui rend la reprise du déroulé insensible au réseau : même isolé, l'écran reprend à
-// l'heure (ADR-0064).
+// interaction**, allumé huit heures sans personne devant. D'où : aucun élément cliquable (ce que
+// l'écran montre vient de son déroulé ou de la consigne, jamais d'un geste) ; **rien ne peut le
+// casser** (une erreur réseau n'efface pas la vue précédente — un écran noir « ne se plaint pas »)
+// ; la **rotation se déduit du temps écoulé** (cf. `rotation.ts`). Le compte à rebours d'une prise
+// se décompte **en local** : même isolé, l'écran reprend à l'heure (ADR-0064).
 
 import { useEffect, useState } from 'react'
 
@@ -55,16 +45,12 @@ export function EcranSalle({
 }: {
   libelle: string | null
   tournoiId: number
-  // Décrocher cet écran (S01, retour maquettes du 04/08/2026 : *« on doit pouvoir décrocher un
-  // écran »*). Fourni par `EspacePoste`, qui possède la session — l'écran de salle ne connaît pas le
-  // jeton, et lui faire importer la feature `poste` créerait un cycle d'imports.
-  //
-  // ⚠️ **Ce n'est pas une entorse à « aucune interaction »** (CA E07US004) : la règle vise ce qui se
-  // voit depuis la salle, à dix mètres, sur un écran que personne ne touche. L'affordance reste donc
-  // **invisible au repos** et n'apparaît qu'au survol ou au focus clavier — c'est-à-dire uniquement
-  // pour quelqu'un physiquement devant la machine, exactement la personne qui a le droit de la
-  // reconfigurer. Sans elle, un écran rattaché au mauvais tournoi n'était récupérable qu'en allant
-  // chercher l'organisateur pour révoquer le jeton depuis l'admin.
+  // Décrocher cet écran (S01, retour maquettes du 04/08/2026). Fourni par `EspacePoste`, qui
+  // possède la session — l'écran de salle ne connaît pas le jeton, et lui faire importer la feature
+  // `poste` créerait un cycle d'imports. ⚠️ **Ce n'est pas une entorse à « aucune interaction »** :
+  // la règle vise ce qui se voit à dix mètres, donc l'affordance reste **invisible au repos** et
+  // n'apparaît qu'au survol ou au focus clavier — pour quelqu'un physiquement devant la machine.
+  // Sans elle, un écran rattaché au mauvais tournoi n'était récupérable que depuis l'admin.
   onDecrocher?: () => void
 }) {
   const affichage = useAffichageEcran(true)
@@ -263,19 +249,12 @@ function SuiviDeSalle({ tournoiId }: { tournoiId: number }) {
 
 /** L'annonce de pause, **permanente et hors rotation** (CA E05US034).
  *
- * Même composant que l'onglet public (`shared/ui/BandeauDePause`), pour que les deux surfaces ne
- * divergent pas — c'est la moitié du CA. L'autre moitié est le **point de montage** : dans
- * `VueEnCours`, l'annonce dépendait de la vue en rotation, donc de la configuration de l'écran.
- *
- * **Lecture choisie : `useAvancementPhases`, pas `useSuiviDeroule`.** Les deux diraient qu'une
- * phase est en pause, mais le second reconstruit tous les tableaux du créneau — l'endpoint le plus
- * coûteux du serveur, que `SuiviDeSalle` prend soin de ne monter que quand sa vue est affichée.
- * Ici la lecture est **permanente** : elle doit rester la moins chère possible. `getAvancement`
- * rend les phases du créneau avec leur statut, sur une route publique déjà consommée par cet écran
- * depuis E05US031, et sa clé de cache est partagée avec le reste de l'application.
- *
- * Comme `SuiviDeSalle` : le créneau est celui qu'on est en train de tirer (`departDeSalle`), un
- * écran de salle n'ayant personne pour en choisir un. */
+ * Même composant que l'onglet public, pour que les deux surfaces ne divergent pas ; l'autre moitié
+ * du CA est le **point de montage** — dans `VueEnCours`, l'annonce dépendait de la vue en rotation.
+ * ⚠️ **Lecture choisie : `useAvancementPhases`, pas `useSuiviDeroule`** : le second reconstruit
+ * tous les tableaux du créneau, l'endpoint le plus coûteux du serveur, alors qu'ici la lecture est
+ * **permanente**. Le créneau est celui qu'on tire, un écran de salle n'ayant personne pour choisir.
+ */
 function MentionDePause({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)
   const departId = departDeSalle(departs.data ?? [])?.id ?? null
@@ -298,16 +277,11 @@ function MentionDePause({ tournoiId }: { tournoiId: number }) {
 
 /** Le bandeau permanent : où on est, ce qu'on regarde, et si l'écran est piloté.
  *
- * Il porte le seul indicateur que le CA exige côté salle — savoir que l'écran est **sous contrôle**.
- * Sans lui, un podium figé serait indiscernable d'un écran planté, et personne dans le gymnase ne
- * saurait lequel des deux appeler l'organisateur.
- *
- * **Le compte à rebours de reprise en a été retiré** (P07, retour maquettes du 04/08/2026 : *« bruit
- * à l'écran, seulement visible côté admin »*). Le fait — « cette vue est imposée » — reste écrit,
- * parce qu'il répond à la question que se pose la salle ; l'échéance à la seconde ne répond qu'à
- * celle de l'organisateur, qui la lit sur son propre écran. `reste` n'est donc plus un paramètre du
- * bandeau — il continue de piloter l'**expiration locale** dans `EcranSalle`, ce qui est le cœur
- * d'ADR-0064 et n'a jamais dépendu de son affichage. */
+ * Il porte le seul indicateur que le CA exige côté salle — savoir que l'écran est **sous contrôle**
+ * : sans lui, un podium figé serait indiscernable d'un écran planté. **Le compte à rebours en a été
+ * retiré** (P07 : « bruit à l'écran, seulement visible côté admin ») ; `reste` continue de piloter
+ * l'**expiration locale**, cœur d'ADR-0064, qui n'a jamais dépendu de son affichage.
+ */
 function BandeauSalle({
   libelle,
   tournoiId,

@@ -1,14 +1,10 @@
 // Mise en mots du palmarès (E06US004) — fonctions **pures**, testées à part de React.
 //
-// Trois règles, et elles ne sont pas cosmétiques :
-//
-// 1. **Aucun rang inventé.** Une fourchette s'affiche « 5ᵉ-8ᵉ » telle quelle. Choisir un chiffre
-//    ferait dire à l'écran ce que la compétition n'a pas décidé — c'est le parti d'ADR-0065, repris
-//    ici (E07US008 le tenait déjà pour le routage).
-// 2. **L'origine se dit.** « 9ᵉ » est ambigu : le préciser (« qualification ») évite de laisser
-//    croire à une élimination en duel à quelqu'un qui n'a jamais tiré de duel.
-// 3. **Ce qui n'est pas décidé se nomme.** Un podium vide dit « en cours », pas rien — un blanc
-//    passerait pour une panne d'affichage sur un écran projeté.
+// Trois règles, non cosmétiques. **Aucun rang inventé** : une fourchette s'affiche « 5ᵉ-8ᵉ » telle
+// quelle, choisir un chiffre ferait dire à l'écran ce que la compétition n'a pas décidé (ADR-0065).
+// **L'origine se dit** : « 9ᵉ » est ambigu, le préciser (« qualification ») évite de laisser croire
+// à une élimination en duel. **Ce qui n'est pas décidé se nomme** : un podium vide dit « en cours
+// », un blanc passerait pour une panne d'affichage sur un écran projeté.
 
 import type { LignePalmares, PodiumCategorie } from './api'
 

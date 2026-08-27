@@ -1,15 +1,11 @@
 // Assembler un tournoi depuis le patrimoine du club (E01US023, ADR-0060) — écran de **pilotage**.
 //
-// Le pendant exact de « Plan de salle » face à « Gabarits » : la bibliothèque vit dans l'atelier,
-// la **copie** d'une édition se travaille ici, là où l'on a un tournoi sous la main.
-//
-// Deux gestes, qui sont les deux sens de circulation arbitrés avec le commanditaire :
-//
-// - **assembler** — le tournoi reçoit une copie des briques du club. Modifier la copie ne remonte
-//   pas ; modifier la bibliothèque ne redescend pas. C'est ce qui garantit qu'un tarif changé en
-//   2027 ne réécrit pas le tournoi 2026 archivé (ADR-0060 §2) ;
-// - **rendre permanent** — « si les modifications sont permanentes, on doit pouvoir le dire » : la
-//   copie ajustée remonte dans la bibliothèque, **sans** rétroagir sur les éditions déjà assemblées.
+// Pendant exact de « Plan de salle » face à « Gabarits » : la bibliothèque vit dans l'atelier, la
+// **copie** d'une édition se travaille ici. Deux gestes, les deux sens de circulation arbitrés avec
+// le commanditaire — **assembler** : le tournoi reçoit une copie des briques, et modifier l'une ne
+// touche pas l'autre, ce qui garantit qu'un tarif changé en 2027 ne réécrit pas le tournoi 2026
+// archivé (ADR-0060 §2) ; **rendre permanent** : la copie ajustée remonte dans la bibliothèque,
+// **sans** rétroagir sur les éditions déjà assemblées.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

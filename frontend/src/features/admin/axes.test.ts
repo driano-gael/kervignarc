@@ -17,16 +17,11 @@ import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 describe('répartition des destinations', () => {
   it('CA — les 33 destinations livrées sont toutes rangées, aucune perdue', () => {
     // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
-    // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc`
-    // ni aucun autre test ne le voie. E01US023 en a ajouté deux : `formats` (atelier) et
-    // `assemblage` (pilotage) ; E01US024 une troisième, `deroule` (atelier) ; E07US004 deux de plus,
-    // `ecrans` et `suivi-deroule` (pilotage) ; E06US004 une de plus, `palmares` (pilotage) ;
-    // E16US012 une de plus, `pret-demarrer` (pilotage, 1ᵉʳ membre neuf de la famille « prêt à… ») ;
-    // E16US006 une de plus, `identite` (pilotage — elle règle **cette** édition, comme `bareme`).
-    //
-    // ⚠️ Ce garde-fou est tombé à l'ajout d'E16US012, et c'est **exactement** ce qu'on lui demande :
-    // il n'y a aucun moyen de l'oublier, puisqu'une destination ajoutée sans son entrée d'aide (ou
-    // sans son axe) le fait échouer avant d'atteindre la sidebar.
+    // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc` ni
+    // aucun autre test ne le voie. ⚠️ Ce garde-fou est tombé à l'ajout d'E16US012, et c'est
+    // **exactement** ce qu'on lui demande : il n'y a aucun moyen de l'oublier, puisqu'une
+    // destination ajoutée sans son entrée d'aide (ou sans son axe) le fait échouer avant
+    // d'atteindre la sidebar.
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
     expect(toutes).toHaveLength(33)
@@ -68,17 +63,13 @@ describe('destinationParDefaut', () => {
   })
 
   it('CA E01US023 — AUCUNE destination de l’atelier n’exige un tournoi (DETTE-023 résorbée)', () => {
-    // Le garde-fou a changé de nature, et c'est le fait notable. Il disait « n'ouvre pas sur une
-    // brique bloquée » — un contournement, tant que quatre des destinations de l'axe
-    // réclamaient un tournoi que l'axe ne propose pas de choisir. Depuis que les briques sont le
-    // patrimoine du club (ADR-0060), il n'y a plus de brique bloquée : on vérifie l'invariant
-    // **fort**, celui que l'axe promet.
-    //
-    // ⚠️ Sa première version ne le vérifiait pas : elle n'assertait que des appartenances d'axe,
-    // parce que `besoinTournoi` vivait dans `CoquilleAdmin.tsx`, hors de portée du test. Elle est
-    // passée au vert **alors que `simulation` exigeait encore un tournoi** — un test qui affirme un
-    // invariant sans pouvoir le lire est pire que pas de test. La table est désormais dans
-    // `axes.ts` ; l'assertion ci-dessous est la vraie.
+    // Le garde-fou a changé de nature, et c'est le fait notable : il disait « n'ouvre pas sur une
+    // brique bloquée » — un contournement, tant que quatre destinations réclamaient un tournoi que
+    // l'axe ne propose pas de choisir. Depuis ADR-0060 il n'y a plus de brique bloquée, donc on
+    // vérifie l'invariant **fort**. ⚠️ Sa première version n'assertait que des appartenances d'axe,
+    // `besoinTournoi` vivant hors de portée du test : elle passait au vert **alors que `simulation`
+    // exigeait encore un tournoi** — un test qui affirme sans pouvoir lire est pire que pas de
+    // test.
     const destinationsAtelier = Object.entries(AXE_PAR_DESTINATION)
       .filter(([, axe]) => axe === 'atelier')
       .map(([destination]) => destination as keyof typeof BESOIN_TOURNOI)

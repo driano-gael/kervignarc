@@ -1,23 +1,11 @@
 // Tests de **montage** de l'onglet « En cours » (E05US031, ADR-0089).
 //
-// Ce fichier monte réellement le composant, et c'est délibéré : `VueTableaux.test.tsx` porte le
-// récit du défaut qui l'a rendu obligatoire — une boucle de rendu infinie qu'aucune porte mécanique
-// (ni `tsc`, ni `eslint`, ni les tests de logique pure) ne pouvait voir. Une feature front sans un
-// seul rendu testé a un angle mort de cette taille, et celle-ci est un **aiguilleur** : son défaut
-// naturel est précisément d'appeler le mauvais composant, ce que seul un montage attrape.
-//
-// Les vues de format sont des témoins : ce qu'on garde ici est le **choix** et la **descente des
-// props**, pas le rendu de chaque format — chacun a ses propres tests
-// (`VuePoulesPublique.test.tsx`, `VueSuissePublique.test.tsx`,
-// `VueBigShootOffPublique.test.tsx`).
-//
-// ⚠️ **Cette dernière phrase était FAUSSE à la première passe de revue, et c'est ce qui a rendu le
-// trou acceptable.** Les trois vues n'avaient aucun test ; le fichier affirmait le contraire dans le
-// paragraphe même qui raconte pourquoi un rendu non testé est un angle mort. Relevé par trois axes
-// (B, C2, adversarial). Une trace qui se lit comme une preuve coûte plus cher qu'une absence de
-// trace : c'est la mécanique exacte d'un ADR nommant un module vide (ADR-0075). Les trois fichiers
-// existent désormais, et le bloquant de l'US — un compteur d'archers « en lice » qui n'en était pas
-// un — a été trouvé par l'un d'eux.
+// Ce fichier monte réellement le composant : `VueTableaux.test.tsx` porte le récit du défaut qui
+// l'a rendu obligatoire, et cette feature est un **aiguilleur** — son défaut naturel est d'appeler
+// le mauvais composant, ce que seul un montage attrape. ⚠️ La phrase « chaque format a ses propres
+// tests » était **fausse** à la première passe, dans le paragraphe même qui explique pourquoi un
+// rendu non testé est un angle mort : une trace qui se lit comme une preuve coûte plus cher qu'une
+// absence de trace. Les trois fichiers existent désormais.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -164,18 +152,12 @@ describe('VueEnCours — l’aiguillage par format', () => {
   })
 
   it('nomme un format que cette version ne sait pas dessiner au lieu de rendre une page blanche', async () => {
-    // ⚠️ **Ce test a changé de cible en E05US027**, et le changement est instructif. Il visait la
-    // colline, seul format encore dépourvu de vue ; celle-ci étant désormais livrée, **plus aucun
-    // `TypePhase` connu du bundle** ne tombe dans le repli — le `switch` est exhaustif et le
-    // compilateur l'impose (`const inconnu: never`).
-    //
-    // Le cas que le rendu couvre reste pourtant réel, et c'est le seul que le compilateur ne peut
-    // pas voir : un **serveur plus récent** que ce bundle, l'appli publique restant ouverte des
-    // heures sur un téléphone. On le simule donc par un type que TypeScript ne connaît pas — le
-    // `as` est ici la **seule** façon d'exercer la branche, et non un contournement de typage.
-    //
-    // Un écran de salle n'a personne devant lui pour comprendre ce qui manque : le silence y est
-    // indétectable, et c'est pourquoi cette branche existe.
+    // ⚠️ **Ce test a changé de cible en E05US027** : il visait la colline, seul format sans vue ;
+    // celle-ci livrée, **plus aucun `TypePhase` connu du bundle** ne tombe dans le repli — le
+    // `switch` est exhaustif et le compilateur l'impose. Le cas couvert reste pourtant réel, et
+    // c'est le seul que le compilateur ne peut pas voir : un **serveur plus récent** que ce bundle.
+    // Le `as` est ici la **seule** façon d'exercer la branche, pas un contournement de typage — et
+    // un écran de salle n'a personne devant lui pour comprendre ce qui manque.
     vi.mocked(getAvancement).mockResolvedValue([
       phase({
         id: 14,

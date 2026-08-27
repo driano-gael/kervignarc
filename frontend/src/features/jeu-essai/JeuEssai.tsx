@@ -1,13 +1,10 @@
 // Écran « Jeu d'essai » (E15US001) — outil admin de démo/QA.
 //
-// Deux briques, sur un même écran de la coquille admin :
-//  1. **Peupler le tournoi courant** de N archers de test (données réelles) — n'a de sens que si un
-//     tournoi est sélectionné (sinon une invite le rappelle) ;
-//  2. **Scénarios rejouables** : un catalogue qui instancie d'un coup un tournoi complet, prêt à
-//     lancer. À la création, on bascule sur ce nouveau tournoi (callback vers la coquille).
-//
-// C'est de la **donnée réelle persistée** — à distinguer de la simulation éphémère (E15US002, à
-// venir). La graine (déterminisme, règle 9) est réglable pour rejouer exactement le même jeu.
+// Deux briques : **peupler le tournoi courant** de N archers de test (n'a de sens qu'avec un
+// tournoi sélectionné) et des **scénarios rejouables** qui instancient d'un coup un tournoi
+// complet, sur lequel on bascule à la création. C'est de la **donnée réelle persistée**, à
+// distinguer de la simulation éphémère (E15US002). La graine est réglable pour rejouer exactement
+// le même jeu (déterminisme, règle 9).
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

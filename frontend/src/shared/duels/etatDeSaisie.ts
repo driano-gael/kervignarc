@@ -1,14 +1,11 @@
 // Ce qu'une rencontre dit à **qui la saisit** — logique pure, aucun React.
 //
-// ⚠️ **Jumeau de `etatRencontre` (`shared/duels/rencontre.ts`), et volontairement SÉPARÉ de lui** :
-// celui-là lit un DTO **public** (trois états), celui-ci lit le `duel` de saisie (`validee_par`,
-// `validation_en_attente`, `manches` — six états). Les fondre ferait circuler le contenu du tir
-// vers les surfaces ouvertes, ce que la règle 6 interdit et ce que la scission des DTO empêche.
-//
-// ⚠️ **Aucun import depuis une feature.** `Duel` vit dans `features/saisie-duels/api`, et un module
-// de `shared/` qui importerait d'une feature rouvrirait l'inversion de dépendance que
-// `shared/salle/place.ts` documente comme la seule du front. Le contrat ci-dessous est donc
-// **structurel** : un `Duel` de feature le satisfait sans conversion ni cast.
+// ⚠️ **Jumeau de `etatRencontre` (`shared/duels/rencontre.ts`), et volontairement SÉPARÉ** :
+// celui-là lit un DTO **public** (trois états), celui-ci le `duel` de saisie (six états). Les
+// fondre ferait circuler le contenu du tir vers les surfaces ouvertes (règle 6). ⚠️ **Aucun import
+// depuis une feature** : un module de `shared/` qui importerait d'une feature rouvrirait
+// l'inversion que `shared/salle/place.ts` documente. Le contrat est donc **structurel** — un `Duel`
+// de feature le satisfait sans conversion ni cast.
 
 /** Ce qu'une rencontre en cours de saisie porte de son tir, réduit à ce que l'état lit. */
 export interface DuelEnSaisie {
@@ -32,17 +29,10 @@ export interface RencontreEnSaisie {
 /**
  * L'état d'une rencontre en un mot — le vocabulaire commun aux poules, au suisse et à la colline.
  *
- * L'ordre des tests **est** la règle, et chaque cran compte :
- *
- * 1. `desynchronisee` d'abord : une rencontre bloquée annoncée « à tirer » ferait attendre des
- *    archers devant une cible où le serveur refuse toute écriture ;
- * 2. `validee_par` — le sceau, définitif ;
- * 3. `validation_en_attente` — le geste est posé, c'est le **réseau** qu'on attend, pas une
- *    personne. Le confondre avec « à valider » enverrait réclamer un geste déjà fait ;
- * 4. `resultat.termine` — le tir est allé au bout, il reste à sceller ;
- * 5. `manches.length` — commencé, pas fini. ⚠️ **`resultat.termine` et non `manches.length > 0`
- *    pour « à valider »** : une rencontre à demi tirée est encore à saisir, et inverser les deux
- *    ferait proposer une validation que `Duel.valider` refuse (`DuelIncomplet`).
+ * ⚠️ **L'ordre des tests EST la règle** : `desynchronisee` d'abord (une rencontre bloquée annoncée
+ * « à tirer » ferait attendre des archers), `validee_par`, `validation_en_attente` (le geste est
+ * posé, c'est le **réseau** qu'on attend), `resultat.termine`, puis `manches.length`. ⚠️ Et non
+ * `manches.length > 0` pour « à valider » : une rencontre à demi tirée est encore à saisir.
  */
 export function etatRencontreDeSaisie(rencontre: RencontreEnSaisie): string {
   if (rencontre.desynchronisee) return 'tir mis de côté — population à rétablir'

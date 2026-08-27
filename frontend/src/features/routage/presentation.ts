@@ -1,17 +1,10 @@
-// Présentation du panneau de routage (E04US018) — logique pure, testée en node (comme les autres
-// `presentation.ts` des features).
+// Présentation du panneau de routage (E04US018) — logique pure, testée en node.
 //
-// Le serveur dit **ce qui est** (issue, cible, rang, motif) ; ici on en fait la phrase que lit un
-// archer entre deux volées, debout, avec son arc à la main. Trois règles tenues par ces fonctions :
-//
-// 1. **La destination d'abord.** « Cible 4 · couloir B » est l'information qu'il est venu chercher ;
-//    le reste (tour, adversaire) est du contexte.
-// 2. **Ce qui manque est dit, jamais laissé en blanc** (arbitrage de cadrage du 30/07/2026) : un
-//    champ vide se lit comme une panne, une phrase se lit comme une attente. Les motifs viennent du
-//    serveur — les quatre canaux de routage (`D-09`) doivent dire la même chose.
-// 3. **Aucun rang inventé.** Un rang unique hors podium n'existe pas dans un tableau tronqué — on
-//    affiche donc la **fourchette** acquise (« 5ᵉ-8ᵉ », E07US008), jamais un chiffre choisi au
-//    hasard dedans. Le classement officiel, agrégé entre phases, reste E06US004.
+// Le serveur dit **ce qui est** ; ici on en fait la phrase que lit un archer entre deux volées.
+// Trois règles : la **destination d'abord** (« Cible 4 · couloir B »), le reste est du contexte ;
+// **ce qui manque est dit, jamais laissé en blanc** (arbitrage du 30/07/2026 — un champ vide se lit
+// comme une panne), les motifs venant du serveur pour que les quatre canaux (`D-09`) disent la même
+// chose ; **aucun rang inventé** — on affiche la **fourchette** acquise (« 5ᵉ-8ᵉ », E07US008).
 
 import { nommerType } from '../../shared/phases/catalogue'
 import type { IssueRoutage, ProchainDuel, RoutageArcher } from './api'
@@ -63,29 +56,21 @@ export function repechage(
 
 // Les trois groupes d'un panneau d'affectations — **logique pure, donc testable**.
 //
-// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose une cible qu'au
-// **tour 1** (garde tour-1, `DETTE-019`) : partitionner sur `prochain?.cible` rangeait, dès le
-// tour 2, tous les archers encore en lice — demi-finalistes compris — parmi les **sortis**. C'était
-// le bloquant de la revue, et cette fonction existe pour qu'il ne puisse pas revenir en silence :
-// laissée dans le composant, la correction n'avait aucun filet (remarque de la 2ᵉ passe).
-//
-// Trois groupes parce qu'il y a trois situations, et non deux : posé sur une butte, en lice sans
-// butte encore attribuée, sorti du tableau.
+// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose une cible qu'au **tour
+// 1** (`DETTE-019`) : partitionner sur `prochain?.cible` rangeait dès le tour 2 tous les archers
+// encore en lice — demi-finalistes compris — parmi les **sortis**. Laissée dans le composant, la
+// correction n'avait aucun filet. Trois groupes car il y a trois situations : posé sur une butte,
+// en lice sans butte attribuée, sorti du tableau.
 export function partitionner(archers: RoutageArcher[]): {
   poses: RoutageArcher[]
   attente: RoutageArcher[]
   sortis: RoutageArcher[]
 } {
-  // ⚠️ `prochaine_manche` compte ici (E05US028, correctif de revue) : sur une phase de Big Shoot
-  // Off, les finalistes **sont** le pas de tir. Ne tester que `prochain_duel` les rangeait sous
-  // « Sortis du tableau » sur l'écran projeté du gymnase, pendant toute la finale — le jumeau exact
-  // du bloquant déjà corrigé ici pour les demi-finalistes sans cible. Faute de plan de cibles pour
-  // cette phase (`DETTE-059`), ils tombent en **attente**, avec le manque nommé.
-  // ⚠️ `en_attente` compte ici aussi (E05US030) : sur une phase à rondes, l'archer qui porte le bye
-  // — ou dont la rencontre vient d'être validée — n'a **aucune** cible à cet instant, et il en aura
-  // une à la ronde suivante. Le laisser hors de ce test le rangeait sous « Sortis », sur l'écran
-  // projeté, alors qu'il lui reste des rondes à tirer : jumeau exact du bloquant du Big Shoot Off
-  // ci-dessus. Faute de rendez-vous connu, il tombe en **attente**, avec le motif du serveur.
+  // ⚠️ `prochaine_manche` compte ici (E05US028) : sur un Big Shoot Off les finalistes **sont** le
+  // pas de tir, et ne tester que `prochain_duel` les rangeait sous « Sortis » sur l'écran projeté
+  // pendant toute la finale. ⚠️ `en_attente` aussi (E05US030) : l'archer qui porte le bye d'une
+  // ronde n'a aucune cible à cet instant et en aura une à la suivante. Faute de rendez-vous connu
+  // (`DETTE-059` pour le BSO), ils tombent en **attente**, avec le motif du serveur.
   const enLice = (l: RoutageArcher) =>
     l.issue === 'prochain_duel' || l.issue === 'prochaine_manche' || l.issue === 'en_attente'
   const cible = (l: RoutageArcher) =>
@@ -102,19 +87,11 @@ export function partitionner(archers: RoutageArcher[]): {
 
 // Le pas de tir en mode « mes archers » (E16US004) — **logique pure, donc testable**.
 //
-// ⚠️ **La butte reste entière, adversaire compris.** C'est la règle que `shared/suivis/focus.ts`
-// pose pour le plan de cibles — « on garde la cible entière, voisins compris » — et elle compte
-// davantage ici : sur un tableau de duels, le voisin de butte **est** l'adversaire. Filtré ligne à
-// ligne, « Cible 7 · B · MARTIN Luc » ne disait plus contre qui Luc tire, et laissait croire à une
-// butte à un seul tireur. Le bloc ne rend pas le champ `adversaire` : c'est le **voisinage** qui
-// porte l'appariement à l'écran.
-//
-// Extraite du composant en 2ᵉ passe de revue, pour la raison exacte que `partitionner` ci-dessus :
-// laissée dans le JSX, la correction n'avait aucun filet.
-//
-// Ne concerne **que** la lecture « par cible ». Les sections annexes (attente, sortis) restent
-// centrées sur les seuls archers suivis : ce sont des listes de personnes, pas une disposition de
-// salle, et personne n'y cherche un vis-à-vis.
+// ⚠️ **La butte reste entière, adversaire compris** — règle posée par `shared/suivis/focus.ts`, et
+// qui compte davantage ici : sur un tableau de duels, le voisin de butte **est** l'adversaire.
+// Filtré ligne à ligne, « Cible 7 · B · MARTIN Luc » ne disait plus contre qui Luc tire. Le bloc ne
+// rend pas le champ `adversaire` : c'est le **voisinage** qui porte l'appariement. Ne concerne que
+// la lecture « par cible » — les sections annexes restent centrées sur les seuls archers suivis.
 export function posesParCible(
   posesCentrees: RoutageArcher[],
   tousLesArchers: RoutageArcher[],
@@ -171,15 +148,12 @@ export function alerte(archer: RoutageArcher): string | null {
   return archer.issue === 'prochain_duel' ? (archer.prochain?.alerte ?? null) : null
 }
 
-// L'archer a-t-il encore quelque chose à jouer ? Un repêché **oui**, même sans duel affiché : il est
-// sorti de ce tableau, pas de la compétition. Sert aux surfaces qui distinguent « en lice » de
-// « fini » (couleur, tri) — la distinction est métier, pas décorative, d'où sa place ici.
-// ⚠️ **Le garde-fou d'exhaustivité de ce module** (correctif de revue E05US028). Un `Record` indexé
-// par `IssueRoutage` fait **échouer la compilation** quand le serveur publie une issue de plus et
-// qu'on oublie de la traiter ici. Sans lui, `tsc` était aveugle par construction : les issues
-// arrivent par `fetchJson<Routage>`, donc castées, et une chaîne de `===` se contente d'un repli
-// silencieux. C'est exactement ce qui s'est produit pour `prochaine_manche`, livrée côté serveur et
-// jamais lue côté front — les finalistes étaient rangés avec les sortis.
+// L'archer a-t-il encore quelque chose à jouer ? Un repêché **oui**, même sans duel affiché : il
+// est sorti de ce tableau, pas de la compétition. ⚠️ **Le `Record` indexé par `IssueRoutage` est le
+// garde-fou d'exhaustivité de ce module** (E05US028) : il fait **échouer la compilation** quand le
+// serveur publie une issue de plus. Sans lui `tsc` est aveugle — les issues arrivent castées par
+// `fetchJson`, et une chaîne de `===` se contente d'un repli silencieux. C'est ce qui s'est produit
+// pour `prochaine_manche` : livrée côté serveur, jamais lue côté front.
 const EN_LICE: Record<IssueRoutage, boolean> = {
   prochain_duel: true,
   // Un finaliste de Big Shoot Off a une manche devant lui : le ranger avec les sortis le ferait
@@ -231,29 +205,14 @@ export function detail(archer: RoutageArcher): string | null {
   return archer.motif
 }
 
-// Le panneau bascule tout seul quand **tous** les archers de la cible ont fini de tirer (CA : « dès
-// la validation »). Une série est finie quand elle est complète **et** verrouillée par le scoreur :
-// un tir non validé ne compte pas — c'est le scoreur qui clôt, pas le marqueur.
-//
-// `forfait` clôt aussi, et c'est indispensable : un archer qui abandonne ou est disqualifié
-// (E04US015) **reste dans la grille** avec une série incomplète pour toujours. Sans cette clause,
-// `cibleClose` ne serait jamais vrai et les trois autres archers de la cible perdraient le panneau.
-// C'est le serveur qui porte le signal (`LigneGrille.forfait`) — même notion que la complétude
-// (« barème validé **ou** forfait », DETTE-014) : le front n'a pas à la re-dériver.
-// Le panneau bascule tout seul quand **tous** les archers de la cible ont fini de tirer (CA : « dès
-// la validation »). Une série est finie quand elle est complète **et** verrouillée par le scoreur :
-// un tir non validé ne compte pas — c'est le scoreur qui clôt, pas le marqueur.
-//
-// `forfait` clôt aussi, et c'est indispensable : un archer qui abandonne ou est disqualifié
-// (E04US015) **reste dans la grille** avec une série incomplète pour toujours. Sans cette clause,
-// `cibleClose` ne serait jamais vrai et les trois autres archers de la cible perdraient le panneau.
-// C'est le serveur qui porte le signal (`LigneGrille.forfait`) — même notion que la complétude
-// (« barème validé **ou** forfait », DETTE-014) : le front n'a pas à la re-dériver.
-// Le panneau s'ouvre **tout seul** quand la cible a fini (CA), et se rouvre **à la main** à tout
-// moment. Trois entrées, et le piège est dans leur composition : refermer une ouverture *manuelle*
-// ne doit pas consommer l'ouverture *automatique* à venir. Sans cette distinction, jeter un œil au
-// panneau en cours de saisie éteint silencieusement la bascule de fin de cible — c'est-à-dire le CA
-// central de l'US. Logique pure et testée pour cette raison précise.
+// Le panneau bascule tout seul quand **tous** les archers de la cible ont fini (CA « dès la
+// validation ») : une série est finie quand elle est complète **et** verrouillée par le scoreur. ⚠️
+// `forfait` clôt aussi, et c'est indispensable : un archer qui abandonne **reste dans la grille**
+// avec une série incomplète pour toujours, donc sans cette clause `cibleClose` ne serait jamais
+// vrai et les trois autres archers perdraient le panneau (signal serveur, même notion que la
+// complétude — `DETTE-014`). Il se rouvre **à la main** à tout moment : refermer une ouverture
+// *manuelle* ne doit pas consommer l'ouverture *automatique* à venir, sans quoi jeter un œil au
+// panneau éteint le CA central de l'US.
 export function panneauOuvert(etat: {
   cibleClose: boolean
   ferme: boolean

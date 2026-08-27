@@ -1,27 +1,11 @@
 // La bascule « mes archers / tout » de l'appli publique (E16US004) — logique pure, testée en node.
 //
-// Le commanditaire suit **plusieurs** archers (P01, confirmé) et veut pouvoir lire tout l'onglet
-// public soit en entier, soit centré sur eux : *« il me faut les 2 »* (P03, classement) et *« une
-// bascule pour suivre tous les tableaux du tournoi ou uniquement centré sur les archers que l'on
-// choisit de suivre »* (P05, tableaux).
-//
-// **Un seul interrupteur, en tête de l'écran public** (cadrage du 08/08/2026, alternative « un par
-// vue » écartée ; ADR-0079) : le spectateur choisit une fois « je regarde mes archers » et ne le
-// redit pas à chaque onglet. D'où ce module — la règle de centrage est la même pour le classement,
-// le palmarès, les affectations, les tableaux et le plan de cibles, elle n'a donc qu'un domicile.
-//
-// ⚠️ **Il habite `shared/`, pas `features/public/`** (correctif de revue). Cinq features l'importent,
-// dont `competition` et `routage` qui servent **aussi** la coquille admin et l'écran de salle : les
-// loger dans une dépendance de compilation vers la feature *publique* aurait installé, au niveau du
-// module, exactement le couplage que la règle du mode-en-prop évite au niveau de l'exécution. Le
-// guide d'architecture (§8) veut d'ailleurs qu'une feature « se suffise à elle-même », et la donnée
-// manipulée ici — `ArcherSuivi` — habite déjà `shared/stores/`.
-//
-// ⚠️ **Le mode ne se lit jamais depuis le store à l'intérieur d'une vue partagée.** `VueClassement`,
-// `VueTableaux` et `VueAffectations` servent aussi la coquille admin et l'écran de salle : une
-// lecture directe du store y ferait fuir le filtre public sur des surfaces qui n'en veulent pas.
-// Le mode descend donc en **prop explicite** depuis `AccueilPublic`, comme `filtrable` et
-// `interactif` avant lui.
+// **Un seul interrupteur, en tête de l'écran public** (cadrage du 08/08/2026, ADR-0079) : la règle
+// de centrage est la même pour cinq vues, elle n'a donc qu'un domicile. ⚠️ **Il habite `shared/`,
+// pas `features/public/`** : cinq features l'importent, dont deux qui servent **aussi** la coquille
+// admin et l'écran de salle. ⚠️ **Le mode ne se lit jamais depuis le store dans une vue partagée**
+// — une lecture directe y ferait fuir le filtre public sur des surfaces qui n'en veulent pas ; il
+// descend en **prop explicite** depuis `AccueilPublic`.
 
 import type { ArcherSuivi } from '../stores/sessionSuivisStore'
 

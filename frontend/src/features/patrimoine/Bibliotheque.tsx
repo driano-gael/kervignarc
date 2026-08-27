@@ -1,19 +1,11 @@
 // La bibliothèque de briques du club (E01US023, ADR-0060) — écrans de l'axe **atelier**.
 //
-// Ces écrans ne prennent **aucun `tournoiId`** : c'est ce qui résorbe DETTE-023. Jusqu'ici, l'atelier
-// annonçait « fabriquer, hors tournoi » puis affichait « choisissez un tournoi ci-dessus » — sans
-// sélecteur au-dessus, puisque l'axe n'en a pas.
-//
-// **Deux listes séparées** (CA) : référentiel officiel FFTA d'un côté, créations du club de l'autre.
-// La marque d'origine dit **d'où vient** la brique — elle ne certifie pas la conformité au règlement
-// (RG-8, ADR-0060 §4). Le libellé de la section le dit en toutes lettres plutôt que de laisser
-// l'organisateur le supposer.
-//
-// L'édition et la suppression réutilisent les routes **à plat** posées en E01US003/E01US005
-// (`PUT /categories/{id}`, `DELETE /blasons/{id}`) : elles ne portaient déjà pas de tournoi et
-// fonctionnent telles quelles sur un modèle. En ouvrir de nouvelles aurait créé deux chemins pour
-// un même geste. Le référentiel FFTA reste **modifiable et supprimable** comme le reste — RG-8 : le
-// règlement est un template, jamais un verrou.
+// Ces écrans ne prennent **aucun `tournoiId`** : c'est ce qui résorbe DETTE-023. **Deux listes
+// séparées** (CA) : référentiel officiel FFTA d'un côté, créations du club de l'autre — la marque
+// d'origine dit **d'où vient** la brique, elle ne certifie pas la conformité au règlement (RG-8,
+// ADR-0060 §4). Le référentiel FFTA reste **modifiable et supprimable** : le règlement est un
+// template, jamais un verrou. Édition et suppression réutilisent les routes **à plat**
+// d'E01US003/E01US005.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

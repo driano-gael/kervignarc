@@ -1,13 +1,11 @@
 // Tests de l'annonce du **plancher d'inscrits** sur l'écran de composition (E05US021).
 //
-// Le CA veut le minimum annoncé « qu'un effectif soit simulé ou non ». Le piège est le **registre** :
-// annoncer un plancher n'est pas signaler un défaut. Tant que rien ne cloche, c'est une information
-// neutre ; c'est seulement quand l'effectif simulé passe dessous que ça devient un avertissement
-// ambre (`DV-03` — et jamais la couleur seule : glyphe **et** mot portent le sens).
-//
-// Se tromper de registre coûte des deux côtés : une alerte permanente sur un format sain apprend à
-// l'organisateur à ignorer les alertes ; pas d'alerte du tout le laisse simuler à 28 sans savoir
-// qu'il ne pourra pas lancer.
+// Le CA veut le minimum annoncé « qu'un effectif soit simulé ou non ». Le piège est le **registre**
+// : annoncer un plancher n'est pas signaler un défaut — c'est une information neutre tant que rien
+// ne cloche, et un avertissement ambre seulement quand l'effectif simulé passe dessous (`DV-03`,
+// jamais la couleur seule : glyphe **et** mot). Se tromper de registre coûte des deux côtés : une
+// alerte permanente apprend à les ignorer, pas d'alerte laisse simuler à 28 sans savoir qu'on ne
+// pourra pas lancer.
 
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

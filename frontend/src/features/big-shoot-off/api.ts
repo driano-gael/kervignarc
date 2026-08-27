@@ -1,14 +1,10 @@
 // Accès HTTP du **Big Shoot Off** (E05US028) — miroir des DTO de `api/v1/big_shoot_off.py`.
 //
-// ⚠️ **Les écritures vivent ici**, contrairement aux poules. Une rencontre de poule *est* un duel
-// ordinaire, donc elle s'écrit par les hooks de `features/saisie-duels` (ADR-0083 §7) ; une volée de
-// Big Shoot Off est **collective** et n'a pas d'adversaire — le pavé de duel ne s'y applique pas, et
-// il n'existe aucun hook de tir de série côté scoreur à emprunter. Ce sont donc deux mutations
-// propres à cette feature.
-//
-// Les deux écritures rendent l'**état complet** plutôt que l'objet écrit : une manche validée peut
-// éliminer, donc changer la lice de tout le monde. Rendre la volée seule obligerait la tablette à
-// relire aussitôt et laisserait une fenêtre où l'écran montre un archer sorti comme encore en lice.
+// ⚠️ **Les écritures vivent ici**, contrairement aux poules : une volée de Big Shoot Off est
+// **collective** et n'a pas d'adversaire, donc le pavé de duel ne s'y applique pas et il n'existe
+// aucun hook de tir de série à emprunter. Les deux écritures rendent l'**état complet** plutôt que
+// l'objet écrit : une manche validée peut éliminer, donc changer la lice de tout le monde — rendre
+// la volée seule laisserait une fenêtre où l'écran montre un archer sorti comme encore en lice.
 
 import { fetchJson } from '../../shared/api/client'
 

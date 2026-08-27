@@ -1,17 +1,11 @@
-// Consultation publique (E10US001 + E07US001) : sans session admin, la lecture reste ouverte à tous.
-// On choisit un tournoi dans la liste, puis on bascule entre ses **vues publiques** — le classement
-// en direct et le plan de cibles — par onglets. Aucune authentification, lecture seule, responsive
-// mobile (CA E07US001). Le live est automatique : les vues s'appuient sur React Query, invalidé par
-// la diffusion temps réel post-commit (E04US009).
+// Consultation publique (E10US001 + E07US001) : sans session admin, la lecture reste ouverte à
+// tous. Onglets entre les vues publiques d'un tournoi, aucune authentification, responsive mobile.
+// Le live est automatique (React Query invalidé par la diffusion post-commit).
 //
-// Navigation par **état local** (`useState`), pas de `react-router` : cohérent avec l'arbitrage de la
-// coquille admin (18/07/2026) — périmètre réseau local, pas de deep-link/URL partagée, la dépendance
-// ne se justifie pas (règle 11). Les CA d'E07US001 (classements/plans/live) ne réclament pas d'URL
-// partageable. « Suivre des archers » (E07US006) mémorise le choix côté client (`localStorage`), pas
-// dans l'URL : c'est un onglet de plus, sélectionné d'entrée si l'on suit déjà quelqu'un.
-//
-// Extrait de `admin/CoquilleAdmin.tsx` en E07US001 : la zone publique est une surface à part entière,
-// pas un repli enfoui dans le module d'administration.
+// Navigation par **état local**, pas de `react-router` : même arbitrage que la coquille admin
+// (18/07/2026) — réseau local, pas de deep-link, la dépendance ne se justifie pas (règle 11).
+// Extrait de `admin/CoquilleAdmin.tsx` en E07US001 : la zone publique est une surface à part
+// entière, pas un repli enfoui dans le module d'administration.
 
 import { useMemo, useState } from 'react'
 import { useSessionSuivisStore } from '../../shared/stores/sessionSuivisStore'
@@ -27,31 +21,14 @@ import { BadgeStatut } from '../competition/BadgeStatut'
 import { HabillageIdentite, LogoDuTournoi } from '../identite/HabillageIdentite'
 import { GestionTournois } from '../tournois/Tournois'
 
-// Les vues publiques d'un tournoi. Fermé (pas d'ouverture prévue ici) : l'écran de salle (E07US004)
-// n'est pas un onglet du tout, c'est un **poste**.
-//
-// « Tableaux » (E07US005) est arrivé le 04/08/2026, exactement comme cette liste l'annonçait — un
-// onglet de plus, ni réservé ni anticipé. Il se place **après** « Affectations » et avant les
-// classements : l'ordre suit la journée de l'archer (qui je suis, où je tire, contre qui, qui a
+// Les vues publiques d'un tournoi. Fermé : l'écran de salle (E07US004) n'est pas un onglet, c'est
+// un **poste**. L'ordre suit la journée de l'archer (qui je suis, où je tire, contre qui, qui a
 // gagné), pas la structure du logiciel.
 //
 // ⚠️ **« Tableaux » est devenu « En cours » en E05US031** (ADR-0089), et ce n'est pas un renommage
-// d'étiquette : l'onglet ne montre plus un arbre de duels mais **la phase qui se joue**, quel qu'en
-// soit le format — poule, ronde de système suisse, manche de Big Shoot Off, arbre. Les trois
-// premiers étaient jouables depuis des semaines sans qu'aucun n'atteigne jamais l'appli publique.
-// Un onglet par format aurait fait deviner au spectateur lequel regarder et en aurait laissé la
-// moitié vides ; « Tableaux » élargi aurait menti, `Tableau` désignant au glossaire un arbre à
-// élimination (règle 3). Sa place dans la liste ne bouge pas — l'ordre suit toujours la journée de
-// l'archer.
-//
-// « Affectations » (E07US008) sert deux publics d'un coup : l'archer qui cherche sa butte et la
-// **table de l'organisation**, qui vérifie le pas de tir — c'est la même lecture, et le CA n'en
-// demandait qu'une. On la place après le suivi (« mes archers » reste la porte d'entrée, `D-09`).
-//
-// « Palmarès » (E06US004) est le **classement final** — podiums en tête. Il vient après
-// « Classement » (celui de la qualification) et non à sa place : les deux se consultent, et à des
-// moments différents de la journée. On les distingue par le libellé plutôt que de renommer l'un des
-// deux, qui ferait chercher longtemps celui qu'on connaissait.
+// d'étiquette : l'onglet montre **la phase qui se joue**, quel qu'en soit le format. Un onglet par
+// format aurait fait deviner au spectateur lequel regarder ; « Tableaux » élargi aurait menti,
+// `Tableau` désignant au glossaire un arbre à élimination (règle 3).
 type Vue = 'suivi' | 'affectations' | 'en_cours' | 'classement' | 'palmares' | 'plan'
 
 const VUES: { id: Vue; libelle: string }[] = [
@@ -181,15 +158,11 @@ function VuesPubliques({ tournoi, onFermer }: { tournoi: Tournoi; onFermer: () =
 
 /** L'interrupteur « mes archers / tout » (E16US004) — **un seul pour tout l'onglet public**.
  *
- * Le commanditaire suit plusieurs archers et veut lire chaque écran des deux façons (P03 : *« il me
- * faut les 2 »* ; P05 : *« une bascule pour suivre tous les tableaux du tournoi ou uniquement centré
- * sur les archers que l'on choisit de suivre »*). Un interrupteur **par vue** aurait obligé à le
- * redire à chaque onglet — arbitrage du cadrage, 08/08/2026.
- *
- * Même grammaire visuelle que les onglets (pilules, `.onglet--actif` en aplat de marque) mais
- * `role="group"` et `aria-pressed` : ce ne sont pas des destinations, c'est un choix d'affichage.
- * Le compte est écrit en toutes lettres — « Mes archers (3) » dit combien on va voir avant de
- * cliquer, ce qui évite d'attribuer à une panne un écran soudain court.
+ * Le commanditaire suit plusieurs archers et veut lire chaque écran des deux façons (P03, P05) ;
+ * un interrupteur **par vue** aurait obligé à le redire à chaque onglet (arbitrage du 08/08/2026).
+ * Même grammaire visuelle que les onglets, mais `role="group"` et `aria-pressed` : ce ne sont pas
+ * des destinations, c'est un choix d'affichage. Le compte est écrit en toutes lettres, ce qui
+ * évite d'attribuer à une panne un écran soudain court.
  */
 function BasculeAffichage({
   mode,

@@ -1,18 +1,11 @@
-// Création d'un archer (E02US002) — feature extraite de `competition/TrancheVerticale.tsx` lors de
-// la coquille admin (E00US015). Ce formulaire était enfoui dans l'écran monolithique (guide §8 :
-// « aucune fonction n'est enfouie dans le fichier d'une autre ») ; il rejoint la feature `archers`,
-// où vivent déjà la liste et l'édition — la destination « Inscriptions » les présente ensemble.
+// Création d'un archer (E02US002) — extraite de l'écran monolithique lors de la coquille admin
+// (guide §8 : « aucune fonction n'est enfouie dans le fichier d'une autre »).
 //
-// À ne pas confondre avec `inscriptions/InscriptionsArcher.tsx` (pluriel) : celui-ci **crée** un
-// archer, l'autre **inscrit** un archer déjà créé sur des départs (créneaux, E02US009).
-//
-// Deux asymétries à ne pas « corriger » par mégarde :
-//  - la **catégorie est obligatoire** (sans elle, l'archer n'est ni classable ni plaçable) tandis
-//    que le **club ne l'est pas** : « Club inconnu » veut dire « pas encore su », jamais « aucun
-//    club » — en FFTA tout licencié en a un (ADR-0014). On inscrit quand même, et on le signale ;
-//  - un homonyme est **signalé, pas refusé** : le backend rend 409 `homonyme_archer`, l'admin
-//    tranche (père et fils portent les mêmes nom, prénom et club). Le second envoi porte la
-//    confirmation. C'est le serveur qui arbitre — un simple avertissement d'UI se contournerait.
+// À ne pas confondre avec `inscriptions/InscriptionsArcher.tsx` : celui-ci **crée** un archer,
+// l'autre **inscrit** un archer déjà créé sur des départs. ⚠️ Deux asymétries à ne pas « corriger »
+// par mégarde : la **catégorie est obligatoire** (sans elle l'archer n'est ni classable ni
+// plaçable) mais **pas le club** (« Club inconnu » = pas encore su, ADR-0014) ; et un homonyme est
+// **signalé, pas refusé** — c'est le serveur qui arbitre, un avertissement d'UI se contournerait.
 
 import { useState } from 'react'
 import { useBlasons } from '../blasons/hooks'
@@ -44,15 +37,12 @@ export function NouvelArcher({ tournoiId }: { tournoiId: number }) {
   const homonymeSignale =
     ajouter.error instanceof ErreurApi && ajouter.error.code === 'homonyme_archer'
 
-  // Le 409 porte sur **une identité précise** (nom, prénom, club). Dès que l'un des trois change,
-  // le signalement ne s'y applique plus : on l'efface, sinon « Inscrire quand même » confirmerait
-  // un archer que le serveur n'a jamais examiné — et le doublon que cette US refuse passerait
-  // justement par le bouton prévu pour l'autoriser.
-  //
-  // `reset()` plutôt que de comparer à la clé signalée : comparer exigerait de réimplémenter en TS
-  // le repli casse/accents de `domain.club.cle_nom`, soit une 2ᵉ implémentation d'une règle de
-  // domaine — précisément ce que `cle_identite` refuse côté backend en réutilisant `cle_nom`.
-  // Ici, savoir « est-ce que ça a changé » suffit ; nul besoin de savoir « est-ce la même clé ».
+  // Le 409 porte sur **une identité précise** (nom, prénom, club) : dès que l'un des trois change,
+  // le signalement ne s'y applique plus et on l'efface — sinon « Inscrire quand même » confirmerait
+  // un archer que le serveur n'a jamais examiné. ⚠️ `reset()` plutôt que de comparer à la clé
+  // signalée : comparer exigerait de réimplémenter en TS le repli casse/accents de
+  // `domain.club.cle_nom`, soit une 2ᵉ implémentation d'une règle de domaine. Savoir « est-ce que
+  // ça a changé » suffit.
   const surIdentite = (poser: (valeur: string) => void) => (valeur: string) => {
     if (ajouter.error !== null) ajouter.reset()
     poser(valeur)

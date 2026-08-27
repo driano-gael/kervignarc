@@ -1,19 +1,11 @@
 // Pilotage du déroulé **dans un créneau** (E01US025, ADR-0076) — axe pilotage, poste admin.
 //
-// **Pourquoi ce panneau existe.** Jusqu'à ADR-0076, l'écran « Phases » portait les deux mailles :
-// on y composait la séquence *et* on la faisait vivre, parce qu'un tournoi n'avait qu'une suite de
-// phases. Depuis, le déroulé est défini **une fois** au tournoi et chaque départ le rejoue : « la
-// phase 2 » ne désigne plus un objet mais N avancements, un par créneau. Un bouton « Démarrer »
-// sur le déroulé n'aurait donc plus de destinataire — démarrer *où* ? Le geste descend ici, à la
-// maille qui a un statut, et l'écran « Phases » redevient un atelier de composition.
-//
-// **Pourquoi ici et pas dans un écran neuf.** « Suivi du déroulé » est déjà la destination de l'axe
-// pilotage : l'organisateur y lit où en est son tournoi. Lui faire changer d'écran pour agir sur ce
-// qu'il vient de lire serait une couture inutile. Le schéma reste la vue d'ensemble du tournoi ; ce
-// panneau est la commande, créneau par créneau.
-//
-// ⚠️ Ce module n'est **pas** monté sur l'écran de salle (`EcranSalle` compose sa propre vue à partir
-// des mêmes hooks) : « aucune interaction » y reste vrai, CA E07US004.
+// **Pourquoi ce panneau existe** : depuis ADR-0076 le déroulé est défini une fois au tournoi et
+// chaque départ le rejoue, donc « la phase 2 » ne désigne plus un objet mais N avancements. Un
+// bouton « Démarrer » sur le déroulé n'aurait plus de destinataire — démarrer *où* ? Le geste
+// descend à la maille qui a un statut, et « Phases » redevient un atelier de composition. Il vit
+// ici parce que l'organisateur y lit déjà où en est son tournoi. ⚠️ Ce module n'est **pas** monté
+// sur l'écran de salle : « aucune interaction » y reste vrai (CA E07US004).
 
 import { useState } from 'react'
 
@@ -81,25 +73,14 @@ export function PilotageCreneau({
   const avancementParOrdre = new Map(
     (suivi.data?.avancement ?? []).map((bloc) => [bloc.ordre, bloc]),
   )
-  // E16US002, correctif de revue (axe adversarial) — **le titre des étapes, joint par `ordre`.**
+  // E16US002 — **le titre des étapes, joint par `ordre`.**
   //
-  // ⚠️ `Phase` (l'avancement dans un créneau) ne porte délibérément pas le titre : il décrit la
-  // composition, et le serveur ne le sert que sur `EtapeReponse` (ADR-0095 §3). Mais le laisser
-  // hors de CET écran-ci était un défaut, pas une conséquence : c'est ici qu'on **démarre** et
-  // qu'on **termine** une phase, donc le seul endroit où confondre deux qualifications homonymes
-  // coûte réellement quelque chose — publier le mauvais classement. Livrer « vous pouvez nommer vos
-  // phases » en laissant anonyme l'écran du geste, c'était la capacité livrée mais inutilisable que
-  // cette US existe pour fermer.
-  //
-  // La jointure se fait par `ordre`, qui est la clé partagée entre une étape et ses instances
-  // (ADR-0076 §3 : les instances d'un départ héritent de l'ordre des étapes). Aucun appel de plus
-  // en pratique : `usePhases` est déjà monté par l'écran des phases et par l'assemblage, React
-  // ⚠️ **Coût réel, corrigé après revue** : une première rédaction annonçait « aucun appel de plus,
-  // React Query sert le cache partagé ». C'est faux — « Suivi du déroulé » et « Phases du tournoi »
-  // sont deux destinations **distinctes** du menu, donc l'organisateur qui vient droit au pilotage
-  // paie **un `GET` au montage**, et un de plus au retour passé les 30 s de `staleTime`. Aucun
-  // `refetchInterval` n'est armé : rien à ajouter à `DETTE-031`, mais une justification fausse
-  // empêche de compter ce qu'elle nie.
+  // ⚠️ `Phase` ne porte délibérément pas le titre (ADR-0095 §3), mais le laisser hors de CET écran
+  // était un défaut : c'est ici qu'on démarre et qu'on termine une phase, donc le seul endroit où
+  // confondre deux qualifications homonymes coûte quelque chose — publier le mauvais classement. ⚠️
+  // **Coût réel** : une première rédaction annonçait « aucun appel de plus, React Query sert le
+  // cache partagé ». Faux — les deux destinations sont distinctes, donc un `GET` au montage. Rien à
+  // ajouter à `DETTE-031`, mais une justification fausse empêche de compter ce qu'elle nie.
   const etapes = usePhases(tournoiId)
   const titreParOrdre = titresParOrdre(etapes.data)
 
@@ -197,21 +178,13 @@ function LignePilotage({
   )
 }
 
-/**
- * Le tour en cours, **lisible en tant que tel** (CA E05US034).
+/** Le tour en cours, **lisible en tant que tel** (CA E05US034).
  *
- * ⚠️ **Ce CA a été tranché ici, et la fiche demandait qu'il le soit « sur preuve d'usage ».** La
- * question ouverte était : le pilotage exige-t-il plus qu'un numéro de tour lisible — une clôture
- * **persistée** ? La réponse est non, et la preuve est ce composant : ce dont le pilotage a besoin,
- * c'est de **dire** où en est la phase, parce que le geste voisin (« bloquer dans x tours ») se
- * compte à partir de là. Persister une clôture reviendrait à écrire un second avancement à côté de
- * celui qu'ADR-0090 §5 dérive à la lecture — deux sources pour une même vérité, exactement ce que
- * cet ADR a supprimé.
- *
- * ⚠️ **La règle elle-même vit dans `shared/phases/relance.ts`** (`libelleEtatDuTour`), pas ici —
- * correctif de revue, même motif que `peutPoserUnePause` deux fonctions plus bas : écrite en
- * conditions JSX, elle était invisible au test, et son repli mort n'a été vu que par lecture. Ce
- * composant n'est plus que le point de montage.
+ * ⚠️ **Ce CA a été tranché ici**, la fiche demandant qu'il le soit « sur preuve d'usage » : le
+ * pilotage n'exige pas de clôture **persistée**, seulement de **dire** où en est la phase.
+ * Persister reviendrait à écrire un second avancement à côté de celui qu'ADR-0090 §5 dérive. ⚠️
+ * **La règle vit dans `shared/phases/relance.ts`** : écrite en conditions JSX elle était invisible
+ * au test.
  */
 function EtatDuTour({ avancement }: { avancement: AvancementBloc | null }) {
   const libelle = libelleEtatDuTour(avancement)
@@ -219,22 +192,13 @@ function EtatDuTour({ avancement }: { avancement: AvancementBloc | null }) {
   return <span className="carte__aide">{libelle}</span>
 }
 
-/**
- * « Bloquer dans x tours » — la pause décidée **pendant** que la salle tire (CA E05US034, ADR-0092).
+/** « Bloquer dans x tours » — la pause décidée **pendant** que la salle tire (CA E05US034).
  *
- * ⚠️ **Ce geste n'édite pas le déroulé, et c'est tout l'ADR.** Ajouter l'arrêt à l'étape du tournoi
- * l'aurait fait rejouer par le créneau du soir (ADR-0076 §4) : la panne de chauffage du matin
- * arrêterait l'après-midi. Ici on agit sur ce qui tire maintenant (§5), et rien d'autre.
- *
- * ⚠️ **Relatif et non absolu**, parce que c'est la façon dont on parle le jour J : l'organisateur
- * lit « tour 3 sur 5 » juste à gauche et pense « encore deux », pas « après le tour 4 ». La
- * conversion est faite par le **serveur** — le tour courant est une donnée serveur, et un client
- * qui le calculerait couperait au mauvais endroit dès qu'il aurait dix secondes de retard.
- *
- * **Ne s'affiche pas** sur une phase qui n'est pas en cours, sur un type dont l'application ne lit
- * pas le tour (`TYPES_ARRETABLES`), ou tant que le tour n'est pas lisible : dans les quatre cas le
- * serveur refuserait, et offrir un geste dont on sait déjà qu'il sera refusé est ce que la table de
- * transitions ci-dessus évite déjà pour le cycle de vie.
+ * ⚠️ **Ce geste n'édite pas le déroulé, et c'est tout l'ADR-0092** : ajouter l'arrêt à l'étape du
+ * tournoi l'aurait fait rejouer par le créneau du soir, donc la panne de chauffage du matin
+ * arrêterait l'après-midi. ⚠️ **Relatif et non absolu**, parce que c'est ainsi qu'on parle le jour
+ * J — et la conversion est faite par le **serveur**, un client qui calculerait le tour courant
+ * couperait au mauvais endroit dès dix secondes de retard. Caché quand le serveur refuserait.
  */
 function PoserUnePause({
   departId,
@@ -335,17 +299,13 @@ function PoserUnePause({
   )
 }
 
-/**
- * Les pauses atteintes qui attendent un geste (E05US033, ADR-0091).
+/** Les pauses atteintes qui attendent un geste (E05US033, ADR-0091).
  *
  * ⚠️ **Un bouton par arrêt, pas par phase**, et c'est un CA : un arrêt de portée « créneau » a pu
- * mettre quatre phases en pause, et « quatre boutons pour un seul arrêt créerait exactement le piège
- * qu'on cherche à éviter — en oublier une ». Le compte des phases concernées est donc affiché, mais
- * la commande reste unique.
- *
- * ⚠️ **Ne rend rien quand il n'y a rien à relancer**, plutôt qu'un « aucune pause en attente »
- * permanent. Le panneau de pilotage sert tous les jours ; une ligne vide qui ne bouge jamais cesse
- * d'être lue, et c'est précisément celle qu'on veut voir le jour où elle apparaît.
+ * mettre quatre phases en pause, et quatre boutons pour un seul arrêt créerait le piège qu'on
+ * cherche à éviter — en oublier une. ⚠️ **Ne rend rien quand il n'y a rien à relancer** : une ligne
+ * vide qui ne bouge jamais cesse d'être lue, et c'est celle qu'on veut voir le jour où elle
+ * apparaît.
  */
 function RelanceDesArrets({ departId }: { departId: number }) {
   const arrets = useArretsEnAttente(departId)

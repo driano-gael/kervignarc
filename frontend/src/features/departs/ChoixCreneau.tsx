@@ -1,16 +1,11 @@
 // Le sélecteur de créneau, partagé par les surfaces qui lisent une donnée **de départ**.
 //
-// Depuis ADR-0075, le départ est la portée sportive : classement, tableaux et forfaits appartiennent
-// à un créneau, pas au tournoi. Plusieurs écrans doivent donc en désigner un, et ils doivent le
-// faire **de la même façon** — un « Départ 2 — 14:00 » ici et un « créneau n°2 » là, et
-// l'organisateur ne sait plus s'il regarde le même.
-//
-// Hissé ici à la 2ᵉ occurrence (classement, forfaits de qualification) parce que c'est un libellé
-// à tenir cohérent, pas un patron introduit par anticipation : `Placement.tsx` porte déjà le même
-// `<select>` en propre depuis E03US004. C'est donc la 3ᵉ occurrence réelle du motif — le seuil que
-// le projet se fixe avant de factoriser. `Placement` n'est pas migré ici : son sélecteur porte un
-// état « aucun départ choisi » que les deux autres n'ont pas, et on ne réécrit pas ce qu'on
-// n'aggrave pas.
+// Depuis ADR-0075, le départ est la portée sportive : classement, tableaux et forfaits
+// appartiennent à un créneau, pas au tournoi. Plusieurs écrans doivent en désigner un, et **de la
+// même façon** — sinon l'organisateur ne sait plus s'il regarde le même. Hissé ici à la **3ᵉ
+// occurrence réelle** (`Placement.tsx` portait déjà le même sélecteur depuis E03US004), seuil que
+// le projet se fixe. `Placement` n'est pas migré : son sélecteur porte un état « aucun départ
+// choisi » que les deux autres n'ont pas.
 
 import { libelleCreneau, type CreneauChoisissable } from './libelle'
 

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 27/08/2026, 15 h 15** · **128 US livrées** · dernière : `E00US027`
+**Dernière mise à jour : 28/08/2026, 01 h 15** · **128 US livrées** · dernière : `E00US027`
 *(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois
 passes de revue** d'`E16US009` et de la question qu'elles ont provoquée. Sur les 12 majeurs de la 3ᵉ
 passe, **un seul** portait sur du code : les autres étaient des documents qui se contredisent, dont
@@ -1252,7 +1252,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
-| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes de narration, `pagination.ts` de 68 % à 55 %) ; **le reste se traite au fil de l'eau**, pas en big bang. Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
+| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Appliquee **au depot entier** apres arbitrage du 27/08/2026 (plafond de **8 lignes** par bloc, « tout, maintenant ») : le cliquet backend passe de **1048 blocs a 0** et le front de **103 a 0**. La regle est donc **dure des deux cotes**, et verifiee — `test_commentaires_bornes.py` (pytest) et `commentaires.test.ts` (vitest, ajoute par cette US). Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

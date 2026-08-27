@@ -1,17 +1,11 @@
 // Le modèle des arrêts programmés (E05US033, ADR-0091) — tests du **front**, écrits depuis le CA.
 //
-// Ce fichier ne teste ni le déclenchement ni le gel : ils sont serveur, et leurs oracles sont
-// `backend/tests/test_domain_arret_programme.py` et `test_service_arrets_programmes.py`. Ici on ne
-// garde que la **conversion** « ce que l'écran affiche ↔ ce qui part au serveur », qui est la seule
-// règle que le front porte réellement.
-//
-// ⚠️ **Deux gardes valent d'être lues** :
-//
-// - `null vs undefined` : c'est la distinction qui décide si un `PUT` **efface** le réglage ou s'il ne
-//   part pas du tout. Les confondre effacerait le planning d'un organisateur en train de retaper un
-//   champ — un défaut silencieux, puisque la requête réussirait.
-// - la **clé de ligne** : sans elle, supprimer un arrêt ferait glisser les valeurs saisies d'une ligne
-//   à l'autre. Le test la vérifie par sa seule propriété observable — deux lignes neuves diffèrent.
+// Ce fichier ne teste ni le déclenchement ni le gel : ils sont serveur, avec leurs oracles côté
+// backend. Ici on ne garde que la **conversion** « ce que l'écran affiche ↔ ce qui part au serveur
+// ». ⚠️ Deux gardes valent d'être lues : `null vs undefined`, qui décide si un `PUT` **efface** le
+// réglage ou ne part pas (les confondre effacerait un planning en silence, la requête réussissant)
+// ; et la **clé de ligne**, sans laquelle supprimer un arrêt ferait glisser les valeurs saisies
+// d'une ligne à l'autre.
 
 import { describe, expect, it } from 'vitest'
 

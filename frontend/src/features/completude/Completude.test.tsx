@@ -1,31 +1,11 @@
 // Tests de **placement** de la complétude (E16US003) — le sportif au pilotage, l'administratif à la
 // gestion, depuis une seule source.
 //
-// Pourquoi des tests de rendu et pas de logique pure : le CA d'E16US003 ne porte sur aucun calcul.
-// Le serveur sépare déjà `sportif` et `hors_sportif` (E12US005), et `presentation.test.ts` couvre
-// déjà la dérivation. Ce que l'US décide, c'est **où chaque liste s'affiche** — un fait qui ne se
-// lit qu'en montant les composants. `tsc` et `eslint` ne voient rien d'une section rendue au mauvais
-// endroit, et le refus d'A14 portait précisément là-dessus.
-//
-// Les cas se lisent depuis le CA de `stories/E16-retours-maquettes.md` :
-//   - « deux écrans, une source » : le sportif ici, l'administratif là, **sans dupliquer le calcul** ;
-//   - « le bouton "Terminer" suit le sportif » — et n'est **jamais bloqué** (`D-15`) ;
-//   - « l'administratif à la **gestion** » — donc sur l'écran Paiements réellement monté ;
-//   - « le pilotage ne mélange plus » — y compris sur son écran d'**ouverture**, le tableau de bord.
-//
-// **Ce que la revue a corrigé ici, et qui vaut d'être su.** La première version de ce fichier montait
-// les deux composants *isolément* : elle prouvait ce que chacun **rend**, jamais **où** il est
-// **monté**. Supprimer `<CompletudeAdministrative>` de `Paiements.tsx` la laissait entièrement verte,
-// alors que la moitié « gestion » du CA avait disparu du produit. Un test de placement doit monter
-// l'**écran**, pas le composant. Même piège pour le lien de la confirmation : `presentation.test.ts`
-// garde la **fonction** `messageConfirmationTerminer`, pas son **site d'appel** — d'où le test qui
-// ouvre réellement le dialogue.
-//
-// Les assertions **négatives** (`queryBy… toBeNull`) restent le cœur du fichier : c'est le mélange
-// qui était refusé, donc c'est l'absence qu'il faut prouver. Chacune est **appariée** à une
-// assertion positive ailleurs dans le fichier, qui prouve que le libellé nié existe bel et bien
-// quelque part — sans quoi une négation reste verte pour la mauvaise raison (libellé renommé,
-// composant qui ne rend rien du tout).
+// Des tests de rendu et non de logique pure : le CA ne porte sur aucun calcul, il décide **où
+// chaque liste s'affiche**. ⚠️ **Monter l'écran, pas le composant** : la première version les
+// montait isolément, si bien que supprimer `<CompletudeAdministrative>` de `Paiements.tsx` la
+// laissait verte. ⚠️ Les assertions **négatives** sont appariées à une positive ailleurs, sans quoi
+// une négation reste verte pour la mauvaise raison.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -219,13 +199,10 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
   it('E16US012 `D-15` — le verdict avertit sans annoncer de refus', async () => {
     // L'écran a migré sur la coquille commune de la famille « prêt à… » (ADR-0096), qui lui ajoute
     // un verdict en tête. Ce verdict doit rester du **bon côté de l'asymétrie** : terminer n'a
-    // aucune garde dure, donc l'écran ne doit jamais annoncer un refus qui n'arrivera pas.
-    //
-    // C'est la contrepartie du `bloquant` passé par cet écran : si quelqu'un le mettait à `true`
-    // « par symétrie » avec l'écran de démarrage, ce test tomberait — et c'est le seul endroit où
-    // cette erreur-là se verrait, le typage ne disant rien d'un booléen inversé.
-    //
-    // ⚠️ **Pendant le tournoi**, et c'est le sujet des deux tests suivants.
+    // aucune garde dure, donc l'écran ne doit jamais annoncer un refus qui n'arrivera pas. C'est la
+    // contrepartie du `bloquant` passé par cet écran — si quelqu'un le mettait à `true` « par
+    // symétrie » avec l'écran de démarrage, ce test tomberait, et c'est le seul endroit où cette
+    // erreur se verrait, le typage ne disant rien d'un booléen inversé.
     monter(<Completude tournoiId={1} statut="en_cours" />)
 
     const verdict = await screen.findByRole('status')
@@ -245,14 +222,11 @@ describe('CA E16US003 — le pilotage ne montre que le sportif', () => {
 
   it('E16US012 — hors du tournoi en cours, le verdict n’affirme pas que rien n’empêche', async () => {
     // **Le bloquant de la 2ᵉ passe de revue.** `ServiceTournois.terminer` n'accepte que `en_cours`
-    // (`{StatutTournoi.EN_COURS}`) : sur un tournoi **en pause** — la pause déjeuner du jour J —
-    // terminer est refusé tant qu'on n'a pas repris. Avec `bloquant={false}` figé, l'écran
-    // affichait « l'application ne vous en empêchera pas » juste avant un 409, c'est-à-dire la
-    // phrase même que cette US déclarait avoir supprimée, sur le membre voisin de la famille.
-    //
-    // Ce test est le miroir de `domain.jalon.evaluer_terminer` : il tombe si l'un des deux bouge
-    // sans l'autre. C'est le prix assumé de laisser cet écran lire `/completude` plutôt que
-    // `/jalons/terminer` (ADR-0096 § Conséquences : un second poll de 5 s par tablette).
+    // : sur un tournoi **en pause** — la pause déjeuner du jour J — terminer est refusé. Avec
+    // `bloquant={false}` figé, l'écran affichait « l'application ne vous en empêchera pas » juste
+    // avant un 409, la phrase même que cette US déclarait avoir supprimée. Ce test est le miroir de
+    // `domain.jalon.evaluer_terminer` : il tombe si l'un des deux bouge sans l'autre — prix assumé
+    // de lire `/completude` plutôt que `/jalons/terminer` (ADR-0096 § Conséquences).
     monter(<Completude tournoiId={1} statut="en_pause" />)
 
     // ⚠️ On attend la **liste**, pas la raison : cette dernière ne dépend pas de la réponse serveur

@@ -1,14 +1,10 @@
 // Accueil-tableau de bord contextualisé par tournoi (E14US001, `D-20`).
 //
-// « Où j'en suis, quoi faire ensuite », sans parcourir ~21 écrans. **Agrège** des sources déjà
-// livrées — il ne recalcule **aucune** règle métier (cadrage E14US001) :
-//  - frise du cycle de vie 7 statuts + actions (`FriseCycleDeVie`, transitions du serveur) ;
-//  - chiffres-clés : inscrits & réglés (paiements, E08US002), postes en ligne (supervision, E12US001) ;
-//  - checklist « à faire » et alertes dérivées de la complétude (E12US005) + des postes hors ligne.
-//
-// Couverture : deux tests de rendu depuis E16US003 (`completude/Completude.test.tsx`) gardent le
-// fait que la checklist et les alertes ne portent **que** le sportif. Le reste de l'écran se vérifie
-// **à l'œil**. Les lectures pollent (complétude, supervision) : l'accueil est un écran **live**.
+// « Où j'en suis, quoi faire ensuite », sans parcourir ~21 écrans. Il **agrège** des sources déjà
+// livrées et ne recalcule **aucune** règle métier : frise du cycle de vie, chiffres-clés
+// (paiements, supervision), checklist et alertes dérivées de la complétude. Couverture : deux tests
+// de rendu gardent le fait que la checklist ne porte **que** le sportif ; le reste se vérifie à
+// l'œil. Les lectures pollent — l'accueil est un écran **live**.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'
@@ -161,25 +157,13 @@ function construireAlertes(lignes: LigneCompletude[], supervision?: Supervision)
   return alertes
 }
 
-/**
- * La **pastille de rappel** : « 2 phases attendent votre relance depuis 14 min » (CA E05US034).
+/** La **pastille de rappel** : « 2 phases attendent votre relance depuis 14 min » (CA E05US034).
  *
- * ⚠️ **C'est le filet de sécurité de la capacité livrée par E05US033**, pas un ornement. Une pause
- * programmée éteint une phase toute seule, à la faveur d'une validation faite par un scoreur ailleurs
- * dans le gymnase. Sans ce rappel, l'organisateur n'apprend qu'une salle attend qu'en ouvrant le
- * pilotage — et rien, nulle part, n'a l'air anormal. C'est un **mode de panne neuf** : la salle
- * attend, personne ne sait pourquoi.
- *
- * ⚠️ **Une lecture par créneau, et aucune route neuve.** Le tableau de bord est au tournoi, la
- * relance est au créneau (ADR-0075) : il faut donc balayer les départs. `useQueries` sur la route
- * que le pilotage polle **déjà** partage son cache — même clé, donc l'écran ouvert à côté ne double
- * pas le trafic. Une route « arrêts du tournoi » aurait été une seconde façon de poser la même
- * question, avec la divergence qui va avec, pour économiser trois requêtes indexées sur un réseau
- * local.
- *
- * **Ne rend rien quand il n'y a rien à relancer** — même parti que le panneau de pilotage : une
- * ligne vide qui ne bouge jamais cesse d'être lue, et c'est exactement celle qu'on veut voir le jour
- * où elle apparaît.
+ * ⚠️ **C'est le filet de sécurité de la capacité livrée par E05US033.** Une pause programmée
+ * éteint une phase toute seule, à la faveur d'une validation faite ailleurs : sans ce rappel,
+ * l'organisateur n'apprend qu'une salle attend qu'en ouvrant le pilotage — un **mode de panne
+ * neuf**. ⚠️ **Une lecture par créneau, et aucune route neuve** : `useQueries` sur la route que le
+ * pilotage polle déjà partage son cache. Ne rend rien quand il n'y a rien à relancer.
  */
 function PastilleDeRelance({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)

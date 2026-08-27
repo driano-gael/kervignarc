@@ -2,11 +2,8 @@
 // câblage des écrans (règle 9).
 //
 // Source : `stories/E16-retours-maquettes.md` § E16US004, puce « CA — bascule mes archers / tout »,
-// élargie au cadrage du 08/08/2026 à **tout l'onglet public** (le commanditaire a choisi un
-// interrupteur unique en tête d'écran plutôt qu'un par vue). Les questionnaires derrière le CA :
-// P03 *« il me faut les 2 : soit le classement uniquement des archers suivis, soit le classement
-// général »* et P05 *« une bascule pour suivre tous les tableaux du tournoi ou uniquement centré sur
-// les archers que l'on choisit de suivre »*.
+// élargie au cadrage du 08/08/2026 à **tout l'onglet public** (un interrupteur unique en tête
+// d'écran plutôt qu'un par vue). Questionnaires derrière le CA : P03 et P05.
 
 import { describe, expect, it } from 'vitest'
 import type { ArcherSuivi } from '../stores/sessionSuivisStore'

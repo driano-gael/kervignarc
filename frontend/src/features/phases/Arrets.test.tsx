@@ -1,17 +1,10 @@
 // Les **pauses programmées** sur les phases d'un tournoi réel (E05US033, ADR-0091).
 //
-// Ce fichier n'existait pas, et c'est ce que la revue a relevé : c'est la **troisième** fois que le
-// même défaut est signalé sur ce formulaire — `Profondeur.test.tsx` a été écrit pour le premier
-// (E06US006), la note de `api.ts` raconte le second (`barrage_jusqu_au`). Le mécanisme est toujours
-// identique : l'édition d'une phase est un `PUT` **total**, donc un champ non réémis est **effacé**,
-// silencieusement, par une requête qui réussit.
-//
-// Ce qu'un planning de pauses effacé coûte est pire que les deux précédents : ce n'est pas un
-// paramètre qu'on retrouve d'un coup d'œil, c'est une liste saisie ligne à ligne — et l'organisateur
-// ne s'en aperçoit que le jour J, quand la salle n'a pas pris sa pause repas.
-//
-// On double les **appels HTTP** seulement : les hooks et le `QueryClient` sont ceux de production,
-// même parti que `Profondeur.test.tsx`.
+// ⚠️ **Troisième fois que le même défaut est signalé sur ce formulaire** : `Profondeur.test.tsx` a
+// été écrit pour le premier (E06US006), la note de `api.ts` raconte le second (`barrage_jusqu_au`).
+// L'édition d'une phase est un `PUT` **total** : un champ non réémis est **effacé**,
+// silencieusement, par une requête qui réussit — et un planning de pauses est une liste saisie
+// ligne à ligne, dont l'absence ne se voit que le jour J. On double les **appels HTTP** seulement.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

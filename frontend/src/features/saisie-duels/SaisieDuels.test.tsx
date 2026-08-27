@@ -1,26 +1,11 @@
 // Test de **rendu** de l'écran de saisie en duels — et il existe pour une raison précise.
 //
-// La 2ᵉ revue d'E01US025 y a trouvé le bloquant le plus coûteux de l'US : l'écran alimentait son
-// sélecteur de phase avec `GET /tournois/{id}/phases`, qui rend le **déroulé** (des `id` de
-// `deroule_etape`), puis passait cet `id` à des routes qui résolvent une **`Phase`**. Deux tables,
-// deux séquences d'`id` indépendantes. Le scoreur de l'après-midi écrasait donc les duels du matin,
-// **sans la moindre erreur**.
-//
-// Rien ne pouvait le voir : `tsc` non (le type local `Phase {id, ordre, type}` est structurellement
-// identique à une étape), `eslint` non, et aucun des tests de logique pure de cette feature
-// (`duel.ts`, `etat.ts`, `rejeu.ts`) ne monte le composant — donc aucun ne sait **quel hook l'écran
-// appelle**. C'est précisément l'angle mort que `PanneauBarrages.test.tsx` documente dans son propre
-// en-tête. D'où ce fichier.
-//
-// ⚠️ **Le choix du créneau a déménagé** (E05US030, `DETTE-056` refermée) : il est fait une fois dans
-// `EspaceScoreur`, qui le passe en prop aux quatre panneaux de saisie. Les cas qui portaient sur ce
-// choix — quel créneau par défaut, changer de créneau, « aucun départ » — vivent donc désormais dans
-// `features/scoreur-session/EspaceScoreur.test.tsx`. Ce qui reste ici est ce dont ce panneau répond
-// toujours : **la phase demandée est celle du créneau reçu**, et changer de créneau **remet à zéro**
-// le choix de phase. Déplacer plutôt que supprimer : c'est le même défaut d'un cran plus bas, et il
-// resterait aussi silencieux.
-//
-// On double **uniquement** les hooks de données ; le JSX est celui de production.
+// La 2ᵉ revue d'E01US025 y a trouvé le bloquant le plus coûteux : l'écran alimentait son sélecteur
+// avec `GET /tournois/{id}/phases`, qui rend le **déroulé**, puis passait cet `id` à des routes
+// résolvant une **`Phase`** — deux séquences d'`id` indépendantes, donc le scoreur de l'après-midi
+// écrasait les duels du matin **sans la moindre erreur**. Ni `tsc` ni les tests purs ne savent
+// **quel hook l'écran appelle**. ⚠️ Le choix du créneau a déménagé dans `EspaceScoreur` (E05US030,
+// `DETTE-056`) ; reste ici : **la phase demandée est celle du créneau reçu**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

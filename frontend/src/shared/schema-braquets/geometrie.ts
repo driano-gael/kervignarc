@@ -1,20 +1,11 @@
 // Mise en page du **schéma à braquets** (E01US024) — géométrie pure, aucun React, aucun DOM.
 //
-// Convention du projet : le JSX ne se teste pas, la logique si (`features/blasons/zones.ts`,
-// `features/phases/ordre.ts`). Tout ce qui se calcule — positions, tailles, tracés des flèches —
-// vit donc ici, et `SchemaBraquets.tsx` ne fait que rendre le `Plan` obtenu.
-//
-// **SVG maison, aucune bibliothèque** (règle 11 ; précédent DETTE-024, routeur maison). Un graphe
-// de 3 à 8 nœuds en colonnes ne justifie pas une dépendance de layout : la disposition est linéaire
-// (une colonne par phase, dans l'ordre), et les seules courbes sont les flèches qui sautent
-// par-dessus une ou plusieurs colonnes.
-//
-// **Une seule géométrie pour les trois surfaces** (atelier, pilotage, écran de salle — E07US004).
-// Le CA demande « le **même** schéma » : le paramétrer par densité aurait produit trois dessins
-// cousins qu'un lecteur devrait réapprendre. Ce qui change d'une surface à l'autre est *au-dessus*
-// de la géométrie — l'échelle de rendu (le `viewBox` d'un SVG met tout à l'échelle, texte compris),
-// l'habillage et le calque d'avancement. Déplacé de `features/deroule/schema.ts` vers `shared/` en
-// E07US004, quand la deuxième et la troisième surface sont arrivées.
+// Convention du projet : le JSX ne se teste pas, la logique si. **SVG maison, aucune bibliothèque**
+// (règle 11) : un graphe de 3 à 8 nœuds en colonnes ne justifie pas une dépendance de layout. ⚠️
+// **Une seule géométrie pour les trois surfaces** (atelier, pilotage, écran de salle) : le CA
+// demande « le **même** schéma », et le paramétrer par densité aurait produit trois dessins cousins
+// qu'un lecteur devrait réapprendre. Ce qui change est *au-dessus* — échelle de rendu, habillage,
+// calque d'avancement.
 
 import type { Bloc, Flux } from './modele'
 
@@ -109,14 +100,12 @@ export function disposer(blocs: readonly Bloc[]): Plan {
   }
 }
 
-/**
- * Trace une flèche du bord droit de sa source au bord gauche de sa cible.
+/** Trace une flèche du bord droit de sa source au bord gauche de sa cible.
  *
- * Entre colonnes **voisines**, un segment droit suffit. Dès qu'elle en saute une, la flèche
- * passerait **à travers** les blocs intermédiaires : elle est alors renvoyée sous eux par une
- * courbe quadratique. Rend `null` si la source n'est pas dans le plan — cas d'un format incohérent
- * (source introuvable, source postérieure), que le diagnostic signale déjà comme bloquant : mieux
- * vaut ne pas dessiner de flèche que d'en dessiner une qui ne mène nulle part.
+ * Entre colonnes **voisines**, un segment droit suffit ; dès qu'elle en saute une, la flèche
+ * passerait **à travers** les blocs intermédiaires et est renvoyée sous eux par une courbe. Rend
+ * `null` si la source n'est pas dans le plan — format incohérent que le diagnostic signale déjà :
+ * mieux vaut ne pas dessiner de flèche que d'en dessiner une qui ne mène nulle part.
  */
 function tracer(
   flux: Flux,

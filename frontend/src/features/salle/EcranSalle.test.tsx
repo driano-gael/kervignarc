@@ -1,18 +1,11 @@
 // Tests de **montage** de l'écran de salle — le point de montage de l'annonce de pause.
 //
-// ⚠️ **Ce fichier existe à cause d'un bloquant de revue (E05US034, axes C2 et adversarial).** Le
-// bandeau de pause vivait dans `VueEnCours`, et `EN_COURS` **n'est pas** au déroulé par défaut
-// (`SequenceVues.par_defaut` côté domaine : classement, plan de cibles, suivi). Sur un écran
-// branché sans configuration — le cas nominal — l'annonce ne s'affichait donc jamais, alors que
-// quatre documents du dépôt affirmaient le contraire.
-//
-// Le défaut n'était **pas** dans une fonction : `resumeDeRelance` et `peutPoserUnePause` étaient
-// justes, et tous les tests verts. Il était dans le **point de montage** — la seule chose qu'un
-// test de logique pure ne peut pas voir. D'où un test qui monte réellement le composant et regarde
-// ce qui s'affiche pendant qu'une **autre** vue tourne.
-//
-// Les vues sont des témoins : leur rendu a ses propres tests, ce qu'on épingle ici est ce qui les
-// coiffe.
+// ⚠️ **Ce fichier existe à cause d'un bloquant de revue (E05US034).** Le bandeau vivait dans
+// `VueEnCours`, et `EN_COURS` **n'est pas** au déroulé par défaut : sur un écran branché sans
+// configuration — le cas nominal — l'annonce ne s'affichait jamais, alors que quatre documents du
+// dépôt affirmaient le contraire. Le défaut n'était pas dans une fonction (toutes justes, tous les
+// tests verts) mais dans le **point de montage**, la seule chose qu'un test de logique pure ne peut
+// pas voir.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -36,23 +29,13 @@ vi.mock('../phases/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../phases/api')>()),
   getAvancement: vi.fn(),
 }))
-// Le déroulé de l'écran : on impose une rotation qui ne passe **jamais** par `en_cours`, c'est-à-dire
-// exactement le déroulé par défaut d'un écran neuf.
-// ⚠️ `pages` fait partie du décor **depuis E16US009** : sans lui, la doublure servait un affichage
-// dépourvu du réglage, donc l'écran empruntait la branche d'avant l'US et le câblage neuf n'était
-// épinglé nulle part (correctif de revue, trois axes).
-//
-// ⚠️ **Les valeurs ne sont PAS celles du défaut** (40/20) : à l'identique, le test n'aurait pas
-// distingué « la prop traverse » de « quelqu'un a recâblé sur les constantes du module », qui est
-// la régression la plus plausible sur une surface où ce défaut existe déjà (2ᵉ passe, axe B).
-//
-// Le décor est **mutable** (`vi.hoisted`) pour qu'un test puisse changer la vue projetée : le
-// déroulé était figé sur « classement », donc la branche `affectations` — qui reçoit le **même**
-// réglage — n'était jamais exercée.
-// ⚠️ `VueProgrammee` plutôt que `{ vue: string }` : ce commit ferme par ailleurs une chaîne libre
-// par une union (`CleDePage`), et rouvrir la même porte dans le décor voisin serait incohérent —
-// `decor.vues = [{ vue: 'affectation' }]` compilerait, et le dépôt a déjà renommé une vue
-// (`TABLEAUX` → `EN_COURS`, migration 0047). L'annotation remplace l'assertion `as`.
+// Le déroulé de l'écran : une rotation qui ne passe **jamais** par `en_cours`, c'est-à-dire le
+// déroulé par défaut d'un écran neuf. ⚠️ `pages` fait partie du décor **depuis E16US009** : sans
+// lui l'écran empruntait la branche d'avant l'US et le câblage neuf n'était épinglé nulle part. ⚠️
+// **Les valeurs ne sont PAS celles du défaut** (40/20) : à l'identique, le test n'aurait pas
+// distingué « la prop traverse » de « quelqu'un a recâblé sur les constantes du module ». Le décor
+// est **mutable** pour qu'un test puisse changer la vue projetée, et typé `VueProgrammee` plutôt
+// que `{ vue: string }` — le dépôt a déjà renommé une vue (`TABLEAUX` → `EN_COURS`).
 const DECOR_INITIAL: { vues: VueProgrammee[]; pages: ReglagePages } = {
   vues: [{ vue: 'classement', cadence_s: 30 }],
   pages: { noms_par_page: 24, cadence_page_s: 12 },

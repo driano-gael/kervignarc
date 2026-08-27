@@ -36,14 +36,12 @@ export function useSuiviDeroule(departId: number | null) {
 
 export const RACINE_ARRETS = ['arrets-en-attente'] as const
 
-/**
- * Les arrêts qui **attendent une relance** dans ce créneau.
+/** Les arrêts qui **attendent une relance** dans ce créneau.
  *
  * ⚠️ **Même poll que le suivi, et pour la même raison** : un arrêt ne se franchit pas quand
- * l'organisateur clique, il se franchit quand un tour s'achève — donc à la faveur d'une validation
- * faite par un scoreur, ailleurs, sur une tablette. Sans poll, le pilotage n'apprendrait qu'une phase
- * est en pause qu'au prochain rechargement de page : c'est exactement le mode de panne neuf que
- * l'US cherche à éviter (la salle attend, personne ne sait pourquoi).
+ * l'organisateur clique, mais quand un tour s'achève — donc à la faveur d'une validation faite
+ * ailleurs, sur une tablette. Sans poll, le pilotage n'apprendrait la pause qu'au rechargement,
+ * c'est-à-dire le mode de panne que l'US cherche à éviter (la salle attend, personne ne sait).
  */
 export function useArretsEnAttente(departId: number | null) {
   return useQuery({
@@ -80,23 +78,13 @@ export function useRelancerArret(departId: number | null) {
   })
 }
 
-/**
- * Pose une pause **dans ce créneau**, comptée depuis le tour en cours (E05US034, ADR-0092).
+/** Pose une pause **dans ce créneau**, comptée depuis le tour en cours (E05US034, ADR-0092).
  *
- * ⚠️ **N'invalide rien, et c'est le fait notable** (correctif de revue, axe adversarial). Poser un
- * arrêt ne change **aucune lecture existante** : la coupe viendra plus tard, quand un tour
- * s'achèvera. `RACINE_ARRETS` ne sert que les **franchissements** — aucun n'est créé ici ;
- * `RACINE_SUIVI` ne porte pas les arrêts de circonstance ; `RACINE_AVANCEMENT` porte les statuts,
- * qui ne bougent pas non plus.
- *
- * La première rédaction invalidait les deux premières et argumentait longuement de ne pas toucher
- * à `RACINE_AVANCEMENT` (« la lecture la plus chère du projet », `DETTE-031`) — raisonnement juste
- * appliqué à la mauvaise cible : `RACINE_SUIVI` est la reconstruction de **tous les tableaux** du
- * créneau, que l'écran de salle prend soin de ne pas solliciter hors de sa vue. On payait donc le
- * plus cher des trois pour ne rafraîchir aucune donnée modifiée.
- *
- * ⚠️ **Ce qui devra changer avec `DETTE-075`** : le jour où les arrêts posés deviennent relisibles,
- * c'est **cette lecture-là** qu'il faudra invalider ici — et elle seule.
+ * ⚠️ **N'invalide rien, et c'est le fait notable** : poser un arrêt ne change aucune lecture
+ * existante, la coupe viendra quand un tour s'achèvera. La première rédaction invalidait
+ * `RACINE_SUIVI` — la reconstruction de **tous les tableaux** du créneau —, donc payait le plus
+ * cher des trois pour rien. ⚠️ Avec `DETTE-075`, le jour où les arrêts posés deviendront
+ * relisibles, c'est **cette lecture-là** qu'il faudra invalider, et elle seule.
  */
 export function usePoserArretRelatif(departId: number | null) {
   return useMutation({

@@ -1,20 +1,11 @@
 // La vue **publique** d'une phase de poules (E05US031, ADR-0089).
 //
 // Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
-// salle (`interactif=false`), toutes deux montées par l'aiguilleur `features/en-cours/`. Les
-// dessiner séparément les ferait diverger sur la seule chose qui compte — l'appariement affiché.
-//
-// ⚠️ **« Trois surfaces » jusqu'à la revue** : la formule, reprise de `VueTableaux`, ajoutait
-// l'écran d'organisation — qui ne monte pas cette vue. Relevé par l'axe C2, et ce n'est pas
-// cosmétique : c'est cette liste de surfaces qui **justifie** la contrainte « cette vue ne lit pas
-// le store, elle reçoit `mode` et `suivis` en props ». Justifier une contrainte réelle par une
-// surface imaginaire, c'est la même classe d'erreur qu'un ADR nommant un module vide — un lecteur
-// qui vérifie ne trouve rien et peut en conclure que la contrainte est morte.
-//
-// **L'historique est ici gratuit** : une poule est un round-robin, ses tours sont tous joués sur le
-// même plateau et tiennent à l'écran. On les affiche donc **tous**, du premier au dernier, plutôt
-// que de bâtir une navigation par tour comme le suisse en réclame une. C'est le CA « remonter
-// l'historique » servi par la forme du format lui-même.
+// salle (`interactif=false`). ⚠️ **« Trois surfaces » jusqu'à la revue** : la formule recopiée
+// ajoutait l'écran d'organisation, qui ne monte pas cette vue — or c'est cette liste qui
+// **justifie** « cette vue ne lit pas le store, elle reçoit `mode` et `suivis` en props ».
+// **L'historique est ici gratuit** : une poule est un round-robin, ses tours tiennent à l'écran, on
+// les affiche donc tous — pas de navigation par tour comme le suisse en réclame une.
 
 import { LigneRencontre } from '../../shared/duels/LigneRencontre'
 import { decrirePlaces } from '../../shared/salle/place'

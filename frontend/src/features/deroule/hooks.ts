@@ -1,13 +1,10 @@
 // Hooks React Query de la feature « composer un déroulé » (E01US024).
 //
-// Le **diagnostic** est de l'état serveur dérivé de deux choses : le format enregistré et
-// l'effectif simulé. Il entre donc dans la clé de cache — changer N ne « rafraîchit » pas le
-// diagnostic, il en demande un **autre**. C'est ce qui rend le CA « changer N recalcule le dessin »
-// gratuit : React Query sert le dessin déjà vu quand on revient à 120 après un détour par 82.
-//
-// La **simulation** est une mutation et non une query, bien qu'elle ne change rien en base : elle
-// joue plusieurs milliers de volées, on ne la déclenche pas au montage ni au refocus. `POST` traduit
-// exactement cela — « fais ce calcul maintenant, parce que je te le demande ».
+// Le **diagnostic** est dérivé du format enregistré **et** de l'effectif simulé : il entre donc
+// dans la clé de cache — changer N ne « rafraîchit » pas le diagnostic, il en demande un **autre**,
+// ce qui rend le CA « changer N recalcule le dessin » gratuit. La **simulation** est une mutation
+// et non une query bien qu'elle ne change rien en base : elle joue plusieurs milliers de volées, on
+// ne la déclenche ni au montage ni au refocus.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -30,16 +27,13 @@ export function useDiagnostic(formatId: number, effectif: number | null) {
   })
 }
 
-/**
- * Enregistre le brouillon **et** périme le schéma.
+/** Enregistre le brouillon **et** périme le schéma.
  *
  * ⚠️ `useModifierFormat` seul ne suffit pas : il invalide `['patrimoine', 'formats']`, sans aucun
  * recouvrement de préfixe avec la clé du diagnostic. Avec `staleTime: 30_000`,
- * `refetchOnWindowFocus: false` et un composant qui ne remonte pas, la query ne refetchait **ni**
- * par invalidation **ni** par péremption : le schéma restait figé sur la version d'avant, pendant
- * que l'écran retirait l'avertissement « modifications non enregistrées ». Il affirmait donc être
- * à jour tout en montrant le passé — et le bouton « Simuler » restait verrouillé sur un
- * `applicable` périmé.
+ * `refetchOnWindowFocus: false` et un composant qui ne remonte pas, la query ne refetchait ni par
+ * invalidation ni par péremption : l'écran retirait « modifications non enregistrées » tout en
+ * montrant le passé, et « Simuler » restait verrouillé sur un `applicable` périmé.
  */
 export function useEnregistrerBrouillon() {
   const queryClient = useQueryClient()

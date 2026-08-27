@@ -1,12 +1,10 @@
 // Session scoreur (Zustand) — E10US003.
 //
-// Détient le jeton de session scoreur (délivré par le backend à la connexion **par code**) et
-// l'identité du scoreur (nom, tournoi) pour l'afficher après un rechargement. Persisté dans le
-// `localStorage` : le CA veut une session qui **survit à la fermeture de l'onglet** le temps d'une
-// journée de tournoi. Elle redevient invalide si le serveur redémarre ou si l'admin **supprime** le
-// scoreur — l'app le détecte alors sur un 401 et purge la session (cf. `enregistrerSurNonAutorise-
-// Scoreur`). Le jeton est joint automatiquement via l'en-tête `X-Jeton-Scoreur` (le client HTTP ne
-// dépend pas de ce store : inversion de dépendance, comme la session admin).
+// Détient le jeton de session scoreur et l'identité du scoreur, persistés dans le `localStorage` :
+// le CA veut une session qui **survit à la fermeture de l'onglet** le temps d'une journée. Elle
+// redevient invalide si le serveur redémarre ou si l'admin **supprime** le scoreur — l'app le
+// détecte sur un 401 et purge. Le jeton est joint via `X-Jeton-Scoreur` (le client HTTP ne dépend
+// pas de ce store : inversion de dépendance, comme la session admin).
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'

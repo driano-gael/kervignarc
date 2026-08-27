@@ -1,12 +1,9 @@
-// Gestion des blasons d'un tournoi (E01US005 ; zones : E01US014) — réservée à l'admin
-// (montée sous `estAdmin`).
+// Gestion des blasons d'un tournoi (E01US005 ; zones : E01US014) — admin (sous `estAdmin`).
 //
-// Liste + création + édition (nom, taille, capacité, zones) + suppression à confirmation. Un
-// blason modélise l'occupation d'une cible : la **taille** est une fraction de place (]0, 1]) et
-// la **capacité** le nombre d'archers admis (≥ 1). Les **zones** sont les valeurs de score
-// admises, qui pilotent le pavé de saisie (EPIC-04) : un triple 40 n'a pas les zones 5 → 1.
-// Les bornes sont validées côté serveur (domaine) ; un message d'erreur en rouge s'affiche si une
-// valeur est refusée.
+// Liste + création + édition (nom, taille, capacité, zones) + suppression à confirmation. Un blason
+// modélise l'occupation d'une cible : la **taille** est une fraction de place et la **capacité** le
+// nombre d'archers admis. Les **zones** sont les valeurs de score admises, qui pilotent le pavé de
+// saisie (EPIC-04) : un triple 40 n'a pas les zones 5 → 1. Les bornes sont validées côté serveur.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

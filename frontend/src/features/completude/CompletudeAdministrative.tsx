@@ -1,23 +1,11 @@
-// Complétude **administrative** (E16US003) — la moitié hors-sportive de `GET /completude`, rendue
-// sur l'axe **gestion**, là où l'organisateur la traite.
+// Complétude **administrative** (E16US003) — la moitié hors-sportive, rendue sur l'axe **gestion**.
 //
-// Pourquoi ce composant existe : le questionnaire A14 a refusé l'écran de complétude parce qu'il
-// mélangeait les deux mondes — *« je n'aime pas le mélange entre le déroulé et la gestion
-// administrative ; complétude en déroulé n'est pas complétude administrative, en déroulé on est
-// centré sur l'événement »*. Les deux listes voyagent toujours dans **une seule réponse** serveur
-// (`sportif` / `hors_sportif`, déjà séparées côté domaine depuis E12US005) : rien n'est recalculé
-// ici, c'est la **destination** qui change, pas le calcul.
-//
-// **Pourquoi sur l'écran Paiements et non sur une destination neuve** : `hors_sportif` ne porte
-// aujourd'hui qu'**une** ligne, « Paiements » (`domain/completude.py`). Lui donner une destination
-// propre aurait posé, dans l'axe gestion, un écran d'une seule ligne juste au-dessus de l'écran qui
-// traite exactement ce sujet. Le CA demande « deux destinations » : `paiements` **est** une
-// destination de l'axe gestion. Une destination dédiée ne se justifierait que le jour où le
-// hors-sportif porte plusieurs sujets — on ne fabrique pas l'ossature d'une évolution supposée.
-//
-// Ce que cette ligne dit et que le total en euros ne dit pas : elle compte des **archers réglés**,
-// pas des montants. « 113/120 » répond à « combien de personnes reste-t-il à encaisser », question
-// d'accueil, quand « reste 56 € » répond à « combien manque-t-il en caisse ». Les deux se lisent.
+// A14 a refusé l'écran unique : *« je n'aime pas le mélange entre le déroulé et la gestion
+// administrative »*. Les deux listes voyagent dans **une seule réponse** (`sportif` /
+// `hors_sportif`, séparées au domaine depuis E12US005) : c'est la **destination** qui change, pas
+// le calcul. **Sur l'écran Paiements plutôt qu'une destination neuve** : `hors_sportif` ne porte
+// qu'une ligne — une destination dédiée ne se justifiera qu'avec plusieurs sujets. Cette ligne
+// compte des **archers réglés**, pas des montants.
 
 import { texteErreur } from '../../shared/ui/texteErreur'
 import { useCompletude } from './hooks'

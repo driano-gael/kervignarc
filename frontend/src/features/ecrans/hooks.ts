@@ -1,13 +1,10 @@
 // Hooks React Query des écrans de salle (E07US004, ADR-0064).
 //
-// **L'affichage se poll**, il ne s'abonne pas. C'est le corollaire direct de la décision
-// d'architecture : la fin d'une prise de contrôle naît du *temps qui passe*, qu'aucun événement
-// serveur ne peut pousser (ADR-0038 §4, repris par ADR-0064). Un écran abonné au WebSocket
-// resterait figé sur un podium expiré tant que personne n'écrirait quelque part.
-//
-// L'écran décompte **en local** entre deux polls (`reste_s` + une horloge locale), ce qui lui donne
-// une reprise à la seconde sans interroger le serveur dix fois par minute — et une reprise correcte
-// même s'il perd le réseau au mauvais moment.
+// **L'affichage se poll**, il ne s'abonne pas : la fin d'une prise de contrôle naît du *temps qui
+// passe*, qu'aucun événement serveur ne peut pousser (ADR-0038 §4, repris par ADR-0064) — un écran
+// abonné au WebSocket resterait figé sur un podium expiré. L'écran décompte **en local** entre deux
+// polls (`reste_s` + horloge locale), ce qui lui donne une reprise à la seconde sans interroger le
+// serveur dix fois par minute.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 

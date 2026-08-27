@@ -50,15 +50,12 @@ export function creerCategorieBibliotheque(
   })
 }
 
-// Édition et suppression d'un modèle passent par les routes **à plat** posées en E01US003/E01US005
-// (`PUT /categories/{id}`, `DELETE /blasons/{id}`) : elles ne portent déjà pas de tournoi et
-// fonctionnent telles quelles sur une brique de bibliothèque. En ouvrir de nouvelles aurait créé
-// deux chemins pour un même geste, qui auraient divergé.
-// ⚠️ `PUT /categories/{id}` est **total** (ADR-0020) : tout champ omis est **remis à son défaut**
-// côté serveur (`ages: []`, `sexe: null`, `blason_id: null`). L'entrée reprend donc `ModifierCategorie`
-// en entier — la première version n'envoyait que `libelle`/`arme`/`hauteur_cm` et effaçait
-// silencieusement les tranches d'âge, le sexe et le blason par défaut de toute catégorie renommée,
-// y compris en bibliothèque, d'où le défaut se propageait à chaque assemblage suivant.
+// Édition et suppression d'un modèle passent par les routes **à plat** d'E01US003/E01US005 (`PUT
+// /categories/{id}`, `DELETE /blasons/{id}`) : elles ne portent déjà pas de tournoi. En ouvrir de
+// nouvelles aurait créé deux chemins pour un même geste. ⚠️ `PUT /categories/{id}` est **total**
+// (ADR-0020) : tout champ omis est **remis à son défaut** (`ages: []`, `sexe: null`, `blason_id:
+// null`), d'où l'entrée qui reprend `ModifierCategorie` en entier — la première version effaçait
+// silencieusement tranches d'âge, sexe et blason de toute catégorie renommée.
 export type ModifierCategorieBibliotheque = ModifierCategorie
 
 export function renommerCategorieBibliotheque(

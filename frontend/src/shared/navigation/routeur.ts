@@ -1,16 +1,11 @@
-// Routeur **maison** de l'application (E14US003) — analyse et construction de chemins, sans dépendance.
+// Routeur **maison** de l'application (E14US003) — analyse et construction de chemins.
 //
-// **Pourquoi maison.** L'arbitrage du 18/07/2026 (« pas de react-router, le périmètre ne justifie pas
-// la dépendance ») avait été **levé** par le commanditaire le 30/07 au profit de `react-router-dom` —
-// puis deux faits l'ont refermé le jour même : (1) toutes les versions ≥ 7.12.0 tirent un
-// `react-router` dans la plage vulnérable de l'avis `GHSA-qwww-vcr4-c8h2`, ce qui contredit la
-// règle 11 (« `npm audit` vert ») même si le trou vise le mode RSC, absent d'une SPA purement
-// cliente ; (2) l'installation est bloquée sur le poste. Le besoin réel — cinq mondes et deux
-// segments d'admin — tient en quelques dizaines de lignes : la règle 11 dit précisément « stdlib ou
-// quelques lignes maison préférées ». Décision : ADR-0059. Dette inscrite : **DETTE-024**.
-//
-// **Ce module est pur** (aucun accès au DOM) : c'est lui qui porte les décisions, donc c'est lui
-// qu'on teste. L'abonnement à `history` vit dans `useChemin.ts`, réduit à de la plomberie.
+// **Pourquoi maison.** L'arbitrage du 18/07/2026 avait été levé au profit de `react-router-dom`,
+// puis refermé le jour même : toutes les versions ≥ 7.12.0 tirent un `react-router` dans la plage
+// de `GHSA-qwww-vcr4-c8h2` (règle 11, « `npm audit` vert »), et l'installation est bloquée sur le
+// poste. Le besoin tient en quelques dizaines de lignes. Décision : ADR-0059, dette : DETTE-024.
+// **Ce module est pur** (aucun accès au DOM) : c'est lui qui porte les décisions, donc lui qu'on
+// teste ; l'abonnement à `history` vit dans `useChemin.ts`.
 
 import type { Role } from '../stores/sessionRoleStore'
 
@@ -46,26 +41,14 @@ const MONDE_PAR_SEGMENT: Record<string, Monde> = {
   admin: 'admin',
 }
 
-// ————————————————————————————————————————————————————————————————————————————————————————————————
-// Portes — ce que l'utilisateur franchit, à distinguer du monde que l'app sert
-// ————————————————————————————————————————————————————————————————————————————————————————————————
+// Portes — ce que l'utilisateur franchit, à distinguer du monde que l'app sert (A00, 04/08/2026).
 //
-// Retour maquettes du 04/08/2026 (A00, « ce qui manque complètement ») : *« une porte pour le ou les
-// écrans de projections »*. Elle **n'ajoute pas un monde** : un écran de salle est un poste, avec le
-// même code de rattachement, le même jeton, le même heartbeat et la même révocation — c'est le `type`
-// rendu par le serveur qui aiguille ensuite vers la saisie ou l'affichage plein écran (cf. l'en-tête
-// d'`EspacePoste`, qui a déjà tranché ce point en E07US004).
-//
-// Ce qui manquait n'était donc pas de la mécanique mais de **l'orientation** : rien, à l'écran de
-// choix, ne disait au bénévole que le vidéoprojecteur passe par là — il devait franchir « Tablette de
-// cible » pour rattacher un écran, ce qui est faux dans les mots. D'où une **porte** de plus,
-// c'est-à-dire une adresse (`/salle`) et un intitulé, pour un monde inchangé.
-//
-// ⚠️ **Asymétrie assumée** : `porte → chemin` est total, `chemin → monde` écrase la distinction
-// (`/salle` et `/cible` donnent tous deux `tablette`). `construireChemin({ monde: 'tablette' })`
-// rend donc toujours `/cible`. Sans conséquence : l'app ne *reconstruit* jamais cette adresse pour
-// un poste déjà installé (`mondeAServir` ne corrige que depuis la racine), et un écran laissé sur
-// `/salle` y reste — c'est justement ce qu'on veut d'une machine allumée huit heures.
+// Une porte pour les écrans de projection **n'ajoute pas un monde** : un écran de salle est un
+// poste, même code, même jeton, et c'est le `type` rendu par le serveur qui aiguille. Ce qui
+// manquait était de l'**orientation**. ⚠️ **Asymétrie assumée** : `porte → chemin` est total,
+// `chemin → monde` écrase la distinction, donc `construireChemin({ monde: 'tablette' })` rend
+// toujours `/cible` — sans conséquence, l'app ne reconstruit jamais cette adresse pour un poste
+// installé.
 export type Porte = Role | 'salle'
 
 const SEGMENT_PAR_PORTE: Record<Porte, string> = {

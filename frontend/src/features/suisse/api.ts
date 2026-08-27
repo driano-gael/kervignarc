@@ -1,15 +1,11 @@
 // Accès HTTP du **système suisse** (E05US030) — miroir des DTO de `api/v1/suisse.py`.
 //
-// Même partage des rôles que les poules (E05US023, ADR-0083) : deux **lectures** ici — l'état
-// rédigé (`/etat`, ouvert) et l'état de saisie (`/saisie`, scoreur) —, et **aucune écriture**. Une
-// rencontre de ronde *est* un duel ordinaire (ADR-0083 §7) : elle s'écrit par les hooks de
+// Même partage des rôles que les poules (ADR-0083) : deux **lectures** ici, et **aucune écriture**
+// — une rencontre de ronde *est* un duel ordinaire (§7), donc elle s'écrit par les hooks de
 // `features/saisie-duels` avec la famille `'suisse'`, ce qui lui donne gratuitement l'idempotence,
-// la file hors-ligne et le rejeu.
-//
-// **Deux vues, deux DTO**, et la raison n'est pas cosmétique : la vue de saisie porte le duel
-// entier — chaque flèche, le barrage, les zones du pavé, le nom du bénévole validateur. Rien de
-// cela n'a à circuler sur une route anonyme (règle 6, correctif de revue d'E05US023 recopié dans
-// `api/v1/suisse.py`).
+// la file hors-ligne et le rejeu. ⚠️ **Deux vues, deux DTO** : la vue de saisie porte le duel
+// entier — chaque flèche, le barrage, les zones, le nom du validateur —, et rien de cela n'a à
+// circuler sur une route anonyme (règle 6).
 
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'
@@ -73,12 +69,10 @@ export interface RondePublique extends Omit<Ronde, 'rencontres'> {
 /** Une ligne du classement provisoire.
  *
  * ⚠️ `rang` suit la convention **« 1224 »** (deux ex æquo au rang 2 laissent le 3 vacant), et
- * `points` est en **demi-points doublés** : une victoire vaut 2, un nul 1. Le domaine évite le
- * flottant, dont les égalités approchées sont exactement ce sur quoi un départage ne doit pas
- * reposer — c'est donc à l'affichage de rendre la moitié.
- *
- * `buchholz` est la somme des points des adversaires rencontrés : à points égaux, celui qui a
- * affronté plus fort passe devant. */
+ * `points` est en **demi-points doublés** : une victoire vaut 2, un nul 1 — le domaine évite le
+ * flottant, dont les égalités approchées sont ce sur quoi un départage ne doit pas reposer.
+ * `buchholz` est la somme des points des adversaires rencontrés.
+ */
 export interface RangSuisse {
   rang: number
   archer_id: number

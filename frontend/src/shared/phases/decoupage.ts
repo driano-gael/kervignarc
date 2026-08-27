@@ -1,15 +1,11 @@
 // Le **modèle** du découpage d'une qualification en tours (E05US035, ADR-0093) — logique pure.
 //
-// Séparé du composant pour la raison habituelle (`suisse.ts`, `poules.ts`, `bigShootOff.ts`) :
-// `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, et la conversion
-// « ce que l'écran affiche ↔ ce qui part au serveur » se teste ici sans monter de DOM.
-//
-// ⚠️ **La divisibilité est un miroir assumé du domaine** (`domain/qualification.py::
-// verifier_decoupage`), au même titre que `rondesMaximales` pour le suisse. Le serveur fait
-// autorité — `EtapeDeroule` **refuse** un découpage qui ne tombe pas juste. Mais l'organisateur
-// n'a aucune raison de découvrir la règle en se faisant refuser son étape : la dire à l'écran vaut
-// mieux que la lui opposer. Sa dérive ne produirait qu'un avertissement faux, jamais un tournoi
-// faux.
+// Séparé du composant pour la raison habituelle : `react-refresh` interdit à un module de rendu
+// d'exporter aussi des fonctions, et la conversion « écran ↔ serveur » se teste ici sans DOM. ⚠️
+// **La divisibilité est un miroir assumé du domaine** (`verifier_decoupage`). Le serveur fait
+// autorité et **refuse** un découpage qui ne tombe pas juste ; mais l'organisateur n'a aucune
+// raison de découvrir la règle en se faisant refuser son étape. Sa dérive ne produirait qu'un
+// avertissement faux, jamais un tournoi faux.
 
 /** Le réglage tel que l'API le transporte, miroir de `DecoupageDTO`. */
 export interface Decoupage {
@@ -38,16 +34,12 @@ export function depuisDecoupage(decoupage: Decoupage | null): EtatDecoupage {
   return { tours: String(decoupage.nb_tours) }
 }
 
-/**
- * Ce qui part au serveur — ou `undefined` quand la saisie n'est pas exploitable.
+/** Ce qui part au serveur — ou `undefined` quand la saisie n'est pas exploitable.
  *
  * Même convention que les autres formats : `undefined` veut dire « illisible », **pas** « efface ».
- * L'appelant ne le transmet jamais tel quel, il bloque sa soumission (`estValide`).
- *
- * ⚠️ **Un seul tour rend `null`, pas `{ nb_tours: 1 }`** — et la nuance n'est pas cosmétique. « Non
- * découpée » est l'état par défaut de toute qualification existante ; persister un découpage à 1
- * ferait apparaître un réglage là où l'organisateur n'a rien réglé, et rendrait la relecture d'une
- * base ancienne différente de celle d'une base neuve pour un comportement identique.
+ * ⚠️ **Un seul tour rend `null`, pas `{ nb_tours: 1 }`** : « non découpée » est l'état par défaut
+ * de toute qualification existante, et persister un découpage à 1 ferait apparaître un réglage là
+ * où l'organisateur n'a rien réglé — la relecture d'une base ancienne différerait d'une base neuve.
  */
 export function versDecoupage(etat: EtatDecoupage): Decoupage | null | undefined {
   const nombre = Number(etat.tours)
@@ -61,16 +53,12 @@ export function estValide(etat: EtatDecoupage): boolean {
   return versDecoupage(etat) !== undefined
 }
 
-/**
- * Dit ce que le découpage donne, et **nomme l'écart** quand il ne tombe pas juste.
+/** Dit ce que le découpage donne, et **nomme l'écart** quand il ne tombe pas juste.
  *
- * C'est tout l'objet du réglage à l'écran : la règle « des tours égaux » existe côté domaine, mais
- * l'organisateur ne la découvrirait qu'en se faisant refuser son étape. On lui montre la longueur
- * obtenue (« 2 tours de 10 volées »), ou la raison du refus à venir.
- *
- * ⚠️ **`nbVolees` peut être inconnu** (`null`) : l'atelier compose un format de bibliothèque, sans
- * barème posé. On ne promet alors rien plutôt que d'inventer un dénominateur — même parti que la
- * borne du suisse sans effectif.
+ * C'est tout l'objet du réglage à l'écran : la règle « des tours égaux » vit côté domaine, mais
+ * l'organisateur ne la découvrirait qu'en se faisant refuser son étape. ⚠️ **`nbVolees` peut être
+ * inconnu** (`null`) : l'atelier compose un format de bibliothèque, sans barème posé — on ne promet
+ * alors rien plutôt que d'inventer un dénominateur.
  */
 export function decrireDecoupage(nbVolees: number | null, nbTours: number): string {
   if (nbTours <= 1)

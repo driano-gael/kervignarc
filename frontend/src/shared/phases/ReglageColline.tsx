@@ -1,15 +1,10 @@
 // La fiche de réglages d'une **colline** (E05US027).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
-// bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ReglagePoules`,
-// `ReglageBigShootOff` et `ReglageSuisse` avant elle.
-//
-// ⚠️ **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006, reprise telle quelle) :
-// monté sous condition, un état dérivé d'une prop diverge dès que la condition bascule.
-//
-// **Deux réglages**, et le second est le plus important des deux : la portée de défi est ce qui
-// fait un King of the Hill ou un Ladder. C'est pourquoi l'écran **nomme le format** sous le champ
-// plutôt que de laisser l'organisateur traduire un nombre.
+// Partagée par les **deux** écrans qui composent des phases, comme ses trois sœurs avant elle. ⚠️
+// **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006) : monté sous condition, un
+// état dérivé d'une prop diverge dès que la condition bascule. **Deux réglages**, dont le second
+// est le plus important : la portée de défi fait un King of the Hill ou un Ladder — d'où un écran
+// qui **nomme le format** sous le champ plutôt que de laisser traduire un nombre.
 
 import type { EtatColline } from './colline'
 import {

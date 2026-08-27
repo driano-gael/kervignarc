@@ -18,14 +18,11 @@ export interface DuellistePublic {
 
 // Un match de l'arbre.
 //
-// ⚠️ `place_en_jeu` n'est renseigné que sur les matchs **terminaux** (ceux qui départagent deux
-// rangs) : il vaut `[1, 2]` pour la finale, `[5, 6]` pour le match de la 5ᵉ place, et **`null`
-// partout ailleurs** — y compris sur un match des places 5-8 disputé au tour d'une demi-finale.
-// C'est `plage` qui distingue ces branches-là, et `libelle` qui les nomme.
-//
-// `termine` et `validee` ne disent pas la même chose et l'écart est **visible à l'écran** : le tir
-// est allé au bout (`termine`) mais le scoreur n'a pas encore scellé (`validee`), donc l'arbre
-// n'avance pas. C'est le même vocabulaire « en attente de validation » / « validé » qu'E07US009.
+// ⚠️ `place_en_jeu` n'est renseigné que sur les matchs **terminaux** : `[1, 2]` pour la finale,
+// `null` partout ailleurs — y compris sur un match des places 5-8 disputé au tour d'une
+// demi-finale. C'est `plage` qui distingue ces branches et `libelle` qui les nomme. `termine` et
+// `validee` ne disent pas la même chose, et l'écart est **visible à l'écran** : le tir est allé au
+// bout mais le scoreur n'a pas scellé, donc l'arbre n'avance pas.
 export interface DuelPublic {
   numero: number
   tour: number

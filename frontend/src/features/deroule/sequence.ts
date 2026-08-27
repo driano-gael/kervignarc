@@ -1,14 +1,10 @@
 // Manipulation d'une **séquence d'étapes** de format (E01US024) — logique pure, aucun React.
 //
 // Deux gestes, et le second est ce qui les rend sûrs : réordonner ou retirer une étape **renumérote
-// les ordres**, or `ordre_source` désigne une phase **par son ordre** (`# DETTE-026`). Sans
-// remappage, monter une phase d'un cran fait glisser en silence les prélèvements de ses cadettes
-// sur la voisine.
-//
-// Le backend fait déjà exactement cela pour les phases d'un tournoi — `ServicePhases.reordonner`
-// remappe (`_remapper`) et `supprimer` **refuse** de retirer une phase encore référencée
-// (`PhaseSourceReferencee`). Un premier jet de cet écran ne faisait ni l'un ni l'autre : c'est la
-// parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
+// les ordres**, or `ordre_source` désigne une phase **par son ordre** (`# DETTE-026`) — sans
+// remappage, monter une phase d'un cran fait glisser en silence les prélèvements de ses cadettes.
+// Le backend fait déjà exactement cela (`_remapper`) et **refuse** de retirer une phase encore
+// référencée : c'est la parité avec l'écran équivalent qui manquait, pas une subtilité nouvelle.
 
 import type { Etape, Source } from '../patrimoine/api'
 import { decrireProfondeur } from '../../shared/phases/profondeur'
@@ -24,25 +20,13 @@ function ordreOrphelin(taille: number): number {
   return taille + 1
 }
 
-/**
- * Renumérote les ordres selon la **position** et remappe les prélèvements en conséquence.
+/** Renumérote les ordres selon la **position** et remappe les prélèvements en conséquence.
  *
- * Les ordres sont dérivés de la position, jamais saisis — ce qui supprime par construction la
- * classe d'erreurs « ordres non contigus ». Le remappage préserve l'**intention** : « je prélève
- * dans la phase qui était la 2ᵉ » reste vrai après que cette phase soit devenue la 3ᵉ.
- *
- * ⚠️ **Un prélèvement dont l'étape a disparu est rendu explicitement introuvable**, jamais laissé
- * tel quel. Un premier jet le laissait « pointer dans le vide » en croyant que le diagnostic le
- * verrait — c'était faux, et le trou était pire que celui qu'on venait de fermer : puisque *tous*
- * les ordres sont renumérotés, la valeur conservée `k` désigne désormais **la phase qui suivait
- * celle qu'on vient de retirer**. Retirer la phase du milieu d'un déroulé à quatre phases faisait
- * donc puiser la finale dans le mauvais tableau, **sans aucune anomalie** — la cible existe et est
- * antérieure. Le garde-fou d'alors était du code mort, et son test ne s'en apercevait pas parce
- * qu'à deux phases la réaffectation produit une auto-référence, elle, visible.
- *
- * Le backend, lui, **refuse** de supprimer une phase encore référencée (`PhaseSourceReferencee`).
- * Ici, la composition étant un brouillon, on préfère laisser retirer et **montrer** le prélèvement
- * devenu orphelin : c'est le régime du CA, et le diagnostic le nomme.
+ * Le remappage préserve l'**intention** : « je prélève dans la phase qui était la 2ᵉ » reste vrai
+ * quand elle devient la 3ᵉ. ⚠️ **Un prélèvement dont l'étape a disparu est rendu explicitement
+ * introuvable** : le laisser tel quel était pire que le trou qu'on fermait — tous les ordres étant
+ * renumérotés, la valeur conservée désigne **la phase qui suivait celle qu'on retire**, ce qui
+ * faisait puiser la finale dans le mauvais tableau **sans aucune anomalie**.
  */
 export function renumeroter(etapes: readonly Etape[]): Etape[] {
   const ancienVersNouveau = new Map<number, number>()

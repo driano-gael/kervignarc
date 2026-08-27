@@ -1,22 +1,11 @@
 // Le **schéma à braquets** — un seul composant de dessin, trois surfaces (E07US004, ADR-0064).
 //
-// C'est la décision de conception centrale du CA d'E07US004, et elle mérite d'être justifiée ici
-// plutôt que dans une story qu'on ne lit pas en codant :
-//
-// | Surface                     | Écran            | Interaction | Habillage             |
-// |-----------------------------|------------------|-------------|-----------------------|
-// | Atelier — composer          | PC               | on compose  | outil (jamais d'identité, `D-27`) |
-// | Pilotage — suivre           | PC               | oui         | outil                 |
-// | Salle — projeter            | ≥ 1920 px, de loin | **aucune** | identité du tournoi (`D-27`, `DV-08`) |
-//
-// Le dessiner pour une seule condamnerait les deux autres : les contraintes sont **opposées**.
-// D'où trois props de variation — et **aucune** variation de géométrie : `geometrie.ts` produit le
-// même `Plan` partout, parce que le CA dit « le **même** schéma ». C'est le `viewBox` du SVG qui met
-// le dessin à l'échelle, texte compris — un écran de salle affiche donc *le dessin de l'atelier*,
-// simplement plus gros, et non un cousin qu'il faudrait réapprendre à lire.
-//
-// Le calque d'`avancement` (E07US004) est **superposé**, jamais fondu dans les blocs : c'est ce qui
-// garantit qu'un bloc se dessine identiquement avec ou sans réalité par-dessus.
+// Atelier et pilotage sont sur PC et interactifs ; la salle projette à ≥ 1920 px, **sans aucune
+// interaction**, et porte l'identité du tournoi (`D-27`, `DV-08`). Le dessiner pour une seule
+// condamnerait les deux autres. D'où trois props de variation — et **aucune** variation de
+// géométrie : `geometrie.ts` produit le même `Plan` partout, c'est le `viewBox` qui met à
+// l'échelle. ⚠️ Le calque d'`avancement` est **superposé**, jamais fondu dans les blocs : c'est ce
+// qui garantit qu'un bloc se dessine identiquement avec ou sans réalité par-dessus.
 
 import { useMemo } from 'react'
 

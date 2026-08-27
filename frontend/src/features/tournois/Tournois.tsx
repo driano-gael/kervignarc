@@ -1,15 +1,10 @@
-// Gestion des tournois (E01US001, E01US002) — feature extraite de `competition/TrancheVerticale.tsx`
-// lors de la coquille admin (E00US015). Le fichier `TrancheVerticale.tsx` enfouissait cette fonction
-// dans l'écran d'une autre (guide §8 : « aucune fonction n'est enfouie dans le fichier d'une autre ») ;
-// elle vit désormais dans sa propre feature.
+// Gestion des tournois (E01US001, E01US002) — extraite de l'écran monolithique lors de la coquille
+// admin (guide §8 : « aucune fonction n'est enfouie dans le fichier d'une autre »).
 //
-// Périmètre : créer / éditer / lister / supprimer un tournoi et piloter son **cycle de vie**
-// (brouillon → en cours → terminé). La **création et le cycle de vie** sont réservés à l'admin
-// (E10US002) ; la **lecture** (liste, pour rouvrir un tournoi ou consulter son classement public)
-// reste publique — sans session admin, on présente l'écran de connexion à la place du formulaire.
-//
-// La couche données (types + hooks React Query) reste dans `competition/` : c'est un hub partagé
-// (archers, placement en dépendent aussi), qu'on ne déplace pas au titre de cette US.
+// Périmètre : créer / éditer / lister / supprimer un tournoi et piloter son **cycle de vie**. La
+// création et le cycle de vie sont réservés à l'admin (E10US002) ; la **lecture** reste publique —
+// sans session admin, on présente l'écran de connexion à la place du formulaire. La couche données
+// reste dans `competition/` : c'est un hub partagé qu'on ne déplace pas au titre de cette US.
 
 import { useMemo, useState } from 'react'
 import { useDeconnexionAdmin } from '../admin/hooks'

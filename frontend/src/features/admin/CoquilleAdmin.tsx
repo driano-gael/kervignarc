@@ -1,49 +1,11 @@
 // Coquille de navigation de l'appli admin (E00US015, refondue en E14US003).
 //
-// **Le découpage a changé de nature le 30/07/2026.** L'ossature groupait les destinations par
-// **temps du tournoi** (Préparation / Jour J) — 19 entrées d'un côté, 6 de l'autre. Le commanditaire
-// l'a refusé : « la sidebar fait vivre le tournoi sous tous ses états en même temps, je trouve cela
-// confus ». Le critère n'est plus *quand*, c'est **quelle activité** — trois axes :
-//
-//  - **atelier** — fabriquer, **hors tournoi** : briques du club, salles types, formats, banc d'essai ;
-//  - **pilotage** — le temps réel : lancer, superviser, valider, faire tourner la journée ;
-//  - **gestion** — l'administratif, **transverse au temps** : inscriptions, paiements, exports.
-//
-// Pourquoi ce n'est pas un renommage : un rangement **temporel coupe en morceaux** une activité qui
-// dure. La gestion administrative en était la preuve — inscriptions, doublons et paiements étaient
-// rangés dans « Préparation », exports et archive dans « Jour J ». Personne ne l'avait décidé : c'était
-// l'ordre d'arrivée des US, une entrée de sidebar par US livrée.
-//
-// Conséquences de structure :
-//  - **un accueil admin choisit l'axe** (`axeActif === null`), et porte l'**assemblage** — la liste
-//    des tournois, leur création, leur cycle de vie. Un seul axe est ouvert à la fois : les groupes
-//    repliables disparaissent, la sidebar ne montre que les destinations de l'axe courant. `P-3` est
-//    respecté — l'accueil est à un clic, rien n'est interdit — mais on n'est plus *pollué* par les
-//    deux autres axes.
-//  - **le sélecteur de tournoi ne coiffe plus tout** : l'atelier n'a **pas** de tournoi (patrimoine du
-//    club), donc le sélecteur n'apparaît que dans les axes qui en ont besoin. L'exception « ici le
-//    sélecteur ne s'applique pas » disparaît au lieu d'être expliquée.
-//  - l'**accueil-tableau de bord** (E14US001) et le **cockpit de simulation** (E15US003) cessent
-//    d'être des destinations parmi dix-neuf : le premier est la destination d'ouverture du pilotage
-//    (`D-20`), le second l'entrée du banc d'essai de l'atelier.
-//
-// **Chaque écran a son adresse** : `/admin` ouvre l'accueil des axes, `/admin/12/pilotage/supervision`
-// ouvre un écran précis **sur un tournoi précis**. Le tournoi, l'axe et la destination ne sont donc
-// **pas** dupliqués en état local — c'est ce qui fait qu'un `F5` revient là où l'on était et qu'un lien
-// s'ouvre sur la même vue. Routeur **maison** (`shared/navigation/routeur.ts`), pas de dépendance :
-// cf. son en-tête pour le pourquoi (ADR-0059).
-//
-// Périmètre borné aux **fonctions livrées** (CA « non-régression ») : les destinations que le CDC UX
-// prévoit mais qui n'existent pas encore (Identité, Validation, Podiums, Audit) ne sont **pas**
-// matérialisées par des entrées vides — elles arriveront avec leur US. La **recherche d'archer**
-// (E12US006, `D-19`) reste hors du système de destinations : elle coiffe la sidebar, elle ne s'ouvre
-// pas dans la zone principale. Elle est scopée au tournoi courant, donc n'apparaît que dans les axes
-// qui en ont un — sa variante « toutes entités » pour l'atelier relève du lot suivant.
-//
-// **E01US023 a rendu l'atelier honnête** (DETTE-023 résorbée, ADR-0060). Catégories, Blasons et
-// Formats y sont désormais des **briques du club** — des modèles de bibliothèque, sans tournoi. La
-// copie d'une édition se travaille au pilotage (« Assemblage »), là où l'on a un tournoi sous la
-// main : c'est le partage déjà établi entre `gabarits` (le modèle) et `plan` (la copie).
+// **Le découpage a changé de nature le 30/07/2026** : l'ossature groupait par **temps du tournoi**,
+// ce que le commanditaire a refusé (« la sidebar fait vivre le tournoi sous tous ses états en même
+// temps »). Le critère est désormais l'**activité** — atelier (hors tournoi), pilotage (temps
+// réel), gestion (transverse). Un rangement temporel **coupe en morceaux** une activité qui dure.
+// Conséquences : un accueil choisit l'axe, le sélecteur de tournoi ne coiffe plus l'atelier, et
+// **chaque écran a son adresse** (routeur maison, ADR-0059) — un `F5` revient là où l'on était.
 
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
@@ -298,17 +260,13 @@ function Coquille() {
     {
       id: 'phases',
       libelle: 'Phases du tournoi',
-      // Séquence des phases du moteur (E05US001, ADR-0045) : élimination directe / placement après
-      // la qualification. Juste après « Barème & validation » — c'est la suite de la définition du
-      // déroulé (la qualification, elle, se règle sur cet écran-là).
+      // Séquence des phases du moteur (E05US001, ADR-0045), juste après « Barème & validation ».
       //
-      // ⚠️ **Renommé par E16US002 : le libellé disait « Phases (format) », et c'était faux depuis
-      // ADR-0076.** Cet écran compose le **déroulé d'un tournoi concret** — son `<h3>` le dit déjà
-      // (« Phases (déroulé du tournoi) ») —, alors qu'un *format* est la brique de bibliothèque
-      // d'ADR-0060, composée à l'atelier et sans tournoi. Les deux libellés étaient **croisés** :
-      // celui-ci portait le mot de son voisin « Composer un déroulé », qui fabrique un format.
-      // Deux mots pour deux choses différentes, à un clic l'un de l'autre : c'est le motif exact du
-      // refus d'A10, qu'ADR-0073 a fait lever sur le plan de salle.
+      // ⚠️ **Renommé par E16US002 : le libellé disait « Phases (format) », faux depuis ADR-0076.**
+      // Cet écran compose le **déroulé d'un tournoi concret**, alors qu'un *format* est la brique
+      // de bibliothèque d'ADR-0060. Les deux libellés étaient **croisés** — celui-ci portait le mot
+      // de son voisin « Composer un déroulé », qui fabrique un format. Deux mots pour deux choses
+      // différentes, à un clic l'un de l'autre : le motif exact du refus d'A10.
       rendu: () => courant && <Phases tournoiId={courant.id} />,
     },
     {

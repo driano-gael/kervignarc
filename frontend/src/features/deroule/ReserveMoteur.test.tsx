@@ -1,14 +1,10 @@
 // Tests de la **réserve d'honnêteté** de l'écran de composition (E05US020).
 //
-// Le bandeau prévient l'organisateur que ce qu'il compose ne se déroulera pas tel quel. Sa
-// condition d'affichage est la seule chose qui empêche deux erreurs opposées : le laisser sur un
-// déroulé désormais exact (on fait douter d'un schéma juste), ou le retirer d'un déroulé que le
-// moteur ne sait toujours pas exécuter (on laisse partir un tournoi qui ne se jouera pas).
-//
-// Les deux causes sont **distinctes** et doivent le rester : un prélèvement inerte (« le reste »,
-// « les gagnants d'un tour ») et un type de phase que le moteur ne déroule pas (poules, suisse,
-// colline). L'ancienne condition les couvrait toutes les deux **par accident** ; les séparer sans
-// réintroduire la seconde était le défaut relevé en contre-revue.
+// Le bandeau prévient que ce qu'on compose ne se déroulera pas tel quel. Sa condition d'affichage
+// empêche deux erreurs opposées : le laisser sur un déroulé désormais exact (faire douter d'un
+// schéma juste), ou le retirer d'un déroulé que le moteur ne sait pas exécuter (laisser partir un
+// tournoi qui ne se jouera pas). Les deux causes sont **distinctes** — un prélèvement inerte et un
+// type non déroulé — et l'ancienne condition les couvrait toutes deux **par accident**.
 
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -82,19 +78,11 @@ describe('ReserveMoteur', () => {
 
   it('prévient aussi sur un type de phase que le moteur ne déroule pas', () => {
     // Le cas que la première version du correctif avait perdu : un prélèvement par rangs, mais un
-    // type dont le moteur ne sait rien faire (DETTE-028).
-    //
-    // ⚠️ **Ce cas a changé de type trois fois** : les poules jusqu'à E05US023, le système suisse
-    // jusqu'à E05US030, la colline jusqu'à E05US027 — chaque US rendant jouable le format qu'il
-    // citait. Il vise donc désormais le **placement**. Le déplacement n'affaiblit rien : ce qui est
-    // testé est le mécanisme, pas l'identité du type — et chaque type sorti de la liste gagne son
-    // propre test « ne prévient plus », ci-dessous, qui est la moitié utile du changement.
-    //
-    // ✅ **Et il cesse ici de se déplacer.** Le `placement` a un décor d'arbre mais aucun service
-    // pour le monter (E06US006, tranché par ADR-0083) : ce n'est pas un chantier en attente mais un
-    // état stable, donc ce test a enfin un porteur durable. Il suivait jusqu'ici le dernier format
-    // non livré, ce qui le faisait ressembler à un compteur d'avancement plutôt qu'au garde-fou
-    // d'un mécanisme.
+    // type dont le moteur ne sait rien faire (DETTE-028). ⚠️ **Ce cas a changé de type trois fois**
+    // (poules, suisse, colline), chaque US rendant jouable le format qu'il citait ; il vise donc le
+    // **placement**. Ce qui est testé est le mécanisme, pas l'identité du type. ✅ **Et il cesse ici
+    // de se déplacer** : le `placement` a un décor d'arbre mais aucun service pour le monter
+    // (ADR-0083), état stable et non chantier en attente — ce test a enfin un porteur durable.
     render(
       <ReserveMoteur
         diagnostic={diagnostic([bloc('qualification'), bloc('placement', [flux('rangs')])])}

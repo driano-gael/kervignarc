@@ -1,17 +1,11 @@
 // Test de **couture** : enregistrer un brouillon doit périmer le diagnostic (E01US024).
 //
-// C'est le seul test de hook de cette feature, et il est là pour une raison précise : le défaut
-// qu'il fixe est passé au travers de tout le reste. Les clés `['patrimoine','formats']` et
+// Le défaut qu'il fixe est passé au travers de tout le reste : `['patrimoine','formats']` et
 // `['deroule','diagnostic']` n'ont aucun recouvrement de préfixe, donc enregistrer n'invalidait
-// rien ; avec `staleTime: 30_000`, `refetchOnWindowFocus: false` et un composant qui ne remonte
-// pas, le schéma restait figé sur la version d'avant — pendant que l'écran retirait l'avertissement
-// « modifications non enregistrées ». Ni `tsc`, ni `eslint`, ni un test de logique pure ne pouvaient
-// le voir : la faute est **entre** deux hooks, pas dans l'un d'eux.
-//
-// La convention « le JSX ne se teste pas » ne couvre pas un hook : `shared/navigation/useChemin` a
-// le sien, et `@testing-library/react` est déjà en devDependencies. On ne double que les **appels
-// HTTP** (`./api`, `../patrimoine/api`) : les hooks eux-mêmes, et le vrai `QueryClient`, sont ceux
-// de production — sans quoi le test ne dirait rien de la couture qu'il prétend vérifier.
+// rien — avec `staleTime: 30_000` et `refetchOnWindowFocus: false`, le schéma restait figé pendant
+// que l'écran retirait « modifications non enregistrées ». La faute est **entre** deux hooks, pas
+// dans l'un d'eux. On ne double que les **appels HTTP** : hooks et `QueryClient` sont ceux de
+// production.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'

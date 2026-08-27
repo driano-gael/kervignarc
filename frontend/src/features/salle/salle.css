@@ -135,16 +135,11 @@
 }
 
 /* « Mettre le maximum d'archers sur une page quand même » : colonnes CSS plutôt qu'une grille figée
-   — la largeur d'une colonne s'ajuste à celle du vidéoprojecteur, et une page de 40 noms remplit
-   l'écran sans qu'aucune largeur n'ait été codée en dur.
-   ⚠️ `columns: 3 22ch` fixe **au plus** trois colonnes : sous une certaine largeur, le navigateur
-   n'en rend que deux ou une. Ce **maximum** est l'unité dans laquelle se compte `noms_par_page` —
-   le classement projeté, tableau mono-colonne, divise le réglage par autant
-   (`NOMS_PAR_LIGNE_PROJETEE` dans `TableClassement.tsx`). **La conversion** sous-remplit donc quand
-   la largeur n'autorise que deux colonnes : elle ne fait jamais déborder le *classement*. ⚠️ Cette
-   page de noms-ci, en revanche, n'est **pas** plafonnée — à deux colonnes, 40 noms font 20 lignes
-   au lieu de 14 et le bas est coupé sans ascenseur (`DETTE-086`). Changer ce nombre ici oblige à
-   l'y changer aussi. */
+   — la largeur d'une colonne s'ajuste au vidéoprojecteur. ⚠️ `columns: 3 22ch` fixe **au plus**
+   trois colonnes, et ce **maximum** est l'unité dans laquelle se compte `noms_par_page` — le
+   classement projeté, mono-colonne, divise le réglage par autant (`NOMS_PAR_LIGNE_PROJETEE` dans
+   `TableClassement.tsx`), donc sous-remplit sans jamais déborder. ⚠️ Cette page de noms-ci, elle,
+   n'est **pas** plafonnée : à deux colonnes le bas est coupé sans ascenseur (`DETTE-086`). */
 .salle-pages__noms {
   flex: 1;
   margin: 0;

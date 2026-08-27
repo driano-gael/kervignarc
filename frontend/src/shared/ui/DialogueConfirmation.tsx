@@ -1,22 +1,11 @@
-// Dialogue de confirmation — retour maquettes du 04/08/2026 (A15).
+// Dialogue de confirmation — retour maquettes du 04/08/2026 (A15) : « une pop-up propre ».
 //
-// *« La confirmation passe par un window.confirm que le code signale comme provisoire — que veux-tu à
-// la place ? → une pop-up propre et bien design. »*
-//
-// **Le provisoire s'était répandu.** Ce n'était pas un `window.confirm` mais **huit**, sur les gestes
-// les plus lourds du produit : lancer un tour, terminer un tournoi, annuler, archiver, révoquer un
-// écran, un poste, perdre un barrage en cours. Tous portaient la même note « en attendant une friction
-// plus riche ». Un `confirm` natif a trois défauts qui comptent ici : il **bloque le fil** (les
-// requêtes en vol et le rendu s'arrêtent, sur un écran temps réel c'est visible), il ne peut **rien
-// nommer** (ni le ton, ni les conséquences chiffrées, ni un libellé de bouton qui redit le geste — on
-// lit « OK / Annuler », ce qui est ambigu quand le geste *est* une annulation), et son apparence
-// dépend du navigateur, donc du parc — ce qui contredit le CDC design.
-//
-// **Pourquoi `<dialog>` natif et pas une librairie.** Règle 11 : « stdlib ou quelques lignes maison
-// préférées ». `showModal()` fournit gratuitement le piège de focus, la fermeture par `Échap`, l'inertie
-// de l'arrière-plan et le `::backdrop` — c'est-à-dire exactement ce pour quoi on prendrait une
-// dépendance. Support : Chrome 37+, Safari 15.4+, Firefox 98+ ; le parc du jour J est BYOD mais un
-// navigateur antérieur à 2022 ne ferait pas tourner le reste de l'app non plus.
+// **Le provisoire s'était répandu** : non pas un `window.confirm` mais **huit**, sur les gestes les
+// plus lourds du produit. Un `confirm` natif a trois défauts qui comptent ici : il **bloque le
+// fil** (visible sur un écran temps réel), il ne peut **rien nommer** (« OK / Annuler » est ambigu
+// quand le geste *est* une annulation), et son apparence dépend du parc. **`<dialog>` natif et pas
+// une librairie** (règle 11) : `showModal()` fournit gratuitement le piège de focus, `Échap`,
+// l'inertie et le `::backdrop` — exactement ce pour quoi on prendrait une dépendance.
 
 import { useEffect, useId, useRef } from 'react'
 

@@ -1,34 +1,22 @@
 // File de saisie **de duels** hors-ligne (Zustand) — E04US013, résilience E04US009 / ADR-0037.
 //
-// Quand le réseau tombe pendant qu'un scoreur score un duel, l'acte (saisir une manche, un barrage,
-// valider) ne doit pas être **perdu** ni bloquer le scoreur : on le met dans cette file, persistée
-// dans le `localStorage`, et on le **rejoue à la reconnexion**. Jumeau de `fileHorsLigneStore` (la
-// qualif) — **2ᵉ occurrence** du motif : on **duplique** plutôt que d'extraire un socle générique
-// (règle 12 / § Dette : la 3ᵉ occurrence déclenchera l'extraction en ADR + US dédiée, pas avant).
-//
-// **Divergence assumée avec la file de qualification** : ici la file est **FIFO stricte, sans dédup
-// à l'enfilage**. La qualif remplace une volée en attente de même emplacement (actes homogènes,
-// emplacements indépendants) ; un duel enchaîne des actes **hétérogènes dont l'ordre compte** —
-// valider suppose les manches déjà rejouées. Réordonner une manche rééditée après la validation la
-// ferait rejouer sur un duel « déjà tranché » (refus). On garde donc l'ordre d'action = ordre de
-// rejeu. Le **dédoublonnage** reste **serveur** (idempotence par `identifiant_saisie`, ADR-0036),
-// stable tant que l'identifiant est figé à l'enfilage (jamais régénéré au rejeu).
+// L'acte (saisir une manche, un barrage, valider) est persisté dans le `localStorage` et **rejoué à
+// la reconnexion**. Jumeau de `fileHorsLigneStore` — **2ᵉ occurrence** du motif : on **duplique**
+// plutôt que d'extraire un socle (la 3ᵉ déclenchera l'extraction, § Dette). ⚠️ **Divergence
+// assumée** : ici la file est **FIFO stricte, sans dédup à l'enfilage**, parce qu'un duel enchaîne
+// des actes **hétérogènes dont l'ordre compte** — valider suppose les manches rejouées. Le
+// dédoublonnage reste **serveur** (`identifiant_saisie`, ADR-0036).
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// Les corps d'actes en attente. Structurellement identiques aux requêtes de `features/saisie-duels/
-// api` (la feature y passe ses corps sans que `shared/` importe la feature — inversion de
-// dépendance, comme `VoleeEnFile`). Discriminés par `type` pour le rejeu (endpoint par acte).
+// Les corps d'actes en attente, structurellement identiques aux requêtes de
+// `features/saisie-duels/api` (la feature y passe ses corps sans que `shared/` importe la feature).
 /** À quelle **surface** l'acte s'adresse : l'arbre d'un tableau, ou une rencontre de poule.
  *
- * Ajoutée par E05US023 : une rencontre de poule *est* un duel ordinaire (ADR-0083 §7) et se saisit
- * avec le même pavé, mais elle s'écrit sur d'autres routes (`/api/v1/poules/...`). Le rejeu doit
- * donc savoir où renvoyer l'acte.
- *
- * ⚠️ **Optionnelle, et absente vaut `tableau`.** La file est persistée dans le `localStorage` : une
- * tablette qui a des actes en attente au moment du déploiement les a écrits sans ce champ. Les lire
- * comme des actes de tableau est exact — c'est tout ce qui existait. */
+ * E05US023 : une rencontre de poule *est* un duel ordinaire (ADR-0083 §7) mais s'écrit sur d'autres
+ * routes. ⚠️ **Optionnelle, et absente vaut `tableau`** : la file étant persistée, une tablette qui
+ * avait des actes en attente au déploiement les a écrits sans ce champ. */
 export type FamilleDuel = 'tableau' | 'poule' | 'suisse' | 'colline'
 
 export interface MancheEnFile {

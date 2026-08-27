@@ -1,15 +1,10 @@
 // Tests de **montage** de la vue publique du système suisse (E05US031, ADR-0089).
 //
-// ⚠️ **Écrits en correctif de revue** (axes B, C1 et C2) : l'US avait livré quatre composants de vue
-// neufs et n'en montait qu'un. Les trois oubliés portaient précisément les deux CA les plus
-// détaillés — la profondeur d'historique par format, et le filtre « mes archers ».
-//
-// Deux défauts réels ont été trouvés ici sans qu'aucun test ne puisse les voir, et les deux sont
-// gardés ci-dessous : le porteur du **bye** échappait au filtre « mes archers », et les **conflits
-// de pose** n'étaient pas annoncés alors que la vue des poules le fait, sur le même champ et dans
-// le même onglet.
-//
-// Les cas dérivent de `docs/fonctionnel/E05US031.md` § scénarios 3 et 6, pas de l'implémentation.
+// ⚠️ **Écrits en correctif de revue** : l'US avait livré quatre composants de vue neufs et n'en
+// montait qu'un — les trois oubliés portaient les deux CA les plus détaillés. Deux défauts réels,
+// invisibles à toute porte, sont gardés ici : le porteur du **bye** échappait au filtre « mes
+// archers », et les **conflits de pose** n'étaient pas annoncés. Cas dérivés de
+// `docs/fonctionnel/E05US031.md` §3 et §6, pas de l'implémentation.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

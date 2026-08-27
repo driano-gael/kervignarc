@@ -1,19 +1,11 @@
 // Tests de **montage** de la table de classement (E06US001, élargie par E16US004).
 //
-// Ce fichier naît d'un défaut de **conjonction** trouvé en revue d'E16US004, du genre que ni les
-// tests de logique pure ni les tests d'architecture ne peuvent voir, parce qu'il n'existe qu'à la
-// jonction de deux moitiés vertes :
-//
-//  - `focus.centrerLignes` filtrait correctement (testé, conforme au CA « on ne renumérote pas ») ;
-//  - `departage.totauxExAequo` calculait correctement (testé sur listes complètes) ;
-//  - et pourtant, branchés l'un sur l'autre, ils **effaçaient une égalité FFTA** de l'écran le plus
-//    regardé de la journée : le calcul recevait la liste déjà filtrée, si bien qu'un archer suivi à
-//    542 points, à égalité avec un archer **non suivi** à 542, se retrouvait seul avec son total et
-//    n'était plus signalé comme ex æquo. Son rang se présentait comme acquis alors qu'il tenait à
-//    un départage au nombre de 10 — voire à un barrage encore à tirer.
-//
-// D'où la règle que ces tests verrouillent : **la source du calcul n'est pas la source de
-// l'affichage**. `lignes` dit ce qu'on montre, `lignesCompletes` dit sur quoi l'on raisonne.
+// Ce fichier naît d'un défaut de **conjonction** trouvé en revue, du genre que ni les tests de
+// logique pure ni ceux d'architecture ne voient : `centrerLignes` filtrait correctement et
+// `totauxExAequo` calculait correctement, mais branchés l'un sur l'autre ils **effaçaient une
+// égalité FFTA** — le calcul recevait la liste déjà filtrée, donc un archer suivi à 542 à égalité
+// avec un **non suivi** se retrouvait seul avec son total. D'où la règle que ces tests verrouillent
+// : **la source du calcul n'est pas la source de l'affichage**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
@@ -258,17 +250,13 @@ describe('TableClassement — le reste projeté', () => {
   })
 
   it('convertit les NOMS réglés en LIGNES de tableau, sans quoi la page déborde de l’écran', () => {
-    // ⚠️ **Le bloquant de la revue d'E16US009**, et il tombait au réglage livré par défaut.
-    // `noms_par_page` compte des noms tels que `.salle-pages__noms { columns: 3 22ch }` les
-    // dispose — trois colonnes, donc ~14 lignes de haut pour 40 noms. Le classement est un tableau
-    // mono-colonne : 40 noms y feraient 40 lignes, soit environ trois fois la hauteur disponible
-    // sur un 1920x1080, et `.classement__pages` n'a **aucun ascenseur** (ADR-0098 §3 : personne ne
-    // fait défiler un vidéoprojecteur). Le bas de chaque page n'aurait pas été « mal lu », il
-    // n'aurait **jamais été montré** — et la fenêtre avançant du même pas, les archers concernés ne
-    // seraient jamais sortis de la journée. C'est le défaut que l'US existe pour corriger.
-    //
-    // Ce test est l'oracle du ratio : 12 noms réglés → 4 lignes par page. Sans la conversion,
-    // `nombreDePages(7, 12)` vaudrait 1 — donc page unique, aucun compteur, ARCHER7 à l'écran.
+    // ⚠️ **Le bloquant de la revue d'E16US009**, au réglage livré par défaut. `noms_par_page`
+    // compte des noms tels que `columns: 3 22ch` les dispose — trois colonnes —, alors que le
+    // classement est un tableau **mono-colonne** : 40 noms y feraient 40 lignes, trois fois la
+    // hauteur d'un 1920×1080, et `.classement__pages` n'a **aucun ascenseur** (ADR-0098 §3). Le bas
+    // de page n'aurait pas été « mal lu », il n'aurait **jamais été montré**. Ce test est l'oracle
+    // du ratio : 12 noms réglés → 4 lignes par page ; sans la conversion, `nombreDePages(7, 12)`
+    // vaudrait 1.
     const { container } = render(
       <Cadre
         enfants={
@@ -301,15 +289,12 @@ describe('TableClassement — le reste projeté', () => {
     [40, 9], // ⚠️ le DÉFAUT LIVRÉ : `ceil(40/3)` = 14, plafonné à `LIGNES_PROJETEES_MAX`
     [100, 9], // plafond du domaine : idem, le plafond d'affichage tient
   ])('découpe %i noms réglés en pages de %i lignes', (noms, lignesAttendues) => {
-    // ⚠️ **Le résidu que la 2ᵉ passe de revue a trouvé, et pourquoi il y a DEUX constantes.** Le
-    // ratio ferme le facteur ×3 ; il laisse ouverts un chrome fixe (tête figée + en-têtes, qui ne
-    // se divise pas) et un écart de hauteur de ligne (`padding` en px dans `.table`, en em dans
-    // `.salle-pages__nom`) qui *croît* quand l'écran rétrécit. Trois axes l'ont calculé
-    // séparément : à 1280×720, le défaut livré débordait encore de deux lignes.
-    //
-    // Le plafond ne rend pas la valeur juste — rien n'a encore été mesuré sur un vidéoprojecteur.
-    // Il rend la **direction de l'erreur** sûre : trop de pages plutôt que des archers jamais
-    // montrés. C'est ce que ces quatre cas épinglent, aux deux bornes du réglage.
+    // ⚠️ **Le résidu que la 2ᵉ passe a trouvé, et pourquoi il y a DEUX constantes.** Le ratio ferme
+    // le facteur ×3 ; restent un chrome fixe (tête figée + en-têtes, qui ne se divise pas) et un
+    // écart de hauteur de ligne qui *croît* quand l'écran rétrécit — à 1280×720, le défaut livré
+    // débordait encore de deux lignes. Le plafond ne rend pas la valeur juste (rien n'a été mesuré
+    // sur un vidéoprojecteur), il rend la **direction de l'erreur** sûre : trop de pages plutôt que
+    // des archers jamais montrés.
     const TRENTE = Array.from({ length: 30 }, (_, i) =>
       ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 700 - i }),
     )

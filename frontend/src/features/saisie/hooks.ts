@@ -185,16 +185,13 @@ async function draineLaFile(queryClient: QueryClient): Promise<void> {
   }
 }
 
-// Rejeu de la file hors-ligne (E04US009, ADR-0037). Monté sur l'écran de saisie du poste. Draine la
-// file sur deux déclencheurs, chacun **par transition** (pas de boucle chaude) :
-//  - le lien WebSocket **revient** (`connecte`) : sur un LAN, la restauration du réseau coïncide avec
-//    la réouverture du WebSocket (reconnexion auto ~1 s) — le cas nominal.
-//  - le **jeton de poste revient** (re-rattachement) : après un rejeu qui a buté sur un 401 (serveur
-//    redémarré → session purgée), le WebSocket reste connecté ; c'est le re-rattachement, pas une
-//    transition de lien, qui doit relancer le rejeu des saisies gardées en file.
-// (Un troisième filet — succès d'une saisie en ligne — vit dans `useSaisirVolee.onSuccess`.)
-// On ne draine pas sans jeton : les endpoints de saisie sont scopés « poste » (un POST sans jeton
-// referait un 401 inutile).
+// Rejeu de la file hors-ligne (E04US009, ADR-0037) — monté sur l'écran de saisie du poste. Draine
+// la file sur deux déclencheurs, chacun **par transition** (pas de boucle chaude) : le lien
+// WebSocket qui **revient** (cas nominal — sur un LAN, la restauration du réseau coïncide avec la
+// reconnexion auto) ; et le **jeton de poste qui revient** (re-rattachement) — après un rejeu buté
+// sur un 401, le WebSocket reste connecté, donc aucune transition de lien ne relancerait le rejeu.
+// On ne draine pas sans jeton : les endpoints de saisie sont scopés « poste ». (Troisième filet :
+// `useSaisirVolee.onSuccess`.)
 export function useRejeuFileHorsLigne(): void {
   const queryClient = useQueryClient()
   const statut = useConnexionStore((state) => state.statut)

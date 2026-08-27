@@ -160,7 +160,10 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     la version « trois tests » seule n'avait retiré que **0,3 %** du volume en trois vagues) :
     **(i) huit lignes au plus par bloc.** Au-delà, ce n'est plus un avertissement mais un
     raisonnement : il part en ADR et le code garde un renvoi. Seule règle de commentaire du projet
-    qui soit **mesurable**, donc la seule qui ne dérivera pas.
+    qui soit **mesurable**, donc la seule qui ne dérivera pas — et elle est **vérifiée des deux
+    côtés** : `backend/tests/test_commentaires_bornes.py` et `frontend/src/commentaires.test.ts`,
+    l'un et l'autre **sans tolérance** depuis E00US027 (le cliquet backend est vidé, le front n'en
+    a jamais eu).
     **(ii) aucune docstring tautologique** — si elle ne dit rien de plus que la signature, elle
     disparaît (`par_club(club_id) -> list[Archer]` n'a pas besoin de « renvoie les archers du club »).
     **(iii) un seul avertissement par bloc.** Trois ⚠️ empilés signalent soit un module qui fait trop

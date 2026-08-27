@@ -203,6 +203,24 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/ClassementSuisse.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/SaisieSuisse.tsx » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/presentation.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0083"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce ServicePoules, LecteurClassementPoules, LecteurClassementBigShootOff dans « backend/application/prelevement.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -282,6 +300,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 46
+  "signaux": 49
  }
 };

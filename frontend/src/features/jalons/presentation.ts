@@ -14,19 +14,12 @@ export interface Verdict {
 
 // Les **trois** cas, et pas deux : `pret` seul ne suffit pas à écrire la phrase.
 //
-// C'est l'asymétrie de la famille (ADR-0096). « Il manque quelque chose » se dit différemment
-// selon que le serveur **refusera** (démarrer : `TournoiSansDepart`,
-// `EffectifInsuffisantPourDemarrer`) ou **laissera passer** (terminer, qui n'a aucune garde dure).
-// Annoncer un refus là où l'appli accepte ferait un écran plus sévère que le produit ; annoncer
-// « allez-y » là où le serveur refuse enverrait l'organisateur au 409, le jour J, devant la salle.
-//
-// **`moment` dit *quand* le refus tombe, et il n'est pas décoratif.** Un jalon répond de
-// l'**étape**, pas du prochain clic : depuis *brouillon*, l'action offerte est « Marquer prêt », qui
-// n'exige que les créneaux — un tournoi à 28 inscrits sur 34 la passera sans broncher pendant que le
-// jalon dit déjà « pas prêt ». « Ce qui manque sera refusé » se lisait alors comme un refus
-// **immédiat**, démenti par le clic suivant : l'écran se contredisait à deux lignes d'intervalle
-// (relevé en revue, axe D). Nommer le moment (« sera refusé **au démarrage** ») rend la phrase vraie
-// dans les deux cas, et reste générique — le mot vient du jalon, pas d'une table d'écrans.
+// C'est l'asymétrie de la famille (ADR-0096) : « il manque quelque chose » se dit différemment
+// selon que le serveur **refusera** (démarrer) ou **laissera passer** (terminer, sans garde dure).
+// ⚠️ **`moment` dit *quand* le refus tombe** : un jalon répond de l'**étape**, pas du prochain clic
+// — depuis *brouillon*, « Marquer prêt » n'exige que les créneaux, et « ce qui manque sera refusé »
+// se lisait comme un refus **immédiat**, démenti au clic suivant (relevé par l'axe D). Nommer le
+// moment rend la phrase vraie dans les deux cas.
 export function verdict(pret: boolean, bloquant: boolean, moment?: string | null): Verdict {
   if (pret) return { ton: 'ok', texte: 'Oui — rien ne s’y oppose.' }
   if (bloquant) {

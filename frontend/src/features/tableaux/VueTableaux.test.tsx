@@ -1,23 +1,11 @@
 // Tests de **montage** de la vue publique des tableaux (E07US005).
 //
-// Ce fichier existe à cause d'un défaut précis, et il vaut mieux le dire que le paraphraser : la
-// première version de `VueTableaux` dérivait la liste des archers suivis **dans le sélecteur
-// Zustand** (`s.suivis.filter(...).map(...)`). Un sélecteur qui rend un tableau neuf à chaque appel
-// rend `getSnapshot` instable pour `useSyncExternalStore` — donc **boucle de rendu infinie** en
-// Zustand v5 / React 19, y compris avec zéro archer suivi. La fonctionnalité était inutilisable, et
-// **aucune porte mécanique ne pouvait le voir** : ni `tsc`, ni `eslint`, ni les 17 tests de logique
-// pure de `presentation.test.ts`, qui n'appellent jamais React.
-//
-// Le dépôt portait pourtant déjà le correctif, sur le **même store**, dans la feature voisine
-// (`suivi/VueSuivi.tsx`, « correctif de revue A »). Ce qui manquait n'était pas la connaissance,
-// c'était un test qui **monte le composant**. C'est tout l'objet de ce fichier — et la leçon
-// réutilisable : une feature front sans un seul rendu testé a un angle mort de cette taille.
-//
-// ⚠️ **Depuis E16US004, cette vue ne lit plus le store du tout** : les archers suivis descendent en
-// prop depuis `AccueilPublic`, comme le mode. Le piège du sélecteur instable n'a donc pas disparu,
-// il a **changé d'adresse** — il vit maintenant chez le seul lecteur restant, couvert par
-// `AccueilPublic.test.tsx`. Les tests ci-dessous gardent leur valeur (ils montent réellement la
-// vue), mais ce n'est plus ici que se joue la boucle infinie.
+// Ce fichier existe à cause d'un défaut précis : la première version dérivait la liste des suivis
+// **dans le sélecteur Zustand**, or un sélecteur qui rend un tableau neuf à chaque appel rend
+// `getSnapshot` instable — donc **boucle de rendu infinie**, y compris à zéro archer suivi, et
+// **aucune porte mécanique ne pouvait le voir**. Ce qui manquait n'était pas la connaissance (le
+// correctif existait dans la feature voisine) mais un test qui **monte le composant**. ⚠️ Depuis
+// E16US004 cette vue ne lit plus le store : le piège a changé d'adresse.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -140,16 +128,11 @@ describe('VueTableaux — montage', () => {
   })
 
   it('rend « Mon chemin » quand l’affichage est centré sur les archers suivis', async () => {
-    // ⚠️ **Comportement modifié en E16US004, volontairement.** Jusqu'ici la vue décidait seule
-    // d'ouvrir sur « Mon chemin » dès qu'on suivait quelqu'un, et portait son propre sélecteur
-    // « Mon chemin / Tableau complet ». Ce choix est remonté d'un cran : c'est l'interrupteur
-    // « mes archers / tout » de l'en-tête public (P05) qui le porte, pour tout l'onglet à la fois.
-    // Deux interrupteurs disant la même chose sur le même écran finissaient par se contredire.
-    //
-    // Le CA d'E07US005 — « la lecture *Mon chemin* est celle par défaut **dès qu'on suit
-    // quelqu'un** » — n'est pas abandonné pour autant : il est porté par la valeur initiale de
-    // `centrerSurSuivis` (armée), et c'est `AccueilPublic.test.tsx` qui le vérifie désormais, là où
-    // le défaut se décide. Ici on teste la vue, qui ne fait qu'obéir à ses props.
+    // ⚠️ **Comportement modifié en E16US004, volontairement.** La vue décidait seule d'ouvrir sur «
+    // Mon chemin » et portait son propre sélecteur ; ce choix est remonté à l'interrupteur « mes
+    // archers / tout » de l'en-tête public (P05), pour tout l'onglet à la fois — deux interrupteurs
+    // disant la même chose finissaient par se contredire. Le CA d'E07US005 n'est pas abandonné : il
+    // est porté par la valeur initiale de `centrerSurSuivis`, et vérifié par `AccueilPublic.test`.
     render(<Cadre enfants={<VueTableaux tournoiId={1} mode="suivis" suivis={[1]} />} />)
 
     await waitFor(() => expect(screen.getByText(/MARTIN/)).toBeInTheDocument())

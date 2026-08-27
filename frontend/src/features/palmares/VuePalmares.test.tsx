@@ -1,14 +1,10 @@
 // Tests de **montage** du palmarès (E06US004, centrage ajouté par E16US004).
 //
-// Un seul invariant est verrouillé ici, mais c'est celui qui n'a pas de recours s'il tombe :
-// **le centrage « mes archers » ne touche jamais les podiums**.
-//
-// C'est un garde-fou qui *interdit* un comportement, donc exactement la sorte de règle qu'un
-// refactor casse en silence — on n'ajoute pas un bug, on retire une exception. La revue d'E16US004
-// l'a relevé : la règle était énoncée dans une docstring et appliquée dans le JSX, sans un seul
-// test. Un podium amputé de ses médaillés ne répond plus à « qui a gagné », la seule question que
-// cet écran serve ; et le spectateur qui ne suit aucun médaillé est précisément celui pour qui la
-// question se pose.
+// Un seul invariant, celui qui n'a pas de recours s'il tombe : **le centrage « mes archers » ne
+// touche jamais les podiums**. C'est un garde-fou qui *interdit* un comportement, donc la sorte de
+// règle qu'un refactor casse en silence — la revue d'E16US004 l'a relevée énoncée en docstring et
+// appliquée dans le JSX, sans un test. Un podium amputé de ses médaillés ne répond plus à « qui a
+// gagné », et le spectateur qui ne suit aucun médaillé est celui pour qui la question se pose.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

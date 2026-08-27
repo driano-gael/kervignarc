@@ -1,14 +1,10 @@
 // Accès HTTP de la **colline** (E05US027) — miroir des DTO de `api/v1/colline.py`.
 //
-// Même partage des rôles que les poules et le suisse (ADR-0083) : deux **lectures** ici — l'état
-// rédigé (`/etat`, ouvert) et l'état de saisie (`/saisie`, scoreur) —, et **aucune écriture**. Un
-// défi *est* un duel ordinaire (ADR-0083 §7) : il s'écrit par les hooks de `features/saisie-duels`
-// avec la famille `'colline'`, ce qui lui donne gratuitement l'idempotence, la file hors-ligne et
-// le rejeu.
-//
-// **Deux vues, deux DTO**, et la raison n'est pas cosmétique : la vue de saisie porte le duel
-// entier — chaque flèche, le barrage, les zones du pavé, le nom du bénévole validateur. Rien de
-// cela n'a à circuler sur une route anonyme (règle 6).
+// Même partage des rôles que les poules et le suisse (ADR-0083) : deux **lectures** ici, **aucune
+// écriture** — un défi *est* un duel ordinaire (§7), donc il s'écrit par les hooks de
+// `features/saisie-duels` avec la famille `'colline'`, ce qui lui donne gratuitement l'idempotence,
+// la file hors-ligne et le rejeu. ⚠️ **Deux vues, deux DTO** : la vue de saisie porte le duel
+// entier, et rien de cela n'a à circuler sur une route anonyme (règle 6).
 
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'
@@ -62,15 +58,12 @@ export interface DefiPublic {
 
 /** Une manche : ses défis, ses archers **au repos**, et si elle est **close**.
  *
- * `close` est ce dont l'écran a besoin pour dire pourquoi la manche suivante n'est pas là : les
- * défis de la manche `n+1` se calculent sur les **positions** issues de la manche `n`, donc tant
- * qu'un défi n'est pas tranché, ces positions n'existent pas. Une manche ouverte n'est pas une
- * anomalie, c'est le régime normal d'une manche en cours de saisie.
- *
- * ⚠️ **`au_repos` n'est pas décoratif, et ce n'est pas le « bye » du suisse.** Un bye est un
- * archer désigné qui gagne d'office ; ici personne ne gagne rien — à portée 1, les **deux**
- * extrémités de la colline ne tirent pas de la manche, quel que soit l'effectif. Sans cette liste,
- * elles disparaissent de la manche sans explication et le scoreur les cherche. */
+ * `close` dit pourquoi la manche suivante n'est pas là : ses défis se calculent sur les
+ * **positions** issues de la manche courante. Une manche ouverte est le régime normal d'une saisie
+ * en cours. ⚠️ **`au_repos` n'est pas le « bye » du suisse** : un bye gagne d'office, ici personne
+ * ne gagne — à portée 1, les **deux** extrémités ne tirent pas, et sans cette liste elles
+ * disparaissent.
+ */
 export interface Manche {
   numero: number
   defis: Defi[]

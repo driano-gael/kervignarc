@@ -98,25 +98,13 @@ export interface EtapeDeroule {
   titre: string | null
 }
 
-// La **phase** : l'avancement de cette étape dans un créneau. Elle porte la définition **assemblée**
-// par le serveur (le repository la joint depuis l'étape de même rang), plus ce qui n'appartient
-// qu'au créneau : `depart_id`, `statut`, et son propre `id` — celui auquel s'adressent les
-// transitions de cycle de vie.
-// ⚠️ **`arrets` est retiré du type, et pas seulement commenté** (correctif de revue, axe C1). Le
-// serveur ne remplit ce champ que sur `EtapeReponse` : sur une `Phase`, il vaut `undefined` à
-// l'exécution pendant que TS garantissait un tableau. Un commentaire n'est pas un type, et
-// `E05US034` touchera précisément ces écrans.
+// La **phase** : l'avancement d'une étape dans un créneau — la définition **assemblée** par le
+// serveur, plus `depart_id`, `statut` et son propre `id`, celui auquel s'adressent les transitions.
 //
-// ⚠️ **`nb_volees` est retiré pour la même raison** (E05US035) : le serveur ne le sert que sur
-// `EtapeReponse`, parce que le barème se lit par sa propre ressource. Le laisser fuir par le `Omit`
-// aurait rejoué le défaut d'`arrets` un an après l'avoir corrigé — un champ garanti par TS et
-// `undefined` à l'exécution.
-//
-// ⚠️ **`titre` est retiré pour la troisième fois la même raison** (E16US002) : le serveur ne le
-// sert que sur `EtapeReponse`, parce qu'il décrit la **composition** et non l'avancement — l'agrégat
-// `Phase` ne le porte pas, exactement comme `arrets`. Le laisser fuir par le `Omit` aurait rejoué,
-// un an après, le défaut que les deux paragraphes ci-dessus racontent. Le typecheck l'a attrapé au
-// premier essai : c'est le `Omit` explicite qui rend la couture visible, et il gagne à le rester.
+// ⚠️ **`arrets`, `nb_volees` et `titre` sont retirés du type, pas seulement commentés** — trois
+// fois le même défaut (E05US034, E05US035, E16US002). Le serveur ne sert ces champs que sur
+// `EtapeReponse` : sur une `Phase` ils valent `undefined` à l'exécution pendant que TS garantissait
+// une valeur. C'est le `Omit` explicite qui rend la couture visible.
 export interface Phase extends Omit<EtapeDeroule, 'tournoi_id' | 'arrets' | 'nb_volees' | 'titre'> {
   depart_id: number
   statut: StatutPhase

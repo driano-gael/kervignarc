@@ -1,18 +1,11 @@
-// Écran d'ajustement du placement (E03US004, ADR-0024) — réservé à l'admin (monté sous `estAdmin`).
+// Écran d'ajustement du placement (E03US004, ADR-0024) — réservé à l'admin (`estAdmin`).
 //
-// On choisit un départ (créneau), puis on ajuste son plan de cibles au **glisser-déposer** : on
-// glisse un jeton d'archer d'une cible à l'autre, vers une case libre (déplacement) ou occupée
-// (échange), ou vers la **réserve** (mise à l'écart). Le serveur reste l'autorité : chaque geste est
-// un PUT, et un refus (`409 deplacement_invalide`) laisse le plan inchangé — on affiche l'alerte et
-// on refetch. Drag & drop **HTML5 natif** (à la souris, écran admin sur PC) : aucune dépendance.
-//
-// **Mise en page (E16US005, retour A11)** : *« trop tassé, une cible par ligne me paraît plus
-// adaptée »*. Le plan est donc une **pile de bandes** pleine largeur — une cible par ligne, ses
-// couloirs alignés en colonnes d'une ligne à l'autre — et non plus une grille de vignettes de
-// 160 px. La largeur ainsi gagnée porte, sous chaque nom, les repères sur lesquels l'organisateur
-// arbitre (club, catégorie, blason). La **réserve** passe en panneau collant à droite : le
-// glisser-déposer HTML5 natif ne fait pas défiler la page, donc une réserve en pied d'écran devient
-// inatteignable dès qu'un départ compte vingt cibles.
+// On ajuste le plan de cibles d'un créneau au **glisser-déposer** : vers une case libre
+// (déplacement), occupée (échange) ou vers la **réserve**. Le serveur reste l'autorité — chaque
+// geste est un PUT, et un refus laisse le plan inchangé. Drag & drop **HTML5 natif**, aucune
+// dépendance. Mise en page (E16US005, A11) : une **cible par ligne**, couloirs alignés en colonnes,
+// et la réserve en panneau **collant** — le glisser-déposer natif ne fait pas défiler la page, donc
+// une réserve en pied d'écran devient inatteignable dès vingt cibles.
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -243,15 +236,12 @@ function PlanCharge({
   }
 
   // Nombre de colonnes de couloirs, **dérivé du plan** : les cibles n'ont pas toutes la même
-  // capacité, et les aligner d'une bande à l'autre demande une grille commune — une cible à 2
-  // places occupe alors les colonnes A et B, les deux suivantes restant vides. C'est le seul
-  // service que rend ce calcul, et c'est un vrai service.
+  // capacité, et les aligner d'une bande à l'autre demande une grille commune.
   //
   // ⚠️ Le `Math.min` n'est pas décoratif : sans lui, une capacité serveur > 4 ouvrirait N colonnes
-  // sur **toutes** les bandes du plan, en n'en remplissant que 4 (`POSITIONS.slice`) — donc une
-  // colonne fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond :
-  // c'est `POSITIONS` qui le porte (`DETTE-010`), et le `Math.min` fait que le rendu reste cohérent
-  // en attendant E01US019.
+  // sur **toutes** les bandes en n'en remplissant que 4 (`POSITIONS.slice`) — donc une colonne
+  // fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond : c'est
+  // `POSITIONS` qui le porte (`DETTE-010`).
   const couloirs = Math.max(
     1,
     ...plan.cibles.map((cible) => Math.min(cible.capacite, POSITIONS.length)),
@@ -427,12 +417,10 @@ function PlanCharge({
 // `reperes` : les attributs d'arbitrage affichés sous le nom (club, catégorie, blason), déjà
 // traduits en clair et éventuellement vides — le jeton ne consulte aucun référentiel lui-même.
 //
-// DETTE-085 : ce type et les quatre composants qui suivent (`Cible`, `Case`, `JetonArcher`,
-// `Reserve`) sont **recopiés à l'identique** dans `duels/Duels.tsx`, cloné d'ici à E03US009. Le
-// vocabulaire métier, lui, est mutualisé dans `presentation.ts` — c'est le rendu qui reste double.
-// E16US005 est le premier changement à devoir toucher les deux : elle inscrit la dette au registre
-// plutôt que de remonter les composants dans `shared/`, ce qui serait un remède structurel introduit
-// en douce (§ Dette). À traiter avec DETTE-083, même geste et même destination.
+// DETTE-085 : ce type et les quatre composants qui suivent sont **recopiés à l'identique** dans
+// `duels/Duels.tsx`, cloné d'ici à E03US009. Le vocabulaire métier est mutualisé dans
+// `presentation.ts` ; c'est le rendu qui reste double. E16US005 inscrit la dette au registre plutôt
+// que de remonter les composants dans `shared/` — remède structurel introduit en douce (§ Dette).
 type Jeton = { nom: string; lignes: LignesDeReperes; inscriptionId: number }
 
 function Cible({

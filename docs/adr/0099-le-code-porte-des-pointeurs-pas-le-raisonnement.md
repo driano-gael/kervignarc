@@ -189,4 +189,6 @@ passage, et `/revue-us` peut relever un commentaire neuf qui ne passe aucun des 
 | Lot démonstratif — archéologie retirée, avertissement d'exhaustivité conservé | `frontend/src/shared/phases/catalogue.ts` | oui |
 | Lot démonstratif | `frontend/src/shared/phases/relance.ts` · `frontend/src/features/completude/Completude.tsx` | oui |
 | Le raisonnement déplacé, jamais détruit | `docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md` (le pourquoi du ratio et du plafond y était **déjà**, ce qui a permis de couper dans `TableClassement.tsx`) | oui — vérifié avant chaque coupe |
+| **(i) huit lignes au plus par bloc**, côté backend | `backend/tests/test_commentaires_bornes.py` (+ `backend/tests/commentaires_cliquet.txt`, **vidé** en E00US027 : la règle y est dure) | oui — la suite rougit au 9ᵉ |
+| **(i) huit lignes au plus par bloc**, côté front | `frontend/src/commentaires.test.ts` (pendant vitest, **sans cliquet** — `frontend/src` est né sous le plafond) | oui — `npm test` rougit au 9ᵉ |
 | Le comportement est **inchangé** : c'est un nettoyage de prose | la porte mécanique complète (`pytest`, `npm test`, `tsc`, `ruff`, `mypy`) | oui — aucune ligne de code exécutable modifiée |

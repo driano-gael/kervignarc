@@ -1,18 +1,11 @@
 // Barrages de places décisives (E06US003, ADR-0066) — surface **admin** du classement.
 //
-// Deux moitiés, dans l'ordre où l'organisateur les vit : les égalités que le format réclame de
-// trancher au tir (« faire tirer »), puis les barrages en cours, avec la saisie de leur manche.
-//
-// Cette carte ne s'affiche que s'il y a une egalite signalee ou un barrage en cours : le defaut du
-// produit reste l'ex aequo partage (E06US001), et une alerte ambre permanente sur les tournois qui
-// ne barrent pas serait du bruit sur l'ecran qu'on regarde toute la journee. Le **departage
-// manuel** (poule, Big Shoot Off) vit hors de cette carte, dans `VueClassement` : il doit rester
-// atteignable en permanence, mais replie, sans allumer d'alerte.
-//
-// ⚠️ **Un groupe se retire en entier.** Le serveur refuse une manche où une partie seulement du
-// groupe a tiré — deux ex æquo dont un seul a retiré ne se départagent sur rien. Le formulaire
-// soumet donc **tout le groupe** d'un coup, et un tireur qu'on n'a pas renseigné part « absent »
-// seulement si on l'a coché : sans cela, un oubli de saisie ferait perdre quelqu'un qui a tiré.
+// Deux moitiés, dans l'ordre où l'organisateur les vit : les égalités à trancher au tir, puis les
+// barrages en cours. La carte ne s'affiche que s'il y a matière — le défaut du produit reste l'ex
+// æquo partagé, et une alerte ambre permanente serait du bruit. Le **départage manuel** vit hors
+// d'ici, replié, dans `VueClassement`. ⚠️ **Un groupe se retire en entier** : le serveur refuse une
+// manche partielle, donc le formulaire soumet tout le groupe, et un tireur non renseigné part «
+// absent » **seulement s'il est coché** — sinon un oubli ferait perdre quelqu'un qui a tiré.
 
 import { useState } from 'react'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
@@ -60,22 +53,14 @@ export function PanneauBarrages({
   lignes: LigneClassement[]
 }) {
   const barrages = useBarrages(tournoiId)
-  // ⚠️ **Les barrages CLOS sont rendus eux aussi**, et c'est un correctif de revue. Les filtrer
-  // rendait inatteignable le seul chemin de réparation d'un verdict acté par erreur : le barrage
-  // quittait l'écran au clic sur « Acter », l'égalité disparaissait du classement (le verdict
-  // s'appliquant), et la carte entière s'effaçait. Le juge qui avait inversé deux flèches sur la
-  // dernière place qualificative envoyait le mauvais archer au tableau, définitivement — le
-  // dommage même que le correctif serveur disait avoir fermé.
+  // ⚠️ **Les barrages CLOS sont rendus eux aussi** : les filtrer rendait inatteignable le seul
+  // chemin de réparation d'un verdict acté par erreur — le juge qui avait inversé deux flèches
+  // envoyait le mauvais archer au tableau, définitivement.
   //
-  // ⚠️ **…mais uniquement ceux de CE créneau** (ADR-0075, revue E01US025, axe adversarial). La
-  // route reste au niveau tournoi ; le filtre est donc ici. Le serveur avait été corrigé sur ce
-  // point (`ServiceBarrage._meme_endroit` lit `par_depart`), le miroir client ne l'avait pas suivi.
-  // Sans lui, deux créneaux ayant chacun une égalité au **même rang** — cas ordinaire, les rangs se
-  // répètent d'un départ à l'autre — se voyaient comme « le même endroit » : `dejaOuvert` passait à
-  // `true` et **retirait du DOM** le bouton « Faire tirer » de l'après-midi. Le serveur aurait
-  // accepté l'annonce ; l'organisateur n'avait plus aucun chemin pour départager sa dernière place
-  // qualificative. Les cartes du matin s'affichaient de surcroît sous l'en-tête de l'après-midi,
-  // sans rien qui les distingue, et allumaient l'alerte ambre.
+  // ⚠️ **…mais uniquement ceux de CE créneau** (ADR-0075, axe adversarial) : la route reste au
+  // niveau tournoi, donc le filtre est ici. Sans lui, deux créneaux ayant une égalité au **même
+  // rang** se voyaient comme « le même endroit » — `dejaOuvert` retirait du DOM le bouton « Faire
+  // tirer » de l'après-midi, et les cartes du matin s'affichaient sous son en-tête.
   const tous = (barrages.data ?? []).filter((barrage) => barrage.depart_id === departId)
   const nomDe = (archerId: number) => {
     const ligne = lignes.find((candidate) => candidate.archer_id === archerId)
@@ -423,21 +408,11 @@ function SaisieGroupe({
 
 /** Départager des archers **hors qualification** — poule ou Big Shoot Off (ADR-0066).
  *
- * ⚠️ **Pourquoi un formulaire plutôt qu'un bouton comme en qualification.** Là-haut, l'application
- * *sait* qui est à égalité : elle lit le classement, donc elle propose. Ici l'organisateur désigne
- * les tireurs lui-même.
- *
- * ⚠️ **Ce paragraphe disait « aucun classement de poule n'est calculé nulle part » — c'est faux
- * depuis E05US023** (ADR-0083). Le classement de poule existe, l'écran de saisie l'affiche, et le
- * verdict d'un barrage de portée `poule` **referme** ce classement (`ServicePoules`
- * `_verdicts_de_barrage`). Ce qui reste vrai, et qui justifie le formulaire : la **désignation**
- * n'est pas automatisée ici — l'écran de saisie des poules *annonce* le barrage requis, il n'ouvre
- * pas le formulaire à la place de l'organisateur. Le Big Shoot Off, lui, reste entièrement manuel
- * jusqu'à `E05US028` (reste de `DETTE-028`).
- *
- * Vit **hors de la carte d'alerte** et replié par défaut : il doit rester atteignable en
- * permanence (rien ne peut le signaler), sans pour autant allumer une alerte ambre toute la
- * journée sur un tournoi qui ne fait ni poule ni Big Shoot Off.
+ * ⚠️ **Pourquoi un formulaire plutôt qu'un bouton** : en qualification l'application *sait* qui
+ * est à égalité, ici l'organisateur désigne les tireurs. Ce qui justifie le formulaire n'est pas
+ * l'absence de classement de poule (il existe depuis E05US023) mais l'absence de **désignation
+ * automatique**. Vit **hors de la carte d'alerte** et replié : atteignable en permanence, sans
+ * allumer d'ambre toute la journée sur un tournoi qui ne fait ni poule ni Big Shoot Off.
  */
 export function DepartageManuel({
   tournoiId,

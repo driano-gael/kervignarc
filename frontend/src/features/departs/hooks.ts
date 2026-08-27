@@ -31,21 +31,11 @@ export function useDeparts(tournoiId: number, enabled = true) {
 
 /** Le créneau des trois écrans de duels : un défaut **calculé une fois**, puis figé.
  *
- * ⚠️ **Le gel n'est pas un détail d'implémentation, c'est le correctif** (2ᵉ revue E01US025).
- * `shared/realtime/useRealtime` appelle `invalidateQueries()` **sans clé** à chaque événement temps
- * réel : la liste des départs est donc refetchée en permanence, et leur `etat` change en cours de
- * journée. Un défaut recalculé à chaque rendu suivait ces changements — le scoreur qui avait ouvert
- * son tableau à 10h55 et n'avait touché à rien voyait, à la clôture de la qualification, l'écran
- * changer de créneau **sous ses doigts** : la clé de requête bascule, `phases.data` redevient
- * indéfini, le tableau se démonte au milieu d'un duel. Sur l'écran qui porte la file hors-ligne,
- * c'est la pire surface possible pour un démontage non sollicité.
- *
- * Une fois le premier créneau résolu, il devient donc un choix **explicite** : plus rien ne le
- * déplace sauf l'utilisateur, ou sa disparition (`creneauRetenu` retombe alors sur le défaut).
- *
- * Hissé en hook partagé à la **3ᵉ occurrence réelle** (plan de duels, saisie des duels, feu vert) —
- * le seuil que le projet se fixe. Recopier le `useEffect` trois fois, c'était garantir qu'un des
- * trois divergerait.
+ * ⚠️ **Le gel est le correctif** (2ᵉ revue E01US025). `useRealtime` invalide **sans clé** : la
+ * liste des départs est refetchée en permanence et leur `etat` change en cours de journée. Un
+ * défaut recalculé suivait ces changements — le scoreur voyait l'écran changer de créneau **sous
+ * ses doigts** et le tableau se démonter au milieu d'un duel. Une fois résolu, le créneau devient
+ * un choix **explicite** ; hissé en hook partagé à la **3ᵉ occurrence réelle**.
  */
 export function useCreneauDesDuels(tournoiId: number) {
   const [choix, setChoix] = useState<number | null>(null)

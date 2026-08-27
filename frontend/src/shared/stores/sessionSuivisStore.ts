@@ -1,15 +1,11 @@
 // Session « suivis » (Zustand) — E07US006.
 //
-// Mémorise localement la liste des archers que l'utilisateur a choisi de **suivre** : la vue publique
-// s'ouvre alors directement sur eux, sans avoir à les rechercher à chaque fois (D-09, CDC UX §6.3).
-// Même principe que le jeton de poste (`localStorage`, survit à la fermeture de l'onglet le temps de
-// la journée) mais **sans aucun compte ni jeton serveur** : la lecture publique est anonyme, il n'y a
-// rien à authentifier. Le store ne s'enregistre donc **pas** auprès du client HTTP — contrairement
-// aux sessions poste/scoreur, il n'a pas d'en-tête à joindre ni de 401 à écouter.
-//
-// « Liste de suivis » (arbitrage métier du 20/07) : pas de notion privilégiée de « moi » — un archer
-// suivi en vaut un autre (un accompagnateur/coach en suit plusieurs). Le CA v0.1 « c'est moi » / « ce
-// n'est pas moi » devient donc suivre / ne plus suivre, par archer.
+// Mémorise localement les archers que l'utilisateur a choisi de **suivre** (D-09, CDC UX §6.3).
+// Même principe que le jeton de poste (`localStorage`) mais **sans aucun compte ni jeton serveur**
+// : la lecture publique est anonyme. Le store ne s'enregistre donc **pas** auprès du client HTTP —
+// il n'a ni en-tête à joindre ni 401 à écouter. « Liste de suivis » (arbitrage du 20/07) : pas de
+// notion privilégiée de « moi », un accompagnateur en suit plusieurs — le CA « c'est moi » devient
+// donc suivre / ne plus suivre, par archer.
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -28,26 +24,11 @@ interface SessionSuivisState {
   suivis: ArcherSuivi[]
   /** La bascule « mes archers / tout » de l'appli publique (E16US004).
    *
-   * **Une préférence de lecture, donc globale** — pas par tournoi, contrairement aux suivis :
-   * « je regarde mes archers » se dit une fois et vaut partout. C'est `focus.modeEffectif` qui la
-   * retombe sur « tout » lorsqu'on ouvre un tournoi où l'on ne suit personne (sans quoi tous les
-   * écrans publics seraient vides sans que rien ne l'explique).
-   *
-   * Persistée avec la liste : elle survit à un rechargement, ce qui compte sur un téléphone qu'on
-   * range et ressort toute la journée. Une clé **absente** du `localStorage` d'hier retombe sur la
-   * valeur initiale par la fusion de `persist`.
-   *
-   * ⚠️ *(Cette phrase disait « aucune migration à écrire ». Elle ne vaut que pour une clé absente :
-   * un premier jet de cette US avait déjà **écrit** `false` chez tout appareil ayant ouvert la
-   * branche, et une valeur présente gagne. Cf. `migrate` en bas de fichier.)*
-   *
-   * ⚠️ **Armée par défaut** (`true`), arbitrage du 08/08/2026 en revue d'E16US004. Le CA
-   * d'E07US005 promet que « la lecture *Mon chemin* est celle par défaut **dès qu'on suit
-   * quelqu'un** », et D-09 ouvre déjà l'onglet « Suivi » d'office pour la même raison : qui a
-   * désigné ses archers a dit ce qu'il venait regarder. L'interrupteur unique d'E16US004 ayant
-   * dissous les défauts **par vue**, laisser celui-ci sur `false` révoquait ce CA en silence.
-   * C'est `focus.modeEffectif` qui rend la valeur inoffensive quand on ne suit personne — armée ne
-   * veut donc pas dire « écran vide », jamais.
+   * **Une préférence de lecture, donc globale** — pas par tournoi, contrairement aux suivis ;
+   * `focus.modeEffectif` la retombe sur « tout » sur un tournoi où l'on ne suit personne.
+   * ⚠️ **Armée par défaut** (`true`), arbitrage du 08/08/2026 : le CA d'E07US005 promet « Mon
+   * chemin » par défaut **dès qu'on suit quelqu'un**, et l'interrupteur unique d'E16US004 ayant
+   * dissous les défauts par vue, la laisser à `false` révoquait ce CA en silence.
    */
   centrerSurSuivis: boolean
   suivre: (archer: ArcherSuivi) => void
@@ -73,17 +54,12 @@ export const useSessionSuivisStore = create<SessionSuivisState>()(
     }),
     {
       name: 'kervignarc-session-suivis',
-      // ⚠️ **`version: 1` + `migrate` sont indispensables ici** (2ᵉ passe de revue), et pas de la
-      // précaution générale. `persist` fusionne **superficiellement** : une clé **absente** du
-      // stockage retombe sur la valeur initiale — c'est le cas d'un appareil d'avant E16US004, et
-      // c'est bien ce que disait le commentaire ci-dessus. Mais un premier jet de cette US a déjà
-      // écrit `centrerSurSuivis: false` dans le `localStorage` de tout appareil ayant ouvert la
-      // branche. Là, la valeur **persistée gagne** : l'arbitrage du commanditaire aurait été
-      // invisible précisément sur les machines qui comptent — la sienne et celle de la recette —
-      // et se serait diagnostiqué en « le correctif ne marche pas ».
-      //
-      // La migration ne touche **que** la préférence d'affichage, jamais la liste des suivis : on
-      // remet le défaut voulu sans faire perdre à quiconque les archers qu'il suit.
+      // ⚠️ **`version: 1` + `migrate` sont indispensables ici**, et pas de la précaution générale.
+      // `persist` fusionne **superficiellement** : une clé **absente** retombe sur la valeur
+      // initiale, mais un premier jet de cette US a déjà écrit `centrerSurSuivis: false` chez tout
+      // appareil ayant ouvert la branche — et là, la valeur **persistée gagne**. L'arbitrage aurait
+      // été invisible précisément sur les machines qui comptent. La migration ne touche **que** la
+      // préférence d'affichage, jamais la liste des suivis.
       version: 1,
       migrate: (etatPersiste, versionLue) => {
         const etat = (etatPersiste ?? {}) as Partial<SessionSuivisState>

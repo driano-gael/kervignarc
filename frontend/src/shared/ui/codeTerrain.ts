@@ -1,15 +1,10 @@
 // L'alphabet des codes de terrain, et ce qu'on en fait — retour maquettes du 04/08/2026 (S01).
 //
-// Séparé de `PaveCode.tsx` pour la règle ESLint `react-refresh/only-export-components` (un `.tsx`
-// n'exporte que des composants — même parti que `features/admin/axes.ts`), et parce que la
-// normalisation est **pure**, donc testable sans rendu.
-//
-// ⚠️ **Duplication assumée de l'alphabet serveur.** C'est sa 3ᵉ occurrence (`infrastructure/postes/
-// codes.py`, `infrastructure/scoreurs/codes.py`, ici), donc le seuil où le projet autorise à
-// réfléchir à un remède structurel — mais les deux premières sont en Python et celle-ci en
-// TypeScript : aucun pattern ne les réunit sans exposer l'alphabet par l'API, ce qui serait une US à
-// part entière. Le garde-fou réel est ailleurs : **le serveur reste l'autorité**. Ce module est une
-// aide à la frappe, pas une validation — un code refusé par le serveur reste refusé.
+// Séparé de `PaveCode.tsx` pour `react-refresh/only-export-components`, et parce que la
+// normalisation est **pure**, donc testable sans rendu. ⚠️ **Duplication assumée de l'alphabet
+// serveur** — 3ᵉ occurrence, donc le seuil du remède structurel, mais les deux premières sont en
+// Python et celle-ci en TypeScript : aucun pattern ne les réunit sans exposer l'alphabet par l'API.
+// Le garde-fou réel est que **le serveur reste l'autorité** ; ceci est une aide à la frappe.
 
 /** Miroir de `ALPHABET_CODE` (backend) : 32 symboles, sans les confondables `I`, `O`, `0`, `1`. */
 // DETTE-040 — 3ᵉ exemplaire (les deux autres sont en Python). Aucun remède : cf. registre.

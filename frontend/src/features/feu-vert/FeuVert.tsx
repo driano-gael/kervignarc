@@ -1,12 +1,10 @@
-// Écran de pilotage « Feu vert — lancer le tour » (E12US002, ADR-0056) — la surface de
-// l'**organisateur** le jour J.
+// Écran de pilotage « Feu vert — lancer le tour » (E12US002, ADR-0056) — surface de l'organisateur.
 //
-// « Ne jamais découvrir un blocage en appuyant sur le bouton. » L'écran montre **en continu** ce qui
-// est prêt à partir et ce qui bloque (nommé : « en attente du duel n°2 », « cible non attribuée ») —
-// il n'empêche rien (`P-3`), il montre. Le bouton **chiffre** ce qu'il déclenche (« N duels, cibles
-// …, K archers ») et, à l'appui, fait **partir** les duels prêts : le serveur émet un signal diffusé
-// aux postes/écrans (les récepteurs ciblés sont livrés : E04US018/E07US008/E07US004). Live par poll
-// court (les validations de duels d'un scoreur font avancer le tableau, cf. `hooks`).
+// « Ne jamais découvrir un blocage en appuyant sur le bouton » : l'écran montre **en continu** ce
+// qui est prêt et ce qui bloque, nommé (« en attente du duel n°2 », « cible non attribuée ») — il
+// n'empêche rien (`P-3`). Le bouton **chiffre** ce qu'il déclenche et, à l'appui, fait partir les
+// duels prêts ; le serveur émet alors un signal diffusé aux postes et écrans
+// (E04US018/E07US008/E07US004). Live par poll court.
 
 import { useState } from 'react'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'

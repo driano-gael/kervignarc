@@ -1,21 +1,11 @@
 // Le **modèle** du réglage de colline (E05US027) — logique pure, aucun React.
 //
-// Séparé du composant pour la raison habituelle (`poules.ts`, `bigShootOff.ts`, `suisse.ts`) :
-// `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, et la conversion
-// « ce que l'écran affiche ↔ ce qui part au serveur » se teste ici sans monter de DOM.
-//
-// ⚠️ **`porteeMaximale` est un miroir assumé du domaine** (`domain/colline.py::portee_maximale`),
-// au même titre que `rondesMaximales` pour le suisse. Le serveur fait autorité — il **borne à la
-// lecture** (`ServiceColline.etat` rend `portee_maximale`) et `EtapeDeroule` **refuse** une étape
-// dont l'effectif déclaré ne permet pas la portée. Mais l'atelier compose aussi un format de
-// **bibliothèque**, sans tournoi ni phase posée : il n'y a alors aucune lecture à appeler. La règle
-// tient en une ligne, elle est testée ici, et sa dérive ne produirait qu'un avertissement faux —
-// jamais un tournoi faux.
-//
-// ⚠️ **Deux champs, là où les trois autres formats n'en ont qu'un**, et l'asymétrie porte une
-// information : la portée est ce qui distingue le **King of the Hill** (défier son voisin immédiat)
-// du **Ladder** (« le n°6 peut défier le 5 ou le 4 »). Le référentiel §10.1 les présente comme deux
-// formats ; ce sont deux réglages d'un même format, d'où un seul type au catalogue.
+// Séparé du composant pour la raison habituelle : `react-refresh` interdit à un module de rendu
+// d'exporter aussi des fonctions. ⚠️ **`porteeMaximale` est un miroir assumé du domaine** : le
+// serveur borne à la lecture et refuse une étape impossible, mais l'atelier compose aussi un format
+// de **bibliothèque**, sans lecture à appeler. ⚠️ **Deux champs, là où les trois autres formats
+// n'en ont qu'un** : la portée distingue le **King of the Hill** du **Ladder**, que le référentiel
+// §10.1 présente comme deux formats et qui sont deux réglages d'un même type.
 
 /** Le réglage tel que l'API le transporte, miroir de `ReglageCollineDTO`. */
 export interface ReglageColline {
@@ -105,14 +95,12 @@ export function decrireBorne(effectif: number, portee: number): string {
   return decrireBorneConnue(effectif, portee, porteeMaximale(effectif), 'refuse')
 }
 
-/**
- * La **même phrase**, mais sur une borne que l'appelant connaît déjà — celle du serveur.
+/** La **même phrase**, mais sur une borne que l'appelant connaît déjà — celle du serveur.
  *
- * ⚠️ Cette variante existe pour la raison qu'`api.ts` documente et que la revue du suisse a fait
- * inscrire : l'écran de saisie a `portee_maximale` dans sa réponse d'état et ne doit **jamais** le
- * recalculer — deux arithmétiques pour une même règle divergent tôt ou tard. Réécrire la phrase à
- * la main plutôt que la partager est ce qui avait produit un texte faux au cas limite chez le
- * suisse (« 1 archers »).
+ * ⚠️ Cette variante existe pour la raison qu'`api.ts` documente : l'écran de saisie a
+ * `portee_maximale` dans sa réponse d'état et ne doit **jamais** le recalculer — deux arithmétiques
+ * pour une même règle divergent tôt ou tard. Réécrire la phrase à la main est ce qui avait produit
+ * un texte faux au cas limite chez le suisse (« 1 archers »).
  */
 export type RegimeDeBorne = 'borne' | 'refuse'
 
@@ -130,17 +118,11 @@ export function decrireBorneConnue(
   const borne = `${effectif} archers : un défi porte au plus sur ${maximum} ${rangs}.`
   if (portee <= maximum) return borne
   // ⚠️ **Les deux régimes ne disent PAS la même chose, et un correctif de revue les avait
-  // inversés.** Ce qui se passe au-delà de la borne dépend d'où vient l'effectif :
-  //
-  // - `'borne'` — effectif **réel** du créneau, lu du serveur : `ServiceColline` **borne à la
-  //   lecture** et ne lève pas (« un écran qui refuse de s'ouvrir vaut moins qu'un écran qui montre
-  //   la borne »). Le réglage excédentaire est donc réellement joué, en plus court ;
-  // - `'refuse'` — effectif **déclaré** dans le formulaire : `EtapeDeroule._verifier_portee_de_defi`
-  //   **lève** `ConfigurationCollineInvalide`, et l'enregistrement rend 422.
-  //
-  // Dire « seront appliqués » dans le second cas, c'est promettre à l'organisateur que son réglage
-  // passera alors qu'il sera refusé deux secondes plus tard — un feu vert suivi d'un mur, très
-  // exactement le parcours que le CA « borne affichée en clair » existe pour supprimer.
+  // inversés.** Ce qui se passe au-delà de la borne dépend d'où vient l'effectif : sur l'effectif
+  // **réel** du créneau (`'borne'`), `ServiceColline` **borne à la lecture** et ne lève pas, donc
+  // le réglage excédentaire est réellement joué, en plus court ; sur l'effectif **déclaré**
+  // (`'refuse'`), `EtapeDeroule` **lève** et l'enregistrement rend 422. Dire « seront appliqués »
+  // dans le second cas, c'est un feu vert suivi d'un mur — ce que le CA existe pour supprimer.
   if (regime === 'refuse') {
     return `${borne} Vous avez réglé ${portee} : réduisez la portée, sinon l’enregistrement sera refusé.`
   }

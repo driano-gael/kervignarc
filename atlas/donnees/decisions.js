@@ -4981,7 +4981,9 @@ window.ATLAS.decisions = {
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "RONDES_APPARIEES"
+     ],
      "verifiable": true
     },
     {
@@ -4992,7 +4994,9 @@ window.ATLAS.decisions = {
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "RONDES_APPARIEES"
+     ],
      "verifiable": true
     },
     {
@@ -5003,7 +5007,9 @@ window.ATLAS.decisions = {
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "RONDES_APPARIEES"
+     ],
      "verifiable": true
     },
     {
@@ -8129,7 +8135,35 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/tests/commentaires_cliquet.txt",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_commentaires_bornes.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/commentaires.test.ts",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],

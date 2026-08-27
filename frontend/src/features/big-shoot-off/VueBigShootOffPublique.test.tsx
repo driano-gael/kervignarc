@@ -1,16 +1,11 @@
 // Tests de **montage** de la vue publique du Big Shoot Off (E05US031, ADR-0089).
 //
-// ⚠️ **Ce fichier n'existait pas à la première passe de revue, et son absence a laissé passer un
-// bloquant.** L'US avait livré quatre composants de vue neufs et n'en montait qu'un
-// (`VueEnCours.test.tsx`), dont l'en-tête affirmait pourtant que « chacun a ses propres tests ».
-// Le défaut trouvé en revue (axe C1) : l'en-tête affichait `format.restants` — le nombre d'archers
-// qui resteront **à la fin** — sous le libellé « encore en lice ». Soit « 5 encore en lice » dès la
-// première manche, avec 12 archers sur les cibles, et le chiffre ne bougeait pas de la finale.
-// Aucune porte mécanique ne pouvait le voir (le DTO est conforme, le test d'API vérifie les clés) ;
-// seul un rendu l'attrape. C'est mot pour mot le récit que porte `VueTableaux.test.tsx`.
-//
-// Les cas dérivent de `docs/fonctionnel/E05US031.md` § scénario 4 et du CA « mes archers », pas de
-// l'implémentation.
+// ⚠️ **Son absence à la 1ʳᵉ passe de revue a laissé passer un bloquant** : l'US avait livré quatre
+// vues et n'en montait qu'une. Le défaut (axe C1) : l'en-tête affichait `format.restants` — le
+// nombre d'archers restant **à la fin** — sous le libellé « encore en lice », soit « 5 encore en
+// lice » dès la première manche avec 12 archers sur les cibles. Aucune porte mécanique ne pouvait
+// le voir (le DTO est conforme) ; seul un rendu l'attrape. Cas dérivés de
+// `docs/fonctionnel/E05US031.md` §4.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

@@ -1,13 +1,10 @@
 // Définition des scoreurs d'un tournoi (E10US003) — réservé à l'admin (monté sous `estAdmin`).
 //
-// Liste (nom + **code** à distribuer) + création (le nom seul ; le serveur génère le code) +
-// renommage (le code reste figé) + suppression à confirmation. 3 à 4 scoreurs suffisent pour ~30
-// cibles (D-14) : c'est un petit module de **préparation** (P-6), redéfinissable même tournoi en
-// cours. Le code est le sésame que le scoreur retape pour ouvrir sa session (« Espace scoreur »).
-//
-// Supprimer un scoreur **invalide sa session** côté serveur (il ne peut plus valider), mais la trace
-// de ses validations passées est conservée (E10US005). Le code est affiché en clair : c'est un
-// secret d'usage (pas un mot de passe), destiné à être imprimé et remis en main propre.
+// Liste (nom + **code**) + création (le nom seul ; le serveur génère le code) + renommage (code
+// figé) + suppression : un module de **préparation** (P-6), redéfinissable tournoi en cours. Le
+// code est le sésame que le scoreur retape pour ouvrir sa session. Supprimer un scoreur **invalide
+// sa session** côté serveur, mais la trace de ses validations passées est conservée (E10US005).
+// Code affiché en clair : secret d'usage, pas mot de passe — imprimé et remis en main propre.
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

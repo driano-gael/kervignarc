@@ -1,14 +1,10 @@
 // La fiche de réglages du **découpage d'une qualification en tours** (E05US035, ADR-0093).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
-// bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ReglageSuisse` avant elle.
-//
-// ⚠️ **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006, reprise telle quelle) :
-// monté sous condition, un état dérivé d'une prop diverge dès que la condition bascule.
-//
-// **Un seul réglage** : en combien de tours. La longueur en découle, et elle est *annoncée* plutôt
-// que saisie — c'est l'arbitrage du cadrage du 20/08/2026, et c'est ce qui garantit des tours
-// égaux sans avoir à valider une liste de longueurs.
+// Partagée par les **deux** écrans qui composent des phases, comme `ReglageSuisse` avant elle. ⚠️
+// **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006) : monté sous condition, un
+// état dérivé d'une prop diverge dès que la condition bascule. **Un seul réglage** : en combien de
+// tours — la longueur en découle et elle est *annoncée* plutôt que saisie (cadrage du 20/08/2026),
+// ce qui garantit des tours égaux sans valider une liste de longueurs.
 
 import type { EtatDecoupage } from './decoupage'
 import { TOURS_MAX_REGLABLES, decrireDecoupage, estValide, versDecoupage } from './decoupage'

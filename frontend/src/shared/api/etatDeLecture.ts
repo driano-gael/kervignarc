@@ -1,23 +1,11 @@
-// Ce qu'une vue publique **dit** pendant qu'elle n'a pas encore de données — logique pure (E05US031).
+// Ce qu'une vue publique **dit** pendant qu'elle n'a pas encore de données — pure (E05US031).
 //
-// ⚠️ **Ce module naît d'un défaut relevé en revue (axe adversarial), pas d'un souci de factorisation.**
-// Les vues publiques reprenaient toutes la formule de `VueTableaux` : « si `isError`, annoncer une
-// connexion perdue ». Le raisonnement était **juste chez son auteur d'origine** — `/tableaux/{id}`
-// ne rend jamais de 409 —, et il a été transporté sur trois routes d'état de phase qui, elles, en
-// rendent : `PhasePasReglee`, `PhasePasDesPoules`, `PhasePasUnBigShootOff`.
-//
-// Conséquence en salle : une phase de poules composée mais **pas encore réglée** faisait lire
-// « Connexion momentanément perdue » à tous les spectateurs et à l'écran projeté, alors que le
-// réseau allait très bien. Le bénévole qu'on appelle cherche le Wi-Fi ; le vrai geste est un champ
-// à remplir à l'atelier. Et comme les hooks portent `retry: false`, le message restait affiché
-// jusqu'à la prochaine invalidation temps réel.
-//
-// ⚠️ **Ce n'est pas un « remède structurel » au sens du CLAUDE.md**, bien que le bloc soit écrit
-// cinq fois dans le dépôt : c'est une **fonction pure de six lignes**, sans indirection, sans point
-// d'extension et sans interface. Le correctif du 409 imposait de toucher les trois vues neuves de
-// toute façon — l'écrire une fois coûtait moins cher que trois fois. Le ralliement de `VueTableaux`
-// et `VueAffectations`, lui, reste **hors périmètre** : ces deux-là ne rendent pas de 409, donc le
-// geste serait cosmétique. Cf. la note du corps de commit.
+// ⚠️ **Né d'un défaut relevé en revue, pas d'un souci de factorisation** : les vues publiques
+// reprenaient la formule de `VueTableaux` (« si `isError`, annoncer une connexion perdue »), juste
+// chez son auteur d'origine — `/tableaux/{id}` ne rend jamais de 409 — mais transportée sur trois
+// routes qui, elles, en rendent. Une phase composée mais **pas encore réglée** faisait donc lire «
+// Connexion momentanément perdue » à toute la salle. ⚠️ **Pas un remède structurel** : une fonction
+// pure de six lignes, sans indirection ni point d'extension.
 
 import { ErreurApi } from './client'
 

@@ -1,14 +1,11 @@
 /// <reference types="node" />
+
 // Tests du thème de poste (E17US001, `D-26` / `DV-02`).
 //
-// Ils existent parce qu'un défaut est passé **sans qu'aucun test ne bouge** : `appliquerTheme(null)`
-// posait `data-theme="systeme"`, or le store initialise `theme` à `null` et réapplique le thème à
-// chaque ouverture — une tablette neuve suivait donc l'OS, c'est-à-dire l'alternative qu'ADR-0074
-// déclare rejeter. Le CA disait l'inverse de ce que le code faisait, et `sessionPosteStore.test.ts`
-// notait lui-même qu'« aucun test n'asserte sur `data-theme` ».
-//
-// Ces tests dérivent des **puces de CA**, pas du code : « le thème sombre est le défaut, sans suivre
-// le système » et « l'option Système reste disponible et fonctionnelle ».
+// Ils existent parce qu'un défaut est passé **sans qu'aucun test ne bouge** :
+// `appliquerTheme(null)` posait `data-theme="systeme"`, or le store initialise `theme` à `null` —
+// une tablette neuve suivait donc l'OS, l'alternative qu'ADR-0074 déclare rejeter. Le CA disait
+// l'inverse de ce que le code faisait. Ces tests dérivent des **puces de CA**, pas du code.
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'

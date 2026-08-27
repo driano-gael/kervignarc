@@ -1,13 +1,10 @@
 // Hooks React Query de la feature « archers » (E02US003).
 //
-// La liste des inscrits d'un tournoi est de l'état **serveur** (lecture) ; éditer et désinscrire
-// sont des **mutations**. Chacune invalide deux caches : la liste elle-même, et le **classement**
-// — un archer corrigé y change de nom, un archer désinscrit doit en disparaître. C'est en plus de
-// la diffusion temps réel post-commit, qui invalide tout le cache ; l'invalidation locale est le
-// filet quand le lien WebSocket est momentanément coupé.
-//
-// La dépendance va d'ici vers `competition` (on lui emprunte `cleClassement`) et jamais l'inverse :
-// un import croisé entre deux modules de hooks serait un cycle.
+// La liste des inscrits est de l'état **serveur** ; éditer et désinscrire sont des **mutations**,
+// et chacune invalide deux caches : la liste et le **classement** — un archer corrigé y change de
+// nom, un désinscrit doit en disparaître. C'est en plus de la diffusion temps réel post-commit ;
+// l'invalidation locale est le filet quand le WebSocket est coupé. La dépendance va d'ici vers
+// `competition` (`cleClassement`) et jamais l'inverse : un import croisé serait un cycle.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cleClassement } from '../competition/hooks'

@@ -1,20 +1,11 @@
 // Panneau de routage (E04US018) — « où tire-t-on ensuite ? ».
 //
-// **Canal n°1 des quatre canaux de routage** (`D-09`) : celui qui attrape l'archer avant qu'il ne
-// parte. Il valide, range ses flèches et s'en va — l'information doit le suivre. Le même panneau
-// sert les deux surfaces de saisie, parce que c'est la même question :
-//
-// - **qualification** (E04US002) : la tablette bascule quand les quatre séries de la cible sont
-//   validées, et envoie chacun vers son duel de 1ᵉʳ tour ;
-// - **duels** (E04US013) : elle bascule dès le duel tranché, et route vainqueur et battu.
-//
-// `D-08` — l'affichage est **instantané** : rien n'est calculé à cet instant. Les cibles sont
-// attribuées aux **matchs** (E03US009), donc la destination existe avant même le duel.
-//
-// **Ce qui n'est pas encore connu est écrit**, jamais laissé en blanc (arbitrage de cadrage du
-// 30/07/2026) : « cible attribuée au lancement du tour », « en attente du duel n°2 », « rang publié
-// en fin de phase ». Les phrases viennent du **serveur** — les quatre canaux doivent dire la même
-// chose, et c'est lui qui sait pourquoi la donnée manque.
+// **Canal n°1 des quatre canaux de routage** (`D-09`) : celui qui attrape l'archer avant son
+// départ. Le même panneau sert les deux surfaces de saisie — qualification (bascule aux quatre
+// séries validées) et duels (bascule dès le duel tranché). `D-08` : l'affichage est **instantané**,
+// rien n'est calculé là, les cibles étant attribuées aux **matchs** (E03US009). **Ce qui n'est pas
+// encore connu est écrit**, jamais laissé en blanc (cadrage du 30/07/2026), et les phrases viennent
+// du **serveur** : les quatre canaux doivent dire la même chose.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { RoutageArcher } from './api'

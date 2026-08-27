@@ -1,20 +1,11 @@
 // Bandeau repliable qui **remonte son alerte même refermé** — retour maquettes du 04/08/2026 (A12).
 //
-// *« Chaque type d'écran est sous un bandeau repliable de type ; si besoin d'info (erreur,
-// déconnexion, …), le bandeau affiche une icône d'erreur ; quand on déplie, on peut voir les postes
-// en erreur avec plus de détail. »*
-//
-// **Ce qui rend ce composant utile, c'est la deuxième moitié de la phrase.** Un simple `<details>`
-// cache ce qu'il replie, ce qui est exactement ce qu'il ne faut pas d'un écran de supervision : un
-// bandeau fermé sur trois tablettes mortes ne se distinguerait pas d'un bandeau fermé sur un parc
-// intact. Le bandeau porte donc **le nombre d'anomalies** en permanence, replié ou non, et ne
-// s'ouvre que pour en montrer le détail.
-//
-// L'état d'ouverture initial suit la même logique : **ouvert s'il y a un problème**, replié sinon.
-// C'est la transposition, au niveau du groupe, de ce que A13 demande au niveau de l'écran — *« seuls
-// les problèmes sautent aux yeux »*. Et il n'est **jamais re-synchronisé** ensuite : une anomalie
-// qui apparaît pendant qu'on travaille ne rouvre pas un bandeau qu'on vient de fermer sous les
-// doigts. Elle se signale sur le bandeau, ce qui suffit à la retrouver.
+// ⚠️ **Ce qui rend ce composant utile, c'est cette dernière clause.** Un simple `<details>` cache
+// ce qu'il replie : un bandeau fermé sur trois tablettes mortes ne se distinguerait pas d'un
+// bandeau fermé sur un parc intact. Il porte donc **le nombre d'anomalies** en permanence. L'état
+// initial suit la même logique — **ouvert s'il y a un problème** — et n'est **jamais
+// re-synchronisé** : une anomalie qui apparaît pendant qu'on travaille ne rouvre pas un bandeau
+// qu'on vient de fermer sous les doigts.
 
 import { useState, type ReactNode } from 'react'
 

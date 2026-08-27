@@ -1,26 +1,11 @@
 // Le **découpage en tours** d'une qualification, sur l'écran des phases (E05US035, ADR-0093).
 //
-// ⚠️ **Ce fichier existe parce que la revue a montré qu'aucun test ne pouvait voir le défaut** —
-// et c'est la seconde fois dans ce même dossier, après `BorneSuisse.test.tsx`, dont l'entête
-// raconte exactement la même histoire.
-//
-// `decoupage.ts` était pur, testé, parfaitement vert. Pendant ce temps, `ReglageDecoupage` était
-// monté dans `FormulairePhase` sous `{estQualification && …}` — une branche **morte** : la
-// qualification n'ouvre jamais ce formulaire (`gereeAilleurs`) et n'est pas dans
-// `TYPES_AJOUTABLES`. Le réglage central de l'US n'était donc atteignable par **aucun** écran de
-// tournoi, et `nb_volees`, ajouté au serveur exprès pour l'alimenter, n'avait aucun lecteur.
-//
-// Un test de formatage ne voit pas un défaut de câblage ; seul un test qui monte **l'écran** le
-// voit. C'est pourquoi celui-ci monte `Phases` en entier, et non le contrôle isolé : ce qu'on
-// garde ici n'est pas « le composant sait afficher », c'est « l'organisateur peut l'atteindre ».
-//
-// ⚠️ **Le GESTE a changé en E16US002, l'INTENTION est intacte.** Les réglages de la qualification
-// vivaient à plat dans la barre d'actions ; ils sont désormais dans **sa fiche**, qu'on ouvre
-// depuis sa ligne (c'est le CA d'A07 : « sur chaque ligne on peut ouvrir une fiche de la phase »).
-// Ces tests ouvrent donc la fiche avant de chercher le réglage. Ce que le garde-fou empêche n'a
-// pas bougé d'un pouce : un réglage recâblé sous une condition que la qualification ne satisfait
-// jamais ferait échouer le clic sur un écran réellement monté, exactement comme avant. Ce qui
-// n'est **plus** garanti, et il faut le dire : le réglage n'est plus visible **sans clic**.
+// ⚠️ **Ce fichier existe parce que la revue a montré qu'aucun test ne pouvait voir le défaut** :
+// `decoupage.ts` était pur, testé, vert, pendant que `ReglageDecoupage` était monté sous une
+// branche **morte** — la qualification n'ouvre jamais ce formulaire. Un test de formatage ne voit
+// pas un défaut de câblage ; seul un test qui monte **l'écran** le voit. ⚠️ Le **geste** a changé
+// en E16US002 (les réglages sont dans la fiche qu'on ouvre) : ce qui n'est **plus** garanti, et il
+// faut le dire, c'est que le réglage soit visible **sans clic**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
@@ -67,19 +52,14 @@ function monter(phase: EtapeDeroule) {
 
 /** Ouvre la fiche de la première (ou n-ième) phase listée — le geste du CA d'A07.
  *
- * Passe par un vrai clic sur un vrai bouton : c'est ce qui fait que le garde-fou de câblage tient
- * toujours. Un réglage monté sous une condition inatteignable ne s'afficherait pas davantage
- * après ce clic qu'avant.
+ * Passe par un vrai clic sur un vrai bouton : c'est ce qui fait tenir le garde-fou de câblage.
  */
+
 /** Les requêtes **portées à la ligne de phase**, et non à l'écran entier.
  *
- * ⚠️ **Ce cadrage manquait, et il rendait ces tests plus faibles que leur nom** (constaté en
- * E16US002). L'écran monte en permanence un formulaire **d'ajout** en tête, qui affiche lui aussi
- * « Pauses programmées ». `findByText` résolvant à la **première** correspondance — et le
- * formulaire d'ajout étant rendu avant que React Query n'ait servi la liste —, l'assertion
- * matchait le formulaire d'ajout, pas la fiche de la qualification. Elle serait restée verte avec
- * le réglage de la qualification entièrement décâblé : exactement le défaut que ce fichier existe
- * pour empêcher. Porter la requête à la ligne le referme.
+ * ⚠️ Ce cadrage manquait : l'écran monte en permanence un formulaire **d'ajout** qui affiche lui
+ * aussi « Pauses programmées », et `findByText` résolvant à la **première** correspondance,
+ * l'assertion matchait ce formulaire — verte avec le réglage entièrement décâblé.
  */
 function ligne(index = 0) {
   // Filtré sur `.phase` : `ReglageArrets` rend un `<li>` par pause à l'intérieur d'une fiche, donc

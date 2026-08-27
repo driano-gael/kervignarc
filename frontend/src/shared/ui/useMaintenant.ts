@@ -1,15 +1,10 @@
 // Un **battement local** : « quelle heure est-il », re-rendu à intervalle régulier (E05US034).
 //
-// **Pourquoi un hook et pas `Date.now()` dans le rendu.** Lire l'horloge pendant le rendu est une
-// impureté — `react-hooks/purity` la refuse, et à raison : le résultat changerait à chaque re-rendu
-// fortuit, sans qu'aucun état ne l'explique. Le hook rend l'instant **explicite** : c'est un état,
-// il change quand le battement le dit, et React sait pourquoi il re-rend.
-//
-// ⚠️ **Ce n'est pas la même chose qu'un compteur incrémenté**, et la nuance est celle que
-// `salle/rotation.ts` documente : on relit l'horloge à chaque battement au lieu d'ajouter une
-// seconde. Un onglet en arrière-plan voit ses minuteurs bridés par le navigateur ; un compteur
-// incrémenté y accumulerait une dérive de plusieurs minutes sur une journée de tournoi, alors qu'un
-// `Date.now()` relu est juste **quel que soit** le nombre de battements manqués.
+// **Pourquoi un hook et pas `Date.now()` dans le rendu** : lire l'horloge pendant le rendu est une
+// impureté que `react-hooks/purity` refuse à raison — le résultat changerait à chaque re-rendu
+// fortuit. ⚠️ **Ce n'est pas un compteur incrémenté** : on **relit** l'horloge à chaque battement
+// au lieu d'ajouter une seconde, car un onglet en arrière-plan voit ses minuteurs bridés et un
+// compteur y accumulerait des minutes de dérive sur une journée.
 
 import { useEffect, useState } from 'react'
 

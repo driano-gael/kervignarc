@@ -1,16 +1,11 @@
 // La ligne d'une rencontre **rédigée** — le composant que les trois formats sans arbre partagent
 // dans l'onglet « En cours » (E05US031, ADR-0089).
 //
-// Le rendu est celui de `LigneDuel` (`features/tableaux/VueTableaux.tsx`), dont il reprend la
-// grammaire visuelle : deux noms, un score au milieu, le gagnant en gras une fois scellé. C'est
-// voulu — un spectateur qui passe d'une poule à un arbre ne doit pas réapprendre à lire.
-//
-// ⚠️ `# DETTE-072` — **`VueTableaux` n'a pas été migrée dessus dans cette US**, et c'est délibéré :
-// son `LigneDuel` porte les classes `tableaux__*` et une feuille de style calibrée sur deux surfaces
-// (360 px et projection), et la refondre aurait mêlé à cette US un remaniement de l'existant sans
-// bénéfice pour le CA. La duplication restante est **connue et bornée à deux rendus** ; ce qui
-// compte est qu'elle ne porte que du JSX — la logique de lecture, elle, est partagée dans
-// `rencontre.ts` et testée. Déclencheur de résorption : la première US qui touche l'un des deux.
+// Le rendu reprend la grammaire visuelle de `LigneDuel` : un spectateur qui passe d'une poule à un
+// arbre ne doit pas réapprendre à lire. ⚠️ `# DETTE-072` — **`VueTableaux` n'a pas été migrée
+// dessus**, délibérément : son `LigneDuel` porte une feuille de style calibrée sur deux surfaces.
+// La duplication restante ne porte que du **JSX** — la logique de lecture est partagée et testée.
+// Déclencheur de résorption : la première US qui touche l'un des deux.
 
 import {
   etatRencontre,
@@ -34,11 +29,9 @@ export function LigneRencontre({
   /**
    * Ce que la rencontre est, **avant** de dire qui s'y oppose — « le 6 défie le 4 » (E05US027).
    *
-   * ⚠️ Ajouté pour la colline, et seulement parce que ce format en a réellement besoin : ses
-   * positions **sont** l'information que le public suit, et une ligne « MARTIN vs DURAND » perdrait
-   * qui défie qui. Les trois autres formats l'omettent — une rencontre de poule ou de ronde
-   * n'oppose aucune hiérarchie préalable, et leur ajouter un préfixe vide serait du bruit sur un
-   * écran projeté, où la place lisible se paie.
+   * ⚠️ Ajouté pour la colline, et seulement parce que ce format en a besoin : ses positions
+   * **sont** l'information que le public suit. Les trois autres l'omettent — une rencontre de poule
+   * n'oppose aucune hiérarchie préalable, et un préfixe vide serait du bruit sur un écran projeté.
    */
   prefixe?: string
 }) {

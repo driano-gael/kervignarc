@@ -1,27 +1,11 @@
-// Vue « toutes les affectations » (E07US008) — le **canal n°2** des quatre canaux de routage (`D-09`).
+// Vue « toutes les affectations » (E07US008) — le **canal n°2** des quatre canaux de routage.
 //
-// Un seul composant pour deux surfaces, comme le schéma à braquets d'E01US024 : la **table de
-// l'organisation** (dans l'appli publique, interactive) et l'**écran de salle** (projeté, aucune
-// interaction). Les dessiner séparément les ferait diverger sur la seule chose qui compte ici — la
-// butte annoncée — et c'est précisément l'écart qu'on ne découvre qu'à 18 h, quand deux archers se
-// présentent au même endroit.
-//
-// **`Q-UX2`, volet « tri » : les deux.** La question ouverte depuis le CDC UX était « trier par
-// **nom** (l'archer se cherche) ou par **cible** (l'organisation vérifie) ». Ce n'est pas le même
-// écran, et c'est justement pourquoi trancher pour tout le monde était le mauvais réflexe : l'écran
-// projeté, qui ne peut rien actionner, garde l'ordre du **pas de tir** (celui du serveur, seul ordre
-// qui se lise de loin) ; la table de l'organisation, elle, bascule d'un bouton. Même arbitrage que
-// `Q-UX7` en E07US004 — « les deux », quand offrir les deux coûte un bouton.
-//
-// ✅ **Le volet « scannabilité » de `Q-UX2` est fermé** par le retour maquettes du 04/08/2026 (P06).
-// L'avertissement qui figurait ici — *« 200 archers ne tiennent pas sur un écran projeté, et rien ici
-// ne pagine ni ne cycle »* — a reçu sa réponse : variante A, *« défilement par pages, tri par nom »*,
-// *« oui pour le compteur de pages »*, ~20 s par page, et un ordre d'ensemble — *« d'abord par tour,
-// puis par archer »*. La surface projetée pagine donc désormais (cf. `pagination.ts` pour les
-// règles, et `SalleParPages` plus bas pour la séquence).
-//
-// La surface **interactive** (table de l'organisation) ne pagine pas et n'a pas à le faire : on y
-// défile à la main, et un découpage automatique sous les doigts serait une gêne, pas un service.
+// Un seul composant pour deux surfaces (table de l'organisation, écran de salle) : les dessiner
+// séparément les ferait diverger sur la butte annoncée, écart qu'on ne découvre qu'à 18 h.
+// **`Q-UX2`, volet « tri » : les deux** — l'écran projeté garde l'ordre du **pas de tir**, la table
+// bascule d'un bouton. ✅ Le volet « scannabilité » est fermé par P06 : la surface projetée
+// **pagine** (cf. `pagination.ts`). La surface **interactive** ne pagine pas et n'a pas à le faire
+// : on y défile à la main.
 
 import { useState } from 'react'
 import type { RoutageArcher } from './api'
@@ -175,18 +159,12 @@ export function VueAffectations({
   )
 }
 
-/**
- * La surface **projetée** : une séquence de pages qui tourne toute seule (P06).
+/** La surface **projetée** : une séquence de pages qui tourne toute seule (P06).
  *
- * L'ordre vient de la réponse à la question 3 — *« d'abord par tour, puis par archer »* :
- *
- *   page 0 · **le tour en cours**, groupé par butte — ce que la salle regarde quand un tour part ;
- *   pages 1…n · **tous les archers, par nom** — *« par nom, c'est plus clair »* (question 1), pour
- *              que chacun retrouve le sien même s'il n'est pas concerné par le tour qui se lance.
- *
- * Le tour en cours reste **une seule page** même si le pas de tir est long : c'est une vue de
- * situation, pas un annuaire, et la découper ferait perdre la lecture d'ensemble qu'on vient y
- * chercher. Ce sont les pages nominatives, elles, qui pagineraient sur 200 archers.
+ * L'ordre vient de la question 3 — *« d'abord par tour, puis par archer »* : page 0 le **tour en
+ * cours** groupé par butte, pages suivantes **tous les archers par nom**, pour que chacun retrouve
+ * le sien. ⚠️ Le tour en cours reste **une seule page** même si le pas de tir est long : c'est une
+ * vue de situation, pas un annuaire, et la découper ferait perdre la lecture d'ensemble.
  */
 function SalleParPages({
   poses,

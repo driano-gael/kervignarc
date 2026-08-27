@@ -1,14 +1,10 @@
-// Logique pure de la saisie d'un barrage (E06US003, ADR-0066) — extraite du composant pour être
-// testable seule, comme `format.ts` et `routage/presentation.ts`.
+// Logique pure de la saisie d'un barrage (E06US003, ADR-0066) — testable hors composant.
 //
-// Deux règles y vivent, et toutes deux protègent contre une **saisie incomplète qui ferait perdre
-// quelqu'un** :
-//
-// - un groupe se retire **en entier** — le serveur refuse une manche à moitié tirée, et on le dit
-//   avant d'émettre la requête plutôt que de laisser partir un 422 ;
-// - « pas encore noté » n'est **pas** « absent ». L'absence est une issue réglementaire
-//   (B.6.5.2.4 : l'archer est déclaré perdant) ; elle se **coche**, elle ne se déduit jamais d'un
-//   champ vide. Confondre les deux ferait éliminer un archer que le scoreur n'a pas encore saisi.
+// Deux règles y vivent, toutes deux contre une **saisie incomplète qui ferait perdre quelqu'un** :
+// un groupe se retire **en entier** — le serveur refuse une manche à moitié tirée, et on le dit
+// avant d'émettre la requête ; et « pas encore noté » n'est **pas** « absent » — l'absence est une
+// issue réglementaire (B.6.5.2.4 : l'archer est déclaré perdant), elle se **coche** et ne se déduit
+// jamais d'un champ vide. Confondre les deux éliminerait un archer non encore saisi.
 
 import type { TirBarrage } from './api'
 

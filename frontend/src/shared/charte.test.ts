@@ -1,21 +1,11 @@
 // Garde-fou de la charte (E17US001, ADR-0074).
 //
 // Ces tests ne vérifient pas un composant : ils vérifient que **la palette reste à un seul
-// endroit**. C'est le seul invariant qui empêche la dérive qui a produit cette US — 98 US livrées
-// sur un socle provisoire, chacune conforme à *son* CA, aucune en position de voir le problème.
-//
-// Ils dérivent des CA de l'US, pas de l'implémentation : chaque `describe` cite la puce dont il
-// vient. Les fichiers sont lus **en source** plutôt qu'via le DOM, parce qu'on veut attraper une
-// couleur écrite dans une feuille de style qu'aucun test ne monte.
-//
-// ⚠️ **Durci à la revue d'E17US001** après qu'un relecteur adversarial eut fait passer **sept**
-// diffs hostiles au vert. Les quatre causes, toutes corrigées ici, méritent d'être connues avant de
-// retoucher ce fichier : (1) les valeurs étaient cherchées par `toContain` sur **tout** le fichier,
-// donc un jeton juste dans *un* thème validait *tous* les thèmes ; (2) les blocs de thème étaient
-// **codés en dur**, donc une quatrième déclinaison échappait à la comparaison ; (3) le découpage en
-// règles se faisait sur `'\n}'`, qui ne coupe pas sur une accolade **indentée** — une `@media`
-// entière comptait pour une seule règle ; (4) les dérogations étaient comparées par **sous-chaîne**.
-// La leçon : ce fichier est le garde-fou, il ne se relâche pas pour laisser passer son auteur.
+// endroit** — le seul invariant qui empêche la dérive qui a produit cette US. Ils dérivent des CA,
+// pas de l'implémentation, et lisent les fichiers **en source** pour attraper une couleur écrite
+// dans une feuille qu'aucun test ne monte. ⚠️ **Durci à la revue** après sept diffs hostiles passés
+// au vert : recherche par règle et non sur tout le fichier, blocs de thème découverts et non codés
+// en dur, découpage par accolades, dérogations comparées exactement. Il ne se relâche pas.
 
 /// <reference types="node" />
 import { describe, expect, it } from 'vitest'
@@ -71,14 +61,12 @@ it('les sources du front sont lisibles depuis le répertoire d’exécution', ()
 
 /** Énumère les règles d'une feuille : un couple *(sélecteur, corps)* par paire d'accolades.
  *
- *  **Ne pas revenir à un découpage sur les retours à la ligne.** Les deux tentatives précédentes ont
- *  chacune ouvert un trou vérifié : `'\n}'` ne coupe pas sur une accolade **indentée**, donc une
- *  `@media` entière comptait pour une seule règle — un aplat y légitimait le contour de toutes les
- *  autres ; et `/\n\s*\}/` rate les règles écrites **sur une seule ligne** (`.x { color: … }`), par
- *  lesquelles n'importe quelle violation de marque passait.
- *
- *  `[^{}]*` borne chaque corps à une règle sans accolade : la prélude d'une `@media` ne matche donc
- *  pas, et ce sont ses règles **internes** qui sont énumérées — exactement ce qu'on veut examiner. */
+ * ⚠️ **Ne pas revenir à un découpage sur les retours à la ligne.** Les deux tentatives précédentes
+ * ont chacune ouvert un trou vérifié : `'\n}'` ne coupe pas sur une accolade **indentée** (une
+ * `@media` entière comptait pour une règle), et `/\n\s*\}/` rate les règles écrites sur une seule
+ * ligne. `[^{}]*` borne chaque corps à une règle sans accolade : la prélude d'une `@media` ne
+ * matche donc pas, et ce sont ses règles **internes** qui sont énumérées.
+ */
 function regles(source: string): { selecteurs: string[]; corps: string }[] {
   return [...source.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => {
     // Le préambule contient le commentaire d'introduction **et** les éventuels sélecteurs du groupe,
@@ -398,16 +386,12 @@ describe('CA — le rouge du club est une surface, jamais un accent (DV-04)', ()
 // ————————————————————————————————————————————————————————————————————————————————————————————————
 
 describe('CA — l’habillage de tournoi ne touche que le public et la salle (D-27, E16US006)', () => {
-  // ⚠️ **Ce bloc transforme une intention en décision.** `HabillageIdentite.tsx` dit de lui-même que
-  // `D-27` « n'est pas tenu par une condition mais par le **montage** » — ce qui est le bon choix de
-  // conception, mais laissait la règle sans aucun gardien : rien n'empêchait une US future
-  // d'importer l'habillage dans `CoquilleAdmin` ou dans un écran de saisie, et **aucun test
-  // n'aurait bougé**. ADR-0097 §5 était donc appliqué sans être gardé — le mode de panne exact
-  // d'ADR-0017 (treize mois), qu'ADR-0075 existe pour ne pas rejouer (relevé en revue).
-  //
-  // Il vit dans ce fichier et non dans `features/identite/` parce que la machinerie de lecture des
-  // sources y est déjà, et parce que c'est bien la même question : **qui a le droit de toucher à la
-  // marque**. Les deux blocs de ce fichier y répondent, l'un pour les jetons, l'autre pour la portée.
+  // ⚠️ **Ce bloc transforme une intention en décision.** `HabillageIdentite.tsx` dit que `D-27` «
+  // n'est pas tenu par une condition mais par le **montage** » — bon choix de conception, mais qui
+  // laissait la règle sans gardien : rien n'empêchait une US future de l'importer dans
+  // `CoquilleAdmin`, et **aucun test n'aurait bougé**. C'est le mode de panne d'ADR-0017 (treize
+  // mois). Il vit ici parce que la machinerie de lecture des sources y est déjà, et parce que c'est
+  // la même question : **qui a le droit de toucher à la marque**.
 
   const HABILLEURS = ['features/salle/EcranSalle.tsx', 'features/public/AccueilPublic.tsx']
 
@@ -416,18 +400,12 @@ describe('CA — l’habillage de tournoi ne touche que le public et la salle (D
   const PORTEURS_DE_JETONS = ['features/identite/HabillageIdentite.tsx']
 
   it('seuls l’écran de salle et l’appli publique importent l’habillage', () => {
-    // ⚠️ **Le motif ne s'arrête pas à `from '…'`.** La rédaction précédente exigeait un import
-    // statique, en quotes simples, se terminant exactement par le nom du module : un
-    // `lazy(() => import('../identite/HabillageIdentite'))` — la façon normale de monter un écran
-    // dans une coquille d'admin qu'on veut découper — passait au vert, tout comme des guillemets
-    // doubles ou une extension explicite. Chercher le nom **suivi de sa quote fermante** couvre les
-    // cinq formes, statiques et dynamiques.
-    // ⚠️ **On cherche le NOM, pas le chemin.** Le contrôle demandait « qui importe ce module »,
-    // ce qu'un porteur autorisé peut contourner en le **ré-exportant** : deux lignes
-    // (`export { HabillageIdentite } from '…'` dans l'écran de salle, puis un import depuis l'admin)
-    // habillaient l'admin avec les 29 tests au vert — mutation faite en revue. Un `.js` en fin de
-    // spécificateur ou un alias de chemin suffisaient aussi. L'identifiant nu, lui, apparaît quelle
-    // que soit la route empruntée ; le module qui le définit entre donc dans la liste attendue.
+    // ⚠️ **Le motif ne s'arrête pas à `from '…'`** : la rédaction précédente exigeait un import
+    // statique en quotes simples, donc un `lazy(() => import('…'))` — la façon normale de découper
+    // une coquille d'admin — passait au vert. Chercher le nom **suivi de sa quote fermante** couvre
+    // les cinq formes. ⚠️ **On cherche le NOM, pas le chemin** : un porteur autorisé pouvait
+    // contourner le contrôle en **ré-exportant** le module (mutation faite en revue : 29 tests au
+    // vert). L'identifiant nu apparaît quelle que soit la route empruntée.
     const porteurs = features
       .filter(([, source]) => /\bHabillageIdentite\b/.test(neutraliserCommentaires(source)))
       .map(([chemin]) => chemin)
@@ -469,28 +447,21 @@ describe('CA — l’habillage de tournoi ne touche que le public et la salle (D
 
 describe('CA — la strate « marque » est la SEULE personnalisable par tournoi (DV-06, E16US006)', () => {
   // ⚠️ **Ce bloc ferme un trou que cette US a révélé.** Le contrôle « aucune feuille de feature ne
-  // redéfinit un jeton de la charte » est écrit pour du CSS : il découpe la source en règles
-  // `sélecteur { corps }`. Appliqué à un `.tsx` qui **fabrique** du CSS en chaîne de gabarit, il ne
-  // voit rien — les `${…}` cassent son découpage. `jetons.ts` en fabriquait donc huit sans
-  // qu'aucun test ne s'en aperçoive.
-  //
-  // La réponse n'est pas d'élargir la dérogation, c'est d'encoder la règle qui manquait. `DV-06`
-  // décrit **trois strates** : marque *personnalisable*, sémantique et structure *figées*. Le
-  // garde-fou ne connaissait que « la palette est à un seul endroit », ce qui est vrai de deux
-  // strates sur trois. On vérifie donc ici la vraie règle, sur le seul module autorisé à l'exercer.
+  // redéfinit un jeton » est écrit pour du CSS ; appliqué à un `.tsx` qui **fabrique** du CSS en
+  // chaîne de gabarit, les `${…}` cassent son découpage et `jetons.ts` en fabriquait huit sans
+  // qu'aucun test ne s'en aperçoive. La réponse n'est pas d'élargir la dérogation mais d'encoder la
+  // règle qui manquait : `DV-06` décrit **trois strates**, le garde-fou n'en connaissait que deux.
 
   const CHEMIN_JETONS = 'features/identite/jetons.ts'
   const fabrique = SOURCES[CHEMIN_JETONS] ?? ''
 
   /**
    * Une source pose-t-elle ce jeton ? Trois formes, parce qu'il y a trois façons d'écrire une
-   * variable CSS depuis React : `{--x:${c}}` (deux-points collé), `{'--x': c}` (une quote
-   * s'intercale) et `setProperty('--x', c)` (pas de deux-points du tout).
+   * variable CSS depuis React : `{--x:${c}}`, `{'--x': c}` et `setProperty('--x', c)`.
    *
-   * ⚠️ **Écrit d'un seul endroit, et c'est le correctif.** Le motif avait été élargi pour surveiller
-   * les *autres* features, mais le contrôle qui porte sur `jetons.ts` — le module dont ce bloc dit
-   * qu'il est le seul autorisé à toucher la marque — gardait l'ancienne version étroite. Le trou
-   * n'avait pas été fermé, il avait été déplacé sur le fichier le plus exposé (relevé en revue).
+   * ⚠️ **Écrit d'un seul endroit, et c'est le correctif** : le motif avait été élargi pour
+   * surveiller les *autres* features, mais le contrôle portant sur `jetons.ts` gardait l'ancienne
+   * version étroite. Le trou n'avait pas été fermé, il avait été déplacé sur le plus exposé.
    */
   const poseLeJeton = (jeton: string, source: string) =>
     new RegExp(
@@ -536,23 +507,14 @@ describe('CA — la strate « marque » est la SEULE personnalisable par tournoi
   })
 
   it('aucune AUTRE feature ne fabrique de CSS posant un jeton de la charte', () => {
-    // Le mécanisme est **un**, et il est nommé. Une seconde feature qui se mettrait à émettre des
-    // jetons rouvrirait la palette à plusieurs endroits — ce que tout ce fichier existe pour
-    // empêcher. Détecté sur le texte brut (et non par le découpage en règles CSS), précisément
-    // parce que c'est ce découpage qui ne voit pas les chaînes de gabarit.
+    // Le mécanisme est **un**, et il est nommé : une seconde feature qui émettrait des jetons
+    // rouvrirait la palette à plusieurs endroits. Détecté sur le texte brut, précisément parce que
+    // le découpage en règles CSS ne voit pas les chaînes de gabarit.
     //
-    // ⚠️ **La borne de gauche a été élargie, et c'est tout l'intérêt de ce commentaire.** La
-    // première rédaction exigeait une apostrophe, un guillemet ou un accent grave *immédiatement*
-    // devant le nom du jeton — c'est-à-dire exactement la mise en forme de `jetons.ts`, qui écrit
-    // une déclaration par chaîne. Une feature qui aurait écrit la **règle entière** dans un seul
-    // gabarit, `${porte}{--surface-0:${c}}` — la forme la plus naturelle, et celle que
-    // `cssDesJetons` emploie lui-même pour assembler ses règles — repeignait le fond du produit
-    // avec la suite au vert. Vérifié par mutation en revue adversariale : 25 tests passés.
-    //
-    // La borne actuelle accepte n'importe quel caractère non identifiant devant le jeton (ou le
-    // début de la source). Le faux positif est quasi impossible : hors fabrication de CSS, un `.ts`
-    // n'a aucune raison d'écrire `--surface-0:`, les commentaires sont déjà blanchis, et un
-    // `var(--surface-0)` n'est pas suivi d'un deux-points.
+    // ⚠️ **La borne de gauche a été élargie** : exiger une quote *immédiatement* devant le jeton
+    // laissait passer `${porte}{--surface-0:${c}}` — la forme la plus naturelle, et celle que
+    // `cssDesJetons` emploie lui-même (mutation vérifiée : 25 tests au vert). La borne actuelle
+    // accepte tout caractère non identifiant ; le faux positif est quasi impossible.
     const jetonsDeLaCharte = Object.keys(declinaison("data-theme='dark'").jetons)
     const fautes = features
       .filter(([chemin]) => chemin !== CHEMIN_JETONS && /\.tsx?$/.test(chemin))

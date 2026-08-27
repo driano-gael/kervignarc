@@ -1,18 +1,11 @@
-// Ex æquo et règle de départage — retour maquettes du 04/08/2026 (A16).
+// Ex æquo et règle de départage — retour maquettes du 04/08/2026 (A16) : *« la règle de départage
+// doit-elle être affichée en permanence, ou seulement en cas d'ex æquo ? → seulement en cas d'ex
+// aequo. »*
 //
-// *« La règle de départage doit-elle être affichée en permanence, ou seulement en cas d'ex æquo ?
-// → seulement en cas d'ex aequo. »*
-//
-// **Ce que cela change, et ce que cela ne change pas.** Les colonnes « 10 » et « 9 » ne sont pas la
-// règle, ce sont des **données** — le nombre de 10 et de 9 de chaque archer, qui se lit pour
-// lui-même. Elles restent. Ce qui disparaît, c'est la **phrase de règle** (« à total égal, plus de
-// 10, puis plus de 9 ») affichée en permanence : elle n'apprend rien tant que personne n'est à
-// égalité, et un écran qui explique en continu une règle qui ne s'applique pas finit par ne plus
-// être lu du tout.
-//
-// Corollaire utile : si l'on n'affiche la règle qu'au moment où elle s'applique, encore faut-il
-// **montrer sur qui**. D'où `totauxExAequo`, qui sert à marquer les lignes concernées — sans quoi on
-// afficherait « il y a des ex æquo » sans dire lesquels, ce qui est une devinette.
+// Les colonnes « 10 » et « 9 » ne sont pas la règle, ce sont des **données** : elles restent. Ce
+// qui disparaît, c'est la **phrase de règle** affichée en permanence — un écran qui explique en
+// continu une règle qui ne s'applique pas finit par ne plus être lu. Corollaire : il faut alors
+// **montrer sur qui**, d'où `totauxExAequo`, sans quoi on annoncerait une devinette.
 
 /** Ce qu'il faut d'une ligne de classement pour raisonner sur les égalités. Structurel plutôt que
  * `LigneClassement` : la fonction est testable avec trois champs, et le palmarès pourra la
@@ -23,16 +16,12 @@ export interface LigneDepartageable {
   categorie_id: number
 }
 
-/**
- * Les totaux **à égalité** au sein d'une même catégorie, par catégorie.
+/** Les totaux **à égalité** au sein d'une même catégorie, par catégorie.
  *
- * Pourquoi par catégorie et non sur tout le tableau : le départage FFTA sert à ordonner un
- * **classement**, et le classement qui compte pour un archer est celui de sa catégorie. Deux archers
- * de catégories différentes au même total ne sont pas ex æquo, ils ne se disputent rien.
- *
- * Les archers **hors course** (abandon, disqualification) sont écartés : leur score reste affiché,
- * mais ils ne sont plus classés — les faire entrer dans une égalité signalerait un départage qui
- * n'aura jamais lieu (cf. ADR-0050).
+ * Par catégorie et non sur tout le tableau : le départage FFTA ordonne un **classement**, et celui
+ * qui compte pour un archer est celui de sa catégorie — deux archers de catégories différentes au
+ * même total ne se disputent rien. Les archers **hors course** sont écartés : leur score reste
+ * affiché, mais signaler leur égalité annoncerait un départage qui n'aura jamais lieu (ADR-0050).
  */
 export function totauxExAequo(lignes: readonly LigneDepartageable[]): Map<number, Set<number>> {
   const vus = new Map<number, Map<number, number>>()
@@ -71,15 +60,10 @@ export function estExAequo(
 
 /** Y a-t-il au moins une égalité à départager **dans cette liste** ?
  *
- * ⚠️ **Ce n'est plus la condition d'affichage de la règle** (E16US004). Depuis que le classement
- * peut être centré sur les archers suivis, la légende se décide sur `lignes.some(estExAequo)` — les
- * égalités se **calculent** sur la liste complète (sinon on efface une égalité en même temps que
- * l'archer non suivi avec qui elle existe) mais ne s'**annoncent** que si une ligne visible les
- * porte, sans quoi on affiche « il y a des ex æquo » sans dire lesquels.
- *
- * Conservée : elle exprime l'invariant du module (« aucune égalité fantôme ») et c'est par elle que
- * les tests de `totauxExAequo` vérifient les cas où il ne doit rien y avoir — matinée à zéro,
- * forfaits, catégories disjointes. Plus aucun appelant en production.
+ * ⚠️ **Ce n'est plus la condition d'affichage de la règle** (E16US004) : depuis que le classement
+ * peut être centré, les égalités se **calculent** sur la liste complète mais ne s'**annoncent**
+ * que si une ligne visible les porte. Conservée parce qu'elle exprime l'invariant du module («
+ * aucune égalité fantôme ») et que les tests s'en servent. Plus aucun appelant en production.
  */
 export function aDesExAequo(egalites: ReadonlyMap<number, ReadonlySet<number>>): boolean {
   return egalites.size > 0

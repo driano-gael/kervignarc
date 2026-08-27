@@ -1,12 +1,11 @@
-// Abonnement à l'historique du navigateur (E14US003) — la seule partie du routeur qui touche au DOM.
+// Abonnement à l'historique du navigateur (E14US003) — la seule partie du routeur qui touche au
+// DOM.
 //
-// Volontairement **mince** : toutes les décisions vivent dans `routeur.ts`, qui est pur et testé. Ici
-// il n'y a que de la plomberie — pousser une entrée d'historique et prévenir React.
-//
-// `useSyncExternalStore` plutôt qu'un `useState` + `useEffect` : c'est l'API prévue pour lire une
-// source **extérieure** à React (ici `window.location`). Elle évite le piège classique du routeur
-// maison — un état local qui se désynchronise du navigateur quand l'utilisateur clique sur
-// « précédent », parce que `popstate` arrive après le rendu.
+// Volontairement **mince** : toutes les décisions vivent dans `routeur.ts`, qui est pur et testé.
+// ⚠️ `useSyncExternalStore` plutôt qu'un `useState` + `useEffect` : c'est l'API prévue pour lire
+// une source **extérieure** à React, et elle évite le piège classique du routeur maison — un état
+// local qui se désynchronise du navigateur au clic sur « précédent », `popstate` arrivant après le
+// rendu.
 
 import { useSyncExternalStore } from 'react'
 

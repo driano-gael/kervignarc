@@ -1,19 +1,11 @@
 // La vue **publique** d'un Big Shoot Off (E05US031, ADR-0089).
 //
 // Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
-// salle, toutes deux montées par l'aiguilleur `features/en-cours/`.
-//
-// ⚠️ **« Trois surfaces » jusqu'à la revue** (axe C2) : la formule ajoutait l'écran d'organisation,
-// qui ne monte pas cette vue. C'est cette liste qui **justifie** la contrainte « cette vue ne lit
-// pas le store » ; l'appuyer sur une surface imaginaire la rend invérifiable.
-//
-// **L'historique est ici gratuit, comme pour les poules** : une finale se lit en tableau — un
-// tireur par ligne, une manche par colonne —, donc toutes les manches jouées sont visibles
-// d'emblée. Aucune navigation à bâtir : c'est la forme du format qui la rend inutile.
-//
-// ⚠️ **La lecture est celle du sort, pas celle du score.** Ce qu'un spectateur vient chercher ici
-// est « qui reste en lice » et « qui est sorti à quel rang » — les totaux de manche ne sont qu'un
-// moyen de le comprendre. D'où l'ordre des colonnes : le rang d'abord, le détail ensuite.
+// salle, toutes deux montées par l'aiguilleur `features/en-cours/`. ⚠️ La formule disait « trois
+// surfaces » jusqu'à la revue, en comptant l'écran d'organisation qui ne monte pas cette vue — or
+// c'est cette liste qui **justifie** la contrainte « cette vue ne lit pas le store ». L'historique
+// est ici gratuit : une finale se lit en tableau, donc toutes les manches jouées sont visibles. ⚠️
+// **La lecture est celle du sort, pas du score** — d'où le rang d'abord, le détail ensuite.
 
 import { messageDeLecture } from '../../shared/api/etatDeLecture'
 import { type ModeAffichage } from '../../shared/suivis/focus'
@@ -119,15 +111,12 @@ export function VueBigShootOffPublique({
               </td>
               <td>{decrireSort(tireur)}</td>
               {jouees.map((manche) => (
-                // `scores` ne porte que les manches **entièrement validées** : une case vide dit
-                // « pas encore scellée », jamais « zéro ». Un `0` inventé ferait croire à un tir
-                // manqué sur un archer dont la feuille est simplement en cours de validation.
-                //
-                // ⚠️ Indexé par `manche.numero - 1`, **pas** par le rang dans `jouees` (correctif
-                // de revue, axe C1). L'alignement des deux tenait aujourd'hui — `jouee` est un
-                // préfixe sans trou — mais c'était la coïncidence de deux constructions
-                // indépendantes : le jour où une manche serait sautée, les scores glisseraient
-                // d'une colonne sans qu'aucun test ne bronche. On exprime la correspondance.
+                // `scores` ne porte que les manches **entièrement validées** : une case vide dit «
+                // pas encore scellée », jamais « zéro » — un `0` inventé ferait croire à un tir
+                // manqué. ⚠️ Indexé par `manche.numero - 1`, **pas** par le rang dans `jouees` :
+                // l'alignement tenait aujourd'hui (`jouee` est un préfixe sans trou) mais c'était
+                // la coïncidence de deux constructions indépendantes — le jour où une manche serait
+                // sautée, les scores glisseraient d'une colonne sans qu'un test ne bronche.
                 <td key={manche.numero}>{tireur.scores[manche.numero - 1] ?? '—'}</td>
               ))}
             </tr>
