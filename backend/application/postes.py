@@ -35,7 +35,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from domain.depart import Depart, DepartId
-from domain.ecran import SequenceVues
+from domain.ecran import ReglagePages, SequenceVues
 from domain.ports import (
     DepartRepository,
     GabaritSalleRepository,
@@ -219,6 +219,24 @@ class ServicePostes:
         """
         ecran = self._exiger_ecran(tournoi_id, poste_id)
         return self._postes.enregistrer(ecran.avec_deroule(deroule))
+
+    def regler_pages_ecran(
+        self, tournoi_id: TournoiId, poste_id: PosteId, pages: ReglagePages
+    ) -> Poste:
+        """Fixe le découpage et la cadence des listes projetées par un écran (E16US009).
+
+        **Un geste distinct du déroulé**, et non un champ de plus sur `regler_deroule_ecran` : le
+        déroulé dit *quelles vues et pendant combien de temps*, celui-ci dit *comment une liste se
+        lit à dix mètres*. Ils se règlent à des moments différents (l'un à la préparation, l'autre
+        une fois le projecteur branché dans la salle) et le second se corrige seul, sans avoir à
+        renvoyer la séquence de vues entière — ce qui, à l'inverse, exposait à l'écraser par
+        inadvertance.
+
+        Persisté pour la même raison que le déroulé : le réglage doit survivre au redémarrage du
+        matin du jour J.
+        """
+        ecran = self._exiger_ecran(tournoi_id, poste_id)
+        return self._postes.enregistrer(ecran.avec_pages(pages))
 
     def supprimer_ecran(self, tournoi_id: TournoiId, poste_id: PosteId) -> None:
         """Retire un écran : sessions, consigne et présence oubliées, puis ligne supprimée.

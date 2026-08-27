@@ -31,6 +31,7 @@ from application.ecrans import AffichageEcran, PriseActive, ServiceEcrans
 from application.postes import ServicePostes
 from domain.ecran import (
     Consigne,
+    ReglagePages,
     SequenceVues,
     VueEcran,
     VueProgrammee,
@@ -67,12 +68,38 @@ class VueProgrammeeDTO(BaseModel):
     cadence_s: int
 
 
+class ReglagePagesDTO(BaseModel):
+    """Comment une liste projetée se découpe et à quel rythme elle tourne (E16US009).
+
+    **Aucune borne `Field(ge=…, le=…)`**, pour la raison écrite au-dessus pour `cadence_s` : les
+    bornes sont un **jugement** sur ce qui se lit à dix mètres, elles vivent dans le domaine, et les
+    répéter ici les dégraderait en 400 générique là où le domaine rend un **422** portant le champ
+    fautif (`nombre_de_noms_par_page_invalide` / `cadence_de_page_invalide`).
+    """
+
+    noms_par_page: int
+    cadence_page_s: int
+
+    @staticmethod
+    def de_domaine(pages: ReglagePages) -> ReglagePagesDTO:
+        """Traduit le value object de domaine en DTO de réponse."""
+        return ReglagePagesDTO(
+            noms_par_page=pages.noms_par_page, cadence_page_s=pages.cadence_page_s
+        )
+
+    def vers_domaine(self) -> ReglagePages:
+        """Traduit le DTO en value object de domaine (qui revalide les bornes)."""
+        return ReglagePages(noms_par_page=self.noms_par_page, cadence_page_s=self.cadence_page_s)
+
+
 class EcranReponse(BaseModel):
     """Un écran de salle vu de l'admin : son libellé, son code, son déroulé effectif.
 
     `deroule` est **toujours** rempli : c'est `deroule_effectif`, donc le déroulé par défaut tant
     que rien n'a été réglé. Le front n'a ainsi jamais à savoir qu'un défaut existe — et ne peut pas
-    afficher « aucune vue ».
+    afficher « aucune vue ». `pages` suit **exactement** le même parti (`pages_effectives`,
+    E16US009) : le formulaire d'admin affiche donc toujours des valeurs, jamais des champs vides
+    qu'il faudrait remplir d'un défaut qu'il aurait fallu recopier côté front.
     """
 
     id: int
@@ -80,6 +107,7 @@ class EcranReponse(BaseModel):
     libelle: str
     code: str
     deroule: list[VueProgrammeeDTO]
+    pages: ReglagePagesDTO
 
     @staticmethod
     def de_agregat(ecran: Poste) -> EcranReponse:
@@ -95,6 +123,7 @@ class EcranReponse(BaseModel):
                 VueProgrammeeDTO(vue=v.vue, cadence_s=v.cadence_s)
                 for v in ecran.deroule_effectif.vues
             ],
+            pages=ReglagePagesDTO.de_domaine(ecran.pages_effectives),
         )
 
 
@@ -120,6 +149,17 @@ class ReglerDerouleRequete(BaseModel):
     def vers_domaine(self) -> SequenceVues:
         """Traduit le DTO en value object de domaine (qui revalide les bornes de cadence)."""
         return SequenceVues(tuple(VueProgrammee(etape.vue, etape.cadence_s) for etape in self.vues))
+
+
+class ReglerPagesRequete(BaseModel):
+    """Corps de réglage des pages projetées : les deux valeurs, ensemble.
+
+    **Les deux, toujours** — pas de champ facultatif : `ReglagePages` est un value object
+    indivisible, et un réglage partiel obligerait la frontière à décider quoi faire de la moitié
+    manquante (garder l'ancienne ? reprendre le défaut ?), c'est-à-dire à porter une règle.
+    """
+
+    pages: ReglagePagesDTO
 
 
 class PrendreLeControleRequete(BaseModel):
@@ -183,6 +223,7 @@ class AffichageReponse(BaseModel):
     vue_figee: VueEcran | None
     sous_controle: bool
     reste_s: float | None
+    pages: ReglagePagesDTO
 
     @staticmethod
     def de_affichage(affichage: AffichageEcran) -> AffichageReponse:
@@ -203,6 +244,7 @@ class AffichageReponse(BaseModel):
             vue_figee=affichage.vue_figee,
             sous_controle=affichage.sous_controle,
             reste_s=affichage.reste_s,
+            pages=ReglagePagesDTO.de_domaine(affichage.pages),
         )
 
 
@@ -268,6 +310,30 @@ async def regler_deroule(
     deroule = requete.vers_domaine()
     ecran = await asyncio.wrap_future(
         write_queue.submit(lambda: service.regler_deroule_ecran(tournoi_id, poste_id, deroule))
+    )
+    return EcranReponse.de_agregat(ecran)
+
+
+@router.put("/{poste_id}/pages", response_model=EcranReponse, dependencies=[Depends(exiger_admin)])
+async def regler_pages(
+    tournoi_id: int, poste_id: int, requete: ReglerPagesRequete, request: Request
+) -> EcranReponse:
+    """Fixe le découpage et la cadence des listes projetées par un écran (**admin**, via file).
+
+    **Route distincte du déroulé**, et non un champ de plus sur `PUT …/deroule` : les deux réglages
+    répondent à deux questions différentes (*quelles vues* / *comment une liste se lit de loin*) et
+    se posent à deux moments différents. Les fondre aurait obligé l'écran d'admin à renvoyer la
+    séquence de vues entière pour corriger une cadence de page — donc à pouvoir l'écraser par
+    inadvertance.
+
+    `404` / `409` comme le renommage ; `422 nombre_de_noms_par_page_invalide` ou
+    `422 cadence_de_page_invalide` si une valeur sort des bornes.
+    """
+    service: ServicePostes = request.app.state.service_postes
+    write_queue: WriteQueue = request.app.state.write_queue
+    pages = requete.pages.vers_domaine()
+    ecran = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.regler_pages_ecran(tournoi_id, poste_id, pages))
     )
     return EcranReponse.de_agregat(ecran)
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.ecran import SequenceVues
+from domain.ecran import ReglagePages, SequenceVues
 from domain.erreurs import (
     CibleInvalide,
     CodePosteInvalide,
@@ -130,3 +130,43 @@ def test_creer_ecran_refuse_un_libelle_trop_long() -> None:
     limite = Poste.creer_ecran(tournoi_id=1, libelle="x" * LIBELLE_ECRAN_MAX, code="EC01ZZ")
     assert limite.libelle is not None
     assert len(limite.libelle) == LIBELLE_ECRAN_MAX
+
+
+# --- Le réglage des pages projetées (E16US009) ---------------------------------------------------
+
+
+def test_un_ecran_neuf_joue_le_reglage_de_pages_par_defaut() -> None:
+    """CA « le rendre réglable » : réglable, donc facultatif — un écran non réglé doit tourner.
+
+    Exactement le parti de `deroule_effectif` : le défaut se résout **dans l'agrégat** et non chez
+    chaque appelant, de sorte qu'aucune surface ne peut recevoir « pas de réglage ».
+    """
+    ecran = Poste.creer_ecran(tournoi_id=7, libelle="Fond de salle", code="AB12CD")
+
+    assert ecran.pages is None
+    assert ecran.pages_effectives == ReglagePages.par_defaut()
+
+
+def test_un_ecran_regle_joue_son_propre_reglage() -> None:
+    """CA : la cadence se règle **par écran** — deux écrans du même tournoi peuvent différer."""
+    ecran = Poste.creer_ecran(tournoi_id=7, libelle="Fond de salle", code="AB12CD")
+
+    regle = ecran.avec_pages(ReglagePages(noms_par_page=24, cadence_page_s=12))
+
+    assert regle.pages_effectives == ReglagePages(noms_par_page=24, cadence_page_s=12)
+    # Agrégat immuable (règle 4) : l'original n'a pas bougé.
+    assert ecran.pages is None
+
+
+def test_seul_un_ecran_porte_un_reglage_de_pages() -> None:
+    """Une tablette de cible ne projette rien : lui régler des pages n'a pas de sens.
+
+    Même garde que `avec_deroule` / `deroule_effectif`, et pour la même raison — c'est la nature du
+    poste qui décide, pas l'appelant.
+    """
+    cible = Poste.creer(tournoi_id=7, cible_index=3, code="AB12CD")
+
+    with pytest.raises(PosteSansEcran):
+        cible.avec_pages(ReglagePages.par_defaut())
+    with pytest.raises(PosteSansEcran):
+        _ = cible.pages_effectives

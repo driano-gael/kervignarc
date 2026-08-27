@@ -23,14 +23,22 @@
 // La surface **interactive** (table de l'organisation) ne pagine pas et n'a pas à le faire : on y
 // défile à la main, et un découpage automatique sous les doigts serait une gêne, pas un service.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { RoutageArcher } from './api'
 import { useDeparts } from '../departs/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import { departDeSalle } from '../salle/rotation'
 import { useAffectations } from './hooks'
 import { alerte, detail, encoreEnLice, partitionner, posesParCible, titre } from './presentation'
-import { nombreDePages, pageCourante, rateauDePage, trancheDePage } from './pagination'
+import { EnteteDePage } from '../../shared/ui/EnteteDePage'
+import {
+  type ReglagePages,
+  nombreDePages,
+  pageCourante,
+  rateauDePage,
+  trancheDePage,
+  useSecondesDAffichage,
+} from '../../shared/ui/pagination'
 
 type Tri = 'cible' | 'nom'
 
@@ -41,6 +49,7 @@ export function VueAffectations({
   interactif = true,
   mode = 'tout',
   suivis = [],
+  pagination,
 }: {
   tournoiId: number
   interactif?: boolean
@@ -49,6 +58,9 @@ export function VueAffectations({
   mode?: ModeAffichage
   /** Les archers suivis sur ce tournoi — n'a de sens qu'avec `mode === 'suivis'`. */
   suivis?: number[]
+  /** Le réglage de pages de **cet écran de salle** (E16US009), servi par le serveur. Absent, la
+   * séquence retombe sur les défauts du module — c'est-à-dire le comportement d'avant l'US. */
+  pagination?: ReglagePages
 }) {
   const [tri, setTri] = useState<Tri>('cible')
   // Le pas de tir est celui d'un **créneau** (ADR-0075). Ni l'écran de salle ni la table
@@ -141,7 +153,7 @@ export function VueAffectations({
       {/* L'écran projeté ne peut rien actionner : il ne choisit donc pas son tri, il **cycle**
           (P06). `interactif` fait plus que masquer deux boutons — il change la nature de la vue. */}
       {!interactif ? (
-        <SalleParPages poses={poses} tous={archersAffiches} />
+        <SalleParPages poses={poses} tous={archersAffiches} pagination={pagination} />
       ) : tri === 'nom' ? (
         <ListeParNom lignes={archersAffiches} />
       ) : (
@@ -176,17 +188,27 @@ export function VueAffectations({
  * situation, pas un annuaire, et la découper ferait perdre la lecture d'ensemble qu'on vient y
  * chercher. Ce sont les pages nominatives, elles, qui pagineraient sur 200 archers.
  */
-function SalleParPages({ poses, tous }: { poses: RoutageArcher[]; tous: RoutageArcher[] }) {
-  const secondes = useSecondesDAffichage()
+function SalleParPages({
+  poses,
+  tous,
+  pagination,
+}: {
+  poses: RoutageArcher[]
+  tous: RoutageArcher[]
+  pagination: ReglagePages | undefined
+}) {
+  // Clé propre à cette vue : le cumul est indexé, sans quoi le classement projeté (qui pagine
+  // depuis E16US009) et les affectations feraient avancer les pages l'un de l'autre.
+  const secondes = useSecondesDAffichage('affectations')
 
   const parNom = [...tous].sort((a, b) => nomComplet(a).localeCompare(nomComplet(b), 'fr'))
-  const pagesDeNoms = nombreDePages(parNom.length)
+  const pagesDeNoms = nombreDePages(parNom.length, pagination?.noms_par_page)
   // +1 pour la page « tour en cours », quand il y a effectivement un pas de tir à montrer. Sans
   // butte posée (avant le premier lancement), on ne montre que les noms — une page « tour en cours »
   // vide serait vingt secondes de mur blanc.
   const avecTour = poses.length > 0
   const total = pagesDeNoms + (avecTour ? 1 : 0)
-  const index = pageCourante(total, secondes)
+  const index = pageCourante(total, secondes, pagination?.cadence_page_s)
 
   if (avecTour && index === 0) {
     return (
@@ -198,7 +220,7 @@ function SalleParPages({ poses, tous }: { poses: RoutageArcher[]; tous: RoutageA
   }
 
   const pageNoms = avecTour ? index - 1 : index
-  const lignes = trancheDePage(parNom, pageNoms)
+  const lignes = trancheDePage(parNom, pageNoms, pagination?.noms_par_page)
   const rateau = rateauDePage(lignes.map(nomComplet))
 
   return (
@@ -214,81 +236,6 @@ function SalleParPages({ poses, tous }: { poses: RoutageArcher[]; tous: RoutageA
       </ul>
     </div>
   )
-}
-
-/** L'en-tête d'une page projetée : **le compteur et le râteau, en grand** (P06 : *« grossir le
- * compteur de page, il faut qu'il soit visible, de même que les lettres comprises dans le râteau de
- * nom »*). Ce sont les deux seules informations qui servent à quelqu'un debout au fond de la salle :
- * « est-ce que mon nom est sur cette page, et sinon combien de temps j'attends ». */
-function EnteteDePage({
-  numero,
-  total,
-  titre: intitule,
-  rateau,
-}: {
-  numero: number
-  total: number
-  titre: string
-  rateau: { debut: string; fin: string } | null
-}) {
-  return (
-    <header className="salle-pages__entete">
-      <span className="salle-pages__titre">{intitule}</span>
-      {rateau !== null && (
-        <span className="salle-pages__rateau">
-          {rateau.debut} <span aria-hidden="true">→</span> {rateau.fin}
-        </span>
-      )}
-      {total > 1 && (
-        <span className="salle-pages__compteur">
-          {numero}
-          <span className="salle-pages__compteur-total">/{total}</span>
-        </span>
-      )}
-    </header>
-  )
-}
-
-/**
- * Temps d'affichage **cumulé de cette vue**, en secondes — pas l'heure du monde.
- *
- * ⚠️ **C'est la correction d'un défaut trouvé en revue adversariale (05/08/2026), et il n'était pas
- * théorique.** La première version dérivait la page de `Date.now()` nu, comme `salle/rotation.ts` le
- * fait pour la rotation des vues. Le raisonnement était faux d'un cran : la rotation, elle, tourne
- * **en continu** ; la vue « affectations », non — elle n'est à l'écran qu'une étape sur N du déroulé.
- * Une page calée sur l'heure absolue n'avance donc que **par sauts**, et quand la période du déroulé
- * et les 20 s tombent juste, certaines pages ne sortent **jamais**. Vérifié en exécutant la
- * fonction : déroulé « affectations 30 s + classement 30 s » et trois pages → la page 2 n'est jamais
- * projetée de la journée. La moitié des archers ne verrait jamais son nom, c'est-à-dire exactement
- * la fonction demandée en P06.
- *
- * On compte donc le temps **pendant lequel la vue est affichée**, cumulé d'un passage à l'autre : la
- * séquence reprend où elle s'était arrêtée, et toutes les pages finissent par sortir quelle que soit
- * la découpe du déroulé.
- *
- * Le cumul vit **au module** et non dans un état React : le composant est démonté à chaque fois que
- * l'écran passe à une autre vue, donc tout état interne serait perdu — c'est précisément ce qu'on
- * cherche à conserver. Une seule surface projetée par onglet, donc pas de collision possible.
- *
- * Reste une **horloge** et non un compteur incrémenté, pour la raison écrite dans `rotation.ts` : un
- * onglet en arrière-plan voit ses minuteurs bridés, et huit heures de dérive figeraient l'écran.
- */
-let secondesAffichees = 0
-
-function useSecondesDAffichage(): number {
-  const [ecoulees, setEcoulees] = useState(secondesAffichees)
-  useEffect(() => {
-    const debut = Date.now() / 1000
-    const battement = window.setInterval(
-      () => setEcoulees(secondesAffichees + (Date.now() / 1000 - debut)),
-      1000,
-    )
-    return () => {
-      window.clearInterval(battement)
-      secondesAffichees += Date.now() / 1000 - debut
-    }
-  }, [])
-  return ecoulees
 }
 
 // Le pas de tir, groupé par butte : la disposition physique de la salle. L'ordre vient du serveur —

@@ -19,9 +19,14 @@ import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   CADENCE_MAX_S,
   CADENCE_MIN_S,
+  CADENCE_PAGE_MAX_S,
+  CADENCE_PAGE_MIN_S,
   LIBELLE_VUE,
+  NOMS_PAR_PAGE_MAX,
+  NOMS_PAR_PAGE_MIN,
   TOUTES_LES_VUES,
   type Ecran,
+  type ReglagePages,
   type VueEcran,
   type VueProgrammee,
 } from './api'
@@ -29,6 +34,7 @@ import {
   useCreerEcran,
   useEcrans,
   useReglerDeroule,
+  useReglerPages,
   useRenommerEcran,
   useSupprimerEcran,
 } from './hooks'
@@ -143,8 +149,93 @@ function CarteEcran({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
         />
       </div>
       <ReglageDeroule ecran={ecran} tournoiId={tournoiId} />
+      <ReglagePagesProjetees ecran={ecran} tournoiId={tournoiId} />
       <MessageErreur erreur={renommer.error ?? supprimer.error} />
     </li>
+  )
+}
+
+/** Le réglage des **listes projetées** par un écran (E16US009).
+ *
+ * ⚠️ **Deux durées coexistent sur cette carte, et l'écran doit le dire.** Juste au-dessus, la
+ * cadence d'une *vue* : combien de temps l'écran reste sur le classement. Ici, la cadence d'une
+ * *page* : à quel rythme la liste tourne **à l'intérieur** de cette vue, quand elle ne tient pas
+ * d'un coup. Le libellé visible porte donc ici son objet — « **Durée d'une page** » — parce que
+ * « cadence », seul, désignerait indifféremment les deux.
+ *
+ * ⚠️ **La symétrie n'est pas parfaite, et il ne faut pas la promettre** : côté déroulé, le libellé
+ * « Cadence de la vue N » est `sr-only` (une rangée compacte par étape), donc **seul un lecteur
+ * d'écran l'entend** ; un organisateur voyant lit le sous-titre « Déroulé » et un champ de secondes
+ * nu. C'est le bloc entier qui désambiguïse pour lui, pas un libellé. *(La première rédaction
+ * affirmait deux libellés visibles se faisant face — relevé par l'axe adversarial. Rendre celui du
+ * déroulé visible ferait le meilleur écran, mais c'est une retouche de l'existant, donc une autre
+ * US.)*
+ *
+ * **Deux valeurs et un seul bouton** : `ReglagePages` est indivisible côté serveur (une route, un
+ * corps), et un enregistrement partiel obligerait la frontière à décider quoi faire de la moitié
+ * manquante.
+ *
+ * Le réglage est **par écran** parce qu'il dépend de la diagonale du projecteur, de la distance de
+ * lecture et de la longueur des noms du club : le vidéoprojecteur du fond de salle et l'écran
+ * d'accueil n'ont pas les mêmes. */
+function ReglagePagesProjetees({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
+  const [pages, setPages] = useState<ReglagePages>(ecran.pages)
+  const regler = useReglerPages(tournoiId)
+
+  return (
+    <div className="ecrans__deroule">
+      <span className="carte__soustitre">Listes projetées</span>
+      <span className="ecrans__etape">
+        <label htmlFor={`noms-${ecran.id}`}>Noms par page</label>
+        <input
+          id={`noms-${ecran.id}`}
+          type="number"
+          min={NOMS_PAR_PAGE_MIN}
+          max={NOMS_PAR_PAGE_MAX}
+          value={pages.noms_par_page}
+          onChange={(e) => setPages({ ...pages, noms_par_page: Number(e.target.value) })}
+          style={{ width: '5em' }}
+        />
+        <label htmlFor={`page-${ecran.id}`}>Durée d’une page</label>
+        <input
+          id={`page-${ecran.id}`}
+          type="number"
+          min={CADENCE_PAGE_MIN_S}
+          max={CADENCE_PAGE_MAX_S}
+          value={pages.cadence_page_s}
+          onChange={(e) => setPages({ ...pages, cadence_page_s: Number(e.target.value) })}
+          style={{ width: '5em' }}
+        />
+        <span>s</span>
+      </span>
+      {/* Le CA dit « à confirmer **sur le vidéoprojecteur réel** » : l'écran le rappelle plutôt que
+          de laisser croire que 40 est une valeur mesurée. C'est la moitié du réglage — l'autre
+          moitié est le geste d'aller voir au fond de la salle. */}
+      <p className="carte__aide">
+        À ajuster en regardant l’écran depuis le fond de la salle : ces valeurs dépendent du
+        projecteur, de la distance et de la longueur des noms. « Noms par page » se compte sur la
+        liste d’affectations, qui s’affiche sur trois colonnes ; le classement, à un archer par
+        ligne, en montre trois fois moins — et <strong>jamais plus de 9</strong>.
+      </p>
+      {/* ⚠️ Le plafond crée une **plage inerte**, et le taire ferait passer un cadran bloqué pour
+          une panne : au-delà de 27 noms réglés, le classement ne bouge plus. L'organisateur doit
+          alors surveiller l'autre vue, qui n'a pas de plafond (correctif de 3ᵉ passe de revue,
+          axes B et C1 convergents). `DETTE-086`. */}
+      <p className="carte__aide">
+        Jusqu’à <strong>27</strong>, c’est le <strong>classement</strong> qui déborde en premier :
+        réglez sur lui. Au-delà, il reste figé à 9 archers et c’est la{' '}
+        <strong>liste d’affectations</strong> qui commande — surveillez-la, elle n’a pas de plafond.
+        Dans les deux cas, ce qui déborde n’est pas affiché du tout : rien ne dépasse à l’écran.
+      </p>
+      <button
+        type="button"
+        disabled={regler.isPending}
+        onClick={() => regler.mutate({ posteId: ecran.id, pages })}
+      >
+        Enregistrer les listes
+      </button>
+      <MessageErreur erreur={regler.error} />
+    </div>
   )
 }
 

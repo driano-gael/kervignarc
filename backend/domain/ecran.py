@@ -25,9 +25,11 @@ from dataclasses import dataclass
 from enum import Enum
 
 from domain.erreurs import (
+    CadenceDePageInvalide,
     CadenceEcranInvalide,
     ConsigneEcranInvalide,
     DureePriseDeControleInvalide,
+    NombreDeNomsParPageInvalide,
     SequenceVuesVide,
 )
 
@@ -145,6 +147,83 @@ class SequenceVues:
                 VueProgrammee(VueEcran.SUIVI_DEROULE, 30),
             )
         )
+
+
+NOMS_PAR_PAGE_MIN = 5
+"""Plancher du nombre de noms par page : sous 5 noms, le nombre de pages explose.
+
+Sur 200 archers et à la cadence par défaut, en **temps d'affichage cumulé** (une seule convention,
+pour que les deux surfaces se comparent) : une **liste de noms** ferait 40 pages, soit ~13 min ; le
+**classement projeté**, où le front convertit ce nombre en lignes de tableau (~3 noms par ligne),
+en ferait près de cent, soit ~33 min — et près d'une heure et demie d'horloge, l'écran ne montrant
+le classement qu'un tiers du temps. 5 est une borne d'essai, pas un réglage de journée.
+*(Chiffres corrigés en revue d'E16US009 : ils dataient d'avant la conversion, et mélangeaient les
+deux horloges.)*
+"""
+
+NOMS_PAR_PAGE_MAX = 100
+"""Plafond du nombre de noms par page : au-delà, la hauteur de ligne d'un 1920x1080 tombe sous ce
+qui se lit **à dix mètres** — or c'est exactement ce que la pagination existe pour préserver. Le
+plafond ne prétend pas dire la bonne valeur : il borne un réglage dont le CA dit lui-même qu'il est
+« à confirmer sur le vidéoprojecteur réel ».
+"""
+
+CADENCE_PAGE_MIN_S = 5
+"""Plancher de cadence d'une page : même jugement que `CADENCE_MIN_S` — sous 5 s, une liste vue de
+loin clignote plus qu'elle n'informe."""
+
+CADENCE_PAGE_MAX_S = 300
+"""Plafond de cadence d'une page : au-delà de cinq minutes, la liste ne défile plus, elle est figée
+— et l'archer dont le nom est en page 3 ne le verra pas de la matinée."""
+
+
+@dataclass(frozen=True)
+class ReglagePages:
+    """Comment une **liste projetée** se découpe et à quel rythme elle tourne (E16US009).
+
+    ⚠️ **Deux durées coexistent sur un écran, et les confondre est le piège de cette US** :
+    `VueProgrammee.cadence_s` dit combien de temps l'écran reste sur *une vue* ; `cadence_page_s`
+    dit à quel rythme la *liste* tourne **à l'intérieur** de cette vue. Rien n'exige que l'une
+    divise l'autre — la séquence de pages reprend où elle s'était arrêtée au passage suivant.
+
+    **Réglage de l'écran, pas de la vue** (CA : « se règle **par écran** »), et ce n'est pas
+    qu'une commodité : les deux valeurs dépendent de la **diagonale du projecteur, de la distance de
+    lecture et de la longueur des noms du club** — trois propriétés du lieu, identiques pour toutes
+    les vues d'un même écran et différentes d'un écran à l'autre. Les porter sur `VueProgrammee`
+    aurait demandé de les répéter à chaque étape du déroulé, avec la possibilité d'en diverger sans
+    qu'aucune règle ne le justifie.
+
+    Résorbe `DETTE-039`, qui tenait ces deux valeurs en dur dans le front.
+    """
+
+    noms_par_page: int
+    cadence_page_s: int
+
+    def __post_init__(self) -> None:
+        if not NOMS_PAR_PAGE_MIN <= self.noms_par_page <= NOMS_PAR_PAGE_MAX:
+            raise NombreDeNomsParPageInvalide(
+                f"Une page projetée porte entre {NOMS_PAR_PAGE_MIN} et {NOMS_PAR_PAGE_MAX} noms "
+                f"(reçu : {self.noms_par_page})."
+            )
+        if not CADENCE_PAGE_MIN_S <= self.cadence_page_s <= CADENCE_PAGE_MAX_S:
+            raise CadenceDePageInvalide(
+                f"La cadence d'une page doit être comprise entre {CADENCE_PAGE_MIN_S} et "
+                f"{CADENCE_PAGE_MAX_S} secondes (reçu : {self.cadence_page_s})."
+            )
+
+    @staticmethod
+    def par_defaut() -> ReglagePages:
+        """Le réglage d'un écran qui n'a rien réglé — même parti que `SequenceVues.par_defaut`.
+
+        Les valeurs sont **celles que le front tenait en dur** avant cette US (`NOMS_PAR_PAGE = 40`,
+        `SECONDES_PAR_PAGE = 20`, `DETTE-039`) : un écran déjà installé ne change donc pas de
+        comportement au déploiement, et la migration n'a aucune donnée à écrire.
+
+        Les 20 s viennent du questionnaire P06 — *« on peut dire que 20 s (réglable) par écran de
+        liste de noms est correct »*. Les 40 noms sont un pari jamais confronté à un vidéoprojecteur
+        réel ; le rendre réglable est précisément ce qui permet de le corriger sans toucher au code.
+        """
+        return ReglagePages(noms_par_page=40, cadence_page_s=20)
 
 
 @dataclass(frozen=True)

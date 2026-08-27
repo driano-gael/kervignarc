@@ -16,12 +16,13 @@
 // l'affichage**. `lignes` dit ce qu'on montre, `lignesCompletes` dit sur quoi l'on raisonne.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
+import { __reinitialiserCumulsDePage_TESTS } from '../../shared/ui/pagination'
 import { TableClassement } from './TableClassement'
 
 // ⚠️ On mocke **le hook**, pas `getDeroule` : `useDeroule` appelle la fonction par sa liaison
@@ -192,5 +193,227 @@ describe('TableClassement — détail des flèches (CA racine E16US004)', () => 
     render(<Cadre enfants={<TableClassement tournoiId={1} lignes={[ligne()]} admin={false} />} />)
 
     expect(screen.queryByRole('button', { name: /MARTIN/ })).toBeNull()
+  })
+})
+
+// --- Le classement projeté, page après page (E16US009, ADR-0098) --------------------------------
+//
+// ⚠️ **Un test de rendu par écran** — la leçon de `DETTE-085`, apprise à ses dépens dans l'US
+// précédente : `tsc` ne voit pas une propriété fournie et jamais consommée, et aucun test ne montait
+// l'écran concerné. Le composant calculait ses repères et ne les rendait pas. Ces deux tests-ci
+// tombent si `pagination` cesse d'être honorée, dans un sens comme dans l'autre.
+
+describe('TableClassement — le reste projeté', () => {
+  // Dix archers : trois en tête figée, sept dans le reste, découpé en pages de quatre → deux pages.
+  const DIX = Array.from({ length: 10 }, (_, i) =>
+    ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 600 - i }),
+  )
+  // ⚠️ **12 noms réglés donnent 4 LIGNES par page**, pas 12 : le réglage compte des noms tels que la
+  // page d'affectations les dispose — sur trois colonnes CSS — et le classement est un tableau
+  // mono-colonne. Bloquant de revue : à valeur brute, le bas de chaque page tombait sous le bord de
+  // l'image, sur un écran où personne ne peut faire défiler.
+  const REGLAGE = { noms_par_page: 12, cadence_page_s: 20 }
+
+  // Le cumul de `useSecondesDAffichage` lit `Date.now()` et vit **au module**, donc il persiste
+  // d'un test à l'autre dans ce fichier : sans horloge figée, ces assertions vérifieraient surtout
+  // que la suite tourne vite. Oracle maîtrisé (règle 9) — relevé en revue.
+  beforeEach(() => {
+    vi.useFakeTimers()
+    // ⚠️ **Indispensable, et le trou avait été fermé dans l'AUTRE fichier.** `useSecondesDAffichage`
+    // écrit son cumul **au démontage**, dans une `Map` de module partagée par tous les tests de ce
+    // fichier. L'`afterEach` local (`useRealTimers`) s'exécutant AVANT le `cleanup` de RTL, ce
+    // cumul est écrit avec une horloge **réelle** : chaque montage paginé y laisse la durée réelle
+    // du test. L'oracle du test de cadence est un `floor(t / 5)` — il suffit qu'une seconde traîne
+    // pour qu'il tombe en CI. Vert ici, rouge un jour, diagnostic trompeur (3ᵉ passe, trois axes).
+    __reinitialiserCumulsDePage_TESTS()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('rend UNE page du reste, avec son compteur, et laisse la suite hors écran', () => {
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    // La tête : toujours là, quelle que soit la page.
+    expect(container.textContent).toContain('ARCHER0 ')
+    // Page 1 du reste : les archers 3 à 6.
+    expect(container.textContent).toContain('ARCHER3 ')
+    expect(container.textContent).toContain('ARCHER6 ')
+    // Page 2 : pas encore à l'écran — c'est ce qui distingue une pagination d'un rendu complet.
+    expect(container.textContent).not.toContain('ARCHER7 ')
+    // Le compteur de pages, que P06 demande explicitement (« oui pour le compteur de pages »).
+    expect(container.querySelector('.salle-pages__compteur')).not.toBeNull()
+  })
+
+  it('convertit les NOMS réglés en LIGNES de tableau, sans quoi la page déborde de l’écran', () => {
+    // ⚠️ **Le bloquant de la revue d'E16US009**, et il tombait au réglage livré par défaut.
+    // `noms_par_page` compte des noms tels que `.salle-pages__noms { columns: 3 22ch }` les
+    // dispose — trois colonnes, donc ~14 lignes de haut pour 40 noms. Le classement est un tableau
+    // mono-colonne : 40 noms y feraient 40 lignes, soit environ trois fois la hauteur disponible
+    // sur un 1920x1080, et `.classement__pages` n'a **aucun ascenseur** (ADR-0098 §3 : personne ne
+    // fait défiler un vidéoprojecteur). Le bas de chaque page n'aurait pas été « mal lu », il
+    // n'aurait **jamais été montré** — et la fenêtre avançant du même pas, les archers concernés ne
+    // seraient jamais sortis de la journée. C'est le défaut que l'US existe pour corriger.
+    //
+    // Ce test est l'oracle du ratio : 12 noms réglés → 4 lignes par page. Sans la conversion,
+    // `nombreDePages(7, 12)` vaudrait 1 — donc page unique, aucun compteur, ARCHER7 à l'écran.
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    // 7 lignes de reste découpées par 4 → deux pages, donc un compteur « 1/2 ».
+    // `toBe` et non `toContain` : ce dernier acceptait aussi « /12 », « /20 », « /25 ».
+    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toBe('/2')
+    // La 4ᵉ ligne du reste est la dernière de la page 1 ; la 5ᵉ attend son tour.
+    expect(container.textContent).toContain('ARCHER6 ')
+    expect(container.textContent).not.toContain('ARCHER7 ')
+  })
+
+  it.each([
+    // [noms réglés, lignes attendues par page] — les deux bornes du domaine, le défaut livré, et
+    // **le point de bascule** entre les deux constantes.
+    [5, 2], // plancher : `ceil(5/3)` = 2, et non 1 — c'est `ceil` qui est prouvé ici, pas `floor`
+    [12, 4], // le point nominal des tests voisins
+    [24, 8], // ratio seul : le plafond n'a pas encore mordu
+    [27, 9], // ⚠️ le point de BASCULE exact — au-delà, le réglage n'agit plus sur le classement
+    [40, 9], // ⚠️ le DÉFAUT LIVRÉ : `ceil(40/3)` = 14, plafonné à `LIGNES_PROJETEES_MAX`
+    [100, 9], // plafond du domaine : idem, le plafond d'affichage tient
+  ])('découpe %i noms réglés en pages de %i lignes', (noms, lignesAttendues) => {
+    // ⚠️ **Le résidu que la 2ᵉ passe de revue a trouvé, et pourquoi il y a DEUX constantes.** Le
+    // ratio ferme le facteur ×3 ; il laisse ouverts un chrome fixe (tête figée + en-têtes, qui ne
+    // se divise pas) et un écart de hauteur de ligne (`padding` en px dans `.table`, en em dans
+    // `.salle-pages__nom`) qui *croît* quand l'écran rétrécit. Trois axes l'ont calculé
+    // séparément : à 1280×720, le défaut livré débordait encore de deux lignes.
+    //
+    // Le plafond ne rend pas la valeur juste — rien n'a encore été mesuré sur un vidéoprojecteur.
+    // Il rend la **direction de l'erreur** sûre : trop de pages plutôt que des archers jamais
+    // montrés. C'est ce que ces quatre cas épinglent, aux deux bornes du réglage.
+    const TRENTE = Array.from({ length: 30 }, (_, i) =>
+      ligne({ archer_id: i + 1, nom: `ARCHER${i}`, rang_scratch: i + 1, total: 700 - i }),
+    )
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={TRENTE}
+            admin={false}
+            teteFigee={3}
+            pagination={{ noms_par_page: noms, cadence_page_s: 20 }}
+          />
+        }
+      />,
+    )
+
+    // ⚠️ **On compte les RANGÉES rendues, pas seulement les pages.** Le compteur seul ne borne pas
+    // la valeur : `ceil(27/x)` vaut 3 pour tout `x` de 9 à 13, si bien qu'une dérive de ±1 du
+    // plafond passait inaperçue — alors que « jamais plus de N » est précisément ce que la fiche,
+    // le journal et l'aide d'admin annoncent à l'organisateur (3ᵉ passe, axes B et D).
+    expect(container.querySelectorAll('.classement__pages tbody tr')).toHaveLength(
+      Math.min(lignesAttendues, 27),
+    )
+    const attendu = Math.ceil(27 / lignesAttendues)
+    expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toBe(`/${attendu}`)
+  })
+
+  it('tourne au rythme RÉGLÉ, et non au défaut du module', () => {
+    // ⚠️ **La moitié « cadence » du CA n'était prouvée par aucun test** (relevé en 2ᵉ passe, axe B) :
+    // toutes les fixtures valaient 20, c'est-à-dire `SECONDES_PAR_PAGE`. Remplacer
+    // `pagination.cadence_page_s` par la constante du module laissait la suite entière verte —
+    // alors que « 20 s **(réglable)** » est la demande même du questionnaire P06.
+    const REGLAGE_RAPIDE = { noms_par_page: 12, cadence_page_s: 5 }
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE_RAPIDE}
+          />
+        }
+      />,
+    )
+
+    // Sous la cadence réglée : encore en page 1. (Assertion appariée — sans elle, le cas suivant
+    // passerait aussi avec un composant qui tourne à chaque battement.)
+    act(() => {
+      vi.advanceTimersByTime(4_000)
+    })
+    expect(container.textContent).toContain('ARCHER3 ')
+    expect(container.textContent).not.toContain('ARCHER7 ')
+
+    // Passé la cadence réglée : page 2. Avec 20 s en dur, rien n'aurait bougé.
+    act(() => {
+      vi.advanceTimersByTime(2_000)
+    })
+    expect(container.textContent).toContain('ARCHER7 ')
+    expect(container.textContent).not.toContain('ARCHER3 ')
+
+    // Et la séquence **boucle** : c'est la promesse « tout archer finit par apparaître ».
+    act(() => {
+      vi.advanceTimersByTime(5_000)
+    })
+    expect(container.textContent).toContain('ARCHER3 ')
+  })
+
+  it('n’enferme JAMAIS le reste dans un cadre à ascenseur quand il est projeté', () => {
+    // ⚠️ Le cœur d'ADR-0098 : sur un vidéoprojecteur, `overflow-y: auto` produit un cadre que
+    // personne ne peut actionner. Ce test tombe si quelqu'un « simplifie » en réunifiant les deux
+    // branches de rendu — et la salle perdrait alors tout ce qui suit la 3ᵉ ligne.
+    const { container } = render(
+      <Cadre
+        enfants={
+          <TableClassement
+            tournoiId={1}
+            lignes={DIX}
+            admin={false}
+            teteFigee={3}
+            pagination={REGLAGE}
+          />
+        }
+      />,
+    )
+
+    expect(container.querySelector('.classement__defilement')).toBeNull()
+    expect(container.querySelector('.classement__pages')).not.toBeNull()
+  })
+
+  it('garde le cadre à ascenseur sur une surface qu’on manipule', () => {
+    // L'assertion **appariée** de la précédente : sans réglage de pages, rien ne change pour le PC
+    // d'organisation — l'ascenseur y est le bon geste, et cette US ne devait rien y toucher.
+    const { container } = render(
+      <Cadre
+        enfants={<TableClassement tournoiId={1} lignes={DIX} admin={false} teteFigee={3} />}
+      />,
+    )
+
+    expect(container.querySelector('.classement__defilement')).not.toBeNull()
+    expect(container.querySelector('.classement__pages')).toBeNull()
+    // Et **tout le monde** est rendu : le cadre défile, il ne tronque pas.
+    expect(container.textContent).toContain('ARCHER9 ')
   })
 })

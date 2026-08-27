@@ -19,7 +19,7 @@ import pytest
 from application.ecrans import ServiceEcrans
 from application.erreurs import PosteIntrouvable, PosteNEstPasUnEcran, SaisieHorsCible
 from application.postes import ServicePostes
-from domain.ecran import Consigne, SequenceVues, VueEcran, VueProgrammee
+from domain.ecran import Consigne, ReglagePages, SequenceVues, VueEcran, VueProgrammee
 from domain.poste import Poste, PosteId, TypePoste
 from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 from infrastructure.postes.consignes import RegistreConsignesMemoire
@@ -229,6 +229,20 @@ def test_un_ecran_d_un_autre_tournoi_n_existe_pas(ctx: Contexte) -> None:
         ctx.service.prendre_le_controle(
             autre.id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
         )
+
+    # ⚠️ **Le cloisonnement par tournoi est porté par DEUX gardes jumelles, une par service** :
+    # `ServicePostes._exiger_ecran` (renommage, déroulé, pages, suppression) et
+    # `ServiceEcrans._exiger_ecran_du_tournoi` (prise de contrôle, retour de main). Elles recopient
+    # le même `if poste is None or poste.tournoi_id != tournoi_id`. On exerce donc **un geste de
+    # chaque service** — le vrai risque ici est la duplication, pas l'énumération : un 7ᵉ geste
+    # n'hérite de rien mécaniquement, il doit appeler l'une des deux.
+    #
+    # *(Troisième rédaction de ce commentaire. La 1ʳᵉ annonçait « CHAQUE geste » en en citant deux
+    # sur cinq ; la 2ᵉ a corrigé en invoquant un « point de passage unique » qui n'existe pas — et
+    # `prendre_le_controle`, exercé deux lignes plus haut, ne le traverse même pas. Relevé en 3ᵉ
+    # passe, axe C1.)*
+    with pytest.raises(PosteIntrouvable):
+        ctx.service_postes.regler_pages_ecran(autre.id, ecran.id, ReglagePages.par_defaut())
 
 
 def test_un_ecran_se_supprime(ctx: Contexte) -> None:

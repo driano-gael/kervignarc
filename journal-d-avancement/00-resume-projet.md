@@ -24,7 +24,10 @@ dû, par archer et par club) est en place — et une somme déjà encaissée ne 
 annuler une inscription **payée** ouvre un **remboursement à traiter** que l'organisateur marque
 remboursé ou reporté. Un tournoi porte enfin **son identité visuelle** : deux logos — celui de l'édition, celui du club
 organisateur — et deux couleurs, dont l'application dérive seule les nuances lisibles, sur l'écran de
-salle et l'appli du public (jamais sur l'outil des bénévoles). L'écran de **placement sur les cibles**
+salle et l'appli du public (jamais sur l'outil des bénévoles). L'**écran projeté dans le gymnase** se règle enfin sans passer par un
+développeur — vitesse de défilement et nombre de noms par page, **écran par écran** — et son
+classement ne s'arrête plus aux trois premiers : ils restent affichés en haut pendant que tous les
+autres archers défilent page après page en dessous. L'écran de **placement sur les cibles**
 se lit désormais sur toute la largeur d'un PC — une cible
 par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
 main — de sorte qu'ajuster un plan ne demande plus de quitter l'écran pour savoir qui cause un
@@ -552,10 +555,18 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **126 US livrées** sur `main` (mergées, revues, CI verte) à la date du 25/08/2026 — dont deux
+- **127 US livrées** sur `main` (mergées, revues, CI verte) à la date du 26/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
   autorité sur le compte) —, la dernière
-  étant `E16US006` — **le tournoi porte ses couleurs et ses logos** : deux logos facultatifs
+  étant `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
+  une page de noms défile et le nombre de noms qu'elle porte se règlent **par écran**, depuis la
+  préparation du tournoi, au lieu d'être écrits dans le programme. Et le classement projeté garde
+  ses **trois premiers** en tête pendant que le reste **tourne page par page** — sur un
+  vidéoprojecteur, personne ne peut faire défiler quoi que ce soit à la main, donc ce qui
+  n'apparaît pas tout seul n'apparaît jamais. ⚠️ Les valeurs livrées par défaut (40 noms, 20
+  secondes) **n'ont jamais été essayées sur un vrai projecteur** : c'est précisément ce que le
+  réglage permet de corriger, en salle, le jour du premier essai. La précédente était
+  `E16US006` — **le tournoi porte ses couleurs et ses logos** : deux logos facultatifs
   (l'édition, le club organisateur) et deux couleurs, dont l'application **dérive seule** les
   nuances lisibles en thème sombre comme en thème clair. Elle habille l'écran de salle et l'appli
   du public, **jamais** l'administration ni la saisie — le jour J, un bénévole n'a pas le temps de

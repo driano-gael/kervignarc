@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react'
 
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
+import type { ReglagePages } from '../../shared/ui/pagination'
 import { HabillageIdentite, LogoDuTournoi } from '../identite/HabillageIdentite'
 import { VueClassement } from '../competition/VueClassement'
 import { phasesSuspendues } from '../../shared/phases/relance'
@@ -76,6 +77,12 @@ export function EcranSalle({
   // reviendrait à continuer de jouer la consigne (2ᵉ passe de revue).
   const vues = affichage.data?.vues ?? null
   const repli = affichage.data?.deroule_repli ?? null
+  // Le réglage des listes projetées de **cet** écran (E16US009). Servi résolu par le serveur, donc
+  // jamais absent une fois la réponse arrivée ; `undefined` avant, ce qui laisse les vues sur les
+  // défauts du module — soit exactement leur comportement d'avant l'US pendant les deux secondes de
+  // connexion. Il ne dépend pas de la prise de contrôle : celle-ci change *ce qu'on montre*, jamais
+  // *comment une liste se lit à dix mètres*.
+  const pages = affichage.data?.pages
 
   // L'origine du décompte est l'instant où la réponse a été **reçue**, que React Query horodate
   // pour nous (`dataUpdatedAt`, en millisecondes). Aucun état local à tenir : sans cela, il aurait
@@ -152,7 +159,7 @@ export function EcranSalle({
           {affiche.vue === null ? (
             <p className="salle__attente">Connexion à l’écran…</p>
           ) : (
-            <VueDeSalle vue={affiche.vue} tournoiId={tournoiId} />
+            <VueDeSalle vue={affiche.vue} tournoiId={tournoiId} pagination={pages} />
           )}
         </div>
       </section>
@@ -160,11 +167,29 @@ export function EcranSalle({
   )
 }
 
-function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
+function VueDeSalle({
+  vue,
+  tournoiId,
+  pagination,
+}: {
+  vue: VueEcran
+  tournoiId: number
+  pagination: ReglagePages | undefined
+}) {
   // `admin={false}` : la vue publique du classement. `filtrable={false}` : **aucune interaction**
   // sur un écran projeté — un `<select>` que personne ne peut actionner (correctif de revue).
   if (vue === 'classement') {
-    return <VueClassement tournoiId={tournoiId} admin={false} filtrable={false} />
+    // `pagination` fait **deux** choses ici, et la seconde est le CA : elle règle la cadence des
+    // pages, et c'est sa présence qui autorise la tête figée de 3 (P07) — sans elle, le reste
+    // n'aurait aucun moyen de défiler sur un écran que personne ne peut toucher (ADR-0098).
+    return (
+      <VueClassement
+        tournoiId={tournoiId}
+        admin={false}
+        filtrable={false}
+        pagination={pagination}
+      />
+    )
   }
   if (vue === 'plan_cibles') {
     // Variante sans sélecteur, calée sur le départ **en cours** et non sur le premier.
@@ -177,7 +202,7 @@ function VueDeSalle({ vue, tournoiId }: { vue: VueEcran; tournoiId: number }) {
     // `interactif={false}` : **aucune interaction** sur un écran projeté (CA E07US004). Ce n'est pas
     // qu'une question de boutons inutiles — c'est ce qui fixe la lecture sur l'ordre du **pas de
     // tir**, le seul qui se lise de loin quand on cherche sa butte (`Q-UX2`).
-    return <VueAffectations tournoiId={tournoiId} interactif={false} />
+    return <VueAffectations tournoiId={tournoiId} interactif={false} pagination={pagination} />
   }
   if (vue === 'en_cours') {
     // `interactif={false}` : ni fil du déroulé, ni sélecteur de ronde, ni bascule « mon chemin »

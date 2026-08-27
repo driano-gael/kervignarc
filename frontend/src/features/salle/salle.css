@@ -134,46 +134,17 @@
   height: 100%;
 }
 
-.salle-pages__entete {
-  display: flex;
-  align-items: baseline;
-  gap: clamp(12px, 2vw, 40px);
-}
-
-.salle-pages__titre {
-  color: var(--text);
-  font-size: 1.4em;
-  font-weight: 700;
-}
-
-/* Le râteau : « DUP → LEF ». C'est lui qui dit « mon nom est sur cette page », donc il est traité
-   comme une donnée, pas comme une légende — mono pour l'alignement, gros, à l'accent. */
-.salle-pages__rateau {
-  font-family: var(--mono);
-  font-size: 2em;
-  font-weight: 700;
-  color: var(--brand-text);
-  letter-spacing: 0.05em;
-}
-
-/* Le compteur part à droite et domine : « combien de temps j'attends avant de revoir ma page ». */
-.salle-pages__compteur {
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 2.4em;
-  font-weight: 700;
-  color: var(--text);
-  line-height: 1;
-}
-
-.salle-pages__compteur-total {
-  font-size: 0.55em;
-  color: var(--text-secondary);
-}
-
 /* « Mettre le maximum d'archers sur une page quand même » : colonnes CSS plutôt qu'une grille figée
-   — le nombre de colonnes s'ajuste à la largeur réelle du vidéoprojecteur, et une page de 40 noms
-   remplit l'écran sans qu'aucun nombre de colonnes n'ait été codé en dur. */
+   — la largeur d'une colonne s'ajuste à celle du vidéoprojecteur, et une page de 40 noms remplit
+   l'écran sans qu'aucune largeur n'ait été codée en dur.
+   ⚠️ `columns: 3 22ch` fixe **au plus** trois colonnes : sous une certaine largeur, le navigateur
+   n'en rend que deux ou une. Ce **maximum** est l'unité dans laquelle se compte `noms_par_page` —
+   le classement projeté, tableau mono-colonne, divise le réglage par autant
+   (`NOMS_PAR_LIGNE_PROJETEE` dans `TableClassement.tsx`). **La conversion** sous-remplit donc quand
+   la largeur n'autorise que deux colonnes : elle ne fait jamais déborder le *classement*. ⚠️ Cette
+   page de noms-ci, en revanche, n'est **pas** plafonnée — à deux colonnes, 40 noms font 20 lignes
+   au lieu de 14 et le bas est coupé sans ascenseur (`DETTE-086`). Changer ce nombre ici oblige à
+   l'y changer aussi. */
 .salle-pages__noms {
   flex: 1;
   margin: 0;

@@ -11,7 +11,15 @@
 // Le club encore inconnu y est signalé (E02US002, ADR-0014) : le classement est la surface qu'on
 // regarde toute la journée, c'est là que l'anomalie se remarque ; l'écran d'admin la répare.
 
-import { useState } from 'react'
+import { type ReactElement, useState } from 'react'
+import { EnteteDePage } from '../../shared/ui/EnteteDePage'
+import {
+  type ReglagePages,
+  nombreDePages,
+  pageCourante,
+  trancheDePage,
+  useSecondesDAffichage,
+} from '../../shared/ui/pagination'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
 import { estExAequo, totauxExAequo } from './departage'
@@ -55,6 +63,25 @@ interface TableClassementProps {
    * interaction » (CA E07US004).
    */
   detailFleches?: boolean
+  /**
+   * Fait **défiler** le reste au lieu de l'enfermer dans un cadre à ascenseur (E16US009, P07 :
+   * *« ok pour les 3 premiers toujours visible, mais défilement de tous les autres archers
+   * dessous »*).
+   *
+   * ⚠️ **« Défilement » se lit ici comme une pagination, et c'est un arbitrage** — [ADR-0098]. Un
+   * cadre `overflow-y: auto` sur un vidéoprojecteur est un cadre que **personne ne peut faire
+   * défiler** : ni souris, ni doigt, « aucune interaction » (CA E07US004). Le commanditaire a par
+   * ailleurs accepté la pagination pour les listes de noms projetées dans le même questionnaire
+   * (P06, *« 20 s (réglable) par écran de liste de noms est correct »*) : c'est donc la forme qu'il
+   * connaît déjà, et elle a l'avantage d'être **déterministe et testable**, là où une animation
+   * continue ne se prouve pas.
+   *
+   * Absent = comportement d'avant, le cadre défilant des surfaces qu'on **manipule** (PC, tablette),
+   * où l'ascenseur est le bon geste.
+   *
+   * [ADR-0098]: ../../../../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md
+   */
+  pagination?: ReglagePages
 }
 
 export function TableClassement({
@@ -64,6 +91,7 @@ export function TableClassement({
   admin,
   teteFigee = 0,
   detailFleches = false,
+  pagination,
 }: TableClassementProps) {
   if (lignes.length === 0) {
     return <p className="carte__etat">Aucun archer inscrit pour l'instant.</p>
@@ -119,7 +147,11 @@ export function TableClassement({
           ligne) — le calage aurait été juste jusqu'au premier cas réel. `table-layout: fixed` et un
           `<colgroup>` **partagé** (cf. `Colonnes`) garantissent l'alignement des colonnes entre les
           deux tables, sans mesure ni JavaScript. */}
-      {separer && (
+      {separer && pagination !== undefined && (
+        <ResteProjete lignes={reste} pagination={pagination} admin={admin} corps={corps} />
+      )}
+
+      {separer && pagination === undefined && (
         <div className="classement__defilement">
           <table className="table">
             <Colonnes admin={admin} />
@@ -156,6 +188,116 @@ export function TableClassement({
  * en bout de ligne de détail. La constante ne supprime pas la duplication — elle la rend nommée, ce
  * qui suffit ici (correctif de revue, sans pattern : les trois listes restent côte à côte). */
 const NB_COLONNES_LECTURE = 8
+
+/** Combien de **noms** de liste projetée valent une **ligne** de classement, en hauteur d'écran.
+ *
+ * Le réglage de l'écran compte des noms tels que la page d'affectations les dispose :
+ * `.salle-pages__noms { columns: 3 22ch }`, donc trois colonnes — 40 noms y tiennent sur ~14 lignes.
+ * Le classement, lui, est un tableau **mono-colonne** : une ligne par archer, pleine largeur. À
+ * valeur égale, une page de classement serait donc ~3 fois plus haute que la page de noms pour
+ * laquelle le réglage a été calibré, et `.classement__pages` n'a **aucun ascenseur** (choix
+ * d'ADR-0098 : personne ne fait défiler un vidéoprojecteur). Ce qui déborde n'est pas « mal lu »,
+ * il n'est **jamais montré** — et comme la fenêtre avance ensuite du même pas, les archers du bas
+ * de chaque page ne sortiraient jamais de la journée.
+ *
+ * Le ratio vient donc du CSS, pas d'un goût : c'est le nombre de colonnes de `.salle-pages__noms`.
+ * Bloquant trouvé en revue (deux axes, arithmétiques indépendantes) — E16US009. */
+const NOMS_PAR_LIGNE_PROJETEE = 3
+
+/** Le plafond de lignes d'une page projetée, **quel que soit le réglage**.
+ *
+ * ⚠️ **Le ratio ci-dessus ne suffit pas, et trois axes de revue l'ont montré séparément.** Il ferme
+ * le facteur multiplicatif, pas les deux termes qui restent :
+ *
+ *  - un **chrome fixe** que la page de noms n'a pas — la tête figée (3 lignes) et la rangée
+ *    d'en-têtes vivent dans la même scène, et quatre lignes ne se divisent par rien ;
+ *  - une **hauteur de ligne différente** : `.table td { padding: 8px 6px }` est en **pixels**,
+ *    `.salle-pages__nom { padding: 0.15em 0 }` est en **em**. Le résidu vaut donc ~1,28 à 1080p et
+ *    ~1,45 à 720p — il *croît* quand l'écran rétrécit.
+ *
+ * D'où un plafond, calculé au cas le plus contraint — 1280×720, un projecteur de gymnase courant.
+ * Le chrome de la scène, **recompté élément par élément en 3ᵉ passe de revue** (les deux premiers
+ * décomptes l'avaient sous-évalué) :
+ *
+ * | élément | ~px à 720p |
+ * |---|---|
+ * | `h3.carte__soustitre` « Classement en direct » | 46 |
+ * | `thead` visible de la tête figée | 30 |
+ * | 3 lignes de tête figée | 108 |
+ * | `gap` de `.classement__pages` | 10 |
+ * | `EnteteDePage` (compteur à `2.4em`) | 38 |
+ * | `.classement__departage`, les jours d'ex æquo | 41 |
+ *
+ * Soit ~273 px sur ~617 px de scène, donc **~9 lignes utiles**.
+ *
+ * ⚠️ **Ce nombre est CALCULÉ depuis le CSS, jamais mesuré** — l'écran n'a toujours pas été vu sur un
+ * vidéoprojecteur (angle mort assumé d'ADR-0098, et `DETTE-086` au registre). Ce que le plafond
+ * garantit n'est donc pas la justesse de la valeur, c'est la **direction de l'erreur** : trop bas,
+ * on obtient plus de pages et tout finit par passer à l'écran ; trop haut, le bas de page n'est
+ * **jamais montré** et les archers concernés ne sortent jamais de la journée. Entre les deux, il
+ * n'y a pas d'arbitrage à rendre — et c'est la raison de préférer le décompte le plus pessimiste
+ * des trois qu'a produits la revue, plutôt que d'en tenter un quatrième.
+ *
+ * ⚠️ **Effet de bord à connaître** : au-delà de `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE`
+ * (27) noms réglés, le classement **ne réagit plus** au réglage. C'est dit à l'organisateur dans
+ * l'aide de l'écran d'admin, parce qu'un cadran bloqué ressemble à une panne. Au-delà de ce seuil,
+ * c'est la **liste d'affectations** — qui n'a, elle, aucun plafond — qui commande le réglage.
+ * `// DETTE-086` — voir le registre : cette dette dit précisément que les mises en page de ces
+ * écrans sont **calculées et jamais mesurées**, et l'US l'a vérifié à ses dépens (trois passes de
+ * revue, trois décomptes de hauteur successifs, chacun corrigeant le précédent). */
+const LIGNES_PROJETEES_MAX = 9
+
+/** Le reste du classement **projeté**, page après page (E16US009).
+ *
+ * Distinct du cadre défilant, et rendu par un composant à part pour une raison mécanique : il tient
+ * un minuteur (`useSecondesDAffichage`), et `TableClassement` est monté sur trois surfaces dont deux
+ * n'ont rien à faire d'une horloge qui bat à la seconde. Un hook appelé en tête du composant parent
+ * aurait fait battre l'appli publique et l'écran d'admin pour rien.
+ *
+ * ⚠️ **La clé du cumul est propre à cette vue.** Le compteur de `useSecondesDAffichage` est indexé
+ * depuis cette US : partagé avec les affectations, il faisait avancer les pages du classement
+ * pendant que l'écran montrait autre chose.
+ */
+function ResteProjete({
+  lignes,
+  pagination,
+  admin,
+  corps,
+}: {
+  lignes: LigneClassement[]
+  pagination: ReglagePages
+  admin: boolean
+  corps: (source: LigneClassement[]) => ReactElement
+}) {
+  const secondes = useSecondesDAffichage('classement')
+  // Le réglage compte des noms sur trois colonnes ; ici chaque archer prend une ligne pleine
+  // largeur. Sans cette conversion, le bas de chaque page tomberait sous le bord de l'image — et
+  // le plafond tient le reste, que le ratio seul ne couvre pas (cf. les deux constantes).
+  const lignesParPage = Math.min(
+    Math.max(1, Math.ceil(pagination.noms_par_page / NOMS_PAR_LIGNE_PROJETEE)),
+    LIGNES_PROJETEES_MAX,
+  )
+  const total = nombreDePages(lignes.length, lignesParPage)
+  const index = pageCourante(total, secondes, pagination.cadence_page_s)
+  const page = trancheDePage(lignes, index, lignesParPage)
+  // Le râteau se calcule sur les **noms**, comme pour les affectations : c'est lui qui répond à
+  // « mon nom est-il sur cette page ». Le classement est trié par rang, pas par nom — le râteau
+  // n'est donc pas un intervalle alphabétique ici, et l'afficher tromperait. On ne le passe pas.
+  return (
+    <div className="classement__pages">
+      <EnteteDePage numero={index + 1} total={total} titre="Suite du classement" rateau={null} />
+      <table className="table">
+        <Colonnes admin={admin} />
+        {/* En-têtes **répétés et masqués visuellement**, même raison que le cadre défilant : sans
+            eux, les lignes hors de la tête figée perdent l'association `scope="col"`. */}
+        <thead className="sr-only">
+          <EnTetes admin={admin} />
+        </thead>
+        {corps(page)}
+      </table>
+    </div>
+  )
+}
 
 /** La rangée d'en-têtes, **partagée** par les deux tables — visible en tête, masquée (mais lue) dans
  * la table défilante. Un seul point de vérité : ajouter une colonne sans toucher les deux endroits
