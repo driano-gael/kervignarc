@@ -673,48 +673,35 @@ def create_app(
         serie_repository,
         HorlogeSysteme(),
     )
-    # Plan de duels (E03US009, ADR-0048) : placer les duellistes d'une phase de tableau côte à côte,
-    # matérialisé par phase et ajustable au glisser-déposer. Assemble le classement (recalculé) →
-    # l'arbre (`construire_tableau`, politiques par défaut : serpent / byes aux mieux classés /
-    # placement en cascade) → les paires du 1er tour → le placement réordonné pour l'adjacence.
-    # Réutilise `service_classement` (source d'ensemencement) ; scoppé par **phase** (≠ départ).
+    # Plan de duels (ADR-0048) : placer les duellistes d'une phase de tableau côte à côte. Assemble
+    # le classement recalculé → l'arbre (`construire_tableau`) → les paires du 1er tour → le
+    # placement réordonné pour l'adjacence. Scopé par **phase**, pas par départ.
     #
-    # ⚠️ **`PlacementEnCascade` et non `EliminationSeche`** (E05US010, ADR-0061), malgré le nom :
-    # le format livré ici a une **petite finale**, donc les perdants des demies rejouent — ce n'est
-    # pas une élimination sèche mais un placement **tronqué au rang 4**. C'est la paire
-    # `PlacementEnCascade` + `ProfondeurPodium()` qui le dit, et les deux sont injectées **ici** :
-    # le `routing` décide *où* descend un perdant, la `depth` *jusqu'où* l'on descend. L'arbre
-    # produit est **identique** à celui d'avant l'US ; c'est le vocabulaire qui se met en accord
-    # avec le comportement.
+    # ⚠️ **`PlacementEnCascade` et non `EliminationSeche`, malgré le nom du format** (ADR-0061) : le
+    # format livré a une **petite finale**, donc les perdants des demies rejouent — c'est un
+    # placement **tronqué au rang 4**. Le `routing` dit *où* descend un perdant, la `depth`
+    # *jusqu'où* l'on descend.
     #
-    # ⚠️ **La profondeur n'est plus injectée ici depuis E06US006** ([ADR-0070]). Elle était figée à
-    # `ProfondeurPodium()` sur cette ligne, en attendant « le levier qu'E01US024 exposera à
-    # l'organisateur phase par phase » — E01US024 a livré le composeur de déroulé sans lui, et
-    # E06US006 hérite donc de la promesse. Chaque phase porte désormais sa profondeur
-    # (`Phase.profondeur`), résolue **par le registre** (`profondeur_de`) ; ce qui s'injecte ici est
-    # le **catalogue**, pas le choix. Une phase qui ne règle rien retombe sur le preset de son type,
-    # le podium — soit exactement ce que cette ligne câblait, pour que rien de déjà joué ne bouge.
+    # ⚠️ **Ce qui s'injecte ici est le CATALOGUE de profondeurs, pas le choix** (ADR-0070) : chaque
+    # phase porte la sienne (`Phase.profondeur`), résolue par le registre. Une phase qui ne règle
+    # rien retombe sur le preset de son type.
     #
     # [ADR-0070]: ../../docs/adr/0070-profondeur-de-classement-reglee-par-phase.md
-    # Saisie en duels (E04US013, ADR-0049) : reconstruit le même arbre (classement → tableau) et
-    # **rejoue** les duels validés pour la progression. Le barème est résolu par arme via le
-    # résolveur FFTA par défaut (cumul en poulies, sets sinon) — E01US011 le remplacera par un
-    # résolveur configuré au même point d'injection (règle 2). Mêmes politiques de tableau (MVP).
-    # E04US015 (ADR-0050) : le port `forfait` fait **passer l'adversaire** d'un duelliste déclaré
-    # forfait dans la phase de tableau (walkover à la reconstruction) ; les forfaits de qualif sont,
-    # eux, exclus à l'ensemencement (via le classement).
+    # Saisie en duels (ADR-0049) : reconstruit le même arbre et **rejoue** les duels validés pour la
+    # progression. Le barème est résolu par arme (cumul en poulies, sets sinon) au même point
+    # d'injection (règle 2). Le port `forfait` fait **passer l'adversaire** d'un duelliste forfait
+    # (walkover à la reconstruction) ; les forfaits de qualification sont, eux, exclus dès
+    # l'ensemencement, via le classement.
     #
-    # ⚠️ **Construit avant le plan de cibles** depuis E05US024 : celui-ci lui emprunte sa résolution
-    # de classement amont (`resolveur_de_classement`), pour ensemencer exactement la population que
-    # l'arbre fera jouer. Deux résolutions distinctes rouvriraient l'écart mesuré à la revue
-    # d'E05US020 — plan de 8 placements pour un tableau de 4.
+    # ⚠️ **Construit AVANT le plan de cibles**, qui lui emprunte sa résolution de classement amont
+    # (`resolveur_de_classement`) pour ensemencer exactement la population que l'arbre fera jouer.
+    # Deux résolutions distinctes rouvrent un écart mesuré : plan de 8 placements pour un tableau
+    # de 4.
     #
-    # ⚠️ **Une seule instance d'`aggregation` pour la saisie ET le palmarès** (correctif de revue,
-    # relevé par les quatre axes). Elle ferme les fourchettes *ex æquo* d'un tableau — côté saisie
-    # pour décider qui entre dans la consolante, côté palmarès pour l'afficher au mur. Les faire
-    # diverger, c'est un archer qui entre par un ordre que l'écran voisin contredit le même jour.
-    # Un premier jet ne la câblait **pas** à la saisie, qui retombait sur une stratégie instanciée
-    # en dur : les deux coïncidaient par accident de valeur, pas par construction.
+    # ⚠️ **Une seule instance d'`aggregation` pour la saisie ET le palmarès.** Elle ferme les
+    # fourchettes *ex æquo* d'un tableau — côté saisie pour décider qui entre en consolante, côté
+    # palmarès pour l'afficher au mur. Les faire diverger, c'est un archer qui entre par un ordre
+    # que l'écran voisin contredit le même jour.
     aggregation = cast(
         "Aggregation",
         app.state.registre_politiques.resoudre(

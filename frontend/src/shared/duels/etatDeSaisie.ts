@@ -1,31 +1,14 @@
-// Ce qu'une rencontre dit à **qui la saisit** — logique pure, aucun React (E05US027).
+// Ce qu'une rencontre dit à **qui la saisit** — logique pure, aucun React.
 //
-// Jumeau de `etatRencontre` (`shared/duels/rencontre.ts`), et volontairement **séparé de lui** :
-// celui-là lit un DTO **public** (`termine`, `validee`, trois états), celui-ci lit le `duel` de
-// saisie (`validee_par`, `validation_en_attente`, `manches`, six états). Les fondre reviendrait à
-// faire circuler le contenu du tir vers les surfaces ouvertes, ce que la règle 6 interdit et ce que
-// la scission des DTO existe pour empêcher.
-//
-// ## Pourquoi ce module existe, et pourquoi maintenant
-//
-// ⚠️ **C'est le rendez-vous posé par la revue d'E05US030**, et il est tenu à la lettre. La fonction
-// était écrite **deux fois**, caractère pour caractère, dans `features/poules/SaisiePoules.tsx` et
-// `features/suisse/presentation.ts`. Deux occurrences : « dupliquer une 2ᵉ fois et attendre le 3ᵉ
-// cas » est la réponse que le § *Dette* de `CLAUDE.md` tient pour valide, donc rien n'avait été
-// extrait — mais la fiche d'`E05US027` notait que sans rendez-vous écrit, la colline recopierait
-// une **3ᵉ** fois par mimétisme et le seuil serait franchi sans que personne le remarque.
-//
-// La colline en a effectivement besoin. Le seuil est atteint **sur preuve dans le code du jour**,
-// et l'extraction se fait ici plutôt qu'une troisième copie.
-//
-// ⚠️ **Ce n'est pas un « remède structurel » au sens du CLAUDE.md**, et la nuance est la même que
-// celle que `rencontre.ts` pose déjà : on n'introduit aucun *pattern*, on déménage une fonction de
-// huit lignes à l'endroit où ses trois appelants la voient. Pas d'ADR, pas d'US dédiée.
+// ⚠️ **Jumeau de `etatRencontre` (`shared/duels/rencontre.ts`), et volontairement SÉPARÉ de lui** :
+// celui-là lit un DTO **public** (trois états), celui-ci lit le `duel` de saisie (`validee_par`,
+// `validation_en_attente`, `manches` — six états). Les fondre ferait circuler le contenu du tir
+// vers les surfaces ouvertes, ce que la règle 6 interdit et ce que la scission des DTO empêche.
 //
 // ⚠️ **Aucun import depuis une feature.** `Duel` vit dans `features/saisie-duels/api`, et un module
-// de `shared/` qui importerait d'une feature rouvrirait l'inversion que `shared/salle/place.ts`
-// documente comme la seule du front — et qu'elle a précisément corrigée. Le contrat ci-dessous est
-// donc **structurel** : un `Duel` de feature le satisfait sans conversion ni cast.
+// de `shared/` qui importerait d'une feature rouvrirait l'inversion de dépendance que
+// `shared/salle/place.ts` documente comme la seule du front. Le contrat ci-dessous est donc
+// **structurel** : un `Duel` de feature le satisfait sans conversion ni cast.
 
 /** Ce qu'une rencontre en cours de saisie porte de son tir, réduit à ce que l'état lit. */
 export interface DuelEnSaisie {

@@ -1,43 +1,26 @@
-// Vue « suivi » de l'appli publique (E07US006, élargie par E16US004) — « je retrouve **mes** archers
-// sans chercher », au pluriel.
+// Vue « suivi » de l'appli publique — « je retrouve **mes** archers sans chercher », au pluriel.
 //
-// Deux gestes : **rechercher** des archers (par nom **ou par club**) pour les **suivre**, et voir la
-// **carte** de chacun — sa cible / son couloir / son départ, à jour en direct. Le choix des archers
-// suivis est mémorisé localement (`sessionSuivisStore`, `localStorage`) : aux ouvertures suivantes,
-// la vue s'ouvre directement sur eux. Aucun compte, aucune authentification — la lecture publique
-// est anonyme.
+// Deux gestes : **rechercher** des archers (par nom ou par club) pour les suivre, et voir la
+// **carte** de chacun — cible, couloir, départ, déroulé du tour en direct, et l'à-venir au tableau
+// (rang s'il est sorti, destination s'il est repêché). Le choix des suivis est mémorisé
+// localement (`sessionSuivisStore`) ; aucun compte, la lecture publique est anonyme.
 //
-// **Cette vue n'est plus le seul endroit où le suivi sert** : depuis E16US004, l'interrupteur
-// « mes archers / tout » de l'en-tête public centre aussi le classement, les affectations, les
-// tableaux, le palmarès et le plan de cibles (`shared/suivis/focus.ts`). Ici on **compose** la
-// liste ; là-bas on la **lit**.
+// ⚠️ **Ici on COMPOSE la liste des suivis ; ailleurs on la LIT.** Depuis E16US004, l'interrupteur
+// « mes archers / tout » centre aussi classement, affectations, tableaux, palmarès et plan de
+// cibles, via `shared/suivis/focus.ts`.
 //
-// **Source des données** : la journée d'un archer se reconstruit depuis **la liste des départs**
-// (`useDeparts`, numéro/horaire) et **les plans de cibles** (`getPlanDeCibles`/`useQueries`, la place).
-// On n'utilise **pas** l'endpoint des inscriptions : son DTO porte `paye`/`montant_du_centimes` — des
-// données financières nominatives qui ne doivent pas atteindre le navigateur d'un spectateur anonyme
-// (règle 6 ; correctif de revue B/C1). Les départs et les plans, eux, sont des surfaces publiques sans
-// donnée personnelle.
+// ⚠️ **Ne JAMAIS reconstruire la journée depuis l'endpoint des inscriptions** : son DTO porte
+// `paye` / `montant_du_centimes`, données financières nominatives qui n'ont rien à faire dans le
+// navigateur d'un spectateur anonyme (règle 6). On passe par les départs et les plans de cibles,
+// qui sont des surfaces publiques sans donnée personnelle.
 //
-// Le live est **gratuit** : ces hooks sont de l'état serveur React Query, invalidé globalement par la
-// diffusion temps réel post-commit (E04US009) ; un **déplacement de placement** (admin) ou un
-// **rattachement** rafraîchit la carte sans action de l'utilisateur.
+// ⚠️ **L'à-venir passe par la lecture COLLECTIVE** (`useAffectations`), jamais par un `useRoutage`
+// par carte : une lecture par archer suivi multiplierait par N la requête la plus chère de
+// l'application (classement + reconstruction de l'arbre + plan de duels). Le gain s'arrête à
+// l'appareil — le cache React Query est par navigateur, il n'y a ni cache serveur ni en-tête HTTP
+// sur cette route. `# DETTE-031`, que cette vue aggrave.
 //
-// La carte couvre le « où il tire » (cible/position/départ), le **déroulé du tour en direct**
-// (E07US009, ADR-0039) : les volées du jour, chacune avec son statut « en attente de validation » /
-// « validé », et depuis E07US008 l'**à-venir** — où il tire au tableau, son rang s'il est sorti, sa
-// destination s'il est repêché.
-//
-// ⚠️ **L'à-venir passe par la lecture collective** (`useAffectations`), pas par un `useRoutage` par
-// carte : une lecture par archer suivi multiplierait par le nombre de suivis la requête la plus
-// chère de l'application (classement + reconstruction de l'arbre + plan de duels). Le gain est
-// **une** requête au lieu de N, et il s'arrête à l'appareil — le cache React Query est par
-// navigateur, il n'y a ni cache serveur ni en-tête HTTP sur cette route. C'est `# DETTE-031`, que
-// cette US **aggrave** et dont elle élargit la ligne au registre.
-//
-// *(Un premier jet écrivait « une seule entrée de cache, un seul appel » pour tout le gymnase, sous
-// le numéro DETTE-008 — deux erreurs, relevées en revue : le cache n'est pas partagé entre
-// appareils, et DETTE-008 traite de l'écho d'une réponse 400.)*
+// Le live est gratuit : état serveur React Query, invalidé par la diffusion temps réel post-commit.
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'

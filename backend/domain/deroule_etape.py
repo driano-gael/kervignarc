@@ -225,36 +225,22 @@ class EtapeDeroule:
         # par une entrée client qu'aucun agrégat porteur ne jugeait.
         if not self.arrets:
             return
-        # ⚠️ **Un arrêt n'est licite que sur un type dont l'application sait LIRE le tour** — c'est
-        # le périmètre arrêté par le commanditaire le 19/08/2026, en fin de revue.
+        # ⚠️ **Un arrêt n'est licite que sur un type dont l'application sait LIRE le tour.** Le
+        # déclencheur ne coupe qu'à une frontière de tour **observée** ; les types dont personne ne
+        # lit l'avancement — échauffement, barrage, placement — n'ont aucun tour à observer, et un
+        # arrêt posé dessus serait **accepté à l'atelier puis inerte le jour J** : l'organisateur
+        # découvrirait en pleine compétition que sa pause repas n'a jamais eu lieu.
         #
-        # Le déclencheur ne coupe qu'à une frontière de tour **observée** : il demande le tour
-        # courant au service qui observe la phase. Les types dont personne ne lit l'avancement —
-        # l'échauffement, le barrage, le placement — n'ont aucun tour à observer, et un arrêt posé
-        # dessus serait **accepté à l'atelier puis définitivement inerte le jour J** :
-        # l'organisateur découvrirait le jour de la compétition que sa pause repas n'a jamais eu
-        # lieu.
-        #
-        # ⚠️ **La colline en est sortie en E05US027**, et ce commentaire la citait encore après le
-        # correctif qui l'en fait sortir — relevé par deux axes en 2ᵉ passe. Le miroir front
-        # (`catalogue.ts`) et le glossaire avaient été corrigés, le domaine non : c'est mot pour mot
-        # le défaut que `TYPES_SIGNALES_EN_ECART` dénonce dans le même diff — une table dérivée
-        # n'est jamais fausse, seule sa description l'est, et rien ne rougit quand elle dérive.
-        #
-        # ⚠️ **La qualification en est sortie en E05US035** (ADR-0093) : `ServiceSaisie` lit son
-        # avancement, tour par tour, une fois résolus sa population réelle (deux qualifications
-        # peuvent coexister dans un créneau, ADR-0082), son plan de cibles et ses forfaits.
-        #
-        # ⚠️ **Mais le type ne suffit plus à décider, et c'est la leçon de la revue d'E05US035** :
-        # pour elle seule, l'arrêtabilité dépend d'un **réglage d'instance** (le découpage), pas du
-        # type. `verifier_type_arretable` ne voit que le type ; c'est `verifier_arrets`, nourri par
+        # ⚠️ **Le type ne suffit PLUS à décider.** Pour la qualification (ADR-0093), l'arrêtabilité
+        # dépend d'un **réglage d'instance** — le découpage —, pas du type :
+        # `verifier_type_arretable` ne voit que le type, et c'est `verifier_arrets`, nourri par
         # `_nb_tours_a_la_composition`, qui ferme le cas d'une qualification non découpée. Les deux
-        # refus sont nécessaires, et aucun ne remplace l'autre.
+        # refus sont nécessaires, aucun ne remplace l'autre.
         #
-        # ⚠️ **Le refus lui-même a été hissé au module d'arrêt en E05US034** : le pilotage ouvre une
-        # seconde porte (poser un arrêt le jour J), et deux copies d'une même règle divergent —
-        # c'est celle écrite en second qui rate le cas nouveau. Ce qui reste ici est le *moment* de
-        # la vérification, qui est bien une propriété de l'étape.
+        # ⚠️ **Le refus lui-même vit dans le module d'arrêt**, pas ici : le pilotage ouvre une
+        # seconde porte (poser un arrêt le jour J), et deux copies d'une même règle divergent — la
+        # seconde écrite rate le cas nouveau. Ce qui reste ici est le *moment* de la vérification,
+        # qui est bien une propriété de l'étape.
         verifier_type_arretable(self.type)
         verifier_arrets(
             self.arrets,
