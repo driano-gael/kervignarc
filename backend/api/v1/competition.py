@@ -1,17 +1,7 @@
-"""Endpoints REST de la tranche verticale (`/api/v1`) — archers, placement, scores, classement.
+"""Fil rouge du walking skeleton : inscrire, placer, saisir, classer.
 
-Les routes d'administration des archers (lister, éditer, désinscrire — E02US003) sont posées ici,
-auprès des routes archer déjà existantes, plutôt que dans un `api/v1/archers.py` neuf : elles
-partagent le même DTO de réponse et le même service. Un module dédié se justifiera quand la
-tranche verticale du walking skeleton sera démantelée (placement en E03, saisie en E04).
-
-Concrétise le fil rouge E00US011 : inscrire un archer → le placer sur une cible → saisir un
-score → consulter le classement (qui se met à jour en direct côté client via WebSocket, la
-diffusion post-commit étant câblée dans la composition root).
-
-Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats ; **écritures**
-routées par la file d'écriture (writer unique, ADR-0005) ; **lecture** du classement exécutée
-hors boucle (threadpool) ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+⚠️ **Tranche verticale provisoire** — elle sera démantelée quand le placement (E03) et la saisie
+(E04) auront leurs propres surfaces. Ne rien y ajouter qui ait vocation à durer.
 """
 
 from __future__ import annotations

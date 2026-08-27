@@ -1,16 +1,8 @@
-"""Service applicatif Plan de duels — placer les duellistes côte à côte (E03US009, ADR-0048).
+"""Plan de duels — **matérialisé** par phase et ajustable, comme le plan de qualification.
 
-Assemble ce que le domaine tient séparé : le **classement** (source d'ensemencement), l'**arbre**
-d'élimination (`construire_tableau`, qui produit les duels du 1er tour) et le **moteur de
-placement** (qui pose les archers, réordonnés pour l'adjacence). Le plan de duels est
-**matérialisé** par phase (table `placement_tableau`) et **ajustable** au glisser-déposer, à l'image
-de la qualification (`ServicePlacement`, ADR-0024) — mais l'**appariement** n'est jamais persisté :
-il est **recalculé** du classement à chaque régénération (déterministe, ADR-0023).
-
-MVP (ADR-0048) : **ensemencement scratch** (au `rang_scratch`), **tour 1** uniquement (seuls duels
-aux adversaires connus), **gabarit du tournoi** réutilisé. Les `Participant` de genre **équipe**
-sont ignorés (pas d'entité `Equipe` avant E13US002). Le pont `Participant → inscription` vit ici
-(couche haute, ADR-0028) : en individuel `ref_id` est l'`ArcherId`, résolu vers son inscription.
+⚠️ **L'appariement, lui, n'est JAMAIS persisté** : il est recalculé du classement à chaque
+régénération (déterministe, ADR-0023). MVP : ensemencement scratch, tour 1 seulement, gabarit du
+tournoi réutilisé. Les participants de genre équipe sont ignorés — pas d'entité `Equipe`.
 """
 
 from __future__ import annotations

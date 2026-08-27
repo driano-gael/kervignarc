@@ -1,17 +1,10 @@
-"""Endpoints REST du **barrage de places décisives** (E06US003, ADR-0066).
+"""Barrages — un acte d'**organisation**, pas de saisie de cible.
 
-Expose `ServiceBarrage` à l'organisateur : **annoncer** un barrage sur une égalité que la politique
-`tiebreak` signale, **saisir** (ou corriger) ses manches, le **clore**. Écritures routées par la
-**file** du writer unique (règle 7), derrière `exiger_admin` — annoncer un barrage change le
-classement publié, c'est un acte d'organisation, pas de saisie de cible.
+Les égalités à départager voyagent avec le **classement**, seule surface qui sache les calculer :
+un second endpoint dériverait de ce qui est affiché à l'écran.
 
-Les **égalités à départager** ne sont pas exposées ici : elles voyagent avec le classement
-(`GET /tournois/{id}/classement`), qui est la seule surface qui sache les calculer. Un second
-endpoint qui les recalculerait produirait une réponse qui dériverait de celle affichée à l'écran.
-
-⚠️ **La distance au centre est en dixièmes de millimètre**, et son absence n'est **pas** un zéro :
-c'est une mesure non faite, sur laquelle le moteur refuse de départager (il fait retirer). C'est le
-cas le plus fréquent du jour J — le juge mesure la flèche litigieuse, rarement les deux.
+⚠️ **La distance au centre est en dixièmes de mm, et son absence n'est PAS un zéro** : c'est une
+mesure non faite, sur laquelle le moteur refuse de départager — le cas le plus fréquent du jour J.
 """
 
 from __future__ import annotations

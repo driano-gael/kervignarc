@@ -9,16 +9,15 @@ api/erreurs.py 2
 api/realtime.py 1
 api/spa.py 4
 api/v1/archive.py 1
-api/v1/audit.py 1
 api/v1/auth.py 1
 api/v1/bareme_qualification.py 2
-api/v1/barrages.py 4
+api/v1/barrages.py 3
 api/v1/big_shoot_off.py 4
 api/v1/blasons.py 2
 api/v1/categories.py 1
 api/v1/clubs.py 2
 api/v1/colline.py 4
-api/v1/competition.py 8
+api/v1/competition.py 7
 api/v1/departs.py 3
 api/v1/ecrans.py 2
 api/v1/feuille_de_marque.py 1
@@ -31,7 +30,6 @@ api/v1/inscriptions.py 2
 api/v1/jalons.py 2
 api/v1/jeu_essai.py 1
 api/v1/listes_impression.py 1
-api/v1/paiements.py 1
 api/v1/palmares.py 2
 api/v1/patrimoine.py 1
 api/v1/phases.py 20
@@ -46,10 +44,9 @@ api/v1/suisse.py 2
 api/v1/suivi_deroule.py 2
 api/v1/supervision.py 1
 api/v1/tableaux.py 3
-api/v1/tournois.py 2
+api/v1/tournois.py 1
 application/archers.py 15
 application/arrets_programmes.py 18
-application/auth.py 1
 application/bareme_qualification.py 3
 application/barrages.py 8
 application/big_shoot_off.py 16
@@ -66,7 +63,7 @@ application/erreurs/exploitation.py 4
 application/erreurs/moteur.py 13
 application/erreurs/referentiel.py 13
 application/erreurs/tir.py 4
-application/feuille_de_marque.py 3
+application/feuille_de_marque.py 2
 application/formats.py 4
 application/gabarits.py 1
 application/gel_de_pause.py 3
@@ -81,7 +78,7 @@ application/phases.py 9
 application/pilotage_simulation.py 2
 application/pilotage_tour.py 1
 application/placement.py 5
-application/placement_duels.py 3
+application/placement_duels.py 2
 application/portee.py 4
 application/postes.py 5
 application/poules.py 18
@@ -127,7 +124,6 @@ domain/entree_audit.py 3
 domain/erreurs/exploitation.py 1
 domain/erreurs/moteur.py 11
 domain/erreurs/tir.py 2
-domain/feuille_marque.py 1
 domain/forfait.py 1
 domain/format_tournoi.py 12
 domain/gabarit_salle.py 1
@@ -139,7 +135,6 @@ domain/patrimoine.py 1
 domain/phase.py 21
 domain/placement.py 13
 domain/placement_par_bloc.py 3
-domain/plage.py 1
 domain/politiques.py 18
 domain/ports.py 28
 domain/poste.py 2
@@ -162,7 +157,6 @@ infrastructure/db/repositories/exploitation.py 3
 infrastructure/db/repositories/moteur.py 27
 infrastructure/db/repositories/referentiel.py 15
 infrastructure/db/repositories/tir.py 6
-infrastructure/db/snapshot.py 1
 infrastructure/idempotence.py 1
 infrastructure/memory/repositories.py 2
 infrastructure/pdf/_commun.py 1
@@ -174,4 +168,3 @@ infrastructure/postes/consignes.py 1
 infrastructure/postes/sessions.py 1
 infrastructure/realtime/broadcaster.py 1
 infrastructure/scoreurs/codes.py 1
-infrastructure/scoreurs/sessions.py 1

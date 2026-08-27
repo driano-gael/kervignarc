@@ -1,17 +1,7 @@
-"""Endpoints REST des tournois (`/api/v1/tournois`).
+"""Tournois — CRUD et cycle de vie (brouillon, démarrer, pause, reprendre, terminer, archiver).
 
-- créer, consulter, lister (E01US001) ;
-- éditer, supprimer (E01US002) ;
-- piloter le **cycle de vie à sept statuts** (E01US017, [ADR-0026]) : passer prêt, revenir
-  brouillon, démarrer, mettre en pause, reprendre, terminer, archiver, annuler.
-
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine (aucune entité domaine exposée) ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), attendue via
-  `asyncio.wrap_future` sans bloquer la boucle ; toute écriture exige une session admin
-  (`exiger_admin`, E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
+Patron de bout en bout : DTO distincts des agrégats, écritures par la **file** et sous session
+admin, lectures hors boucle, erreurs typées traduites à la frontière.
 """
 
 from __future__ import annotations

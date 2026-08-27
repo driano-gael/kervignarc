@@ -1,17 +1,7 @@
-"""Service applicatif Feuille de marque (E09US001).
+"""Feuille de marque — reconstitue le placement par **ports seuls**, jamais service→service.
 
-Compose le document imprimable d'un départ : il lit le **plan de cibles persisté** (E03US001 —
-qui tire sur quelle cible, dans quel couloir de tir), reconstitue la jointure archer → catégorie
-→ blason
-(comme `ServicePlacement._archer_a_placer`, via des ports seuls — jamais service→service),
-récupère la **grille** depuis le barème de qualification du tournoi, et confie le rendu au port
-`GenerateurFeuilleDeMarque` (adapter ReportLab, ADR-0031).
-
-Le service reste synchrone et pur d'infrastructure : il ne connaît ni HTTP, ni SQL, ni ReportLab.
-Il fait remonter les mêmes gardes 404 que `ServicePlacement` (`TournoiIntrouvable`,
-`DepartIntrouvable`) — même couple tournoi/départ. Un tournoi **sans** barème de qualification
-défini n'est pas une erreur : la grille prend le **preset FFTA 18 m** (20 volées de 3), défaut le
-plus sûr pour une qualification 18 m (référentiel §6.1, cf. `domain.bareme`).
+⚠️ **Un tournoi sans barème défini n'est PAS une erreur** : la grille prend le preset FFTA 18 m
+(20 volées de 3), défaut le plus sûr pour une qualification (référentiel §6.1).
 """
 
 from __future__ import annotations

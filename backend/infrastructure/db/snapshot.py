@@ -1,16 +1,7 @@
-"""Copie **cohérente** d'une base SQLite vive — API `sqlite3.backup` (E11US003).
+"""Instantané cohérent d'une base **ouverte et en service** (API `backup` de SQLite, page à page).
 
-Copier une base SQLite en mode WAL par un simple `shutil.copy` est **faux** : le fichier
-`.db` seul ignore les pages encore dans le journal `-wal`, et une copie prise pendant une
-écriture peut être tronquée. L'API en ligne `sqlite3.Connection.backup()` fait la copie
-**page à page** au niveau moteur : elle inclut l'état WAL et redémarre proprement si la source
-est modifiée pendant la copie. C'est le mécanisme prévu par SQLite pour sauvegarder une base
-**ouverte et en service**.
-
-Une sauvegarde est une **lecture** : elle ne passe donc **pas** par la file d'écriture
-(règle 7 — seules les écritures y transitent ; les lectures sont concurrentes, WAL). Ce module
-est appelé hors boucle événementielle (threadpool), aussi bien par la sauvegarde périodique
-(`infrastructure/backup/`) que par la composition d'archive (`infrastructure/archive/`).
+⚠️ **Une sauvegarde est une LECTURE** : elle ne passe donc pas par la file d'écriture (règle 7).
+Appelée hors boucle, par la sauvegarde périodique comme par la composition d'archive.
 """
 
 from __future__ import annotations

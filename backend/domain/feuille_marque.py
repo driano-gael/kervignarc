@@ -1,16 +1,9 @@
-"""Feuille de marque — contenu **imprimable** d'un départ (E09US001), domaine **pur**.
+"""Feuille de marque — de simples valeurs immuables ; le rendu est un adapter (ADR-0031).
 
-Décrit *ce qui* figure sur les feuilles de marque d'un départ, sans savoir *comment* on les rend :
-le rendu PDF est un adapter d'infrastructure (ReportLab, ADR-0031) branché derrière le port
-`GenerateurFeuilleDeMarque` (`domain/ports.py`). Ici, aucune dépendance framework (règle 1) : de
-simples valeurs immuables.
+Un document par départ, une page par archer **placé** : la réserve ne tire pas, donc pas de feuille.
 
-**Un document par départ, une page par archer placé.** Le service `application.feuille_de_marque`
-lit le plan de cibles (E03US001) — qui tire sur quelle cible, à quelle position — reconstitue la
-jointure archer → catégorie → blason, et pose une `LigneArcher` par archer *placé* (la réserve ne
-tire pas, donc pas de feuille). La **grille de scores** (volées et flèches par volée) n'est pas en
-dur : elle dérive du **barème de qualification** du tournoi (`domain/bareme.py`), pour rester
-« conforme aux données » — 20 volées de 3 en preset FFTA 18 m, mais un tournoi peut le configurer.
+⚠️ **La grille de scores n'est pas en dur** : elle dérive du **barème** du tournoi, pour rester
+conforme aux données. 20 volées de 3 en preset FFTA, mais un tournoi peut le configurer.
 """
 
 from __future__ import annotations
