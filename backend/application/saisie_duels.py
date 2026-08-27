@@ -1,19 +1,9 @@
-"""Service applicatif Saisie en duels — scorer un match du tableau (E04US013, ADR-0049).
+"""Saisie des duels — le tableau est **reconstruit** du classement et **rejoué** des duels validés ;
+seul le tir est persisté. Un duel validé fait donc avancer le tableau à la reconstruction suivante.
 
-Assemble ce que le domaine tient séparé : le **classement** (source d'ensemencement), l'**arbre**
-d'élimination (`construire_tableau`, qui donne l'appariement), le **résolveur de barème** (par arme)
-et l'agrégat **`Duel`** (le scoring). Le tableau n'est **pas** persisté (ADR-0023/0048) : il est
-**reconstruit** du classement et **rejoué** des duels validés (`Tableau.jouer`) ; seul le **tir**
-est persisté (`DuelRepository`). Le vainqueur d'un duel validé fait donc **avancer** le tableau à la
-reconstruction suivante — c'est le sens de « transmis au moteur E05US005 ».
-
-MVP (ADR-0049) : **ensemencement scratch**, tableau **tournoi-large** (les tableaux par catégorie
-sont downstream). Le barème (et les zones du pavé) est résolu **par duel** depuis l'arme du **camp
-haut** — en tableau par division les deux duellistes partagent la catégorie, donc la même arme ;
-le bracket mixte-armes du MVP prend celle du haut (hypothèse d'homogénéité assumée). Résolveur FFTA
-par défaut (cumul en poulies, sets sinon) ; E01US011 branchera les catalogues configurables au même
-point d'injection. Les `Participant` de genre **équipe** sont ignorés (pas d'entité avant E13US002).
-Le pont `Participant → archer` (nom, catégorie, blason) vit ici (couche haute, ADR-0028).
+⚠️ **Le barème est résolu par duel depuis l'arme du CAMP HAUT** : en tableau par division les deux
+duellistes partagent la catégorie, mais le bracket mixte-armes du MVP prend celle du haut —
+hypothèse d'homogénéité assumée (ADR-0049).
 """
 
 from __future__ import annotations

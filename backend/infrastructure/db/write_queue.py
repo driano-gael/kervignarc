@@ -1,20 +1,10 @@
-"""File d'écriture SQLite — sérialisation par un writer unique (guide §7, ADR-0005).
+"""File d'écriture à **writer unique** — sérialisation *par construction*, sans verrou applicatif.
 
-SQLite n'accepte **qu'un seul écrivain** : plutôt que de risquer des `database is
-locked` sous ~30 clients, **toutes les écritures transitent par une file**
-(`queue.Queue`) consommée par **un unique thread worker**. Les commandes sont donc
-exécutées **séquentiellement**, dans leur ordre de soumission — sérialisation *par
-construction*, sans verrou applicatif.
+L'appelant soumet une commande et attend sa `Future` sans bloquer la boucle. Les **lectures ne
+passent pas** par ici : directes et synchrones, elles restent concurrentes (WAL).
 
-L'appelant (handler FastAPI, `async`) **soumet une commande** et récupère une
-`Future` (`concurrent.futures.Future`) : il en attend le résultat sans bloquer la
-boucle événementielle (`asyncio.wrap_future`). Les **lectures ne passent pas** par
-cette file : directes et synchrones, elles restent concurrentes (mode WAL).
-
-Ce **point de passage unique** est l'endroit où brancher, après commit, les traitements
-transverses via des **listeners post-commit** : chaque commande réussie notifie les
-listeners enregistrés avec son résultat — c'est ainsi que la diffusion WebSocket est
-déclenchée (E00US008), et où viendra le journal d'audit. Un seul endroit à instrumenter.
+⚠️ **C'est le point de passage unique où brancher tout traitement post-commit** — la diffusion
+WebSocket y est branchée, l'audit y viendra. Un seul endroit à instrumenter.
 """
 
 from __future__ import annotations

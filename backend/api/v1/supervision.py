@@ -1,20 +1,8 @@
-"""Endpoints REST de la **supervision des postes** (E12US001, ADR-0038).
+"""Supervision des postes — état, dernière saisie, avancement, plus révocation et heartbeat.
 
-Trois routes, deux portées :
-
-- **Console** (`GET /api/v1/tournois/{tournoi_id}/supervision`, admin) : l'instantané de tous les
-  postes de cible — état, dernière saisie, avancement — et le compteur global. Lecture ; le front la
-  rafraîchit par un poll court (le passage *hors ligne* naît du **temps qui passe**, pas d'un
-  événement — ADR-0038 §4).
-- **Révocation** (`POST /api/v1/tournois/{tournoi_id}/postes/{poste_id}/revocation`, admin) : ferme
-  les sessions d'un poste et oublie sa présence (`D-07`). N'écrit qu'en mémoire (sessions), pas en
-  base : hors file.
-- **Heartbeat** (`POST /api/v1/postes/session/heartbeat`, poste) : le signe de vie périodique. Le
-  poste s'authentifie par son jeton (`exiger_poste`) ; on horodate sa dernière vue et son IP (indice
-  de diagnostic, `D-06`, jamais une identité). Écrit en mémoire, sans transaction ni diffusion.
-
-DTO Pydantic distincts des agrégats (règle 6). Erreurs typées traduites à la frontière
-(`api/erreurs.py`) : tournoi/poste introuvable → 404, jeton de poste absent/invalide → 401.
+⚠️ **Le passage HORS LIGNE naît du temps qui passe, pas d'un événement** (ADR-0038 §4) : d'où un
+poll court côté front, et non une diffusion. Révocation et heartbeat n'écrivent qu'**en mémoire** —
+hors file. L'IP relevée est un indice de diagnostic (`D-06`), jamais une identité.
 """
 
 from __future__ import annotations

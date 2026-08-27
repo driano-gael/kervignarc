@@ -1,19 +1,9 @@
-"""Value object `GrainValidation` — **quand le scoreur valide** une phase (E01US015).
+"""Grain de validation — la validation est un acte **de fin** (CDC UX §7.3). L'article B.6.1.2
+(« scores toutes les 2 volées ») porte sur le **cumul**, pas sur la validation par un tiers.
 
-Le grain de validation est une **politique de phase** (`D-11`), pas un réglage global : la
-qualification valide en **fin de série**, l'élimination directe en **fin de duel**. Il est réglé
-**une fois à la configuration** de la phase, jamais le jour J.
-
-**Fondement réglementaire** (CDC UX §7.3) : les feuilles de marque sont signées « à la fin de la
-distance, ou de la compétition, **ou du duel** » — la validation est un acte **de fin**. L'article
-B.6.1.2 (« établissement des scores toutes les 2 volées ») porte sur le **cumul**, que l'appli
-calcule seule, **pas** sur la validation par un tiers.
-
-**Motif chiffré** (CDC UX §7.3) : à 3 scoreurs pour ~30 cibles, valider toutes les 2 volées =
-~180 passages par départ (une toutes les 40 s, intenable) contre ~60 en fin de série (~20 par
-scoreur, confortable). Le grain n'est donc pas un détail : il dimensionne la charge des scoreurs.
-
-Value object de domaine **pur** (immuable, sans dépendance framework), validé à la construction.
+⚠️ **Le grain dimensionne la charge des scoreurs** : à 3 scoreurs pour 30 cibles, valider toutes
+les 2 volées fait ~180 passages par départ — une toutes les 40 s, intenable — contre ~60 en fin de
+série.
 """
 
 from __future__ import annotations

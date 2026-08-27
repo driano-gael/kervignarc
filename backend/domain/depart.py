@@ -1,19 +1,10 @@
-"""Agrégat `Depart` — un créneau (session horaire) d'un tournoi (E02US004, ADR-0017).
+"""Agrégat **Depart** — un créneau du tournoi ; le lien archer↔départ vit ailleurs.
 
-Un **départ** est un créneau du tournoi, comme si le tournoi se jouait plusieurs fois dans la
-journée : le hall se remplit, tire, se vide, puis se remplit d'une autre vague. C'est une entité
-**du tournoi** (`tournoi_id`), **partagée** par les archers qui s'y inscrivent — l'inscription
-(lien archer↔départ) est E02US009, pas cet agrégat.
+Le `numero` est attribué par le service : le domaine ne voit qu'un départ à la fois.
 
-Agrégat de domaine **pur** (aucune dépendance framework, immuable) : `creer`/`modifier` valident les
-valeurs et renvoient une copie. Le `numero` est **attribué par le service** (1, 2, 3…, unique dans
-le tournoi) ; le domaine ne voit qu'un départ à la fois et ne peut donc pas garantir l'unicité — il
-vérifie seulement qu'un numéro est un entier ≥ 1.
-
-**L'argent est compté en centimes entiers** (ADR-0012), d'où le suffixe `_centimes`. Contrairement
-à l'ancien tarif du tournoi (E01US010), le tarif d'un créneau est **obligatoire** : on ne crée pas
-un départ sans prix, donc l'état « non défini » (`None`) n'existe plus ici — `0` (gratuit) reste un
-état licite et distinct.
+⚠️ **Le tarif d'un créneau est OBLIGATOIRE**, contrairement à l'ancien tarif de tournoi : l'état
+« non défini » n'existe pas ici. `0` (gratuit) reste licite et distinct. Argent en **centimes
+entiers** (ADR-0012).
 """
 
 from __future__ import annotations

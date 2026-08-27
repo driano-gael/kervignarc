@@ -1,19 +1,9 @@
-"""Agrégat `Categorie` — une catégorie de tir d'un tournoi (E01US003, `ages` : E01US013).
+"""Agrégat **Categorie** — le blason par défaut est facultatif ; sa cohérence est au service.
 
-Sert à **classer et cloisonner** les archers (arme, tranches d'âge, sexe). Agrégat de domaine
-**pur** (aucune dépendance framework, immuable), validé à la création/édition : seul le `libelle`
-est obligatoire ; `arme`, `ages` et `sexe` sont facultatifs (le référentiel FFTA officiel sera
-pré-chargé et modifiable en E01US004). Une catégorie peut porter un **blason par défaut** facultatif
-(`blason_id`, E01US006) exploité par le placement (EPIC-03) ; la cohérence de ce lien (le blason
-doit appartenir au même tournoi) relève d'une règle **inter-agrégats**, vérifiée par le service
-applicatif, non par cet agrégat.
-
-**E01US013 — pourquoi `ages` (liste) et non `tranche_age` (scalaire).** La FFTA regroupe des
-tranches d'âge sous une même catégorie de classement : en arc nu, « U18 » couvre **U15 et U18**,
-« Scratch » couvre **U21, S1, S2, S3** (`docs/referentiel-ffta.md` §3). Un scalaire rendait ces cas
-indistinguables (`tranche_age = "U18"` = « U18 seul » en classique, « U15 ou U18 » en arc nu — même
-valeur, deux sens). `ages` porte donc **l'ensemble** des tranches éligibles, et les regroupements
-(« U18 », « Scratch ») redeviennent de simples **libellés** de catégorie, pas des tranches.
+⚠️ **`ages` est une LISTE, pas un scalaire** : la FFTA regroupe des tranches sous une même
+catégorie de classement — en arc nu, « U18 » couvre U15 **et** U18. Un scalaire rendait les cas
+indistinguables (`"U18"` valant « U18 seul » en classique, « U15 ou U18 » en arc nu). Les
+regroupements redeviennent ainsi de simples **libellés**.
 """
 
 from __future__ import annotations

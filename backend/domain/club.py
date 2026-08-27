@@ -1,19 +1,10 @@
-"""Agrégat `Club` — référentiel des clubs d'appartenance des archers (E02US001).
+"""Agrégat **Club** — portée **globale**, hors tournoi : il n'a pas de `tournoi_id`.
 
-Agrégat de domaine **pur** (aucune dépendance framework, immuable) : un club porte un `nom`,
-et rien d'autre — c'est un simple référentiel de rattachement, saisi une fois puis réutilisé.
+C'est ce qui réalise le « réutilisable entre tournois » — et un club **survit** à la suppression
+d'un tournoi, il n'appartient pas à sa descendance.
 
-**Portée globale, hors tournoi.** Contrairement à tous les autres agrégats de configuration
-(`Categorie`, `Blason`, `GabaritSalle`, `Phase`), un club **n'appartient pas** à un tournoi :
-il n'a pas de `tournoi_id`. C'est ce qui réalise le « réutilisable entre tournois » d'E02US001
-— les clubs voisins reviennent d'une compétition à l'autre, les ressaisir chaque fois serait
-la corvée que cette US supprime. Conséquence : un club **survit** à la suppression d'un
-tournoi ; il n'appartient pas à sa descendance (cf. DETTE-001).
-
-L'unicité du nom n'est **pas** vérifiée ici : le domaine ne voit qu'un club à la fois, jamais
-la collection. C'est une règle d'ensemble, portée par le service applicatif et garantie par
-une contrainte `UNIQUE` en base (cf. `application/clubs.py`). En revanche, **ce qui fait que
-deux noms désignent le même club** est une notion métier : elle vit ici, dans `cle_nom`.
+⚠️ **L'unicité du nom n'est pas vérifiée ici** (règle d'ensemble, portée par le service). En
+revanche, **ce qui fait que deux noms désignent le même club** est du métier : c'est `cle_nom`.
 """
 
 from __future__ import annotations

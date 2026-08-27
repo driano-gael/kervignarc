@@ -1,19 +1,10 @@
-"""Service applicatif Placement — plan de cibles **matérialisé et ajustable** (E03US004, ADR-0024).
+"""Service de **placement** — lit le plan persisté, régénère, déplace, comble la réserve.
 
-E03US001 recalculait le plan à chaque lecture ; E03US004 le **matérialise** (table `placement`, une
-affectation par inscription) pour le rendre ajustable au glisser-déposer. Ce service :
+La raison d'une mise en réserve est **dérivée**, jamais persistée. Un déplacement invalide est
+refusé **en bloc**, l'état restant inchangé.
 
-- **lit** le plan persisté (`plan_de_cibles`) et range les inscrits sans affectation en **réserve**,
-  avec une **raison dérivée** (sans blason / saturé / en attente) — jamais persistée ;
-- **régénère** (`regenerer`) le plan depuis le moteur glouton déterministe — c'est aussi « annuler
-  les modifications » (ADR-0024) ;
-- **déplace / échange / met en réserve** un archer (`deplacer`), en **validant** contre l'état
-  courant (refus en bloc, état inchangé — CA « déplacement invalide ») ;
-- **place les restants** (`placer_les_restants`) : comble la réserve sans bouger les placés.
-
-Les écritures passent par la **file** (règle 7) — routage côté API ; le service reste synchrone. La
-jointure archer → catégorie → blason par défaut (héritée d'E03US001) nourrit le moteur pur en
-`ArcherAPlacer` ; un archer sans blason exploitable est un conflit `SANS_BLASON`, jamais placé.
+⚠️ **Un archer sans blason exploitable est un CONFLIT, jamais placé** : la jointure archer →
+catégorie → blason nourrit le moteur, elle ne comble pas les trous.
 """
 
 from __future__ import annotations

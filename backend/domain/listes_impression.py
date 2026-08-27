@@ -1,19 +1,8 @@
-"""Listes imprimables — contenu **imprimable** de deux documents d'organisation (E09US003), pur.
+"""Contenus imprimables — de simples valeurs immuables : liste de placement, liste club & paiement.
 
-Décrit *ce qui* figure sur les listes papier utiles le jour J, sans savoir *comment* on les rend :
-le rendu PDF est un adapter d'infrastructure (ReportLab, ADR-0031) branché derrière le port
-`GenerateurListesImpression` (`domain/ports.py`). Ici, aucune dépendance framework (règle 1) : de
-simples valeurs immuables.
-
-Deux documents, deux structures de contenu :
-
-- **Liste de placement** (`ListePlacement`) — pour l'accueil des archers : qui tire sur quelle
-  cible, à quelle position, sur quel départ. Ordonnable *par cible* (ordre physique de la salle) ou
-  *par nom* (retrouver un archer à l'accueil) — c'est le service qui trie ; le `tri` n'est porté ici
-  que pour l'imprimer en en-tête. Filtrable sur un départ (le service borne alors la liste).
-- **Liste club & paiement** (`ListeClubPaiement`) — pour l'administratif : par club, chaque archer
-  avec ses départs, son dû et son statut de règlement, plus les totaux du club. Les montants sont en
-  **centimes entiers** (comme `domain.paiement`), le formatage en euros est un détail de rendu.
+⚠️ **Le `tri` n'est porté ici que pour l'imprimer en en-tête** : c'est le **service** qui trie, et
+qui borne la liste sur un départ. Montants en **centimes entiers** — le formatage en euros est un
+détail de rendu.
 """
 
 from __future__ import annotations
