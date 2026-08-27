@@ -1,35 +1,10 @@
-"""Endpoints REST du **Big Shoot Off** (E05US028) — l'atelier règle, la salle fait tirer.
+"""Routeur **Big Shoot Off** — un tir *est* une série de volées, dans `serie`/`volee` (ADR-0083 §7).
+La volée est **collective** ; `numero` est dérivé du réglage, jamais stocké. Trois surfaces, trois
+droits : `/etat/` ouvert, `/saisie/` scoreur, `/projection/` admin.
 
-Expose `ServiceBigShootOff` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **l'atelier** (admin) lit la **projection** que la liste de sortants produit sur l'effectif réel
-  (« avec vos 12 inscrits : 12 → 8 → 6 → 5 ») ;
-- **la salle et le public** lisent l'**état** de la phase — qui est en lice, qui est sorti et à quel
-  rang, où en est la manche courante ;
-- **le scoreur** lit la même photo augmentée de l'adressage de saisie (`/saisie/`) et **saisit** les
-  volées avec le pavé de la qualification.
-
-⚠️ **Un tir de Big Shoot Off *est* une série de volées**, et ce routeur le montre : la saisie écrit
-dans la table `serie`/`volee`, sans table ni migration propres. C'est le pendant exact d'ADR-0083
-§7, où une rencontre de poule réutilise `duel`. Ce qui diffère est le **décor** — la volée est
-**collective**, tout le monde sur la ligne, et c'est le classement de la manche qui élimine.
-
-`numero` est le numéro de volée dans la feuille de l'archer, **dérivé** du réglage et jamais
-stocké : la manche *m* occupe les volées `(m-1)·V + 1 … m·V`.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036) — mêmes garanties que la saisie de qualification et celle des poules.
-
-**Trois surfaces de lecture, trois droits** (E05US031). `/etat/` est **ouvert**, `/saisie/` est
-**scoreur**, `/projection/` est **admin** — c'est un écran d'atelier, pas un panneau de salle.
-
-⚠️ **La frontière entre les deux premières a changé de justification, pas seulement de place.** Ce
-routeur affirmait que l'état complet devait rester scoreur parce qu'« il porte les scores manche par
-manche, donc ce que le public n'a pas à voir avant validation ». C'est faux depuis toujours :
-`_scores_par_manche` ne rend que les manches **entièrement validées**, et s'arrête à la première
-incomplète. Le secret invoqué n'existait pas ; ce qui distingue réellement les deux formes est
-l'**adressage de saisie** (`prochaine_volee`, `volees`), qui n'a de sens que devant un pavé. Cf.
-`TireurPubliqueReponse`.
+⚠️ **Ce qui sépare `/etat/` de `/saisie/` est l'ADRESSAGE, pas un secret.** `_scores_par_manche` ne
+rend que les manches entièrement validées : il n'y a rien à cacher au public. Ce qui n'a de sens que
+devant un pavé, c'est `prochaine_volee` / `volees`.
 """
 
 from __future__ import annotations

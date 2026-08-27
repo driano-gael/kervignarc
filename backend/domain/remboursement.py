@@ -1,32 +1,10 @@
-"""Agrégat `Remboursement` — une somme encaissée à rendre (E08US005, ADR-0057).
+"""Registre des **remboursements** — un instantané, jamais des liens vers ce qui a disparu.
 
-Jusqu'ici, le paiement est un **simple booléen** `paye` porté par l'`Inscription` : rien dans le
-modèle ne représente un **mouvement d'argent**. Or quand une inscription **payée** disparaît — un
-départ à inscriptions supprimé (ADR-0018) ou une désinscription — sa ligne est **détruite** : la
-somme encaissée s'évanouit avec elle. Le `Remboursement` est la trace durable qui **survit** à cette
-disparition : un poste à part, figé au moment de l'effacement, que l'admin traitera (« remboursé »
-ou « reporté »).
+Fige le nom de l'archer, le libellé du créneau détruit et le montant encaissé ; seul `tournoi_id`
+reste une FK. Un enregistrement comptable ne se répare pas en suivant un lien vers une ligne partie.
 
-Comme l'`EntreeAudit` fige le **nom** de son auteur (pas une FK — la trace doit survivre à la
-suppression du scoreur, E10US003), ce registre fige un **instantané** de ce à quoi il se rapporte :
-le **nom** de l'archer et le **libellé** du créneau détruit, plus le **montant** encaissé (le tarif
-du créneau au moment de l'effacement). Aucune FK vers l'inscription (elle n'existe plus) ni vers le
-départ (souvent détruit lui aussi) : un enregistrement comptable ne se répare pas en suivant un lien
-vers une ligne partie. Seul `tournoi_id` reste une FK — le remboursement appartient à son tournoi.
-
-Cycle de vie **à trois états** (le CA offre deux issues à un `à_rembourser`) :
-
-    à_rembourser ──▶ remboursé   (l'argent a été rendu)
-                 └─▶ reporté     (réaffecté à un autre créneau — simple **intention consignée** ici,
-                                  la ré-inscription reste un geste manuel, hors périmètre E08US005)
-
-Les deux transitions sont **terminales** : un remboursement traité ne se re-traite pas (le refus de
-re-traiter est porté par le **service**, `RemboursementDejaTraite`, 409 — un conflit d'**état**, à
-l'image des transitions de statut de tournoi). L'entité, elle, ne porte que l'invariant de
-**construction** (`montant_centimes > 0` : un remboursement de 0 € n'a pas de raison d'exister — un
-créneau gratuit marqué payé n'encaisse rien).
-
-Pur et synchrone (règle 1) : aucun import de framework ni d'autre couche.
+⚠️ **Les deux transitions sont TERMINALES** (`remboursé`, `reporté`) : le refus de re-traiter est
+porté par le **service** (409), l'entité ne portant que l'invariant de construction.
 """
 
 from __future__ import annotations

@@ -1,34 +1,10 @@
-"""Le **classement** que produit un tableau — pour qu'une phase aval puisse y prélever (E05US024).
+"""Lire un `Tableau` **comme un classement**, pour que l'aval ignore d'où vient l'ordre (ADR-0065).
+Fermer les fourchettes est le travail de la politique `aggregation` (ADR-0067) — on ne réinvente pas
+un départage local, qui divergerait du palmarès affiché le même jour.
 
-Jusqu'ici, prélever « les rangs 1 à 8 » n'était possible que dans la **qualification** : c'était le
-seul classement que le moteur savait lire. Une source visant un tableau amont était **ignorée en
-silence**, et la phase recevait *tous* les archers en lice — un tableau bien formé, plausible, et
-faux (reste ouvert de `DETTE-028`).
-
-Ce module fournit la pièce qui manquait : lire un `Tableau` **comme un classement**, dans la même
-forme que celui d'une qualification, pour que `application/prelevement.py` n'ait pas à savoir de
-quel type de phase vient l'ordre qu'il consomme.
-
-**Pourquoi le domaine et non l'application.** La fonction croise un `Tableau`, un `Classement`
-et une politique `Aggregation` — trois notions du domaine, aucune infrastructure, aucun
-repository. C'est l'argument exact que `application/prelevement.py` retourne pour `profondeur_de` :
-ce qui ne
-touche que des objets du domaine et n'exprime aucun cas d'usage y descend.
-
-⚠️ **Un tableau ne décerne pas que des rangs exacts.** Les quatre battus des quarts d'un tableau de 8
-sortent tous sur la plage `[5..8]` (*Règle R*, ADR-0065) : la compétition ne dit pas lequel est 5ᵉ.
-Fermer ces fourchettes est précisément ce que la politique `aggregation` sait faire (ADR-0067), et
-c'est elle qu'on appelle — on ne réinvente pas un départage local, qui divergerait du palmarès
-affiché au mur le même jour.
-
-⚠️ **Toutes les fourchettes ne se valent pas, et c'est ce que ce module rend explicite** (ADR-0081,
-correctif de revue adversariale). Une fourchette portée par des archers **encore en lice** n'est pas
-*ex æquo* : elle est **indécise** — des matchs restent à tirer qui la trancheront. Le classement
-rendu leur donne des rangs *provisoires*, et c'est légitime tant que l'aval les prend **en bloc** ;
-ça ne l'est plus dès qu'une fenêtre **coupe** le bloc. `ClassementSource.plages_indecises` porte
-donc
-l'information dont l'appelant a besoin pour refuser une fenêtre à laquelle la compétition n'a pas
-encore répondu, au lieu de rendre une population plausible et fausse.
+⚠️ **Une fourchette portée par des archers ENCORE EN LICE n'est pas *ex æquo*, elle est indécise** :
+des matchs la trancheront. D'où `plages_indecises`, qui permet de refuser une fenêtre qui la
+**coupe** au lieu de rendre une population plausible et fausse (ADR-0081).
 """
 
 from __future__ import annotations

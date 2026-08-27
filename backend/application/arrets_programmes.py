@@ -1,34 +1,10 @@
-"""Service applicatif **Arrêts programmés** — la salle peut s'arrêter ([ADR-0091], [ADR-0092]).
+"""Service **Arrêts programmés** — la salle peut s'arrêter (ADR-0091, ADR-0092). Quatre gestes,
+un seul écrit ; `evaluer` est **idempotent**.
 
-Quatre gestes, un seul écrit :
-
-- **`evaluer`** — le **déclencheur**, appelé après chaque validation de score : il met en pause les
-  phases dont un arrêt vient d'être atteint. **Idempotent** — rappelé sans changement, il ne fait
-  rien.
-- **`lever`** — le geste de l'admin : un arrêt de portée départ relance **toutes** les phases qu'il
-  a coupées, d'un seul geste.
-- **`en_attente_de_relance`** — la lecture qu'affiche le pilotage.
-- **`poser_arret_relatif`** — le geste du jour J (« bloque-moi dans deux tours »). Il écrit un
-  `ArretDeCirconstance`, qui appartient au **créneau** et n'est rejoué par aucun autre — à la
-  différence d'un arrêt d'atelier, qui est du déroulé.
-
-⚠️ **Ce service CONSTATE, il n'écoute pas.** Le projet ne persiste aucun avancement — chaque service
-de format le recalcule à la lecture (ADR-0090 §5) et le lancement d'un tour est un *événement*, pas
-un état (ADR-0056) : il n'existe nulle part où accrocher « le tour vient de se terminer ». D'où la
-comparaison à chaque appel plutôt qu'une réaction.
-
-⚠️ **Passer par `ServiceSuiviDeroule` pour l'avancement, jamais par un registre local.** C'est le
-seul endroit qui sait répondre « quel tour tourne » pour **tous** les formats : poules, suisse et
-Big Shoot Off répondent par le port `LecteurAvancementDePhase`, mais l'élimination directe — le
-format le plus courant — n'en a pas et voit son avancement reconstruit depuis les braquets. Un
-second registre par type laisserait donc le tableau hors du mécanisme, et serait la **quatrième**
-résolution par type du dépôt.
-
-**Coût de lecture assumé** : la couture recompose chaque phase qui tourne à chaque validation de
-score — `DETTE-031`, marqueur au point d'appel.
-
-[ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-[ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+⚠️ **Passer par `ServiceSuiviDeroule` pour l'avancement, jamais par un registre local** : c'est le
+seul endroit qui sache « quel tour tourne » pour **tous** les formats — l'élimination directe n'a
+pas de lecteur et voit le sien reconstruit depuis les braquets. Un second registre par type
+laisserait le tableau hors du mécanisme. Coût de lecture assumé : `DETTE-031`.
 """
 
 from __future__ import annotations

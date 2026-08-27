@@ -1,32 +1,9 @@
-"""Placement d'un **groupe de tireurs** sur un bloc de couloirs contigus (E05US023, [ADR-0083]).
+"""Placement **par bloc de couloirs** — l'unité placée est le groupe, jamais l'archer (ADR-0083).
 
-Règle **fournie par le commanditaire le 09/08/2026**, elle n'est écrite nulle part ailleurs :
-
-> Un groupe occupe un **bloc de couloirs contigus**. Quand il déborde d'une cible, il prend la
-> suite sur la cible d'après, et **le groupe suivant démarre au couloir libre juste après** — on
-> n'ouvre pas une cible neuve pour lui. La salle se remplit en continu, groupe après groupe.
-
-**L'unité placée est le groupe, pas l'archer**, et c'est la différence de fond avec le placement de
-qualification (`domain/placement.py`, un archer par couloir) comme avec le plan de duels
-(`ServicePlacementDuels`, deux adversaires côte à côte). La raison tient en une phrase : **le
-tireur au repos change à chaque tour**. Une poule de 5 tient sur 4 couloirs parce qu'un membre se
-repose — mais jamais le même ; une ronde de système suisse ré-apparie **tout le plateau**, donc
-aucun de ses tireurs n'a de couloir attitré non plus. Persister « archer → couloir » écrirait dans
-les deux cas une information *fausse*, pas seulement incomplète.
-
-Ce que le bloc porte est **matérialisé** ; les couloirs de chaque rencontre, tour par tour, sont
-**dérivés** à la lecture — même parti que l'appariement d'un tableau, recalculé et jamais persisté
-(ADR-0023/0048).
-
-⚠️ **Ce module s'appelait `placement_poules` jusqu'à E05US026**, et le renommage n'est pas
-cosmétique : il ne connaissait déjà **que le nombre de couloirs** d'un groupe, jamais la poule
-elle-même. Le nom promettait une spécialisation que le code n'avait pas, et il aurait fait croire
-qu'un second mécanisme était nécessaire pour le système suisse. La table et le port ont suivi
-(`placement_poule` → `placement_par_bloc`, migration 0046).
-
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Le tireur au repos change à chaque tour**, et c'est toute la raison du bloc : une poule de 5
+tient sur 4 couloirs parce qu'un membre se repose, mais jamais le même ; une ronde de suisse
+ré-apparie tout le plateau. Persister « archer → couloir » écrirait une information **fausse**, pas
+seulement incomplète. Le bloc est matérialisé, les couloirs de chaque rencontre sont **dérivés**.
 """
 
 from __future__ import annotations

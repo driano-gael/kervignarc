@@ -1,33 +1,10 @@
-"""Projection d'un **déroulé** : ce qu'un format produit à un effectif donné (E01US024, ADR-0063).
+"""Projection d'un déroulé sur un effectif réel — le domaine projette, le front dessine (ADR-0063).
+Deux régimes d'anomalie : **structurel** (vrai quel que soit l'effectif, bloquant) et
+**conjoncturel** (né de la résolution, avertissant) — sinon « composé pour 120, jouable à 82 »
+serait inutilisable.
 
-C'est le calcul derrière le « schéma à braquets » du CA — *« un visuel découpé par phase qui montre
-où sont les archers, ce qui leur est demandé, où ils iront après leur phase […] en fonction du
-nombre d'archers »*. Le module rend des **faits structurés** (combien, quelle tranche de rangs,
-quelles flèches, combien de tours) ; l'habillage — libellés, SVG, couleurs — est au front.
-
-**Pourquoi ici et pas côté front.** Les braquets sont la *Règle R* de
-`moteur-placement-lucky-loser.md` (« les perdants du tour *t* forment la tranche de rangs basse
-encore ouverte »), déjà portée par `domain.plage.Plage`. La recalculer en TypeScript dupliquerait un
-invariant du moteur — exactement ce que le registre de dette proscrit. Le domaine projette, le front
-dessine.
-
-**Deux régimes d'anomalie** (ADR-0063 §3). Les défauts **structurels** viennent des générateurs de
-`domain.phase` (`anomalies_sequence`, `anomalies_etape`) : ils sont vrais quel que soit l'effectif,
-donc **bloquants**. Les défauts **conjoncturels** naissent ici, à la résolution : « les rangs 33 à
-120 » sur 82 inscrits, une phase que plus personne n'atteint. Ils **avertissent** sans bloquer —
-sans quoi les plages relatives du CA d'E05US010 (« composé pour 120, jouable à 82 ») seraient
-inutilisables.
-
-**Ce que ce module ne prétend pas savoir.** Le nombre de tours n'est calculé que pour les phases
-**en tableau** (élimination directe, placement), où il se déduit de l'effectif. Poules, système
-suisse et colline le tirent d'une configuration que **ce module** ne lit pas — la projection rend
-alors un bloc sans tours plutôt qu'un chiffre inventé.
-
-⚠️ **La formulation d'origine disait « que le domaine ne modélise pas encore » (`# DETTE-028`), et
-c'est faux depuis E05US026** (relevé en revue d'E05US027, qui la périme pour le troisième format) :
-`ConfigurationSuisse` et `ConfigurationColline` sont portées par `EtapeDeroule` et `ModelePhase`. Ce
-qui reste vrai est plus étroit et plus utile : la projection **ne les consulte pas**, faute de quoi
-elle annoncerait un nombre de tours que l'effectif du jour peut réduire.
+⚠️ **Le nombre de tours n'est calculé QUE pour les phases en tableau** : poules, suisse et colline
+le tirent d'une configuration que ce module ne consulte pas.
 """
 
 from __future__ import annotations

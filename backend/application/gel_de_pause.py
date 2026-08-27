@@ -1,33 +1,10 @@
-"""Le **gel** d'une phase en pause et le **signalement** d'une validation (E05US033, [ADR-0091]).
+"""Port et collaborateur **neutres** partagés par les cinq services de saisie (ADR-0091).
 
-Deux gestes que les **cinq** services qui écrivent un résultat doivent faire, et qui n'appartiennent
-à aucun d'eux :
-
-- **refuser** un résultat neuf sur une phase `EN_PAUSE` (`refuser_si_en_pause`) ; - **signaler**
-qu'un résultat vient d'être écrit, pour que les arrêts programmés s'évaluent
-  (`DeclencheurArrets`).
-
-Les cinq services concernés sont `ServiceSaisie` (qualification), `ServiceSaisieDuels` (élimination
-directe), `ServicePoules`, `ServiceSuisse` et `ServiceBigShootOff`.
-
-⚠️ **Module neutre, et c'est un correctif de revue.** La première rédaction définissait le port
-`EvaluateurArrets` dans `application.arrets_programmes` — c'est-à-dire chez son **réalisateur** — et
-le faisait importer par les services de saisie, donc un service bas dépendait d'un module
-d'orchestration qui importe lui-même `ServicePhases`. Le commentaire d'alors posait une fausse
-alternative (« le définir chez l'un obligerait l'autre à l'importer de son jumeau, ou à en tenir une
-copie ») ; l'axe A a montré qu'il en existe une troisième, **déjà en service** dans le dépôt :
-`application.prelevement` héberge `LecteurPopulationPhase`, port à deux consommateurs, dans un
-module sans dépendance de service — et sa docstring dit explicitement pourquoi (« cela évite que
-`application/saisie.py` importe `application/saisie_duels.py` »). Ce module reprend ce patron.
-
-⚠️ **`DeclencheurArrets` existe pour ne pas écrire cinq fois le même trio.** Chaque service portait
-son attribut, son `brancher_evaluateur_arrets` et son `_signaler_validation` — une vingtaine de
-lignes identiques. À deux services c'était tolérable ; à cinq, c'est la duplication d'invariant que
-le § *Dette* proscrit, et le geste à répliquer est précisément celui dont l'oubli rend l'US
-**inerte** (`DETTE-028`). Le collaborateur se construit **sans argument**, donc aucune signature de
-service ne change et aucun décor de test existant n'est touché.
-
-[ADR-0091]: ../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+⚠️ **Module sans dépendance de service, délibérément** : définir le port chez son réalisateur ferait
+dépendre un service bas d'un module d'orchestration. Patron déjà employé par
+`application.prelevement`. `DeclencheurArrets` évite d'écrire cinq fois le même trio — et c'est
+précisément le geste dont l'oubli rend l'US **inerte** (`DETTE-028`). Il se construit **sans
+argument** : aucune signature de service ne change.
 """
 
 from __future__ import annotations

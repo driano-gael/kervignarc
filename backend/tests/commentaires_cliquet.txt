@@ -13,7 +13,7 @@ api/v1/audit.py 1
 api/v1/auth.py 1
 api/v1/bareme_qualification.py 2
 api/v1/barrages.py 4
-api/v1/big_shoot_off.py 5
+api/v1/big_shoot_off.py 4
 api/v1/blasons.py 2
 api/v1/categories.py 1
 api/v1/clubs.py 2
@@ -55,8 +55,7 @@ api/v1/tableaux.py 4
 api/v1/tournois.py 2
 application/archers.py 15
 application/archive.py 1
-application/arrets_programmes.py 19
-application/audit.py 1
+application/arrets_programmes.py 18
 application/auth.py 1
 application/bareme_qualification.py 4
 application/barrages.py 9
@@ -79,7 +78,7 @@ application/feuille_de_marque.py 3
 application/forfaits.py 1
 application/formats.py 5
 application/gabarits.py 2
-application/gel_de_pause.py 4
+application/gel_de_pause.py 3
 application/generateur_scores.py 1
 application/grain_validation.py 4
 application/identite.py 2
@@ -88,7 +87,7 @@ application/jalons.py 2
 application/jeu_essai.py 3
 application/listes_impression.py 1
 application/paiements.py 1
-application/palmares.py 13
+application/palmares.py 12
 application/patrimoine.py 5
 application/phases.py 10
 application/pilotage_simulation.py 3
@@ -99,7 +98,7 @@ application/portee.py 4
 application/postes.py 6
 application/poules.py 18
 application/prelevement.py 7
-application/referentiel_ffta.py 2
+application/referentiel_ffta.py 1
 application/remboursements.py 2
 application/routage.py 31
 application/saisie.py 13
@@ -107,7 +106,7 @@ application/saisie_duels.py 15
 application/scoreurs.py 1
 application/simulation.py 2
 application/simulation_format.py 8
-application/suisse.py 16
+application/suisse.py 15
 application/suivi_deroule.py 10
 application/supervision.py 3
 application/tableaux_publics.py 4
@@ -121,11 +120,11 @@ domain/barrage.py 11
 domain/big_shoot_off.py 8
 domain/blason.py 6
 domain/categorie.py 5
-domain/classement.py 8
+domain/classement.py 7
 domain/classement_de_colline.py 2
 domain/classement_de_poules.py 2
 domain/classement_de_suisse.py 3
-domain/classement_de_tableau.py 5
+domain/classement_de_tableau.py 4
 domain/cloisonnement.py 2
 domain/club.py 2
 domain/colline.py 4
@@ -133,7 +132,7 @@ domain/completude.py 3
 domain/contrat_phase.py 19
 domain/cycle_depart.py 4
 domain/depart.py 3
-domain/deroule.py 20
+domain/deroule.py 19
 domain/deroule_etape.py 17
 domain/documents_salle.py 1
 domain/doublons.py 1
@@ -160,14 +159,13 @@ domain/participant.py 1
 domain/patrimoine.py 2
 domain/phase.py 21
 domain/placement.py 13
-domain/placement_par_bloc.py 4
+domain/placement_par_bloc.py 3
 domain/plage.py 1
 domain/politiques.py 18
 domain/ports.py 28
-domain/poste.py 3
+domain/poste.py 2
 domain/poule.py 17
 domain/qualification.py 3
-domain/remboursement.py 1
 domain/scoreur.py 1
 domain/serie.py 7
 domain/suisse.py 8

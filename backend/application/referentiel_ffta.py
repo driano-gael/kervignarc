@@ -1,33 +1,9 @@
-"""Référentiel FFTA — catégories officielles du Tir à 18 m (salle) pré-chargeables (E01US004).
+"""Jeu de référence **FFTA salle 18 m** — catégories officielles par division et blasons (§3). Les
+blasons y figurent parce qu'une catégorie pointe un blason **du tournoi** : le lien n'existe
+qu'une fois ceux-ci créés.
 
-Source de vérité documentaire : `docs/referentiel-ffta.md` §1 à §3 (règlement sportif FFTA,
-édition déc. 2023). Données **pures** (aucune dépendance framework/infrastructure) consommées par
-`ServiceCategories.precharger_ffta` pour proposer, à la création d'un tournoi, un jeu de catégories
-**modifiable et supprimable**. Une catégorie = division (arme) x catégorie de classement x sexe
-(art. A.6.2 / A.7.1.2 / A.7.1.3).
-
-Le jeu encode uniquement les catégories **officielles par division** du §3 (valeurs `✅ FFTA`), et
-non le produit cartésien complet arme x âge (qui inventerait des catégories non ouvertes, ex.
-poulies U11/U13). L'arme est en texte libre côté domaine (E01US003). Les catégories créées restent
-ordinaires : modifiables/supprimables via le CRUD existant.
-
-**E01US022 — blason par défaut du §3.** Chaque catégorie porte le **blason par défaut** prévu par
-la FFTA à 18 m (§3) : Classique U11 → 80 cm, U13/U15 → 60 cm, U18 et au-delà → 40 cm ; Poulies →
-triples 40 ; Arc Nu « U18 » → 60 cm, « Scratch » → 40 cm. E01US006 a posé le **mécanisme** (une
-catégorie porte un `blason_id`), mais ni le pré-chargement des catégories (E01US004) ni celui des
-blasons (E01US005 — CRUD seul, aucun jeu FFTA) ne le renseignaient. Ce module décrit donc aussi
-les **blasons FFTA** à pré-charger (`blasons_salle_18m`), que `ServiceCategories.precharger_ffta`
-crée puis relie à chaque catégorie. Le `blason_id` étant une clé étrangère vers un blason
-**existant du tournoi**, le lien n'est possible qu'une fois ces blasons créés — d'où leur présence
-ici, aux côtés des catégories. Blasons et liens restent, comme tout le référentiel, un **template
-modifiable** (RG-8), pas une contrainte.
-
-**E01US013 — regroupements d'âge.** L'arc nu regroupe plusieurs tranches sous une catégorie de
-classement dont le **libellé n'est pas une tranche** (« U18 » = U15+U18 ; « Scratch » = U21..S3,
-§3). On modélise donc chaque catégorie d'âge comme un **groupe** `(libellé, tranches)` : hors arc
-nu, le groupe est une tranche unique dont le libellé est son propre code ; en arc nu, le libellé est
-découplé de la liste `ages`. C'est ce que la bascule `tranche_age` → `Categorie.ages` (liste) rend
-enfin exprimable.
+⚠️ **Une catégorie d'âge est un GROUPE `(libellé, tranches)`, pas une tranche** : en arc nu, « U18 »
+vaut U15+U18 et « Scratch » U21..S3. Tout reste un template modifiable (RG-8).
 """
 
 from __future__ import annotations

@@ -1,33 +1,9 @@
-"""Calcul du classement de qualification — logique de domaine **pure** (E06US001).
+"""Classement de qualification — départage FFTA §8.1, puis **ex æquo** par défaut (ADR-0020).
 
-`calculer_classement` ordonne les archers d'un tournoi sur leur **score cumulé** (la somme de
-leurs volées **validées**, cf. `Serie.cumul`), puis applique le **départage FFTA** à total égal :
-plus grand nombre de **10**, puis de **9** (`docs/referentiel-ffta.md` §8.1, art. C.3 — spécifique
-au tir à 18 m). Les deux critères sont **séquentiels** (le nombre de 9 ne départage que si les 10
-sont à égalité) et ne jouent **qu'à** total égal. Si l'égalité subsiste après les 10 et les 9,
-E06US001 laisse l'**ex æquo** par défaut : les deux archers partagent le rang. Départager les places
-à enjeu par un **barrage** de tir (§8.2) reste une **option configurable** (E06US003 ; politique
-`tiebreak` d'ADR-0004) — les deux résolutions restent ouvertes, seul le défaut est fixé ici. Le X
-(mouche) n'est pas un score distinct (ADR-0020) : on départage sur les 10, pas sur les X.
-
-Chaque ligne porte **deux rangs** (arbitrage produit du 20/07/2026, reversé dans `stories/`) :
-
-- `rang_scratch` : le classement **global**, toutes catégories confondues ;
-- `rang_categorie` : le classement **au sein de la catégorie** de l'archer, **repartant de 1** par
-  catégorie (ex æquo partagés avec sauts — même règle que le scratch, §8.1 ; ce n'est **pas**
-  un rang « dense » sans trou : deux ex æquo en 2ᵉ place sont suivis d'un 4ᵉ, pas d'un 3ᵉ).
-
-Les deux se calculent avec le **même** ordre ; ils ne diffèrent que par la numérotation (le scratch
-saute les places prises par les autres catégories, la catégorie repart de 1). Le décompte de 10 et
-de 9 est **restitué** dans la ligne : le CA veut le départage « traçable », c.-à-d. vérifiable à
-l'œil sans rejouer le calcul.
-
-Ce n'est **pas** encore la politique `tiebreak` injectable d'ADR-0004 : il n'existe qu'une règle (la
-FFTA), et son moteur relève d'EPIC-05 (l'ADR se scope lui-même là-bas). On implémente donc la règle
-comme une clé de tri **isolée et nommée** (`_cle_tri`, `_CLE_DEPARTAGE`) — la couture d'une future
-injection — sans la plomberie de config prématurée (règle 12, « remède structurel sur preuve »).
-
-Fonction pure sur des agrégats : testable sans base ni serveur.
+⚠️ **Chaque ligne porte DEUX rangs**, même ordre et numérotations différentes : `rang_scratch`
+(global) et `rang_categorie` (repartant de 1). Le rang de catégorie n'est **pas dense** — deux ex
+æquo en 2ᵉ place sont suivis d'un 4ᵉ, jamais d'un 3ᵉ. Le décompte de 10 et de 9 est restitué pour
+que le départage se vérifie à l'œil, sans rejouer le calcul.
 """
 
 from __future__ import annotations

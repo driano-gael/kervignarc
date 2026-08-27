@@ -1,33 +1,9 @@
-"""Agrégat `Poste` — le credential d'un **point de rattachement** d'un tournoi (E04US001, ADR-0029 ;
-élargi aux écrans de salle par E07US004, ADR-0064).
+"""Agrégat **Poste** — une cible ou un écran de salle, rattaché par jeton (ADR-0025, E07US004).
+Typer l'écran ici plutôt que d'inventer un second agrégat fait hériter le jeton, le heartbeat et la
+supervision — dont le CA a besoin : un écran figé ne se plaint pas.
 
-Un `Poste` matérialise un lieu du gymnase augmenté d'un **code** distribuable : le code imprimé sous
-le QR (E09US008), retapé à la main en secours pour **rattacher** un appareil à ce lieu. C'est le
-**troisième mode d'identité** du projet (`D-13` : le *lieu*), après le scoreur (la *personne*,
-ADR-0025) et l'admin (un *secret*).
-
-Deux natures (`TypePoste`) :
-
-- **cible** — le couple `(tournoi_id, cible_index)` d'origine ; la cible elle-même reste un value
-  object dérivé du `GabaritSalle`, sans identité propre ;
-- **écran** — un écran de salle, désigné par un **libellé** de place (« près du pas de tir »). Le
-  CA d'E07US004 est explicite : *« l'écran est un poste de l'appli publique rattaché par jeton (même
-  mécanisme que la tablette de cible) »*. Le typer ici plutôt que d'inventer un second agrégat fait
-  hériter gratuitement le jeton, le heartbeat et la console de supervision — dont le CA a besoin
-  (« un écran figé ne se plaint pas, seule la supervision le révèle »).
-
-Le typage rend `cible_index` facultatif. Pour que cette facultativité ne se dilue pas en `None`
-silencieux chez les appelants, l'invariant « seul un poste de cible a une cible » est **exigible au
-point d'usage** : `Poste.cible()` lève plutôt que de rendre `None`.
-
-Le `code` est **attribué par le service** (comme `Scoreur.code`, `Depart.numero`) : le domaine ne
-voit qu'un poste à la fois, il ne peut garantir l'unicité — c'est une règle d'ensemble portée par
-`ServicePostes` (génération avec ré-essai + `UNIQUE` en base). Le domaine ne fait que **normaliser**
-le code et vérifier ses invariants. Agrégat **pur** (aucune dépendance framework, immuable).
-
-`normaliser_code` est volontairement **dupliqué** de `domain.scoreur` (2ᵉ occurrence d'un « code de
-terrain retapé ») : importer l'un dans l'autre couplerait deux agrégats distincts pour trois lignes.
-On attend une **3ᵉ** preuve avant tout remède structurel (règle « dette »).
+⚠️ **Le `code` est attribué par le SERVICE**, jamais par le domaine : l'unicité est une règle
+d'ensemble (ré-essai + `UNIQUE` en base). Le domaine normalise et vérifie, il ne garantit pas.
 """
 
 from __future__ import annotations

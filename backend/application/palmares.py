@@ -1,43 +1,9 @@
-"""Service applicatif Palmarès (E06US004) — lecture du classement final d'un tournoi.
+"""Service **Palmarès** — reconstruit ce que chaque phase a décerné, ne rejoue rien du domaine.
 
-Cas d'usage de **lecture** : compose le classement de qualification (E06US001) et ce que chaque
-phase à tableau a décidé, puis délègue la fusion à la fonction pure du domaine
-(`calculer_palmares`). Sans écriture, il s'exécute hors de la file d'écriture (règle 7).
-
-**Choix de câblage : service → service, comme le routage et le pilotage.** Reconstruire un tableau
-(classement → arbre → rejeu des duels validés → forfaits appliqués) est une règle métier non
-triviale que `ServiceSaisieDuels.reconstruire` porte déjà et que deux services consomment
-(E12US002, E04US018/E07US008). La recoder par ports seuls la ferait **diverger** de la saisie : le
-palmarès annoncerait un vainqueur que l'écran de duels ne montre pas. C'est la même exception que
-`ServiceListesImpression` s'accorde sur `ServicePaiements.recap_par_club` — on duplique une
-chaîne de ports, jamais une règle métier.
-
-**Portée : tout ce qui classe.** Quatre chemins, parce que quatre façons de décerner un rang :
-la qualification (elle *est* la base), les phases à **tableau** (rejeu d'arbre), le **Big Shoot
-Off** (rangs exacts par élimination), et depuis E05US026 les phases dont on lit le **classement de
-phase** — poules et système suisse. Seule la **colline** reste dehors, faute de service qui la
-déroule (`# DETTE-028`).
-
-## Ce qui décerne une médaille, et ce qui ne fait que classer
-
-⚠️ **La règle n'est pas « par type de phase »** (arbitrage du commanditaire, 15/08/2026). Une phase
-**décerne** ses rangs — donc peut donner un podium — **si et seulement si aucune phase avale ne
-prélève dedans**. Le critère est structurel, lu sur le graphe des sources du déroulé.
-
-L'intuition de départ était « une phase de poules ne titre jamais, il faut une phase finale », et le
-commanditaire l'a lui-même invalidée en décrivant un format club : *36 archers, 6 poules de 6, puis
-6 poules composées par niveau* — la dernière phase **est** une phase de poules, et elle rend le
-classement final exact de 1 à 36. Elle doit donc titrer.
-
-Les deux régimes, et ce qu'ils changent :
-
-- une phase **consommée** contribue ses rangs sans médaille (`origine=QUALIFICATION`). C'est ce qui
-  classe enfin les **non-qualifiés** d'une phase de poules à leur vraie place, au lieu de les
-  renvoyer à leur rang de qualification ;
-- une phase **terminale** décerne (`origine=DUELS`).
-
-Le mécanisme de fusion fait le reste seul : `_positions_par_archer` retient la position de plus
-grand `ordre`, donc les qualifiés d'un tableau aval reçoivent bien le rang du tableau.
+⚠️ **Une phase ne décerne ses rangs que si RIEN ne prélève dedans** (ADR-0085) : tant qu'une phase
+avale puise dans celle-ci, ses rangs sont provisoires et n'ont pas leur place au palmarès. C'est ce
+qui distingue « la phase est finie » de « la phase a décerné », et les confondre publierait au mur
+un classement que la compétition va encore modifier.
 """
 
 from __future__ import annotations

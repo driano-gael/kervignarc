@@ -1,40 +1,9 @@
-"""Service applicatif du **système suisse** (E05US026) — habiter le contrat de phase jouable.
+"""Service **Suisse** — une rencontre est un duel ordinaire ; seule la navigation diffère.
+Ni appariements ni rondes ne sont persistés : tout se rejoue des duels validés (règle 9).
 
-Le moteur (`domain/suisse.py`) est livré depuis E05US015 et n'avait **aucun appelant de
-production** : c'est le volet suisse de `DETTE-028`. Ce service est cet appelant.
-
-## Ce qui est partagé, et ce qui ne l'est pas
-
-Comme pour les poules ([ADR-0083](../../docs/adr/0083-le-contrat-de-phase-jouable.md) §7), ce qui
-est partagé avec `ServiceSaisieDuels` l'est **réellement** : l'agrégat `Duel`, le pavé de saisie
-(`bareme_de` / `zones_de`) et la table `duel`. Une rencontre de ronde **est** un duel ordinaire, et
-la faire écrire autrement créerait deux façons de saisir un tir — l'exacte duplication qu'ADR-0083
-se donne pour objet de fermer.
-
-Ce qui diffère est la **navigation**, c'est-à-dire le `decor` du contrat (2ᵉ question) : là-bas on
-retrouve un match dans un arbre, en poules une rencontre dans un groupe, ici une rencontre dans une
-**ronde**. C'est tout ce que ce module réimplémente.
-
-## Le rejeu, et la seule règle qui le contraint
-
-Une phase de suisse ne persiste **ni ses appariements ni ses rondes** : elle les rejoue des duels
-validés, exactement comme un tableau rejoue son arbre. `apparier_ronde` est déterministe à donnée
-constante (règle 9), donc le rejeu est reproductible.
-
-⚠️ **Mais le moteur refuse d'apparier par-dessus une ronde en cours de saisie**, et ce refus est le
-cœur de ce service. `_rondes_closes` compte les résultats et **lève** si le compte ne tombe pas
-juste, parce qu'apparier la ronde suivante perdrait les rencontres non encore saisies et donnerait
-le bye à quelqu'un qui vient de tirer. Une ronde se saisit cible par cible : l'état « partiellement
-saisie » est le régime **normal** du jour J, pas un cas limite.
-
-Le rejeu s'arrête donc à la première ronde incomplète, et l'état rendu le **dit** (`close`). C'est
-ce qui permet à l'écran de nommer l'attente au lieu d'afficher un bouton inerte.
-
-## Les byes n'accompagnent que les rondes closes
-
-`apparier_ronde` prend les byes **explicitement** et les vérifie (cardinal, appartenance, unicité).
-Le service ne lui passe donc que les byes des rondes **closes** — un bye déclaré pour une ronde en
-cours ferait mentir le compte et serait refusé, à juste titre.
+⚠️ **Le moteur REFUSE d'apparier par-dessus une ronde en cours de saisie**, et ce refus est le cœur
+du service : apparier perdrait les rencontres non saisies et donnerait le bye à quelqu'un qui vient
+de tirer. « Partiellement saisie » est le régime **normal** du jour J, pas un cas limite.
 """
 
 from __future__ import annotations
