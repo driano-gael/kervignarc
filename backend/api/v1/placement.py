@@ -1,11 +1,9 @@
 """Frontière API — plan de cibles d'un départ (E03US001 lecture ; E03US004 ajustement, ADR-0024).
 
-La **lecture** (`GET`) renvoie le plan **persisté** (matérialisé E03US004) : cibles remplies +
-réserve (dans `conflits`, avec sa raison). Directe hors boucle (`run_in_threadpool`, règle 7).
-Les **écritures** — régénérer/annuler, déplacer/échanger/mettre en réserve, placer les restants —
-passent par la **file** (writer unique, ADR-0005) et sont réservées à l'admin (`exiger_admin`) ;
-leur commit déclenche la diffusion live (broadcaster post-commit → invalidation front). DTO
-**distincts** des value objects du domaine (règle 6) : `PlanDeCibles` n'est jamais exposé tel quel.
+Le `GET` renvoie le plan **persisté** : cibles remplies et réserve (`conflits`, avec sa raison). Les
+écritures passent par la file (writer unique) et leur commit déclenche la diffusion live — c'est
+elle qui invalide le cache du front. DTO **distincts** des value objects (règle 6) : `PlanDeCibles`
+n'est jamais exposé tel quel.
 """
 
 from __future__ import annotations

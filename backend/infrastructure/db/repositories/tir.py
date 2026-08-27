@@ -1,15 +1,9 @@
-"""Adapters repository SQLAlchemy — le **tir**
+"""Adapters repository SQLAlchemy — le **tir** : scores, séries, duels, forfaits, barrages.
 
-Scores, séries et volées, duels, forfaits, barrages.
-
-Découpé de l'ancien `repositories.py` (3 378 lignes, 21 adapters) par l'action 2 de
-[l'audit de maintenabilité](../../../../docs/audit-maintenabilite.md) : le fichier unique
-figurait parmi les onze « passages obligés » du dépôt. Le contenu n'a pas bougé d'un
-caractère ; seuls les imports inutiles ont été élagués.
-
-Chaque opération ouvre une **session courte** (ADR-0005) et traduit les lignes ORM en agrégats
-de domaine. Les pannes SQLAlchemy sont **enveloppées** en `InfrastructureError` — le domaine ne
-voit jamais d'exception brute."""
+Session courte par opération et pannes SQLAlchemy enveloppées en `InfrastructureError` : ADR-0005.
+Le découpage de l'ancien `repositories.py` est l'action 2 de
+[l'audit de maintenabilité](../../../../docs/audit-maintenabilite.md).
+"""
 
 from __future__ import annotations
 

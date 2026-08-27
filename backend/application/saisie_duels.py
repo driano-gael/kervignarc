@@ -72,14 +72,11 @@ trois repositories qu'un service de tableau n'a aucune raison de connaître : d'
 """
 
 TYPES_DELEGUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS - _TYPES_RESOLUS_SUR_PLACE
-"""Les types dont le classement est lu par un `LecteurClassementDePhase` branché ([ADR-0084]).
+"""Les types dont le classement est lu par un `LecteurClassementDePhase` branché (ADR-0084).
 
 **Dérivé du registre de contrat**, pas énuméré à la main : un format qui devient
 `classement_lisible` entre ici automatiquement, et le composition root doit alors lui brancher son
-lecteur — le test de câblage le vérifie. C'est la promesse d'ADR-0083 appliquée à ce site-ci.
-
-[ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
-[ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+lecteur — le test de câblage le vérifie.
 """
 
 
@@ -99,14 +96,10 @@ class Duelliste:
 class EtatDuel:
     """L'état d'un match du tableau : son câblage, ses occupants résolus et son tir (`duel`).
 
-    `duel` est `None` tant qu'aucun tir n'y est saisi ; sinon il porte manches, barrage et résultat
-    (`duel.resultat`). `est_bye` marque un match gagné d'office (pas de duel à saisir).
-
-    `bareme` et `zones` dimensionnent le **pavé de saisie** du front (nombre de manches, de flèches,
-    zones légales du blason tiré — E04US002 les expose déjà pour la qualif) : disponibles dès qu'un
+    `duel` est `None` tant qu'aucun tir n'y est saisi ; `est_bye` marque un match gagné d'office.
+    `bareme` et `zones` dimensionnent le **pavé de saisie** du front et sont disponibles dès qu'un
     match est **jouable** (deux occupants connus, pas un bye), **avant** tout tir, pour que la
-    grille sache d'emblée sets ou cumul. `bareme` est `None` et `zones` vide pour un bye ou un
-    match dont les occupants ne sont pas encore connus.
+    grille sache d'emblée sets ou cumul. `bareme` est `None` et `zones` vide sinon.
     """
 
     numero: int
@@ -131,12 +124,10 @@ class EtatDuel:
     """Le nom que la salle donne au match, calculé par `domain.tableau.libelle_tour`.
 
     Porté par l'application plutôt que recalculé par chaque surface : c'est du **vocabulaire
-    métier** (règle 3), il n'a qu'un domicile légitime, le domaine (`DETTE-020`).
-
-    **Sans défaut** (`kw_only`, correctif de revue) : le DTO public le sert comme `str` obligatoire,
-    et un défaut vide aurait publié un titre de section vide — que le repli `?? '—'` du front ne
-    rattrape pas, puisqu'il ne teste que `null`. `kw_only` permet un champ obligatoire **après** des
-    champs à défaut, sans réordonner la dataclass."""
+    métier** (règle 3), il n'a qu'un domicile légitime (`DETTE-020`). **Sans défaut** (`kw_only`) :
+    le DTO public le sert comme `str` obligatoire, et un défaut vide aurait publié un titre de
+    section vide, que le repli `?? '—'` du front ne rattrape pas (il ne teste que `null`).
+    """
 
 
 @dataclass(frozen=True)
@@ -194,47 +185,34 @@ class ServiceSaisieDuels:
         # duels : les deux montent le même arbre, ils ne peuvent pas le tronquer différemment.
         self._registre = registre
         # E05US024 : ferme les fourchettes *ex æquo* d'un tableau amont pour qu'une phase aval
-        # puisse y prélever par rangs. Même patron d'injection que `ServicePalmares` — et **la même
-        # politique doit y être câblée**, sinon un archer entrerait dans la consolante par un ordre
-        # que le palmarès contredirait le même jour, sur le même écran.
+        # puisse y prélever par rangs. **La même politique doit être câblée qu'au palmarès**, sinon
+        # un archer entrerait en consolante par un ordre que le palmarès contredirait le même jour.
         #
-        # ⚠️ **Paramètre obligatoire, sans défaut** (correctif de revue, relevé par les quatre axes).
-        # Un premier jet le laissait optionnel avec un `AggregationParQualification()` instancié en
-        # dur ici — et **aucun** des deux composition roots ne le câblait. L'invariant ci-dessus
-        # n'était donc tenu que par la coïncidence des deux valeurs : le jour où le palmarès résout
-        # `ex_aequo`, la saisie serait restée sur `par_qualification` sans que rien ne rougisse.
-        # Le typage est désormais le garde-fou — un oubli de câblage ne construit plus.
+        # ⚠️ **Paramètre obligatoire, sans défaut** : un premier jet l'instanciait en dur ici, et
+        # **aucun** des deux composition roots ne le câblait — l'invariant n'était tenu que par la
+        # coïncidence des deux valeurs. Le typage est désormais le garde-fou.
         self._aggregation = aggregation
         # Les classements que ce service ne sait pas produire lui-même, délégués par type au
-        # service du format ([ADR-0084]). Branchés **après** construction (`brancher_lecteur`)
-        # parce que ces services reçoivent celui-ci dans leur propre constructeur : les deux côtés
-        # se tiennent par les deux bouts, et aucun ordre de construction ne les satisfait.
+        # service du format (ADR-0084). Branchés **après** construction parce que ces services
+        # reçoivent celui-ci dans leur constructeur : aucun ordre ne satisfait les deux bouts.
         #
         # ⚠️ Une entrée **absente** n'est pas un défaut de câblage silencieux : c'est le régime
-        # légitime de tout montage qui n'a pas ce format — le harnais de simulation, les tests de
-        # tableau. Le prix est que l'oubli au composition root ne construit pas moins bien, il
-        # *lit* moins bien ; le test de câblage `test_composition` est donc le garde-fou, pas le
-        # typage.
-        #
-        # [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+        # légitime d'un montage qui n'a pas ce format (harnais de simulation, tests de tableau). Le
+        # prix est qu'un oubli au composition root *lit* moins bien sans construire moins bien — le
+        # test de câblage est donc le garde-fou, pas le typage.
         self._lecteurs: dict[TypePhase, LecteurClassementDePhase] = {}
         # E05US033 : collaborateur **partagé** par les cinq services d'écriture
         # (`application.gel_de_pause`), inerte tant que rien n'y est branché.
         self._arrets = DeclencheurArrets()
 
     def brancher_lecteur(self, type_phase: TypePhase, lecteur: LecteurClassementDePhase) -> None:
-        """Donne à ce service de quoi lire le classement d'un type de phase ([ADR-0084]).
+        """Donne à ce service de quoi lire le classement d'un type de phase (ADR-0084).
 
-        Appelé **une fois par format, au composition root** (règle 8), juste après la construction
-        du service concerné. Sans branchement, une source visant ce type reste inerte — exactement
-        le comportement d'avant que le format ne soit jouable, donc sûr par défaut.
-
-        ⚠️ **Refuse un type que le registre de contrat ne dit pas lisible.** `classement_lisible`
-        (`domain/contrat_phase.py`, ADR-0083) est la source unique de « sait-on lire ce que cette
-        phase a classé ? » ; brancher un lecteur pour un type qui l'a à `False` ferait diverger le
-        câblage du registre, c'est-à-dire exactement le défaut qu'ADR-0083 s'est donné pour tâche
-        de rendre **impossible** plutôt qu'improbable. C'est une erreur de programmation, pas une
-        donnée d'exécution : elle casse au démarrage, pas en salle.
+        Appelé **une fois par format, au composition root** (règle 8). Sans branchement, une source
+        visant ce type reste inerte — le comportement d'avant que le format soit jouable, donc sûr.
+        ⚠️ **Refuse un type que le registre ne dit pas lisible** : `classement_lisible` est la
+        source unique, et brancher contre elle ferait diverger le câblage du registre. Erreur de
+        programmation, pas donnée d'exécution — elle casse au démarrage, pas en salle.
         """
         if type_phase not in TYPES_DELEGUES:
             raise ValueError(
@@ -276,14 +254,11 @@ class ServiceSaisieDuels:
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> tuple[Tableau, dict[int, LigneClassement]]:
         """Reconstruit le tableau (duels validés **rejoués**, forfaits **appliqués**) pour un
-        lecteur externe — le **pilotage du tour** (E12US002, feu vert) — avec le classement (noms).
+        lecteur externe — le **pilotage du tour** (E12US002) — avec le classement (noms).
 
-        Même décor que la saisie (`_decor`), simplement **exposé en lecture** : le pilotage a besoin
-        du `Tableau` brut (occupants connus, vainqueurs propagés, câblage des sources) pour dire,
-        par duel à venir, ce qui manque avant de lancer. On ne duplique donc pas la reconstruction —
-        une
-        seule source de vérité de la progression, comme la saisie et le placement partagent l'arbre.
-        Mêmes gardes que `_decor` (`TournoiIntrouvable` / `PhaseIntrouvable` / `PhasePasUnTableau`).
+        Même décor que la saisie (`_decor`), simplement **exposé en lecture** : le pilotage a
+        besoin du `Tableau` brut pour dire, par duel à venir, ce qui manque avant de lancer. On ne
+        duplique donc pas la reconstruction — une seule source de vérité de la progression.
         """
         return self._decor(tournoi_id, phase_id)
 
@@ -360,15 +335,10 @@ class ServiceSaisieDuels:
         # (E05US033).
         #
         # ⚠️ Ici et non dans `saisir_manche` / `saisir_barrage` : un braquet n'avance que sur des
-        # duels **tranchés et validés** (`AvancementTour`, ADR-0090), donc une manche saisie ne
-        # franchit aucune frontière de tour. Y appeler le déclencheur aurait payé la
-        # recomposition du créneau à chaque volée de duel pour un résultat toujours identique
-        # (`DETTE-031`).
-        #
-        # ⚠️ **La résolution de la phase est passée DANS le bloc protégé** (correctif de revue, axe
-        # adversarial) : elle était ici, donc **hors** du `except`, et une `InfrastructureError` sur
-        # cette lecture aurait rendu un 500 au scoreur après un duel déjà persisté — exactement ce
-        # que la promesse « le déclencheur ne peut pas faire échouer une validation » exclut.
+        # duels **tranchés et validés** (ADR-0090), donc une manche saisie ne franchit aucune
+        # frontière de tour — y appeler le déclencheur paierait la recomposition du créneau à chaque
+        # volée pour un résultat identique (`DETTE-031`). ⚠️ **La résolution de la phase est DANS le
+        # bloc protégé** : hors du `except`, une `InfrastructureError` rendait un 500 au scoreur.
         self._signaler_validation_de(tournoi_id, phase_id)
         return self._etat_du_match(match, phase_id, lignes, tableau.nb_tours, duel=duel)
 
@@ -394,29 +364,11 @@ class ServiceSaisieDuels:
     def _refuser_si_en_pause(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
         """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.
 
-        ⚠️ **La garde est sur `valider`, pas dans `_decor`**, et c'est le point à ne pas simplifier.
-        `_decor` est le passage obligé des écritures **et** des lectures (sept appels, dont l'état
-        d'un match, la grille et la reconstruction récursive d'une phase amont) : y poser le refus
-        rendrait le tableau **illisible** pendant la pause — le pilotage, l'écran de salle et
-        l'affichage public tomberaient tous les trois, au moment précis où l'organisateur a besoin
-        de voir où il en est.
-
-        ⚠️ **Posée sur `valider` SEULEMENT**, et c'est un correctif de revue (axe adversarial). La
-        première rédaction gardait aussi `saisir_manche` et `saisir_barrage` — ce qui coupait **en
-        plein tir** un duel du tour suivant déjà engagé : `_match_saisissable` rend un match jouable
-        dès que ses deux occupants sont connus, donc des quarts se tirent pendant que les derniers
-        huitièmes finissent. Quand le dernier huitième était validé, l'arrêt « après ce tour »
-        figeait la phase et le scoreur ne pouvait plus **ni finir ni rectifier** le quart en cours.
-        Deux CA violés d'un coup — « personne n'est coupé en plein tir », qui ne vaut pas que
-        pour la portée départ, et « la correction reste possible ».
-
-        Le CA « une correction reste possible pendant la pause » est donc **tenu** ici, et par la
-        même mécanique que pour la qualification : `saisir_manche` se documente « Saisit (**ou
-        réédite**) une manche d'un match », c'est le chemin de correction du duel, et il reste
-        ouvert. Seule la **validation** — le geste qui fait avancer le braquet, donc le tour — est
-        refusée. Une rédaction antérieure affirmait le contraire (« les duels n'ont aucun chemin de
-        correction ») : c'était faux, et le refus large qu'elle justifiait est celui qui vient
-        d'être retiré.
+        ⚠️ **La garde est sur `valider`, pas dans `_decor`** : celui-ci est le passage obligé des
+        écritures **et** des lectures, donc y poser le refus rendrait le tableau **illisible**
+        pendant la pause — pilotage, écran de salle et affichage public tomberaient ensemble. ⚠️
+        **Sur `valider` SEULEMENT** : garder aussi `saisir_manche` coupait **en plein tir** un duel
+        du tour suivant déjà engagé. Le CA « une correction reste possible » tient par là.
         """
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is not None:
@@ -513,21 +465,10 @@ class ServiceSaisieDuels:
         """De quoi lire le classement de **n'importe quelle** phase amont de ce créneau (E05US024).
 
         Remplace `_ordre_de_la_qualification`, qui ne désignait qu'un seul ordre lisible : toute
-        autre source était ignorée en silence et la phase recevait *tous* les archers en lice.
-
-        **Exposé** (et non privé) parce que `ServicePlacementDuels` doit lire **exactement** la même
-        chose : les deux services ensemencent le même arbre, l'un pour dire qui affronte qui,
-        l'autre
-        où ils tirent. C'est la raison d'être d'`application/prelevement.py`, et l'écart mesuré à la
-        revue d'E05US020 — plan de 8 placements pour un tableau de 4 — est ce qui arrive quand la
-        règle est recopiée au lieu d'être partagée.
-
-        **Mémoïsé sur toute la descente** : le cache est créé au sommet et **transmis** aux niveaux
-        inférieurs, si bien qu'une phase amont partagée par deux chemins n'est reconstruite qu'une
-        fois. Le coût est donc linéaire en **nombre de phases** de la chaîne, quelle que soit la
-        forme du graphe de sources — et non en nombre de chemins, comme le faisait un premier jet
-        (correctif de revue, axe C2). Le cache **transverse aux requêtes** reste `DETTE-031`, que
-        cette US ne rouvre pas.
+        autre source était ignorée en silence. **Exposé** (et non privé) parce que
+        `ServicePlacementDuels` doit lire **exactement** la même chose — l'écart mesuré à la revue
+        d'E05US020 (plan de 8 pour un tableau de 4) est ce qui arrive quand la règle est recopiée.
+        **Mémoïsé sur toute la descente** : coût linéaire en nombre de **phases**, pas de chemins.
         """
         cache: dict[int, ClassementSource | None] = {} if _cache is None else _cache
 
@@ -550,41 +491,23 @@ class ServiceSaisieDuels:
     ) -> ClassementSource | None:
         """Le classement produit par la phase de cet `ordre` **dans ce créneau**, ou `None`.
 
-        Quatre cas, et le dernier compte autant que les trois autres :
-
-        1. **qualification** — le classement de tir du départ (ADR-0075 : jamais tous créneaux
-           confondus, ce qui y ferait entrer des archers qui ne tirent pas ici) ;
-        2. **élimination directe** — l'arbre reconstruit, lu comme un classement
-           (`domain/classement_de_tableau.py`). C'est ici que le service **s'appelle lui-même** ;
-        3. **tout type délégué** (`TYPES_DELEGUES` — poules, Big Shoot Off, système suisse) — le
-           classement est produit par le service du format et lu par le port
-           `LecteurClassementDePhase`, [ADR-0084]. Le service n'y touche pas lui-même : rejouer une
-           de ces phases demande son réglage, son plan et ses tirs, c'est-à-dire trois repositories
-           qu'un service de tableau n'a aucune raison de connaître ;
-        4. **tout autre type** — `None`. C'est aussi la réponse quand le type est délégué mais
-           qu'**aucun lecteur n'est branché** : le montage n'a pas ce format. Rendre `None` fait
-           retomber la phase sur son comportement d'avant plutôt que d'inventer un ordre — le
-           prélèvement reste **inerte**, pas faux.
-
-        ⚠️ **La cascade était écrite un type par branche jusqu'à E05US026**, et les deux dernières
-        étaient identiques au type près. C'est la duplication qu'[ADR-0084] a refermée sur sa 3ᵉ
-        occurrence : ajouter la colline (`E05US027`) ne demandera plus de brancher ici.
-
-        [ADR-0084]: ../../docs/adr/0084-un-seul-port-de-lecture-de-classement-resolu-par-type.md
+        1. **qualification** — le classement de tir du départ (ADR-0075) ;
+        2. **élimination directe** — l'arbre reconstruit ; le service s'appelle lui-même ;
+        3. **type délégué** — produit par le service du format, lu par `LecteurClassementDePhase` ;
+        4. **tout autre**, ou aucun lecteur branché — `None` : la phase retombe sur son
+           comportement d'avant, le prélèvement reste **inerte** plutôt que faux.
         """
         phase = next((p for p in self._phases.par_depart(depart_id) if p.ordre == ordre), None)
         if phase is None:
             return None
         if phase.type is TypePhase.QUALIFICATION:
-            # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir sont
-            # fermes dès que les volées sont validées.
+            # Un classement de qualification n'a **aucune plage indécise** : les rangs de tir
+            # sont fermes dès que les volées sont validées.
             #
-            # ⚠️ **Mais il ne dispute plus forcément le tournoi entier** (E05US025, ADR-0082). Ce
-            # bloc rendait `pour_depart(depart_id)` — le classement de la qualification de tête —
-            # pour **toute** phase de type qualification, quel que soit son ordre. Sur le déroulé de
-            # référence, la *haute* et la *basse* auraient donc toutes deux relu le classement du
-            # premier tour : leurs 3x15 n'auraient servi à rien, et les deux auraient prélevé dans
-            # les mêmes rangs. C'était le vrai câblage à casser, bien plus que les appels de portée.
+            # ⚠️ **Mais il ne dispute plus forcément le tournoi entier** (E05US025, ADR-0082) : ce
+            # bloc rendait le classement de la qualification de tête pour **toute** phase de ce
+            # type, si bien que la *haute* et la *basse* auraient relu le même premier tour et
+            # prélevé dans les mêmes rangs.
             if not phase.sources:
                 # La qualification de tête : tous les inscrits, elle dispute le tournoi entier.
                 return ClassementSource(classement=self._classements.pour_depart(depart_id))
@@ -653,17 +576,13 @@ class ServiceSaisieDuels:
         )
 
     def _appliquer_forfaits(self, tableau: Tableau, phase_id: PhaseId) -> Tableau:
-        """Fait **passer l'adversaire** de tout duelliste déclaré forfait **dans cette phase de
-        tableau** (E04US015 / ADR-0050, ex-E12US004).
+        """Fait **passer l'adversaire** d'un duelliste forfait dans cette phase (ADR-0050).
 
-        Un forfait en duels est un **walkover** : l'archer garde ses duels déjà validés (rejoués
-        avant), mais tout match **jouable et non encore tranché** où il figure est gagné d'office
-        par son adversaire — analogue à la résolution d'un bye. On traite par **tour croissant**
-        (un tour ≥ 2 n'a ses occupants qu'après propagation amont). L'annulation du forfait fait
-        **disparaître** le walkover à la reconstruction suivante (réversibilité, `D-15`). Deux
-        forfaits face à face (rare) : le camp **haut** avance par convention — lui-même walkover
-        en aval s'il reste forfait. Les forfaits de **qualification** ne passent pas ici : leurs
-        archers ne sont pas dans le tableau (exclus à l'ensemencement).
+        Un forfait en duels est un **walkover** : l'archer garde ses duels déjà validés, mais tout
+        match jouable et non tranché où il figure est gagné d'office. On traite par **tour
+        croissant** (un tour ≥ 2 n'a ses occupants qu'après propagation). Deux forfaits face à face
+        : le camp **haut** avance par convention. Les forfaits de qualification ne passent pas ici
+        — leurs archers ne sont pas dans le tableau.
         """
         forfaits = {f.archer_id for f in self._forfaits.par_phase(phase_id)}
         if not forfaits:
@@ -692,12 +611,11 @@ class ServiceSaisieDuels:
     ) -> Tableau:
         """Rejoue les duels **validés** dans l'ordre des tours pour peupler les tours ≥ 2.
 
-        Un tour ≥ 2 ne connaît ses occupants qu'une fois les vainqueurs amont propagés : on traite
-        donc les matchs **par tour croissant**. On ne rejoue qu'un duel **validé** (officiel) et
-        tranché — un tir non validé n'avance pas le tableau (comme le cumul de qualif ne compte que
-        le validé). Un tir dont les **duellistes enregistrés divergent** des occupants (le
-        classement a changé depuis) est **ignoré**, jamais rejoué pour d'autres archers (ADR-0049
-        §4) ; un `match_numero` **hors tableau** (effectif rétréci) est écarté avant tout accès.
+        Un tour ≥ 2 ne connaît ses occupants qu'une fois les vainqueurs amont propagés, d'où le
+        traitement par tour croissant. On ne rejoue qu'un duel **validé** et tranché. Un tir dont
+        les **duellistes enregistrés divergent** des occupants est **ignoré**, jamais rejoué pour
+        d'autres archers (ADR-0049 §4) ; un `match_numero` hors tableau est écarté avant tout
+        accès.
         """
         numeros = self._duels.numeros_enregistres(phase_id)
         valides = {m.numero for m in tableau.matchs}

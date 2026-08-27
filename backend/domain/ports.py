@@ -100,48 +100,24 @@ class ArcherRepository(Protocol):
         ...
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer d'identifiant donné, **ses scores et ses inscriptions** (E02US003,
-        E02US009).
+        """Supprime l'archer, **ses scores et ses inscriptions** (E02US003, E02US009).
 
-        Existence garantie par l'appelant. La purge des scores **et des inscriptions sur départs**
-        (E02US009) fait partie du contrat : elle n'est pas un effet de bord, c'est la seule façon de
-        tenir la promesse « l'archer disparaît » — `score.archer_id` **et** `inscription.archer_id`
-        sont des FK **sans `ON DELETE`** (DETTE-001), donc une suppression qui les laisserait
-        derrière elle échouerait en base. Cascade **applicative et maîtrisée**, à faire dans **une
-        seule transaction** : deux transactions successives laisseraient, en cas d'échec de la
-        seconde, un archer dépouillé de ses flèches.
-
-        L'appelant a **déjà** obtenu la confirmation de l'admin si l'archer était placé ou
-        engagé (`ArcherEngage`) : à ce niveau, la décision est prise et les données sont
-        perdues volontairement. Un archer qui **abandonne** ne passe pas par ici — c'est un
-        forfait tracé (E04US015 / ADR-0050, ex-E12US004), qui préserve ses flèches.
+        ⚠️ La purge fait partie du contrat, dans **une seule transaction** : `score.archer_id` et
+        `inscription.archer_id` sont des FK **sans `ON DELETE`** (DETTE-001), et deux transactions
+        successives laisseraient un archer dépouillé de ses flèches. Existence et confirmation
+        (`ArcherEngage`) garanties par l'appelant. Un archer qui **abandonne** ne passe pas par
+        ici : c'est un forfait tracé (ADR-0050), qui préserve ses flèches.
         """
         ...
 
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
-        """Fusionne deux fiches d'un doublon : **réassigne** au gagnant les inscriptions, scores et
-        séries du perdant, puis **supprime** le perdant (E02US005).
+        """Fusionne deux fiches d'un doublon (E02US005) : réassigne inscriptions, scores et séries
+        au gagnant, puis **supprime** le perdant — en **une seule transaction** (FK sans
+        `ON DELETE`, DETTE-001). Miroir de `supprimer`, qui purge là où celle-ci réattribue.
 
-        Miroir de `supprimer` : là où la suppression **purge** la descendance de l'archer, la fusion
-        la **réattribue** — dans **une seule transaction** (mêmes FK sans `ON DELETE`, DETTE-001).
-
-        **Contrat garanti par l'appelant** (le service, dans une commande de la file du writer
-        unique) : les deux archers existent, sont **distincts**, appartiennent au **même tournoi**,
-        et ils n'ont **pas tous les deux** une série de saisie (sinon la réassignation violerait
-        `UNIQUE(tournoi_id, archer_id)` — le service lève `FusionArchersEngages` avant d'appeler).
-
-        Deux collisions d'unicité à résoudre au niveau de l'adapter (elles ne remontent pas au
-        service) :
-
-        - `inscription` — `UNIQUE(archer_id, depart_id)` : si le gagnant est **déjà** inscrit sur un
-          départ où le perdant l'est aussi, on **ne réassigne pas** cette inscription (on la
-          supprime) et on **reporte le paiement** sur celle du gagnant (`paye` vrai si l'une
-          des deux était payée) — pas de doublon d'inscription, pas de perte de « a payé ».
-        - `serie` — `UNIQUE(tournoi_id, archer_id)` : le contrat (« pas les deux ») garantit qu'au
-          plus une série existe, donc la réassignation est sans collision.
-
-        Les **volées** suivent leur série (réassignée avec elle). Le **placement** (E03US004) suit
-        l'inscription : réassigné avec l'inscription gardée, cascadé avec l'inscription supprimée.
+        L'appelant garantit deux archers distincts du même tournoi dont **pas les deux** n'ont de
+        série. ⚠️ Collision `UNIQUE(archer_id, depart_id)` à résoudre dans l'adapter : l'inscription
+        doublonnée est supprimée plutôt que réassignée, **paiement reporté** sur celle du gagnant.
         """
         ...
 
@@ -213,14 +189,11 @@ class DepartRepository(Protocol):
         ...
 
     def supprimer(self, depart_id: DepartId) -> None:
-        """Supprime le départ d'identifiant donné **et ses inscriptions** (E02US009).
+        """Supprime le départ **et ses inscriptions** (E02US009).
 
-        Existence garantie par l'appelant, qui a **déjà** obtenu la confirmation de l'admin si le
-        départ portait des inscriptions (`DepartAvecInscriptions`). La purge des inscriptions fait
-        partie du contrat, dans **une seule transaction** : `inscription.depart_id` est une FK
-        **sans `ON DELETE`** (DETTE-001), donc une suppression qui les laisserait échouerait.
-        Même patron que `ArcherRepository.supprimer` avec les scores — cascade **applicative et
-        maîtrisée**.
+        Existence et confirmation (`DepartAvecInscriptions`) garanties par l'appelant. La purge est
+        au contrat, en **une seule transaction** : `inscription.depart_id` est une FK **sans
+        `ON DELETE`** (DETTE-001). Même patron que `ArcherRepository.supprimer`.
         """
         ...
 
@@ -230,14 +203,10 @@ class DepartRepository(Protocol):
         """Supprime le départ (et ses inscriptions) **et** ouvre les remboursements en une
         transaction (E08US005, ADR-0057).
 
-        Variante de `supprimer` pour un créneau dont **certaines inscriptions étaient payées** : les
-        `remboursements` (un par inscription payée d'un créneau tarifé, construits par le service)
-        sont **insérés dans la même session** que les `DELETE`, puis un **unique** `commit` scelle
-        l'ensemble. Atomicité « on n'efface une inscription payée que si son remboursement est
-        ouvert » — jamais de somme encaissée effacée sans contrepartie (le but de l'US), jamais de
-        remboursement en double. Existence et confirmation garanties par l'appelant, comme
-        `supprimer`. Une liste vide n'a pas de raison d'appeler cette variante (le service appelle
-        `supprimer`) ; l'implémentation doit néanmoins la tolérer (équivalente à `supprimer`).
+        Variante de `supprimer` quand des inscriptions étaient **payées** : les `remboursements`
+        construits par le service sont insérés dans la **même session** que les `DELETE`, un unique
+        `commit` scellant l'ensemble — jamais de somme encaissée effacée sans contrepartie, jamais
+        de remboursement en double. Liste vide tolérée (équivalente à `supprimer`).
         """
         ...
 
@@ -369,16 +338,11 @@ class PlacementRepository(Protocol):
 class PlacementParBlocRepository(Protocol):
     """Port de persistance du **plan de blocs** matérialisé d'une phase (E05US023, ADR-0083 §3).
 
-    Troisième port de placement, et le seul dont l'unité posée ne soit pas un archer : on persiste
-    « groupe → plage de couloirs contigus », jamais « archer → couloir ». La raison est dans
-    `poule.couloirs_occupes` — le membre au repos change à chaque tour, donc aucun membre n'a de
-    couloir attitré, et écrire l'archer serait écrire une information *fausse*.
-
-    Le port ne connaît que **deux** gestes, contre quatre pour `PlacementTableauRepository`, et
-    l'écart est volontaire : un plan de blocs ne s'ajuste pas au glisser-déposer archer par archer.
-    L'organisateur déplace un **groupe**, ce qui revient à reposer le plan entier — le CA n'offre
-    pas d'autre geste, et en offrir un ici inviterait à casser la contiguïté du bloc, qui est
-    l'invariant de tout le format.
+    ⚠️ Seul port de placement dont l'unité posée n'est **pas** un archer : on persiste « groupe →
+    plage de couloirs contigus ». Le membre au repos change à chaque tour
+    (`poule.couloirs_occupes`), donc écrire « archer → couloir » écrirait une information fausse.
+    D'où deux gestes seulement, contre quatre pour `PlacementTableauRepository` — l'organisateur
+    déplace un **groupe** ; en offrir plus inviterait à casser la contiguïté du bloc.
     """
 
     def par_phase(self, phase_id: PhaseId) -> list[BlocDeCouloirs]:
@@ -442,12 +406,10 @@ class PlacementTableauRepository(Protocol):
 class DuelRepository(Protocol):
     """Port de persistance du **tir** d'un match du tableau (saisie en duels, E04US013, ADR-0049).
 
-    On persiste le **tir** (manches, barrage, validateur) **et l'identité des duellistes**, keyés
-    `(phase_id, match_numero)`. Cette identité n'est pas l'appariement *plan* (recalculé du
-    classement, ADR-0048) : c'est le fait « qui a tiré », qui **ancre** le résultat pour que
-    l'appelant **détecte** une divergence (classement changé) au lieu d'un score à l'aveugle
-    (ADR-0049 §4). Seul le **barème** (dérivé de l'arme) est réinjecté à la lecture — à duellistes
-    identiques, même arme, même barème.
+    On persiste le tir (manches, barrage, validateur) **et l'identité des duellistes**, keyés
+    `(phase_id, match_numero)`. Cette identité n'est pas l'appariement *plan*, recalculé du
+    classement (ADR-0048) : c'est le fait « qui a tiré », qui **ancre** le résultat pour que
+    l'appelant détecte une divergence (ADR-0049 §4). Seul le barème est réinjecté à la lecture.
     """
 
     def numeros_enregistres(self, phase_id: PhaseId) -> frozenset[int]:
@@ -684,23 +646,11 @@ class DerouleRepository(Protocol):
     def reordonner(self, etapes: list[EtapeDeroule]) -> list[EtapeDeroule]:
         """Réécrit **en un bloc** les rangs (et définitions remappées) de tout un déroulé.
 
-        ⚠️ **Pourquoi ce n'est pas une boucle sur `enregistrer`.** Un déroulé est une suite 1..N
-        *sans doublon* : l'échange de deux rangs voisins passe forcément par un état où deux étapes
-        portent le même, et l'adapter SQL, qui fait respecter cette unicité, refuse la première
-        écriture. La sortie de ce piège — parquer les rangs hors de portée puis les reposer — est
-        une affaire de **persistance**, pas de métier : le service dit quel déroulé il veut, il n'a
-        pas à connaître l'ordre dans lequel les lignes tolèrent d'être touchées (ADR-0003).
-
-        L'écriture est **atomique** : ou tout le déroulé prend ses nouveaux rangs, ou rien ne bouge.
-        Un réordonnancement à moitié appliqué laisserait une séquence que le domaine rejette, donc
-        un tournoi que plus personne ne peut composer.
-
-        Renvoie les étapes relues, dans l'ordre demandé.
-
-        `# DETTE-026` — **cette méthode n'existe que parce que le rang porte l'identité.** Elle est,
-        avec son pendant `PhaseRepository.reordonner`, le 3ᵉ et le 4ᵉ écrivain de la séquence : le
-        seuil que le registre s'était fixé avant de proposer un remède structurel (ancrer par
-        identité plutôt que par ordre). Cf. `docs/dette.md`.
+        ⚠️ **Pas une boucle sur `enregistrer`** : un déroulé est une suite 1..N sans doublon, et
+        l'échange de deux rangs voisins passe par un état que l'unicité SQL refuse. Sortir du piège
+        est une affaire de **persistance**, pas de métier (ADR-0003). L'écriture est **atomique** —
+        à moitié appliquée, elle laisserait une séquence que le domaine rejette. Renvoie les étapes
+        relues dans l'ordre demandé. `# DETTE-026` : 3ᵉ écrivain, le rang porte l'identité.
         """
         ...
 
@@ -712,27 +662,11 @@ class DerouleRepository(Protocol):
 class PhaseRepository(Protocol):
     """Port de persistance des phases — l'**avancement** d'une étape dans un créneau (ADR-0076).
 
-    ⚠️ **Une phase ne persiste plus sa définition.** Depuis ADR-0076, seuls `depart_id`, `ordre` et
-    `statut` sont écrits ; le barème, le grain, les prélèvements et la profondeur viennent de
-    l'`EtapeDeroule` de même rang. Les `Phase` **rendues** par ce port portent malgré tout leur
-    définition — le repository l'**assemble** —, si bien que les modules qui lisent `phase.bareme`
-    ignorent la couture. C'est l'affaire de l'adapter (ADR-0003), pas celle du domaine.
-
-    Corollaire à connaître : passer une `Phase` à `ajouter` ou `enregistrer` avec un barème modifié
-    **ne change rien** — la définition s'édite sur l'étape, via `DerouleRepository`. Le seul champ
-    qu'une écriture de phase déplace est le `statut`.
-
-    Introduit minimalement pour la qualification (E01US009 / ADR-0011), **étendu par E05US001** à
-    toute la séquence : `par_depart` (liste ordonnée) et `supprimer` servent la composition et le
-    cycle de vie des phases du moteur (ADR-0045).
-
-    ⚠️ **Les lectures sont passées de `par_tournoi` à `par_depart` en E01US025** (ADR-0075) : la
-    portée sportive est le **départ**. Le renommage est délibérément **cassant** — `DepartId` et
-    `TournoiId` sont tous deux des alias de `int`, donc mypy n'aurait **rien** signalé si les
-    méthodes avaient gardé leur nom : chaque appelant serait resté compilable et faux, cherchant des
-    phases par un identifiant de tournoi dans une colonne de départ. Renommer était le seul moyen
-    de forcer la revisite de tous les appels. *(Voir DETTE-044 : des `NewType` supprimeraient cette
-    classe entière de confusions.)*
+    ⚠️ **Une phase ne persiste plus sa définition** : seuls `depart_id`, `ordre` et `statut` sont
+    écrits, le reste venant de l'`EtapeDeroule` de même rang, que le repository **assemble**.
+    Corollaire : passer une `Phase` au barème modifié ne change rien — la définition s'édite sur
+    l'étape. ⚠️ Lectures `par_depart` et non `par_tournoi` depuis E01US025 (ADR-0075) ; le
+    renommage est **cassant à dessein**, les deux identifiants étant des alias d'`int` (DETTE-044).
     """
 
     def ajouter(self, phase: Phase) -> Phase:
@@ -744,19 +678,13 @@ class PhaseRepository(Protocol):
         ...
 
     def par_depart_et_type(self, depart_id: DepartId, type_phase: TypePhase) -> Phase | None:
-        """Renvoie **la dernière** phase d'un départ pour ce type, ou `None` s'il n'y en a pas.
+        """Renvoie **la dernière** phase d'un départ pour ce type, ou `None`.
 
-        ⚠️ **Cette méthode n'a plus aucun appelant de production** (E05US025) : elle ne survit que
-        dans des décors de tests, qui s'en servent pour retrouver l'unique phase qu'ils viennent de
-        poser. Sa docstring affirmait « un départ porte **au plus une** phase de `qualification` » —
-        exactement l'invariant qu'ADR-0082 retire, et dont le retour « par prudence » est ce que le
-        commentaire de `domain/phase.py` met en garde contre. La phrase est retirée plutôt que la
-        méthode, dont la suppression toucherait une vingtaine de décors sans rien prouver de plus.
-
-        En cas de multiplicité, les deux adapters rendent l'`ordre` **le plus élevé** — c'est un
-        choix arbitraire, pas une résolution de « la » qualification. Qui a besoin de désigner une
-        qualification parmi plusieurs passe par `application/portee.py:qualification_courante`
-        (celle où l'on tire) ou par la population de la phase, jamais par ici.
+        ⚠️ **Plus aucun appelant de production** (E05US025) : ne survit que dans des décors de
+        tests. Un départ ne porte **plus** au plus une qualification (ADR-0082) ; en cas de
+        multiplicité, les deux adapters rendent l'`ordre` le plus élevé — un choix arbitraire, pas
+        une résolution. Qui doit désigner « la » qualification passe par
+        `application/portee.py:qualification_courante`, jamais par ici.
         """
         ...
 
@@ -789,13 +717,10 @@ class PhaseRepository(Protocol):
     def reordonner(self, phases: list[Phase]) -> None:
         """Réécrit **en un bloc** le rang des phases d'un créneau (réalignement sur les étapes).
 
-        Pendant de `DerouleRepository.reordonner`, et pour la même raison : un créneau ne porte
-        qu'un avancement par rang, donc décaler les phases une à une bute sur cette unicité dès que
-        deux rangs s'échangent. Le rang **est** la clé de jointure vers la définition (ADR-0076) :
-        une phase laissée sur son ancien rang pointerait l'étape voisine — un changement de barème
-        silencieux, sans la moindre erreur visible. D'où l'atomicité.
-
-        `# DETTE-026` — 4ᵉ écrivain de la séquence, même remarque que sur `DerouleRepository`.
+        Pendant de `DerouleRepository.reordonner`, même raison : l'unicité du rang par créneau
+        refuse un décalage un à un. ⚠️ Le rang **est** la clé de jointure vers la définition
+        (ADR-0076) — une phase laissée sur son ancien rang pointerait l'étape voisine, soit un
+        changement de barème silencieux. D'où l'atomicité. `# DETTE-026`, 4ᵉ écrivain.
         """
         ...
 
@@ -854,14 +779,11 @@ class ScoreurRepository(Protocol):
 class PosteRepository(Protocol):
     """Port de persistance des postes — credential d'un lieu (E04US001, ADR-0029 ; élargi E07US004).
 
-    Entité **du tournoi** (`par_tournoi` énumère les postes d'un plan), mais le `code` est **unique
-    dans toute la base** (`par_code` n'a pas de `tournoi_id`) : le rattachement se fait par le seul
-    code (scan/saisie), qui doit désigner un lieu sans ambiguïté d'un tournoi à l'autre.
-
-    Depuis E07US004, un poste est de type **cible** ou **écran** — d'où `par_tournoi_et_type`
-    (cf. sa docstring : `par_tournoi` seul est devenu un piège pour tout appelant qui ne pense
-    qu'aux cibles). `supprimer` n'existe que pour les écrans (un écran se retire du gymnase ; une
-    cible, elle, existe tant que le plan de salle l'a).
+    Entité **du tournoi**, mais le `code` est **unique dans toute la base** (`par_code` n'a pas de
+    `tournoi_id`) : le rattachement se fait par le seul code, qui doit désigner un lieu sans
+    ambiguïté d'un tournoi à l'autre. ⚠️ Un poste est de type **cible** ou **écran** (E07US004),
+    d'où `par_tournoi_et_type` ; `supprimer` n'existe que pour les écrans, une cible existant tant
+    que le plan de salle la porte.
     """
 
     def ajouter(self, poste: Poste) -> Poste:
@@ -876,11 +798,9 @@ class PosteRepository(Protocol):
         """Renvoie **tous** les postes d'un tournoi, cibles **et** écrans (liste éventuellement
         vide).
 
-        ⚠️ Depuis E07US004, « tous » inclut les écrans de salle : un appelant qui ne traite que des
-        cibles doit passer par `par_tournoi_et_type`, sous peine de trier des écrans par numéro de
-        cible inexistant. Le seul appelant légitime de cette méthode est celui qui veut vraiment
-        l'ensemble — la console de supervision, dont le CA d'E07US004 exige qu'elle montre les
-        écrans à côté des tablettes.
+        ⚠️ Depuis E07US004, « tous » inclut les écrans : un appelant qui ne traite que des cibles
+        passe par `par_tournoi_et_type`, sous peine de trier des écrans par numéro de cible
+        inexistant. Le seul appelant légitime est la console de supervision.
         """
         ...
 
@@ -924,16 +844,11 @@ class PosteRepository(Protocol):
 class RegistreConsignes(Protocol):
     """Port : **prises de contrôle** des écrans de salle (E07US004, ADR-0064) — volatil en mémoire.
 
-    Quand l'admin impose une vue à un écran, la consigne est **posée ici**, pas poussée à l'écran :
-    le hub temps réel est mono-canal (aucun ciblage par destinataire) et, surtout, la **fin** d'une
-    prise de contrôle naît du *temps qui passe*, que nul événement serveur ne peut pousser — le même
-    raisonnement qu'ADR-0038 §4 pour le passage hors-ligne. L'écran **lit** donc sa consigne et
-    décompte lui-même.
-
-    **En mémoire, comme les sessions de poste et la présence** : une prise de contrôle est un geste
-    du jour J, pas un réglage de préparation (celui-là, le déroulé, est en base sur le `Poste`).
-    Effet de bord **voulu** : un redémarrage du serveur **libère** les écrans au lieu de les figer —
-    c'est le sens du CA « jamais un état forcé qu'on oublie », appliqué à la panne.
+    La consigne est **posée ici**, pas poussée à l'écran : le hub temps réel est mono-canal, et la
+    **fin** d'une prise de contrôle naît du temps qui passe, qu'aucun événement serveur ne peut
+    pousser (même raisonnement qu'ADR-0038 §4) — l'écran lit sa consigne et décompte lui-même.
+    ⚠️ **En mémoire, comme les sessions de poste** : un redémarrage **libère** les écrans au lieu
+    de les figer, ce qui est « jamais un état forcé qu'on oublie » appliqué à la panne.
     """
 
     def poser(self, poste_id: PosteId, prise: PriseDeControle) -> None:
@@ -974,12 +889,10 @@ class RegistreConsignes(Protocol):
 class RegistrePresence(Protocol):
     """Port : **présence des postes** par heartbeat (E12US001, ADR-0038) — état volatil en mémoire.
 
-    Le poste signale sa présence périodiquement (heartbeat) ; le registre mémorise, par poste,
-    **quand** il a été vu pour la dernière fois et **depuis quelle IP**. Sert à dériver l'état
-    *en ligne / hors ligne* (le service compare « maintenant » — port `Horloge` — au dernier
-    heartbeat). Aucune persistance : effacé au redémarrage serveur, comme le jeton de poste
-    (ADR-0029) et le départ courant (ADR-0034). **Ce n'est pas** l'activité de saisie : « depuis
-    combien de temps ça n'a pas *tiré* » se lit sur les séries, pas ici (ADR-0038 §2).
+    Mémorise, par poste, **quand** il a été vu et **depuis quelle IP** ; le service en dérive
+    *en ligne / hors ligne* en comparant au port `Horloge`. Effacé au redémarrage, comme le jeton
+    de poste (ADR-0029). ⚠️ **Ce n'est pas** l'activité de saisie : « depuis combien de temps ça
+    n'a pas *tiré* » se lit sur les séries (ADR-0038 §2).
     """
 
     def enregistrer(self, poste_id: PosteId, instant: datetime.datetime, ip: str | None) -> None:
@@ -1029,12 +942,9 @@ class GenerateurDocumentsSalle(Protocol):
     def qr_rattachement(self, url: str) -> bytes:
         """Rend le seul QR de rattachement d'une cible en **image SVG** (octets UTF-8) (E11US008).
 
-        Distinct des deux PDF ci-dessus : ce QR-là s'affiche **à l'écran** (admin « Postes de
-        cible »), il n'est pas imprimé. **SVG** (vectoriel) pour rester net une fois **agrandi**
-        pour le scan, et **sans dépendance ajoutée** (même rendu natif ReportLab que le QR PDF —
-        règle 11). `url` est l'URL de rattachement **déjà composée** (`{origine}/?poste=<code>`) :
-        le domaine ne sait pas la bâtir (règle 1), c'est le service qui la lui passe. Un échec de
-        rendu remonte en `InfrastructureError`, traduit en 500 à la frontière.
+        Ce QR s'affiche **à l'écran**, il n'est pas imprimé — d'où le **SVG**, net une fois agrandi
+        pour le scan et sans dépendance ajoutée (règle 11). `url` est l'URL de rattachement **déjà
+        composée** : le domaine ne sait pas la bâtir (règle 1), le service la lui passe.
         """
         ...
 
@@ -1061,15 +971,10 @@ class GenerateurListesImpression(Protocol):
 class GenerateurPalmares(Protocol):
     """Port de génération du **palmarès imprimable** (E06US004 ; adapter d'infrastructure).
 
-    Le domaine décrit le contenu (`Palmares`), l'adapter (ReportLab, ADR-0031) le rend en octets
-    PDF. Une seule méthode : le palmarès **est** le document — podiums par catégorie puis
-    classement complet, comme on l'affiche au mur en fin de journée. Le retour est un simple
-    `bytes` (règle 1) ; un échec de rendu remonte en `InfrastructureError`, traduit en 500.
-
-    `tournoi` est passé à part plutôt qu'inclus dans un objet « document » : le palmarès porte déjà
-    tout son contenu, et l'envelopper d'un type dont le seul apport serait un titre serait une
-    indirection sans règle. Les listes d'impression en ont un parce qu'elles portent, elles, des
-    paramètres de composition (départ visé, ordre de tri).
+    Le domaine décrit le contenu (`Palmares`), l'adapter (ReportLab, ADR-0031) le rend en octets.
+    Une seule méthode : le palmarès **est** le document. `tournoi` est passé à part plutôt
+    qu'enveloppé dans un objet « document » — le palmarès porte déjà tout son contenu ; les listes
+    d'impression en ont un parce qu'elles portent, elles, des paramètres de composition.
     """
 
     def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
@@ -1119,16 +1024,11 @@ class AuditRepository(Protocol):
 class RemboursementRepository(Protocol):
     """Port de persistance du **registre de remboursements** (E08US005, ADR-0057).
 
-    Le registre n'est **pas** alimenté par ce port : ses lignes naissent **atomiquement** avec la
-    suppression de l'inscription payée qui les a provoquées
-    (`InscriptionRepository.supprimer_avec_remboursement`,
-    `DepartRepository.supprimer_avec_remboursements`). Ce port sert le **traitement** — lire les
-    remboursements d'un tournoi et marquer un poste « remboursé »/« reporté » — et rien d'autre :
-    on ne crée ni ne supprime un remboursement isolément (il naît d'un effacement, il ne meurt pas).
-
-    `enregistrer_avec_trace` co-écrit le nouveau statut **et** son entrée d'audit `REMBOURSEMENT`
-    dans **une seule transaction** (atomicité acte↔trace, ADR-0035, comme `definir_paye_avec_trace`
-    du paiement) : le traitement est un mouvement d'argent, il ne bascule jamais sans trace.
+    ⚠️ Le registre n'est **pas** alimenté par ce port : ses lignes naissent **atomiquement** avec la
+    suppression de l'inscription payée (`…supprimer_avec_remboursement(s)`). Ce port sert le
+    **traitement** — lire, marquer « remboursé » ou « reporté » — et rien d'autre.
+    `enregistrer_avec_trace` co-écrit statut **et** entrée d'audit en une transaction (ADR-0035) :
+    un mouvement d'argent ne bascule jamais sans trace.
     """
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Remboursement]:
@@ -1159,45 +1059,31 @@ class RemboursementRepository(Protocol):
 class SerieRepository(Protocol):
     """Port de persistance des séries de saisie de qualification (E04US002).
 
-    **Une série par `(phase, archer)`** depuis E05US025 (ADR-0082) — et non plus par
-    `(tournoi, archer)`. Un déroulé peut enchaîner plusieurs qualifications : l'archer qui tire la
-    *haute* après la qualification de tête y ouvre une **seconde** feuille, et les deux coexistent.
-    Ce changement de clé **résorbe `DETTE-046`** (un archer sur deux créneaux n'avait qu'un seul
-    emplacement pour ses flèches), la phase appartenant à un départ.
-
-    `enregistrer` sert la **saisie** ordinaire (sans trace) ; `enregistrer_avec_trace` co-écrit la
-    série **et** son entrée d'audit dans **une seule transaction** (atomicité acte↔trace, ADR-0035)
-    — la validation et la correction, qui laissent une trace. L'atomicité est réalisée par l'adapter
-    (session partagée) ; au niveau du port, c'est une seule opération « la série ET sa trace, ou ni
-    l'une ni l'autre ».
+    ⚠️ **Une série par `(phase, archer)`** depuis E05US025 (ADR-0082), et non plus par
+    `(tournoi, archer)` : un déroulé peut enchaîner plusieurs qualifications, et les deux feuilles
+    coexistent. Résorbe `DETTE-046`. `enregistrer` sert la saisie ordinaire ;
+    `enregistrer_avec_trace` co-écrit la série **et** son audit en une seule transaction
+    (ADR-0035) — la validation et la correction, elles, laissent une trace.
     """
 
     def par_archer(self, phase_id: PhaseId, archer_id: ArcherId) -> Serie | None:
         """La feuille de cet archer **dans cette phase**, ou `None` si elle n'existe pas encore.
 
-        ⚠️ **Le premier paramètre était `tournoi_id` jusqu'à E05US025, et rien ne le vérifie.** Le
-        remplacer plutôt que d'ajouter un paramètre visait à faire **cesser de compiler** les
-        appelants restés à la maille tournoi. Le pari a échoué, et la revue l'a mesuré : `TournoiId`
-        et `PhaseId` sont deux **alias** d'`int` (`DETTE-044`), donc mypy voit deux fois le même
-        type. Neuf sites ont été manqués en silence — dont le chemin de lecture de la grille de
-        saisie et l'impression des feuilles de marque.
-
-        La liste des appelants a été **relevée à la main** et les décors de tests ne font plus
-        coïncider `tournoi_id` et `phase_id` (c'est ce qui rendait la confusion invisible). La
-        vraie barrière reste à poser : `NewType("PhaseId", int)`, inscrit à `DETTE-044`. Tant
-        qu'elle n'existe pas, **ne pas se fier au compilateur ici** — vérifier l'appelant.
+        ⚠️ **Le 1ᵉʳ paramètre était `tournoi_id` jusqu'à E05US025, et rien ne le vérifie.** Le
+        remplacer devait faire cesser de compiler les appelants restés à la maille tournoi ; le pari
+        a échoué — `TournoiId` et `PhaseId` sont deux alias d'`int` (`DETTE-044`), et neuf sites ont
+        été manqués en silence. La liste a été relevée à la main. **Ne pas se fier au compilateur
+        ici** tant que `NewType("PhaseId", int)` n'existe pas : vérifier l'appelant.
         """
         ...
 
     def par_phase(self, phase_id: PhaseId) -> list[Serie]:
         """Toutes les feuilles d'une phase (liste éventuellement vide).
 
-        Sert au **classement** (E06US001), qui se calcule phase par phase : le cumul et le départage
-        d'une qualification ne regardent que les flèches tirées **dans celle-ci**. Les lire au
-        tournoi mélangerait les deux tours de l'exemple d'ADR-0082 et rendrait un classement faux.
+        Sert au **classement** (E06US001), qui se calcule phase par phase : les lire au tournoi
+        mélangerait les deux tours de l'exemple d'ADR-0082 et rendrait un classement faux.
 
-        L'ordre n'est pas garanti par le port (le classement trie lui-même) ; les volées de chaque
-        série sont, elles, ordonnées par numéro (contrat de `par_archer`).
+        L'ordre n'est pas garanti (le classement trie lui-même) ; les volées, si (`par_archer`).
         """
         ...
 
@@ -1236,12 +1122,9 @@ class SerieRepository(Protocol):
 class ForfaitRepository(Protocol):
     """Port de persistance des **forfaits** — abandon / disqualification (E04US015, ADR-0050).
 
-    Un forfait par `(tournoi, archer, phase)`. Comme la série, les écritures **co-écrivent une trace
-    d'audit** en **une seule transaction** (atomicité acte↔trace, ADR-0035) : `declarer_avec_trace`
-    (ajout) et `annuler_avec_trace` (suppression — réversibilité, `D-15`). L'atomicité est réalisée
-    par l'adapter (session partagée) ; au niveau du port, c'est « le forfait ET sa trace, ou ni l'un
-    ni l'autre ». Les lectures servent le **classement** (forfaits de la phase de qualif) et le
-    **rejeu des duels** (forfaits de la phase de tableau → l'adversaire passe).
+    Un forfait par `(tournoi, archer, phase)`. Comme la série, les écritures co-écrivent une trace
+    d'audit en **une seule transaction** (ADR-0035) : `declarer_avec_trace` et `annuler_avec_trace`
+    (réversibilité, `D-15`). Les lectures servent le **classement** et le **rejeu des duels**.
     """
 
     def par_tournoi(self, tournoi_id: TournoiId) -> list[Forfait]:
@@ -1282,32 +1165,23 @@ class ForfaitRepository(Protocol):
 
 
 class BarrageRepository(Protocol):
-    """Port de persistance des **barrages de places** (E06US003, [ADR-0066]).
+    """Port de persistance des **barrages de places** (E06US003, ADR-0066).
 
-    Le grain d'écriture est la **manche**, pas la flèche : un barrage se tire en une fois, tous ses
-    tireurs ensemble, et le moteur refuse d'ailleurs un groupe retiré à moitié. Enregistrer flèche
-    par flèche exposerait une manche incomplète à la lecture — donc un verdict provisoire faux.
-
+    Le grain d'écriture est la **manche**, pas la flèche : un barrage se tire en une fois, et
+    enregistrer flèche par flèche exposerait une manche incomplète — donc un verdict provisoire.
     ⚠️ **Aucune méthode ne rend le verdict** : il se recalcule depuis les tirs
-    (`BarrageDePlaces.resultat`),
-    et rien ne le stocke. C'est ce qui rend une flèche mal saisie corrigeable — la corriger corrige
-    le classement. Un port qui exposerait « le verdict » inviterait à le mémoriser, donc à créer une
-    seconde vérité périmée dès le premier correctif.
-
-    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    (`BarrageDePlaces.resultat`). C'est ce qui rend une flèche mal saisie corrigeable ; l'exposer
+    inviterait à le mémoriser, donc à créer une seconde vérité périmée dès le premier correctif.
     """
 
     def par_depart(self, depart_id: DepartId) -> list[BarrageDePlaces]:
         """Tous les barrages **d'un départ**, clos compris (liste éventuellement vide).
 
-        Les **clos** sont rendus eux aussi : ce sont eux qui portent les verdicts déjà appliqués au
-        classement. Les filtrer ici ferait retomber les rangs tranchés en ex æquo à la lecture
-        suivante.
+        Les **clos** sont rendus : ce sont eux qui portent les verdicts déjà appliqués au
+        classement, et les filtrer ferait retomber les rangs tranchés en ex æquo.
 
-        **D'un départ depuis E01US025** (ADR-0075) : un barrage départage une place dans le
-        classement d'un créneau. Renommé comme `PhaseRepository.par_depart`, et pour la même
-        raison — `TournoiId` et `DepartId` étant deux alias de `int`, garder le nom aurait laissé
-        chaque appelant compilable et faux.
+        ⚠️ D'un **départ** depuis E01US025 (ADR-0075). Renommé comme `PhaseRepository.par_depart` :
+        les deux identifiants étant des alias d'`int`, garder le nom laissait l'appelant faux.
         """
         ...
 
@@ -1358,17 +1232,11 @@ class BarrageRepository(Protocol):
 class FranchissementArretRepository(Protocol):
     """Port de persistance des **franchissements d'arrêt** — ce qu'un arrêt a coupé (E05US033).
 
-    ⚠️ **Ce port ne persiste pas les arrêts eux-mêmes**, et la séparation est le cœur d'[ADR-0091].
-    La *définition* d'un arrêt (« après le tour 3, portée départ ») vit sur l'`EtapeDeroule` du
-    tournoi, dans sa `config` JSON, servie par `DerouleRepository` : c'est du déroulé, défini une
-    fois et rejoué par chaque créneau (ADR-0076). Ce port-ci ne porte que l'**avancement** : cet
-    arrêt-là a-t-il coupé, dans ce créneau-ci, et l'admin l'a-t-il relevé.
-
-    C'est le seul état **persisté** du mécanisme, tout le reste étant dérivé à la lecture (ADR-0090
-    §5). La raison est écrite en tête de `domain.arret_programme` : la condition de déclenchement
-    est monotone, donc un déclencheur sans mémoire remettrait la phase en pause à chaque reprise.
-
-    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    ⚠️ **Ce port ne persiste pas les arrêts eux-mêmes** (ADR-0091) : leur *définition* vit sur
+    l'`EtapeDeroule` du tournoi, servie par `DerouleRepository`. Ce port-ci ne porte que
+    l'**avancement** — cet arrêt-là a-t-il coupé dans ce créneau, et l'admin l'a-t-il relevé. C'est
+    le seul état **persisté** du mécanisme (ADR-0090 §5) : la condition étant monotone, un
+    déclencheur sans mémoire remettrait la phase en pause à chaque reprise.
     """
 
     def par_depart(self, depart_id: DepartId) -> list[FranchissementArret]:
@@ -1391,30 +1259,11 @@ class FranchissementArretRepository(Protocol):
 class ArretDeCirconstanceRepository(Protocol):
     """Port de persistance des **arrêts posés le jour J**, propres à un créneau (E05US034).
 
-    ⚠️ **Troisième port du mécanisme, et le partage n'est pas arbitraire** ([ADR-0092]) :
-
-    - `DerouleRepository` sert les arrêts **programmés à l'atelier** — de la définition, portée par
-      le tournoi et rejouée par tous ses créneaux (ADR-0076 §4) ;
-    - **ce port-ci** sert les arrêts **décidés en cours de journée** — de la conduite, portée par le
-      départ (ADR-0076 §5), rejouée par personne ;
-    - `FranchissementArretRepository` sert l'**avancement** — ce qu'un arrêt a effectivement coupé.
-
-    Ranger les deux premiers ensemble aurait fait rejouer par le créneau de l'après-midi une pause
-    décidée le matin pour une panne de chauffage : la propagation silencieuse est le symétrique
-    exact de la divergence silencieuse qu'ADR-0076 a supprimée.
-
-    **Pas de `retirer`.** Le CA n'en demande pas, et le coût d'une erreur de saisie est d'un clic :
-    l'arrêt tombe, l'organisateur relance. En ajouter un « au cas où » serait une porte de plus à
-    garder — et, celle-là, capable d'annuler une pause que la salle attend déjà.
-
-    ⚠️ **`# DETTE-075` — `par_depart` n'a qu'un seul appelant, et c'est le service.** Aucune route
-    ne rend les arrêts **posés** : `GET …/arrets/en-attente` ne sert que des `FranchissementArret`,
-    donc des arrêts qui ont **déjà coupé**. Un arrêt armé est ainsi invisible jusqu'à ce qu'il
-    tombe, et l'organisateur qui recharge sa page ne peut plus vérifier ce qu'il a posé. Relevé par
-    quatre axes de revue ; rien n'est cassé (l'arrêt coupera), mais c'est le seul angle mort de
-    l'US « rendre la pause visible ». Cf. `docs/dette.md`.
-
-    [ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    ⚠️ Troisième port du mécanisme (ADR-0092) : `DerouleRepository` sert les arrêts **programmés
+    à l'atelier** (portés par le tournoi, rejoués par tous ses créneaux) et **celui-ci** ceux
+    **décidés dans la journée** (portés par le départ, rejoués par personne) — les confondre ferait
+    rejouer l'après-midi une pause du matin. Pas de `retirer` : l'arrêt tombe, l'organisateur
+    relance. `# DETTE-075` — aucune route ne rend les arrêts **posés**.
     """
 
     def par_depart(self, depart_id: DepartId) -> list[ArretDeCirconstance]:
@@ -1428,18 +1277,11 @@ class ArretDeCirconstanceRepository(Protocol):
     def ajouter(self, arret: ArretDeCirconstance) -> ArretDeCirconstance:
         """Persiste un arrêt de circonstance et le renvoie avec son identifiant attribué.
 
-        ⚠️ **Lève `ArretProgrammeInvalide` (domaine) si un arrêt occupe déjà ce tour**, et cela fait
-        partie du contrat — pas d'un détail d'implémentation. L'unicité `(depart_id, phase_id,
-        apres_tour)` est tenue par le **schéma** parce que la pose est concurrente : le service
-        refuse le doublon qu'il *voit*, la contrainte ferme la **course** que sa lecture ne peut pas
-        fermer (double-clic, deux postes d'admin). Le refus est donc **métier** dans les deux cas —
-        même message (`doublon_d_arret`), même 422 — et non une panne d'infrastructure : rendre un
-        500 générique sur un geste ordinaire du jour J serait faux pour l'organisateur qui a l'écran
-        devant lui.
-
-        ⚠️ **Une doublure de test doit honorer ce `raise`**, sinon le chemin de course n'a d'oracle
-        nulle part au-dessus de l'adapter (précisé en revue : le contrat était muet, et la doublure
-        en mémoire n'avait aucune raison de le deviner).
+        ⚠️ **Lève `ArretProgrammeInvalide` (domaine) si un arrêt occupe déjà ce tour** — c'est au
+        contrat. L'unicité `(depart_id, phase_id, apres_tour)` est tenue par le **schéma** parce que
+        la pose est concurrente : le service refuse le doublon qu'il *voit*, la contrainte ferme la
+        **course**. Le refus est **métier** dans les deux cas (`doublon_d_arret`, 422), jamais un
+        500. ⚠️ Une doublure de test doit honorer ce `raise` : la course n'a pas d'autre oracle.
         """
         ...
 
@@ -1447,17 +1289,11 @@ class ArretDeCirconstanceRepository(Protocol):
 class IdentiteVisuelleRepository(Protocol):
     """Port de persistance de l'identité visuelle d'un tournoi (E16US006, adapter en infra).
 
-    ⚠️ **Trois méthodes de lecture et non une, à dessein.** Les réglages (deux accents, la présence
-    des logos) pèsent quelques octets et sont lus à chaque affichage public ; les octets d'un logo
-    pèsent jusqu'à 512 Ko et ne sont lus que par la balise `<img>` qui l'affiche, sur sa propre
-    route et son propre cache. Un port qui rendrait tout d'un bloc obligerait le chemin chaud à
-    traîner les deux blobs pour connaître une couleur.
-
-    **L'absence de réglage est un état normal**, pas une anomalie : `reglages` renvoie une
-    `IdentiteVisuelle` dont les accents valent `None`, et c'est l'agrégat — pas l'adapter — qui sait
-    que cela veut dire « celle du club » (`IdentiteVisuelle.accents`). L'adapter ne **fabrique**
-    donc aucun défaut : sans cela, « réglé au rouge du club » et « rien choisi » deviendraient
-    indiscernables, alors que l'écran doit dire *hérité* dans un cas et *réglé* dans l'autre.
+    ⚠️ **Trois méthodes de lecture et non une, à dessein** : les réglages pèsent quelques octets et
+    sont lus à chaque affichage public, les octets d'un logo jusqu'à 512 Ko et seulement par la
+    balise `<img>` — tout rendre d'un bloc ferait traîner les blobs au chemin chaud.
+    **L'absence de réglage est un état normal** : `reglages` rend des accents à `None`, et c'est
+    l'agrégat qui sait que cela veut dire « celle du club ». L'adapter ne fabrique aucun défaut.
     """
 
     def reglages(self, tournoi_id: TournoiId) -> IdentiteVisuelle:
@@ -1475,17 +1311,11 @@ class IdentiteVisuelleRepository(Protocol):
     def empreinte_du_logo(self, tournoi_id: TournoiId, emplacement: EmplacementLogo) -> str | None:
         """Renvoie la seule **empreinte** d'un logo, ou `None` si l'emplacement est vide.
 
-        ⚠️ **Une quatrième méthode, et elle a une raison précise.** La route qui sert les octets
-        répond `304` la plupart du temps — `Cache-Control: no-cache` impose une revalidation à
-        chaque affichage, et l'écran de salle plus une trentaine de tablettes la déclenchent en
-        boucle. Sans cette lecture, répondre « rien de neuf » obligeait à **charger les 512 Ko**
-        pour
-        en calculer l'`ETag` : la projection sans blob, raison d'être de la table séparée, était
-        annulée sur la route la plus chaude (relevé par trois axes de revue, mesuré).
-
-        C'est aussi ce qui fait de l'empreinte **persistée** la seule source de la version :
-        l'`ETag`
-        servi et le segment `?v=` posé par le front sortent désormais de la même colonne.
+        ⚠️ **Une quatrième méthode, et pour une raison précise** : la route qui sert les octets
+        répond `304` la plupart du temps (`no-cache` impose une revalidation, que l'écran de salle
+        et trente tablettes déclenchent en boucle). Sans cette lecture il fallait charger les
+        512 Ko pour calculer l'`ETag`, annulant la projection sans blob sur la route la plus
+        chaude. C'est aussi la seule source de version : `ETag` et `?v=` sortent d'ici.
         """
         ...
 

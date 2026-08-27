@@ -1,13 +1,8 @@
 """Adapter ReportLab du port `GenerateurFeuilleDeMarque` (socle PDF, E09US001 — ADR-0031).
 
-Rend une `FeuilleDeMarque` (décrite par le domaine) en octets PDF : **une page par archer placé**,
-avec son en-tête d'identité (tournoi, départ, cible, position, catégorie, blason) et une **grille de
-scores vierge** dimensionnée par le barème (volées et flèches) — les « zones de scores » à remplir à
-la main, plus les colonnes *total de volée* et *cumul* de la feuille FFTA (référentiel §6.1).
-
-Seule couche à importer ReportLab (règle 1 : le domaine et l'application n'en dépendent pas). Toute
-défaillance de rendu est **enveloppée** en `InfrastructureError` (ADR-0007) : aucune exception de
-bibliothèque brute ne remonte ; à la frontière API elle devient un 500 au message générique.
+Une page par archer placé : en-tête d'identité, puis grille de scores vierge dimensionnée par le
+barème (référentiel §6.1). Seule couche à importer ReportLab (règle 1) ; toute défaillance de rendu
+est enveloppée en `InfrastructureError` (ADR-0007).
 """
 
 from __future__ import annotations

@@ -20,24 +20,11 @@ from domain.politiques import DecompteDepartage, Tiebreak, TiebreakPoules
 class ModeDeComposition(Enum):
     """Comment une phase de poules **répartit** son classement source en groupes (E05US029).
 
-    C'est un **réglage**, pas un type de phase : `TypePhase.POULES` ne se dédouble pas, parce qu'un
-    format de tournoi est de la configuration (règle 2). Les deux modes appellent le même moteur —
-    mêmes rencontres, même barème, même départage — et ne diffèrent que sur *qui joue avec qui*.
-
-    - `SERPENT` — le défaut, et le comportement de toujours (arbitrage du 31/07/2026) : 1→A, 2→B,
-      3→C, 4→C, 5→B, 6→A. Il **équilibre la force des groupes**, ce qui est juste quand personne ne
-      connaît encore les niveaux — typiquement une première phase de poules.
-    - `PAR_NIVEAU` — un groupe par **tranche de rangs contiguë** : les rangs 1-6 ensemble, puis
-      7-12, etc. C'est l'inverse assumé du serpent, et c'est le format club en cascade décrit par
-      le commanditaire le 15/08/2026 : une deuxième phase dont tout l'intérêt est que la poule A
-      soit celle des meilleurs.
-
-    ⚠️ **Le mode ne décide pas que de la composition, il décide aussi de la LECTURE du classement
-    de phase** (`domain/classement_de_poules.py`). Au serpent, les vainqueurs des `P` groupes sont
-    les `P` meilleurs, donc le classement se lit « par rang de poule d'abord » (ADR-0083 §6). Par
-    niveau, cet ordre serait faux — il annoncerait le vainqueur du groupe des 31ᵉ-36ᵉ « 1ᵉʳ du
-    tournoi ». Les deux versants sont indissociables : n'en porter qu'un produit un classement bien
-    formé, plausible, et faux (la classe de défaut d'ADR-0081).
+    Un **réglage**, pas un type de phase (règle 2) : les deux modes appellent le même moteur et ne
+    diffèrent que sur *qui joue avec qui*. `SERPENT` (défaut) équilibre la force des groupes ;
+    `PAR_NIVEAU` donne un groupe par tranche de rangs contiguë — le format club en cascade. ⚠️ Le
+    mode décide aussi de la **lecture** du classement de phase : par niveau, lire « par rang de
+    poule d'abord » annoncerait le vainqueur des 31ᵉ-36ᵉ 1ᵉʳ du tournoi. Indissociables.
     """
 
     SERPENT = "serpent"
@@ -46,17 +33,12 @@ class ModeDeComposition(Enum):
 
 @dataclass(frozen=True)
 class BaremePoule:
-    """Ce que rapporte une rencontre de poule — « un barème de points attribue les victoires, nuls
-    et défaites » (règle du commanditaire).
+    """Ce que rapporte une rencontre de poule — victoire, nul, défaite.
 
-    Défaut **3 / 1 / 0**, arbitré le 31/07/2026. La première proposition était 2 / 1 / 0 par
-    cohérence avec les points de set FFTA (2 la manche gagnée, 1-1 l'égalité) ; le commanditaire a
-    tranché pour 3 / 1 / 0, qui **écarte davantage** un vainqueur d'un archer qui accumule les nuls.
-    C'est un réglage, pas une règle : il se change sans toucher au moteur.
-
-    L'invariant `victoire >= nul >= defaite` n'est pas une coquetterie : un barème qui récompense
-    la défaite produirait un classement où perdre fait monter, et le moteur n'a aucun moyen de s'en
-    apercevoir plus tard — le classement resterait parfaitement cohérent, simplement absurde.
+    Défaut **3 / 1 / 0**, arbitré le 31/07/2026 contre 2 / 1 / 0 : il **écarte davantage** un
+    vainqueur d'un archer qui accumule les nuls. C'est un réglage, pas une règle. ⚠️ L'invariant
+    `victoire >= nul >= defaite` n'est pas une coquetterie : un barème qui récompense la défaite
+    produirait un classement parfaitement cohérent où perdre fait monter.
     """
 
     victoire: int = 3
@@ -87,16 +69,10 @@ class BaremePoule:
 class ConfigurationPoules:
     """Le réglage d'une phase de poules — tout ce qui, du format, est de la configuration.
 
-    `nb_qualifies` vaut `None` par défaut **délibérément** : le CA proposait 2 par poule, le
-    commanditaire a demandé le 31/07/2026 qu'aucune valeur ne soit pré-remplie. C'est défendable
-    au-delà de la préférence : le nombre de qualifiés est dicté par ce que la **phase suivante**
-    attend (un tableau de 16 alimenté par 8 poules en prend 2, par 4 poules en prend 4), donc le
-    déduire du format de poule serait deviner à la place de l'organisateur. `None` signifie « la
-    poule classe, elle ne qualifie pas » — la sélection se fait alors par un prélèvement de la
-    phase avale.
-
-    `rencontres_par_archer` à `None` = **round-robin complet**, la lecture par défaut de « tout ou
-    partie des autres archers ».
+    `nb_qualifies` vaut `None` **délibérément** : le nombre de qualifiés est dicté par ce que la
+    phase **suivante** attend, donc le déduire du format de poule serait deviner à la place de
+    l'organisateur. `None` = « la poule classe, elle ne qualifie pas », la sélection se faisant par
+    un prélèvement de la phase avale. `rencontres_par_archer` à `None` = round-robin complet.
     """
 
     nb_poules: int
@@ -124,12 +100,8 @@ class ConfigurationPoules:
         # ⚠️ **Ce n'est pas une duplication d'invariant, c'est l'invariant DE CET OBJET.**
         # `ConfigurationPoules` porte elle-même `nb_qualifies` **et** `mode` : un value object qui
         # refuse son propre état incohérent est à sa place, et c'est `nb_qualifies` d'ici que lit
-        # `qualifies_de_poule`. Le réglage le redouble uniquement pour **ajouter le conseil de
+        # `qualifies_de_poule`. Le réglage le redouble uniquement pour ajouter le **conseil de
         # remédiation** (« faites prélever des groupes entiers »), qui n'aurait aucun sens ici.
-        #
-        # *(Correctif de revue : une version antérieure de ce commentaire justifiait la pose par une
-        # pluralité de portes d'entrée — `pour_effectif` est en réalité le seul constructeur de
-        # production. La pose reste juste, la raison invoquée était fausse.)*
         if self.nb_qualifies is not None and self.mode is ModeDeComposition.PAR_NIVEAU:
             raise ConfigurationPouleInvalide(
                 "Des poules de niveau ne désignent pas un nombre de qualifiés par poule : chaque "
@@ -141,23 +113,11 @@ class ConfigurationPoules:
 class ReglageDePoules:
     """Ce que l'organisateur **règle à l'atelier**, avant que l'effectif soit connu (E05US023).
 
-    **À ne pas confondre avec `ConfigurationPoules`**, et la distinction est tout le sujet :
-
-    - `ReglageDePoules` porte une **taille visée** (« des poules de 4 »), connue dès la
-      **composition** du déroulé, inscriptions encore ouvertes ;
-    - `ConfigurationPoules` porte un **nombre de poules** (« 7 poules »), qui n'existe que le
-      **jour J**, une fois l'effectif arrêté.
-
-    Le déroulé se compose des semaines avant le tournoi : le nombre de poules n'y est **pas
-    calculable**, il dépend du nombre d'inscrits. Stocker `nb_poules` dans la phase reviendrait à
-    figer la répartition sur un effectif supposé — un tournoi réglé pour 32 et joué à 30 monterait
-    8 poules dont deux à 3 archers, sans que rien ne le signale. C'est `pour_effectif` qui fait la
-    conversion, au dernier moment et **en un seul endroit**.
-
-    `nb_qualifies` porte aussi le **régime d'ex æquo** (arbitrage du 09/08/2026) : vide, la poule
-    *classe* et tout ex æquo irréductible se départage ; renseigné, elle *qualifie* et seul un
-    ex æquo tombant sur la barre justifie un barrage. Ce n'est pas un champ de plus — c'est la même
-    information, seulement rendue explicite à l'écran plutôt que déduite d'un champ laissé vide.
+    ⚠️ **À ne pas confondre avec `ConfigurationPoules`** : celui-ci porte une **taille visée**,
+    connue dès la composition ; celle-là un **nombre de poules**, qui n'existe que le jour J.
+    Stocker `nb_poules` figerait la répartition sur un effectif supposé — un tournoi réglé pour 32
+    et joué à 30 monterait 8 poules dont deux à 3. `nb_qualifies` porte aussi le **régime d'ex
+    æquo** : vide, la poule classe ; renseigné, elle qualifie.
     """
 
     taille_visee: int
@@ -167,23 +127,12 @@ class ReglageDePoules:
     departage_inter_poules: bool = False
     """Départager les archers d'un **même rang de poule** par leur décompte (§10.1, ADR-0083 §6).
 
-    Le classement de phase range « par rang de poule d'abord » : sur `P` poules, les rangs `1..P`
-    sont les vainqueurs. À l'intérieur de ce bloc, les archers sont **ex æquo par défaut** :
-    comparer des décomptes obtenus contre des adversaires différents n'a de valeur qu'au besoin.
-
-    L'option est **auto-régulée par ADR-0081** : sans elle, une phase avale qui prélève le bloc
-    entier (« les rangs 1 à 4 » sur 4 poules) passe, et une qui le coupe (« les rangs 1 à 2 ») est
-    refusée **et annoncée**. L'organisateur n'a donc à l'activer que quand l'outil le lui dit — au
-    lieu de qualifier en silence sur un ordre d'affichage.
-
-    ⚠️ Elle ne ferme **que** ce que le décompte sépare : deux décomptes identiques restent ex æquo,
-    et un ex æquo *interne* à une poule reste irréductible quoi qu'on active
-    (`domain/classement_de_poules.py`).
-
-    ⚠️ **Sans objet en mode `PAR_NIVEAU`** : il n'y a alors aucun bloc inter-poules à départager,
-    chaque groupe occupant sa propre tranche de rangs. Le champ est ignoré plutôt que refusé — un
-    organisateur qui bascule un réglage existant du serpent vers le niveau ne doit pas se voir
-    opposer un 422 sur une case qu'il n'a pas touchée."""
+    À l'intérieur d'un bloc de vainqueurs, les archers sont **ex æquo par défaut** : comparer des
+    décomptes obtenus contre des adversaires différents n'a de valeur qu'au besoin. L'option est
+    **auto-régulée par ADR-0081** — l'organisateur n'a à l'activer que quand une phase avale coupe
+    un bloc et se voit refusée. ⚠️ Sans objet en mode `PAR_NIVEAU` (aucun bloc inter-poules) : le
+    champ y est **ignoré** plutôt que refusé, pour ne pas opposer un 422 sur une case non touchée.
+    """
 
     mode: ModeDeComposition = ModeDeComposition.SERPENT
     """Comment les groupes sont composés — serpent (défaut) ou par niveau (E05US029).
@@ -195,33 +144,11 @@ class ReglageDePoules:
     serpent_assume: bool = False
     """L'organisateur **assume** le serpent là où le niveau serait attendu (E05US029).
 
-    Une phase de poules qui prélève dans une autre phase de poules dispose déjà des niveaux : la
-    composer au serpent est presque toujours une erreur, et `domain/deroule.py` la **refuse**
-    (arbitrage du cadrage du 21/08/2026 — refus, pas simple bandeau, parce que le défaut ne se voit
-    qu'en salle une fois les groupes affichés). Cette case lève le refus.
-
-    ⚠️ **Ce qu'elle achète n'est pas le droit de se tromper**, c'est la trace que le choix a été
-    posé : rebrasser volontairement les groupes reste légitime, et sans cette case rien ne permet
-    de distinguer « voulu » de « pas vu ». Elle n'a d'effet **que** sous `SERPENT` — en mode
-    `PAR_NIVEAU` il n'y a rien à assumer, et `__post_init__` la **remet à `False`** plutôt que de
-    laisser la propriété au bon vouloir des appelants (correctif de revue, axes C1 et D).
-
-    ⚠️ **Pourquoi effacer ici, alors que `departage_inter_poules` est seulement ignoré ?**
-    L'asymétrie est voulue et tient à ce que chaque champ **fait** : une dérogation *lève un refus*,
-    un départage n'en lève aucun. Un départage dormant sous `PAR_NIVEAU` ne peut rien produire au
-    retour au serpent — il retrouve simplement la case telle qu'elle était, ce que l'organisateur
-    attend. Une dérogation dormante, elle, **désarmerait un garde-fou** sans que personne ne l'ait
-    assumée pour ce réglage-là. On efface donc l'une et on conserve l'autre.
-
-    *(On ne **refuse** pas pour autant, contrairement à `SourcePhase`, qui traite un champ étranger
-    à sa nature en `SourceMalFormee` : cocher la case puis changer de mode n'est pas une faute de
-    l'organisateur, c'est un geste ordinaire d'écran.)*
-
-    ⚠️ **La normalisation vit ici et non côté écran.** Le front la faisait déjà (`versReglage`),
-    mais il n'est qu'une des portes : l'API en direct, la promotion d'un format, un import de
-    bibliothèque passent à côté. Une dérogation persistée sous `PAR_NIVEAU` restait **armée à
-    froid** et levait le refus au retour au serpent — donc « voulu » et « pas vu » redevenaient
-    indiscernables, exactement ce que ce champ existe pour empêcher.
+    Une phase de poules qui prélève dans des poules dispose déjà des niveaux : `domain/deroule.py`
+    **refuse** de la composer au serpent, et cette case lève le refus — elle achète la trace que le
+    choix a été posé, pas le droit de se tromper. ⚠️ Effacée à `False` sous `PAR_NIVEAU`,
+    contrairement à `departage_inter_poules` seulement ignoré : une dérogation dormante
+    **désarmerait un garde-fou** au retour au serpent.
     """
 
     def __post_init__(self) -> None:
@@ -250,23 +177,13 @@ class ReglageDePoules:
                 f"Un archer dispute au moins une rencontre, ou toutes si le nombre n'est pas "
                 f"déclaré (reçu {self.rencontres_par_archer})."
             )
-        # ⚠️ **« k qualifiés par poule » n'est pas exprimable en poules de niveau** (relevé en revue,
-        # axe C1, bloquant). Sous `SERPENT`, les `k` premiers de chaque groupe occupent les rangs
-        # `1..k*P` du classement de phase — une fenêtre **contiguë**, que la phase avale prélève par
-        # rangs. Sous `PAR_NIVEAU` ce n'est plus vrai : sur 4 groupes de 4 qualifiant 2, les
-        # qualifiés sont les rangs {1,2, 5,6, 9,10, 13,14}, un **peigne** qu'aucun prélèvement par
-        # rangs ne désigne. La fenêtre « rangs 1-8 » rendrait les groupes A et B entiers — un autre
-        # ensemble, de même cardinal, donc plausible et faux.
-        #
-        # Trois conséquences suivaient, toutes atteignables : la vue publique annonçait des
-        # qualifiés que le moteur ne prélevait pas, ADR-0081 ne pouvait plus refuser une fenêtre qui
-        # coupe un groupe (`_par_groupe` ne produit aucun bloc indécis), et un barrage était réclamé
-        # — donc des flèches tirées en salle — pour départager une barre que personne ne consomme.
-        #
-        # On refuse **le réglage** plutôt que d'inventer une sémantique : une phase de niveau qui
-        # doit resserrer se prélève par **groupes entiers** (« les rangs 1 à 18 » = les trois
-        # premiers groupes), ce qui est exact et déjà composable. Aucun réglage existant n'est
-        # concerné — `PAR_NIVEAU` naît avec cette US.
+        # ⚠️ **« k qualifiés par poule » n'est pas exprimable en poules de niveau** (bloquant de
+        # revue). Sous `SERPENT`, les `k` premiers de chaque groupe occupent les rangs `1..k*P` —
+        # une fenêtre **contiguë** que la phase avale prélève par rangs. Sous `PAR_NIVEAU`, sur 4
+        # groupes de 4 qualifiant 2, les qualifiés sont les rangs {1,2, 5,6, 9,10, 13,14} : un
+        # **peigne** qu'aucun prélèvement par rangs ne désigne, et « rangs 1-8 » rendrait un autre
+        # ensemble de même cardinal — plausible et faux. On refuse donc **le réglage** : une phase
+        # de niveau qui doit resserrer se prélève par **groupes entiers**, déjà composable.
         if self.nb_qualifies is not None and self.mode is ModeDeComposition.PAR_NIVEAU:
             raise ConfigurationPouleInvalide(
                 "Des poules de niveau ne désignent pas un nombre de qualifiés par poule : chaque "
@@ -303,34 +220,17 @@ class ReglageDePoules:
 def nb_poules_pour(effectif: int, taille_visee: int) -> int:
     """Combien de groupes former pour des poules « de `taille_visee` » (arbitrage du 09/08/2026).
 
-    L'organisateur raisonne en **taille de poule**, pas en nombre de groupes : il demande « des
-    poules de 4 », et c'est l'effectif du jour qui décide combien il y en aura. Cette fonction fait
-    la conversion, et elle arrondit **vers le bas** :
-
-    - 32 archers en poules de 4 → **8** poules de 4 ;
-    - 30 archers en poules de 4 → **7** poules, que `composer_poules` remplira en cinq de 4 et deux
-      de 5.
-
-    **Pourquoi vers le bas.** Arrondir vers le haut donnerait 8 poules dont deux de 3 — le
-    commanditaire l'a écarté explicitement : « il est possible pour répartir de faire quelques
-    poules de 5 ». L'invariant retenu est donc *aucune poule ne compte moins que la taille
-    demandée*, jamais l'inverse. C'est cohérent avec `composer_poules`, qui répartit au serpent et
-    ne produit jamais plus d'une unité d'écart entre groupes.
-
-    ⚠️ **Conséquence assumée** : sous le double de la taille visée, il ne reste qu'**une** poule —
-    7 archers en poules de 4 donnent une poule de 7. Les deux invariants (« pas de poule sous la
-    taille » et « pas plus d'une unité d'écart ») sont alors inconciliables, et on garde le premier.
-    C'est pour ce cas que le CA exige que l'écran **montre** la répartition obtenue avant de la
-    valider : l'organisateur voit la poule de 7 et corrige sa taille s'il n'en veut pas.
+    L'organisateur raisonne en **taille de poule** ; l'arrondi se fait **vers le bas** (30 archers
+    en poules de 4 → 7 poules, remplies en cinq de 4 et deux de 5), l'invariant retenu étant
+    *aucune poule ne compte moins que la taille demandée*. ⚠️ Sous le double de la taille visée il
+    ne reste qu'**une** poule — 7 archers en poules de 4 donnent une poule de 7, que l'écran doit
+    montrer avant validation.
     """
-    # ⚠️ **Erreurs typées, pas des `ValueError` nus** (règle 5, correctif de revue).
-    #
-    # Le second cas est **atteignable depuis le client** : `ServicePoules._configuration` appelle
-    # `pour_effectif(len(participants))`, et une population vide est parfaitement licite — phase de
-    # poules composée avant les inscriptions, ou source amont qui ne prélève encore rien. Un
-    # `ValueError` n'étant ni `DomainError` ni `ApplicationError`, il tombait dans le filet
-    # « erreur inattendue » de la frontière API et sortait en **500** — sur l'écran de réglage, sur
-    # l'écran de saisie, et sur toute phase avale qui prélève dans des poules encore vides.
+
+    # ⚠️ **Erreurs typées, pas des `ValueError` nus** (règle 5). Le second cas est **atteignable
+    # depuis le client** : `ServicePoules._configuration` appelle `pour_effectif(len(participants))`
+    # et une population vide est licite (phase composée avant les inscriptions). Un `ValueError`
+    # n'étant ni `DomainError` ni `ApplicationError`, il sortait en **500**.
     if taille_visee < 2:
         raise ConfigurationPouleInvalide(
             f"Une poule apparie au moins deux archers (taille visée reçue : {taille_visee})."
@@ -345,19 +245,11 @@ def nb_poules_pour(effectif: int, taille_visee: int) -> int:
 def couloirs_occupes(effectif_de_poule: int) -> int:
     """Combien de **couloirs de tir** une poule occupe — son parallélisme, pas son effectif.
 
-    **C'est l'arbitrage du 09/08/2026, et il n'est pas intuitif.** Une poule ne met pas tous ses
-    membres sur la ligne en même temps : `rencontres_de_poule` apparie par la méthode du cercle,
-    qui produit `effectif ÷ 2` rencontres par tour — à effectif **impair**, un membre se repose (le
-    cercle tourne autour d'une place vide). Une poule de 5 ne dispute donc que **deux** rencontres
-    simultanées, soit **quatre** archers sur la ligne : elle tient sur une seule cible de 4
-    couloirs, exactement comme une poule de 4.
-
-    Réserver un couloir par membre aurait fait déborder toute poule impaire sans raison, et décalé
-    la salle entière d'un cran par poule. Les membres **tournent** sur le bloc : celui qui se repose
-    change à chaque tour, ce qui est aussi la raison pour laquelle le plan place la **poule** et non
-    l'archer (`domain/placement_par_bloc.py`, ADR-0083).
-
-    Une poule de moins de deux membres n'apparie personne et n'occupe donc aucun couloir.
+    ⚠️ **Arbitrage du 09/08/2026, et il n'est pas intuitif.** `rencontres_de_poule` apparie par la
+    méthode du cercle, qui produit `effectif ÷ 2` rencontres par tour : une poule de 5 ne dispute
+    que **deux** rencontres simultanées, soit quatre archers sur la ligne — elle tient sur une
+    cible de 4 couloirs, comme une poule de 4. Réserver un couloir par membre ferait déborder toute
+    poule impaire. Les membres **tournent** sur le bloc, d'où un plan qui place la poule.
     """
     if effectif_de_poule < 2:
         return 0
@@ -391,18 +283,11 @@ class RencontrePoule:
 class ResultatRencontre:
     """L'issue **déjà tranchée** d'une rencontre, telle que le moteur la consomme.
 
-    Le moteur de poule ne rejoue pas le duel : il reçoit ce que la saisie a produit. `sets_*`
-    départage la rencontre (le vainqueur est celui qui a le plus de sets ; à égalité c'est un nul),
-    `score_*` alimente la différence de score, `nb_dix_*` / `nb_neuf_*` les deux derniers critères
-    du départage §10.1.
-
-    ⚠️ En **cumul** (arc à poulies, qui ne joue pas en sets), la saisie reporte le total dans
-    `score_*` et laisse les sets à 0 : la rencontre est alors un **nul** au sens des points de
-    match. C'est une limite connue et **assumée ici** plutôt que devinée : décider qu'un duel au
-    cumul vaut « victoire » demanderait de savoir que la phase se joue en cumul, information qui
-    vit sur le barème de la phase (`BaremeDuel.mode`) et non sur le résultat. Le service qui
-    assemble les résultats doit donc reporter la victoire dans `sets_*` (1-0) quand il travaille en
-    cumul — c'est documenté dans `docs/fonctionnel/E05US015.md`.
+    Le moteur ne rejoue pas le duel : `sets_*` départage (à égalité, un nul), `score_*` alimente la
+    différence de score, `nb_dix_*` / `nb_neuf_*` les deux derniers critères §10.1. ⚠️ En **cumul**
+    (arc à poulies), la saisie reporte le total dans `score_*` et laisse les sets à 0 : la
+    rencontre devient un **nul** au sens des points de match. Le service qui assemble doit reporter
+    la victoire dans `sets_*` (1-0) — le résultat ne sait pas qu'il est au cumul.
     """
 
     a: Participant
@@ -437,19 +322,11 @@ def composer_poules(
 ) -> tuple[Poule, ...]:
     """Répartit les participants **classés** en poules, selon le mode réglé (E05US023, E05US029).
 
-    `participants` arrive **ordonné par rang** de la phase source (indice 0 = premier). Deux modes,
-    et le choix entre eux est un réglage d'organisateur, pas une politique du moteur :
-
-    - `SERPENT` (défaut) — 1→A, 2→B, 3→C, puis retour 4→C, 5→B, 6→A. C'est ce qui **équilibre la
-      force des groupes**, exactement comme le seeding serpent équilibre un arbre : une
-      distribution naïve mettrait tous les favoris ensemble et en éliminerait la moitié au premier
-      tour (arbitrage du 31/07/2026).
-    - `PAR_NIVEAU` — un groupe par **tranche de rangs contiguë** : 1-6 dans la poule A, 7-12 dans
-      la B. C'est exactement ce que le serpent existe pour éviter, et c'est voulu — la phase amont
-      a déjà établi les niveaux, cette phase-ci les affine (E05US029).
-
-    Les poules peuvent être de **tailles inégales** d'une unité quand l'effectif ne divise pas —
-    c'est inévitable et sans conséquence sur le classement, chaque poule étant classée séparément.
+    `participants` arrive **ordonné par rang**. `SERPENT` (défaut) équilibre la force des groupes,
+    comme le seeding serpent équilibre un arbre — une distribution naïve mettrait tous les favoris
+    ensemble. `PAR_NIVEAU` donne un groupe par tranche contiguë : exactement ce que le serpent
+    existe pour éviter, et c'est voulu (la phase amont a déjà établi les niveaux). Les poules
+    peuvent différer d'une unité quand l'effectif ne divise pas — chacune est classée séparément.
     """
     if configuration.nb_poules > len(participants):
         raise ConfigurationPouleInvalide(
@@ -480,14 +357,10 @@ def _serpent(participants: Sequence[Participant], nb_poules: int) -> list[list[P
 def tailles_de_niveau(effectif: int, nb_poules: int) -> list[int]:
     """Les effectifs des tranches d'une composition **par niveau**, dans l'ordre (E05US029).
 
-    **Domicile unique de la règle du gonflement.** Les `surplus` **derniers** groupes prennent un
-    membre de plus — le bas absorbe le reste (arbitrage du cadrage du 21/08/2026).
-
-    Publique et partagée : `_tranches_de_niveau` la consomme pour composer, et
-    `domain/deroule.py` pour savoir **quels rangs occupe un groupe** — c'est ce qui lui permet de
-    dire si un tableau peut apparier deux membres d'une même poule sans réinventer l'arithmétique
-    (correctif de revue, axe D). La recopier là-bas aurait été la duplication d'invariant que le
-    registre proscrit, sur la propriété même qui définit le format.
+    **Domicile unique de la règle du gonflement** : les `surplus` **derniers** groupes prennent un
+    membre de plus — le bas absorbe le reste. Publique et partagée, `domain/deroule.py` la consomme
+    pour savoir quels rangs occupe un groupe : la recopier là-bas aurait été la duplication
+    d'invariant que le registre proscrit, sur la propriété même qui définit le format.
     """
     base, surplus = divmod(effectif, nb_poules)
     return [base + (1 if numero >= nb_poules - surplus else 0) for numero in range(nb_poules)]
@@ -498,30 +371,11 @@ def _tranches_de_niveau(
 ) -> list[list[Participant]]:
     """Un groupe par tranche de rangs **contiguë**, le surplus au **bas** (E05US029).
 
-    Deux propriétés, et les deux comptent :
-
-    1. **Contiguïté.** Un groupe est un intervalle de rangs, jamais un peigne. C'est ce qui fait le
-       format : si une tranche sautait un rang, deux archers de niveaux voisins joueraient dans des
-       groupes disputant des espaces de rangs différents.
-    2. **Le surplus va aux groupes du bas** (arbitrage du cadrage du 21/08/2026). Quand l'effectif
-       ne tombe pas juste — 34 archers en poules de 6 donnent 5 groupes, soit 4 archers à
-       replacer —, ce sont les **dernières** tranches qui gonflent d'une unité. Les tranches du
-       haut restent à la taille visée : le haut du classement, celui qui a le plus d'enjeu, tire
-       dans les conditions annoncées plutôt que d'hériter d'un adversaire de plus.
-
-    ⚠️ **La question ne se pose pas au serpent**, et c'est pourquoi elle n'avait jamais été
-    tranchée : les groupes y sont équilibrés par construction, donc *lequel* gonfle est sans
-    conséquence sportive. Par niveau, c'en est une.
-
-    ⚠️ **Limite connue — les sources multiples** (`# DETTE-077`, relevée en revue, axe D).
-    `preleves` range son résultat par `(ordre_source, rang)`. Une phase de niveau qui prélève dans
-    **deux** phases parallèles reçoit donc « tous ceux de la source A, puis tous ceux de la source
-    B » et compose des groupes qui reflètent l'**ordre des sources**, pas les niveaux. Le classement
-    annoncerait le vainqueur de B derrière le dernier de A, au seul motif que B porte un ordre plus
-    grand. Le cas n'est ni refusé ni signalé : il demanderait de savoir fusionner deux classements
-    de phases parallèles, ce qu'aucun CA ne demande aujourd'hui. Au serpent, le défaut
-    d'ensemencement existe déjà, mais la lecture par blocs n'*affirmait* pas un ordre de
-    niveau — ici, si.
+    Un groupe est un intervalle, jamais un peigne, et le surplus va aux **dernières** tranches pour
+    que le haut du classement tire dans les conditions annoncées. ⚠️ `# DETTE-077` — `preleves`
+    range par `(ordre_source, rang)` : une phase de niveau qui prélève dans **deux** phases
+    parallèles compose des groupes reflétant l'ordre des sources, pas les niveaux. Ni refusé ni
+    signalé.
     """
     tailles = tailles_de_niveau(len(participants), nb_poules)
     groupes: list[list[Participant]] = []
@@ -537,27 +391,11 @@ def rencontres_de_poule(
 ) -> tuple[RencontrePoule, ...]:
     """Les rencontres d'une poule, par tours, selon la **méthode du cercle**.
 
-    On fixe un membre et on fait tourner les autres : à chaque tour, chacun rencontre un adversaire
-    différent, et personne n'y figure deux fois. À effectif **impair**, un membre se repose à chaque
-    tour (le cercle tourne autour d'une place vide) — sa rencontre n'est simplement pas produite.
-
-    Pourquoi le cercle plutôt que « toutes les paires » : les paires seules ne disent pas **quand**
-    se tirent les rencontres, or une poule de 6 tirée sur une cible doit s'organiser en 5 tours de 3
-    matchs. Et surtout, le cercle est **déterministe** — ce que la règle 9 exige d'un moteur testé.
-
-    `rencontres_par_archer` **tronque** le cercle à ses `k` premiers tours : c'est le « ou partie
-    des autres archers » de la règle, obtenu sans second algorithme. Sauf pour `k = n-1`, qui est le
-    round-robin complet exprimé en nombre : on y déroule le cercle **entier** (un tour de plus à
-    effectif impair, celui du repos), sans quoi un seul membre disputerait ses `n-1` rencontres et
-    tous les autres `n-2`.
-
-    ⚠️ **Pour une troncature intermédiaire (`k < n-1`) à effectif impair, l'écart subsiste.** Un
-    tour sur deux fait reposer quelqu'un ; sur `k` tours, les `k` archers qui se sont reposés ont
-    disputé `k-1` rencontres et les autres `k`. L'écart est d'**une** rencontre, mais il fausse
-    légèrement la comparaison des points de match. Deux façons honnêtes de l'éviter : composer des
-    poules de taille **paire**, ou laisser le round-robin complet. On le signale plutôt que de le
-    corriger en douce, parce qu'aucune correction n'est neutre — rallonger le cercle changerait le
-    nombre de rencontres demandé.
+    On fixe un membre et on fait tourner les autres ; à effectif **impair**, un membre se repose
+    chaque tour. Le cercle dit **quand** se tirent les rencontres, et il est **déterministe**
+    (règle 9). `rencontres_par_archer` le tronque à `k` tours ; à `k = n-1` on le déroule
+    **entier**, sans quoi un seul membre disputerait `n-1` rencontres. ⚠️ Pour `k < n-1` à effectif
+    impair, l'écart d'**une** rencontre subsiste : composer des poules paires, ou laisser complet.
     """
     membres = list(poule.membres)
     if len(membres) < 2:
@@ -606,15 +444,11 @@ def classement_de_poule(
 ) -> tuple[RangPoule, ...]:
     """Classe les membres d'une poule à partir des rencontres tranchées (§10.1).
 
-    Le `tiebreak` est **injecté** (règle 2) ; à défaut c'est `TiebreakPoules`, l'ordre à cinq
-    critères de la règle. Deux membres que le comparateur ne sépare pas partagent le rang et sont
-    marqués `ex_aequo` — c'est le moment du « barrage si nécessaire », que le moteur signale sans le
-    décider (un comparateur pur ne fait pas tirer de flèches).
-
-    ⚠️ Les résultats d'une rencontre **étrangère à la poule** sont ignorés en silence : le service
-    passe volontiers l'ensemble des résultats de la phase, et filtrer ici évite de lui imposer un
-    découpage préalable. En revanche, un membre **sans aucune rencontre** figure bien au classement
-    (à 0 partout) : le faire disparaître serait pire — un archer présent doit apparaître.
+    Le `tiebreak` est **injecté** (règle 2) ; à défaut `TiebreakPoules`. Deux membres que le
+    comparateur ne sépare pas partagent le rang et sont marqués `ex_aequo` — le « barrage si
+    nécessaire », que le moteur signale sans le décider. ⚠️ Les résultats d'une rencontre étrangère
+    à la poule sont ignorés en silence ; en revanche un membre **sans aucune rencontre** figure
+    bien au classement, à 0 partout — le faire disparaître serait pire.
     """
     comparateur: Tiebreak = tiebreak if tiebreak is not None else TiebreakPoules()
     membres = set(poule.membres)
@@ -700,13 +534,10 @@ def qualifies_de_poule(
 ) -> tuple[Participant, ...]:
     """Les qualifiés d'une poule — les `nb_qualifies` premiers du classement.
 
-    Renvoie `()` si la configuration n'en déclare aucun (« la poule classe, elle ne qualifie pas » :
-    c'est alors la phase avale qui prélève ce qu'elle veut).
-
-    ⚠️ **Un ex æquo qui chevauche la barre est refusé**, pas arbitré. Prendre « les deux premiers »
-    quand les rangs 2 et 3 sont à égalité reviendrait à qualifier sur l'ordre d'affichage — c'est-à-
-    dire sur le rang de qualification d'origine, qui n'a plus cours en poule. C'est précisément le
-    « barrage si nécessaire » de la règle : il faut faire tirer, et le moteur le dit.
+    `()` si la configuration n'en déclare aucun (« la poule classe, elle ne qualifie pas »). ⚠️
+    **Un ex æquo qui chevauche la barre est refusé**, pas arbitré : prendre « les deux premiers »
+    quand les rangs 2 et 3 sont à égalité qualifierait sur l'ordre d'affichage, c'est-à-dire sur le
+    rang de qualification d'origine, qui n'a plus cours en poule. Il faut faire tirer.
     """
     if configuration.nb_qualifies is None:
         return ()

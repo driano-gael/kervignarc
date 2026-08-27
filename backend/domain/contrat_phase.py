@@ -14,27 +14,13 @@ from enum import Enum
 
 
 class TypePhase(str, Enum):
-    """Type d'une phase. E05US001 ouvre le typage aux formats dont la **règle est écrite** ;
-    **E05US015 peuple le catalogue** avec les six types dont la règle a été obtenue du
-    commanditaire le 31/07/2026 (référentiel §10.1) ou tirée du règlement (§8.2).
+    """Type d'une phase — catalogue peuplé par E05US015 (référentiel §10.1, §8.2).
 
-    ⚠️ La règle d'ADR-0045 §2 tient toujours — « on n'offre pas en façade un type qu'aucun moteur
-    ne sait dérouler » : **chaque** valeur ajoutée ici vient avec son moteur de domaine
-    (`poule.py`, `big_shoot_off.py`, `suisse.py`, `colline.py`, `barrage.py`) ; l'échauffement est
-    le seul sans moteur, et c'est **son** contenu — une phase qui ne calcule rien.
-
-    Trois formats du catalogue ouvert (EF-3.2) **n'apparaissent pas ici**, et ce n'est pas un
-    oubli : le **repêchage** est une politique `routing`, le **handicap** une politique `scoring`,
-    la **finale spectacle** un assemblage d'`elimination_directe` + `BaremeDuel` (E05US015,
-    [ADR-0062]). Un type de phase se justifie par une **structure** propre, pas par un réglage.
-
-    ⚠️ **Déplacé de `domain/phase.py` vers ce module en E05US023**, et le sens compte : le type et
-    son **contrat** sont la même information, à deux niveaux de détail. Les laisser dans deux
-    modules obligeait `phase.py` à importer le contrat pendant que le contrat importait le type —
-    un cycle. `domain.phase` continue de le ré-exporter : les ~100 `from domain.phase import
-    TypePhase` restent valides, il n'y avait rien à gagner à les réécrire.
-
-    [ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+    ⚠️ ADR-0045 §2 tient toujours : **chaque** valeur ajoutée vient avec son moteur de domaine ;
+    l'échauffement est le seul sans moteur, et c'est **son** contenu — une phase qui ne calcule
+    rien. Repêchage, handicap et finale spectacle n'y figurent pas : ce sont des politiques ou un
+    assemblage (ADR-0062). Un type se justifie par une **structure** propre, pas par un réglage.
+    `domain.phase` le ré-exporte — le déplacer ici (E05US023) a rompu un cycle d'imports.
     """
 
     QUALIFICATION = "qualification"
@@ -61,19 +47,13 @@ class TypePhase(str, Enum):
 
 
 class UniteDeTour(str, Enum):
-    """*En combien de tours, et sous quel nom ?* — la 7ᵉ question du contrat ([ADR-0090]).
+    """*En combien de tours, et sous quel nom ?* — la 7ᵉ question du contrat (ADR-0090).
 
-    Toute phase avance par tours, et **un tour n'est pas un braquet** : le tour dit *où on en
-    est*, le braquet dit *quels rangs ce tour attribue*. Certaines phases classent au fil des
-    tours (l'élimination directe, Règle R), d'autres ne classent qu'à la fin (la qualification :
-    le total, pas la volée 12). L'unité vit ici, avec les autres questions du contrat ; sa
-    **résolution en libellé** vit dans `domain/tour_de_phase.py`, qui délègue au tableau ce que
-    le tableau sait déjà faire.
-
-    L'unité est le **mot de la salle**, pas une forme technique : deux formats qui avancent de la
+    Toute phase avance par tours, et **un tour n'est pas un braquet** : le tour dit *où on en est*,
+    le braquet *quels rangs ce tour attribue*. L'unité vit ici ; sa **résolution en libellé** vit
+    dans `domain/tour_de_phase.py`.
+    ⚠️ L'unité est le **mot de la salle**, pas une forme technique : deux formats qui avancent de la
     même façon peuvent porter deux unités si le métier les nomme différemment (règle 3).
-
-    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
     """
 
     PHASE_ENTIERE = "phase_entiere"
@@ -100,20 +80,12 @@ class UniteDeTour(str, Enum):
     MANCHE = "manche"
     """Une manche : le Big Shoot Off — tous les finalistes tirent en parallèle — et la **colline**.
 
-    ⚠️ **La colline a porté `RONDE` jusqu'à E05US027, et c'était invisible** : tant qu'elle n'était
-    pas `avancement_lisible`, le libellé n'atteignait aucun écran. L'US qui l'y expose a révélé la
-    divergence — la même phase annonçait « Manche 2 sur 3 » à la saisie et au public, « **Ronde** 2
-    »
-    au suivi du déroulé et sur le bandeau de pause, lui aussi public. Trois axes de revue l'ont
-    relevée indépendamment.
-
-    Le mot du métier est ici « manche », sans ambiguïté : `nb_manches` au réglage, `MancheAffichee`
-    au service, et le référentiel §10.1 lui-même — « après plusieurs **manches** » — que la
-    docstring de `RONDE` citait pourtant à l'appui du contraire. Que le Big Shoot Off tire une
-    manche *collective* et la colline une manche *appariée* ne change rien : l'unité est le **mot de
-    la salle**, pas une forme technique, et c'est exactement le cas prévu deux paragraphes plus
-    haut — deux formats qui avancent différemment peuvent porter la même unité si le métier les
-    nomme pareil (règle 3)."""
+    ⚠️ La colline a porté `RONDE` jusqu'à E05US027, et c'était invisible tant qu'elle n'était pas
+    `avancement_lisible` : la même phase annonçait « Manche 2 sur 3 » à la saisie et « Ronde 2 » au
+    suivi du déroulé, tous deux publics. Le mot du métier est « manche » — `nb_manches` au réglage,
+    `MancheAffichee` au service, et le référentiel §10.1. Que l'une soit collective et l'autre
+    appariée ne change rien : l'unité est le **mot de la salle** (règle 3).
+    """
 
 
 class DecorDeSaisie(str, Enum):
@@ -181,12 +153,10 @@ class PlanDeCibles(str, Enum):
 class ContratDePhase:
     """Ce qu'un type de phase sait répondre — une ligne du registre ci-dessous.
 
-    **Les valeurs par défaut penchent du côté prudent**, et c'est délibéré : un type ajouté demain
-    et laissé au défaut est *classant* et *opposant* (donc il réclame son plancher d'inscrits) mais
-    n'est **ni monté, ni lu, ni routé** — l'oubli le plus probable est d'inscrire un vrai format au
-    catalogue avant que son service existe, exactement ce qui s'est produit avec E05US015. Le
-    défaut le fait alors se comporter comme un format inerte, ce qui est vrai, plutôt que comme un
-    format joué, ce qui casserait en salle.
+    ⚠️ **Les valeurs par défaut penchent du côté prudent** : un type ajouté demain et laissé au
+    défaut est *classant* et *opposant* mais n'est **ni monté, ni lu, ni routé**. L'oubli le plus
+    probable est d'inscrire un format au catalogue avant que son service existe (E05US015) — le
+    défaut le fait alors se comporter comme un format inerte, ce qui est vrai.
     """
 
     decor: DecorDeSaisie
@@ -200,13 +170,11 @@ class ContratDePhase:
     deroule_par_un_service: bool = False
     """Un service de **production** fait réellement jouer ce type, aujourd'hui.
 
-    ⚠️ Se vérifie dans le code, jamais par l'intention. `PLACEMENT` vaut `False` parce qu'aucun
+    ⚠️ Se vérifie dans le code, jamais par l'intention : `PLACEMENT` vaut `False` parce qu'aucun
     service ne monte son tableau, quand bien même son *décor* est un arbre de duels.
-
-    ⚠️ **Le nom ne dit pas *comment*, et c'est le correctif d'E05US028** : `monte_les_oppositions`
-    supposait des matchs ou des groupes, que le Big Shoot Off n'a pas. Une capacité doit nommer la
-    **question** qu'elle tranche, pas la forme que prend la réponse pour les types déjà écrits —
-    sans quoi le premier format d'une autre forme la rend inrépondable."""
+    ⚠️ **Le nom ne dit pas *comment*** (E05US028) : une capacité nomme la **question** qu'elle
+    tranche, pas la forme que prend la réponse pour les types déjà écrits.
+    """
 
     classement_lisible: bool = False
     """Le moteur sait **lire** le classement de cette phase pour y prélever (E05US024).
@@ -217,55 +185,32 @@ class ContratDePhase:
     avancement_lisible: bool = False
     """Un service sait dire **où en est** cette phase, tour par tour, aujourd'hui (E05US035).
 
-    ⚠️ **À ne pas confondre avec `deroule_par_un_service`**, et la nuance décide de refus d'arrêt :
-    celle-là répond « le moteur *fait jouer* cette phase ? » — donc si son prélèvement sera honoré,
-    donc si son rang de départ **relève le plancher d'inscrits** (E05US021) —, celle-ci « sait-on
-    *observer son tour* ? ». Les deux ensembles ne coïncident pas : la **qualification** s'observe
-    (`ServiceSaisie.avancement_de_phase` compte les volées du plus lent) sans être « montée » par
-    personne — elle n'a aucune opposition à monter. C'est exactement la raison pour laquelle
-    `classement_lisible` est déjà une capacité distincte plutôt qu'un alias, et l'élargir en
-    réutilisant `deroule_par_un_service` aurait fait réclamer un plancher par rangs à toute
-    qualification prélevée : un refus de démarrage, le jour J, pour un réglage d'affichage.
-
-    C'est de cette table que dérive `TYPES_ARRETABLES` — un arrêt programmé ne coupe qu'à une
-    frontière de tour **observée** ([ADR-0091], [ADR-0093]).
-
-    ⚠️ Se vérifie dans le code, jamais par l'intention : la mettre à `True` « puisque le format
-    existe » reproduirait `DETTE-028`.
-
-    [ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    ⚠️ **À ne pas confondre avec `deroule_par_un_service`** : celle-là répond « le moteur *fait
+    jouer* cette phase ? », donc si son rang de départ relève le plancher (E05US021) ; celle-ci
+    « sait-on *observer son tour* ? ». La **qualification** s'observe sans être montée — les
+    confondre aurait fait réclamer un plancher à toute qualification prélevée, donc un refus de
+    démarrage pour un réglage d'affichage. `TYPES_ARRETABLES` en dérive (ADR-0091, ADR-0093).
     """
 
     unite_de_tour: UniteDeTour = UniteDeTour.PHASE_ENTIERE
-    """Dans quelle unité cette phase **avance**, et sous quel mot la salle la nomme ([ADR-0090]).
+    """Dans quelle unité cette phase **avance**, et sous quel mot la salle la nomme (ADR-0090).
 
-    ⚠️ **Sans rapport avec `produit_un_classement`**, et c'est tout l'objet de l'ADR : l'échauffement
-    ne classe rien mais occupe du temps et des cibles — donc il avance, donc il a un tour. Le code
-    dérivait jusqu'ici les tours des **braquets**, ce qui faisait afficher « zéro tour » à toute
-    phase ne classant pas au fil de l'eau.
-
-    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    ⚠️ **Sans rapport avec `produit_un_classement`** : l'échauffement ne classe rien mais occupe du
+    temps et des cibles — donc il avance, donc il a un tour. Le code dérivait jusqu'ici les tours
+    des **braquets**, ce qui faisait afficher « zéro tour » à toute phase ne classant pas au fil.
     """
 
     route_l_archer: bool = False
     route_tout_le_plateau: bool = True
     """Cette phase concerne-t-elle **tous** les archers du créneau, ou une population restreinte ?
 
-    ⚠️ **Capacité ajoutée à la revue d'E05US028**, sur un défaut constaté et non sur un pronostic.
-    `route_l_archer` répond à « sait-on dire où cet archer tire ensuite ? » ; elle ne dit rien de
-    *combien d'archers* la phase concerne. Tant que seule l'élimination directe routait, les deux
-    questions se confondaient — un tableau reçoit le plateau. Le Big Shoot Off les sépare : il route
-    **huit finalistes** sur cent vingt.
-
-    Ce que la confusion coûtait, en production : `ServiceRoutage._phase_de_tableau` dérive sa cible
-    de `TYPES_ROUTES` et, en résolution **implicite** (`phase_id=None`, le régime par défaut des
-    tablettes), prend la dernière phase routée du créneau. Dès que l'élimination directe passait à
-    `TERMINEE`, le Big Shoot Off devenait cette cible et les **112 non-finalistes** lisaient « Cet
-    archer ne fait pas partie de ce Big Shoot Off » à la place de leur rang final — définitivement,
-    puisque `tableaux[-1]` reste le Big Shoot Off une fois tout terminé. C'est le défaut que le
-    commentaire de `_phase_de_tableau` disait vouloir éviter, appliqué à l'envers.
+    ⚠️ `route_l_archer` répond à « sait-on dire où cet archer tire ensuite ? » et ne dit rien de
+    *combien d'archers* la phase concerne. Le Big Shoot Off les sépare : il route huit finalistes
+    sur cent vingt. Ce que la confusion coûtait : en résolution **implicite**,
+    `ServiceRoutage._phase_de_tableau` prenait la dernière phase routée du créneau, si bien que les
+    112 non-finalistes lisaient « ne fait pas partie de ce Big Shoot Off » au lieu de leur rang.
     """
+
     """Le routage sait dire où un archer de cette phase tire ensuite (`application/routage.py`)."""
 
 
@@ -333,16 +278,14 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         unite_de_tour=UniteDeTour.TOUR,
         deroule_par_un_service=True,
         avancement_lisible=True,
-        # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023** — et seulement une
-        # fois le code écrit. Ce qui l'autorise, module par module :
-        # `domain/classement_de_poules.py` range la phase « par rang de poule d'abord » (ADR-0083
-        # §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
-        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par le port `LecteurClassementDePhase`.
+        # ✅ **`classement_lisible` bascule à `True` en fin de tranche E05US023**, une fois le
+        # code écrit : `domain/classement_de_poules.py` range la phase par rang de poule
+        # (ADR-0083 §6), `ServicePoules.classement_de_phase` rend le `ClassementSource`, et
+        # `ServiceSaisieDuels._classement_de_l_ordre` le lit par `LecteurClassementDePhase`.
         #
-        # ⚠️ L'effet de cette ligne est **mesurable**, et c'est pourquoi elle a attendu : elle fait
-        # réclamer le plancher d'inscrits (E05US021) pour un prélèvement visant des poules. Un
-        # `True` posé par anticipation aurait exigé 34 inscrits pour une source que rien n'honore —
-        # le « refus abusif le jour J » que cette US-là nommait comme sa pire défaillance.
+        # ⚠️ L'effet est **mesurable** : elle fait réclamer le plancher d'inscrits (E05US021) pour
+        # un prélèvement visant des poules. Posée par anticipation, elle aurait exigé 34 inscrits
+        # pour une source que rien n'honore — le « refus abusif le jour J ».
         classement_lisible=True,
         # ✅ **`route_l_archer` bascule en E05US026.** Elle valait `False` depuis E05US023, où le
         # routage était une capacité **explicitement hors périmètre** — au point que les poules
@@ -359,15 +302,11 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # sont des inscrits du créneau, et leur couloir de qualification n'est pas relu par le
         # moteur du format. Le routage le **nomme** au lieu de le taire (`DETTE-059`).
         plan_de_cibles=PlanDeCibles.AUCUN,
-        # ✅ Les trois capacités basculent **en fin de tranche E05US028**, et seulement une fois le
-        # code écrit — même discipline qu'E05US023 pour les poules. Ce qui les autorise, module par
-        # module :
-        # `application/big_shoot_off.py` rejoue la phase des volées validées et rend son état
-        # (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
-        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
-        # `LecteurClassementDePhase` (`classement_lisible`), et
-        # `ServiceRoutage._routage_big_shoot_off` dit à un finaliste quelle manche il tire
-        # (`route_l_archer`).
+        # ✅ Les trois capacités basculent **en fin de tranche E05US028**, une fois le code écrit
+        # — même discipline qu'E05US023. `application/big_shoot_off.py` rejoue la phase et rend son
+        # état (`deroule_par_un_service`), `ServiceBigShootOff.classement_de_phase` rend le
+        # `ClassementSource` (`classement_lisible`), et `ServiceRoutage._routage_big_shoot_off` dit
+        # à un finaliste quelle manche il tire (`route_l_archer`).
         deroule_par_un_service=True,
         avancement_lisible=True,
         classement_lisible=True,
@@ -386,30 +325,24 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # raison pour laquelle les poules persistent un bloc (ADR-0083 §3). Le suisse en pose **un
         # seul**, là où une phase de poules en pose un par groupe : il n'y a rien à séparer.
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
-        # ✅ Les deux capacités basculent **en fin de tranche E05US026**, et seulement une fois le
-        # code écrit — même discipline qu'E05US023 et E05US028. Ce qui les autorise, module par
-        # module : `application/suisse.py` rejoue la phase des duels validés, ronde après ronde, et
-        # rend son état (`deroule_par_un_service`) ; `ServiceSuisse.classement_de_phase` rend le
-        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
-        # `LecteurClassementDePhase`, via `domain/classement_de_suisse.py` (`classement_lisible`).
+        # ✅ Les deux capacités basculent **en fin de tranche E05US026**, une fois le code écrit :
+        # `application/suisse.py` rejoue la phase ronde après ronde (`deroule_par_un_service`) et
+        # `ServiceSuisse.classement_de_phase` rend le `ClassementSource` via
+        # `domain/classement_de_suisse.py` (`classement_lisible`).
         #
         # ⚠️ L'effet de `classement_lisible` est **mesurable** : elle fait réclamer le plancher
-        # d'inscrits (E05US021) pour un prélèvement visant un suisse. Elle n'est légitime que parce
-        # que le prélèvement est réellement honoré — un `True` posé par anticipation aurait exigé
-        # des inscrits pour une source que rien n'honore.
+        # d'inscrits (E05US021) pour un prélèvement visant un suisse — légitime seulement parce que
+        # ce prélèvement est réellement honoré.
         deroule_par_un_service=True,
         avancement_lisible=True,
         classement_lisible=True,
-        # ✅ **`route_l_archer` bascule ici aussi**, par le même chemin
-        # (`ServiceRoutage._routage_par_rencontres`) : une rencontre de ronde **est** un duel, avec
-        # deux adversaires nommés et deux couloirs — aucun champ de rendez-vous neuf n'a donc été
-        # nécessaire, à la différence du Big Shoot Off dont la manche collective n'oppose personne.
+        # ✅ **`route_l_archer` bascule ici aussi** (`ServiceRoutage._routage_par_rencontres`) :
+        # une rencontre de ronde **est** un duel, avec deux adversaires et deux couloirs — aucun
+        # champ de rendez-vous neuf, à la différence du Big Shoot Off.
         #
-        # ⚠️ **Une issue neuve l'a été, en revanche** (E05US030, ce commentaire disait le contraire
-        # jusque-là) : `EN_ATTENTE`. Elle ne vient pas de la forme du rendez-vous mais du **rythme**
-        # du format — seule la ronde courante existe, donc un archer peut être en course sans rien
-        # à tirer à cet instant (le porteur du bye, ou celui dont la rencontre vient d'être
-        # validée). Un format à groupes connus d'avance, comme les poules, n'a pas ce régime.
+        # ⚠️ **Une issue neuve l'a été** (E05US030) : `EN_ATTENTE`. Elle vient du **rythme** du
+        # format — seule la ronde courante existe, donc un archer peut être en course sans rien à
+        # tirer (le porteur du bye). Un format à groupes connus d'avance n'a pas ce régime.
         route_l_archer=True,
     ),
     TypePhase.COLLINE: ContratDePhase(
@@ -419,36 +352,21 @@ _CONTRATS: dict[TypePhase, ContratDePhase] = {
         # la salle dit « manche ». Les deux champs répondent à deux questions différentes du
         # contrat, et c'est précisément pourquoi ils ne se déduisent pas l'un de l'autre.
         unite_de_tour=UniteDeTour.MANCHE,
-        # ✅ **Bascule en fin d'E05US027**, une fois `ServiceColline.regenerer_plan` écrit — et
-        # `AUCUN` jusque-là, ce qui était exact tant que rien ne faisait tirer ce format.
+        # ✅ **Bascule en fin d'E05US027**, une fois `ServiceColline.regenerer_plan` écrit.
         #
-        # Même raisonnement que le suisse, et pour une raison **plus forte encore** : les défis
-        # d'une manche ne changent pas seulement de composition, ils changent de **nombre**. À
-        # portée 1 les extrémités se reposent une manche sur deux, et à portée 2 la distance tourne
-        # — une manche à 4 archers apparie deux défis, la suivante un seul. « Archer → couloir »
-        # serait donc une information non seulement fausse mais **instable**. C'est le bloc qui est
+        # Même raisonnement que le suisse, en plus fort : les défis d'une manche changent de
+        # **nombre** — à portée 1 les extrémités se reposent une manche sur deux. « Archer →
+        # couloir » serait donc non seulement faux mais **instable**. C'est le bloc qui est
         # persisté (ADR-0083 §3), les couloirs de chaque défi s'y dérivant manche par manche.
         plan_de_cibles=PlanDeCibles.PAR_BLOC_DE_COULOIRS,
-        # ✅ Les quatre capacités basculent **en fin de tranche E05US027**, et seulement une fois le
-        # code écrit — même discipline qu'E05US023, E05US026 et E05US028. Ce qui les autorise,
-        # module par module : `application/colline.py` rejoue la phase des duels validés, manche
-        # après manche, en appliquant `appliquer_manche` à chaque manche close, et rend son état
-        # (`deroule_par_un_service`) ; `ServiceColline.classement_de_phase` rend le
-        # `ClassementSource` que `ServiceSaisieDuels._classement_de_l_ordre` lit par le port
-        # `LecteurClassementDePhase`, via `domain/classement_de_colline.py`
-        # (`classement_lisible`) ; `ServiceColline.avancement_de_phase` répond au port
-        # `LecteurAvancementDePhase` (`avancement_lisible`, ADR-0090) ; et
-        # `ServiceRoutage._routage_par_rencontres` dit à un archer quel défi il tire
-        # (`route_l_archer`).
+        # ✅ Les quatre capacités basculent **en fin de tranche E05US027**, une fois le code écrit
+        # : `application/colline.py` rejoue la phase manche après manche
+        # (`deroule_par_un_service`), `classement_de_phase` rend le `ClassementSource`
+        # (`classement_lisible`), `avancement_de_phase` répond au port `LecteurAvancementDePhase`
+        # (ADR-0090), et `_routage_par_rencontres` dit quel défi un archer tire (`route_l_archer`).
         #
-        # ⚠️ **`avancement_lisible` est aussi ce qui rend la colline arrêtable** : `TYPES_ARRETABLES`
-        # en dérive (ADR-0093). Une pause programmée peut donc se poser sur ce format dès cette US,
-        # sans que rien n'ait à être ajouté du côté d'`ArretProgramme`.
-        #
-        # ⚠️ **`classement_lisible` a un effet mesurable** : elle fait réclamer le plancher
-        # d'inscrits (E05US021) pour un prélèvement visant une colline. Elle n'est légitime que
-        # parce que le prélèvement est réellement honoré — un `True` posé par anticipation aurait
-        # exigé des inscrits pour une source que rien n'honore.
+        # ⚠️ `avancement_lisible` rend aussi la colline **arrêtable** (`TYPES_ARRETABLES`,
+        # ADR-0093), et `classement_lisible` fait réclamer le plancher d'inscrits (E05US021).
         deroule_par_un_service=True,
         avancement_lisible=True,
         classement_lisible=True,
@@ -489,35 +407,22 @@ TYPES_DEROULES: frozenset[TypePhase] = frozenset(
 )
 """Les types qu'un service **exécute réellement** aujourd'hui (`deroule._TYPES_DEROULES`).
 
-⚠️ **Nommée `TYPES_MONTES` jusqu'à E05US028** : « monter » supposait des oppositions à monter, ce
-qu'un Big Shoot Off n'a pas. Le verbe « dérouler » est celui qu'emploie déjà tout le reste du code
-(`domain/deroule.py`, « le moteur ne sait pas encore dérouler ce type »), donc le renommage
-**supprime** un vocabulaire au lieu d'en ajouter un.
-
 Répond à « le moteur va-t-il seulement monter cette phase ? ». C'est cette table qui décide si le
 prélèvement d'une phase sera honoré, donc si son rang de départ **relève le plancher d'inscrits**
-(E05US021)."""
+(E05US021). ⚠️ Nommée `TYPES_MONTES` jusqu'à E05US028 : « monter » supposait des oppositions à
+monter, ce qu'un Big Shoot Off n'a pas.
+"""
 
 TYPES_ARRETABLES: frozenset[TypePhase] = frozenset(
     type_phase for type_phase, contrat in _CONTRATS.items() if contrat.avancement_lisible
 )
-"""Les types sur lesquels une **pause programmée** peut se poser (E05US035, [ADR-0093]).
+"""Les types sur lesquels une **pause programmée** peut se poser (E05US035, ADR-0093).
 
-Répond à « sait-on *observer* le tour de cette phase ? », et c'est la seule question qui décide :
-le déclencheur ne coupe qu'à une frontière de tour observée, donc un arrêt posé sur un type qu'on
-ne sait pas lire serait accepté à l'atelier puis **définitivement inerte** le jour J.
-
-⚠️ **Ce n'est pas `TYPES_DEROULES`**, bien que les deux aient coïncidé jusqu'à E05US035 — et c'est
-la qualification qui les sépare : on sait dire où elle en est sans qu'aucun service ne la *monte*.
-Le refus lisait `TYPES_DEROULES` tant qu'ils coïncidaient ; l'y laisser aurait obligé à mentir sur
-l'autre capacité pour lever ce refus-ci, donc à réclamer un plancher d'inscrits par rangs à toute
-qualification prélevée (E05US021). Deux questions, deux tables.
-
-Miroir du registre `ServiceSuiviDeroule._avancements`, à l'élimination directe près — dont le
-suivi reconstruit l'avancement des braquets projetés sans passer par le port. Le vis-à-vis des deux
-oracles est tenu par `backend/tests/test_arrets_api.py`.
-
-[ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+Répond à « sait-on *observer* le tour de cette phase ? » : le déclencheur ne coupe qu'à une
+frontière de tour observée, donc un arrêt posé sur un type illisible serait accepté à l'atelier puis
+**définitivement inerte**. ⚠️ **Ce n'est pas `TYPES_DEROULES`** — la qualification les sépare : on
+sait dire où elle en est sans qu'aucun service ne la *monte*. Miroir de
+`ServiceSuiviDeroule._avancements`, vis-à-vis tenu par `backend/tests/test_arrets_api.py`.
 """
 
 TYPES_CLASSANTS_LUS: frozenset[TypePhase] = frozenset(
@@ -564,26 +469,22 @@ TYPES_EN_TABLEAU_JOUE: frozenset[TypePhase] = frozenset(
 )
 """Les types dont un service monte **et** déroule l'arbre de duels — l'élimination directe, seule.
 
-Conjonction des deux capacités, et les deux sont nécessaires : il faut un arbre (le décor) **et**
-un service qui le monte. `placement` a le premier sans le second, les poules le second sans le
-premier. C'est le filtre de `ServiceSaisieDuels`, de `ServicePlacementDuels` et du palmarès —
-trois sites qui écrivaient chacun `phase.type is not TypePhase.ELIMINATION_DIRECTE`.
-
-⚠️ **Les poules en sont absentes**, bien qu'elles soient montées et lues : elles n'ont pas d'arbre.
-Leur saisie, leur plan de cibles et leur classement passent par leur propre service — le contrat
-sépare les deux formats **ici**, une fois, au lieu de le redemander à chaque appelant."""
+Conjonction de deux capacités, toutes deux nécessaires : un arbre (le décor) **et** un service qui
+le monte. `placement` a le premier sans le second, les poules le second sans le premier. C'est le
+filtre de `ServiceSaisieDuels`, `ServicePlacementDuels` et du palmarès — trois sites qui écrivaient
+chacun `phase.type is not TypePhase.ELIMINATION_DIRECTE`. ⚠️ Les poules en sont absentes bien
+qu'elles soient montées et lues : elles n'ont pas d'arbre.
+"""
 
 TYPES_RECONSTRUCTIBLES: frozenset[TypePhase] = TYPES_EN_TABLEAU_JOUE
 """Les types dont le palmarès sait **rejouer l'arbre** (`application/palmares.py`).
 
-⚠️ Alias de `TYPES_EN_TABLEAU_JOUE`, et **pas** une capacité de plus : « rejouer l'arbre » et
-« monter l'arbre » sont la même chose ici, `ServicePalmares` déléguant à
-`ServiceSaisieDuels.reconstruire`. Le nom subsiste parce qu'il dit ce que le palmarès en fait ;
-en faire une entrée distincte du registre inviterait précisément la divergence qu'on ferme.
+⚠️ Alias de `TYPES_EN_TABLEAU_JOUE`, et **pas** une capacité de plus : `ServicePalmares` délègue à
+`ServiceSaisieDuels.reconstruire`. Le nom subsiste parce qu'il dit ce que le palmarès en fait ; en
+faire une entrée distincte du registre inviterait la divergence qu'on ferme.
 
-Les **poules** n'entrent donc pas au palmarès dans cette tranche. Ce n'est pas un oubli mais une
-limite de périmètre (le CA d'E05US023 ne le demande pas) ; l'y verser demanderait un `_resultat`
-propre au format, pas une entrée de plus dans une table."""
+Les **poules** n'entrent donc pas au palmarès : limite de périmètre, pas oubli (CA d'E05US023).
+"""
 
 TYPES_JOUES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS | TYPES_DEROULES
 """Les types que la production sait **faire jouer**, montage ou classement (`ToursPhase.joue`).
@@ -601,16 +502,11 @@ TYPES_SIGNALES_EN_ECART: frozenset[TypePhase] = frozenset(
 """Les types que l'atelier signale comme **composables mais pas jouables** (E01US024).
 
 Un type non joué **et** non classant n'y figure pas : l'échauffement ne produit rien *par
-définition*, donc annoncer un écart à son sujet serait un faux positif. Le signal doit **continuer
-de viser** le barrage autonome et le placement — sans quoi il mentirait pour ceux qui restent
-(CA d'E05US023).
-
-⚠️ **Cette phrase a énuméré cinq types jusqu'à E05US027, et la table n'en contient plus que deux**
-(relevé en revue par deux axes). Les poules en sont sorties à E05US023, le suisse à E05US026, le Big
-Shoot Off à E05US028, la colline ici même : chacun a gagné son service, donc rejoint `TYPES_JOUES`.
-La table, elle, est **dérivée** — c'est une compréhension sur `_CONTRATS` — donc elle n'a jamais été
-fausse ; seule sa description l'était. C'est le piège propre aux ensembles calculés : rien ne rougit
-quand le commentaire qui les explique cesse de correspondre à ce qu'ils contiennent."""
+définition*. Le signal doit continuer de viser le barrage autonome et le placement. ⚠️ La table est
+**dérivée** (compréhension sur `_CONTRATS`), donc jamais fausse — mais la phrase qui l'explique a
+énuméré cinq types jusqu'à E05US027 alors qu'elle n'en contient plus que deux : rien ne rougit quand
+le commentaire d'un ensemble calculé cesse de lui correspondre.
+"""
 
 
 def produit_un_classement(type_phase: TypePhase) -> bool:

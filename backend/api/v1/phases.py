@@ -87,29 +87,23 @@ class SourceDTO(BaseModel):
 class ProfondeurDTO(BaseModel):
     """La **profondeur de classement** d'une phase (E06US006, ADR-0070).
 
-    Deux modes seulement, ceux qu'un organisateur choisit : `un_vers_n` (tous les rangs se jouent)
-    et `top_n` (on ne départage que les `jusqu_au` premiers, le reste reste groupé). Le catalogue
+    Deux modes seulement, ceux qu'un organisateur choisit : `un_vers_n` et `top_n`. Le catalogue
     `depth` en compte un troisième — `aucun` — délibérément **absent** de la façade : c'est le
-    contenu du type échauffement, pas un réglage de tableau (règle « on n'offre pas en façade ce
-    qu'aucun moteur ne sait dérouler », ADR-0045 §2).
+    contenu du type échauffement, pas un réglage de tableau (ADR-0045 §2).
 
-    Jumeau assumé de `api/v1/formats.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO`.
+    Jumeau assumé de `api/v1/formats.ProfondeurDTO` — cf. `DETTE-054`.
     """
 
     nom: NomProfondeur
     jusqu_au: int | None = None
     """Obligatoire pour `top_n`, interdit pour `un_vers_n`.
 
-    ⚠️ **Aucune borne Pydantic ici, délibérément** (corrigé en revue). Un `ge=1` y figurait, et il
-    contredisait la phrase qui l'accompagnait : il **recopiait** à moitié l'invariant que le
-    `ProfondeurClassement` porte déjà, avec pour effet observable **deux codes d'erreur pour une
-    seule faute** — `{"nom":"top_n","jusqu_au":0}` rendait 400 `requete_invalide`, alors que
-    `{"nom":"top_n"}` rend 422 `profondeur_invalide`. Une seule source, un seul code : le domaine
-    (règle 6 — la frontière API ne doit pas devenir un second lieu d'invariants).
-
-    *(`barrage_jusqu_au`, plus bas, garde son `ge=1` : il est un entier nu sans value object pour le
-    porter, donc la frontière y est bien le seul lieu possible. La divergence est assumée, pas une
-    incohérence — cf. ADR-0070 « Négatives / à surveiller ».)*"""
+    ⚠️ **Aucune borne Pydantic ici, délibérément** : un `ge=1` recopiait à moitié l'invariant du
+    `ProfondeurClassement`, avec pour effet **deux codes d'erreur pour une seule faute** (400
+    `requete_invalide` contre 422 `profondeur_invalide`). Une seule source, un seul code : le
+    domaine (règle 6). `barrage_jusqu_au` garde le sien — entier nu sans value object pour le
+    porter, la frontière y est le seul lieu possible (ADR-0070, « à surveiller »).
+    """
 
     def vers_agregat(self) -> ProfondeurClassement:
         return ProfondeurClassement(nom=self.nom, jusqu_au=self.jusqu_au)
@@ -142,18 +136,11 @@ class BaremePouleDTO(BaseModel):
 class ReglagePoulesDTO(BaseModel):
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083 §4).
 
-    Porte la **taille visée**, pas le nombre de groupes : le déroulé se compose des semaines avant
-    le tournoi, inscriptions ouvertes, et le nombre de poules n'y est pas calculable. La conversion
-    se fait le jour J, sur l'effectif réel, en un seul endroit (`ReglageDePoules.pour_effectif`).
-
-    `nb_qualifies` porte aussi le **régime d'ex æquo** (§5) : vide, la poule *classe* et tout
-    ex æquo irréductible se départage au barrage ; renseigné, elle *qualifie* et seul un ex æquo
-    tombant sur la barre justifie un barrage. Pas un champ de plus — le même, rendu explicite.
-
-    ⚠️ **Jumeau assumé de `api/v1/formats.ReglagePoulesDTO`**, pour la raison déjà tranchée sur
-    `SourceDTO` et `ProfondeurDTO` : même notion, deux ressources distinctes. C'est la **3ᵉ** paire
-    de jumeaux entre ces deux routeurs, donc le seuil du « remède structurel » de `CLAUDE.md` est
-    atteint — inscrit à `DETTE-054` plutôt que traité ici, où il noierait le diff de l'US.
+    Porte la **taille visée**, pas le nombre de groupes : le déroulé se compose avant le tournoi,
+    inscriptions ouvertes. La conversion se fait le jour J (`ReglageDePoules.pour_effectif`).
+    `nb_qualifies` porte aussi le **régime d'ex æquo** (§5) : vide, la poule *classe* ; renseigné,
+    elle *qualifie*. Pas un champ de plus — le même, rendu explicite. ⚠️ Jumeau assumé de son
+    homonyme dans l'autre routeur de composition, 3ᵉ paire — `DETTE-054`.
     """
 
     taille_visee: int
@@ -199,19 +186,10 @@ class ReglageBigShootOffDTO(BaseModel):
     """Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
 
     `eliminations` est une **liste écrite par l'organisateur**, une case par manche : `[4, 2, 1]`
-    veut dire « quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ ». Rien n'impose qu'elle décroisse
-    ni qu'elle soit régulière — ce n'est pas une progression, et le mot « suite » a été écarté au
-    cadrage pour cette raison.
-
-    ⚠️ **Il n'y a pas de champ « restants » (K)**, et c'est le cœur de l'élargissement du
-    14/08/2026 : K se **déduit** de ce que la liste n'élimine pas. Deux champs pour la même
-    information pouvaient se contredire ; il n'en reste qu'un.
-
-    Aucune borne haute n'est posée sur la longueur de la liste : le format est réutilisé sur des
-    effectifs qu'il ignore, et « on joue tant que la manche est possible ». L'écran montre la
-    projection (`/api/v1/big-shoot-off/projection/…`) avant que l'organisateur compose.
-
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 4ᵉ paire, `DETTE-054`.
+    = quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ. Rien n'impose qu'elle décroisse.
+    ⚠️ **Pas de champ « restants »** : K se **déduit** de ce que la liste n'élimine pas — deux
+    champs pour la même information pouvaient se contredire. Aucune borne haute de longueur : le
+    format est réutilisé sur des effectifs qu'il ignore. Jumeau, 4ᵉ paire — `DETTE-054`.
     """
 
     # ⚠️ Bornes ajoutées à la revue d'E05US028. Les **valeurs** restent libres (`paliers_pour`
@@ -254,24 +232,13 @@ class ReglageBigShootOffDTO(BaseModel):
 
 
 class DecoupageDTO(BaseModel):
-    """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]) — « 20 volées en 2 ».
+    """Le découpage d'une **qualification** en tours (E05US035, ADR-0093) — « 20 volées en 2 ».
 
-    Un seul champ : l'organisateur saisit un **nombre de tours**, et le moteur en déduit la
-    longueur. Le découpage ne change **rien** au score — la qualification se classe toujours au
-    total (`avancer ≠ classer`, ADR-0090) —, il n'existe que pour donner à une **pause programmée**
-    une frontière où tomber.
-
-    ⚠️ **La divisibilité n'est pas ici**, et ce n'est pas un oubli : « 2 tours » est licite sur un
-    barème de 20 volées et ne l'est pas sur un de 15. Elle dépend donc du **barème**, que ce DTO ne
-    connaît pas et qu'un format de bibliothèque ne connaîtra jamais. `EtapeDeroule` la vérifie là
-    où le barème est déclaré, et l'atelier affiche la longueur obtenue sous le champ. C'est le même
-    partage que `ReglageSuisseDTO` avec l'effectif — le plafond posé ici (`le=64`) est la garde de
-    frontière habituelle, pas la règle du format.
-
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 7ᵉ paire,
-    `DETTE-054`.
-
-    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    Un seul champ : l'organisateur saisit un **nombre de tours**. Le découpage ne change rien au
+    score (`avancer ≠ classer`, ADR-0090) ; il n'existe que pour donner à une pause une frontière.
+    ⚠️ **La divisibilité n'est pas ici** : « 2 tours » est licite sur 20 volées et pas sur 15 —
+    elle dépend du **barème**, que ce DTO ne connaît pas. `EtapeDeroule` la vérifie. Le `le=64` est
+    la garde de frontière habituelle, pas la règle du format. Jumeau, 7ᵉ paire — `DETTE-054`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -289,20 +256,11 @@ class DecoupageDTO(BaseModel):
 class ReglageSuisseDTO(BaseModel):
     """Le réglage d'une phase au **système suisse** (E05US026) — le nombre de rondes.
 
-    Un seul champ, et c'est voulu : tout le reste du format est déjà écrit dans le moteur
-    (appariement vainqueurs contre vainqueurs, évitement des revanches, byes, Buchholz au
-    départage). L'organisateur ne règle que **combien de rondes on tire**.
-
-    ⚠️ **La borne haute n'est pas ici**, et ce n'est pas un oubli. À N participants, on ne peut
-    apparier que N-1 rondes sans ré-affrontement (N à effectif impair, le bye coûtant un tour) —
-    donc la borne dépend de l'**effectif**, que ce DTO ne connaît pas et qu'un format de
-    bibliothèque ne connaîtra jamais. Elle est vérifiée par `EtapeDeroule`, là où l'effectif est
-    déclaré, et l'atelier affiche le maximum atteignable sous le champ.
-
-    Le plafond posé ici (`le=64`) n'est donc pas la règle du suisse : c'est la garde de frontière
-    habituelle contre une saisie qui a dérapé, au même titre que `ConfigPhaseRequete.sources`.
-
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 5ᵉ paire, `DETTE-054`.
+    Un seul champ : tout le reste du format est écrit dans le moteur (appariement, évitement des
+    revanches, byes, Buchholz).
+    ⚠️ **La borne haute n'est pas ici** : à N participants on ne peut apparier que N-1 rondes sans
+    ré-affrontement, donc elle dépend de l'**effectif**, que ce DTO ne connaît pas. `EtapeDeroule`
+    la vérifie. Le `le=64` est la garde de frontière habituelle. Jumeau, 5ᵉ paire — `DETTE-054`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -320,23 +278,11 @@ class ReglageSuisseDTO(BaseModel):
 class ReglageCollineDTO(BaseModel):
     """Le réglage d'une phase de **colline** (E05US027) — manches et portée de défi.
 
-    **Deux champs, là où ses trois voisins n'en ont qu'un**, et l'asymétrie porte une information :
-    `portee_de_defi` est ce qui distingue le **King of the Hill** (1 — on défie son voisin immédiat)
-    du **Ladder** (2+ — « le n°6 peut défier le 5 ou le 4 »). Le référentiel §10.1 les présente
-    comme deux formats ; ce sont deux **réglages d'un même format** (règle 2 : un format de tournoi
-    est de la configuration, pas du code), d'où un seul `TypePhase.COLLINE` au catalogue.
-
-    ⚠️ **La borne haute de la portée n'est pas ici**, et ce n'est pas un oubli — même raisonnement
-    que `ReglageSuisseDTO` : une portée doit rester strictement inférieure à l'effectif, faute de
-    quoi « chacun défie n'importe qui » et ce n'est plus un format. Cette borne dépend de
-    l'**effectif**, que ce DTO ne connaît pas et qu'un format de bibliothèque ne connaîtra jamais.
-    Elle est vérifiée par `EtapeDeroule`, là où l'effectif est déclaré, et l'atelier affiche le
-    maximum atteignable sous le champ.
-
-    Le plafond posé ici (`le=64`) n'est donc pas la règle de la colline : c'est la garde de
-    frontière habituelle contre une saisie qui a dérapé.
-
-    ⚠️ **Jumeau assumé de son homonyme dans l'autre routeur de composition** — 8ᵉ paire, `DETTE-054`.
+    **Deux champs là où ses voisins n'en ont qu'un** : `portee_de_defi` distingue le **King of the
+    Hill** (1) du **Ladder** (2+). Le référentiel §10.1 les donne comme deux formats ; ce sont deux
+    réglages d'un même format (règle 2), d'où un seul `TypePhase.COLLINE`.
+    ⚠️ **La borne haute de la portée n'est pas ici** — elle dépend de l'effectif, vérifié par
+    `EtapeDeroule`. Le `le=64` est la garde de frontière. Jumeau, 8ᵉ paire — `DETTE-054`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -357,19 +303,11 @@ class ReglageCollineDTO(BaseModel):
 class ArretProgrammeDTO(BaseModel):
     """Une **pause programmée** : après quel tour la salle s'arrête (E05US033, ADR-0091).
 
-    `portee` vaut `phase` (défaut, le moins intrusif : couper une phase n'éteint pas la salle) ou
-    `depart` — toutes les phases du créneau, chacune **finissant son tour en cours**.
-
-    ⚠️ **Ce DTO ne porte aucun état de franchissement**, et c'est délibéré : il décrit une
-    *définition*,
-    éditable à l'atelier et rejouée par chaque créneau (ADR-0076). Savoir si l'arrêt a déjà coupé
-    relève de l'avancement, et se lit par la route de relance — mêler les deux dans un même document
-    laisserait un client réécrire un état d'exploitation en éditant un déroulé.
-
-    La borne haute d'`apres_tour` n'est pas ici : « après le tour 5 » est applicable à un suisse de
-    7 rondes et inerte à un suisse de 5, donc elle dépend du nombre de tours, que ce DTO ne connaît
-    pas. `EtapeDeroule` la vérifie là où l'information existe. Le plafond posé (`le=64`) est la
-    garde de frontière habituelle contre une saisie qui a dérapé, comme celui de `ReglageSuisseDTO`.
+    `portee` vaut `phase` (défaut, le moins intrusif) ou `depart` — toutes les phases du créneau,
+    chacune **finissant son tour en cours**.
+    ⚠️ **Ce DTO ne porte aucun état de franchissement** : il décrit une *définition*, rejouée par
+    chaque créneau (ADR-0076) ; mêler les deux laisserait un client réécrire un état d'exploitation
+    en éditant un déroulé. La borne d'`apres_tour` dépend du nombre de tours — `EtapeDeroule`.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -397,16 +335,12 @@ class ConfigPhaseRequete(BaseModel):
     model_config = ConfigDict(extra="forbid")
     """⚠️ **Seul régime strict du projet, et c'est délibéré** (E05US010, ADR-0061).
 
-    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici, le champ d'entrée
-    a été **renommé** (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne
-    forme
-    verrait sa clé silencieusement ignorée. Et comme le `PUT` est une édition **totale**, il ne
-    perdrait pas seulement sa saisie — il **écraserait** la composition existante par une liste
-    vide,
-    en 200. Le déploiement rend le cas réel : une trentaine de tablettes personnelles, une SPA
-    servie
-    depuis leur cache, aucun versionnage de bundle qui garantisse qu'elles rechargent le jour J.
-    Mieux vaut un 422 explicite qu'une destruction muette."""
+    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici le champ d'entrée
+    a été renommé (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne forme
+    verrait sa clé ignorée — et comme le `PUT` est une édition **totale**, il **écraserait** la
+    composition existante par une liste vide, en 200. Une trentaine de tablettes personnelles
+    servent une SPA depuis leur cache : mieux vaut un 422 explicite qu'une destruction muette.
+    """
 
     type: TypePhase
     sources: list[SourceDTO] = Field(default_factory=list, max_length=16)
@@ -415,22 +349,17 @@ class ConfigPhaseRequete(BaseModel):
     """Jusqu'où cette phase départage (E06US006, ADR-0070).
 
     `null` (défaut) = **non réglée**, donc le preset du type : le **podium** pour une élimination
-    directe (ce qui se jouait avant cette US), le **classement intégral** pour un placement, qui
-    n'a aucun existant à préserver (ADR-0070 §3).
-
-    ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
-    réglage et fait retomber la phase sur son preset.
+    directe, le **classement intégral** pour un placement (ADR-0070 §3). ⚠️ Même régime d'édition
+    **totale** que `sources` : omettre le champ au `PUT` **efface** le réglage.
     """
 
     poules: ReglagePoulesDTO | None = None
     """Le réglage d'une phase de **poules** (E05US023, ADR-0083).
 
-    `null` (défaut) = **non réglée**, ce qui est licite : le type se choisit avant ses paramètres.
-    C'est la composition du jour J qui exigera le réglage (`PhasePasReglee`, 409), pas l'édition.
-
-    ⚠️ Même régime d'édition **totale** que `sources` : omettre le champ au `PUT` **efface** le
-    réglage. Posé sur un type qui n'est pas `poules`, il lève `ReglageDePoulesInvalide` (422) —
-    contrairement à `profondeur`, dont l'incompatibilité de type n'est refusée qu'à l'application.
+    `null` (défaut) = **non réglée**, ce qui est licite : c'est la composition du jour J qui exigera
+    le réglage (`PhasePasReglee`, 409). ⚠️ Même régime d'édition **totale** que `sources`. Posé sur
+    un type qui n'est pas `poules`, il lève `ReglageDePoulesInvalide` (422) — contrairement à
+    `profondeur`, dont l'incompatibilité n'est refusée qu'à l'application.
     """
 
     big_shoot_off: ReglageBigShootOffDTO | None = None
@@ -459,32 +388,21 @@ class ConfigPhaseRequete(BaseModel):
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
     """Les **pauses programmées** de cette étape (E05US033, ADR-0091) — liste vide = aucune.
 
-    ⚠️ Une **liste**, parce que c'est la lettre du CA : l'organisateur prépare sa journée (« pause
-    après le tour 2, pause après le tour 5 »), pas un arrêt unique.
-
+    ⚠️ Une **liste**, parce que c'est la lettre du CA : l'organisateur prépare sa journée.
     ⚠️ Même régime d'édition **totale** : envoyer une liste vide au `PUT` **supprime** tous les
-    arrêts. C'est cohérent avec `sources`, `poules` et les autres, et c'est ce que le
-    `extra="forbid"` rend lisible — mais la conséquence mérite d'être dite, car ici l'effacement
-    porte sur du **planning de journée** que l'organisateur a saisi ligne à ligne, non sur un
-    paramètre qu'il retrouvera d'un coup d'œil. L'écran doit donc toujours renvoyer la liste
-    complète, jamais un delta.
-
-    Deux arrêts après le même tour, ou un arrêt au-delà du dernier tour connu, lèvent
-    `ArretProgrammeInvalide` (422) — le refus vit sur l'étape, là où le nombre de tours est
-    connu."""
+    arrêts — l'effacement porte ici sur du planning saisi ligne à ligne, donc l'écran doit toujours
+    renvoyer la liste complète, jamais un delta. Deux arrêts après le même tour, ou un arrêt au-delà
+    du dernier tour connu, lèvent `ArretProgrammeInvalide` (422) — le refus vit sur l'étape.
+    """
 
     titre: str | None = Field(default=None, max_length=80)
     """Le **libellé** que l'organisateur donne à cette étape (E16US002) — `null` = aucun.
 
-    ⚠️ Même régime d'édition **totale** que ses voisins : omettre le champ au `PUT` **efface** le
-    titre et fait retomber l'écran sur le libellé du type. C'est le geste par lequel on *retire*
-    un titre, et il n'y en a pas d'autre.
+    ⚠️ Même régime d'édition **totale** : omettre le champ au `PUT` **efface** le titre et fait
+    retomber l'écran sur le libellé du type. C'est le geste par lequel on *retire* un titre.
 
-    **Borné à 80 caractères à la frontière, pas dans le domaine.** Le domaine n'a aucune règle
-    métier sur la longueur d'un libellé — inventer un maximum sportif serait faux. Ce qu'il faut
-    borner est l'**entrée** : une chaîne non bornée à la frontière gonfle le `config` JSON de la
-    table et ouvre la porte au déni de service, même garde que `sources` (16) et `arrets` (64).
-    Un blanc ou une chaîne vide passent : le domaine les ramène à « pas de titre ».
+    **Borné à 80 caractères à la frontière, pas dans le domaine** : le domaine n'a aucune règle
+    métier sur la longueur. Ce qu'il faut borner est l'**entrée** — même garde que `sources` (16).
     """
 
     barrage_jusqu_au: int | None = Field(default=None, ge=1)
@@ -614,14 +532,10 @@ class EtapeReponse(BaseModel):
     nb_volees: int | None = None
     """Le nombre de volées du barème de cette étape — **lecture seule** (E05US035).
 
-    ⚠️ **Ce n'est pas « le barème exposé »**, et la distinction est volontaire : le barème se règle
-    par sa propre ressource (`/bareme-qualification`), et l'y dupliquer en écriture ouvrirait deux
-    chemins pour une même donnée. Ce qui est servi ici est le seul chiffre dont l'écran d'atelier a
-    besoin pour **dire ce que le découpage donne** (« 2 tours de 10 volées ») et nommer le refus à
-    venir quand il ne tombe pas juste. Sans lui, la fiche de découpage ne pourrait qu'annoncer
-    « la longueur dépend du barème » sur un tournoi où le barème est pourtant connu.
-
-    `null` sur tout type sans barème — donc partout sauf la qualification.
+    ⚠️ **Ce n'est pas « le barème exposé »** : il se règle par sa propre ressource
+    (`/bareme-qualification`), et l'y dupliquer en écriture ouvrirait deux chemins. Ce qui est servi
+    ici est le seul chiffre dont l'atelier a besoin pour dire ce que le découpage donne (« 2 tours
+    de 10 volées »). `null` sur tout type sans barème — donc partout sauf la qualification.
     """
 
     arrets: list[ArretProgrammeDTO] = Field(default_factory=list, max_length=64)
@@ -685,19 +599,10 @@ async def lister_avancement(depart_id: int, request: Request) -> list[PhaseRepon
     """Renvoie **où en est ce créneau** : ses phases ordonnées, avec leur statut.
 
     Pendant de `lister_phases` à l'autre maille (ADR-0076) : celle-ci rend le déroulé *prévu* du
-    tournoi (`EtapeReponse`, sans statut), celle-là ce qu'un créneau en a *joué*. C'est cette
-    lecture que l'écran de pilotage consomme — les transitions de statut s'adressent à un
-    `phase_id`, qui n'existe qu'ici.
-
-    `# DETTE-071` — ⚠️ **route ouverte servant `PhaseReponse` entière.** Un anonyme y lit les
-    réglages d'atelier du créneau (`sources`, `poules`, `suisse`, `big_shoot_off`, `profondeur`),
-    alors que ses consommateurs publics — l'onglet « En cours » et l'écran de salle depuis
-    E05US031 — n'ont besoin que de `id`, `ordre`, `type`, `statut`. Rien de secret, mais **tout
-    champ ajouté à `PhaseReponse` part au public sans décision** : y ajouter un réglage qu'on ne
-    veut pas annoncer se ferait en silence. Résorption par un DTO public étroit (E10US009), pas par
-    une garde admin — l'appli publique et l'écran de salle n'ont pas de session.
-
-    Lève `DepartIntrouvable` (404) si le créneau est inconnu.
+    tournoi, celle-là ce qu'un créneau en a *joué*.
+    `# DETTE-071` — ⚠️ **route ouverte servant `PhaseReponse` entière**, alors que ses consommateurs
+    publics n'ont besoin que d'`id`, `ordre`, `type`, `statut`. Rien de secret, mais **tout champ
+    ajouté à `PhaseReponse` part au public sans décision**. Résorption par un DTO étroit (E10US009).
     """
     service: ServicePhases = request.app.state.service_phases
     phases = await run_in_threadpool(service.avancement, depart_id)
@@ -836,12 +741,9 @@ class ArretFranchiReponse(BaseModel):
     """Un arrêt **franchi** qui attend un geste de relance (E05US033, ADR-0091).
 
     Distinct d'`ArretProgrammeDTO`, qui décrit la *définition* : celui-ci décrit un **fait
-    d'exploitation**. Les mêler dans un même document laisserait un client réécrire un état
-    d'exploitation en éditant un déroulé, et ferait passer `id` — l'identité d'un franchissement —
-    pour un attribut de planning.
-
-    `phases_arretees` porte **toutes** les phases que cet arrêt a coupées : c'est ce que la relance
-    rendra d'un seul geste, et c'est pourquoi l'écran affiche un bouton par arrêt et non par phase.
+    d'exploitation**. Les mêler laisserait un client réécrire un état d'exploitation en éditant un
+    déroulé. `phases_arretees` porte **toutes** les phases que cet arrêt a coupées — c'est ce que la
+    relance rendra d'un seul geste, d'où un bouton par arrêt et non par phase.
     """
 
     id: int
@@ -910,14 +812,10 @@ async def lister_arrets_en_attente(depart_id: int, request: Request) -> list[Arr
 async def relancer_arret(depart_id: int, arret_id: int, request: Request) -> list[int]:
     """Relance la salle : **toutes** les phases coupées par cet arrêt repartent (**action admin**).
 
-    Rend la liste des phases effectivement relancées. `ArretIntrouvable` (404) si l'identifiant est
-    inconnu, s'il relève d'un autre créneau, s'il est encore armé, ou s'il a **déjà été levé** — un
-    double-clic ne relance pas deux fois.
-
-    ⚠️ **Un seul geste pour tout l'arrêt**, et c'est un CA : « quatre boutons pour un seul arrêt
-    créerait exactement le piège qu'on cherche à éviter — en oublier une ». D'où une route adressée
-    par **arrêt** et non par phase, là où la reprise manuelle d'une phase seule garde la sienne
-    (`POST /departs/{id}/phases/{id}/statut`).
+    Rend la liste des phases relancées. `ArretIntrouvable` (404) si l'identifiant est inconnu,
+    relève d'un autre créneau, est encore armé, ou a **déjà été levé** — un double-clic ne relance
+    pas deux fois. ⚠️ **Un seul geste pour tout l'arrêt** (CA : « quatre boutons pour un seul arrêt
+    créerait le piège qu'on cherche à éviter »), d'où une route adressée par **arrêt**.
     """
     service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
     write_queue: WriteQueue = request.app.state.write_queue
@@ -933,15 +831,11 @@ async def relancer_arret(depart_id: int, arret_id: int, request: Request) -> lis
 class PoserArretRelatifRequete(BaseModel):
     """« Bloque-moi dans x tours » — la pause décidée pendant que la salle tire (E05US034).
 
-    ⚠️ **Trois DTO d'arrêt, et ce n'est pas une redondance** : `ArretProgrammeDTO` décrit une
-    *définition de déroulé* (posée à l'atelier, rejouée par tous les créneaux),
-    `ArretFranchiReponse` un *fait d'exploitation*, et celui-ci une *commande*. Les deux premiers
-    portent `apres_tour` —
-    un numéro absolu — quand celui-ci porte `dans_x_tours`, un **relatif**. Les confondre serait le
-    piège du jour J : l'organisateur lit « tour 3 sur 5 » à l'écran et pense « encore deux », pas
-    « après le tour 4 ». La conversion est faite par le domaine (`tour_d_un_arret_relatif`), pas au
-    client — le tour courant est une donnée serveur, et un client qui la calculerait couperait au
-    mauvais endroit dès qu'il aurait dix secondes de retard.
+    ⚠️ **Trois DTO d'arrêt, et ce n'est pas une redondance** : `ArretProgrammeDTO` est une
+    *définition*, `ArretFranchiReponse` un *fait d'exploitation*, celui-ci une *commande*. Les deux
+    premiers portent `apres_tour` (absolu), celui-ci `dans_x_tours` (relatif) : l'organisateur lit
+    « tour 3 sur 5 » et pense « encore deux ». La conversion est faite par le **domaine** — un
+    client qui la calculerait couperait au mauvais endroit dès dix secondes de retard.
     """
 
     dans_x_tours: int = Field(ge=1, le=64)
@@ -989,14 +883,10 @@ async def poser_arret_relatif(
 ) -> ArretDeCirconstanceReponse:
     """Pose une pause **dans ce créneau seul**, à partir du tour en cours (**action admin**).
 
-    ⚠️ **Adressée par créneau et par phase, et pas par étape** — c'est la route qui *dit* ce que
-    l'ADR décide. Poser un arrêt à l'atelier se fait sur le déroulé du tournoi
-    (`PUT /tournois/{id}/deroule`), et tous les créneaux le rejouent (ADR-0076 §4). Ici on agit sur
-    ce qui tire **maintenant** (§5) : le créneau du soir ne saura rien de cette pause.
-
-    Refus possibles : `ArretIntrouvable` (404) si la phase n'est pas de ce créneau,
-    `ArretProgrammeInvalide` (422) si le type n'annonce pas ses tours, si le tour courant n'est pas
-    lisible, si un arrêt occupe déjà ce tour, ou si le tour visé dépasse la phase.
+    ⚠️ **Adressée par créneau et par phase, et pas par étape** — la route *dit* ce que décide
+    l'ADR : poser un arrêt à l'atelier se fait sur le déroulé, et tous les créneaux le rejouent
+    (ADR-0076 §4) ; ici on agit sur ce qui tire **maintenant** (§5). Refus : `ArretIntrouvable`
+    (404) hors créneau, `ArretProgrammeInvalide` (422) si le tour n'est pas lisible ou déjà occupé.
     """
     service: ServiceArretsProgrammes = request.app.state.service_arrets_programmes
     write_queue: WriteQueue = request.app.state.write_queue

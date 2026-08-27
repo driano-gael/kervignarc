@@ -4679,7 +4679,10 @@ window.ATLAS.decisions = {
       "plan_de_cibles",
       "AUCUN"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "plan_de_cibles",
+      "AUCUN"
+     ],
      "verifiable": true
     },
     {
@@ -4771,7 +4774,8 @@ window.ATLAS.decisions = {
      ],
      "symboles_absents": [
       "saisie_duels.TYPES_DELEGUES",
-      "palmares._TYPES_CLASSANTS_AU_PALMARES"
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
+      "monte_les_oppositions"
      ],
      "verifiable": true
     },
@@ -4868,7 +4872,10 @@ window.ATLAS.decisions = {
       "poule_numero",
       "groupe_numero"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "placement_poule",
+      "poule_numero"
+     ],
      "verifiable": true
     },
     {

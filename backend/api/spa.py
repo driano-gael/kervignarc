@@ -1,13 +1,9 @@
 """Service du build front en statique — adapter entrant (couche API ; E00US012).
 
-En production (et via l'exécutable de dev), **FastAPI sert la SPA React** (le build
-`frontend/dist/`) au **même origin** que l'API : plus besoin du proxy Vite, un seul
-serveur pour tout (base d'EPIC-11, packaging PyInstaller).
+FastAPI sert la SPA React au **même origin** que l'API : un seul serveur, pas de proxy Vite.
 
-Le montage est **conditionnel** : s'il n'y a pas de build (dépôt fraîchement cloné, job
-CI backend qui ne construit pas le front, tests), on ne monte rien — l'API reste servie
-seule. Le montage se fait **en dernier**, à la racine `/`, pour ne jamais masquer les
-routes déjà déclarées (`/api/v1/…`, `/ws`, `/health`, `/docs`).
+⚠️ Le montage est **conditionnel** (pas de build ⇒ on ne monte rien) et se fait **en dernier**, à la
+racine `/`, pour ne jamais masquer `/api/v1/…`, `/ws`, `/health` ni `/docs`.
 """
 
 from __future__ import annotations

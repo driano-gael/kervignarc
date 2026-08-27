@@ -1,11 +1,10 @@
 """Adapter : jetons de session admin en mémoire (E10US002).
 
-Jetons **opaques** (`secrets.token_urlsafe`), conservés dans un ensemble protégé par un
-verrou (les lectures/écritures peuvent venir de threads du threadpool). **Sans expiration** —
-et E10US003 a tranché de **ne pas** en introduire pour le scoreur non plus : le CA veut un jeton
-qui survit à la fermeture de l'onglet le temps d'une journée, et l'admin (plus puissant) n'expire
-pas. Les sessions sont invalidées au **redémarrage** du serveur (mémoire volontairement volatile)
-ou à la **déconnexion**.
+Jetons opaques (`secrets.token_urlsafe`) dans un ensemble sous verrou — les accès viennent
+des threads du threadpool. Invalidés au redémarrage du serveur, ou à la déconnexion.
+
+⚠️ **Sans expiration**, délibérément (E10US003 a tranché de même pour le scoreur) : un jeton
+doit survivre à la fermeture de l'onglet, le temps d'une journée de tournoi.
 """
 
 from __future__ import annotations

@@ -44,12 +44,10 @@ class TournoiORM(Base):
 class DepartORM(Base):
     """Table `depart` — persistance de l'agrégat `Depart` (E02US004, ADR-0017).
 
-    Un départ est un **créneau du tournoi** (`tournoi_id`), pas une propriété d'un archer : le lien
-    archer↔départ (inscription, portant `paye`) est E02US009, table distincte à venir.
-    `tarif_centimes` est un **INTEGER**, pas un REAL : l'argent se compte en centimes entiers
-    (ADR-0012) ; il est **NOT NULL** (un créneau a toujours un prix, `0` = gratuit). `horaire`
-    est l'horaire du créneau `HH:MM` (E02US010), **NOT NULL** : un créneau a toujours une heure
-    depuis E02US010 (le libellé libre facultatif d'E02US004 est abandonné).
+    Un départ est un **créneau du tournoi**, pas une propriété d'un archer : le lien archer↔départ
+    est `inscription` (E02US009). `tarif_centimes` est un **INTEGER** — l'argent se compte en
+    centimes entiers (ADR-0012) — et **NOT NULL** (`0` = gratuit). `horaire` (`HH:MM`) est
+    **NOT NULL** depuis E02US010, qui a abandonné le libellé libre facultatif d'E02US004.
     """
 
     __tablename__ = "depart"
@@ -75,16 +73,11 @@ class DepartORM(Base):
 class ClubORM(Base):
     """Table `club` — persistance de l'agrégat `Club` (E02US001).
 
-    **Aucune FK vers `tournoi`** : le référentiel est global et réutilisé d'une compétition à
-    l'autre. La table n'appartient donc **pas** à la descendance de `tournoi` — supprimer un
-    tournoi ne doit pas toucher aux clubs, et DETTE-001 ne la concerne pas.
-
-    `nom` est `UNIQUE` : garde-fou d'intégrité, **exact** — il n'attrape que les homonymes au
-    caractère près. Le refus fonctionnel du doublon (message et 409) est plus large et porté en
-    amont par `ServiceClubs`, qui compare au sens de `domain.club.cle_nom` : espaces de bord,
-    casse **et accents** repliés (« Élan de Fougères » ≡ « elan de fougeres »). Cet écart est
-    assumé — SQL ne sait pas replier les accents sans colonne dénormalisée, et le writer unique
-    (ADR-0005) garantit qu'aucune écriture ne contourne le service.
+    **Aucune FK vers `tournoi`** : le référentiel est global, la table n'est pas dans la descendance
+    de `tournoi` (DETTE-001 ne la concerne pas). ⚠️ `nom` est `UNIQUE` **exact** — il n'attrape que
+    les homonymes au caractère près ; le refus fonctionnel, plus large, vit dans `ServiceClubs`
+    (`cle_nom` replie espaces, casse et accents). Écart assumé : le writer unique garantit qu'aucune
+    écriture ne le contourne.
     """
 
     __tablename__ = "club"
@@ -134,14 +127,11 @@ class CategorieORM(Base):
 class BlasonORM(Base):
     """Table `blason` — persistance de l'agrégat `Blason` (E01US005 ; `zones` : E01US014).
 
-    `taille` stocke la fraction de place occupée sur une cible (réel dans `]0, 1]`) et
-    `capacite` le nombre d'archers admis (entier `>= 1`) ; la validation est portée par le
-    domaine (`Blason.creer` / `Blason.modifier`).
+    `taille` est la fraction de place occupée (`]0, 1]`), `capacite` le nombre d'archers admis ; la
+    validation est portée par le domaine.
 
-    `zones` stocke les valeurs de score admises en **JSON** (`["10", "9", ..., "M"]`, même
-    procédé que `GabaritSalleORM.config`) ; la traduction JSON ↔ tuple est faite par le
-    repository. Une colonne dédiée par zone, ou une table fille, coûterait une jointure pour une
-    donnée toujours lue en bloc et jamais requêtée.
+    `zones` stocke les valeurs de score en **JSON** (même procédé que `GabaritSalleORM.config`) :
+    une table fille coûterait une jointure pour une donnée toujours lue en bloc, jamais requêtée.
     """
 
     __tablename__ = "blason"
@@ -164,13 +154,10 @@ class BlasonORM(Base):
 class GabaritSalleORM(Base):
     """Table `gabarit_salle` — persistance de l'agrégat `GabaritSalle` (E01US007, E01US008).
 
-    Le plafond d'archers de chaque cible est stocké dans `config` (JSON, `{"capacites": [...]}`) ;
-    `nb_cibles` est dénormalisé (= longueur de la liste) pour la lecture. La traduction JSON ↔
-    agrégat est faite par le repository.
-
-    `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, réutilisable) d'une **instance**
-    appliquée à un tournoi (E01US008) : appliquer un modèle en crée une copie portant ce
-    `tournoi_id`, ajustable sans altérer le modèle. Un tournoi porte au plus une instance.
+    Le plafond de chaque cible est dans `config` (JSON) ; `nb_cibles` est dénormalisé pour la
+    lecture. ⚠️ `tournoi_id` distingue un **modèle** de bibliothèque (`NULL`, réutilisable) d'une
+    **instance** appliquée à un tournoi : appliquer un modèle en crée une copie ajustable sans
+    altérer le modèle. Un tournoi porte au plus une instance.
     """
 
     __tablename__ = "gabarit_salle"
@@ -187,21 +174,11 @@ class GabaritSalleORM(Base):
 class FormatTournoiORM(Base):
     """Table `format_tournoi` — persistance de l'agrégat `FormatTournoi` (E01US023, ADR-0060 §5).
 
-    **Aucune FK vers `tournoi`**, et ce n'est pas un oubli : un format n'existe qu'en bibliothèque
-    (patrimoine du club). Sa « copie » dans un tournoi n'est pas une ligne de cette table, ce sont
-    les lignes de `phase` produites par son application. La table n'appartient donc **pas** à la
-    descendance de `tournoi` — supprimer un tournoi ne doit pas toucher aux formats, et DETTE-001
-    ne la concerne pas (même régime que `club`).
-
-    La **séquence de modèles de phases** est stockée dans `config` (JSON,
-    `{"etapes": [{"ordre", "type", "policies"?, "validation"?, "source"?, "effectif"?}, …]}`) —
-    même procédé que `PhaseORM.config`, dont elle reprend la forme étape par étape pour que les
-    deux se relisent avec les mêmes fonctions. Une table fille coûterait une jointure pour une
-    donnée toujours lue en bloc et jamais requêtée.
-
-    `nom` est `UNIQUE` : c'est ce qui rend la **promotion** idempotente — promouvoir deux fois sous
-    le même nom met à jour le format au lieu de créer un homonyme que l'organisateur ne saurait pas
-    distinguer dans sa liste.
+    **Aucune FK vers `tournoi`** : un format n'existe qu'en bibliothèque (patrimoine du club), sa
+    « copie » dans un tournoi étant les lignes de `phase` produites par son application. Hors
+    descendance de `tournoi`, donc hors DETTE-001 — même régime que `club`. La **séquence de
+    modèles de phases** est dans `config` (JSON), même forme que `PhaseORM.config` pour que les deux
+    se relisent avec les mêmes fonctions. `nom` est `UNIQUE` : la promotion est ainsi idempotente.
     """
 
     __tablename__ = "format_tournoi"
@@ -230,14 +207,11 @@ class ArcherORM(Base):
     # politique de suppression non tranchée. E02US002 élargit la ligne existante du registre.
     categorie_id: Mapped[int] = mapped_column(ForeignKey("categorie.id"), nullable=False)
     # Club de rattachement, **facultatif** : `NULL` = club encore *inconnu*, jamais « aucun club »
-    # (en FFTA tout licencié en a un — ADR-0014). L'anomalie est signalée à l'écran, pas comblée
-    # par un club sentinelle. La suppression d'un club référencé est refusée côté service
-    # (409, `ClubReference`).
+    # (ADR-0014). L'anomalie est signalée à l'écran, pas comblée par un club sentinelle ; la
+    # suppression d'un club référencé est refusée côté service (409, `ClubReference`).
     #
-    # **Hors périmètre de DETTE-001**, à la différence des autres FK de ce fichier : elle pointe
-    # vers `club`, qui n'est PAS dans la descendance de `tournoi`. Supprimer un tournoi (donc ses
-    # archers) ne la viole jamais — c'est le sens inverse qu'elle contraint, et ce cas-là est
-    # tranché (refus 409), comme l'est déjà `categorie.blason_id`.
+    # **Hors périmètre de DETTE-001** : elle pointe vers `club`, qui n'est PAS dans la descendance
+    # de `tournoi` — c'est le sens inverse qu'elle contraint, et ce cas-là est tranché.
     club_id: Mapped[int | None] = mapped_column(ForeignKey("club.id"), nullable=True)
     # Handicap (E05US015) : deux colonnes, jamais une seule — le handicap **officiel** entretenu par
     # le club, et la **surcharge** qui le prime pour cette édition (demande du commanditaire,
@@ -292,17 +266,11 @@ class InscriptionORM(Base):
 class PlacementORM(Base):
     """Table `placement` — affectation matérialisée d'un inscrit sur une case (E03US004, ADR-0024).
 
-    Une ligne = un inscrit **posé** ; `inscription_id` en **clé primaire** (au plus une case par
-    inscription). Un inscrit **sans** ligne est *en réserve* — l'absence de ligne *est*
-    l'information, on ne persiste pas la réserve. `depart_id` est **dénormalisé** (dérivable de
-    l'inscription) pour lire et réécrire le plan d'un départ sans jointure ; `position` porte la
-    lettre A..D.
-
-    **`ON DELETE CASCADE`**, à rebours de la convention DETTE-001 (« FK sans `ON DELETE`, purge
-    applicative ») : `placement` est de la donnée **dérivée, reconstructible et feuille** (l'auto la
-    régénère), pas de la donnée saisie remontant l'arbre du tournoi. Sa disparition suit
-    automatiquement celle de l'inscription (désinscription, suppression d'archer/de départ) — cf.
-    ADR-0024. Les FK sont **enforced** (`PRAGMA foreign_keys=ON`, `engine.py`).
+    Une ligne = un inscrit **posé** ; `inscription_id` en clé primaire. Un inscrit **sans** ligne
+    est *en réserve* — l'absence de ligne *est* l'information. `depart_id` est dénormalisé pour lire
+    le plan d'un départ sans jointure. ⚠️ **`ON DELETE CASCADE`**, à rebours de DETTE-001 :
+    `placement` est de la donnée **dérivée, reconstructible et feuille**, pas de la donnée saisie
+    qui remonte l'arbre du tournoi. Les FK sont *enforced* (`engine.py`).
     """
 
     __tablename__ = "placement"
@@ -322,17 +290,11 @@ class PlacementORM(Base):
 class PlacementTableauORM(Base):
     """Table `placement_tableau` — pose matérialisée d'un duelliste, par phase (E03US009, ADR-0048).
 
-    Le **plan de duels**, distinct du plan de cibles de qualification (`placement`, par départ) :
-    scoppé par **phase** de tableau. Une ligne = un duelliste **posé** sur une case ;
-    **clé primaire composite** `(phase_id, inscription_id)` — au plus une case par inscription **et
-    par phase** (un archer a une pose en qualif *et* une pose en tableau, dans deux tables). Un
-    inscrit **sans** ligne est en réserve — l'absence *est* l'information (comme ADR-0024).
-
-    L'**appariement** (qui affronte qui) n'est **pas** persisté : il est recalculé du classement à
-    chaque régénération (déterministe, ADR-0023/0048). Seule la **pose** l'est, pour l'ajustement au
-    glisser-déposer. **`ON DELETE CASCADE`** (donnée dérivée, feuille — exception DETTE-001,
-    ADR-0024) sur `phase_id` **et** `inscription_id` : la pose disparaît avec la phase ou
-    l'inscription."""
+    Le **plan de duels**, distinct du plan de cibles (`placement`, par départ) : scopé par la
+    **phase**, clé primaire `(phase_id, inscription_id)`. ⚠️ L'**appariement** n'est **pas**
+    persisté — il se recalcule du classement (ADR-0023/0048) ; seule la **pose** l'est, pour
+    l'ajustement au glisser-déposer. `ON DELETE CASCADE` sur les deux FK (donnée dérivée, feuille).
+    """
 
     __tablename__ = "placement_tableau"
 
@@ -351,42 +313,11 @@ class PlacementTableauORM(Base):
 class PlacementParBlocORM(Base):
     """Table `placement_par_bloc` — les couloirs qu'un **groupe** occupe, par phase (E05US023).
 
-    Troisième table de placement, et la seule dont l'unité posée ne soit pas un archer. C'est tout
-    le sujet d'[ADR-0083] §3 : **le tireur au repos change à chaque tour**. Une poule de 5 tient sur
-    4 couloirs — la méthode du cercle ne fait tirer que `effectif ÷ 2` rencontres par tour, donc un
-    membre se repose, mais jamais le même ; une ronde de système suisse ré-apparie tout le plateau,
-    donc aucun de ses tireurs n'a de couloir attitré non plus. Persister « archer → couloir », comme
-    le fait `placement_tableau` (keyé `(phase_id, inscription_id)`), écrirait dans les deux cas une
-    information **fausse**, pas seulement incomplète.
-
-    ⚠️ **Elle s'appelait `placement_poule` jusqu'à E05US026** (migration 0046), et la colonne
-    `poule_numero` s'appelle désormais `groupe_numero`. Le renommage a été demandé par le
-    commanditaire le 16/08/2026 plutôt que de laisser un système suisse ranger ses blocs dans une
-    table qui dit « poule » — une table qui ment sur ce qu'elle contient est un écart à la règle 3,
-    et le prochain lecteur y perd plus que ce que la migration coûte. C'est l'arbitrage inverse de
-    `DETTE-042` (`position` / « couloir »), et pour une raison assumée : là-bas le mot juste ne
-    changeait **rien** au contenu, ici le nom désignait le mauvais **concept**.
-
-    Une ligne = **un couloir** attribué à un groupe. `rang` porte sa position dans le bloc (1-based)
-    pour que la plage se relise dans l'ordre de remplissage : un bloc peut déborder d'une cible sur
-    la suivante, et « cible 3 couloir C » ne dit pas à lui seul s'il vient avant ou après « cible 4
-    couloir A » sur des salles à capacité variable.
-
-    ⚠️ **La clé primaire est le couloir** (`phase_id, cible_index, position`), pas le groupe. Elle
-    porte donc l'invariant qui compte en salle — *un couloir, un occupant* —, que la base fait
-    respecter au lieu de le confier au seul service. `UNIQUE(phase_id, groupe_numero, rang)` tient
-    l'autre bout : un bloc ne saute ni ne répète de position, et l'index sert la lecture « les
-    couloirs du groupe *n* », qui est la requête de tous les appelants.
-
-    Les couloirs de chaque **rencontre**, tour par tour, ne sont pas ici : ils sont **dérivés** à la
-    lecture, comme l'appariement d'un tableau (ADR-0023/0048). Persister le bloc et dériver le
-    détail est ce qui permet à l'organisateur de déplacer un groupe entier sans réécrire un plan de
-    rencontres qui, lui, dépend du tour affiché.
-
-    **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception
-    DETTE-001 que `placement_tableau` et `duel`) : le plan disparaît avec la phase.
-
-    [ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+    ⚠️ Seule table de placement dont l'unité posée ne soit pas un archer (ADR-0083 §3) : **le tireur
+    au repos change à chaque tour**, donc persister « archer → couloir » écrirait une information
+    **fausse**. Une ligne = un couloir, `rang` portant sa position dans le bloc. ⚠️ La clé primaire
+    est le **couloir** — la base fait respecter *un couloir, un occupant*, et
+    `UNIQUE(phase_id, groupe_numero, rang)` tient l'autre bout. `ON DELETE CASCADE` sur `phase_id`.
     """
 
     __tablename__ = "placement_par_bloc"
@@ -408,24 +339,13 @@ class PlacementParBlocORM(Base):
 
 
 class PhaseORM(Base):
-    """Table `phase` — persistance de l'agrégat `Phase` (introduction minimale, E01US009/ADR-0011).
+    """Table `phase` — persistance de l'agrégat `Phase` (E01US009/ADR-0011).
 
-    `type` et `statut` stockent la **valeur** de leurs énumérations (`TypePhase`, `StatutPhase`).
-    Les **politiques** de la phase sont sérialisées dans `config` (JSON) : depuis E05US003/ADR-0046,
-    le barème de qualification dans `config.policies.scoring` (nommé « cumul » + paramètres), le
-    grain de validation restant à la racine dans `config.validation` (E01US015, `D-11`, ce n'est pas
-    une politique de moteur) ; la traduction JSON ↔ agrégat est faite par le repository. C'est le
-    `config` JSON qui permet d'ajouter une politique **sans migration de schéma** (ADR-0011) : une
-    ligne écrite avant E01US015 n'a pas de clé `validation` et se relit avec le preset de son type,
-    et la relecture reste tolérante à l'ancienne forme à plat de `scoring` (repli `_lire_scoring`,
-    la migration `0028` réécrivant les lignes existantes). `ordre` et `statut` sont conformes au
-    modèle de données mais non exploités avant le moteur (EPIC-05).
-
-    ⚠️ **La phase pend au `depart`, plus au `tournoi`** (E01US025, ADR-0075, migration 0042) : le
-    départ est la **portée sportive** — il rejoue le tournoi en entier, donc il porte sa séquence,
-    ses classements et ses tableaux. `ordre` est contigu 1..N **par départ**. Le lien au tournoi
-    reste atteignable par jointure `phase → depart → tournoi`, et c'est ce que font les lectures
-    transverses (supervision, complétude, suppression en cascade).
+    `type` et `statut` stockent la **valeur** de leurs énumérations ; les politiques sont dans
+    `config` (JSON, forme `config.policies` d'ADR-0046), ce qui permet d'en ajouter **sans migration
+    de schéma**. ⚠️ **La phase pend au `depart`, plus au `tournoi`** (E01US025, ADR-0075, migration
+    0042) : le départ est la **portée sportive**, `ordre` est contigu 1..N **par départ**, et le
+    tournoi reste atteignable par jointure `phase → depart → tournoi`.
     """
 
     __tablename__ = "phase"
@@ -449,14 +369,9 @@ class DerouleEtapeORM(Base):
     """Table `deroule_etape` — la **définition** d'une étape du déroulé d'un tournoi (ADR-0076).
 
     Le déroulé se définit **une fois** par tournoi ; chaque départ le rejoue en portant un simple
-    **avancement** (`PhaseORM`, qui n'a plus que `depart_id`, `ordre` et `statut`). Avant le
-    07/08/2026, appliquer un format écrivait N copies complètes — une par créneau —, libres de
-    diverger en silence.
-
-    `type` stocke la valeur de `TypePhase`. Les **politiques** vivent dans `config` (JSON), forme
-    `config.policies` d'ADR-0046 : c'est ce qui permet d'ajouter une politique **sans migration de
-    schéma** (ADR-0011). La traduction JSON ↔ agrégat est faite par le repository, à l'identique de
-    ce que faisait `PhaseORM` — le format de la `config` n'a pas changé, il a **changé de table**.
+    **avancement** (`PhaseORM`). Avant le 07/08/2026, appliquer un format écrivait N copies
+    complètes, libres de diverger en silence. Les politiques vivent dans `config` (JSON, forme
+    d'ADR-0046) : le format n'a pas changé, il a **changé de table**.
     """
 
     __tablename__ = "deroule_etape"
@@ -473,32 +388,13 @@ class DerouleEtapeORM(Base):
 
 
 class FranchissementArretORM(Base):
-    """Table `franchissement_arret` — ce qu'un **arrêt programmé** a coupé (E05US033, [ADR-0091]).
+    """Table `franchissement_arret` — ce qu'un **arrêt programmé** a coupé (E05US033, ADR-0091).
 
-    ⚠️ **Cette table ne porte pas les arrêts eux-mêmes**, et la séparation est le cœur de l'ADR. La
-    *définition* d'un arrêt (« après le tour 3, portée départ ») vit dans `deroule_etape.config`, en
-    JSON, donc **sans migration de schéma** (ADR-0046) : c'est du déroulé, défini une fois par
-    tournoi et rejoué par chaque créneau (ADR-0076). Ici ne vit que l'**avancement** : cet arrêt-là
-    a-t-il coupé, dans ce créneau-ci, et l'admin l'a-t-il relevé.
-
-    C'est le **seul état persisté** du mécanisme — tout le reste de l'avancement étant recalculé à
-    la lecture (ADR-0090 §5) — et il faut dire pourquoi celui-ci fait exception : la condition de
-    déclenchement est **monotone**. Une fois le tour 2 achevé, « le tour 2 est achevé et un arrêt
-    est posé après le tour 2 » reste vrai indéfiniment ; un déclencheur qui la relirait sans mémoire
-    remettrait la phase en pause à chaque reprise, et l'organisateur perdrait la main
-    définitivement.
-
-    `phase_id` est la phase **déclenchante**, et `apres_tour` désigne l'arrêt dans la définition de
-    son étape : le couple porte donc l'unicité. `phases_arretees` est un tableau JSON d'identifiants
-    de phases — celles que cet arrêt a effectivement mises en pause, et donc celles que le geste de
-    relance rendra. Les déduire à la reprise (« toutes les phases en pause du créneau ») relancerait
-    aussi une phase suspendue à la main pour une autre raison.
-
-    `tours_a_finir` est la photo, prise à l'armement d'un arrêt de portée **départ**, du tour que
-    chaque autre phase avait en cours — c'est ce qui permet à chacune de *finir son tour* avant de
-    s'arrêter (arbitrage du commanditaire, 18/08/2026).
-
-    [ADR-0091]: ../../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
+    ⚠️ **Cette table ne porte pas les arrêts eux-mêmes** : leur *définition* vit dans
+    `deroule_etape.config` (JSON, sans migration), rejouée par chaque créneau (ADR-0076). Seul état
+    **persisté** du mécanisme, la condition de déclenchement étant **monotone** — sans mémoire, la
+    phase repasserait en pause à chaque reprise. `phases_arretees` liste celles que cet arrêt a
+    mises en pause ; les déduire à la reprise relancerait une phase suspendue pour autre chose.
     """
 
     __tablename__ = "franchissement_arret"
@@ -531,23 +427,13 @@ class FranchissementArretORM(Base):
 
 
 class ArretDeCirconstanceORM(Base):
-    """Table `arret_de_circonstance` — une pause décidée **le jour J** (E05US034, [ADR-0092]).
+    """Table `arret_de_circonstance` — une pause décidée **le jour J** (E05US034, ADR-0092).
 
-    ⚠️ **Troisième rangement du mécanisme, et la frontière est celle d'ADR-0076.** Un arrêt posé à
-    l'atelier est de la *composition* : il vit dans `deroule_etape.config`, en JSON, et **tous les
-    créneaux du tournoi le rejouent** (§4). Un arrêt posé pendant que la salle tire est de la
-    *conduite* : il vit ici, il porte un `depart_id`, et **personne ne le rejoue** (§5). Les ranger
-    ensemble ferait s'arrêter le créneau de l'après-midi pour une panne de chauffage du matin.
-
-    ⚠️ **Une table plutôt qu'une colonne JSON sur `depart`**, contrairement au parti pris pour la
-    définition. Deux raisons, et la seconde est la vraie : l'unicité `(depart_id, phase_id,
-    apres_tour)` doit être tenue par le schéma — la pose est concurrente, ~30 tablettes valident
-    pendant que l'organisateur clique — et un document JSON ne sait pas la tenir. Le volume est le
-    même dans les deux cas (quelques lignes par créneau), donc ce n'est pas lui qui tranche.
-
-    `portee` reprend `PorteeArret` : cette phase seule, ou tout ce qui tire dans le créneau.
-
-    [ADR-0092]: ../../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    ⚠️ Un arrêt posé à l'atelier est de la *composition* : il vit dans `deroule_etape.config` et
+    **tous les créneaux le rejouent** (ADR-0076 §4). Un arrêt posé pendant que la salle tire est de
+    la *conduite* : il vit ici, porte un `depart_id`, et **personne ne le rejoue** (§5).
+    ⚠️ Une table plutôt qu'un JSON sur `depart` : l'unicité `(depart_id, phase_id, apres_tour)` doit
+    être tenue par le **schéma**, la pose étant concurrente. Le volume, lui, ne tranche pas.
     """
 
     __tablename__ = "arret_de_circonstance"
@@ -571,12 +457,10 @@ class ArretDeCirconstanceORM(Base):
 class ScoreurORM(Base):
     """Table `scoreur` — persistance de l'agrégat `Scoreur` (E10US003).
 
-    Scoreur **du tournoi** (`tournoi_id`), comme `depart` : défini à la configuration,
-    redéfinissable à tout moment (`D-14`). `code` est le code individuel remis au scoreur, `UNIQUE`
-    **global** (pas par tournoi) : le scoreur ouvre sa session par son seul code, qui doit donc
-    désigner un scoreur sans ambiguïté d'un tournoi à l'autre. L'unicité `UNIQUE` est **exacte** ;
-    contrairement au nom de club, aucun repli d'accents n'est nécessaire — le service stocke déjà le
-    code sous forme canonique (`normaliser_code` : majuscules), et le code n'a pas d'accent.
+    Scoreur **du tournoi**, comme `depart`, redéfinissable à tout moment (`D-14`). `code` est
+    `UNIQUE` **global** : le scoreur ouvre sa session par son seul code, qui doit le désigner sans
+    ambiguïté d'un tournoi à l'autre. L'unicité est **exacte** et suffit — le service stocke déjà le
+    code canonique (`normaliser_code`), et un code n'a pas d'accent.
     """
 
     __tablename__ = "scoreur"
@@ -592,38 +476,11 @@ class ScoreurORM(Base):
 class PosteORM(Base):
     """Table `poste` — persistance de l'agrégat `Poste` (E04US001, ADR-0029 ; E07US004, ADR-0064).
 
-    Credential d'un **lieu** d'un tournoi, plus le `code` imprimé sous le QR. `code` est `UNIQUE`
-    **global** (pas par tournoi) : le rattachement se fait par le seul code, qui doit désigner un
-    lieu sans ambiguïté d'un tournoi à l'autre. Le service stocke le code déjà canonique
-    (`normaliser_code`).
-
-    Deux natures depuis E07US004 (`type`) — **une seule table**, parce que le credential, le jeton,
-    le heartbeat et la supervision sont rigoureusement les mêmes des deux côtés (le CA : *« c'est un
-    poste, comme une tablette de cible — donc rien de neuf à inventer »*) :
-
-    - `cible` : `cible_index` renseigné, `libelle` nul ;
-    - `ecran` : `libelle` renseigné, `cible_index` nul.
-
-    ⚠️ `cible_index` devient donc **nullable**, ce qui **affaiblit** `uq_poste_tournoi_cible` :
-    SQLite considère chaque `NULL` comme distinct, donc plusieurs écrans coexistent sans heurter la
-    contrainte — c'est exactement le CA (« plusieurs écrans possibles »). En contrepartie, la
-    contrainte ne protège plus « une seule cible N par tournoi » que pour les lignes de type
-    `cible`, ce qui est le seul cas où elle avait un sens. L'exclusivité `cible_index` ↔ `libelle`
-    est portée par le domaine (`Poste.creer` / `creer_ecran`), pas par un `CHECK` : la base du
-    projet n'en utilise nulle part, et un `CHECK` ajouté ici serait la seule règle métier vivant
-    hors du domaine (règle 2).
-
-    `deroule_json` porte la `SequenceVues` d'un écran, sérialisée comme `phase.sources_json`
-    (migration 0036) : un tableau JSON `[{"vue": …, "cadence_s": …}]`. Nul pour une cible, et nul
-    aussi pour un écran qui n'a rien réglé — il joue alors `SequenceVues.par_defaut()`, ce que le CA
-    appelle le « déroulé par défaut ».
-
-    `noms_par_page` et `cadence_page_s` portent le `ReglagePages` d'un écran (E16US009, migration
-    0051) : deux **colonnes** plutôt qu'un troisième JSON, parce que ce sont deux entiers scalaires
-    dont le nombre ne bougera pas — la raison qui justifiait `deroule_json` (une **liste** ordonnée
-    de longueur libre) ne s'applique pas ici. Nuls pour une cible, et nuls aussi pour un écran qui
-    n'a rien réglé : il joue alors `ReglagePages.par_defaut()`, ce qui est **exactement** ce que le
-    front tenait en dur avant cette US (`DETTE-039`). La migration n'écrit donc aucune donnée.
+    Credential d'un **lieu**, plus le `code` imprimé sous le QR — `UNIQUE` **global**. Deux natures
+    (`type`) dans **une seule table** : une `cible` porte `cible_index`, un `ecran` porte `libelle`,
+    `deroule_json` et son réglage de pages. ⚠️ `cible_index` est donc **nullable**, ce qui affaiblit
+    `uq_poste_tournoi_cible` (SQLite tient chaque `NULL` pour distinct) — c'est le CA « plusieurs
+    écrans ». L'exclusivité `cible_index` ↔ `libelle` est portée par le domaine (règle 2).
     """
 
     __tablename__ = "poste"
@@ -646,34 +503,20 @@ class PosteORM(Base):
 class SerieORM(Base):
     """Table `serie` — racine de persistance de l'agrégat `Serie` (saisie de qualif, E04US002).
 
-    **Une série par `(phase, archer)`** (`UNIQUE(phase_id, archer_id)`, cf. port `SerieRepository`)
-    :
-    la grille de saisie d'un archer **dans une** phase de qualification — un déroulé peut en compter
-    plusieurs (E05US025, ADR-0082). La série ne porte pas ses volées en
-    colonne — elles vivent dans la table enfant `volee` (une ligne par volée), reliée par
-    `serie_id`. Le **cumul** n'est pas stocké : il se recalcule des volées validées (`Serie.cumul`),
-    seul l'état saisi est persisté.
-
-    Deux FK **sans `ON DELETE`** = DETTE-001 : la série est de la donnée **saisie** (les scores),
-    dans la descendance du tournoi via `archer` **et** `tournoi` — sa purge relève de la politique
-    de suppression du tournoi, non tranchée. La cascade `archer` → `serie` est réalisée
-    **applicativement** par `ArcherRepositorySQL.supprimer` (cascade maîtrisée, cf. `score`).
+    **Une série par `(phase, archer)`** (E05US025, ADR-0082) : un déroulé peut compter plusieurs
+    qualifications. Les volées vivent dans `volee` ; le **cumul** n'est pas stocké, il se recalcule.
+    Deux FK **sans `ON DELETE`** (DETTE-001) — c'est de la donnée **saisie** —, la cascade
+    `archer` → `serie` étant réalisée **applicativement** par `ArcherRepositorySQL.supprimer`.
     """
 
     __tablename__ = "serie"
     # UNIQUE(phase_id, archer_id) : une feuille par archer **et par phase** (E05US025, ADR-0082).
     # Nommée comme dans la migration `0044` — présente ici, dans le `Base.metadata` cible de
-    # l'autogénération, sinon un futur `--autogenerate` émettrait un `drop_constraint` fantôme et
-    # retirerait le garde-fou.
+    # l'autogénération, sinon un futur `--autogenerate` émettrait un `drop_constraint` fantôme.
     #
-    # DETTE-046 **résorbée** ici. Le registre signalait une unicité au tournoi devenue fausse depuis
-    # ADR-0075 — un archer inscrit sur deux créneaux n'avait qu'un seul emplacement pour ses
-    # flèches,
-    # la seconde série écrasant la première — et proposait `UNIQUE(depart_id, archer_id)`. La phase
-    # **subsume** le départ (elle lui appartient), donc descendre la clé jusqu'à la phase règle le
-    # cas de DETTE-046 *et* celui des qualifications multiples, avec **un** champ au lieu de deux
-    # qui
-    # diraient la même chose à deux mailles.
+    # DETTE-046 **résorbée** ici : l'unicité au tournoi était fausse depuis ADR-0075 (un archer sur
+    # deux créneaux n'avait qu'un emplacement). La phase **subsume** le départ, donc descendre la
+    # clé jusqu'à elle règle ce cas *et* celui des qualifications multiples, avec un seul champ.
     __table_args__ = (UniqueConstraint("phase_id", "archer_id", name="uq_serie_phase_archer"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -700,25 +543,11 @@ class SerieORM(Base):
 class VoleeORM(Base):
     """Table `volee` — une volée d'une série (E04US002), table **enfant** de `serie`.
 
-    Une ligne = une volée saisie : son `numero` (rang dans le barème), ses `valeurs` (les zones de
-    score, stockées en **JSON** comme `BlasonORM.zones` — même procédé : petite liste toujours lue
-    en bloc, jamais requêtée), et les marqueurs déclaratifs `saisie_par` / `validee_par`
-    (`NULL` = non renseigné ; `validee_par` non `NULL` **est** le verrou, cf. `domain.serie.Volee`).
-
-    `created_at` porte le **« quand »** de la saisie (ex-017, « volée 7 saisie par DURAND, 10h42 »):
-    **métadonnée de persistance, hors du domaine `Volee`** (arbitrage de revue — réversible si un
-    besoin domaine émergeait), comme l'`id`. Posé par le repository (port `Horloge`, UTC), et
-    **préservé par numéro** à travers le purge + réinsertion : réécrire une série ne réinitialise
-    pas le « quand » de ses volées déjà saisies. Le `server_default CURRENT_TIMESTAMP` n'est qu'un
-    filet (SQLite exige un défaut pour un `NOT NULL` ajouté ; l'application le renseigne toujours) —
-    relu, il redevient *aware* comme l'`horodatage` d'audit (SQLite stocke sans fuseau).
-
-    **`ON DELETE CASCADE`** sur `serie_id`, à rebours de la convention DETTE-001 : une volée est un
-    **composant strict** de l'agrégat `Serie` (value object interne), son cycle de vie est
-    entièrement lié à sa série — pas de la donnée qui remonte l'arbre du tournoi de façon autonome.
-    Sa disparition suit celle de la série (cf. `PlacementORM`, même exception assumée) ; les FK sont
-    **enforced** (`PRAGMA foreign_keys=ON`, `engine.py`). En fonctionnement normal, le repository
-    réécrit les volées d'une série par purge + réinsertion (patron `PlacementRepositorySQL`).
+    Une ligne = une volée saisie : `numero`, `valeurs` (JSON, comme `BlasonORM.zones`), et les
+    marqueurs `saisie_par` / `validee_par` — ce dernier non `NULL` **est** le verrou. `created_at`
+    est une **métadonnée de persistance**, hors du domaine (arbitrage de revue), **préservée par
+    numéro** à travers le purge + réinsertion. ⚠️ `ON DELETE CASCADE` sur `serie_id`, à rebours de
+    DETTE-001 : une volée est un **composant strict** de son agrégat.
     """
 
     __tablename__ = "volee"
@@ -742,23 +571,11 @@ class VoleeORM(Base):
 class DuelORM(Base):
     """Table `duel` — le **tir** d'un match du tableau (saisie en duels, E04US013, ADR-0049).
 
-    Une ligne = le résultat d'un match, keyé **`(phase_id, match_numero)`** (clé primaire composite,
-    comme `placement_tableau`). On persiste le **tir** — `manches` (JSON, la liste des sets, deux
-    volées de `ZoneScore` par manche), l'éventuel `barrage` (JSON, une flèche par camp + le gagnant
-    désigné au plus près du centre), `validee_par` (le scoreur ; `NULL` = non validé) — **et
-    l'identité des deux duellistes** (`haut_genre`/`haut_ref`, `bas_genre`/`bas_ref`). Elle
-    n'est **pas** l'appariement *plan* (qui reste recalculé du classement, ADR-0048) : c'est le fait
-    historique « **qui** a tiré ce résultat ». Elle **ancre** le tir contre une identité stable au
-    lieu de la seule **position** `match_numero` : à la reconstruction, si les occupants recalculés
-    du match divergent des duellistes enregistrés (le classement a changé après le tir), la
-    divergence est **détectée** — jamais un score ré-attribué en silence à d'autres (ADR-0049
-    §4). Le **barème** reste dérivé de l'arme (re-résolu à la lecture) : à participants identiques,
-    même arme, même barème.
-
-    **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception que
-    `placement_tableau`) : le tir disparaît avec la phase. Le `match_numero` n'est pas une FK (le
-    tableau n'est pas persisté — il n'y a pas de table `match`) ; `*_ref` non plus (l'archer peut
-    précéder ou non selon le genre, ADR-0028 — MVP : toujours un `archer_id`)."""
+    Une ligne = le résultat d'un match, keyé `(phase_id, match_numero)` : le tir (`manches`,
+    `barrage`, `validee_par`) **et l'identité des deux duellistes**. ⚠️ Cette identité n'est **pas**
+    l'appariement *plan* (recalculé du classement, ADR-0048) : elle **ancre** le tir, si bien qu'une
+    divergence est **détectée** au lieu d'un score ré-attribué en silence (ADR-0049 §4).
+    """
 
     __tablename__ = "duel"
 
@@ -778,14 +595,11 @@ class DuelORM(Base):
 class EntreeAuditORM(Base):
     """Table `entree_audit` — persistance de l'agrégat `EntreeAudit` (journal d'audit, E10US005).
 
-    Journal **du tournoi** (`tournoi_id`), en **ajout seul** : ni `enregistrer` ni `supprimer` côté
-    repository (une trace ne se retouche pas). `action` stocke la **valeur** de l'énumération
-    `ActionAuditee` (`validation` / `correction_score` / `forfait`) ; la traduction chaîne ↔ enum
-    est faite par le repository, comme `statut`/`StatutTournoi`.
+    Journal **du tournoi**, en **ajout seul** : ni `enregistrer` ni `supprimer` côté repository —
+    une trace ne se retouche pas. `action` stocke la **valeur** de `ActionAuditee`.
 
-    `auteur` est le **nom** de qui a agi (pas une FK vers `scoreur`) : la trace survit à la
-    suppression du scoreur (E10US003). `horodatage` porte le « quand » ; `avant`/`apres` sont
-    **nullables** (une validation n'a pas d'état antérieur, une correction si).
+    `auteur` est le **nom** de qui a agi (pas une FK) : la trace survit à la suppression du scoreur.
+    `avant`/`apres` sont nullables — une validation n'a pas d'état antérieur, une correction si.
     """
 
     __tablename__ = "entree_audit"
@@ -805,22 +619,11 @@ class EntreeAuditORM(Base):
 class ForfaitORM(Base):
     """Table `forfait` — persistance de l'agrégat `Forfait` (abandon / DSQ, E04US015, ADR-0050).
 
-    Un forfait par **`(tournoi, archer, phase)`** (`UNIQUE`) : un archer ne se déclare qu'une fois
-    forfait dans une phase donnée. `nature` stocke la **valeur** de l'énumération `NatureForfait`
-    (`abandon` / `disqualification`) ; la traduction chaîne ↔ enum est faite par le repository,
-    comme `action`/`ActionAuditee`. `declare_par` est le **nom** du déclarant (pas une FK) : la
-    déclaration survit à la suppression du scoreur (E10US003), comme l'auteur d'audit. `motif` est
-    **nullable** (facultatif). L'annulation (réversibilité, `D-15`) **supprime** la ligne — les
-    flèches (`serie`/`volee`) ne sont jamais touchées.
-
-    **`ON DELETE CASCADE`** sur `phase_id` (donnée dérivée d'une phase, feuille — même exception que
-    `duel`/`placement_tableau`) : le forfait disparaît avec sa phase. Les FK `tournoi_id`/`archer`
-    restent **sans `ON DELETE`** (DETTE-001, comme `serie`) : `tournoi_id` est stocké pour la
-    lecture `par_tournoi` sans jointure. `archer_id` est purgé/réassigné par la **cascade
-    applicative** de `ArcherRepositorySQL.supprimer`/`fusionner` — **exactement comme `serie`** (la
-    FK est *enforced*, l'oublier bloque la suppression d'un archer forfaitaire ; revue adversariale
-    E04US015). La purge liée au **tournoi** relève de la politique de suppression du tournoi, non
-    tranchée.
+    Un forfait par `(tournoi, archer, phase)`. `declare_par` est le **nom** du déclarant (pas une
+    FK) : la déclaration survit à la suppression du scoreur. L'annulation (`D-15`) **supprime** la
+    ligne — les flèches ne sont jamais touchées. `ON DELETE CASCADE` sur `phase_id`, les autres FK
+    restant sans `ON DELETE` (DETTE-001). ⚠️ `archer_id` est purgé par la **cascade applicative** de
+    `ArcherRepositorySQL` — l'oublier bloque la suppression d'un archer forfaitaire.
     """
 
     __tablename__ = "forfait"
@@ -848,18 +651,10 @@ class ForfaitORM(Base):
 class RemboursementORM(Base):
     """Table `remboursement` — registre des sommes encaissées à rendre (E08US005, ADR-0057).
 
-    Née quand une **inscription payée disparaît** (départ supprimé, désinscription) : la ligne
-    **survit** à cette disparition, elle en est la trace comptable. D'où l'absence de FK vers
-    `inscription` ou `depart` — souvent détruits : on fige des **instantanés textuels**
-    (`archer_prenom`, `archer_nom`, `creneau`) et le `montant_centimes` encaissé, comme
-    `entree_audit`/`forfait` figent le **nom** de l'auteur plutôt qu'une FK (survie à la suppression
-    du scoreur). Seul `tournoi_id` reste une FK — le registre appartient à son tournoi.
-
-    `motif` et `statut` stockent la **valeur** des énumérations `MotifRemboursement` /
-    `StatutRemboursement` (traduction chaîne ↔ enum côté repository, comme
-    `action`/`ActionAuditee`).
-    `cree_le` date l'ouverture ; `traite_le` est **nullable** (rempli au traitement
-    remboursé/reporté).
+    Née quand une **inscription payée disparaît**, la ligne **survit** à cette disparition : elle en
+    est la trace comptable. D'où l'absence de FK vers `inscription` ou `depart` — on fige des
+    **instantanés textuels** et le montant, comme `entree_audit`/`forfait` figent le nom de
+    l'auteur. Seul `tournoi_id` reste une FK ; `traite_le` est nullable (rempli au traitement).
     """
 
     __tablename__ = "remboursement"
@@ -881,24 +676,11 @@ class RemboursementORM(Base):
 class BarrageORM(Base):
     """Table `barrage` — un tir de barrage **annoncé** (E06US003, ADR-0066).
 
-    `portee` stocke la valeur de `PorteeBarrage` (qualification / poule / big_shoot_off). Les trois
-    sont modélisées d'emblée bien qu'une seule soit câblée : le discriminant coûte une colonne
-    aujourd'hui et une **migration de données** si on l'ajoutait plus tard (DETTE-028).
-
-    `phase_id` et `reference` situent le barrage **dans** sa portée : la phase concernée, et le
-    numéro de poule ou de manche pour les portées qui en ont une. Nuls en qualification, où le
-    tournoi et le rang suffisent. `rang_dispute` est le rang partagé à éclater — **nul** pour un Big
-    Shoot Off, dont l'égalité désigne un sortant plutôt qu'une place.
-
-    `participants_json` fige la liste des tireurs (`[archer_id, …]`) à l'annonce. Même parti que
-    `phase.sources_json` (migration 0036) et `poste.deroule_json` (0038) : du JSON dans une colonne
-    texte pour une donnée toujours lue et écrite **en entier**, jamais ligne à ligne. Et surtout,
-    elle est **figée** — la recalculer depuis le classement à chaque lecture ferait changer les
-    tireurs sous les pieds du juge dès qu'une volée en retard est validée.
-
-    ⚠️ **Le verdict n'est pas stocké**, il se recalcule depuis les tirs (`Barrage.resultat`). C'est
-    ce qui rend une flèche mal saisie corrigeable : la corriger corrige le classement. Stocker
-    l'ordre en plus des tirs créerait deux vérités, dont une périmée au premier correctif.
+    `portee` stocke la valeur de `PorteeBarrage` ; les trois sont modélisées d'emblée bien qu'une
+    seule soit câblée — le discriminant coûte une colonne aujourd'hui, une migration plus tard
+    (DETTE-028). ⚠️ `participants_json` est **figé** à l'annonce : recalculer depuis le classement
+    ferait changer les tireurs sous les pieds du juge. ⚠️ Le **verdict n'est pas stocké**, il se
+    recalcule des tirs — c'est ce qui rend une flèche mal saisie corrigeable.
     """
 
     __tablename__ = "barrage"
@@ -922,18 +704,10 @@ class BarrageORM(Base):
 class BarrageTirORM(Base):
     """Table `barrage_tir` — une flèche de barrage, manche par manche (E06US003).
 
-    Le grain est le **tir d'un participant à une manche**, ce qu'exige le CA (« persistance flèche
-    par flèche ») et ce dont le moteur a besoin pour rejouer le verdict.
-
-    ⚠️ **`score` nul signifie ABSENT, pas « pas encore saisi ».** C'est une issue réglementaire
-    (B.6.5.2.4 : l'archer absent au barrage annoncé est déclaré perdant), et le domaine en avertit
-    déjà (`TirBarrage`). Une saisie en attente n'a **pas de ligne** dans cette table — c'est ce qui
-    distingue les deux, et confondre les deux ferait perdre quelqu'un qui n'a pas encore tiré.
-
-    `distance_au_centre` est en **dixièmes de millimètre**, nulle quand la mesure n'a pas été faite.
-    Une mesure absente n'est pas une distance nulle : le domaine refuse de départager dessus et fait
-    retirer, ce qui est le cas le plus fréquent du jour J (le juge mesure la flèche litigieuse,
-    rarement les deux).
+    ⚠️ **`score` nul signifie ABSENT, pas « pas encore saisi »** — issue réglementaire (B.6.5.2.4).
+    Une saisie en attente n'a **pas de ligne** ici, et confondre les deux ferait perdre quelqu'un
+    qui n'a pas tiré. `distance_au_centre` est en **dixièmes de millimètre**, nulle quand la mesure
+    n'a pas été faite : le domaine refuse alors de départager dessus et fait retirer.
     """
 
     __tablename__ = "barrage_tir"
@@ -953,25 +727,13 @@ class BarrageTirORM(Base):
 
 
 class IdentiteVisuelleORM(Base):
-    """Table `identite_tournoi` — l'identité visuelle d'un tournoi (E16US006, [ADR-0097]).
+    """Table `identite_tournoi` — l'identité visuelle d'un tournoi (E16US006, ADR-0097).
 
-    **Une table à part, pas des colonnes sur `tournoi`.** Les deux logos sont des blobs ; posés sur
-    `tournoi`, ils seraient traînés par chaque `SELECT` de la ligne — c'est-à-dire à l'ouverture de
-    la liste des tournois, du tableau de bord et de toute lecture publique. Ici, la ligne d'identité
-    n'est lue que par qui veut l'identité, et l'adapter sépare encore les **réglages** (quelques
-    octets) des **octets d'un logo**, chacun sur sa requête.
-
-    `tournoi_id` est **à la fois** clé primaire et clé étrangère : un tournoi a au plus une
-    identité, et l'unicité est tenue par le schéma plutôt que par une garde applicative.
-
-    Les accents sont **nullables** : `NULL` veut dire « rien n'a été choisi », et l'identité est
-    alors héritée du club. Une ligne peut donc exister sans aucun accent — c'est le cas d'un
-    tournoi dont on a seulement déposé le logo. Y semer un défaut le ferait passer pour *réglé*.
-    Sinon, ils portent la forme normalisée `#rrggbb` (`domain.identite.Couleur.hex`) ; le type
-    d'un logo stocke la **valeur** de `TypeLogo`, c'est-à-dire son type MIME. Un emplacement vide
-    porte `NULL` **sur les deux colonnes** du couple — c'est l'adapter qui tient cet appariement,
-    SQLite ne sachant pas exprimer « les deux ou aucune » sans `CHECK` (cf. commentaire du
-    repository).
+    **Une table à part, pas des colonnes sur `tournoi`** : les logos sont des blobs, que chaque
+    `SELECT` de la ligne traînerait. `tournoi_id` est à la fois clé primaire et clé étrangère.
+    ⚠️ Les accents sont **nullables** : `NULL` = « rien n'a été choisi », l'identité étant héritée
+    du club — y semer un défaut ferait passer le tournoi pour *réglé*. Un emplacement de logo vide
+    porte `NULL` **sur les deux colonnes**, appariement tenu par l'adapter.
     """
 
     __tablename__ = "identite_tournoi"

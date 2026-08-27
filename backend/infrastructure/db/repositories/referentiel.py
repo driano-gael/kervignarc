@@ -64,16 +64,11 @@ from infrastructure.erreurs import InfrastructureError
 def _purger_descendance_du_depart(session: Session, depart_id: DepartId) -> None:
     """Supprime ce qui pend au créneau **avant** lui — cascade applicative maîtrisée (DETTE-001).
 
-    ⚠️ **Élargi par E01US025** (ADR-0075) : le départ est devenu la portée **sportive**, donc
-    `phase.depart_id` et `barrage.depart_id` sont des FK **sans `ON DELETE`** qui n'existaient pas
-    avant. Sans cette purge, supprimer un créneau d'un tournoi configuré partait en `IntegrityError`
-    → 500, à la place des refus typés que le service arbitre (`DepartAvecInscriptions`,
-    `DepartEnCoursNonConfirme`, `DernierDepartNonSupprimable`). Défaut relevé en revue.
-
-    L'ordre suit les dépendances : `barrage_tir` → `barrage` → `phase` → `inscription`. Ce qui pend
-    à la **phase** (plan de duels, duels, forfaits) porte `ON DELETE CASCADE` et part avec elle ;
-    `placement` porte la même cascade depuis le départ. On ne supprime donc à la main que ce que le
-    schéma ne sait pas emporter.
+    ⚠️ **Élargi par E01US025** (ADR-0075) : `phase.depart_id` et `barrage.depart_id` sont des FK
+    **sans `ON DELETE`** qui n'existaient pas avant, et sans cette purge supprimer un créneau
+    configuré partait en `IntegrityError` → 500, à la place des refus typés du service. L'ordre
+    suit les dépendances : `barrage_tir` → `barrage` → `phase` → `inscription`. Ce qui pend à la
+    phase porte `ON DELETE CASCADE` — on ne supprime à la main que ce que le schéma n'emporte pas.
     """
     barrages = select(BarrageORM.id).where(BarrageORM.depart_id == depart_id)
     session.execute(delete(BarrageTirORM).where(BarrageTirORM.barrage_id.in_(barrages)))
@@ -153,16 +148,11 @@ def _vers_inscription(ligne: InscriptionORM) -> Inscription:
 def _vers_blason(ligne: BlasonORM) -> Blason:
     """Traduit une ligne ORM en agrégat de domaine `Blason`.
 
-    `zones` est écrit par le repository comme un tableau JSON de valeurs de score (E01US014). Un
-    contenu illisible, **ou lisible mais hors règle**, est une **incohérence technique** (le
-    repository en est le seul rédacteur, il écrit toujours un jeu valide) → enveloppée en
-    `InfrastructureError` (ADR-0007), jamais laissée fuir en agrégat silencieusement invalide.
-
-    On **rejoue `valider_zones`** plutôt que de se contenter d'une coercition `ZoneScore(...)`,
-    pour la même raison que `_vers_phase` repasse par `BaremeQualification.creer` : la coercition
-    seule ne voit que le vocabulaire, pas la structure. Un `'{"10": 1}'` en base réhydraterait
-    `('10',)` — clés d'un objet JSON, vocabulaire valide, mais **sans `M`** — c'est-à-dire un
-    blason hors invariant, qui piloterait le pavé d'EPIC-04 sans qu'aucune erreur ne soit levée.
+    Un `zones` illisible **ou lisible mais hors règle** est une **incohérence technique** (ce
+    repository en est le seul rédacteur) → `InfrastructureError` (ADR-0007). ⚠️ On **rejoue
+    `valider_zones`** plutôt qu'une simple coercition `ZoneScore(...)` : celle-ci ne voit que le
+    vocabulaire, pas la structure — un `'{"10": 1}'` réhydraterait `('10',)`, valide au vocabulaire
+    et **sans `M`**, c'est-à-dire un blason hors invariant qui piloterait le pavé d'EPIC-04.
     """
     try:
         zones = valider_zones(json.loads(ligne.zones))
@@ -402,26 +392,13 @@ class ArcherRepositorySQL:
             raise InfrastructureError("Échec de mise à jour de l'archer.") from exc
 
     def supprimer(self, archer_id: ArcherId) -> None:
-        """Supprime l'archer, **ses scores, ses inscriptions, sa série de saisie et ses forfaits**
-        (E02US003, E02US009, E04US002, E04US015).
+        """Supprime l'archer, **ses scores, inscriptions, série de saisie et forfaits**.
 
-        **Contrat** (même que `enregistrer`) : l'existence est garantie par le service ; une ligne
-        absente est une incohérence technique, pas un 404. Le service a par ailleurs déjà obtenu
-        la confirmation de l'admin si l'archer était placé, engagé ou inscrit (`ArcherEngage`) :
-        ici, la destruction est voulue.
-
-        **Une seule transaction** pour tous les `DELETE`, dans cet ordre : `score.archer_id`,
-        `inscription.archer_id`, `serie.archer_id` **et** `forfait.archer_id` sont des FK **sans
-        `ON DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. `serie` (E04US002) et
-        `forfait` (E04US015) sont des enfants de plus : les retirer ici étend la **cascade
-        applicative maîtrisée** (qui manque au reste de la descendance de `tournoi` — DETTE-001). Le
-        `forfait` **doit** être purgé ici, pas seulement « assumé en dette » : sa FK est *enforced*
-        (`PRAGMA foreign_keys=ON`), une ligne orpheline ferait échouer la suppression (500, archer
-        indéracinable — trouvé en revue adversariale). Les **volées** de la série suivent
-        automatiquement (`volee.serie_id` est `ON DELETE CASCADE` — composant strict de l'agrégat) :
-        le `DELETE` de la série déclenche la cascade SQLite. Deux transactions successives
-        laisseraient, si la seconde échouait, un archer à demi dépouillé — un état que personne n'a
-        demandé.
+        Existence garantie par le service, qui a déjà obtenu la confirmation de l'admin. **Une
+        seule transaction** pour tous les `DELETE`, dans cet ordre : ces FK sont **sans `ON
+        DELETE`** (DETTE-001), donc supprimer l'archer d'abord échouerait. Le `forfait` **doit**
+        être purgé ici — sa FK est *enforced*, et une ligne orpheline rendait l'archer
+        indéracinable (500). Les **volées** suivent leur série par cascade SQLite.
         """
         try:
             with self._session_factory() as session:
@@ -451,17 +428,11 @@ class ArcherRepositorySQL:
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> None:
         """Réassigne la descendance du perdant au gagnant, puis supprime le perdant (E02US005).
 
-        **Miroir de `supprimer`** : mêmes FK sans `ON DELETE` (DETTE-001), même transaction unique,
-        mais on **réattribue** au lieu de purger. Tout en instructions **Core** (`update`/`delete`),
-        comme `supprimer` : une collision d'inscription est effacée par un `DELETE` SQL, qui
-        déclenche la cascade base `placement.inscription_id` (`ON DELETE CASCADE`) — un
-        `session.delete` ORM
-        laisserait SQLAlchemy deviner la descendance (cf. `supprimer`, la série et ses volées).
-
-        Contrat (garanti par le service) : deux archers distincts, même tournoi, **pas tous les
-        deux** une série (sinon `UNIQUE(tournoi_id, archer_id)` sauterait). Les collisions d'unicité
-        d'**inscription** (par départ) **et de forfait** (par phase, E04US015) sont résolues **ici**
-        (le service ne les voit pas) : voir `ArcherRepository.fusionner`.
+        **Miroir de `supprimer`** : mêmes FK sans `ON DELETE`, même transaction unique, mais on
+        **réattribue** au lieu de purger. Tout en instructions **Core** — un `session.delete` ORM
+        laisserait SQLAlchemy deviner la descendance. Contrat garanti par le service : deux archers
+        distincts, même tournoi, **pas tous les deux** une série. Les collisions d'unicité
+        d'inscription et de forfait sont résolues **ici**, le service ne les voyant pas.
         """
         try:
             with self._session_factory() as session:
@@ -578,16 +549,12 @@ class ClubRepositorySQL:
             raise InfrastructureError("Échec de lecture du club.") from exc
 
     def par_nom(self, nom: str) -> Club | None:
-        """Relit le club de même nom au sens de `domain.club.cle_nom`, ou `None` s'il n'y en a pas.
+        """Relit le club de même nom au sens de `domain.club.cle_nom`, ou `None`.
 
         La comparaison est faite **côté Python**, via la clé du domaine, plutôt qu'en SQL : le
-        `COLLATE NOCASE` de SQLite ne replie que la casse **ASCII** — il laisserait passer « Élan »
-        / « élan » comme « Élan » / « Elan », alors que les noms de clubs sont accentués. L'adapter
-        n'invente donc aucune règle de comparaison : il applique celle du domaine.
-
-        Le référentiel compte quelques dizaines de lignes et cette lecture n'a lieu qu'à la
-        création/au renommage (donc dans la file d'écriture, jamais sur un chemin chaud) : les
-        parcourir est sans conséquence, et l'unique lecture reste courte.
+        `COLLATE NOCASE` de SQLite ne replie que la casse **ASCII**, or les noms de clubs sont
+        accentués. Le référentiel compte quelques dizaines de lignes et cette lecture n'a lieu qu'à
+        la création ou au renommage, donc dans la file d'écriture — jamais sur un chemin chaud.
         """
         try:
             with self._session_factory() as session:
@@ -734,15 +701,10 @@ class DepartRepositorySQL:
         """Supprime le départ (et ses inscriptions) **et** ouvre les remboursements — une
         transaction.
 
-        Variante de `supprimer` (E08US005, ADR-0057) : les `remboursements` (un par inscription
-        payée
-        d'un créneau tarifé) sont **insérés** dans la **même** session que les deux `DELETE`,
-        scellés
-        par un **unique** `commit`. Ordre des `DELETE` inchangé (`inscription` avant `depart` — FK
-        sans `ON DELETE`, DETTE-001). Atomicité « on n'efface une inscription payée que si son
-        remboursement est ouvert » — jamais de somme encaissée effacée sans contrepartie, jamais de
-        remboursement en double (un échec avant le `commit` annule **tout**). Une liste vide est
-        tolérée (équivalente à `supprimer`) — mais le service appelle `supprimer` dans ce cas.
+        Variante de `supprimer` (E08US005, ADR-0057) : les `remboursements` sont insérés dans la
+        **même** session que les deux `DELETE`, scellés par un **unique** `commit`. Ordre inchangé
+        (`inscription` avant `depart`). Atomicité « on n'efface une inscription payée que si son
+        remboursement est ouvert ». Liste vide tolérée, mais le service appelle `supprimer`.
         """
         try:
             with self._session_factory() as session:
@@ -862,12 +824,10 @@ class InscriptionRepositorySQL:
     ) -> list[Inscription]:
         """Bascule `paye` sur plusieurs inscriptions **et** co-écrit sa trace — une transaction.
 
-        Tout ou rien (ADR-0035) : les inscriptions visées passent à `paye`, la trace est ajoutée
-        dans **la même** session (via `AuditRepositorySQL.consigner_dans`, qui ne commit pas), puis
-        un **unique** `commit` scelle l'ensemble. Un échec avant le commit ne laisse ni marquage non
-        tracé, ni trace fantôme. Une ligne absente est une **incohérence technique** (l'appelant
-        garantit l'existence) → `InfrastructureError`. Les inscriptions mises à jour sont renvoyées
-        dans l'ordre des identifiants fournis.
+        Tout ou rien (ADR-0035) : la trace est ajoutée dans **la même** session (via
+        `consigner_dans`, qui ne commit pas), puis un **unique** `commit` scelle l'ensemble — ni
+        marquage non tracé, ni trace fantôme. Une ligne absente est une incohérence technique →
+        `InfrastructureError`. Retour dans l'ordre des identifiants fournis.
         """
         try:
             with self._session_factory() as session:
@@ -901,12 +861,9 @@ class InscriptionRepositorySQL:
     ) -> None:
         """Supprime l'inscription **et** ouvre son remboursement — une transaction (E08US005).
 
-        Tout ou rien (ADR-0057, couture de session partagée comme `definir_paye_avec_trace`) : le
-        remboursement est **inséré** puis l'inscription **supprimée** dans la **même** session, un
-        **unique** `commit` scelle l'ensemble. Ordre insertion-avant-suppression sans importance
-        (un seul commit), mais l'atomicité garantit qu'on n'efface **jamais** une inscription payée
-        sans ouvrir sa contrepartie, ni l'inverse. Ligne absente = incohérence technique (l'appelant
-        garantit l'existence) → `InfrastructureError`.
+        Tout ou rien (ADR-0057, couture de session partagée comme `definir_paye_avec_trace`) : un
+        **unique** `commit` scelle l'ensemble, si bien qu'on n'efface **jamais** une inscription
+        payée sans ouvrir sa contrepartie, ni l'inverse. Ligne absente = incohérence technique.
         """
         try:
             with self._session_factory() as session:
@@ -1224,17 +1181,11 @@ class GabaritSalleRepositorySQL:
 class RemboursementRepositorySQL:
     """Adapter SQLite du port `RemboursementRepository` (E08US005, ADR-0057).
 
-    Registre des sommes encaissées à rendre. Les **créations** ne passent pas par cet adapter : une
-    ligne naît **atomiquement** avec la suppression de l'inscription payée qui la provoque
-    (`InscriptionRepositorySQL.supprimer_avec_remboursement`,
-    `DepartRepositorySQL.supprimer_avec_remboursements`, via `_remboursement_orm`). Cet adapter sert
-    la **lecture** (`par_tournoi`, `par_id`) et le **traitement** (`enregistrer_avec_trace`).
-
-    `enregistrer_avec_trace` réalise la **couture de session partagée** (ADR-0035, comme
-    `InscriptionRepositorySQL.definir_paye_avec_trace`) : le nouveau statut du remboursement **et**
-    son entrée d'audit `REMBOURSEMENT` s'écrivent dans **une seule session, un seul `commit`**. D'où
-    l'`AuditRepositorySQL` injecté — collaboration **infra → infra** (le port du domaine ignore la
-    couture). L'entrée arrive **déjà construite et datée** par le service (via `Horloge`).
+    ⚠️ Les **créations** ne passent pas par cet adapter : une ligne naît **atomiquement** avec la
+    suppression de l'inscription payée qui la provoque. Il sert la lecture et le traitement.
+    `enregistrer_avec_trace` réalise la **couture de session partagée** (ADR-0035) — statut et
+    audit dans une seule session, un seul `commit` —, d'où l'`AuditRepositorySQL` injecté :
+    collaboration **infra → infra**, le port du domaine ignorant la couture.
     """
 
     def __init__(
@@ -1266,14 +1217,10 @@ class RemboursementRepositorySQL:
     def enregistrer_avec_trace(
         self, remboursement: Remboursement, entree: EntreeAudit
     ) -> Remboursement:
-        """Met à jour le remboursement traité **et** co-écrit sa trace `REMBOURSEMENT` — une
-        transaction.
+        """Met à jour le remboursement traité **et** co-écrit sa trace — une transaction.
 
-        Tout ou rien (ADR-0035) : le nouveau `statut`/`traite_le` et l'entrée d'audit (via
-        `AuditRepositorySQL.consigner_dans`, qui ne commit pas) tiennent dans un **unique**
-        `commit`.
-        Ligne absente = incohérence technique (l'appelant garantit l'existence) →
-        `InfrastructureError`.
+        Tout ou rien (ADR-0035) : le nouveau `statut`/`traite_le` et l'entrée d'audit tiennent dans
+        un **unique** `commit`. Ligne absente = incohérence technique → `InfrastructureError`.
         """
         assert remboursement.id is not None, "Un remboursement à traiter est persisté."
         try:
@@ -1369,19 +1316,15 @@ def _supprimer_barrages_de_l_archer(session: Session, archer_id: int) -> None:
 
 
 def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> None:
-    """Reporte sur le gagnant les barrages du perdant (fusion de doublons, E02US005 et E06US003).
+    """Reporte sur le gagnant les barrages du perdant (fusion de doublons, E02US005, E06US003).
 
-    Deux collisions à traiter, et elles ne sont pas symétriques :
-
-    - **un tir** — `uq_barrage_tir(barrage_id, manche, archer_id)` : si les deux fiches ont tiré la
-      même manche du même barrage (le cas d'un doublon réellement dédoublé sur le pas de tir), on
-      **garde celui du gagnant** et on supprime celui du perdant, comme pour l'inscription ;
-    - **la liste des participants** : le perdant y est remplacé par le gagnant, **dédoublonné**.
-      Sans cela le barrage compterait deux fois la même personne, ce que l'agrégat refuse.
-
-    Un barrage qui se retrouverait à **moins de deux** participants après fusion n'oppose plus
-    personne : il est supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
+    Deux collisions, non symétriques : **un tir** (`uq_barrage_tir`) — on garde celui du gagnant et
+    supprime celui du perdant, comme pour l'inscription ; **la liste des participants** — le
+    perdant y est remplacé par le gagnant, **dédoublonné**, sinon le barrage compterait deux fois
+    la même personne. Un barrage tombé sous **deux** participants n'oppose plus personne : il est
+    supprimé plutôt que laissé dans un état que l'agrégat rejetterait.
     """
+
     # Ceinture symétrique de `_supprimer_barrages_de_l_archer` : un tir du perdant orphelin de
     # `participants_json` échapperait à la boucle et ferait échouer le `DELETE` de l'archer (500).
     orphelins = [ligne.id for ligne in _barrages_contenant(session, perdant_id)]
@@ -1436,16 +1379,11 @@ def _fusionner_barrages(session: Session, gagnant_id: int, perdant_id: int) -> N
 def _supprimer_si_illisible(session: Session, barrage_id: int) -> None:
     """Supprime le barrage **seulement s'il ne se relit plus** après fusion.
 
-    ⚠️ **On vérifie au lieu de présumer, et c'est un correctif de revue.** Une première version
-    supprimait le barrage dès que la fusion touchait deux de ses participants — ce qui détruisait
-    aussi des barrages parfaitement sains : à une seule manche, le report des tirs produit un
-    agrégat relisible. L'organisateur nettoyait un doublon d'inscription, geste de routine, et un
-    barrage tiré et acté sur la dernière place qualificative disparaissait sans trace, le classement
-    revenant silencieusement au rang partagé.
-
-    Le vrai critère n'est pas « deux fiches concernées » mais « l'agrégat tient-il encore » : une
-    manche ≥ 2 peut se retrouver avec un tireur que la manche 1 vient de départager. On rejoue donc
-    le moteur, et on ne supprime que s'il refuse.
+    ⚠️ **On vérifie au lieu de présumer.** Supprimer dès que la fusion touche deux participants
+    détruisait aussi des barrages sains : à une seule manche, le report des tirs produit un agrégat
+    relisible. Un doublon d'inscription nettoyé faisait alors disparaître sans trace un barrage
+    tiré sur la dernière place qualificative. Le critère est « l'agrégat tient-il encore » — on
+    rejoue le moteur, et on ne supprime que s'il refuse.
     """
     ligne = session.get(BarrageORM, barrage_id)
     if ligne is None:  # pragma: no cover — on vient de l'écrire
@@ -1537,10 +1475,8 @@ class IdentiteVisuelleRepositorySQL:
         ⚠️ Écrit `accent_primaire` / `accent_secondaire` — les accents **choisis** — et non
         `identite.accents`, qui est la propriété *effective* : celle-ci retombe sur les couleurs du
         club quand rien n'a été choisi, si bien qu'`enregistrer_accents(id, IdentiteVisuelle())`
-        aurait persisté `#b71918` / `#1d1d1b` et fait basculer `reglee` à `true` sans que personne
-        n'ait rien réglé. C'était, un étage plus bas, exactement le défaut que cette US a chassé du
-        service — inatteignable par les appelants du jour, armé pour le premier « revenir aux
-        couleurs du club ». Le défaut appartient à l'agrégat, et à lui seul (cf. port).
+        aurait persisté le rouge du club et fait basculer `reglee` à `true` sans qu'on ait rien
+        réglé.
         """
         try:
             with self._session_factory() as session:
@@ -1590,15 +1526,10 @@ def _ligne_identite_ou_creation(session: Session, tournoi_id: TournoiId) -> Iden
 def _lire_reglages_identite(session: Session, tournoi_id: TournoiId) -> IdentiteVisuelle:
     """Projection **sans blob** : les accents éventuels, et la seule *présence* de chaque logo.
 
-    On projette les **empreintes** — de courtes chaînes — plus un `IS NOT NULL` sur chaque blob,
-    évalué par SQLite : la présence se lit des unes, la version des autres, et aucun octet ne
-    remonte
-    jusqu'à Python. Un `len(...) > 0` côté Python les aurait tous chargés pour n'en garder qu'un
-    booléen.
-
-    Aucune ligne rend l'identité **vide** — pas `None` : un tournoi a toujours une identité, elle
-    est simplement entièrement héritée. C'est l'agrégat qui porte ce défaut
-    (`IdentiteVisuelle.accents`), pas cet adapter.
+    On projette les **empreintes** — de courtes chaînes — plus un `IS NOT NULL` évalué par SQLite :
+    aucun octet ne remonte jusqu'à Python, là où un `len(...) > 0` côté Python les aurait tous
+    chargés pour n'en garder qu'un booléen. Aucune ligne rend l'identité **vide**, pas `None` : un
+    tournoi a toujours une identité, simplement entièrement héritée (défaut porté par l'agrégat).
     """
     ligne = session.execute(
         select(

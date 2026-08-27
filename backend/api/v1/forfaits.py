@@ -1,11 +1,8 @@
 """Endpoints REST des forfaits (E04US015, ADR-0050) — le **scoreur** déclare abandon / DSQ.
 
-Expose `ServiceForfait` au scoreur : **déclarer** qu'un archer abandonne ou est disqualifié, et
-**annuler** cette déclaration (réversibilité, `D-15`), en **qualification** (relégation/exclusion au
-classement) comme en **duels** (l'adversaire passe). Acte du **scoreur**, dans **son** tournoi
-(`403 scoreur_hors_tournoi`) — même famille d'autorisation que la validation (E04US002/E04US013).
-Écritures routées par la **file** (writer unique) et **dédoublonnées** par identifiant de saisie
-(ADR-0036). DTO Pydantic distincts des agrégats ; erreurs typées traduites à la frontière.
+Déclarer et **annuler** (réversibilité, `D-15`), en qualification (relégation ou exclusion au
+classement) comme en duels (l'adversaire passe). Acte du scoreur dans **son** tournoi
+(`403 scoreur_hors_tournoi`), écritures dédoublonnées par identifiant de saisie (ADR-0036).
 """
 
 from __future__ import annotations

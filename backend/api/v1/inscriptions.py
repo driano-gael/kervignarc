@@ -1,13 +1,8 @@
 """Endpoints REST des inscriptions — liens archer ↔ départ (E02US009, ADR-0017).
 
-Inscrire un archer sur des départs (créneaux) de son tournoi, marquer payé, désinscrire. Deux
-racines, comme pour les archers (cf. `competition.py`) : la **création et la liste** sont imbriquées
-sous l'archer (`/api/v1/archers/{archer_id}/inscriptions`), la **mutation d'une inscription** est à
-plat sur sa ressource (`/api/v1/inscriptions/{inscription_id}`).
-
-Suit le patron de bout en bout : DTO Pydantic distincts des agrégats ; écritures routées par la
-**file d'écriture** (writer unique, ADR-0005) et réservées à l'admin (`exiger_admin`) ; lectures
-**hors boucle** (threadpool) ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+Deux racines, comme pour les archers (cf. `competition.py`) : la création et la liste sont
+imbriquées sous l'archer, la mutation d'une inscription est à plat sur sa ressource. Patron de bout
+en bout : E00US009.
 """
 
 from __future__ import annotations

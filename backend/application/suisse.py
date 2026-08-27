@@ -72,13 +72,10 @@ class RencontreDeRonde:
     """Une rencontre d'une ronde, prête à l'affichage et à la saisie.
 
     `numero` est le `match_numero` de la table `duel` : un **compteur continu sur toute la phase**,
-    ronde après ronde. C'est ce qui permet de porter les rencontres de toutes les rondes sans table
-    neuve — aucune migration, même parti que les poules.
-
-    ⚠️ **Un compteur, donc pas une position stable.** La même remarque que `DETTE-057` vaut ici : si
-    la population de la phase change après des tirs, les numéros glissent et les rencontres déjà
-    tirées ne décrivent plus les mêmes duellistes. C'est `desynchronisee` qui le dit, et le tir est
-    alors **masqué** plutôt que ré-attribué (ADR-0049 §4).
+    ce qui permet de porter les rencontres de toutes les rondes sans table neuve. ⚠️ Un compteur,
+    donc **pas une position stable** (DETTE-057) : si la population change après des tirs, les
+    numéros glissent et `desynchronisee` le dit — le tir est alors **masqué** plutôt que
+    ré-attribué (ADR-0049 §4).
     """
 
     numero: int
@@ -128,20 +125,12 @@ class EtatSuisse:
     conflits: tuple[ConflitDeBloc, ...] = ()
     """Ce que la pose du plan n'a **pas** pu faire — **ou** le fait qu'elle n'a pas eu lieu.
 
-    Même parti que les poules et que le plan de cibles de qualification (ADR-0024) : le placement
-    **rapporte** son échec au lieu de tronquer en silence. L'organisateur doit voir à l'atelier que
-    sa salle est trop petite, pas le découvrir le jour J.
-
-    ⚠️ **Renseigné en lecture aussi, depuis E05US030.** Le défaut valait la correction : rempli par
-    la seule `regenerer_plan`, ce champ restait vide sur la route de saisie, si bien que le message
-    « le plan de cibles n'est pas posé » de l'écran scoreur ne pouvait **jamais** s'afficher. En
-    relecture, la seule raison connaissable est `NON_POSEE` — rien n'est persisté qui dise pourquoi
-    un bloc manque. `regenerer_plan` rend la raison réelle (`SALLE_PLEINE`, `SANS_RENCONTRE`) dans
-    **sa propre réponse** ; dès le refetch suivant, on retombe sur `NON_POSEE`. L'organisateur dont
-    la salle est trop petite relit donc « le plan n'est pas posé » et peut regénérer en vain — c'est
-    le régime **hérité du jumeau poules** (`application/poules.py`), assumé là-bas comme ici, et non
-    un écart introduit par cette US. Le rendre durable demanderait de persister la raison avec le
-    plan."""
+    Le placement **rapporte** son échec au lieu de tronquer en silence. ⚠️ **Renseigné en lecture
+    aussi** — rempli par la seule `regenerer_plan`, ce champ restait vide sur la route de saisie et
+    le message « plan non posé » de l'écran scoreur était une branche morte. En relecture, la seule
+    raison connaissable est `NON_POSEE` : les raisons réelles ne vivent que dans la réponse de
+    `regenerer_plan` (régime hérité du jumeau poules).
+    """
 
 
 _PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
@@ -151,20 +140,11 @@ _PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
 def _plan_suffisant(bloc: BlocDeCouloirs | None, effectif: int) -> bool:
     """Le bloc posé couvre-t-il **le plateau d'aujourd'hui** ?
 
-    ⚠️ **Tester la seule présence du bloc ne suffit pas**, et le premier correctif s'y était arrêté
-    (relevé au 2ᵉ tour de revue par deux axes, sonde à l'appui). `regenerer_plan` dimensionne le
-    bloc unique sur l'effectif **du jour de la pose**, et son numéro est toujours 1 : un archer
-    inscrit après coup ne fait pas disparaître le bloc, il le rend **trop court**. Les rencontres en
-    débordement perdaient alors leur cible sans que rien ne le signale — la branche morte d'origine,
-    un cran plus loin, et sur un cas banal le jour J (retardataire, forfait annulé, phase amont qui
-    bouge).
-
-    ⚠️ **Le jumeau poules n'a pas ce trou, et c'est ce qui l'a rendu invisible par analogie** : une
-    croissance d'effectif y ajoute des *groupes*, dont les numéros n'ont aucun bloc, donc
-    `_conflits_du_plan` les voit. Le suisse n'a qu'un groupe, qui ne disparaît jamais.
-
-    L'empreinte attendue est celle de `regenerer_plan` : `2 * (effectif // 2)` couloirs — le porteur
-    du bye ne tire pas, on ne lui réserve pas de place.
+    ⚠️ **Tester la seule présence du bloc ne suffit pas** : `regenerer_plan` le dimensionne sur
+    l'effectif **du jour de la pose**, et son numéro est toujours 1 — un archer inscrit après coup
+    le rend **trop court**, et les rencontres en débordement perdent leur cible sans signal. Le
+    jumeau poules n'a pas ce trou (une croissance y ajoute des *groupes* que `_conflits_du_plan`
+    voit), ce qui l'a rendu invisible par analogie. Empreinte attendue : deux couloirs par paire.
     """
     if bloc is None:
         return False
@@ -216,26 +196,13 @@ class ServiceSuisse:
     def avancement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> AvancementDePhase | None:
-        """Où en est ce système suisse — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+        """Où en est ce système suisse — le port `LecteurAvancementDePhase` (ADR-0090 §5).
 
         Le nombre de tours est celui que l'effectif du jour rend **jouable**, pas celui qui est
-        réglé : un suisse réglé à 7 rondes n'en apparie que 5 à 12 archers sans
-        ré-affrontement, et c'est la borne qui fait foi — l'atelier l'affiche déjà en clair pour
-        cette raison (E05US030).
-
-        Le tour courant est la première ronde **non close**. `None` quand toutes le sont : plus rien
-        ne tourne, même si la phase n'est pas clôturée — c'est exactement l'état où `E05US033`
-        proposera de lancer la suite.
-
-        ⚠️ **Rend `None` — et non « zéro tour » — quand la borne vaut 0** (correctif de revue, axes
-        B et C1). `_photo` rend délibérément `rondes_maximales=0` sous deux tireurs (« aucune ronde
-        n'est appariable »), cas **normal et durable** d'une phase réglée à l'atelier dont la source
-        amont n'a encore classé personne. Le `min` donnait alors `0`, exactement le « zéro tour »
-        que cette US existe pour supprimer — et le plancher du domaine ne rattrapait pas, puisqu'il
-        ne joue que si le lecteur est *absent*, pas s'il répond `0`. Ne rien savoir se dit `None`,
-        comme chez les deux jumeaux sur une phase vide.
-
-        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        réglé : un suisse réglé à 7 rondes n'en apparie que 5 à 12 archers. Le tour courant est la
+        première ronde **non close**, `None` quand toutes le sont. ⚠️ **`None` — et non « zéro tour
+        » — quand la borne vaut 0** (sous deux tireurs) : cas normal et durable d'une phase dont la
+        source amont n'a classé personne, que le plancher du domaine ne rattrape pas.
         """
         etat = self.etat(tournoi_id, phase_id)
         if etat.rondes_maximales == 0:
@@ -251,14 +218,10 @@ class ServiceSuisse:
     ) -> ClassementSource:
         """Le classement que cette phase **produit** — le port `LecteurClassementDePhase`.
 
-        C'est ce qui rend une phase avale alimentable par un système suisse : jusqu'ici
-        `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
-        le visant restait **inerte** — la phase aval recevait tous les archers en lice, ce qui est
-        plausible et faux.
-
-        `rang_premier` est posé ici avec le **même** résolveur que celui qui a servi à prélever :
-        deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
-        distincts, ce qui est exactement `DETTE-034`.
+        Sans lui, un prélèvement visant un système suisse restait **inerte** : l'aval recevait tous
+        les archers en lice, plausible et faux. `rang_premier` est posé avec le **même** résolveur
+        que celui qui a servi à prélever — deux bases différentes situeraient la population et le
+        décalage dans deux espaces de rangs distincts (`DETTE-034`).
         """
         phase, participants = self._population(tournoi_id, phase_id, resolveur)
         photo = self._photo(phase, participants)
@@ -295,20 +258,14 @@ class ServiceSuisse:
                 classement=(),
             )
         tireurs = [Participant.individuel(ligne.archer_id) for ligne in participants]
-        # ⚠️ **On borne ici, on ne lève pas** — et la première version faisait l'inverse, ce qui a
-        # été un bloquant de revue reproduit par trois axes.
+        # ⚠️ **On borne ici, on ne lève pas** — la première version faisait l'inverse, bloquant de
+        # revue reproduit par trois axes. `ConfigurationSuisse.nb_rondes` vaut **5** par défaut et
+        # `EtapeDeroule` ne vérifie la borne que si l'effectif est **déclaré** : une phase réglée
+        # par défaut et jouée à 4 archers faisait lever `apparier_ronde` dès la première ronde,
+        # donc **422 sur le palmarès public, son PDF et le panneau de routage**.
         #
-        # `ConfigurationSuisse.nb_rondes` vaut **5** par défaut, et `EtapeDeroule` ne vérifie la
-        # borne que si l'effectif est **déclaré** — régime licite et testé. Une phase réglée par
-        # défaut et jouée à 4 archers faisait donc lever `apparier_ronde`
-        # (`ConfigurationSuisseInvalide`, une `DomainError`) dès la première ronde, ce qui
-        # remontait en **422 sur le palmarès public, son PDF et le panneau de routage**.
-        #
-        # La docstring de `_configuration` promet « un écran qui refuse de s'ouvrir vaut moins qu'un
-        # écran qui montre la borne » : la borner à la lecture est la seule façon de **tenir** cette
-        # promesse. L'état continue d'exposer les deux nombres — `nb_rondes` (ce que l'organisateur
-        # a réglé) et `rondes_maximales` (ce que l'effectif du jour permet) — donc l'atelier montre
-        # l'écart au lieu de le subir.
+        # L'état expose les deux nombres — `nb_rondes` (le réglage) et `rondes_maximales` (ce que
+        # l'effectif permet) — donc l'atelier montre l'écart au lieu de le subir.
         maximum = rondes_maximales(len(tireurs))
         jouables = replace(configuration, nb_rondes=min(configuration.nb_rondes, maximum))
         # Un **seul** bloc pour toute la phase : une ronde apparie tout le plateau d'un coup, il n'y
@@ -322,21 +279,14 @@ class ServiceSuisse:
             effectif=len(tireurs),
             rondes=rondes,
             classement=classement_suisse(tireurs, resultats, byes),
-            # ⚠️ **Le manque se rapporte à la LECTURE, pas seulement après une pose** (correctif de
-            # revue E05US030, axe adversarial). `conflits` n'était renseigné que par
-            # `regenerer_plan` : sur la route de saisie il restait **toujours vide**, donc le
-            # message « le plan de cibles n'est pas posé » de l'écran scoreur était une **branche
-            # morte**. Le scoreur voyait ses rondes sans aucune cible et sans un mot d'explication.
+            # ⚠️ **Le manque se rapporte à la LECTURE, pas seulement après une pose.** `conflits`
+            # n'était renseigné que par `regenerer_plan` : sur la route de saisie il restait
+            # toujours vide, donc le message « le plan de cibles n'est pas posé » de l'écran scoreur
+            # était une **branche morte** — le scoreur voyait ses rondes sans cible ni explication.
             #
-            # Le jumeau poules le fait depuis E05US023 (`ServicePoules._conflits_du_plan`), et pour
-            # la même raison qu'ici : on **relaie** le manque, on ne le comble pas — poser le bloc
-            # dans cette méthode reviendrait à écrire un plan là où l'appelant croit qu'on ne fait
-            # que lire (ADR-0083 §3).
-            #
-            # `NON_POSEE` et rien d'autre : en relecture, rien n'est persisté qui dise *pourquoi* le
-            # bloc manque. `regenerer_plan` rend les raisons réelles (`SALLE_PLEINE`,
-            # `SANS_RENCONTRE`) dans **sa propre réponse** ; la relecture suivante retombe ici, donc
-            # sur `NON_POSEE`. C'est le régime du jumeau poules, assumé de la même façon.
+            # On **relaie** le manque, on ne le comble pas : poser le bloc ici écrirait un plan là
+            # où l'appelant croit ne faire que lire (ADR-0083 §3). `NON_POSEE` et rien d'autre —
+            # rien n'est persisté qui dise *pourquoi* le bloc manque.
             conflits=() if _plan_suffisant(bloc, len(tireurs)) else _PLAN_A_REPOSER,
         )
 
@@ -351,17 +301,10 @@ class ServiceSuisse:
         """Rejoue les rondes des duels validés, et **s'arrête à la première ronde incomplète**.
 
         L'arrêt n'est pas une précaution : `apparier_ronde` **refuse** d'apparier par-dessus une
-        ronde en cours (`_rondes_closes` lève), parce que la ronde suivante perdrait les rencontres
-        non encore saisies et donnerait le bye à quelqu'un qui vient de tirer. On ne tente donc même
-        pas l'appel — l'état rendu dit `close=False` et l'écran nomme l'attente.
-
-        ⚠️ **Les byes n'accompagnent que les rondes closes**, pour la même raison : le moteur les
-        vérifie contre le nombre de rondes disputées, et déclarer celui d'une ronde en cours ferait
-        mentir le compte.
-
-        ⚠️ **Le compteur de numéros court sur toute la phase**, ronde après ronde, et il ne se
-        recale jamais : c'est ce qui permet à `(phase_id, match_numero)` de porter les rencontres de
-        toutes les rondes sans table neuve.
+        ronde en cours, parce que la suivante perdrait les rencontres non saisies et donnerait le
+        bye à quelqu'un qui vient de tirer. ⚠️ Les **byes** n'accompagnent que les rondes closes,
+        pour la même raison. Le compteur de numéros court sur toute la phase et ne se recale
+        jamais.
         """
         rondes: list[RondeAffichee] = []
         resultats: list[ResultatRonde] = []
@@ -464,18 +407,11 @@ class ServiceSuisse:
     def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatSuisse:
         """Pose la phase sur la salle et **remplace** le plan existant.
 
-        ⚠️ **Un seul bloc, là où les poules en posent un par groupe**, et c'est toute la différence
-        entre les deux formats : une ronde de suisse apparie **tout le plateau** d'un coup. Il n'y a
-        donc pas de groupes à séparer — la phase entière occupe une plage contiguë, et les couloirs
-        de chaque rencontre s'y dérivent ronde par ronde.
-
-        L'empreinte est `2 * (effectif // 2)` : deux couloirs par rencontre, et à effectif impair le
-        porteur de bye ne tire pas — mais **ce n'est jamais le même**, ce qui est exactement la
-        raison pour laquelle on persiste le bloc et non « archer → couloir » (ADR-0083 §3).
-
-        Le geste est volontairement grossier — on repose tout. Reposer après un changement
-        d'effectif est sûr, à ceci près que les tirs déjà saisis peuvent se retrouver rattachés à
-        d'autres adversaires : c'est ce qu'ADR-0049 §4 détecte, et ce que `desynchronisee` dit.
+        ⚠️ **Un seul bloc, là où les poules en posent un par groupe** : une ronde apparie **tout le
+        plateau** d'un coup, donc la phase occupe une plage contiguë et les couloirs de chaque
+        rencontre s'y dérivent ronde par ronde. À effectif impair le porteur de bye ne tire pas, et
+        **ce n'est jamais le même** — d'où le bloc persisté plutôt qu'« archer → couloir »
+        (ADR-0083 §3). Reposer après un changement d'effectif peut désynchroniser des tirs.
         """
         phase, participants = self._population(tournoi_id, phase_id)
         # ⚠️ **Toutes les gardes avant la moindre écriture** (correctif de revue). La version
@@ -502,17 +438,11 @@ class ServiceSuisse:
     def rencontres_a_tirer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> RencontresARouter:
         """Les rencontres encore à tirer — le port `LecteurRencontresARouter` (E05US026).
 
-        Dans l'ordre du déroulé, donc ronde par ronde : la **première** d'un archer est celle qui
-        vient. Les rondes ultérieures n'existent même pas tant que la courante n'est pas close, donc
-        il n'y a rien à promettre au-delà.
-
-        Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée,
-        l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
-
-        ⚠️ **`epuisee` est le champ qui empêche de mentir**, et son absence a été un bloquant de
-        revue. Un suisse ne montre que sa ronde courante : sans lui, le porteur de bye et tout
-        archer dont la rencontre vient d'être validée passaient pour « terminés » sur un panneau
-        public. La phase n'est épuisée que si **toutes** les rondes réglées sont closes.
+        Dans l'ordre du déroulé, ronde par ronde : la **première** d'un archer est celle qui vient.
+        Une rencontre **désynchronisée** est écartée — son écriture est refusée, l'annoncer
+        enverrait un archer sur une cible où il ne peut rien saisir. ⚠️ **`epuisee` est le champ
+        qui empêche de mentir** : un suisse ne montre que sa ronde courante, donc sans lui le
+        porteur de bye passait pour « terminé » sur un panneau public.
         """
         etat = self.etat(tournoi_id, phase_id)
         rondes_dues = min(etat.nb_rondes, etat.rondes_maximales)
@@ -548,13 +478,10 @@ class ServiceSuisse:
     ) -> tuple[Phase, list[LigneClassement]]:
         """Les gardes, puis **qui entre dans la phase** — la 1ʳᵉ question du contrat (ADR-0083 §1).
 
-        Générique depuis ADR-0068/E05US024 : `preleves` lit chaque source dans le classement de
-        **sa** phase, en remontant la chaîne. Une phase de suisse sans source déclarée est donc
-        alimentée par le classement du départ, comme un tableau de tête.
-
-        `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
-        chaîne par `LecteurClassementDePhase`) : on réutilise alors son cache et sa chaîne de phases
-        visitées plutôt que d'en ouvrir un second (`DETTE-031`, et la détection de cycle avec).
+        Générique depuis ADR-0068 : `preleves` lit chaque source dans le classement de **sa**
+        phase, en remontant la chaîne. Sans source déclarée, la phase est alimentée par le
+        classement du départ. `resolveur` est fourni quand l'appel vient d'en haut : on réutilise
+        son cache et sa chaîne de phases visitées (`DETTE-031`, et la détection de cycle avec).
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -628,19 +555,11 @@ class ServiceSuisse:
     ) -> RencontreDeRonde:
         """Saisit le tir de barrage **interne** à une rencontre nulle (§8.2, E04US013).
 
-        ⚠️ **Exigé, comme partout ailleurs — et la première version de cette docstring disait le
-        contraire.** Elle affirmait qu'un nul était « un résultat légitime » propre au suisse, et
-        que ne pas tirer le barrage laissait la rencontre à 1-1. C'est faux : `Duel.valider` refuse
-        un duel non tranché (`DuelIncomplet`).
-
-        La confusion venait du **moteur** : `domain/suisse.py` sait représenter un nul
-        (`ResultatRonde.nul`, `POINTS_NUL`), parce qu'un système suisse générique en admet. Mais le
-        **décor de saisie** du projet est le duel FFTA (ADR-0083 §7), et lui exige un vainqueur —
-        d'où le barrage. La branche `POINTS_NUL` de `_resultat_de` est donc **inatteignable par ce
-        service** aujourd'hui ; elle reste écrite parce que le moteur, lui, la produit dès qu'un
-        autre décor l'alimentera.
-
-        L'écart a été trouvé en écrivant le test depuis la règle annoncée (règle 9).
+        ⚠️ **Exigé, comme partout ailleurs** — et la première rédaction affirmait le contraire.
+        `Duel.valider` refuse un duel non tranché. La confusion venait du **moteur** :
+        `domain/suisse.py` sait représenter un nul, parce qu'un système suisse générique en admet ;
+        mais le **décor de saisie** du projet est le duel FFTA (ADR-0083 §7), qui exige un
+        vainqueur. La branche `POINTS_NUL` de `_resultat_de` est donc inatteignable par ce service.
         """
         return self._ecrire(
             tournoi_id,
@@ -658,24 +577,16 @@ class ServiceSuisse:
 
         ⚠️ **La validation est le geste qui clôt une ronde**, donc celui qui autorise l'appariement
         de la suivante. Un tir non validé laisse la ronde ouverte, et le moteur **refuse**
-        d'apparier par-dessus : c'est voulu, et c'est la règle de la reconstruction d'un tableau,
-        qui ne rejoue lui aussi que les duels validés.
+        d'apparier par-dessus — la règle de la reconstruction d'un tableau.
         """
-        # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** : c'est
-        # un correctif de 2ᵉ passe de revue, relevé par trois axes au même endroit.
-        #
-        # `_ecrire` est le tronc commun des **trois** écritures. Y poser la garde gelait aussi
-        # `saisir_manche` et `saisir_barrage`, donc la **rectification** d'une rencontre engagée
-        # pendant la pause — le cul-de-sac que le contrat de `refuser_si_en_pause` interdit, et que
-        # l'axe adversarial avait déjà fait corriger sur les duels. Le CA est net : la pause gèle ce
-        # qui *avance*, jamais ce qui *répare*.
-        #
-        # Y poser le **signalement** faisait en outre payer la recomposition intégrale du
-        # créneau à chaque manche et chaque barrage, sur le thread du writer unique
-        # (règle 7, `DETTE-031`), pour
-        # un résultat structurellement identique : un tour n'avance que sur des rencontres
-        # **validées**. C'est l'erreur que la docstring de `ServiceSaisieDuels.valider` explique
-        # avoir évitée.
+
+        # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** :
+        # `_ecrire` est le tronc commun des **trois** écritures, et y poser la garde gelait aussi la
+        # **rectification** d'une rencontre engagée pendant la pause — le cul-de-sac que
+        # `refuser_si_en_pause` interdit. La pause gèle ce qui *avance*, jamais ce qui *répare*.
+        # Y poser le signalement faisait en outre payer la recomposition intégrale du créneau à
+        # chaque manche, sur le thread du writer unique (`DETTE-031`), pour un résultat identique :
+        # un tour n'avance que sur des rencontres **validées**.
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is not None:
             refuser_si_en_pause(phase)
@@ -706,17 +617,10 @@ class ServiceSuisse:
         """Le tronc commun des trois écritures : retrouver la rencontre, appliquer, persister.
 
         `# DETTE-031` — appelle `etat()` à **chaque** manche, barrage et validation, donc rejoue la
-        reconstruction complète sur le thread du writer unique. Même régime que `ServicePoules`, et
-        la dette est élargie d'autant.
-
-        La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table
-        `duel` : c'est ce qui garantit que le tir écrit porte les deux adversaires que l'appariement
-        du moment désigne. Écrire depuis la ligne persistée se fierait à un `match_numero` qui a pu
-        changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert à détecter.
-
-        ⚠️ **Une rencontre désynchronisée refuse l'écriture** au lieu de reconstruire un duel vierge.
-        C'est le correctif que les poules ont dû faire en revue : le `or Duel.vide(...)` remplaçait
-        la ligne, un tir validé disparaissait sans trace, et le verrou de validation sautait avec.
+        reconstruction complète sur le thread du writer unique. La rencontre est retrouvée **par
+        recomposition**, jamais par une lecture de `duel` : la ligne persistée se fierait à un
+        `match_numero` qui a pu changer de sens. ⚠️ Une rencontre désynchronisée **refuse
+        l'écriture** — le `or Duel.vide(...)` des poules faisait disparaître un tir validé.
         """
         rencontre = self._trouver(tournoi_id, phase_id, numero)
         if rencontre.desynchronisee:
@@ -767,19 +671,11 @@ class ServiceSuisse:
 def _resultat_de(rencontre: RencontreDeRonde) -> ResultatRonde | None:
     """Traduit un tir **validé** en résultat consommable par le moteur d'appariement.
 
-    ⚠️ **Seuls les duels validés comptent.** Un tir en cours de saisie ferait bouger le classement à
-    chaque flèche, et surtout l'appariement de la ronde suivante changerait sous les yeux du juge.
-    Même parti que la reconstruction d'un tableau et que les poules.
-
-    Les points sont ceux du barème classique **doublé** (2 / 1 / 0) que `domain/suisse.py` emploie
-    pour rester en entiers : une victoire vaut 1 point et un nul 0,5, et le domaine évite le
-    flottant, dont les comparaisons d'égalité sont exactement ce sur quoi un départage ne doit pas
-    reposer.
-
-    ⚠️ **La branche `POINTS_NUL` n'est pas atteignable par ce service** : le décor de saisie est le
-    duel FFTA, et `Duel.valider` refuse un duel non tranché — le barrage est donc obligatoire. Elle
-    est conservée parce que le moteur de domaine, lui, produit des nuls, et qu'un décor futur
-    pourrait l'alimenter. Constaté en revue, cf. `test_une_rencontre_a_egalite_exige_son_barrage`.
+    ⚠️ **Seuls les duels validés comptent** : l'appariement de la ronde suivante changerait sinon
+    sous les yeux du juge. Les points sont ceux du barème classique **doublé** (2 / 1 / 0) que
+    `domain/suisse.py` emploie pour rester en entiers — une victoire vaut 1 et un nul 0,5, et le
+    domaine évite le flottant. ⚠️ La branche `POINTS_NUL` n'est pas atteignable ici (le décor de
+    saisie est le duel FFTA) ; elle est conservée parce que le moteur, lui, produit des nuls.
     """
     duel = rencontre.duel
     if duel is None or not duel.verrouille:

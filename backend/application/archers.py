@@ -1,13 +1,8 @@
 """Service applicatif Archers (E00US011, E02US002, E02US003) — inscrire, éditer, placer, marquer.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API). Chaque cas d'usage vérifie l'existence
-des ressources amont (tournoi, archer, club, catégorie) et fait remonter des erreurs typées.
-
-**Deux registres de refus**, à ne pas confondre (E02US003). Les *signalements* — `HomonymeArcher`,
-`ChangementCategorieArcherEngage` — constatent un fait dont la machine ne sait pas s'il est une
-erreur ; ils portent un drapeau `autoriser_*` par lequel l'admin tranche (ADR-0015). Le *refus*
-— `ArcherEngage` — est définitif : aucun drapeau ne le lève, il faut changer l'état du monde.
+⚠️ **Deux registres de refus, à ne pas confondre.** Les *signalements* (`HomonymeArcher`,
+`ChangementCategorieArcherEngage`) portent un drapeau `autoriser_*` par lequel l'admin tranche
+(ADR-0015) ; le refus `ArcherEngage`, lui, est **définitif** — aucun drapeau ne le lève.
 """
 
 from __future__ import annotations
@@ -79,13 +74,9 @@ class ServiceArchers:
         """Inscrit un archer à un tournoi (E02US002).
 
         La **catégorie est obligatoire** et doit appartenir au tournoi ; le **club est facultatif**
-        (`None` = club encore inconnu, cf. `domain.archer` et ADR-0014) mais doit exister s'il est
-        fourni.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `CategorieHorsTournoi` si la catégorie
-        est inexistante ou étrangère au tournoi, `ClubIntrouvable` si un `club_id` est fourni sans
-        correspondre à un club du référentiel, et `HomonymeArcher` si un archer de même identité
-        (`domain.archer.cle_identite`) est déjà inscrit — sauf `autoriser_homonyme=True`, par lequel
+        (`None` = club encore inconnu, ADR-0014) mais doit exister s'il est fourni. Lève
+        `TournoiIntrouvable`, `CategorieHorsTournoi`, `ClubIntrouvable`, et `HomonymeArcher` si un
+        archer de même identité est déjà inscrit — sauf `autoriser_homonyme=True`, par lequel
         l'admin confirme qu'il s'agit bien de deux personnes distinctes.
         """
         if self._tournois.par_id(tournoi_id) is None:
@@ -107,19 +98,11 @@ class ServiceArchers:
     def lister(self, tournoi_id: TournoiId) -> list[Archer]:
         """Renvoie les inscrits d'un tournoi, triés par nom puis prénom (E02US003).
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas — un tournoi inconnu n'a pas « zéro
-        inscrit », il n'a pas d'inscrits du tout, et l'écran doit dire lequel des deux.
-
-        Trie sur `cle_nom` (casse **et** accents repliés) comme `ServiceClubs.lister`, et pour la
-        même raison : un tri sur le nom brut classe par code point, donc « Élan » après « Zola » —
-        les archers accentués s'entasseraient en fin de liste, dans l'écran même où le bénévole
-        cherche un nom à l'œil. Le prénom départage les inscrits d'une même famille.
-
-        L'`id` départage en dernier ressort. Deux homonymes **confirmés** (le père et le fils,
-        que le projet soutient depuis E02US002) ont la même clé : sans ce 3ᵉ terme, leur ordre
-        serait celui que rend `par_tournoi`, c'est-à-dire un `SELECT` sans `ORDER BY` — que SQLite
-        ne garantit pas. Les deux lignes permuteraient d'un rafraîchissement à l'autre, sur l'écran
-        même où on doit les distinguer à l'œil.
+        Lève `TournoiIntrouvable` : un tournoi inconnu n'a pas « zéro inscrit ». Trie sur `cle_nom`
+        (casse **et** accents repliés) — un tri sur le nom brut classe par code point, donc « Élan
+        » après « Zola ». ⚠️ L'`id` départage en dernier ressort : deux homonymes **confirmés** ont
+        la même clé, et sans ce 3ᵉ terme leur ordre serait celui d'un `SELECT` sans `ORDER BY`, que
+        SQLite ne garantit pas — ils permuteraient d'un rafraîchissement à l'autre.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -131,39 +114,22 @@ class ServiceArchers:
     def detecter_doublons(self, tournoi_id: TournoiId) -> list[PaireDoublon]:
         """Rapproche les paires d'inscrits vraisemblablement en double (E02US005).
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas — comme `lister`, un tournoi inconnu
-        n'a pas « zéro doublon », il n'a pas d'inscrits du tout.
-
-        Toute la logique de rapprochement vit dans le **domaine** (`domain.doublons`, pur et testé
-        depuis le CA) : le service ne fait que fournir les inscrits du tournoi et propager le refus
-        de tournoi inconnu. La détection est **sans état** — recalculée à chaque appel, aucune paire
-        écartée n'est mémorisée (cf. story).
+        Toute la logique vit dans le **domaine** (`domain.doublons`, pur et testé depuis le CA) :
+        le service fournit les inscrits et propage `TournoiIntrouvable`. La détection est **sans
+        état** — recalculée à chaque appel, aucune paire écartée n'est mémorisée.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         return detecter_doublons(self._archers.par_tournoi(tournoi_id))
 
     def fusionner(self, gagnant_id: ArcherId, perdant_id: ArcherId) -> Archer:
-        """Fusionne un doublon : le **gagnant** absorbe les inscriptions et scores du **perdant**,
-        qui disparaît (E02US005). Renvoie le gagnant.
+        """Fusionne un doublon : le **gagnant** absorbe la descendance du **perdant** (E02US005).
 
-        L'admin a **choisi** quelle fiche survit (le gagnant) ; la machine ne fusionne jamais
-        d'office (le rapprochement est heuristique, ADR-0015). Le transfert lui-même — inscriptions,
-        scores, série, en une transaction — est le contrat du port (`ArcherRepository.fusionner`),
-        prouvé au niveau du repository ; ici on tient les **gardes** :
-
-        - `ArcherIntrouvable` si l'une des fiches n'existe pas (contrôlé **avant** tout le reste) ;
-        - `FusionImpossible` si c'est la **même** fiche (rien à fusionner) ou deux fiches de
-          **tournois différents** (deux inscriptions distinctes, pas un doublon — l'homonymie
-          se juge dans le tournoi, E02US002) ;
-        - `FusionArchersEngages` si les **deux** fiches ont déjà une série de saisie : les fusionner
-          mêlerait des volées (et violerait `UNIQUE(tournoi_id, archer_id)`). Le doublon se règle
-          avant que le tournoi tire (arbitrage du 22/07/2026) ; si **une seule** a tiré, la fusion
-          passe (série réassignée sans collision).
-
-        Comme `ajouter`/`supprimer`, les lectures de garde **et** l'écriture tiennent dans la même
-        commande soumise à la file du writer unique (règle 7) : aucune saisie concurrente ne peut se
-        glisser entre le contrôle « les deux ont-ils tiré ? » et la fusion.
+        L'admin **choisit** quelle fiche survit ; la machine ne fusionne jamais d'office
+        (ADR-0015). Le transfert est le contrat du port ; ici on tient les **gardes** :
+        `ArcherIntrouvable`, `FusionImpossible` (même fiche, ou deux tournois différents), et
+        `FusionArchersEngages` si les **deux** ont une série — les fusionner mêlerait des volées et
+        violerait l'unicité.
         """
         gagnant = self._archer_existant(gagnant_id)
         perdant = self._archer_existant(perdant_id)
@@ -196,16 +162,10 @@ class ServiceArchers:
     ) -> Archer:
         """Corrige un archer inscrit (E02US003) — **remplacement total** des champs éditables.
 
-        Rejoue les contrôles de l'inscription : nom et prénom non vides (domaine), catégorie **du
-        tournoi de l'archer** (`CategorieHorsTournoi`), club existant s'il est fourni
-        (`ClubIntrouvable`). Lève `ArcherIntrouvable` si l'identifiant est inconnu.
-
-        Deux signalements, chacun levé par son propre drapeau :
-
-        - `HomonymeArcher` si l'édition **fait entrer** l'archer dans l'identité d'un inscrit ;
-        - `ChangementCategorieArcherEngage` si la catégorie change alors que l'archer a déjà tiré.
-
-        Le placement et le tournoi ne sont pas éditables (cf. `Archer.modifier`).
+        Rejoue les contrôles de l'inscription : nom et prénom non vides, catégorie **du tournoi de
+        l'archer**, club existant s'il est fourni. Deux signalements, chacun levé par son drapeau :
+        `HomonymeArcher` si l'édition **fait entrer** l'archer dans l'identité d'un inscrit, et
+        `ChangementCategorieArcherEngage` si la catégorie change alors qu'il a déjà tiré.
         """
         archer = self._archer_existant(archer_id)
         self._verifier_categorie_du_tournoi(archer.tournoi_id, categorie_id)
@@ -233,18 +193,11 @@ class ServiceArchers:
     ) -> Archer:
         """Fixe les deux handicaps d'un archer (E05US015) — **remplacement total** des deux valeurs.
 
-        **Cas d'usage distinct de `modifier`, et volontairement pas un champ de plus dedans.**
-        `modifier` corrige l'**état civil** d'un archer (nom, prénom, catégorie, club) : c'est une
-        opération d'identité, gardée par deux confirmations d'homonymie et de catégorie. Un
-        handicap n'a rien à y faire — il se règle souvent en série (import du club), parfois juste
-        avant une phase, et le passer par `modifier` obligerait à renvoyer nom/prénom/catégorie à
-        chaque ajustement, avec le risque d'écraser une correction faite entre-temps sur un autre
-        poste. Un DTO par cas d'usage, c'est déjà le patron du projet (E02US001).
-
-        `officiel` est la référence entretenue par le club ; `surcharge` la prime pour cette
-        édition. Passer `None` aux deux **efface** les handicaps (retour au scratch) : comme pour
-        `club_id` dans `modifier`, l'absence de valeur veut dire « remets à rien », jamais « n'y
-        touche pas ». Lève `HandicapInvalide` (domaine) sur une valeur négative.
+        **Cas d'usage distinct de `modifier`, et pas un champ de plus dedans** : `modifier` corrige
+        l'**état civil**, gardé par deux confirmations. Un handicap se règle souvent en série, et
+        le passer par `modifier` obligerait à renvoyer nom/prénom/catégorie à chaque ajustement —
+        au risque d'écraser une correction faite entre-temps. Passer `None` aux deux **efface** les
+        handicaps : l'absence de valeur veut dire « remets à rien », jamais « n'y touche pas ».
         """
         archer = self._archer_existant(archer_id)
         return self._archers.enregistrer(
@@ -254,20 +207,11 @@ class ServiceArchers:
     def supprimer(self, archer_id: ArcherId, autoriser_suppression_engage: bool = False) -> None:
         """Désinscrit un archer (E02US003). Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        La suppression **efface aussi sa série de saisie (ses flèches), son placement et ses
-        inscriptions sur départs** (E02US009) — c'est le contrat du port
-        (cf. `ArcherRepository.supprimer`), pas un effet de bord.
-
-        Lève `ArcherEngage` si l'archer est **placé** (il occupe une cible), **engagé** (il a déjà
-        tiré — au moins une volée **validée**) ou **inscrit** sur au moins un départ, sauf
-        `autoriser_suppression_engage=True` : un **signalement**, pas un refus
-        (ADR-0016, sur le protocole d'ADR-0015). On ne fait pas disparaître en un clic un placement
-        construit et des flèches saisies — mais l'admin, lui, peut savoir qu'il s'agit d'une erreur
-        d'inscription.
-
-        **Un abandon ne passe pas par ici** : c'est un forfait tracé (E04US015 / ADR-0050,
-        ex-E12US004 — la même US couvre la qualification **et** les duels), qui préserve les
-        flèches. Voir `ArcherEngage`.
+        La suppression **efface aussi sa série de saisie, son placement et ses inscriptions**
+        (E02US009) — c'est le contrat du port, pas un effet de bord. Lève `ArcherEngage` s'il est
+        placé, a déjà tiré ou est inscrit, sauf `autoriser_suppression_engage=True` : un
+        **signalement**, pas un refus (ADR-0016). ⚠️ **Un abandon ne passe pas par ici** : c'est un
+        forfait tracé (ADR-0050), qui préserve les flèches.
         """
         archer = self._archer_existant(archer_id)
         # DETTE-007 : la confirmation est **aveugle**. Le compte de flèches annoncé par le
@@ -287,17 +231,10 @@ class ServiceArchers:
     ) -> Score:
         """Enregistre une flèche d'un archer. Lève `ArcherIntrouvable` s'il n'existe pas.
 
-        `poste_autorise` porte le **mode d'identité** de l'appelant (E10US007) :
-
-        - `None` — la saisie vient de l'**admin** (E10US001), sans contrainte de cible ;
-        - un `Poste` — la saisie vient d'un **poste de cible**, qui ne peut marquer que pour **sa**
-          cible : `SaisieHorsCible` (→ 403) si l'archer visé n'est pas placé sur
-          `(poste.tournoi_id, poste.cible_index)`.
-
-        Le contrôle vit **ici**, dans la même opération que l'écriture (donc dans la même commande
-        de la file du writer unique, règle 7) : lire la cible de l'archer puis écrire sans barrière
-        entre les deux fermerait une fenêtre de course (l'archer replacé entre-temps). L'existence
-        de l'archer se vérifie **avant** sa cible — un archer inconnu rend 404, pas 403.
+        `poste_autorise` porte le **mode d'identité** de l'appelant (E10US007) : `None` = admin
+        sans contrainte de cible ; un `Poste` = saisie depuis un poste, qui ne peut marquer que
+        pour **sa** cible (`SaisieHorsCible`, 403). Le contrôle vit **ici**, dans la même commande
+        de la file que l'écriture (règle 7) : lire puis écrire sans barrière ouvrirait une course.
         """
         archer = self._archer_existant(archer_id)
         if poste_autorise is not None:
@@ -306,24 +243,13 @@ class ServiceArchers:
 
     @staticmethod
     def _verifier_poste_sert_l_archer(poste: Poste, archer: Archer) -> None:
-        """Lève `SaisieHorsCible` si l'archer n'est pas sur la cible servie par le poste (E10US007).
+        """Lève `SaisieHorsCible` si l'archer n'est pas sur la cible du poste (E10US007).
 
-        « SA cible » = même **tournoi** *et* même **index de cible**. Le tournoi compte : plusieurs
-        tournois tournent en concurrence (intérieur + extérieur) et les numéros de cible se
-        répètent, donc comparer le seul `cible_index` laisserait le poste d'un tournoi voisin saisir
-        ici.
-
-        ⚠️ **Les deux `None` sont refusés explicitement** (correctif de revue E07US004). La version
-        d'origine s'en remettait à la comparaison : « un archer non placé n'est sur aucune cible,
-        `None != cible_index` le refuse naturellement ». Ce raisonnement ne tenait que tant que
-        `Poste.cible_index` était **garanti non nul** — E07US004 l'a rendu facultatif (écran de
-        salle), et `None != None` vaut **faux** : la garde s'ouvrait pour un jeton d'écran face à
-        n'importe quel archer non placé, c'est-à-dire tout l'effectif avant le placement. mypy n'a
-        rien vu, parce que c'est une **comparaison** et non une affectation.
-
-        Leçon générale, plus utile que le correctif : une garde qui repose sur « ces deux valeurs ne
-        peuvent pas être nulles en même temps » est une garde qu'un changement **lointain** peut
-        désarmer sans rien casser de visible. On énonce donc les conditions, on ne les déduit pas.
+        « SA cible » = même **tournoi** *et* même index : plusieurs tournois tournent en
+        concurrence et les numéros se répètent. ⚠️ **Les deux `None` sont refusés explicitement** —
+        s'en remettre à `None != cible_index` ne tenait que tant que `Poste.cible_index` était non
+        nul, or E07US004 l'a rendu facultatif et `None != None` vaut **faux**. Une garde qui repose
+        sur « ces deux valeurs ne peuvent pas être nulles ensemble » se désarme de loin.
         """
         if (
             poste.type is not TypePoste.CIBLE
@@ -356,12 +282,9 @@ class ServiceArchers:
     ) -> None:
         """Lève `HomonymeArcher` si un archer de même identité est déjà inscrit au tournoi.
 
-        `sauf` : l'archer en cours d'édition (E02US003), qui ne peut pas être son propre doublon —
-        sans quoi toute édition serait impossible (patron `ServiceClubs._exiger_nom_libre`).
-
-        Balayage linéaire des inscrits plutôt qu'un port de recherche dédié : quelques centaines
-        d'archers par tournoi, sur une inscription — la simplicité prime hors du domaine (règle 12),
-        et un index serait à maintenir cohérent avec `cle_identite` pour rien.
+        `sauf` : l'archer en cours d'édition, qui ne peut pas être son propre doublon. Balayage
+        linéaire plutôt qu'un port de recherche dédié — quelques centaines d'archers par tournoi,
+        sur une inscription : la simplicité prime hors du domaine (règle 12).
         """
         for inscrit in self._archers.par_tournoi(tournoi_id):
             if inscrit.id != sauf and inscrit.cle_identite() == cle:
@@ -372,40 +295,27 @@ class ServiceArchers:
                 )
 
     def _signaler_engagement(self, archer: Archer, archer_id: ArcherId) -> None:
-        """Lève `ArcherEngage` si l'archer est placé, a déjà tiré **ou est inscrit** (E02US003,
-        E02US009).
+        """Lève `ArcherEngage` si l'archer est placé, a déjà tiré **ou est inscrit** (E02US009).
 
-        « Engagé » s'est élargi (glossaire, E02US009) : une inscription sur au moins un départ
-        suffit désormais, au même titre qu'une **volée validée** ou un placement. Le message
-        **énumère ce qui sera détruit** plutôt que d'inviter à confirmer : c'est la seule chose qui
-        distingue, à l'écran, une suppression légitime (erreur de saisie) d'un abandon mal
-        enregistré — que le forfait (E04US015 / ADR-0050, ex-E12US004) doit servir en préservant
-        les flèches. Un message qui dirait « confirmez pour supprimer » ferait de la destruction
-        le chemin par défaut de l'archer.
-
-        `archer_id` est passé par l'appelant, qui le tient déjà, plutôt que lu dans `archer.id` :
-        cela évite un `assert` de narrowing — or un `assert` saute sous `python -O`, et celui-ci
-        aurait laissé `par_archer(…, None)` ne trouver aucune série (`fleches = 0`), et un archer
-        engagé se supprimer **sans aucun signalement**. Un garde-fou ne dépend pas de `-O`.
+        « Engagé » s'est élargi : une inscription sur au moins un départ suffit. Le message
+        **énumère ce qui sera détruit** plutôt que d'inviter à confirmer — c'est ce qui distingue à
+        l'écran une suppression légitime d'un abandon mal enregistré, que le forfait doit servir en
+        préservant les flèches. `archer_id` est passé par l'appelant plutôt que lu dans `archer.id`
+        pour éviter un `assert` de narrowing, qui saute sous `python -O`.
         """
-        # « A tiré » dérive des **volées validées** (`Serie`, E04US002), pas de l'agrégat `Score`
-        # que plus aucun flux n'alimente (DETTE-013 résorbée). Une volée saisie mais non validée
-        # n'est qu'un état intermédiaire : elle ne rend pas l'archer engagé (arbitrage 20/07,
-        # `stories/E02-inscriptions.md`).
+
+        # « A tiré » dérive des **volées validées** (`Serie`), pas de l'agrégat `Score` que plus
+        # aucun flux n'alimente (DETTE-013 résorbée). Une volée saisie non validée ne rend pas
+        # l'archer engagé (arbitrage du 20/07/2026).
         fleches = self._fleches_validees(archer.tournoi_id, archer_id)
         liste_inscriptions = self._inscriptions.par_archer(archer_id)
         inscriptions = len(liste_inscriptions)
-        # DETTE-018 : la suppression d'archer purge ses inscriptions en cascade **sans ouvrir de
+        # DETTE-018 : la suppression d'archer purge ses inscriptions **sans ouvrir de
         # remboursement** (E08US005 ne couvre que la désinscription et la suppression de départ).
-        # Faute de mieux pour ce chemin, on **alerte** l'admin des sommes à rembourser — la création
-        # automatique du poste **n'est portée par aucune US à ce jour** : la référence est
-        # [DETTE-018] au registre, qui décrit le remède — méthode
-        # `supprimer_avec_remboursements` sur `ArcherRepository`, motif `ARCHER_SUPPRIME`, comme
-        # le départ — et l'arbitrage du 29/07/2026 : différer plutôt qu'étendre la cascade
-        # sensible de l'archer (ADR-0016). Ne pas chercher « l'US de suite » : elle n'a jamais
-        # existé — le registre parle d'une « US de dette à créer ». On compte les payées sur `paye`
-        # seul (sans relire les tarifs — pas de `depart_repository` ici) : un créneau gratuit marqué
-        # payé est donc **sur-signalé**, tolérable pour un simple avertissement.
+        # Faute de mieux, on **alerte** l'admin des sommes à rembourser — la création automatique du
+        # poste n'est portée par aucune US : le registre décrit le remède et l'arbitrage du
+        # 29/07/2026 (différer plutôt qu'étendre la cascade sensible de l'archer). On compte sur
+        # `paye` seul, donc un créneau gratuit marqué payé est **sur-signalé** — tolérable.
         payees = sum(1 for inscription in liste_inscriptions if inscription.paye)
         if archer.cible is None and fleches == 0 and inscriptions == 0:
             return
@@ -438,19 +348,11 @@ class ServiceArchers:
     def _feuilles(self, tournoi_id: TournoiId, archer_id: ArcherId) -> list[Serie]:
         """Les feuilles de cet archer dans ce tournoi — **toutes phases confondues**.
 
-        ⚠️ **Correctif de revue E05US025.** Ces trois gardes (« a-t-il tiré ? ») appelaient
-        `SerieRepository.par_archer(archer.tournoi_id, …)`, dont le premier paramètre est devenu un
-        `phase_id` avec cette US. `TournoiId` et `PhaseId` sont deux alias de `int` (`DETTE-044`) :
-        rien n'a échoué à la compilation, et les gardes ne trouvaient plus **aucune** série dès que
-        les deux entiers cessaient de coïncider — un archer engagé se supprimait alors *sans le
-        moindre signalement*, exactement le mode de panne contre lequel `_impact_suppression`
-        s'était prémunie par ailleurs.
-
-        La bonne maille est bien le **tournoi** et non la phase : la question posée est « cet archer
-        a-t-il tiré **quelque part** ? », pas « dans laquelle ». `par_tournoi` la répond
-        exactement, et mieux qu'avant l'US — un archer qui n'a tiré que dans la *basse* est
-        désormais vu. L'avertissement du port (« jamais base de calcul d'un classement ») ne vise
-        pas cet usage : on ne classe rien, on compte.
+        ⚠️ Ces gardes appelaient `par_archer(archer.tournoi_id, …)`, dont le premier paramètre est
+        devenu un `phase_id` (E05US025). `TournoiId` et `PhaseId` étant deux alias d'`int`
+        (`DETTE-044`), rien n'a échoué à la compilation et les gardes ne trouvaient plus **aucune**
+        série. La bonne maille est bien le **tournoi** : la question est « a-t-il tiré quelque part
+        ? », pas « dans laquelle » — on ne classe rien, on compte.
         """
         return [
             serie for serie in self._series.par_tournoi(tournoi_id) if serie.archer_id == archer_id
@@ -468,12 +370,11 @@ class ServiceArchers:
         """Lève `ChangementCategorieArcherEngage` si l'archer a déjà tiré (E02US003).
 
         Appelé seulement quand la catégorie change réellement : c'est le déplacement des flèches
-        déjà tirées d'un classement à l'autre qui se confirme, pas l'édition en elle-même.
+        déjà tirées d'un classement à l'autre qui se confirme, pas l'édition elle-même.
         """
-        # « A déjà tiré » = au moins une volée **validée** (`Serie`, E04US002 — plus l'agrégat
-        # `Score`, DETTE-013 résorbée) : ce sont les flèches **qui comptent** qui basculeraient vers
-        # un autre classement. Une volée saisie non validée n'est encore dans aucun classement, rien
-        # ne bascule — elle ne déclenche pas ce signalement (arbitrage du 20/07/2026).
+
+        # « A déjà tiré » = au moins une volée **validée** : ce sont les flèches **qui comptent**
+        # qui basculeraient. Une volée non validée n'est dans aucun classement, rien ne bascule.
         if self._fleches_validees(edite.tournoi_id, archer_id) > 0:
             raise ChangementCategorieArcherEngage(
                 f"« {edite.prenom} {edite.nom} » a déjà tiré dans sa catégorie actuelle. Changer "

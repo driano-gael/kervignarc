@@ -1,13 +1,9 @@
 """Diffusion temps réel — hub d'abonnés WebSocket (guide §7, ADR-0005 ; CDC technique §6.2).
 
-Adapter sortant de diffusion : après **commit** d'une écriture, le writer unique
-(E00US007) pousse un `LiveEvent` que le `Broadcaster` **fan-out** vers tous les abonnés
-connectés. Point clé : le writer tourne sur un **thread**, la diffusion WebSocket sur la
-**boucle asyncio** ; `publish()` franchit ce pont via `loop.call_soon_threadsafe` —
-thread-safe et non bloquant pour le writer.
+⚠️ Le writer unique tourne sur un **thread**, la diffusion WebSocket sur la **boucle asyncio** :
+`publish()` franchit ce pont par `loop.call_soon_threadsafe`, sans jamais bloquer le writer.
 
-Modèle minimal (walking skeleton) : **un canal unique**, diffusion à tous les abonnés.
-L'abonnement par **sujet / tournoi** (CDC §6.2) viendra avec les US métier.
+Un canal unique, diffusion à tous : l'abonnement par sujet / tournoi (CDC §6.2) reste à venir.
 """
 
 from __future__ import annotations

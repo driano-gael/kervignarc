@@ -70,17 +70,10 @@ class DefiDeLaManche:
     """Un défi d'une manche, prêt à l'affichage et à la saisie.
 
     `numero` est le `match_numero` de la table `duel` : un **compteur continu sur toute la phase**,
-    manche après manche. C'est ce qui permet de porter les défis de toutes les manches sans table
-    neuve — aucune migration, même parti que les poules et le suisse.
-
-    ⚠️ **Un compteur, donc pas une position stable.** Si la population de la phase change après des
-    tirs, les numéros glissent et les défis déjà tirés ne décrivent plus les mêmes duellistes.
-    C'est `desynchronisee` qui le dit, et le tir est alors **masqué** plutôt que ré-attribué
-    (ADR-0049 §4).
-
-    `haut` est le **défié** (la position la plus haute de la colline, donc le mieux placé) et `bas`
-    le **challenger**. L'orientation n'est pas cosmétique : c'est elle qui décide, à la lecture du
-    vainqueur, s'il y a échange de positions ou non.
+    ce qui permet de porter les défis de toutes les manches sans table neuve. ⚠️ Un compteur, donc
+    **pas une position stable** — si la population change après des tirs, les numéros glissent et
+    `desynchronisee` le dit, le tir étant alors **masqué** plutôt que ré-attribué (ADR-0049 §4).
+    `haut` est le **défié**, `bas` le **challenger** : l'orientation décide de l'échange.
     """
 
     numero: int
@@ -126,16 +119,10 @@ class MancheAffichee:
 class RangColline:
     """Une position de la colline — le classement, qui **est** l'état courant du format.
 
-    Aucun ex æquo n'est possible : deux participants n'occupent jamais la même position. C'est ce
-    qui rend `classement_de_colline` si court, et ce qui fait qu'un prélèvement dans une colline
-    n'est jamais retenu par une **égalité**.
-
-    ⚠️ **Il l'est en revanche tant que la phase n'est pas ACHEVÉE** — ne pas lire la phrase
-    ci-dessus comme « un prélèvement dans une colline n'est jamais retenu », ce qu'elle affirmait
-    jusqu'à la revue d'E05US027. Ce sont deux causes distinctes d'indécision, et la colline n'en a
-    qu'une : `ServiceColline.classement_de_phase` déclare la plage entière indécise tant que
-    `_achevee` est faux, parce qu'un classement de colline **complet et parfaitement ordonné** peut
-    n'être que le classement amont recopié, avant qu'une flèche soit tirée.
+    Aucun ex æquo n'est possible : deux participants n'occupent jamais la même position.
+    ⚠️ Un prélèvement y reste néanmoins retenu tant que la phase n'est pas ACHEVÉE — deux causes
+    d'indécision distinctes, et la colline n'a que la seconde : un classement complet et
+    parfaitement ordonné peut n'être que le classement amont recopié, avant la première flèche.
     """
 
     position: int
@@ -146,14 +133,10 @@ class RangColline:
 class EtatColline:
     """La photo complète d'une phase de colline : ses manches jouées ou en cours, son ordre.
 
-    `portee_maximale` est la **borne** que l'effectif du jour autorise — ce que l'atelier affiche en
-    clair sous le champ de réglage, exactement comme `rondes_maximales` pour le suisse. Elle est
-    rendue ici plutôt que calculée à l'écran : deux arithmétiques pour une même règle sont une
-    divergence en attente, la leçon des dix filtres d'ADR-0083.
-
-    Les deux nombres coexistent — `portee_de_defi` (ce que l'organisateur a réglé) et
-    `portee_maximale` (ce que l'effectif du jour permet) — pour que l'atelier **montre** l'écart au
-    lieu de le subir.
+    `portee_maximale` est la **borne** que l'effectif du jour autorise, rendue ici plutôt que
+    calculée à l'écran : deux arithmétiques pour une même règle sont une divergence en attente.
+    Les deux nombres coexistent — `portee_de_defi` (le réglage) et `portee_maximale` (le possible)
+    — pour que l'atelier **montre** l'écart au lieu de le subir.
     """
 
     phase_id: PhaseId
@@ -166,15 +149,12 @@ class EtatColline:
     conflits: tuple[ConflitDeBloc, ...] = ()
     """Ce que la pose du plan n'a **pas** pu faire — **ou** le fait qu'elle n'a pas eu lieu.
 
-    Même parti que les poules et le suisse : le placement **rapporte** son échec au lieu de tronquer
-    en silence. L'organisateur doit voir à l'atelier que sa salle est trop petite, pas le découvrir
-    le jour J.
-
-    ⚠️ **Renseigné en lecture aussi**, et pas seulement après une pose — c'est le correctif de revue
-    d'E05US030, repris ici d'emblée : rempli par la seule `regenerer_plan`, ce champ resterait vide
-    sur la route de saisie, si bien que le message « le plan de cibles n'est pas posé » de l'écran
-    scoreur serait une **branche morte**. En relecture, la seule raison connaissable est
-    `NON_POSEE` — rien n'est persisté qui dise pourquoi un bloc manque."""
+    Le placement **rapporte** son échec au lieu de tronquer en silence : l'organisateur doit voir à
+    l'atelier que sa salle est trop petite. ⚠️ **Renseigné en lecture aussi**, pas seulement après
+    une pose — rempli par la seule `regenerer_plan`, ce champ resterait vide sur la route de saisie
+    et le message « plan non posé » de l'écran scoreur serait une branche morte. En relecture, la
+    seule raison connaissable est `NON_POSEE`.
+    """
 
 
 _PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
@@ -184,17 +164,10 @@ _PLAN_A_REPOSER = (ConflitDeBloc(1, RaisonConflitBloc.NON_POSEE),)
 def _toutes_manches_closes(etat: EtatColline) -> bool:
     """La phase est-elle **allée au bout** — toutes les manches réglées jouées et closes.
 
-    ⚠️ **Ce n'est pas « le classement est-il départagé ? »**, et confondre les deux a coûté un
-    majeur en revue. Une colline n'a jamais d'ex æquo : son classement est *toujours* départagé, dès
-    la première lecture, y compris avant qu'une seule flèche soit tirée — il vaut alors le
-    classement
-    amont recopié. Ce qui décide qu'on peut prélever dedans, c'est **l'achèvement**, pas l'absence
-    d'égalité.
-
-    Deux appelants, et c'est voulu : `rencontres_a_tirer` (une phase épuisée ne route plus personne)
-    et `classement_de_phase` (une phase inachevée retient les prélèvements, ADR-0081). Écrite une
-    fois plutôt que deux — les deux questions sont la même, et deux copies auraient divergé au
-    premier cas limite.
+    ⚠️ **Ce n'est pas « le classement est-il départagé ? »** : une colline n'a jamais d'ex æquo, son
+    classement est toujours départagé dès la première lecture. Ce qui décide qu'on peut prélever
+    dedans, c'est l'**achèvement**. Deux appelants — `rencontres_a_tirer` et `classement_de_phase`
+    (ADR-0081) — parce que les deux questions sont la même.
     """
     return len(etat.manches) >= etat.nb_manches and all(m.close for m in etat.manches)
 
@@ -202,27 +175,11 @@ def _toutes_manches_closes(etat: EtatColline) -> bool:
 def _achevee(phase: Phase, etat: EtatColline) -> bool:
     """La colline a-t-elle **fini de produire son classement** — pour le prélèvement d'ADR-0081.
 
-    Deux façons d'avoir fini, et la seconde a été oubliée en 1ʳᵉ rédaction (relevé par l'axe
-    adversarial) :
-
-    1. **toutes les manches réglées sont closes** — le cas nominal ;
-    2. **l'organisateur a terminé la phase** — le cas réel du jour J.
-
-    ⚠️ **Sans le point 2, le frein n'avait aucune porte de sortie.** Une colline réglée à 5 manches
-    dont on n'en joue que 4, faute de temps, puis qu'on passe à `TERMINEE`, bloquait sa phase avale
-    **indéfiniment** : `PrelevementEnAttente` à chaque lecture, aucun rang jamais décerné au
-    palmarès, et pour seul geste de sortie une réédition de `nb_manches` à la baisse — que rien
-    n'indique et que `DETTE-062` déconseille sur une phase en cours. On aurait fermé « ensemencé
-    trop tôt » en ouvrant « jamais ensemencé », ce qui est pire : le premier se voit et se corrige,
-    le second immobilise le tournoi.
-
-    C'est le mode de panne que `EtapeDeroule._verifier_convergence_du_big_shoot_off` documente déjà
-    (« bloquée en `PrelevementEnAttente` **pour toujours** — plus aucune flèche à tirer pour lever
-    l'attente »). `ServiceRoutage` savait déjà écarter une phase terminée ; le prélèvement, non.
-
-    Terminer une phase est un **geste explicite d'organisateur** : il vaut décision que ce qui est
-    joué l'est. C'est exactement ce que le statut veut dire, et c'est pourquoi il fait autorité ici
-    sur le compte des manches.
+    Deux façons d'avoir fini : toutes les manches réglées sont closes, **ou** l'organisateur a
+    terminé la phase. ⚠️ Sans la seconde, le frein n'a aucune porte de sortie : une colline réglée
+    à 5 manches dont on n'en joue que 4 bloquait sa phase avale **indéfiniment**
+    (`PrelevementEnAttente` à chaque lecture, aucun rang au palmarès). Terminer une phase est un
+    geste explicite : il vaut décision que ce qui est joué l'est.
     """
     return phase.statut is StatutPhase.TERMINEE or _toutes_manches_closes(etat)
 
@@ -231,15 +188,9 @@ def _plan_suffisant(bloc: BlocDeCouloirs | None, effectif: int) -> bool:
     """Le bloc posé couvre-t-il **le plateau d'aujourd'hui** ?
 
     ⚠️ **Tester la seule présence du bloc ne suffit pas** : `regenerer_plan` dimensionne le bloc
-    unique sur l'effectif **du jour de la pose**, et son numéro est toujours 1 — un archer inscrit
-    après coup ne fait pas disparaître le bloc, il le rend **trop court**. Les défis en débordement
-    perdraient alors leur cible sans que rien ne le signale. C'est le trou trouvé en revue sur le
-    suisse (deux axes, sonde à l'appui), invisible par analogie avec les poules dont la croissance
-    d'effectif ajoute des *groupes* que `_conflits_du_plan` voit.
-
-    L'empreinte attendue est celle de `regenerer_plan` : `2 * (effectif // 2)` couloirs — c'est le
-    nombre maximal d'archers qui tirent **en même temps**, atteint par la manche 1 à portée 1. Les
-    manches suivantes en emploient moins (les archers au repos ne tirent pas), jamais plus.
+    unique sur l'effectif **du jour de la pose**, et un archer inscrit après coup le rend trop
+    court — les défis en débordement perdraient leur cible sans signal. L'empreinte attendue est
+    `2 * (effectif // 2)` couloirs, le maximum d'archers tirant en même temps (manche 1, portée 1).
     """
     if bloc is None:
         return False
@@ -292,23 +243,13 @@ class ServiceColline:
     def avancement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> AvancementDePhase | None:
-        """Où en est cette colline — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+        """Où en est cette colline — le port `LecteurAvancementDePhase` (ADR-0090 §5).
 
-        Le nombre de tours est le nombre de manches **réglé**, sans borne à appliquer : une colline
-        n'a pas l'équivalent de `rondes_maximales`, puisque le ré-affrontement y est **légitime**
-        (on rejoue son voisin, c'est le principe du format). Ce que l'effectif borne est la
-        *portée*, pas le nombre de manches.
-
-        Le tour courant est la première manche **non close**. `None` quand toutes le sont : plus
-        rien ne tourne, même si la phase n'est pas clôturée.
-
-        ⚠️ **Rend `None` — et non « zéro tour » — quand la borne de portée vaut 0**, c'est-à-dire
-        sous deux tireurs. C'est le correctif de revue du suisse (axes B et C1), repris ici
-        d'emblée : une phase réglée à l'atelier dont la source amont n'a encore classé personne est
-        un cas **normal et durable**, et « zéro tour » est précisément ce que cette famille d'US
-        existe pour supprimer. Ne rien savoir se dit `None`.
-
-        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        Le nombre de tours est le nombre de manches **réglé**, sans borne : le ré-affrontement est
+        légitime dans ce format, l'effectif bornant la *portée* et non les manches. Le tour courant
+        est la première manche non close, `None` quand toutes le sont.
+        ⚠️ **`None` — et non « zéro tour » — quand la borne de portée vaut 0** (sous deux tireurs) :
+        une phase réglée dont la source amont n'a classé personne est normale et durable.
         """
         etat = self.etat(tournoi_id, phase_id)
         if etat.portee_maximale == 0:
@@ -324,27 +265,11 @@ class ServiceColline:
     ) -> ClassementSource:
         """Le classement que cette phase **produit** — le port `LecteurClassementDePhase`.
 
-        C'est ce qui rend une phase avale alimentable par une colline : jusqu'ici
-        `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
-        le visant restait **inerte** — la phase aval recevait tous les archers en lice, ce qui est
-        plausible et faux.
-
-        ⚠️ **4ᵉ occurrence du port unifié d'ADR-0084, et aucune duplication à écrire.** C'était la
-        promesse faite en fondant les deux ports jumeaux ; elle est tenue.
-
-        ⚠️ **`plages_indecises` a DEUX consommateurs, et le second surprend** (relevé en revue).
-        Outre le prélèvement (`preleves.coupe`), c'est `_borne` au palmarès qui le lit : tant que la
-        colline n'est pas achevée, ses N archers reçoivent donc tous la même fourchette `1..N` et
-        s'affichent en **un seul paquet** « 1ᵉʳ à Nᵉ » sur l'écran public et le PDF. C'est le régime
-        normal d'une phase en cours — mais la colline est le seul format dont la fourchette ne se
-        resserre *jamais* avant la fin, puisqu'elle n'a pas d'ex æquo à départager progressivement.
-        Le classement vivant reste lisible sur l'écran de la colline elle-même, qui est sa surface
-        propre. Épinglé par un test au palmarès, pour qu'un futur correctif ne le défasse pas en
-        croyant réparer un bug d'affichage.
-
-        `rang_premier` est posé ici avec le **même** résolveur que celui qui a servi à prélever :
-        deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
-        distincts, ce qui est exactement `DETTE-034`.
+        C'est ce qui rend une phase avale alimentable par une colline : jusqu'ici un prélèvement la
+        visant restait **inerte**, l'aval recevant tous les archers en lice — plausible et faux.
+        ⚠️ **`plages_indecises` a deux consommateurs** : le prélèvement, et `_borne` au palmarès —
+        tant que la colline n'est pas achevée, ses N archers s'affichent en un seul paquet « 1ᵉʳ à
+        Nᵉ ». Régime normal, épinglé par un test pour qu'un correctif ne le défasse pas.
         """
         phase, participants = self._population(tournoi_id, phase_id, resolveur)
         photo = self._photo(phase, participants)
@@ -357,20 +282,13 @@ class ServiceColline:
         return replace(
             source,
             # ⚠️ **Tant que toutes les manches ne sont pas closes, ces positions ne sont pas
-            # décidées — elles vont encore bouger** (relevé en revue). `classement_de_colline` rend
-            # `plages_indecises=()`, et il a raison : une colline n'a jamais d'ex æquo. Mais
-            # « personne n'est à égalité » n'est **pas** « tout est joué », et c'est la seconde
-            # question que pose ADR-0081. Sans ce frein, une colline dont aucune manche n'est close
-            # rendait un classement complet et parfaitement départagé — qui n'est que le classement
-            # **amont** recopié — et une phase avale s'y ensemençait sans que rien ne dise
-            # « en attente » : l'organisateur posait son tableau et son plan de cibles pendant que
-            # la colline tournait, puis voyait l'ensemencement changer à chaque manche validée et
-            # les duels déjà tirés basculer en `desynchronisee`.
+            # décidées.** `classement_de_colline` rend `plages_indecises=()` et il a raison — une
+            # colline n'a jamais d'ex æquo —, mais « personne n'est à égalité » n'est pas « tout est
+            # joué », la seconde question d'ADR-0081. Sans ce frein, une phase avale s'ensemençait
+            # sur le classement **amont** recopié, puis changeait à chaque manche validée.
             #
             # Les trois autres formats ont ce frein **par accident** : une phase non commencée y met
-            # tout le monde à égalité, donc `_indecises` remplit la plage. La colline, seule à
-            # n'avoir aucune égalité, en était dépourvue — le garde-fou d'ADR-0081 ne tenait chez
-            # les voisins que par un effet de bord de leur mode de classement.
+            # tout le monde à égalité, donc `_indecises` remplit la plage.
             plages_indecises=(
                 ()
                 if _achevee(phase, photo) or not source.classement.lignes
@@ -396,25 +314,14 @@ class ServiceColline:
         configuration = self._configuration(phase)
         lignes = {ligne.archer_id: ligne for ligne in participants}
         maximum = portee_maximale(len(participants))
-        # Une phase encore vide est une photo **vide**, pas une erreur : elle se compose et se règle
-        # avant que sa population existe. Sans cette porte, l'écran de saisie et toute phase avale
-        # qui y prélève sortaient en 500 (le correctif que les poules ont dû faire en revue).
+        # Une phase encore vide est une photo **vide**, pas une erreur : elle se compose et se
+        # règle avant que sa population existe. `maximum == 0` couvre l'effectif 0 **et** 1 — aucun
+        # défi n'est appariable et `defis_de_la_manche` lèverait.
         #
-        # `maximum == 0` couvre l'effectif 0 **et** l'effectif 1 : dans les deux cas aucun défi
-        # n'est appariable, et `defis_de_la_manche` lèverait.
-        #
-        # ⚠️ **Mais ne pas apparier de défi n'est pas ne classer personne** (correctif de revue,
-        # axe A). Le classement était rendu vide dans les deux cas, et à effectif 1 c'était faux
-        # dans un sens observable : l'unique archer prélevé **existe** et occupe la position 1. Le
-        # taire le faisait disparaître du classement public (une colline vide alors qu'un archer y
-        # est), des `participants` du panneau de routage — donc rendu `INDISPONIBLE`, « il n'y
-        # figure pas », au lieu d'`EN_ATTENTE` — et du `ClassementSource` servi à une phase avale,
-        # qui recevait une source vide au lieu d'un rang.
-        #
-        # Le cas n'est pas théorique : il est **atteignable dès la composition**, avant que la
-        # source amont ait classé du monde, et c'est le régime que `avancement_de_phase` qualifie
-        # elle-même de « normal et durable ». À effectif 0, la boucle ci-dessous ne produit rien —
-        # une phase vide reste une photo vide, sans porte spéciale.
+        # ⚠️ **Mais ne pas apparier de défi n'est pas ne classer personne** : à effectif 1, l'unique
+        # archer prélevé existe et occupe la position 1. Le taire le faisait disparaître du
+        # classement public, des `participants` du routage (donc `INDISPONIBLE` au lieu
+        # d'`EN_ATTENTE`) et du `ClassementSource` servi à l'aval.
         if maximum == 0:
             return EtatColline(
                 phase_id=phase_id,
@@ -433,12 +340,9 @@ class ServiceColline:
             )
         tireurs = [Participant.individuel(ligne.archer_id) for ligne in participants]
         # ⚠️ **On borne ici, on ne lève pas** — la leçon du suisse, où l'inverse a été un bloquant
-        # de revue reproduit par trois axes.
-        #
-        # `EtapeDeroule._verifier_portee_de_defi` ne vérifie la borne que si l'effectif est
-        # **déclaré**, régime licite et testé. Une phase réglée à portée 3 et jouée à 3 archers
-        # ferait donc lever `defis_de_la_manche` (`ConfigurationCollineInvalide`, une
-        # `DomainError`) dès la première manche, ce qui remonterait en **422 sur le palmarès
+        # de revue. `EtapeDeroule._verifier_portee_de_defi` ne vérifie la borne que si l'effectif
+        # est **déclaré**, régime licite : une phase réglée à portée 3 et jouée à 3 archers ferait
+        # sinon lever `defis_de_la_manche` dès la première manche, donc **422 sur le palmarès
         # public, son PDF et le panneau de routage**. Un écran qui refuse de s'ouvrir vaut moins
         # qu'un écran qui montre la borne.
         jouable = replace(configuration, portee_de_defi=min(configuration.portee_de_defi, maximum))
@@ -475,17 +379,11 @@ class ServiceColline:
     ) -> tuple[tuple[MancheAffichee, ...], tuple[Participant, ...]]:
         """Rejoue les manches des duels validés, et **s'arrête à la première manche incomplète**.
 
-        Rend les manches affichables **et** l'ordre courant de la colline — les deux sont produits
-        par le même parcours, et les séparer en deux méthodes ferait rejouer la phase deux fois.
-
-        ⚠️ **L'arrêt est structurel, pas prudentiel.** Les défis de la manche `n+1` se calculent sur
-        les **positions** issues de la manche `n` : tant qu'un défi n'est pas tranché, ces positions
-        n'existent pas. Apparier par-dessus ne donnerait pas un appariement approximatif mais un
-        appariement **faux**, qui changerait à chaque validation.
-
-        ⚠️ **Le compteur de numéros court sur toute la phase**, manche après manche, et il ne se
-        recale jamais : c'est ce qui permet à `(phase_id, match_numero)` de porter les défis de
-        toutes les manches sans table neuve.
+        Rend les manches affichables **et** l'ordre courant — les séparer ferait rejouer la phase
+        deux fois. ⚠️ **L'arrêt est structurel, pas prudentiel** : les défis de la manche `n+1` se
+        calculent sur les positions issues de la manche `n`, donc apparier par-dessus donnerait un
+        appariement **faux**, qui changerait à chaque validation. Le compteur de numéros court sur
+        toute la phase et ne se recale jamais.
         """
         manches: list[MancheAffichee] = []
         ordre: tuple[Participant, ...] = tuple(tireurs)
@@ -582,18 +480,11 @@ class ServiceColline:
     def regenerer_plan(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatColline:
         """Pose la phase sur la salle et **remplace** le plan existant.
 
-        Un seul bloc, comme le suisse : une manche apparie sur **tout le plateau**, il n'y a pas de
-        groupes à séparer. L'empreinte est `2 * (effectif // 2)` — deux couloirs par défi, au
-        maximum de défis simultanés, atteint par la manche 1 à portée 1.
-
-        ⚠️ **Et à effectif pair, une manche peut quand même laisser des couloirs vides** : dès la
-        manche 2, les extrémités se reposent. C'est voulu — dimensionner sur la manche la plus
-        chargée est la seule façon de n'avoir jamais à **redimensionner en cours de phase**, ce qui
-        déplacerait les archers déjà installés.
-
-        Le geste est volontairement grossier — on repose tout. Reposer après un changement
-        d'effectif est sûr, à ceci près que les tirs déjà saisis peuvent se retrouver rattachés à
-        d'autres adversaires : c'est ce qu'ADR-0049 §4 détecte, et ce que `desynchronisee` dit.
+        Un seul bloc, comme le suisse : une manche apparie sur tout le plateau. L'empreinte est
+        `2 * (effectif // 2)` — le maximum de défis simultanés, atteint par la manche 1 à portée 1.
+        ⚠️ Dès la manche 2 les extrémités se reposent, donc des couloirs restent vides : c'est
+        voulu, dimensionner sur la manche la plus chargée évite de **redimensionner en cours de
+        phase**. Reposer après un changement d'effectif peut désynchroniser des tirs (ADR-0049 §4).
         """
         phase, participants = self._population(tournoi_id, phase_id)
         # ⚠️ **Toutes les gardes avant la moindre écriture** (correctif de revue du suisse, repris
@@ -616,19 +507,11 @@ class ServiceColline:
     def rencontres_a_tirer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> RencontresARouter:
         """Les défis encore à tirer — le port `LecteurRencontresARouter`.
 
-        Dans l'ordre du déroulé, donc manche par manche : le **premier** d'un archer est celui qui
-        vient. Les manches ultérieures n'existent même pas tant que la courante n'est pas close,
-        donc il n'y a rien à promettre au-delà.
-
-        Un défi **désynchronisé** est écarté : son tir est masqué et son écriture refusée,
-        l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
-
-        ⚠️ **`epuisee` est le champ qui empêche de mentir**, et son absence a été un bloquant de
-        revue sur le suisse. Ici l'enjeu est **plus grand encore** : une colline ne montre que sa
-        manche courante, et à portée 1 les deux extrémités s'y reposent — sans ce champ, elles
-        passeraient pour « terminées » sur un panneau public à chaque manche, et non pas seulement
-        dans le cas limite d'un effectif impair. La phase n'est épuisée que si **toutes** les
-        manches réglées sont closes.
+        Dans l'ordre du déroulé, manche par manche : le **premier** d'un archer est celui qui vient.
+        Un défi **désynchronisé** est écarté — son écriture est refusée, l'annoncer enverrait un
+        archer sur une cible où il ne peut rien saisir.
+        ⚠️ **`epuisee` est le champ qui empêche de mentir** : à portée 1 les deux extrémités se
+        reposent à chaque manche et passeraient sinon pour « terminées » sur un panneau public.
         """
         etat = self.etat(tournoi_id, phase_id)
         return RencontresARouter(
@@ -662,18 +545,11 @@ class ServiceColline:
     ) -> tuple[Phase, list[LigneClassement]]:
         """Les gardes, puis **qui entre dans la phase** — la 1ʳᵉ question du contrat (ADR-0083 §1).
 
-        ⚠️ **L'ordre de cette liste est l'ordre initial de la colline**, et ce n'est pas un détail
-        d'implémentation : le référentiel §10.1 le pose comme la « version de journée » du format —
-        l'ordre initial est le classement source, par opposition au classement permanent de club
-        que la règle d'origine décrit et qui ne se modélise pas en `Phase`.
-
-        Générique depuis ADR-0068/E05US024 : `preleves` lit chaque source dans le classement de
-        **sa** phase, en remontant la chaîne. Une colline sans source déclarée est donc alimentée
-        par le classement du départ, comme un tableau de tête.
-
-        `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
-        chaîne par `LecteurClassementDePhase`) : on réutilise alors son cache et sa chaîne de phases
-        visitées plutôt que d'en ouvrir un second (`DETTE-031`, et la détection de cycle avec).
+        ⚠️ **L'ordre de cette liste est l'ordre initial de la colline** : le référentiel §10.1 le
+        pose comme la « version de journée » du format, l'ordre initial étant le classement source
+        (le classement permanent de club ne se modélise pas en `Phase`). Générique depuis ADR-0068 :
+        `preleves` lit chaque source dans le classement de **sa** phase. `resolveur` est fourni
+        quand l'appel vient d'en haut — on réutilise son cache (`DETTE-031`, détection de cycle).
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -725,12 +601,10 @@ class ServiceColline:
     ) -> DefiDeLaManche:
         """Saisit une manche d'un défi — même agrégat, même contrôle qu'un duel de tableau.
 
-        ⚠️ **Deux sens du mot « manche » se croisent ici, et c'est inévitable.** Celui du format
-        (la manche de la colline, `DefiDeLaManche.manche`) et celui du duel FFTA (la manche de
-        sets, l'argument `manche`). Le second est celui de l'agrégat `Duel` et se retrouve à
-        l'identique dans les quatre services ; le premier est le tour du format. Les renommer
-        rendrait ce service incohérent avec ses trois jumeaux, ce qui coûterait plus cher que
-        l'homonymie — mais elle est signalée ici et sur `MancheAffichee`.
+        ⚠️ **Deux sens du mot « manche » se croisent ici** : celui du format
+        (`DefiDeLaManche.manche`) et celui du duel FFTA (l'argument `manche`, la manche de sets).
+        Les renommer rendrait ce service incohérent avec ses trois jumeaux — l'homonymie coûte
+        moins cher, et elle est signalée ici et sur `MancheAffichee`.
         """
         return self._ecrire(
             tournoi_id,
@@ -756,13 +630,10 @@ class ServiceColline:
     ) -> DefiDeLaManche:
         """Saisit le tir de barrage **interne** à un défi nul (§8.2, E04US013).
 
-        ⚠️ **Exigé, et ici la raison est plus forte qu'ailleurs.** `Duel.valider` refuse déjà un duel
-        non tranché (`DuelIncomplet`) dans les quatre formats, mais la colline ne *pourrait* pas
-        s'en accommoder même si l'agrégat le permettait : `appliquer_manche` exige un vainqueur qui
-        soit l'un des deux engagés, parce qu'un défi décide d'un **échange de positions**. Un nul
-        n'a pas de traduction dans ce format — il n'existe pas d'état « les deux restent où ils
-        sont » qui soit distinct de « le défié a gagné », et les confondre donnerait au défié une
-        victoire qu'il n'a pas obtenue.
+        ⚠️ **Exigé, et la raison est plus forte qu'ailleurs** : `appliquer_manche` veut un vainqueur
+        qui soit l'un des deux engagés, parce qu'un défi décide d'un **échange de positions**. Un
+        nul n'a pas de traduction dans ce format — il n'existe pas d'état « les deux restent où ils
+        sont » distinct de « le défié a gagné », et les confondre donnerait au défié une victoire.
         """
         return self._ecrire(
             tournoi_id,
@@ -780,19 +651,14 @@ class ServiceColline:
 
         ⚠️ **La validation est le geste qui fait bouger les positions**, donc celui qui clôt une
         manche et autorise l'appariement de la suivante. Un tir non validé laisse la manche ouverte
-        et la colline inchangée : c'est voulu, et c'est la règle de la reconstruction d'un tableau,
-        qui ne rejoue lui aussi que les duels validés.
+        et la colline inchangée — la règle de la reconstruction d'un tableau.
         """
+
         # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** :
-        # `_ecrire` est le tronc commun des **trois** écritures, et y poser la garde gelait aussi la
-        # **rectification** d'un défi engagé pendant la pause — le cul-de-sac que le contrat de
-        # `refuser_si_en_pause` interdit. Le CA est net : la pause gèle ce qui *avance*, jamais ce
-        # qui *répare*.
-        #
-        # Y poser le **signalement** ferait en outre payer la recomposition intégrale du créneau à
-        # chaque manche et chaque barrage, sur le thread du writer unique (règle 7, `DETTE-031`),
-        # pour un résultat structurellement identique : un tour n'avance que sur des défis
-        # **validés**.
+        # `_ecrire` est le tronc commun des trois écritures, et y poser la garde gelait aussi la
+        # **rectification** d'un défi engagé pendant la pause. La pause gèle ce qui *avance*, jamais
+        # ce qui *répare*. Y poser le signalement ferait en outre payer la recomposition intégrale
+        # du créneau à chaque manche, sur le thread du writer unique (`DETTE-031`).
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is not None:
             refuser_si_en_pause(phase)
@@ -823,17 +689,10 @@ class ServiceColline:
         """Le tronc commun des trois écritures : retrouver le défi, appliquer, persister.
 
         `# DETTE-031` — appelle `etat()` à **chaque** manche, barrage et validation, donc rejoue la
-        reconstruction complète sur le thread du writer unique. Même régime que `ServicePoules` et
-        `ServiceSuisse`, et la dette est élargie d'autant.
-
-        Le défi est retrouvé **par recomposition**, jamais par une lecture de la table `duel` :
-        c'est ce qui garantit que le tir écrit porte les deux adversaires que l'appariement du
-        moment désigne. Écrire depuis la ligne persistée se fierait à un `match_numero` qui a pu
-        changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert à détecter.
-
-        ⚠️ **Un défi désynchronisé refuse l'écriture** au lieu de reconstruire un duel vierge. C'est
-        le correctif que les poules ont dû faire en revue : le `or Duel.vide(...)` remplaçait la
-        ligne, un tir validé disparaissait sans trace, et le verrou de validation sautait avec.
+        reconstruction complète sur le thread du writer unique (même régime que poules et suisse).
+        Le défi est retrouvé **par recomposition**, jamais par une lecture de `duel` : la ligne
+        persistée se fierait à un `match_numero` qui a pu changer de sens. ⚠️ Un défi désynchronisé
+        **refuse l'écriture** — le `or Duel.vide(...)` des poules faisait disparaître un tir validé.
         """
         defi = self._trouver(tournoi_id, phase_id, numero)
         if defi.desynchronisee:
@@ -885,16 +744,11 @@ class ServiceColline:
 def _issue_de(defi: DefiDeLaManche) -> IssueDefi | None:
     """Traduit un tir **validé** en issue consommable par `appliquer_manche`.
 
-    ⚠️ **Seuls les duels validés comptent.** Un tir en cours de saisie ferait bouger la colline à
-    chaque flèche, et surtout l'appariement de la manche suivante changerait sous les yeux du juge.
-    Même parti que la reconstruction d'un tableau, les poules et le suisse.
-
-    ⚠️ **Aucune branche « nul »**, à la différence du suisse dont le moteur sait représenter un
-    match nul : `appliquer_manche` exige un vainqueur qui soit l'un des deux engagés, parce qu'un
-    défi décide d'un **échange de positions** et qu'il n'existe pas d'état intermédiaire. Un duel
-    validé a donc toujours un vainqueur (`Duel.valider` refuse l'inverse) ; l'assertion le dit
-    plutôt que de rendre `None`, qui laisserait la manche indéfiniment ouverte sans que rien
-    l'explique.
+    ⚠️ **Seuls les duels validés comptent** : un tir en cours de saisie ferait bouger la colline à
+    chaque flèche, et l'appariement de la manche suivante changerait sous les yeux du juge.
+    ⚠️ **Aucune branche « nul »**, à la différence du suisse : `appliquer_manche` exige un vainqueur
+    qui soit l'un des deux engagés. L'assertion le dit plutôt que de rendre `None`, qui laisserait
+    la manche indéfiniment ouverte.
     """
     duel = defi.duel
     if duel is None or not duel.verrouille:

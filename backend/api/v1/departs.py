@@ -1,11 +1,7 @@
-"""Endpoints REST des départs — créneaux d'un tournoi (`/api/v1/tournois/{tournoi_id}/departs`).
+"""Endpoints REST des départs — créneaux d'un tournoi (E02US004, ADR-0017).
 
-Configurer les départs d'un tournoi (E02US004, ADR-0017) : créer, lister, éditer (tarif/horaire),
-supprimer. Les routes sont **imbriquées sous le tournoi** — un départ n'existe pas hors de lui.
-
-Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats ; écritures routées
-par la **file d'écriture** (writer unique, ADR-0005) et réservées à l'admin (`exiger_admin`) ;
-lectures **hors boucle** (threadpool) ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+Créer, lister, éditer (tarif/horaire), supprimer. Routes **imbriquées sous le tournoi** — un départ
+n'existe pas hors de lui. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations

@@ -1,11 +1,9 @@
-"""Politique de supervision des postes (E12US001, ADR-0038) — pur, synchrone (règle 1).
+"""Politique de supervision des postes (E12US001, ADR-0038) — pure, synchrone (règle 1).
 
-L'**état** d'un poste (*en ligne* · *hors ligne* · *non rattaché*) est une **règle métier** dérivée
-de sa présence, pas une lecture d'horloge : le « maintenant » et le seuil arrivent en paramètres,
-le domaine ne lit jamais l'heure (port `Horloge`, côté service — règle 9, déterminisme). La
-distinction porte le cœur du CA : séparer *une tablette morte* (hors ligne) de *des archers qui
-tirent lentement* (en ligne, mais dont la **dernière saisie** est ancienne — activité calculée
-ailleurs, hors de cette politique).
+⚠️ L'état d'un poste (*en ligne* · *hors ligne* · *non rattaché*) dérive de sa présence, jamais
+d'une lecture d'horloge : le « maintenant » et le seuil arrivent en paramètres (port `Horloge`,
+côté service). C'est ce qui sépare *une tablette morte* de *des archers qui tirent lentement* —
+ceux-ci restent en ligne, seule leur dernière saisie est ancienne (activité calculée ailleurs).
 """
 
 from __future__ import annotations

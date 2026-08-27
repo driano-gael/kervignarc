@@ -1,12 +1,9 @@
 """Endpoints REST du **palmarès** (`/api/v1`) — classement final d'un tournoi (E06US004).
 
-Deux lectures du même calcul : le JSON qu'affichent les surfaces (public, écran de salle, admin) et
-le **PDF** que l'on colle au mur en fin de journée (CA « affiché et exportable »). Les deux passent
-par `ServicePalmares` — un document qui recalculerait de son côté finirait par contredire l'écran.
+JSON et PDF passent tous deux par `ServicePalmares` : un document qui recalculerait de son côté
+finirait par contredire l'écran.
 
-**Public, sans authentification**, comme le classement de qualification (E07US001) et les
-affectations (E07US008) : un palmarès est fait pour être lu par tout le monde. Lecture pure, donc
-exécutée hors de la file d'écriture (`run_in_threadpool`, règle 7).
+⚠️ **Public, sans authentification**, comme le classement (E07US001) et les affectations (E07US008).
 """
 
 from __future__ import annotations

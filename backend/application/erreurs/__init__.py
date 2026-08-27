@@ -1,13 +1,8 @@
 """Erreurs applicatives (ADR-0007) — un cas d'usage est impossible.
 
-Racine `ApplicationError`. Traduites à la frontière API en 404 (ressource introuvable)
-ou 409 (conflit d'état) ; la couche application, elle, ignore HTTP.
-
-**Paquet depuis l'action 2 de l'audit de maintenabilité** (03/08/2026) : les 77 classes
-vivaient dans un **fichier unique de 962 lignes**, l'un des onze « passages obligés » que
-l'audit a mesurés. Elles sont réparties par **thème métier** (`referentiel`, `moteur`, `tir`,
-`exploitation`) et ce module les **ré-exporte toutes** : aucun import existant n'a changé,
-aucune ligne de classe n'a bougé d'un caractère.
+Racine `ApplicationError`, réparties par thème métier (`referentiel`, `moteur`, `tir`,
+`exploitation`) et **toutes ré-exportées ici** : le découpage (action 2 de l'audit de
+maintenabilité) n'a changé aucun import existant. Traduites en 404 / 409 à la frontière API seule.
 """
 
 from __future__ import annotations

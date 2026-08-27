@@ -60,15 +60,11 @@ from domain.tournoi import TournoiId
 class ProjectionBigShootOff:
     """Ce que la liste de sortants donne sur l'effectif **réel** — le CA « la répartition montrée ».
 
-    Jumeau de `RepartitionPoules`, et pour la même raison : l'organisateur doit voir ce que son
-    réglage produit **avant** de composer, pas le découvrir en salle. `paliers` porte ce qu'il reste
-    après chaque manche réellement jouable ; `manches_ignorees` compte les cases de la liste qui ne
-    se joueront pas faute d'effectif.
-
-    ⚠️ `manches_ignorees` n'est pas une erreur : c'est le prix de « on joue tant que la manche est
-    possible », qui rend un format réutilisable sur un effectif qu'il ignore. Mais c'est une
-    information que l'écran doit **dire**, sinon l'organisateur croit jouer une liste qu'il ne joue
-    pas.
+    Jumeau de `RepartitionPoules` : l'organisateur doit voir ce que son réglage produit **avant**
+    de composer. `paliers` porte ce qu'il reste après chaque manche jouable ; `manches_ignorees`
+    compte les cases qui ne se joueront pas faute d'effectif. ⚠️ Ce n'est pas une erreur mais le
+    prix de « on joue tant que la manche est possible » — l'écran doit le **dire**, sinon
+    l'organisateur croit jouer une liste qu'il ne joue pas.
     """
 
     effectif: int
@@ -112,18 +108,12 @@ class TireurAffiche:
     prochaine_volee: int | None = None
     """La **prochaine volée à saisir** pour cet archer, ou `None` s'il n'y a rien à tirer.
 
-    ⚠️ **Champ ajouté à la revue d'E05US028, et il ferme un cas injouable.** La manche *m* occupe
-    les volées `(m-1)·V+1 … m·V`, et rien au DTO ne disait laquelle était déjà posée : l'écran de
-    saisie envoyait donc **toujours** la première volée de la manche. À `V = 1` c'est juste par
-    accident — seule valeur pour laquelle « la première » et « la prochaine » coïncident, et seule
-    valeur que les tests exerçaient. Dès `V = 2`, la volée 2 n'était jamais saisissable :
-    chaque « Enregistrer » réécrivait la volée 1, et `Serie.valider` refusait un lot incomplet
-    (`RienAValider`). La finale était bloquée en salle, sur un réglage que **cette US expose
-    elle-même** au formulaire.
-
-    Le calcul appartient au serveur : c'est lui qui tient la série et qui sait ce qui est validé. Le
-    front ne doit pas re-dériver une numérotation de volées qu'il ne persiste pas — c'est la même
-    règle que `manque` sur le routage, « le serveur sait pourquoi, le front affiche »."""
+    ⚠️ **Ferme un cas injouable** : la manche *m* occupe les volées `(m-1)·V+1 … m·V`, et sans ce
+    champ l'écran envoyait toujours la première de la manche. Juste par accident à `V = 1`, seule
+    valeur testée ; dès `V = 2` la volée 2 n'était jamais saisissable et `Serie.valider` refusait
+    le lot (`RienAValider`). Le calcul appartient au serveur, qui tient la série et sait ce qui est
+    validé — le front ne re-dérive pas une numérotation qu'il ne persiste pas.
+    """
 
 
 @dataclass(frozen=True)
@@ -162,15 +152,10 @@ class EtatBigShootOffAffiche:
 class LecteurEtatBigShootOff(Protocol):
     """Port étroit : « où en est ce Big Shoot Off ? » — réalisé par `ServiceBigShootOff`.
 
-    Consommé par `ServicePalmares`, qui a besoin des rangs décernés mais n'a aucune raison de
-    connaître les volées, les barrages ni le prélèvement qui les produisent.
-
-    ⚠️ **Ce port n'est pas branché tardivement**, contrairement à `LecteurClassementDePhase` : il
-    n'y a **pas de cycle** ici (`palmares` importe déjà `saisie_duels`, et `big_shoot_off` n'importe
-    pas `palmares`). Le branchement tardif de `brancher_lecteur` existe pour casser un cycle réel ;
-    le reproduire sans cycle n'aurait fait qu'échanger un contrôle du compilateur contre un test de
-    câblage — un oubli au composition root serait passé en silence. Le port se passe donc au
-    **constructeur**, comme toutes les autres dépendances du projet.
+    Consommé par `ServicePalmares`, qui a besoin des rangs décernés sans connaître les volées. ⚠️
+    **Ce port n'est pas branché tardivement**, contrairement à `LecteurClassementDePhase` : il n'y
+    a **pas de cycle** ici. Le branchement tardif existe pour en casser un ; le reproduire sans
+    cycle échangerait un contrôle du compilateur contre un test de câblage.
     """
 
     def etat(self, tournoi_id: TournoiId, phase_id: PhaseId) -> EtatBigShootOffAffiche:
@@ -181,13 +166,10 @@ class LecteurEtatBigShootOff(Protocol):
 class ServiceBigShootOff:
     """Cas d'usage du Big Shoot Off : consulter, saisir une volée, valider une manche.
 
-    **Ce qui est partagé l'est réellement** : l'agrégat `Serie`, la table `serie`/`volee`, et la
-    résolution de population (`preleves`). Faire écrire le tir autrement créerait une seconde façon
-    de saisir des volées — l'exacte duplication qu'ADR-0083 se donne pour objet de fermer.
-
-    **Ce qui diffère est le décor** : ici l'archer tire une **volée collective**, tout le monde sur
-    la ligne, et c'est le *classement de la manche* qui décide — pas un adversaire. C'est le `decor`
-    du contrat (`VOLEE_COLLECTIVE`, la 2ᵉ question), et c'est tout ce que ce service réimplémente.
+    **Ce qui est partagé l'est réellement** : l'agrégat `Serie`, les tables `serie`/`volee`, la
+    résolution de population. Écrire le tir autrement créerait une seconde façon de saisir des
+    volées. **Ce qui diffère est le décor** : l'archer tire une **volée collective**, et c'est le
+    classement de la manche qui décide — pas un adversaire (`VOLEE_COLLECTIVE`, ADR-0083 §2).
     """
 
     def __init__(
@@ -237,14 +219,9 @@ class ServiceBigShootOff:
         """La photo complète : qui tire, qui est sorti, à quel rang, et ce qui bloque.
 
         `# DETTE-031` — l'état est **rejoué intégralement** à chaque lecture, chaîne de sources
-        amont comprise, sans mémoïsation transverse aux requêtes.
-
-        ⚠️ **Élargie par E05US031** : cette lecture n'était servie qu'à des scoreurs authentifiés ;
-        elle l'est désormais aussi sur `GET /big-shoot-off/etat/`, route **ouverte**, montée par
-        l'onglet public « En cours » en autant d'exemplaires qu'il y a de spectateurs.
-
-        Lève `TournoiIntrouvable` / `PhaseIntrouvable` (404), `PhasePasUnBigShootOff` ou
-        `PhasePasReglee` (409).
+        amont comprise. ⚠️ **Élargie par E05US031** : cette lecture n'était servie qu'à des
+        scoreurs authentifiés, elle l'est désormais sur une route **ouverte**, montée par l'onglet
+        public en autant d'exemplaires qu'il y a de spectateurs.
         """
         phase, participants = self._population(tournoi_id, phase_id)
         return self._photo(phase, participants)
@@ -252,22 +229,13 @@ class ServiceBigShootOff:
     def avancement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> AvancementDePhase | None:
-        """Où en est ce Big Shoot Off — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+        """Où en est ce Big Shoot Off — le port `LecteurAvancementDePhase` (ADR-0090 §5).
 
-        Une manche est le tour de ce format : tous les finalistes y tirent la même volée en
-        parallèle (§10.1). Le tour courant est la première manche **non jouée** ; `None` quand la
-        phase est terminée, y compris si une manche reste théoriquement au programme — un Big Shoot
-        Off qui a désigné son vainqueur n'a plus de tour en cours, et sa liste de sortants s'écourte
-        d'elle-même (`manches_ignorees`).
-
-        ⚠️ **Un barrage suspend la phase, donc plus aucun tour ne tourne** (correctif de revue, axes
-        C1 et adversarial). `_photo` porte déjà cette règle — « `None` quand la phase est finie **ou
-        suspendue par un barrage** : dans les deux cas il n'y a rien à saisir » — et la première
-        rédaction n'en reprenait que la moitié, annonçant « Manche 3 » pendant que l'écran de saisie
-        disait qu'il n'y avait rien à tirer. Deux définitions de « la manche qui tourne » dans le
-        même service.
-
-        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        Une manche est le tour de ce format ; le tour courant est la première manche **non jouée**,
+        et `None` quand la phase est terminée même s'il reste une manche au programme (la liste
+        s'écourte d'elle-même). ⚠️ **Un barrage suspend la phase, donc plus aucun tour ne tourne**
+        : `_photo` porte déjà cette règle, et n'en reprendre que la moitié annonçait « Manche 3 »
+        pendant que l'écran de saisie disait qu'il n'y avait rien à tirer.
         """
         etat = self.etat(tournoi_id, phase_id)
         if not etat.manches:
@@ -284,22 +252,11 @@ class ServiceBigShootOff:
     ) -> ClassementSource:
         """Le classement que ce Big Shoot Off **produit** — le port `LecteurClassementDePhase`.
 
-        C'est ce qui rend une phase avale alimentable par un Big Shoot Off : jusqu'ici
-        `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
-        le visant restait **inerte** — la phase aval recevait tous les archers en lice, ce qui est
-        plausible et faux.
-
-        ⚠️ **Aucune plage indécise n'est déclarée** (ADR-0081), et ce n'est pas un oubli : les rangs
-        d'un Big Shoot Off sont **exacts** dès qu'ils sont décernés. Un archer encore en lice n'a
-        pas de rang du tout — il n'apparaît donc pas dans une fourchette « 1ᵉʳ-5ᵉ à départager »
-        comme un duelliste de tableau, il partage le rang 1 avec les autres rescapés jusqu'à sa
-        sortie. Ce **partage** est en revanche une vraie indécision, et il est déclaré comme telle :
-        sans quoi une phase avale prélevant « le rang 1 » d'un Big Shoot Off inachevé emporterait
-        cinq archers en croyant en prendre un.
-
-        `rang_premier` est posé ici avec le **même** résolveur que celui qui a servi à prélever :
-        deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
-        distincts, ce qui est exactement `DETTE-034`.
+        Sans lui, un prélèvement le visant restait **inerte** : l'aval recevait tous les archers en
+        lice, plausible et faux. ⚠️ **Aucune plage indécise pour les rangs décernés** (ADR-0081) :
+        ils sont **exacts**. En revanche le **partage du rang 1** entre rescapés est une vraie
+        indécision, déclarée comme telle — sans quoi une phase avale prélevant « le rang 1 »
+        emporterait cinq archers.
         """
         phase, participants = self._population(tournoi_id, phase_id, resolveur)
         photo = self._photo(phase, participants)
@@ -383,12 +340,9 @@ class ServiceBigShootOff:
     ) -> EtatBigShootOffAffiche:
         """Valide le lot de volées de la manche courante pour **un** archer.
 
-        La validation reste **par archer** — c'est l'agrégat `Serie` qui se verrouille, et chaque
-        finaliste a la sienne. C'est la *manche* qui se joue collectivement, pas la validation : le
-        scoreur qui descend la ligne valide feuille par feuille, exactement comme en qualification.
-
-        Le grain est dérivé du réglage (`toutes_les_n_volees(V)`) et non lu sur la phase — voir la
-        note de module (`# DETTE-058`).
+        La validation reste **par archer** — c'est l'agrégat `Serie` qui se verrouille. C'est la
+        *manche* qui se joue collectivement, pas la validation : le scoreur descend la ligne
+        feuille par feuille, comme en qualification. Le grain est dérivé du réglage (DETTE-058).
         """
         phase, _participants = self._population(tournoi_id, phase_id)
         # E05US033 — **le gel**. Cette garde manquait à la première livraison : la pause restait
@@ -419,14 +373,10 @@ class ServiceBigShootOff:
     ) -> tuple[Phase, list[LigneClassement]]:
         """Les gardes, puis **qui entre dedans** — la 1ʳᵉ question du contrat (ADR-0083 §1).
 
-        Générique depuis ADR-0068/E05US024 : `preleves` lit chaque source dans le classement de
-        **sa** phase, en remontant la chaîne. Un Big Shoot Off sans source déclarée est donc
-        alimenté par le classement du départ.
-
-        `resolveur` est fourni quand l'appel vient **d'en haut** (une phase avale qui remonte la
-        chaîne) : on réutilise alors son cache et sa chaîne de phases visitées plutôt que d'en
-        ouvrir un second — sans quoi on repaierait la reconstruction d'un amont déjà résolu
-        (`DETTE-031`) et on perdrait la détection de cycle.
+        Générique depuis ADR-0068 : `preleves` lit chaque source dans le classement de **sa**
+        phase, en remontant la chaîne. Sans source déclarée, la phase est alimentée par le
+        classement du départ. `resolveur` est fourni quand l'appel vient d'en haut : on réutilise
+        son cache et sa chaîne de phases visitées (`DETTE-031`, et la détection de cycle avec).
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -533,24 +483,11 @@ class ServiceBigShootOff:
     ) -> tuple[EtatBigShootOff, tuple[tuple[int, ...], ...]]:
         """Rejoue le Big Shoot Off manche par manche depuis les volées **validées**.
 
-        ⚠️ **Seules les volées validées comptent.** Un tir en cours de saisie ferait bouger
-        l'élimination à chaque flèche, et un archer apparaîtrait sorti puis rentré sous les yeux du
-        juge. Même parti que la reconstruction d'un tableau, qui ne rejoue que les duels validés.
-
-        On s'arrête à la première manche **incomplète** : tant qu'un archer en lice n'a pas validé
-        ses V volées, la manche n'a pas eu lieu. La traiter en la comptant comme un zéro
-        éliminerait quelqu'un sur une donnée absente — ce que `jouer_manche` refuse déjà
-        (`ScoreDeMancheManquant`), et qu'on n'a donc pas à lui demander.
-
-        Les **verdicts de barrage** déjà rendus sont appliqués au passage : sans eux, une manche
-        suspendue par une égalité le resterait à chaque relecture, et la phase serait bloquée alors
-        même que le barrage a été tiré.
-
-        Rend aussi la **lice au début de chaque manche**, capturée au fil du rejeu. ⚠️ Un premier
-        jet la reconstituait *après coup* en dépliant les rangs décernés à l'envers : exact tant
-        qu'une manche ne sort qu'un archer, faux dès qu'elle en sort plusieurs à rangs partagés —
-        et l'erreur ne se serait vue qu'en salle, sur l'écran de saisie d'une manche intermédiaire.
-        Capturer ce que la boucle sait déjà coûte une ligne et supprime la classe d'erreur.
+        ⚠️ Un tir en cours de saisie ferait bouger l'élimination à chaque flèche. On s'arrête à la
+        première manche **incomplète** : la compter comme un zéro éliminerait quelqu'un sur une
+        donnée absente. Les **verdicts de barrage** déjà rendus sont appliqués au passage. La lice
+        au début de chaque manche est capturée au fil du rejeu — la reconstituer après coup était
+        faux dès qu'une manche sort plusieurs archers à rangs partagés.
         """
         etat = demarrer(
             [Participant.individuel(ligne.archer_id) for ligne in participants], configuration
@@ -564,15 +501,11 @@ class ServiceBigShootOff:
                 break
             issue = jouer_manche(etat, scores)
             # ⚠️ **Une manche peut demander plusieurs barrages successifs**, et le rejeu doit les
-            # appliquer *tous* avant d'avancer (revue d'E05US028). Le domaine ne départage qu'un
-            # groupe d'ex æquo à la fois — `_conclure` le dit : « s'il en reste un autre, la
-            # conclusion rejouée le trouvera au tour suivant » — donc `eliminer_apres_barrage` peut
-            # **re-suspendre** la même manche. Un premier jet n'appliquait qu'un seul verdict puis
-            # rebouclait : `etat.manche` n'ayant pas avancé, `jouer_manche` retrouvait un barrage en
-            # attente et levait `ConfigurationBigShootOffInvalide` — à *chaque lecture*, donc
-            # l'écran de saisie, le panneau de routage et le palmarès tombaient tous les trois,
-            # définitivement. Le cas est ordinaire dès que `departage_les_sortants` est réglé : deux
-            # groupes d'ex æquo parmi les sortants suffisent, sur un shoot-off à 3 flèches.
+            # appliquer *tous* avant d'avancer. Le domaine ne départage qu'un groupe d'ex æquo à la
+            # fois, donc `eliminer_apres_barrage` peut **re-suspendre** la même manche. N'appliquer
+            # qu'un verdict puis reboucler faisait lever `ConfigurationBigShootOffInvalide` à
+            # *chaque lecture* — écran de saisie, routage et palmarès tombaient définitivement. Le
+            # cas est ordinaire dès que `departage_les_sortants` est réglé.
             while issue.barrage_entre:
                 ordre = verdicts.get(frozenset(issue.barrage_entre))
                 if ordre is None:
@@ -589,31 +522,11 @@ class ServiceBigShootOff:
     ) -> dict[frozenset[Participant], tuple[Participant, ...]]:
         """Les verdicts qu'un barrage de portée **Big Shoot Off** a rendus dans cette phase.
 
-        Indexés par l'**ensemble** des ex æquo, parce que c'est ce que le moteur nomme quand il
-        suspend une manche : il ne connaît pas l'identifiant du barrage, seulement qui est à
-        égalité.
-
-        ⚠️ **On lit `resultat()`, jamais `verdict()`, et le domaine le disait déjà.** `verdict()`
-        éclate un *rang partagé* en rangs consécutifs — il rend donc un ordre **vide** quand
-        `rang_dispute is None`, ce qui est précisément le cas d'un Big Shoot Off : l'égalité au
-        plus faible ne dispute aucun rang, elle désigne un **sortant**. Sa docstring renvoie
-        explicitement l'appelant vers `resultat()`. Un premier jet de ce service lisait
-        `verdict().rangs()` et trouvait donc toujours le vide : la manche restait suspendue **même
-        après le barrage tiré**, et la phase se bloquait en salle sans rien dire. C'est le test de
-        service qui l'a attrapé.
-
-        ⚠️ **L'ordre est inversé ici.** `ResultatBarrage.ordre` classe du **meilleur au moins bon**
-        (`_groupes_de_score`), quand `eliminer_apres_barrage` attend le plus faible en premier — le
-        sortant. On inverse dans le service plutôt que dans le domaine : c'est une convention de
-        lecture entre deux moteurs, pas une règle du Big Shoot Off.
-
-        ⚠️ **Les barrages clos comptent**, comme en poules et en qualification : ce sont eux qui
-        portent les verdicts déjà appliqués. Les filtrer ferait retomber en égalité, à la lecture
-        suivante, une manche qu'on a fait tirer.
-
-        Un barrage **non résolu** (ex æquo persistants au retir) est ignoré : `ordre` y est vide par
-        contrat — « un classement à moitié vrai est plus dangereux qu'un refus » —, donc la manche
-        reste suspendue, ce qui est exact.
+        Indexés par l'**ensemble** des ex æquo : c'est ce que le moteur nomme quand il suspend une
+        manche. ⚠️ On lit `resultat()`, **jamais** `verdict()`, qui rend un ordre vide quand
+        `rang_dispute is None` — le cas ici. ⚠️ L'ordre est **inversé** : `resultat.ordre` va du
+        meilleur au moins bon, `eliminer_apres_barrage` attend le plus faible d'abord. Les barrages
+        clos comptent ; un non résolu est ignoré, donc la manche reste suspendue.
         """
         verdicts: dict[frozenset[Participant], tuple[Participant, ...]] = {}
         for barrage in self._barrages.par_depart(phase.depart_id):
@@ -673,12 +586,10 @@ class ServiceBigShootOff:
     def _feuille(self, tournoi_id: TournoiId, phase: Phase, archer_id: int) -> Serie:
         """La feuille de cet archer **dans cette phase**, ou une feuille vierge.
 
-        ⚠️ **La clé de lecture est `(phase_id, archer_id)`, et `tournoi_id` n'est qu'un cadre** —
-        les confondre est le piège que `SerieRepository.par_archer` documente : `TournoiId`,
-        `DepartId` et `PhaseId` sont trois alias d'`int` (`DETTE-044`), donc mypy ne dirait rien.
-        Neuf sites l'avaient fait en silence à l'introduction de la clé (E05US025), et un premier
-        jet de ce service dérivait le tournoi de `phase.depart_id` — faux, et invisible au
-        compilateur. Le tournoi est donc **passé par l'appelant**, qui le tient de la route.
+        ⚠️ **La clé de lecture est `(phase_id, archer_id)`, `tournoi_id` n'est qu'un cadre** :
+        `TournoiId`, `DepartId` et `PhaseId` sont trois alias d'`int` (`DETTE-044`), donc mypy ne
+        dirait rien. Un premier jet dérivait le tournoi de `phase.depart_id` — faux et invisible au
+        compilateur ; il est donc **passé par l'appelant**, qui le tient de la route.
         """
         phase_id = phase.id
         assert phase_id is not None, "`_population` a déjà refusé une phase sans identité."
@@ -690,12 +601,10 @@ class ServiceBigShootOff:
     def _exiger_en_lice(self, photo: EtatBigShootOffAffiche, archer_id: int) -> None:
         """Refuse d'écrire pour un archer déjà sorti (ou étranger à la phase).
 
-        ⚠️ **Deux erreurs dédiées depuis la revue d'E05US028**, là où ce refus empruntait les codes
-        de `MancheIntrouvable` et de `PhasePasReglee`. Le second était le plus coûteux : le même
-        code `phase_pas_reglee` sortait du même endpoint pour deux situations dont les corrections
-        **opposées** — « allez régler la phase à l'atelier » et « rechargez, cet archer est
-        éliminé ». Le champ `code` existe pour qu'un client aiguille dessus (règle 5) ; deux sens
-        pour un code, c'est un contresens affiché en salle.
+        ⚠️ **Deux erreurs dédiées**, là où ce refus empruntait `MancheIntrouvable` et
+        `PhasePasReglee`. Le même code sortait du même endpoint pour deux situations aux
+        corrections **opposées** — « allez régler la phase » et « rechargez, cet archer est éliminé
+        ». Le champ `code` existe pour qu'un client aiguille dessus (règle 5).
         """
         tireur = next((t for t in photo.tireurs if t.archer_id == archer_id), None)
         if tireur is None:
@@ -716,19 +625,11 @@ class ServiceBigShootOff:
     ) -> None:
         """Refuse une volée hors des manches jouables sur cet effectif.
 
-        `Serie.saisir_volee` borne déjà au « barème » (`len(eliminations) · V`), mais ce barème
-        décrit la liste **complète** — or elle s'écourte quand l'effectif ne la porte pas. Sans
-        cette garde, on pourrait saisir les volées d'une manche que la phase ne jouera jamais.
-
-        ⚠️ **La borne est resserrée à la manche COURANTE depuis la revue d'E05US028**, et pas
-        seulement à l'ensemble des manches jouables. Rien n'interdisait de saisir la volée 4 (manche
-        2) avant la volée 3 (manche 1), or `Serie.valider(toutes_les_n_volees(V))` verrouille « le
-        prochain lot de V volées **non validées**, par numéro », sans considération de manche : le
-        lot pouvait donc emporter une volée de la manche suivante, et la manche courante devenait
-        **définitivement incomplétable** — sa volée manquante étant désormais verrouillée, donc
-        refusée à la saisie. La docstring de `valider_manche` (« le lot de la manche courante »)
-        n'était vraie que si la saisie arrivait dans l'ordre, ce que rien ne garantissait. Le
-        serveur est autoritaire : il ne suppose pas l'ordre, il l'impose.
+        `Serie.saisir_volee` borne au « barème » (`len(eliminations) · V`), mais ce barème décrit
+        la liste **complète**, qui s'écourte quand l'effectif ne la porte pas. ⚠️ **Borne resserrée
+        à la manche COURANTE** : `Serie.valider` verrouille « le prochain lot de V volées non
+        validées, par numéro », donc saisir la volée 4 avant la 3 laissait le lot emporter une
+        volée de la manche suivante et rendait la courante **incomplétable**.
         """
         jouables = photo.projection.manches_jouables * configuration.volees
         if not 1 <= numero <= jouables:
@@ -801,18 +702,11 @@ def _prochaine_volee(
 ) -> int | None:
     """La prochaine volée à saisir pour cet archer dans `manche`, ou `None` s'il n'y a rien à tirer.
 
-    `manche` est **0-indexée** (le `numero` de `MancheAffichee` l'est à partir de 1). On rend la
-    première volée du bloc `(manche·V+1 … (manche+1)·V)` qui n'est **pas encore posée**.
-
-    ⚠️ **« Pas encore posée » et non « pas encore verrouillée »**, et la nuance est ce qui fait
-    avancer l'écran. Une manche se valide d'un **bloc** de V volées (`toutes_les_n_volees`) : entre
-    la première saisie et la validation, les V volées coexistent non verrouillées. Viser la première
-    non verrouillée ferait donc revenir le pavé sur la volée 1 après l'avoir posée, et la manche ne
-    progresserait jamais — exactement le blocage que ce champ existe pour lever.
-
-    Rend `None` quand le bloc est complet : il n'y a plus qu'à valider. Corriger une volée posée
-    mais non validée n'est pas de la compétence de cet écran — c'est le geste de correction, tracé
-    au registre (`DETTE-061`).
+    `manche` est **0-indexée**. On rend la première volée du bloc `(manche·V+1 … (manche+1)·V)` qui
+    n'est **pas encore posée**. ⚠️ « Pas encore posée » et non « pas encore verrouillée » : une
+    manche se valide d'un **bloc**, donc entre la première saisie et la validation les V volées
+    coexistent non verrouillées — viser la première non verrouillée ramènerait le pavé sur la volée
+    1. `None` quand le bloc est complet : il n'y a plus qu'à valider.
     """
     if manche is None:
         return None
