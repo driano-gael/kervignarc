@@ -37,12 +37,10 @@ __all__ = [
 class PorteeArret(str, Enum):
     """Ce que l'arrêt éteint : cette phase seule, ou tout ce qui tire dans le créneau.
 
-    Le **départ** est la portée sportive du projet ([ADR-0075]) et correspond à « ce qui tire en
-    salle en ce moment ». Le statut du **tournoi** n'est pas une portée d'arrêt : il a déjà sa
-    propre pause, à une autre maille (ADR-0026 §3), et la confondre avec celle-ci mélangerait « la
-    salle s'arrête dix minutes » et « la compétition est suspendue ».
-
-    [ADR-0075]: ../../docs/adr/0075-le-depart-est-la-portee-sportive.md
+    Le **départ** est la portée sportive du projet (ADR-0075) et correspond à « ce qui tire en
+    salle en ce moment ». Le statut du **tournoi** n'est pas une portée d'arrêt : il a sa propre
+    pause, à une autre maille (ADR-0026 §3), et les confondre mélangerait « la salle s'arrête dix
+    minutes » et « la compétition est suspendue ».
     """
 
     PHASE = "phase"
@@ -50,19 +48,13 @@ class PorteeArret(str, Enum):
 
 
 class EtatFranchissement(str, Enum):
-    """Où en est un arrêt qui a été atteint. Cycle **monotone**, comme celui d'une phase (ADR-0045).
+    """Où en est un arrêt atteint. Cycle **monotone**, comme celui d'une phase (ADR-0045).
 
-    - `ARME` — le tour déclencheur est atteint ; les phases concernées s'arrêteront à la fin de leur
-      tour courant. État transitoire, et seul un arrêt de portée **départ** y séjourne : un arrêt de
-      portée phase est franchi d'emblée, puisque le tour qui vient de s'achever est le sien.
-    - `FRANCHI` — toutes les phases concernées sont en pause. L'arrêt attend un geste d'admin.
-    - `LEVE` — l'admin a relancé. L'arrêt est consommé et **ne se redéclenche plus jamais** ; la
-      phase repart en automatique jusqu'au prochain arrêt.
-
-    ⚠️ Il n'y a **pas** d'état « programmé » : c'est l'**absence** de franchissement. Un état de
-    plus dupliquerait une information que la table porte déjà par une ligne manquante, et obligerait
-    à écrire une ligne par arrêt dès la composition — donc à ré-écrire l'avancement de tous les
-    créneaux à chaque édition du déroulé, ce qu'ADR-0076 a précisément supprimé.
+    `ARME` — le tour déclencheur est atteint, les phases s'arrêteront à la fin de leur tour courant
+    (transitoire, et seul un arrêt de portée **départ** y séjourne) ; `FRANCHI` — toutes les phases
+    sont en pause, l'arrêt attend un geste d'admin ; `LEVE` — consommé, il ne se redéclenche plus.
+    ⚠️ Il n'y a **pas** d'état « programmé » : c'est l'**absence** de franchissement. L'ajouter
+    obligerait à écrire une ligne par arrêt dès la composition, ce qu'ADR-0076 a supprimé.
     """
 
     ARME = "arme"
@@ -94,24 +86,11 @@ class ArretProgramme:
 class FranchissementArret:
     """La trace d'un arrêt **atteint** dans un créneau donné, et de ce qu'il a coupé.
 
-    `phase_id` est la phase **déclenchante** — celle qui portait l'arrêt et dont le tour s'est
-    achevé. `apres_tour` désigne l'arrêt dans la définition de son étape : le couple
-    (`phase_id`, `apres_tour`) est donc l'identité fonctionnelle, et c'est lui qui porte l'unicité
-    en base.
-
-    `tours_a_finir` n'est peuplé que pour une portée **départ** : c'est la photo, prise à
-    l'armement, du tour que chaque autre phase avait en cours. Une paire `(phase, None)` dit « cette
-    phase n'avait plus rien en cours » — elle s'arrête donc immédiatement.
-
-    `arrete_depuis` est l'instant où cet arrêt a éteint sa **première** phase (E05US034). C'est ce
-    que la pastille de rappel décompte (« 2 phases attendent votre relance depuis 14 min »), et il
-    ne se dérive de rien : ni le statut de phase ni l'avancement ne portent d'heure, l'avancement
-    étant même recalculé à chaque lecture (ADR-0090 §5).
-
-    ⚠️ **La première, pas la dernière**, et c'est le contraire du réflexe d'implémentation. Un arrêt
-    de créneau éteint la salle en plusieurs minutes ; ré-horodater à chaque phase coupée ferait
-    *rajeunir* la pastille — elle annoncerait « depuis 1 min » sur une salle arrêtée depuis vingt,
-    c'est-à-dire qu'elle mentirait dans le sens qui endort la vigilance.
+    `phase_id` est la phase **déclenchante** ; le couple (`phase_id`, `apres_tour`) porte l'unicité
+    en base. `tours_a_finir` n'est peuplé que pour une portée **départ** : la photo, prise à
+    l'armement, du tour que chaque autre phase avait en cours. ⚠️ `arrete_depuis` est l'instant de
+    la **première** extinction : ré-horodater ferait *rajeunir* la pastille, qui annoncerait «
+    depuis 1 min » sur une salle arrêtée depuis vingt.
     """
 
     phase_id: PhaseId
@@ -149,27 +128,13 @@ class FranchissementArret:
 
 
 def verifier_type_arretable(type_phase: TypePhase) -> None:
-    """Refuse une pause sur un type dont l'application ne lit pas le tour. Périmètre du 19/08/2026.
+    """Refuse une pause sur un type dont l'application ne lit pas le tour (périmètre du 19/08/2026).
 
-    ⚠️ **Hissée ici en E05US034 parce qu'il existe désormais deux portes d'entrée.** La règle est
-    née dans `EtapeDeroule._verifier_arrets_applicables` — l'atelier — et il n'y avait rien d'autre
-    à garder. Le pilotage en ouvre une seconde (poser un arrêt le jour J) : la laisser sur l'étape
-    aurait obligé la seconde porte à instancier une étape pour rien, ou — bien plus probable — à
-    réécrire le test de type. Deux copies d'un même refus divergent, et celle qui diverge est
-    toujours celle qu'on a écrite en second.
-
-    Le déclencheur ne coupe qu'à une frontière de tour **observée**. Les types dont aucun service
-    ne lit l'avancement — échauffement, barrage, placement, colline — n'ont aucun tour à observer :
-    l'arrêt y serait accepté puis définitivement inerte, et l'organisateur découvrirait le jour J
-    que sa pause repas n'a jamais eu lieu. Un refus explicite vaut mieux qu'un réglage mort, et il
-    dit **où** poser la pause (`P-3` : un refus sans issue est un cul-de-sac).
-
-    ⚠️ **L'oracle est `TYPES_ARRETABLES`, et non `TYPES_DEROULES` comme jusqu'à E05US035.** Les
-    deux tables coïncidaient, ce qui rendait la confusion invisible ; la **qualification** les
-    sépare — on sait désormais dire où elle en est (`ServiceSaisie.avancement_de_phase`) sans
-    qu'aucun service ne la monte. Lever le refus en basculant l'autre capacité aurait fait réclamer
-    un plancher d'inscrits par rangs à toute qualification prélevée (E05US021), soit un refus de
-    démarrage le jour J pour un réglage d'affichage.
+    ⚠️ **Hissée ici en E05US034 parce qu'il existe deux portes d'entrée** — l'atelier et le
+    pilotage : la laisser sur l'étape aurait fait réécrire le test de type par la seconde. Le
+    déclencheur ne coupe qu'à une frontière de tour **observée**, donc sur un type illisible
+    l'arrêt serait accepté puis inerte. ⚠️ L'oracle est `TYPES_ARRETABLES`, **non**
+    `TYPES_DEROULES` : la qualification les sépare depuis E05US035.
     """
     if type_phase not in TYPES_ARRETABLES:
         raise ArretProgrammeInvalide(
@@ -188,15 +153,11 @@ def verifier_type_arretable(type_phase: TypePhase) -> None:
 def doublon_d_arret(tours: Sequence[int]) -> ArretProgrammeInvalide:
     """Le refus « deux arrêts au même endroit », **composé une seule fois** dans le projet.
 
-    ⚠️ **Extrait en revue** (axe adversarial) parce qu'un second exemplaire venait d'apparaître :
-    l'adapter SQLite le recopiait à la main pour traduire la violation d'unicité
-    `(depart_id, phase_id, apres_tour)` que la **course** déclenche — deux postes d'admin, ou le
-    double-clic d'un seul. Les deux textes coïncidaient au singulier et auraient divergé à la
-    première retouche, celle qui diverge étant toujours la seconde copie. C'est mot pour mot ce que
-    `verifier_type_arretable` interdit deux cents lignes plus haut, et pour la même raison.
-
-    Rend l'exception au lieu de la lever : l'appelant écrit `raise doublon_d_arret(...)`, ce qui
-    garde la levée visible à l'endroit où elle se produit.
+    ⚠️ **Extrait en revue** parce qu'un second exemplaire venait d'apparaître : l'adapter SQLite le
+    recopiait pour traduire la violation d'unicité que la **course** déclenche (deux postes
+    d'admin, ou un double-clic). Les deux textes coïncidaient au singulier et auraient divergé à la
+    première retouche. Rend l'exception au lieu de la lever : l'appelant écrit `raise
+    doublon_d_arret(...)`, ce qui garde la levée visible là où elle se produit.
     """
     pluriel = "s" if len(tours) > 1 else ""
     liste = ", ".join(str(tour) for tour in tours)
@@ -214,20 +175,11 @@ def verifier_arrets(
 ) -> None:
     """Vérifie qu'une **liste** d'arrêts est applicable. Lève `ArretProgrammeInvalide` sinon.
 
-    Les invariants d'un arrêt seul sont à son `__post_init__` ; ceux du **couple** (deux arrêts
-    entre eux, un arrêt face au nombre de tours) sont ici, là où l'information existe. C'est la
-    même répartition que `ConfigurationSuisse` face à `EtapeDeroule._verifier_rondes_appariables` :
-    le réglage refuse ce qu'il peut juger seul, l'étape refuse ce qui dépend de son contexte.
-
-    `nb_tours=None` signifie « inconnu » et ne déclenche aucun refus : un système suisse réglé à
-    7 rondes n'en joue que 5 si l'effectif ne permet pas plus, et l'atelier ne connaît pas toujours
-    l'effectif. On ne refuse pas ce qu'on ne peut pas juger.
-
-    ⚠️ **`geste_reparateur` existe parce qu'un refus sans issue est un cul-de-sac** (`P-3`). Le
-    message générique dit *pourquoi* c'est refusé ; sur une qualification non découpée il ne dit
-    pas *quoi faire*, et « la phase n'en compte que 1 » laisse l'organisateur sans prise — il n'a
-    aucune raison de deviner qu'un réglage de découpage existe deux blocs plus haut. L'appelant qui
-    connaît le geste le fournit ; les autres gardent le message d'origine.
+    Les invariants d'un arrêt seul sont à son `__post_init__` ; ceux du **couple** sont ici, là où
+    l'information existe — même répartition que `ConfigurationSuisse` face à `EtapeDeroule`.
+    `nb_tours=None` signifie « inconnu » et ne déclenche aucun refus : on ne refuse pas ce qu'on ne
+    peut pas juger. ⚠️ `geste_reparateur` existe parce qu'un refus sans issue est un cul-de-sac
+    (`P-3`) : « la phase n'en compte que 1 » laisse l'organisateur sans prise.
     """
     tours = [arret.apres_tour for arret in arrets]
     doublons = {tour for tour in tours if tours.count(tour) > 1}
@@ -252,18 +204,11 @@ def arrets_atteints(
 ) -> tuple[ArretProgramme, ...]:
     """Les arrêts **dus** maintenant que `tour_acheve` est fini, du plus ancien au plus récent.
 
-    `deja_traites` porte les `apres_tour` des arrêts qui ont déjà un franchissement, **quel qu'en
-    soit l'état** — `ARME`, `FRANCHI` ou `LEVE`. C'est la mémoire qui empêche la boucle décrite en
-    tête de module.
-
-    ⚠️ **Le test est `<=`, pas `==`**, et c'est un choix. Rien ne garantit que le déclencheur soit
-    évalué à chaque frontière de tour : une correction en cascade, un lot de validations ou une
-    phase reprise après incident peuvent faire passer le tour courant de 2 à 5 entre deux
-    évaluations. Comparer par égalité perdrait alors silencieusement les arrêts intermédiaires —
-    l'organisateur aurait programmé trois pauses et n'en verrait aucune. On les rend tous : le
-    service n'appliquera qu'une pause (la phase ne peut être en pause qu'une fois) mais marquera les
-    autres traités, ce qui est la lecture honnête — ces pauses-là ont été **manquées**, pas
-    annulées.
+    `deja_traites` porte les `apres_tour` déjà franchis, **quel qu'en soit l'état** : c'est la
+    mémoire qui empêche la boucle décrite en tête de module. ⚠️ **Le test est `<=`, pas `==`** :
+    rien ne garantit que le déclencheur soit évalué à chaque frontière de tour, et une comparaison
+    par égalité perdrait silencieusement les arrêts intermédiaires. On les rend tous — le service
+    n'appliquera qu'une pause mais marquera les autres **manquées**, ce qui est la lecture honnête.
     """
     traites = set(deja_traites)
     return tuple(
@@ -284,36 +229,11 @@ def phases_a_arreter(
 ) -> tuple[PhaseId, ...]:
     """Parmi les phases qu'un arrêt de départ doit couper, celles qui ont fini leur tour.
 
-    Une phase a fini son tour quand son tour courant n'est **plus** celui noté à l'armement. Deux
-    cas s'y ajoutent, et tous deux comptent comme « finie » :
-
-    - `tours_a_finir[phase] is None` — elle n'avait déjà plus rien en cours à l'armement (convention
-      d'`AvancementDePhase`, ADR-0090 : tout est joué même si la phase n'est pas clôturée). Lui
-      faire attendre un changement qui ne viendra jamais la laisserait `EN_COURS` pour l'éternité,
-      et l'arrêt resterait `ARME` sans jamais devenir relançable ;
-    - la phase a disparu de `tours_courants` — clôturée à la main pendant l'armement (E12US008).
-    Elle
-      n'a plus d'avancement à lire ; l'attendre ferait d'un geste de clôture légitime un gel de la
-      reprise.
-
-    ⚠️ **La comparaison est `>` et non `!=`, et c'est un correctif de bloquant de 2ᵉ passe** (axe
-    adversarial). Un tour qui **recule** n'est pas un tour fini — et il peut reculer : le tour d'une
-    qualification se dérive du tireur le **moins** avancé du plateau, or un archer qui commence en
-    retard fait baisser ce minimum. Avec `!=`, toute différence valait « a fini son tour », donc la
-    phase était **mise en pause en plein tour** par un arrêt de créneau à la première volée d'un
-    retardataire.
-
-    La correction vit **ici**, au domaine, et non chez le lecteur qui produit le tour : c'est ce qui
-    ferme la classe entière quel que soit le format et quelle que soit la façon dont son service
-    calcule son avancement. La corriger côté lecteur aurait rejoué le même raisonnement un cran plus
-    haut, une fois par format — et l'axe adversarial a montré qu'une première tentative y avait
-    aussitôt réintroduit deux trous.
-
-    `tour_courant is None` compte aussi comme « fini » : c'est la convention d'`AvancementDePhase`
-    (ADR-0090), et une phase dont plus rien ne tourne n'a effectivement plus de tour à finir.
-
-    Rendu **trié par identifiant** pour que deux évaluations successives produisent la même liste :
-    un ordre instable rendrait les diffs de trace illisibles et les tests dépendants du hasard.
+    Une phase a fini quand son tour courant n'est plus celui noté à l'armement ; comptent aussi
+    `tours_a_finir[phase] is None` et la disparition de `tours_courants` (clôturée à la main). ⚠️
+    **La comparaison est `>` et non `!=`** : un tour peut **reculer** — celui d'une qualification
+    se dérive du tireur le moins avancé, qu'un retardataire fait baisser. Avec `!=`, la phase était
+    mise en pause **en plein tour**. La correction vit au domaine, pas chez le lecteur.
     """
 
     def a_fini(phase_id: PhaseId, tour_a_finir: int | None) -> bool:
@@ -335,33 +255,13 @@ def phases_a_arreter(
 
 @dataclass(frozen=True)
 class ArretDeCirconstance:
-    """Une coupe décidée **en cours de journée**, propre à un créneau ([ADR-0092], E05US034).
+    """Une coupe décidée **en cours de journée**, propre à un créneau (ADR-0092, E05US034).
 
-    Troisième nature du mécanisme, et la frontière est celle d'ADR-0076 :
-
-    - `ArretProgramme` est de la **composition** — posé à l'atelier, porté par l'`EtapeDeroule` du
-      tournoi, **rejoué par tous les créneaux** (ADR-0076 §4) ;
-    - `ArretDeCirconstance` est de la **conduite** — posé au pilotage pendant que la salle tire,
-      porté par le **départ** (ADR-0076 §5), et rejoué par **personne** ;
-    - `FranchissementArret` reste l'**avancement** : cet arrêt-là a coupé, ici, et l'admin l'a
-      relevé.
-
-    ⚠️ **Pourquoi pas simplement ajouter l'arrêt au déroulé.** Parce que le déroulé est la
-    définition du tournoi : un arrêt ajouté à 14 h pour cause de panne de chauffage y serait rejoué
-    par le créneau de l'après-midi, qui n'a aucune raison de s'arrêter. La divergence serait
-    exactement du type qu'ADR-0076 a rendu impossible — sauf qu'ici elle jouerait dans l'autre sens,
-    en **propageant** ce qui devait rester local.
-
-    ⚠️ **Pourquoi pas un état `PROGRAMME` de plus sur le franchissement.** L'en-tête
-    d'`EtatFranchissement` explique pourquoi cet état n'existe pas : « programmé » est l'**absence**
-    de franchissement. Le réintroduire pour les seuls arrêts de circonstance ferait porter à la
-    table de l'avancement une moitié de la définition, et « un arrêt franchi » cesserait de vouloir
-    dire « un arrêt atteint ».
-
-    `portee` a le même sens que sur `ArretProgramme` : cette phase seule, ou tout le créneau.
-
-    [ADR-0076]: ../../docs/adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md
-    [ADR-0092]: ../../docs/adr/0092-un-arret-pose-le-jour-j-appartient-au-creneau.md
+    Troisième nature, frontière d'ADR-0076 : `ArretProgramme` est de la **composition** (porté par
+    l'étape, rejoué par tous les créneaux), celui-ci de la **conduite** (porté par le départ,
+    rejoué par personne), `FranchissementArret` reste l'**avancement**. ⚠️ Pas d'ajout au déroulé :
+    un arrêt posé à 14 h pour une panne y serait rejoué le soir. ⚠️ Pas d'état `PROGRAMME` : c'est
+    l'**absence** de franchissement.
     """
 
     depart_id: DepartId
@@ -396,18 +296,10 @@ def tour_d_un_arret_relatif(tour_courant: int | None, dans_x_tours: int) -> int:
     """Traduit « bloquer dans x tours » en « après le tour n » (CA E05US034).
 
     ⚠️ **Le tour courant compte dans les x**, d'où le `- 1` : « dans 1 tour » veut dire *celui qui
-    tourne finit, puis on s'arrête*. C'est la lecture de l'organisateur, qui a le numéro du tour
-    sous les yeux au moment où il clique. La convention inverse (`tour_courant + x`) couperait un
-    tour trop tard — sur un système suisse, une demi-heure après le repas.
-
-    `tour_courant is None` est **refusé** et non réparé : ce `None` a au moins cinq provenances (cf.
-    `ServiceArretsProgrammes._tour_acheve`), de « tout est joué » à « aucun lecteur branché pour ce
-    type ». Aucune n'autorise à deviner une origine — poser l'arrêt « après le tour 1 » par défaut
-    couperait la salle au premier tour d'une phase qu'on croyait au cinquième.
-
-    `dans_x_tours < 1` est refusé pour la même raison de franchise : le mécanisme coupe **à la fin
-    d'un tour** (ADR-0091), jamais au milieu. Se replier silencieusement sur 1 laisserait croire
-    qu'un arrêt immédiat existe.
+    tourne finit, puis on s'arrête* — la lecture de l'organisateur, qui a le numéro sous les yeux.
+    `tour_courant is None` est **refusé** et non réparé : ce `None` a au moins cinq provenances, et
+    aucune n'autorise à deviner. `dans_x_tours < 1` est refusé pour la même franchise — le
+    mécanisme coupe **à la fin d'un tour**, jamais au milieu.
     """
     if tour_courant is None:
         raise ArretProgrammeInvalide(
@@ -428,25 +320,11 @@ def arrets_applicables(
 ) -> tuple[ArretProgramme, ...]:
     """Le jeu d'arrêts que le déclencheur doit lire pour une phase : les deux natures fondues.
 
-    CA E05US034 : l'arrêt du jour J *« s'ajoute aux arrêts programmés, il ne les remplace pas »*.
-
-    ⚠️ **Tolérant sur la collision, là où la pose est stricte** — et l'asymétrie est délibérée.
-    Poser un arrêt de circonstance sur un tour déjà pris est refusé à l'organisateur, qui a l'écran
-    devant lui et peut corriger. Mais la collision peut naître **après** la pose, sans que personne
-    ne se trompe : l'atelier ajoute un arrêt après le tour 4 au déroulé du tournoi pendant qu'un
-    créneau porte déjà un arrêt de circonstance après le tour 4. L'atelier ne **peut pas** le
-    savoir : ADR-0076 lui interdit de voir l'avancement d'un créneau. Lever ici gèlerait le
-    déclencheur du créneau entier — plus aucune pause ne tomberait, pour aucune phase.
-
-    Fusionner garde aussi vraie l'unicité `(phase_id, apres_tour)` du franchissement : une coupe,
-    une trace, un bouton de relance.
-
-    **La portée la plus large gagne.** Un arrêt de créneau *contient* un arrêt de phase :
-    l'appliquer honore les deux. L'inverse laisserait tirer une salle que l'un des deux voulait
-    éteindre.
-
-    Rendu **trié par tour** : `arrets_atteints` en dépend, et `_appliquer` n'applique que le plus
-    ancien dû.
+    CA E05US034 : l'arrêt du jour J « s'ajoute aux arrêts programmés, il ne les remplace pas ». ⚠️
+    **Tolérant sur la collision, là où la pose est stricte** : celle-ci peut naître **après** la
+    pose sans que personne ne se trompe — l'atelier ne peut pas voir l'avancement d'un créneau
+    (ADR-0076). Lever ici gèlerait le déclencheur du créneau entier. **La portée la plus large
+    gagne** : un arrêt de créneau *contient* un arrêt de phase. Rendu **trié par tour**.
     """
     par_tour: dict[int, ArretProgramme] = {}
     for arret in (*arrets_de_l_etape, *(a.definition() for a in arrets_de_circonstance)):

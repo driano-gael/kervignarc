@@ -54,26 +54,20 @@ _TYPES_CLASSANTS_AU_PALMARES: frozenset[TypePhase] = TYPES_CLASSANTS_LUS - (
 )
 """Les types dont le palmarès lit le **classement de phase** plutôt qu'un arbre (E05US026).
 
-Aujourd'hui : les **poules** et le **système suisse**. Ni l'un ni l'autre n'a d'arbre à rejouer, et
-tous deux rendent un `ClassementSource` complet — c'est précisément ce que `classement_lisible`
-promet. Les lire par leur classement, et non par une reconstruction, est donc la voie **directe**.
-
-**Dérivée, pas énumérée** : un format qui devient `classement_lisible` sans être reconstructible
-entre ici automatiquement. Les trois soustraits sont ceux qui ont déjà leur chemin — les tableaux
-(rejeu d'arbre), la qualification (elle *est* la base du palmarès) et le Big Shoot Off (ses rangs
-viennent des éliminations, pas d'un ordre de classement).
+Aujourd'hui les **poules** et le **système suisse** : ni l'un ni l'autre n'a d'arbre à rejouer, et
+tous deux rendent un `ClassementSource` complet. **Dérivée, pas énumérée** — un format qui devient
+`classement_lisible` sans être reconstructible entre ici automatiquement. Les trois soustraits ont
+déjà leur chemin : les tableaux (rejeu d'arbre), la qualification (base du palmarès) et le Big
+Shoot Off (ses rangs viennent des éliminations).
 """
 
 _TYPES_RECONSTRUCTIBLES = TYPES_RECONSTRUCTIBLES
 """Les types de phase dont ce service sait **rejouer l'arbre** aujourd'hui.
 
-Dérivé du registre de contrat (`domain/contrat_phase.py`, ADR-0083) : conjonction d'un décor en
-arbre de duels **et** d'un service qui le monte. Le parti reste celui d'une **liste blanche**, à
-rebours de `produit_un_classement` qui est écrit en négatif : là-bas l'oubli probable est
-d'ajouter un vrai format (donc classant par défaut), ici c'est de croire lire une phase dont aucun
-moteur ne déroule le résultat. Un type absent ne casse pas le palmarès — il n'y apporte
-simplement rien, ce qui est le cas des **poules** dans cette tranche (leur classement est lisible,
-mais il n'y a pas d'arbre à rejouer et le CA d'E05US023 ne demande pas leur palmarès).
+Dérivé du registre de contrat (ADR-0083) : conjonction d'un décor en arbre **et** d'un service qui
+le monte. **Liste blanche**, à rebours de `produit_un_classement` écrit en négatif : là-bas l'oubli
+probable est d'ajouter un vrai format, ici c'est de croire lire une phase dont aucun moteur ne
+déroule le résultat. Un type absent ne casse pas le palmarès — il n'y apporte rien.
 """
 
 
@@ -202,13 +196,11 @@ class ServicePalmares:
     def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
         """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.
 
-        ⚠️ **Raccourci tracé (`DETTE-045`).** Le palmarès est rendu « du tournoi » alors que le
-        classement dont il dérive est celui d'un **départ** : sur un tournoi multi-créneaux, il
-        n'affiche donc que le podium du premier. La question métier qui bloquait la résorption —
-        additionne-t-on les podiums de chaque créneau, ou les juxtapose-t-on ? — a été **tranchée
-        par le commanditaire le 07/08/2026** : *juxtaposé*, quatre départs font quatre podiums. Il
-        n'y a donc aucune agrégation à écrire, et le remède se réduit à une route par départ,
-        planifiée en **E06US009**.
+        ⚠️ **Raccourci tracé (`DETTE-045`)** : le palmarès est rendu « du tournoi » alors que le
+        classement dont il dérive est celui d'un **départ**, donc un tournoi multi-créneaux
+        n'affiche que le podium du premier. La question métier a été tranchée le 07/08/2026 —
+        *juxtaposé*, quatre départs font quatre podiums —, et le remède se réduit à une route par
+        départ (E06US009).
         """
         departs = self._departs.par_tournoi(tournoi_id)
         if not departs:
@@ -222,37 +214,11 @@ class ServicePalmares:
     def _resultat_big_shoot_off(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'un Big Shoot Off a décidé — `None` s'il n'a **rien** décidé (encore) (E05US028).
 
-        ⚠️ **Un `_resultat` propre au format, et non une entrée de plus dans
-        `TYPES_RECONSTRUCTIBLES`.** ADR-0083 l'annonçait pour les poules : cette table est l'alias
-        de `TYPES_EN_TABLEAU_JOUE`, donc « rejouer l'arbre » — et un Big Shoot Off n'a pas d'arbre.
-        Y ajouter le type aurait envoyé `ServiceSaisieDuels.reconstruire` sur une phase sans
-        tableau. Ce qu'il faut lui demander est autre chose, et c'est plus simple : ses rangs sont
-        **exacts** par construction, donc `rang_min == rang_max`.
-
-        Trois écartements, et chacun a sa raison :
-
-        1. **une phase que le lecteur ne sait pas résoudre** (`None`) — même parti que `_resultat` :
-           une phase n'éteint pas un écran public, elle n'y ajoute rien ;
-        2. **une phase où personne n'est encore sorti** : tous les finalistes partagent le rang 1
-           tant que la première manche n'est pas jouée, ce qui leur donnerait à tous la première
-           place du tournoi pendant qu'ils tirent. Même défaut que celui qu'`_resultat` corrige
-           pour les tableaux (« 1ᵉʳ-120ᵉ · à départager » affiché toute la qualification), et même
-           remède : on n'entre au palmarès qu'une fois qu'il y a quelque chose à dire ;
-        3. **les rescapés d'une phase encore en cours**, marqués `en_lice` : leur rang 1 partagé
-           n'est pas un titre, c'est une absence de verdict, et `LignePalmares.decerne` doit
-           pouvoir les distinguer d'un vainqueur — sinon cinq archers reçoivent l'or.
-
-        ⚠️ **`en_lice` se ferme quand la phase est terminée**, et l'oubli coûtait le podium. Le
-        moteur garde les rescapés dans `en_lice` même une fois `est_termine` — c'est sa lice, pas
-        un pronostic. Mais `LignePalmares.en_lice` répond à une autre question : « cet archer a-t-il
-        encore un match devant lui ? ». Reporter le champ tel quel laissait le **vainqueur** en
-        lice, donc `decerne=False`, donc **pas d'or** sur un BSO pourtant fini. Trouvé par le
-        test de palmarès, pas par relecture : les deux champs portent le même nom et disent deux
-        choses différentes.
-
-        Aucune étiquette `origine=QUALIFICATION` ici, à la différence d'`_resultat_qualification` :
-        les rangs d'un Big Shoot Off sont **gagnés au tir**, manche après manche. Le podium qu'ils
-        décernent est légitime, et c'est précisément ce que ce format sert à produire.
+        ⚠️ **Un `_resultat` propre au format, et non une entrée de `TYPES_RECONSTRUCTIBLES`** :
+        cette table est l'alias de « rejouer l'arbre », qu'un Big Shoot Off n'a pas. Ses rangs sont
+        **exacts** par construction. Trois écartements : phase illisible, phase où personne n'est
+        sorti, et **rescapés** d'une phase en cours. ⚠️ `en_lice` se ferme quand la phase est
+        terminée — le reporter tel quel laissait le **vainqueur** en lice, donc sans or.
         """
         if phase.id is None or self._big_shoot_off is None:
             return None
@@ -265,17 +231,13 @@ class ServicePalmares:
             PhasePasUnBigShootOff,
         ) as exc:
             # Mêmes absorptions que `_resultat`, et **journalisées** pour la même raison : le
-            # palmarès est public et projeté en salle, donc une phase de la séquence ne doit pas
-            # éteindre l'écran — mais une phase absente du palmarès le jour J serait indébogable.
+            # palmarès est public et projeté en salle, donc une phase ne doit pas éteindre l'écran —
+            # mais une phase absente le jour J serait indébogable.
             #
-            # ⚠️ **La liste est nominative, et ce n'est pas un détail de style** (revue d'E05US028).
-            # Un premier jet écrivait `(PhaseIntrouvable, PrelevementEnAttente, ApplicationError)` :
-            # les deux premiers termes étant filles du troisième, la clause attrapait **toute**
-            # erreur applicative, présente et future. Elle ré-avalait notamment `DerouleCyclique`,
-            # que `_resultat` exclut **délibérément** (« une base incohérente doit rester visible »)
-            # et que cette US venait justement de faire lever sur ce chemin — la garde était donc
-            # écrite d'un côté du diff et neutralisée de l'autre. `ruff B014` ne voit pas ce
-            # doublon : il ne résout pas les relations de sous-classe.
+            # ⚠️ **La liste est nominative, et ce n'est pas un détail de style** : écrire
+            # `(PhaseIntrouvable, PrelevementEnAttente, ApplicationError)` attrapait **toute**
+            # erreur applicative, y compris `DerouleCyclique` que `_resultat` exclut délibérément.
+            # `ruff B014` ne le voit pas : il ne résout pas les relations de sous-classe.
             _logger.info("Big Shoot Off %s écarté du palmarès : %s", phase.id, exc)
             return None
         if not any(tireur.rang is not None for tireur in etat.tireurs):
@@ -302,27 +264,11 @@ class ServicePalmares:
     ) -> ResultatPhase | None:
         """Ce qu'une phase **classante sans arbre** a décidé — poules, système suisse (E05US026).
 
-        `# DETTE-031` — une résolution de classement **par phase classante**, plus une lecture
-        d'avancement (`_est_epuisee`), sur les deux routes publiques du palmarès dont le PDF.
-
-        On lit son **classement de phase**, celui-là même qu'un prélèvement consomme
-        (`ClassementSource`) : rangs et plages encore indécises. C'est la voie directe, et surtout
-        la seule qui ne puisse pas **diverger** de ce que la phase avale reçoit — deux calculs pour
-        un même ordre finiraient par se contredire.
-
-        ⚠️ **`origine` porte la règle « décerne si rien ne prélève dedans »** (arbitrage du
-        15/08/2026). Une phase consommée contribue ses rangs sans médaille ; une phase terminale
-        décerne. Le critère est **structurel** — le graphe des sources du déroulé — et non « par
-        type » : dans une cascade « poules → poules de niveau », la dernière phase *est* une phase
-        de poules et rend le classement final exact, elle doit donc titrer.
-
-        ⚠️ **Les plages indécises deviennent des fourchettes**, et c'est exactement leur sens : les
-        quatre vainqueurs de quatre poules sont 1ᵉʳˢ-4ᵉˢ, et rien ne les départage tant que
-        l'organisateur n'a pas demandé le départage inter-poules. C'est la politique `aggregation`
-        qui tranchera, comme pour les battus d'un quart de finale — pas nous, ici, au hasard.
-
-        Rend `None` quand la phase n'a **rien** classé : une phase qui n'a pas commencé n'ajoute
-        rien au palmarès, elle n'y met pas tout le monde au rang 1.
+        `# DETTE-031` — une résolution de classement par phase classante, plus une lecture
+        d'avancement, sur les deux routes publiques. On lit son **classement de phase**, celui-là
+        même qu'un prélèvement consomme : deux calculs pour un même ordre se contrediraient. ⚠️
+        `origine` porte la règle « décerne si rien ne prélève dedans », critère **structurel** et
+        non par type. Les plages indécises deviennent des **fourchettes**.
         """
         if phase.id is None:
             return None
@@ -336,17 +282,14 @@ class ServicePalmares:
             EffectifTableauInvalide,
             DomainError,
         ) as exc:
-            # Absorptions nominatives, **plus `DomainError`** — et ce dernier terme est un correctif
-            # de revue, pas une précaution. Les moteurs de format lèvent des erreurs de **domaine**
-            # (`ConfigurationSuisseInvalide`, `AppariementImpossible`,
-            # `ConfigurationPouleInvalide`), qui ne sont pas des `ApplicationError` : la liste
-            # d'origine les laissait passer, et une seule phase mal dimensionnée rendait **422 le
-            # palmarès du tournoi entier, écran public et PDF compris** (reproduit par deux axes).
+            # Absorptions nominatives, **plus `DomainError`** — un correctif de revue, pas une
+            # précaution : les moteurs de format lèvent des erreurs de **domaine**
+            # (`ConfigurationSuisseInvalide`, `AppariementImpossible`), qui ne sont pas des
+            # `ApplicationError`. La liste d'origine les laissait passer, et une seule phase mal
+            # dimensionnée rendait **422 le palmarès du tournoi entier**, PDF compris.
             #
-            # ⚠️ `DomainError` est volontairement **le dernier terme** et non un remplacement des
-            # quatre autres : ceux-ci restent nominatifs pour que la liste dise ce qu'elle attend,
-            # et `DerouleCyclique` — une `ApplicationError` — continue de **traverser**, comme
-            # `_resultat` l'exige (« une base incohérente doit rester visible »).
+            # ⚠️ `DomainError` est volontairement **le dernier terme** : les autres restent
+            # nominatifs, et `DerouleCyclique` continue de **traverser**, comme `_resultat` l'exige.
             _logger.info("Phase classante %s écartée du palmarès : %s", phase.id, exc)
             return None
         if source is None or not source.classement.lignes:
@@ -400,11 +343,9 @@ class ServicePalmares:
         """La phase est-elle allée à son terme ? — par le port partagé avec le routage.
 
         `# DETTE-031` — `rencontres_a_tirer` rejoue l'état complet de la phase, **avec un résolveur
-        neuf** : c'est un second rejeu de la chaîne amont par phase classante, pas une simple
-        lecture d'avancement (précision apportée en revue).
-
-        Prudent par défaut : sans lecteur branché, on répond « non », donc les archers restent
-        `en_lice` et **aucune médaille n'est décernée**. Un montage incomplet retire un podium, il
+        neuf** : c'est un second rejeu de la chaîne amont, pas une simple lecture d'avancement.
+        Prudent par défaut : sans lecteur branché on répond « non », donc les archers restent
+        `en_lice` et **aucune médaille n'est décernée** — un montage incomplet retire un podium, il
         n'en invente pas.
         """
         lecteur = self._rencontres.get(phase.type)
@@ -431,29 +372,11 @@ class ServicePalmares:
     def _resultat_qualification(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une **seconde** qualification a classé — `None` si elle n'a rien à dire encore.
 
-        E05US025 (ADR-0082) : un déroulé peut enchaîner les qualifications. Sur l'exemple de
-        référence — 120 archers en 3x20, puis une *haute* (rangs 1..60) et une *basse* (61..120) en
-        3x15 —, c'est **ici** que le classement final devient un 1..120 au lieu de rester celui du
-        premier tour.
-
-        Trois écartements, chacun pour une raison différente :
-
-        1. **La qualification de tête** (`sources` vide) n'est pas un résultat : elle *est* la base
-           du palmarès, passée à `calculer_palmares` comme classement de référence. L'ajouter en
-           plus lui ferait écraser… elle-même, en bloc `ordre` au lieu de bloc 0.
-        2. **Une phase que le résolveur ne sait pas lire** (`None`) — même parti que `_resultat` :
-           une phase n'éteint pas un écran public, elle n'y ajoute rien.
-        3. **Une phase où personne n'a encore marqué** : tous les totaux à zéro rendent un
-        classement
-           d'ex æquo au rang 1, qui donnerait à ses 60 archers la première place du tournoi pendant
-           tout le temps où ils tirent. Même défaut que celui qu'`_resultat` corrige pour les
-           tableaux (« 1ᵉʳ-120ᵉ · à départager » affiché toute la qualification), et même remède :
-           on n'entre au palmarès qu'une fois qu'il y a quelque chose à dire.
-
-           ⚠️ Le critère est `total > 0`, donc une phase où **tout le monde aurait tout manqué**
-           resterait dehors. C'est la limite que `_Decompte.a_tire` documente déjà côté classement
-           (« a tiré » n'est pas « a marqué ») ; ici elle ne fait que **retarder** l'entrée au
-           palmarès, elle ne fausse rien — et le cas ne se produit pas sur un tournoi réel.
+        E05US025 (ADR-0082) : c'est ici que le classement final devient un 1..120. Trois
+        écartements : la **qualification de tête** (elle *est* la base du palmarès) ; une phase que
+        le résolveur ne sait pas lire ; une phase où **personne n'a marqué**, dont les ex æquo au
+        rang 1 donneraient à 60 archers la première place pendant qu'ils tirent. ⚠️ Le critère est
+        `total > 0` : une phase où tout le monde aurait manqué resterait dehors — cela retarde.
         """
         if not phase.sources:
             return None
@@ -489,38 +412,11 @@ class ServicePalmares:
     def _resultat(self, tournoi_id: TournoiId, phase: Phase) -> ResultatPhase | None:
         """Ce qu'une phase à tableau a décidé — `None` si elle n'a **rien** décidé (encore).
 
-        ⚠️ **Une phase qui n'a tranché aucun duel est écartée**, et c'est un correctif de revue
-        relevé par trois axes. Le déroulé se compose à l'avance (E01US024), donc la phase de
-        tableau existe **dès le matin** ; `_decor` l'ensemence alors avec tous les archers en lice
-        (`# DETTE-028`), et chacun n'a acquis que la plage de son premier match — c'est-à-dire le
-        tableau **entier**. Le palmarès affichait donc « 1ᵉʳ-120ᵉ · à départager » sur 120 lignes,
-        pendant toute la qualification, sur l'onglet public et l'écran de salle.
-
-        Le critère est **ce que le tableau a décidé**, pas `phase.statut` : le passage à `en_cours`
-        est une action **manuelle** de l'organisateur (`ServicePhases.demarrer`), et faire dépendre
-        un écran public de sa discipline le laisserait muet tout l'après-midi s'il l'oublie. Un
-        tableau dont un duel est tranché a forcément commencé ; la lecture est auto-corrective.
-
-        Deux choses ne comptent pas, et les distinguer a demandé une contre-revue : un **bye**
-        avance un archer sans que rien ne se soit joué, et un **walkover de forfait**
-        (`_appliquer_forfaits`, ADR-0050) fait de même sur un match qui n'est pourtant **pas**
-        un bye. `est_bye` seul laissait donc revenir la régression dès qu'un organisateur
-        enregistrait un forfait le matin — geste que le produit encourage. D'où le second
-        critère : **un tir enregistré**. Aucun tir, aucun duel, quelle que soit la façon dont
-        l'arbre s'est avancé tout seul.
-
-        ⚠️ Le correctif symétrique proposé en revue — écarter côté domaine toute position couvrant
-        le tableau entier — a été **écarté** : il casserait le milieu de tour. Après le premier
-        duel d'un tableau de 8, six archers n'ont encore rien acquis (`[1..8]`) ; les faire retomber
-        sur la qualification les classerait **derrière le battu** qu'ils n'ont pas rencontré.
-
-        Les échecs absorbés sont ceux d'un tableau pas encore montable : effectif insuffisant
-        (`EffectifTableauInvalide`, comme le routage) et phase disparue entre deux lectures. Le
-        palmarès est **public et projeté en salle** : une phase de la séquence ne doit pas éteindre
-        l'écran, elle doit simplement n'y rien ajouter — même parti que le filet d'E06US003. Ils
-        sont **journalisés** : une phase absente du palmarès le jour J serait sinon indébogable.
-        `PhasePasUnTableau` n'y figure plus — `pour_tournoi` filtre déjà sur le type, la garde était
-        morte et une garde morte finit par masquer autre chose.
+        ⚠️ **Une phase qui n'a tranché aucun duel est écartée** : elle existe dès le matin et
+        `_decor` l'ensemence avec tous les archers en lice (`# DETTE-028`) — le palmarès affichait
+        « 1ᵉʳ-120ᵉ · à départager » sur 120 lignes toute la qualification. Le critère est **ce que
+        le tableau a décidé**, pas `phase.statut`. ⚠️ Ni un **bye** ni un **walkover de forfait**
+        ne comptent : d'où le second critère, **un tir enregistré**.
         """
         if phase.id is None:
             return None
@@ -555,17 +451,13 @@ class ServicePalmares:
             if participant.genre is GenreParticipant.INDIVIDUEL
         )
         # ⚠️ La **tranche** que cette phase dispute (E05US020, ADR-0068 §5) : une consolante
-        # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans
-        # ce décalage, son vainqueur passait devant le finaliste du tableau principal — c'était
-        # `DETTE-034`, inatteignable tant qu'aucun moteur ne consommait les prélèvements.
-        # E05US024 : la tranche se lit sur **chaque** phase source, plus seulement sur la
-        # qualification. Le même résolveur que l'ensemencement — un décalage calculé sur une autre
-        # base que celle qui a peuplé le tableau situerait ses positions dans le mauvais espace de
-        # rangs, ce qui est exactement `DETTE-034`.
-        # ⚠️ Le paramètre `classement` a disparu de `tranche` (correctif de revue) : elle ne le
-        # lisait plus depuis E05US024 — l'effectif se lit sur le classement **source**. L'appelant
-        # payait donc ici une reconstruction complète du classement du départ (`DETTE-031`) pour
-        # alimenter un paramètre mort, **une fois par phase à tableau**, sur deux routes publiques.
+        # prélevant « les rangs 5 et suivants » joue pour la 5ᵉ place, pas pour la victoire. Sans ce
+        # décalage, son vainqueur passait devant le finaliste du tableau principal (`DETTE-034`).
+        # E05US024 : la tranche se lit sur **chaque** phase source, avec le même résolveur que
+        # l'ensemencement — une autre base situerait les positions dans le mauvais espace de rangs.
+        #
+        # ⚠️ Le paramètre `classement` a disparu de `tranche` : l'appelant payait une reconstruction
+        # complète du classement du départ pour alimenter un paramètre mort, une fois par phase.
         rang_premier = tranche(
             phase,
             self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
@@ -576,13 +468,11 @@ class ServicePalmares:
 def _est_terminale(phase: Phase, phases: list[Phase]) -> bool:
     """Aucune autre phase du créneau ne **prélève** dans celle-ci (E05US026).
 
-    C'est le critère qui décide si une phase décerne des médailles ou se contente de classer. Il est
-    **structurel** — lu sur le graphe des sources — et non « par type de phase » : la même phase de
-    poules titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne.
-
-    ⚠️ **Se lit sur `ordre`, pas sur l'identité**, parce que c'est ainsi qu'une source désigne sa
-    phase (`SourcePhase.ordre_source`). C'est l'ancrage par ordre de `DETTE-026` ; le suivre ici est
-    juste, s'en écarter créerait une seconde convention.
+    Le critère qui décide si une phase décerne des médailles ou se contente de classer. Il est
+    **structurel** — lu sur le graphe des sources — et non « par type » : la même phase de poules
+    titre dans un format qui s'arrête là, et ne titre pas dans un format qui enchaîne. ⚠️ Se lit
+    sur `ordre`, pas sur l'identité, parce que c'est ainsi qu'une source désigne sa phase
+    (`DETTE-026`).
     """
     return not any(
         source.ordre_source == phase.ordre

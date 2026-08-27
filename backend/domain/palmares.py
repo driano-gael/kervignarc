@@ -40,11 +40,8 @@ class PositionPhase:
 
     `rang_min == rang_max` quand un match terminal a décerné le rang ; sinon la fourchette *ex
     æquo* de la plage du match perdu (ADR-0065). Les rangs sont ceux **de la phase**, pas du
-    tournoi : c'est la fusion qui les renumérote.
-
-    `en_lice` dit si la fourchette peut encore se refermer **au tir** (`Tableau.PositionAcquise`).
-    Le palmarès ne départage **que** ce qui est joué : deux finalistes partagent « 1ᵉʳ-2ᵉ » jusqu'à
-    ce que la finale tranche, et aucune politique n'a le droit de décider à leur place.
+    tournoi : c'est la fusion qui les renumérote. `en_lice` dit si la fourchette peut encore se
+    refermer **au tir** — le palmarès ne départage **que** ce qui est joué.
     """
 
     archer_id: ArcherId
@@ -68,48 +65,33 @@ class ResultatPhase:
     origine: OriginePalmares = OriginePalmares.DUELS
     """Ce qui a décidé ces positions — **un tir de duel, ou un classement** (E05US025).
 
-    Jusqu'ici la question ne se posait pas : seules les phases à tableau produisaient un
-    `ResultatPhase`, donc `_situer` étiquetait `DUELS` en dur. Un déroulé peut désormais enchaîner
-    **plusieurs qualifications** (ADR-0082), et la seconde décerne bien des rangs — sans qu'aucun
-    duel ait eu lieu.
-
-    ⚠️ **Ce champ garde les médailles.** `LignePalmares.decerne` — la seule forme qui vaut un podium
-    — se déduisait de « position acquise fermée » (`rang_min == rang_max`). Or le rang d'une
-    qualification est *toujours* fermé : sans distinction d'origine, un tournoi de deux
-    qualifications d'affilée remettrait or, argent et bronze **avant le moindre duel**. C'est
-    exactement le défaut que la docstring de `decerne` dit avoir corrigé en revue d'E06US004, sous
-    une autre forme.
-
-    Vaut `DUELS` par défaut : les producteurs existants (phases à tableau) ne passent rien et
-    doivent continuer de décerner. Un défaut inverse aurait retiré le podium à tous les tournois
-    d'aujourd'hui — une régression bien plus grave que le trou comblé."""
+    ⚠️ **Ce champ garde les médailles.** `LignePalmares.decerne` se déduisait de « position acquise
+    fermée », or le rang d'une qualification est *toujours* fermé : sans distinction d'origine, un
+    tournoi de deux qualifications d'affilée remettrait or, argent et bronze **avant le moindre
+    duel**. Vaut `DUELS` par défaut — les producteurs existants ne passent rien et doivent
+    continuer de décerner ; l'inverse aurait retiré le podium à tous les tournois d'aujourd'hui.
+    """
 
     rang_premier: int = 1
     """Le **premier rang du tournoi** que cette phase dispute (E05US020, ADR-0068 §5).
 
     Une phase qui prélève « les rangs 5 et suivants » ne joue pas pour la victoire : son vainqueur
-    est 5ᵉ, pas 1ᵉʳ. Les positions arrivent dans l'espace de rangs **du tableau** (1..effectif) ;
-    ce décalage les ramène dans celui **du tournoi**.
-
-    ⚠️ C'est ce qui résorbe `DETTE-034`. Sans lui, l'ordre entre phases se lisait sur `ordre` — « la
-    plus tardive l'emporte » — et couronnait le vainqueur d'une **consolante** devant le finaliste
-    du tableau principal. Défaut inatteignable tant qu'aucun moteur ne consommait les prélèvements,
-    rendu atteignable par E05US020 et mesuré en revue adversariale.
-
-    Vaut **1** par défaut : une phase qui ne prélève rien dispute le tournoi entier."""
+    est 5ᵉ. Les positions arrivent dans l'espace de rangs **du tableau** ; ce décalage les ramène
+    dans celui **du tournoi**. ⚠️ C'est ce qui résorbe `DETTE-034` : sans lui, l'ordre entre phases
+    se lisait sur `ordre` et couronnait le vainqueur d'une **consolante** devant le finaliste du
+    tableau principal. Vaut **1** par défaut.
+    """
 
 
 @dataclass(frozen=True)
 class LignePalmares:
     """Une ligne du palmarès : le rang final d'un archer, scratch et dans sa catégorie.
 
-    Les rangs sont des **fourchettes** (`min`/`max`), qui se referment (`min == max`) dès qu'un
-    rang exact est acquis. Deux champs plutôt qu'un « rang + ex æquo booléen » : la borne haute
-    porte l'information (« 5ᵉ-8ᵉ » dit *combien* d'archers partagent), et un booléen obligerait
-    chaque surface à recompter le groupe pour l'afficher.
-
-    `None` partout : l'archer est **hors classement** (disqualifié, ADR-0050) — et non « rang
-    inconnu ».
+    Les rangs sont des **fourchettes** (`min`/`max`), qui se referment dès qu'un rang exact est
+    acquis. Deux champs plutôt qu'un « rang + ex æquo booléen » : la borne haute porte
+    l'information (« 5ᵉ-8ᵉ » dit *combien* partagent), et un booléen obligerait chaque surface à
+    recompter le groupe. `None` partout : l'archer est **hors classement** (disqualifié), pas «
+    rang inconnu ».
     """
 
     rang_min: int | None
@@ -119,16 +101,11 @@ class LignePalmares:
     decerne: bool
     """Un **match** a décerné ce rang — la seule forme qui vaut une médaille.
 
-    ⚠️ **Ne se déduit PAS de `rang_min == rang_max`**, et c'est tout l'objet de ce champ. La
-    renumérotation rend un rang « exact » dès qu'un archer est **seul dans son paquet**, ce qui
-    arrive à un finaliste dont la finale n'est pas tirée : sa position acquise vaut `[1..2]`, mais
-    aucun autre archer ne la partage, donc le curseur lui donnait « 1ᵉʳ ». L'écran et le PDF lui
-    remettaient l'**or avant le tir** (défaut trouvé en revue, axe adversarial — le drapeau
-    `en_lice` protégeait le *groupement*, pas la *numérotation*).
-
-    Faux, donc, pour : un rang de qualification (aucun duel ne l'a décerné), une position encore
-    ouverte (`en_lice`), et un ex æquo tranché par la politique `aggregation` — celle-ci **décide**
-    un ordre, elle ne le fait pas **gagner**.
+    ⚠️ **Ne se déduit PAS de `rang_min == rang_max`** : la renumérotation rend un rang « exact »
+    dès qu'un archer est **seul dans son paquet**, ce qui arrive au finaliste dont la finale n'est
+    pas tirée — l'écran lui remettait l'**or avant le tir**. Faux pour un rang de qualification,
+    une position encore ouverte, et un ex æquo tranché par `aggregation` : celle-ci **décide** un
+    ordre, elle ne le fait pas **gagner**.
     """
 
     en_lice: bool
@@ -157,38 +134,11 @@ class Palmares:
     def podium(self, categorie_id: CategorieId) -> tuple[LignePalmares, ...]:
         """Les quatre premiers **d'une catégorie** (CA « podium »).
 
-        Trois conditions, et chacune ferme un trou trouvé en revue :
-
-        1. **le rang vient des duels et n'est plus ouvert** (`origine is DUELS`, `not en_lice`).
-           Sans la première moitié, le podium se remplissait sur les seuls scores du matin : un
-           rang de qualification étant exact par construction, l'écran décernait « Or / Argent /
-           Bronze » **avant le moindre duel**. Sans la seconde, le vainqueur d'une demi-finale
-           recevait l'or **avant la finale** — sa position `[1..2]`, seule de son paquet, sortait
-           « 1ᵉʳ » de la renumérotation ;
-        2. **rang de catégorie exact** — on ne remet pas une médaille à quatre archers *ex æquo* ;
-        3. **≤ 4** — finale (1-2) et petite finale (3-4).
-
-        ⚠️ **Un rang définitif suffit ; il n'a pas à être décerné par un match** (arbitrage du
-        commanditaire, 03/08/2026). La condition « décerné » avait été essayée et **amputait le
-        livrable** : le moteur ne monte qu'un **seul tableau scratch** (`# DETTE-028`), donc quatre
-        archers du tournoi entier seulement ont un rang décerné par un match terminal — toutes les
-        autres catégories perdaient leur podium, **tournoi terminé**, et le PDF affiché au mur
-        omettait leurs blocs. Le CA (« rangs 1-4 issus de la finale/petite finale ») présuppose un
-        tableau **par catégorie**, que le moteur ne réalise pas encore.
-
-        La provenance n'est pas perdue pour autant : `LignePalmares.decerne` la porte, et l'écran
-        comme le PDF **disent** quand une place a été rangée au classement plutôt que gagnée au
-        tir. C'est ce qui garde la distinction demandée entre *classement* et *podium* sans faire
-        disparaître les médailles.
-
-        Le podium se lit **par catégorie**, jamais scratch : c'est là que se remettent les
-        médailles, et la restriction du podium scratch serait vide pour toute catégorie n'ayant
-        personne dans les quatre premiers. Le paramètre est **obligatoire** depuis la revue — une
-        branche scratch que seuls ses tests tenaient aurait dérivé en silence.
-
-        Un podium peut donc être **partiel** (rangs 3-4 publiés seuls : la petite finale se tire
-        couramment avant la finale) ou **vide** — c'est la lecture au fil de l'eau de tout le
-        projet, et l'écran le **dit** plutôt que de laisser un blanc.
+        Trois conditions : le rang vient des **duels** et n'est plus ouvert ; le rang de catégorie
+        est **exact** ; il est **≤ 4**. ⚠️ Un rang définitif suffit, il n'a pas à être **décerné
+        par un match** (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch
+        (`# DETTE-028`), donc exiger `decerne` privait de podium toutes les catégories. La
+        provenance n'est pas perdue — `decerne` la porte, et l'écran le **dit**.
         """
         return tuple(
             ligne
@@ -243,32 +193,11 @@ def calculer_palmares(
 ) -> Palmares:
     """Fusionne les rangs des phases en un palmarès (CA « podium » + CA « agrégation »).
 
-    - `qualification` : le classement de qualification (E06US001). Il fournit **l'identité** de
-      chaque archer, son statut (ADR-0050) et le rang de repli de qui n'a pas disputé de duel ;
-    - `resultats` : ce que chaque phase classante a décidé, dans un ordre quelconque ;
-    - `aggregation` : la politique de **départage des sortis au même tour** par défaut du tournoi.
-      `None` retombe sur `AggregationParQualification` (usage World Archery).
-
-    La règle de fusion tient en trois temps :
-
-    1. **le bloc** — chaque archer est situé par la phase la plus **tardive** qui l'a classé (son
-       `ordre`), la qualification faisant bloc 0. Un rang acquis plus tard **remplace** le
-       précédent : celui qui gagne son tableau n'est plus 6ᵉ de qualif, il est 1ᵉʳ.
-       ⚠️ **L'ordre entre archers se lit sur le rang absolu**, pas sur l'ordre de
-       phase : une phase qui prélève « les rangs 5 et suivants » dispute les places 5+, et
-       son vainqueur est 5ᵉ. `ResultatPhase.rang_premier` porte ce décalage (E05US020,
-       ADR-0068 §5, qui résorbe DETTE-034) ;
-    2. **l'ordre** — blocs décroissants, puis position acquise croissante. Un battu du 1ᵉʳ tour du
-       tableau passe donc devant tout non-qualifié, quel qu'ait été son rang de qualification :
-       il a franchi une porte que l'autre n'a pas franchie ;
-    3. **la renumérotation** — les rangs repartent de 1 et se suivent **sans trou**, chaque paquet
-       d'ex æquo occupant autant de rangs qu'il compte d'archers. Le palmarès est un classement du
-       tournoi, pas la juxtaposition des numérotations de ses phases. ⚠️ **Une exception** :
-       un paquet encore **en lice** rend sa fourchette acquise (`_numeroter`), si bien que deux
-       lignes peuvent se **chevaucher** tant que le tir n'a pas tranché — c'est ce qu'un
-       tournoi en cours a de vrai à dire.
-
-    Les **disqualifiés** (ADR-0050) restent hors classement (`rang_* is None`), listés en fin.
+    Trois temps : le **bloc** — chaque archer est situé par la phase la plus tardive qui l'a classé
+    ; l'**ordre** — blocs décroissants puis position acquise croissante, si bien qu'un battu du 1ᵉʳ
+    tour passe devant tout non-qualifié ; la **renumérotation** — 1→N sans trou. ⚠️ L'ordre entre
+    archers se lit sur le **rang absolu** (`rang_premier`, qui résorbe DETTE-034), et un paquet
+    **en lice** rend sa fourchette acquise — deux lignes peuvent donc se chevaucher.
     """
     defaut = aggregation if aggregation is not None else AggregationParQualification()
     rang_qualification = {ligne.archer_id: ligne.rang_scratch for ligne in qualification.lignes}
@@ -397,15 +326,14 @@ def _paquets(
 
     Deux archers forment un groupe quand ils sortent du **même bloc** sur la **même position** —
     c'est-à-dire quand aucun match ne les a séparés. La politique décide alors s'il faut éclater le
-    groupe (par la qualification) ou le laisser tel quel… **sauf** si le groupe est encore en lice :
-    ce que le tir doit trancher ne se départage pas d'avance.
+    groupe, **sauf** s'il est encore en lice : ce que le tir doit trancher ne se départage pas
+    d'avance.
     """
+
     # ⚠️ **Le tri se fait sur le rang absolu, pas sur l'ordre de phase** (E05US020, ADR-0068 §5).
-    # Trier d'abord sur `-bloc` — « la phase la plus tardive l'emporte » — plaçait le vainqueur
-    # d'une consolante devant le finaliste du tableau principal. Les tranches d'un déroulé valide ne
-    # se recoupent pas (`verifier_sequence`), donc les rangs absolus suffisent à ordonner ; `bloc`
-    # ne sert plus que de départage, pour qu'à rang égal une position **jouée** précède un rang de
-    # qualification.
+    # Trier d'abord sur `-bloc` plaçait le vainqueur d'une consolante devant le finaliste du tableau
+    # principal. Les tranches d'un déroulé valide ne se recoupent pas, donc les rangs absolus
+    # suffisent ; `bloc` ne sert plus que de départage à rang égal.
     ordonnees = sorted(
         classables,
         key=lambda entree: (entree.rang_min or 0, entree.rang_max or 0, -entree.bloc),
@@ -459,32 +387,17 @@ def _numeroter(
 ) -> dict[ArcherId, tuple[int, int]]:
     """Numérote les paquets **1→N sans trou**, chacun occupant autant de rangs qu'il a de membres.
 
-    `retenir` restreint la numérotation à un sous-ensemble (une catégorie) : l'**ordre** reste
-    celui du palmarès, seule la numérotation repart de 1. C'est le même parti qu'E06US001 sur le
-    rang de catégorie — même ordre, deux numérotations.
-
-    ⚠️ **Un paquet encore en lice rend sa fourchette acquise, pas celle du curseur.** C'est le
-    correctif du défaut le plus grave de cette US (revue, axe adversarial) : la numérotation par
-    curseur donne un rang **exact** à qui est seul dans son paquet, ce qui arrive au vainqueur
-    d'une demi-finale quand l'autre demie n'est pas encore validée — il sortait « 1ᵉʳ », médaille
-    comprise, la finale non tirée. Sa position acquise dit `[1..2]` : c'est **elle** la vérité,
-    et la rendre telle quelle est la seule façon de ne rien resserrer que le tir n'a pas resserré.
-    La fourchette acquise vaut directement comme rang du tournoi parce qu'une phase dispute les
-    rangs du haut de celui-ci — l'hypothèse qu'un repêchage romprait (`# DETTE-034`).
-
-    ⚠️ Un paquet d'ex æquo filtré peut se réduire à un seul membre : deux archers 5ᵉ-8ᵉ scratch de
-    catégories différentes sont chacun **seul** de sa catégorie à ce niveau, donc chacun reçoit un
-    rang de catégorie **exact**. Ce n'est pas une contradiction : rien ne les départage entre eux,
-    mais ils ne concourent pas l'un contre l'autre pour la médaille. Le podium ne s'y trompe pas —
-    il exige `decerne`, pas l'exactitude d'affichage.
+    `retenir` restreint la numérotation à un sous-ensemble : l'**ordre** reste celui du palmarès,
+    seule la numérotation repart de 1. ⚠️ **Un paquet encore en lice rend sa fourchette acquise,
+    pas celle du curseur** : la numérotation par curseur donnait « 1ᵉʳ » — médaille comprise — au
+    vainqueur d'une demi-finale dont l'autre demie n'était pas validée. ⚠️ Un paquet filtré peut se
+    réduire à un membre : deux 5ᵉ-8ᵉ de catégories différentes sont chacun seul de la sienne.
     """
-    # DETTE-029 (../../docs/dette.md) — 4ᵉ site de l'arithmétique « un paquet d'ex æquo
-    # occupe autant de rangs qu'il compte de membres, le suivant reprend après le saut »
-    # (avec `classement._ranger`, `poule.classement_de_poule`, `suisse.classement_suisse`).
-    # Nuance : la **détection** de l'égalité n'est pas dupliquée ici — `_grouper` et la
-    # politique la portent —, seule la numérotation l'est, et sous une autre forme
-    # (`(min, max)` plutôt que rang + drapeau). Le remède déjà proposé au registre
-    # (`attribuer_rangs`) accommoderait ce site.
+
+    # DETTE-029 — 4ᵉ site de l'arithmétique « un paquet d'ex æquo occupe autant de rangs qu'il
+    # compte de membres » (avec `classement._ranger`, `poule`, `suisse`). Nuance : la **détection**
+    # de l'égalité n'est pas dupliquée ici, seule la numérotation l'est, et sous une autre forme
+    # (`(min, max)` plutôt que rang + drapeau).
     rangs: dict[ArcherId, tuple[int, int]] = {}
     curseur = 1
     for paquet in paquets:

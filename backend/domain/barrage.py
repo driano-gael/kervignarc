@@ -33,14 +33,10 @@ class ConfigurationBarrage:
     """Le format d'un barrage — individuel (1 flèche) ou par équipe (3).
 
     Le nombre de flèches **n'est pas un réglage libre** : le règlement le fixe, et un barrage à 2
-    flèches ne serait pas un barrage mal réglé mais une autre épreuve. On le vérifie donc au lieu
-    de l'accepter, contrairement au barème de poule ou au BSO où le club choisit.
-
-    ⚠️ **Ce value object n'a toujours aucun consommateur, et E06US003 ne l'a pas branché** : la
-    surface de saisie est arrivée, mais elle fixe **une flèche par archer et par manche** dans le
-    schéma (`uq_barrage_tir`). Le barrage **par équipe** (volée de 3 flèches) reste donc
-    inexprimable sans migration — décision de modélisation assumée, l'épreuve par équipes n'ayant
-    pas encore de moteur ([DETTE-028](../../docs/dette.md), ADR-0028).
+    flèches serait une autre épreuve. On le vérifie donc au lieu de l'accepter. ⚠️ Ce value object
+    n'a **toujours aucun consommateur** : la surface de saisie fixe une flèche par archer et par
+    manche dans le schéma (`uq_barrage_tir`), donc le barrage **par équipe** reste inexprimable
+    sans migration (DETTE-028, ADR-0028).
     """
 
     fleches: int = FLECHES_INDIVIDUEL
@@ -70,15 +66,11 @@ class ConfigurationBarrage:
 class TirBarrage:
     """Ce qu'un participant a réalisé au barrage.
 
-    `score` à `None` signifie **absent au barrage annoncé** — pas « pas encore saisi ». La nuance
-    est décisive : l'absence est une issue réglementaire (B.6.5.2.4, l'archer est déclaré perdant),
-    tandis qu'une saisie en attente ne doit surtout pas faire perdre qui que ce soit. Le service
-    n'appelle donc ce moteur qu'une fois les tirs **clos**.
-
-    `distance_au_centre` est en dixièmes de millimètre, mesurée du centre à l'impact ; `None` quand
-    la mesure n'a pas été faite. Elle ne sert **que** si les scores restent égaux — c'est le
-    « répète au plus près du centre » du règlement, second critère **séquentiel**, pas fusionné avec
-    le premier.
+    `score` à `None` signifie **absent au barrage annoncé** — pas « pas encore saisi ». L'absence
+    est une issue réglementaire (B.6.5.2.4, l'archer est déclaré perdant), une saisie en attente ne
+    doit surtout pas faire perdre : le service n'appelle ce moteur qu'une fois les tirs **clos**.
+    `distance_au_centre` (dixièmes de mm, `None` si non mesurée) ne sert **que** si les scores
+    restent égaux — second critère **séquentiel**, jamais fusionné avec le premier.
     """
 
     participant: Participant
@@ -106,16 +98,11 @@ class TirBarrage:
 class ResultatBarrage:
     """L'issue d'un barrage : l'ordre obtenu, ou les ex æquo qu'il faut faire retirer.
 
-    Les deux champs sont **exclusifs** : soit le barrage a départagé tout le monde (`ordre` plein,
-    `groupes_a_rejouer` vide), soit il ne l'a pas fait (`ordre` vide, les groupes nommant ceux qui
-    restent à égalité). On ne rend **pas** un ordre partiel : un classement à moitié vrai est plus
-    dangereux qu'un refus, parce qu'il s'affiche sans avertir.
-
-    ⚠️ **Les ex æquo sont rendus par GROUPES, et c'est ce qui rend le résultat exploitable.** Un
-    barrage à quatre tireurs dont deux à 10 et deux à 8 laisse **deux** égalités distinctes, pas
-    une seule. Les aplatir en une liste ferait retirer les quatre ensemble — et un tireur à 8
-    pourrait alors passer devant un tireur à 10 que le premier tir avait déjà départagé. Chaque
-    groupe se rejoue **séparément** ; c'est le sens de « on répète » au règlement.
+    Les deux champs sont **exclusifs** : on ne rend **pas** un ordre partiel — un classement à
+    moitié vrai est plus dangereux qu'un refus, parce qu'il s'affiche sans avertir. ⚠️ Les ex æquo
+    sont rendus par **groupes** : un barrage à quatre dont deux à 10 et deux à 8 laisse **deux**
+    égalités distinctes, et les aplatir ferait retirer les quatre ensemble — un tireur à 8 pourrait
+    alors passer devant un tireur à 10 déjà départagé.
     """
 
     ordre: tuple[Participant, ...] = ()
@@ -148,33 +135,13 @@ class ResultatBarrage:
 
 
 def resoudre_barrage(tirs: Sequence[TirBarrage]) -> ResultatBarrage:
-    """Départage les participants d'un barrage (art. B.6.5.2).
+    """Départage les participants d'un barrage (art. B.6.5.2), **séquentiellement**.
 
-    Ordre d'application, **séquentiel** :
-
-    1. les **absents** (`score is None`) sont relégués derrière tous les présents, quelle que soit
-       la suite — c'est B.6.5.2.4, et cela s'applique avant toute comparaison de score ;
-    2. le **plus haut score** l'emporte ;
-    3. à score égal, la **distance au centre** (la plus petite gagne) ;
-    4. si l'égalité subsiste — distances égales, **ou l'une d'elles non mesurée** —, le barrage
-       **n'est pas résolu** : le groupe part dans `groupes_a_rejouer`, et le règlement dit de
-       répéter.
-
-    ⚠️ **Une distance non mesurée n'est PAS une distance nulle.** C'est le point 4, et c'est le
-    défaut qu'un premier jet de cette US a laissé passer : `None` était replié sur `0`, c'est-à-dire
-    sur le **centre parfait**, donc le tir non mesuré gagnait contre un tir mesuré. Le cas est le
-    plus probable du jour J — le juge mesure la flèche litigieuse, rarement les deux —, et le
-    verdict rendu était faux **et silencieux**. Une mesure absente est une **inconnue** : on ne
-    départage pas sur une inconnue, on fait retirer.
-
-    ⚠️ **Le nombre de 10/9 n'intervient jamais** (B.6.5.2). C'est le seul endroit du produit où ce
-    critère est écarté, et l'y réintroduire « pour éviter un retir » serait une faute réglementaire
-    invisible : le classement produit aurait l'air correct.
-
-    ⚠️ **Plusieurs absents restent ex æquo entre eux.** Deux absents sont tous deux « déclarés
-    perdants » — le règlement ne les ordonne pas l'un par rapport à l'autre, et rien ne permet de le
-    faire : ils n'ont pas tiré. Ils forment donc un groupe à rejouer plutôt qu'un ordre inventé,
-    quitte à ce que ce soit au service d'en tirer les conséquences (généralement : rang partagé).
+    Les **absents** (`score is None`) sont relégués derrière tous les présents (B.6.5.2.4) ; puis
+    le plus haut score ; puis la **distance au centre**. Si l'égalité subsiste, le groupe part dans
+    `groupes_a_rejouer`. ⚠️ **Une distance non mesurée n'est PAS une distance nulle** : la replier
+    sur `0` faisait gagner le tir non mesuré, le cas le plus probable du jour J. ⚠️ Le nombre de
+    10/9 n'intervient **jamais** ici, et plusieurs absents restent ex æquo entre eux.
     """
     return _issue(partitionner_barrage(tirs))
 
@@ -182,17 +149,11 @@ def resoudre_barrage(tirs: Sequence[TirBarrage]) -> ResultatBarrage:
 def partitionner_barrage(tirs: Sequence[TirBarrage]) -> tuple[tuple[Participant, ...], ...]:
     """La même règle que `resoudre_barrage`, rendue **structurée** : la partition **ordonnée**.
 
-    Chaque groupe rassemble des participants que ce tir n'a pas départagés ; les groupes sont rendus
-    du mieux placé au moins bien, un **singleton** valant « départagé ». `((A, C), (B, D))` se lit
-    donc : A et C devant B et D, mais indépartageables entre eux.
-
-    ⚠️ **C'est l'information que `resoudre_barrage` doit jeter, et pourquoi ce découpage existe.**
-    Son contrat interdit l'ordre partiel (« un classement à moitié vrai est plus dangereux qu'un
-    refus »), donc il rend `groupes_a_rejouer` **sans** l'ordre relatif des groupes. Ce choix reste
-    juste pour un appelant qui publie un résultat — mais la **répétition en manches**, elle, a
-    besoin de savoir que le groupe à 10 précède le groupe à 8, sans quoi le retir pourrait faire
-    passer un tireur à 8 devant un tireur à 10 déjà départagé. On expose donc la partition à côté,
-    plutôt que d'affaiblir le contrat de `resoudre_barrage` pour un seul appelant.
+    Chaque groupe rassemble des participants que ce tir n'a pas départagés, du mieux placé au moins
+    bien, un **singleton** valant « départagé ». ⚠️ C'est l'information que `resoudre_barrage` doit
+    jeter : son contrat interdit l'ordre partiel, mais la **répétition en manches** a besoin de
+    savoir que le groupe à 10 précède celui à 8, sans quoi le retir pourrait faire passer un tireur
+    à 8 devant un tireur à 10 déjà départagé.
     """
     if len(tirs) < 2:
         raise ConfigurationBarrageInvalide(
@@ -225,21 +186,11 @@ def _issue(partition: Sequence[tuple[Participant, ...]]) -> ResultatBarrage:
 def resoudre_barrage_en_manches(manches: Sequence[Sequence[TirBarrage]]) -> ResultatBarrage:
     """Applique les manches successives d'un barrage — le « on répète » du règlement (§8.2).
 
-    `manches[0]` est le barrage annoncé, chaque manche suivante le **retir** des ex æquo qu'il n'a
-    pas départagés. Le verdict se **recalcule** intégralement depuis les tirs : rien n'est stocké
-    d'un ordre saisi à la main, donc corriger une flèche mal saisie corrige le classement (CA
-    « verdict rejouable »).
-
-    Trois règles de saisie, refusées plutôt qu'absorbées en silence :
-
-    1. **un tireur déjà départagé ne retire pas** — le laisser passer réordonnerait des places que
-       la manche précédente avait tranchées, et c'est exactement l'accident que la partition
-       ordonnée existe pour empêcher ;
-    2. **un groupe se retire en entier ou pas du tout** — deux ex æquo dont un seul a tiré ne se
-       départagent sur rien ; l'accepter ferait gagner celui qui a tiré, faute d'adversaire ;
-    3. un groupe **absent** de la manche n'est pas résolu pour autant : il reste à égalité. C'est le
-       cas normal du jour J, où le juge fait retirer une égalité puis l'autre, pas les deux
-       ensemble.
+    Le verdict se **recalcule** intégralement depuis les tirs : corriger une flèche mal saisie
+    corrige le classement. Trois règles de saisie, refusées plutôt qu'absorbées : un tireur déjà
+    départagé **ne retire pas** ; un groupe se retire **en entier ou pas du tout** (deux ex æquo
+    dont un seul a tiré ne se départagent sur rien) ; un groupe **absent** de la manche reste à
+    égalité — le cas normal du jour J, où le juge fait retirer une égalité puis l'autre.
     """
     if not manches:
         raise ConfigurationBarrageInvalide(
@@ -347,14 +298,10 @@ def egalites_a_departager(
 ) -> tuple[EgaliteADepartager, ...]:
     """Les égalités de `rangs` que `tiebreak` veut voir départagées au tir (E06US003).
 
-    `rangs` associe à chaque participant son rang, **ex æquo déjà partagés** — c'est-à-dire la
-    sortie d'un classement, quel qu'il soit : qualification (§8.1), poule (§10.1) ou tout autre.
-    C'est ce qui permet aux trois consommateurs du CA de partager ce déclenchement sans qu'aucun ne
-    connaisse la structure des autres.
-
-    Un rang **non partagé** n'est jamais une égalité, et un groupe que la politique ne réclame pas
-    reste **ex æquo** — le défaut d'E06US001, que le seuil ne fait qu'ouvrir là où on le règle.
-    Rendu trié par rang : la sortie est une surface d'affichage, elle doit être déterministe.
+    `rangs` est la sortie d'un classement quel qu'il soit — qualification (§8.1), poule (§10.1) ou
+    autre : c'est ce qui permet aux trois consommateurs du CA de partager ce déclenchement sans
+    qu'aucun ne connaisse la structure des autres. Un rang **non partagé** n'est jamais une
+    égalité, et un groupe que la politique ne réclame pas reste **ex æquo**. Rendu trié par rang.
     """
     par_rang: dict[int, list[Participant]] = {}
     for rang, participant in rangs:
@@ -414,30 +361,20 @@ class PorteeBarrage(str, Enum):
 class BarrageDePlaces:
     """Un barrage **annoncé** : qui il départage, ce qui a été tiré, et ce qu'il en résulte.
 
-    Agrégat de persistance du barrage de places (E06US003). `participants` est figé à l'annonce —
-    et non recalculé depuis le classement à chaque lecture : les scores continuent d'évoluer (une
-    volée validée en retard, un forfait), et un barrage dont la liste de tireurs change sous les
-    pieds du juge ne serait pas un barrage. `manches` porte les tirs, manche par manche ; le verdict
-    s'en **recalcule** intégralement : corriger une flèche mal saisie corrige le classement.
-
-    `rang_dispute` est le rang partagé que ce barrage vient éclater. Il est `None` pour un Big Shoot
-    Off, dont l'égalité au plus faible n'a pas de rang à disputer — elle désigne un **sortant**.
-
-    ⚠️ **Un tir absent de `manches` n'est pas un tireur absent.** L'absence réglementaire
-    (B.6.5.2.4, l'archer est déclaré perdant) se saisit comme un `TirBarrage` de `score` à `None` ;
-    « pas encore saisi », c'est l'absence de la **ligne** elle-même. Confondre les deux ferait
-    perdre quelqu'un qui n'a pas encore tiré, ce dont `TirBarrage` avertit déjà.
+    `participants` est **figé à l'annonce** — les scores continuent d'évoluer, et un barrage dont
+    la liste de tireurs change sous les pieds du juge n'en serait pas un. Le verdict, lui, se
+    **recalcule** depuis les tirs. `rang_dispute` est `None` pour un Big Shoot Off, dont l'égalité
+    désigne un **sortant**. ⚠️ Un tir absent de `manches` n'est **pas** un tireur absent : celle-ci
+    se saisit comme un `TirBarrage` de `score` à `None`.
     """
 
     depart_id: DepartId
     """Le créneau où ce barrage se tire (E01US025, ADR-0075).
 
-    C'était `tournoi_id` jusqu'au 06/08/2026. Un barrage départage une place **dans un
-    classement**, or un classement appartient désormais à un départ : garder la portée tournoi
-    aurait fait départager des archers de créneaux différents, qui ne se sont jamais rencontrés.
-    Le tournoi reste atteignable par `depart → tournoi`, et **n'est pas dupliqué ici** — deux
-    portées coexistantes obligeraient chaque lecture à choisir laquelle honorer (ADR-0075,
-    « ce qui a été écarté »).
+    C'était `tournoi_id` jusqu'au 06/08/2026 : un barrage départage une place **dans un
+    classement**, or un classement appartient à un départ — garder la portée tournoi aurait fait
+    départager des archers de créneaux différents, qui ne se sont jamais rencontrés. Le tournoi
+    reste atteignable par `depart → tournoi` et **n'est pas dupliqué ici**.
     """
 
     portee: PorteeBarrage
@@ -464,18 +401,11 @@ class BarrageDePlaces:
     def resultat(self) -> ResultatBarrage:
         """L'issue du barrage au vu des manches saisies — recalculée, jamais mémorisée.
 
-        Tant qu'aucune manche n'est saisie, tout le monde est à égalité : le barrage est « à
-        tirer », ce qui est un `groupes_a_rejouer` d'un seul groupe et non un ordre vide ambigu.
-
-        ⚠️ **La manche 1 doit faire tirer TOUS les participants annoncés.** C'est le pendant, pour
-        la première manche, de la règle « un groupe se retire en entier ou pas du tout » que
-        `_rejouer` applique aux suivantes — et l'oubli qui rendait le reste inopérant : la manche 1
-        ne passe pas par `_rejouer`, elle va droit à `partitionner_barrage`, qui ne connaît **que
-        les tirs qu'on lui donne** et ne peut donc pas remarquer qu'il en manque. Un barrage annoncé
-        à trois dont on ne saisissait que deux tirs rendait `est_resolu = True` en **oubliant** le
-        troisième, lequel gardait ensuite `position_barrage = 0` au classement et passait devant
-        ceux qui avaient tiré. L'invariant vit ici, dans le domaine, parce que `self.participants`
-        n'est connu que de l'agrégat — le moteur, lui, ne voit jamais que des tirs.
+        Tant qu'aucune manche n'est saisie, tout le monde est à égalité : le barrage est « à tirer
+        ». ⚠️ **La manche 1 doit faire tirer TOUS les participants annoncés** — pendant, pour la
+        première manche, de « un groupe se retire en entier ou pas du tout ». Elle ne passe pas par
+        `_rejouer` mais droit à `partitionner_barrage`, qui ne connaît que les tirs qu'on lui donne
+        : un barrage annoncé à trois dont on ne saisissait que deux tirs se déclarait résolu.
         """
         if not self.manches:
             return ResultatBarrage(groupes_a_rejouer=(self.participants,))
