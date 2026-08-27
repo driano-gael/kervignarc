@@ -225,6 +225,23 @@ réglage mort est plus coûteux qu'un réglage absent.
 > | 2ᵉ | le ratio ferme le **facteur**, pas le **chrome fixe** ni l'écart de hauteur de ligne (`padding` en px contre em) : à 720p, le défaut débordait encore | recalcul, par **trois axes** |
 > | 3ᵉ | le chrome retenu (144 px) omettait le sous-titre, le `gap` et **l'en-tête de page lui-même** : ~273 px réels, donc ~9 lignes utiles et non 13 | recalcul, encore |
 >
+> **Le décompte retenu**, conservé ici parce que c'est le seul endroit où il servira le jour où
+> quelqu'un mesurera enfin l'écran — 1280×720, scène ~617 px, ligne de tableau ~36 px :
+>
+> | élément de chrome | ~px à 720p |
+> |---|---|
+> | `h3.carte__soustitre` « Classement en direct » | 46 |
+> | `thead` visible de la tête figée | 30 |
+> | 3 lignes de tête figée | 108 |
+> | `gap` de `.classement__pages` | 10 |
+> | `EnteteDePage` (compteur à `2.4em`) | 38 |
+> | `.classement__departage`, les jours d'ex æquo | 41 |
+> | **total** | **~273** |
+>
+> Soit (617 − 273) / 36 ≈ **9 lignes utiles**. S'y ajoute le résidu de hauteur de ligne entre les
+> deux vues (`padding` en px contre em) : ~1,28 à 1080p, ~1,45 à 720p — il **croît** quand l'écran
+> rétrécit, ce qui est contre-intuitif et explique les deux sous-évaluations précédentes.
+>
 > **Trois passes, trois arithmétiques, aucune mesure.** Le plafond livré (`LIGNES_PROJETEES_MAX = 9`)
 > retient le décompte **le plus pessimiste** des trois — non parce qu'il serait le juste, mais parce
 > que la direction de l'erreur est asymétrique : trop bas coûte quelques pages de plus, trop haut

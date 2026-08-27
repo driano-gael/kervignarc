@@ -140,6 +140,22 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     fantôme ou non documentée est bloquante.
 12. **Simplicité assumée hors domaine.** <!--regle:simplicite-assumee-hors-domaine--> L'infra reste simple : mono-club, local. La rigueur va au
     moteur métier, pas à l'outillage.
+13. **Le code porte des pointeurs, pas le raisonnement.** <!--regle:commentaires-pointeurs--> Un commentaire est le seul artefact
+    que **rien ne vérifie** — ni le compilateur, ni `mypy`, ni `eslint`, ni un test : une phrase
+    fausse y survit indéfiniment et se lit comme une preuve. Il ne survit donc que s'il satisfait
+    **au moins un** de ces trois tests ([ADR-0099](docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md)) :
+    **(a) contrainte non déductible** du fichier (une valeur qui dérive d'un autre fichier, un
+    invariant tenu ailleurs) ; **(b) avertissement** — une modification d'apparence innocente
+    casserait quelque chose que le code ne peut pas dire seul ; **(c) renvoi** d'**une ligne** vers
+    l'ADR, la story ou l'entrée de dette qui porte le raisonnement.
+    Sortent : historique de revue (c'est `git`), citations de CA (c'est [`stories/`](stories/)),
+    justification d'existence (c'est [`docs/dette.md`](docs/dette.md)), raisonnement long (c'est
+    l'ADR), paraphrase du code (c'est un échec de nommage).
+    ⚠️ **On ne coupe que ce qui existe ailleurs** — sinon on **déplace d'abord**. Le risque est
+    asymétrique : un commentaire de trop coûte une lecture, un savoir perdu coûte une US.
+    ⚠️ La maxime « un code commenté se lit mal » vaut pour le *quoi* et le *comment*, **pas pour le
+    pourquoi** : aucun nommage ne dit qu'une constante dérive d'une règle CSS d'une autre feature.
+    Le corps de commit, lui, reste long — il est immuable, donc il ne diverge pas.
 
 ## Dette
 

@@ -1,0 +1,142 @@
+# ADR-0099 — Le code porte des **pointeurs**, pas le raisonnement
+
+- **Statut** : Accepté
+- **Date** : 2026-08-27
+- **US** : `E00US027`
+- **Décideurs** : Organisateur / Architecte
+
+> ⚠️ **Cet ADR ne figure pas à la liste nominative d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md#portée-de-la-règle--porté-dans-le-code-par--tranchée-le-08082026), et c'est volontaire.**
+> Il est de **convention documentaire** : aucun moteur sportif ne lit une convention de commentaire,
+> aucune portée ne change, aucune politique injectable n'est en jeu. Le critère de `CLAUDE.md` exclut
+> nommément ce cas ; les précédents sont `0086`, `0088`, `0089`, `0095`, `0096`, `0097`, `0098`. Il
+> porte en revanche sa section « Porté dans le code par », exigée de **tout ADR neuf** sans condition.
+
+## Contexte
+
+Le commentaire est, dans ce dépôt, le seul artefact que **rien ne vérifie** : ni le compilateur, ni
+`mypy`, ni `eslint`, ni un test. Une phrase fausse y survit indéfiniment, et elle est lue comme une
+preuve.
+
+Deux mesures, prises le 27/08/2026 :
+
+- sur les 106 450 lignes de code de production, ~14 500 sont du commentaire — **13 %**, ce qui est
+  sain en moyenne ;
+- mais la distribution est très inégale : **45 fichiers dépassent 40 %**, et quatre dépassent **60 %**
+  (`shared/ui/pagination.ts` à 68 %, `shared/duels/etatDeSaisie.ts` à 69 %).
+
+Ce n'est donc pas un excès général, c'est une **concentration**. Et en lisant ce que contiennent
+réellement ces fichiers, le volume ne vient pas de ce qu'on croit :
+
+| Ce qu'on y trouve | Ce que c'est | Où ça vit déjà |
+|---|---|---|
+| « relevé en 2ᵉ passe, axe C2 », « la 1ʳᵉ rédaction disait X » | de l'**historique de revue** | `git log`, corps de commit |
+| Le questionnaire P06 recopié mot pour mot sur huit lignes | un **CA** | [`stories/`](../../stories/) |
+| Le raisonnement complet d'un arbitrage, sur vingt lignes | une **décision** | l'ADR correspondant |
+| « pourquoi ce module a été créé en E01US024 » | de l'**archéologie** | `docs/dette.md`, `git log` |
+| « ce 3 vient de `columns: 3 22ch` dans `salle.css` » | une **contrainte invisible** | **nulle part ailleurs** |
+
+Seule la dernière ligne justifie sa place dans le code. Les quatre autres sont des **copies** — et
+une copie diverge. C'est le mécanisme qui a produit, en revue d'`E16US009`, une section d'ADR
+nommant un test inexistant, un renvoi de dette pointant la mauvaise entrée, et trois commentaires
+sur-promettants réécrits trois fois.
+
+**La maxime « un code qui a besoin de commentaires se lit mal » est vraie aux deux tiers**, et c'est
+la nuance qui décide de cet ADR. Elle vaut pour le **quoi** (un commentaire qui paraphrase est un
+échec de nommage) et pour le **comment** (un commentaire qui explique l'algorithme est un échec de
+découpage). Elle est **fausse pour le pourquoi** : aucun nommage, si bon soit-il, ne peut dire qu'une
+constante dérive d'une règle CSS écrite dans une autre feature. `NOMS_PAR_LIGNE_PROJETEE = 3` est
+parfaitement nommé et reste indéchiffrable sans cette phrase.
+
+Le pourquoi doit donc exister — la question est **où**.
+
+## Décision
+
+**Le code porte des pointeurs vers le raisonnement, il ne le recopie pas.** Un commentaire ne
+survit que s'il satisfait **au moins un** de ces trois tests :
+
+1. **Contrainte non déductible du fichier** — un couplage que rien n'exprime dans le langage : une
+   valeur qui dérive d'un autre fichier, un invariant tenu ailleurs, un ordre d'exécution imposé.
+2. **Avertissement** — une modification d'apparence innocente casserait quelque chose, et le code ne
+   peut pas le dire seul (le repli d'un ternaire qui rend un oubli compilable, un effet de bord au
+   démontage, une garde dont dépend une autre couche).
+3. **Renvoi** — une ligne qui nomme l'ADR, la story ou l'entrée de dette qui porte le raisonnement.
+   **Une ligne**, pas le raisonnement recopié.
+
+Tout le reste sort : historique de revue, citations de CA, justification d'existence, paraphrase du
+code, narration de processus.
+
+### La règle de sécurité, qui prime sur tout le reste
+
+⚠️ **On ne coupe que ce qui existe ailleurs.** Avant de retirer une phrase, on vérifie qu'elle est
+portée par un ADR, une story, le registre de dette ou un test. Si elle n'est nulle part, **on la
+déplace d'abord** — le nettoyage ne détruit aucune connaissance, il la range.
+
+C'est le seul vrai risque de cette décision, et il est asymétrique : un commentaire de trop coûte
+une lecture, un savoir perdu coûte une US.
+
+### Ce que la décision ne dit pas
+
+- **Ce n'est pas une chasse au commentaire.** Un fichier à 60 % peut être légitime si la règle
+  métier qu'il porte est subtile — `shared/phases/relance.ts` en est un candidat. Le pourcentage
+  **désigne où regarder**, il ne condamne pas.
+- **Les docstrings de test gardent leur statut à part.** Un test énonce son oracle : ce qu'il
+  prouve, et ce qu'il ne prouve pas. C'est une contrainte non déductible (test 1) — et la revue
+  d'`E16US009` a montré le coût inverse, une docstring qui promettait deux couvertures pour une.
+- **Le corps de commit reste long.** C'est le lieu du *pourquoi* daté, versionné, jamais recopié :
+  il ne diverge pas, puisqu'il est immuable.
+- **Une mention d'origine courte n'est pas de la narration.** « (correctif de revue, E16US004) »
+  accolé à un avertissement le **crédibilise** — il dit que le piège s'est déjà refermé sur
+  quelqu'un, ce qu'un lecteur pressé a besoin de savoir pour ne pas « simplifier ». Ce qui sort,
+  c'est le **récit** : qui l'a trouvé, à quelle passe, ce que disait la rédaction précédente. La
+  frontière tient en une question — *est-ce que ça change ce que le lecteur va faire ?*
+
+## Ce qui a été écarté
+
+- **Un seuil mécanique** (« pas plus de N % de commentaire », vérifié en CI). Rejeté : il pousse à
+  supprimer l'avertissement utile pour tenir un ratio, et il compte des lignes au lieu de les lire.
+  Le pourcentage reste un **indicateur de tri**, jamais une porte.
+- **Supprimer tout commentaire hors JSDoc d'API publique.** Rejeté : c'est la version forte de la
+  maxime, et elle jette le tiers qui est faux — les couplages invisibles disparaîtraient sans que
+  personne ne s'en aperçoive avant le premier bug.
+- **Un big bang sur les 45 fichiers.** Rejeté au titre de la règle 16 (INVEST) : un diff de cette
+  taille est irrelisable, et c'est précisément ce que les trois passes d'`E16US009` ont montré. Voir
+  « Conséquences ».
+
+## Conséquences
+
+**Positives**
+
+- Moins d'assertions non vérifiées : chaque phrase retirée est une divergence future en moins.
+- Le raisonnement gagne un domicile **unique** — donc corrigible en un seul endroit.
+- Le diff d'une US rétrécit : `E16US009` touchait 45 fichiers, dont une part de prose recopiée.
+
+**Coûteuses / à surveiller**
+
+- ⚠️ **Un renvoi peut mourir.** « cf. ADR-0098 » ne vaut que si l'ADR existe et dit bien cela.
+  L'atlas contrôle déjà l'inverse (les fichiers nommés *par* un ADR) ; il ne contrôle pas les ADR
+  nommés *par* le code. C'est une limite connue, non fermée par cet ADR.
+- Le nettoyage est **progressif** : la règle vaut pour tout code neuf immédiatement, l'existant se
+  traite au fil de l'eau (cf. § suivant). Le dépôt vivra donc quelque temps avec les deux styles.
+
+### Application : un lot démonstratif, puis au fil de l'eau
+
+`E00US027` applique la règle à **cinq fichiers**, choisis sur un critère objectif — ≥ 100 lignes de
+commentaire **et** ≥ 50 % du fichier — plus `TableClassement.tsx`, retenu explicitement parce qu'il
+est l'échantillon le plus chargé en narration de revue (trois passes viennent de l'y déposer).
+
+**Ensuite, la règle vit au fil de l'eau** : toute US qui touche un fichier le nettoie sur son
+passage, et `/revue-us` peut relever un commentaire neuf qui ne passe aucun des trois tests — en
+**mineur**, jamais en majeur : c'est de la forme, pas un défaut de produit.
+
+## Porté dans le code par
+
+⚠️ Section écrite en **vérifiant dans le code du jour**, pas en déduisant de la décision.
+
+| Décision | Module qui l'applique | Vérifié |
+|---|---|---|
+| La règle des trois tests, énoncée là où on la lit | [`CLAUDE.md`](../../CLAUDE.md) § « Commentaires » | oui |
+| Lot démonstratif — contrainte invisible **conservée**, narration **retirée** | `frontend/src/shared/ui/pagination.ts` · `frontend/src/features/competition/TableClassement.tsx` | oui |
+| Lot démonstratif — archéologie retirée, avertissement d'exhaustivité conservé | `frontend/src/shared/phases/catalogue.ts` | oui |
+| Lot démonstratif | `frontend/src/shared/phases/relance.ts` · `frontend/src/features/completude/Completude.tsx` | oui |
+| Le raisonnement déplacé, jamais détruit | `docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md` (le pourquoi du ratio et du plafond y était **déjà**, ce qui a permis de couper dans `TableClassement.tsx`) | oui — vérifié avant chaque coupe |
+| Le comportement est **inchangé** : c'est un nettoyage de prose | la porte mécanique complète (`pytest`, `npm test`, `tsc`, `ruff`, `mypy`) | oui — aucune ligne de code exécutable modifiée |

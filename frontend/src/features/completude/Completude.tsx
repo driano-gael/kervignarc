@@ -1,25 +1,13 @@
-// Écran « **Prêt à terminer ?** » (E12US005, recentré et renommé en E16US003) — « qu'est-ce qui
-// manque pour que le tournoi soit fini ? », côté sportif.
+// Écran « **Prêt à terminer ?** » — « qu'est-ce qui manque pour que le tournoi soit fini ? », côté
+// sportif. 2ᵉ membre de la famille « prêt à… », rendu par la coquille `jalons/PretA` (ADR-0096).
 //
-// **Pourquoi ce nom.** L'écran s'est d'abord appelé « Complétude », puis « Complétude du déroulé » —
-// abandonné en revue : la sidebar du pilotage porte déjà « Suivi du déroulé » trois entrées plus
-// haut, et ADR-0076 réserve « déroulé » au **plan composé une fois**. Deux libellés voisins pour deux
-// choses différentes, c'est le motif exact du refus d'A10 (ADR-0073). Le nom retenu dit la
-// **question à laquelle l'écran répond** plutôt que son contenu.
+// ⚠️ **Le mot « déroulé » est proscrit du libellé de cet écran** : la sidebar du pilotage porte
+// déjà « Suivi du déroulé », et ADR-0076 réserve le mot au **plan composé une fois**.
 //
-// **E16US012 — cet écran est devenu le 2ᵉ membre d'une famille.** Ce que la version précédente
-// annonçait sans le faire (« le commanditaire vise à terme une famille de prêt à… — ne pas
-// l'improviser ici ») est arrivé : quatre écrans « prêt à… » (démarrer / terminer / archiver /
-// exporter) partagent désormais une **coquille unique**, `jalons/PretA` (ADR-0096). Le rendu ne
-// change pas — même titre, même intro, même liste, même bouton — mais il passe par la coquille, et
-// l'écran gagne au passage le **verdict** en tête (« Il reste des choses à faire — l'application ne
-// vous en empêchera pas »).
-//
-// ⚠️ **Cet écran continue de lire `/completude`, pas `/jalons/terminer`.** Les deux rendent la même
-// chose, et `test_jalons_api.py` l'épingle plutôt que de le laisser à la vigilance ; mais la
-// **confirmation** a besoin en plus du volet administratif pour chiffrer les impayés (cf. plus
-// bas). Basculer la liste sur le jalon aurait ajouté un second poll de 5 s par tablette pour une
-// réponse identique.
+// ⚠️ **Cet écran lit `/completude`, pas `/jalons/terminer`.** Les deux rendent la même chose
+// (`test_jalons_api.py` l'épingle), mais basculer sur le jalon ajouterait un second poll de 5 s par
+// tablette pour une réponse identique. La **confirmation**, elle, a besoin en plus du volet
+// administratif pour chiffrer les impayés (cf. plus bas).
 //
 // Pas une barre de progression : une **liste d'états** (`D-17`, CDC UX §8.3). L'écran dit aussi **ce
 // que « terminer » implique** et pose le **contrôle en amont** de cette action (la seule
@@ -62,7 +50,7 @@ import { IMPLICATION_TERMINER, messageConfirmationTerminer } from './presentatio
 // l'US a écrite pour l'écran voisin sans se l'appliquer ici : « Ce qui reste à jouer **avant de
 // pouvoir terminer** » s'affichait sur un tournoi **déjà terminé**, trois lignes au-dessus de « le
 // sportif **est figé** ». Même contradiction de temps que l'implication en pied, corrigée un commit
-// plus tôt, à l'autre bout du même écran (5ᵉ passe de revue, axe D).
+// plus tôt, à l'autre bout du même écran (relevé en revue).
 const INTRO_EN_COURS = (
   <>
     Ce qui reste à jouer avant de pouvoir terminer ce tournoi. Les inscriptions et les paiements se
@@ -100,7 +88,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       titreSection="Sportif"
       // ⚠️ **La liste reste rendue quel que soit le statut** — c'est le comportement d'avant l'US, et
       // le vider a été une sur-correction : l'organisateur qui ouvre cet écran **pendant la pause
-      // déjeuner** veut justement voir où en est la qualification (4ᵉ passe de revue, axe C1). Ce
+      // déjeuner** veut justement voir où en est la qualification (relevé en revue). Ce
       // qu'il fallait retirer hors « en cours », c'est le **verdict** — il accusait la liste (« ce
       // qui manque ci-dessous ») alors que terminer n'a aucune garde de contenu. C'est
       // `questionPosee` qui le porte, pas `lignes`.
@@ -123,7 +111,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       // `bloquant={false}` en dur, un tournoi **en pause** (la pause déjeuner du jour J) s'entendait
       // dire « l'application ne vous en empêchera pas » juste avant un 409, et un tournoi terminé
       // lisait « Oui — rien ne s'y oppose » au-dessus de « ce tournoi est terminé ». C'était le
-      // bloquant de la 2ᵉ passe de revue.
+      // bloquant relevé en revue.
       //
       // Pourquoi une déduction locale ici, alors que `PretADemarrer` n'en fait aucune : cet écran
       // lit `/completude`, qui ne porte pas de statut, et le brancher sur `/jalons/terminer`
@@ -137,7 +125,7 @@ export function Completude({ tournoiId, statut }: { tournoiId: number; statut: S
       // DETTE-082, que cette US venait d'écrire sans se l'appliquer (3ᵉ passe, axes A, C2 et D).
       // `false`, et non `!enCours` : hors « en cours » le verdict n'est pas rendu du tout, donc la
       // valeur ne serait **jamais lue** — une prop inerte se lit comme une preuve et n'en est pas
-      // une (4ᵉ passe, axe C2). Ce que ce drapeau dit, c'est : *quand la question se pose*, terminer
+      // une (relevé en revue). Ce que ce drapeau dit, c'est : *quand la question se pose*, terminer
       // passe malgré les manques. La garde de statut, elle, est portée par `questionPosee`.
       bloquant={false}
       // ⚠️ Pas de `moment` : le domaine n'en produit pas pour ce membre, et « à la clôture » — écrit

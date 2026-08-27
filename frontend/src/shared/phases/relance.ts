@@ -1,17 +1,12 @@
-// Ce que l'application **dit** d'une salle qui attend sa relance (E05US034, ADR-0092) — logique
-// pure, aucun React.
+// Ce que l'application **dit** d'une salle qui attend sa relance. Décision : ADR-0092.
 //
-// **Pourquoi un module à part et pas trois lignes dans le composant.** C'est le CA le plus important
-// de l'US : sans ce rappel, la capacité livrée par E05US033 crée un **mode de panne neuf** — la
-// salle attend, personne ne sait pourquoi, et rien n'a l'air anormal. Une phrase qui porte un CA se
-// teste, et `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions (cf. l'en-
-// tête de `suisse/presentation.ts`, même raison, même conclusion).
+// ⚠️ **Module à part, et non trois lignes dans le composant** : `react-refresh` interdit à un module
+// de rendu d'exporter aussi des fonctions (même contrainte que `suisse/presentation.ts`).
 //
-// ⚠️ **Le serveur rend un instant, ce module en fait une durée.** Le calcul ne peut pas vivre côté
-// serveur : la route est pollée toutes les 10 s, mais le rendu vit *entre* deux réponses, si bien
-// qu'un « depuis 14 min » calculé là-bas afficherait 14 pendant dix secondes de plus. Les deux
-// horloges sont en UTC et sur le même réseau local ; l'écart entre elles est sans effet sur une
-// durée affichée à la minute.
+// ⚠️ **Le serveur rend un instant, ce module en fait une durée** — et le calcul ne peut pas
+// remonter côté serveur : la route est pollée toutes les 10 s, mais le rendu vit *entre* deux
+// réponses, si bien qu'un « depuis 14 min » calculé là-bas resterait à 14 pendant dix secondes de
+// plus.
 
 import { nommerType, TYPES_ARRETABLES } from './catalogue'
 import type { TypePhase } from './catalogue'
@@ -219,7 +214,7 @@ export function phasesSuspendues(phases: readonly PhaseAffichable[]): string[] |
 /**
  * Combien de tours on peut encore « bloquer d'avance » sur cette phase (CA E05US034).
  *
- * ⚠️ **Extraite pour être tenue en vis-à-vis du refus serveur** (correctif de revue, axe B). Le
+ * ⚠️ **Extraite pour être tenue en vis-à-vis du refus serveur** (correctif de revue). Le
  * serveur pose `apres_tour = tour_courant + x - 1` et refuse `apres_tour >= nb_tours` : la borne
  * du champ de saisie vaut donc exactement `nb_tours - tour_courant`. Écrite en dur dans le JSX,
  * cette coïncidence n'avait aucun oracle — et c'est la seule chose qui empêche les deux bornes de

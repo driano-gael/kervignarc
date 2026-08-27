@@ -8084,6 +8084,83 @@ window.ATLAS.decisions = {
     "E16US005",
     "E16US009"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-27",
+   "date_brute": "2026-08-27",
+   "extrait": "Le code porte des pointeurs vers le raisonnement, il ne le recopie pas. Un commentaire ne survit que s'il satisfait au moins un de ces trois tests : 1. Contrainte non déductible du fichier — un couplage que rien n'exprime dans le langage : une valeur qui dérive d'un autre fichier, un invariant tenu ailleurs, un ordre d'exécution imposé. 2. Avertissement — une modification d'apparence innocente casserait quelque chose, et le code ne peut pas le dire seul (le repli d'un ternaire qui rend un oubli compilable, un effet de bord au démontage, une garde dont dépend une autre couche). 3. Renvoi — une ligne qui nomme l'ADR, la story ou l'entrée de dette qui porte le raisonnement. Une ligne, pas le […]",
+   "fichier": "docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md",
+   "identifiant": "0099",
+   "liens": [
+    {
+     "cible": "E00US027",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "CLAUDE.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/TableClassement.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/completude/Completude.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/catalogue.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/relance.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/pagination.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le code porte des **pointeurs**, pas le raisonnement",
+   "us": [
+    "E00US027",
+    "E01US024",
+    "E16US004",
+    "E16US009"
+   ]
   }
  ]
 };

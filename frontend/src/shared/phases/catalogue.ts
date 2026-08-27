@@ -1,17 +1,7 @@
-// Le **catalogue des types de phase**, côté front : l'union, ses libellés, ses aides (E05US015,
-// ADR-0062).
+// Le **catalogue des types de phase**, côté front : l'union, ses libellés, ses aides (ADR-0062).
 //
-// **Pourquoi ce module existe** — DETTE-030 (`docs/dette.md`) constatait que l'union `TypePhase`
-// vivait en **deux** exemplaires (`features/phases/api.ts`, `features/patrimoine/api.ts`), et les
-// libellés en deux aussi (`Phases.tsx`, `patrimoine/format.ts`). Le registre l'assumait
-// explicitement « **tant qu'il n'y en a que deux** — à une 3ᵉ, l'extraire dans un module partagé se
-// justifiera ». E01US024 est cette 3ᵉ occurrence : l'écran de composition d'un déroulé nomme les
-// mêmes types. On extrait donc, comme annoncé, plutôt que d'aggraver une dette listée
-// (règle « Dette » du CLAUDE.md) — et sur **preuve dans le code d'aujourd'hui**, pas sur une
-// évolution supposée.
-//
-// Les deux `api.ts` **ré-exportent** d'ici : aucun import existant ne casse, et il n'y a plus qu'un
-// seul domicile à synchroniser avec l'enum `TypePhase` du backend.
+// ⚠️ **Domicile unique** : `features/phases/api.ts` et `features/patrimoine/api.ts` ré-exportent
+// d'ici, et c'est le seul point à synchroniser avec l'enum `TypePhase` du backend.
 //
 // ⚠️ **Exhaustivité obligatoire.** Chaque table est un `Record<TypePhase, …>`, jamais un ternaire à
 // repli : c'est un repli (`… : 'Placement'`) qui a fait afficher six types comme « Placement » sans

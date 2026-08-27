@@ -98,7 +98,7 @@ export function TableClassement({
   }
 
   const egalites = totauxExAequo(lignesCompletes ?? lignes)
-  // ⚠️ **La règle ne s'annonce que si une ligne VISIBLE la porte** (2ᵉ passe de revue). Calculer les
+  // ⚠️ **La règle ne s'annonce que si une ligne VISIBLE la porte** (relevé en revue). Calculer les
   // égalités sur la liste complète corrige le marquage, mais ne doit pas décider seul de l'affichage
   // du paragraphe : centré sur trois archers, `egalites` décrit tout le créneau, donc la mention
   // serait apparue dès qu'une égalité existe **quelque part** — c'est-à-dire en permanence à partir
@@ -189,62 +189,24 @@ export function TableClassement({
  * qui suffit ici (correctif de revue, sans pattern : les trois listes restent côte à côte). */
 const NB_COLONNES_LECTURE = 8
 
-/** Combien de **noms** de liste projetée valent une **ligne** de classement, en hauteur d'écran.
+/** Combien de **noms** de liste projetée valent une **ligne** de classement.
  *
- * Le réglage de l'écran compte des noms tels que la page d'affectations les dispose :
- * `.salle-pages__noms { columns: 3 22ch }`, donc trois colonnes — 40 noms y tiennent sur ~14 lignes.
- * Le classement, lui, est un tableau **mono-colonne** : une ligne par archer, pleine largeur. À
- * valeur égale, une page de classement serait donc ~3 fois plus haute que la page de noms pour
- * laquelle le réglage a été calibré, et `.classement__pages` n'a **aucun ascenseur** (choix
- * d'ADR-0098 : personne ne fait défiler un vidéoprojecteur). Ce qui déborde n'est pas « mal lu »,
- * il n'est **jamais montré** — et comme la fenêtre avance ensuite du même pas, les archers du bas
- * de chaque page ne sortiraient jamais de la journée.
- *
- * Le ratio vient donc du CSS, pas d'un goût : c'est le nombre de colonnes de `.salle-pages__noms`.
- * Bloquant trouvé en revue (deux axes, arithmétiques indépendantes) — E16US009. */
+ * ⚠️ **Ce 3 n'est pas un goût : c'est `columns: 3` dans `features/salle/salle.css`.** Le réglage
+ * d'écran compte des noms tels que la page d'affectations les dispose — sur trois colonnes ; le
+ * classement est un tableau mono-colonne. Changer la règle CSS oblige à changer ce nombre, et rien
+ * ici ne peut le signaler. Décision : ADR-0098 §5. */
 const NOMS_PAR_LIGNE_PROJETEE = 3
 
 /** Le plafond de lignes d'une page projetée, **quel que soit le réglage**.
  *
- * ⚠️ **Le ratio ci-dessus ne suffit pas, et trois axes de revue l'ont montré séparément.** Il ferme
- * le facteur multiplicatif, pas les deux termes qui restent :
+ * ⚠️ **Calculé depuis le CSS, jamais mesuré** — `DETTE-086` porte le décompte et l'incertitude. Ce
+ * que le plafond garantit n'est pas la justesse de la valeur mais la **direction de l'erreur** :
+ * trop bas, on fait plus de pages et tout finit par passer ; trop haut, le bas de page n'est
+ * **jamais montré** (`.classement__pages` n'a aucun ascenseur — ADR-0098 §3).
  *
- *  - un **chrome fixe** que la page de noms n'a pas — la tête figée (3 lignes) et la rangée
- *    d'en-têtes vivent dans la même scène, et quatre lignes ne se divisent par rien ;
- *  - une **hauteur de ligne différente** : `.table td { padding: 8px 6px }` est en **pixels**,
- *    `.salle-pages__nom { padding: 0.15em 0 }` est en **em**. Le résidu vaut donc ~1,28 à 1080p et
- *    ~1,45 à 720p — il *croît* quand l'écran rétrécit.
- *
- * D'où un plafond, calculé au cas le plus contraint — 1280×720, un projecteur de gymnase courant.
- * Le chrome de la scène, **recompté élément par élément en 3ᵉ passe de revue** (les deux premiers
- * décomptes l'avaient sous-évalué) :
- *
- * | élément | ~px à 720p |
- * |---|---|
- * | `h3.carte__soustitre` « Classement en direct » | 46 |
- * | `thead` visible de la tête figée | 30 |
- * | 3 lignes de tête figée | 108 |
- * | `gap` de `.classement__pages` | 10 |
- * | `EnteteDePage` (compteur à `2.4em`) | 38 |
- * | `.classement__departage`, les jours d'ex æquo | 41 |
- *
- * Soit ~273 px sur ~617 px de scène, donc **~9 lignes utiles**.
- *
- * ⚠️ **Ce nombre est CALCULÉ depuis le CSS, jamais mesuré** — l'écran n'a toujours pas été vu sur un
- * vidéoprojecteur (angle mort assumé d'ADR-0098, et `DETTE-086` au registre). Ce que le plafond
- * garantit n'est donc pas la justesse de la valeur, c'est la **direction de l'erreur** : trop bas,
- * on obtient plus de pages et tout finit par passer à l'écran ; trop haut, le bas de page n'est
- * **jamais montré** et les archers concernés ne sortent jamais de la journée. Entre les deux, il
- * n'y a pas d'arbitrage à rendre — et c'est la raison de préférer le décompte le plus pessimiste
- * des trois qu'a produits la revue, plutôt que d'en tenter un quatrième.
- *
- * ⚠️ **Effet de bord à connaître** : au-delà de `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE`
- * (27) noms réglés, le classement **ne réagit plus** au réglage. C'est dit à l'organisateur dans
- * l'aide de l'écran d'admin, parce qu'un cadran bloqué ressemble à une panne. Au-delà de ce seuil,
- * c'est la **liste d'affectations** — qui n'a, elle, aucun plafond — qui commande le réglage.
- * `// DETTE-086` — voir le registre : cette dette dit précisément que les mises en page de ces
- * écrans sont **calculées et jamais mesurées**, et l'US l'a vérifié à ses dépens (trois passes de
- * revue, trois décomptes de hauteur successifs, chacun corrigeant le précédent). */
+ * ⚠️ **Effet de bord** : au-delà de `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE` noms réglés, le
+ * classement ne réagit plus au réglage — l'aide de l'écran d'admin le dit à l'organisateur, un
+ * cadran bloqué ressemblant à une panne. */
 const LIGNES_PROJETEES_MAX = 9
 
 /** Le reste du classement **projeté**, page après page (E16US009).

@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/08/2026, 18 h 52** · **127 US livrées** · dernière : `E16US009`
+**Dernière mise à jour : 27/08/2026, 15 h 15** · **128 US livrées** · dernière : `E00US027`
 *(**l'écran de salle se règle, et montre enfin tout le monde** — les deux moitiés laissées en
 suspens par les questionnaires `P06` et `P07` sont tenues. La **cadence** et la **taille** d'une page
 projetée se règlent **par écran** (elles étaient deux constantes du programme, `DETTE-039`), et le
@@ -1240,6 +1240,17 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ⬜ |
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
+
+## Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**
+
+> Née d'une question du commanditaire après les **trois passes de revue** d'`E16US009` : *« pourquoi
+> autant de passes ? »*. La mesure a montré que la majorité des remarques de 2ᵉ et 3ᵉ passe portaient
+> non sur du code mais sur des **documents qui se contredisent** — dont des commentaires que rien ne
+> vérifie. D'où une règle d'écriture, et un lot démonstratif.
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes de narration, `pagination.ts` de 68 % à 55 %) ; **le reste des 45 fichiers >40 % se traite au fil de l'eau**, pas en big bang. Mesure d'entrée : 13 % de commentaire sur 106 450 lignes de production, mais 45 fichiers au-dessus de 40 %)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 
