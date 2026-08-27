@@ -61,18 +61,30 @@ cadre à ascenseur.** Concrètement :
    de classement porte donc `ceil(noms_par_page / 3)` lignes.
 
    **Le ratio ne suffit pas : une page de classement est en outre plafonnée** à
-   `LIGNES_PROJETEES_MAX = 12`. Le ratio ferme le facteur multiplicatif ; il laisse deux termes que
+   `LIGNES_PROJETEES_MAX = 9`. Le ratio ferme le facteur multiplicatif ; il laisse deux termes que
    la 2ᵉ passe de revue a chiffrés séparément sur trois axes — un **chrome fixe** que la page de
-   noms n'a pas (tête figée + rangée d'en-têtes, qui ne se divise par rien) et une **hauteur de
-   ligne différente** (`.table td` a un `padding` en **pixels**, `.salle-pages__nom` en **em**),
-   dont le résidu *croît* quand l'écran rétrécit : ~1,28 à 1080p, ~1,45 à 720p. Au réglage par
-   défaut, un projecteur 1280×720 débordait encore de deux lignes.
+   noms n'a pas (sous-titre de la vue, tête figée, rangée d'en-têtes, `gap`, et l'en-tête de page
+   lui-même, qui ne se divisent par rien) et une **hauteur de ligne différente** (`.table td` a un
+   `padding` en **pixels**, `.salle-pages__nom` en **em**), dont le résidu *croît* quand l'écran
+   rétrécit : ~1,28 à 1080p, ~1,45 à 720p.
 
-   ⚠️ **Le plafond est calculé depuis le CSS, il n'est pas mesuré** — l'écran n'a toujours pas été
-   vu sur un vidéoprojecteur (§ Conséquences, angle mort assumé). Ce qu'il garantit n'est donc pas
-   la justesse de la valeur mais la **direction de l'erreur** : trop bas, on obtient plus de pages
-   et tout finit par passer ; trop haut, des archers ne sont jamais montrés. Entre les deux, il n'y
-   a pas d'arbitrage à rendre.
+   ⚠️ **Le plafond est calculé depuis le CSS, il n'est JAMAIS mesuré — et trois passes de revue ont
+   produit trois décomptes successifs** (144 px de chrome, puis 232, puis 273), chacun corrigeant le
+   précédent, sur un écran que personne n'a branché. La valeur retenue est celle du décompte **le
+   plus pessimiste**, et c'est un choix de méthode : ce que le plafond garantit n'est pas la
+   justesse mais la **direction de l'erreur** — trop bas, on obtient plus de pages et tout finit par
+   passer ; trop haut, des archers ne sont **jamais** montrés. Entre les deux il n'y a pas
+   d'arbitrage à rendre, et un quatrième raffinement arithmétique n'aurait rien apporté qu'un
+   quatrième chiffre. **La dette est inscrite (`DETTE-086`)** : elle se solde par un œil humain
+   devant l'écran, pas par du code.
+
+   ⚠️ **Deux résidus assumés, écrits plutôt que gommés** :
+   - **`VueAffectations` n'a pas de plafond.** La liste de noms déborde, elle, vers 55-66 noms
+     réglés. L'asymétrie est **dite** à l'organisateur : sous 27 noms réglés le classement commande
+     le réglage, au-delà il est figé et c'est la liste de noms qu'il faut surveiller. Poser le même
+     plafond des deux côtés demande la mesure qui manque.
+   - **Le plafond crée une plage inerte.** Au-delà de 27, monter le réglage ne change plus rien au
+     classement. Un cadran bloqué ressemble à une panne : l'aide de l'écran d'admin le dit.
 
    ⚠️ **Ce point est né d'un bloquant de revue, et il n'est pas cosmétique.** Appliquer la valeur
    brute à un tableau produisait, *au réglage livré par défaut*, une page deux à trois fois plus
@@ -89,10 +101,11 @@ cadre à ascenseur.** Concrètement :
    hauteur réellement disponible.
 
    Corollaire pour l'exploitation, écrit dans l'aide de l'écran d'admin et dans la fiche de recette :
-   **on règle en regardant le classement**, la vue la plus dense. La liste de noms, elle, suivra
-   toujours — au pire un peu aérée. Le conseil inverse, écrit en 1ʳᵉ rédaction du correctif, envoyait
-   l'organisateur remplir une page de noms qui occupe toute la hauteur (`flex: 1`), donc droit dans
-   la brèche que le correctif venait de fermer. Un troisième champ
+   **on regarde le classement sous 27 noms réglés, la liste d'affectations au-delà.** Les deux
+   rédactions précédentes ont chacune donné un conseil faux dans un sens différent — « réglez sur la
+   liste de noms » envoyait remplir une page qui occupe toute la hauteur (`flex: 1`), donc droit
+   dans la brèche ; « réglez sur le classement » est inopérant dès que le plafond mord. Le conseil
+   juste dépend du régime, et le dire coûte deux phrases. Un troisième champ
    persisté (`lignes_par_page_classement`) a été écarté : migration, DTO et champ de formulaire de
    plus pour un écran que personne n'a encore vu, alors qu'une conversion dérivée suffit et se
    prouve (règle 16).

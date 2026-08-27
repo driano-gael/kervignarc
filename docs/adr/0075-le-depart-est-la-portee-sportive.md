@@ -200,9 +200,23 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0067`, `0068`, `0069`, `0070`.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`, `0084`, `0085`, `0090`, `0091`, `0092`, `0093`, `0094`. La liste dérive à chaque US qui
-crée ou
-rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans `CLAUDE.md`.
+`0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`. La liste dérive à
+chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
+`CLAUDE.md`.
+
+⚠️ **`0087` et `0089` manquaient aux DEUX listes, et l'intervalle `0086`-`0089` sautait sans un mot**
+— relevé en 3ᵉ passe de revue d'E16US009 (axe adversarial), dans le paragraphe même qui dénonce ce
+mode de panne : la 2ᵉ passe avait réparé le cas signalé (`0097`) **sans auditer l'intervalle**.
+Tranchés à l'occasion, tous deux portant déjà leur section « Porté dans le code par » :
+- **`0087` entre au critère** (ci-dessus) — *« une attente n'est pas une indisponibilité »* décide
+  d'une valeur d'`IssueRoutage`, que le **moteur de routage** produit et que l'écran ne fait que
+  rendre ;
+- **`0089` en est hors** (liste ci-dessous) — le catalogue `VueEcran` est de l'**IHM** : il dit ce
+  qu'un écran de salle sait dessiner, aucun classement n'en dépend.
+
+*Le geste d'audit correct n'est pas de recopier la liste : c'est de balayer `ls docs/adr/` sur
+l'intervalle et de rapprocher des deux listes. Une liste tenue à la main ne se répare pas au cas par
+cas.*
 
 ⚠️ **`0090` y a été oublié à son tour**, et rattrapé en revue d'E05US032 (axe C2) — soit la
 **troisième** omission consécutive sur cette liste. Le constat ci-dessous n'a donc rien perdu de son
@@ -238,7 +252,8 @@ précisément ce qui produit la cinquième — un lecteur qui audite verrait « 
 `0095` : il est d'**IHM** — un écran de salle *montre* un classement, il n'en produit aucun ; le
 moteur sportif ne lit rien du réglage de pages, aucune portée ne change, aucune politique injectable
 n'est en jeu. Il porte sa section « Porté dans le code par », exigée sans condition. *La liste des
-ADR **hors critère** est donc, à ce jour : `0086`, `0088`, `0095`, `0096`, **`0097`**, `0098` —
+ADR **hors critère** est donc, à ce jour : `0086`, `0088`, **`0089`**, `0095`, `0096`, **`0097`**,
+`0098` —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

@@ -230,11 +230,17 @@ def test_un_ecran_d_un_autre_tournoi_n_existe_pas(ctx: Contexte) -> None:
             autre.id, ecran.id, Consigne(vue=VueEcran.CLASSEMENT, sequence=None, duree_s=60)
         )
 
-    # ⚠️ **La propriété est portée par le point de passage unique `ServicePostes._exiger_ecran`**,
-    # que les cinq gestes de pilotage traversent — on l'exerce donc ici sur deux d'entre eux, sans
-    # prétendre à une énumération. *(La 1ʳᵉ rédaction annonçait « CHAQUE geste » et en citait deux
-    # sur cinq : c'est le défaut que ce même commit dénonce dans `test_ecrans_api.py`, une
-    # énumération qui se donne pour exhaustive — relevé en 2ᵉ passe, axe adversarial.)*
+    # ⚠️ **Le cloisonnement par tournoi est porté par DEUX gardes jumelles, une par service** :
+    # `ServicePostes._exiger_ecran` (renommage, déroulé, pages, suppression) et
+    # `ServiceEcrans._exiger_ecran_du_tournoi` (prise de contrôle, retour de main). Elles recopient
+    # le même `if poste is None or poste.tournoi_id != tournoi_id`. On exerce donc **un geste de
+    # chaque service** — le vrai risque ici est la duplication, pas l'énumération : un 7ᵉ geste
+    # n'hérite de rien mécaniquement, il doit appeler l'une des deux.
+    #
+    # *(Troisième rédaction de ce commentaire. La 1ʳᵉ annonçait « CHAQUE geste » en en citant deux
+    # sur cinq ; la 2ᵉ a corrigé en invoquant un « point de passage unique » qui n'existe pas — et
+    # `prendre_le_controle`, exercé deux lignes plus haut, ne le traverse même pas. Relevé en 3ᵉ
+    # passe, axe C1.)*
     with pytest.raises(PosteIntrouvable):
         ctx.service_postes.regler_pages_ecran(autre.id, ecran.id, ReglagePages.par_defaut())
 

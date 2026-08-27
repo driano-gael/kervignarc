@@ -41,12 +41,18 @@ serviront de point de départ pour les tournois suivants.
 
 Un repère utile pour ce réglage : « noms par page » se compte sur la **liste d'affectations**, qui
 range ses noms sur trois colonnes. Le classement, lui, met **un archer par ligne** avec ses scores :
-il en affiche donc **trois fois moins** par page, et **jamais plus de douze**. C'est voulu — sans
+il en affiche donc **trois fois moins** par page, et **jamais plus de neuf**. C'est voulu — sans
 cela, une page de classement serait plus haute que l'écran, et sa partie basse ne s'afficherait
 jamais.
 
-Réglez en regardant le **classement** : c'est la vue la plus dense, donc celle qui déborde la
-première — et un débordement ne se voit pas, puisque ce qui ne tient pas n'est simplement pas
-affiché. La liste de noms, elle, suivra toujours ; au pire un peu aérée, ce qui ne coûte rien.
+Quelle vue regarder dépend de la valeur : **jusqu'à 27**, c'est le classement qui déborde en
+premier, réglez sur lui ; **au-delà**, il reste figé à neuf archers et c'est la liste de noms qui
+commande. Dans les deux cas, un débordement **ne se voit pas** — ce qui ne tient pas n'est
+simplement pas affiché.
+
+⚠️ Un mot d'honnêteté, parce qu'il pèse sur ce réglage : **ces hauteurs sont calculées, pas
+mesurées**. Personne n'a encore branché cet écran sur un vidéoprojecteur, et la relecture du code
+en a produit trois estimations successives avant de retenir la plus prudente. C'est exactement
+pourquoi le réglage vous appartient : le premier essai en salle vaudra plus que tous nos calculs.
 
 Le scénario de test complet est dans `docs/fonctionnel/E16US009.md`.

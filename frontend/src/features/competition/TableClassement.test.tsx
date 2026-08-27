@@ -22,6 +22,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDeroule } from '../suivi/deroule'
 import type { LigneClassement } from './api'
+import { __reinitialiserCumulsDePage_TESTS } from '../../shared/ui/pagination'
 import { TableClassement } from './TableClassement'
 
 // ⚠️ On mocke **le hook**, pas `getDeroule` : `useDeroule` appelle la fonction par sa liaison
@@ -218,6 +219,13 @@ describe('TableClassement — le reste projeté', () => {
   // que la suite tourne vite. Oracle maîtrisé (règle 9) — relevé en revue.
   beforeEach(() => {
     vi.useFakeTimers()
+    // ⚠️ **Indispensable, et le trou avait été fermé dans l'AUTRE fichier.** `useSecondesDAffichage`
+    // écrit son cumul **au démontage**, dans une `Map` de module partagée par tous les tests de ce
+    // fichier. L'`afterEach` local (`useRealTimers`) s'exécutant AVANT le `cleanup` de RTL, ce
+    // cumul est écrit avec une horloge **réelle** : chaque montage paginé y laisse la durée réelle
+    // du test. L'oracle du test de cadence est un `floor(t / 5)` — il suffit qu'une seconde traîne
+    // pour qu'il tombe en CI. Vert ici, rouge un jour, diagnostic trompeur (3ᵉ passe, trois axes).
+    __reinitialiserCumulsDePage_TESTS()
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -284,11 +292,14 @@ describe('TableClassement — le reste projeté', () => {
   })
 
   it.each([
-    // [noms réglés, lignes attendues par page] — les deux bornes du domaine et le défaut livré.
+    // [noms réglés, lignes attendues par page] — les deux bornes du domaine, le défaut livré, et
+    // **le point de bascule** entre les deux constantes.
     [5, 2], // plancher : `ceil(5/3)` = 2, et non 1 — c'est `ceil` qui est prouvé ici, pas `floor`
     [12, 4], // le point nominal des tests voisins
-    [40, 12], // ⚠️ le DÉFAUT LIVRÉ : `ceil(40/3)` = 14, plafonné à `LIGNES_PROJETEES_MAX`
-    [100, 12], // plafond du domaine : idem, le plafond d'affichage tient
+    [24, 8], // ratio seul : le plafond n'a pas encore mordu
+    [27, 9], // ⚠️ le point de BASCULE exact — au-delà, le réglage n'agit plus sur le classement
+    [40, 9], // ⚠️ le DÉFAUT LIVRÉ : `ceil(40/3)` = 14, plafonné à `LIGNES_PROJETEES_MAX`
+    [100, 9], // plafond du domaine : idem, le plafond d'affichage tient
   ])('découpe %i noms réglés en pages de %i lignes', (noms, lignesAttendues) => {
     // ⚠️ **Le résidu que la 2ᵉ passe de revue a trouvé, et pourquoi il y a DEUX constantes.** Le
     // ratio ferme le facteur ×3 ; il laisse ouverts un chrome fixe (tête figée + en-têtes, qui ne
@@ -316,7 +327,13 @@ describe('TableClassement — le reste projeté', () => {
       />,
     )
 
-    // 27 lignes de reste : le compteur dit le découpage sans qu'on ait à compter les rangées.
+    // ⚠️ **On compte les RANGÉES rendues, pas seulement les pages.** Le compteur seul ne borne pas
+    // la valeur : `ceil(27/x)` vaut 3 pour tout `x` de 9 à 13, si bien qu'une dérive de ±1 du
+    // plafond passait inaperçue — alors que « jamais plus de N » est précisément ce que la fiche,
+    // le journal et l'aide d'admin annoncent à l'organisateur (3ᵉ passe, axes B et D).
+    expect(container.querySelectorAll('.classement__pages tbody tr')).toHaveLength(
+      Math.min(lignesAttendues, 27),
+    )
     const attendu = Math.ceil(27 / lignesAttendues)
     expect(container.querySelector('.salle-pages__compteur-total')?.textContent).toBe(`/${attendu}`)
   })

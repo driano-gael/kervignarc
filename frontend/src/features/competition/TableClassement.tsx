@@ -215,15 +215,37 @@ const NOMS_PAR_LIGNE_PROJETEE = 3
  *    `.salle-pages__nom { padding: 0.15em 0 }` est en **em**. Le résidu vaut donc ~1,28 à 1080p et
  *    ~1,45 à 720p — il *croît* quand l'écran rétrécit.
  *
- * D'où un plafond, calculé au cas le plus contraint (1280×720, un projecteur de gymnase courant :
- * scène ~617 px, ligne ~36 px, chrome ~144 px, soit ~13 lignes utiles). **12 tient partout.**
+ * D'où un plafond, calculé au cas le plus contraint — 1280×720, un projecteur de gymnase courant.
+ * Le chrome de la scène, **recompté élément par élément en 3ᵉ passe de revue** (les deux premiers
+ * décomptes l'avaient sous-évalué) :
  *
- * ⚠️ **Ce nombre est CALCULÉ depuis le CSS, pas mesuré** — l'écran n'a toujours pas été vu sur un
- * vidéoprojecteur (angle mort assumé d'ADR-0098). Ce que le plafond garantit n'est donc pas la
- * justesse de la valeur, c'est la **direction de l'erreur** : trop bas, on obtient plus de pages et
- * tout finit par passer à l'écran ; trop haut, le bas de page n'est **jamais montré** et les
- * archers concernés ne sortent jamais de la journée. Entre les deux, il n'y a pas d'hésitation. */
-const LIGNES_PROJETEES_MAX = 12
+ * | élément | ~px à 720p |
+ * |---|---|
+ * | `h3.carte__soustitre` « Classement en direct » | 46 |
+ * | `thead` visible de la tête figée | 30 |
+ * | 3 lignes de tête figée | 108 |
+ * | `gap` de `.classement__pages` | 10 |
+ * | `EnteteDePage` (compteur à `2.4em`) | 38 |
+ * | `.classement__departage`, les jours d'ex æquo | 41 |
+ *
+ * Soit ~273 px sur ~617 px de scène, donc **~9 lignes utiles**.
+ *
+ * ⚠️ **Ce nombre est CALCULÉ depuis le CSS, jamais mesuré** — l'écran n'a toujours pas été vu sur un
+ * vidéoprojecteur (angle mort assumé d'ADR-0098, et `DETTE-086` au registre). Ce que le plafond
+ * garantit n'est donc pas la justesse de la valeur, c'est la **direction de l'erreur** : trop bas,
+ * on obtient plus de pages et tout finit par passer à l'écran ; trop haut, le bas de page n'est
+ * **jamais montré** et les archers concernés ne sortent jamais de la journée. Entre les deux, il
+ * n'y a pas d'arbitrage à rendre — et c'est la raison de préférer le décompte le plus pessimiste
+ * des trois qu'a produits la revue, plutôt que d'en tenter un quatrième.
+ *
+ * ⚠️ **Effet de bord à connaître** : au-delà de `LIGNES_PROJETEES_MAX * NOMS_PAR_LIGNE_PROJETEE`
+ * (27) noms réglés, le classement **ne réagit plus** au réglage. C'est dit à l'organisateur dans
+ * l'aide de l'écran d'admin, parce qu'un cadran bloqué ressemble à une panne. Au-delà de ce seuil,
+ * c'est la **liste d'affectations** — qui n'a, elle, aucun plafond — qui commande le réglage.
+ * `// DETTE-086` — voir le registre : cette dette dit précisément que les mises en page de ces
+ * écrans sont **calculées et jamais mesurées**, et l'US l'a vérifié à ses dépens (trois passes de
+ * revue, trois décomptes de hauteur successifs, chacun corrigeant le précédent). */
+const LIGNES_PROJETEES_MAX = 9
 
 /** Le reste du classement **projeté**, page après page (E16US009).
  *

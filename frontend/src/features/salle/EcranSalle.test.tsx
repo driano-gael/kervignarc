@@ -19,6 +19,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { ReglagePages, VueProgrammee } from '../ecrans/api'
 import type { Depart } from '../departs/api'
 import { getDeparts } from '../departs/api'
 import type { Phase } from '../phases/api'
@@ -48,9 +49,17 @@ vi.mock('../phases/api', async (importOriginal) => ({
 // Le décor est **mutable** (`vi.hoisted`) pour qu'un test puisse changer la vue projetée : le
 // déroulé était figé sur « classement », donc la branche `affectations` — qui reçoit le **même**
 // réglage — n'était jamais exercée.
-const decor = vi.hoisted(() => ({
-  vues: [{ vue: 'classement', cadence_s: 30 }] as { vue: string; cadence_s: number }[],
+// ⚠️ `VueProgrammee` plutôt que `{ vue: string }` : ce commit ferme par ailleurs une chaîne libre
+// par une union (`CleDePage`), et rouvrir la même porte dans le décor voisin serait incohérent —
+// `decor.vues = [{ vue: 'affectation' }]` compilerait, et le dépôt a déjà renommé une vue
+// (`TABLEAUX` → `EN_COURS`, migration 0047). L'annotation remplace l'assertion `as`.
+const DECOR_INITIAL: { vues: VueProgrammee[]; pages: ReglagePages } = {
+  vues: [{ vue: 'classement', cadence_s: 30 }],
   pages: { noms_par_page: 24, cadence_page_s: 12 },
+}
+const decor = vi.hoisted(() => ({
+  vues: [{ vue: 'classement', cadence_s: 30 }] as import('../ecrans/api').VueProgrammee[],
+  pages: { noms_par_page: 24, cadence_page_s: 12 } as import('../ecrans/api').ReglagePages,
 }))
 
 vi.mock('../ecrans/hooks', () => ({
@@ -139,6 +148,15 @@ beforeEach(() => {
   vi.mocked(getAvancement).mockReset()
 })
 
+// ⚠️ Restauration **au niveau du fichier**, et des deux champs : `decor` est hoisté pour tout le
+// module, alors que la première rédaction ne restaurait que `vues`, et seulement dans le dernier
+// `describe`. Un test ajouté ailleurs qui toucherait `decor` n'aurait été restauré par rien
+// (relevé en 3ᵉ passe, axes B et D).
+afterEach(() => {
+  decor.vues = [...DECOR_INITIAL.vues]
+  decor.pages = { ...DECOR_INITIAL.pages }
+})
+
 describe('EcranSalle — l’annonce de pause est hors rotation (CA E05US034)', () => {
   it('annonce la pause alors que la vue en rotation n’est pas « en cours »', async () => {
     vi.mocked(getAvancement).mockResolvedValue([
@@ -186,11 +204,6 @@ describe('EcranSalle — l’annonce de pause est hors rotation (CA E05US034)', 
 })
 
 describe('EcranSalle — le réglage de pages descend jusqu’aux vues (CA E16US009)', () => {
-  afterEach(() => {
-    // Le décor est partagé : une vue imposée par un test ne doit pas fuir sur le suivant.
-    decor.vues = [{ vue: 'classement', cadence_s: 30 }]
-  })
-
   it('transmet `pages` de l’affichage servi à la vue projetée', async () => {
     // ⚠️ **Le maillon que la première rédaction d'E16US009 n'épinglait pas** (correctif de revue).
     // Le réglage traverse `EcranSalle` → `VueDeSalle` → `VueClassement` → `TableClassement` ; les

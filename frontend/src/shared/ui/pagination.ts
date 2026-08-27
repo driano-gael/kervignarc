@@ -145,13 +145,22 @@ export function rateauDePage(noms: readonly string[]): { debut: string; fin: str
  */
 const secondesAffichees = new Map<CleDePage, number>()
 
-/** Vide les cumuls. **Réservé aux tests de ce module** — la `Map` vit au module précisément pour
- * survivre au démontage d'une vue, donc rien en production n'a de raison de l'effacer.
+/** Vide les cumuls. **RÉSERVÉ AUX TESTS** — le double tiret bas du nom n'est pas décoratif.
  *
- * Sans cette porte, les tests dépendaient de leur **ordre** : le premier laissait 30 s sur
- * `'classement'`, et un test ajouté après lui aurait échoué là où le même test placé avant passait
- * — pour un diagnostic bien plus coûteux que la fonction (relevé en 2ᵉ passe, axe D). */
-export function reinitialiserCumulsDePage(): void {
+ * Sans cette porte, les tests dépendent de leur **ordre** : `useSecondesDAffichage` écrit son cumul
+ * au démontage, dans une `Map` de module partagée par tout un fichier de test, si bien qu'un test
+ * qui avance l'horloge fait échouer le suivant — et le diagnostic coûte bien plus cher que la
+ * fonction (relevé en 2ᵉ passe, axe D ; le besoin s'est confirmé en 3ᵉ dans un second fichier).
+ *
+ * ⚠️ **Ne JAMAIS l'appeler depuis du code de production.** Ce qu'elle efface est exactement ce que
+ * le module protège : le cumul survit au démontage **pour que les dernières pages finissent par
+ * sortir**. Un appel périodique — au rafraîchissement d'un WebSocket, sur un bouton « réinitialiser
+ * l'affichage » — figerait l'écran de salle sur la page 1 toute la journée, c'est-à-dire le défaut
+ * d'origine d'E07US008 restauré. Et aucun test ne le verrait : la suite passe *parce que* la
+ * fonction remet à zéro. *(Le risque a été nommé par l'axe adversarial en 3ᵉ passe. L'export reste
+ * — l'alternative, `vi.resetModules()` + import dynamique dans deux fichiers, coûte plus qu'elle ne
+ * rapporte, règle 12 — mais le nom porte l'avertissement.)* */
+export function __reinitialiserCumulsDePage_TESTS(): void {
   secondesAffichees.clear()
 }
 

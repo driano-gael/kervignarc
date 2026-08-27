@@ -215,9 +215,17 @@ function ReglagePagesProjetees({ ecran, tournoiId }: { ecran: Ecran; tournoiId: 
         À ajuster en regardant l’écran depuis le fond de la salle : ces valeurs dépendent du
         projecteur, de la distance et de la longueur des noms. « Noms par page » se compte sur la
         liste d’affectations, qui s’affiche sur trois colonnes ; le classement, à un archer par
-        ligne, en montre trois fois moins par page — et jamais plus de douze. Réglez en regardant le{' '}
-        <strong>classement</strong> : c’est la vue la plus dense, donc celle qui déborde en premier,
-        et ce qui déborde n’est pas affiché du tout.
+        ligne, en montre trois fois moins — et <strong>jamais plus de 9</strong>.
+      </p>
+      {/* ⚠️ Le plafond crée une **plage inerte**, et le taire ferait passer un cadran bloqué pour
+          une panne : au-delà de 27 noms réglés, le classement ne bouge plus. L'organisateur doit
+          alors surveiller l'autre vue, qui n'a pas de plafond (correctif de 3ᵉ passe de revue,
+          axes B et C1 convergents). `DETTE-086`. */}
+      <p className="carte__aide">
+        Jusqu’à <strong>27</strong>, c’est le <strong>classement</strong> qui déborde en premier :
+        réglez sur lui. Au-delà, il reste figé à 9 archers et c’est la{' '}
+        <strong>liste d’affectations</strong> qui commande — surveillez-la, elle n’a pas de plafond.
+        Dans les deux cas, ce qui déborde n’est pas affiché du tout : rien ne dépasse à l’écran.
       </p>
       <button
         type="button"

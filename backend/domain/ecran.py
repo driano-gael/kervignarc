@@ -150,11 +150,15 @@ class SequenceVues:
 
 
 NOMS_PAR_PAGE_MIN = 5
-"""Plancher du nombre de noms par page : sous 5 noms, le nombre de pages explose — sur 200 archers,
-une **liste de noms** ferait 40 pages, soit plus de treize minutes avant de revoir la sienne à la
-cadence par défaut. ⚠️ Le **classement projeté** est plus dense encore : le front convertit ce
-nombre en lignes de tableau (~3 noms par ligne), donc près de cent pages au même plancher — plus
-d'une heure. 5 est une borne d'essai, pas un réglage de journée (précisé en revue d'E16US009).
+"""Plancher du nombre de noms par page : sous 5 noms, le nombre de pages explose.
+
+Sur 200 archers et à la cadence par défaut, en **temps d'affichage cumulé** (une seule convention,
+pour que les deux surfaces se comparent) : une **liste de noms** ferait 40 pages, soit ~13 min ; le
+**classement projeté**, où le front convertit ce nombre en lignes de tableau (~3 noms par ligne),
+en ferait près de cent, soit ~33 min — et près d'une heure et demie d'horloge, l'écran ne montrant
+le classement qu'un tiers du temps. 5 est une borne d'essai, pas un réglage de journée.
+*(Chiffres corrigés en revue d'E16US009 : ils dataient d'avant la conversion, et mélangeaient les
+deux horloges.)*
 """
 
 NOMS_PAR_PAGE_MAX = 100

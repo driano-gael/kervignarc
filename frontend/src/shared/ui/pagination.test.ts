@@ -11,7 +11,7 @@ import {
   pageCourante,
   rateauDePage,
   trancheDePage,
-  reinitialiserCumulsDePage,
+  __reinitialiserCumulsDePage_TESTS,
   useSecondesDAffichage,
 } from './pagination'
 
@@ -131,7 +131,7 @@ describe('useSecondesDAffichage — un cumul PAR vue', () => {
     vi.useFakeTimers()
     // ⚠️ Le cumul vit **au module** et survit au démontage : sans cette remise à zéro, ces tests
     // dépendraient de leur ordre d'exécution (2ᵉ passe de revue, axe D).
-    reinitialiserCumulsDePage()
+    __reinitialiserCumulsDePage_TESTS()
   })
   afterEach(() => {
     vi.useRealTimers()

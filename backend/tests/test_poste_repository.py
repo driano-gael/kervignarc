@@ -185,11 +185,16 @@ def test_une_paire_de_colonnes_incomplete_est_un_defaut_d_infrastructure(tmp_pat
 def test_une_ecriture_sur_une_ligne_abimee_ne_fuit_pas_en_422(tmp_path: Path) -> None:
     """L'enveloppement d'erreur vaut aussi pour les **écritures**, pas seulement les lectures.
 
-    ⚠️ `creer` et `enregistrer` relisaient la ligne par `_vers_poste` **nu** : leur
+    ⚠️ `ajouter` et `enregistrer` relisaient la ligne par `_vers_poste` **nu** : leur
     `except SQLAlchemyError` n'attrape ni `ValueError` ni `DomainError`, si bien qu'une ligne
     abîmée relue **après le commit** serait remontée en 422 métier sur une écriture — le client
     aurait cru sa requête fautive alors que la base l'est. Relevé en revue, corrigé en faisant
-    passer les deux retours par `_relire_poste` ; ce test est ce qui empêche le retour en arrière.
+    passer les deux retours par `_relire_poste`.
+
+    **Portée honnête** : ce test exerce `enregistrer` **seul**. `ajouter` emprunte le même helper,
+    mais la corruption n'y est pas atteignable depuis un `Poste` valide — on ne promet donc pas de
+    l'y empêcher. *(Trois axes ont relevé que la 1ʳᵉ rédaction nommait une méthode `creer` qui
+    n'existe pas — c'est `ajouter` — et annonçait deux couvertures pour une.)*
 
     Le `type` est choisi comme corruption parce qu'`enregistrer` ne le réécrit pas : la relecture
     post-commit lève donc bien, ce qui est le chemin qu'on veut exercer.

@@ -247,10 +247,10 @@ def test_le_reglage_de_pages_est_independant_de_la_cadence_de_vue() -> None:
     for cadence in (vue.cadence_s - 25, vue.cadence_s, vue.cadence_s + 15):
         ReglagePages(noms_par_page=40, cadence_page_s=cadence)  # aucune contrainte croisée
 
-    # L'assertion appariée, elle, discrimine : le domaine borne bien la cadence de page **pour
-    # elle-même**, indépendamment de toute cadence de vue.
-    with pytest.raises(CadenceDePageInvalide):
-        ReglagePages(noms_par_page=40, cadence_page_s=CADENCE_PAGE_MAX_S + 1)
+    # ⚠️ Pas d'assertion « appariée » ici : le refus hors bornes est déjà couvert par
+    # `test_une_cadence_de_page_hors_bornes_est_refusee`, et le rejouer sous un autre nom ne
+    # discrimine rien de plus. *(La 2ᵉ rédaction en avait ajouté une, en affirmant qu'elle
+    # discriminait : c'était un doublon exact du 4ᵉ paramètre de ce test-là — relevé en 3ᵉ passe.)*
 
 
 def test_les_bornes_du_reglage_de_pages_sont_inclusives() -> None:
