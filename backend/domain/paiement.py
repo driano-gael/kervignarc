@@ -1,23 +1,10 @@
-"""Récapitulatif de paiement — dû / payé / reste (E08US002).
+"""Règle de calcul du paiement — **dérivée**, jamais stockée.
 
-Le **fait** de paiement est stocké au plus bas niveau : le booléen `paye` d'une `Inscription` (un
-archer sur un départ). Tout ce qui est *au-dessus* — combien un archer doit, a réglé, reste à payer,
-et les mêmes totaux agrégés par club — se **dérive** de ces booléens et des tarifs des créneaux, à
-la
-lecture. Rien de nouveau n'est stocké (comme le montant dû d'E08US001, ADR-0017).
+dû = somme des tarifs inscrits ; payé = somme des tarifs marqués payés ; reste = dû - payé.
 
-Ce module porte la **règle de calcul** de cette dérivation, pure et testable depuis le CA :
-
-- **dû** = somme des tarifs des créneaux inscrits ;
-- **payé** = somme des tarifs des créneaux **marqués payés** ;
-- **reste** = dû - payé.
-
-Le `reste` est une **propriété**, jamais un champ : un dû et un payé ne peuvent pas se contredire
-avec leur reste s'il n'existe pas de troisième valeur à désynchroniser. Par construction (le payé
-n'additionne que des tarifs qui figurent déjà dans le dû), `0 ≤ payé ≤ dû`, donc `reste ≥ 0` — c'est
-une conséquence du calcul, pas une garde à poser.
-
-Pur et synchrone (règle 1) : aucun import de framework ni d'autre couche.
+⚠️ **Le `reste` est une PROPRIÉTÉ, jamais un champ** : un dû et un payé ne peuvent pas contredire
+leur reste s'il n'existe aucune troisième valeur à désynchroniser. `reste ≥ 0` est une conséquence
+du calcul, pas une garde à poser.
 """
 
 from __future__ import annotations

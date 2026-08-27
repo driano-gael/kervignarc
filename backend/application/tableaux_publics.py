@@ -1,24 +1,9 @@
-"""Lecture **publique** des tableaux d'un **créneau** (E07US005) — « voir les arbres en direct ».
+"""Lecture **publique** des tableaux — la maille est le **créneau**, pas le tournoi (ADR-0075).
+Service à part de `ServiceSaisieDuels`, qui est celui du scoreur : mêler deux audiences dans le même
+objet finirait par exposer au public un champ ajouté pour la saisie.
 
-Le CA d'E07US005 dit « rendu de l'arbre (**principal + placement**) mis à jour en live ». Ce
-service est le côté serveur de cette phrase : il rend, pour un **départ**, **tous** ses arbres —
-élimination directe *et* placement (`TYPES_EN_TABLEAU`, E05US010) — dans l'ordre du déroulé.
-
-⚠️ **La maille est le créneau** depuis E01US025 (ADR-0075) : un départ rejoue le tournoi en entier,
-donc chaque créneau a ses propres arbres, aux mêmes rangs. Lire à la maille tournoi les concaténait
-sans marqueur d'origine — cf. `TableauxDuDepart`.
-
-**Pourquoi un service à part et non une méthode de `ServiceSaisieDuels`.** `ServiceSaisieDuels` est
-le service du **scoreur** : il saisit, il valide, et sa lecture `etat_tableau` est protégée par
-`exiger_scoreur`. Y accrocher une lecture publique mêlerait deux audiences dans le même objet, et
-c'est le genre de mélange qui finit par exposer au public un champ ajouté pour le scoreur. On suit
-donc la forme déjà en place pour les autres lectures publiques dérivées du même arbre —
-`ServiceRoutage` (E04US018/E07US008) et `ServiceSuiviDeroule` (E07US004) sont eux aussi des
-services de lecture qui **consomment** `ServiceSaisieDuels` sans en faire partie.
-
-⚠️ **La restriction du contenu n'est pas ici, elle est au DTO** (`api/v1/tableaux.py`, règle 6) :
-ce service rend l'`EtatTableau` complet, la frontière API choisit ce que le public en voit. Le
-partage est volontaire — le domaine et l'application n'ont pas à connaître la notion de « public ».
+⚠️ **La restriction du contenu n'est PAS ici, elle est au DTO** (règle 6) : ce service rend l'état
+complet, la frontière API choisit ce que le public en voit.
 """
 
 from __future__ import annotations

@@ -1,23 +1,9 @@
-"""Une **anomalie** : un défaut de composition *rendu* au lieu d'être levé (E01US024, ADR-0063).
+"""Anomalies d'un déroulé — **deux gravités**, et la ligne de partage est la contribution de l'US.
+**Bloquante** : vraie *quel que soit l'effectif*. **Avertissement** : vraie *à cet effectif-là*
+seulement — la bloquer reviendrait à interdire les plages relatives.
 
-Jusqu'ici le domaine n'avait qu'un mode de signalement — l'exception. C'était suffisant tant qu'un
-format ne s'écrivait que valide : la construction refusait, l'appelant corrigeait. Le CA d'E01US024
-demande l'inverse — « *on doit pouvoir sauvegarder le brouillon tout le temps* » — et donc un mode
-où l'on **énumère** les défauts au lieu de s'arrêter au premier.
-
-**Aucune règle n'est recopiée pour autant** : une anomalie *porte* l'erreur typée existante
-(`SourceApresPhase`, `PhaseQualificationIncomplete`…), qui porte déjà son `code` et son message.
-C'est ce qui évite la duplication d'invariant que le registre de dette proscrit : les versions
-levantes (`verifier_sequence`, `verifier_coherence_etape`) deviennent de minces enveloppes qui
-lèvent la première anomalie produite.
-
-**Deux gravités**, et la ligne de partage est la contribution de conception de l'US :
-
-- **bloquante** — le défaut est vrai *quel que soit l'effectif* (une source postérieure, un ordre en
-  doublon, une qualification sans barème). Il interdit d'appliquer le format à un tournoi.
-- **avertissement** — le défaut n'est vrai qu'*à cet effectif-là* (« les rangs 33 à 120 » sur 82
-  inscrits). Le format n'est pas faux : il ne tient pas *ici*. Le bloquer reviendrait à interdire
-  les plages relatives, que le CA d'E05US010 demande précisément.
+⚠️ **Aucune règle n'est recopiée** : une anomalie **porte** l'erreur typée existante, qui a déjà
+son code et son message.
 """
 
 from __future__ import annotations

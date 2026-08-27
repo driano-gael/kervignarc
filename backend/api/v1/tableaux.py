@@ -1,23 +1,9 @@
-"""Endpoint REST **public** des tableaux d'un tournoi (E07US005) — « voir les arbres en direct ».
+"""Tableaux **publics** — c'est ici que vit la restriction de contenu (règle 6).
 
-Expose `ServiceTableauxPublics` à l'appli publique et à l'écran de salle. **Aucune
-authentification** : c'est le régime de toutes les vues publiques (E07US001) et la condition pour
-qu'un écran de salle, qui n'a pas de session admin, puisse afficher un tableau.
+Le public lit qui rencontre qui, où en est le match, qui a gagné. Pas `validee_par` (l'identité d'un
+bénévole), pas les manches ni le barrage (donnée de saisie), pas le barème ni les zones.
 
-⚠️ **C'est ici que vit la restriction de contenu (règle 6), et c'est tout l'enjeu du fichier.**
-Le tableau du **scoreur** (`api/v1/duels.py`, `exiger_scoreur`) rend le même `EtatTableau` avec
-tout ce qu'il faut pour saisir : chaque flèche de chaque manche, le barrage, les zones du blason,
-le barème du pavé, et le **nom du scoreur qui a validé**. Rien de tout cela n'a de raison d'être
-public. Le DTO ci-dessous garde ce qu'un spectateur vient lire — qui rencontre qui, où en est le
-match, qui a gagné — et **rien d'autre** :
-
-- pas de `validee_par` (identité d'un bénévole), remplacé par un booléen `validee` : le public a
-  besoin de savoir si un résultat est **acquis** ou encore en attente, jamais de savoir par qui ;
-- pas de `manches` ni de `barrage` : le détail flèche à flèche est une donnée de saisie. Ce que le
-  public lit d'un duel, c'est son **score de sets** (`points_haut`/`points_bas`) ;
-- pas de `bareme` ni de `zones` : ils dimensionnent le pavé de saisie, ils n'ont pas de lecteur ici.
-
-Un DTO **distinct** et non un `exclude` sur celui du scoreur : un champ ajouté au DTO du scoreur
+⚠️ **Un DTO DISTINCT, jamais un `exclude` sur celui du scoreur** : un champ ajouté au DTO du scoreur
 n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
 """
 

@@ -1,24 +1,10 @@
-"""Service applicatif Barrage (E06US003, ADR-0066) — organiser un départage au tir.
+"""Barrages — le service ne décide pas qu'un barrage est nécessaire, il l'**organise**.
 
-Cas d'usage d'**écriture** (donc consommés par la file du writer unique, règle 7) : annoncer un
-barrage sur une égalité que la politique `tiebreak` a signalée, saisir ses manches, le clore. La
-lecture (« quelles égalités restent à départager ? ») appartient au **classement**, qui les calcule
-déjà : les recalculer ici en produirait une seconde version, qui dériverait.
+La politique signale, l'organisateur déclenche, le service vérifie que l'égalité annoncée est bien
+l'une de celles-là : sans ce contrôle, on ferait retirer trois archers qui ne sont pas à égalité.
 
-**Le service ne décide pas qu'un barrage est nécessaire — il l'organise.** C'est la politique qui
-signale (`Classement.egalites_a_departager`, seuil d'ADR-0066) et l'organisateur qui déclenche. Le
-service se contente de vérifier que l'égalité annoncée est bien l'une de celles-là : sans ce
-contrôle, on pourrait faire retirer trois archers qui ne sont pas à égalité, et publier le résultat.
-
-⚠️ **Les trois portées sont servies, mais pas de la même façon — et la nuance compte.** En
-**qualification**, les tireurs sont *dérivés* du classement et le verdict y **retourne** : la boucle
-est fermée. En **poule** et en **Big Shoot Off**, les tireurs sont *désignés* par l'organisateur,
-parce qu'il n'existe aujourd'hui aucun classement de poule ni aucun état de Big Shoot Off calculé
-quelque part — ni `poule.py` ni `big_shoot_off.py` n'ont de consommateur de production (DETTE-028).
-Le barrage y est donc pleinement opérationnel (annonce, manches, verdict, correction, annulation),
-mais son verdict **ne retourne dans aucun classement**, faute de classement à alimenter. La boucle
-se fermera quand le chantier moteur livrera l'exécution de ces phases ; d'ici là, l'organisateur qui
-fait tourner une poule sur papier peut conduire et enregistrer son barrage dans l'application.
+⚠️ **En poule et en Big Shoot Off, le verdict ne retourne dans AUCUN classement** — faute de
+classement calculé à alimenter (`DETTE-028`). Le barrage y est conduit et enregistré, pas reversé.
 """
 
 from __future__ import annotations

@@ -1,23 +1,9 @@
-"""Documents de préparation de salle — contenu **imprimable** de l'identité des postes (E09US008).
+"""Étiquettes de cible et cartes de scoreur — de simples valeurs décrivant **ce qui** figure sur le
+support, jamais comment on le rend (le PDF est un adapter, ADR-0031).
 
-Deux supports qu'on prépare **à l'avance** (`D-07`, principe `P-6` : « tout ce qui s'identifie se
-prépare à l'avance ; le jour J on distribue, on ne configure pas ») et qu'on imprime pour monter la
-salle sans rien configurer sur place :
-
-- les **étiquettes de cible** — un QR par cible, à poser sur le pied — qui encodent l'**URL de
-  rattachement** du poste (E04US001) et portent le **code lisible en clair** en dessous (recours si
-  le QR est abîmé ou l'appareil photo capricieux) ;
-- les **cartes de scoreur** — un papier par scoreur avec son **code personnel** (E10US003).
-
-Domaine **pur** (règle 1) : de simples valeurs immuables décrivant *ce qui* figure sur le support,
-sans savoir *comment* on le rend. Le rendu PDF est un adapter d'infrastructure (ReportLab, ADR-0031)
-branché derrière le port `GenerateurDocumentsSalle` (`domain/ports.py`), à l'image de la feuille de
-marque (`domain/feuille_marque.py`).
-
-Le domaine ne construit **pas** l'URL (il ne connaît ni HTTP ni l'origine réseau du serveur) : c'est
-le service applicatif qui la compose à partir de l'origine de la requête et du code, et la dépose
-ici prête à encoder. Le QR **ne porte pas** le rattachement lui-même (c'est E04US001) — il n'encode
-qu'une URL.
+⚠️ **Le domaine ne construit PAS l'URL** : il ne connaît ni HTTP ni l'origine réseau du serveur.
+C'est le service qui la compose et la dépose ici prête à encoder. Le QR n'encode qu'une URL — il ne
+porte pas le rattachement lui-même.
 """
 
 from __future__ import annotations

@@ -1,23 +1,9 @@
-"""Service applicatif Barème de qualification (E01US009 / ADR-0011).
+"""Barème de qualification — porté par l'**étape** du déroulé (ADR-0011, ADR-0076).
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Le barème est porté par l'**étape** de type `qualification` du déroulé (ADR-0011, puis ADR-0076
-qui l'a sortie de la phase). `definir` fait un **upsert** sur la première : il crée la
-qualification avec son barème si le déroulé n'en a pas, sinon il met à jour la sienne. Fait
-remonter des erreurs typées (`TournoiIntrouvable`).
-
-⚠️ **Depuis E05US025 (ADR-0082), un déroulé peut porter plusieurs qualifications** : parler du
-« barème du tournoi » n'a plus de sens en général. `definir_pour_etape` règle une étape
-**désignée** et `qualifications` les liste — c'est ce que consomme l'écran. Les deux méthodes
-historiques restent, servies par les routes d'origine et justes tant qu'il n'y a qu'une
-qualification, ce qui est le cas de la quasi-totalité des tournois.
-
-Depuis E01US015, la phase porte aussi un **grain de validation** (`config.validation`, `D-11`), et
-l'agrégat garantit leur cohérence : réduire le barème **sous la cadence** du grain en place est
-refusé (le grain ne validerait jamais). L'upsert n'est donc plus inconditionnel — cf. `definir`.
+⚠️ **Un déroulé peut porter PLUSIEURS qualifications** (ADR-0082) : « le barème du tournoi » n'a
+plus de sens en général. `definir_pour_etape` règle une étape désignée ; les méthodes historiques
+restent, justes tant qu'il n'y en a qu'une. ⚠️ Réduire le barème **sous la cadence** du grain en
+place est refusé — le grain ne validerait jamais.
 """
 
 from __future__ import annotations

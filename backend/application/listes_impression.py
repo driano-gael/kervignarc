@@ -1,24 +1,9 @@
-"""Service applicatif Listes imprimables (E09US003).
+"""Listes imprimables — placement, et club & paiement. Ni HTTP, ni SQL, ni ReportLab ici.
 
-Compose deux documents papier utiles le jour J, sur le socle PDF (ReportLab, ADR-0031) :
-
-- **liste de placement** — reconstitue archer → cible/position/départ depuis le plan persisté
-  (E03US001), ordonnable par cible (ordre physique) ou par nom (accueil), filtrable sur un départ ;
-- **liste club & paiement** — regroupe par club le dû/payé de chaque archer et les totaux du club.
-
-Le service reste synchrone et pur d'infrastructure : il ne connaît ni HTTP, ni SQL, ni ReportLab.
-
-**Choix de câblage.** Le placement se reconstitue par **ports seuls** (comme la feuille de marque —
-jamais service→service) : la chaîne affectation → inscription → archer → catégorie est une 2ᵉ
-occurrence assumée de celle de la feuille de marque (règle « dupliquer une 2ᵉ fois, factoriser au
-3ᵉ »). En revanche la vue **club & paiement réutilise `ServicePaiements.recap_par_club`** (précédent
-`ServiceCompletude`, `composition.py`) plutôt que de recoder l'agrégation des paiements, le bucket
-« Sans club » (ADR-0014) et le tri : dupliquer cette règle métier non triviale la ferait diverger
-d'E08US002. Le service n'ajoute que l'enrichissement des **numéros de départ** (absents du récap) et
-la transposition en contenu imprimable.
-
-Gardes 404 identiques à la feuille de marque (`TournoiIntrouvable`, `DepartIntrouvable`) pour le
-placement ; `recap_par_club` porte déjà `TournoiIntrouvable` pour la vue club & paiement.
+⚠️ **Deux câblages volontairement différents** : le placement se reconstitue par **ports seuls**
+(2ᵉ occurrence assumée de la chaîne de la feuille de marque), tandis que la vue club & paiement
+**réutilise `ServicePaiements.recap_par_club`** — dupliquer cette règle non triviale (agrégation,
+bucket « Sans club », tri) la ferait diverger d'E08US002.
 """
 
 from __future__ import annotations

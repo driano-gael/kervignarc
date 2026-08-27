@@ -1,23 +1,9 @@
-"""Service applicatif Clubs — CRUD du référentiel des clubs (E02US001).
+"""Référentiel **global** des clubs — réutilisés d'une compétition à l'autre. L'unicité du nom se
+refuse ici (le domaine ne voit qu'un club) ; vérification et insertion ne s'entrelacent pas, la
+file du writer unique les sérialisant (ADR-0005).
 
-Orchestre le domaine derrière le port `ClubRepository`. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Le référentiel est **global** (aucun tournoi en paramètre) : les clubs sont réutilisés d'une
-compétition à l'autre.
-
-**Unicité du nom.** Le domaine ne voit qu'un club à la fois, jamais la collection : c'est donc
-ici qu'on refuse un doublon (`NomClubDejaPris`), avec une contrainte `UNIQUE` en base comme
-garde-fou d'intégrité. Le contrôle « le nom est-il libre ? » puis l'insertion ne peuvent pas
-s'entrelacer : toutes les écritures passent par la **file du writer unique** (ADR-0005), qui
-les sérialise — le classique problème de concurrence entre la vérification et l'écriture ne se
-pose donc pas ici.
-
-**Suppression d'un club utilisé.** Refusée (`ClubReference` → 409), sur le patron de
-`ServiceBlasons.supprimer` / `BlasonReference` (E01US006) : on refuse plutôt que de cascader
-silencieusement sur des inscriptions. La règle est **exerçable** parce que la même US pose
-`archer.club_id` — sans ce lien, elle n'aurait pu se vérifier que contre le vide.
+⚠️ **Supprimer un club utilisé est refusé** (409) plutôt que de cascader silencieusement sur des
+inscriptions — même patron que `ServiceBlasons`.
 """
 
 from __future__ import annotations

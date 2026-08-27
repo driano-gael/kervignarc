@@ -1,24 +1,8 @@
-"""Service applicatif Jeu d'essai — peupler un tournoi & instancier des scénarios (E15US001).
+"""Jeu d'essai — **orchestre les services existants**, n'écrit jamais lui-même : toute la validation
+métier et l'audit passent donc par les chemins normaux (règle 12 pour l'atomicité).
 
-Outil de **démo et de QA** (retours de la démo du 27/07/2026) : peupler un tournoi d'inscrits
-réalistes sans saisie manuelle, ou instancier d'un coup un tournoi complet **prêt à lancer** depuis
-un **catalogue de scénarios**. C'est de la **donnée réelle persistée** — un tournoi de test qu'on
-assume comme tel — **à distinguer** de la simulation *éphémère* (E15US002), qui ne persiste rien.
-
-**Réutilisation des services, pas de court-circuit du domaine.** Ce service n'écrit rien lui-même :
-il **orchestre** les cas d'usage existants (`ServiceTournois`, `ServiceCategories`,
-`ServiceDeparts`, `ServiceArchers`, `ServiceInscriptions`, `ServiceClubs`) — même patron que
-`ServicePlacementDuels`, qui compose `ServiceClassement`. Toute la validation métier (catégorie,
-unicité d'inscription…) et l'audit passent donc par les chemins normaux. La commande de file qui
-appelle `peupler`/`instancier` enchaîne ainsi plusieurs écritures (une par service appelé), comme
-`ServiceCategories.precharger_ffta` le fait déjà (règle 7 : le writer unique sérialise le tout ;
-l'atomicité de bout en bout n'est pas requise — c'est un tournoi de test, règle 12).
-
-**Déterminisme (règle 9).** La génération est pilotée par un `random.Random(graine)` construit à
-partir d'une **graine explicite** : à graine égale (et catalogue de catégories égal), les mêmes
-noms, clubs et catégories sont produits — le scénario est *rejouable*. Les identifiants de base
-(auto-incrément) ne font pas partie de cette reproductibilité : ils croissent avec la base ; ce qui
-est déterministe, ce sont les **données saisies** (nom, prénom, catégorie), pas leur `id` technique.
+⚠️ **Le déterminisme porte sur les DONNÉES saisies, pas sur les `id`** : ceux-ci croissent avec la
+base. À graine égale, mêmes noms et catégories — jamais mêmes identifiants.
 """
 
 from __future__ import annotations
