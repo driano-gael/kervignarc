@@ -1,18 +1,9 @@
-"""Service applicatif Inscriptions — inscrire un archer sur des départs (E02US009, ADR-0017).
+"""Service des **inscriptions** — c'est ici que vivent les règles inter-agrégats.
 
-Orchestre le lien **archer ↔ départ** derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni
-la file d'écriture (sérialisation assurée en amont, côté API) ; synchrone et pur d'infrastructure.
+Un archer ne s'inscrit que sur un départ **de son propre tournoi** ; un départ voisin lui est
+*introuvable*, pas interdit. Pas deux fois le même couple (pendant applicatif du `UNIQUE`).
 
-C'est ici — et pas dans l'entité `Inscription`, qui ne voit que deux clés — que vivent les règles
-inter-agrégats de l'US :
-
-- **même tournoi** : un archer ne s'inscrit que sur un départ **de son propre tournoi** ; un départ
-  d'un autre tournoi est *introuvable* de son point de vue (`DepartIntrouvable`, comme
-  `CategorieHorsTournoi` cachait la catégorie voisine) ;
-- **unicité** : pas deux fois le même couple `(archer, départ)` (`DejaInscrit`), pendant applicatif
-  de la contrainte `UNIQUE` en base ;
-- **montant dérivé** : le montant dû d'une inscription **n'est pas stocké**, il se lit sur le
-  `tarif_centimes` du départ à chaque lecture (`InscriptionDetaillee`).
+⚠️ **Le montant dû n'est pas stocké** : il se lit sur le tarif du départ à chaque lecture.
 """
 
 from __future__ import annotations

@@ -1,17 +1,7 @@
-"""Service applicatif Gabarits de salle — bibliothèque de modèles (E01US007) et application à un
-tournoi (E01US008).
+"""Service des **gabarits** — bibliothèque de modèles, et application à un tournoi.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Deux facettes :
-- **bibliothèque** : CRUD des gabarits **modèles** (`tournoi_id is None`), réutilisables ;
-- **application à un tournoi** : appliquer un modèle en crée une **copie** propre au tournoi, que
-  l'on peut ensuite **ajuster** (nom, plafond cible par cible) **sans altérer** le modèle.
-
-Fait remonter des erreurs typées (`GabaritIntrouvable`, `TournoiIntrouvable`,
-`GabaritDuTournoiAbsent`).
+Appliquer un modèle en crée une **copie** propre au tournoi, ajustable **sans altérer** le modèle.
+Le service ignore HTTP, SQL et la file : il reste synchrone et pur d'infrastructure.
 """
 
 from __future__ import annotations

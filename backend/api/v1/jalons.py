@@ -1,19 +1,8 @@
-"""Endpoint REST des **jalons « prêt à… »** (E16US012).
+"""Jalons « prêt à… » — lecture pollée, comme la complétude et la supervision.
 
-`GET /api/v1/tournois/{tournoi_id}/jalons/{jalon}` (**admin**) : « puis-je passer à l'étape
-suivante, et sinon qu'est-ce qui manque ? ». Une **route unique paramétrée par le membre**, image
-directe de la forme unique décidée au domaine — quatre routes jumelles auraient rouvert côté API
-la divergence que l'US ferme (ADR-0096).
-
-Lecture ; le front la **poll** comme la complétude et la supervision. DTO Pydantic distincts des
-value objects du domaine (règle 6). Erreurs typées traduites à la frontière (`api/erreurs.py`) :
-tournoi inconnu **et** membre pas encore instruit → 404.
-
-⚠️ `LigneCompletudeReponse` est **réutilisée** depuis `api.v1.completude` et non recopiée : c'est
-littéralement la même ligne (`domain.completude.LigneCompletude`), et le jalon *terminer* rend
-exactement les lignes que l'écran de complétude rendait déjà. Une 2ᵉ écriture du même DTO aurait
-fait diverger deux contrats que le front consomme avec le **même** composant — c'est le motif de
-`DETTE-065`, qu'on ne va pas alimenter en le sachant.
+⚠️ **`LigneCompletudeReponse` est RÉUTILISÉE, jamais recopiée** : c'est littéralement la même ligne
+de domaine, et le front la consomme avec le **même** composant. Une 2ᵉ écriture du DTO ferait
+diverger deux contrats — le motif de `DETTE-065`, qu'on n'alimente pas en le sachant.
 """
 
 from __future__ import annotations

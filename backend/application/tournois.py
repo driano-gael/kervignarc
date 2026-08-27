@@ -1,12 +1,7 @@
-"""Service applicatif Tournois — orchestre le domaine derrière le port repository.
+"""Service des **tournois** — arbitre l'existence et les **conflits d'état** du cycle de vie.
 
-Use cases de configuration d'un tournoi : créer, consulter, lister (E01US001) ; éditer et
-piloter le **cycle de vie à sept statuts** (E01US017, [ADR-0026]) — passer prêt, démarrer,
-mettre en pause / reprendre, terminer, archiver, annuler — et supprimer. Il ne connaît ni HTTP,
-ni SQL, ni la file d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et
-pur d'infrastructure. Il arbitre l'**existence** (`TournoiIntrouvable`) et les **conflits d'état**
-du cycle de vie (`TransitionStatutInvalide`, `TournoiEnCoursNonSupprimable`,
-`TournoiArchiveNonModifiable`) — l'agrégat, lui, ne valide que les valeurs (ADR-0007/0026 §4).
+L'agrégat, lui, ne valide que les valeurs (ADR-0007, ADR-0026 §4). Le service ignore HTTP, SQL et
+la file : il reste synchrone et pur d'infrastructure.
 """
 
 from __future__ import annotations

@@ -1,18 +1,8 @@
-"""Complétude d'un tournoi (E12US005) — « qu'est-ce qui manque pour qu'il soit fini ? ».
+"""Complétude — une **liste d'états** section par section, jamais une barre de progression.
 
-Politique **pure** (aucune I/O, aucun framework — règle 1) : à partir de décomptes déjà agrégés par
-le service (cibles de qualification terminées, archers réglés), elle assemble la réponse affichable,
-**le sportif et le tiers comptés séparément** (`D-17`) — ce qui « fige » à *terminé* (le sportif)
-n'est pas ce qui reste ouvert (les paiements). Ce n'est **pas** une barre de progression : c'est une
-liste d'états, section par section.
-
-Périmètre **séquencé** (arbitrage E12US005, cf. `stories/E12-pilotage-jour-j.md`) : les **phases
-éliminatoires** (1/8, 1/4…) n'ont pas encore de moteur (EPIC-05, `TypePhase` ne porte que la
-qualification), donc leur ligne est un jalon `À_VENIR` — présente pour dire « pas encore géré »,
-sans jamais rendre le sportif éternellement incomplet. Le `sportif_complet` (qui pilote
-l'avertissement avant *terminé*) ne dépend donc que de la **qualification** aujourd'hui ; il
-s'enrichira quand EPIC-05 livrera les duels. Aucun comportement perdu (règle 9), seulement séquencé
-— comme E12US001 pour les écrans de salle.
+⚠️ **Périmètre séquencé** : les phases éliminatoires n'ont pas de moteur au moment de l'écriture,
+donc leur ligne est un jalon `À_VENIR` — présente pour dire « pas encore géré », sans jamais rendre
+le sportif éternellement incomplet. `sportif_complet` ne dépend donc que de la qualification.
 """
 
 from __future__ import annotations

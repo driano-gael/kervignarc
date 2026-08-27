@@ -1,18 +1,8 @@
-"""Le déroulé **rempli par la réalité** — l'avancement d'un tournoi en cours (E07US004, ADR-0064).
+"""Superpose ce qui est **fait** à ce que la projection dit **attendu** — sans rien recalculer.
 
-CA : *« l'écran affiche le **même schéma à braquets** que l'atelier (E01US024), mais **rempli par la
-réalité** : phase terminée / en cours / à venir, **tour en cours**, duels joués sur duels attendus,
-braquets qui **se remplissent** au fur et à mesure »*.
-
-**Ce module ne recalcule rien de la projection.** `domain.deroule.projeter` dit ce qui est
-**attendu** — les braquets, la *Règle R*, le nombre de duels par tour ; ce module y superpose ce qui
-est **fait**. La séparation est le cœur du CA : un suivi qui recalculerait les duels attendus
-pourrait diverger du schéma que l'atelier a montré, alors que le CA demande explicitement *le même*
-schéma. C'est aussi ce qui évite de dupliquer un invariant du moteur (le reproche que le registre de
-dette adresse à toute recopie de règle).
-
-Pur et synchrone (règle 1) : la « réalité » arrive en paramètre, dénombrée par le service qui, lui,
-sait reconstruire un `Tableau` et lire les statuts de phase.
+⚠️ **Un suivi qui recalculerait les duels attendus pourrait diverger du schéma que l'atelier a
+montré**, alors que le CA demande *le même* schéma. C'est aussi ce qui évite de dupliquer un
+invariant du moteur. La « réalité » arrive donc en paramètre, dénombrée par le service.
 """
 
 from __future__ import annotations

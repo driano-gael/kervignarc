@@ -1,17 +1,9 @@
-"""Adapters repository SQLAlchemy (E00US009) — implémentent les ports du domaine.
+"""Adapters SQL — traduisent les lignes ORM en agrégats et **enveloppent** les pannes SQLAlchemy
+en `InfrastructureError` : le domaine ne voit jamais d'exception brute.
 
-`TournoiRepositorySQL` réalise `domain.ports.TournoiRepository` (conformité structurelle,
-vérifiée au câblage). Chaque opération ouvre une **session courte** (une par opération,
-ADR-0005) et traduit les lignes ORM en agrégats de domaine. Les pannes SQLAlchemy sont
-**enveloppées** en `InfrastructureError` — le domaine ne voit jamais d'exception brute.
-
-**Paquet depuis l'action 2 de l'audit de maintenabilité** (03/08/2026) : les 21 adapters
-vivaient dans un **fichier unique de 3 378 lignes**, l'un des onze « passages obligés »
-mesurés. Ils sont répartis par **thème métier** et ce module les **ré-exporte tous** : aucun
-import existant n'a changé.
-
-Les 45 fonctions de mapping ont suivi **le thème qui les appelle**, calculé sur le code et non
-réparti à vue ; une seule était réellement partagée (`_mapping.py`).
+⚠️ **Paquet réparti par thème métier, qui RÉ-EXPORTE tout** : aucun import existant n'a changé
+quand les 21 adapters ont quitté leur fichier unique de 3 378 lignes. Une seule fonction de mapping
+était réellement partagée — `_mapping.py`.
 """
 
 from __future__ import annotations

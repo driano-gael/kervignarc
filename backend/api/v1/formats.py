@@ -1,19 +1,8 @@
-"""Endpoints REST des formats de tournoi (`/api/v1`) — la brique « déroulé » (E01US023).
+"""Formats — bibliothèque à plat, et déroulé d'un tournoi.
 
-ADR-0060 §5. Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats,
-écriture routée par la **file** (writer unique, ADR-0005) et protégée par `exiger_admin`, lecture
-directe **hors boucle** (threadpool), erreurs typées traduites à la frontière.
-
-Deux familles de routes, calquées sur `/gabarits` (E01US007/E01US008) :
-
-- **bibliothèque** de formats réutilisables, à plat sous `/formats` ;
-- **déroulé d'un tournoi**, sous `/tournois/{id}/format` : appliquer un format (crée les phases) et
-  promouvoir le déroulé courant en format de bibliothèque.
-
-Noter l'asymétrie avec les autres briques : un format appliqué ne produit **pas** un format
-rattaché au tournoi, mais des **phases** — il n'y a donc pas de `GET /tournois/{id}/format`, la
-lecture du déroulé restant `GET /tournois/{id}/phases` (E05US001). Exposer une route qui laisserait
-croire qu'un tournoi « a » un format entretiendrait exactement la confusion que l'ADR écarte.
+⚠️ **Un format appliqué ne produit PAS un format rattaché au tournoi, mais des PHASES** : d'où
+l'absence de `GET /tournois/{id}/format`, la lecture du déroulé restant `GET .../phases`. Exposer
+une telle route laisserait croire qu'un tournoi « a » un format — la confusion qu'ADR-0060 écarte.
 """
 
 from __future__ import annotations

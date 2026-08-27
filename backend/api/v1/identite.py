@@ -1,18 +1,10 @@
-"""Endpoints REST de l'**identité visuelle du tournoi** (`/api/v1`) — E16US006, ADR-0097.
+"""Identité visuelle — **deux lectures publiques** (l'identité déclinée, les octets d'un logo).
 
-Suit le patron de bout en bout : DTO Pydantic distincts du domaine (règle 6), **écritures** par la
-file (writer unique, ADR-0005) sous `exiger_admin`, **lectures** hors boucle (threadpool), erreurs
-typées traduites à la frontière.
+Il n'y a rien à protéger dans une couleur projetée sur le mur d'un gymnase ; les écritures restent
+admin.
 
-**Deux lectures sont PUBLIQUES, et c'est délibéré** : l'identité déclinée et les octets d'un logo.
-L'écran de salle et l'appli du spectateur en vivent, et il n'y a rien à protéger dans une couleur
-projetée sur le mur d'un gymnase. Les écritures, elles, restent admin.
-
-**Un logo monte en corps brut, pas en `multipart/form-data`.** `UploadFile` exigerait
-`python-multipart`, qui n'est ni installé ni déclaré au manifeste — l'ajouter serait un arbitrage de
-dépendance (règle 11), pour un gain nul ici : on téléverse **un** fichier sans aucun champ à côté.
-Le corps est donc le fichier, et le `Content-Type` dit son format. Bonus non négligeable sur un
-réseau de gymnase : pas les ~33 % d'inflation d'un encodage base64.
+⚠️ **Un logo monte en CORPS BRUT, pas en `multipart`** : `UploadFile` exigerait `python-multipart`,
+non déclaré au manifeste (règle 11), pour un gain nul — un fichier, aucun champ à côté.
 """
 
 from __future__ import annotations

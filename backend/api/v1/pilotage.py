@@ -1,18 +1,10 @@
-"""Endpoints REST du pilotage d'un tour (E12US002, ADR-0056) — feu vert + lancement.
+"""Pilotage du lancement d'un tour — feu vert, chiffrage, puis le geste.
 
-Expose `ServicePilotageTour` à l'**organisateur** (rôle admin — « la journée a un maître de
-cérémonie, et ce n'est pas le logiciel » : c'est l'admin qui appuie, `exiger_admin`). Trois routes,
-calquées sur le placement (lire le plan / prévisualiser l'impact / agir) :
+`lancer` passe par la **file** et renvoie un `LiveEvent` typé que le listener post-commit diffuse
+aux abonnés. L'acte trace `LANCEMENT`.
 
-- `GET …/feu-vert/{tournoi}/{phase}` — l'état de préparation, duel par duel (lecture pure).
-- `GET …/impact-lancement/{tournoi}/{phase}` — le **chiffrage** du lancement global (le nombre
-  affiché par le bouton : « N duels, cibles …, K archers »), miroir de ce que `lancer` fera.
-- `POST …/lancer` — le geste. Passe par la **file** (writer unique) et renvoie un `LiveEvent`
-  typé `tour_lance` : le listener post-commit le **diffuse** aux abonnés WebSocket (les 4 canaux —
-  leurs écrans récepteurs, E04US018/E07US008/E07US004, sont séquencés). L'acte trace `LANCEMENT`.
-
-DTO Pydantic distincts des dataclasses d'application ; erreurs typées traduites à la frontière
-(`AucunDuelALancer` → 409). On réutilise `DuellisteReponse` de la saisie (mêmes noms affichés).
+⚠️ **`impact-lancement` est le MIROIR de ce que `lancer` fera** : les deux doivent donner le même
+compte, sinon le bouton annonce autre chose que ce qu'il produit.
 """
 
 from __future__ import annotations

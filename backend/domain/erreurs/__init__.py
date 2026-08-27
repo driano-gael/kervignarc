@@ -1,17 +1,8 @@
-"""Erreurs du domaine (ADR-0007) — une règle métier est violée.
+"""Erreurs du domaine, réparties par **thème métier** — ce module les **ré-exporte toutes**.
 
-Racine `DomainError` : le domaine **ignore HTTP**. La traduction en réponse (HTTP 422,
-code métier) se fait uniquement à la frontière API (`api/erreurs.py`).
-
-**Paquet depuis l'action 2 de l'audit de maintenabilité** (03/08/2026) : les 94 classes vivaient
-dans un **fichier unique de 941 lignes**, qu'il fallait ouvrir à presque chaque US — l'audit l'a
-mesuré parmi les onze « passages obligés » du dépôt. Elles sont réparties par **thème métier**
-(`referentiel`, `moteur`, `tir`, `exploitation`) et ce module les **ré-exporte toutes** : aucun
-import existant n'a changé, aucune ligne de classe n'a bougé d'un caractère.
-
-Une erreur neuve se pose désormais **dans son thème**, pas au milieu de quatre-vingts autres. Le
-seul point commun restant est ce barillet — une ligne à y ajouter, contre trois cents lignes à
-parcourir avant.
+⚠️ **Une erreur neuve se pose dans SON thème**, pas au milieu de quatre-vingts autres : c'est tout
+l'objet de la répartition. Aucun import existant n'a changé quand les 94 classes ont quitté leur
+fichier unique, et aucune ligne de classe n'a bougé d'un caractère.
 """
 
 from __future__ import annotations

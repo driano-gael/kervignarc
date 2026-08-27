@@ -1,19 +1,8 @@
-"""Service applicatif Departs — orchestre les créneaux d'un tournoi (E02US004, ADR-0017).
+"""Service des **départs** — arbitre l'existence et **attribue le numéro** d'un créneau.
 
-Use cases de configuration des **départs** (créneaux horaires) d'un tournoi : créer, lister, éditer
-(tarif/horaire), supprimer. Il ne connaît ni HTTP, ni SQL, ni la file d'écriture (sérialisation
-assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
-
-Il arbitre l'**existence** — du tournoi (`TournoiIntrouvable`) et du départ dans ce tournoi
-(`DepartIntrouvable`) — et **attribue le numéro** d'un nouveau créneau : le domaine ne voit qu'un
-départ à la fois, il ne peut donc pas savoir quel numéro est libre. Le numéro est toujours **le plus
-grand existant + 1** (1 pour le premier) — jamais un rang recalculé. Supprimer un créneau
-**intermédiaire** laisse donc un trou définitif ; supprimer **le dernier** (le plus grand numéro)
-libère son numéro, que la création suivante reprendra (le max a baissé). Les inscriptions et le
-placement référencent l'`id` technique, pas le `numero`, donc cette réutilisation est sans effet.
-
-Le lien archer↔départ (inscription) et le suivi `payé` sont E02US009 : ce service ne gère que la
-**définition** des créneaux.
+⚠️ **Le numéro est toujours « le plus grand + 1 », jamais un rang recalculé** : supprimer un
+créneau intermédiaire laisse donc un trou définitif, tandis que supprimer le dernier libère son
+numéro. Sans effet : inscriptions et placement référencent l'`id` technique, pas le `numero`.
 """
 
 from __future__ import annotations

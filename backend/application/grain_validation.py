@@ -1,19 +1,9 @@
-"""Service applicatif Grain de validation (E01US015 / `D-11`).
+"""Grain de validation — une politique de la phase de qualification (ADR-0011).
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Le grain de validation d'un tournoi est une **politique de sa phase** de qualification (ADR-0011),
-sérialisée dans `config.validation` à côté du barème. Contrairement au barème, `definir` **ne crée
-pas** la phase : régler le grain d'une qualification dont le barème n'est pas encore défini
-supposerait d'inventer un barème que l'organisateur n'a pas choisi. Le cas remonte donc en
-`PhaseQualificationAbsente` (404) — le barème d'abord, le grain ensuite.
-
-⚠️ **Le grain vit sur l'étape du déroulé** depuis ADR-0076, pas sur la phase de chaque créneau : il
-se définit **une fois** pour le tournoi. Avant, ce service écrivait « en éventail » — une fois par
-départ — et la seule chose qui empêchait deux créneaux de valider à des rythmes différents était
-que personne n'avait édité l'un sans l'autre.
+⚠️ **`definir` ne CRÉE pas la phase**, contrairement au barème : régler le grain d'une
+qualification sans barème supposerait d'en inventer un que l'organisateur n'a pas choisi. Le barème
+d'abord, le grain ensuite (404 sinon). ⚠️ Le grain vit sur l'**étape** du déroulé (ADR-0076), donc
+se définit **une fois** pour le tournoi — l'écriture en éventail laissait deux créneaux diverger.
 """
 
 from __future__ import annotations
