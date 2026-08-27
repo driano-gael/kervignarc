@@ -1,35 +1,10 @@
-"""Ce que deux services de tableau doivent lire **de la même façon** (E05US020, E06US006).
+"""Qui entre dans une phase — **une seule règle, appelée par les deux services** (ADR-0068).
 
-Deux règles y vivent, pour un seul et même motif : `preleves` (qui entre dans une phase) et
-`profondeur_de` (jusqu'où cette phase départage). Le module s'appelait « la règle d'ensemencement »
-quand il n'en portait qu'une ; il porte désormais **ce que `ServicePlacementDuels` et
-`ServiceSaisieDuels` ne peuvent pas lire différemment sans monter deux arbres distincts**.
+`ServiceSaisieDuels` (l'arbre) et `ServicePlacementDuels` (le plan) doivent ensemencer exactement la
+même population : un écart, c'est un archer posté sans duel et un autre face au mauvais adversaire.
 
-Deux services montent le même tableau à partir du même classement : `ServiceSaisieDuels` (l'arbre
-que l'on joue) et `ServicePlacementDuels` (le plan de cibles qui pose les duellistes côte à côte).
-Ils doivent ensemencer **exactement** la même population : le premier dit qui affronte qui, le
-second où ils tirent. Un écart entre les deux, c'est un archer posté sur une butte sans duel, et
-un autre en face du mauvais adversaire — invisible jusqu'au jour J.
-
-Cette règle vivait **recopiée** aux deux endroits, avec un commentaire affirmant leur parité. La
-recopie a tenu tant que la règle était « tous les archers en lice » ; elle a lâché à la première
-évolution — E05US020 a fait consommer les prélèvements d'un seul côté, et la revue adversariale a
-mesuré le résultat : plan de 8 placements pour un tableau de 4. D'où cette extraction, qui n'ajoute
-aucune abstraction : une fonction pure, appelée deux fois.
-
-**Pourquoi en couche application et non dans le domaine** : `preleves` croise un `Classement`
-(domaine) et une `Phase` (domaine), mais son *besoin* est celui de deux cas d'usage. La poser dans
-`domain/phase.py` obligerait ce module à importer `domain/classement.py`, qui importe déjà
-`domain/politiques.py` — on paierait un couplage de modules pour une fonction de quinze lignes.
-
-⚠️ **Cet argument ne vaut pas pour `profondeur_de`**, et la revue l'a relevé : elle ne touche pas au
-`Classement`, elle croise une `Phase` et un
-`RegistrePolitiques`, tous deux du domaine — et `domain/phase.py` importe déjà
-`domain/politiques.py` depuis E06US006. Le couplage invoqué serait donc nul, et la
-descendre dans le domaine la rendrait testable comme unité de domaine. Elle reste ici pour une autre
-raison, moins noble mais réelle : c'est **le lieu que les deux services partagent déjà**, et le
-motif de son extraction est un motif de cas d'usage (« ces deux-là ne peuvent pas diverger »), pas
-une règle métier. À rouvrir si une troisième politique de phase rejoint la file — cf. ADR-0070.
+⚠️ **La règle a déjà lâché une fois recopiée** : mesuré en revue, plan de 8 placements pour un
+tableau de 4. Aucune abstraction ici — une fonction pure, appelée deux fois.
 """
 
 from __future__ import annotations

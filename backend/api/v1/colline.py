@@ -1,41 +1,10 @@
-"""Endpoints REST de la **colline** (E05US027, [ADR-0083]) — régler, puis faire tirer.
+"""Routeur **colline** — un défi *est* un duel ordinaire ; seule la navigation diffère (ADR-0083).
+`numero` est **dérivé** du rejeu, jamais stocké ; un tir dont les duellistes ne correspondent plus
+s'affiche « non tiré » plutôt que d'être ré-attribué (ADR-0049 §4).
 
-Expose `ServiceColline` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **la salle et le public** lisent l'**état** de la phase — manches appariées, défis, archers au
-  repos, ordre courant de la colline — ainsi que la **borne** de portée que l'effectif du jour
-  autorise ;
-- **le scoreur** saisit les défis avec le pavé de duel d'E04US013.
-
-⚠️ **Un défi *est* un duel ordinaire** (ADR-0083 §7), et ce routeur le montre : les trois écritures
-de tir sont les jumelles de celles de `api/v1/poules.py`, `api/v1/suisse.py` et
-`api/v1/saisie_duels.py`, et écrivent dans la même table `duel`. Ce qui diffère est la
-**navigation** — on entre par la **manche**, pas par la ronde, la poule ni le numéro de match d'un
-arbre. C'est le `decor` du contrat (`RONDES_APPARIEES`, partagé avec le suisse), et c'est tout ce
-que la duplication porte.
-
-`numero` est le `match_numero` de la table `duel`, **dérivé** du rejeu et jamais stocké : manches
-dans l'ordre, défis dans l'ordre de l'appariement, numérotation continue depuis 1 sur toute la
-phase. Un tir dont les duellistes ne correspondent plus à l'appariement recalculé s'affiche « non
-tiré » plutôt que d'être ré-attribué (ADR-0049 §4) — le défi rend alors un pavé **vierge** et lève
-`desynchronisee`, plutôt que de prêter un score au mauvais couple.
-
-⚠️ **Il n'y a pas de route « manche suivante »**, et c'est structurel — comme au suisse, mais pour
-une raison plus contraignante encore : les défis de la manche `n+1` se calculent sur les
-**positions** issues de la manche `n`. Tant qu'un défi n'est pas tranché, ces positions n'existent
-pas. Exposer un geste « apparier la manche suivante » n'aurait donc pas seulement laissé croire à
-une décision d'organisateur là où il n'y a qu'une conséquence : il aurait permis de demander un
-appariement **faux**.
-
-⚠️ **Aucune route ne rend l'ordre de la colline autrement que par `classement`.** C'est délibéré :
-l'ordre courant *est* le classement de ce format, et en exposer deux formes ferait croire à deux
-vérités. Un spectateur lit la colline, un prélèvement lit le classement de phase — c'est la même
-liste.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036), comme les trois autres décors.
-
-[ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Il n'y a pas de route « manche suivante », et c'est structurel** : les défis de la manche `n+1`
+se calculent sur les positions issues de `n`. Tant qu'un défi n'est pas tranché, ces positions
+n'existent pas — un tel geste permettrait de demander un appariement **faux**.
 """
 
 from __future__ import annotations

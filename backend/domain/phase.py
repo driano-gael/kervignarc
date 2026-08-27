@@ -1,41 +1,9 @@
-"""Agrégat `Phase` et `SequencePhases` — les étapes d'un tournoi et leur enchaînement.
+"""Agrégat **Phase** et séquence — cycle de vie, typage, prélèvements (ADR-0045, ADR-0061).
+L'agrégat porte la valeur et des transitions **pures** ; le service arbitre l'enchaînement.
 
-**Historique.** E01US009/ADR-0011 a introduit la `Phase` de façon **minimale et passive** : un seul
-type (`qualification`), un `ordre` et un `statut` conformes au modèle de données mais qu'aucun code
-n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de validation).
-
-**E05US001 / [ADR-0045] rend la séquence active** — c'est le socle du moteur de phases (jalon J2) :
-
-- **Cycle de vie** : quatre statuts `a_venir → en_cours → terminee`, avec `en_cours ⇄ en_pause`
-  réversible. `en_pause` **gèle une phase** pendant que le reste du tournoi vit (distinct du
-  `en_pause` **de tournoi**, ADR-0026 §3). L'agrégat porte la **valeur** et des transitions
-  **pures** ; le service arbitre l'enchaînement (patron `ServiceTournois`).
-- **Typage ouvert** : `elimination_directe` et `placement` rejoignent `qualification`. Déclarer un
-  type ne présuppose pas son moteur ; leurs politiques propres sont **arrivées** en E05US003. En
-  conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
-  seulement).
-- **Peuplement** : une phase est alimentée par des `SourcePhase`. E05US001 n'en admettait
-  qu'**une**,
-  « rangs [a..b] de la phase d'ordre k » (amorce inscrite en DETTE-015) ; **E05US010 / [ADR-0061] a
-  livré le modèle complet et résorbé cette dette** : `Phase.sources` est une **liste** de
-  prélèvements de natures mêlées (`rangs`, `issue_de_tour`, `reste`), dont les **plages relatives**
-  (fin ouverte, « le reste ») rendent un format indépendant de l'effectif réel. Les contrôles
-  collectifs — source existante et antérieure, rangs dans l'effectif, sources qui ne se recoupent
-  pas, somme compatible — sont portés par l'agrégat pur `SequencePhases`.
-  ⚠️ **Ce qui reste ancré par `ordre`** (et non par identité) : une source désigne sa phase amont
-  par
-  son rang dans la séquence, ce qui oblige à **remapper** les références à chaque réordonnancement
-  ou suppression (`ServicePhases._remapper`, `ServiceBaremeQualification._decaler_dun_cran`).
-  E05US010 n'a pas changé cet ancrage — elle l'a seulement généralisé à N sources. C'est un écart
-  **assumé et tracé** : cf. [DETTE-026](../../docs/dette.md).
-
-La **forme JSON** de la config est une préoccupation du **repository** (l'agrégat pur ci-dessous ne
-sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent sous `config.policies`
-(le barème sous `config.policies.scoring`), le grain de `validation` restant à la racine. Agrégats
-de domaine **purs** (immuables, sans dépendance framework).
-
-[ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
-[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
+⚠️ **Une source désigne sa phase amont par son `ordre`, pas par son identité** : tout
+réordonnancement ou suppression oblige donc à **remapper** les références
+(`ServicePhases._remapper`). Écart assumé et tracé — `DETTE-026`.
 """
 
 from __future__ import annotations

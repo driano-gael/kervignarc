@@ -1,34 +1,9 @@
-"""Moteur de **poules** — groupes se rencontrant en round-robin (E05US015, [ADR-0062]).
+"""Moteur de **poules** — la structure et le classement ; **personne n'y tire** (ADR-0062). Le tir
+est un duel ordinaire ; « tout ou partie des autres archers » est un réglage, pas deux moteurs.
+Arbitrages du 31/07/2026 (serpent, round-robin, barème 3/1/0) : `stories/E05`.
 
-Règle **fournie par le commanditaire le 31/07/2026** et reproduite au [référentiel §10.1] : elle
-n'est écrite nulle part ailleurs (ni au règlement FFTA salle, ni dans aucun document du projet).
-
-> **Principe** — les archers sont regroupés en poules et se rencontrent dans leur groupe.
-> **Fonctionnement** — chaque archer rencontre tout ou partie des autres archers de sa poule ; un
-> barème de points attribue les victoires, nuls et défaites ; le classement de poule détermine les
-> qualifiés pour la phase suivante.
-> **Départage** — points de match, différence de sets, différence de score, nombre de 10 / 9,
-> barrage si nécessaire.
-
-**Ce module ne fait tirer personne.** Il produit la **structure** (qui est dans quelle poule, qui
-rencontre qui) et lit le **classement** à partir de résultats déjà tranchés. Le tir lui-même est un
-duel ordinaire (`domain/duel.py`, pavé de saisie d'E04US013) : une poule n'invente pas une façon de
-tirer, seulement une façon d'apparier et de compter.
-
-**Ce qui est de la configuration, pas du code** (règle 2). « Tout ou partie des autres archers »
-est un **réglage** (`rencontres_par_archer`), pas deux moteurs ; le barème de points, le nombre de
-poules et le nombre de qualifiés en sont d'autres. Ce module ne connaît aucun format en dur.
-
-**Arbitrages du 31/07/2026** (reversés dans `stories/E05-moteur-phases.md`, cf. règle 9) :
-composition **serpent** depuis le classement source ; **round-robin complet** par défaut ; barème
-**3 / 1 / 0** (victoire / nul / défaite) ; **aucun défaut** imposé au nombre de qualifiés — c'est
-l'organisateur qui le saisit, parce qu'il dépend de ce que la phase suivante attend, pas du format
-de poule.
-
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[référentiel §10.1]: ../../docs/referentiel-ffta.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ **Aucun défaut n'est imposé au nombre de qualifiés** — il dépend de ce que la phase suivante
+attend, pas du format de poule. C'est l'organisateur qui le saisit.
 """
 
 from __future__ import annotations

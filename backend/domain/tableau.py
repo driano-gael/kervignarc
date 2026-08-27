@@ -1,34 +1,9 @@
-"""Arbre d'élimination directe (E05US005, ADR-0004) — le *tableau* qui orchestre les politiques.
+"""Moteur de tableau — **récursion sur des plages de rangs**, dont l'élimination directe est un cas
+particulier (ADR-0061). Le `routing` dit *où* descend un perdant, la `depth` *jusqu'où*.
 
-E05US003 a livré les **stratégies pures** d'un format de tableau (`SeedingSerpent`,
-`ByesAuxMieuxClasses`, `EliminationSeche`, …) ; cette US construit la **structure** qui les
-assemble : dimensionner à la puissance de 2, ensemencer, attribuer les byes, générer les matchs
-reliés à leurs sources, faire avancer le vainqueur et produire le podium (glossaire : `Tableau` =
-« arbre de matchs à élimination »).
-
-**Un format est de la configuration, pas du code** (règle 2). Le moteur ne connaît donc aucun format
-en dur : il reçoit ses politiques injectées (`seeding` / `byes` / `routing` / `depth`) et compose
-l'arbre à partir d'elles. Changer de politique change le format sans toucher ce module.
-
-**Le moteur oppose des `Participant`, pas des archers** (ADR-0028, E13US001). Un `Match` oppose des
-`Participant` (archer **ou** équipe) : le moteur les traite de façon **opaque** — il les compare par
-identité et les reporte dans l'arbre, sans jamais brancher sur leur genre (aucun `if équipe`). Le
-**rang** de qualification ne sert qu'à l'**ensemencement** : `construire_tableau` reçoit les
-participants **ordonnés par rang** (indice 0 = tête de série n°1), et le seeding organise les
-**positions**. C'est la clé de structure (byes, appariements), distincte de l'occupant (le
-participant). Le placement intégral d'E05US010 réutilisera ces mêmes briques.
-
-**E05US010 généralise la structure : le placement intégral, dont l'élimination directe est un cas.**
-L'arbre n'est plus une suite de tours mais une **récursion sur les plages de rangs** — un groupe
-disputant `[a..b]` engendre ses matchs, puis les vainqueurs sur `[a..mid]` et les perdants sur
-`[mid+1..b]` là où le `routing` les envoie (*Règle R*), jusqu'à une plage de largeur 2 dont le match
-**terminal** fixe deux rangs (*Règle T*). Avec une profondeur `podium`, cette même récursion rend
-**exactement** l'arbre d'E05US005 — la petite finale *est* le sous-groupe des perdants des demies.
-Le `routing` dit **où** descend un perdant, la `depth` **jusqu'où** l'on descend ; le repêchage WA
-(E05US015) ajoutera une destination, pas un moteur. Cf. [ADR-0061].
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
+⚠️ **Le moteur oppose des `Participant`, jamais des archers** (ADR-0028) : il les traite de façon
+**opaque**, sans jamais brancher sur leur genre — aucun `if équipe`. Le rang ne sert qu'à
+l'ensemencement ; la clé de structure (byes, appariements) est la **position**, pas l'occupant.
 """
 
 from __future__ import annotations

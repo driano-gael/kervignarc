@@ -1,35 +1,10 @@
-"""Le **découpage d'une qualification en tours** (E05US035, [ADR-0093]).
+"""Réglage du **découpage en tours** d'une qualification — *avancer ≠ classer* (ADR-0090, ADR-0093).
+Le classement reste **toujours au total**, jamais au tour : d'où le réglage ici plutôt que sur le
+barème. Ce module porte le réglage, pas la lecture du terrain.
 
-Une qualification est un bloc de `n` volées au cumul : rien dans « 20 volées » ne dit s'il y a un
-ou quatre tours. C'est un **choix de l'organisateur** — « 20 volées en 2 tours de 10 » —, et il
-n'existe que pour une raison : pouvoir y poser une **pause programmée** comme sur les quatre autres
-formats déroulés ([ADR-0091]). Le découpage ne change **rien** au score : la qualification se classe
-toujours au total, jamais au tour. C'est l'invariant *avancer ≠ classer* posé par [ADR-0090], et
-c'est pourquoi le réglage vit ici et non sur `BaremeQualification`.
-
-**Ce module porte le *réglage*, pas la lecture du terrain.** Il dit ce qu'un découpage doit
-respecter et combien de volées fait un tour ; la fabrique d'`AvancementDePhase` qui s'en sert vit
-dans `domain.suivi_deroule`, auprès du type qu'elle construit — l'y laisser aurait fermé un cycle
-d'import (`phase` → `qualification` → `suivi_deroule` → `phase`), et le cycle n'aurait fait que
-signaler ce que la place dit mieux : une fabrique appartient au module de ce qu'elle fabrique.
-
-Quant à *qui* tire — résoudre la population réelle d'une qualification (deux peuvent coexister dans
-un créneau, [ADR-0082]), la croiser au plan de cibles et en soustraire les forfaits — c'est une
-résolution **applicative** (`ServiceSaisie.avancement_de_phase`), et c'est ce qui rend
-l'arithmétique du tour testable sans monter un créneau entier.
-
-⚠️ **Le tour d'une qualification peut reculer.** Un archer qui commence en retard fait baisser le
-minimum du plateau, donc le tour. Le calcul ci-dessous n'a **aucune mémoire** — il dit ce qui tourne
-maintenant, et c'est `domain.arret_programme.phases_a_arreter` qui absorbe le recul (comparaison
-`>` et non `!=`, correctif de 2ᵉ passe d'E05US033). Lisser ici pour « éviter le recul » ferait
-mentir la lecture au moment précis où elle protège le pas de tir.
-
-Domaine **pur** (règle 1).
-
-[ADR-0082]: ../../docs/adr/0082-plusieurs-qualifications-dans-un-meme-deroule.md
-[ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
-[ADR-0091]: ../../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md
-[ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+⚠️ **Le tour d'une qualification peut RECULER** — un archer qui commence en retard fait baisser le
+minimum du plateau. Ce calcul n'a aucune mémoire, et c'est `arret_programme` qui absorbe le recul.
+Lisser ici ferait mentir la lecture au moment précis où elle protège le pas de tir.
 """
 
 from __future__ import annotations

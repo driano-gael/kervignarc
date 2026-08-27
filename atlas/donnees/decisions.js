@@ -1854,7 +1854,9 @@ window.ATLAS.decisions = {
       "config.policies",
       "validation"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "config.policies"
+     ],
      "verifiable": true
     },
     {

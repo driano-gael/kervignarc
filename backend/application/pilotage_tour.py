@@ -1,36 +1,9 @@
-"""Service applicatif Pilotage du tour — feu vert + lancement (E12US002, ADR-0056).
+"""Pilotage du **lancement d'un tour** — le bouton ne calcule rien (ADR-0056). Le tour suivant est
+déjà prêt : lancer, c'est faire partir des duels **prêts**, et l'unité lançable est le **duel**, pas
+le tour (`D-23`).
 
-C'est la **valeur du jour J** (EPIC-12) : ne jamais découvrir un blocage en appuyant sur le bouton,
-et faire partir la suite **d'un geste** pour que 150 archers sachent où aller en moins de deux
-minutes. Deux cas d'usage, **tous deux en lecture** sur le tableau reconstruit, plus une écriture
-minimale pour le geste de lancement :
-
-- **`feu_vert`** — l'état de préparation **affiché en continu** (`P-3` : l'appli n'empêche rien,
-  elle montre). Pour chaque **duel à venir** (non tranché, pas un bye) : *participants connus ?*
-  (occupants propagés), *cible attribuée ?* (jointure occupant → plan de duels persisté), et, quand
-  un occupant manque, *quelle source* on attend (« en attente du duel n°3 ») — **ce qui bloque est
-  nommé**, pas seulement signalé.
-- **`impact_lancement`** — la **prévisualisation** que le bouton affiche : « N duels, cibles X et
-  Y — K archers ». Lecture pure, comme `impact_regeneration` d'E12US007.
-- **`lancer`** — le geste. **Le bouton ne calcule rien** : le tour suivant est déjà prêt (le
-  placement l'a posé, la progression l'a peuplé). Lancer, c'est **faire partir** un ou plusieurs
-  duels **prêts** — l'unité lançable est le **duel**, pas le tour (`D-23` : deux prêts et un qui
-  attend sa source ⇒ on fait partir les deux). L'acte laisse une **trace d'audit** `LANCEMENT`
-  (daté/attribué) qui, à la frontière API, **déclenche la diffusion** d'un `LiveEvent` typé aux 4
-  canaux (`D-09`). **Aucun statut n'est posé** sur le tableau (il reste reconstruit du classement +
-  duels validés, ADR-0049) : le lancement est un **événement**, pas un état (ADR-0056).
-
-**Ce service ne calcule pas le tour suivant** (routage/seeding = EPIC-05), ne place pas (EPIC-03) :
-il **agrège** ce que le classement, l'arbre et le plan tiennent séparés, et **émet** le geste. Il
-compose donc `ServiceSaisieDuels` (reconstruction de l'arbre + noms), `ServicePlacementDuels` (le
-plan → la cible de chaque duelliste) et `ServiceAudit` (la trace) — service→service, sur le
-précédent de `ServiceClassement`.
-
-**Séquencement assumé (règle 9, comme E12US005/E12US006 face à EPIC-05)** : le placement des tours
-≥ 2 est E05US010 (non livré) — un duel de tour ≥ 2, même jouable, ressort donc « cible non
-attribuée » tant que ce placement n'existe pas. Et les 3 canaux récepteurs (tablette E04US018,
-public E07US008, écran de salle E07US004) ne sont pas construits : le lancement **émet** le signal,
-mais seuls leurs futurs écrans le **recevront** de façon ciblée. Aucun comportement perdu, séquencé.
+⚠️ **Aucun statut n'est posé sur le tableau** — il reste reconstruit du classement et des duels
+validés (ADR-0049). Le lancement est un **événement**, pas un état : seule sa trace d'audit existe.
 """
 
 from __future__ import annotations
