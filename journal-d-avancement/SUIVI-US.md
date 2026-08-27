@@ -13,16 +13,16 @@
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
 **Dernière mise à jour : 27/08/2026, 15 h 15** · **128 US livrées** · dernière : `E00US027`
-*(**l'écran de salle se règle, et montre enfin tout le monde** — les deux moitiés laissées en
-suspens par les questionnaires `P06` et `P07` sont tenues. La **cadence** et la **taille** d'une page
-projetée se règlent **par écran** (elles étaient deux constantes du programme, `DETTE-039`), et le
-classement projeté garde ses **trois premiers** figés pendant que le reste **tourne page par page**.
-⚠️ **« Défiler » a été tranché en pagination** ([ADR-0098](../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md)) :
-un cadre à ascenseur sur un vidéoprojecteur ne s'actionne pas — c'est pour cela que `E16US005` avait
-laissé la tête figée **à zéro** sur cette surface. ⚠️ **Le 4ᵉ CA était déjà livré la veille** par
-`E16US006` (le logo sur l'écran de salle). Migration `0051`, `DETTE-039` **résorbée sur son volet
-technique** — l'incertitude qu'elle abritait, elle, reste ouverte : rien n'a été mesuré sur un vrai
-vidéoprojecteur.)*
+*(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois
+passes de revue** d'`E16US009` et de la question qu'elles ont provoquée. Sur les 12 majeurs de la 3ᵉ
+passe, **un seul** portait sur du code : les autres étaient des documents qui se contredisent, dont
+des commentaires que **rien ne vérifie**. Un commentaire ne survit donc qu'à trois conditions —
+**contrainte non déductible**, **avertissement**, ou **renvoi d'une ligne**
+([ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md), règle 13) ; le
+reste vit déjà ailleurs. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome du
+plafond de pages, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant
+d'être retiré. Lot démonstratif de 5 fichiers (−125 lignes) ; les 45 fichiers au-dessus de 40 % se
+traitent **au fil de l'eau**, pas en big bang. Aucune ligne exécutable modifiée.)*
 
 **Précédente : `E16US006`**
 *(**le tournoi porte ses couleurs et ses logos** — deux logos facultatifs, celui de l'**édition** et

@@ -558,9 +558,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 - **128 US livrées** sur `main` (mergées, revues, CI verte) à la date du 27/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
   autorité sur le compte) —, la dernière étant `E00US027`, **sans effet visible pour vous** : une
-  règle d'écriture qui range le *pourquoi* du code dans la documentation au lieu de le recopier en
-  commentaire, là où rien ne le vérifie et où il finit par dire le contraire du code. La précédente
-  était `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
+  règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le
+  recopier en commentaire, là où rien ne le vérifie et où il finit par dire le contraire du code.
+  La précédente était `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
   une page de noms défile et le nombre de noms qu'elle porte se règlent **par écran**, depuis la
   préparation du tournoi, au lieu d'être écrits dans le programme. Et le classement projeté garde
   ses **trois premiers** en tête pendant que le reste **tourne page par page** — sur un
