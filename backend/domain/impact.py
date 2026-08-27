@@ -1,24 +1,9 @@
-"""Calcul d'impact d'une écriture (E12US007, [ADR-0040]) — value objects **purs**.
+"""Graduation de l'**alerte d'impact** — quel niveau mérite quel geste (ADR-0040).
 
-L'appli ne demande confirmation **que quand ça compte** (`P-4`, `D-16`) : elle calcule l'impact
-**réel** au moment où on agit, elle ne classe pas les actions d'avance. La **ligne de partage**
-n'est
-ni *brouillon / en cours*, ni *sportif / tiers*, mais : **est-ce que ça a déjà produit des données
-réelles ?** ([CDC UX §9.1](../../cahier-des-charges-ux.md)).
+Ce module ne porte que la règle ; le **comptage** lit des repositories et vit au service.
 
-Ce module ne porte que la **règle métier** de graduation — *quel* niveau d'alerte mérite *quel*
-geste. Le **comptage** (combien d'archers, combien de cibles ont des scores) est de
-l'orchestration :
-il lit des repositories, il vit donc dans le service applicatif (`application/placement.py`), pas
-ici
-(règle 1, domaine pur et synchrone).
-
-**Périmètre E12US007 (scope A, ADR-0040)** : la seule action câblée est la **régénération du plan de
-cibles** (le cas « REPLACER » du CDC). `NiveauImpact` — l'échelle — est **générique** et se
-réutilisera ; `ImpactRegeneration` — le calcul — est **spécifique** au placement. On n'abstrait pas
-un `CalculateurImpact` avant la 3ᵉ action réelle (règle « remède structurel sur preuve »).
-
-[ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
+⚠️ **`NiveauImpact` est générique, `ImpactRegeneration` est spécifique au placement** : on
+n'abstrait pas un `CalculateurImpact` avant la 3ᵉ action réelle (remède structurel sur preuve).
 """
 
 from __future__ import annotations

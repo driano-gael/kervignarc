@@ -1,26 +1,10 @@
-"""Canal WebSocket temps réel — adapter entrant (couche API ; CDC technique §6.2).
+"""Hub temps réel — **un canal unique, sans sujets**, et c'est resté un choix.
 
-`/ws` : un client **s'abonne** au flux d'événements ; le serveur pousse chaque `LiveEvent`
-diffusé après commit d'une écriture (E00US008). Un message `connected` est envoyé dès
-l'abonnement (le client sait qu'il est en ligne et peut se resynchroniser).
-
-Modèle minimal (walking skeleton) : **un canal unique**, sans sujets — et il l'est resté.
-
-⚠️ **Ne pas lire cette ligne comme une étape à venir.** L'abonnement par sujet / tournoi
-(CDC §6.2) était annoncé « avec les US métier » ; les US métier sont livrées et le hub est
-toujours mono-canal, parce que le projet a **décidé autour** plutôt que de l'étendre :
-
-- [ADR-0064](../../docs/adr/0064-ecran-de-salle-poste-type-et-pilotage-par-etat-lu.md) fait du
-  pilotage d'un écran de salle un **état lu** et non un ordre poussé — précisément parce que le hub
-  ne sait pas cibler un destinataire (et parce que la *fin* d'une prise de contrôle naît du temps
-  qui passe, qu'aucun événement ne peut diffuser) ;
-- [ADR-0055](../../docs/adr/0055-session-de-simulation-vivante-pilotee-par-pas.md) isole la
-  simulation dans un **second hub** (`/ws/simulation`) plutôt que par un filtre de sujet : deux hubs
-  rendent l'isolement **structurel**, un filtre le rendrait conditionnel à l'absence de bug.
-
-Le mono-canal est donc aujourd'hui une **contrainte assumée sur laquelle deux décisions
-s'appuient**, pas une dette en attente. L'introduire demanderait de rouvrir ces deux ADR.
-*(Réévalué le 08/08/2026 : la formulation d'origine promettait une suite qui n'arrive plus.)*
+⚠️ **Ne pas lire le mono-canal comme une dette en attente** : deux décisions s'appuient dessus.
+ADR-0064 fait du pilotage d'un écran un **état lu** parce que le hub ne sait pas cibler ; ADR-0055
+isole la simulation dans un **second hub** plutôt que par un filtre de sujet — deux hubs rendent
+l'isolement structurel, un filtre le rendrait conditionnel à l'absence de bug. L'introduire
+demanderait de rouvrir ces deux ADR.
 """
 
 from __future__ import annotations

@@ -1,25 +1,9 @@
-"""Constructeur du paquet d'archive ZIP (E11US003, CA « export/archive fin de tournoi »).
+"""Construit l'archive d'un tournoi : instantané `.db`, CSV lisibles, PDF, manifeste.
 
-Assemble en mémoire un `.zip` (module `zipfile` de la **stdlib** — aucune dépendance ajoutée,
-règle 11) réunissant, au choix de l'appelant :
-
-- `kervignarc.db` : un **instantané cohérent** de toute la base (API `sqlite3.backup`, cf.
-  `infrastructure/db/snapshot.py`) — le filet anti-plantage, fidèle et rejouable ;
-- `donnees/<table>.csv` : un **dump lisible** de chaque table de la base, colonnes en en-tête. Les
-  tables sont lues depuis `sqlite_master` (fidèle au schéma réel, sans coupler ce module aux
-  modèles ORM) ; c'est la couche « ouvrable dans un tableur » de l'archive ;
-- les **documents PDF** fournis par l'appelant (feuilles de marque, listes) sous `documents/` ;
-- `manifeste.json` : les métadonnées métier fournies par l'appelant, **complétées** ici des faits
-  tirés de la base (version du schéma Alembic, tables et nombre de lignes).
-
-**Cohérence interne.** Un **unique instantané** de la base vive est pris au début, et **toutes** les
-parties tirées de la base (fichier `.db`, CSV, comptes et version du manifeste) sont lues depuis
-**cet** instantané figé — jamais de la base vive à des instants différents. Ainsi le `.db`, les CSV
-et le manifeste décrivent le **même** état, même si des saisies ont lieu pendant la composition.
-Seuls les PDF, régénérés en amont par le service, reflètent leur propre instant de lecture.
-
-Ce module est purement mécanique : il ne connaît ni tournoi ni règle métier (règle 12 — l'infra
-d'export reste simple). L'orchestration (quel tournoi, quels PDF) est dans `ServiceArchive`.
+⚠️ **Un UNIQUE instantané est pris au début**, et toutes les parties tirées de la base sont lues
+depuis lui — jamais de la base vive à des instants différents. Le `.db`, les CSV et le manifeste
+décrivent donc le **même** état, même si des saisies ont lieu pendant la composition. Module
+purement mécanique : il ne connaît ni tournoi ni règle métier.
 """
 
 from __future__ import annotations

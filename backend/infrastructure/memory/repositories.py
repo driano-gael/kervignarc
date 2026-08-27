@@ -1,25 +1,10 @@
-"""Adapters in-memory des ports du moteur (E15US002, ADR-0054).
+"""Repositories **en mémoire** pour la simulation — code de production, pas des doublures de test.
 
-Onze magasins `dict` conformes (structurellement, `Protocol`) aux ports du chemin
-qualif → duels → classement : `Tournoi`, `Archer`, `Categorie`, `Blason`, `GabaritSalle`,
-`Inscription`, `Phase`, `Serie`, `Forfait`, `Duel`, `PlacementTableau`. Ce sont des **adapters de
-production** (règle 2) : `infrastructure/`, dépendances **stdlib + domaine** seulement (le domaine
-reste pur, règle 1).
+Le code de production ne peut pas importer `tests/` : la duplication est assumée et tenue honnête
+par `test_conformite_ports_memoire.py` (ADR-0054).
 
-**Pourquoi un jeu distinct des `Faux*Repository` des tests ?** Le code de production ne peut pas
-importer `tests/` (dépendance interdite) ; l'inverse (promouvoir les doublures de test) serait un
-refactor transverse traité en US dédiée, pas ici (ADR-0054 §2, règle 12). La duplication assumée est
-tenue honnête par les **tests de conformité de port** (`test_conformite_ports_memoire.py`).
-
-**Hydratation sans perte d'identifiant.** L'hydratation (SQL → in-memory) **recopie** des entités
-qui portent **déjà** leur `id` ; l'intégrité référentielle (`archer.categorie_id`, `phase.source`)
-en dépend. Les méthodes d'ajout **préservent** donc l'`id` fourni et n'en attribuent un (auto-inc.)
-que s'il est `None` — ce dernier cas sert le bot d'E15US003 qui *crée* des entités simulées.
-
-**No-op d'audit.** Les écritures « avec trace » (`Serie.enregistrer_avec_trace`,
-`Forfait.declarer_avec_trace`, `Inscription.definir_paye_avec_trace`) **ignorent** l'audit :
-en simulation, rien n'est consigné (ADR-0054). C'est le pendant en mémoire du couplage infra→infra
-`consigner_dans` des adapters SQL, ici sans objet.
+⚠️ **L'hydratation recopie des entités qui portent DÉJÀ leur `id`** — l'intégrité référentielle en
+dépend. Les ajouts préservent donc l'`id` fourni et n'en attribuent un que s'il est `None`.
 """
 
 from __future__ import annotations

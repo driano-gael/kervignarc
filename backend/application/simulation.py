@@ -1,25 +1,10 @@
-"""Service applicatif Simulation — rejouer le moteur **sans rien persister** (E15US002, ADR-0054).
+"""Service de **simulation** — « ne rien persister » est une propriété **structurelle** (ADR-0054).
 
-Cœur technique d'EPIC-15 : offrir un **substrat d'exécution éphémère** du moteur (qualif → duels →
-classement) sur lequel E15US003 posera le bot pilote et le cockpit. La simulation câble les
-**mêmes** services applicatifs (`ServiceClassement`, `ServicePlacementDuels`, `ServiceSaisieDuels`)
-et les **mêmes** politiques (serpent / byes / élimination sèche) que la production, mais sur un jeu
-d'adapters **in-memory** au lieu des adapters SQL : « ne rien persister » devient une propriété
-**structurelle** — aucun chemin de ces adapters vers SQLite ni vers la file d'écriture (règle 7).
+Le harnais est fait d'adapters in-memory : aucun chemin vers SQLite ni vers la file. La composition
+root injecte une **usine**, ce service n'importe aucun adapter concret.
 
-**Application sans infrastructure (convention du projet).** Ce service n'importe **aucun** adapter
-concret : la composition root (règle 8) lui injecte une **usine** (`usine_harnais`) qui fabrique un
-`HarnaisSimulation` vierge — le seul point qui connaît les adapters in-memory et les politiques par
-défaut. Le service **remplit** ce harnais (hydratation) puis fait tourner ses services.
-
-**Garde-fou (ADR-0054 §4).** On ne simule qu'un tournoi **avant démarrage** (`brouillon`/`prêt`) :
-lancer une simulation sur un tournoi démarré/figé lève `SimulationTournoiDemarre` (409) — même
-borne, même raison que `PeuplementTournoiDemarre` d'E15US001 (« ne pollue jamais le réel »).
-
-**Hydratation par les ports.** L'hydratation lit le tournoi réel via les ports (lecture hors file,
-règle 7) et recopie dans le harnais en **préservant les identifiants** (intégrité). Duels, plans de
-duels et forfaits ne sont **pas** hydratés : le garde-fou garantit un tournoi avant démarrage, où
-ils sont toujours vides (ils naissent du jeu, absent avant `en_cours`).
+⚠️ **On ne simule qu'un tournoi AVANT démarrage** (409 sinon) : c'est ce garde-fou qui autorise à ne
+pas hydrater duels, plans de duels et forfaits — avant `en_cours`, ils sont toujours vides.
 """
 
 from __future__ import annotations

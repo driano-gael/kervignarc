@@ -1,26 +1,10 @@
-"""Endpoint REST du **suivi du déroulé** (E07US004, ADR-0064) — le plan rempli par la réalité.
+"""Suivi du déroulé — **la route est celle d'un créneau**, pas du tournoi (ADR-0075).
 
-`GET /api/v1/departs/{depart_id}/suivi-deroule` — **lecture publique**, comme le classement, le
-plan de cibles et le tableau de duels.
+Deux consommateurs pour un seul endpoint : l'écran de salle (public, non authentifiable) et le
+pilotage. La donnée est la même, seul l'habillage change.
 
-⚠️ **La route est celle d'un créneau** depuis E01US025 (ADR-0075,
-`docs/adr/0075-le-depart-est-la-portee-sportive.md`) : elle était
-`/tournois/{id}/suivi-deroule` et fusionnait les créneaux — même chemin que
-`/departs/{id}/classement` et `/departs/{id}/phases`, et pour la même raison (un départ rejoue le
-tournoi en entier, avec son effectif et son avancement propres).
-
-Deux consommateurs, et c'est le CA lui-même qui l'exige :
-l'**écran de salle** (projeté, sans authentification possible — c'est un poste public) et le
-**pilotage** (écran PC de l'organisateur). Un endpoint et non deux : la donnée est la même, seul
-l'habillage change (« un seul composant de dessin, trois surfaces »).
-
-**Rien de sensible n'y transite** : des types de phase, des comptes de duels, des tranches de rangs.
-Ni nom d'archer, ni code de poste, ni donnée de paiement — la règle 6 est tenue par construction,
-puisque la projection ne connaît que des structures.
-
-Le DTO **reprend** la forme de `GET /api/v1/formats/{id}/diagnostic` (E01US024) pour ses blocs, et
-lui **ajoute** un calque `avancement`. C'est délibéré : le composant de dessin du front reçoit la
-même structure à l'atelier et ici, il ne diffère que par ce qu'il superpose.
+⚠️ **Rien de sensible n'y transite par CONSTRUCTION** : des types de phase, des comptes de duels,
+des tranches de rangs — jamais un nom, un code de poste ou un montant. La règle 6 tient d'elle-même.
 """
 
 from __future__ import annotations

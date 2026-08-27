@@ -1,24 +1,9 @@
-"""Agrégat `Archer` — participant d'un tournoi (E00US011, complété par E02US002).
+"""Agrégat **Archer** — la catégorie est obligatoire, le club ne l'est pas (ADR-0014).
 
-Gabarit d'agrégat **pur** (aucune dépendance framework, immuable) : un archer appartient à un
-tournoi, porte un `nom` et un `prenom`, tire dans une **catégorie** (obligatoire), peut être
-rattaché à un **club** (facultatif — voir ci-dessous) et peut être **placé** sur une cible
-(numéro de peloton). Le placement reste celui du walking skeleton (un simple numéro) ; les vraies
-contraintes (capacité 1/2/4, ≥ 2 clubs/cible, blason = fraction de place) l'enrichiront en EPIC-03.
-
-**Pourquoi la catégorie est obligatoire et pas le club** (ADR-0014). La catégorie se lit sur
-l'archer présent (son âge, son arme) et commande tout le reste : sans elle, il n'est ni classable,
-ni plaçable, ni facturable — c'est un état inexploitable, pas une donnée manquante. Le club, lui,
-est une donnée **administrative externe** : le jour J, la licence est restée dans la voiture. En
-FFTA tout licencié a pourtant un club, donc `club_id is None` ne dit **jamais** « cet archer n'a pas
-de club » — il dit « on ne le sait pas **encore** ». C'est une anomalie à résorber, que l'écran des
-archers signale et que E12US005 comptera ; ce n'est pas un état légitime, et surtout ce n'est pas un
-club. Inventer un club « Sans club » pour combler le trou détruirait précisément cette nuance : deux
-archers y seraient rattachés au **même** `club_id`, et le placement (E03US006, RG-3) les croirait du
-même club — une affirmation fausse là où `None` dit honnêtement « inconnu ».
-
-L'existence du club et de la catégorie référencés est vérifiée par le service applicatif : le
-domaine ne lit pas la persistance (règle 1).
+⚠️ **`club_id is None` ne dit JAMAIS « cet archer n'a pas de club »** — en FFTA tout licencié en a
+un. Il dit « on ne le sait pas **encore** » : une anomalie à résorber, pas un état légitime.
+Inventer un club « Sans club » détruirait la nuance — deux archers partageraient le même `club_id`
+et le placement les croirait du même club, une affirmation fausse là où `None` est honnête.
 """
 
 from __future__ import annotations

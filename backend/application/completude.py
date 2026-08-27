@@ -1,26 +1,9 @@
-"""Service applicatif **Complétude du tournoi** (E12US005) — « qu'est-ce qui manque pour finir ? ».
+"""Complétude sportive et administrative — deux décomptes agrégés, lus en poll.
 
-Cas d'usage de **lecture** : agrège, depuis les ports, les décomptes qui répondent à la question de
-l'organisateur, puis délègue l'assemblage à la politique pure `domain.completude.evaluer_completude`
-(le service compte, le domaine juge). Lecture seule (hors file d'écriture, règle 7) : l'endpoint
-l'exécute dans le threadpool et le front la **poll** (live, comme la supervision).
-
-Deux décomptes agrégés :
-
-- **Qualification, en cibles terminées / total.** Une « cible » ici = un couple `(départ, cible)`
-  portant au moins un archer placé (donnée **persistante** : plan matérialisé + inscriptions,
-  ADR-0024 / E02US009) — pas l'état runtime d'un poste rattaché (celui-là, c'est la supervision,
-  E12US001). Elle est *terminée* quand **toutes** ses séries sont complètes (`Serie.est_complete` :
-  toutes les volées du barème **validées**). Arbitrage de maille reversé dans `stories/` : le compte
-  se fait sur `(départ, cible)`, pas sur la cible physique, car un même numéro de cible sert sur
-  plusieurs créneaux et chacun est une session de tir à terminer.
-- **Paiements, en archers réglés / total.** Réglé = `reste_centimes == 0` (un archer qui ne doit
-  rien — sans inscription — est réglé d'office). Lu via un **port étroit** sur `ServicePaiements`
-  (`LecteurPaiements`), qui porte déjà la règle de calcul dû/payé/reste (E08US002) : on ne la
-  redérive pas ici.
-
-Les **phases éliminatoires** et l'état *prêt / en attente* du classement sont dérivés par le domaine
-(cf. `domain.completude`) — le premier séquencé (EPIC-05), le second de la qualification.
+⚠️ **Une « cible » est un couple `(départ, cible)`, pas une cible physique** : un même numéro sert
+sur plusieurs créneaux, et chacun est une session de tir à terminer. C'est de la donnée
+**persistante** (plan matérialisé + inscriptions), pas l'état runtime d'un poste — celui-là, c'est
+la supervision. Les paiements passent par un **port étroit** qui porte déjà la règle dû/payé/reste.
 """
 
 from __future__ import annotations

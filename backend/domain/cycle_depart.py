@@ -1,25 +1,10 @@
-"""Cycle de vie d'un **départ** (créneau) — value object **pur** `AvancementDepart` (E12US008).
+"""Graduation de l'état d'un départ — **dérivé, jamais saisi** (E12US008).
 
-Un départ (créneau horaire, cf. `domain.depart`) traverse trois états au fil de la journée :
+`Depart` reste un agrégat figé, sans colonne de statut. Ce module ne porte que la règle de
+graduation ; le **comptage** lit des repositories, il vit donc au service.
 
-- **ouvert** : aucun score n'y a encore été consigné → il se modifie et se supprime librement,
-  exactement comme avant (E02US009 / ADR-0018) ;
-- **lancé** : au moins une flèche y a été consignée, mais toutes les séries ne sont pas closes → une
-  **session de tir est en cours**, l'éditer ou le supprimer doit être **confirmé** (E12US008) ;
-- **clos** : toutes les séries des archers placés sont closes (barème validé **ou** forfait) → la
-  session est finie, mêmes garde-fous que *lancé*.
-
-**L'état est dérivé, jamais saisi** (CA E12US008) : `Depart` reste un agrégat figé sans colonne de
-statut (règle 4). Ce module ne porte que la **règle de graduation** — *quels décomptes* donnent
-*quel état* — comme `domain.impact` porte la graduation de l'alerte. Le **comptage** (combien
-d'archers placés, combien ont tiré, combien de séries closes) est de l'orchestration : il lit des
-repositories, il vit donc dans le service applicatif (`application/completude.py`), pas ici
-(règle 1, domaine pur et synchrone).
-
-Le fait réel qui fait basculer *ouvert → lancé* est la **présence d'un score** (`nb_ayant_tire`),
-pas l'heure du créneau : `Depart.horaire` est un libellé libre (« 9h00 »), pas une heure comparable
-— « heure atteinte » n'est donc pas dérivable d'un fait réel sans re-modéliser l'horaire, hors
-périmètre de cette US (arbitrage reversé dans `stories/`, E12US008).
+⚠️ **Ce qui fait basculer *ouvert → lancé* est la présence d'un SCORE, pas l'heure** : `horaire` est
+un libellé libre (« 9h00 »), pas une heure comparable — « heure atteinte » n'est pas dérivable.
 """
 
 from __future__ import annotations

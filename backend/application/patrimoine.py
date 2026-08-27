@@ -1,26 +1,9 @@
-"""Service applicatif Patrimoine — la bibliothèque de briques du club (E01US023, ADR-0060).
+"""Service du **patrimoine** — bibliothèque, assemblage, promotion (ADR-0060).
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
-
-Trois facettes, qui sont les trois temps de la vie d'une brique :
-
-- **bibliothèque** — CRUD des modèles (`tournoi_id is None`), plus le pré-chargement du référentiel
-  FFTA **une fois pour toutes** (et non à chaque tournoi, ce qui était le symptôme de fond de
-  DETTE-023) ;
-- **assemblage** — copier des modèles dans un tournoi. La copie, pas la référence : si un barème
-  change en 2027, le tournoi 2026 archivé ne doit pas bouger (ADR-0060 §2) ;
-- **promotion** — faire remonter la copie modifiée d'un tournoi dans la bibliothèque, sans
-  rétroagir sur les éditions déjà assemblées (ADR-0060 §3).
-
-**Pourquoi un service à part** plutôt que d'étoffer `ServiceCategories` et `ServiceBlasons` : la
-copie d'une catégorie doit **réattacher son `blason_id`** à la copie du blason du même tournoi.
-C'est une règle **inter-agrégats et inter-collections** — aucun des deux services existants ne voit
-les deux côtés, et les faire se connaître aurait couplé deux CRUD indépendants. Ici,
-`ServiceCategories` et `ServiceBlasons` restent inchangés dans leur périmètre « un tournoi ».
-
-Les formats de tournoi, eux, vivent dans `application/formats.py` : leur copie n'est pas une brique
-rattachée mais les **phases** du tournoi (ADR-0060 §5).
+⚠️ **Service à part, et non `ServiceCategories` étoffé** : copier une catégorie oblige à
+**réattacher son `blason_id`** à la copie du blason du même tournoi — une règle inter-agrégats
+qu'aucun des deux CRUD ne voit. Les faire se connaître aurait couplé deux services indépendants.
+Les formats, eux, vivent dans `application/formats.py` : leur copie, ce sont les **phases**.
 """
 
 from __future__ import annotations
