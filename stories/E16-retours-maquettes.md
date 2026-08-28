@@ -306,14 +306,40 @@
   **Élargi aussi à l'annulation** (`D-15`) : qui peut déclarer doit pouvoir défaire, sinon une
   faute de frappe reste irréparable sans aller chercher un scoreur. **Borné aux duels** : la
   qualification reste au scoreur seul, aucun écran admin ne la demande.
+  ⚠️ **Reversé de la revue du 28/08/2026 — l'annulation est livrée SANS SURFACE** (`DETTE-090`) :
+  la route est ouverte à l'admin et testée, mais **aucun écran ne l'appelle** (`useAnnulerForfaitDuel`
+  n'a aucun appelant). Le motif de `D-15` n'est donc pas tenu côté produit. Poser le bouton demandait
+  une surface neuve — le duel amont **quitte la liste** dès qu'il est tranché par le walkover, une
+  action sur sa ligne serait hors d'atteinte l'instant d'après —, soit un choix de périmètre, pas une
+  correction de revue. Le dialogue de confirmation **avertit** au lieu de promettre.
+  ⚠️ **Le bornage aux duels tenait par une seule de ses deux portes** (revue, axe A) : `phase_id`
+  vient du client, et rien ne vérifiait le **type** de la phase — un `phase_id` de qualification posté
+  sur la route des duels écrivait un forfait relu par le classement de qualification, contournant
+  `exiger_scoreur`. La route **refuse désormais explicitement** une phase de qualification. Un test
+  fermé sur une porte seule est une assurance fausse, pas une demi-garde.
 - **CA — déclenchement configurable** ➡️ **sorti du périmètre** le 28/08/2026, devient **`E16US013`** : par phase ou par tour, le lancement est **automatique** (conditions remplies) ou **manuel**. Les notes ci-dessous l'annonçaient déjà (« vrai changement de moteur : à cadrer séparément »), le cadrage l'a acté.
 - **Notes** : les manquements sont **déjà** nommés par ligne (`afficheDuel`) — c'est le volet « actions » qui manque. Le déclenchement automatique est un vrai changement de moteur : à cadrer séparément. **Redécoupable**.
   ⚠️ **Un angle mort découvert au cadrage, absent de la fiche** : au **tour ≥ 2**, aucune cible
   n'est attribuée (`place = match.tour == 1`, garde délibérée de `DETTE-019` — la pose persistée est
   celle du tour 1, l'annoncer enverrait les finalistes sur la mauvaise butte). *« cible non
   attribuée »* n'y est donc **levable par aucun geste**, et le renvoi au plan de duels serait une
-  fausse porte. La ligne **dit la limite** au lieu de l'offrir ; `DETTE-019` gagne un 3ᵉ site qui la
-  constate. Le jour où le placement 1→N sera posé, c'est **ici aussi** qu'il faudra revenir.
+  fausse porte. La ligne **dit la limite** au lieu de l'offrir ; `DETTE-019` gagne un site qui la
+  constate (**4ᵉ** au total, la table en sous-comptait un dans le front). Le jour où le placement 1→N
+  sera posé, c'est **ici aussi** qu'il faudra revenir.
+  ⚠️ **La même arithmétique vaut pour l'autre branche, et le cadrage ne l'y avait PAS rejouée**
+  (revue du 28/08/2026, axe adversarial). Un duel qui attend un duel amont est **forcément** au tour
+  ≥ 2 (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`) : le forfait déclaré depuis le feu
+  vert fait donc avancer le tableau, mais **ne rend jamais la ligne prête** — elle passe de « en
+  attente du duel n°X » à « cible non attribuée ». Les textes qui promettaient « ce duel-ci se
+  débloque » (dialogue, recette, journal) ont été corrigés. La leçon vaut au-delà de l'US : un
+  correctif de cadrage se rejoue sur **toutes** les branches où son raisonnement s'applique, pas sur
+  celle qui l'a fait apparaître.
+  ⚠️ **Le forfait n'est offert que si le duel amont a ses DEUX camps** (revue, bloquant).
+  `ServiceSaisieDuels._appliquer_forfaits` **saute** un match dont un camp est vide : un forfait posé
+  là s'écrivait en base, sans rien débloquer et sans le moindre retour d'écran — l'organisateur
+  recliquait jusqu'au `ForfaitDejaDeclare`. La fiche fonctionnelle l'exigeait déjà (« aucun bouton de
+  forfait ne doit apparaître ») ; c'est le **test** qui avait consacré l'inverse, dérivé du code au
+  lieu du CA.
 - **Dépend de** : E12US002, E04US015, E10US001 · **Jalon** : J3 · **Origine** : questionnaire A15, 04/08/2026
 
 ---

@@ -213,7 +213,8 @@ window.ATLAS.avancement = {
     "E07US004",
     "E07US008",
     "E05US010",
-    "E16US008"
+    "E16US008",
+    "E04US018"
    ],
    "severite": "mineur"
   },
@@ -542,6 +543,15 @@ window.ATLAS.avancement = {
    "identifiant": "089",
    "introduite_par": [
     "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "090",
+   "introduite_par": [
+    "E16US008"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -2399,7 +2409,9 @@ window.ATLAS.avancement = {
     "021",
     "022"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "019"
+   ],
    "epic": "04",
    "epic_titre": "Saisie des scores en temps réel",
    "etat": "✅",
@@ -4118,10 +4130,13 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0050",
+    "0075",
     "0096"
    ],
    "dettes_introduites": [
-    "017"
+    "017",
+    "090"
    ],
    "dettes_resorbees": [
     "019"

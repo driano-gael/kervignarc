@@ -199,8 +199,16 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 `0004`, `0011`, `0017`, `0026`, `0028`, `0045`, `0046`, `0049`, `0060`, `0061`, `0062`, `0066`,
 `0067`, `0068`, `0069`, `0070`.
 
+⚠️ **`0050` manquait aux deux listes** — **cinquième** omission consécutive, relevée en revue
+d'E16US008 (axe C2). Il entre au critère sans discussion : le forfait commande le **classement de
+qualification** (relégation/exclusion) *et* la reconstruction du **tableau** (walkover). Il est
+ajouté ici parce que la même US le **rouvre** (sa *Décision* change d'acteur en duels) ; sa section
+« Porté dans le code par » a donc été écrite dans le même commit. Cinq sur cinq confirme le constat
+plus bas : c'est la liste qui n'est pas tenue, et seule la revue la tient.
+
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
-`0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`. La liste dérive à
+`0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`. Et, par
+réouverture plutôt que par création : **`0050`** (E16US008, 28/08/2026). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 

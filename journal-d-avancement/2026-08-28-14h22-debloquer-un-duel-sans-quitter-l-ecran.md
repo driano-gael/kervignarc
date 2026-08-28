@@ -13,8 +13,13 @@ l'écran de lancement.
 **Vous pouvez déclarer un forfait vous-même.** C'est le cas qui coûtait le plus cher : un archer est
 parti, son duel ne se terminera jamais, et tout ce qui vient après reste bloqué. Jusqu'ici il fallait
 trouver un scoreur et lui faire faire la manipulation. Le bouton est maintenant sur la ligne, avec
-une confirmation qui redit ce que ça déclenche. Et parce qu'une action qu'on ne peut pas défaire est
-un piège, l'annulation s'ouvre en même temps.
+une confirmation qui redit ce que ça déclenche.
+
+⚠️ **Un point d'honnêteté sur cette livraison** : le serveur accepte désormais aussi qu'un
+administrateur **annule** un forfait de duel, mais **aucun écran ne propose encore ce geste**. La
+confirmation vous l'annonce avant que vous cliquiez, pour que la surprise n'arrive pas après. Un
+forfait de duel déclaré par erreur ne se répare donc pas depuis l'application aujourd'hui : l'écran
+qui le permettra fera l'objet d'une évolution à part.
 
 **« Cible non attribuée » vous emmène au bon endroit** — la rubrique « Plan de duels », sur le bon
 tournoi, sans le resélectionner.
@@ -28,6 +33,13 @@ La ligne l'écrit noir sur blanc au lieu d'offrir un bouton qui n'aurait rien pu
 
 C'est un choix délibéré. Un bouton inerte vous aurait fait chercher l'erreur de votre côté pendant
 que la salle attend. La limite sera levée avec le placement des tours suivants.
+
+⚠️ **Cette limite touche aussi le forfait ci-dessus**, et il faut le dire clairement : un duel qui en
+attend un autre est forcément à partir du 2ᵉ tour. Déclarer le forfait fait donc bien avancer le
+tableau — le duel n'attend plus son issue — mais la ligne affichera ensuite « cible non attribuée »
+et le compteur du bouton « Lancer » ne bougera pas. **Ce n'est pas que votre geste n'a pas porté** :
+c'est le placement des tours suivants qui manque encore. Tant qu'il n'est pas livré, le forfait
+depuis le feu vert sert à **débloquer la suite du tableau**, pas à faire partir ce duel-là.
 
 ## Ce qui n'est pas dans cette livraison
 

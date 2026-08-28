@@ -566,7 +566,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   peut **déclarer un forfait lui-même** au lieu d'aller chercher un scoreur — le cas coûteux du jour
   J, un archer parti dont le duel ne finira jamais et qui bloque tout ce qui vient après. Au
   deuxième tour et au-delà, l'écran **dit** que les cibles ne sont pas encore posées plutôt que
-  d'offrir un bouton qui n'aurait rien pu faire. Le lancement reste **manuel** : l'automatique que
+  d'offrir un bouton qui n'aurait rien pu faire — et le forfait, dans ce cas, **débloque la suite du
+  tableau sans faire partir ce duel-là**, ce que la confirmation annonce désormais sans détour. Deux
+  limites sont assumées et écrites : un forfait de duel **ne se défait depuis aucun écran** pour
+  l'instant (le serveur le sait, la surface manque), et le forfait n'est proposé que si le duel
+  attendu a bien **ses deux archers**. Le lancement reste **manuel** : l'automatique que
   vous aviez évoqué part en tranche séparée. La précédente était `E00US027`, **sans effet visible
   pour vous** : une
   règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le
