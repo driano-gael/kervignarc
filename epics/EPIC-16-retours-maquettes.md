@@ -63,21 +63,27 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 
 - [x] Lot front seul du 04/08/2026 (cf. ci-dessus).
 - [x] Plan de salle : lever le malentendu de modèle (E16US001).
-- [ ] Phases : catalogue, gabarits, fiche de réglages (E16US002). ⚠️ **Rétrécie le 08/08/2026** : le
+- [x] Phases : catalogue, gabarits, fiche de réglages (E16US002). ⚠️ **Rétrécie le 08/08/2026** : le
       CA « plusieurs qualifications » en est sorti (→ `E05US024` livrée + `E05US025`), le CA
       « gabarit » est tranché (ADR-0060 §5 confirmé, la brique reste le **format**). Restent liste,
       titre de phase et fiche de réglages.
 - [x] Complétude : séparer le déroulé de l'administratif (E16US003).
 - [x] Public : suivre plusieurs archers de bout en bout (E16US004).
-- [ ] Placement : largeur, une cible par ligne, puits de réserve (E16US005).
-- [ ] Patrimoine : origine FFTA/local, logo du club (E16US006).
+- [x] Placement : largeur, une cible par ligne, puits de réserve (E16US005).
+- [x] Patrimoine : origine FFTA/local, logo du club (E16US006) — **recadrée** en identité
+      visuelle du tournoi ; absorbe `E01US016`.
 - [ ] Impressions, exports et podiums paramétrables (E16US007).
-- [ ] Feu vert : agir sur la ligne du duel (E16US008).
-- [ ] Écran de salle : réglages et défilement (E16US009).
+- [x] Feu vert : agir sur la ligne du duel (E16US008). ⚠️ **Rétrécie le 28/08/2026** : le CA
+      « déclenchement automatique ou manuel » en est sorti (→ `E16US013`), c'est un changement
+      de moteur. Ce qui est livré : le dépliage du duel amont, le forfait déclarable par
+      l'admin, le renvoi au plan de duels.
+- [x] Écran de salle : réglages et défilement (E16US009).
 - [ ] Recherche transverse et alerte de complétude en liste (E16US010).
 - [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
-- [ ] Famille « prêt à… » : démarrer / terminer / archiver / exporter (E16US012) — **née d'E16US003**,
-      refonte de navigation, ADR probable.
+- [x] Famille « prêt à… » : démarrer / terminer / archiver / exporter (E16US012) — **née d'E16US003**,
+      refonte de navigation, ADR-0096. ⚠️ Deux membres restent à instruire (*archiver*, *exporter*).
+- [ ] Lancement d'un tour : automatique ou manuel (E16US013) — **sortie d'E16US008** le
+      28/08/2026, candidate à un ADR.
 
 ## Critères d'acceptation (epic)
 

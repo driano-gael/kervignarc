@@ -284,13 +284,36 @@
 
 ---
 
-### E16US008 — Feu vert : agir depuis la ligne du duel qui bloque
+### E16US008 — Feu vert : agir depuis la ligne du duel qui bloque ✅
 *En tant qu'*organisateur, *je veux* que les **actions** soient sur la ligne du duel qui a un manquement, *afin de* débloquer sans quitter l'écran.
 - **Contexte** : A15, évolution : *« les manquements appartiennent à la ligne du duel qui a des manquements, ainsi que ses actions »*. Question 5, qui déclare un forfait : *« admin »*. Question 3, qui appuie sur le bouton : *« un admin, mais suivant la configuration on doit choisir ce qui attend un déclenchement manuel (les phases ou le tour) : selon la configuration, soit ça se déclenche automatiquement quand les conditions sont remplies, soit c'est un déclenchement manuel. »*
-- **CA — actions sur la ligne** : chaque duel bloqué porte, à côté de son manquement déjà nommé, l'action qui le lève.
-- **CA — forfait par l'admin** : déclarer un forfait de duel devient possible depuis l'administration. ⚠️ Aujourd'hui l'endpoint (`POST /forfaits/duel`) exige un **jeton scoreur** : c'est une décision d'**autorisation**, à trancher explicitement (élargir à l'admin, ou ouvrir une route admin).
-- **CA — déclenchement configurable** : par phase ou par tour, le lancement est **automatique** (conditions remplies) ou **manuel**.
+- **CA — actions sur la ligne** ✅ : chaque duel bloqué porte, à côté de son manquement déjà nommé, l'action qui le lève.
+  ⚠️ **Arbitrage tranché au cadrage, le 28/08/2026 — l'action dépend du manquement, et il y en a
+  trois**, ceux que `ServicePilotageTour._blocage` sait nommer. *« en attente du duel n°3 »* → le
+  duel amont se **déplie sur place** (ses occupants, sa cible) et porte le bouton de forfait ;
+  *« cible non attribuée »* → renvoi au plan de duels ; *« adversaire non déterminé »* → **aucune
+  action**, cela se répare à la composition de la phase, pas au feu vert.
+  ⚠️ **« Ouvrir le duel amont » a été écarté, et c'est un fait de code, pas un choix de confort** :
+  `SaisieDuels` n'est monté que dans `EspaceScoreur`, derrière un code scoreur. Un lien y aurait
+  posé l'organisateur devant un écran de connexion qu'il ne peut pas franchir. Ouvrir la validation
+  de duel à l'admin est un autre sujet — la règle « validation = scoreur seul » (E10US003) —, à
+  instruire ailleurs.
+- **CA — forfait par l'admin** ✅ : déclarer un forfait de duel devient possible depuis l'administration.
+  ⚠️ **Décision d'autorisation tranchée le 28/08/2026 : la route existante est ÉLARGIE** (admin
+  **ou** scoreur), pas doublée d'une route admin. C'est la ligne du dépôt (`autoriser_saisie`,
+  E10US007 : une route, deux identités) ; deux routes vers la même écriture demanderaient de tenir
+  idempotence, audit et règles métier en double. `declare_par` vaut alors `"Administrateur"`.
+  **Élargi aussi à l'annulation** (`D-15`) : qui peut déclarer doit pouvoir défaire, sinon une
+  faute de frappe reste irréparable sans aller chercher un scoreur. **Borné aux duels** : la
+  qualification reste au scoreur seul, aucun écran admin ne la demande.
+- **CA — déclenchement configurable** ➡️ **sorti du périmètre** le 28/08/2026, devient **`E16US013`** : par phase ou par tour, le lancement est **automatique** (conditions remplies) ou **manuel**. Les notes ci-dessous l'annonçaient déjà (« vrai changement de moteur : à cadrer séparément »), le cadrage l'a acté.
 - **Notes** : les manquements sont **déjà** nommés par ligne (`afficheDuel`) — c'est le volet « actions » qui manque. Le déclenchement automatique est un vrai changement de moteur : à cadrer séparément. **Redécoupable**.
+  ⚠️ **Un angle mort découvert au cadrage, absent de la fiche** : au **tour ≥ 2**, aucune cible
+  n'est attribuée (`place = match.tour == 1`, garde délibérée de `DETTE-019` — la pose persistée est
+  celle du tour 1, l'annoncer enverrait les finalistes sur la mauvaise butte). *« cible non
+  attribuée »* n'y est donc **levable par aucun geste**, et le renvoi au plan de duels serait une
+  fausse porte. La ligne **dit la limite** au lieu de l'offrir ; `DETTE-019` gagne un 3ᵉ site qui la
+  constate. Le jour où le placement 1→N sera posé, c'est **ici aussi** qu'il faudra revenir.
 - **Dépend de** : E12US002, E04US015, E10US001 · **Jalon** : J3 · **Origine** : questionnaire A15, 04/08/2026
 
 ---
@@ -374,6 +397,19 @@
 - **CA — sans doublonner ce qui existe** : la **frise du cycle de vie** (E14US001, 7 statuts, [ADR-0026](../docs/adr/0026-cycle-de-vie-du-tournoi-sept-statuts.md)) porte déjà les transitions et leurs gardes ; le **feu vert** (`E16US008`) est déjà un « prêt à lancer un tour ». Ces écrans doivent s'y **brancher**, pas en fabriquer une seconde source. ⚠️ **Le vrai problème était plus profond que la navigation**, et il n'était pas dans cette fiche : les gardes existent, mais **ne sont lisibles qu'en échouant** — `vers_pret` lève `TournoiSansDepart`, `demarrer` lève `EffectifInsuffisantPourDemarrer`, et une exception ne rend que le **premier** manquement rencontré. Un jalon les **énumère** sans les exécuter. Là où le calcul ne peut pas être mécaniquement partagé, l'accord écran ↔ garde est **épinglé par un test de cohérence**, jamais laissé à la vigilance.
 - **Notes** : ✅ **ADR-0096 écrit** — l'« ADR probable » l'était bien. La tension avec l'ossature à trois axes ([ADR-0058](../docs/adr/0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)) est tranchée à son §4 : un jalon **ne déménage aucune activité**, il pose une question là où l'activité se fait déjà — la famille peut donc traverser pilotage et gestion sans contredire les axes. ✅ **La consigne d'ordre est honorée** : `E16US007` et `E16US008` n'ont plus de forme à inventer. **Redécoupée par membre**, comme la fiche l'autorisait : cette tranche livre le **mécanisme** + `démarrer` (membre neuf) et migre `terminer` (existant) sur la coquille commune — deux occurrences réelles, pas une abstraction sur pari. ⚠️ **`archiver` et `exporter` restent à instruire** : ils existent dans l'énumération mais répondent `404` (`jalon_non_instruit`), jamais une liste vide qui se lirait « rien ne manque, allez-y ». ⚠️ **Angle mort assumé** : la frise du cycle de vie porte toujours ses propres boutons « Démarrer »/« Terminer » — deux endroits pour le même geste. À instruire quand `archiver` rejoindra la famille, la frise portant aussi ce bouton.
 - **Dépend de** : E14US001, E16US003 · **Jalon** : J3 · **Origine** : arbitrage du commanditaire en revue d'E16US003, 07/08/2026
+
+---
+
+### E16US013 — Le lancement d'un tour : automatique ou manuel, au choix
+
+*En tant qu'*organisateur, *je veux* choisir **par phase ou par tour** si le lancement part **tout seul** quand les conditions sont remplies ou s'il attend mon geste, *afin de* ne pas rester la main sur le bouton toute la journée sur les formats qui n'en ont pas besoin.
+
+- **Contexte** : sortie d'`E16US008` au cadrage du 28/08/2026 — sa fiche annonçait déjà « un vrai changement de moteur, à cadrer séparément ». Questionnaire A15, question 3 : *« un admin, mais suivant la configuration on doit choisir ce qui attend un déclenchement manuel (les phases ou le tour) : selon la configuration, soit ça se déclenche automatiquement quand les conditions sont remplies, soit c'est un déclenchement manuel. »*
+- **CA — le mode est un réglage** : chaque phase (et, dans une phase, chaque tour) se règle en lancement **automatique** ou **manuel**. Le réglage est **persisté** et se lit à l'atelier, comme les autres réglages d'étape.
+- **CA — l'automatique lance ce qui est prêt** : quand toutes les conditions d'un duel sont remplies, il part **sans clic**, et les postes et écrans sont prévenus exactement comme au lancement manuel (même trace d'audit, même diffusion).
+- **CA — le manuel ne change pas** : le feu vert garde son bouton chiffré et sa confirmation (`E12US002`, ADR-0056).
+- **Notes** : ⚠️ **Trois questions à trancher avant d'implémenter, aucune n'est dans le questionnaire.** (1) **Qui évalue les conditions ?** Aujourd'hui le feu vert est calculé **à la lecture**, par le poll de l'écran (5 s) : personne ne l'évalue côté serveur quand aucun organisateur ne regarde. Un lancement automatique demande un déclencheur serveur — au fil des validations de duel (le flux qui fait bouger le tableau), ou une boucle. C'est le vrai coût de l'US. (2) **Que fait l'automatique d'un duel bloqué par une cible manquante ?** Il ne peut pas l'inventer : le mode ne supprime pas les manquements, il supprime le clic. (3) **La maille « par tour » existe-t-elle ?** Un réglage par phase est immédiat (`Reglage*` d'étape) ; « par tour » n'a aucun support persistant aujourd'hui. Candidate à un **ADR** (le lancement cesse d'être un geste pour devenir une politique).
+- **Dépend de** : E12US002, E16US008 · **Jalon** : J3 · **Origine** : questionnaire A15 Q3, 04/08/2026 — sortie d'`E16US008` le 28/08/2026
 
 ---
 
