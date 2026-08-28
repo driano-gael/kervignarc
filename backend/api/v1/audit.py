@@ -2,7 +2,7 @@
 public.
 
 ⚠️ **Aucun endpoint d'écriture, et c'est structurel** : les entrées naissent d'un **acte métier**,
-écrites dans la commande du producteur. L'audit reflète des actes, il ne s'édite pas.
+écrites dans la commande du producteur. L'audit reflète des actes, il ne s'édite pas. ADR-0050
 """
 
 from __future__ import annotations

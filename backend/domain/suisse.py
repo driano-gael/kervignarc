@@ -3,7 +3,7 @@ ronde 1, ré-affrontement, Buchholz) sont tranchés dans `stories/E05-moteur-pha
 
 ⚠️ **L'appariement procède par ESSAIS AVEC RETOUR ARRIÈRE, jamais en glouton.** Mesuré en revue sur
 500 tournois au réglage par défaut (16 archers, 5 rondes) : le glouton se bloquait **53 %** du
-temps. `AppariementImpossible` ne se lève donc que si aucune solution n'existe (`DETTE-027`).
+temps. `AppariementImpossible` ne se lève que si aucune solution n'existe (ADR-0087, `DETTE-027`).
 """
 
 from __future__ import annotations

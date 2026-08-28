@@ -2,7 +2,7 @@
 
 ⚠️ **C'est un choix, pas une facilité** : une prise est un geste du jour J (« podium 10 min ») ; un
 redémarrage doit **libérer** les écrans, jamais les laisser figés sur une consigne que plus personne
-ne se rappelle avoir posée. Le réglage durable — le déroulé — est en base, lui.
+ne se rappelle avoir posée. Le réglage durable — le déroulé — est en base, lui. ADR-0064
 """
 
 from __future__ import annotations

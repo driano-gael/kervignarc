@@ -22,17 +22,17 @@ PLAFOND = 8
 _FICHIER_CLIQUET = Path(__file__).with_name("commentaires_cliquet.txt")
 
 
-def _charger_cliquet() -> dict[str, int]:
+def _charger_cliquet(fichier: Path = _FICHIER_CLIQUET) -> dict[str, int]:
     """Lit la baseline depuis un fichier plat : un chemin, une espace, un compte.
 
     Hors du code du test délibérément : mille entrées dans un littéral Python rendraient le
     garde-fou illisible, et chaque résorption produirait un diff de test au lieu d'un diff de
     donnée.
     """
-    if not _FICHIER_CLIQUET.exists():
+    if not fichier.exists():
         return {}
     entrees: dict[str, int] = {}
-    for ligne in _FICHIER_CLIQUET.read_text(encoding="utf-8").splitlines():
+    for ligne in fichier.read_text(encoding="utf-8").splitlines():
         nette = ligne.strip()
         if not nette or nette.startswith("#"):
             continue
@@ -53,8 +53,10 @@ def _blocs_trop_longs(chemin: Path) -> list[tuple[int, int]]:
     with open(chemin, encoding="utf-8") as source:
         try:
             jetons = list(tokenize.generate_tokens(source.readline))
-        except (tokenize.TokenError, SyntaxError):  # pragma: no cover - fichier illisible
-            return []
+        except (tokenize.TokenError, SyntaxError) as illisible:
+            # ⚠️ On relève : un module de production que le tokenizer refuse passerait sinon la
+            # porte en silence. `atlas/sources/code.py` a tranché de même (relevé en revue).
+            raise AssertionError(f"{chemin} illisible : {illisible}") from illisible
 
     blocs: list[tuple[int, int]] = []
     courant: tuple[int, int] | None = None
@@ -88,10 +90,15 @@ def _fichiers_de_production() -> list[Path]:
     # répertoire nommé `tests` ou `.venv` vidait le balayage en silence (relevé en revue).
     fichiers = list(_BACKEND_ROOT.glob("*.py"))
     for couche in _COUVERTS:
-        for chemin in (_BACKEND_ROOT / couche).rglob("*.py"):
-            if any(part in _EXCLUS for part in chemin.relative_to(_BACKEND_ROOT).parts):
-                continue
-            fichiers.append(chemin)
+        trouves = [
+            chemin
+            for chemin in (_BACKEND_ROOT / couche).rglob("*.py")
+            if not any(part in _EXCLUS for part in chemin.relative_to(_BACKEND_ROOT).parts)
+        ]
+        # ⚠️ Une couche vide ou renommee ne rend pas zero fichier : `rglob` ne leve pas. Le plancher
+        # agrege ne l'attrape pas non plus — retirer `domain` laisse 188 fichiers sur 255.
+        assert trouves, f"couche « {couche} » vide ou absente — périmètre cassé"
+        fichiers.extend(trouves)
     return fichiers
 
 
@@ -121,6 +128,66 @@ def test_aucun_fichier_ne_gagne_de_bloc_trop_long() -> None:
         "Le cliquet ne se relève pas — faire descendre un chiffre est le seul geste autorisé.\n\n"
         + "\n".join(regressions[:30])
     )
+
+
+def test_le_detecteur_voit_la_borne(tmp_path: Path) -> None:
+    """Neuf lignes rougissent, huit passent — le pendant backend des cas du détecteur front.
+
+    ⚠️ Sans lui, un détecteur cassé rend `[]` partout et la porte reste **verte** sur un dépôt déjà
+    à zéro. C'est la panne exacte qui a laissé 13 blocs JSX passer côté front (relevé en revue).
+    """
+    neuf = tmp_path / "neuf.py"
+    neuf.write_text("# x\n" * 9 + "a = 1\n", encoding="utf-8")
+    assert _blocs_trop_longs(neuf) == [(1, 9)]
+
+    huit = tmp_path / "huit.py"
+    huit.write_text("# x\n" * 8 + "a = 1\n", encoding="utf-8")
+    assert _blocs_trop_longs(huit) == []
+
+
+def test_le_detecteur_compte_les_docstrings_et_pas_les_chaines(tmp_path: Path) -> None:
+    """Une docstring compte, une chaîne **affectée** non — c'est la condition `precedent`.
+
+    La mesure d'entrée de l'US était fausse d'un facteur trois pour n'avoir pas vu les docstrings :
+    c'est la frontière la plus coûteuse du détecteur, et elle n'était figée nulle part.
+    """
+    doc = tmp_path / "doc.py"
+    doc.write_text('"""' + "x\n" * 9 + '"""' + "\na = 1\n", encoding="utf-8")
+    assert _blocs_trop_longs(doc) == [(1, 10)]
+
+    affectee = tmp_path / "affectee.py"
+    affectee.write_text("X = " + '"""' + "x\n" * 11 + '"""' + "\n", encoding="utf-8")
+    assert _blocs_trop_longs(affectee) == []
+
+
+def test_le_detecteur_ignore_les_dieses_de_fin_de_ligne(tmp_path: Path) -> None:
+    """Neuf lignes de code commentées une à une ne font pas un bloc — le front ne les compte pas."""
+    fin_de_ligne = tmp_path / "fin.py"
+    fin_de_ligne.write_text("a = 1  # x\n" * 9, encoding="utf-8")
+    assert _blocs_trop_longs(fin_de_ligne) == []
+
+    # ⚠️ Limite assumée, `DETTE-088` : une ligne vide coupe le bloc, des deux côtés.
+    coupe = tmp_path / "coupe.py"
+    coupe.write_text("# x\n" * 5 + "\n" + "# x\n" * 5 + "a = 1\n", encoding="utf-8")
+    assert _blocs_trop_longs(coupe) == []
+
+
+def test_le_chargeur_de_cliquet_lit_une_entree(tmp_path: Path) -> None:
+    """La soupape est vide, donc son parseur dort — il servirait le jour où on l'ouvrirait."""
+    fichier = tmp_path / "cliquet.txt"
+    fichier.write_text("# un commentaire\n\ndomain/x.py 3\n", encoding="utf-8")
+    assert _charger_cliquet(fichier) == {"domain/x.py": 3}
+
+
+def test_aucun_paquet_de_production_hors_perimetre() -> None:
+    """`_COUVERTS` est une liste blanche : un paquet neuf y serait **hors porte en silence**."""
+    paquets = {
+        chemin.parent.name
+        for chemin in _BACKEND_ROOT.glob("*/__init__.py")
+        if chemin.parent.name not in _EXCLUS
+    }
+    hors = sorted(paquets - set(_COUVERTS))
+    assert not hors, f"paquets de production hors du plafond — {hors}"
 
 
 def test_le_cliquet_est_vide() -> None:

@@ -2,7 +2,7 @@
 fermeture de l'onglet, au redémarrage de la tablette ou à une veille.
 
 ⚠️ **La révocation « tournoi terminé » n'est PAS portée ici** : elle s'applique à la **résolution**,
-par le service, qui seul connaît le cycle de vie du tournoi.
+par le service, qui seul connaît le cycle de vie du tournoi. ADR-0025, ADR-0029
 """
 
 from __future__ import annotations

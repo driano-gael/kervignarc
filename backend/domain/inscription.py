@@ -4,7 +4,7 @@ Les invariants « même tournoi » et « unicité du couple » supposent de reli
 ils vivent au service.
 
 ⚠️ **Le montant dû ne vit PAS ici** : il se dérive du tarif du départ à la lecture — rien à
-stocker, rien à resynchroniser. Seul `paye`, non dérivable, est un attribut propre.
+stocker, rien à resynchroniser. Seul `paye`, non dérivable, est un attribut propre. ADR-0017
 """
 
 from __future__ import annotations

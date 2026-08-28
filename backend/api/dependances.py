@@ -106,11 +106,11 @@ def _refuser_ecran(poste: Poste) -> Poste:
 def autoriser_saisie(request: Request) -> Poste | None:
     """Autorise la **saisie** de score : admin **ou** poste de cible (E10US007).
 
-    Renvoie `None` pour une session **admin** valide, le `Poste` pour un jeton de poste de cible,
-    sinon `NonAuthentifie` (401) ; l'admin est essayé **en premier**, mode le plus large. ⚠️ **Un
-    écran de salle est refusé ici** : `Poste.cible_index` devenu facultatif transformait la garde
-    en `None != None`, donnant un droit d'écriture à un appareil public. Deux barrières, pas une :
-    celle-ci et `ServiceArchers._verifier_poste_sert_l_archer` (garde-fou `test_acces_public`).
+    Renvoie `None` pour une session **admin** valide, le `Poste` pour un jeton de poste de cible —
+    **que l'appelant doit utiliser pour borner la saisie à CETTE cible**. ⚠️ **Un écran de salle est
+    refusé ici** : `Poste.cible_index` devenu facultatif transformait la garde en `None != None`,
+    donnant un droit d'écriture à un appareil public. Deux barrières, pas une : celle-ci et
+    `ServiceArchers._verifier_poste_sert_l_archer` (garde-fou `test_acces_public`).
     """
     service_auth: ServiceAuth = request.app.state.service_auth
     if service_auth.session_valide(extraire_jeton(request)):

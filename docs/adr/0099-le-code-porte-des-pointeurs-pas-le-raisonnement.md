@@ -80,15 +80,19 @@ trois vagues et onze fichiers : **122 lignes retirées sur 39 206, soit 0,3 %** 
 global n'a pas bougé d'un point. Le tri sémantique plafonne, parce que l'essentiel du volume est
 fait d'avertissements et de contrats que la règle protège à raison.
 
-S'y ajoutent donc trois contraintes de **forme**, qui priment sur le jugement :
+S'y ajoutent donc deux contraintes de **forme**, qui priment sur le jugement, et un **indicateur** :
 
 1. **Huit lignes au plus par bloc de commentaire.** Au-delà, ce n'est plus un avertissement mais un
    raisonnement : il part en ADR, en story ou au registre, et le code garde **un renvoi**. Huit
    lignes suffisent à énoncer un piège ; elles ne suffisent pas à le justifier — et c'est
    exactement la frontière qu'on cherche.
 2. **Aucune docstring tautologique.** Si elle ne dit rien de plus que la signature, elle disparaît.
-3. **Un seul avertissement par bloc.** Trois ⚠️ empilés signalent soit un module qui fait trop de
-   choses, soit un raisonnement à sortir.
+3. **Un seul avertissement par bloc — indicateur de revue, non mécanisé** *(reclassé en revue de
+   la 2ᵉ passe d'E00US027, 28/08/2026)*. Trois ⚠️ empilés signalent un module qui fait trop de
+   choses ou un raisonnement à sortir, mais **la contrainte (1) pousse en sens inverse** : fusionner
+   pour tenir en huit lignes empile les avertissements. E00US027 s'est livrée en violant ce point
+   **153 fois**, et le volume de ⚠️ a **augmenté** malgré la coupe. Une règle démentie par son propre
+   commit d'introduction ne se tient plus jamais : on la relève à la lecture, on ne la compte pas.
 
 **Pourquoi le plafond, et pas une quatrième règle de jugement** — c'est le point de cet amendement.
 Le plafond est la **seule règle de commentaire du projet qui se compte**. Elle peut donc devenir un
@@ -168,8 +172,9 @@ une lecture, un savoir perdu coûte une US.
 - ⚠️ **Un renvoi peut mourir.** « cf. ADR-0098 » ne vaut que si l'ADR existe et dit bien cela.
   L'atlas contrôle déjà l'inverse (les fichiers nommés *par* un ADR) ; il ne contrôle pas les ADR
   nommés *par* le code. C'est une limite connue, non fermée par cet ADR.
-- Le nettoyage a été **intégral** (E00US027, 27-28/08/2026) : le dépôt ne vit pas avec deux styles.
-  La règle vaut pour tout code neuf immédiatement, et le plafond la tient mécaniquement.
+- Le nettoyage a été **intégral sur le code de production et sur tout `frontend/src`** (E00US027,
+  27-28/08/2026) ; `backend/tests/` (395 blocs) et `migrations/` (56) restent au style antérieur,
+  et c'est `DETTE-088`. La règle vaut pour tout code neuf, et le plafond la tient mécaniquement.
 
 ### Application : un lot démonstratif, puis le dépôt entier
 
@@ -177,9 +182,10 @@ une lecture, un savoir perdu coûte une US.
 — ≥ 100 lignes de commentaire **et** ≥ 50 % du fichier —, puis a été **élargie au dépôt entier** sur
 arbitrage du commanditaire du 27/08/2026, une fois le plafond de huit lignes rendu mécanique.
 
-Mesure de sortie : **1 048 blocs backend** et **453 blocs front** (236 fichiers) ramenés sous le
-plafond, 437 fichiers de production touchés, **aucune ligne exécutable modifiée** (vérifié jeton à
-jeton). Le cliquet backend est vidé ; le front n'en a pas eu besoin.
+Mesure de sortie, **recomptée au détecteur livré** : **1 086 blocs backend** (218 fichiers, sur le
+périmètre élargi en revue à `atlas/`, `release/` et aux points d'entrée) et **453 blocs front**
+(236 fichiers) ramenés sous le plafond, **aucune ligne exécutable modifiée** — vérifié jeton à
+jeton. Le cliquet backend est vidé ; le front n'en a pas eu besoin.
 
 **Ensuite, la règle vit au fil de l'eau** : toute US qui touche un fichier le garde sous le plafond,
 et `/revue-us` peut relever un commentaire neuf qui ne passe aucun des trois tests — en **mineur**,
@@ -196,6 +202,6 @@ jamais en majeur : c'est de la forme, pas un défaut de produit.
 | Lot démonstratif — archéologie retirée, avertissement d'exhaustivité conservé | `frontend/src/shared/phases/catalogue.ts` | oui |
 | Lot démonstratif | `frontend/src/shared/phases/relance.ts` · `frontend/src/features/completude/Completude.tsx` | oui |
 | Le raisonnement déplacé, jamais détruit | `docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md` (le pourquoi du ratio et du plafond y était **déjà**, ce qui a permis de couper dans `TableClassement.tsx`) | oui — vérifié avant chaque coupe |
-| **(i) huit lignes au plus par bloc**, côté backend | `backend/tests/test_commentaires_bornes.py` (+ `backend/tests/commentaires_cliquet.txt`, **vidé** et gardé vide par `test_le_cliquet_est_vide`) | oui — la suite rougit au 9ᵉ sur tout le code de production ; `tests/` et `migrations/` restent hors porte (`DETTE-088`) |
+| **(i) huit lignes au plus par bloc**, côté backend | `backend/tests/test_commentaires_bornes.py` (+ le fichier de cliquet backend/tests/commentaires_cliquet.txt, **vidé** et gardé vide par `test_le_cliquet_est_vide`) | oui — la suite rougit au 9ᵉ sur tout le code de production ; `tests/` et `migrations/` restent hors porte (`DETTE-088`) |
 | **(i) huit lignes au plus par bloc**, côté front | `frontend/src/commentaires.test.ts` (pendant vitest, **sans cliquet** — le front a été *ramené* sous le plafond par E00US027, 453 blocs, il n'y avait donc pas de baseline à garder) | oui — `npm test` rougit au 9ᵉ, JSX et CSS compris depuis la revue |
 | Le comportement est **inchangé** : c'est un nettoyage de prose | la porte mécanique complète (`pytest`, `npm test`, `tsc`, `ruff`, `mypy`) | oui — aucune ligne exécutable modifiée. ⚠️ Borne : les docstrings de handlers FastAPI alimentent l'attribut `description` d'`/openapi.json`, qui change ; aucun contrat n'en dépend aujourd'hui (E00US025 non livrée) |

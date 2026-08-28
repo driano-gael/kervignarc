@@ -26,7 +26,8 @@ export default tseslint.config(
 
   // — La frontière navigateur / Node, tenue **ici** et non par TypeScript (E17US001, revue). —
   //
-  // Deux tests lisent les sources sur disque (`charte.test.ts`, `theme.test.ts`) et ont donc besoin
+  // Les tests qui lisent les sources sur disque (`charte.test.ts`, `theme.test.ts`,
+  // `commentaires.test.ts`) ont donc besoin
   // d'`@types/node`. Les deux façons de le leur donner **fuient sur tout le programme** : `types`
   // dans `tsconfig.app.json` évidemment, mais aussi `/// <reference types="node" />`, qui injecte le
   // paquet dans les globaux **du programme entier** et non du seul fichier — c'est contre-intuitif,

@@ -23,14 +23,14 @@ FEATURES = ("frontend", "src", "features")
 #: Les cinq couches, dans l'ordre où les dépendances les traversent (le domaine au centre).
 COUCHES: tuple[str, ...] = ("domain", "application", "infrastructure", "api", "bootstrap")
 
-#: Ce que chaque couche a le droit d'importer. Dérivé des **règles écrites** : règle 1, règle 2,
-#: règle 8. ⚠️ **`bootstrap` n'apparaît dans aucune valeur** — la racine de composition est un
-#: consommateur **terminal** : quiconque l'importe inverse le câblage. Deux autorisations vont
-#: au-delà de la lettre de la prose, et sont écrites ici **et** dans l'amendement `E00US020`
-#: d'ADR-0086 : `infrastructure → application` (un seul import, ports techniques déclarés dans
-#: `application/`, signalés par `port-hors-domaine` et non bloqués) et `api → infrastructure`
-#: (39 imports, patron de câblage des `Depends`, règle 5 et règle 6 — c'est un **arbitrage**, pas
-#: une transcription). `test_domain_isolation.py` reste complémentaire : il couvre les frameworks.
+#: Ce que chaque couche a le droit d'importer. Dérivé des **règles écrites** (1, 2, 8).
+#: ⚠️ **`bootstrap` n'apparaît dans aucune valeur** : la racine de composition est un consommateur
+#: **terminal**, quiconque l'importe inverse le câblage. Deux autorisations vont au-delà de la
+#: lettre de la prose, écrites ici **et** dans l'amendement `E00US020` d'ADR-0086 :
+#: `infrastructure → application` (un import, ports techniques signalés par `port-hors-domaine`)
+#: et `api → infrastructure` (39 imports, câblage des `Depends`). ⚠️ **Ne pas les retirer pour
+#: « corriger l'oubli »** : c'est un arbitrage, et les ôter produirait des dizaines de faux
+#: bloquants. `test_domain_isolation.py` reste complémentaire : il couvre les frameworks.
 SENS_AUTORISE: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "application": frozenset({"domain"}),

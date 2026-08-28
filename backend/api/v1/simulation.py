@@ -3,7 +3,7 @@
 Ces routes s'exécutent via `run_in_threadpool`, contrairement aux écritures du jeu d'essai.
 
 ⚠️ **Les DTO de lecture sont RÉUTILISÉS** (classement, tableaux) : un même objet se rend partout
-pareil, sans mapping dupliqué qui divergerait.
+pareil, sans mapping dupliqué qui divergerait. ADR-0055
 """
 
 from __future__ import annotations

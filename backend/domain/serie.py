@@ -1,10 +1,10 @@
 """Agrégat **Serie** — l'état (les volées) ; la configuration lui est **passée** par le service.
 
 Zones du blason, flèches par volée, grain de validation ne sont pas dupliqués dans l'agrégat : ses
-invariants sont vérifiés à chaque opération contre la config fournie.
-
-⚠️ **Le reliquat de volées est VALIDÉ en fin de barème** (moins de N pour un grain « toutes les
-N ») — sinon les dernières volées ne se verrouilleraient jamais.
+invariants sont vérifiés à chaque opération contre la config fournie. ⚠️ **Le reliquat de volées
+est VALIDÉ en fin de barème** (moins de N pour un grain « toutes les N »), sinon les dernières
+volées ne se verrouilleraient jamais. La flèche est une **valeur** (`ZoneScore`), pas une entité :
+`DETTE-011` n'est pas résorbée ici, l'agrégat `Score` du walking skeleton survit.
 """
 
 from __future__ import annotations

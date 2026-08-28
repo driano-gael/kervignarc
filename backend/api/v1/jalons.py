@@ -2,7 +2,7 @@
 
 ⚠️ **`LigneCompletudeReponse` est RÉUTILISÉE, jamais recopiée** : c'est littéralement la même ligne
 de domaine, et le front la consomme avec le **même** composant. Une 2ᵉ écriture du DTO ferait
-diverger deux contrats — le motif de `DETTE-065`, qu'on n'alimente pas en le sachant.
+diverger deux contrats — le motif de `DETTE-065`, qu'on n'alimente pas en le sachant. ADR-0096
 """
 
 from __future__ import annotations

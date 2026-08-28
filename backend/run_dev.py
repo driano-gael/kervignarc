@@ -2,9 +2,9 @@
 
 Enchaîne le build du front (sauf `--no-build`), les migrations Alembic, puis un serveur Uvicorn
 unique sur port fixe servant l'API, le WebSocket **et** la SPA au même origin. Base du packaging
-PyInstaller (EPIC-11). ⚠️ **Écoute `0.0.0.0` par défaut** (E11US008) : le QR encode l'origine de la
-requête (`DETTE-012`), donc ouvert par l'IP LAN il devient scannable. `--host 127.0.0.1` pour une
-démo isolée ; procédure dans `docs/deploiement.md`.
+PyInstaller (EPIC-11). ⚠️ **Écoute `0.0.0.0` par défaut** (E11US008) parce que les tablettes du LAN
+doivent atteindre le serveur ; ouvert par l'IP LAN, le QR — qui encode l'origine de la requête
+(`DETTE-012`) — devient scannable. `--host 127.0.0.1` pour une démo isolée (`docs/deploiement.md`).
 """
 
 from __future__ import annotations

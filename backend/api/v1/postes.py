@@ -2,7 +2,7 @@
 
 ⚠️ **La préparation renvoie les CODES, des secrets à imprimer** : elle est donc réservée à l'admin,
 à rebours des autres lectures. Le rattachement, lui, est ouvert — c'est l'acte lui-même — et reste
-**hors file**, comme la relecture de session.
+**hors file**, comme la relecture de session. ADR-0005, ADR-0029
 """
 
 from __future__ import annotations

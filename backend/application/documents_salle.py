@@ -2,7 +2,7 @@
 
 ⚠️ **L'URL du QR est composée depuis l'origine de la requête admin** : générer depuis `localhost`
 produit des QR inutilisables sur les tablettes du réseau. Limite assumée — `DETTE-012` — acceptable
-parce que le jour J l'admin accède au serveur par son IP réseau.
+parce que le jour J l'admin accède au serveur par son IP réseau. ADR-0031
 """
 
 from __future__ import annotations

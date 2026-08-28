@@ -4,7 +4,7 @@
 aux abonnés. L'acte trace `LANCEMENT`.
 
 ⚠️ **`impact-lancement` est le MIROIR de ce que `lancer` fera** : les deux doivent donner le même
-compte, sinon le bouton annonce autre chose que ce qu'il produit.
+compte, sinon le bouton annonce autre chose que ce qu'il produit. ADR-0056
 """
 
 from __future__ import annotations

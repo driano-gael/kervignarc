@@ -3,7 +3,7 @@ en `InfrastructureError` : le domaine ne voit jamais d'exception brute.
 
 ⚠️ **Paquet réparti par thème métier, qui RÉ-EXPORTE tout** : aucun import existant n'a changé
 quand les 21 adapters ont quitté leur fichier unique de 3 378 lignes. Une seule fonction de mapping
-était réellement partagée — `_mapping.py`.
+était réellement partagée — `_mapping.py`. ADR-0005
 """
 
 from __future__ import annotations

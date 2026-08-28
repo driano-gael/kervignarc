@@ -50,11 +50,6 @@ function monter(phase: EtapeDeroule) {
   monterPlusieurs([phase])
 }
 
-/** Ouvre la fiche de la première (ou n-ième) phase listée — le geste du CA d'A07.
- *
- * Passe par un vrai clic sur un vrai bouton : c'est ce qui fait tenir le garde-fou de câblage.
- */
-
 /** Les requêtes **portées à la ligne de phase**, et non à l'écran entier.
  *
  * ⚠️ Ce cadrage manquait : l'écran monte en permanence un formulaire **d'ajout** qui affiche lui
@@ -71,6 +66,10 @@ function ligne(index = 0) {
   return within(element)
 }
 
+/** Ouvre la fiche de la première (ou n-ième) phase listée — le geste du CA d'A07.
+ *
+ * Passe par un vrai clic sur un vrai bouton : c'est ce qui fait tenir le garde-fou de câblage.
+ */
 async function ouvrirLaFiche(index = 0) {
   // ⚠️ **Le bouton se cherche DANS sa ligne, pas dans la liste globale.** Une fois une fiche
   // ouverte, son bouton devient « Fermer la fiche » : la liste des « Ouvrir la fiche » se décale,

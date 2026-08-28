@@ -4,7 +4,7 @@ Le registre d'ADR emploie **33 libellés d'en-tête distincts** pour ~6 sens de 
 gagne un nouveau tous les trois ou quatre ADR. Sans table explicite, le graphe perdrait des arêtes
 en silence ; avec une table qui « ignore ce qu'elle ne connaît pas », il en perdrait tout autant.
 D'où le parti pris : **tout libellé inconnu fait échouer le générateur**. Écrire un ADR avec un
-verbe neuf oblige alors à décider de son sens, au lieu de laisser le registre se déliter.
+verbe neuf oblige alors à décider de son sens, au lieu de laisser le registre se déliter. ADR-0059
 """
 
 from __future__ import annotations

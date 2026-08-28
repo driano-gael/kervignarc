@@ -3,7 +3,7 @@
 seulement — la bloquer reviendrait à interdire les plages relatives.
 
 ⚠️ **Aucune règle n'est recopiée** : une anomalie **porte** l'erreur typée existante, qui a déjà
-son code et son message.
+son code et son message. ADR-0063
 """
 
 from __future__ import annotations

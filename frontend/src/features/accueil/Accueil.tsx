@@ -4,7 +4,7 @@
 // livrées et ne recalcule **aucune** règle métier : frise du cycle de vie, chiffres-clés
 // (paiements, supervision), checklist et alertes dérivées de la complétude. Couverture : deux tests
 // de rendu gardent le fait que la checklist ne porte **que** le sportif ; le reste se vérifie à
-// l'œil. Les lectures pollent — l'accueil est un écran **live**.
+// l'œil. Les lectures pollent — l'accueil est un écran **live** (ADR-0075).
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'

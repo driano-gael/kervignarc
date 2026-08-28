@@ -4,7 +4,7 @@
 graduation ; le **comptage** lit des repositories, il vit donc au service.
 
 ⚠️ **Ce qui fait basculer *ouvert → lancé* est la présence d'un SCORE, pas l'heure** : `horaire` est
-un libellé libre (« 9h00 »), pas une heure comparable — « heure atteinte » n'est pas dérivable.
+un libellé libre, pas une heure comparable — « heure atteinte » n'est pas dérivable (ADR-0018).
 """
 
 from __future__ import annotations

@@ -322,6 +322,7 @@ export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
   )
 }
 
+// Les types que le moteur ne sait **pas encore** exécuter — domiciliés au catalogue partagé et
 // écrits en **négatif** : un oubli y coûte un avertissement de trop, jamais un de moins.
 const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
 
@@ -331,7 +332,6 @@ const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
  * verdict vert et applique — sans jamais cliquer « Simuler » — repart avec un tournoi qui ne se
  * déroulera pas comme dessiné. C'est le point où cette US **aggrave** la dette.
  */
-// Les types que le moteur ne sait **pas encore** exécuter — domiciliés au catalogue partagé et
 export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
   // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068) : le moteur lit les prélèvements **par
   // rangs**, restent inertes « le reste » et « les gagnants/perdants du tour N » (DETTE-033). La

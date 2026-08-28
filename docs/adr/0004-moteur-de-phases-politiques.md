@@ -93,7 +93,9 @@ Sept familles existent aujourd'hui, contre six au tableau : `aggregation` s'est 
 
 *Déplacé depuis la docstring de `backend/domain/politiques.py` par `E00US027` (ADR-0099, règle du
 plafond) : un tableau de quatorze lignes est un raisonnement, pas un avertissement — sa place est
-ici, et le module garde un renvoi.*
+ici, et le module garde un renvoi. ⚠️ **Recompté contre `registre_par_defaut()` en revue** : la
+ligne `tiebreak` omettait `TiebreakAvecBarrage`, omission héritée de la docstring d'origine. La
+seule source à comparer est le registre, pas la copie précédente.*
 
 | Famille | Rôle | Implémentations livrées |
 |---|---|---|
@@ -101,7 +103,7 @@ ici, et le module garde un renvoi.*
 | `scoring` | calcul du score | `ScoreCumul`, `ScoreAvecHandicap` |
 | `seeding` | composition de l'arbre | `SeedingSerpent` |
 | `byes` | exempts si effectif ≠ 2^k | `ByesAuxMieuxClasses` |
-| `tiebreak` | départage des égalités | `TiebreakFftaDefaut`, `TiebreakPoules` |
+| `tiebreak` | départage des égalités | `TiebreakFftaDefaut`, `TiebreakPoules`, `TiebreakAvecBarrage` (composite, nom `barrage`, E06US003) |
 | `depth` | jusqu'où classer | `ProfondeurUnVersN`, `ProfondeurPodium`, `AucunClassement` |
 | `aggregation` | départage des sortis au même tour | `AggregationParQualification`, `AggregationExAequo` |
 

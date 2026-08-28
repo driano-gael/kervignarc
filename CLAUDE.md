@@ -164,9 +164,10 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     est vérifiée des deux côtés, par `backend/tests/test_commentaires_bornes.py` et
     `frontend/src/commentaires.test.ts`, l'un et l'autre **sans tolérance** depuis E00US027.
     ⚠️ **Périmètre exact**, parce qu'une porte qui se croit plus large qu'elle n'est éteint la
-    vigilance : côté backend, **tout le code de production** (les cinq couches, `atlas/`,
-    `release/`, les points d'entrée) — `tests/` et `migrations/` restent dehors ; côté front, tout
-    `frontend/src` en `.ts` / `.tsx` / `.css`, **tests compris**. L'écart est tracé `DETTE-088`.
+    vigilance : côté backend, **tout le code de production `.py`** (les cinq couches, `atlas/`,
+    `release/`, les points d'entrée) ; côté front, tout `frontend/src` en `.ts` / `.tsx` / `.css`,
+    **tests compris**. Restent dehors `backend/tests/`, `migrations/`, `kervignarc.spec` et
+    `frontend/eslint.config.js` — écart tracé, chiffré et justifié en `DETTE-088`.
     **(ii) aucune docstring tautologique** — si elle ne dit rien de plus que la signature, elle
     disparaît (`par_club(club_id) -> list[Archer]` n'a pas besoin de « renvoie les archers du club »).
     **(iii) un seul avertissement par bloc** — **indicateur de revue, non mécanisé**, et la nuance
@@ -180,7 +181,11 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
 
 <!--regle:registre-de-dette--> Une dette **assumée** (technique ou de conception) s'inscrit au registre
 [`docs/dette.md`](docs/dette.md) **dans le commit qui l'introduit** : ligne au tableau + section de
-détail + marqueur `# DETTE-nnn` à l'endroit exact du raccourci. Une US qui **aggrave** une dette déjà
+détail + marqueur `DETTE-nnn` à l'endroit exact du raccourci. **La forme reconnue est le jeton
+`DETTE-nnn` où qu'il soit dans le commentaire**, pas seulement en tête de ligne : le geste de
+résorption est un `grep DETTE-nnn`, et exiger `# ` en tête ferait rater les sites où le marqueur
+vit à l'intérieur d'une phrase *(précisé en revue d'E00US027 — les deux conventions coexistaient
+sans être dites, ce qui rendait le grep de résorption faux)*. Une US qui **aggrave** une dette déjà
 listée élargit la ligne existante au lieu d'inventer un contournement local. Une dette silencieuse
 est remontée en **majeur** à la revue ; ce qui casse un cas utilisateur réel dès maintenant n'est pas
 de la dette mais un **bloquant** à corriger avant merge. Le registre n'est pas une liste de tâches :

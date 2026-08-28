@@ -3,7 +3,7 @@
 ⚠️ **La LECTURE est protégée ici, à rebours des autres référentiels** : la réponse porte le **code**
 de chaque scoreur, un secret à distribuer. E10US001 ouvre les *lectures*, pas les *secrets*. La
 connexion, elle, est ouverte — c'est l'acte d'authentification — et reste **hors file** (relecture
-par code + session en mémoire).
+par code + session en mémoire). ADR-0005
 """
 
 from __future__ import annotations

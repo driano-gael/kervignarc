@@ -3,7 +3,7 @@ déroulé **lisible** où les totaux s'étalent, pour que le classement ait du s
 
 ⚠️ **Toute l'aléa passe par un `random.Random` INJECTÉ**, jamais le module global : même graine,
 même déroulé, tests reproductibles (règle 9). « Un score plausible » n'étant pas un invariant
-métier, la stratégie vit au niveau applicatif, substituable sans toucher au domaine.
+métier, la stratégie vit au niveau applicatif, substituable sans toucher au domaine. ADR-0055
 """
 
 from __future__ import annotations

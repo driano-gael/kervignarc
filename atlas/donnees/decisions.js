@@ -4655,7 +4655,9 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "ServicePoules",
-      "classement_de_phase"
+      "classement_de_phase",
+      "LecteurClassementDePhase",
+      "ServiceSaisieDuels"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4664,7 +4666,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/prelevement.py",
      "existe": true,
      "symboles": [
-      "LecteurClassementDePhase"
+      "LecteurClassementDePhase",
+      "ServicePoules",
+      "ServiceSaisieDuels"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4695,6 +4699,9 @@ window.ATLAS.decisions = {
       "TYPES_JOUES",
       "TYPES_SIGNALES_EN_ECART",
       "_classement_de_l_ordre",
+      "LecteurClassementDePhase",
+      "ServicePoules",
+      "ServiceSaisieDuels",
       "brancher_lecteur",
       "TYPES_DELEGUES",
       "brancher_poules",
@@ -4778,7 +4785,10 @@ window.ATLAS.decisions = {
       "ProchaineManche",
       "IssueRoutage.PROCHAINE_MANCHE",
       "plan_de_cibles",
-      "AUCUN"
+      "AUCUN",
+      "RONDES_APPARIEES",
+      "DuelCharge",
+      "suisse"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4972,6 +4982,7 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/suisse/ClassementSuisse.tsx",
      "existe": true,
      "symboles": [
+      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
@@ -4982,6 +4993,7 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/suisse/SaisieSuisse.tsx",
      "existe": true,
      "symboles": [
+      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
@@ -4992,6 +5004,7 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/suisse/presentation.ts",
      "existe": true,
      "symboles": [
+      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
@@ -8119,15 +8132,6 @@ window.ATLAS.decisions = {
      "symboles": [],
      "symboles_absents": [],
      "verifiable": true
-    },
-    {
-     "chemin": "backend/tests/commentaires_cliquet.txt",
-     "existe": true,
-     "symboles": [
-      "test_le_cliquet_est_vide"
-     ],
-     "symboles_absents": [],
-     "verifiable": false
     },
     {
      "chemin": "backend/tests/test_commentaires_bornes.py",

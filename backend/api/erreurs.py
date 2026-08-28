@@ -2,7 +2,7 @@
 `InfrastructureError` 500 générique, `RequestValidationError` 400.
 
 ⚠️ **Les messages techniques ne fuient JAMAIS** : une panne d'infrastructure rend un message
-générique, le détail restant journalisé côté serveur.
+générique, le détail restant journalisé côté serveur. ADR-0007
 """
 
 from __future__ import annotations

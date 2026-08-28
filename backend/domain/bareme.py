@@ -3,7 +3,7 @@
 Preset FFTA 18 m : 20 volées de 3. Le règlement étant un **template**, il reste modifiable.
 
 ⚠️ **Le mode de comptage est implicitement le CUMUL** : les autres barèmes (sets, shoot-off, Big
-Shoot Off) concernent les duels et relèvent du moteur de phases.
+Shoot Off) concernent les duels et relèvent du moteur de phases. ADR-0004
 """
 
 from __future__ import annotations

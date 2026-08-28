@@ -136,12 +136,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0086"
   },
   {
-   "code": "portage-non-verifiable",
-   "message": "annonce test_le_cliquet_est_vide dans « backend/tests/commentaires_cliquet.txt », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
-   "severite": "signal",
-   "sujet": "ADR-0099"
-  },
-  {
    "code": "portage-symbole-absent",
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
@@ -246,6 +240,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 40
+  "signaux": 39
  }
 };

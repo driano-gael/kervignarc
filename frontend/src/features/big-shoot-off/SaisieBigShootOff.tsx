@@ -5,7 +5,7 @@
 // `DuelCharge` n'est pas réutilisé : il suppose **deux** duellistes, et l'y forcer aurait demandé
 // un adversaire fictif. ⚠️ **Conséquence assumée : pas de file hors-ligne ici** (`DETTE-060`) — une
 // coupure LAN pendant une finale fait perdre la volée en cours, que le scoreur retape ; borné, mais
-// c'est un écart au régime des autres surfaces de saisie.
+// c'est un écart au régime des autres surfaces de saisie (ADR-0083).
 
 import { useState } from 'react'
 

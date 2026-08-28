@@ -4,7 +4,7 @@ dû = somme des tarifs inscrits ; payé = somme des tarifs marqués payés ; res
 
 ⚠️ **Le `reste` est une PROPRIÉTÉ, jamais un champ** : un dû et un payé ne peuvent pas contredire
 leur reste s'il n'existe aucune troisième valeur à désynchroniser. `reste ≥ 0` est une conséquence
-du calcul, pas une garde à poser.
+du calcul, pas une garde à poser. ADR-0017
 """
 
 from __future__ import annotations
