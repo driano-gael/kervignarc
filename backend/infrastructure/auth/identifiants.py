@@ -1,6 +1,8 @@
 """Identifiants admin dans un `.env` local — aussi la **porte de secours** en cas d'oubli : l'éditer
 redéclenche la définition au prochain accès. Hors versionnage.
 
+⚠️ Login et mot de passe y vivent **en clair** : compromis assumé, mono-club sur LAN (E10US002).
+
 ⚠️ **L'écriture fait un upsert ligne à ligne** : elle remplace les deux clés visées et **préserve**
 le reste du fichier (autres clés, commentaires). Mini-parseur en stdlib (ADR-0009).
 """

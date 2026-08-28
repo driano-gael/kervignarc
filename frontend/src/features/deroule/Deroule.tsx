@@ -1,11 +1,11 @@
 // Écran « Composer un format » (E01US024, ADR-0063 ; renommé par E16US002) — axe **atelier**.
 //
 // Composer une séquence en **brouillon**, la **voir** (schéma à braquets), savoir si elle **tient
-// debout**, la **faire tourner** (simulation), et **changer l'effectif** sans la retoucher. ⚠️ **Le
-// brouillon est local, le diagnostic est serveur** : recalculer côté client obligerait à
-// réimplémenter la *Règle R* en TypeScript, la duplication d'invariant que le registre proscrit.
-// Modèle : `features/phases/Phases.tsx`, à trois différences voulues — pas de statut, qualification
-// éditable ici, et **ordres dérivés de la position** (ce qui supprime les « ordres non contigus »).
+// debout**, la **faire tourner** et **changer l'effectif** sans la retoucher. ⚠️ **Le brouillon est
+// local, le diagnostic est serveur** : recalculer côté client obligerait à réimplémenter la
+// *Règle R* — elle vit dans `backend/domain/deroule.py`, et le registre proscrit d'en dupliquer
+// l'invariant. Modèle : `features/phases/Phases.tsx`, à trois différences voulues — pas de statut,
+// qualification éditable ici, et **ordres dérivés de la position**.
 
 import { useState } from 'react'
 
@@ -322,6 +322,9 @@ export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
   )
 }
 
+// écrits en **négatif** : un oubli y coûte un avertissement de trop, jamais un de moins.
+const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
+
 /** La réserve que la vue par défaut doit porter (`# DETTE-028`).
  *
  * Le schéma est un **engagement dessiné** : sans cette note, l'organisateur qui compose, voit le
@@ -329,9 +332,6 @@ export function EffectifMinimum({ diagnostic }: { diagnostic: Diagnostic }) {
  * déroulera pas comme dessiné. C'est le point où cette US **aggrave** la dette.
  */
 // Les types que le moteur ne sait **pas encore** exécuter — domiciliés au catalogue partagé et
-// écrits en **négatif** : un oubli y coûte un avertissement de trop, jamais un de moins.
-const EN_ECART = new Set<TypePhase>(TYPES_SIGNALES_EN_ECART)
-
 export function ReserveMoteur({ diagnostic }: { diagnostic: Diagnostic }) {
   // ⚠️ **Reformulée, pas supprimée** (E05US020, ADR-0068) : le moteur lit les prélèvements **par
   // rangs**, restent inertes « le reste » et « les gagnants/perdants du tour N » (DETTE-033). La
@@ -509,21 +509,16 @@ export function LignePhaseSimulee({ phase }: { phase: PhaseSimulee }) {
       </th>
       <td>
         {phase.joue ? phase.effectif : '—'}
-        {/* Honnêteté d'outil : le **bot de simulation** ne sait dérouler aucun des quatre formats
-            à rencontres — poules, Big Shoot Off, suisse, colline (`_TYPES_DEROULABLES`, DETTE-066) —
-            alors que le **moteur**, lui, les joue tous depuis E05US027 ; et il n'honore pas les
-            prélèvements « le reste » / « issue de tour »
-            (ADR-0068 §3). Plutôt que de servir un chiffre faux et muet à qui dimensionne ses
-            scoreurs, on montre l'écart avec ce que le schéma annonçait — et on dit quand le moteur
-            n'a rien joué du tout. Les prélèvements **par rangs** sont désormais honorés (E05US020),
-            donc l'écart s'y referme de lui-même. */}
-        {/* ⚠️ **Deux phrases, parce qu'il y a deux causes** (correctif de revue E05US028). E05US023
-            puis E05US028 ont rendu les poules et le Big Shoot Off **jouables par le moteur**, mais
-            le *bot de simulation* ne sait toujours pas les jouer (`_TYPES_DEROULABLES` les exclut
-            explicitement, côté serveur). La phrase unique disait « le moteur ne sait pas dérouler ce
-            type » : factuellement fausse depuis, et affichée à l'organisateur la veille du tournoi,
-            sur l'écran fait pour le rassurer. Le lot d'origine fermait le signal honnête (le bandeau
-            de réserve) et laissait celui-ci en place. */}
+        {/* Honnêteté d'outil : le **bot de simulation** ne sait dérouler aucun des quatre
+            formats à rencontres (`_TYPES_DEROULABLES`, DETTE-066) alors que le **moteur** les
+            joue tous depuis E05US027, et il n'honore pas les prélèvements « le reste » / «
+            issue de tour » (ADR-0068 §3). On montre donc l'écart avec ce que le schéma
+            annonçait. */}
+
+        {/* ⚠️ **Deux phrases, parce qu'il y a deux causes** (correctif de revue E05US028) : la
+            phrase unique disait « le moteur ne sait pas dérouler ce type », factuellement
+            fausse depuis que les poules et le Big Shoot Off sont jouables — et affichée à
+            l'organisateur la veille du tournoi. */}
         {!phase.joue ? (
           <span className="deroule__ecart" role="note">
             {' '}

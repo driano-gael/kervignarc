@@ -527,6 +527,24 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "088",
+   "introduite_par": [
+    "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "089",
+   "introduite_par": [
+    "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "087",
    "introduite_par": [
     "E16US006"
@@ -1338,7 +1356,9 @@ window.ATLAS.avancement = {
    "titre_story": "Sortir la logique des quatre composants XXL du front"
   },
   {
-   "adr": [],
+   "adr": [
+    "0099"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "00",
@@ -1372,9 +1392,14 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0004",
+    "0060",
+    "0075",
     "0099"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "088",
+    "089"
+   ],
    "dettes_resorbees": [],
    "epic": "00",
    "epic_titre": "Socle technique & walking skeleton",
@@ -2626,6 +2651,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0004",
     "0045",
     "0062",
     "0080",

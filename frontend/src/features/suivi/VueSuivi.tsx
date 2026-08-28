@@ -1,11 +1,14 @@
 // Vue « suivi » de l'appli publique — « je retrouve **mes** archers sans chercher », au pluriel.
 //
 // Deux gestes : **rechercher** des archers (nom ou club) pour les suivre, et voir la **carte** de
-// chacun. Les suivis sont mémorisés localement ; aucun compte, la lecture publique est anonyme. ⚠️
-// **Ici on COMPOSE la liste des suivis ; ailleurs on la LIT** (`shared/suivis/focus.ts`). ⚠️ **Ne
-// JAMAIS reconstruire la journée depuis l'endpoint des inscriptions** : son DTO porte des données
-// financières nominatives (règle 6). ⚠️ **L'à-venir passe par la lecture COLLECTIVE**, une lecture
-// par archer multipliant par N la requête la plus chère (`# DETTE-031`, ici aggravée).
+// chacun. Les suivis sont mémorisés localement ; aucun compte, la lecture publique est anonyme.
+// ⚠️ **Ici on COMPOSE la liste des suivis ; ailleurs on la LIT** (`shared/suivis/focus.ts`).
+
+// ⚠️ **Ne JAMAIS reconstruire la journée depuis l'endpoint des inscriptions** : son DTO porte des
+// données financières nominatives (règle 6). L'à-venir passe donc par la lecture **collective**,
+// une lecture par archer multipliant par N la requête la plus chère (`# DETTE-031`, ici aggravée).
+
+// DETTE-008 — le suivi recharge par poll ce que le canal live pourrait pousser.
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'

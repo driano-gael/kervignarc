@@ -6,6 +6,8 @@ La saisie est cloisonnée au triplet `(tournoi, cible, départ)` ; `contexte=Non
 Les archers de la grille se reconstituent depuis les `Affectation`, pas depuis `Archer.cible`.
 """
 
+# DETTE-046 — la saisie de qualification garde une lecture à la maille tournoi.
+
 from __future__ import annotations
 
 import datetime

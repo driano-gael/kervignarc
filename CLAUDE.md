@@ -160,14 +160,21 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     la version « trois tests » seule n'avait retiré que **0,3 %** du volume en trois vagues) :
     **(i) huit lignes au plus par bloc.** Au-delà, ce n'est plus un avertissement mais un
     raisonnement : il part en ADR et le code garde un renvoi. Seule règle de commentaire du projet
-    qui soit **mesurable**, donc la seule qui ne dérivera pas — et elle est **vérifiée des deux
-    côtés** : `backend/tests/test_commentaires_bornes.py` et `frontend/src/commentaires.test.ts`,
-    l'un et l'autre **sans tolérance** depuis E00US027 (le cliquet backend est vidé, le front n'en
-    a jamais eu).
+    qui soit **mesurable**, donc la seule qui ne dérivera pas — et **la seule mécanisée** : elle
+    est vérifiée des deux côtés, par `backend/tests/test_commentaires_bornes.py` et
+    `frontend/src/commentaires.test.ts`, l'un et l'autre **sans tolérance** depuis E00US027.
+    ⚠️ **Périmètre exact**, parce qu'une porte qui se croit plus large qu'elle n'est éteint la
+    vigilance : côté backend, **tout le code de production** (les cinq couches, `atlas/`,
+    `release/`, les points d'entrée) — `tests/` et `migrations/` restent dehors ; côté front, tout
+    `frontend/src` en `.ts` / `.tsx` / `.css`, **tests compris**. L'écart est tracé `DETTE-088`.
     **(ii) aucune docstring tautologique** — si elle ne dit rien de plus que la signature, elle
     disparaît (`par_club(club_id) -> list[Archer]` n'a pas besoin de « renvoie les archers du club »).
-    **(iii) un seul avertissement par bloc.** Trois ⚠️ empilés signalent soit un module qui fait trop
-    de choses, soit un raisonnement à sortir.
+    **(iii) un seul avertissement par bloc** — **indicateur de revue, non mécanisé**, et la nuance
+    compte : trois ⚠️ empilés signalent un module qui fait trop de choses ou un raisonnement à
+    sortir, mais la contrainte (i) **pousse en sens inverse** (fusionner pour tenir en huit lignes
+    empile les ⚠️). E00US027 s'est livrée en violant (iii) 153 fois : une règle démentie par son
+    propre commit d'introduction ne se tient plus jamais. On la relève donc à la lecture, on ne la
+    compte pas.
 
 ## Dette
 

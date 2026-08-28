@@ -1,10 +1,12 @@
 /* Base globale + jetons de la **charte mesurée** du club (E17US001, ADR-0074). Les valeurs viennent
    de `cahier-des-charges-design.md` §3.3 — **chaque couleur porte son ratio de contraste mesuré sur
-   le fond de son thème**. On ne « choisit » pas une couleur ici. ⚠️ `DV-04` : le **rouge du club
-   est une surface, jamais un accent** (2,55:1 sur l'anthracite), d'où **trois** jetons de marque
-   selon l'usage. ⚠️ `DV-03` : l'**alerte est ambre**. ⚠️ Un **jeton sémantique est une paire** —
-   toute déclinaison redéclare l'ensemble des jetons, un oubli étant un bug de contraste silencieux
-   (`charte.test.ts` le vérifie). */
+   le fond de son thème**. On ne « choisit » pas une couleur ici. */
+
+/* ⚠️ `DV-04` : le **rouge du club est une surface, jamais un accent** (2,55:1 sur l'anthracite),
+   d'où **trois** jetons de marque selon l'usage ; `DV-03` : l'alerte est **ambre**. */
+
+/* ⚠️ Un **jeton sémantique est une paire** : toute déclinaison redéclare l'ensemble des jetons, un
+   oubli étant un bug de contraste silencieux (`charte.test.ts` le vérifie). */
 
 /* Le **sombre est la référence** de la charte (`DV-02`) : `#1D1D1B` est le fond de la banderole du
    club. Ce n'est pas qu'une préférence esthétique — le jour J, ~30 tablettes BYOD suivraient chacune

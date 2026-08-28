@@ -1,21 +1,10 @@
 """Exécutable de développement (E00US012) — lance **toute** l'app en une commande.
 
-Enchaîne, dans l'ordre :
-1. **build du front** (`npm run build` → `frontend/dist/`), sauf `--no-build` ;
-2. **migrations** de la base (`alembic upgrade head`) — schéma prêt ;
-3. **serveur unique** Uvicorn sur un **port fixe**, servant l'API, le WebSocket **et** la
-   SPA au même origin (plus de proxy Vite).
-
-But : un point d'entrée « double-clic » de dev, **base du packaging PyInstaller** (EPIC-11).
-Usage : `python run_dev.py` (depuis `backend/`), ou `python run_dev.py --no-build` pour
-réutiliser un build existant.
-
-**Écoute réseau (E11US008).** Par défaut le serveur écoute sur **toutes les interfaces**
-(`0.0.0.0`), comme le binaire de release (`run.py`) : une tablette du réseau local peut donc
-atteindre `http://<ip-lan>:8000` — indispensable le jour J pour tester le rattachement des postes
-(le QR encode l'origine de la requête, # DETTE-012 ; ouvert par l'IP LAN, il devient scannable).
-Pour restreindre à la seule machine (démo isolée), passer `--host 127.0.0.1`. Procédure LAN et
-pare-feu : `docs/deploiement.md`.
+Enchaîne le build du front (sauf `--no-build`), les migrations Alembic, puis un serveur Uvicorn
+unique sur port fixe servant l'API, le WebSocket **et** la SPA au même origin. Base du packaging
+PyInstaller (EPIC-11). ⚠️ **Écoute `0.0.0.0` par défaut** (E11US008) : le QR encode l'origine de la
+requête (`DETTE-012`), donc ouvert par l'IP LAN il devient scannable. `--host 127.0.0.1` pour une
+démo isolée ; procédure dans `docs/deploiement.md`.
 """
 
 from __future__ import annotations

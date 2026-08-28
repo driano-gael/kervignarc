@@ -560,8 +560,8 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   autorité sur le compte) —, la dernière étant `E00US027`, **sans effet visible pour vous** : une
   règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le
   recopier en commentaire, là où rien ne le vérifie et où il finit par dire le contraire du code.
-  Elle a été passée sur **tout** le code, et une vérification automatique la fait désormais
-  respecter à chaque modification.
+  Elle a été passée sur **tout** le code — environ 1 500 passages réécrits — et une vérification
+  automatique la fait désormais respecter à chaque modification, des deux côtés de l'application.
   La précédente était `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
   une page de noms défile et le nombre de noms qu'elle porte se règlent **par écran**, depuis la
   préparation du tournoi, au lieu d'être écrits dans le programme. Et le classement projeté garde

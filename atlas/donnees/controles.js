@@ -136,22 +136,16 @@ window.ATLAS.controles = {
    "sujet": "ADR-0086"
   },
   {
+   "code": "portage-non-verifiable",
+   "message": "annonce test_le_cliquet_est_vide dans « backend/tests/commentaires_cliquet.txt », qui n'est pas un fichier lisible symbole par symbole : la promesse existe mais n'est pas contrôlée.",
+   "severite": "signal",
+   "sujet": "ADR-0099"
+  },
+  {
    "code": "portage-symbole-absent",
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0004"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce config.policies dans « backend/domain/phase.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0046"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce tournoi_id dans « backend/domain/patrimoine.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0060"
   },
   {
    "code": "portage-symbole-absent",
@@ -179,12 +173,6 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce forfaits, feuille_de_marque dans « backend/application/portee.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0082"
-  },
-  {
-   "code": "portage-symbole-absent",
    "message": "annonce DecorDeSaisie.VOLEE_COLLECTIVE dans « frontend/src/features/big-shoot-off/SaisieBigShootOff.tsx » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
@@ -203,49 +191,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/ClassementSuisse.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/SaisieSuisse.tsx » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce RONDES_APPARIEES dans « frontend/src/features/suisse/presentation.ts » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce ServicePoules, LecteurClassementPoules, LecteurClassementBigShootOff dans « backend/application/prelevement.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
    "message": "annonce brancher_poules dans « backend/application/saisie_duels.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce placement_poule, poule_numero dans « backend/infrastructure/db/models.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce plan_de_cibles, AUCUN dans « backend/application/routage.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0083"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce saisie_duels.TYPES_DELEGUES, palmares._TYPES_CLASSANTS_AU_PALMARES, monte_les_oppositions dans « backend/domain/contrat_phase.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0083"
   },
@@ -300,6 +246,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 49
+  "signaux": 40
  }
 };

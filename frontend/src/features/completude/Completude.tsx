@@ -7,6 +7,8 @@
 // identique. ⚠️ Le bouton « Terminer » n'est **jamais bloqué** (`D-15`) et sa confirmation
 // **chiffre les impayés** — le seul moment où les deux mondes doivent se croiser (E16US003, A14).
 
+// DETTE-082 — deux endroits portent le même geste : la frise du cycle de vie garde son bouton nu.
+
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { texteErreur } from '../../shared/ui/texteErreur'
 // DETTE-083 — ⚠️ l'autre moitié du cycle : `jalons/PretA` réimporte `completude`.

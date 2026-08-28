@@ -21,12 +21,17 @@ des commentaires que **rien ne vérifie**. Un commentaire ne survit donc qu'à t
 ([ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md), règle 13) ; le
 reste vit déjà ailleurs. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome du
 plafond de pages, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant
-d'être retiré. Lot démonstratif de 5 fichiers ; les **151** fichiers au-dessus de 40 % — dont
-**103 côté backend** — se traitent **au fil de l'eau**, ni en big bang ni par script : un motif de
-normalisation a été écrit puis **rejeté sur simulation**, il cassait la prose multi-lignes. Aucune
-ligne exécutable modifiée.)*
+d'être retiré. Après un lot démonstratif de 5 fichiers, l'US a été **élargie au dépôt entier** sur
+arbitrage du 27/08/2026 : **1 048 blocs backend** et **453 blocs front** (236 fichiers) ramenés sous
+un plafond de **huit lignes par bloc**, désormais vérifié des deux côtés par pytest et vitest.
+Aucune ligne exécutable modifiée — vérifié jeton à jeton sur 437 fichiers.)*
 
-**Précédente : `E16US006`**
+**Précédente : `E16US009`**
+*(**l'écran de salle se règle, et montre tout le monde** — la cadence de défilement et le nombre de
+noms par page se règlent par écran, et le classement projeté garde ses trois premiers en tête
+pendant que le reste tourne page par page.)*
+
+**Avant elle : `E16US006`**
 *(**le tournoi porte ses couleurs et ses logos** — deux logos facultatifs, celui de l'**édition** et
 celui du **club organisateur**, et deux couleurs d'accent dont le système **dérive** seul l'aplat, le
 contour et la variante de texte, en thème sombre **et** clair. L'habillage porte sur l'**écran de
@@ -1252,7 +1257,7 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 
 | US | Titre | Jalon | État |
 |---|---|---|---|
-| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Appliquee **au depot entier** apres arbitrage du 27/08/2026 (plafond de **8 lignes** par bloc, « tout, maintenant ») : le cliquet backend passe de **1048 blocs a 0** et le front de **103 a 0**. La regle est donc **dure des deux cotes**, et verifiee — `test_commentaires_bornes.py` (pytest) et `commentaires.test.ts` (vitest, ajoute par cette US). Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
+| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Appliquée **au dépôt entier** après arbitrage du 27/08/2026 (plafond de **8 lignes** par bloc, « tout, maintenant ») : le cliquet backend passe de **1 048 blocs à 0**, le front de **453 blocs sur 236 fichiers à 0**. La règle est **dure des deux côtés** et vérifiée — `test_commentaires_bornes.py` (pytest, tout le code de production) et `commentaires.test.ts` (vitest, tout `frontend/src`, tests compris). ⚠️ Le chiffre « 103 » annoncé en 1ʳᵉ passe était le **reliquat** au moment d'une reprise, pas le total : corrigé en revue. Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

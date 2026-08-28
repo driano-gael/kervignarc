@@ -187,7 +187,9 @@ précisément pour être lisible par lui.
 > Les modules ci-dessous ont été **vérifiés dans le code du jour**, pas déduits de l'ADR — nommer un
 > module vide reproduirait exactement le défaut que la section existe pour empêcher.*
 
-- `backend/domain/patrimoine.py` — les briques de bibliothèque et leur distinction par `tournoi_id`.
+- `backend/domain/patrimoine.py` — `OrigineBrique`, la marque d'origine d'une brique (§4).
+  ⚠️ La distinction bibliothèque / copie ne s'y lit **pas** : le domaine pur ne porte aucun
+  identifiant de tournoi, elle vit dans la couche application ci-dessous (corrigé en E00US027).
 - `backend/application/patrimoine.py` — les trois gestes de l'ADR, un par méthode :
   `appliquer_categorie` / `appliquer_blason` (**copier** vers un tournoi, §2),
   `promouvoir_blason` / `promouvoir_categorie` (**remonter** au club, §3),

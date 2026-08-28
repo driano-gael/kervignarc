@@ -1,16 +1,10 @@
 """Point d'entrée du binaire de release (E11US001).
 
-Pendant « production » de `run_dev.py`. Différences avec l'entrée de dev :
-
-- **pas de build front** : le front est déjà embarqué dans le binaire (spec PyInstaller) ;
-- **écoute `0.0.0.0`** et non `127.0.0.1` : les tablettes du réseau local doivent atteindre
-  le serveur — sur la boucle locale elles ne le pourraient pas. C'est le sens même de
-  « mise en réseau » de l'US ;
-- **base à côté de l'exécutable**, migrée au **1er lancement** (créée si absente) ;
-- **annonce mDNS** `kervignarc.local` pendant toute la vie du serveur.
-
-Séquence : résoudre les chemins → publier base/front via l'environnement (source unique lue
-par la composition root ET par Alembic) → migrer → annoncer mDNS → servir API + WS + SPA.
+Pendant « production » de `run_dev.py`, dont il diffère sur quatre points : pas de build front (il
+est embarqué dans le binaire), **écoute `0.0.0.0`** — les tablettes du LAN ne peuvent pas atteindre
+la boucle locale —, base **à côté de l'exécutable** et migrée au 1ᵉʳ lancement, et annonce mDNS
+`kervignarc.local`. Séquence : résoudre les chemins → publier base et front par l'environnement →
+migrer → annoncer → servir.
 """
 
 from __future__ import annotations

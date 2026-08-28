@@ -5,6 +5,9 @@
 // obligatoire** : chaque table est un `Record<TypePhase, …>`, jamais un ternaire à repli — c'est un
 // repli qui a fait afficher six types comme « Placement » sans que TypeScript bronche.
 
+// DETTE-030 — domicile unique de l'union `TypePhase` : un type ajouté ici doit l'être côté
+// serveur dans le même commit, rien ne compare mécaniquement les deux tables.
+
 // Types de phase déclarables (ADR-0045 §2), catalogue peuplé par E05US015 (ADR-0062).
 // Le repêchage et le handicap n'y figurent **pas** : ce sont des politiques (`routing`, `scoring`),
 // pas des types — un type se justifie par une **structure**, pas par un réglage (ADR-0062 §1).

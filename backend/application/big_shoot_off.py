@@ -7,6 +7,8 @@ l'élimination qu'elle a produite avec elle. Le rejeu est correct — c'est le g
 manque, et la fiche de recette a cru la capacité livrée.
 """
 
+# DETTE-028 — moteur de format branché tardivement : la capacité précède son appelant.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, replace

@@ -6,6 +6,8 @@ du service : apparier perdrait les rencontres non saisies et donnerait le bye à
 de tirer. « Partiellement saisie » est le régime **normal** du jour J, pas un cas limite.
 """
 
+# DETTE-028 — moteur de format branché tardivement : la capacité précède son appelant.
+
 from __future__ import annotations
 
 from collections.abc import Callable

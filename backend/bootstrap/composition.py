@@ -1024,7 +1024,7 @@ def create_app(
     # ⚠️ `depart_repository` depuis E01US025 : les quatre canaux entrent par le **créneau**
     # (ADR-0075). ⚠️ `service_big_shoot_off` depuis E05US028 : sans lui, `_routage_big_shoot_off`
     # rend INDISPONIBLE sur les quatre canaux — et le paramètre étant optionnel, **rien ne
-    # rougissait**. Ancré désormais par `test_composition_routage_big_shoot_off`.
+    # rougit** : aucun test ne monte `create_app` pour l'éprouver (`DETTE-089`).
     app.state.service_routage = ServiceRoutage(
         app.state.service_saisie_duels,
         app.state.service_placement_duels,

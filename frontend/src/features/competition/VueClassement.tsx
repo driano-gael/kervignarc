@@ -134,20 +134,15 @@ export function VueClassement({
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
-          {/* `teteFigee` (A16) : *« les x premiers sont toujours affichés, mais le dessous du tableau
-              a un défilé jusqu'à n »*. Huit sur les surfaces qu'on **manipule** : on y suit le haut
-              d'une catégorie, pas seulement le podium, et huit lignes tiennent sans écraser le cadre
-              défilant.
-              ✅ **Trois sur l'écran de salle depuis E16US009** — P07 : *« ok pour les 3 premiers
-              toujours visible, mais défilement de tous les autres archers dessous »*. La valeur
-              restait à **zéro** jusqu'ici, délibérément : livrer la tête figée sans le défilement
-              aurait réduit un classement de 40 archers à 3 lignes, soit une **régression** de ce
-              que la salle affichait (revue du 05/08/2026, axe B). C'est `pagination` qui lève le
-              verrou — le reste **tourne** page par page au lieu de s'enfermer dans un cadre à
-              ascenseur que personne, dans un gymnase, ne peut actionner (ADR-0098).
-              ⚠️ Le lien est **mécanique et non cosmétique** : sans réglage de pages, la tête figée
-              retombe à zéro. Un appelant qui passerait `filtrable={false}` sans `pagination`
-              retrouverait donc le classement entier d'avant l'US, jamais les 3 lignes seules. */}
+          {/* `teteFigee` (A16) : huit lignes sur les surfaces qu'on **manipule** — on y suit le
+              haut d'une catégorie, pas seulement le podium. ✅ **Trois sur l'écran de salle**
+              (P07, E16US009) ; la valeur restait à zéro tant que le défilement n'existait pas,
+              sans quoi un classement de 40 archers tombait à 3 lignes — la régression refusée
+              le 05/08/2026. */}
+
+          {/* ⚠️ Le lien est **mécanique** : sans `pagination`, la tête figée retombe à zéro,
+              donc un appelant qui passerait `filtrable` seul retrouve le classement entier
+              d'avant l'US, jamais les 3 lignes seules (ADR-0098). */}
           <TableClassement
             tournoiId={tournoiId}
             lignes={lignesAffichees}

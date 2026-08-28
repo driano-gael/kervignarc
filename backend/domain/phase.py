@@ -6,6 +6,10 @@ réordonnancement ou suppression oblige donc à **remapper** les références
 (`ServicePhases._remapper`). Écart assumé et tracé — `DETTE-026`.
 """
 
+# Forme persistée de `config` (ADR-0046) : les politiques sous `config.policies`, le barème sous
+# `config.policies.scoring`, le grain de `validation` **à la racine**. La sérialisation elle-même
+# est une affaire de repository — `infrastructure/db/repositories/moteur.py`.
+
 from __future__ import annotations
 
 import sys

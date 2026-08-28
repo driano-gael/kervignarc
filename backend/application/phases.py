@@ -7,6 +7,8 @@ réimplémente rien et arbitre les transitions illégales (409/404).
 l'`ordre` de la phase amont et non par son identité. C'est `DETTE-026`.
 """
 
+# DETTE-057 — le mode d'une poule n'est pas encore porté par un réglage dédié.
+
 from __future__ import annotations
 
 from collections.abc import Callable

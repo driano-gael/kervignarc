@@ -7,6 +7,8 @@
 // WebSocket manqué pendant une coupure. Un écran projeté qui se fige sur un état ancien **ne se
 // plaint pas** : c'est précisément le mode de panne que le CA veut éviter.
 
+// DETTE-031 — chaque appel refait la lecture la plus chère de l'application.
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { RACINE_AVANCEMENT } from '../phases/hooks'

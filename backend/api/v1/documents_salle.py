@@ -1,11 +1,12 @@
 """Documents de salle — deux PDF à imprimer, plus le **QR d'une cible à l'écran** (SVG).
 
 Le SVG est chargé par **blob authentifié** : le Bearer admin vit en JS, un `<img src>` direct
-n'emporterait pas le jeton.
-
-⚠️ **Les QR encodent une URL bâtie sur l'ORIGINE DE LA REQUÊTE** — le seul endroit qui connaisse
-l'adresse par laquelle les tablettes atteindront le serveur le jour J (`DETTE-012`).
+n'emporterait pas le jeton. ⚠️ **Réservé à l'admin** (`exiger_admin`, E10US001) : les QR encodent
+des codes de rattachement, secrets d'usage qui n'ont pas à fuiter au public.
 """
+
+# ⚠️ **Les QR encodent une URL bâtie sur l'ORIGINE DE LA REQUÊTE** — le seul endroit qui connaisse
+# l'adresse par laquelle les tablettes atteindront le serveur le jour J (`DETTE-012`).
 
 from __future__ import annotations
 

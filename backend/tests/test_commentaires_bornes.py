@@ -1,11 +1,10 @@
 """Garde-fou de la règle 13 — un bloc de commentaire ne dépasse pas huit lignes (ADR-0099).
 
-Ce test **est** la règle. Les trois « tests de survie » d'ADR-0099 reposent sur une appréciation,
-donc rien ne les contrôle, donc ils dériveront ; le plafond, lui, se compte — c'est la seule
-contrainte de commentaire du projet qui soit mécanisable.
-
-⚠️ Le compte porte sur les **blocs contigus**, docstrings comprises : c'est ce qu'un lecteur avale
-d'un trait, pas le nombre de `#`.
+Ce test **est** la règle : les trois « tests de survie » d'ADR-0099 reposent sur une appréciation,
+le plafond se compte. ⚠️ Le compte porte sur les **blocs contigus**, docstrings comprises — ce
+qu'un lecteur avale d'un trait, pas le nombre de `#`. ⚠️ Périmètre : **tout le code de production**
+(les cinq couches, `atlas/`, `release/`, les points d'entrée) ; `tests/` et `migrations/` en sont
+**hors**, c'est `DETTE-088` — le front, lui, couvre ses propres tests.
 """
 
 from __future__ import annotations
@@ -14,7 +13,8 @@ import tokenize
 from pathlib import Path
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
-_COUVERTS = ("domain", "application", "api", "infrastructure", "bootstrap")
+# DETTE-088 — `tests/` et `migrations/` restent hors porte ; le front, lui, couvre ses tests.
+_COUVERTS = ("domain", "application", "api", "infrastructure", "bootstrap", "atlas", "release")
 _EXCLUS = ("tests", "migrations", ".venv", "__pycache__")
 
 PLAFOND = 8
@@ -61,7 +61,10 @@ def _blocs_trop_longs(chemin: Path) -> list[tuple[int, int]]:
     precedent: int | None = None
     for jeton in jetons:
         # Une docstring est une chaîne en position d'instruction : c'est ce que teste `precedent`.
-        est_commentaire = jeton.type == tokenize.COMMENT or (
+        # ⚠️ Un `#` posé APRÈS du code n'ouvre pas de bloc — sinon neuf lignes commentées une à une
+        # (une table de constantes) rougissaient, et le front, lui, ne les compte pas (revue).
+        seul_sur_sa_ligne = not jeton.line[: jeton.start[1]].strip()
+        est_commentaire = (jeton.type == tokenize.COMMENT and seul_sur_sa_ligne) or (
             jeton.type == tokenize.STRING
             and precedent in (None, tokenize.INDENT, tokenize.NEWLINE, tokenize.NL, tokenize.DEDENT)
         )
@@ -81,24 +84,26 @@ def _blocs_trop_longs(chemin: Path) -> list[tuple[int, int]]:
 
 
 def _fichiers_de_production() -> list[Path]:
-    fichiers: list[Path] = []
+    # ⚠️ `_EXCLUS` se teste sur le chemin **relatif** : sur l'absolu, un dépôt cloné sous un
+    # répertoire nommé `tests` ou `.venv` vidait le balayage en silence (relevé en revue).
+    fichiers = list(_BACKEND_ROOT.glob("*.py"))
     for couche in _COUVERTS:
         for chemin in (_BACKEND_ROOT / couche).rglob("*.py"):
-            if any(part in _EXCLUS for part in chemin.parts):
+            if any(part in _EXCLUS for part in chemin.relative_to(_BACKEND_ROOT).parts):
                 continue
             fichiers.append(chemin)
     return fichiers
 
 
 def test_aucun_fichier_ne_gagne_de_bloc_trop_long() -> None:
-    """Règle 13 : huit lignes au plus par bloc — au-delà, le raisonnement va en ADR.
+    """Règle 13 : huit lignes au plus par bloc — au-delà, le raisonnement va en ADR."""
+    fichiers = _fichiers_de_production()
+    # ⚠️ Sans cette borne, un périmètre cassé rend la porte **verte et vide** : `rglob` sur un
+    # dossier absent ne lève pas, il rend une liste vide (relevé en revue).
+    assert len(fichiers) > 150, f"le balayage n'a lu que {len(fichiers)} fichiers — périmètre cassé"
 
-    Ce que ce test prouve : aucun fichier ne porte **plus** de blocs longs que sa baseline. Ce
-    qu'il ne prouve pas : que les blocs restants soient légitimes — le cliquet est une dette, pas
-    un blanc-seing.
-    """
     regressions: list[str] = []
-    for chemin in _fichiers_de_production():
+    for chemin in fichiers:
         relatif = chemin.relative_to(_BACKEND_ROOT).as_posix()
         trop_longs = _blocs_trop_longs(chemin)
         tolere = _CLIQUET.get(relatif, 0)
@@ -116,6 +121,15 @@ def test_aucun_fichier_ne_gagne_de_bloc_trop_long() -> None:
         "Le cliquet ne se relève pas — faire descendre un chiffre est le seul geste autorisé.\n\n"
         + "\n".join(regressions[:30])
     )
+
+
+def test_le_cliquet_est_vide() -> None:
+    """Vidé en E00US027 : `CLAUDE.md` règle 13 annonce le plafond « sans tolérance ».
+
+    ⚠️ Sans ce test, rouvrir la soupape est un diff d'une ligne dans un fichier de **données**, que
+    rien ne fait rougir. Avec lui, c'est un diff de **test** — donc un geste que la revue voit.
+    """
+    assert not _CLIQUET, f"cliquet rouvert — {sorted(_CLIQUET)}"
 
 
 def test_le_cliquet_ne_contient_que_des_fichiers_existants() -> None:

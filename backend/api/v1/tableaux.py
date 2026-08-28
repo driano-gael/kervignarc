@@ -7,6 +7,8 @@ bénévole), pas les manches ni le barrage (donnée de saisie), pas le barème n
 n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
 """
 
+# DETTE-020 — l'arbre est reconstruit à chaque lecture, sans cache.
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Request

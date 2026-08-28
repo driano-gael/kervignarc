@@ -106,6 +106,7 @@ export type CleDePage = 'classement' | 'affectations'
 /** ⚠️ **`cle` est lue au montage pour l'état initial, et suivie ensuite par l'effet seul.**
  *
  * Un appelant qui changerait de clé **sans démonter** repartirait du cumul de la vue précédente.
+ * Les tests isolent leurs cumuls par `__reinitialiserCumulsDePage_TESTS()`.
  * Aucun ne le fait aujourd'hui, et la parade est chez l'appelant : un `key={cle}` force le
  * remontage. *(Resynchroniser l'état en tête d'effet est un `setState` synchrone que
  * `react-hooks/set-state-in-effect` refuse, à raison : un rendu en cascade pour un cas inatteint.)*

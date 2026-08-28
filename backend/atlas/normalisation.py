@@ -109,16 +109,12 @@ _ADR_CITE = re.compile(r"ADR-(\d{4})")
 def normaliser_statut(brut: str, *, fichier: str) -> tuple[Statut, str]:
     """Rend (statut normalisé, identifiant du remplaçant ou chaîne vide).
 
-    Le champ est écrit à la main : on y trouve `Accepté`, `accepté`, `Accepté *(précision…)*` et
-    un `**Remplacé par [ADR-0059](…)** (30/07/2026)`. On normalise pour trier et filtrer, mais
-    l'appelant conserve le texte brut : les parenthèses portent souvent la nuance utile.
+    Le champ est écrit à la main : on normalise pour trier, l'appelant garde le texte brut.
     """
-    # ⚠️ Les deux ordres possibles sont des pièges **de polarité opposée** : tester « remplac »
-    # d'abord classe un « Accepté (remplace en partie …) » comme obsolète ; tester « accepté »
-    # d'abord classe un « Accepté, remplacé par … » comme en vigueur — le plus coûteux des deux,
-    # puisqu'il fait passer une décision morte pour vivante. Aucune des deux formes n'existe au
-    # registre. Plutôt que de choisir le moindre mal, on **refuse de deviner** : c'est la ligne de
-    # conduite du module, et la seule qui ne mente pas si le cas apparaît.
+    # ⚠️ Les deux ordres de test sont des pièges de **polarité opposée** : « remplac » d'abord
+    # classe un « Accepté (remplace en partie …) » comme obsolète, « accepté » d'abord fait passer
+    # une décision morte pour vivante. Aucune des deux formes n'existe au registre : on **refuse
+    # de deviner**.
     canonique = cle(brut)
     accepte = canonique.startswith("accepte")
     remplace = "remplac" in canonique

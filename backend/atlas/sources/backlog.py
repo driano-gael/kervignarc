@@ -96,15 +96,11 @@ def lire_epics(racine: Path) -> tuple[Epic, ...]:
 def lire_dettes(racine: Path) -> tuple[Dette, ...]:
     """Les deux registres de dette — ouverte et résorbée — dans l'ordre du fichier.
 
-    Le drapeau `ouverte` se déduit de la **section** où la table se trouve — « Dette ouverte » ou
-    « Dette résorbée » — parce que la procédure du projet veut qu'une dette résorbée **change de
-    table**, et que c'est ce déplacement qui fait foi.
-
-    ⚠️ Il se déduisait auparavant de la **présence d'une colonne `Sévérité`**, ce qui marchait par
-    coïncidence et contredisait cette docstring. Ajouter une colonne `Sévérité` à la table des
-    dettes résorbées — pour garder la sévérité historique, geste parfaitement naturel — les aurait
-    toutes basculées en « ouvertes », rendant `dette-dans-les-deux-tables` définitivement incapable
-    de se déclencher. Un lecteur silencieusement faux vaut moins que pas de lecteur.
+    Le drapeau `ouverte` se déduit de la **section** où la table se trouve, parce que la procédure
+    veut qu'une dette résorbée **change de table** et que c'est ce déplacement qui fait foi. ⚠️ Il
+    se déduisait auparavant de la présence d'une colonne `Sévérité` : ajouter cette colonne à la
+    table des résorbées — geste parfaitement naturel — les aurait toutes basculées en « ouvertes »,
+    rendant `dette-dans-les-deux-tables` incapable de se déclencher.
     """
     texte = markdown.lire(racine / "docs" / "dette.md")
     trouves: list[Dette] = []

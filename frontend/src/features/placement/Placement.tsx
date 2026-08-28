@@ -7,6 +7,9 @@
 // et la réserve en panneau **collant** — le glisser-déposer natif ne fait pas défiler la page, donc
 // une réserve en pied d'écran devient inatteignable dès vingt cibles.
 
+// DETTE-083, DETTE-085 — quatre composants recopiés entre le plan de qualification et celui des
+// duels : une correction faite ici ne rougit nulle part si elle n'est pas portée à `duels/`.
+
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -338,16 +341,14 @@ function PlanCharge({
       <MessageErreur erreur={regenerer.error} />
       <MessageErreur erreur={placerRestants.error} />
 
-      {/* Retour de génération (E03US011) : après un « Générer » réussi, on **confirme** le résultat —
-          sinon une génération qui n'aboutit à rien (plan vide) ou laisse des archers en réserve
-          paraît muette. Le cas « tous placés » est déjà couvert par `planPret` ci-dessous : on ne
-          double pas la ligne verte (`!planPret`). `isSuccess` couvre aussi « annuler les
-          modifications » (même mutation). Erreur et « en cours » sont pris ailleurs (MessageErreur,
-          libellé du bouton).
-          Ton **neutre** (`carte__etat`), pas vert `placement__pret` : le vert « succès » reste
-          réservé à « tous placés ». Un reliquat en réserve peut cacher de **vraies anomalies**
-          (`sans_blason` / `non_place`, ambre DV-03) — l'annoncer en vert serait trompeur ; l'ambre
-          des anomalies est déjà porté par la réserve et sa bannière en dessous. */}
+      {/* Retour de génération (E03US011) : après un « Générer » réussi, on **confirme** le
+          résultat, sinon une génération qui n'aboutit à rien paraît muette. Le cas « tous
+          placés » est déjà couvert par `planPret` ci-dessous. `isSuccess` couvre aussi «
+          annuler les modifications ». */}
+
+      {/* Ton **neutre**, pas le vert de `planPret` : un reliquat en réserve peut cacher de
+          **vraies anomalies** (`sans_blason` / `non_place`, ambre `DV-03`) — l'annoncer en vert
+          serait trompeur, et l'ambre est déjà porté par la réserve et sa bannière en dessous. */}
       {regenerer.isSuccess && !planPret && (
         <p className="carte__etat" role="status">
           {nbPlaces === 0 && nbReserve === 0

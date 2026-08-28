@@ -123,6 +123,7 @@ window.ATLAS.decisions = {
    "us": [
     "E00US027",
     "E05US003",
+    "E05US023",
     "E06US003"
    ]
   },
@@ -1854,9 +1855,7 @@ window.ATLAS.decisions = {
       "config.policies",
       "validation"
      ],
-     "symboles_absents": [
-      "config.policies"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -2574,11 +2573,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/patrimoine.py",
      "existe": true,
      "symboles": [
-      "tournoi_id"
+      "OrigineBrique"
      ],
-     "symboles_absents": [
-      "tournoi_id"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -2597,6 +2594,7 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Les briques de configuration sont le patrimoine du club : bibliothèque, copie, promotion",
    "us": [
+    "E00US027",
     "E01US007",
     "E01US008",
     "E01US023",
@@ -3652,6 +3650,7 @@ window.ATLAS.decisions = {
    "titre": "Le départ est la portée sportive, pas seulement un créneau logistique",
    "us": [
     "E00US021",
+    "E00US027",
     "E01US025",
     "E05US026",
     "E05US029",
@@ -4379,10 +4378,7 @@ window.ATLAS.decisions = {
       "forfaits",
       "feuille_de_marque"
      ],
-     "symboles_absents": [
-      "forfaits",
-      "feuille_de_marque"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4632,6 +4628,14 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
+      "TYPES_EN_TABLEAU",
+      "TYPES_DEROULES",
+      "TYPES_CLASSANTS_LUS",
+      "TYPES_EN_TABLEAU_JOUE",
+      "TYPES_JOUES",
+      "TYPES_SIGNALES_EN_ECART",
       "_resultat_big_shoot_off",
       "_resultat",
       "TYPES_RECONSTRUCTIBLES"
@@ -4660,17 +4664,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/prelevement.py",
      "existe": true,
      "symboles": [
-      "LecteurClassementDePhase",
-      "ServicePoules",
-      "ServiceSaisieDuels",
-      "LecteurClassementPoules",
-      "LecteurClassementBigShootOff"
+      "LecteurClassementDePhase"
      ],
-     "symboles_absents": [
-      "ServicePoules",
-      "LecteurClassementPoules",
-      "LecteurClassementBigShootOff"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4683,16 +4679,21 @@ window.ATLAS.decisions = {
       "plan_de_cibles",
       "AUCUN"
      ],
-     "symboles_absents": [
-      "plan_de_cibles",
-      "AUCUN"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
+      "TYPES_EN_TABLEAU",
+      "TYPES_DEROULES",
+      "TYPES_CLASSANTS_LUS",
+      "TYPES_EN_TABLEAU_JOUE",
+      "TYPES_JOUES",
+      "TYPES_SIGNALES_EN_ECART",
       "_classement_de_l_ordre",
       "brancher_lecteur",
       "TYPES_DELEGUES",
@@ -4767,20 +4768,19 @@ window.ATLAS.decisions = {
       "TYPES_JOUES",
       "TYPES_SIGNALES_EN_ECART",
       "deroule_par_un_service",
-      "monte_les_oppositions",
-      "TYPES_MONTES",
       "BIG_SHOOT_OFF",
       "classement_lisible",
       "route_l_archer",
       "True",
       "route_tout_le_plateau",
-      "TYPES_ROUTES_IMPLICITEMENT"
+      "TYPES_ROUTES_IMPLICITEMENT",
+      "_routage_big_shoot_off",
+      "ProchaineManche",
+      "IssueRoutage.PROCHAINE_MANCHE",
+      "plan_de_cibles",
+      "AUCUN"
      ],
-     "symboles_absents": [
-      "saisie_duels.TYPES_DELEGUES",
-      "palmares._TYPES_CLASSANTS_AU_PALMARES",
-      "monte_les_oppositions"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4871,15 +4871,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PlacementParBlocORM",
-      "placement_poule",
       "placement_par_bloc",
-      "poule_numero",
       "groupe_numero"
      ],
-     "symboles_absents": [
-      "placement_poule",
-      "poule_numero"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4977,39 +4972,30 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/suisse/ClassementSuisse.tsx",
      "existe": true,
      "symboles": [
-      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [
-      "RONDES_APPARIEES"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/suisse/SaisieSuisse.tsx",
      "existe": true,
      "symboles": [
-      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [
-      "RONDES_APPARIEES"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/suisse/presentation.ts",
      "existe": true,
      "symboles": [
-      "RONDES_APPARIEES",
       "DuelCharge",
       "suisse"
      ],
-     "symboles_absents": [
-      "RONDES_APPARIEES"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -8137,26 +8123,23 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/tests/commentaires_cliquet.txt",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "test_le_cliquet_est_vide"
+     ],
      "symboles_absents": [],
-     "verifiable": true
+     "verifiable": false
     },
     {
      "chemin": "backend/tests/test_commentaires_bornes.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "test_le_cliquet_est_vide"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
-     "existe": true,
-     "symboles": [],
-     "symboles_absents": [],
-     "verifiable": true
-    },
-    {
-     "chemin": "frontend/src",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -8210,6 +8193,7 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Le code porte des **pointeurs**, pas le raisonnement",
    "us": [
+    "E00US025",
     "E00US027",
     "E01US024",
     "E16US004",

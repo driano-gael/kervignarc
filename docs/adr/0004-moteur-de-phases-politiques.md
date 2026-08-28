@@ -111,8 +111,13 @@ de structure propre — le premier décide où va un perdant, le second comment 
 Leur donner une `TypePhase` aurait été une erreur de maille.
 
 ⚠️ **Une famille sans appelant reste inerte, et ça ne se voit pas** (`DETTE-028`, rétrécie par
-E06US003). `tiebreak` a désormais un appelant de production résolu par le registre. `scoring` n'en
-a **toujours aucun** : le classement calcule son cumul hors politique, si bien que
-`ScoreAvecHandicap` ne s'exécute jamais, alors que le handicap est stocké, exposé et affiché. Les
-moteurs `poule`, `big_shoot_off`, `suisse` et `colline` n'ont pas davantage d'appelant, pas plus que
-`TiebreakPoules` et `RoutingRepechage`.
+E06US003 puis E05US023). Seule `scoring` n'a **toujours aucun** appelant : le classement calcule son
+cumul hors politique, si bien que `ScoreAvecHandicap` ne s'exécute jamais alors que le handicap est
+stocké, exposé et affiché. `RoutingRepechage` reste inerte pour la même raison.
+
+⚠️ **Ce paragraphe a été faux entre le 09/08/2026 et le 28/08/2026**, et il vaut d'être signalé : il
+affirmait que les moteurs `poule`, `big_shoot_off`, `suisse`, `colline` et `TiebreakPoules` étaient
+sans appelant, alors que `bootstrap/composition.py` les câble tous et que `docs/dette.md` déclarait
+ce volet **clos**. La phrase venait d'une docstring périmée, déplacée ici en E00US027 sans être
+vérifiée dans le code du jour — exactement ce contre quoi ADR-0075 met en garde. Le registre de
+dette fait autorité sur l'état d'une dette, pas la copie qu'un ADR en garde.

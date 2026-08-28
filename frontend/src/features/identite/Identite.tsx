@@ -145,14 +145,12 @@ function ChampAccent({
       <label className="identite__saisie">
         <span>{libelle}</span>
         {/* Le sélecteur natif et le champ texte disent la **même** valeur : le premier sert au
-            geste (souris, doigt), le second à coller une référence lue sur une charte — c'est le
-            cas réel décrit par le CDC.
+            geste, le second à coller une référence lue sur une charte. */}
 
-            ⚠️ Le sélecteur reçoit la dernière valeur **valide**, pas la valeur brute. Les deux
-            champs partagent l'état de frappe, et pendant qu'on tape `#b7191` la valeur est
-            transitoirement invalide : le navigateur coerce alors `type="color"` à `#000000`. La
-            pastille clignotait en noir à chaque caractère, et rouvrir le sélecteur natif le faisait
-            démarrer sur du noir plutôt que sur la couleur en cours (relevé en revue). */}
+        {/* ⚠️ Le sélecteur reçoit la dernière valeur **valide**, pas la valeur brute : les deux
+            champs partagent l'état de frappe, et pendant qu'on tape la valeur est
+            transitoirement invalide — le navigateur coerce alors le sélecteur à du noir, d'où
+            une pastille qui clignotait à chaque caractère (relevé en revue). */}
         <input
           type="color"
           className="identite__pastille"

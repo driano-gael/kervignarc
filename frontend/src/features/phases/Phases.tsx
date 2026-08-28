@@ -259,14 +259,6 @@ function PlanDeColline({ tournoiId, phaseId }: { tournoiId: number; phaseId: num
   )
 }
 
-/** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
- *
- * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose ; en relecture le
- * serveur répond `non_posee`. ⚠️ C'est ce qui distingue « vous n'avez pas encore généré » de
- * « votre salle est trop petite » — la première version confondait les deux et invitait à
- * regénérer indéfiniment une salle qui ne pouvait pas grandir.
- */
-
 /** Aiguille vers le panneau de plan du format — un seul point d'entrée, dérivé de la table.
  *
  * Les trois panneaux restent distincts (`DETTE-079`) ; ce qui est centralisé ici, c'est le **fait
@@ -288,6 +280,13 @@ function PlanParBlocs({
   return null
 }
 
+/** Ce que le plan n'a pas pu poser, **et pourquoi** — la raison vient du serveur, pas d'ici.
+ *
+ * `salle_pleine` et `sans_rencontre` ne sont rendues qu'au retour d'une pose ; en relecture le
+ * serveur répond `non_posee`. ⚠️ C'est ce qui distingue « vous n'avez pas encore généré » de
+ * « votre salle est trop petite » — la première version confondait les deux et invitait à
+ * regénérer indéfiniment une salle qui ne pouvait pas grandir.
+ */
 function decrireConflits(
   conflits: { poule: number; raison: string }[],
   // Le nom du groupe est **paramétrable** depuis E05US030 : le système suisse n'a pas de poules,
@@ -894,14 +893,6 @@ export function FormulairePhase({
   )
 }
 
-/** Réglage du **barrage** sur la phase de qualification (E06US003, ADR-0066).
- *
- * ⚠️ **Il vit ici et nulle part ailleurs, et c'est un correctif de revue** : le champ avait été
- * ajouté à `FormulairePhase`, que la qualification **n'ouvre jamais** — le seuil restait réglable
- * par aucun écran. Contrôle **réduit au seul seuil** : le `PUT` étant une édition totale, on
- * réémet le reste tel quel ; rouvrir le formulaire complet risquerait d'écraser son barème.
- */
-
 /** La config **complète et inchangée** d'une étape, à surcharger par le seul champ qu'on édite.
  *
  * ⚠️ **Extrait sur preuve** : le `PUT` est une édition **totale**, tout champ non réémis est
@@ -977,6 +968,13 @@ function ReglageTitre({ tournoiId, phase }: { tournoiId: number; phase: EtapeDer
   )
 }
 
+/** Réglage du **barrage** sur la phase de qualification (E06US003, ADR-0066).
+ *
+ * ⚠️ **Il vit ici et nulle part ailleurs, et c'est un correctif de revue** : le champ avait été
+ * ajouté à `FormulairePhase`, que la qualification **n'ouvre jamais** — le seuil restait réglable
+ * par aucun écran. Contrôle **réduit au seul seuil** : le `PUT` étant une édition totale, on
+ * réémet le reste tel quel ; rouvrir le formulaire complet risquerait d'écraser son barème.
+ */
 function ReglageBarrage({ tournoiId, phase }: { tournoiId: number; phase: EtapeDeroule }) {
   const [valeur, setValeur] = useState(
     phase.barrage_jusqu_au != null ? String(phase.barrage_jusqu_au) : '',

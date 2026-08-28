@@ -1,16 +1,10 @@
 """Lecture du tracker — `journal-d-avancement/SUIVI-US.md`, le point de reprise du projet.
 
-Ce fichier est écrit **à la main**, et il prévient lui-même qu'il est piégeux : sept variantes
-d'en-tête de tableau, six glyphes d'état, du texte barré conservé pour rester trouvable, des US
-absorbées hors décompte, et des lignes qui sont du travail livré sans être des US.
-
-Il porte aussi **sa propre règle de comptage**, instituée le 08/08/2026 après que trois compteurs
-sur cinq se sont révélés faux — chacun d'un mode différent. Ce module ne fait que l'appliquer à la
-lettre ; c'est elle l'oracle, pas ce code.
-
-Parti pris, hérité du reste de l'atlas : **échouer bruyamment** sur une table qu'on ne sait pas
-lire plutôt que produire un décompte faux. Un compteur silencieusement faux est pire que pas de
-vue du tout — c'est précisément ce que ce fichier existe pour empêcher.
+Ce fichier est écrit **à la main** et prévient lui-même qu'il est piégeux : sept variantes d'en-tête
+de tableau, six glyphes d'état, du texte barré conservé, des US absorbées hors décompte. Il porte
+**sa propre règle de comptage**, instituée le 08/08/2026 après que trois compteurs sur cinq se sont
+révélés faux ; c'est elle l'oracle, pas ce code. ⚠️ Parti pris hérité de l'atlas : **échouer
+bruyamment** sur une table qu'on ne sait pas lire plutôt que produire un décompte faux.
 """
 
 from __future__ import annotations
@@ -49,12 +43,10 @@ class Entete:
     """Ce que le tracker **déclare de lui-même**, et que rien d'autre ne vérifiait.
 
     L'annonce de tête (dernière US, total livré, ADR cités par le résumé) et le rappel des
-    compteurs de jalon dans la Légende. Ce sont tous des nombres et des noms écrits **à la main**
-    dans le fichier qu'ils décrivent : ils se périment exactement comme les en-têtes de section, et
-    ils sont donc recalculés comme eux.
-
-    L'annonce et le résumé se recoupent : si le résumé décrit une **autre** US que celle annoncée
-    — le défaut trouvé sur `main` le 16/08/2026 — l'ADR qu'il cite ne connaîtra pas l'US annoncée.
+    compteurs de jalon dans la Légende : des nombres et des noms écrits **à la main** dans le
+    fichier qu'ils décrivent, donc recalculés comme les en-têtes de section. L'annonce et le résumé
+    se recoupent : si le résumé décrit une **autre** US que celle annoncée — le défaut trouvé sur
+    `main` le 16/08/2026 — l'ADR qu'il cite ne connaîtra pas l'US annoncée.
     """
 
     derniere: str
@@ -90,17 +82,11 @@ class Section:
     def est_comptee(self, ligne: LigneUS) -> bool:
         """La règle de la Légende, définie **une seule fois**, ici.
 
-        Trois exclusions, et chacune correspond à un mode de panne réellement constaté :
-        - **pas d'identifiant d'US** — un relevé, un lot hors US : du travail livré, pas une unité
-          de travail ;
-        - **absorbée (⛔)** — la capacité a été livrée par une autre US, celle-ci n'existe plus ;
-        - **hors séquence (`Seq = —`)** dans un jalon — l'US est remontée d'une section d'ajouts et
-          y est déjà comptée ; sans cette clause elle compterait deux fois.
-
-        Exposée en **prédicat** et pas seulement en filtre : les consommateurs qui doivent marquer
-        une ligne « hors décompte » passaient auparavant par l'identité mémoire des objets rendus
-        par `comptees`, ce qui marchait mais serait devenu faux en silence le jour où la propriété
-        rendrait des copies.
+        Trois exclusions, chacune tirée d'un mode de panne constaté : **pas d'identifiant d'US**
+        (un relevé, du travail livré mais pas une unité de travail) ; **absorbée (⛔)**, la
+        capacité ayant été livrée ailleurs ; **hors séquence** dans un jalon, l'US étant remontée
+        d'une section d'ajouts où elle est déjà comptée. Exposée en **prédicat** et pas seulement
+        en filtre : passer par l'identité mémoire des objets rendus deviendrait faux en silence.
         """
         return bool(
             ligne.identifiant
@@ -248,15 +234,10 @@ def lire_entete_du_texte(texte: str) -> Entete:
     """Ce que le tracker déclare de lui-même : son annonce de tête et le rappel de sa Légende.
 
     ⚠️ **Refuse plutôt que de rendre un en-tête à moitié lu.** La version précédente rendait des
-    champs vides quand une regex ne mordait pas, et les contrôles qui en dépendent étaient gardés
-    par des `is not None` : déplacer un `**` ou intervertir deux champs de la ligne d'annonce
-    suffisait à **éteindre en silence** le seul contrôle capable de voir une US livrée restée hors
-    jalon. Mesuré le 16/08/2026 : un tracker annonçant « 999 US livrées » passait au vert. Le
-    silence ne peut pas valoir accord sur un fichier écrit à la main que chaque US réécrit.
-
-    Les deux champs se lisent sur **la même ligne** — c'est la forme du fichier — et le résumé
-    court jusqu'à la première ligne vide : une borne locale, là où le marqueur « Précédente : »
-    était distant et a déjà été réécrit une fois dans ce même diff.
+    champs vides quand une regex ne mordait pas : déplacer un `**` suffisait à **éteindre en
+    silence** le seul contrôle capable de voir une US livrée restée hors jalon, et un tracker
+    annonçant « 999 US livrées » passait au vert (mesuré le 16/08/2026). Les deux champs se lisent
+    sur **la même ligne** et le résumé court jusqu'à la première ligne vide : une borne locale.
     """
     lignes = texte.split("\n")
     for rang, ligne in enumerate(lignes):

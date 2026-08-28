@@ -87,15 +87,12 @@ export function CoquilleAdmin() {
       <section className="carte carte--connexion">
         <ConnexionAdmin />
       </section>
-      {/* Retour explicite à l'écran des portes (A01, retour maquettes du 04/08/2026 : *« il manque
-          peut-être une possibilité de choisir un autre écran… il faut pouvoir sélectionner un rôle de
-          l'appareil »*).
-          L'échappatoire **existait déjà** — « Changer de rôle », dans l'en-tête, depuis E00US017 —
-          mais elle est délibérément discrète (action rare, ton neutre) et n'a donc pas été vue là où
-          on la cherche : sur le seul écran où l'on peut s'être trompé de porte. On ne la déplace pas,
-          on la **redouble ici**, au pied du formulaire, avec les mots de la question posée.
-          Depuis E17US003 elle est **hors de la carte et centrée**, comme sur la planche : dedans,
-          elle se lisait comme une action du formulaire. */}
+      {/* Retour explicite à l'écran des portes (A01, retour maquettes du 04/08/2026).
+          L'échappatoire « Changer de rôle » **existait déjà** dans l'en-tête, mais délibérément
+          discrète : elle n'était pas vue là où on la cherche. On la **redouble ici**, au pied
+          du formulaire, avec les mots de la question posée. Depuis E17US003 elle est **hors de
+          la carte et centrée** (planche A01) : dedans, elle se lisait comme une action du
+          formulaire. */}
       <p className="connexion__echappatoire">
         <ChangerDeRole libelle="← Choisir un autre appareil" />
       </p>

@@ -250,16 +250,14 @@ function PoserUnePause({
     >
       <label>
         Bloquer dans{' '}
-        {/* ⚠️ **`max` borné par ce qui reste de la phase, pas par le plafond du DTO** (correctif de
-            revue) : au-delà, le serveur refuse (« ne couperait rien »), et la même règle doit se
-            lire là où l'organisateur saisit. `peutPoserUnePause` garantit ici `tourCourant !== null`
-            et `tourCourant < nbTours`, donc le calcul vaut au moins 1.
-            ⚠️ **La saisie est gardée en chaîne**, et convertie seulement à la soumission (correctif
-            de 2ᵉ passe). Un champ contrôlé par un nombre ne peut pas être **vidé** : `Number('')`
-            valait `0`, et le repli `|| 1` ne faisait que réafficher « 1 » — pire, effacer puis
-            taper « 3 » produisait « 13 », donc une pause dans treize tours au lieu de trois, sur un
-            geste dont le seul retour est un message transitoire (`DETTE-075`). Au doigt, en pleine
-            salle, c'est ce genre de détail qui fait renoncer. */}
+        {/* ⚠️ **`max` borné par ce qui reste de la phase, pas par le plafond du DTO**
+            (correctif de revue) : au-delà, le serveur refuse, et la même règle doit se lire là
+            où l'organisateur saisit. `peutPoserUnePause` garantit ici que le calcul vaut au
+            moins 1. */}
+        {/* ⚠️ **La saisie est gardée en chaîne**, convertie à la soumission seulement (2ᵉ
+            passe) : un champ contrôlé par un nombre ne peut pas être **vidé**, et effacer puis
+            taper « 3 » produisait « 13 » — une pause dans treize tours au lieu de trois, sur un
+            geste dont le seul retour est un message transitoire (`DETTE-075`). */}
         <input
           type="number"
           min={1}
@@ -323,15 +321,13 @@ function RelanceDesArrets({ departId }: { departId: number }) {
   return (
     <div className="carte__etat carte__etat--alerte" role="status">
       <p>
-        {/* E05US034 — la phrase compte les **phases éteintes** et dit **depuis quand**, au lieu de
-            compter les arrêts. Un arrêt de créneau en éteint plusieurs d'un coup : « 1 pause »
-            minimisait ce qu'il y a à rallumer. Mutualisée avec la pastille du tableau de bord —
-            deux formulations pour un même fait, c'est une divergence en attente.
-            ⚠️ **Le repli compte, il ne suppose pas** (correctif de revue) : `resumeDeRelance` rend
-            `null` quand aucun arrêt listé n'a de phase éteinte, et le singulier codé en dur
-            titrait « Une pause attend » au-dessus de trois boutons de relance. Depuis que
-            `en_attente_de_relance` écarte les arrêts dont plus rien n'est en pause, ce chemin ne
-            devrait plus être atteint — raison de plus pour qu'il ne mente pas s'il l'était. */}
+        {/* E05US034 — la phrase compte les **phases éteintes** et dit **depuis quand**, au lieu
+            de compter les arrêts : un arrêt de créneau en éteint plusieurs d'un coup, et « 1
+            pause » minimisait ce qu'il y a à rallumer. Mutualisée avec la pastille du tableau
+            de bord. */}
+        {/* ⚠️ **Le repli compte, il ne suppose pas** (correctif de revue) : le singulier codé
+            en dur titrait « Une pause attend » au-dessus de trois boutons de relance. Ce chemin
+            ne devrait plus être atteint — raison de plus pour qu'il ne mente pas s'il l'était. */}
         <strong>
           {phraseDeRelance(resume ?? { nbPhases: arrets.data.length, minutes: null })}
         </strong>{' '}

@@ -166,16 +166,15 @@ function BlocDuSchema({
               : 'duels'
             : `${bloc.nb_volees} volées de ${bloc.nb_fleches_par_volee}`}
       </text>
-      {/* Question 4, cas des formats **sans braquet** (E05US032) : la phase avance par tours mais
-          n'attribue pas de rangs au fil de l'eau, donc il n'y a aucune ligne de braquet où loger le
-          tour courant. On l'annonce alors sur sa propre ligne, dans le mot de la salle servi par le
-          backend — « Ronde 3 », « Tour 2 », « Manche 2 ».
+      {/* Question 4, cas des formats **sans braquet** (E05US032) : la phase avance par tours
+          mais n'attribue pas de rangs au fil de l'eau, donc aucune ligne de braquet où loger le
+          tour courant. On l'annonce sur sa propre ligne, dans le mot de la salle servi par le
+          backend. */}
 
-          ⚠️ **Ici et pas seulement dans l'en-tête du suivi** : l'en-tête ne parle que de la phase
-          `ordre_courant`, alors que le CA dit « **chaque** phase démarrée ». Et c'est ce composant,
-          pas l'en-tête, que monte l'écran de salle — la surface que l'US invoque. Sans cette ligne,
-          l'écran projeté continuait de ne rien dire hors tableau. Arbitrage du commanditaire rendu
-          en revue, sur une divergence `stories/` ↔ `docs/fonctionnel/` relevée par l'axe C1. */}
+      {/* ⚠️ **Ici et pas seulement dans l'en-tête du suivi** : l'en-tête ne parle que de la
+          phase `ordre_courant`, alors que le CA dit « **chaque** phase démarrée » — et c'est ce
+          composant que monte l'écran de salle. Arbitrage du commanditaire rendu en revue (axe
+          C1). */}
       {bloc.tours.length === 0 && avancement?.libelle_tour_courant != null && (
         <text
           className="schema-braquets__bloc-braquet schema-braquets__bloc-braquet--courant"

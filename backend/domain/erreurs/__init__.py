@@ -5,6 +5,8 @@ l'objet de la répartition. Aucun import existant n'a changé quand les 94 class
 fichier unique, et aucune ligne de classe n'a bougé d'un caractère.
 """
 
+# Règle 5, erreurs typées par couche — ADR-0007.
+
 from __future__ import annotations
 
 from domain.erreurs.base import DomainError

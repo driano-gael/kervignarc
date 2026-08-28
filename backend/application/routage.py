@@ -7,6 +7,8 @@ duel, et rien n'est calculé à la bascule.
 une phrase se lit comme une attente. Jumeau assumé de `pilotage_tour.py` — `DETTE-019`.
 """
 
+# DETTE-028 — aucun moteur ne consomme encore ces prélèvements.
+
 from __future__ import annotations
 
 import logging

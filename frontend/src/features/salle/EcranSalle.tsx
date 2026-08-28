@@ -129,15 +129,15 @@ export function EcranSalle({
             onConfirmer={onDecrocher}
           />
         )}
-        {/* ⚠️ **Hors de la rotation, et c'est tout l'intérêt** (correctif de bloquant de revue,
-          axes C2 et adversarial). Le bandeau de pause vit dans `VueEnCours`, or `EN_COURS` **n'est
-          pas** au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut` : classement, plan
-          de cibles, suivi) — l'annonce ne s'affichait donc *pas une fois de la journée* sur un
-          écran branché sans configuration, c'est-à-dire le cas nominal que sa propre docstring
-          décrit (« on le branche, il tourne »). C'était le CA qui justifie l'US, manqué sur la
-          seule surface sans personne devant elle pour changer de vue.
-          L'ajouter à la séquence par défaut n'aurait pas suffi : la pause serait restée invisible
-          trois quarts du temps. Monté ici, il coiffe la scène **quelle que soit** la vue. */}
+        {/* ⚠️ **Hors de la rotation, et c'est tout l'intérêt** (bloquant de revue, axes C2 et
+            adversarial). Le bandeau de pause vit dans `VueEnCours`, or `EN_COURS` **n'est pas**
+            au déroulé par défaut d'un écran neuf (`SequenceVues.par_defaut`) : l'annonce ne
+            s'affichait donc pas une seule fois de la journée sur un écran branché sans
+            configuration — le cas nominal que sa propre docstring décrit. */}
+
+        {/* L'ajouter à la séquence par défaut n'aurait pas suffi : la pause serait restée
+            invisible trois quarts du temps. Monté ici, il coiffe la scène **quelle que soit**
+            la vue. */}
         <MentionDePause tournoiId={tournoiId} />
         <div className="salle__scene">
           {/* Tant que la première réponse n'est pas arrivée, on n'affiche **rien de faux** : un

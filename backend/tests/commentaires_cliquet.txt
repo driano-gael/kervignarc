@@ -1,11 +1,9 @@
-# Baseline du plafond de commentaires (ADR-0099, regle 13) — genere par E00US027.
+# Baseline du plafond de commentaires (regle 13, ADR-0099) — un chemin, une espace, un compte.
 #
-# Chaque ligne : <chemin relatif a backend/> <nombre de blocs > 8 lignes toleres>.
-# CLIQUET : un chiffre ne se releve JAMAIS. Toute US qui touche un fichier fait baisser le
-# sien ; un fichier absent d'ici n'a droit a aucun bloc long. Quand un chiffre atteint 0,
-# retirer sa ligne.
+# ETAT : VIDE depuis E00US027. Le perimetre du garde-fou est **tout le code de production**
+# backend : les cinq couches, plus `atlas/`, `release/` et les points d'entree racine — soit
+# 1048 blocs resorbes. Restent **hors porte** `backend/tests/` et `backend/migrations/`, ce qui
+# est trace en `DETTE-088` ; le front, lui, couvre ses propres tests.
 #
-# ETAT : VIDE depuis E00US027 — le backend est integralement sous le plafond (1048 blocs
-# resorbes). La regle est donc DURE : tout bloc de plus de huit lignes fait echouer la suite,
-# ou qu'il soit. Ce fichier n'est plus une baseline mais une soupape : y ajouter une ligne est
-# une derogation a justifier en revue, jamais un geste de routine.
+# Le fichier n'est plus une baseline mais une soupape, et `test_le_cliquet_est_vide` la garde :
+# y ajouter une ligne oblige a supprimer ce test, donc produit un diff que la revue voit.

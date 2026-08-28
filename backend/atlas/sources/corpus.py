@@ -1,13 +1,10 @@
 """Le corpus de recherche — des résumés, pas les textes entiers.
 
 Choix assumé : **pas d'index inversé.** Le corpus fait ~300 documents ; un `indexOf` sur une copie
-normalisée coûte quelques millisecondes dans le navigateur. Un index pèserait autant, demanderait
-une tokenisation française, et **interdirait la recherche par expression** (« portée sportive »,
-`E05US028`) — précisément ce qu'on cherche dans ce corpus. Zéro code d'indexation, donc zéro risque
-de désynchronisation entre l'index et le texte.
-
-La normalisation (minuscules, sans accents) est faite **ici**, une fois, et non dans le navigateur
-à chaque frappe.
+normalisée coûte quelques millisecondes. Un index pèserait autant, demanderait une tokenisation
+française et **interdirait la recherche par expression** (« portée sportive », `E05US028`) —
+précisément ce qu'on cherche ici. La normalisation (minuscules, sans accents) est faite **ici**,
+une fois, et non dans le navigateur à chaque frappe.
 """
 
 from __future__ import annotations

@@ -7,6 +7,9 @@ est un échange de positions en suspens, et la manche suivante se calcule dessus
 donnerait un appariement **faux**, qui changerait à chaque validation.
 """
 
+# DETTE-028, DETTE-062 — moteur branché tardivement ; la portée de défi n'est pas encore réglable
+# par phase.
+
 from __future__ import annotations
 
 from collections.abc import Callable

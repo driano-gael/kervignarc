@@ -1,16 +1,10 @@
 """Les écarts entre ce que l'écrit promet et ce que le dépôt contient.
 
-C'est le vrai livrable de l'atlas. Le dessin rend le registre lisible ; ces contrôles le rendent
-**opposable**. Ils mécanisent la leçon d'ADR-0075 : « un ADR sans lien vérifiable vers le code est
-une intention, pas une décision » — et le rétro-équipement du 08/08/2026 avait déjà montré que la
-section « Porté dans le code par » pouvait nommer des modules qui ne tiennent pas la promesse.
-
-Calibrage des sévérités, délibéré :
-- **bloquant** = un constat sans ambiguïté, corrigible en une minute (un chemin qui n'existe pas,
-  un ADR cité qui n'existe pas). La CI a le droit de rougir dessus.
-- **signal** = un constat heuristique ou un choix de forme (un symbole cité introuvable, une date
-  hors format canonique). Affiché, jamais bloquant : une porte qui rougit sur de l'heuristique
-  finit désactivée, et on perd aussi les contrôles qui, eux, étaient justes.
+C'est le vrai livrable de l'atlas : le dessin rend le registre lisible, ces contrôles le rendent
+**opposable** (ADR-0075). ⚠️ Calibrage délibéré des sévérités : **bloquant** pour un constat sans
+ambiguïté, corrigible en une minute (chemin ou ADR inexistant) ; **signal** pour tout constat
+heuristique ou de forme — une porte qui rougit sur de l'heuristique finit désactivée, et on perd
+alors aussi les contrôles justes.
 """
 
 from __future__ import annotations
@@ -201,16 +195,11 @@ def _cycles(epics: tuple[Epic, ...]) -> tuple[str, ...]:
     return tuple(sorted(engages))
 
 
-# ⚠️ **Il n'y a pas de contrôle de « titre divergent » ici, et c'est un constat, pas un oubli.**
-# La première version comparait le libellé du tracker à celui de `stories/` par recouvrement de
-# mots. Mesuré le 16/08/2026, puis attaqué en revue : à l'égalité stricte il criait sur 23 des 109
-# US livrées, **toutes** des reformulations du même travail ; au seuil qui les taisait, on
-# construisait sans effort des faux négatifs — « Supprimer un archer » concordait avec « Supprimer
-# un club », « Placement automatique des cibles » avec « Placement manuel des cibles ». Précision
-# mesurée : **0 vrai positif sur 2 signaux**. Aucun seuil ne sépare les deux populations, parce
-# qu'un titre reformulé et un titre changé se ressemblent exactement autant.
-# Un signal à la fois bruyant et poreux n'apprend qu'une chose au lecteur : ignorer la page. Le
-# retirer est plus honnête que de le documenter comme « calibré ».
+# ⚠️ **Il n'y a pas de contrôle de « titre divergent », et c'est un constat, pas un oubli.** La
+# première version comparait le libellé du tracker à celui de `stories/` par recouvrement de mots :
+# à l'égalité stricte elle criait sur 23 des 109 US livrées, toutes des reformulations ; au seuil
+# qui les taisait, « Supprimer un archer » concordait avec « Supprimer un club ». Précision mesurée
+# le 16/08/2026 : **0 vrai positif sur 2 signaux**. Aucun seuil ne sépare les deux populations.
 
 
 def verifier_avancement(
@@ -456,18 +445,11 @@ def verifier_code(
 ) -> tuple[Controle, ...]:
     """Ce que le code fait des règles d'architecture — un seul bloquant, et il est exact.
 
-    Calibrage, dans la ligne des sévérités posées en tête de module :
-
-    - **bloquant** — `sens-des-dependances`. Constat AST, donc sans approximation, et **satisfait
-      au moment de la livraison** : la porte est verte le premier jour et ne fait que verrouiller
-      un invariant. C'est le trou réel que cette tranche bouche —
-      `tests/test_domain_isolation.py` ne surveille que le domaine, les quatre autres sens ne
-      l'étaient par rien ;
-    - **signal** — tout le reste. `port-hors-domaine` est un écart de **conception** qui peut être
-      légitime ; `port-sans-adapter` repose sur un appariement structurel heuristique ;
-      `features-enchevetrees` est lu à l'expression régulière. Bloquer là-dessus ferait rougir la
-      CI dès la livraison (19 features sont déjà enchevêtrées) et la ferait désactiver — on
-      perdrait alors aussi le bloquant ci-dessus, qui, lui, était juste.
+    ⚠️ Calibrage, dans la ligne des sévérités du module : **bloquant** pour `sens-des-dependances`,
+    constat AST sans approximation et satisfait à la livraison — le trou réel que cette tranche
+    bouche, `test_domain_isolation.py` ne surveillant que le domaine. **Signal** pour le reste :
+    `port-hors-domaine` peut être légitime, `port-sans-adapter` est heuristique,
+    `features-enchevetrees` est lu à l'expression régulière.
     """
     trouves: list[Controle] = []
 

@@ -7,6 +7,8 @@ des matchs la trancheront. D'où `plages_indecises`, qui permet de refuser une f
 **coupe** au lieu de rendre une population plausible et fausse (ADR-0081).
 """
 
+# DETTE-028 — classement de format branché tardivement.
+
 from __future__ import annotations
 
 from collections.abc import Mapping

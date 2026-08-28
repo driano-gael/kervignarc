@@ -146,15 +146,11 @@ def cellule(cellules_: list[str], index: dict[str, int], nom: str) -> str:
 def tableaux(texte: str) -> list[tuple[str, list[str], list[list[str]]]]:
     """Les tableaux Markdown de premier niveau, sous forme (section, en-tête, lignes).
 
-    La **section** est le titre `## ` qui précède le tableau. Elle est rendue parce que le sens
-    d'un tableau en dépend parfois : dans `docs/dette.md`, c'est le titre — « Dette ouverte » ou
-    « Dette résorbée » — qui dit ce que la ligne signifie, une colonne ne le dit pas.
-
-    Les tableaux **en citation** (`> | … |`) sont ignorés : dans ce dépôt, ce sont des vues de
-    priorité ou des encadrés, jamais des inventaires. Une ligne plus courte que son en-tête est
-    rendue telle quelle — c'est à l'appelant de décider si le décalage est tolérable, parce que la
-    réponse dépend de ce qu'il compte : un tableau d'états ne le tolère pas, un tableau descriptif
-    s'en accommode.
+    La **section** est le titre `## ` qui précède le tableau, rendue parce que le sens en dépend
+    parfois : dans `docs/dette.md`, c'est lui — « Dette ouverte » ou « Dette résorbée » — qui dit
+    ce que la ligne signifie. Les tableaux **en citation** sont ignorés : dans ce dépôt ce sont des
+    encadrés, jamais des inventaires. Une ligne plus courte que son en-tête est rendue telle quelle
+    — à l'appelant de juger, la réponse dépendant de ce qu'il compte.
     """
     trouves: list[tuple[str, list[str], list[list[str]]]] = []
     section = ""

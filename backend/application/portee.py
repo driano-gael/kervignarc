@@ -7,6 +7,11 @@ tournoi (ADR-0076), que le repository assemble sur la phase de chaque créneau.
 l'utiliser. Ce module n'est ni testé ni couvert par le garde-fou de portée — `DETTE-048`.
 """
 
+# DETTE-022, DETTE-047 — cinq appelants de `qualification_du_tournoi`, tous triés au registre : ne
+# pas en ajouter un sixième sans l'y recompter. Portés au créneau (ADR-0082) : `forfaits`,
+# `feuille_de_marque`, `saisie.avancement_cible` et les deux comptages de `completude` ; replis
+# assumés : `saisie._phase_qualification_ou_none` et `pilotage_simulation`.
+
 from __future__ import annotations
 
 from collections.abc import Iterable

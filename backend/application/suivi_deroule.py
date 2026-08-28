@@ -7,6 +7,8 @@ tableau qu'on ne sait pas reconstruire laisse un bloc à zéro plutôt qu'une pa
 de salle tourne sans personne devant. Coût de recomposition : `DETTE-031`.
 """
 
+# DETTE-028 — le suivi lit des capacités que tous les moteurs ne servent pas encore.
+
 from __future__ import annotations
 
 import logging

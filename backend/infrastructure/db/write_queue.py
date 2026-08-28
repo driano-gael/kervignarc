@@ -7,6 +7,8 @@ passent pas** par ici : directes et synchrones, elles restent concurrentes (WAL)
 WebSocket y est branchée, l'audit y viendra. Un seul endroit à instrumenter.
 """
 
+# Règle 7, file d'écriture à writer unique — ADR-0005, livrée en E00US008.
+
 from __future__ import annotations
 
 import logging

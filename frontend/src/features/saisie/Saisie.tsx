@@ -350,17 +350,15 @@ function LigneArcher({
         <span className="saisie__cumul">{cumul}</span>
       </button>
 
-      {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
-          FFTA B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
-          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible.
-          ⚠️ **Hors du `<button>`, et c'est le point.** Placée dedans, cette bande — la plus large
-          zone tapable de la ligne — déclenchait `onSelectionner`, donc **fermait le pavé** (le bouton
-          est une bascule) et **démontait `PaveArcher` avec son tampon de frappe** : l'archer qui se
-          penchait pour vérifier ses volées faisait disparaître les flèches que le marqueur venait de
-          taper, sans un mot. Le geste de *vérifier* ne doit rien changer à l'état de *saisir* —
-          c'était l'intention de départ, elle n'était pas tenue (revue du 05/08/2026, axes C1 et
-          adversarial). `role="group"` plutôt qu'`aria-label` sur un `<span>` nu : sans rôle, le
-          libellé était ignoré des lecteurs d'écran. */}
+      {/* **Relecture par les autres archers** (S02, question 2 — contre-vérification FFTA
+          B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
+          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
+
+      {/* ⚠️ **Hors du bouton, et c'est le point.** Placée dedans, cette bande — la plus large
+          zone tapable de la ligne — fermait le pavé et **démontait `PaveArcher` avec son tampon
+          de frappe** : vérifier ses volées effaçait les flèches que le marqueur venait de
+          taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). `role=group` : sans
+          rôle, le libellé était ignoré des lecteurs d'écran. */}
       {nbVolees !== null && nbVolees > 0 && (
         <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
           {Array.from({ length: nbVolees }, (_, i) => {

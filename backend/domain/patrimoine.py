@@ -6,6 +6,9 @@ assumée — un brouillon ne bénéficie pas d'une correction faite ensuite. Une
 déclarée **permanente** est promue dans la bibliothèque, sans toucher les tournois déjà assemblés.
 """
 
+# ADR-0060, E01US023 — une brique se **copie** dans un tournoi ; `DETTE-023` trace ce qui restait
+# à découpler quand l'atelier a cessé d'exiger un tournoi.
+
 from __future__ import annotations
 
 from enum import Enum

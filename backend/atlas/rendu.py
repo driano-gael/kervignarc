@@ -1,15 +1,10 @@
 """Sérialisation des données de l'atlas — déterministe, sinon rien.
 
-La sortie est **commitée puis comparée en CI**. Le moindre indéterminisme (horodatage, ordre de
-parcours d'un `set`, chemin absolu, fin de ligne selon la plateforme) ferait clignoter la porte,
-et une porte qui clignote est désactivée sous quinze jours — on perdrait alors aussi les contrôles
-qui, eux, étaient justes. D'où les partis pris ci-dessous, tous non négociables :
-
-- `sort_keys=True` et listes triées à la construction ;
-- `indent=1` : un jeton par ligne, donc un **diff à la ligne** plutôt qu'un pavé de 400 Ko sur une
-  seule ligne — c'est ce qui rend le choix « données commitées » vivable en revue ;
-- **aucun horodatage, aucune empreinte de commit du dépôt, aucun chemin absolu** ;
-- `newline="\\n"` et `encoding="utf-8"` explicites — poste Windows, CI Linux, dépôt en LF.
+La sortie est **commitée puis comparée en CI** : le moindre indéterminisme (horodatage, ordre de
+parcours d'un `set`, chemin absolu, fin de ligne) ferait clignoter la porte, et une porte qui
+clignote est désactivée sous quinze jours. D'où quatre partis pris non négociables — clés et listes
+triées ; `indent=1`, un jeton par ligne, donc un **diff à la ligne** ; aucun horodatage ni chemin
+absolu ; fin de ligne et encodage explicites (poste Windows, CI Linux, dépôt en LF).
 """
 
 from __future__ import annotations
@@ -105,17 +100,11 @@ def ecarts(racine: Path, fichiers: dict[str, str]) -> list[str]:
 def _ecarts_historique(present: str, attendu: str) -> list[str]:
     """La tolérance porte sur l'**ajout en tête**, et sur rien d'autre.
 
-    L'histoire d'une règle est une liste antichronologique. Entre le hook pre-commit et la CI, elle
-    ne peut varier que d'une façon : gagner des entrées **au début**. Le commité doit donc être un
-    **suffixe exact** du frais — même contenu, même ordre, sans trou.
-
-    ⚠️ Deux versions antérieures ont sous-estimé ce que « tolérance » devait exclure. La première
-    ne comparait que les empreintes : dates et motifs pouvaient être réécrits. La seconde comparait
-    les entrées partagées champ par champ, mais parcourait les seules clés du **frais** et
-    n'imposait aucune borne à la réduction : `historique.js` amputé de 67 % de son contenu, remis
-    dans l'ordre inverse, ou enrichi d'une règle inventée passait **au vert** — pendant que la
-    docstring affirmait le contraire. Un contrôle qui se décrit plus strict qu'il n'est vaut moins
-    que pas de contrôle : il dispense de regarder.
+    L'histoire d'une règle est antichronologique : entre le hook pre-commit et la CI elle ne peut
+    gagner des entrées qu'**au début**, donc le commité doit être un **suffixe exact** du frais. ⚠️
+    Deux versions antérieures ont sous-estimé ce que « tolérance » devait exclure — la seconde
+    laissait passer au vert un `historique.js` amputé de 67 %, remis dans l'ordre inverse, ou
+    enrichi d'une règle inventée, pendant que sa docstring affirmait le contraire.
     """
     commite = _charge_utile(present, CLE_TOLERANTE)
     frais = _charge_utile(attendu, CLE_TOLERANTE)

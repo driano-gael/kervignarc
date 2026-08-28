@@ -66,21 +66,15 @@ export function VueCollinePublique({
         {manche.close ? ' · close' : ''}
       </p>
 
-      {/* Une manche qu'aucun bloc de couloirs ne porte : plan non posé, ou salle trop petite. On le
-          **dit**, sinon les défis s'affichent sans cible et le spectateur croit à un oubli. C'est le
-          correctif que la revue d'E05US031 a dû faire sur le suisse, repris ici d'emblée. */}
-      {/* ⚠️ **Un seul message, et il parle du PLAN, pas d'un nombre de défis** (relevé par deux
-          axes). Une colline pose **un bloc unique pour toute la phase** : `conflits` vaut donc
-          toujours 0 ou 1 élément, la branche plurielle était morte, et le singulier — « Un défi n'a
-          pas encore de cibles » — désignait un défi isolé alors que **tous** les défis de la phase
-          sont sans couloir. Le message comptait des défis quand la donnée compte des blocs ; l'un
-          des deux lecteurs de cet écran est l'organisateur, et c'est lui qui doit comprendre qu'il
-          a un plan à générer.
+      {/* Une manche qu'aucun bloc de couloirs ne porte : plan non posé, ou salle trop petite.
+          On le **dit**, sinon les défis s'affichent sans cible et le spectateur croit à un
+          oubli. */}
 
-          ⚠️ **Et il n'AFFIRME pas la cause** (correctif de 2ᵉ passe) : `_PLAN_A_REPOSER` couvre
-          deux situations — plan jamais posé, *et* plan posé mais devenu trop court (salle trop
-          petite, ou archer inscrit après la pose). Dire « le plan n'est pas posé » à un
-          organisateur qui vient de le générer l'enverrait refaire un geste déjà fait. */}
+      {/* ⚠️ **Un seul message, et il parle du PLAN, pas d'un nombre de défis** (relevé par deux
+          axes) : une colline pose un bloc unique pour toute la phase, donc `conflits` vaut
+          toujours 0 ou 1. ⚠️ **Il n'affirme pas la cause** (2ᵉ passe) : `_PLAN_A_REPOSER`
+          couvre le plan jamais posé *et* le plan devenu trop court — dire « le plan n'est pas
+          posé » à qui vient de le générer l'enverrait refaire un geste déjà fait. */}
       {donnees.conflits.length > 0 && (
         <p className="carte__etat">
           Les défis n’ont pas encore de cible : le plan n’est pas posé, ou il ne couvre plus tout le
