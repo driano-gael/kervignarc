@@ -239,3 +239,89 @@ def test_declaration_sans_scoreur_refusee(
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
         )
         assert reponse.status_code in (401, 403), reponse.text
+
+
+def test_forfait_duel_declarable_par_l_admin(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US008 : l'organisateur déclare un forfait de duel **sans** jeton de scoreur, et la trace
+    porte le rôle admin (`declare_par`) — pas un nom de personne."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        # Le scoreur n'est créé que pour **relire** le tableau (lecture gardée) ; la déclaration,
+        # elle, part sans son en-tête — c'est tout l'objet du test.
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        fort, faible = scn.archers
+
+        reponse = client.post(
+            "/api/v1/forfaits/duel",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "archer_id": faible,
+                "nature": "abandon",
+            },
+        )
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["declare_par"] == "Administrateur"
+
+        tableau = client.get(
+            f"/api/v1/duels/tableau/{scn.tournoi_id}/{scn.phase_id}", headers=entete
+        ).json()
+        assert tableau["est_termine"] is True
+        assert {p["rang"]: p["duelliste"]["archer_id"] for p in tableau["podium"]}[1] == fort
+
+
+def test_forfait_duel_annulable_par_l_admin(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Réversibilité (`D-15`) : qui peut déclarer peut annuler — sinon une faute de frappe admin
+    resterait irréparable sans aller chercher un scoreur."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        corps = {
+            "tournoi_id": scn.tournoi_id,
+            "phase_id": scn.phase_id,
+            "archer_id": scn.archers[1],
+        }
+        declaration = client.post("/api/v1/forfaits/duel", json={**corps, "nature": "abandon"})
+        assert declaration.status_code == 200, declaration.text
+
+        annulation = client.post("/api/v1/forfaits/duel/annulation", json=corps)
+        assert annulation.status_code == 200, annulation.text
+        tableau = client.get(
+            f"/api/v1/duels/tableau/{scn.tournoi_id}/{scn.phase_id}", headers=entete
+        ).json()
+        assert tableau["est_termine"] is False
+
+
+def test_forfait_duel_refuse_sans_aucune_identite(app_forfaits: FastAPI) -> None:
+    """L'élargissement ajoute une identité, il n'en retire pas la garde : anonyme = refusé."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        reponse = client.post(
+            "/api/v1/forfaits/duel",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.phase_id,
+                "archer_id": scn.archers[1],
+                "nature": "abandon",
+            },
+        )
+        assert reponse.status_code in (401, 403), reponse.text
+
+
+def test_forfait_qualification_reste_ferme_a_l_admin(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """L'élargissement est **borné aux duels** : la qualification reste au scoreur seul, faute
+    d'écran admin qui le demande (E16US008 — on n'ouvre pas une autorisation sans appelant)."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        connecter_admin(client)
+        reponse = client.post(
+            "/api/v1/forfaits/qualification",
+            json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
+        )
+        assert reponse.status_code in (401, 403), reponse.text

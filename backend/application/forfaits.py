@@ -31,6 +31,10 @@ from domain.ports import (
 )
 from domain.tournoi import StatutTournoi, TournoiId
 
+# DETTE-017 : 5ᵉ site de la constante `"Administrateur"` (auteur d'un acte admin). Publique
+# ici — l'API la lit pour tracer un forfait déclaré depuis l'administration (E16US008).
+AUTEUR_ADMIN = "Administrateur"
+
 
 class ServiceForfait:
     """Cas d'usage du forfait : déclarer / annuler un abandon ou une DSQ, en qualif ou en duels."""

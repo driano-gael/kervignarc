@@ -1,8 +1,10 @@
-"""Endpoints REST des forfaits (E04US015, ADR-0050) — le **scoreur** déclare abandon / DSQ.
+"""Endpoints REST des forfaits (E04US015, ADR-0050) — qui déclare abandon / DSQ.
 
-Déclarer et **annuler** (réversibilité, `D-15`), en qualification (relégation ou exclusion au
-classement) comme en duels (l'adversaire passe). Acte du scoreur dans **son** tournoi
-(`403 scoreur_hors_tournoi`), écritures dédoublonnées par identifiant de saisie (ADR-0036).
+Déclarer et **annuler** (`D-15`), en qualification (relégation / exclusion au classement) comme en
+duels (l'adversaire passe). Écritures dédoublonnées par identifiant de saisie (ADR-0036).
+⚠️ **Deux portées, pas une** : la qualification reste au **scoreur seul**, les duels acceptent
+**admin ou scoreur** (E16US008) — et seul le scoreur est borné à **son** tournoi
+(`403 scoreur_hors_tournoi`), le secret admin valant pour l'instance (`D-13`).
 """
 
 from __future__ import annotations
@@ -13,9 +15,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from api.dependances import exiger_scoreur
+from api.dependances import autoriser_forfait_duel, exiger_scoreur
 from application.erreurs import ScoreurHorsTournoi
-from application.forfaits import ServiceForfait
+from application.forfaits import AUTEUR_ADMIN, ServiceForfait
 from domain.forfait import Forfait, NatureForfait
 from domain.scoreur import Scoreur
 from infrastructure.db import WriteQueue
@@ -105,6 +107,17 @@ def _exiger_meme_tournoi(scoreur: Scoreur, tournoi_id: int) -> None:
         raise ScoreurHorsTournoi("Ce scoreur n'officie pas dans ce tournoi.")
 
 
+def _garder_tournoi(scoreur: Scoreur | None, tournoi_id: int) -> None:
+    """Même garde, appliquée au seul scoreur : un admin n'est rattaché à aucun tournoi."""
+    if scoreur is not None:
+        _exiger_meme_tournoi(scoreur, tournoi_id)
+
+
+def _auteur(scoreur: Scoreur | None) -> str:
+    """Qui a agi, pour la trace persistée : la personne, ou le rôle admin (DETTE-017)."""
+    return AUTEUR_ADMIN if scoreur is None else scoreur.nom
+
+
 def _cle_idempotence(operation: str, identifiant: str | None, *portee: int) -> str | None:
     """Clé d'idempotence **scopée** (opération + cible), ou `None` sans identifiant (ADR-0036)."""
     if not identifiant:
@@ -165,13 +178,13 @@ async def annuler_en_qualification(
 async def declarer_en_duel(
     requete: DeclarerDuelRequete,
     request: Request,
-    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait_duel)],
 ) -> ForfaitReponse:
-    """Déclare un forfait en duels : l'adversaire passera (walkover). Scoreur ; via la file."""
+    """Déclare un forfait en duels : l'adversaire passera (walkover). Admin ou scoreur ; file."""
     service: ServiceForfait = request.app.state.service_forfait
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
-    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    _garder_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
         "forfait_duel",
         requete.identifiant_saisie,
@@ -186,7 +199,7 @@ async def declarer_en_duel(
             requete.phase_id,
             requete.archer_id,
             requete.nature,
-            scoreur.nom,
+            _auteur(scoreur),
             requete.motif,
         )
 
@@ -198,13 +211,15 @@ async def declarer_en_duel(
 async def annuler_en_duel(
     requete: AnnulerDuelRequete,
     request: Request,
-    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait_duel)],
 ) -> AnnulationReponse:
-    """Annule un forfait de duel : le walkover disparaît à la reconstruction. Scoreur ; file."""
+    # ⚠️ Élargi **avec** la déclaration : un admin qui peut déclarer et pas annuler laisse une
+    # erreur de frappe irréparable sans aller chercher un scoreur — `D-15` (réversibilité).
+    """Annule un forfait de duel : le walkover disparaît à la reconstruction. Admin ou scoreur."""
     service: ServiceForfait = request.app.state.service_forfait
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
-    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    _garder_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
         "annul_forfait_duel",
         requete.identifiant_saisie,
@@ -215,7 +230,7 @@ async def annuler_en_duel(
 
     def ecrire() -> None:
         service.annuler_en_duel(
-            requete.tournoi_id, requete.phase_id, requete.archer_id, scoreur.nom
+            requete.tournoi_id, requete.phase_id, requete.archer_id, _auteur(scoreur)
         )
 
     await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))

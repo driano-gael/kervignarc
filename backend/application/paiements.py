@@ -33,6 +33,7 @@ from domain.ports import (
 )
 from domain.tournoi import TournoiId
 
+# DETTE-017 : 1ᵉʳ site de cette constante, dupliquée sur cinq modules applicatifs.
 _AUTEUR_ADMIN = "Administrateur"
 """Auteur des entrées d'audit de paiement — l'admin agit sous une identité unique (pas un nom).
 
