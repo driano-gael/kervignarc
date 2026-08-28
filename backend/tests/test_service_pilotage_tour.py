@@ -46,6 +46,7 @@ from domain.politiques import (
     SeedingSerpent,
     registre_par_defaut,
 )
+from domain.tableau import Tableau
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -55,6 +56,7 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxPhaseRepository,
 )
+from tests.test_domain_tableau import construire, jouer_gagne_mieux_classe
 from tests.test_service_audit import FauxAuditRepository, HorlogeFigee
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -443,20 +445,22 @@ def test_feu_vert_refuse_une_phase_de_qualification() -> None:
         monde.pilotage.feu_vert(monde.tournoi_id, qualif.id)
 
 
-def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_les_byes() -> None:
+def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_ce_qui_reste_a_trancher() -> None:
     """L'ORACLE de ce que les écrans annoncent après un forfait (E16US008).
 
-    ⚠️ Ce test existe parce que la prose s'est trompée **trois fois de suite** en revue : « une
-    source » (1ʳᵉ passe), puis « deux sources » (3ᵉ passe). Les deux généralisations sont fausses.
-    Un `VainqueurDe`/`PerdantDe` ne compte comme *source en attente* que si son camp est **vide** ;
-    un bye ayant déjà rempli un camp à la construction, une ligne peut n'attendre qu'un seul duel.
-    Tant que cet oracle vivait dans `docs/`, chaque passe de revue en produisait une version fausse.
+    ⚠️ Ce test existe parce que la prose s'est trompée **quatre fois de suite** en revue : « une
+    source », puis « deux sources », puis « deux sauf byes ». Un `VainqueurDe`/`PerdantDe` ne compte
+    comme attente que si son camp est **vide** ; un camp se remplit de DEUX façons — un bye à la
+    construction, **ou un duel amont déjà tranché**. D'où le régime **1 ou 2, à tout effectif**.
+    ⚠️ Le fixture doit être un tableau **EN COURS** : l'organisateur ne lit jamais le feu vert sur un
+    tableau vierge, et c'est en ne mesurant que le vierge qu'on a conclu « puissance de 2 ⇒ toujours
+    deux ». Les décomptes exacts dépendent de la profondeur injectée (règle 2) ; le régime 1-ou-2,
+    lui, est **structurel** — un match n'a que deux camps.
     """
-    from tests.test_domain_tableau import construire
 
-    def repartition(effectif: int) -> dict[int, int]:
+    def repartition(tableau: Tableau) -> dict[int, int]:
         compte: dict[int, int] = {}
-        for match in construire(effectif).matchs:
+        for match in tableau.matchs:
             if match.est_bye or match.vainqueur is not None:
                 continue
             attendues = len(ServicePilotageTour._sources_en_attente(match))
@@ -464,25 +468,37 @@ def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_les_byes() -> None:
                 compte[attendues] = compte.get(attendues, 0) + 1
         return compte
 
-    # Puissance de 2 : aucun bye, toute ligne bloquée attend ses DEUX duels amont.
-    assert repartition(8) == {2: 4}
-    assert repartition(16) == {2: 8}
-    # Effectif quelconque — le cas normal d'un club : les DEUX régimes coexistent.
-    assert repartition(6) == {1: 2, 2: 2}
-    assert repartition(12) == {1: 4, 2: 4}
-    # Petit effectif : ici, aucune ligne n'attend deux duels.
-    assert repartition(3) == {1: 1}
+    # À la construction, les byes seuls font varier le régime (profondeur `podium`, défaut).
+    assert repartition(construire(8)) == {2: 4}
+    assert repartition(construire(6)) == {1: 2, 2: 2}
+    assert repartition(construire(3)) == {1: 1}
+
+    # ⚠️ EN COURS, et sans le moindre bye : trancher un amont suffit à faire naître le régime « une
+    # source ». C'est l'assertion qui aurait rougi sur les quatre versions fausses de la prose.
+    en_cours = jouer_gagne_mieux_classe(construire(8), 1)
+    assert repartition(en_cours) == {1: 1, 2: 3}
 
 
-def test_un_duel_amont_de_tour_2_n_est_jamais_compte_parmi_les_prets() -> None:
-    """Second volet du même oracle : le compteur du bouton « Lancer » ne diminue au forfait QUE si
-    le duel tranché y figurait. Or `place = match.tour == 1` interdit toute cible au-delà du tour 1,
-    donc un duel amont de tour ≥ 2 n'est jamais `pret_a_lancer` — le compteur ne bouge pas."""
-    from tests.test_domain_tableau import construire
+def test_un_duel_de_tour_2_n_est_jamais_pret_a_lancer() -> None:
+    """Second volet de l'oracle : le compteur « Lancer » ne diminue au forfait QUE si le duel
+    tranché y figurait. `place = match.tour == 1` interdit toute cible au-delà du tour 1, donc un
+    duel de tour ≥ 2 n'est jamais `pret_a_lancer` — même une fois ses deux occupants connus.
 
-    tableau = construire(8)
-    for match in tableau.matchs:
-        if match.tour >= 2:
-            assert ServicePilotageTour._sources_en_attente(
-                match
-            ), "un duel de tour >= 2 attend ses sources tant qu'elles ne sont pas tranchées"
+    ⚠️ Passe par `feu_vert` (surface publique) et non par un helper privé : la version précédente de
+    ce test assertait `_sources_en_attente` sur un tableau vierge, ce qui est vrai par construction
+    et ne touchait ni `place`, ni `cible_attribuee`, ni `pret_a_lancer`. Elle serait restée verte si
+    la garde tour-1 disparaissait — le défaut que `DETTE-089` nomme « une promesse de test est pire
+    qu'une absence de test ».
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    monde.gagner(1)
+    monde.gagner(2)
+    feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    finale = next(d for d in feu.duels if d.tour == 2)
+    assert finale.participants_connus is True
+    assert finale.cible_attribuee is False
+    assert finale.pret_a_lancer is False
+    assert finale.blocage == "cible non attribuée"
+    assert feu.nb_prets == 0

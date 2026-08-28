@@ -571,7 +571,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   limites sont assumées et écrites : un forfait de duel **ne se défait depuis aucun écran** pour
   l'instant (le serveur le sait, la surface manque) ; le forfait n'est proposé que si le duel attendu
   a bien **ses deux archers** ; et comme une ligne bloquée attend **un ou deux** duels
-  précédents selon le tirage, un forfait n'en résout qu'un : l'écran peut donc rester bloqué pour une
+  précédents selon ce qui reste à trancher en amont, un forfait n'en résout qu'un : l'écran peut donc rester bloqué pour une
   autre raison, et le compteur du bouton « Lancer » ne bouge que si le duel réglé était lui-même
   prêt. C'est logique une fois dit, déroutant tant que ça ne l'est pas — d'où la mention explicite
   dans la fenêtre de confirmation. Le lancement reste **manuel** : l'automatique que

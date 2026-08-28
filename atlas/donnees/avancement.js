@@ -209,9 +209,7 @@ window.ATLAS.avancement = {
     "E12US002"
    ],
    "ouverte": true,
-   "resorption_us": [
-    "E05US010"
-   ],
+   "resorption_us": [],
    "severite": "mineur"
   },
   {
@@ -2513,8 +2511,7 @@ window.ATLAS.avancement = {
     "054"
    ],
    "dettes_resorbees": [
-    "015",
-    "019"
+    "015"
    ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
@@ -4129,6 +4126,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0013",
     "0050",
     "0075",
     "0096"

@@ -224,12 +224,14 @@ function ActionLevee({
   // boutons de toutes les autres lignes et son erreur s'affichait sous chacune.
   const forfait = useDeclarerForfaitDepuisFeuVert(tournoiId, phaseId)
 
-  // ⚠️ Rendu dans les TROIS branches, car le succès fait justement CHANGER de branche : le forfait
-  // qui tranche la dernière source bascule la ligne sur `sans-recours`, dont le `return` est plus
-  // haut que le corps du cas `sources`. Placé dans le seul cas `sources`, le retour du geste
-  // disparaissait à l'instant où il réussissait. Limite qui subsiste : si `actionDuel` rend `null`
-  // (ligne débloquée), `ActionLevee` est démonté et l'état de mutation part avec — DETTE-090.
-  const retourDuGeste = forfait.isSuccess ? (
+  // ⚠️ Rendu AVANT les sorties anticipées, car le succès fait CHANGER de branche : le forfait qui
+  // tranche la dernière source bascule la ligne sur `sans-recours`, dont le `return` est plus haut
+  // que le corps du cas `sources`. Placé dans le seul cas `sources`, le retour du geste
+  // disparaissait à l'instant où il réussissait. La seule bascule réelle est `sources` →
+  // `sans-recours` ; `placement` exige le tour 1, où aucun forfait n'est offert — défensif.
+  const retourDuGeste = forfait.isError ? (
+    <MessageErreur erreur={forfait.error} />
+  ) : forfait.isSuccess ? (
     <p className="feu-vert__levee--inerte" role="status">
       Forfait enregistré — l’adversaire passe.
     </p>
@@ -262,10 +264,12 @@ function ActionLevee({
         className="bouton--discret"
         aria-expanded={deplie}
         aria-controls={`feu-vert-sources-${numeroLigne}`}
-        // ⚠️ `reset()` : le retour du geste vit hors du repli (il doit survivre au changement de
-        // branche), donc rien ne l'effacerait plus — replier redevient le geste de congé.
+        // ⚠️ `reset()` **jamais pendant le vol** : il détache l'observateur de la mutation, donc
+        // ni le succès ni l'ERREUR ne reviendraient — un forfait raté n'afficherait plus rien.
+        // Hors vol, il fait du repli le geste de congé (branche `sources` seule : `sans-recours`
+        // n'a pas de bouton de dépliage, le message y vit jusqu'au démontage de la ligne).
         onClick={() => {
-          forfait.reset()
+          if (!forfait.isPending) forfait.reset()
           setDeplie((ouvert) => !ouvert)
         }}
       >
@@ -301,7 +305,6 @@ function ActionLevee({
               onConfirmer={() => forfait.mutate(archer.archer_id)}
             />
           ))}
-          {forfait.isError && <MessageErreur erreur={forfait.error} />}
         </>
       )}
       {retourDuGeste}

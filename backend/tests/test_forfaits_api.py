@@ -382,7 +382,7 @@ def test_annulation_de_duel_refuse_une_phase_de_qualification(
     app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
     """La garde de type couvre les DEUX routes : `annuler_en_duel` passe par le même
-    `_phase_de_tableau`. Sans elle, l'admin **déferait** par la route des duels un forfait de
+    `_exiger_phase_de_tableau`. Sans elle, l'admin **déferait** par la route des duels un forfait de
     qualification déclaré par un scoreur — le contournement d'`exiger_scoreur`, en sens inverse."""
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)

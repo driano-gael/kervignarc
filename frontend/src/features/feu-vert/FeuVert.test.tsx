@@ -115,6 +115,8 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     await waitFor(() => expect(declarerForfaitDuel).toHaveBeenCalledTimes(1))
     // ⚠️ L'assertion qui compte : la **portée**. Sans elle, aucun jeton n'est joint depuis l'écran
     // d'administration et tout forfait part anonyme.
+    // ⚠️ Le retour du geste : livré inerte en 2ᵉ passe, corrigé en 3ᵉ, jamais gardé par un test.
+    expect(await screen.findByRole('status')).toHaveTextContent(/Forfait enregistré/)
     expect(vi.mocked(declarerForfaitDuel).mock.calls[0]).toEqual([
       1,
       7,
@@ -126,16 +128,21 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
   })
 
   it('n’offre aucun forfait quand le duel amont n’a qu’un camp connu', async () => {
+    // ⚠️ Amont au tour 2 SANS cible, aval au tour 3 : un match de tour 1 à camp vide est un bye
+    // (exclu des duels à venir), et `place = match.tour == 1` interdit toute cible au-delà — l'état
+    // « un camp connu AVEC cible » n'existe pas côté serveur (cf. `etat.test.ts`).
     const amont = duel({
       numero: 3,
-      tour: 1,
+      tour: 2,
       bas: null,
       participants_connus: false,
       pret_a_lancer: false,
+      cible_haut: null,
+      cible_bas: null,
     })
     const aval = duel({
       numero: 9,
-      tour: 2,
+      tour: 3,
       pret_a_lancer: false,
       participants_connus: false,
       haut: null,
@@ -160,15 +167,18 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
   })
 
   it('nomme les DEUX duels qui bloquent et compte ce qui reste attendu', async () => {
-    // ⚠️ Le cas nominal, et il n'était couvert par rien : un duel de tableau attend TOUJOURS deux
-    // sources (`construire_tableau` engendre chaque match de tour n+1 depuis deux matchs). Le
-    // libellé pluriel et le complément « Elle attend encore N autre duel. » ne vivent que là.
+    // ⚠️ Le régime « deux sources », qui n'était couvert par rien. Une ligne peut n'en attendre
+    // qu'UNE (bye, ou duel amont déjà tranché) — oracle du régime :
+    // `test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_ce_qui_reste_a_trancher` (backend).
+    // Ici, seuls le libellé pluriel et « Elle attend encore N autre duel. ».
     const amontA = duel({ numero: 3, tour: 1 })
     const amontB = duel({
       numero: 4,
       tour: 1,
       haut: { archer_id: 5, nom: 'Tuck', prenom: 'Frère' },
       bas: { archer_id: 6, nom: 'Little', prenom: 'John' },
+      cible_haut: 7,
+      cible_bas: 7,
     })
     const aval = duel({
       numero: 9,
@@ -189,7 +199,8 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     const liste = document.getElementById('feu-vert-sources-9') as HTMLElement
     expect(within(liste).getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: /forfait$/ })).toHaveLength(4)
-    expect(screen.getAllByText(/Elle attend encore 1 autre duel\./).length).toBeGreaterThan(0)
+    // Un `<dialog>` par bouton de forfait, monté en permanence : le compte est déterminé.
+    expect(screen.getAllByText(/Elle attend encore 1 autre duel\./)).toHaveLength(4)
   })
 
   it('renvoie au plan de duels quand la cible manque au tour 1', async () => {

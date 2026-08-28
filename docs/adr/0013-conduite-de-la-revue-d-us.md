@@ -315,6 +315,30 @@ rigueur va au moteur métier, pas à l'outillage). Le **coût en tokens par axe*
 une session ne peut pas lire sa propre consommation ventilée par sous-agent, et une colonne remplie à
 l'estime vaudrait moins qu'une case vide.
 
+**10. Une affirmation de revue portant sur le comportement du moteur s'ancre dans un TEST avant
+d'être reversée aux textes.** *(Amendement du 28/08/2026, E16US008.)* Le même énoncé factuel — « de
+combien de duels amont une ligne bloquée dépend-elle ? » — a été écrit **faux quatre passes de
+suite** : « une source », puis « deux », puis « deux sauf byes », puis « deux sur une puissance
+de 2 ». Chaque passe relisait la prose de la précédente et la transposait : le raisonnement était
+juste, la conclusion fausse, et **aucune porte ne pouvait le voir** — ni `mypy`, ni la suite, ni
+l'atlas ne relisent `stories/` ou `docs/fonctionnel/`.
+
+La règle est donc : **une passe qui corrige une affirmation factuelle sur le moteur écrit d'abord
+l'assertion qui la porte**, dans un test nommé ; les textes n'en sont ensuite que la traduction. Deux
+précisions, chacune payée d'une passe :
+
+- ⚠️ **La fixture doit être l'état que l'utilisateur observe.** Le premier test écrit ici mesurait un
+  tableau **vierge** ; l'organisateur lit le feu vert **pendant** le tour. D'où la 4ᵉ version fausse,
+  démentie par une sonde d'une ligne. Un oracle mesuré hors de l'état réel est un oracle faux.
+- ⚠️ **L'assertion, pas la phrase à côté.** La prose expulsée de `docs/` est revenue deux fois par la
+  fenêtre : dans un **commentaire de test**, et dans une **docstring** dont le nom promettait ce que
+  l'assertion ne vérifiait pas (elle était vraie par construction). Un commentaire de test n'est pas
+  plus vérifié qu'un paragraphe de `stories/` — règle 13, ADR-0099.
+
+Porté par la grille de l'axe D (qui sonde plutôt qu'il ne lit) et par
+[`docs/metriques-revue.md`](../metriques-revue.md), dont la colonne « bloquants par » enregistre
+désormais ce mode de panne.
+
 ## Options envisagées à l'amendement du 16/08/2026
 
 La section « Options envisagées » d'origine porte sur la parallélisation (15/07/2026). L'amendement

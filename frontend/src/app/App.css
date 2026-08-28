@@ -1946,7 +1946,11 @@ button:disabled {
   min-height: 44px;
 }
 
+/* ⚠️ `margin: 0` : depuis que `sans-recours` enveloppe son `<p>` dans un `.feu-vert__levee`, le
+   paragraphe n'est plus ciblé que par cette classe — sans reset il reprend les ~13,5 px de marge
+   verticale du navigateur, non collapsées dans un parent flex. Le `gap` du conteneur suffit. */
 .feu-vert__levee--inerte {
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13.5px;
 }

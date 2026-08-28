@@ -377,7 +377,8 @@ window.ATLAS.decisions = {
    "us": [
     "E01US001",
     "E02US001",
-    "E05US028"
+    "E05US028",
+    "E16US008"
    ]
   },
   {
@@ -2244,14 +2245,22 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/features/feu-vert/FeuVert.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "archersForfaitables",
+      "deplier",
+      "ActionLevee"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/feu-vert/etat.ts",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "archersForfaitables",
+      "deplier",
+      "ActionLevee"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },

@@ -172,7 +172,10 @@ describe('actionDuel', () => {
       cible_haut: null,
       cible_bas: null,
     })
-    const action = actionDuel(aval, [demi, aval])
+    // ⚠️ L'aval passe au tour 3 : une source de tour 2 ne peut pas alimenter un match de tour 2
+    // (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`).
+    const avalTour3 = { ...aval, tour: 3 }
+    const action = actionDuel(avalTour3, [demi, avalTour3])
     expect(action).toEqual({
       genre: 'sources',
       // Le duel amont se déplie quand même (CA : « ses occupants, sa cible ») — c'est le camp
