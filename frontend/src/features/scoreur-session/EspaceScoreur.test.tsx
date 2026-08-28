@@ -1,15 +1,11 @@
-// Test de rendu de l'**espace scoreur** — il garde l'invariant qui a refermé `DETTE-056`
-// (E05US030) : **un seul créneau pour tous les panneaux de saisie**.
+// Test de rendu de l'**espace scoreur** : l'invariant qui a refermé `DETTE-056` (E05US030) — **un
+// seul créneau pour tous les panneaux de saisie**.
 //
-// ⚠️ **Ces cas viennent de `SaisieDuels.test.tsx`**, où ils vivaient tant que chaque panneau
-// choisissait son créneau pour son compte. Le défaut qu'ils gardent n'a pas changé de nature en
-// changeant de domicile : quatre sélecteurs indépendants faisaient scorer les rencontres du mauvais
-// départ **avec des identifiants valides, donc sans la moindre erreur**. Ce qui se vérifie ici est
-// donc « il n'y en a qu'un, et les quatre panneaux reçoivent la même valeur » — précisément ce
-// qu'aucun test de panneau ne peut voir tout seul.
-//
-// Les quatre panneaux sont doublés par une étiquette qui **affiche le créneau reçu** : c'est la
-// seule façon d'observer qu'ils partagent bien la même source.
+// ⚠️ **Ces cas viennent de `SaisieDuels.test.tsx`** : quatre sélecteurs indépendants faisaient
+// scorer les rencontres du mauvais départ **avec des identifiants valides, donc sans la moindre
+// erreur**. Ce qui se vérifie ici — « il n'y en a qu'un, et les quatre panneaux reçoivent la même
+// valeur » — est ce qu'aucun test de panneau ne peut voir seul ; les panneaux sont doublés par une
+// étiquette qui **affiche le créneau reçu**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

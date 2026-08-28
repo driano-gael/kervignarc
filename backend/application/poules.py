@@ -1,45 +1,9 @@
-"""Service applicatif **Poules** — composer, poser, faire tirer et classer (E05US023, [ADR-0083]).
+"""Service **Poules** — la structure se recalcule, le tir se persiste (ADR-0083 §7). Recalculé :
+composition, rencontres, couloirs, classement. Persisté : le bloc de couloirs et le tir.
 
-C'est le consommateur de production qui manquait à `domain/poule.py` depuis E05US015 : le moteur
-existait, testé, et **personne ne l'appelait** (`DETTE-028`). Ce service assemble ce que le domaine
-tient séparé — le **classement source** (`application/prelevement.py`), la **composition** en
-groupes (`composer_poules`), le **placement** en blocs de couloirs (`placer_les_blocs`), les
-**rencontres** (`rencontres_de_poule`), le **classement de poule** (`classement_de_poule`) et le
-**barrage** (`domain/barrage.py`, déjà opérationnel en portée `poule` depuis E06US003).
-
-## Ce qui est recalculé, ce qui est persisté
-
-Le parti est celui du tableau (ADR-0023/0048), et pour la même raison : **la structure se recalcule,
-le tir se persiste**.
-
-- **Recalculé à chaque lecture** : la composition (qui est dans quelle poule), les rencontres et
-  leur ordre, les couloirs de chaque rencontre tour par tour, le classement de poule. Tout cela est
-  une fonction déterministe du classement source et du réglage — le persister créerait une seconde
-  vérité, périmée dès qu'une volée en retard est validée.
-- **Persisté** : le **bloc de couloirs** de chaque poule (`placement_poule`, migration 0045) et le
-  **tir** de chaque rencontre (table `duel`, sans table ni migration neuve — ADR-0083 §7).
-
-## La numérotation des rencontres, et son ancrage
-
-Une rencontre est un **duel ordinaire** : elle se saisit avec le pavé d'E04US013 et se range dans
-`duel`, keyée `(phase_id, match_numero)`. Le `match_numero` est attribué **déterministe** — poules
-dans l'ordre, rencontres dans l'ordre que la méthode du cercle produit, numérotation continue depuis
-1. Même hypothèse que l'arbre d'un tableau, et **le même garde-fou** : le tir enregistre l'identité
-de ses deux duellistes, si bien qu'une composition changée (un forfait, une volée validée en retard)
-fait **détecter** la divergence au lieu de ré-attribuer un score à d'autres (ADR-0049 §4).
-
-⚠️ **Ce garde-fou masque, il ne répare pas.** Un score dont les duellistes ne correspondent plus
-s'affiche « non tiré » — ce qui est le comportement voulu, mais qui reste une perte visible pour le
-scoreur. En salle, recomposer une phase de poules déjà entamée n'est donc pas une opération
-anodine ; le CA ne l'offre pas, et rien ici ne la facilite.
-
-## Coût d'exécution
-
-La composition relit le classement source, donc hérite de `DETTE-031` (reconstruction non
-mémoïsée). La mémoïsation **à l'intérieur d'un appel** suit le parti d'E05US024 — le cache est créé
-au sommet et descendu — ; le cache transverse aux requêtes n'est pas rouvert ici.
-
-[ADR-0083]: ../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Le garde-fou d'identité des duellistes MASQUE, il ne répare pas** : un score dont les
+duellistes ne correspondent plus s'affiche « non tiré ». Recomposer une phase de poules entamée
+n'est donc pas anodin — le CA ne l'offre pas, et rien ici ne la facilite.
 """
 
 from __future__ import annotations
@@ -115,17 +79,11 @@ from domain.tournoi import TournoiId
 class RepartitionPoules:
     """Ce que le réglage produit sur l'effectif réel — le CA « la répartition est montrée ».
 
-    `tailles` porte l'effectif de chaque groupe, dans l'ordre. C'est ce qui rend l'arrondi
-    **lisible** plutôt que surprenant : 30 archers en poules de 4 donnent 7 poules, cinq de 4 et
-    deux de 5, et l'organisateur le voit avant de valider. C'est aussi ce qui rend inoffensif le cas
-    extrême — 7 archers en poules de 4 donnent **une** poule de 7, que l'écran montre et qu'il
-    corrige s'il n'en veut pas (`nb_poules_pour`).
-
-    `mode` dit **comment** ces groupes seront composés (E05US029). Il change ce que la répartition
-    signifie pour l'organisateur, sans changer sa forme : sous `PAR_NIVEAU`, les tailles décrivent
-    des **tranches de rangs contiguës**, et l'écran les nomme (« rangs 1-6, 7-12, … »). Les bornes
-    ne sont pas portées ici — elles se déduisent du cumul des tailles, et les transporter ferait
-    une seconde vérité pour la même information.
+    `tailles` porte l'effectif de chaque groupe : c'est ce qui rend l'arrondi **lisible** plutôt que
+    surprenant (30 archers en poules de 4 → cinq de 4 et deux de 5), et ce qui rend inoffensif le
+    cas extrême d'une seule poule de 7. `mode` dit **comment** ils seront composés (E05US029) —
+    sous `PAR_NIVEAU`, les tailles décrivent des tranches de rangs contiguës, dont les bornes se
+    déduisent du cumul (les porter ici ferait une seconde vérité).
     """
 
     effectif: int
@@ -150,15 +108,11 @@ class RepartitionPoules:
 class RencontreAffichee:
     """Une rencontre de poule, prête pour le pavé de saisie d'E04US013.
 
-    `numero` est le `match_numero` de la table `duel` : c'est par lui que la saisie écrit, et il est
-    **dérivé** de la composition, jamais stocké. `couloirs` porte les deux couloirs que les
-    adversaires occupent à ce tour — dérivés du bloc, comme l'appariement d'un tableau.
-
-    `duel` vaut `None` tant qu'aucun tir n'est saisi **ou** si le tir enregistré ne correspond plus
-    aux deux adversaires recalculés (ADR-0049 §4). `desynchronisee` distingue **ces deux cas** : à
-    `True`, une ligne existe bien en base mais oppose d'autres duellistes. Les confondre faisait
-    afficher « à tirer » sur une rencontre que le service refuse d'écrire, et le scoreur découvrait
-    le refus une flèche plus tard.
+    `numero` est le `match_numero` de la table `duel` — **dérivé** de la composition, jamais stocké.
+    `couloirs` porte les deux couloirs occupés à ce tour, dérivés du bloc.
+    ⚠️ `duel` vaut `None` tant qu'aucun tir n'est saisi **ou** si le tir enregistré n'oppose plus
+    les adversaires recalculés (ADR-0049 §4) ; `desynchronisee` distingue les deux. Les confondre
+    faisait afficher « à tirer » sur une rencontre que le service refuse d'écrire.
     """
 
     numero: int
@@ -177,13 +131,10 @@ class RencontreAffichee:
 class PouleAffichee:
     """Une poule : ses membres, son bloc, ses rencontres par tour, son classement.
 
-    `barrage_requis` porte le **régime d'ex æquo** d'ADR-0083 §5, et c'est le seul champ dont le
-    sens dépende du réglage :
-
-    - la poule **classe** (`nb_qualifies` non déclaré) — le classement *est* le livrable, donc
-      **tout** ex æquo irréductible se départage ;
-    - la poule **qualifie** — seul le franchissement de la barre compte : deux archers à égalité aux
-      rangs 3-4 d'une poule qui en qualifie 2 restent à égalité, et l'outil ne les départage pas.
+    `barrage_requis` porte le **régime d'ex æquo** d'ADR-0083 §5 : quand la poule **classe**
+    (`nb_qualifies` non déclaré), tout ex æquo irréductible se départage ; quand elle **qualifie**,
+    seul le franchissement de la barre compte — deux archers aux rangs 3-4 d'une poule qui en
+    qualifie 2 restent à égalité.
     """
 
     numero: int
@@ -208,14 +159,11 @@ class EtatPoules:
 class ServicePoules:
     """Cas d'usage des poules : consulter une phase, poser son plan, saisir ses rencontres.
 
-    **Ce qui est partagé avec `ServiceSaisieDuels` l'est réellement** : l'agrégat `Duel`, le pavé
-    (`bareme_de` / `zones_de` / `zones_strictes`) et la table `duel`. Une rencontre de poule *est*
-    un duel ordinaire (ADR-0083 §7), et la faire écrire autrement créerait deux façons de saisir un
-    tir — l'exacte duplication que cet ADR se donne pour objet de fermer.
-
+    **Ce qui est partagé avec `ServiceSaisieDuels` l'est réellement** : l'agrégat `Duel`, le pavé et
+    la table `duel`. Une rencontre de poule *est* un duel ordinaire (ADR-0083 §7).
     **Ce qui diffère est la navigation** : là-bas on retrouve un match dans un arbre, ici une
-    rencontre dans un groupe. C'est le `decor` du contrat (la 2ᵉ question), et c'est tout ce que les
-    trois méthodes de saisie ci-dessous réimplémentent.
+    rencontre dans un groupe. C'est le `decor` du contrat, et tout ce que les trois méthodes de
+    saisie ci-dessous réimplémentent.
     """
 
     def __init__(
@@ -281,27 +229,13 @@ class ServicePoules:
     def avancement_de_phase(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> AvancementDePhase | None:
-        """Où en est cette phase de poules — le port `LecteurAvancementDePhase` ([ADR-0090] §5).
+        """Où en est cette phase de poules — le port `LecteurAvancementDePhase` (ADR-0090 §5).
 
-        Les tours d'un round-robin sont **connus d'avance** (contrairement aux rondes d'un suisse,
-        qui s'apparient au fil de l'eau) : le nombre de tours est le plus grand numéro de tour
-        composé, toutes poules confondues. « Toutes confondues » et non « de la première poule » :
-        des poules d'effectifs inégaux n'ont pas le même nombre de tours, et la phase avance au
-        rythme de la plus longue.
-
-        Le tour courant est le **premier tour incomplet** — celui dont une rencontre n'est pas
-        encore **validée**. « Non terminé » et non « entamé », pour que l'organisateur lise « on
-        attaque le tour 3 » entre deux tours plutôt que « rien en cours ».
-
-        ⚠️ **`verrouille`, et surtout pas `vainqueur`** (correctif de revue, axe adversarial). Un
-        `Duel` désigne son vainqueur **dès que le seuil de sets est atteint**, donc avant que le
-        scoreur valide : la première rédaction faisait afficher « Tour 2 » au suivi pendant que
-        `rencontres_a_tirer` et `_resultat_de` — qui lisent tous deux `verrouille` — envoyaient
-        encore la salle sur le tour 1. Deux écrans du même produit se contredisaient sur l'état du
-        pas de tir. Les deux formats jumeaux livrés dans le même diff utilisaient déjà la notion
-        validée (`ronde.close`, `manche.jouee`) ; c'est cette réalisation-ci qui divergeait.
-
-        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        Les tours d'un round-robin sont **connus d'avance** : le nombre de tours est le plus grand
+        numéro composé, **toutes poules confondues**. Le tour courant est le premier tour dont une
+        rencontre n'est pas encore **validée**. ⚠️ **`verrouille`, et surtout pas `vainqueur`** : un
+        `Duel` désigne son vainqueur dès le seuil de sets atteint, donc avant validation — deux
+        écrans du même produit se contredisaient sur l'état du pas de tir.
         """
         etat = self.etat(tournoi_id, phase_id)
         rencontres = [rencontre for poule in etat.poules for rencontre in poule.rencontres]
@@ -322,26 +256,11 @@ class ServicePoules:
     ) -> ClassementSource:
         """Le classement que cette phase de poules **produit** — le port `LecteurClassementDePhase`.
 
-        C'est ce qui rend le CA « la phase avale consomme les qualifiés » livrable : jusqu'ici
-        `ServiceSaisieDuels._classement_de_l_ordre` rendait `None` sur ce type, donc un prélèvement
-        visant une phase de poules restait **inerte** — la phase aval recevait tous les archers en
-        lice, ce qui est plausible et faux.
-
-        L'ordre est celui d'ADR-0083 §6, porté par `domain/classement_de_poules.py` : par rang de
-        poule d'abord, tout le monde au classement, blocs indécis tant que le départage n'est pas
-        demandé. Le **départage** vient du réglage de la phase (`ReglageDePoules`) : c'est un choix
-        d'organisateur, pas une politique du moteur, donc `TiebreakPoules` n'est instancié que
-        lorsqu'il est demandé.
-
-        ⚠️ **Sauf en poules de niveau, où l'ordre s'inverse** (E05US029, ADR-0094). Le `mode` du
-        réglage voyage donc jusqu'ici : composer par tranches de rangs et lire « par rang de poule
-        d'abord » produirait un classement bien formé et faux — le vainqueur du groupe des
-        31ᵉ-36ᵉ annoncé 1ᵉʳ du tournoi. Les deux versants du mode sont indissociables, et c'est
-        **le même réglage** qui les commande, lu une seule fois.
-
-        `rang_premier` est posé ici, avec le **même** résolveur que celui qui a servi à prélever :
-        deux bases différentes situeraient la population et le décalage dans deux espaces de rangs
-        distincts, ce qui est exactement `DETTE-034` (cf. `_classement_de_l_ordre`).
+        Sans lui, un prélèvement visant une phase de poules restait **inerte** : l'aval recevait
+        tous les archers en lice, plausible et faux. L'ordre est celui d'ADR-0083 §6, le
+        **départage** venant du réglage — choix d'organisateur, pas politique du moteur.
+        ⚠️ **Sauf en poules de niveau, où l'ordre s'inverse** (E05US029, ADR-0094) : composer par
+        tranches et lire « par rang de poule d'abord » annoncerait le vainqueur des 31ᵉ-36ᵉ 1ᵉʳ.
         """
         phase, participants = self._population(tournoi_id, phase_id, resolveur)
         photo = self._photo(phase, participants)
@@ -428,17 +347,12 @@ class ServicePoules:
 
     # --- Saisie d'une rencontre (via la file) ----------------------------------------------------
     #
-    # ⚠️ **Trois méthodes qui ressemblent à celles de `ServiceSaisieDuels`, et l'écart est
-    # exactement le sujet d'ADR-0083.** Ce qui est partagé — l'agrégat `Duel`, le pavé
-    # (`bareme_de` / `zones_de`), la table `duel` — l'est *réellement* : une rencontre de poule
-    # **est** un duel ordinaire (§6). Ce qui diffère est la **navigation** : là-bas on retrouve un
-    # match dans un arbre, ici une rencontre dans un groupe. C'est le `decor` du contrat, la 2ᵉ
-    # question, et c'est la seule chose que ces trois méthodes réimplémentent.
-    #
-    # L'alternative — élargir `ServiceSaisieDuels` à un second décor — a été écartée : son `_decor`
-    # rend un `Tableau`, type qu'une poule n'a pas, et l'y ouvrir demanderait de rendre le tableau
-    # facultatif dans un service dont **toutes** les méthodes s'en servent. On aurait échangé une
-    # duplication de trente lignes contre un service à deux modes, ce qui est le pire des deux.
+    # ⚠️ **Trois méthodes qui ressemblent à celles de `ServiceSaisieDuels`, et l'écart est le sujet
+    # d'ADR-0083.** Ce qui est partagé — l'agrégat `Duel`, le pavé, la table `duel` — l'est
+    # *réellement* ; ce qui diffère est la **navigation** (un match dans un arbre contre une
+    # rencontre dans un groupe), c'est-à-dire le `decor` du contrat. Élargir `ServiceSaisieDuels`
+    # aurait demandé de rendre le `Tableau` facultatif dans un service dont toutes les méthodes
+    # s'en servent : un service à deux modes, pire que trente lignes dupliquées.
 
     def saisir_manche(
         self,
@@ -497,21 +411,14 @@ class ServicePoules:
         saisie ferait bouger le classement à chaque flèche, et le barrage requis apparaîtrait puis
         disparaîtrait sous les yeux du juge.
         """
-        # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** : c'est
-        # un correctif de 2ᵉ passe de revue, relevé par trois axes au même endroit.
-        #
-        # `_ecrire` est le tronc commun des **trois** écritures. Y poser la garde gelait aussi
-        # `saisir_manche` et `saisir_barrage`, donc la **rectification** d'une rencontre engagée
-        # pendant la pause — le cul-de-sac que le contrat de `refuser_si_en_pause` interdit, et que
-        # l'axe adversarial avait déjà fait corriger sur les duels. Le CA est net : la pause gèle ce
-        # qui *avance*, jamais ce qui *répare*.
-        #
-        # Y poser le **signalement** faisait en outre payer la recomposition intégrale du
-        # créneau à chaque manche et chaque barrage, sur le thread du writer unique
-        # (règle 7, `DETTE-031`), pour
-        # un résultat structurellement identique : un tour n'avance que sur des rencontres
-        # **validées**. C'est l'erreur que la docstring de `ServiceSaisieDuels.valider` explique
-        # avoir évitée.
+
+        # E05US033 — **garde et signalement sont ici, sur `valider`, et non dans `_ecrire`** :
+        # `_ecrire` est le tronc commun des **trois** écritures, et y poser la garde gelait aussi la
+        # **rectification** d'une rencontre engagée pendant la pause — le cul-de-sac que
+        # `refuser_si_en_pause` interdit. La pause gèle ce qui *avance*, jamais ce qui *répare*.
+        # Y poser le signalement faisait en outre payer la recomposition intégrale du créneau à
+        # chaque manche, sur le thread du writer unique (`DETTE-031`), pour un résultat identique :
+        # un tour n'avance que sur des rencontres **validées**.
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is not None:
             refuser_si_en_pause(phase)
@@ -542,13 +449,10 @@ class ServicePoules:
         """Le tronc commun des trois écritures : retrouver la rencontre, appliquer, persister.
 
         `# DETTE-031` — appelle `etat()` à **chaque** manche, barrage et validation, donc rejoue la
-        reconstruction complète sur le thread du writer unique.
-
-        La rencontre est retrouvée **par recomposition**, jamais par une lecture de la table
-        `duel` : c'est ce qui garantit que le tir écrit porte les deux adversaires que la
-        composition du moment désigne. Écrire depuis la ligne persistée reviendrait à se fier à un
-        `match_numero` qui a pu changer de sens — précisément ce que l'ancrage d'ADR-0049 §4 sert
-        à détecter.
+        reconstruction complète sur le thread du writer unique. La rencontre est retrouvée **par
+        recomposition**, jamais par une lecture de `duel` : c'est ce qui garantit que le tir écrit
+        porte les deux adversaires que la composition du moment désigne — se fier à la ligne
+        persistée se fierait à un `match_numero` qui a pu changer de sens (ADR-0049 §4).
         """
         etat = self.etat(tournoi_id, phase_id)
         rencontre = next(
@@ -585,16 +489,11 @@ class ServicePoules:
             return TiebreakPoules()
         # ⚠️ **`sinon` n'est pas optionnel ici**, et l'oublier a coûté un bloquant en revue.
         #
-        # `_fabriquer_barrage` fait défaut sur `{"nom": "ffta_defaut"}`, soit l'ordre §8.1 — nombre
-        # de 10, puis de 9. Sans `sinon`, régler un seuil de barrage sur une phase de poules ne se
-        # contentait pas d'ajouter le seuil : il **remplaçait** l'ordre §10.1 (points de match,
-        # différence de sets, différence de score, puis 10 et 9) par §8.1 pour tout le tri. Un
-        # archer à 9 points de match serait passé derrière un archer à 3 points ayant un 10 de plus.
-        # `TiebreakPoules` avertit précisément de ne pas confondre les deux ordres : §10.1
-        # **précède**
-        # §8.1 de trois critères, il ne s'y substitue pas. Le premier correctif rendait donc la
-        # politique opérante en lui faisant appliquer la mauvaise règle — pire que la décoration
-        # qu'il venait fermer.
+        # `_fabriquer_barrage` fait défaut sur `{"nom": "ffta_defaut"}`, soit l'ordre §8.1. Sans
+        # `sinon`, régler un seuil de barrage sur une phase de poules ne se contentait pas d'ajouter
+        # le seuil : il **remplaçait** l'ordre §10.1 par §8.1 pour tout le tri — un archer à 9
+        # points de match passait derrière un archer à 3 points ayant un 10. §10.1 **précède**
+        # §8.1 de trois critères, il ne s'y substitue pas.
         politiques = assembler_politiques(
             {
                 "tiebreak": {
@@ -618,18 +517,11 @@ class ServicePoules:
     ) -> Duel:
         """Le duel persisté de la rencontre, ou un duel vierge — **jamais un écrasement**.
 
-        ⚠️ Jumeau exact de `ServiceSaisieDuels._duel_courant`, et c'est tout l'objet du correctif.
-        L'écriture partait de `rencontre.duel or Duel.vide(...)`, ce qui paraît anodin et ne l'est
-        pas : `rencontre.duel` vaut aussi `None` quand une ligne **existe** en base mais oppose
-        d'autres duellistes — c'est l'ancrage d'ADR-0049 §4, qui la *masque* en lecture pour ne pas
-        attribuer un score au mauvais couple. Le `or` reconstruisait alors un duel vierge et
-        `enregistrer` **remplaçait la ligne** : un tir validé disparaissait sans trace dès qu'une
-        composition avait bougé (validation tardive, forfait, effectif corrigé). Pire, le verrou de
-        validation sautait avec — un `Duel.vide` n'a pas de `validee_par`, donc `DuelVerrouille` ne
-        se déclenchait pas et une rencontre déjà scellée se réécrivait.
-
-        Le chemin tableau, lui, refusait déjà en 409. Deux régimes pour le même geste, sur la même
-        table, dont un qui perd de la donnée (relevé en revue).
+        ⚠️ Jumeau exact de `ServiceSaisieDuels._duel_courant`. L'écriture partait de
+        `rencontre.duel or Duel.vide(...)`, ce qui paraît anodin : `rencontre.duel` vaut aussi
+        `None` quand une ligne **existe** mais oppose d'autres duellistes (ADR-0049 §4). Le `or`
+        reconstruisait alors un duel vierge et `enregistrer` **remplaçait la ligne** — un tir validé
+        disparaissait sans trace, verrou de validation compris. Le chemin tableau refusait déjà 409.
         """
         duel = self._duels.charger(phase_id, numero, bareme=bareme)
         if duel is None:
@@ -656,30 +548,11 @@ class ServicePoules:
     def rencontres_a_tirer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> RencontresARouter:
         """Les rencontres encore à tirer — le port `LecteurRencontresARouter` (E05US026).
 
-        ⚠️ **Le routage des poules était hors périmètre d'E05US023**, capacité explicitement laissée
-        de côté : `route_l_archer` valait `False`, et les poules restaient le seul format jouable
-        sans routage une fois le Big Shoot Off livré. Le commanditaire l'a fait entrer au périmètre
-        d'E05US026 le 15/08/2026, où le calcul s'écrivait de toute façon pour le suisse.
-
-        `# DETTE-031` — appelle `etat()`, donc rejoue la phase entière et sa chaîne amont, à chaque
-        lecture du panneau de routage.
-
-        Dans l'ordre du déroulé : poules dans l'ordre, tours dans l'ordre du cercle. La **première**
-        rencontre non tirée d'un membre est celle qui vient.
-
-        Une rencontre **désynchronisée** est écartée : son tir est masqué et son écriture refusée
-        (ADR-0049 §4), l'annoncer enverrait un archer sur une cible où il ne peut rien saisir.
-
-        ⚠️ **`epuisee` vaut « toutes les rencontres sont validées », désynchronisées comprises.**
-        Le filtre `if not r.desynchronisee` qui figurait ici était un **défaut de revue**, et le
-        pire des trois cas : une poule dont une rencontre est bloquée et les autres validées se
-        déclarait épuisée, donc ses deux archers recevaient « Plus aucune rencontre à tirer » — sur
-        une rencontre qu'ils ne *peuvent pas* saisir (écriture refusée, ADR-0049 §4). Sur une phase
-        entièrement saisie puis **recomposée**, la liste filtrée devenait vide, `all(())` valait
-        `True`, et le palmarès décernait les médailles d'une phase irrésolue.
-
-        Une rencontre désynchronisée signifie exactement le contraire d'« épuisée » : il reste
-        quelque chose à faire, et ce quelque chose demande d'abord de rétablir la population.
+        Dans l'ordre du déroulé : poules dans l'ordre, tours dans l'ordre du cercle. Une rencontre
+        **désynchronisée** est écartée — son écriture est refusée (ADR-0049 §4), l'annoncer
+        enverrait un archer sur une cible où il ne peut rien saisir. ⚠️ **`epuisee` vaut « toutes
+        validées », désynchronisées comprises** : les filtrer déclarait épuisée une poule dont une
+        rencontre est bloquée, et le palmarès décernait des médailles. `# DETTE-031`.
         """
         etat = self.etat(tournoi_id, phase_id)
         rencontres = tuple(
@@ -745,16 +618,11 @@ class ServicePoules:
         etat = self.etat(tournoi_id, phase_id)
         # ⚠️ Les conflits **du plan** l'emportent sur ceux que la relecture re-synthétise.
         #
-        # `_conflits_du_plan` ne sait dire qu'une chose — « aucun bloc ne porte cette poule »,
-        # donc `NON_POSEE`. C'est exact en lecture (rien n'est persisté qui dise *pourquoi*),
-        # et faux
-        # juste après une pose : ici on sait que la salle était trop petite ou que la poule n'avait
-        # aucune rencontre, `placer_les_blocs` vient de le rapporter. Sans ce report,
-        # l'organisateur
-        # dont la salle est trop petite lisait « le plan n'est pas posé, à vous de le générer »
-        # **au moment même où il venait de le générer**, et pouvait recommencer indéfiniment — et
-        # `SALLE_PLEINE` / `SANS_RENCONTRE` n'avaient aucun appelant de production malgré leurs
-        # tests de domaine (relevé en revue d'E05US023).
+        # `_conflits_du_plan` ne sait dire qu'une chose — « aucun bloc ne porte cette poule », donc
+        # `NON_POSEE`. C'est exact en lecture et faux juste après une pose : ici on sait que la
+        # salle était trop petite ou que la poule n'avait aucune rencontre. Sans ce report,
+        # l'organisateur lisait « à vous de le générer » **au moment même où il venait de le
+        # générer**, et `SALLE_PLEINE` / `SANS_RENCONTRE` n'avaient aucun appelant de production.
         return replace(etat, conflits=plan.conflits)
 
     # --- Rouages ---------------------------------------------------------------------------------
@@ -768,13 +636,10 @@ class ServicePoules:
         """Les gardes, puis **qui entre dans la phase** — la 1ʳᵉ question du contrat (ADR-0083 §1).
 
         Générique depuis ADR-0068/E05US024 : `preleves` lit chaque source dans le classement de
-        **sa** phase, en remontant la chaîne. Une phase de poules sans source déclarée est donc
-        alimentée par le classement du départ, comme un tableau de tête.
-
-        `resolveur` est fourni quand l'appel vient **d'en haut** (une phase aval qui remonte la
-        chaîne par `LecteurClassementDePhase`) : on réutilise alors son cache et sa chaîne de phases
-        visitées plutôt que d'en ouvrir un second. En fabriquer un neuf coûterait la reconstruction
-        d'un tableau amont déjà résolu (`DETTE-031`) et perdrait la détection de cycle.
+        **sa** phase, en remontant la chaîne. Sans source déclarée, la phase est alimentée par le
+        classement du départ, comme un tableau de tête.
+        `resolveur` est fourni quand l'appel vient **d'en haut** : on réutilise son cache et sa
+        chaîne de phases visitées (`DETTE-031`, et la détection de cycle avec).
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -961,11 +826,8 @@ class ServicePoules:
 
         C'est ce qui « referme le classement » (CA) et ferme la boucle que `DETTE-028` laissait
         ouverte : le moteur de barrage était complet depuis E05US015 et son verdict ne retournait
-        dans aucun classement.
-
-        ⚠️ **Les barrages clos comptent**, comme en qualification : ce sont eux qui portent les
-        verdicts déjà appliqués. Les filtrer ferait retomber en ex æquo, à la lecture suivante, des
-        rangs qu'on a fait tirer.
+        dans aucun classement. ⚠️ **Les barrages clos comptent**, comme en qualification — les
+        filtrer ferait retomber en ex æquo des rangs qu'on a fait tirer.
         """
         rangs: dict[Participant, int] = {}
         for barrage in self._barrages.par_depart(phase.depart_id):
@@ -989,14 +851,11 @@ class ServicePoules:
 def _resultat_de(rencontre: RencontreAffichee) -> ResultatRencontre | None:
     """Traduit un tir **validé** en résultat consommable par le moteur de classement.
 
-    ⚠️ **Seuls les duels validés comptent.** Un tir en cours de saisie ferait bouger le classement
-    de poule à chaque flèche, et le barrage requis apparaîtrait puis disparaîtrait sous les yeux du
-    juge. Même parti que la reconstruction d'un tableau, qui ne rejoue que les duels validés.
-
-    ⚠️ **Le cumul est reporté dans les sets** (limite documentée par `ResultatRencontre`) : un duel
-    à l'arc à poulies ne joue pas en manches, et le laisser à 0-0 en ferait un **nul** au sens des
-    points de match. C'est ici, où l'on sait qui a gagné, que la conversion est légitime — le
-    résultat, lui, ne sait pas qu'il est au cumul.
+    ⚠️ **Seuls les duels validés comptent** : un tir en cours de saisie ferait bouger le classement
+    à chaque flèche, et le barrage requis apparaîtrait puis disparaîtrait sous les yeux du juge.
+    ⚠️ **Le cumul est reporté dans les sets** : un duel à l'arc à poulies ne joue pas en manches, et
+    le laisser à 0-0 en ferait un **nul** au sens des points de match. La conversion est légitime
+    ici, où l'on sait qui a gagné.
     """
     duel = rencontre.duel
     if duel is None or not duel.verrouille:
@@ -1039,12 +898,10 @@ def _volees(duel: Duel, *, cote_haut: bool) -> tuple[Volee, ...]:
 def _compter(volees: tuple[Volee, ...], zone: str) -> int:
     """Combien de flèches d'une valeur donnée — les 4ᵉ et 5ᵉ critères de départage (§10.1).
 
-    ⚠️ **Le X n'est pas compté comme un 10 ici**, et c'est une limite à connaître : le référentiel
-    §10.1 dit « nombre de 10 », sans trancher le sort du X. La qualification, elle, les distingue
-    (`domain/classement.py`). Aligner les deux demanderait de savoir laquelle des deux lectures le
-    club applique en poule — une question de règle, pas de code, et le CA d'E05US023 ne la pose pas.
-    On compte donc littéralement ce que la règle nomme, et l'écart est signalé plutôt que tranché
-    ici.
+    ⚠️ **Le X n'est pas compté comme un 10 ici** : le référentiel §10.1 dit « nombre de 10 » sans
+    trancher le sort du X, quand la qualification les distingue (`domain/classement.py`). Aligner
+    les deux demanderait de savoir laquelle des deux lectures le club applique en poule — une
+    question de règle, pas de code. On compte donc littéralement ce que la règle nomme.
     """
     return sum(1 for volee in volees for valeur in volee.valeurs if valeur == zone)
 
@@ -1092,16 +949,11 @@ def _qualifies_sans_lever(
 def _barrage_requis(classement: tuple[RangPoule, ...], configuration: ConfigurationPoules) -> bool:
     """Les **deux régimes d'ex æquo** d'ADR-0083 §5, et toute la différence est ici.
 
-    - La poule **classe** (`nb_qualifies` non déclaré) : le classement *est* le livrable, donc tout
-      ex æquo irréductible se départage.
-    - La poule **qualifie** : seul le franchissement de la barre compte. Deux archers à égalité aux
-      rangs 3-4 d'une poule qui en qualifie 2 **restent** à égalité — les départager reviendrait à
-      faire tirer des flèches pour une distinction que personne n'utilise.
-
-    ⚠️ **Un classement vide ou incomplet ne réclame rien.** Avant le premier tir, tous les membres
-    sont à 0 partout, donc tous ex æquo : signaler un barrage là annoncerait un départage à faire
-    avant même que la poule ait commencé. On exige donc qu'au moins une rencontre ait été comptée —
-    ce que trahit un décompte non nul quelque part.
+    La poule **classe** (`nb_qualifies` non déclaré) : le classement *est* le livrable, tout ex æquo
+    irréductible se départage. La poule **qualifie** : seul le franchissement de la barre compte —
+    deux archers aux rangs 3-4 d'une poule qui en qualifie 2 restent à égalité.
+    ⚠️ **Un classement vide ou incomplet ne réclame rien** : avant le premier tir tous les membres
+    sont ex æquo, donc on exige qu'au moins une rencontre ait été comptée.
     """
     if not any(ligne.decompte.points_match for ligne in classement):
         return False

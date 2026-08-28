@@ -1,26 +1,10 @@
-"""Endpoint REST du **suivi du déroulé** (E07US004, ADR-0064) — le plan rempli par la réalité.
+"""Suivi du déroulé — **la route est celle d'un créneau**, pas du tournoi (ADR-0075).
 
-`GET /api/v1/departs/{depart_id}/suivi-deroule` — **lecture publique**, comme le classement, le
-plan de cibles et le tableau de duels.
+Deux consommateurs pour un seul endpoint : l'écran de salle (public, non authentifiable) et le
+pilotage. La donnée est la même, seul l'habillage change.
 
-⚠️ **La route est celle d'un créneau** depuis E01US025 (ADR-0075,
-`docs/adr/0075-le-depart-est-la-portee-sportive.md`) : elle était
-`/tournois/{id}/suivi-deroule` et fusionnait les créneaux — même chemin que
-`/departs/{id}/classement` et `/departs/{id}/phases`, et pour la même raison (un départ rejoue le
-tournoi en entier, avec son effectif et son avancement propres).
-
-Deux consommateurs, et c'est le CA lui-même qui l'exige :
-l'**écran de salle** (projeté, sans authentification possible — c'est un poste public) et le
-**pilotage** (écran PC de l'organisateur). Un endpoint et non deux : la donnée est la même, seul
-l'habillage change (« un seul composant de dessin, trois surfaces »).
-
-**Rien de sensible n'y transite** : des types de phase, des comptes de duels, des tranches de rangs.
-Ni nom d'archer, ni code de poste, ni donnée de paiement — la règle 6 est tenue par construction,
-puisque la projection ne connaît que des structures.
-
-Le DTO **reprend** la forme de `GET /api/v1/formats/{id}/diagnostic` (E01US024) pour ses blocs, et
-lui **ajoute** un calque `avancement`. C'est délibéré : le composant de dessin du front reçoit la
-même structure à l'atelier et ici, il ne diffère que par ce qu'il superpose.
+⚠️ **Rien de sensible n'y transite par CONSTRUCTION** : des types de phase, des comptes de duels,
+des tranches de rangs — jamais un nom, un code de poste ou un montant. La règle 6 tient d'elle-même.
 """
 
 from __future__ import annotations
@@ -132,20 +116,11 @@ class AvancementTourReponse(BaseModel):
 class AvancementBlocReponse(BaseModel):
     """Le calque de réalité d'un bloc : statut, braquets remplis, tour en cours.
 
-    `statut` ∈ `a_venir` · `en_cours` · `en_pause` · `terminee`. `tour_courant` est `null` quand
-    rien ne tourne — phase pas encore démarrée, déjà close, ou tout son contenu tranché.
-
-    ⚠️ **`tour_courant` n'est plus un numéro de braquet** (E05US032, [ADR-0090]) : c'est le numéro du
-    tour de la phase, dans l'unité de son format — un tour d'arbre, un tour de poule, une **ronde**
-    de système suisse, une **manche** de Big Shoot Off. `libelle_tour_courant` porte le mot que la
-    salle emploie, **servi ici** et jamais redérivé côté client (`DETTE-020` compte déjà deux
-    domiciles pour cette règle).
-
-    ⚠️ **`nb_tours` n'est pas `len(tours)`** : `tours` porte les **braquets** — les tranches de rangs
-    qu'un tableau attribue au fil de l'eau —, et une phase qui ne classe qu'à la fin en a zéro tout
-    en comptant plusieurs tours. Il ne descend jamais sous 1.
-
-    [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+    `statut` ∈ `a_venir` · `en_cours` · `en_pause` · `terminee` ; `tour_courant` est `null` quand
+    rien ne tourne. ⚠️ **`tour_courant` n'est plus un numéro de braquet** (ADR-0090) : c'est le
+    tour de la phase, dans l'unité de son format — ronde de suisse, manche de Big Shoot Off…
+    `libelle_tour_courant` porte le mot de la salle, **servi ici** et jamais redérivé côté client
+    (`DETTE-020`). ⚠️ **`nb_tours` n'est pas `len(tours)`**, et ne descend jamais sous 1.
     """
 
     ordre: int
@@ -161,27 +136,13 @@ class AvancementBlocReponse(BaseModel):
     def de_bloc(
         bloc: AvancementBloc, type_phase: TypePhase, tranche: tuple[int, int] | None
     ) -> AvancementBlocReponse:
-        """⚠️ **Le libellé est servi, jamais recalculé à l'écran** (E05US032, [ADR-0090] §4).
+        """⚠️ **Le libellé est servi, jamais recalculé à l'écran** (E05US032, ADR-0090 §4).
 
-        Le front pourrait dériver « Demi-finale » de `tour_courant` et `nb_tours` — c'est ce que
-        `saisie-duels/duel.ts` fait déjà, et c'est précisément `DETTE-020` : deux domiciles pour une
-        règle de vocabulaire. E07US005 a refermé la même tentation en servant le libellé du domaine
-        au DTO ; on fait pareil, sinon l'US **aggrave** une dette qu'elle est censée contenir.
-
-        `place_en_jeu` reste à `None` : on nomme ici le tour **de la phase**, pas un match — la
-        petite finale se nomme au match, là où le routage et la vue publique la rendent déjà.
-
-        ⚠️ **`plage`, en revanche, est indispensable** (correctif de revue, axe adversarial). Sans
-        elle, `libelle_tour` nomme **par la distance au titre** un tour dont la tranche ne part pas
-        du rang 1 : une phase de `placement` alimentée par les perdants du tour 1 s'annonçait
-        « **Finale** » pour le match des places 7-8, et un tableau secondaire prélevant « les rangs
-        33 et suivants » faisait de même. C'est nommément le défaut que `libelle_tour` porte dans
-        ses propres encarts (« trois "Finale" simultanées sur le panneau de routage »), et l'écran
-        disait « tour 2 » — neutre et **vrai** — avant cette US : une régression de véracité sur la
-        surface même que l'US livre. Une plage qui commence au rang 1 est celle du titre et ne
-        discrimine rien : on ne la passe pas, pour laisser jouer la branche « distance au titre ».
-
-        [ADR-0090]: ../../docs/adr/0090-une-phase-avance-par-tours-un-tour-n-est-pas-un-braquet.md
+        Le front pourrait le dériver de `tour_courant`/`nb_tours` — c'est `DETTE-020`, deux
+        domiciles pour une règle de vocabulaire. `place_en_jeu` reste `None` : on nomme le tour
+        **de la phase**, pas un match. ⚠️ **`plage` est indispensable** : sans elle, `libelle_tour`
+        nomme par la **distance au titre** un tour dont la tranche ne part pas du rang 1. Une plage
+        partant du rang 1 ne discrimine rien : on ne la passe pas.
         """
         return AvancementBlocReponse(
             ordre=bloc.ordre,

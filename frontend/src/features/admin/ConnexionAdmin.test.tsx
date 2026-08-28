@@ -1,13 +1,10 @@
 // Écran d'accès administrateur — l'étiquetage des champs (E17US003, planche A01).
 //
-// Ce test tient **une puce de CA que l'œil ne suffit pas à vérifier** : « les champs ont un libellé
-// visible au-dessus ; un `placeholder` n'est pas un libellé ». L'US a remplacé les `placeholder` +
-// `aria-label` par un `<label>` enveloppant — meilleur, mais **fragile** : l'association est
-// implicite, et un composant de champ partagé introduit plus tard la casserait sans rien faire
-// rougir. Le champ redeviendrait alors anonyme pour un lecteur d'écran.
-//
-// `getByLabelText` est précisément l'assertion qui l'interdit : elle échoue si l'association se
-// perd, quelle qu'en soit la cause.
+// Tient **une puce de CA que l'œil ne suffit pas à vérifier** : « les champs ont un libellé visible
+// au-dessus ; un `placeholder` n'est pas un libellé ». L'US a remplacé `placeholder` + `aria-label`
+// par un libellé enveloppant — meilleur, mais **fragile** : l'association est implicite, et un
+// composant de champ partagé introduit plus tard la casserait sans rien faire rougir.
+// `getByLabelText` échoue si l'association se perd, quelle qu'en soit la cause.
 
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

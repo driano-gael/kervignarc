@@ -1,15 +1,11 @@
 // Plan de salle d'un tournoi (E01US008) — réservé à l'admin (monté sous `estAdmin`).
 //
-// Applique un **gabarit modèle** de la bibliothèque à ce tournoi : l'application en crée une
-// **copie** propre au tournoi, que l'on peut ensuite **ajuster** (nom, plafond cible par cible)
-// **sans altérer** le modèle d'origine. Un tournoi porte au plus un plan à la fois ; en choisir
-// un autre remplace le précédent. Ce plan sera la base du placement (EPIC-03).
-//
-// Vocabulaire (E16US001, ADR-0073) : un **pas de tir** est un groupement de cibles ; la place d'un
-// archer devant sa cible est un **couloir de tir** (A, B, C, D). Ce que règle cet écran est un
-// **plafond** de couloirs, pas un effectif : le placement en occupe au plus autant, et souvent
-// moins (les blasons ont leurs propres budgets — `domain/placement.py`). D'où « **jusqu'à** N
-// couloirs » dans les libellés, et l'aperçu des lettres en face de chaque réglage.
+// Applique un **gabarit modèle** de la bibliothèque : l'application en crée une **copie** propre au
+// tournoi, ajustable **sans altérer** le modèle. Un tournoi porte au plus un plan ; en choisir un
+// autre remplace le précédent. Vocabulaire (E16US001, ADR-0073) : un **pas de tir** groupe des
+// cibles, la place d'un archer est un **couloir de tir** (A-D). ⚠️ Ce que règle cet écran est un
+// **plafond** de couloirs, pas un effectif — le placement en occupe au plus autant, souvent moins
+// (les blasons ont leurs budgets), d'où « **jusqu'à** N couloirs ».
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

@@ -1,19 +1,11 @@
 // Tests du réglage « jusqu'où classer » sur l'écran de composition (E06US006, ADR-0070).
 //
-// Quatre choses s'y jouent, et chacune ferme un piège de l'US :
-//
-// 1. **Le réglage n'apparaît que sur un tableau.** Une poule ou un échauffement n'a pas d'arbre à
-//    tronquer ; l'offrir mènerait à un 422 dont la consigne n'est pas réalisable à l'écran ;
-// 2. **« Ne rien régler » reste distinct de « podium 4 »**, alors que les deux produisent le même
-//    tournoi. Les confondre écrirait un réglage sur chaque phase déjà composée ;
-// 3. **Un top N sans rang d'arrêt ne part pas au serveur** ;
-// 4. **Ce qui est affiché est ce qui est soumis** — y compris après un aller-**retour** de type.
-//
-// ⚠️ Le point 4 est celui que la première version de ce fichier a manqué, et il portait l'unique
-// bloquant de l'US : le test « oublie le réglage si la phase cesse d'être un tableau » s'arrêtait au
-// changement **aller** et ne revenait jamais sur un type en tableau. Le garde-fou était écrit,
-// testé, et fuyait par la porte d'à côté. C'est la leçon du fichier : un test qui suit le chemin
-// heureux d'un garde-fou ne prouve rien sur le chemin de retour.
+// Quatre pièges fermés : le réglage n'apparaît **que sur un tableau** (ailleurs il mènerait à un
+// 422 irréalisable) ; « ne rien régler » reste **distinct** de « podium 4 », sans quoi on écrirait
+// un réglage sur chaque phase déjà composée ; un top N sans rang d'arrêt ne part pas ; et **ce qui
+// est affiché est ce qui est soumis**, y compris après un aller-**retour** de type. ⚠️ Ce dernier
+// point portait l'unique bloquant de l'US : un test qui suit le chemin heureux d'un garde-fou ne
+// prouve rien sur le chemin de retour.
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

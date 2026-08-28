@@ -1,25 +1,11 @@
-// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisiePoules`, `SaisieSuisse`), à
-// l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux autres, et **rien
-// ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà voyagé à la main d'un
-// écran à l'autre. Le remède retenu est « rien » — la liste des formats à rencontres est close
-// (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
 // Écran de saisie de la **colline** (E05US027, ADR-0083) — surface **scoreur**.
 //
-// Jumeau de `SaisieSuisse` par la coquille et **identique** par le pavé : un défi *est* un duel
-// ordinaire (ADR-0083 §7), donc on remonte `DuelCharge` tel quel avec la famille `'colline'`. Ce
-// qui diffère est la **navigation** — on entre par la **manche**, pas par une ronde ni par un
-// numéro de match d'arbre : c'est le décor `RONDES_APPARIEES` du contrat de phase.
-//
-// Ce que le pavé apporte gratuitement : le mode (sets/cumul) résolu par l'arme, le barrage interne
-// à un défi nul, le verrou de validation, l'état optimiste hors-ligne et le rejeu à la reconnexion
-// (E04US009).
-//
-// ⚠️ **La manche suivante n'existe pas avant que la précédente soit close**, et la raison est plus
-// forte encore qu'au suisse : les défis de la manche `n+1` se calculent sur les **positions**
-// issues de la manche `n`. Tant qu'un défi n'est pas tranché, ces positions n'existent pas —
-// apparier par-dessus ne donnerait pas un appariement approximatif mais un appariement **faux**.
-// L'écran doit donc **nommer l'attente**, sans quoi le scoreur cherche une manche qui n'est nulle
-// part et croit à une panne.
+// ⚠️ `DETTE-079` : la coquille de ce panneau est écrite **trois fois** (ici, `SaisiePoules`,
+// `SaisieSuisse`) — rien ne rougit si un correctif n'est porté qu'à un seul. Le pavé est
+// **identique** (`DuelCharge`, famille `'colline'`) : un défi *est* un duel (ADR-0083 §7) ; seule
+// la **navigation** diffère, on entre par la manche. ⚠️ **La manche suivante n'existe pas avant que
+// la précédente soit close** : les défis de `n+1` se calculent sur les **positions** issues de `n`
+// — apparier par-dessus donnerait un appariement **faux**, pas approximatif.
 
 import { useState } from 'react'
 

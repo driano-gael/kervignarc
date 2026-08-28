@@ -1,22 +1,11 @@
-// Écran d'ajustement du plan de duels (E03US009, ADR-0048) — réservé à l'admin (monté sous
-// `estAdmin`).
+// Écran d'ajustement du plan de duels (E03US009, ADR-0048) — réservé à l'admin.
 //
-// On choisit une **phase de tableau** (élimination directe), puis on ajuste le placement de ses
-// duellistes au **glisser-déposer** : on glisse un jeton d'une cible à l'autre, vers une case libre
-// (déplacement) ou occupée (échange), ou vers la **réserve** (mise à l'écart). Le serveur reste
-// l'autorité : chaque geste est un PUT, et un refus (`409 deplacement_invalide`) laisse le plan
-// inchangé — on affiche l'alerte et on refetch. Drag & drop **HTML5 natif** : aucune dépendance.
-//
-// Jumeau de `placement/Placement.tsx` (plan de cibles de qualification), à deux différences près :
-//  - le signal d'équité est l'**adjacence** (adversaires côte à côte), pas la mixité de club ;
-//    en revanche le **cloisonnement** (E03US007) vaut ici aussi : c'est la même salle, réglée une
-//    fois pour le tournoi — d'où les libellés de réserve et la bannière importés de `placement` ;
-//  - **aucune** confirmation d'impact (E12US007) : la régénération est **directe** (ADR-0048).
-//
-// La **mise en page** est alignée sur celle du plan de cibles (E16US005) : une cible par ligne,
-// couloirs alignés en colonnes, repères sous le nom, réserve en panneau collant. Le refus A11 ne
-// visait que le plan de qualification, mais les deux écrans ont le même défaut, le même utilisateur
-// et le même PC — arbitrage du commanditaire au cadrage du 24/08/2026.
+// On ajuste le placement des duellistes d'une phase de tableau au **glisser-déposer** ; le serveur
+// reste l'autorité, un refus laisse le plan inchangé. Jumeau de `placement/Placement.tsx` à deux
+// différences : le signal d'équité est l'**adjacence** et non la mixité (le **cloisonnement** vaut
+// ici aussi — même salle, réglée une fois), et il n'y a **aucune** confirmation d'impact. Mise en
+// page alignée sur celle du plan de cibles (E16US005) : les deux écrans ont le même utilisateur et
+// le même PC (cadrage du 24/08/2026).
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -198,15 +187,11 @@ function PlanCharge({
   }
 
   // Nombre de colonnes de couloirs, **dérivé du plan** : les cibles n'ont pas toutes la même
-  // capacité, et les aligner d'une bande à l'autre demande une grille commune — une cible à 2
-  // places occupe alors les colonnes A et B, les deux suivantes restant vides. C'est le seul
-  // service que rend ce calcul, et c'est un vrai service.
+  // capacité, et les aligner d'une bande à l'autre demande une grille commune.
   //
   // ⚠️ Le `Math.min` n'est pas décoratif : sans lui, une capacité serveur > 4 ouvrirait N colonnes
-  // sur **toutes** les bandes du plan, en n'en remplissant que 4 (`POSITIONS.slice`) — donc une
-  // colonne fantôme qui rétrécit les autres. La grille ne « suit » pas un délestage du plafond :
-  // c'est `POSITIONS` qui le porte (`DETTE-010`), et le `Math.min` fait que le rendu reste cohérent
-  // en attendant E01US019.
+  // sur **toutes** les bandes en n'en remplissant que 4 (`POSITIONS.slice`) — donc une colonne
+  // fantôme qui rétrécit les autres. C'est `POSITIONS` qui porte le plafond (`DETTE-010`).
   const couloirs = Math.max(
     1,
     ...plan.cibles.map((cible) => Math.min(cible.capacite, POSITIONS.length)),

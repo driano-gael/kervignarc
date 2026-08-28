@@ -1,15 +1,9 @@
-"""Value object `BaremeQualification` — structure de l'épreuve de qualification (E01US009).
+"""Barème de qualification — volées et flèches par volée ; le total et le maximum en découlent.
 
-Un barème de qualification décrit **comment se tire et se compte** la qualification : un nombre de
-**volées** de chacune un nombre de **flèches**, le classement se faisant au **cumul** des points
-(glossaire : *Barème*, *Volée*). Le total de flèches et le score maximum en découlent (une flèche
-vaut au plus 10). Le preset FFTA 18 m est **20 volées de 3 flèches = 60 flèches**
-(`referentiel-ffta.md` §6.1) ; conformément au principe « le règlement est un template », il reste
-**modifiable** (§10.2).
+Preset FFTA 18 m : 20 volées de 3. Le règlement étant un **template**, il reste modifiable.
 
-Value object de domaine **pur** (immuable, sans dépendance framework), validé à la construction.
-Le mode de comptage est ici **implicitement le cumul** : les autres barèmes (sets, shoot-off, Big
-Shoot Off) concernent les duels et relèvent du moteur de phases (EPIC-05, ADR-0004).
+⚠️ **Le mode de comptage est implicitement le CUMUL** : les autres barèmes (sets, shoot-off, Big
+Shoot Off) concernent les duels et relèvent du moteur de phases. ADR-0004
 """
 
 from __future__ import annotations

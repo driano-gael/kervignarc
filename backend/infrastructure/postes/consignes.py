@@ -1,14 +1,8 @@
-"""Adapter : prises de contrôle des écrans de salle, en mémoire (E07US004, ADR-0064).
+"""Registre des prises de contrôle d'écran — en mémoire, **sans persistance**.
 
-Réalise le port `domain.ports.RegistreConsignes`. Dictionnaire `poste_id → PriseDeControle`, protégé
-par un verrou (les lectures viennent des threads du threadpool, comme `RegistrePresenceMemoire` et
-`PosteSessionStore`). **Sans persistance**, et c'est un choix, pas une facilité : une prise de
-contrôle est un geste du jour J (« podium 10 min ») ; un redémarrage du serveur doit **libérer** les
-écrans, jamais les laisser figés sur une consigne que plus personne ne se rappelle avoir posée. Le
-réglage durable, lui — le déroulé de vues —, est en base sur le `Poste`.
-
-Aucune éviction : le dictionnaire est borné par le nombre d'écrans d'un tournoi (quelques-uns), et
-le service retire les prises échues à chaque lecture.
+⚠️ **C'est un choix, pas une facilité** : une prise est un geste du jour J (« podium 10 min ») ; un
+redémarrage doit **libérer** les écrans, jamais les laisser figés sur une consigne que plus personne
+ne se rappelle avoir posée. Le réglage durable — le déroulé — est en base, lui. ADR-0064
 """
 
 from __future__ import annotations

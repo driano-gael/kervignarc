@@ -140,12 +140,52 @@ prettier avant chaque commit. La CI GitHub Actions est **bloquante** sur PR et s
     fantôme ou non documentée est bloquante.
 12. **Simplicité assumée hors domaine.** <!--regle:simplicite-assumee-hors-domaine--> L'infra reste simple : mono-club, local. La rigueur va au
     moteur métier, pas à l'outillage.
+13. **Le code porte des pointeurs, pas le raisonnement.** <!--regle:commentaires-pointeurs--> Un commentaire est le seul artefact
+    que **rien ne vérifie** — ni le compilateur, ni `mypy`, ni `eslint`, ni un test : une phrase
+    fausse y survit indéfiniment et se lit comme une preuve. Il ne survit donc que s'il satisfait
+    **au moins un** de ces trois tests ([ADR-0099](docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md)) :
+    **(a) contrainte non déductible** du fichier (une valeur qui dérive d'un autre fichier, un
+    invariant tenu ailleurs) ; **(b) avertissement** — une modification d'apparence innocente
+    casserait quelque chose que le code ne peut pas dire seul ; **(c) renvoi** d'**une ligne** vers
+    l'ADR, la story ou l'entrée de dette qui porte le raisonnement.
+    Sortent : historique de revue (c'est `git`), citations de CA (c'est [`stories/`](stories/)),
+    justification d'existence (c'est [`docs/dette.md`](docs/dette.md)), raisonnement long (c'est
+    l'ADR), paraphrase du code (c'est un échec de nommage).
+    ⚠️ **On ne coupe que ce qui existe ailleurs** — sinon on **déplace d'abord**. Le risque est
+    asymétrique : un commentaire de trop coûte une lecture, un savoir perdu coûte une US.
+    ⚠️ La maxime « un code commenté se lit mal » vaut pour le *quoi* et le *comment*, **pas pour le
+    pourquoi** : aucun nommage ne dit qu'une constante dérive d'une règle CSS d'une autre feature.
+    Le corps de commit, lui, reste long — il est immuable, donc il ne diverge pas.
+    **Trois contraintes de forme, qui priment sur le jugement** (ADR-0099, amendé le 27/08/2026 —
+    la version « trois tests » seule n'avait retiré que **0,3 %** du volume en trois vagues) :
+    **(i) huit lignes au plus par bloc.** Au-delà, ce n'est plus un avertissement mais un
+    raisonnement : il part en ADR et le code garde un renvoi. Seule règle de commentaire du projet
+    qui soit **mesurable**, donc la seule qui ne dérivera pas — et **la seule mécanisée** : elle
+    est vérifiée des deux côtés, par `backend/tests/test_commentaires_bornes.py` et
+    `frontend/src/commentaires.test.ts`, l'un et l'autre **sans tolérance** depuis E00US027.
+    ⚠️ **Périmètre exact**, parce qu'une porte qui se croit plus large qu'elle n'est éteint la
+    vigilance : côté backend, **tout le code de production `.py`** (les cinq couches, `atlas/`,
+    `release/`, les points d'entrée) ; côté front, tout `frontend/src` en `.ts` / `.tsx` / `.css`,
+    **tests compris**. Restent dehors `backend/tests/`, `migrations/`, `kervignarc.spec` et
+    `frontend/eslint.config.js` — écart tracé, chiffré et justifié en `DETTE-088`.
+    **(ii) aucune docstring tautologique** — si elle ne dit rien de plus que la signature, elle
+    disparaît (`par_club(club_id) -> list[Archer]` n'a pas besoin de « renvoie les archers du club »).
+    **(iii) un seul avertissement par bloc** — **indicateur de revue, non mécanisé**, et la nuance
+    compte : trois ⚠️ empilés signalent un module qui fait trop de choses ou un raisonnement à
+    sortir, mais la contrainte (i) **pousse en sens inverse** (fusionner pour tenir en huit lignes
+    empile les ⚠️). E00US027 s'est livrée en violant (iii) 153 fois : une règle démentie par son
+    propre commit d'introduction ne se tient plus jamais. On la relève donc à la lecture, on ne la
+    compte pas.
 
 ## Dette
 
 <!--regle:registre-de-dette--> Une dette **assumée** (technique ou de conception) s'inscrit au registre
 [`docs/dette.md`](docs/dette.md) **dans le commit qui l'introduit** : ligne au tableau + section de
-détail + marqueur `# DETTE-nnn` à l'endroit exact du raccourci. Une US qui **aggrave** une dette déjà
+détail + marqueur `DETTE-nnn` à l'endroit exact du raccourci. **La forme reconnue est le jeton
+`DETTE-nnn` où qu'il soit dans le commentaire**, pas seulement en tête de ligne : le geste de
+résorption est un `grep DETTE-nnn`, et exiger `# ` en tête ferait rater les sites où le marqueur
+vit à l'intérieur d'une phrase *(précisé en revue d'E00US027 — les deux conventions coexistaient
+sans être dites, ce qui rendait le grep de résorption faux)*. Une US qui **aggrave** une dette déjà
 listée élargit la ligne existante au lieu d'inventer un contournement local. Une dette silencieuse
 est remontée en **majeur** à la revue ; ce qui casse un cas utilisateur réel dès maintenant n'est pas
 de la dette mais un **bloquant** à corriger avant merge. Le registre n'est pas une liste de tâches :

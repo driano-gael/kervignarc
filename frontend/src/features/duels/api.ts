@@ -1,13 +1,10 @@
 // Accès API de la feature « plan de duels » (E03US009, ADR-0048) : ajustement manuel du placement
-// des duellistes d'une **phase de tableau** (élimination directe). Miroir des DTO exposés par le
-// backend (`api/v1/placement_duels.py`).
+// des duellistes d'une **phase de tableau**. Miroir des DTO d'`api/v1/placement_duels.py`.
 //
-// Jumeau du plan de cibles de qualification (`placement/api.ts`), à deux différences métier près :
-//  - on place les **duellistes** d'une **phase** (pas les inscrits d'un **départ**) ;
-//  - le signal d'équité n'est pas la mixité de club mais l'**adjacence** : deux adversaires d'un
-//    même duel doivent être placés **côte à côte** (`adjacence_non_garantie` au niveau cible).
-// Autre différence structurelle : **aucune** confirmation d'impact (E12US007) — la régénération est
-// directe (ADR-0048).
+// Jumeau du plan de cibles de qualification, à deux différences métier près : on place les
+// **duellistes** d'une **phase** (pas les inscrits d'un **départ**), et le signal d'équité n'est
+// pas la mixité de club mais l'**adjacence** — deux adversaires doivent être **côte à côte**. Autre
+// différence structurelle : **aucune** confirmation d'impact, la régénération est directe.
 
 import { fetchJson } from '../../shared/api/client'
 
@@ -29,17 +26,13 @@ export interface Placement {
   inscription_id: number
 }
 
-// Une cible du plan de duels : son rang (`index`), son plafond (`capacite`) et les duellistes posés
-// (`placements`, vide si la cible est libre).
+// Une cible du plan de duels : son rang, son plafond et les duellistes posés (vide si libre).
 //
-// `adjacence_non_garantie` (E03US009) : `true` quand la cible porte au moins un duel dont les deux
-// adversaires ne sont pas placés **côte à côte**. L'admin le voit pour ajuster à la main ; ce n'est
-// **pas** une erreur, juste un objectif d'organisation non atteint. Recalculé serveur à chaque
-// lecture (jamais persisté).
-//
-// `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage du tournoi
-// interdit de mêler — un plan de duels posé **avant** l'activation du réglage. Le cloisonnement
-// vaut pour la salle, donc pour les deux plans.
+// `adjacence_non_garantie` (E03US009) : `true` quand la cible porte un duel dont les adversaires ne
+// sont pas **côte à côte**. Ce n'est **pas** une erreur, juste un objectif d'organisation non
+// atteint ; recalculé serveur à chaque lecture, jamais persisté. `cloisonnement_non_respecte`
+// (E03US007) : un plan posé **avant** l'activation du réglage — le cloisonnement vaut pour la
+// salle, donc pour les deux plans.
 export interface CiblePlaceeDuel {
   index: number
   capacite: number

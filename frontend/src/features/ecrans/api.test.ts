@@ -1,21 +1,11 @@
 // Garde-fou des **bornes miroir** du réglage d'écran (correctif de revue E16US009).
 //
-// ⚠️ Ce fichier ne teste pas du comportement : il **épingle des constantes**. C'est délibéré, et
-// c'est le même patron que `pagination.test.ts` pour les *défauts* — que l'US avait posé pour eux
-// et oublié pour les *bornes*, alors que le raisonnement est identique. Trois axes de revue l'ont
-// relevé.
-//
-// Ce que le trou coûtait, concrètement : resserrer `NOMS_PAR_PAGE_MAX` côté domaine laissait
-// `<input max={100}>` dans le formulaire d'admin, donc l'organisateur saisissait une valeur que le
-// serveur refusait ensuite en 422 sur un champ que l'UI présentait comme valide ; l'élargir laissait
-// le formulaire interdire une valeur légale. Le serveur reste l'autorité (le coût est ergonomique,
-// jamais fonctionnel) — mais un écart entre les deux ne se voit nulle part sans ce fichier, ni au
-// typage ni au lint.
-//
-// Contrepartie côté serveur : `backend/tests/test_domain_ecran.py`
-// (`test_les_bornes_du_reglage_de_pages_sont_inclusives`), qui épingle les mêmes six valeurs en
-// littéraux. Les deux fichiers s'entre-citent : c'est un garde-fou de **lecture**, pas une
-// contrainte de compilation — voir la note d'honnêteté du même nom dans ADR-0098.
+// ⚠️ Ce fichier ne teste pas du comportement : il **épingle des constantes** — même patron que
+// `pagination.test.ts` pour les *défauts*, oublié pour les *bornes* (relevé par trois axes). Le
+// trou coûtait : resserrer `NOMS_PAR_PAGE_MAX` côté domaine laissait le formulaire proposer 100,
+// donc un 422 sur un champ présenté comme valide ; l'élargir faisait interdire une valeur légale.
+// Contrepartie serveur : `test_domain_ecran.py` épingle les mêmes six valeurs — garde-fou de
+// **lecture**, pas de compilation (ADR-0098).
 
 import { describe, expect, it } from 'vitest'
 import {

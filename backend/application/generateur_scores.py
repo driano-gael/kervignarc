@@ -1,19 +1,9 @@
-"""Génération de scores plausibles pour le bot de simulation (E15US003, ADR-0055 §4).
+"""Générateur de scores plausibles pour la démo — pas de fidélité statistique visée, mais un
+déroulé **lisible** où les totaux s'étalent, pour que le classement ait du sens.
 
-Stratégie **injectable** (règle 1/2) qui fabrique des volées vraisemblables pour le pilote
-automatique : à partir des **zones légales** d'un blason, d'un nombre de flèches et d'un **niveau**
-d'archer, elle tire une volée en favorisant le centre d'autant plus que l'archer est fort. Le but
-n'est **pas** la fidélité statistique au tir réel (ce n'est pas une règle FFTA — c'est de
-l'outillage de démo, comme `ServiceJeuEssai` d'E15US001), mais un déroulé **lisible** où les totaux
-**s'étalent** pour que le classement ait du sens.
-
-**Déterminisme (règle 9).** Toute l'aléa passe par un `random.Random` **injecté** (issu de la graine
-de la session) — jamais le module `random` global. Même graine ⇒ même déroulé ⇒ tests
-reproductibles.
-
-**Application, pas domaine.** « Un score plausible » n'est pas un invariant métier : la stratégie
-vit au niveau applicatif, injectée à la composition root (règle 8), substituable sans toucher au
-domaine.
+⚠️ **Toute l'aléa passe par un `random.Random` INJECTÉ**, jamais le module global : même graine,
+même déroulé, tests reproductibles (règle 9). « Un score plausible » n'étant pas un invariant
+métier, la stratégie vit au niveau applicatif, substituable sans toucher au domaine. ADR-0055
 """
 
 from __future__ import annotations

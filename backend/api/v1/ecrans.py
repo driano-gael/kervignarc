@@ -1,21 +1,8 @@
-"""Endpoints REST des **écrans de salle** (E07US004, ADR-0064).
+"""Écrans de salle — préparation admin, et affichage lu par l'écran rattaché.
 
-Deux routers, deux portées — le même partage que les postes de cible :
-
-- **Préparation & pilotage** (`/api/v1/tournois/{tournoi_id}/ecrans`) : réservés à l'admin. Créer,
-  renommer, régler le déroulé, supprimer, **prendre le contrôle** et **rendre la main**. Les
-  réponses portent le `code` : ce sont des secrets d'usage à imprimer, comme pour les cibles.
-- **Affichage** (`/api/v1/ecrans/session/affichage`) : ce que l'écran rattaché doit montrer
-  *maintenant*, protégé par la session de poste (`exiger_poste`) — le rattachement lui-même passe
-  par `/api/v1/postes/session`, strictement inchangé (CA : *« même mécanisme que la tablette »*).
-
-**Aucun endpoint ne pousse un ordre à un écran.** L'affichage est une **lecture** que l'écran
-répète ; la prise de contrôle est un **état** que l'admin pose. C'est la décision d'ADR-0064, et
-elle se voit ici : `prendre_le_controle` répond à l'admin, pas à l'écran.
-
-Écritures et lectures : seuls la création, le renommage, le réglage du déroulé et la suppression
-touchent la base — donc la **file** (writer unique, ADR-0005). Prendre le contrôle et rendre la main
-n'écrivent qu'en mémoire (registre de consignes) : hors file, threadpool.
+⚠️ **Aucun endpoint ne pousse un ordre à un écran** (ADR-0064) : l'affichage est une **lecture** que
+l'écran répète, la prise de contrôle un **état** que l'admin pose — `prendre_le_controle` répond à
+l'admin, pas à l'écran. Prendre le contrôle et rendre la main n'écrivent qu'en mémoire : hors file.
 """
 
 from __future__ import annotations
@@ -46,22 +33,11 @@ session_router = APIRouter(prefix="/api/v1/ecrans/session", tags=["ecrans"])
 class VueProgrammeeDTO(BaseModel):
     """Une étape d'un déroulé : quelle vue, combien de temps.
 
-    **La vue est typée `VueEcran`, la cadence ne l'est pas** — et la distinction n'est pas un
-    caprice (correctif de revue) :
-
-    - `vue` désigne un **catalogue fermé**. Son appartenance relève du **format** de la requête, pas
-      d'une règle métier : `VueEcran` *est* le type. La typer ici fait rejeter une valeur inconnue
-      par Pydantic, en **400 `requete_invalide`** avec le champ fautif. La version d'origine
-      déclarait `vue: str` et traduisait dans le corps du handler :
-      `VueEcran("affectations")` levait
-      un `ValueError` nu, sans gestionnaire typé, qui retombait sur le filet `Exception` → **500 +
-      traceback journalisé**. Et les deux valeurs qui déclenchaient le cas — `affectations`,
-      `tableaux` — sont précisément celles que le CA nomme et que le catalogue ne livre pas encore,
-      donc les premières qu'un client enverra.
-    - `cadence_s` porte au contraire une **règle** (5 s ≤ cadence ≤ 3600 s est un jugement sur la
-      lisibilité à dix mètres). La répéter en `Field(ge=…, le=…)` la ferait vivre à deux endroits
-      (règle 2) et la dégraderait en 400 générique, là où le domaine rend un **422
-      `cadence_ecran_invalide`** exploitable. Même parti pour le libellé et la longueur de séquence.
+    ⚠️ **La vue est typée `VueEcran`, la cadence ne l'est pas.** `vue` désigne un **catalogue
+    fermé** — affaire de **format**, donc Pydantic rejette une valeur inconnue en **400** avec le
+    champ fautif ; déclarée `str`, elle levait un `ValueError` nu → **500 + traceback**, et sur les
+    deux valeurs que le CA nomme sans les livrer. `cadence_s` porte au contraire une **règle** (5 s
+    ≤ c ≤ 3600 s) : la répéter en `Field(ge=…)` la ferait vivre à deux endroits (règle 2).
     """
 
     vue: VueEcran
@@ -320,14 +296,11 @@ async def regler_pages(
 ) -> EcranReponse:
     """Fixe le découpage et la cadence des listes projetées par un écran (**admin**, via file).
 
-    **Route distincte du déroulé**, et non un champ de plus sur `PUT …/deroule` : les deux réglages
-    répondent à deux questions différentes (*quelles vues* / *comment une liste se lit de loin*) et
-    se posent à deux moments différents. Les fondre aurait obligé l'écran d'admin à renvoyer la
-    séquence de vues entière pour corriger une cadence de page — donc à pouvoir l'écraser par
-    inadvertance.
-
-    `404` / `409` comme le renommage ; `422 nombre_de_noms_par_page_invalide` ou
-    `422 cadence_de_page_invalide` si une valeur sort des bornes.
+    **Route distincte du déroulé**, et non un champ de plus sur `PUT …/deroule` : deux questions
+    différentes (*quelles vues* / *comment une liste se lit de loin*), posées à deux moments. Les
+    fondre aurait obligé l'écran d'admin à renvoyer la séquence entière pour corriger une cadence —
+    donc à pouvoir l'écraser par inadvertance. `404`/`409` comme le renommage ; `422
+    nombre_de_noms_par_page_invalide` ou `422 cadence_de_page_invalide` hors bornes.
     """
     service: ServicePostes = request.app.state.service_postes
     write_queue: WriteQueue = request.app.state.write_queue

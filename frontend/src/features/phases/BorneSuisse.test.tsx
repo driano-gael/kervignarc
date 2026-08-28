@@ -1,15 +1,11 @@
 // La **borne d'effectif** d'une phase au système suisse, sur l'écran des phases (E05US030).
 //
-// ⚠️ **Ce fichier existe parce que la revue a montré qu'aucun test ne pouvait voir le défaut.**
-// `decrireBorne` était pure, testée, et parfaitement verte pendant que l'écran ne lui donnait
-// **aucun** effectif (`effectif={null}`) : la borne ne s'affichait donc nulle part, précisément sur
-// le seul écran où « l'effectif du jour » du CA existe vraiment. Un test de formatage ne voit pas
-// un défaut de câblage ; seul un test de rendu le voit.
-//
-// Le second cas garde l'autre moitié : la borne affichée est celle que le **serveur** a calculée
-// (`rondes_maximales`), pas celle que le miroir TypeScript recalculerait. Les deux formules
-// coïncident aujourd'hui — c'est bien pour ça qu'il faut l'asserter : le jour où elles divergeront,
-// rien d'autre ne le dira.
+// ⚠️ **Aucun test ne pouvait voir le défaut** : `decrireBorne` était pure, testée et verte pendant
+// que l'écran ne lui donnait **aucun** effectif — la borne ne s'affichait nulle part. Un test de
+// formatage ne voit pas un défaut de câblage ; seul un test de rendu le voit. Le second cas garde
+// l'autre moitié : la borne affichée est celle que le **serveur** a calculée (`rondes_maximales`),
+// pas celle que le miroir TypeScript recalculerait — les deux coïncident aujourd'hui, d'où
+// l'assertion.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

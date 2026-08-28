@@ -1,18 +1,11 @@
 // Accès HTTP des **poules** (E05US023, ADR-0083) — miroir des DTO de `api/v1/poules.py`.
 //
-// Deux lectures seulement ici : la **répartition** (ce que le réglage produit sur l'effectif réel,
-// sans exiger salle ni plan) et l'**état** de la phase (groupes, blocs de couloirs, rencontres par
-// tour, classements, barrages requis). Les **écritures** ne vivent pas dans cette feature : une
-// rencontre de poule est un duel ordinaire (ADR-0083 §7), donc elle s'écrit par les hooks de
-// `features/saisie-duels`, avec la famille `'poule'` — c'est ce qui lui donne gratuitement
-// l'idempotence, la file hors-ligne et le rejeu.
-//
-// **Deux vues, deux DTO** (correctif de revue E05US023). La consultation (`/etat`, portée
-// `'aucune'`) est ouverte comme le tableau public ou le classement (E10US001) — elle porte donc un
-// contenu **restreint** : ni flèches, ni barrage interne, ni zones/barème du pavé, ni nom du
-// bénévole validateur. La saisie (`/saisie`, portée `'scoreur'`) porte le duel entier. La première
-// version servait le DTO du scoreur sur la route anonyme, ce qui publiait l'identité d'un bénévole
-// et le tir flèche à flèche à qui interrogeait le LAN.
+// Deux lectures seulement : la **répartition** et l'**état** de la phase. Les **écritures** ne
+// vivent pas ici — une rencontre de poule est un duel ordinaire (ADR-0083 §7), donc elle passe par
+// `features/saisie-duels` avec la famille `'poule'`, ce qui lui donne idempotence, file hors-ligne
+// et rejeu. ⚠️ **Deux vues, deux DTO** : `/etat` (portée `'aucune'`) est **restreint** — ni
+// flèches, ni barrage interne, ni nom du validateur ; `/saisie` (portée `'scoreur'`) porte le duel
+// entier. La première version servait le DTO scoreur sur la route anonyme.
 
 import { fetchJson } from '../../shared/api/client'
 import type { Duel, Duelliste } from '../saisie-duels/api'

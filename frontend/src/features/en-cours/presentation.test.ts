@@ -1,25 +1,11 @@
 // Tests de `phaseAAtterrir` — la règle d'atterrissage de l'onglet « En cours » (E05US031).
 //
-// **Dérivés du CA**, pas de l'implémentation : le commanditaire a demandé, le 18/08/2026, un onglet
-// « qui se place sur la phase en cours » avec la possibilité de remonter le déroulé du départ. Cette
-// phrase se teste, et c'est ce qui est écrit ici — la fonction est ensuite libre de son moyen.
-//
-// ⚠️ **Le régime de test avait été mal qualifié, et la revue l'a corrigé (axe B).** L'en-tête
-// d'origine invoquait « API, repository, câblage : tests après l'implémentation » au motif que
-// E05US031 est une US d'écran. C'était faux : `phaseAAtterrir` porte une **règle**, pas du câblage,
-// et cette règle vient d'un CA qui existait **avant** la première ligne de code (l'arbitrage du
-// cadrage du 18/08). « Écran » n'est aucun des trois termes de la dérogation ; ces cas auraient dû
-// être écrits d'abord.
-//
-// La correction n'est pas seulement rédactionnelle : deux des six cas d'origine (`en_pause`,
-// `a_venir`) ne dérivaient d'aucun CA — ils enregistraient le résultat d'un choix d'implémentation,
-// exactement le travers que la règle 9 vise. Ils sont conservés parce qu'ils sont **justes**, mais
-// rattachés explicitement à ce qu'ils gardent, et le septième cas ci-dessous vient d'un défaut réel
-// trouvé en revue, pas du code.
-//
-// *(Le module voisin `shared/duels/rencontre.ts`, lui, relevait bien du régime « tests après » —
-// mais comme **non-régression** : sa lecture est l'extraction littérale de `LigneDuel`, livré en
-// E07US005, donc l'oracle EST le comportement actuel. Ce n'est pas le même motif.)*
+// **Dérivés du CA** : le commanditaire a demandé le 18/08/2026 un onglet « qui se place sur la
+// phase en cours », avec remontée du déroulé. ⚠️ **Le régime de test avait été mal qualifié**
+// (relevé axe B) : l'en-tête invoquait « API, repository, câblage : tests après l'implémentation »
+// au motif que c'est une US d'écran — or `phaseAAtterrir` porte une **règle**, issue d'un CA
+// antérieur au code. Deux cas (`en_pause`, `a_venir`) enregistraient un choix d'implémentation ;
+// conservés parce que justes, mais rattachés à ce qu'ils gardent.
 
 import { describe, expect, it } from 'vitest'
 import { phaseAAtterrir, type PhaseLisible } from './presentation'

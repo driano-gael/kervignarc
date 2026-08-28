@@ -1,29 +1,8 @@
-"""Agrégat `EntreeAudit` — une entrée du **journal d'audit métier** (E10US005).
+"""Trace d'audit — **qui / quand / avant-après** (`D-04`), en **ajout seul** et immuable.
 
-Le jour J, des actes **sensibles** sont posés : un scoreur **valide** une série (elle se
-verrouille), un rôle habilité **corrige** un score verrouillé, un archer est déclaré en **forfait**.
-En cas
-de litige (« qui a validé ma série à 8, pas à 9 ? »), il faut pouvoir répondre. Chaque entrée fige
-donc les quatre invariants d'une trace utile — **qui / quand / avant-après** (CDC UX `D-04`) —, plus
-l'**objet** sur lequel l'action a porté et sa **nature** (`ActionAuditee`).
-
-Trace en **ajout seul** (cf. port `AuditRepository`) : une entrée ne se modifie pas — la corriger la
-viderait de sa valeur de preuve. D'où un agrégat **immuable** (`frozen`).
-
-L'`auteur` est le **nom** de qui a agi (un scoreur, l'admin), **pas une clé étrangère** : la trace
-d'une validation doit survivre à la **suppression** du scoreur (E10US003) — un scoreur qui ne vient
-plus est retiré, ses validations passées restent lisibles. Stocker son `id` casserait à sa
-suppression ; on fige donc le nom au moment de l'acte.
-
-**Socle E10US005** : cet agrégat est ce que les producteurs construisent pour laisser leur trace.
-**Ils existent tous** — la validation et la correction (E04US002), le forfait (E04US015 / ADR-0050,
-ex-E12US004), le paiement (E08US002), le replacement (E12US007), le remboursement (E08US005), le
-lancement de tour (E12US002) —, et ils écrivent leur `EntreeAudit` **dans la même commande de file**
-que l'acte qu'elle décrit : le plus souvent **atomiquement avec leur agrégat** (`*_avec_trace` du
-repository), sinon par `ServiceAudit.consigner`. Voir `application/audit.py` pour le pourquoi des
-deux formes. La surface de **consultation** admin (`lister` + endpoint `GET`) est livrée elle aussi.
-
-*(Rectifié le 08/08/2026 : ce paragraphe disait que les producteurs « n'existent pas encore ».)*
+⚠️ **L'`auteur` est le NOM, jamais une clé étrangère** : la trace d'une validation doit survivre à
+la **suppression** du scoreur qui l'a faite. Stocker son `id` casserait à sa suppression ; on fige
+donc le nom au moment de l'acte — même parti que le registre des remboursements.
 """
 
 from __future__ import annotations
@@ -43,22 +22,10 @@ class ActionAuditee(str, Enum):
     """Nature de l'acte sensible tracé — l'ensemble **fermé** des actions du CA E10US005.
 
     `(str, Enum)` : la valeur est un slug stable, stocké tel quel en base (comme `StatutTournoi`).
-    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (E04US015 / ADR-0050,
-    ex-E12US004 — **livré**, `application/forfaits.py`),
-    `REPLACEMENT` (E12US007 — régénération **massive** du plan de cibles, quand des scores existent
-    déjà, [ADR-0040]), `PAIEMENT` (E08US002 — marquage d'un statut de paiement, simple ou groupé :
-    un mouvement d'argent se trace), `LANCEMENT` (E12US002, [ADR-0056] — l'organisateur fait
-    **partir** un ou plusieurs duels prêts : un acte de pilotage du jour J, daté et attribué, qui
-    **déclenche la diffusion** du signal aux postes/écrans, sans poser de statut sur le tableau),
-    `REMBOURSEMENT` (E08US005, [ADR-0057] — l'admin **traite** une somme encaissée à rendre : la
-    marque « remboursé » ou « reporté » d'un poste du registre ; un mouvement d'argent, comme le
-    paiement, mais **côté sortie**. La *création* du poste n'est **pas** tracée ici : la ligne du
-    registre **est** sa trace datée — l'audit ne suit que l'acte **humain**).
-    Les nommer ici n'anticipe pas leur code : c'est le **vocabulaire** du CA.
-
-    [ADR-0040]: ../../docs/adr/0040-alerte-par-calcul-d-impact.md
-    [ADR-0056]: ../../docs/adr/0056-lancement-d-un-tour-acte-audite-et-diffuse.md
-    [ADR-0057]: ../../docs/adr/0057-registre-de-remboursements.md
+    Producteurs : `VALIDATION`/`CORRECTION_SCORE` (E04US002), `FORFAIT` (ADR-0050), `REPLACEMENT`
+    (ADR-0040, régénération massive quand des scores existent), `PAIEMENT` (E08US002), `LANCEMENT`
+    (ADR-0056), `REMBOURSEMENT` (ADR-0057 — le *traitement*, pas la création du poste : la ligne du
+    registre est déjà sa trace datée, l'audit ne suit que l'acte **humain**).
     """
 
     VALIDATION = "validation"
@@ -74,12 +41,9 @@ class ActionAuditee(str, Enum):
 class EntreeAudit:
     """Une entrée du journal d'audit. `id` vaut `None` tant qu'elle n'est pas persistée.
 
-    `avant`/`apres` sont **optionnels** : une **validation** est un évènement sans état antérieur
-    (l'objet dit *quelle* série a été verrouillée, il n'y a pas d'« avant » à opposer à un
-    « après ») ; une **correction**, elle, les renseigne (l'ancienne et la nouvelle valeur). Ce sont
-    des
-    représentations **textuelles** libres, laissées au producteur — le socle ne présume pas de leur
-    forme.
+    `avant`/`apres` sont **optionnels** : une **validation** est un évènement sans état antérieur,
+    une **correction** les renseigne (ancienne et nouvelle valeur). Ce sont des représentations
+    **textuelles** libres, laissées au producteur — le socle ne présume pas de leur forme.
     """
 
     tournoi_id: TournoiId
@@ -103,12 +67,11 @@ class EntreeAudit:
     ) -> EntreeAudit:
         """Construit une entrée valide.
 
-        `auteur` et `objet` sont normalisés (espaces de bord retirés) et ne peuvent être vides
-        (`AuteurAuditInvalide`, `ObjetAuditInvalide`) — sans eux, la trace ne dit pas *qui* ni *sur
-        quoi*. `horodatage` (« quand ») est fourni par l'appelant via le port `Horloge` (jamais lu
-        ici : le domaine reste pur et déterministe) et doit être un instant **UTC** *aware*
-        (`HorodatageAuditInvalide` sinon) : la persistance réattache UTC en aveugle à la relecture,
-        ce qui n'est fidèle que si l'écrit était déjà UTC. `avant`/`apres` restent **verbatim**.
+        `auteur` et `objet` sont normalisés et non vides (`AuteurAuditInvalide`,
+        `ObjetAuditInvalide`) — sans eux la trace ne dit ni *qui* ni *sur quoi*. ⚠️ `horodatage`
+        est fourni par l'appelant via le port `Horloge` (le domaine reste pur) et doit être **UTC**
+        *aware* : la persistance réattache UTC en aveugle à la relecture, ce qui n'est fidèle que
+        si l'écrit l'était déjà. `avant`/`apres` restent **verbatim**.
         """
         return EntreeAudit(
             tournoi_id=tournoi_id,

@@ -1,19 +1,11 @@
 // Tests de l'écran « **Prêt à démarrer ?** » (E16US012).
 //
-// Ce que ces tests gardent, et pourquoi ils montent le composant plutôt que d'appeler une fonction :
-// le CA de l'US porte sur ce que l'organisateur **voit avant de cliquer**. La règle, elle, est déjà
-// prouvée au domaine (`test_domain_jalon.py`) et l'accord avec les gardes au service
-// (`test_service_jalons.py`) ; ce qui ne se lit qu'à l'écran, c'est :
-//
-//   - « il liste **ce qui manque** » — les deux manquements ensemble, pas l'un après l'autre ;
-//   - « il **avertit sans bloquer** » (`D-15`) — le bouton reste cliquable même quand `pret` est
-//     faux, parce que le refus appartient au serveur (arbitrage E05US021) ;
-//   - « il porte **l'action** correspondante » — celle que le serveur offre, jamais une déduite du
-//     statut (`useTransitions` est la source unique de la topologie, ADR-0026 §2).
-//
-// ⚠️ Le test « le bouton n'est pas grisé » est le plus important du fichier : c'est la seule chose
-// qui empêche un futur correctif « d'ergonomie » de transformer cet écran en **seconde source** de
-// garde, exactement ce que le CA « sans doublonner ce qui existe » interdit.
+// Ils montent le composant parce que le CA porte sur ce que l'organisateur **voit avant de
+// cliquer** ; la règle est déjà prouvée au domaine et au service. Restent trois choses qui ne se
+// lisent qu'à l'écran : les deux manquements listés **ensemble**, l'avertissement **sans blocage**
+// (`D-15`, arbitrage E05US021), et l'action venue de `useTransitions`. ⚠️ Le test « le bouton n'est
+// pas grisé » est le plus important : seul rempart contre un correctif d'ergonomie qui ferait de
+// cet écran une **seconde source** de garde.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

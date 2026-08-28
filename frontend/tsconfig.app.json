@@ -4,7 +4,7 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    /* `node` **n'est pas** ici. Mais attention au faux sentiment de sécurité : les deux tests qui
+    /* `node` **n'est pas** ici. Mais attention au faux sentiment de sécurité : les tests qui
        lisent les sources sur disque le déclarent par `/// <reference types="node" />`, et cette
        directive **injecte le paquet dans le programme entier**, pas dans le seul fichier. Retirer
        `node` d'ici ne referme donc rien à soi seul — vérifié par mutation à la revue, après qu'une

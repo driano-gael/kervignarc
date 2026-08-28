@@ -1,14 +1,10 @@
 // La jointure **étape → phase de créneau** par le rang, au pilotage (E16US002).
 //
-// ⚠️ **Ce fichier existe parce que la jointure avait été livrée sans aucune garde**, et deux axes
-// de revue l'ont relevé en 2ᵉ passe : `features/suivi-deroule/` ne contenait pas un seul test, et
-// aucun test ailleurs ne montait `PilotageCreneau`. C'est pourtant l'écran où l'on **démarre** et
-// où l'on **termine** une phase — donc le seul où confondre deux qualifications homonymes coûte
-// quelque chose : publier le mauvais classement.
-//
-// La jointure se fait par `ordre` et non par identifiant, parce que c'est la clé partagée entre une
-// étape du déroulé et ses instances dans chaque créneau (ADR-0076 §3) — `application/phases.py`
-// l'écrit en toutes lettres, « le rang **est** la clé de jointure ».
+// ⚠️ **Livrée sans aucune garde**, relevé en 2ᵉ passe : `features/suivi-deroule/` ne contenait pas
+// un test, et rien ne montait `PilotageCreneau` — l'écran où l'on **démarre** et **termine** une
+// phase, donc le seul où confondre deux qualifications homonymes coûte un mauvais classement
+// publié. La jointure se fait par `ordre`, clé partagée entre une étape et ses instances (ADR-0076
+// §3, `application/phases.py`).
 
 import { describe, expect, it } from 'vitest'
 

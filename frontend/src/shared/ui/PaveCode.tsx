@@ -1,19 +1,11 @@
 // Pavé de saisie d'un code de terrain — retour maquettes du 04/08/2026 (S01).
 //
-// *« Un pavé de saisie ok, mais qui ne laisse pas de caractère non accessible, et adapté tablette et
-// téléphone. »* La variante retenue est **B — le code court domine** : *« je ne suis pas sûr que les
-// caméras soient toujours accessibles »*. Le code cesse donc d'être le secours du QR pour devenir la
-// voie principale, et il doit se taper **sans clavier système** — un clavier de téléphone impose de
-// chercher la bascule chiffres/lettres au milieu d'un code de six symboles mixtes.
-//
-// **« Caractère non accessible » a un sens précis ici.** Le serveur tire ses codes dans un alphabet
-// **sans confondables** — `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, soit ni `I`, ni `O`, ni `0`, ni `1`
-// (cf. `backend/infrastructure/postes/codes.py`, même alphabet côté scoreurs). Aucun code ne contient
-// donc ces quatre symboles… mais le champ texte les laissait saisir, pour finir par un refus serveur
-// incompréhensible : *« j'ai pourtant bien tapé le O »*. Le pavé ne les propose pas, et le collage
-// clavier les filtre. L'ambiguïté est traitée là où elle naît, au lieu d'être signalée après coup.
-//
-// L'alphabet et la normalisation vivent dans `codeTerrain.ts` (fonctions pures, testées à part).
+// Variante retenue **B — le code court domine** (« je ne suis pas sûr que les caméras soient
+// toujours accessibles ») : le code devient la voie principale, et doit se taper **sans clavier
+// système**. ⚠️ « Caractère non accessible » a un sens précis : le serveur tire ses codes dans un
+// alphabet **sans confondables** (ni `I`, ni `O`, ni `0`, ni `1`), que le champ texte laissait
+// pourtant saisir — pour finir sur un refus incompréhensible. L'ambiguïté est traitée là où elle
+// naît. Alphabet et normalisation vivent dans `codeTerrain.ts`.
 
 import { useId } from 'react'
 import { ALPHABET_CODE, LONGUEUR_CODE, normaliserCode } from './codeTerrain'

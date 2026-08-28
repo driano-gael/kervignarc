@@ -1,18 +1,10 @@
 """L'historique réel d'une règle, lu dans git.
 
-`git log -L <debut>,<fin>:CLAUDE.md` suit un **bloc de lignes** à travers l'historique, y compris
-quand le bloc se déplace. C'est ce qui donne l'historique complet d'une règle : les incises datées
-écrites à la main n'en couvrent que six, alors que dix-neuf commits ont touché le fichier. Les
-sujets de commit portent le périmètre d'US (`feat(e02us002): …`), donc le lien règle → US se déduit
-sans heuristique.
-
-⚠️ **Pourquoi cette sortie est isolée dans son propre fichier.** Le reste des données générées est
-une fonction pure de l'arbre de travail, donc comparable à l'octet près en CI. L'historique, lui,
-ne l'est pas : au moment du hook pre-commit, le commit en cours **n'existe pas encore**, alors que
-la CI — qui tourne une fois la branche poussée — le voit. Une comparaison stricte serait donc
-**rouge en permanence**, et une porte toujours rouge finit désactivée. D'où la vérification par
-**tolérance d'ajout** (cf. `rendu.py`) : la régénération peut contenir des entrées de plus, jamais
-en contredire une déjà commitée.
+`git log -L` suit un **bloc de lignes** à travers l'historique, y compris quand il se déplace : les
+incises datées à la main n'en couvrent que six sur dix-neuf commits. ⚠️ **Cette sortie est isolée**
+parce qu'elle n'est pas une fonction pure de l'arbre : au moment du hook, le commit en cours
+**n'existe pas encore**, alors que la CI le voit — d'où la **tolérance d'ajout** (cf. `rendu.py`),
+la régénération pouvant contenir des entrées de plus, jamais en contredire une.
 """
 
 from __future__ import annotations
@@ -33,13 +25,10 @@ def _git(racine: Path, *arguments: str) -> str:
     """Appelle git en lecture seule. Rend une chaîne vide sur **toute** défaillance.
 
     ⚠️ Ne dit rien de ce que la génération fait de ce vide : depuis qu'un historique vide écrit en
-    silence a été identifié comme une panne muette, `assembler()` **refuse de générer** sans git.
-    Ici on dégrade ; c'est l'appelant qui décide si la dégradation est acceptable — et il a décidé
-    que non.
-
-    Le silence couvre aussi le code retour non nul et le dépassement de délai : un `git log -L`
-    hors bornes rend donc une règle sans histoire plutôt qu'une exception. C'est voulu (le cas
-    existe et il est figé par un test), mais c'est un silence, pas une absence de problème.
+    silence a été identifié comme une panne muette, `assembler()` **refuse de générer** sans git —
+    ici on dégrade, l'appelant décide, et il a décidé que non. Le silence couvre aussi le code
+    retour non nul et le dépassement de délai : un `git log -L` hors bornes rend une règle sans
+    histoire plutôt qu'une exception. C'est voulu et figé par un test, mais c'est un silence.
     """
     try:
         # Arguments littéraux, jamais d'entrée utilisateur : pas de `shell=True`, pas de format.
@@ -100,10 +89,8 @@ def historique(racine: Path, regles: tuple[Regle, ...]) -> dict[str, tuple[Amend
 
     ⚠️ **On ne retrie pas.** Une version antérieure ordonnait par `(date, empreinte)` : la date
     étant au jour près, tous les commits d'une même journée se retrouvaient classés par **hash**,
-    donc dans un ordre arbitraire qui n'a rien de chronologique. Sur ce dépôt — 781 commits en
-    cinq semaines — le cas est la règle, pas l'exception. `git log` rend déjà l'antichronologie
-    exacte, et il la rend de façon déterministe : la garder est à la fois plus juste et plus
-    simple.
+    donc dans un ordre arbitraire. Sur ce dépôt — 781 commits en cinq semaines — le cas est la
+    règle, pas l'exception. `git log` rend déjà l'antichronologie exacte et déterministe.
     """
     if not disponible(racine):
         return {}

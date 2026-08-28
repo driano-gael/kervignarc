@@ -1,13 +1,9 @@
-/* --- Vue publique des tableaux de duels (E07US005), maquette P05 --------------------------------
-   Un seul jeu de règles pour deux surfaces : l'appli publique (360 px, tenue à la main) et l'écran
-   de salle (projeté, lu à cinq mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle
-   typographique dédiée (E07US004) et des px figés y resteraient illisibles de loin. Même règle que
-   `affectations.css`, pour la même raison.
-
-   Le problème de conception que la maquette pose — « un arbre à 16 entrées ne rentre pas sur
-   360 px, et le réduire le rend illisible » — se résout ici en **listes** : par étape pour « mon
-   chemin », par tour pour l'arbre complet. Aucune tentative de dessiner des branches : elles ne
-   passeraient pas, et la concession est assumée. */
+/* Vue publique des tableaux de duels (E07US005), maquette P05. Un seul jeu de règles pour deux
+   surfaces : l'appli publique (360 px) et l'écran de salle (projeté, lu à cinq mètres). Tailles en
+   **em**, jamais en px — `.salle` porte une échelle typographique dédiée et des px figés y
+   resteraient illisibles de loin. Le problème que la maquette pose (« un arbre à 16 entrées ne
+   rentre pas sur 360 px ») se résout en **listes** : par étape pour « mon chemin », par tour pour
+   l'arbre complet. Aucune branche dessinée — concession assumée. */
 
 .tableaux__barre {
   display: flex;

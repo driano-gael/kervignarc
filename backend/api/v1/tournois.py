@@ -1,17 +1,7 @@
-"""Endpoints REST des tournois (`/api/v1/tournois`).
+"""Tournois — CRUD et cycle de vie (brouillon, démarrer, pause, reprendre, terminer, archiver).
 
-- créer, consulter, lister (E01US001) ;
-- éditer, supprimer (E01US002) ;
-- piloter le **cycle de vie à sept statuts** (E01US017, [ADR-0026]) : passer prêt, revenir
-  brouillon, démarrer, mettre en pause, reprendre, terminer, archiver, annuler.
-
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine (aucune entité domaine exposée) ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), attendue via
-  `asyncio.wrap_future` sans bloquer la boucle ; toute écriture exige une session admin
-  (`exiger_admin`, E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
+Patron de bout en bout : DTO distincts des agrégats, écritures par la **file** et sous session
+admin, lectures hors boucle, erreurs typées traduites à la frontière.
 """
 
 from __future__ import annotations
@@ -103,20 +93,11 @@ class TransitionReponse(BaseModel):
 class ExigenceEffectifReponse(BaseModel):
     """Ce que le déroulé d'un tournoi exige d'inscrits, et ce qu'il en a (E05US021).
 
-    Sert l'affichage **permanent** du CA (« 28 inscrits / 34 requis ») : l'écran s'en sert pour
-    prévenir *avant* le clic « Démarrer », que le serveur refuserait. `minimum` vaut `0` quand aucun
-    déroulé n'est composé — il n'y a alors rien à exiger.
-
-    `ordre_phase`, `rang_debut` et `ordre_source` disent **pourquoi** — « la phase 3 prélève à
-    partir du rang 5 **de la phase 2** » — et sont `None` quand le manque ne vient d'aucun
-    prélèvement en particulier (rien de composé, ou exigence propre du club). `D-16` / `P-4` : une
-    alerte qui ne chiffre pas son impact est un clic de plus, pas une protection.
-
-    ⚠️ **`ordre_source` est indispensable depuis E05US024** : le plancher remonte la chaîne des
-    sources, si bien que `rang_debut` se lit dans la phase **source** tandis que `minimum` compte
-    des **inscrits** au tournoi. Sans nommer la source, les deux chiffres ne se déduisaient plus
-    l'un de l'autre et l'alerte devenait indéchiffrable — corrigé côté 409 mais pas ici dans un
-    premier jet, alors que c'est cet écran-là que l'organisateur voit **en premier**.
+    Sert l'affichage **permanent** du CA (« 28 inscrits / 34 requis ») : prévenir *avant* le clic
+    que le serveur refuserait. `minimum` vaut `0` sans déroulé composé. `ordre_phase`, `rang_debut`
+    et `ordre_source` disent **pourquoi** (`D-16`/`P-4`). ⚠️ **`ordre_source` est indispensable
+    depuis E05US024** : `rang_debut` se lit dans la phase **source** tandis que `minimum` compte
+    des **inscrits** — sans nommer la source, l'alerte devient indéchiffrable.
     """
 
     inscrits: int

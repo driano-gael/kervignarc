@@ -1,15 +1,11 @@
 // Écran d'administration des doublons (E02US005) — réservé à l'admin (monté sous `estAdmin`).
 //
-// La double saisie du même archer est l'erreur la plus banale d'une table d'inscription. Faute de
-// numéro de licence (repoussé à E02US007), rien ne la rend **décidable** : on **rapproche** des
-// paires vraisemblables (mêmes nom/prénom/club, ou approximatif) et l'admin tranche. Deux niveaux
-// (voir `presentation.ts`) : « doublons probables » et « à vérifier ».
-//
-// La **fusion** est le geste qui nettoie : l'admin choisit la fiche à **garder** (maître), l'autre
-// est **absorbée** — ses inscriptions et scores passent sur la maître, puis elle disparaît. Geste
-// destructeur (une fiche part) mais **non perdant** (les données sont reprises) : d'où la
-// confirmation explicite avant d'agir, et le message serveur lu tel quel en cas de refus (409 :
-// les deux fiches ont déjà tiré, ou fusion structurellement impossible).
+// Faute de numéro de licence (repoussé à E02US007), rien ne rend la double saisie **décidable** :
+// on **rapproche** des paires vraisemblables (mêmes nom/prénom/club, ou approximatif) et l'admin
+// tranche, sur deux niveaux (voir `presentation.ts`). La **fusion** garde une fiche maître et
+// **absorbe** l'autre — inscriptions et scores passent sur la maître. Geste destructeur mais **non
+// perdant**, d'où la confirmation explicite et le message serveur lu tel quel en cas de refus
+// (409).
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'

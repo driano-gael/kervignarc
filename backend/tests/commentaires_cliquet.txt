@@ -1,0 +1,8 @@
+# Baseline du plafond de commentaires (regle 13, ADR-0099) — un chemin, une espace, un compte.
+#
+# ETAT : VIDE depuis E00US027. Le garde-fou couvre **tout le code de production** backend : les
+# cinq couches, plus `atlas/`, `release/` et les points d'entree racine — 1086 blocs resorbes.
+# `backend/tests/` et `backend/migrations/` restent hors porte : c'est `DETTE-088`.
+#
+# Ce fichier n'est plus une baseline mais une soupape, et `test_le_cliquet_est_vide` la garde :
+# y ajouter une ligne oblige a supprimer ce test, donc produit un diff que la revue voit.

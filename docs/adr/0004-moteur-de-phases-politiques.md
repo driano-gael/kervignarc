@@ -88,3 +88,38 @@ cet ADR :
 
 Sept familles existent aujourd'hui, contre six au tableau : `aggregation` s'est ajoutée
 ([ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md)).
+
+## Catalogue livré — état au 27/08/2026
+
+*Déplacé depuis la docstring de `backend/domain/politiques.py` par `E00US027` (ADR-0099, règle du
+plafond) : un tableau de quatorze lignes est un raisonnement, pas un avertissement — sa place est
+ici, et le module garde un renvoi. ⚠️ **Recompté contre `registre_par_defaut()` en revue** : la
+ligne `tiebreak` omettait `TiebreakAvecBarrage`, omission héritée de la docstring d'origine. La
+seule source à comparer est le registre, pas la copie précédente.*
+
+| Famille | Rôle | Implémentations livrées |
+|---|---|---|
+| `routing` | où va le perdant | `EliminationSeche`, `PlacementEnCascade`, `RoutingRepechage` |
+| `scoring` | calcul du score | `ScoreCumul`, `ScoreAvecHandicap` |
+| `seeding` | composition de l'arbre | `SeedingSerpent` |
+| `byes` | exempts si effectif ≠ 2^k | `ByesAuxMieuxClasses` |
+| `tiebreak` | départage des égalités | `TiebreakFftaDefaut`, `TiebreakPoules`, `TiebreakAvecBarrage` (composite, nom `barrage`, E06US003) |
+| `depth` | jusqu'où classer | `ProfondeurUnVersN`, `ProfondeurPodium`, `AucunClassement` |
+| `aggregation` | départage des sortis au même tour | `AggregationParQualification`, `AggregationExAequo` |
+
+⚠️ **Le repêchage et le handicap sont des POLITIQUES, pas des types de phase** ([ADR-0062](0062-catalogue-de-types-de-phase.md)).
+Le cahier des charges les rangeait parmi les « types de tournoi » à livrer ; ni l'un ni l'autre n'a
+de structure propre — le premier décide où va un perdant, le second comment se calcule un score.
+Leur donner une `TypePhase` aurait été une erreur de maille.
+
+⚠️ **Une famille sans appelant reste inerte, et ça ne se voit pas** (`DETTE-028`, rétrécie par
+E06US003 puis E05US023). Seule `scoring` n'a **toujours aucun** appelant : le classement calcule son
+cumul hors politique, si bien que `ScoreAvecHandicap` ne s'exécute jamais alors que le handicap est
+stocké, exposé et affiché. `RoutingRepechage` reste inerte pour la même raison.
+
+⚠️ **Ce paragraphe a été faux entre le 09/08/2026 et le 28/08/2026**, et il vaut d'être signalé : il
+affirmait que les moteurs `poule`, `big_shoot_off`, `suisse`, `colline` et `TiebreakPoules` étaient
+sans appelant, alors que `bootstrap/composition.py` les câble tous et que `docs/dette.md` déclarait
+ce volet **clos**. La phrase venait d'une docstring périmée, déplacée ici en E00US027 sans être
+vérifiée dans le code du jour — exactement ce contre quoi ADR-0075 met en garde. Le registre de
+dette fait autorité sur l'état d'une dette, pas la copie qu'un ADR en garde.

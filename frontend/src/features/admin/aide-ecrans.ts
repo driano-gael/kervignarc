@@ -1,21 +1,11 @@
 // Textes d'aide contextuelle des écrans d'administration (E14US002).
 //
-// Un dictionnaire **unique** `id de destination → texte`, consommé par la coquille (`CoquilleAdmin`)
-// pour rendre l'aide de la destination active via `<AideEcran>`. Centraliser ici plutôt que dans
-// chacune des 22 features donne **un seul point de vérité** : ajouter/corriger une aide se fait à un
-// seul endroit, et un écran ne peut pas silencieusement se retrouver sans aide (clé absente = pas de
-// bouton, visible d'un coup d'œil ici).
-//
-// Les clés sont les `id` des destinations déclarées dans `CoquilleAdmin` (`tournoi`, `accueil`, …).
-// Elles doivent rester synchronisées : une destination ajoutée là-bas gagne son aide ici.
-//
-// Registre de langage : **organisateur, non technique** (règle 3 — le vocabulaire technique reste au
-// code). Chaque entrée dit **ce qui se saisit** sur l'écran **et à quoi ça sert en aval** — c'est le
-// « pourquoi » réclamé à la démo du 27/07/2026, pas une simple étiquette.
-//
-// ⚠️ **Premier jet à relire avec l'organisateur.** La story E14US002 prévoit que le contenu se rédige
-// en langage métier avec lui ; ces formulations sont une base de départ raisonnable, pas une version
-// arrêtée. Corriger le texte ne touche que ce fichier.
+// Un dictionnaire **unique** `id de destination → texte`, consommé par `CoquilleAdmin` via
+// `AideEcran`. Centraliser plutôt que disperser dans 22 features donne **un seul point de vérité**,
+// et une clé absente se voit d'un coup d'œil ici. Les clés sont les `id` déclarés dans
+// `CoquilleAdmin` et doivent rester synchronisées. Registre **organisateur, non technique** (règle
+// 3) : chaque entrée dit ce qui se saisit **et à quoi ça sert en aval**. ⚠️ Premier jet, à relire
+// avec l'organisateur (story E14US002).
 
 // Union littérale des `id` de destination admin. La typer — plutôt que `string` — fait **prouver au
 // compilateur** l'invariant du CA « chaque écran porte une aide » : `Record<DestinationAdminId, …>`

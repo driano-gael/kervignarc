@@ -1,12 +1,10 @@
 // Le classement **provisoire** d'un système suisse (E05US030).
 //
 // Sorti de `SaisieSuisse.tsx` en revue : le CA le veut « côté organisateur **et** scoreur », et
-// seul le scoreur l'avait. L'écran des phases lit déjà l'état de la phase pour son bouton de plan
-// — il porte donc le même tableau, sans un appel de plus.
-//
-// C'est la seule lecture d'avancement d'un format sans arbre : personne n'est éliminé, donc rien
-// dans la liste des rondes ne dit qui mène. Et c'est aussi ce qui **explique** les appariements de
-// la ronde suivante, qui s'y lisent d'avance.
+// seul le scoreur l'avait ; l'écran des phases lit déjà l'état de la phase, il porte donc le même
+// tableau sans un appel de plus. C'est la seule lecture d'avancement d'un format sans arbre —
+// personne n'est éliminé, donc rien dans la liste des rondes ne dit qui mène — et elle **explique**
+// les appariements de la ronde suivante.
 
 import type { RangSuisse } from './api'
 import { decrirePoints, nomDeLArcher, type RondeLisible } from './presentation'

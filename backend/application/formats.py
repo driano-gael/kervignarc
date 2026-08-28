@@ -1,21 +1,9 @@
-"""Service applicatif Formats de tournoi — la brique « déroulé » du club (E01US023, ADR-0060 §5).
+"""Service des **formats** — un format n'a pas de « copie de tournoi » : sa copie, ce sont les
+**phases**. D'où deux ports traversés, là où l'assemblage des catégories reste dans le sien.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
-
-**Ce qui distingue ce service de `ServicePatrimoine`** : un format n'a pas de forme « copie de
-tournoi ». Sa copie, ce sont les **phases** du tournoi — d'un autre type, dans un autre dépôt. Le
-service traverse donc deux ports (`FormatTournoiRepository` et `PhaseRepository`) là où l'assemblage
-des catégories et des blasons reste dans le sien.
-
-Trois cas d'usage au-delà du CRUD :
-
-- **appliquer** — instancie le format en phases du tournoi. **Remplace** la séquence existante, et
-  refuse net si une phase est engagée (`PhasesEngagees`) : à ce stade, deviner ce que
-  l'organisateur veut garder serait plus dangereux que de lui rendre la main ;
-- **promouvoir** — capture les phases d'un tournoi en format de bibliothèque, idempotent par nom ;
-- **dupliquer** — l'issue « en faire une copie pour garder les deux modèles » du CA, face à
-  `modifier`, qui est l'issue « modifier l'officiel sur place ».
+⚠️ **`appliquer` REMPLACE la séquence et refuse net si une phase est engagée** : deviner ce que
+l'organisateur veut garder serait plus dangereux que de lui rendre la main. `dupliquer` est l'issue
+« garder les deux modèles », face à `modifier` qui touche l'officiel sur place.
 """
 
 from __future__ import annotations
@@ -48,17 +36,11 @@ from domain.tournoi import Tournoi, TournoiId
 class LecteurDonneesDePhase(Protocol):
     """Port **étroit** : tout ce dont la garde de remplacement a besoin d'un dépôt qui pend.
 
-    Le service n'a pas à connaître un `ForfaitRepository` entier (déclarer, lister par tournoi, par
-    archer…) pour répondre à une seule question : « cette phase porte-t-elle des données ? ». Même
-    patron que `LecteurAvancementDepart` (`application/departs.py`), et même bénéfice : le faux de
-    test se réduit à une méthode, et le couplage dit exactement ce qu'il est.
-
-    **Deux** adapters le satisfont structurellement, sans rien déclarer : `ForfaitRepositorySQL` et
-    `PlacementTableauRepositorySQL`. C'est ce qui permet à la garde de couvrir les deux cascades
-    sans les distinguer.
-
-    Déclaré ici plutôt que dans `domain/ports.py` parce que c'est un besoin **de ce service**, pas
-    du domaine.
+    Le service n'a pas à connaître un `ForfaitRepository` entier pour répondre à « cette phase
+    porte-t-elle des données ? » — même patron que `LecteurAvancementDepart`, et le faux de test se
+    réduit à une méthode. **Deux** adapters le satisfont structurellement (`ForfaitRepositorySQL`,
+    `PlacementTableauRepositorySQL`), ce qui permet de couvrir les deux cascades sans les
+    distinguer. Déclaré ici et non dans `domain/ports.py` : c'est un besoin **de ce service**.
     """
 
     def par_phase(self, phase_id: PhaseId) -> Sequence[object]:
@@ -192,25 +174,11 @@ class ServiceFormats:
     def appliquer(self, tournoi_id: TournoiId, format_id: FormatTournoiId) -> list[EtapeDeroule]:
         """Instancie le format en **déroulé** du tournoi et renvoie la séquence créée.
 
-        **Rend des étapes, plus des phases** (ADR-0076) : le déroulé se définit une fois, et
-        les phases créées dans la foulée ne sont que des **avancements** (une par créneau et
-        par étape), sans réglage propre.
-
-        **Remplace** la séquence existante : les phases déjà posées sont supprimées d'abord, sans
-        quoi les ordres du format entreraient en collision avec elles et `SequencePhases`
-        refuserait toute composition ultérieure.
-
-        Refuse (`PhasesEngagees`) dès qu'une phase du tournoi n'est plus `à venir` : le
-        remplacement jetterait un déroulé en cours, avec les séries et les duels qui y pendent.
-
-        **Recopie le minimum d'inscrits exigé** par le format sur le tournoi (E05US021) : le tournoi
-        ne garde aucun lien vers son format — sa copie, ce sont ses phases (ADR-0060) —, donc
-        sans ce transport la garde de démarrage n'aurait rien à lire. Même patron que le
-        gabarit de salle : modèle → copie → ajustement sans altérer le modèle. Le plancher
-        **technique**, lui, ne se recopie pas : il se déduit des phases, qui viennent d'être
-        posées.
-
-        Lève `TournoiIntrouvable`, `FormatIntrouvable`.
+        **Rend des étapes, plus des phases** (ADR-0076) : le déroulé se définit une fois, les
+        phases n'étant que des avancements. **Remplace** la séquence existante — sans quoi les
+        ordres entreraient en collision. Refuse (`PhasesEngagees`) dès qu'une phase n'est plus `à
+        venir`. ⚠️ **Recopie le minimum d'inscrits exigé** (E05US021) : le tournoi ne garde aucun
+        lien vers son format, donc sans ce transport la garde de démarrage n'aurait rien à lire.
         """
         tournoi = self._tournoi_existant(tournoi_id)
         format_tournoi = self._format_existant(format_id)
@@ -269,24 +237,11 @@ class ServiceFormats:
     ) -> None:
         """Trois refus avant de détruire une séquence — statut, **contenu**, et qualification.
 
-        Le premier jet ne regardait que le `statut`, et c'était insuffisant : une phase `à venir`
-        peut déjà porter des données. `forfait.phase_id` et `placement_tableau.phase_id` sont en
-        `ON DELETE CASCADE` (cf. `infrastructure/db/models.py`), et **ni** `ServiceForfait` **ni**
-        `ServicePlacementDuels` n'exigent qu'une phase soit démarrée : un forfait déclaré au
-        pointage pend sur une phase `à venir`, et un plan de duels ajusté à la main la veille aussi
-        (E03US009 — l'ajustement manuel *est* la fonctionnalité). Le remplacement les effaçait en
-        silence, alors que le message de `PhasesEngagees` promet de protéger « les séries et les
-        duels qui y pendent ».
-
-        ⚠️ Le deuxième jet ne comptait que les **forfaits**, tout en **nommant** `placement_tableau`
-        dans cette docstring même — la revue l'a démontré à l'exécution (une pose avant, zéro
-        après). Les deux cascades sont désormais comptées.
-
-        Le troisième refus ferme une **route parallèle** : `ServicePhases.supprimer` interdit de
-        retirer la phase de qualification (`PhaseQualificationNonSupprimable`) parce qu'elle porte
-        le barème ; passer par le repository contournait ce contrôle. Appliquer un format sans
-        qualification à un tournoi qui en a une lui retirait donc son barème, sans qu'aucun écran ne
-        permette de le recréer autrement qu'en le redéfinissant.
+        ⚠️ Le `statut` ne suffit pas : `forfait.phase_id` et `placement_tableau.phase_id` sont en
+        `ON DELETE CASCADE`, et ni les forfaits ni les plans de duels n'exigent une phase démarrée
+        — le remplacement les effaçait en silence. Les **deux** cascades sont comptées (un jet n'en
+        comptait qu'une). Le troisième refus ferme une **route parallèle** : sans lui, appliquer un
+        format sans qualification retirait au tournoi son barème, irrécupérable.
         """
         engagees = [p for p in existantes if p.statut is not StatutPhase.A_VENIR]
         if engagees:
@@ -320,19 +275,11 @@ class ServiceFormats:
     def promouvoir(self, tournoi_id: TournoiId, nom: str) -> FormatTournoi:
         """Capture le déroulé d'un tournoi en format de bibliothèque (« c'est permanent »).
 
-        Idempotent par nom : promouvoir deux fois sous le même nom **met à jour** le format au lieu
-        d'accumuler des homonymes. La mise à jour conserve l'identifiant **et l'origine** du format
-        existant (même règle que `modifier`).
-
-        Ne rétroagit sur aucun tournoi : les éditions déjà assemblées gardent leurs phases
-        (ADR-0060 §3). Lève `TournoiIntrouvable`, `TournoiSansPhase` si le tournoi n'a aucune phase
-        à capturer.
-
-        **L'exigence d'effectif du tournoi remonte avec le déroulé** (E05US021) : elle y a été
-        recopiée à l'application d'un format, et c'est une propriété du déroulé qu'on promeut — pas
-        un accident de l'édition. En son absence, l'exigence du format existant
-        est **conservée** : la promotion capture des *phases*, elle n'a aucune raison d'effacer une
-        règle de club qu'elle ne sait pas exprimer.
+        Idempotent par nom : promouvoir deux fois **met à jour** au lieu d'accumuler des homonymes,
+        en conservant identifiant **et** origine. Ne rétroagit sur aucun tournoi (ADR-0060 §3).
+        Lève `TournoiIntrouvable`, `TournoiSansPhase`. ⚠️ **L'exigence d'effectif remonte avec le
+        déroulé** (E05US021) ; en son absence, celle du format existant est **conservée** — la
+        promotion capture des *phases*, elle n'efface pas une règle de club.
         """
         tournoi = self._tournoi_existant(tournoi_id)
         # **Le déroulé, tout simplement** (ADR-0076). Tant que la définition était recopiée par

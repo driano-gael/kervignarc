@@ -1,18 +1,8 @@
-"""Endpoints REST des postes de cible (E04US001, ADR-0029) — **préparation** (admin) et
-**session** (poste : rattacher une tablette à sa cible).
+"""Postes de cible — préparation admin (idempotente), et session ouverte par code.
 
-Deux routers, deux portées :
-
-- **Préparation**, imbriquée sous le tournoi (`/api/v1/tournois/{tournoi_id}/postes`) : réservée à
-  l'admin. `POST` garantit **un code par cible** du plan (idempotent) et renvoie la liste **avec les
-  codes** — des secrets d'usage à imprimer (E09US008), qui n'ont pas à fuiter au public.
-- **Session**, à la racine (`/api/v1/postes/session`) : `rattacher` par code — **ouverte**, c'est
-  l'acte de rattachement lui-même — puis `GET` (retrouver sa cible à la réouverture) et
-  `deconnexion`, protégés par la session de poste elle-même (`exiger_poste`).
-
-Patron de bout en bout : DTO Pydantic distincts des agrégats ; **écriture** (préparation) routée par
-la file (writer unique, ADR-0005) ; le rattachement et la relecture de session sont des **lectures**
-(hors file, threadpool). Erreurs typées traduites à la frontière (`api/erreurs.py`).
+⚠️ **La préparation renvoie les CODES, des secrets à imprimer** : elle est donc réservée à l'admin,
+à rebours des autres lectures. Le rattachement, lui, est ouvert — c'est l'acte lui-même — et reste
+**hors file**, comme la relecture de session. ADR-0005, ADR-0029
 """
 
 from __future__ import annotations

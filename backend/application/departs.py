@@ -1,19 +1,8 @@
-"""Service applicatif Departs — orchestre les créneaux d'un tournoi (E02US004, ADR-0017).
+"""Service des **départs** — arbitre l'existence et **attribue le numéro** d'un créneau.
 
-Use cases de configuration des **départs** (créneaux horaires) d'un tournoi : créer, lister, éditer
-(tarif/horaire), supprimer. Il ne connaît ni HTTP, ni SQL, ni la file d'écriture (sérialisation
-assurée en amont, côté API) ; il reste synchrone et pur d'infrastructure.
-
-Il arbitre l'**existence** — du tournoi (`TournoiIntrouvable`) et du départ dans ce tournoi
-(`DepartIntrouvable`) — et **attribue le numéro** d'un nouveau créneau : le domaine ne voit qu'un
-départ à la fois, il ne peut donc pas savoir quel numéro est libre. Le numéro est toujours **le plus
-grand existant + 1** (1 pour le premier) — jamais un rang recalculé. Supprimer un créneau
-**intermédiaire** laisse donc un trou définitif ; supprimer **le dernier** (le plus grand numéro)
-libère son numéro, que la création suivante reprendra (le max a baissé). Les inscriptions et le
-placement référencent l'`id` technique, pas le `numero`, donc cette réutilisation est sans effet.
-
-Le lien archer↔départ (inscription) et le suivi `payé` sont E02US009 : ce service ne gère que la
-**définition** des créneaux.
+⚠️ **Le numéro est toujours « le plus grand + 1 », jamais un rang recalculé** : supprimer un
+créneau intermédiaire laisse donc un trou définitif, tandis que supprimer le dernier libère son
+numéro. Sans effet : inscriptions et placement référencent l'`id` technique, pas le `numero`.
 """
 
 from __future__ import annotations
@@ -98,14 +87,11 @@ class ServiceDeparts:
     ) -> Depart:
         """Crée et persiste un départ dans un tournoi, avec un numéro attribué automatiquement.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DomainError` si le tarif, l'horaire
-        (`HH:MM` obligatoire, E02US010) ou le quota sont invalides. Le numéro est le plus grand
-        existant + 1 (1 pour le premier créneau) ; le `quota` est facultatif (`None` = créneau sans
-        plafond, E02US006).
-
-        Lecture (`par_tournoi`) puis écriture (`ajouter`) tiennent dans **une seule commande** en
-        file (règle 7, ADR-0005) : aucune création concurrente ne peut se glisser entre le calcul du
-        numéro et l'insertion. La contrainte `UNIQUE(tournoi_id, numero)` reste le garde-fou ultime.
+        Lève `TournoiIntrouvable`, ou `DomainError` si le tarif, l'horaire (`HH:MM` obligatoire,
+        E02US010) ou le quota sont invalides. Le numéro est le plus grand existant + 1 ; `quota` à
+        `None` = créneau sans plafond (E02US006). ⚠️ Lecture puis écriture tiennent dans **une
+        seule commande** en file (règle 7, ADR-0005) — `UNIQUE(tournoi_id, numero)` reste le
+        garde-fou.
         """
         self._verifier_tournoi(tournoi_id)
         existants = self._departs.par_tournoi(tournoi_id)
@@ -114,14 +100,12 @@ class ServiceDeparts:
         pose = self._departs.ajouter(depart)
         assert pose.id is not None, "Un départ persisté porte toujours son identifiant."
         # Le créneau rejoue le déroulé **déjà** défini pour ce tournoi : une instance par étape, au
-        # statut « à venir ». Sur un tournoi non encore composé, la boucle est vide — et les étapes
-        # ajoutées ensuite s'instancieront dans ce créneau comme dans les autres.
+        # statut « à venir ». Sur un tournoi non encore composé, la boucle est vide.
         #
         # DETTE-025 (5ᵉ site, élargi à la 2ᵉ revue d'E01US025) : `ajouter` le départ puis N fois
-        # `ajouter` une phase, ce sont N+1 transactions. Une panne au milieu laisse un créneau au
-        # déroulé **partiel**, qu'aucun geste ultérieur ne répare — ajouter une étape n'instancie
-        # que celle-là. Même remède que les quatre autres sites : un geste atomique sur l'adapter
-        # concret, patron `consigner_dans` (ADR-0035).
+        # `ajouter` une phase, ce sont N+1 transactions — une panne au milieu laisse un créneau au
+        # déroulé **partiel** que rien ne répare. Même remède que les quatre autres sites :
+        # `consigner_dans` sur l'adapter concret (ADR-0035).
         for etape in self._deroules.par_tournoi(tournoi_id):
             self._phases.ajouter(etape.instancier(pose.id))
         return pose
@@ -157,14 +141,11 @@ class ServiceDeparts:
     ) -> Depart:
         """Édite le tarif, l'horaire et le quota d'un départ (le numéro est fixe).
 
-        **Remplacement complet** : tarif, horaire et quota sont réécrits ; un `quota` omis (`None`)
-        **retire** le plafond (E02US006). L'horaire reste **obligatoire** (`HH:MM`, E02US010). Lève
-        `DepartIntrouvable` si le départ n'existe pas dans ce tournoi, `DomainError` si le tarif,
-        l'horaire ou le quota sont invalides.
-
-        **Garde-fou de cycle (E12US008)** : si le créneau est *lancé* ou *clos* (une session de tir
-        y a eu lieu), lève `DepartEnCoursNonConfirme` tant que `confirme_cycle` n'est pas vrai — on
-        ne réécrit pas les paramètres d'un créneau en cours de tir par mégarde.
+        **Remplacement complet** : un `quota` omis (`None`) **retire** le plafond (E02US006),
+        l'horaire reste **obligatoire** (`HH:MM`, E02US010). Lève `DepartIntrouvable`, ou
+        `DomainError` sur une valeur invalide. ⚠️ **Garde-fou de cycle (E12US008)** : sur un
+        créneau *lancé* ou *clos*, `DepartEnCoursNonConfirme` tant que `confirme_cycle` n'est pas
+        vrai.
         """
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
         self._exiger_confirmation_cycle(depart, confirme_cycle)
@@ -179,27 +160,11 @@ class ServiceDeparts:
     ) -> None:
         """Supprime un départ d'un tournoi (E02US004, garde-fous E02US009 + E12US008).
 
-        Lève `DepartIntrouvable` si le départ n'existe pas dans ce tournoi. Trois garde-fous.
-
-        D'abord, un **refus dur** : c'est le **dernier** départ d'un tournoi **non-brouillon**
-        (`DernierDepartNonSupprimable`, E02US010). Aucun drapeau ne le lève — un tournoi engagé a
-        été validé avec ≥ 1 créneau ; pour repartir de zéro, l'admin **revient en brouillon**. Ce
-        refus **précède** les deux confirmations ci-dessous : les proposer n'aurait pas de sens
-        puisque la suppression est de toute façon interdite.
-
-        Ensuite, deux garde-fous selon l'**état de cycle** du créneau :
-
-        - *lancé* / *clos* (une session de tir a eu lieu) : lève `DepartEnCoursNonConfirme` tant que
-          `confirme_cycle` n'est pas vrai. Cette confirmation **subsume** le signalement
-          d'inscriptions — un créneau lancé porte forcément des inscriptions, et confirmer
-          qu'on détruit une session de tir couvre *a fortiori* ses inscriptions (pas de double
-          dialogue, E12US008) ;
-        - *ouvert* (aucun score) : comportement E02US009 strictement inchangé — si le créneau porte
-          des **inscriptions**, lève `DepartAvecInscriptions` (signalement, pas refus, ADR-0018),
-          que l'admin lève via `autoriser_suppression_inscrits=True`.
-
-        Le message d'inscriptions **décompte les inscriptions, dont les payées**, pour exposer
-        l'effet de bord monétaire (remboursement déporté en E08US005).
+        Trois garde-fous. **Refus dur** d'abord : dernier départ d'un tournoi non-brouillon
+        (`DernierDepartNonSupprimable`, E02US010), qu'aucun drapeau ne lève. Puis, selon l'état de
+        cycle : *lancé*/*clos* → `DepartEnCoursNonConfirme`, qui **subsume** le signalement
+        d'inscriptions (pas de double dialogue) ; *ouvert* avec inscriptions →
+        `DepartAvecInscriptions` (ADR-0018), levé par `autoriser_suppression_inscrits`.
         """
         depart = self._depart_du_tournoi(tournoi_id, depart_id)
         assert depart.id is not None, "Un départ relu est persisté."
@@ -214,15 +179,12 @@ class ServiceDeparts:
         self._supprimer_en_remboursant(depart)
 
     def _supprimer_en_remboursant(self, depart: Depart) -> None:
-        """Supprime le départ en **ouvrant les remboursements** de ses inscriptions payées
-        (E08US005).
+        """Supprime le départ en **ouvrant les remboursements** de ses payées (E08US005).
 
         Sur un créneau **tarifé**, chaque inscription **payée** effacée devient un remboursement à
         traiter (ADR-0057) : on les construit (instantané archer + créneau, montant = tarif) et on
         confie leur ouverture **atomique** avec les `DELETE` à l'adapter
-        (`supprimer_avec_remboursements`). Sans payée à rembourser (créneau gratuit, aucune payée),
-        on retombe sur la suppression simple. La confirmation de l'admin a déjà été obtenue en
-        amont.
+        (`supprimer_avec_remboursements`). Sans payée, on retombe sur la suppression simple.
         """
         assert depart.id is not None, "Un départ relu est persisté."
         remboursements = (
@@ -269,15 +231,12 @@ class ServiceDeparts:
         return remboursements
 
     def _refuser_suppression_du_dernier_depart(self, tournoi_id: TournoiId) -> None:
-        """Lève `DernierDepartNonSupprimable` si retirer ce départ laisserait un tournoi engagé sans
-        aucun créneau (E02US010).
+        """Lève `DernierDepartNonSupprimable` si le tournoi engagé se retrouverait sans créneau.
 
-        « Engagé » = tout statut **hors brouillon** : dès `prêt`, la garde `TournoiSansDepart`
-        (`ServiceTournois.vers_pret`) a exigé ≥ 1 départ ; cette garde-ci **maintient** l'invariant
-        en aval. Le compte (`par_tournoi`) inclut le départ qu'on s'apprête à retirer, d'où le test
-        « ≤ 1 » : s'il n'en reste qu'un, c'est celui-là. Sur un `brouillon`, aucune borne — le
-        tournoi n'est pas encore engagé. La lecture du tournoi et celle des départs tiennent dans la
-        même commande de file que la suppression (règle 7) : pas de course avec un autre créneau.
+        « Engagé » = tout statut **hors brouillon** : dès `prêt`, `TournoiSansDepart` a exigé ≥ 1
+        départ, et cette garde-ci **maintient** l'invariant en aval. ⚠️ Le compte (`par_tournoi`)
+        inclut le départ qu'on s'apprête à retirer, d'où le test « ≤ 1 ». Lectures et suppression
+        tiennent dans la même commande de file (règle 7) : pas de course avec un autre créneau.
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:

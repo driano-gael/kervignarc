@@ -1,18 +1,11 @@
 // La fiche de réglages d'un **Big Shoot Off** (E05US028).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
-// bibliothèque) et « Phases » (les phases d'un tournoi) —, comme `ReglagePoules` et
-// `ChoixProfondeur` avant elle.
-//
-// ⚠️ **Ce composant ne détient AUCUN état**, et c'est la leçon de la revue d'E06US006 reprise telle
-// quelle : monté sous condition, un état dérivé d'une prop diverge dès que la condition bascule —
-// retyper la phase le démonte, y revenir le remonte réinitialisé, pendant que le parent garde
-// l'ancienne valeur. L'écran afficherait alors une liste que le formulaire n'enverrait pas.
-//
-// **Un seul réglage porte la règle** : le nombre de sortants, manche par manche. Le reste est le
-// format du tir (volées, flèches) et deux options. ⚠️ **Il n'y a pas de champ « restants »** : le
-// nombre d'archers conservés se **déduit** de ce que la liste n'élimine pas. C'est le cœur de
-// l'élargissement du 14/08/2026 — deux champs pour la même information pouvaient se contredire.
+// Partagée par les **deux** écrans qui composent des phases, comme `ReglagePoules` avant elle. ⚠️
+// **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006) : monté sous condition, un
+// état dérivé d'une prop diverge dès que la condition bascule. **Un seul réglage porte la règle** :
+// le nombre de sortants, manche par manche. ⚠️ **Il n'y a pas de champ « restants »** — il se
+// **déduit** de ce que la liste n'élimine pas ; deux champs pour la même information pouvaient se
+// contredire (élargissement du 14/08/2026).
 
 import type { EtatBigShootOff } from './bigShootOff'
 import { decrireProjection, estValide, lireSortants } from './bigShootOff'

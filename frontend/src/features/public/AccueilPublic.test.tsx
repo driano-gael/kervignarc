@@ -1,28 +1,11 @@
 // Tests de **montage** de la coquille publique (E07US001, interrupteur global d'E16US004).
 //
-// Ce fichier couvre ce qui ne vit nulle part ailleurs : la **composition** de l'onglet public. Les
-// six vues sont mockées à dessein — chacune a ses propres tests, et les monter pour de vrai ferait
-// de ce fichier un test d'intégration lent qui échouerait pour des raisons étrangères à son sujet.
-// Ce qu'on vérifie ici, c'est l'assemblage : quel mode descend, à qui, et quand l'interrupteur
-// s'affiche.
-//
-// Trois raisons de son existence, toutes issues de la revue d'E16US004 :
-//
-//  1. **C'est ici que se décide le défaut d'ouverture.** Le CA d'E07US005 promet « *Mon chemin* par
-//     défaut dès qu'on suit quelqu'un » ; depuis qu'un interrupteur unique gouverne les cinq vues,
-//     ce défaut n'est plus porté par `VueTableaux` mais par la valeur initiale du store. Le test
-//     qui le gardait a disparu avec le sélecteur local — le voici, à la bonne adresse.
-//  2. **C'est le lecteur du store qui dessert les cinq vues partagées.** Le piège du sélecteur
-//     Zustand instable (`getSnapshot` qui rend un tableau neuf → boucle de rendu infinie en Zustand
-//     v5 / React 19) n'a pas été corrigé, il a **changé d'adresse** : `VueTableaux` reçoit désormais
-//     ses suivis en prop. Monter ce composant est ce qui détecte la rechute ici.
-//     ⚠️ **Ce n'est pas le seul lecteur restant** (rectification de la 2ᵉ passe, qui a repris une
-//     affirmation fausse) : `VueSuivi` lit le store lui aussi, pour composer la liste — et ce
-//     fichier le **mocke**, donc ne le couvre pas. `VueSuivi` n'a à ce jour aucun test de montage,
-//     alors que c'est le composant qui a le plus changé dans cette US ; c'est un angle mort connu,
-//     inscrit comme tel plutôt que masqué par un commentaire optimiste.
-//  3. **L'interrupteur ne doit pas s'afficher là où il n'agit pas** — l'onglet « Suivi », qui est
-//     précisément celui d'atterrissage.
+// Couvre ce qui ne vit nulle part ailleurs : la **composition** de l'onglet public. Les six vues
+// sont mockées à dessein — chacune a ses tests. Trois raisons : c'est ici que se décide le **défaut
+// d'ouverture** (« Mon chemin » dès qu'on suit quelqu'un, désormais porté par la valeur initiale du
+// store) ; c'est le **lecteur du store** qui dessert les vues partagées, donc l'endroit où se
+// détecte la rechute du sélecteur Zustand instable ; et l'interrupteur ne doit pas s'afficher là où
+// il n'agit pas. ⚠️ `VueSuivi` lit aussi le store mais est **mocké** ici : angle mort connu.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -233,17 +216,13 @@ describe('AccueilPublic — l’identité du tournoi habille l’appli publique 
   })
 
   it('affiche le logo du tournoi à côté de son nom, sans le faire dire au titre', async () => {
-    // ⚠️ **Le logo est ici DÉCORATIF, et c'est une décision, pas un oubli** (correctif de revue).
-    // Il est posé **dans** le `<h2>`, qui dit déjà le nom du tournoi ; or un `alt` s'agrège au nom
-    // accessible de son conteneur. Avec un texte alternatif, un lecteur d'écran annonçait « Logo du
-    // tournoi Logo du club organisateur Challenge des Champions » — l'information est déjà dite
-    // juste à côté, le logo n'en est que la marque visuelle. D'où `alt=""`, qui est la façon
-    // normalisée de dire « cette image n'ajoute rien à lire ».
-    //
-    // Le test tient donc les **deux** moitiés : l'image est bien rendue (sinon la fonctionnalité
-    // aurait disparu sans bruit — c'est la leçon de `DETTE-085`), et le titre ne récite pas les
-    // logos. À l'écran de salle, le logo vit dans un `<header>` et **garde** son `alt` : la
-    // distinction est le lieu, pas le composant.
+    // ⚠️ **Le logo est ici DÉCORATIF, et c'est une décision, pas un oubli.** Il est posé **dans**
+    // le `<h2>`, qui dit déjà le nom du tournoi, et un `alt` s'agrège au nom accessible de son
+    // conteneur : un lecteur d'écran annonçait « Logo du tournoi Logo du club organisateur
+    // Challenge des Champions ». D'où `alt=""`. Le test tient les **deux** moitiés : l'image est
+    // bien rendue (sinon la fonctionnalité disparaîtrait sans bruit — leçon de `DETTE-085`) et le
+    // titre ne récite pas les logos. À l'écran de salle le logo vit dans un `<header>` et **garde**
+    // son `alt`.
     vi.mocked(getIdentite).mockResolvedValue({
       ...identitePublique(),
       logos: [{ emplacement: 'evenement', empreinte: 'v1' }],

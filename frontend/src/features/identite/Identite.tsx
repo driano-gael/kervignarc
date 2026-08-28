@@ -1,14 +1,11 @@
 // Identité visuelle du tournoi (E16US006, absorbe E01US016) — écran de préparation, admin.
 //
-// « L'identité est une **destination de préparation** » (`D-28`), et `P-6` le redit : *tout ce qui
-// s'identifie se prépare à l'avance*. L'organisateur y fournit **un logo par marque et deux couleurs
-// d'accent, rien d'autre** — le reste du chrome est dérivé par le serveur (`DV-06`).
-//
-// ⚠️ **Cet écran ne s'habille pas lui-même.** `D-27` : l'identité touche l'appli publique et l'écran
-// de salle, jamais l'admin ni la saisie — « le jour J, un bénévole n'a pas le temps de réapprendre
-// des repères visuels ». L'organisateur voit donc le rendu dans des **vignettes d'aperçu**, pas en
-// repeignant la page sous ses pieds. C'est aussi ce que demande `DV-05` : « aperçu sur les surfaces
-// réelles, pas un nuancier ».
+// « L'identité est une **destination de préparation** » (`D-28`, `P-6`). L'organisateur fournit
+// **un logo par marque et deux couleurs d'accent, rien d'autre** — le reste du chrome est dérivé
+// par le serveur (`DV-06`). ⚠️ **Cet écran ne s'habille pas lui-même** : `D-27` réserve l'identité
+// à l'appli publique et à l'écran de salle, jamais l'admin ni la saisie. D'où des **vignettes
+// d'aperçu** plutôt qu'une page repeinte sous les pieds — c'est aussi `DV-05`, « aperçu sur les
+// surfaces réelles, pas un nuancier ».
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
@@ -148,14 +145,12 @@ function ChampAccent({
       <label className="identite__saisie">
         <span>{libelle}</span>
         {/* Le sélecteur natif et le champ texte disent la **même** valeur : le premier sert au
-            geste (souris, doigt), le second à coller une référence lue sur une charte — c'est le
-            cas réel décrit par le CDC.
+            geste, le second à coller une référence lue sur une charte. */}
 
-            ⚠️ Le sélecteur reçoit la dernière valeur **valide**, pas la valeur brute. Les deux
-            champs partagent l'état de frappe, et pendant qu'on tape `#b7191` la valeur est
-            transitoirement invalide : le navigateur coerce alors `type="color"` à `#000000`. La
-            pastille clignotait en noir à chaque caractère, et rouvrir le sélecteur natif le faisait
-            démarrer sur du noir plutôt que sur la couleur en cours (relevé en revue). */}
+        {/* ⚠️ Le sélecteur reçoit la dernière valeur **valide**, pas la valeur brute : les deux
+            champs partagent l'état de frappe, et pendant qu'on tape la valeur est
+            transitoirement invalide — le navigateur coerce alors le sélecteur à du noir, d'où
+            une pastille qui clignotait à chaque caractère (relevé en revue). */}
         <input
           type="color"
           className="identite__pastille"

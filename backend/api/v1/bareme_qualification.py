@@ -1,15 +1,7 @@
-"""Endpoints REST du barème de qualification (`/api/v1`) — barème d'un tournoi (E01US009).
+"""Barème de qualification — ressource rattachée au tournoi.
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Ressource rattachée au tournoi : routes sous `/tournois/{tournoi_id}/bareme-qualification`.
-Lecture publique (comme les autres consultations) ; définition réservée à l'admin. Le barème est
-porté par la phase de qualification du tournoi (ADR-0011), transparent pour le client.
+Lecture publique, définition réservée à l'admin ; le barème est porté par la phase de qualification,
+de façon transparente pour le client.
 """
 
 from __future__ import annotations
@@ -95,18 +87,11 @@ async def definir_bareme(
 class QualificationReponse(BaseModel):
     """Une qualification du déroulé, avec ses réglages (E05US025, ADR-0082).
 
-    Ce que l'écran « Barème & validation » liste depuis qu'un déroulé peut en porter plusieurs :
-    l'organisateur choisit **laquelle** il règle. `libelle` est dérivé de l'ordre côté serveur —
-    le front n'a pas à réinventer une numérotation, et le vocabulaire reste au même endroit.
-
-    `bareme` et `grain` sont **facultatifs par prudence, pas par usage** : aucun chemin de
-    composition ne laisse aujourd'hui une qualification sans réglage — `ServicePhases.ajouter` pose
-    le preset FFTA 18 m et le grain du type, `ServiceBaremeQualification.definir` crée toujours avec
-    barème, et l'application d'un format passe par `ModelePhase.qualification(bareme)`. Un premier
-    jet de cette docstring justifiait l'optionalité par un état que le même commit rendait
-    inatteignable (relevé de revue) ; elle est conservée parce qu'une base reprise d'une version
-    antérieure peut porter cet état, et que l'écran sait déjà le rendre — pas parce que le geste
-    d'aujourd'hui le produit.
+    Ce que l'écran « Barème & validation » liste depuis qu'un déroulé peut en porter plusieurs.
+    `libelle` est dérivé de l'ordre **côté serveur** — le front n'a pas à réinventer une
+    numérotation. ⚠️ `bareme` et `grain` sont **facultatifs par prudence, pas par usage** : aucun
+    chemin de composition ne laisse aujourd'hui une qualification sans réglage ; l'optionalité vaut
+    pour une base reprise d'une version antérieure, pas pour le geste d'aujourd'hui.
     """
 
     etape_id: int

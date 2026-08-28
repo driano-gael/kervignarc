@@ -1,14 +1,9 @@
 """Endpoints REST des clubs (`/api/v1`) — CRUD du référentiel des clubs (E02US001).
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
+⚠️ Routes **à la racine** et non imbriquées sous un tournoi comme les blasons ou les catégories :
+le référentiel des clubs est global et se réutilise d'une compétition à l'autre.
 
-Routes **à la racine** (`/api/v1/clubs`), et non imbriquées sous un tournoi comme les blasons ou
-les catégories : le référentiel est global et réutilisé d'une compétition à l'autre (E02US001).
+Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations
@@ -151,12 +146,10 @@ async def importer_clubs(
 ) -> RapportImportClubsReponse:
     """Alimente le référentiel **en masse** (**action admin**, E01US023) : écriture via la file.
 
-    Une **seule** soumission à la file pour tout le lot : découper en une écriture par ligne
-    ferait passer un collage de 200 clubs pour 200 transactions, là où l'opération est un geste
-    unique de l'organisateur (transactions courtes, règle 7).
-
-    Ne lève pas sur une ligne vide — elle est comptée. À ne pas confondre avec l'import des
-    **inscrits** depuis un fichier fédéral (E02US007), qui reste entier.
+    ⚠️ Une **seule** soumission à la file pour tout le lot : découper en une écriture par ligne
+    ferait passer un collage de 200 clubs pour 200 transactions, là où c'est un geste unique
+    (transactions courtes, règle 7). Ne lève pas sur une ligne vide — elle est comptée. À ne pas
+    confondre avec l'import des **inscrits** depuis un fichier fédéral (E02US007).
     """
     service: ServiceClubs = request.app.state.service_clubs
     write_queue: WriteQueue = request.app.state.write_queue

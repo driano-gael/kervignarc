@@ -1,16 +1,8 @@
-"""Endpoints REST du suivi des paiements (E08US002).
+"""Paiements — vues et règlements groupés ; le marquage d'**une** inscription reste sur sa
+ressource. Toutes ces écritures partagent la même voie de service, donc la même trace d'audit.
 
-Consulter les paiements **par archer** (dû / payé / reste) et **par club** (mêmes totaux agrégés,
-détail des archers), et **marquer** un règlement groupé (tout un archer, tout un club). Le marquage
-d'**une** inscription reste sur sa ressource (`PUT /api/v1/inscriptions/{id}`, cf.
-`inscriptions.py`)
-— toutes ces écritures partagent la même voie de service (`ServicePaiements`), donc la même trace
-d'audit `PAIEMENT`.
-
-Suit le patron de bout en bout : DTO Pydantic distincts des vues applicatives ; **tout réservé à
-l'admin** (`exiger_admin`) — les montants ne sont pas des données publiques (au contraire des
-classements, E07US001) ; écritures routées par la **file d'écriture** (writer unique, ADR-0005),
-lectures **hors boucle** (threadpool) ; erreurs typées traduites à la frontière.
+⚠️ **Tout est réservé à l'admin** : les montants ne sont pas des données publiques, au contraire
+des classements.
 """
 
 from __future__ import annotations

@@ -1,23 +1,12 @@
 /* Mise en forme du shell (E00US010) — sobre et fonctionnelle, en attendant le design. */
 
-/* ————————————————————————————————————————————————————————————————————————————————————————————————
-   Largeurs **par surface** — retour maquettes du 04/08/2026 (A02, A11).
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   Le shell imposait `960px` à tout le monde. C'était le socle du reproche « trop tassé, on peut
-   exploiter plus d'espace » : sur un PC d'organisation, un tiers de l'écran restait vide pendant que
-   la sidebar, le sélecteur et un tableau de 30 cibles se disputaient 700 px utiles.
-
-   Trois jetons, posés par `data-monde` (cf. `App.tsx`) et consommés par les règles ci-dessous plutôt
-   que redéclarés écran par écran :
-     --largeur-app    : la colonne du shell ;
-     --largeur-carte  : une carte ordinaire ;
-     --largeur-carte-l: une carte « large » (listes, formulaires à deux colonnes) ;
-     --respiration    : le pas d'espacement de la surface.
-
-   Le **défaut** (ci-dessous) reste prudent : c'est celui de l'écran de choix et de tout monde à
-   venir. Chaque surface l'élargit ou le resserre selon **sa** contrainte physique, qui est connue :
-   PC pour l'admin, téléphone pour le public, tablette *ou téléphone* pour la cible (A00, question 3),
-   mur pour la salle. */
+/* Largeurs **par surface** — retour maquettes du 04/08/2026 (A02, A11). Le shell imposait `960px` à
+   tout le monde : sur un PC d'organisation, un tiers de l'écran restait vide. Trois jetons posés
+   par `data-monde` (cf. `App.tsx`) et consommés par les règles ci-dessous plutôt que redéclarés
+   écran par écran : `--largeur-app` (colonne du shell), `--largeur-carte`, `--largeur-carte-l`
+   (listes, formulaires à deux colonnes), `--respiration` (pas d'espacement). ⚠️ Le **défaut**
+   ci-dessous reste prudent — celui de l'écran de choix et de tout monde à venir ; chaque surface
+   l'élargit ou le resserre selon **sa** contrainte physique (PC, téléphone, tablette, mur). */
 .app {
   --largeur-app: 64rem;
   --largeur-carte: 24rem;
@@ -294,35 +283,26 @@
   font-weight: 600;
 }
 
-/* `--hauteur-bandeau` : hauteur **réservée** sous `.bandeau-contexte` par tout ce qui se cale en
-   dessous de lui — aujourd'hui la réserve collante du plan de cibles (E16US005). Elle vit ici, sur
-   l'ancêtre commun, et non sur `.bandeau-contexte` : une propriété personnalisée n'est héritée que
-   par les **descendants**, or ce qui la consomme en est le **frère**.
-   Pourquoi 5,5 rem et non la hauteur nominale (~3 rem) : le bandeau est en `flex-wrap: wrap` et
-   porte jusqu'à cinq éléments, donc il passe à deux lignes dès qu'un nom de tournoi est long. Comme
-   il gagne la superposition (`z-index: 2`), une valeur sous-estimée lui fait recouvrir **en
-   silence** l'en-tête de ce qui le suit. On provisionne les deux lignes : le coût d'une marge un
-   peu large est nul, celui d'un titre masqué ne se voit qu'en salle. */
+/* `--hauteur-bandeau` : hauteur **réservée** sous `.bandeau-contexte` par ce qui se cale dessous
+   (E16US005). Elle vit sur l'ancêtre commun et non sur `.bandeau-contexte` : une propriété
+   personnalisée n'est héritée que par les **descendants**, or le consommateur en est le **frère**.
+   ⚠️ 5,5 rem et non ~3 rem : le bandeau est en `flex-wrap` et passe à deux lignes dès qu'un nom de
+   tournoi est long ; comme il gagne la superposition, une valeur sous-estimée recouvre **en
+   silence** l'en-tête suivant. Une marge large coûte zéro, un titre masqué ne se voit qu'en salle.
+ */
 .coquille__contenu {
   --hauteur-bandeau: 5.5rem;
   flex: 1 1 auto;
   min-width: 0;
 }
 
-/* ————————————————————————————————————————————————————————————————————————————————————————————————
-   Bandeau de contexte de l'admin (A02, retour maquettes du 04/08/2026)
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   « Sur quel tournoi on est et quel départ. » Il se lit **sans être cherché**, donc il est collant :
-   descendre dans un tableau de 200 inscrits ne doit pas faire perdre le sujet. Fond de surface et
-   filet bas pour qu'il se détache du contenu sans se faire passer pour une carte. */
-/* ⚠️ **Ne pas poser ici de `min-height` adossée à `--hauteur-bandeau`.** Essayé puis retiré en revue
-   (E16US005) : ce bandeau est rendu sur **toutes** les destinations de la coquille qui travaillent
-   sur un tournoi, et un plancher à 5,5 rem lui ajoutait ~24 px de vide sur vingt-trois écrans qui
-   n'avaient rien demandé — sur l'axe même (la place à l'écran) qu'`EPIC-16` existe pour corriger.
-   Il gardait de surcroît **du mauvais côté** : le cas nuisible est que ce bandeau *dépasse* la
-   hauteur provisionnée et recouvre ce qui se cale dessous (il a `z-index: 2`) ; un plancher
-   n'interdit que le cas inoffensif, un simple interstice. `--hauteur-bandeau` reste donc une
-   **provision généreuse**, ce que son commentaire dit — pas une contrainte. */
+/* Bandeau de contexte de l'admin (A02) — « sur quel tournoi on est et quel départ ». Il se lit
+   **sans être cherché**, donc il est collant : descendre dans un tableau de 200 inscrits ne doit
+   pas faire perdre le sujet. */
+/* ⚠️ **Ne pas poser ici de `min-height` adossée à `--hauteur-bandeau`.** Essayé puis retiré
+   (E16US005) : il est rendu sur **toutes** les destinations de la coquille, et un plancher ajoutait
+   ~24 px de vide sur vingt-trois écrans. Il gardait de surcroît **du mauvais côté** — le cas
+   nuisible est que le bandeau *dépasse* la provision et recouvre ce qui suit. */
 .bandeau-contexte {
   position: sticky;
   top: 0;
@@ -2143,36 +2123,23 @@ button:disabled {
   gap: 8px;
 }
 
-/* ————————————————————————————————————————————————————————————————————————————————————————————————
-   Plan de cibles et plan de duels — une cible par ligne (E16US005, retour A11 du 04/08/2026)
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   DETTE-086 : ⚠️ **toutes les largeurs de cette section sont CALCULÉES, aucune n'est mesurée.**
-   L'US qui l'a écrite n'a jamais pu afficher l'écran (pas de rendu possible sur le poste). Trois
-   passes de revue ont trouvé trois bloquants de mise en page, chacun par recalcul et aucun par les
-   ~4 800 tests du dépôt — jsdom ne calcule ni grille, ni `sticky`, ni `text-overflow`. Avant de
-   toucher une valeur ici, lire l'entrée de registre : elle porte le résidu connu (la bande
-   [1249, 1377] px, moins lisible qu'avant l'US) et l'arbitrage de seuil qui reste suspendu à une
-   capture d'écran.
-   « Trop tassé, on doit pouvoir mieux s'adapter sur la largeur d'un écran PC ; une cible par ligne
-   me paraît plus adaptée. » L'ancienne grille `auto-fill minmax(160px, 1fr)` empilait les couloirs
-   **verticalement** dans des vignettes étroites : le nom d'un archer y tenait à peine, et rien
-   n'alignait la cible 3 sur la cible 4.
+/* Plan de cibles et plan de duels — une cible par ligne (E16US005, A11 du 04/08/2026). ⚠️
+   `DETTE-086` : **toutes les largeurs de cette section sont CALCULÉES, aucune n'est mesurée.** L'US
+   qui l'a écrite n'a jamais pu afficher l'écran ; trois passes de revue ont trouvé trois bloquants
+   de mise en page, aucun par les tests — jsdom ne calcule ni grille, ni `sticky`, ni
+   `text-overflow`. Avant de toucher une valeur ici, lire l'entrée de registre : elle porte le
+   résidu connu et un arbitrage de seuil suspendu à une capture d'écran. Ces règles servent **les
+   deux plans**, qui ont le même défaut, le même utilisateur et le même PC (cadrage du 24/08/2026).
+ */
 
-   Ces règles servent **les deux plans** — qualification (`placement/Placement.tsx`) et duels
-   (`duels/Duels.tsx`). Ils ont le même défaut, le même utilisateur et le même PC : les laisser
-   diverger créerait un écart à rattraper (arbitrage du commanditaire, cadrage du 24/08/2026). */
-
-/* Le plan et son puits, côte à côte. La réserve **reste sous la main** pendant qu'on fait défiler
-   les cibles : le glisser-déposer HTML5 natif ne fait pas défiler la page toute seule, donc une
-   réserve en pied d'écran devient inatteignable dès qu'un départ compte vingt cibles — le geste
-   même que le questionnaire réclamait (« sortir un archer sans le positionner ailleurs »). */
-/* ⚠️ **La largeur disponible n'est PAS celle de la fenêtre.** Sous la coquille admin, il faut
-   retrancher 368 px avant que le plan voie un pixel : `.coquille__nav` (17rem = 272), le `gap` de
-   `.coquille` (32) et les deux `padding` de `.app` (2 × 32). Une fenêtre de 1366 px ne laisse donc
-   que **998 px**. Toutes les largeurs ci-dessous — et le point de bascule plus bas — sont calibrées
-   sur cette valeur, pas sur le viewport. Première version de cette US : réserve à `20rem` et
-   en-tête à `11rem`, ce qui ne laissait que **52 px de texte** par couloir à 1366 px, contre 123 px
-   *avant* l'US — elle rendait donc l'écran plus tassé que ce qu'elle prétendait corriger. */
+/* Le plan et son puits, côte à côte : la réserve **reste sous la main** pendant qu'on fait défiler
+   les cibles — le glisser-déposer natif ne fait pas défiler la page, donc une réserve en pied
+   d'écran devient inatteignable dès vingt cibles. */
+/* ⚠️ **La largeur disponible n'est PAS celle de la fenêtre** : sous la coquille admin il faut
+   retrancher 368 px (`.coquille__nav` 272, `gap` 32, deux `padding` 2 × 32), donc 1366 px n'en
+   laissent que **998**. Toutes les largeurs ci-dessous sont calibrées là-dessus : la 1ʳᵉ version
+   (réserve 20rem, en-tête 11rem) ne laissait que **52 px de texte** par couloir, contre 123 avant
+   l'US. */
 .placement__plan {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(10rem, 13rem);
@@ -2300,36 +2267,25 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
-/* Club · catégorie · blason (E16US005) — la **cause** des badges portés par la cible (mixité RG-3,
-   cloisonnement RG-4). Registre secondaire : ils expliquent, ils n'alertent pas.
-   Rendus sur **deux lignes** : le club d'abord, puis catégorie et blason. Ce n'est pas cosmétique —
-   c'est ce qui décide de ce qu'on lit. Les trois repères sur **une** ligne tronquée (2ᵉ version de
-   cette US) faisaient ~250 px de long naturel pour une colonne qui en offre ~100 à 1366 px : on
-   lisait « Arc Club de Kervi… » et **jamais** la catégorie ni le blason. Or le club ne discrimine
-   que la **mixité** (RG-3) ; le **cloisonnement** (RG-4), qui est l'autre moitié du CA, se lit sur
-   la catégorie et le blason. Tronquer une chaîne unique revenait donc à ne rendre que la moitié de
-   ce que l'US existe pour ajouter. Deux lignes coûtent ~14 px de hauteur par jeton et rendent la
-   seconde moitié. */
+/* Club · catégorie · blason (E16US005) — la **cause** des badges de la cible (mixité RG-3,
+   cloisonnement RG-4) : ils expliquent, ils n'alertent pas. ⚠️ Rendus sur **deux lignes**, et ce
+   n'est pas cosmétique : les trois repères sur une ligne tronquée faisaient ~250 px pour une
+   colonne qui en offre ~100, donc on lisait « Arc Club de Kervi… » et **jamais** la catégorie ni le
+   blason. Or le club ne discrimine que la **mixité** ; le **cloisonnement**, l'autre moitié du CA,
+   se lit sur la catégorie et le blason. */
 .jeton__reperes {
   font-size: 11px;
   line-height: 1.3;
   color: var(--text-secondary);
 }
 
-/* **Tronqués dans une case, jamais dans la réserve.** Dans une bande, la colonne est étroite et une
-   coupure `overflow-wrap: anywhere` produisait cinq lignes brisées au milieu des mots (1ʳᵉ version
-   de cette US) : l'ellipse laisse lire le début et le `title` du jeton porte le texte entier.
-   La **réserve**, elle, est une colonne verticale de ~200 px qui n'a aucun problème de largeur : y
-   appliquer la même troncature coupait la catégorie — précisément ce qu'un archer « sans blason »
-   oblige à lire pour savoir quelle catégorie n'a pas de carton. Elle enveloppe donc normalement. */
-/* ⚠️ **Seule la ligne du club est tronquée, et c'est le point du raisonnement qui avait été manqué
-   deux fois.** Un nom de club est un bloc qu'on ne peut pas casser utilement : l'ellipse y est le
-   bon geste. « catégorie · blason », en revanche, se coupe **aux espaces** sans jamais briser un
-   mot — le désastre des « cinq lignes illisibles » venait d'`overflow-wrap: anywhere`, pas du
-   retour à la ligne normal. Et c'est la ligne qu'il ne faut surtout pas tronquer : sous les
-   réglages `blason` et `blason_et_categorie`, le **blason** est le seul repère qui explique le badge
-   de cloisonnement, et il est en fin de chaîne — donc le premier effacé. Tronquer les deux lignes
-   revenait à rendre la moitié du CA, un cran plus à droite qu'à la version précédente. */
+/* **Tronqués dans une case, jamais dans la réserve.** En bande la colonne est étroite et
+   `overflow-wrap: anywhere` produisait cinq lignes brisées au milieu des mots ; l'ellipse laisse
+   lire le début, le `title` porte le texte entier. La réserve, colonne de ~200 px, enveloppe. */
+/* ⚠️ **Seule la ligne du club est tronquée** — point manqué deux fois. Un nom de club ne se casse
+   pas utilement ; « catégorie · blason » se coupe **aux espaces** sans briser un mot. Et c'est la
+   ligne à ne surtout pas tronquer : sous `blason`/`blason_et_categorie`, le **blason** est le seul
+   repère qui explique le badge, et il est en fin de chaîne — donc le premier effacé. */
 .cible .jeton__reperes--club {
   white-space: nowrap;
   overflow: hidden;
@@ -2405,20 +2361,13 @@ button:disabled {
   color: var(--danger);
 }
 
-/* L'admin travaille sur PC (A00, question 3), mais rien n'empêche d'ouvrir l'écran plus étroit — et
-   deux colonnes y rendraient les couloirs illisibles. On repasse alors à une seule colonne, réserve
-   en dessous et non collante : sur un écran de cette taille, elle n'est plus le panneau latéral
-   qu'on garde sous la main mais la fin de la page. La bande, elle, **reste** une cible par ligne :
-   c'est le CA, pas une commodité de largeur.
-
-   ⚠️ **`78rem` (1248 px) et non `64rem`, et le chiffre n'est pas rond par hasard** : une media query
-   mesure le **viewport**, alors que la contrainte est la **colonne de contenu**, plus étroite de
-   368 px sous la coquille admin (cf. `.placement__plan`). 78rem de fenêtre = ~880 px de contenu,
-   seuil en dessous duquel quatre couloirs plus une réserve ne tiennent plus. Écrire `64rem` — la
-   valeur de la première version — revenait à basculer à 656 px de contenu, c'est-à-dire jamais
-   assez tôt. La vraie réponse serait une *container query* sur `.coquille__contenu` ; elle
-   toucherait les 24 destinations de la coquille, donc elle relève d'une US d'outillage front, pas
-   d'ici. */
+/* Plus étroit : une seule colonne, réserve en dessous et non collante. La bande **reste** une cible
+   par ligne — c'est le CA, pas une commodité de largeur. ⚠️ **`78rem` (1248 px) et non `64rem`, et
+   ce n'est pas un chiffre rond par hasard** : une media query mesure le **viewport**, la contrainte
+   est la **colonne de contenu**, plus étroite de 368 px sous la coquille admin. 78rem de fenêtre =
+   ~880 px de contenu, seuil sous lequel quatre couloirs plus une réserve ne tiennent plus ; `64rem`
+   aurait basculé à 656 px, jamais assez tôt. La vraie réponse serait une *container query* sur
+   `.coquille__contenu` — 24 destinations, donc une US d'outillage front. */
 @media (max-width: 78rem) {
   .placement__plan {
     grid-template-columns: minmax(0, 1fr);
@@ -2436,15 +2385,12 @@ button:disabled {
   }
 }
 
-/* Plus étroit encore : ce n'est plus la réserve qui étouffe l'écran, c'est la sidebar à 17rem, qui
-   ne se replie qu'à 45rem. On passe alors à deux couloirs par ligne : l'alignement d'une bande à
-   l'autre est conservé (c'est le CA), seule la forme de la grille change.
-   ⚠️ **Le seuil est confortable, pas dérivé** — et la 1ʳᵉ rédaction prétendait le contraire
-   (« quatre couloirs retombent sous 60 px »), ce qui est faux : à 62 rem ils en offrent encore
-   ~100, et les 60 px ne sont atteints qu'à ~52 rem. On bascule donc **avant** que ce soit nécessaire,
-   délibérément. ⚠️ **Contrepartie à connaître** : sous ce seuil, une cible à 2 places remplit son
-   rang au lieu de laisser deux colonnes vides — l'alignement colonne à colonne subsiste, la lecture
-   « il manque deux places ici » non. */
+/* Plus étroit encore : ce n'est plus la réserve qui étouffe l'écran mais la sidebar à 17rem, qui ne
+   se replie qu'à 45rem. Deux couloirs par ligne ; l'alignement d'une bande à l'autre est gardé. ⚠️
+   **Le seuil est confortable, pas dérivé** — la 1ʳᵉ rédaction prétendait le contraire : à 62 rem
+   les couloirs offrent encore ~100 px, les 60 px n'étant atteints qu'à ~52 rem. ⚠️ **Contrepartie**
+   : sous ce seuil, une cible à 2 places remplit son rang, donc la lecture « il manque deux places
+   ici » disparaît. */
 @media (max-width: 62rem) {
   .cible__cases {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2870,17 +2816,12 @@ button:disabled {
   min-height: 48px;
 }
 
-/* ————————————————————————————————————————————————————————————————————————————————————————————————
-   Écran de cible sur **téléphone** (A00 question 3, S02)
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   « Les tablettes de cible doivent pouvoir s'adapter à un téléphone » — et à la question sur la
-   taille du parc : « tablette standard ou téléphone ». Le parc est donc **hétérogène et inconnu**,
-   ce qui interdit de dimensionner pour un appareil précis.
-
-   Sous 480 px : les zones passent en grille pleine largeur (un pouce, une colonne de touches larges,
-   plutôt qu'une rangée qui déborde), les cibles tactiles grandissent au lieu de rétrécir, et
-   l'avancement « n/12 volées » disparaît — la bande de relecture juste en dessous porte déjà la même
-   information, en plus détaillée. */
+/* Écran de cible sur **téléphone** (A00 question 3, S02). « Les tablettes de cible doivent pouvoir
+   s'adapter à un téléphone », et le parc est **hétérogène et inconnu** — ce qui interdit de
+   dimensionner pour un appareil précis. Sous 480 px : les zones passent en grille pleine largeur
+   (un pouce, une colonne de touches larges), les cibles tactiles grandissent au lieu de rétrécir,
+   et l'avancement « n/12 volées » disparaît — la bande de relecture juste en dessous porte déjà la
+   même information. */
 @media (max-width: 480px) {
   .saisie__zones {
     display: grid;
@@ -2929,25 +2870,14 @@ button:disabled {
 /* conteneur défilant pour les larges tables sur petit écran.                 */
 /* ------------------------------------------------------------------------- */
 
-/* ————————————————————————————————————————————————————————————————————————————————————————————————
-   Classement à tête figée (A16 / P07, retour maquettes du 04/08/2026)
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   « Les x premiers sont toujours affichés, mais le dessous du tableau a un défilé jusqu'à n. »
-   Deux tables empilées qui partagent un `<colgroup>` : la tête ne bouge pas, le reste défile dans
-   son propre cadre. `table-layout: fixed` est ce qui rend l'alignement des colonnes exact entre les
-   deux — sans lui, chaque table calculerait ses largeurs sur son propre contenu et les colonnes se
-   décaleraient dès qu'un nom serait plus long en bas qu'en haut. */
-/* ⚠️ **Le plancher de largeur est sur le CONTENEUR, pas sur les tables** — et c'est tout le sujet.
-   Posé sur les tables, il en faisait deux éléments larges dans deux boîtes distinctes : celle du
-   haut défilait dans `.table-defilement` (le conteneur de `VueClassement`), celle du bas dans son
-   propre cadre, puisque `overflow-y: auto` force `overflow-x` à `auto`. Sur un téléphone, pousser le
-   tableau vers la gauche pour lire « Total » désalignait donc tête et corps de **plusieurs centaines
-   de pixels** — un défaut bien pire que les 15 px qu'on cherchait à corriger (2ᵉ passe de revue).
-   Ici, un seul bloc large, un seul défilement horizontal, celui du parent.
-
-   La valeur : 52 rem couvrent les 39 rem de colonnes fixes du mode public **plus** de quoi lire un
-   nom composé ; 60 rem font de même pour les 47 rem du mode admin (colonne « Placer » en plus). Un
-   plancher plus bas laissait « MARTIN Jean-Baptiste » sur 80 px, c'est-à-dire le symptôme même. */
+/* Classement à tête figée (A16 / P07) : deux tables empilées partageant un `<colgroup>`.
+   `table-layout: fixed` rend l'alignement des colonnes exact entre les deux — sans lui chacune
+   calculerait ses largeurs sur son propre contenu. */
+/* ⚠️ **Le plancher de largeur est sur le CONTENEUR, pas sur les tables.** Posé sur les tables, il
+   en faisait deux éléments larges dans deux boîtes distinctes (`overflow-y: auto` force
+   `overflow-x`), et pousser le tableau pour lire « Total » désalignait tête et corps de plusieurs
+   centaines de pixels. Valeurs : 52 rem (public) et 60 rem (admin) couvrent les colonnes fixes plus
+   de quoi lire un nom composé. */
 .classement {
   min-width: 52rem;
 }
@@ -2961,18 +2891,12 @@ button:disabled {
   width: 100%;
 }
 
-/* ⚠️ **Les deux tables réservent la même gouttière d'ascenseur**, sans quoi elles ne s'alignent pas :
-   celle du bas défile, celle du haut non, et les ≈ 15 px de l'ascenseur (Windows/Chrome ; invisible
-   sur macOS, d'où le risque de ne le découvrir qu'au gymnase) rétrécissaient la seule colonne sans
-   largeur fixe — « Archer » — décalant les six suivantes.
-
-   `scrollbar-gutter` ne vaut que sur un **conteneur de défilement** : une première correction l'avait
-   posé sur `.classement > .table`, qui n'en est pas un — la règle était un no-op, et réserver la
-   gouttière du seul cadre du bas rendait le décalage **permanent** au lieu d'intermittent. La tête
-   est donc enveloppée dans un conteneur qui ne défile jamais mais réserve la même place.
-
-   `overflow-x: clip` sur le cadre du bas : le défilement horizontal appartient au parent, un second
-   ici les désynchroniserait à nouveau. */
+/* ⚠️ **Les deux tables réservent la même gouttière d'ascenseur**, sans quoi elles ne s'alignent pas
+   : celle du bas défile, celle du haut non, et les ≈ 15 px de l'ascenseur (Windows/Chrome,
+   invisible sur macOS) rétrécissaient la seule colonne sans largeur fixe. `scrollbar-gutter` ne
+   vaut que sur un **conteneur de défilement** : posé sur `.classement > .table`, qui n'en est pas
+   un, il était un no-op et rendait le décalage **permanent**. D'où la tête enveloppée dans un
+   conteneur qui ne défile jamais mais réserve la même place, et `overflow-x: clip` en bas. */
 .classement__tete {
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -2988,16 +2912,12 @@ button:disabled {
   border-radius: 0 0 8px 8px;
 }
 
-/* Le reste du classement **projeté**, page après page (E16US009, ADR-0098).
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   Jumeau de `.classement__defilement` pour la même portion de tableau, et volontairement **sans
-   aucune propriété de défilement** : c'est tout le sujet. `max-height` + `overflow-y: auto` sur un
-   vidéoprojecteur produit un cadre que personne ne peut actionner — ni souris, ni doigt, « aucune
-   interaction » (CA E07US004). Ici, la page entière est rendue et c'est le **temps** qui tourne.
-
-   Pas de `scrollbar-gutter` non plus : aucune gouttière à réserver puisqu'aucun ascenseur
-   n'apparaît, et en réserver une décalerait la table du bas par rapport à la tête figée — soit
-   exactement le défaut que la gouttière corrige dans le cas manipulable. */
+/* Le reste du classement **projeté**, page après page (E16US009, ADR-0098). Jumeau de
+   `.classement__defilement`, et volontairement **sans aucune propriété de défilement** :
+   `max-height` + `overflow-y` sur un vidéoprojecteur produit un cadre que personne ne peut
+   actionner (CA E07US004, « aucune interaction »). Ici la page entière est rendue et c'est le
+   **temps** qui tourne. ⚠️ Pas de `scrollbar-gutter` non plus : aucun ascenseur n'apparaît, et en
+   réserver une décalerait la table du bas par rapport à la tête figée. */
 .classement__pages {
   display: flex;
   flex-direction: column;
@@ -3153,14 +3073,11 @@ button:disabled {
 }
 
 /* Détail des flèches déplié sous une ligne de classement (E16US004, P03). Le bouton porte le nom de
-   l'archer : il doit rester lisible comme un nom, pas comme un lien de navigation — d'où le
-   soulignement pointillé, plus discret que celui de `.lien`. */
-/* ⚠️ Forme **longue** (`underline dotted`), et non `text-decoration-style` seul — correctif de revue.
-   `.lien` ne pose aucun soulignement au repos : sans `text-decoration-line`, le pointillé n'était
-   jamais dessiné. Et `.lien:hover { text-decoration: underline }` est une forme courte, qui remet
-   `style` à `solid` et l'emporte en spécificité (0,2,0 contre 0,1,0) — d'où la reprise explicite
-   ci-dessous. Le repos comptait plus que le survol : sur une tablette, il n'y a pas de survol, donc
-   c'était l'affordance entière du dépliant qui manquait sur la cible principale de l'appli. */
+   l'archer : il doit se lire comme un nom, pas comme un lien — d'où le pointillé. */
+/* ⚠️ Forme **longue** (`underline dotted`) et non `text-decoration-style` seul : `.lien` ne pose
+   aucun soulignement au repos, donc sans `text-decoration-line` le pointillé n'était jamais dessiné
+   — et `.lien:hover` est une forme courte qui remet `style` à `solid` et l'emporte en spécificité.
+   Le repos comptait plus que le survol : sur tablette il n'y a pas de survol. */
 .table__detail-bascule {
   text-align: left;
   text-decoration: underline dotted;
@@ -3697,15 +3614,11 @@ button:disabled {
   margin-bottom: 12px;
 }
 
-/* Une volée de camp, **sur deux hauteurs** (S05, retour maquettes du 04/08/2026) :
-     ligne 1 — nom … total
-     ligne 2 — les cases de flèches, sur toute la largeur.
-   Elles partageaient une seule rangée avec le nom : un nom long les réduisait à rien, alors que ce
-   sont les seules zones qu'on vise du doigt. Tapable pour devenir le camp actif (que le pavé
-   remplit). */
+/* Une volée de camp, **sur deux hauteurs** (S05) : ligne 1 le nom et le total, ligne 2 les cases de
+   flèches sur toute la largeur. Elles partageaient une rangée avec le nom, qu'un nom long réduisait
+   à rien — alors que ce sont les seules zones qu'on vise du doigt. */
 /* `font: inherit` — bouton **composite** : sans lui, il hérite de la typographie du bouton d'action
-   (13 px, graisse 800, interlettrage) posée sur le sélecteur `button` nu. Même convention que
-   `.coquille__lien`, `.onglet` et `.accueil__porte`. */
+   posée sur le sélecteur `button` nu. Même convention que `.coquille__lien` et `.onglet`. */
 .duel__volee {
   font: inherit;
   display: flex;

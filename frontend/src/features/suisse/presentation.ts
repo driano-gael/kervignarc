@@ -1,12 +1,10 @@
 // Ce que l'écran du système suisse **dit** — logique pure, aucun React (E05US030).
 //
-// Extrait de `SaisieSuisse.tsx` en revue, pour la raison que `shared/phases/suisse.ts` énonce en
-// tête : `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, donc tout ce
-// qui vit dans le `.tsx` est **intestable**. C'était un vrai manque et pas une préférence de style :
-// deux des fonctions ci-dessous portent un CA de l'US — la conversion des points en victoires, et
-// la phrase qui explique pourquoi la ronde suivante n'est pas là —, et la fiche de recette
-// (`docs/fonctionnel/E05US030.md`) désigne nommément la première comme « à vérifier à la main ».
-// Un calcul dont la recette dit « vérifiez que… » mérite un test.
+// Extrait de `SaisieSuisse.tsx` en revue : `react-refresh` interdit à un module de rendu d'exporter
+// aussi des fonctions, donc tout ce qui vit dans le `.tsx` est **intestable**. Vrai manque et non
+// préférence de style — deux des fonctions ci-dessous portent un CA de l'US, et la fiche de recette
+// désigne nommément la première comme « à vérifier à la main ». Un calcul dont la recette dit «
+// vérifiez que… » mérite un test.
 
 import type { Duelliste } from '../saisie-duels/api'
 import type { RencontreSuisse } from './api'
@@ -23,14 +21,12 @@ export interface RondeLisible {
   rencontres: { haut: Duelliste | null; bas: Duelliste | null }[]
 }
 
-/**
- * Les points, rendus **en points réels**.
+/** Les points, rendus **en points réels**.
  *
  * ⚠️ Le serveur les transporte en **demi-points doublés** (victoire = 2, nul = 1) pour ne comparer
  * que des entiers — une égalité de départage ne doit pas reposer sur un flottant. C'est donc à
  * l'affichage de rendre la moitié : servir le nombre brut annoncerait « 6 victoires » à qui en a
- * trois. Le `buchholz` est dans la **même unité** (c'est une somme de ces points), donc il passe
- * par la même fonction.
+ * trois. Le `buchholz` est dans la **même unité**, donc il passe par la même fonction.
  */
 export function decrirePoints(doubles: number): string {
   return doubles % 2 === 0 ? String(doubles / 2) : `${Math.floor(doubles / 2)},5`
@@ -56,13 +52,10 @@ export { decrirePlaces } from '../../shared/salle/place'
 
 /** Ce que l'écran a à dire **sous** la liste des rondes — le CA de l'attente nommée.
  *
- * Trois états, et les trois comptent :
- * - `attente` — la ronde en cours n'est pas close et il en reste à jouer : on dit **pourquoi** la
- *   suivante n'est pas là, sinon il ne reste qu'une absence, et le scoreur ne peut pas distinguer
- *   « plus rien à jouer » de « il reste des rencontres à saisir » ;
- * - `fini` — toutes les rondes dues sont jouées et closes : le classement est définitif ;
- * - `null` — la dernière ronde due est **en cours** : il n'y a pas de ronde suivante à promettre,
- *   et rien n'est terminé non plus. Se taire est alors la seule réponse juste.
+ * Trois états, et les trois comptent : `attente` dit **pourquoi** la ronde suivante n'est pas là
+ * (sans quoi le scoreur ne distingue pas « plus rien à jouer » de « il reste à saisir ») ; `fini`
+ * dit que le classement est définitif ; `null` quand la dernière ronde due est **en cours** — rien
+ * à promettre, rien de terminé, se taire est la seule réponse juste.
  */
 export type MotDeLaFin =
   { etat: 'attente'; courante: number; suivante: number } | { etat: 'fini' } | null
@@ -97,19 +90,11 @@ export function nomDeLArcher(rondes: readonly RondeLisible[], archerId: number):
 
 /** Ce qui **manque** dans une ronde en cours, nommé (CA E05US034).
  *
- * ⚠️ **Deux listes et pas une**, et c'est la lettre du CA : *« quelles rencontres ne sont pas
- * validées, et lesquelles ne sont pas encore saisies »*. La distinction décide de qui doit agir —
- * une rencontre non saisie attend le **scoreur de sa cible**, une rencontre saisie et non validée
- * attend un **geste de validation**. Les confondre dans un seul « il manque 3 rencontres » renvoie
- * l'organisateur chercher partout, ce que le refus existe précisément pour éviter (`P-3` : un refus
- * qui ne dit pas quoi faire est un cul-de-sac).
- *
- * L'ancien message ne comptait que : *« la ronde en cours n'est pas entièrement saisie »*. Vrai, et
- * inutilisable le jour J dans un gymnase où quatorze rencontres se jouent en parallèle.
- *
- * Une rencontre **désynchronisée** est rangée à part : elle n'attend ni saisie ni validation mais
- * un rétablissement de population (ADR-0049 §4), et l'annoncer comme « à saisir » enverrait le
- * scoreur buter sur un tir que le serveur refuse d'écraser.
+ * ⚠️ **Deux listes et pas une**, et c'est la lettre du CA : une rencontre non saisie attend le
+ * **scoreur de sa cible**, une rencontre saisie et non validée attend un **geste de validation**.
+ * Les confondre en « il manque 3 rencontres » renvoie chercher partout (`P-3`). Une rencontre
+ * **désynchronisée** est rangée à part : elle attend un rétablissement de population (ADR-0049 §4),
+ * et l'annoncer « à saisir » enverrait buter sur un tir que le serveur refuse d'écraser.
  */
 export interface CeQuiManque {
   aSaisir: string[]
@@ -131,19 +116,12 @@ export function ceQuiManque(rencontres: readonly RencontreSuisse[]): CeQuiManque
     }
     const duel = rencontre.duel
     if (duel.validee_par !== null) continue
-    // ⚠️ **Une validation en file hors-ligne a sa propre ligne** (arbitrage de revue E05US034,
-    // repris en 2ᵉ passe). `etatRencontre` la distingue (« validation en attente », E04US009) ;
-    // la ranger dans `aValider` faisait dire deux choses contraires à deux phrases du même écran,
-    // et envoyait réclamer un geste déjà posé.
-    //
-    // ⚠️ **Mais l'écarter purement était pire, et c'est la correction de 2ᵉ passe.** Deux raisons.
-    // (1) `validation_en_attente` est **purement local** — le serveur ne renvoie jamais ce champ :
-    // seule la tablette qui a mis en file le voit, donc l'argument « ça n'appelle personne » ne
-    // vaut pas pour l'organisateur, qui ne voit rien du tout. (2) Si c'était la dernière rencontre,
-    // le résumé devenait **vide** sous la phrase « la ronde suivante sera appariée quand celle-ci
-    // sera saisie et validée » : plus rien n'expliquait l'attente, ce qui est exactement le
-    // cul-de-sac (`P-3`) que ce CA existe pour fermer. Elle est donc **nommée**, avec ce qu'elle
-    // attend vraiment — le réseau, pas une personne.
+    // ⚠️ **Une validation en file hors-ligne a sa propre ligne** : la ranger dans `aValider`
+    // faisait dire deux choses contraires à deux phrases du même écran. ⚠️ **Mais l'écarter était
+    // pire** (2ᵉ passe) : `validation_en_attente` est **purement local** — seule la tablette qui a
+    // mis en file le voit, l'organisateur ne voit rien —, et si c'était la dernière rencontre le
+    // résumé devenait **vide** sous « la ronde suivante sera appariée quand celle-ci sera saisie et
+    // validée ». Elle est donc **nommée**, avec ce qu'elle attend vraiment : le réseau.
     if (duel.validation_en_attente === true) {
       manque.enFile.push(nom)
       continue

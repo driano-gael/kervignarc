@@ -144,15 +144,12 @@ function FormulaireConnexion() {
   )
 }
 
-/**
- * Un champ du formulaire de connexion : **libellé visible au-dessus**, comme sur la planche A01
- * (E17US003).
+/** Un champ du formulaire de connexion : **libellé visible au-dessus** (planche A01, E17US003).
  *
- * Le formulaire n'avait jusqu'ici que des `placeholder` et un `aria-label`. Ce n'est pas seulement un
- * écart de maquette : un `placeholder` **disparaît dès la première frappe**, donc celui qui
- * s'interrompt en cours de saisie n'a plus rien pour savoir quel champ il remplissait — et il n'est
- * pas annoncé comme un libellé. Le `<label>` enveloppant associe le texte au champ sans avoir à
- * gérer d'`id`, et rend le `aria-label` inutile : le laisser en plus **remplacerait** le texte visible
+ * Le formulaire n'avait que des `placeholder` et un `aria-label`. Ce n'est pas qu'un écart de
+ * maquette : un `placeholder` **disparaît dès la première frappe**, donc celui qui s'interrompt
+ * n'a plus rien pour savoir quel champ il remplissait. Le libellé enveloppant associe le texte au
+ * champ sans `id`, et rend le `aria-label` inutile — le laisser **remplacerait** le texte visible
  * pour un lecteur d'écran, donc ferait diverger ce qui est lu de ce qui est vu.
  */
 function ChampConnexion({ libelle, children }: { libelle: string; children: React.ReactNode }) {

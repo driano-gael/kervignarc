@@ -1,17 +1,9 @@
-"""Agrégat `GabaritSalle` — un plan de salle réutilisable (E01US007) et son application à un
-tournoi (E01US008).
+"""Gabarit de salle — modèle de bibliothèque, ou instance **copiée** dans un tournoi.
 
-Décrit une disposition de cibles portant un `nom` et, pour chaque **cible**, un **plafond
-d'archers** (`capacite`, de 1 à 4, défaut 4). Ce plafond borne le nombre d'archers admis sur la
-cible ; les **positions** occupées (A, B, C, D) en découlent (plafond 4 → A/B/C/D, 2 → A/B,
-1 → A). Le **remplissage réel** d'une cible selon la taille des blasons — et le regroupement des
-blasons de même type — relève du **placement** (EPIC-03), pas de cet agrégat.
+Le plafond d'une cible détermine ses positions (A/B/C/D).
 
-Un gabarit est soit un **modèle de bibliothèque** (`tournoi_id is None`), réutilisable d'un
-tournoi à l'autre, soit une **instance appliquée** à un tournoi (`tournoi_id` renseigné).
-Appliquer un modèle à un tournoi en produit une **copie** (`pour_tournoi`) : l'instance est
-ensuite ajustable **sans altérer** le modèle d'origine (`ajuster`, plafond cible par cible).
-Agrégat de domaine **pur** (immuable, sans dépendance framework), validé à la création/édition.
+⚠️ **Le remplissage RÉEL d'une cible n'est pas ici** : la taille des blasons et le regroupement des
+blasons de même type relèvent du **placement**, pas de cet agrégat.
 """
 
 from __future__ import annotations
@@ -54,13 +46,11 @@ class Cible:
 class GabaritSalle:
     """Un gabarit de salle. `id` vaut `None` tant qu'il n'est pas persisté.
 
-    L'état porte le plafond d'archers de **chaque** cible (`capacites`, une valeur par cible) :
-    la représentation est par-cible, ce qui permet l'ajustement fin d'E01US008 (`ajuster`), même
-    si la création d'E01US007 remplit ces plafonds de façon **uniforme**.
-
-    `tournoi_id` distingue les deux natures d'un gabarit : `None` pour un **modèle** de
-    bibliothèque (réutilisable), un identifiant de tournoi pour une **instance appliquée** —
-    copie propre à ce tournoi, ajustable sans toucher au modèle.
+    L'état porte le plafond d'archers de **chaque** cible (`capacites`, une valeur par cible) : la
+    représentation est par-cible, ce qui permet l'ajustement fin d'E01US008, même si la création
+    d'E01US007 les remplit uniformément. `tournoi_id` distingue les deux natures : `None` pour un
+    **modèle** de bibliothèque, un identifiant pour une **instance appliquée** — copie propre au
+    tournoi, ajustable sans toucher au modèle.
     """
 
     nom: str

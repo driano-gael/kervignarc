@@ -1,22 +1,11 @@
 // Le **schéma à braquets** — un seul composant de dessin, trois surfaces (E07US004, ADR-0064).
 //
-// C'est la décision de conception centrale du CA d'E07US004, et elle mérite d'être justifiée ici
-// plutôt que dans une story qu'on ne lit pas en codant :
-//
-// | Surface                     | Écran            | Interaction | Habillage             |
-// |-----------------------------|------------------|-------------|-----------------------|
-// | Atelier — composer          | PC               | on compose  | outil (jamais d'identité, `D-27`) |
-// | Pilotage — suivre           | PC               | oui         | outil                 |
-// | Salle — projeter            | ≥ 1920 px, de loin | **aucune** | identité du tournoi (`D-27`, `DV-08`) |
-//
-// Le dessiner pour une seule condamnerait les deux autres : les contraintes sont **opposées**.
-// D'où trois props de variation — et **aucune** variation de géométrie : `geometrie.ts` produit le
-// même `Plan` partout, parce que le CA dit « le **même** schéma ». C'est le `viewBox` du SVG qui met
-// le dessin à l'échelle, texte compris — un écran de salle affiche donc *le dessin de l'atelier*,
-// simplement plus gros, et non un cousin qu'il faudrait réapprendre à lire.
-//
-// Le calque d'`avancement` (E07US004) est **superposé**, jamais fondu dans les blocs : c'est ce qui
-// garantit qu'un bloc se dessine identiquement avec ou sans réalité par-dessus.
+// Atelier et pilotage sont sur PC et interactifs ; la salle projette à ≥ 1920 px, **sans aucune
+// interaction**, et porte l'identité du tournoi (`D-27`, `DV-08`). Le dessiner pour une seule
+// condamnerait les deux autres. D'où trois props de variation — et **aucune** variation de
+// géométrie : `geometrie.ts` produit le même `Plan` partout, c'est le `viewBox` qui met à
+// l'échelle. ⚠️ Le calque d'`avancement` est **superposé**, jamais fondu dans les blocs : c'est ce
+// qui garantit qu'un bloc se dessine identiquement avec ou sans réalité par-dessus.
 
 import { useMemo } from 'react'
 
@@ -177,16 +166,15 @@ function BlocDuSchema({
               : 'duels'
             : `${bloc.nb_volees} volées de ${bloc.nb_fleches_par_volee}`}
       </text>
-      {/* Question 4, cas des formats **sans braquet** (E05US032) : la phase avance par tours mais
-          n'attribue pas de rangs au fil de l'eau, donc il n'y a aucune ligne de braquet où loger le
-          tour courant. On l'annonce alors sur sa propre ligne, dans le mot de la salle servi par le
-          backend — « Ronde 3 », « Tour 2 », « Manche 2 ».
+      {/* Question 4, cas des formats **sans braquet** (E05US032) : la phase avance par tours
+          mais n'attribue pas de rangs au fil de l'eau, donc aucune ligne de braquet où loger le
+          tour courant. On l'annonce sur sa propre ligne, dans le mot de la salle servi par le
+          backend. */}
 
-          ⚠️ **Ici et pas seulement dans l'en-tête du suivi** : l'en-tête ne parle que de la phase
-          `ordre_courant`, alors que le CA dit « **chaque** phase démarrée ». Et c'est ce composant,
-          pas l'en-tête, que monte l'écran de salle — la surface que l'US invoque. Sans cette ligne,
-          l'écran projeté continuait de ne rien dire hors tableau. Arbitrage du commanditaire rendu
-          en revue, sur une divergence `stories/` ↔ `docs/fonctionnel/` relevée par l'axe C1. */}
+      {/* ⚠️ **Ici et pas seulement dans l'en-tête du suivi** : l'en-tête ne parle que de la
+          phase `ordre_courant`, alors que le CA dit « **chaque** phase démarrée » — et c'est ce
+          composant que monte l'écran de salle. Arbitrage du commanditaire rendu en revue (axe
+          C1). */}
       {bloc.tours.length === 0 && avancement?.libelle_tour_courant != null && (
         <text
           className="schema-braquets__bloc-braquet schema-braquets__bloc-braquet--courant"

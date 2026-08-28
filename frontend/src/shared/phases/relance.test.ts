@@ -1,14 +1,10 @@
 // Le rappel de relance (E05US034) — tests du front, écrits **depuis le CA**.
 //
-// L'oracle est la puce *« l'application rappelle qu'une phase attend sa relance. Pastille au tableau
-// de bord (« 2 phases attendent votre relance depuis 14 min ») »* de `stories/E05-moteur-phases.md`
-// § E05US034, et la phrase qui la suit : *« sans ce filet, la capacité livrée en E05US033 crée un
-// mode de panne neuf »*.
-//
-// ⚠️ **Ce fichier ne teste ni le déclenchement ni l'horodatage** : les deux sont serveur, avec leurs
-// oracles dans `backend/tests/test_service_arrets_programmes.py`. Ici ne vit que la traduction d'un
-// instant en attente lisible — la seule règle que le front porte, et celle qui décide si
-// l'organisateur regarde ou passe son chemin.
+// L'oracle est la puce « l'application rappelle qu'une phase attend sa relance » de
+// `stories/E05-moteur-phases.md` § E05US034. ⚠️ **Ce fichier ne teste ni le déclenchement ni
+// l'horodatage** : les deux sont serveur, avec leurs oracles dans
+// `test_service_arrets_programmes.py`. Ici ne vit que la traduction d'un instant en attente lisible
+// — la seule règle que le front porte.
 
 import { describe, expect, it } from 'vitest'
 

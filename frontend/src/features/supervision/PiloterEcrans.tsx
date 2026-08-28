@@ -1,19 +1,10 @@
 // Pilotage des écrans de salle depuis la console (E07US004, ADR-0064).
 //
-// Le motif du CA, mot pour mot : *« basculer sur le podium à 17 h et partir serrer des mains, c'est
-// un écran figé sur le podium à 18 h pendant que les gens cherchent leur classement »*. Tout ce
-// fichier découle de cette phrase.
-//
-// **L'arbitrage Q-UX7 (01/08/2026) vit ici** : une prise de contrôle se termine par une **durée**
-// *ou* par un **retour explicite**, et les deux sont offerts. Concrètement :
-//
-// - le choix de durée propose des valeurs bornées **et** « jusqu'à ce que je rende la main » ;
-// - une prise sans échéance déclenche un **rappel très visible** (`exige_rappel`, remonté par le
-//   domaine — le drapeau n'est pas une décoration d'UI, c'est une règle nommée côté serveur) ;
-// - « Rendre la main » est toujours disponible, y compris sur une prise à durée.
-//
-// L'écran, lui, ne reçoit **aucun ordre** : il lit sa consigne et décompte en local (ADR-0064). Ce
-// panneau ne « pousse » donc rien — il pose un état.
+// Le motif du CA : « basculer sur le podium à 17 h et partir serrer des mains, c'est un écran figé
+// sur le podium à 18 h ». **L'arbitrage Q-UX7 (01/08/2026) vit ici** : une prise se termine par une
+// **durée** *ou* par un **retour explicite**, et les deux sont offerts — une prise sans échéance
+// déclenche un rappel très visible (`exige_rappel`, règle nommée côté serveur, pas une décoration
+// d'UI). ⚠️ L'écran ne reçoit **aucun ordre** : il lit sa consigne et décompte en local.
 
 import { useState } from 'react'
 

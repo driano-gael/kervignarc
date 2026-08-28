@@ -1,27 +1,10 @@
-"""Identité visuelle d'un tournoi — deux accents, deux logos (E16US006, absorbe E01US016).
+"""Identité visuelle — la dérivation des accents est **reproductible** (`DV-05`, ADR-0097).
+Teinte et saturation conservées, clarté ajustée jusqu'au seuil AA : donc du domaine, testable
+sans navigateur.
 
-Le club a **deux marques** : *Les Archers de Kervignac*, permanente, et l'événement — *Challenge des
-Champions* — qui change à chaque édition. L'organisateur fournit **un logo par marque et deux
-couleurs d'accent, rien d'autre** ; tout le reste du chrome est **dérivé** ici (`DV-06`).
-
-**Pourquoi la dérivation vit dans le domaine.** « Teinte et saturation conservées, clarté ajustée
-jusqu'au seuil AA » (`DV-05`) est une **règle reproductible**, pas un goût de graphiste : elle a une
-entrée, une sortie, aucune horloge et aucun aléa. C'est donc du domaine pur (règle 1), testable sans
-navigateur — et non un calcul recopié dans le front, où il aurait échappé à `mypy --strict` et
-n'aurait été vérifié par personne.
-
-**Ce que la dérivation ne touche PAS.** Les deux accents pilotent les **jetons de marque**, jamais
-le fond de page ni les couleurs sémantiques. Le CDC design §3.6 le pose en verrous : *« les neutres,
-l'échelle typographique, les espacements et les composants ne bougent pas — seul le chrome de marque
-change »* (verrou 2) et *« alerte, succès, info appartiennent au produit, pas au tournoi »* (verrou
-1, `DV-03`). Ce n'est pas de la prudence : `frontend/src/index.css` mesure **chaque** couleur contre
-`--surface-0`. Repeindre le fond par tournoi invaliderait d'un coup les vingt ratios de la charte,
-sans qu'aucun test ne bouge — le « bug de contraste silencieux » que `charte.test.ts` dit exister.
-
-**La déclinaison du club est l'oracle de ce module.** `index.css` (E17US001, ADR-0074) décline le
-rouge `#B71918` **à la main** en `#CC1C1B` (contour, 3,01:1) et `#E84E4D` (texte, 4,52:1). Ces trois
-valeurs partagent teinte et saturation à moins d'un demi-degré près : la charte avait déjà appliqué
-la règle que ce module automatise. `test_domain_identite.py` exige qu'il la reproduise.
+⚠️ **Les accents pilotent les jetons de MARQUE, jamais le fond ni le sémantique.** `index.css`
+mesure chaque couleur contre `--surface-0` : repeindre le fond par tournoi invaliderait d'un coup
+les vingt ratios de la charte, sans qu'aucun test ne bouge.
 """
 
 from __future__ import annotations
@@ -127,20 +110,9 @@ class JetonsDeMarque:
 
     Quatre jetons et non un, parce que `DV-04` a montré qu'un seul ne peut pas tenir trois usages :
     le rouge du club est **utilisable en aplat** (2,55:1 suffit à voir une surface) et
-    **inutilisable en texte** sur le même fond.
-
-    ⚠️ **La correspondance vers `index.css` est écrite ici, et une seule fois** — parce que ce n'en
-    est pas tout à fait une transcription, comme une première rédaction l'affirmait :
-
-    | ici | jeton CSS |
-    |---|---|
-    | `surface` | `--brand-surface` |
-    | `contour` | `--brand-border` |
-    | `texte` | `--brand-text` |
-    | `encre` | `--sur-brand` |
-
-    Deux des quatre changent de mot ; la déduire du code de `jetons.ts` était possible, la lire ici
-    l'est davantage (relevé en revue).
+    **inutilisable en texte** sur le même fond. ⚠️ La correspondance vers `index.css` est écrite
+    ici, une seule fois — `surface`→`--brand-surface`, `contour`→`--brand-border`,
+    `texte`→`--brand-text`, `encre`→`--sur-brand` : deux des quatre changent de mot.
     """
 
     surface: Couleur
@@ -179,12 +151,9 @@ def deriver_marque(accent: Couleur, fond: Couleur) -> JetonsDeMarque:
 
     Applique `DV-05` à la lettre : **l'aplat garde la couleur exacte**, seules les variantes de
     contour et de texte sont ajustées, et uniquement en **clarté** — la teinte et la saturation de
-    l'organisateur sont sa marque, les changer serait la lui prendre. C'est aussi ce qui empêche la
-    solution paresseuse : « atteindre 4,5:1 » se satisfait de renvoyer du blanc.
-
-    Le contrôle est **non bloquant** (`P-4`) : rien ici ne refuse une couleur. L'accent trop faible
-    est accepté, décliné, et le chiffre de son échec est rendu à l'écran pour que l'organisateur
-    décide en connaissance de cause.
+    l'organisateur sont sa marque. C'est aussi ce qui empêche la solution paresseuse : « atteindre
+    4,5:1 » se satisfait de renvoyer du blanc. Le contrôle est **non bloquant** (`P-4`) : l'accent
+    trop faible est accepté, décliné, et le chiffre de son échec rendu à l'écran.
     """
     return JetonsDeMarque(
         surface=accent,
@@ -197,18 +166,11 @@ def deriver_marque(accent: Couleur, fond: Couleur) -> JetonsDeMarque:
 def _ajuster_clarte(couleur: Couleur, fond: Couleur, seuil: float) -> Couleur:
     """Éloigne `couleur` de `fond` **en clarté seulement**, jusqu'au premier pas qui tient `seuil`.
 
-    Trois choses qui ont l'air de détails et n'en sont pas :
-
-    1. **Une couleur déjà conforme n'est pas touchée.** En thème clair le rouge du club atteint
-       6,63:1 et `index.css` donne bien la **même** valeur à ses trois jetons de marque. Ajuster
-       systématiquement contredirait la charte livrée.
-    2. **Le sens se décide par les extrêmes, pas par une heuristique.** On compare ce que donnent le
-       blanc et le noir sur ce fond : celui qui gagne indique la direction. Sur l'anthracite c'est
-       le blanc (16,88:1 contre 1,19:1) — descendre vers le noir n'atteindrait **jamais** 3:1, une
-       recherche qui aurait « choisi » cette direction bouclerait sur un échec silencieux.
-    3. **Le seuil est vérifié sur la couleur ARRONDIE.** La clarté est un flottant, le CSS reçoit
-       trois octets : un seuil atteint à 4,502 en flottant peut retomber à 4,497 une fois arrondi.
-       C'est la couleur livrée qui doit tenir la promesse, pas celle qu'on a calculée.
+    1. **Une couleur déjà conforme n'est pas touchée** : en thème clair le rouge du club atteint
+       6,63:1, et la charte livrée donne bien la même valeur à ses trois jetons de marque.
+    2. **Le sens se décide par les extrêmes** — on compare ce que donnent le blanc et le noir sur
+       ce fond. Sur l'anthracite, descendre vers le noir n'atteindrait jamais 3:1.
+    3. **Le seuil est vérifié sur la couleur ARRONDIE** : c'est celle qui est livrée.
     """
     if contraste(couleur, fond) >= seuil:
         return couleur
@@ -251,14 +213,10 @@ class TypeLogo(str, Enum):
     def depuis_entete(entete: str | None) -> TypeLogo:
         """Lit le format dans un `Content-Type` ; lève `TypeDeLogoRefuse` (→ 422) sur tout autre.
 
-        Le paramétrage éventuel (`; charset=utf-8`, courant sur un SVG) est coupé : c'est le type
-        médiatique seul qui décide.
-
-        ⚠️ **Ici et non dans le routeur.** « Quels formats de logo le tournoi accepte-t-il » est une
-        règle du domaine, pas une convention HTTP — et l'API qui la portait se retrouvait à lever
-        une `DomainError` de sa propre initiative, ce que la règle 5 (« erreurs typées **par
-        couche** ») proscrit et que le reste du dépôt ne fait nulle part. Le refus de format se
-        relit maintenant d'un seul endroit, avec le refus de contenu qu'il annonce.
+        Le paramétrage éventuel (`; charset=utf-8`) est coupé : c'est le type médiatique seul qui
+        décide. ⚠️ **Ici et non dans le routeur** : « quels formats de logo le tournoi accepte »
+        est une règle du domaine, pas une convention HTTP — et l'API qui la portait levait une
+        `DomainError` de sa propre initiative, ce que la règle 5 proscrit.
         """
         type_medium = (entete or "").split(";")[0].strip().lower()
         for type_logo in TypeLogo:
@@ -297,26 +255,16 @@ _FIN_PNG = b"\x00\x00\x00\x00IEND\xaeB\x60\x82"
 # Ce qui, dans un SVG, **exécute** — ou permet d'y amener quelque chose qui exécute.
 #
 # ⚠️ **Une denylist perd par défaut, et celle-ci l'a perdu deux fois.** Les motifs ci-dessous sont
-# la TROISIÈME rédaction. La première ne cherchait que quatre formes littérales ; la deuxième les a
-# élargies mais restait écrite sur des balises **non préfixées**, si bien que `<svg:script>` —
-# strictement le même élément aux yeux d'un parseur XML, à deux caractères près — franchissait
-# l'ensemble, y compris les quatre formes que la première version attrapait déjà. Sept charges
-# construites ainsi ont été déposées ET servies en 200 par le relecteur adversarial.
-#
-# La leçon vaut plus que les motifs : **un durcissement qui n'est pas attaqué déplace le trou au
-# lieu de le fermer.** Ce qui a manqué aux deux premières rédactions n'est pas de l'attention, c'est
-# une exécution.
-#
+# la TROISIÈME rédaction : la deuxième était écrite sur des balises **non préfixées**, si bien que
+# `<svg:script>` franchissait l'ensemble. Sept charges ont été déposées ET servies en 200 par le
+# relecteur adversarial. La leçon vaut plus que les motifs : **un durcissement qui n'est pas
+# attaqué déplace le trou au lieu de le fermer.**
+
 # La barrière **porteuse** reste ailleurs : les en-têtes de la route de service
-# (`Content-Security-Policy: default-src 'none'`, `nosniff`) et le rendu en `<img>`. Ces motifs sont
-# la première des trois, jamais la seule.
-#
-# ⚠️ **Et ils ne doivent pas refuser un logo honnête.** La deuxième rédaction s'était durcie sans
-# contre-test d'acceptation : elle refusait un texte accentué échappé (`&#233;`), une bannière de
-# licence portant `&copy;`, un `<use href="#symbole">` (ce que produisent SVGO et Illustrator en
-# masse) et — comble — le bloc `<!ENTITY ns_extend …>` qu'Illustrator écrit dans le `<!DOCTYPE>`
-# même qu'on venait d'accepter *au motif qu'Illustrator le produit*. Chaque clause ci-dessous a
-# donc son contre-exemple **accepté** dans `test_domain_identite.py`.
+# (`Content-Security-Policy: default-src 'none'`, `nosniff`) et le rendu en `<img>`. Ces motifs
+# sont la première des trois, jamais la seule — et ils ne doivent pas refuser un logo honnête :
+# chaque clause ci-dessous a son contre-exemple **accepté** dans `test_domain_identite.py` (texte
+# accentué échappé, `&copy;`, `<use href="#symbole">`, le `<!ENTITY>` d'Illustrator).
 
 # Un nom d'élément peut porter n'importe quel préfixe de namespace : c'est le nom **local** qui
 # décide. La borne est « tout ce qui n'est pas un délimiteur, suivi de `:` » et non une classe de
@@ -348,19 +296,15 @@ _MOTIF_SVG_EXECUTABLE = re.compile(
 
 # **Toute** référence qui sort du fichier, quel que soit l'élément qui la porte.
 #
-# ⚠️ La rédaction précédente ancrait ce contrôle sur `<use …>` et `<image …>` avec un `[^>]*?` entre
-# le nom et l'attribut. Or XML autorise un `>` **littéral** dans une valeur d'attribut : un
-# `<use aria-label="a>b" href="http://…">` coupait le motif et passait (déposé et servi en revue).
-# Chercher la **valeur** plutôt que l'élément est à la fois plus simple et strictement plus fort —
-# cela couvre aussi `<a href>`, `<feImage>`, `<textPath>` et ceux qu'on n'a pas listés.
-#
-# Deux formes restent admises, parce que ce sont celles d'un export vectoriel honnête : le
-# **fragment local** (`#symbole`, la réutilisation interne que produisent SVGO, Illustrator, Figma)
-# et le **raster embarqué** (`data:image/png;base64,…`, un logo vectoriel qui enveloppe un bitmap).
-# `data:image/svg+xml` n'en fait pas partie : c'est un document, pas une image.
-#
-# Le `\s*` vit **dans** le lookahead et non devant : consommé, il permettait au moteur de reculer
-# d'un cran et de faire matcher `href=" #symbole"` — un faux refus sur un espace de mise en forme.
+# ⚠️ Ancrer le contrôle sur `<use …>` / `<image …>` avec un `[^>]*?` laissait passer un `>`
+# **littéral** dans une valeur d'attribut (`<use aria-label="a>b" href="http://…">`, déposé et
+# servi en revue). Chercher la **valeur** plutôt que l'élément est plus simple et strictement plus
+# fort — cela couvre aussi `<a href>`, `<feImage>`, `<textPath>`.
+
+# Deux formes restent admises, celles d'un export vectoriel honnête : le **fragment local**
+# (`#symbole`) et le **raster embarqué** (`data:image/png;base64,…`). `data:image/svg+xml` n'en fait
+# pas partie : c'est un document, pas une image. Le `\s*` vit **dans** le lookahead — consommé, il
+# laissait le moteur reculer et faire matcher `href=" #symbole"`, un faux refus.
 _MOTIF_REFERENCE_EXTERNE = re.compile(
     rb"(?:xlink:)?href\s*=\s*[\"']"
     rb"(?!\s*#)(?!\s*data:image/(?:png|jpe?g|gif|webp|bmp)[;,])"
@@ -375,16 +319,12 @@ _MOTIF_REFERENCE_NUMERIQUE = re.compile(rb"&#(x[0-9a-f]+|[0-9]+);", re.IGNORECAS
 
 # Une **entité générale interne**, déclarée avec une valeur littérale. Illustrator en produit
 # (`<!ENTITY ns_extend "http://ns.adobe.com/…">`) : on ne les refuse donc pas, on les **développe**
-# avant de chercher ce qui exécute, exactement comme les références numériques.
+# avant de chercher ce qui exécute, comme les références numériques.
 #
-# ⚠️ C'est la correction d'un rétrécissement : la rédaction précédente refusait toute entité, puis
-# on a cessé de le faire pour laisser passer Illustrator — sans ajouter le développement. Une charge
-# répartie sur deux entités (`<!ENTITY a "java"><!ENTITY b "script:alert(1)">` puis
-# `href="&a;&b;"`) ne contient alors `javascript:` **nulle part** dans les octets, et le parseur la
-# reconstitue à l'affichage. Déposée et servie en revue.
-#
-# Une seule passe de substitution, jamais récursive : développer des entités qui se référencent
-# entre elles rouvrirait *billion laughs*, et un logo n'a aucun usage d'une entité imbriquée.
+# ⚠️ Refuser toute entité puis cesser de le faire **sans ajouter le développement** laissait passer
+# une charge répartie sur deux entités (`&a;&b;`) : `javascript:` n'apparaît alors nulle part dans
+# les octets, et le parseur la reconstitue à l'affichage. Une seule passe, jamais récursive —
+# développer des entités qui se référencent rouvrirait *billion laughs*.
 _MOTIF_ENTITE_INTERNE = re.compile(rb"<!\s*ENTITY\s+([^\s<>]+)\s+[\"']([^\"']*)[\"']\s*>")
 _MOTIF_APPEL_D_ENTITE = re.compile(rb"&([^\s;&<>]{1,64});")
 
@@ -403,19 +343,11 @@ _MOTIF_DOCTYPE_EXTERNE = re.compile(rb"<!\s*DOCTYPE\b[^>\[]*\bSYSTEM\b", re.IGNO
 class Logo:
     """Un fichier de logo déposé, avec son format. Value object immuable.
 
-    ⚠️ **Un SVG est un document, pas une image.** Servi depuis l'origine de l'application — qui sert
-    aussi sa propre SPA —, un SVG porteur de script s'exécuterait avec la session de qui l'ouvre, y
-    compris celle d'un admin. `<img src>` neutralise bien les scripts, mais la route qui sert le
-    logo reste atteignable en navigation directe : on **refuse le fichier**, plutôt que de faire
-    reposer la sûreté sur la façon dont il sera affiché.
-
-    ⚠️ **Ce refus est une denylist : il attrape ce qu'il connaît, pas « tout ce qui exécute ».** La
-    formulation précédente promettait l'exhaustivité, et trois contournements l'ont démentie en
-    revue (cf. `_MOTIF_SVG_EXECUTABLE`). La barrière **porteuse** est ailleurs : les en-têtes
-    `Content-Security-Policy: default-src 'none'` et `X-Content-Type-Options: nosniff` posés par la
-    route qui sert les octets, plus le rendu en `<img>`. **Conséquence pour la suite** — le jour où
-    un logo sera rendu autrement (SVG inline pour le recolorer au jeton de marque, export PDF,
-    route de téléchargement), c'est la CSP qu'il faudra reporter, pas ce motif qu'il faudra croire.
+    ⚠️ **Un SVG est un document, pas une image.** Servi depuis l'origine de l'application, un SVG
+    porteur de script s'exécuterait avec la session de qui l'ouvre — on **refuse le fichier**. ⚠️
+    Ce refus est une **denylist** : elle attrape ce qu'elle connaît. La barrière **porteuse** est
+    la CSP et le `nosniff` de la route qui sert les octets — c'est elle qu'il faudra reporter le
+    jour où un logo sera rendu autrement.
     """
 
     contenu: bytes
@@ -425,12 +357,10 @@ class Logo:
     def deposer(contenu: bytes, type_logo: TypeLogo) -> Logo:
         """Valide puis emballe un fichier déposé.
 
-        Lève `TypeDeLogoRefuse` si le contenu est vide, dément le format annoncé, ou — pour un SVG —
-        contient de quoi exécuter ; `LogoTropVolumineux` au-delà de la borne.
-
-        **Le type annoncé ne fait pas foi** : c'est le contenu qui décide. Un fichier déclaré PNG
-        mais contenant du balisage serait renvoyé avec `Content-Type: image/png`, ce qu'un
-        navigateur indulgent pourrait ne pas respecter.
+        Lève `TypeDeLogoRefuse` si le contenu est vide, dément le format annoncé, ou — pour un SVG
+        — contient de quoi exécuter ; `LogoTropVolumineux` au-delà de la borne. **Le type annoncé
+        ne fait pas foi** : un fichier déclaré PNG mais contenant du balisage serait renvoyé avec
+        `Content-Type: image/png`, ce qu'un navigateur indulgent pourrait ne pas respecter.
         """
         if not contenu:
             raise TypeDeLogoRefuse("Le fichier déposé est vide.")
@@ -451,18 +381,11 @@ class Logo:
     def empreinte(self) -> str:
         """Empreinte du **contenu** — l'identité des octets, pas celle de l'emplacement.
 
-        Elle sert deux choses qui n'en font qu'une : l'`ETag` de la route qui sert les octets, et le
-        segment de version de l'URL que le front pose dans un `src`.
-
-        ⚠️ **C'est ce qui rend un logo remplacé visible.** Une URL stable ne provoque *aucune*
-        requête sur une image déjà montée — React ne réécrit pas un attribut inchangé, donc le
-        navigateur ne consulte même pas son cache et `Cache-Control: no-cache` ne s'applique à rien.
-        Versionner par l'**horloge** de la requête (la rédaction d'avant) faisait l'inverse : l'URL
-        changeait à chaque événement WebSocket et retéléchargeait 512 Ko pour rien. L'empreinte ne
-        bouge que quand les octets bougent — c'est la seule valeur qui tienne les deux bouts.
-
-        Tronquée à 32 caractères : 128 bits suffisent très largement à distinguer deux versions d'un
-        logo, et l'`ETag` voyage sur chaque réponse.
+        Elle sert l'`ETag` de la route qui sert les octets **et** le segment de version de l'URL.
+        ⚠️ **C'est ce qui rend un logo remplacé visible** : une URL stable ne provoque aucune
+        requête sur une image déjà montée, donc `Cache-Control: no-cache` ne s'applique à rien.
+        Versionner par l'horloge faisait l'inverse — 512 Ko retéléchargés à chaque événement
+        WebSocket. Tronquée à 32 caractères : 128 bits suffisent à distinguer deux versions.
         """
         return hashlib.sha256(self.contenu).hexdigest()[:32]
 
@@ -471,11 +394,9 @@ def _decoder_les_references_numeriques(contenu: bytes) -> bytes:
     """Remplace `&#106;` / `&#x6a;` par le caractère correspondant, comme le ferait un parseur XML.
 
     Sert à chercher ce qui exécute **sur le texte tel que le navigateur le lira**, plutôt qu'à
-    refuser toute référence — ce que la rédaction précédente faisait, au prix d'un refus des textes
-    accentués échappés, courants dans un export français.
-
-    Une référence hors plage ou mal formée est laissée telle quelle : le but est de révéler une
-    dissimulation, pas de valider du XML.
+    refuser toute référence — ce que faisait la rédaction précédente, au prix d'un refus des textes
+    accentués échappés. Une référence hors plage ou mal formée est laissée telle quelle : le but
+    est de révéler une dissimulation, pas de valider du XML.
     """
 
     def _remplacer(trouve: re.Match[bytes]) -> bytes:
@@ -529,16 +450,12 @@ def _lectures_possibles(contenu: bytes) -> list[bytes]:
 def _verifier_le_contenu(contenu: bytes, type_logo: TypeLogo) -> None:
     """Confronte les premiers octets au format annoncé ; lève `TypeDeLogoRefuse` en cas d'écart."""
     if type_logo is TypeLogo.PNG:
-        # ⚠️ La signature seule ne prouve rien : huit octets se recopient, et la revue adversariale
-        # a fait accepter — puis **servir** — un `\x89PNG…` suivi d'un SVG à script. On encadre donc
-        # le fichier par ses deux extrémités obligatoires : `IHDR` est toujours le premier bloc
-        # (octets 12 à 16) et `IEND` **termine** toujours le fichier, CRC compris (quatre octets
-        # constants, le bloc étant vide).
-        #
-        # La deuxième rédaction n'exigeait `IEND` que « quelque part », pour ne pas casser un test
-        # de poids qui bourrait le fichier **après** la fin — un contrôle relâché pour accommoder un
-        # test, ce qui est l'ordre inverse du bon. Vingt octets suffisaient alors à reconstruire un
-        # polyglotte. Le test bourre désormais avant `IEND`, et la contrainte est rendue au code.
+        # ⚠️ La signature seule ne prouve rien : la revue adversariale a fait accepter — puis
+        # **servir** — un `\x89PNG…` suivi d'un SVG à script. On encadre donc le fichier par ses
+        # deux extrémités obligatoires : `IHDR` (octets 12 à 16) et `IEND`, qui **termine** toujours
+        # le fichier, CRC compris. N'exiger `IEND` que « quelque part » — relâché pour ne pas casser
+        # un test de poids qui bourrait après la fin — laissait vingt octets suffire à reconstruire
+        # un polyglotte. Le test bourre désormais avant `IEND`.
         if not contenu.startswith(_SIGNATURE_PNG):
             raise TypeDeLogoRefuse(
                 "Ce fichier est annoncé PNG mais n'en porte pas la signature. "
@@ -603,21 +520,11 @@ comme couleur secondaire est une propriété de sa charte, pas une règle du sys
 class IdentiteVisuelle:
     """L'identité visuelle d'un tournoi : deux accents **facultatifs**, et la présence des logos.
 
-    ⚠️ **Les accents sont `None` tant que personne n'a choisi, et ce n'est pas un détail de
-    stockage.** Le CA dit « défaut = identité du club **si rien n'est fourni** » : il faut donc
-    pouvoir distinguer *l'organisateur a choisi le rouge du club* de *il n'a rien choisi*, sinon
-    l'écran ne peut plus dire « hérité ». `reglee` se **dérive** de cette absence.
-
-    La première rédaction faisait circuler un booléen `reglee` de la persistance jusqu'au DTO, à
-    côté d'une identité toujours concrète. Un test d'API l'a démentie : déposer un logo crée la
-    ligne, et la relecture annonçait alors « réglée » sans qu'aucune couleur ait été choisie. Le
-    défaut venait du drapeau lui-même — deux sources pour un même fait, l'une écrite à la main à
-    chaque appel. Ici, il n'y a plus de drapeau, seulement une valeur absente.
-
-    ⚠️ **Les octets des logos ne sont pas ici non plus.** Un blob traîné dans l'agrégat serait relu
-    à chaque fois qu'on veut connaître les accents — soit à chaque affichage public. Le port lit les
-    deux séparément : les réglages d'un côté (quelques octets), un logo à la fois de l'autre, sur sa
-    propre route et son propre cache.
+    ⚠️ **Les accents sont `None` tant que personne n'a choisi** : le CA veut distinguer *l'a choisi
+    le rouge du club* de *n'a rien choisi*, sinon l'écran ne peut plus dire « hérité ». `reglee` se
+    **dérive** de cette absence — le drapeau porté à la main annonçait « réglée » dès qu'un logo
+    créait la ligne. ⚠️ Les **octets** des logos ne sont pas ici non plus : un blob traîné dans
+    l'agrégat serait relu à chaque affichage public.
     """
 
     accent_primaire: Couleur | None = None
@@ -625,16 +532,11 @@ class IdentiteVisuelle:
     empreintes: Mapping[EmplacementLogo, str] = MappingProxyType({})
     """Empreinte du contenu de chaque logo **présent** — les absents n'y figurent pas.
 
-    ⚠️ **Une seule source pour deux faits.** « Quels emplacements sont pourvus » se lit des clés
-    (`logos_presents`), « quelle version » se lit des valeurs. Porter les deux séparément aurait
-    rejoué le défaut que cet agrégat a déjà corrigé une fois avec `reglee` : deux champs disant la
-    même chose, dont l'un se réécrit à la main.
-
-    ⚠️ **Le champ est gelé à la construction, et ce n'est pas décoratif.** Il a d'abord été un
-    `dict` derrière une annotation `Mapping` : le typage interdisait la mutation, l'objet non — un
-    agrégat `frozen` gardait la référence du dict de l'appelant, restait mutable de l'extérieur, et
-    perdait au passage sa hachabilité (`hash()` levait là où il fonctionnait avec le `frozenset`
-    d'avant). `MappingProxyType` sur une copie ferme les deux, sans dépendance (règle 4).
+    ⚠️ **Une seule source pour deux faits** : « quels emplacements sont pourvus » se lit des clés,
+    « quelle version » des valeurs. Les porter séparément rejouerait le défaut de `reglee`. ⚠️ **Le
+    champ est gelé à la construction** : un `dict` derrière une annotation `Mapping` laissait
+    l'agrégat `frozen` garder la référence de l'appelant, donc mutable de l'extérieur, et perdre sa
+    hachabilité. `MappingProxyType` sur une copie ferme les deux (règle 4).
     """
 
     def __post_init__(self) -> None:

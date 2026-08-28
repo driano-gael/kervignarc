@@ -1,13 +1,10 @@
 // Présentation de l'adjacence des duellistes sur les cibles (E03US009, ADR-0048) — logique pure,
-// testée en node (comme les autres `presentation.ts` des features). Le serveur signale au niveau
-// **cible** les cas où l'adjacence « adversaires côte à côte » n'est pas garantie, et liste au
-// niveau plan les **duels séparés**. Ici on dérive le décompte et le résumé affichés, sans dépendre
-// d'un composant. C'est un **avertissement d'organisation** (ambre, DV-03), jamais une erreur :
-// l'admin ajuste à la main s'il le souhaite (E03US004).
-//
-// Jumeau de `placement/presentation.ts` (mixité de club), à une nuance de comptage près : la
-// bannière chiffre les **duels séparés** (`duels_separes`), pas les cibles — une cible peut porter
-// plusieurs duels, le compte de duels est plus juste pour le message.
+// testée en node. Le serveur signale au niveau **cible** les cas où l'adjacence « adversaires côte
+// à côte » n'est pas garantie et liste au niveau plan les **duels séparés** ; ici on dérive le
+// décompte et le résumé affichés. C'est un **avertissement d'organisation** (ambre, DV-03), jamais
+// une erreur : l'admin ajuste à la main (E03US004). Jumeau de `placement/presentation.ts`, à une
+// nuance près : la bannière chiffre les **duels séparés**, pas les cibles — une cible peut porter
+// plusieurs duels.
 
 import type { CiblePlaceeDuel, PlanDeDuels } from './api'
 

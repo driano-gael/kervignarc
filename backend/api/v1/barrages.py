@@ -1,17 +1,10 @@
-"""Endpoints REST du **barrage de places décisives** (E06US003, ADR-0066).
+"""Barrages — un acte d'**organisation**, pas de saisie de cible.
 
-Expose `ServiceBarrage` à l'organisateur : **annoncer** un barrage sur une égalité que la politique
-`tiebreak` signale, **saisir** (ou corriger) ses manches, le **clore**. Écritures routées par la
-**file** du writer unique (règle 7), derrière `exiger_admin` — annoncer un barrage change le
-classement publié, c'est un acte d'organisation, pas de saisie de cible.
+Les égalités à départager voyagent avec le **classement**, seule surface qui sache les calculer :
+un second endpoint dériverait de ce qui est affiché à l'écran.
 
-Les **égalités à départager** ne sont pas exposées ici : elles voyagent avec le classement
-(`GET /tournois/{id}/classement`), qui est la seule surface qui sache les calculer. Un second
-endpoint qui les recalculerait produirait une réponse qui dériverait de celle affichée à l'écran.
-
-⚠️ **La distance au centre est en dixièmes de millimètre**, et son absence n'est **pas** un zéro :
-c'est une mesure non faite, sur laquelle le moteur refuse de départager (il fait retirer). C'est le
-cas le plus fréquent du jour J — le juge mesure la flèche litigieuse, rarement les deux.
+⚠️ **La distance au centre est en dixièmes de mm, et son absence n'est PAS un zéro** : c'est une
+mesure non faite, sur laquelle le moteur refuse de départager — le cas le plus fréquent du jour J.
 """
 
 from __future__ import annotations
@@ -64,13 +57,11 @@ class MancheRequete(BaseModel):
 class AnnonceRequete(BaseModel):
     """Ce qu'on fait tirer — **deux régimes** selon la portée (ADR-0066).
 
-    - `qualification` (défaut) : `rang` suffit, et il est **obligatoire**. Les tireurs sont dérivés
-      du classement, donc l'organisateur n'a rien à désigner — et ne le peut pas : seule une
-      égalité **signalée** par la politique est annonçable.
-    - `poule` / `big_shoot_off` : `archer_ids` est obligatoire, parce qu'aucun classement calculé
-      n'existe où lire les ex æquo (DETTE-028). `phase_id` et `reference` (numéro de poule ou de
-      manche) situent le barrage ; `rang` reste facultatif — un Big Shoot Off désigne un sortant,
-      pas une place.
+    `qualification` (défaut) : `rang` suffit et est **obligatoire** — les tireurs sont dérivés du
+    classement, et seule une égalité **signalée** est annonçable. `poule`/`big_shoot_off` :
+    `archer_ids` est obligatoire, faute de classement calculé où lire les ex æquo (DETTE-028) ;
+    `phase_id` et `reference` situent le barrage, `rang` reste facultatif — un Big Shoot Off
+    désigne un sortant, pas une place.
     """
 
     depart_id: int = Field(ge=1)
@@ -93,11 +84,11 @@ class AnnonceRequete(BaseModel):
 
         ⚠️ Sans cette garde, `phase_id`/`reference` étaient acceptés en **qualification** alors
         qu'ils y sont sans objet — et comme ils entrent dans la clé d'idempotence, deux `POST` au
-        même rang avec des références différentes ouvraient **deux** barrages sur la même place.
-        Leurs verdicts, contradictoires, passaient tous deux le filtre d'applicabilité (même
-        ensemble de tireurs), et le dernier lu l'emportait **en silence**. L'UI ne le permettait
-        pas ; l'API est le contrat.
+        même rang avec des références différentes ouvraient **deux** barrages sur la même place,
+        aux verdicts contradictoires, le dernier lu l'emportant **en silence**. L'UI ne le
+        permettait pas ; l'API est le contrat.
         """
+
         # `""` et `None` désignent le même « endroit » : ne pas les normaliser laisserait ouvrir
         # deux barrages concurrents sur la même poule, aux mêmes tireurs et aux verdicts opposés.
         if self.reference is not None and self.reference.strip() == "":
@@ -146,12 +137,10 @@ class BarrageReponse(BaseModel):
     perime: bool = False
     """Ce barrage ne porte plus sur le groupe d'ex æquo actuellement constaté (E06US003).
 
-    ⚠️ **Signalé, et non simplement refusé à l'annonce.** Une première version ne gardait que le
-    chemin `annoncer` : le barrage déjà ouvert, lui, restait tirable, résoluble et **actable**. Le
-    panneau affichait côte à côte « 2ᵉ place — A, B, C » et un formulaire ne contenant que A et B ;
-    le geste naturel était de remplir celui qui était là. L'application répondait « Départagé »,
-    acceptait la clôture — et le classement ne bougeait pas d'un rang, le verdict étant écarté,
-    sans un mot d'explication.
+    ⚠️ **Signalé, et non simplement refusé à l'annonce.** Une première version ne gardait que
+    `annoncer` : le barrage déjà ouvert restait tirable et **actable**. Le panneau affichait « 2ᵉ
+    place — A, B, C » à côté d'un formulaire ne contenant que A et B ; l'application répondait «
+    Départagé », acceptait la clôture, et le classement ne bougeait pas — sans un mot.
     """
 
     incoherent: bool = False

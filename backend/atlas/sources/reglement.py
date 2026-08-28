@@ -1,14 +1,10 @@
 """Lecture du règlement — les règles du projet, telles qu'elles sont en vigueur aujourd'hui.
 
 Une règle est identifiée par son **ancre** (`<!--regle:slug-->`), jamais par son numéro ni par son
-titre. C'est le point dur de tout l'atlas : `CLAUDE.md` a été remanié dix-neuf fois en cinq
-semaines, et un identifiant dérivé du rang ou du libellé aurait détaché chaque historique de sa
-règle au premier réordonnancement — sans rien casser de visible. L'ancre rend l'identité explicite
-et opposable ; en contrepartie, une règle qui en manque fait échouer le générateur.
-
-Périmètre : les quatre sections qui portent les règles d'ingénierie. « Communication avec
-l'utilisateur » et « Apprendre à piloter l'assistant » en sont exclues — elles cadrent la façon de
-s'exprimer de l'assistant, pas le projet.
+titre : `CLAUDE.md` a été remanié dix-neuf fois en cinq semaines, et un identifiant dérivé du rang
+ou du libellé aurait détaché chaque historique de sa règle au premier réordonnancement, sans rien
+casser de visible. En contrepartie, une règle sans ancre fait échouer le générateur. Périmètre :
+les quatre sections d'ingénierie — celles qui cadrent l'expression de l'assistant sont exclues.
 """
 
 from __future__ import annotations
@@ -89,18 +85,11 @@ _FIN_DE_PHRASE = re.compile(r"(?<=[.!?])\s+")
 def _titre_et_corps(bloc: str) -> tuple[str, str]:
     """Le titre d'une règle et son corps — calculés **ensemble**, donc jamais superposés.
 
-    Deux pièges que le dépôt contient réellement :
-    - le gras d'un titre court parfois sur deux lignes et **enferme un lien Markdown** (« Le suivi
-      des US ([`journal-d-avancement/SUIVI-US.md`](…)) est tenu à jour… ») — d'où le `DOTALL` et
-      le passage par `en_clair` ;
-    - certaines règles n'ont **pas** de titre en gras, mais du gras au milieu de leur phrase
-      (« …doit être **redécoupée** ») : prendre le premier gras venu donnerait « redécoupée » pour
-      titre. D'où `match` et non `search` — le gras ne fait titre que s'il ouvre la règle.
-
-    ⚠️ Les deux valeurs sont rendues par la même fonction parce qu'une version antérieure ne
-    coupait le titre du corps **que** dans le cas du gras : les trois règles qui ouvrent en prose
-    (`registre-de-dette`, `remede-structurel`, `lancer-la-pr`) affichaient donc leur intitulé deux
-    fois. Le cas signalé était fermé, la classe ne l'était pas.
+    Deux pièges réels : le gras d'un titre court parfois sur deux lignes et **enferme un lien
+    Markdown** (d'où `DOTALL` et `en_clair`) ; et certaines règles n'ont pas de titre en gras mais
+    du gras au milieu de leur phrase (d'où `match` et non `search` — le gras ne fait titre que s'il
+    ouvre la règle). ⚠️ Les deux valeurs sortent de la même fonction parce qu'une version antérieure
+    ne coupait le titre que dans le cas du gras : trois règles s'affichaient deux fois.
     """
     texte = _sans_decor(bloc)
     gras = _GRAS.match(texte)
@@ -180,14 +169,11 @@ def _fin_du_bloc(
 ) -> int:
     """La borne haute (incluse) du bloc d'une règle : l'ancre suivante, ou la fin de la section.
 
-    La borne est plafonnée au nombre **réel** de lignes du fichier : `split("\\n")` produit un
-    élément vide final, donc `len(lignes)` vaut une ligne de plus que ce que git connaît.
-
-    *Mesuré plutôt que supposé* : git **tolère** une borne de fin trop grande et la ramène à la
-    taille du fichier — seule une borne de **départ** au-delà de la fin le fait sortir en erreur,
-    ce qui ne peut pas arriver ici puisqu'une ancre occupe cette ligne. Le plafonnement est donc
-    une exactitude, pas un correctif de panne ; il évite surtout de publier des bornes qui ne
-    correspondent à rien dans la fiche d'une règle.
+    La borne est plafonnée au nombre **réel** de lignes : un `split` final produit un élément vide,
+    donc la longueur vaut une ligne de plus que ce que git connaît. *Mesuré plutôt que supposé* :
+    git tolère une borne de fin trop grande et la ramène à la taille du fichier — seule une borne
+    de **départ** au-delà de la fin le fait sortir en erreur, ce qui ne peut pas arriver ici. Le
+    plafonnement est une exactitude, pas un correctif de panne.
     """
     dernier = len(lignes) - 1 if lignes and not lignes[-1].strip() else len(lignes)
     suivante = reperes[position + 1][0] if position + 1 < len(reperes) else dernier

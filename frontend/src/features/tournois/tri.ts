@@ -1,31 +1,19 @@
 // Ordre et filtrage de la liste des tournois — retour maquettes du 04/08/2026 (A02, A04).
 //
-// **Pourquoi un module à part.** La liste était rendue dans l'ordre où le serveur la renvoie, c'est-
-// à-dire dans l'ordre de création. Le commanditaire a demandé un ordre **métier** :
-//
-//   A04 · « je les classerais dans l'ordre suivant de haut en bas → statut (1. en cours, 2. prêt à
-//   lancer, 3. terminer, 4. brouillon) puis par date. »
-//   A02 · « dérouler doit d'abord afficher les tournois en cours, puis les tournois prêts à être
-//   lancés, surtout si on est à la date prévue du tournoi. »
-//
-// C'est une **règle**, pas de la mise en forme : elle décide ce que l'organisateur voit en premier le
-// matin du jour J. Elle vit donc dans un module pur, testable sans rendu — même parti que
-// `admin/axes.ts` ou `salle/rotation.ts`.
-//
-// ⚠️ `aujourdhui` est un **paramètre**, jamais `new Date()` lu ici : une fonction qui lit l'horloge
-// ne se teste pas de façon déterministe (règle 9). L'appelant fournit la date du jour.
+// La liste était rendue dans l'ordre de création ; le commanditaire a demandé un ordre **métier** :
+// statut (en cours, prêt, terminé, brouillon) puis date, « surtout si on est à la date prévue ».
+// C'est une **règle**, pas de la mise en forme — elle décide ce que l'organisateur voit en premier
+// le matin du jour J —, d'où un module pur, testable sans rendu. ⚠️ `aujourdhui` est un
+// **paramètre**, jamais `new Date()` lu ici : une fonction qui lit l'horloge ne se teste pas de
+// façon déterministe (règle 9).
 
 import type { StatutTournoi, Tournoi } from '../competition/api'
 
-/**
- * Rang d'affichage de chaque statut. Les quatre premiers sont **dictés** par A04 ; les trois autres
- * sont déduits, et le raisonnement est écrit ici parce qu'il n'a pas été arbitré :
- *
- *  - `en_pause` suit immédiatement `en_cours` : c'est le **même** tournoi, celui qui se joue
- *    aujourd'hui, simplement interrompu. Le reléguer plus bas ferait disparaître de la tête de liste
- *    le tournoi dont on vient justement de suspendre le déroulé — exactement quand on y revient.
- *  - `archive` et `annule` ferment la marche : ce sont les seuls statuts sur lesquels il n'y a plus
- *    rien à faire. Les mettre après `brouillon` ne contredit pas A04, qui ne les cite pas.
+/** Rang d'affichage de chaque statut. Les quatre premiers sont **dictés** par A04 ; les trois
+ * autres sont déduits, et le raisonnement est écrit ici parce qu'il n'a pas été arbitré :
+ * `en_pause` suit immédiatement `en_cours` (même tournoi, simplement interrompu — le reléguer plus
+ * bas le ferait disparaître de la tête de liste au moment où l'on y revient) ; `archive` et
+ * `annule` ferment la marche, seuls statuts sur lesquels il n'y a plus rien à faire.
  *
  * `Record` exhaustif : ajouter un huitième statut sans lui donner de rang ne compilera plus.
  */
@@ -44,16 +32,12 @@ export const RANG_STATUT: Record<StatutTournoi, number> = {
  * qu'on leur pose est « celui de la semaine dernière », jamais « celui d'il y a trois ans ». */
 const OUVERTS: readonly StatutTournoi[] = ['brouillon', 'pret', 'en_cours', 'en_pause']
 
-/**
- * La liste, dans l'ordre où l'organisateur veut la lire : par statut, puis par date.
+/** La liste, dans l'ordre où l'organisateur veut la lire : par statut, puis par date.
  *
- * Le « surtout si on est à la date prévue » d'A02 n'ajoute **pas** un troisième critère : trier les
- * `pret` par date croissante fait déjà remonter celui du jour au-dessus de celui du mois prochain.
- * Un critère « proximité à aujourd'hui » aurait, lui, placé un tournoi d'hier avant un tournoi de
- * demain — l'inverse de ce qui est demandé.
- *
- * Tri **stable et non destructif** : on copie avant de trier (`Array.prototype.sort` mute), sinon on
- * réordonnerait le cache React Query sous les autres écrans.
+ * Le « surtout si on est à la date prévue » d'A02 n'ajoute **pas** un troisième critère : trier
+ * les `pret` par date croissante fait déjà remonter celui du jour. Un critère « proximité à
+ * aujourd'hui » aurait placé un tournoi d'hier avant un tournoi de demain. ⚠️ Tri **non
+ * destructif** : on copie avant de trier, sinon on réordonnerait le cache React Query.
  */
 export function ordonnerTournois(tournois: readonly Tournoi[]): Tournoi[] {
   return [...tournois].sort((a, b) => {

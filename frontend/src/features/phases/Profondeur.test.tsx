@@ -1,16 +1,11 @@
 // Le réglage « jusqu'où classer » sur les phases d'un **tournoi réel** (E06US006, ADR-0070).
 //
-// Ce fichier n'existait pas, et c'est ce que la revue a relevé : le CA exige le réglage « depuis
-// « Composer un format » **et** depuis les phases d'un tournoi », mais seul le premier écran était
-// testé — alors que celui-ci est le seul des deux à écrire dans une base.
-//
-// Il porte en outre le piège que l'ADR qualifie de plus coûteux : l'édition d'une phase est un
-// `PUT` **total**, donc un champ non réémis est **effacé**. Une profondeur effacée fait rejouer un
-// tournoi tronqué au podium — c'est l'histoire déjà vécue avec `barrage_jusqu_au`, documentée dans
-// `api.ts`, et que rien ne figeait.
-//
-// On double les **appels HTTP** seulement : les hooks et le `QueryClient` sont ceux de production,
-// sans quoi le test ne dirait rien de ce qu'il prétend vérifier (même parti que `deroule/hooks`).
+// Relevé en revue : le CA exige le réglage depuis « Composer un format » **et** depuis les phases
+// d'un tournoi, mais seul le premier écran était testé — alors que celui-ci est le seul des deux à
+// écrire en base. ⚠️ L'édition d'une phase est un `PUT` **total** : un champ non réémis est
+// **effacé**, et une profondeur effacée fait rejouer un tournoi tronqué au podium (l'histoire de
+// `barrage_jusqu_au`). On double les **appels HTTP** seulement ; hooks et `QueryClient` sont ceux
+// de production.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'

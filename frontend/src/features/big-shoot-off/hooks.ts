@@ -1,17 +1,11 @@
 // Hooks React Query du **Big Shoot Off** (E05US028) — état serveur d'une phase.
 //
-// ⚠️ **Les mutations vivent ici**, contrairement aux poules — dont les rencontres s'écrivent par
-// `features/saisie-duels` parce qu'elles *sont* des duels (ADR-0083 §7). Une volée collective n'a
-// pas d'adversaire, donc pas de pavé de duel à emprunter.
-//
-// Les deux mutations **écrivent directement le cache** avec l'état renvoyé, au lieu d'invalider :
-// la réponse *est* la photo complète et à jour, donc un aller-retour de plus ne ferait qu'ouvrir
-// une fenêtre où l'écran montre un archer sorti comme encore en lice.
-//
-// ⚠️ **Ces deux mutations partent en direct, hors de la file hors-ligne d'E04US009**
-// (`DETTE-060`) : une coupure LAN pendant une finale fait perdre la volée en cours. Le marqueur
-// était annoncé par le registre sur ce fichier sans y figurer — corrigé à la revue d'E05US028, une
-// dette dont le point d'accroche est introuvable n'est pas tracée.
+// ⚠️ **Les mutations vivent ici**, contrairement aux poules dont les rencontres *sont* des duels
+// (ADR-0083 §7) : une volée collective n'a pas d'adversaire, donc pas de pavé à emprunter. Les deux
+// mutations **écrivent directement le cache** avec l'état renvoyé — la réponse *est* la photo à
+// jour, et invalider ouvrirait une fenêtre où un archer sorti paraît encore en lice. ⚠️ **Elles
+// partent en direct, hors de la file hors-ligne** (`DETTE-060`) : une coupure LAN pendant une
+// finale fait perdre la volée en cours.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { nouvelIdentifiant } from '../saisie/volees'
@@ -31,14 +25,11 @@ export function cleBigShootOff(tournoiId: number, phaseId: number) {
 
 /** La clé de cache de l'état **rédigé** (E05US031).
  *
- * ⚠️ **Distincte de celle de saisie, et il le faut** : les deux routes rendent deux formes du même
- * objet. Une clé commune ferait écrire la photo du scoreur — `prochaine_volee` comprise — dans le
- * cache que lit l'appli publique ; le DTO restreint côté serveur ne servirait alors plus à rien,
- * le front l'ayant contourné tout seul.
- *
- * Conséquence à connaître : les deux mutations ci-dessous écrivent **la clé de saisie**, pas
- * celle-ci. La vue publique se remet à jour par l'invalidation globale de `useRealtime`, qui part de
- * toute écriture serveur — même chemin que les poules et le tableau, et non un cas particulier. */
+ * ⚠️ **Distincte de celle de saisie, et il le faut** : une clé commune ferait écrire la photo du
+ * scoreur — `prochaine_volee` comprise — dans le cache que lit l'appli publique, et le DTO
+ * restreint côté serveur ne servirait plus à rien. Conséquence : les mutations écrivent **la clé
+ * de saisie**, la vue publique se remettant à jour par l'invalidation globale de `useRealtime`.
+ */
 export function cleBigShootOffPublique(tournoiId: number, phaseId: number) {
   return ['big-shoot-off-publique', tournoiId, phaseId] as const
 }
@@ -78,18 +69,13 @@ export function useEtatBigShootOffSaisie(tournoiId: number, phaseId: number | nu
 export function useSaisirVolee(tournoiId: number, phaseId: number) {
   const client = useQueryClient()
   return useMutation({
-    // ⚠️ **L'identifiant de saisie est engendré ici** (correctif de revue E05US028). Il était
-    // facultatif au DTO, transmis par `api.ts`… et **jamais fourni** : `_cle_idempotence` rendait
-    // donc toujours `null` et `RegistreIdempotence` ne dédoublonnait rien, alors que la note de
-    // module de l'API promettait « les mêmes garanties que la saisie de qualification » (ADR-0036).
-    // Les deux autres surfaces de saisie le déclarent obligatoire ; le Big Shoot Off était la seule
-    // sans. Sur `/validations` ce n'était pas neutre : `Serie.valider` verrouille « le prochain lot
-    // de N volées non validées » sans vérifier qu'il s'agit de la manche courante, donc un rejeu
-    // pouvait verrouiller les volées de la manche **suivante**.
-    //
-    // ⚠️ `nouvelIdentifiant` et non `crypto.randomUUID` : WebCrypto n'expose `randomUUID` qu'en
-    // contexte sécurisé, et le jour J tourne en **http sur LAN**. Le repli `getRandomValues` est
-    // déjà écrit là-bas, on le réutilise plutôt que de le redécouvrir en salle.
+    // ⚠️ **L'identifiant de saisie est engendré ici** (correctif de revue) : facultatif au DTO,
+    // transmis par `api.ts`… et **jamais fourni**, si bien que `RegistreIdempotence` ne
+    // dédoublonnait rien alors que l'API promettait « les mêmes garanties que la qualification »
+    // (ADR-0036). Sur `/validations` ce n'était pas neutre : `Serie.valider` verrouille « le
+    // prochain lot non validé » sans vérifier la manche, donc un rejeu pouvait verrouiller la
+    // **suivante**. ⚠️ `nouvelIdentifiant` et non `crypto.randomUUID` : WebCrypto est réservé au
+    // contexte sécurisé, et le jour J tourne en **http sur LAN**.
     mutationFn: (corps: { archerId: number; numero: number; valeurs: string[] }) =>
       saisirVolee({ tournoiId, phaseId, ...corps, identifiantSaisie: nouvelIdentifiant() }),
     onSuccess: (etat: EtatBigShootOff) =>

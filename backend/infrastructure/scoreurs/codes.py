@@ -1,11 +1,8 @@
 """Génération des codes individuels de scoreur (E10US003).
 
-Un code est distribué **sur papier** et **retapé** par le scoreur sur son téléphone : il doit être
-court et sans ambiguïté de lecture. D'où un alphabet **sans caractères confondables** (`0`/`O`,
-`1`/`I`) et en majuscules seules, tiré au sort cryptographiquement (`secrets`, jamais `random` — la
-règle 11 « stdlib de préférence » et la robustesse d'un secret même modeste). L'unicité globale
-n'est **pas** garantie ici : c'est `ServiceScoreurs` qui ré-essaie en cas de collision (pré-contrôle
-`par_code`), le générateur ne fait que produire un candidat.
+Un code est distribué **sur papier** puis retapé : alphabet sans caractères confondables (`0`/`O`,
+`1`/`I`), majuscules seules, tiré par `secrets` (jamais `random`). L'unicité globale n'est pas
+garantie ici — `ServiceScoreurs` ré-essaie en cas de collision (pré-contrôle `par_code`).
 """
 
 from __future__ import annotations

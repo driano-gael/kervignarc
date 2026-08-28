@@ -100,21 +100,12 @@ export function construireJournee(
 
 // Les départs où tire **au moins un** archer suivi (E16US004, récapitulatif de journée).
 //
-// ⚠️ **Les créneaux des archers, pas celui de la salle.** Un premier jet lisait `departDeSalle`,
-// c'est-à-dire le départ que la salle est en train de tirer : dès le créneau de l'après-midi lancé,
-// un archer du matin perdait **en silence** toute la section « duels » de son récapitulatif — ses
-// volées de qualification restant affichées, puisqu'elles sont scopées au tournoi et non au départ.
-// Un « récapitulatif de la journée » qui s'ampute à 15 h ne tient pas son CA.
-//
-// ⚠️ **La liste est bornée, et c'est le point** : on dérive des plans **déjà chargés**, donc sans
-// requête supplémentaire, et l'on ne retient que les créneaux réellement concernés — un le plus
-// souvent, deux quand on suit des archers de deux départs. Interroger « tous les départs du
-// tournoi » aurait été plus simple et aurait **aggravé `# DETTE-031`** (chaque entrée est une
-// reconstruction serveur complète) au lieu de la laisser où elle est.
-//
-// Rend `[]` tant que les plans ne sont pas chargés : aucune requête ne part, le récapitulatif se
-// remplit au rendu suivant. C'est le même comportement que la carte elle-même, qui ne connaît la
-// place d'un archer qu'une fois son plan lu.
+// ⚠️ **Les créneaux des archers, pas celui de la salle** : un premier jet lisait `departDeSalle`,
+// si bien que dès le créneau de l'après-midi lancé, un archer du matin perdait **en silence** toute
+// la section « duels » — ses volées de qualification restant affichées. ⚠️ **La liste est bornée**
+// : on dérive des plans **déjà chargés**, sans requête supplémentaire ; interroger « tous les
+// départs » aurait **aggravé `# DETTE-031`**. Rend `[]` tant que les plans ne sont pas chargés —
+// aucune requête ne part, le récapitulatif se remplit au rendu suivant.
 export function departsDesArchersSuivis(
   archerIds: readonly number[],
   departs: Depart[],

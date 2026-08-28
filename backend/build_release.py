@@ -1,12 +1,8 @@
 """Fabrique le binaire de release (E11US001) : build front → PyInstaller.
 
-Pipeline complet « build front → embarquer → packager » du CA build/packaging :
-
-1. `npm run build` → `frontend/dist/` (sauf `--no-build`, qui réutilise le build existant) ;
-2. PyInstaller sur `kervignarc.spec` → `backend/dist/kervignarc[.exe]` (onefile auto-contenu).
-
-Usage (depuis `backend/`, venv dev actif) : `python build_release.py [--no-build]`.
-La procédure de déploiement (réseau, lancement) est dans `docs/deploiement.md`.
+`npm run build` → `frontend/dist/` (sauf `--no-build`), puis PyInstaller sur `kervignarc.spec` →
+`backend/dist/kervignarc[.exe]`, onefile auto-contenu. Usage depuis `backend/`, venv dev actif :
+`python build_release.py [--no-build]`. La procédure de déploiement vit dans `docs/deploiement.md`.
 """
 
 from __future__ import annotations

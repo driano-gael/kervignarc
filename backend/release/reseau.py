@@ -1,15 +1,10 @@
 """Découverte réseau du binaire : adresse LAN + annonce mDNS (E11US001).
 
-Le jour J il n'y a **pas d'internet** : les ~30 tablettes rejoignent un routeur dédié et
-doivent atteindre le serveur. Deux chemins d'accès, décrits dans `docs/deploiement.md` :
-
-- par **IP locale** (p. ex. `http://192.168.1.10:8000`) — toujours disponible ;
-- par **nom mDNS** `http://kervignarc.local:8000` — plus mémorisable, publié ici par le
-  serveur via zeroconf (protocole « Bonjour »/Avahi, sans rien configurer sur le routeur).
-
-La publication mDNS est **best-effort** : une pile mDNS absente, un pare-feu ou un réseau
-capricieux ne doivent **jamais** empêcher le serveur de démarrer — l'accès par IP reste le
-filet de sécurité, toujours affiché au lancement.
+Le jour J il n'y a **pas d'internet** : les ~30 tablettes rejoignent un routeur dédié. Deux chemins
+d'accès (`docs/deploiement.md`) — par IP locale, toujours disponible ; par nom mDNS
+`kervignarc.local`, publié ici via zeroconf sans rien configurer sur le routeur. ⚠️ La publication
+mDNS est **best-effort** : une pile absente, un pare-feu ou un réseau capricieux ne doivent jamais
+empêcher le serveur de démarrer — l'accès par IP est le filet, affiché au lancement.
 """
 
 from __future__ import annotations

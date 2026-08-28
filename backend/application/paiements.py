@@ -1,25 +1,10 @@
-"""Service applicatif Paiements — suivre et marquer les règlements (E08US002).
+"""Service des **paiements** — une seule voie d'écriture, donc **toute auditée**.
 
-Le **suivi** des paiements est trois facettes d'une même capacité (maille révisée du 17/07/2026,
-`stories/E08-paiements.md`) : **marquer** un statut de paiement (simple ou groupé), le **consulter
-par archer** (dû / payé / reste) et **par club** (mêmes totaux agrégés, détail des archers). Le fait
-brut vit ailleurs — le booléen `paye` d'une `Inscription` (par créneau) ; ici on l'**agrège** (règle
-de calcul dans `domain.paiement`) et on le **fait basculer**.
+Le marquage simple et les règlements groupés passent par le même chemin : il n'y a pas un geste
+tracé et un autre non.
 
-Deux arbitrages de l'US, reversés dans le CA (`stories/`, § Notes) :
-
-- **Règlements groupés** (but de l'US) : on peut marquer d'un geste **tout un archer** ou **tout un
-  club** — pas seulement inscription par inscription. Le marquage simple d'E02US009 **migre ici**
-  (`marquer_inscription`) : une **seule** voie d'écriture du paiement, donc **toute auditée**, et
-  non un chemin tracé et un autre non.
-- **Audit** : un paiement est un **mouvement d'argent**, donc tracé (E10US005). Chaque marquage —
-  simple ou groupé — consigne **une** entrée `PAIEMENT`. L'atomicité acte↔trace est réalisée par
-  l'adapter (`InscriptionRepository.definir_paye_avec_trace`, co-écriture en une transaction,
-  ADR-0035, comme la validation d'une série) : jamais un paiement basculé sans trace, ni de trace
-  fantôme. Le service **date** l'entrée (port `Horloge`) ; le domaine reste pur.
-
-Les vues sont des **lectures pures** (hors file d'écriture) ; les marquages sont des **écritures**
-routées par la file (writer unique, règle 7 — assuré côté API).
+⚠️ **Un paiement est un mouvement d'argent, donc tracé** : l'atomicité acte↔trace est réalisée par
+l'adapter (ADR-0035) — jamais un paiement basculé sans trace, ni de trace fantôme.
 """
 
 from __future__ import annotations

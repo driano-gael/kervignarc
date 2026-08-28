@@ -1,19 +1,11 @@
 // Bandeau de contexte de l'administration — retour maquettes du 04/08/2026 (A02).
 //
-// *« Un bandeau en haut doit permettre de savoir sur quel tournoi on est et quel départ, et suit
-// tout le cycle de cette section. »*
-//
-// **Ce qui manquait.** Le tournoi courant n'était visible que dans le sélecteur de la sidebar — un
-// `<select>`, donc un *contrôle*, que l'œil lit comme « ce que je peux changer » et non comme « où je
-// suis ». Passée la première seconde, l'organisateur travaillait sans repère : rien, dans la zone
-// principale, ne disait sur quelle édition il agissait. Sur une machine où deux tournois peuvent être
-// `en_cours` en même temps (capacité voulue, intérieur + extérieur), c'est une **erreur de saisie qui
-// attend** — pas une gêne esthétique.
-//
-// **Ce que le bandeau dit, et pas plus.** Le sujet (tournoi, statut, date), le moment (départ
-// courant, en pilotage seulement) et la position (axe › écran). Il n'offre **aucune action** : le
-// sélecteur reste dans la sidebar. Un bandeau qui agit redevient un contrôle, et l'on perd
-// exactement ce qu'on venait chercher — un repère stable qui ne bouge pas quand on travaille.
+// *« Un bandeau en haut doit permettre de savoir sur quel tournoi on est et quel départ. »* Le
+// tournoi courant n'était visible que dans le sélecteur de la sidebar — un *contrôle*, lu comme «
+// ce que je peux changer », pas comme « où je suis ». Sur une machine où deux tournois peuvent être
+// `en_cours` en même temps, c'est une **erreur de saisie qui attend**. ⚠️ Le bandeau dit le sujet,
+// le moment et la position, et **n'offre aucune action** : un bandeau qui agit redevient un
+// contrôle.
 
 import type { Tournoi } from '../competition/api'
 import { BadgeStatut } from '../competition/BadgeStatut'

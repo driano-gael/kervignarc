@@ -1,15 +1,11 @@
 // Tests de l'identité visuelle du tournoi (E16US006, absorbe E01US016).
 //
-// Ce que ces tests couvrent, et pourquoi ils sont des tests de **rendu** : le CA d'E16US006 ne porte
-// sur aucun calcul côté front — la dérivation vit dans le domaine Python, éprouvée contre la
-// déclinaison que la charte avait calculée à la main (`backend/tests/test_domain_identite.py`). Ce
-// que cette moitié de l'US décide, c'est **ce qui s'affiche et où** : les jetons posés sur les deux
-// bonnes surfaces, les logos rendus, le chiffre de contraste montré sans rien bloquer.
-//
-// ⚠️ **`DETTE-085` a établi le prix de l'omission** : un composant qui reçoit une donnée et ne la
-// rend jamais passe `tsc` sans un mot, et aucun test ne monte l'écran. C'est exactement le bloquant
-// d'`E16US005`. D'où les deux tests qui montent réellement `EcranSalle` et les vues publiques plutôt
-// que le seul `HabillageIdentite` isolé — un test de placement doit monter **l'écran**.
+// Des tests de **rendu** : le CA ne porte sur aucun calcul côté front — la dérivation vit dans le
+// domaine Python. Ce que cette moitié de l'US décide, c'est **ce qui s'affiche et où**. ⚠️
+// **`DETTE-085` a établi le prix de l'omission** : un composant qui reçoit une donnée et ne la rend
+// jamais passe `tsc` sans un mot. D'où les deux tests qui montent réellement `EcranSalle` et les
+// vues publiques plutôt que le seul `HabillageIdentite` isolé — un test de placement doit monter
+// **l'écran**.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -299,18 +295,12 @@ describe('CA — les deux logos', () => {
   })
 
   it('montre le fichier remplacé, sans rechargement de page', async () => {
-    // ⚠️ **Le geste que la passe précédente avait cassé en croyant l'améliorer.**
-    //
-    // L'URL d'un logo était versionnée par l'horodatage React Query — qui change à chaque événement
-    // WebSocket, donc retéléchargeait 512 Ko pour rien. Le correctif a retiré le paramètre… et une
-    // URL **stable** ne provoque plus aucune requête sur une image déjà montée : React ne réécrit
-    // pas un attribut inchangé, le navigateur ne consulte même pas son cache, et
-    // `Cache-Control: no-cache` ne s'applique à rien. Remplacer un logo ne changeait plus rien à
-    // l'écran (mesuré en revue, `setAttribute` instrumenté).
-    //
-    // Le test suit le **geste réel** — déposer un fichier par-dessus un logo existant — plutôt que
-    // de forcer un re-rendu : c'est la chaîne entière qui doit tenir (mutation → invalidation →
-    // relecture → nouvelle empreinte → nouvel attribut `src`).
+    // ⚠️ **Le geste que la passe précédente avait cassé en croyant l'améliorer.** L'URL d'un logo
+    // était versionnée par l'horodatage React Query — qui change à chaque événement WebSocket ; le
+    // correctif a retiré le paramètre… et une URL **stable** ne provoque plus aucune requête sur
+    // une image déjà montée (React ne réécrit pas un attribut inchangé). Le test suit donc le
+    // **geste réel** — déposer un fichier par-dessus un logo existant — plutôt que de forcer un
+    // re-rendu : c'est la chaîne entière qui doit tenir, jusqu'au nouvel attribut `src`.
     vi.mocked(getIdentite)
       .mockResolvedValueOnce({ ...IDENTITE_HERITEE, logos: [pourvu('club', 'avant')] })
       .mockResolvedValue({ ...IDENTITE_HERITEE, logos: [pourvu('club', 'apres')] })

@@ -1,23 +1,12 @@
-"""Service applicatif Saisie (E04US002) — saisir, valider, corriger la qualification d'un archer.
+"""Service de **saisie** des scores de qualification.
 
-Orchestre le moteur métier `Serie`/`Volee` : il **résout la configuration** depuis la phase et le
-blason (le pavé se déduit du blason tiré — `Blason.zones` — pas du barème), pilote l'agrégat, et
-**bâtit les entrées d'audit** de validation et de correction (« qui / quand / avant-après »,
-E10US005). Le « quand » est lu via le port `Horloge` (jamais dans le domaine, resté déterministe).
-
-Frontières (cf. `stories/E04-saisie-scores.md`) :
-
-- L'**autorisation par le poste** vit **ici**, pas dans un `Depends` d'API : les méthodes d'écriture
-  reçoivent un `ContexteSaisie | None` (cible + départ courant) et cloisonnent la saisie au triplet
-  `(tournoi, cible, départ)` — `SaisieHorsCible` sinon (ADR-0033 §3). Au service car un appelant
-  **hors HTTP** (writer WS E04US009, orchestrateur E12US002) contournerait une garde d'API. Les
-  archers de la grille se reconstituent depuis les `Affectation` (`archers_du_poste`), pas depuis le
-  champ hérité `Archer.cible` (ADR-0033 §1). `contexte=None` = saisie **admin**, sans contrainte.
-- Le **nom** de qui agit (scoreur en validation, rôle habilité en correction) est **fourni** au
-  service (résolu par `exiger_scoreur` côté API) : le service reste pur, sans jeton ni session.
-- L'**atomicité acte↔trace** (validation/correction) passe par le port
-  `SerieRepository.enregistrer_avec_trace` (série + audit en une transaction, ADR-0035).
+⚠️ **L'autorisation par le poste vit ICI, jamais dans un `Depends` d'API** (ADR-0033 §3) : un
+appelant hors HTTP — le writer WebSocket, l'orchestrateur de tour — contournerait une garde d'API.
+La saisie est cloisonnée au triplet `(tournoi, cible, départ)` ; `contexte=None` vaut saisie admin.
+Les archers de la grille se reconstituent depuis les `Affectation`, pas depuis `Archer.cible`.
 """
+
+# DETTE-046 — la saisie de qualification garde une lecture à la maille tournoi.
 
 from __future__ import annotations
 
@@ -100,12 +89,10 @@ class ArcherPositionne:
     forfait: bool = False
     """L'archer a **abandonné ou été disqualifié** en qualification (E04US015, ADR-0050).
 
-    Il reste dans la grille (un forfait ne déplace personne) mais sa série ne sera **jamais
-    complétée**. Le signal est exposé parce que le client a besoin de savoir qu'une série incomplète
-    est **close pour de bon** : sans lui, un écran qui attend « toutes les séries finies » (le
-    panneau de routage, E04US018) attendrait indéfiniment des volées qui ne viendront pas. Même
-    notion que `ServiceCompletude._serie_close` — « barème validé **ou** forfait », DETTE-014 :
-    c'est le serveur qui sait, pas le front.
+    Il reste dans la grille (un forfait ne déplace personne) mais sa série ne sera **jamais**
+    complétée. Le signal est exposé parce que le client a besoin de savoir qu'une série incomplète
+    est **close pour de bon** : sans lui, un écran qui attend « toutes les séries finies »
+    attendrait indéfiniment des volées qui ne viendront pas (DETTE-014).
     """
 
 
@@ -125,13 +112,10 @@ class EtatSerie:
 class AvancementCible:
     """Avancement de saisie d'une cible, pour la supervision (E12US001, ADR-0038 §2).
 
-    `volee_courante` : la volée en cours (1-based) au rythme du **plus lent** des archers de la
-    cible — **0** si **aucun archer** n'est placé sur la cible (grille vide) ; des archers placés
-    mais qui n'ont rien saisi donnent **1** (le retardataire tient la cible). `nb_volees` : total
-    attendu (barème de qualification),
-    **0** si la qualification n'est pas configurée (la supervision n'échoue pas là-dessus, elle
-    affiche « — »). `derniere_saisie` : « quand » de la dernière volée saisie sur la cible, tous
-    archers confondus, ou `None` — c'est l'**activité** affichée, jamais le heartbeat (ADR-0038 §2).
+    `volee_courante` suit le **plus lent** des archers de la cible — **0** si aucun archer n'y est
+    placé, **1** si des archers placés n'ont rien saisi. `nb_volees` vaut **0** si la qualification
+    n'est pas configurée (la supervision affiche « — » plutôt que d'échouer). `derniere_saisie` est
+    l'**activité** affichée, jamais le heartbeat (ADR-0038 §2).
     """
 
     volee_courante: int
@@ -148,21 +132,11 @@ def _valeurs_lisibles(serie: Serie, numero: int) -> str | None:
 def _volees_enchainees(serie: Serie | None) -> int:
     """Combien de volées l'archer a **réellement enchaînées**, en partant de la première.
 
-    ⚠️ **Ce n'est pas `len(serie.volees)`, et la nuance décide de couper la salle ou non**
-    (correctif de revue, axe adversarial). `Serie.saisir_volee` accepte **n'importe quel rang**
-    entre 1 et le barème : rien n'impose la contiguïté. Un scoreur qui rattrape une feuille papier
-    et saisit d'abord la dernière volée notée produit une série `{1..9, 20}` — dix volées au
-    cardinal, neuf réellement tirées.
-
-    Si cet archer est le plus lent du plateau, compter le cardinal fait franchir la frontière de
-    tour **avant** que la volée manquante soit tirée : la pause tombe pendant que le pas de tir
-    tire. C'est la seule direction dangereuse — toute cette US est construite pour couper trop
-    tard plutôt que trop tôt —, alors qu'un préfixe contigu ne peut se tromper que dans le sens
-    prudent.
-
-    *(Le défaut est partagé avec `avancement_cible`, qui l'a depuis E12US001 ; là-bas il ne
-    décalait qu'un affichage de supervision, ici il déclenche un arrêt. Non corrigé au passage :
-    ce serait changer le rendu d'un écran hors du périmètre de cette US.)*
+    ⚠️ **Ce n'est pas `len(serie.volees)`, et la nuance décide de couper la salle ou non.**
+    `Serie.saisir_volee` accepte n'importe quel rang : un scoreur qui rattrape une feuille papier
+    produit une série `{1..9, 20}` — dix volées au cardinal, neuf réellement tirées. Si cet archer
+    est le plus lent, compter le cardinal fait franchir la frontière de tour **avant** que la volée
+    manquante soit tirée. Un préfixe contigu ne peut se tromper que dans le sens prudent.
     """
     if serie is None:
         return 0
@@ -250,17 +224,16 @@ class ServiceSaisie:
     ) -> AvancementCible:
         """Compose l'avancement d'une cible pour la console de supervision (E12US001, ADR-0038 §2).
 
-        Lecture seule. Le total de volées vient du barème de qualification (**0** si elle n'est pas
-        configurée : la supervision **ne lève pas** `PhaseQualificationAbsente`, affiche « — »).
-        Le rythme se lit sur les séries des archers **placés** sur la cible ; « volée courante »
-        = celle du **plus lent** (les archers d'une cible tirent ensemble, avance en bloc).
-        La « dernière saisie » (dernier `created_at`) alimente la colonne *dernière activité* — le
-        dernier **tir**, jamais le dernier heartbeat.
+        Lecture seule. Le total vient du barème de qualification (**0** si elle n'est pas
+        configurée : la supervision **ne lève pas**, elle affiche « — »). Le rythme se lit sur les
+        séries des archers **placés** ; « volée courante » = celle du **plus lent**, les archers
+        d'une cible tirant ensemble. La « dernière saisie » est le dernier **tir**, jamais le
+        dernier heartbeat.
         """
+
         # E05US025 : la qualification **de ce créneau**, et celle qui s'y tire. Cette lecture
-        # passait par la portée tournoi alors que la méthode reçoit un `depart_id` — sur un déroulé
-        # à plusieurs qualifications, la console aurait annoncé « volée 3/20 » à des archers en
-        # train de tirer un second tour de 15.
+        # passait par la portée tournoi alors que la méthode reçoit un `depart_id` — la console
+        # aurait annoncé « volée 3/20 » à des archers tirant un second tour de 15.
         phase = qualification_courante(self._phases, depart_id)
         # `bareme` optionnel depuis E05US001 (ADR-0045 §2), présent sur une qualification ; absent
         # (ou phase non configurée) → 0, la supervision affiche « — » sans lever d'erreur.
@@ -306,57 +279,11 @@ class ServiceSaisie:
     ) -> AvancementDePhase | None:
         """*Où en est cette qualification ?* — réalisation du port `LecteurAvancementDePhase`.
 
-        C'est ce que les pauses programmées attendaient depuis trois tranches (E05US033 →
-        E05US034 → E05US035) : un arrêt ne coupe qu'à une frontière de tour **observée**, et la
-        qualification était jusqu'ici le seul format joué dont personne ne savait dire le tour.
-
-        ⚠️ **Tout le travail est de compter la bonne population, et il y a trois façons de la
-        compter faux** — chacune fait avancer le tour au mauvais moment, donc couper la salle
-        pendant que le pas de tir tire (ou ne jamais la couper) :
-
-        1. **Le créneau n'est pas la phase** ([ADR-0082]). Deux qualifications peuvent coexister
-           dans un même départ — la fourche *haute*/*basse* d'E05US025 —, et leurs archers sont
-           placés sur les **mêmes cibles**. On filtre donc par `_admet`, la résolution déjà
-           utilisée par le chemin d'écriture : deux façons de dire « cet archer est à moi »
-           remettraient un archer dans une phase dont la feuille le croit ailleurs.
-        2. **Le plan de cibles décide qui tire** (ADR-0033). Un inscrit en **réserve** n'a aucune
-           affectation, donc aucune volée à tirer ; le compter figerait la phase à zéro pour la
-           journée entière.
-        3. **Les forfaits ne tireront plus** (E04US015). Même effet, et c'est le plus discret des
-           trois : rien à l'écran ne signale que la phase est retenue par quelqu'un de parti.
-
-        ⚠️ **Les forfaits se lisent par les DEUX chemins, et c'est un correctif de revue (axe
-        adversarial).** Un premier jet ne lisait que `par_phase(phase.id)`, en argumentant que
-        `_forfaits_qualif` résout « la » qualification du tournoi et rendrait donc les forfaits
-        d'une phase pour une autre. Le raisonnement est juste sur la **lecture** et faux sur
-        l'**écriture** : `ServiceForfait.declarer_en_qualification` écrit **tous** les forfaits de
-        qualification sur la phase du **premier** créneau (`# DETTE-047`, explicite là-bas). Lire la
-        seule phase courante rendait donc une liste **vide** pour toute qualification hors de ce
-        créneau — c'est-à-dire pour le départ de l'après-midi, et pour la *haute*/*basse* d'ADR-0082
-        que l'argument croyait précisément servir. Un archer abandonnant à sa 4ᵉ volée gelait alors
-        la phase au tour 1 **pour la journée**, et l'arrêt programmé ne partait jamais : la panne
-        n° 3 ci-dessus, celle dont on dit qu'elle ne se signale pas.
-
-        L'union est le moins mauvais filet tant que `DETTE-047` n'est pas résorbée, et **il faut
-        dire ce qu'elle coûte** (relevé en 2ᵉ passe de revue) : elle importe le second effet de
-        cette dette — un archer engagé sur **deux** créneaux et déclaré forfait sur l'un est retiré
-        du plateau de **l'autre**, où il tire réellement. Le plus lent devient alors quelqu'un
-        d'autre et la phase avance **trop tôt**, donc la pause peut tomber pendant qu'il tire. C'est
-        la direction dangereuse, celle contre laquelle tout le reste de cette méthode est construit.
-
-        On l'accepte parce que l'alternative est pire et plus fréquente : sans l'union, **tout**
-        forfait hors du premier créneau est invisible, et un seul abandon gèle la phase pour la
-        journée. Un archer double-engagé est rare ; un abandon ne l'est pas. `DETTE-047` porte les
-        deux effets, et sa résorption — porter un `depart_id` jusqu'au forfait — ferme les deux d'un
-        coup ; c'est alors seulement que `par_phase` seul deviendra correct.
-
-        Sur `DETTE-022`, la lecture reste utile à la résorption : `par_phase(phase.id)` est le geste
-        **juste**, celui vers lequel elle devra converger ; `_forfaits_qualif` n'est là que pour
-        rattraper ce que l'écriture range au mauvais endroit.
-
-        Rend `None` quand ce lecteur n'a rien à dire : phase inconnue, d'un autre type, ou
-        qualification pas encore configurée (barème absent — robustesse jour J, même parti que
-        `avancement_cible`). Le suivi affiche alors « avancement inconnu » plutôt que de tomber.
+        ⚠️ **Tout le travail est de compter la bonne population**, et il y a trois façons de la
+        compter faux : le **créneau n'est pas la phase** (ADR-0082, d'où `_admet`) ; le **plan de
+        cibles** décide qui tire ; les **forfaits** ne tireront plus. ⚠️ Ceux-ci se lisent par les
+        **deux** chemins tant que `DETTE-047` n'est pas résorbée — `par_phase` seul rendait une
+        liste vide hors du premier créneau, et un abandon gelait la phase pour la journée.
         """
         phase = self._phases.par_id(phase_id)
         if phase is None or phase.type is not TypePhase.QUALIFICATION or phase.bareme is None:
@@ -450,24 +377,11 @@ class ServiceSaisie:
     ) -> EtatSerie | None:
         """L'état persisté de la série de l'archer (volées + « quand »), ou `None` si rien de saisi.
 
-        Chemin de lecture de la grille : la série (valeurs, marqueurs, verrou, cumul) **et** le
-        `created_at` de chaque volée (ex-017), joints par numéro. Ne cloisonne pas à la cible : une
-        lecture, l'appelant (API) a déjà établi le droit d'accès du poste.
-
-        ⚠️ **La lecture résout la phase comme l'écriture** (correctif de revue E05US025). Elle
-        passait `tournoi_id` au port, dont le premier paramètre est un `phase_id` depuis cette US :
-        `TournoiId` et `PhaseId` étant deux alias de `int` (`DETTE-044`), mypy n'a rien vu et la
-        grille repartait **vierge sur des flèches réellement en base** dès que les deux entiers
-        cessaient de coïncider — c'est-à-dire dès le second tournoi de la base. La résolution est
-        celle du chemin d'écriture, à la nuance près qu'elle ne **lève** pas : une lecture sans
-        qualification configurée rend `None`, comme une série jamais ouverte.
-
-        ⚠️ **`contexte` n'est pas décoratif** (2ᵉ correctif de revue) : sans lui, la lecture résout
-        le créneau par « le plus petit identifiant où l'archer est inscrit » (`DETTE-052`) alors que
-        l'écriture le reçoit du poste. Sur un archer inscrit matin **et** après-midi, la tablette de
-        l'après-midi écrivait dans sa phase et relisait celle du matin : grille vide sur des flèches
-        en base, ou pire, les volées verrouillées du matin. La limite `DETTE-052` ne vaut que pour
-        la saisie **admin** — le poste sait où il est, encore fallait-il le lui demander.
+        ⚠️ **La lecture résout la phase comme l'écriture** : elle passait `tournoi_id` au port,
+        dont le premier paramètre est un `phase_id` — deux alias d'`int` (`DETTE-044`), donc mypy
+        n'a rien vu et la grille repartait **vierge sur des flèches en base**. ⚠️ `contexte` n'est
+        pas décoratif : sans lui la lecture résout le créneau par `DETTE-052` alors que l'écriture
+        le reçoit du poste, si bien que la tablette de l'après-midi relisait la phase du matin.
         """
         return self._etat_dans(
             self._phase_qualification_ou_none(tournoi_id, archer_id, contexte), archer_id
@@ -477,13 +391,10 @@ class ServiceSaisie:
         """Le « quand » de chaque volée de l'archer **dans cette phase** (`{}` sinon).
 
         Chemin de lecture **léger** pour bâtir la réponse d'un acte d'écriture depuis la `Serie`
-        qu'il renvoie déjà, sans re-lire la série entière (`etat_serie`) : l'API dédoublonne
-        l'**écriture** seule, puis lit ce « quand » **hors** de l'unité idempotente (ADR-0036).
-
-        ⚠️ **Le paramètre est la `phase_id`, pas le tournoi** (correctif de revue E05US025). Les
-        trois appelants d'API tiennent déjà la `Serie` que l'écriture vient de rendre : ils passent
-        son `phase_id`, ce qui est **exact par construction** — aucune résolution à refaire, donc
-        aucune chance qu'elle diverge de celle qui a écrit.
+        qu'il renvoie déjà : l'API dédoublonne l'**écriture** seule, puis lit ce « quand » **hors**
+        de l'unité idempotente (ADR-0036). ⚠️ Le paramètre est la `phase_id`, pas le tournoi — les
+        appelants tiennent déjà la `Serie` que l'écriture vient de rendre, donc **exact par
+        construction** : aucune résolution à refaire, aucune chance de diverger.
         """
         return self._series.horodatages(phase_id, archer_id)
 
@@ -542,15 +453,11 @@ class ServiceSaisie:
     ) -> Serie:
         """Valide la série de l'archer selon le grain de la phase, au nom du `scoreur`.
 
-        Verrouille les volées concernées (fin de série ou lot de N, cf. `Serie.valider`) et laisse
-        une **trace** `VALIDATION` (sans avant/après) dans la même transaction que l'écriture.
-        `contexte` cloisonne au poste (ADR-0033 §3) — la garde vaut pour **tout** chemin d'écriture.
-
-        ⚠️ Le `scoreur` est un **nom** (pour l'audit) : ce service **ne peut pas** vérifier que le
-        scoreur officie dans **ce** tournoi. Cette garde (`ScoreurHorsTournoi`, 403) vit **à l'API**
-        (`exiger_scoreur` résout le `Scoreur` + `_exiger_meme_tournoi`) — asymétrique avec la garde
-        poste, descendue ici. Aucun appelant hors HTTP ne valide aujourd'hui ; **E04US009 (writer
-        WS) devra la répliquer** — ou passer le tournoi du scoreur — s'il ouvre un tel chemin.
+        Verrouille les volées concernées et laisse une **trace** `VALIDATION` dans la même
+        transaction. `contexte` cloisonne au poste (ADR-0033 §3). ⚠️ Le `scoreur` est un **nom**
+        (pour l'audit) : ce service **ne peut pas** vérifier qu'il officie dans ce tournoi — cette
+        garde vit à l'API (`exiger_scoreur`), asymétrique avec la garde poste descendue ici.
+        E04US009 (writer WS) devra la répliquer s'il ouvre un chemin hors HTTP.
         """
         self._charger_archer(tournoi_id, archer_id, contexte)
         phase = self._phase_qualification(tournoi_id, archer_id, contexte)
@@ -659,39 +566,11 @@ class ServiceSaisie:
     ) -> Phase:
         """La qualification **dans laquelle cet archer tire en ce moment**.
 
-        `PhaseQualificationAbsente` s'il n'y en a aucune.
-
         ⚠️ **C'est ici que se tient le CA « la saisie sait dans quelle qualification elle écrit »**
-        (E05US025, ADR-0082). Cette méthode résolvait « **la** » qualification du tournoi
-        (`portee.qualification_du_tournoi`, c'est-à-dire celle du **premier** créneau) : avec un
-        déroulé qui en porte plusieurs, les 3x15 de la *haute* seraient allés réécrire les volées
-        des
-        3x20 du premier tour, dans la même feuille et sans le moindre signal.
-
-        Deux résolutions successives, et aucune n'est facultative :
-
-        1. **Le créneau.** Celui du poste (`contexte.depart_id`) quand la saisie vient d'une
-        tablette
-           — c'est l'autorité, le poste sait où il est. En saisie **admin** (`contexte is None`), le
-           créneau se lit sur les inscriptions de l'archer, au numéro le plus bas s'il en a
-           plusieurs. Ce dernier point reste un **raccourci** : un archer engagé matin et après-midi
-           verra l'admin écrire dans son créneau du matin. C'est `DETTE-046` vue de l'autre bout —
-           la donnée sait désormais les distinguer (la clé est `(phase, archer)`), mais cette
-           **route** ne porte pas encore le créneau. Marqué `# DETTE-052`.
-
-        2. **La phase, parmi les qualifications de ce créneau**, par ordre : celle qui est
-           **démarrée et non terminée** d'abord (c'est « la phase en cours », au sens de
-           l'arbitrage) ; à défaut la première **à venir** ; à défaut la dernière.
-
-           Le repli sur « à venir » n'est pas de la complaisance : démarrer une phase est un geste
-           **manuel** de l'organisateur (`ServicePhases.demarrer`), et faire dépendre la saisie de
-           sa
-           discipline bloquerait le pas de tir tout l'après-midi s'il l'oublie. Même parti que
-           `ServicePalmares._resultat`, qui refuse déjà de lire `phase.statut` pour décider ce qu'un
-           écran affiche.
-
-        Sur un déroulé à **une seule** qualification — tous les tournois d'aujourd'hui — les deux
-        résolutions rendent cette unique phase : le comportement est inchangé, oracle 120 compris.
+        : résoudre « la » qualification du tournoi aurait fait réécrire les volées du premier tour
+        par celles de la *haute*. Deux résolutions — le **créneau** (celui du poste, sinon le plus
+        bas des inscriptions, `# DETTE-052`), puis la **phase** parmi les qualifications de ce
+        créneau. Sur un déroulé à une seule qualification, le comportement est inchangé.
         """
         phase = self._phase_qualification_ou_none(tournoi_id, archer_id, contexte)
         if phase is None:
@@ -736,33 +615,10 @@ class ServiceSaisie:
         """La qualification de ce créneau **qui admet cet archer**, ou `None` s'il n'y en a aucune.
 
         ⚠️ **C'est ici que se tient le CA « une flèche ne peut pas atterrir dans la mauvaise
-        feuille »** — et un premier jet ne le tenait pas (bloquant de revue).
-        `qualification_courante` rend la **première démarrée** du créneau : sur la fourche du CA
-        (*haute* et *basse* composées ensemble, démarrées ensemble, cf. l'arbitrage du 09/08/2026
-        « rien n'impose une seule phase en cours à la fois »), elle rendait la *haute* pour **tout
-        le monde**. Les 60 archers de la *basse* auraient écrit leurs 3x15 dans la feuille de la
-        haute, et la basse serait restée vide — le défaut même que l'US existe pour fermer, déplacé
-        du tournoi vers le créneau.
-
-        La discrimination se fait sur la **population** : une qualification prélevée ne reçoit que
-        les archers que ses sources lui ont donnés. On la lit par le résolveur de classement de
-        `ServiceSaisieDuels` — **le même** que le plan de cibles et le palmarès (raison d'être
-        d'`application/prelevement.py`) : deux résolutions distinctes remettraient un archer à un
-        poste dont l'arbre le croit ailleurs.
-
-        ⚠️ **La tête n'est jamais discriminante** : une qualification sans source accueille tout le
-        créneau, donc elle admet *aussi* l'archer de la *basse*. Le départage final se fait par
-        `la_plus_avancee` et non `la_plus_courante` — sens **inverse** sur les phases démarrées,
-        pour la raison écrite là-bas. Un premier correctif s'y était trompé : tant que le premier
-        tour restait « en cours », il captait toute la saisie.
-
-        **Court-circuit voulu sur un créneau mono-qualification** : la lecture de classement n'est
-        même pas tentée. C'est le cas de tous les tournois d'aujourd'hui — non-régression par
-        construction (oracle 120 compris), et surtout aucun coût ajouté au chemin chaud de la
-        saisie, qui reconstruirait sinon le classement du créneau à **chaque flèche** (`DETTE-031`,
-        pas de cache transverse aux requêtes). Sur un créneau qui en porte plusieurs, `resolveur`
-        permet à un appelant qui boucle sur des archers (`avancement_cible`) de **partager** le
-        cache d'une résolution à l'autre : le construire par appel l'annulait.
+        feuille »** : `qualification_courante` rend la première démarrée, donc la *haute* pour tout
+        le monde. La discrimination se fait sur la **population**, lue par le résolveur de
+        `ServiceSaisieDuels` — **le même** que le plan de cibles et le palmarès. La tête n'étant
+        jamais discriminante, le départage se fait par `la_plus_avancee`.
         """
         qualifications = [
             phase
@@ -798,22 +654,11 @@ class ServiceSaisie:
     def _admet(phase: Phase, archer_id: ArcherId, resoudre: ResolveurClassement) -> bool:
         """Cette phase compte-t-elle cet archer dans sa population ?
 
-        Le résolveur rend, pour l'`ordre` d'une phase, le classement qu'elle **produit** — donc
-        restreint aux archers qu'elle a reçus (`ClassementSource`, cf.
-        `ServiceSaisieDuels._classement_de_l_ordre`). L'appartenance s'y lit directement, sans
-        redire les règles de prélèvement ici.
-
-        **La phase de tête (sans source) rend `True` sans rien lire.** Elle accueille tout le
-        créneau par construction : lui résoudre un classement complet pour conclure « oui » est la
-        plus chère des lectures pour une réponse acquise — sur le chemin **d'écriture**, dans la
-        file du writer unique.
-
-        Best-effort assumé : toute erreur de lecture du moteur rend `False` — l'appelant retombe
-        alors sur la phase en cours, et le journalise. Le filet couvre `ApplicationError`
-        (`PrelevementEnAttente` sur une source indécise) **et** `DomainError` : une qualification
-        peut se prélever d'un tableau, dont la reconstruction lève des erreurs de domaine
-        (`EffectifTableauInvalide`, `FormatTableauIncoherent`) — les omettre aurait fait tomber la
-        saisie en 500 sur un déroulé incohérent, à rebours de ce que ce repli promet.
+        Le résolveur rend le classement que la phase **produit** : l'appartenance s'y lit sans
+        redire les règles de prélèvement. **La phase de tête rend `True` sans rien lire** — elle
+        accueille tout le créneau, et lui résoudre un classement serait la plus chère des lectures
+        pour une réponse acquise. Best-effort : le filet couvre `ApplicationError` **et**
+        `DomainError`, sans quoi un déroulé incohérent faisait tomber la saisie en 500.
         """
         if not phase.sources:
             return True
@@ -847,17 +692,11 @@ class ServiceSaisie:
     ) -> DepartId | None:
         """Le créneau où cet archer tire : celui du poste, sinon le premier où il est inscrit.
 
-        `None` quand l'archer n'a aucune inscription — l'appelant retombe alors sur la résolution
-        au tournoi. C'est une donnée incohérente (on ne tire pas sans être inscrit), pas un cas
-        nominal : on ne casse pas la saisie dessus le jour J.
-
-        Le départage entre plusieurs inscriptions se fait sur le **plus petit identifiant** de
-        créneau, et non sur son numéro d'affichage : il faudrait injecter un `DepartRepository` pour
-        lire ce numéro, ce qui ferait porter à la composition root une dépendance entière au service
-        d'un départage sans enjeu — les deux ordres ne diffèrent que si les créneaux ont été
-        renumérotés après coup. Ce qui compte ici est d'être **déterministe** : deux saisies
-        successives du même archer doivent atterrir dans la même feuille. Le vrai remède n'est pas
-        un meilleur tri, c'est que la route porte le créneau (`# DETTE-052`).
+        `None` quand l'archer n'a aucune inscription — donnée incohérente, pas un cas nominal : on
+        ne casse pas la saisie dessus le jour J. Le départage se fait sur le **plus petit
+        identifiant** de créneau et non son numéro d'affichage : lire ce numéro exigerait un
+        `DepartRepository` entier pour un départage sans enjeu. Ce qui compte est d'être
+        **déterministe** ; le vrai remède est que la route porte le créneau (`# DETTE-052`).
         """
         if contexte is not None:
             return contexte.depart_id

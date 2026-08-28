@@ -121,7 +121,10 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Moteur de phases à politiques injectables",
    "us": [
-    "E05US003"
+    "E00US027",
+    "E05US003",
+    "E05US023",
+    "E06US003"
    ]
   },
   {
@@ -2570,7 +2573,7 @@ window.ATLAS.decisions = {
      "chemin": "backend/domain/patrimoine.py",
      "existe": true,
      "symboles": [
-      "tournoi_id"
+      "OrigineBrique"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -2591,6 +2594,7 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Les briques de configuration sont le patrimoine du club : bibliothèque, copie, promotion",
    "us": [
+    "E00US027",
     "E01US007",
     "E01US008",
     "E01US023",
@@ -3646,6 +3650,7 @@ window.ATLAS.decisions = {
    "titre": "Le départ est la portée sportive, pas seulement un créneau logistique",
    "us": [
     "E00US021",
+    "E00US027",
     "E01US025",
     "E05US026",
     "E05US029",
@@ -4623,6 +4628,14 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/palmares.py",
      "existe": true,
      "symboles": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
+      "TYPES_EN_TABLEAU",
+      "TYPES_DEROULES",
+      "TYPES_CLASSANTS_LUS",
+      "TYPES_EN_TABLEAU_JOUE",
+      "TYPES_JOUES",
+      "TYPES_SIGNALES_EN_ECART",
       "_resultat_big_shoot_off",
       "_resultat",
       "TYPES_RECONSTRUCTIBLES"
@@ -4642,7 +4655,9 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "ServicePoules",
-      "classement_de_phase"
+      "classement_de_phase",
+      "LecteurClassementDePhase",
+      "ServiceSaisieDuels"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4653,9 +4668,7 @@ window.ATLAS.decisions = {
      "symboles": [
       "LecteurClassementDePhase",
       "ServicePoules",
-      "ServiceSaisieDuels",
-      "LecteurClassementPoules",
-      "LecteurClassementBigShootOff"
+      "ServiceSaisieDuels"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -4677,7 +4690,18 @@ window.ATLAS.decisions = {
      "chemin": "backend/application/saisie_duels.py",
      "existe": true,
      "symboles": [
+      "saisie_duels.TYPES_DELEGUES",
+      "palmares._TYPES_CLASSANTS_AU_PALMARES",
+      "TYPES_EN_TABLEAU",
+      "TYPES_DEROULES",
+      "TYPES_CLASSANTS_LUS",
+      "TYPES_EN_TABLEAU_JOUE",
+      "TYPES_JOUES",
+      "TYPES_SIGNALES_EN_ECART",
       "_classement_de_l_ordre",
+      "LecteurClassementDePhase",
+      "ServicePoules",
+      "ServiceSaisieDuels",
       "brancher_lecteur",
       "TYPES_DELEGUES",
       "brancher_poules",
@@ -4751,19 +4775,22 @@ window.ATLAS.decisions = {
       "TYPES_JOUES",
       "TYPES_SIGNALES_EN_ECART",
       "deroule_par_un_service",
-      "monte_les_oppositions",
-      "TYPES_MONTES",
       "BIG_SHOOT_OFF",
       "classement_lisible",
       "route_l_archer",
       "True",
       "route_tout_le_plateau",
-      "TYPES_ROUTES_IMPLICITEMENT"
+      "TYPES_ROUTES_IMPLICITEMENT",
+      "_routage_big_shoot_off",
+      "ProchaineManche",
+      "IssueRoutage.PROCHAINE_MANCHE",
+      "plan_de_cibles",
+      "AUCUN",
+      "RONDES_APPARIEES",
+      "DuelCharge",
+      "suisse"
      ],
-     "symboles_absents": [
-      "saisie_duels.TYPES_DELEGUES",
-      "palmares._TYPES_CLASSANTS_AU_PALMARES"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -4854,9 +4881,7 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PlacementParBlocORM",
-      "placement_poule",
       "placement_par_bloc",
-      "poule_numero",
       "groupe_numero"
      ],
      "symboles_absents": [],
@@ -8082,6 +8107,100 @@ window.ATLAS.decisions = {
     "E07US004",
     "E07US008",
     "E16US005",
+    "E16US009"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-27",
+   "date_brute": "2026-08-27",
+   "extrait": "Le code porte des pointeurs vers le raisonnement, il ne le recopie pas. Un commentaire ne survit que s'il satisfait au moins un de ces trois tests : 1. Contrainte non déductible du fichier — un couplage que rien n'exprime dans le langage : une valeur qui dérive d'un autre fichier, un invariant tenu ailleurs, un ordre d'exécution imposé. 2. Avertissement — une modification d'apparence innocente casserait quelque chose, et le code ne peut pas le dire seul (le repli d'un ternaire qui rend un oubli compilable, un effet de bord au démontage, une garde dont dépend une autre couche). 3. Renvoi — une ligne qui nomme l'ADR, la story ou l'entrée de dette qui porte le raisonnement. Une ligne, pas le […]",
+   "fichier": "docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md",
+   "identifiant": "0099",
+   "liens": [
+    {
+     "cible": "E00US027",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "CLAUDE.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_commentaires_bornes.py",
+     "existe": true,
+     "symboles": [
+      "test_le_cliquet_est_vide"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/commentaires.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/competition/TableClassement.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/completude/Completude.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/catalogue.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/phases/relance.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/ui/pagination.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le code porte des **pointeurs**, pas le raisonnement",
+   "us": [
+    "E00US025",
+    "E00US027",
+    "E01US024",
+    "E16US004",
     "E16US009"
    ]
   }

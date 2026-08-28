@@ -1,21 +1,9 @@
-"""Endpoints REST du patrimoine du club (`/api/v1`) — bibliothèque, assemblage, promotion.
+"""Patrimoine — bibliothèque à plat, assemblage sous le tournoi, promotion en retour (ADR-0060).
 
-E01US023 / ADR-0060. Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des
-agrégats, écriture routée par la **file** (writer unique, ADR-0005) et protégée par `exiger_admin`,
-lecture directe **hors boucle** (threadpool), erreurs typées traduites à la frontière.
-
-**Trois familles de routes**, qui sont les trois temps de la vie d'une brique :
-
-- **bibliothèque**, à plat sous `/categories` et `/blasons` — le pendant de `/gabarits` (E01US007).
-  Seules la **lecture** et la **création** sont ici : l'édition (`PUT /categories/{id}`) et la
-  suppression (`DELETE /categories/{id}`) sont **déjà** à plat depuis E01US003 et fonctionnent
-  telles quelles sur un modèle, sans qu'il faille les redéclarer. Les redoubler aurait créé deux
-  chemins pour un même geste ;
-- **assemblage** d'un tournoi, sous `/tournois/{id}/assemblage` — copie de la bibliothèque ;
-- **promotion**, sous `/categories/{id}/promotion` et `/blasons/{id}/promotion` — le retour.
-
-Les routes de bibliothèque **ne portent pas de `tournoi_id`** : c'est tout l'objet de l'US, et ce
-qui permet enfin à l'axe atelier de tenir sa promesse « fabriquer, hors tournoi » (DETTE-023).
+⚠️ **L'édition et la suppression ne sont PAS redéclarées ici** : elles sont déjà à plat depuis
+E01US003 et fonctionnent telles quelles sur un modèle. Les redoubler créerait deux chemins pour un
+même geste. Les routes de bibliothèque ne portent **pas** de `tournoi_id` — c'est tout l'objet de
+l'US (`DETTE-023`).
 """
 
 from __future__ import annotations
@@ -66,11 +54,10 @@ class DupliquerBriqueRequete(BaseModel):
     """Corps d'une duplication de brique : le nom sous lequel ranger la copie.
 
     Borné comme les deux autres corps de cette US : l'écriture passe par le writer unique, et un
-    champ non borné y fait une tâche de durée non bornée (règle 7).
-
-    Seconde issue du CA « modifier un officiel » — « en faire une **copie** pour garder les deux
-    modèles » — face à `PUT /categories/{id}`, qui modifie l'officiel **sur place** et le laisse
-    officiel (le règlement évolue, ADR-0060 §4). Sans elle, le CA n'était tenu que pour les formats.
+    champ non borné y fait une tâche de durée non bornée (règle 7). Seconde issue du CA « modifier
+    un officiel » — en faire une **copie** — face à `PUT /categories/{id}`, qui le modifie **sur
+    place** en le laissant officiel (ADR-0060 §4). Sans elle, le CA n'était tenu que pour les
+    formats.
     """
 
     nom: str = Field(min_length=1, max_length=200)

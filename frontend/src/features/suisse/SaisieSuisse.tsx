@@ -1,23 +1,11 @@
-// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisiePoules`, `SaisieColline`), à
-// l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux autres, et **rien
-// ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà voyagé à la main d'un
-// écran à l'autre. Le remède retenu est « rien » — la liste des formats à rencontres est close
-// (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
 // Écran de saisie du **système suisse** (E05US030, ADR-0083) — surface **scoreur**.
 //
-// Jumeau de `SaisiePoules` par la coquille et **identique** par le pavé : une rencontre de ronde
-// *est* un duel ordinaire (ADR-0083 §7), donc on remonte `DuelCharge` tel quel avec la famille
-// `'suisse'`. Ce qui diffère est la **navigation** — on entre par la **ronde**, pas par un numéro de
-// match d'arbre : c'est le décor `RONDES_APPARIEES` du contrat de phase.
-//
-// Ce que le pavé apporte gratuitement : le mode (sets/cumul) résolu par l'arme, le barrage interne à
-// une rencontre nulle, le verrou de validation, l'état optimiste hors-ligne et le rejeu à la
-// reconnexion (E04US009).
-//
-// ⚠️ **La ronde suivante n'existe pas avant que la précédente soit close**, et c'est structurel :
-// le moteur refuse d'apparier par-dessus une ronde en cours (`domain/suisse.py::_rondes_closes`),
-// puisqu'un appariement suisse se calcule sur le classement du moment. L'écran doit donc **nommer
-// l'attente** — sans quoi le scoreur cherche une ronde qui n'est nulle part et croit à une panne.
+// ⚠️ `DETTE-079` : la coquille de ce panneau est écrite **trois fois** (ici, `SaisiePoules`,
+// `SaisieColline`) — rien ne rougit si un correctif n'est porté qu'à un seul. Le pavé est
+// **identique** (`DuelCharge`, famille `'suisse'`) : une rencontre de ronde *est* un duel (ADR-0083
+// §7) ; seule la **navigation** diffère, on entre par la ronde. ⚠️ **La ronde suivante n'existe pas
+// avant que la précédente soit close** (`domain/suisse.py::_rondes_closes`) : l'écran doit **nommer
+// l'attente**.
 
 import { useState } from 'react'
 

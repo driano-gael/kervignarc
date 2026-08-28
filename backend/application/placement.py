@@ -1,19 +1,10 @@
-"""Service applicatif Placement — plan de cibles **matérialisé et ajustable** (E03US004, ADR-0024).
+"""Service de **placement** — lit le plan persisté, régénère, déplace, comble la réserve.
 
-E03US001 recalculait le plan à chaque lecture ; E03US004 le **matérialise** (table `placement`, une
-affectation par inscription) pour le rendre ajustable au glisser-déposer. Ce service :
+La raison d'une mise en réserve est **dérivée**, jamais persistée. Un déplacement invalide est
+refusé **en bloc**, l'état restant inchangé.
 
-- **lit** le plan persisté (`plan_de_cibles`) et range les inscrits sans affectation en **réserve**,
-  avec une **raison dérivée** (sans blason / saturé / en attente) — jamais persistée ;
-- **régénère** (`regenerer`) le plan depuis le moteur glouton déterministe — c'est aussi « annuler
-  les modifications » (ADR-0024) ;
-- **déplace / échange / met en réserve** un archer (`deplacer`), en **validant** contre l'état
-  courant (refus en bloc, état inchangé — CA « déplacement invalide ») ;
-- **place les restants** (`placer_les_restants`) : comble la réserve sans bouger les placés.
-
-Les écritures passent par la **file** (règle 7) — routage côté API ; le service reste synchrone. La
-jointure archer → catégorie → blason par défaut (héritée d'E03US001) nourrit le moteur pur en
-`ArcherAPlacer` ; un archer sans blason exploitable est un conflit `SANS_BLASON`, jamais placé.
+⚠️ **Un archer sans blason exploitable est un CONFLIT, jamais placé** : la jointure archer →
+catégorie → blason nourrit le moteur, elle ne comble pas les trous.
 """
 
 from __future__ import annotations
@@ -166,11 +157,10 @@ class ServicePlacement:
         """Règle le cloisonnement des cibles du tournoi et renvoie la valeur retenue (E03US007).
 
         **Ne replace personne** : le plan est matérialisé (ADR-0024) et l'organisateur reste maître
-        de ses ajustements. Le nouveau réglage s'applique à la prochaine régénération, aux
-        déplacements manuels et au **signal** porté par les cibles déjà posées qui le violent
-        (`cloisonnement_non_respecte`). Aucune garde de statut : cloisonner reste réglable tournoi
-        en cours — c'est un critère de placement, pas une donnée de résultat, et le plan lui-même
-        s'ajuste jusqu'au bout (E03US004).
+        de ses ajustements. Le réglage s'applique à la prochaine régénération, aux déplacements
+        manuels et au **signal** des cibles déjà posées qui le violent
+        (`cloisonnement_non_respecte`). Aucune garde de statut : c'est un critère de placement, pas
+        une donnée de résultat, et le plan s'ajuste jusqu'au bout (E03US004).
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
@@ -183,16 +173,11 @@ class ServicePlacement:
     ) -> PlanDeCibles:
         """(Re)génère le plan auto et **écrase** l'existant — sert aussi d'« annuler ».
 
-        Déterministe (ADR-0023) : « annuler les modifications » n'a pas besoin d'instantané, c'est
-        cette même régénération (ADR-0024). Les archers que l'auto ne place pas restent en réserve.
-
-        **Alerte par calcul d'impact (E12US007, ADR-0040)** : l'impact est **recalculé ici**, dans
-        la file (jamais cru sur parole — c'est ce qui évite le défaut de DETTE-007). Si le niveau
-        est `MASSIF` (des archers placés **et** des scores existent) et que l'admin n'a pas
-        `confirme`, on lève `ReplacementNonConfirme` (409 chiffré, état inchangé). Une régénération
-        massive laisse une **trace d'audit** co-écrite atomiquement avec le plan (ADR-0035) ; les
-        niveaux `AUCUN` (première génération) et `CONFIRMATION` (placement sans score, réversible)
-        passent directement, sans trace.
+        Déterministe (ADR-0023) : « annuler » n'a pas besoin d'instantané, c'est cette même
+        régénération (ADR-0024). ⚠️ **L'impact est recalculé ici**, dans la file, jamais cru sur
+        parole (défaut de DETTE-007) : au niveau `MASSIF` (archers placés **et** scores existants)
+        sans `confirme`, on lève `ReplacementNonConfirme` (409 chiffré, état inchangé), et une
+        trace d'audit est co-écrite atomiquement avec le plan (ADR-0035).
         """
         contexte = self._charger(tournoi_id, depart_id)
         impact = self._impact(contexte, tournoi_id, depart_id)
@@ -229,20 +214,13 @@ class ServicePlacement:
     def _impact(
         self, contexte: _Contexte, tournoi_id: TournoiId, depart_id: DepartId
     ) -> ImpactRegeneration:
-        """Chiffre l'impact d'une régénération : archers actuellement placés + cibles avec scores.
+        """Chiffre l'impact d'une régénération : archers placés + cibles avec scores.
 
-        # DETTE-037 : ne chiffre **pas** la réserve qu'un cloisonnement plus strict (E03US007) va
-        # créer — l'organisateur confirme, puis la découvre. Remède pressenti : rejouer `placer` à
-        # blanc (lecture pure) et compter les conflits. Voir `docs/dette.md`.
-
-        `archers_deplaces` = toutes les affectations actuelles (le glouton déterministe re-brasse
-        tout). `cibles_avec_scores` = cibles distinctes du plan **actuel** dont un archer a **au
-        moins une volée validée** — la marque de « données réelles produites » (la ligne de partage
-        du CA). « A tiré » = **volée validée**, jamais une simple saisie provisoire : c'est
-        l'arbitrage daté du 20/07/2026 (reversé dans `stories/E02-inscriptions.md`, cf.
-        `Serie.nb_fleches_validees`), cohérent avec `cumul`, le classement et les gardes
-        d'engagement — une volée saisie non validée est un état réversible, pas une donnée réelle.
-        Une seule requête `par_tournoi` (pas de N+1) fournit l'ensemble des archers ayant tiré.
+        ⚠️ `# DETTE-037` : ne chiffre **pas** la réserve qu'un cloisonnement plus strict (E03US007)
+        va créer — l'organisateur confirme, puis la découvre. `cibles_avec_scores` compte les
+        cibles dont un archer a **au moins une volée validée** ; « a tiré » = **volée validée**,
+        jamais une saisie provisoire (arbitrage du 20/07/2026, `stories/E02-inscriptions.md`),
+        cohérent avec `cumul` et le classement. Une seule requête `par_tournoi` (pas de N+1).
         """
         affectations = self._placements.par_depart(depart_id)
         archers_avec_scores = {
@@ -443,13 +421,11 @@ class ServicePlacement:
     ) -> None:
         """Refuse la pose si la cible ne peut pas accueillir le candidat (déplacement invalide).
 
-        Le message **nomme la cause** : un refus dû au cloisonnement (E03US007) se corrige en
-        desserrant un réglage, pas en libérant de la place — dire « capacité, espace ou hauteur »
-        enverrait l'admin chercher un problème qui n'existe pas. Et il distingue **deux** refus de
-        cloisonnement, parce qu'ils n'appellent pas le même geste : le candidat qui mêlerait, et la
-        cible **déjà** non conforme (plan posé avant l'activation du réglage), où même une pose
-        « neutre » est refusée. Dans ce second cas, accuser le candidat serait faux — ce n'est pas
-        lui qui mêle quoi que ce soit —, et l'admin chercherait indéfiniment ce qu'il a mal fait.
+        Le message **nomme la cause** : un refus de cloisonnement (E03US007) se corrige en
+        desserrant un réglage, pas en libérant de la place. ⚠️ Il distingue **deux** refus de
+        cloisonnement : le candidat qui mêlerait, et la cible **déjà** non conforme (plan posé
+        avant l'activation du réglage), où même une pose neutre est refusée — accuser le candidat
+        serait faux, et l'admin chercherait indéfiniment ce qu'il a mal fait.
         """
         motif = self._motif(contexte, affectations, cible, candidat, exclus)
         if motif is MotifRefus.AUCUN:
@@ -597,14 +573,11 @@ class ServicePlacement:
     ) -> tuple[Conflit, ...]:
         """Réserve = inscrits non posés, avec leur **raison dérivée** (ADR-0024, non persistée).
 
-        `SANS_BLASON` (donnée), sinon `NON_PLACE` si plus aucune cible ne l'accueille (saturé /
-        hauteur), sinon `EN_RESERVE` (plaçable, mis de côté ou en attente). Ordre déterministe :
-        celui des inscriptions.
-
-        **E03US007** : entre les deux, `CLOISONNEMENT` quand c'est le *réglage* — et non la salle —
-        qui l'exclut. On le sait en reposant la même question **sans** le cloisonnement : si une
-        cible l'accueillerait alors, le refus vient du réglage. Deux gestes différents pour l'admin
-        (desserrer le réglage vs. ajouter une cible), donc deux raisons distinctes.
+        `SANS_BLASON` (donnée), sinon `NON_PLACE` si plus aucune cible ne l'accueille, sinon
+        `EN_RESERVE`. Ordre déterministe : celui des inscriptions. **E03US007** : entre les deux,
+        `CLOISONNEMENT` quand c'est le *réglage* qui exclut — on le sait en reposant la même
+        question **sans** le cloisonnement. Deux gestes différents pour l'admin (desserrer vs.
+        ajouter une cible), donc deux raisons distinctes.
         """
         cible_par_index = {cible.index: cible for cible in contexte.gabarit.cibles}
         occupants_par_index = {

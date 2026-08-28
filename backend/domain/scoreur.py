@@ -1,20 +1,10 @@
-"""Agrégat `Scoreur` — une personne habilitée à **valider** les scores d'un tournoi (E10US003).
+"""Agrégat **Scoreur** — entité du tournoi, redéfinissable à tout moment (`D-14`).
 
-Un **scoreur** est un bénévole **itinérant** (CDC UX §7.3, `D-12`) : rattaché à **aucune cible**, il
-choisit celle dont il valide les scores. 3 à 4 scoreurs par tournoi (~30 cibles). Il est identifié
-par **la personne** — un `code` court, individuel, distribué sur papier (`D-13`) —, à la différence
-du poste de cible (identité = le **lieu**, sans code, E10US007) et de l'admin (identité = **un
-secret**, E10US002). Il n'y a **pas de rôle archer** : la tablette de saisie est ouverte ; le
-scoreur, lui, **valide** et doit donc être tracé.
+Il n'y a **pas de rôle archer** : la tablette de saisie est ouverte ; le scoreur, lui, **valide**,
+donc il doit être tracé.
 
-Entité **du tournoi** (`tournoi_id`), comme `Depart` : les scoreurs se définissent à la
-configuration du tournoi et sont **redéfinissables à tout moment** (`D-14`). Agrégat **pur** (aucune
-dépendance framework, immuable) : `creer` / `modifier` valident et renvoient une copie.
-
-Le `code` est **attribué par le service** (comme `Depart.numero`) : le domaine ne voit qu'un scoreur
-à la fois, il ne peut donc pas garantir l'unicité — c'est une règle d'ensemble portée par
-`ServiceScoreurs` (génération avec ré-essai + `UNIQUE` en base). Le domaine ne fait que
-**normaliser** le code (`normaliser_code`) et vérifier qu'il n'est pas vide.
+⚠️ **Le `code` est attribué par le SERVICE** : le domaine ne voit qu'un scoreur à la fois, il ne
+peut pas garantir l'unicité. Il normalise et vérifie, rien de plus.
 """
 
 from __future__ import annotations

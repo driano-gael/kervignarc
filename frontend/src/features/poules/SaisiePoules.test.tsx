@@ -1,16 +1,10 @@
 // Test de **rendu** de l'écran de saisie des poules (E05US023, ADR-0083).
 //
-// Il existe pour la même raison que son jumeau `SaisieDuels.test.tsx` : ce que cet écran **choisit
-// d'appeler** ne se voit ni au typage ni au lint. Trois points le méritent ici :
-//
-// 1. le sélecteur ne doit proposer que les phases de type `poules` — proposer un tableau y
-//    conduirait à un 409 `phase_pas_des_poules` sans qu'aucun test de logique pure ne le voie ;
-// 2. les rencontres doivent être groupées **par tour**, c'est ce qui garantit qu'un tour se tire en
-//    parallèle sur le bloc de couloirs de la poule ;
-// 3. l'**annonce de barrage** doit apparaître sur la poule concernée, et sur elle seule — c'est la
-//    seule surface qui la porte (le CA « le barrage se tire et se saisit »).
-//
-// On double uniquement les hooks de données ; le JSX est celui de production.
+// Même raison que son jumeau `SaisieDuels.test.tsx` : ce que cet écran **choisit d'appeler** ne se
+// voit ni au typage ni au lint. Trois points le méritent — le sélecteur ne doit proposer que les
+// phases de type `poules` (sinon 409 `phase_pas_des_poules`, invisible aux tests purs) ; les
+// rencontres doivent être groupées **par tour**, ce qui garantit le tir en parallèle sur le bloc de
+// couloirs ; l'**annonce de barrage** doit apparaître sur la poule concernée et sur elle seule.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'

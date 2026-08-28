@@ -1,18 +1,11 @@
 // Test de **rendu** de la liste d'affectations projetée (E16US009, correctif de 3ᵉ passe de revue).
 //
-// ⚠️ **Pourquoi ce fichier n'existait pas, et pourquoi c'est un défaut.** Le réglage de pages
-// traverse `EcranSalle` → `VueDeSalle` → `VueAffectations` → `SalleParPages`. Les deux passes
-// précédentes ont épinglé le **câblage** (le témoin d'`EcranSalle.test.tsx` recopie la prop) et la
-// vue jumelle (`TableClassement.test.tsx` monte le vrai composant). Ici, rien : `features/routage/`
-// n'avait que `presentation.test.ts`, qui teste des fonctions pures.
-//
-// Conséquence mesurée : supprimer `pagination?.noms_par_page` de `SalleParPages` laissait **toute
-// la suite verte**, et la liste projetée retombait en silence sur `NOMS_PAR_PAGE = 40` /
-// `SECONDES_PAR_PAGE = 20` — c'est-à-dire la moitié « affectations » du CA « la cadence et la
-// taille d'une page se règlent par écran », perdue sans un seul signal. Un témoin mocké ne peut
-// structurellement pas voir cela : il prouve qu'une prop **passe**, jamais qu'elle est
-// **consommée**. C'est le mode de défaillance de `DETTE-085`, et le raisonnement n'avait été
-// appliqué qu'à une des deux vues paginées.
+// ⚠️ Le réglage de pages traverse `EcranSalle` → `VueDeSalle` → `VueAffectations` →
+// `SalleParPages`, et `features/routage/` n'avait que des tests de fonctions pures. Conséquence
+// mesurée : supprimer `pagination?.noms_par_page` de `SalleParPages` laissait **toute la suite
+// verte**, la liste projetée retombant en silence sur ses valeurs par défaut — la moitié «
+// affectations » du CA perdue sans un signal. Un témoin mocké prouve qu'une prop **passe**, jamais
+// qu'elle est **consommée** (`DETTE-085`).
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'

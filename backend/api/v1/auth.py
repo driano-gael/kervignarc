@@ -1,14 +1,7 @@
 """Endpoints REST de l'accès administrateur (`/api/v1/auth`) — E10US002.
 
-- `GET /etat` : l'accès admin est-il déjà défini ? (oriente le front : définir ou se connecter) ;
-- `POST /configurer` : **1ᵉʳ accès** — définit login + mot de passe et ouvre aussitôt une session ;
-- `POST /connexion` : vérifie les identifiants et ouvre une session (jeton) ;
-- `POST /deconnexion` : ferme la session courante (jeton requis).
-
-Les DTO Pydantic sont **distincts** de la couche application. Les opérations touchant le fichier
-`.env` (lecture d'état, écriture des identifiants) s'exécutent **hors boucle** (threadpool).
-Les erreurs typées sont traduites à la frontière (`api/erreurs.py`) : 401 (identifiants),
-409 (déjà/pas configuré), 400 (entrée invalide).
+⚠️ `POST /configurer` n'est ouvert qu'au **1ᵉʳ accès** : il pose login et mot de passe, puis ouvre
+aussitôt une session. Écrire les identifiants touche le fichier `.env`, d'où le threadpool.
 """
 
 from __future__ import annotations

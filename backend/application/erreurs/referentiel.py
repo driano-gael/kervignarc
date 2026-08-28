@@ -15,33 +15,23 @@ from application.erreurs.base import ApplicationError
 class TournoiSansDepart(ApplicationError):
     """Passage à `prêt` refusé : le tournoi n'a **aucun départ** (créneau) (E02US010) → 409.
 
-    **Un refus, pas un signalement** (famille de `TransitionStatutInvalide`) : un tournoi se joue
-    sur des créneaux ; sans au moins un départ, il n'y a **rien à lancer** ni personne à placer. La
-    garde vit sur `vers_pret` (l'entrée de la zone « préparé ») ; l'invariant tient ensuite parce
-    qu'on ne peut plus retirer le **dernier** départ d'un tournoi non-brouillon
-    (`DernierDepartNonSupprimable`). C'est une **première brique** de la garde de complétude de
-    préparation ([ADR-0026] §2) — catégories, blasons, gabarit, barème restent à ajouter par une
-    tranche ultérieure. Conflit d'**état**, d'où 409.
+    **Un refus, pas un signalement** : un tournoi se joue sur des créneaux, et sans départ il n'y a
+    **rien à lancer**. La garde vit sur `vers_pret` ; l'invariant tient ensuite parce qu'on ne peut
+    plus retirer le dernier départ d'un tournoi non-brouillon (`DernierDepartNonSupprimable`).
+    Première brique de la garde de complétude de préparation (ADR-0026 §2).
     """
 
     code = "tournoi_sans_depart"
 
 
 class EffectifInsuffisantPourDemarrer(ApplicationError):
-    """Démarrage refusé : le tournoi a **moins d'inscrits** que son déroulé n'en exige (E05US021)
-    → 409.
+    """Démarrage refusé : le tournoi a **moins d'inscrits** que son déroulé n'en exige → 409.
 
     Un déroulé qui prélève « les rangs 33 et suivants » ne monte un tableau qu'à partir du 34ᵉ
-    classé. Jusqu'ici, ce manque n'apparaissait qu'**en compétition**, quand le moteur refusait de
-    construire le tableau (`EffectifTableauInvalide`, E05US020) : sur la tablette, trop tard pour
-    changer de format. La garde remonte donc le contrôle au **lancement**, là où l'organisateur peut
-    encore décider — [ADR-0069], sur arbitrage du commanditaire ([ADR-0068] §6).
-
-    **Une exception assumée à `D-15`** (« en cours, tout passe ») : le refus ne porte pas sur une
-    saisie mais sur l'ouverture d'un tournoi qu'on sait déjà impossible à dérouler. Le message
-    **chiffre** ce qui manque et **nomme la phase en cause** (`D-16`/`P-4`) — sans quoi il
-    ajouterait un clic sans dire quoi corriger. Conflit d'**état**, d'où 409, comme
-    `TournoiSansDepart` dont il est le voisin direct.
+    classé. Sans cette garde, le manque n'apparaissait qu'**en compétition** — trop tard pour
+    changer de format (ADR-0069, arbitrage du commanditaire). ⚠️ Exception assumée à `D-15` (« en
+    cours, tout passe ») : le refus porte sur l'ouverture d'un tournoi qu'on sait impossible à
+    dérouler. Le message **chiffre** ce qui manque et **nomme la phase** (`D-16`/`P-4`).
     """
 
     code = "effectif_insuffisant_pour_demarrer"
@@ -50,15 +40,10 @@ class EffectifInsuffisantPourDemarrer(ApplicationError):
 class JalonNonInstruit(ApplicationError):
     """Jalon « prêt à… » demandé mais **pas encore spécifié** (E16US012) → 404.
 
-    La famille compte quatre membres (démarrer · terminer · archiver · exporter) ; deux seulement
-    ont une règle aujourd'hui. Les deux autres **existent** dans l'énumération — la forme est posée,
-    leur question se dérive — mais n'ont aucun contenu : `E16US007` (exports) et l'US d'archivage
-    les brancheront.
-
-    **404 et non 501** : côté client, le geste utile est le même que pour un identifiant inconnu —
-    cet écran n'existe pas. Et surtout, rendre `200` avec une liste vide se lirait « rien ne
-    manque, vous pouvez exporter », soit exactement le mensonge que la famille est censée
-    supprimer.
+    La famille compte quatre membres (démarrer · terminer · archiver · exporter) ; deux ont une
+    règle aujourd'hui, les deux autres existent dans l'énumération sans contenu. **404 et non 501**
+    : le geste utile est le même que pour un identifiant inconnu — cet écran n'existe pas. Rendre
+    `200` avec une liste vide se lirait « rien ne manque », le mensonge que la famille supprime.
     """
 
     code = "jalon_non_instruit"
@@ -100,35 +85,23 @@ class TournoiArchiveNonModifiable(ApplicationError):
 class DepartAvecInscriptions(ApplicationError):
     """Suppression suspendue : le départ porte des inscriptions (E02US009) → 409.
 
-    **Un signalement, pas un refus** — même famille qu'`ArcherEngage` (ADR-0016), tranchée en
-    [ADR-0018](../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md). Un créneau
-    est une **configuration locale du tournoi**, comme un archer : un créneau annulé doit pouvoir
-    être retiré sans désinscrire à la main chaque archer. L'admin confirme via
-    `ServiceDeparts.supprimer(autoriser_suppression_inscrits=True)`, et la suppression **efface les
-    inscriptions** du créneau — définitivement.
-
-    Le message **décompte les inscriptions détruites, dont les payées** : l'effet de bord monétaire
-    (le remboursement, déporté en E08US005) est rendu visible au point de décision. Le refus dur
-    `ClubReference` a été **écarté** (ADR-0018) — le club est un référentiel *global* partagé entre
-    tournois, le départ non.
+    **Un signalement, pas un refus** (ADR-0016, tranché en ADR-0018) : un créneau est une
+    configuration locale du tournoi, comme un archer, et un créneau annulé doit pouvoir être retiré
+    sans désinscrire chacun à la main. L'admin confirme, et la suppression **efface les
+    inscriptions**. Le message **décompte les inscriptions détruites, dont les payées** : l'effet
+    de bord monétaire est rendu visible au point de décision.
     """
 
     code = "depart_avec_inscriptions"
 
 
 class DernierDepartNonSupprimable(ApplicationError):
-    """Suppression refusée : c'est le **dernier** départ d'un tournoi **non-brouillon** (E02US010)
-    → 409.
+    """Suppression refusée : c'est le **dernier** départ d'un tournoi **non-brouillon** → 409.
 
-    **Un refus, pas un signalement** : un tournoi `prêt`, `en_cours`, `en_pause` ou `terminé` a été
-    validé comme ayant au moins un créneau (garde `TournoiSansDepart` sur `vers_pret`). Lui retirer
-    son dernier départ le laisserait sans rien à jouer tout en restant hors brouillon — un état
-    incohérent que l'invariant « ≥ 1 départ dès qu'on quitte le brouillon » interdit. Pour repartir
-    de zéro depuis `prêt`, l'admin **revient en brouillon** (`revenir_brouillon`), où les créneaux
-    redeviennent librement supprimables ; depuis un statut terminal (`terminé`/`annulé`/`archivé`)
-    la configuration est figée, le dernier départ y reste définitivement en place. Sur un
-    `brouillon`, supprimer le dernier départ reste permis (le tournoi n'est pas encore engagé).
-    Conflit d'**état**, d'où 409.
+    **Un refus, pas un signalement** : un tournoi hors brouillon a été validé comme ayant au moins
+    un créneau (`TournoiSansDepart` sur `vers_pret`). Lui retirer son dernier départ le laisserait
+    sans rien à jouer. Pour repartir de zéro, l'admin **revient en brouillon**, où les créneaux
+    redeviennent supprimables ; sur un brouillon, supprimer le dernier départ reste permis.
     """
 
     code = "dernier_depart_non_supprimable"
@@ -137,22 +110,11 @@ class DernierDepartNonSupprimable(ApplicationError):
 class DepartEnCoursNonConfirme(ApplicationError):
     """Édition/suppression d'un départ **lancé ou clos** non confirmée (E12US008) → 409.
 
-    **Un signalement chiffré, pas un refus** — même famille que `ReplacementNonConfirme`
-    (ADR-0040) : un créneau *ouvert* (aucun score consigné) se modifie et se supprime librement,
-    mais dès qu'une **flèche y a été tirée** (état *lancé*), et *a fortiori* quand toutes ses séries
-    sont closes (*clos*), le toucher risque de détruire une **session de tir en cours ou finie**.
-    Le geste demande donc une confirmation explicite (`modifier(..., confirme_cycle=True)` /
-    `supprimer(..., confirme_cycle=True)`).
-
-    À la différence des confirmations aveugles de la famille `DepartAvecInscriptions` (DETTE-007),
-    l'état est **dérivé au moment d'agir** d'un fait réel (scores présents, séries closes), jamais
-    saisi ni cru sur parole : `details` porte l'**état** et le **nombre d'archers ayant tiré** —
-    canal `details` du format `{code, message, details?}` (règle 5), comme `ReplacementNonConfirme`.
-
-    Sur **suppression**, la confirmation de cycle **subsume** `DepartAvecInscriptions`
-    (un créneau lancé porte forcément des inscriptions) : confirmer qu'on détruit une session de tir
-    couvre *a fortiori* les inscriptions. Un créneau *ouvert* garde exactement le comportement
-    E02US009 (seul `DepartAvecInscriptions` s'y applique) — non-régression.
+    **Un signalement chiffré, pas un refus** (famille de `ReplacementNonConfirme`, ADR-0040) : un
+    créneau ouvert se modifie librement, mais dès qu'une flèche y a été tirée, le toucher risque de
+    détruire une session de tir. ⚠️ À la différence des confirmations aveugles de la famille
+    (DETTE-007), l'état est **dérivé au moment d'agir** d'un fait réel, jamais cru sur parole. Sur
+    suppression, la confirmation de cycle **subsume** `DepartAvecInscriptions`.
     """
 
     code = "depart_en_cours_non_confirme"
@@ -166,19 +128,13 @@ class DepartEnCoursNonConfirme(ApplicationError):
 
 
 class HomonymeArcher(ApplicationError):
-    """Inscription suspendue : un archer de même nom, prénom et club existe déjà (E02US002) → 409.
+    """Inscription suspendue : un archer de même nom, prénom et club existe déjà → 409.
 
-    **Un signalement, pas un refus.** Deux archers réels peuvent porter les mêmes nom, prénom et
-    club (un père et son fils, cas courant en compétition de club) : les rejeter interdirait une
-    inscription légitime, le jour J, au guichet. C'est donc l'**admin qui tranche** : renoncer
-    (il réinscrivait le même archer par mégarde) ou confirmer l'homonyme via
-    `ServiceArchers.ajouter(autoriser_homonyme=True)`.
-
-    D'où l'absence de contrainte `UNIQUE` correspondante en base : elle rejetterait le fils sans
-    recours. Le contrôle vit ici, et il suffit — le **writer unique** (règle 7, ADR-0005) sérialise
-    les écritures, et le contrôle **et** l'insertion tiennent dans la même commande en file, donc
-    aucune création concurrente ne peut se glisser entre les deux. Comparaison au sens de
-    `domain.archer.cle_identite` (casse et accents repliés). Voir ADR-0015 pour le protocole.
+    **Un signalement, pas un refus.** Deux archers réels peuvent porter la même identité (un père
+    et son fils) : les rejeter interdirait une inscription légitime au guichet, le jour J. D'où
+    l'absence de contrainte `UNIQUE` en base — elle rejetterait le fils sans recours. Le contrôle
+    vit ici et suffit : le **writer unique** sérialise les écritures, et contrôle et insertion
+    tiennent dans la même commande en file. Protocole : ADR-0015.
     """
 
     code = "homonyme_archer"
@@ -187,16 +143,11 @@ class HomonymeArcher(ApplicationError):
 class ChangementCategorieArcherEngage(ApplicationError):
     """Édition suspendue : on change la catégorie d'un archer qui a déjà tiré (E02US003) → 409.
 
-    **Un signalement, pas un refus** — même protocole qu'`HomonymeArcher` (ADR-0015), et pour la
-    même raison : la machine constate un fait troublant, elle ne sait pas ce qu'il signifie. Changer
-    de catégorie en cours d'épreuve déplace l'archer d'un classement à l'autre avec ses flèches
-    déjà tirées ; c'est le plus souvent une erreur, mais c'est parfois exactement la correction
-    attendue (catégorie mal saisie au guichet, découverte à la première volée). Figer la catégorie
-    à la première flèche rendrait cette erreur-là inrattrapable ; l'admin tranche via
-    `ServiceArchers.modifier(autoriser_changement_categorie=True)`.
-
-    Ne se déclenche que sur un **changement** de catégorie : éditer le nom d'un archer engagé ne
-    fausse aucun classement et n'a rien à confirmer.
+    **Un signalement, pas un refus** (ADR-0015) : changer de catégorie en cours d'épreuve déplace
+    l'archer d'un classement à l'autre avec ses flèches déjà tirées. C'est le plus souvent une
+    erreur, mais c'est parfois la correction attendue (catégorie mal saisie au guichet) — figer la
+    catégorie à la première flèche rendrait celle-là inrattrapable. Ne se déclenche que sur un
+    **changement** : éditer le nom d'un archer engagé ne fausse aucun classement.
     """
 
     code = "changement_categorie_archer_engage"
@@ -205,49 +156,35 @@ class ChangementCategorieArcherEngage(ApplicationError):
 class FusionImpossible(ApplicationError):
     """Fusion de doublons **structurellement** impossible (E02US005) → 409.
 
-    **Un refus, pas un signalement** (famille de `DejaInscrit`) : aucun drapeau ne le lève, la
-    demande n'a pas de sens. Deux causes, toutes deux constatées avant d'écrire :
-
-    - fusionner une fiche **avec elle-même** (gagnant = perdant) — il n'y a rien à fusionner ;
-    - fusionner deux fiches de **tournois différents** — ce sont deux inscriptions distinctes,
-      pas un doublon (l'homonymie se juge dans le tournoi, comme à l'inscription, E02US002).
-      Réassigner inscriptions et séries d'un tournoi à l'autre romprait leur cloisonnement.
+    **Un refus, pas un signalement** : aucun drapeau ne le lève, la demande n'a pas de sens. Deux
+    causes — fusionner une fiche **avec elle-même**, ou deux fiches de **tournois différents**, qui
+    sont deux inscriptions distinctes et non un doublon (l'homonymie se juge dans le tournoi).
+    Réassigner inscriptions et séries d'un tournoi à l'autre romprait leur cloisonnement.
     """
 
     code = "fusion_impossible"
 
 
 class FusionArchersEngages(ApplicationError):
-    """Fusion refusée : les **deux** fiches ont déjà une saisie (série) au tournoi (E02US005) → 409.
+    """Fusion refusée : les **deux** fiches ont déjà une saisie (série) au tournoi → 409.
 
-    **Un signalement, pas un début d'exécution** (esprit ADR-0015) : fusionner mêlerait deux séries
-    de volées sur le même `(tournoi, archer)` — la contrainte `UNIQUE(tournoi_id, archer_id)` d'une
-    part, l'ambiguïté « quelles volées garder ? » d'autre part. Le doublon se règle **à
-    l'inscription, avant que le tournoi tire** (arbitrage du 22/07/2026) ; ce cas n'est donc pas
-    nominal. Aucun drapeau ne le lève : mêler des scores en silence détruirait des flèches. Si une
-    seule des deux fiches a tiré, la fusion passe (la série est réassignée sans collision).
+    Fusionner mêlerait deux séries de volées sur le même `(tournoi, archer)` — contrainte d'unicité
+    d'une part, ambiguïté « quelles volées garder ? » d'autre part. Le doublon se règle **à
+    l'inscription, avant que le tournoi tire** (arbitrage du 22/07/2026) ; aucun drapeau ne le
+    lève, mêler des scores en silence détruirait des flèches. Si une seule a tiré, la fusion passe.
     """
 
     code = "fusion_archers_engages"
 
 
 class InscriptionPayeeARembourser(ApplicationError):
-    """Désinscription suspendue : l'inscription est **payée**, sa suppression ouvrira un
-    remboursement (E08US005, ADR-0057) → 409.
+    """Désinscription suspendue : l'inscription est **payée** (E08US005, ADR-0057) → 409.
 
-    **Un signalement chiffré, pas un refus** — même famille que `DepartEnCoursNonConfirme` : la
-    désinscription est **confirmable**, pas interdite. Une inscription non payée (ou d'un créneau
-    gratuit) se désinscrit **librement** (comportement E02US009 inchangé) ; mais désinscrire une
-    inscription **payée** efface une somme encaissée, qui deviendra un **remboursement à traiter**.
-    L'admin doit le voir avant de trancher — d'où ce signalement, levé par
-    `ServiceInscriptions.desinscrire(confirme=True)`, qui supprime **et** ouvre le remboursement
-    dans
-    la même transaction (atomicité, ADR-0057).
-
-    `details` porte le **montant** à rembourser (centimes) et le **nom** de l'archer, calculés au
-    moment d'agir — canal `details` du format `{code, message, details?}` (règle 5), comme
-    `DepartEnCoursNonConfirme`. Symétrique de `DepartAvecInscriptions`, qui joue le même rôle côté
-    suppression d'un **départ** entier.
+    **Un signalement chiffré, pas un refus** : une inscription non payée se désinscrit librement,
+    mais en désinscrire une payée efface une somme encaissée, qui deviendra un **remboursement à
+    traiter**. Levé par `desinscrire(confirme=True)`, qui supprime **et** ouvre le remboursement
+    dans la même transaction. `details` porte le **montant** et le **nom**, calculés au moment
+    d'agir. Symétrique de `DepartAvecInscriptions`, côté départ entier.
     """
 
     code = "inscription_payee_a_rembourser"
@@ -266,15 +203,12 @@ class RemboursementIntrouvable(ApplicationError):
 
 
 class RemboursementDejaTraite(ApplicationError):
-    """Traitement refusé : le remboursement est **déjà** remboursé ou reporté (E08US005) → 409.
+    """Traitement refusé : le remboursement est **déjà** remboursé ou reporté → 409.
 
-    **Un refus, pas un signalement** : un remboursement traité est **terminal** (marquer «
-    remboursé »
-    ou « reporté » clôt le poste). Le re-marquer réécrirait sa date de traitement, brouillant la
-    trace d'un mouvement d'argent — conflit d'**état**, comme les transitions de statut de tournoi
-    (`TransitionStatutInvalide`), d'où le 409 porté par le **service** (l'entité, pure, ne connaît
-    pas l'intention de l'appelant). Le front n'offre le geste que sur les postes `à_rembourser` ;
-    cette garde est le filet serveur (autorité, règle 6).
+    **Un refus, pas un signalement** : un remboursement traité est **terminal**. Le re-marquer
+    réécrirait sa date de traitement, brouillant la trace d'un mouvement d'argent — conflit d'état,
+    d'où le 409 porté par le **service** (l'entité, pure, ignore l'intention de l'appelant). Le
+    front n'offre le geste que sur les postes `à_rembourser` ; ceci est le filet serveur.
     """
 
     code = "remboursement_deja_traite"
@@ -295,12 +229,10 @@ class DejaInscrit(ApplicationError):
 class DepartComplet(ApplicationError):
     """Inscription refusée : le départ a **atteint son quota** de places (E02US006) → 409.
 
-    **Un refus, pas un signalement** — famille de `DejaInscrit` : le créneau est plein, il n'y a
-    aucun sens à passer outre (le quota *est* la capacité de la salle). Aucun drapeau ne le lève ;
-    pour faire de la place, l'admin désinscrit quelqu'un ou relève le quota du départ. Contrairement
-    à l'unicité, **aucune contrainte SQL** ne garantit le plafond : c'est la sérialisation par le
-    writer unique (règle 7) qui empêche deux inscriptions concurrentes de franchir la dernière
-    place.
+    **Un refus, pas un signalement** : le quota *est* la capacité de la salle, il n'y a aucun sens
+    à passer outre. Pour faire de la place, l'admin désinscrit quelqu'un ou relève le quota.
+    Contrairement à l'unicité, **aucune contrainte SQL** ne garantit le plafond : c'est la
+    sérialisation par le writer unique qui empêche deux inscriptions de franchir la dernière place.
     """
 
     code = "depart_complet"

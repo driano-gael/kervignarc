@@ -1,29 +1,13 @@
-"""Service applicatif Phases — compose et fait vivre la séquence de phases d'un tournoi (E05US001).
+"""Service des **phases** — la cohérence de la séquence est au domaine, les conflits d'état ici.
 
-Use cases : lister, ajouter, éditer (type/source/effectif), réordonner, supprimer, et faire
-avancer le **cycle de vie** de chaque phase (`a_venir → en_cours ⇄ en_pause → terminee`).
+`SequencePhases` rejette une séquence incohérente à la **construction** (422) ; le service n'en
+réimplémente rien et arbitre les transitions illégales (409/404).
 
-Répartition des responsabilités (ADR-0045, ADR-0007) :
-
-- **La cohérence de la séquence** (ordres contigus, sources bien formées : source vide / rangs
-  inexistants / effectif incompatible) est une **règle du domaine** : le service assemble les phases
-  en `SequencePhases`, dont la **construction** rejette une séquence incohérente (→ `DomainError`,
-  traduite en 422). Le service n'en réimplémente rien.
-- **Les conflits d'état** (transition de statut illégale, suppression d'une phase qui en alimente
-  une autre, existence d'une phase dans *ce* tournoi) sont arbitrés **ici** (`ApplicationError`,
-  409/404), comme `ServiceTournois` pour le cycle de vie du tournoi.
-
-Le service ignore HTTP, SQL et la file d'écriture (sérialisation assurée en amont, côté API) : il
-reste synchrone et pur d'infrastructure.
-
-**Le peuplement admet plusieurs sources** depuis E05US010 (ADR-0061) : une phase se compose de
-prélèvements de natures mêlées (rangs, issue de tour, « le reste »), éventuellement relatifs à
-l'effectif réel. DETTE-015 est résorbée.
-Le réordonnancement et la suppression **remappent** les références de source (portées par l'`ordre`
-de la phase source) pour qu'elles suivent la phase qu'elles désignaient. Cet **ancrage par `ordre`**
-— plutôt que par identité — survit à E05US010, qui l'a seulement généralisé à N sources : c'est
-`# DETTE-026`, la seule facette de DETTE-015 qui n'ait pas été résorbée.
+⚠️ **Le réordonnancement et la suppression REMAPPENT les références de source**, ancrées par
+l'`ordre` de la phase amont et non par son identité. C'est `DETTE-026`.
 """
+
+# DETTE-057 — le mode d'une poule n'est pas encore porté par un réglage dédié.
 
 from __future__ import annotations
 
@@ -108,13 +92,10 @@ class ServicePhases:
         """Renvoie **où en est ce créneau** : ses phases, ordonnées, définition assemblée.
 
         Pendant de `lister` à l'autre maille (ADR-0076) : `lister` dit *ce qui est prévu* pour le
-        tournoi, `avancement` dit *où en est* un créneau. C'est cette lecture-ci que l'écran de
-        pilotage consomme — le déroulé seul ne lui donnerait aucun identifiant de phase à faire
-        vivre, ni le statut de chacune.
-
-        Lève `DepartIntrouvable` si le créneau n'existe pas : rendre `[]` ferait passer « ce départ
-        n'existe pas » pour « ce départ n'a rien à jouer », deux situations qui n'appellent pas la
-        même réaction côté écran.
+        tournoi, `avancement` dit *où en est* un créneau — c'est cette lecture que l'écran de
+        pilotage consomme. Lève `DepartIntrouvable` si le créneau n'existe pas : rendre `[]` ferait
+        passer « ce départ n'existe pas » pour « ce départ n'a rien à jouer », deux situations qui
+        n'appellent pas la même réaction.
         """
         if self._departs.par_id(depart_id) is None:
             raise DepartIntrouvable(f"Aucun départ d'identifiant {depart_id}.")
@@ -140,22 +121,11 @@ class ServicePhases:
     ) -> EtapeDeroule:
         """Ajoute une étape **en fin de déroulé** (ordre = N+1) et l'instancie dans chaque créneau.
 
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, une `DomainError` (→ 422) si l'étape
-        ou la séquence obtenue est incohérente (source mal formée, effectif nul…). Rien n'est
-        persisté si la validation échoue.
-
-        ⚠️ **Une qualification composée ici reçoit des réglages de départ** (E05US025, ADR-0082).
-        L'invariant `anomalies_etape` exige qu'une qualification porte barème **et** grain ; cette
-        méthode n'en posait aucun, si bien que composer une **seconde** qualification à l'atelier
-        échouait en `PhaseQualificationIncomplete` — le CA « deux qualifications coexistent » était
-        infaisable de bout en bout, alors que le domaine et le moteur l'acceptaient.
-
-        Le barème de départ est le **preset FFTA 18 m**, celui du club, et le grain celui du type.
-        C'est un arbitrage assumé : `ServiceGrainValidation` refuse par ailleurs « d'inventer un
-        barème que l'organisateur n'a pas choisi », mais la comparaison ne tient pas — là-bas
-        l'alternative était de demander le barème d'abord, ici c'est de ne pas pouvoir composer du
-        tout. La valeur n'est d'ailleurs pas cachée : l'écran la **liste** avec l'étape, et
-        `PUT /tournois/{id}/qualifications/{etape_id}/bareme` la règle.
+        Rien n'est persisté si la validation échoue. ⚠️ **Une qualification composée ici reçoit des
+        réglages de départ** (E05US025, ADR-0082) : `anomalies_etape` exige qu'elle porte barème
+        **et** grain, si bien que composer une seconde qualification échouait — le CA « deux
+        qualifications coexistent » était infaisable. Le barème de départ est le preset FFTA 18 m,
+        et la valeur n'est pas cachée : l'écran la **liste** avec l'étape.
         """
         self._exiger_tournoi(tournoi_id)
         existantes = self._deroules.par_tournoi(tournoi_id)
@@ -207,24 +177,13 @@ class ServicePhases:
         arrets: tuple[ArretProgramme, ...] = (),
         titre: str | None = None,
     ) -> EtapeDeroule:
-        """Édite le type, les sources et l'effectif d'une étape (édition **totale** de sa config de
-        séquence — `ordre` et barème/grain sont préservés).
+        """Édite le type, les sources et l'effectif d'une étape — édition **totale** de sa config.
 
         **Une seule écriture** (ADR-0076) : la définition ne vit qu'ici, donc tous les créneaux la
-        voient changer d'un coup. Les avancements ne bougent pas — modifier le déroulé ne remet
-        personne à zéro.
-
-        Lève `PhaseIntrouvable` si l'étape n'est pas dans ce tournoi, une `DomainError` (→ 422) si
-        le résultat est incohérent (ex. retyper en `qualification` sans barème, source hors bornes).
-
-        ⚠️ **Aucune garde sur le format du tir d'un Big Shoot Off déjà tiré** (`# DETTE-062`, relevé
-        à la revue d'E05US028). Le découpage manche → volées est **dérivé du réglage à chaque
-        lecture** (`(m-1)·V+1 … m·V`) et n'est stocké nulle part : passer `volees` de 1 à 2 en cours
-        de phase **re-partitionne des volées déjà validées** dans d'autres manches, donc rejoue les
-        éliminations autrement, sans le moindre message. C'est une classe de risque neuve — la
-        qualification n'a aucun regroupement dérivé — et c'est le pendant de `DETTE-057` côté format
-        du tir plutôt que population. `eliminations` et les options, elles, ne déplacent aucune
-        borne : seuls `volees` et `fleches_par_volee` sont en cause.
+        voient changer d'un coup, et les avancements ne bougent pas. ⚠️ **Aucune garde sur le
+        format du tir d'un Big Shoot Off déjà tiré** (`# DETTE-062`) : le découpage manche → volées
+        est dérivé à chaque lecture, donc passer `volees` de 1 à 2 **re-partitionne des volées déjà
+        validées** et rejoue les éliminations autrement, sans message.
         """
         etape = self._exiger_etape(tournoi_id, etape_id)
         modifiee = replace(
@@ -261,13 +220,10 @@ class ServicePhases:
     ) -> list[EtapeDeroule]:
         """Réordonne **l'ensemble** du déroulé selon la liste d'identifiants fournie.
 
-        Chaque étape reçoit un nouvel `ordre` (position dans la liste) ; les références de source
-        sont **remappées** pour suivre l'étape qu'elles désignaient. Les avancements de chaque
-        créneau sont réalignés dans la foulée, sinon une phase pointerait la mauvaise définition.
-
-        Lève `ReordonnancementPhasesInvalide` (→ 409) si la liste ne recouvre pas exactement le
-        déroulé, et une `DomainError` (→ 422) si l'ordre demandé rend la séquence incohérente (ex.
-        une source se retrouve **après** l'étape qu'elle alimente).
+        Chaque étape reçoit un nouvel `ordre` ; les références de source sont **remappées** pour
+        suivre l'étape qu'elles désignaient, et les avancements de chaque créneau réalignés dans la
+        foulée — sinon une phase pointerait la mauvaise définition. Lève
+        `ReordonnancementPhasesInvalide` (409) si la liste ne recouvre pas exactement le déroulé.
         """
         self._exiger_tournoi(tournoi_id)
         actuelles = self._deroules.par_tournoi(tournoi_id)
@@ -293,14 +249,12 @@ class ServicePhases:
         ]
         verifier_sequence(reordonnees)  # valide l'ordre demandé
         # **En un bloc, pas étape par étape** : un déroulé n'a qu'une étape par rang, donc tout
-        # échange passerait par un doublon transitoire que la persistance refuse. Le port porte
-        # cette écriture d'ensemble, à charge pour l'adapter de savoir s'y prendre (ADR-0003).
-        # DETTE-025 (docs/dette.md) : ces **deux** écritures ne forment pas une unité de travail —
-        # chaque appel de repository ouvre sa session et son commit. Une panne entre elles laisse
-        # les étapes renumérotées et les avancements sur leurs anciens rangs, donc chaque phase
-        # pointant la **définition voisine** : le créneau exécuterait un autre barème, sans erreur
-        # ni signal. Le remède est un geste atomique sur l'adapter concret (patron
-        # `consigner_dans`), hors périmètre ici ; ne pas contourner en réordonnant une à une.
+        # échange passerait par un doublon transitoire que la persistance refuse (ADR-0003).
+        #
+        # DETTE-025 : ces **deux** écritures ne forment pas une unité de travail. Une panne entre
+        # elles laisse les étapes renumérotées et les avancements sur leurs anciens rangs, donc
+        # chaque phase pointant la **définition voisine** — un autre barème, sans erreur ni signal.
+        # Ne pas contourner en réordonnant une à une.
         posees = self._deroules.reordonner(reordonnees)
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         return posees
@@ -337,17 +291,13 @@ class ServicePhases:
             for e in restantes
         ]
         verifier_sequence(recompactees)
-        # ⚠️ **On retire avant de recompacter, et les avancements avant leur étape.** Deux raisons,
-        # dans cet ordre :
-        # 1. le rang étant la clé de jointure vers la définition, décaler les étapes avant d'avoir
-        #    retiré la phase supprimée la ferait pointer sur l'étape voisine — une phase orpheline
-        #    qui ressusciterait sous une autre définition ;
-        # 2. un tournoi ne porte qu'une étape par rang : recompacter avant d'avoir retiré la cible
-        #    ferait écrire son rang sur sa voisine alors qu'elle l'occupe encore.
-        # Le déroulé a donc, le temps de ces trois gestes, un trou dans sa numérotation. C'est
-        # assumé : rien ne le lit entre-temps (écrivain unique, règle 7), et l'alternative — poser
-        # la séquence complète en une écriture — demanderait au port de savoir supprimer et
-        # renuméroter du même mouvement, pour un gain nul ici.
+        # ⚠️ **On retire avant de recompacter, et les avancements avant leur étape.** Le rang
+        # étant la clé de jointure vers la définition, décaler les étapes avant d'avoir retiré la
+        # phase supprimée la ferait pointer sur l'étape voisine ; et un tournoi ne portant qu'une
+        # étape par rang, recompacter d'abord écrirait son rang sur sa voisine.
+        #
+        # Le déroulé a donc, le temps de ces trois gestes, un trou dans sa numérotation — assumé,
+        # rien ne le lit entre-temps (écrivain unique, règle 7).
         for depart_id in self._creneaux(tournoi_id):
             for phase in self._phases.par_depart(depart_id):
                 if phase.ordre == cible.ordre:
@@ -355,17 +305,14 @@ class ServicePhases:
                     self._phases.supprimer(phase.id)
         assert cible.id is not None, "Une étape consultée est persistée."
         self._deroules.supprimer(cible.id)
-        # ⚠️ **Réaligner AVANT de recompacter, jamais après** (revue E01US025, axe C2).
+        # ⚠️ **Réaligner AVANT de recompacter, jamais après** (revue E01US025).
         # `_realigner_avancements` relit les phases par `par_depart`, qui **assemble** — et
         # l'assemblage **écarte silencieusement** toute phase dont le rang n'a plus d'étape.
-        # Recompacter d'abord rendait donc la dernière phase de chaque créneau invisible à la
-        # relecture : elle n'était jamais réalignée, restait en base à son ancien rang, et l'ajout
-        # d'étape suivant heurtait `uq_phase_depart_ordre` — écran d'atelier en 500, définitivement.
-        # Ici les rangs des phases correspondent encore tous à une étape : elles se relisent toutes.
-        # DETTE-025 : même défaut qu'à `reordonner`, sur **trois** écritures ici (retrait des
-        # avancements, retrait de l'étape, réalignement + recompactage). Le trou de numérotation
-        # décrit ci-dessus est assumé *dans* le geste ; ce qui ne l'est pas, c'est une panne qui le
-        # fige — le déroulé garderait un rang manquant et des phases mal appariées.
+        # Recompacter d'abord rendait la dernière phase de chaque créneau invisible : jamais
+        # réalignée, restée en base à son ancien rang, elle faisait heurter `uq_phase_depart_ordre`
+        # à l'ajout suivant — écran d'atelier en 500, définitivement.
+        #
+        # DETTE-025 : même défaut qu'à `reordonner`, sur **trois** écritures ici.
         self._realigner_avancements(tournoi_id, ancien_vers_nouveau)
         self._deroules.reordonner(recompactees)
 
@@ -379,11 +326,9 @@ class ServicePhases:
         """Fait suivre le rang des phases quand celui de leur étape change.
 
         Le rang **est** la clé de jointure (ADR-0076) : une phase restée sur son ancien ordre
-        pointerait la définition d'une autre étape, sans la moindre erreur visible. C'est le seul
-        éventail qui subsiste après la séparation — et il ne déplace aucun réglage, juste un rang.
-
-        L'écriture se fait **par créneau et en un bloc** : un créneau ne porte qu'un avancement par
-        rang, donc les décaler un à un buterait sur cette unicité dès que deux rangs s'échangent.
+        pointerait la définition d'une autre étape, sans la moindre erreur visible. L'écriture se
+        fait **par créneau et en un bloc** — un créneau ne porte qu'un avancement par rang, donc
+        les décaler un à un buterait sur cette unicité dès que deux rangs s'échangent.
         """
         for depart_id in self._creneaux(tournoi_id):
             a_realigner = [
@@ -439,14 +384,12 @@ class ServicePhases:
     def _remapper(
         etape: EtapeDeroule, *, nouvel_ordre: int, ancien_vers_nouveau: dict[int, int]
     ) -> EtapeDeroule:
-        """Renvoie l'étape à son nouvel ordre, **chacune** de ses sources remappée sur le nouvel
-        ordre de l'étape qu'elle désignait.
+        """Renvoie l'étape à son nouvel ordre, **chacune** de ses sources remappée.
 
         `# DETTE-026` — les ancres de source sont des `ordre`, non des `id` : déplacer une phase
-        oblige donc à réécrire les références de toutes celles qui la citent. Depuis E05US010 une
-        phase en porte **plusieurs** — le remappage vaut pour chacune, sans quoi seule la première
-        suivrait le déplacement et les autres pointeraient une phase arbitraire. C'est la surface de
-        ce raccourci qui a grandi, pas sa nature.
+        oblige à réécrire les références de toutes celles qui la citent. Depuis E05US010 une phase
+        en porte **plusieurs**, et le remappage vaut pour chacune — sans quoi seule la première
+        suivrait le déplacement. C'est la surface de ce raccourci qui a grandi, pas sa nature.
         """
         deplacee = etape.avec_ordre(nouvel_ordre)
         if not etape.sources:

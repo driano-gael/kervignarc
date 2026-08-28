@@ -1,16 +1,8 @@
-"""Traduction des erreurs typées en réponses HTTP normalisées (frontière API, ADR-0007).
+"""Mapping HTTP des erreurs typées — `DomainError` 422, `ApplicationError` 400/401/403/404/409,
+`InfrastructureError` 500 générique, `RequestValidationError` 400.
 
-Le mapping des familles d'exceptions (domaine / application / infrastructure) vers HTTP se
-fait **uniquement ici**. Format de réponse uniforme : `{ code, message, details? }`. Les
-messages techniques **ne fuient pas** : une panne d'infrastructure renvoie un message
-générique, le détail étant journalisé côté serveur.
-
-| Famille                | HTTP           |
-|------------------------|----------------|
-| `DomainError`          | 422            |
-| `ApplicationError`     | 400 (borne de service) / 401 (auth) / 403 (interdit) / 404 / 409 |
-| `InfrastructureError`  | 500 (générique)|
-| `RequestValidationError` (entrée) | 400 |
+⚠️ **Les messages techniques ne fuient JAMAIS** : une panne d'infrastructure rend un message
+générique, le détail restant journalisé côté serveur. ADR-0007
 """
 
 from __future__ import annotations
@@ -162,13 +154,11 @@ async def _sur_erreur_infrastructure(_: Request, exc: Exception) -> JSONResponse
 async def _sur_erreur_inattendue(_: Request, exc: Exception) -> JSONResponse:
     """Dernier filet : toute exception **non typée** → 500 au format uniforme `{code, message}`.
 
-    Sans ce gestionnaire, une exception qui échappe aux familles typées (un `AssertionError` d'un
-    invariant « un persisté a un id », un bug de programmation) retombe sur le 500 **texte brut** de
-    Starlette : hors du contrat `{code, message}` (règle 5), et surtout **la trace complète fuirait
-    au client** si l'app tournait un jour avec `debug=True`. On journalise le détail côté serveur
-    (`_logger.exception`) et on ne rend qu'un message générique. Enregistré pour `Exception`, il
-    n'attrape que le résidu des gestionnaires plus spécifiques (domaine / application / infra /
-    validation) — Starlette route vers le handler le plus précis de la MRO.
+    Sans lui, une exception échappant aux familles typées retombe sur le 500 **texte brut** de
+    Starlette : hors du contrat `{code, message}` (règle 5), et ⚠️ **la trace complète fuirait au
+    client** si l'app tournait un jour avec `debug=True`. On journalise côté serveur et on ne rend
+    qu'un message générique. Enregistré pour `Exception`, il n'attrape que le résidu — Starlette
+    route vers le handler le plus précis de la MRO.
     """
     _logger.exception("Exception non gérée à la frontière API.", exc_info=exc)
     return _reponse(500, "erreur_interne", "Erreur interne du serveur.")

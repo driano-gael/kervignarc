@@ -1,16 +1,9 @@
-"""Adapter : jetons de session scoreur **nominatifs** en mémoire (E10US003).
+"""Sessions scoreur — jetons **nominatifs**, contrairement au store admin qui est anonyme.
 
-Réalise le port `application.scoreurs.StoreSessionsScoreur`. Jetons **opaques**
-(`secrets.token_urlsafe`), conservés dans un dictionnaire `jeton → scoreur_id` protégé par un
-verrou (lectures/écritures peuvent venir de threads du threadpool). Le lien vers l'identité du
-scoreur — ce qui distingue ce store du `SessionStore` admin, un simple ensemble de jetons anonymes —
-sert à **purger** les jetons d'un scoreur supprimé et, plus tard, à tracer la validation (E10US005).
+Le nom sert à purger les jetons d'un scoreur supprimé et à tracer ses validations.
 
-**Sans expiration**, comme la session admin, et pour la même raison renforcée : le CA veut un jeton
-qui « survit à la fermeture de l'onglet » le temps d'une journée de tournoi ; l'admin, plus
-puissant, n'expire pas — le scoreur, moins, ne le ferait pas davantage. Les sessions sont invalidées
-au **redémarrage** du serveur (mémoire volontairement volatile), à la **déconnexion**, ou à la
-**suppression** du scoreur.
+⚠️ **Sans expiration, volontairement** : le CA veut un jeton qui survive à la fermeture de l'onglet
+le temps d'une journée. Invalidation au redémarrage, à la déconnexion, ou à la suppression.
 """
 
 from __future__ import annotations

@@ -104,6 +104,72 @@ window.ATLAS.historique = {
    "us": []
   }
  ],
+ "commentaires-pointeurs": [
+  {
+   "adr": [],
+   "date": "2026-08-28",
+   "motif": "fix(e00us027): 2e passe de revue — les deux portes gardaient mal ce qu'elles annoncaient",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "a5bc5d0db1",
+   "us": [
+    "E00US027"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-28",
+   "motif": "fix(e00us027): corriger les trois bloquants et quinze majeurs de la revue",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "3df0e112e3",
+   "us": [
+    "E00US027"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-28",
+   "motif": "refactor(e00us027): le front passe sous le plafond — 103 blocs a 0",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "11abebcba7",
+   "us": [
+    "E00US027"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-27",
+   "motif": "feat(e00us027): plafonner les blocs a 8 lignes, et le rendre verifiable",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "e35ba3668e",
+   "us": [
+    "E00US027"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-08-27",
+   "motif": "refactor(e00us027): le code porte des pointeurs, pas le raisonnement",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "5a97815b14",
+   "us": [
+    "E00US027"
+   ]
+  },
+  {
+   "adr": [],
+   "date": "2026-07-15",
+   "motif": "docs(claude): consigner les règles projet pour le développement assisté",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "2d04c9babb",
+   "us": []
+  }
+ ],
  "commits-conventionnels": [
   {
    "adr": [],
@@ -617,6 +683,17 @@ window.ATLAS.historique = {
   }
  ],
  "registre-de-dette": [
+  {
+   "adr": [],
+   "date": "2026-08-28",
+   "motif": "fix(e00us027): 2e passe de revue — les deux portes gardaient mal ce qu'elles annoncaient",
+   "nature": "commit",
+   "origine": "git",
+   "reference": "a5bc5d0db1",
+   "us": [
+    "E00US027"
+   ]
+  },
   {
    "adr": [],
    "date": "2026-08-16",

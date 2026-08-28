@@ -1,23 +1,9 @@
-"""Service applicatif Clubs — CRUD du référentiel des clubs (E02US001).
+"""Référentiel **global** des clubs — réutilisés d'une compétition à l'autre. L'unicité du nom se
+refuse ici (le domaine ne voit qu'un club) ; vérification et insertion ne s'entrelacent pas, la
+file du writer unique les sérialisant (ADR-0005).
 
-Orchestre le domaine derrière le port `ClubRepository`. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Le référentiel est **global** (aucun tournoi en paramètre) : les clubs sont réutilisés d'une
-compétition à l'autre.
-
-**Unicité du nom.** Le domaine ne voit qu'un club à la fois, jamais la collection : c'est donc
-ici qu'on refuse un doublon (`NomClubDejaPris`), avec une contrainte `UNIQUE` en base comme
-garde-fou d'intégrité. Le contrôle « le nom est-il libre ? » puis l'insertion ne peuvent pas
-s'entrelacer : toutes les écritures passent par la **file du writer unique** (ADR-0005), qui
-les sérialise — le classique problème de concurrence entre la vérification et l'écriture ne se
-pose donc pas ici.
-
-**Suppression d'un club utilisé.** Refusée (`ClubReference` → 409), sur le patron de
-`ServiceBlasons.supprimer` / `BlasonReference` (E01US006) : on refuse plutôt que de cascader
-silencieusement sur des inscriptions. La règle est **exerçable** parce que la même US pose
-`archer.club_id` — sans ce lien, elle n'aurait pu se vérifier que contre le vide.
+⚠️ **Supprimer un club utilisé est refusé** (409) plutôt que de cascader silencieusement sur des
+inscriptions — même patron que `ServiceBlasons`.
 """
 
 from __future__ import annotations
@@ -75,21 +61,11 @@ class ServiceClubs:
     def importer(self, lignes: str) -> RapportImportClubs:
         """Alimente le référentiel **en masse** depuis une liste collée — une ligne, un club.
 
-        Sert le patrimoine du club (E01US023) : les clubs voisins reviennent d'une compétition à
-        l'autre, et les saisir un à un est la corvée que le référentiel existe pour supprimer.
-
-        **Ne pas confondre avec E02US007**, l'import des *inscrits* depuis un fichier fédéral :
-        celui-là crée archers, clubs et départs **d'un tournoi**, avec ses propres pièges (quota
-        d'un départ, homonymes, licence). Ici il n'y a qu'un référentiel global à peupler.
-
-        Le doublon s'entend au sens de `domain.club.cle_nom` — casse, accents et espaces de bord
-        repliés — **comme la saisie unitaire** : un import ne doit pas ouvrir une porte que le
-        formulaire ferme, sinon c'est par lui qu'entreront les « Élan de Fougères » / « elan de
-        fougeres » que `creer` refuse. La déduplication couvre aussi les répétitions **internes** au
-        collage, qui sont le cas le plus fréquent quand on colle deux listes bout à bout.
-
-        Ne lève pas sur une ligne fautive : une ligne vide est **comptée**, pas fatale. C'est la
-        promesse « aucun import partiel silencieux » — on va au bout et on rend le compte-rendu.
+        Sert le patrimoine du club (E01US023). **Ne pas confondre avec E02US007**, l'import des
+        *inscrits* depuis un fichier fédéral, qui crée archers, clubs et départs d'un tournoi. ⚠️
+        Le doublon s'entend au sens de `domain.club.cle_nom` — **comme la saisie unitaire** : un
+        import ne doit pas ouvrir une porte que le formulaire ferme. La déduplication couvre aussi
+        les répétitions **internes** au collage. Une ligne fautive est **comptée**, jamais fatale.
         """
         crees: list[str] = []
         doublons: list[str] = []

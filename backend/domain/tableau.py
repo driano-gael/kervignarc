@@ -1,34 +1,9 @@
-"""Arbre d'élimination directe (E05US005, ADR-0004) — le *tableau* qui orchestre les politiques.
+"""Moteur de tableau — **récursion sur des plages de rangs**, dont l'élimination directe est un cas
+particulier (ADR-0061). Le `routing` dit *où* descend un perdant, la `depth` *jusqu'où*.
 
-E05US003 a livré les **stratégies pures** d'un format de tableau (`SeedingSerpent`,
-`ByesAuxMieuxClasses`, `EliminationSeche`, …) ; cette US construit la **structure** qui les
-assemble : dimensionner à la puissance de 2, ensemencer, attribuer les byes, générer les matchs
-reliés à leurs sources, faire avancer le vainqueur et produire le podium (glossaire : `Tableau` =
-« arbre de matchs à élimination »).
-
-**Un format est de la configuration, pas du code** (règle 2). Le moteur ne connaît donc aucun format
-en dur : il reçoit ses politiques injectées (`seeding` / `byes` / `routing` / `depth`) et compose
-l'arbre à partir d'elles. Changer de politique change le format sans toucher ce module.
-
-**Le moteur oppose des `Participant`, pas des archers** (ADR-0028, E13US001). Un `Match` oppose des
-`Participant` (archer **ou** équipe) : le moteur les traite de façon **opaque** — il les compare par
-identité et les reporte dans l'arbre, sans jamais brancher sur leur genre (aucun `if équipe`). Le
-**rang** de qualification ne sert qu'à l'**ensemencement** : `construire_tableau` reçoit les
-participants **ordonnés par rang** (indice 0 = tête de série n°1), et le seeding organise les
-**positions**. C'est la clé de structure (byes, appariements), distincte de l'occupant (le
-participant). Le placement intégral d'E05US010 réutilisera ces mêmes briques.
-
-**E05US010 généralise la structure : le placement intégral, dont l'élimination directe est un cas.**
-L'arbre n'est plus une suite de tours mais une **récursion sur les plages de rangs** — un groupe
-disputant `[a..b]` engendre ses matchs, puis les vainqueurs sur `[a..mid]` et les perdants sur
-`[mid+1..b]` là où le `routing` les envoie (*Règle R*), jusqu'à une plage de largeur 2 dont le match
-**terminal** fixe deux rangs (*Règle T*). Avec une profondeur `podium`, cette même récursion rend
-**exactement** l'arbre d'E05US005 — la petite finale *est* le sous-groupe des perdants des demies.
-Le `routing` dit **où** descend un perdant, la `depth` **jusqu'où** l'on descend ; le repêchage WA
-(E05US015) ajoutera une destination, pas un moteur. Cf. [ADR-0061].
-Domaine **pur** : aucun framework, aucune autre couche (règle 1).
-
-[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
+⚠️ **Le moteur oppose des `Participant`, jamais des archers** (ADR-0028) : il les traite de façon
+**opaque**, sans jamais brancher sur leur genre — aucun `if équipe`. Le rang ne sert qu'à
+l'ensemencement ; la clé de structure (byes, appariements) est la **position**, pas l'occupant.
 """
 
 from __future__ import annotations
@@ -206,33 +181,22 @@ class Tableau:
     def est_termine(self) -> bool:
         """**Tous** les matchs terminaux sont tranchés : plus aucun rang n'est en attente.
 
-        Définition généralisée par E05US010. La formulation précédente — « la finale est jouée, et
-        la petite finale aussi » — décrivait le seul format alors livré ; sous placement intégral
-        elle déclarerait le tableau terminé dès la finale, alors que des dizaines de matchs de
-        placement resteraient à disputer (le feu vert et l'état de tableau s'en servent). Compter
-        les **matchs terminaux** vaut pour les deux formats : en profondeur `podium` il n'y en a que
-        deux, la finale et la petite finale — le comportement historique est donc rendu à
-        l'identique.
-
-        Un match terminal **bye** (plage dont un seul camp est occupé) est résolu d'office par
-        `_resoudre_byes`, donc porte un vainqueur : il n'empêche pas la terminaison.
+        Définition généralisée par E05US010 : « la finale est jouée, et la petite finale aussi »
+        décrivait le seul format alors livré, et déclarerait le tableau terminé dès la finale sous
+        placement intégral. Compter les **matchs terminaux** vaut pour les deux formats — en
+        profondeur `podium` il n'y en a que deux. Un match terminal **bye** porte un vainqueur
+        (résolu par `_resoudre_byes`) : il n'empêche pas la terminaison.
         """
         return all(m.vainqueur is not None for m in self.matchs if m.place_en_jeu is not None)
 
     def jouer(self, numero: int, vainqueur: Participant) -> Tableau:
         """Enregistre le vainqueur du match `numero` et peuple le(s) match(s) aval — CA progression.
 
-        Refuse un match introuvable (`MatchIntrouvable`), non jouable (`MatchNonJouable` : bye,
-        places incomplètes, déjà joué) ou un vainqueur étranger au match (`VainqueurHorsMatch`).
-
-        **Le routing n'est plus consulté ici** (E05US010) : il l'a été à la construction, quand
-        l'arbre a été câblé. Le perdant suit donc simplement l'arête `PerdantDe` que la cascade lui
-        a posée — vers son sous-tableau de placement s'il en existe un, nulle part sinon. C'est ce
-        qui rend le tableau **reconstructible** depuis les seuls résultats (ADR-0049) :
-        rejouer les mêmes matchs dans un autre ordre donne le même arbre.
-
-        Les byes ainsi rendus décidables (un sous-tableau alimenté par un match gagné d'office) sont
-        résolus dans la foulée.
+        Refuse un match introuvable, non jouable ou un vainqueur étranger au match. **Le routing
+        n'est plus consulté ici** (E05US010) : il l'a été à la construction, quand l'arbre a été
+        câblé — le perdant suit simplement l'arête `PerdantDe` que la cascade lui a posée. C'est ce
+        qui rend le tableau **reconstructible** depuis les seuls résultats (ADR-0049) : rejouer les
+        mêmes matchs dans un autre ordre donne le même arbre.
         """
         m = self.match(numero)
         if not m.est_jouable:
@@ -263,26 +227,11 @@ class Tableau:
     def classement(self) -> tuple[Place, ...]:
         """Toutes les places **acquises**, du rang 1 au dernier décidé (CA « rangs terminaux »).
 
-        Un rang est décidé par un **match terminal** : celui dont `place_en_jeu` porte la paire
-        `(2k-1, 2k)`. *Règle T* - le gagnant prend le rang supérieur, le perdant le suivant. En
-        placement intégral, tous les rangs 1→N y passent ; en profondeur `podium`, seuls les
-        premiers. Les places sortent **triées par rang**, et le classement est **partiel** tant que
-        des matchs terminaux restent à jouer : c'est la lecture « au fil de l'eau » dont vit
-        l'écran de suivi.
-
-        Un bye en match terminal (une plage dont un seul camp est occupé — effectif tronqué)
-        attribue le rang supérieur à son unique occupant, sans attribuer le suivant : il n'y a
-        personne à ce rang.
-
-        ⚠️ **Un battu non classé ici n'est pas sans rang pour autant.** La *fourchette* qu'il a
-        acquise (« 5ᵉ-8ᵉ » : la moitié basse de la plage du match perdu, écrêtée à l'effectif) se
-        lit dans `fourchette_de_rangs` / `positions_acquises`
-        ([ADR-0065](../../docs/adr/0065-rang-acquis-lu-sur-la-plage-et-issue-repechee.md) §1). Elle
-        n'est **pas** dupliquée ici : elle ne fait que relire `Plage.moitie_basse`, que ce module
-        porte déjà. Le renvoi avait été posé à la demande de la revue d'E07US008 pour qu'E06US004
-        tombe dessus avant de la réécrire ; c'est ce qui est arrivé, et la fonction a **remonté de
-        `application.routage` vers ce module** à cette occasion — deux consommateurs valaient mieux
-        qu'un import de fonction privée entre services.
+        Un rang est décidé par un **match terminal** (*Règle T*). Les places sortent **triées**, et
+        le classement est **partiel** tant que des matchs terminaux restent à jouer. Un bye
+        terminal attribue le rang supérieur sans le suivant. ⚠️ Un battu non classé ici n'est pas
+        sans rang : sa *fourchette* se lit dans `fourchette_de_rangs` (ADR-0065 §1), qui ne fait
+        que relire `Plage.moitie_basse` — elle n'est pas dupliquée ici.
         """
         places: list[Place] = []
         for m in self.matchs:
@@ -297,43 +246,22 @@ class Tableau:
     def podium(self) -> tuple[Place, ...]:
         """Les quatre premières places : finale → rangs 1-2, petite finale → rangs 3-4 (CA podium).
 
-        Vue **restreinte** du classement, au même régime que lui : les places sortent **au fil de
-        l'eau**, chaque match terminal livrant les siennes dès qu'il est tranché.
-
-        ⚠️ Ne pas exiger que la finale soit jouée pour publier les rangs 3-4 : **la petite finale se
-        tire couramment avant la finale** (le bronze avant l'or est l'usage en salle). Une garde
-        « rien tant que la finale n'est pas jouée » priverait l'écran de duels et le panneau de
-        routage des rangs 3-4 pendant tout l'intervalle — c'est la régression qu'a introduite un
-        premier jet de cette US, et que la revue a rattrapée.
+        Vue **restreinte** du classement, au même régime : les places sortent au fil de l'eau. ⚠️
+        Ne pas exiger que la finale soit jouée pour publier les rangs 3-4 — **la petite finale se
+        tire couramment avant la finale** (le bronze avant l'or est l'usage en salle). Une garde «
+        rien tant que la finale n'est pas jouée » priverait l'écran de duels et le routage des
+        rangs 3-4 pendant tout l'intervalle.
         """
         return tuple(place for place in self.classement() if place.rang <= 4)
 
     def positions_acquises(self) -> dict[Participant, PositionAcquise]:
         """Ce que ce tableau a décidé **pour chacun** : `participant → position acquise`.
 
-        La lecture dont vit le palmarès (E06US004) — et le pendant collectif de `classement()`, qui
-        ne rend que les rangs **exacts**. Trois cas, du plus précis au plus honnête :
-
-        1. **rang exact** décerné par un match terminal ⇒ la fourchette s'y referme (`(3, 3)`) ;
-        2. **battu sans rang exact** ⇒ la moitié basse de la plage du match perdu (*Règle R*,
-           ADR-0065), écrêtée à l'effectif : le battu d'un quart d'un tableau de 8 est `(5, 8)` ;
-        3. **encore en lice** ⇒ la plage de son match en cours : un demi-finaliste est `(1, 4)`.
-
-        Le cas 3 n'est pas une coquetterie. Le palmarès se consulte **pendant** le tournoi (l'écran
-        public le rafraîchit en direct) : sans lui, un demi-finaliste n'aurait aucune position et
-        tomberait derrière les éliminés qu'il vient de battre. Il dit exactement ce qui est acquis
-        — « au mieux 1ᵉʳ, au pire 4ᵉ » — et se referme match après match.
-
-        Un participant **absent** du tableau n'a pas d'entrée (plutôt qu'une entrée vide) : c'est
-        au palmarès de le classer sur la qualification, et une entrée le ferait passer pour sorti.
-
-        ⚠️ `PositionAcquise.en_lice` **distingue les deux fourchettes**, et cette distinction n'est
-        pas décorative : `[1..2]` porté par deux finalistes ne veut pas dire la même chose que
-        `[5..8]` porté par quatre battus. Les seconds sont *ex æquo* — plus aucun match ne les
-        départagera, une politique doit trancher ; les premiers vont **tirer la finale**. Sans le
-        drapeau, le palmarès départageait les finalistes sur leur rang de qualification et
-        décernait l'or **avant** que la finale ne soit tirée (défaut relevé par le test de service
-        d'E06US004).
+        Pendant collectif de `classement()`, qui ne rend que les rangs **exacts**. Trois cas : rang
+        exact ; **battu sans rang exact** (moitié basse de la plage perdue, *Règle R*) ; **encore
+        en lice** (la plage de son match en cours). Le troisième n'est pas une coquetterie — sans
+        lui, un demi-finaliste tomberait derrière les éliminés qu'il vient de battre. ⚠️ `en_lice`
+        distingue les deux fourchettes : sans lui, l'or était décerné avant la finale.
         """
         rangs = {place.participant: place.rang for place in self.classement()}
         acquises: dict[Participant, PositionAcquise] = {}
@@ -373,17 +301,11 @@ class Tableau:
 class PositionAcquise:
     """Ce qu'un participant a acquis dans un tableau : une fourchette de rangs, et son statut.
 
-    `rang_min == rang_max` : le rang est **décerné**. Sinon la fourchette dit ce qui reste ouvert,
-    et `en_lice` dit **pourquoi** :
-
-    - `en_lice=True` — l'archer a un match devant lui : `[1..4]` en demi-finale. Ce qui reste
-      ouvert le sera **par le tir** ;
-    - `en_lice=False` — l'archer est sorti sans que rien ne le départage de ses compagnons de
-      plage : `[5..8]` pour les quatre battus des quarts. Ce qui reste ouvert ne se fermera
-      **jamais** au tir, et c'est là — et seulement là — qu'une politique `aggregation` intervient.
-
-    Deux fourchettes de forme identique, deux sens opposés : les confondre revient à décerner l'or
-    au mieux qualifié avant la finale.
+    `rang_min == rang_max` : le rang est **décerné**. Sinon `en_lice` dit **pourquoi** la
+    fourchette reste ouverte — `True`, l'archer a un match devant lui et ce qui reste ouvert le
+    sera **par le tir** ; `False`, il est sorti sans que rien ne le départage de ses compagnons de
+    plage, et cela ne se fermera **jamais** au tir (c'est là, et seulement là, qu'une politique
+    `aggregation` intervient). Deux fourchettes de forme identique, deux sens opposés.
     """
 
     rang_min: int
@@ -394,33 +316,11 @@ class PositionAcquise:
 def fourchette_de_rangs(
     rang: int | None, perdu: Match | None, effectif: int
 ) -> tuple[int, int] | None:
-    """Les rangs qu'un participant a **acquis** — exacts si connus, sinon la fourchette *ex æquo*.
+    """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
-    Trois cas, du plus précis au plus honnête :
-
-    1. **rang exact connu** (un match terminal l'a décerné) ⇒ la fourchette s'y referme ;
-    2. **battu sans rang exact** ⇒ la *moitié basse* de la plage du match perdu (*Règle R*,
-       `Plage.moitie_basse`), **écrêtée à l'effectif réel**. Le battu d'un quart d'un tableau de 8
-       est 5ᵉ-8ᵉ : aucun match n'a été joué pour départager les quatre battus des quarts, donc
-       l'*ex æquo* n'est pas une approximation, c'est **le** résultat ;
-    3. **rien d'exploitable** ⇒ `None`, et l'appelant dira que le rang viendra.
-
-    ⚠️ **L'écrêtage à l'effectif n'est pas cosmétique** (correctif de revue d'E07US008, axes C1 et
-    adversarial, tous deux preuve à l'appui). Une plage est bornée par la **taille** du tableau —
-    une puissance de 2 — pas par le nombre d'archers : sur l'oracle 120 (taille 128), un battu du
-    1ᵉʳ tour sortait « 65ᵉ-**128**ᵉ » alors que les rangs 121 à 128 **n'existent pas**. Le défaut
-    était invisible aux tests parce que 4 et 8 archers sont les deux seuls effectifs du décor où
-    `taille == effectif`. Seule la borne **haute** a besoin de l'écrêtage : un occupant réel d'un
-    match réel a toujours `basse.debut <= effectif`, `_a_classer` élaguant les sous-plages sans
-    rang atteignable.
-
-    **Vit dans le domaine depuis E06US004**, d'où elle sort la *Règle R* qu'elle relit ; E07US008
-    l'avait écrite dans `application/routage.py` faute d'un second consommateur. Le palmarès en est
-    le second : deux services important une fonction privée l'un de l'autre auraient inversé le
-    sens des dépendances (règle 2) pour une règle qui est de bout en bout métier.
-
-    Ce n'est pas le **palmarès** pour autant : c'est ce que *ce tableau* a décidé, sans agrégation
-    inter-phases ni départage des ex æquo — c'est `domain/palmares.py` qui les fusionne.
+    L'absence de ces deux champs n'est pas un oubli du DTO : ils n'existent pas sur le modèle et
+    naissent à l'application. Les exposer inviterait un client à les fournir, donc à croire qu'un
+    format porte un avancement.
     """
     if rang is not None:
         return (rang, rang)
@@ -446,33 +346,11 @@ def construire_tableau(
 ) -> Tableau:
     """Assemble le tableau pour ces `participants` (CA E05US005, généralisé par E05US010).
 
-    `participants` est **ordonné par rang** de qualification (indice 0 = tête n°1).
-
-    **La structure est une récursion sur les plages de rangs**, et non plus une suite de tours. Un
-    *groupe* de `2^j` camps disputant la plage `[a..b]` engendre `2^(j-1)` matchs ; puis, tant que
-    la plage n'est pas terminale, il engendre **deux** sous-groupes : les vainqueurs sur la moitié
-    haute, les perdants sur la moitié basse là où le `routing` les envoie (*Règle R*). Quand la
-    plage atteint la largeur 2, le match est **terminal** : son issue fixe les deux rangs (*Règle
-    T*), et la récursion s'arrête.
-
-    L'élimination directe d'E05US005 **est un cas particulier** de cette récursion : avec une
-    profondeur `podium` (rangs 1-4), le sous-groupe des perdants des quarts n'est pas engendré
-    (aucun de ses rangs n'est à classer) tandis que celui des perdants des demies l'est — et ce
-    sous-groupe *est* la petite finale. Même arbre, même numérotation qu'avant l'US.
-
-    Consomme **quatre politiques** (ADR-0004) : `seeding` (l'ordre des positions), `byes` (autorité
-    sur les dispensés — un garde-fou refuse une paire seeding/byes incohérente via
-    `FormatTableauIncoherent`), `routing` (où descend un perdant) et `depth` (jusqu'où classer).
-    Les quatre sont **obligatoires** : la profondeur décide du format autant que le routing, et un
-    défaut implicite ici la rendrait invisible au composition root, où le projet a décidé qu'on lit
-    le câblage (règles 2 et 8). Un appelant qui l'oublierait obtiendrait un top 4 sans le moindre
-    signal — c'est l'écart que la revue d'E05US010 a fait corriger.
-
-    **Préconditions à la charge de l'appelant** (non défendues ici : le moteur ne lit aucune
-    identité, il ne peut donc pas les vérifier) : `participants` est **trié par rang** de
-    qualification et **sans doublon**. Un ordre faux produirait un ensemencement silencieusement
-    erroné ; un même participant présent deux fois briserait l'appariement. Le premier consommateur
-    (le classement source, via E04US013 / E05US010) garantit ces invariants.
+    **La structure est une récursion sur les plages de rangs** : un groupe de `2^j` camps disputant
+    `[a..b]` engendre `2^(j-1)` matchs, puis deux sous-groupes (vainqueurs en haut, perdants là où
+    le `routing` les envoie) ; à la largeur 2 le match est **terminal** (*Règle T*). Consomme
+    **quatre politiques obligatoires** — un défaut implicite les rendrait invisibles au composition
+    root. ⚠️ `participants` doit arriver **trié par rang** et **sans doublon**.
     """
     effectif = len(participants)
     if effectif < 2:
@@ -565,18 +443,14 @@ def construire_tableau(
                 ]
                 engendrer(entrants, destination.plage, tour + 1)
         elif isinstance(destination, VersRepechage):
-            # **Ne construire aucun sous-tableau est ici la bonne réponse**, et c'est le seul
-            # endroit du moteur où « ne rien faire » demande une justification écrite. Un perdant
-            # repêché ne se classe pas dans *ce* tableau : il en sort, et c'est une **phase avale**
-            # qui le reprend par un prélèvement `issue_de_tour/perdants` (E05US010). La moitié basse
-            # de la plage reste donc délibérément non engendrée — ses rangs seront décernés par le
-            # repêchage, pas ici.
+            # **Ne construire aucun sous-tableau est ici la bonne réponse.** Un perdant repêché
+            # ne se classe pas dans *ce* tableau : il en sort, et c'est une **phase avale** qui le
+            # reprend par un prélèvement `issue_de_tour/perdants`. La moitié basse de la plage reste
+            # donc délibérément non engendrée.
             #
-            # ⚠️ Le piège que cela ouvre, et qui n'appartient plus au moteur : si la composition
-            # oublie la phase de repêchage, ces battus **disparaissent** du classement sans que rien
-            # ne le signale — un tableau amputé de sa moitié basse est structurellement valide. Le
-            # diagnostic de déroulé (E01US024) est le bon endroit pour l'attraper ; le moteur, lui,
-            # ne peut pas savoir ce que la séquence prévoit après lui.
+            # ⚠️ Le piège que cela ouvre n'appartient plus au moteur : si la composition oublie la
+            # phase de repêchage, ces battus **disparaissent** du classement sans signal. Le
+            # diagnostic de déroulé (E01US024) est le bon endroit pour l'attraper.
             pass
         elif not isinstance(destination, HorsTableau):
             # ⚠️ **Ne jamais laisser tomber une destination inconnue en silence.** E05US005 refusait
@@ -642,37 +516,11 @@ def libelle_tour(
 ) -> str:
     """Le nom que la salle donne à ce tour — « Quart de finale », « 1/8 de finale », « Finale ».
 
-    Vocabulaire métier (règle 3), donc domaine : un archer ne se repère pas au **rang** du tour dans
-    l'arbre (« tour 2 »), il se repère à sa **distance au titre**. Ce libellé se compte donc **à
-    rebours** de la finale — le tour 1 est un quart sur un tableau de 8, une demie sur un tableau de
-    4. Au-delà du quart, la FFTA nomme les tours par leur fraction (1/8, 1/16, …).
-
-    `place_en_jeu` **prime** sur le compte : la petite finale se dispute au **même tour** que la
-    finale, et sans ce discriminant les deux matchs porteraient le même nom (E04US018 — le panneau
-    de routage enverrait les demi-finalistes battus au mauvais rendez-vous).
-
-    **Les matchs de placement se nomment par leur enjeu, pas par leur distance au titre**
-    (E05US010) : sous placement intégral, le match des places 5-6 se dispute au même tour que la
-    finale et se serait donc appelé « Finale » lui aussi — trois « Finale » simultanées sur le
-    panneau de routage. Un match qui décerne un rang au-delà du podium s'annonce « Match pour la
-    5ᵉ place » : c'est ce qu'un archer attend d'entendre, et c'est sans ambiguïté.
-
-    **`plage` couvre l'angle mort de `place_en_jeu`** (E07US005). `place_en_jeu` n'est renseigné
-    que sur les matchs **terminaux** (`plage.paire_terminale if terminal`, plus bas) : un match
-    d'un sous-tableau de placement **non terminal** — les places 5-8 au tour d'une demi-finale —
-    n'en a **aucun**, et se faisait donc appeler « Demi-finale » par le seul compte des tours.
-    C'est la version non terminale du défaut que `place_en_jeu` corrigeait déjà, et elle a le
-    même coût : elle envoie au podium quelqu'un qui joue la 5ᵉ place. Une plage dont le premier
-    rang dépasse le podium se nomme donc par ses **rangs**, pas par sa distance au titre.
-
-    Fonction **pure** : aucune lecture, aucun état. `nb_tours` vient de `Tableau.nb_tours`,
-    `plage` de `Match.plage`.
-
-    `# DETTE-020` — le front calcule **aussi** ce libellé (`features/saisie-duels/duel.ts`,
-    E04US013), au pluriel et avec un suffixe sur la petite finale : deux domiciles pour une
-    règle de vocabulaire, à unifier ici (ADR-0006). E07US005 a **failli en ouvrir un troisième**
-    (`features/tableaux/`) et l'a refermé en consommant ce libellé au DTO ; la dette reste à
-    deux domiciles, et le suivant devra faire pareil.
+    Vocabulaire métier (règle 3) : un archer se repère à sa **distance au titre**, non au rang du
+    tour. `place_en_jeu` **prime** sur le compte (la petite finale se dispute au même tour que la
+    finale), et un match décernant un rang au-delà du podium s'annonce « Match pour la 5ᵉ place ».
+    **`plage` couvre l'angle mort de `place_en_jeu`** (E07US005). `# DETTE-020` — le front calcule
+    **aussi** ce libellé : deux domiciles pour une règle de vocabulaire.
     """
     if place_en_jeu == (3, 4):
         return "Petite finale"

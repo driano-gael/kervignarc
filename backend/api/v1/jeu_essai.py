@@ -1,14 +1,7 @@
 """Endpoints REST du jeu d'essai (`/api/v1`) — peupler & instancier des scénarios (E15US001).
 
-Outil **admin** de démo/QA (retours de la démo du 27/07/2026). Trois routes :
-- `GET /jeu-essai/scenarios` — le **catalogue** rejouable (lecture, pour l'écran de sélection) ;
-- `POST /tournois/{id}/jeu-essai/peupler` — peuple un tournoi **existant** de N archers de test ;
-- `POST /jeu-essai/scenarios/{id}/instancier` — crée un tournoi **complet, prêt à lancer**.
-
-Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats, écritures routées
-par la **file** (writer unique, ADR-0005), toutes protégées par `exiger_admin`, erreurs typées
-traduites à la frontière (`ScenarioInconnu` → 404). C'est de la **donnée réelle persistée** — à
-distinguer de la simulation éphémère d'E15US002.
+⚠️ C'est de la **donnée réelle persistée** dans le tournoi visé, à ne pas confondre avec la
+simulation éphémère d'E15US002.
 """
 
 from __future__ import annotations

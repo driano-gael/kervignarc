@@ -12,19 +12,26 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 26/08/2026, 18 h 52** · **127 US livrées** · dernière : `E16US009`
-*(**l'écran de salle se règle, et montre enfin tout le monde** — les deux moitiés laissées en
-suspens par les questionnaires `P06` et `P07` sont tenues. La **cadence** et la **taille** d'une page
-projetée se règlent **par écran** (elles étaient deux constantes du programme, `DETTE-039`), et le
-classement projeté garde ses **trois premiers** figés pendant que le reste **tourne page par page**.
-⚠️ **« Défiler » a été tranché en pagination** ([ADR-0098](../docs/adr/0098-un-ecran-projete-pagine-au-lieu-de-defiler.md)) :
-un cadre à ascenseur sur un vidéoprojecteur ne s'actionne pas — c'est pour cela que `E16US005` avait
-laissé la tête figée **à zéro** sur cette surface. ⚠️ **Le 4ᵉ CA était déjà livré la veille** par
-`E16US006` (le logo sur l'écran de salle). Migration `0051`, `DETTE-039` **résorbée sur son volet
-technique** — l'incertitude qu'elle abritait, elle, reste ouverte : rien n'a été mesuré sur un vrai
-vidéoprojecteur.)*
+**Dernière mise à jour : 28/08/2026, 01 h 15** · **128 US livrées** · dernière : `E00US027`
+*(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois
+passes de revue** d'`E16US009` et de la question qu'elles ont provoquée. Sur les 12 majeurs de la 3ᵉ
+passe, **un seul** portait sur du code : les autres étaient des documents qui se contredisent, dont
+des commentaires que **rien ne vérifie**. Un commentaire ne survit donc qu'à trois conditions —
+**contrainte non déductible**, **avertissement**, ou **renvoi d'une ligne**
+([ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md), règle 13) ; le
+reste vit déjà ailleurs. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome du
+plafond de pages, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant
+d'être retiré. Après un lot démonstratif de 5 fichiers, l'US a été **élargie au dépôt entier** sur
+arbitrage du 27/08/2026 : **1 086 blocs backend** et **453 blocs front** (236 fichiers) ramenés sous
+un plafond de **huit lignes par bloc**, désormais vérifié des deux côtés par pytest et vitest.
+Aucune ligne exécutable modifiée — vérifié jeton à jeton sur 437 fichiers.)*
 
-**Précédente : `E16US006`**
+**Précédente : `E16US009`**
+*(**l'écran de salle se règle, et montre tout le monde** — la cadence de défilement et le nombre de
+noms par page se règlent par écran, et le classement projeté garde ses trois premiers en tête
+pendant que le reste tourne page par page.)*
+
+**Avant elle : `E16US006`**
 *(**le tournoi porte ses couleurs et ses logos** — deux logos facultatifs, celui de l'**édition** et
 celui du **club organisateur**, et deux couleurs d'accent dont le système **dérive** seul l'aplat, le
 contour et la variante de texte, en thème sombre **et** clair. L'habillage porte sur l'**écran de
@@ -1240,6 +1247,17 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US024 | Sortir la logique des quatre composants XXL du front | hors jalon | ⬜ |
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
+
+## Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**
+
+> Née d'une question du commanditaire après les **trois passes de revue** d'`E16US009` : *« pourquoi
+> autant de passes ? »*. La mesure a montré que la majorité des remarques de 2ᵉ et 3ᵉ passe portaient
+> non sur du code mais sur des **documents qui se contredisent** — dont des commentaires que rien ne
+> vérifie. D'où une règle d'écriture, et un lot démonstratif.
+
+| US | Titre | Jalon | État |
+|---|---|---|---|
+| E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Appliquée **au dépôt entier** après arbitrage du 27/08/2026 (plafond de **8 lignes** par bloc, « tout, maintenant ») : le cliquet backend passe de **1 086 blocs à 0**, le front de **453 blocs sur 236 fichiers à 0**. La règle est **dure des deux côtés** et vérifiée — `test_commentaires_bornes.py` (pytest, tout le code de production) et `commentaires.test.ts` (vitest, tout `frontend/src`, tests compris). ⚠️ Le chiffre « 103 » annoncé en 1ʳᵉ passe était le **reliquat** au moment d'une reprise, pas le total : corrigé en revue. Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

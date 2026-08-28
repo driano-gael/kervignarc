@@ -1,17 +1,7 @@
-"""Service applicatif Gabarits de salle — bibliothèque de modèles (E01US007) et application à un
-tournoi (E01US008).
+"""Service des **gabarits** — bibliothèque de modèles, et application à un tournoi.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure.
-
-Deux facettes :
-- **bibliothèque** : CRUD des gabarits **modèles** (`tournoi_id is None`), réutilisables ;
-- **application à un tournoi** : appliquer un modèle en crée une **copie** propre au tournoi, que
-  l'on peut ensuite **ajuster** (nom, plafond cible par cible) **sans altérer** le modèle.
-
-Fait remonter des erreurs typées (`GabaritIntrouvable`, `TournoiIntrouvable`,
-`GabaritDuTournoiAbsent`).
+Appliquer un modèle en crée une **copie** propre au tournoi, ajustable **sans altérer** le modèle.
+Le service ignore HTTP, SQL et la file : il reste synchrone et pur d'infrastructure.
 """
 
 from __future__ import annotations
@@ -77,11 +67,9 @@ class ServiceGabarits:
     def appliquer(self, tournoi_id: TournoiId, modele_id: GabaritSalleId) -> GabaritSalle:
         """Applique un gabarit **modèle** à un tournoi (E01US008) : en crée/rafraîchit la copie.
 
-        La copie reprend le nom et les plafonds du modèle. Si le tournoi avait déjà une instance,
-        elle est **remplacée sur place** (même identifiant, pour ne pas casser d'éventuelles
-        références) ; sinon une nouvelle copie est persistée. Le modèle d'origine reste intact.
-
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `GabaritIntrouvable` si
+        La copie reprend le nom et les plafonds du modèle. Une instance existante est **remplacée
+        sur place** (même identifiant, pour ne casser aucune référence) ; sinon une copie est
+        persistée. Le modèle reste intact. Lève `TournoiIntrouvable`, ou `GabaritIntrouvable` si
         `modele_id` n'est pas un modèle applicable (inconnu ou déjà rattaché à un tournoi).
         """
         self._tournoi_existant(tournoi_id)

@@ -1,14 +1,7 @@
 """Frontière API — archive de fin de tournoi en ZIP (E11US003, CA « export/archive »).
 
-Endpoint de **lecture** : compose le paquet à la demande (instantané SQLite + CSV + PDF), aucune
-écriture DB → exécuté hors boucle événementielle (`run_in_threadpool`, règle 7). Réservé à l'admin
-(`exiger_admin`, E10US001). Renvoie un **binaire** `application/zip` avec `Content-Disposition:
-attachment`.
-
-Les parties à inclure sont des **paramètres de requête booléens** (cases à cocher côté UI), toutes
-à `true` par défaut — l'archive complète est le cas nominal. La garde 404 (`TournoiIntrouvable`)
-remonte du service et est traduite à la frontière (`api/erreurs.py`) — pas de gestion locale
-(règle 5).
+Les parties à inclure sont des paramètres de requête booléens, toutes à `true` par défaut :
+l'archive complète est le cas nominal. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations

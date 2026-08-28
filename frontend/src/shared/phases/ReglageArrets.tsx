@@ -1,35 +1,21 @@
 // La fiche des **pauses programmées** d'une étape (E05US033, ADR-0091).
 //
-// Partagée par les **deux** écrans qui composent des phases — « Composer un format » (un modèle de
-// bibliothèque) et « Phases » (le déroulé d'un tournoi) —, comme `ReglageSuisse`, `ReglagePoules` et
-// `ReglageBigShootOff` avant elle.
-//
-// ⚠️ **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006, reprise telle quelle) :
-// monté sous condition, un état dérivé d'une prop diverge dès que la condition bascule.
-//
-// ⚠️ **La fiche est montée sur TOUS les types, y compris ceux qui n'admettent pas d'arrêt.** Elle
-// n'offre alors aucun champ, mais elle **dit pourquoi** — c'est le tout l'intérêt de la monter quand
-// même. La cacher laisserait l'organisateur chercher un réglage qu'il a vu sur la phase voisine, sans
-// jamais apprendre qu'il n'existe pas ici.
+// Partagée par les **deux** écrans qui composent des phases, comme `ReglageSuisse` avant elle. ⚠️
+// **Ce composant ne détient AUCUN état** (leçon de la revue d'E06US006) : monté sous condition, un
+// état dérivé d'une prop diverge dès que la condition bascule. ⚠️ **La fiche est montée sur TOUS
+// les types**, y compris ceux qui n'admettent pas d'arrêt : elle n'offre alors aucun champ mais
+// **dit pourquoi** — la cacher laisserait chercher un réglage vu sur la phase voisine.
 
 import type { EtatArrets, LigneArret, PorteeArret } from './arrets'
 import { TOURS_MAX_REGLABLES, decrire, ligneNeuve, toursEnDoublon, versArrets } from './arrets'
 
-/**
- * Rend la fiche des pauses programmées. Aucun état : l'unique source est `etat`, détenu par le parent.
+/** Rend la fiche des pauses programmées. Aucun état : l'unique source est `etat`, chez le parent.
  *
- * `arretable` dit si une pause peut se poser sur cette étape. C'est le parent qui le sait — il
- * connaît le type choisi **et** son découpage. Quand c'est faux, la fiche n'offre aucun champ et
- * explique le refus : l'API rejette l'arrêt (`ArretProgrammeInvalide`, 422) et, le `PUT` étant une
- * édition **totale**, c'est l'étape entière qui serait refusée.
- *
- * ⚠️ **`motif` existe parce que le refus a cessé d'avoir une seule cause** (E05US035, correctif de
- * 2ᵉ passe de revue). Jusque-là, « pas arrêtable » voulait dire « ce **type** n'annonce pas ses
- * tours », et la fiche pouvait énumérer les types qui les annoncent. Depuis qu'une **qualification**
- * est arrêtable une fois **découpée**, la même phrase serait fausse deux fois : elle dirait au
- * lecteur que son type ne le permet pas — alors que si —, et elle omettrait la qualification de la
- * liste, alors qu'elle vient d'y entrer. Surtout, elle ne nommerait pas le geste réparateur, qui est
- * à deux blocs de là sur le même écran (`P-3` : un refus sans issue est un cul-de-sac).
+ * `arretable` dit si une pause peut se poser — le parent le sait, il connaît le type **et** son
+ * découpage. Quand c'est faux, la fiche explique le refus : l'API rejette l'arrêt (422) et, le
+ * `PUT` étant total, c'est l'étape entière qui serait refusée. ⚠️ **`motif` existe parce que le
+ * refus a cessé d'avoir une seule cause** : depuis qu'une qualification est arrêtable une fois
+ * **découpée**, énumérer les types serait faux et ne nommerait pas le geste réparateur (`P-3`).
  */
 export function ReglageArrets({
   etat,

@@ -1,24 +1,11 @@
 // Vue publique des tableaux de duels (E07US005) — maquette **P05**.
 //
-// Un seul composant pour deux surfaces, comme les affectations (E07US008) et le schéma à braquets
-// (E01US024) : l'appli publique (interactive) et l'**écran de salle** (projeté, `interactif=false`,
-// aucune interaction — CA E07US004). Les dessiner séparément les ferait diverger sur la seule chose
-// qui compte, l'appariement affiché.
-//
-// **Les deux partis pris de la maquette sont livrés, et l'ordre entre eux est le sien :**
-//  - **A · « Mon chemin »**, *recommandé* — « l'archer est le sujet, la compétition est le
-//    contexte » (`D-09`). C'est la vue par défaut **dès qu'on suit quelqu'un**, exactement comme
-//    l'onglet « Suivi » est la porte d'entrée de l'appli publique ;
-//  - **B · « Arbre complet »**, *nécessaire en second* — l'arbre en vraies branches ne tient pas
-//    sur 360 px ; en **liste par tour**, si. C'est la concession mobile que la maquette assume, et
-//    la seule lecture possible sur l'écran de salle (personne à suivre devant un projecteur).
-//
-// ⚠️ **Ce que la maquette proposait et qui n'est pas livré : les horaires prévisionnels** (« 1/4 ·
-// MARTIN vs DURAND · 14 h 20 »). Arbitrage du 04/08/2026 : le domaine ne porte **aucun** horaire au
-// grain de la phase ou du duel — seul le départ en a un (E02US010). Les afficher supposerait un
-// moteur d'ordonnancement qui n'existe pas ; les inventer serait pire que les taire, puisque c'est
-// précisément le risque que la maquette pointait (« au risque qu'ils glissent et qu'on vous le
-// reproche »). La question reste ouverte au questionnaire P05.
+// Un seul composant pour deux surfaces (appli publique interactive, écran de salle projeté) : les
+// dessiner séparément les ferait diverger sur la seule chose qui compte, l'appariement affiché.
+// Deux lectures : **« Mon chemin »**, par défaut dès qu'on suit quelqu'un (`D-09`), et **« Arbre
+// complet »**, en liste par tour — l'arbre en vraies branches ne tient pas sur 360 px. ⚠️ **Les
+// horaires prévisionnels ne sont pas livrés** (arbitrage du 04/08/2026) : le domaine n'en porte
+// aucun au grain de la phase, et les inventer serait pire que les taire.
 
 import { useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
@@ -41,14 +28,11 @@ export function VueTableaux({
   tournoiId: number
   /** La phase à montrer, **imposée** par l'appelant — `null` = cette vue choisit elle-même.
    *
-   * Ajouté par E05US031 : l'onglet « En cours » porte désormais le fil du déroulé du départ et
-   * aiguille vers un rendu par format. Quand c'est lui qui pilote, le tableau affiché doit être
-   * celui qu'il désigne — sinon il annoncerait « 3. Élimination directe » au-dessus d'un arbre qui
-   * en montre un autre, dès qu'un départ porte deux tableaux (cas banal : principal + consolante).
-   *
-   * ⚠️ **Imposer la phase éteint aussi le sélecteur local**, même en `interactif` : deux barres de
-   * choix concurrentes sur le même écran donneraient deux vérités contradictoires — exactement le
-   * défaut qu'E16US004 a corrigé sur la bascule « mes archers » de cette même vue. */
+   * Ajouté par E05US031 : quand l'onglet « En cours » pilote, le tableau affiché doit être celui
+   * qu'il désigne — sinon il annoncerait « 3. Élimination directe » au-dessus d'un autre arbre dès
+   * qu'un départ porte deux tableaux. ⚠️ **Imposer la phase éteint aussi le sélecteur local** :
+   * deux barres de choix concurrentes donneraient deux vérités contradictoires.
+   */
   phaseId?: number | null
   interactif?: boolean
   /** La bascule « mes archers / tout » de l'appli publique (E16US004).

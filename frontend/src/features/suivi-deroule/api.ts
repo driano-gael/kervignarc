@@ -1,12 +1,10 @@
 // Accès API du **suivi du déroulé** (E07US004, ADR-0064) : le schéma à braquets d'une édition en
 // cours, rempli par la réalité. Miroir des DTO de `api/v1/suivi_deroule.py`.
 //
-// **Lecture publique** (portée `'aucune'`), et ce n'est pas un oubli : les deux consommateurs sont
-// le poste de pilotage (admin, qui a un jeton) et l'**écran de salle**, qui n'en a pas — c'est un
-// poste public projeté dans un gymnase. Un endpoint gardé rendrait l'écran muet.
-//
-// La feature ne redéclare **ni** `Bloc` **ni** `AvancementBloc` : ils viennent de
-// `shared/schema-braquets/modele`, la source unique du modèle de schéma côté front.
+// ⚠️ **Lecture publique** (portée `'aucune'`), et ce n'est pas un oubli : les deux consommateurs
+// sont le poste de pilotage et l'**écran de salle**, qui n'a pas de jeton — un endpoint gardé le
+// rendrait muet. La feature ne redéclare ni `Bloc` ni `AvancementBloc` : ils viennent de
+// `shared/schema-braquets/modele`, source unique du modèle de schéma côté front.
 
 import { fetchJson } from '../../shared/api/client'
 import type { PorteeArret } from '../../shared/phases/arrets'
@@ -87,18 +85,13 @@ export interface ArretDeCirconstance {
   portee: PorteeArret
 }
 
-/**
- * Pose une pause **dans ce créneau seul**, comptée depuis le tour en cours.
+/** Pose une pause **dans ce créneau seul**, comptée depuis le tour en cours.
  *
- * ⚠️ **La route est adressée par créneau et par phase, et c'est ce qui la distingue de l'atelier.**
- * Poser un arrêt à l'atelier édite le déroulé du **tournoi** (`PUT /tournois/{id}/deroule`), que
- * tous les créneaux rejouent (ADR-0076 §4). Ici on agit sur ce qui tire **maintenant** (§5) : le
- * créneau du soir ne saura rien de cette pause.
- *
- * `dansXTours` compte le tour **en cours** : « 1 » veut dire « celui-là finit, puis on s'arrête ».
- * La conversion en numéro absolu est faite par le serveur — le tour courant est une donnée serveur,
- * et un client qui le calculerait couperait au mauvais endroit dès qu'il aurait dix secondes de
- * retard.
+ * ⚠️ **La route est adressée par créneau et par phase, et c'est ce qui la distingue de l'atelier**
+ * : poser un arrêt à l'atelier édite le déroulé du **tournoi**, que tous les créneaux rejouent
+ * (ADR-0076 §4) ; ici on agit sur ce qui tire **maintenant** (§5). `dansXTours` compte le tour
+ * **en cours**, et la conversion en numéro absolu est faite par le **serveur** — un client qui
+ * calculerait couperait au mauvais endroit dès dix secondes de retard.
  */
 export function poserArretRelatif(
   departId: number,

@@ -1,14 +1,7 @@
 """Endpoints REST des catégories (`/api/v1`) — CRUD des catégories d'un tournoi (E01US003).
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Routes imbriquées sous le tournoi pour la création/liste (une catégorie appartient à un
-tournoi) ; l'édition et la suppression ciblent la catégorie par son identifiant.
+Une catégorie appartient à un tournoi : création et liste sont imbriquées sous lui, édition et
+suppression ciblent la catégorie par son identifiant. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations

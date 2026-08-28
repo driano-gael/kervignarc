@@ -1,19 +1,11 @@
-// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisieSuisse`, `SaisieColline`), à
-// l'identique sur ~120 lignes. Toute correction faite ici se porte sur les deux autres, et **rien
-// ne rougira** si elle ne l'est qu'à une : cinq correctifs de revue ont déjà voyagé à la main d'un
-// écran à l'autre. Le remède retenu est « rien » — la liste des formats à rencontres est close
-// (`DETTE-066`) —, donc la trace au registre EST le garde-fou.
-// Écran de saisie des **rencontres de poule** (E05US023, ADR-0083) — surface **scoreur**.
+// ⚠️ **`// DETTE-079` — la coquille de ce panneau est écrite TROIS fois** (ici, `SaisieSuisse`,
+// `SaisieColline`), à l'identique sur ~120 lignes : toute correction faite ici se porte sur les
+// deux autres et **rien ne rougira** si elle ne l'est qu'à une. Le remède retenu est « rien » (la
+// liste des formats à rencontres est close), donc la trace au registre EST le garde-fou.
 //
-// Jumeau de `SaisieDuels` par la coquille (choisir un créneau, puis une phase), et **identique** par
-// le pavé : une rencontre de poule *est* un duel ordinaire (ADR-0083 §7), donc on remonte
-// `DuelCharge` tel quel avec la famille `'poule'`. Ce qui diffère est la **navigation** — on entre
-// par la poule et le tour, pas par le numéro de match d'un arbre —, et c'est tout ce que ce fichier
-// écrit de neuf.
-//
-// Ce que le pavé apporte gratuitement, et qu'il aurait fallu réécrire sinon : le mode (sets/cumul)
-// résolu par l'arme, le barrage interne à une rencontre nulle, le verrou de validation, l'état
-// optimiste hors-ligne et le rejeu à la reconnexion (E04US009).
+// Écran de saisie des **rencontres de poule** (E05US023, ADR-0083) — surface **scoreur**. Jumeau de
+// `SaisieDuels` par la coquille et **identique** par le pavé : une rencontre de poule *est* un duel
+// ordinaire (§7). Ce qui diffère est la **navigation**, et c'est tout ce que ce fichier écrit.
 
 import { useState } from 'react'
 
@@ -40,16 +32,13 @@ export function SaisiePoules({
 
   const poulesDispo = (phases.data ?? []).filter((phase) => phase.type === 'poules')
 
-  // ⚠️ **Toujours pas de `return null` ici**, et la raison a survécu au remède de `DETTE-056`
-  // (E05US030, qui a remonté le créneau dans l'espace scoreur). Une première tentative — E05US023 —
-  // masquait tout le panneau quand le créneau ne portait aucune poule, pour supprimer le second
-  // sélecteur de créneau : elle créait un cul-de-sac, le sélecteur vivant *dans* le JSX retiré.
-  // Le sélecteur n'est plus ici, mais masquer resterait faux pour l'autre moitié du défaut : la
-  // branche d'erreur deviendrait morte, et un `/phases` en échec ferait disparaître le panneau
-  // **sans un mot**, en salle, wifi instable.
-  //
-  // Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait scorer les
-  // poules de l'autre départ, avec un identifiant valide et donc sans la moindre erreur.
+  // ⚠️ **Toujours pas de `return null` ici**, et la raison a survécu au remède de `DETTE-056`. Une
+  // première tentative masquait le panneau quand le créneau ne portait aucune poule : elle créait
+  // un cul-de-sac, le sélecteur vivant *dans* le JSX retiré. Le sélecteur n'est plus ici, mais
+  // masquer resterait faux pour l'autre moitié du défaut — la branche d'erreur deviendrait morte,
+  // et un `/phases` en échec ferait disparaître le panneau **sans un mot**, en salle, wifi
+  // instable. Changer de créneau rend l'ancien `phaseId` étranger à la liste : le garder ferait
+  // scorer les poules de l'autre départ, avec un identifiant valide donc sans la moindre erreur.
   const phaseRetenue =
     phaseId !== null && poulesDispo.some((phase) => phase.id === phaseId) ? phaseId : null
 

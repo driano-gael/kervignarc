@@ -1,19 +1,10 @@
-"""Agrégat `Depart` — un créneau (session horaire) d'un tournoi (E02US004, ADR-0017).
+"""Agrégat **Depart** — un créneau du tournoi ; le lien archer↔départ vit ailleurs.
 
-Un **départ** est un créneau du tournoi, comme si le tournoi se jouait plusieurs fois dans la
-journée : le hall se remplit, tire, se vide, puis se remplit d'une autre vague. C'est une entité
-**du tournoi** (`tournoi_id`), **partagée** par les archers qui s'y inscrivent — l'inscription
-(lien archer↔départ) est E02US009, pas cet agrégat.
+Le `numero` est attribué par le service : le domaine ne voit qu'un départ à la fois.
 
-Agrégat de domaine **pur** (aucune dépendance framework, immuable) : `creer`/`modifier` valident les
-valeurs et renvoient une copie. Le `numero` est **attribué par le service** (1, 2, 3…, unique dans
-le tournoi) ; le domaine ne voit qu'un départ à la fois et ne peut donc pas garantir l'unicité — il
-vérifie seulement qu'un numéro est un entier ≥ 1.
-
-**L'argent est compté en centimes entiers** (ADR-0012), d'où le suffixe `_centimes`. Contrairement
-à l'ancien tarif du tournoi (E01US010), le tarif d'un créneau est **obligatoire** : on ne crée pas
-un départ sans prix, donc l'état « non défini » (`None`) n'existe plus ici — `0` (gratuit) reste un
-état licite et distinct.
+⚠️ **Le tarif d'un créneau est OBLIGATOIRE**, contrairement à l'ancien tarif de tournoi : l'état
+« non défini » n'existe pas ici. `0` (gratuit) reste licite et distinct. Argent en **centimes
+entiers** (ADR-0012).
 """
 
 from __future__ import annotations
@@ -65,12 +56,11 @@ SQLite et n'y déborde en erreur non typée (500). Un quota **absent** (`None`) 
 class Depart:
     """Un créneau de tir d'un tournoi. `id` vaut `None` tant que l'agrégat n'est pas persisté.
 
-    `numero` est attribué par le service (unique dans le tournoi) ; `horaire` est l'horaire du
-    créneau `HH:MM` (24 h), **obligatoire** depuis E02US010 (plus un libellé libre) ;
-    `tarif_centimes` est le prix **de ce créneau**, obligatoire. `quota` est le nombre maximal
-    d'inscrits **de ce créneau** (E02US006), **facultatif** : `None` = pas de plafond. L'agrégat ne
-    connaît que la **valeur** du quota ; le contrôle « inscrits < quota » vit dans le service (il
-    voit les inscriptions, pas l'agrégat).
+    `numero` est attribué par le service (unique dans le tournoi) ; `horaire` (`HH:MM`, 24 h) est
+    **obligatoire** depuis E02US010 ; `tarif_centimes` est le prix **de ce créneau**, obligatoire ;
+    `quota` (E02US006) est **facultatif** — `None` = pas de plafond. ⚠️ L'agrégat ne connaît que la
+    **valeur** du quota ; le contrôle « inscrits < quota » vit dans le service, seul à voir les
+    inscriptions.
     """
 
     tournoi_id: TournoiId
@@ -106,16 +96,11 @@ class Depart:
     def modifier(self, tarif_centimes: int, horaire: str, quota: int | None = None) -> Depart:
         """Renvoie une copie au tarif, à l'horaire et au quota mis à jour (règles de `creer`).
 
-        L'`id`, le `tournoi_id` et surtout le `numero` sont **préservés** : le numéro est attribué
-        par le système, il n'est pas une donnée que l'admin corrige (au contraire du nom d'un club).
-        L'édition est un **remplacement complet** : un `quota` omis (`None`) **retire** le plafond ;
-        l'horaire, lui, est **obligatoire** (E02US010) — l'appelant renvoie l'horaire courant s'il
-        veut le garder. Lève `TarifDepartInvalide` / `HoraireDepartInvalide` / `QuotaDepartInvalide`
-        si tarif, horaire ou quota sont invalides.
-
-        Abaisser le quota **sous** le nombre d'inscrits déjà en place est accepté ici : l'agrégat ne
-        voit pas les inscriptions, et le blocage ne joue qu'aux **nouvelles** inscriptions (le
-        service ne rejette qu'au moment d'inscrire, jamais les inscrits déjà présents — E02US006).
+        `id`, `tournoi_id` et surtout `numero` sont **préservés** : le numéro est attribué par le
+        système, pas corrigé par l'admin. **Remplacement complet** : un `quota` omis (`None`)
+        **retire** le plafond, l'horaire reste **obligatoire**. ⚠️ Abaisser le quota **sous** le
+        nombre d'inscrits est accepté ici — l'agrégat ne voit pas les inscriptions, et le blocage
+        ne joue qu'aux **nouvelles** (E02US006).
         """
         return replace(
             self,

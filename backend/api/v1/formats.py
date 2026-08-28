@@ -1,19 +1,8 @@
-"""Endpoints REST des formats de tournoi (`/api/v1`) — la brique « déroulé » (E01US023).
+"""Formats — bibliothèque à plat, et déroulé d'un tournoi.
 
-ADR-0060 §5. Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats,
-écriture routée par la **file** (writer unique, ADR-0005) et protégée par `exiger_admin`, lecture
-directe **hors boucle** (threadpool), erreurs typées traduites à la frontière.
-
-Deux familles de routes, calquées sur `/gabarits` (E01US007/E01US008) :
-
-- **bibliothèque** de formats réutilisables, à plat sous `/formats` ;
-- **déroulé d'un tournoi**, sous `/tournois/{id}/format` : appliquer un format (crée les phases) et
-  promouvoir le déroulé courant en format de bibliothèque.
-
-Noter l'asymétrie avec les autres briques : un format appliqué ne produit **pas** un format
-rattaché au tournoi, mais des **phases** — il n'y a donc pas de `GET /tournois/{id}/format`, la
-lecture du déroulé restant `GET /tournois/{id}/phases` (E05US001). Exposer une route qui laisserait
-croire qu'un tournoi « a » un format entretiendrait exactement la confusion que l'ADR écarte.
+⚠️ **Un format appliqué ne produit PAS un format rattaché au tournoi, mais des PHASES** : d'où
+l'absence de `GET /tournois/{id}/format`, la lecture du déroulé restant `GET .../phases`. Exposer
+une telle route laisserait croire qu'un tournoi « a » un format — la confusion qu'ADR-0060 écarte.
 """
 
 from __future__ import annotations
@@ -108,19 +97,11 @@ class SourceDTO(BaseModel):
 class ProfondeurDTO(BaseModel):
     """La **profondeur de classement** d'une étape de format (E06US006, ADR-0070).
 
-    Jumeau assumé de `api/v1/phases.ProfondeurDTO`, pour la raison déjà tranchée sur `SourceDTO` :
-    même notion, deux ressources distinctes.
-
-    ⚠️ **Les deux jumeaux sont strictement identiques**, et c'est ce que le régime brouillon
-    d'ADR-0063 laisse ici. Un premier jet affirmait le contraire (« celui-ci ne valide rien de plus
-    que la forme ») — c'était faux, et doublement : `vers_agregat()` construit un
-    `ProfondeurClassement`, dont le `__post_init__` **refuse** un `top_n` sans seuil comme un
-    `un_vers_n` avec seuil. Ce qui échappe au brouillon, ce n'est pas l'incohérence **interne** du
-    descripteur (refusée des deux côtés, en 422), c'est sa **compatibilité avec le type** de
-    l'étape : une profondeur posée sur une qualification s'enregistre, et n'est refusée qu'à
-    `pour_tournoi`. ⚠️ Elle n'est pas non plus **diagnostiquée** — `projeter` ne lit pas la
-    profondeur — donc l'organisateur ne l'apprend qu'à l'application. Inatteignable depuis l'écran
-    (le front force `profondeur: null` hors tableau) ; cf. ADR-0070 §2.
+    Jumeau assumé de `api/v1/phases.ProfondeurDTO`. ⚠️ Les deux sont **strictement identiques** :
+    `vers_agregat()` construit un `ProfondeurClassement`, dont le `__post_init__` refuse les
+    incohérences **internes** des deux côtés. Ce qui échappe au brouillon d'ADR-0063 est la
+    **compatibilité avec le type** de l'étape — refusée seulement à `pour_tournoi`, et non
+    diagnostiquée (`projeter` ne lit pas la profondeur).
     """
 
     nom: NomProfondeur
@@ -156,24 +137,11 @@ class BaremePouleDTO(BaseModel):
 class ReglageBigShootOffDTO(BaseModel):
     """Le réglage d'un **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
 
-    `eliminations` est une **liste écrite par l'organisateur**, une case par manche : `[4, 2, 1]`
-    veut dire « quatre sortent au 1ᵉʳ tour, deux au 2ᵉ, un au 3ᵉ ». Rien n'impose qu'elle décroisse
-    ni qu'elle soit régulière — ce n'est pas une progression, et le mot « suite » a été écarté au
-    cadrage pour cette raison.
-
-    ⚠️ **Il n'y a pas de champ « restants » (K)**, et c'est le cœur de l'élargissement du
-    14/08/2026 : K se **déduit** de ce que la liste n'élimine pas. Deux champs pour la même
-    information pouvaient se contredire ; il n'en reste qu'un.
-
-    Aucune borne haute n'est posée sur la longueur de la liste : le format est réutilisé sur des
-    effectifs qu'il ignore, et « on joue tant que la manche est possible ». L'écran montre la
-    projection (`/api/v1/big-shoot-off/projection/…`) avant que l'organisateur compose.
-
-    ⚠️ **Jumeau assumé de `api/v1/phases.ReglageBigShootOffDTO`** — 4ᵉ paire, `DETTE-054`.
-
-    ⚠️ **Régime brouillon** (ADR-0063), comme `profondeur` et `poules` : un réglage posé sur une
-    étape d'un autre type est un modèle **licite** ici, qui refusera de s'appliquer à la promotion
-    (`ConfigurationBigShootOffInvalide` à la construction de la `Phase`).
+    `eliminations` est une **liste écrite par l'organisateur**, une case par manche ; rien n'impose
+    qu'elle décroisse. ⚠️ Pas de champ « restants » : K se **déduit** de ce que la liste n'élimine
+    pas — deux champs pour la même information pouvaient se contredire. Aucune borne haute de
+    longueur : le format est réutilisé sur des effectifs qu'il ignore. Jumeau, 4ᵉ paire
+    (`DETTE-054`). ⚠️ **Régime brouillon** (ADR-0063) : le refus tombe à la promotion.
     """
 
     # ⚠️ Bornes ajoutées à la revue d'E05US028. Les **valeurs** restent libres (`paliers_pour`
@@ -216,16 +184,13 @@ class ReglageBigShootOffDTO(BaseModel):
 
 
 class DecoupageDTO(BaseModel):
-    """Le découpage d'une **qualification** en tours (E05US035, [ADR-0093]) — « 20 volées en 2 ».
+    """Le découpage d'une **qualification** en tours (E05US035, ADR-0093) — « 20 volées en 2 ».
 
-    Jumeau assumé de `api/v1/phases.DecoupageDTO` — **7ᵉ** paire, `DETTE-054`.
-
-    Aucune vérification de divisibilité ici, et pour la raison qui vaut déjà pour le suisse et le
-    Big Shoot Off : un format de bibliothèque s'écrit **sans connaître le barème** du tournoi qui
-    l'appliquera. « 2 tours » est licite sur 20 volées et ne l'est pas sur 15 ; le refus se pose sur
-    l'étape d'un tournoi, jamais sur la brique réutilisable.
-
-    [ADR-0093]: ../../docs/adr/0093-une-qualification-se-decoupe-en-tours-egaux.md
+    Jumeau assumé de `api/v1/phases.DecoupageDTO` — **7ᵉ** paire, `DETTE-054`. Aucune vérification
+    de divisibilité ici, pour la raison qui vaut déjà pour le suisse et le Big Shoot Off : un
+    format de bibliothèque s'écrit **sans connaître le barème** du tournoi qui l'appliquera. « 2
+    tours » est licite sur 20 volées et ne l'est pas sur 15 ; le refus se pose sur l'étape d'un
+    tournoi.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -241,14 +206,12 @@ class DecoupageDTO(BaseModel):
 
 
 class ReglageSuisseDTO(BaseModel):
-    """Le réglage d'une étape au **système suisse** dans un format (E05US026) — le nombre de rondes.
+    """Le réglage d'une étape au **système suisse** dans un format (E05US026) — nombre de rondes.
 
-    Jumeau assumé de `api/v1/phases.ReglageSuisseDTO` — **5ᵉ** paire, `DETTE-054`.
-
-    ⚠️ **Régime brouillon** (ADR-0063), et il porte ici tout son sens : un format de bibliothèque
-    s'écrit sans connaître l'effectif, or c'est l'effectif qui borne le nombre de rondes
-    appariables sans ré-affrontement. « 5 rondes » est donc un modèle **licite** qui refusera de
-    s'appliquer à un tournoi de 5 archers — le refus tombe à l'étape, jamais sur la brique.
+    Jumeau assumé de `api/v1/phases.ReglageSuisseDTO` — **5ᵉ** paire, `DETTE-054`. ⚠️ **Régime
+    brouillon** (ADR-0063), et il porte ici tout son sens : un format s'écrit sans connaître
+    l'effectif, or c'est lui qui borne le nombre de rondes appariables. « 5 rondes » est un modèle
+    **licite** qui refusera de s'appliquer à un tournoi de 5 archers.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -266,13 +229,10 @@ class ReglageSuisseDTO(BaseModel):
 class ReglageCollineDTO(BaseModel):
     """Le réglage d'une étape de **colline** dans un format (E05US027) — manches et portée.
 
-    Jumeau assumé de `api/v1/phases.ReglageCollineDTO` — **8ᵉ** paire, `DETTE-054`.
-
-    ⚠️ **Régime brouillon** (ADR-0063), et il porte ici le même sens que chez le suisse : un format
-    de bibliothèque s'écrit sans connaître l'effectif, or c'est l'effectif qui borne la portée de
-    défi (elle doit rester strictement inférieure au nombre d'archers, sans quoi « chacun défie
-    n'importe qui »). « Portée 3 » est donc un modèle **licite** qui refusera de s'appliquer à un
-    tournoi de 3 archers — le refus tombe à l'étape, jamais sur la brique.
+    Jumeau assumé de `api/v1/phases.ReglageCollineDTO` — **8ᵉ** paire, `DETTE-054`. ⚠️ **Régime
+    brouillon** (ADR-0063), même sens que chez le suisse : c'est l'effectif qui borne la portée de
+    défi (strictement inférieure au nombre d'archers, sans quoi « chacun défie n'importe qui »), et
+    un format s'écrit sans le connaître. Le refus tombe à l'étape, jamais sur la brique.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -293,15 +253,11 @@ class ReglageCollineDTO(BaseModel):
 class ReglagePoulesDTO(BaseModel):
     """Le réglage d'une étape de **poules** dans un format (E05US023, ADR-0083 §4).
 
-    Jumeau assumé de `api/v1/phases.ReglagePoulesDTO` — même notion, deux ressources distinctes,
-    pour la raison déjà tranchée sur `SourceDTO` et `ProfondeurDTO`. C'est la **3ᵉ** paire de
-    jumeaux entre ces deux routeurs : le seuil du « remède structurel » de `CLAUDE.md` est atteint,
-    et l'extraction est inscrite à `DETTE-054` plutôt que faite ici, où elle noierait le diff.
-
-    ⚠️ **Régime brouillon** (ADR-0063), comme `profondeur` : un réglage de poules posé sur une
-    élimination directe s'enregistre dans un format et n'est refusé qu'à `pour_tournoi`
-    (`ReglageDePoulesInvalide`). Les incohérences **internes** du réglage (taille < 2, plus de
-    qualifiés que de membres), elles, sont refusées ici même en 422 — `ReglageDePoules` les porte.
+    Jumeau assumé de `api/v1/phases.ReglagePoulesDTO` — **3ᵉ** paire, donc le seuil du remède
+    structurel est atteint : l'extraction est inscrite à `DETTE-054` plutôt que faite ici. ⚠️
+    **Régime brouillon** (ADR-0063) : un réglage de poules posé sur une élimination directe
+    s'enregistre et n'est refusé qu'à `pour_tournoi`. Les incohérences **internes**, elles, sont
+    refusées ici même en 422 — `ReglageDePoules` les porte.
     """
 
     taille_visee: int
@@ -343,16 +299,11 @@ class ReglagePoulesDTO(BaseModel):
 class ArretProgrammeDTO(BaseModel):
     """Une **pause programmée** d'une étape de format (E05US033, ADR-0091).
 
-    Jumeau assumé de `api/v1/phases.ArretProgrammeDTO` — `DETTE-054`, élargie.
-
-    ⚠️ **Régime brouillon, et il porte tout son sens ici** : « après le tour 5 » est applicable à un
-    suisse de 7 rondes et **inerte** à un suisse de 5. Comme le nombre de rondes appariables, la
-    validité dépend d'un nombre de tours qu'un format de bibliothèque ne connaît pas au moment où on
-    l'écrit. Le refus tombe sur l'`EtapeDeroule` d'un tournoi, là où l'effectif est déclaré.
-
-    ⚠️ **Présent ici parce que son absence rejouerait le défaut de `barrage_jusqu_au`** : capturer
-    un tournoi en format perdrait ses pauses **en silence** (cf. `ModelePhase.barrage_jusqu_au`,
-    dont la docstring raconte l'épisode). Le dépôt a déjà payé cette leçon une fois.
+    Jumeau assumé de `api/v1/phases.ArretProgrammeDTO` — `DETTE-054`, élargie. ⚠️ **Régime
+    brouillon** : « après le tour 5 » est applicable à un suisse de 7 rondes et **inerte** à un de
+    5, et un format ne connaît pas ce nombre. ⚠️ **Présent ici parce que son absence rejouerait le
+    défaut de `barrage_jusqu_au`** : capturer un tournoi en format perdrait ses pauses **en
+    silence**. Le dépôt a déjà payé cette leçon une fois.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -369,12 +320,12 @@ class ArretProgrammeDTO(BaseModel):
 
 
 class EtapeDTO(BaseModel):
-    # DETTE-081 — ce DTO ne déclare **pas** `barrage_jusqu_au`, que `ModelePhase` porte pourtant et
-    # que le repository persiste. Le `PUT` étant une édition **totale**, éditer un format **efface**
-    # le seuil de barrage qu'il portait, en 200 et sans un mot. Antérieur à E16US002, découvert par
-    # l'axe adversarial de sa revue et reproduit par exécution. ⚠️ Le mode de panne est structurel :
-    # tout champ de `ModelePhase` absent d'ici subit le même sort — la résorption commence par un
-    # inventaire des deux listes, pas par l'ajout d'un champ.
+    # DETTE-081 — ce DTO ne déclare **pas** `barrage_jusqu_au`, que `ModelePhase` porte pourtant
+    # et que le repository persiste. Le `PUT` étant une édition **totale**, éditer un format
+    # **efface** le seuil de barrage qu'il portait, en 200 et sans un mot. ⚠️ Le mode de panne est
+    # structurel : tout champ de `ModelePhase` absent d'ici subit le même sort — la résorption
+    # commence par un inventaire des deux listes, pas par l'ajout d'un champ.
+
     """Un modèle de phase dans un format — **ni statut, ni tournoi** (ADR-0060 §5).
 
     L'absence de ces deux champs n'est pas un oubli du DTO : ils n'existent pas sur le modèle, et
@@ -385,16 +336,12 @@ class EtapeDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
     """⚠️ **Seul régime strict du projet, et c'est délibéré** (E05US010, ADR-0061).
 
-    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici, le champ d'entrée
-    a été **renommé** (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne
-    forme
-    verrait sa clé silencieusement ignorée. Et comme le `PUT` est une édition **totale**, il ne
-    perdrait pas seulement sa saisie — il **écraserait** la composition existante par une liste
-    vide,
-    en 200. Le déploiement rend le cas réel : une trentaine de tablettes personnelles, une SPA
-    servie
-    depuis leur cache, aucun versionnage de bundle qui garantisse qu'elles rechargent le jour J.
-    Mieux vaut un 422 explicite qu'une destruction muette."""
+    Les 31 autres routeurs laissent Pydantic **ignorer** les champs inconnus. Ici le champ d'entrée
+    a été renommé (`source` → `sources`) : sans cette garde, un client resté sur l'ancienne forme
+    verrait sa clé ignorée — et comme le `PUT` est une édition **totale**, il **écraserait** la
+    composition existante par une liste vide, en 200. Une trentaine de tablettes personnelles
+    servent une SPA depuis leur cache : mieux vaut un 422 explicite qu'une destruction muette.
+    """
 
     ordre: int
     type: TypePhase
@@ -438,33 +385,21 @@ class EtapeDTO(BaseModel):
     titre: str | None = Field(default=None, max_length=80)
     """Le **libellé** de cette étape (E16US002) — `null` = aucun.
 
-    ⚠️ **Présent ici pour la même raison qu'`arrets` juste au-dessus** : sans lui, promouvoir un
-    déroulé en format perdrait ses titres **en silence**, et le format rejoué l'année suivante
-    remonterait des phases anonymes. C'est le défaut `barrage_jusqu_au` que ce fichier documente
-    déjà deux fois — la troisième aurait été gratuite.
-
-    Borné à 80 comme son jumeau de `api/v1/phases`. ⚠️ **Ce n'est PAS une paire de plus au sens de
-    `DETTE-054`**, et une première rédaction l'affirmait à tort (relevé par deux axes de revue) :
-    `titre` est un champ ajouté aux deux `EtapeDTO` **racines**, que cette dette exclut nommément de
-    son remède (« ne pas fusionner les deux `EtapeDTO` : ce sont les **feuilles** qui sont
-    identiques, pas les racines »). Un marqueur qui annonce un élargissement absent du registre
-    pousse au mauvais geste — c'est le défaut que `DETTE-054` consigne déjà, en sens inverse, pour
-    E05US028."""
+    ⚠️ **Présent ici pour la même raison qu'`arrets`** : sans lui, promouvoir un déroulé en format
+    perdrait ses titres **en silence**. Borné à 80 comme son jumeau de `api/v1/phases`. ⚠️ Ce n'est
+    **pas** une paire de plus au sens de `DETTE-054` : `titre` est ajouté aux deux `EtapeDTO`
+    **racines**, que cette dette exclut nommément de son remède (« ce sont les **feuilles** qui
+    sont identiques, pas les racines »).
+    """
 
     def vers_modele(self) -> ModelePhase:
         """Traduit le DTO en agrégat de domaine.
 
-        ⚠️ **Aucun invariant d'étape n'est revérifié ici depuis E01US024** (ADR-0063). Cette
-        docstring promettait l'inverse — « une étape incohérente lève une `DomainError` → 422 » —
-        et c'est précisément la garde que l'US a **déplacée** : `ModelePhase` n'a plus
-        aucun **invariant** à la construction. ⚠️ Il porte depuis E16US002 un `__post_init__`, mais
-        qui **normalise sans valider** (le seul titre) — ne pas y glisser de garde en croyant être
-        le premier : une première rédaction de cette docstring disait « n'existe plus » et le
-        laissait croire. Un brouillon incohérent s'enregistre, `GET /formats/{id}/diagnostic` dit
-        ce qui cloche et `PUT /tournois/{id}/format` refuse. Les **value objects** conservent, eux,
-        leurs
-        invariants (`BaremeQualification.creer`, `GrainValidation.creer`, `SourcePhase`) : une
-        donnée **malformée** reste un 422, seule la **composition** est tolérée incomplète.
+        ⚠️ **Aucun invariant d'étape n'est revérifié ici depuis E01US024** (ADR-0063) :
+        `ModelePhase` n'a plus aucun invariant à la construction. Il porte depuis E16US002 un
+        `__post_init__` qui **normalise sans valider** — ne pas y glisser de garde en croyant être
+        le premier. Les **value objects** conservent, eux, leurs invariants : une donnée
+        **malformée** reste un 422, seule la **composition** est tolérée incomplète.
         """
         return ModelePhase(
             ordre=self.ordre,
@@ -947,13 +882,10 @@ async def simuler_format(
     """Joue le format sur N archers fictifs et rend ce qu'il produit (**action admin**).
 
     **Hors de la file d'écriture**, délibérément (ADR-0063 §6) : la simulation n'écrit rien de
-    persistant — elle tourne de bout en bout sur des adapters in-memory (ADR-0054), et rien n'y mène
-    à SQLite. La faire passer par le writer unique bloquerait toutes les écritures du tournoi
-    pendant plusieurs secondes, pour un calcul qui ne touche pas la base. Elle part donc au
-    threadpool, comme une lecture.
-
-    400 si l'effectif sort des bornes de service, 404 si le format n'existe pas, 422 s'il porte
-    une anomalie bloquante (on ne simule pas un déroulé qu'aucun tournoi ne pourrait recevoir).
+    persistant — elle tourne sur des adapters in-memory (ADR-0054). La faire passer par le writer
+    unique bloquerait toutes les écritures du tournoi pendant plusieurs secondes pour un calcul qui
+    ne touche pas la base. 400 si l'effectif sort des bornes, 404 si le format n'existe pas, 422
+    s'il porte une anomalie bloquante.
     """
     service: ServiceSimulationFormat = request.app.state.service_simulation_format
     resultat = await run_in_threadpool(service.simuler, format_id, requete.effectif, requete.graine)

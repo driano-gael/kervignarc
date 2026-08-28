@@ -63,23 +63,11 @@ class ArcherIntrouvable(ApplicationError):
 class ArcherEngage(ApplicationError):
     """Suppression suspendue : l'archer est placé ou a déjà tiré (E02US003) → 409.
 
-    **Un signalement, pas un refus** — 3ᵉ de la famille, même protocole qu'`HomonymeArcher`
-    (ADR-0015) : la machine constate un fait lourd, elle ne sait pas ce qu'il signifie. L'admin
-    tranche via `ServiceArchers.supprimer(autoriser_suppression_engage=True)`, et la suppression
-    confirmée **efface les scores et le placement** — définitivement, sans journal (l'audit est
-    E10US005).
-
-    **Ce signalement n'est pas la façon d'enregistrer un abandon.** Un archer qui arrête en cours
-    d'épreuve n'est pas une donnée à effacer : c'est un **forfait tracé** (daté, attribué, motif,
-    réversible, audité) — E04US015 / ADR-0050, ex-E12US004 —, qui **préserve** ses flèches. La
-    suppression, elle, ne sert que l'**erreur de saisie** (cet archer n'aurait jamais dû être
-    inscrit) et le **cas majeur**.
-    D'où le message, qui dit ce qui sera détruit plutôt que d'inviter à cliquer.
-
-    **Refus définitif d'abord retenu, renversé le 16/07/2026** (arbitrage métier). Il tenait la
-    place du forfait sans en être un : l'archer devenait indéboulonnable à vie et le message
-    prescrivait un geste — « retirez-le de son placement » — qu'aucun écran n'offrait. Le vrai
-    besoin était de **séparer** forfait et suppression, pas de refuser la seconde.
+    **Un signalement, pas un refus** — même protocole qu'`HomonymeArcher` (ADR-0015) : l'admin
+    tranche via `autoriser_suppression_engage`, et la suppression confirmée **efface scores et
+    placement**. ⚠️ **Ce n'est pas la façon d'enregistrer un abandon** : celui-ci est un **forfait
+    tracé** qui **préserve** les flèches (E04US015, ADR-0050). Le refus définitif d'abord retenu a
+    été renversé le 16/07/2026 : il tenait la place du forfait sans en être un.
     """
 
     code = "archer_engage"
@@ -100,13 +88,10 @@ class BlasonIntrouvable(ApplicationError):
 class DuelDesynchronise(ApplicationError):
     """Le tir enregistré oppose d'**autres** duellistes que ceux recalculés (E04US013) → 409.
 
-    Le tableau est reconstruit du classement à chaque opération (ADR-0048) ; le tir, lui, est
-    **ancré** sur l'identité des duellistes qui l'ont produit (ADR-0049 §4). Si le classement bouge
-    depuis le tir (correction de qualification…), les occupants recalculés du match divergent des
-    enregistrés : on **refuse** d'écrire dessus plutôt que d'attribuer le score en silence
-    à d'autres archers (« un score faux et silencieux est pire qu'une erreur visible »). Conflit
-    d'état, pas un 404 : le tir existe, mais il ne correspond plus à ce match. Le gel du classement
-    pendant la phase de tableau relève du cycle de vie (E01US017/E12US002).
+    Le tableau est reconstruit du classement à chaque opération (ADR-0048) ; le tir est **ancré**
+    sur l'identité des duellistes qui l'ont produit (ADR-0049 §4). Si le classement bouge, on
+    **refuse** d'écrire plutôt que d'attribuer le score en silence à d'autres archers. Conflit
+    d'état et non 404 : le tir existe, il ne correspond plus à ce match.
     """
 
     code = "duel_desynchronise"
@@ -126,15 +111,13 @@ class ScoreurHorsTournoi(ApplicationError):
 
 
 class SaisieHorsCible(ApplicationError):
-    """Un poste tente de saisir pour un archer qui n'est pas sur **sa** cible (E10US007). → 403.
+    """Un poste saisit pour un archer qui n'est pas sur **sa** cible (E10US007) → 403.
 
-    **Refus, pas signalement, et surtout pas 401** : le jeton de poste est valide (l'identité par
-    le *lieu* est établie, `D-13`, ADR-0030), mais il n'autorise la saisie que pour la cible qu'il
-    sert. Un poste sur une **autre** cible — ou d'un **autre tournoi**, les numéros de cible se
-    répètent d'un tournoi à l'autre — ou visant un archer **non placé** (sur aucune cible) est
-    éconduit. C'est le **premier 403** du projet : « authentifié mais interdit pour cette
-    ressource » n'est ni un défaut d'authentification (401) ni un conflit d'état (409). L'admin,
-    lui, n'a aucune contrainte de cible (E10US001) : ce refus ne vise que l'identité *poste*.
+    **Refus, pas signalement, et surtout pas 401** : le jeton de poste est valide (identité par le
+    *lieu*, `D-13`, ADR-0030) mais n'autorise que sa cible. ⚠️ Les numéros de cible se répètent
+    d'un tournoi à l'autre, donc un poste d'un **autre tournoi** est éconduit aussi. Premier 403 du
+    projet. L'admin n'a aucune contrainte de cible (E10US001) : ce refus ne vise que l'identité
+    *poste*.
     """
 
     code = "saisie_hors_cible"
@@ -176,22 +159,11 @@ class ForfaitTournoiTermine(ApplicationError):
 class PhaseEnPause(ApplicationError):
     """La phase est **en pause** : on n'y saisit ni ne valide de résultat neuf (E05US033) → 409.
 
-    ⚠️ **Cette garde n'existait pas avant E05US033**, et son absence était le défaut central que le
-    cadrage du 19/08/2026 a mis au jour : `StatutPhase.EN_PAUSE` (ADR-0045 §1) ne gelait **rien** —
-    ni la saisie, ni la validation, ni le routage. Mettre une phase en pause changeait un libellé
-    dans le suivi, et les archers continuaient de tirer. La docstring de
-    `ServiceTournois.mettre_en_pause` affirmait pourtant « la saisie s'arrête jusqu'à `reprendre` »
-    : c'était faux. Cf. `DETTE-073` pour le volet **tournoi**, resté cosmétique et hors du périmètre
-    de cette US (autre maille, ADR-0026 §3).
-
-    ⚠️ **Ce refus ne couvre pas la correction**, et c'est un CA explicite du commanditaire :
-    `EN_PAUSE` gèle un résultat **neuf**, jamais la **rectification** d'un score déjà saisi. La
-    pause est précisément le moment où l'on relit les feuilles et où l'on découvre les erreurs ;
-    interdire de les réparer ferait de chaque pause un cul-de-sac. `ServiceSaisie.corriger_volee`
-    n'a donc **pas** cette garde, et ce n'est pas un oubli.
-
-    409 et non 403 : ce n'est pas une question de droit mais d'**état** — le même geste redeviendra
-    licite dès la reprise, sans que rien ne change côté appelant.
+    ⚠️ **Cette garde n'existait pas avant E05US033** : `StatutPhase.EN_PAUSE` ne gelait **rien**,
+    et les archers continuaient de tirer (cf. `DETTE-073` pour le volet tournoi). ⚠️ **Ce refus ne
+    couvre pas la correction**, CA explicite du commanditaire : la pause gèle un résultat **neuf**,
+    jamais la rectification — `corriger_volee` n'a donc pas cette garde. 409 et non 403 : c'est un
+    **état**, le même geste redevient licite à la reprise.
     """
 
     code = "phase_en_pause"

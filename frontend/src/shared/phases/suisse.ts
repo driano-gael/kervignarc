@@ -1,16 +1,11 @@
 // Le **modèle** du réglage de système suisse (E05US030) — logique pure, aucun React.
 //
-// Séparé du composant pour la raison habituelle (`poules.ts`, `bigShootOff.ts`) : `react-refresh`
-// interdit à un module de rendu d'exporter aussi des fonctions, et la conversion « ce que l'écran
-// affiche ↔ ce qui part au serveur » se teste ici sans monter de DOM.
-//
-// ⚠️ **`rondesMaximales` est un miroir assumé du domaine** (`domain/suisse.py::rondes_maximales`),
-// au même titre que `paliers` pour le Big Shoot Off et le serpent pour les poules. Le serveur fait
-// autorité — il **borne à la lecture** (`ServiceSuisse.etat` rend `rondes_maximales`) et
-// `EtapeDeroule` **refuse** une étape dont l'effectif déclaré ne permet pas le nombre de rondes.
-// Mais l'atelier compose un format de **bibliothèque**, sans tournoi ni phase posée : il n'y a
-// aucune lecture à appeler. La règle tient en une ligne, elle est testée ici, et sa dérive ne
-// produirait qu'un avertissement faux — jamais un tournoi faux.
+// Séparé du composant pour la raison habituelle : `react-refresh` interdit à un module de rendu
+// d'exporter aussi des fonctions, et la conversion « écran ↔ serveur » se teste ici sans DOM. ⚠️
+// **`rondesMaximales` est un miroir assumé du domaine** (`domain/suisse.py`). Le serveur fait
+// autorité — il borne à la lecture et `EtapeDeroule` refuse une étape impossible —, mais l'atelier
+// compose un format de **bibliothèque**, sans tournoi ni phase posée : aucune lecture à appeler. Sa
+// dérive ne produirait qu'un avertissement faux, jamais un tournoi faux.
 
 /** Le réglage tel que l'API le transporte, miroir de `ReglageSuisseDTO`. */
 export interface ReglageSuisse {
@@ -57,16 +52,13 @@ export function estValide(etat: EtatSuisse): boolean {
   return versReglage(etat) !== undefined
 }
 
-/**
- * Combien de rondes un effectif autorise sans qu'aucune paire ne se répète — miroir de
+/** Combien de rondes un effectif autorise sans qu'aucune paire ne se répète — miroir de
  * `domain/suisse.py::rondes_maximales`.
  *
  * À effectif **pair**, chacun a `n-1` adversaires et joue à chaque ronde : `n-1` rondes. À effectif
  * **impair**, chacun a encore `n-1` adversaires mais **chôme une fois** (le bye tourne), donc il
- * faut `n` rondes pour les rencontrer tous.
- *
- * ⚠️ Sous deux tireurs, la réponse honnête est **0** et non 1 : aucune ronde n'est appariable. Le
- * service rend le même 0 sur une phase vide.
+ * faut `n` rondes. ⚠️ Sous deux tireurs la réponse honnête est **0** et non 1 : aucune ronde n'est
+ * appariable, et le service rend le même 0 sur une phase vide.
  */
 export function rondesMaximales(effectif: number): number {
   if (!Number.isInteger(effectif) || effectif < 2) return 0
@@ -85,15 +77,12 @@ export function decrireBorne(effectif: number, nbRondes: number): string {
   return decrireBorneConnue(effectif, nbRondes, rondesMaximales(effectif))
 }
 
-/**
- * La **même phrase**, mais sur une borne que l'appelant connaît déjà — celle du serveur.
+/** La **même phrase**, mais sur une borne que l'appelant connaît déjà — celle du serveur.
  *
- * ⚠️ Cette variante existe pour une raison précise (correctif de revue) : l'écran de saisie a
- * `rondes_maximales` dans sa réponse d'état, et `api.ts` documente qu'il ne doit **jamais** le
- * recalculer — deux arithmétiques pour une même règle divergent tôt ou tard. Appeler `decrireBorne`
- * là-bas aurait rejoué le miroir au lieu de lire l'autorité ; réécrire la phrase à la main, ce qui
- * avait été fait, a produit un texte faux au cas limite (« 1 archers », et « sans que deux archers
- * se rencontrent deux fois » comme raison alors que la vraie est « il en faut au moins deux »).
+ * ⚠️ Cette variante existe pour une raison précise : l'écran de saisie a `rondes_maximales` dans sa
+ * réponse d'état et ne doit **jamais** le recalculer — deux arithmétiques pour une même règle
+ * divergent tôt ou tard. Réécrire la phrase à la main, ce qui avait été fait, a produit un texte
+ * faux au cas limite (« 1 archers », et une raison qui n'était pas la bonne).
  */
 export function decrireBorneConnue(effectif: number, nbRondes: number, maximum: number): string {
   if (maximum === 0) {

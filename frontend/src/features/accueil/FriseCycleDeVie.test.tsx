@@ -1,15 +1,11 @@
 // Tests de l'**avertissement d'effectif** de la frise (E05US021).
 //
-// Le CA « visible avant le clic » est la promesse centrale de l'US — `docs/fonctionnel/E05US021.md`
-// l'appelle « l'étape la plus importante de la fiche ». Elle était livrée sans aucun test front.
-//
-// Trois comportements non triviaux se jouent ici, et chacun a un mode de défaillance silencieux :
-//  - l'encart ne doit apparaître **qu'avant le lancement** (le rappeler sur un tournoi en cours
-//    serait un reproche sans action possible — et la fiche liste ce cas comme un défaut) ;
-//  - la **cause** se lit sur `origine`, jamais sur `ordre_phase === null` : c'est le défaut relevé
-//    en revue, où le produit annonçait une règle de club là où il n'y en avait aucune ;
-//  - une lecture en échec ne doit **rien** afficher : l'avertissement est un confort, il ne doit pas
-//    transformer un hoquet réseau en alarme.
+// Le CA « visible avant le clic » est la promesse centrale de l'US, et elle était livrée sans aucun
+// test front. Trois comportements non triviaux, chacun à mode de défaillance silencieux : l'encart
+// ne doit apparaître **qu'avant le lancement** ; la **cause** se lit sur `origine`, jamais sur
+// `ordre_phase === null` (le défaut relevé en revue, où le produit annonçait une règle de club
+// inexistante) ; et une lecture en échec ne doit **rien** afficher — l'avertissement est un
+// confort, pas une alarme sur hoquet réseau.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -64,12 +60,10 @@ async function encartDe(statut: StatutTournoi) {
 
 /** Monte la frise et vérifie qu'**aucun** encart n'apparaît — pour les cas d'absence.
  *
- * ⚠️ Deux pièges, et les deux ont été rencontrés. Attendre un élément toujours présent (la frise
- * elle-même) rend la main **avant** la query : « pas d'encart » serait vrai par construction, et le
- * test ne prouverait rien. Mais attendre la query puis vider les microtâches ne suffit pas non
- * plus — sous charge, le re-rendu peut arriver après, ce qui rendait le test **instable** en suite
- * complète. On laisse donc `waitFor` retenter jusqu'à ce que la query soit *settled*, puis on
- * conclut : à ce stade, un encart dû serait monté.
+ * ⚠️ Deux pièges, tous deux rencontrés : attendre un élément toujours présent rend la main
+ * **avant** la query, donc « pas d'encart » serait vrai par construction ; mais attendre la query
+ * puis vider les microtâches ne suffit pas non plus — sous charge le re-rendu peut arriver après,
+ * ce qui rendait le test **instable**. On laisse donc `waitFor` retenter jusqu'au *settled*.
  */
 async function pasDEncart(statut: StatutTournoi) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

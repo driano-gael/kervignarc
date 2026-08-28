@@ -1,12 +1,8 @@
 """Frontière API — plan de duels d'une phase de tableau (E03US009, ADR-0048).
 
-La **lecture** (`GET`) renvoie le plan **persisté** des duellistes d'une phase d'élimination :
-cibles remplies + réserve (dans `conflits`) + signal **côte à côte** (`adjacence_non_garantie` par
-cible, `duels_separes` pour la bannière). Directe hors boucle (`run_in_threadpool`, règle 7). Les
-**écritures** — régénérer, déplacer/échanger/mettre en réserve, placer les restants — passent par la
-**file** (writer unique, ADR-0005), réservées à l'admin (`exiger_admin`). DTO **distincts** des
-value objects du domaine (règle 6) : `PlanDeDuels` n'est jamais exposé tel quel. Les feuilles
-`PlacementReponse`/`ConflitReponse` sont partagées avec le plan de cibles (même sens métier).
+Le `GET` renvoie le plan **persisté** : cibles remplies, réserve (`conflits`) et signal côte à côte
+(`adjacence_non_garantie` par cible, `duels_separes` pour la bannière). `PlacementReponse` et
+`ConflitReponse` sont partagées avec le plan de cibles — même sens métier, pas une commodité.
 """
 
 from __future__ import annotations
@@ -28,14 +24,12 @@ router = APIRouter(prefix="/api/v1", tags=["placement-duels"])
 class CiblePlaceeDuelReponse(BaseModel):
     """Une cible du plan de duels : rang, plafond, duellistes posés, et le drapeau d'adjacence.
 
-    `adjacence_non_garantie` (E03US009, ADR-0048) : `true` quand la cible porte un duelliste dont
-    l'adversaire n'est **pas** côte à côte (autre cible ou position non adjacente). Le front en fait
-    un badge ambre ; l'admin peut ajuster à la main. Dérivé, jamais persisté.
-
-    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage du
-    tournoi interdit de mêler — un plan de duels **posé avant** l'activation du réglage. Même
-    régime dérivé, et même signal que sur le plan de cibles : le cloisonnement vaut pour la salle,
-    pas pour un écran."""
+    `adjacence_non_garantie` (E03US009, ADR-0048) : `true` quand un duelliste posé n'a pas son
+    adversaire côte à côte. Le front en fait un badge ambre ; dérivé, jamais persisté.
+    `cloisonnement_non_respecte` (E03US007) : `true` quand la cible mêle ce que le réglage interdit
+    — un plan **posé avant** l'activation du réglage. Même régime dérivé, et même signal que sur le
+    plan de cibles : le cloisonnement vaut pour la salle, pas pour un écran.
+    """
 
     index: int
     capacite: int

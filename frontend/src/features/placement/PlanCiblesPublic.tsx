@@ -1,18 +1,11 @@
-// Vue **publique en lecture seule** du plan de cibles (E07US001, CA « plans de cibles »). Un
-// spectateur ou un archer choisit un **départ** (créneau) et voit, cible par cible, qui tire à quelle
-// position. Aucune authentification, aucune interaction : c'est l'écran d'ajustement `Placement.tsx`
-// (E03US004) débarrassé du glisser-déposer, des mutations admin et de la réserve.
+// Vue **publique en lecture seule** du plan de cibles (E07US001) : l'écran d'ajustement
+// `Placement.tsx` débarrassé du glisser-déposer, des mutations admin et de la réserve.
 //
-// Le plan et la liste des archers sont de l'état **serveur** (React Query) : la diffusion temps réel
-// post-commit (E04US009) invalide le cache → la vue se met à jour **toute seule** après un
-// changement de placement (CA « live »), sans action du lecteur.
-//
-// Les noms sont résolus côté client (jointure `archer_id → nom`) : le DTO du plan n'expose que des
-// identifiants (voir `planConsultation.ts`). Même approche que `Placement.tsx`, factorisée dans la
-// fonction pure pour rester testable.
-//
-// Nommé `PlanCiblesPublic` (et non `PlanConsultation`) pour ne pas entrer en collision de casse avec
-// la logique pure `planConsultation.ts` sur les systèmes de fichiers insensibles à la casse (Windows).
+// Le plan et la liste des archers sont de l'état **serveur** : la diffusion temps réel post-commit
+// invalide le cache, donc la vue se met à jour **toute seule**. Les noms sont résolus côté client —
+// le DTO n'expose que des identifiants. ⚠️ Nommé `PlanCiblesPublic` et non `PlanConsultation` pour
+// ne pas entrer en collision de casse avec `planConsultation.ts` sur un système de fichiers
+// insensible à la casse (Windows).
 
 import { useMemo, useState } from 'react'
 import { useArchers } from '../archers/hooks'
@@ -95,17 +88,11 @@ export function PlanCiblesPublic({
 
 /** Le plan de cibles **sans sélecteur**, pour une surface sans interaction (écran de salle).
  *
- * Deux défauts corrigés en revue, et le second était le vrai :
- *
- * 1. `PlanCiblesPublic` embarque un `<select>` que personne ne peut actionner sur un écran projeté
- *    — le CA d'E07US004 dit « **aucune interaction** » ;
- * 2. surtout, il retombe sur le **premier** départ. Le plan affiché restait donc celui du départ 1
- *    toute la journée, y compris quand le départ 3 était sur le pas de tir — sur *le* canal censé
- *    répondre à « où je tire ».
- *
- * On choisit ici le départ **réellement en cours** : le premier `lance` (E12US008), sinon le
- * premier encore ouvert, sinon le premier tout court. Un départ clos n'intéresse plus personne dans
- * la salle.
+ * Deux défauts corrigés en revue, et le second était le vrai : `PlanCiblesPublic` embarque un
+ * `<select>` que personne ne peut actionner sur un écran projeté, et surtout il retombe sur le
+ * **premier** départ — le plan affiché restait celui du départ 1 toute la journée. On choisit ici
+ * le départ **réellement en cours** : le premier `lance`, sinon le premier ouvert, sinon le
+ * premier.
  */
 export function PlanCiblesDeSalle({ tournoiId }: { tournoiId: number }) {
   const departs = useDeparts(tournoiId)

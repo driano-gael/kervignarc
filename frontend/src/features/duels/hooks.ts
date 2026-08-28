@@ -1,13 +1,11 @@
 // Hooks React Query de la feature « plan de duels » (E03US009, ADR-0048).
 //
-// Le plan de duels d'une phase est de l'état **serveur** (lecture) ; régénérer, déplacer et placer
-// les restants sont des **mutations** qui invalident ce plan (rafraîchissement immédiat, en plus de
-// la diffusion temps réel post-commit côté serveur). Le drag cible une **inscription** : le plan
-// porte directement l'`inscription_id` de chaque duelliste (posé ou en réserve), aucune
-// correspondance à reconstituer côté client.
-//
-// Jumeau de `placement/hooks.ts`, **sans** `useImpactRegeneration` : la régénération du plan de
-// duels est directe (pas de confirmation chiffrée, ADR-0048).
+// Le plan de duels d'une phase est de l'état **serveur** ; régénérer, déplacer et placer les
+// restants sont des **mutations** qui l'invalident (en plus de la diffusion temps réel
+// post-commit). Le drag cible une **inscription** : le plan porte directement l'`inscription_id` de
+// chaque duelliste, aucune correspondance à reconstituer côté client. Jumeau de
+// `placement/hooks.ts`, **sans** `useImpactRegeneration` — la régénération du plan de duels est
+// directe (ADR-0048).
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {

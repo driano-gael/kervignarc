@@ -1,14 +1,7 @@
 """Frontière API — listes imprimables d'organisation en PDF (E09US003).
 
-Deux endpoints de **lecture** (aucune écriture DB : ils composent à la demande à partir du plan et
-des inscriptions) → exécutés hors boucle événementielle (`run_in_threadpool`, règle 7). Réservés à
-l'admin (`exiger_admin`, E10US001). Renvoient un **binaire** `application/pdf` avec
-`Content-Disposition: attachment` pour déclencher le téléchargement.
-
-La liste de placement accepte deux paramètres de requête : `tri` (`cible` par défaut, ou `nom`) et
-`depart_id` (optionnel, pour n'imprimer qu'un départ). Les gardes 404 (`TournoiIntrouvable`,
-`DepartIntrouvable`) remontent du service et sont traduites à la frontière (`api/erreurs.py`) — pas
-de gestion d'erreur locale (règle 5).
+Lecture seule, admin, `application/pdf` en pièce jointe ; `tri` (`cible` | `nom`) et `depart_id`
+restreignent la liste de placement. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations

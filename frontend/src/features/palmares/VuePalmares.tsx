@@ -1,12 +1,10 @@
 // Vue « palmarès » (E06US004) — le **classement final** du tournoi, podiums en tête.
 //
 // Un seul composant pour trois surfaces, comme `VueAffectations` (E07US008) : l'appli publique
-// (interactive : filtre + export), l'écran de salle (projeté, aucune interaction) et l'admin. Les
-// dessiner séparément les ferait diverger sur la seule chose qui compte — qui a gagné.
-//
-// **Les podiums d'abord, le classement ensuite** : c'est l'ordre de lecture réel. On cherche
-// d'abord qui monte sur la boîte ; le détail des 120 rangs sert après. Le PDF suit le même ordre,
-// délibérément — écran et papier doivent se ressembler assez pour qu'on les compare d'un coup d'œil.
+// (interactive), l'écran de salle (projeté, sans interaction) et l'admin — les dessiner séparément
+// les ferait diverger sur la seule chose qui compte. **Les podiums d'abord, le classement ensuite**
+// : c'est l'ordre de lecture réel, et le PDF suit le même, délibérément — écran et papier doivent
+// se comparer d'un coup d'œil.
 
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'

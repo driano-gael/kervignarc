@@ -1,29 +1,11 @@
-// L'onglet **« En cours »** — ce qui se joue maintenant, quel que soit le format (E05US031,
-// ADR-0089).
+// L'onglet **« En cours »** — ce qui se joue maintenant, quel que soit le format (E05US031).
 //
-// **Pourquoi un aiguilleur et non un onglet de plus.** Le manque relevé au cadrage d'`E05US030`
-// n'était pas « une vue publique du système suisse » mais celui des **trois** formats sans arbre :
-// poules (E05US023), Big Shoot Off (E05US028) et suisse (E05US026) sont livrés jouables sans qu'un
-// seul n'atteigne jamais l'application publique. Ajouter un onglet par format aurait fait deviner
-// au spectateur lequel regarder, et laissé la moitié d'entre eux vides toute la journée.
-//
-// **Pourquoi « En cours » et non « Phases ».** `Tableau` désigne au glossaire un « arbre de matchs à
-// élimination » : garder ce libellé sur une vue qui rend aussi une poule aurait été faux (règle 3).
-// `Phase` était le mot juste du domaine, mais il demande au spectateur un vocabulaire qu'il n'a pas.
-// « En cours » ne nomme aucun format, dit ce que l'écran fait, et reste vrai quand un dixième type
-// de phase arrivera. Arbitrage du commanditaire, 18/08/2026.
-//
-// ⚠️ `# DETTE-031` **élargie par cette US** : selon le format de la phase affichée, cet onglet monte
-// `/poules/etat/`, `/suisse/etat/` ou `/big-shoot-off/etat/` — trois routes qui **rejouent la phase
-// entière** à chaque lecture, sur une surface publique donc en autant d'exemplaires qu'il y a de
-// spectateurs. Deux bornes tiennent, et elles sont volontaires : une seule route est montée à la
-// fois (celle du format courant), et **rien** n'est monté tant que l'onglet n'est pas ouvert — « En
-// cours » n'est pas l'onglet d'atterrissage, contrairement au cas d'`E16US004`. Ce qui n'est pas
-// borné est le pic de validation de fin de tour. Cf. `docs/dette.md`.
-//
-// ⚠️ **Avec l'historique, l'onglet n'est plus *strictement* « en cours »** — on peut remonter le
-// déroulé du départ. Ce qui rend le nom honnête est l'**atterrissage** : la phase qui se joue est
-// celle qu'on voit en arrivant, remonter est un geste volontaire.
+// **Un aiguilleur et non un onglet de plus** : les trois formats sans arbre étaient livrés jouables
+// sans qu'un seul n'atteigne l'appli publique, et un onglet par format aurait fait deviner au
+// spectateur lequel regarder. **« En cours » et non « Phases »** (ADR-0089) : `Tableau` désigne au
+// glossaire un arbre (règle 3) et `Phase` demande un vocabulaire que le spectateur n'a pas.
+// ⚠️ `# DETTE-031` **élargie** : une seule route de format montée à la fois, rien tant que l'onglet
+// est fermé.
 
 import { useState } from 'react'
 import { nommerType } from '../../shared/phases/catalogue'
@@ -127,20 +109,15 @@ export function VueEnCours({
         {phase.statut === 'terminee' && <span className="encours__statut"> · terminée</span>}
       </h3>
 
-      {/* CA E05US034 — **la pause se voit**, et se distingue d'un simple délai.
-          ⚠️ Le « · en pause » ci-dessus ne suffisait pas, et c'est le mode de panne que cette US
-          existe pour fermer : un spectateur qui voit la salle immobile et un écran qui n'annonce
-          rien conclut à une **panne**. Un suffixe de titre en petits caractères se lit à un mètre,
-          pas depuis les gradins ni sur l'écran projeté au fond du gymnase (≥ 1920 px, vu de loin,
-          E07US004).
-          La phrase vit dans `shared/ui/BandeauDePause` — **le même composant que l'écran de
-          salle**, qui le monte hors de sa rotation de vues (correctif de revue : voir l'en-tête
-          du composant).
-          ⚠️ **`interactif` discrimine les deux surfaces**, et c'est un correctif de 2ᵉ passe : un
-          écran de salle dont le déroulé **contient** la vue « En cours » empilait deux bandeaux
-          identiques — celui, permanent, de `MentionDePause`, et celui-ci. Sur un projecteur en
-          1,1 em, ce doublon n'est pas discret. L'écran de salle passe déjà `interactif={false}` :
-          il garde le bandeau permanent, l'onglet public garde le sien. */}
+      {/* CA E05US034 — **la pause se voit**, et se distingue d'un simple délai. Un suffixe de
+          titre en petits caractères se lit à un mètre, pas depuis les gradins ni sur l'écran
+          projeté (E07US004) : un spectateur qui voit la salle immobile et un écran muet conclut
+          à une **panne**. */}
+
+      {/* ⚠️ **`interactif` discrimine les deux surfaces** (correctif de 2ᵉ passe) : un écran de
+          salle dont le déroulé contient cette vue empilait deux bandeaux identiques — celui,
+          permanent, de `MentionDePause`, et celui-ci. En 1,1 em sur un projecteur, le doublon
+          n'est pas discret. */}
       {interactif && phase.statut === 'en_pause' && <BandeauDePause />}
 
       {/* ⚠️ `key={phase.id}` : **remonte** le composant de format à chaque changement de phase
@@ -162,16 +139,11 @@ export function VueEnCours({
 
 /** L'aiguillage proprement dit : un type de phase, une vue.
  *
- * ⚠️ **Un `switch` exhaustif et non une table**, à la différence des libellés de
- * `shared/phases/catalogue.ts`. La raison est qu'il ne s'agit pas de données mais de **composants
- * aux props différentes** : `VueTableaux` prend un `tournoiId` et résout son créneau seule,
- * `VuePoulesPublique` prend un `phaseId`. Une table les uniformiserait de force, et le premier
- * format qui demanderait une prop de plus la ferait éclater.
- *
- * ⚠️ **Le `default` ne rend jamais une page blanche.** Un type inconnu de ce bundle — serveur plus
- * récent, appli publique restée ouverte des heures sur un téléphone — est **nommé** au lieu d'être
- * ignoré. Même parti que `VueDeSalle` (`features/salle/EcranSalle.tsx`) : un écran qui montre autre
- * chose que ce qui est demandé, sans le dire, est indétectable devant une salle.
+ * ⚠️ **Un `switch` exhaustif et non une table** : il ne s'agit pas de données mais de **composants
+ * aux props différentes**, qu'une table uniformiserait de force. ⚠️ **Le `default` ne rend jamais
+ * une page blanche** : un type inconnu de ce bundle — serveur plus récent, appli restée ouverte
+ * des heures — est **nommé** au lieu d'être ignoré, car un écran qui montre autre chose sans le
+ * dire est indétectable devant une salle.
  */
 function Format({
   phase,

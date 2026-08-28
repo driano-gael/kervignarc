@@ -527,6 +527,24 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "088",
+   "introduite_par": [
+    "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "089",
+   "introduite_par": [
+    "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "087",
    "introduite_par": [
     "E16US006"
@@ -755,9 +773,9 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
-   "0098"
+   "0099"
   ],
-  "derniere": "E16US009"
+  "derniere": "E00US027"
  },
  "epics": [
   {
@@ -1338,7 +1356,9 @@ window.ATLAS.avancement = {
    "titre_story": "Sortir la logique des quatre composants XXL du front"
   },
   {
-   "adr": [],
+   "adr": [
+    "0099"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "00",
@@ -1368,6 +1388,29 @@ window.ATLAS.avancement = {
    "story": "stories/E00-socle.md",
    "titre": "Rallier le JavaScript de l'atlas à l'outillage du front (DETTE-067)",
    "titre_story": "Rallier le JavaScript de l'atlas à l'outillage du front"
+  },
+  {
+   "adr": [
+    "0004",
+    "0060",
+    "0075",
+    "0099"
+   ],
+   "dettes_introduites": [
+    "088",
+    "089"
+   ],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "✅",
+   "identifiant": "E00US027",
+   "sections": [
+    "Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Le code porte des pointeurs, pas le raisonnement",
+   "titre_story": "Le code porte des pointeurs, pas le raisonnement"
   },
   {
    "adr": [
@@ -1813,7 +1856,8 @@ window.ATLAS.avancement = {
     "0070",
     "0080",
     "0083",
-    "0095"
+    "0095",
+    "0099"
    ],
    "dettes_introduites": [
     "028",
@@ -2607,6 +2651,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0004",
     "0045",
     "0062",
     "0080",
@@ -3005,6 +3050,7 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
+    "0004",
     "0049",
     "0066",
     "0070"
@@ -3991,7 +4037,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0073",
     "0079",
-    "0089"
+    "0089",
+    "0099"
    ],
    "dettes_introduites": [
     "031"
@@ -4088,7 +4135,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0064",
     "0075",
-    "0098"
+    "0098",
+    "0099"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [
@@ -4321,8 +4369,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 127,
-  "vivantes": 163
+  "livrees": 128,
+  "vivantes": 164
  },
  "sections": [
   {
@@ -5504,6 +5552,25 @@ window.ATLAS.avancement = {
     }
    ],
    "titre": "Ce que la carte du code a révélé (16/08/2026) — ⬜ **à planifier (0/4)**"
+  },
+  {
+   "calcule": [
+    1,
+    1
+   ],
+   "compteur_ecrit": [
+    1,
+    1
+   ],
+   "lignes": [
+    {
+     "comptee": true,
+     "etat": "✅",
+     "identifiant": "E00US027",
+     "titre": "Le code porte des pointeurs, pas le raisonnement"
+    }
+   ],
+   "titre": "Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**"
   },
   {
    "calcule": [

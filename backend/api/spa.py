@@ -1,13 +1,9 @@
 """Service du build front en statique — adapter entrant (couche API ; E00US012).
 
-En production (et via l'exécutable de dev), **FastAPI sert la SPA React** (le build
-`frontend/dist/`) au **même origin** que l'API : plus besoin du proxy Vite, un seul
-serveur pour tout (base d'EPIC-11, packaging PyInstaller).
+FastAPI sert la SPA React au **même origin** que l'API : un seul serveur, pas de proxy Vite.
 
-Le montage est **conditionnel** : s'il n'y a pas de build (dépôt fraîchement cloné, job
-CI backend qui ne construit pas le front, tests), on ne monte rien — l'API reste servie
-seule. Le montage se fait **en dernier**, à la racine `/`, pour ne jamais masquer les
-routes déjà déclarées (`/api/v1/…`, `/ws`, `/health`, `/docs`).
+⚠️ Le montage est **conditionnel** (pas de build ⇒ on ne monte rien) et se fait **en dernier**, à la
+racine `/`, pour ne jamais masquer `/api/v1/…`, `/ws`, `/health` ni `/docs`.
 """
 
 from __future__ import annotations
@@ -37,15 +33,11 @@ _SEGMENTS_SERVEUR = frozenset({"api", "ws", "health", "docs", "redoc", "openapi.
 def _premier_segment(path: str) -> str:
     """Premier segment du chemin demandé, normalisé.
 
-    Deux normalisations, chacune pour un piège vérifié :
-
-    - **le séparateur** — `StaticFiles` construit son `path` avec `os.path.normpath`, qui rend le
-      chemin avec des antislashs **sur Windows**, là où les segments sont écrits en `/`. Comparer
-      brut fait échouer le garde sur Windows *et nulle part ailleurs* : la CI (Linux) resterait
-      verte pendant que le poste de la table d'organisation renverrait une page HTML en 200 sur un
-      appel d'API inexistant ;
-    - **la casse** — le routage FastAPI y est sensible, donc `/API/v1/x` n'est **aucune** route :
-      c'est un 404, pas une adresse de SPA. Sans repli de casse, elle recevait `index.html` en 200.
+    Deux normalisations, chacune pour un piège vérifié. ⚠️ **Le séparateur** : `StaticFiles`
+    construit son `path` avec `os.path.normpath`, qui rend des antislashs **sur Windows** —
+    comparer brut fait échouer le garde sur Windows *et nulle part ailleurs*, la CI (Linux) restant
+    verte. ⚠️ **La casse** : le routage FastAPI y est sensible, donc `/API/v1/x` n'est aucune route
+    — sans repli, elle recevait `index.html` en 200.
     """
     return path.replace(os.sep, "/").replace("\\", "/").lstrip("/").split("/", 1)[0].lower()
 
@@ -53,15 +45,11 @@ def _premier_segment(path: str) -> str:
 def _demande_une_page(scope: Scope) -> bool:
     """Le client demande-t-il une **page** (navigation) plutôt qu'une ressource ?
 
-    C'est ce qui referme la classe entière au lieu d'allonger une liste à maintenir : un navigateur
-    qui **navigue** envoie `Accept: text/html…`, alors qu'un appel d'API (`application/json`, `*/*`)
-    ou une ressource (`image/svg+xml` pour un favicon) ne le fait pas.
-
-    Sans ce filtre, tout fichier de `frontend/public/` — que Vite copie **à la racine de `dist/`,
-    hors `assets/`** : `favicon.svg`, `icons.svg`, et demain un `robots.txt` ou une police —
-    recevrait `index.html` en 200 avec un type MIME faux dès qu'il manquerait, ce que le navigateur
-    signale par une erreur obscure. Une liste de préfixes ne peut pas suivre le contenu d'un
-    répertoire.
+    Ce filtre referme la classe entière au lieu d'allonger une liste : un navigateur qui
+    **navigue** envoie `Accept: text/html…`, un appel d'API ou une ressource non. ⚠️ Sans lui, tout
+    fichier de `frontend/public/` — que Vite copie **à la racine de `dist/`, hors `assets/`** —
+    recevrait `index.html` en 200 avec un type MIME faux dès qu'il manquerait. Une liste de
+    préfixes ne peut pas suivre le contenu d'un répertoire.
     """
     entetes = dict(scope.get("headers") or [])
     return b"text/html" in entetes.get(b"accept", b"")
@@ -71,13 +59,10 @@ class _StatiquesSpa(StaticFiles):
     """`StaticFiles` qui **replie les liens profonds** vers `index.html` (routage côté client).
 
     Nécessaire dès que la SPA a des routes (E14US003) : `F5` sur `/admin/12/pilotage/supervision`
-    demande au serveur un fichier qui n'existe pas — sans repli, l'utilisateur reçoit un 404 au lieu
-    de son écran.
-
-    Le repli est **doublement borné**, et les deux bornes attrapent des cas différents :
-    `_SEGMENTS_SERVEUR` protège les routes du serveur (une 404 d'API doit rester une 404), et
-    `_demande_une_page` protège **tout le reste** — aucune ressource manquante ne reçoit du HTML,
-    quel que soit son emplacement dans `dist/`.
+    demande un fichier qui n'existe pas. ⚠️ Le repli est **doublement borné**, et les deux bornes
+    attrapent des cas différents : `_SEGMENTS_SERVEUR` protège les routes du serveur (une 404 d'API
+    doit rester une 404), `_demande_une_page` protège **tout le reste** — aucune ressource
+    manquante ne reçoit du HTML, où qu'elle soit dans `dist/`.
     """
 
     async def get_response(self, path: str, scope: Scope) -> Response:

@@ -1,26 +1,9 @@
-"""Service applicatif Scoreurs (E10US003) — **définition** & **session** des scoreurs d'un tournoi.
+"""Service des **scoreurs** — un code court imprimé, une session **nominative** (`D-12`, `D-13`).
+Le scoreur est **itinérant** : sa session n'est rattachée à aucune cible. La supprimer invalide ses
+jetons mais laisse intacte la **trace** de ses validations passées, qui portent son nom.
 
-Deux volets d'une même capacité, portés par un seul service (même parti que `ServiceAuth`, qui tient
-identifiants **et** session admin d'E10US002) :
-
-- **Définition** (admin, `D-14`) : créer / lister / modifier / supprimer les scoreurs d'un tournoi.
-  Chaque scoreur reçoit un **code court généré**, unique dans toute la base ; `modifier` ne touche
-  que le **nom** (le code, imprimé et distribué, est figé — comme `Depart.numero`). Redéfinissable
-  **même tournoi en cours** : aucune garde sur le statut du tournoi (`D-15`).
-- **Session** (le scoreur, `D-12`/`D-13`) : `connexion` par code → **session nominative** (jeton
-  opaque en mémoire, lié à l'**identité** du scoreur pour tracer « qui a validé » — E10US005) ;
-  `deconnexion` ; `session_valide` (consommée par la dépendance API `exiger_scoreur`). Le scoreur
-  est **itinérant** : la session n'est rattachée à **aucune cible** (il valide n'importe laquelle).
-
-Le store de sessions est un **port** (`StoreSessionsScoreur`) implémenté par l'infrastructure
-(jetons en mémoire). Supprimer un scoreur **invalide sa session** (le store purge ses jetons) mais
-laisse intacte la **trace** de ses validations passées (elles portent son nom, E10US005).
-
-Le code est **attribué par le service** — le domaine ne voit qu'un scoreur, il ne peut garantir
-l'unicité. La génération est **injectée** (`generer_code`) pour rester déterministe en test
-(règle 9, pas d'aléa non maîtrisé) ; l'implémentation `secrets` est câblée au bootstrap. Elle
-**ré-essaie** en cas de collision (pré-contrôle `par_code`, comme `ServiceClubs` pour le nom du
-club) ; la contrainte `UNIQUE(code)` en base reste le garde-fou d'intégrité ultime.
+⚠️ **Le code est attribué par le SERVICE et figé** (imprimé, distribué) : le domaine ne voit qu'un
+scoreur, il ne peut garantir l'unicité. Génération injectée pour rester déterministe en test.
 """
 
 from __future__ import annotations

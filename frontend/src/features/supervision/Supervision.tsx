@@ -1,18 +1,10 @@
-// Console de supervision des postes (E12US001, ADR-0038 ; écrans de salle : E07US004, ADR-0064) —
-// l'écran du jour J.
+// Console de supervision des postes (E12US001, ADR-0038 ; écrans : E07US004) — l'écran du jour J.
 //
 // « Ce n'est pas un graphique de progression : c'est une console de supervision. » Elle distingue
-// *ils tirent lentement* (en ligne, mais dernière activité ancienne) de *leur tablette est morte*
-// (hors ligne). Live par poll court (cf. `useSupervision`). L'état se rend en **couleur + pastille +
-// texte** (jamais la couleur seule) ; hors ligne = **ambre**, pas rouge (arbitrage ADR-0038 / DV-03).
-//
-// Les cibles se lisent en **grille de tuiles** depuis E17US004 (planche A13, variante B retenue) ; le
-// tableau qui tenait ce rôle était la variante écartée.
-//
-// **Les écrans de salle y figurent aussi** (E07US004), dans un second bandeau — pas dans un autre
-// écran. Le CA le dit sans détour : *« un écran figé ne se plaint pas, seule la supervision le
-// révèle »*. C'est aussi d'ici que l'organisateur **impose une vue** sans traverser le gymnase, et
-// qu'il voit, en rouge, les prises de contrôle qu'il a oublié de rendre.
+// *ils tirent lentement* de *leur tablette est morte*. L'état se rend en **couleur + pastille +
+// texte** (jamais la couleur seule) ; hors ligne = **ambre**, pas rouge (ADR-0038 / DV-03). Les
+// cibles se lisent en **grille de tuiles** depuis E17US004. **Les écrans de salle y figurent
+// aussi** : « un écran figé ne se plaint pas, seule la supervision le révèle ».
 
 import { ErreurApi } from '../../shared/api/client'
 import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
@@ -109,18 +101,13 @@ export function Supervision({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-/**
- * Une cible, en tuile — planche A13, variante **B « grille de tuiles (30 d'un œil) »**, retenue au
- * questionnaire du 04/08/2026 et **validée sans réserve** (E17US004).
+/** Une cible, en tuile — planche A13, variante **B « grille de tuiles (30 d'un œil) »**, retenue et
+ * validée sans réserve (E17US004).
  *
- * Le tableau qui tenait ce rôle était la variante **A**, écartée. Le motif du choix est dans le nom
- * de la variante : trente lignes ne se balaient pas d'un regard, trente tuiles si — et cet écran
- * n'existe que pour répondre à « qui s'est tu ? » en traversant le gymnase le moins possible.
- *
- * **Deux informations que la planche ne montre pas sont conservées** : l'IP (diagnostic `D-06` —
- * c'est elle qui permet de retrouver *physiquement* une tablette) et la révocation. Les perdre aurait
- * été troquer une régression fonctionnelle contre une ressemblance ; la planche est une maquette à
- * données fictives, elle n'a pas vocation à énumérer les actions.
+ * Le motif du choix est dans le nom de la variante : trente lignes ne se balaient pas d'un regard,
+ * trente tuiles si. ⚠️ **Deux informations que la planche ne montre pas sont conservées** : l'IP
+ * (diagnostic `D-06`, c'est elle qui permet de retrouver *physiquement* une tablette) et la
+ * révocation — les perdre aurait troqué une régression contre une ressemblance.
  */
 function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: number }) {
   const revoquer = useRevoquerPoste(tournoiId)
@@ -131,19 +118,13 @@ function TuilePoste({ poste, tournoiId }: { poste: PosteSupervision; tournoiId: 
   const vu = poste.derniere_saisie === null ? null : tempsRelatif(poste.derniere_saisie, new Date())
 
   // La pastille porte **toujours** le temps écoulé quand il existe — y compris sur un poste muet.
-  //
   // La première version l'y remplaçait par l'état, sur une lecture fausse de la planche : sa tuile
-  // hors ligne (A13, tuile 7) porte **« 14 min » ET** un bandeau « hors ligne ». Elle superpose, elle
-  // ne substitue pas. Et c'est bien le temps qui compte ici : « muet depuis 90 s » (coupure wifi, on
-  // attend) et « muet depuis 25 min » (tablette morte, on traverse le gymnase) appellent deux gestes
-  // opposés — c'est la seule décision que cet écran sert à prendre. L'ancien tableau les portait dans
-  // deux colonnes distinctes ; les fondre en une seule marque était une régression. (Revue E17US004.)
-  //
-  // Quand le poste est **muet**, le mot est porté par le bandeau : la pastille n'a donc pas à le
-  // redire — elle affiche « — » si le serveur ne connaît aucun temps (cas réel : une cible rattachée
-  // qui se tait **avant d'avoir saisi quoi que ce soit**, `derniere_saisie` étant l'horodatage de la
-  // dernière volée et non un battement de cœur). Sans cette nuance, « Hors ligne » apparaissait deux
-  // fois dans une tuile de 150 px.
+  // hors ligne **superpose** « 14 min » et le bandeau, elle ne substitue pas. Et c'est le temps qui
+  // décide : « muet depuis 90 s » et « muet depuis 25 min » appellent deux gestes opposés — la
+  // seule décision que cet écran sert à prendre. Quand le poste est muet, le mot est porté par le
+  // bandeau, la pastille affichant « — » si le serveur ne connaît aucun temps (cible rattachée qui
+  // se tait avant toute saisie). Sans cette nuance, « Hors ligne » apparaissait deux fois dans 150
+  // px.
   const signe = vu ?? (poste.etat === 'hors_ligne' ? '—' : libelle)
 
   return (

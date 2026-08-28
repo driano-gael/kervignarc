@@ -59,11 +59,9 @@ class ProfondeurInvalide(DomainError):
 
     Trois cas : un top N sans rang d'arrêt (ou à un rang `< 1`), un classement intégral assorti
     d'un rang d'arrêt — les deux décrivent des profondeurs contradictoires —, et une profondeur
-    réglée sur un type qui ne monte **aucun tableau** (une qualification classe toujours tout le
-    monde, un échauffement ne classe rien : le réglage n'y agit sur rien).
-
-    La profondeur est **facultative** (`None` = non réglée) : elle retombe alors sur le preset du
-    type, le podium pour un tableau (mécanisme « politique sans migration », ADR-0011).
+    réglée sur un type qui ne monte **aucun tableau**. La profondeur est **facultative** (`None` =
+    non réglée) : elle retombe alors sur le preset du type (« politique sans migration »,
+    ADR-0011).
     """
 
     code = "profondeur_invalide"
@@ -72,14 +70,11 @@ class ProfondeurInvalide(DomainError):
 class ReglageDePoulesInvalide(DomainError):
     """Un réglage de poules porté par une phase qui n'est pas de type `poules` (E05US023).
 
-    Symétrique de `ProfondeurInvalide` sur son troisième cas, et pour la même raison : retyper une
-    phase sans nettoyer son réglage laisserait une élimination directe porter une taille de poule,
-    que plus aucun lecteur n'irait chercher. Un réglage que rien ne lit est pire qu'absent — il se
-    voit en base, il rassure, et il ne s'applique pas.
-
-    Les réglages **incohérents en eux-mêmes** (taille < 2, qualifiés hors bornes) restent
-    `ConfigurationPouleInvalide`, levée par `ReglageDePoules` : c'est la cohérence du réglage,
-    celle-ci est sa compatibilité avec le type qui le porte.
+    Symétrique du 3ᵉ cas de `ProfondeurInvalide` : retyper une phase sans nettoyer son réglage
+    laisserait une élimination directe porter une taille de poule, que plus aucun lecteur n'irait
+    chercher — un réglage que rien ne lit est pire qu'absent. Les réglages **incohérents en
+    eux-mêmes** restent `ConfigurationPouleInvalide` : celle-ci porte la compatibilité avec le
+    type.
     """
 
     code = "reglage_de_poules_invalide"
@@ -188,12 +183,10 @@ class EffectifIncompatible(DomainError):
 class PhaseSansParticipant(DomainError):
     """À l'effectif projeté, cette phase n'accueille personne (E01US024).
 
-    C'est le « **trou** » du CA d'E01US024 rendu nommable : un bloc du schéma où aucun archer
-    n'arrive — parce que ses prélèvements visent des rangs que l'effectif simulé n'atteint pas, ou
-    parce qu'une source amont s'est vidée. **Jamais bloquant** : le défaut ne vaut qu'à *cet*
-    effectif, et un format composé pour 120 archers a le droit de se vider à 12 sans être faux
-    (ADR-0063 §3). Contrairement aux autres erreurs de ce module, celle-ci n'est jamais **levée** —
-    elle ne naît que portée par une `Anomalie`.
+    Le « **trou** » du CA rendu nommable : un bloc du schéma où aucun archer n'arrive. **Jamais
+    bloquant** — le défaut ne vaut qu'à *cet* effectif, et un format composé pour 120 archers a le
+    droit de se vider à 12 sans être faux (ADR-0063 §3). Contrairement aux autres erreurs de ce
+    module, celle-ci n'est jamais **levée** : elle ne naît que portée par une `Anomalie`.
     """
 
     code = "phase_sans_participant"
@@ -214,56 +207,24 @@ class PrelevementVide(DomainError):
 class ChocDePoulePossible(DomainError):
     """Deux archers d'une **même poule** peuvent se retrouver au premier tour du tableau (E05US023).
 
-    ⚠️ **Tout ce qui suit vaut au serpent seulement.** En composition `PAR_NIVEAU` (E05US029),
-    les membres d'une poule occupent des rangs **contigus** et non régulièrement espacés : le
-    raisonnement sur la parité de `P` ne s'y applique pas, et `_motif_de_choc` écarte ce mode en
-    tête plutôt que de lui appliquer une arithmétique qui ne le décrit pas.
-
-    Le serpent sépare les membres d'une poule quand leur nombre `P` est **pair** : le tableau
-    apparie les rangs `r` et `M+1-r` (`M` = taille du tableau, une puissance de 2), donc l'écart
-    entre deux adversaires est **impair** et n'est jamais divisible par un `P` pair. À `P` impair il
-    existe des paires fautives : 3 poules x 4 qualifiés = 12 archers produit (rang 7, rang 10), tous
-    deux de la poule 1 — l'exemple du CA.
-
-    ⚠️ **Deux énoncés antérieurs de cette règle étaient faux, et l'un vivait ici.** « Puissance de 2
-    ⇒ pas de choc » ne tient pas : à 3 poules et 16 places, la paire (1, 16) réunit le n° 1 et un
-    membre de sa propre poule. Les sept mesures qui l'étayaient — 4x2, 8x2, 4x4, 8x4, 16x2, 2x4,
-    5x2 — avaient toutes soit un `P` pair, soit un effectif non puissance de 2 : un échantillon
-    biaisé dont on avait tiré une loi générale. Et « les byes décalent les paires » est un faux
-    positif systématique à `P` pair. Le prédicat exact vit dans `domain/deroule.py`
-    (`_motif_de_choc`), vérifié contre l'appariement réel sur 9945 configurations.
-
-    **Avertissement, jamais bloquant** (arbitrage du 09/08/2026) : corriger demanderait une
-    politique de croisement, donc une règle métier que personne n'a demandée. On le **signale** à
-    l'atelier plutôt qu'en douce — l'organisateur ajuste son nombre de qualifiés s'il y tient.
+    ⚠️ **Vaut au serpent seulement** : en `PAR_NIVEAU` les membres occupent des rangs contigus, et
+    `_motif_de_choc` écarte ce mode en tête. Le serpent les sépare quand leur nombre `P` est
+    **pair** — le tableau apparie `r` et `M+1-r`, donc l'écart est impair et jamais divisible par
+    un `P` pair. À `P` impair il existe des paires fautives. Le prédicat exact vit dans
+    `domain/deroule.py`, vérifié sur 9945 configurations. Avertissement, jamais bloquant.
     """
 
     code = "choc_de_poule_possible"
 
 
 class SerpentApresDesPoules(DomainError):
-    """Une phase de poules prélève dans une autre phase de poules et compose au **serpent**
-    (E05US029).
+    """Une phase de poules prélève dans des poules et compose au **serpent** (E05US029).
 
     Le serpent **équilibre** les groupes, ce qui est juste tant que personne ne connaît les
-    niveaux — c'est pourquoi il est le défaut depuis le 31/07/2026. Mais une phase nourrie par
-    d'autres poules dispose déjà d'un classement de niveau : composer au serpent y éparpille les
-    six têtes de série dans les six groupes, soit l'inverse exact de ce que l'organisateur croit
-    régler en enchaînant deux phases de poules.
-
-    **Bloquant, et c'est un arbitrage** (cadrage du 21/08/2026). Le défaut ne produit ni erreur ni
-    incohérence : il monte un tournoi parfaitement jouable, simplement dépourvu de l'intérêt
-    sportif visé — et cela ne se voit qu'en salle, une fois les groupes affichés. Un avertissement
-    qu'on peut ignorer arriverait donc toujours trop tard.
-
-    `ReglageDePoules.serpent_assume` lève le refus. Rebrasser volontairement les groupes reste
-    légitime ; ce que la dérogation apporte est la **trace** que le choix a été posé, sans quoi
-    « voulu » et « pas vu » sont indiscernables.
-
-    ⚠️ **Le prédicat porte sur la SOURCE, pas sur le rang dans le déroulé.** Une phase de poules
-    sans source déclarée est alimentée par le classement du départ (ADR-0068), donc par la
-    qualification — les niveaux n'en viennent pas, et le serpent y reste légitime même si des
-    poules la précèdent dans le déroulé.
+    niveaux. Une phase nourrie par d'autres poules en dispose déjà : y composer éparpille les têtes
+    de série. **Bloquant** (cadrage du 21/08/2026) : le tournoi reste jouable mais dépourvu de
+    l'intérêt sportif visé, ce qui ne se voit qu'en salle. `serpent_assume` lève le refus. ⚠️ Le
+    prédicat porte sur la **source**, pas sur le rang dans le déroulé.
     """
 
     code = "serpent_apres_des_poules"
@@ -307,23 +268,11 @@ class EffectifTableauInvalide(DomainError):
 class EffectifMinimumIncoherent(DomainError):
     """Un format exige **moins** d'inscrits que son déroulé n'en réclame (E05US021).
 
-    Le minimum d'un format se **déduit** de ses prélèvements : « les rangs 33 et suivants » ne monte
-    un tableau de deux qu'à partir du 34ᵉ classé. Un club peut exiger davantage (« pas de tournoi de
-    ce type sous 40 archers ») — c'est une règle sportive, elle se pose au-dessus du plancher
-    technique.
-
-    ⚠️ **Une exigence trop basse ne laisse rien passer** : le minimum retenu est le `max` des deux,
-    donc une valeur sous le plancher est simplement **inerte**. Ce n'est pas un risque pour le
-    tournoi, c'est un **écran qui ment** — l'organisateur croit avoir réglé un seuil qui ne
-    s'appliquera jamais, et le corrigera d'autant moins qu'il le croit posé. C'est ce mensonge que
-    l'anomalie interdit, pas un danger d'exécution. *(La docstring affirmait initialement l'inverse
-    — « il laisserait démarrer un tournoi que le moteur refuserait » — ce que le `max` contredit ;
-    relevé en revue.)*
-
-    Bloquante, donc, et non conjoncturelle : la contradiction est vraie à tout effectif. Le prix
-    assumé est qu'ajouter une consolante « rangs 41 et suivants » à un format qui exigeait 40 le
-    rend inapplicable jusqu'à ce que le chiffre soit relevé — le déroulé a changé, l'exigence doit
-    être revue.
+    Le minimum d'un format se **déduit** de ses prélèvements ; un club peut exiger davantage, règle
+    sportive posée au-dessus du plancher technique. ⚠️ Une exigence trop basse ne laisse rien
+    passer — le minimum retenu est le `max` des deux, donc elle est **inerte**. Ce n'est pas un
+    risque pour le tournoi, c'est un **écran qui ment** : l'organisateur croit avoir réglé un seuil
+    qui ne s'appliquera jamais. Bloquante, donc, la contradiction étant vraie à tout effectif.
     """
 
     code = "effectif_minimum_incoherent"
@@ -343,12 +292,10 @@ class ExigenceEffectifInvalide(DomainError):
 class FormatTableauIncoherent(DomainError):
     """Les politiques `seeding` et `byes` injectées se contredisent sur les exempts (E05US005).
 
-    Un format de tableau est un **assemblage** de stratégies (règle 2) : le `seeding` place les
-    seeds dans les slots, le `byes` désigne les dispensés du premier tour. Ces deux choix doivent
-    **concorder** — les seeds que `byes` dispense doivent être exactement ceux que la structure du
-    seeding laisse sans adversaire réel. Une paire incohérente (ex. seeding serpent + byes « aux
-    plus mauvais classés ») produirait un arbre où un seed dispensé aurait pourtant un adversaire,
-    ou l'inverse : le moteur la **refuse** à la construction plutôt que de trancher en douce.
+    Un format de tableau est un **assemblage** de stratégies (règle 2), et ces deux choix doivent
+    **concorder** : les seeds que `byes` dispense doivent être exactement ceux que la structure du
+    seeding laisse sans adversaire réel. Une paire incohérente produirait un arbre où un seed
+    dispensé aurait pourtant un adversaire — le moteur la **refuse** plutôt que de trancher.
     """
 
     code = "format_tableau_incoherent"
@@ -384,12 +331,10 @@ class VainqueurHorsMatch(DomainError):
 class RoutingNonSupporte(DomainError):
     """Le moteur ne sait pas honorer la destination que le routing réclame pour le perdant.
 
-    E05US005 ne connaissait qu'« élimination sèche » et refusait tout le reste ; E05US010 a livré la
-    **cascade de placement** (`VersPlage`), qui n'est donc plus un cas d'erreur. L'erreur reste pour
-    la destination encore à écrire — le **repêchage** WA (E05US015), qui réinjecte le perdant
-    dans le tableau *amont* au lieu de le faire descendre, et suppose un câblage que ce moteur ne
-    construit
-    pas.
+    E05US005 ne connaissait qu'« élimination sèche » ; E05US010 a livré la **cascade de placement**
+    (`VersPlage`), qui n'est plus un cas d'erreur. L'erreur reste pour la destination encore à
+    écrire — le **repêchage** WA (E05US015), qui réinjecte le perdant dans le tableau *amont* et
+    suppose un câblage que ce moteur ne construit pas.
     """
 
     code = "routing_non_supporte"
@@ -433,14 +378,10 @@ class PlageInvalide(DomainError):
 class PhaseSansClassementPrelevee(DomainError):
     """Une source prélève **par rangs** dans une phase qui ne produit aucun classement (E05US015).
 
-    C'est la règle de cohérence de l'**échauffement** (référentiel §10.1) : une phase sans point et
-    sans classement n'ordonne personne, donc « les rangs 1 à 32 de l'échauffement » ne désigne
-    aucun ensemble. Ce n'est pas un détail d'ergonomie mais un invariant de séquence : la seule
-    façon licite de succéder à une phase non classante est de reprendre **les mêmes participants,
-    sans ordre** (`le reste`).
-
-    Le contrôle est **collectif** (il faut connaître la phase amont), donc il vit dans
-    `verifier_sequence` et non dans `SourcePhase.__post_init__`.
+    La règle de cohérence de l'**échauffement** (référentiel §10.1) : une phase sans point et sans
+    classement n'ordonne personne, donc « les rangs 1 à 32 de l'échauffement » ne désigne aucun
+    ensemble. La seule façon licite de lui succéder est de reprendre les mêmes participants **sans
+    ordre** (`le reste`). Contrôle **collectif**, donc dans `verifier_sequence`.
     """
 
     code = "phase_sans_classement_prelevee"
@@ -449,14 +390,10 @@ class PhaseSansClassementPrelevee(DomainError):
 class PhaseSansSource(DomainError):
     """Une phase autre que la première ne prélève dans aucune phase antérieure (E01US024).
 
-    Le bloc ne dit pas d'où viennent ses archers : c'est le « trou » du CA d'E01US024 dans sa forme
-    structurelle. **Avertissement, jamais bloquante** — la revue a montré que la bloquer casserait
-    un déroulé livré (`docs/fonctionnel/E05US015.md` : « échauffement puis élimination directe sans
-    source, c'est accepté ») et affirmerait quelque chose de faux, le peuplement ensemençant
-    aujourd'hui avec *tous* les archers en lice (`# DETTE-028`). Comme les autres erreurs de
-    diagnostic, elle n'est jamais **levée** : elle ne naît que portée par une `Anomalie`.
-
-    La **première** phase, elle, se peuple des inscrits : son absence de source est normale.
+    Le bloc ne dit pas d'où viennent ses archers — le « trou » du CA dans sa forme structurelle.
+    **Avertissement, jamais bloquante** : la bloquer casserait un déroulé livré et documenté, et
+    affirmerait quelque chose de faux, le peuplement ensemençant avec *tous* les archers en lice
+    (`# DETTE-028`). La **première** phase, elle, se peuple des inscrits.
     """
 
     code = "phase_sans_source"
@@ -465,20 +402,11 @@ class PhaseSansSource(DomainError):
 class ArretProgrammeInvalide(DomainError):
     """Un **arrêt programmé** ne décrit pas une coupe applicable (E05US033, ADR-0091).
 
-    Trois motifs, tous constatables à la composition :
-
-    - `apres_tour` < 1 — un arrêt « après le tour 0 » couperait la phase avant son premier tir ;
-      ce n'est pas une pause mais un refus de démarrer, qui a déjà son geste (ne pas la démarrer) ;
-    - deux arrêts après le **même** tour — le second est inapplicable, la phase étant déjà en
-      pause, et la portée ne les désambiguïse pas (le geste large contient le geste étroit) ;
-    - `apres_tour` ≥ le nombre de tours **quand celui-ci est connu** — l'arrêt est inerte, la phase
-      étant finie. Silencieux quand il ne l'est pas : un suisse réglé à 7 rondes n'en joue que 5 si
-      l'effectif ne permet pas plus, et l'atelier ne connaît pas toujours l'effectif. Même doctrine
-      qu'`EtapeDeroule._verifier_rondes_appariables` — on ne refuse pas ce qu'on ne peut pas juger.
-
-    Sert aussi de refus au **franchissement** qui reculerait (`ARME → FRANCHI → LEVE` est monotone,
-    comme le cycle de vie d'une phase, ADR-0045) : un franchissement réversible ferait de chaque
-    évaluation du déclencheur un tirage au sort.
+    Trois motifs : `apres_tour` < 1 (couperait avant le premier tir) ; deux arrêts après le
+    **même** tour (le second est inapplicable) ; `apres_tour` ≥ le nombre de tours **quand il est
+    connu**. Silencieux quand il ne l'est pas — un suisse réglé à 7 rondes n'en joue que 5 si
+    l'effectif ne permet pas plus : on ne refuse pas ce qu'on ne peut pas juger. Sert aussi de
+    refus au **franchissement** qui reculerait : `ARME → FRANCHI → LEVE` est monotone.
     """
 
     code = "arret_programme_invalide"

@@ -1,16 +1,10 @@
 // Écran « Écrans de salle » (E07US004) — axe **pilotage**, préparation des écrans d'un tournoi.
 //
-// Le pendant de « Postes de cible » (E04US001) pour les écrans : créer, nommer, distribuer le code
-// de rattachement, régler le déroulé de vues. Deux différences avec les cibles, toutes deux issues
-// du modèle :
-//
-// - la création est **explicite** (aucun plan de salle ne dit combien d'écrans le club branchera,
-//   ni où) — d'où un formulaire, là où les cibles ont un bouton « préparer les codes » idempotent ;
-// - un écran se **supprime** (il se débranche), une cible non : son code est imprimé sous un QR.
-//
-// Le **pilotage** (imposer une vue) n'est pas ici mais dans la console de supervision : c'est ce que
-// le CA demande, et c'est cohérent — on prépare à froid, on pilote à chaud, sur l'écran où l'on voit
-// déjà l'état de la salle.
+// Le pendant de « Postes de cible » pour les écrans : créer, nommer, distribuer le code, régler le
+// déroulé de vues. Deux différences issues du modèle : la création est **explicite** (aucun plan de
+// salle ne dit combien d'écrans le club branchera, ni où), et un écran se **supprime** — une cible
+// non, son code étant imprimé sous un QR. Le **pilotage** (imposer une vue) vit dans la console de
+// supervision : on prépare à froid, on pilote à chaud, là où l'on voit l'état de la salle.
 
 import { useState } from 'react'
 
@@ -157,27 +151,10 @@ function CarteEcran({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
 
 /** Le réglage des **listes projetées** par un écran (E16US009).
  *
- * ⚠️ **Deux durées coexistent sur cette carte, et l'écran doit le dire.** Juste au-dessus, la
- * cadence d'une *vue* : combien de temps l'écran reste sur le classement. Ici, la cadence d'une
- * *page* : à quel rythme la liste tourne **à l'intérieur** de cette vue, quand elle ne tient pas
- * d'un coup. Le libellé visible porte donc ici son objet — « **Durée d'une page** » — parce que
- * « cadence », seul, désignerait indifféremment les deux.
- *
- * ⚠️ **La symétrie n'est pas parfaite, et il ne faut pas la promettre** : côté déroulé, le libellé
- * « Cadence de la vue N » est `sr-only` (une rangée compacte par étape), donc **seul un lecteur
- * d'écran l'entend** ; un organisateur voyant lit le sous-titre « Déroulé » et un champ de secondes
- * nu. C'est le bloc entier qui désambiguïse pour lui, pas un libellé. *(La première rédaction
- * affirmait deux libellés visibles se faisant face — relevé par l'axe adversarial. Rendre celui du
- * déroulé visible ferait le meilleur écran, mais c'est une retouche de l'existant, donc une autre
- * US.)*
- *
- * **Deux valeurs et un seul bouton** : `ReglagePages` est indivisible côté serveur (une route, un
- * corps), et un enregistrement partiel obligerait la frontière à décider quoi faire de la moitié
- * manquante.
- *
- * Le réglage est **par écran** parce qu'il dépend de la diagonale du projecteur, de la distance de
- * lecture et de la longueur des noms du club : le vidéoprojecteur du fond de salle et l'écran
- * d'accueil n'ont pas les mêmes. */
+ * ⚠️ **Deux durées coexistent ici** : la cadence d'une *vue* et celle d'une *page* (le rythme
+ * auquel la liste tourne **dedans**), d'où « Durée d'une page ». ⚠️ **La symétrie n'est pas
+ * parfaite** : côté déroulé le libellé est `sr-only`. **Deux valeurs, un seul bouton** :
+ * `ReglagePages` est indivisible côté serveur. Le réglage est **par écran**. */
 function ReglagePagesProjetees({ ecran, tournoiId }: { ecran: Ecran; tournoiId: number }) {
   const [pages, setPages] = useState<ReglagePages>(ecran.pages)
   const regler = useReglerPages(tournoiId)

@@ -1,17 +1,10 @@
-/* ⚠️ Le bloc BEM `salle-pages__` est **coupé en deux couches** : l'en-tête de page (titre, compteur,
-   râteau) vit ici, en `shared/ui/`, parce que deux features s'en servent ; la mise en page de la
-   liste de noms elle-même (`.salle-pages__noms`, `__nom*`) est restée dans
-   `features/salle/salle.css`, qui est sa seule consommatrice. Qui cherche `salle-pages__` doit
-   regarder les deux fichiers (relevé en revue : le déplacement avait laissé un commentaire ici et
-   sa règle là-bas). */
-/* En-tête d'une page projetée (P06, retour maquettes du 04/08/2026).
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   Déplacé de `features/salle/salle.css` par E16US009, avec le composant `EnteteDePage` qu'il
-   habille : deux consommateurs (les affectations et le classement projetés), donc `shared/`.
-
-   « Grossir le compteur de page, il faut qu'il soit visible, de même que les lettres comprises dans
-   le râteau de nom. » Les deux repères sont dimensionnés **au-dessus** du corps de la liste : ce
-   sont eux qu'on lit debout au fond de la salle, la liste ne se lit qu'ensuite. */
+/* ⚠️ Le bloc BEM `salle-pages__` est **coupé en deux couches** : l'en-tête de page (titre,
+   compteur, râteau) vit ici, en `shared/ui/`, parce que deux features s'en servent ; la mise en
+   page de la liste de noms elle-même est restée dans `features/salle/salle.css`, sa seule
+   consommatrice. Qui cherche `salle-pages__` doit regarder les deux fichiers. */
+/* En-tête d'une page projetée (P06, 04/08/2026) : « grossir le compteur de page, il faut qu'il soit
+   visible, de même que les lettres du râteau ». Les deux repères sont dimensionnés **au-dessus** du
+   corps de la liste — ce sont eux qu'on lit debout au fond de la salle. */
 .salle-pages__entete {
   display: flex;
   align-items: baseline;

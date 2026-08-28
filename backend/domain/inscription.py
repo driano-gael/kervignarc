@@ -1,18 +1,10 @@
-"""Entité de domaine `Inscription` — le lien archer ↔ départ (E02US009, ADR-0017).
+"""Agrégat **Inscription** — deux identifiants, et rien de plus.
 
-Une inscription rattache un **archer** à un **départ** (créneau) du tournoi, et porte le seul fait
-qui lui soit propre : `paye`. C'est un **agrégat mince** — presque toute la règle métier vit dans le
-service (`application.inscriptions`), qui seul voit les deux côtés du lien :
+Les invariants « même tournoi » et « unicité du couple » supposent de relire d'autres agrégats :
+ils vivent au service.
 
-- l'invariant « archer et départ du **même tournoi** » suppose de relire l'archer et le départ —
-  l'entité ne porte que deux identifiants, elle ne peut pas le vérifier seule ;
-- l'unicité du couple `(archer, départ)` est un fait d'**ensemble** (y a-t-il déjà cette
-  inscription ?), donc un contrôle de service + une contrainte `UNIQUE` en base.
-
-Le **montant dû** ne vit pas ici : il se **dérive** du `tarif_centimes` du départ à la lecture
-(rien à stocker, rien à resynchroniser). Seul `paye`, non dérivable, est un attribut propre.
-
-Pur et synchrone (règle 1) : aucun import de framework ni d'autre couche.
+⚠️ **Le montant dû ne vit PAS ici** : il se dérive du tarif du départ à la lecture — rien à
+stocker, rien à resynchroniser. Seul `paye`, non dérivable, est un attribut propre. ADR-0017
 """
 
 from __future__ import annotations

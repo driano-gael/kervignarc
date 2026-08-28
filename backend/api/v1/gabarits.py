@@ -1,16 +1,7 @@
-"""Endpoints REST des gabarits de salle (`/api/v1`) — CRUD des gabarits réutilisables (E01US007).
+"""Gabarits de salle — bibliothèque de modèles à plat, et plan de salle d'un tournoi.
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Deux familles de routes :
-- **bibliothèque** de modèles réutilisables (E01US007), à plat sous `/gabarits` ;
-- **plan de salle d'un tournoi** (E01US008), sous `/tournois/{tournoi_id}/gabarit` : appliquer un
-  modèle (copie), lire et ajuster la copie (plafond cible par cible) sans altérer le modèle.
+Appliquer un modèle en fait une **copie**, ajustable sans altérer le modèle. Écritures par la file
+et sous session admin, lectures hors boucle.
 """
 
 from __future__ import annotations

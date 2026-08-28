@@ -1,16 +1,8 @@
-"""La **plage de rangs** — l'intervalle de classement qu'un participant peut encore atteindre.
+"""Plage de rangs — la récursion du placement intégral : `[a..mid]` aux gagnants, `[mid+1..b]` aux
+perdants, jusqu'à une largeur 2 où un match terminal fixe les deux rangs (ADR-0061).
 
-Value object fondateur du placement intégral (E05US010). La *Règle R* de
-[`moteur-placement-lucky-loser.md`](../../moteur-placement-lucky-loser.md) § 4 s'énonce entièrement
-en ces termes : un participant engagé sur la plage `[a..b]` passe, selon l'issue de son match, dans
-la **moitié haute** `[a..mid]` (gagnants) ou la **moitié basse** `[mid+1..b]` (perdants), jusqu'à
-une plage de **largeur 2** où un match terminal fixe les deux rangs (*Règle T*, § 3).
-
-Vit dans son propre module — et non dans `politiques.py` ou `tableau.py` — parce que les deux
-l'utilisent : le **routing** décide vers quelle plage descend un perdant, le **tableau** engendre le
-sous-groupe correspondant. Le loger dans l'un créerait un cycle d'import avec l'autre.
-
-Domaine **pur** (règle 1) : aucun framework, aucune autre couche.
+⚠️ **Module à part, et il doit le rester** : le **routing** décide vers quelle plage descend un
+perdant, le **tableau** engendre le sous-groupe. Le loger dans l'un créerait un cycle avec l'autre.
 """
 
 from __future__ import annotations

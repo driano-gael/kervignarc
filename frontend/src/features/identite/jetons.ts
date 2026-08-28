@@ -7,17 +7,13 @@
 
 import type { Identite, JetonsDeMarque } from './api'
 
-/**
- * Les trois déclinaisons de thème d'une identité, en CSS.
+/** Les trois déclinaisons de thème d'une identité, en CSS — pure, testée sans DOM.
  *
- * Exportée pour être testée sans DOM : c'est une fonction pure de l'identité vers du texte, et c'est
- * là que vivent les seules décisions du module.
- *
- * ⚠️ **Seuls les jetons de MARQUE sont émis.** Les neutres (`--surface-*`, `--text*`, `--border*`) et
- * les sémantiques (`--danger`, `--success`, `--info`) n'apparaissent nulle part ici, et c'est le
- * verrou de `DV-06` : « 3 strates — marque personnalisable, sémantique et structure figées ». Un
- * tournoi ne redéfinit pas ce que « hors ligne » veut dire, et repeindre `--surface-0` invaliderait
- * d'un coup les vingt ratios que la charte a mesurés contre lui. `charte.test.ts` le vérifie.
+ * ⚠️ **Seuls les jetons de MARQUE sont émis.** Les neutres (`--surface-*`, `--text*`, `--border*`)
+ * et les sémantiques (`--danger`, `--success`, `--info`) n'apparaissent nulle part ici : c'est le
+ * verrou de `DV-06` — « 3 strates, marque personnalisable, sémantique et structure figées ». Un
+ * tournoi ne redéfinit pas ce que « hors ligne » veut dire, et repeindre `--surface-0`
+ * invaliderait les vingt ratios mesurés contre lui. `charte.test.ts` le vérifie.
  */
 export function cssDesJetons(marqueur: string, identite: Identite): string {
   const porte = `[data-identite='${marqueur}']`

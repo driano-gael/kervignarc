@@ -1,12 +1,10 @@
-// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif de revue D-1/D-2).
+// Tests du `sessionPosteStore` — **mode poste persistant** (E04US001, correctif D-1/D-2).
 //
 // Garde-fou du contrat qui distingue « ce navigateur est un poste » (intention persistante) de la
-// simple présence d'un jeton : une session **révoquée** (jeton perdu) doit laisser la tablette sur
-// le **rattachement**, jamais la renvoyer vers l'admin (D-13) ; seul un **détachement explicite**
-// quitte le mode poste. Le thème (D-26) survit aux deux. Ces tests s'exécutent sous l'environnement
-// jsdom global (ADR-0053) : `appliquerTheme` s'y applique au `document` de jsdom, sans effet
-// observable ici (aucun test n'asserte sur `data-theme`) ; sa garde SSR `typeof document` ne protège
-// donc plus que le vrai rendu serveur, pas ces tests.
+// simple présence d'un jeton : une session **révoquée** doit laisser la tablette sur le
+// **rattachement**, jamais la renvoyer vers l'admin (D-13) ; seul un **détachement explicite**
+// quitte le mode poste, et le thème survit aux deux. ⚠️ Sous jsdom global (ADR-0053), la garde SSR
+// `typeof document` d'`appliquerTheme` ne protège plus que le vrai rendu serveur, pas ces tests.
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useSessionPosteStore, type PosteRattache } from './sessionPosteStore'

@@ -1,14 +1,11 @@
-// Classement de qualification en direct (E06US001) — surface de **lecture** partagée par la coquille
-// admin (destination « Classement en direct ») et la **consultation publique** (E07US001). La prop
-// `admin` n'ajoute que la colonne « Placer » (déléguée à `TableClassement`) ; le reste est identique,
-// public ou non.
+// Classement de qualification en direct (E06US001) — surface de **lecture** partagée par la
+// coquille admin et la consultation publique (E07US001). La prop `admin` n'ajoute que la colonne «
+// Placer » ; le reste est identique.
 //
-// Un filtre par catégorie restreint l'affichage à une catégorie **sans changer les rangs** : le rang
-// scratch (global) reste celui du classement complet — on **voit** une catégorie sans perdre la
-// position d'ensemble. Le classement se rafraîchit tout seul via l'invalidation temps réel (E04US009).
-//
-// Extrait de `admin/CoquilleAdmin.tsx` en E07US001 pour être réutilisable hors de la coquille admin :
-// une vue de lecture n'a pas à vivre dans le module d'administration.
+// Un filtre par catégorie restreint l'affichage **sans changer les rangs** : le rang scratch reste
+// celui du classement complet — on **voit** une catégorie sans perdre la position d'ensemble.
+// Extrait de `admin/CoquilleAdmin.tsx` en E07US001 : une vue de lecture n'a pas à vivre dans le
+// module d'administration.
 
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
@@ -36,14 +33,11 @@ export function VueClassement({
   admin: boolean
   /** `false` pour une surface **sans interaction** — l'écran de salle (E07US004).
    *
-   * Un `<select>` projeté dans un gymnase est au mieux inutile, au pire trompeur : personne ne peut
-   * l'actionner, et il donne à croire que ce qui est affiché résulte d'un choix. Le CA d'E07US004
-   * est explicite (« **aucune interaction** »), et la recette le vérifie à l'œil (« rien de
-   * cliquable »). Sans cette prop, l'écran de salle héritait du filtre — relevé en revue.
-   *
-   * ⚠️ Depuis ADR-0075, elle gouverne **aussi** le choix du créneau : un classement appartient à un
-   * départ, il faut donc en désigner un. Interactif, on l'offre au choix ; projeté, on prend celui
-   * qu'on est en train de tirer (`departDeSalle`), sans rien à cliquer. */
+   * Un `<select>` projeté dans un gymnase est au mieux inutile, au pire trompeur : personne ne
+   * peut l'actionner, et il donne à croire que l'affichage résulte d'un choix. Sans cette prop,
+   * l'écran de salle héritait du filtre. ⚠️ Depuis ADR-0075 elle gouverne **aussi** le choix du
+   * créneau : interactif on l'offre, projeté on prend celui qu'on est en train de tirer.
+   */
   filtrable?: boolean
   /** Bascule « mes archers / tout » de l'appli publique (E16US004). Par défaut `'tout'` : la
    * coquille admin et l'écran de salle n'ont pas de suivis et ne doivent pas en hériter. */
@@ -74,19 +68,13 @@ export function VueClassement({
   // gardent `classement.data.lignes` **entier** : ce sont des surfaces d'organisation, et leur
   // donner une liste amputée ferait proposer un barrage entre deux archers sur trois.
   const lignesAffichees = centrerLignes(classement.data?.lignes ?? [], mode, suivis)
-  // « Aucun de vos archers ici » n'est pas « aucun archer inscrit » : la table dirait le second, qui
-  // est faux et fait chercher une panne. Le cas est réel — un suivi engagé sur le départ du matin
-  // quand on regarde le créneau de l'après-midi, ou filtré hors de sa catégorie.
-  // ⚠️ `classement.data.lignes.length > 0` (correctif de revue) : sans lui, un classement
-  // **réellement vide** se présentait comme un vide de filtre, et le message envoyait chercher du
-  // côté de l'interrupteur ce qui n'y était pas — le défaut que ce bloc existe pour éviter,
-  // retourné contre lui-même.
-  //
-  // ⚠️ Ce cas est celui d'un départ **sans aucun engagé**, et **non** « le matin avant la première
-  // volée » (rectification de la 2ᵉ passe, qui a repris un premier jet fautif) : `calculer_classement`
-  // crée une ligne `EN_LICE` pour **chaque** archer, série ou pas — avant la première volée, les 120
-  // archers sont là, à zéro. `departage.ts` et `VueAffectations` portent déjà la même rectification ;
-  // c'est manifestement l'erreur que ce coin du domaine inspire, d'où le rappel ici aussi.
+  // « Aucun de vos archers ici » n'est pas « aucun archer inscrit » : la table dirait le second,
+  // qui est faux et fait chercher une panne. ⚠️ `classement.data.lignes.length > 0` : sans lui, un
+  // classement **réellement vide** se présentait comme un vide de filtre — le défaut que ce bloc
+  // existe pour éviter, retourné contre lui-même. ⚠️ Ce cas est celui d'un départ **sans aucun
+  // engagé**, et **non** « le matin avant la première volée » : `calculer_classement` crée une
+  // ligne `EN_LICE` pour **chaque** archer, série ou pas. C'est l'erreur que ce coin du domaine
+  // inspire.
   const aucunSuiviIci =
     mode === 'suivis' &&
     classement.data !== undefined &&
@@ -146,20 +134,15 @@ export function VueClassement({
         // Conteneur défilant : à 8 colonnes, la table déborde sur mobile (CA « responsive ») — on la
         // laisse défiler horizontalement plutôt que d'écraser les colonnes.
         <div className="table-defilement">
-          {/* `teteFigee` (A16) : *« les x premiers sont toujours affichés, mais le dessous du tableau
-              a un défilé jusqu'à n »*. Huit sur les surfaces qu'on **manipule** : on y suit le haut
-              d'une catégorie, pas seulement le podium, et huit lignes tiennent sans écraser le cadre
-              défilant.
-              ✅ **Trois sur l'écran de salle depuis E16US009** — P07 : *« ok pour les 3 premiers
-              toujours visible, mais défilement de tous les autres archers dessous »*. La valeur
-              restait à **zéro** jusqu'ici, délibérément : livrer la tête figée sans le défilement
-              aurait réduit un classement de 40 archers à 3 lignes, soit une **régression** de ce
-              que la salle affichait (revue du 05/08/2026, axe B). C'est `pagination` qui lève le
-              verrou — le reste **tourne** page par page au lieu de s'enfermer dans un cadre à
-              ascenseur que personne, dans un gymnase, ne peut actionner (ADR-0098).
-              ⚠️ Le lien est **mécanique et non cosmétique** : sans réglage de pages, la tête figée
-              retombe à zéro. Un appelant qui passerait `filtrable={false}` sans `pagination`
-              retrouverait donc le classement entier d'avant l'US, jamais les 3 lignes seules. */}
+          {/* `teteFigee` (A16) : huit lignes sur les surfaces qu'on **manipule** — on y suit le
+              haut d'une catégorie, pas seulement le podium. ✅ **Trois sur l'écran de salle**
+              (P07, E16US009) ; la valeur restait à zéro tant que le défilement n'existait pas,
+              sans quoi un classement de 40 archers tombait à 3 lignes — la régression refusée
+              le 05/08/2026. */}
+
+          {/* ⚠️ Le lien est **mécanique** : sans `pagination`, la tête figée retombe à zéro,
+              donc un appelant qui passerait `filtrable` seul retrouve le classement entier
+              d'avant l'US, jamais les 3 lignes seules (ADR-0098). */}
           <TableClassement
             tournoiId={tournoiId}
             lignes={lignesAffichees}

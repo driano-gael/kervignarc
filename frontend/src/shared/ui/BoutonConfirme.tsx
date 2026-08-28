@@ -1,13 +1,10 @@
 // Un bouton dont l'action passe par une confirmation — retour maquettes du 04/08/2026 (A15).
 //
-// C'est la forme sous laquelle les huit `window.confirm` du produit se remplacent : chacun était
-// « un bouton + une question », et les réécrire un par un aurait demandé partout le même `useState`
-// d'ouverture, la même remise à zéro et le même risque d'oubli (un dialogue qu'on n'a pas refermé
-// après succès reste ouvert sur un écran temps réel).
-//
-// Le composant possède donc **le bouton et son dialogue**, et l'appelant ne voit qu'un élément.
-// Quand le déclencheur n'est pas un bouton ordinaire — une ligne de tableau, un lien — on descend
-// d'un cran sur `DialogueConfirmation`, qui ne fait aucune supposition sur le déclencheur.
+// C'est la forme sous laquelle les huit `window.confirm` du produit se remplacent : chacun était «
+// un bouton + une question », et les réécrire un par un aurait demandé partout le même `useState`
+// et le même risque d'oubli (un dialogue non refermé après succès reste ouvert sur un écran temps
+// réel). Quand le déclencheur n'est pas un bouton ordinaire, on descend d'un cran sur
+// `DialogueConfirmation`, qui ne suppose rien du déclencheur.
 
 import { useState } from 'react'
 import { DialogueConfirmation, type TonConfirmation } from './DialogueConfirmation'

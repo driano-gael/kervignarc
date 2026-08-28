@@ -1,20 +1,9 @@
-"""Adapter ReportLab du port `GenerateurDocumentsSalle` (E09US008, socle PDF ADR-0031).
+"""Rendu PDF des documents de salle — seule couche à importer ReportLab (règle 1).
 
-Rend les deux supports d'identité à imprimer avant le jour J :
+Le QR est produit **nativement** par ReportLab : pas de dépendance supplémentaire (règle 11).
 
-- `etiquettes_cibles` : **une page par cible**, avec le numéro de cible, un **QR** encodant l'URL de
-  rattachement (E04US001) et le **code en clair** en dessous (recours si le QR est illisible) ;
-- `cartes_scoreurs` : **une page par scoreur**, avec son nom et son **code personnel** (E10US003).
-
-Le QR est produit **nativement par ReportLab** (`reportlab.graphics.barcode.qr.QrCodeWidget`) : pas
-de dépendance supplémentaire (règle 11 ; la Note « lib QR » de la story est caduque — cf. corps du
-commit). Le widget dessine à une échelle de module fixe ; on le loge dans un `Drawing` mis à
-l'échelle voulue (recette ReportLab : `getBounds` + `transform`), lui-même un `Flowable` inséré dans
-le flux Platypus.
-
-Seule couche à importer ReportLab (règle 1). Toute défaillance de rendu est **enveloppée** en
-`InfrastructureError` (ADR-0007) : aucune exception de bibliothèque brute ne remonte ; à la
-frontière API elle devient un 500 au message générique.
+⚠️ **Toute défaillance de rendu est enveloppée en `InfrastructureError`** (ADR-0007) : aucune
+exception de bibliothèque brute ne remonte — à la frontière, elle devient un 500 générique.
 """
 
 from __future__ import annotations

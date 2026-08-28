@@ -1,10 +1,7 @@
-"""Service applicatif Catégories — CRUD des catégories d'un tournoi (E01US003).
+"""Service des **catégories** — vérifie l'existence amont et la cohérence du blason par défaut.
 
-Orchestre le domaine derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni la file
-d'écriture (sérialisation assurée en amont, côté API) ; il reste synchrone et pur
-d'infrastructure. Il vérifie l'existence des ressources amont (tournoi, catégorie) et la
-cohérence du **blason par défaut** (règle inter-agrégats : même tournoi), et fait remonter des
-erreurs typées (`TournoiIntrouvable`, `CategorieIntrouvable`, `BlasonHorsTournoi`).
+⚠️ **« Même tournoi » est une règle inter-agrégats** : l'agrégat ne voit qu'une catégorie, il ne
+peut pas la vérifier seul.
 """
 
 from __future__ import annotations
@@ -77,19 +74,11 @@ class ServiceCategories:
     def precharger_ffta(self, tournoi_id: TournoiId) -> list[Categorie]:
         """Pré-charge le jeu FFTA salle (18 m) dans un tournoi : blasons puis catégories (E01US004).
 
-        Crée d'abord les **blasons FFTA** du §3 absents du tournoi (E01US022), puis les catégories
-        du référentiel officiel (`application.referentiel_ffta`) absentes du tournoi, **rattachées
-        à leur blason par défaut** du §3. Blasons et catégories sont dédupliqués par nom/libellé
-        (comparaison insensible à la casse et aux espaces de bord) : l'action reste **rejouable
-        sans doublonner**. Le tout est ordinaire : **modifiable et supprimable** via le CRUD.
-
-        Le rattachement d'un `blason_id` de catégorie n'étant possible que vers un blason
-        **existant du tournoi**, l'ordre (blasons d'abord) n'est pas cosmétique. Une catégorie déjà
-        présente est ignorée telle quelle — on ne lui **réaffecte pas** rétroactivement un blason
-        (respect de l'idempotence : on ne touche pas à l'existant).
-
-        Renvoie les catégories effectivement **créées**, dans l'ordre du référentiel (liste vide
-        si tout était déjà présent). Lève `TournoiIntrouvable` si le tournoi n'existe pas.
+        Crée les **blasons FFTA** du §3 absents (E01US022), puis les catégories du référentiel
+        absentes, **rattachées à leur blason par défaut**. ⚠️ L'ordre n'est pas cosmétique : un
+        `blason_id` ne peut viser qu'un blason **existant du tournoi**. Dédup par nom/libellé
+        (insensible casse/espaces), donc **rejouable sans doublonner** ; une catégorie déjà
+        présente est ignorée telle quelle. Renvoie les créées ; lève `TournoiIntrouvable`.
         """
         if self._tournois.par_id(tournoi_id) is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -163,15 +152,11 @@ class ServiceCategories:
     ) -> Categorie:
         """Édite une catégorie (libellé, arme, tranches d'âge, sexe, blason par défaut, hauteur).
 
-        Le PUT catégorie est **total** (ADR-0020) : `hauteur_cm` est **obligatoire** — le formulaire
-        catégorie le porte depuis E03US004, ce qui résorbe DETTE-009. Paramètre **keyword-only**
-        pour rester requis derrière les champs facultatifs.
-
-        Lève `CategorieIntrouvable` si l'identifiant est inconnu, `DomainError` si le libellé est
-        vide ou la hauteur du centre fournie n'est pas un entier strictement positif. Pour le blason
-        par défaut : `BlasonHorsTournoi` si la catégorie appartient à un tournoi et que le blason
-        n'en fait pas partie ; `BriqueHorsBibliotheque` si c'est un **modèle** et que le blason
-        appartient à un tournoi ; `BlasonIntrouvable` dans les deux cas si le blason n'existe pas.
+        Le PUT catégorie est **total** (ADR-0020) : `hauteur_cm` est **obligatoire** (résorbe
+        DETTE-009), en paramètre **keyword-only** pour rester requis derrière les champs
+        facultatifs. Lève `CategorieIntrouvable`, `DomainError` (libellé vide, hauteur non entière
+        > 0), et pour le blason `BlasonHorsTournoi` / `BriqueHorsBibliotheque` /
+        `BlasonIntrouvable`.
         """
         categorie = self._categorie_existante(categorie_id)
         # Un modèle de bibliothèque n'a pas de tournoi : la garde « le blason appartient bien à ce
@@ -223,12 +208,10 @@ class ServiceCategories:
     def _verifier_blason_de_bibliotheque(self, blason_id: BlasonId | None) -> None:
         """Vérifie qu'un blason par défaut (facultatif) est bien un **modèle de bibliothèque**.
 
-        Pendant de `_verifier_blason_du_tournoi` pour une catégorie sans tournoi (E01US023). Un
-        modèle qui pointerait vers le blason d'un tournoi serait recopié tel quel à **chaque**
-        assemblage et traînerait une FK vers une autre édition — et à la copie, le service ne
-        retrouvant pas ce blason en bibliothèque, la catégorie atterrirait **sans blason**, en
-        silence. Même règle que `ServicePatrimoine.creer_categorie` ; elle est ici parce que
-        l'édition passe par ce service, la création par l'autre.
+        Pendant de `_verifier_blason_du_tournoi` pour une catégorie sans tournoi (E01US023). ⚠️ Un
+        modèle pointant vers le blason d'un tournoi serait recopié à **chaque** assemblage avec une
+        FK vers une autre édition — et à la copie, le blason introuvable en bibliothèque, la
+        catégorie atterrirait **sans blason**, en silence.
         """
         if blason_id is None:
             return

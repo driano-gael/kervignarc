@@ -1,21 +1,10 @@
 // Tests de la présentation des tableaux (E07US005).
 //
-// C'est ici que vit la règle de la vue « Mon chemin » — la variante **recommandée** par la maquette
-// P05 (« l'archer est le sujet, la compétition est le contexte »). Elle n'est pas un simple filtre :
-// elle doit dire, sans jamais mentir, où en est un archer dans un arbre qui n'a de vérité que
-// partielle — un duel tiré mais pas validé n'a pas de vainqueur acquis, un adversaire peut n'être
-// pas encore sorti de son duel amont, et un archer battu n'est **pas** forcément éliminé depuis que
-// la profondeur intégrale (E06US006) fait descendre les perdants dans un tableau de placement.
-//
-// Le piège que ces tests existent pour empêcher : afficher « éliminé » à quelqu'un qui joue encore,
-// ou « à venir » à quelqu'un qui est rentré chez lui. Les deux sont indétectables depuis le code.
-//
-// ⚠️ **Les fixtures reproduisent le DTO réel, et c'est un correctif de revue.** Un premier jet
-// posait `place_en_jeu: [5, 8]` sur un match de tour 2 — une valeur que le serveur **ne produit
-// jamais** (`place_en_jeu` n'existe que sur les matchs terminaux, `domain/tableau.py`). Les tests
-// passaient donc sur une fiction et masquaient le vrai comportement : « Demi-finales » affiché sur
-// un match des places 5-8. Toute fixture ajoutée ici doit rester une **sortie possible du
-// serveur** ; en cas de doute, faire tourner le domaine plutôt que de l'imaginer.
+// C'est ici que vit la règle de « Mon chemin » : elle doit dire, sans mentir, où en est un archer
+// dans un arbre qui n'a de vérité que partielle. Le piège que ces tests empêchent : afficher «
+// éliminé » à quelqu'un qui joue encore, ou « à venir » à quelqu'un qui est rentré chez lui. ⚠️
+// **Les fixtures reproduisent le DTO réel** : un premier jet posait `place_en_jeu` sur un match non
+// terminal, valeur que le serveur **ne produit jamais** — les tests passaient sur une fiction.
 
 import { describe, expect, it } from 'vitest'
 import type { DuelPublic, TableauPublic } from './api'

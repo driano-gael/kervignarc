@@ -1,12 +1,11 @@
-// Accès API de la feature « identité visuelle du tournoi » (E16US006, absorbe E01US016).
-// Miroir des DTO exposés par `api/v1/identite.py`.
+// Accès API de la feature « identité visuelle du tournoi » (E16US006, absorbe E01US016). Miroir des
+// DTO exposés par `api/v1/identite.py`.
 //
-// ⚠️ **Ce module ne calcule aucune couleur, et c'est le point le plus important de la feature.**
-// La dérivation « teinte et saturation conservées, clarté ajustée jusqu'au seuil AA » (`DV-05`) vit
-// dans `backend/domain/identite.py`, où elle est pure, typée strictement et éprouvée contre la
-// déclinaison que la charte avait calculée à la main. La recopier ici produirait une **seconde
-// vérité** dont le mode de panne est silencieux : un contraste faux ne lève aucune erreur, il rend
-// juste un texte illisible dans un gymnase. Le front reçoit donc des valeurs **prêtes à poser**.
+// ⚠️ **Ce module ne calcule aucune couleur, et c'est le point le plus important de la feature.** La
+// dérivation (`DV-05`) vit dans `backend/domain/identite.py`, pure et éprouvée. La recopier ici
+// produirait une **seconde vérité** au mode de panne silencieux : un contraste faux ne lève aucune
+// erreur, il rend juste un texte illisible dans un gymnase. Le front reçoit des valeurs **prêtes à
+// poser**.
 
 import { fetchJson } from '../../shared/api/client'
 
@@ -56,10 +55,9 @@ export interface LogoPresent {
    * L'empreinte du **contenu** — le numéro de version que `urlDuLogo` pose dans l'URL.
    *
    * ⚠️ Sans elle, une URL stable ne provoque **aucune** requête sur une image déjà montée : React
-   * ne réécrit pas un attribut inchangé, le navigateur ne consulte même pas son cache, et
-   * `Cache-Control: no-cache` ne s'applique à rien. Un organisateur qui corrigeait son logo ne le
-   * voyait jamais. Versionner par l'horloge de la requête faisait l'inverse — l'URL changeait à
-   * chaque événement WebSocket et retéléchargeait 512 Ko pour rien.
+   * ne réécrit pas un attribut inchangé, et `Cache-Control: no-cache` ne s'applique à rien — un
+   * organisateur qui corrigeait son logo ne le voyait jamais. Versionner par l'horloge faisait
+   * l'inverse : 512 Ko retéléchargés à chaque événement WebSocket.
    */
   empreinte: string
 }
@@ -131,25 +129,13 @@ export function retirerLogo(tournoiId: number, emplacement: EmplacementLogo): Pr
   })
 }
 
-/**
- * L'adresse des octets d'un logo — à poser dans un `src`, jamais à télécharger soi-même.
+/** L'adresse des octets d'un logo — à poser dans un `src`, jamais à télécharger soi-même.
  *
- * **Versionnée par le CONTENU, et il a fallu deux rédactions pour y arriver.**
- *
- * 1. La première posait `?v=${dataUpdatedAt}`, l'horodatage React Query. Il change à **chaque**
- *    refetch, y compris quand la réponse est identique — et `useRealtime` invalide toutes les
- *    requêtes à chaque événement WebSocket (chaque volée validée). Résultat : une URL neuve en
- *    permanence, donc un *cache miss* permanent, donc jusqu'à 2 × 512 Ko retéléchargés par
- *    appareil, sur le réseau d'un gymnase, pour une image qui n'avait pas bougé.
- * 2. La deuxième retirait le paramètre. Le diagnostic réseau était juste, la conclusion fausse :
- *    avec une URL **stable**, React ne réécrit pas l'attribut `src` d'une image déjà montée, donc
- *    aucune requête ne part, donc `Cache-Control: no-cache` ne s'applique à rien. Remplacer un
- *    logo ne changeait plus rien à l'écran — ni sur l'admin, ni sur l'écran de salle ouvert toute
- *    la journée (mesuré en revue, `setAttribute` instrumenté).
- *
- * L'empreinte du contenu tient les deux bouts : elle ne bouge **que** quand les octets bougent. Le
- * *cache miss* devient alors légitime et rare, et c'est la même valeur que l'`ETag` servi par la
- * route — les deux moitiés de la chaîne de cache parlent enfin de la même chose.
+ * **Versionnée par le CONTENU, et il a fallu deux rédactions.** `?v=${dataUpdatedAt}` changeait à
+ * chaque refetch, donc à chaque événement WebSocket : *cache miss* permanent, jusqu'à 2 × 512 Ko
+ * par appareil. Retirer le paramètre faisait l'inverse — avec une URL stable, React ne réécrit pas
+ * le `src` d'une image montée, donc remplacer un logo ne changeait plus rien à l'écran (mesuré en
+ * revue). L'empreinte ne bouge **que** quand les octets bougent, et c'est la valeur de l'`ETag`.
  */
 export function urlDuLogo(
   tournoiId: number,

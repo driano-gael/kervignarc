@@ -1,22 +1,11 @@
 // Tests de l'écran de placement (E16US005, retour A11 du 04/08/2026).
 //
-// Ce que ces tests gardent, et pourquoi ils montent le composant. Le CA d'A11 est un CA de **mise
-// en page** — « une cible par ligne », « un puits de réserve » : la mise en page ne se prouve pas en
-// jsdom, qui ne calcule aucune grille. Ce qui se prouve, et qui est le vrai contenu de l'US, c'est
-// **ce que la largeur gagnée sert à montrer** :
-//
-//   - le jeton porte les repères d'arbitrage (club, catégorie, blason), ceux-là mêmes sur lesquels
-//     portent les deux badges de la cible — sans quoi l'organisateur lit « mixité non garantie »
-//     sans savoir **qui** la cause, ce qui était exactement l'état d'avant ;
-//   - un club non renseigné se dit « club inconnu », jamais « aucun club » (ADR-0014) ;
-//   - un référentiel absent **n'invente rien** : pas de « Club #7 » sur quarante lignes ;
-//   - la réserve distingue une mise à l'écart voulue (« en attente », neutre) d'une anomalie
-//     (« sans blason », ambre) — c'est le CA « un archer en réserve doit se distinguer d'un archer
-//     sans cible », déjà tenu par E03US004 et qu'on **garde ici contre une régression**.
-//
-// ⚠️ Le test qui compte le plus est celui du référentiel absent : c'est le seul cas où l'écran
-// pourrait afficher une information **fausse** plutôt qu'incomplète, et un organisateur déplace des
-// archers sur ce qu'il lit.
+// Le CA d'A11 est un CA de **mise en page**, qui ne se prouve pas en jsdom : ce qui se prouve est
+// **ce que la largeur gagnée sert à montrer** — les repères d'arbitrage sur le jeton (club,
+// catégorie, blason), « club inconnu » plutôt que « aucun club » (ADR-0014), un référentiel absent
+// qui **n'invente rien**, et une réserve distinguant la mise à l'écart voulue de l'anomalie. ⚠️ Le
+// cas qui compte le plus est le référentiel absent : le seul où l'écran afficherait une information
+// **fausse** plutôt qu'incomplète.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'

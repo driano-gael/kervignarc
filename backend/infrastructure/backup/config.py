@@ -1,17 +1,7 @@
-"""Paramètres de la sauvegarde périodique — variables d'environnement (E11US003).
+"""Réglages de sauvegarde périodique, par variables d'environnement (règle 12).
 
-Miroir de `infrastructure/db/config.py` et `infrastructure/auth/config.py` : le projet n'a pas
-de `BaseSettings`, la configuration se lit dans `os.environ` avec un défaut et une variable de
-surcharge (règle 12 — simplicité hors domaine). `run.py` peut publier ces variables ; à défaut,
-les valeurs par défaut conviennent au déploiement standard (dossier `backups/` à côté de l'exe).
-
-- **intervalle** (`KERVIGNARC_BACKUP_INTERVAL_SECONDS`) : période entre deux sauvegardes. 900 s
-  (15 min) par défaut — assez fréquent pour un tournoi d'une journée, assez espacé pour rester
-  invisible. `0` (ou négatif) **désactive** la sauvegarde périodique.
-- **rétention** (`KERVIGNARC_BACKUP_RETENTION`) : nombre de sauvegardes conservées (les plus
-  récentes) ; les plus anciennes sont purgées. 48 par défaut (≈ 12 h à 15 min).
-- **dossier** (`KERVIGNARC_BACKUP_DIR`) : où déposer les copies. Par défaut `backups/` dans le
-  dossier de données (à côté de l'exécutable en release, cf. `release/chemins.py`).
+Intervalle 900 s par défaut — `0` **désactive**. Rétention 48 copies (~12 h). Dossier `backups/`
+à côté de l'exécutable.
 """
 
 from __future__ import annotations

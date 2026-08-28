@@ -1,18 +1,10 @@
 // Écran de saisie du poste de cible (E04US002) — le poste du **marqueur**.
 //
-// « La tablette appartient à la cible, pas à la personne » (CDC UX §7.2). Un marqueur (un archer de
-// la cible, désigné FFTA B.6.1.1) tape ce que chacun annonce : une grille des 3–4 archers, un pavé
-// **déduit du blason** (touches illégales absentes), le **grain de validation** affiché (D-11), le
-// marqueur **discret et tapable** (D-04 : l'interface ne s'organise pas autour d'un changement rare).
-//
-// Périmètre de cette tranche : la **saisie** (et la ré-édition avant validation). La **validation**
-// et la **correction** sont l'acte du **scoreur**, sur sa propre surface (§7.3) — hors d'ici. La
-// **file hors-ligne** et la **diffusion live** sont E04US009.
-//
-// Depuis E04US018, l'écran a un **second état** : quand les séries de la cible sont toutes validées,
-// il bascule en **panneau de routage** — « où tire-t-on ensuite ». C'est le moment exact où l'archer
-// range ses flèches et s'en va : l'information doit partir avec lui. « Retour à la grille » revient
-// à la saisie (CA), et le panneau reste rouvrable tant que la cible est close.
+// « La tablette appartient à la cible, pas à la personne » (CDC UX §7.2) : une grille des 3-4
+// archers, un pavé **déduit du blason**, le grain de validation affiché (D-11), le marqueur discret
+// et tapable (D-04). ⚠️ Périmètre : la **saisie** et la ré-édition avant validation — la validation
+// et la correction sont l'acte du scoreur, sur sa propre surface. Depuis E04US018, second état :
+// cible entièrement validée → **panneau de routage**, au moment où l'archer range ses flèches.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -56,20 +48,11 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   // ⚠️ **Les frappes en cours vivent ici, pas dans le pavé.** Elles étaient un `useState` de
   // `PaveArcher`, monté avec `key={archer_id}` : **tout** ce qui démontait ce composant jetait la
-  // volée en cours sans un mot, et quatre chemins le démontent — changer d'archer (le geste le plus
-  // fréquent d'une cible à quatre), ouvrir « Où tire-t-on ensuite ? », changer de départ, fermer le
-  // pavé. Une première correction n'avait gardé que le quatrième, le plus rare, et affirmait en
-  // commentaire les avoir tous couverts (2ᵉ passe de revue, 05/08/2026).
-  //
-  // Remonter l'état d'un cran **supprime la classe entière de défauts** au lieu d'en garder les
-  // chemins un par un : le brouillon survit au démontage, donc changer d'archer et revenir retrouve
-  // la frappe telle qu'on l'avait laissée. Et comme plus rien ne se perd, la confirmation de
-  // fermeture disparaît — elle criait de toute façon au loup à chaque fin de série, le tampon étant
-  // pré-rempli avec la volée déjà enregistrée.
-  //
-  // Clé `archerId:numeroDeVolee`. Un brouillon est effacé **à l'enregistrement** : la vérité repasse
-  // alors au serveur. Les brouillons d'archers disparus de la grille sont inertes (personne ne les
-  // lit) et partent au prochain démontage de l'écran.
+  // volée en cours sans un mot, et quatre chemins le démontent — changer d'archer, ouvrir le
+  // panneau de routage, changer de départ, fermer le pavé. Remonter l'état d'un cran **supprime la
+  // classe entière de défauts** au lieu d'en garder les chemins un par un, et la confirmation de
+  // fermeture disparaît avec. Clé `archerId:numeroDeVolee` ; un brouillon est effacé **à
+  // l'enregistrement**, la vérité repassant alors au serveur.
   const [brouillons, setBrouillons] = useState<Brouillons>({})
   const changerBrouillon = (archerId: number, numero: number, valeurs: string[] | null) =>
     setBrouillons((actuels) => noterBrouillon(actuels, archerId, numero, valeurs))
@@ -83,19 +66,12 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
 
   const lignes = grille.data ?? []
 
-  // **Le pavé est appelé, pas permanent** — retour maquettes du 04/08/2026 (S02) : la variante
-  // retenue est « grille complète, pavé appelé », et l'évolution demandée est explicite, écrite deux
-  // fois dans le questionnaire — *« l'appel du pavé doit se faire à la sélection de la zone de
-  // saisie »*.
-  //
-  // L'écran ouvrait le pavé d'office sur l'archer en position A. C'était une commodité (« le pavé est
-  // utilisable tout de suite ») qui coûte cher sur une cible : la grille des quatre archers, celle
-  // qu'on lit pour savoir où l'on en est, était repoussée sous un pavé que personne n'avait demandé,
-  // et un tap malheureux saisissait pour l'archer A — celui qu'on n'avait jamais choisi.
-  //
-  // `archerActif` n'a donc **plus de repli** : il vaut `null` tant qu'aucune ligne n'a été tapée. Un
-  // choix devenu obsolète (changement de départ, archer retiré) referme le pavé au lieu de glisser
-  // silencieusement sur un autre archer — ce qui était le vrai danger du repli.
+  // **Le pavé est appelé, pas permanent** — retour maquettes du 04/08/2026 (S02), demandé deux fois
+  // : *« l'appel du pavé doit se faire à la sélection de la zone de saisie »*. L'écran l'ouvrait
+  // d'office sur l'archer A : la grille des quatre archers, celle qu'on lit pour savoir où l'on en
+  // est, était repoussée sous un pavé que personne n'avait demandé, et un tap malheureux saisissait
+  // pour A. ⚠️ `archerActif` n'a donc **plus de repli** : un choix devenu obsolète referme le pavé
+  // au lieu de glisser silencieusement sur un autre archer — le vrai danger du repli.
   const premier = lignes[0]
   const archerActif =
     archerChoisi !== null && lignes.some((l) => l.archer_id === archerChoisi) ? archerChoisi : null
@@ -118,16 +94,12 @@ export function Saisie({ tournoiId, cibleIndex }: { tournoiId: number; cibleInde
     lignes.length > 0 &&
     lignes.every((ligne, i) => serieClose(series[i]?.data?.volees ?? [], nbVolees, ligne.forfait))
 
-  // Ouverture **automatique** quand la cible a fini (CA), et « Retour à la grille » qui referme
-  // (CA). Le panneau reste **ouvrable à la main** en toutes circonstances : un archer absent, une
-  // série restée en erreur ou un cas qu'on n'a pas prévu ne doit pas pouvoir condamner la
-  // fonctionnalité pour les trois autres archers — une porte automatique a toujours besoin d'une
-  // poignée. Refermer une consultation **manuelle** ne consomme pas la bascule automatique à venir
-  // (`apresRetour`) : sans cette nuance, jeter un œil au panneau en pleine saisie éteindrait
-  // silencieusement le CA central de l'US. `panneauFerme` est par ailleurs réinitialisé quand la
-  // grille change de **composition** (changement de départ), pas quand elle change d'**ordre** (un
-  // échange de positions A↔B au plan ne doit pas rouvrir sous les doigts un panneau qu'on vient de
-  // fermer). Ajustement d'état **au rendu** (pas en effet), comme le tampon du pavé.
+  // Ouverture **automatique** quand la cible a fini (CA), « Retour à la grille » qui referme, et
+  // panneau **ouvrable à la main** en toutes circonstances : un cas imprévu ne doit pas condamner
+  // la fonctionnalité pour les trois autres archers — une porte automatique a toujours besoin d'une
+  // poignée. ⚠️ Refermer une consultation **manuelle** ne consomme pas la bascule automatique à
+  // venir, sans quoi jeter un œil au panneau éteindrait le CA central. `panneauFerme` est
+  // réinitialisé quand la grille change de **composition**, pas d'**ordre**. Ajustement au rendu.
   const signatureGrille = [...archerIds].sort((a, b) => a - b).join(',')
   const [ancreGrille, setAncreGrille] = useState(signatureGrille)
   const [panneauFerme, setPanneauFerme] = useState(false)
@@ -378,17 +350,15 @@ function LigneArcher({
         <span className="saisie__cumul">{cumul}</span>
       </button>
 
-      {/* **Relecture par les autres archers** (S02, question 2 : *« oui »* — contre-vérification
-          FFTA B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
-          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible.
-          ⚠️ **Hors du `<button>`, et c'est le point.** Placée dedans, cette bande — la plus large
-          zone tapable de la ligne — déclenchait `onSelectionner`, donc **fermait le pavé** (le bouton
-          est une bascule) et **démontait `PaveArcher` avec son tampon de frappe** : l'archer qui se
-          penchait pour vérifier ses volées faisait disparaître les flèches que le marqueur venait de
-          taper, sans un mot. Le geste de *vérifier* ne doit rien changer à l'état de *saisir* —
-          c'était l'intention de départ, elle n'était pas tenue (revue du 05/08/2026, axes C1 et
-          adversarial). `role="group"` plutôt qu'`aria-label` sur un `<span>` nu : sans rôle, le
-          libellé était ignoré des lecteurs d'écran. */}
+      {/* **Relecture par les autres archers** (S02, question 2 — contre-vérification FFTA
+          B.6.1.1). Chaque volée montre son total, en lecture seule ; le cadenas dit ce que le
+          scoreur a déjà verrouillé, donc ce qui n'est plus discutable à la cible. */}
+
+      {/* ⚠️ **Hors du bouton, et c'est le point.** Placée dedans, cette bande — la plus large
+          zone tapable de la ligne — fermait le pavé et **démontait `PaveArcher` avec son tampon
+          de frappe** : vérifier ses volées effaçait les flèches que le marqueur venait de
+          taper, sans un mot (revue du 05/08/2026, axes C1 et adversarial). `role=group` : sans
+          rôle, le libellé était ignoré des lecteurs d'écran. */}
       {nbVolees !== null && nbVolees > 0 && (
         <span className="saisie__relecture" role="group" aria-label={`Volées de ${ligne.nom}`}>
           {Array.from({ length: nbVolees }, (_, i) => {

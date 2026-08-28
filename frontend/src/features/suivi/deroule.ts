@@ -1,14 +1,10 @@
 // Accès API + hook de suivi du **déroulé du tour** d'un archer (E07US009, ADR-0039).
 //
-// Miroir du DTO public exposé par `api/v1/deroule.py` : les volées du jour de l'archer suivi, chacune
-// avec ses valeurs, son total, un **statut** (« en attente de validation » / « validé ») et son
-// horodatage, plus le cumul **validé**. Endpoint public, anonyme — le DTO tait volontairement
-// l'identité du scoreur (règle 6). Les scores non validés sont **provisoires** (ADR-0039) : l'UI le
-// signale par le statut.
-//
-// Le live est **gratuit** : cet état serveur React Query est invalidé globalement par la diffusion
-// temps réel post-commit (E04US009), donc chaque volée saisie ou validée rafraîchit la carte sans
-// action de l'utilisateur.
+// Miroir du DTO public d'`api/v1/deroule.py` : les volées du jour, chacune avec son statut et son
+// horodatage, plus le cumul **validé**. Endpoint public et anonyme — le DTO tait volontairement
+// l'identité du scoreur (règle 6), et les scores non validés sont **provisoires** (ADR-0039), ce
+// que l'UI signale. Le live est **gratuit** : cet état serveur est invalidé globalement par la
+// diffusion temps réel post-commit.
 
 import { useQuery } from '@tanstack/react-query'
 import { fetchJson } from '../../shared/api/client'

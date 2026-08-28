@@ -1,13 +1,10 @@
 // L'en-tête d'une **page projetée** : le compteur et le râteau, en grand (P06, 04/08/2026).
 //
 // ⚠️ **Extrait de `VueAffectations` par E16US009**, quand le classement projeté s'est mis à paginer
-// lui aussi. Le recopier aurait été la 2ᵉ occurrence d'un composant jumeau — exactement le
-// mécanisme que `DETTE-085` décrit et qui, dans l'US précédente, a produit un écran calculant des
-// repères qu'il ne rendait jamais. Deux consommateurs réels, donc `shared/`, comme le module de
-// pagination qui l'accompagne.
-//
-// Le préfixe de classes `salle-pages__` est **historique et reste juste** : les deux consommateurs
-// sont bien des pages de salle. Le renommer n'aurait déplacé aucun problème.
+// : le recopier aurait été la 2ᵉ occurrence d'un composant jumeau — le mécanisme que `DETTE-085`
+// décrit et qui, dans l'US précédente, a produit un écran calculant des repères qu'il ne rendait
+// jamais. Le préfixe `salle-pages__` est **historique et reste juste** : les deux consommateurs
+// sont bien des pages de salle.
 
 /** Les deux seules informations qui servent à quelqu'un debout au fond de la salle : « est-ce que
  * mon nom est sur cette page, et sinon combien de temps j'attends ».

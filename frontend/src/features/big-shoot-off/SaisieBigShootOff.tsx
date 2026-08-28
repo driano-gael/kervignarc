@@ -1,20 +1,11 @@
 // Écran de saisie d'un **Big Shoot Off** (E05US028) — surface **scoreur**.
 //
-// Jumeau de `SaisiePoules` par la coquille (choisir un créneau, puis une phase) et **différent** par
-// le fond : ici il n'y a pas de duel. Tous les finalistes sont sur la ligne, chacun tire la même
-// manche, et c'est le **classement de la manche** qui élimine. L'écran est donc une **ligne de tir**
-// — un archer par ligne, sa volée en cours, son état — et non un pavé d'opposition.
-//
-// ⚠️ **Ce que cet écran ne réutilise pas, et pourquoi.** `DuelCharge` apporte gratuitement le mode
-// sets/cumul, le barrage interne, le verrou de validation et la file hors-ligne — mais il suppose
-// **deux** duellistes. L'y forcer aurait demandé un adversaire fictif ; c'est précisément le genre
-// de nom trop étroit qu'ADR-0083 a fait corriger ailleurs dans cette US. On saisit donc la volée
-// directement.
-//
-// ⚠️ **Conséquence assumée : pas de file hors-ligne sur cet écran** (`DETTE-060`). Les deux
-// mutations partent en direct ; une coupure LAN pendant une finale fait perdre la volée en cours,
-// que le scoreur retape. C'est borné — un Big Shoot Off dure quelques manches et se joue devant
-// tout le monde — mais c'est un écart au régime des autres surfaces de saisie, et il est tracé.
+// Jumeau de `SaisiePoules` par la coquille et **différent** par le fond : il n'y a pas de duel —
+// tous les finalistes sont sur la ligne, et c'est le **classement de la manche** qui élimine. ⚠️
+// `DuelCharge` n'est pas réutilisé : il suppose **deux** duellistes, et l'y forcer aurait demandé
+// un adversaire fictif. ⚠️ **Conséquence assumée : pas de file hors-ligne ici** (`DETTE-060`) — une
+// coupure LAN pendant une finale fait perdre la volée en cours, que le scoreur retape ; borné, mais
+// c'est un écart au régime des autres surfaces de saisie (ADR-0083).
 
 import { useState } from 'react'
 

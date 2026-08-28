@@ -1,16 +1,11 @@
 // La **borne d'effectif** d'une phase au système suisse, dans l'atelier de composition (E05US030).
 //
-// ⚠️ **Ce fichier ferme un défaut que la fonction pure ne pouvait pas voir.** `decrireBorne` est
-// testée depuis le premier jour et n'a jamais eu tort ; ce qui était faux, c'est l'**effectif qu'on
-// lui donnait**. L'atelier lui passait l'effectif **simulé du déroulé entier**, alors que la borne
-// est opposée par `EtapeDeroule._verifier_rondes_appariables` sur l'effectif **déclaré de l'étape**
-// — le champ que ce même formulaire envoie deux lignes plus loin. Simuler 120 archers puis déclarer
-// une étape à 8 affichait donc « 119 rondes au maximum », feu vert, et l'enregistrement rendait
-// 422 : exactement le parcours que le CA veut supprimer.
-//
-// Le second cas garde le repli, qui est **indicatif et non opposable** : sans effectif déclaré, le
-// serveur ne refuse rien (« on ne refuse pas ce qu'on ne peut pas juger »), et la simulation est
-// alors le seul nombre disponible.
+// ⚠️ **La fonction pure ne pouvait pas voir ce défaut** : `decrireBorne` n'a jamais eu tort, c'est
+// l'**effectif qu'on lui donnait** qui était faux. L'atelier lui passait l'effectif **simulé du
+// déroulé entier**, alors que la borne est opposée par `EtapeDeroule._verifier_rondes_appariables`
+// sur l'effectif **déclaré de l'étape** — simuler 120 puis déclarer 8 affichait « 119 rondes au
+// maximum », feu vert, et 422 à l'enregistrement. Le second cas garde le repli, **indicatif et non
+// opposable**.
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

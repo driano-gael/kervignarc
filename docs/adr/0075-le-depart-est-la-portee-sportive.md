@@ -253,7 +253,9 @@ précisément ce qui produit la cinquième — un lecteur qui audite verrait « 
 moteur sportif ne lit rien du réglage de pages, aucune portée ne change, aucune politique injectable
 n'est en jeu. Il porte sa section « Porté dans le code par », exigée sans condition. *La liste des
 ADR **hors critère** est donc, à ce jour : `0086`, `0088`, **`0089`**, `0095`, `0096`, **`0097`**,
-`0098` —
+`0098`, **`0099`** (E00US027 — convention documentaire : une règle d'écriture des commentaires ne
+change ni portée, ni moteur, ni politique injectable ; inscrit ici en revue plutôt que laissé
+expliqué chez lui, le mode de panne que ce paragraphe décrit) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

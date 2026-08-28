@@ -1,15 +1,7 @@
-"""Connexion SQLite synchrone en mode WAL (guide §7, ADR-0005).
+"""Moteur SQLite — `journal_mode=WAL` (lectures concurrentes, indispensable au single-writer) et
+`foreign_keys=ON` (SQLite les désactive par défaut).
 
-`create_database_engine` fabrique un `Engine` SQLAlchemy **synchrone** et applique, à
-**chaque connexion**, les PRAGMA SQLite requis :
-
-- `journal_mode=WAL` : lectures concurrentes non bloquées par l'écriture en cours
-  (indispensable au single-writer, cf. ADR-0005) ;
-- `foreign_keys=ON` : SQLite désactive les clés étrangères par défaut ; on rétablit
-  l'intégrité référentielle.
-
-`Database` encapsule l'`Engine` et une fabrique de sessions courtes. Les repositories
-(ports côté domaine, E00US009) consommeront ces sessions ; le domaine reste pur.
+`Database` encapsule l'`Engine` et une fabrique de **sessions courtes**.
 """
 
 from __future__ import annotations

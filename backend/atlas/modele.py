@@ -166,19 +166,11 @@ class AreteCode:
 class Port:
     """Une interface déclarée (`Protocol`) et les classes qui la satisfont.
 
-    ⚠️ `adapters` est rempli par **appariement structurel** — une classe qui porte tous les membres
-    publics du port, méthodes **et attributs annotés** —, jamais par héritage : aucune
-    implémentation du dépôt n'hérite du port qu'elle satisfait, un inventaire fondé sur les bases
-    de classe rendrait donc une page vide en affirmant qu'elle est complète.
-
-    Les deux directions d'imprécision sont assumées, et **écrites** — la revue a montré que n'en
-    documenter qu'une revenait à sur-vendre le contrôle :
-    - **sur**-appariement : un port à un seul membre au nom courant apparie beaucoup (26 des ports
-      du dépôt n'en ont qu'un). D'où un **nombre de candidats** affiché, jamais un verdict ;
-    - **sous**-appariement : il a existé, et il a produit **deux signaux faux sur deux** avant
-      correction — un port en `@property` face à une dataclass à champs annotés. C'est pourquoi
-      `_membres` lit aussi les attributs : le patron dominant du domaine (règle 4, immutabilité)
-      passait au travers.
+    ⚠️ `adapters` est rempli par **appariement structurel** — tous les membres publics du port,
+    attributs annotés compris —, jamais par héritage : aucune implémentation n'hérite du port
+    qu'elle satisfait. Les deux imprécisions sont assumées : **sur**-appariement (26 ports n'ont
+    qu'un membre, d'où un nombre de candidats et jamais un verdict) et **sous**-appariement, qui a
+    produit deux signaux faux sur deux avant que `_membres` ne lise aussi les attributs.
     """
 
     nom: str

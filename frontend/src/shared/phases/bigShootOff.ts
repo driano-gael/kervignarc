@@ -1,17 +1,11 @@
 // Le **modèle** du réglage de Big Shoot Off (E05US028) — logique pure, aucun React.
 //
-// Séparé du composant pour la même raison que `poules.ts` et `profondeur.ts` : la règle
-// `react-refresh` interdit à un module de rendu d'exporter aussi des fonctions, et surtout la
-// conversion « ce que l'écran affiche ↔ ce qui part au serveur » se teste ici sans monter de DOM.
-//
-// ⚠️ **`paliers` est un miroir assumé du domaine** (`ConfigurationBigShootOff.paliers_pour`). Le
-// calcul vit **aussi** côté serveur, où il fait autorité (`GET /api/v1/big-shoot-off/projection/…`)
-// — mais cette lecture-là exige un tournoi et une phase posée, alors que l'atelier compose un
-// **format de bibliothèque**, sans tournoi. Il n'y a donc pas d'appel possible, et un aller-retour
-// par frappe serait de toute façon le mauvais outil pour une aide à la saisie. Même précédent et
-// même garde-fou que le serpent des poules : la règle tient en trois lignes, elle est testée, et sa
-// dérive ne produirait qu'un aperçu faux — jamais un tournoi faux, puisque c'est le serveur qui
-// déroule le jour J.
+// Séparé du composant comme `poules.ts` : `react-refresh` interdit à un module de rendu d'exporter
+// aussi des fonctions, et la conversion « écran ↔ serveur » se teste ici sans DOM. ⚠️ **`paliers`
+// est un miroir assumé du domaine** (`ConfigurationBigShootOff.paliers_pour`) : la lecture serveur
+// exige un tournoi et une phase posée, alors que l'atelier compose un **format de bibliothèque**.
+// Même garde-fou que le serpent des poules — la règle tient en trois lignes, elle est testée, et sa
+// dérive ne produirait qu'un aperçu faux, jamais un tournoi faux.
 
 /** Le réglage tel que l'API le transporte, miroir de `ReglageBigShootOffDTO`. */
 export interface ReglageBigShootOff {
@@ -22,17 +16,13 @@ export interface ReglageBigShootOff {
   departage_les_sortants: boolean
 }
 
-/**
- * Ce que l'organisateur a choisi à l'écran — la forme **éditable**, distincte de ce qui part au
+/** Ce que l'organisateur a choisi à l'écran — la forme **éditable**, distincte de ce qui part au
  * serveur.
  *
  * Les nombres restent des **chaînes** : un champ vidé doit pouvoir rester vide pendant qu'on le
- * retape, ce qu'un `number` piloté ferait perdre à chaque frappe (même parti que `EtatPoules`).
- *
- * `sortants` est saisi comme **une liste séparée par des virgules** (« 4, 2, 1 ») plutôt que par N
- * champs numérotés. Deux raisons : le nombre de manches n'est pas connu d'avance — c'est la
- * longueur de la liste —, et un organisateur qui pense « 12 → 8 → 4 → 2 » écrit plus vite une suite
- * qu'il n'ajoute quatre lignes. L'aperçu ci-dessous rattrape immédiatement une frappe fautive.
+ * retape. `sortants` est saisi comme **une liste séparée par des virgules** plutôt que par N champs
+ * numérotés — le nombre de manches n'est pas connu d'avance (c'est la longueur de la liste), et un
+ * organisateur qui pense « 12 → 8 → 4 → 2 » écrit plus vite une suite qu'il n'ajoute quatre lignes.
  */
 export interface EtatBigShootOff {
   sortants: string
@@ -69,15 +59,12 @@ function entier(valeur: string, minimum: number): number | undefined {
   return nombre
 }
 
-/**
- * Lit la liste de sortants — `undefined` si une seule case est illisible.
+/** Lit la liste de sortants — `undefined` si une seule case est illisible.
  *
  * ⚠️ **Une case à zéro est refusée**, comme côté domaine : « 4, 0, 1 » décrirait une manche qu'on
- * ferait tirer pour rien, et l'organisateur voulait « 4, 1 ». On refuse plutôt que de filtrer en
- * silence — filtrer changerait sa liste sans le lui dire.
- *
- * Les séparateurs sont tolérants (virgule, point-virgule, espace) : c'est une aide à la saisie, pas
- * un format à respecter.
+ * ferait tirer pour rien. On refuse plutôt que de filtrer en silence — filtrer changerait sa liste
+ * sans le lui dire. Les séparateurs sont tolérants (virgule, point-virgule, espace) : c'est une
+ * aide à la saisie, pas un format à respecter.
  */
 export function lireSortants(valeur: string): number[] | undefined {
   const morceaux = valeur
@@ -119,14 +106,12 @@ export function estValide(etat: EtatBigShootOff): boolean {
   return versReglage(etat) !== undefined
 }
 
-/**
- * Ce qu'il **reste** après chaque manche réellement jouable — miroir de `paliers_pour`.
+/** Ce qu'il **reste** après chaque manche réellement jouable — miroir de `paliers_pour`.
  *
  * On s'arrête à la première manche qui viderait le pas de tir : sortir 2 archers sur 2 ne
  * laisserait personne, donc cette manche ne se joue pas. C'est la règle « on joue tant que la
- * manche est possible », qui rend un format réutilisable sur un effectif qu'il ignore.
- *
- * Rend `[]` sur un effectif illisible : l'écran n'affiche alors rien plutôt qu'un aperçu inventé.
+ * manche est possible », qui rend un format réutilisable sur un effectif qu'il ignore. Rend `[]`
+ * sur un effectif illisible : l'écran n'affiche rien plutôt qu'un aperçu inventé.
  */
 export function paliers(effectif: number, eliminations: number[]): number[] {
   if (!Number.isInteger(effectif) || effectif < 1) return []

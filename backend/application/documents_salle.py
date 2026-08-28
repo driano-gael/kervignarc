@@ -1,24 +1,8 @@
-"""Service applicatif Documents de salle (E09US008) — étiquettes de cible & cartes de scoreur.
+"""Documents de salle (QR des postes, cartes scoreurs) — **lecture pure**, ports seuls.
 
-Compose deux documents imprimables à partir de données **déjà préparées** (les codes existent : ils
-sont émis par `ServicePostes.assurer_codes` pour les cibles, `ServiceScoreurs` pour les scoreurs) :
-
-- `etiquettes_cibles` : un QR par cible du tournoi, encodant l'**URL de rattachement** du poste
-  (E04US001) et portant le code en clair ;
-- `cartes_scoreurs` : un papier par scoreur, avec son nom et son code personnel (E10US003).
-
-Comme la feuille de marque, c'est une **lecture pure** (aucune écriture DB) : le service lit les
-postes/scoreurs persistés via des **ports seuls** (jamais service→service — même parti que
-`ServiceFeuilleDeMarque`) et délègue le rendu au port `GenerateurDocumentsSalle` (adapter ReportLab,
-ADR-0031). Le service reste synchrone et pur d'infrastructure : il ne connaît ni HTTP, ni SQL, ni
-ReportLab. Seule garde 404 : `TournoiIntrouvable`.
-
-**Construction de l'URL** : le domaine ne sait pas construire une URL réseau ; c'est ici qu'on la
-compose, à partir de l'**origine** de la requête admin (`request.base_url`, passée par l'API) et du
-code — forme `…/?poste=<code>`, lue par le front (`frontend/src/features/poste/url.ts`). Générer
-depuis `localhost` produit donc des QR pointant sur localhost, inutilisables sur les tablettes du
-réseau local : c'est une limite assumée (# DETTE-012), acceptable car le jour J l'admin accède au
-serveur par son IP réseau ; une base URL configurable relèvera de la mise en réseau (E11US001).
+⚠️ **L'URL du QR est composée depuis l'origine de la requête admin** : générer depuis `localhost`
+produit des QR inutilisables sur les tablettes du réseau. Limite assumée — `DETTE-012` — acceptable
+parce que le jour J l'admin accède au serveur par son IP réseau. ADR-0031
 """
 
 from __future__ import annotations

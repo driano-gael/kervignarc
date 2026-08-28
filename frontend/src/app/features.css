@@ -1,17 +1,10 @@
-/* Styles par feature — la suite de `App.css`, dans un fichier à part.
-   ————————————————————————————————————————————————————————————————————————————————————————————————
-   Sortis d'`App.css` par l'action 2 de l'audit de maintenabilité, ils y étaient ré-importés **en
-   fin de fichier** pour que la cascade reste identique. C'était juste sur l'intention et faux sur
-   le mécanisme : la spec CSS impose qu'`@import` précède toute autre règle, donc les dix lignes,
-   posées après 3767 lignes de style, étaient **ignorées** — 1187 lignes de feuilles absentes du
-   bundle (relevé à la revue d'E05US023 ; les chemins étaient faux d'un niveau par-dessus le marché,
-   ce que la position masquait puisqu'un `@import` ignoré n'est jamais résolu).
-
-   D'où ce fichier : ici les `@import` sont bien en tête, donc valides. Et `App.tsx` l'importe
-   **après** `App.css`, ce qui rend exactement l'ordre que le commentaire d'origine promettait —
-   le socle du shell d'abord, les feuilles de feature ensuite, dans leur ordre historique.
-
-   Une feature neuve ajoute son fichier et une ligne ici. */
+/* Styles par feature — la suite de `App.css`, dans un fichier à part. Sortis d'`App.css` par
+   l'audit de maintenabilité, ils y étaient ré-importés **en fin de fichier** pour préserver la
+   cascade : juste sur l'intention, faux sur le mécanisme — la spec CSS impose qu'un import précède
+   toute autre règle, donc ces dix lignes étaient **ignorées**, soit 1187 lignes de feuilles
+   absentes du bundle (relevé à la revue d'E05US023). Ici les imports sont en tête, donc valides, et
+   `App.tsx` importe ce fichier **après** `App.css`. Une feature neuve ajoute son fichier et une
+   ligne ici. */
 @import '../features/routage/routage.css';
 @import '../features/deroule/deroule.css';
 @import '../shared/schema-braquets/schema-braquets.css';

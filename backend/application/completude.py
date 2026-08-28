@@ -1,26 +1,9 @@
-"""Service applicatif **Complétude du tournoi** (E12US005) — « qu'est-ce qui manque pour finir ? ».
+"""Complétude sportive et administrative — deux décomptes agrégés, lus en poll.
 
-Cas d'usage de **lecture** : agrège, depuis les ports, les décomptes qui répondent à la question de
-l'organisateur, puis délègue l'assemblage à la politique pure `domain.completude.evaluer_completude`
-(le service compte, le domaine juge). Lecture seule (hors file d'écriture, règle 7) : l'endpoint
-l'exécute dans le threadpool et le front la **poll** (live, comme la supervision).
-
-Deux décomptes agrégés :
-
-- **Qualification, en cibles terminées / total.** Une « cible » ici = un couple `(départ, cible)`
-  portant au moins un archer placé (donnée **persistante** : plan matérialisé + inscriptions,
-  ADR-0024 / E02US009) — pas l'état runtime d'un poste rattaché (celui-là, c'est la supervision,
-  E12US001). Elle est *terminée* quand **toutes** ses séries sont complètes (`Serie.est_complete` :
-  toutes les volées du barème **validées**). Arbitrage de maille reversé dans `stories/` : le compte
-  se fait sur `(départ, cible)`, pas sur la cible physique, car un même numéro de cible sert sur
-  plusieurs créneaux et chacun est une session de tir à terminer.
-- **Paiements, en archers réglés / total.** Réglé = `reste_centimes == 0` (un archer qui ne doit
-  rien — sans inscription — est réglé d'office). Lu via un **port étroit** sur `ServicePaiements`
-  (`LecteurPaiements`), qui porte déjà la règle de calcul dû/payé/reste (E08US002) : on ne la
-  redérive pas ici.
-
-Les **phases éliminatoires** et l'état *prêt / en attente* du classement sont dérivés par le domaine
-(cf. `domain.completude`) — le premier séquencé (EPIC-05), le second de la qualification.
+⚠️ **Une « cible » est un couple `(départ, cible)`, pas une cible physique** : un même numéro sert
+sur plusieurs créneaux, et chacun est une session de tir à terminer. C'est de la donnée
+**persistante** (plan matérialisé + inscriptions), pas l'état runtime d'un poste — celui-là, c'est
+la supervision. Les paiements passent par un **port étroit** qui porte déjà la règle dû/payé/reste.
 """
 
 from __future__ import annotations
@@ -120,24 +103,17 @@ class ServiceCompletude:
     def avancement_depart(self, tournoi_id: TournoiId, depart_id: DepartId) -> AvancementDepart:
         """Avancement d'un créneau (E12US008) : archers placés, ayant tiré, séries closes.
 
-        Réalise le port `LecteurAvancementDepart` consommé par `ServiceDeparts` (garde-fou cycle).
-        On réutilise la même notion de série **close** que la complétude — `_serie_close` : barème
-        validé **ou** forfait (DETTE-014, ADR-0050) — d'où la place naturelle de ce calcul ici. « A
-        tiré » = **au moins une flèche validée** (`Serie.nb_fleches_validees > 0`), le fait réel qui
-        fait basculer un créneau *ouvert → lancé* (le CA E12US008).
-
-        **Barème non configuré** (phase de qualification absente) → aucune série n'est *scorable* ni
-        validable : `nb_ayant_tire` et `nb_series_closes` tombent à 0 (hors forfaits), le créneau
-        reste donc **ouvert** — librement éditable, robustesse jour J (même parti que
-        `_compter_cibles`). La résolution barème + forfaits est **dupliquée** de `_compter_cibles`
-        (`# DETTE-022` — le 3ᵉ cas est arrivé avec `ServiceSaisie` en E04US018 ; l'extraction
-        est inscrite au registre, elle se fera en US dédiée).
+        Réalise `LecteurAvancementDepart`, consommé par `ServiceDeparts`. Même notion de série
+        **close** que la complétude (`_serie_close` : barème validé **ou** forfait, ADR-0050) ; « a
+        tiré » = **au moins une flèche validée**. ⚠️ **Barème non configuré** → 0 partout, le
+        créneau reste **ouvert** et librement éditable (robustesse jour J). La résolution barème +
+        forfaits est **dupliquée** de `_compter_cibles` (`# DETTE-022`).
         """
+
         # E05US025 : **toutes** les qualifications du créneau, chacune sur sa population. Un premier
         # jet ne retenait que `qualification_courante` tout en comptant **tous** les archers placés
-        # (bloquant de revue) : sur la fourche du CA, les 60 archers de la *basse* n'ayant aucune
-        # feuille dans la *haute*, aucune série n'était jamais close et le créneau ne pouvait plus
-        # se clore — le cycle de vie d'E12US008 restait bloqué pour toujours.
+        # (bloquant de revue) : les 60 archers de la *basse* n'ayant aucune feuille dans la *haute*,
+        # aucune série n'était close et le créneau ne pouvait plus se clore.
         archers = self._archers_places(depart_id)
         jugements = self._jugements_du_creneau(tournoi_id, depart_id, archers)
         if not jugements:
@@ -216,19 +192,10 @@ class ServiceCompletude:
         """Un jugement par qualification **scorable** du créneau : sa population et ses feuilles.
 
         ⚠️ **C'est le CA « la complétude juge chaque qualification sur son propre effectif »**
-        (E05US025). Sur l'exemple de référence — 120 archers en 3x20, puis une *haute* et une
-        *basse* à 3x15 sur le **même** plan de cibles —, les trois phases sont exigées, chacune sur
-        ses 120, 60 et 60 archers. Ne regarder que la phase courante laissait passer une feuille
-        jamais close au premier tour, alors que c'est ce tour-là qui décide qui va où.
-
-        La **population** d'une qualification prélevée est ce que ses sources lui ont donné, lue par
-        le même résolveur que la saisie et le plan de cibles (`LecteurPopulationPhase`) : un archer
-        de la *basse* ne doit pas peser sur la *haute*, sans quoi aucune cible mixte ne serait
-        jamais terminée. La qualification de **tête** (sans source) garde tous les archers placés —
-        c'est le comportement d'avant l'US, à ne pas casser.
-
-        Une phase **sans barème** est écartée : rien n'y est encore *scorable*, on ne va pas la
-        déclarer inachevée pour toujours (robustesse jour J, même parti que le `(0, 0)` d'origine).
+        (E05US025) : 120 en 3x20, puis *haute* et *basse* à 3x15 — les trois phases sont exigées,
+        chacune sur ses 120, 60 et 60. La **population** d'une phase prélevée est lue par le même
+        résolveur que la saisie (`LecteurPopulationPhase`), la **tête** gardant tous les placés.
+        Une phase **sans barème** est écartée : rien n'y est encore scorable.
         """
         jugements: list[_JugementPhase] = []
         tous = set(archers)
@@ -295,12 +262,9 @@ class ServiceCompletude:
         """Les feuilles de marque **de cette phase**, indexées par archer.
 
         ⚠️ **`par_phase`, jamais `par_tournoi`** (E05US025, ADR-0082). L'indexation par `archer_id`
-        est ici légitime — dans une phase donnée, un archer n'a qu'une feuille — mais elle ne
-        l'était
-        plus sur `par_tournoi`, qui rend désormais une ligne **par phase tirée** : le `dict` n'en
-        aurait gardé qu'une, au hasard de l'ordre du repository, si bien que la complétude aurait
-        jugé le premier tour sur les volées du second (ou l'inverse) d'un rafraîchissement à
-        l'autre.
+        est légitime ici — une feuille par archer dans une phase — mais plus sur `par_tournoi`, qui
+        rend une ligne **par phase tirée** : le `dict` n'en aurait gardé qu'une, au hasard de
+        l'ordre du repository, jugeant le premier tour sur les volées du second.
         """
         if phase is None or phase.id is None:
             return {}

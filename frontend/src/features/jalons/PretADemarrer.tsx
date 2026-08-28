@@ -1,25 +1,11 @@
 // Écran « **Prêt à démarrer ?** » (E16US012) — le premier membre neuf de la famille.
 //
-// **Ce qu'il apporte.** Les gardes du feu vert existaient déjà, mais n'étaient lisibles
-// **qu'en échouant** : `vers_pret` lève `TournoiSansDepart`, `demarrer` lève
-// `EffectifInsuffisantPourDemarrer`. Une exception ne rend que le **premier** manquement — on
-// ajoute un créneau, on reclique, et on découvre alors l'effectif. Cet écran les **énumère** avant
-// le clic, toutes ensemble (ADR-0096).
-//
-// **L'action se lit du serveur, elle ne se déduit pas du statut.** `useTransitions` est la source
-// unique de la topologie du cycle de vie (ADR-0026 §2), déjà consommée par `FriseCycleDeVie` — le
-// CA « sans doublonner ce qui existe » interdisait d'en tenir une seconde table ici. Deux
-// transitions mènent au départ (`vers-pret` depuis *brouillon*, `demarrer` depuis *prêt*) : on
-// propose celle que le serveur offre, quelle qu'elle soit.
-//
-// DETTE-082 — ⚠️ **deux endroits pour le même geste.** La frise du cycle de vie (`FriseCycleDeVie`,
-// accueil admin) porte toujours son propre bouton « Démarrer », action **nue** ; celui-ci est l'action
-// **expliquée**. Rien n'est incohérent (même topologie serveur, même transition, même garde), mais
-// qui part de la frise ne voit pas ce qui manque. À instruire quand `ARCHIVER` rejoindra la famille.
-//
-// ⚠️ **Le bouton n'est jamais grisé**, même quand `pret` est faux : le refus remonte du serveur
-// (`D-15`, et l'arbitrage d'E05US021). C'est aussi ce qui évite la seconde source — le front ne
-// décide d'aucune garde, il annonce seulement ce qui va se passer.
+// Les gardes du feu vert existaient, mais n'étaient lisibles **qu'en échouant** — une exception ne
+// rend que le **premier** manquement ; cet écran les **énumère** avant le clic (ADR-0096).
+// **L'action se lit du serveur** via `useTransitions`, source unique de la topologie (ADR-0026 §2)
+// : on propose la transition qu'il offre, jamais une déduite du statut. ⚠️ **Le bouton n'est jamais
+// grisé**, même quand `pret` est faux (`D-15`) : le refus appartient au serveur. `DETTE-082` — la
+// frise du cycle de vie porte le même geste en action **nue**.
 
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { texteErreur } from '../../shared/ui/texteErreur'

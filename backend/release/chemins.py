@@ -1,17 +1,10 @@
 """Résolution des chemins du binaire de release (E11US001).
 
-Un exécutable PyInstaller vit dans **deux mondes** :
-
-- **Ressources embarquées** (lecture seule) : le front `frontend/dist/` et les migrations
-  `migrations/` sont dépaquetés au lancement dans un dossier temporaire exposé par
-  `sys._MEIPASS`. On lit là.
-- **Données mutables et persistantes** : la base SQLite doit **survivre** entre deux
-  lancements et être inscriptible ; on ne l'écrit donc **pas** dans `_MEIPASS` (effacé à la
-  sortie du programme) mais **à côté de l'exécutable**. Le répertoire courant ne convient
-  pas : un `.exe` double-cliqué peut hériter d'un CWD arbitraire (p. ex. `C:\\Windows\\System32`).
-
-Hors gel (dev, tests), tout retombe sur l'arborescence du dépôt — ces fonctions sont donc
-utilisables partout, `run_dev.py` restant l'entrée de développement.
+Un exécutable PyInstaller vit dans **deux mondes** : les ressources embarquées (front, migrations)
+sont dépaquetées au lancement sous `sys._MEIPASS`, en lecture seule ; la base SQLite, elle, doit
+**survivre** entre deux lancements, donc s'écrit **à côté de l'exécutable**. ⚠️ Ni dans `_MEIPASS`
+(effacé à la sortie) ni dans le répertoire courant : un exécutable double-cliqué peut hériter d'un
+CWD arbitraire. Hors gel, tout retombe sur l'arborescence du dépôt.
 """
 
 from __future__ import annotations

@@ -1,24 +1,9 @@
-"""Service applicatif Forfait (E04US015, ADR-0050) — déclarer / annuler un abandon ou une DSQ.
+"""Forfaits — deux contextes, une seule mécanique (ADR-0050). En qualification le forfait relègue ou
+exclut du **classement** ; en duels il fait **passer l'adversaire**. Trace co-écrite dans la même
+transaction (ADR-0035).
 
-Cas d'usage du **scoreur** : enregistrer qu'un archer **abandonne** ou est **disqualifié**
-(DSQ), en **préservant** ses flèches (le service ne touche jamais la série — c'est ce qui distingue
-le forfait de la suppression, ADR-0016), et **annuler** cette déclaration tant que le tournoi
-n'est pas terminé (réversibilité, `D-15`).
-
-Deux contextes, une seule mécanique (ADR-0050) :
-
-- **en qualification** : le service résout la phase de qualification du tournoi ; le forfait y
-  relègue (abandon) ou en exclut (DSQ) l'archer au **classement** (`domain.classement`) ;
-- **en duels** : le forfait est porté par la **phase de tableau** fournie ; à la reconstruction, il
-  fait **passer l'adversaire** (`ServiceSaisieDuels`).
-
-Le « quand » est lu via le port `Horloge` (jamais dans le domaine, resté déterministe). Chaque acte
-laisse une **trace d'audit** `FORFAIT` co-écrite dans la même transaction que l'acte (atomicité
-acte↔trace, ADR-0035, via `ForfaitRepository.declarer_avec_trace` / `annuler_avec_trace`).
-
-Le `declare_par` est un **nom** (pour l'audit) : ce service ne vérifie pas que le scoreur officie
-dans **ce** tournoi — cette garde (`ScoreurHorsTournoi`, 403) vit **à l'API** (`exiger_scoreur`),
-comme pour la validation de qualif et de duels.
+⚠️ **`declare_par` est un NOM, pour l'audit** : ce service ne vérifie pas que le scoreur officie
+dans **ce** tournoi — cette garde vit à l'API, comme pour la validation.
 """
 
 from __future__ import annotations

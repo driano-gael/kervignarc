@@ -1,28 +1,9 @@
-"""Endpoints REST des **poules** (E05US023, [ADR-0083]) — l'atelier règle, la salle fait tirer.
+"""Routeur **poules** — une rencontre *est* un duel ordinaire ; seule la navigation diffère.
+`numero` est **dérivé** de la composition, jamais stocké ; un tir dont les duellistes ne
+correspondent plus rend `duel: null` plutôt que d'être ré-attribué (ADR-0049 §4, ADR-0083 §7).
 
-Expose `ServicePoules` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **l'atelier** (admin) lit la **répartition** que le réglage produit sur l'effectif réel (« 30
-  archers → 7 poules : cinq de 4, deux de 5 ») et **pose le plan** de couloirs ;
-- **la salle** (scoreur) lit l'**état** de la phase — groupes, blocs de couloirs, rencontres par
-  tour, classements — et **saisit** les rencontres avec le pavé de duel d'E04US013.
-
-⚠️ **Une rencontre de poule *est* un duel ordinaire** (ADR-0083 §7), et ce routeur le montre : les
-trois écritures de tir sont les jumelles de celles de `api/v1/saisie_duels.py`, au même corps près,
-et écrivent dans la même table `duel`. Ce qui diffère est la **navigation** — on entre par la poule
-et le tour, pas par le numéro de match d'un arbre. C'est le `decor` du contrat de phase, et c'est
-tout ce que la duplication porte.
-
-`numero` est le `match_numero` de la table `duel`, **dérivé** de la composition et jamais stocké :
-poules dans l'ordre, rencontres dans l'ordre du cercle, numérotation continue depuis 1. Un tir dont
-les duellistes ne correspondent plus à la composition recalculée s'affiche « non tiré » plutôt que
-d'être ré-attribué (ADR-0049 §4) — d'où `duel: null` sur une rencontre qui a pourtant une ligne.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036) pour les trois actes du scoreur. La pose du plan, elle, est un geste **admin** et
-non idempotent par nature : elle **remplace** le plan existant, comme `plan-de-duels/regenerer`.
-
-[ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **La pose du plan n'est PAS idempotente**, contrairement aux trois actes du scoreur : c'est un
+geste admin qui **remplace** le plan existant, comme `plan-de-duels/regenerer`.
 """
 
 from __future__ import annotations
@@ -62,14 +43,10 @@ class RepartitionReponse(BaseModel):
     """Ce que le réglage produit sur l'effectif **réel** — le CA « la répartition est montrée ».
 
     `tailles` porte l'effectif de chaque groupe, dans l'ordre : c'est ce qui rend l'arrondi lisible
-    plutôt que surprenant (30 archers en poules de 4 → sept groupes, cinq de 4 et deux de 5) et ce
-    qui rend inoffensif le cas extrême (7 archers en poules de 4 → **une** poule de 7, que
-    l'organisateur voit et corrige s'il n'en veut pas).
-
-    `mode` dit **ce que ces tailles signifient** (E05US029) : sous `serpent` ce sont des groupes
-    équilibrés, sous `par_niveau` des **tranches de rangs contiguës** — l'écran les nomme alors
-    (« rangs 1-6, 7-12, … »). Les bornes ne sont pas transportées : elles se déduisent du cumul des
-    tailles, et les envoyer ferait une seconde vérité pour la même information.
+    (30 archers en poules de 4 → sept groupes, cinq de 4 et deux de 5) et inoffensif le cas extrême
+    (7 archers → **une** poule de 7, que l'organisateur voit et corrige). `mode` dit **ce que ces
+    tailles signifient** (E05US029) : `serpent` = groupes équilibrés, `par_niveau` = **tranches de
+    rangs contiguës**, que l'écran nomme depuis le cumul des tailles — jamais transportées.
     """
 
     effectif: int
@@ -105,12 +82,11 @@ def _couloirs(places: tuple[tuple[int, str], ...] | None) -> list[list[int | str
 class RencontreReponse(BaseModel):
     """Une rencontre de poule, prête pour le pavé de saisie d'E04US013.
 
-    `couloirs` porte les deux places que les adversaires occupent **à ce tour** — `[cible, couloir]`
-    chacune, dérivées du bloc de la poule et jamais persistées (le membre au repos change à chaque
-    tour, ADR-0083 §3). `null` si le plan n'est pas posé, ou trop court pour cette position.
-
-    `duel` est le **même** DTO que celui d'un match de tableau : une rencontre *est* un duel
-    ordinaire, et servir une seconde forme obligerait le front à écrire un second pavé.
+    `couloirs` porte les deux places occupées **à ce tour** — `[cible, couloir]`, dérivées du bloc
+    de la poule et jamais persistées (le membre au repos change à chaque tour, ADR-0083 §3) ;
+    `null` si le plan n'est pas posé, ou trop court. `duel` est le **même** DTO qu'un match de
+    tableau : une rencontre *est* un duel ordinaire, et servir une seconde forme obligerait le
+    front à écrire un second pavé.
     """
 
     numero: int
@@ -141,17 +117,10 @@ class RencontrePubliqueReponse(BaseModel):
     """La **même** rencontre, vue de qui n'a pas à saisir — écran de salle, public, écran admin.
 
     ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et c'est la raison d'être de ce
-    DTO. `RencontreReponse` ci-dessus sert `DuelReponse` en entier : chaque flèche de chaque volée,
-    le barrage, les zones et le barème du pavé, et le **nom du bénévole qui a validé**. Rien de
-    cela n'a de raison d'être lu hors de la saisie — c'est mot pour mot la décision qu'`api/v1/
-    tableaux.py` porte pour les arbres, et que la première version d'E05US023 a contournée sans le
-    vouloir en servant le DTO du scoreur sur une route **anonyme** (relevé en revue).
-
-    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
-    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
-
-    `termine` et `validee` disent deux choses différentes : le tir est allé au bout / le scoreur a
-    scellé. Le public voit « en attente de validation » entre les deux.
+    DTO : `RencontreReponse` sert `DuelReponse` en entier — chaque flèche, le barrage, le barème et
+    le **nom du bénévole qui a validé** —, rien de cela n'ayant à être lu hors de la saisie. DTO
+    **distinct** et non un `exclude`, comme `api/v1/tableaux.py` : un champ ajouté là n'apparaît
+    pas ici par défaut. `termine` (le tir est allé au bout) ≠ `validee` (le scoreur a scellé).
     """
 
     numero: int
@@ -239,13 +208,11 @@ def _classement(poule: PouleAffichee) -> list[RangPouleReponse]:
 class PouleReponse(BaseModel):
     """Une poule : ses membres, son bloc de couloirs, ses rencontres, son classement.
 
-    `barrage_requis` porte le **régime d'ex æquo** d'ADR-0083 §5, et c'est le seul champ dont le
-    sens dépende du réglage : la poule qui *classe* départage **tout** ex æquo irréductible, celle
-    qui *qualifie* ne départage que la barre. C'est lui qui déclenche l'annonce à l'écran — le
-    barrage lui-même se tire par `POST /api/v1/tournois/{id}/barrages` en portée `poule` (E06US003).
-
-    `bloc` est la liste des places contiguës que la poule occupe, `[cible, couloir]` chacune ;
-    `null` tant que le plan n'est pas posé.
+    `barrage_requis` porte le **régime d'ex æquo** d'ADR-0083 §5 : la poule qui *classe* départage
+    **tout** ex æquo irréductible, celle qui *qualifie* ne départage que la barre. C'est lui qui
+    déclenche l'annonce à l'écran — le barrage se tire par `POST /api/v1/tournois/{id}/barrages` en
+    portée `poule` (E06US003). `bloc` est la liste des places contiguës occupées, `[cible,
+    couloir]` chacune ; `null` tant que le plan n'est pas posé.
     """
 
     numero: int
@@ -270,9 +237,7 @@ class PouleReponse(BaseModel):
 
 
 class PoulePubliqueReponse(BaseModel):
-    """La même poule, **sans le détail de saisie** de ses rencontres.
-
-    Cf. `RencontrePubliqueReponse`.
+    """La même poule, **sans le détail de saisie** — cf. `RencontrePubliqueReponse`.
 
     Tout le reste est identique et **volontairement servi** : la composition, le bloc de couloirs,
     le classement complet avec ses cinq critères et le drapeau de barrage requis n'ont rien de
@@ -402,13 +367,10 @@ def _en_etat_duel(rencontre: RencontreAffichee) -> EtatDuel:
     """Projette une rencontre dans la forme que `DuelReponse` sait sérialiser.
 
     ⚠️ **Adaptation de frontière, pas une conversion métier.** `EtatDuel` porte deux champs qu'une
-    poule n'a pas : `place_en_jeu` (une rencontre ne décerne aucune place — c'est le classement de
-    poule qui le fait) et `est_bye` (le cercle met au repos, il n'exempte personne). Le `libelle`
-    dit le tour du groupe, pas un nom d'arbre — « Quart de finale » n'a aucun sens ici.
-
-    On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second, à
-    trois champs près, obligerait le front à écrire un second écran de saisie, ce que toute cette
-    tranche s'applique à éviter.
+    poule n'a pas : `place_en_jeu` (c'est le classement de poule qui décerne les places) et
+    `est_bye` (le cercle met au repos, il n'exempte personne) ; le `libelle` dit le tour du groupe,
+    pas un nom d'arbre. On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) — en
+    écrire un second, à trois champs près, imposerait au front un second écran de saisie.
     """
     return EtatDuel(
         numero=rencontre.numero,
@@ -448,10 +410,9 @@ async def lire_repartition(tournoi_id: int, phase_id: int, request: Request) -> 
 
     Volontairement séparé de l'état : montrer la répartition ne doit exiger ni gabarit de salle, ni
     plan posé, ni le moindre tir — sans quoi l'organisateur ne pourrait pas régler ses poules avant
-    d'avoir fait sa salle. Lecture ouverte, comme les autres consultations (E10US001).
-
-    `404` si le tournoi ou la phase est inconnu, `409 phase_pas_des_poules` sur un autre type,
-    `409 phase_pas_reglee` tant que la taille de poule n'est pas fixée.
+    d'avoir fait sa salle. Lecture ouverte (E10US001). `404` si le tournoi ou la phase est inconnu,
+    `409 phase_pas_des_poules` sur un autre type, `409 phase_pas_reglee` tant que la taille de
+    poule n'est pas fixée.
     """
     service: ServicePoules = request.app.state.service_poules
     repartition = await run_in_threadpool(service.repartition, tournoi_id, phase_id)
@@ -505,11 +466,9 @@ async def regenerer_plan(
 
     Le geste est volontairement grossier — on repose tout — parce que l'unité déplaçable est la
     **poule** et que la contiguïté de son bloc est l'invariant du format. `404
-    gabarit_du_tournoi_absent` si aucune salle n'est appliquée au tournoi.
-
-    Rend la photo **publique** : c'est l'écran d'organisation qui appelle, il n'a pas à recevoir le
-    détail de saisie, et c'est la même forme que celle qu'il relit ensuite — donc la même entrée de
-    cache côté client, sans conversion.
+    gabarit_du_tournoi_absent` si aucune salle n'est appliquée au tournoi. Rend la photo
+    **publique** : c'est l'écran d'organisation qui appelle, il n'a pas à recevoir le détail de
+    saisie, et c'est la même forme qu'il relit ensuite — donc la même entrée de cache côté client.
     """
     service: ServicePoules = request.app.state.service_poules
     write_queue: WriteQueue = request.app.state.write_queue

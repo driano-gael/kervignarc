@@ -1,20 +1,11 @@
-// Écran d'administration des archers (E02US003) — réservé à l'admin (monté sous `estAdmin`).
+// Écran d'administration des archers (E02US003) — réservé à l'admin.
 //
-// Liste des inscrits du tournoi (triée serveur, nom puis prénom), édition des quatre champs et
-// désinscription à confirmation. C'est la surface où le **club inconnu** devient corrigeable :
-// jusqu'ici l'anomalie se voyait au classement (ADR-0014) sans qu'on puisse rien en faire.
-//
-// **Trois signalements, même protocole (ADR-0015), une conséquence à part.** Chacun constate un
-// fait dont la machine ignore le sens, l'affiche en ton **neutre** (ce ne sont pas des erreurs)
-// et offre un bouton qui rejoue l'appel avec son drapeau :
-//   - `homonyme_archer` — l'édition fait entrer l'archer dans l'identité d'un inscrit ;
-//   - `changement_categorie_archer_engage` — sa catégorie change alors qu'il a déjà tiré ;
-//   - `archer_engage` — on le supprime alors qu'il est placé ou a tiré.
-// Le troisième est le seul dont la confirmation **détruit** (les flèches et le placement partent
-// avec) : bouton `--danger`, libellé qui nomme la perte. Les trois se ressemblent, leurs
-// conséquences non — et un archer qui **abandonne** ne se supprime pas : c'est un forfait tracé
-// (E04US015 / ADR-0050, ex-E12US004), qui conserve ses résultats. Le message du serveur
-// le dit ; c'est lui qu'on lit.
+// Liste des inscrits, édition des quatre champs, désinscription à confirmation. C'est la surface où
+// le **club inconnu** devient corrigeable. **Trois signalements, même protocole (ADR-0015), une
+// conséquence à part** : `homonyme_archer`, `changement_categorie_archer_engage` et `archer_engage`
+// — le troisième est le seul dont la confirmation **détruit** (flèches et placement), d'où un
+// bouton `--danger`. ⚠️ Un archer qui **abandonne** ne se supprime pas : c'est un forfait tracé
+// (ADR-0050), qui conserve ses résultats.
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -292,17 +283,12 @@ function FormulaireArcher({
     enregistrer({})
   }
 
-  // Champ vide = **efface** le handicap (retour au scratch), jamais « laisse en l'état » : c'est la
-  // même convention que `club_id` à l'édition, et retirer une surcharge est une action que
-  // l'organisateur demandera. Le serveur reste l'autorité sur les **bornes** (négatif ou trop grand
-  // → 422 `handicap_invalide`, affiché par `MessageErreur`).
-  //
-  // ⚠️ **Mais il ne peut pas être l'autorité sur ce qu'il ne voit jamais.** Un `Number()` nu rend
-  // `NaN` sur `12,5` (la virgule décimale française, que le pavé numérique d'une tablette en locale
-  // FR propose), sur `abc`, sur `7 0` — et `JSON.stringify` sérialise `NaN` en `null`. Le serveur
-  // recevait donc « efface ce handicap », répondait **200**, et la surcharge disparaissait pendant
-  // que l'écran affichait un succès. C'est la seule classe d'erreur que la validation serveur ne
-  // peut pas rattraper, parce que le front la convertit en une demande parfaitement valide.
+  // Champ vide = **efface** le handicap, jamais « laisse en l'état » : même convention que
+  // `club_id`. Le serveur reste l'autorité sur les **bornes**. ⚠️ **Mais il ne peut pas être
+  // l'autorité sur ce qu'il ne voit jamais** : un `Number()` nu rend `NaN` sur `12,5` (la virgule
+  // décimale que propose un pavé numérique en locale FR), et `JSON.stringify` sérialise `NaN` en
+  // `null` — le serveur recevait « efface ce handicap », répondait **200**, et la surcharge
+  // disparaissait pendant que l'écran affichait un succès.
   const lireEntier = (saisie: string): number | null | 'invalide' => {
     const texte = saisie.trim()
     if (texte === '') return null

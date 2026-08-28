@@ -1,28 +1,10 @@
-"""Pilotage d'une simulation vivante — bot pausable + reprise en main (E15US003, ADR-0055).
+"""Pilotage de simulation — **cadence par pas**, jamais par boucle de fond (ADR-0055 §2).
 
-Anime le **substrat** éphémère d'E15US002 (ADR-0054) : là où `ServiceSimulation.simuler` rejoue le
-moteur d'un coup et fige le résultat, ce service tient une **session vivante** (état mutable en
-mémoire serveur, hors file d'écriture — règle 7) qu'un **bot** fait avancer **pas à pas**, qu'on
-**met en pause**, où l'on **saisit à la main à la place d'un rôle**, puis que l'on **reprend**.
+Le pilote automatique est un ticker côté front ; la pause, c'est cesser d'appeler. Bot et humain
+jouent la **même** unité atomique, exposée par `prochaine_unite`.
 
-**Cadence par pas, pas par boucle de fond (ADR-0055 §2).** « Avancer » est synchrone : le pilote
-automatique est un *ticker côté front* qui appelle `avancer` sur un intervalle ; la pause, c'est
-cesser d'appeler. La **logique** reste **déterministe** (règle 9) — pas de boucle de fond, pas
-d'horloge : une même `(graine, suite d'actions séquentielle)` produit toujours le même déroulé, donc
-des tests reproductibles. Les routes s'exécutent sur des threads (`run_in_threadpool`) ; ce
-déterminisme ne vaut donc que si les opérations d'**une même** session sont **sérialisées** — ce que
-garantit un **verrou par session** (`SessionSimulation.verrou`), pas une hypothèse tacite (revue).
-
-**Une unité, deux acteurs (ADR-0055 §3).** Le bot et l'humain jouent la **même** unité atomique — la
-prochaine volée manquante d'un archer (qualif), ou le prochain duel jouable (duels) —, exposée par
-`prochaine_unite` pour peupler le formulaire de reprise en main. Le bot en **génère** les valeurs
-(générateur plausible injecté, §4) ; l'humain les **fournit**. « Saisir à la place d'un rôle » n'est
-donc pas un chemin parallèle : juste l'autre acteur sur le même curseur.
-
-**Trois états gardés (ADR-0055 §2).** `en_cours` (le bot avance, l'humain ne saisit pas) ⇄
-`en_pause` (l'humain saisit, le bot est suspendu) → `terminée` (plus d'unité). Demander une action
-hors de son état est un conflit (`PilotageSimulationInvalide`, 409), comme le cycle de vie du
-tournoi (ADR-0026).
+⚠️ **Le déterminisme ne vaut que si les opérations d'UNE MÊME session sont sérialisées** — les
+routes s'exécutent sur des threads. D'où un **verrou par session**, pas une hypothèse tacite.
 """
 
 from __future__ import annotations
@@ -574,13 +556,13 @@ class ServicePilotageSimulation:
         """Pose une volée **validée** (verrouillée) dans la série de l'archer, et compte l'unité.
 
         Court-circuite délibérément le workflow de validation par grain d'E04US002 (ADR-0055 §3) :
-        produire une donnée plausible n'est pas rejouer la cérémonie de saisie. Le `_avec_volee`
-        local duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
+        produire une donnée plausible n'est pas rejouer la cérémonie de saisie. `_avec_volee`
+        duplique trivialement l'assemblage privé de `domain.serie` (2ᵉ occurrence, règle 16).
         """
+
         # E05US025 : la feuille se résout par `(phase, archer)`. La session porte déjà l'identifiant
-        # de la qualification qu'elle simule (`phase_qualif_id`, posé à l'ouverture) — le harnais ne
-        # simule qu'un déroulé mono-qualification, mais il écrit désormais **dans** cette phase et
-        # non « dans le tournoi », ce qui le rend juste si un scénario multi-qualifications arrive.
+        # de la qualification qu'elle simule (`phase_qualif_id`) — le harnais ne simule qu'un
+        # déroulé mono-qualification, mais il écrit **dans** cette phase et non « dans le tournoi ».
         serie = session.harnais.series.par_archer(session.phase_qualif_id, archer_id)
         if serie is None:
             serie = Serie.vide(session.tournoi_id, archer_id, session.phase_qualif_id)
@@ -598,14 +580,12 @@ class ServicePilotageSimulation:
         gagnant: Cote,
         auteur: str,
     ) -> None:
-        """Score un duel jusqu'au vainqueur `gagnant`, le valide (le tableau avance ensuite,
-        ADR-0049).
+        """Score un duel jusqu'au vainqueur `gagnant`, puis le valide (ADR-0049).
 
         Scores **décisifs** (gagnant au maximum, perdant strictement en dessous) : le duel se
-        tranche toujours par les manches, sans barrage. Le barrage reste géré par sécurité (ne
-        devrait pas se déclencher). Vaut en `sets` comme en `cumul` : la condition d'arrêt
-        `resultat.termine` n'est vraie avant la dernière manche qu'en sets (en cumul, on saisit
-        toutes les manches).
+        tranche toujours par les manches, sans barrage — celui-ci reste géré par sécurité. Vaut en
+        `sets` comme en `cumul` : la condition d'arrêt `resultat.termine` n'est vraie avant la
+        dernière manche qu'en sets (en cumul, on saisit toutes les manches).
         """
         tid = session.tournoi_id
         n = etat_duel.numero

@@ -1,19 +1,9 @@
-"""Endpoints REST des scoreurs (E10US003) — **définition** (admin) et **session** (scoreur).
+"""Scoreurs — CRUD admin, et session ouverte par code.
 
-Deux routers, deux portées :
-
-- **Définition**, imbriquée sous le tournoi (`/api/v1/tournois/{tournoi_id}/scoreurs`) : CRUD
-  réservé à l'admin. La lecture y est **aussi** protégée (`exiger_admin`), à rebours des autres
-  référentiels (clubs, départs, publics) : la réponse porte le **code** de chaque scoreur, un secret
-  à distribuer, qui n'a pas à fuiter au public (E10US001 ouvre les *lectures*, pas les *secrets*).
-- **Session**, à la racine (`/api/v1/scoreurs/session`) : `connexion` par code — **ouverte**, c'est
-  l'acte d'authentification lui-même — et `deconnexion`, protégée par la session scoreur elle-même.
-  Le code seul suffit (aucun tournoi à désigner) : il est unique dans toute la base.
-
-Suit le patron de bout en bout : DTO Pydantic distincts des agrégats ; **écritures** (CRUD) routées
-par la file (writer unique, ADR-0005) ; la connexion est une **lecture** (relecture par code +
-session en mémoire), donc hors file (threadpool), comme la connexion admin. Erreurs typées traduites
-à la frontière (`api/erreurs.py`).
+⚠️ **La LECTURE est protégée ici, à rebours des autres référentiels** : la réponse porte le **code**
+de chaque scoreur, un secret à distribuer. E10US001 ouvre les *lectures*, pas les *secrets*. La
+connexion, elle, est ouverte — c'est l'acte d'authentification — et reste **hors file** (relecture
+par code + session en mémoire). ADR-0005
 """
 
 from __future__ import annotations

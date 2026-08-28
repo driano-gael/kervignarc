@@ -1,33 +1,10 @@
-"""Projection d'un **déroulé** : ce qu'un format produit à un effectif donné (E01US024, ADR-0063).
+"""Projection d'un déroulé sur un effectif réel — le domaine projette, le front dessine (ADR-0063).
+Deux régimes d'anomalie : **structurel** (vrai quel que soit l'effectif, bloquant) et
+**conjoncturel** (né de la résolution, avertissant) — sinon « composé pour 120, jouable à 82 »
+serait inutilisable.
 
-C'est le calcul derrière le « schéma à braquets » du CA — *« un visuel découpé par phase qui montre
-où sont les archers, ce qui leur est demandé, où ils iront après leur phase […] en fonction du
-nombre d'archers »*. Le module rend des **faits structurés** (combien, quelle tranche de rangs,
-quelles flèches, combien de tours) ; l'habillage — libellés, SVG, couleurs — est au front.
-
-**Pourquoi ici et pas côté front.** Les braquets sont la *Règle R* de
-`moteur-placement-lucky-loser.md` (« les perdants du tour *t* forment la tranche de rangs basse
-encore ouverte »), déjà portée par `domain.plage.Plage`. La recalculer en TypeScript dupliquerait un
-invariant du moteur — exactement ce que le registre de dette proscrit. Le domaine projette, le front
-dessine.
-
-**Deux régimes d'anomalie** (ADR-0063 §3). Les défauts **structurels** viennent des générateurs de
-`domain.phase` (`anomalies_sequence`, `anomalies_etape`) : ils sont vrais quel que soit l'effectif,
-donc **bloquants**. Les défauts **conjoncturels** naissent ici, à la résolution : « les rangs 33 à
-120 » sur 82 inscrits, une phase que plus personne n'atteint. Ils **avertissent** sans bloquer —
-sans quoi les plages relatives du CA d'E05US010 (« composé pour 120, jouable à 82 ») seraient
-inutilisables.
-
-**Ce que ce module ne prétend pas savoir.** Le nombre de tours n'est calculé que pour les phases
-**en tableau** (élimination directe, placement), où il se déduit de l'effectif. Poules, système
-suisse et colline le tirent d'une configuration que **ce module** ne lit pas — la projection rend
-alors un bloc sans tours plutôt qu'un chiffre inventé.
-
-⚠️ **La formulation d'origine disait « que le domaine ne modélise pas encore » (`# DETTE-028`), et
-c'est faux depuis E05US026** (relevé en revue d'E05US027, qui la périme pour le troisième format) :
-`ConfigurationSuisse` et `ConfigurationColline` sont portées par `EtapeDeroule` et `ModelePhase`. Ce
-qui reste vrai est plus étroit et plus utile : la projection **ne les consulte pas**, faute de quoi
-elle annoncerait un nombre de tours que l'effectif du jour peut réduire.
+⚠️ **Le nombre de tours n'est calculé QUE pour les phases en tableau** : poules, suisse et colline
+le tirent d'une configuration que ce module ne consulte pas.
 """
 
 from __future__ import annotations
@@ -85,21 +62,12 @@ lieu du permissif — un oubli y sur-protège au lieu de laisser passer."""
 _TYPES_DEROULES = TYPES_DEROULES
 """Les types qu'un service **exécute réellement** aujourd'hui (E05US021).
 
-Dérivé de la capacité `deroule_par_un_service` (ADR-0083). Distinct de `TYPES_EN_TABLEAU`, qu'il
-recoupait par coïncidence : celui-ci répond « sait-on dessiner ses tours ? », celui-là « le moteur
-va-t-il seulement monter cette phase ? ». Les types qui ont un moteur de domaine mais **aucun
-consommateur de production** (`# DETTE-028`) n'y figurent pas : leur prélèvement ne sera pas
-honoré, donc il ne peut pas justifier un refus de démarrage.
-
-⚠️ **Deux mouvements en E05US023**, tous deux voulus. Les **poules** y entrent (elles ont leur
-service), et `placement` en **sort** : aucun service ne monte son tableau, ce que le registre
-constate désormais au lieu de l'affirmer à l'envers. La divergence était signalée par E06US006 et
-laissée en l'état — « corriger la table changerait le plancher, donc le comportement d'une autre
-US ». Elle est tranchée ici, parce que le remède structurel la referme de toute façon : la garder
-demanderait d'écrire un mensonge **explicite** dans le registre. Effet : une phase `placement` qui
-prélève « les rangs 33 et suivants » cesse de relever le plancher d'inscrits pour une phase que
-rien ne joue — c'est exactement le « refus abusif » qu'E05US021 nommait comme sa pire défaillance,
-et il disparaît."""
+Dérivé de la capacité `deroule_par_un_service` (ADR-0083). ⚠️ À ne pas confondre avec
+`TYPES_EN_TABLEAU` : celui-ci répond « sait-on dessiner ses tours ? », celui-là « le moteur va-t-il
+seulement monter cette phase ? ». Les types sans consommateur de production (`# DETTE-028`) n'y
+figurent pas — leur prélèvement ne sera pas honoré, donc il ne peut justifier un refus de démarrage.
+E05US023 y fait entrer les **poules** et en sort `placement`, qu'aucun service ne monte.
+"""
 
 
 class EtapeProjetable(EtapeSequencee, Protocol):
@@ -123,11 +91,8 @@ class EtapeProjetable(EtapeSequencee, Protocol):
         """Le réglage d'une phase de poules — nécessaire au **signal de choc** (ADR-0083 §6).
 
         Ajouté pour la même raison que `bareme` et `validation` : la question ne se répond pas sans
-        lui. Le nombre de poules **et** le fait qu'un départage inter-poules soit demandé décident
-        si le serpent peut réunir deux membres d'un même groupe au premier tour.
-
-        ⚠️ La première version de ce texte était posée **après** le `...`, donc c'était une
-        expression morte et non une docstring : rien ne l'affichait.
+        lui. Le nombre de poules et le fait qu'un départage inter-poules soit demandé décident si le
+        serpent peut réunir deux membres d'un même groupe au premier tour.
         """
         ...
 
@@ -216,14 +181,10 @@ class ExigenceEffectif:
 class ProjectionDeroule:
     """Le déroulé projeté : les blocs, leurs flèches, et tout ce qui cloche.
 
-    `anomalies` porte **tout** — y compris ce qui est déjà rattaché à un bloc — pour que l'appelant
-    qui ne veut qu'un verdict n'ait pas à parcourir les blocs.
-
-    `effectif_minimum` est le plancher d'inscrits **déduit** des prélèvements (E05US021). Il est une
-    donnée, **pas** une anomalie de plus : le cas « à cet effectif, ce prélèvement ne prend
-    personne » remonte déjà en `PrelevementVide`, et l'ajouter une seconde fois ferait signaler le
-    même défaut deux fois — le piège documenté sous `_anomalies_effectif_declare`. Un format qui
-    *exige* davantage relève le chiffre au-dessus (`FormatTournoi.projeter`).
+    `anomalies` porte **tout**, y compris ce qui est déjà rattaché à un bloc, pour qu'un appelant
+    qui ne veut qu'un verdict n'ait pas à parcourir les blocs. `effectif_minimum` est le plancher
+    d'inscrits **déduit** des prélèvements (E05US021) — une donnée, **pas** une anomalie de plus :
+    le cas « ce prélèvement ne prend personne » remonte déjà en `PrelevementVide`.
     """
 
     effectif: int | None
@@ -245,12 +206,9 @@ class ProjectionDeroule:
 def projeter(etapes: Sequence[EtapeProjetable], effectif: int | None = None) -> ProjectionDeroule:
     """Projette un format sur `effectif` archers et rend le déroulé qui en découle.
 
-    Sans effectif, le format « reste abstrait » (CA) : la projection décrit sa structure — types,
-    flèches, ordre — mais ne compte personne. Avec, chaque bloc devient calculable, et les défauts
-    propres à cet effectif apparaissent.
-
-    Tolérante par construction : une séquence incohérente ne fait pas échouer le calcul, elle le
-    **décrit**. C'est tout l'objet de l'US — un brouillon doit pouvoir être regardé.
+    Sans effectif, le format « reste abstrait » (CA) : la projection décrit sa structure sans
+    compter personne. ⚠️ **Tolérante par construction** : une séquence incohérente ne fait pas
+    échouer le calcul, elle le **décrit** — un brouillon doit pouvoir être regardé.
     """
     triees = sorted(etapes, key=lambda etape: etape.ordre)
     structurelles = list(_anomalies_structurelles(triees))
@@ -313,51 +271,11 @@ def effectif_minimum(etapes: Sequence[EtapeSequencee]) -> int:
 def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
     """Le plancher d'inscrits de ce déroulé, **et la phase qui le réclame** (E05US021).
 
-    Le raisonnement, une fois pour toutes : une phase à duels a besoin de **deux** participants pour
-    qu'un match existe ; un prélèvement « à partir du rang *d* » n'en trouve deux que lorsque sa
-    phase source en classe *d + 1*. D'où `d - 1 + 2` inscrits — 34 pour « les rangs 33 et
-    suivants », l'exemple même du CA. Seules la qualification et l'échauffement se contentent d'un
-    participant : les six autres types du catalogue opposent des tireurs.
-
-    **Ce plancher vise exactement ce que le moteur lira** — c'est une contrainte du **moteur**, pas
-    une commodité, et s'en écarter le fait mentir dans les deux sens. Les types dont le moteur sait
-    lire le classement sont énumérés par `_TYPES_CLASSANTS_LUS`, miroir de
-    `ServiceSaisieDuels._classement_de_l_ordre` ; une source visant un autre type (poules, suisse,
-    colline, Big Shoot Off) reste **inerte**, la phase reçoit *tous* les archers en lice, et aucun
-    plancher n'est donc réclamé pour elle (reste ouvert de `# DETTE-028`, levé par E05US023).
-
-    Les deux mensonges symétriques, tous deux constatés avant correction :
-
-    - viser la **première phase** au lieu d'un type réellement lu laissait passer un déroulé
-      « échauffement → qualification → tableau 33+ » avec un plancher de 1, alors que le moteur
-      lèverait `EffectifTableauInvalide` en salle ;
-    - à l'inverse, réclamer un plancher pour un prélèvement que **rien n'honore** est un refus
-      abusif le jour J, qui coûte aussi cher qu'un oubli.
-
-    ⚠️ **La chaîne se remonte** (E05US024). Un rang se lit dans le classement de sa **phase
-    source**, et cette source a pu elle-même prélever : « les rangs 5 et suivants d'un tableau qui
-    prend les rangs 17 à 32 » réclame **22** inscrits. Une version antérieure de cette docstring
-    affirmait l'inverse (« ne dit rien sur le nombre d'inscrits nécessaires ») et citait une méthode
-    aujourd'hui supprimée — elle décrivait le moteur d'avant l'US, dans la fonction même qui l'a
-    changé. Restent hors de portée les natures qui ne se lisent pas en rangs (`issue_de_tour`,
-    `le_reste`, `# DETTE-033`), dont le compte dépend du déroulé.
-
-    ⚠️ **Une fenêtre amont bornée ne fixe aucun plancher.** « Les rangs 33 et suivants d'un tableau
-    qui n'en prend que 32 » est infaisable à 34 inscrits comme à 400 : c'est un défaut de
-    composition, que le diagnostic signale en `PrelevementVide`, et non un besoin d'effectif.
-    Annoncer un chiffre y serait rassurant et faux.
-
-    ⚠️ **Ces cas ne sont couverts par rien à la composition** — ni ici, ni par une anomalie :
-    `PrelevementVide` et `RangsSourceInexistants` ne naissent que dans la branche `RANGS` de
-    `_flux_de_source`, et `PhaseSansParticipant` exige un compte **nul**. Le plancher structurel
-    (`base`) est donc le seul filet : il est **toujours** retenu, quelle que soit la nature des
-    prélèvements, parce qu'un tableau exige deux tireurs quoi qu'il l'alimente. C'est une borne
-    inférieure jamais surestimante.
-
-    **Plusieurs prélèvements sur une phase se cumulent**, donc c'est le **plus bas** qui décide :
-    une phase nourrie par « 1 à 8 » *et* « 33 à 40 » a ses deux archers dès le 2ᵉ inscrit. Entre
-    phases, au contraire, c'est le **plus exigeant** qui l'emporte — toutes doivent pouvoir
-    se dérouler.
+    Une phase à duels veut **deux** participants ; « à partir du rang *d* » n'en trouve deux que si
+    sa source en classe *d + 1*, d'où `d - 1 + 2` inscrits. ⚠️ Le plancher vise **exactement ce que
+    le moteur lira** (`_TYPES_CLASSANTS_LUS`) : viser autre chose ment dans les deux sens — tableau
+    qui casse en salle, ou refus abusif le jour J. ⚠️ **La chaîne se remonte** (E05US024), et une
+    fenêtre amont **bornée** ne fixe aucun plancher. Entre phases, le plus exigeant l'emporte.
     """
     triees = sorted(etapes, key=lambda etape: etape.ordre)
     if not triees:
@@ -375,19 +293,11 @@ def exigence_minimale(etapes: Sequence[EtapeSequencee]) -> ExigenceEffectif:
 _TYPES_CLASSANTS_LUS = TYPES_CLASSANTS_LUS
 """Les types dont le moteur sait **lire le classement** pour y prélever (E05US024).
 
-Dérivé de la capacité `classement_lisible` (ADR-0083).
-
-⚠️ **À ne pas confondre avec `_TYPES_DEROULES`**, juste au-dessus, et la nuance décide de refus de
-démarrage : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci « sait-il *lire
-ce qu'elle a classé* ? ». Les deux ensembles ne coïncident toujours pas — `qualification` est lue
-sans être montée. C'est précisément parce qu'ils ne coïncident pas qu'ils sont **deux capacités**
-du registre, et non une seule.
-
-Miroir exact de `ServiceSaisieDuels._classement_de_l_ordre` : ce qu'il résout, on l'exige ; ce qu'il
-rend `None`, on ne l'exige pas. Faire diverger les deux rouvrirait le défaut symétrique qu'E05US021
-a corrigé — soit un plancher réclamé pour un prélèvement que rien n'honore (refus abusif le jour J),
-soit un plancher tu pour un prélèvement que le moteur lira (le tournoi démarre puis casse en salle).
-E05US023 y fait entrer les **poules**, qui sont désormais montées *et* lues.
+Dérivé de la capacité `classement_lisible` (ADR-0083). ⚠️ **À ne pas confondre avec
+`_TYPES_DEROULES`** : celui-là répond « le moteur va-t-il *monter* cette phase ? », celui-ci
+« sait-il *lire ce qu'elle a classé* ? » — `qualification` est lue sans être montée, et c'est
+pourquoi ce sont deux capacités et non une. Miroir exact de
+`ServiceSaisieDuels._classement_de_l_ordre` : les faire diverger rouvre le défaut d'E05US021.
 """
 
 
@@ -396,17 +306,11 @@ def _exigence_de_letape(
 ) -> ExigenceEffectif:
     """Le plancher d'inscrits qu'une seule étape réclame.
 
-    `base` est le plancher **structurel** : ce qu'il faut pour que l'étape ait un sens, quelle que
-    soit sa provenance. Il est retenu dans **tous** les cas de repli — une phase à duels alimentée
-    par « le reste » reste une phase à duels, et le moteur lui demandera deux tireurs.
-
-    ⚠️ **Le plancher par rangs ne vaut que pour ce que le moteur déroule vraiment.** Un déroulé
-    « qualification → poules (rangs 33 et suivants) » ne doit pas empêcher de démarrer à 28
-    inscrits : aucun service n'exécute une poule (`# DETTE-028`), donc rien ne cassera en salle, et
-    refuser le lancement serait un **refus abusif** — le pire mode de défaillance pour cette US,
-    puisqu'il ne se répare que le jour J en éditant le déroulé. C'est la symétrie exacte du repli
-    « pas de qualification » ci-dessous : l'oracle « ce que le moteur lira » s'applique dans les
-    **deux** sens, pas seulement dans le permissif. *(Relevé en contre-revue adversariale.)*
+    `base` est le plancher **structurel** — ce qu'il faut pour que l'étape ait un sens —, retenu
+    dans **tous** les cas de repli. ⚠️ **Le plancher par rangs ne vaut que pour ce que le moteur
+    déroule vraiment** : refuser un démarrage pour une phase que rien n'exécute est un **refus
+    abusif**, le pire mode de défaillance de cette US puisqu'il ne se répare que le jour J. L'oracle
+    « ce que le moteur lira » s'applique dans les deux sens, pas seulement dans le permissif.
     """
     base = 1 if etape.type in _TYPES_SANS_OPPOSITION else 2
 
@@ -434,25 +338,14 @@ def _exigence_de_letape(
     if not lisibles:
         return ExigenceEffectif(minimum=base)
 
-    # ⚠️ **E05US024 — on remonte la chaîne.** Avant, seule une source visant la qualification
-    # comptait et « rangs 33+ » se traduisait directement en 34 inscrits. Depuis que le moteur lit
-    # le classement de n'importe quelle phase classante, une source peut viser un **tableau**, qui
-    # a lui-même prélevé : « les rangs 5+ d'un tableau qui prend les rangs 17 à 32 de la
-    # qualification » réclame **22** inscrits (17 - 1 + (5 - 1 + 2)), pas 6. Traduire un rang en
-    # inscrits sans remonter annoncerait un plancher trop bas — l'organisateur démarrerait, et la
-    # phase manquerait de monde en salle.
+    # ⚠️ **E05US024 — on remonte la chaîne.** Une source peut viser un **tableau**, qui a lui-même
+    # prélevé : « les rangs 5+ d'un tableau qui prend les rangs 17 à 32 » réclame **22** inscrits
+    # (17 - 1 + (5 - 1 + 2)), pas 6. Sans remonter, le plancher annoncé serait trop bas.
     #
-    # Le `min` porte sur les **exigences**, pas sur les `rang_debut` : deux sources peuvent viser
-    # des phases de profondeurs différentes, auquel cas la plus basse en rang n'est pas la moins
-    # exigeante (correctif de revue, axe C1). `_inscrits_pour_classer` applique la même règle un
-    # cran plus bas.
-    # ⚠️ **La source retenue voyage avec son exigence.** Un premier correctif prenait le `min` des
-    # besoins d'un côté et, de l'autre, la source au plus petit `rang_debut` pour nommer la phase :
-    # le message rendait alors un chiffre et une fenêtre qui **ne se correspondaient pas**, et pire,
-    # pouvait nommer une fenêtre infaisable à tout effectif (écartée du calcul, mais toujours
-    # candidate au `min` des rangs). L'organisateur était envoyé compléter ses inscriptions pour
-    # débloquer ce qu'aucun effectif ne débloque. Reproduit en revue sur la fixture d'un test ajouté
-    # par ce même commit — c'est exactement le défaut que `ordre_source` existe pour fermer.
+    # ⚠️ Le `min` porte sur les **exigences**, pas sur les `rang_debut` : deux sources peuvent viser
+    # des phases de profondeurs différentes. Et la source retenue **voyage avec son exigence** —
+    # sinon le message rend un chiffre et une fenêtre qui ne se correspondent pas, et peut nommer
+    # une fenêtre infaisable à tout effectif.
     candidats = [
         (besoin, source)
         for source in lisibles
@@ -498,38 +391,11 @@ def _inscrits_pour_classer(
 ) -> int | None:
     """Combien d'**inscrits** il faut pour que la phase `ordre` classe `combien` participants.
 
-    La récursion du plancher (E05US024). Une phase alimentée par les inscriptions en réclame
-    exactement autant ; une phase qui prélève « à partir du rang *a* » a besoin que **sa** source en
-    classe `a - 1 + combien` — et ainsi de suite jusqu'à la tête du déroulé.
-
-    Rend **`None`** quand aucun effectif ne suffirait : une phase dont la fenêtre est **bornée** ne
-    classera jamais plus que sa largeur. « Les rangs 33 et suivants d'un tableau qui prend les rangs
-    1 à 32 » est infaisable à 34 inscrits comme à 400 — c'est un **défaut de composition**, que le
-    diagnostic de déroulé signale, et non un plancher. Annoncer 34 y serait un chiffre rassurant et
-    faux, exactement ce que la garde `_largeur(source) >= base` refuse un cran plus bas.
-
-    ⚠️ **Le plafond est mesuré sur la source la plus basse, pas sur la somme des sources.** Une
-    phase nourrie par « 1 à 32 » *et* « 40 à 50 » en accueille 43 ; on n'en compte que 32. C'est une
-    **sous-estimation de capacité**, donc un `None` rendu un peu trop tôt, donc un plancher **tu**
-    plutôt qu'un refus indu — le sens sûr, celui que cette US et E05US021 ont choisi partout
-    ailleurs (« refuser à tort est le pire mode de défaillance »). À resserrer le jour où un déroulé
-    réel en souffrira, pas avant.
-
-    ⚠️ **`vus` n'est pas une ceinture de sécurité, c'est la seule chose qui fasse terminer cette
-    fonction sur le chemin où elle est appelée** (bloquant de revue, reproduit par deux axes). Un
-    premier jet fondait sa terminaison sur « une source est toujours **antérieure** (ADR-0045 §3,
-    vérifié par `verifier_sequence`) ». L'argument est juste — pour les chemins d'**écriture**. Or
-    `exigence_minimale` est atteinte par `projeter`, dont la docstring dit l'inverse en toutes
-    lettres : « tolérante par construction : une séquence incohérente ne fait pas échouer le calcul,
-    elle le **décrit** ». Et depuis E01US024/ADR-0063, un format s'enregistre **incomplet** sans
-    passer par `verifier_sequence`. Un brouillon dont une étape se désigne elle-même en source est
-    donc parfaitement persistable, et c'est l'écran de **diagnostic** — celui dont le métier est
-    justement de dire à l'organisateur que sa composition boucle — qui partait en `RecursionError`,
-    donc en **500**, donc en page éteinte.
-
-    On rend `None` (« aucun plancher chiffrable ») plutôt que de lever : le cycle est déjà signalé
-    comme anomalie par `anomalies_sequence`, le plancher n'a rien à y ajouter, et `projeter` doit
-    rester tolérante.
+    La récursion du plancher (E05US024) : prélever « à partir du rang *a* » demande que **sa**
+    source en classe `a - 1 + combien`. Rend **`None`** quand aucun effectif ne suffirait — une
+    fenêtre **bornée** ne classera jamais plus que sa largeur : défaut de composition, pas plancher.
+    ⚠️ **`vus` est ce qui fait terminer cette fonction** : `projeter` est tolérante par contrat, un
+    brouillon qui se désigne lui-même en source est persistable, et l'écran partait en 500.
     """
     if ordre in vus:
         return None
@@ -592,44 +458,11 @@ def _anomalies_structurelles(etapes: Sequence[EtapeProjetable]) -> Iterator[Anom
 def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
     """Une phase de poules qui prélève dans des poules et compose au **serpent** (E05US029).
 
-    **Structurel, donc bloquant** — et les deux vont ensemble, c'est la ligne de partage d'ADR-0063
-    (« ce qui est faux quel que soit l'effectif bloque »). Le défaut ne dépend d'aucun effectif :
-    équilibrer des groupes dont les niveaux sont déjà connus est l'inverse de ce que
-    l'enchaînement de deux phases de poules cherche à faire, à 12 archers comme à 120.
-
-    ⚠️ **Le prédicat porte sur la source, pas sur le rang dans le déroulé.** Une phase de poules
-    sans source déclarée est alimentée par le classement du départ (ADR-0068) : ses niveaux
-    viennent de la qualification, pas des poules qui la précèdent, et le serpent y reste le bon
-    réglage. Lire « la 2ᵉ phase de poules du déroulé » aurait produit un faux positif systématique
-    sur ce cas — et manqué celui d'une phase de poules prélevant dans une phase de poules **non
-    adjacente**.
-
-    ⚠️ **Seules les sources `RANGS` comptent** (correctif de revue, axe D, bloquant). `preleves`
-    n'honore que celles-là : `le_reste` et `issue_de_tour` sont **inertes** (`DETTE-033`), et une
-    phase dont toutes les sources le sont retombe sur le classement du **départ** — donc le cas que
-    le paragraphe ci-dessus déclare légitime, atteint par une autre porte. Sans ce filtre, un
-    format « la phase 3 prend *le reste* de la phase 2 » — geste offert par l'atelier — devenait
-    **inapplicable** après mise à jour, et son message invitait à composer par niveau une phase
-    peuplée du plateau entier en ordre de qualification. C'est le précédent qu'énonce
-    `_anomalies_blocs_orphelins` : « un format du club qui cesse de fonctionner ».
-
-    ⚠️ **Une phase qui ne peut donner qu'UN groupe n'est jamais en cause** (correctif de revue, axe
-    C2). À un seul groupe, serpent et niveau composent la **même** poule : rien n'est éparpillé, et
-    exiger un geste qui ne change rien est un refus non justifiable. Le cas n'a rien de théorique —
-    c'est la façon dont ce format se composait **avant** cette US, une étape par niveau portant une
-    poule et sa tranche (« les rangs 1 à 6 »). Sans cette garde, six étapes de ce genre rendaient
-    six anomalies bloquantes et le format entier basculait non applicable. Le test reste
-    **structurel** (il lit l'effectif *déclaré*, pas un effectif de tournoi), donc la gravité
-    bloquante d'ADR-0063 reste justifiée.
-
-    ⚠️ **Borné aux sources de type POULES par le CA d'E05US029.** Le motif — « la source établit
-    déjà des niveaux » — vaudrait identiquement pour un système suisse ou une élimination directe,
-    tous deux `classement_lisible`. Ce n'est pas un oubli mais un périmètre : l'élargir demande un
-    arbitrage du commanditaire, pas une extension de prédicat en douce.
-
-    ⚠️ **On ne cite que les sources réellement en cause**, comme `_anomalies_choc_de_poule` a appris
-    à le faire : nommer une source de qualification à côté d'une source de poules enverrait
-    l'organisateur corriger un prélèvement qui n'a rien à se reprocher.
+    **Structurel, donc bloquant** (ADR-0063) : équilibrer des groupes dont les niveaux sont déjà
+    connus est l'inverse de ce que cet enchaînement cherche, à 12 archers comme à 120.
+    ⚠️ Le prédicat porte sur la **source**, pas sur le rang dans le déroulé ; seules les sources
+    `RANGS` comptent (les autres sont inertes, `DETTE-033`) ; une phase qui ne peut donner qu'**un**
+    groupe n'est jamais en cause ; et le périmètre est borné aux sources de type poules par le CA.
     """
     par_ordre = {etape.ordre: etape for etape in etapes}
     for etape in etapes:
@@ -666,23 +499,11 @@ def _anomalies_serpent_apres_poules(etapes: Sequence[EtapeProjetable]) -> Iterat
 def _ne_donne_qu_un_groupe(etape: EtapeProjetable, reglage: ReglageDePoules) -> bool:
     """L'étape ne peut-elle composer qu'**une** poule, d'après tout ce qu'elle déclare (E05US029) ?
 
-    On lit l'effectif **déclaré** — celui de l'étape *et* la largeur cumulée de ses fenêtres — et
-    non un effectif de tournoi : le contrôle reste ainsi vrai à tout effectif, donc structurel, ce
-    qui est la condition de la gravité bloquante (ADR-0063).
-
-    ⚠️ **Les deux évidences doivent concorder, et la première version ne le faisait pas**
-    (correctif de 2ᵉ passe, axes C1 et D). L'effectif déclaré court-circuitait la lecture des
-    fenêtres — or ce n'est qu'une *déclaration*, jamais opposable : au tournoi c'est
-    `len(participants)` qui compose. Une phase déclarant « 6 » avec une source « à partir du rang
-    1 » recevait 36 archers, composait 6 poules au serpent après des poules, et le refus ne tombait
-    pas. On ne se tait donc que si **aucun** signal déclarable n'annonce plus d'un groupe.
-
-    ⚠️ **Un effectif déclaré invalide ne fait pas lever ici** (même correctif, axes A, C1 et D).
-    `nb_poules_pour` refuse `effectif < 1`, et un `ModelePhase` de brouillon accepte `0` — c'est le
-    régime d'ADR-0063, « l'enregistrement accepte le brouillon, le diagnostic dit pourquoi ». Sans
-    cette garde, une `DomainError` s'échappait du générateur d'anomalies et le diagnostic répondait
-    **422** au lieu de lister le défaut qu'`anomalies_etape` produit déjà. Le voisin
-    `_motif_de_choc` portait cette précaution depuis toujours ; la fonction neuve ne l'avait pas.
+    On lit l'effectif **déclaré** — celui de l'étape *et* la largeur cumulée de ses fenêtres — pour
+    que le contrôle reste vrai à tout effectif, condition de la gravité bloquante (ADR-0063).
+    ⚠️ Les deux évidences doivent **concorder** : un effectif déclaré n'est jamais opposable (au
+    tournoi c'est `len(participants)` qui compose), donc on ne se tait que si **aucun** signal
+    n'annonce plus d'un groupe. ⚠️ Un effectif déclaré invalide ne fait pas lever ici (ADR-0063).
     """
     if etape.effectif is not None:
         if etape.effectif < 1:
@@ -705,27 +526,11 @@ def _ne_donne_qu_un_groupe(etape: EtapeProjetable, reglage: ReglageDePoules) -> 
 def _anomalies_blocs_orphelins(etapes: Sequence[EtapeProjetable]) -> Iterator[Anomalie]:
     """Une phase qui n'est pas la première et ne prélève nulle part : d'où viennent ses archers ?
 
-    Le schéma dessinait sinon un rectangle isolé « effectif inconnu / suite inconnue » sous un
-    verdict « tient debout » — le contraire exact de ce que le CA appelle « un trou visible ».
-
-    ⚠️ **Avertissement, et non bloquant** — la revue a démontré que le bloquer serait une
-    **régression**. Deux raisons, et la seconde suffirait :
-
-    1. **C'est un déroulé livré et documenté.** `docs/fonctionnel/E05US015.md` (mergé la veille)
-       décrit comme résultat attendu « enregistrez la phase d'élimination directe **sans source** :
-       c'est accepté ». Un format promu depuis un tel tournoi serait devenu inapplicable après mise
-       à jour — un format du club qui cesse de fonctionner.
-    2. **Le message serait faux.** « Personne ne peut l'atteindre » suppose que le moteur lit les
-       prélèvements. Il lit désormais ceux **par rangs** (E05US020, ADR-0068) ; pour les autres
-       natures il ne les lit toujours pas (`# DETTE-028` : `_decor` ensemence avec
-       *tous* les archers en lice) : une phase sans source accueille en réalité tout le monde.
-
-    L'anomalie garde donc son utilité — elle **montre** le bloc qui ne dit pas d'où viennent ses
-    archers — sans interdire ce que le produit accepte par ailleurs. Elle redeviendra candidate au
-    blocage le jour où le peuplement honorera les sources, et c'est ce jour-là que la règle aura un
-    sens dans `anomalies_sequence`, pour les phases d'un tournoi.
-
-    La première phase, elle, se peuple des inscrits : son absence de source est normale.
+    Le schéma dessinait sinon un rectangle isolé sous un verdict « tient debout » — le contraire de
+    ce que le CA appelle « un trou visible ».
+    ⚠️ **Avertissement, et non bloquant** : c'est un déroulé livré et documenté
+    (`docs/fonctionnel/E05US015.md`), et le message serait faux — le moteur ne lit pas encore toutes
+    les natures de prélèvement (`# DETTE-028`), donc une phase sans source accueille tout le monde.
     """
     if not etapes:
         return
@@ -748,12 +553,10 @@ def _anomalies_effectif_declare(
 ) -> Iterator[Anomalie]:
     """L'effectif **déclaré** est-il tenable par ce que les prélèvements amènent réellement ?
 
-    `_anomalies_somme` (`domain.phase`) abandonne l'égalité dès qu'un prélèvement est **relatif** —
-    « le reste », une issue de tour, une fin ouverte — parce qu'elle ne se décide pas au format. Or
-    la projection, elle, **sait** les résoudre à l'effectif simulé : ne pas s'en servir laissait
-    dessiner une flèche « 120 » entrant dans un bloc « 16 archers », verdict vert.
-
-    Conjoncturel par nature (le compte dépend de l'effectif) → avertissement, ADR-0063 §3.
+    `_anomalies_somme` abandonne l'égalité dès qu'un prélèvement est **relatif**, parce qu'elle ne
+    se décide pas au format. Or la projection **sait** les résoudre à l'effectif simulé : ne pas
+    s'en servir laissait dessiner une flèche « 120 » entrant dans un bloc « 16 archers », au vert.
+    Conjoncturel par nature → avertissement (ADR-0063 §3).
     """
     if etape.effectif is None or not entrees or resolu is None:
         return
@@ -788,25 +591,11 @@ def _anomalies_choc_de_poule(
 ) -> Iterator[Anomalie]:
     """Deux archers d'une même poule peuvent-ils se croiser au **premier tour** du tableau aval ?
 
-    C'est l'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce.
+    L'exception mesurée d'ADR-0083 §6, signalée à l'atelier plutôt que corrigée en douce.
 
-    ⚠️ **Deux oracles faux se sont succédé ici ; celui-ci est vérifié contre le moteur.** Le premier
-    tenait « effectif puissance de 2 ⇒ pas de choc » — faux, un nombre **impair** de poules produit
-    des chocs à tout effectif (à `P = 3` et 16 places, le serpent apparie (1, 16), soit le n° 1
-    contre un membre de sa propre poule). Le second corrigeait la parité mais avertissait sur les
-    **byes**, ce qui est un faux positif systématique à `P` pair, et se taisait sur des réglages où
-    l'arithmétique ne s'applique tout simplement pas.
-
-    Le prédicat retenu est exact **au serpent**, et il l'est au sens strict : `P impair ET
-    (M+1+P)//2 <= N`, où
-    `M` est la puissance de 2 **supérieure ou égale** à `N`. Confronté à l'appariement réel du
-    serpent sur `P = 2..39` croisé avec `N = 2..256` — 9945 configurations —, **zéro désaccord**.
-    ⚠️ Cette mesure ne dit **rien** du mode `PAR_NIVEAU`, qui révoque l'hypothèse d'espacement
-    elle-même (E05US029) : ce cas est écarté en tête de `_motif_de_choc`, avant tout calcul.
-
-    Avertissement, jamais bloquant : corriger demanderait une politique de croisement, donc une
-    règle métier que personne n'a demandée (arbitrage du 09/08/2026). Et rien ne se signale sur une
-    phase que le moteur ne monte pas — l'appariement n'y existe pas.
+    ⚠️ **Deux oracles faux se sont succédé ici ; celui-ci est vérifié contre le moteur** : `P impair
+    ET (M+1+P)//2 <= N`, où `M` est la puissance de 2 ≥ `N` — zéro désaccord sur 9945 configurations
+    au serpent. Il ne dit **rien** du mode `PAR_NIVEAU`, écarté en tête de `_motif_de_choc`.
     """
     if resolu is None or resolu < 2 or etape.type not in TYPES_EN_TABLEAU:
         return
@@ -856,28 +645,11 @@ def _puissance_de_deux_au_moins(valeur: int) -> int:
 def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | None) -> str | None:
     """Pourquoi le serpent peut réunir deux membres d'une poule — ou `None` s'il ne le peut pas.
 
-    Le raisonnement ne vaut que sous une hypothèse : **le membre `k` d'une poule occupe les rangs
-    `k, k+P, k+2P…`** du classement de phase. Quatre choses la cassent, et chacune est vérifiée ici
-    plutôt que supposée — c'est ce qui a manqué à la version précédente :
-
-    1. le **départage inter-poules** : `classement_de_poules` trie alors chaque bloc de niveau
-       indépendamment, si bien que la position d'une poule change d'un bloc à l'autre. Le module le
-       documente lui-même (« le départage peut réordonner un bloc »). Aggravant : c'est le geste que
-       le produit **recommande** quand un prélèvement coupe un bloc (ADR-0081), donc le cas est
-       fréquent, pas exotique ;
-    2. des **poules de tailles inégales** : au-delà du dernier niveau complet, le bloc est plus
-       court que `P` et l'espacement n'est plus régulier. On ne conclut donc que si le prélèvement
-       tient dans les niveaux pleins ;
-    3. un **nombre de poules inconnu** (phase non réglée, effectif ni résolu ni déclaré).
-
-    Dans ces trois cas on **signale** : l'innocuité n'est pas démontrable, et un avertissement de
-    trop coûte une lecture là où un avertissement manquant coûte un tournoi mal apparié.
-
-    4. le mode **`PAR_NIVEAU`** (E05US029) casse l'hypothèse d'une **quatrième** façon, et c'est la
-       seule qui ne mène pas à « signaler faute de savoir » : les membres d'une poule y occupent des
-       rangs **contigus**, donc l'appariement se **calcule** exactement
-       (`_choc_entre_tranches`) au lieu de se supposer. Ce cas ne passe jamais par l'arithmétique
-       d'espacement ci-dessous — il en sort avant.
+    Le raisonnement suppose que **le membre `k` d'une poule occupe les rangs `k, k+P, k+2P…`**.
+    Trois choses la cassent sans qu'on puisse conclure — départage inter-poules (qui réordonne un
+    bloc), poules de tailles inégales, nombre de poules inconnu — et on **signale** alors, faute de
+    pouvoir démontrer l'innocuité. Le mode **`PAR_NIVEAU`** la casse d'une quatrième façon, la seule
+    calculable : les rangs y sont contigus, donc `_choc_entre_tranches` tranche exactement.
     """
     reglage = source.poules
     effectif = effectif_resolu if effectif_resolu is not None else source.effectif
@@ -887,19 +659,14 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
             "inconnu), donc l'appariement ne peut pas être prouvé sûr"
         )
     if reglage.mode is ModeDeComposition.PAR_NIVEAU:
-        # ⚠️ **La 4ᵉ chose qui casse l'hypothèse d'espacement** (E05US029, relevée par trois axes de
-        # revue). Tout ce qui suit repose sur « le membre `k` occupe les rangs `k, k+P, k+2P…` » —
-        # c'est la lecture **au serpent**. Par niveau, `classement_de_poules` range groupe par
-        # groupe : les membres d'une poule occupent des rangs **contigus**, et le prédicat validé
-        # sur 9945 configurations ne décrit plus rien.
+        # ⚠️ **La 4ᵉ chose qui casse l'hypothèse d'espacement** (E05US029). Tout ce qui suit repose
+        # sur « le membre `k` occupe les rangs `k, k+P, k+2P…` », la lecture **au serpent** ; par
+        # niveau, les membres d'une poule occupent des rangs **contigus**.
         #
-        # ⚠️ **On calcule le prédicat exact plutôt que de signaler par prudence** (2ᵉ correctif de
-        # revue). Une première version rendait le motif **inconditionnellement**, en affirmant que
-        # c'était « exact plutôt que prudent » : mesuré, c'était faux **une fois sur quatre**
-        # (25,1 % de faux positifs sur 89 408 configurations, axe D). Or les tranches étant
-        # **contiguës et dérivables**, l'appariement se vérifie directement — et un avertissement
-        # systématique sur un format nominal est le bruit qui fait ignorer les vrais signaux,
-        # exactement l'argument que cette fonction oppose déjà à l'un de ses oracles passés.
+        # ⚠️ **On calcule le prédicat exact plutôt que de signaler par prudence** : une première
+        # version rendait le motif inconditionnellement — 25,1 % de faux positifs mesurés sur
+        # 89 408 configurations. Un avertissement systématique est le bruit qui fait ignorer les
+        # vrais signaux.
         return _choc_entre_tranches(effectif, resolu, reglage.taille_visee)
     if reglage.departage_inter_poules:
         return (
@@ -924,14 +691,10 @@ def _motif_de_choc(resolu: int, source: EtapeProjetable, effectif_resolu: int | 
 def _choc_entre_tranches(effectif: int, resolu: int, taille_visee: int) -> str | None:
     """Le tableau apparie-t-il deux membres d'une **même tranche de niveau** au premier tour ?
 
-    Exact, et vérifiable à la main : les groupes sont des intervalles de rangs (`tailles_de_niveau`,
-    domicile unique de la règle), et le tableau oppose le rang `r` au rang `M+1-r` où `M` est sa
-    taille — la puissance de 2 au moins égale au prélèvement. Il y a choc dès qu'une de ces paires
-    tombe deux fois dans la même tranche.
-
-    Rend `None` — donc *pas* d'avertissement — dans le cas nominal que le format vise : un
-    prélèvement de **groupes entiers** (« les rangs 1 à 16 » sur des groupes de 8) apparie
-    systématiquement le groupe A contre le groupe B, et ne réunit personne.
+    Exact et vérifiable à la main : les groupes sont des intervalles de rangs (`tailles_de_niveau`,
+    domicile unique de la règle), et le tableau oppose le rang `r` au rang `M+1-r`. Il y a choc dès
+    qu'une paire tombe deux fois dans la même tranche. Rend `None` dans le cas nominal — un
+    prélèvement de **groupes entiers** apparie le groupe A contre le B et ne réunit personne.
     """
     try:
         nb_poules = nb_poules_pour(effectif, taille_visee)
@@ -1134,21 +897,13 @@ def _tranche_du_bloc(
 def _braquets(
     etape: EtapeProjetable, resolu: int | None, tranche: tuple[int, int] | None
 ) -> tuple[TourBraquet, ...]:
-    """Déroule la *Règle R* : à chaque tour, les gagnants gardent la moitié haute, les perdants
-    prennent la basse, jusqu'à la paire terminale.
+    """Déroule la *Règle R* : à chaque tour, les gagnants gardent la moitié haute, les perdants la
+    basse, jusqu'à la paire terminale.
 
-    Calculé seulement pour les phases **en tableau** et quand la tranche d'entrée est connue : sans
-    elle, les rangs rendus seraient relatifs au tableau, donc faux dès qu'il ne part pas du rang 1.
-
-    Le nombre de duels d'un tour est `engagés - places gagnantes` : au premier tour d'un tableau
-    incomplet, cela donne exactement les byes que `ByesAuxMieuxClasses` distribuera (24 duellistes
-    dans un tableau de 32 → 8 duels, 8 exemptés). La somme des duels vaut toujours `effectif - 1`.
-
-    ⚠️ `# DETTE-035` — c'est l'arbre **nu** : les duels que la politique `depth` ajoute (une petite
-    finale au preset, toute la cascade de placement en 1→N) **n'y sont pas comptés**. Depuis
-    E06US006 l'organisateur choisit cette profondeur juste à côté du schéma, sans en voir le coût
-    en duels. Les deux corrections évidentes sont pires que le mal (ensemencer un vrai tableau ici,
-    ou recopier la formule de l'arbre) : cf. le registre de dette.
+    Calculé pour les phases **en tableau** et quand la tranche d'entrée est connue : sans elle, les
+    rangs seraient relatifs au tableau, donc faux dès qu'il ne part pas du rang 1. Le nombre de
+    duels d'un tour est `engagés - places gagnantes`, la somme valant `effectif - 1`.
+    ⚠️ `# DETTE-035` — c'est l'arbre **nu** : les duels ajoutés par `depth` n'y sont pas comptés.
     """
     if etape.type not in TYPES_EN_TABLEAU or resolu is None or tranche is None or resolu < 2:
         return ()
@@ -1215,17 +970,11 @@ def _bloc(
 def _sans_suite(resolu: int | None, sorties: Sequence[Flux]) -> int | None:
     """Combien d'archers voient leur tournoi s'arrêter dans ce bloc — le reste du CA « trou ».
 
-    Ce n'est pas une anomalie en soi : les 88 non-qualifiés d'une qualification à 120 gardent leur
-    rang et rentrent chez eux, c'est le déroulé normal. Ce que le CA demande, c'est que le dessin le
-    **montre** au lieu de le laisser deviner.
-
-    ⚠️ **Rend une valeur signée.** Un premier jet écrasait le négatif par `max(0, …)` en affirmant
-    « négatif impossible : une sur-souscription est déjà un recoupement, signalé comme tel ». C'est
-    faux, et c'est exactement ce qui a laissé passer le trou : `_anomalies_recoupements` compare les
-    prélèvements **d'une même phase cible**, jamais ceux de deux phases avales différentes puisant
-    dans la même source. « Rangs 1 à 32 » puis « rangs 32 à 64 » — l'erreur de borne d'un rang —
-    passait donc au vert. Le négatif est désormais **rendu**, et `_anomalies_sur_souscription` le
-    signale.
+    Ce n'est pas une anomalie : les 88 non-qualifiés d'une qualification à 120 rentrent chez eux.
+    Le CA demande que le dessin le **montre**.
+    ⚠️ **Rend une valeur signée.** `_anomalies_recoupements` compare les prélèvements d'une **même**
+    phase cible, jamais ceux de deux phases avales puisant dans la même source : « rangs 1 à 32 »
+    puis « rangs 32 à 64 » passait au vert. `_anomalies_sur_souscription` le signale désormais.
     """
     if resolu is None or any(sortie.effectif is None for sortie in sorties):
         return None

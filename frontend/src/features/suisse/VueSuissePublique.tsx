@@ -1,18 +1,11 @@
 // La vue **publique** d'une phase au système suisse (E05US031, ADR-0089).
 //
 // Un seul composant pour **deux** surfaces, comme `VueTableaux` : l'appli publique et l'écran de
-// salle (`interactif=false`), toutes deux montées par l'aiguilleur `features/en-cours/`.
-//
-// ⚠️ **« Trois surfaces » jusqu'à la revue** (axe C2) : la formule, reprise de `VueTableaux`,
-// ajoutait l'écran d'organisation, qui ne monte pas cette vue. C'est cette liste qui **justifie** la
-// contrainte « cette vue ne lit pas le store » ; l'appuyer sur une surface imaginaire la rend
-// invérifiable.
-//
-// **C'est le seul des trois formats sans arbre qui réclame une navigation d'historique.** Une poule
-// tient tous ses tours à l'écran (round-robin sur un plateau), un Big Shoot Off met ses manches en
-// colonnes ; un suisse, lui, ré-apparie **tout le plateau** à chaque ronde, donc les afficher toutes
-// donnerait une page interminable où la ronde en cours — la seule que la salle regarde — serait
-// noyée. D'où l'atterrissage sur la ronde courante et des boutons pour remonter.
+// salle (`interactif=false`). ⚠️ **« Trois » jusqu'à la revue** : la formule recopiée ajoutait
+// l'écran d'organisation, qui ne monte pas cette vue — or c'est cette liste qui **justifie** «
+// cette vue ne lit pas le store ». **Seul format sans arbre qui réclame une navigation
+// d'historique** : un suisse ré-apparie tout le plateau à chaque ronde, d'où l'atterrissage sur la
+// ronde courante.
 
 import { useState } from 'react'
 import { LigneRencontre } from '../../shared/duels/LigneRencontre'

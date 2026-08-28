@@ -1,32 +1,10 @@
-"""Endpoints REST du **système suisse** (E05US026, [ADR-0083]) — régler, puis faire tirer.
+"""Routeur **suisse** — une rencontre *est* un duel ordinaire ; seule la navigation diffère.
+`numero` est **dérivé** du rejeu, jamais stocké ; un tir dont les duellistes ne correspondent plus
+s'affiche « non tiré » plutôt que d'être ré-attribué (ADR-0049 §4, ADR-0083 §7).
 
-Expose `ServiceSuisse` sur deux surfaces qui n'ont ni le même public ni les mêmes droits :
-
-- **la salle et le public** lisent l'**état** de la phase — rondes appariées, rencontres, porteur de
-  bye, classement — ainsi que la **borne** de rondes que l'effectif du jour autorise ;
-- **le scoreur** saisit les rencontres avec le pavé de duel d'E04US013.
-
-⚠️ **Une rencontre de ronde *est* un duel ordinaire** (ADR-0083 §7), et ce routeur le montre : les
-trois écritures de tir sont les jumelles de celles de `api/v1/poules.py` et de
-`api/v1/saisie_duels.py`, et écrivent dans la même table `duel`. Ce qui diffère est la
-**navigation** — on entre par la **ronde**, pas par la poule ni par le numéro de match d'un arbre.
-C'est le `decor` du contrat (`RONDES_APPARIEES`), et c'est tout ce que la duplication porte.
-
-`numero` est le `match_numero` de la table `duel`, **dérivé** du rejeu et jamais stocké : rondes
-dans l'ordre, rencontres dans l'ordre de l'appariement, numérotation continue depuis 1 sur toute
-la phase. Un tir dont les duellistes ne correspondent plus à l'appariement recalculé s'affiche « non
-tiré » plutôt que d'être ré-attribué (ADR-0049 §4) — la rencontre rend alors un pavé **vierge** et
-lève `desynchronisee`, plutôt que de prêter un score au mauvais couple.
-
-⚠️ **Il n'y a pas de route « ronde suivante »**, et c'est structurel : les rondes ne se déclenchent
-pas, elles se **déduisent**. La ronde `n+1` apparaît dans l'état dès que la ronde `n` est close,
-c'est-à-dire dès que sa dernière rencontre est validée. Exposer un geste « apparier la ronde
-suivante » aurait laissé croire à une décision d'organisateur là où il n'y a qu'une conséquence.
-
-Écritures routées par la **file** (writer unique, ADR-0005) et dédoublonnées par identifiant de
-saisie (ADR-0036), comme les deux autres décors.
-
-[ADR-0083]: ../../../docs/adr/0083-le-contrat-de-phase-jouable.md
+⚠️ **Il n'y a pas de route « ronde suivante », et c'est structurel** : les rondes ne se déclenchent
+pas, elles se **déduisent** — la ronde `n+1` apparaît dès que la dernière rencontre de `n` est
+validée. Un tel geste laisserait croire à une décision là où il n'y a qu'une conséquence.
 """
 
 from __future__ import annotations
@@ -114,17 +92,10 @@ class RencontrePubliqueReponse(BaseModel):
     """La **même** rencontre, vue de qui n'a pas à saisir — écran de salle, public, écran admin.
 
     ⚠️ **C'est ici que vit la restriction de contenu (règle 6)**, et ce DTO est un correctif de
-    revue. `RencontreReponse` ci-dessous sert `DuelReponse` en entier : chaque flèche de chaque
-    volée, le barrage, les zones et le barème du pavé, et le **nom du bénévole qui a validé**. Rien
-    de cela n'a de raison d'être lu hors de la saisie.
-
-    La première version de ce routeur servait ce DTO-là sur une route **anonyme** — exactement ce
-    qu'`api/v1/poules.py` avait dû corriger en revue d'E05US023, et dont la docstring de son
-    `RencontrePubliqueReponse` porte le récit. Le défaut a été recopié en même temps que la
-    structure du fichier, sans la leçon qu'elle portait.
-
-    Comme là-bas, un DTO **distinct** et non un `exclude` : un champ ajouté au DTO du scoreur
-    n'apparaît pas ici par défaut, alors qu'une liste d'exclusions aurait laissé passer le suivant.
+    revue : `RencontreReponse` sert `DuelReponse` en entier — chaque flèche, le barrage, les zones,
+    le barème et le **nom du bénévole qui a validé**. La première version servait ce DTO-là sur une
+    route **anonyme**, défaut recopié d'`api/v1/poules.py` en même temps que la structure du
+    fichier, sans la leçon. Un DTO **distinct** et non un `exclude`.
     """
 
     numero: int
@@ -347,14 +318,11 @@ class ValiderRencontreRequete(BaseModel):
 def _en_etat_duel(rencontre: RencontreDeRonde) -> EtatDuel:
     """Projette une rencontre dans la forme que `DuelReponse` sait sérialiser.
 
-    ⚠️ **Adaptation de frontière, pas une conversion métier.** Même parti que `api/v1/poules.py` :
-    `EtatDuel` porte deux champs qu'une ronde n'a pas — `place_en_jeu` (une rencontre de ronde ne
-    décerne aucune place, c'est le classement qui le fait) et `est_bye` (le bye d'un suisse est
-    porté par la **ronde**, pas par une rencontre : personne n'y est opposé à personne).
-
-    On réutilise le DTO parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second, à
-    trois champs près, obligerait le front à écrire un troisième écran de saisie — ce que toute
-    cette série de tranches s'applique à éviter.
+    ⚠️ **Adaptation de frontière, pas une conversion métier**, même parti que `api/v1/poules.py` :
+    `EtatDuel` porte deux champs qu'une ronde n'a pas — `place_en_jeu` (c'est le classement qui
+    décerne) et `est_bye` (le bye d'un suisse est porté par la **ronde**). On réutilise le DTO
+    parce que le **pavé** est le même (ADR-0083 §7) ; en écrire un second obligerait le front à un
+    troisième écran de saisie.
     """
     return EtatDuel(
         numero=rencontre.numero,

@@ -1,20 +1,9 @@
-"""Endpoints REST du pilotage de simulation (`/api/v1`) — bot + cockpit (E15US003, ADR-0055).
+"""Cockpit de **simulation** — aucune écriture réelle, tout passe par le harnais en mémoire.
 
-Outil **admin** de démo/QA : piloter une **session vivante** de simulation (ADR-0055). Toutes les
-routes sont **lecture pure côté vraie base** — elles ne mutent qu'un état **en mémoire** (le harnais
-in-memory de la session), jamais SQLite : elles n'empruntent donc **pas** la file d'écriture (règle
-7) et s'exécutent via `run_in_threadpool`, contrairement aux écritures réelles du jeu d'essai
-(E15US001).
+Ces routes s'exécutent via `run_in_threadpool`, contrairement aux écritures du jeu d'essai.
 
-Le cockpit pilote la session par ces routes : démarrer, avancer (le ticker du pilote automatique),
-pause / reprendre, saisir une volée ou désigner un vainqueur (reprise en main), lire l'état (les
-vues cible/archer/scoreur/public en dérivent), arrêter. La diffusion isolée (`/ws/simulation`)
-signale les changements ; le front recharge l'état par `GET`.
-
-DTO Pydantic distincts des agrégats (règle 6). On **réutilise** les DTO de lecture du classement
-(`ClassementReponse`) et des tableaux (`TableauReponse`) : un même objet se rend partout pareil,
-sans mapping dupliqué. Erreurs typées traduites à la frontière (`SessionSimulationIntrouvable` →
-404, `PilotageSimulationInvalide` / `UniteSimulationInvalide` → 409).
+⚠️ **Les DTO de lecture sont RÉUTILISÉS** (classement, tableaux) : un même objet se rend partout
+pareil, sans mapping dupliqué qui divergerait. ADR-0055
 """
 
 from __future__ import annotations

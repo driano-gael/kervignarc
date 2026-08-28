@@ -27,18 +27,14 @@ export function estRefusServeur(erreur: unknown): boolean {
 // et rejoué plus tard vaut mieux qu'un score perdu en silence.
 const STATUTS_TRANSITOIRES = new Set([401, 408, 409, 429])
 
-// ⚠️ **Des refus dont le *statut* est définitif mais dont la *cause* ne l'est pas** — correctif de
-// revue E05US023, et il est né d'un autre correctif.
+// ⚠️ **Un refus au *statut* définitif dont la *cause* ne l'est pas** — correctif de revue E05US023.
 //
-// Tant que le rejeu s'arrêtait au premier refus transitoire, les actes situés derrière n'étaient
-// jamais envoyés : ce chemin était masqué. Depuis qu'un 409 ne bloque plus que **sa** rencontre, ils
-// le sont — et un `404 rencontre_introuvable` y était traité comme définitif, donc **retiré de la
-// file**, score perdu contre un `console.error` que personne n'ouvrira.
-//
-// Or en poules, ces deux causes sont réversibles : une recomposition **peut être défaite**. Retirer
-// quatre absents fait passer une phase de 12 rencontres à 6 ; les actes hors-ligne des rencontres 7
-// à 12 ne désignent plus rien *aujourd'hui*, et redésigneront leur rencontre dès que la population
-// sera rétablie. Les jeter, c'est perdre les scores que la recette promet noir sur blanc de garder.
+// Depuis qu'un 409 ne bloque plus que **sa** rencontre, les actes situés derrière sont envoyés, et
+// un `404 rencontre_introuvable` y était traité comme définitif, donc **retiré de la file** : score
+// perdu contre un `console.error`. Or en poules ces causes sont réversibles — retirer quatre
+// absents fait passer une phase de 12 rencontres à 6, et les actes des rencontres 7 à 12
+// redésigneront la leur dès la population rétablie. Les jeter perd des scores que la recette promet
+// de garder.
 const CODES_TRANSITOIRES = new Set(['rencontre_introuvable', 'match_non_jouable'])
 
 // Au **rejeu**, un refus est-il **définitif** (rejouer n'y changera rien → on retire et on

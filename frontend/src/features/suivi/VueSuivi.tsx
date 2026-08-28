@@ -1,43 +1,14 @@
-// Vue « suivi » de l'appli publique (E07US006, élargie par E16US004) — « je retrouve **mes** archers
-// sans chercher », au pluriel.
+// Vue « suivi » de l'appli publique — « je retrouve **mes** archers sans chercher », au pluriel.
 //
-// Deux gestes : **rechercher** des archers (par nom **ou par club**) pour les **suivre**, et voir la
-// **carte** de chacun — sa cible / son couloir / son départ, à jour en direct. Le choix des archers
-// suivis est mémorisé localement (`sessionSuivisStore`, `localStorage`) : aux ouvertures suivantes,
-// la vue s'ouvre directement sur eux. Aucun compte, aucune authentification — la lecture publique
-// est anonyme.
-//
-// **Cette vue n'est plus le seul endroit où le suivi sert** : depuis E16US004, l'interrupteur
-// « mes archers / tout » de l'en-tête public centre aussi le classement, les affectations, les
-// tableaux, le palmarès et le plan de cibles (`shared/suivis/focus.ts`). Ici on **compose** la
-// liste ; là-bas on la **lit**.
-//
-// **Source des données** : la journée d'un archer se reconstruit depuis **la liste des départs**
-// (`useDeparts`, numéro/horaire) et **les plans de cibles** (`getPlanDeCibles`/`useQueries`, la place).
-// On n'utilise **pas** l'endpoint des inscriptions : son DTO porte `paye`/`montant_du_centimes` — des
-// données financières nominatives qui ne doivent pas atteindre le navigateur d'un spectateur anonyme
-// (règle 6 ; correctif de revue B/C1). Les départs et les plans, eux, sont des surfaces publiques sans
-// donnée personnelle.
-//
-// Le live est **gratuit** : ces hooks sont de l'état serveur React Query, invalidé globalement par la
-// diffusion temps réel post-commit (E04US009) ; un **déplacement de placement** (admin) ou un
-// **rattachement** rafraîchit la carte sans action de l'utilisateur.
-//
-// La carte couvre le « où il tire » (cible/position/départ), le **déroulé du tour en direct**
-// (E07US009, ADR-0039) : les volées du jour, chacune avec son statut « en attente de validation » /
-// « validé », et depuis E07US008 l'**à-venir** — où il tire au tableau, son rang s'il est sorti, sa
-// destination s'il est repêché.
-//
-// ⚠️ **L'à-venir passe par la lecture collective** (`useAffectations`), pas par un `useRoutage` par
-// carte : une lecture par archer suivi multiplierait par le nombre de suivis la requête la plus
-// chère de l'application (classement + reconstruction de l'arbre + plan de duels). Le gain est
-// **une** requête au lieu de N, et il s'arrête à l'appareil — le cache React Query est par
-// navigateur, il n'y a ni cache serveur ni en-tête HTTP sur cette route. C'est `# DETTE-031`, que
-// cette US **aggrave** et dont elle élargit la ligne au registre.
-//
-// *(Un premier jet écrivait « une seule entrée de cache, un seul appel » pour tout le gymnase, sous
-// le numéro DETTE-008 — deux erreurs, relevées en revue : le cache n'est pas partagé entre
-// appareils, et DETTE-008 traite de l'écho d'une réponse 400.)*
+// Deux gestes : **rechercher** des archers (nom ou club) pour les suivre, et voir la **carte** de
+// chacun. Les suivis sont mémorisés localement ; aucun compte, la lecture publique est anonyme.
+// ⚠️ **Ici on COMPOSE la liste des suivis ; ailleurs on la LIT** (`shared/suivis/focus.ts`).
+
+// ⚠️ **Ne JAMAIS reconstruire la journée depuis l'endpoint des inscriptions** : son DTO porte des
+// données financières nominatives (règle 6). L'à-venir passe donc par la lecture **collective**,
+// une lecture par archer multipliant par N la requête la plus chère (`# DETTE-031`, ici aggravée).
+
+// DETTE-008 — le suivi recharge par poll ce que le canal live pourrait pousser.
 
 import { useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
@@ -107,17 +78,14 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
   const chargementPlans = departsQuery.isLoading || plansResults.some((r) => r.isLoading)
   const erreurPlans = departsQuery.isError || plansResults.some((r) => r.isError)
 
-  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes.
+  // L'à-venir (E07US008), lu **une fois** pour toutes les cartes. `enabled` : même garde que
+  // `besoinPlans` ci-dessus — sans elle, un spectateur qui ouvre l'onglet sans suivre personne
+  // déclenchait toutes les 20 s la lecture la plus chère du serveur (`# DETTE-031`). Le créneau
+  // en cours (ADR-0075) : les affectations sont celles d'un départ, pas du tournoi.
   //
-  // `enabled` : même garde que `besoinPlans` ci-dessus (correctif de revue). Sans elle, un
-  // spectateur qui ouvre l'onglet **sans suivre personne** déclenchait toutes les 20 s la lecture
-  // la plus chère du serveur — classement complet, arbre rebâti, duels rejoués (`# DETTE-031`).
-  //
-  // ⚠️ Trois états à distinguer, et non deux (correctif de revue) : pas de tableau (`phase_id` nul),
-  // tableau **pas encore constituable** (phase présente, aucune ligne — le cas de la matinée), et
-  // tableau constitué dont cet archer est absent. Les confondre faisait annoncer « non retenu » à
-  // tout le monde un matin où personne n'était encore placé.
-  // Le créneau en cours (ADR-0075) : les affectations sont celles d'un départ, pas du tournoi.
+  // ⚠️ Trois états à distinguer, et non deux : pas de tableau, tableau **pas encore constituable**
+  // (phase présente, aucune ligne — le cas de la matinée), et tableau constitué dont cet archer est
+  // absent ; les confondre faisait annoncer « non retenu » à tout le monde le matin.
   const departCourant = departDeSalle(departs)?.id ?? null
   const affectations = useAffectations(departCourant, null, besoinPlans)
   const lignesAffectations = affectations.data?.archers ?? []
@@ -137,18 +105,13 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
     departs,
     plansParDepart,
   )
-  // ⚠️ **Repli sur le créneau de la salle quand on ne sait pas encore où l'archer tire** (2ᵉ passe
-  // de revue). `construireJournee` ignore un archer absent du plan de cibles — donc un archer
-  // **engagé en duels mais jamais placé** (le tableau s'ensemence depuis le classement, qui compte
-  // tout inscrit) n'aurait réclamé aucun départ, et aurait perdu sa section « duels » en silence :
-  // le défaut d'origine, re-créé sous un autre déclencheur.
-  //
-  // ⚠️ `chargementPlans` dans la condition (3ᵉ passe) : sans lui, le repli se déclenchait pendant
-  // que les plans arrivaient — `departsSuivis` est **vide** à ce moment-là sans que cela veuille
-  // dire « aucun archer placé ». On tirait donc une reconstruction serveur complète de plus par
-  // ouverture d'appli, sur chaque téléphone, avant d'aller chercher le bon créneau au rendu
-  // suivant. Cela falsifiait de surcroît la promesse écrite dans `suivi.ts` (« aucune requête ne
-  // part tant que les plans ne sont pas chargés »), que son propre test verrouille.
+  // ⚠️ **Repli sur le créneau de la salle quand on ne sait pas encore où l'archer tire** :
+  // `construireJournee` ignore un archer absent du plan, donc un archer **engagé en duels mais
+  // jamais placé** perdait sa section « duels » en silence. ⚠️ `chargementPlans` dans la condition
+  // (3ᵉ passe) : sans lui le repli se déclenchait pendant que les plans arrivaient — on tirait une
+  // reconstruction serveur complète de plus par ouverture d'appli, et cela falsifiait la promesse
+  // que le test de `suivi.ts` verrouille (« aucune requête ne part tant que les plans ne sont pas
+  // chargés »).
   const departsARelire =
     departsSuivis.length > 0 || !besoinPlans || chargementPlans
       ? departsSuivis
@@ -157,19 +120,13 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
         : []
   const tableauxResults = useTableauxDesDeparts(departsARelire)
   const arbres = tableauxResults.flatMap((r) => r.data?.tableaux ?? [])
-  // ⚠️ **Une lecture d'arbres qui échoue doit se dire** (2ᵉ passe de revue). Sans cela, une requête
-  // ratée — banal sur le LAN d'un gymnase, c'est l'argument retenu deux écrans plus loin pour le
-  // référentiel des clubs — faisait **disparaître la section « duels »** sans un mot, les volées de
-  // qualification restant affichées puisqu'elles viennent d'ailleurs. C'est très exactement le
-  // défaut que ce bloc vient de corriger, déplacé du « mauvais départ » vers « le réseau ». Le
-  // fan-out l'aggravait : sur deux départs, une panne partielle amputait un archer et pas l'autre.
-  //
-  // ⚠️ **`data === undefined` en plus d'`isError`** (3ᵉ passe). Ces requêtes se rafraîchissent
-  // toutes les 20 s : à l'échec d'un refetch d'**arrière-plan**, React Query passe en `error` mais
-  // **conserve** la dernière donnée lue. Sans ce second test, le bandeau rouge s'affichait
-  // au-dessus des duels qu'il déclarait indisponibles, alors qu'ils étaient là et justes. C'est le
-  // piège « les données priment sur l'erreur » que `VueAffectations` a déjà corrigé — deux fichiers
-  // plus loin, dans cette même US.
+  // ⚠️ **Une lecture d'arbres qui échoue doit se dire** : sans cela une requête ratée — banal sur
+  // le LAN d'un gymnase — faisait **disparaître la section « duels »** sans un mot, les volées de
+  // qualification restant affichées. ⚠️ **`data === undefined` en plus d'`isError`** : ces requêtes
+  // se rafraîchissent toutes les 20 s, et à l'échec d'un refetch d'arrière-plan React Query passe
+  // en `error` tout en **conservant** la dernière donnée — le bandeau rouge s'affichait alors
+  // au-dessus de duels justes. Piège « les données priment sur l'erreur », déjà corrigé dans
+  // `VueAffectations`.
   const erreurArbres = tableauxResults.some((r) => r.isError && r.data === undefined)
 
   return (
@@ -218,20 +175,12 @@ export function VueSuivi({ tournoiId }: { tournoiId: number }) {
 }
 
 // La recherche : un nom, un club, et sous eux la liste qui se met à jour à la frappe. Sans aucun
-// critère, rien ne s'affiche (D-09 : la recherche est l'exception). Au-delà de MAX_RESULTATS, on
-// invite à préciser.
-//
-// **Trois évolutions d'E16US004**, dérivées du questionnaire P01 (*« mettre un filtre de tri par
-// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche ; dans
-// la ligne d'un archer mettre un état : suivi, à suivre, ne plus suivre »*) :
-//  1. un **filtre par club** qui, choisi seul, liste les archers du club — sans quoi il ne serait
-//     qu'un raffinage d'une recherche déjà tapée, pas un filtre ;
-//  2. chaque ligne porte son **état actionnable** dans les deux sens : on suit **et** on cesse de
-//     suivre depuis la recherche. Auparavant un archer déjà suivi n'affichait qu'un « Suivi ✓ »
-//     inerte, et il fallait aller le retrouver dans sa carte pour le retirer ;
-//  3. la recherche **ne se vide plus** après un « Suivre » : on en suit désormais plusieurs d'affilée
-//     (c'est tout l'objet de l'US), et repartir d'un champ vide à chaque ajout imposait de retaper
-//     le club à chaque archer.
+// critère, rien ne s'affiche (D-09 : la recherche est l'exception) ; au-delà de MAX_RESULTATS, on
+// invite à préciser. **Trois évolutions d'E16US004** dérivées de P01 : un **filtre par club** qui,
+// choisi seul, liste les archers du club (sans quoi il ne serait qu'un raffinage) ; chaque ligne
+// porte son **état actionnable dans les deux sens** (on suit **et** on cesse de suivre depuis la
+// recherche) ; la recherche **ne se vide plus** après un « Suivre » — on en suit plusieurs
+// d'affilée, et repartir d'un champ vide imposait de retaper le club à chaque archer.
 function RechercheArcher({
   archers,
   enChargement,
@@ -480,18 +429,13 @@ function CarteArcherSuivi({
   )
 }
 
-/** Le récapitulatif de la journée d'un archer suivi — **repliable** (E16US004).
+/** Le récapitulatif de la journée d'un archer suivi — **repliable** (E16US004, P02).
  *
- * P02 le demande en ces termes : *« écran repliable pour le récapitulatif des informations de la
- * journée, on doit pouvoir retrouver tous les tours de toutes les phases joués »*. Deux parties :
- * la **qualification** (les volées, telles que la carte les montrait déjà) et les **duels**, phase
- * par phase.
- *
- * ⚠️ **Ouvert par défaut, et c'est délibéré.** P02 demande « repliable », pas « replié » — et P03
- * demande de voir les scores *« en direct, dès que les informations sont disponibles »*. Livrer le
- * bloc fermé aurait caché derrière un clic ce que la carte affichait jusqu'ici, donc **retiré** une
- * information au nom d'une demande qui n'en réclamait aucune. `<details>` natif : l'état replié, le
- * clavier et le lecteur d'écran sont acquis sans une ligne de JavaScript (règle 11).
+ * Deux parties : la **qualification** (les volées) et les **duels**, phase par phase. ⚠️ **Ouvert
+ * par défaut, et c'est délibéré** : P02 demande « repliable », pas « replié », et P03 demande de
+ * voir les scores en direct. Livrer le bloc fermé aurait **retiré** une information au nom d'une
+ * demande qui n'en réclamait aucune. `<details>` natif : replié, clavier et lecteur d'écran acquis
+ * sans une ligne de JavaScript (règle 11).
  */
 function RecapitulatifJournee({
   volees,

@@ -1,25 +1,11 @@
-// Ce qu'une rencontre **rédigée** dit à qui la lit sans la saisir — logique pure, aucun React
-// (E05US031).
+// Ce qu'une rencontre **rédigée** dit à qui la lit sans la saisir — logique pure (E05US031).
 //
-// Trois formats servent au public la même forme de rencontre : les poules (`RencontrePublique`), le
-// système suisse (`RencontreSuissePublique`) et l'arbre de duels (`DuelPublic`). L'onglet « En
-// cours » les affiche tous ; écrire la ligne trois fois l'aurait fait diverger sur la seule chose
-// qui compte — ce qu'un spectateur lit d'une rencontre.
-//
-// ⚠️ **Ce n'est pas un « remède structurel » au sens du CLAUDE.md**, et la distinction mérite d'être
-// posée pour qu'on ne la confonde pas plus tard. Un remède structurel introduit un **pattern** sur
-// preuve de 3ᵉ occurrence *déjà écrite*, et passe alors par un ADR et une US dédiée. Ici les deux
-// occurrences supplémentaires n'existaient pas avant ce diff : la seule question était de les
-// écrire une fois ou trois. Ne pas dupliquer ce qu'on écrit soi-même dans le même commit n'est pas
-// une décision d'architecture, c'est le travail.
-//
-// ⚠️ **`DuellisteLisible` est redéclaré ici plutôt qu'importé** de `features/saisie-duels/api`. Un
-// module de `shared/` qui importe d'une feature est l'inversion que `shared/salle/place.ts`
-// documente comme la seule du front, et qu'elle a précisément corrigée : on ne la rouvre pas. Le
-// typage structurel de TypeScript fait le reste — un `Duelliste` de feature satisfait ce contrat
-// sans conversion. Le jour où `Duelliste` lui-même remontera en `shared/`, ce type-ci disparaîtra
-// au profit du sien ; ce déménagement touche une demi-douzaine de features et n'a pas sa place dans
-// une US de format.
+// Trois formats servent au public la même forme de rencontre (poules, suisse, arbre de duels) ;
+// écrire la ligne trois fois l'aurait fait diverger sur la seule chose qui compte. ⚠️ **Ce n'est
+// pas un « remède structurel »** : les deux occurrences supplémentaires n'existaient pas avant ce
+// diff. ⚠️ **`DuellisteLisible` est redéclaré ici plutôt qu'importé** d'une feature — un module de
+// `shared/` qui importe d'une feature est l'inversion que `shared/salle/place.ts` documente comme
+// la seule du front, et qu'elle a corrigée. Le typage structurel fait le reste.
 
 /** Un duelliste, réduit à ce qu'une ligne de rencontre a besoin de nommer. */
 export interface DuellisteLisible {
@@ -31,11 +17,9 @@ export interface DuellisteLisible {
 /** La forme minimale d'une rencontre **rédigée**, commune aux trois formats.
  *
  * Volontairement pauvre : ni pavé, ni manches, ni validateur. La typer sur l'un des trois DTO
- * interdirait de la réutiliser sur les deux autres — même parti que `RondeLisible`
- * (`features/suisse/presentation.ts`), pour la même raison.
- *
- * `termine` et `validee` disent deux choses distinctes — le tir est allé au bout / le scoreur a
- * scellé —, et c'est **entre les deux** que le public lit « en attente de validation ».
+ * interdirait de la réutiliser sur les deux autres. `termine` et `validee` disent deux choses
+ * distinctes — le tir est allé au bout / le scoreur a scellé —, et c'est **entre les deux** que le
+ * public lit « en attente de validation ».
  */
 export interface RencontreLisible {
   haut: DuellisteLisible | null
@@ -55,22 +39,11 @@ export function nomComplet(qui: DuellisteLisible): string {
 
 /** L'état d'une rencontre en un mot, **pour le public**.
  *
- * ⚠️ Distinct d'`etatRencontre` (`features/suisse/presentation.ts`), qui lit le `duel` de saisie —
- * `validee_par`, `validation_en_attente`, `manches` — et ne peut donc pas servir ici : le DTO
- * public ne porte rien de tout cela, et c'est exactement sa raison d'être (règle 6).
- *
- * ⚠️ **Les deux vocabulaires se recouvrent sans être identiques**, et l'affirmation contraire a été
- * corrigée en revue (axe B). Là où la tablette distingue « à valider » de « validation en attente »
- * — deux états de **saisie** —, l'écran public n'en connaît qu'un, « en attente de validation », qui
- * les recouvre : le spectateur n'a pas à savoir laquelle des deux gâchettes manque. De même,
- * « tir mis de côté » est la forme courte de « tir mis de côté — population à rétablir », dont la
- * seconde moitié nomme un geste qui n'appartient qu'au scoreur. Ce n'est pas une divergence à
- * résorber, c'est une réduction voulue ; l'écrire « alignés » laissait croire à une contrainte
- * d'égalité que personne ne tient.
- *
- * `desynchronisee` passe en premier parce qu'elle **prime** : une rencontre dont le tir a été mis
- * de côté n'est pas « à tirer », elle est bloquée, et l'annoncer autrement ferait attendre des
- * archers pour rien (cf. la docstring du champ côté serveur).
+ * ⚠️ Distinct d'`etatRencontre` (`features/suisse/presentation.ts`), qui lit le `duel` de saisie :
+ * le DTO public ne porte rien de tout cela (règle 6). ⚠️ **Les deux vocabulaires se recouvrent sans
+ * être identiques** — l'écran public ne connaît qu'« en attente de validation » là où la tablette
+ * distingue deux états de saisie : réduction voulue, pas divergence. `desynchronisee` **prime** :
+ * une rencontre bloquée n'est pas « à tirer », l'annoncer ferait attendre des archers pour rien.
  */
 export function etatRencontre(rencontre: RencontreLisible): string {
   if (rencontre.desynchronisee) return 'tir mis de côté'

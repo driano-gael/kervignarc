@@ -1,13 +1,9 @@
-/* --- Onglet « En cours » : la phase qui se joue, quel que soit son format (E05US031) -------------
-   Un seul jeu de règles pour deux surfaces : l'appli publique (360 px, tenue à la main) et l'écran
-   de salle (projeté, lu à cinq mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle
-   typographique dédiée (E07US004) et des px figés y resteraient illisibles de loin. Même règle que
-   `tableaux.css` et `affectations.css`, pour la même raison.
-
-   Le parti de mise en page est celui que `tableaux.css` a tranché et qu'il n'y a aucune raison de
-   rejouer : **des listes**, jamais de branches ni de grilles à colonnes fixes. Une poule de 6, une
-   ronde de 20 rencontres et une finale à 12 tireurs n'ont pas la même densité ; seule une liste
-   encaisse les trois sans réglage par format. */
+/* Onglet « En cours » : la phase qui se joue, quel que soit son format (E05US031). Un seul jeu de
+   règles pour deux surfaces — l'appli publique (360 px) et l'écran de salle (projeté, lu à cinq
+   mètres). Tailles en **em**, jamais en px : `.salle` porte une échelle typographique dédiée
+   (E07US004), des px figés y resteraient illisibles. Même parti de mise en page que `tableaux.css`
+   : **des listes**, jamais de branches ni de grilles à colonnes fixes — une poule de 6, une ronde
+   de 20 et une finale à 12 n'ont pas la même densité. */
 
 /* ⚠️ **Les règles de la LIGNE D'UNE RENCONTRE ne sont plus ici** : elles vivent dans
    `shared/duels/rencontre.css`, auprès du composant `shared/duels/LigneRencontre.tsx` qui les

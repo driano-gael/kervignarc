@@ -1,17 +1,7 @@
-"""Endpoints REST de la tranche verticale (`/api/v1`) — archers, placement, scores, classement.
+"""Fil rouge du walking skeleton : inscrire, placer, saisir, classer.
 
-Les routes d'administration des archers (lister, éditer, désinscrire — E02US003) sont posées ici,
-auprès des routes archer déjà existantes, plutôt que dans un `api/v1/archers.py` neuf : elles
-partagent le même DTO de réponse et le même service. Un module dédié se justifiera quand la
-tranche verticale du walking skeleton sera démantelée (placement en E03, saisie en E04).
-
-Concrétise le fil rouge E00US011 : inscrire un archer → le placer sur une cible → saisir un
-score → consulter le classement (qui se met à jour en direct côté client via WebSocket, la
-diffusion post-commit étant câblée dans la composition root).
-
-Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats ; **écritures**
-routées par la file d'écriture (writer unique, ADR-0005) ; **lecture** du classement exécutée
-hors boucle (threadpool) ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+⚠️ **Tranche verticale provisoire** — elle sera démantelée quand le placement (E03) et la saisie
+(E04) auront leurs propres surfaces. Ne rien y ajouter qui ait vocation à durer.
 """
 
 from __future__ import annotations
@@ -56,20 +46,11 @@ class AjouterArcherRequete(BaseModel):
 class ModifierArcherRequete(BaseModel):
     """Corps d'édition d'un archer inscrit (E02US003) — **remplacement total**.
 
-    DTO distinct d'`AjouterArcherRequete` bien qu'il en reprenne les champs : les deux corps
-    divergent déjà (`autoriser_changement_categorie` n'a pas de sens à l'inscription) et le
-    patron du projet est un DTO par cas d'usage, même quand ils coïncident (E02US001).
-
-    Les quatre champs éditables sont **tous** attendus : c'est un PUT, pas un patch. `club_id`
-    absent ou `null` **détache** le club (retour à « club inconnu », ADR-0014), il ne signifie
-    jamais « laisse en l'état ».
-
-    Les deux drapeaux sont des **confirmations** de l'admin après un premier 409, chacun pour son
-    propre signalement : `autoriser_homonyme` (l'édition fait entrer l'archer dans l'identité d'un
-    autre inscrit) et `autoriser_changement_categorie` (elle change la catégorie d'un archer qui a
-    déjà tiré). Ils sont indépendants : si les deux faits sont vrais, le client reçoit un 409 pour
-    l'un, puis pour l'autre — deux confirmations distinctes, plutôt qu'un blanc-seing sur un motif
-    que l'admin n'aurait pas lu.
+    DTO distinct d'`AjouterArcherRequete` : les deux corps divergent déjà, et le patron est un DTO
+    par cas d'usage (E02US001). Les quatre champs sont **tous** attendus, c'est un PUT ; `club_id`
+    absent ou `null` **détache** le club (ADR-0014), jamais « laisse en l'état ». ⚠️ Les deux
+    drapeaux sont des **confirmations indépendantes** après un premier 409 — si les deux faits sont
+    vrais, le client reçoit un 409 pour l'un puis pour l'autre, pas un blanc-seing.
     """
 
     nom: str
@@ -193,18 +174,11 @@ class ScoreReponse(BaseModel):
 class LigneClassementReponse(BaseModel):
     """Une ligne de classement renvoyée au client (E06US001).
 
-    Deux rangs : `rang_scratch` (global, toutes catégories) et `rang_categorie` (au sein de la
-    catégorie de l'archer). `nb_dix`/`nb_neuf` rendent le **départage traçable** (à total égal, plus
-    de 10 puis de 9) : le client peut afficher *pourquoi* deux archers sont ainsi ordonnés.
-
-    `club_id` à `null` = club encore **inconnu** : c'est le signal que l'écran affiche pour que
-    l'anomalie soit résorbée (E02US002, ADR-0014). Le nom du club n'est pas résolu ici — le
-    client dispose déjà du référentiel s'il veut l'afficher.
-
-    `statut` (E04US015, ADR-0050) : `en_lice` (concourt), `abandon` (relégué en fin, rangé) ou
-    `disqualifie` (**sorti** du classement — `rang_scratch`/`rang_categorie` valent alors `null`).
-    Les deux rangs sont donc **nullables** : `null` = archer disqualifié, hors classement, dont le
-    score reste néanmoins affiché (les flèches sont préservées).
+    Deux rangs : `rang_scratch` (global) et `rang_categorie`. `nb_dix`/`nb_neuf` rendent le
+    **départage traçable**. `club_id` à `null` = club encore **inconnu**, le signal que l'écran
+    affiche pour que l'anomalie soit résorbée (ADR-0014) ; le nom n'est pas résolu ici. ⚠️ `statut`
+    `disqualifie` **sort** l'archer du classement — les deux rangs sont donc **nullables**, son
+    score restant affiché (ADR-0050). `abandon` est relégué en fin, mais rangé.
     """
 
     rang_scratch: int | None
@@ -236,12 +210,10 @@ class EgaliteADepartagerReponse(BaseModel):
 class ClassementReponse(BaseModel):
     """Classement d'un **créneau** renvoyé au client.
 
-    ⚠️ `depart_id` et non `tournoi_id` (correctif de revue E01US025). Le champ s'appelait
-    `tournoi_id` et la route est passée à `/departs/{depart_id}/classement` : le DTO **publiait donc
-    un identifiant de départ sous un nom de tournoi**. C'est `DETTE-044` en acte — `DepartId` et
-    `TournoiId` sont deux alias de `int`, mypy ne voit rien — et le test censé l'attraper la
-    consacrait, vert parce que le tournoi et le départ du décor portaient tous deux l'`id` 1. Un
-    client qui refaisait une requête avec cette valeur interrogeait un autre objet.
+    ⚠️ `depart_id` et non `tournoi_id` (correctif de revue E01US025) : le DTO **publiait un
+    identifiant de départ sous un nom de tournoi**. C'est `DETTE-044` en acte — `DepartId` et
+    `TournoiId` sont deux alias de `int`, mypy ne voit rien — et le test censé l'attraper le
+    consacrait, vert parce que le tournoi et le départ du décor portaient tous deux l'`id` 1.
     """
 
     depart_id: int
@@ -366,12 +338,10 @@ async def definir_handicap_archer(
 ) -> ArcherReponse:
     """Fixe le handicap d'un archer (**écriture**, session requise — E10US001 ; E05US015).
 
-    Ressource **séparée** de `PUT /archers/{id}` : régler un handicap n'est pas corriger un état
-    civil, et mêler les deux obligerait à renvoyer nom/prénom/catégorie à chaque ajustement — donc
-    à écraser une correction faite entre-temps depuis un autre poste.
-
-    Renvoie `422 handicap_invalide` sur une valeur négative **ou supérieure au score parfait d'une
-    qualification** : un handicap s'**ajoute** au score, et au-delà il le remplacerait.
+    Ressource **séparée** de `PUT /archers/{id}` : mêler les deux obligerait à renvoyer
+    nom/prénom/catégorie à chaque ajustement, donc à écraser une correction faite entre-temps
+    depuis un autre poste. `422 handicap_invalide` sur une valeur négative **ou supérieure au score
+    parfait d'une qualification** : un handicap s'**ajoute** au score, au-delà il le remplacerait.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
@@ -393,16 +363,11 @@ async def supprimer_archer(
 ) -> Response:
     """Désinscrit un archer (**écriture**, session requise — E10US001 ; E02US003).
 
-    Renvoie `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le
-    client lève en rejouant l'appel avec `autoriser_suppression_engage`. La suppression confirmée
-    **efface ses scores et son placement**. Un archer qui abandonne relève du forfait — **une seule
-    US pour les deux portées**, E04US015 (ADR-0050, ex-E12US004) —, pas d'ici : voir ADR-0016.
-
-    Le drapeau est en **paramètre de requête** et non dans le corps, contrairement à la forme posée
-    par ADR-0015 — qui prévoit ce cas (« soit justifier d'en diverger ») : un `DELETE` n'a pas de
-    corps par convention HTTP, et certains intermédiaires le suppriment. La substance d'ADR-0015 est
-    tenue : drapeau booléen explicite, à `False` par défaut, sur une route réservée à l'admin.
-    **ADR-0016 sanctionne cette variante** — ADR-0015 est immuable, il ne pouvait pas l'accueillir.
+    `409 archer_engage` si l'archer est placé ou a déjà tiré : un **signalement**, que le client
+    lève avec `autoriser_suppression_engage` ; la suppression confirmée **efface ses scores et son
+    placement**. Un abandon relève du forfait (E04US015, ADR-0050), pas d'ici. ⚠️ Le drapeau est en
+    **paramètre de requête** et non dans le corps — divergence à ADR-0015 qu'ADR-0016 sanctionne :
+    un `DELETE` n'a pas de corps par convention, et des intermédiaires le suppriment.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
@@ -481,14 +446,11 @@ async def saisir_score(
 ) -> ScoreReponse:
     """Enregistre une flèche marquée par un archer (**écriture** — E10US001, E10US007).
 
-    Autorisée à l'**admin** (sans contrainte) **ou** au **poste de cible** (E04US001), qui ne peut
-    marquer que pour **sa** cible — `autoriser_saisie` renvoie le `Poste` correspondant, transmis au
-    service qui fait respecter cet invariant (403 sinon). La **validation** d'une série reste
-    réservée au scoreur (E04US002) : un poste saisit, il ne valide pas.
-
-    `Annotated[..., Depends(...)]` plutôt qu'un défaut `= Depends(...)` : c'est le premier endpoint
-    qui exploite la **valeur** rendue par sa dépendance (les autres passent par `dependencies=[...]`
-    dans le décorateur), et cette forme évite le faux positif B008 sans `noqa`.
+    Autorisée à l'**admin** ou au **poste de cible** (E04US001), qui ne peut marquer que pour
+    **sa** cible : `autoriser_saisie` rend le `Poste`, transmis au service qui fait respecter
+    l'invariant (403 sinon). La **validation** reste réservée au scoreur (E04US002).
+    `Annotated[..., Depends]` plutôt qu'un défaut : premier endpoint à exploiter la **valeur**
+    rendue par sa dépendance, et cette forme évite le faux positif B008 sans `noqa`.
     """
     service: ServiceArchers = request.app.state.service_archers
     write_queue: WriteQueue = request.app.state.write_queue
@@ -505,14 +467,9 @@ async def consulter_classement(
     """Renvoie le classement de qualification **d'un départ** (lecture directe hors boucle).
 
     ⚠️ **La route a changé de parent en E01US025** (ADR-0075) : elle pendait au tournoi et
-    fusionnait tous les créneaux — 4 départs de 100 archers rendaient un classement de 400, où
-    l'archer du matin était rangé contre celui du soir qu'il n'a jamais affronté. Un départ rejoue
-    le tournoi en entier, donc il a **son** classement. Rupture assumée : l'application n'a aucun
-    client tiers (mono-club, réseau local).
-
-    `categorie_id` (optionnel) **filtre** l'affichage à une catégorie ; les rangs (scratch et
-    catégorie) restent ceux du classement complet **du départ** — filtrer une catégorie ne
-    réordonne pas le reste.
+    fusionnait tous les créneaux — 4 départs de 100 rendaient un classement de 400, où l'archer du
+    matin était rangé contre celui du soir. Rupture assumée : aucun client tiers. `categorie_id`
+    **filtre** l'affichage ; les rangs restent ceux du classement complet **du départ**.
     """
     service: ServiceClassement = request.app.state.service_classement
     classement = await run_in_threadpool(service.pour_depart, depart_id, categorie_id)

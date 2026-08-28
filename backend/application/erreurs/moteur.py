@@ -51,32 +51,24 @@ class InscriptionIntrouvable(ApplicationError):
 class DeplacementInvalide(ApplicationError):
     """Ajustement de placement refusé : le déplacement/échange violerait une contrainte (E03US004).
 
-    **Un refus, pas un signalement** (famille de `DejaInscrit`/`DepartComplet`) → 409. Couvre le
-    déplacement qui déborde un budget de cible (capacité, espace, partage de carton, **hauteur** —
-    ADR-0022/0024), l'échange dont l'un des deux tireurs ne tient pas à la place de l'autre (refus
-    **en bloc**, état inchangé), le dépôt depuis la réserve sur une case **occupée** (rien à
-    permuter en retour), une cible/position **inexistante**, ou un archer **sans blason** (fraction
-    inconnue, non plaçable). Aucun drapeau ne le lève : l'admin corrige son geste. Le message dit
-    **quelle** contrainte bloque, sans détail interne (règle 5).
+    **Un refus, pas un signalement** → 409. Couvre le déplacement qui déborde un budget de cible
+    (capacité, espace, partage de carton, hauteur — ADR-0022/0024), l'échange dont l'un des deux ne
+    tient pas à la place de l'autre (refus **en bloc**, état inchangé), le dépôt sur une case
+    occupée, une cible inexistante, ou un archer **sans blason**. Le message dit **quelle**
+    contrainte bloque, sans détail interne (règle 5).
     """
 
     code = "deplacement_invalide"
 
 
 class ReplacementNonConfirme(ApplicationError):
-    """Régénération **massive** du plan non confirmée (E12US007, [ADR-0040]) → 409.
+    """Régénération **massive** du plan non confirmée (E12US007, ADR-0040) → 409.
 
-    **Un signalement chiffré, pas un refus** — famille d'`ArcherEngage`/`DepartAvecInscriptions`
-    (ADR-0016/0018) : régénérer le plan écrase le placement de tous les archers, et **des scores
-    existent déjà** (niveau `MASSIF`). Le geste demande donc une confirmation explicite
-    (`regenerer(..., confirme=True)`) ; côté UI, il faut **taper un mot** (`REPLACER`) — friction
-    humaine impossible par réflexe. Ici, à la frontière API, le serveur n'exige que le booléen : il
-    ne connaît pas la copie d'UI (couplage évité, ADR-0040 §4).
-
-    À la **différence** des confirmations aveugles de la famille (DETTE-007), le décompte est
-    **recalculé au commit**, jamais cru sur parole : `details` porte les chiffres frais
-    (`archers_deplaces`, `cibles_avec_scores`) — première utilisation du canal `details` du format
-    `{code, message, details?}` (règle 5). L'action ne rejoint donc pas DETTE-007.
+    **Un signalement chiffré, pas un refus** : régénérer écrase le placement de tous les archers,
+    et des scores existent déjà. Côté UI il faut **taper un mot** (`REPLACER`) ; à la frontière API
+    le serveur n'exige que le booléen — il ne connaît pas la copie d'UI (ADR-0040 §4). ⚠️ À la
+    différence des confirmations aveugles (DETTE-007), le décompte est **recalculé au commit**,
+    jamais cru sur parole : `details` porte les chiffres frais.
     """
 
     code = "replacement_non_confirme"
@@ -133,11 +125,9 @@ class PhasePasUneQualification(ApplicationError):
 
     Pendant symétrique de `PhasePasUnTableau`. Régler un barème ou un grain de validation sur une
     étape de tableau n'a pas de sens : ce sont les réglages d'un tir en séries. L'étape existant
-    bien, c'est un conflit d'état et non un 404.
-
-    Cette erreur naît avec la **désignation** de l'étape : tant que le barème se réglait « du
-    tournoi », il n'y avait rien à désigner de travers — le service résolvait lui-même la seule
-    qualification possible (ADR-0082).
+    bien, c'est un conflit d'état et non un 404. Cette erreur naît avec la **désignation** de
+    l'étape : tant que le barème se réglait « du tournoi », il n'y avait rien à désigner de
+    travers.
     """
 
     code = "phase_pas_une_qualification"
@@ -170,11 +160,9 @@ class PhasePasUnBigShootOff(ApplicationError):
     """La phase existe mais n'est **pas** un Big Shoot Off (E05US028) → 409.
 
     Troisième jumeau de `PhasePasUnTableau`, et le troisième n'est **pas** le signal d'un remède
-    structurel à introduire : chaque décor refuse ce qui n'est pas le sien, et c'est précisément le
-    rôle que le contrat de phase (ADR-0083) laisse aux services. Ce qui serait dupliqué, ce serait
-    la **table** des types admis — or elle est dérivée du registre depuis E05US023, donc il ne reste
-    ici qu'un nom d'erreur par décor. Trois noms distincts valent mieux qu'un message générique :
-    l'organisateur lit « cette phase n'est pas un Big Shoot Off », pas « type de phase incorrect ».
+    structurel : ce qui serait dupliqué, ce serait la **table** des types admis — or elle est
+    dérivée du registre depuis E05US023, donc il ne reste ici qu'un nom d'erreur par décor. Trois
+    noms distincts valent mieux qu'un « type de phase incorrect » qui n'aide personne.
     """
 
     code = "phase_pas_un_big_shoot_off"
@@ -183,12 +171,10 @@ class PhasePasUnBigShootOff(ApplicationError):
 class PhasePasUnSuisse(ApplicationError):
     """La phase existe mais n'est **pas** un système suisse (E05US026) → 409.
 
-    Quatrième et dernier jumeau de `PhasePasUnTableau` pour les formats livrés — la colline
-    (`E05US027`) en fera un cinquième. La justification est celle donnée à `PhasePasUnBigShootOff`
-    et elle tient toujours : ce qui serait fâcheux à dupliquer, c'est la **table** des types admis,
-    et elle est dérivée du registre de contrat depuis E05US023. Il ne reste ici qu'un nom d'erreur
-    par décor, et un nom par décor est ce qui permet à l'organisateur de lire « cette phase n'est
-    pas un système suisse » plutôt qu'un « type de phase incorrect » qui ne l'aide en rien.
+    Quatrième jumeau de `PhasePasUnTableau`. Même justification qu'à `PhasePasUnBigShootOff` : ce
+    qui serait fâcheux à dupliquer est la **table** des types admis, dérivée du registre de
+    contrat. Il ne reste ici qu'un nom d'erreur par décor, et c'est ce qui permet de lire « cette
+    phase n'est pas un système suisse » plutôt qu'un message générique.
     """
 
     code = "phase_pas_un_suisse"
@@ -197,19 +183,11 @@ class PhasePasUnSuisse(ApplicationError):
 class PhasePasUneColline(ApplicationError):
     """La phase existe mais n'est **pas** une colline (E05US027) → 409.
 
-    Cinquième et **dernier** jumeau de `PhasePasUnTableau` : la colline est le dernier des formats
-    d'E05US015 à recevoir son service, donc cette famille est close. La justification donnée à
-    `PhasePasUnBigShootOff` vaut telle quelle — ce qui serait fâcheux à dupliquer, c'est la
-    **table** des types admis, et elle est dérivée du registre de contrat depuis E05US023. Il ne
-    reste ici qu'un nom d'erreur par décor, et c'est ce qui permet à l'organisateur de lire « cette
-    phase n'est pas une colline » plutôt qu'un « type de phase incorrect » qui ne l'aide en rien.
-
-    ⚠️ **Cinq jumeaux ne déclenchent pas le seuil du remède structurel**, et il faut le dire
-    explicitement puisque le § *Dette* de `CLAUDE.md` fixe ce seuil à la 3ᵉ occurrence. Le critère
-    y est « **invariant déjà dupliqué** » : ici, aucun invariant ne l'est. Chaque classe ne porte
-    qu'un `code` et un texte — la logique commune (le refus lui-même) vit déjà en un seul endroit,
-    dans la table dérivée du registre. Les fondre rendrait le message générique sans supprimer une
-    seule ligne de règle.
+    Cinquième et **dernier** jumeau de `PhasePasUnTableau` : la colline est le dernier format
+    d'E05US015 à recevoir son service. ⚠️ **Cinq jumeaux ne déclenchent pas le seuil du remède
+    structurel**, et il faut le dire puisque le § *Dette* le fixe à la 3ᵉ occurrence : le critère y
+    est « invariant déjà dupliqué », or aucun ne l'est ici. Chaque classe ne porte qu'un `code` et
+    un texte — les fondre rendrait le message générique sans supprimer une ligne de règle.
     """
 
     code = "phase_pas_une_colline"
@@ -243,15 +221,11 @@ class ArcherHorsBigShootOff(ApplicationError):
 class ArcherDejaSorti(ApplicationError):
     """Cet archer est sorti du Big Shoot Off : il ne tire plus (E05US028) → 409.
 
-    ⚠️ **Erreur ajoutée à la revue d'E05US028**, où ce refus empruntait `PhasePasReglee` — dont le
-    code (`phase_pas_reglee`) signifie « l'organisateur doit régler la phase à l'atelier ». Le même
-    code sortait donc du même endpoint pour deux situations dont les corrections sont **opposées** :
-    aller régler la phase, ou recharger la tablette parce que cet archer est éliminé. C'est
-    exactement l'argument que la docstring de `PhasePasReglee` oppose déjà à sa confusion avec
-    `PhasePasDesPoules`.
-
-    409 et non 404 : l'archer **existe** dans cette phase, il y a même un rang. C'est son état qui
-    interdit l'écriture, pas son absence.
+    ⚠️ Ce refus empruntait `PhasePasReglee`, dont le code signifie « l'organisateur doit régler la
+    phase à l'atelier » : le même code sortait du même endpoint pour deux situations aux
+    corrections **opposées** — aller régler la phase, ou recharger parce que cet archer est
+    éliminé. 409 et non 404 : l'archer **existe** dans cette phase, il y a même un rang — c'est son
+    état qui interdit l'écriture, pas son absence.
     """
 
     code = "archer_deja_sorti"
@@ -273,13 +247,9 @@ class PhasePasReglee(ApplicationError):
     """La phase de poules existe mais sa **taille de poule** n'est pas réglée (E05US023) → 409.
 
     Distinct de `PhasePasDesPoules` parce que la correction l'est aussi : ici le type est bon, il
-    manque un paramètre que l'organisateur fixe à l'atelier. Le confondre avec « pas des poules »
-    enverrait le message « cette phase n'est pas une phase de poules » sur une phase qui en est
-    une — l'utilisateur chercherait la faute au mauvais endroit.
-
-    C'est la contrepartie assumée du brouillon d'ADR-0063 : le type se choisit avant ses
-    paramètres, donc l'agrégat accepte une phase de poules non réglée. Le refus arrive au moment
-    d'en jouer une, pas au moment de l'écrire.
+    manque un paramètre que l'organisateur fixe à l'atelier — confondre les deux enverrait chercher
+    la faute au mauvais endroit. C'est la contrepartie assumée du brouillon d'ADR-0063 : le type se
+    choisit avant ses paramètres, donc le refus arrive au moment d'en jouer une.
     """
 
     code = "phase_pas_reglee"
@@ -288,20 +258,11 @@ class PhasePasReglee(ApplicationError):
 class PrelevementEnAttente(ApplicationError):
     """La phase prélève des places que sa source n'a **pas encore décidées** (E05US024) → 409.
 
-    Un tableau de 8 non commencé porte ses huit archers sur la plage `[1..8]` de leur quart en
-    cours : la compétition n'a encore attribué aucune des huit places. Une consolante qui déclare
-    « les rangs 5 à 8 » demande donc quatre places qui n'existent pas — et jusqu'à ce refus, le
-    moteur y répondait en départageant sur le **rang de qualification**, livrant les 4 derniers
-    qualifiés au lieu des 4 battus des quarts (ADR-0081).
-
-    **Un conflit d'état, pas une panne** : la phase existe, sa composition est valide, il est
-    simplement trop tôt. Le message nomme les deux phases et le bloc en cause pour que
-    l'organisateur sache quoi attendre.
-
-    ⚠️ **Distinct d'un prélèvement inerte** (`le_reste`, `par_issue_de_tour` — `DETTE-033`), qui
-    fait retomber la phase sur son comportement d'avant, et d'une phase **sans source**, alimentée
-    par les inscriptions. Les trois se ressemblaient dans le code d'avant la revue ; les confondre
-    est ce qui rendait le défaut silencieux.
+    Un tableau de 8 non commencé porte ses huit archers sur la plage `[1..8]` : aucune des huit
+    places n'est attribuée. Une consolante qui déclare « les rangs 5 à 8 » demande donc quatre
+    places qui n'existent pas — et le moteur y répondait en départageant sur le rang de
+    qualification (ADR-0081). ⚠️ **Distinct d'un prélèvement inerte** (`DETTE-033`) et d'une phase
+    **sans source** : les trois se ressemblaient, et les confondre rendait le défaut silencieux.
     """
 
     code = "prelevement_en_attente"
@@ -323,23 +284,11 @@ class PrelevementEnAttente(ApplicationError):
 class DerouleCyclique(ApplicationError):
     """Une chaîne de sources **boucle** : une phase se prélève elle-même (E05US024) → 409.
 
-    Inatteignable par la composition — `verifier_sequence` exige qu'une source soit **antérieure**,
-    donc le déroulé est acyclique — mais atteignable par une base incohérente (import, migration à
-    la main). Un refus typé vaut mieux qu'un `RecursionError` remonté en 500 muet un jour de
-    compétition.
-
-    ⚠️ **Type dédié, et non `PhaseIntrouvable`** (correctif de revue, relevé par quatre axes). Un
-    premier jet réutilisait `PhaseIntrouvable`, avec deux conséquences : un **404 « phase
-    introuvable »** pour une incohérence de données, et surtout `ServicePalmares._resultat` qui
-    l'attrape déjà pour écarter une phase disparue — le refus censé remplacer un 500 muet devenait
-    une **omission muette** sur l'écran projeté en salle. Aucun `except` **nominatif** ne la cite
-    donc, et `ServicePalmares` la laisse remonter.
-
-    ⚠️ **Elle reste néanmoins avalée par deux filets larges** (`except (ApplicationError,
-    DomainError)`) : `ServiceTableauxPublics.pour_depart` et `ServiceSuiviDeroule`. Sur l'onglet
-    public, un déroulé cyclique redevient donc un tableau silencieusement absent. C'est assumé —
-    le spectateur n'a rien à réparer, et le diagnostic vit à l'atelier — mais l'écrire évite que
-    le prochain lecteur se fie à un « visible partout » qui serait faux (relevé par trois axes).
+    Inatteignable par la composition (`verifier_sequence` exige une source antérieure) mais
+    atteignable par une base incohérente. ⚠️ **Type dédié, et non `PhaseIntrouvable`** :
+    `ServicePalmares._resultat` attrape déjà celui-ci pour écarter une phase disparue, si bien que
+    le refus devenait une **omission muette** sur l'écran de salle. Elle reste avalée par deux
+    filets larges — sur l'onglet public, un déroulé cyclique reste un tableau absent.
     """
 
     code = "deroule_cyclique"
@@ -384,13 +333,10 @@ class ReordonnancementPhasesInvalide(ApplicationError):
 class EffectifSimulationInvalide(ApplicationError):
     """L'effectif demandé pour simuler un format sort des bornes de service (E01US024) → 400.
 
-    Ce n'est **ni** une règle métier (le domaine ne connaît pas de nombre maximal d'archers) **ni**
-    un conflit d'état : c'est une **borne de service**, comme le refus de matérialiser
-    `frozenset(range(…))` dans `SourcePhase.intervalle`. Simuler joue le tournoi entier — volées
-    puis duels — sur le thread de la requête, et l'effectif vient du client : sans plafond, une
-    valeur absurde immobiliserait le serveur. En dessous de 2, il n'y a pas de tournoi à jouer.
-
-    Seule erreur applicative en **400** : les autres sont 401/403/404/409 (cf. `api/erreurs.py`).
+    Ni règle métier (le domaine ne connaît pas de nombre maximal d'archers) ni conflit d'état : une
+    **borne de service**. Simuler joue le tournoi entier sur le thread de la requête, et l'effectif
+    vient du client — sans plafond, une valeur absurde immobiliserait le serveur. Seule erreur
+    applicative en **400** : les autres sont 401/403/404/409 (`api/erreurs.py`).
     """
 
     code = "effectif_simulation_invalide"
@@ -399,13 +345,10 @@ class EffectifSimulationInvalide(ApplicationError):
 class FormatNonSimulable(ApplicationError):
     """Le format s'applique à un tournoi, mais le rejeu ne sait pas le dérouler (E01US024) → 400.
 
-    Aujourd'hui, un seul motif : **aucune phase de qualification**, donc aucun barème d'où le bot
-    tirerait des volées. Ce n'est **pas** une incohérence du format — `ServiceFormats.appliquer`
-    l'accepte —, c'est une limite du substrat de simulation.
-
-    Même famille que `EffectifSimulationInvalide` (**400**) : la requête est impossible *en soi*, et
-    aucun changement d'état ne la rendrait acceptable. Distincte de `PhaseQualificationAbsente`
-    (404), qui parle d'un **tournoi** réel : ici il n'y en a aucun, et ce 404 était un contresens.
+    Un seul motif aujourd'hui : **aucune phase de qualification**, donc aucun barème d'où le bot
+    tirerait des volées. Ce n'est pas une incohérence du format — `ServiceFormats.appliquer`
+    l'accepte —, c'est une limite du substrat de simulation. Distincte de
+    `PhaseQualificationAbsente` (404), qui parle d'un **tournoi** réel : ici il n'y en a aucun.
     """
 
     code = "format_non_simulable"
@@ -414,18 +357,10 @@ class FormatNonSimulable(ApplicationError):
 class ArretIntrouvable(ApplicationError):
     """Aucun arrêt **relançable** ne correspond à cet identifiant dans ce créneau (E05US033) → 404.
 
-    Couvre trois cas, réunis parce qu'ils appellent le même geste — recharger l'écran :
-
-    - l'identifiant est inconnu ;
-    - l'arrêt appartient à un **autre** créneau (même parti que `PhaseIntrouvable` : du point de vue
-      du départ de l'URL, il n'existe pas davantage qu'un identifiant inventé) ;
-    - l'arrêt a **déjà été levé**. C'est le cas courant en salle : deux organisateurs devant deux
-      tablettes, ou un double-clic. Le confondre avec « inconnu » est délibéré côté API — mais le
-      motif du refus compte, car relancer deux fois relancerait des phases que quelqu'un a pu
-      suspendre à la main entre les deux clics, un geste que personne n'a demandé.
-
-    ⚠️ **Un arrêt encore `ARME` est également introuvable** au sens de ce refus : la coupe est
-    décidée mais pas faite (une phase finit son tour), il n'y a donc rien à relancer.
+    Trois cas réunis parce qu'ils appellent le même geste — recharger l'écran : identifiant
+    inconnu, arrêt d'un **autre** créneau, ou arrêt **déjà levé** (le cas courant en salle : deux
+    tablettes, ou un double-clic). ⚠️ Un arrêt encore `ARME` est également introuvable au sens de
+    ce refus : la coupe est décidée mais pas faite, il n'y a rien à relancer.
     """
 
     code = "arret_introuvable"

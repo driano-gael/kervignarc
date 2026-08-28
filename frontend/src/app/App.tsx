@@ -1,17 +1,11 @@
-// Shell de l'application (E00US017, ADR-0042 ; adressé en E14US003) : charpente minimale (en-tête +
-// « changer de rôle » + indicateur de connexion) qui aiguille vers **le monde du rôle choisi**.
+// Shell de l'application (E00US017, ADR-0042 ; adressé en E14US003) : charpente minimale qui
+// aiguille vers **le monde du rôle choisi**.
 //
-// Au 1ᵉʳ lancement, l'app présente un **écran de choix** à cinq portes (Écran de cible / Écran de
-// salle / Public / Scoreur / Admin — la porte « salle » est arrivée au retour maquettes du
-// 04/08/2026) ; le choix est mémorisé et l'app y va **droit** ensuite. Cinq portes pour quatre
-// mondes : `cible` et `salle` sont deux entrées d'un même monde, cf. `Porte` dans `routeur.ts`.
-//
-// **Chaque monde a désormais son adresse** (`/public`, `/scoreur`, `/cible`, `/salle`, `/admin`) — routeur
-// maison, cf. `routeur.ts`. L'aiguillage combine donc deux sources, l'adresse et l'état de session,
-// dans la fonction pure `mondeAServir` : le verrou de poste (`D-13`) prime sur tout, l'adresse
-// l'emporte ensuite sur un choix mémorisé, et la racine retombe sur `resoudreRole`. Quand le monde
-// servi ne correspond pas à l'adresse, celle-ci est **corrigée en `replaceState`** — sans quoi le
-// bouton « précédent » renverrait sur l'adresse que l'app vient de refuser.
+// Au 1ᵉʳ lancement, un **écran de choix** à cinq portes, mémorisé ensuite. Cinq portes pour quatre
+// mondes : `cible` et `salle` sont deux entrées d'un même monde. L'aiguillage combine adresse et
+// état de session dans `mondeAServir` — le verrou de poste (`D-13`) prime. ⚠️ Quand le monde servi
+// ne correspond pas à l'adresse, celle-ci est **corrigée en `replaceState`** : sinon « précédent »
+// renverrait sur l'adresse que l'app vient de refuser.
 
 import { useEffect } from 'react'
 import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
@@ -94,21 +88,13 @@ export function App() {
   // seulement choisie au menu (cf. `resoudreRole.ts` pour le raisonnement).
   const changementPossible = peutChangerDeRole(role, estPoste, codePoste !== null)
 
-  // **La surface annonce sa nature au CSS** (retour maquettes du 04/08/2026, A02 : *« on est sur
-  // l'écran admin donc un pc, on peut exploiter plus d'espace, et cela pour tous les écrans »*).
-  //
-  // Le shell imposait une seule largeur — 960 px — à cinq surfaces dont les contraintes sont
-  // **opposées** : un PC d'organisation, un téléphone de spectateur, une tablette de cible et un
-  // vidéoprojecteur. C'est ce qui rendait l'admin « tassé » (A02, A11) *et* ce qui reléguait l'écran
-  // de salle dans une colonne de 960 px au milieu d'un mur de 1920 — un défaut réel, pas cosmétique.
-  //
-  // `data-monde` plutôt qu'une classe : c'est un **état de la surface**, pas une variante d'apparence,
-  // et il pilote des jetons (`--largeur-*`) que chaque règle consomme, au lieu d'obliger chaque écran
-  // à connaître les quatre cas.
-  //
-  // L'écran de salle est distingué **par sa session, pas par son adresse** : le monde est `tablette`
-  // dans les deux cas, et un écran atteint par QR n'a pas d'adresse `/salle`. Seule la réponse du
-  // serveur (`poste.type`) dit la vérité.
+  // **La surface annonce sa nature au CSS** (A02, 04/08/2026). Le shell imposait une seule largeur
+  // — 960 px — à cinq surfaces aux contraintes **opposées** : PC d'organisation, téléphone,
+  // tablette, vidéoprojecteur. C'est ce qui rendait l'admin « tassé » *et* ce qui reléguait l'écran
+  // de salle dans une colonne de 960 px au milieu d'un mur de 1920. `data-monde` plutôt qu'une
+  // classe : c'est un **état de la surface**, et il pilote des jetons que chaque règle consomme. ⚠️
+  // L'écran de salle est distingué **par sa session, pas par son adresse** — le monde est
+  // `tablette` dans les deux cas, et un écran atteint par QR n'a pas d'adresse `/salle`.
   const surface = posteEstEcran ? 'salle' : monde
 
   return (

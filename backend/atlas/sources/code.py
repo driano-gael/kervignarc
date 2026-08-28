@@ -1,25 +1,10 @@
 """Ce que le code fait réellement des règles d'architecture — lu dans le code, pas dans les docs.
 
-Les autres sources de l'atlas lisent des documents ; celle-ci lit le **dépôt**. Elle répond à trois
-questions que rien ne posait :
-
-1. **quelle couche dépend de quelle autre** — la règle 2 (« tout pointe vers le domaine ») n'était
-   vérifiée que **pour le domaine** (`tests/test_domain_isolation.py`). Les quatre autres sens ne
-   l'étaient par rien : un `application/` important `api/` passait le hook, la CI et la revue ;
-2. **où sont les ports, et qui les implémente** — la règle 2 veut les ports dans le domaine et les
-   adapters dans l'infrastructure ; l'inventaire dit si c'est tenu ;
-3. **comment le front est découpé** — la règle 10 impose une organisation par features, sans qu'un
-   contrôle ne dise jamais si les features sont encore autonomes.
-
-Deux techniques, et l'écart entre elles est **la** propriété importante de ce module :
-
-- le backend est lu à l'**AST** (`ast`, bibliothèque standard). C'est exact, y compris sur les
-  imports relatifs, multi-lignes ou sous `if TYPE_CHECKING`. C'est ce qui autorise un contrôle
-  **bloquant** : on ne bloque pas une CI sur une approximation ;
-- le front est lu à l'**expression régulière**. L'atlas n'a aucune dépendance (ADR-0086) et la
-  bibliothèque standard ne sait pas lire du TypeScript. Un import écrit autrement (concaténation,
-  chemin calculé) échappe à la lecture. Conséquence assumée et écrite sur la page elle-même :
-  **aucun constat côté front n'est bloquant**.
+Les autres sources lisent des documents ; celle-ci lit le **dépôt** : quelle couche dépend de quelle
+autre (la règle 2 n'était vérifiée **que pour le domaine**), où sont les ports et qui les
+implémente, comment le front est découpé (règle 10). ⚠️ Le backend est lu à l'**AST**, exact y
+compris sous `if TYPE_CHECKING` — c'est ce qui autorise un contrôle **bloquant** ; le front est lu
+à l'**expression régulière** (l'atlas n'a aucune dépendance, ADR-0086), donc **rien n'y bloque**.
 """
 
 from __future__ import annotations
@@ -38,33 +23,14 @@ FEATURES = ("frontend", "src", "features")
 #: Les cinq couches, dans l'ordre où les dépendances les traversent (le domaine au centre).
 COUCHES: tuple[str, ...] = ("domain", "application", "infrastructure", "api", "bootstrap")
 
-#: Ce que chaque couche a le droit d'importer. Dérivé des **règles écrites**, et de rien d'autre :
-#: règle 1 (le domaine n'importe aucune couche), règle 2 (tout pointe vers le domaine, les ports
-#: dans le domaine et les adapters dans l'infrastructure), règle 8 (`bootstrap/` est la racine de
-#: composition, elle câble tout le monde à la main).
-#:
-#: ⚠️ **`bootstrap` n'apparaît dans aucune valeur** — ce n'est pas un oubli : la racine de
-#: composition est un consommateur **terminal**. Quiconque l'importe inverse le câblage et fait
-#: d'un point d'assemblage une dépendance, ce qui rend la composition impossible à relire.
-#:
-#: Deux autorisations vont au-delà de la lettre de la prose. Elles sont écrites ici **et** dans
-#: l'amendement `E00US020` d'ADR-0086 — sans quoi un relecteur futur « corrigerait l'oubli » en
-#: retirant une arête, et produirait des dizaines de faux bloquants le lendemain :
-#:
-#: - `infrastructure → application` : quelques ports techniques (l'authentification) sont déclarés
-#:   dans `application/`, et leur adapter doit bien les importer. Étendue réelle : **un** import.
-#:   Que ces ports ne soient pas dans le domaine est un écart à la règle 2 — mais il est
-#:   **signalé** (`port-hors-domaine`), pas bloqué : trancher mécaniquement qu'un port
-#:   d'authentification est du métier de tir à l'arc reviendrait à arbitrer seul une conception ;
-#: - `api → infrastructure` : la règle 5 impose le mapping des erreurs à la frontière API, et les
-#:   objets câblés par `bootstrap` sont typés dans les signatures `Depends` (règle 6). 39 imports
-#:   répartis sur 32 fichiers à raison de un ou deux chacun — c'est le patron de câblage, pas une
-#:   fuite. Cette arête n'est écrite ni dans la règle 2 ni dans le guide : c'est un **arbitrage**,
-#:   pas une transcription, et il doit se lire comme tel.
-#:
-#: `test_domain_isolation.py` reste **complémentaire** et n'est pas subsumé : il couvre
-#: `domain → {frameworks, outillage}`, que cette table ne regarde pas (elle ne retient que les
-#: têtes appartenant aux couches). Les fusionner perdrait de la couverture.
+#: Ce que chaque couche a le droit d'importer. Dérivé des **règles écrites** (1, 2, 8).
+#: ⚠️ **`bootstrap` n'apparaît dans aucune valeur** : la racine de composition est un consommateur
+#: **terminal**, quiconque l'importe inverse le câblage. Deux autorisations vont au-delà de la
+#: lettre de la prose, écrites ici **et** dans l'amendement `E00US020` d'ADR-0086 :
+#: `infrastructure → application` (un import, ports techniques signalés par `port-hors-domaine`)
+#: et `api → infrastructure` (39 imports, câblage des `Depends`). ⚠️ **Ne pas les retirer pour
+#: « corriger l'oubli »** : c'est un arbitrage, et les ôter produirait des dizaines de faux
+#: bloquants. `test_domain_isolation.py` reste complémentaire : il couvre les frameworks.
 SENS_AUTORISE: dict[str, frozenset[str]] = {
     "domain": frozenset(),
     "application": frozenset({"domain"}),
@@ -122,16 +88,11 @@ def _racine_backend(racine: Path) -> Path:
 def _fichiers_python(racine: Path) -> list[tuple[Path, str]]:
     """Tous les modules des cinq couches, triés — l'ordre de sortie est comparé à l'octet en CI.
 
-    ⚠️ **Une couche absente ou vide fait échouer la lecture**, elle ne rend pas zéro fichier.
-    `rglob` sur un répertoire inexistant ne lève rien : renommer `bootstrap/` aurait fait fondre
-    ses imports, vidé sa ligne de la matrice, rendu **invisible** tout futur `api → composition`
-    — et la porte serait restée **verte**, parce qu'elle n'aurait rien regardé. Le plancher agrégé
-    des tests ne l'aurait pas vu non plus : mesuré, le dépôt passe encore `imports >= 500` après
-    la disparition de `bootstrap` (713), d'`infrastructure` (669) ou d'`api` (517).
-
-    C'est le seul mode de défaillance dont on ne se relève pas : le diff de `carte.js` est replié
-    par `.gitattributes`, la CI est verte, et l'atlas affirme une architecture saine pendant des
-    mois. Un garde-fou doit échouer **bruyamment** quand il ne peut pas faire son travail.
+    ⚠️ **Une couche absente ou vide fait échouer la lecture**, elle ne rend pas zéro fichier :
+    `rglob` sur un répertoire inexistant ne lève rien, donc renommer `bootstrap/` aurait vidé sa
+    ligne de la matrice et laissé la porte **verte** parce qu'elle n'aurait rien regardé. Le
+    plancher agrégé ne l'aurait pas vu non plus (le dépôt passe `imports >= 500` même sans
+    `bootstrap`). Un garde-fou doit échouer **bruyamment** quand il ne peut pas travailler.
     """
     backend = _racine_backend(racine)
     fichiers: list[tuple[Path, str]] = []
@@ -158,17 +119,11 @@ def _fichiers_python(racine: Path) -> list[tuple[Path, str]]:
 def _arbre(chemin: Path) -> ast.Module:
     """L'arbre d'un module, lu **une seule fois** et converti au contrat d'erreurs du générateur.
 
-    Deux corrections en une, toutes deux relevées en revue :
-
-    - `ast.parse` non gardé laissait remonter une `SyntaxError` ou une `UnicodeDecodeError`
-      **nue**, avec sa trace, alors que tout le reste de l'atlas passe par `AtlasSourceInvalide`
-      → sortie 2 → message lisible. `rendu.py` s'était déjà donné la règle : « un fichier tronqué
-      doit produire le message prévu, pas une trace remontée depuis un hook pre-commit ». Le motif
-      du hook couvrant désormais tout `backend/**.py`, le cas se rencontre en cours de refactor ;
-    - les 217 modules étaient parsés **deux fois** (une passe pour les imports, une pour les
-      classes) — ~0,8 s sur les ~5 s facturées à presque chaque commit, et le défaut exact
-      qu'`E00US019` venait de corriger sur le tracker. Le cache est sûr ici : le générateur est
-      mono-passe et le dépôt ne bouge pas sous lui.
+    Deux corrections relevées en revue : `ast.parse` non gardé laissait remonter une `SyntaxError`
+    **nue** au lieu d'`AtlasSourceInvalide` → sortie 2 → message lisible, alors que le motif du hook
+    couvre désormais tout `backend/**.py` ; et les 217 modules étaient parsés **deux fois** (~0,8 s
+    sur les ~5 s facturées à presque chaque commit). Le cache est sûr : le générateur est mono-passe
+    et le dépôt ne bouge pas sous lui.
     """
     try:
         return ast.parse(chemin.read_text(encoding="utf-8"))
@@ -248,15 +203,11 @@ def _import_dynamique(noeud: ast.Call) -> str | None:
 def _modules_importes(arbre: ast.AST, paquet: str) -> list[str]:
     """Les modules importés — imports relatifs résolus, imports dynamiques littéraux compris.
 
-    ⚠️ **La résolution des relatifs ne change aujourd'hui aucun verdict, et c'est écrit ici pour
-    ne pas sur-vendre le garde-fou.** Les cinq couches sont des paquets de **premier niveau** (il
-    n'existe pas de `backend/__init__.py`), donc un import relatif valide reste toujours à
-    l'intérieur de son propre paquet, donc de sa propre couche — et le dépôt n'en contient
-    d'ailleurs aucun. La résolution est une défense contre une **évolution de la racine de
-    paquet**, pas contre un contournement d'aujourd'hui. La version précédente de ce commentaire
-    affirmait le contraire (« sans elle, `from ..api import x` échapperait au contrôle ») : c'était
-    faux — depuis `infrastructure/db/`, cet import désigne `infrastructure.api`. Le projet traite
-    une justification sur-vendue comme un défaut, ADR-0017 lui a coûté treize mois.
+    ⚠️ **La résolution des relatifs ne change aujourd'hui aucun verdict**, et c'est écrit pour ne
+    pas sur-vendre le garde-fou : les cinq couches sont des paquets de premier niveau, donc un
+    import relatif valide reste dans sa propre couche — et le dépôt n'en contient aucun. C'est une
+    défense contre une **évolution de la racine de paquet**. La version précédente affirmait le
+    contraire ; le projet traite une justification sur-vendue comme un défaut (ADR-0017).
     """
     trouves: list[str] = []
     for noeud in ast.walk(arbre):
@@ -323,17 +274,11 @@ def lire_aretes(racine: Path) -> tuple[AreteCode, ...]:
 def _membres(noeud: ast.ClassDef) -> frozenset[str]:
     """Les membres **publics** d'une classe : méthodes **et attributs annotés**.
 
-    ⚠️ Les attributs comptent, et c'est le correctif central de la revue. Un port déclare ses
-    membres en `@property` (il le doit : c'est une interface) tandis que son implémentation les
-    porte en **champs de dataclass `frozen`** — la règle 4 privilégie l'immutabilité dans le
-    domaine, donc c'est le patron **dominant** ici. En ne lisant que les `FunctionDef`,
-    l'appariement ratait systématiquement ce couple : les deux seuls signaux `port-sans-adapter`
-    livrés (`EtapeSequencee`, `EtapeProjetable`) étaient **tous les deux faux**, et leurs propres
-    docstrings disaient déjà que `Phase` et `ModelePhase` satisfont le contrat.
-
-    Le précédent est dans le même fichier : ADR-0086 a **retiré** le contrôle « titre divergent »
-    sur exactement ce ratio — « 0 vrai positif sur 2 signaux […] un signal à la fois bruyant et
-    poreux n'apprend qu'à ignorer la page ». Ce contrôle-ci, lui, pouvait être rendu juste.
+    ⚠️ Les attributs comptent, et c'est le correctif central de la revue : un port déclare ses
+    membres en `@property` tandis que son implémentation les porte en **champs de dataclass
+    `frozen`** — le patron dominant ici (règle 4). En ne lisant que les `FunctionDef`, l'appariement
+    ratait ce couple : les deux seuls signaux `port-sans-adapter` livrés étaient **tous deux faux**.
+    Le précédent est dans le même fichier — ADR-0086 a retiré « titre divergent » sur ce ratio.
     """
     membres = {
         membre.name
@@ -377,15 +322,11 @@ def _classes(racine: Path) -> tuple[_Classe, ...]:
 def lire_ports(racine: Path) -> tuple[Port, ...]:
     """Les ports du dépôt et les classes qui les satisfont.
 
-    L'appariement est **structurel** — une classe qui porte tous les membres publics du port.
-    C'est le seul appariement qui fonctionne ici : un `Protocol` s'implémente **sans héritage**, et
-    le dépôt ne compte aucun héritage de port par une implémentation. Un inventaire fondé sur les
-    bases de classe rendrait donc une page **vide** en affirmant qu'elle est complète — le genre
-    exact de « rendu qui affirme faux » qu'ADR-0086 veut empêcher.
-
-    Un port **sans membre public** (un simple marqueur) n'apparie personne : tout le monde
-    satisfait l'ensemble vide. Ses adapters restent vides et il n'est pas signalé pour autant — il
-    n'y a rien à constater, seulement rien à dire.
+    L'appariement est **structurel** — une classe qui porte tous les membres publics du port. C'est
+    le seul qui fonctionne ici : un `Protocol` s'implémente **sans héritage**, et le dépôt ne compte
+    aucun héritage de port. Un inventaire fondé sur les bases de classe rendrait une page **vide**
+    en affirmant qu'elle est complète (ADR-0086). Un port **sans membre public** n'apparie personne
+    et n'est pas signalé pour autant : il n'y a rien à constater.
     """
     classes = _classes(racine)
     ports = [classe for classe in classes if classe.est_protocole]
@@ -476,15 +417,11 @@ def _est_un_test(chemin: Path) -> bool:
 def lire_aretes_front(racine: Path) -> tuple[AreteFeature, ...]:
     """Les imports d'une feature vers une autre — la mesure de la règle 10.
 
-    Lecture par expression régulière, donc **heuristique** : un import écrit autrement lui échappe.
-    Elle attrape les trois formes que le front emploie (`from '…'`, `import '…'`, `import('…')`),
-    ce qui suffit à mesurer une tendance — jamais à bloquer une CI.
-
-    ⚠️ **Les fichiers de test sont exclus.** Ils ne pesaient que 3 arêtes sur 142 — mais ces 3
-    suffisaient à faire naître un **nœud d'enchevêtrement entier** (`accueil ↔ completude ↔
-    paiements`), soit un quart des nœuds annoncés. Or le grief fait à un nœud est qu'« aucune
-    feature ne peut plus être lue, **testée** ni retirée seule » : le fonder sur le test lui-même
-    n'a pas de sens. Sans eux : 139 arêtes, 3 nœuds.
+    Lecture par expression régulière, donc **heuristique** : elle attrape les trois formes que le
+    front emploie, ce qui suffit à mesurer une tendance, jamais à bloquer une CI. ⚠️ **Les fichiers
+    de test sont exclus** : ils ne pesaient que 3 arêtes sur 142, mais ces 3 suffisaient à faire
+    naître un **nœud d'enchevêtrement entier** — or le grief fait à un nœud est qu'aucune feature
+    ne peut plus être lue, **testée** ni retirée seule. Sans eux : 139 arêtes, 3 nœuds.
     """
     dossier = _dossier_features(racine)
     _exiger_le_front(dossier)

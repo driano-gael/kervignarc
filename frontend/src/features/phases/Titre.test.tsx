@@ -1,18 +1,11 @@
 // Le **titre de phase** et la **fiche dépliable**, sur l'écran des phases d'un tournoi (E16US002).
 //
-// Tests dérivés du CA d'A07 (`stories/E16-retours-maquettes.md` → E16US002) : « *un écran liste les
-// phases du tournoi, une ligne par phase* » et « *ouvrir une ligne ouvre la fiche de la phase — son
-// **titre** et ses **réglages propres au type*** ».
-//
-// ⚠️ **Ce fichier monte `Phases` en entier, pas un contrôle isolé** — même parti que
-// `Decoupage.test.tsx`, et pour la raison que son en-tête raconte : un test de formatage ne voit
-// pas un défaut de câblage. Ce qu'on garde ici n'est pas « le champ sait s'afficher », c'est
-// « l'organisateur peut nommer sa phase, quel qu'en soit le type ».
-//
-// ⚠️ **Les requêtes sont portées à la LIGNE** (`ligne()`), jamais à l'écran. L'écran monte en
-// permanence un formulaire d'**ajout** qui porte les mêmes libellés que la fiche : une requête
-// globale y matcherait le formulaire d'ajout et resterait verte avec la fiche entièrement décâblée.
-// C'est le défaut latent que `Decoupage.test.tsx` portait, découvert en écrivant cette US.
+// Tests dérivés du CA d'A07. ⚠️ **Ce fichier monte `Phases` en entier, pas un contrôle isolé** — un
+// test de formatage ne voit pas un défaut de câblage ; ce qu'on garde n'est pas « le champ sait
+// s'afficher » mais « l'organisateur peut nommer sa phase ». ⚠️ **Les requêtes sont portées à la
+// LIGNE**, jamais à l'écran : celui-ci monte en permanence un formulaire d'**ajout** aux mêmes
+// libellés, et une requête globale y matcherait ce formulaire en restant verte avec la fiche
+// entièrement décâblée.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
@@ -197,15 +190,11 @@ describe('la fiche d’une phase', () => {
 })
 
 describe('la charge utile envoyée au serveur', () => {
-  // ⚠️ **Ces trois tests manquaient à la première livraison, et trois axes de revue l'ont relevé.**
-  // `configInchangee` a été extraite avec, en argument, « `titre` en aurait été le TROISIÈME bug :
-  // sans cette fonction, régler un barrage renommait la phase en silence » — et rien ne l'exerçait.
-  // Toutes les fixtures portaient `titre: null`, donc la borne n'était jamais atteinte : une
-  // régression qui perdrait le titre serait restée verte des deux côtés.
-  //
-  // Le `PUT` est une édition **totale** : ce qui n'est pas réémis est effacé. C'est exactement la
-  // classe de bug que ce fichier a déjà payée deux fois (le barrage effaçait le découpage ; le
-  // couple découpage/arrêts partait en 422).
+  // ⚠️ **Ces trois tests manquaient à la première livraison, et trois axes l'ont relevé.**
+  // `configInchangee` a été extraite en argumentant que « `titre` en aurait été le TROISIÈME bug :
+  // sans cette fonction, régler un barrage renommait la phase en silence » — et rien ne l'exerçait,
+  // toutes les fixtures portant `titre: null`. Le `PUT` est une édition **totale** : ce qui n'est
+  // pas réémis est effacé, la classe de bug que ce fichier a déjà payée deux fois.
 
   const QUALIFICATION_REGLEE: EtapeDeroule = {
     ...QUALIFICATION,

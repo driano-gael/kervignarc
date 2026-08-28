@@ -26,17 +26,14 @@ import {
   type TirBarrage,
 } from './api'
 
-// Exportée : la feature `archers` (E02US003) invalide le classement après une édition ou une
-// désinscription — un archer corrigé ou retiré doit quitter le tableau sans attendre. La clé se
-// déclare **une fois**, ici, où vit la requête ; deux littéraux `['classement', id]` finiraient
-// par diverger et l'invalidation raterait sa cible en silence.
+// Exportée : la feature `archers` invalide le classement après une édition ou une désinscription.
+// La clé se déclare **une fois**, ici, où vit la requête — deux littéraux `['classement', id]`
+// finiraient par diverger et l'invalidation raterait sa cible en silence.
 //
 // ⚠️ **La clé reste ancrée au tournoi alors que la donnée est celle d'un départ** (ADR-0075), et
 // c'est délibéré : React Query invalide **par préfixe**, donc `['classement', tournoiId]` couvre
-// les N créneaux du tournoi *et* leurs vues filtrées par catégorie. Les six invalidations
-// existantes (archers, forfaits, barrages, phases) raisonnent au tournoi — un archer corrigé peut
-// tirer dans n'importe quel créneau. Descendre la clé au seul départ les aurait toutes fait rater
-// leur cible **en silence** : l'écran cesserait de se rafraîchir sans qu'aucune erreur ne le dise.
+// les N créneaux et leurs vues filtrées. Descendre la clé au seul départ aurait fait rater leur
+// cible **en silence** aux six invalidations existantes.
 export const cleClassement = (tournoiId: number) => ['classement', tournoiId] as const
 
 // La clé d'une vue **précise** : ce créneau, éventuellement cette catégorie. Préfixée par la
@@ -70,23 +67,13 @@ export function useClassement(tournoiId: number, departId: number | null, catego
 }
 
 // `live` — **pollé sur demande, jamais par défaut**. Le `statut` qui sort d'ici pilote des écrans
-// entiers de l'administration : depuis E16US012, « Prêt à terminer ? » y prend son verdict, sa
-// raison **et** la présence de son bouton. Sans rafraîchissement (le `staleTime` global est de 30 s,
-// `refetchOnWindowFocus` est désactivé, et aucune transition de cycle de vie ne diffuse d'événement
-// WebSocket), un second poste restait sur un statut périmé indéfiniment : le PC reprend le tournoi,
-// la tablette continue de croire à la pause et **fait disparaître le bouton « Terminer »**. L'appli
-// empêchait alors sans rien dire — l'inverse de `D-15`/`P-3`, sans même un 409 pour détromper
-// l'organisateur (5ᵉ passe de revue, axe D).
-//
-// ⚠️ **Pourquoi une option et non un poll inconditionnel.** La 5ᵉ passe l'avait armé pour tout le
-// monde, sur un inventaire faux — « deux consommateurs, tous deux des écrans d'administration ».
-// Ils sont **trois**, et le troisième est la **porte publique** : `GestionTournois` est monté sans
-// condition par `public/AccueilPublic`. Chaque téléphone de spectateur aurait donc interrogé
-// `GET /api/v1/tournois` toutes les 5 s, jour J, sur le LAN — contre la doctrine que le dépôt écrit
-// noir sur blanc pour les routes ouvertes (`big-shoot-off/hooks.ts` : « aucun `refetchInterval` :
-// le rafraîchissement vient de l'invalidation globale de `useRealtime` »). Relevé en 6ᵉ passe par
-// deux axes. Seule la coquille admin demande donc le direct ; le public garde le comportement
-// d'avant.
+// entiers : sans rafraîchissement (aucune transition de cycle de vie ne diffuse d'événement), un
+// second poste restait sur un statut périmé — le PC reprend le tournoi, la tablette croit à la
+// pause et **fait disparaître le bouton « Terminer »**, donc l'appli empêche sans rien dire. ⚠️
+// **Pourquoi une option et non un poll inconditionnel** : les consommateurs sont **trois**, et le
+// troisième est la **porte publique** — chaque téléphone de spectateur aurait interrogé la route
+// toutes les 5 s, jour J, sur le LAN, contre la doctrine écrite pour les routes ouvertes. Seule la
+// coquille admin demande donc le direct.
 export function useTournois({ live = false }: { live?: boolean } = {}) {
   return useQuery({
     queryKey: CLE_TOURNOIS,

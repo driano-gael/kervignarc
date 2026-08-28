@@ -1,11 +1,7 @@
-"""Endpoints REST des départs — créneaux d'un tournoi (`/api/v1/tournois/{tournoi_id}/departs`).
+"""Endpoints REST des départs — créneaux d'un tournoi (E02US004, ADR-0017).
 
-Configurer les départs d'un tournoi (E02US004, ADR-0017) : créer, lister, éditer (tarif/horaire),
-supprimer. Les routes sont **imbriquées sous le tournoi** — un départ n'existe pas hors de lui.
-
-Suit le patron de bout en bout (E00US009) : DTO Pydantic distincts des agrégats ; écritures routées
-par la **file d'écriture** (writer unique, ADR-0005) et réservées à l'admin (`exiger_admin`) ;
-lectures **hors boucle** (threadpool) ; erreurs typées traduites à la frontière (`api/erreurs.py`).
+Créer, lister, éditer (tarif/horaire), supprimer. Routes **imbriquées sous le tournoi** — un départ
+n'existe pas hors de lui. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations
@@ -57,14 +53,11 @@ class ModifierDepartRequete(BaseModel):
 class DepartReponse(BaseModel):
     """Représentation d'un départ renvoyée au client.
 
-    `tarif_centimes` est en **centimes entiers** (l'unité est dans le nom) : c'est le client qui met
-    en forme des euros. `0` = gratuit. `quota` = nombre maximal d'inscrits, ou `null` (illimité).
-
-    `etat` est l'**état de cycle de vie** du créneau (E12US008), une chaîne `ouvert` / `lance` /
-    `clos` **dérivée** (jamais stockée) : `ouvert` = aucun score encore consigné (librement
-    éditable) ; `lance` = une session de tir est en cours ; `clos` = toutes les séries sont closes.
-    Le front en fait un badge et sait qu'éditer/supprimer un créneau non *ouvert* demandera une
-    confirmation.
+    `tarif_centimes` est en **centimes entiers** (l'unité est dans le nom) — c'est le client qui
+    met en forme des euros ; `0` = gratuit. `quota` = maximum d'inscrits, ou `null`. `etat` est
+    l'**état de cycle de vie** (E12US008), **dérivé** et jamais stocké : `ouvert` (aucun score,
+    librement éditable), `lance` (session en cours), `clos` (toutes séries closes). Le front en
+    fait un badge.
     """
 
     id: int
@@ -180,20 +173,11 @@ async def supprimer_depart(
 ) -> Response:
     """Supprime un départ d'un tournoi (**action admin**) : écriture via la file, 204 si succès.
 
-    Deux signalements possibles, selon l'**état de cycle** du créneau (E12US008) :
-
-    - `409 depart_en_cours_non_confirme` si le créneau est *lancé* ou *clos* (une session de tir y a
-      eu lieu) : `details` chiffre l'état et les archers ayant tiré. Le client lève en rejouant avec
-      `confirme_cycle=true` — elle **subsume** le signalement d'inscriptions ci-dessous (pas de
-      double dialogue) ;
-    - `409 depart_avec_inscriptions` si le créneau est *ouvert* mais porte des inscriptions
-      ([ADR-0018](../../../docs/adr/0018-supprimer-un-depart-a-inscriptions-confirmable.md)), levé
-      par `autoriser_suppression_inscrits=true` ; efface les inscriptions (payées à rembourser —
-      E08US005).
-
-    Les drapeaux sont en **paramètres de requête**, comme `autoriser_suppression_engage` de la
-    suppression d'archer : un `DELETE` n'a pas de corps par convention HTTP (même divergence assumée
-    qu'en E02US003, sanctionnée par ADR-0016).
+    Deux signalements selon l'**état de cycle** (E12US008) : `409 depart_en_cours_non_confirme`
+    (créneau *lancé*/*clos*, levé par `confirme_cycle=true` — il **subsume** le suivant, pas de
+    double dialogue) et `409 depart_avec_inscriptions` (créneau *ouvert*, ADR-0018, levé par
+    `autoriser_suppression_inscrits=true`). ⚠️ Les drapeaux sont en **paramètres de requête** : un
+    `DELETE` n'a pas de corps par convention (divergence assumée, ADR-0016).
     """
     service: ServiceDeparts = request.app.state.service_departs
     write_queue: WriteQueue = request.app.state.write_queue

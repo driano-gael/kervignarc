@@ -1,68 +1,10 @@
-"""Politiques injectables du moteur de phases (E05US003, [ADR-0004] / [ADR-0046]).
+"""Politiques injectables du moteur — sept familles (ADR-0004 § « Catalogue livré », ADR-0046).
 
-Un **format** de phase de tableau n'est pas du code mais un **assemblage de stratégies** (règle 2) :
-comment on route le perdant, comment on score, comment on ensemence l'arbre, à qui vont les byes,
-comment on départage, jusqu'où on classe. ADR-0004 en faisait **six familles** de politiques —
-E06US004 en ajoute une **septième**, `aggregation` ([ADR-0067]) — chacune une interface du domaine
-(`Protocol`) avec au moins une implémentation :
+Un format de phase est un assemblage de stratégies, pas du code (règle 2).
 
-| Famille       | Rôle                        | Implémentations livrées |
-|---------------|-----------------------------|-------------------------|
-| `routing`     | où va le perdant            | `EliminationSeche`, `PlacementEnCascade`, |
-|               |                             | `RoutingRepechage` |
-| `scoring`     | calcul du score             | `ScoreCumul`, `ScoreAvecHandicap` |
-| `seeding`     | composition de l'arbre      | `SeedingSerpent` |
-| `byes`        | exempts si effectif ≠ 2^k   | `ByesAuxMieuxClasses` |
-| `tiebreak`    | départage des égalités      | `TiebreakFftaDefaut`, `TiebreakPoules` |
-| `depth`       | jusqu'où classer            | `ProfondeurUnVersN`, `ProfondeurPodium`, |
-|               |                             | `AucunClassement` |
-| `aggregation` | départage des sortis        | `AggregationParQualification`, |
-|               | au même tour                | `AggregationExAequo` |
-
-**E05US015 peuple ce catalogue** ([ADR-0062]) : le **repêchage** et le **handicap**, que le cahier
-des charges rangeait parmi les « types de tournoi » à livrer, ne sont pas des types de phase mais
-des **politiques** — le premier décide où va un perdant, le second comment se calcule un score. Ni
-l'un ni l'autre n'a de structure propre, donc leur donner une `TypePhase` aurait été une erreur de
-maille : c'est l'apport de conception de l'US, pas un détail d'implémentation.
-
-**Portée E05US003.** Ce module livre les **interfaces**, une implémentation **pure et testable**
-par famille, et l'**assemblage** d'une `config.policies` en un jeu résolu (`PolitiquesPhase`) via un
-`RegistrePolitiques` que la **composition root** peuple (CA « assemblage »). Le *tableau* qui
-orchestre ces stratégies (dimensionnement 2^k, génération, progression, podium) est **E05US005**
-(élimination directe) et **E05US010** (placement intégral, routing en cascade) : ils **consomment**
-ces politiques déjà éprouvées. Les stratégies couplées à la structure d'arbre exposent donc ici leur
-méthode **fondatrice** (celle dont la règle est écrite) ; les US consommatrices la **ressignent**
-au fil de leurs besoins. **E05US010 a exercé cette clause** sur le `routing` :
-`destination_du_perdant()` est devenue `route(contexte)` (ADR-0061), la rupture ayant coûté un
-appelant de production et deux
-doubles de test — exactement le pari annoncé ici. Le barème par sets fera de même sur le `scoring`.
-Ce sont des **ruptures de contrat**, bon marché tant qu'il n'y a **qu'un implémenteur et aucun
-consommateur** par famille. C'est le sur-gel prématuré que
-DETTE-003 mettait en garde d'éviter — singulièrement pour le `scoring` : on livre étroit et honnête
-plutôt que de figer une signature spéculative.
-
-**Forme de la config (ADR-0046, résorbe DETTE-003).** Chaque politique vit sous `config.policies`,
-désignée par un objet `{"nom": <implémentation>, …paramètres}` — un **nom** (l'implémentation
-résolue par le registre) **et** des paramètres (le barème de qualif se *paramètre*, il ne se choisit
-pas dans un catalogue fermé). Le grain de `validation` **n'est pas** une politique de moteur : il
-reste **hors** `policies` (ADR-0046). Agrégats/stratégies de domaine **purs** — immuables, sans
-dépendance framework (règle 1).
-
-# DETTE-028 (../../docs/dette.md) — **rétréci par E06US003 (02/08/2026)**, ne pas le relire au
-# passé : la famille `tiebreak` a désormais un appelant de production
-# (`ServiceClassement._tiebreak`, résolu **par le registre** depuis `config.policies.tiebreak`),
-# et `domain/classement.py` ne
-# réimplémente plus §8.1 à la main. Ce qui reste vrai, et seul : la famille **`scoring`** n'a
-# toujours aucun appelant — le classement calcule son cumul hors politique, donc
-# `ScoreAvecHandicap` reste inerte bien que le handicap soit stocké, exposé et affiché — et les
-# moteurs `poule`, `big_shoot_off`, `suisse`, `colline` (ainsi que `TiebreakPoules` et
-# `RoutingRepechage`) n'en ont pas davantage. Résorption : US dédiée du chantier moteur, la couture
-# `tiebreak` montrant désormais comment s'y prendre.
-
-[ADR-0004]: ../../docs/adr/0004-moteur-de-phases-politiques.md
-[ADR-0046]: ../../docs/adr/0046-config-policies-politiques-nommees-parametrees.md
-[ADR-0067]: ../../docs/adr/0067-palmares-agregation-des-rangs-de-phases.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ Une famille **sans appelant de production est inerte, et rien ne le signale** — c'est le cas de
+`scoring`, donc de `ScoreAvecHandicap` (`DETTE-028`). Vérifier qu'une politique est résolue par le
+registre avant de la croire active.
 """
 
 from __future__ import annotations
@@ -106,17 +48,10 @@ FAMILLES_HORS_CONFIG_PHASE: frozenset[FamillePolitique] = frozenset({FamillePoli
 """Les familles qui **ne se règlent pas** dans la `config.policies` d'une phase.
 
 `aggregation` fusionne les rangs de **toutes** les phases en un palmarès : elle vaut pour le
-tournoi, pas pour l'une d'elles. Rien ne la persiste aujourd'hui (`Phase` n'a pas de `config`
-générique) et elle s'injecte à la composition root (E06US004).
-
-⚠️ **Sans cette liste, ajouter la famille élargissait ce que le serveur accepte.**
-`FamillePolitique` sert de **catalogue fermé** des clés admises — `assembler_politiques` refuse
-une clé inconnue. `config.policies.aggregation`, refusée avant E06US004, devenait donc
-acceptée, résolue… et silencieusement **ignorée** : un réglage sans effet, que l'organisateur
-croirait actif. Relevé en revue (axe C2) ; c'est un cran pire que « pas encore réglable ».
-
-Même parti que le grain de `validation`, qu'ADR-0046 garde déjà **hors** de `policies` : une
-clé n'est acceptée que si quelqu'un la consomme.
+tournoi, pas pour l'une d'elles, et s'injecte à la composition root (E06US004).
+⚠️ Sans cette liste, ajouter la famille élargissait ce que le serveur accepte : `FamillePolitique`
+est le **catalogue fermé** des clés admises, donc `config.policies.aggregation` serait devenue
+acceptée, résolue… et silencieusement **ignorée**. Une clé n'est acceptée que si on la consomme.
 """
 
 _FAMILLES_DE_PHASE: tuple[FamillePolitique, ...] = tuple(
@@ -134,10 +69,8 @@ class ContexteRoutage:
 
     C'est le `contexte` d'ADR-0004. Il ne porte **pas** le perdant lui-même : le routage est décidé
     à la **construction** de l'arbre, quand les camps sont câblés mais qu'aucun participant n'est
-    encore connu (`PerdantDe(m)` est une arête, pas une personne). Router à la construction plutôt
-    qu'à chaque match joué est ce qui garde le `Tableau` **reconstructible** (ADR-0049) : la
-    structure ne dépend que des politiques, jamais de l'ordre dans lequel les résultats sont
-    tombés. Voir [ADR-0061](../../docs/adr/0061-routing-generique-et-placement-en-cascade.md).
+    connu. C'est ce qui garde le `Tableau` **reconstructible** (ADR-0049, ADR-0061) — la structure
+    ne dépend que des politiques, jamais de l'ordre dans lequel les résultats sont tombés.
     """
 
     tour: int
@@ -168,17 +101,11 @@ class VersPlage:
 class VersRepechage:
     """Le perdant **sort de ce tableau sans être classé** : une phase de repêchage le reprendra.
 
-    C'est la variante annoncée par E05US010, livrée par E05US015. Elle se distingue de
-    `HorsTableau` par ce qu'elle promet : `HorsTableau` **consomme** un rang (le perdant a fini sa
-    compétition), `VersRepechage` n'en consomme **aucun** — le repêché peut encore remonter
-    disputer le titre, donc lui attribuer un rang ici serait faux.
-
-    ⚠️ **Cette destination ne construit rien.** La réintégration n'est pas un lien d'arbre mais un
-    **prélèvement** de la phase avale : `SourcePhase.par_issue_de_tour(ordre, tour, PERDANTS)`,
-    livrée par E05US010. Le routing dit seulement « ces perdants-là ne descendent pas dans la
-    cascade » ; qui les récupère est une affaire de composition. C'est exactement la distinction de
-    `moteur-placement-lucky-loser.md` (Q1) entre **placement** (le perdant descend vers un tableau
-    de classement, sans retour) et **repêchage** (il ressort du tableau et peut revenir).
+    Se distingue de `HorsTableau` par ce qu'elle promet : celui-ci **consomme** un rang, celle-ci
+    n'en consomme **aucun** — le repêché peut encore remonter disputer le titre.
+    ⚠️ **Cette destination ne construit rien** : la réintégration est un **prélèvement** de la phase
+    avale (`SourcePhase.par_issue_de_tour(…, PERDANTS)`). Le routing dit seulement « ces perdants-là
+    ne descendent pas dans la cascade » ; qui les récupère est affaire de composition.
     """
 
 
@@ -200,16 +127,10 @@ class Routing(Protocol):
         """Où va le perdant du match décrit par `contexte`.
 
         ⚠️ **Précondition : jamais appelée sur une plage indivisible** (`largeur < 4`). La *Règle T*
-        tranche avant — `construire_tableau` sort dès `plage.est_terminale`, « l'issue fixe les deux
-        rangs, il n'y a plus rien à diviser ». Cette garde-là ne couvre que la largeur **2** ; elle
-        suffit parce qu'un arbre construit part de `Plage(1, taille)` avec `taille` puissance de 2
-        et ne divise que par moitiés, donc aucune plage impaire n'y naît. Un appelant qui fabrique
-        ses propres plages doit, lui, se garder sur `largeur < 4` — `PlacementEnCascade` lèverait
-        `PlageInvalide` en appelant `moitie_basse()`.
-
-        Le contrat était **implicite** et a été enfreint par son deuxième appelant
-        (`application.routage._est_repeche`, E07US008) : il est écrit ici pour que le troisième le
-        trouve à la source plutôt qu'en production — ADR-0065 §2.
+        tranche avant — `construire_tableau` sort dès `plage.est_terminale`, qui ne couvre que la
+        largeur **2** ; cela suffit pour un arbre construit (`Plage(1, 2^k)`, divisions par moitiés)
+        mais pas pour un appelant qui fabrique ses propres plages, où `PlacementEnCascade` lèverait
+        `PlageInvalide`. Le contrat était implicite et son 2ᵉ appelant l'a enfreint (ADR-0065 §2).
         """
         ...
 
@@ -246,19 +167,12 @@ class PlacementEnCascade:
 @dataclass(frozen=True)
 class RoutingRepechage:
     """*Repêchage World Archery* : les perdants de certains tours **ressortent** du tableau au lieu
-    d'y être classés (E05US015, [ADR-0062]).
-
-    `tours_repeches` liste les tours dont le perdant est repêchable, comptés **depuis la racine**
-    comme le veut `ContexteRoutage.tour` — la règle WA « les perdants du 1ᵉʳ tour sont repêchés »
-    s'écrit donc `frozenset({1})`. Tout autre tour est délégué à `sinon`, ce qui rend le repêchage
-    **composable** avec les deux routings existants : repêchage + cascade (le format du club, où le
-    « Lucky-Looser » remonte en Grande Finale et où les autres battus descendent se classer), ou
-    repêchage + élimination sèche.
-
-    **Décoration plutôt qu'implémentation autonome**, et c'est le point de conception : un
-    repêchage ne remplace pas une politique de placement, il en **excepte** quelques tours. Écrire
-    `RoutingRepechage` sans `sinon` aurait forcé à choisir entre « repêcher » et « classer », alors
-    que le classeur réel fait les deux dans le même tableau.
+    d'y être classés (E05US015, ADR-0062).
+    `tours_repeches` liste les tours repêchables, comptés **depuis la racine** — la règle WA « les
+    perdants du 1ᵉʳ tour sont repêchés » s'écrit `frozenset({1})`. Tout autre tour est délégué à
+    `sinon`. **Décoration plutôt qu'implémentation autonome** : un repêchage ne remplace pas une
+    politique de placement, il en **excepte** quelques tours — sans `sinon`, il aurait fallu choisir
+    entre « repêcher » et « classer », alors que le classeur réel fait les deux.
     """
 
     tours_repeches: frozenset[int]
@@ -317,17 +231,11 @@ class ScoreCumul:
 class ScoreAvecHandicap:
     """Classement **au handicap** : score réalisé **+** handicap du tireur (E05US015).
 
-    Règle donnée par le commanditaire le 31/07/2026 : « le score final est *score réalisé +
-    handicap* », de sorte qu'un débutant qui dépasse son niveau habituel batte un champion en
-    performance moyenne. Le format récompense donc la **progression**, pas la performance absolue.
-
-    ⚠️ **La politique ne calcule pas le handicap, elle l'applique.** Sa valeur vient de l'archer
-    (`Archer.handicap`, où une surcharge prime un handicap officiel) et transite par
-    `ContexteScore`. Ce partage est délibéré : la fiabilité du handicap est le point faible reconnu
-    du format (« les nouveaux archers peuvent être avantagés si leur handicap est mal évalué »), et
-    c'est un problème de **donnée entretenue par le club**, pas d'algorithme. Aucune table
-    officielle n'est codée en dur : le projet n'en a aucune, et en inventer une produirait des
-    classements plausibles mais faux.
+    Règle du commanditaire (31/07/2026) : le format récompense la **progression**, pas la
+    performance absolue.
+    ⚠️ **La politique ne calcule pas le handicap, elle l'applique** — sa valeur vient de l'archer et
+    transite par `ContexteScore`. La fiabilité du handicap est un problème de **donnée entretenue
+    par le club**, pas d'algorithme : coder une table officielle produirait des classements faux.
     """
 
     def total(self, points_par_volee: Iterable[int], contexte: ContexteScore) -> int:
@@ -356,15 +264,11 @@ def _puissance_de_deux_superieure(effectif: int) -> int:
 class SeedingSerpent:
     """Ensemencement **serpent** : la tête `r` affronte `2^k+1-r` (référentiel, CA E05US005).
 
-    Construit récursivement l'ordre des slots du tableau : à chaque doublement, on intercale le
-    complément (`taille+1-tête`) après chaque tête du demi-tableau — d'où les paires adjacentes
-    `(1,8), (4,5), (2,7), (3,6)` pour un tableau de 8, chacune de somme `2^k+1`. Les têtes de rang
-    supérieur à l'effectif réel sont des **places d'exempt** (byes, cf. `ByesAuxMieuxClasses`).
-
-    ⚠️ E05US005/oracle 120 : cet ordre plat donne les **appariements** (et donc la structure
-    d'arbre), **pas** la numérotation des matchs de `moteur-placement-lucky-loser.md` — l'ordre
-    linéaire des matchs peut différer du doc à structure identique. Ne pas comparer des *numéros* de
-    match sans table de correspondance.
+    À chaque doublement, on intercale le complément (`taille+1-tête`) après chaque tête du
+    demi-tableau — d'où `(1,8), (4,5), (2,7), (3,6)` pour un tableau de 8. Les têtes au-delà de
+    l'effectif réel sont des **places d'exempt**.
+    ⚠️ Cet ordre plat donne les **appariements**, **pas** la numérotation des matchs de
+    `moteur-placement-lucky-loser.md` : ne pas comparer des *numéros* sans table de correspondance.
     """
 
     def ordre_des_tetes(self, effectif: int) -> tuple[int, ...]:
@@ -408,18 +312,11 @@ class ByesAuxMieuxClasses:
 class DecompteDepartage:
     """Ce sur quoi on départage deux tireurs à égalité — **union** des critères des formats livrés.
 
-    §8.1 (qualification) n'en emploie que deux, `nb_dix` puis `nb_neuf` ; §10.1 (poules) en emploie
-    **cinq**, en commençant par trois critères propres au jeu en poule. Les deux ordres sont
-    différents et le référentiel avertit de ne pas les confondre : c'est la **politique `tiebreak`**
-    qui porte l'ordre, ce décompte ne porte que les **valeurs**.
-
-    ⚠️ **Les trois champs d'E05US015 sont ajoutés avec un défaut à 0, et c'est ce qui rend
-    l'élargissement non cassant.** `DecompteDepartage(nb_dix=…, nb_neuf=…)` reste valide tel quel,
-    donc `TiebreakFftaDefaut` et tous ses appelants sont intacts — le CA désignait cet
-    élargissement comme la rupture de contrat la plus risquée de l'US, elle se réduit à un ajout de
-    champs facultatifs. Le corollaire à connaître : un décompte de **qualification** comparé par
-    `TiebreakPoules` donnerait trois premiers critères tous nuls, donc retomberait exactement sur
-    §8.1 — dégradation silencieuse mais **juste**, pas une erreur à lever.
+    §8.1 n'en emploie que deux (`nb_dix`, `nb_neuf`), §10.1 en emploie **cinq** dans un autre ordre.
+    C'est la **politique `tiebreak`** qui porte l'ordre ; ce décompte ne porte que les valeurs.
+    ⚠️ Les trois champs d'E05US015 ont un défaut à 0, ce qui rend l'élargissement non cassant. Un
+    décompte de **qualification** comparé par `TiebreakPoules` retombe donc sur §8.1 — dégradation
+    silencieuse mais **juste**, pas une erreur à lever.
     """
 
     nb_dix: int
@@ -435,22 +332,13 @@ class DecompteDepartage:
 
 
 class Tiebreak(Protocol):
-    """Départage deux tireurs à égalité de score (ADR-0004). Méthode fondatrice : le comparateur
-    (`< 0` si `a` devance `b`, `0` si ex æquo).
+    """Départage deux tireurs à égalité de score (ADR-0004) — le comparateur (`< 0` si `a` devance).
 
-    **Seconde méthode, ajoutée par E06US003** ([ADR-0066]) : `barrage_requis`. Elle ne départage
-    rien — elle dit si l'ex æquo constaté à un `rang` donné doit être tranché **au tir** plutôt que
-    partagé. Le partage des rôles écrit par E05US015 est **intact** : le comparateur constate,
-    le moteur fait tirer. Décider « jusqu'où on barre » reste une **constatation** de politique, et
-    c'est un réglage de **format** — donc de la configuration, pas du code (règle 2).
-
+    **Seconde méthode, ajoutée par E06US003** (ADR-0066) : `barrage_requis`. Elle ne départage rien
+    — elle dit si l'ex æquo doit être tranché **au tir** plutôt que partagé. Le comparateur
+    constate, le moteur fait tirer.
     Pourquoi ici plutôt que dans une 7ᵉ famille : le seuil et le comparateur doivent rester
-    **cohérents entre eux** (barrer selon §8.1 dans un tournoi qui départage en poule n'a pas de
-    sens), et deux familles séparées permettraient précisément de les désaccorder. Le prix assumé :
-    toute implémentation de `Tiebreak` porte désormais deux méthodes, dont une qui vaut `False`
-    pour les deux stratégies historiques.
-
-    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    **cohérents entre eux**, et deux familles séparées permettraient de les désaccorder.
     """
 
     def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int: ...
@@ -486,15 +374,10 @@ class TiebreakFftaDefaut:
 class TiebreakPoules:
     """Départage **de poule** à cinq critères séquentiels (E05US015, référentiel §10.1).
 
-    Ordre donné par le commanditaire, verbatim : « points de match, différence de sets, différence
-    de score, nombre de 10 / 9, barrage si nécessaire ». Il **précède** §8.1 de trois critères et ne
-    s'y substitue pas — le référentiel avertit explicitement de ne pas confondre les deux ordres.
-
-    Le « barrage si nécessaire » n'est **pas** un sixième critère de comparaison : c'est ce qui
-    arrive **après** que ce comparateur a rendu `0`. Un comparateur pur ne peut pas faire tirer des
-    flèches ; il constate l'ex æquo, et c'est au moteur de poule (`poule.py`) de décider s'il
-    organise un barrage ou laisse le rang partagé. Même partage des rôles que
-    `TiebreakFftaDefaut`, dont le `0` laisse déjà l'ex æquo.
+    Ordre donné par le commanditaire : « points de match, différence de sets, différence de score,
+    nombre de 10 / 9, barrage si nécessaire ». Il **précède** §8.1 de trois critères sans s'y
+    substituer. Le « barrage si nécessaire » n'est **pas** un sixième critère : c'est ce qui arrive
+    **après** que ce comparateur a rendu `0` — au moteur de poule d'en décider.
     """
 
     def departager(self, a: DecompteDepartage, b: DecompteDepartage) -> int:
@@ -520,22 +403,11 @@ class TiebreakPoules:
 class TiebreakAvecBarrage:
     """Départage **composite** : celui de `sous_jacent`, plus un **barrage** jusqu'au rang réglé.
 
-    C'est l'option qu'E06US001 avait laissée ouverte (« seul le défaut, l'ex æquo, est fixé ici »),
-    réglée au cadrage du 02/08/2026 en **seuil configurable** plutôt qu'en règle fixe : ce
-    qui fait qu'une place est « à enjeu » dépend du tournoi — la dernière place qualificative d'un
-    tableau de 8 n'est pas celle d'un tableau de 32.
-
-    ⚠️ **Le seuil désigne le rang du GROUPE, pas chacune de ses places.** Deux ex æquo au rang 8
-    avec `jusqu_au=8` se départagent, et le barrage tranche donc **aussi** la 9ᵉ place, au-delà du
-    seuil. C'est voulu : « départager la dernière place qualificative » est précisément une égalité
-    qui **chevauche** le seuil, et la lire place par place rendrait l'option inutile là où on la
-    demande.
-
-    Composite au même titre que `RoutingRepechage` : il **délègue** `departager` sans y toucher, et
-    n'ajoute que le déclenchement. Un seuil réglé sur `TiebreakPoules` départage donc toujours en
-    poule — les deux réglages restent cohérents parce qu'ils voyagent ensemble ([ADR-0066]).
-
-    [ADR-0066]: ../../docs/adr/0066-seuil-de-barrage-porte-par-la-politique-tiebreak.md
+    Seuil configurable plutôt que règle fixe (cadrage du 02/08/2026) : ce qui fait qu'une place est
+    « à enjeu » dépend du tournoi.
+    ⚠️ **Le seuil désigne le rang du GROUPE, pas chacune de ses places** : deux ex æquo au rang 8
+    avec `jusqu_au=8` se départagent, donc le barrage tranche **aussi** la 9ᵉ place. C'est voulu —
+    « départager la dernière place qualificative » est une égalité qui **chevauche** le seuil.
     """
 
     sous_jacent: Tiebreak
@@ -593,13 +465,10 @@ class ProfondeurPodium:
 class AucunClassement:
     """Profondeur de l'**échauffement** : aucun rang n'est produit (E05US015, §10.1).
 
-    Le cas dégénéré de `Depth` — et il n'est pas artificiel, c'est littéralement la demande du
-    commanditaire (« sans point sans classement »). Rendre `()` plutôt que de laisser `depth` à
-    `None` **dit** quelque chose : la phase a une politique de profondeur, et cette politique est
-    « on ne classe rien ». Un `None` se lirait « la profondeur n'a pas encore été choisie ».
-
-    Son pendant côté séquence est `PhaseSansClassementPrelevee` : ce qui ne produit aucun rang ne
-    peut pas être prélevé par rangs.
+    Le cas dégénéré de `Depth`, et il n'est pas artificiel : « sans point sans classement ». Rendre
+    `()` plutôt que de laisser `depth` à `None` **dit** quelque chose — la phase a une politique de
+    profondeur, et cette politique est « on ne classe rien » ; un `None` se lirait « pas encore
+    choisie ». Son pendant côté séquence est `PhaseSansClassementPrelevee`.
     """
 
     def rangs_a_classer(self, effectif: int) -> tuple[int, ...]:
@@ -609,21 +478,11 @@ class AucunClassement:
 class NomProfondeur(str, Enum):
     """Les profondeurs qu'un **organisateur** choisit — un sous-ensemble du catalogue `depth`.
 
-    `aucun` (`AucunClassement`) n'y figure pas : ce n'est pas un choix mais le contenu même du type
-    `échauffement` (§10.1), et l'offrir sur un tableau proposerait de monter un arbre dont on ne
-    lirait aucun rang.
-
-    ⚠️ **`top_n` et non `podium`** (E06US006, relevé en revue). La stratégie s'appelle
-    `ProfondeurPodium` depuis E05US003, mais `docs/glossaire.md` réserve le mot **Podium** aux
-    rangs **1-4 décernés par un match** — un encadré « trois mots à ne pas confondre » y insiste.
-    Or ce nom devient ici un **contrat REST et une valeur persistée**, où il désignerait un
-    « podium jusqu'au 8ᵉ » : la règle 3 (cohérence code ↔ API ↔ UI ↔ doc) serait rompue dans les
-    quatre sens. Le renommage est **gratuit aujourd'hui** — la clé `config.policies.depth` n'a
-    jamais été écrite avant cette US, aucune base ne porte l'ancien nom — et coûteux dès la
-    première base de production. `docs/modele-de-donnees.md` annonçait d'ailleurs `top_n`.
-
-    La **classe** garde son nom : elle est interne, et le renommer toucherait quatre fichiers de
-    tests sans rien changer au contrat. C'est le nom de façade qui devait être juste.
+    `aucun` n'y figure pas : ce n'est pas un choix mais le contenu même du type `échauffement`.
+    ⚠️ **`top_n` et non `podium`** (E06US006) : `docs/glossaire.md` réserve **Podium** aux rangs 1-4
+    décernés par un match, or ce nom devient ici un **contrat REST et une valeur persistée**. Le
+    renommage est gratuit aujourd'hui (aucune base ne porte l'ancien nom) et coûteux dès la
+    première base de production. La **classe** garde son nom : elle est interne.
     """
 
     UN_VERS_N = "un_vers_n"
@@ -634,13 +493,10 @@ class NomProfondeur(str, Enum):
 class ProfondeurClassement:
     """Le **choix** de profondeur d'une phase — un descripteur sérialisable, pas la stratégie.
 
-    La distinction est celle d'ADR-0066 : l'agrégat porte de la **donnée** (ce que l'organisateur a
-    réglé, ce que la base relit), et c'est le **registre** qui en fait une `Depth`. Mettre la
-    stratégie sur la phase ferait entrer un objet non sérialisable dans un agrégat, et court-
-    circuiterait le point d'injection — la politique deviendrait une décoration.
-
-    `en_config()` rend la forme ADR-0046 (`{"nom": …, …paramètres}`), donc directement consommable
-    par `assembler_politiques`.
+    Distinction d'ADR-0066 : l'agrégat porte de la **donnée**, et c'est le **registre** qui en fait
+    une `Depth`. Mettre la stratégie sur la phase ferait entrer un objet non sérialisable dans un
+    agrégat et court-circuiterait le point d'injection. `en_config()` rend la forme ADR-0046,
+    directement consommable par `assembler_politiques`.
     """
 
     nom: NomProfondeur
@@ -688,29 +544,13 @@ class ProfondeurClassement:
 
 
 class Aggregation(Protocol):
-    """Décide comment ordonner des archers qu'**aucun match n'a départagés** ([ADR-0067]).
+    """Décide comment ordonner des archers qu'**aucun match n'a départagés** (ADR-0067).
 
-    Le cas : les quatre battus des quarts d'un tableau de 8 sortent tous sur la plage `[5..8]`
-    (*Règle R*, ADR-0065) — la compétition ne dit pas lequel est 5ᵉ. Deux réponses défendables, donc
-    une politique : leur donner l'ordre de la qualification (usage World Archery, défaut du projet)
-    ou assumer l'*ex æquo* et publier une fourchette.
-
-    ⚠️ **À ne pas confondre avec `tiebreak`.** `tiebreak` départage sur un **score** (nombre de 10
-    puis de 9, §8.1) des archers qui ont tiré la même chose ; `aggregation` intervient là où il n'y
-    a **aucun score commun à comparer** — deux archers de tableaux différents n'ont pas tiré les
-    mêmes flèches. Les fusionner en une seule famille aurait obligé `Tiebreak` à accepter un
-    `DecompteDepartage` vide, c'est-à-dire à mentir sur ce qu'il compare.
-
-    ⚠️ **Seule famille typée sur l'archer** (`ArcherId`), là où le moteur traite des
-    `Participant` opaques (ADR-0028). C'est délibéré, pas un oubli : elle départage sur le
-    **rang de qualification**, qui est une notion d'archer — une équipe n'en a pas. Le service
-    écarte donc les participants « équipe » avant de l'appeler, et leur classement viendra
-    avec les équipes elles-mêmes (E13US002). Relevé en revue, axe A.
-
-    Méthode fondatrice : rendre des **paquets ordonnés**. Un paquet d'un seul archer vaut un rang
-    exact ; un paquet de `k` archers, un *ex æquo* sur `k` rangs consécutifs. Rendre des paquets
-    plutôt qu'une liste plate est ce qui permet à une implémentation de dire « je n'ai pas su
-    départager » sans avoir à inventer un ordre.
+    Les quatre battus des quarts sortent tous sur la plage `[5..8]` (*Règle R*) : leur donner
+    l'ordre de la qualification (défaut) ou assumer l'*ex æquo* sont deux réponses défendables.
+    ⚠️ **À ne pas confondre avec `tiebreak`**, qui départage sur un **score** commun ; ici il n'y en
+    a aucun. ⚠️ **Seule famille typée sur l'archer** (`ArcherId`) : elle départage sur le rang de
+    qualification, qu'une équipe n'a pas — le service écarte les participants « équipe » avant.
     """
 
     def departager(
@@ -726,14 +566,10 @@ class Aggregation(Protocol):
 class AggregationParQualification:
     """Défaut du projet : les sortis au même tour se rangent sur leur **rang de qualification**.
 
-    C'est l'usage World Archery — le classement de qualification sert d'ordre de référence partout
-    où la compétition n'a pas tranché. Il donne un classement **1→N sans ex æquo**, ce qu'un
-    palmarès affiché au mur demande.
-
-    Deux archers **ex æquo en qualification** ressortent ex æquo ici : la politique départage *sur*
-    la qualification, elle ne la contourne pas. Un archer sans rang de qualification (disqualifié —
-    ADR-0050) passe en dernier, et deux archers sans rang restent ensemble : il n'y a rien à
-    comparer, et fabriquer un ordre sur l'identifiant de base serait un tirage au sort déguisé.
+    L'usage World Archery, qui donne un classement **1→N sans ex æquo** — ce qu'un palmarès affiché
+    au mur demande. Deux archers **ex æquo en qualification** ressortent ex æquo ici : la politique
+    départage *sur* la qualification, elle ne la contourne pas. Un archer sans rang (disqualifié)
+    passe en dernier, et deux archers sans rang restent ensemble.
     """
 
     def departager(
@@ -905,13 +741,9 @@ def _fabriquer_repechage(
     """`{"nom": "repechage", "tours": [1], "sinon": {"nom": "placement_cascade"}}` → la politique.
 
     `tours` est **obligatoire et non vide** : un repêchage qui ne repêche aucun tour est un
-    `placement_cascade` déguisé, et l'accepter laisserait croire à l'organisateur que son format
-    repêche alors qu'il n'en fait rien. `sinon` est facultatif et vaut `placement_cascade` par
-    défaut — le cas du format club, où les battus non repêchés descendent malgré tout se classer.
-
-    La récursion sur `sinon` passe par le registre, donc un `sinon` lui-même « repechage » est
-    résolu sans traitement particulier. Ce n'est pas un cas d'usage connu ; c'est simplement ce que
-    la composition rend gratuit.
+    `placement_cascade` déguisé, et l'accepter laisserait croire que le format repêche. `sinon` vaut
+    `placement_cascade` par défaut. La récursion passe par le registre, donc un `sinon` lui-même
+    « repechage » est résolu sans traitement particulier — la composition le rend gratuit.
     """
     if profondeur >= PROFONDEUR_MAX_ROUTING:
         raise PolitiqueMalFormee(
@@ -958,14 +790,10 @@ def _fabriquer_barrage(
     """`{"nom": "barrage", "jusqu_au": 8, "sinon": {"nom": "ffta_defaut"}}` → la politique.
 
     `jusqu_au` est **obligatoire** : un barrage sans seuil ne barre rien, c'est un `ffta_defaut`
-    déguisé — et l'accepter laisserait croire à l'organisateur que son format départage au tir alors
-    qu'il n'en fait rien. Même raisonnement que le `tours` obligatoire du repêchage. `sinon` est
-    facultatif et vaut `ffta_defaut`, le comparateur de qualification.
-
-    ⚠️ **Un barrage ne s'enveloppe pas lui-même**, et le cas est refusé explicitement plutôt que
-    laissé à une limite de profondeur : deux seuils imbriqués ne composent rien (le plus interne
-    serait purement et simplement ignoré, `barrage_requis` n'étant jamais délégué). C'est ce qui le
-    distingue du repêchage, dont l'imbrication a un sens même si aucun format ne l'emploie.
+    déguisé. Même raisonnement que le `tours` du repêchage.
+    ⚠️ **Un barrage ne s'enveloppe pas lui-même** — deux seuils imbriqués ne composent rien
+    (`barrage_requis` n'étant jamais délégué, le plus interne serait ignoré). C'est ce qui le
+    distingue du repêchage, dont l'imbrication a un sens.
     """
     brut = params.get("jusqu_au")
     if not isinstance(brut, int) or isinstance(brut, bool) or brut < 1:

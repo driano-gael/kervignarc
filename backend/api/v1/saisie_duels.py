@@ -1,13 +1,9 @@
 """Endpoints REST de la saisie en duels (E04US013) — le **scoreur** score un match du tableau.
 
-Expose le service `ServiceSaisieDuels` au scoreur : consulter le **tableau reconstruit** (matchs,
-occupants, tirs, podium), **saisir une manche** (les deux volées d'un set), **saisir le barrage**
-(shoot-off à égalité), et **valider** un duel tranché — son vainqueur fait alors avancer le tableau
-(« transmis au moteur E05US005 »). La validation est un acte du **scoreur** (comme la qualification,
-E04US002 : validation = scoreur seul) ; le scoreur, itinérant, n'agit que dans **son** tournoi
-(`403 scoreur_hors_tournoi`). Écritures routées par la **file** (writer unique) et **dédoublonnées**
-par identifiant de saisie (ADR-0036). DTO Pydantic distincts des agrégats ; erreurs typées traduites
-à la frontière (`api/erreurs.py`).
+Consulter le tableau reconstruit, saisir une manche ou un barrage, valider un duel tranché — son
+vainqueur fait alors avancer le tableau (E05US005). Valider est un acte du **scoreur** seul, et le
+scoreur n'agit que dans **son** tournoi (`403 scoreur_hors_tournoi`). Écritures dédoublonnées par
+identifiant de saisie : ADR-0036.
 """
 
 from __future__ import annotations

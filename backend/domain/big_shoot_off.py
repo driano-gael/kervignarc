@@ -1,54 +1,10 @@
-"""Moteur du **Big Shoot Off** — finale à N archers en parallèle (E05US015, [ADR-0062]).
+"""**Big Shoot Off** — type de phase à N participants, pas un barème de duel (ADR-0062).
 
-Règle **fournie par le commanditaire le 31/07/2026**, qui **ferme la question Q9** du cahier des
-charges — bloquante depuis l'origine du projet — puis **élargie par lui le 14/08/2026** au cadrage
-d'E05US028. Les deux états sont reproduits au [référentiel §10.1] ; le second fait foi :
+Deux barrages : à la barre (toujours, §8.2, seuls les ex æquo de la frontière tirent) et entre
+sortants (au choix — un barrage immobilise le pas de tir).
 
-> Une phase finale qui reçoit N archers. Ils tirent en parallèle, par tours ; à chaque tour chacun
-> tire V volées de F flèches, et **les plus faibles sont éliminés** — l'organisateur dit, **tour par
-> tour, combien sortent**.
-
-⚠️ **Ce n'est pas un barème de duel mais un type de phase à N participants.** Le « Big » désigne le
-**nombre d'archers**, pas le nombre de flèches. Le cadrage a levé ainsi une tension du cahier des
-charges, qui le rangeait tantôt en barème (EF-1.5, EF-5.2) tantôt en type de phase (EF-3.2) : c'est
-bien un type, et c'est pourquoi il a son moteur plutôt qu'une ligne dans `BaremeDuel`.
-
-## Ce que l'élargissement du 14/08/2026 a changé, et pourquoi
-
-La première règle éliminait **un** archer par tour, et `restants` (K) disait où s'arrêter. Deux
-paramètres pour une même information — combien de monde sort, et jusqu'où — qui pouvaient se
-contredire : `demarrer` devait refuser `K >= N`. Le commanditaire a demandé de pouvoir sortir
-**plusieurs** archers par tour (le rythme d'une finale spectacle : 12 → 8 → 4 → 2), ce qui rend le
-compte par tour explicite et **fait disparaître K** — il ne reste que ce qu'on n'a pas éliminé.
-
-⚠️ **`eliminations` est une liste écrite par l'organisateur, pas une progression déduite.** Une case
-par manche, « combien sortent à ce tour ». Rien n'impose qu'elle décroisse ni qu'elle soit
-régulière : `(2, 2, 2, 2)`, `(4, 2, 1)` et `(1, 5)` sont également valides. *(Le mot « suite » a été
-écarté au cadrage : il faisait entendre une règle imposée par l'outil.)*
-
-**On joue tant que la manche est possible.** Une liste n'est jamais refusée, elle s'écourte : un
-format est de la **configuration** (règle 2) : il part au patrimoine et se réutilise sur des
-effectifs qu'il ne connaît pas. Refuser aurait obligé à ressaisir la liste le jour J — au moment
-où il a le moins de temps, et sur une phase **avale** dont l'effectif dépend de qui a survécu au
-tableau. `paliers_pour` existe pour que l'atelier **montre** ce que la liste donne sur l'effectif du
-jour, avant de composer : on montre, on ne décide pas à sa place.
-
-## Les égalités, et les deux barrages qu'elles déclenchent
-
-- **À la barre** — la frontière entre sortants et rescapés. Elle décide *qui continue*, donc elle se
-  tire toujours (§8.2). Seuls les ex æquo **de la frontière** tirent : un archer déjà condamné, ou
-  déjà sauvé, ne monte pas sur le pas de tir.
-- **Entre sortants** — deux éliminés au même score ne diffèrent que par leur *numéro de rang*. Les
-  départager est un **choix d'organisateur** (`departage_les_sortants`, demandé le 14/08), pas une
-  règle : c'est le jumeau exact de `ReglageDePoules.departage_inter_poules`, et pour la même raison
-  un barrage immobilise le pas de tir et le juge, donc on ne le déclenche pas pour une distinction
-  que personne n'utilisera.
-
-⚠️ **Ce module ne fait pas tirer.** Il reçoit les scores d'une manche et dit qui sort ; c'est une
-mécanique d'élimination, pas une saisie. Domaine **pur** (règle 1).
-
-[référentiel §10.1]: ../../docs/referentiel-ffta.md
-[ADR-0062]: ../../docs/adr/0062-catalogue-de-types-de-phase.md
+⚠️ **`eliminations` est ÉCRITE par l'organisateur, pas déduite** : rien n'impose qu'elle décroisse.
+Jamais refusée, elle s'**écourte** — un format se réutilise sur des effectifs inconnus (règle 2).
 """
 
 from __future__ import annotations
@@ -72,16 +28,11 @@ jamais passer sous un 18 parce qu'un barrage l'a désigné."""
 class ConfigurationBigShootOff:
     """Ce que l'organisateur règle — **une case par manche**, plus le format du tir.
 
-    `eliminations` porte le nombre de sortants **de chaque manche**, dans l'ordre. Elle n'a pas de
-    valeur par défaut, et c'est délibéré : une liste vide décrirait une phase sans élimination,
-    donc un échauffement. « Pas encore réglé » se dit `Phase.big_shoot_off is None` — le patron de
-    `ReglageDePoules`, où l'absence de réglage est un état de la **phase**, pas une configuration
-    dégénérée qu'un moteur devrait interpréter.
-
-    ⚠️ **Aucune validation ne dépend de l'effectif ici**, et c'est ce qui rend le format
-    réutilisable : une configuration de bibliothèque (`FormatTournoi`) s'écrit **avant** de savoir
-    combien d'archers arriveront. L'ajustement à l'effectif réel se fait à la lecture
-    (`paliers_pour`) et au jeu (`EtatBigShootOff.quota_de_la_manche`), jamais par un refus.
+    `eliminations` porte le nombre de sortants **de chaque manche**, sans valeur par défaut : une
+    liste vide décrirait une phase sans élimination, donc un échauffement. « Pas encore réglé » se
+    dit `Phase.big_shoot_off is None`. ⚠️ **Aucune validation ne dépend de l'effectif ici**, et
+    c'est ce qui rend le format réutilisable — l'ajustement se fait à la lecture (`paliers_pour`)
+    et au jeu, jamais par un refus.
     """
 
     eliminations: tuple[int, ...]
@@ -123,12 +74,10 @@ class ConfigurationBigShootOff:
     def paliers_pour(self, effectif: int) -> tuple[int, ...]:
         """Ce qu'il **reste** après chaque manche réellement jouable, sur cet effectif.
 
-        C'est la projection que l'atelier affiche sous la fiche de réglages — patron
-        `RepartitionPoules` : « avec vos 12 inscrits : 12 → 8 → 6 → 5 ». L'organisateur voit que sa
-        dernière case ne servira pas **avant** de composer, au lieu de le découvrir en salle.
-
-        La liste s'arrête à la première manche qui viderait la lice : sortir 2 archers sur 2 ne
-        laisserait personne, donc cette manche ne se joue pas.
+        La projection que l'atelier affiche sous la fiche de réglages — patron `RepartitionPoules`
+        : « avec vos 12 inscrits : 12 → 8 → 6 → 5 ». L'organisateur voit que sa dernière case ne
+        servira pas **avant** de composer. La liste s'arrête à la première manche qui viderait la
+        lice : sortir 2 archers sur 2 ne laisserait personne.
         """
         paliers: list[int] = []
         restant = effectif
@@ -224,12 +173,10 @@ class EtatBigShootOff:
 class IssueManche:
     """Ce qu'une manche produit : qui sort et à quel rang — ou l'égalité qui la suspend.
 
-    `barrage_entre` n'est pas vide quand une égalité empêche de conclure : la manche **ne peut pas**
-    se terminer, il faut faire tirer (§8.2). L'état renvoyé est alors inchangé quant à la lice — on
-    ne devine pas un sortant.
-
-    `elimines` et `rangs_attribues` sont ordonnés du **plus faible au plus fort**, donc du rang le
-    plus bas au plus haut.
+    `barrage_entre` n'est pas vide quand une égalité empêche de conclure : la manche **ne peut
+    pas** se terminer, il faut faire tirer (§8.2), et l'état renvoyé est alors inchangé quant à la
+    lice — on ne devine pas un sortant. `elimines` et `rangs_attribues` sont ordonnés du **plus
+    faible au plus fort**, donc du rang le plus bas au plus haut.
     """
 
     etat: EtatBigShootOff
@@ -259,17 +206,11 @@ def demarrer(
 def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> IssueManche:
     """Applique une manche : **les plus faibles sortent**, et prennent les derniers rangs.
 
-    `scores` porte le score **de la manche** pour chaque archer encore en lice. En mode cumul, le
-    moteur les additionne aux manches précédentes avant de comparer ; en mode remise à zéro (le
-    défaut), il compare la manche seule.
-
-    Les rangs attribués descendent depuis `len(en_lice)` : le plus faible d'un BSO à 12 dont 4
-    sortent prend le rang 12, le suivant 11, etc. C'est l'« ordre inverse de sortie » de l'arbitrage
-    du 31/07, généralisé aux sorties multiples le 14/08.
-
-    ⚠️ Un score **manquant** est refusé plutôt que traité comme un zéro. Un archer sans score dans
-    la table n'est pas un archer à zéro : c'est une saisie incomplète, et le traiter comme le plus
-    faible l'éliminerait sur une donnée absente — précisément l'erreur qu'on ne voit qu'après coup.
+    En mode cumul, le moteur additionne les manches précédentes avant de comparer ; en remise à
+    zéro (le défaut), il compare la manche seule. Les rangs descendent depuis `len(en_lice)` — l'«
+    ordre inverse de sortie » de l'arbitrage du 31/07, généralisé aux sorties multiples le 14/08.
+    ⚠️ Un score **manquant** est refusé plutôt que traité comme un zéro : c'est une saisie
+    incomplète, et l'éliminer sur une donnée absente est l'erreur qu'on ne voit qu'après coup.
     """
     if etat.est_termine:
         raise ConfigurationBigShootOffInvalide(
@@ -277,16 +218,14 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
             "de tir."
         )
     if etat.barrage_en_cours:
-        # ⚠️ **Le garde-fou de l'autre porte.** `eliminer_apres_barrage` vérifiait déjà qu'une manche
-        # est suspendue ; `jouer_manche` ne vérifiait rien, donc on pouvait enjamber un barrage en
-        # cours en rejouant une manche. Constaté : le leader s'y faisait éliminer, et l'égalité
+        # ⚠️ **Le garde-fou de l'autre porte.** `eliminer_apres_barrage` vérifiait déjà qu'une
+        # manche est suspendue ; `jouer_manche` ne vérifiait rien, donc on pouvait enjamber un
+        # barrage en cours en rejouant une manche — le leader s'y faisait éliminer et l'égalité
         # était oubliée sans trace. Fermer une porte et laisser l'autre ouverte ne ferme rien.
         #
-        # ⚠️ **Correction de diagnostic (revue d'E05US028).** Cette note affirmait que les scores de
-        # la manche suspendue étaient « déjà repliés dans `cumuls`, donc comptés deux fois ». C'est
-        # l'inverse : `_suspendre` ne replie rien, ils étaient *perdus*. Le diagnostic faux a
-        # survécu au correctif et a directement produit le bug de
-        # `_cumuls_de_la_manche_suspendue` — d'où sa rectification ici plutôt que sa suppression.
+        # ⚠️ Cette note affirmait que les scores de la manche suspendue étaient « déjà repliés dans
+        # `cumuls`, donc comptés deux fois ». C'est l'inverse : `_suspendre` ne replie rien, ils
+        # étaient *perdus* — le diagnostic faux a directement produit un bug de plus.
         raise ConfigurationBigShootOffInvalide(
             "Un barrage est en attente entre "
             f"{len(etat.barrage_en_cours)} archers : il doit être tranché avant la manche suivante."
@@ -311,21 +250,11 @@ def jouer_manche(etat: EtatBigShootOff, scores: Mapping[Participant, int]) -> Is
 def eliminer_apres_barrage(etat: EtatBigShootOff, ordre: Sequence[Participant]) -> IssueManche:
     """Conclut une manche que l'égalité avait suspendue, une fois le barrage tiré (§8.2).
 
-    `ordre` range les ex æquo **du plus faible au plus fort** : c'est ce que `resoudre_barrage`
-    produit (`ResultatBarrage.verdict().rangs()`), et le moteur du BSO ne rejoue pas le barrage, il
-    en applique le verdict. Séparer les deux est ce qui permet au barrage d'être réutilisé tel quel
-    par les poules et par un duel nul.
-
-    ⚠️ **Le verdict départage, il ne réordonne pas.** Il n'entre dans la comparaison qu'en second
-    terme, derrière le score de la manche (`_Cle`) : un archer à 21 ne peut donc jamais passer sous
-    un archer à 18 parce qu'un barrage l'a désigné. C'est ce qui rend sûre la reprise quand
-    l'organisateur a réglé `departage_les_sortants` et qu'une manche demande **deux** barrages
-    successifs — la conclusion est simplement rejouée avec un critère de plus.
-
-    ⚠️ **Deux vérifications, et aucune n'est superflue** : il faut qu'une manche soit réellement
-    **suspendue** (sinon on éliminerait quelqu'un hors de toute manche, en lui décernant un rang),
-    et que le verdict porte **exactement** sur les ex æquo de ce barrage (sinon le verdict d'un
-    barrage servirait à éliminer un tiers, ou en oublierait un).
+    `ordre` range les ex æquo **du plus faible au plus fort** : le moteur du BSO ne rejoue pas le
+    barrage, il en applique le verdict — ce qui permet au barrage d'être réutilisé tel quel par les
+    poules et par un duel nul. ⚠️ **Le verdict départage, il ne réordonne pas** : il n'entre qu'en
+    second terme, derrière le score de la manche. ⚠️ Deux vérifications, aucune superflue — la
+    manche doit être **suspendue**, et le verdict porter **exactement** sur ses ex æquo.
     """
     if not etat.barrage_en_cours:
         raise ConfigurationBigShootOffInvalide(
@@ -351,22 +280,11 @@ def _cumuls_de_la_manche_suspendue(
 ) -> tuple[tuple[Participant, int], ...]:
     """Les cumuls **manche comprise**, à replier au moment de conclure un barrage.
 
-    ⚠️ **C'est ici que se jouait une inversion de vainqueur** (revue d'E05US028). `_suspendre` ne
-    replie délibérément pas les cumuls — c'est ce qui permet de ressaisir une manche suspendue sans
-    double comptage — mais `eliminer_apres_barrage` repassait ensuite ces mêmes cumuls *d'avant la
-    manche* à `_conclure`, qui les persistait tels quels. Le score de la manche tranchée au barrage
-    disparaissait donc du total, et toutes les manches suivantes comparaient des cumuls amputés :
-    en mode cumul, le moteur pouvait désigner le mauvais vainqueur d'une finale.
-
-    Le repli diffère selon le mode, et c'est ce qui rend la ligne non triviale :
-    - en **cumul**, `scores_suspendus` porte déjà le total (`compares` *est* le cumul dans
-      `jouer_manche`) — le reprendre tel quel, l'additionner le compterait deux fois ;
-    - en **remise à zéro**, il ne porte que la manche — il s'ajoute aux cumuls antérieurs, qui ne
-      servent alors qu'à l'affichage mais n'ont aucune raison d'être faux.
-
-    Le commentaire qui a laissé passer le défaut disait l'inverse du code (« déjà repliés dans
-    `cumuls`, donc comptés deux fois ») ; ils étaient *perdus*. Un diagnostic inversé est ce qui
-    rend un bug durable : il ferme la piste qui y menait.
+    ⚠️ **C'est ici que se jouait une inversion de vainqueur.** `_suspendre` ne replie délibérément
+    pas les cumuls — ce qui permet de ressaisir une manche suspendue sans double comptage — mais
+    `eliminer_apres_barrage` repassait ensuite ces cumuls *d'avant la manche*, si bien que le score
+    tranché au barrage disparaissait du total. Le repli diffère selon le mode : en **cumul**
+    `scores_suspendus` porte déjà le total ; en **remise à zéro** il ne porte que la manche.
     """
     suspendus = dict(etat.scores_suspendus)
     anciens = dict(etat.cumuls)
@@ -461,22 +379,11 @@ def _eliminer(
 ) -> IssueManche:
     """Retire les `sortants` de la lice et leur décerne les derniers rangs disponibles.
 
-    Les rangs descendent depuis `len(en_lice)`, le plus faible d'abord. Deux sortants de clé
-    **identique** partagent leur rang, au sens usuel du classement sportif (« 1224 ») : chacun prend
-    le rang **du meilleur** de son groupe d'ex æquo — c'est-à-dire `1 + le nombre d'archers
-    strictement meilleurs` — et le ou les rangs sautés restent vacants **après** le groupe. Ce trou
-    est la trace visible d'un départage qui n'a pas eu lieu — c'est `departage_les_sortants` qui le
-    referme, à la demande.
-
-    ⚠️ **Le sens du partage a été arbitré le 15/08/2026** (revue d'E05US028) et reversé au
-    référentiel §10.1, qui disait seulement « ils partagent leur rang » sans dire lequel. Le code
-    appliquait la convention inverse (« 1334 » : le rang du plus faible du groupe, vacance *avant*),
-    ce qui coûtait une place à chaque ex æquo — et le test figeait ce comportement en invoquant,
-    lui, la convention « 1224 ». Sur 12 archers, 4 sortants à 18/21/21/24, on attribue donc
-    `{12, 10, 10, 9}` et non `{12, 11, 11, 9}` : les deux 21 ont bien neuf archers devant eux.
-
-    C'est aussi la convention que `classement()` applique déjà aux **rescapés** dans ce même
-    module ; les deux lectures d'un même agrégat n'ont aucune raison de se contredire.
+    Les rangs descendent depuis `len(en_lice)`. Deux sortants de clé **identique** partagent leur
+    rang au sens usuel du classement sportif (« 1224 ») : chacun prend `1 + le nombre d'archers
+    strictement meilleurs`, les rangs sautés restant vacants **après** le groupe — trace d'un
+    départage qui n'a pas eu lieu. ⚠️ Le sens du partage a été arbitré le 15/08/2026 et reversé au
+    référentiel §10.1 ; c'est la convention que `classement()` applique déjà aux rescapés.
     """
     depart = len(etat.en_lice)
     attribues: list[tuple[Participant, int]] = []

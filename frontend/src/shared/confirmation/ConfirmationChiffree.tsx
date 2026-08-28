@@ -1,14 +1,11 @@
 // Confirmation **par calcul d'impact** (E12US007, ADR-0040) — brique transverse partagée.
 //
-// « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » (P-4). Ce
-// composant affiche donc un **corps chiffré** (fourni par l'appelant : « 156 archers perdront leur
-// place… ») plutôt qu'un « Êtes-vous sûr ? » creux. Pour une **action massive**, il exige un **geste
-// délibéré** : taper un mot (`motRequis`, ex. REPLACER) — impossible par réflexe. Sans `motRequis`,
-// c'est une confirmation simple (un bouton). Le composant ne connaît **rien** du métier : il reçoit
-// le texte chiffré et le mot, il ne les calcule pas (le calcul est serveur, prévisualisé).
-//
-// Rendu **inline** (pas de modale à piéger le focus) : cohérent avec le patron de confirmation déjà
-// employé dans les features (bascule de boutons), et suffisant pour l'écran admin sur PC.
+// « Une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection » (P-4) : d'où
+// un **corps chiffré** fourni par l'appelant plutôt qu'un « Êtes-vous sûr ? » creux. Pour une
+// action **massive**, il exige un **geste délibéré** — taper un mot, impossible par réflexe. Le
+// composant ne connaît **rien** du métier : il reçoit le texte chiffré, il ne le calcule pas. Rendu
+// **inline** (pas de modale à piéger le focus), cohérent avec le patron déjà employé dans les
+// features.
 
 import { useId, useState } from 'react'
 

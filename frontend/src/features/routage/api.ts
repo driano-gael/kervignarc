@@ -101,12 +101,9 @@ export interface Routage {
 // ⚠️ **L'entrée est le créneau** (E01US025, ADR-0075) : « le tableau qui vient » n'a de sens que
 // dans une séquence, et un tournoi en a autant qu'il a de départs. À la maille tournoi, le serveur
 // renvoyait tout le monde vers le tableau du **premier** créneau — les archers de l'après-midi
-// compris, sur les quatre canaux de routage à la fois. C'est d'ailleurs ce que la tablette connaît
-// déjà : « sa cible et son départ ».
-//
-// `phaseId` omis = le serveur vise la première élimination directe non terminée **du créneau**.
-// L'ordre des `archerIds` est **conservé** par le serveur — le panneau affiche A, B, C, D dans
-// l'ordre de la grille.
+// compris, sur les quatre canaux à la fois. `phaseId` omis = le serveur vise la première
+// élimination directe non terminée **du créneau**. L'ordre des `archerIds` est **conservé** par le
+// serveur.
 export function getRoutage(
   departId: number,
   archerIds: number[],

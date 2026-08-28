@@ -1,15 +1,10 @@
 // Session de poste (Zustand) — E04US001, ADR-0029.
 //
-// Détient le jeton de session de poste (délivré au **rattachement** par code) et la **cible** servie
-// (tournoi, numéro), pour rouvrir directement dessus après une coupure. Persisté dans le
-// `localStorage` : le CA veut une session qui **survit à la fermeture de l'onglet**, à une veille, à
-// un redémarrage de la tablette — « le poste retrouve sa cible sans rien demander à personne ». Elle
-// redevient invalide si le serveur redémarre ou si le tournoi est **terminé** (révocation) — l'app le
-// détecte sur un 401 et purge la session (cf. `enregistrerSurNonAutorisePoste`).
-//
-// Le store porte aussi le **thème** du poste (D-26), appliqué au chargement et à chaque changement :
-// c'est la préférence qui « revient toute seule » à la réouverture. Le jeton est joint via l'en-tête
-// `X-Jeton-Poste` (inversion de dépendance : le client HTTP ne dépend pas de ce store).
+// Détient le jeton de session et la **cible** servie, persistés : le CA veut une session qui survit
+// à la fermeture de l'onglet, à une veille, à un redémarrage — « le poste retrouve sa cible sans
+// rien demander à personne ». Elle redevient invalide si le serveur redémarre ou si le tournoi est
+// **terminé** (401 → purge). Le store porte aussi le **thème** du poste (D-26), la préférence qui
+// revient toute seule. Jeton joint via `X-Jeton-Poste` (inversion de dépendance).
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'

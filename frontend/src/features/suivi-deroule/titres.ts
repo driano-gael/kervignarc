@@ -10,12 +10,10 @@ import type { EtapeDeroule } from '../phases/api'
 
 /** Le titre de chaque étape, indexé par son **rang**.
  *
- * Le rang **est** la clé de jointure entre une étape et ses instances (ADR-0076 §3 : les instances
- * d'un départ héritent de l'ordre des étapes) — `application/phases.py` l'écrit en toutes lettres,
- * et le réordonnancement comme la suppression réalignent les `Phase` de chaque départ.
- *
- * Rend une `Map` vide tant que les étapes ne sont pas chargées : chaque ligne retombe alors sur le
- * libellé de son type, soit le comportement d'avant l'US.
+ * Le rang **est** la clé de jointure entre une étape et ses instances (ADR-0076 §3), et le
+ * réordonnancement comme la suppression réalignent les `Phase` de chaque départ. Rend une `Map`
+ * vide tant que les étapes ne sont pas chargées : chaque ligne retombe alors sur le libellé de son
+ * type, soit le comportement d'avant l'US.
  */
 export function titresParOrdre(etapes: EtapeDeroule[] | undefined): Map<number, string | null> {
   return new Map((etapes ?? []).map((etape) => [etape.ordre, etape.titre]))

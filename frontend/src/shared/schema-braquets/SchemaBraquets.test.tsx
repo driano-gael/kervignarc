@@ -1,15 +1,10 @@
 // Tests de **montage** du schéma à braquets, sur le volet « où en est cette phase » (E05US032).
 //
-// Ce fichier naît d'un relevé de revue : la surface visible de l'US — le tour annoncé dans le mot
-// de son format — n'avait aucun test de rendu, alors que le composant est monté par **deux**
-// surfaces (le pilotage et l'écran de salle projeté toute la journée). Le défaut le plus probable
-// d'une ligne de ce genre est le **séparateur orphelin** quand le libellé est nul, et aucune porte
-// mécanique ne le voit : ni `tsc`, ni `eslint`, ni les tests de géométrie pure de `geometrie.test.ts`,
-// qui n'appellent jamais React.
-//
-// Les deux premiers tests gardent le CA « le suivi montre le tour en cours de **chaque** phase
-// démarrée » — au pluriel, ce qui est le point : l'en-tête de `SuiviDeroule` ne parle que de la
-// phase courante, donc c'est **ici** que le CA se tient, et c'est ici que l'écran de salle le lit.
+// Ce fichier naît d'un relevé de revue : la surface visible de l'US n'avait aucun test de rendu,
+// alors que le composant est monté par **deux** surfaces. Le défaut le plus probable d'une ligne de
+// ce genre est le **séparateur orphelin** quand le libellé est nul, et aucune porte mécanique ne le
+// voit. Les deux premiers tests gardent le CA « le suivi montre le tour en cours de **chaque**
+// phase démarrée » — au pluriel, ce qui est le point.
 
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'

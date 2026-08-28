@@ -1,15 +1,11 @@
 // Le modèle du **schéma à braquets** — partagé par les trois surfaces (E01US024, E07US004).
 //
-// Ces types décrivent ce qu'une **projection de déroulé** contient : les blocs (une phase chacun),
-// les flèches (un prélèvement chacune), les braquets (un tour chacun). Ils sont identiques d'un bout
-// à l'autre parce que le serveur rend la même chose au diagnostic d'atelier
-// (`GET /api/v1/formats/{id}/diagnostic`) et au suivi d'une édition
-// (`GET /api/v1/tournois/{id}/suivi-deroule`) — c'est la contrainte du CA d'E07US004 : *« le **même**
-// schéma à braquets que l'atelier, mais rempli par la réalité »*.
-//
-// Ils vivent en `shared/` et non dans `features/deroule/` parce qu'ils sont désormais consommés par
-// trois features (atelier, pilotage, écran de salle) : un type partagé qui habite chez l'un de ses
-// consommateurs fait dépendre les deux autres d'une feature qui ne les concerne pas.
+// Ces types décrivent ce qu'une projection de déroulé contient : blocs, flèches, braquets. Ils sont
+// identiques d'un bout à l'autre parce que le serveur rend la même chose au diagnostic d'atelier et
+// au suivi d'une édition — contrainte du CA d'E07US004 : « le **même** schéma, rempli par la
+// réalité ». ⚠️ Ils vivent en `shared/` parce qu'ils sont consommés par trois features : un type
+// partagé qui habite chez l'un de ses consommateurs fait dépendre les deux autres d'une feature qui
+// ne les concerne pas.
 
 import type { IssueTour, NatureSource, TypePhase } from '../phases/catalogue'
 

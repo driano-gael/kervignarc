@@ -8,23 +8,14 @@
 import type { Porte } from '../shared/navigation/routeur'
 import './EcranAccueil.css'
 
-// Une porte = une icône, un intitulé et une phrase qui dit **à qui c'est** et **ce qu'on y fait** —
-// pour qu'un bénévole choisisse sans hésiter.
+// Une porte = une icône, un intitulé et une phrase qui dit **à qui c'est** et **ce qu'on y fait**.
 //
-// **Cinq portes depuis le retour maquettes du 04/08/2026** (A00). Deux décisions y sont reversées :
-//
-//  - *« il faudrait quand même ajouter une porte pour le ou les écrans de projections »* → la porte
-//    « Écran de salle ». Elle ne crée pas un monde : c'est un poste comme un autre (cf. `Porte` dans
-//    `routeur.ts`), mais le bénévole qui installe le vidéoprojecteur doit la **voir**, au lieu de
-//    devoir deviner qu'elle se cache derrière « tablette de cible ».
-//  - le tableau « Vocabulaire » du même questionnaire : *tablette de cible → **écran de cible***,
-//    *téléphone (public) → **public***. Le mot « tablette » promettait un appareil précis alors que
-//    la réponse à la question 3 dit l'inverse (*« les tablettes de cible doivent pouvoir s'adapter à
-//    un téléphone »*) ; « téléphone (public) » avait le même défaut, dans l'autre sens — le public
-//    consulte aussi depuis une tablette posée à l'accueil.
-//
-// L'ordre suit le parc : les deux appareils **rattachés à un lieu** d'abord (ils s'installent le
-// matin, une fois), les appareils **personnels** ensuite, le PC d'organisation en dernier.
+// **Cinq portes depuis le retour maquettes du 04/08/2026** (A00), qui reverse deux décisions : une
+// porte « Écran de salle » — elle ne crée pas un monde (c'est un poste comme un autre) mais le
+// bénévole qui installe le vidéoprojecteur doit la **voir** ; et le vocabulaire *tablette de cible
+// → **écran de cible***, *téléphone (public) → **public*** — « tablette » promettait un appareil
+// précis que le CA dément. L'ordre suit le parc : appareils **rattachés à un lieu** d'abord,
+// personnels ensuite, PC en dernier.
 const PORTES: { porte: Porte; icone: string; titre: string; description: string }[] = [
   {
     porte: 'tablette',

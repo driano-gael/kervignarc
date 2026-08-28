@@ -1,21 +1,10 @@
-"""Agrégats `Serie` / `Volee` — la saisie de qualification d'un archer (E04US002).
+"""Agrégat **Serie** — l'état (les volées) ; la configuration lui est **passée** par le service.
 
-Vocabulaire du glossaire : une **volée** (`Volee`) est un groupe de flèches tirées d'affilée
-(3 en salle) ; une **série** (`Serie`) est l'ensemble des volées d'un archer sur la phase, validé
-par lots ou d'un bloc. Le **score** (cumul) est le total des points des volées **validées**.
-
-Modèle de domaine **pur** (immuable, sans dépendance framework). La **configuration** — zones
-admises du blason tiré (`Blason.zones`, E01US014), nombre de flèches par volée (barème, E01US009),
-grain de validation (`GrainValidation`, E01US015) — n'est **pas** dupliquée dans l'agrégat : elle
-est **passée aux opérations** par le service, qui la lit sur la phase et le blason. La série ne
-porte donc que son état (les volées) ; ses invariants sont vérifiés à chaque opération contre la
-config fournie.
-
-Décisions actées (cf. `stories/E04-saisie-scores.md`) :
-- La **flèche est une valeur** (`ZoneScore`), pas une entité : DETTE-011 n'est pas résorbée par
-  renommage ici (l'agrégat `Score` du walking skeleton survit pour le classement de démo).
-- Le **reliquat** de volées (< N pour un grain « toutes les N ») **est validé** en fin de barème —
-  sinon les dernières volées ne se verrouilleraient jamais (cf. `phase.py`, `_verifier_cadence`).
+Zones du blason, flèches par volée, grain de validation ne sont pas dupliqués dans l'agrégat : ses
+invariants sont vérifiés à chaque opération contre la config fournie. ⚠️ **Le reliquat de volées
+est VALIDÉ en fin de barème** (moins de N pour un grain « toutes les N »), sinon les dernières
+volées ne se verrouilleraient jamais. La flèche est une **valeur** (`ZoneScore`), pas une entité :
+`DETTE-011` n'est pas résorbée ici, l'agrégat `Score` du walking skeleton survit.
 """
 
 from __future__ import annotations
@@ -79,13 +68,10 @@ def valider_valeurs_volee(
 ) -> None:
     """Vérifie qu'une volée compte le bon nombre de flèches, toutes dans les zones du blason tiré.
 
-    Lève `NombreFlechesVoleeInvalide` (mauvais compte) ou `ValeurHorsBlason` (valeur hors zones).
-
-    **Publique** à dessein : « qu'est-ce qu'une volée valide » est **une** règle du domaine, et
-    d'autres cas d'usage que la saisie l'appliquent — la simulation (E15US003) valide ainsi une
-    volée saisie à la main **sans** repasser par le workflow de grain (ADR-0055 §3) mais **sans**
-    dupliquer la règle (source unique, cf. revue axe A/C2). Même geste que `blason.valider_zones`,
-    publique pour la même raison.
+    Lève `NombreFlechesVoleeInvalide` ou `ValeurHorsBlason`. **Publique** à dessein : « qu'est-ce
+    qu'une volée valide » est **une** règle du domaine, et d'autres cas d'usage que la saisie
+    l'appliquent — la simulation (E15US003) valide sans repasser par le workflow de grain (ADR-0055
+    §3) ni dupliquer la règle. Même geste que `blason.valider_zones`.
     """
     if len(valeurs) != nb_fleches_par_volee:
         raise NombreFlechesVoleeInvalide(
@@ -114,24 +100,11 @@ def _avec_volee(volees: tuple[Volee, ...], volee: Volee) -> tuple[Volee, ...]:
 class Serie:
     """La feuille de marque d'un archer **dans une phase** : l'ensemble ordonné de ses volées.
 
-    Racine d'agrégat : toutes les mutations passent par ses méthodes et renvoient une **nouvelle**
-    instance (immuabilité). Le cumul ne compte que les volées **validées**.
-
-    ⚠️ **La clé est `(phase_id, archer_id)`, pas `(tournoi_id, archer_id)`** (E05US025, ADR-0082).
-    Un déroulé peut enchaîner **plusieurs qualifications** : un archer qui tire 3x20 puis, selon son
-    rang, 3x15 dans la *haute* ou la *basse*, y tient **deux feuilles distinctes**. Une flèche du
-    second tour ne peut donc pas atterrir dans la première — c'est le CA « la saisie sait dans
-    quelle qualification elle écrit », et il n'est tenu que par cette clé.
-
-    Cela **résorbe `DETTE-046`** au passage, sans détour : le registre signalait qu'un archer
-    inscrit sur deux créneaux n'avait qu'un seul emplacement pour ses flèches (sa seconde série
-    écrasant la première), et proposait `Serie.depart_id`. La phase **subsume** le départ — elle lui
-    appartient —, donc rattacher la feuille à sa phase règle les deux problèmes d'un seul champ,
-    plutôt que d'en ajouter deux qui diraient la même chose à deux mailles.
-
-    `tournoi_id` **reste** : c'est la portée que lisent les vues d'ensemble, et le déduire par
-    jointure à chaque lecture coûterait plus qu'il ne rapporte. Il n'est plus une clé, seulement un
-    cadre.
+    Racine d'agrégat : toute mutation renvoie une **nouvelle** instance, et le cumul ne compte que
+    les volées **validées**. ⚠️ **La clé est `(phase_id, archer_id)`, pas `(tournoi_id,
+    archer_id)`** (E05US025, ADR-0082) : un déroulé peut enchaîner plusieurs qualifications, où
+    l'archer tient **deux feuilles distinctes**. Cela résorbe `DETTE-046` au passage. `tournoi_id`
+    **reste**, comme cadre lu par les vues d'ensemble — plus comme clé.
     """
 
     tournoi_id: TournoiId
@@ -173,13 +146,10 @@ class Serie:
     def nb_fleches_validees(self) -> int:
         """Nombre de flèches des volées **validées** — la mesure de « l'archer a déjà tiré ».
 
-        Sert aux gardes d'engagement d'`ServiceArchers` (E02US003) : supprimer ou changer la
-        catégorie d'un archer **qui a tiré** se signale. « A tiré » = **au moins une volée validée**
-        (arbitrage produit du 20/07/2026, reversé dans `stories/E02-inscriptions.md`), cohérent avec
-        `cumul` et le classement, qui ne comptent déjà que le validé : une volée **saisie mais pas
-        encore validée** n'est qu'un état intermédiaire, elle ne rend pas l'archer « engagé ». On
-        compte les **flèches** (pas les volées) car le message énumère « N flèches déjà tirées » —
-        le manqué (`M`) en fait partie : une flèche manquée reste une flèche tirée.
+        « A tiré » = **au moins une volée validée** (arbitrage du 20/07/2026, reversé dans
+        `stories/E02-inscriptions.md`), cohérent avec `cumul` et le classement : une volée saisie
+        non validée est un état intermédiaire. On compte les **flèches** et non les volées car le
+        message énumère « N flèches déjà tirées » — le manqué (`M`) en fait partie.
         """
         return sum(len(v.valeurs) for v in self.volees if v.verrouillee)
 
@@ -187,14 +157,9 @@ class Serie:
         """La série a-t-elle **toutes** les volées du barème, **validées** (E12US005) ?
 
         « Complète » au sens de la qualification *terminée* : les volées 1..N sont présentes **et
-        verrouillées** — pas seulement saisies. On s'aligne sur `cumul` / `nb_fleches_validees` /
-        le classement, qui ne comptent déjà que le validé : une volée saisie mais non validée est un
-        état intermédiaire, la qualification de l'archer n'est pas *close* tant que le scoreur ne
-        l'a pas validée. Sert à la **complétude du tournoi** (E12US005) : une cible est *terminée*
-        quand toutes ses séries le sont, et le classement *prêt* quand toutes les séries le sont.
-
-        `nb_volees_bareme <= 0` (barème non configuré) → jamais complète : on ne peut pas déclarer
-        « terminé » ce dont on ignore l'attendu (l'appelant, lui, affiche « en attente »).
+        verrouillées**, aligné sur `cumul` / `nb_fleches_validees` / le classement. Sert à la
+        complétude du tournoi. ⚠️ `nb_volees_bareme <= 0` (barème non configuré) → **jamais
+        complète** : on ne déclare pas « terminé » ce dont on ignore l'attendu.
         """
         if nb_volees_bareme <= 0:
             return False
@@ -213,12 +178,10 @@ class Serie:
     ) -> Serie:
         """Saisit ou réédite (avant validation) la volée `numero`.
 
-        Valide le **rang** (`1 <= numero <= nb_volees_bareme`), le nombre de flèches et
-        l'appartenance des valeurs aux zones. La borne haute est **symétrique** de la garde
-        sur les flèches (ex-004) : le serveur est autoritaire, une volée hors barème gonflerait le
-        cumul. Une volée déjà **verrouillée** ne se réécrit pas ici : passer par `corriger_volee`.
-        En réédition, le marqueur précédent est gardé si aucun n'est fourni ;
-        un marqueur vide (après normalisation) équivaut à « non déclaré » (`None`).
+        Valide le **rang** (`1 <= numero <= nb_volees_bareme`), le nombre de flèches et les zones :
+        le serveur est autoritaire, une volée hors barème gonflerait le cumul. Une volée déjà
+        **verrouillée** ne se réécrit pas ici — passer par `corriger_volee`. En réédition, le
+        marqueur précédent est gardé si aucun n'est fourni ; vide = « non déclaré » (`None`).
         """
         if not 1 <= numero <= nb_volees_bareme:
             raise NumeroVoleeInvalide(
@@ -249,12 +212,10 @@ class Serie:
     ) -> Serie:
         """Verrouille les volées à valider selon le `grain`, au nom de `par` (le scoreur).
 
-        - **Fin de série** (et fin de duel) : verrouille toutes les volées d'un bloc, mais seulement
-          quand la série est **complète** — sinon `SerieIncomplete`.
-        - **Toutes les N volées** : verrouille le prochain lot de N volées non validées ; en fin de
-          barème, un **reliquat** de moins de N volées est validé plutôt que laissé ouvert.
-
-        `RienAValider` si aucun lot complet ni reliquat n'est disponible.
+        **Fin de série** (et fin de duel) : verrouille tout un bloc, mais seulement quand la série
+        est **complète** — sinon `SerieIncomplete`. **Toutes les N volées** : verrouille le
+        prochain lot de N non validées ; en fin de barème un **reliquat** de moins de N est validé
+        plutôt que laissé ouvert. `RienAValider` si aucun lot complet ni reliquat n'est disponible.
         """
         par = _intervenant_valide(par)
         a_valider = tuple(v for v in self.volees if not v.verrouillee)

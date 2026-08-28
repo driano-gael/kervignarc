@@ -1,19 +1,12 @@
-/* Base globale + jetons de la **charte mesurée** du club (E17US001, ADR-0074).
-   Jusqu'ici ce fichier portait le socle neutre du walking skeleton (accent violet, fond blanc) :
-   l'application ne ressemblait à aucune des 36 planches de `maquettes/`. Les valeurs ci-dessous sont
-   celles de `maquettes/assets/systeme.css`, elles-mêmes transcrites de
-   `cahier-des-charges-design.md` §3.3 — **chaque couleur porte son ratio de contraste mesuré sur le
-   fond de son thème**. On ne « choisit » pas une couleur ici : on reprend la charte.
+/* Base globale + jetons de la **charte mesurée** du club (E17US001, ADR-0074). Les valeurs viennent
+   de `cahier-des-charges-design.md` §3.3 — **chaque couleur porte son ratio de contraste mesuré sur
+   le fond de son thème**. On ne « choisit » pas une couleur ici. */
 
-   Trois règles expliquent l'essentiel de ce qu'on lit plus bas :
-   - `DV-04` — le **rouge du club est une surface, jamais un accent** : 2,55:1 sur l'anthracite, il
-     échoue en texte *et* en contour. D'où **trois** jetons de marque et non un seul, selon l'usage :
-     aplat (`--brand-surface`), contour (`--brand-border`), texte (`--brand-text`).
-   - `DV-03` — l'**alerte est ambre**, jamais rouge : sur l'anthracite le rouge ne signale rien.
-   - Un **jeton sémantique est une paire**, pas une couleur : l'ambre `#FFB000` (9,22:1 sur sombre)
-     tombe à 1,83:1 sur blanc et **doit** devenir `#9F6D00` en thème clair. Toute déclinaison ici
-     redéclare donc l'ensemble des jetons — un jeton oublié dans un thème est un bug de contraste
-     silencieux (`charte.test.ts` le vérifie). */
+/* ⚠️ `DV-04` : le **rouge du club est une surface, jamais un accent** (2,55:1 sur l'anthracite),
+   d'où **trois** jetons de marque selon l'usage ; `DV-03` : l'alerte est **ambre**. */
+
+/* ⚠️ Un **jeton sémantique est une paire** : toute déclinaison redéclare l'ensemble des jetons, un
+   oubli étant un bug de contraste silencieux (`charte.test.ts` le vérifie). */
 
 /* Le **sombre est la référence** de la charte (`DV-02`) : `#1D1D1B` est le fond de la banderole du
    club. Ce n'est pas qu'une préférence esthétique — le jour J, ~30 tablettes BYOD suivraient chacune

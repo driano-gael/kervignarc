@@ -1,12 +1,10 @@
 // Écran « Suivi du déroulé » (E07US004) — axe **pilotage**, sur une édition en cours.
 //
-// La deuxième des trois surfaces du schéma à braquets. Elle montre exactement ce que l'écran de
-// salle montre, mais à un poste PC : *« ce plan de suivi est aussi une destination de l'axe pilotage
-// — l'organisateur le consulte à son poste sans dépendre d'un écran projeté »* (CA).
-//
-// Elle ne contient donc presque rien : le dessin est dans `shared/schema-braquets`, la donnée dans
-// `hooks.ts`. C'est le signe que le partage a fonctionné — si cet écran avait dû réécrire du dessin,
-// c'est que le composant n'aurait pas été assez paramétré.
+// Deuxième des trois surfaces du schéma à braquets : elle montre ce que l'écran de salle montre,
+// mais à un poste PC — *« l'organisateur le consulte à son poste sans dépendre d'un écran projeté
+// »* (CA). Elle ne contient donc presque rien : le dessin est dans `shared/schema-braquets`, la
+// donnée dans `hooks.ts`. Si cet écran avait dû réécrire du dessin, c'est que le composant n'aurait
+// pas été assez paramétré.
 
 import { useState } from 'react'
 

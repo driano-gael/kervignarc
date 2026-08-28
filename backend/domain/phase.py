@@ -1,42 +1,14 @@
-"""Agrégat `Phase` et `SequencePhases` — les étapes d'un tournoi et leur enchaînement.
+"""Agrégat **Phase** et séquence — cycle de vie, typage, prélèvements (ADR-0045, ADR-0061).
+L'agrégat porte la valeur et des transitions **pures** ; le service arbitre l'enchaînement.
 
-**Historique.** E01US009/ADR-0011 a introduit la `Phase` de façon **minimale et passive** : un seul
-type (`qualification`), un `ordre` et un `statut` conformes au modèle de données mais qu'aucun code
-n'exploitait. E01US015 a ajouté la 2ᵉ politique de qualification (le grain de validation).
-
-**E05US001 / [ADR-0045] rend la séquence active** — c'est le socle du moteur de phases (jalon J2) :
-
-- **Cycle de vie** : quatre statuts `a_venir → en_cours → terminee`, avec `en_cours ⇄ en_pause`
-  réversible. `en_pause` **gèle une phase** pendant que le reste du tournoi vit (distinct du
-  `en_pause` **de tournoi**, ADR-0026 §3). L'agrégat porte la **valeur** et des transitions
-  **pures** ; le service arbitre l'enchaînement (patron `ServiceTournois`).
-- **Typage ouvert** : `elimination_directe` et `placement` rejoignent `qualification`. Déclarer un
-  type ne présuppose pas son moteur ; leurs politiques propres sont **arrivées** en E05US003. En
-  conséquence, `bareme`/`validation` deviennent **facultatifs** (obligatoires pour `qualification`
-  seulement).
-- **Peuplement** : une phase est alimentée par des `SourcePhase`. E05US001 n'en admettait
-  qu'**une**,
-  « rangs [a..b] de la phase d'ordre k » (amorce inscrite en DETTE-015) ; **E05US010 / [ADR-0061] a
-  livré le modèle complet et résorbé cette dette** : `Phase.sources` est une **liste** de
-  prélèvements de natures mêlées (`rangs`, `issue_de_tour`, `reste`), dont les **plages relatives**
-  (fin ouverte, « le reste ») rendent un format indépendant de l'effectif réel. Les contrôles
-  collectifs — source existante et antérieure, rangs dans l'effectif, sources qui ne se recoupent
-  pas, somme compatible — sont portés par l'agrégat pur `SequencePhases`.
-  ⚠️ **Ce qui reste ancré par `ordre`** (et non par identité) : une source désigne sa phase amont
-  par
-  son rang dans la séquence, ce qui oblige à **remapper** les références à chaque réordonnancement
-  ou suppression (`ServicePhases._remapper`, `ServiceBaremeQualification._decaler_dun_cran`).
-  E05US010 n'a pas changé cet ancrage — elle l'a seulement généralisé à N sources. C'est un écart
-  **assumé et tracé** : cf. [DETTE-026](../../docs/dette.md).
-
-La **forme JSON** de la config est une préoccupation du **repository** (l'agrégat pur ci-dessous ne
-sérialise rien) : depuis E05US003/ADR-0046, les politiques du moteur y vivent sous `config.policies`
-(le barème sous `config.policies.scoring`), le grain de `validation` restant à la racine. Agrégats
-de domaine **purs** (immuables, sans dépendance framework).
-
-[ADR-0045]: ../../docs/adr/0045-sequence-de-phases-cycle-de-vie-typage-source.md
-[ADR-0061]: ../../docs/adr/0061-routing-generique-et-placement-en-cascade.md
+⚠️ **Une source désigne sa phase amont par son `ordre`, pas par son identité** : tout
+réordonnancement ou suppression oblige donc à **remapper** les références
+(`ServicePhases._remapper`). Écart assumé et tracé — `DETTE-026`.
 """
+
+# Forme persistée de `config` (ADR-0046) : les politiques sous `config.policies`, le barème sous
+# `config.policies.scoring`, le grain de `validation` **à la racine**. La sérialisation elle-même
+# est une affaire de repository — `infrastructure/db/repositories/moteur.py`.
 
 from __future__ import annotations
 
@@ -103,18 +75,13 @@ class StatutPhase(str, Enum):
     TERMINEE = "terminee"
 
 
-# Grains admis par type de phase (`D-11`). La qualification se tire en séries (fin de série / toutes
-# les N volées) et ne comporte **pas** de duels. L'élimination directe, elle, se valide **en fin de
-# duel** (la feuille de marque se signe « à la fin du duel », FFTA B.6.1.1) : E04US013 ouvre
-# `FIN_DE_DUEL` pour ce type (ADR-0049 §5). L'agrégat `Duel` valide toujours d'un bloc en fin de
-# duel ; ce grain rend le **modèle de phase** cohérent (une phase à duels peut le déclarer).
+# Grains admis par type de phase (`D-11`). La qualification se tire en séries et ne comporte pas
+# de duels ; l'élimination directe se valide **en fin de duel** (FFTA B.6.1.1, ADR-0049 §5).
 #
-# **E05US015** range les six types neufs selon ce qu'ils *font tirer*, pas selon leur famille : ce
-# qui s'y joue en **duels** (barrage, poules, suisse, colline) se valide en fin de duel comme
-# l'élimination directe ; le **Big Shoot Off** fait tirer des **volées** en parallèle, donc il se
-# valide comme une série. L'**échauffement** n'a **aucun** grain admis — et c'est délibéré : il
-# n'attribue rien, donc il n'y a rien à valider. Un grain déclaré sur un échauffement est une
-# `GrainIncompatibleAvecTypePhase`, pas un réglage inutile toléré en silence.
+# **E05US015** range les six types neufs selon ce qu'ils *font tirer* : ce qui s'y joue en duels
+# (barrage, poules, suisse, colline) se valide en fin de duel, le **Big Shoot Off** fait tirer des
+# volées en parallèle donc se valide comme une série. L'**échauffement** n'a **aucun** grain admis
+# — il n'attribue rien : un grain déclaré dessus est une `GrainIncompatibleAvecTypePhase`.
 _GRAINS_ADMIS: dict[TypePhase, frozenset[TypeGrain]] = {
     TypePhase.QUALIFICATION: frozenset({TypeGrain.FIN_DE_SERIE, TypeGrain.TOUTES_LES_N_VOLEES}),
     TypePhase.ELIMINATION_DIRECTE: frozenset({TypeGrain.FIN_DE_DUEL}),
@@ -147,28 +114,18 @@ _GRAIN_PAR_DEFAUT: dict[TypePhase, GrainValidation] = {
 # Profondeur preset de chaque type en tableau (« politique sans migration », ADR-0011).
 #
 # ⚠️ **Deux presets différents, et l'asymétrie est le sujet** : le podium pour l'élimination
-# directe, le classement **intégral** pour le placement. La règle ci-dessous vaut donc pour le
-# **premier** type ; la raison de l'exception est notée sur l'entrée elle-même.
+# directe, le classement **intégral** pour le placement (raison notée sur l'entrée elle-même).
 #
-# ⚠️ **Le podium, et non 1→N** pour l'élimination directe, malgré le « 1→N (défaut) » du CA et
-# d'ADR-0004 — arbitrage du
-# 04/08/2026, ADR-0070. Le défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* :
-# jusqu'à E06US006 toutes les phases se jouaient en `ProfondeurPodium` figée au câblage, et faire
-# de 1→N le preset aurait converti tous les tournois existants au placement intégral — un tableau
-# de 120 passant de **128 duels à 436** (mesuré), sans que personne ne l'ait demandé.
-# 1→N est ce que l'organisateur **choisit** ; l'absence de réglage reste ce qui était joué hier.
+# ⚠️ Le **podium** pour l'élimination directe, malgré le « 1→N (défaut) » du CA — ADR-0070. Le
+# défaut du *catalogue* n'est pas le preset d'une *phase déjà en base* : faire de 1→N le preset
+# aurait converti tous les tournois existants (un tableau de 120 passant de 128 duels à 436).
 _PROFONDEUR_PAR_DEFAUT: dict[TypePhase, ProfondeurClassement] = {
     TypePhase.ELIMINATION_DIRECTE: ProfondeurClassement.top(RANGS_DU_PODIUM),
-    # ⚠️ **Le placement, lui, va jusqu'au bout** — asymétrie voulue, relevée en revue (axe A).
-    # L'argument de rétro-compatibilité ci-dessus ne s'applique **qu'à l'élimination directe** :
-    # elle seule a un existant à préserver. Aucun service ne monte de tableau pour une phase de
-    # type `placement` (les deux gardent `TypePhase.ELIMINATION_DIRECTE`, `# DETTE-028`), donc il
-    # n'y a **rien** à ne pas casser — et le catalogue promet à l'organisateur « tableau qui classe
-    # tout le monde, du 1ᵉʳ au dernier ». Lui donner le podium en preset ferait afficher « Podium —
-    # rangs 1 à 4 (défaut) » sur le type dont le nom dit l'inverse.
-    #
-    # La fenêtre est **maintenant** : le jour où ce type gagne son moteur, corriger le preset
-    # exigerait exactement la conversion silencieuse qu'ADR-0070 §3 refuse.
+    # ⚠️ **Le placement, lui, va jusqu'au bout** — asymétrie voulue. L'argument de
+    # rétro-compatibilité ci-dessus ne vaut que pour l'élimination directe : aucun service ne monte
+    # de tableau pour une phase de type `placement` (`# DETTE-028`), donc il n'y a rien à préserver
+    # — et le catalogue promet « du 1ᵉʳ au dernier ». La fenêtre est **maintenant** : plus tard,
+    # corriger le preset exigerait la conversion silencieuse qu'ADR-0070 §3 refuse.
     TypePhase.PLACEMENT: ProfondeurClassement.integrale(),
 }
 
@@ -176,16 +133,11 @@ _PROFONDEUR_PAR_DEFAUT: dict[TypePhase, ProfondeurClassement] = {
 def profondeur_par_defaut(type_phase: TypePhase) -> ProfondeurClassement:
     """La profondeur preset d'un type de phase — le podium pour un tableau (E06US006).
 
-    Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E06US006, dont la
-    `config` ne porte pas encore de clé `depth` : c'est le même mécanisme que `grain_par_defaut`
-    pour les phases d'avant E01US015.
-
-    ⚠️ Le preset **dépend du type** : podium pour une élimination directe, classement intégral pour
-    un placement (ADR-0070 §3). Dire « le preset, c'est le podium » serait faux pour la moitié des
-    types en tableau.
-
-    Lève `ProfondeurInvalide` si le type ne monte aucun tableau — explicite plutôt qu'un `KeyError`
-    que le repository diagnostiquerait « configuration illisible ».
+    Sert à la création **et** à la relecture d'une phase antérieure à E06US006, dont la `config` ne
+    porte pas de clé `depth` — même mécanisme que `grain_par_defaut`. ⚠️ Le preset **dépend du
+    type** : podium pour une élimination directe, classement intégral pour un placement (ADR-0070
+    §3). Lève `ProfondeurInvalide` si le type ne monte aucun tableau, explicite plutôt qu'un
+    `KeyError` que le repository diagnostiquerait « configuration illisible ».
     """
     preset = _PROFONDEUR_PAR_DEFAUT.get(type_phase)
     if preset is None:
@@ -199,12 +151,9 @@ def profondeur_par_defaut(type_phase: TypePhase) -> ProfondeurClassement:
 def grain_par_defaut(type_phase: TypePhase) -> GrainValidation:
     """Le grain preset d'un type de phase — `fin de série` pour la qualification (`D-11`).
 
-    Sert à la création d'une phase **et** à la relecture d'une phase antérieure à E01US015, dont la
-    `config` ne porte pas encore de clé `validation` (cf. `repositories._vers_phase`).
-
-    Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas de preset déclaré (les types à duels,
-    dont le preset est venu avec E05US003) : explicite plutôt qu'un `KeyError` que `_vers_phase`
-    diagnostiquerait « configuration illisible ».
+    Sert à la création **et** à la relecture d'une phase antérieure à E01US015, dont la `config` ne
+    porte pas de clé `validation`. Lève `GrainIncompatibleAvecTypePhase` si le type n'a pas de
+    preset déclaré : explicite plutôt qu'un `KeyError` diagnostiqué « configuration illisible ».
     """
     preset = _GRAIN_PAR_DEFAUT.get(type_phase)
     if preset is None:
@@ -245,23 +194,11 @@ class IssueTour(str, Enum):
 class SourcePhase:
     """Un **prélèvement** de participants dans une phase antérieure (E05US010, ADR-0061).
 
-    Une phase peut en porter **plusieurs**, de natures différentes — le CA cite l'exemple du
-    commanditaire : « les demi-finalistes du tableau principal, **et** le gagnant du tableau
-    secondaire ». Value object **pur**, validé à la construction sur ce qui ne dépend **pas** de la
-    séquence ; les contrôles inter-phases (la source existe, est antérieure, tient dans son
-    effectif, ne recoupe pas ses voisines) vivent dans `verifier_sequence`.
-
-    **Un seul type, discriminé par `nature`, plutôt qu'une union de trois classes.** L'union serait
-    plus étanche — chaque nature ne porterait que ses champs — mais `SourcePhase(ordre_source=…,
-    rang_debut=…, rang_fin=…)` est construit dans une trentaine d'endroits (tests, DTO, repository,
-    format de bibliothèque) et le prélèvement par rangs reste, de loin, le cas courant. On garde
-    donc cette construction **valide telle quelle** (`nature` vaut `RANGS` par défaut) et l'on
-    défend l'étanchéité par `__post_init__` : un champ étranger à la nature est une
-    `SourceMalFormee`, pas une donnée ignorée en silence. Le compromis est assumé dans l'ADR.
-
-    **Plages relatives** : `rang_fin=None` signifie « et suivants » — la fin dépend de l'effectif
-    réel de la phase source, pas du format. C'est ce qui permet à un déroulé composé pour 120
-    archers d'en accueillir 82 (CA « plages relatives »).
+    Une phase peut en porter **plusieurs**, de natures différentes. Value object pur, validé sur ce
+    qui ne dépend **pas** de la séquence ; les contrôles inter-phases vivent dans
+    `verifier_sequence`. ⚠️ **Un seul type discriminé par `nature`**, et non trois classes : la
+    construction par rangs est le cas courant et reste valide telle quelle, l'étanchéité étant
+    défendue par `__post_init__` (`SourceMalFormee`). `rang_fin=None` = « et suivants ».
     """
 
     ordre_source: int
@@ -314,13 +251,10 @@ class SourcePhase:
         """Interdit `rang_debut`/`rang_fin` sur une nature qui ne se lit pas en rangs.
 
         ⚠️ `rang_debut` a pour **défaut** `1` : un test `is not None` ne dirait rien, il faut
-        comparer à ce défaut. C'est précisément le trou qu'un premier jet de cette US a laissé —
-        un `rang_fin` parasite sur une source « issue de tour » était **accepté** puis **jamais
-        sérialisé** (`_source_json` n'écrit que les champs de la nature) : le POST répondait 201
-        avec la valeur, le GET suivant la rendait à `null`. C'est exactement le « champ avalé en
-        silence » que l'ADR déclarait écarter, et c'est le prix du type unique discriminé : ce que
-        l'union de trois classes aurait rendu impossible par construction, il faut ici l'interdire
-        à la main.
+        comparer à ce défaut. C'est le trou d'un premier jet — un `rang_fin` parasite était accepté
+        puis jamais sérialisé, le POST répondant 201 avec la valeur et le GET la rendant à `null`.
+        C'est le prix du type unique discriminé : ce qu'une union rendrait impossible s'interdit
+        ici à la main.
         """
         if self.rang_fin is not None or self.rang_debut != 1:
             raise SourceMalFormee(f"{motif} : « rang_debut » et « rang_fin » n'y ont aucun sens.")
@@ -352,18 +286,12 @@ class SourcePhase:
 
     def intervalle(self, effectif_source: int | None) -> tuple[int, int] | None:
         """Les **bornes** que ce prélèvement occupe dans la phase source, ou `None` s'il ne se lit
-        pas en rangs (« le reste », une issue de tour : leur recoupement éventuel ne se décide qu'au
-        déroulé — E01US024).
+        pas en rangs.
 
-        ⚠️ Rend un **intervalle**, jamais l'ensemble des rangs. Deux intervalles se comparent en
-        O(1) ; matérialiser `frozenset(range(debut, fin))` ferait dépendre l'allocation mémoire d'un
-        entier fourni par le client (`effectif` n'est borné que par le bas), et ce calcul tourne sur
-        le **thread du writer unique** — un effectif absurde y gèlerait toutes les écritures du jour
-        J. Défaut relevé par trois axes de la revue d'E05US010.
-
-        Une **fin ouverte** sans effectif source déclaré s'étend jusqu'à l'infini : c'est
-        littéralement « et tous les suivants », donc elle recoupe tout ce qui commence après son
-        début — le contrôle reste décidable sans connaître l'effectif.
+        ⚠️ Rend un **intervalle**, jamais l'ensemble des rangs : matérialiser
+        `frozenset(range(...))` ferait dépendre l'allocation d'un entier fourni par le client, et ce
+        calcul tourne sur le **thread du writer unique**. Une **fin ouverte** sans effectif déclaré
+        s'étend jusqu'à l'infini — le recoupement reste décidable sans connaître l'effectif.
         """
         if self.nature is not NatureSource.RANGS:
             return None
@@ -398,26 +326,11 @@ class SourcePhase:
 class Phase:
     """Une phase **d'un départ**. `id` vaut `None` tant qu'elle n'est pas persistée.
 
-    ⚠️ **D'un départ, pas d'un tournoi** (E01US025, ADR-0075). Un départ *rejoue le tournoi en
-    entier* : il porte sa propre séquence de phases, ses propres classements et ses propres
-    tableaux. Deux archers de départs différents ne sont jamais comparés, et un prélèvement
-    (`sources`) ne traverse jamais un départ. Les phases d'un tournoi sont l'**union** de celles de
-    ses départs — il n'en possède aucune en propre.
-
-    C'était `tournoi_id` jusqu'au 06/08/2026, ce qui faisait classer ensemble les 400 archers de 4
-    départs de 100. ADR-0017 avait pourtant décidé le contraire treize mois plus tôt : seule la
-    logistique l'avait porté.
-
-    `bareme` et `validation` ne concernent que la **qualification** (barème de cumul + grain,
-    `D-11`) : ils sont `None` pour les autres types, dont les politiques propres sont venues en
-    E05US003 (ADR-0045 §2). `sources` décrit d'où la phase tire ses participants — **plusieurs**
-    prélèvements possibles depuis E05US010 (`()` = première de la séquence, alimentée par les
-    inscriptions). `effectif` (facultatif) déclare combien de participants la phase classe/produit —
-    il borne les rangs prélevables et sert au contrôle « effectif incompatible ».
-
-    **Invariants** (vérifiés à chaque construction, `replace()` compris) : effectif ≥ 1 s'il est
-    déclaré ; une phase de `qualification` porte barème **et** grain ; le grain — s'il y en a un —
-    est admis par le type et sa cadence ne dépasse pas le barème.
+    ⚠️ **D'un départ, pas d'un tournoi** (E01US025, ADR-0075) : un départ rejoue le tournoi en
+    entier — sa séquence, ses classements, ses tableaux. Deux archers de départs différents ne sont
+    jamais comparés, et un prélèvement ne traverse jamais un départ. `bareme` et `validation` ne
+    concernent que la **qualification** (ADR-0045 §2) ; `sources` dit d'où la phase tire ses
+    participants (`()` = première de la séquence) ; `effectif` borne les rangs prélevables.
     """
 
     depart_id: DepartId
@@ -446,16 +359,12 @@ class Phase:
     big_shoot_off: ConfigurationBigShootOff | None = None
     """Le réglage d'une phase de **Big Shoot Off** (E05US028) — combien sortent, manche par manche.
 
-    Même régime que `poules` ci-dessus : `None` sur tout autre type, et sur un Big Shoot Off **pas
-    encore réglé**.
-
-    ⚠️ **Une seule classe ici, là où les poules en ont deux**, et l'asymétrie est justifiée. Les
-    poules séparent `ReglageDePoules` (une *taille visée*, connue à la composition) de
-    `ConfigurationPoules` (un *nombre de poules*, qui n'existe que le jour J) parce que la
-    conversion **dépend de l'effectif**. La liste de sortants d'un Big Shoot Off, elle, n'en dépend
-    pas : « 4 puis 2 puis 1 » se lit à l'identique sur 12 ou sur 20 inscrits — c'est la *projection*
-    (`paliers_pour`) qui varie, et elle se calcule à la lecture sans rien figer. Dédoubler la classe
-    ici n'aurait donc porté aucune information, seulement une conversion identité."""
+    Même régime que `poules` : `None` sur tout autre type, et sur un Big Shoot Off pas encore réglé.
+    ⚠️ **Une seule classe ici, là où les poules en ont deux** : celles-ci séparent une *taille
+    visée* d'un *nombre de poules* parce que la conversion dépend de l'effectif. « 4 puis 2 puis 1 »
+    se lit à l'identique sur 12 ou 20 inscrits — seule la projection (`paliers_pour`) varie, et elle
+    se calcule à la lecture.
+    """
 
     suisse: ConfigurationSuisse | None = None
     """Le réglage d'une phase au **système suisse** (E05US026) — le nombre de rondes.
@@ -468,33 +377,21 @@ class Phase:
     colline: ConfigurationColline | None = None
     """Le réglage d'une phase de **colline** (E05US027) — nombre de manches et portée de défi.
 
-    Même régime que les trois réglages ci-dessus, et **une seule classe** pour la même raison : ni
-    le nombre de manches ni la portée ne dépendent de l'effectif. Ce qui en dépend est la **borne**
-    de portée (`portee_de_defi` doit rester strictement inférieure à l'effectif, faute de quoi
-    « chacun défie n'importe qui » et ce n'est plus un King of the Hill), affichée à l'atelier et
-    vérifiée par `EtapeDeroule` là où l'effectif est déclaré — jamais figée ici.
-
-    ⚠️ **Deux champs pour un seul réglage, là où les trois voisins n'en portent qu'un** : c'est la
-    portée qui distingue le **King of the Hill** (défier son voisin immédiat) du **Ladder** (« le
-    n°6 peut défier le 5 ou le 4 »). Le référentiel §10.1 les donne comme deux formats ; ce sont
-    deux **réglages d'un même format** (règle 2 : un format de tournoi est de la configuration, pas
-    du code), et c'est pourquoi le catalogue n'a qu'un `TypePhase.COLLINE`."""
+    Une seule classe, comme ses voisins : ni le nombre de manches ni la portée ne dépendent de
+    l'effectif — c'est la **borne** de portée qui en dépend, vérifiée par `EtapeDeroule`.
+    ⚠️ **Deux champs pour un seul réglage** : la portée distingue le **King of the Hill** (défier
+    son voisin) du **Ladder**. Le référentiel §10.1 les donne comme deux formats ; ce sont deux
+    **réglages** d'un même format (règle 2), d'où un seul `TypePhase.COLLINE`.
+    """
 
     decoupage: DecoupageEnTours | None = None
     """Le découpage d'une **qualification** en tours — « 20 volées en 2 tours de 10 » (E05US035).
 
-    Même régime que `poules`, `big_shoot_off` et `suisse` ci-dessus : porté par l'étape donc par le
-    tournoi (ADR-0076), `None` sur tout autre type et sur une qualification non découpée — auquel
-    cas la phase **est** son tour, ce qui reste vrai.
-
-    ⚠️ **Ce n'est pas du barème**, et l'y ranger aurait été le raccourci naturel : `nb_volees` vit
-    sur `BaremeQualification`, `nb_tours` semblait sa voisine. Mais un barème dit comment on
-    **classe** (le cumul, le total), un découpage dit comment on **avance** — l'invariant
-    *avancer ≠ classer* d'ADR-0090, posé par le commanditaire. Les mêler aurait fait croire qu'un
-    tour de qualification produit un classement intermédiaire, qu'aucune règle FFTA ne prévoit.
-
-    Le seul usage est de rendre la qualification **arrêtable** (ADR-0093) : sans découpage, une
-    pause n'a aucune frontière de tour où tomber.
+    Même régime que ses voisins : porté par l'étape (ADR-0076), `None` sur une qualification non
+    découpée — auquel cas la phase **est** son tour. ⚠️ **Ce n'est pas du barème** : un barème dit
+    comment on **classe**, un découpage comment on **avance** (invariant *avancer ≠ classer*,
+    ADR-0090) ; les mêler ferait croire qu'un tour produit un classement intermédiaire, qu'aucune
+    règle FFTA ne prévoit. Seul usage : rendre la qualification **arrêtable** (ADR-0093).
     """
 
     statut: StatutPhase = StatutPhase.A_VENIR
@@ -520,15 +417,10 @@ class Phase:
             )
         # DETTE-078
         # ⚠️ **Ces gardes-ci arrivent APRÈS la persistance de l'étape, et c'est la dette.** Elles
-        # vivent sur `Phase`, donc à `instancier()` — or `ServicePhases.ajouter` fait rejoindre
-        # l'étape au déroulé **avant** d'instancier. Une requête refusée en 422 laisse donc derrière
-        # elle une étape orpheline qui brûle un `ordre` : le déroulé se troue du fait d'une entrée
-        # que le serveur a rejetée.
-        #
-        # Seule `colline` est fermée (E05US027) : sa garde jumelle vit dans
-        # `EtapeDeroule.__post_init__`, donc antérieure à toute écriture. Les quatre autres sont
-        # **héritées** — les hisser touche quatre invariants de composition et leurs tests, ce
-        # qu'une US de format n'a pas à faire. Résorption en US `refactor/` dédiée.
+        # vivent sur `Phase`, donc à `instancier()`, or `ServicePhases.ajouter` fait rejoindre
+        # l'étape au déroulé **avant** : une requête refusée en 422 laisse une étape orpheline qui
+        # brûle un `ordre`. Seule `colline` est fermée (garde jumelle dans
+        # `EtapeDeroule.__post_init__`) ; les quatre autres sont héritées, résorption en US dédiée.
         if self.big_shoot_off is not None and self.type is not TypePhase.BIG_SHOOT_OFF:
             # Même garde que `poules`, et le motif est le même : un réglage que rien ne lit est
             # invisible et faux. Il est d'autant plus dangereux ici qu'il décrit **qui sort** — le
@@ -665,16 +557,10 @@ class SequencePhases:
     """La séquence **ordonnée** des phases **d'un départ**, gardienne de sa cohérence (E05US001).
 
     ⚠️ **D'un départ depuis E01US025** (ADR-0075) : les ordres forment la suite contiguë 1..N *dans
-    un départ*, et chaque départ a la sienne. Les invariants ci-dessous sont inchangés — seule leur
-    **portée** l'est. Assembler dans une même séquence les phases de deux départs lèverait
-    `SequenceOrdreInvalide`, ce qui est le comportement voulu : c'est le garde-fou qui signale une
-    lecture restée à la portée tournoi.
-
-    Value object pur validé à la construction : les ordres forment la suite contiguë 1..N, et
-    chaque source désigne une phase **antérieure** existante dont l'effectif couvre les rangs
-    prélevés, avec un compte compatible (ADR-0045 §3). Le service assemble les phases relues du
-    dépôt en `SequencePhases` — dont la construction **rejette** une séquence incohérente — avant
-    de persister une édition. Une séquence **vide** est licite (tournoi sans phase composée).
+    un départ*. Assembler les phases de deux départs lève `SequenceOrdreInvalide` — c'est le
+    garde-fou qui signale une lecture restée à la portée tournoi. Value object pur : chaque source
+    désigne une phase **antérieure** existante dont l'effectif couvre les rangs prélevés (ADR-0045
+    §3). Une séquence **vide** est licite (tournoi sans phase composée).
     """
 
     phases: tuple[Phase, ...]
@@ -686,21 +572,11 @@ class SequencePhases:
 class EtapeSequencee(Protocol):
     """Ce dont les contrôles de séquence ont besoin d'une étape — **rien de plus**.
 
-    Deux agrégats satisfont ce contrat : la `Phase` d'un tournoi (ci-dessus) et le `ModelePhase`
-    d'un `FormatTournoi` (E01US023, ADR-0060 §5). Les contrôles d'ordre et de source ne regardent
-    que `ordre`, `sources` et `effectif` — ni le statut, ni le départ, qui n'existent que sur une
-    phase réelle. Le protocole rend cette frontière explicite au lieu de la laisser deviner.
-
-    Membres déclarés en **propriétés** (lecture seule) : les deux implémentations sont des
-    dataclasses `frozen`, et un protocole à attributs *variables* exigerait qu'ils soient
-    assignables (règle 4 — l'immutabilité est la norme dans le domaine).
-
-    ⚠️ **`type` a rejoint le contrat en E05US015** — c'est un élargissement assumé de « rien de
-    plus ». Le contrôle « une phase sans classement ne se prélève pas par rangs » a besoin de
-    savoir *ce qu'est* la phase **amont**, pas seulement ce qu'elle prélève. Les deux
-    implémentations le portaient déjà (`Phase.type`, `ModelePhase.type`), donc l'ajout ne coûte
-    rien ; il déplace seulement la frontière de « ce que les contrôles de séquence ont le droit de
-    regarder ».
+    Deux agrégats satisfont ce contrat : la `Phase` d'un départ et le `ModelePhase` d'un
+    `FormatTournoi` (ADR-0060 §5). Les contrôles ne regardent que `ordre`, `sources` et `effectif`
+    — ni le statut ni le départ, qui n'existent que sur une phase réelle. Membres déclarés en
+    **propriétés** : les deux implémentations sont `frozen`, et un protocole à attributs variables
+    exigerait qu'ils soient assignables (règle 4).
     """
 
     @property
@@ -719,17 +595,11 @@ class EtapeSequencee(Protocol):
 def verifier_sequence(etapes: Sequence[EtapeSequencee]) -> None:
     """Vérifie les invariants **collectifs** d'une séquence d'étapes (ADR-0045 §3).
 
-    Les ordres forment la suite contiguë 1..N, et chaque source désigne une étape **antérieure**
-    existante dont l'effectif couvre les rangs prélevés, avec un compte compatible.
-
-    **Publique et partagée** entre `SequencePhases` (les phases d'un tournoi) et `FormatTournoi`
-    (les modèles de phases d'une brique de bibliothèque) : c'est le **même** invariant, et le
-    recopier serait la duplication d'invariant que le registre de dette proscrit. Ce n'est pas
-    l'introduction d'un patron — juste une fonction appelée à deux endroits.
-
-    **Enveloppe levante** depuis E01US024 : la règle vit dans `anomalies_sequence`, qui les
-    **énumère** ; celle-ci lève la première. Le type d'exception — donc le code HTTP — est
-    inchangé.
+    Ordres contigus 1..N, et chaque source désigne une étape **antérieure** existante dont
+    l'effectif couvre les rangs prélevés, avec un compte compatible. **Publique et partagée** entre
+    `SequencePhases` et `FormatTournoi` : c'est le **même** invariant, et le recopier serait la
+    duplication que le registre proscrit. **Enveloppe levante** depuis E01US024 — la règle vit dans
+    `anomalies_sequence`, celle-ci lève la première.
     """
     for anomalie in anomalies_sequence(etapes):
         raise anomalie.erreur
@@ -756,14 +626,11 @@ def verifier_coherence_etape(
 ) -> None:
     """Vérifie les invariants **d'une seule** étape — indépendamment de la séquence qui la porte.
 
-    Effectif ≥ 1 s'il est déclaré ; une `qualification` porte barème **et** grain ; le grain — s'il
-    y en a un — est admis par le type et sa cadence ne dépasse pas le barème.
+    Effectif ≥ 1 s'il est déclaré ; une `qualification` porte barème **et** grain ; le grain est
+    admis par le type et sa cadence ne dépasse pas le barème.
 
-    Partagée pour la même raison que `verifier_sequence` : une phase de départ et un modèle de
-    phase d'un format obéissent aux **mêmes** règles de cohérence interne ; seul le contexte
-    (statut, départ) les distingue.
-
-    **Enveloppe levante** depuis E01US024 (cf. `verifier_sequence`).
+    Partagée pour la même raison que `verifier_sequence` : une phase et un modèle de phase obéissent
+    aux **mêmes** règles internes. **Enveloppe levante** depuis E01US024.
     """
     for anomalie in anomalies_etape(type_phase, bareme, validation, effectif):
         raise anomalie.erreur
@@ -858,31 +725,21 @@ def _anomalies_ordres(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
 
 # E05US025 — `_anomalies_unicite_qualification` a été **retiré** ici.
 #
-# E05US021 l'avait posé pour fermer un bug (neuf lecteurs de « la » qualification, dont deux la
-# résolvaient différemment) et sa docstring reconnaissait un invariant « supposé partout et vérifié
-# nulle part ». Ce n'était donc pas une règle du tir à l'arc : on avait interdit le cas au lieu de
-# réparer les lecteurs. E05US025 répare les lecteurs — chacun sait désormais **de quelle** phase il
-# parle — et rend le cas licite, comme le commanditaire le demandait (ADR-0082).
-#
-# ⚠️ Ne pas le réintroduire « par prudence » : c'est le pansement, pas la règle. Un lecteur qui
-# aurait besoin de l'unicité pour être juste est un lecteur à corriger.
+# E05US021 l'avait posé pour fermer un bug (neuf lecteurs de « la » qualification), mais ce n'était
+# pas une règle du tir à l'arc : on avait interdit le cas au lieu de réparer les lecteurs. E05US025
+# les répare — chacun sait désormais **de quelle** phase il parle — et rend le cas licite
+# (ADR-0082). ⚠️ Ne pas le réintroduire « par prudence » : un lecteur qui aurait besoin de
+# l'unicité pour être juste est un lecteur à corriger.
 
 
 def _anomalies_sources(phases: Sequence[EtapeSequencee]) -> Iterator[Anomalie]:
     """Les invariants **collectifs** du peuplement d'une phase (E05US001, étendus par E05US010).
 
-    Six contrôles : chaque source désigne une phase **existante** et **antérieure** ; elle ne
-    prélève pas **par rangs** dans une phase qui n'en produit aucun (E05US015 — l'échauffement) ;
-    ses rangs tiennent dans l'effectif de cette phase ; deux sources d'une même phase ne
-    **recoupent** pas leurs rangs ; et la somme des prélèvements **couvre** l'effectif déclaré.
-
-    ⚠️ Le contrôle de somme ne s'applique que si **tous** les prélèvements sont dénombrables au
-    format (`effectif_selectionne is not None`). Dès qu'une source est relative — fin ouverte, « le
-    reste », issue de tour —, le compte ne se connaît qu'à l'exécution : l'exiger ici rendrait les
-    plages relatives inutilisables, alors qu'elles sont précisément ce que le CA demande. Le CA le
-    dit d'ailleurs pour l'autre bout du problème : un format devenu infaisable à effectif réduit
-    n'est **pas** une erreur à corriger dans le format : c'est une **anomalie à afficher**
-    (E01US024).
+    Chaque source désigne une phase existante et antérieure ; elle ne prélève pas par rangs dans
+    une phase qui n'en produit aucun ; ses rangs tiennent dans l'effectif ; deux sources ne se
+    recoupent pas ; la somme couvre l'effectif déclaré. ⚠️ Ce dernier contrôle ne s'applique que si
+    **tous** les prélèvements sont dénombrables — une source relative ne se compte qu'à l'exécution,
+    et l'exiger ici rendrait les plages relatives inutilisables (anomalie à afficher, E01US024).
     """
     par_ordre = {phase.ordre: phase for phase in phases}
     for phase in phases:
@@ -947,19 +804,11 @@ def _anomalies_recoupements(
 ) -> Iterator[Anomalie]:
     """Deux sources d'une même phase ne prélèvent pas le même participant (CA « cohérence »).
 
-    Le recoupement se juge **par phase source** : « les rangs 1-2 de la phase 1 » et « les rangs 1-2
-    de la phase 2 » désignent quatre participants distincts, pas deux. Seuls les prélèvements **par
-    rangs** se comparent en rangs — mais deux sources **strictement identiques** sont refusées,
-    quelle que soit leur nature : « le reste » deux fois, ou deux fois les mêmes gagnants d'un tour,
-    sont
-    des non-sens qui se voient sans dérouler le tournoi. Un recoupement *partiel* entre natures
-    différentes, lui, reste une anomalie d'exécution (E01US024).
-
-    ⚠️ Le contrôle **ne dépend pas** de l'effectif déclaré de la phase source. Un premier jet de
-    cette US sautait tout le contrôle quand cet effectif valait `None` — or `Phase.effectif` est
-    facultatif, donc le cas par défaut : deux plages pourtant **entièrement bornées** ([1..10] et
-    [5..15]) passaient sans examen. Une fin ouverte sans effectif connu s'étend jusqu'à l'infini,
-    ce qui la rend comparable elle aussi (cf. `SourcePhase.intervalle`).
+    Le recoupement se juge **par phase source**. Seuls les prélèvements par rangs se comparent en
+    rangs — mais deux sources **strictement identiques** sont refusées quelle que soit leur nature.
+    ⚠️ Le contrôle **ne dépend pas** de l'effectif déclaré de la phase source : un premier jet le
+    sautait quand cet effectif valait `None` — le cas par défaut —, si bien que deux plages
+    entièrement bornées passaient sans examen (cf. `SourcePhase.intervalle`).
     """
     doublons = [s for s in phase.sources if phase.sources.count(s) > 1]
     if doublons:
@@ -1000,20 +849,11 @@ def _anomalies_recoupements(
 def _anomalies_somme(phase: EtapeSequencee) -> Iterator[Anomalie]:
     """Les prélèvements doivent tenir dans l'effectif déclaré de la phase (CA « cohérence »).
 
-    Deux régimes, et c'est la distinction qui compte :
-
-    - **tous les prélèvements dénombrables** → la somme doit **égaler** l'effectif déclaré ;
-    - **au moins un prélèvement relatif** (fin ouverte, « le reste », issue de tour) → l'**égalité**
-      devient indécidable au format, puisque le compte ne se ferme qu'à l'exécution. Mais
-      l'**inégalité**, elle, reste décidable : un prélèvement relatif ajoute un nombre ≥ 0 de
-      participants, donc si les seuls dénombrables dépassent déjà l'effectif, la composition est
-      fausse quoi qu'il arrive.
-
-    Un premier jet de cette US désactivait **tout** le contrôle dès qu'un prélèvement était
-    relatif :
-    « les rangs 1 à 64, puis le reste » pour une phase déclarant 32 participants passait alors sans
-    broncher, alors qu'il était refusé avant l'US. Relevé par la revue — et son test l'évitait en
-    choisissant 8 prélevés pour 32 déclarés.
+    Deux régimes : **tous dénombrables** ⇒ la somme doit **égaler** l'effectif ; **au moins un
+    relatif** ⇒ l'égalité devient indécidable au format, mais l'**inégalité** reste décidable — un
+    prélèvement relatif ajoute ≥ 0 participants, donc des dénombrables qui dépassent déjà l'effectif
+    sont faux quoi qu'il arrive. Un premier jet désactivait **tout** le contrôle dès qu'un
+    prélèvement était relatif, et son test l'évitait en choisissant 8 prélevés pour 32 déclarés.
     """
     if phase.effectif is None or not phase.sources:
         return

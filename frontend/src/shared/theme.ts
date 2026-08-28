@@ -1,17 +1,11 @@
 // Thème d'un poste de saisie (D-26, E04US001).
 //
-// Un poste peut basculer en clair/sombre selon la lumière de **sa** cible (baie vitrée vs fond de
-// gymnase) sans toucher aux autres tablettes. La préférence est locale au poste (portée par le
-// `sessionPosteStore`, persistée) ; ici, on ne fait que l'**appliquer** en posant `data-theme` sur
-// `<html>`, ce qui active le bloc CSS correspondant.
-//
-// Trois valeurs explicites **et** `null`, et la distinction est le cœur du sujet :
-//   - `null`      = le poste n'a **jamais** choisi ⇒ **sombre**, le défaut de la charte (`DV-02`) ;
-//   - `'systeme'` = le poste a **choisi** de suivre l'OS (`D-26`) ⇒ `data-theme="systeme"`, auquel une
-//                   règle `@media (prefers-color-scheme: light)` dédiée rend son effet, en CSS et non
-//                   en JS — la page suit alors le basculement de l'OS en direct ;
-//   - `'clair'` / `'sombre'` = surcharge explicite du poste.
-// Confondre les deux premiers, c'est livrer « suivre l'OS par défaut » en croyant livrer l'inverse.
+// Un poste bascule en clair/sombre selon la lumière de **sa** cible, sans toucher aux autres. La
+// préférence est locale et persistée ; ici on ne fait que l'**appliquer** via `data-theme`. ⚠️
+// Trois valeurs **et** `null`, et la distinction est le cœur du sujet : `null` = jamais choisi ⇒
+// **sombre**, défaut de la charte (`DV-02`) ; `'systeme'` = le poste a **choisi** de suivre l'OS,
+// effet rendu en CSS et non en JS ; `'clair'`/`'sombre'` = surcharge explicite. Confondre les deux
+// premiers, c'est livrer « suivre l'OS par défaut » en croyant livrer l'inverse.
 
 export type Theme = 'clair' | 'sombre' | 'systeme'
 

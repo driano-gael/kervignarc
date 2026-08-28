@@ -1,14 +1,11 @@
 // Le **découpage en tours** d'une qualification, sur l'atelier « Composer un format » (E05US035).
 //
-// ⚠️ **Ce fichier existe parce que la 2ᵉ passe de revue a montré que le seul écran portant le geste
-// du CA n'avait aucun oracle.** L'écran des phases a le sien (`features/phases/Decoupage.test.tsx`),
-// mais c'est ici — dans l'atelier de bibliothèque — que le découpage et la pause se composent
-// ensemble sur une étape en cours de saisie, donc ici que la condition « la fiche de pauses s'ouvre
-// dès qu'on tape 2, sans enregistrer » s'exerce réellement. Côté `Phases.tsx`, la même condition
-// portait sur une phase persistée.
-//
-// Même leçon que `BorneSuisse.test.tsx` juste à côté : la fonction pure était juste, c'est ce qu'on
-// lui donnait qui pouvait être faux.
+// ⚠️ **La 2ᵉ passe de revue a montré que le seul écran portant le geste du CA n'avait aucun
+// oracle.** L'écran des phases a le sien (`features/phases/Decoupage.test.tsx`), mais c'est ici —
+// dans l'atelier — que découpage et pause se composent sur une étape en cours de saisie, donc ici
+// que « la fiche de pauses s'ouvre dès qu'on tape 2, sans enregistrer » s'exerce vraiment. Même
+// leçon que `BorneSuisse.test.tsx` : la fonction pure était juste, c'est ce qu'on lui donnait qui
+// pouvait être faux.
 
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

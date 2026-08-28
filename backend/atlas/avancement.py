@@ -1,13 +1,10 @@
 """La vue d'avancement : ce que les quatre livrables de suivi disent, mis côte à côte.
 
-`SUIVI-US.md` dit l'**état**, `stories/` dit ce que l'US **est**, `epics/README.md` dit à quelle
-capacité elle appartient et de quoi celle-ci dépend, `docs/dette.md` dit ce qu'elle a laissé
-derrière elle. Aucun des quatre ne connaît les trois autres. Ce module ne tranche rien : il
-rapproche, et laisse `controles.verifier_avancement` dire là où le rapprochement échoue.
-
-⚠️ **L'état d'une US ne se déduit jamais de git.** Le tracker prévient lui-même que `E00US016`,
-`E01US018` et `E01US019` ont un commit dans `main` sans être livrées : une vue qui lirait le
-journal des commits les compterait faites. Le glyphe écrit à la main fait autorité.
+`SUIVI-US.md` dit l'**état**, `stories/` ce que l'US **est**, `epics/README.md` la capacité dont
+elle relève, `docs/dette.md` ce qu'elle a laissé derrière elle — et aucun des quatre ne connaît les
+trois autres. Ce module ne tranche rien : il rapproche, `controles.verifier_avancement` dit où le
+rapprochement échoue. ⚠️ **L'état d'une US ne se déduit jamais de git** : `E00US016`, `E01US018` et
+`E01US019` ont un commit dans `main` sans être livrées — le glyphe écrit à la main fait autorité.
 """
 
 from __future__ import annotations

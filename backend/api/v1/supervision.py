@@ -1,20 +1,8 @@
-"""Endpoints REST de la **supervision des postes** (E12US001, ADR-0038).
+"""Supervision des postes — état, dernière saisie, avancement, plus révocation et heartbeat.
 
-Trois routes, deux portées :
-
-- **Console** (`GET /api/v1/tournois/{tournoi_id}/supervision`, admin) : l'instantané de tous les
-  postes de cible — état, dernière saisie, avancement — et le compteur global. Lecture ; le front la
-  rafraîchit par un poll court (le passage *hors ligne* naît du **temps qui passe**, pas d'un
-  événement — ADR-0038 §4).
-- **Révocation** (`POST /api/v1/tournois/{tournoi_id}/postes/{poste_id}/revocation`, admin) : ferme
-  les sessions d'un poste et oublie sa présence (`D-07`). N'écrit qu'en mémoire (sessions), pas en
-  base : hors file.
-- **Heartbeat** (`POST /api/v1/postes/session/heartbeat`, poste) : le signe de vie périodique. Le
-  poste s'authentifie par son jeton (`exiger_poste`) ; on horodate sa dernière vue et son IP (indice
-  de diagnostic, `D-06`, jamais une identité). Écrit en mémoire, sans transaction ni diffusion.
-
-DTO Pydantic distincts des agrégats (règle 6). Erreurs typées traduites à la frontière
-(`api/erreurs.py`) : tournoi/poste introuvable → 404, jeton de poste absent/invalide → 401.
+⚠️ **Le passage HORS LIGNE naît du temps qui passe, pas d'un événement** (ADR-0038 §4) : d'où un
+poll court côté front, et non une diffusion. Révocation et heartbeat n'écrivent qu'**en mémoire** —
+hors file. L'IP relevée est un indice de diagnostic (`D-06`), jamais une identité.
 """
 
 from __future__ import annotations
@@ -69,14 +57,11 @@ class PriseReponse(BaseModel):
 class LigneSupervisionReponse(BaseModel):
     """Une ligne de la console : un poste (cible **ou** écran) et son état à cet instant.
 
-    `etat` ∈ `en_ligne` · `hors_ligne` · `non_rattache` (valeur de `EtatPoste`). `derniere_saisie`
-    est un horodatage ISO (le front calcule « il y a 14 mn »), `None` si rien n'a été saisi. `ip`
-    est un indice de diagnostic, `None` si le poste n'est pas rattaché. Le **code** n'est
-    pas exposé (secret de rattachement) : le poste se désigne par sa `cible_index` ou son `libelle`.
-
-    `type` ∈ `cible` · `ecran`. Une **cible** porte `cible_index` et `avancement` ; un **écran**
-    porte `libelle` et, s'il est sous contrôle, `prise`. Les deux dans le même tableau, parce que
-    c'est précisément là que le CA veut qu'on découvre un écran figé.
+    `etat` ∈ `en_ligne` · `hors_ligne` · `non_rattache`. `derniere_saisie` est un horodatage ISO
+    (le front calcule « il y a 14 mn »), `ip` un indice de diagnostic. ⚠️ Le **code** n'est pas
+    exposé (secret de rattachement) : le poste se désigne par sa `cible_index` ou son `libelle`.
+    Une **cible** porte `cible_index` et `avancement`, un **écran** `libelle` et sa `prise` — les
+    deux dans le même tableau, là où le CA veut qu'on découvre un écran figé.
     """
 
     poste_id: int

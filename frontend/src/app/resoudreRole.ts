@@ -51,19 +51,13 @@ export function peutChangerDeRole(
   return role !== null && !tabletteVerrouillee
 }
 
-// Quel monde servir, maintenant que **l'adresse** est une source d'entrée à part entière (E14US003) —
-// et faut-il corriger l'adresse pour qu'elle dise la vérité ? Fonction **pure**, comme ses deux
-// voisines, parce que c'est là que se joue l'aiguillage d'entrée.
-//
-// Ordre de précédence, prolongement direct de celui d'ADR-0042 :
-//  1. **le verrou de poste** (`D-13`) prime sur tout, y compris sur l'adresse : une tablette rattachée
-//     ou arrivée par QR ne sort pas de son écran parce qu'on a tapé `/admin` dans la barre ;
-//  2. **l'adresse**, si elle nomme un monde — c'est un geste explicite, au même titre qu'un tap sur
-//     une porte, et il doit gagner sur un choix mémorisé plus ancien (sinon un lien envoyé à un
-//     bénévole n'ouvrirait jamais le bon écran) ;
-//  3. **le choix mémorisé ou une session héritée** (`resoudreRole`) quand l'adresse est la racine.
-//     L'adresse est alors **corrigée** pour refléter le monde servi : sans ça, un rechargement
-//     retomberait sur la racine et l'utilisateur croirait avoir perdu sa session.
+// Quel monde servir, maintenant que **l'adresse** est une source d'entrée à part entière
+// (E14US003), et faut-il corriger l'adresse pour qu'elle dise la vérité ? Fonction **pure**. Ordre
+// de précédence, prolongement d'ADR-0042 : **le verrou de poste** (`D-13`) prime sur tout, adresse
+// comprise — une tablette rattachée ne sort pas de son écran parce qu'on a tapé `/admin` ; puis
+// **l'adresse** si elle nomme un monde, geste explicite qui gagne sur un choix mémorisé plus ancien
+// ; puis **le choix mémorisé ou une session héritée**, l'adresse étant alors **corrigée** — sans
+// quoi un rechargement retomberait sur la racine.
 export function mondeAServir(
   mondeUrl: Monde,
   etat: EtatEntree,

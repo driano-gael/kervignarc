@@ -1,12 +1,9 @@
 // Règles de zones du blason, côté client (E01US014) — fonctions **pures**, sans React.
 //
-// Ce sont des **miroirs** de règles qui vivent au domaine (`backend/domain/blason.py`) : le
-// serveur reste l'autorité et revalide tout. Elles n'existent ici que pour éviter d'envoyer une
-// requête vouée au 422 et pour rendre l'ordre d'affichage stable.
-//
-// Extraites du composant à dessein : inline dans `Blasons.tsx`, elles n'étaient testables qu'avec
-// un rendu (le projet n'a ni jsdom ni testing-library). Ici, `vitest` seul suffit — même geste que
-// pour `format.ts` (E00US014).
+// Ce sont des **miroirs** de règles qui vivent au domaine (`backend/domain/blason.py`) : le serveur
+// reste l'autorité et revalide tout. Elles n'existent ici que pour éviter une requête vouée au 422
+// et rendre l'ordre d'affichage stable. Extraites du composant à dessein : inline dans
+// `Blasons.tsx`, elles n'étaient testables qu'avec un rendu.
 
 // Vocabulaire des zones de score en salle, du centre vers l'extérieur (référentiel FFTA §4.2).
 // Miroir de l'énuméré `ZoneScore` du domaine ; sert aussi d'ordre d'affichage.
@@ -62,12 +59,10 @@ export function aUneZoneMarquante(zones: readonly Zone[]): boolean {
 
 /** Vrai si la case de `zone` doit être verrouillée (non décochable).
  *
- * Seul le manqué se verrouille — et **une fois coché seulement**. Le domaine impose `M` sur tout
- * blason : l'UI le verrouille plutôt que de laisser l'admin le décocher pour se faire refuser en
- * 422. Mais un blason qui arriverait **sans** `M` (base éditée à la main) doit rester rattrapable :
- * verrouiller inconditionnellement rendrait sa case ni cochée ni cochable, le PUT échouerait en
- * 422, et l'admin n'aurait aucune action dans l'UI pour s'en sortir — le blason deviendrait
- * inéditable, jusqu'à son nom.
+ * Seul le manqué se verrouille, et **une fois coché seulement**. ⚠️ Un blason qui arriverait
+ * **sans** `M` (base éditée à la main) doit rester rattrapable : verrouiller inconditionnellement
+ * rendrait sa case ni cochée ni cochable, le PUT échouerait en 422, et l'admin n'aurait aucune
+ * action pour s'en sortir — le blason deviendrait inéditable, jusqu'à son nom.
  */
 export function estVerrouillee(zones: readonly Zone[], zone: Zone): boolean {
   return zone === ZONE_MANQUE && zones.includes(ZONE_MANQUE)

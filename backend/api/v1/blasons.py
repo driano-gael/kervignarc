@@ -1,14 +1,7 @@
 """Endpoints REST des blasons (`/api/v1`) — CRUD des blasons d'un tournoi (E01US005).
 
-Suit le patron de bout en bout (E00US009) :
-- **DTO Pydantic** distincts des agrégats de domaine ;
-- **écriture** routée par la **file d'écriture** (writer unique, ADR-0005), protégée par
-  `exiger_admin` (E10US001/E10US002) ;
-- **lecture** directe exécutée **hors boucle** (threadpool) ;
-- **erreurs typées** traduites à la frontière (`api/erreurs.py`).
-
-Routes imbriquées sous le tournoi pour la création/liste (un blason appartient à un tournoi) ;
-l'édition et la suppression ciblent le blason par son identifiant.
+Un blason appartient à un tournoi : création et liste sont imbriquées sous lui, édition et
+suppression ciblent le blason par son identifiant. Patron de bout en bout : E00US009.
 """
 
 from __future__ import annotations
@@ -31,12 +24,10 @@ router = APIRouter(prefix="/api/v1", tags=["blasons"])
 class CreerBlasonRequete(BaseModel):
     """Corps de création d'un blason (nom, taille dans `]0, 1]`, capacité `>= 1`).
 
-    `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (le jeu complet
-    d'un blason simple). Le **vocabulaire** est fermé par `ZoneScore` : une valeur hors des onze
-    zones FFTA fait rejeter la requête en **400** à la frontière, avant que le domaine ne la voie
-    (règle 6) — même régime qu'`ages`, cf. ADR-0019.
-    Les règles **structurelles** (M obligatoire, au moins une zone marquante, pas de doublon)
-    restent au domaine et sortent en 422.
+    `zones` (E01US014) est **facultatif** : omis, le domaine applique son défaut (jeu complet d'un
+    blason simple). Le **vocabulaire** est fermé par `ZoneScore` — une valeur hors des onze zones
+    FFTA est rejetée en **400** à la frontière, avant le domaine (règle 6, même régime qu'`ages`,
+    ADR-0019). Les règles **structurelles** restent au domaine et sortent en 422.
     """
 
     nom: str

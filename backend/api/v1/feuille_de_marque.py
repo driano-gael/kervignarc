@@ -1,11 +1,8 @@
 """Frontière API — feuille de marque d'un départ en PDF (E09US001).
 
-Endpoint de **lecture** : compose le document à la demande à partir du plan persisté (aucune
-écriture DB) → exécuté hors boucle événementielle (`run_in_threadpool`, règle 7). Réservé à
-l'admin (`exiger_admin`, E10US001). Premier endpoint du projet à renvoyer un **binaire** : la
-réponse porte `application/pdf` et un `Content-Disposition: attachment` pour déclencher le
-téléchargement. Les gardes 404 (`TournoiIntrouvable`, `DepartIntrouvable`) remontent du service et
-sont traduites à la frontière (`api/erreurs.py`) — pas de gestion d'erreur locale (règle 5).
+Lecture seule, admin : le document se compose à la demande depuis le plan persisté, d'où le
+`run_in_threadpool` (règle 7). Réponse binaire `application/pdf` en pièce jointe. Patron de bout en
+bout : E00US009.
 """
 
 from __future__ import annotations

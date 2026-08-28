@@ -1,16 +1,9 @@
-"""Service applicatif d'accès administrateur (E10US002).
+"""Authentification admin — deux ports : un store d'identifiants, un store de sessions.
 
-L'authentification est un concern **technique**, pas métier : il n'y a donc **pas d'entité
-domaine**. Le service orchestre deux adapters, exprimés ici comme **contrats** (Protocols) que
-l'application possède et que l'infrastructure implémente (dépendance pointant vers l'intérieur) :
+Les identifiants vivent dans un `.env` local : compromis **assumé** pour un outil mono-club LAN.
 
-- un **store d'identifiants** (login + mot de passe), persistés dans un fichier `.env` local —
-  compromis de sécurité **assumé** pour un outil mono-club LAN (cf. story E10US002) ;
-- un **store de sessions** délivrant/validant des **jetons opaques** en mémoire.
-
-Le flux : au 1ᵉʳ accès (aucun identifiant), l'admin **définit** l'accès (`configurer`) ; ensuite
-il se **connecte** (`connexion`). Une réussite ouvre une session dont le jeton est joint aux
-actions admin. Comparaison des secrets en **temps constant** (`hmac.compare_digest`).
+⚠️ **Comparaison des secrets en temps constant** (`hmac.compare_digest`) — au 1ᵉʳ accès, l'admin
+définit l'accès, ensuite il se connecte.
 """
 
 from __future__ import annotations

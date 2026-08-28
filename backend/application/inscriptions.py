@@ -1,18 +1,9 @@
-"""Service applicatif Inscriptions — inscrire un archer sur des départs (E02US009, ADR-0017).
+"""Service des **inscriptions** — c'est ici que vivent les règles inter-agrégats.
 
-Orchestre le lien **archer ↔ départ** derrière les ports repository. Ne connaît ni HTTP, ni SQL, ni
-la file d'écriture (sérialisation assurée en amont, côté API) ; synchrone et pur d'infrastructure.
+Un archer ne s'inscrit que sur un départ **de son propre tournoi** ; un départ voisin lui est
+*introuvable*, pas interdit. Pas deux fois le même couple (pendant applicatif du `UNIQUE`).
 
-C'est ici — et pas dans l'entité `Inscription`, qui ne voit que deux clés — que vivent les règles
-inter-agrégats de l'US :
-
-- **même tournoi** : un archer ne s'inscrit que sur un départ **de son propre tournoi** ; un départ
-  d'un autre tournoi est *introuvable* de son point de vue (`DepartIntrouvable`, comme
-  `CategorieHorsTournoi` cachait la catégorie voisine) ;
-- **unicité** : pas deux fois le même couple `(archer, départ)` (`DejaInscrit`), pendant applicatif
-  de la contrainte `UNIQUE` en base ;
-- **montant dérivé** : le montant dû d'une inscription **n'est pas stocké**, il se lit sur le
-  `tarif_centimes` du départ à chaque lecture (`InscriptionDetaillee`).
+⚠️ **Le montant dû n'est pas stocké** : il se lit sur le tarif du départ à chaque lecture.
 """
 
 from __future__ import annotations
@@ -75,15 +66,11 @@ class ServiceInscriptions:
     def inscrire(self, archer_id: ArcherId, depart_id: DepartId) -> InscriptionDetaillee:
         """Inscrit un archer sur un départ de **son** tournoi.
 
-        Lève `ArcherIntrouvable` si l'archer n'existe pas, `DepartIntrouvable` si le départ n'existe
-        pas **ou n'appartient pas au tournoi de l'archer**, `DejaInscrit` s'il est déjà inscrit sur
-        ce créneau, `DepartComplet` si le créneau porte un quota déjà **atteint** (E02US006).
-
-        Contrôle d'unicité, **contrôle de quota** et insertion tiennent dans **une seule commande**
-        en file (règle 7) : aucune inscription concurrente ne peut se glisser entre le comptage et
-        l'insertion, donc franchir la dernière place. La contrainte `UNIQUE(archer_id, depart_id)`
-        reste le garde-fou ultime de l'unicité — mais le quota, lui, n'a **aucun** filet en base
-        (rien ne l'exprime en SQL) : la sérialisation par le writer unique **est** ce garde-fou.
+        Lève `ArcherIntrouvable`, `DepartIntrouvable` (inexistant **ou** hors du tournoi de
+        l'archer), `DejaInscrit`, `DepartComplet` (quota atteint, E02US006). ⚠️ Unicité, quota et
+        insertion tiennent dans **une seule commande** en file (règle 7) : `UNIQUE(archer_id,
+        depart_id)` est le filet ultime de l'unicité, mais le quota n'a **aucun** filet en base —
+        la sérialisation par le writer unique **est** ce garde-fou.
         """
         archer = self._archer_existant(archer_id)
         depart = self._depart_de_l_archer(archer, depart_id)
@@ -132,30 +119,20 @@ class ServiceInscriptions:
         """Montant total dû par un archer = **somme des tarifs** de ses créneaux (E08US001).
 
         Dérivé à la lecture, jamais stocké (ADR-0017) : délègue à `lister_par_archer`, donc suit
-        tout changement de tarif **ou** d'inscription, et ignore de la même façon une inscription
-        dont le départ vient d'être purgé en cascade — le total compte **exactement** les créneaux
-        que la liste montre, jamais un de plus. C'est une **somme**, pas un tarif unique multiplié
-        par le nombre de créneaux : les prix diffèrent par créneau (ADR-0017). Lève
-        `ArcherIntrouvable` si l'archer n'existe pas — un archer inconnu ne « doit » rien, il
-        n'existe pas (patron `lister_par_archer`).
+        tout changement de tarif ou d'inscription et compte **exactement** les créneaux que la
+        liste montre. C'est une **somme**, pas un tarif multiplié : les prix diffèrent par créneau.
+        Lève `ArcherIntrouvable` — un archer inconnu ne « doit » rien, il n'existe pas.
         """
         return sum(detail.montant_du_centimes for detail in self.lister_par_archer(archer_id))
 
     def desinscrire(self, inscription_id: InscriptionId, confirme: bool = False) -> None:
         """Désinscrit un archer d'un départ. Lève `InscriptionIntrouvable` si elle n'existe pas.
 
-        Une inscription **non payée** (ou d'un créneau **gratuit**) se désinscrit **librement**
-        (comportement E02US009 inchangé). Une inscription **payée** d'un créneau **tarifé** efface
-        une somme encaissée : elle est **confirmable** (E08US005, ADR-0057). Tant que `confirme` est
-        faux, lève `InscriptionPayeeARembourser` (409) — `details` chiffre le montant et nomme
-        l'archer. Confirmée, la désinscription **supprime l'inscription ET ouvre le remboursement en
-        une transaction** (`supprimer_avec_remboursement`) : jamais de somme effacée sans
-        contrepartie (le but de l'US), jamais de remboursement en double.
-
-        Le créneau peut avoir disparu (vestige d'un instantané périmé, purge en cascade concurrente)
-        ou l'archer être introuvable : dans ces cas on ne peut/doit pas ouvrir de remboursement — on
-        retombe sur la suppression simple (le départ détruit a déjà ouvert ses propres
-        remboursements par son propre chemin).
+        Une inscription **non payée** (ou d'un créneau gratuit) se désinscrit librement. Une
+        inscription **payée** d'un créneau tarifé efface une somme encaissée : `confirme` faux →
+        `InscriptionPayeeARembourser` (409 chiffré) ; confirmée, la suppression **et** l'ouverture
+        du remboursement tiennent en **une transaction** (ADR-0057). ⚠️ Créneau ou archer disparu :
+        on retombe sur la suppression simple — le départ détruit a déjà ouvert ses remboursements.
         """
         inscription = self._inscription_existante(inscription_id)
         assert inscription.id is not None, "Une inscription relue est persistée."

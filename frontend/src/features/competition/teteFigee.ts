@@ -12,10 +12,8 @@ import type { ReglagePages } from '../../shared/ui/pagination'
  * Trois cas, et le troisième est le garde-fou : projeté **avec** un réglage de pages → 3 (P07) ;
  * manipulé et non centré sur des suivis → 8 ; sinon **zéro**. Le zéro couvre la liste courte
  * centrée sur ses archers (figer 8 sur 3 lignes n'encadre plus rien) **et** l'écran projeté sans
- * réglage — où figer une tête sans faire tourner le reste amputerait le classement.
- *
- * Fonction pure et nommée plutôt qu'un ternaire imbriqué dans le JSX : c'est une règle de choix,
- * elle se teste (cf. `teteFigee.test.ts`).
+ * réglage — où figer une tête sans faire tourner le reste amputerait le classement. Pure et nommée
+ * plutôt qu'un ternaire dans le JSX : c'est une règle de choix, elle se teste.
  */
 export function teteFigee(
   filtrable: boolean,

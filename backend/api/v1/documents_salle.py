@@ -1,24 +1,12 @@
-"""Frontière API — documents de préparation de salle (E09US008, E11US008).
+"""Documents de salle — deux PDF à imprimer, plus le **QR d'une cible à l'écran** (SVG).
 
-Endpoints de **lecture** (aucune écriture DB : ils composent à la demande à partir des codes déjà
-préparés) → exécutés hors boucle événementielle (`run_in_threadpool`, règle 7). Réservés à l'admin
-(`exiger_admin`, E10US001) : les codes sont des secrets d'usage, ils n'ont pas à fuiter au public.
-
-Deux formes de sortie :
-
-- les deux **PDF à imprimer** (étiquettes de cible, cartes de scoreur) : binaire `application/pdf`
-  avec `Content-Disposition: attachment` ;
-- le **QR d'une cible à l'écran** (E11US008) : image `image/svg+xml`, affichée dans l'admin
-  « Postes de cible » pour rattacher une tablette sans repasser par le PDF. SVG (vectoriel) pour
-  rester net une fois agrandi ; chargé côté front par **blob authentifié** (le Bearer admin est en
-  JS, un `<img src>` direct n'emporterait pas le jeton).
-
-Les QR de cible (PDF **et** écran) encodent une URL de rattachement bâtie sur l'**origine de la
-requête** (`request.base_url`), passée au service — le seul endroit qui connaisse l'adresse par
-laquelle l'admin (donc, le jour J, les tablettes) atteint le serveur (# DETTE-012). Les gardes 404
-(`TournoiIntrouvable`, `PosteIntrouvable`) remontent du service, traduites à la frontière
-(`api/erreurs.py`).
+Le SVG est chargé par **blob authentifié** : le Bearer admin vit en JS, un `<img src>` direct
+n'emporterait pas le jeton. ⚠️ **Réservé à l'admin** (`exiger_admin`, E10US001) : les QR encodent
+des codes de rattachement, secrets d'usage qui n'ont pas à fuiter au public.
 """
+
+# ⚠️ **Les QR encodent une URL bâtie sur l'ORIGINE DE LA REQUÊTE** — le seul endroit qui connaisse
+# l'adresse par laquelle les tablettes atteindront le serveur le jour J (`DETTE-012`).
 
 from __future__ import annotations
 

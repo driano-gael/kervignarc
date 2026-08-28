@@ -1,15 +1,8 @@
-"""Adapter : jetons de session de poste en mémoire (E04US001, ADR-0029).
+"""Sessions de poste — en mémoire, **sans expiration**, persistées côté client pour survivre à la
+fermeture de l'onglet, au redémarrage de la tablette ou à une veille.
 
-Réalise le port `application.postes.StoreSessionsPoste`. Jetons **opaques**
-(`secrets.token_urlsafe`), conservés dans un dictionnaire `jeton → poste_id` protégé par un verrou
-(lectures/écritures peuvent venir de threads du threadpool). Le lien vers l'`id` du poste sert au
-client à retrouver **sa cible** à la réouverture.
-
-**Sans expiration**, comme la session scoreur (ADR-0025), et persisté côté client (`localStorage`)
-pour survivre à la fermeture de l'onglet, au redémarrage de la tablette ou à une veille. Invalidé au
-**redémarrage** du serveur (mémoire volontairement volatile) ou à la **déconnexion**. La révocation
-« tournoi terminé » n'est **pas** portée ici : elle est appliquée à la **résolution** par le service
-(`ServicePostes.resoudre_session`), qui seul connaît le cycle de vie du tournoi.
+⚠️ **La révocation « tournoi terminé » n'est PAS portée ici** : elle s'applique à la **résolution**,
+par le service, qui seul connaît le cycle de vie du tournoi. ADR-0025, ADR-0029
 """
 
 from __future__ import annotations

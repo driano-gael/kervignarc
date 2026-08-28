@@ -1,26 +1,9 @@
-"""Service applicatif Remboursements — traiter les sommes encaissées à rendre (E08US005, ADR-0057).
+"""Service des **remboursements** — on consulte et on clôt ; l'inscription est créée ailleurs.
 
-Ce service porte le **traitement** des remboursements : les **lister** (pour l'écran Paiements) et
-marquer un poste **remboursé** ou **reporté** (l'acte humain « daté, tracé » du CA). Il ne les
-**crée pas** : un remboursement naît **atomiquement** avec la suppression de l'inscription payée qui
-le provoque (désinscription ou suppression de départ), côté `ServiceInscriptions` / `ServiceDeparts`
-— voir [ADR-0057]. Ici on ne fait que consulter et clore.
-
-Deux invariants du traitement :
-
-- **Trace** (règle 9, CA « daté, tracé ») : marquer remboursé/reporté est un **mouvement d'argent**
-  (côté sortie, comme le paiement l'est côté entrée), donc **audité** (`REMBOURSEMENT`). L'atomicité
-  acte↔trace est réalisée par l'adapter (`RemboursementRepository.enregistrer_avec_trace`,
-  co-écriture en une transaction, ADR-0035) : jamais un poste clos sans trace.
-- **Terminalité** : un remboursement déjà traité ne se re-traite pas (`RemboursementDejaTraite`,
-409)
-  — conflit d'**état**, à l'image des transitions de statut de tournoi. La garde vit ici (le
-  service), pas dans l'entité (pure) : c'est l'intention « clore ce poste » qui est refusée quand il
-  est déjà clos.
-
-Le service **date** l'entrée d'audit et le traitement via le port `Horloge` — le domaine reste pur.
-
-[ADR-0057]: ../../docs/adr/0057-registre-de-remboursements.md
+⚠️ **Marquer remboursé ou reporté est un MOUVEMENT D'ARGENT**, donc audité, et l'atomicité
+acte↔trace est réalisée par l'adapter (ADR-0035) : jamais un poste clos sans trace. Un
+remboursement déjà traité ne se re-traite pas (409) — la garde vit **ici**, pas dans l'entité :
+c'est l'intention « clore ce poste » qui est refusée.
 """
 
 from __future__ import annotations
@@ -118,14 +101,13 @@ class ServiceRemboursements:
         remboursement_id: RemboursementId,
         cible: StatutRemboursement,
     ) -> Remboursement:
-        """Applique une transition terminale (remboursé/reporté) et co-écrit sa trace
-        `REMBOURSEMENT`.
+        """Applique une transition terminale (remboursé/reporté) et co-écrit sa trace.
 
-        Garde de **terminalité** ici (le service) : on ne clôt que ce qui est encore `à_rembourser`.
-        Le poste est **borné au tournoi** de l'URL : un `id` d'un autre tournoi est *introuvable* de
-        son point de vue (symétrique de `lister`, qui 404 sur un tournoi inconnu) — on ne traite pas
-        le poste d'un voisin par une URL mal formée. L'entité applique la transformation ; l'adapter
-        scelle statut + trace en une transaction.
+        Garde de **terminalité** ici (le service) : on ne clôt que ce qui est encore
+        `à_rembourser`. ⚠️ Le poste est **borné au tournoi** de l'URL — un `id` d'un autre tournoi
+        est *introuvable* de son point de vue : on ne traite pas le poste d'un voisin par une URL
+        mal formée. L'entité applique la transformation ; l'adapter scelle statut + trace en une
+        transaction.
         """
         remboursement = self._remboursements.par_id(remboursement_id)
         if remboursement is None or remboursement.tournoi_id != tournoi_id:

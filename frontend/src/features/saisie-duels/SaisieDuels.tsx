@@ -1,12 +1,10 @@
 // Écran tactile de saisie en duels (E04US013) — la surface du **scoreur** itinérant (D-12).
 //
-// Le scoreur, sur son téléphone, choisit une **phase de tableau**, voit la **liste des duels par
-// tour**, en ouvre un, et le score : une **grille de manches** (sets ou cumul selon `mode`, résolu
-// par arme côté serveur — le front n'en décide pas, ADR-0049), un **barrage** conditionnel (§8.2, à
-// égalité : une flèche par camp + désignation du plus près du centre, que l'appli ne mesure pas),
-// puis la **validation** du duel tranché (grain fin de duel), qui fait avancer le tableau. Le serveur
-// reste l'**autorité** (mode, zones du pavé, résultat) ; le front n'affiche que ce qu'il reçoit. La
-// saisie survit à une coupure réseau (file hors-ligne + rejeu, E04US009).
+// Le scoreur choisit une phase de tableau, voit la liste des duels par tour, en ouvre un et le
+// score : grille de manches (sets ou cumul selon `mode`, **résolu par arme côté serveur** — le
+// front n'en décide pas, ADR-0049), barrage conditionnel (§8.2, que l'appli ne mesure pas), puis
+// validation du duel tranché. Le serveur reste l'**autorité** ; le front n'affiche que ce qu'il
+// reçoit. La saisie survit à une coupure réseau (file hors-ligne + rejeu, E04US009).
 
 import { useState } from 'react'
 import { ErreurApi } from '../../shared/api/client'
@@ -299,18 +297,13 @@ function GrilleDuel({
   )
 }
 
-/**
- * Le **pavé de saisie d'un duel chargé** — en-tête, manches, barrage, validation.
+/** Le **pavé de saisie d'un duel chargé** — en-tête, manches, barrage, validation.
  *
  * ⚠️ **Exporté depuis E05US023**, et c'est ce qui rend les poules jouables sans second écran : une
- * rencontre de poule *est* un duel ordinaire (ADR-0083 §7), donc elle se saisit avec ce pavé-ci.
- * `famille` dit seulement **où écrire** (`/api/v1/duels/...` ou `/api/v1/poules/...`) ; tout le
- * reste — l'agrégat, le mode, les zones, le verrou, le barrage interne — est identique.
- *
- * Une seule chose ne traverse pas : le **forfait**. Déclarer un abandon en tableau est un
- * *walkover* qui fait passer l'adversaire (ADR-0050) ; en poule, la question ne se pose pas de la
- * même façon — le CA d'E05US023 ne l'ouvre pas, et l'offrir ici appellerait un service qui ne sait
- * pas recomposer une poule. Le bouton n'est donc rendu que pour un tableau.
+ * rencontre de poule *est* un duel ordinaire (ADR-0083 §7). `famille` dit seulement **où écrire**
+ * ; tout le reste est identique. Une seule chose ne traverse pas : le **forfait** — un *walkover*
+ * fait passer l'adversaire (ADR-0050), et en poule le CA ne l'ouvre pas. Le bouton n'est donc
+ * rendu que pour un tableau.
  */
 export function DuelCharge({
   tournoiId,
@@ -605,18 +598,13 @@ function SaisieManche({
 }
 
 // Une volée d'un camp : nom et total sur une première ligne, pastilles des flèches sur une seconde.
-// Tapable pour devenir le camp **actif** (celui que le pavé remplit). Cible tactile ≥ 48 px.
+// Tapable pour devenir le camp **actif**. Cible tactile ≥ 48 px.
 //
-// **Deux hauteurs, pas une seule rangée** — retour maquettes du 04/08/2026 (S05) : *« les
-// emplacements de saisie des volées est trop étroit »*, *« au lieu de 2 colonnes je préférerais sur
-// 2 hauteurs, adapté tablette et téléphone »*.
-//
-// Nuance utile pour la lecture du retour : la variante critiquée (« deux colonnes symétriques »)
-// était celle de la **maquette** ; le code, lui, empilait déjà les deux camps l'un au-dessus de
-// l'autre. Ce qui restait juste du reproche, c'est l'intérieur de chaque camp — nom, flèches et
-// total se partageaient **une** rangée, si bien que les cases de flèches, seule zone qu'on vise du
-// doigt, recevaient ce que le nom voulait bien leur laisser. Un nom long les écrasait. Elles ont
-// désormais leur propre ligne, sur toute la largeur.
+// **Deux hauteurs, pas une seule rangée** — retour maquettes du 04/08/2026 (S05). Nuance utile : la
+// variante critiquée (« deux colonnes symétriques ») était celle de la **maquette**, le code
+// empilait déjà les deux camps. Ce qui restait juste, c'est l'intérieur de chaque camp — nom,
+// flèches et total se partageaient **une** rangée, si bien qu'un nom long écrasait les cases, seule
+// zone qu'on vise du doigt.
 function VoleeCamp({
   nom,
   valeurs,

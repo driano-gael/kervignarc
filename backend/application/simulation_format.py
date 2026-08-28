@@ -1,44 +1,9 @@
-"""Service applicatif Simulation de format — « le format tient-il à N archers ? » (E01US024).
+"""Simule un format sur le moteur **réel**, sur un tournoi qui n'existe nulle part (ADR-0063).
+L'isolation tient au passage par `ouvrir_sur_harnais`, pas à l'absence de repository.
 
-Le CA : *« je veux être sûr de pouvoir lancer une simulation du format du tournoi une fois les
-phases et le nombre d'inscrits donnés »*. La simulation révèle ce qu'aucune relecture ne donne — le
-format **tient-il** à cet effectif, **combien de duels au total** (donc quelle charge pour les
-scoreurs et les cibles), combien de tours, et le **classement 1→N effectivement produit**.
-
-**Aucun moteur n'est écrit ici.** Tout existe déjà : `fabriquer_harnais_simulation` (E15US002,
-ADR-0054) fournit le substrat in-memory, `ServicePilotageSimulation` (E15US003, ADR-0055) fournit le
-bot qui joue les volées et tranche les duels. Ce service **compose** les deux sur un tournoi qui
-n'existe nulle part.
-
-⚠️ **Ce que la simulation mesure vraiment — et sa limite d'aujourd'hui.** Elle joue le format sur le
-moteur **réel**, celui du jour J. ⚠️ **Depuis E05US020 il honore les prélèvements par rangs**
-(ADR-0068) ; ce qui suit ne vaut donc plus que pour `le_reste`, `par_issue_de_tour` et les types
-qu'aucun service ne déroule. Le moteur **n'a pas de consommateur** de ces sources-là
-côté duels : `ServiceSaisieDuels._decor` ensemence chaque tableau avec **tous** les archers en lice,
-sans regarder le prélèvement déclaré. Un format qui dit « les rangs 1 à 8 au tableau » se joue donc
-aujourd'hui à 12 si 12 archers sont classés. C'est `# DETTE-028` — le catalogue de types et le
-routing sont livrés sans consommateur —, et cette US ne la résorbe pas : elle la **rend visible**.
-Chaque `ToursPhase` porte donc l'effectif **projeté** à côté de l'effectif **constaté**, et l'écran
-signale l'écart. Taire la divergence donnerait un chiffre de duels faux à qui dimensionne ses
-scoreurs ; l'afficher dit exactement ce que l'outil sait et ce qu'il ne sait pas encore.
-
-**Pourquoi le garde-fou d'ADR-0054 §4 ne s'applique pas ici.** Il interdit de simuler un tournoi
-déjà démarré, pour ne pas interférer avec une compétition. Il n'y a ici **aucun tournoi réel** : le
-tournoi simulé naît dans le harnais et meurt avec lui. La non-persistance reste structurelle — ce
-service ne reçoit aucun repository SQL en propre, seulement la bibliothèque de formats, en
-**lecture**. Nuance à ne pas surestimer : `ServicePilotageSimulation`, qu'il compose, **détient**
-des repositories SQL — ils ne sont lus que par `demarrer`, que ce chemin n'emprunte pas. L'isolation
-tient donc parce qu'on appelle `ouvrir_sur_harnais`, pas parce que le chemin SQL serait absent.
-
-**Pourquoi `ServiceJeuEssai` n'est pas réutilisé pour les archers fictifs.** La note de l'US le
-prévoyait (« il n'y a qu'à composer les deux ») ; le code ne s'y prête pas. `ServiceJeuEssai` pilote
-des **services** (`ServiceTournois`, `ServiceDeparts`, `ServiceClubs`, `ServiceInscriptions`…), pas
-des repositories : le brancher sur le harnais supposerait d'élargir `HarnaisSimulation` de trois
-magasins (clubs, départs, inscriptions) et d'instancier six services — pour obtenir des noms. Or un
-format ne connaît ni départs ni clubs ni quotas : ces règles n'ont rien à valider ici. La génération
-locale (`_peupler`) tient en une vingtaine de lignes, reste déterministe (`random.Random(graine)`,
-règle 9) et n'emprunte aucune règle métier à qui que ce soit. Arbitrage tranché en cours d'US et
-consigné à l'ADR-0063 §5.
+⚠️ **La simulation RÉVÈLE un écart qu'elle ne corrige pas** : le moteur de duels ensemence avec tous
+les archers en lice sans lire le prélèvement déclaré (`DETTE-028`). D'où l'effectif **projeté** à
+côté du **constaté** sur chaque `ToursPhase`.
 """
 
 from __future__ import annotations
@@ -71,54 +36,30 @@ from domain.tournoi import StatutTournoi, Tournoi, TournoiId
 _TYPES_DEROULABLES = TYPES_JOUES - {
     TypePhase.POULES,
     TypePhase.BIG_SHOOT_OFF,
-    # DETTE-066 — ⚠️ **3ᵉ retrait à la main, et il a été oublié une fois** (revue d'E05US026) :
-    # `SUISSE` entre dans `TYPES_JOUES` dès que le service le déroule, alors que
-    # `fabriquer_harnais_simulation` ne construit **aucun** `ServiceSuisse`. Sans ce terme,
-    # l'atelier annonçait `joue=True, 0 tour, 0 duel` — des zéros lus comme un constat — et le
-    # bandeau « le moteur ne sait pas encore dérouler ce type » **disparaissait**.
-    #
-    # La 3ᵉ occurrence atteint le seuil du remède structurel de `CLAUDE.md` : la capacité manquante
-    # au registre de contrat est « le **bot** sait-il simuler ce type ? », question distincte de
-    # « un service de production le déroule-t-il ? ». Inscrite au registre (`DETTE-066`), à traiter
-    # en US dédiée — la colline en fera un 4ᵉ retrait sinon.
+    # DETTE-066 — ⚠️ **3ᵉ retrait à la main, et il a été oublié une fois** : `SUISSE` entre dans
+    # `TYPES_JOUES` dès que le service le déroule, alors que `fabriquer_harnais_simulation` ne
+    # construit **aucun** `ServiceSuisse`. Sans ce terme, l'atelier annonçait `joue=True, 0 tour,
+    # 0 duel` — des zéros lus comme un constat — et le bandeau « le moteur ne sait pas encore
+    # dérouler ce type » **disparaissait**. La capacité manquante au registre est « le **bot**
+    # sait-il simuler ce type ? », distincte de « un service de production le déroule-t-il ? ».
     TypePhase.SUISSE,
-    # DETTE-066 — ⚠️ **4ᵉ retrait, et il était annoncé nommément par le commentaire ci-dessus.**
-    # E05US027 rend la colline jouable en production, donc `COLLINE` entre dans `TYPES_JOUES` ;
-    # `fabriquer_harnais_simulation` ne construit toujours **aucun** `ServiceColline`.
+    # DETTE-066 — ⚠️ **4ᵉ retrait, annoncé nommément par le commentaire ci-dessus.** E05US027
+    # rend la colline jouable en production, et `fabriquer_harnais_simulation` ne construit
+    # toujours aucun `ServiceColline`.
     #
-    # ⚠️ **Cette fois l'oubli n'était pas possible** : le garde-fou posé en E05US035
-    # (`test_le_bot_de_simulation_ne_pretend_pas_jouer_ce_qu_il_ne_sait_pas`) est **tombé** dès la
-    # bascule du registre, avant qu'une seule ligne de simulation soit touchée. C'est la
-    # démonstration que le remède attendu — une capacité *simulable* au registre de contrat — n'a
-    # pas besoin d'être improvisé ici : le test rend le retrait manuel **visible et daté**, ce qui
-    # était tout ce qui manquait. La dette reste ouverte et s'élargit d'un 4ᵉ terme ; elle ne
-    # s'aggrave pas d'un cran de risque.
+    # ⚠️ **Cette fois l'oubli n'était pas possible** : le garde-fou posé en E05US035 est **tombé**
+    # dès la bascule du registre, avant qu'une ligne de simulation soit touchée. Le test rend le
+    # retrait manuel **visible et daté**, ce qui était tout ce qui manquait au remède.
     TypePhase.COLLINE,
 }
 """Les types que **le bot de simulation** sait réellement jouer aujourd'hui.
 
-⚠️ **Deux questions distinctes, et les confondre a fait mentir cet écran** (correctif de revue).
-`TYPES_JOUES` répond « un service de **production** sait faire jouer ce type » ; ce site demande
-« le **bot** sait-il le jouer ? ». E05US023 a fait entrer `POULES` dans la première sans que la
-seconde change : `fabriquer_harnais_simulation` ne construit aucun `ServicePoules`, et
-`application/simulation.py` ne déroule que l'élimination directe.
-
-Conséquence, avant ce retrait : une phase de poules tombait dans la branche « pas d'état » et
-sortait `joue=True, tours=0, duels=0` — donc l'atelier affichait « 0 tour, 0 duel » comme un
-**constat**, et le bandeau « le moteur ne sait pas encore dérouler ce type » **disparaissait**.
-C'est mot pour mot ce que le drapeau existe pour empêcher (cf. `_phases_jouees`). Remplacer une
-table écrite à la main par une table dérivée n'est sûr que si la capacité dérivée répond
-**exactement** à la même question ; ici elle n'y répondait pas.
-
-Le retrait est explicite plutôt que dérivé parce qu'il n'existe pas encore de capacité « le bot
-sait simuler ce type » au registre de contrat. La poser serait le remède propre — elle vaut une US
-dédiée, pas un cavalier dans un correctif de revue (`# DETTE-028`).
-
-⚠️ **Le Big Shoot Off rejoint la liste en E05US028**, pour exactement la même raison et sans qu'il
-ait fallu le redécouvrir : `fabriquer_harnais_simulation` ne construit aucun `ServiceBigShootOff`,
-et `application/simulation.py` ne déroule que l'élimination directe. C'est la **2ᵉ** fois que le
-retrait est nécessaire, ce qui confirme que la capacité manquante est réelle — mais deux n'est pas
-trois, et la poser reste une US."""
+⚠️ **Deux questions distinctes, et les confondre a fait mentir cet écran.** `TYPES_JOUES` répond «
+un service de **production** sait jouer ce type » ; ce site demande « le **bot** sait-il le jouer ?
+». Une phase de poules tombait donc dans la branche « pas d'état » et sortait `joue=True, tours=0`
+— l'atelier affichait « 0 tour » comme un **constat**, et le bandeau d'avertissement disparaissait.
+Le retrait est explicite faute d'une capacité « le bot sait simuler » au registre (`# DETTE-028`).
+"""
 
 GRAINE_DEFAUT = 20260801
 """Graine par défaut : un même format simulé deux fois rend le **même** déroulé (règle 9)."""
@@ -126,13 +67,12 @@ GRAINE_DEFAUT = 20260801
 EFFECTIF_MAX = 200
 """Plafond d'effectif simulable.
 
-Un format se joue intégralement — volées puis duels — sur le thread de la requête ; le coût croît
-linéairement avec l'effectif et le barème (120 archers pour 20 volées : 2 400 volées, plus les
-duels).
-Le plafond n'est pas une règle métier mais une **borne de service** : un `effectif` vient du client
-et rien d'autre ne le borne (même raison que le refus d'un `frozenset(range(…))` dans
-`SourcePhase.intervalle`). 200 couvre très largement un tournoi de club (le plus gros oracle du
-projet en compte 120)."""
+Un format se joue intégralement — volées puis duels — sur le thread de la requête, et le coût croît
+linéairement avec l'effectif et le barème. Ce n'est pas une règle métier mais une **borne de
+service** : un `effectif` vient du client et rien d'autre ne le borne (même raison que le refus
+d'un `frozenset(range(…))` dans `SourcePhase.intervalle`). 200 couvre très largement un tournoi de
+club.
+"""
 
 _NOMS = (
     "Durand",
@@ -174,13 +114,11 @@ _PRENOMS = (
 class ToursPhase:
     """Combien de tours une phase a **réellement** joués, et combien de duels y ont été tranchés.
 
-    `effectif_projete` est ce que le **schéma** annonçait pour cette phase ; `effectif` ce que la
-    simulation a **constaté**. Les deux doivent coïncider — quand ils divergent, c'est que le moteur
-    d'exécution n'honore pas **certains** prélèvements (`# DETTE-028` — depuis E05US020 les rangs
-    le sont ; restent `le_reste` et `par_issue_de_tour` : aucun consommateur de
-    `Phase.sources` côté duels ; `ServiceSaisieDuels._decor` ensemence le tableau avec **tous** les
-    archers en lice, quelle que soit la source). L'écart est rendu au client plutôt que tu, parce
-    qu'un chiffre faux et silencieux est pire qu'un chiffre discuté (`ecart` ci-dessous).
+    `effectif_projete` est ce que le **schéma** annonçait ; `effectif` ce que la simulation a
+    **constaté**. Les deux doivent coïncider — quand ils divergent, c'est que le moteur n'honore
+    pas certains prélèvements (`# DETTE-028` : `le_reste` et `par_issue_de_tour` n'ont aucun
+    consommateur côté duels). L'écart est rendu au client plutôt que tu, parce qu'un chiffre faux
+    et silencieux est pire qu'un chiffre discuté.
     """
 
     ordre: int
@@ -197,24 +135,11 @@ class ToursPhase:
     def ecart(self) -> bool:
         """Vrai si la simulation n'a pas déroulé ce que le schéma annonçait.
 
-        Compare l'**effectif** et le **nombre de tours** — et signale une phase que le moteur ne
-        sait pas jouer du tout (`joue`).
-
-        ⚠️ **Les duels sont délibérément hors du prédicat**, alors qu'ils sont affichés. Le schéma
-        compte les duels de l'**arbre** (`effectif - 1`) ; le moteur y ajoute ce que la politique de
-        profondeur impose — une petite finale au preset `podium`, **toute la cascade de placement**
-        si la phase déclare un classement intégral (E06US006 : la profondeur se lit désormais sur la
-        phase, elle n'est plus câblée). L'écart n'est donc plus « d'une unité » dans tous les cas,
-        mais il reste **structurel et attendu** sur toute phase de tableau — `# DETTE-035`.
-
-        Un premier jet l'incluait : `ecart` devenait vrai sur 100 % des simulations, y compris pour
-        un format parfaitement composé, et l'avertissement — dont l'objet est de signaler la
-        divergence `# DETTE-028` — se noyait dans son propre bruit. Pire, il rendait le test de
-        non-régression de cette dette **tautologique**, alors qu'on attend précisément qu'il échoue
-        le jour où le moteur honorera les sources.
-
-        Les deux comptes restent rendus côte à côte : c'est à l'organisateur de lire « 15 annoncés,
-        16 joués » et d'en tirer sa charge réelle.
+        Compare l'**effectif** et le **nombre de tours**, et signale une phase que le moteur ne
+        sait pas jouer du tout. ⚠️ **Les duels sont hors du prédicat**, alors qu'ils sont affichés
+        : le schéma compte les duels de l'**arbre** quand le moteur y ajoute ce que la profondeur
+        impose (`# DETTE-035`). Les inclure rendait `ecart` vrai sur 100 % des simulations — le
+        test de non-régression en devenait tautologique.
         """
         return not self.joue or any(
             projete is not None and projete != constate
@@ -308,14 +233,11 @@ class ServiceSimulationFormat:
 def _exiger_qualification(format_tournoi: FormatTournoi) -> None:
     """Un format sans qualification est **applicable**, mais pas **simulable**.
 
-    Ce n'est pas une incohérence du format : `ServiceFormats.appliquer` l'accepte (il ne refuse que
-    de *retirer* une qualification à un tournoi qui en a une). C'est une limite du **bot** — il tire
-    ses volées d'un barème, et sans phase de qualification il n'en a aucun (`ouvrir_sur_harnais` →
-    `PhaseQualificationAbsente`).
-
-    Le contrôle est remonté **avant** l'ouverture de session pour deux raisons : le 404 de
-    `PhaseQualificationAbsente` est un contresens ici (rien n'est « introuvable », et il n'y a même
-    pas de tournoi), et son message parle d'un tournoi que l'organisateur ne verrait nulle part.
+    Ce n'est pas une incohérence du format : `ServiceFormats.appliquer` l'accepte. C'est une limite
+    du **bot** — il tire ses volées d'un barème, et sans phase de qualification il n'en a aucun. Le
+    contrôle est remonté **avant** l'ouverture de session pour deux raisons : le 404 de
+    `PhaseQualificationAbsente` est un contresens ici, et son message parle d'un tournoi que
+    l'organisateur ne verrait nulle part.
     """
     if not any(etape.type is TypePhase.QUALIFICATION for etape in format_tournoi.etapes):
         raise FormatNonSimulable(
@@ -414,24 +336,11 @@ def _phases_jouees(
 ) -> tuple[ToursPhase, ...]:
     """Compte, par phase, les tours et les duels **réellement** joués par le bot.
 
-    Le compte vient de l'état des tableaux — pas de la projection : c'est tout l'intérêt de la
-    simulation, confirmer (ou démentir) ce que le schéma annonçait.
-
-    L'appariement se fait par **`phase_id`**, que `EtatTableau` porte depuis E01US024. Un premier
-    jet consommait une liste ordonnée (`restants.pop(0)`) en croyant échapper au décalage d'un `zip`
-    naïf — c'est **le même** décalage : `_tableaux` saute une phase non jouable sans dire laquelle,
-    et tout ce qui suit glisse d'un cran. Relevé par trois axes de la revue.
-
-    `joue` distingue « joué à 0 duel » de « le moteur ne sait pas dérouler ce type ». Les six types
-    d'E05US015 (poules, suisse, colline, big shoot off, barrage, échauffement) n'ont **aucun**
-    moteur d'exécution (`# DETTE-028`) : sans ce drapeau, ils s'affichaient « — tours, — duels »
-    comme des **faits**, et l'écart restait muet puisque leur effectif « constaté » était l'effectif
-    entier recopié. C'est précisément le cas où l'organisateur a le plus besoin d'être averti.
-
-    ⚠️ Il se déduit du **type**, pas de l'absence de tableau. Une élimination directe peut être
-    sautée par `_tableaux` faute de duellistes classés (`EffectifTableauInvalide`) : la conclure
-    « type non déroulable » serait une cause fausse — le moteur sait la jouer, il n'a simplement
-    rien eu à jouer.
+    Le compte vient de l'état des tableaux, pas de la projection. L'appariement se fait par
+    **`phase_id`** — consommer une liste ordonnée subissait le même décalage qu'un `zip` naïf,
+    `_tableaux` sautant une phase non jouable sans dire laquelle. `joue` distingue « joué à 0 duel
+    » de « le moteur ne sait pas dérouler ce type », et ⚠️ il se déduit du **type**, pas de
+    l'absence de tableau — une élimination directe peut n'avoir rien eu à jouer.
     """
     assert tournoi.id is not None
     par_phase = {etat.phase_id: etat for etat in final.tableaux}

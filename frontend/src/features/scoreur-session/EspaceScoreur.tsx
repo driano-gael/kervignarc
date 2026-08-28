@@ -72,16 +72,11 @@ function FormulaireCode() {
 function SessionOuverte({ scoreur }: { scoreur: ScoreurConnecte }) {
   const deconnexion = useDeconnexionScoreur()
   // ✅ **`DETTE-056` refermée ici (E05US030).** Le créneau des panneaux de saisie est choisi **une
-  // fois**, en tête de l'espace, et passé en prop. Chacun des panneaux appelait auparavant
-  // `useCreneauDesDuels` pour son compte — le choix vivant en `useState` **local** au hook —, donc
-  // autant de sélecteurs côte à côte qu'il y a de formats, indépendants et divergents dès la
-  // première bascule. Le scoreur changeait de créneau dans un panneau, saisissait dans l'autre, et
-  // scorait les rencontres du mauvais départ **avec des identifiants valides, donc sans erreur**.
-  // Le quatrième format (le système suisse) aurait porté le nombre de couples désaccordables à six.
-  //
-  // Remonté **ici** et non dans `useSessionScoreurStore` : ce store est persisté au `localStorage`,
-  // et un créneau qui survit à la fermeture de l'onglet rouvrirait la journée du lendemain sur le
-  // départ de la veille. Le gel voulu dure une session d'écran, pas une nuit.
+  // fois**, en tête de l'espace, et passé en prop. Chaque panneau appelait auparavant
+  // `useCreneauDesDuels` pour son compte, le choix vivant en `useState` **local** : autant de
+  // sélecteurs divergents que de formats, et le scoreur scorait les rencontres du mauvais départ
+  // **avec des identifiants valides, donc sans erreur**. Remonté ici et non dans le store persisté
+  // : un créneau qui survit à la fermeture de l'onglet rouvrirait sur le départ de la veille.
   const { departs, liste, departId, choisir } = useCreneauDesDuels(scoreur.tournoi_id)
 
   return (
