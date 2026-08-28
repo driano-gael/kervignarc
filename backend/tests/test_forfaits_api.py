@@ -238,7 +238,7 @@ def test_declaration_sans_scoreur_refusee(
             "/api/v1/forfaits/qualification",
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
         )
-        assert reponse.status_code in (401, 403), reponse.text
+        assert reponse.status_code == 401, reponse.text
 
 
 def test_forfait_duel_declarable_par_l_admin(
@@ -248,8 +248,8 @@ def test_forfait_duel_declarable_par_l_admin(
     porte le rôle admin (`declare_par`) — pas un nom de personne."""
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
-        # Le scoreur n'est créé que pour **relire** le tableau (lecture gardée) ; la déclaration,
-        # elle, part sans son en-tête — c'est tout l'objet du test.
+        # ⚠️ `_scoreur` ouvre AUSSI la session admin (`connecter_admin`) : c'est elle qui autorise
+        # le POST ci-dessous. Le jeton scoreur, lui, n'est joint qu'à la relecture du tableau.
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
         fort, faible = scn.archers
 
@@ -309,7 +309,7 @@ def test_forfait_duel_refuse_sans_aucune_identite(app_forfaits: FastAPI) -> None
                 "nature": "abandon",
             },
         )
-        assert reponse.status_code in (401, 403), reponse.text
+        assert reponse.status_code == 401, reponse.text
 
 
 def test_forfait_qualification_reste_ferme_a_l_admin(
@@ -324,4 +324,53 @@ def test_forfait_qualification_reste_ferme_a_l_admin(
             "/api/v1/forfaits/qualification",
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
         )
-        assert reponse.status_code in (401, 403), reponse.text
+        assert reponse.status_code == 401, reponse.text
+
+
+def test_forfait_duel_refuse_une_phase_de_qualification(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route des duels est bornee aux **tableaux** : sans garde de type, un `phase_id` de
+    qualification poste ici ecrirait un forfait relu par le classement de qualification — et
+    contournerait `exiger_scoreur`, seule garde de l'autre route (E16US008, revue axe A)."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        connecter_admin(client)
+        reponse = client.post(
+            "/api/v1/forfaits/duel",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.qualif_id,
+                "archer_id": scn.archers[1],
+                "nature": "abandon",
+            },
+        )
+        assert reponse.status_code == 404, reponse.text
+        # La preuve que le refus mord : sans lui, l'archer serait releve au classement de qualif.
+        assert _classement(client, scn.tournoi_id)[scn.archers[1]]["statut"] == "en_lice"
+
+
+def test_forfait_duel_refuse_un_scoreur_d_un_autre_tournoi(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """`_garder_tournoi` ne relache la garde que pour l'**admin** : un scoreur reste borne a son
+    tournoi. La garde a ete reecrite par E16US008 sans qu'aucun test ne couvre ces deux routes."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        autre = Scenario(app_forfaits)
+        entete = _scoreur(client, autre.tournoi_id, connecter_admin)
+        client.headers.pop("Authorization", None)
+        corps = {
+            "tournoi_id": scn.tournoi_id,
+            "phase_id": scn.phase_id,
+            "archer_id": scn.archers[1],
+        }
+        declaration = client.post(
+            "/api/v1/forfaits/duel", json={**corps, "nature": "abandon"}, headers=entete
+        )
+        assert declaration.status_code == 403, declaration.text
+        assert declaration.json()["code"] == "scoreur_hors_tournoi"
+
+        annulation = client.post("/api/v1/forfaits/duel/annulation", json=corps, headers=entete)
+        assert annulation.status_code == 403, annulation.text
+        assert annulation.json()["code"] == "scoreur_hors_tournoi"

@@ -21,7 +21,7 @@ from application.portee import phase_du_tournoi, qualification_du_tournoi
 from domain.archer import ArcherId
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
-from domain.phase import Phase, PhaseId
+from domain.phase import Phase, PhaseId, TypePhase
 from domain.ports import (
     ArcherRepository,
     ForfaitRepository,
@@ -190,4 +190,10 @@ class ServiceForfait:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
+        # ⚠️ Le `phase_id` vient du client : sans ce refus, la route des duels ecrit un forfait de
+        # QUALIFICATION (relu par `ServiceClassement._forfaits_qualif`) et contourne
+        # `exiger_scoreur`, seule garde de l'autre route. On refuse le type exclu plutot que
+        # d'autoriser une liste, pour ne pas presumer des types de tableau a venir.
+        if phase.type is TypePhase.QUALIFICATION:
+            raise PhaseIntrouvable("La route des duels ne declare pas un forfait de qualification.")
         return phase
