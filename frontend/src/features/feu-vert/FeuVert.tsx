@@ -224,17 +224,34 @@ function ActionLevee({
   // boutons de toutes les autres lignes et son erreur s'affichait sous chacune.
   const forfait = useDeclarerForfaitDepuisFeuVert(tournoiId, phaseId)
 
+  // ⚠️ Rendu dans les TROIS branches, car le succès fait justement CHANGER de branche : le forfait
+  // qui tranche la dernière source bascule la ligne sur `sans-recours`, dont le `return` est plus
+  // haut que le corps du cas `sources`. Placé dans le seul cas `sources`, le retour du geste
+  // disparaissait à l'instant où il réussissait. Limite qui subsiste : si `actionDuel` rend `null`
+  // (ligne débloquée), `ActionLevee` est démonté et l'état de mutation part avec — DETTE-090.
+  const retourDuGeste = forfait.isSuccess ? (
+    <p className="feu-vert__levee--inerte" role="status">
+      Forfait enregistré — l’adversaire passe.
+    </p>
+  ) : null
+
   if (action.genre === 'placement') {
     return (
       <div className="feu-vert__levee">
         <button type="button" className="bouton--discret" onClick={surPlanDeDuels}>
           Attribuer une cible — ouvrir le plan de duels
         </button>
+        {retourDuGeste}
       </div>
     )
   }
   if (action.genre === 'sans-recours') {
-    return <p className="feu-vert__levee feu-vert__levee--inerte">{action.explication}</p>
+    return (
+      <div className="feu-vert__levee">
+        <p className="feu-vert__levee--inerte">{action.explication}</p>
+        {retourDuGeste}
+      </div>
+    )
   }
 
   const forfaitables = archersForfaitables(action.sources)
@@ -245,7 +262,12 @@ function ActionLevee({
         className="bouton--discret"
         aria-expanded={deplie}
         aria-controls={`feu-vert-sources-${numeroLigne}`}
-        onClick={() => setDeplie((ouvert) => !ouvert)}
+        // ⚠️ `reset()` : le retour du geste vit hors du repli (il doit survivre au changement de
+        // branche), donc rien ne l'effacerait plus — replier redevient le geste de congé.
+        onClick={() => {
+          forfait.reset()
+          setDeplie((ouvert) => !ouvert)
+        }}
       >
         {`${deplie ? 'Masquer' : 'Voir'} ${
           action.sources.length > 1 ? 'les duels qui bloquent' : 'le duel qui bloque'
@@ -282,14 +304,7 @@ function ActionLevee({
           {forfait.isError && <MessageErreur erreur={forfait.error} />}
         </>
       )}
-      {/* ⚠️ HORS du `deplie &&` : quand le forfait tranche la DERNIÈRE source attendue, `actionDuel`
-          bascule sur `sans-recours` et ce bloc ne serait jamais atteint — le seul retour du geste
-          disparaîtrait à l'instant où il réussit. */}
-      {forfait.isSuccess && (
-        <p className="feu-vert__levee--inerte" role="status">
-          Forfait enregistré — l’adversaire passe.
-        </p>
-      )}
+      {retourDuGeste}
     </div>
   )
 }

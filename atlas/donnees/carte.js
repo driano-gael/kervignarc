@@ -70,12 +70,12 @@ window.ATLAS.carte = {
     "feature": "phases"
    },
    {
-    "clientes": 7,
-    "feature": "categories"
+    "clientes": 8,
+    "feature": "saisie-duels"
    },
    {
     "clientes": 7,
-    "feature": "saisie-duels"
+    "feature": "categories"
    },
    {
     "clientes": 6,
@@ -2938,7 +2938,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 171,
+  "aretes_front": 172,
   "enchevetrements": 4,
   "features": 49,
   "imports": 910,

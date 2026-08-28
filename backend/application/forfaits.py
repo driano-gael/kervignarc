@@ -89,14 +89,14 @@ class ServiceForfait:
         motif: str | None = None,
     ) -> Forfait:
         """Déclare un forfait dans une **phase de tableau** : l'adversaire passera (walkover)."""
-        phase = self._phase_de_tableau(tournoi_id, phase_id)
+        phase = self._exiger_phase_de_tableau(tournoi_id, phase_id)
         return self._declarer(tournoi_id, phase, archer_id, nature, declare_par, motif)
 
     def annuler_en_duel(
         self, tournoi_id: TournoiId, phase_id: PhaseId, archer_id: ArcherId, annule_par: str
     ) -> None:
         """Annule un forfait de duel : à la reconstruction suivante, le walkover disparaît."""
-        self._phase_de_tableau(tournoi_id, phase_id)
+        self._exiger_phase_de_tableau(tournoi_id, phase_id)
         self._annuler(tournoi_id, phase_id, archer_id, annule_par)
 
     # --- Interne -------------------------------------------------------------------------------
@@ -188,7 +188,7 @@ class ServiceForfait:
             )
         return phase
 
-    def _phase_de_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def _exiger_phase_de_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")

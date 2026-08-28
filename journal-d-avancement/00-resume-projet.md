@@ -570,9 +570,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   tableau sans faire partir ce duel-là**, ce que la confirmation annonce désormais sans détour. Trois
   limites sont assumées et écrites : un forfait de duel **ne se défait depuis aucun écran** pour
   l'instant (le serveur le sait, la surface manque) ; le forfait n'est proposé que si le duel attendu
-  a bien **ses deux archers** ; et comme un duel de tableau attend **deux** duels précédents, un
-  forfait n'en résout qu'un — le compteur du bouton « Lancer » **diminue** alors d'un, ce qui est
-  logique une fois dit, mais déroutant tant que ça ne l'est pas. Le lancement reste **manuel** : l'automatique que
+  a bien **ses deux archers** ; et comme une ligne bloquée attend **un ou deux** duels
+  précédents selon le tirage, un forfait n'en résout qu'un : l'écran peut donc rester bloqué pour une
+  autre raison, et le compteur du bouton « Lancer » ne bouge que si le duel réglé était lui-même
+  prêt. C'est logique une fois dit, déroutant tant que ça ne l'est pas — d'où la mention explicite
+  dans la fenêtre de confirmation. Le lancement reste **manuel** : l'automatique que
   vous aviez évoqué part en tranche séparée. La précédente était `E00US027`, **sans effet visible
   pour vous** : une
   règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le

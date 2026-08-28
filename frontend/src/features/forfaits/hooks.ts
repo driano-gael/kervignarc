@@ -2,11 +2,13 @@
 //
 // Chaque mutation invalide la vue concernée : un forfait de **qualification** rejoue le classement
 // (relégation / exclusion, `['classement', tournoiId]`) ; un forfait de **duels** rejoue le tableau
-// (`['duels-tableau', tournoiId, phaseId]`, où le walkover apparaît). Les clés sont reprises
-// telles quelles des features `competition` / `saisie-duels` — invalider suffit à resynchroniser.
+// (`cleTableau`, où le walkover apparaît). Les clés sont **importées** de leur feature
+// propriétaire — `competition` et `saisie-duels` —, jamais recopiées : une clé qui diverge
+// n'invalide plus rien et rien ne rougit (le symptôme est une vue périmée, pas une erreur).
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cleClassement } from '../competition/hooks'
+import { cleTableau } from '../saisie-duels/hooks'
 import {
   annulerForfaitDuel,
   annulerForfaitQualif,
@@ -14,9 +16,6 @@ import {
   declarerForfaitQualif,
   type NatureForfait,
 } from './api'
-
-const cleTableau = (tournoiId: number, phaseId: number) =>
-  ['duels-tableau', tournoiId, phaseId] as const
 
 export function useDeclarerForfaitQualif(tournoiId: number) {
   const queryClient = useQueryClient()

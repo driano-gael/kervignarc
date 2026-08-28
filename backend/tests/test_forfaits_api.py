@@ -161,7 +161,7 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
         )
         assert reponse.status_code == 200, reponse.text
 
-        lignes = _classement(client, scn.tournoi_id)
+        lignes = _classement(client, scn.depart_id)
         assert lignes[faible]["rang_scratch"] == 1  # le faible passe devant
         assert lignes[fort]["statut"] == "abandon"
         assert lignes[fort]["rang_scratch"] == 2  # relégué, mais rangé
@@ -173,7 +173,7 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
             headers=entete,
         )
         assert annul.status_code == 200, annul.text
-        retabli = _classement(client, scn.tournoi_id)
+        retabli = _classement(client, scn.depart_id)
         assert retabli[fort]["rang_scratch"] == 1
         assert retabli[fort]["statut"] == "en_lice"
 
@@ -193,7 +193,7 @@ def test_dsq_qualif_sort_du_classement(
             headers=entete,
         )
         assert reponse.status_code == 200, reponse.text
-        lignes = _classement(client, scn.tournoi_id)
+        lignes = _classement(client, scn.depart_id)
         assert lignes[fort]["statut"] == "disqualifie"
         assert lignes[fort]["rang_scratch"] is None
         assert lignes[fort]["total"] == 30

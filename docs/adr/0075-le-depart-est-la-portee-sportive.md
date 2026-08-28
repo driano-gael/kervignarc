@@ -203,7 +203,13 @@ gestionnaire de paquets. **Leur absence de section n'est pas un défaut à relev
 précis sur le mode de panne, parce que ce n'est **pas** celui que la section mesure plus bas. Les cas
 `0087`/`0089`/`0090`/`0091` étaient des ADR **neufs** qui portaient leur section sans être inscrits
 ici : la liste n'était pas tenue. `0050`, lui, ne portait **aucune** section : c'est le
-**rétro-équipement du 08/08 qui a manqué un ADR de moteur**, premier défaut de ce type. Il entre au
+**rétro-équipement du 08/08 qui a manqué un ADR de moteur** — et pas le seul. Un balayage des ADR
+sans section, croisé au critère ci-dessus, rend au moins cinq autres candidats (`0023` placement
+glouton, `0027` vocabulaire de score **injectable** au sens de la règle 2, `0047` et `0048`
+placement/réordonnancement des duellistes, `0065` rang acquis sur la plage). ⚠️ Ne pas conclure de
+`0050` que le trou est refermé : **la liste des seize retenus n'a jamais été auditée**, et le
+présent paragraphe ne l'audite pas non plus — il le constate. C'est inscrit à `DETTE-091`, faute de
+quoi ce balayage sera redemandé une troisième fois sans porteur. Il entre au
 critère sans discussion — le forfait commande le **classement de qualification**
 (relégation/exclusion) *et* la reconstruction du **tableau** (walkover) — et il est ajouté ici parce
 que la même US le **rouvre** (sa *Décision* change d'acteur en duels) ; sa section « Porté dans le

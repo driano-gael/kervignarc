@@ -83,30 +83,23 @@ function deplier(numero: number, duels: DuelAVenir[]): DuelSource {
   if (source === undefined) {
     return { numero, detail: 'plus dans la liste des duels à venir', archers: [] }
   }
-  // ⚠️ Deux décisions distinctes, à ne pas confondre. Le FORFAIT exige les deux camps :
-  // `ServiceSaisieDuels._appliquer_forfaits` saute un match dont un camp est vide, un forfait posé
-  // là s'écrirait sans rien débloquer. Le DÉPLIAGE, lui, doit dire ce qu'il sait — le CA veut
-  // « ses occupants, sa cible », et le camp connu est justement l'archer à aller chercher.
   if (source.haut === null && source.bas === null) {
     return { numero, detail: 'occupants pas encore connus', archers: [] }
   }
-  if (source.haut === null || source.bas === null) {
-    const cibleUnique = libelleCibles(source)
-    const connus = `${nomDuelliste(source.haut)} vs ${nomDuelliste(source.bas)}`
-    return {
-      numero,
-      detail: cibleUnique ? `${connus} · ${cibleUnique}` : connus,
-      archers: [],
-    }
-  }
+  const cibles = libelleCibles(source)
+  const opposants = `${nomDuelliste(source.haut)} vs ${nomDuelliste(source.bas)}`
+  const detail = cibles ? `${opposants} · ${cibles}` : opposants
+  // ⚠️ Deux décisions distinctes, à ne pas confondre. Le FORFAIT exige les deux camps :
+  // `ServiceSaisieDuels._appliquer_forfaits` saute un match dont un camp est vide, un forfait posé
+  // là s'écrirait sans rien débloquer. Le DÉPLIAGE, lui, dit ce qu'il sait — le CA veut « ses
+  // occupants, sa cible », et le camp connu est justement l'archer à aller chercher.
+  if (source.haut === null || source.bas === null) return { numero, detail, archers: [] }
   const archers = [source.haut, source.bas].map((d) => ({
     archer_id: d.archer_id,
     libelle: nomDuelliste(d),
     numero_duel: numero,
   }))
-  const cibles = libelleCibles(source)
-  const opposants = `${nomDuelliste(source.haut)} vs ${nomDuelliste(source.bas)}`
-  return { numero, detail: cibles ? `${opposants} · ${cibles}` : opposants, archers }
+  return { numero, detail, archers }
 }
 
 export function archersForfaitables(sources: DuelSource[]): ArcherForfaitable[] {

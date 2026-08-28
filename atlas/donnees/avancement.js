@@ -210,8 +210,6 @@ window.ATLAS.avancement = {
    ],
    "ouverte": true,
    "resorption_us": [
-    "E07US004",
-    "E07US008",
     "E05US010"
    ],
    "severite": "mineur"
@@ -541,6 +539,15 @@ window.ATLAS.avancement = {
    "identifiant": "089",
    "introduite_par": [
     "E00US027"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "091",
+   "introduite_par": [
+    "E16US008"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -3182,9 +3189,7 @@ window.ATLAS.avancement = {
     "031",
     "032"
    ],
-   "dettes_resorbees": [
-    "019"
-   ],
+   "dettes_resorbees": [],
    "epic": "07",
    "epic_titre": "Affichage public & écran projeté",
    "etat": "✅",
@@ -3252,9 +3257,7 @@ window.ATLAS.avancement = {
     "031",
     "033"
    ],
-   "dettes_resorbees": [
-    "019"
-   ],
+   "dettes_resorbees": [],
    "epic": "07",
    "epic_titre": "Affichage public & écran projeté",
    "etat": "✅",
@@ -4132,7 +4135,8 @@ window.ATLAS.avancement = {
    ],
    "dettes_introduites": [
     "017",
-    "090"
+    "090",
+    "091"
    ],
    "dettes_resorbees": [],
    "epic": "16",

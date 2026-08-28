@@ -2189,11 +2189,10 @@ window.ATLAS.decisions = {
       "declarer_en_duel",
       "ForfaitDejaDeclare",
       "AUTEUR_ADMIN",
-      "_phase_du_tournoi"
+      "_exiger_phase_de_tableau",
+      "TYPES_EN_TABLEAU_JOUE"
      ],
-     "symboles_absents": [
-      "_phase_du_tournoi"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -2245,18 +2244,14 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/features/feu-vert/FeuVert.tsx",
      "existe": true,
-     "symboles": [
-      "deplier"
-     ],
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/feu-vert/etat.ts",
      "existe": true,
-     "symboles": [
-      "deplier"
-     ],
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },

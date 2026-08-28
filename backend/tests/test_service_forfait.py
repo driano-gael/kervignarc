@@ -25,6 +25,7 @@ from application.erreurs import (
     ForfaitIntrouvable,
     ForfaitTournoiTermine,
     PhaseIntrouvable,
+    PhasePasUnTableau,
     PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
@@ -203,3 +204,22 @@ def test_declarer_en_duel_phase_inconnue_leve_erreur() -> None:
     m = _Monde()
     with pytest.raises(PhaseIntrouvable):
         m.service.declarer_en_duel(m.tournoi_id, 999, m.archer_id, NatureForfait.ABANDON, "S")
+
+
+def test_declarer_en_duel_refuse_une_phase_hors_tableau_joue() -> None:
+    """Règle de SERVICE, donc testée au service (règle 9) : la route des duels n'admet que
+    `TYPES_EN_TABLEAU_JOUE`. Sans ce filtre, un `phase_id` de qualification venu du client y écrit
+    un forfait relu par le classement de qualification, en contournant `exiger_scoreur`."""
+    m = _Monde()
+    with pytest.raises(PhasePasUnTableau):
+        m.service.declarer_en_duel(
+            m.tournoi_id, m.qualif_id, m.archer_id, NatureForfait.ABANDON, "S"
+        )
+
+
+def test_annuler_en_duel_refuse_une_phase_hors_tableau_joue() -> None:
+    """Le même filtre couvre l'annulation — sinon on **défait** par la route des duels un forfait
+    de qualification. Un filtre prouvé sur une seule de ses deux portes est une assurance fausse."""
+    m = _Monde()
+    with pytest.raises(PhasePasUnTableau):
+        m.service.annuler_en_duel(m.tournoi_id, m.qualif_id, m.archer_id, "S")

@@ -160,13 +160,24 @@ describe('actionDuel', () => {
   })
 
   it('n’offre aucun forfait quand un seul camp du duel amont est connu', () => {
-    const demi = duel({ numero: 3, bas: null, participants_connus: false, cible_bas: null })
+    // ⚠️ tour 2 et sans cible : un match de tour 1 à camp vide est un BYE (exclu des duels à
+    // venir), et `place = match.tour == 1` interdit toute cible au-delà — l'état « un camp connu
+    // AVEC cible » n'existe pas en production.
+    const demi = duel({
+      numero: 3,
+      tour: 2,
+      bas: null,
+      participants_connus: false,
+      pret_a_lancer: false,
+      cible_haut: null,
+      cible_bas: null,
+    })
     const action = actionDuel(aval, [demi, aval])
     expect(action).toEqual({
       genre: 'sources',
       // Le duel amont se déplie quand même (CA : « ses occupants, sa cible ») — c'est le camp
       // connu que l'organisateur doit aller chercher. Seul le FORFAIT est refusé.
-      sources: [{ numero: 3, detail: 'Robin Hood vs — · cible 4', archers: [] }],
+      sources: [{ numero: 3, detail: 'Robin Hood vs —', archers: [] }],
     })
   })
 

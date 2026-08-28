@@ -441,3 +441,48 @@ def test_feu_vert_refuse_une_phase_de_qualification() -> None:
     assert qualif.id is not None
     with pytest.raises(PhasePasUnTableau):
         monde.pilotage.feu_vert(monde.tournoi_id, qualif.id)
+
+
+def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_les_byes() -> None:
+    """L'ORACLE de ce que les écrans annoncent après un forfait (E16US008).
+
+    ⚠️ Ce test existe parce que la prose s'est trompée **trois fois de suite** en revue : « une
+    source » (1ʳᵉ passe), puis « deux sources » (3ᵉ passe). Les deux généralisations sont fausses.
+    Un `VainqueurDe`/`PerdantDe` ne compte comme *source en attente* que si son camp est **vide** ;
+    un bye ayant déjà rempli un camp à la construction, une ligne peut n'attendre qu'un seul duel.
+    Tant que cet oracle vivait dans `docs/`, chaque passe de revue en produisait une version fausse.
+    """
+    from tests.test_domain_tableau import construire
+
+    def repartition(effectif: int) -> dict[int, int]:
+        compte: dict[int, int] = {}
+        for match in construire(effectif).matchs:
+            if match.est_bye or match.vainqueur is not None:
+                continue
+            attendues = len(ServicePilotageTour._sources_en_attente(match))
+            if attendues:
+                compte[attendues] = compte.get(attendues, 0) + 1
+        return compte
+
+    # Puissance de 2 : aucun bye, toute ligne bloquée attend ses DEUX duels amont.
+    assert repartition(8) == {2: 4}
+    assert repartition(16) == {2: 8}
+    # Effectif quelconque — le cas normal d'un club : les DEUX régimes coexistent.
+    assert repartition(6) == {1: 2, 2: 2}
+    assert repartition(12) == {1: 4, 2: 4}
+    # Petit effectif : ici, aucune ligne n'attend deux duels.
+    assert repartition(3) == {1: 1}
+
+
+def test_un_duel_amont_de_tour_2_n_est_jamais_compte_parmi_les_prets() -> None:
+    """Second volet du même oracle : le compteur du bouton « Lancer » ne diminue au forfait QUE si
+    le duel tranché y figurait. Or `place = match.tour == 1` interdit toute cible au-delà du tour 1,
+    donc un duel amont de tour ≥ 2 n'est jamais `pret_a_lancer` — le compteur ne bouge pas."""
+    from tests.test_domain_tableau import construire
+
+    tableau = construire(8)
+    for match in tableau.matchs:
+        if match.tour >= 2:
+            assert ServicePilotageTour._sources_en_attente(
+                match
+            ), "un duel de tour >= 2 attend ses sources tant qu'elles ne sont pas tranchées"

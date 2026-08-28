@@ -330,17 +330,21 @@
   (revue du 28/08/2026, axe adversarial). Un duel qui attend un duel amont est **forcément** au tour
   ≥ 2 (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`) : le forfait déclaré depuis le feu
   vert fait donc avancer le tableau, mais **ne rend jamais la ligne prête**.
-  ⚠️⚠️ **Et la première correction de ce point était elle-même fausse** — relevée en 2ᵉ passe de revue,
-  par sonde sur le moteur. Un duel de tableau attend **DEUX** sources, pas une (`construire_tableau`
-  engendre chaque match de tour n+1 depuis **deux** matchs : `VainqueurDe(a)` + `VainqueurDe(b)`).
-  Conséquences, à tenir pour vraies dans toute US ultérieure : (a) un forfait ne résout **qu'une**
-  des deux attentes — la ligne passe de « en attente du duel n°1, n°2 » à « en attente du duel n°2 »,
-  et **pas** à « cible non attribuée » ; (b) le compteur du bouton « Lancer » **DIMINUE** d'un, le
-  duel amont tranché étant, lui, prêt et donc compté ; (c) le dépliage rend **deux** lignes et
-  jusqu'à **quatre** boutons de forfait.
-  La leçon vaut au-delà de l'US, et elle est plus dure que la première formulation : rejouer un
-  correctif de cadrage sur une branche voisine ne suffit pas — **il faut re-sonder le moteur sur
-  cette branche-là**, parce que le raisonnement transposé y arrive juste et la conclusion fausse.
+  ⚠️⚠️ **Ce point s'est trompé TROIS fois de suite en revue, et l'oracle n'est plus ici.** La 1ʳᵉ
+  passe a écrit « un duel attend une source », la 3ᵉ « il en attend deux » : les deux
+  généralisations sont fausses. La règle réelle est **« une ou deux, selon le tirage »** — un
+  `VainqueurDe`/`PerdantDe` ne compte comme attente que si son camp est **vide**, et un bye en
+  remplit un dès la construction. Sur un effectif quelconque (le cas normal d'un club) les deux
+  régimes coexistent ; sur une puissance de 2, toute ligne en attend deux.
+  Conséquences : (a) le forfait tranche **une** attente — la ligne passe à « en attente du duel n°X »
+  s'il en restait deux, à « cible non attribuée » s'il n'en restait qu'une ; (b) le compteur
+  « Lancer » **diminue seulement si le duel tranché y figurait**, donc jamais quand l'amont est au
+  tour ≥ 2 (aucune cible n'y est posée, il n'était pas compté).
+  ⚠️ **Ne pas redériver ces phrases de tête : elles sont la traduction d'un test.**
+  `test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_les_byes` et son jumeau sur le compteur
+  (`backend/tests/test_service_pilotage_tour.py`) portent l'oracle ; la CI les relit. C'est la leçon
+  qui vaut au-delà de l'US : **tant qu'un oracle ne vit que dans de la prose, chaque passe de revue
+  en produit une version fausse** — trois fois ici, avant qu'on ne l'écrive en test.
   ⚠️ **Le forfait n'est offert que si le duel amont a ses DEUX camps** (revue, bloquant).
   `ServiceSaisieDuels._appliquer_forfaits` **saute** un match dont un camp est vide : un forfait posé
   là s'écrivait en base, sans rien débloquer et sans le moindre retour d'écran — l'organisateur
