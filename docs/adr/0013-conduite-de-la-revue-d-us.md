@@ -317,8 +317,9 @@ l'estime vaudrait moins qu'une case vide.
 
 **10. Une affirmation de revue portant sur le comportement du moteur s'ancre dans un TEST avant
 d'être reversée aux textes.** *(Amendement du 28/08/2026, E16US008.)* Le même énoncé factuel — « de
-combien de duels amont une ligne bloquée dépend-elle ? » — a été écrit **faux quatre passes de
-suite** : « une source », puis « deux », puis « deux sauf byes », puis « deux sur une puissance
+combien de duels amont une ligne bloquée dépend-elle ? » — a reçu **quatre formulations fausses en
+trois passes de correctifs** (la 3ᵉ en a produit deux : une en prose, une en généralisant un test
+mesuré sur un tableau vierge) : « une source », puis « deux », puis « deux sauf byes », puis « deux sur une puissance
 de 2 ». Chaque passe relisait la prose de la précédente et la transposait : le raisonnement était
 juste, la conclusion fausse, et **aucune porte ne pouvait le voir** — ni `mypy`, ni la suite, ni
 l'atlas ne relisent `stories/` ou `docs/fonctionnel/`.
@@ -335,9 +336,14 @@ précisions, chacune payée d'une passe :
   l'assertion ne vérifiait pas (elle était vraie par construction). Un commentaire de test n'est pas
   plus vérifié qu'un paragraphe de `stories/` — règle 13, ADR-0099.
 
-Porté par la grille de l'axe D (qui sonde plutôt qu'il ne lit) et par
-[`docs/metriques-revue.md`](../metriques-revue.md), dont la colonne « bloquants par » enregistre
-désormais ce mode de panne.
+⚠️ **Rien ne mécanise cette décision, et il faut le dire plutôt que d'inventer un porteur.** Ni la
+suite ni l'atlas ne relisent `stories/` ou `docs/fonctionnel/` ; l'axe D est **sans grille par
+construction** (décision 7) et ne peut donc rien porter ; [`docs/metriques-revue.md`](../metriques-revue.md)
+**enregistre** un mode de panne, il ne prescrit rien. La décision repose sur la discipline de l'agent
+auteur à l'étape 2, et sa seule trace est la colonne « bloquants par » du registre. *(Première
+rédaction de ce paragraphe : « porté par la grille de l'axe D » — un porteur qui n'a jamais existé,
+soit le défaut d'ADR-0017 commis dans l'ADR qui organise la revue censée l'attraper. Relevé par
+quatre axes sur cinq à la 5ᵉ passe.)*
 
 ## Options envisagées à l'amendement du 16/08/2026
 
@@ -367,9 +373,10 @@ en appelle une seconde, parce que la règle 16 exige que l'option « **rien** »
 | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | 1 — l'autorité bloquante dont la porte est un sous-ensemble |
 | `backend/tests/test_domain_isolation.py`, `backend/pyproject.toml` (`[tool.mypy]`, `[tool.ruff*]`) | 1 et 5 — les preuves machine qui fondent la décharge, et les fichiers dont le diff la suspend |
 | [`backend/tests/test_agents_de_revue.py`](../../backend/tests/test_agents_de_revue.py) | 8 — transforme l'épinglage `model: opus` et le retrait d'`Edit`/`Write` en **preuve machine** au lieu d'une convention |
-| [`docs/metriques-revue.md`](../metriques-revue.md) | 9 — l'instrument de mesure |
+| [`docs/metriques-revue.md`](../metriques-revue.md) | 9 — l'instrument de mesure ; **et la seule trace de la 10**, qu'il enregistre sans la prescrire |
+| ⚠️ **Décision 10 — aucun porteur** | 10 — assumé : rien ne relit `stories/` ni `docs/fonctionnel/`. Elle tient à la discipline de l'agent auteur, et cette ligne existe pour que son absence de portage soit **visible** plutôt que comblée par un nom inventé |
 
-⚠️ Cette table nomme des fichiers **vérifiés à la main le 16/08/2026**. Un module nommé ici qui ne
+⚠️ Cette table nomme des fichiers **vérifiés à la main le 16/08/2026**, la ligne de la décision 10 le **28/08/2026**. Un module nommé ici qui ne
 porterait plus rien serait pire que pas de table : elle se relit dans le code du jour, pas dans cet
 ADR.
 

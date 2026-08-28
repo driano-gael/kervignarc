@@ -36,8 +36,8 @@ que la salle attend. La limite sera levée avec le placement des tours suivants.
 
 ⚠️ **Cette limite touche aussi le forfait ci-dessus**, et il faut le dire clairement, parce que ce
 que vous verrez à l'écran peut donner l'impression que le geste n'a pas porté. Une ligne bloquée
-attend **un ou deux** duels précédents — selon les byes du tirage, et surtout selon ce qui
-a déjà été tranché, et elle n'est jamais au premier tour.
+attend **un ou deux** duels précédents — selon les exemptions du tirage, et surtout selon ce qui a
+déjà été tranché. Elle n'est jamais au premier tour.
 Déclarer un forfait en tranche **un** : si elle en attendait deux, elle continue d'attendre l'autre ;
 s'il n'en restait qu'un, elle affiche « cible non attribuée ». Quant au compteur du bouton
 « Lancer », il **diminue** si le duel que vous venez de régler était lui-même prêt à partir, et **ne

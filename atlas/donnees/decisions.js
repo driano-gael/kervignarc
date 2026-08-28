@@ -363,7 +363,21 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "docs/fonctionnel/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "docs/metriques-revue.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "stories/",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],

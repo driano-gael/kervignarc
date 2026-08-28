@@ -330,9 +330,10 @@
   (revue du 28/08/2026, axe adversarial). Un duel qui attend un duel amont est **forcément** au tour
   ≥ 2 (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`) : le forfait déclaré depuis le feu
   vert fait donc avancer le tableau, mais **ne rend jamais la ligne prête**.
-  ⚠️⚠️ **Ce point s'est trompé QUATRE fois de suite en revue, et l'oracle n'est plus ici.** La 1ʳᵉ
+  ⚠️⚠️ **Ce point a reçu QUATRE formulations fausses en TROIS passes de correctifs, et l'oracle n'est plus ici.** La 1ʳᵉ
   passe a écrit « un duel attend une source », la 2ᵉ « il en attend deux », la 3ᵉ « deux, sauf
-  byes » : les trois généralisations sont fausses. La règle réelle est **« une ou deux, à tout
+  byes », puis « deux sur une puissance de 2 » : les quatre sont fausses — la 3ᵉ passe en a produit
+  deux, l'une en prose, l'autre en généralisant un test mesuré sur un tableau vierge. La règle réelle est **« une ou deux, à tout
   effectif »** — un `VainqueurDe`/`PerdantDe` ne compte comme attente que si son camp est **vide**,
   et un camp se remplit de **deux** façons : un bye à la construction, **ou un duel amont déjà
   tranché**. C'est cette seconde cause qui a été manquée trois fois. Une ligne n'attend jamais plus

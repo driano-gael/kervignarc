@@ -26,7 +26,7 @@ est **impossible** — `SaisieDuels` n'est monté que dans `EspaceScoreur`, derr
 et au **tour ≥ 2** « cible non attribuée » n'est levable par **aucun** geste (garde délibérée,
 `DETTE-019`), d'où une ligne qui **dit la limite** au lieu d'offrir une fausse porte.
 ➡️ Le CA « déclenchement automatique » est **sorti** vers `E16US013`. `DETTE-017` élargie à 5 sites
-— dont un **4ᵉ jamais inscrit** — et `DETTE-019` à un 3ᵉ site, dans le front. Aucune migration.)*
+— dont un **4ᵉ jamais inscrit** — et `DETTE-019` portée à **quatre** sites, dont **deux** dans le front — le site `presentation.ts` n'avait jamais été inscrit. Aucune migration.)*
 
 **Précédente : `E00US027`**
 *(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois

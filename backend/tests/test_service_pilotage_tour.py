@@ -36,6 +36,7 @@ from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee
+from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -479,26 +480,36 @@ def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_ce_qui_reste_a_tranc
     assert repartition(en_cours) == {1: 1, 2: 3}
 
 
-def test_un_duel_de_tour_2_n_est_jamais_pret_a_lancer() -> None:
-    """Second volet de l'oracle : le compteur « Lancer » ne diminue au forfait QUE si le duel
-    tranché y figurait. `place = match.tour == 1` interdit toute cible au-delà du tour 1, donc un
-    duel de tour ≥ 2 n'est jamais `pret_a_lancer` — même une fois ses deux occupants connus.
+def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> None:
+    """Le volet « compteur » de l'oracle (E16US008) — et le seul cas qu'aucun test ne couvrait.
 
-    ⚠️ Passe par `feu_vert` (surface publique) et non par un helper privé : la version précédente de
-    ce test assertait `_sources_en_attente` sur un tableau vierge, ce qui est vrai par construction
-    et ne touchait ni `place`, ni `cible_attribuee`, ni `pret_a_lancer`. Elle serait restée verte si
-    la garde tour-1 disparaissait — le défaut que `DETTE-089` nomme « une promesse de test est pire
-    qu'une absence de test ».
+    Le compteur du bouton « Lancer » ne diminue au forfait QUE si le duel tranché y figurait. Un
+    duel de tour ≥ 2 n'a jamais de cible (`place = match.tour == 1`), donc n'est jamais compté : le
+    forfait fait avancer le tableau **sans** bouger le compteur. C'est la phrase que la recette et
+    le journal rendent à l'organisateur — voir ADR-0013 §10 : elle vit ici, pas dans la prose.
     """
     monde = _Monde(capacites=(4,))
     _quatre(monde)
     monde.placer()
     monde.gagner(1)
     monde.gagner(2)
-    feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
-    finale = next(d for d in feu.duels if d.tour == 2)
-    assert finale.participants_connus is True
-    assert finale.cible_attribuee is False
-    assert finale.pret_a_lancer is False
-    assert finale.blocage == "cible non attribuée"
-    assert feu.nb_prets == 0
+    avant = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    assert avant.nb_prets == 0
+    finale = next(d for d in avant.duels if d.tour == 2)
+    assert finale.participants_connus and not finale.pret_a_lancer
+
+    monde.forfaits.semer(
+        Forfait.creer(
+            monde.tournoi_id,
+            finale.haut.archer_id if finale.haut else 0,
+            monde.phase_id,
+            NatureForfait.ABANDON,
+            "Administrateur",
+            datetime.datetime(2026, 8, 28, 10, 0, tzinfo=datetime.UTC),
+        )
+    )
+    apres = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    # Le tableau a avancé (le duel forfait est tranché, il quitte les duels à venir)...
+    assert len(apres.duels) < len(avant.duels)
+    # ...et le compteur n'a pas bougé : ce duel n'y figurait pas.
+    assert apres.nb_prets == 0

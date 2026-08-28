@@ -61,9 +61,13 @@ function monter(duels: DuelAVenir[], surPlanDeDuels = vi.fn()) {
     duels,
     nb_prets: duels.filter((d) => d.pret_a_lancer).length,
   }
-  vi.mocked(useFeuVert).mockReturnValue({ data: donnees, isPending: false } as ReturnType<
-    typeof useFeuVert
-  >)
+  // ⚠️ `mockImplementation` et non `mockReturnValue` : le feu vert doit pouvoir CHANGER entre deux
+  // rendus. Sur une donnée figée, la ligne ne bascule jamais de `sources` vers `sans-recours` — or
+  // c'est cette bascule seule qui motive le hissage de `retourDuGeste` hors des sorties anticipées.
+  // Avec un mock constant, remettre le message dans la branche `sources` laisserait le test vert.
+  vi.mocked(useFeuVert).mockImplementation(
+    () => ({ data: donnees, isPending: false }) as ReturnType<typeof useFeuVert>,
+  )
   const impact: ResumeLancement = {
     phase_id: 7,
     numeros: duels.filter((d) => d.pret_a_lancer).map((d) => d.numero),
@@ -78,8 +82,14 @@ function monter(duels: DuelAVenir[], surPlanDeDuels = vi.fn()) {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
-  render(<FeuVert tournoiId={1} surPlanDeDuels={surPlanDeDuels} />, { wrapper: Wrapper })
-  return { surPlanDeDuels }
+  const { rerender } = render(<FeuVert tournoiId={1} surPlanDeDuels={surPlanDeDuels} />, {
+    wrapper: Wrapper,
+  })
+  // `rafraichir` rejoue ce que fait le poll de 5 s : `FeuVert` relit le feu vert et ses lignes
+  // changent de branche. Sans cela seul `ActionLevee` se re-rend (son état de mutation), et la
+  // bascule `sources` → `sans-recours` — la seule qui motive le hissage — reste invisible.
+  const rafraichir = () => rerender(<FeuVert tournoiId={1} surPlanDeDuels={surPlanDeDuels} />)
+  return { surPlanDeDuels, donnees, rafraichir }
 }
 
 describe('FeuVert — actions sur la ligne bloquée', () => {
@@ -103,7 +113,26 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
       sources_en_attente: [3],
       blocage: 'en attente du duel n°3',
     })
-    monter([amont, aval])
+    const { donnees, rafraichir } = monter([amont, aval])
+    // ⚠️ Au succès, la ligne perd sa dernière source et bascule sur `sans-recours` — c'est l'état
+    // que l'organisateur observe, et la raison d'être du hissage de `retourDuGeste`.
+    vi.mocked(declarerForfaitDuel).mockImplementation(async () => {
+      donnees.duels = [
+        amont,
+        duel({
+          numero: 9,
+          tour: 2,
+          pret_a_lancer: false,
+          participants_connus: true,
+          cible_attribuee: false,
+          cible_haut: null,
+          cible_bas: null,
+          sources_en_attente: [],
+          blocage: 'cible non attribuée',
+        }),
+      ]
+      return { declare_par: 'Administrateur' } as Awaited<ReturnType<typeof declarerForfaitDuel>>
+    })
 
     await userEvent.click(await screen.findByRole('button', { name: /Voir le duel qui bloque/ }))
     await userEvent.click(screen.getByRole('button', { name: /Déclarer Robin Hood forfait/ }))
@@ -115,8 +144,14 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     await waitFor(() => expect(declarerForfaitDuel).toHaveBeenCalledTimes(1))
     // ⚠️ L'assertion qui compte : la **portée**. Sans elle, aucun jeton n'est joint depuis l'écran
     // d'administration et tout forfait part anonyme.
-    // ⚠️ Le retour du geste : livré inerte en 2ᵉ passe, corrigé en 3ᵉ, jamais gardé par un test.
+    // ⚠️ Les DEUX assertions ensemble, sinon rien n'est prouvé : la phrase grise atteste qu'on est
+    // passé de l'autre côté du `return` anticipé de `sans-recours`, et le `status` que le retour du
+    // geste y a survécu. Défaut livré en 2ᵉ passe, corrigé en 3ᵉ, gardé seulement maintenant.
     expect(await screen.findByRole('status')).toHaveTextContent(/Forfait enregistré/)
+    rafraichir()
+    expect(screen.getByText(/Les cibles ne sont posées qu’au premier tour/)).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent(/Forfait enregistré/)
+    expect(screen.getByRole('status')).toHaveTextContent(/Forfait enregistré/)
     expect(vi.mocked(declarerForfaitDuel).mock.calls[0]).toEqual([
       1,
       7,
@@ -153,7 +188,14 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     })
     monter([amont, aval])
 
-    await userEvent.click(await screen.findByRole('button', { name: /Voir le duel qui bloque/ }))
+    // ⚠️ Deux lignes portent désormais ce bouton (l'amont attend lui aussi un duel) : on cible la
+    // ligne aval par son `aria-controls`, sans quoi `findByRole` lève « multiple elements ».
+    await screen.findAllByRole('button', { name: /Voir le duel qui bloque/ })
+    const deplieur = document.querySelector<HTMLButtonElement>(
+      '[aria-controls="feu-vert-sources-9"]',
+    )
+    expect(deplieur).not.toBeNull()
+    await userEvent.click(deplieur as HTMLButtonElement)
     // Le dépliage dit ce qu'il sait (le camp connu, la cible) ; seul le forfait est refusé.
     // ⚠️ On cible la liste dépliée : la LIGNE du duel amont affiche le même texte, et c'est voulu
     // — les deux vues du même duel doivent concorder.
