@@ -1928,6 +1928,36 @@ button:disabled {
   gap: 8px;
   align-items: flex-start;
 }
+/* Actions sur la ligne d'un duel bloqué (E16US008, A15) : « les manquements appartiennent à la
+   ligne du duel qui en a, ainsi que ses actions ». `flex-basis: 100%` casse la ligne du duel — le
+   bloc prend la largeur sous les trois colonnes plutôt que de les serrer. */
+.feu-vert__levee {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ⚠️ La config se fait sur **tablette** le jour J : `button` global tombe à ~31 px, sous la cible
+   tactile de 44 px que le reste des surfaces du jour J applique. */
+.feu-vert__levee button {
+  min-height: 44px;
+}
+
+.feu-vert__levee--inerte {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
+
+.feu-vert__sources {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
 
 /* Complétude du tournoi (E12US005) : deux sections (sportif / hors sportif), chacune une liste
    d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).
@@ -3949,28 +3979,3 @@ button:disabled {
    Sortis d'ici par l'action 2 de l'audit de maintenabilité, ils vivent dans `features.css`,
    qu'`App.tsx` importe **après** ce fichier — un `@import` doit précéder toute autre règle,
    il ne pouvait donc pas rester ici. Une feature neuve ajoute sa ligne là-bas. */
-
-/* Actions sur la ligne d'un duel bloqué (E16US008, A15) : « les manquements appartiennent à la
-   ligne du duel qui en a, ainsi que ses actions ». `flex-basis: 100%` casse la ligne du duel — le
-   bloc prend la largeur sous les trois colonnes plutôt que de les serrer. */
-.feu-vert__levee {
-  flex-basis: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.feu-vert__levee--inerte {
-  color: var(--text-secondary);
-  font-size: 13.5px;
-}
-
-.feu-vert__sources {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 13.5px;
-}

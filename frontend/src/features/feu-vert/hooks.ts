@@ -60,6 +60,9 @@ export function useDeclarerForfaitDepuisFeuVert(tournoiId: number, phaseId: numb
       if (phaseId === null) return
       queryClient.invalidateQueries({ queryKey: cleFeuVert(tournoiId, phaseId) })
       queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, phaseId) })
+      // ⚠️ Le tableau aussi : la ligne porte un renvoi vers « Plan de duels », et l'organisateur y
+      // lirait un tableau d'avant le walkover (`useDeclarerForfaitDuel` invalide déjà cette clé).
+      queryClient.invalidateQueries({ queryKey: ['duels-tableau', tournoiId, phaseId] })
     },
   })
 }

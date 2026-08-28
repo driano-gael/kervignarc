@@ -193,6 +193,7 @@ function LigneDuel({
       {action && (
         <ActionLevee
           action={action}
+          numeroLigne={duel.numero}
           tournoiId={tournoiId}
           phaseId={phaseId}
           surPlanDeDuels={surPlanDeDuels}
@@ -207,11 +208,13 @@ function LigneDuel({
 // qu'aucun geste ne débloque d'ici — mieux qu'un bouton qui n'aboutirait pas.
 function ActionLevee({
   action,
+  numeroLigne,
   tournoiId,
   phaseId,
   surPlanDeDuels,
 }: {
   action: ActionLigne
+  numeroLigne: number
   tournoiId: number
   phaseId: number | null
   surPlanDeDuels: () => void
@@ -241,13 +244,14 @@ function ActionLevee({
         type="button"
         className="bouton--discret"
         aria-expanded={deplie}
+        aria-controls={`feu-vert-sources-${numeroLigne}`}
         onClick={() => setDeplie((ouvert) => !ouvert)}
       >
         {deplie ? 'Masquer le duel qui bloque' : 'Voir le duel qui bloque'}
       </button>
       {deplie && (
         <>
-          <ul className="feu-vert__sources">
+          <ul className="feu-vert__sources" id={`feu-vert-sources-${numeroLigne}`}>
             {action.sources.map((source) => (
               <li key={source.numero}>
                 Duel n°{source.numero} · {source.detail}
@@ -263,12 +267,17 @@ function ActionLevee({
               enCours={forfait.isPending}
               ton="danger"
               titre={`Déclarer ${archer.libelle} forfait ?`}
-              message={`Son adversaire du duel n°${archer.numero_duel} passe d'office (walkover), et ce duel-ci se débloque.`}
-              detail="Abandon. Réversible : le forfait s'annule depuis l'espace scoreur ou ici même."
+              message={`Son adversaire du duel n°${archer.numero_duel} passe d'office (walkover) : le tableau avance et ce duel-ci n'attend plus son issue.`}
+              detail="Abandon. ⚠️ Aucun écran ne défait un forfait de duel aujourd'hui (DETTE-090) : à ne déclarer qu'en dernier recours."
               libelleConfirmer="Déclarer forfait"
               onConfirmer={() => forfait.mutate(archer.archer_id)}
             />
           ))}
+          {forfait.isSuccess && (
+            <p className="feu-vert__levee--inerte" role="status">
+              Forfait enregistré — l’adversaire passe.
+            </p>
+          )}
           {forfait.isError && <MessageErreur erreur={forfait.error} />}
         </>
       )}

@@ -73,18 +73,15 @@ export function declarerForfaitDuel(
   )
 }
 
+// ⚠️ Pas de `portee` ici, contrairement a la declaration : le serveur accepte l'admin (`D-15`) mais
+// aucun ecran ne l'appelle encore — DETTE-090. Le parametre reviendra avec son appelant.
 export function annulerForfaitDuel(
   tournoiId: number,
   phaseId: number,
   archerId: number,
-  portee: PorteeAuth = 'scoreur',
 ): Promise<{ annule: boolean }> {
-  return fetchJson<{ annule: boolean }>(
-    '/api/v1/forfaits/duel/annulation',
-    {
-      method: 'POST',
-      body: JSON.stringify({ tournoi_id: tournoiId, phase_id: phaseId, archer_id: archerId }),
-    },
-    portee,
-  )
+  return fetchJson<{ annule: boolean }>('/api/v1/forfaits/duel/annulation', {
+    method: 'POST',
+    body: JSON.stringify({ tournoi_id: tournoiId, phase_id: phaseId, archer_id: archerId }),
+  })
 }
