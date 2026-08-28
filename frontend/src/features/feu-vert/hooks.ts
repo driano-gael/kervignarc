@@ -8,6 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { declarerForfaitDuel } from '../forfaits/api'
+import { cleTableau } from '../saisie-duels/hooks'
 import { getFeuVert, getImpactLancement, lancerTour } from './api'
 
 const INTERVALLE_POLL_MS = 5000
@@ -61,8 +62,10 @@ export function useDeclarerForfaitDepuisFeuVert(tournoiId: number, phaseId: numb
       queryClient.invalidateQueries({ queryKey: cleFeuVert(tournoiId, phaseId) })
       queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, phaseId) })
       // ⚠️ Le tableau aussi : la ligne porte un renvoi vers « Plan de duels », et l'organisateur y
-      // lirait un tableau d'avant le walkover (`useDeclarerForfaitDuel` invalide déjà cette clé).
-      queryClient.invalidateQueries({ queryKey: ['duels-tableau', tournoiId, phaseId] })
+      // lirait un tableau d'avant le walkover. Clé importée de `saisie-duels`, propriétaire de la
+      // query — une invalidation qui rate sa clé ne casse rien de VISIBLE, elle se contente de
+      // laisser le tableau périmé, donc rien ne rougirait si elle divergeait.
+      queryClient.invalidateQueries({ queryKey: cleTableau(tournoiId, phaseId) })
     },
   })
 }

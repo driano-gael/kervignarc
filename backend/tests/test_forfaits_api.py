@@ -330,9 +330,9 @@ def test_forfait_qualification_reste_ferme_a_l_admin(
 def test_forfait_duel_refuse_une_phase_de_qualification(
     app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """La route des duels est bornee aux **tableaux** : sans garde de type, un `phase_id` de
-    qualification poste ici ecrirait un forfait relu par le classement de qualification — et
-    contournerait `exiger_scoreur`, seule garde de l'autre route (E16US008, revue axe A)."""
+    """La route des duels est bornée aux **tableaux** (`TYPES_EN_TABLEAU_JOUE`) : sans ce filtre,
+    un `phase_id` de qualification posté ici écrirait un forfait relu par le classement de
+    qualification — en contournant `exiger_scoreur`, seule garde de l'autre route."""
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         connecter_admin(client)
@@ -345,16 +345,18 @@ def test_forfait_duel_refuse_une_phase_de_qualification(
                 "nature": "abandon",
             },
         )
-        assert reponse.status_code == 404, reponse.text
-        # La preuve que le refus mord : sans lui, l'archer serait releve au classement de qualif.
-        assert _classement(client, scn.tournoi_id)[scn.archers[1]]["statut"] == "en_lice"
+        # 409 et non 404 : la phase EXISTE, c'est un conflit d'état (`PhasePasUnTableau`).
+        assert reponse.status_code == 409, reponse.text
+        assert reponse.json()["code"] == "phase_pas_un_tableau"
+        # La preuve que le refus mord : sans lui, l'archer serait relégué au classement de qualif.
+        assert _classement(client, scn.depart_id)[scn.archers[1]]["statut"] == "en_lice"
 
 
 def test_forfait_duel_refuse_un_scoreur_d_un_autre_tournoi(
     app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """`_garder_tournoi` ne relache la garde que pour l'**admin** : un scoreur reste borne a son
-    tournoi. La garde a ete reecrite par E16US008 sans qu'aucun test ne couvre ces deux routes."""
+    """`_garder_tournoi` ne relâche la garde que pour l'**admin** : un scoreur reste borné à son
+    tournoi. La garde a été réécrite par E16US008 sans qu'aucun test ne couvre ces deux routes."""
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         autre = Scenario(app_forfaits)
@@ -374,3 +376,37 @@ def test_forfait_duel_refuse_un_scoreur_d_un_autre_tournoi(
         annulation = client.post("/api/v1/forfaits/duel/annulation", json=corps, headers=entete)
         assert annulation.status_code == 403, annulation.text
         assert annulation.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_annulation_de_duel_refuse_une_phase_de_qualification(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La garde de type couvre les DEUX routes : `annuler_en_duel` passe par le même
+    `_phase_de_tableau`. Sans elle, l'admin **déferait** par la route des duels un forfait de
+    qualification déclaré par un scoreur — le contournement d'`exiger_scoreur`, en sens inverse."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        declaration = client.post(
+            "/api/v1/forfaits/qualification",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "archer_id": scn.archers[0],
+                "nature": "abandon",
+            },
+            headers=entete,
+        )
+        assert declaration.status_code == 200, declaration.text
+
+        annulation = client.post(
+            "/api/v1/forfaits/duel/annulation",
+            json={
+                "tournoi_id": scn.tournoi_id,
+                "phase_id": scn.qualif_id,
+                "archer_id": scn.archers[0],
+            },
+        )
+        assert annulation.status_code == 409, annulation.text
+        assert annulation.json()["code"] == "phase_pas_un_tableau"
+        # Le forfait de qualification tient toujours : le refus a bien protégé l'écriture.
+        assert _classement(client, scn.depart_id)[scn.archers[0]]["statut"] == "abandon"

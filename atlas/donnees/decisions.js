@@ -2191,7 +2191,9 @@ window.ATLAS.decisions = {
       "AUTEUR_ADMIN",
       "_phase_du_tournoi"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "_phase_du_tournoi"
+     ],
      "verifiable": true
     },
     {
@@ -2214,6 +2216,26 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "ForfaitRepositorySQL.declarer_avec_trace",
+      "annuler_avec_trace"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/tir.py",
+     "existe": true,
+     "symboles": [
+      "ForfaitRepositorySQL.declarer_avec_trace",
+      "annuler_avec_trace"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/tests/test_forfaits_api.py",
      "existe": true,
      "symboles": [],
@@ -2223,14 +2245,27 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/features/feu-vert/FeuVert.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "deplier"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
     {
      "chemin": "frontend/src/features/feu-vert/etat.ts",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "deplier"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/feu-vert/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "useDeclarerForfaitDepuisFeuVert"
+     ],
      "symboles_absents": [],
      "verifiable": true
     }

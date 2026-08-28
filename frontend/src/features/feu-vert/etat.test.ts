@@ -7,7 +7,6 @@ import {
   libelleBouton,
   libelleCibles,
   nomDuelliste,
-  SANS_RECOURS_HORS_TOUR_1,
 } from './etat'
 
 function duel(patch: Partial<DuelAVenir>): DuelAVenir {
@@ -165,7 +164,9 @@ describe('actionDuel', () => {
     const action = actionDuel(aval, [demi, aval])
     expect(action).toEqual({
       genre: 'sources',
-      sources: [{ numero: 3, detail: 'occupants pas encore connus', archers: [] }],
+      // Le duel amont se déplie quand même (CA : « ses occupants, sa cible ») — c'est le camp
+      // connu que l'organisateur doit aller chercher. Seul le FORFAIT est refusé.
+      sources: [{ numero: 3, detail: 'Robin Hood vs — · cible 4', archers: [] }],
     })
   })
 
@@ -199,10 +200,14 @@ describe('actionDuel', () => {
       blocage: 'cible non attribuée',
     })
     const action = actionDuel(tourDeux, [tourDeux])
-    // Le TEXTE, pas seulement le genre : c'est la seule accroche cote front du `grep DETTE-019`
-    // le jour ou le placement 1→N levera la garde serveur (sans quoi l'ecran annonce une
-    // limite abolie et rien ne rougit).
-    expect(action).toEqual({ genre: 'sans-recours', explication: SANS_RECOURS_HORS_TOUR_1 })
+    // Le TEXTE, pas seulement le genre : c'est la seule accroche côté front du `grep DETTE-019`
+    // le jour où le placement 1→N lèvera la garde serveur (sans quoi l'écran annonce une limite
+    // abolie et rien ne rougit).
+    expect(action).toEqual({
+      genre: 'sans-recours',
+      explication:
+        'Les cibles ne sont posées qu’au premier tour : ce duel ne peut pas encore partir d’ici.',
+    })
   })
 
   it('ne propose rien sur « adversaire non déterminé » : rien ne se lève depuis le feu vert', () => {

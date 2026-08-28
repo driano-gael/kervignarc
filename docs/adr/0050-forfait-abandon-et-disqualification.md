@@ -126,7 +126,9 @@ nature (abandon ↔ DSQ) = **annuler puis re-déclarer** — deux traces plutôt
 | `backend/application/classements.py` | `_forfaits_qualif` — le lecteur « qualification » (relégation/exclusion) |
 | `backend/application/saisie_duels.py` | `_appliquer_forfaits` — le lecteur « duels » (walkover). ⚠️ **Saute un match dont un camp est vide** : un forfait y est écrit sans effet visible, ce que le front doit refuser d'offrir |
 | `backend/application/completude.py` | Clôture par forfait de la série en qualif (DETTE-014 résorbée) |
-| `frontend/src/features/feu-vert/{etat.ts,FeuVert.tsx}` | La déclaration par l'organisateur, en portée `'admin'` |
+| `backend/infrastructure/db/repositories/tir.py` | `ForfaitRepositorySQL.declarer_avec_trace` / `annuler_avec_trace` — l'**atomicité acte↔trace** promise par la Décision (ADR-0035) ; port en `backend/domain/ports.py` |
+| `frontend/src/features/feu-vert/hooks.ts` | `useDeclarerForfaitDepuisFeuVert` — **c'est ici, et nulle part ailleurs, que vit la portée `'admin'`** |
+| `frontend/src/features/feu-vert/{etat.ts,FeuVert.tsx}` | Quels archers sont déclarables (`deplier` exige les deux camps) et le dialogue qui avertit de l'irréversibilité |
 | `backend/tests/test_forfaits_api.py` | Les bornes : qualification fermée à l'admin, phase de qualif refusée sur la route duel, scoreur hors tournoi, anonyme refusé |
 
 ⚠️ **Ce qui n'est porté par rien** : aucun écran n'**annule** un forfait de duel — l'élargissement de

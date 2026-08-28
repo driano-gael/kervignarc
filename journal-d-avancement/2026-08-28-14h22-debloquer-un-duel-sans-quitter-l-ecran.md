@@ -34,12 +34,14 @@ La ligne l'écrit noir sur blanc au lieu d'offrir un bouton qui n'aurait rien pu
 C'est un choix délibéré. Un bouton inerte vous aurait fait chercher l'erreur de votre côté pendant
 que la salle attend. La limite sera levée avec le placement des tours suivants.
 
-⚠️ **Cette limite touche aussi le forfait ci-dessus**, et il faut le dire clairement : un duel qui en
-attend un autre est forcément à partir du 2ᵉ tour. Déclarer le forfait fait donc bien avancer le
-tableau — le duel n'attend plus son issue — mais la ligne affichera ensuite « cible non attribuée »
-et le compteur du bouton « Lancer » ne bougera pas. **Ce n'est pas que votre geste n'a pas porté** :
-c'est le placement des tours suivants qui manque encore. Tant qu'il n'est pas livré, le forfait
-depuis le feu vert sert à **débloquer la suite du tableau**, pas à faire partir ce duel-là.
+⚠️ **Cette limite touche aussi le forfait ci-dessus**, et il faut le dire clairement, parce que ce
+que vous verrez à l'écran peut donner l'impression que le geste n'a pas porté. Un duel de tableau se
+nourrit de **deux** duels précédents, et il n'est jamais au premier tour. Déclarer un forfait en
+tranche **un** : la ligne cesse d'attendre celui-là, mais continue d'attendre l'autre. Et le
+compteur du bouton « Lancer » **diminue d'un**, parce que le duel que vous venez de régler était,
+lui, prêt à partir. **Votre geste a bien porté** : il a fait avancer le tableau. Tant que le
+placement des tours suivants n'est pas livré, le forfait depuis le feu vert sert à **débloquer la
+suite du tableau**, pas à faire partir ce duel-là.
 
 ## Ce qui n'est pas dans cette livraison
 

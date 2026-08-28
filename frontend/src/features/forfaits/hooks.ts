@@ -58,6 +58,8 @@ export function useDeclarerForfaitDuel(tournoiId: number, phaseId: number) {
   })
 }
 
+// ⚠️ DETTE-090 : hook **sans appelant** — la surface d'annulation d'un forfait de duel n'existe
+// pas encore. Ce n'est pas du code mort à supprimer : c'est la moitié livrée de `D-15`.
 export function useAnnulerForfaitDuel(tournoiId: number, phaseId: number) {
   const queryClient = useQueryClient()
   return useMutation({

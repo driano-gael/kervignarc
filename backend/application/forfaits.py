@@ -14,14 +14,16 @@ from application.erreurs import (
     ForfaitIntrouvable,
     ForfaitTournoiTermine,
     PhaseIntrouvable,
+    PhasePasUnTableau,
     PhaseQualificationAbsente,
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi, qualification_du_tournoi
 from domain.archer import ArcherId
+from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
 from domain.entree_audit import ActionAuditee, EntreeAudit
 from domain.forfait import Forfait, NatureForfait
-from domain.phase import Phase, PhaseId, TypePhase
+from domain.phase import Phase, PhaseId
 from domain.ports import (
     ArcherRepository,
     ForfaitRepository,
@@ -87,14 +89,14 @@ class ServiceForfait:
         motif: str | None = None,
     ) -> Forfait:
         """Déclare un forfait dans une **phase de tableau** : l'adversaire passera (walkover)."""
-        phase = self._phase_du_tournoi(tournoi_id, phase_id)
+        phase = self._phase_de_tableau(tournoi_id, phase_id)
         return self._declarer(tournoi_id, phase, archer_id, nature, declare_par, motif)
 
     def annuler_en_duel(
         self, tournoi_id: TournoiId, phase_id: PhaseId, archer_id: ArcherId, annule_par: str
     ) -> None:
         """Annule un forfait de duel : à la reconstruction suivante, le walkover disparaît."""
-        self._phase_du_tournoi(tournoi_id, phase_id)
+        self._phase_de_tableau(tournoi_id, phase_id)
         self._annuler(tournoi_id, phase_id, archer_id, annule_par)
 
     # --- Interne -------------------------------------------------------------------------------
@@ -186,14 +188,18 @@ class ServiceForfait:
             )
         return phase
 
-    def _phase_du_tournoi(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
+    def _phase_de_tableau(self, tournoi_id: TournoiId, phase_id: PhaseId) -> Phase:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
-        # ⚠️ Le `phase_id` vient du client : sans ce refus, la route des duels ecrit un forfait de
-        # QUALIFICATION (relu par `ServiceClassement._forfaits_qualif`) et contourne
-        # `exiger_scoreur`, seule garde de l'autre route. On refuse le type exclu plutot que
-        # d'autoriser une liste, pour ne pas presumer des types de tableau a venir.
-        if phase.type is TypePhase.QUALIFICATION:
-            raise PhaseIntrouvable("La route des duels ne declare pas un forfait de qualification.")
+        # ⚠️ Le `phase_id` vient du client. Sans ce filtre, la route des duels écrit un forfait de
+        # QUALIFICATION (relu par `_forfaits_qualif`) en contournant `exiger_scoreur`, seule garde
+        # de l'autre route. Miroir exact de la LECTURE (`_appliquer_forfaits`) : écrire hors de cet
+        # ensemble poserait une ligne fantôme — invisible, puis `ForfaitDejaDeclare` au geste
+        # suivant, et `ServiceFormats` la compte. Allowlist, pas denylist : un type neuf déclare
+        # son décor en un seul endroit (ADR-0083) et le filtre suit.
+        if phase.type not in TYPES_EN_TABLEAU_JOUE:
+            raise PhasePasUnTableau(
+                f"La phase {phase_id} n'est pas une élimination directe : pas de forfait de duel."
+            )
         return phase

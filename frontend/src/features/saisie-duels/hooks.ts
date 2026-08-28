@@ -39,7 +39,7 @@ import { rejouerActes } from './rejeu'
 // (ADR-0075). Indexée par tournoi, elle aurait servi les phases du matin au scoreur de
 // l'après-midi — le cache aurait recréé le bug que la route vient de fermer.
 const clePhases = (departId: number) => ['duels-phases', departId] as const
-const cleTableau = (tournoiId: number, phaseId: number) =>
+export const cleTableau = (tournoiId: number, phaseId: number) =>
   ['duels-tableau', tournoiId, phaseId] as const
 const cleDuel = (
   tournoiId: number,

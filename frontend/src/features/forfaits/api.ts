@@ -1,11 +1,10 @@
-// Appels d'API des forfaits — abandon / disqualification (E04US015, ADR-0050).
-//
-// Acte du **scoreur** : le jeton `X-Jeton-Scoreur` est joint automatiquement (portée `'scoreur'`,
-// cf. `shared/api/client`). Déclarer / annuler en **qualification** (relégation / exclusion au
-// classement) ou en **duels** (l'adversaire passe). Écritures routées par la file serveur.
-// ⚠️ Les deux appels de **duel** portent une `portee` : le serveur y accepte admin **ou** scoreur
-// (E16US008) et une requête ne joint qu'**une** identité à la fois — appelée depuis le feu vert,
-// elle doit partir en `'admin'`, faute de quoi elle partirait anonyme.
+// Appels d'API des forfaits — abandon / disqualification (E04US015, ADR-0050). Qualification
+// (relégation, exclusion) ou duels (l'adversaire passe) ; écritures routées par la file serveur.
+
+// ⚠️ Le défaut de `fetchJson` est `'admin'`, et une requête ne joint qu'**une** identité : toute
+// écriture de scoreur doit nommer `'scoreur'` EXPLICITEMENT — l'omettre change l'identité émise
+// en silence. Seule la **déclaration en duel** prend la portée en paramètre (le serveur y accepte
+// les deux, E16US008) : venue du feu vert elle part en `'admin'`.
 
 import { fetchJson, type PorteeAuth } from '../../shared/api/client'
 
@@ -73,15 +72,21 @@ export function declarerForfaitDuel(
   )
 }
 
-// ⚠️ Pas de `portee` ici, contrairement a la declaration : le serveur accepte l'admin (`D-15`) mais
-// aucun ecran ne l'appelle encore — DETTE-090. Le parametre reviendra avec son appelant.
+// ⚠️ Pas de `portee` en paramètre, contrairement à la déclaration : le serveur accepte l'admin
+// (`D-15`) mais aucun écran ne l'appelle encore — `DETTE-090`. La portée `'scoreur'` reste donc
+// écrite EN DUR — le défaut de `fetchJson` est `'admin'`, l'omettre changerait l'identité de l'appel
+// en silence. Le paramètre reviendra avec son appelant admin.
 export function annulerForfaitDuel(
   tournoiId: number,
   phaseId: number,
   archerId: number,
 ): Promise<{ annule: boolean }> {
-  return fetchJson<{ annule: boolean }>('/api/v1/forfaits/duel/annulation', {
-    method: 'POST',
-    body: JSON.stringify({ tournoi_id: tournoiId, phase_id: phaseId, archer_id: archerId }),
-  })
+  return fetchJson<{ annule: boolean }>(
+    '/api/v1/forfaits/duel/annulation',
+    {
+      method: 'POST',
+      body: JSON.stringify({ tournoi_id: tournoiId, phase_id: phaseId, archer_id: archerId }),
+    },
+    'scoreur',
+  )
 }

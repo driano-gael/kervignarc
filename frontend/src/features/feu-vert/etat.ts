@@ -61,7 +61,7 @@ export type ActionLigne =
 // ⚠️ Le placement des cibles n'existe qu'au **tour 1** (`ServicePilotageTour._duel_a_venir`,
 // `DETTE-019`) : au-delà, « cible non attribuée » ne se lève par aucun geste, et un lien vers le
 // plan de cibles serait une fausse porte. On dit la limite plutôt que de l'offrir.
-export const SANS_RECOURS_HORS_TOUR_1 =
+const SANS_RECOURS_HORS_TOUR_1 =
   'Les cibles ne sont posées qu’au premier tour : ce duel ne peut pas encore partir d’ici.'
 
 export function actionDuel(duel: DuelAVenir, duels: DuelAVenir[]): ActionLigne | null {
@@ -83,11 +83,21 @@ function deplier(numero: number, duels: DuelAVenir[]): DuelSource {
   if (source === undefined) {
     return { numero, detail: 'plus dans la liste des duels à venir', archers: [] }
   }
-  // ⚠️ Les DEUX camps, pas un seul : `ServiceSaisieDuels._appliquer_forfaits` saute un match
-  // dont un camp est vide, donc un forfait posé ici s'écrirait sans rien débloquer — écran inchangé,
-  // et l'organisateur reclique jusqu'au `ForfaitDejaDeclare`.
-  if (source.haut === null || source.bas === null) {
+  // ⚠️ Deux décisions distinctes, à ne pas confondre. Le FORFAIT exige les deux camps :
+  // `ServiceSaisieDuels._appliquer_forfaits` saute un match dont un camp est vide, un forfait posé
+  // là s'écrirait sans rien débloquer. Le DÉPLIAGE, lui, doit dire ce qu'il sait — le CA veut
+  // « ses occupants, sa cible », et le camp connu est justement l'archer à aller chercher.
+  if (source.haut === null && source.bas === null) {
     return { numero, detail: 'occupants pas encore connus', archers: [] }
+  }
+  if (source.haut === null || source.bas === null) {
+    const cibleUnique = libelleCibles(source)
+    const connus = `${nomDuelliste(source.haut)} vs ${nomDuelliste(source.bas)}`
+    return {
+      numero,
+      detail: cibleUnique ? `${connus} · ${cibleUnique}` : connus,
+      archers: [],
+    }
   }
   const archers = [source.haut, source.bas].map((d) => ({
     archer_id: d.archer_id,

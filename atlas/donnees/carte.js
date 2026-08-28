@@ -74,16 +74,16 @@ window.ATLAS.carte = {
     "feature": "categories"
    },
    {
+    "clientes": 7,
+    "feature": "saisie-duels"
+   },
+   {
     "clientes": 6,
     "feature": "blasons"
    },
    {
     "clientes": 6,
     "feature": "placement"
-   },
-   {
-    "clientes": 6,
-    "feature": "saisie-duels"
    },
    {
     "clientes": 5,
@@ -268,7 +268,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 355,
+   "occurrences": 356,
    "source": "application"
   },
   {
@@ -749,7 +749,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 341,
+   "occurrences": 342,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -2938,11 +2938,11 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 170,
+  "aretes_front": 171,
   "enchevetrements": 4,
   "features": 49,
-  "imports": 909,
-  "imports_entre_couches": 771,
+  "imports": 910,
+  "imports_entre_couches": 772,
   "plus_gros_noeud": 24,
   "ports": 68,
   "ports_hors_domaine": 25,

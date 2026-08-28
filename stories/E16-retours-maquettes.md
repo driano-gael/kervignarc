@@ -329,11 +329,18 @@
   ⚠️ **La même arithmétique vaut pour l'autre branche, et le cadrage ne l'y avait PAS rejouée**
   (revue du 28/08/2026, axe adversarial). Un duel qui attend un duel amont est **forcément** au tour
   ≥ 2 (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`) : le forfait déclaré depuis le feu
-  vert fait donc avancer le tableau, mais **ne rend jamais la ligne prête** — elle passe de « en
-  attente du duel n°X » à « cible non attribuée ». Les textes qui promettaient « ce duel-ci se
-  débloque » (dialogue, recette, journal) ont été corrigés. La leçon vaut au-delà de l'US : un
-  correctif de cadrage se rejoue sur **toutes** les branches où son raisonnement s'applique, pas sur
-  celle qui l'a fait apparaître.
+  vert fait donc avancer le tableau, mais **ne rend jamais la ligne prête**.
+  ⚠️⚠️ **Et la première correction de ce point était elle-même fausse** — relevée en 2ᵉ passe de revue,
+  par sonde sur le moteur. Un duel de tableau attend **DEUX** sources, pas une (`construire_tableau`
+  engendre chaque match de tour n+1 depuis **deux** matchs : `VainqueurDe(a)` + `VainqueurDe(b)`).
+  Conséquences, à tenir pour vraies dans toute US ultérieure : (a) un forfait ne résout **qu'une**
+  des deux attentes — la ligne passe de « en attente du duel n°1, n°2 » à « en attente du duel n°2 »,
+  et **pas** à « cible non attribuée » ; (b) le compteur du bouton « Lancer » **DIMINUE** d'un, le
+  duel amont tranché étant, lui, prêt et donc compté ; (c) le dépliage rend **deux** lignes et
+  jusqu'à **quatre** boutons de forfait.
+  La leçon vaut au-delà de l'US, et elle est plus dure que la première formulation : rejouer un
+  correctif de cadrage sur une branche voisine ne suffit pas — **il faut re-sonder le moteur sur
+  cette branche-là**, parce que le raisonnement transposé y arrive juste et la conclusion fausse.
   ⚠️ **Le forfait n'est offert que si le duel amont a ses DEUX camps** (revue, bloquant).
   `ServiceSaisieDuels._appliquer_forfaits` **saute** un match dont un camp est vide : un forfait posé
   là s'écrivait en base, sans rien débloquer et sans le moindre retour d'écran — l'organisateur

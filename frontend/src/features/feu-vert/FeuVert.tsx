@@ -247,17 +247,23 @@ function ActionLevee({
         aria-controls={`feu-vert-sources-${numeroLigne}`}
         onClick={() => setDeplie((ouvert) => !ouvert)}
       >
-        {deplie ? 'Masquer le duel qui bloque' : 'Voir le duel qui bloque'}
+        {`${deplie ? 'Masquer' : 'Voir'} ${
+          action.sources.length > 1 ? 'les duels qui bloquent' : 'le duel qui bloque'
+        }`}
       </button>
+      {/* ⚠️ `hidden` plutôt que démonté : `aria-controls` ci-dessus pointerait sinon un `id`
+          inexistant à l'état replié, qui est l'état par défaut. */}
+      <ul className="feu-vert__sources" id={`feu-vert-sources-${numeroLigne}`} hidden={!deplie}>
+        {action.sources.map((source) => (
+          <li key={source.numero}>
+            Duel n°{source.numero} · {source.detail}
+          </li>
+        ))}
+      </ul>
       {deplie && (
         <>
-          <ul className="feu-vert__sources" id={`feu-vert-sources-${numeroLigne}`}>
-            {action.sources.map((source) => (
-              <li key={source.numero}>
-                Duel n°{source.numero} · {source.detail}
-              </li>
-            ))}
-          </ul>
+          {/* DETTE-090 : le dialogue AVERTIT au lieu de promettre la réversibilité — aucun écran
+              n'annule un forfait de duel. La promesse revient quand un écran l'annulera. */}
           {forfaitables.map((archer) => (
             <BoutonConfirme
               key={archer.archer_id}
@@ -267,19 +273,22 @@ function ActionLevee({
               enCours={forfait.isPending}
               ton="danger"
               titre={`Déclarer ${archer.libelle} forfait ?`}
-              message={`Son adversaire du duel n°${archer.numero_duel} passe d'office (walkover) : le tableau avance et ce duel-ci n'attend plus son issue.`}
-              detail="Abandon. ⚠️ Aucun écran ne défait un forfait de duel aujourd'hui (DETTE-090) : à ne déclarer qu'en dernier recours."
+              message={`Son adversaire du duel n°${archer.numero_duel} passe d'office (walkover) : ce duel est tranché et cette ligne cesse de l'attendre.${action.sources.length > 1 ? ` Elle attend encore ${action.sources.length - 1} autre duel.` : ''}`}
+              detail="Abandon. ⚠️ Aucun écran ne défait un forfait de duel aujourd'hui : à ne déclarer qu'en dernier recours."
               libelleConfirmer="Déclarer forfait"
               onConfirmer={() => forfait.mutate(archer.archer_id)}
             />
           ))}
-          {forfait.isSuccess && (
-            <p className="feu-vert__levee--inerte" role="status">
-              Forfait enregistré — l’adversaire passe.
-            </p>
-          )}
           {forfait.isError && <MessageErreur erreur={forfait.error} />}
         </>
+      )}
+      {/* ⚠️ HORS du `deplie &&` : quand le forfait tranche la DERNIÈRE source attendue, `actionDuel`
+          bascule sur `sans-recours` et ce bloc ne serait jamais atteint — le seul retour du geste
+          disparaîtrait à l'instant où il réussit. */}
+      {forfait.isSuccess && (
+        <p className="feu-vert__levee--inerte" role="status">
+          Forfait enregistré — l’adversaire passe.
+        </p>
       )}
     </div>
   )

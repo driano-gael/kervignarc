@@ -7,7 +7,7 @@
 // connu (le forfait y serait écrit sans rien débloquer), et le renvoi au plan de duels.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,7 +28,7 @@ vi.mock('../departs/hooks', () => ({
 vi.mock('../phases/hooks', () => ({
   useAvancementPhases: () => ({
     data: [{ id: 7, type: 'elimination_directe', libelle: 'Tableau' }],
-    isLoading: false,
+    isPending: false,
   }),
 }))
 vi.mock('./hooks', async (importOriginal) => ({
@@ -60,8 +60,8 @@ function monter(duels: DuelAVenir[], surPlanDeDuels = vi.fn()) {
     est_termine: false,
     duels,
     nb_prets: duels.filter((d) => d.pret_a_lancer).length,
-  } as FeuVertData
-  vi.mocked(useFeuVert).mockReturnValue({ data: donnees, isLoading: false } as ReturnType<
+  }
+  vi.mocked(useFeuVert).mockReturnValue({ data: donnees, isPending: false } as ReturnType<
     typeof useFeuVert
   >)
   const impact: ResumeLancement = {
@@ -71,7 +71,7 @@ function monter(duels: DuelAVenir[], surPlanDeDuels = vi.fn()) {
     nb_duels: duels.filter((d) => d.pret_a_lancer).length,
     nb_archers: 0,
   }
-  vi.mocked(useImpactLancement).mockReturnValue({ data: impact, isLoading: false } as ReturnType<
+  vi.mocked(useImpactLancement).mockReturnValue({ data: impact, isPending: false } as ReturnType<
     typeof useImpactLancement
   >)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -107,6 +107,11 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /Voir le duel qui bloque/ }))
     await userEvent.click(screen.getByRole('button', { name: /Déclarer Robin Hood forfait/ }))
+    // ⚠️ DETTE-090 : le dialogue AVERTIT de l'irréversibilité au lieu de promettre le contraire.
+    // C'est le seul garde-fou de cette dette — sans cette assertion, la promesse peut repousser.
+    expect(screen.getAllByText(/Aucun écran ne défait un forfait de duel/).length).toBeGreaterThan(
+      0,
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Déclarer forfait' }))
 
     await waitFor(() => expect(declarerForfaitDuel).toHaveBeenCalledTimes(1))
@@ -138,7 +143,12 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     monter([amont, aval])
 
     await userEvent.click(await screen.findByRole('button', { name: /Voir le duel qui bloque/ }))
-    expect(screen.getByText(/occupants pas encore connus/)).toBeInTheDocument()
+    // Le dépliage dit ce qu'il sait (le camp connu, la cible) ; seul le forfait est refusé.
+    // ⚠️ On cible la liste dépliée : la LIGNE du duel amont affiche le même texte, et c'est voulu
+    // — les deux vues du même duel doivent concorder.
+    const deplie = document.getElementById('feu-vert-sources-9')
+    expect(deplie).not.toBeNull()
+    expect(within(deplie as HTMLElement).getByText(/Robin Hood vs —/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /forfait/i })).not.toBeInTheDocument()
   })
 

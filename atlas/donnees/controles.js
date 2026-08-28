@@ -143,6 +143,12 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce _phase_du_tournoi dans « backend/application/forfaits.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0050"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce elimination_directe dans « backend/domain/politiques.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0062"
@@ -240,6 +246,6 @@ window.ATLAS.controles = {
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 39
+  "signaux": 40
  }
 };
