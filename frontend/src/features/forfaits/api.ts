@@ -2,9 +2,12 @@
 //
 // Acte du **scoreur** : le jeton `X-Jeton-Scoreur` est joint automatiquement (portée `'scoreur'`,
 // cf. `shared/api/client`). Déclarer / annuler en **qualification** (relégation / exclusion au
-// classement) ou en **duels** (l'adversaire passe). Les écritures sont routées par la file serveur.
+// classement) ou en **duels** (l'adversaire passe). Écritures routées par la file serveur.
+// ⚠️ Les deux appels de **duel** portent une `portee` : le serveur y accepte admin **ou** scoreur
+// (E16US008) et une requête ne joint qu'**une** identité à la fois — appelée depuis le feu vert,
+// elle doit partir en `'admin'`, faute de quoi elle partirait anonyme.
 
-import { fetchJson } from '../../shared/api/client'
+import { fetchJson, type PorteeAuth } from '../../shared/api/client'
 
 export type NatureForfait = 'abandon' | 'disqualification'
 
@@ -52,6 +55,7 @@ export function declarerForfaitDuel(
   archerId: number,
   nature: NatureForfait,
   motif?: string,
+  portee: PorteeAuth = 'scoreur',
 ): Promise<Forfait> {
   return fetchJson<Forfait>(
     '/api/v1/forfaits/duel',
@@ -65,7 +69,7 @@ export function declarerForfaitDuel(
         motif,
       }),
     },
-    'scoreur',
+    portee,
   )
 }
 
@@ -73,6 +77,7 @@ export function annulerForfaitDuel(
   tournoiId: number,
   phaseId: number,
   archerId: number,
+  portee: PorteeAuth = 'scoreur',
 ): Promise<{ annule: boolean }> {
   return fetchJson<{ annule: boolean }>(
     '/api/v1/forfaits/duel/annulation',
@@ -80,6 +85,6 @@ export function annulerForfaitDuel(
       method: 'POST',
       body: JSON.stringify({ tournoi_id: tournoiId, phase_id: phaseId, archer_id: archerId }),
     },
-    'scoreur',
+    portee,
   )
 }

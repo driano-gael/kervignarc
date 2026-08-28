@@ -131,6 +131,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
+    "feature": "forfaits"
+   },
+   {
+    "clientes": 3,
     "feature": "identite"
    },
    {
@@ -156,10 +160,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "en-cours"
-   },
-   {
-    "clientes": 2,
-    "feature": "forfaits"
    },
    {
     "clientes": 2,
@@ -2938,7 +2938,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 169,
+  "aretes_front": 170,
   "enchevetrements": 4,
   "features": 49,
   "imports": 909,

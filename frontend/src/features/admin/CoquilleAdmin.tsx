@@ -381,7 +381,12 @@ function Coquille() {
       // est prêt à partir, puis faire partir les duels prêts (les postes/écrans sont prévenus).
       id: 'feu-vert',
       libelle: 'Feu vert',
-      rendu: () => courant && <FeuVert tournoiId={courant.id} />,
+      // Le renvoi « attribuer une cible » de la ligne bloquée (E16US008) : la navigation reste
+      // ici, une feature ne construit pas de chemin d'administration.
+      rendu: () =>
+        courant && (
+          <FeuVert tournoiId={courant.id} surPlanDeDuels={() => allerA('pilotage', 'duels')} />
+        ),
     },
     {
       // Premier membre neuf de la famille « prêt à… » (E16US012, ADR-0096), **voisin immédiat** de
