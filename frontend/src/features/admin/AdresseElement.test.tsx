@@ -12,6 +12,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournoi } from '../competition/api'
+import type { Archer } from '../archers/api'
+import { getArchers } from '../archers/api'
 import { getTournois } from '../competition/api'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { CoquilleAdmin } from './CoquilleAdmin'
@@ -49,8 +51,22 @@ function monter(enfants: ReactNode) {
   return render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
 }
 
+const JEAN: Archer = {
+  id: 57,
+  tournoi_id: 12,
+  nom: 'Lévêque',
+  prenom: 'Jean',
+  categorie_id: 1,
+  cible: null,
+  club_id: null,
+  handicap_officiel: null,
+  handicap_surcharge: null,
+  handicap: 0,
+}
+
 beforeEach(() => {
   vi.mocked(getTournois).mockResolvedValue([TOURNOI])
+  vi.mocked(getArchers).mockResolvedValue([JEAN])
   useSessionAdminStore.setState({ jeton: 'jeton-de-test' })
 })
 
@@ -64,6 +80,10 @@ describe('le 4ᵉ segment d’adresse survit à la canonisation', () => {
     // corriger la destination SANS perdre l'élément.
     await screen.findByText('Gestion')
     await waitFor(() => expect(window.location.pathname).toBe('/admin/12/gestion/inscriptions/57'))
+    // ⚠️ **Et surtout : la fiche s'OUVRE.** L'adresse seule gardait la couture voisine — retirer
+    // `ouvrir={…}` du site de montage laissait ce test vert. Le symptôme du bloquant était « la
+    // fiche se referme dans la foulée du clic » ; c'est donc lui qu'on exige.
+    expect(await screen.findByDisplayValue('Jean')).toBeVisible()
   })
 
   it('une destination INVALIDE pour l’axe fait bien retomber l’adresse — et lâche l’élément', async () => {
@@ -75,5 +95,9 @@ describe('le 4ᵉ segment d’adresse survit à la canonisation', () => {
     monter(<CoquilleAdmin />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/admin/12/gestion/inscriptions'))
+    // Et l'élément n'a **pas** été ouvert au passage : la canonisation est un effet, donc
+    // postérieure au premier rendu — c'est l'élément CONSOMMÉ qui doit être filtré, pas seulement
+    // l'adresse réécrite.
+    expect(screen.queryByDisplayValue('Jean')).not.toBeInTheDocument()
   })
 })

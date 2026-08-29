@@ -63,7 +63,7 @@ describe('signalement de doublon sur la ligne', () => {
     // signal qui n'existe qu'en image ne se lit pas au lecteur d'écran.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} />)
+    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
 
     expect(await screen.findAllByRole('button', { name: 'Doublon probable' })).toHaveLength(2)
   })
@@ -72,7 +72,7 @@ describe('signalement de doublon sur la ligne', () => {
     // Négatif apparié au positif ci-dessus : un signalement sur toutes les lignes ne dirait rien.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} />)
+    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
 
     await screen.findAllByRole('button', { name: 'Doublon probable' })
     const ligneDeLuc = screen.getByText(/Luc/).closest('li')
@@ -83,7 +83,7 @@ describe('signalement de doublon sur la ligne', () => {
   it('CA — cliquer déplie l’ACTION sur place : c’est ce qui remplace l’écran dédié', async () => {
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} />)
+    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
 
     const marques = await screen.findAllByRole('button', { name: 'Doublon probable' })
     expect(screen.queryByRole('button', { name: 'Garder cette fiche' })).not.toBeInTheDocument()
@@ -97,13 +97,13 @@ describe('signalement de doublon sur la ligne', () => {
     // perte réelle du retrait de l'écran dédié.
     vi.mocked(getDoublons).mockResolvedValue([PAIRE])
 
-    monter(<Archers tournoiId={1} />)
+    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
 
     expect(await screen.findByText(/1 rapprochement de fiches/)).toBeInTheDocument()
   })
 
   it('aucun doublon : aucune phrase, aucun signalement', async () => {
-    monter(<Archers tournoiId={1} />)
+    monter(<Archers tournoiId={1} ouvrir={null} onOuvrir={vi.fn()} />)
 
     await screen.findByText(/Luc/)
     expect(screen.queryByText(/rapprochement/)).not.toBeInTheDocument()

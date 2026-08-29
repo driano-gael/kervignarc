@@ -12,7 +12,7 @@
 > branche, il est optimiste d'un cran — c'est le livrable. Le même commit pointe la 🎯 suivante. En
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
-**Dernière mise à jour : 29/08/2026, 14 h 00** · **130 US livrées** · dernière : `E16US010`
+**Dernière mise à jour : 29/08/2026, 16 h 46** · **130 US livrées** · dernière : `E16US010`
 *(**chercher partout, et voir d'avance ce qui bloque** — la barre de recherche de l'administration
 porte une déroulante (tournoi · archer · club), trouve sans accents ni majuscules et **ouvre la
 fiche d'un clic**, avec une adresse copiable qui survit au F5 ([ADR-0100](../docs/adr/0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md)).
@@ -20,7 +20,11 @@ La liste des tournois porte **deux niveaux de pastille** — « à compléter »
 démarrer » —, dérivés du jalon « prêt à démarrer » et non recalculés. Les **doublons** quittent leur
 écran dédié pour la ligne de l'archer. ⚠️ **Un CA n'est pas livré et c'est écrit** : « déclarer un
 forfait » depuis la fiche d'archer — la route de qualification est réservée au scoreur, l'élargir à
-l'organisateur est **une décision qui vous revient**.)*
+l'organisateur est **une décision qui vous revient**. ⚠️ **Deux passes de revue, un bloquant
+chacune** — le mécanisme central (l'ouverture d'une fiche par l'adresse) ne marchait pas, puis son
+correctif tactile a repeint la pastille en aplat de marque. Deux entrées de dette ouvertes :
+`DETTE-092` (la recherche lit trois référentiels par frappe) et `DETTE-093` (**un verdict de porte
+mécanique peut être vert sans que toutes les étapes aient tourné** — constaté sur cette US).)*
 
 **Précédente : `E00US027`**
 *(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois

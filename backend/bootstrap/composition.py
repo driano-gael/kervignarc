@@ -44,8 +44,8 @@ from api.v1.gabarits import router as gabarits_router
 from api.v1.grain_validation import router as grain_validation_router
 from api.v1.identite import router as identite_router
 from api.v1.inscriptions import router as inscriptions_router
+from api.v1.jalons import apercus_router as jalons_apercus_router
 from api.v1.jalons import router as jalons_router
-from api.v1.jalons import router_liste as jalons_liste_router
 from api.v1.jeu_essai import router as jeu_essai_router
 from api.v1.listes_impression import router as listes_impression_router
 from api.v1.paiements import router as paiements_router
@@ -1336,7 +1336,7 @@ def create_app(
     app.include_router(competition_router)
     app.include_router(completude_router)
     app.include_router(recherche_router)
-    app.include_router(jalons_liste_router)
+    app.include_router(jalons_apercus_router)
     app.include_router(jalons_router)
     app.include_router(saisie_router)
     app.include_router(deroule_router)

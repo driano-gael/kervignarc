@@ -2624,16 +2624,10 @@ window.ATLAS.decisions = {
    ],
    "date": "2026-07-30",
    "date_brute": "2026-07-30",
-   "extrait": "1. Cinq adresses, une par monde. / (choix des quatre portes), /public, /scoreur, /cible, /admin/\u003ctournoi>/\u003caxe>/\u003cdestination>. Le tournoi est dans l'adresse, pas seulement l'écran. Corrigé en revue : la première version le laissait en état local, si bien que F5 restaurait l'axe et la destination mais pas leur sujet — 21 destinations sur 24 en dépendent, l'utilisateur retombait donc sur « choisissez un tournoi ». Il est placé avant l'axe pour survivre au changement d'axe, et reconnu à sa forme (suite de chiffres) : aucun axe ni aucune destination n'est numérique, la lecture est donc sans ambiguïté. L'adresse dit cible, le code dit tablette. Ce n'est pas une incohérence : l'adresse est lue […]",
+   "extrait": "1. Cinq adresses, une par monde. / (choix des quatre portes), /public, /scoreur, /cible, /admin/\u003ctournoi?>/\u003caxe?>/\u003cdestination?>. Le tournoi est dans l'adresse, pas seulement l'écran. Corrigé en revue : la première version le laissait en état local, si bien que F5 restaurait l'axe et la destination mais pas leur sujet — 21 destinations sur 24 en dépendent, l'utilisateur retombait donc sur « choisissez un tournoi ». Il est placé avant l'axe pour survivre au changement d'axe, et reconnu à sa forme (suite de chiffres) : aucun axe ni aucune destination n'est numérique, la lecture est donc sans ambiguïté. L'adresse dit cible, le code dit tablette. Ce n'est pas une incohérence : l'adresse est lue […]",
    "fichier": "docs/adr/0059-routage-par-role-dans-l-url-routeur-maison.md",
    "identifiant": "0059",
    "liens": [
-    {
-     "cible": "0100",
-     "libelle": "Amendé par",
-     "sens": "entrant",
-     "type": "amende"
-    },
     {
      "cible": "0032",
      "libelle": "Remplace",
@@ -2651,6 +2645,12 @@ window.ATLAS.decisions = {
      "libelle": "Lie",
      "sens": "symetrique",
      "type": "voisin"
+    },
+    {
+     "cible": "0100",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
     }
    ],
    "portage": [],
@@ -3813,7 +3813,8 @@ window.ATLAS.decisions = {
     "E05US035",
     "E16US002",
     "E16US008",
-    "E16US009"
+    "E16US009",
+    "E16US010"
    ]
   },
   {
@@ -7612,6 +7613,7 @@ window.ATLAS.decisions = {
      "symboles": [
       "PreparationJalonReponse",
       "ApercuJalonReponse",
+      "pastille",
       "question",
       "_VERBE",
       "PreparationJalonReponse.question",
@@ -7805,6 +7807,9 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/jalons/PretA.tsx",
      "existe": true,
      "symboles": [
+      "PreparationJalonReponse",
+      "ApercuJalonReponse",
+      "pastille",
       "questionPosee",
       "pret",
       "complet",

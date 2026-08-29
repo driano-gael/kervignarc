@@ -5,7 +5,7 @@
 // exactement le défaut de `DETTE-085`, que `tsc` ne voit pas.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,6 +35,8 @@ const BROUILLON: Tournoi = {
   statut: 'brouillon',
 }
 
+const AUTRE: Tournoi = { ...BROUILLON, id: 13, nom: 'Extérieur 50m' }
+
 function monter(enfants: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
@@ -56,7 +58,9 @@ describe('pastille de préparation en liste', () => {
       apercu('alerte', 'Un tournoi sans créneau ne peut pas être marqué prêt.'),
     ])
 
-    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+    monter(
+      <GestionTournois selectionneId={null} onChoisi={vi.fn()} ouvrir={null} onOuvrir={vi.fn()} />,
+    )
 
     const pastille = await screen.findByText('Ne peut pas démarrer')
     expect(pastille).toHaveClass('badge-preparation--alerte')
@@ -72,24 +76,33 @@ describe('pastille de préparation en liste', () => {
       apercu('avertissement', 'Il reste à préparer : Déroulé composé.'),
     ])
 
-    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+    monter(
+      <GestionTournois selectionneId={null} onChoisi={vi.fn()} ouvrir={null} onOuvrir={vi.fn()} />,
+    )
 
     expect(await screen.findByText('À compléter')).toHaveClass('badge-preparation--avertissement')
   })
 
   it('un tournoi que rien ne retient ne porte AUCUNE pastille', async () => {
-    // Assertion négative appariée aux deux positives ci-dessus : une pastille sur tous les
-    // tournois ne dirait plus rien.
-    vi.mocked(getApercusJalon).mockResolvedValue([apercu('aucun', null)])
+    // ⚠️ **Deux tournois, dont un pastillé** — c'est la pastille de l'AUTRE qui prouve que les
+    // données sont arrivées. La 1ʳᵉ rédaction s'appuyait sur `waitFor(toHaveBeenCalled)`, qui ne
+    // synchronise rien : `waitFor` évalue son callback une première fois de façon synchrone, et
+    // l'appel part dès le montage. « Niveau aucun » et « pas encore chargé » restaient donc
+    // indiscernables (relevé par l'axe adversarial).
+    vi.mocked(getTournois).mockResolvedValue([BROUILLON, AUTRE])
+    vi.mocked(getApercusJalon).mockResolvedValue([
+      apercu('aucun', null),
+      { tournoi_id: 13, niveau: 'avertissement', resume: 'Il reste : Déroulé composé.' },
+    ])
 
-    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+    monter(
+      <GestionTournois selectionneId={null} onChoisi={vi.fn()} ouvrir={null} onOuvrir={vi.fn()} />,
+    )
 
-    await screen.findByText(/Salle 18m/)
-    // ⚠️ Sans cette attente, l'assertion serait verte pour la mauvaise raison : « niveau aucun » et
-    // « aperçu pas encore chargé » rendent tous deux `null` (relevé par l'axe adversarial).
-    await waitFor(() => expect(getApercusJalon).toHaveBeenCalled())
-    expect(screen.queryByText('Ne peut pas démarrer')).not.toBeInTheDocument()
-    expect(screen.queryByText('À compléter')).not.toBeInTheDocument()
+    await screen.findByText('À compléter')
+    const ligne = screen.getByText(/Salle 18m/).closest('li')
+    expect(ligne?.textContent).not.toContain('Ne peut pas démarrer')
+    expect(ligne?.textContent).not.toContain('À compléter')
   })
 
   it('D-16 au doigt — la cause s’ouvre au CLIC, pas seulement au survol', async () => {
@@ -99,7 +112,9 @@ describe('pastille de préparation en liste', () => {
       apercu('alerte', 'Un tournoi sans créneau ne peut pas être marqué prêt.'),
     ])
 
-    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+    monter(
+      <GestionTournois selectionneId={null} onChoisi={vi.fn()} ouvrir={null} onOuvrir={vi.fn()} />,
+    )
 
     await userEvent.click(await screen.findByRole('button', { name: 'Ne peut pas démarrer' }))
 
@@ -111,7 +126,9 @@ describe('pastille de préparation en liste', () => {
     // partait en 401.
     useSessionAdminStore.setState({ jeton: null })
 
-    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+    monter(
+      <GestionTournois selectionneId={null} onChoisi={vi.fn()} ouvrir={null} onOuvrir={vi.fn()} />,
+    )
 
     await screen.findByText(/Salle 18m/)
     expect(getApercusJalon).not.toHaveBeenCalled()

@@ -37,7 +37,7 @@ import {
 export function GestionTournois({
   selectionneId,
   onChoisi,
-  ouvrir = null,
+  ouvrir,
   onOuvrir,
 }: {
   selectionneId: number | null
@@ -45,8 +45,9 @@ export function GestionTournois({
   // ⚠️ **`ouvrir` n'est pas `selectionneId`** : sélectionner désigne le tournoi sur lequel on
   // travaille, ouvrir déplie son formulaire d'édition (E16US010, ADR-0100). Les confondre ferait
   // s'ouvrir une fiche à chaque fois qu'on change de tournoi courant.
-  ouvrir?: number | null
-  onOuvrir?: (id: number | null) => void
+  // ⚠️ **Requis** : voir `Archers` — optionnels, un site de montage pouvait les oublier.
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
 }) {
   // `estAdmin` gouverne **l'affichage** des contrôles d'écriture (création, cycle de vie, édition,
   // suppression). Le **login** n'est plus ici : il vit dans `CoquilleAdmin` (porte Admin, E00US017).
@@ -210,7 +211,7 @@ function LigneTournoi({
   aujourdhui: string
   onChoisi: (t: Tournoi) => void
   ouvrir: number | null
-  onOuvrir?: (id: number | null) => void
+  onOuvrir: (id: number | null) => void
   apercu: ApercuJalon | undefined
 }) {
   const [edition, setEdition] = useOuvertureParAdresse(tournoi.id, ouvrir, onOuvrir)

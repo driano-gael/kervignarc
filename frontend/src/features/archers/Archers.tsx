@@ -34,8 +34,11 @@ export function Archers({
   tournoiId: number
   // L'archer dont la fiche doit s'ouvrir — vient de l'adresse (E16US010, ADR-0100), donc d'un
   // résultat de recherche aussi bien que d'un lien copié.
-  ouvrir?: number | null
-  onOuvrir?: (id: number | null) => void
+  // ⚠️ **Requis, tous les deux** : optionnels, retirer `ouvrir={…}` du site de montage compilait,
+  // passait le lint et laissait tous les tests verts — le défaut de câblage de `DETTE-085`. `tsc`
+  // est l'ancrage le moins cher, et il rend le repli local du hook inutile.
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
 }) {
   const archers = useArchers(tournoiId)
   // Les rapprochements de fiches (E02US005) se lisent désormais **sur la ligne** (CA E16US010) et
@@ -90,7 +93,7 @@ function LigneArcher({
   tournoiId: number
   signalement: SignalementDoublon | null
   ouvrir: number | null
-  onOuvrir?: (id: number | null) => void
+  onOuvrir: (id: number | null) => void
 }) {
   const [edition, setEdition] = useOuvertureParAdresse(archer.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)

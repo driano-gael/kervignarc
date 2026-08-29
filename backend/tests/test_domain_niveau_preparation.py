@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from domain.completude import Completude, EtatSection, LigneCompletude
 from domain.jalon import (
+    CLE_EFFECTIF,
     Jalon,
     NiveauPreparation,
     PreparationJalon,
@@ -209,11 +210,36 @@ def test_sans_exigence_le_nombre_d_inscrits_ne_change_rien_au_reste_a_preparer()
     assert vide == garni
 
 
-def test_une_exigence_non_tenue_reste_nommee() -> None:
-    """La contrepartie : un minimum qui existe et n'est pas atteint reste un manque nommé.
+def test_une_ligne_d_effectif_chiffree_reste_un_manque() -> None:
+    """**La garde contre la sur-correction** — et cette fois elle atteint vraiment le prédicat.
 
-    C'est la garde contre la sur-correction : masquer « Inscrits » **toujours** aurait supprimé
-    le seul signalement d'un effectif réellement insuffisant.
+    ⚠️ La 1ʳᵉ rédaction passait par `_demarrer(effectif_suffisant=False)` : `pret` valait alors
+    `False`, donc `niveau_de_preparation` sortait en `ALERTE` **avant** `_est_un_manque`, et
+    `resume_du_manque` rendait `detail` **avant** la branche `restants`. Deux axes de revue l'ont
+    démontré par mutation — masquer la ligne « Inscrits » en toute circonstance laissait 40 tests
+    verts. D'où une préparation construite à la main, seul moyen d'atteindre la branche gardée.
+    """
+    preparation = PreparationJalon(
+        jalon=Jalon.DEMARRER,
+        lignes=(
+            LigneCompletude(
+                cle=CLE_EFFECTIF, libelle="Inscrits", etat=EtatSection.ALERTE, fait=8, total=34
+            ),
+        ),
+        pret=True,
+        bloquant=False,
+        question_posee=True,
+    )
+
+    assert niveau_de_preparation(preparation) is NiveauPreparation.AVERTISSEMENT
+    assert resume_du_manque(preparation) == "Il reste à préparer : Inscrits."
+
+
+def test_le_refus_chiffre_prime_sur_l_enumeration() -> None:
+    """Quand le serveur a une phrase de refus, c'est elle qui parle — pas la liste des lignes.
+
+    C'est ce que l'ancien `test_une_exigence_non_tenue_reste_nommee` vérifiait réellement ; il est
+    conservé sous le nom de ce qu'il fait.
     """
     preparation = _demarrer(effectif_suffisant=False, inscrits=8, minimum=34)
 

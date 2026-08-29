@@ -12,12 +12,13 @@ import type { Club, NouveauClub } from './api'
 import { useClubs, useCreerClub, useModifierClub, useSupprimerClub } from './hooks'
 
 export function Clubs({
-  ouvrir = null,
+  ouvrir,
   onOuvrir,
 }: {
-  ouvrir?: number | null
-  onOuvrir?: (id: number | null) => void
-} = {}) {
+  // ⚠️ **Requis** : voir `Archers` — optionnels, un site de montage pouvait les oublier en silence.
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
+}) {
   const clubs = useClubs()
 
   return (
@@ -46,7 +47,7 @@ function LigneClub({
 }: {
   club: Club
   ouvrir: number | null
-  onOuvrir?: (id: number | null) => void
+  onOuvrir: (id: number | null) => void
 }) {
   const [edition, setEdition] = useOuvertureParAdresse(club.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)

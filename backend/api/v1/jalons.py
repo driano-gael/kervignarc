@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["jalons"])
 # le type qu'**après**, si bien que `POST /api/v1/tournois/jalons/demarrer` matchait
 # `/{tournoi_id}/demarrer`. Seule la **méthode HTTP** séparait les deux, et un futur
 # `GET /tournois/{id}/demarrer` aurait suffi à casser l'aperçu. Ici, plus aucun chemin concurrent.
-router_liste = APIRouter(prefix="/api/v1/jalons", tags=["jalons"])
+apercus_router = APIRouter(prefix="/api/v1/jalons", tags=["jalons"])
 
 
 class PreparationJalonReponse(BaseModel):
@@ -110,7 +110,7 @@ class ApercuJalonReponse(BaseModel):
         )
 
 
-@router_liste.get(
+@apercus_router.get(
     "/{jalon}/apercus",
     response_model=list[ApercuJalonReponse],
     dependencies=[Depends(exiger_admin)],

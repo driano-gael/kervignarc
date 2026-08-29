@@ -48,7 +48,15 @@ export function AccueilPublic() {
       {/* Porte **Public** (E00US017, ADR-0042) : liste en lecture seule. `GestionTournois` ne porte
           plus le login admin (parti dans `CoquilleAdmin`, porte Admin) — le public ne peut pas
           escalader. Le scoreur et la tablette ont désormais leurs propres portes ; plus proposés ici. */}
-      <GestionTournois selectionneId={selection?.id ?? null} onChoisi={setSelection} />
+      {/* ⚠️ Aucune fiche ne s'ouvre ici : sous la porte Public, `estAdmin` est faux et les
+          contrôles d'écriture ne sont pas rendus. Les deux props sont **requises** depuis la revue
+          d'E16US010 — c'est ce montage-là que leur optionalité laissait passer en silence. */}
+      <GestionTournois
+        selectionneId={selection?.id ?? null}
+        onChoisi={setSelection}
+        ouvrir={null}
+        onOuvrir={() => {}}
+      />
 
       {/* `key={selection.id}` : changer directement de tournoi (la liste reste cliquable au-dessus)
           **remonte** le sous-arbre au lieu de le réconcilier en place — sinon le filtre catégorie et

@@ -147,7 +147,10 @@ Quatre règles sur ce rapport :
    milieu, n'en déduis pas la cause. Copie les lignes.
 2. **`EXIT` différent de 0 ⇒ ROUGE.** Toujours. Tu ne décides jamais qu'un échec est « bénin »,
    « préexistant » ou « sans rapport avec le diff ».
-3. **Toute étape du périmètre qui n'a produit aucun `EXIT` interdit le verdict vert** — permission
+3. `DETTE-093` — **cette règle a déjà été enfreinte sans que rien ne le voie** (E16US010,
+   29/08/2026 : verdict vert alors que `pip-audit` n'avait pas tourné). Rien ne la vérifie ; le
+   registre porte le critère de fin. **Toute étape du périmètre qui n'a produit aucun `EXIT`
+   interdit le verdict vert** — permission
    refusée, outil introuvable, oubli, quelle qu'en soit la raison. Le verdict est alors **`PORTE
    INCOMPLÈTE`** et la raison est nommée. Seules les trois omissions volontaires énumérées à
    l'étape 2 ne comptent pas. *(Sans cette règle, « exit ≠ 0 ⇒ rouge » laissait passer un vert avec

@@ -6,7 +6,7 @@
 // est chiffrée (`D-16`).
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -107,15 +107,48 @@ describe('RechercheTransverse', () => {
   })
 })
 
-describe('anti-rebond', () => {
-  it('DETTE-092 — une frappe rapide ne produit PAS une requête par caractère', async () => {
-    // Chaque requête relit trois référentiels entiers côté serveur : c'est le coût que le retard
-    // borne. Sans lui, « leveque » partait en sept appels.
+describe('« il tire là » (E12US006, D-09)', () => {
+  it('la place se rend pour un archer DU TOURNOI COURANT, y compris hors pilotage', async () => {
+    // ⚠️ La régression corrigée : la place était liée au *scope de recherche*, donc absente de
+    // l'axe Gestion où l'ancien composant la rendait. Le test l'exige sur `enPilotage={false}`.
+    monter(<RechercheTransverse tournoiId={12} enPilotage={false} onOuvrir={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
+
+    expect(await screen.findByText('Pas encore placé.')).toBeVisible()
+  })
+
+  it('mais PAS pour un archer d’une autre édition — ses plans ne sont pas ceux affichés', async () => {
+    // Négatif apparié : sans lui, une place calculée sur le plan du tournoi courant serait
+    // affichée pour un archer qui n'y tire pas — plausible et faux.
     monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
-    await userEvent.type(screen.getByLabelText('Archer à trouver'), 'leveque')
-    await waitFor(() => expect(chercher).toHaveBeenCalled())
+    await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
+    await screen.findByRole('button', { name: /Lévêque Jean/ })
 
-    expect(vi.mocked(chercher).mock.calls.length).toBeLessThan(4)
+    expect(screen.queryByText('Pas encore placé.')).not.toBeInTheDocument()
+  })
+})
+
+describe('anti-rebond', () => {
+  it('DETTE-092 — une frappe rapide ne produit qu’UNE requête, sur la valeur finale', async () => {
+    // ⚠️ **Horloge maîtrisée** (règle 9) : la 1ʳᵉ rédaction comparait la vitesse de frappe réelle à
+    // la fenêtre de 250 ms, avec `toBeLessThan(4)` pour tolérance — trois requêtes sur sept
+    // seraient passées, et un runner chargé l'aurait fait rougir sans régression. L'oracle est
+    // désormais exact, et il porte aussi sur **la valeur** : un retard qui figerait la première
+    // frappe passerait un simple décompte.
+    // `shouldAdvanceTime` : React Query pose ses propres minuteurs, un gel total les fige aussi.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const utilisateur = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
+
+    await utilisateur.type(screen.getByLabelText('Archer à trouver'), 'leveque')
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(chercher).toHaveBeenCalledTimes(1)
+    expect(chercher).toHaveBeenLastCalledWith('archer', 'leveque', null)
+    vi.useRealTimers()
   })
 })

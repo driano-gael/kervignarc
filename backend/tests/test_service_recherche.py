@@ -31,9 +31,13 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
         Tournoi(nom="Salle 18m", date=datetime.date(2026, 3, 14), lieu="Kervignarc")
     )
     ancien = tournois.ajouter(Tournoi(nom="Salle 18m", date=datetime.date(2025, 3, 15)))
+    # ⚠️ **Même nom, MÊME ANNÉE que `salle`** : la saison salle court de novembre à mars, deux
+    # éditions d'une même année civile sont ordinaires. C'est le cas que la 1ʳᵉ correction (l'année
+    # seule) ne fermait pas et que la fixture d'alors ne pouvait pas exercer.
+    jumelle = tournois.ajouter(Tournoi(nom="Salle 18m", date=datetime.date(2026, 11, 21)))
     kerv = clubs.ajouter(Club.creer("Arc Club de Kervignarc"))
     autre = clubs.ajouter(Club.creer("Compagnie de Saint-Mérien"))
-    assert salle.id and ancien.id and kerv.id and autre.id
+    assert salle.id and ancien.id and jumelle.id and kerv.id and autre.id
 
     archers.ajouter(
         Archer(
@@ -59,7 +63,20 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
     archers.ajouter(
         Archer(nom="Bordure", prenom="Luc", tournoi_id=salle.id, categorie_id=_CATEGORIE)
     )
-    return ServiceRecherche(tournois, archers, clubs), {"salle": salle.id, "ancien": ancien.id}
+    archers.ajouter(
+        Archer(
+            nom="Lévêque",
+            prenom="Jean",
+            tournoi_id=jumelle.id,
+            categorie_id=_CATEGORIE,
+            club_id=kerv.id,
+        )
+    )
+    return ServiceRecherche(tournois, archers, clubs), {
+        "salle": salle.id,
+        "ancien": ancien.id,
+        "jumelle": jumelle.id,
+    }
 
 
 def test_un_archer_se_trouve_sans_accents_a_travers_tous_les_tournois() -> None:
@@ -68,11 +85,11 @@ def test_un_archer_se_trouve_sans_accents_a_travers_tous_les_tournois() -> None:
 
     recherche = service.chercher(EntiteRecherchable.ARCHER, "leveque")
 
-    assert recherche.total == 2
+    assert recherche.total == 3
     assert {r.libelle for r in recherche.resultats} == {"Lévêque Jean"}
 
 
-def test_deux_homonymes_se_distinguent_par_leur_club_et_leur_tournoi() -> None:
+def test_des_homonymes_du_meme_club_se_distinguent_par_leur_edition() -> None:
     """Sans cette décoration, la complétion propose deux lignes identiques : rien à choisir."""
     service, _ = _attelage()
 
@@ -80,10 +97,14 @@ def test_deux_homonymes_se_distinguent_par_leur_club_et_leur_tournoi() -> None:
         r.precision for r in service.chercher(EntiteRecherchable.ARCHER, "leveque").resultats
     }
 
+    # ⚠️ **Trois fiches, trois précisions distinctes** — dont deux de la MÊME année civile, que
+    # l'année seule ne séparait pas. C'est la date complète qui les situe, comme pour les tournois.
     assert precisions == {
-        "Arc Club de Kervignarc · Salle 18m (2026)",
-        "Arc Club de Kervignarc · Salle 18m (2025)",
+        "Arc Club de Kervignarc · Salle 18m — 14/03/2026 · Kervignarc",
+        "Arc Club de Kervignarc · Salle 18m — 15/03/2025",
+        "Arc Club de Kervignarc · Salle 18m — 21/11/2026",
     }
+    assert len(precisions) == 3
 
 
 def test_en_pilotage_la_recherche_est_scopee_au_tournoi() -> None:
@@ -112,7 +133,7 @@ def test_un_archer_se_trouve_par_le_nom_de_son_club() -> None:
 
     recherche = service.chercher(EntiteRecherchable.ARCHER, "arc club")
 
-    assert recherche.total == 2
+    assert recherche.total == 3
 
 
 def test_un_archer_sans_club_connu_reste_trouvable() -> None:
@@ -122,7 +143,7 @@ def test_un_archer_sans_club_connu_reste_trouvable() -> None:
     recherche = service.chercher(EntiteRecherchable.ARCHER, "bordure")
 
     assert recherche.total == 1
-    assert recherche.resultats[0].precision == "Salle 18m (2026)"
+    assert recherche.resultats[0].precision == "Salle 18m — 14/03/2026 · Kervignarc"
 
 
 def test_chaque_resultat_dit_ou_ouvrir_sa_fiche() -> None:
@@ -136,7 +157,7 @@ def test_chaque_resultat_dit_ou_ouvrir_sa_fiche() -> None:
     tournois = service.chercher(EntiteRecherchable.TOURNOI, "salle").resultats
     clubs = service.chercher(EntiteRecherchable.CLUB, "compagnie").resultats
 
-    assert {a.tournoi_id for a in archers} == {ids["salle"], ids["ancien"]}
+    assert {a.tournoi_id for a in archers} == {ids["salle"], ids["ancien"], ids["jumelle"]}
     assert all(t.tournoi_id == t.id for t in tournois)
     # Un club est un référentiel **global** : aucune édition ne le porte.
     assert clubs[0].tournoi_id is None
@@ -149,8 +170,12 @@ def test_un_tournoi_se_trouve_par_son_nom_ou_son_lieu_et_sa_date_le_situe() -> N
     par_nom = service.chercher(EntiteRecherchable.TOURNOI, "salle")
     par_lieu = service.chercher(EntiteRecherchable.TOURNOI, "kervignarc")
 
-    assert par_nom.total == 2
-    assert {r.precision for r in par_nom.resultats} == {"14/03/2026 · Kervignarc", "15/03/2025"}
+    assert par_nom.total == 3
+    assert {r.precision for r in par_nom.resultats} == {
+        "14/03/2026 · Kervignarc",
+        "15/03/2025",
+        "21/11/2026",
+    }
     assert par_lieu.total == 1
 
 
@@ -169,7 +194,7 @@ def test_le_scope_tournoi_est_ignore_hors_des_archers() -> None:
     scope = ids["salle"]
 
     assert service.chercher(EntiteRecherchable.CLUB, "compagnie", tournoi_id=scope).total == 1
-    assert service.chercher(EntiteRecherchable.TOURNOI, "salle", tournoi_id=scope).total == 2
+    assert service.chercher(EntiteRecherchable.TOURNOI, "salle", tournoi_id=scope).total == 3
 
 
 def test_un_fragment_vide_ne_propose_rien_sur_aucune_entite() -> None:

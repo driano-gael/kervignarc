@@ -855,23 +855,26 @@
   outline-offset: 2px;
 }
 
-/* La pastille de préparation d'une ligne de tournoi (E16US010, A02). Deux niveaux : « tout n'est
-   pas complet » et « impossible de lancer en l'état ». ⚠️ Les deux ambres de la charte, jamais le
-   rouge — sur l'anthracite il ne signale rien (`DV-03`, 2,55:1). Le mot porte l'information, la
-   couleur ne fait que l'escalader : une pastille lisible à la seule teinte ne l'est ni au
-   daltonisme ni au lecteur d'écran. */
+/* La pastille de préparation d'une ligne de tournoi (E16US010, A02). ⚠️ Les deux ambres de la
+   charte, jamais le rouge (`DV-03`, 2,55:1 sur l'anthracite), et le **mot** porte l'information :
+   une pastille lisible à la seule teinte ne l'est ni au daltonisme ni au lecteur d'écran. */
+
+/* C'est un BOUTON dès qu'elle a une cause — au doigt, ni survol ni lecteur d'écran ne rendent le
+   `title` accessible (règle 10).
+   ⚠️ **`background` et `font-weight` OBLIGATOIRES** : le reset global `button` repeint sinon la
+   pastille en aplat `--brand-surface`, soit 1,5:1 en clair. Gardé par `reset-bouton.test.ts`. */
 .badge-preparation {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 2px 8px;
   border: 1px solid currentColor;
   border-radius: 999px;
+  background: none;
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
   white-space: nowrap;
-}
-
-/* La pastille devient un BOUTON dès qu'elle a une cause à dire : au doigt, ni survol ni lecteur
-   d'écran ne rendent le `title` accessible (règle 10, parc de tablettes). */
-.badge-preparation {
-  min-height: 44px;
   cursor: default;
 }
 

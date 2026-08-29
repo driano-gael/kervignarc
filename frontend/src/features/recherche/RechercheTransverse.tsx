@@ -33,7 +33,7 @@ export function RechercheTransverse({
 }) {
   const [entite, setEntite] = useState<EntiteRecherchable>('archer')
   const [requete, setRequete] = useState('')
-  // Une requête par frappe partirait sinon (voir `useValeurRetardee`, `DETTE-089`).
+  // Une requête par frappe partirait sinon (voir `useValeurRetardee`, `DETTE-092`).
   const fragment = useValeurRetardee(requete)
 
   // A09 : « se concentrer sur le tournoi en cours sélectionné ». Le scope ne vaut que pour les
@@ -43,6 +43,12 @@ export function RechercheTransverse({
   const resultats = recherche.data?.resultats ?? []
   const total = recherche.data?.total ?? 0
   const requeteVide = requete.trim() === ''
+  // ⚠️ **La saisie a-t-elle dépassé la requête ?** `requeteVide` se lit sur la valeur immédiate,
+  // `recherche` sur la valeur retardée : entre les deux, l'ancienne réponse (souvent vide) est
+  // encore `isSuccess`. Sans ce garde, taper une nouvelle lettre affichait « Aucun résultat » pour
+  // une saisie que le serveur n'a pas vue — le fait négatif présenté à la place d'un chargement,
+  // exactement ce que l'ordre d'affichage ci-dessous interdit. L'anti-rebond allonge la fenêtre.
+  const enRetard = fragment.trim() !== requete.trim()
 
   return (
     <div className="coquille__recherche recherche-archer">
@@ -115,7 +121,7 @@ export function RechercheTransverse({
               </p>
             )}
           </>
-        ) : recherche.isSuccess ? (
+        ) : recherche.isSuccess && !enRetard ? (
           <p className="carte__etat">Aucun résultat à ce nom.</p>
         ) : (
           <p className="carte__etat">Chargement…</p>

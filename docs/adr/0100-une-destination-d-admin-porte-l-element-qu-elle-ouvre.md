@@ -13,7 +13,9 @@
 > ⚠️ **Cet ADR ne figure pas à la liste nominative d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md), et c'est volontaire.**
 > Il est de **navigation et d'IHM** : aucun moteur sportif ne lit une adresse, aucune portée ne
 > change, aucune politique injectable n'est en jeu. Le critère de `CLAUDE.md` exclut nommément les
-> ADR d'UI ; les précédents existent (`0095`, `0096`, `0098`). Il porte en revanche sa section
+> ADR d'UI ; les précédents existent (`0095`, `0096`, `0098`). ⚠️ **Et il est inscrit à la liste
+> « hors critère » d'ADR-0075** — l'y plaider seul ici ne suffit pas : c'est cette liste qui borne
+> ce qu'une revue a le droit de relever, et un trou non commenté y éteint la détection. Il porte en revanche sa section
 > « Porté dans le code par », exigée de **tout ADR neuf**.
 
 ## Contexte

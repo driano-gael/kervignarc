@@ -1,16 +1,16 @@
 # ADR-0059 — Une adresse par rôle, servie par un routeur maison
 
 - **Statut** : Accepté
-- **Amendé par** : [ADR-0100](0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md) — l'adresse d'admin gagne un 4ᵉ segment, l'**élément ouvert** (E16US010). Le routeur lui-même est inchangé : c'est `features/admin/axes.ts` qui interprète les segments.
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
-- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi>/<axe>/<destination>`)
+- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi?>/<axe?>/<destination?>/<élément?>`)
 - **Remplace** : [ADR-0032](0032-navigation-admin-par-etat-local.md) — dont il **garde** la conclusion
   sur la dépendance (routeur maison) et **renverse** celle sur les URL
 - **Lie** : [ADR-0042](0042-modele-d-entree-choix-de-role-explicite.md) (les quatre portes, dont cet
   ADR prolonge la précédence), [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)
   (les axes que l'adresse porte), `D-13` (verrou physique de la tablette),
   [DETTE-024](../dette.md#dette-024--routeur-maison-plutôt-quune-bibliothèque)
+- **Amendé par** : [ADR-0100](0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md) — l'adresse d'admin gagne un 4ᵉ segment, l'**élément ouvert** (E16US010). Le routeur lui-même est **inchangé** : c'est `features/admin/axes.ts` qui interprète les segments. ⚠️ Inscrit **ici** et non par un `Amende` chez ADR-0100 (qui produirait la même arête d'atlas) : c'est le lecteur du markdown brut de **cet** ADR qui doit voir l'amendement sans passer par l'atlas.
 
 ## Contexte et problème
 
@@ -37,7 +37,7 @@ Trois manques concrets le motivent :
 ## Décision
 
 **1. Cinq adresses, une par monde.** `/` (choix des quatre portes), `/public`, `/scoreur`, `/cible`,
-`/admin/<tournoi>/<axe>/<destination>`.
+`/admin/<tournoi?>/<axe?>/<destination?>`.
 
 **Le tournoi est dans l'adresse, pas seulement l'écran.** Corrigé en revue : la première version le
 laissait en état local, si bien que `F5` restaurait l'axe et la destination mais **pas leur sujet** —

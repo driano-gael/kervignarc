@@ -59,6 +59,7 @@ import {
   BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
   destinationDunResultat,
+  elementRetenu,
   segmentsCanoniques,
   analyserSegmentsAdmin,
   contextePilotage,
@@ -160,10 +161,10 @@ function Coquille() {
   // résultat porte, pas le tournoi courant : la recherche hors pilotage traverse les éditions, et
   // ouvrir sa fiche dans le mauvais tournoi la montrerait vide.
   const ouvrirResultat = (r: ResultatRecherche) => {
-    if (r.entite === 'tournoi') return ouvrirFicheTournoi(r.id)
-    if (r.entite === 'club') return ouvreurDe('clubs')(r.id)
-    // ⚠️ La règle vit dans `axes.ts`, pure et testée : c'est du CA, et une décision enfouie dans un
-    // composant n'a aucun garde-fou. Les trois entités y passent, pas seulement l'archer.
+    // ⚠️ **Aucun court-circuit avant cet appel.** La 1ʳᵉ rédaction traitait `tournoi` et `club` en
+    // amont : les branches correspondantes de `destinationDunResultat` étaient donc mortes en
+    // production **tout en étant testées** — la règle vivait à deux endroits, et le test gardait
+    // celui que l'écran n'exécutait pas (relevé par C1 et l'axe adversarial).
     const cible = destinationDunResultat(r.entite, r.tournoi_id, axeActif, tournoiId)
     if (cible.destination === null || cible.axe === null) return ouvrirFicheTournoi(r.id)
     return allerA(cible.axe, cible.destination, cible.tournoi, r.id)
@@ -322,7 +323,7 @@ function Coquille() {
       // — peupler la liste des clubs voisins — à deux échelles.
       rendu: () => (
         <>
-          <Clubs ouvrir={elementDemande} onOuvrir={ouvreurDe('clubs')} />
+          <Clubs ouvrir={elementOuvrable} onOuvrir={ouvreurDe('clubs')} />
           <ImportClubs />
         </>
       ),
@@ -345,7 +346,7 @@ function Coquille() {
             <NouvelArcher tournoiId={courant.id} />
             <Archers
               tournoiId={courant.id}
-              ouvrir={elementDemande}
+              ouvrir={elementOuvrable}
               onOuvrir={ouvreurDe('inscriptions')}
             />
           </>
@@ -361,7 +362,7 @@ function Coquille() {
         courant && (
           <FicheArcherPilotage
             tournoiId={courant.id}
-            archerId={elementDemande}
+            archerId={elementOuvrable}
             onCorrigerLaFiche={(id) => ouvreurDe('inscriptions')(id)}
             onModifierLePlacement={() => allerA(AXE_PAR_DESTINATION['placement'], 'placement')}
           />
@@ -521,14 +522,19 @@ function Coquille() {
   const active =
     dansAxe.find((d) => d.id === demandee) ?? dansAxe.find((d) => d.id === ouverture) ?? dansAxe[0]
 
+  // ⚠️ **L'élément consommé suit la même garde que l'adresse.** La canonisation ci-dessous est un
+  // effet, donc postérieure au premier rendu : sans ce filtre, `/admin/12/gestion/doublons/57`
+  // ouvrait la fiche 57 sur la destination de repli **le temps d'un rendu**.
+  const elementOuvrable =
+    active === undefined
+      ? null
+      : elementRetenu({ tournoiId, axe: axeActif, destinationDemandee, elementDemande }, active.id)
   // L'adresse doit dire la vérité **aussi à l'intérieur de l'admin** : `/admin/atelier/supervision`
-  // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet ou une capture de
-  // recette aurait figée. Même politique qu'`App` sur les mondes, même `replaceState` (correction
-  // subie, à ne pas empiler dans l'historique).
+  // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet aurait figée.
+  // Même `replaceState` qu'`App` sur les mondes (correction subie, hors historique).
   // ⚠️ **`segmentsCanoniques` et non `segmentsAdmin`** : la 1ʳᵉ version appelait ce dernier sans
-  // son 4ᵉ argument, donc réécrivait l'adresse **sans l'élément ouvert** — la fiche se refermait
-  // dans la foulée du clic, et tout ADR-0100 était mort hors de l'accueil. La règle vit désormais
-  // dans `axes.ts`, où elle est testée ; ce composant ne fait que l'appliquer.
+  // son 4ᵉ argument, réécrivait donc l'adresse **sans l'élément** — la fiche se refermait dans la
+  // foulée du clic, et ADR-0100 était mort hors de l'accueil.
   const chemAttendu =
     axe === null || active === undefined
       ? null
@@ -585,6 +591,8 @@ function Coquille() {
         {/* L'aide de l'écran « Tournoi » suit l'écran (E14US002) : il change de place, sa couverture
             d'aide ne doit pas disparaître pour autant. */}
         <AideEcran texte={AIDE_ECRANS['tournoi']} />
+        {/* ⚠️ `elementDemande` et non `elementOuvrable` : l'accueil n'a **pas** de destination à
+            valider (`axe === null` ici), et la forme `/admin/12/fiche/7` porte déjà toute la garde. */}
         <GestionTournois
           selectionneId={tournoiId}
           onChoisi={entrerDansTournoi}

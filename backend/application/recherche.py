@@ -119,14 +119,15 @@ def _precision_tournoi(tournoi: Tournoi) -> str:
 def _precision_archer(club: Club | None, tournoi: Tournoi | None) -> str | None:
     """« Club · Tournoi (année) », sans les morceaux qu'on n'a pas — « club inconnu » est réel.
 
-    ⚠️ **L'année n'est pas décorative.** Un club rejoue son tournoi chaque saison : deux fiches du
-    même archer, du même club, sous le même nom de tournoi rendaient **deux lignes identiques** —
-    ce que cette précision existe pour éviter. Le raisonnement était déjà écrit pour
-    `_precision_tournoi` et n'avait pas été reporté ici (relevé en revue par deux axes).
+    ⚠️ **Le tournoi se situe par la MÊME règle que `_precision_tournoi`** — sa date complète et son
+    lieu, pas seulement son année. Deux fiches du même archer, du même club, sous le même nom de
+    tournoi rendaient sinon deux lignes identiques ; la 1ʳᵉ correction n'a repris que la moitié de
+    la leçon (l'année), et deux éditions d'une **même année civile** collisionnaient encore — la
+    saison salle en autorise deux. Une seule règle, appelée des deux côtés.
     """
     morceaux = [
         club.nom if club else None,
-        f"{tournoi.nom} ({tournoi.date:%Y})" if tournoi else None,
+        f"{tournoi.nom} — {_precision_tournoi(tournoi)}" if tournoi else None,
     ]
     presents = [morceau for morceau in morceaux if morceau]
     return " · ".join(presents) if presents else None

@@ -50,6 +50,10 @@ const planAvec = (
   conflits: [],
 })
 
+// ⚠️ **Rattachement de source (règle 9)** : ce bloc dérive du CA d'E16US004 (questionnaire P01,
+// « recherche par club, un club seul suffit »), écrit avant le câblage de l'écran. Le commentaire
+// vivait au-dessus du `describe` de `filtrerArchers`, supprimé par E16US010 — il portait pourtant
+// sur CELUI-CI. « On ne coupe que ce qui existe ailleurs » : il est replacé.
 describe('rechercherArchers — nom et club', () => {
   const archers = [
     { ...archer(1, 'Martin', 'Paul'), club_id: 7 },
@@ -90,6 +94,21 @@ describe('rechercherArchers — nom et club', () => {
     // d'office dans le club filtré ferait croire qu'il en est, et l'y chercher ensuite en vain.
     expect(rechercherArchers(archers, { requete: 'marty', clubId: 7 })).toEqual([])
     expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
+  })
+  it('replie les ACCENTS — « remy » trouve « Rémy »', () => {
+    // ⚠️ Seul test du repli d'accents côté front depuis E16US010, qui a supprimé le `describe` de
+    // `filtrerArchers` où il vivait. Or `normaliser` est toujours consommée par `VueSuivi`, et
+    // c'est le pendant front du repli que `cle_nom` fait au serveur.
+    const trouves = rechercherArchers(archers, { requete: 'remy', clubId: null })
+
+    expect(trouves.map((a) => a.id)).toEqual([2])
+  })
+
+  it('cherche aussi dans le PRÉNOM, pas seulement le nom', () => {
+    // Même raison : les assertions restantes ne cherchaient que des noms de famille.
+    const trouves = rechercherArchers(archers, { requete: 'sophie', clubId: null })
+
+    expect(trouves.map((a) => a.id)).toEqual([3])
   })
 })
 

@@ -196,8 +196,9 @@ const SEGMENT_FICHE = 'fiche'
 /**
  * L'élément que l'écran doit **ouvrir** — deux formes d'adresse, un seul sens (ADR-0100).
  *
- * Sous une destination, c'est le 4ᵉ segment. Sur l'accueil — qui n'a ni axe ni destination et où
- * vit la liste des tournois — l'élément **est** le tournoi courant, d'où `SEGMENT_FICHE`.
+ * Sous une destination, c'est le 4ᵉ segment. Sur l'accueil — ni axe ni destination — `SEGMENT_FICHE`
+ * demande l'ouverture, et l'identifiant qui **le suit** désigne l'élément ; à défaut, c'est le
+ * tournoi courant (ADR-0100 §3).
  * ⚠️ Sans écran pour l'ouvrir, l'adresse porterait un état que rien ne consomme.
  */
 function elementOuvert(
@@ -340,6 +341,47 @@ export function destinationDunArcher(
   }
 }
 
+/** Quelles destinations **consomment** un élément ouvert (ADR-0100 §5).
+ *
+ * ⚠️ `Record` **exhaustif**, même patron que `BESOIN_TOURNOI` : une destination neuve ne compile
+ * pas tant qu'elle n'a pas répondu. Sans lui, `/admin/12/pilotage/supervision/57` conservait un
+ * élément que personne ne lit — l'état mort que le §5 dit d'écarter.
+ */
+export const OUVRE_UN_ELEMENT: Record<Exclude<DestinationAdminId, 'tournoi'>, boolean> = {
+  clubs: true,
+  inscriptions: true,
+  archer: true,
+  gabarits: false,
+  categories: false,
+  blasons: false,
+  formats: false,
+  deroule: false,
+  'jeu-essai': false,
+  accueil: false,
+  assemblage: false,
+  bareme: false,
+  identite: false,
+  phases: false,
+  simulation: false,
+  supervision: false,
+  ecrans: false,
+  'suivi-deroule': false,
+  'feu-vert': false,
+  'pret-demarrer': false,
+  completude: false,
+  classement: false,
+  palmares: false,
+  postes: false,
+  scoreurs: false,
+  plan: false,
+  placement: false,
+  duels: false,
+  departs: false,
+  paiements: false,
+  exports: false,
+  archive: false,
+}
+
 /**
  * L'adresse **canonique** de l'écran réellement affiché — pure, donc testable sans rendu.
  *
@@ -353,11 +395,26 @@ export function segmentsCanoniques(
   axeAffiche: Axe,
   destinationAffichee: DestinationAdminId,
 ): string[] {
-  const memeDestination = destinationAffichee === route.destinationDemandee
   return segmentsAdmin(
     route.tournoiId,
     axeAffiche,
     destinationAffichee,
-    memeDestination ? route.elementDemande : null,
+    elementRetenu(route, destinationAffichee),
   )
+}
+
+/**
+ * L'élément que l'écran affiché doit réellement **ouvrir**, ou `null`.
+ *
+ * ⚠️ Deux gardes, et il faut les deux : la destination affichée doit être celle **demandée** (sinon
+ * un signet périmé ouvrirait l'élément sur la destination de repli), et elle doit **savoir** ouvrir
+ * un élément. La seconde manquait : `…/supervision/57` gardait un élément mort dans l'adresse.
+ */
+export function elementRetenu(
+  route: RouteAdmin,
+  destinationAffichee: DestinationAdminId,
+): number | null {
+  const memeDestination = destinationAffichee === route.destinationDemandee
+  const consomme = destinationAffichee !== 'tournoi' && OUVRE_UN_ELEMENT[destinationAffichee]
+  return memeDestination && consomme ? route.elementDemande : null
 }

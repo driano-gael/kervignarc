@@ -133,14 +133,18 @@ _ETATS_EN_MANQUE = frozenset({EtatSection.ALERTE, EtatSection.EN_ATTENTE})
 def _est_un_manque(ligne: LigneCompletude) -> bool:
     """Cette ligne est-elle quelque chose qu'il **reste à préparer** ?
 
-    ⚠️ **La ligne d'effectif sans total n'exige rien.** `_etat_effectif` la met à `EN_ATTENTE`
-    quand aucun minimum n'est requis — c'est juste sur l'écran du jalon, où le décompte est
-    à côté ; promue dans une **phrase**, elle faisait dire « il reste à préparer : Inscrits » à un
-    tournoi qui en compte 80. Une donnée plausible et fausse, relevée par trois axes de revue.
+    ⚠️ **Une ligne d'effectif EN ATTENTE et sans total n'exige rien.** `_etat_effectif` la met dans
+    cet état quand aucun minimum n'est requis — juste sur l'écran du jalon, où le décompte est à
+    côté ; promue dans une **phrase**, elle faisait dire « il reste à préparer : Inscrits » à un
+    tournoi qui en compte 80. ⚠️ L'exclusion est bornée à `EN_ATTENTE` : une ligne `ALERTE` sans
+    total, qu'aucun chemin ne produit aujourd'hui, ne doit jamais devenir muette.
     """
     if ligne.etat not in _ETATS_EN_MANQUE:
         return False
-    return not (ligne.cle == CLE_EFFECTIF and ligne.total is None)
+    # `minimum == 0` ⟺ aucune étape composée (`application.tournois.exigence_effectif`) : le manque
+    # est alors porté par la ligne « Déroulé composé », qui est `EN_ATTENTE` dans le même état.
+    sans_exigence = ligne.cle == CLE_EFFECTIF and ligne.total is None
+    return not (sans_exigence and ligne.etat is EtatSection.EN_ATTENTE)
 
 
 def niveau_de_preparation(preparation: PreparationJalon) -> NiveauPreparation:

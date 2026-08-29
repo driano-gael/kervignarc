@@ -94,7 +94,7 @@
     - **Portée : archers du tournoi courant.** La recherche filtre les archers **inscrits au tournoi
       sélectionné** dans la sidebar (le cas d'usage « je tire où ? » à la table d'organisation), pas
       tout le référentiel d'archers. Inerte tant qu'aucun tournoi n'est choisi.
-    - **Réalisation front pure.** Réutilise la logique déjà testée d'E07US006 (`filtrerArchers` /
+    - **Réalisation front pure.** Réutilise la logique déjà testée d'E07US006 (`rechercherArchers` /
       `construireJournee`) — même geste nom → place — sur les endpoints de lecture existants (archers,
       départs, plans de cibles). Aucun endpoint backend nouveau.
 - **Dépend de** : E02US002, E03US001 · **Jalon** : J1
