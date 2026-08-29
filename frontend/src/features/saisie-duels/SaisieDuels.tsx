@@ -419,7 +419,11 @@ export function DuelCharge({
 
 // Forfait d'un duelliste (E04US015, ADR-0050) : abandon en cours de tableau. L'adversaire passe
 // d'office (walkover côté serveur) et le tableau se reconstruit ; le scoreur revient à la liste où le
-// match apparaît tranché. Réversible depuis le panneau de qualification ou par re-régénération.
+// match apparaît tranché.
+// ⚠️ DETTE-090 : ce bloc annonçait « réversible depuis le panneau de qualification ou par
+// re-régénération » — les DEUX chemins sont faux. `annuler_en_qualification` résout la phase de
+// QUALIFICATION (un forfait de duel y est introuvable) et `regenerer` ne touche aucun forfait.
+// Aucun écran ne défait un forfait de duel aujourd'hui.
 function ForfaitDuel({
   tournoiId,
   phaseId,

@@ -120,3 +120,21 @@ def autoriser_saisie(request: Request) -> Poste | None:
     if poste is None:
         raise NonAuthentifie("Session requise pour saisir un score (admin ou poste de cible).")
     return _refuser_ecran(poste)
+
+
+def autoriser_forfait_duel(request: Request) -> Scoreur | None:
+    """Autorise la déclaration d'un **forfait de duel** : admin **ou** scoreur (E16US008).
+
+    Renvoie `None` pour l'**admin**, le `Scoreur` sinon — que l'appelant doit utiliser pour borner
+    l'action à **son** tournoi et tracer qui a déclaré. ⚠️ L'admin, lui, n'est borné à aucun
+    tournoi : son secret vaut pour l'instance (`D-13`). Jumelle d'`autoriser_saisie` — une route,
+    deux identités, jamais une route admin parallèle (ADR-0099 : le pourquoi est en `stories/`).
+    """
+    service_auth: ServiceAuth = request.app.state.service_auth
+    if service_auth.session_valide(extraire_jeton(request)):
+        return None
+    service_scoreurs: ServiceScoreurs = request.app.state.service_scoreurs
+    scoreur = service_scoreurs.resoudre_session(extraire_jeton_scoreur(request))
+    if scoreur is None:
+        raise NonAuthentifie("Session requise pour déclarer un forfait (admin ou scoreur).")
+    return scoreur

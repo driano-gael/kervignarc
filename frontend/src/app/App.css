@@ -1928,6 +1928,47 @@ button:disabled {
   gap: 8px;
   align-items: flex-start;
 }
+/* Actions sur la ligne d'un duel bloqué (E16US008, A15) : « les manquements appartiennent à la
+   ligne du duel qui en a, ainsi que ses actions ». `flex-basis: 100%` casse la ligne du duel — le
+   bloc prend la largeur sous les trois colonnes plutôt que de les serrer. */
+.feu-vert__levee {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ⚠️ La config se fait sur **tablette** le jour J : `button` global tombe à ~31 px, sous la cible
+   tactile de 44 px que le reste des surfaces du jour J applique. */
+.feu-vert__levee button {
+  min-height: 44px;
+}
+
+/* ⚠️ `margin: 0` : depuis que `sans-recours` enveloppe son `<p>` dans un `.feu-vert__levee`, le
+   paragraphe n'est plus ciblé que par cette classe — sans reset il reprend les ~13,5 px de marge
+   verticale du navigateur, non collapsées dans un parent flex. Le `gap` du conteneur suffit. */
+.feu-vert__levee--inerte {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
+
+.feu-vert__sources {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
+
+/* ⚠️ Contrepartie du `hidden` de `FeuVert.tsx` : `[hidden] { display: none }` vient de la feuille
+   du navigateur, donc **toute** déclaration `display:` posée ci-dessus la battrait et laisserait le
+   panneau replié visible. Cette règle rend le masquage indépendant de ce voisinage. */
+.feu-vert__sources[hidden] {
+  display: none;
+}
 
 /* Complétude du tournoi (E12US005) : deux sections (sportif / hors sportif), chacune une liste
    d'états. Comme la supervision : **couleur + pastille + texte**, jamais la couleur seule (DV-03).

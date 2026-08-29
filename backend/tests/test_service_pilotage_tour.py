@@ -36,6 +36,7 @@ from domain.categorie import Categorie
 from domain.depart import Depart
 from domain.duel import ResolveurBaremeDuelFfta
 from domain.entree_audit import ActionAuditee
+from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
 from domain.phase import Phase, TypePhase
@@ -46,6 +47,7 @@ from domain.politiques import (
     SeedingSerpent,
     registre_par_defaut,
 )
+from domain.tableau import Tableau
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
@@ -55,6 +57,7 @@ from tests.conftest import (
     FauxInscriptionRepository,
     FauxPhaseRepository,
 )
+from tests.test_domain_tableau import construire, jouer_gagne_mieux_classe
 from tests.test_service_audit import FauxAuditRepository, HorlogeFigee
 from tests.test_service_placement_duels import (
     FauxBlasonRepository,
@@ -441,3 +444,72 @@ def test_feu_vert_refuse_une_phase_de_qualification() -> None:
     assert qualif.id is not None
     with pytest.raises(PhasePasUnTableau):
         monde.pilotage.feu_vert(monde.tournoi_id, qualif.id)
+
+
+def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_ce_qui_reste_a_trancher() -> None:
+    """L'ORACLE de ce que les écrans annoncent après un forfait (E16US008).
+
+    ⚠️ Ce test existe parce que la prose s'est trompée **quatre fois de suite** en revue : « une
+    source », puis « deux sources », puis « deux sauf byes ». Un `VainqueurDe`/`PerdantDe` ne compte
+    comme attente que si son camp est **vide** ; un camp se remplit de DEUX façons — un bye à la
+    construction, **ou un duel amont déjà tranché**. D'où le régime **1 ou 2, à tout effectif**.
+    ⚠️ Le fixture doit être un tableau **EN COURS** : l'organisateur ne lit jamais le feu vert sur un
+    tableau vierge, et c'est en ne mesurant que le vierge qu'on a conclu « puissance de 2 ⇒ toujours
+    deux ». Les décomptes exacts dépendent de la profondeur injectée (règle 2) ; le régime 1-ou-2,
+    lui, est **structurel** — un match n'a que deux camps.
+    """
+
+    def repartition(tableau: Tableau) -> dict[int, int]:
+        compte: dict[int, int] = {}
+        for match in tableau.matchs:
+            if match.est_bye or match.vainqueur is not None:
+                continue
+            attendues = len(ServicePilotageTour._sources_en_attente(match))
+            if attendues:
+                compte[attendues] = compte.get(attendues, 0) + 1
+        return compte
+
+    # À la construction, les byes seuls font varier le régime (profondeur `podium`, défaut).
+    assert repartition(construire(8)) == {2: 4}
+    assert repartition(construire(6)) == {1: 2, 2: 2}
+    assert repartition(construire(3)) == {1: 1}
+
+    # ⚠️ EN COURS, et sans le moindre bye : trancher un amont suffit à faire naître le régime « une
+    # source ». C'est l'assertion qui aurait rougi sur les quatre versions fausses de la prose.
+    en_cours = jouer_gagne_mieux_classe(construire(8), 1)
+    assert repartition(en_cours) == {1: 1, 2: 3}
+
+
+def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> None:
+    """Le volet « compteur » de l'oracle (E16US008) — et le seul cas qu'aucun test ne couvrait.
+
+    Le compteur du bouton « Lancer » ne diminue au forfait QUE si le duel tranché y figurait. Un
+    duel de tour ≥ 2 n'a jamais de cible (`place = match.tour == 1`), donc n'est jamais compté : le
+    forfait fait avancer le tableau **sans** bouger le compteur. C'est la phrase que la recette et
+    le journal rendent à l'organisateur — voir ADR-0013 §10 : elle vit ici, pas dans la prose.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    monde.gagner(1)
+    monde.gagner(2)
+    avant = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    assert avant.nb_prets == 0
+    finale = next(d for d in avant.duels if d.tour == 2)
+    assert finale.participants_connus and not finale.pret_a_lancer
+
+    monde.forfaits.semer(
+        Forfait.creer(
+            monde.tournoi_id,
+            finale.haut.archer_id if finale.haut else 0,
+            monde.phase_id,
+            NatureForfait.ABANDON,
+            "Administrateur",
+            datetime.datetime(2026, 8, 28, 10, 0, tzinfo=datetime.UTC),
+        )
+    )
+    apres = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    # Le tableau a avancé (le duel forfait est tranché, il quitte les duels à venir)...
+    assert len(apres.duels) < len(avant.duels)
+    # ...et le compteur n'a pas bougé : ce duel n'y figurait pas.
+    assert apres.nb_prets == 0

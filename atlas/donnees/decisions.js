@@ -363,7 +363,21 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "docs/fonctionnel/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "docs/metriques-revue.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "stories/",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -377,7 +391,8 @@ window.ATLAS.decisions = {
    "us": [
     "E01US001",
     "E02US001",
-    "E05US028"
+    "E05US028",
+    "E16US008"
    ]
   },
   {
@@ -2142,7 +2157,137 @@ window.ATLAS.decisions = {
      "type": "voisin"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/dependances.py",
+     "existe": true,
+     "symboles": [
+      "autoriser_forfait_duel",
+      "exiger_scoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/forfaits.py",
+     "existe": true,
+     "symboles": [
+      "_garder_tournoi",
+      "_auteur",
+      "declare_par"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/classements.py",
+     "existe": true,
+     "symboles": [
+      "_forfaits_qualif"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/completude.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/forfaits.py",
+     "existe": true,
+     "symboles": [
+      "ServiceForfait",
+      "declarer_en_qualification",
+      "declarer_en_duel",
+      "ForfaitDejaDeclare",
+      "AUTEUR_ADMIN",
+      "_exiger_phase_de_tableau",
+      "TYPES_EN_TABLEAU_JOUE"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "_appliquer_forfaits"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/forfait.py",
+     "existe": true,
+     "symboles": [
+      "Forfait",
+      "NatureForfait"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "ForfaitRepositorySQL.declarer_avec_trace",
+      "annuler_avec_trace"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/tir.py",
+     "existe": true,
+     "symboles": [
+      "ForfaitRepositorySQL.declarer_avec_trace",
+      "annuler_avec_trace"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/tests/test_forfaits_api.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/feu-vert/FeuVert.tsx",
+     "existe": true,
+     "symboles": [
+      "archersForfaitables",
+      "deplier",
+      "ActionLevee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/feu-vert/etat.ts",
+     "existe": true,
+     "symboles": [
+      "archersForfaitables",
+      "deplier",
+      "ActionLevee"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/feu-vert/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "useDeclarerForfaitDepuisFeuVert"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -2154,7 +2299,8 @@ window.ATLAS.decisions = {
     "E06US001",
     "E10US005",
     "E12US004",
-    "E12US005"
+    "E12US005",
+    "E16US008"
    ]
   },
   {
@@ -3658,6 +3804,7 @@ window.ATLAS.decisions = {
     "E05US034",
     "E05US035",
     "E16US002",
+    "E16US008",
     "E16US009"
    ]
   },

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { DuelAVenir, ResumeLancement } from './api'
-import { afficheDuel, libelleBouton, libelleCibles, nomDuelliste } from './etat'
+import {
+  actionDuel,
+  afficheDuel,
+  archersForfaitables,
+  libelleBouton,
+  libelleCibles,
+  nomDuelliste,
+} from './etat'
 
 function duel(patch: Partial<DuelAVenir>): DuelAVenir {
   return {
@@ -85,5 +92,165 @@ describe('libelleBouton', () => {
     expect(
       libelleBouton(impact({ numeros: [], cibles: [], nb_duels: 0, nb_archers: 0 })),
     ).toBeNull()
+  })
+})
+
+describe('actionDuel', () => {
+  // Un tableau réaliste : le n°5 attend l'issue du n°3, qui est prêt à partir sur la cible 4.
+  const aval = duel({
+    numero: 5,
+    tour: 2,
+    haut: null,
+    bas: null,
+    participants_connus: false,
+    cible_haut: null,
+    cible_bas: null,
+    cible_attribuee: false,
+    sources_en_attente: [3],
+    pret_a_lancer: false,
+    blocage: 'en attente du duel n°3',
+  })
+  const amont = duel({ numero: 3 })
+
+  it('ne propose rien sur un duel prêt : il n’a aucun manquement à lever', () => {
+    expect(actionDuel(duel({}), [duel({})])).toBeNull()
+  })
+
+  it('déplie le duel amont attendu — ses occupants et sa cible, sans quitter l’écran', () => {
+    expect(actionDuel(aval, [amont, aval])).toEqual({
+      genre: 'sources',
+      sources: [
+        {
+          numero: 3,
+          detail: 'Robin Hood vs Will Scarlet · cible 4',
+          archers: [
+            { archer_id: 1, libelle: 'Robin Hood', numero_duel: 3 },
+            { archer_id: 2, libelle: 'Will Scarlet', numero_duel: 3 },
+          ],
+        },
+      ],
+    })
+  })
+
+  it('déplie les deux duels amont quand le blocage en nomme deux', () => {
+    const bloque = duel({
+      ...aval,
+      sources_en_attente: [3, 4],
+      blocage: 'en attente du duel n°3, n°4',
+    })
+    const quatre = duel({
+      numero: 4,
+      haut: { archer_id: 7, nom: 'Tuck', prenom: 'Frère' },
+      bas: { archer_id: 8, nom: 'Little', prenom: 'John' },
+      cible_haut: 7,
+      cible_bas: 7,
+    })
+    const action = actionDuel(bloque, [amont, quatre, bloque])
+    expect(action?.genre).toBe('sources')
+    expect(action?.genre === 'sources' && action.sources.map((s) => s.numero)).toEqual([3, 4])
+  })
+
+  it('n’offre aucun archer à déclarer forfait quand le duel amont n’a pas encore d’occupant', () => {
+    const vide = duel({ numero: 3, haut: null, bas: null, participants_connus: false })
+    const action = actionDuel(aval, [vide, aval])
+    expect(action).toEqual({
+      genre: 'sources',
+      sources: [{ numero: 3, detail: 'occupants pas encore connus', archers: [] }],
+    })
+  })
+
+  it('n’offre aucun forfait quand un seul camp du duel amont est connu', () => {
+    // ⚠️ tour 2 et sans cible : un match de tour 1 à camp vide est un BYE (exclu des duels à
+    // venir), et `place = match.tour == 1` interdit toute cible au-delà — l'état « un camp connu
+    // AVEC cible » n'existe pas en production.
+    const demi = duel({
+      numero: 3,
+      tour: 2,
+      bas: null,
+      participants_connus: false,
+      pret_a_lancer: false,
+      cible_haut: null,
+      cible_bas: null,
+    })
+    // ⚠️ L'aval passe au tour 3 : une source de tour 2 ne peut pas alimenter un match de tour 2
+    // (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`).
+    const avalTour3 = { ...aval, tour: 3 }
+    const action = actionDuel(avalTour3, [demi, avalTour3])
+    expect(action).toEqual({
+      genre: 'sources',
+      // Le duel amont se déplie quand même (CA : « ses occupants, sa cible ») — c'est le camp
+      // connu que l'organisateur doit aller chercher. Seul le FORFAIT est refusé.
+      sources: [{ numero: 3, detail: 'Robin Hood vs —', archers: [] }],
+    })
+  })
+
+  it('ne casse pas si le duel amont a disparu de la liste entre deux rafraîchissements', () => {
+    expect(actionDuel(aval, [aval])).toEqual({
+      genre: 'sources',
+      sources: [{ numero: 3, detail: 'plus dans la liste des duels à venir', archers: [] }],
+    })
+  })
+
+  it('renvoie au plan de cibles quand la cible manque au premier tour', () => {
+    const sansCible = duel({
+      tour: 1,
+      cible_haut: null,
+      cible_bas: null,
+      cible_attribuee: false,
+      pret_a_lancer: false,
+      blocage: 'cible non attribuée',
+    })
+    expect(actionDuel(sansCible, [sansCible])).toEqual({ genre: 'placement' })
+  })
+
+  it('dit la limite au lieu d’offrir une fausse porte au-delà du premier tour', () => {
+    const tourDeux = duel({
+      numero: 5,
+      tour: 2,
+      cible_haut: null,
+      cible_bas: null,
+      cible_attribuee: false,
+      pret_a_lancer: false,
+      blocage: 'cible non attribuée',
+    })
+    const action = actionDuel(tourDeux, [tourDeux])
+    // Le TEXTE, pas seulement le genre : c'est la seule accroche côté front du `grep DETTE-019`
+    // le jour où le placement 1→N lèvera la garde serveur (sans quoi l'écran annonce une limite
+    // abolie et rien ne rougit).
+    expect(action).toEqual({
+      genre: 'sans-recours',
+      explication:
+        'Les cibles ne sont posées qu’au premier tour : ce duel ne peut pas encore partir d’ici.',
+    })
+  })
+
+  it('ne propose rien sur « adversaire non déterminé » : rien ne se lève depuis le feu vert', () => {
+    const orphelin = duel({
+      haut: null,
+      bas: null,
+      participants_connus: false,
+      sources_en_attente: [],
+      pret_a_lancer: false,
+      blocage: 'adversaire non déterminé',
+    })
+    expect(actionDuel(orphelin, [orphelin])).toBeNull()
+  })
+})
+
+describe('archersForfaitables', () => {
+  it('aplatit les occupants de tous les duels amont dépliés', () => {
+    const sources = [
+      { numero: 3, detail: '', archers: [{ archer_id: 1, libelle: 'Robin Hood', numero_duel: 3 }] },
+      {
+        numero: 4,
+        detail: '',
+        archers: [{ archer_id: 8, libelle: 'John Little', numero_duel: 4 }],
+      },
+    ]
+    expect(archersForfaitables(sources).map((a) => a.archer_id)).toEqual([1, 8])
+  })
+
+  it('rend une liste vide quand aucun occupant n’est connu (pas de bouton à offrir)', () => {
+    expect(archersForfaitables([{ numero: 3, detail: '', archers: [] }])).toEqual([])
   })
 })

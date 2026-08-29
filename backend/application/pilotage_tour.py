@@ -24,6 +24,7 @@ from domain.tournoi import TournoiId
 
 # Auteur de la trace de lancement : l'organisateur agit sous le rôle **admin**, un secret partagé
 # (E10US002, `D-13`), pas une personne nommée — on fige le rôle, comme la trace `REPLACEMENT`.
+# DETTE-017 : 4ᵉ site de cette constante — il manquait au registre jusqu'au 28/08/2026.
 _AUTEUR_ADMIN = "Administrateur"
 
 

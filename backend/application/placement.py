@@ -60,6 +60,7 @@ from domain.tournoi import TournoiId
 # **secret**, pas une personne nommée (E10US002, `D-13`) — on fige donc le rôle, pas un nom.
 # Cohérent
 # avec l'agrégat `EntreeAudit` qui exige un auteur non vide (« qui a agi »).
+# DETTE-017 : 2ᵉ site de cette constante, dupliquée sur cinq modules applicatifs.
 _AUTEUR_ADMIN = "Administrateur"
 
 

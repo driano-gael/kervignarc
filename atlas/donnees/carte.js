@@ -70,6 +70,10 @@ window.ATLAS.carte = {
     "feature": "phases"
    },
    {
+    "clientes": 8,
+    "feature": "saisie-duels"
+   },
+   {
     "clientes": 7,
     "feature": "categories"
    },
@@ -80,10 +84,6 @@ window.ATLAS.carte = {
    {
     "clientes": 6,
     "feature": "placement"
-   },
-   {
-    "clientes": 6,
-    "feature": "saisie-duels"
    },
    {
     "clientes": 5,
@@ -131,6 +131,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
+    "feature": "forfaits"
+   },
+   {
+    "clientes": 3,
     "feature": "identite"
    },
    {
@@ -156,10 +160,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "en-cours"
-   },
-   {
-    "clientes": 2,
-    "feature": "forfaits"
    },
    {
     "clientes": 2,
@@ -268,7 +268,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 355,
+   "occurrences": 356,
    "source": "application"
   },
   {
@@ -749,7 +749,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 341,
+   "occurrences": 342,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -2938,11 +2938,11 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 169,
+  "aretes_front": 172,
   "enchevetrements": 4,
   "features": 49,
-  "imports": 909,
-  "imports_entre_couches": 771,
+  "imports": 910,
+  "imports_entre_couches": 772,
   "plus_gros_noeud": 24,
   "ports": 68,
   "ports_hors_domaine": 25,

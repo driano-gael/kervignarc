@@ -45,7 +45,10 @@ score désormais un duel de bout en bout** sur son appareil — manche par manch
 validation du vainqueur qui fait avancer le tableau jusqu'au podium. Le scoreur peut aussi désormais
 **déclarer un abandon ou une disqualification** — en qualification (l'archer est relégué ou sorti du
 classement, ses flèches conservées) comme en duels (l'adversaire passe d'office) —, un geste
-**réversible** qui remplace la suppression. Et un **créneau de tir affiche désormais son état**
+**réversible** qui remplace la suppression. Et l'écran depuis lequel l'organisateur **lance les
+tours** ne se contente plus de nommer ce qui bloque : chaque ligne porte **le geste qui la débloque**
+— voir sur place qui tire le duel attendu et sur quelle cible, y **déclarer un forfait** sans aller
+chercher un scoreur, ou rejoindre le plan de cibles. Et un **créneau de tir affiche désormais son état**
 (ouvert / lancé / clos, déduit du tir réel) et **se protège** d'une modification ou d'une suppression
 accidentelle une fois qu'une session de tir y a commencé. Enfin, pour la démo et la mise au point, un
 **cockpit de simulation** rejoue un tournoi **en accéléré et sans rien enregistrer** : un robot génère
@@ -555,14 +558,30 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **128 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/08/2026 — dont deux
+- **129 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E00US027`, **sans effet visible pour vous** : une
+  autorité sur le compte) —, la dernière étant `E16US008` — **débloquer un duel sans quitter
+  l'écran** : sur le feu vert, chaque ligne qui n'est pas prête porte désormais le geste qui la
+  débloque. Le duel qui bloque **s'ouvre sur place** (qui tire, sur quelle cible), et l'organisateur
+  peut **déclarer un forfait lui-même** au lieu d'aller chercher un scoreur — le cas coûteux du jour
+  J, un archer parti dont le duel ne finira jamais et qui bloque tout ce qui vient après. Au
+  deuxième tour et au-delà, l'écran **dit** que les cibles ne sont pas encore posées plutôt que
+  d'offrir un bouton qui n'aurait rien pu faire — et le forfait, dans ce cas, **débloque la suite du
+  tableau sans faire partir ce duel-là**, ce que la confirmation annonce désormais sans détour. Trois
+  limites sont assumées et écrites : un forfait de duel **ne se défait depuis aucun écran** pour
+  l'instant (le serveur le sait, la surface manque) ; le forfait n'est proposé que si le duel attendu
+  a bien **ses deux archers** ; et comme une ligne bloquée attend **un ou deux** duels
+  précédents selon ce qui reste à trancher en amont, un forfait n'en résout qu'un : l'écran peut donc rester bloqué pour une
+  autre raison, et le compteur du bouton « Lancer » ne bouge que si le duel réglé était lui-même
+  prêt. C'est logique une fois dit, déroutant tant que ça ne l'est pas — d'où la mention explicite
+  dans la fenêtre de confirmation. Le lancement reste **manuel** : l'automatique que
+  vous aviez évoqué part en tranche séparée. La précédente était `E00US027`, **sans effet visible
+  pour vous** : une
   règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le
   recopier en commentaire, là où rien ne le vérifie et où il finit par dire le contraire du code.
   Elle a été passée sur **tout** le code — environ 1 500 passages réécrits — et une vérification
   automatique la fait désormais respecter à chaque modification, des deux côtés de l'application.
-  La précédente était `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
+  Avant elle, `E16US009` — **l'écran de salle se règle, et montre tout le monde** : la vitesse à laquelle
   une page de noms défile et le nombre de noms qu'elle porte se règlent **par écran**, depuis la
   préparation du tournoi, au lieu d'être écrits dans le programme. Et le classement projeté garde
   ses **trois premiers** en tête pendant que le reste **tourne page par page** — sur un

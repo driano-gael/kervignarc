@@ -13,10 +13,31 @@ import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { useAvancementPhases } from '../phases/hooks'
 import type { DuelAVenir } from './api'
-import { afficheDuel, libelleBouton, libelleCibles, nomDuelliste } from './etat'
-import { useFeuVert, useImpactLancement, useLancerTour } from './hooks'
+import {
+  actionDuel,
+  afficheDuel,
+  archersForfaitables,
+  libelleBouton,
+  libelleCibles,
+  nomDuelliste,
+  type ActionLigne,
+} from './etat'
+import {
+  useDeclarerForfaitDepuisFeuVert,
+  useFeuVert,
+  useImpactLancement,
+  useLancerTour,
+} from './hooks'
 
-export function FeuVert({ tournoiId }: { tournoiId: number }) {
+// `surPlanDeDuels` vient de la **coquille** : la navigation entre écrans d'administration lui
+// appartient (`CoquilleAdmin.allerA`), une feature ne construit pas de chemin elle-même.
+export function FeuVert({
+  tournoiId,
+  surPlanDeDuels,
+}: {
+  tournoiId: number
+  surPlanDeDuels: () => void
+}) {
   // Créneau **figé une fois résolu** (cf. `useCreneauDesDuels`) : le pilotage du tour ne doit pas
   // changer de créneau tout seul parce qu'une qualification vient de se clore ailleurs.
   const { departs, liste, departId, choisir } = useCreneauDesDuels(tournoiId)
@@ -100,7 +121,14 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
           ) : (
             <ul className="feu-vert__liste">
               {feu.data.duels.map((duel) => (
-                <LigneDuel key={duel.numero} duel={duel} />
+                <LigneDuel
+                  key={duel.numero}
+                  duel={duel}
+                  duels={feu.data.duels}
+                  tournoiId={tournoiId}
+                  phaseId={phaseId}
+                  surPlanDeDuels={surPlanDeDuels}
+                />
               ))}
             </ul>
           )}
@@ -133,9 +161,22 @@ export function FeuVert({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function LigneDuel({ duel }: { duel: DuelAVenir }) {
+function LigneDuel({
+  duel,
+  duels,
+  tournoiId,
+  phaseId,
+  surPlanDeDuels,
+}: {
+  duel: DuelAVenir
+  duels: DuelAVenir[]
+  tournoiId: number
+  phaseId: number | null
+  surPlanDeDuels: () => void
+}) {
   const { classe, libelle } = afficheDuel(duel)
   const cibles = libelleCibles(duel)
+  const action = actionDuel(duel, duels)
   return (
     <li className="feu-vert__duel">
       <span className="feu-vert__match">
@@ -149,6 +190,124 @@ function LigneDuel({ duel }: { duel: DuelAVenir }) {
         {libelle}
         {classe === 'pret' && cibles ? ` · ${cibles}` : ''}
       </span>
+      {action && (
+        <ActionLevee
+          action={action}
+          numeroLigne={duel.numero}
+          tournoiId={tournoiId}
+          phaseId={phaseId}
+          surPlanDeDuels={surPlanDeDuels}
+        />
+      )}
     </li>
+  )
+}
+
+// L'action qui **lève** le manquement de la ligne (CA E16US008). Trois formes, une par manquement
+// que le serveur sait nommer : un renvoi au plan de duels, un dépliage du duel amont, ou l'aveu
+// qu'aucun geste ne débloque d'ici — mieux qu'un bouton qui n'aboutirait pas.
+function ActionLevee({
+  action,
+  numeroLigne,
+  tournoiId,
+  phaseId,
+  surPlanDeDuels,
+}: {
+  action: ActionLigne
+  numeroLigne: number
+  tournoiId: number
+  phaseId: number | null
+  surPlanDeDuels: () => void
+}) {
+  const [deplie, setDeplie] = useState(false)
+  // ⚠️ Une mutation **par ligne**, pas une pour l'écran : partagée, un forfait en cours grisait les
+  // boutons de toutes les autres lignes et son erreur s'affichait sous chacune.
+  const forfait = useDeclarerForfaitDepuisFeuVert(tournoiId, phaseId)
+
+  // ⚠️ Rendu AVANT les sorties anticipées, car le succès fait CHANGER de branche : le forfait qui
+  // tranche la dernière source bascule la ligne sur `sans-recours`, dont le `return` est plus haut
+  // que le corps du cas `sources`. Placé dans le seul cas `sources`, le retour du geste
+  // disparaissait à l'instant où il réussissait. La seule bascule réelle est `sources` →
+  // `sans-recours` ; `placement` exige le tour 1, où aucun forfait n'est offert — défensif.
+  const retourDuGeste = forfait.isError ? (
+    <MessageErreur erreur={forfait.error} />
+  ) : forfait.isSuccess ? (
+    <p className="feu-vert__levee--inerte" role="status">
+      Forfait enregistré — l’adversaire passe.
+    </p>
+  ) : null
+
+  if (action.genre === 'placement') {
+    return (
+      <div className="feu-vert__levee">
+        <button type="button" className="bouton--discret" onClick={surPlanDeDuels}>
+          Attribuer une cible — ouvrir le plan de duels
+        </button>
+        {retourDuGeste}
+      </div>
+    )
+  }
+  if (action.genre === 'sans-recours') {
+    return (
+      <div className="feu-vert__levee">
+        <p className="feu-vert__levee--inerte">{action.explication}</p>
+        {retourDuGeste}
+      </div>
+    )
+  }
+
+  const forfaitables = archersForfaitables(action.sources)
+  return (
+    <div className="feu-vert__levee">
+      <button
+        type="button"
+        className="bouton--discret"
+        aria-expanded={deplie}
+        aria-controls={`feu-vert-sources-${numeroLigne}`}
+        // ⚠️ `reset()` **jamais pendant le vol** : il détache l'observateur de la mutation, donc
+        // ni le succès ni l'ERREUR ne reviendraient — un forfait raté n'afficherait plus rien.
+        // Hors vol, il fait du repli le geste de congé (branche `sources` seule : `sans-recours`
+        // n'a pas de bouton de dépliage, le message y vit jusqu'au démontage de la ligne).
+        onClick={() => {
+          if (!forfait.isPending) forfait.reset()
+          setDeplie((ouvert) => !ouvert)
+        }}
+      >
+        {`${deplie ? 'Masquer' : 'Voir'} ${
+          action.sources.length > 1 ? 'les duels qui bloquent' : 'le duel qui bloque'
+        }`}
+      </button>
+      {/* ⚠️ `hidden` plutôt que démonté : `aria-controls` ci-dessus pointerait sinon un `id`
+          inexistant à l'état replié, qui est l'état par défaut. */}
+      <ul className="feu-vert__sources" id={`feu-vert-sources-${numeroLigne}`} hidden={!deplie}>
+        {action.sources.map((source) => (
+          <li key={source.numero}>
+            Duel n°{source.numero} · {source.detail}
+          </li>
+        ))}
+      </ul>
+      {deplie && (
+        <>
+          {/* DETTE-090 : le dialogue AVERTIT au lieu de promettre la réversibilité — aucun écran
+              n'annule un forfait de duel. La promesse revient quand un écran l'annulera. */}
+          {forfaitables.map((archer) => (
+            <BoutonConfirme
+              key={archer.archer_id}
+              className="bouton--danger"
+              libelle={`Déclarer ${archer.libelle} forfait`}
+              disabled={forfait.isPending}
+              enCours={forfait.isPending}
+              ton="danger"
+              titre={`Déclarer ${archer.libelle} forfait ?`}
+              message={`Son adversaire du duel n°${archer.numero_duel} passe d'office (walkover) : ce duel est tranché et cette ligne cesse de l'attendre.${action.sources.length > 1 ? ` Elle attend encore ${action.sources.length - 1} autre duel.` : ''}`}
+              detail="Abandon. ⚠️ Aucun écran ne défait un forfait de duel aujourd'hui : à ne déclarer qu'en dernier recours."
+              libelleConfirmer="Déclarer forfait"
+              onConfirmer={() => forfait.mutate(archer.archer_id)}
+            />
+          ))}
+        </>
+      )}
+      {retourDuGeste}
+    </div>
   )
 }

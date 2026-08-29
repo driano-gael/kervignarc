@@ -7,6 +7,8 @@
 // Le lancement est une **mutation** qui ré-invalide feu vert + impact.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { declarerForfaitDuel } from '../forfaits/api'
+import { cleTableau } from '../saisie-duels/hooks'
 import { getFeuVert, getImpactLancement, lancerTour } from './api'
 
 const INTERVALLE_POLL_MS = 5000
@@ -43,6 +45,27 @@ export function useLancerTour(tournoiId: number, phaseId: number | null) {
       if (phaseId === null) return
       queryClient.invalidateQueries({ queryKey: cleFeuVert(tournoiId, phaseId) })
       queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, phaseId) })
+    },
+  })
+}
+
+// Le forfait déclaré **depuis le feu vert** (E16US008) : portée `'admin'`, car c'est l'organisateur
+// qui agit, et invalidation des deux vues de l'écran — sans quoi la ligne resterait bloquée jusqu'au
+// prochain poll (5 s) alors qu'on vient de la débloquer.
+export function useDeclarerForfaitDepuisFeuVert(tournoiId: number, phaseId: number | null) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (archerId: number) =>
+      declarerForfaitDuel(tournoiId, phaseId as number, archerId, 'abandon', undefined, 'admin'),
+    onSuccess: () => {
+      if (phaseId === null) return
+      queryClient.invalidateQueries({ queryKey: cleFeuVert(tournoiId, phaseId) })
+      queryClient.invalidateQueries({ queryKey: cleImpact(tournoiId, phaseId) })
+      // ⚠️ Le tableau des duels aussi (`useTableau`, écran de saisie du scoreur) : c'est LA vue où
+      // le walkover apparaît. Clé importée de `saisie-duels`, propriétaire de la query — une
+      // invalidation qui rate sa clé ne casse rien de VISIBLE, elle laisse un tableau périmé, donc
+      // rien ne rougirait si elle divergeait.
+      queryClient.invalidateQueries({ queryKey: cleTableau(tournoiId, phaseId) })
     },
   })
 }
