@@ -204,10 +204,17 @@ function elementOuvert(
   tournoiId: number | null,
   axe: Axe | null,
   destination: string | null,
-  premier: string | undefined,
-  quatrieme: string | undefined,
+  segments: readonly (string | undefined)[],
 ): number | null {
-  if (axe === null) return premier === SEGMENT_FICHE ? tournoiId : null
+  const [premier, second, quatrieme] = segments
+  if (axe === null) {
+    if (premier !== SEGMENT_FICHE) return null
+    // ⚠️ `/admin/12/fiche/7` — l'élément est **explicite**. Le confondre avec le tournoi courant
+    // (ce que faisait la 1ʳᵉ version) faisait qu'ouvrir la fiche du tournoi 7 depuis le tournoi 12
+    // **changeait le tournoi courant**, et que refermer la fiche le désélectionnait — l'exact
+    // contraire du §2 d'ADR-0100. La forme courte `/admin/12/fiche` reste « ouvre le courant ».
+    return estIdentifiant(second) ? Number(second) : tournoiId
+  }
   return destination !== null && estIdentifiant(quatrieme) ? Number(quatrieme) : null
 }
 
@@ -222,7 +229,11 @@ export function analyserSegmentsAdmin(segments: readonly string[]): RouteAdmin {
     tournoiId,
     axe,
     destinationDemandee,
-    elementDemande: elementOuvert(tournoiId, axe, destinationDemandee, premier, troisieme),
+    elementDemande: elementOuvert(tournoiId, axe, destinationDemandee, [
+      premier,
+      second,
+      troisieme,
+    ]),
   }
 }
 
@@ -235,9 +246,15 @@ export function segmentsAdmin(
 ): string[] {
   const segments: string[] = []
   if (tournoiId !== null) segments.push(String(tournoiId))
-  // Accueil : l'élément **est** le tournoi, on ne le répète pas — on demande son ouverture.
+  // Accueil : `fiche` demande l'ouverture ; l'identifiant ne s'écrit que s'il **diffère** du
+  // tournoi courant. ⚠️ Le tournoi courant n'est jamais écrasé par l'élément — les deux slots sont
+  // distincts (ADR-0100 §2), et les confondre déplaçait le tournoi de travail sous les pieds de
+  // l'organisateur.
   if (axe === null) {
-    if (tournoiId !== null && element === tournoiId) segments.push(SEGMENT_FICHE)
+    if (element !== null) {
+      segments.push(SEGMENT_FICHE)
+      if (element !== tournoiId) segments.push(String(element))
+    }
     return segments
   }
   segments.push(axe)
@@ -282,6 +299,25 @@ export function contextePilotage(
 }
 
 /**
+ * Où mène **n'importe quel** résultat de recherche (CA E16US010) — pure, donc testable.
+ *
+ * ⚠️ Le cas *tournoi* rend `axe: null` : sa fiche vit sur l'**accueil**, qui n'a ni axe ni
+ * destination (§3 d'ADR-0100). L'appelant navigue alors vers la forme `fiche`.
+ */
+export function destinationDunResultat(
+  entite: 'tournoi' | 'archer' | 'club',
+  tournoiDuResultat: number | null,
+  axeCourant: Axe | null,
+  tournoiCourant: number | null,
+): { axe: Axe | null; destination: DestinationAdminId | null; tournoi: number | null } {
+  if (entite === 'tournoi') return { axe: null, destination: null, tournoi: tournoiCourant }
+  if (entite === 'club') {
+    return { axe: AXE_PAR_DESTINATION['clubs'], destination: 'clubs', tournoi: tournoiCourant }
+  }
+  return destinationDunArcher(axeCourant, tournoiCourant, tournoiDuResultat)
+}
+
+/**
  * Où mène un **archer** trouvé par la recherche (CA E16US010) — pure, donc testable sans rendu.
  *
  * Deux destinations pour une entité : en pilotage la fiche **en consultation**, ailleurs la fiche
@@ -302,4 +338,26 @@ export function destinationDunArcher(
     destination: 'inscriptions',
     tournoi: tournoiDeLArcher ?? tournoiCourant,
   }
+}
+
+/**
+ * L'adresse **canonique** de l'écran réellement affiché — pure, donc testable sans rendu.
+ *
+ * ⚠️ **Elle conserve l'élément ouvert** — la 1ʳᵉ version rappelait `segmentsAdmin` sans son 4ᵉ
+ * argument, donc réécrivait l'adresse sans l'élément et refermait la fiche dans la foulée du clic.
+ * ⚠️ L'élément n'est gardé que si la destination **affichée** est celle **demandée** : sinon un
+ * signet périmé (`…/gestion/doublons/57`) ouvrirait l'élément 57 sur la destination de repli.
+ */
+export function segmentsCanoniques(
+  route: RouteAdmin,
+  axeAffiche: Axe,
+  destinationAffichee: DestinationAdminId,
+): string[] {
+  const memeDestination = destinationAffichee === route.destinationDemandee
+  return segmentsAdmin(
+    route.tournoiId,
+    axeAffiche,
+    destinationAffichee,
+    memeDestination ? route.elementDemande : null,
+  )
 }

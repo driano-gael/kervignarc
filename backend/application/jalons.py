@@ -110,8 +110,8 @@ class ServiceJalons:
         ⚠️ **Un seul appel, pas N** : c'est l'objet de la route, la complétude étant par ailleurs
         une lecture par tournoi. Un tournoi qui ne partira plus est tranché **sans lire ses
         créneaux ni son effectif** — `demarrer_sans_objet` rend la même réponse que le chemin
-        complet. Seul `DEMARRER` est instruit : `TERMINER` exigerait la complétude sportive de
-        chaque tournoi, un coût que la pastille du CA ne réclame pas.
+        complet (`DETTE-092` chiffre ce qui reste). Seul `DEMARRER` est instruit : `TERMINER`
+        exigerait la complétude sportive de chaque tournoi, que la pastille ne réclame pas.
         """
         if jalon is not Jalon.DEMARRER:
             raise JalonNonInstruit(f"Il n'y a pas d'aperçu de liste pour « prêt à {jalon.value} ».")

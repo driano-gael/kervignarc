@@ -130,6 +130,19 @@ class NiveauPreparation(str, Enum):
 _ETATS_EN_MANQUE = frozenset({EtatSection.ALERTE, EtatSection.EN_ATTENTE})
 
 
+def _est_un_manque(ligne: LigneCompletude) -> bool:
+    """Cette ligne est-elle quelque chose qu'il **reste à préparer** ?
+
+    ⚠️ **La ligne d'effectif sans total n'exige rien.** `_etat_effectif` la met à `EN_ATTENTE`
+    quand aucun minimum n'est requis — c'est juste sur l'écran du jalon, où le décompte est
+    à côté ; promue dans une **phrase**, elle faisait dire « il reste à préparer : Inscrits » à un
+    tournoi qui en compte 80. Une donnée plausible et fausse, relevée par trois axes de revue.
+    """
+    if ligne.etat not in _ETATS_EN_MANQUE:
+        return False
+    return not (ligne.cle == CLE_EFFECTIF and ligne.total is None)
+
+
 def niveau_de_preparation(preparation: PreparationJalon) -> NiveauPreparation:
     """Résume une préparation en un niveau d'alerte, pour une **ligne de liste** (E16US010).
 
@@ -142,7 +155,7 @@ def niveau_de_preparation(preparation: PreparationJalon) -> NiveauPreparation:
         return NiveauPreparation.AUCUN
     if not preparation.pret:
         return NiveauPreparation.ALERTE if preparation.bloquant else NiveauPreparation.AVERTISSEMENT
-    if any(ligne.etat in _ETATS_EN_MANQUE for ligne in preparation.lignes):
+    if any(_est_un_manque(ligne) for ligne in preparation.lignes):
         return NiveauPreparation.AVERTISSEMENT
     return NiveauPreparation.AUCUN
 
@@ -159,7 +172,7 @@ def resume_du_manque(preparation: PreparationJalon) -> str | None:
         return None
     if preparation.detail is not None:
         return preparation.detail
-    restants = [ligne.libelle for ligne in preparation.lignes if ligne.etat in _ETATS_EN_MANQUE]
+    restants = [ligne.libelle for ligne in preparation.lignes if _est_un_manque(ligne)]
     return f"Il reste à préparer : {', '.join(restants)}." if restants else None
 
 

@@ -223,7 +223,7 @@ def test_l_apercu_rend_un_niveau_par_tournoi_en_une_requete(
         lance = int(cree.json()["id"])
         _lancer(client, lance)
 
-        reponse = client.get("/api/v1/tournois/jalons/demarrer")
+        reponse = client.get("/api/v1/jalons/demarrer/apercus")
 
         assert reponse.status_code == 200, reponse.text
         niveaux = {ligne["tournoi_id"]: ligne for ligne in reponse.json()}
@@ -236,7 +236,34 @@ def test_l_apercu_rend_un_niveau_par_tournoi_en_une_requete(
 def test_l_apercu_de_liste_est_reserve_a_l_admin(app_session: FastAPI) -> None:
     """Même garde que l'écran du jalon : la préparation d'un tournoi n'est pas publique."""
     with TestClient(app_session) as client:
-        assert client.get("/api/v1/tournois/jalons/demarrer").status_code == 401
+        assert client.get("/api/v1/jalons/demarrer/apercus").status_code == 401
+
+
+def test_l_apercu_ne_recouvre_aucune_route_de_tournoi(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Le garde-fou du déménagement de cette route.**
+
+    Elle vivait sous `/api/v1/tournois/jalons/{jalon}`, où elle **recouvrait** les sous-ressources
+    verbales d'un tournoi : `POST /api/v1/tournois/jalons/demarrer` matchait
+    `/{tournoi_id}/demarrer` avec `tournoi_id="jalons"`. Seule la méthode HTTP les séparait — un
+    futur `GET /tournois/{id}/demarrer` aurait suffi à casser l'aperçu, sans que rien ne le dise.
+    Ce test épingle l'absence de recouvrement plutôt que la vigilance.
+    """
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        # **La preuve du recouvrement** : sous l'ancien préfixe, `jalons` est lu comme un
+        # identifiant de tournoi. Rien ne l'écartait — ni le compte de segments, ni le type `int`,
+        # qui n'est validé qu'APRÈS l'appariement. Seule la méthode HTTP séparait les deux.
+        recouvrement = client.post("/api/v1/tournois/jalons/demarrer")
+        assert recouvrement.status_code == 400, recouvrement.text
+        assert recouvrement.json()["details"][0]["loc"] == ["path", "tournoi_id"]
+
+        # Donc l'aperçu a déménagé : plus rien ne le sert sous `/tournois`, et son adresse n'a plus
+        # aucun chemin concurrent. Un futur `GET /tournois/{id}/demarrer` ne peut plus le masquer.
+        assert client.get("/api/v1/tournois/jalons/demarrer").status_code == 404
+        assert client.get("/api/v1/jalons/demarrer/apercus").status_code == 200
 
 
 def test_l_apercu_d_un_membre_sans_liste_rend_404(
@@ -246,7 +273,7 @@ def test_l_apercu_d_un_membre_sans_liste_rend_404(
     with TestClient(app_session) as client:
         connecter_admin(client)
 
-        assert client.get("/api/v1/tournois/jalons/terminer").status_code == 404
+        assert client.get("/api/v1/jalons/terminer/apercus").status_code == 404
 
 
 def test_un_segment_hors_famille_rend_400_sur_l_apercu(
@@ -256,4 +283,4 @@ def test_un_segment_hors_famille_rend_400_sur_l_apercu(
     with TestClient(app_session) as client:
         connecter_admin(client)
 
-        assert client.get("/api/v1/tournois/jalons/deployer").status_code == 400
+        assert client.get("/api/v1/jalons/deployer/apercus").status_code == 400

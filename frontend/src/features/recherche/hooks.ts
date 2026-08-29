@@ -18,5 +18,8 @@ export function useRecherche(entite: EntiteRecherchable, q: string, tournoiId: n
     queryFn: () => chercher(entite, fragment, tournoiId),
     enabled: fragment !== '',
     placeholderData: keepPreviousData,
+    // Le référentiel bouge peu pendant qu'on cherche ; sans cela, chaque retour d'onglet
+    // relançait **toutes** les clés vivantes de la recherche (`DETTE-092`).
+    staleTime: 30_000,
   })
 }

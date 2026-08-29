@@ -97,8 +97,10 @@ describe('fiche d’archer du pilotage', () => {
     expect(placer).toHaveBeenCalled()
   })
 
-  it('aucun bouton de forfait n’est armé ici, et l’écran dit pourquoi', async () => {
-    // Un bouton qui partirait en 401 est pire que pas de bouton : même arbitrage qu'E16US008.
+  it('aucun bouton de forfait n’est armé ici, et l’écran NOMME la cause', async () => {
+    // ⚠️ L'assertion porte sur la **cause** (« espace scoreur ») et pas seulement sur l'absence de
+    // bouton : le jour où la route s'élargira à l'organisateur, un test qui ne vérifierait que
+    // l'absence **figerait** un écran devenu faux au lieu de rougir (relevé par l'axe C2).
     monter(fiche(57))
 
     await screen.findByText('Lévêque Jean')

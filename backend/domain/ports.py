@@ -101,7 +101,8 @@ class ArcherRepository(Protocol):
         ⚠️ Liste **complète et non filtrée, exprès** : la recherche replie casse et accents
         (`domain.recherche`), ce qu'un `LIKE` SQLite ne sait pas faire — « leveque » n'y trouverait
         jamais « Lévêque ». Le filtrage se fait donc en mémoire, tenable parce que l'appli est
-        mono-club et locale (règle 12) ; un référentiel qui grossirait démentirait ce pari.
+        mono-club et locale (règle 12) ; un référentiel qui grossirait démentirait ce pari —
+        `DETTE-092` porte le seuil et le critère de résorption.
         """
         ...
 

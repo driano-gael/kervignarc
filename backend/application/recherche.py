@@ -4,7 +4,7 @@ Assemble les trois référentiels cherchables (tournois, archers, clubs) en une 
 unique ; la règle de correspondance et le classement vivent au domaine (`domain.recherche`).
 ⚠️ **Le filtrage est en mémoire, délibérément** : le repli casse/accents n'est pas exprimable en
 `LIKE` SQLite (« leveque » n'y trouve pas « Lévêque »). Tenable parce que mono-club et local
-(règle 12) — voir la docstring d'`ArcherRepository.tous`.
+(règle 12) ; le coût et son seuil sont inscrits en `DETTE-092`.
 """
 
 from __future__ import annotations
@@ -117,7 +117,16 @@ def _precision_tournoi(tournoi: Tournoi) -> str:
 
 
 def _precision_archer(club: Club | None, tournoi: Tournoi | None) -> str | None:
-    """« Club · Tournoi », sans les morceaux qu'on n'a pas — « club inconnu » est un cas réel."""
-    morceaux = [club.nom if club else None, tournoi.nom if tournoi else None]
+    """« Club · Tournoi (année) », sans les morceaux qu'on n'a pas — « club inconnu » est réel.
+
+    ⚠️ **L'année n'est pas décorative.** Un club rejoue son tournoi chaque saison : deux fiches du
+    même archer, du même club, sous le même nom de tournoi rendaient **deux lignes identiques** —
+    ce que cette précision existe pour éviter. Le raisonnement était déjà écrit pour
+    `_precision_tournoi` et n'avait pas été reporté ici (relevé en revue par deux axes).
+    """
+    morceaux = [
+        club.nom if club else None,
+        f"{tournoi.nom} ({tournoi.date:%Y})" if tournoi else None,
+    ]
     presents = [morceau for morceau in morceaux if morceau]
     return " · ".join(presents) if presents else None

@@ -58,7 +58,8 @@ import {
   AXES,
   BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
-  destinationDunArcher,
+  destinationDunResultat,
+  segmentsCanoniques,
   analyserSegmentsAdmin,
   contextePilotage,
   destinationParDefaut,
@@ -161,15 +162,21 @@ function Coquille() {
   const ouvrirResultat = (r: ResultatRecherche) => {
     if (r.entite === 'tournoi') return ouvrirFicheTournoi(r.id)
     if (r.entite === 'club') return ouvreurDe('clubs')(r.id)
-    // ⚠️ La règle « deux destinations pour un archer » vit dans `axes.ts`, pure et testée : c'est
-    // du CA, et une décision enfouie dans un composant n'a aucun garde-fou.
-    const cible = destinationDunArcher(axeActif, tournoiId, r.tournoi_id)
+    // ⚠️ La règle vit dans `axes.ts`, pure et testée : c'est du CA, et une décision enfouie dans un
+    // composant n'a aucun garde-fou. Les trois entités y passent, pas seulement l'archer.
+    const cible = destinationDunResultat(r.entite, r.tournoi_id, axeActif, tournoiId)
+    if (cible.destination === null || cible.axe === null) return ouvrirFicheTournoi(r.id)
     return allerA(cible.axe, cible.destination, cible.tournoi, r.id)
   }
 
   // La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination — d'où `/admin/12/fiche`.
+  // ⚠️ **Le tournoi courant est reconduit, il n'est pas remplacé par l'élément.** La 1ʳᵉ version
+  // passait `id` dans les deux slots : ouvrir la fiche d'un autre tournoi changeait le tournoi de
+  // travail, et la refermer le désélectionnait (`/admin` nu). Deux slots, deux sens (ADR-0100 §2).
   const ouvrirFicheTournoi = (id: number | null) =>
-    naviguer(construireChemin({ monde: 'admin', segments: segmentsAdmin(id, null, null, id) }))
+    naviguer(
+      construireChemin({ monde: 'admin', segments: segmentsAdmin(tournoiId, null, null, id) }),
+    )
 
   const entrerDansAxe = (axe: Axe) => allerA(axe, destinationParDefaut(axe))
 
@@ -518,12 +525,20 @@ function Coquille() {
   // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet ou une capture de
   // recette aurait figée. Même politique qu'`App` sur les mondes, même `replaceState` (correction
   // subie, à ne pas empiler dans l'historique).
+  // ⚠️ **`segmentsCanoniques` et non `segmentsAdmin`** : la 1ʳᵉ version appelait ce dernier sans
+  // son 4ᵉ argument, donc réécrivait l'adresse **sans l'élément ouvert** — la fiche se refermait
+  // dans la foulée du clic, et tout ADR-0100 était mort hors de l'accueil. La règle vit désormais
+  // dans `axes.ts`, où elle est testée ; ce composant ne fait que l'appliquer.
   const chemAttendu =
     axe === null || active === undefined
       ? null
       : construireChemin({
           monde: 'admin',
-          segments: segmentsAdmin(tournoiId, axe.axe, active.id),
+          segments: segmentsCanoniques(
+            { tournoiId, axe: axeActif, destinationDemandee, elementDemande },
+            axe.axe,
+            active.id,
+          ),
         })
   useEffect(() => {
     if (chemAttendu !== null && chemin !== chemAttendu) {
@@ -615,7 +630,11 @@ function Coquille() {
             ⚠️ Montée sur **tous** les axes depuis E16US010 — elle ne se limitait à ceux qui ont un
             tournoi que parce qu'elle ne cherchait que des archers ; clubs et tournois sont des
             référentiels globaux, et l'atelier est justement le lieu où on les corrige. */}
-        <RechercheTransverse tournoiId={tournoiId} axe={axe.axe} onOuvrir={ouvrirResultat} />
+        <RechercheTransverse
+          tournoiId={tournoiId}
+          enPilotage={axe.axe === 'pilotage'}
+          onOuvrir={ouvrirResultat}
+        />
 
         {/* Le sélecteur de tournoi ne coiffe que les axes qui travaillent **sur** un tournoi. */}
         {axe.besoinTournoi && (

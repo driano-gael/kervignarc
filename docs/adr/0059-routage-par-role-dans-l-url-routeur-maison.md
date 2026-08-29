@@ -1,6 +1,7 @@
 # ADR-0059 — Une adresse par rôle, servie par un routeur maison
 
 - **Statut** : Accepté
+- **Amendé par** : [ADR-0100](0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md) — l'adresse d'admin gagne un 4ᵉ segment, l'**élément ouvert** (E16US010). Le routeur lui-même est inchangé : c'est `features/admin/axes.ts` qui interprète les segments.
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
 - **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi>/<axe>/<destination>`)

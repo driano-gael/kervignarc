@@ -59,6 +59,29 @@ def _decor(client: TestClient, connecter_admin: ConnecterAdmin) -> int:
         },
     )
     assert archer.status_code == 201, archer.text
+
+    # ⚠️ **Une SECONDE édition, avec un homonyme.** Sans elle, `ArcherRepositorySQL.tous()` n'était
+    # jamais exercé sur plus d'un tournoi — or « la recherche traverse les éditions » est le CA
+    # central de cette route, et il n'était prouvé qu'avec un faux (relevé par l'axe B).
+    ancien = client.post(
+        "/api/v1/tournois", json={"nom": "Salle 18m", "date": "2025-03-15", "lieu": "Kervignarc"}
+    )
+    assert ancien.status_code == 201, ancien.text
+    ancien_id = int(ancien.json()["id"])
+    categorie_ancienne = client.post(
+        f"/api/v1/tournois/{ancien_id}/categories", json={"libelle": "Senior 1 H"}
+    )
+    assert categorie_ancienne.status_code == 201, categorie_ancienne.text
+    jumeau = client.post(
+        f"/api/v1/tournois/{ancien_id}/archers",
+        json={
+            "nom": "Lévêque",
+            "prenom": "Jean",
+            "categorie_id": int(categorie_ancienne.json()["id"]),
+            "club_id": int(club.json()["id"]),
+        },
+    )
+    assert jumeau.status_code == 201, jumeau.text
     return tournoi_id
 
 
@@ -73,8 +96,11 @@ def test_un_archer_se_trouve_sans_accents(
 
         assert reponse.status_code == 200, reponse.text
         corps = reponse.json()
-        assert corps["total"] == 1
+        # Les DEUX éditions remontent : c'est le CA « hors pilotage, on traverse les éditions ».
+        assert corps["total"] == 2
         assert corps["resultats"][0]["libelle"] == "Lévêque Jean"
+        # Et elles se distinguent, malgré le même nom de tournoi et le même club.
+        assert len({r["precision"] for r in corps["resultats"]}) == 2
         assert corps["resultats"][0]["entite"] == "archer"
         # Le tournoi d'ouverture voyage : sans lui, le front ne sait pas où mène le résultat.
         assert corps["resultats"][0]["tournoi_id"] is not None
@@ -87,11 +113,15 @@ def test_les_trois_entites_repondent_sur_la_meme_route(
     with TestClient(app_recherche) as client:
         _decor(client, connecter_admin)
 
-        for entite, fragment in (("tournoi", "salle"), ("club", "kervignarc"), ("archer", "jean")):
+        for entite, fragment, attendu in (
+            ("tournoi", "salle", 2),
+            ("club", "kervignarc", 1),
+            ("archer", "jean", 2),
+        ):
             reponse = client.get("/api/v1/recherche", params={"entite": entite, "q": fragment})
 
             assert reponse.status_code == 200, reponse.text
-            assert reponse.json()["total"] == 1, entite
+            assert reponse.json()["total"] == attendu, entite
 
 
 def test_le_scope_tournoi_voyage_jusqu_au_service(

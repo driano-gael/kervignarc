@@ -45,7 +45,6 @@ window.ATLAS.carte = {
    ],
    [
     "admin",
-    "recherche",
     "tournois"
    ],
    [
@@ -152,10 +151,6 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 2,
-    "feature": "admin"
-   },
-   {
-    "clientes": 2,
     "feature": "bareme"
    },
    {
@@ -193,6 +188,10 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "tournois"
+   },
+   {
+    "clientes": 1,
+    "feature": "admin"
    },
    {
     "clientes": 1,
@@ -2952,7 +2951,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 173,
+  "aretes_front": 172,
   "enchevetrements": 4,
   "features": 49,
   "imports": 920,

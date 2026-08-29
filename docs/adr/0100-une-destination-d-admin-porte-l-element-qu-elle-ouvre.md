@@ -5,7 +5,7 @@
 - **US** : E16US010
 - **Décideurs** : Organisateur / Architecte
 - **S'appuie sur** :
-  - [ADR-0059](0059-routeur-maison-plutot-que-react-router.md) — le routeur maison, et le principe
+  - [ADR-0059](0059-routage-par-role-dans-l-url-routeur-maison.md) — le routeur maison, et le principe
     qu'il **ignore** la structure interne de l'admin : c'est `axes.ts` qui interprète les segments
   - [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md) — les trois axes ; l'élément
     ouvert ne déplace aucune activité, il désigne une ligne **là où elle vit déjà**
@@ -44,10 +44,18 @@ et se reconduit d'écran en écran ; l'élément ouvert **déplie un formulaire*
 l'écran courant. Les confondre ferait s'ouvrir une fiche à chaque changement de tournoi courant.
 
 **3. Deux formes d'adresse, un seul sens.** La liste des tournois vit sur **l'accueil**, qui n'a ni
-axe ni destination : un 4ᵉ segment ne l'atteint pas. L'élément y **est** le tournoi courant, d'où le
-segment littéral `fiche` — `/admin/12` dit « c'est celle-là », `/admin/12/fiche` dit « ouvre-la ».
-C'est une seconde forme, pas un second mécanisme : les deux alimentent le **même** champ
-`elementDemande`, et les trois listes consomment la **même** prop.
+axe ni destination : un 4ᵉ segment ne l'atteint pas. Le segment littéral `fiche` demande donc
+l'ouverture — `/admin/12` dit « c'est celle-là », `/admin/12/fiche` dit « ouvre-la », et
+`/admin/12/fiche/7` dit « ouvre la fiche du 7 **sans quitter** le 12 ». C'est une seconde forme,
+pas un second mécanisme : les deux alimentent le **même** champ `elementDemande`, et les trois
+listes consomment la **même** prop.
+
+> ⚠️ **Corrigé en revue le 29/08/2026, et la correction touche le §2.** La 1ʳᵉ rédaction faisait de
+> l'élément **le tournoi courant lui-même** (`segmentsAdmin(id, null, null, id)`). Cela contredisait
+> le §2 dans les faits : ouvrir la fiche du tournoi 7 depuis le 12 **changeait le tournoi de
+> travail**, et refermer la fiche renvoyait sur `/admin` nu, désélectionnant tout. Deux slots
+> distincts dans l'adresse, deux sens — c'est ce que le §2 promettait, et ce que la forme longue
+> tient enfin.
 
 **4. L'ouverture est l'adresse, pas un état qui la copie.** Le hook `useOuvertureParAdresse` dérive
 l'ouverture de la prop et **remonte** la fermeture par un `onOuvrir(null)` qui réécrit l'adresse.
@@ -86,9 +94,10 @@ puis agir » (en pilotage) sont deux lectures du même segment, portées par les
 | §1 — l'élément entre dans l'adresse | `frontend/src/features/admin/axes.ts` (`RouteAdmin.elementDemande`, `analyserSegmentsAdmin`, `segmentsAdmin`) | oui |
 | §1 — le routeur reste ignorant de la structure admin (ADR-0059) | `frontend/src/shared/navigation/routeur.ts` — **inchangé** : il ne connaît que `segments` | oui — aucune ligne touchée |
 | §2 — ouvrir ≠ sélectionner | `frontend/src/features/tournois/Tournois.tsx` (`GestionTournois` reçoit `selectionneId` **et** `ouvrir`, deux props distinctes) | oui |
-| §3 — la seconde forme, sur l'accueil | `frontend/src/features/admin/axes.ts` (`SEGMENT_FICHE`, `elementOuvert`) · `frontend/src/features/admin/CoquilleAdmin.tsx` (`ouvrirFicheTournoi`) | oui |
+| §3 — la seconde forme, sur l'accueil, **sans écraser le tournoi courant** | `frontend/src/features/admin/axes.ts` (`SEGMENT_FICHE`, `elementOuvert`, `segmentsAdmin`) · `frontend/src/features/admin/CoquilleAdmin.tsx` (`ouvrirFicheTournoi` passe `tournoiId` **et** `id`) — gardé par `axes.test.ts` (`['12','fiche','7']` → tournoi 12, élément 7 ; fermer rend `['12']`) | oui — ⚠️ corrigé en revue, cf. l'encadré du §3 |
 | §3 — un seul champ, une seule prop | `axes.ts` (`elementDemande`) consommé par les trois listes via `ouvrir` | oui |
-| §4 — l'ouverture **est** l'adresse | `frontend/src/shared/navigation/useOuvertureParAdresse.ts` — gardé par `frontend/src/features/admin/axes.test.ts` (aller-retour sous les deux formes) | oui |
+| §4 — l'ouverture **est** l'adresse | `frontend/src/shared/navigation/useOuvertureParAdresse.ts` — gardé par `frontend/src/shared/navigation/useOuvertureParAdresse.test.tsx` (l'écran monté avec `ouvrir`/`onOuvrir` : la fiche désignée est ouverte, elle seule, et la fermeture remonte `onOuvrir(null)`) | oui — ⚠️ **corrigé en revue** : cette cellule citait `axes.test.ts`, qui garde la réciprocité du **parseur** et ne touche jamais le hook. Nommer un module qui n'applique pas ce qu'on lui prête est le défaut qu'ADR-0075 documente (ADR-0028, ADR-0049) — il s'est reproduit ici, dans l'ADR qui l'annonçait |
 | §4 — le repli local est explicite | `useOuvertureParAdresse` (branche `onOuvrir === undefined`) | oui |
+| §1 — l'adresse **canonique** conserve l'élément | `frontend/src/features/admin/axes.ts` (`segmentsCanoniques`) · `frontend/src/features/admin/CoquilleAdmin.tsx` (l'effet de correction d'adresse l'appelle) — gardé par `axes.test.ts` **et** par `frontend/src/features/admin/AdresseElement.test.tsx`, qui monte la coquille | oui — ⚠️ **c'était le bloquant de la revue** : la correction d'adresse rappelait `segmentsAdmin` sans son 4ᵉ argument et effaçait l'élément par `replaceState`, si bien qu'aucune fiche ne s'ouvrait hors de l'accueil. Trois axes l'ont trouvé ; aucun test ne pouvait le voir, tous portant sur des fonctions pures |
 | §5 — un élément orphelin est ignoré | `axes.ts` (`elementOuvert`, garde `destination !== null`) — gardé par `axes.test.ts` (`un élément SANS destination pour l'ouvrir est ignoré`) | oui |
 | §1 — l'axe d'une destination n'est jamais réécrit à la main | `CoquilleAdmin.tsx` (`ouvreurDe` lit `AXE_PAR_DESTINATION`) | oui |

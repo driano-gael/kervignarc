@@ -50,7 +50,7 @@ beforeEach(() => {
 
 describe('RechercheTransverse', () => {
   it('CA — la déroulante propose les trois entités cherchables', () => {
-    monter(<RechercheTransverse tournoiId={3} axe="gestion" onOuvrir={vi.fn()} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
     const deroulante = screen.getByLabelText('Rechercher')
     expect(deroulante).toHaveTextContent('Archer')
@@ -61,7 +61,7 @@ describe('RechercheTransverse', () => {
   it('CA — cliquer un résultat remonte de quoi OUVRIR sa fiche, tournoi compris', async () => {
     // Sans `tournoi_id`, la coquille ouvrirait la fiche dans le tournoi courant — donc vide.
     const onOuvrir = vi.fn()
-    monter(<RechercheTransverse tournoiId={3} axe="gestion" onOuvrir={onOuvrir} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={onOuvrir} />)
 
     await userEvent.type(screen.getByLabelText('Archer à trouver'), 'leveque')
     await userEvent.click(await screen.findByRole('button', { name: /Lévêque Jean/ }))
@@ -70,17 +70,18 @@ describe('RechercheTransverse', () => {
   })
 
   it('CA A09 — en pilotage la recherche d’archer se scope au tournoi courant', async () => {
-    monter(<RechercheTransverse tournoiId={3} axe="pilotage" onOuvrir={vi.fn()} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={true} onOuvrir={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
 
+    // `waitFor` porte aussi l'anti-rebond (`useValeurRetardee`) : la requête ne part qu'après.
     await waitFor(() => expect(chercher).toHaveBeenCalledWith('archer', 'lev', 3))
   })
 
   it('hors pilotage elle ne se scope PAS — sinon elle ne traverserait aucune édition', async () => {
     // Assertion négative appariée à la positive ci-dessus : sans elle, un scope toujours nul
     // rendrait les deux tests verts pour la mauvaise raison.
-    monter(<RechercheTransverse tournoiId={3} axe="gestion" onOuvrir={vi.fn()} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
 
@@ -89,7 +90,7 @@ describe('RechercheTransverse', () => {
 
   it('D-16 — une liste tronquée annonce son total, elle ne se tait pas', async () => {
     vi.mocked(chercher).mockResolvedValue(reponse([LEVEQUE], 34))
-    monter(<RechercheTransverse tournoiId={3} axe="gestion" onOuvrir={vi.fn()} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
 
@@ -97,11 +98,24 @@ describe('RechercheTransverse', () => {
   })
 
   it('une liste complète n’annonce aucun total — le bruit serait permanent', async () => {
-    monter(<RechercheTransverse tournoiId={3} axe="gestion" onOuvrir={vi.fn()} />)
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
     await userEvent.type(screen.getByLabelText('Archer à trouver'), 'lev')
     await screen.findByRole('button', { name: /Lévêque Jean/ })
 
     expect(screen.queryByText(/sur 1 —/)).not.toBeInTheDocument()
+  })
+})
+
+describe('anti-rebond', () => {
+  it('DETTE-092 — une frappe rapide ne produit PAS une requête par caractère', async () => {
+    // Chaque requête relit trois référentiels entiers côté serveur : c'est le coût que le retard
+    // borne. Sans lui, « leveque » partait en sept appels.
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText('Archer à trouver'), 'leveque')
+    await waitFor(() => expect(chercher).toHaveBeenCalled())
+
+    expect(vi.mocked(chercher).mock.calls.length).toBeLessThan(4)
   })
 })

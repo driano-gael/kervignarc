@@ -91,11 +91,12 @@ export function FicheArcherPilotage({
               Modifier son placement
             </button>
           </span>
-          {/* ⚠️ **Pas de bouton « Déclarer un forfait » ici, et ce n'est pas un oubli.** La route
-              de forfait en qualification est réservée au **scoreur** (`exiger_scoreur`) ;
-              `E16US008` n'a élargi que celle des duels. Offrir un bouton qui partirait en 401
-              serait pire que ne rien offrir — même arbitrage qu'`E16US008` sur « cible non
-              attribuée » : la ligne dit pourquoi plutôt que d'armer un geste inerte. */}
+          {/* ⚠️ **Pas de bouton « Déclarer un forfait », et ce n'est pas un oubli** : la route de
+              qualification est réservée au scoreur (`exiger_scoreur`), `E16US008` n'ayant élargi
+              que celle des duels. Un bouton partirait en 401.
+              ⚠️ **Ce paragraphe énonce une frontière de RÔLES** : son élargissement à l'organisateur
+              est en arbitrage — `stories/E16-retours-maquettes.md` § E16US010. Le jour où il est
+              tranché, cette phrase devient fausse à l'écran. */}
           <p className="carte__etat">
             Un abandon se déclare depuis l’espace scoreur : en qualification, cette écriture lui est
             réservée. En duel, le feu vert permet à l’organisateur de le faire lui-même.

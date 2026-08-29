@@ -171,8 +171,51 @@ def test_l_avertissement_nomme_ce_qui_reste_a_preparer() -> None:
 
     Sans cela, la pastille faible serait un point de couleur sans explication — le « clic de
     plus » que `D-16` refuse.
+
+    ⚠️ **`minimum=0` est la combinaison RÉELLE**, et c'est tout l'objet de la correction de revue :
+    `nb_etapes_deroule` et `minimum` viennent du **même** dépôt d'étapes — sans étape, il n'y a
+    aucune exigence d'effectif. La 1ʳᵉ rédaction gardait le `minimum=34` du helper, une
+    combinaison que le service ne peut pas produire : le test décrivait un chemin inexistant.
     """
-    resume = resume_du_manque(_demarrer(nb_etapes_deroule=0))
+    resume = resume_du_manque(_demarrer(nb_etapes_deroule=0, minimum=0, inscrits=40))
 
     assert resume is not None
     assert "Déroulé composé" in resume
+
+
+def test_un_tournoi_qui_a_ses_inscrits_ne_se_voit_pas_reclamer_des_inscrits() -> None:
+    """Le défaut que la revue a trouvé : une phrase **plausible et fausse**.
+
+    Sans exigence (aucune étape composée), la ligne « Inscrits » est `EN_ATTENTE` — juste sur
+    l'écran du jalon, où le décompte est à côté. Promue dans « il reste à préparer : … », elle
+    réclamait des inscriptions à un tournoi qui en compte 40, dans la seule phrase que la pastille
+    affiche. `D-16` demande exactement l'inverse.
+    """
+    resume = resume_du_manque(_demarrer(nb_etapes_deroule=0, minimum=0, inscrits=40))
+
+    assert resume is not None
+    assert "Inscrits" not in resume
+
+
+def test_sans_exigence_le_nombre_d_inscrits_ne_change_rien_au_reste_a_preparer() -> None:
+    """Zéro inscrit ou quarante : sans règle à comparer, ce n'est pas un manque à énoncer.
+
+    Apparié au test ci-dessus — sinon une correction qui masquerait la ligne « Inscrits » en toute
+    circonstance passerait aussi.
+    """
+    vide = resume_du_manque(_demarrer(nb_etapes_deroule=0, minimum=0, inscrits=0))
+    garni = resume_du_manque(_demarrer(nb_etapes_deroule=0, minimum=0, inscrits=40))
+
+    assert vide == garni
+
+
+def test_une_exigence_non_tenue_reste_nommee() -> None:
+    """La contrepartie : un minimum qui existe et n'est pas atteint reste un manque nommé.
+
+    C'est la garde contre la sur-correction : masquer « Inscrits » **toujours** aurait supprimé
+    le seul signalement d'un effectif réellement insuffisant.
+    """
+    preparation = _demarrer(effectif_suffisant=False, inscrits=8, minimum=34)
+
+    assert niveau_de_preparation(preparation) is NiveauPreparation.ALERTE
+    assert resume_du_manque(preparation) == "Il manque 26 inscrits sur 34."

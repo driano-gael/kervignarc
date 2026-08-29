@@ -5,10 +5,10 @@
 // sa fiche en modification ; en pilotage on se concentre sur les archers du tournoi courant, avec
 // leur place — ⚠️ **le « il tire là » d'E12US006 est conservé**, le perdre aurait été une
 // régression livrée sous couvert de CA neuf. La correspondance est désormais **serveur**
-// (`domain.recherche`) et non `filtrerArchers` : même repli casse/accents que les doublons.
+// (`domain.recherche`) et non un filtrage local : même repli casse/accents que les doublons.
 
 import { useState } from 'react'
-import type { Axe } from '../admin/axes'
+import { useValeurRetardee } from '../../shared/hooks/useValeurRetardee'
 import { PlaceDeLArcher } from '../placement/PlaceDeLArcher'
 import type { EntiteRecherchable, ResultatRecherche } from './api'
 import { useRecherche } from './hooks'
@@ -21,20 +21,25 @@ const LIBELLE_ENTITE: Record<EntiteRecherchable, string> = {
 
 export function RechercheTransverse({
   tournoiId,
-  axe,
+  enPilotage,
   onOuvrir,
 }: {
   tournoiId: number | null
-  axe: Axe
+  // ⚠️ **Un booléen, pas l'`Axe`.** Importer le type depuis `features/admin` créait une arête de
+  // retour (`admin` importe déjà ce composant) et donc un **cycle de features**, que l'atlas
+  // enregistrait comme enchevêtrement (`DETTE-083`). Ce composant n'a besoin que du moment.
+  enPilotage: boolean
   onOuvrir: (resultat: ResultatRecherche) => void
 }) {
   const [entite, setEntite] = useState<EntiteRecherchable>('archer')
   const [requete, setRequete] = useState('')
+  // Une requête par frappe partirait sinon (voir `useValeurRetardee`, `DETTE-089`).
+  const fragment = useValeurRetardee(requete)
 
   // A09 : « se concentrer sur le tournoi en cours sélectionné ». Le scope ne vaut que pour les
   // archers — clubs et tournois sont des référentiels globaux, les borner les viderait sans le dire.
-  const scope = axe === 'pilotage' && entite === 'archer' ? tournoiId : null
-  const recherche = useRecherche(entite, requete, scope)
+  const scope = enPilotage && entite === 'archer' ? tournoiId : null
+  const recherche = useRecherche(entite, fragment, scope)
   const resultats = recherche.data?.resultats ?? []
   const total = recherche.data?.total ?? 0
   const requeteVide = requete.trim() === ''
@@ -90,7 +95,15 @@ export function RechercheTransverse({
                       <span className="recherche-resultat__precision">{r.precision}</span>
                     )}
                   </button>
-                  {scope !== null && <PlaceDeLArcher archerId={r.id} tournoiId={scope} />}
+                  {/* ⚠️ La place se rend pour tout archer **du tournoi courant**, sur tous les
+                      axes — et pas seulement en pilotage. Le lier au scope de recherche avait
+                      supprimé le « il tire là » d'E12US006 (`D-09`) sur l'axe Gestion, où l'ancien
+                      composant le rendait : une régression livrée sous couvert de CA neuf.
+                      La condition d'entité est nécessaire : avec `keepPreviousData`, changer de
+                      déroulante rend brièvement des clubs sous une entité « archer ». */}
+                  {r.entite === 'archer' && tournoiId !== null && r.tournoi_id === tournoiId && (
+                    <PlaceDeLArcher archerId={r.id} tournoiId={tournoiId} />
+                  )}
                 </li>
               ))}
             </ul>

@@ -50,7 +50,10 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
             prenom="Jean",
             tournoi_id=ancien.id,
             categorie_id=_CATEGORIE,
-            club_id=autre.id,
+            # ⚠️ **Même club que son homonyme, délibérément** : la 1ʳᵉ fixture leur donnait deux
+            # clubs différents, ce qui rendait le test vert sans jamais exercer la
+            # désambiguïsation d'ÉDITION que son nom annonce (relevé par les axes C1 et D).
+            club_id=kerv.id,
         )
     )
     archers.ajouter(
@@ -78,8 +81,8 @@ def test_deux_homonymes_se_distinguent_par_leur_club_et_leur_tournoi() -> None:
     }
 
     assert precisions == {
-        "Arc Club de Kervignarc · Salle 18m",
-        "Compagnie de Saint-Mérien · Salle 18m",
+        "Arc Club de Kervignarc · Salle 18m (2026)",
+        "Arc Club de Kervignarc · Salle 18m (2025)",
     }
 
 
@@ -104,12 +107,12 @@ def test_en_pilotage_la_precision_cesse_de_repeter_le_tournoi() -> None:
 
 
 def test_un_archer_se_trouve_par_le_nom_de_son_club() -> None:
-    """« Qui de Saint-Mérien ? » est une question que l'organisateur pose vraiment."""
+    """« Qui de l'Arc Club ? » est une question que l'organisateur pose vraiment."""
     service, _ = _attelage()
 
-    recherche = service.chercher(EntiteRecherchable.ARCHER, "saint-merien")
+    recherche = service.chercher(EntiteRecherchable.ARCHER, "arc club")
 
-    assert recherche.total == 1
+    assert recherche.total == 2
 
 
 def test_un_archer_sans_club_connu_reste_trouvable() -> None:
@@ -119,7 +122,7 @@ def test_un_archer_sans_club_connu_reste_trouvable() -> None:
     recherche = service.chercher(EntiteRecherchable.ARCHER, "bordure")
 
     assert recherche.total == 1
-    assert recherche.resultats[0].precision == "Salle 18m"
+    assert recherche.resultats[0].precision == "Salle 18m (2026)"
 
 
 def test_chaque_resultat_dit_ou_ouvrir_sa_fiche() -> None:
@@ -155,6 +158,18 @@ def test_un_club_se_trouve_par_son_nom() -> None:
     service, _ = _attelage()
 
     assert service.chercher(EntiteRecherchable.CLUB, "compagnie").total == 1
+
+
+def test_le_scope_tournoi_est_ignore_hors_des_archers() -> None:
+    """Clubs et tournois sont des référentiels **globaux** : un scope les viderait sans le dire.
+
+    La docstring du service l'affirmait, rien ne le tenait (relevé par l'axe B).
+    """
+    service, ids = _attelage()
+    scope = ids["salle"]
+
+    assert service.chercher(EntiteRecherchable.CLUB, "compagnie", tournoi_id=scope).total == 1
+    assert service.chercher(EntiteRecherchable.TOURNOI, "salle", tournoi_id=scope).total == 2
 
 
 def test_un_fragment_vide_ne_propose_rien_sur_aucune_entite() -> None:

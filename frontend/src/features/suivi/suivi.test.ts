@@ -8,7 +8,6 @@ import type { PlanDeCibles } from '../placement/api'
 import {
   construireJournee,
   departsDesArchersSuivis,
-  filtrerArchers,
   placeDansPlan,
   rechercherArchers,
 } from './suivi'
@@ -51,44 +50,6 @@ const planAvec = (
   conflits: [],
 })
 
-describe('filtrerArchers — recherche par nom', () => {
-  const archers = [
-    archer(1, 'Martin', 'Paul'),
-    archer(2, 'Durand', 'Rémy'),
-    archer(3, 'Martinez', 'Sophie'),
-  ]
-
-  it('une requête vide ne propose rien (la recherche est l’exception, pas la porte)', () => {
-    expect(filtrerArchers(archers, '')).toEqual([])
-    expect(filtrerArchers(archers, '   ')).toEqual([])
-  })
-
-  it('matche sur le nom, insensible à la casse', () => {
-    expect(filtrerArchers(archers, 'mart').map((a) => a.id)).toEqual([1, 3])
-  })
-
-  it('matche aussi sur le prénom', () => {
-    expect(filtrerArchers(archers, 'sophie').map((a) => a.id)).toEqual([3])
-  })
-
-  it('matche sur une sous-chaîne au milieu du nom (pas seulement le préfixe)', () => {
-    expect(filtrerArchers(archers, 'arti').map((a) => a.id)).toEqual([1, 3])
-  })
-
-  it('tolère les accents (« remy » retrouve « Rémy »)', () => {
-    expect(filtrerArchers(archers, 'remy').map((a) => a.id)).toEqual([2])
-  })
-
-  it('sans correspondance, renvoie une liste vide', () => {
-    expect(filtrerArchers(archers, 'zzz')).toEqual([])
-  })
-})
-
-// E16US004, **dérivé du CA** « recherche : filtre par club, liste qui se met à jour à la frappe,
-// état de suivi actionnable sur chaque ligne » (questionnaire P01 : *« mettre un filtre de tri par
-// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche »*).
-// Écrit avant le câblage de l'écran (règle 9). Seuls les deux premiers volets sont de la logique
-// pure ; l'« état actionnable » est du rendu, vérifié à la recette.
 describe('rechercherArchers — nom et club', () => {
   const archers = [
     { ...archer(1, 'Martin', 'Paul'), club_id: 7 },

@@ -5,7 +5,8 @@
 // exactement le défaut de `DETTE-085`, que `tsc` ne voit pas.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tournoi } from '../competition/api'
@@ -84,8 +85,25 @@ describe('pastille de préparation en liste', () => {
     monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
 
     await screen.findByText(/Salle 18m/)
+    // ⚠️ Sans cette attente, l'assertion serait verte pour la mauvaise raison : « niveau aucun » et
+    // « aperçu pas encore chargé » rendent tous deux `null` (relevé par l'axe adversarial).
+    await waitFor(() => expect(getApercusJalon).toHaveBeenCalled())
     expect(screen.queryByText('Ne peut pas démarrer')).not.toBeInTheDocument()
     expect(screen.queryByText('À compléter')).not.toBeInTheDocument()
+  })
+
+  it('D-16 au doigt — la cause s’ouvre au CLIC, pas seulement au survol', async () => {
+    // Le parc est fait de tablettes : sans survol ni lecteur d'écran, un `title` seul rendait la
+    // cause inatteignable, et la pastille redevenait « un clic de plus, pas une protection ».
+    vi.mocked(getApercusJalon).mockResolvedValue([
+      apercu('alerte', 'Un tournoi sans créneau ne peut pas être marqué prêt.'),
+    ])
+
+    monter(<GestionTournois selectionneId={null} onChoisi={vi.fn()} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Ne peut pas démarrer' }))
+
+    expect(screen.getByText('Un tournoi sans créneau ne peut pas être marqué prêt.')).toBeVisible()
   })
 
   it('sans session admin, l’aperçu n’est même pas demandé', async () => {

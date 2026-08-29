@@ -59,6 +59,8 @@ export interface ApercuJalon {
 
 // ⚠️ **Une requête pour toute la liste.** La complétude est par ailleurs une lecture par tournoi ;
 // la faire depuis le front tournoi par tournoi partait en N requêtes.
+// ⚠️ L'adresse est **hors** de `/api/v1/tournois` : sous ce préfixe, `jalons` était appariable
+// comme identifiant de tournoi (cf. `api/v1/jalons.py`). Ne pas l'y ramener.
 export function getApercusJalon(jalon: Jalon): Promise<ApercuJalon[]> {
-  return fetchJson<ApercuJalon[]>(`/api/v1/tournois/jalons/${jalon}`)
+  return fetchJson<ApercuJalon[]>(`/api/v1/jalons/${jalon}/apercus`)
 }

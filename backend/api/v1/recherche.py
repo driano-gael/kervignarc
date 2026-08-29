@@ -6,6 +6,8 @@ jumelles ferait diverger trois contrats pour une même question.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -25,7 +27,8 @@ class ResultatRechercheReponse(BaseModel):
     pas dire où elle mène.
     """
 
-    entite: str
+    # Union **fermée** plutôt que `str` (cf. `ApercuJalonReponse`) : au schéma OpenAPI.
+    entite: Literal["tournoi", "archer", "club"]
     id: int
     libelle: str
     precision: str | None

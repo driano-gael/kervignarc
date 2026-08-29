@@ -27,7 +27,7 @@ _METADONNEES = frozenset(
     }
 )
 
-# Les 26 libellés de relation réellement employés, ramenés à six sens.
+# Les 27 libellés de relation réellement employés, ramenés à six sens.
 # La clé est le libellé sans accent et en minuscules ; la valeur, (type, sens).
 # ⚠️ `Prolongé par` et `Complété et partiellement révisé par` sont des arêtes **entrantes** :
 # l'ADR y désigne ce qui agit **sur lui**, pas ce sur quoi il agit. Les traiter comme sortantes
@@ -41,6 +41,9 @@ _RELATIONS: dict[str, tuple[TypeLien, Sens]] = {
     "complete / amende": (TypeLien.AMENDE, Sens.SORTANT),
     "precise / anticipe": (TypeLien.AMENDE, Sens.SORTANT),
     "complete et partiellement revise par": (TypeLien.AMENDE, Sens.ENTRANT),
+    # Entrante elle aussi : « Amendé par » désigne ce qui agit **sur** l'ADR (E16US010, ADR-0059
+    # amendé par ADR-0100). Le sens sortant inverserait la chronologie du graphe.
+    "amende par": (TypeLien.AMENDE, Sens.ENTRANT),
     "remplace": (TypeLien.REMPLACE, Sens.SORTANT),
     "renverse": (TypeLien.REMPLACE, Sens.SORTANT),
     "complete": (TypeLien.COMPLETE, Sens.SORTANT),

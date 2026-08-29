@@ -13,20 +13,14 @@
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
 **Dernière mise à jour : 29/08/2026, 14 h 00** · **130 US livrées** · dernière : `E16US010`
-*(**débloquer un duel sans quitter le feu vert** — chaque ligne qui n'est pas prête porte désormais
-**le geste qui la lève**, à côté du manquement qu'elle nommait déjà. « en attente du duel n°3 » →
-le duel amont se **déplie sur place** (ses deux archers, sa cible) et porte le bouton de **forfait**,
-que l'organisateur peut enfin déclarer lui-même — le cas coûteux du jour J, un archer parti dont le
-duel ne se terminera jamais et qui bloque tout l'aval. « cible non attribuée » → renvoi au plan de
-duels. « adversaire non déterminé » → **rien**, cela se répare à la composition de la phase.
-L'autorisation est **élargie, pas doublée** (`autoriser_forfait_duel`, jumelle d'`autoriser_saisie` :
-une route, deux identités), annulation comprise (`D-15`), et bornée aux **duels**.
-⚠️ **Deux constats de cadrage, lus dans le code et contraires à la fiche** : « ouvrir le duel amont »
-est **impossible** — `SaisieDuels` n'est monté que dans `EspaceScoreur`, derrière un code scoreur —,
-et au **tour ≥ 2** « cible non attribuée » n'est levable par **aucun** geste (garde délibérée,
-`DETTE-019`), d'où une ligne qui **dit la limite** au lieu d'offrir une fausse porte.
-➡️ Le CA « déclenchement automatique » est **sorti** vers `E16US013`. `DETTE-017` élargie à 5 sites
-— dont un **4ᵉ jamais inscrit** — et `DETTE-019` portée à **quatre** sites, dont **deux** dans le front — le site `presentation.ts` n'avait jamais été inscrit. Aucune migration.)*
+*(**chercher partout, et voir d'avance ce qui bloque** — la barre de recherche de l'administration
+porte une déroulante (tournoi · archer · club), trouve sans accents ni majuscules et **ouvre la
+fiche d'un clic**, avec une adresse copiable qui survit au F5 ([ADR-0100](../docs/adr/0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md)).
+La liste des tournois porte **deux niveaux de pastille** — « à compléter » et « ne peut pas
+démarrer » —, dérivés du jalon « prêt à démarrer » et non recalculés. Les **doublons** quittent leur
+écran dédié pour la ligne de l'archer. ⚠️ **Un CA n'est pas livré et c'est écrit** : « déclarer un
+forfait » depuis la fiche d'archer — la route de qualification est réservée au scoreur, l'élargir à
+l'organisateur est **une décision qui vous revient**.)*
 
 **Précédente : `E00US027`**
 *(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois

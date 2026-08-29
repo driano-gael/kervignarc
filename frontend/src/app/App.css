@@ -839,7 +839,10 @@
    visuel que `.table__anomalie`, mais c'est un BOUTON — il déplie la fusion sur place, ce qui
    remplace l'écran dédié. Réinitialisation du chrome de bouton, la couleur venant de l'anomalie. */
 .archer__doublon {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 2px;
   border: 0;
   background: none;
   font: inherit;
@@ -863,6 +866,28 @@
   border-radius: 999px;
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* La pastille devient un BOUTON dès qu'elle a une cause à dire : au doigt, ni survol ni lecteur
+   d'écran ne rendent le `title` accessible (règle 10, parc de tablettes). */
+.badge-preparation {
+  min-height: 44px;
+  cursor: default;
+}
+
+button.badge-preparation {
+  cursor: pointer;
+}
+
+button.badge-preparation:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
+.badge-preparation__cause {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .badge-preparation--avertissement {
@@ -3283,7 +3308,9 @@ button:disabled {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  min-height: 36px;
+  /* 44 px : le plancher tactile du projet (WCAG 2.5.5), appliqué partout ailleurs dans ce
+     fichier. Le résultat de recherche est devenu cliquable en E16US010 — c'est une cible neuve. */
+  min-height: 44px;
   padding: 4px 0;
   border: 0;
   background: none;

@@ -8,7 +8,9 @@ import {
   BESOIN_TOURNOI,
   analyserSegmentsAdmin,
   destinationDunArcher,
+  destinationDunResultat,
   destinationParDefaut,
+  segmentsCanoniques,
   destinationValide,
   segmentsAdmin,
   type Axe,
@@ -163,6 +165,21 @@ describe('analyserSegmentsAdmin', () => {
     expect(analyserSegmentsAdmin(['fiche']).elementDemande).toBeNull()
   })
 
+  it('sur l’accueil, un AUTRE tournoi que le courant s’ouvre sans le remplacer', () => {
+    // ⚠️ Le défaut corrigé en revue : `/admin/7/fiche` faisait de 7 le tournoi de travail, et le
+    // refermer renvoyait sur `/admin` nu. Deux slots, deux sens (ADR-0100 §2).
+    const route = analyserSegmentsAdmin(['12', 'fiche', '7'])
+
+    expect(route.tournoiId).toBe(12)
+    expect(route.elementDemande).toBe(7)
+  })
+
+  it('aucun axe ne s’appelle « fiche » — sinon la forme d’accueil deviendrait inatteignable', () => {
+    // Une ligne, parce que le jour où un axe porterait ce nom, `/admin/12/fiche` cesserait
+    // silencieusement d'ouvrir un formulaire pour entrer dans un axe.
+    expect(AXES.map((a) => a.axe)).not.toContain('fiche')
+  })
+
   it('un axe inconnu retombe sur l’accueil, pas sur une page vide', () => {
     expect(analyserSegmentsAdmin(['preparation', 'blasons'])).toEqual({
       tournoiId: null,
@@ -203,6 +220,15 @@ describe('segmentsAdmin', () => {
     ).toBe(57)
     expect(segmentsAdmin(12, null, null, 12)).toEqual(['12', 'fiche'])
     expect(analyserSegmentsAdmin(segmentsAdmin(12, null, null, 12)).elementDemande).toBe(12)
+  })
+
+  it('l’élément n’est PAS jeté silencieusement sur l’accueil', () => {
+    // Il l'était : `segmentsAdmin(12, null, null, 7)` rendait `['12']`, l'élément disparaissait
+    // sans erreur — et c'est ce qui avait forcé l'appelant à confondre les deux slots.
+    expect(segmentsAdmin(12, null, null, 7)).toEqual(['12', 'fiche', '7'])
+    expect(segmentsAdmin(12, null, null, 12)).toEqual(['12', 'fiche'])
+    // Refermer la fiche ne désélectionne pas le tournoi.
+    expect(segmentsAdmin(12, null, null, null)).toEqual(['12'])
   })
 
   it('CA — le tournoi survit au changement d’écran et d’axe', () => {
@@ -287,5 +313,59 @@ describe('destinationDunArcher', () => {
 
   it('sans tournoi porté par le résultat, on retombe sur le tournoi courant', () => {
     expect(destinationDunArcher('gestion', 12, null).tournoi).toBe(12)
+  })
+})
+
+describe('segmentsCanoniques', () => {
+  const route = {
+    tournoiId: 12,
+    axe: 'gestion' as const,
+    destinationDemandee: 'inscriptions',
+    elementDemande: 57,
+  }
+
+  it('BLOQUANT corrigé — la canonisation CONSERVE l’élément ouvert', () => {
+    // La version d'origine vivait dans `CoquilleAdmin` et rappelait `segmentsAdmin` sans son 4ᵉ
+    // argument : l'adresse était réécrite sans l'élément, et la fiche se refermait aussitôt.
+    expect(segmentsCanoniques(route, 'gestion', 'inscriptions')).toEqual([
+      '12',
+      'gestion',
+      'inscriptions',
+      '57',
+    ])
+  })
+
+  it('mais le LÂCHE quand la destination affichée n’est pas celle demandée', () => {
+    // Négatif apparié : un signet périmé (`…/doublons/57`) ne doit pas ouvrir l'élément 57 sur la
+    // destination de repli, qui ne le connaît pas.
+    const perimee = { ...route, destinationDemandee: 'doublons' }
+
+    expect(segmentsCanoniques(perimee, 'gestion', 'inscriptions')).toEqual([
+      '12',
+      'gestion',
+      'inscriptions',
+    ])
+  })
+})
+
+describe('destinationDunResultat', () => {
+  it('un club mène à l’atelier, en gardant le tournoi de travail', () => {
+    expect(destinationDunResultat('club', null, 'pilotage', 12)).toEqual({
+      axe: 'atelier',
+      destination: 'clubs',
+      tournoi: 12,
+    })
+  })
+
+  it('un tournoi n’a NI axe NI destination — sa fiche vit sur l’accueil', () => {
+    // C'est ce qui force l'appelant à passer par la forme `fiche` (ADR-0100 §3) : sans ce `null`,
+    // il chercherait une destination qui n'existe pas.
+    expect(destinationDunResultat('tournoi', 7, 'gestion', 12).destination).toBeNull()
+  })
+
+  it('un archer délègue à la règle du moment, sans la recopier', () => {
+    expect(destinationDunResultat('archer', 12, 'pilotage', 12)).toEqual(
+      destinationDunArcher('pilotage', 12, 12),
+    )
   })
 })

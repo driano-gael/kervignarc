@@ -7,6 +7,8 @@ diverger deux contrats — le motif de `DETTE-065`, qu'on n'alimente pas en le s
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -18,10 +20,14 @@ from domain.jalon import Jalon, PreparationJalon, question
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["jalons"])
 
-# Second router : l'aperçu porte sur la **collection**, pas sur un tournoi — d'où un préfixe sans
-# `{tournoi_id}`. Aucune ambiguïté de résolution : les deux chemins n'ont pas le même nombre de
-# segments, et `{tournoi_id}` est typé `int`.
-router_liste = APIRouter(prefix="/api/v1/tournois", tags=["jalons"])
+# Second router : l'aperçu porte sur la **collection**, pas sur un tournoi.
+# ⚠️ **Hors du préfixe `/api/v1/tournois`, délibérément.** Une 1ʳᵉ version le montait dessous en
+# affirmant « aucune ambiguïté : pas le même nombre de segments, et `{tournoi_id}` est typé `int` »
+# — c'était **faux**, et la revue l'a prouvé : Starlette apparie sur `[^/]+` et Pydantic ne valide
+# le type qu'**après**, si bien que `POST /api/v1/tournois/jalons/demarrer` matchait
+# `/{tournoi_id}/demarrer`. Seule la **méthode HTTP** séparait les deux, et un futur
+# `GET /tournois/{id}/demarrer` aurait suffi à casser l'aperçu. Ici, plus aucun chemin concurrent.
+router_liste = APIRouter(prefix="/api/v1/jalons", tags=["jalons"])
 
 
 class PreparationJalonReponse(BaseModel):
@@ -89,19 +95,23 @@ class ApercuJalonReponse(BaseModel):
     """
 
     tournoi_id: int
-    niveau: str
+    # Union **fermée** plutôt que `str` : elle entre ainsi au schéma OpenAPI, et le miroir déclaré
+    # côté front cesse d'être une convention orale (suggestion de revue, axe A).
+    niveau: Literal["aucun", "avertissement", "alerte"]
     resume: str | None
 
     @staticmethod
     def de_apercu(apercu: ApercuPreparation) -> ApercuJalonReponse:
         """Traduit l'aperçu du service en DTO de réponse."""
         return ApercuJalonReponse(
-            tournoi_id=apercu.tournoi_id, niveau=apercu.niveau.value, resume=apercu.resume
+            tournoi_id=apercu.tournoi_id,
+            niveau=apercu.niveau.value,
+            resume=apercu.resume,
         )
 
 
 @router_liste.get(
-    "/jalons/{jalon}",
+    "/{jalon}/apercus",
     response_model=list[ApercuJalonReponse],
     dependencies=[Depends(exiger_admin)],
 )

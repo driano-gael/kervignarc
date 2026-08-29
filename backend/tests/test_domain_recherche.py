@@ -89,5 +89,9 @@ def test_la_completion_borne_la_liste_mais_annonce_le_total_reel() -> None:
 
     recherche = completer(beaucoup, "dupont")
 
-    assert len(recherche.resultats) == LIMITE_COMPLETION
+    # ⚠️ **8 en clair, pas `LIMITE_COMPLETION`** : se mesurer à la constante du module testé laisse
+    # le test vert si elle passe à 3. La valeur est un choix d'écran que la fiche fonctionnelle
+    # annonce (« la liste s'arrête à 8 ») — c'est donc elle que le test doit tenir.
+    assert len(recherche.resultats) == 8
+    assert LIMITE_COMPLETION == 8
     assert recherche.total == 20
