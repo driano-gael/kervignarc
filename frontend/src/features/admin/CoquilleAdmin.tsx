@@ -10,8 +10,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
 import { Archers } from '../archers/Archers'
+import { FicheArcherPilotage } from '../archers/FicheArcherPilotage'
 import { Archive } from '../archive/Archive'
-import { Doublons } from '../archers/Doublons'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
@@ -46,7 +46,8 @@ import { FeuVert } from '../feu-vert/FeuVert'
 import { Simulation } from '../simulation/Simulation'
 import { SuiviDeroule } from '../suivi-deroule/SuiviDeroule'
 import { Supervision } from '../supervision/Supervision'
-import { RechercheArcher } from '../recherche/RechercheArcher'
+import { RechercheTransverse } from '../recherche/RechercheTransverse'
+import type { ResultatRecherche } from '../recherche/api'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
 import { AideEcran } from '../../shared/ui/AideEcran'
 import { ChangerDeRole } from '../../shared/ui/ChangerDeRole'
@@ -57,6 +58,9 @@ import {
   AXES,
   BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
+  destinationDunResultat,
+  elementRetenu,
+  segmentsCanoniques,
   analyserSegmentsAdmin,
   contextePilotage,
   destinationParDefaut,
@@ -121,6 +125,10 @@ function Coquille() {
     tournoiId,
     axe: axeActif,
     destinationDemandee,
+    // L'élément que l'écran doit **ouvrir** (E16US010, ADR-0100). Il vient de l'adresse, donc il
+    // survit au F5 et se copie dans un lien — un `useState` local à la ligne ne faisait ni l'un
+    // ni l'autre, et restait hors d'atteinte d'un résultat de recherche.
+    elementDemande,
   } = analyserSegmentsAdmin(analyserChemin(chemin).segments)
 
   // Version **fraîche** du tournoi courant : après un démarrer/terminer, la liste est invalidée et
@@ -130,9 +138,45 @@ function Coquille() {
 
   // Toute navigation d'administration passe par ici : le tournoi courant est **reconduit** d'un écran
   // à l'autre et d'un axe à l'autre, puisqu'il fait partie de l'adresse.
-  const allerA = (axe: Axe, destination: DestinationAdminId, tournoi = tournoiId) =>
+  const allerA = (
+    axe: Axe,
+    destination: DestinationAdminId,
+    tournoi = tournoiId,
+    element: number | null = null,
+  ) =>
     naviguer(
-      construireChemin({ monde: 'admin', segments: segmentsAdmin(tournoi, axe, destination) }),
+      construireChemin({
+        monde: 'admin',
+        segments: segmentsAdmin(tournoi, axe, destination, element),
+      }),
+    )
+
+  // Ouvrir la fiche d'un élément **sur sa destination** (E16US010, ADR-0100). L'axe se lit dans
+  // `AXE_PAR_DESTINATION` : le réécrire ici donnerait un lien qui ouvre l'écran sous le mauvais
+  // intitulé le jour où une destination change d'axe.
+  const ouvreurDe = (destination: Exclude<DestinationAdminId, 'tournoi'>) => (id: number | null) =>
+    allerA(AXE_PAR_DESTINATION[destination], destination, tournoiId, id)
+
+  // Où mène un résultat de recherche (E16US010). ⚠️ Pour un **archer**, on suit le tournoi que le
+  // résultat porte, pas le tournoi courant : la recherche hors pilotage traverse les éditions, et
+  // ouvrir sa fiche dans le mauvais tournoi la montrerait vide.
+  const ouvrirResultat = (r: ResultatRecherche) => {
+    // ⚠️ **Aucun court-circuit avant cet appel.** La 1ʳᵉ rédaction traitait `tournoi` et `club` en
+    // amont : les branches correspondantes de `destinationDunResultat` étaient donc mortes en
+    // production **tout en étant testées** — la règle vivait à deux endroits, et le test gardait
+    // celui que l'écran n'exécutait pas (relevé par C1 et l'axe adversarial).
+    const cible = destinationDunResultat(r.entite, r.tournoi_id, axeActif, tournoiId)
+    if (cible.destination === null || cible.axe === null) return ouvrirFicheTournoi(r.id)
+    return allerA(cible.axe, cible.destination, cible.tournoi, r.id)
+  }
+
+  // La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination — d'où `/admin/12/fiche`.
+  // ⚠️ **Le tournoi courant est reconduit, il n'est pas remplacé par l'élément.** La 1ʳᵉ version
+  // passait `id` dans les deux slots : ouvrir la fiche d'un autre tournoi changeait le tournoi de
+  // travail, et la refermer le désélectionnait (`/admin` nu). Deux slots, deux sens (ADR-0100 §2).
+  const ouvrirFicheTournoi = (id: number | null) =>
+    naviguer(
+      construireChemin({ monde: 'admin', segments: segmentsAdmin(tournoiId, null, null, id) }),
     )
 
   const entrerDansAxe = (axe: Axe) => allerA(axe, destinationParDefaut(axe))
@@ -279,7 +323,7 @@ function Coquille() {
       // — peupler la liste des clubs voisins — à deux échelles.
       rendu: () => (
         <>
-          <Clubs />
+          <Clubs ouvrir={elementOuvrable} onOuvrir={ouvreurDe('clubs')} />
           <ImportClubs />
         </>
       ),
@@ -294,20 +338,35 @@ function Coquille() {
       libelle: 'Inscriptions',
       // Créer un archer, puis le corriger / l'inscrire sur des départs : les deux briques de la
       // feature « archers » (création + liste) sur une même destination.
+      // ⚠️ **Le nettoyage des doublons y a été absorbé** (E16US010) : la destination « Doublons »
+      // a disparu, le rapprochement se signale et se traite sur la ligne de l'archer concerné.
       rendu: () =>
         courant && (
           <>
             <NouvelArcher tournoiId={courant.id} />
-            <Archers tournoiId={courant.id} />
+            <Archers
+              tournoiId={courant.id}
+              ouvrir={elementOuvrable}
+              onOuvrir={ouvreurDe('inscriptions')}
+            />
           </>
         ),
     },
     {
-      id: 'doublons',
-      libelle: 'Doublons',
-      // Nettoyage de la liste des inscrits (E02US005) : repérer les fiches en double et fusionner.
-      // Juste après « Inscriptions » — c'est la suite naturelle du travail sur la liste.
-      rendu: () => courant && <Doublons tournoiId={courant.id} />,
+      id: 'archer',
+      libelle: 'Fiche d’un archer',
+      // Le pendant **pilotage** de la liste des inscrits : on y lit d'abord (catégorie, club, où
+      // il tire), on agit ensuite. On y arrive par la recherche (ADR-0100), pas par la sidebar —
+      // mais l'entrée reste listée, sans quoi la destination serait inatteignable au clavier.
+      rendu: () =>
+        courant && (
+          <FicheArcherPilotage
+            tournoiId={courant.id}
+            archerId={elementOuvrable}
+            onCorrigerLaFiche={(id) => ouvreurDe('inscriptions')(id)}
+            onModifierLePlacement={() => allerA(AXE_PAR_DESTINATION['placement'], 'placement')}
+          />
+        ),
     },
     {
       id: 'placement',
@@ -463,16 +522,29 @@ function Coquille() {
   const active =
     dansAxe.find((d) => d.id === demandee) ?? dansAxe.find((d) => d.id === ouverture) ?? dansAxe[0]
 
+  // ⚠️ **L'élément consommé suit la même garde que l'adresse.** La canonisation ci-dessous est un
+  // effet, donc postérieure au premier rendu : sans ce filtre, `/admin/12/gestion/doublons/57`
+  // ouvrait la fiche 57 sur la destination de repli **le temps d'un rendu**.
+  const elementOuvrable =
+    active === undefined
+      ? null
+      : elementRetenu({ tournoiId, axe: axeActif, destinationDemandee, elementDemande }, active.id)
   // L'adresse doit dire la vérité **aussi à l'intérieur de l'admin** : `/admin/atelier/supervision`
-  // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet ou une capture de
-  // recette aurait figée. Même politique qu'`App` sur les mondes, même `replaceState` (correction
-  // subie, à ne pas empiler dans l'historique).
+  // affichait l'ouverture de l'atelier sous une adresse mensongère, qu'un signet aurait figée.
+  // Même `replaceState` qu'`App` sur les mondes (correction subie, hors historique).
+  // ⚠️ **`segmentsCanoniques` et non `segmentsAdmin`** : la 1ʳᵉ version appelait ce dernier sans
+  // son 4ᵉ argument, réécrivait donc l'adresse **sans l'élément** — la fiche se refermait dans la
+  // foulée du clic, et ADR-0100 était mort hors de l'accueil.
   const chemAttendu =
     axe === null || active === undefined
       ? null
       : construireChemin({
           monde: 'admin',
-          segments: segmentsAdmin(tournoiId, axe.axe, active.id),
+          segments: segmentsCanoniques(
+            { tournoiId, axe: axeActif, destinationDemandee, elementDemande },
+            axe.axe,
+            active.id,
+          ),
         })
   useEffect(() => {
     if (chemAttendu !== null && chemin !== chemAttendu) {
@@ -519,7 +591,14 @@ function Coquille() {
         {/* L'aide de l'écran « Tournoi » suit l'écran (E14US002) : il change de place, sa couverture
             d'aide ne doit pas disparaître pour autant. */}
         <AideEcran texte={AIDE_ECRANS['tournoi']} />
-        <GestionTournois selectionneId={tournoiId} onChoisi={entrerDansTournoi} />
+        {/* ⚠️ `elementDemande` et non `elementOuvrable` : l'accueil n'a **pas** de destination à
+            valider (`axe === null` ici), et la forme `/admin/12/fiche/7` porte déjà toute la garde. */}
+        <GestionTournois
+          selectionneId={tournoiId}
+          onChoisi={entrerDansTournoi}
+          ouvrir={elementDemande}
+          onOuvrir={ouvrirFicheTournoi}
+        />
       </div>
     )
   }
@@ -555,10 +634,15 @@ function Coquille() {
         </button>
         <p className="coquille__axe">{axe.libelle}</p>
 
-        {/* La recherche d'archer coiffe la sidebar (E12US006, `D-19`) : elle répond à « je tire où ? »
-            sans quitter l'écran courant. Scopée au tournoi courant, elle n'a donc rien à faire dans
-            l'atelier, qui n'en a pas. */}
-        {axe.besoinTournoi && <RechercheArcher tournoiId={tournoiId} />}
+        {/* La recherche coiffe la sidebar (`D-19`) : elle répond sans quitter l'écran courant.
+            ⚠️ Montée sur **tous** les axes depuis E16US010 — elle ne se limitait à ceux qui ont un
+            tournoi que parce qu'elle ne cherchait que des archers ; clubs et tournois sont des
+            référentiels globaux, et l'atelier est justement le lieu où on les corrige. */}
+        <RechercheTransverse
+          tournoiId={tournoiId}
+          enPilotage={axe.axe === 'pilotage'}
+          onOuvrir={ouvrirResultat}
+        />
 
         {/* Le sélecteur de tournoi ne coiffe que les axes qui travaillent **sur** un tournoi. */}
         {axe.besoinTournoi && (

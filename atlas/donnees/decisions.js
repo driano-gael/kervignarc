@@ -2619,7 +2619,8 @@ window.ATLAS.decisions = {
   },
   {
    "amende_par": [
-    "0072"
+    "0072",
+    "0100"
    ],
    "date": "2026-07-30",
    "date_brute": "2026-07-30",
@@ -2644,6 +2645,12 @@ window.ATLAS.decisions = {
      "libelle": "Lie",
      "sens": "symetrique",
      "type": "voisin"
+    },
+    {
+     "cible": "0100",
+     "libelle": "Amendé par",
+     "sens": "entrant",
+     "type": "amende"
     }
    ],
    "portage": [],
@@ -2654,7 +2661,8 @@ window.ATLAS.decisions = {
    "us": [
     "E07US004",
     "E09US008",
-    "E14US003"
+    "E14US003",
+    "E16US010"
    ]
   },
   {
@@ -3805,7 +3813,8 @@ window.ATLAS.decisions = {
     "E05US035",
     "E16US002",
     "E16US008",
-    "E16US009"
+    "E16US009",
+    "E16US010"
    ]
   },
   {
@@ -7602,6 +7611,9 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/jalons.py",
      "existe": true,
      "symboles": [
+      "PreparationJalonReponse",
+      "ApercuJalonReponse",
+      "pastille",
       "question",
       "_VERBE",
       "PreparationJalonReponse.question",
@@ -7792,9 +7804,23 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/jalons/PastillePreparation.tsx",
+     "existe": true,
+     "symboles": [
+      "PreparationJalonReponse",
+      "ApercuJalonReponse",
+      "pastille"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/jalons/PretA.tsx",
      "existe": true,
      "symboles": [
+      "PreparationJalonReponse",
+      "ApercuJalonReponse",
+      "pastille",
       "questionPosee",
       "pret",
       "complet",
@@ -7831,6 +7857,9 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/jalons/presentation.ts",
      "existe": true,
      "symboles": [
+      "PreparationJalonReponse",
+      "ApercuJalonReponse",
+      "pastille",
       "bloquant",
       "False",
       "verdict",
@@ -7853,6 +7882,7 @@ window.ATLAS.decisions = {
     "E16US003",
     "E16US007",
     "E16US008",
+    "E16US010",
     "E16US012"
    ]
   },
@@ -8349,6 +8379,139 @@ window.ATLAS.decisions = {
     "E01US024",
     "E16US004",
     "E16US009"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-29",
+   "date_brute": "2026-08-29",
+   "extrait": "1. L'élément qu'un écran ouvre fait partie de son adresse. Le contrat d'adresse d'admin devient /admin/\u003ctournoi?>/\u003caxe?>/\u003cdestination?>/\u003célément?>. Le 4ᵉ segment est numérique ; il n'est jamais confondu avec le tournoi, qui est en tête. 2. Ouvrir n'est pas sélectionner. selectionneId désigne le tournoi sur lequel on travaille et se reconduit d'écran en écran ; l'élément ouvert déplie un formulaire et ne concerne que l'écran courant. Les confondre ferait s'ouvrir une fiche à chaque changement de tournoi courant. 3. Deux formes d'adresse, un seul sens. La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination : un 4ᵉ segment ne l'atteint pas. Le segment littéral fiche demande […]",
+   "fichier": "docs/adr/0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md",
+   "identifiant": "0100",
+   "liens": [
+    {
+     "cible": "E16US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0059",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0058",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/features/admin/AdresseElement.test.tsx",
+     "existe": true,
+     "symboles": [
+      "segmentsCanoniques",
+      "segmentsAdmin",
+      "replaceState"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/CoquilleAdmin.tsx",
+     "existe": true,
+     "symboles": [
+      "SEGMENT_FICHE",
+      "elementOuvert",
+      "segmentsAdmin",
+      "ouvrirFicheTournoi",
+      "tournoiId",
+      "id",
+      "segmentsCanoniques",
+      "replaceState"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/axes.ts",
+     "existe": true,
+     "symboles": [
+      "RouteAdmin.elementDemande",
+      "analyserSegmentsAdmin",
+      "segmentsAdmin",
+      "SEGMENT_FICHE",
+      "elementOuvert",
+      "ouvrirFicheTournoi",
+      "tournoiId",
+      "id",
+      "segmentsCanoniques",
+      "replaceState"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/archers/Archers.tsx",
+     "existe": true,
+     "symboles": [
+      "tsc",
+      "ouvrir",
+      "onOuvrir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tournois/Tournois.tsx",
+     "existe": true,
+     "symboles": [
+      "GestionTournois",
+      "selectionneId",
+      "ouvrir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/navigation/routeur.ts",
+     "existe": true,
+     "symboles": [
+      "segments"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/navigation/useOuvertureParAdresse.test.tsx",
+     "existe": true,
+     "symboles": [
+      "ouvrir",
+      "onOuvrir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/navigation/useOuvertureParAdresse.ts",
+     "existe": true,
+     "symboles": [
+      "ouvrir",
+      "onOuvrir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une destination d'admin porte, dans son adresse, l'élément qu'elle ouvre",
+   "us": [
+    "E16US010"
    ]
   }
  ]

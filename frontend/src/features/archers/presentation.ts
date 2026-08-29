@@ -6,26 +6,42 @@
 
 import type { Doublon } from './api'
 
-// Les deux niveaux du serveur, du plus sûr au plus douteux, avec leur titre d'écran. L'ordre de ce
-// tableau **est** l'ordre d'affichage des groupes.
+// Les deux niveaux du serveur, du plus sûr au plus douteux, avec le mot qui les dit **sur une
+// ligne d'archer**. L'ordre de ce tableau **est** l'ordre de certitude : le premier gagne quand un
+// archer est rapproché de plusieurs fiches.
+//
+// ⚠️ Le singulier est délibéré. Ces libellés titraient des groupes (« Doublons probables ») tant
+// qu'un écran dédié les empilait ; depuis E16US010 le signalement vit **sur la ligne**, où il
+// qualifie une fiche et non un tas.
 const NIVEAUX = [
-  { niveau: 'probable', libelle: 'Doublons probables' },
-  { niveau: 'a_verifier', libelle: 'À vérifier' },
+  { niveau: 'probable', libelle: 'Doublon probable' },
+  { niveau: 'a_verifier', libelle: 'Doublon à vérifier' },
 ] as const
 
-export interface GroupeDoublons {
+export interface SignalementDoublon {
   niveau: string
   libelle: string
+  /** Les paires où cet archer figure — souvent une, parfois plusieurs. */
   paires: Doublon[]
 }
 
-// Regroupe les paires par niveau, dans l'ordre « probable » puis « à vérifier », en n'émettant que
-// les groupes **non vides** — un titre sans paire en dessous n'a rien à dire. Un niveau inconnu
-// (serveur en avance sur le front) n'apparaît pas : le front et le back évoluent ensemble.
-export function grouperDoublons(doublons: Doublon[]): GroupeDoublons[] {
-  return NIVEAUX.map(({ niveau, libelle }) => ({
-    niveau,
-    libelle,
-    paires: doublons.filter((doublon) => doublon.niveau === niveau),
-  })).filter((groupe) => groupe.paires.length > 0)
+/**
+ * Ce qu'il faut signaler **sur la ligne d'un archer**, ou `null` si rien ne le rapproche (CA
+ * E16US010 : « une simple icône cliquable sur la ligne de l'archer peut suffire »).
+ *
+ * ⚠️ Le niveau retenu est **le plus certain** de ses paires : un archer à la fois « probable » et
+ * « à vérifier » doit se lire au plus fort, sinon le signalement le plus sûr disparaît derrière le
+ * plus douteux.
+ */
+export function signalementPour(archerId: number, doublons: Doublon[]): SignalementDoublon | null {
+  const siennes = doublons.filter((d) => d.a.id === archerId || d.b.id === archerId)
+  if (siennes.length === 0) return null
+  const niveau = NIVEAUX.find(({ niveau }) => siennes.some((d) => d.niveau === niveau))
+  // Un niveau inconnu (serveur en avance sur le front) ne fait pas disparaître le signalement :
+  // mieux vaut « fiches qui se ressemblent » sans qualificatif qu'un archer signalé nulle part.
+  return {
+    niveau: niveau?.niveau ?? 'inconnu',
+    libelle: niveau?.libelle ?? 'Fiche à vérifier',
+    paires: siennes,
+  }
 }

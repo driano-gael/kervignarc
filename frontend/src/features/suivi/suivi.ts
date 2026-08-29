@@ -36,12 +36,6 @@ export function rechercherArchers(archers: Archer[], critere: CritereRecherche):
   })
 }
 
-// Filtre les archers sur le seul nom — la recherche de la sidebar admin (E12US006), qui n'a pas de
-// filtre par club. Délègue à `rechercherArchers` : deux implémentations du même geste divergeraient.
-export function filtrerArchers(archers: Archer[], requete: string): Archer[] {
-  return rechercherArchers(archers, { requete, clubId: null })
-}
-
 // La place d'un archer sur un départ : sa cible (rang de salle) et sa position (« A »…« D »).
 export interface PlaceArcher {
   cible: number

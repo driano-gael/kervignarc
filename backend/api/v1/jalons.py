@@ -7,16 +7,27 @@ diverger deux contrats — le motif de `DETTE-065`, qu'on n'alimente pas en le s
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from api.v1.completude import LigneCompletudeReponse
-from application.jalons import ServiceJalons
+from application.jalons import ApercuPreparation, ServiceJalons
 from domain.jalon import Jalon, PreparationJalon, question
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["jalons"])
+
+# Second router : l'aperçu porte sur la **collection**, pas sur un tournoi.
+# ⚠️ **Hors du préfixe `/api/v1/tournois`, délibérément.** Une 1ʳᵉ version le montait dessous en
+# affirmant « aucune ambiguïté : pas le même nombre de segments, et `{tournoi_id}` est typé `int` »
+# — c'était **faux**, et la revue l'a prouvé : Starlette apparie sur `[^/]+` et Pydantic ne valide
+# le type qu'**après**, si bien que `POST /api/v1/tournois/jalons/demarrer` matchait
+# `/{tournoi_id}/demarrer`. Seule la **méthode HTTP** séparait les deux, et un futur
+# `GET /tournois/{id}/demarrer` aurait suffi à casser l'aperçu. Ici, plus aucun chemin concurrent.
+apercus_router = APIRouter(prefix="/api/v1/jalons", tags=["jalons"])
 
 
 class PreparationJalonReponse(BaseModel):
@@ -72,3 +83,46 @@ async def preparation_jalon(
     service: ServiceJalons = request.app.state.service_jalons
     preparation = await run_in_threadpool(service.preparation, tournoi_id, jalon)
     return PreparationJalonReponse.de_preparation(preparation)
+
+
+class ApercuJalonReponse(BaseModel):
+    """Un jalon résumé pour **une ligne de liste** : de quoi allumer une pastille, rien de plus.
+
+    ⚠️ Ce n'est pas une `PreparationJalonReponse` allégée mais un **autre** contrat : pas de
+    `lignes`, pas de `pret`. Le front qui veut le détail ouvre l'écran du jalon. `niveau` vaut
+    `aucun` | `avertissement` | `alerte` ; `resume` est `null` exactement quand le niveau est
+    `aucun` — la pastille éteinte n'a rien à dire.
+    """
+
+    tournoi_id: int
+    # Union **fermée** plutôt que `str` : elle entre ainsi au schéma OpenAPI, et le miroir déclaré
+    # côté front cesse d'être une convention orale (suggestion de revue, axe A).
+    niveau: Literal["aucun", "avertissement", "alerte"]
+    resume: str | None
+
+    @staticmethod
+    def de_apercu(apercu: ApercuPreparation) -> ApercuJalonReponse:
+        """Traduit l'aperçu du service en DTO de réponse."""
+        return ApercuJalonReponse(
+            tournoi_id=apercu.tournoi_id,
+            niveau=apercu.niveau.value,
+            resume=apercu.resume,
+        )
+
+
+@apercus_router.get(
+    "/{jalon}/apercus",
+    response_model=list[ApercuJalonReponse],
+    dependencies=[Depends(exiger_admin)],
+)
+async def apercus_jalon(jalon: Jalon, request: Request) -> list[ApercuJalonReponse]:
+    """Le même jalon sur tous les tournois (**admin**) — la pastille de la liste (E16US010).
+
+    `404` si le membre n'a pas d'aperçu instruit (seul *démarrer* en a un) ; `400` si le segment
+    n'est pas un membre de la famille. ⚠️ **Une requête pour toute la liste** : c'est la raison
+    d'être de la route, la complétude étant par ailleurs une lecture par tournoi.
+    Lecture pure : hors file d'écriture, dans le threadpool.
+    """
+    service: ServiceJalons = request.app.state.service_jalons
+    apercus = await run_in_threadpool(service.apercus, jalon)
+    return [ApercuJalonReponse.de_apercu(apercu) for apercu in apercus]

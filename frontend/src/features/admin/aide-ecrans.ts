@@ -29,7 +29,6 @@ export type DestinationAdminId =
   | 'clubs'
   | 'scoreurs'
   | 'inscriptions'
-  | 'doublons'
   | 'placement'
   | 'duels'
   | 'paiements'
@@ -46,6 +45,7 @@ export type DestinationAdminId =
   | 'jeu-essai'
   | 'simulation'
   | 'feu-vert'
+  | 'archer'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
@@ -101,10 +101,13 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'l’espace de saisie avec ce code, sans mot de passe administrateur.',
   inscriptions:
     'Créez les archers et inscrivez-les sur un ou plusieurs départs. L’inscription alimente les ' +
-    'listes, le placement, le montant dû et, le jour J, la saisie des scores.',
-  doublons:
-    'Repérez les archers qui semblent en double (même nom, même club) et fusionnez leurs fiches. ' +
-    'Nettoyer la liste évite les erreurs de placement et de comptage.',
+    'listes, le placement, le montant dû et, le jour J, la saisie des scores. Les fiches qui se ' +
+    'ressemblent sont signalées sur leur ligne : dépliez-en une pour choisir celle à garder — ' +
+    'l’autre y est fusionnée (inscriptions et scores repris), puis supprimée.',
+  archer:
+    'La fiche d’un archer pendant le tournoi : sa catégorie, son club, et où il tire créneau par ' +
+    'créneau. On y arrive par la barre de recherche, et l’on peut de là corriger sa fiche ou ' +
+    'changer sa place.',
   placement:
     'Répartissez les archers inscrits sur les cibles et les couloirs de tir. Le plan peut être généré ' +
     'automatiquement puis ajusté au doigt (glisser-déposer) ; il détermine où chacun tire.',

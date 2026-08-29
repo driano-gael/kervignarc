@@ -41,3 +41,26 @@ export interface PreparationJalon {
 export function getPreparationJalon(tournoiId: number, jalon: Jalon): Promise<PreparationJalon> {
   return fetchJson<PreparationJalon>(`/api/v1/tournois/${tournoiId}/jalons/${jalon}`)
 }
+
+// --- Aperçu de liste (E16US010) ------------------------------------------------------------
+
+// Les deux niveaux de pastille du CA, plus l'absence de pastille. Miroir de
+// `domain.jalon.NiveauPreparation`.
+export type NiveauPreparation = 'aucun' | 'avertissement' | 'alerte'
+
+export interface ApercuJalon {
+  tournoi_id: number
+  niveau: NiveauPreparation
+  // Ce que la pastille dit au survol — `null` exactement quand le niveau est `aucun`. C'est la
+  // phrase du refus serveur quand il y en a une : l'aperçu et l'écran du jalon ne peuvent pas
+  // énoncer deux causes différentes du même manque.
+  resume: string | null
+}
+
+// ⚠️ **Une requête pour toute la liste.** La complétude est par ailleurs une lecture par tournoi ;
+// la faire depuis le front tournoi par tournoi partait en N requêtes.
+// ⚠️ L'adresse est **hors** de `/api/v1/tournois` : sous ce préfixe, `jalons` était appariable
+// comme identifiant de tournoi (cf. `api/v1/jalons.py`). Ne pas l'y ramener.
+export function getApercusJalon(jalon: Jalon): Promise<ApercuJalon[]> {
+  return fetchJson<ApercuJalon[]>(`/api/v1/jalons/${jalon}/apercus`)
+}

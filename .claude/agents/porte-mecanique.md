@@ -69,7 +69,9 @@ faussement verte.
 
 1. **L'installation des dépendances Python** (`pip install -r requirements.txt`,
    `pip install -e . --no-deps`) — l'environnement local est déjà installé, et `pip install` est
-   refusé par les permissions du dépôt.
+   refusé par les permissions du dépôt. ⚠️ **Le `pip install pip-audit` de l'étape d'audit n'en
+   fait PAS partie** : `pip-audit` est installé au venv et s'exécute — l'étape doit produire son
+   `EXIT`. C'est par cette porte qu'un faux vert est passé le 29/08/2026 (`DETTE-093`).
 2. **La synchro `requirements.txt`↔`pyproject.toml`** (le script Python inline du job `backend`).
 
 `npm ci` n'en fait **pas** partie : il installe le lockfile à l'identique, il est autorisé, et c'est
@@ -80,6 +82,22 @@ Toute **autre** divergence entre ce que contient `ci.yml` et ce que tu exécutes
 de procédure** : signale-la en tête de rapport. *(Cette énumération remplace un décompte — « une
 seule étape est sciemment omise » — qui était faux devant `ci.yml` et t'aurait fait crier à chaque
 passe.)*
+
+### ⚠️ `pytest` se lance **comme le job `backend` de la CI**, sans build front visible
+
+```
+KERVIGNARC_FRONTEND_DIST=/chemin/inexistant  pytest
+```
+
+Le job `backend` de `ci.yml` **ne construit pas le front** — `npm run build` vit dans un autre job.
+Or `frontend/dist/`, s'il existe en local, fait monter la SPA à la racine : elle attrape alors des
+requêtes que le serveur nu laisserait tomber, et **change des codes de réponse**. Une suite verte
+en local peut donc être rouge en CI sans qu'aucun code ait bougé.
+
+*(Constaté le 29/08/2026 sur E16US010 : `GET /api/v1/tournois/jalons/demarrer` rend `404` avec un
+build front — repli SPA — et `405` sans lui — appariement partiel de Starlette. La porte locale
+était verte, la CI rouge. Même famille que `DETTE-093` : un verdict vert qui ne prouve pas ce qu'il
+annonce.)*
 
 ### Binaires autorisés
 
@@ -135,7 +153,7 @@ Les quatre sections sont **obligatoires**. Un rapport amputé est invalide.
 <les lignes telles quelles, 50 max par commande ; à défaut les 80 dernières du journal>
 
 ## Non exécuté
-<étapes de ci.yml sautées + raison : hors périmètre / omission volontaire (1-3 ci-dessus) /
+<étapes de ci.yml sautées + raison : hors périmètre / omission volontaire (1-2 ci-dessus) /
  outil introuvable / PERMISSION REFUSÉE / répertoire absent>
 
 ## Verdict : PORTE VERTE | PORTE INCOMPLÈTE | PORTE ROUGE
@@ -149,7 +167,7 @@ Quatre règles sur ce rapport :
    « préexistant » ou « sans rapport avec le diff ».
 3. **Toute étape du périmètre qui n'a produit aucun `EXIT` interdit le verdict vert** — permission
    refusée, outil introuvable, oubli, quelle qu'en soit la raison. Le verdict est alors **`PORTE
-   INCOMPLÈTE`** et la raison est nommée. Seules les trois omissions volontaires énumérées à
+   INCOMPLÈTE`** et la raison est nommée. Seules les **deux** omissions volontaires énumérées à
    l'étape 2 ne comptent pas. *(Sans cette règle, « exit ≠ 0 ⇒ rouge » laissait passer un vert avec
    la moitié de la CI en « non exécuté » : une étape qui ne part pas n'a pas de code de sortie.)*
 4. **Un cas, et un seul, mérite une note** : `python -m atlas --verifier` rouge peut être le cas

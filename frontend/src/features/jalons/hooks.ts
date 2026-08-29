@@ -8,7 +8,7 @@
 // bon — exactement le défaut que `useExigenceEffectif` avait déjà eu à corriger.
 
 import { useQuery } from '@tanstack/react-query'
-import { getPreparationJalon, type Jalon } from './api'
+import { getApercusJalon, getPreparationJalon, type Jalon } from './api'
 
 const INTERVALLE_POLL_MS = 5000
 
@@ -28,5 +28,21 @@ export function usePreparationJalon(tournoiId: number, jalon: Jalon) {
     queryFn: () => getPreparationJalon(tournoiId, jalon),
     refetchInterval: INTERVALLE_POLL_MS,
     staleTime: 0,
+  })
+}
+
+export const cleApercusJalon = (jalon: Jalon) => ['jalons-apercu', jalon] as const
+
+// ⚠️ **Pas de poll ici**, à la différence de `usePreparationJalon`. L'aperçu coiffe la **liste des
+// tournois**, un écran de choix qu'on traverse — pas un écran de suivi ouvert pendant la journée.
+// Le rafraîchissement au montage et au retour d'onglet suffit, et il évite de relire les créneaux
+// et l'effectif de tous les tournois toutes les cinq secondes.
+// ⚠️ `actif` n'est pas un confort : la liste des tournois est rendue **aussi sous la porte
+// Public**, sans jeton admin. Sans ce garde, la route partirait en 401 à chaque affichage public.
+export function useApercusJalon(jalon: Jalon, actif: boolean) {
+  return useQuery({
+    queryKey: cleApercusJalon(jalon),
+    queryFn: () => getApercusJalon(jalon),
+    enabled: actif,
   })
 }

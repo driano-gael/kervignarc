@@ -27,11 +27,15 @@ _METADONNEES = frozenset(
     }
 )
 
-# Les 26 libellés de relation réellement employés, ramenés à six sens.
+# Les 27 libellés de relation réellement employés, ramenés à six sens.
 # La clé est le libellé sans accent et en minuscules ; la valeur, (type, sens).
-# ⚠️ `Prolongé par` et `Complété et partiellement révisé par` sont des arêtes **entrantes** :
-# l'ADR y désigne ce qui agit **sur lui**, pas ce sur quoi il agit. Les traiter comme sortantes
-# inverserait la chronologie du graphe d'amendement.
+# ⚠️ Parmi les libellés d'**amendement**, ceux au participe passé + « par » (`Prolongé par`,
+# `Amendé par`, `Complété et partiellement révisé par`) sont **entrants** : l'ADR y désigne ce qui
+# agit **sur lui**. Les traiter comme sortants inverserait la chronologie du graphe.
+
+# ⚠️ `introduit par` et `porte dans le code par` sont **sortants** malgré leur « par » : ils
+# désignent un artefact (US, module), pas un autre ADR. La 1ʳᵉ rédaction énonçait « participe passé
+# + par ⇒ entrant » : une règle **fausse**, donc pire que l'énumération qu'elle remplaçait.
 _RELATIONS: dict[str, tuple[TypeLien, Sens]] = {
     "amende": (TypeLien.AMENDE, Sens.SORTANT),
     "revise": (TypeLien.AMENDE, Sens.SORTANT),
@@ -41,6 +45,7 @@ _RELATIONS: dict[str, tuple[TypeLien, Sens]] = {
     "complete / amende": (TypeLien.AMENDE, Sens.SORTANT),
     "precise / anticipe": (TypeLien.AMENDE, Sens.SORTANT),
     "complete et partiellement revise par": (TypeLien.AMENDE, Sens.ENTRANT),
+    "amende par": (TypeLien.AMENDE, Sens.ENTRANT),
     "remplace": (TypeLien.REMPLACE, Sens.SORTANT),
     "renverse": (TypeLien.REMPLACE, Sens.SORTANT),
     "complete": (TypeLien.COMPLETE, Sens.SORTANT),

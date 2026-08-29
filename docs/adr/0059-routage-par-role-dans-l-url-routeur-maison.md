@@ -10,6 +10,7 @@
   ADR prolonge la précédence), [ADR-0058](0058-decoupage-de-l-admin-en-trois-axes-d-activite.md)
   (les axes que l'adresse porte), `D-13` (verrou physique de la tablette),
   [DETTE-024](../dette.md#dette-024--routeur-maison-plutôt-quune-bibliothèque)
+- **Amendé par** : [ADR-0100](0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md) — l'adresse d'admin gagne un 4ᵉ segment, l'**élément ouvert** (E16US010). Le routeur lui-même est **inchangé** : c'est `features/admin/axes.ts` qui interprète les segments. ⚠️ Inscrit **ici** et non par un `Amende` chez ADR-0100 (qui produirait la même arête d'atlas) : c'est le lecteur du markdown brut de **cet** ADR qui doit voir l'amendement sans passer par l'atlas.
 
 ## Contexte et problème
 

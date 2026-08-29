@@ -273,7 +273,11 @@ n'est en jeu. Il porte sa section « Porté dans le code par », exigée sans co
 ADR **hors critère** est donc, à ce jour : `0086`, `0088`, **`0089`**, `0095`, `0096`, **`0097`**,
 `0098`, **`0099`** (E00US027 — convention documentaire : une règle d'écriture des commentaires ne
 change ni portée, ni moteur, ni politique injectable ; inscrit ici en revue plutôt que laissé
-expliqué chez lui, le mode de panne que ce paragraphe décrit) —
+expliqué chez lui, le mode de panne que ce paragraphe décrit), **`0100`** (E16US010 — **navigation
+et IHM** : l'adresse d'admin gagne un 4ᵉ segment, l'élément ouvert ; aucun moteur ne lit une
+adresse, aucune portée ne change. Inscrit **en 2ᵉ passe de revue** : l'ADR argumentait son
+exclusion **chez lui** et l'intervalle sautait de `0099` à rien — la 5ᵉ occurrence du mode de panne
+que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

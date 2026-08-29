@@ -8,12 +8,23 @@ duplication sortie par la porte. `ARCHIVER` et `EXPORTER` lèvent `JalonNonInstr
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from application.erreurs import JalonNonInstruit, TournoiIntrouvable
 from application.tournois import ExigenceEffectifTournoi, LecteurDerouleDuTournoi
 from domain.completude import Completude
-from domain.jalon import Jalon, PreparationJalon, evaluer_demarrer, evaluer_terminer
+from domain.jalon import (
+    Jalon,
+    NiveauPreparation,
+    PreparationJalon,
+    demarrer_sans_objet,
+    evaluer_demarrer,
+    evaluer_terminer,
+    niveau_de_preparation,
+    resume_du_manque,
+    transition_offerte,
+)
 from domain.ports import DepartRepository, TournoiRepository
 from domain.tournoi import StatutTournoi, TournoiId
 
@@ -42,6 +53,19 @@ class LecteurCompletude(Protocol):
     def pour_tournoi(self, tournoi_id: TournoiId) -> Completude:
         """La complétude du tournoi (sportif et hors sportif, comptés séparément)."""
         ...
+
+
+@dataclass(frozen=True)
+class ApercuPreparation:
+    """Ce qu'une **ligne de liste** a besoin de savoir d'un jalon (E16US010).
+
+    Volontairement plus maigre que `PreparationJalon` : une liste rend une pastille, pas un écran.
+    ⚠️ Ce n'est **pas** un second calcul — les deux champs se dérivent de la préparation complète.
+    """
+
+    tournoi_id: TournoiId
+    niveau: NiveauPreparation
+    resume: str | None
 
 
 class ServiceJalons:
@@ -79,6 +103,35 @@ class ServiceJalons:
                 completude=self._completudes.pour_tournoi(tournoi_id), statut=tournoi.statut
             )
         raise JalonNonInstruit(f"Il n'y a pas encore d'écran « prêt à {jalon.value} ».")
+
+    def apercus(self, jalon: Jalon) -> list[ApercuPreparation]:
+        """Le même jalon sur **tous** les tournois — de quoi pastiller une liste (E16US010).
+
+        ⚠️ **Un seul appel, pas N** : c'est l'objet de la route, la complétude étant par ailleurs
+        une lecture par tournoi. Un tournoi qui ne partira plus est tranché **sans lire ses
+        créneaux ni son effectif** — `demarrer_sans_objet` rend la même réponse que le chemin
+        complet (`DETTE-092` chiffre ce qui reste). Seul `DEMARRER` est instruit : `TERMINER`
+        exigerait la complétude sportive de chaque tournoi, que la pastille ne réclame pas.
+        """
+        if jalon is not Jalon.DEMARRER:
+            raise JalonNonInstruit(f"Il n'y a pas d'aperçu de liste pour « prêt à {jalon.value} ».")
+        apercus = []
+        for tournoi in self._tournois.lister():
+            if tournoi.id is None:
+                continue
+            preparation = (
+                self._demarrer(tournoi.id, tournoi.statut)
+                if transition_offerte(tournoi.statut, jalon)
+                else demarrer_sans_objet(tournoi.statut)
+            )
+            apercus.append(
+                ApercuPreparation(
+                    tournoi_id=tournoi.id,
+                    niveau=niveau_de_preparation(preparation),
+                    resume=resume_du_manque(preparation),
+                )
+            )
+        return apercus
 
     def _demarrer(self, tournoi_id: TournoiId, statut: StatutTournoi) -> PreparationJalon:
         """Rassemble ce que les gardes du feu vert vérifient, **sans les exécuter**.

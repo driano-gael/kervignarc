@@ -33,9 +33,12 @@ par ligne, chaque archer avec son club, sa catégorie et son blason, et une rés
 main — de sorte qu'ajuster un plan ne demande plus de quitter l'écran pour savoir qui cause un
 signalement. Deux écrans **« prêt à… »** disent d'un coup d'œil ce qui manque
 avant de **lancer** puis avant de **terminer** le tournoi — tous les manques ensemble, avant le
-clic, et sans jamais verrouiller le bouton —, une **recherche d'archer** permanente répond à « je tire
-où ? » depuis n'importe quel écran admin, et un écran **« Doublons »** repère les fiches en double
-et les **fusionne** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
+clic, et sans jamais verrouiller le bouton —, et la **recherche permanente** ne trouve plus seulement
+un archer : on y choisit ce qu'on cherche — **tournoi, archer ou club** —, on tape sans se soucier
+des accents, et **un clic ouvre la fiche**, y compris celle d'un archer d'une autre édition. La
+**liste des tournois prévient d'avance** de ce qui empêche un lancement, en distinguant « il manque
+quelque chose » de « ça ne partira pas ». Les **fiches en double** ne vivent plus sur un écran à
+part : elles se signalent **sur la ligne de l'archer** et s'y **fusionnent** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
@@ -558,10 +561,22 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **129 US livrées** sur `main` (mergées, revues, CI verte) à la date du 28/08/2026 — dont deux
+- **130 US livrées** sur `main` (mergées, revues, CI verte) à la date du 29/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US008` — **débloquer un duel sans quitter
-  l'écran** : sur le feu vert, chaque ligne qui n'est pas prête porte désormais le geste qui la
+  autorité sur le compte) —, la dernière étant `E16US010` — **chercher partout, et voir d'avance ce
+  qui bloque** : la barre de recherche de l'administration porte désormais une liste déroulante
+  (tournoi, archer, club), trouve sans accents ni majuscules, et **ouvre la fiche d'un clic** — avec
+  une adresse qu'on peut copier ou mettre en favori, ce qui n'existait pour aucun écran jusqu'ici.
+  Pendant le tournoi elle se concentre sur les archers du tournoi en cours et ouvre leur fiche **en
+  consultation** (où il tire, sa catégorie, son club) avec de quoi agir ensuite ; avant le tournoi,
+  elle ouvre directement le formulaire. La **liste des tournois** porte deux marques distinctes —
+  « à compléter » et « ne peut pas démarrer » —, chacune expliquant sa raison au survol dans les
+  mots mêmes que l'application opposerait au clic. Et l'écran **« Doublons »** a disparu : le
+  rapprochement de fiches se lit sur la **ligne de l'archer** dans les inscriptions, avec un
+  décompte en tête de liste, et la fusion s'y déplie sur place. Une réserve est écrite : **déclarer
+  un abandon depuis la fiche d'archer n'est pas livré** — cette écriture appartient à l'espace
+  scoreur, et l'ouvrir à l'organisateur est une décision qui vous revient. La précédente était
+  `E16US008` — **débloquer un duel sans quitter l'écran** : sur le feu vert, chaque ligne qui n'est pas prête porte désormais le geste qui la
   débloque. Le duel qui bloque **s'ouvre sur place** (qui tire, sur quelle cible), et l'organisateur
   peut **déclarer un forfait lui-même** au lieu d'aller chercher un scoreur — le cas coûteux du jour
   J, un archer parti dont le duel ne finira jamais et qui bloque tout ce qui vient après. Au
@@ -575,7 +590,7 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   autre raison, et le compteur du bouton « Lancer » ne bouge que si le duel réglé était lui-même
   prêt. C'est logique une fois dit, déroutant tant que ça ne l'est pas — d'où la mention explicite
   dans la fenêtre de confirmation. Le lancement reste **manuel** : l'automatique que
-  vous aviez évoqué part en tranche séparée. La précédente était `E00US027`, **sans effet visible
+  vous aviez évoqué part en tranche séparée. Avant elle, `E00US027`, **sans effet visible
   pour vous** : une
   règle d'écriture (ADR-0099) qui range le *pourquoi* du code dans la documentation au lieu de le
   recopier en commentaire, là où rien ne le vérifie et où il finit par dire le contraire du code.

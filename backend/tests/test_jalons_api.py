@@ -201,3 +201,93 @@ def test_un_tournoi_inconnu_rend_404(app_session: FastAPI, connecter_admin: Conn
     with TestClient(app_session) as client:
         connecter_admin(client)
         assert client.get("/api/v1/tournois/9999/jalons/demarrer").status_code == 404
+
+
+# --- Aperçu de liste (E16US010) -----------------------------------------------------------------
+
+
+def test_l_apercu_rend_un_niveau_par_tournoi_en_une_requete(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La pastille de la liste : deux tournois, deux niveaux, **un** appel.
+
+    Le premier n'a pas de créneau (« impossible à lancer »), le second est lancé (plus rien à
+    préparer). Les deux niveaux du CA se lisent donc dans la même réponse.
+    """
+    with TestClient(app_session) as client:
+        bloque = _creer_tournoi(client, connecter_admin)
+        # La session admin est déjà ouverte : `_creer_tournoi` la rouvrirait, et `configurer`
+        # refuse un second réglage (409).
+        cree = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-03-15"})
+        assert cree.status_code == 201, cree.text
+        lance = int(cree.json()["id"])
+        _lancer(client, lance)
+
+        reponse = client.get("/api/v1/jalons/demarrer/apercus")
+
+        assert reponse.status_code == 200, reponse.text
+        niveaux = {ligne["tournoi_id"]: ligne for ligne in reponse.json()}
+        assert niveaux[bloque]["niveau"] == "alerte"
+        assert niveaux[bloque]["resume"]
+        assert niveaux[lance]["niveau"] == "aucun"
+        assert niveaux[lance]["resume"] is None
+
+
+def test_l_apercu_de_liste_est_reserve_a_l_admin(app_session: FastAPI) -> None:
+    """Même garde que l'écran du jalon : la préparation d'un tournoi n'est pas publique."""
+    with TestClient(app_session) as client:
+        assert client.get("/api/v1/jalons/demarrer/apercus").status_code == 401
+
+
+def test_l_apercu_ne_recouvre_aucune_route_de_tournoi(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Le garde-fou du déménagement de cette route.**
+
+    Elle vivait sous `/api/v1/tournois/jalons/{jalon}`, où elle **recouvrait** les sous-ressources
+    verbales d'un tournoi : `POST /api/v1/tournois/jalons/demarrer` matchait
+    `/{tournoi_id}/demarrer` avec `tournoi_id="jalons"`. Seule la méthode HTTP les séparait — un
+    futur `GET /tournois/{id}/demarrer` aurait suffi à casser l'aperçu, sans que rien ne le dise.
+    Ce test épingle l'absence de recouvrement plutôt que la vigilance.
+    """
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        # **La preuve du recouvrement** : sous l'ancien préfixe, `jalons` est lu comme un
+        # identifiant de tournoi. Rien ne l'écartait — ni le compte de segments, ni le type `int`,
+        # qui n'est validé qu'APRÈS l'appariement. Seule la méthode HTTP séparait les deux.
+        recouvrement = client.post("/api/v1/tournois/jalons/demarrer")
+        assert recouvrement.status_code == 400, recouvrement.text
+        assert recouvrement.json()["details"][0]["loc"] == ["path", "tournoi_id"]
+
+        # Donc l'aperçu a déménagé : plus rien ne le sert sous `/tournois`, et son adresse n'a plus
+        # aucun chemin concurrent. Un futur `GET /tournois/{id}/demarrer` ne peut plus le masquer.
+        ancienne = client.get("/api/v1/tournois/jalons/demarrer")
+        # ⚠️ **Le code exact dépend de la présence de `frontend/dist/`**, et pas du serveur : avec
+        # un build front, la SPA montée à la racine attrape la requête et son repli rend `404` ;
+        # sans lui — le cas du job `backend` de la CI, où le front est bâti dans un autre job —
+        # Starlette retombe sur l'appariement **partiel** de `/{tournoi_id}/demarrer` et rend `405`.
+        # Ce 405 est d'ailleurs la preuve *positive* du recouvrement. On assertionne donc ce qui est
+        # vrai des deux côtés : l'ancienne adresse ne sert plus l'aperçu.
+        assert ancienne.status_code in (404, 405), ancienne.text
+        assert client.get("/api/v1/jalons/demarrer/apercus").status_code == 200
+
+
+def test_l_apercu_d_un_membre_sans_liste_rend_404(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """« Terminer » a un écran mais pas d'aperçu de liste — un 404, pas une liste vide."""
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        assert client.get("/api/v1/jalons/terminer/apercus").status_code == 404
+
+
+def test_un_segment_hors_famille_rend_400_sur_l_apercu(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le type de chemin `Jalon` couvre l'aperçu comme il couvre l'écran."""
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        assert client.get("/api/v1/jalons/deployer/apercus").status_code == 400

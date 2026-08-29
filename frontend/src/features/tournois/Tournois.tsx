@@ -7,6 +7,10 @@
 // reste dans `competition/` : c'est un hub partagé qu'on ne déplace pas au titre de cette US.
 
 import { useMemo, useState } from 'react'
+import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
+import type { ApercuJalon } from '../jalons/api'
+import { useApercusJalon } from '../jalons/hooks'
+import { PastillePreparation } from '../jalons/PastillePreparation'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -33,18 +37,42 @@ import {
 export function GestionTournois({
   selectionneId,
   onChoisi,
+  ouvrir,
+  onOuvrir,
+  lectureSeule = false,
 }: {
   selectionneId: number | null
   onChoisi: (t: Tournoi) => void
+  // ⚠️ **`ouvrir` n'est pas `selectionneId`** : sélectionner désigne le tournoi sur lequel on
+  // travaille, ouvrir déplie son formulaire d'édition (E16US010, ADR-0100). Les confondre ferait
+  // s'ouvrir une fiche à chaque fois qu'on change de tournoi courant.
+  // ⚠️ **Requis** : voir `Archers` — optionnels, un site de montage pouvait les oublier.
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
+  // ⚠️ **La lecture seule s'IMPOSE, elle ne se déduit pas du store.** Le commentaire d'origine
+  // affirmait que « sous la porte Public aucun jeton admin ne peut exister » : c'est faux depuis
+  // E14US003, où l'adresse est devenue une source d'entrée — `/public` tapé par un organisateur
+  // connecté rend `estAdmin` vrai. Les contrôles d'écriture s'y affichaient donc déjà.
+  lectureSeule?: boolean
 }) {
   // `estAdmin` gouverne **l'affichage** des contrôles d'écriture (création, cycle de vie, édition,
-  // suppression). Le **login** n'est plus ici : il vit dans `CoquilleAdmin` (porte Admin, E00US017).
-  // Invariant qui garde le public : sous la porte **Public** (`AccueilPublic`), aucun jeton admin ne
-  // peut exister — on n'atteint l'écran de choix que si `resoudreRole === null`, donc `!aJetonAdmin`,
-  // et le public n'a aucun moyen de se logger (pas de `ConnexionAdmin` monté). `estAdmin` y est donc
-  // toujours faux, ces contrôles restent masqués. Le serveur reste l'autorité en dernier ressort.
-  const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
+  // suppression). Le **login** vit dans `CoquilleAdmin` (porte Admin, E00US017).
+  // ⚠️ **`lectureSeule` prime, et ce n'est pas de la ceinture-bretelle.** L'ancienne rédaction
+  // affirmait qu'aucun jeton admin ne peut exister sous la porte Public : faux depuis E14US003,
+  // l'adresse `/public` étant une entrée à part entière (`resoudreRole` n'est plus consulté quand
+  // l'URL nomme un monde). Le serveur reste l'autorité en dernier ressort.
+  const jetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
+  const estAdmin = !lectureSeule && jetonAdmin
   const tournois = useTournois()
+
+  // La pastille de préparation (E16US010, A02) : « voir d'avance ce qui bloque un lancement ».
+  // ⚠️ **La requête elle-même est gardée par `estAdmin`**, pas seulement son exploitation : sous
+  // la porte Public cette liste est rendue sans jeton, et l'appel partirait en 401 à chaque
+  // affichage. Une seule requête pour toute la liste — c'est le serveur qui agrège.
+  const apercus = useApercusJalon('demarrer', estAdmin)
+  const apercuParTournoi = new Map<number, ApercuJalon>(
+    (apercus.data ?? []).map((a) => [a.tournoi_id, a]),
+  )
 
   // Filtre par état (A04 : *« j'ajouterais également un filtre sur les états »*). Ensemble **vide au
   // départ** = tout est montré : un écran qui s'ouvre déjà filtré ferait chercher longtemps un
@@ -151,6 +179,9 @@ export function GestionTournois({
                 selectionne={t.id === selectionneId}
                 aujourdhui={aujourdhui}
                 onChoisi={onChoisi}
+                ouvrir={ouvrir}
+                onOuvrir={onOuvrir}
+                apercu={apercuParTournoi.get(t.id)}
               />
             ))}
           </ul>
@@ -177,14 +208,20 @@ function LigneTournoi({
   selectionne,
   aujourdhui,
   onChoisi,
+  ouvrir,
+  onOuvrir,
+  apercu,
 }: {
   tournoi: Tournoi
   estAdmin: boolean
   selectionne: boolean
   aujourdhui: string
   onChoisi: (t: Tournoi) => void
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
+  apercu: ApercuJalon | undefined
 }) {
-  const [edition, setEdition] = useState(false)
+  const [edition, setEdition] = useOuvertureParAdresse(tournoi.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerTournoi()
 
@@ -209,6 +246,10 @@ function LigneTournoi({
           {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')}
         </button>
         <BadgeStatut statut={tournoi.statut} />
+        {/* « une pastille d'alerte si tout n'est pas complet ; alerte forte si impossible de
+            lancer en l'état » (A02). Elle vit **après** le statut : le statut dit où en est le
+            tournoi, la pastille ce qui l'empêche d'avancer — l'ordre est celui de la lecture. */}
+        <PastillePreparation apercu={apercu} />
         {/* « surtout si on est à la date prévue du tournoi » (A02) : l'ordre le fait déjà remonter,
             cette marque dit **pourquoi** il est là. Un mot et non une couleur seule (`DV-03`). */}
         {estAujourdhui(tournoi, aujourdhui) && (

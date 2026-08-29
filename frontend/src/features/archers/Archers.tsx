@@ -8,6 +8,7 @@
 // (ADR-0050), qui conserve ses résultats.
 
 import { useState } from 'react'
+import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBlasons } from '../blasons/hooks'
@@ -15,15 +16,49 @@ import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
 import type { Archer, ModifierArcher } from './api'
-import { useArchers, useDefinirHandicap, useModifierArcher, useSupprimerArcher } from './hooks'
+import { FusionDoublon } from './FusionDoublon'
+import { signalementPour, type SignalementDoublon } from './presentation'
+import {
+  useArchers,
+  useDefinirHandicap,
+  useDoublons,
+  useModifierArcher,
+  useSupprimerArcher,
+} from './hooks'
 
-export function Archers({ tournoiId }: { tournoiId: number }) {
+export function Archers({
+  tournoiId,
+  ouvrir,
+  onOuvrir,
+}: {
+  tournoiId: number
+  // L'archer dont la fiche doit s'ouvrir — vient de l'adresse (E16US010, ADR-0100), donc d'un
+  // résultat de recherche aussi bien que d'un lien copié.
+  // ⚠️ **Requis, tous les deux** : optionnels, retirer `ouvrir={…}` du site de montage compilait,
+  // passait le lint et laissait tous les tests verts — le défaut de câblage de `DETTE-085`. `tsc`
+  // est l'ancrage le moins cher, et il rend le repli local du hook inutile.
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
+}) {
   const archers = useArchers(tournoiId)
+  // Les rapprochements de fiches (E02US005) se lisent désormais **sur la ligne** (CA E16US010) et
+  // non sur un écran dédié. ⚠️ Une seule requête pour toute la liste : la détection est un calcul
+  // d'ensemble, elle n'a pas d'équivalent par archer.
+  const doublons = useDoublons(tournoiId)
+  const paires = doublons.data ?? []
 
   return (
     <section>
       <h3 className="carte__soustitre">Archers inscrits</h3>
       {archers.isError && <MessageErreur erreur={archers.error} />}
+      {/* La vue d'ensemble que l'écran dédié portait tient en une phrase : sans elle, on ne
+          saurait qu'il y a des doublons qu'en tombant dessus ligne par ligne. */}
+      {paires.length > 0 && (
+        <p className="carte__etat carte__etat--alerte">
+          {paires.length} rapprochement{paires.length > 1 ? 's' : ''} de fiches — repéré
+          {paires.length > 1 ? 's' : ''} sur les lignes concernées.
+        </p>
+      )}
       {/* `isSuccess` et non `data ?? []` : tant que la requête court, `data` est `undefined` et
           le message s'afficherait à tort sur un tournoi qui a bel et bien des inscrits. */}
       {archers.isSuccess && archers.data.length === 0 && (
@@ -32,7 +67,14 @@ export function Archers({ tournoiId }: { tournoiId: number }) {
       {archers.data && archers.data.length > 0 && (
         <ul className="liste-archers">
           {archers.data.map((archer) => (
-            <LigneArcher key={archer.id} archer={archer} tournoiId={tournoiId} />
+            <LigneArcher
+              key={archer.id}
+              archer={archer}
+              tournoiId={tournoiId}
+              signalement={signalementPour(archer.id, paires)}
+              ouvrir={ouvrir}
+              onOuvrir={onOuvrir}
+            />
           ))}
         </ul>
       )}
@@ -40,10 +82,23 @@ export function Archers({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number }) {
-  const [edition, setEdition] = useState(false)
+function LigneArcher({
+  archer,
+  tournoiId,
+  signalement,
+  ouvrir,
+  onOuvrir,
+}: {
+  archer: Archer
+  tournoiId: number
+  signalement: SignalementDoublon | null
+  ouvrir: number | null
+  onOuvrir: (id: number | null) => void
+}) {
+  const [edition, setEdition] = useOuvertureParAdresse(archer.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const [inscriptionsOuvertes, setInscriptionsOuvertes] = useState(false)
+  const [doublonOuvert, setDoublonOuvert] = useState(false)
   const supprimer = useSupprimerArcher(tournoiId)
   const clubs = useClubs()
   const categories = useCategories(tournoiId)
@@ -103,6 +158,23 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
               {' '}
               Club inconnu
             </span>
+          )}
+          {/* CA E16US010 : « une simple icône cliquable sur la ligne de l'archer peut suffire »,
+              qui « montre le problème et propose l'action ». ⚠️ Un bouton porteur de TEXTE et non
+              une icône seule : le rapprochement se lit aussi au lecteur d'écran, et « probable »
+              ne se devine pas d'un pictogramme. Même vocabulaire visuel que « Club inconnu ». */}
+          {signalement !== null && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="table__anomalie archer__doublon"
+                aria-expanded={doublonOuvert}
+                onClick={() => setDoublonOuvert((ouvert) => !ouvert)}
+              >
+                {signalement.libelle}
+              </button>
+            </>
           )}
         </span>
         <span className="archer__details">
@@ -192,6 +264,13 @@ function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number 
         <MessageErreur erreur={supprimer.error} />
       )}
       {inscriptionsOuvertes && <InscriptionsArcher archerId={archer.id} tournoiId={tournoiId} />}
+      {/* L'action se déplie **sur place** : c'est ce qui remplace l'écran dédié. Un archer peut
+          être rapproché de plusieurs fiches — on les rend toutes, en trancher une ne dit rien des
+          autres. */}
+      {doublonOuvert &&
+        signalement?.paires.map((paire) => (
+          <FusionDoublon key={`${paire.a.id}-${paire.b.id}`} paire={paire} tournoiId={tournoiId} />
+        ))}
     </li>
   )
 }

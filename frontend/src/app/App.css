@@ -835,6 +835,82 @@
   color: var(--danger);
 }
 
+/* Le signalement de doublon sur une ligne d'archer (E16US010) : il porte le même vocabulaire
+   visuel que `.table__anomalie`, mais c'est un BOUTON — il déplie la fusion sur place, ce qui
+   remplace l'écran dédié. Réinitialisation du chrome de bouton, la couleur venant de l'anomalie. */
+.archer__doublon {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  /* `color` et `letter-spacing` ne sont PAS remis par `font: inherit` : sans eux, le bouton hérite
+     du blanc de marque et de la chasse 0.02em du reset. La classe compagne `table__anomalie` donne
+     la teinte à l'usage, mais une classe ne doit pas dépendre d'une autre pour être lisible. */
+  color: inherit;
+  font: inherit;
+  letter-spacing: normal;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.archer__doublon:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
+/* La pastille de préparation d'une ligne de tournoi (E16US010, A02). ⚠️ Les deux ambres de la
+   charte, jamais le rouge (`DV-03`, 2,55:1 sur l'anthracite), et le **mot** porte l'information :
+   une pastille lisible à la seule teinte ne l'est ni au daltonisme ni au lecteur d'écran. */
+
+/* C'est un BOUTON dès qu'elle a une cause — au doigt, ni survol ni lecteur d'écran ne rendent le
+   `title` accessible (règle 10).
+   ⚠️ **`background` et `font-weight` OBLIGATOIRES** : le reset global `button` repeint sinon la
+   pastille en aplat `--brand-surface`, soit 1,5:1 en clair. Gardé par `reset-bouton.test.ts`. */
+.badge-preparation {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: none;
+  /* Couleur de BASE : les variantes `--alerte` / `--avertissement` l'escaladent. Sans elle, le
+     reset `button` pose `--sur-brand` (#ffffff) — blanc sur blanc en thème clair. */
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  white-space: nowrap;
+  cursor: default;
+}
+
+button.badge-preparation {
+  /* Le plancher tactile appartient à la CIBLE : la variante `<span>` (pastille sans cause) n'en
+     est pas une, et l'y appliquer faisait grandir la ligne pour rien. */
+  min-height: 44px;
+  cursor: pointer;
+}
+
+button.badge-preparation:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
+.badge-preparation__cause {
+  flex: 1 1 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.badge-preparation--avertissement {
+  color: var(--danger);
+}
+
+.badge-preparation--alerte {
+  color: var(--danger-strong);
+}
+
 /* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
 .liste-postes {
   list-style: none;
@@ -965,6 +1041,9 @@
 .lien {
   padding: 4px 0;
   font: inherit;
+  /* ⚠️ `letter-spacing` n'est pas remis par `font: inherit` — le reset `button` pose 0.02em, une
+     chasse de bouton sur ce qui est du texte de ligne (E16US010, garde `reset-bouton.test.ts`). */
+  letter-spacing: normal;
   color: var(--brand-text);
   background: none;
   border: none;
@@ -3234,6 +3313,40 @@ button:disabled {
 .recherche-resultat__nom {
   flex: 1 1 auto;
   color: var(--text);
+}
+
+/* Le résultat est **cliquable** depuis E16US010 : il ouvre la fiche trouvée (ADR-0100). Un bouton
+   et non un lien — la navigation est interne et passe par `history`, un <a href> rechargerait la
+   page. Il occupe toute la largeur de la ligne pour rester une cible tactile confortable. */
+.recherche-resultat__ouvrir {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  /* 44 px : le plancher tactile du projet (WCAG 2.5.5), appliqué partout ailleurs dans ce
+     fichier. Le résultat de recherche est devenu cliquable en E16US010 — c'est une cible neuve. */
+  min-height: 44px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: normal;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recherche-resultat__ouvrir:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
+/* Ce qui distingue deux homonymes (club, tournoi). Secondaire à la lecture, mais indispensable :
+   sans elle, la complétion propose deux lignes identiques et il n'y a rien à choisir. */
+.recherche-resultat__precision {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .recherche-resultat__suivi {

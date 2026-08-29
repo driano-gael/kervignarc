@@ -28,8 +28,16 @@ from application.jalons import ServiceJalons
 from application.tournois import ServiceTournois
 from domain.completude import Completude, EtatSection, evaluer_completude
 from domain.depart import Depart
-from domain.jalon import CLE_CRENEAUX, CLE_DEROULE, CLE_EFFECTIF, Jalon
-from domain.tournoi import StatutTournoi, TournoiId
+from domain.jalon import (
+    CLE_CRENEAUX,
+    CLE_DEROULE,
+    CLE_EFFECTIF,
+    Jalon,
+    NiveauPreparation,
+    niveau_de_preparation,
+    resume_du_manque,
+)
+from domain.tournoi import MESSAGE_SANS_DEPART, StatutTournoi, TournoiId
 from tests.conftest import (
     DATE_TOURNOI,
     FauxCompteurEngages,
@@ -62,7 +70,7 @@ def _attelage(
     avec_deroule: bool = False,
     completude: Completude | None = None,
     creneaux: tuple[int, ...] = (),
-) -> tuple[ServiceJalons, ServiceTournois, int]:
+) -> tuple[ServiceJalons, ServiceTournois, int, FauxDepartRepository]:
     """Un tournoi et les deux services qui le regardent — jalons et cycle de vie.
 
     Les **mêmes** dépôts alimentent les deux : c'est la condition du test de cohérence. Deux jeux de
@@ -98,7 +106,7 @@ def _attelage(
         service_tournois,
         FauxLecteurCompletude(completude or evaluer_completude(qualif=(0, 0), paiements=(0, 0))),
     )
-    return service_jalons, service_tournois, cree.id
+    return service_jalons, service_tournois, cree.id, departs
 
 
 def _amener_a(tournois: ServiceTournois, tournoi_id: int, statut: StatutTournoi) -> None:
@@ -130,21 +138,21 @@ def _ligne_etat(service: ServiceJalons, tournoi_id: int, cle: str) -> EtatSectio
 
 
 def test_le_jalon_demarrer_compte_les_creneaux_du_tournoi() -> None:
-    jalons, _, tid = _attelage(avec_creneau=False)
+    jalons, _, tid, _departs = _attelage(avec_creneau=False)
 
     assert _ligne_etat(jalons, tid, CLE_CRENEAUX) is EtatSection.EN_ATTENTE
 
 
 def test_le_jalon_demarrer_lit_le_deroule_compose_au_tournoi() -> None:
     """ADR-0076 : le déroulé est une **définition** au tournoi, pas N copies par créneau."""
-    jalons, _, tid = _attelage(avec_deroule=True, inscrits=40)
+    jalons, _, tid, _departs = _attelage(avec_deroule=True, inscrits=40)
 
     assert _ligne_etat(jalons, tid, CLE_DEROULE) is EtatSection.OK
 
 
 def test_le_jalon_demarrer_chiffre_l_effectif_depuis_l_exigence_du_service() -> None:
     """Le « 28/34 » de l'écran vient de `exigence_effectif` — la méthode que la garde exécute."""
-    jalons, _, tid = _attelage(avec_deroule=True, inscrits=28)
+    jalons, _, tid, _departs = _attelage(avec_deroule=True, inscrits=28)
 
     ligne = next(
         ligne
@@ -160,7 +168,9 @@ def test_le_jalon_terminer_relit_la_completude_sans_la_recalculer() -> None:
     raison — même règle que *démarrer*.
     """
     completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
-    jalons, tournois, tid = _attelage(completude=completude, inscrits=40, avec_deroule=True)
+    jalons, tournois, tid, departs = _attelage(
+        completude=completude, inscrits=40, avec_deroule=True
+    )
     _amener_a(tournois, tid, StatutTournoi.EN_COURS)
 
     preparation = jalons.preparation(tid, Jalon.TERMINER)
@@ -178,7 +188,7 @@ def test_sans_creneau_le_jalon_annonce_ce_que_la_garde_refusera() -> None:
     que le refus porte. Se contenter des deux verdicts laissait les deux textes diverger en silence
     au premier reformulage (2ᵉ passe de revue, axes A, C2 et D).
     """
-    jalons, tournois, tid = _attelage(avec_creneau=False)
+    jalons, tournois, tid, departs = _attelage(avec_creneau=False)
 
     preparation = jalons.preparation(tid, Jalon.DEMARRER)
     assert preparation.pret is False
@@ -191,7 +201,7 @@ def test_sans_creneau_le_jalon_annonce_ce_que_la_garde_refusera() -> None:
 
 def test_effectif_insuffisant_le_jalon_annonce_ce_que_la_garde_refusera() -> None:
     """Second versant du même accord, sur l'autre garde (E05US021)."""
-    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=28)
+    jalons, tournois, tid, departs = _attelage(avec_deroule=True, inscrits=28)
 
     preparation = jalons.preparation(tid, Jalon.DEMARRER)
     assert preparation.pret is False
@@ -221,7 +231,7 @@ def test_quand_le_jalon_dit_pret_les_deux_gardes_laissent_passer() -> None:
     Un écran trop pessimiste fait perdre du temps ; un écran trop optimiste envoie l'organisateur
     au refus, le jour J, devant la salle.
     """
-    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=40)
+    jalons, tournois, tid, departs = _attelage(avec_deroule=True, inscrits=40)
 
     assert jalons.preparation(tid, Jalon.DEMARRER).pret is True
     tournois.vers_pret(tid)
@@ -235,7 +245,7 @@ def test_un_deroule_vide_ne_bloque_ni_le_jalon_ni_la_garde() -> None:
     attente alors que `pret` reste vrai. Si un jour la garde durcit, ce test tombe — et c'est bien
     ce qu'on veut, la décision est métier.
     """
-    jalons, tournois, tid = _attelage(avec_deroule=False, inscrits=0)
+    jalons, tournois, tid, departs = _attelage(avec_deroule=False, inscrits=0)
 
     preparation = jalons.preparation(tid, Jalon.DEMARRER)
     assert preparation.pret is True
@@ -252,7 +262,7 @@ def test_le_jalon_chiffre_l_effectif_du_creneau_le_moins_garni() -> None:
     8, tournoi démarré puis bloqué en salle sur le second) a coûté treize mois. Un jalon qui
     sommerait les créneaux annoncerait « 48 inscrits, allez-y » là où la garde refuse.
     """
-    jalons, tournois, tid = _attelage(avec_deroule=True, creneaux=(40, 8))
+    jalons, tournois, tid, departs = _attelage(avec_deroule=True, creneaux=(40, 8))
 
     preparation = jalons.preparation(tid, Jalon.DEMARRER)
     ligne = next(ligne for ligne in preparation.lignes if ligne.cle == CLE_EFFECTIF)
@@ -273,7 +283,7 @@ def test_l_effectif_juste_atteint_passe_des_deux_cotes() -> None:
     Elle ne peut plus diverger depuis que le verdict est transporté et non recalculé ; ce test
     épingle **que ce soit toujours le cas**.
     """
-    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=34)
+    jalons, tournois, tid, departs = _attelage(avec_deroule=True, inscrits=34)
 
     assert jalons.preparation(tid, Jalon.DEMARRER).pret is True
     tournois.vers_pret(tid)
@@ -287,7 +297,7 @@ def test_un_tournoi_deja_lance_n_annonce_pas_qu_il_peut_demarrer() -> None:
     pourtant « prêt, et l'action passera ». Seul le front masquait le mensonge, et `E16US007` /
     `E16US008`, qui consommeront ce contrat, n'auraient pas eu ce garde-fou.
     """
-    jalons, tournois, tid = _attelage(avec_deroule=True, inscrits=40)
+    jalons, tournois, tid, departs = _attelage(avec_deroule=True, inscrits=40)
     tournois.vers_pret(tid)
     tournois.demarrer(tid)
 
@@ -303,7 +313,7 @@ def test_terminer_hors_du_tournoi_en_cours_annonce_ce_que_la_garde_refusera() ->
     être terminé. Le CA disait « terminer n'a aucune garde dure » : vrai du contenu, faux du statut.
     """
     complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
-    jalons, tournois, tid = _attelage(completude=complet)
+    jalons, tournois, tid, departs = _attelage(completude=complet)
 
     preparation = jalons.preparation(tid, Jalon.TERMINER)
     assert preparation.pret is False
@@ -323,7 +333,9 @@ def test_le_jalon_terminer_egale_la_completude_sportive_pendant_le_tournoi() -> 
     la garde de statut a rendue nécessaire.
     """
     completude = evaluer_completude(qualif=(28, 30), paiements=(113, 120))
-    jalons, tournois, tid = _attelage(completude=completude, inscrits=40, avec_deroule=True)
+    jalons, tournois, tid, departs = _attelage(
+        completude=completude, inscrits=40, avec_deroule=True
+    )
     tournois.vers_pret(tid)
     tournois.demarrer(tid)
 
@@ -350,7 +362,9 @@ def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() 
     complet = evaluer_completude(qualif=(30, 30), paiements=(120, 120))
 
     for statut in StatutTournoi:
-        jalons, tournois, tid = _attelage(completude=complet, inscrits=40, avec_deroule=True)
+        jalons, tournois, tid, departs = _attelage(
+            completude=complet, inscrits=40, avec_deroule=True
+        )
         _amener_a(tournois, tid, statut)
 
         preparation = jalons.preparation(tid, Jalon.TERMINER)
@@ -374,7 +388,7 @@ def test_le_jalon_terminer_suit_la_table_des_transitions_sur_tous_les_statuts() 
 @pytest.mark.parametrize("jalon", [Jalon.DEMARRER, Jalon.TERMINER])
 def test_un_tournoi_inconnu_rend_404_sur_tous_les_membres(jalon: Jalon) -> None:
     """Un « rien ne manque » sur une ressource inexistante serait un 200 rassurant et faux."""
-    jalons, _, _ = _attelage()
+    jalons, _, _, _departs = _attelage()
 
     with pytest.raises(TournoiIntrouvable):
         jalons.preparation(9999, jalon)
@@ -383,7 +397,7 @@ def test_un_tournoi_inconnu_rend_404_sur_tous_les_membres(jalon: Jalon) -> None:
 @pytest.mark.parametrize("jalon", [Jalon.ARCHIVER, Jalon.EXPORTER])
 def test_les_membres_pas_encore_instruits_le_disent(jalon: Jalon) -> None:
     """Plutôt qu'une réponse vide, qui se lirait « rien ne manque, allez-y »."""
-    jalons, _, tid = _attelage()
+    jalons, _, tid, _departs = _attelage()
 
     with pytest.raises(JalonNonInstruit):
         jalons.preparation(tid, jalon)
@@ -394,7 +408,85 @@ def test_l_existence_du_tournoi_prime_sur_le_membre_non_instruit() -> None:
 
     L'inverse aurait masqué un identifiant faux derrière « cet écran n'existe pas encore ».
     """
-    jalons, _, _ = _attelage()
+    jalons, _, _, _departs = _attelage()
 
     with pytest.raises(TournoiIntrouvable):
         jalons.preparation(9999, Jalon.EXPORTER)
+
+
+# --- Aperçu de liste (E16US010) -----------------------------------------------------------------
+
+
+def test_l_apercu_de_liste_dit_de_chaque_tournoi_ce_que_son_ecran_dirait() -> None:
+    """**Le garde-fou de la pastille** : la liste et l'écran ne peuvent pas diverger.
+
+    C'est le même contrat que le test de cohérence ci-dessus, d'un cran plus haut : la liste
+    n'ouvre aucun second chemin de calcul, elle résume celui du jalon. Sans ce test, une pastille
+    « rien à signaler » pourrait coexister avec un écran « impossible à lancer ».
+    """
+    jalons, tournois, tid, departs = _attelage(avec_creneau=False)
+    autre = tournois.creer("Autre", DATE_TOURNOI)
+    assert autre.id is not None
+    # ⚠️ **Un tournoi doit franchir le raccourci**, sinon ce garde-fou ne garde rien : avec deux
+    # brouillons, `transition_offerte` est vrai des deux côtés et `demarrer_sans_objet` — la seule
+    # branche où liste et écran pourraient diverger — n'est jamais comparée au chemin complet
+    # (relevé par les axes C1 et D). On amène donc `autre` jusqu'à *en cours*.
+    departs.ajouter(Depart.creer(autre.id, 1, 810, "09:00"))
+    tournois.vers_pret(autre.id)
+    tournois.demarrer(autre.id)
+
+    apercus = {apercu.tournoi_id: apercu for apercu in jalons.apercus(Jalon.DEMARRER)}
+
+    assert set(apercus) == {tid, autre.id}
+    for tournoi_id, apercu in apercus.items():
+        preparation = jalons.preparation(tournoi_id, Jalon.DEMARRER)
+        assert apercu.niveau is niveau_de_preparation(preparation), tournoi_id
+        assert apercu.resume == resume_du_manque(preparation), tournoi_id
+
+
+def test_un_tournoi_sans_creneau_est_pastille_en_alerte_forte() -> None:
+    """Le cas que le questionnaire A02 nomme : « impossible de lancer en l'état »."""
+    jalons, _, tid, _departs = _attelage(avec_creneau=False)
+
+    apercu = next(a for a in jalons.apercus(Jalon.DEMARRER) if a.tournoi_id == tid)
+
+    assert apercu.niveau is NiveauPreparation.ALERTE
+    assert apercu.resume == MESSAGE_SANS_DEPART
+
+
+def test_un_tournoi_lance_sort_de_la_liste_des_alertes() -> None:
+    """Et il en sort **sans qu'on lise ses créneaux** : il n'y a plus rien à préparer.
+
+    ⚠️ Le raccourci de `apercus` ne doit pas changer la réponse — c'est ce que ce test tient.
+    """
+    jalons, tournois, tid, departs = _attelage(inscrits=40, avec_creneau=True)
+    _amener_a(tournois, tid, StatutTournoi.EN_COURS)
+
+    apercu = next(a for a in jalons.apercus(Jalon.DEMARRER) if a.tournoi_id == tid)
+
+    assert apercu.niveau is NiveauPreparation.AUCUN
+    assert apercu.resume is None
+
+
+def test_un_tournoi_sans_deroule_compose_est_pastille_en_avertissement() -> None:
+    """Le niveau **faible** du CA, sur un attelage réel — aucun test d'aperçu ne le couvrait.
+
+    ⚠️ Et il vérifie que le résumé **ne réclame pas d'inscrits** : sans étape composée, il n'y a
+    aucune exigence d'effectif à opposer (correction de revue).
+    """
+    jalons, _, tid, _departs = _attelage(inscrits=40, avec_creneau=True, avec_deroule=False)
+
+    apercu = next(a for a in jalons.apercus(Jalon.DEMARRER) if a.tournoi_id == tid)
+
+    assert apercu.niveau is NiveauPreparation.AVERTISSEMENT
+    assert apercu.resume is not None
+    assert "Inscrits" not in apercu.resume
+
+
+@pytest.mark.parametrize("jalon", [Jalon.TERMINER, Jalon.ARCHIVER, Jalon.EXPORTER])
+def test_l_apercu_de_liste_n_est_instruit_que_pour_demarrer(jalon: Jalon) -> None:
+    """Un refus explicite plutôt qu'une liste vide, qui se lirait « aucune alerte »."""
+    jalons, _, _, _departs = _attelage()
+
+    with pytest.raises(JalonNonInstruit):
+        jalons.apercus(jalon)

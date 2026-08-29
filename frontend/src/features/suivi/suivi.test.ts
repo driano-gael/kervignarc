@@ -8,7 +8,6 @@ import type { PlanDeCibles } from '../placement/api'
 import {
   construireJournee,
   departsDesArchersSuivis,
-  filtrerArchers,
   placeDansPlan,
   rechercherArchers,
 } from './suivi'
@@ -51,44 +50,10 @@ const planAvec = (
   conflits: [],
 })
 
-describe('filtrerArchers — recherche par nom', () => {
-  const archers = [
-    archer(1, 'Martin', 'Paul'),
-    archer(2, 'Durand', 'Rémy'),
-    archer(3, 'Martinez', 'Sophie'),
-  ]
-
-  it('une requête vide ne propose rien (la recherche est l’exception, pas la porte)', () => {
-    expect(filtrerArchers(archers, '')).toEqual([])
-    expect(filtrerArchers(archers, '   ')).toEqual([])
-  })
-
-  it('matche sur le nom, insensible à la casse', () => {
-    expect(filtrerArchers(archers, 'mart').map((a) => a.id)).toEqual([1, 3])
-  })
-
-  it('matche aussi sur le prénom', () => {
-    expect(filtrerArchers(archers, 'sophie').map((a) => a.id)).toEqual([3])
-  })
-
-  it('matche sur une sous-chaîne au milieu du nom (pas seulement le préfixe)', () => {
-    expect(filtrerArchers(archers, 'arti').map((a) => a.id)).toEqual([1, 3])
-  })
-
-  it('tolère les accents (« remy » retrouve « Rémy »)', () => {
-    expect(filtrerArchers(archers, 'remy').map((a) => a.id)).toEqual([2])
-  })
-
-  it('sans correspondance, renvoie une liste vide', () => {
-    expect(filtrerArchers(archers, 'zzz')).toEqual([])
-  })
-})
-
-// E16US004, **dérivé du CA** « recherche : filtre par club, liste qui se met à jour à la frappe,
-// état de suivi actionnable sur chaque ligne » (questionnaire P01 : *« mettre un filtre de tri par
-// club en plus dans la recherche ; une liste d'archers se met à jour à mesure de la recherche »*).
-// Écrit avant le câblage de l'écran (règle 9). Seuls les deux premiers volets sont de la logique
-// pure ; l'« état actionnable » est du rendu, vérifié à la recette.
+// ⚠️ **Rattachement de source (règle 9)** : ce bloc dérive du CA d'E16US004 (questionnaire P01,
+// « recherche par club, un club seul suffit »), écrit avant le câblage de l'écran. Le commentaire
+// vivait au-dessus du `describe` de `filtrerArchers`, supprimé par E16US010 — il portait pourtant
+// sur CELUI-CI. « On ne coupe que ce qui existe ailleurs » : il est replacé.
 describe('rechercherArchers — nom et club', () => {
   const archers = [
     { ...archer(1, 'Martin', 'Paul'), club_id: 7 },
@@ -129,6 +94,21 @@ describe('rechercherArchers — nom et club', () => {
     // d'office dans le club filtré ferait croire qu'il en est, et l'y chercher ensuite en vain.
     expect(rechercherArchers(archers, { requete: 'marty', clubId: 7 })).toEqual([])
     expect(rechercherArchers(archers, { requete: '', clubId: 7 }).map((a) => a.id)).toEqual([1, 3])
+  })
+  it('replie les ACCENTS — « remy » trouve « Rémy »', () => {
+    // ⚠️ Seul test du repli d'accents côté front depuis E16US010, qui a supprimé le `describe` de
+    // `filtrerArchers` où il vivait. Or `normaliser` est toujours consommée par `VueSuivi`, et
+    // c'est le pendant front du repli que `cle_nom` fait au serveur.
+    const trouves = rechercherArchers(archers, { requete: 'remy', clubId: null })
+
+    expect(trouves.map((a) => a.id)).toEqual([2])
+  })
+
+  it('cherche aussi dans le PRÉNOM, pas seulement le nom', () => {
+    // Même raison : les assertions restantes ne cherchaient que des noms de famille.
+    const trouves = rechercherArchers(archers, { requete: 'sophie', clubId: null })
+
+    expect(trouves.map((a) => a.id)).toEqual([3])
   })
 })
 

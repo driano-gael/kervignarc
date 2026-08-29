@@ -159,6 +159,9 @@ class FauxArcherRepository:
         # Sans filtre sur le tournoi : le référentiel des clubs est global (E02US001).
         return [a for a in self._archers.values() if a.club_id == club_id]
 
+    def tous(self) -> list[Archer]:
+        return list(self._archers.values())
+
     def enregistrer(self, archer: Archer) -> Archer:
         assert archer.id is not None
         self._archers[archer.id] = archer
