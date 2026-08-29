@@ -10,6 +10,8 @@ import {
   destinationDunArcher,
   destinationDunResultat,
   destinationParDefaut,
+  elementRetenu,
+  OUVRE_UN_ELEMENT,
   segmentsCanoniques,
   destinationValide,
   segmentsAdmin,
@@ -367,5 +369,47 @@ describe('destinationDunResultat', () => {
     expect(destinationDunResultat('archer', 12, 'pilotage', 12)).toEqual(
       destinationDunArcher('pilotage', 12, 12),
     )
+  })
+})
+
+describe('OUVRE_UN_ELEMENT', () => {
+  it('exactement trois destinations consomment un élément — celles qui sont câblées', () => {
+    // ⚠️ Le `Record` exhaustif force une **réponse** à la compilation, il ne garde aucune
+    // **valeur** : basculer `supervision` à `true` ne faisait rien tomber (relevé en 3ᵉ passe).
+    // Ces trois-là sont celles auxquelles `CoquilleAdmin` passe réellement `ouvrir`.
+    const consommatrices = Object.entries(OUVRE_UN_ELEMENT)
+      .filter(([, ouvre]) => ouvre)
+      .map(([destination]) => destination)
+      .sort()
+
+    expect(consommatrices).toEqual(['archer', 'clubs', 'inscriptions'])
+  })
+
+  it('une destination qui ne consomme PAS d’élément le lâche de l’adresse', () => {
+    // C'est la seconde garde d'`elementRetenu`, celle qui n'était exercée nulle part.
+    const route = {
+      tournoiId: 12,
+      axe: 'pilotage' as const,
+      destinationDemandee: 'supervision',
+      elementDemande: 57,
+    }
+
+    expect(elementRetenu(route, 'supervision')).toBeNull()
+    expect(segmentsCanoniques(route, 'pilotage', 'supervision')).toEqual([
+      '12',
+      'pilotage',
+      'supervision',
+    ])
+  })
+
+  it('et une destination qui le consomme le GARDE — l’exclusion n’est pas globale', () => {
+    const route = {
+      tournoiId: 12,
+      axe: 'gestion' as const,
+      destinationDemandee: 'inscriptions',
+      elementDemande: 57,
+    }
+
+    expect(elementRetenu(route, 'inscriptions')).toBe(57)
   })
 })

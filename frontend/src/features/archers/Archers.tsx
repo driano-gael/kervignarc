@@ -28,7 +28,7 @@ import {
 
 export function Archers({
   tournoiId,
-  ouvrir = null,
+  ouvrir,
   onOuvrir,
 }: {
   tournoiId: number

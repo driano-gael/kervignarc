@@ -29,10 +29,13 @@ _METADONNEES = frozenset(
 
 # Les 27 libellés de relation réellement employés, ramenés à six sens.
 # La clé est le libellé sans accent et en minuscules ; la valeur, (type, sens).
-# ⚠️ Les libellés au **participe passé suivi de « par »** (`Prolongé par`, `Amendé par`, `Complété
-# et partiellement révisé par`) sont des arêtes **entrantes** : l'ADR y désigne ce qui agit **sur
-# lui**, pas ce sur quoi il agit. Les traiter comme sortantes inverserait la chronologie du graphe.
-# La règle, et non l'énumération : celle-ci se lisait comme exhaustive et ne l'était plus.
+# ⚠️ Parmi les libellés d'**amendement**, ceux au participe passé + « par » (`Prolongé par`,
+# `Amendé par`, `Complété et partiellement révisé par`) sont **entrants** : l'ADR y désigne ce qui
+# agit **sur lui**. Les traiter comme sortants inverserait la chronologie du graphe.
+
+# ⚠️ `introduit par` et `porte dans le code par` sont **sortants** malgré leur « par » : ils
+# désignent un artefact (US, module), pas un autre ADR. La 1ʳᵉ rédaction énonçait « participe passé
+# + par ⇒ entrant » : une règle **fausse**, donc pire que l'énumération qu'elle remplaçait.
 _RELATIONS: dict[str, tuple[TypeLien, Sens]] = {
     "amende": (TypeLien.AMENDE, Sens.SORTANT),
     "revise": (TypeLien.AMENDE, Sens.SORTANT),

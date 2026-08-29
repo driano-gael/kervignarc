@@ -48,7 +48,10 @@ export function RechercheTransverse({
   // encore `isSuccess`. Sans ce garde, taper une nouvelle lettre affichait « Aucun résultat » pour
   // une saisie que le serveur n'a pas vue — le fait négatif présenté à la place d'un chargement,
   // exactement ce que l'ordre d'affichage ci-dessous interdit. L'anti-rebond allonge la fenêtre.
-  const enRetard = fragment.trim() !== requete.trim()
+  // ⚠️ **Deux sources de décalage.** `fragment !== requete` ne voit que l'anti-rebond ;
+  // `isPlaceholderData` voit **tout changement de clé** — changer la déroulante à texte constant
+  // laissait sinon « Aucun résultat » s'afficher sous le nouveau libellé.
+  const enRetard = fragment.trim() !== requete.trim() || recherche.isPlaceholderData
 
   return (
     <div className="coquille__recherche recherche-archer">

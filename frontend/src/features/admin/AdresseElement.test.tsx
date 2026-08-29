@@ -95,6 +95,9 @@ describe('le 4ᵉ segment d’adresse survit à la canonisation', () => {
     monter(<CoquilleAdmin />)
 
     await waitFor(() => expect(window.location.pathname).toBe('/admin/12/gestion/inscriptions'))
+    // ⚠️ **Ancré** : sans cette attente, « Jean » pouvait être absent parce que la liste n'était
+    // pas encore rendue, pas parce que l'élément avait été filtré (relevé en 3ᵉ passe).
+    await screen.findByText(/Lévêque/)
     // Et l'élément n'a **pas** été ouvert au passage : la canonisation est un effet, donc
     // postérieure au premier rendu — c'est l'élément CONSOMMÉ qui doit être filtré, pas seulement
     // l'adresse réécrite.

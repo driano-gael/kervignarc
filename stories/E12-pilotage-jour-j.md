@@ -91,10 +91,11 @@
       et le résultat de recherche les affiche **tous** (départ · horaire → cible · position). La ligne
       « prochaine affectation » s'ajoutera quand EPIC-05 livrera les phases — même séquencement que la
       complétude des duels d'E12US005, ou les écrans de salle d'E12US001. Aucun comportement perdu.
-    - **Portée : archers du tournoi courant.** La recherche filtre les archers **inscrits au tournoi
+    - **Portée : archers du tournoi courant — en PILOTAGE seulement** *(amendé E16US010, questionnaire A09)*. Hors pilotage la recherche traverse **toutes les éditions** et fonctionne sans tournoi choisi.
+  ~~**Portée : archers du tournoi courant.**~~ La recherche filtre les archers **inscrits au tournoi
       sélectionné** dans la sidebar (le cas d'usage « je tire où ? » à la table d'organisation), pas
       tout le référentiel d'archers. Inerte tant qu'aucun tournoi n'est choisi.
-    - **Réalisation front pure.** Réutilise la logique déjà testée d'E07US006 (`rechercherArchers` /
+    - **Réalisation : front d'abord (E12US006), puis SERVEUR depuis E16US010** — `GET /api/v1/recherche`. ~~**Réalisation front pure.**~~ Réutilise la logique déjà testée d'E07US006 (`rechercherArchers` /
       `construireJournee`) — même geste nom → place — sur les endpoints de lecture existants (archers,
       départs, plans de cibles). Aucun endpoint backend nouveau.
 - **Dépend de** : E02US002, E03US001 · **Jalon** : J1

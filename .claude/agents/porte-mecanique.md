@@ -69,7 +69,9 @@ faussement verte.
 
 1. **L'installation des dépendances Python** (`pip install -r requirements.txt`,
    `pip install -e . --no-deps`) — l'environnement local est déjà installé, et `pip install` est
-   refusé par les permissions du dépôt.
+   refusé par les permissions du dépôt. ⚠️ **Le `pip install pip-audit` de l'étape d'audit n'en
+   fait PAS partie** : `pip-audit` est installé au venv et s'exécute — l'étape doit produire son
+   `EXIT`. C'est par cette porte qu'un faux vert est passé le 29/08/2026 (`DETTE-093`).
 2. **La synchro `requirements.txt`↔`pyproject.toml`** (le script Python inline du job `backend`).
 
 `npm ci` n'en fait **pas** partie : il installe le lockfile à l'identique, il est autorisé, et c'est
@@ -135,7 +137,7 @@ Les quatre sections sont **obligatoires**. Un rapport amputé est invalide.
 <les lignes telles quelles, 50 max par commande ; à défaut les 80 dernières du journal>
 
 ## Non exécuté
-<étapes de ci.yml sautées + raison : hors périmètre / omission volontaire (1-3 ci-dessus) /
+<étapes de ci.yml sautées + raison : hors périmètre / omission volontaire (1-2 ci-dessus) /
  outil introuvable / PERMISSION REFUSÉE / répertoire absent>
 
 ## Verdict : PORTE VERTE | PORTE INCOMPLÈTE | PORTE ROUGE
@@ -147,12 +149,9 @@ Quatre règles sur ce rapport :
    milieu, n'en déduis pas la cause. Copie les lignes.
 2. **`EXIT` différent de 0 ⇒ ROUGE.** Toujours. Tu ne décides jamais qu'un échec est « bénin »,
    « préexistant » ou « sans rapport avec le diff ».
-3. `DETTE-093` — **cette règle a déjà été enfreinte sans que rien ne le voie** (E16US010,
-   29/08/2026 : verdict vert alors que `pip-audit` n'avait pas tourné). Rien ne la vérifie ; le
-   registre porte le critère de fin. **Toute étape du périmètre qui n'a produit aucun `EXIT`
-   interdit le verdict vert** — permission
+3. **Toute étape du périmètre qui n'a produit aucun `EXIT` interdit le verdict vert** — permission
    refusée, outil introuvable, oubli, quelle qu'en soit la raison. Le verdict est alors **`PORTE
-   INCOMPLÈTE`** et la raison est nommée. Seules les trois omissions volontaires énumérées à
+   INCOMPLÈTE`** et la raison est nommée. Seules les **deux** omissions volontaires énumérées à
    l'étape 2 ne comptent pas. *(Sans cette règle, « exit ≠ 0 ⇒ rouge » laissait passer un vert avec
    la moitié de la CI en « non exécuté » : une étape qui ne part pas n'a pas de code de sortie.)*
 4. **Un cas, et un seul, mérite une note** : `python -m atlas --verifier` rouge peut être le cas

@@ -47,6 +47,7 @@ US ciblée : `$ARGUMENTS` (si vide, la déduire de la branche courante `<type>/<
 
    `DETTE-093` — **ce contrôle n'est pas mécanisé, et son absence a déjà produit un faux vert**
    (E16US010) : recouper la liste des étapes ne dit rien du **décompte des `EXIT`**.
+
    Vérifie ensuite que les omissions sont bien les **deux** énumérées dans `porte-mecanique.md` — installation des dépendances Python, synchro `requirements.txt`↔`pyproject.toml` — et **rien d'autre** : `npm ci` en particulier doit avoir tourné. Toute autre divergence est un bug de cette procédure. *(Ce contrôle n'est pas décoratif : la liste que cette commande portait en dur avait divergé de `ci.yml` **deux fois** — `npm test` manquant depuis sa rédaction, découvert le 15/08/2026 sur E05US028, puis le job `atlas` jamais mentionné.)*
 
    **Rouge ou INCOMPLÈTE ⇒ tu corriges d'abord, tu ne lances pas la revue** : un diff qui ne passe pas mypy fait relire du code condamné, et une porte incomplète ne prouve rien. Seule interprétation qui t'appartient : `python -m atlas --verifier` rouge **peut** être le cas connu de régénération post-commit (`CLAUDE.md` § Cycle de branche) — auquel cas tu **régénères** (`cd backend && python -m atlas`), tu **commites** la carte et tu **redemandes la porte**. Un atlas rouge ne franchit jamais l'étape 0. La CI garde le dernier mot.

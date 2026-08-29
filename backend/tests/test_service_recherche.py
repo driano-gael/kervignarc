@@ -12,20 +12,26 @@ import datetime
 
 from application.recherche import ServiceRecherche
 from domain.archer import Archer
+from domain.categorie import Categorie
 from domain.club import Club
 from domain.recherche import EntiteRecherchable
 from domain.tournoi import Tournoi
-from tests.conftest import FauxArcherRepository, FauxClubRepository, FauxTournoiRepository
-
-_CATEGORIE = 1
+from tests.conftest import (
+    FauxArcherRepository,
+    FauxCategorieRepository,
+    FauxClubRepository,
+    FauxTournoiRepository,
+)
 
 
 def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
-    """Deux tournois, deux clubs, trois archers dont deux homonymes d'éditions différentes."""
-    tournois, archers, clubs = (
+    """Trois tournois — dont deux de la MÊME année —, deux clubs, cinq archers dont quatre homonymes
+    (deux éditions distinctes, une même année, et **le père et le fils dans le même tournoi**)."""
+    tournois, archers, clubs, categories = (
         FauxTournoiRepository(),
         FauxArcherRepository(),
         FauxClubRepository(),
+        FauxCategorieRepository(),
     )
     salle = tournois.ajouter(
         Tournoi(nom="Salle 18m", date=datetime.date(2026, 3, 14), lieu="Kervignarc")
@@ -38,13 +44,21 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
     kerv = clubs.ajouter(Club.creer("Arc Club de Kervignarc"))
     autre = clubs.ajouter(Club.creer("Compagnie de Saint-Mérien"))
     assert salle.id and ancien.id and jumelle.id and kerv.id and autre.id
+    # Deux catégories dans le tournoi courant : c'est ce qui sépare deux fiches de même nom, même
+    # prénom et même club — le père et le fils que `cle_identite` déclare « vraisemblablement le
+    # même » et que la détection de doublons de cette US rapproche.
+    senior = categories.ajouter(Categorie(tournoi_id=salle.id, libelle="Senior 1 H"))
+    cadet = categories.ajouter(Categorie(tournoi_id=salle.id, libelle="Cadet H"))
+    categories.ajouter(Categorie(tournoi_id=ancien.id, libelle="Senior 1 H"))
+    categories.ajouter(Categorie(tournoi_id=jumelle.id, libelle="Senior 1 H"))
+    assert senior.id and cadet.id
 
     archers.ajouter(
         Archer(
             nom="Lévêque",
             prenom="Jean",
             tournoi_id=salle.id,
-            categorie_id=_CATEGORIE,
+            categorie_id=senior.id,
             club_id=kerv.id,
         )
     )
@@ -53,7 +67,7 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
             nom="Lévêque",
             prenom="Jean",
             tournoi_id=ancien.id,
-            categorie_id=_CATEGORIE,
+            categorie_id=senior.id,
             # ⚠️ **Même club que son homonyme, délibérément** : la 1ʳᵉ fixture leur donnait deux
             # clubs différents, ce qui rendait le test vert sans jamais exercer la
             # désambiguïsation d'ÉDITION que son nom annonce (relevé par les axes C1 et D).
@@ -61,18 +75,29 @@ def _attelage() -> tuple[ServiceRecherche, dict[str, int]]:
         )
     )
     archers.ajouter(
-        Archer(nom="Bordure", prenom="Luc", tournoi_id=salle.id, categorie_id=_CATEGORIE)
+        Archer(nom="Bordure", prenom="Luc", tournoi_id=salle.id, categorie_id=senior.id)
     )
     archers.ajouter(
         Archer(
             nom="Lévêque",
             prenom="Jean",
             tournoi_id=jumelle.id,
-            categorie_id=_CATEGORIE,
+            categorie_id=senior.id,
             club_id=kerv.id,
         )
     )
-    return ServiceRecherche(tournois, archers, clubs), {
+    # ⚠️ **Le père et le fils** — même nom, même prénom, même club, MÊME TOURNOI. Aucune fixture ne
+    # produisait ce cas, et c'est celui que la détection de doublons de cette US fabrique.
+    archers.ajouter(
+        Archer(
+            nom="Lévêque",
+            prenom="Jean",
+            tournoi_id=salle.id,
+            categorie_id=cadet.id,
+            club_id=kerv.id,
+        )
+    )
+    return ServiceRecherche(tournois, archers, clubs, categories), {
         "salle": salle.id,
         "ancien": ancien.id,
         "jumelle": jumelle.id,
@@ -85,7 +110,7 @@ def test_un_archer_se_trouve_sans_accents_a_travers_tous_les_tournois() -> None:
 
     recherche = service.chercher(EntiteRecherchable.ARCHER, "leveque")
 
-    assert recherche.total == 3
+    assert recherche.total == 4
     assert {r.libelle for r in recherche.resultats} == {"Lévêque Jean"}
 
 
@@ -100,11 +125,14 @@ def test_des_homonymes_du_meme_club_se_distinguent_par_leur_edition() -> None:
     # ⚠️ **Trois fiches, trois précisions distinctes** — dont deux de la MÊME année civile, que
     # l'année seule ne séparait pas. C'est la date complète qui les situe, comme pour les tournois.
     assert precisions == {
-        "Arc Club de Kervignarc · Salle 18m — 14/03/2026 · Kervignarc",
-        "Arc Club de Kervignarc · Salle 18m — 15/03/2025",
-        "Arc Club de Kervignarc · Salle 18m — 21/11/2026",
+        "Arc Club de Kervignarc · Senior 1 H · Salle 18m — 14/03/2026 · Kervignarc",
+        "Arc Club de Kervignarc · Cadet H · Salle 18m — 14/03/2026 · Kervignarc",
+        "Arc Club de Kervignarc · Senior 1 H · Salle 18m — 15/03/2025",
+        "Arc Club de Kervignarc · Senior 1 H · Salle 18m — 21/11/2026",
     }
-    assert len(precisions) == 3
+    # Quatre fiches, quatre précisions : deux éditions du même nom, deux d'une même année, et
+    # **deux du même tournoi et du même club** — le père et le fils.
+    assert len(precisions) == 4
 
 
 def test_en_pilotage_la_recherche_est_scopee_au_tournoi() -> None:
@@ -113,18 +141,50 @@ def test_en_pilotage_la_recherche_est_scopee_au_tournoi() -> None:
 
     recherche = service.chercher(EntiteRecherchable.ARCHER, "leveque", tournoi_id=ids["salle"])
 
-    assert recherche.total == 1
+    assert recherche.total == 2
 
 
 def test_en_pilotage_la_precision_cesse_de_repeter_le_tournoi() -> None:
-    """On y est déjà : le répéter à chaque ligne noie le club, seule chose qui distingue."""
+    """On y est déjà : le répéter à chaque ligne noierait ce qui distingue vraiment les fiches.
+
+    ⚠️ **La catégorie, elle, reste** — et c'est le correctif de la 3ᵉ passe : en pilotage le club
+    est par construction le même pour un père et son fils, donc la catégorie est le **seul**
+    discriminant. Sans elle, les deux lignes étaient identiques.
+    """
     service, ids = _attelage()
 
-    resultat = service.chercher(
-        EntiteRecherchable.ARCHER, "leveque", tournoi_id=ids["salle"]
-    ).resultats[0]
+    precisions = {
+        r.precision
+        for r in service.chercher(
+            EntiteRecherchable.ARCHER, "leveque", tournoi_id=ids["salle"]
+        ).resultats
+    }
 
-    assert resultat.precision == "Arc Club de Kervignarc"
+    assert precisions == {
+        "Arc Club de Kervignarc · Senior 1 H",
+        "Arc Club de Kervignarc · Cadet H",
+    }
+    assert all("Salle 18m" not in (p or "") for p in precisions)
+
+
+def test_le_pere_et_le_fils_du_meme_tournoi_restent_distinguables() -> None:
+    """Le cas que la détection de doublons de CETTE US fabrique, et qu'aucune fixture n'avait.
+
+    `domain.archer.cle_identite` le dit : « un père et son fils partagent nom, prénom et club ».
+    Hors pilotage comme en pilotage, deux lignes identiques laissaient l'organisateur ouvrir la
+    fiche du fils pour le père — et lire son couloir de tir.
+    """
+    service, ids = _attelage()
+
+    partout = service.chercher(EntiteRecherchable.ARCHER, "leveque").resultats
+    dans_le_tournoi = service.chercher(
+        EntiteRecherchable.ARCHER, "leveque", tournoi_id=ids["salle"]
+    ).resultats
+
+    du_tournoi = [r for r in partout if r.tournoi_id == ids["salle"]]
+    assert len(du_tournoi) == 2
+    assert len({r.precision for r in du_tournoi}) == 2
+    assert len({r.precision for r in dans_le_tournoi}) == 2
 
 
 def test_un_archer_se_trouve_par_le_nom_de_son_club() -> None:
@@ -133,7 +193,7 @@ def test_un_archer_se_trouve_par_le_nom_de_son_club() -> None:
 
     recherche = service.chercher(EntiteRecherchable.ARCHER, "arc club")
 
-    assert recherche.total == 3
+    assert recherche.total == 4
 
 
 def test_un_archer_sans_club_connu_reste_trouvable() -> None:
@@ -143,7 +203,7 @@ def test_un_archer_sans_club_connu_reste_trouvable() -> None:
     recherche = service.chercher(EntiteRecherchable.ARCHER, "bordure")
 
     assert recherche.total == 1
-    assert recherche.resultats[0].precision == "Salle 18m — 14/03/2026 · Kervignarc"
+    assert recherche.resultats[0].precision == "Senior 1 H · Salle 18m — 14/03/2026 · Kervignarc"
 
 
 def test_chaque_resultat_dit_ou_ouvrir_sa_fiche() -> None:

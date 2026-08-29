@@ -39,6 +39,7 @@ export function GestionTournois({
   onChoisi,
   ouvrir,
   onOuvrir,
+  lectureSeule = false,
 }: {
   selectionneId: number | null
   onChoisi: (t: Tournoi) => void
@@ -48,14 +49,20 @@ export function GestionTournois({
   // ⚠️ **Requis** : voir `Archers` — optionnels, un site de montage pouvait les oublier.
   ouvrir: number | null
   onOuvrir: (id: number | null) => void
+  // ⚠️ **La lecture seule s'IMPOSE, elle ne se déduit pas du store.** Le commentaire d'origine
+  // affirmait que « sous la porte Public aucun jeton admin ne peut exister » : c'est faux depuis
+  // E14US003, où l'adresse est devenue une source d'entrée — `/public` tapé par un organisateur
+  // connecté rend `estAdmin` vrai. Les contrôles d'écriture s'y affichaient donc déjà.
+  lectureSeule?: boolean
 }) {
   // `estAdmin` gouverne **l'affichage** des contrôles d'écriture (création, cycle de vie, édition,
-  // suppression). Le **login** n'est plus ici : il vit dans `CoquilleAdmin` (porte Admin, E00US017).
-  // Invariant qui garde le public : sous la porte **Public** (`AccueilPublic`), aucun jeton admin ne
-  // peut exister — on n'atteint l'écran de choix que si `resoudreRole === null`, donc `!aJetonAdmin`,
-  // et le public n'a aucun moyen de se logger (pas de `ConnexionAdmin` monté). `estAdmin` y est donc
-  // toujours faux, ces contrôles restent masqués. Le serveur reste l'autorité en dernier ressort.
-  const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
+  // suppression). Le **login** vit dans `CoquilleAdmin` (porte Admin, E00US017).
+  // ⚠️ **`lectureSeule` prime, et ce n'est pas de la ceinture-bretelle.** L'ancienne rédaction
+  // affirmait qu'aucun jeton admin ne peut exister sous la porte Public : faux depuis E14US003,
+  // l'adresse `/public` étant une entrée à part entière (`resoudreRole` n'est plus consulté quand
+  // l'URL nomme un monde). Le serveur reste l'autorité en dernier ressort.
+  const jetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
+  const estAdmin = !lectureSeule && jetonAdmin
   const tournois = useTournois()
 
   // La pastille de préparation (E16US010, A02) : « voir d'avance ce qui bloque un lancement ».

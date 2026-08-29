@@ -3,7 +3,7 @@
 - **Statut** : Accepté
 - **Date** : 2026-07-30
 - **Décideurs** : Organisateur / Architecte
-- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi?>/<axe?>/<destination?>/<élément?>`)
+- **Portée** : E14US003 (adresses `/public`, `/scoreur`, `/cible`, `/admin/<tournoi>/<axe>/<destination>`)
 - **Remplace** : [ADR-0032](0032-navigation-admin-par-etat-local.md) — dont il **garde** la conclusion
   sur la dépendance (routeur maison) et **renverse** celle sur les URL
 - **Lie** : [ADR-0042](0042-modele-d-entree-choix-de-role-explicite.md) (les quatre portes, dont cet
@@ -37,7 +37,7 @@ Trois manques concrets le motivent :
 ## Décision
 
 **1. Cinq adresses, une par monde.** `/` (choix des quatre portes), `/public`, `/scoreur`, `/cible`,
-`/admin/<tournoi?>/<axe?>/<destination?>`.
+`/admin/<tournoi>/<axe>/<destination>`.
 
 **Le tournoi est dans l'adresse, pas seulement l'écran.** Corrigé en revue : la première version le
 laissait en état local, si bien que `F5` restaurait l'axe et la destination mais **pas leur sujet** —

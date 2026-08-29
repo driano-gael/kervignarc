@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Recherche, ResultatRecherche } from './api'
 import { chercher } from './api'
 import { RechercheTransverse } from './RechercheTransverse'
@@ -42,6 +42,11 @@ function monter(enfants: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
 }
+
+// ⚠️ Restauré même si une assertion échoue : sinon les faux minuteurs fuient sur la suite.
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 beforeEach(() => {
   vi.mocked(chercher).mockReset()
@@ -130,6 +135,28 @@ describe('« il tire là » (E12US006, D-09)', () => {
   })
 })
 
+describe('jamais un fait négatif à la place d’un chargement', () => {
+  it('changer de déroulante n’affiche pas « Aucun résultat » de l’entité précédente', async () => {
+    // ⚠️ `enRetard` ne comparait que le texte : à texte constant, changer d'entité laissait
+    // `isSuccess` vrai avec les résultats de l'ancienne clé (`keepPreviousData`), donc le fait
+    // négatif sous le nouveau libellé — ce que l'ordre d'affichage interdit (relevé en 3ᵉ passe).
+    // La 1ʳᵉ requête (archer) répond vide ; la 2ᵉ (club) reste **en vol** — c'est la fenêtre où
+    // `keepPreviousData` sert l'ancienne réponse et où le fait négatif s'affichait à tort.
+    vi.mocked(chercher)
+      .mockResolvedValueOnce(reponse([]))
+      .mockReturnValue(new Promise(() => {}))
+    monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
+
+    await userEvent.type(screen.getByLabelText('Archer à trouver'), 'zzz')
+    expect(await screen.findByText('Aucun résultat à ce nom.')).toBeVisible()
+
+    await userEvent.selectOptions(screen.getByLabelText('Rechercher'), 'club')
+
+    expect(screen.queryByText('Aucun résultat à ce nom.')).not.toBeInTheDocument()
+    expect(screen.getByText('Chargement…')).toBeVisible()
+  })
+})
+
 describe('anti-rebond', () => {
   it('DETTE-092 — une frappe rapide ne produit qu’UNE requête, sur la valeur finale', async () => {
     // ⚠️ **Horloge maîtrisée** (règle 9) : la 1ʳᵉ rédaction comparait la vitesse de frappe réelle à
@@ -139,7 +166,12 @@ describe('anti-rebond', () => {
     // frappe passerait un simple décompte.
     // `shouldAdvanceTime` : React Query pose ses propres minuteurs, un gel total les fige aussi.
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    const utilisateur = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    // `delay: null` : les sept frappes tiennent dans un seul tour, l'anti-rebond ne peut plus
+    // partir au milieu — sans quoi l'oracle exact redevient une course avec le runner.
+    const utilisateur = userEvent.setup({
+      advanceTimers: vi.advanceTimersByTime,
+      delay: null,
+    })
     monter(<RechercheTransverse tournoiId={3} enPilotage={false} onOuvrir={vi.fn()} />)
 
     await utilisateur.type(screen.getByLabelText('Archer à trouver'), 'leveque')
@@ -149,6 +181,5 @@ describe('anti-rebond', () => {
 
     expect(chercher).toHaveBeenCalledTimes(1)
     expect(chercher).toHaveBeenLastCalledWith('archer', 'leveque', null)
-    vi.useRealTimers()
   })
 })

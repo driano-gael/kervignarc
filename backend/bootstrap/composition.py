@@ -1227,7 +1227,7 @@ def create_app(
     # --- Recherche transverse (E16US010) : une seule route paramétrée par l'entité. Lecture pure,
     # trois dépôts, aucune écriture — la fiche trouvée s'ouvre par les routes existantes. ---
     app.state.service_recherche = ServiceRecherche(
-        tournoi_repository, archer_repository, club_repository
+        tournoi_repository, archer_repository, club_repository, categorie_repository
     )
 
     # --- Jalons « prêt à… » (E16US012, ADR-0096) : « puis-je passer à l'étape suivante, et sinon

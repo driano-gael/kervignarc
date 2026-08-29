@@ -10,7 +10,12 @@ unique ; la règle de correspondance et le classement vivent au domaine (`domain
 from __future__ import annotations
 
 from domain.club import Club
-from domain.ports import ArcherRepository, ClubRepository, TournoiRepository
+from domain.ports import (
+    ArcherRepository,
+    CategorieRepository,
+    ClubRepository,
+    TournoiRepository,
+)
 from domain.recherche import (
     EntiteRecherchable,
     Recherche,
@@ -29,10 +34,12 @@ class ServiceRecherche:
         tournoi_repository: TournoiRepository,
         archer_repository: ArcherRepository,
         club_repository: ClubRepository,
+        categorie_repository: CategorieRepository,
     ) -> None:
         self._tournois = tournoi_repository
         self._archers = archer_repository
         self._clubs = club_repository
+        self._categories = categorie_repository
 
     def chercher(
         self,
@@ -77,10 +84,13 @@ class ServiceRecherche:
     def _archers_correspondants(
         self, fragment: str, tournoi_id: TournoiId | None
     ) -> list[ResultatRecherche]:
-        """Les archers, décorés de leur club et de leur tournoi.
+        """Les archers, décorés de leur club, de leur catégorie et de leur tournoi.
 
-        Sans cette décoration, deux fiches homonymes de deux éditions différentes rendraient deux
-        lignes identiques : l'organisateur ne pourrait pas choisir laquelle ouvrir.
+        ⚠️ **La catégorie n'est pas de l'ornement** : `domain.archer.cle_identite` dit qu'un père et
+        son fils partagent nom, prénom **et** club — la détection de doublons de cette même US les
+        rapproche pour cette raison. Sans elle, deux fiches du même tournoi rendaient deux lignes
+        strictement identiques, et l'organisateur ouvrait celle du fils pour le père (relevé en
+        3ᵉ passe par deux axes). Les classes d'âge les séparent par construction.
         """
         archers = (
             self._archers.par_tournoi(tournoi_id)
@@ -89,26 +99,45 @@ class ServiceRecherche:
         )
         clubs = {club.id: club for club in self._clubs.lister() if club.id is not None}
         tournois = {t.id: t for t in self._tournois.lister() if t.id is not None}
-        resultats = []
-        for archer in archers:
-            club = clubs.get(archer.club_id) if archer.club_id is not None else None
-            libelle = f"{archer.nom} {archer.prenom}"
-            if archer.id is None or not correspond(fragment, libelle, club.nom if club else ""):
-                continue
-            resultats.append(
-                ResultatRecherche(
-                    entite=EntiteRecherchable.ARCHER,
-                    id=archer.id,
-                    libelle=libelle,
-                    # En pilotage on est déjà dans le tournoi : le rappeler à chaque ligne noie
-                    # la seule information qui distingue les fiches, le club.
-                    precision=_precision_archer(
-                        club, tournois.get(archer.tournoi_id) if tournoi_id is None else None
-                    ),
-                    tournoi_id=archer.tournoi_id,
-                )
+        retenus = [
+            (archer, clubs.get(archer.club_id) if archer.club_id is not None else None)
+            for archer in archers
+            if archer.id is not None
+        ]
+        retenus = [
+            (archer, club)
+            for archer, club in retenus
+            if correspond(fragment, f"{archer.nom} {archer.prenom}", club.nom if club else "")
+        ]
+        # Chargé **après** le filtrage, et seulement pour les tournois réellement représentés :
+        # les catégories sont par tournoi, il n'existe pas de listing global (`DETTE-092`).
+        categories = self._libelles_de_categorie({archer.tournoi_id for archer, _ in retenus})
+        return [
+            ResultatRecherche(
+                entite=EntiteRecherchable.ARCHER,
+                id=archer.id,
+                libelle=f"{archer.nom} {archer.prenom}",
+                # En pilotage on est déjà dans le tournoi : le rappeler à chaque ligne noie
+                # les informations qui distinguent les fiches.
+                precision=_precision_archer(
+                    club,
+                    categories.get(archer.categorie_id),
+                    tournois.get(archer.tournoi_id) if tournoi_id is None else None,
+                ),
+                tournoi_id=archer.tournoi_id,
             )
-        return resultats
+            for archer, club in retenus
+            if archer.id is not None
+        ]
+
+    def _libelles_de_categorie(self, tournois: set[TournoiId]) -> dict[int, str]:
+        """Les libellés de catégorie des tournois donnés, indexés par identifiant."""
+        libelles: dict[int, str] = {}
+        for tournoi in tournois:
+            for categorie in self._categories.par_tournoi(tournoi):
+                if categorie.id is not None:
+                    libelles[categorie.id] = categorie.libelle
+        return libelles
 
 
 def _precision_tournoi(tournoi: Tournoi) -> str:
@@ -116,17 +145,19 @@ def _precision_tournoi(tournoi: Tournoi) -> str:
     return f"{tournoi.date:%d/%m/%Y}" + (f" · {tournoi.lieu}" if tournoi.lieu else "")
 
 
-def _precision_archer(club: Club | None, tournoi: Tournoi | None) -> str | None:
-    """« Club · Tournoi (année) », sans les morceaux qu'on n'a pas — « club inconnu » est réel.
+def _precision_archer(
+    club: Club | None, categorie: str | None, tournoi: Tournoi | None
+) -> str | None:
+    """« Club · Catégorie · Tournoi daté », sans les morceaux qu'on n'a pas.
 
-    ⚠️ **Le tournoi se situe par la MÊME règle que `_precision_tournoi`** — sa date complète et son
-    lieu, pas seulement son année. Deux fiches du même archer, du même club, sous le même nom de
-    tournoi rendaient sinon deux lignes identiques ; la 1ʳᵉ correction n'a repris que la moitié de
-    la leçon (l'année), et deux éditions d'une **même année civile** collisionnaient encore — la
-    saison salle en autorise deux. Une seule règle, appelée des deux côtés.
+    ⚠️ **Le tournoi se situe par la MÊME règle que `_precision_tournoi`** — date complète et lieu,
+    pas seulement l'année : deux éditions d'une **même année civile** sont ordinaires (saison salle
+    de novembre à mars), et la 1ʳᵉ correction n'avait repris que la moitié de la leçon.
+    ⚠️ La **catégorie** sépare deux fiches d'un même tournoi et d'un même club — voir l'appelant.
     """
     morceaux = [
         club.nom if club else None,
+        categorie,
         f"{tournoi.nom} — {_precision_tournoi(tournoi)}" if tournoi else None,
     ]
     presents = [morceau for morceau in morceaux if morceau]

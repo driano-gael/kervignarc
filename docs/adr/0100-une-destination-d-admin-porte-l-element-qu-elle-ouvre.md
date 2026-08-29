@@ -59,10 +59,17 @@ listes consomment la **même** prop.
 > distincts dans l'adresse, deux sens — c'est ce que le §2 promettait, et ce que la forme longue
 > tient enfin.
 
-**4. L'ouverture est l'adresse, pas un état qui la copie.** Le hook `useOuvertureParAdresse` dérive
-l'ouverture de la prop et **remonte** la fermeture par un `onOuvrir(null)` qui réécrit l'adresse.
-Un repli en état local subsiste pour les points de montage qui ne routent pas (tests, écrans
-autonomes) : c'est la seule concession, et elle est explicite.
+**4. L'ouverture est l'adresse, pas un état qui la copie — et sans concession.** Le hook
+`useOuvertureParAdresse` dérive l'ouverture de la prop et **remonte** la fermeture par un
+`onOuvrir(null)` qui réécrit l'adresse.
+
+> ⚠️ **Amendé en 3ᵉ passe de revue (29/08/2026).** La 1ʳᵉ rédaction gardait « un repli en état local
+> pour les points de montage qui ne routent pas (tests, écrans autonomes) : c'est la seule
+> concession ». Il n'existait **aucun** écran autonome : la branche n'était atteinte que par les
+> tests, et elle laissait un montage qui oublie `onOuvrir` diverger **en silence** au lieu de ne pas
+> compiler. Elle est supprimée ; `ouvrir` et `onOuvrir` sont des props **requises**, et c'est `tsc`
+> qui porte la garde — il a d'ailleurs immédiatement trouvé un site de production non câblé
+> (`AccueilPublic.tsx`), que trois passes de revue n'avaient pas vu.
 
 **5. Un élément sans écran pour l'ouvrir est ignoré.** `/admin/12/gestion/57` ne porte pas
 d'élément : sans destination, personne ne le consommerait et l'adresse porterait un état mort.
@@ -99,7 +106,7 @@ puis agir » (en pilotage) sont deux lectures du même segment, portées par les
 | §3 — la seconde forme, sur l'accueil, **sans écraser le tournoi courant** | `frontend/src/features/admin/axes.ts` (`SEGMENT_FICHE`, `elementOuvert`, `segmentsAdmin`) · `frontend/src/features/admin/CoquilleAdmin.tsx` (`ouvrirFicheTournoi` passe `tournoiId` **et** `id`) — gardé par `axes.test.ts` (`['12','fiche','7']` → tournoi 12, élément 7 ; fermer rend `['12']`) | oui — ⚠️ corrigé en revue, cf. l'encadré du §3 |
 | §3 — un seul champ, une seule prop | `axes.ts` (`elementDemande`) consommé par les trois listes via `ouvrir` | oui |
 | §4 — l'ouverture **est** l'adresse | `frontend/src/shared/navigation/useOuvertureParAdresse.ts` — gardé par `frontend/src/shared/navigation/useOuvertureParAdresse.test.tsx` (l'écran monté avec `ouvrir`/`onOuvrir` : la fiche désignée est ouverte, elle seule, et la fermeture remonte `onOuvrir(null)`) | oui — ⚠️ **corrigé en revue** : cette cellule citait `axes.test.ts`, qui garde la réciprocité du **parseur** et ne touche jamais le hook. Nommer un module qui n'applique pas ce qu'on lui prête est le défaut qu'ADR-0075 documente (ADR-0028, ADR-0049) — il s'est reproduit ici, dans l'ADR qui l'annonçait |
-| §4 — le repli local est explicite | `useOuvertureParAdresse` (branche `onOuvrir === undefined`) | oui |
+| §4 — **aucun repli** : le contrat est requis, `tsc` le garde | `frontend/src/features/archers/Archers.tsx`, `clubs/Clubs.tsx`, `tournois/Tournois.tsx` — `ouvrir`/`onOuvrir` **non optionnelles** ; `useOuvertureParAdresse.ts` n'a plus de branche locale | oui — ⚠️ **corrigé en 3ᵉ passe** : cette ligne nommait un module pour une branche que le commit précédent venait de supprimer. Le défaut d'ADR-0017/0028/0049, reproduit à la ligne suivant celle qui le corrigeait |
 | §1 — l'adresse **canonique** conserve l'élément | `frontend/src/features/admin/axes.ts` (`segmentsCanoniques`) · `frontend/src/features/admin/CoquilleAdmin.tsx` (l'effet de correction d'adresse l'appelle) — gardé par `axes.test.ts` **et** par `frontend/src/features/admin/AdresseElement.test.tsx`, qui monte la coquille | oui — ⚠️ **c'était le bloquant de la revue** : la correction d'adresse rappelait `segmentsAdmin` sans son 4ᵉ argument et effaçait l'élément par `replaceState`, si bien qu'aucune fiche ne s'ouvrait hors de l'accueil. Trois axes l'ont trouvé ; aucun test ne pouvait le voir, tous portant sur des fonctions pures |
 | §5 — un élément orphelin est ignoré | `axes.ts` (`elementOuvert`, garde `destination !== null`) — gardé par `axes.test.ts` (`un élément SANS destination pour l'ouvrir est ignoré`) | oui |
 | §1 — l'axe d'une destination n'est jamais réécrit à la main | `CoquilleAdmin.tsx` (`ouvreurDe` lit `AXE_PAR_DESTINATION`) | oui |

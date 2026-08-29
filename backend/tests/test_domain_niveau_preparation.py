@@ -9,7 +9,8 @@ Le niveau se **dérive** d'une `PreparationJalon` déjà évaluée (E16US012, AD
 d'E16US012 interdit nommément une seconde source de complétude, donc la pastille ne recalcule
 aucune garde — elle traduit en **niveau d'alerte** ce que le jalon a déjà répondu.
 
-Domaine pur : aucune I/O, on part de préparations construites par les politiques existantes.
+Domaine pur : aucune I/O, on part de préparations construites par les politiques existantes — sauf
+là où seule une préparation montée à la main atteint la branche gardée, ce qui est dit sur place.
 """
 
 from __future__ import annotations
@@ -224,6 +225,31 @@ def test_une_ligne_d_effectif_chiffree_reste_un_manque() -> None:
         lignes=(
             LigneCompletude(
                 cle=CLE_EFFECTIF, libelle="Inscrits", etat=EtatSection.ALERTE, fait=8, total=34
+            ),
+        ),
+        pret=True,
+        bloquant=False,
+        question_posee=True,
+    )
+
+    assert niveau_de_preparation(preparation) is NiveauPreparation.AVERTISSEMENT
+    assert resume_du_manque(preparation) == "Il reste à préparer : Inscrits."
+
+
+def test_une_alerte_d_effectif_sans_total_ne_devient_pas_muette() -> None:
+    """La borne `EN_ATTENTE` de `_est_un_manque` — et elle n'était gardée par rien.
+
+    ⚠️ Deux axes de revue ont rejoué la mutation : remplacer la conjonction par la version d'avant
+    (`cle == CLE_EFFECTIF and total is None`, sans l'état) laissait **toute la suite verte**. Le
+    test voisin construit sa ligne avec `total=34`, donc il traverse `_est_un_manque` mais
+    **contourne la clause**. Aucun chemin de production ne produit cet état aujourd'hui ; c'est
+    précisément pourquoi seul un cas construit à la main peut le fixer.
+    """
+    preparation = PreparationJalon(
+        jalon=Jalon.DEMARRER,
+        lignes=(
+            LigneCompletude(
+                cle=CLE_EFFECTIF, libelle="Inscrits", etat=EtatSection.ALERTE, fait=None, total=None
             ),
         ),
         pret=True,

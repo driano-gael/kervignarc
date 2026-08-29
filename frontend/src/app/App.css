@@ -845,7 +845,12 @@
   padding: 0 2px;
   border: 0;
   background: none;
+  /* `color` et `letter-spacing` ne sont PAS remis par `font: inherit` : sans eux, le bouton hérite
+     du blanc de marque et de la chasse 0.02em du reset. La classe compagne `table__anomalie` donne
+     la teinte à l'usage, mais une classe ne doit pas dépendre d'une autre pour être lisible. */
+  color: inherit;
   font: inherit;
+  letter-spacing: normal;
   text-decoration: underline dotted;
   cursor: pointer;
 }
@@ -866,11 +871,13 @@
 .badge-preparation {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
   padding: 2px 8px;
   border: 1px solid currentColor;
   border-radius: 999px;
   background: none;
+  /* Couleur de BASE : les variantes `--alerte` / `--avertissement` l'escaladent. Sans elle, le
+     reset `button` pose `--sur-brand` (#ffffff) — blanc sur blanc en thème clair. */
+  color: var(--danger);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: normal;
@@ -879,6 +886,9 @@
 }
 
 button.badge-preparation {
+  /* Le plancher tactile appartient à la CIBLE : la variante `<span>` (pastille sans cause) n'en
+     est pas une, et l'y appliquer faisait grandir la ligne pour rien. */
+  min-height: 44px;
   cursor: pointer;
 }
 
@@ -1031,6 +1041,9 @@ button.badge-preparation:focus-visible {
 .lien {
   padding: 4px 0;
   font: inherit;
+  /* ⚠️ `letter-spacing` n'est pas remis par `font: inherit` — le reset `button` pose 0.02em, une
+     chasse de bouton sur ce qui est du texte de ligne (E16US010, garde `reset-bouton.test.ts`). */
+  letter-spacing: normal;
   color: var(--brand-text);
   background: none;
   border: none;
@@ -3317,7 +3330,9 @@ button:disabled {
   padding: 4px 0;
   border: 0;
   background: none;
+  color: inherit;
   font: inherit;
+  letter-spacing: normal;
   text-align: left;
   cursor: pointer;
 }

@@ -332,7 +332,9 @@ export function destinationDunArcher(
   tournoiDeLArcher: number | null,
 ): { axe: Axe; destination: DestinationAdminId; tournoi: number | null } {
   if (axeCourant === 'pilotage' && tournoiDeLArcher === tournoiCourant) {
-    return { axe: 'pilotage', destination: 'archer', tournoi: tournoiCourant }
+    // Dérivé, jamais réécrit : le jour où `archer` change d'axe, la cible sortirait de l'axe
+    // courant, `destinationValide` rendrait `null` et la fiche cesserait de s'ouvrir en silence.
+    return { axe: AXE_PAR_DESTINATION['archer'], destination: 'archer', tournoi: tournoiCourant }
   }
   return {
     axe: AXE_PAR_DESTINATION['inscriptions'],

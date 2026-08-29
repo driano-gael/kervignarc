@@ -21,6 +21,9 @@ import { BadgeStatut } from '../competition/BadgeStatut'
 import { HabillageIdentite, LogoDuTournoi } from '../identite/HabillageIdentite'
 import { GestionTournois } from '../tournois/Tournois'
 
+// Inerte par construction : `lectureSeule` empêche tout contrôle d'écriture d'être rendu.
+const AUCUNE_OUVERTURE = () => {}
+
 // Les vues publiques d'un tournoi. Fermé : l'écran de salle (E07US004) n'est pas un onglet, c'est
 // un **poste**. L'ordre suit la journée de l'archer (qui je suis, où je tire, contre qui, qui a
 // gagné), pas la structure du logiciel.
@@ -48,14 +51,17 @@ export function AccueilPublic() {
       {/* Porte **Public** (E00US017, ADR-0042) : liste en lecture seule. `GestionTournois` ne porte
           plus le login admin (parti dans `CoquilleAdmin`, porte Admin) — le public ne peut pas
           escalader. Le scoreur et la tablette ont désormais leurs propres portes ; plus proposés ici. */}
-      {/* ⚠️ Aucune fiche ne s'ouvre ici : sous la porte Public, `estAdmin` est faux et les
-          contrôles d'écriture ne sont pas rendus. Les deux props sont **requises** depuis la revue
-          d'E16US010 — c'est ce montage-là que leur optionalité laissait passer en silence. */}
+      {/* ⚠️ **`lectureSeule` est ce qui rend l'inertie vraie.** Le no-op posé en 2ᵉ passe reposait
+          sur « sous la porte Public, `estAdmin` est faux » — faux depuis E14US003 : un organisateur
+          connecté qui tape `/public` voyait « Éditer », et le no-op le rendait **mort** alors qu'il
+          fonctionnait avant. La prop coupe les contrôles à la source ; le no-op n'est plus
+          atteignable, il ne masque plus rien. */}
       <GestionTournois
         selectionneId={selection?.id ?? null}
         onChoisi={setSelection}
         ouvrir={null}
-        onOuvrir={() => {}}
+        onOuvrir={AUCUNE_OUVERTURE}
+        lectureSeule
       />
 
       {/* `key={selection.id}` : changer directement de tournoi (la liste reste cliquable au-dessus)
