@@ -1,59 +1,20 @@
-// Écran d'administration des doublons (E02US005) — réservé à l'admin (monté sous `estAdmin`).
+// La fusion d'une paire de fiches rapprochées (E02US005) — **déplacée** ici par E16US010, où elle
+// se déplie sur la ligne de l'archer au lieu d'occuper un écran dédié (CA : « une simple icône
+// cliquable sur la ligne de l'archer peut suffire », plutôt qu'« un écran qui pollue »).
 //
-// Faute de numéro de licence (repoussé à E02US007), rien ne rend la double saisie **décidable** :
-// on **rapproche** des paires vraisemblables (mêmes nom/prénom/club, ou approximatif) et l'admin
-// tranche, sur deux niveaux (voir `presentation.ts`). La **fusion** garde une fiche maître et
-// **absorbe** l'autre — inscriptions et scores passent sur la maître. Geste destructeur mais **non
-// perdant**, d'où la confirmation explicite et le message serveur lu tel quel en cas de refus
-// (409).
+// Faute de numéro de licence, rien ne rend la double saisie **décidable** : on rapproche, l'admin
+// tranche. La fusion garde une fiche maître et **absorbe** l'autre — inscriptions et scores
+// passent sur la maître. Geste destructeur mais **non perdant**, d'où la confirmation explicite et
+// le message serveur lu tel quel en cas de refus (409).
 
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
 import type { Archer, Doublon } from './api'
-import { grouperDoublons } from './presentation'
-import { useDoublons, useFusionnerArchers } from './hooks'
+import { useFusionnerArchers } from './hooks'
 
-export function Doublons({ tournoiId }: { tournoiId: number }) {
-  const doublons = useDoublons(tournoiId)
-
-  return (
-    <section>
-      <h3 className="carte__soustitre">Doublons</h3>
-      <p className="carte__etat">
-        Fiches qui se ressemblent — un même archer saisi deux fois. Choisissez la fiche à garder :
-        l'autre y est fusionnée (inscriptions et scores repris), puis supprimée.
-      </p>
-      {doublons.isError && <MessageErreur erreur={doublons.error} />}
-      {/* `isSuccess` et non `data ?? []` : tant que la requête court, `data` est `undefined` et le
-          message « aucun doublon » s'afficherait à tort sur un tournoi qui en a. */}
-      {doublons.isSuccess && doublons.data.length === 0 && (
-        <p className="carte__etat">Aucun doublon détecté.</p>
-      )}
-      {doublons.data && doublons.data.length > 0 && (
-        <>
-          {grouperDoublons(doublons.data).map((groupe) => (
-            <section key={groupe.niveau}>
-              <h4 className="carte__soustitre">{groupe.libelle}</h4>
-              <ul className="liste-archers">
-                {groupe.paires.map((paire) => (
-                  <PaireDoublon
-                    key={`${paire.a.id}-${paire.b.id}`}
-                    paire={paire}
-                    tournoiId={tournoiId}
-                  />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </>
-      )}
-    </section>
-  )
-}
-
-function PaireDoublon({ paire, tournoiId }: { paire: Doublon; tournoiId: number }) {
+export function FusionDoublon({ paire, tournoiId }: { paire: Doublon; tournoiId: number }) {
   // La fiche que l'admin a choisi de **garder** (maître), avec celle qui sera absorbée. Tant que
   // `null`, on n'affiche que les deux fiches et leur bouton « Garder » — pas de geste armé.
   const [choix, setChoix] = useState<{ gagnant: Archer; perdant: Archer } | null>(null)
@@ -74,7 +35,7 @@ function PaireDoublon({ paire, tournoiId }: { paire: Doublon; tournoiId: number 
   }
 
   return (
-    <li className="doublon">
+    <div className="doublon">
       {[paire.a, paire.b].map((archer) => (
         <FicheResume
           key={archer.id}
@@ -122,7 +83,7 @@ function PaireDoublon({ paire, tournoiId }: { paire: Doublon; tournoiId: number 
       {/* Refus fermes du serveur (409 `fusion_archers_engages` / `fusion_impossible`) : aucun drapeau
           ne les lève, on affiche le message tel quel — c'est lui qui explique quoi corriger. */}
       {fusionner.isError && <MessageErreur erreur={fusionner.error} />}
-    </li>
+    </div>
   )
 }
 

@@ -29,7 +29,6 @@ export type DestinationAdminId =
   | 'clubs'
   | 'scoreurs'
   | 'inscriptions'
-  | 'doublons'
   | 'placement'
   | 'duels'
   | 'paiements'
@@ -101,10 +100,8 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'l’espace de saisie avec ce code, sans mot de passe administrateur.',
   inscriptions:
     'Créez les archers et inscrivez-les sur un ou plusieurs départs. L’inscription alimente les ' +
-    'listes, le placement, le montant dû et, le jour J, la saisie des scores.',
-  doublons:
-    'Repérez les archers qui semblent en double (même nom, même club) et fusionnez leurs fiches. ' +
-    'Nettoyer la liste évite les erreurs de placement et de comptage.',
+    'listes, le placement, le montant dû et, le jour J, la saisie des scores. Les fiches qui se ' +
+    'ressemblent sont signalées sur leur ligne : dépliez-les pour fusionner les doublons.',
   placement:
     'Répartissez les archers inscrits sur les cibles et les couloirs de tir. Le plan peut être généré ' +
     'automatiquement puis ajusté au doigt (glisser-déposer) ; il détermine où chacun tire.',

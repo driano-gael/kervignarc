@@ -11,7 +11,6 @@ import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
 import { Archers } from '../archers/Archers'
 import { Archive } from '../archive/Archive'
-import { Doublons } from '../archers/Doublons'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
 import { Blasons } from '../blasons/Blasons'
@@ -331,6 +330,8 @@ function Coquille() {
       libelle: 'Inscriptions',
       // Créer un archer, puis le corriger / l'inscrire sur des départs : les deux briques de la
       // feature « archers » (création + liste) sur une même destination.
+      // ⚠️ **Le nettoyage des doublons y a été absorbé** (E16US010) : la destination « Doublons »
+      // a disparu, le rapprochement se signale et se traite sur la ligne de l'archer concerné.
       rendu: () =>
         courant && (
           <>
@@ -342,13 +343,6 @@ function Coquille() {
             />
           </>
         ),
-    },
-    {
-      id: 'doublons',
-      libelle: 'Doublons',
-      // Nettoyage de la liste des inscrits (E02US005) : repérer les fiches en double et fusionner.
-      // Juste après « Inscriptions » — c'est la suite naturelle du travail sur la liste.
-      rendu: () => courant && <Doublons tournoiId={courant.id} />,
     },
     {
       id: 'placement',

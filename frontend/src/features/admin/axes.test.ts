@@ -15,17 +15,19 @@ import {
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 
 describe('répartition des destinations', () => {
-  it('CA — les 33 destinations livrées sont toutes rangées, aucune perdue', () => {
+  it('CA — les 32 destinations livrées sont toutes rangées, aucune perdue', () => {
     // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
     // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc` ni
     // aucun autre test ne le voie. ⚠️ Ce garde-fou est tombé à l'ajout d'E16US012, et c'est
     // **exactement** ce qu'on lui demande : il n'y a aucun moyen de l'oublier, puisqu'une
     // destination ajoutée sans son entrée d'aide (ou sans son axe) le fait échouer avant
-    // d'atteindre la sidebar.
+    // d'atteindre la sidebar. ⚠️ Le compte a **baissé** en E16US010 : la destination « Doublons »
+    // a disparu, absorbée par la ligne d'archer. Une destination retirée doit l'être des trois
+    // tables à la fois — ce test est ce qui l'impose.
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(33)
-    expect(rangees).toHaveLength(32)
+    expect(toutes).toHaveLength(32)
+    expect(rangees).toHaveLength(31)
     // La dernière est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par
     // l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])

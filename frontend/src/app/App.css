@@ -835,6 +835,23 @@
   color: var(--danger);
 }
 
+/* Le signalement de doublon sur une ligne d'archer (E16US010) : il porte le même vocabulaire
+   visuel que `.table__anomalie`, mais c'est un BOUTON — il déplie la fusion sur place, ce qui
+   remplace l'écran dédié. Réinitialisation du chrome de bouton, la couleur venant de l'anomalie. */
+.archer__doublon {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.archer__doublon:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
 /* La pastille de préparation d'une ligne de tournoi (E16US010, A02). Deux niveaux : « tout n'est
    pas complet » et « impossible de lancer en l'état ». ⚠️ Les deux ambres de la charte, jamais le
    rouge — sur l'anthracite il ne signale rien (`DV-03`, 2,55:1). Le mot porte l'information, la

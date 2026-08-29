@@ -45,10 +45,12 @@ function useInvaliderArchers(tournoiId: number) {
   }
 }
 
-// La détection est de l'état **serveur**. L'écran « Doublons » n'est monté que lorsqu'on ouvre sa
-// destination (`courant && <Doublons/>`), donc la requête ne part pas tant qu'il est fermé — la
-// paresse vient de là, pas du fetch. `enabled` reste offert par symétrie avec `useArchers` (E12US006),
-// pour un futur appelant monté en permanence qui voudrait, lui, différer le fetch.
+// La détection est de l'état **serveur**, et c'est un calcul d'ENSEMBLE : il n'a pas d'équivalent
+// par archer, d'où une requête pour toute la liste.
+// ⚠️ **La paresse a changé de nature en E16US010.** Elle venait du montage — l'écran « Doublons »
+// n'existait que sur sa destination. Cet écran a disparu : le rapprochement se signale sur la
+// ligne de l'archer, donc la requête part maintenant avec la liste des inscrits. `enabled` est ce
+// qui reste pour la différer, et il n'est plus décoratif.
 export function useDoublons(tournoiId: number, enabled = true) {
   return useQuery({
     queryKey: cleDoublons(tournoiId),
