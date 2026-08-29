@@ -359,6 +359,15 @@ class ArcherRepositorySQL:
         except SQLAlchemyError as exc:
             raise InfrastructureError("Échec de lecture des archers du club.") from exc
 
+    def tous(self) -> list[Archer]:
+        """Tous les archers, tous tournois confondus (recherche transverse E16US010)."""
+        try:
+            with self._session_factory() as session:
+                lignes = session.execute(select(ArcherORM).order_by(ArcherORM.id)).scalars()
+                return [_vers_archer(ligne) for ligne in lignes]
+        except SQLAlchemyError as exc:
+            raise InfrastructureError("Échec de lecture des archers.") from exc
+
     def enregistrer(self, archer: Archer) -> Archer:
         """Met à jour un archer déjà persisté (placement E00US011, édition E02US003).
 

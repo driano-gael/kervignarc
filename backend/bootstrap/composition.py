@@ -58,6 +58,7 @@ from api.v1.placement_duels import router as placement_duels_router
 from api.v1.postes import router as postes_router
 from api.v1.postes import session_router as poste_session_router
 from api.v1.poules import router as poules_router
+from api.v1.recherche import router as recherche_router
 from api.v1.remboursements import router as remboursements_router
 from api.v1.routage import router as routage_router
 from api.v1.saisie import router as saisie_router
@@ -117,6 +118,7 @@ from application.prelevement import (
     LecteurClassementDePhase,
     LecteurPopulationPhase,
 )
+from application.recherche import ServiceRecherche
 from application.remboursements import ServiceRemboursements
 from application.routage import LecteurRencontresARouter, ServiceRoutage
 from application.saisie import ServiceSaisie
@@ -1222,6 +1224,12 @@ def create_app(
         populations,
     )
 
+    # --- Recherche transverse (E16US010) : une seule route paramétrée par l'entité. Lecture pure,
+    # trois dépôts, aucune écriture — la fiche trouvée s'ouvre par les routes existantes. ---
+    app.state.service_recherche = ServiceRecherche(
+        tournoi_repository, archer_repository, club_repository
+    )
+
     # --- Jalons « prêt à… » (E16US012, ADR-0096) : « puis-je passer à l'étape suivante, et sinon
     # qu'est-ce qui manque ? ». Foyer **unique** de la famille (démarrer · terminer · archiver ·
     # exporter). Lecture pure.
@@ -1327,6 +1335,7 @@ def create_app(
     app.include_router(phases_router)
     app.include_router(competition_router)
     app.include_router(completude_router)
+    app.include_router(recherche_router)
     app.include_router(jalons_liste_router)
     app.include_router(jalons_router)
     app.include_router(saisie_router)

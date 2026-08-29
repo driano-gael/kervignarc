@@ -268,7 +268,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 356,
+   "occurrences": 360,
    "source": "application"
   },
   {
@@ -316,13 +316,13 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 95,
+   "occurrences": 96,
    "source": "api"
   },
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 70,
+   "occurrences": 71,
    "source": "api"
   },
   {
@@ -346,7 +346,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 52,
+   "occurrences": 53,
    "source": "bootstrap"
   },
   {
@@ -358,7 +358,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "api",
-   "occurrences": 56,
+   "occurrences": 57,
    "source": "bootstrap"
   }
  ],
@@ -368,7 +368,7 @@ window.ATLAS.carte = {
    "cible": "api",
    "couche_cible": "api",
    "couche_source": "api",
-   "occurrences": 41,
+   "occurrences": 42,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -403,6 +403,7 @@ window.ATLAS.carte = {
     "backend/api/v1/placement_duels.py",
     "backend/api/v1/postes.py",
     "backend/api/v1/poules.py",
+    "backend/api/v1/recherche.py",
     "backend/api/v1/remboursements.py",
     "backend/api/v1/saisie.py",
     "backend/api/v1/saisie_duels.py",
@@ -442,7 +443,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "api",
-   "occurrences": 57,
+   "occurrences": 58,
    "origines": [
     "backend/api/v1/archive.py",
     "backend/api/v1/audit.py",
@@ -479,6 +480,7 @@ window.ATLAS.carte = {
     "backend/api/v1/placement_duels.py",
     "backend/api/v1/postes.py",
     "backend/api/v1/poules.py",
+    "backend/api/v1/recherche.py",
     "backend/api/v1/remboursements.py",
     "backend/api/v1/routage.py",
     "backend/api/v1/saisie.py",
@@ -538,7 +540,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 91,
+   "occurrences": 92,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -567,6 +569,7 @@ window.ATLAS.carte = {
     "backend/api/v1/placement.py",
     "backend/api/v1/postes.py",
     "backend/api/v1/poules.py",
+    "backend/api/v1/recherche.py",
     "backend/api/v1/remboursements.py",
     "backend/api/v1/routage.py",
     "backend/api/v1/saisie.py",
@@ -749,7 +752,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 342,
+   "occurrences": 346,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -791,6 +794,7 @@ window.ATLAS.carte = {
     "backend/application/postes.py",
     "backend/application/poules.py",
     "backend/application/prelevement.py",
+    "backend/application/recherche.py",
     "backend/application/referentiel_ffta.py",
     "backend/application/remboursements.py",
     "backend/application/routage.py",
@@ -847,7 +851,7 @@ window.ATLAS.carte = {
    "cible": "api/v1",
    "couche_cible": "api",
    "couche_source": "bootstrap",
-   "occurrences": 51,
+   "occurrences": 52,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -858,7 +862,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 52,
+   "occurrences": 53,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1255,7 +1259,8 @@ window.ATLAS.carte = {
     "par_club",
     "par_id",
     "par_tournoi",
-    "supprimer"
+    "supprimer",
+    "tous"
    ],
    "nom": "ArcherRepository",
    "sans_adapter": false
@@ -2724,6 +2729,10 @@ window.ATLAS.carte = {
      "nom": "LigneClassementDTO"
     },
     {
+     "fichier": "backend/api/v1/recherche.py",
+     "nom": "RechercheReponse"
+    },
+    {
      "fichier": "backend/domain/classement.py",
      "nom": "LigneClassement"
     },
@@ -2742,6 +2751,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/domain/politiques.py",
      "nom": "ScoreCumul"
+    },
+    {
+     "fichier": "backend/domain/recherche.py",
+     "nom": "Recherche"
     }
    ],
    "couche": "domain",
@@ -2941,8 +2954,8 @@ window.ATLAS.carte = {
   "aretes_front": 172,
   "enchevetrements": 4,
   "features": 49,
-  "imports": 911,
-  "imports_entre_couches": 773,
+  "imports": 920,
+  "imports_entre_couches": 781,
   "plus_gros_noeud": 24,
   "ports": 68,
   "ports_hors_domaine": 25,

@@ -104,6 +104,9 @@ class InMemoryArcherRepository(_AllocateurId):
     def par_club(self, club_id: ClubId) -> list[Archer]:
         return [a for a in self._items.values() if a.club_id == club_id]
 
+    def tous(self) -> list[Archer]:
+        return list(self._items.values())
+
     def enregistrer(self, archer: Archer) -> Archer:
         assert archer.id is not None
         self._items[archer.id] = archer
