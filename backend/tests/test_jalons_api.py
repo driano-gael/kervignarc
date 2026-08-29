@@ -262,7 +262,14 @@ def test_l_apercu_ne_recouvre_aucune_route_de_tournoi(
 
         # Donc l'aperçu a déménagé : plus rien ne le sert sous `/tournois`, et son adresse n'a plus
         # aucun chemin concurrent. Un futur `GET /tournois/{id}/demarrer` ne peut plus le masquer.
-        assert client.get("/api/v1/tournois/jalons/demarrer").status_code == 404
+        ancienne = client.get("/api/v1/tournois/jalons/demarrer")
+        # ⚠️ **Le code exact dépend de la présence de `frontend/dist/`**, et pas du serveur : avec
+        # un build front, la SPA montée à la racine attrape la requête et son repli rend `404` ;
+        # sans lui — le cas du job `backend` de la CI, où le front est bâti dans un autre job —
+        # Starlette retombe sur l'appariement **partiel** de `/{tournoi_id}/demarrer` et rend `405`.
+        # Ce 405 est d'ailleurs la preuve *positive* du recouvrement. On assertionne donc ce qui est
+        # vrai des deux côtés : l'ancienne adresse ne sert plus l'aperçu.
+        assert ancienne.status_code in (404, 405), ancienne.text
         assert client.get("/api/v1/jalons/demarrer/apercus").status_code == 200
 
 

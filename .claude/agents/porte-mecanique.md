@@ -83,6 +83,22 @@ de procédure** : signale-la en tête de rapport. *(Cette énumération remplace
 seule étape est sciemment omise » — qui était faux devant `ci.yml` et t'aurait fait crier à chaque
 passe.)*
 
+### ⚠️ `pytest` se lance **comme le job `backend` de la CI**, sans build front visible
+
+```
+KERVIGNARC_FRONTEND_DIST=/chemin/inexistant  pytest
+```
+
+Le job `backend` de `ci.yml` **ne construit pas le front** — `npm run build` vit dans un autre job.
+Or `frontend/dist/`, s'il existe en local, fait monter la SPA à la racine : elle attrape alors des
+requêtes que le serveur nu laisserait tomber, et **change des codes de réponse**. Une suite verte
+en local peut donc être rouge en CI sans qu'aucun code ait bougé.
+
+*(Constaté le 29/08/2026 sur E16US010 : `GET /api/v1/tournois/jalons/demarrer` rend `404` avec un
+build front — repli SPA — et `405` sans lui — appariement partiel de Starlette. La porte locale
+était verte, la CI rouge. Même famille que `DETTE-093` : un verdict vert qui ne prouve pas ce qu'il
+annonce.)*
+
 ### Binaires autorisés
 
 Tu n'exécutes que des commandes dont le binaire est `ruff`, `mypy`, `pytest`, `pip-audit`, `npm`, ou
