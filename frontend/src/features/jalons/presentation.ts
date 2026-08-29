@@ -5,6 +5,8 @@
 // question binaire*. Une liste d'états y répond implicitement — il faut la lire en entier et savoir
 // lesquelles bloquent. La phrase, elle, répond tout de suite ; la liste dit ensuite *pourquoi*.
 
+import type { NiveauPreparation } from './api'
+
 export type TonVerdict = 'ok' | 'alerte'
 
 export interface Verdict {
@@ -30,4 +32,25 @@ export function verdict(pret: boolean, bloquant: boolean, moment?: string | null
     ton: 'alerte',
     texte: 'Il reste des choses à faire — l’application ne vous en empêchera pas.',
   }
+}
+
+// --- La pastille de la liste des tournois (E16US010) ------------------------------------------
+
+export interface Pastille {
+  libelle: string
+  /** L'escalade — `--danger-strong` plutôt que `--danger`, le rouge restant exclu (`DV-03`). */
+  fort: boolean
+}
+
+/**
+ * Ce qu'affiche la pastille d'un niveau, ou `null` si elle ne s'allume pas.
+ *
+ * ⚠️ Le libellé est **du texte**, pas seulement une couleur : une pastille qui ne signale que par
+ * la teinte n'est lisible ni au daltonisme ni au lecteur d'écran. La cause chiffrée, elle, vient
+ * du serveur (`resume`) — c'est la phrase du refus lui-même.
+ */
+export function pastille(niveau: NiveauPreparation): Pastille | null {
+  if (niveau === 'alerte') return { libelle: 'Ne peut pas démarrer', fort: true }
+  if (niveau === 'avertissement') return { libelle: 'À compléter', fort: false }
+  return null
 }

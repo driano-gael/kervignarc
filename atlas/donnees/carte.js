@@ -140,6 +140,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 3,
+    "feature": "jalons"
+   },
+   {
+    "clientes": 3,
     "feature": "palmares"
    },
    {
@@ -169,10 +173,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "grain-validation"
-   },
-   {
-    "clientes": 2,
-    "feature": "jalons"
    },
    {
     "clientes": 2,
@@ -2952,7 +2952,7 @@ window.ATLAS.carte = {
   }
  ],
  "resume": {
-  "aretes_front": 172,
+  "aretes_front": 173,
   "enchevetrements": 4,
   "features": 49,
   "imports": 920,

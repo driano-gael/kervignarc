@@ -835,6 +835,27 @@
   color: var(--danger);
 }
 
+/* La pastille de préparation d'une ligne de tournoi (E16US010, A02). Deux niveaux : « tout n'est
+   pas complet » et « impossible de lancer en l'état ». ⚠️ Les deux ambres de la charte, jamais le
+   rouge — sur l'anthracite il ne signale rien (`DV-03`, 2,55:1). Le mot porte l'information, la
+   couleur ne fait que l'escalader : une pastille lisible à la seule teinte ne l'est ni au
+   daltonisme ni au lecteur d'écran. */
+.badge-preparation {
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.badge-preparation--avertissement {
+  color: var(--danger);
+}
+
+.badge-preparation--alerte {
+  color: var(--danger-strong);
+}
+
 /* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
 .liste-postes {
   list-style: none;

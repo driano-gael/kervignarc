@@ -8,6 +8,9 @@
 
 import { useMemo, useState } from 'react'
 import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
+import type { ApercuJalon } from '../jalons/api'
+import { useApercusJalon } from '../jalons/hooks'
+import { PastillePreparation } from '../jalons/PastillePreparation'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -53,6 +56,15 @@ export function GestionTournois({
   // toujours faux, ces contrôles restent masqués. Le serveur reste l'autorité en dernier ressort.
   const estAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const tournois = useTournois()
+
+  // La pastille de préparation (E16US010, A02) : « voir d'avance ce qui bloque un lancement ».
+  // ⚠️ **La requête elle-même est gardée par `estAdmin`**, pas seulement son exploitation : sous
+  // la porte Public cette liste est rendue sans jeton, et l'appel partirait en 401 à chaque
+  // affichage. Une seule requête pour toute la liste — c'est le serveur qui agrège.
+  const apercus = useApercusJalon('demarrer', estAdmin)
+  const apercuParTournoi = new Map<number, ApercuJalon>(
+    (apercus.data ?? []).map((a) => [a.tournoi_id, a]),
+  )
 
   // Filtre par état (A04 : *« j'ajouterais également un filtre sur les états »*). Ensemble **vide au
   // départ** = tout est montré : un écran qui s'ouvre déjà filtré ferait chercher longtemps un
@@ -161,6 +173,7 @@ export function GestionTournois({
                 onChoisi={onChoisi}
                 ouvrir={ouvrir}
                 onOuvrir={onOuvrir}
+                apercu={apercuParTournoi.get(t.id)}
               />
             ))}
           </ul>
@@ -189,6 +202,7 @@ function LigneTournoi({
   onChoisi,
   ouvrir,
   onOuvrir,
+  apercu,
 }: {
   tournoi: Tournoi
   estAdmin: boolean
@@ -197,6 +211,7 @@ function LigneTournoi({
   onChoisi: (t: Tournoi) => void
   ouvrir: number | null
   onOuvrir?: (id: number | null) => void
+  apercu: ApercuJalon | undefined
 }) {
   const [edition, setEdition] = useOuvertureParAdresse(tournoi.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
@@ -223,6 +238,10 @@ function LigneTournoi({
           {tournoi.lieu ? ` · ${tournoi.lieu}` : ''} · {tournoi.type_tournoi.replace('_', ' ')}
         </button>
         <BadgeStatut statut={tournoi.statut} />
+        {/* « une pastille d'alerte si tout n'est pas complet ; alerte forte si impossible de
+            lancer en l'état » (A02). Elle vit **après** le statut : le statut dit où en est le
+            tournoi, la pastille ce qui l'empêche d'avancer — l'ordre est celui de la lecture. */}
+        <PastillePreparation apercu={apercu} />
         {/* « surtout si on est à la date prévue du tournoi » (A02) : l'ordre le fait déjà remonter,
             cette marque dit **pourquoi** il est là. Un mot et non une couleur seule (`DV-03`). */}
         {estAujourdhui(tournoi, aujourdhui) && (
