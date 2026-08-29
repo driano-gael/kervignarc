@@ -76,6 +76,8 @@ def test_un_archer_se_trouve_sans_accents(
         assert corps["total"] == 1
         assert corps["resultats"][0]["libelle"] == "Lévêque Jean"
         assert corps["resultats"][0]["entite"] == "archer"
+        # Le tournoi d'ouverture voyage : sans lui, le front ne sait pas où mène le résultat.
+        assert corps["resultats"][0]["tournoi_id"] is not None
 
 
 def test_les_trois_entites_repondent_sur_la_meme_route(

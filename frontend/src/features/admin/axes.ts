@@ -163,30 +163,65 @@ export function destinationParDefaut(axe: Axe): DestinationAdminId {
   return 'formats'
 }
 
-// Lecture et écriture de l'adresse admin : `/admin/<tournoi?>/<axe?>/<destination?>`.
+// Lecture et écriture de l'adresse admin : `/admin/<tournoi?>/<axe?>/<destination?>/<élément?>`.
 //
 // Le **tournoi est dans l'adresse** (E14US003) : sans lui, un `F5` ou un lien partagé restaurait
 // l'écran mais pas son sujet, et 21 des 24 destinations en dépendent. Il est placé **avant** l'axe
 // pour survivre au changement d'axe et se lire dans l'ordre naturel. Il est reconnu par sa
 // **forme** (suite de chiffres) : aucun axe ni aucune destination n'est numérique.
 
+// Le 4ᵉ segment — **l'élément que la destination ouvre** — vient d'E16US010 (ADR-0100) : un
+// résultat de recherche doit pouvoir dire « ouvre la fiche de l'archer 57 », et l'état d'ouverture
+// vivait en `useState` local à la ligne, hors d'atteinte. ⚠️ Il est **numérique** lui aussi, mais
+// sans ambiguïté avec le tournoi : celui-ci est en tête, l'élément en 4ᵉ position.
+
 export interface RouteAdmin {
   tournoiId: number | null
   axe: Axe | null
   destinationDemandee: string | null
+  /** L'élément que la destination doit ouvrir, ou `null` — voir ADR-0100. */
+  elementDemande: number | null
 }
 
 function estIdentifiant(segment: string | undefined): segment is string {
   return segment !== undefined && /^\d+$/.test(segment)
 }
 
+// Le mot qui dit « ouvre-la » sur l'accueil. `/admin/12` désigne le tournoi courant ; `/admin/12/
+// fiche` demande en plus d'ouvrir son formulaire. Non numérique, donc jamais confondu avec un axe.
+const SEGMENT_FICHE = 'fiche'
+
+/**
+ * L'élément que l'écran doit **ouvrir** — deux formes d'adresse, un seul sens (ADR-0100).
+ *
+ * Sous une destination, c'est le 4ᵉ segment. Sur l'accueil — qui n'a ni axe ni destination et où
+ * vit la liste des tournois — l'élément **est** le tournoi courant, d'où `SEGMENT_FICHE`.
+ * ⚠️ Sans écran pour l'ouvrir, l'adresse porterait un état que rien ne consomme.
+ */
+function elementOuvert(
+  tournoiId: number | null,
+  axe: Axe | null,
+  destination: string | null,
+  premier: string | undefined,
+  quatrieme: string | undefined,
+): number | null {
+  if (axe === null) return premier === SEGMENT_FICHE ? tournoiId : null
+  return destination !== null && estIdentifiant(quatrieme) ? Number(quatrieme) : null
+}
+
 /** Traduit les segments qui suivent `/admin` en route d'administration. */
 export function analyserSegmentsAdmin(segments: readonly string[]): RouteAdmin {
   const reste = [...segments]
   const tournoiId = estIdentifiant(reste[0]) ? Number(reste.shift()) : null
-  const [premier, second] = reste
+  const [premier, second, troisieme] = reste
   const axe = AXES.find((a) => a.axe === premier)?.axe ?? null
-  return { tournoiId, axe, destinationDemandee: axe === null ? null : (second ?? null) }
+  const destinationDemandee = axe === null ? null : (second ?? null)
+  return {
+    tournoiId,
+    axe,
+    destinationDemandee,
+    elementDemande: elementOuvert(tournoiId, axe, destinationDemandee, premier, troisieme),
+  }
 }
 
 /** Construit les segments d'une adresse d'administration. Réciproque d'`analyserSegmentsAdmin`. */
@@ -194,11 +229,18 @@ export function segmentsAdmin(
   tournoiId: number | null,
   axe: Axe | null,
   destination: DestinationAdminId | null,
+  element: number | null = null,
 ): string[] {
   const segments: string[] = []
   if (tournoiId !== null) segments.push(String(tournoiId))
-  if (axe !== null) segments.push(axe)
-  if (axe !== null && destination !== null) segments.push(destination)
+  // Accueil : l'élément **est** le tournoi, on ne le répète pas — on demande son ouverture.
+  if (axe === null) {
+    if (tournoiId !== null && element === tournoiId) segments.push(SEGMENT_FICHE)
+    return segments
+  }
+  segments.push(axe)
+  if (destination !== null) segments.push(destination)
+  if (destination !== null && element !== null) segments.push(String(element))
   return segments
 }
 

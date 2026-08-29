@@ -8,6 +8,7 @@
 // (ADR-0050), qui conserve ses résultats.
 
 import { useState } from 'react'
+import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
 import { ErreurApi } from '../../shared/api/client'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBlasons } from '../blasons/hooks'
@@ -17,7 +18,17 @@ import { InscriptionsArcher } from '../inscriptions/InscriptionsArcher'
 import type { Archer, ModifierArcher } from './api'
 import { useArchers, useDefinirHandicap, useModifierArcher, useSupprimerArcher } from './hooks'
 
-export function Archers({ tournoiId }: { tournoiId: number }) {
+export function Archers({
+  tournoiId,
+  ouvrir = null,
+  onOuvrir,
+}: {
+  tournoiId: number
+  // L'archer dont la fiche doit s'ouvrir — vient de l'adresse (E16US010, ADR-0100), donc d'un
+  // résultat de recherche aussi bien que d'un lien copié.
+  ouvrir?: number | null
+  onOuvrir?: (id: number | null) => void
+}) {
   const archers = useArchers(tournoiId)
 
   return (
@@ -32,7 +43,13 @@ export function Archers({ tournoiId }: { tournoiId: number }) {
       {archers.data && archers.data.length > 0 && (
         <ul className="liste-archers">
           {archers.data.map((archer) => (
-            <LigneArcher key={archer.id} archer={archer} tournoiId={tournoiId} />
+            <LigneArcher
+              key={archer.id}
+              archer={archer}
+              tournoiId={tournoiId}
+              ouvrir={ouvrir}
+              onOuvrir={onOuvrir}
+            />
           ))}
         </ul>
       )}
@@ -40,8 +57,18 @@ export function Archers({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function LigneArcher({ archer, tournoiId }: { archer: Archer; tournoiId: number }) {
-  const [edition, setEdition] = useState(false)
+function LigneArcher({
+  archer,
+  tournoiId,
+  ouvrir,
+  onOuvrir,
+}: {
+  archer: Archer
+  tournoiId: number
+  ouvrir: number | null
+  onOuvrir?: (id: number | null) => void
+}) {
+  const [edition, setEdition] = useOuvertureParAdresse(archer.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const [inscriptionsOuvertes, setInscriptionsOuvertes] = useState(false)
   const supprimer = useSupprimerArcher(tournoiId)

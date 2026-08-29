@@ -105,6 +105,7 @@ describe('analyserSegmentsAdmin', () => {
       tournoiId: null,
       axe: null,
       destinationDemandee: null,
+      elementDemande: null,
     })
   })
 
@@ -113,6 +114,7 @@ describe('analyserSegmentsAdmin', () => {
       tournoiId: null,
       axe: 'pilotage',
       destinationDemandee: null,
+      elementDemande: null,
     })
   })
 
@@ -121,6 +123,7 @@ describe('analyserSegmentsAdmin', () => {
       tournoiId: 12,
       axe: 'pilotage',
       destinationDemandee: 'supervision',
+      elementDemande: null,
     })
   })
 
@@ -131,11 +134,35 @@ describe('analyserSegmentsAdmin', () => {
     expect(analyserSegmentsAdmin(['7']).axe).toBeNull()
   })
 
+  it('CA E16US010 — un 4ᵉ segment nomme l’élément que la destination doit ouvrir', () => {
+    // Sans lui, un résultat de recherche ne peut rien dire de plus que « va sur cet écran » :
+    // l'état d'ouverture vivait en useState local à la ligne, hors d'atteinte (ADR-0100).
+    expect(analyserSegmentsAdmin(['12', 'gestion', 'inscriptions', '57']).elementDemande).toBe(57)
+  })
+
+  it('un élément SANS destination pour l’ouvrir est ignoré', () => {
+    // L'adresse porterait sinon un état que rien ne consomme.
+    expect(analyserSegmentsAdmin(['12', 'gestion', '57']).elementDemande).toBeNull()
+  })
+
+  it('sur l’accueil, « fiche » demande d’ouvrir le tournoi courant', () => {
+    // La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination : un 4ᵉ segment ne
+    // l'atteint pas. `/admin/12` dit « c'est celle-là », `/admin/12/fiche` dit « ouvre-la ».
+    expect(analyserSegmentsAdmin(['12', 'fiche']).elementDemande).toBe(12)
+    expect(analyserSegmentsAdmin(['12']).elementDemande).toBeNull()
+    expect(analyserSegmentsAdmin(['12', 'fiche']).axe).toBeNull()
+  })
+
+  it('« fiche » sans tournoi n’ouvre rien', () => {
+    expect(analyserSegmentsAdmin(['fiche']).elementDemande).toBeNull()
+  })
+
   it('un axe inconnu retombe sur l’accueil, pas sur une page vide', () => {
     expect(analyserSegmentsAdmin(['preparation', 'blasons'])).toEqual({
       tournoiId: null,
       axe: null,
       destinationDemandee: null,
+      elementDemande: null,
     })
   })
 })
@@ -155,6 +182,21 @@ describe('segmentsAdmin', () => {
       expect(relu.axe).toBe(axe)
       expect(relu.destinationDemandee).toBe(axe === null ? null : destination)
     }
+  })
+
+  it('l’élément ouvert fait l’aller-retour, sous ses deux formes', () => {
+    // Réciprocité : c'est elle qui garantit qu'un lien copié rouvre la même fiche après un F5.
+    expect(segmentsAdmin(12, 'gestion', 'inscriptions', 57)).toEqual([
+      '12',
+      'gestion',
+      'inscriptions',
+      '57',
+    ])
+    expect(
+      analyserSegmentsAdmin(segmentsAdmin(12, 'gestion', 'inscriptions', 57)).elementDemande,
+    ).toBe(57)
+    expect(segmentsAdmin(12, null, null, 12)).toEqual(['12', 'fiche'])
+    expect(analyserSegmentsAdmin(segmentsAdmin(12, null, null, 12)).elementDemande).toBe(12)
   })
 
   it('CA — le tournoi survit au changement d’écran et d’axe', () => {

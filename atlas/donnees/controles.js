@@ -89,7 +89,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "features-enchevetrees",
-   "message": "et 1 autre(s) feature(s) s'importent mutuellement (admin, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
+   "message": "et 2 autre(s) feature(s) s'importent mutuellement (admin, recherche, tournois) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
    "sujet": "admin"
   },

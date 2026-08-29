@@ -7,6 +7,7 @@
 // reste dans `competition/` : c'est un hub partagé qu'on ne déplace pas au titre de cette US.
 
 import { useMemo, useState } from 'react'
+import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
 import { useDeconnexionAdmin } from '../admin/hooks'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useSessionAdminStore } from '../../shared/stores/sessionAdminStore'
@@ -33,9 +34,16 @@ import {
 export function GestionTournois({
   selectionneId,
   onChoisi,
+  ouvrir = null,
+  onOuvrir,
 }: {
   selectionneId: number | null
   onChoisi: (t: Tournoi) => void
+  // ⚠️ **`ouvrir` n'est pas `selectionneId`** : sélectionner désigne le tournoi sur lequel on
+  // travaille, ouvrir déplie son formulaire d'édition (E16US010, ADR-0100). Les confondre ferait
+  // s'ouvrir une fiche à chaque fois qu'on change de tournoi courant.
+  ouvrir?: number | null
+  onOuvrir?: (id: number | null) => void
 }) {
   // `estAdmin` gouverne **l'affichage** des contrôles d'écriture (création, cycle de vie, édition,
   // suppression). Le **login** n'est plus ici : il vit dans `CoquilleAdmin` (porte Admin, E00US017).
@@ -151,6 +159,8 @@ export function GestionTournois({
                 selectionne={t.id === selectionneId}
                 aujourdhui={aujourdhui}
                 onChoisi={onChoisi}
+                ouvrir={ouvrir}
+                onOuvrir={onOuvrir}
               />
             ))}
           </ul>
@@ -177,14 +187,18 @@ function LigneTournoi({
   selectionne,
   aujourdhui,
   onChoisi,
+  ouvrir,
+  onOuvrir,
 }: {
   tournoi: Tournoi
   estAdmin: boolean
   selectionne: boolean
   aujourdhui: string
   onChoisi: (t: Tournoi) => void
+  ouvrir: number | null
+  onOuvrir?: (id: number | null) => void
 }) {
-  const [edition, setEdition] = useState(false)
+  const [edition, setEdition] = useOuvertureParAdresse(tournoi.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerTournoi()
 

@@ -45,6 +45,7 @@ window.ATLAS.carte = {
    ],
    [
     "admin",
+    "recherche",
     "tournois"
    ],
    [
@@ -87,10 +88,6 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 5,
-    "feature": "archers"
-   },
-   {
-    "clientes": 5,
     "feature": "clubs"
    },
    {
@@ -100,6 +97,10 @@ window.ATLAS.carte = {
    {
     "clientes": 5,
     "feature": "routage"
+   },
+   {
+    "clientes": 4,
+    "feature": "archers"
    },
    {
     "clientes": 4,
@@ -147,6 +148,10 @@ window.ATLAS.carte = {
    },
    {
     "clientes": 2,
+    "feature": "admin"
+   },
+   {
+    "clientes": 2,
     "feature": "bareme"
    },
    {
@@ -188,10 +193,6 @@ window.ATLAS.carte = {
    {
     "clientes": 2,
     "feature": "tournois"
-   },
-   {
-    "clientes": 1,
-    "feature": "admin"
    },
    {
     "clientes": 1,

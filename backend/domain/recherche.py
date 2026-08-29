@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from domain.club import cle_nom
+from domain.tournoi import TournoiId
 
 # Nombre de propositions rendues. ⚠️ Le total réel voyage à côté (`Recherche.total`) : une liste
 # tronquée en silence se lit « il n'y a que ça », et l'organisateur cesse de préciser sa saisie.
@@ -44,6 +45,13 @@ class ResultatRecherche:
     id: int
     libelle: str
     precision: str | None = None
+    tournoi_id: TournoiId | None = None
+    """Le tournoi **où ouvrir la fiche** — sans lui, un archer d'une autre édition est introuvable.
+
+    Vaut l'identifiant du tournoi pour un archer, le sien pour un tournoi, `None` pour un club
+    (référentiel global). ⚠️ Ce n'est pas de la décoration : `precision` porte le **nom** du
+    tournoi, qui se lit mais ne s'adresse pas.
+    """
 
 
 @dataclass(frozen=True)

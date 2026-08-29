@@ -6,11 +6,18 @@
 // quel — le message du serveur nomme le club déjà présent.
 
 import { useState } from 'react'
+import { useOuvertureParAdresse } from '../../shared/navigation/useOuvertureParAdresse'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Club, NouveauClub } from './api'
 import { useClubs, useCreerClub, useModifierClub, useSupprimerClub } from './hooks'
 
-export function Clubs() {
+export function Clubs({
+  ouvrir = null,
+  onOuvrir,
+}: {
+  ouvrir?: number | null
+  onOuvrir?: (id: number | null) => void
+} = {}) {
   const clubs = useClubs()
 
   return (
@@ -24,7 +31,7 @@ export function Clubs() {
       {clubs.data && clubs.data.length > 0 && (
         <ul className="liste-clubs">
           {clubs.data.map((club) => (
-            <LigneClub key={club.id} club={club} />
+            <LigneClub key={club.id} club={club} ouvrir={ouvrir} onOuvrir={onOuvrir} />
           ))}
         </ul>
       )}
@@ -32,8 +39,16 @@ export function Clubs() {
   )
 }
 
-function LigneClub({ club }: { club: Club }) {
-  const [edition, setEdition] = useState(false)
+function LigneClub({
+  club,
+  ouvrir,
+  onOuvrir,
+}: {
+  club: Club
+  ouvrir: number | null
+  onOuvrir?: (id: number | null) => void
+}) {
+  const [edition, setEdition] = useOuvertureParAdresse(club.id, ouvrir, onOuvrir)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerClub()
 

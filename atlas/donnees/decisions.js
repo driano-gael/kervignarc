@@ -8350,6 +8350,102 @@ window.ATLAS.decisions = {
     "E16US004",
     "E16US009"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-29",
+   "date_brute": "2026-08-29",
+   "extrait": "1. L'élément qu'un écran ouvre fait partie de son adresse. Le contrat d'adresse d'admin devient /admin/\u003ctournoi?>/\u003caxe?>/\u003cdestination?>/\u003célément?>. Le 4ᵉ segment est numérique ; il n'est jamais confondu avec le tournoi, qui est en tête. 2. Ouvrir n'est pas sélectionner. selectionneId désigne le tournoi sur lequel on travaille et se reconduit d'écran en écran ; l'élément ouvert déplie un formulaire et ne concerne que l'écran courant. Les confondre ferait s'ouvrir une fiche à chaque changement de tournoi courant. 3. Deux formes d'adresse, un seul sens. La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination : un 4ᵉ segment ne l'atteint pas. L'élément y est le tournoi courant, […]",
+   "fichier": "docs/adr/0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md",
+   "identifiant": "0100",
+   "liens": [
+    {
+     "cible": "E16US010",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0059",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0058",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "frontend/src/features/admin/CoquilleAdmin.tsx",
+     "existe": true,
+     "symboles": [
+      "SEGMENT_FICHE",
+      "elementOuvert",
+      "ouvrirFicheTournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/axes.test.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/admin/axes.ts",
+     "existe": true,
+     "symboles": [
+      "RouteAdmin.elementDemande",
+      "analyserSegmentsAdmin",
+      "segmentsAdmin",
+      "SEGMENT_FICHE",
+      "elementOuvert",
+      "ouvrirFicheTournoi"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/tournois/Tournois.tsx",
+     "existe": true,
+     "symboles": [
+      "GestionTournois",
+      "selectionneId",
+      "ouvrir"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/navigation/routeur.ts",
+     "existe": true,
+     "symboles": [
+      "segments"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/navigation/useOuvertureParAdresse.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Une destination d'admin porte, dans son adresse, l'élément qu'elle ouvre",
+   "us": [
+    "E16US010"
+   ]
   }
  ]
 };

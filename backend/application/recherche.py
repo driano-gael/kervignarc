@@ -61,6 +61,7 @@ class ServiceRecherche:
                 id=tournoi.id,
                 libelle=tournoi.nom,
                 precision=_precision_tournoi(tournoi),
+                tournoi_id=tournoi.id,
             )
             for tournoi in self._tournois.lister()
             if tournoi.id is not None and correspond(fragment, tournoi.nom, tournoi.lieu or "")
@@ -104,6 +105,7 @@ class ServiceRecherche:
                     precision=_precision_archer(
                         club, tournois.get(archer.tournoi_id) if tournoi_id is None else None
                     ),
+                    tournoi_id=archer.tournoi_id,
                 )
             )
         return resultats

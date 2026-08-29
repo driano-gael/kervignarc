@@ -29,6 +29,7 @@ class ResultatRechercheReponse(BaseModel):
     id: int
     libelle: str
     precision: str | None
+    tournoi_id: int | None
 
 
 class RechercheReponse(BaseModel):
@@ -57,6 +58,7 @@ def _de_resultat(resultat: ResultatRecherche) -> ResultatRechercheReponse:
         id=resultat.id,
         libelle=resultat.libelle,
         precision=resultat.precision,
+        tournoi_id=resultat.tournoi_id,
     )
 
 

@@ -122,6 +122,23 @@ def test_un_archer_sans_club_connu_reste_trouvable() -> None:
     assert recherche.resultats[0].precision == "Salle 18m"
 
 
+def test_chaque_resultat_dit_ou_ouvrir_sa_fiche() -> None:
+    """Le CA promet d'**ouvrir** la fiche : un archer d'une autre édition est sinon inatteignable.
+
+    ⚠️ Le nom du tournoi (`precision`) se lit mais ne s'adresse pas — d'où l'identifiant.
+    """
+    service, ids = _attelage()
+
+    archers = service.chercher(EntiteRecherchable.ARCHER, "leveque").resultats
+    tournois = service.chercher(EntiteRecherchable.TOURNOI, "salle").resultats
+    clubs = service.chercher(EntiteRecherchable.CLUB, "compagnie").resultats
+
+    assert {a.tournoi_id for a in archers} == {ids["salle"], ids["ancien"]}
+    assert all(t.tournoi_id == t.id for t in tournois)
+    # Un club est un référentiel **global** : aucune édition ne le porte.
+    assert clubs[0].tournoi_id is None
+
+
 def test_un_tournoi_se_trouve_par_son_nom_ou_son_lieu_et_sa_date_le_situe() -> None:
     """Deux éditions portent le même nom : c'est la date qui les sépare."""
     service, _ = _attelage()
