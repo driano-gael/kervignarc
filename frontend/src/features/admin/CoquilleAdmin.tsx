@@ -10,6 +10,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Accueil } from '../accueil/Accueil'
 import { Archers } from '../archers/Archers'
+import { FicheArcherPilotage } from '../archers/FicheArcherPilotage'
 import { Archive } from '../archive/Archive'
 import { NouvelArcher } from '../archers/NouvelArcher'
 import { BaremeQualification } from '../bareme/BaremeQualification'
@@ -57,6 +58,7 @@ import {
   AXES,
   BESOIN_TOURNOI,
   AXE_PAR_DESTINATION,
+  destinationDunArcher,
   analyserSegmentsAdmin,
   contextePilotage,
   destinationParDefaut,
@@ -159,12 +161,10 @@ function Coquille() {
   const ouvrirResultat = (r: ResultatRecherche) => {
     if (r.entite === 'tournoi') return ouvrirFicheTournoi(r.id)
     if (r.entite === 'club') return ouvreurDe('clubs')(r.id)
-    return allerA(
-      AXE_PAR_DESTINATION['inscriptions'],
-      'inscriptions',
-      r.tournoi_id ?? tournoiId,
-      r.id,
-    )
+    // ⚠️ La règle « deux destinations pour un archer » vit dans `axes.ts`, pure et testée : c'est
+    // du CA, et une décision enfouie dans un composant n'a aucun garde-fou.
+    const cible = destinationDunArcher(axeActif, tournoiId, r.tournoi_id)
+    return allerA(cible.axe, cible.destination, cible.tournoi, r.id)
   }
 
   // La liste des tournois vit sur l'accueil, qui n'a ni axe ni destination — d'où `/admin/12/fiche`.
@@ -342,6 +342,22 @@ function Coquille() {
               onOuvrir={ouvreurDe('inscriptions')}
             />
           </>
+        ),
+    },
+    {
+      id: 'archer',
+      libelle: 'Fiche d’un archer',
+      // Le pendant **pilotage** de la liste des inscrits : on y lit d'abord (catégorie, club, où
+      // il tire), on agit ensuite. On y arrive par la recherche (ADR-0100), pas par la sidebar —
+      // mais l'entrée reste listée, sans quoi la destination serait inatteignable au clavier.
+      rendu: () =>
+        courant && (
+          <FicheArcherPilotage
+            tournoiId={courant.id}
+            archerId={elementDemande}
+            onCorrigerLaFiche={(id) => ouvreurDe('inscriptions')(id)}
+            onModifierLePlacement={() => allerA(AXE_PAR_DESTINATION['placement'], 'placement')}
+          />
         ),
     },
     {

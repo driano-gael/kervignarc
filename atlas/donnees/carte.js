@@ -59,7 +59,7 @@ window.ATLAS.carte = {
     "feature": "competition"
    },
    {
-    "clientes": 17,
+    "clientes": 16,
     "feature": "departs"
    },
    {
@@ -79,12 +79,12 @@ window.ATLAS.carte = {
     "feature": "categories"
    },
    {
-    "clientes": 6,
-    "feature": "blasons"
+    "clientes": 7,
+    "feature": "placement"
    },
    {
     "clientes": 6,
-    "feature": "placement"
+    "feature": "blasons"
    },
    {
     "clientes": 5,

@@ -45,6 +45,7 @@ export type DestinationAdminId =
   | 'jeu-essai'
   | 'simulation'
   | 'feu-vert'
+  | 'archer'
 
 export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
   tournoi:
@@ -102,6 +103,10 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Créez les archers et inscrivez-les sur un ou plusieurs départs. L’inscription alimente les ' +
     'listes, le placement, le montant dû et, le jour J, la saisie des scores. Les fiches qui se ' +
     'ressemblent sont signalées sur leur ligne : dépliez-les pour fusionner les doublons.',
+  archer:
+    'La fiche d’un archer pendant le tournoi : sa catégorie, son club, et où il tire créneau par ' +
+    'créneau. On y arrive par la barre de recherche, et l’on peut de là corriger sa fiche ou ' +
+    'changer sa place.',
   placement:
     'Répartissez les archers inscrits sur les cibles et les couloirs de tir. Le plan peut être généré ' +
     'automatiquement puis ajusté au doigt (glisser-déposer) ; il détermine où chacun tire.',

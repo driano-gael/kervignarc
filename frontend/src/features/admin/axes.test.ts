@@ -7,6 +7,7 @@ import {
   contextePilotage,
   BESOIN_TOURNOI,
   analyserSegmentsAdmin,
+  destinationDunArcher,
   destinationParDefaut,
   destinationValide,
   segmentsAdmin,
@@ -15,19 +16,22 @@ import {
 import { AIDE_ECRANS, type DestinationAdminId } from './aide-ecrans'
 
 describe('répartition des destinations', () => {
-  it('CA — les 32 destinations livrées sont toutes rangées, aucune perdue', () => {
+  it('CA — les 33 destinations livrées sont toutes rangées, aucune perdue', () => {
     // Le risque n°1 d'E14US003 : des destinations réétiquetées à la main. Une entrée oubliée
     // disparaîtrait **silencieusement** de la sidebar (elle est filtrée par axe), sans que `tsc` ni
     // aucun autre test ne le voie. ⚠️ Ce garde-fou est tombé à l'ajout d'E16US012, et c'est
     // **exactement** ce qu'on lui demande : il n'y a aucun moyen de l'oublier, puisqu'une
     // destination ajoutée sans son entrée d'aide (ou sans son axe) le fait échouer avant
-    // d'atteindre la sidebar. ⚠️ Le compte a **baissé** en E16US010 : la destination « Doublons »
-    // a disparu, absorbée par la ligne d'archer. Une destination retirée doit l'être des trois
-    // tables à la fois — ce test est ce qui l'impose.
+    // d'atteindre la sidebar.
+
+    // ⚠️ E16US010 a **retiré** « Doublons » (absorbée par la ligne d'archer) et **ajouté**
+    // « archer » (la fiche du pilotage) : le compte revient à son point de départ par deux
+    // mouvements contraires. Une destination retirée doit l'être des trois tables à la fois, et
+    // c'est ce test qui l'impose.
     const rangees = Object.keys(AXE_PAR_DESTINATION)
     const toutes = Object.keys(AIDE_ECRANS)
-    expect(toutes).toHaveLength(32)
-    expect(rangees).toHaveLength(31)
+    expect(toutes).toHaveLength(33)
+    expect(rangees).toHaveLength(32)
     // La dernière est « tournoi » : elle n'appartient à aucun axe, c'est l'assemblage porté par
     // l'accueil.
     expect(toutes.filter((d) => !rangees.includes(d))).toEqual(['tournoi'])
@@ -252,5 +256,36 @@ describe('contextePilotage', () => {
     // `null` et non `''` : l'appelant n'a pas à distinguer « rien à dire » de « quelque chose à
     // dire, mais vide ».
     expect(contextePilotage(tournois)).toBeNull()
+  })
+})
+
+describe('destinationDunArcher', () => {
+  it('CA — en PILOTAGE, un archer du tournoi courant ouvre sa fiche « en consultation »', () => {
+    expect(destinationDunArcher('pilotage', 12, 12)).toEqual({
+      axe: 'pilotage',
+      destination: 'archer',
+      tournoi: 12,
+    })
+  })
+
+  it('CA — hors pilotage, il ouvre sa fiche « en modification »', () => {
+    // Négatif apparié au positif ci-dessus : c'est le MOMENT qui décide, pas l'entité.
+    expect(destinationDunArcher('gestion', 12, 12).destination).toBe('inscriptions')
+    expect(destinationDunArcher('atelier', 12, 12).destination).toBe('inscriptions')
+    expect(destinationDunArcher(null, 12, 12).destination).toBe('inscriptions')
+  })
+
+  it('un archer d’une AUTRE édition part à sa liste, dans SON tournoi', () => {
+    // La fiche de pilotage lit sa place et ses créneaux : sur un archer d'ailleurs elle serait
+    // vide, et le tournoi courant montrerait une fiche qui ne lui appartient pas.
+    expect(destinationDunArcher('pilotage', 12, 7)).toEqual({
+      axe: 'gestion',
+      destination: 'inscriptions',
+      tournoi: 7,
+    })
+  })
+
+  it('sans tournoi porté par le résultat, on retombe sur le tournoi courant', () => {
+    expect(destinationDunArcher('gestion', 12, null).tournoi).toBe(12)
   })
 })

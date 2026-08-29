@@ -81,6 +81,9 @@ export const AXE_PAR_DESTINATION: Record<Exclude<DestinationAdminId, 'tournoi'>,
   ecrans: 'pilotage',
   'suivi-deroule': 'pilotage',
   'feu-vert': 'pilotage',
+  // La fiche d'un archer **pendant** le tournoi (E16US010) : lecture d'abord, action ensuite —
+  // c'est du pilotage, pas de la gestion, qui ouvre un formulaire d'emblée.
+  archer: 'pilotage',
   // Les deux membres livrés de la famille « prêt à… » (E16US012) sont **voisins** dans la
   // sidebar : c'est leur adjacence qui les fait lire comme une famille plutôt que comme deux
   // écrans qui se ressemblent.
@@ -131,6 +134,7 @@ export const BESOIN_TOURNOI: Record<Exclude<DestinationAdminId, 'tournoi'>, bool
   ecrans: true,
   'suivi-deroule': true,
   'feu-vert': true,
+  archer: true,
   'pret-demarrer': true,
   completude: true,
   classement: true,
@@ -275,4 +279,27 @@ export function contextePilotage(
 ): string | null {
   const enCours = tournoisEnCours(tournois)
   return enCours.length === 0 ? null : enCours.map((t) => t.nom).join(' · ')
+}
+
+/**
+ * Où mène un **archer** trouvé par la recherche (CA E16US010) — pure, donc testable sans rendu.
+ *
+ * Deux destinations pour une entité : en pilotage la fiche **en consultation**, ailleurs la fiche
+ * **en modification**. ⚠️ C'est le **moment** qui décide, pas l'entité. ⚠️ La fiche de pilotage
+ * lit la place et les créneaux : un archer d'une autre édition part donc à sa liste d'inscrits,
+ * dans SON tournoi.
+ */
+export function destinationDunArcher(
+  axeCourant: Axe | null,
+  tournoiCourant: number | null,
+  tournoiDeLArcher: number | null,
+): { axe: Axe; destination: DestinationAdminId; tournoi: number | null } {
+  if (axeCourant === 'pilotage' && tournoiDeLArcher === tournoiCourant) {
+    return { axe: 'pilotage', destination: 'archer', tournoi: tournoiCourant }
+  }
+  return {
+    axe: AXE_PAR_DESTINATION['inscriptions'],
+    destination: 'inscriptions',
+    tournoi: tournoiDeLArcher ?? tournoiCourant,
+  }
 }
