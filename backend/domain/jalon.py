@@ -112,6 +112,57 @@ class PreparationJalon:
     moment: str | None = None
 
 
+class NiveauPreparation(str, Enum):
+    """Les deux niveaux de pastille du CA d'E16US010, plus l'absence de pastille.
+
+    `AVERTISSEMENT` = « tout n'est pas complet » ; `ALERTE` = « impossible de lancer en l'état »
+    (questionnaire A02). ⚠️ Deux niveaux **et pas trois** : `EtatSection` en a quatre, mais c'est
+    l'état d'une *ligne* — ici on résume une préparation entière pour une ligne de liste.
+    """
+
+    AUCUN = "aucun"
+    AVERTISSEMENT = "avertissement"
+    ALERTE = "alerte"
+
+
+# Les états de ligne qui comptent comme un **manque**. ⚠️ `A_VENIR` n'en est pas un : il marque un
+# séquencement de l'appli (`domain.completude`), et le compter rendrait la pastille inextinguible.
+_ETATS_EN_MANQUE = frozenset({EtatSection.ALERTE, EtatSection.EN_ATTENTE})
+
+
+def niveau_de_preparation(preparation: PreparationJalon) -> NiveauPreparation:
+    """Résume une préparation en un niveau d'alerte, pour une **ligne de liste** (E16US010).
+
+    ⚠️ **Dérivé, jamais recalculé** : aucune garde n'est relue ici, sinon la liste et l'écran du
+    jalon finiraient par se contredire — c'est ce que le CA d'E16US012 interdit. ⚠️ `pret` seul ne
+    suffit pas : il vaut `False` sur un tournoi déjà lancé, qui ne doit porter **aucune** pastille.
+    C'est `question_posee` qui dit si la question a encore un objet.
+    """
+    if not preparation.question_posee:
+        return NiveauPreparation.AUCUN
+    if not preparation.pret:
+        return NiveauPreparation.ALERTE if preparation.bloquant else NiveauPreparation.AVERTISSEMENT
+    if any(ligne.etat in _ETATS_EN_MANQUE for ligne in preparation.lignes):
+        return NiveauPreparation.AVERTISSEMENT
+    return NiveauPreparation.AUCUN
+
+
+def resume_du_manque(preparation: PreparationJalon) -> str | None:
+    """Ce que la pastille dit quand on la survole — `None` si elle ne s'allume pas.
+
+    `D-16` : « une alerte qui ne chiffre pas son impact est un clic de plus, pas une protection ».
+    ⚠️ **Rédigé ici, jamais au front** — même raison que la question du jalon : une seconde table
+    de libellés finirait par contredire celle du refus. La phrase du refus prime quand elle existe,
+    parce qu'elle est déjà **celle que le serveur opposera** au clic.
+    """
+    if niveau_de_preparation(preparation) is NiveauPreparation.AUCUN:
+        return None
+    if preparation.detail is not None:
+        return preparation.detail
+    restants = [ligne.libelle for ligne in preparation.lignes if ligne.etat in _ETATS_EN_MANQUE]
+    return f"Il reste à préparer : {', '.join(restants)}." if restants else None
+
+
 def evaluer_demarrer(
     *,
     statut: StatutTournoi,
@@ -131,17 +182,7 @@ def evaluer_demarrer(
     clic — d'où `moment`.
     """
     if not transition_offerte(statut, Jalon.DEMARRER):
-        # **Aucune ligne** : « ce qui manque » n'a pas de sens pour un tournoi qui ne partira plus.
-        # Les rendre quand même — ce que faisait la 1ʳᵉ correction, contre sa propre docstring —
-        # obligeait le front à les masquer lui-même, donc à recopier la garde (axes B et D).
-        return PreparationJalon(
-            jalon=Jalon.DEMARRER,
-            lignes=(),
-            pret=False,
-            bloquant=True,
-            question_posee=False,
-            detail=_pourquoi_plus_a_lancer(statut),
-        )
+        return demarrer_sans_objet(statut)
 
     etat_creneaux = EtatSection.OK if nb_creneaux > 0 else EtatSection.EN_ATTENTE
     etat_effectif = _etat_effectif(effectif_suffisant, minimum)
@@ -168,6 +209,25 @@ def evaluer_demarrer(
         question_posee=True,
         detail=_cause_demarrer(creneaux_ok, effectif_suffisant, cause_effectif),
         moment=_moment_du_refus(creneaux_ok, effectif_suffisant),
+    )
+
+
+def demarrer_sans_objet(statut: StatutTournoi) -> PreparationJalon:
+    """La réponse de « prêt à démarrer ? » pour un tournoi qui ne partira plus.
+
+    **Aucune ligne** : « ce qui manque » n'a pas de sens ici. Les rendre quand même obligeait le
+    front à les masquer lui-même, donc à recopier la garde (E16US012, axes B et D).
+    ⚠️ **Publique depuis E16US010** : l'agrégat de liste s'en sert pour trancher un tournoi *sans
+    lire ses créneaux ni son effectif* — il n'y a rien à préparer, donc rien à aller chercher.
+    C'est la **même** réponse que par le chemin complet ; ne pas en écrire une seconde ici.
+    """
+    return PreparationJalon(
+        jalon=Jalon.DEMARRER,
+        lignes=(),
+        pret=False,
+        bloquant=True,
+        question_posee=False,
+        detail=_pourquoi_plus_a_lancer(statut),
     )
 
 

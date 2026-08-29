@@ -13,10 +13,15 @@ from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
 from api.v1.completude import LigneCompletudeReponse
-from application.jalons import ServiceJalons
+from application.jalons import ApercuPreparation, ServiceJalons
 from domain.jalon import Jalon, PreparationJalon, question
 
 router = APIRouter(prefix="/api/v1/tournois/{tournoi_id}", tags=["jalons"])
+
+# Second router : l'aperçu porte sur la **collection**, pas sur un tournoi — d'où un préfixe sans
+# `{tournoi_id}`. Aucune ambiguïté de résolution : les deux chemins n'ont pas le même nombre de
+# segments, et `{tournoi_id}` est typé `int`.
+router_liste = APIRouter(prefix="/api/v1/tournois", tags=["jalons"])
 
 
 class PreparationJalonReponse(BaseModel):
@@ -72,3 +77,42 @@ async def preparation_jalon(
     service: ServiceJalons = request.app.state.service_jalons
     preparation = await run_in_threadpool(service.preparation, tournoi_id, jalon)
     return PreparationJalonReponse.de_preparation(preparation)
+
+
+class ApercuJalonReponse(BaseModel):
+    """Un jalon résumé pour **une ligne de liste** : de quoi allumer une pastille, rien de plus.
+
+    ⚠️ Ce n'est pas une `PreparationJalonReponse` allégée mais un **autre** contrat : pas de
+    `lignes`, pas de `pret`. Le front qui veut le détail ouvre l'écran du jalon. `niveau` vaut
+    `aucun` | `avertissement` | `alerte` ; `resume` est `null` exactement quand le niveau est
+    `aucun` — la pastille éteinte n'a rien à dire.
+    """
+
+    tournoi_id: int
+    niveau: str
+    resume: str | None
+
+    @staticmethod
+    def de_apercu(apercu: ApercuPreparation) -> ApercuJalonReponse:
+        """Traduit l'aperçu du service en DTO de réponse."""
+        return ApercuJalonReponse(
+            tournoi_id=apercu.tournoi_id, niveau=apercu.niveau.value, resume=apercu.resume
+        )
+
+
+@router_liste.get(
+    "/jalons/{jalon}",
+    response_model=list[ApercuJalonReponse],
+    dependencies=[Depends(exiger_admin)],
+)
+async def apercus_jalon(jalon: Jalon, request: Request) -> list[ApercuJalonReponse]:
+    """Le même jalon sur tous les tournois (**admin**) — la pastille de la liste (E16US010).
+
+    `404` si le membre n'a pas d'aperçu instruit (seul *démarrer* en a un) ; `400` si le segment
+    n'est pas un membre de la famille. ⚠️ **Une requête pour toute la liste** : c'est la raison
+    d'être de la route, la complétude étant par ailleurs une lecture par tournoi.
+    Lecture pure : hors file d'écriture, dans le threadpool.
+    """
+    service: ServiceJalons = request.app.state.service_jalons
+    apercus = await run_in_threadpool(service.apercus, jalon)
+    return [ApercuJalonReponse.de_apercu(apercu) for apercu in apercus]

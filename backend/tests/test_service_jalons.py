@@ -28,8 +28,16 @@ from application.jalons import ServiceJalons
 from application.tournois import ServiceTournois
 from domain.completude import Completude, EtatSection, evaluer_completude
 from domain.depart import Depart
-from domain.jalon import CLE_CRENEAUX, CLE_DEROULE, CLE_EFFECTIF, Jalon
-from domain.tournoi import StatutTournoi, TournoiId
+from domain.jalon import (
+    CLE_CRENEAUX,
+    CLE_DEROULE,
+    CLE_EFFECTIF,
+    Jalon,
+    NiveauPreparation,
+    niveau_de_preparation,
+    resume_du_manque,
+)
+from domain.tournoi import MESSAGE_SANS_DEPART, StatutTournoi, TournoiId
 from tests.conftest import (
     DATE_TOURNOI,
     FauxCompteurEngages,
@@ -398,3 +406,59 @@ def test_l_existence_du_tournoi_prime_sur_le_membre_non_instruit() -> None:
 
     with pytest.raises(TournoiIntrouvable):
         jalons.preparation(9999, Jalon.EXPORTER)
+
+
+# --- Aperçu de liste (E16US010) -----------------------------------------------------------------
+
+
+def test_l_apercu_de_liste_dit_de_chaque_tournoi_ce_que_son_ecran_dirait() -> None:
+    """**Le garde-fou de la pastille** : la liste et l'écran ne peuvent pas diverger.
+
+    C'est le même contrat que le test de cohérence ci-dessus, d'un cran plus haut : la liste
+    n'ouvre aucun second chemin de calcul, elle résume celui du jalon. Sans ce test, une pastille
+    « rien à signaler » pourrait coexister avec un écran « impossible à lancer ».
+    """
+    jalons, tournois, tid = _attelage(avec_creneau=False)
+    autre = tournois.creer("Autre", DATE_TOURNOI)
+    assert autre.id is not None
+
+    apercus = {apercu.tournoi_id: apercu for apercu in jalons.apercus(Jalon.DEMARRER)}
+
+    assert set(apercus) == {tid, autre.id}
+    for tournoi_id, apercu in apercus.items():
+        preparation = jalons.preparation(tournoi_id, Jalon.DEMARRER)
+        assert apercu.niveau is niveau_de_preparation(preparation), tournoi_id
+        assert apercu.resume == resume_du_manque(preparation), tournoi_id
+
+
+def test_un_tournoi_sans_creneau_est_pastille_en_alerte_forte() -> None:
+    """Le cas que le questionnaire A02 nomme : « impossible de lancer en l'état »."""
+    jalons, _, tid = _attelage(avec_creneau=False)
+
+    apercu = next(a for a in jalons.apercus(Jalon.DEMARRER) if a.tournoi_id == tid)
+
+    assert apercu.niveau is NiveauPreparation.ALERTE
+    assert apercu.resume == MESSAGE_SANS_DEPART
+
+
+def test_un_tournoi_lance_sort_de_la_liste_des_alertes() -> None:
+    """Et il en sort **sans qu'on lise ses créneaux** : il n'y a plus rien à préparer.
+
+    ⚠️ Le raccourci de `apercus` ne doit pas changer la réponse — c'est ce que ce test tient.
+    """
+    jalons, tournois, tid = _attelage(inscrits=40, avec_creneau=True)
+    _amener_a(tournois, tid, StatutTournoi.EN_COURS)
+
+    apercu = next(a for a in jalons.apercus(Jalon.DEMARRER) if a.tournoi_id == tid)
+
+    assert apercu.niveau is NiveauPreparation.AUCUN
+    assert apercu.resume is None
+
+
+@pytest.mark.parametrize("jalon", [Jalon.TERMINER, Jalon.ARCHIVER, Jalon.EXPORTER])
+def test_l_apercu_de_liste_n_est_instruit_que_pour_demarrer(jalon: Jalon) -> None:
+    """Un refus explicite plutôt qu'une liste vide, qui se lirait « aucune alerte »."""
+    jalons, _, _ = _attelage()
+
+    with pytest.raises(JalonNonInstruit):
+        jalons.apercus(jalon)

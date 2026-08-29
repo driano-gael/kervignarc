@@ -201,3 +201,59 @@ def test_un_tournoi_inconnu_rend_404(app_session: FastAPI, connecter_admin: Conn
     with TestClient(app_session) as client:
         connecter_admin(client)
         assert client.get("/api/v1/tournois/9999/jalons/demarrer").status_code == 404
+
+
+# --- Aperçu de liste (E16US010) -----------------------------------------------------------------
+
+
+def test_l_apercu_rend_un_niveau_par_tournoi_en_une_requete(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La pastille de la liste : deux tournois, deux niveaux, **un** appel.
+
+    Le premier n'a pas de créneau (« impossible à lancer »), le second est lancé (plus rien à
+    préparer). Les deux niveaux du CA se lisent donc dans la même réponse.
+    """
+    with TestClient(app_session) as client:
+        bloque = _creer_tournoi(client, connecter_admin)
+        # La session admin est déjà ouverte : `_creer_tournoi` la rouvrirait, et `configurer`
+        # refuse un second réglage (409).
+        cree = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-03-15"})
+        assert cree.status_code == 201, cree.text
+        lance = int(cree.json()["id"])
+        _lancer(client, lance)
+
+        reponse = client.get("/api/v1/tournois/jalons/demarrer")
+
+        assert reponse.status_code == 200, reponse.text
+        niveaux = {ligne["tournoi_id"]: ligne for ligne in reponse.json()}
+        assert niveaux[bloque]["niveau"] == "alerte"
+        assert niveaux[bloque]["resume"]
+        assert niveaux[lance]["niveau"] == "aucun"
+        assert niveaux[lance]["resume"] is None
+
+
+def test_l_apercu_de_liste_est_reserve_a_l_admin(app_session: FastAPI) -> None:
+    """Même garde que l'écran du jalon : la préparation d'un tournoi n'est pas publique."""
+    with TestClient(app_session) as client:
+        assert client.get("/api/v1/tournois/jalons/demarrer").status_code == 401
+
+
+def test_l_apercu_d_un_membre_sans_liste_rend_404(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """« Terminer » a un écran mais pas d'aperçu de liste — un 404, pas une liste vide."""
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        assert client.get("/api/v1/tournois/jalons/terminer").status_code == 404
+
+
+def test_un_segment_hors_famille_rend_400_sur_l_apercu(
+    app_session: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le type de chemin `Jalon` couvre l'aperçu comme il couvre l'écran."""
+    with TestClient(app_session) as client:
+        connecter_admin(client)
+
+        assert client.get("/api/v1/tournois/jalons/deployer").status_code == 400
