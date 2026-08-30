@@ -93,7 +93,7 @@ describe("l'écran rend ce que le catalogue annonce", () => {
     // ⚠️ Portée à la section : « Télécharger (CSV (tableur)) » existe aussi sous club & paiement.
     const placement = await screen.findByRole('heading', { name: 'Liste de placement' })
     const section = placement.closest('section')!
-    await userEvent.click(section.querySelectorAll('button')[1])
+    await userEvent.click(section.querySelectorAll('button')[1]!)
 
     expect(telechargerExport).toHaveBeenCalledWith(
       '/api/v1/tournois/7/listes/placement?tri=cible',
@@ -133,7 +133,7 @@ describe('commandes propres à un document', () => {
 
     const placement = await screen.findByRole('heading', { name: 'Liste de placement' })
     const section = placement.closest('section')!
-    await userEvent.selectOptions(section.querySelectorAll('select')[0], 'nom')
+    await userEvent.selectOptions(section.querySelectorAll('select')[0]!, 'nom')
     await userEvent.click(section.querySelector('button')!)
 
     expect(telechargerExport).toHaveBeenCalledWith(
