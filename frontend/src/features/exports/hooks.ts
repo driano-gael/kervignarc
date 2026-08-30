@@ -1,20 +1,35 @@
-// Hooks React Query de la feature « exports » (E09US003).
+// Hooks React Query de la feature « exports » (E09US003, catalogue E16US007).
 //
-// Un téléchargement n'est pas de l'état serveur à mettre en cache : c'est une **action** ponctuelle
-// → `useMutation` (pas `useQuery`, qui déclencherait un fetch automatique et mettrait le PDF en
-// cache). `isPending` désactive le bouton pendant la génération ; `error` alimente `MessageErreur`.
+// Le **catalogue** est de l'état serveur en lecture → `useQuery`. Un **téléchargement** est une
+// action ponctuelle → `useMutation` (pas de cache : `useQuery` déclencherait un fetch automatique
+// et garderait le document en mémoire). `isPending` désactive le bouton, `error` alimente
+// `MessageErreur`.
 
-import { useMutation } from '@tanstack/react-query'
-import { type OptionsPlacement, telechargerClubPaiement, telechargerPlacement } from './api'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { chargerCatalogueExports, telechargerExport } from './api'
 
-export function useTelechargerPlacement(tournoiId: number) {
-  return useMutation({
-    mutationFn: (options: OptionsPlacement) => telechargerPlacement(tournoiId, options),
+export function useCatalogueExports() {
+  return useQuery({
+    queryKey: ['catalogue-exports'],
+    // Le catalogue ne dépend d'aucun tournoi et ne change qu'au redémarrage du serveur : inutile de
+    // le recharger à chaque retour sur l'écran.
+    staleTime: Number.POSITIVE_INFINITY,
+    queryFn: chargerCatalogueExports,
   })
 }
 
-export function useTelechargerClubPaiement(tournoiId: number) {
+export interface DemandeExport {
+  chemin: string
+  nomSansExtension: string
+  format: string
+}
+
+// ⚠️ **Un hook par section rendue**, pas un pour l'écran : une mutation partagée désactiverait
+// les boutons de tous les documents pendant la génération d'un seul, et afficherait son erreur
+// sous chacun d'eux.
+export function useTelechargerExport() {
   return useMutation({
-    mutationFn: () => telechargerClubPaiement(tournoiId),
+    mutationFn: (demande: DemandeExport) =>
+      telechargerExport(demande.chemin, demande.nomSansExtension, demande.format),
   })
 }

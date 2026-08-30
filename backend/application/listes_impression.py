@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
+from application.exports import FormatExport, RegistreDeFormats
 from application.paiements import RecapClub
 from domain.archer import ArcherId
 from domain.depart import Depart, DepartId
@@ -61,7 +62,7 @@ class ServiceListesImpression:
         archers: ArcherRepository,
         categories: CategorieRepository,
         paiements: LecteurRecapClub,
-        generateur: GenerateurListesImpression,
+        generateurs: RegistreDeFormats[GenerateurListesImpression],
     ) -> None:
         self._tournois = tournois
         self._departs = departs
@@ -70,7 +71,12 @@ class ServiceListesImpression:
         self._archers = archers
         self._categories = categories
         self._paiements = paiements
-        self._generateur = generateur
+        self._generateurs = generateurs
+
+    @property
+    def formats_disponibles(self) -> tuple[FormatExport, ...]:
+        """Formats que ce service sait produire — ce que le catalogue publie (ADR-0101 §3)."""
+        return self._generateurs.formats
 
     # --- Liste de placement ------------------------------------------------------------------
 
@@ -79,13 +85,15 @@ class ServiceListesImpression:
         tournoi_id: TournoiId,
         depart_id: DepartId | None = None,
         tri: TriPlacement = TriPlacement.CIBLE,
+        format_: FormatExport = FormatExport.PDF,
     ) -> bytes:
-        """Rend en PDF la liste de placement du tournoi (ou d'un seul départ si `depart_id`).
+        """Rend la liste de placement du tournoi (ou d'un seul départ si `depart_id`).
 
         Lève `TournoiIntrouvable` si le tournoi n'existe pas, `DepartIntrouvable` si `depart_id` ne
         désigne pas un départ **de ce tournoi** (même contrat que la feuille de marque). Seuls les
         archers **placés** figurent (la réserve ne tire pas) ; l'ordre suit `tri` (par cible =
         départ/cible/position, ordre physique ; par nom = nom/prénom, casse repliée).
+        ⚠️ `format_` retombe sur le PDF : les appelants d'avant E16US007 n'en passent aucun.
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
@@ -130,7 +138,7 @@ class ServiceListesImpression:
             tri=tri,
             lignes=tuple(lignes),
         )
-        return self._generateur.placement(liste)
+        return self._generateurs.pour(format_).placement(liste)
 
     def _ligne_placement(
         self, affectation: Affectation, depart_numero: int
@@ -160,8 +168,10 @@ class ServiceListesImpression:
 
     # --- Liste club & paiement ---------------------------------------------------------------
 
-    def generer_club_paiement(self, tournoi_id: TournoiId) -> bytes:
-        """Rend en PDF la liste club & paiement du tournoi (un bloc par club, avec totaux).
+    def generer_club_paiement(
+        self, tournoi_id: TournoiId, format_: FormatExport = FormatExport.PDF
+    ) -> bytes:
+        """Rend la liste club & paiement du tournoi (un bloc par club, avec totaux).
 
         Lève `TournoiIntrouvable` (via `recap_par_club`) si le tournoi n'existe pas. La vue porte
         sur **tout le tournoi** : un dû d'archer additionne ses départs, un filtre par départ n'y a
@@ -195,7 +205,7 @@ class ServiceListesImpression:
             for recap_club in recaps
         ]
         liste = ListeClubPaiement(tournoi=tournoi.nom, groupes=tuple(groupes))
-        return self._generateur.club_paiement(liste)
+        return self._generateurs.pour(format_).club_paiement(liste)
 
     def _departs_de_l_archer(
         self, archer_id: ArcherId, numeros: dict[DepartId, int]

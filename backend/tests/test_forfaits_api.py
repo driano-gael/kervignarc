@@ -17,6 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from application.forfaits import AUTEUR_ADMIN
 from bootstrap.composition import create_app
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -312,11 +313,16 @@ def test_forfait_duel_refuse_sans_aucune_identite(app_forfaits: FastAPI) -> None
         assert reponse.status_code == 401, reponse.text
 
 
-def test_forfait_qualification_reste_ferme_a_l_admin(
+def test_forfait_qualification_ouvert_a_l_admin(
     app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """L'élargissement est **borné aux duels** : la qualification reste au scoreur seul, faute
-    d'écran admin qui le demande (E16US008 — on n'ouvre pas une autorisation sans appelant)."""
+    """La qualification accepte l'admin depuis le 30/08/2026 (décision du commanditaire).
+
+    ⚠️ Ce test **remplace** son inverse, qui épinglait la borne d'E16US008 (« l'élargissement est
+    borné aux duels, faute d'écran admin qui le demande »). L'écran existe désormais — la fiche
+    d'archer du pilotage —, donc la borne tombe. La **trace** reste le point à garder : un forfait
+    déclaré par l'organisateur s'inscrit au nom du rôle admin, jamais d'un scoreur (`DETTE-017`).
+    """
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         connecter_admin(client)
@@ -324,6 +330,26 @@ def test_forfait_qualification_reste_ferme_a_l_admin(
             "/api/v1/forfaits/qualification",
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
         )
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["declare_par"] == AUTEUR_ADMIN
+
+        annulation = client.post(
+            "/api/v1/forfaits/qualification/annulation",
+            json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0]},
+        )
+        assert annulation.status_code == 200, annulation.text
+
+
+def test_forfait_qualification_refuse_sans_session(app_forfaits: FastAPI) -> None:
+    """Élargir n'est pas ouvrir : sans aucune identité, la route reste fermée (401)."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        reponse = client.post(
+            "/api/v1/forfaits/qualification",
+            json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
+        )
+
         assert reponse.status_code == 401, reponse.text
 
 

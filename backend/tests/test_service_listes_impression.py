@@ -26,7 +26,12 @@ import datetime
 
 import pytest
 
-from application.erreurs import DepartIntrouvable, TournoiIntrouvable
+from application.erreurs import (
+    DepartIntrouvable,
+    FormatExportIndisponible,
+    TournoiIntrouvable,
+)
+from application.exports import FormatExport, RegistreDeFormats
 from application.listes_impression import ServiceListesImpression
 from application.paiements import ServicePaiements
 from domain.archer import Archer
@@ -103,17 +108,20 @@ class FauxGenerateur:
     SENTINELLE_PLACEMENT = b"%PDF-placement"
     SENTINELLE_CLUB = b"%PDF-club-paiement"
 
-    def __init__(self) -> None:
+    def __init__(self, marque: bytes = b"") -> None:
+        # `marque` distingue deux générateurs du **même** document (E16US007) : sans elle, un test
+        # de format vert prouverait seulement qu'un générateur a répondu, pas lequel.
+        self.marque = marque
         self.placement_capture: ListePlacement | None = None
         self.club_capture: ListeClubPaiement | None = None
 
     def placement(self, liste: ListePlacement) -> bytes:
         self.placement_capture = liste
-        return self.SENTINELLE_PLACEMENT
+        return self.SENTINELLE_PLACEMENT + self.marque
 
     def club_paiement(self, liste: ListeClubPaiement) -> bytes:
         self.club_capture = liste
-        return self.SENTINELLE_CLUB
+        return self.SENTINELLE_CLUB + self.marque
 
 
 # --- Décor ---------------------------------------------------------------------------------------
@@ -123,6 +131,7 @@ class FauxGenerateur:
 class _Monde:
     service: ServiceListesImpression
     generateur: FauxGenerateur
+    generateur_csv: FauxGenerateur
     tournois: FauxTournoiRepository
     departs: FauxDepartRepository
     clubs: FauxClubRepository
@@ -177,7 +186,12 @@ class _Monde:
         )
 
 
-def _monde(*, numeros_departs: tuple[int, ...] = (1,), tarif_centimes: int = 800) -> _Monde:
+def _monde(
+    *,
+    numeros_departs: tuple[int, ...] = (1,),
+    tarif_centimes: int = 800,
+    formats: tuple[FormatExport, ...] = (FormatExport.PDF, FormatExport.CSV),
+) -> _Monde:
     """Un tournoi peuplé d'une catégorie et de `numeros_departs` créneaux, prêt à recevoir."""
     tournois = FauxTournoiRepository()
     departs = FauxDepartRepository()
@@ -187,6 +201,7 @@ def _monde(*, numeros_departs: tuple[int, ...] = (1,), tarif_centimes: int = 800
     inscriptions = FauxInscriptionRepository()
     placements = FauxPlacementRepository()
     generateur = FauxGenerateur()
+    generateur_csv = FauxGenerateur(marque=b"-csv")
 
     tournoi = tournois.ajouter(Tournoi.creer("Tournoi Test", datetime.date(2026, 1, 18)))
     assert tournoi.id is not None
@@ -202,11 +217,24 @@ def _monde(*, numeros_departs: tuple[int, ...] = (1,), tarif_centimes: int = 800
 
     paiements = ServicePaiements(tournois, archers, departs, inscriptions, clubs, FauxHorloge())
     service = ServiceListesImpression(
-        tournois, departs, placements, inscriptions, archers, categories, paiements, generateur
+        tournois,
+        departs,
+        placements,
+        inscriptions,
+        archers,
+        categories,
+        paiements,
+        RegistreDeFormats(
+            {
+                format_: generateur if format_ is FormatExport.PDF else generateur_csv
+                for format_ in formats
+            }
+        ),
     )
     return _Monde(
         service=service,
         generateur=generateur,
+        generateur_csv=generateur_csv,
         tournois=tournois,
         departs=departs,
         clubs=clubs,
@@ -441,3 +469,74 @@ def test_club_paiement_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     monde = _monde()
     with pytest.raises(TournoiIntrouvable):
         monde.service.generer_club_paiement(9999)
+
+
+# --- Format demandé (E16US007) --------------------------------------------------------------------
+#
+# CA « chaque export propose ses formats disponibles ». Le service ne rend pas un format : il
+# délègue au générateur **câblé** pour ce format. Les deux faux générateurs du décor ne diffèrent
+# que par leur marque — un test vert prouve donc *lequel* a répondu, pas seulement qu'un a répondu.
+
+
+def test_le_placement_part_au_generateur_du_format_demande() -> None:
+    monde = _monde()
+    monde.placer("Durand", "Marie", numero_depart=1, cible_index=1, position="A")
+
+    octets = monde.service.generer_placement(monde.tournoi_id, format_=FormatExport.CSV)
+
+    assert octets == FauxGenerateur.SENTINELLE_PLACEMENT + b"-csv"
+    assert monde.generateur_csv.placement_capture is not None
+    # ⚠️ Le générateur PDF n'a **pas** été sollicité : le format choisit, il ne s'ajoute pas.
+    assert monde.generateur.placement_capture is None
+
+
+def test_la_liste_club_paiement_part_au_generateur_du_format_demande() -> None:
+    monde = _monde()
+    monde.inscrire("Durand", "Marie", numero_depart=1, club_id=monde.creer_club("Kervignarc"))
+
+    octets = monde.service.generer_club_paiement(monde.tournoi_id, format_=FormatExport.CSV)
+
+    assert octets == FauxGenerateur.SENTINELLE_CLUB + b"-csv"
+    assert monde.generateur_csv.club_capture is not None
+    assert monde.generateur.club_capture is None
+
+
+def test_le_contenu_compose_ne_depend_pas_du_format() -> None:
+    """Le service compose **une** vue métier ; le format n'agit qu'au rendu.
+
+    ⚠️ Ce test est le garde-fou de la conception : si le contenu se mettait à dépendre du format,
+    le CSV et le PDF pourraient dire deux choses différentes du même tournoi — exactement le
+    « bien formé, plausible et faux » qu'ADR-0081 décrit.
+    """
+    monde = _monde()
+    monde.placer("Durand", "Marie", numero_depart=1, cible_index=1, position="A")
+
+    monde.service.generer_placement(monde.tournoi_id)
+    monde.service.generer_placement(monde.tournoi_id, format_=FormatExport.CSV)
+
+    assert monde.generateur.placement_capture == monde.generateur_csv.placement_capture
+
+
+def test_le_format_par_defaut_reste_le_pdf() -> None:
+    """Non-régression : les appelants d'avant l'US (archive, écran) ne passent aucun format."""
+    monde = _monde()
+    monde.placer("Durand", "Marie", numero_depart=1, cible_index=1, position="A")
+
+    assert monde.service.generer_placement(monde.tournoi_id) == (
+        FauxGenerateur.SENTINELLE_PLACEMENT
+    )
+    assert monde.service.generer_club_paiement(monde.tournoi_id) == FauxGenerateur.SENTINELLE_CLUB
+
+
+def test_le_service_annonce_les_formats_qu_il_a_cables() -> None:
+    """C'est cette lecture qui alimente le catalogue — pas une liste écrite au composition root."""
+    assert _monde().service.formats_disponibles == (FormatExport.PDF, FormatExport.CSV)
+
+
+def test_un_format_non_cable_est_refuse() -> None:
+    monde = _monde(formats=(FormatExport.PDF,))
+
+    with pytest.raises(FormatExportIndisponible):
+        monde.service.generer_placement(monde.tournoi_id, format_=FormatExport.CSV)
+
+    assert monde.service.formats_disponibles == (FormatExport.PDF,)

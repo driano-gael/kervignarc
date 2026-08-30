@@ -30,6 +30,7 @@ from application.erreurs import (
     DepartIntrouvable,
     EffectifSimulationInvalide,
     ForfaitIntrouvable,
+    FormatExportIndisponible,
     FormatIntrouvable,
     FormatNonSimulable,
     GabaritDuTournoiAbsent,
@@ -76,11 +77,14 @@ async def _sur_erreur_application(_: Request, exc: Exception) -> JSONResponse:
         exc, IdentifiantsInvalides | NonAuthentifie | CodeScoreurInconnu | CodePosteInconnu
     ):
         status = 401
-    elif isinstance(exc, EffectifSimulationInvalide | FormatNonSimulable):
+    elif isinstance(
+        exc, EffectifSimulationInvalide | FormatNonSimulable | FormatExportIndisponible
+    ):
         # 400 : la requête est impossible **en soi** (borne de service), pas en conflit avec un
         # état. Le 409 par défaut promettrait qu'un changement d'état la rendrait acceptable, ce qui
         # serait faux — 300 archers ne deviendront jamais simulables, et un format sans
-        # qualification ne le devient pas davantage en changeant d'état (E01US024).
+        # qualification ne le devient pas davantage en changeant d'état (E01US024). Idem d'un
+        # format d'export que rien ne sait produire (E16US007).
         status = 400
     elif isinstance(exc, CorpsHorsDeProportion):
         # 413 : le serveur refuse d'ingérer le corps, indépendamment de ce qu'il contient. Un 422

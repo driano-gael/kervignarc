@@ -82,6 +82,12 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
+   "code": "derniere-us-orpheline",
+   "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0100, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
+   "severite": "signal",
+   "sujet": "E16US007"
+  },
+  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -140,6 +146,12 @@ window.ATLAS.controles = {
    "message": "annonce Protocol dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0004"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce autoriser_forfait_duel dans « backend/api/dependances.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0050"
   },
   {
    "code": "portage-symbole-absent",
@@ -236,10 +248,22 @@ window.ATLAS.controles = {
    "message": "annonce test_un_arret_relatif_coupe_la_phase_quand_son_tour_s_acheve dans « backend/application/arrets_programmes.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0092"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_le_contenu_compose_ne_depend_pas_du_format dans « backend/application/listes_impression.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0101"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_les_formats_annonces_derivent_du_cablage, test_le_service_annonce_les_formats_qu_il_a_cables dans « backend/bootstrap/composition.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0101"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 39
+  "signaux": 43
  }
 };

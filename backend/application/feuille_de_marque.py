@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
+from application.exports import FormatExport, RegistreDeFormats
 from application.portee import qualification_courante
 from domain.bareme import BaremeQualification
 from domain.depart import DepartId
@@ -43,7 +44,7 @@ class ServiceFeuilleDeMarque:
         categories: CategorieRepository,
         blasons: BlasonRepository,
         phases: PhaseRepository,
-        generateur: GenerateurFeuilleDeMarque,
+        generateurs: RegistreDeFormats[GenerateurFeuilleDeMarque],
     ) -> None:
         self._tournois = tournois
         self._departs = departs
@@ -53,9 +54,23 @@ class ServiceFeuilleDeMarque:
         self._categories = categories
         self._blasons = blasons
         self._phases = phases
-        self._generateur = generateur
+        self._generateurs = generateurs
 
-    def generer(self, tournoi_id: TournoiId, depart_id: DepartId) -> bytes:
+    @property
+    def formats_disponibles(self) -> tuple[FormatExport, ...]:
+        """Formats que ce service sait produire — ce que le catalogue publie (ADR-0101 §3).
+
+        ⚠️ **Un seul format aujourd'hui, et c'est du métier, pas un raccourci** : une feuille de
+        marque se remplit au stylo sur la cible. Un CSV de feuille de marque n'a aucun usage.
+        """
+        return self._generateurs.formats
+
+    def generer(
+        self,
+        tournoi_id: TournoiId,
+        depart_id: DepartId,
+        format_: FormatExport = FormatExport.PDF,
+    ) -> bytes:
         """Rend en PDF la feuille de marque du départ.
 
         Lève `TournoiIntrouvable` / `DepartIntrouvable` (gardes 404, même couple que le placement).
@@ -86,7 +101,7 @@ class ServiceFeuilleDeMarque:
             nb_fleches_par_volee=bareme.nb_fleches_par_volee,
             archers=tuple(lignes),
         )
-        return self._generateur.generer(feuille)
+        return self._generateurs.pour(format_).generer(feuille)
 
     def _bareme_du_creneau(self, depart_id: DepartId) -> BaremeQualification:
         """Le barème de la qualification **qui se tire dans ce créneau**, ou le preset FFTA 18 m.

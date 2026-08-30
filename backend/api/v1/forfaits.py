@@ -2,9 +2,9 @@
 
 Déclarer et **annuler** (`D-15`), en qualification (relégation / exclusion au classement) comme en
 duels (l'adversaire passe). Écritures dédoublonnées par identifiant de saisie (ADR-0036).
-⚠️ **Deux portées, pas une** : la qualification reste au **scoreur seul**, les duels acceptent
-**admin ou scoreur** (E16US008) — et seul le scoreur est borné à **son** tournoi
-(`403 scoreur_hors_tournoi`), le secret admin valant pour l'instance (`D-13`).
+⚠️ **Une seule portée depuis le 30/08/2026** : les quatre routes acceptent **admin ou scoreur**.
+Seul le scoreur est borné à **son** tournoi (`403 scoreur_hors_tournoi`), le secret admin valant
+pour l'instance (`D-13`) ; l'auteur tracé est la personne, ou `AUTEUR_ADMIN` (`DETTE-017`).
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from api.dependances import autoriser_forfait_duel, exiger_scoreur
+from api.dependances import autoriser_forfait
 from application.erreurs import ScoreurHorsTournoi
 from application.forfaits import AUTEUR_ADMIN, ServiceForfait
 from domain.forfait import Forfait, NatureForfait
@@ -132,20 +132,21 @@ def _cle_idempotence(operation: str, identifiant: str | None, *portee: int) -> s
 async def declarer_en_qualification(
     requete: DeclarerQualificationRequete,
     request: Request,
-    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait)],
 ) -> ForfaitReponse:
-    """Déclare un forfait (abandon/DSQ) en qualification. Scoreur, son tournoi ; via la file."""
+    """Déclare un forfait (abandon/DSQ) en qualification. Admin ou scoreur ; via la file."""
     service: ServiceForfait = request.app.state.service_forfait
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
-    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    _garder_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
         "forfait_qualif", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id
     )
+    auteur = _auteur(scoreur)
 
     def ecrire() -> Forfait:
         return service.declarer_en_qualification(
-            requete.tournoi_id, requete.archer_id, requete.nature, scoreur.nom, requete.motif
+            requete.tournoi_id, requete.archer_id, requete.nature, auteur, requete.motif
         )
 
     forfait = await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
@@ -156,19 +157,20 @@ async def declarer_en_qualification(
 async def annuler_en_qualification(
     requete: AnnulerQualificationRequete,
     request: Request,
-    scoreur: Annotated[Scoreur, Depends(exiger_scoreur)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait)],
 ) -> AnnulationReponse:
-    """Annule un forfait de qualification (réversibilité, `D-15`). Scoreur ; via la file."""
+    """Annule un forfait de qualification (réversibilité, `D-15`). Admin ou scoreur ; file."""
     service: ServiceForfait = request.app.state.service_forfait
     write_queue: WriteQueue = request.app.state.write_queue
     registre: RegistreIdempotence = request.app.state.registre_idempotence
-    _exiger_meme_tournoi(scoreur, requete.tournoi_id)
+    _garder_tournoi(scoreur, requete.tournoi_id)
     cle = _cle_idempotence(
         "annul_forfait_qualif", requete.identifiant_saisie, requete.tournoi_id, requete.archer_id
     )
+    auteur = _auteur(scoreur)
 
     def ecrire() -> None:
-        service.annuler_en_qualification(requete.tournoi_id, requete.archer_id, scoreur.nom)
+        service.annuler_en_qualification(requete.tournoi_id, requete.archer_id, auteur)
 
     await asyncio.wrap_future(write_queue.submit(lambda: registre.executer(cle, ecrire)))
     return AnnulationReponse()
@@ -178,7 +180,7 @@ async def annuler_en_qualification(
 async def declarer_en_duel(
     requete: DeclarerDuelRequete,
     request: Request,
-    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait_duel)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait)],
 ) -> ForfaitReponse:
     """Déclare un forfait en duels : l'adversaire passera (walkover). Admin ou scoreur ; file."""
     service: ServiceForfait = request.app.state.service_forfait
@@ -211,7 +213,7 @@ async def declarer_en_duel(
 async def annuler_en_duel(
     requete: AnnulerDuelRequete,
     request: Request,
-    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait_duel)],
+    scoreur: Annotated[Scoreur | None, Depends(autoriser_forfait)],
 ) -> AnnulationReponse:
     # ⚠️ Élargi **avec** la déclaration : un admin qui peut déclarer et pas annuler laisse une
     # erreur de frappe irréparable sans aller chercher un scoreur — `D-15` (réversibilité).

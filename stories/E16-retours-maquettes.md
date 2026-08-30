@@ -271,16 +271,42 @@
 
 ---
 
-### E16US007 — Impressions, exports et podiums paramétrables
-*En tant qu'*organisateur, *je veux* choisir **le format** de chaque export, encaisser **par club**, et configurer **ce que couvre un podium**, *afin de* ne pas dépendre d'une liste figée décidée à l'avance.
-- **Contexte** : A18 : *« chaque ligne d'export doit proposer plusieurs formats possibles (CSV, EXCEL, PDF…) »* et, sur les exports attendus : *« ça peut évoluer et donc être paramétrable »* ; le journal d'audit doit être consultable **en cours** de tournoi. A17 : paiements par club, *« oui »* (un chèque pour douze archers) ; le détail des modes de versement **en option**. A16 : *« podium configurable, tout doit être possible »* (par catégorie, scratch, par club, par équipe). A08 : un **QR par scoreur**, en plus du code (seul le PDF groupé existe aujourd'hui).
+### E16US007 — Exports : choisir le format de chaque document
+*En tant qu'*organisateur, *je veux* choisir **le format** de chaque document que je sors, *afin de* ne pas dépendre d'un format figé décidé à l'avance.
+- **Contexte** : A18 : *« chaque ligne d'export doit proposer plusieurs formats possibles (CSV, EXCEL, PDF…) »* et, sur les exports attendus : *« ça peut évoluer et donc être paramétrable »*. ✅ **Découpée le 30/08/2026 au cadrage**, comme les Notes d'origine le prescrivaient : cette fiche garde le **volet formats** ; les podiums configurables partent en `E16US014` et le QR par scoreur en `E16US015`.
 - **CA — formats** : chaque export propose ses formats disponibles ; l'ajout d'un format ne demande pas de toucher l'écran.
-- **CA — paiement groupé par club** : un règlement unique couvre plusieurs archers, et le solde de chacun le reflète.
+- **CA — le catalogue est servi par le serveur** *(ajouté au cadrage du 30/08/2026)*. Le CA ci-dessus n'est **vérifiable** que si l'écran ne tient aucune liste de formats : c'est le serveur qui énumère, pour chaque export, ce qu'il sait produire. ⚠️ Le catalogue porte les **formats**, pas les **URL** ni les paramètres (tri, départ) — ceux-là sont des choix d'IHM. Ajouter un *format* ne touche donc pas l'écran ; ajouter un *export*, si — et ce n'est pas ce que le CA demande.
+- **CA — un export n'offre que les formats qui ont un sens** *(ajouté au cadrage du 30/08/2026)*. La liste est **par export**, pas globale : une **feuille de marque** se remplit à la main, elle n'existe qu'en PDF ; une **liste** part au tableur, elle existe aussi en CSV. Un catalogue où toutes les entrées offriraient les mêmes formats ne prouverait rien.
+- **Notes** : **backend + API + l'écran « Exports & impressions »** — périmètre front arbitré au cadrage du 30/08/2026 : le catalogue est servi pour les exports de cet écran, les boutons d'archive, d'étiquettes QR et de cartes scoreur restent dans leur contexte de travail (ADR-0058). ⚠️ **Formats livrés : PDF et CSV, sans nouvelle dépendance** (ReportLab est déjà là, `csv` est stdlib) — arbitrage du commanditaire du 30/08/2026 : `xlsx` demanderait `openpyxl`/`xlsxwriter`, donc la règle 11, et la plupart des tableurs ouvrent un CSV. **Il reste dû**, cf. `E16US016`. ⚠️ **Deux CA d'origine étaient CADUCS**, vérifié dans le code au cadrage : *paiement groupé par club* est livré depuis `E08US002` (`recap_par_club` / `marquer_club`, `api/v1/paiements.py`), et *audit consultable en cours de tournoi* l'est aussi — `ServiceAudit.lister` n'a **aucune** restriction de statut. Ce qui manque à l'audit n'est pas sa consultation mais son **export** (`E16US016`). ⚠️ **Le palmarès est hors tranche** : sa route s'appelle littéralement `/palmares.pdf` et elle est **publique**, donc lui ajouter un format est un renommage d'API publique — arbitrage à part, et `DETTE-031` y multiplie un coût de recalcul déjà signalé. Cf. `E16US016`.
+- **Dépend de** : E09US001, E09US003 · **Jalon** : J3 · **Origine** : questionnaire A18, 04/08/2026 — découpée le 30/08/2026
+
+---
+
+### E16US014 — Podiums configurables
+*En tant qu'*organisateur, *je veux* configurer **ce que couvre un podium**, *afin de* récompenser ce que mon club a décidé de récompenser.
+- **Contexte** : sortie d'`E16US007` au découpage du 30/08/2026. A16 : *« podium configurable, tout doit être possible »* (par catégorie, scratch, par club, par équipe).
 - **CA — podiums configurables** : la portée d'un podium se règle (catégorie / scratch / club / équipe).
-- **CA — audit en cours de tournoi** : consultable sans attendre la clôture.
+- **Notes** : `application/palmares.py` ne connaît aujourd'hui que **deux** portées — *scratch* et *catégorie* (`pour_tournoi(tournoi_id, categorie_id)`), constat fait au cadrage du 30/08/2026. *Club* et *équipe* n'ont aucun porteur. ⚠️ **Les équipes relèvent d'EPIC-13** ([ADR-0028](../docs/adr/0028-epreuves-par-equipes-participant.md)) : ne pas les anticiper ici — une portée « équipe » sans classe `Equipe` livrerait un réglage qui ne peut rien rendre. ⚠️ La portée d'un podium est un **réglage**, donc de la configuration et non du code (règle 2) — même parti que le mode de composition d'une poule ([ADR-0094](../docs/adr/0094-le-mode-de-composition-d-une-poule-commande-aussi-la-lecture-de-son-classement.md)). ⚠️ **Question à trancher avant de coder** : un podium *par club* classe-t-il les archers d'un club entre eux, ou les clubs entre eux (somme des scores) ? Le questionnaire ne le dit pas.
+- **Dépend de** : E06US004, E16US007 · **Jalon** : J3 · **Origine** : questionnaire A16, 04/08/2026 — sortie d'`E16US007` le 30/08/2026
+
+---
+
+### E16US015 — Un QR par scoreur
+*En tant qu'*organisateur, *je veux* un QR **par scoreur**, en plus de son code, *afin de* rattacher une tablette sans faire recopier un code à la main.
+- **Contexte** : sortie d'`E16US007` au découpage du 30/08/2026. A08 : un **QR par scoreur**, en plus du code.
 - **CA — QR par scoreur** : jumeau de celui des cibles, affichable à l'écran.
-- **Notes** : entièrement **backend + API**. ⚠️ **Trop large pour une branche** — à redécouper en au moins trois US (exports/formats · paiement par club · podiums). Les équipes relèvent d'EPIC-13, à ne pas anticiper ici.
-- **Dépend de** : E09US001, E09US003, E08, E06US004, **E10US005** *(journal d'audit — ~~« E11 (audit) »~~ était faux : l'audit métier est dans **EPIC-10**, `E10US005`, livrée ; EPIC-11 est l'exploitation. Corrigé le 08/08/2026)* · **Jalon** : J3 · **Origine** : questionnaires A08, A16, A17, A18, 04/08/2026
+- **Notes** : le **jumeau existe** et sert de patron, constat fait au cadrage du 30/08/2026 : `GET /tournois/{id}/postes/{cible_index}/qr` rend le QR d'**une** cible en **SVG** affichable à l'écran (`GenerateurDocumentsSalle.qr_rattachement`, `frontend/src/features/postes/QrCible.tsx`). Côté scoreur, seul le **PDF groupé** existe (`/scoreurs/cartes-codes`, une page par scoreur) — il n'y a rien par scoreur. ⚠️ **Question à trancher** : que contient l'URL du QR d'un scoreur ? Celui d'une cible porte une URL de **rattachement de poste** ; un code scoreur est un secret **personnel** (E10US002), et l'afficher en QR à l'écran de l'admin le rend photographiable par n'importe qui passant derrière — c'est une question de sécurité, pas d'IHM.
+- **Dépend de** : E09US008, E10US002 · **Jalon** : J3 · **Origine** : questionnaire A08, 04/08/2026 — sortie d'`E16US007` le 30/08/2026
+
+---
+
+### E16US016 — Exports : les formats et les documents qui restent dus
+*En tant qu'*organisateur, *je veux* sortir **le classement** et **le journal d'audit** au format de mon choix, *afin de* les reprendre dans un tableur.
+- **Contexte** : reliquat écrit d'`E16US007` (30/08/2026). Cette fiche existe pour que trois manques constatés au cadrage ne se reperdent pas ; elle n'est **pas** un plan de travail, elle est à découper quand elle sera prise.
+- **CA — le palmarès sort aussi en tableur** : le classement final s'exporte dans les formats du catalogue, pas seulement en PDF. ⚠️ **Arbitrage requis d'abord** : la route est `GET /tournois/{id}/palmares.pdf`, **publique et non authentifiée**, et son chemin **nomme le format**. Lui ajouter un format demande de généraliser le chemin, donc de renommer une route publique. À trancher avec le commanditaire, avec `DETTE-031` en vis-à-vis (chaque lecture reconstruit toutes les phases à tableau — un format de plus multiplie ce coût).
+- **CA — le journal d'audit s'exporte** : `GET /tournois/{id}/audit` rend du JSON et rien d'autre. Sa **consultation en cours de tournoi** est déjà acquise (aucune restriction de statut dans `ServiceAudit.lister`) — c'est bien l'export qui manque.
+- **CA — le format Excel** : `xlsx` était demandé par A18 (*« CSV, EXCEL, PDF… »*) et a été écarté d'`E16US007` faute de dépendance. ⚠️ **Ajout de dépendance = règle 11** : `openpyxl` ou `xlsxwriter` à justifier, auditer (`pip-audit`), documenter — arbitrage du commanditaire, jamais de l'assistant. Une fois tranché, le coût de code est **une entrée de registre et un adapter** : c'est ce que `E16US007` a livré pour que cette US soit petite.
+- **Dépend de** : E16US007, E06US004, E10US005 · **Jalon** : J3 · **Origine** : reliquat d'`E16US007`, 30/08/2026
 
 ---
 

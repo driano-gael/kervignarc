@@ -7,10 +7,13 @@
 //
 // L'archer ouvert vient de l'adresse (ADR-0100), donc d'un résultat de recherche comme d'un lien.
 
+import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBlasons } from '../blasons/hooks'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
+import type { NatureForfait } from '../forfaits/api'
+import { useDeclarerForfaitQualif } from '../forfaits/hooks'
 import { PlaceDeLArcher } from '../placement/PlaceDeLArcher'
 import { useArchers } from './hooks'
 
@@ -91,18 +94,79 @@ export function FicheArcherPilotage({
               Modifier son placement
             </button>
           </span>
-          {/* ⚠️ **Pas de bouton « Déclarer un forfait », et ce n'est pas un oubli** : la route de
-              qualification est réservée au scoreur (`exiger_scoreur`), `E16US008` n'ayant élargi
-              que celle des duels. Un bouton partirait en 401.
-              ⚠️ **Ce paragraphe énonce une frontière de RÔLES** : son élargissement à l'organisateur
-              est en arbitrage — `stories/E16-retours-maquettes.md` § E16US010. Le jour où il est
-              tranché, cette phrase devient fausse à l'écran. */}
-          <p className="carte__etat">
-            Un abandon se déclare depuis l’espace scoreur : en qualification, cette écriture lui est
-            réservée. En duel, le feu vert permet à l’organisateur de le faire lui-même.
-          </p>
+          <DeclarerForfait tournoiId={tournoiId} archerId={archer.id} />
         </>
       )}
     </section>
+  )
+}
+
+// Déclaration d'un forfait de **qualification** depuis la fiche, en portée admin (E16US007 —
+// arbitrage du commanditaire du 30/08/2026 : la route, réservée au scoreur, s'ouvre à
+// l'organisateur ; elle est **élargie, pas doublée**, comme celle des duels en E16US008).
+//
+// ⚠️ **Déclarer seulement** : l'annulation (`D-15`) reste au panneau de l'espace scoreur, qui
+// dispose du classement pour dire *qui* est déjà forfait. La fiche ne le sait pas, et un bouton
+// « Annuler » qui ne saurait pas s'il a quelque chose à annuler serait pire que son absence.
+function DeclarerForfait({ tournoiId, archerId }: { tournoiId: number; archerId: number }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [nature, setNature] = useState<NatureForfait>('abandon')
+  const [motif, setMotif] = useState('')
+  const declarer = useDeclarerForfaitQualif(tournoiId, 'admin')
+
+  if (declarer.isSuccess) {
+    return (
+      <p className="carte__etat">
+        Forfait enregistré. Ses flèches déjà tirées sont conservées ; l’annulation se fait depuis
+        l’espace scoreur, panneau « Forfaits — qualification ».
+      </p>
+    )
+  }
+
+  if (!ouvert) {
+    return (
+      <span className="archer__actions">
+        <button type="button" className="bouton--discret" onClick={() => setOuvert(true)}>
+          Déclarer un forfait
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <div className="formulaire formulaire--colonne">
+      <label className="formulaire__libelle">
+        Nature
+        <select
+          className="formulaire__champ"
+          value={nature}
+          onChange={(e) => setNature(e.target.value as NatureForfait)}
+        >
+          <option value="abandon">Abandon (relégué en fin de classement)</option>
+          <option value="disqualification">Disqualification (sorti du classement)</option>
+        </select>
+      </label>
+      <label className="formulaire__libelle">
+        Motif (facultatif)
+        <input
+          className="formulaire__champ"
+          value={motif}
+          onChange={(e) => setMotif(e.target.value)}
+        />
+      </label>
+      <div className="formulaire__actions">
+        <button
+          type="button"
+          disabled={declarer.isPending}
+          onClick={() => declarer.mutate({ archerId, nature, motif: motif.trim() || undefined })}
+        >
+          {declarer.isPending ? 'Enregistrement…' : 'Confirmer le forfait'}
+        </button>
+        <button type="button" className="bouton--discret" onClick={() => setOuvert(false)}>
+          Annuler
+        </button>
+      </div>
+      <MessageErreur erreur={declarer.error} />
+    </div>
   )
 }
