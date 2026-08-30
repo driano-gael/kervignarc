@@ -28,19 +28,14 @@ class FormatExport(Enum):
     CSV = "csv"
 
 
-@dataclass(frozen=True)
-class DescriptionFormat:
-    """Ce que le client a besoin de savoir d'un format : comment le nommer, comment le servir."""
-
-    libelle: str
-    media_type: str
-
-
-# ⚠️ Registre jumeau de `FormatExport` : un membre ajouté sans sa description ne casserait rien
-# avant la première requête — d'où le test de cohérence (`test_service_exports.py`).
-DESCRIPTIONS_FORMAT: Mapping[FormatExport, DescriptionFormat] = {
-    FormatExport.PDF: DescriptionFormat(libelle="PDF", media_type="application/pdf"),
-    FormatExport.CSV: DescriptionFormat(libelle="CSV (tableur)", media_type="text/csv"),
+# Le mot que le client affiche pour un format. ⚠️ Le **type MIME n'est pas ici** : c'est une
+# décision HTTP, elle vit à la frontière API (`api/documents.py`) — même partage que le mapping des
+# erreurs (règle 5/6).
+# ⚠️ Registre jumeau de `FormatExport` : un membre ajouté sans son libellé ne casserait rien avant
+# la première requête — d'où le test de cohérence (`test_service_exports.py`).
+LIBELLES_FORMAT: Mapping[FormatExport, str] = {
+    FormatExport.PDF: "PDF",
+    FormatExport.CSV: "Tableur (CSV)",
 }
 
 
@@ -83,14 +78,15 @@ class RegistreDeFormats(Generic[G]):
 
 @dataclass(frozen=True)
 class EntreeCatalogueExport:
-    """Un document exportable, tel qu'annoncé au client.
+    """Un document exportable : son identité, et ce que le serveur sait en produire.
 
     `formats` se remplit depuis un `RegistreDeFormats`, jamais à la main (ADR-0101 §3).
+    ⚠️ **Ni libellé ni description** : ce sont des choix d'IHM, au même titre que l'URL et les
+    commandes que le catalogue ne porte pas (ADR-0101 §1). Les faire descendre ici mettrait la
+    copie de l'écran dans le composition root.
     """
 
     identifiant: str
-    libelle: str
-    description: str
     formats: tuple[FormatExport, ...]
 
 
@@ -104,3 +100,20 @@ class CatalogueExports:
     """
 
     entrees: tuple[EntreeCatalogueExport, ...]
+
+
+# ⚠️ Fonction **pure**, et c'est le point : la dérivation des formats depuis le câblage ne se
+# vérifie qu'ici. Composer le catalogue directement dans `bootstrap/` la rendait intestable, si
+# bien qu'une liste réécrite à la main y serait passée sans rien faire rougir (relevé en revue,
+# axe B) — alors qu'ADR-0101 §3 en fait l'invariant central.
+def construire_catalogue(
+    formats_listes: tuple[FormatExport, ...], formats_feuille: tuple[FormatExport, ...]
+) -> CatalogueExports:
+    """Compose le catalogue des exports de l'écran, à partir des formats **réellement câblés**."""
+    return CatalogueExports(
+        (
+            EntreeCatalogueExport(identifiant="placement", formats=formats_listes),
+            EntreeCatalogueExport(identifiant="club-paiement", formats=formats_listes),
+            EntreeCatalogueExport(identifiant="feuille-de-marque", formats=formats_feuille),
+        )
+    )

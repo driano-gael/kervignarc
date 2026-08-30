@@ -21,6 +21,11 @@ from infrastructure.erreurs import InfrastructureError
 
 _SEPARATEUR = ";"
 
+# Caractères par lesquels un tableur reconnaît une **formule**. Une cellule qui commence par l'un
+# d'eux est exécutée à l'ouverture (CWE-1236) — or les noms d'archers et de clubs viennent de la
+# saisie et de l'import FFTA, et le fichier est fait pour partir chez la trésorière.
+_AMORCES_DE_FORMULE = ("=", "+", "-", "@", "\t", "\r")
+
 _ENTETE_PLACEMENT = ("Départ", "Cible", "Couloir", "Nom", "Prénom", "Catégorie")
 _ENTETE_CLUB_PAIEMENT = (
     "Club",
@@ -46,10 +51,10 @@ class GenerateurListesImpressionCsv:
                 (
                     str(ligne.depart_numero),
                     str(ligne.cible_index),
-                    ligne.position,
-                    ligne.nom,
-                    ligne.prenom,
-                    ligne.categorie,
+                    _neutraliser(ligne.position),
+                    _neutraliser(ligne.nom),
+                    _neutraliser(ligne.prenom),
+                    _neutraliser(ligne.categorie),
                 )
                 for ligne in liste.lignes
             ],
@@ -61,9 +66,9 @@ class GenerateurListesImpressionCsv:
             _ENTETE_CLUB_PAIEMENT,
             [
                 (
-                    groupe.club,
-                    ligne.nom,
-                    ligne.prenom,
+                    _neutraliser(groupe.club),
+                    _neutraliser(ligne.nom),
+                    _neutraliser(ligne.prenom),
                     " ".join(str(numero) for numero in ligne.departs),
                     str(ligne.nb_departs),
                     _montant(ligne.du_centimes),
@@ -75,6 +80,15 @@ class GenerateurListesImpressionCsv:
                 for ligne in groupe.lignes
             ],
         )
+
+
+def _neutraliser(cellule: str) -> str:
+    """Empêche un tableur d'exécuter une valeur saisie comme une formule (CSV injection).
+
+    ⚠️ Réservé aux colonnes de **texte** : appliqué à un montant, il rendrait `-5,00` non sommable,
+    ce qu'ADR-0101 §4 interdit explicitement.
+    """
+    return f"'{cellule}" if cellule.startswith(_AMORCES_DE_FORMULE) else cellule
 
 
 def _rendre(entete: tuple[str, ...], lignes: list[tuple[str, ...]]) -> bytes:

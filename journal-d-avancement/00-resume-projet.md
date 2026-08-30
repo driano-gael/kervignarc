@@ -582,11 +582,11 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   n'obligera pas à retoucher l'écran. Les deux listes sortent en **PDF ou en CSV** ; la feuille de
   marque, en PDF seul (elle se remplit à la main), ce qui montre que la liste des formats est
   **propre à chaque document**. Les feuilles de marque, jusqu'ici accessibles par aucun bouton,
-  entrent au passage sur cet écran. ⚠️ **Trois manques sont écrits** : le classement et le journal
-  d'audit ne s'exportent pas encore, et le format Excel attend votre arbitrage sur une bibliothèque
-  (`E16US016`). Deux CA de la fiche d'origine étaient **caducs** — le paiement par club et la
-  consultation de l'audit en cours de tournoi sont livrés depuis longtemps —, et le reste de la
-  fiche est parti en `E16US014` (podiums) et `E16US015` (QR par scoreur). ✅ **Un reliquat écrit
+  entrent au passage sur cet écran. ⚠️ **Trois manques sont écrits** : le classement ne s'exporte pas
+  encore, le **journal d'audit n'est consultable nulle part** (la fonction existe côté serveur, aucun
+  écran ne l'affiche — nous l'avions d'abord cru livré, la relecture l'a corrigé), et le format Excel
+  attend votre arbitrage sur une bibliothèque (`E16US016`). **Un** CA de la fiche d'origine était **caduc** — le paiement par club, livré
+  depuis longtemps —, et le reste de la fiche est parti en `E16US014` (podiums) et `E16US015` (QR par scoreur). ✅ **Un reliquat écrit
   d'`E16US010` est soldé dans la même livraison** : vous avez tranché d'ouvrir la déclaration
   d'abandon en qualification à l'organisateur — elle se fait depuis la fiche de l'archer, la route
   étant **élargie et non doublée**. L'annulation reste au panneau du scoreur, qui seul sait qui est

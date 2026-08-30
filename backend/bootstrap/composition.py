@@ -91,10 +91,9 @@ from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.ecrans import ServiceEcrans
 from application.exports import (
-    CatalogueExports,
-    EntreeCatalogueExport,
     FormatExport,
     RegistreDeFormats,
+    construire_catalogue,
 )
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
@@ -915,46 +914,19 @@ def create_app(
         ),
     )
     # Catalogue d'exports (E16US007, ADR-0101) : ce que l'écran « Exports & impressions » propose.
-    # ⚠️ Les formats de chaque entrée sont **lus sur les services**, jamais réécrits ici — une liste
-    # tenue à la main finirait par annoncer un format que rien ne sait produire.
-    # ⚠️ Variables **annotées** : `app.state.*` rend `Any`, donc mypy ne vérifierait rien du type
-    # des formats sans elles (même parade que `rencontres_a_router` ci-dessus).
+    # ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici — une liste tenue à la main
+    # finirait par annoncer un format que rien ne sait produire. La composition est déportée dans
+    # `construire_catalogue`, fonction pure, pour que cette dérivation soit **testable** : elle ne
+    # l'était pas tant qu'elle vivait ici (relevé en revue). DETTE-095 : l'identifiant de chaque
+    # entrée doit exister dans la table `documents` de `Exports.tsx`, rien ne le vérifie.
+    # ⚠️ Variables **annotées** : `app.state.*` rend `Any` (même parade que `rencontres_a_router`).
     formats_listes: tuple[FormatExport, ...] = (
         app.state.service_listes_impression.formats_disponibles
     )
     formats_feuille: tuple[FormatExport, ...] = (
         app.state.service_feuille_de_marque.formats_disponibles
     )
-    app.state.catalogue_exports = CatalogueExports(
-        (
-            EntreeCatalogueExport(
-                identifiant="placement",
-                libelle="Liste de placement",
-                description=(
-                    "Qui tire sur quelle cible et dans quel couloir de tir — pour l'accueil "
-                    "des archers."
-                ),
-                formats=formats_listes,
-            ),
-            EntreeCatalogueExport(
-                identifiant="club-paiement",
-                libelle="Liste club & paiement",
-                description=(
-                    "Par club : départs, dû, réglé ou non, et totaux — pour le suivi "
-                    "administratif. Couvre tout le tournoi."
-                ),
-                formats=formats_listes,
-            ),
-            EntreeCatalogueExport(
-                identifiant="feuille-de-marque",
-                libelle="Feuille de marque",
-                description=(
-                    "Une page par archer placé sur un départ, à remplir au stylo sur la cible."
-                ),
-                formats=formats_feuille,
-            ),
-        )
-    )
+    app.state.catalogue_exports = construire_catalogue(formats_listes, formats_feuille)
     # Palmarès (E06US004, ADR-0067) : le **classement final** du tournoi — rangs des tableaux
     # fusionnés avec ceux de la qualification, par catégorie, plus l'export PDF. Réutilise
     # `service_saisie_duels` pour reconstruire chaque tableau : recoder la reconstruction la ferait

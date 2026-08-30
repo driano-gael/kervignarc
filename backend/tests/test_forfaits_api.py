@@ -136,6 +136,11 @@ def _scoreur(
     assert reponse.status_code in (200, 201), reponse.text
     code = reponse.json()["code"]
     jeton = client.post("/api/v1/scoreurs/session", json={"code": code}).json()["jeton"]
+    # ⚠️ **Le Bearer admin reste posé sur le client** (il a fallu créer le scoreur). Un test qui
+    # veut réellement emprunter le chemin SCOREUR doit faire `client.headers.pop("Authorization")`
+    # : depuis E16US007, `autoriser_forfait` retient l'admin, testé en premier, et un test
+    # « scoreur » passerait par le chemin admin sans que rien ne le montre — la branche scoreur
+    # pourrait alors être supprimée sans rien faire rougir (relevé en revue, axe B).
     return {"X-Jeton-Scoreur": jeton}
 
 
@@ -153,6 +158,9 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin SCOREUR : sans ce retrait, `autoriser_forfait` retient l'admin (testé en
+        # premier) et la branche scoreur ne serait plus couverte du tout (revue, axe B).
+        client.headers.pop("Authorization", None)
         fort, faible = scn.archers
 
         reponse = client.post(
@@ -186,6 +194,9 @@ def test_dsq_qualif_sort_du_classement(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin SCOREUR : sans ce retrait, `autoriser_forfait` retient l'admin (testé en
+        # premier) et la branche scoreur ne serait plus couverte du tout (revue, axe B).
+        client.headers.pop("Authorization", None)
         fort, _faible = scn.archers
 
         reponse = client.post(
@@ -339,6 +350,37 @@ def test_forfait_qualification_ouvert_a_l_admin(
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0]},
         )
         assert annulation.status_code == 200, annulation.text
+
+
+def test_forfait_qualification_refuse_un_scoreur_d_un_autre_tournoi(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La garde de tournoi survit au passage `_exiger_meme_tournoi` → `_garder_tournoi`.
+
+    ⚠️ Le jumeau existait pour le duel, pas pour la qualification — et c'est justement la garde
+    que le diff d'E16US007 a réécrite (le scoreur y devient `Scoreur | None`). Relevé en revue.
+    """
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        autre = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-04-01"})
+        assert autre.status_code == 201, autre.text
+        # Chemin SCOREUR : le Bearer admin doit partir, sinon la requête est résolue en admin —
+        # qui, lui, n'est borné à aucun tournoi (`D-13`) et passerait.
+        client.headers.pop("Authorization", None)
+
+        declaration = client.post(
+            "/api/v1/forfaits/qualification",
+            json={
+                "tournoi_id": int(autre.json()["id"]),
+                "archer_id": scn.archers[0],
+                "nature": "abandon",
+            },
+            headers=entetes,
+        )
+
+        assert declaration.status_code == 403, declaration.text
+        assert declaration.json()["code"] == "scoreur_hors_tournoi"
 
 
 def test_forfait_qualification_refuse_sans_session(app_forfaits: FastAPI) -> None:

@@ -2162,12 +2162,10 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/dependances.py",
      "existe": true,
      "symboles": [
-      "autoriser_forfait_duel",
+      "autoriser_forfait",
       "exiger_scoreur"
      ],
-     "symboles_absents": [
-      "autoriser_forfait_duel"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -2254,7 +2252,19 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/tests/test_forfaits_api.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "_scoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/archers/FicheArcherPilotage.tsx",
+     "existe": true,
+     "symboles": [
+      "DeclarerForfait",
+      "BoutonConfirme"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -2295,14 +2305,15 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Forfait unifié (abandon / disqualification), scopé à la phase",
    "us": [
-    "E04US002",
     "E04US013",
     "E04US015",
     "E06US001",
     "E10US005",
     "E12US004",
     "E12US005",
-    "E16US008"
+    "E16US007",
+    "E16US008",
+    "E16US010"
    ]
   },
   {
@@ -8546,6 +8557,20 @@ window.ATLAS.decisions = {
    ],
    "portage": [
     {
+     "chemin": "backend/api/documents.py",
+     "existe": true,
+     "symboles": [
+      "reponse_document",
+      "reponses_document",
+      "MEDIA_TYPES",
+      "test_chaque_format_porte_un_media_type_distinct"
+     ],
+     "symboles_absents": [
+      "test_chaque_format_porte_un_media_type_distinct"
+     ],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/api/erreurs.py",
      "existe": true,
      "symboles": [
@@ -8564,8 +8589,7 @@ window.ATLAS.decisions = {
       "description",
       "formats",
       "CatalogueExports",
-      "EntreeCatalogueExport",
-      "reponse_document"
+      "EntreeCatalogueExport"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -8611,9 +8635,14 @@ window.ATLAS.decisions = {
       "CatalogueExports",
       "EntreeCatalogueExport",
       "RegistreDeFormats.pour",
-      "if"
+      "if",
+      "construire_catalogue",
+      "RegistreDeFormats.formats",
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
+     ],
      "verifiable": true
     },
     {
@@ -8643,14 +8672,13 @@ window.ATLAS.decisions = {
      "chemin": "backend/bootstrap/composition.py",
      "existe": true,
      "symboles": [
+      "construire_catalogue",
       "RegistreDeFormats.formats",
-      "test_les_formats_annonces_derivent_du_cablage",
-      "test_le_service_annonce_les_formats_qu_il_a_cables",
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne",
       "FormatExportIndisponible"
      ],
      "symboles_absents": [
-      "test_les_formats_annonces_derivent_du_cablage",
-      "test_le_service_annonce_les_formats_qu_il_a_cables"
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
      ],
      "verifiable": true
     },
@@ -8662,9 +8690,16 @@ window.ATLAS.decisions = {
       "GenerateurListesImpression",
       "_montant",
       "_ENTETE_CLUB_PAIEMENT",
-      "Club"
+      "Club",
+      "_neutraliser",
+      "_AMORCES_DE_FORMULE",
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
+     ],
      "verifiable": true
     },
     {

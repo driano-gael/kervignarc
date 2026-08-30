@@ -23,10 +23,10 @@ export interface FormatExport {
   libelle: string
 }
 
+// ⚠️ Ni `libelle` ni `description` : le catalogue porte la **capacité** (quels formats), l'écran
+// porte la **copie** (ADR-0101 §1) — au même titre que le chemin et les commandes, qui sont ici.
 export interface EntreeCatalogueExport {
   identifiant: string
-  libelle: string
-  description: string
   formats: FormatExport[]
 }
 

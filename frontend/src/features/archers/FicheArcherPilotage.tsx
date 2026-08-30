@@ -8,6 +8,7 @@
 // L'archer ouvert vient de l'adresse (ADR-0100), donc d'un résultat de recherche comme d'un lien.
 
 import { useState } from 'react'
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBlasons } from '../blasons/hooks'
 import { useCategories } from '../categories/hooks'
@@ -15,6 +16,7 @@ import { useClubs } from '../clubs/hooks'
 import type { NatureForfait } from '../forfaits/api'
 import { useDeclarerForfaitQualif } from '../forfaits/hooks'
 import { PlaceDeLArcher } from '../placement/PlaceDeLArcher'
+import type { Archer } from './api'
 import { useArchers } from './hooks'
 
 export function FicheArcherPilotage({
@@ -94,7 +96,11 @@ export function FicheArcherPilotage({
               Modifier son placement
             </button>
           </span>
-          <DeclarerForfait tournoiId={tournoiId} archerId={archer.id} />
+          {/* ⚠️ `key` **obligatoire** : la destination `archer` ne remonte pas la fiche quand
+              l'adresse change d'archer (ADR-0100), donc React conserverait l'état de ce
+              panneau — un forfait confirmé pour A s'afficherait sur B, et un motif saisi pour
+              A partirait avec le POST de B. */}
+          <DeclarerForfait key={archer.id} tournoiId={tournoiId} archer={archer} />
         </>
       )}
     </section>
@@ -108,7 +114,7 @@ export function FicheArcherPilotage({
 // ⚠️ **Déclarer seulement** : l'annulation (`D-15`) reste au panneau de l'espace scoreur, qui
 // dispose du classement pour dire *qui* est déjà forfait. La fiche ne le sait pas, et un bouton
 // « Annuler » qui ne saurait pas s'il a quelque chose à annuler serait pire que son absence.
-function DeclarerForfait({ tournoiId, archerId }: { tournoiId: number; archerId: number }) {
+function DeclarerForfait({ tournoiId, archer }: { tournoiId: number; archer: Archer }) {
   const [ouvert, setOuvert] = useState(false)
   const [nature, setNature] = useState<NatureForfait>('abandon')
   const [motif, setMotif] = useState('')
@@ -155,13 +161,25 @@ function DeclarerForfait({ tournoiId, archerId }: { tournoiId: number; archerId:
         />
       </label>
       <div className="formulaire__actions">
-        <button
-          type="button"
-          disabled={declarer.isPending}
-          onClick={() => declarer.mutate({ archerId, nature, motif: motif.trim() || undefined })}
-        >
-          {declarer.isPending ? 'Enregistrement…' : 'Confirmer le forfait'}
-        </button>
+        {/* ⚠️ Acte **destructif et non défaisable depuis cet écran** : il passe par la confirmation
+            commune, comme le forfait de duel du feu vert (E16US008). L'avertissement doit tomber
+            AVANT le clic — le dire après l'écriture n'aide personne. */}
+        <BoutonConfirme
+          libelle="Confirmer le forfait"
+          libelleConfirmer="Déclarer forfait"
+          titre={`Déclarer ${archer.nom} ${archer.prenom} forfait ?`}
+          message={
+            nature === 'abandon'
+              ? 'Abandon : l’archer est relégué en fin de classement. Ses flèches déjà tirées sont conservées.'
+              : 'Disqualification : l’archer sort du classement. Ses flèches déjà tirées sont conservées.'
+          }
+          detail="⚠️ Cet écran ne défait pas un forfait : l’annulation se fait depuis l’espace scoreur, panneau « Forfaits — qualification »."
+          ton="danger"
+          enCours={declarer.isPending}
+          onConfirmer={() =>
+            declarer.mutate({ archerId: archer.id, nature, motif: motif.trim() || undefined })
+          }
+        />
         <button type="button" className="bouton--discret" onClick={() => setOuvert(false)}>
           Annuler
         </button>

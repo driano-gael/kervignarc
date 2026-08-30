@@ -1113,6 +1113,10 @@ button:disabled {
 .formulaire__actions {
   display: flex;
   gap: 8px;
+  /* ⚠️ `wrap` depuis E16US007 : une section d'export porte désormais **un bouton par format**, aux
+     libellés longs, dans une colonne d'admin dont la largeur n'a jamais été mesurée (DETTE-086).
+     Sans lui, les items flex (`min-width: auto`) débordent au lieu de passer à la ligne. */
+  flex-wrap: wrap;
 }
 
 /* Gestion des tournois (E01US002) : ligne = ouverture + statut + actions admin. */

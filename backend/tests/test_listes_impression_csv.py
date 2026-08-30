@@ -163,3 +163,83 @@ def test_les_numeros_de_depart_ne_contiennent_pas_de_separateur_decimal() -> Non
     liste = ListeClubPaiement(tournoi="Trophée", groupes=(_groupe("Kervignarc", "Durand", 800, 0),))
 
     assert ";1 2;" in _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+
+
+# --- Injection de formule (CWE-1236) --------------------------------------------------------------
+
+
+def test_un_club_nomme_comme_une_formule_n_est_pas_execute() -> None:
+    """⚠️ Relevé par les cinq axes de revue. Le chemin est complet : un nom de club entre par
+    l'import FFTA, ressort au CSV, et le fichier est fait pour être ouvert dans un tableur."""
+    liste = ListeClubPaiement(
+        tournoi="Trophée", groupes=(_groupe('=cmd|"/c calc"!A1', "Durand", 800, 0),)
+    )
+
+    ligne = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+
+    assert ligne.startswith("\"'=cmd")
+
+
+def test_un_nom_commencant_par_un_signe_est_neutralise() -> None:
+    liste = ListePlacement(
+        tournoi="Trophée",
+        depart_numero=None,
+        tri=TriPlacement.CIBLE,
+        lignes=(_ligne_placement("+33 6 12", "@Marie", 1, "A"),),
+    )
+
+    ligne = _lignes(GenerateurListesImpressionCsv().placement(liste))[1]
+
+    assert ";'+33 6 12;'@Marie;" in ligne
+
+
+def test_un_nom_ordinaire_n_est_pas_touche() -> None:
+    """La neutralisation ne doit pas défigurer les 99,9 % de noms normaux."""
+    liste = ListePlacement(
+        tournoi="Trophée",
+        depart_numero=None,
+        tri=TriPlacement.CIBLE,
+        lignes=(_ligne_placement("Durand", "Marie", 1, "A"),),
+    )
+
+    assert _lignes(GenerateurListesImpressionCsv().placement(liste))[1] == (
+        "1;1;A;Durand;Marie;Sénior Homme"
+    )
+
+
+def test_les_montants_ne_sont_jamais_neutralises() -> None:
+    """⚠️ Un montant préfixé d'une apostrophe cesse d'être sommable — ADR-0101 §4 l'interdit.
+
+    Le décor force un `paye` supérieur au `du` pour produire un reste **négatif**, seul montant
+    qui commence par un caractère d'amorce de formule.
+    """
+    liste = ListeClubPaiement(tournoi="Trophée", groupes=(_groupe("Kervignarc", "Durand", 0, 500),))
+
+    ligne = _lignes(GenerateurListesImpressionCsv().club_paiement(liste))[1]
+
+    assert ";-5,00;" in ligne
+    assert "'-5,00" not in ligne
+
+
+def test_un_archer_sans_depart_ni_du_rend_des_cellules_vides() -> None:
+    """Cas courant (archer saisi, pas encore inscrit) : le PDF écrit « — », le CSV laisse vide.
+
+    Parti **voulu** : une cellule vide se filtre au tableur, un tiret non. Épinglé pour qu'un
+    futur `or "—"` recopié du PDF ne passe pas en silence.
+    """
+    groupe = GroupePaiementClub(
+        club="Kervignarc",
+        lignes=(
+            LignePaiementImpression(
+                nom="Durand", prenom="Marie", departs=(), du_centimes=0, paye_centimes=0
+            ),
+        ),
+        total_du_centimes=0,
+        total_paye_centimes=0,
+    )
+
+    ligne = _lignes(
+        GenerateurListesImpressionCsv().club_paiement(ListeClubPaiement("Trophée", (groupe,)))
+    )[1]
+
+    assert ligne == "Kervignarc;Durand;Marie;;0;0,00;0,00;0,00;"

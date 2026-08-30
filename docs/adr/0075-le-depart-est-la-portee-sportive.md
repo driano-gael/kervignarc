@@ -218,7 +218,7 @@ retenus** mérite le même balayage que celle des ajouts.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
 `0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`. Et, par
-réouverture plutôt que par création : **`0050`** (E16US008, 28/08/2026). La liste dérive à
+réouverture plutôt que par création : **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 

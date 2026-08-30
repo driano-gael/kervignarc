@@ -149,12 +149,6 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce autoriser_forfait_duel dans « backend/api/dependances.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0050"
-  },
-  {
-   "code": "portage-symbole-absent",
    "message": "annonce elimination_directe dans « backend/domain/politiques.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0062"
@@ -251,19 +245,37 @@ window.ATLAS.controles = {
   },
   {
    "code": "portage-symbole-absent",
+   "message": "annonce test_chaque_format_porte_un_media_type_distinct dans « backend/api/documents.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0101"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne dans « backend/application/exports.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0101"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne dans « backend/bootstrap/composition.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0101"
+  },
+  {
+   "code": "portage-symbole-absent",
    "message": "annonce test_le_contenu_compose_ne_depend_pas_du_format dans « backend/application/listes_impression.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0101"
   },
   {
    "code": "portage-symbole-absent",
-   "message": "annonce test_les_formats_annonces_derivent_du_cablage, test_le_service_annonce_les_formats_qu_il_a_cables dans « backend/bootstrap/composition.py » — introuvable(s) dans le fichier.",
+   "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/listes_impression.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0101"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 43
+  "signaux": 45
  }
 };

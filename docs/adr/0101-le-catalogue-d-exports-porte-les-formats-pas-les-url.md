@@ -12,7 +12,12 @@
 
 > ⚠️ **Cet ADR ne figure pas à la liste nominative d'[ADR-0075 § « Portée de la règle »](0075-le-depart-est-la-portee-sportive.md), et c'est volontaire.**
 > Il est d'**outillage documentaire** : aucun moteur sportif ne lit un format de fichier, aucune
-> portée ne change, aucune politique injectable au sens de la règle 2 n'est en jeu. Le critère de
+> portée ne change, aucune politique injectable au sens de la règle 2 n'est en jeu.
+> ⚠️ **« Au sens de la règle 2 » désigne les six politiques du moteur** — `routing`, `scoring`,
+> `seeding`, `byes`, `tiebreak`, `depth`. Le §2 ci-dessous dit « la règle 2 appliquée au rendu » :
+> c'est un emprunt de **forme** (un adapter plutôt qu'une branche), pas une septième politique.
+> Sans cette précision, un relecteur appliquant le critère mot à mot conclut que l'exclusion est
+> fausse *(levé en revue, axe C2)*. Le critère de
 > `CLAUDE.md` exclut nommément les ADR d'outillage ; précédents : `0095`, `0096`, `0098`, `0100`.
 > ⚠️ **Il est en revanche inscrit à la liste « hors critère » d'ADR-0075** — le plaider ici ne
 > suffit pas, c'est cette liste qui borne ce qu'une revue a le droit de relever. Il porte sa
@@ -72,9 +77,14 @@ configuration, pas du code*.
 
 ### §3 — Les formats annoncés **dérivent** du câblage
 
-`RegistreDeFormats.formats` lit les clés réellement câblées ; le composition root remplit chaque
-entrée du catalogue depuis `service.formats_disponibles`. **Aucune ligne n'écrit une liste de
-formats à la main.**
+`RegistreDeFormats.formats` lit les clés réellement câblées ; le composition root passe ces formats
+à `construire_catalogue`, **fonction pure**, qui compose les entrées. **Aucune ligne n'écrit une
+liste de formats à la main.**
+
+⚠️ **La fonction est pure exprès** : composer le catalogue *dans* `bootstrap/` rendait la
+dérivation intestable, si bien qu'une liste réécrite à la main y serait passée sans rien faire
+rougir — alors que c'est l'invariant central de cet ADR. *(Relevé en revue, axe B : la promesse
+était plus forte que la preuve.)*
 
 C'est le point qui empêche le défaut caractéristique du projet — « bien formé, plausible et faux »
 ([ADR-0081](0081-un-classement-de-poule-se-lit-par-groupe.md)). Une entrée qui figerait
@@ -121,10 +131,25 @@ paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
 
 ## Conséquences
 
-- **Un point unique** compose la réponse binaire (`api/v1/exports.reponse_document`) : type de
+- **Un point unique** compose la réponse binaire (`api/documents.reponse_document`) : type de
   contenu **et** extension dérivés du format. Sans lui, un format ajouté se téléchargerait en
   `.pdf` contenant du CSV — un fichier qu'aucun outil n'ouvre et dont rien, côté serveur, ne dirait
   qu'il est faux.
+- **Le catalogue ne porte pas non plus les libellés.** Un libellé et une description sont des
+  choix d'IHM au même titre que l'URL et les commandes : les faire descendre dans le catalogue
+  mettrait la copie de l'écran dans le composition root, et une correction de formulation
+  deviendrait une modification du backend. Ils vivent donc dans la table `documents` de
+  `Exports.tsx`, à côté du chemin. *(Corrigé en revue, axe C2 : la 1ʳᵉ livraison les portait.)*
+- **Le nom de fichier est dérivé des deux côtés** : le serveur pour le `Content-Disposition`
+  (`api/documents.py`), le front pour le fichier enregistré (`telechargerExport`). Le « point
+  unique » ne couvre que la paire **(type MIME, extension)**, pas le radical du nom. Le remède —
+  lire le `Content-Disposition` côté front — demanderait d'exposer les en-têtes dans `fetchBlob`,
+  utilisé par tout le dépôt, pour un défaut qui produit un fichier mal nommé et rien de plus.
+  Écrit ici pour qu'on ne croie pas le point unique plus large qu'il n'est *(axes C2 et D)*.
+- **Le type MIME vit à la frontière API** (`api/documents.py`), pas dans `application/` : c'est une
+  décision HTTP, même partage que le mapping des erreurs (règle 5/6) — `FormatExportIndisponible`
+  ne porte pas son 400. Le libellé, lui, reste applicatif : il est **servi au client**, donc il
+  fait partie du contrat. *(Corrigé en revue, axe A.)*
 - **Le paquet d'infra s'appelle `tableur/`, pas `csv/`** : il porterait le nom du module stdlib que
   ses propres modules importent.
 - **Aucune dépendance ajoutée** (règle 11) : ReportLab était déjà là, `csv` est stdlib. `xlsx`
@@ -150,10 +175,11 @@ paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
 | §1 — chaque document garde sa route et ses options | `backend/api/v1/listes_impression.py` (`tri`, `depart_id` **inchangés**) · `backend/api/v1/feuille_de_marque.py` (`depart_id` en chemin) | oui — aucune option déplacée |
 | §2 — le format est un adapter, jamais une branche | `backend/application/exports.py` (`RegistreDeFormats.pour`) · `backend/application/listes_impression.py` et `backend/application/feuille_de_marque.py` (`self._generateurs.pour(format_)`, **zéro** `if`) | oui |
 | §2 — l'adapter CSV réalise le **même** port que le PDF | `backend/infrastructure/tableur/listes_impression.py` (`GenerateurListesImpressionCsv`, port `GenerateurListesImpression`) | oui |
-| §3 — les formats dérivent du câblage | `backend/bootstrap/composition.py` (`formats=app.state.service_*.formats_disponibles`) · `RegistreDeFormats.formats` — gardé par `test_les_formats_annonces_derivent_du_cablage` et `test_le_service_annonce_les_formats_qu_il_a_cables` | oui |
+| §3 — les formats dérivent du câblage | `backend/application/exports.py` (`construire_catalogue`, fonction **pure**) · `backend/bootstrap/composition.py` (`construire_catalogue(formats_listes, formats_feuille)`) · `RegistreDeFormats.formats` — gardé par `test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne` (décor **mono-format** : une liste écrite en dur en annoncerait deux) | oui — ⚠️ **corrigé en revue (axe B)** : la 1ʳᵉ livraison composait le catalogue **dans** `bootstrap/`, donc hors de portée des tests ; la cellule « gardé » promettait plus que la preuve, exactement le défaut qu'ADR-0075 documente |
 | §3 — registre vide refusé, ordre stable | `RegistreDeFormats.__init__` (`ValueError`) et `.formats` (itère `FormatExport`) — gardés par `test_un_registre_vide_est_refuse_a_la_construction` et `test_les_formats_sortent_dans_l_ordre_du_catalogue_pas_du_cablage` | oui |
 | §4 — BOM, séparateur, montants, pas de totaux | `backend/infrastructure/tableur/listes_impression.py` (`utf-8-sig`, `_SEPARATEUR = ";"`, `_montant`, `_ENTETE_CLUB_PAIEMENT` avec `Club` en colonne) | oui |
+| §4 bis — une cellule de texte ne devient pas une formule | `backend/infrastructure/tableur/listes_impression.py` (`_neutraliser`, `_AMORCES_DE_FORMULE`) — appliqué aux **colonnes de texte seulement**, jamais aux montants (un `-5,00` préfixé cesserait d'être sommable) ; gardé par `test_un_club_nomme_comme_une_formule_n_est_pas_execute` et `test_les_montants_ne_sont_jamais_neutralises` | oui — ⚠️ **ajouté en revue** : relevé par les **cinq** axes (CWE-1236), le chemin étant complet (import FFTA → CSV → tableur de la trésorière) |
 | §4 — le contenu ne dépend pas du format | `backend/application/listes_impression.py` — le contenu est composé **avant** `.pour(format_)` ; gardé par `test_le_contenu_compose_ne_depend_pas_du_format` | oui |
 | §5 — un export mono-format, et le refus explicite | `backend/bootstrap/composition.py` (`RegistreDeFormats({FormatExport.PDF: GenerateurFeuilleDeMarquePdf()})`) · `backend/application/erreurs/exploitation.py` (`FormatExportIndisponible`) · `backend/api/erreurs.py` (→ 400) | oui |
 | §5 / §1 — l'écran ne tient aucune liste de formats | `frontend/src/features/exports/Exports.tsx` et `api.ts` — les boutons sont produits depuis le catalogue reçu | oui |
-| Conséquence — point unique de réponse binaire | `backend/api/v1/exports.py` (`reponse_document`), appelé par `listes_impression.py` et `feuille_de_marque.py` | oui |
+| Conséquence — point unique de réponse binaire | `backend/api/documents.py` (`reponse_document`, `reponses_document`, `MEDIA_TYPES`) — module d'API **sans routeur**, appelé par `listes_impression.py` et `feuille_de_marque.py` ; exhaustivité gardée par `test_chaque_format_porte_un_media_type_distinct` | oui — ⚠️ **corrigé en revue (axes A, C2)** : il vivait dans le routeur du catalogue, et le dictionnaire OpenAPI réénumérait les types MIME **à la main**, dans le module même qui importe le registre |

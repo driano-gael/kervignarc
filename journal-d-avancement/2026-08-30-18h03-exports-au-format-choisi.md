@@ -47,15 +47,18 @@ formats est **propre à chaque document**, et non une liste unique appliquée pa
 
 Vous avez tranché une question laissée ouverte le 29 août : **l'organisateur peut désormais déclarer
 lui-même l'abandon d'un archer en qualification**, depuis la fiche de l'archer, sans aller chercher
-un scoreur. C'est le même geste que celui déjà ouvert sur les duels. L'**annulation** d'un abandon
-reste, elle, dans l'espace du scoreur — c'est le seul écran qui affiche le classement, donc le seul
-qui sache dire *qui* est déjà déclaré forfait.
+un scoreur. C'est le même geste que celui déjà ouvert sur les duels, et il passe par la **même fenêtre de
+confirmation** : elle nomme l'archer et vous prévient **avant** le clic.
+
+L'**annulation** d'un abandon reste, elle, dans l'espace du scoreur — c'est le seul écran qui
+affiche le classement, donc le seul qui sache dire *qui* est déjà déclaré forfait. C'est une limite
+assumée : vous pouvez déclarer sans pouvoir défaire depuis cet écran.
 
 ## Ce qui reste dû sur les exports
 
 - Le **classement (palmarès)** ne sort qu'en PDF. L'ouvrir aux autres formats demande de changer une
   adresse **publique**, ce qui appelle votre arbitrage.
-- Le **journal d'audit** se consulte à l'écran mais ne s'exporte pas.
+- Le **journal d'audit** n'est consultable **nulle part** : la fonction existe côté serveur, mais aucun écran ne l'affiche. (Nous avions d'abord cru le contraire ; la relecture l'a corrigé.) Il faut donc l'écran **puis** l'export.
 - Le format **Excel (`.xlsx`)** n'est pas proposé : il faudrait ajouter une bibliothèque au logiciel,
   décision qui vous revient. En attendant, **Excel ouvre les CSV**.
 

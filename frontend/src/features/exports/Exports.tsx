@@ -21,6 +21,8 @@ import { useCatalogueExports, useTelechargerExport } from './hooks'
 // l'enregistrer, et les commandes qui le paramètrent. `chemin: null` = commandes incomplètes.
 interface DocumentDeLEcran {
   identifiant: string
+  libelle: string
+  description: string
   chemin: string | null
   nomSansExtension: string
   commandes?: ReactNode
@@ -32,8 +34,8 @@ function SectionExport({ entree, doc }: { entree: EntreeCatalogueExport; doc: Do
 
   return (
     <section>
-      <h4 className="carte__soustitre">{entree.libelle}</h4>
-      <p className="carte__etat">{entree.description}</p>
+      <h4 className="carte__soustitre">{doc.libelle}</h4>
+      <p className="carte__etat">{doc.description}</p>
       <div className="formulaire formulaire--colonne">
         {doc.commandes}
         <div className="formulaire__actions">
@@ -51,7 +53,9 @@ function SectionExport({ entree, doc }: { entree: EntreeCatalogueExport; doc: Do
                 })
               }
             >
-              {telecharger.isPending ? 'Génération…' : `Télécharger (${format.libelle})`}
+              {telecharger.isPending && telecharger.variables?.format === format.code
+                ? 'Génération…'
+                : `Télécharger — ${format.libelle}`}
             </button>
           ))}
         </div>
@@ -79,6 +83,9 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
   const documents: DocumentDeLEcran[] = [
     {
       identifiant: 'placement',
+      libelle: 'Liste de placement',
+      description:
+        'Qui tire sur quelle cible et dans quel couloir de tir — pour l’accueil des archers.',
       chemin: cheminPlacement(tournoiId, { tri, departId }),
       nomSansExtension: `placement-tournoi-${tournoiId}${suffixePlacement}`,
       commandes: (
@@ -114,11 +121,16 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
     },
     {
       identifiant: 'club-paiement',
+      libelle: 'Liste club & paiement',
+      description:
+        'Par club : départs, dû, réglé ou non, et totaux — pour le suivi administratif. Couvre tout le tournoi.',
       chemin: cheminClubPaiement(tournoiId),
       nomSansExtension: `club-paiement-tournoi-${tournoiId}`,
     },
     {
       identifiant: 'feuille-de-marque',
+      libelle: 'Feuille de marque',
+      description: 'Une page par archer placé sur un départ, à remplir au stylo sur la cible.',
       // Le départ est **obligatoire** ici (il est dans le chemin), au contraire du placement où il
       // filtre. D'où le bouton inactif tant qu'aucun n'est choisi, plutôt qu'un appel qui partirait
       // en 404.
@@ -157,6 +169,17 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
         sait en produire.
       </p>
       <MessageErreur erreur={catalogue.error} />
+      {/* ⚠️ **Trois états, pas un** : depuis que l'écran dérive du catalogue, une requête en vol
+          ou en échec ne rend AUCUNE section — indistinguable d'un écran cassé (revue, 3 axes). */}
+      {catalogue.isPending && <p className="carte__etat">Chargement des documents…</p>}
+      {catalogue.isError && (
+        <p className="carte__etat">
+          Impossible de lister les documents disponibles.{' '}
+          <button type="button" className="bouton--discret" onClick={() => catalogue.refetch()}>
+            Réessayer
+          </button>
+        </p>
+      )}
 
       {/* ⚠️ `doc`, pas `document` : ce dernier est le DOM global de la page. */}
       {documents.map((doc) => {

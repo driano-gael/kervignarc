@@ -25,20 +25,20 @@ vi.mock('../departs/hooks', () => ({
 }))
 
 const PDF = { code: 'pdf', libelle: 'PDF' }
-const CSV = { code: 'csv', libelle: 'CSV (tableur)' }
+const CSV = { code: 'csv', libelle: 'Tableur (CSV)' }
 
+// ⚠️ Le catalogue ne porte QUE la capacité : les libellés affichés viennent de l'écran (ADR-0101).
 function entree(
   identifiant: string,
-  libelle: string,
   formats: { code: string; libelle: string }[],
 ): EntreeCatalogueExport {
-  return { identifiant, libelle, description: `À propos de ${libelle}.`, formats }
+  return { identifiant, formats }
 }
 
 const CATALOGUE = [
-  entree('placement', 'Liste de placement', [PDF, CSV]),
-  entree('club-paiement', 'Liste club & paiement', [PDF, CSV]),
-  entree('feuille-de-marque', 'Feuille de marque', [PDF]),
+  entree('placement', [PDF, CSV]),
+  entree('club-paiement', [PDF, CSV]),
+  entree('feuille-de-marque', [PDF]),
 ]
 
 function monter() {
@@ -66,7 +66,7 @@ describe("l'écran rend ce que le catalogue annonce", () => {
     expect(section).not.toBeNull()
     expect(
       Array.from(section!.querySelectorAll('button')).map((bouton) => bouton.textContent),
-    ).toEqual(['Télécharger (PDF)', 'Télécharger (CSV (tableur))'])
+    ).toEqual(['Télécharger — PDF', 'Télécharger — Tableur (CSV)'])
   })
 
   it("n'offre qu'un bouton à un document mono-format", async () => {
@@ -80,17 +80,17 @@ describe("l'écran rend ce que le catalogue annonce", () => {
   it("rend un format que ce fichier ne mentionne nulle part — c'est le CA", async () => {
     // Le serveur câble un format de plus ; **aucune ligne d'écran ne change**.
     vi.mocked(chargerCatalogueExports).mockResolvedValue([
-      entree('club-paiement', 'Liste club & paiement', [PDF, CSV, { code: 'ods', libelle: 'ODS' }]),
+      entree('club-paiement', [PDF, CSV, { code: 'ods', libelle: 'ODS' }]),
     ])
     monter()
 
-    expect(await screen.findByRole('button', { name: 'Télécharger (ODS)' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Télécharger — ODS' })).toBeTruthy()
   })
 
   it('demande le document au format du bouton cliqué', async () => {
     monter()
 
-    // ⚠️ Portée à la section : « Télécharger (CSV (tableur)) » existe aussi sous club & paiement.
+    // ⚠️ Portée à la section : « Télécharger — Tableur (CSV) » existe aussi sous club & paiement.
     const placement = await screen.findByRole('heading', { name: 'Liste de placement' })
     const section = placement.closest('section')!
     await userEvent.click(section.querySelectorAll('button')[1]!)

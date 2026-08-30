@@ -161,8 +161,8 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'ces archers sont à égalité, aucun match ne les ayant départagés. « Exporter en PDF » sort le ' +
     'document à afficher au mur.',
   exports:
-    'Générez les documents imprimables du jour J : listes de placement, par club, feuilles de ' +
-    'paiement. À imprimer pour l’accueil et les bénévoles.',
+    'Sortez les documents du jour J : liste de placement, liste club & paiement, feuilles de ' +
+    'marque. Chaque document se prend au format qui sert — PDF pour imprimer, CSV pour le tableur.',
   archive:
     'Constituez le paquet de fin de tournoi (sauvegarde de la base, fichiers CSV et PDF) à conserver. ' +
     'Choisissez ce que vous voulez inclure avant de générer l’archive.',

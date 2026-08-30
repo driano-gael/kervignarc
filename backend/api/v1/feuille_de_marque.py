@@ -7,11 +7,13 @@ bout : E00US009.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from api.dependances import exiger_admin
-from api.v1.exports import REPONSE_DOCUMENT, reponse_document
+from api.documents import reponse_document, reponses_document
 from application.exports import FormatExport
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 
@@ -21,13 +23,13 @@ router = APIRouter(prefix="/api/v1", tags=["feuille-de-marque"])
 @router.get(
     "/tournois/{tournoi_id}/departs/{depart_id}/feuille-de-marque",
     dependencies=[Depends(exiger_admin)],
-    responses=REPONSE_DOCUMENT,
+    responses=reponses_document(FormatExport.PDF),
 )
 async def feuille_de_marque(
     tournoi_id: int,
     depart_id: int,
     request: Request,
-    format: FormatExport = FormatExport.PDF,
+    format_: Annotated[FormatExport, Query(alias="format")] = FormatExport.PDF,
 ) -> Response:
     """Renvoie la feuille de marque du départ (une page par archer placé).
 
@@ -36,7 +38,7 @@ async def feuille_de_marque(
     silence, qui rendrait un PDF à qui a demandé du CSV.
     """
     service: ServiceFeuilleDeMarque = request.app.state.service_feuille_de_marque
-    document = await run_in_threadpool(service.generer, tournoi_id, depart_id, format)
+    document = await run_in_threadpool(service.generer, tournoi_id, depart_id, format_)
     return reponse_document(
-        document, format, f"feuille-de-marque-tournoi-{tournoi_id}-depart-{depart_id}"
+        document, format_, f"feuille-de-marque-tournoi-{tournoi_id}-depart-{depart_id}"
     )

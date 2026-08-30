@@ -21,11 +21,12 @@ import pytest
 
 from application.erreurs import FormatExportIndisponible
 from application.exports import (
-    DESCRIPTIONS_FORMAT,
+    LIBELLES_FORMAT,
     CatalogueExports,
     EntreeCatalogueExport,
     FormatExport,
     RegistreDeFormats,
+    construire_catalogue,
 )
 
 # --- Doublures ------------------------------------------------------------------------------------
@@ -45,10 +46,7 @@ def test_le_catalogue_enumere_chaque_export_avec_ses_formats() -> None:
     catalogue = CatalogueExports(
         (
             EntreeCatalogueExport(
-                identifiant="placement",
-                libelle="Liste de placement",
-                description="Qui tire sur quelle cible.",
-                formats=(FormatExport.PDF, FormatExport.CSV),
+                identifiant="placement", formats=(FormatExport.PDF, FormatExport.CSV)
             ),
         )
     )
@@ -56,7 +54,6 @@ def test_le_catalogue_enumere_chaque_export_avec_ses_formats() -> None:
     (entree,) = catalogue.entrees
 
     assert entree.identifiant == "placement"
-    assert entree.libelle == "Liste de placement"
     assert entree.formats == (FormatExport.PDF, FormatExport.CSV)
 
 
@@ -64,12 +61,7 @@ def test_un_export_mono_format_n_annonce_qu_un_format() -> None:
     """CA « que les formats qui ont un sens » : une feuille de marque se remplit à la main."""
     registre = RegistreDeFormats({FormatExport.PDF: FauxGenerateur("pdf")})
 
-    entree = EntreeCatalogueExport(
-        identifiant="feuille-de-marque",
-        libelle="Feuille de marque",
-        description="Une page par archer placé, à remplir au stylo.",
-        formats=registre.formats,
-    )
+    entree = EntreeCatalogueExport(identifiant="feuille-de-marque", formats=registre.formats)
 
     assert entree.formats == (FormatExport.PDF,)
 
@@ -79,8 +71,6 @@ def test_deux_exports_du_meme_catalogue_peuvent_offrir_des_formats_differents() 
         (
             EntreeCatalogueExport(
                 identifiant="placement",
-                libelle="Liste de placement",
-                description="…",
                 formats=RegistreDeFormats(
                     {
                         FormatExport.PDF: FauxGenerateur("pdf"),
@@ -90,8 +80,6 @@ def test_deux_exports_du_meme_catalogue_peuvent_offrir_des_formats_differents() 
             ),
             EntreeCatalogueExport(
                 identifiant="feuille-de-marque",
-                libelle="Feuille de marque",
-                description="…",
                 formats=RegistreDeFormats({FormatExport.PDF: FauxGenerateur("pdf")}).formats,
             ),
         )
@@ -177,13 +165,15 @@ def test_un_registre_vide_est_refuse_a_la_construction() -> None:
 # --- Cohérence du registre de formats -------------------------------------------------------------
 
 
-def test_chaque_format_est_decrit() -> None:
-    """Garde-fou de registres jumeaux : l'énumération et la table de description ne dérivent pas.
+def test_chaque_format_a_un_libelle() -> None:
+    """Garde-fou de registres jumeaux : l'énumération et la table de libellés ne dérivent pas.
 
     Patron déjà employé entre `TYPES_DEROULES` et `TYPES_ARRETABLES` (E05US035). Sans lui, ajouter
-    un membre à `FormatExport` sans sa description ne casserait rien avant la première requête.
+    un membre à `FormatExport` sans son libellé ne casserait rien avant la première requête.
+    ⚠️ Le **type MIME** a son jumeau à la frontière API (`test_listes_impression_api.py`) : il y a
+    deux tables, parce qu'elles n'appartiennent pas à la même couche.
     """
-    assert set(DESCRIPTIONS_FORMAT) == set(FormatExport)
+    assert set(LIBELLES_FORMAT) == set(FormatExport)
 
 
 def test_l_extension_de_fichier_est_le_code_du_format() -> None:
@@ -192,7 +182,34 @@ def test_l_extension_de_fichier_est_le_code_du_format() -> None:
     assert FormatExport.CSV.value == "csv"
 
 
-def test_chaque_format_porte_un_media_type_distinct() -> None:
-    types = [description.media_type for description in DESCRIPTIONS_FORMAT.values()]
+# --- La fabrique du catalogue (là où la dérivation peut casser) ---------------------------------
 
-    assert len(set(types)) == len(types)
+
+def test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne() -> None:
+    """⚠️ **Le seul test qui garde la dérivation là où elle vit.** Relevé en revue (axe B) : tant
+    que le catalogue était composé dans `bootstrap/`, réécrire `formats=(PDF, CSV)` à la main y
+    passait sans rien faire rougir — alors qu'ADR-0101 §3 en fait l'invariant central. Le décor
+    donne aux listes **un seul** format : une liste écrite en dur en annoncerait deux.
+    """
+    catalogue = construire_catalogue(
+        formats_listes=(FormatExport.PDF,), formats_feuille=(FormatExport.PDF,)
+    )
+
+    formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
+
+    assert formats == {
+        "placement": (FormatExport.PDF,),
+        "club-paiement": (FormatExport.PDF,),
+        "feuille-de-marque": (FormatExport.PDF,),
+    }
+
+
+def test_le_catalogue_construit_distingue_les_listes_de_la_feuille_de_marque() -> None:
+    catalogue = construire_catalogue(
+        formats_listes=(FormatExport.PDF, FormatExport.CSV), formats_feuille=(FormatExport.PDF,)
+    )
+
+    formats = {entree.identifiant: entree.formats for entree in catalogue.entrees}
+
+    assert formats["placement"] == (FormatExport.PDF, FormatExport.CSV)
+    assert formats["feuille-de-marque"] == (FormatExport.PDF,)

@@ -16,6 +16,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.documents import MEDIA_TYPES
+from application.exports import FormatExport
 from bootstrap.composition import create_app
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
@@ -223,18 +225,23 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "club-paiement": ["pdf", "csv"],
         "feuille-de-marque": ["pdf"],
     }
-    assert par_identifiant["placement"]["libelle"] == "Liste de placement"
+    assert par_identifiant["placement"]["formats"][0]["libelle"] == "PDF"
 
 
-def test_le_catalogue_ne_porte_aucune_url(
+def test_le_catalogue_ne_porte_que_la_capacite(
     app_listes: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """ADR-0101 §1 : une URL au catalogue ferait de l'écran un client de gabarits d'adresses."""
+    """ADR-0101 §1 : ni URL, ni libellé, ni description — la copie d'écran appartient à l'écran.
+
+    ⚠️ Boucle sur **toutes** les entrées : n'en inspecter qu'une laisserait passer celle qu'on
+    ajoutera (relevé en revue, axe D).
+    """
     with TestClient(app_listes) as client:
         connecter_admin(client)
         reponse = client.get("/api/v1/exports")
 
-    assert set(reponse.json()[0]) == {"identifiant", "libelle", "description", "formats"}
+    for entree in reponse.json():
+        assert set(entree) == {"identifiant", "formats"}, entree
 
 
 def test_le_catalogue_est_reserve_a_l_admin(app_listes: FastAPI) -> None:
@@ -338,3 +345,13 @@ def test_sans_format_le_document_reste_un_pdf(
     assert feuille.status_code == 200, feuille.text
     assert feuille.headers["content-type"] == "application/pdf"
     assert feuille.content.startswith(b"%PDF")
+
+
+def test_chaque_format_porte_un_media_type_distinct() -> None:
+    """Registre jumeau de `FormatExport`, côté API depuis la revue (le type MIME est du HTTP).
+
+    Sans ce test, ajouter un membre à `FormatExport` sans son type MIME lèverait un `KeyError`
+    à la première requête — donc une 500 au lieu d'un échec de suite.
+    """
+    assert set(MEDIA_TYPES) == set(FormatExport)
+    assert len(set(MEDIA_TYPES.values())) == len(MEDIA_TYPES)
