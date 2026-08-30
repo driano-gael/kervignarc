@@ -1439,7 +1439,8 @@ window.ATLAS.avancement = {
     "0004",
     "0060",
     "0075",
-    "0099"
+    "0099",
+    "0102"
    ],
    "dettes_introduites": [
     "088",
@@ -1451,11 +1452,64 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US027",
    "sections": [
-    "Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**"
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Le code porte des pointeurs, pas le raisonnement",
    "titre_story": "Le code porte des pointeurs, pas le raisonnement"
+  },
+  {
+   "adr": [
+    "0075",
+    "0102"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US028",
+   "sections": [
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Un ADR qui nomme du code disparu fait rougir la CI",
+   "titre_story": "Un ADR qui nomme du code disparu fait rougir la CI"
+  },
+  {
+   "adr": [
+    "0102"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US029",
+   "sections": [
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque",
+   "titre_story": "Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque"
+  },
+  {
+   "adr": [
+    "0075",
+    "0102"
+   ],
+   "dettes_introduites": [],
+   "dettes_resorbees": [],
+   "epic": "00",
+   "epic_titre": "Socle technique & walking skeleton",
+   "etat": "⬜",
+   "identifiant": "E00US030",
+   "sections": [
+    "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
+   ],
+   "story": "stories/E00-socle.md",
+   "titre": "Un fait, un lieu : la charte des documents",
+   "titre_story": "Un fait, un lieu : la charte des documents"
   },
   {
    "adr": [
@@ -4140,7 +4194,8 @@ window.ATLAS.avancement = {
   },
   {
    "adr": [
-    "0096"
+    "0096",
+    "0102"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
@@ -4160,7 +4215,8 @@ window.ATLAS.avancement = {
     "0013",
     "0050",
     "0075",
-    "0096"
+    "0096",
+    "0102"
    ],
    "dettes_introduites": [
     "017",
@@ -4208,7 +4264,8 @@ window.ATLAS.avancement = {
     "0073",
     "0075",
     "0096",
-    "0100"
+    "0100",
+    "0102"
    ],
    "dettes_introduites": [
     "006",
@@ -4443,7 +4500,7 @@ window.ATLAS.avancement = {
  ],
  "resume": {
   "livrees": 130,
-  "vivantes": 165
+  "vivantes": 168
  },
  "sections": [
   {
@@ -5635,11 +5692,11 @@ window.ATLAS.avancement = {
   {
    "calcule": [
     1,
-    1
+    4
    ],
    "compteur_ecrit": [
     1,
-    1
+    4
    ],
    "lignes": [
     {
@@ -5647,9 +5704,27 @@ window.ATLAS.avancement = {
      "etat": "✅",
      "identifiant": "E00US027",
      "titre": "Le code porte des pointeurs, pas le raisonnement"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US028",
+     "titre": "Un ADR qui nomme du code disparu fait rougir la CI"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US029",
+     "titre": "Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
+     "identifiant": "E00US030",
+     "titre": "Un fait, un lieu : la charte des documents"
     }
    ],
-   "titre": "Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**"
+   "titre": "Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**"
   },
   {
    "calcule": [

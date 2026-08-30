@@ -1267,7 +1267,13 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | E00US025 | Le contrat DTO front ↔ back, vérifié plutôt que recopié | hors jalon | ⬜ |
 | E00US026 | Rallier le JavaScript de l'atlas à l'outillage du front (`DETTE-067`) | hors jalon | ⬜ |
 
-## Ajout du 27/08/2026 — Qualité de lecture du code — ✅ **livrée (1/1)**
+## Ajout du 27/08/2026 — Qualité de lecture, code **et documentation** — 🔶 **en cours (1/4)**
+
+> ⚠️ **Section élargie le 30/08/2026.** Elle ne portait que le **code** (`E00US027`, ADR-0099).
+> La revue d'`E16US007` a montré que le raisonnement chassé du code avait été déversé dans une
+> documentation que rien ne vérifie non plus : un fait unique écrit dans **11 documents sur 13**.
+> [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) étend la
+> décision, et trois US la portent.
 
 > Née d'une question du commanditaire après les **trois passes de revue** d'`E16US009` : *« pourquoi
 > autant de passes ? »*. La mesure a montré que la majorité des remarques de 2ᵉ et 3ᵉ passe portaient
@@ -1277,6 +1283,9 @@ d'une **action destructrice**, absente de la charte)*. Précédente : `E16US001`
 | US | Titre | Jalon | État |
 |---|---|---|---|
 | E00US027 | Le code porte des pointeurs, pas le raisonnement | hors jalon | ✅ *(règle 13 + [ADR-0099](../docs/adr/0099-le-code-porte-des-pointeurs-pas-le-raisonnement.md) : un commentaire ne survit que s'il porte une **contrainte non déductible**, un **avertissement**, ou un **renvoi d'une ligne**. Le reste vit déjà ailleurs — `git` pour l'historique, `stories/` pour les CA, l'ADR pour le raisonnement, `docs/dette.md` pour l'archéologie. ⚠️ **On ne coupe que ce qui existe ailleurs** : le décompte de chrome de `LIGNES_PROJETEES_MAX`, qui ne vivait que dans un commentaire, a été **déplacé** dans `DETTE-086` avant d'être retiré. Appliquée **au dépôt entier** après arbitrage du 27/08/2026 (plafond de **8 lignes** par bloc, « tout, maintenant ») : le cliquet backend passe de **1 086 blocs à 0**, le front de **453 blocs sur 236 fichiers à 0**. La règle est **dure des deux côtés** et vérifiée — `test_commentaires_bornes.py` (pytest, tout le code de production) et `commentaires.test.ts` (vitest, tout `frontend/src`, tests compris). ⚠️ Le chiffre « 103 » annoncé en 1ʳᵉ passe était le **reliquat** au moment d'une reprise, pas le total : corrigé en revue. Mesure d'entree : **36 %** de commentaire sur le code de production (39 206 / 108 118 lignes) et **151 fichiers** au-dessus de 40 %, dont **103 cote backend** — une premiere mesure disait 13 %, elle ne voyait aucune docstring Python)* |
+| E00US028 | Un ADR qui nomme du code disparu fait rougir la CI | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §3. ⚠️ **Le contrôle existe déjà** : `portage-symbole-absent` (`backend/atlas/controles.py`) rend **22 constats** et vit en sévérité `SIGNAL`, noyé dans un lot de 45 que personne ne lit. L'US solde les 22 et le passe **bloquant**. Ferme la limite écrite en dernière ligne des Notes d'`E00US027`, sur sa première moitié)* |
+| E00US029 | Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §2. Source de pourrissement n° 1 mesurée : deux fiches livrées affirmaient qu'un geste n'existait pas alors qu'il venait d'être livré)* |
+| E00US030 | Un fait, un lieu : la charte des documents | hors jalon | ⬜ *(née de la revue d'`E16US007`, 30/08/2026 — [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §1 et §4. **Mesuré** : 13 documents touchés par une US, dont **11** énonçant le même fait. ⚠️ **US structurante** — touche `CLAUDE.md`, et une question revient au commanditaire sur `00-resume-projet.md`, qui est un livrable. À prendre **après** `E00US028` et `E00US029`)* |
 
 ## Résorptions de dette planifiées (arbitrages du 07/08/2026)
 

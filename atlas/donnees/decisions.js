@@ -3805,6 +3805,8 @@ window.ATLAS.decisions = {
    "us": [
     "E00US021",
     "E00US027",
+    "E00US028",
+    "E00US030",
     "E01US025",
     "E05US026",
     "E05US029",
@@ -8511,6 +8513,66 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Une destination d'admin porte, dans son adresse, l'élément qu'elle ouvre",
    "us": [
+    "E16US010"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-30",
+   "date_brute": "2026-08-30",
+   "extrait": "### §1 — Un fait, un lieu ; les autres pointent Chaque type de document a une responsabilité et n'énonce en propre que ce qui relève d'elle. Ce qui vient d'ailleurs se cite en une ligne, avec un lien, jamais recopié. | Document | Ce qu'il énonce en propre | Ce qu'il ne fait que pointer | |---|---|---| | stories/ | le CA et les arbitrages — c'est l'oracle des tests (règle 9) | le raisonnement (ADR), le geste (fiche fonctionnelle) | | docs/adr/ | le pourquoi — seul lieu du raisonnement long | le CA, l'état d'avancement | | docs/fonctionnel/ | le geste utilisateur d'aujourd'hui, en français non technique | le pourquoi, l'absence (cf. §2) | | docs/dette.md | le raccourci assumé et son critère […]",
+   "fichier": "docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md",
+   "identifiant": "0102",
+   "liens": [
+    {
+     "cible": "E00US028",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E00US029",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "E00US030",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0099",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0086",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0075",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté *(la **décision** est prise ; **rien ne l'implémente encore** — cf. § « Porté dans le code par », qui le dit au lieu de le laisser croire)*",
+   "titre": "La documentation porte des pointeurs, pas des copies",
+   "us": [
+    "E00US027",
+    "E00US028",
+    "E00US029",
+    "E00US030",
+    "E16US007",
+    "E16US008",
     "E16US010"
    ]
   }
