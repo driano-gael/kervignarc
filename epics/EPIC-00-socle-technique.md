@@ -27,6 +27,10 @@ Mettre en place le socle et **livrer très tôt une tranche verticale bout-en-bo
 - [ ] Squelette de couches + un port/adapter repository de bout en bout.
 - [ ] File d'écriture opérationnelle + diffusion WebSocket post-commit.
 - [ ] Tranche verticale démontrable.
+- [ ] La documentation porte des pointeurs, pas des copies (`E00US028`, `E00US029`, `E00US030`) —
+      [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md), né de la
+      revue d'`E16US007` le 30/08/2026 : un fait unique y était écrit dans **11 documents sur 13**,
+      et quatre des dix majeurs de cette revue étaient des **copies divergentes**.
 
 ## Critères d'acceptation (epic)
 - La tranche verticale fonctionne bout-en-bout, temps réel inclus.

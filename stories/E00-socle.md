@@ -212,3 +212,123 @@
 - **CA — le comportement ne change pas** : aucune ligne exécutable modifiée, porte mécanique complète verte. C'est le seul garde-fou possible sur ce genre d'US, et il est suffisant : ce qui n'est pas du commentaire n'est pas touché.
 - **Notes** : ⚠️ **le pourcentage désigne où regarder, il ne condamne pas** — un fichier à 60 % peut être légitime si la règle métier qu'il porte est subtile. ⚠️ **La contrainte « un seul avertissement par bloc » est un indicateur, pas une règle mécanisée** (reclassée en revue : le plafond de huit lignes pousse à fusionner, donc à empiler les ⚠️ — l'US elle-même l'a violée 153 fois). ⚠️ **Les docstrings de test gardent leur statut** *sémantique* — un test énonce son oracle, contrainte non déductible — **mais pas la dispense de forme** : le front tient ses propres tests sous le plafond, le backend en dispense les siens (`DETTE-088`, asymétrie assumée et tracée). ⚠️ Le « au fil de l'eau, pas en big bang » de la rédaction initiale a été **renversé le 27/08/2026** par le commanditaire ; ce qui l'a rendu tenable est le plafond mécanique, pas un changement d'avis sur la relisibilité d'un gros diff. Le fil de l'eau reste la règle **pour la suite** : toute US qui touche un fichier le garde sous le plafond. ⚠️ **Et pas non plus par expression régulière** : un motif de normalisation a été écrit puis **rejeté sur simulation** — il laissait des parenthèses ouvertes et des fragments orphelins dès que la mention traversait un saut de ligne. Ce nettoyage se lit, il ne se scripte pas. ⚠️ Limite connue et non fermée : rien ne vérifie qu'un renvoi `cf. ADR-00xx` pointe un ADR qui existe et dit bien cela — l'atlas contrôle l'inverse.
 - **Dépend de** : — · **Jalon** : hors jalon *(qualité de lecture, arbitrée le 27/08/2026)*
+
+---
+
+### E00US028 — Un ADR qui nomme du code disparu fait rougir la CI
+
+*En tant que* développeur, *je veux* que la section « Porté dans le code par » d'un ADR soit
+**vérifiée par la machine**, *afin de* ne plus découvrir en revue — ou treize mois plus tard — qu'un
+ADR promet un module qui ne porte rien.
+
+- **Contexte** : c'est un mode de panne **récurrent, connu, documenté et toujours détecté à la
+  main**. [ADR-0075](../docs/adr/0075-le-depart-est-la-portee-sportive.md) en recense trois
+  précédents — `0017` (portée du départ, **treize mois**), `0028` (équipes, porté **au quart** : la
+  classe `Equipe` n'existe pas), `0049` (barème promis résolu par « (phase, arme) », résolu par
+  l'arme seule) — et `E16US007` en a produit un quatrième : `ADR-0050`, qui porte la **frontière de
+  rôles**, nommait `autoriser_forfait_duel`, symbole supprimé par le diff même qui le laissait.
+  Décision : [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §3.
+- ⚠️ **L'outil existe déjà, et il avait vu.** `backend/atlas/controles.py` porte
+  `portage-symbole-absent`, il fonctionne, et il rend **22 constats** au 30/08/2026 — par exemple
+  `ADR-0004` annonce `Protocol` dans `backend/domain/tableau.py`, `ADR-0062` annonce
+  `elimination_directe` dans `backend/domain/politiques.py`. Il est en sévérité **`SIGNAL`**, noyé
+  dans un lot de 45 que personne ne lit. **Cette US ne construit donc rien : elle solde une dette et
+  relève une sévérité.** C'est ce qui la rend petite, et c'est aussi ce qui la rend gênante — le
+  dépôt avait la mesure et le constat, et le défaut est passé quand même.
+- **CA — les 22 constats sont soldés** : chaque ADR concerné est **corrigé sur le code du jour**
+  (symbole renommé, module déplacé, promesse retirée si elle n'est pas tenue). ⚠️ **Corriger ne veut
+  pas dire retirer la ligne** : un ADR dont plus rien ne porte la décision doit le **dire** — c'est
+  l'information la plus utile qu'il puisse rendre.
+- **CA — le contrôle passe bloquant** : `portage-symbole-absent` devient `Severite.BLOQUANT`, donc
+  `python -m atlas --verifier` échoue et la CI avec lui. Un ADR qui nomme un symbole disparu ne
+  passe plus.
+- **CA — le cliquet ne se relève pas** : le compte des constats tolérés est **zéro** et le reste,
+  au patron d'`E00US027` (« faire descendre un chiffre est le seul geste autorisé »).
+- **CA — un portage non vérifiable est dit tel** : `portage-non-verifiable` (4 constats) reste en
+  signal — un chemin qui n'est pas lisible symbole par symbole (un dossier, un `.md`) n'est pas une
+  promesse fausse, c'est une promesse qu'on ne sait pas contrôler. Ne pas les confondre.
+- **Notes** : ⚠️ **Le vrai enseignement n'est pas technique** : *un contrôle en `SIGNAL` n'est pas un
+  garde-fou*. Avant de mécaniser autre chose, se demander si le résultat sera **lu**. ⚠️ Cette US
+  ferme la limite écrite en dernière ligne des Notes d'`E00US027` (« rien ne vérifie qu'un renvoi
+  pointe un ADR qui existe **et dit bien cela** ») — **sur sa première moitié seulement** : que le
+  symbole existe est vérifiable, qu'il *porte bien la décision* ne l'est pas. Ne pas laisser croire
+  l'inverse. ⚠️ **Risque à surveiller** : rendre le contrôle bloquant crée une incitation à écrire
+  des sections vagues (« le module `X` ») pour échapper au contrôle. Le remède n'est pas mécanique,
+  il est de revue.
+- **Dépend de** : E00US018 (atlas) · **Jalon** : hors jalon · **Origine** : revue d'`E16US007`,
+  30/08/2026 (majeur de l'axe D) + limite écrite d'`E00US027`
+
+---
+
+### E00US029 — Une fiche fonctionnelle décrit ce qui existe, jamais ce qui manque
+
+*En tant que* testeur non technicien, *je veux* que le scénario de recette que je déroule décrive le
+produit **d'aujourd'hui**, *afin de* ne pas remonter un défaut sur une fonctionnalité qui marche.
+
+- **Contexte** : source de pourrissement n° 1 mesurée en revue d'`E16US007`. Deux fiches livrées
+  affirmaient qu'un geste n'existait pas alors qu'il venait d'être livré :
+  `docs/fonctionnel/E16US010.md` (« *Réserve connue :* “déclarer un forfait” depuis la fiche
+  d'archer **n'est pas livré** ») et `docs/fonctionnel/E16US008.md` (« Elle ne touche pas aux
+  forfaits de qualification : ils **restent au scoreur seul** »). Un testeur déroulant l'une ou
+  l'autre aurait signalé un défaut sur du code sain. Décision :
+  [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §2.
+- **CA — la règle est écrite là où on la lit** : `CLAUDE.md` (règle 9-doc) dit qu'une fiche décrit le
+  **geste d'aujourd'hui** ; une non-livraison, une réserve de rôles ou un arbitrage en attente
+  appartiennent à `stories/`, qui est le backlog.
+- **CA — une fiche peut borner son périmètre, pas décrire le produit ailleurs** : « ce que ce
+  scénario ne couvre pas » reste permis (c'est de l'aide au testeur) ; « telle capacité n'existe pas
+  dans le produit » ne l'est plus.
+- **CA — le passif est traité** : les fiches existantes sont balayées et les phrases à date de
+  péremption sont soit **retirées**, soit **remplacées par un lien** vers la fiche d'US qui porte le
+  manque.
+- **CA — un garde-fou existe** : un contrôle (atlas ou test) relève dans `docs/fonctionnel/` les
+  tournures d'absence — « n'est pas livré », « pas encore », « réservé au », « en attente »,
+  « reste au ». ⚠️ **Signal, pas bloquant, et c'est délibéré** : la détection est lexicale, donc
+  approximative, et un bloquant sur une heuristique se contourne par paraphrase — ce qui serait
+  pire que pas de contrôle. La leçon d'`E00US028` s'applique en sens inverse : un signal ne vaut que
+  s'il est lu, donc **il est rendu dans le rapport de `/revue-us`**, pas seulement dans l'atlas.
+- **Notes** : ⚠️ **Ne pas confondre avec `stories/`** : une fiche d'US *doit*, elle, dire ce qui
+  n'est pas livré — c'est même une exigence de la règle 9 (l'arbitrage reversé). La règle ne vaut
+  que pour `docs/fonctionnel/`. ⚠️ **Cette US est petite en code et large en relecture** : le
+  balayage du passif se lit, il ne se script pas — même constat qu'`E00US027` sur son motif de
+  normalisation rejeté.
+- **Dépend de** : — · **Jalon** : hors jalon · **Origine** : revue d'`E16US007`, 30/08/2026
+  (bloquant de l'axe B, majeurs des axes C1 et D)
+
+---
+
+### E00US030 — Un fait, un lieu : la charte des documents
+
+*En tant que* développeur, *je veux* que chaque type de document ait **une** responsabilité et cite
+le reste par un lien, *afin de* réduire le nombre de copies capables de diverger.
+
+- **Contexte** : mesuré sur `E16US007` (30/08/2026) — **527 lignes de documentation** contre 1 812
+  de code, réparties sur **13 documents**, dont **11** devaient énoncer **le même fait**. Le volume
+  est sain ; c'est l'éparpillement qui coûte. Quatre des dix majeurs de la revue sont des **copies
+  divergentes**, pas des erreurs d'écriture. Décision :
+  [ADR-0102](../docs/adr/0102-la-documentation-porte-des-pointeurs-pas-des-copies.md) §1 et §4.
+- **CA — la charte est écrite dans `CLAUDE.md`** : le tableau d'ADR-0102 §1 (qui énonce quoi en
+  propre, qui ne fait que pointer) devient une règle du projet, au même rang que la règle 13 pour le
+  code.
+- **CA — le récit vit dans le fichier daté** : la cellule d'une US dans `SUIVI-US.md` porte l'**état**
+  et des **liens**, pas un essai. ⚠️ **Repère mesuré** : la cellule d'`E16US007` fait aujourd'hui
+  plus de mots que l'ADR qu'elle résume — c'est l'inversion exacte que cette US corrige (l'ADR est
+  immuable et versionné, le tracker est un pointeur).
+- **CA — le doublon `00-resume-projet.md` ↔ `SUIVI-US.md` est SOLDÉ, pas discipliné** :
+  les chiffres repères sont **dérivés** de l'atlas (qui compte déjà les US livrées, et a attrapé un
+  compteur d'épic périmé le 30/08) ou retirés au profit d'un lien. ⚠️ `CLAUDE.md` reconnaît ce
+  doublon depuis longtemps et lui oppose une **discipline** — « les deux fichiers se réconcilient
+  dans le même commit ». Une discipline n'est pas un mécanisme : elle tient tant qu'un humain y
+  pense.
+- **Notes** : ⚠️ **US structurante, à ne pas prendre à la légère** : elle touche `CLAUDE.md`, donc
+  le cadre de toutes les US suivantes — et le cycle de branche impose alors de **régénérer l'atlas
+  après le commit** (les bornes d'un `git log -L` sont résolues contre `HEAD`, cf. `CLAUDE.md`
+  § Cycle de branche). ⚠️ **Question à trancher avant de coder** : `00-resume-projet.md` est un
+  **livrable rendu au commanditaire**, pas un fichier interne — le vider de ses chiffres au profit
+  de liens peut le rendre moins lisible pour son lecteur réel. À arbitrer avec lui, pas seul.
+  ⚠️ **Le risque assumé d'ADR-0102** vaut surtout ici : chaque document devient plus court mais
+  **moins autonome**. C'est le même prix qu'ADR-0099 a fait payer au code.
+  ⚠️ **Prendre après `E00US028` et `E00US029`** : elles ne demandent aucun arbitrage et ferment
+  déjà l'essentiel des fuites ; celle-ci demande une décision du commanditaire.
+- **Dépend de** : E00US028, E00US029 · **Jalon** : hors jalon · **Origine** : revue d'`E16US007`,
+  30/08/2026 — question du commanditaire sur la surface documentaire

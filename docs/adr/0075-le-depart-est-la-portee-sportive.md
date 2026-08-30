@@ -280,7 +280,9 @@ exclusion **chez lui** et l'intervalle sautait de `0099` à rien — la 5ᵉ occ
 que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), **`0101`** (E16US007 —
 **outillage documentaire** : un catalogue de formats de fichier ne touche ni portée, ni moteur, ni
 politique injectable au sens de la règle 2. ✅ **Inscrit du premier coup, hors revue** — 3ᵉ US
-d'affilée) —
+d'affilée), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
+que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
+✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et
