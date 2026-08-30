@@ -54,14 +54,21 @@ Un même concept, lu par **trois** endroits selon la phase où le forfait est d�
 Le scope `phase_id` est **ce qui rend la fusion correcte** : un forfait en duels ne relègue pas le
 rang de qualif (les lecteurs filtrent par phase), un abandon en qualif ne s'invente pas de match.
 
-**Acteur — deux régimes depuis E16US008 (28/08/2026)** :
+**Acteur — un seul régime depuis E16US007 (30/08/2026)** : **l'admin *ou* le scoreur**
+(`autoriser_forfait`) sur les **quatre** routes. Le scoreur reste borné à **son** tournoi
+(`403 scoreur_hors_tournoi`) ; l'admin ne l'est à aucun (le secret vaut pour l'instance, `D-13`).
 
-- **en qualification**, le **scoreur seul** (`exiger_scoreur`), dans **son** tournoi
-  (`403 scoreur_hors_tournoi`) — cohérent avec la validation (E04US002/E04US013). *(Résout `Q-UX5`
-  d'E12US004, qui laissait l'acteur « admin par défaut » ouvert : le scoreur est celui qui, sur le
-  terrain, constate l'abandon.)* Aucun écran d'administration ne le demande : on n'ouvre pas une
-  autorisation sans appelant.
-- **en duels**, **l'admin *ou* le scoreur** (`autoriser_forfait_duel`), déclaration **et** annulation
+⚠️ **Historique, parce qu'il explique la forme du code** — il y avait *deux* régimes du 28/08 au
+30/08/2026 :
+
+- ~~**en qualification**, le **scoreur seul** (`exiger_scoreur`)~~ — *« aucun écran
+  d'administration ne le demande : on n'ouvre pas une autorisation sans appelant »*. **L'écran est
+  arrivé** : la fiche d'archer du pilotage (`E16US007`, reliquat d'`E16US010`), sur arbitrage du
+  commanditaire. La justification d'origine tenait donc sur l'absence d'appelant, pas sur une règle
+  métier — c'est pourquoi elle tombe sans rien invalider d'autre. *(Résout `Q-UX5` d'E12US004 : le
+  scoreur constate l'abandon sur le terrain, l'organisateur le saisit aussi depuis sa fiche.)*
+- **en duels**, **l'admin *ou* le scoreur** (`autoriser_forfait`, ex-`autoriser_forfait_duel`),
+  déclaration **et** annulation
   (`D-15` : qui peut déclarer doit pouvoir défaire). L'organisateur doit lever un duel bloqué depuis
   le feu vert sans aller chercher un scoreur. C'est un **élargissement de la route existante**, au
   patron d'[ADR-0030](0030-saisie-autorisee-au-poste-de-cible-403-hors-cible.md), et non une
@@ -72,7 +79,10 @@ rang de qualif (les lecteurs filtrent par phase), un abandon en qualif ne s'inve
 
 ⚠️ La route des duels **refuse une phase de qualification** (`phase.type is QUALIFICATION` →
 `PhaseIntrouvable`). Le `phase_id` vient du client : sans ce refus, elle écrirait un forfait relu par
-le classement de qualification et contournerait `exiger_scoreur`, seule garde de l'autre route.
+le classement de qualification **en sautant `_exiger_phase_de_tableau`**, donc en écrivant une
+ligne fantôme que `_forfaits_qualif` relirait. ⚠️ **Le motif d'origine — « contournerait
+`exiger_scoreur`, seule garde de l'autre route » — est caduc depuis E16US007** : les deux routes
+ont désormais la même garde. Le refus, lui, reste indispensable pour la raison ci-dessus.
 *(Trou trouvé en revue d'E16US008, axe A — le bornage « admin en duels seulement » était asséré par
 un test qui ne couvrait qu'une des deux portes.)*
 
@@ -115,24 +125,27 @@ nature (abandon ↔ DSQ) = **annuler puis re-déclarer** — deux traces plutôt
 
 ## Porté dans le code par
 
-*(Vérifié dans le code du 28/08/2026, pas déduit de la décision.)*
+*(Vérifié dans le code du 30/08/2026, pas déduit de la décision.)*
 
 | Module | Ce qu'il porte |
 |---|---|
 | `backend/domain/forfait.py` | `Forfait`, `NatureForfait` ; le scope `(tournoi, archer, phase_id)` qui rend la fusion correcte |
 | `backend/application/forfaits.py` | `ServiceForfait` — les deux contextes (`declarer_en_qualification` / `declarer_en_duel` et leurs annulations), l'unicité (`ForfaitDejaDeclare`), `AUTEUR_ADMIN`, et `_exiger_phase_de_tableau` qui n'admet que **`TYPES_EN_TABLEAU_JOUE`** (ADR-0083) sur le chemin des duels — miroir exact de la surface de lecture |
-| `backend/api/dependances.py` | `autoriser_forfait_duel` (admin **ou** scoreur, `Scoreur \| None`) ; `exiger_scoreur` reste sur la qualification |
+| `backend/api/dependances.py` | `autoriser_forfait` (admin **ou** scoreur, `Scoreur \| None`) — **une seule dépendance pour les quatre routes** depuis E16US007 ; `exiger_scoreur` n'est plus sur ce chemin |
 | `backend/api/v1/forfaits.py` | Les quatre routes ; `_garder_tournoi` (garde de tournoi appliquée **au seul scoreur**) et `_auteur` (`declare_par`) |
 | `backend/application/classements.py` | `_forfaits_qualif` — le lecteur « qualification » (relégation/exclusion) |
 | `backend/application/saisie_duels.py` | `_appliquer_forfaits` — le lecteur « duels » (walkover). ⚠️ **Saute un match dont un camp est vide** : un forfait y est écrit sans effet visible, ce que le front doit refuser d'offrir |
 | `backend/application/completude.py` | Clôture par forfait de la série en qualif (DETTE-014 résorbée) |
 | `backend/infrastructure/db/repositories/tir.py` | `ForfaitRepositorySQL.declarer_avec_trace` / `annuler_avec_trace` — l'**atomicité acte↔trace** promise par la Décision (ADR-0035) ; port en `backend/domain/ports.py` |
-| `frontend/src/features/feu-vert/hooks.ts` | `useDeclarerForfaitDepuisFeuVert` — **c'est ici, et nulle part ailleurs, que vit la portée `'admin'`** |
+| `frontend/src/features/feu-vert/hooks.ts` | `useDeclarerForfaitDepuisFeuVert` — la portée `'admin'` du forfait de **duel** |
+| `frontend/src/features/archers/FicheArcherPilotage.tsx` | `DeclarerForfait` — la portée `'admin'` du forfait de **qualification** (E16US007). ⚠️ `key={archer.id}` **obligatoire** : sans elle l'état survit au changement d'archer (bloquant de revue). Confirmation par `BoutonConfirme`, qui nomme l'archer et avertit avant le clic |
 | `frontend/src/features/feu-vert/{etat.ts,FeuVert.tsx}` | `archersForfaitables` / `deplier` (`etat.ts`) — quels archers sont **déclarables** : le forfait exige les deux camps, le dépliage dit le camp connu ; `ActionLevee` (`FeuVert.tsx`) — le dialogue qui avertit de l'irréversibilité |
-| `backend/tests/test_forfaits_api.py` | Les bornes : qualification fermée à l'admin, phase de qualif refusée sur la route duel, scoreur hors tournoi, anonyme refusé |
+| `backend/tests/test_forfaits_api.py` | Les bornes : qualification **ouverte** à l'admin (`declare_par == AUTEUR_ADMIN`), phase de qualif refusée sur la route duel, scoreur hors tournoi **sur les deux contextes**, anonyme refusé. ⚠️ Un test « scoreur » doit retirer le Bearer admin que `_scoreur` laisse posé, sinon il emprunte le chemin admin et la branche scoreur cesse d'être couverte |
 
-⚠️ **Ce qui n'est porté par rien** : aucun écran n'**annule** un forfait de duel — l'élargissement de
-`D-15` est livré côté serveur et testé, sans appelant produit (`DETTE-090`).
+⚠️ **Ce qui n'est porté par rien** : aucun écran n'**annule** un forfait, ni en duel ni en
+qualification pour l'organisateur — l'élargissement de `D-15` est livré côté serveur et testé, sans
+appelant produit (`DETTE-090`, élargie par E16US007). En qualification, seul le panneau de l'espace
+**scoreur** annule ; l'organisateur qui déclare depuis la fiche d'archer ne peut pas défaire.
 
 ## Liens
 

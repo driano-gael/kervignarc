@@ -218,7 +218,7 @@ retenus** mérite le même balayage que celle des ajouts.
 
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
 `0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`. Et, par
-réouverture plutôt que par création : **`0050`** (E16US008, 28/08/2026). La liste dérive à
+réouverture plutôt que par création : **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 
@@ -277,10 +277,12 @@ expliqué chez lui, le mode de panne que ce paragraphe décrit), **`0100`** (E16
 et IHM** : l'adresse d'admin gagne un 4ᵉ segment, l'élément ouvert ; aucun moteur ne lit une
 adresse, aucune portée ne change. Inscrit **en 2ᵉ passe de revue** : l'ADR argumentait son
 exclusion **chez lui** et l'intervalle sautait de `0099` à rien — la 5ᵉ occurrence du mode de panne
-que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), **`0102`** (E00US028
-à E00US030 — **convention documentaire**, exactement au même titre que `0099` : une règle d'écriture
-ne touche ni portée, ni moteur, ni politique injectable. ✅ Inscrit du premier coup, à l'écriture de
-l'ADR) —
+que ce paragraphe décrit, et la 2ᵉ fois qu'il se produit dans la même US), **`0101`** (E16US007 —
+**outillage documentaire** : un catalogue de formats de fichier ne touche ni portée, ni moteur, ni
+politique injectable au sens de la règle 2. ✅ **Inscrit du premier coup, hors revue** — 3ᵉ US
+d'affilée), **`0102`** (E00US028 à E00US030 — **convention documentaire**, exactement au même titre
+que `0099` : une règle d'écriture ne touche ni portée, ni moteur, ni politique injectable.
+✅ Inscrit du premier coup, à l'écriture de l'ADR — 4ᵉ US d'affilée) —
 ⚠️ `0097` (le logo de tournoi) y manquait : la liste avait été recopiée depuis ADR-0098, qui
 l'omettait déjà, et c'est le paragraphe même qui dénonce ce mode de panne qui l'a reproduit
 (rattrapé en 2ᵉ passe, axe adversarial). Écrite ici et

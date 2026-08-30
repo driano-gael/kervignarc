@@ -72,14 +72,26 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 - [x] Placement : largeur, une cible par ligne, puits de réserve (E16US005).
 - [x] Patrimoine : origine FFTA/local, logo du club (E16US006) — **recadrée** en identité
       visuelle du tournoi ; absorbe `E01US016`.
-- [ ] Impressions, exports et podiums paramétrables (E16US007).
+- [x] Exports : choisir le format de chaque document (E16US007) — **découpée le 30/08/2026**, comme
+      ses Notes le prescrivaient : les podiums partent en `E16US014`, le QR par scoreur en
+      `E16US015`, et le reliquat (palmarès, audit, `xlsx`) en `E16US016`. ⚠️ **UN de ses CA
+      d'origine était caduc** — le paiement par club, livré depuis `E08US002`. ⚠️ Le CA
+      *audit consultable en cours de tournoi* avait été déclaré caduc **à tort** (jugement porté sur
+      la route, alors qu'**aucun écran ne la consomme**) : il reste **dû**, reporté en `E16US016`.
+      Corrigé en 2ᵉ passe de revue.
 - [x] Feu vert : agir sur la ligne du duel (E16US008). ⚠️ **Rétrécie le 28/08/2026** : le CA
       « déclenchement automatique ou manuel » en est sorti (→ `E16US013`), c'est un changement
       de moteur. Ce qui est livré : le dépliage du duel amont, le forfait déclarable par
       l'admin, le renvoi au plan de duels.
 - [x] Écran de salle : réglages et défilement (E16US009).
-- [ ] Recherche transverse et alerte de complétude en liste (E16US010).
+- [x] Recherche transverse et alerte de complétude en liste (E16US010) — livrée le 29/08/2026,
+      ADR-0100. ⚠️ Case restée décochée jusqu'au 30/08/2026, corrigée en découpant `E16US007`.
 - [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
+- [ ] Podiums configurables (E16US014) — **sortie d'E16US007** le 30/08/2026.
+- [ ] Un QR par scoreur (E16US015) — **sortie d'E16US007** le 30/08/2026.
+- [ ] Exports : les formats et documents qui restent dus (E16US016) — reliquat d'`E16US007`,
+      30/08/2026 : palmarès en tableur (renommage d'une route publique à arbitrer), export du
+      journal d'audit, format `xlsx` (dépendance, règle 11).
 - [x] Famille « prêt à… » : démarrer / terminer / archiver / exporter (E16US012) — **née d'E16US003**,
       refonte de navigation, ADR-0096. ⚠️ Deux membres restent à instruire (*archiver*, *exporter*).
 - [ ] Lancement d'un tour : automatique ou manuel (E16US013) — **sortie d'E16US008** le

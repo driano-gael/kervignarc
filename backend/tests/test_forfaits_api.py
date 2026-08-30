@@ -17,6 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from application.forfaits import AUTEUR_ADMIN
 from bootstrap.composition import create_app
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -127,6 +128,19 @@ def app_forfaits(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
+# Bearer admin mis de côté par `_scoreur`, par client de test. ⚠️ **Mécanisme, pas convention** :
+# `connecter_admin` n'est pas idempotent (409 `acces_deja_configure`), donc un test qui veut
+# redevenir admin ne peut pas la rappeler — il restaure le jeton par `_redevenir_admin`.
+_BEARERS_ADMIN: dict[int, str] = {}
+
+
+def _redevenir_admin(client: TestClient) -> None:
+    """Rétablit l'identité admin retirée par `_scoreur` — le chemin admin se redemande."""
+    bearer = _BEARERS_ADMIN.get(id(client))
+    assert bearer is not None, "`_redevenir_admin` suppose un `_scoreur` préalable."
+    client.headers["Authorization"] = bearer
+
+
 def _scoreur(
     client: TestClient, tournoi_id: int, connecter_admin: ConnecterAdmin
 ) -> dict[str, str]:
@@ -135,6 +149,17 @@ def _scoreur(
     assert reponse.status_code in (200, 201), reponse.text
     code = reponse.json()["code"]
     jeton = client.post("/api/v1/scoreurs/session", json={"code": code}).json()["jeton"]
+    # ⚠️ **Le Bearer admin est retiré ICI**, pas laissé à la vigilance de l'appelant : depuis
+    # E16US007 `autoriser_forfait` retient l'admin, **testé en premier**, donc un client qui garde
+    # les deux identités emprunte le chemin admin en silence — la branche scoreur pourrait être
+    # supprimée sans rien faire rougir. Un test qui veut l'admin **le redemande explicitement**
+    # (`connecter_admin(client)`), ce qui se lit ; l'oubli inverse, lui, ne se lisait pas.
+    # Mécanisé en 2ᵉ passe de revue (axe C2) — la 1ʳᵉ correction était un commentaire recopié
+    # sur trois sites d'appel sur huit, soit la convention tenue à la main que le registre
+    # de dette documente déjà trois fois.
+    bearer = client.headers.pop("Authorization", None)
+    if bearer is not None:
+        _BEARERS_ADMIN[id(client)] = bearer
     return {"X-Jeton-Scoreur": jeton}
 
 
@@ -160,6 +185,11 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
             headers=entete,
         )
         assert reponse.status_code == 200, reponse.text
+        # ⚠️ **La TRACE, pas seulement l'autorisation** : `_auteur` rend `AUTEUR_ADMIN` ou le nom
+        # du scoreur. Sans cette ligne, le muter en `return AUTEUR_ADMIN` laissait toute la suite
+        # verte — le journal d'audit `FORFAIT` cessait de distinguer les deux origines (ADR-0050,
+        # DETTE-017). Relevé en 2ᵉ passe de revue, axes B et D.
+        assert reponse.json()["declare_par"] == "ROUX", reponse.text
 
         lignes = _classement(client, scn.depart_id)
         assert lignes[faible]["rang_scratch"] == 1  # le faible passe devant
@@ -251,6 +281,8 @@ def test_forfait_duel_declarable_par_l_admin(
         # ⚠️ `_scoreur` ouvre AUSSI la session admin (`connecter_admin`) : c'est elle qui autorise
         # le POST ci-dessous. Le jeton scoreur, lui, n'est joint qu'à la relecture du tableau.
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         fort, faible = scn.archers
 
         reponse = client.post(
@@ -280,6 +312,8 @@ def test_forfait_duel_annulable_par_l_admin(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         corps = {
             "tournoi_id": scn.tournoi_id,
             "phase_id": scn.phase_id,
@@ -312,11 +346,16 @@ def test_forfait_duel_refuse_sans_aucune_identite(app_forfaits: FastAPI) -> None
         assert reponse.status_code == 401, reponse.text
 
 
-def test_forfait_qualification_reste_ferme_a_l_admin(
+def test_forfait_qualification_ouvert_a_l_admin(
     app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
 ) -> None:
-    """L'élargissement est **borné aux duels** : la qualification reste au scoreur seul, faute
-    d'écran admin qui le demande (E16US008 — on n'ouvre pas une autorisation sans appelant)."""
+    """La qualification accepte l'admin depuis le 30/08/2026 (décision du commanditaire).
+
+    ⚠️ Ce test **remplace** son inverse, qui épinglait la borne d'E16US008 (« l'élargissement est
+    borné aux duels, faute d'écran admin qui le demande »). L'écran existe désormais — la fiche
+    d'archer du pilotage —, donc la borne tombe. La **trace** reste le point à garder : un forfait
+    déclaré par l'organisateur s'inscrit au nom du rôle admin, jamais d'un scoreur (`DETTE-017`).
+    """
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         connecter_admin(client)
@@ -324,6 +363,57 @@ def test_forfait_qualification_reste_ferme_a_l_admin(
             "/api/v1/forfaits/qualification",
             json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
         )
+
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["declare_par"] == AUTEUR_ADMIN
+
+        annulation = client.post(
+            "/api/v1/forfaits/qualification/annulation",
+            json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0]},
+        )
+        assert annulation.status_code == 200, annulation.text
+
+
+def test_forfait_qualification_refuse_un_scoreur_d_un_autre_tournoi(
+    app_forfaits: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La garde de tournoi survit au passage `_exiger_meme_tournoi` → `_garder_tournoi`.
+
+    ⚠️ Le jumeau existait pour le duel, pas pour la qualification — et c'est justement la garde
+    que le diff d'E16US007 a réécrite (le scoreur y devient `Scoreur | None`). Relevé en revue.
+    """
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # L'autre tournoi se crée en admin ; on repasse ensuite en identité scoreur pour l'attaque.
+        _redevenir_admin(client)
+        autre = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-04-01"})
+        assert autre.status_code == 201, autre.text
+        client.headers.pop("Authorization", None)
+
+        declaration = client.post(
+            "/api/v1/forfaits/qualification",
+            json={
+                "tournoi_id": int(autre.json()["id"]),
+                "archer_id": scn.archers[0],
+                "nature": "abandon",
+            },
+            headers=entetes,
+        )
+
+        assert declaration.status_code == 403, declaration.text
+        assert declaration.json()["code"] == "scoreur_hors_tournoi"
+
+
+def test_forfait_qualification_refuse_sans_session(app_forfaits: FastAPI) -> None:
+    """Élargir n'est pas ouvrir : sans aucune identité, la route reste fermée (401)."""
+    with TestClient(app_forfaits) as client:
+        scn = Scenario(app_forfaits)
+        reponse = client.post(
+            "/api/v1/forfaits/qualification",
+            json={"tournoi_id": scn.tournoi_id, "archer_id": scn.archers[0], "nature": "abandon"},
+        )
+
         assert reponse.status_code == 401, reponse.text
 
 
@@ -387,6 +477,8 @@ def test_annulation_de_duel_refuse_une_phase_de_qualification(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         declaration = client.post(
             "/api/v1/forfaits/qualification",
             json={

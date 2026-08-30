@@ -122,13 +122,14 @@ def autoriser_saisie(request: Request) -> Poste | None:
     return _refuser_ecran(poste)
 
 
-def autoriser_forfait_duel(request: Request) -> Scoreur | None:
-    """Autorise la déclaration d'un **forfait de duel** : admin **ou** scoreur (E16US008).
+def autoriser_forfait(request: Request) -> Scoreur | None:
+    """Autorise la déclaration d'un **forfait** : admin **ou** scoreur (E16US008, E16US007).
 
     Renvoie `None` pour l'**admin**, le `Scoreur` sinon — que l'appelant doit utiliser pour borner
     l'action à **son** tournoi et tracer qui a déclaré. ⚠️ L'admin, lui, n'est borné à aucun
     tournoi : son secret vaut pour l'instance (`D-13`). Jumelle d'`autoriser_saisie` — une route,
-    deux identités, jamais une route admin parallèle (ADR-0099 : le pourquoi est en `stories/`).
+    deux identités, jamais une route admin parallèle. Élargie de « duel » à **tout forfait** le
+    30/08/2026 (reliquat d'E16US010, cf. `stories/E16-retours-maquettes.md`).
     """
     service_auth: ServiceAuth = request.app.state.service_auth
     if service_auth.session_valide(extraire_jeton(request)):

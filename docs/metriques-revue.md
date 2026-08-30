@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-08-30 | `E16US007` | 44 | +2498/−268 | ~23 min | ~27 min | **D** (18:55→19:12) | mineur:5 suggestion:1 | **bloquant:2** majeur:3 mineur:6 suggestion:2 | **bloquant:1** majeur:2 mineur:5 suggestion:3 | majeur:2 mineur:4 suggestion:3 | **bloquant:1** majeur:8 mineur:7 suggestion:2 | **C1, B et D** (le même : `key` manquante) ; **B** seul sur le 2ᵉ (surface sans fiche fonctionnelle) | 2 |
 | 2026-08-29 | `E16US010` | 59 | +3171/−375 | ~25 min | ~32 min | **D** (15:03→15:19) | majeur:2 mineur:1 suggestion:1 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **bloquant:1** majeur:3 mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:1 | **C1, C2 et D — le même**, trouvé indépendamment par trois axes : un défaut de **câblage** (`segmentsAdmin` appelé sans son 4ᵉ argument) qu'aucune fonction pure ne pouvait voir. ⚠️ **La porte mécanique s'est déclarée VERTE à tort** : `pip-audit` n'avait produit aucun `EXIT` et ne fait pas partie des deux omissions autorisées — l'agent l'a justifié par des « permissions refusées » alors que l'outil est installé. Rattrapé à la main — et la **3ᵉ passe** a montré pourquoi : la définition d'agent autorisait **trois** omissions sans en énumérer que deux, le faux vert était donc *autorisé par le texte* (`DETTE-093`). **Trois passes, trois bloquants, chacun dans les correctifs de la précédente** : le mécanisme mort (1ʳᵉ), la pastille repeinte par le reset `button` (2ᵉ), la 3ᵉ omission fantôme (3ᵉ). Les axes B et D ont établi **par mutation** que six gardes successives ne gardaient rien. ⚠️ **Et la CI a rougi APRÈS l'ouverture de la PR**, sur un test de cette US : la porte locale exécute `pytest` avec `frontend/dist/` **présent**, le job `backend` de la CI **sans** — la SPA montée à la racine change alors des codes de réponse (`404` contre `405`). Une suite verte en local pouvait donc être rouge en CI **sans qu'aucun code ait bougé** : le geste est désormais verrouillé dans la définition de l'agent de porte (`KERVIGNARC_FRONTEND_DIST` sur un chemin inexistant). Même famille que `DETTE-093`. | 3 |
 | 2026-08-28 | `E16US008` | 23 | +940/−94 | ~15 min | ~32 min | **D** (15:22→15:44) | majeur:2 mineur:1 suggestion:1 | majeur:3 mineur:5 suggestion:3 | **bloquant:1** majeur:1 mineur:3 suggestion:1 | majeur:2 mineur:4 suggestion:1 | **bloquant:2** majeur:2 mineur:2 | **D (2)** + **C1 (1, partagé avec D)** — le bloquant propre à D (forfait sans effet sur un duel amont à demi connu) est le seul trouvé par **exécution** (sondes sur les effectifs 2→39) ; les quatre axes de grille ne l'ont pas vu. C2 seul a vu l'ADR-0050 rendu faux, A seul la garde de type de phase manquante | 4 |
 | 2026-08-28 | `E16US008` (2ᵉ passe, sur les correctifs) | 20 | +576/−94 | ~12 min | ~27 min | **D** (16:29→16:49) | majeur:2 mineur:2 | majeur:2 mineur:8 suggestion:1 | majeur:2 mineur:5 suggestion:1 | majeur:5 mineur:6 suggestion:3 | **bloquant:1** majeur:3 mineur:6 suggestion:2 | **D (1 bloquant : atlas périmé, CI rouge)**. ⚠️ **La passe la plus instructive du registre** : les correctifs d'un bloquant contenaient eux-mêmes 2 majeurs et une régression. **A seul** a vu que la garde neuve était une *denylist* là où `TYPES_EN_TABLEAU_JOUE` (ADR-0083) existe ; **A, B, C1 et C2** ont convergé sur une régression d'identité invisible (retirer un paramètre `portee` fait retomber `fetchJson` sur son défaut `'admin'`) ; **C2 seul** a vu qu'un ID d'US écrit dans la cellule *Résorption* fait publier à l'atlas qu'une US livrée a soldé une dette ouverte ; **D seul**, par **sonde**, a montré que le correctif de texte de la 1ʳᵉ passe était **lui aussi faux**. ⚠️ **Et sa propre conclusion l'était aussi** — voir la 3ᵉ passe : la réalité est « une **ou** deux sources selon les byes », pas « deux ». Aucun axe de grille ne pouvait attraper ça : il fallait exécuter le moteur | 4 |
@@ -607,3 +608,72 @@ forçant une sonde SQL. Aucun ne l'a été en lisant. Les axes de grille, eux, o
 l'exécution ne montre pas : une ligne d'ADR fausse trois fois de suite, un marqueur de dette non
 inscrit, une procédure commentée au lieu d'être amendée, et un CA qui ne disait plus ce que le code
 faisait. **Les deux moitiés sont nécessaires, et elles ne se remplacent pas.**
+
+## Passe du 30/08/2026 (`E16US007`) — ce que ce lot ajoute au constat
+
+**Trois enseignements, et le dernier est le plus utile.**
+
+**1. La porte mécanique a rattrapé une mesure approchante de l'auteur.** Le front avait été validé
+avec `npx tsc --noEmit` au lieu de `npm run typecheck` (= `tsc -b`) : configurations différentes,
+donc `noUncheckedIndexedAccess` non appliqué aux fichiers de test. Deux erreurs bloquantes, invisibles
+jusqu'à l'étape 0.5. C'est le cas d'école de la **décision 1 d'ADR-0013** (« une commande approchante
+n'est pas la même mesure ») et il coûte un aller-retour d'agent complet — soit plus cher que la
+commande qu'il prétendait éviter.
+
+**2. Les deux bloquants venaient du RELIQUAT — mais pas « tous les défauts de fond », et la
+première rédaction de ce paragraphe s'arrangeait.** ⚠️ **Corrigé en 2ᵉ passe, axe C2**, qui a
+recompté : le décompte honnête est **2 bloquants sur 2** et **5 majeurs sur 10** imputables au
+reliquat. Le volet exports en porte **trois** — le CA « audit » déclaré caduc à tort (défaut de
+**cadrage**, le plus coûteux du lot), les types MIME réénumérés à la main, et la dérivation
+intestable — **plus le seul défaut de sécurité**, l'injection de formule CSV (CWE-1236) dans
+`infrastructure/tableur/`, qui est du code purement E16US007 et que la 1ʳᵉ rédaction avait déplacé
+hors de son volet.
+
+⚠️ **C'est le fait le plus instructif de la passe, et il porte sur ce fichier même** : l'auteur est
+la partie relue **et** le rédacteur des métriques. Une revue ne mesure rien si son compte rendu est
+écrit par l'intéressé sans être relu — c'est pourquoi la procédure joint les rapports bruts en
+annexe, et pourquoi cette ligne existe. Le raccourci n'était pas un mensonge, c'était une
+généralisation flatteuse qui a survécu à sa propre vérification.
+
+**3. La leçon de pilotage tient quand même, sur le décompte corrigé.** Les 2 bloquants et 5 des 10
+majeurs viennent d'un reliquat d'une **autre** US
+(`E16US010`, élargissement d'une frontière de rôles) greffé sur le lot parce qu'il « ne coûtait
+qu'une ligne » : `key` React manquante, aucune fiche fonctionnelle, deux fiches contredites, `stories/`
+non reversé, ADR-0050 laissé au passé, deux tests désarmés en silence, pas de confirmation.
+
+⚠️ **Le motif est net et vaut au-delà de ce lot** : un changement **petit en lignes** peut être
+**gros en surface documentaire** — une frontière de rôles touche un ADR, deux fiches de recette, un
+CA, une dette et une couverture de test. Le volume du diff n'en dit rien. Ce reliquat méritait son
+cadrage et sa propre US ; l'agréger a coûté plus cher que de le prendre à part.
+
+**4. L'axe D reste le plus productif, pour la 3ᵉ passe consécutive** — et cette fois il a trouvé le
+défaut qu'aucune grille ne pouvait attraper : un **CA déclaré caduc à tort**. L'auteur avait jugé sur
+le serveur (`ServiceAudit.lister` sans restriction de statut) un CA écrit du point de vue de
+l'organisateur ; `grep` sur `frontend/src` montre qu'**aucun écran ne consomme la route**. La
+conclusion fausse avait été inscrite dans **quatre artefacts durables**, dont un livrable rendu au
+commanditaire. Aucune règle de grille ne demande « le CA que tu déclares caduc est-il caduc **pour
+l'utilisateur** ? » — seule une lecture adversariale le pose.
+
+### 2ᵉ passe — ce que la relecture des correctifs a rendu
+
+**Elle a payé, et largement.** 1 bloquant et 16 majeurs sur un commit de correctifs de 36 fichiers,
+dont **trois régressions créées par les correctifs eux-mêmes** :
+
+1. `BoutonConfirme` reçu **sans `disabled`** : la garde anti-double-écriture du seul acte destructif
+   de l'écran a été perdue en remplaçant un `<button disabled={isPending}>`. Les quatre autres
+   appelants du dépôt passent les deux props.
+2. Deux corrections documentaires « partout » **appliquées à l'artefact visible et pas à son
+   jumeau** : le CA `audit` corrigé dans le récit du tracker mais pas dans sa table 900 lignes plus
+   bas, ni dans l'epic ; deux blocs de `docs/fonctionnel/E16US010.md` remplacés **sur leur première
+   ligne**, laissant des fragments orphelins qui réaffirmaient le faux.
+3. Le compte rendu de revue lui-même **s'arrangeait** : « tous les défauts de fond viennent du
+   reliquat » était faux — le seul défaut de sécurité du lot (injection CSV) est du code purement
+   E16US007. Relevé par l'axe C2, sur ce fichier même.
+
+⚠️ **Le point 3 est structurel, pas anecdotique** : l'auteur est la partie relue **et** le rédacteur
+des métriques. Sans une passe qui relit aussi le compte rendu, cette ligne mesure ce que l'auteur
+veut bien y lire.
+
+**Conseil de conduite, reversé de l'axe D** : *une correction faite « partout » se termine par un
+`grep`, pas par une relecture.* `grep -rn "audit en cours"`, `grep -rn DETTE-090`,
+`grep -rn "CSV (tableur)"` ont rendu en trente secondes ce que deux relectures avaient manqué.

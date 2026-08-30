@@ -7,6 +7,7 @@
 // n'invalide plus rien et rien ne rougit (le symptôme est une vue périmée, pas une erreur).
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { PorteeAuth } from '../../shared/api/client'
 import { cleClassement } from '../competition/hooks'
 import { cleTableau } from '../saisie-duels/hooks'
 import {
@@ -17,7 +18,9 @@ import {
   type NatureForfait,
 } from './api'
 
-export function useDeclarerForfaitQualif(tournoiId: number) {
+// `portee` par défaut `'scoreur'` : l'espace scoreur, seul appelant jusqu'à E16US007, ne change
+// pas d'identité. La fiche d'archer du pilotage passe `'admin'`.
+export function useDeclarerForfaitQualif(tournoiId: number, portee: PorteeAuth = 'scoreur') {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
@@ -28,15 +31,17 @@ export function useDeclarerForfaitQualif(tournoiId: number) {
       archerId: number
       nature: NatureForfait
       motif?: string
-    }) => declarerForfaitQualif(tournoiId, archerId, nature, motif),
+    }) => declarerForfaitQualif(tournoiId, archerId, nature, motif, portee),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
   })
 }
 
-export function useAnnulerForfaitQualif(tournoiId: number) {
+// DETTE-090 : `portee` est ici **sans appelant admin** — l'organisateur déclare depuis la fiche
+// d'archer (E16US007) mais aucun écran ne lui fait défaire. Moitié livrée de `D-15`.
+export function useAnnulerForfaitQualif(tournoiId: number, portee: PorteeAuth = 'scoreur') {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (archerId: number) => annulerForfaitQualif(tournoiId, archerId),
+    mutationFn: (archerId: number) => annulerForfaitQualif(tournoiId, archerId, portee),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: cleClassement(tournoiId) }),
   })
 }

@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 15 août 2026
+# Résumé du projet — où on en est au 30 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -38,7 +38,13 @@ un archer : on y choisit ce qu'on cherche — **tournoi, archer ou club** —, o
 des accents, et **un clic ouvre la fiche**, y compris celle d'un archer d'une autre édition. La
 **liste des tournois prévient d'avance** de ce qui empêche un lancement, en distinguant « il manque
 quelque chose » de « ça ne partira pas ». Les **fiches en double** ne vivent plus sur un écran à
-part : elles se signalent **sur la ligne de l'archer** et s'y **fusionnent** sans rien perdre. Et l'application se **déploie désormais en un seul fichier**
+part : elles se signalent **sur la ligne de l'archer** et s'y **fusionnent** sans rien perdre. Les
+**documents à sortir ne sont plus prisonniers du PDF** : chaque document propose les formats qui ont
+un sens pour lui — PDF pour imprimer, **CSV pour le tableur** —, si bien qu'une liste d'inscrits ou
+une liste club & paiement s'ouvre dans Excel, se trie, se filtre et **s'additionne** au lieu de se
+ressaisir à la main ; les **feuilles de marque**, dont la fonction existait sans qu'aucun bouton n'y
+mène, ont rejoint le même écran. Et l'organisateur peut désormais **déclarer lui-même l'abandon d'un
+archer en qualification**, depuis sa fiche, sans aller chercher un scoreur. Et l'application se **déploie désormais en un seul fichier**
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
@@ -345,11 +351,18 @@ C'est le cœur du jour J, et c'est le travail le plus récent :
 
 - Le **socle PDF** et la **feuille de marque**.
 - L'**impression des QR de cible et des codes scoreurs** (branché sur la saisie ci-dessus).
-- Un écran **« Exports »** avec les **deux premières listes à imprimer** (dernier fait marquant,
-  25/07) : la **liste de placement** (qui tire où — triable par cible ou par nom, et filtrable sur un
-  seul départ) et la **liste club & paiement** (par club : départs, dû, réglé ou non, totaux). Détail
-  dans [`2026-07-25-20h08-listes-imprimables.md`](2026-07-25-20h08-listes-imprimables.md).
-  *Restent à venir : les classements et le déroulé horaire imprimables.*
+- Un écran **« Exports & impressions »** avec la **liste de placement** (qui tire où — triable par
+  cible ou par nom, et filtrable sur un seul départ), la **liste club & paiement** (par club :
+  départs, dû, réglé ou non, totaux) et les **feuilles de marque** par départ. Détail dans
+  [`2026-07-25-20h08-listes-imprimables.md`](2026-07-25-20h08-listes-imprimables.md).
+- **Le format se choisit** (dernier fait marquant, 30/08) : chaque document propose les formats qui
+  ont un sens pour lui — les deux listes existent en **PDF et en CSV**, la feuille de marque en PDF
+  seul, parce qu'elle se remplit au stylo. Le CSV s'ouvre du premier coup dans un tableur français
+  (accents corrects, colonnes séparées, montants additionnables). Détail dans
+  [`2026-08-30-18h03-exports-au-format-choisi.md`](2026-08-30-18h03-exports-au-format-choisi.md).
+  *Restent à venir : le classement et le journal d'audit exportables, et le format Excel (`.xlsx`),
+  qui demande votre feu vert sur l'ajout d'une bibliothèque. Le déroulé horaire imprimable reste
+  à faire.*
 
 ### 10. Déployer le jour J — *l'application tient dans un fichier*
 
@@ -561,9 +574,23 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **130 US livrées** sur `main` (mergées, revues, CI verte) à la date du 29/08/2026 — dont deux
+- **131 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US010` — **chercher partout, et voir d'avance ce
+  autorité sur le compte) —, la dernière étant `E16US007` — **choisir le format de chaque
+  document** : l'écran « Exports & impressions » ne propose plus un bouton par document mais **un
+  bouton par format**, et c'est le serveur qui dit lesquels — de sorte qu'ajouter un format demain
+  n'obligera pas à retoucher l'écran. Les deux listes sortent en **PDF ou en CSV** ; la feuille de
+  marque, en PDF seul (elle se remplit à la main), ce qui montre que la liste des formats est
+  **propre à chaque document**. Les feuilles de marque, jusqu'ici accessibles par aucun bouton,
+  entrent au passage sur cet écran. ⚠️ **Trois manques sont écrits** : le classement ne s'exporte pas
+  encore, le **journal d'audit n'est consultable nulle part** (la fonction existe côté serveur, aucun
+  écran ne l'affiche — nous l'avions d'abord cru livré, la relecture l'a corrigé), et le format Excel
+  attend votre arbitrage sur une bibliothèque (`E16US016`). **Un** CA de la fiche d'origine était **caduc** — le paiement par club, livré
+  depuis longtemps —, et le reste de la fiche est parti en `E16US014` (podiums) et `E16US015` (QR par scoreur). ✅ **Un reliquat écrit
+  d'`E16US010` est soldé dans la même livraison** : vous avez tranché d'ouvrir la déclaration
+  d'abandon en qualification à l'organisateur — elle se fait depuis la fiche de l'archer, la route
+  étant **élargie et non doublée**. L'annulation reste au panneau du scoreur, qui seul sait qui est
+  déjà forfait. La précédente était `E16US010` — **chercher partout, et voir d'avance ce
   qui bloque** : la barre de recherche de l'administration porte désormais une liste déroulante
   (tournoi, archer, club), trouve sans accents ni majuscules, et **ouvre la fiche d'un clic** — avec
   une adresse qu'on peut copier ou mettre en favori, ce qui n'existait pour aucun écran jusqu'ici.
@@ -573,9 +600,9 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
   « à compléter » et « ne peut pas démarrer » —, chacune expliquant sa raison au survol dans les
   mots mêmes que l'application opposerait au clic. Et l'écran **« Doublons »** a disparu : le
   rapprochement de fiches se lit sur la **ligne de l'archer** dans les inscriptions, avec un
-  décompte en tête de liste, et la fusion s'y déplie sur place. Une réserve est écrite : **déclarer
-  un abandon depuis la fiche d'archer n'est pas livré** — cette écriture appartient à l'espace
-  scoreur, et l'ouvrir à l'organisateur est une décision qui vous revient. La précédente était
+  décompte en tête de liste, et la fusion s'y déplie sur place. Sa réserve écrite — **déclarer
+  un abandon depuis la fiche d'archer** — est **levée depuis le 30/08/2026** : vous avez tranché,
+  et le geste existe (cf. `E16US007` ci-dessus). La précédente était
   `E16US008` — **débloquer un duel sans quitter l'écran** : sur le feu vert, chaque ligne qui n'est pas prête porte désormais le geste qui la
   débloque. Le duel qui bloque **s'ouvre sur place** (qui tire, sur quelle cible), et l'organisateur
   peut **déclarer un forfait lui-même** au lieu d'aller chercher un scoreur — le cas coûteux du jour

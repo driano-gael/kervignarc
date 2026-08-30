@@ -24,6 +24,7 @@ from collections.abc import Callable
 import pytest
 
 from application.erreurs import DepartIntrouvable, TournoiIntrouvable
+from application.exports import FormatExport, RegistreDeFormats
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from domain.archer import Archer
 from domain.bareme import BaremeQualification
@@ -248,7 +249,7 @@ def _monde(*, avec_bareme: BaremeQualification | None = _BAREME_DEFAUT) -> _Mond
         categories,
         blasons,
         phases,
-        generateur,
+        RegistreDeFormats({FormatExport.PDF: generateur}),
     )
     tournoi_id = tournoi.id
 
