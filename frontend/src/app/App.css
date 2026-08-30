@@ -1115,6 +1115,14 @@ button:disabled {
   gap: 8px;
 }
 
+/* ⚠️ Modificateur **local**, et non `flex-wrap` sur `.formulaire__actions` : cette classe est
+   employée 24 fois dans 21 fichiers, et l'y poser changeait le rendu de tous les formulaires du
+   produit sur la foi d'un écran jamais ouvert (relevé en 2ᵉ passe de revue, DETTE-086). Ici la
+   raison est connue : un bouton **par format** (E16US007), donc un nombre d'actions variable. */
+.formulaire__actions--enroulable {
+  flex-wrap: wrap;
+}
+
 /* Gestion des tournois (E01US002) : ligne = ouverture + statut + actions admin. */
 .tournoi {
   padding: 4px 0;

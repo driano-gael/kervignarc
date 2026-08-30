@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Archer } from './api'
+import { declarerForfaitQualif } from '../forfaits/api'
 import { getArchers } from './api'
 import { FicheArcherPilotage } from './FicheArcherPilotage'
 
@@ -24,6 +25,10 @@ vi.mock('../categories/hooks', () => ({
   useCategories: () => ({ data: [{ id: 1, libelle: 'Senior 1 H', blason_id: null }] }),
 }))
 vi.mock('../blasons/hooks', () => ({ useBlasons: () => ({ data: [] }) }))
+vi.mock('../forfaits/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../forfaits/api')>()),
+  declarerForfaitQualif: vi.fn(),
+}))
 // La place tire départs et plans : neutralisée pour n'observer que la fiche.
 vi.mock('../placement/PlaceDeLArcher', () => ({ PlaceDeLArcher: () => null }))
 
@@ -40,9 +45,25 @@ const JEAN: Archer = {
   handicap: 0,
 }
 
+const CLAIRE: Archer = { ...JEAN, id: 58, nom: 'Martin', prenom: 'Claire' }
+
+const FORFAIT_DE_JEAN = {
+  id: 1,
+  tournoi_id: 12,
+  archer_id: 57,
+  phase_id: 3,
+  nature: 'abandon' as const,
+  declare_par: 'Administrateur',
+  declare_le: '2026-08-30T16:00:00+00:00',
+  motif: null,
+}
+
 function monter(enfants: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
+  const rendu = render(<QueryClientProvider client={client}>{enfants}</QueryClientProvider>)
+  // ⚠️ `client` rendu avec le rendu : un re-rendu qui referait un `QueryClientProvider` neuf
+  // **remonterait tout l'arbre**, et le test de `key` passerait sans la `key`.
+  return { ...rendu, client }
 }
 
 function fiche(
@@ -60,7 +81,7 @@ function fiche(
 }
 
 beforeEach(() => {
-  vi.mocked(getArchers).mockResolvedValue([JEAN])
+  vi.mocked(getArchers).mockResolvedValue([JEAN, CLAIRE])
 })
 
 describe('fiche d’archer du pilotage', () => {
@@ -97,14 +118,77 @@ describe('fiche d’archer du pilotage', () => {
     expect(placer).toHaveBeenCalled()
   })
 
-  it('aucun bouton de forfait n’est armé ici, et l’écran NOMME la cause', async () => {
-    // ⚠️ L'assertion porte sur la **cause** (« espace scoreur ») et pas seulement sur l'absence de
-    // bouton : le jour où la route s'élargira à l'organisateur, un test qui ne vérifierait que
-    // l'absence **figerait** un écran devenu faux au lieu de rougir (relevé par l'axe C2).
+  it('déclare un forfait de qualification en portée ADMIN', async () => {
+    // ⚠️ Ce test **remplace** son inverse, qui vérifiait l'absence de bouton ET nommait sa cause
+    // (« depuis l'espace scoreur ») précisément pour rougir le jour de l'élargissement. Il a
+    // rougi : arbitrage du commanditaire du 30/08/2026, la route de qualification s'ouvre à
+    // l'organisateur. ⚠️ **La portée `'admin'` est le cœur de l'assertion** : un appel parti en
+    // `'scoreur'` depuis l'admin joindrait un jeton absent et repartirait en 401, sans que le
+    // rendu change d'un pixel.
+    vi.mocked(declarerForfaitQualif).mockResolvedValue({
+      id: 1,
+      tournoi_id: 12,
+      archer_id: 57,
+      phase_id: 3,
+      nature: 'abandon',
+      declare_par: 'Administrateur',
+      declare_le: '2026-08-30T16:00:00+00:00',
+      motif: null,
+    })
     monter(fiche(57))
 
     await screen.findByText('Lévêque Jean')
-    expect(screen.queryByRole('button', { name: /forfait|abandon/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/depuis l’espace scoreur/)).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer un forfait' }))
+    // Le geste passe par la confirmation commune (E16US008) : déclencheur, puis dialogue.
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmer le forfait' }))
+    expect(screen.getByText(/Déclarer Lévêque Jean forfait/)).toBeTruthy()
+    expect(screen.getByText(/l’annulation se fait depuis l’espace scoreur/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer forfait' }))
+
+    expect(declarerForfaitQualif).toHaveBeenCalledWith(12, 57, 'abandon', undefined, 'admin')
+    expect(await screen.findByText(/Forfait enregistré/)).toBeVisible()
+  })
+
+  it('repart à zéro quand on ouvre la fiche d’un AUTRE archer', async () => {
+    // ⚠️ Bloquant relevé en revue (axes C1, B, D) : sans `key={archer.id}`, la destination
+    // `archer` ne remonte pas la fiche quand l'adresse change (ADR-0100) et React conserve
+    // l'état du panneau — l'archer suivant héritait de « Forfait enregistré » et perdait son
+    // bouton. Vérifié en réintroduisant le bug : ce test rougit sans la `key`.
+    vi.mocked(declarerForfaitQualif).mockResolvedValue(FORFAIT_DE_JEAN)
+    const rendu = monter(fiche(57))
+
+    await screen.findByText('Lévêque Jean')
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer un forfait' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmer le forfait' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer forfait' }))
+    await screen.findByText(/Forfait enregistré/)
+
+    rendu.rerender(<QueryClientProvider client={rendu.client}>{fiche(58)}</QueryClientProvider>)
+
+    await screen.findByText('Martin Claire')
+    expect(screen.queryByText(/Forfait enregistré/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Déclarer un forfait' })).toBeTruthy()
+  })
+
+  it('renvoie l’annulation là où elle se fait, sans armer de bouton qui ne saurait rien annuler', async () => {
+    // `D-15` reste tenu par le panneau scoreur : la fiche ne sait pas *qui* est déjà forfait.
+    vi.mocked(declarerForfaitQualif).mockResolvedValue({
+      id: 1,
+      tournoi_id: 12,
+      archer_id: 57,
+      phase_id: 3,
+      nature: 'abandon',
+      declare_par: 'Administrateur',
+      declare_le: '2026-08-30T16:00:00+00:00',
+      motif: null,
+    })
+    monter(fiche(57))
+
+    await screen.findByText('Lévêque Jean')
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer un forfait' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmer le forfait' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Déclarer forfait' }))
+
+    expect(await screen.findByText(/l’espace scoreur/)).toBeVisible()
   })
 })

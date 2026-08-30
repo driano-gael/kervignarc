@@ -37,6 +37,7 @@ from api.v1.deroule import router as deroule_router
 from api.v1.documents_salle import router as documents_salle_router
 from api.v1.ecrans import router as ecrans_router
 from api.v1.ecrans import session_router as ecran_session_router
+from api.v1.exports import router as exports_router
 from api.v1.feuille_de_marque import router as feuille_de_marque_router
 from api.v1.forfaits import router as forfaits_router
 from api.v1.formats import router as formats_router
@@ -89,6 +90,11 @@ from application.completude import ServiceCompletude
 from application.departs import ServiceDeparts
 from application.documents_salle import ServiceDocumentsSalle
 from application.ecrans import ServiceEcrans
+from application.exports import (
+    FormatExport,
+    RegistreDeFormats,
+    construire_catalogue,
+)
 from application.feuille_de_marque import ServiceFeuilleDeMarque
 from application.forfaits import ServiceForfait
 from application.formats import ServiceFormats
@@ -215,6 +221,7 @@ from infrastructure.postes import (
 )
 from infrastructure.realtime import Broadcaster, DiffusionSimulationBroadcaster, LiveEvent
 from infrastructure.scoreurs import ScoreurSessionStore, generer_code_scoreur
+from infrastructure.tableur import GenerateurListesImpressionCsv
 
 _logger = logging.getLogger(__name__)
 
@@ -870,7 +877,10 @@ def create_app(
         categorie_repository,
         blason_repository,
         phase_repository,
-        GenerateurFeuilleDeMarquePdf(),
+        # ⚠️ Registre à **un** format : c'est ce qui fait que le catalogue annonce « PDF seul »
+        # sans qu'aucune ligne ne l'écrive (ADR-0101 §3). Une feuille de marque se remplit au
+        # stylo — le CSV n'y est pas absent par oubli.
+        RegistreDeFormats({FormatExport.PDF: GenerateurFeuilleDeMarquePdf()}),
     )
     # Documents de salle (E09US008) : étiquettes de cible (QR de rattachement + code) et cartes de
     # scoreur (code personnel). Lecture pure comme la feuille de marque ; ports seuls (postes,
@@ -894,8 +904,29 @@ def create_app(
         archer_repository,
         categorie_repository,
         app.state.service_paiements,
-        GenerateurListesImpressionPdf(),
+        # E16US007 : **ajouter un format se fait ici et nulle part ailleurs** — le catalogue
+        # servi au front en dérive, l'écran ne tient aucune liste (ADR-0101).
+        RegistreDeFormats(
+            {
+                FormatExport.PDF: GenerateurListesImpressionPdf(),
+                FormatExport.CSV: GenerateurListesImpressionCsv(),
+            }
+        ),
     )
+    # Catalogue d'exports (E16US007, ADR-0101) : ce que l'écran « Exports & impressions » propose.
+    # ⚠️ Les formats sont **lus sur les services**, jamais réécrits ici — une liste tenue à la main
+    # finirait par annoncer un format que rien ne sait produire. La composition est déportée dans
+    # `construire_catalogue`, fonction pure, pour que cette dérivation soit **testable** : elle ne
+    # l'était pas tant qu'elle vivait ici (relevé en revue). DETTE-095 : l'identifiant de chaque
+    # entrée doit exister dans la table `documents` de `Exports.tsx`, rien ne le vérifie.
+    # ⚠️ Variables **annotées** : `app.state.*` rend `Any` (même parade que `rencontres_a_router`).
+    formats_listes: tuple[FormatExport, ...] = (
+        app.state.service_listes_impression.formats_disponibles
+    )
+    formats_feuille: tuple[FormatExport, ...] = (
+        app.state.service_feuille_de_marque.formats_disponibles
+    )
+    app.state.catalogue_exports = construire_catalogue(formats_listes, formats_feuille)
     # Palmarès (E06US004, ADR-0067) : le **classement final** du tournoi — rangs des tableaux
     # fusionnés avec ceux de la qualification, par catégorie, plus l'export PDF. Réutilise
     # `service_saisie_duels` pour reconstruire chaque tableau : recoder la reconstruction la ferait
@@ -1354,6 +1385,9 @@ def create_app(
     app.include_router(barrages_router)
     app.include_router(feuille_de_marque_router)
     app.include_router(documents_salle_router)
+    # E16US007 : catalogue des exports (quels documents, quels formats) — lu par l'écran
+    # « Exports & impressions », qui ne tient plus aucune liste de formats (ADR-0101).
+    app.include_router(exports_router)
     app.include_router(listes_impression_router)
     app.include_router(palmares_router)
     app.include_router(archive_router)

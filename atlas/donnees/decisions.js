@@ -2162,7 +2162,7 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/dependances.py",
      "existe": true,
      "symboles": [
-      "autoriser_forfait_duel",
+      "autoriser_forfait",
       "exiger_scoreur"
      ],
      "symboles_absents": [],
@@ -2252,7 +2252,19 @@ window.ATLAS.decisions = {
     {
      "chemin": "backend/tests/test_forfaits_api.py",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "_scoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/archers/FicheArcherPilotage.tsx",
+     "existe": true,
+     "symboles": [
+      "DeclarerForfait",
+      "BoutonConfirme"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -2293,14 +2305,15 @@ window.ATLAS.decisions = {
    "statut_brut": "Accepté",
    "titre": "Forfait unifié (abandon / disqualification), scopé à la phase",
    "us": [
-    "E04US002",
     "E04US013",
     "E04US015",
     "E06US001",
     "E10US005",
     "E12US004",
     "E12US005",
-    "E16US008"
+    "E16US007",
+    "E16US008",
+    "E16US010"
    ]
   },
   {
@@ -3812,6 +3825,7 @@ window.ATLAS.decisions = {
     "E05US034",
     "E05US035",
     "E16US002",
+    "E16US007",
     "E16US008",
     "E16US009",
     "E16US010"
@@ -8512,6 +8526,198 @@ window.ATLAS.decisions = {
    "titre": "Une destination d'admin porte, dans son adresse, l'élément qu'elle ouvre",
    "us": [
     "E16US010"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-30",
+   "date_brute": "2026-08-30",
+   "extrait": "### §1 — Le catalogue porte les formats, et rien d'autre GET /api/v1/exports énumère les documents proposés par l'écran « Exports & impressions » et, pour chacun, les formats que ce serveur sait produire. Il ne porte ni URL, ni verbe HTTP, ni paramètres : chaque document garde sa route et ses options d'IHM. La propriété obtenue est donc exactement celle du CA, ni plus ni moins : | Geste | L'écran change-t-il ? | |---|---| | Ajouter un format à un document existant | non — un adapter, une ligne au composition root | | Ajouter un document au catalogue | oui — il lui faut ses commandes (quel départ, quel tri) | C'est assumé : le CA demande le premier. Promettre le second aurait coûté le […]",
+   "fichier": "docs/adr/0101-le-catalogue-d-exports-porte-les-formats-pas-les-url.md",
+   "identifiant": "0101",
+   "liens": [
+    {
+     "cible": "E16US007",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0031",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0058",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/documents.py",
+     "existe": true,
+     "symboles": [
+      "reponse_document",
+      "reponses_document",
+      "MEDIA_TYPES",
+      "test_chaque_format_porte_un_media_type_distinct"
+     ],
+     "symboles_absents": [
+      "test_chaque_format_porte_un_media_type_distinct"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/erreurs.py",
+     "existe": true,
+     "symboles": [
+      "FormatExportIndisponible"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/exports.py",
+     "existe": true,
+     "symboles": [
+      "EntreeCatalogueReponse",
+      "identifiant",
+      "libelle",
+      "description",
+      "formats",
+      "CatalogueExports",
+      "EntreeCatalogueExport"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/feuille_de_marque.py",
+     "existe": true,
+     "symboles": [
+      "tri",
+      "depart_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/api/v1/listes_impression.py",
+     "existe": true,
+     "symboles": [
+      "tri",
+      "depart_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/erreurs/exploitation.py",
+     "existe": true,
+     "symboles": [
+      "FormatExportIndisponible"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/exports.py",
+     "existe": true,
+     "symboles": [
+      "EntreeCatalogueReponse",
+      "identifiant",
+      "libelle",
+      "description",
+      "formats",
+      "CatalogueExports",
+      "EntreeCatalogueExport",
+      "RegistreDeFormats.pour",
+      "if",
+      "construire_catalogue",
+      "RegistreDeFormats.formats",
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
+     ],
+     "symboles_absents": [
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/feuille_de_marque.py",
+     "existe": true,
+     "symboles": [
+      "RegistreDeFormats.pour",
+      "if"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/listes_impression.py",
+     "existe": true,
+     "symboles": [
+      "RegistreDeFormats.pour",
+      "if",
+      "test_le_contenu_compose_ne_depend_pas_du_format"
+     ],
+     "symboles_absents": [
+      "test_le_contenu_compose_ne_depend_pas_du_format"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [
+      "construire_catalogue",
+      "RegistreDeFormats.formats",
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne",
+      "FormatExportIndisponible"
+     ],
+     "symboles_absents": [
+      "test_le_catalogue_construit_annonce_les_formats_qu_on_lui_donne"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/tableur/listes_impression.py",
+     "existe": true,
+     "symboles": [
+      "GenerateurListesImpressionCsv",
+      "GenerateurListesImpression",
+      "_montant",
+      "_ENTETE_CLUB_PAIEMENT",
+      "Club",
+      "_neutraliser",
+      "_AMORCES_DE_FORMULE",
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
+     ],
+     "symboles_absents": [
+      "test_un_club_nomme_comme_une_formule_n_est_pas_execute",
+      "test_les_montants_ne_sont_jamais_neutralises"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/exports/Exports.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le catalogue d'exports porte les formats, pas les URL",
+   "us": [
+    "E16US007",
+    "E16US012",
+    "E16US016"
    ]
   }
  ]

@@ -7,11 +7,16 @@
 //
 // L'archer ouvert vient de l'adresse (ADR-0100), donc d'un résultat de recherche comme d'un lien.
 
+import { useState } from 'react'
+import { BoutonConfirme } from '../../shared/ui/BoutonConfirme'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useBlasons } from '../blasons/hooks'
 import { useCategories } from '../categories/hooks'
 import { useClubs } from '../clubs/hooks'
+import type { NatureForfait } from '../forfaits/api'
+import { useDeclarerForfaitQualif } from '../forfaits/hooks'
 import { PlaceDeLArcher } from '../placement/PlaceDeLArcher'
+import type { Archer } from './api'
 import { useArchers } from './hooks'
 
 export function FicheArcherPilotage({
@@ -91,18 +96,114 @@ export function FicheArcherPilotage({
               Modifier son placement
             </button>
           </span>
-          {/* ⚠️ **Pas de bouton « Déclarer un forfait », et ce n'est pas un oubli** : la route de
-              qualification est réservée au scoreur (`exiger_scoreur`), `E16US008` n'ayant élargi
-              que celle des duels. Un bouton partirait en 401.
-              ⚠️ **Ce paragraphe énonce une frontière de RÔLES** : son élargissement à l'organisateur
-              est en arbitrage — `stories/E16-retours-maquettes.md` § E16US010. Le jour où il est
-              tranché, cette phrase devient fausse à l'écran. */}
-          <p className="carte__etat">
-            Un abandon se déclare depuis l’espace scoreur : en qualification, cette écriture lui est
-            réservée. En duel, le feu vert permet à l’organisateur de le faire lui-même.
-          </p>
+          {/* ⚠️ `key` **obligatoire** : la destination `archer` ne remonte pas la fiche quand
+              l'adresse change d'archer (ADR-0100), donc React conserverait l'état de ce
+              panneau — un forfait confirmé pour A s'afficherait sur B, et un motif saisi pour
+              A partirait avec le POST de B. */}
+          <DeclarerForfait key={archer.id} tournoiId={tournoiId} archer={archer} />
         </>
       )}
     </section>
+  )
+}
+
+// Déclaration d'un forfait de **qualification** depuis la fiche, en portée admin (E16US007 —
+// arbitrage du commanditaire du 30/08/2026 : la route, réservée au scoreur, s'ouvre à
+// l'organisateur ; elle est **élargie, pas doublée**, comme celle des duels en E16US008).
+//
+// ⚠️ **Déclarer seulement** : l'annulation (`D-15`) reste au panneau de l'espace scoreur, qui
+// dispose du classement pour dire *qui* est déjà forfait — `DETTE-090`. Un bouton « Annuler » qui
+// ne saurait pas s'il a quelque chose à annuler serait pire que son absence.
+// ⚠️ `DETTE-047` : le forfait vaut pour **tous** les créneaux de l'archer ; le dialogue le dit.
+function DeclarerForfait({ tournoiId, archer }: { tournoiId: number; archer: Archer }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [nature, setNature] = useState<NatureForfait>('abandon')
+  const [motif, setMotif] = useState('')
+  const declarer = useDeclarerForfaitQualif(tournoiId, 'admin')
+
+  if (declarer.isSuccess) {
+    return (
+      <p className="carte__etat">
+        Forfait enregistré. Ses flèches déjà tirées sont conservées ; l’annulation se fait depuis
+        l’espace scoreur, panneau « Forfaits — qualification ».
+      </p>
+    )
+  }
+
+  if (!ouvert) {
+    return (
+      <span className="archer__actions">
+        <button type="button" className="bouton--discret" onClick={() => setOuvert(true)}>
+          Déclarer un forfait
+        </button>
+      </span>
+    )
+  }
+
+  return (
+    <div className="formulaire formulaire--colonne">
+      <label className="formulaire__libelle">
+        Nature
+        <select
+          className="formulaire__champ"
+          value={nature}
+          onChange={(e) => setNature(e.target.value as NatureForfait)}
+        >
+          <option value="abandon">Abandon (relégué en fin de classement)</option>
+          <option value="disqualification">Disqualification (sorti du classement)</option>
+        </select>
+      </label>
+      <label className="formulaire__libelle">
+        Motif (facultatif)
+        <input
+          className="formulaire__champ"
+          value={motif}
+          onChange={(e) => setMotif(e.target.value)}
+        />
+      </label>
+      <div className="formulaire__actions">
+        {/* ⚠️ Acte **destructif et non défaisable depuis cet écran** : il passe par la confirmation
+            commune, comme le forfait de duel du feu vert (E16US008). L'avertissement doit tomber
+            AVANT le clic — le dire après l'écriture n'aide personne. */}
+        <BoutonConfirme
+          libelle="Confirmer le forfait"
+          libelleConfirmer="Déclarer forfait"
+          className="bouton--danger"
+          titre={`Déclarer ${archer.nom} ${archer.prenom} forfait ?`}
+          message={
+            nature === 'abandon'
+              ? 'Abandon : l’archer est relégué en fin de classement. Ses flèches déjà tirées sont conservées.'
+              : 'Disqualification : l’archer sort du classement. Ses flèches déjà tirées sont conservées.'
+          }
+          detail={
+            // DETTE-047 : le forfait vaut pour TOUS les créneaux de l'archer — l'écran doit le dire
+            // avant le clic, pas le laisser au registre. DETTE-090 : rien ici ne le défait.
+            '⚠️ Le forfait vaut pour TOUS les créneaux de cet archer. Et cet écran ne le défait pas : ' +
+            'l’annulation se fait depuis l’espace scoreur, panneau « Forfaits — qualification ».'
+          }
+          ton="danger"
+          // ⚠️ `disabled` ET `enCours` : `BoutonConfirme` **ferme le dialogue avant d'agir**, donc
+          // `enCours` seul n'empêche pas un 2ᵉ clic sur le déclencheur. Sans `disabled`, la 2ᵉ
+          // écriture n'est pas dédoublonnée (aucun `identifiant_saisie`), lève `ForfaitDejaDeclare`,
+          // et l'écran affiche une ERREUR sur un forfait pourtant enregistré. Patron des 7 autres
+          // sites du dépôt (relevé en 2ᵉ passe de revue, axe C1).
+          disabled={declarer.isPending}
+          enCours={declarer.isPending}
+          onConfirmer={() =>
+            declarer.mutate({ archerId: archer.id, nature, motif: motif.trim() || undefined })
+          }
+        />
+        <button
+          type="button"
+          className="bouton--discret"
+          // Fermer pendant l'écriture démonterait `MessageErreur` : un échec deviendrait muet.
+          disabled={declarer.isPending}
+          onClick={() => setOuvert(false)}
+        >
+          Annuler
+        </button>
+      </div>
+      <MessageErreur erreur={declarer.error} />
+    </div>
   )
 }
