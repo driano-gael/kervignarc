@@ -128,6 +128,19 @@ def app_forfaits(tmp_path: Path) -> Iterator[FastAPI]:
         app.state.database.engine.dispose()
 
 
+# Bearer admin mis de côté par `_scoreur`, par client de test. ⚠️ **Mécanisme, pas convention** :
+# `connecter_admin` n'est pas idempotent (409 `acces_deja_configure`), donc un test qui veut
+# redevenir admin ne peut pas la rappeler — il restaure le jeton par `_redevenir_admin`.
+_BEARERS_ADMIN: dict[int, str] = {}
+
+
+def _redevenir_admin(client: TestClient) -> None:
+    """Rétablit l'identité admin retirée par `_scoreur` — le chemin admin se redemande."""
+    bearer = _BEARERS_ADMIN.get(id(client))
+    assert bearer is not None, "`_redevenir_admin` suppose un `_scoreur` préalable."
+    client.headers["Authorization"] = bearer
+
+
 def _scoreur(
     client: TestClient, tournoi_id: int, connecter_admin: ConnecterAdmin
 ) -> dict[str, str]:
@@ -136,11 +149,17 @@ def _scoreur(
     assert reponse.status_code in (200, 201), reponse.text
     code = reponse.json()["code"]
     jeton = client.post("/api/v1/scoreurs/session", json={"code": code}).json()["jeton"]
-    # ⚠️ **Le Bearer admin reste posé sur le client** (il a fallu créer le scoreur). Un test qui
-    # veut réellement emprunter le chemin SCOREUR doit faire `client.headers.pop("Authorization")`
-    # : depuis E16US007, `autoriser_forfait` retient l'admin, testé en premier, et un test
-    # « scoreur » passerait par le chemin admin sans que rien ne le montre — la branche scoreur
-    # pourrait alors être supprimée sans rien faire rougir (relevé en revue, axe B).
+    # ⚠️ **Le Bearer admin est retiré ICI**, pas laissé à la vigilance de l'appelant : depuis
+    # E16US007 `autoriser_forfait` retient l'admin, **testé en premier**, donc un client qui garde
+    # les deux identités emprunte le chemin admin en silence — la branche scoreur pourrait être
+    # supprimée sans rien faire rougir. Un test qui veut l'admin **le redemande explicitement**
+    # (`connecter_admin(client)`), ce qui se lit ; l'oubli inverse, lui, ne se lisait pas.
+    # Mécanisé en 2ᵉ passe de revue (axe C2) — la 1ʳᵉ correction était un commentaire recopié
+    # sur trois sites d'appel sur huit, soit la convention tenue à la main que le registre
+    # de dette documente déjà trois fois.
+    bearer = client.headers.pop("Authorization", None)
+    if bearer is not None:
+        _BEARERS_ADMIN[id(client)] = bearer
     return {"X-Jeton-Scoreur": jeton}
 
 
@@ -158,9 +177,6 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
-        # Chemin SCOREUR : sans ce retrait, `autoriser_forfait` retient l'admin (testé en
-        # premier) et la branche scoreur ne serait plus couverte du tout (revue, axe B).
-        client.headers.pop("Authorization", None)
         fort, faible = scn.archers
 
         reponse = client.post(
@@ -169,6 +185,11 @@ def test_abandon_qualif_relegue_puis_annulation_retablit(
             headers=entete,
         )
         assert reponse.status_code == 200, reponse.text
+        # ⚠️ **La TRACE, pas seulement l'autorisation** : `_auteur` rend `AUTEUR_ADMIN` ou le nom
+        # du scoreur. Sans cette ligne, le muter en `return AUTEUR_ADMIN` laissait toute la suite
+        # verte — le journal d'audit `FORFAIT` cessait de distinguer les deux origines (ADR-0050,
+        # DETTE-017). Relevé en 2ᵉ passe de revue, axes B et D.
+        assert reponse.json()["declare_par"] == "ROUX", reponse.text
 
         lignes = _classement(client, scn.depart_id)
         assert lignes[faible]["rang_scratch"] == 1  # le faible passe devant
@@ -194,9 +215,6 @@ def test_dsq_qualif_sort_du_classement(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
-        # Chemin SCOREUR : sans ce retrait, `autoriser_forfait` retient l'admin (testé en
-        # premier) et la branche scoreur ne serait plus couverte du tout (revue, axe B).
-        client.headers.pop("Authorization", None)
         fort, _faible = scn.archers
 
         reponse = client.post(
@@ -263,6 +281,8 @@ def test_forfait_duel_declarable_par_l_admin(
         # ⚠️ `_scoreur` ouvre AUSSI la session admin (`connecter_admin`) : c'est elle qui autorise
         # le POST ci-dessous. Le jeton scoreur, lui, n'est joint qu'à la relecture du tableau.
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         fort, faible = scn.archers
 
         reponse = client.post(
@@ -292,6 +312,8 @@ def test_forfait_duel_annulable_par_l_admin(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         corps = {
             "tournoi_id": scn.tournoi_id,
             "phase_id": scn.phase_id,
@@ -363,10 +385,10 @@ def test_forfait_qualification_refuse_un_scoreur_d_un_autre_tournoi(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entetes = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # L'autre tournoi se crée en admin ; on repasse ensuite en identité scoreur pour l'attaque.
+        _redevenir_admin(client)
         autre = client.post("/api/v1/tournois", json={"nom": "Autre", "date": "2026-04-01"})
         assert autre.status_code == 201, autre.text
-        # Chemin SCOREUR : le Bearer admin doit partir, sinon la requête est résolue en admin —
-        # qui, lui, n'est borné à aucun tournoi (`D-13`) et passerait.
         client.headers.pop("Authorization", None)
 
         declaration = client.post(
@@ -455,6 +477,8 @@ def test_annulation_de_duel_refuse_une_phase_de_qualification(
     with TestClient(app_forfaits) as client:
         scn = Scenario(app_forfaits)
         entete = _scoreur(client, scn.tournoi_id, connecter_admin)
+        # Chemin ADMIN, redemandé explicitement : `_scoreur` rend un client en identité scoreur.
+        _redevenir_admin(client)
         declaration = client.post(
             "/api/v1/forfaits/qualification",
             json={

@@ -106,6 +106,8 @@ class CatalogueExports:
 # vérifie qu'ici. Composer le catalogue directement dans `bootstrap/` la rendait intestable, si
 # bien qu'une liste réécrite à la main y serait passée sans rien faire rougir (relevé en revue,
 # axe B) — alors qu'ADR-0101 §3 en fait l'invariant central.
+# DETTE-095 : les identifiants ci-dessous doivent exister dans la table `documents` de
+# `Exports.tsx` ; rien ne rapproche les deux listes, elles sont dans deux langages.
 def construire_catalogue(
     formats_listes: tuple[FormatExport, ...], formats_feuille: tuple[FormatExport, ...]
 ) -> CatalogueExports:

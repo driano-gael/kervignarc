@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.documents import MEDIA_TYPES
-from application.exports import FormatExport
+from application.exports import LIBELLES_FORMAT, FormatExport
 from bootstrap.composition import create_app
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
@@ -225,6 +225,13 @@ def test_le_catalogue_annonce_les_documents_et_leurs_formats(
         "club-paiement": ["pdf", "csv"],
         "feuille-de-marque": ["pdf"],
     }
+    # ⚠️ ET la même chose lue sur le **câblage réel** : les littéraux ci-dessus disent ce que le
+    # produit doit servir, cette assertion dit que le catalogue le DÉRIVE (ADR-0101 §3). Sans elle,
+    # réécrire `formats=` en dur au composition root passait (relevé en 2ᵉ passe, axe B).
+    cables = app_listes.state.service_listes_impression.formats_disponibles
+    assert par_identifiant["placement"]["formats"] == [
+        {"code": format_.value, "libelle": LIBELLES_FORMAT[format_]} for format_ in cables
+    ]
     assert par_identifiant["placement"]["formats"][0]["libelle"] == "PDF"
 
 
@@ -355,3 +362,32 @@ def test_chaque_format_porte_un_media_type_distinct() -> None:
     """
     assert set(MEDIA_TYPES) == set(FormatExport)
     assert len(set(MEDIA_TYPES.values())) == len(MEDIA_TYPES)
+
+
+# Chemins des routes de document, par identifiant de catalogue. ⚠️ Table locale au test : c'est
+# précisément le décalage catalogue ↔ routes qu'il détecte ; une table partagée le cacherait.
+_CHEMINS_DE_DOCUMENT = {
+    "placement": "/api/v1/tournois/{tournoi_id}/listes/placement",
+    "club-paiement": "/api/v1/tournois/{tournoi_id}/listes/club-paiement",
+    "feuille-de-marque": "/api/v1/tournois/{tournoi_id}/departs/{depart_id}/feuille-de-marque",
+}
+
+
+def test_l_openapi_declare_exactement_les_formats_du_catalogue(app_listes: FastAPI) -> None:
+    """ADR-0101 §3 dit « aucune ligne n'écrit une liste de formats à la main ». Prouvé ici.
+
+    ⚠️ Relevé en 2ᵉ passe de revue (axe A) : `reponses_document(FormatExport.PDF, ...)` **est** une
+    liste écrite à la main, dans trois décorateurs. Un décorateur est évalué à l'import et ne peut
+    pas lire un registre assemblé au runtime — la duplication est donc inévitable, mais elle cesse
+    d'être **silencieuse** : débrancher le CSV au composition root fait rougir ici.
+    """
+    schema = app_listes.openapi()
+
+    for entree in app_listes.state.catalogue_exports.entrees:
+        chemin = _CHEMINS_DE_DOCUMENT[entree.identifiant]
+        declares = set(schema["paths"][chemin]["get"]["responses"]["200"]["content"])
+        # ⚠️ FastAPI ajoute `application/json` d'office (type de la réponse par défaut) : il n'est
+        # pas déclaré par `reponses_document` et n'est jamais servi par ces routes.
+        assert declares - {"application/json"} == {
+            MEDIA_TYPES[format_] for format_ in entree.formats
+        }, entree.identifiant

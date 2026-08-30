@@ -38,7 +38,7 @@ function SectionExport({ entree, doc }: { entree: EntreeCatalogueExport; doc: Do
       <p className="carte__etat">{doc.description}</p>
       <div className="formulaire formulaire--colonne">
         {doc.commandes}
-        <div className="formulaire__actions">
+        <div className="formulaire__actions formulaire__actions--enroulable">
           {entree.formats.map((format) => (
             <button
               key={format.code}
@@ -136,7 +136,9 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
       // en 404.
       chemin: departFeuille === null ? null : cheminFeuilleDeMarque(tournoiId, departFeuille),
       nomSansExtension: `feuille-de-marque-tournoi-${tournoiId}-depart-${departFeuille ?? 0}`,
-      indisponible: 'Choisissez le départ dont vous voulez les feuilles.',
+      indisponible: departs.isError
+        ? 'Impossible de lister les départs — la feuille de marque ne peut pas être choisie.'
+        : 'Choisissez le départ dont vous voulez les feuilles.',
       commandes: (
         <label className="formulaire__libelle">
           Départ
@@ -168,17 +170,24 @@ export function Exports({ tournoiId }: { tournoiId: number }) {
         Générez les documents utiles le jour J. Chaque document propose les formats que le serveur
         sait en produire.
       </p>
-      <MessageErreur erreur={catalogue.error} />
-      {/* ⚠️ **Trois états, pas un** : depuis que l'écran dérive du catalogue, une requête en vol
+      {/* ⚠️ **Quatre états, pas un** : depuis que l'écran dérive du catalogue, une requête en vol
           ou en échec ne rend AUCUNE section — indistinguable d'un écran cassé (revue, 3 axes). */}
       {catalogue.isPending && <p className="carte__etat">Chargement des documents…</p>}
       {catalogue.isError && (
-        <p className="carte__etat">
-          Impossible de lister les documents disponibles.{' '}
-          <button type="button" className="bouton--discret" onClick={() => catalogue.refetch()}>
-            Réessayer
-          </button>
-        </p>
+        <>
+          <MessageErreur erreur={catalogue.error} />
+          <p className="carte__etat">
+            Impossible de lister les documents disponibles.{' '}
+            <button type="button" className="bouton--discret" onClick={() => catalogue.refetch()}>
+              Réessayer
+            </button>
+          </p>
+        </>
+      )}
+      {/* DETTE-095 : 4ᵉ état — le serveur répond, mais aucun identifiant ne correspond à la table
+          ci-dessous. Le dire en clair est le repli que le critère de fin de la dette prévoit. */}
+      {catalogue.isSuccess && !documents.some((doc) => entrees.has(doc.identifiant)) && (
+        <p className="carte__etat">Le serveur ne propose aucun document connu de cet écran.</p>
       )}
 
       {/* ⚠️ `doc`, pas `document` : ce dernier est le DOM global de la page. */}

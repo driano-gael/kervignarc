@@ -36,6 +36,8 @@ export function useDeclarerForfaitQualif(tournoiId: number, portee: PorteeAuth =
   })
 }
 
+// DETTE-090 : `portee` est ici **sans appelant admin** — l'organisateur déclare depuis la fiche
+// d'archer (E16US007) mais aucun écran ne lui fait défaire. Moitié livrée de `D-15`.
 export function useAnnulerForfaitQualif(tournoiId: number, portee: PorteeAuth = 'scoreur') {
   const queryClient = useQueryClient()
   return useMutation({

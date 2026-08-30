@@ -112,8 +112,9 @@ export function FicheArcherPilotage({
 // l'organisateur ; elle est **élargie, pas doublée**, comme celle des duels en E16US008).
 //
 // ⚠️ **Déclarer seulement** : l'annulation (`D-15`) reste au panneau de l'espace scoreur, qui
-// dispose du classement pour dire *qui* est déjà forfait. La fiche ne le sait pas, et un bouton
-// « Annuler » qui ne saurait pas s'il a quelque chose à annuler serait pire que son absence.
+// dispose du classement pour dire *qui* est déjà forfait — `DETTE-090`. Un bouton « Annuler » qui
+// ne saurait pas s'il a quelque chose à annuler serait pire que son absence.
+// ⚠️ `DETTE-047` : le forfait vaut pour **tous** les créneaux de l'archer ; le dialogue le dit.
 function DeclarerForfait({ tournoiId, archer }: { tournoiId: number; archer: Archer }) {
   const [ouvert, setOuvert] = useState(false)
   const [nature, setNature] = useState<NatureForfait>('abandon')
@@ -167,20 +168,38 @@ function DeclarerForfait({ tournoiId, archer }: { tournoiId: number; archer: Arc
         <BoutonConfirme
           libelle="Confirmer le forfait"
           libelleConfirmer="Déclarer forfait"
+          className="bouton--danger"
           titre={`Déclarer ${archer.nom} ${archer.prenom} forfait ?`}
           message={
             nature === 'abandon'
               ? 'Abandon : l’archer est relégué en fin de classement. Ses flèches déjà tirées sont conservées.'
               : 'Disqualification : l’archer sort du classement. Ses flèches déjà tirées sont conservées.'
           }
-          detail="⚠️ Cet écran ne défait pas un forfait : l’annulation se fait depuis l’espace scoreur, panneau « Forfaits — qualification »."
+          detail={
+            // DETTE-047 : le forfait vaut pour TOUS les créneaux de l'archer — l'écran doit le dire
+            // avant le clic, pas le laisser au registre. DETTE-090 : rien ici ne le défait.
+            '⚠️ Le forfait vaut pour TOUS les créneaux de cet archer. Et cet écran ne le défait pas : ' +
+            'l’annulation se fait depuis l’espace scoreur, panneau « Forfaits — qualification ».'
+          }
           ton="danger"
+          // ⚠️ `disabled` ET `enCours` : `BoutonConfirme` **ferme le dialogue avant d'agir**, donc
+          // `enCours` seul n'empêche pas un 2ᵉ clic sur le déclencheur. Sans `disabled`, la 2ᵉ
+          // écriture n'est pas dédoublonnée (aucun `identifiant_saisie`), lève `ForfaitDejaDeclare`,
+          // et l'écran affiche une ERREUR sur un forfait pourtant enregistré. Patron des 7 autres
+          // sites du dépôt (relevé en 2ᵉ passe de revue, axe C1).
+          disabled={declarer.isPending}
           enCours={declarer.isPending}
           onConfirmer={() =>
             declarer.mutate({ archerId: archer.id, nature, motif: motif.trim() || undefined })
           }
         />
-        <button type="button" className="bouton--discret" onClick={() => setOuvert(false)}>
+        <button
+          type="button"
+          className="bouton--discret"
+          // Fermer pendant l'écriture démonterait `MessageErreur` : un échec deviendrait muet.
+          disabled={declarer.isPending}
+          onClick={() => setOuvert(false)}
+        >
           Annuler
         </button>
       </div>

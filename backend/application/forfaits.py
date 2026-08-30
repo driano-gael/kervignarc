@@ -193,10 +193,8 @@ class ServiceForfait:
         if phase is None:
             raise PhaseIntrouvable(f"Aucune phase {phase_id} dans le tournoi {tournoi_id}.")
         # ⚠️ Le `phase_id` vient du client. Sans ce filtre, la route des duels écrit un forfait de
-        # QUALIFICATION relu par `_forfaits_qualif`. ⚠️ Le motif d'origine — « en contournant
-        # `exiger_scoreur`, seule garde de l'autre route » — est **caduc depuis E16US007** : les
-        # quatre routes partagent `autoriser_forfait`. Le filtre reste indispensable pour la raison
-        # ci-dessous. Miroir exact de la LECTURE (`_appliquer_forfaits`) : écrire hors de cet
+        # QUALIFICATION relu par `_forfaits_qualif`. Miroir exact de la LECTURE
+        # (`_appliquer_forfaits`) : écrire hors de cet
         # ensemble poserait une ligne fantôme — invisible, puis `ForfaitDejaDeclare` au geste
         # suivant, et `ServiceFormats` la compte. Allowlist, pas denylist : un type neuf déclare
         # son décor en un seul endroit (ADR-0083) et le filtre suit.

@@ -7,8 +7,8 @@ format**.
 
 | Document | Formats proposés |
 |---|---|
-| Liste de placement | PDF · **CSV (tableur)** |
-| Liste club & paiement | PDF · **CSV (tableur)** |
+| Liste de placement | PDF · **Tableur (CSV)** |
+| Liste club & paiement | PDF · **Tableur (CSV)** |
 | Feuille de marque | PDF seul |
 
 Et les **feuilles de marque** arrivent sur cet écran : la fonction existait depuis longtemps côté

@@ -143,3 +143,44 @@ describe('commandes propres à un document', () => {
     )
   })
 })
+
+// ⚠️ Ces trois tests gardent des **correctifs de revue**. Sans eux, un futur diff qui « simplifie »
+// les `&&` du rendu ferait redisparaître les états, et l'écran redeviendrait indistinguable d'un
+// écran cassé — le défaut que trois axes avaient relevé (2ᵉ passe, axes B et D).
+describe("l'écran dit dans quel état il est", () => {
+  it('annonce le chargement plutôt que de ne rien rendre', async () => {
+    vi.mocked(chargerCatalogueExports).mockReturnValue(new Promise(() => {}))
+    monter()
+
+    expect(await screen.findByText(/Chargement des documents/)).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Liste de placement' })).toBeNull()
+  })
+
+  it('annonce l’échec et propose de réessayer', async () => {
+    vi.mocked(chargerCatalogueExports).mockRejectedValue(new Error('boum'))
+    monter()
+
+    expect(await screen.findByText(/Impossible de lister les documents/)).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+    expect(chargerCatalogueExports).toHaveBeenCalledTimes(2)
+  })
+
+  it('dit en clair qu’aucun document servi ne lui est connu (DETTE-095)', async () => {
+    vi.mocked(chargerCatalogueExports).mockResolvedValue([entree('inconnu-au-bataillon', [PDF])])
+    monter()
+
+    expect(await screen.findByText(/aucun document connu de cet écran/)).toBeVisible()
+  })
+
+  it('ne dit « Génération… » que sur le bouton cliqué', async () => {
+    vi.mocked(telechargerExport).mockReturnValue(new Promise(() => {}))
+    monter()
+
+    const placement = await screen.findByRole('heading', { name: 'Liste de placement' })
+    const section = placement.closest('section')!
+    await userEvent.click(section.querySelectorAll('button')[0]!)
+
+    const libelles = Array.from(section.querySelectorAll('button')).map((b) => b.textContent)
+    expect(libelles).toEqual(['Génération…', 'Télécharger — Tableur (CSV)'])
+  })
+})

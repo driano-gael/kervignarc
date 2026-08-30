@@ -74,9 +74,11 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
       visuelle du tournoi ; absorbe `E01US016`.
 - [x] Exports : choisir le format de chaque document (E16US007) — **découpée le 30/08/2026**, comme
       ses Notes le prescrivaient : les podiums partent en `E16US014`, le QR par scoreur en
-      `E16US015`, et le reliquat (palmarès, audit, `xlsx`) en `E16US016`. ⚠️ **Deux de ses CA
-      d'origine étaient caducs** — le paiement par club et la consultation de l'audit en cours
-      sont livrés depuis `E08US002` et `E10US005`.
+      `E16US015`, et le reliquat (palmarès, audit, `xlsx`) en `E16US016`. ⚠️ **UN de ses CA
+      d'origine était caduc** — le paiement par club, livré depuis `E08US002`. ⚠️ Le CA
+      *audit consultable en cours de tournoi* avait été déclaré caduc **à tort** (jugement porté sur
+      la route, alors qu'**aucun écran ne la consomme**) : il reste **dû**, reporté en `E16US016`.
+      Corrigé en 2ᵉ passe de revue.
 - [x] Feu vert : agir sur la ligne du duel (E16US008). ⚠️ **Rétrécie le 28/08/2026** : le CA
       « déclenchement automatique ou manuel » en est sorti (→ `E16US013`), c'est un changement
       de moteur. Ce qui est livré : le dépliage du duel amont, le forfait déclarable par

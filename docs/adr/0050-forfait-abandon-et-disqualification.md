@@ -125,7 +125,7 @@ nature (abandon ↔ DSQ) = **annuler puis re-déclarer** — deux traces plutôt
 
 ## Porté dans le code par
 
-*(Vérifié dans le code du 28/08/2026, pas déduit de la décision.)*
+*(Vérifié dans le code du 30/08/2026, pas déduit de la décision.)*
 
 | Module | Ce qu'il porte |
 |---|---|

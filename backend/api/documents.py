@@ -1,6 +1,6 @@
 """Frontière API — servir un document au format demandé (E16US007).
 
-Module d'API **sans routeur** (comme `api/dependances.py`) : trois routeurs y puisent.
+Module d'API **sans routeur** (comme `api/dependances.py`) : deux routeurs y puisent.
 
 ⚠️ Le **type MIME est une décision HTTP**, d'où sa place ici et non dans `application/` — motivé
 au § Conséquences d'`docs/adr/0101-le-catalogue-d-exports-porte-les-formats-pas-les-url.md`.
@@ -16,7 +16,8 @@ from fastapi import Response
 from application.exports import FormatExport
 
 # Registre jumeau de `FormatExport` : un membre ajouté sans son type MIME lèverait un `KeyError`
-# à la première requête — d'où le test d'exhaustivité (`test_listes_impression_api.py`).
+# — au démarrage pour `reponses_document`, à la requête pour `reponse_document` — d'où le test
+# d'exhaustivité (`test_listes_impression_api.py`).
 MEDIA_TYPES: Mapping[FormatExport, str] = {
     FormatExport.PDF: "application/pdf",
     FormatExport.CSV: "text/csv",

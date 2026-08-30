@@ -148,8 +148,11 @@ paramètre ignoré en silence, qui rendrait un PDF à qui a demandé du CSV.
   Écrit ici pour qu'on ne croie pas le point unique plus large qu'il n'est *(axes C2 et D)*.
 - **Le type MIME vit à la frontière API** (`api/documents.py`), pas dans `application/` : c'est une
   décision HTTP, même partage que le mapping des erreurs (règle 5/6) — `FormatExportIndisponible`
-  ne porte pas son 400. Le libellé, lui, reste applicatif : il est **servi au client**, donc il
-  fait partie du contrat. *(Corrigé en revue, axe A.)*
+  ne porte pas son 400. Le libellé de **format**, lui, reste applicatif, et pour une raison
+  vérifiable : l'écran doit rendre un format **qu'il ne connaît pas** (`Exports.test.tsx`, cas
+  `ods`), donc son nom ne peut venir que du serveur. Un **document** inconnu de l'écran est hors
+  périmètre par §1 — son libellé peut donc y vivre. *(La 1ʳᵉ rédaction disait « il est servi au
+  client, donc il fait partie du contrat » : circulaire, relevé en 2ᵉ passe.)* *(Corrigé en revue, axe A.)*
 - **Le paquet d'infra s'appelle `tableur/`, pas `csv/`** : il porterait le nom du module stdlib que
   ses propres modules importent.
 - **Aucune dépendance ajoutée** (règle 11) : ReportLab était déjà là, `csv` est stdlib. `xlsx`

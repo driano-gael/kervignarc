@@ -1113,9 +1113,13 @@ button:disabled {
 .formulaire__actions {
   display: flex;
   gap: 8px;
-  /* ⚠️ `wrap` depuis E16US007 : une section d'export porte désormais **un bouton par format**, aux
-     libellés longs, dans une colonne d'admin dont la largeur n'a jamais été mesurée (DETTE-086).
-     Sans lui, les items flex (`min-width: auto`) débordent au lieu de passer à la ligne. */
+}
+
+/* ⚠️ Modificateur **local**, et non `flex-wrap` sur `.formulaire__actions` : cette classe est
+   employée 24 fois dans 21 fichiers, et l'y poser changeait le rendu de tous les formulaires du
+   produit sur la foi d'un écran jamais ouvert (relevé en 2ᵉ passe de revue, DETTE-086). Ici la
+   raison est connue : un bouton **par format** (E16US007), donc un nombre d'actions variable. */
+.formulaire__actions--enroulable {
   flex-wrap: wrap;
 }
 

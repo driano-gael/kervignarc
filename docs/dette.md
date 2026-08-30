@@ -392,7 +392,10 @@ patron `TYPES_DEROULES` / `TYPES_ARRETABLES` (E05US035) : une liste littérale v
 des deux côtés — à ceci près qu'il faut ici franchir deux langages, ce qui est précisément ce que
 les deux dettes jumelles n'avaient pas à faire.
 
-Marqueur `DETTE-095` sur la table `documents` de `Exports.tsx`.
+Marqueurs `DETTE-095` **des deux côtés** : la table `documents` de `Exports.tsx`, et
+`construire_catalogue` (`backend/application/exports.py`), qui porte les identifiants servis.
+⚠️ Le second avait d'abord été posé sur `bootstrap/composition.py` ; l'extraction de la fonction
+pure les en a sortis, et le marqueur a suivi **le code**, pas le fichier.
 
 ### DETTE-090 — aucun écran n'annule un forfait de duel
 
@@ -401,8 +404,15 @@ Marqueur `DETTE-095` sur la table `documents` de `Exports.tsx`.
 `frontend/src/features/feu-vert/FeuVert.tsx` (le dialogue),
 `frontend/src/features/saisie-duels/SaisieDuels.tsx` (`ForfaitDuel` — la même promesse fausse y
 survivait, sur l'écran du **scoreur**) et `frontend/src/features/feu-vert/FeuVert.test.tsx`
-(l'assertion sur l'avertissement, qui est **le** garde-fou de cette dette). **Cinq** marqueurs
+(l'assertion sur l'avertissement, qui est **le** garde-fou de cette dette). **Sept** marqueurs
 `DETTE-090` : le geste de résorption est un `grep`, la table et ce § doivent donc s'accorder.
+
+⚠️ **Élargie le 30/08/2026 (E16US007)** : le même défaut existe désormais en **qualification**.
+L'organisateur déclare un abandon depuis `frontend/src/features/archers/FicheArcherPilotage.tsx`,
+mais seul le panneau de l'espace **scoreur** l'annule — `useAnnulerForfaitQualif` a reçu son
+paramètre `portee` sans appelant admin. Ce sont les deux marqueurs neufs. *(Le § affirmait « Cinq »
+pendant que la table en nommait sept : corrigé en 2ᵉ passe de revue, sur la phrase même qui exige
+leur accord.)*
 
 E16US008 a élargi `POST /api/v1/forfaits/duel/annulation` à l'administrateur au nom de `D-15` — « qui
 peut déclarer doit pouvoir défaire » — et l'a couvert par un test d'API. Côté produit, **rien** :
@@ -3859,7 +3869,13 @@ ici plutôt que tranché seul.
 
 **Où** : `backend/application/forfaits.py` (`_phase_qualification`),
 `backend/application/classements.py` (`_forfaits_qualif`),
-`backend/application/portee.py` (`qualification_du_tournoi`).
+`backend/application/portee.py` (`qualification_du_tournoi`),
+`frontend/src/features/archers/FicheArcherPilotage.tsx` (`DeclarerForfait`, depuis E16US007).
+
+⚠️ **2ᵉ point d'entrée depuis le 30/08/2026** : la fiche d'archer ouvre cette écriture à
+l'**organisateur**, qui n'a pas la connaissance terrain du scoreur. Le dialogue de confirmation
+**dit** désormais que le forfait vaut pour tous les créneaux — l'avertissement est dans le produit,
+pas seulement au registre.
 
 `ServiceForfait.declarer_en_qualification` ne reçoit pas de `depart_id` : il résout « la »
 qualification par `qualification_du_tournoi`, qui rend celle du **premier** créneau. Le forfait est
