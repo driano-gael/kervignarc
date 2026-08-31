@@ -17,10 +17,15 @@ from domain.archer import ArcherId
 from domain.categorie import CategorieId
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.club import ClubId
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 
-PODIUM_JUSQU_AU = 4
-"""Les rangs qui font un podium : 1-2 (finale) et 3-4 (petite finale), CA « podium »."""
+LIBELLE_SCRATCH = "Scratch"
+"""Le nom du podium sans regroupement — vocabulaire FFTA (règle 3), pas de la copie d'interface.
+
+Rendu par le serveur pour la même raison que `categorie_libelle` : le PDF doit nommer ses blocs et
+n'a pas d'écran pour le faire à sa place.
+"""
 
 
 class OriginePalmares(str, Enum):
@@ -98,6 +103,15 @@ class LignePalmares:
     rang_max: int | None
     rang_categorie_min: int | None
     rang_categorie_max: int | None
+    rang_club_min: int | None
+    rang_club_max: int | None
+    """Le rang de l'archer **parmi ceux de son club** (E16US014), `None` s'il n'a pas de club.
+
+    Troisième couple de bornes, et pas un rang de plus dans un champ générique : chacun se lit dans
+    **son** espace de rangs et les trois cohabitent sur la même ligne. `None` sur `club_id is None`
+    — l'anomalie « club inconnu » d'ADR-0014 n'est pas un club de rattachement.
+    """
+
     decerne: bool
     """Un **match** a décerné ce rang — la seule forme qui vaut une médaille.
 
@@ -121,8 +135,34 @@ class LignePalmares:
     categorie_id: CategorieId
     categorie_libelle: str
     club_id: ClubId | None
+    club_libelle: str | None
     origine: OriginePalmares
     statut: StatutClassement
+
+
+@dataclass(frozen=True)
+class PlacePodium:
+    """Une place d'un podium : le rang **dans la portée du bloc**, et l'archer qui l'occupe.
+
+    ⚠️ Le rang est porté ici et non lu sur la ligne : sans lui, chaque surface devrait aiguiller sur
+    `bloc.portee` pour choisir entre trois couples de bornes — trois occasions de se tromper, dont
+    une sur le papier où personne ne verrait l'erreur.
+    """
+
+    rang: int
+    ligne: LignePalmares
+
+
+@dataclass(frozen=True)
+class BlocPodium:
+    """Un podium affichable : ce qu'il récompense, et les places décernées."""
+
+    portee: PorteePodium
+    cle: CategorieId | ClubId | None
+    """L'identifiant de ce qui est regroupé — `None` pour le scratch, qui ne regroupe rien."""
+
+    libelle: str
+    places: tuple[PlacePodium, ...]
 
 
 @dataclass(frozen=True)
@@ -131,25 +171,66 @@ class Palmares:
 
     lignes: tuple[LignePalmares, ...]
 
-    def podium(self, categorie_id: CategorieId) -> tuple[LignePalmares, ...]:
-        """Les quatre premiers **d'une catégorie** (CA « podium »).
+    def podiums(self, reglage: ReglagePodiums) -> tuple[BlocPodium, ...]:
+        """Les podiums que ce tournoi décerne, dans l'ordre d'affichage (E16US014).
 
-        Trois conditions : le rang vient des **duels** et n'est plus ouvert ; le rang de catégorie
-        est **exact** ; il est **≤ 4**. ⚠️ Un rang définitif suffit, il n'a pas à être **décerné
-        par un match** (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch
-        (`# DETTE-028`), donc exiger `decerne` privait de podium toutes les catégories. La
-        provenance n'est pas perdue — `decerne` la porte, et l'écran le **dit**.
+        Un bloc par groupe de la portée — un seul pour le scratch, un par catégorie ou par club
+        sinon. ⚠️ **Un bloc sans place décernée est rendu quand même** : à l'écran, un groupe qui
+        disparaît se lit comme un groupe sans archers alors qu'il est simplement en cours (parti
+        `P-3`). C'est au **document** de sauter les vides — sur le papier, un tableau à en-tête seul
+        n'a pas d'équivalent du message « podium en cours ».
         """
         return tuple(
-            ligne
-            for ligne in self.lignes
-            if ligne.categorie_id == categorie_id
-            and ligne.origine is OriginePalmares.DUELS
-            and not ligne.en_lice
-            and ligne.rang_categorie_min is not None
-            and ligne.rang_categorie_min == ligne.rang_categorie_max
-            and ligne.rang_categorie_min <= PODIUM_JUSQU_AU
+            self._bloc(portee, cle, libelle, reglage.profondeur)
+            for portee in reglage.portees_actives()
+            for cle, libelle in self._groupes(portee)
         )
+
+    def _groupes(self, portee: PorteePodium) -> tuple[tuple[int | None, str], ...]:
+        """Ce que cette portée regroupe, dans l'ordre du palmarès — donc du meilleur au moins bon.
+
+        Le scratch ne regroupe rien : un groupe unique, sans clé.
+        """
+        if portee is PorteePodium.SCRATCH:
+            return ((None, LIBELLE_SCRATCH),)
+        vus: dict[int, str] = {}
+        for ligne in self.lignes:
+            if portee is PorteePodium.CATEGORIE:
+                vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
+            elif ligne.club_id is not None:
+                vus.setdefault(ligne.club_id, ligne.club_libelle or "")
+        return tuple(vus.items())
+
+    def _bloc(
+        self, portee: PorteePodium, cle: int | None, libelle: str, profondeur: int
+    ) -> BlocPodium:
+        """Les places décernées d'un groupe — le tuple est vide tant qu'il n'y en a aucune.
+
+        Trois conditions, les mêmes pour les trois portées (E06US004, élargi par E16US014) : le
+        rang vient des **duels** et n'est plus ouvert ; il est **exact** ; il tient dans la
+        profondeur. ⚠️ Un rang définitif suffit, il n'a pas à être **décerné par un match**
+        (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch (`DETTE-028`),
+        donc l'exiger priverait de podium toutes les catégories, et tous les clubs.
+        """
+        places = tuple(
+            PlacePodium(rang=rang, ligne=ligne)
+            for ligne in self.lignes
+            if self._cle_de(portee, ligne) == cle
+            if ligne.origine is OriginePalmares.DUELS and not ligne.en_lice
+            if (rang := _rang_exact(portee, ligne)) is not None and rang <= profondeur
+        )
+        return BlocPodium(portee, cle, libelle, places)
+
+    @staticmethod
+    def _cle_de(portee: PorteePodium, ligne: LignePalmares) -> int | None:
+        """Le groupe auquel cette ligne appartient pour la portée donnée.
+
+        ⚠️ Un archer **sans club** rend `None`, qui n'est la clé d'aucun bloc de club — il n'entre
+        donc dans aucun. C'est `None` qui vaut « scratch », et le scratch retient tout le monde.
+        """
+        if portee is PorteePodium.SCRATCH:
+            return None
+        return ligne.categorie_id if portee is PorteePodium.CATEGORIE else ligne.club_id
 
     def pour_categorie(self, categorie_id: CategorieId) -> Palmares:
         """Restreint l'**affichage** à une catégorie, **sans renuméroter** le rang scratch.
@@ -161,12 +242,18 @@ class Palmares:
             lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id)
         )
 
-    def categories(self) -> tuple[tuple[CategorieId, str], ...]:
-        """Les catégories présentes, dans l'ordre du palmarès — de quoi composer les podiums."""
-        vues: dict[CategorieId, str] = {}
-        for ligne in self.lignes:
-            vues.setdefault(ligne.categorie_id, ligne.categorie_libelle)
-        return tuple(vues.items())
+
+def _rang_exact(portee: PorteePodium, ligne: LignePalmares) -> int | None:
+    """Le rang de la ligne **dans la portée**, s'il est fermé — `None` s'il reste une fourchette.
+
+    Un *ex æquo* n'a pas de place de podium : personne ne saurait quelle médaille lui remettre.
+    """
+    bornes = {
+        PorteePodium.SCRATCH: (ligne.rang_min, ligne.rang_max),
+        PorteePodium.CATEGORIE: (ligne.rang_categorie_min, ligne.rang_categorie_max),
+        PorteePodium.CLUB: (ligne.rang_club_min, ligne.rang_club_max),
+    }[portee]
+    return bornes[0] if bornes[0] is not None and bornes[0] == bornes[1] else None
 
 
 # --- calcul --------------------------------------------------------------------------------------
@@ -190,6 +277,7 @@ def calculer_palmares(
     qualification: Classement,
     resultats: Sequence[ResultatPhase] = (),
     aggregation: Aggregation | None = None,
+    libelles_club: Mapping[ClubId, str] | None = None,
 ) -> Palmares:
     """Fusionne les rangs des phases en un palmarès (CA « podium » + CA « agrégation »).
 
@@ -212,16 +300,29 @@ def calculer_palmares(
     par_categorie = {entree.ligne.archer_id: entree.ligne.categorie_id for entree in classables}
     rangs_categorie: dict[ArcherId, tuple[int, int]] = {}
     for categorie_id in dict.fromkeys(par_categorie.values()):
-        rangs_categorie.update(
-            _numeroter(paquets, retenir=_de_categorie(par_categorie, categorie_id))
-        )
+        rangs_categorie.update(_numeroter(paquets, retenir=_du_groupe(par_categorie, categorie_id)))
 
+    # E16US014 : le rang **dans son club**, calculé par la même passe que le rang de catégorie.
+    # ⚠️ Un archer sans club n'est d'aucun groupe (ADR-0014) : il reste au classement, sans rang de
+    # club — ce n'est pas un club à part, c'est une absence de club.
+    par_club = {
+        entree.ligne.archer_id: entree.ligne.club_id
+        for entree in classables
+        if entree.ligne.club_id is not None
+    }
+    rangs_club: dict[ArcherId, tuple[int, int]] = {}
+    for club_id in dict.fromkeys(par_club.values()):
+        rangs_club.update(_numeroter(paquets, retenir=_du_groupe(par_club, club_id)))
+
+    libelles = libelles_club if libelles_club is not None else {}
     entree_par_archer = {entree.ligne.archer_id: entree for entree in classables}
     lignes = [
         _ligne(
             entree_par_archer[archer_id],
             rangs.get(archer_id),
             rangs_categorie.get(archer_id),
+            rangs_club.get(archer_id),
+            libelles,
             decerne=paquet.decerne,
             en_lice=paquet.en_lice,
         )
@@ -229,21 +330,21 @@ def calculer_palmares(
         for archer_id in paquet.archers
     ]
     lignes += [
-        _ligne(entree, None, None, decerne=False, en_lice=False) for entree in hors_classement
+        _ligne(entree, None, None, None, libelles, decerne=False, en_lice=False)
+        for entree in hors_classement
     ]
     return Palmares(lignes=tuple(lignes))
 
 
-def _de_categorie(
-    par_categorie: Mapping[ArcherId, CategorieId], categorie_id: CategorieId
-) -> Callable[[ArcherId], bool]:
-    """Le filtre « cet archer est-il de cette catégorie ? », fermé sur la catégorie voulue.
+def _du_groupe(par_archer: Mapping[ArcherId, int], groupe: int) -> Callable[[ArcherId], bool]:
+    """Le filtre « cet archer est-il de ce groupe ? », fermé sur le groupe voulu.
 
-    Une fonction nommée plutôt qu'une `lambda` à paramètre par défaut : la seconde capture la
-    variable de boucle par valeur *par effet de bord* d'une astuce de portée, ce que ni mypy ni un
-    relecteur ne lisent volontiers.
+    Une catégorie ou un club (E16US014) : `_numeroter` ne demande qu'un prédicat, et les deux
+    portées renumérotent à l'identique. Fonction nommée plutôt que `lambda` à paramètre par défaut :
+    la seconde capture la variable de boucle *par effet de bord* d'une astuce de portée, que ni mypy
+    ni un relecteur ne lisent volontiers.
     """
-    return lambda archer: par_categorie.get(archer) == categorie_id
+    return lambda archer: par_archer.get(archer) == groupe
 
 
 def _positions_par_archer(
@@ -426,10 +527,13 @@ def _ligne(
     entree: _Entree,
     rang: tuple[int, int] | None,
     rang_categorie: tuple[int, int] | None,
+    rang_club: tuple[int, int] | None,
+    libelles_club: Mapping[ClubId, str],
     *,
     decerne: bool,
     en_lice: bool,
 ) -> LignePalmares:
+    club_id = entree.ligne.club_id
     return LignePalmares(
         decerne=decerne,
         en_lice=en_lice,
@@ -437,12 +541,17 @@ def _ligne(
         rang_max=rang[1] if rang is not None else None,
         rang_categorie_min=rang_categorie[0] if rang_categorie is not None else None,
         rang_categorie_max=rang_categorie[1] if rang_categorie is not None else None,
+        rang_club_min=rang_club[0] if rang_club is not None else None,
+        rang_club_max=rang_club[1] if rang_club is not None else None,
         archer_id=entree.ligne.archer_id,
         nom=entree.ligne.nom,
         prenom=entree.ligne.prenom,
         categorie_id=entree.ligne.categorie_id,
         categorie_libelle=entree.ligne.categorie_libelle,
-        club_id=entree.ligne.club_id,
+        club_id=club_id,
+        # `None` et non "" : l'écran distingue « club inconnu » (ADR-0014) d'un nom vide, et le
+        # référentiel peut manquer au lot passé sans que la ligne mente sur l'absence de club.
+        club_libelle=libelles_club.get(club_id) if club_id is not None else None,
         origine=entree.origine,
         statut=entree.ligne.statut,
     )

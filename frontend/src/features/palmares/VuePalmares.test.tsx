@@ -57,7 +57,15 @@ const MON_ARCHER = ligne({
 
 const PALMARES: Palmares = {
   tournoi_id: 1,
-  podiums: [{ categorie_id: 3, categorie_libelle: 'Senior 1 Homme', lignes: [MEDAILLE] }],
+  podiums: [
+    {
+      portee: 'categorie',
+      cle: 3,
+      libelle: 'Senior 1 Homme',
+      places: [{ rang: 1, ligne: MEDAILLE }],
+    },
+  ],
+  profondeur_podium: 4,
   lignes: [MEDAILLE, MON_ARCHER],
 }
 

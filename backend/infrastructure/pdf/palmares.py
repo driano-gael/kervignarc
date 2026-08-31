@@ -23,7 +23,8 @@ from reportlab.platypus import (
 )
 
 from domain.classement import StatutClassement
-from domain.palmares import LignePalmares, Palmares
+from domain.palmares import LignePalmares, Palmares, PlacePodium
+from domain.podium import ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.pdf._commun import echapper as _echapper
 
@@ -66,51 +67,51 @@ class GenerateurPalmaresPdf:
         )
         self._info = ParagraphStyle("info_palmares", parent=styles["Normal"], fontSize=11)
 
-    def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
+    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
         """Rend le palmarès en PDF. Enveloppe tout échec en `InfrastructureError`."""
         try:
-            return self._rendre("Palmarès", self._corps(tournoi, palmares))
+            return self._rendre("Palmarès", self._corps(tournoi, palmares, reglage))
         # ReportLab lève une famille d'exceptions hétérogène : on enveloppe (aucune fuite brute).
         except Exception as exc:
             raise InfrastructureError("Échec de génération du PDF du palmarès.") from exc
 
-    def _corps(self, tournoi: str, palmares: Palmares) -> list[Flowable]:
+    def _corps(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> list[Flowable]:
         elements: list[Flowable] = [
             Paragraph(f"Palmarès — {_echapper(tournoi)}", self._titre),
-            Paragraph("Podiums par catégorie, puis classement complet", self._sous_titre),
+            Paragraph("Podiums décernés, puis classement complet", self._sous_titre),
             Spacer(1, 4 * mm),
         ]
         if not palmares.lignes:
             elements.append(Paragraph("Aucun archer classé.", self._info))
             return elements
-        elements.extend(self._podiums(palmares))
+        elements.extend(self._podiums(palmares, reglage))
         elements.append(Paragraph("Classement complet", self._section))
         elements.append(self._table_classement(palmares.lignes))
         return elements
 
-    def _podiums(self, palmares: Palmares) -> list[Flowable]:
-        """Un bloc par catégorie — et rien du tout pour celles dont aucun rang n'est décerné.
+    def _podiums(self, palmares: Palmares, reglage: ReglagePodiums) -> list[Flowable]:
+        """Un bloc par podium réglé — et rien du tout pour ceux dont aucun rang n'est décerné.
 
-        Un podium vide s'imprimerait comme un tableau à en-tête seul, que le lecteur prendrait
-        pour une catégorie sans archers plutôt que pour une finale non encore tirée.
+        Un podium vide s'imprimerait comme un tableau à en-tête seul, que le lecteur prendrait pour
+        une catégorie sans archers plutôt que pour une finale non encore tirée. L'écran, lui, les
+        garde et **nomme** l'attente (`P-3`) : il peut, le papier non.
         """
         elements: list[Flowable] = []
-        for categorie_id, libelle in palmares.categories():
-            podium = palmares.podium(categorie_id)
-            if not podium:
+        for bloc in palmares.podiums(reglage):
+            if not bloc.places:
                 continue
-            elements.append(Paragraph(f"Podium — {_echapper(libelle)}", self._section))
+            elements.append(Paragraph(f"Podium — {_echapper(bloc.libelle)}", self._section))
             table = Table(
                 [
                     ["Rang", "Médaille", "Nom", "Prénom"],
                     *[
                         [
-                            _rang(ligne.rang_categorie_min, ligne.rang_categorie_max),
-                            _medaille(ligne),
-                            ligne.nom,
-                            ligne.prenom,
+                            _rang(place.rang, place.rang),
+                            _medaille(place),
+                            place.ligne.nom,
+                            place.ligne.prenom,
                         ]
-                        for ligne in podium
+                        for place in bloc.places
                     ],
                 ],
                 repeatRows=1,
@@ -156,7 +157,7 @@ class GenerateurPalmaresPdf:
         return tampon.getvalue()
 
 
-def _medaille(ligne: LignePalmares) -> str:
+def _medaille(place: PlacePodium) -> str:
     """Le métal, suivi de sa **provenance** quand aucun match ne l'a décerné.
 
     Le moteur ne monte qu'un seul tableau scratch (`DETTE-028`) : dans la plupart des catégories,
@@ -165,8 +166,8 @@ def _medaille(ligne: LignePalmares) -> str:
     catégories sans médailles), mais le document **le dit** : c'est le mur du gymnase, et une
     médaille dont on ignore d'où elle vient s'y discute toute la soirée.
     """
-    metal = _MEDAILLES.get(ligne.rang_categorie_min or 0, "—")
-    return metal if ligne.decerne else f"{metal} (au classement)"
+    metal = _MEDAILLES.get(place.rang, "—")
+    return metal if place.ligne.decerne else f"{metal} (au classement)"
 
 
 def _rang(minimum: int | None, maximum: int | None) -> str:

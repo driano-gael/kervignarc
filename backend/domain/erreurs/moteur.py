@@ -289,6 +289,17 @@ class ExigenceEffectifInvalide(DomainError):
     code = "exigence_effectif_invalide"
 
 
+class ProfondeurPodiumInvalide(DomainError):
+    """Un podium a été réglé sur moins d'une place (E16US014).
+
+    « Ne rien récompenser » se dit en ne retenant **aucune portée**, pas en demandant zéro place —
+    même parti qu'`ExigenceEffectifInvalide`. Deux écritures pour la même intention obligeraient
+    chaque écran à trancher laquelle croire.
+    """
+
+    code = "profondeur_podium_invalide"
+
+
 class FormatTableauIncoherent(DomainError):
     """Les politiques `seeding` et `byes` injectées se contredisent sur les exempts (E05US005).
 

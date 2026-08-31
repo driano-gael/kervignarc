@@ -6,7 +6,7 @@
 // à une élimination en duel. **Ce qui n'est pas décidé se nomme** : un podium vide dit « en cours
 // », un blanc passerait pour une panne d'affichage sur un écran projeté.
 
-import type { LignePalmares, PodiumCategorie } from './api'
+import type { LignePalmares, Podium } from './api'
 
 const MEDAILLES: Record<number, string> = { 1: 'Or', 2: 'Argent', 3: 'Bronze' }
 
@@ -26,10 +26,10 @@ export function ordinal(valeur: number): string {
   return valeur === 1 ? '1ᵉʳ' : `${valeur}ᵉ`
 }
 
-// La médaille d'un rang de podium — vide au 4ᵉ, qui figure au podium (la petite finale l'a décerné)
-// mais ne reçoit rien.
-export function medaille(rangCategorie: number | null): string {
-  return rangCategorie === null ? '' : (MEDAILLES[rangCategorie] ?? '')
+// La médaille d'un rang de podium — vide au-delà du bronze : ces places figurent au podium (la
+// petite finale a décerné la 4ᵉ) mais ne reçoivent rien.
+export function medaille(rangDansLaPortee: number | null): string {
+  return rangDansLaPortee === null ? '' : (MEDAILLES[rangDansLaPortee] ?? '')
 }
 
 // La **provenance** d'une place de podium. Le moteur ne monte qu'un seul tableau scratch, donc dans
@@ -58,18 +58,29 @@ export function detail(ligne: LignePalmares): string | null {
   return null
 }
 
-// Le titre d'un bloc de podium, et son état quand il est vide.
-export function etatPodium(podium: PodiumCategorie, effectif: number): string | null {
-  if (podium.lignes.length === 0) return 'Podium en cours — aucune place décernée.'
-  // Comparé à l'**effectif de la catégorie**, pas à la constante 3 : une catégorie de
-  // deux archers (courant en salle — Benjamine, Cadet Femme…) a un podium complet à
-  // deux noms, et affichait « podium partiel » à perpétuité, tournoi terminé compris
-  // (relevé en revue, axes B et C1).
-  const complet = Math.min(3, effectif)
-  if (podium.lignes.length < complet) {
+// L'état d'un bloc de podium quand il n'est pas complet.
+export function etatPodium(podium: Podium, effectif: number, profondeur: number): string | null {
+  if (podium.places.length === 0) return 'Podium en cours — aucune place décernée.'
+  // Comparé à l'**effectif du groupe**, pas à la constante 3 : un groupe de deux archers (courant
+  // en salle — Benjamine, Cadet Femme…) a un podium complet à deux noms, et affichait « podium
+  // partiel » à perpétuité, tournoi terminé compris (relevé en revue, axes B et C1).
+  //
+  // ⚠️ `profondeur` entre au minimum **sans remplacer le 3** (E16US014) : le seuil reste celui des
+  // **médailles**, pas des places affichées — sinon le réglage par défaut (4 places) ferait dire
+  // « partiel » à tout podium complet de trois médaillés, une régression sur tous les tournois.
+  const complet = Math.min(3, profondeur, effectif)
+  if (podium.places.length < complet) {
     return 'Podium partiel — les finales ne sont pas toutes tirées.'
   }
   return null
+}
+
+// Combien d'archers ce bloc regroupe — de quoi savoir si son podium est complet. Le scratch
+// regroupe tout le monde ; les deux autres portées comparent la clé du bloc.
+export function effectifDuGroupe(podium: Podium, lignes: LignePalmares[]): number {
+  if (podium.portee === 'scratch') return lignes.length
+  const cle = podium.portee === 'categorie' ? 'categorie_id' : 'club_id'
+  return lignes.filter((ligne) => ligne[cle] === podium.cle).length
 }
 
 export const nomComplet = (ligne: LignePalmares) => `${ligne.prenom} ${ligne.nom}`.trim()

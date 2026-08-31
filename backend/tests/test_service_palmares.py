@@ -36,15 +36,16 @@ from domain.classement import StatutClassement
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
-from domain.palmares import OriginePalmares, Palmares
+from domain.palmares import LignePalmares, OriginePalmares, Palmares
 from domain.phase import Phase, SourcePhase, TypePhase
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import (
     Aggregation,
     AggregationExAequo,
     AggregationParQualification,
     ProfondeurClassement,
 )
-from tests.conftest import poser_phase_factice
+from tests.conftest import FauxClubRepository, poser_phase_factice
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -128,9 +129,11 @@ class _FauxGenerateurPalmares:
 
     def __init__(self) -> None:
         self.appels: list[tuple[str, Palmares]] = []
+        self.reglages: list[ReglagePodiums] = []
 
-    def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
+    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
         self.appels.append((tournoi, palmares))
+        self.reglages.append(reglage)
         return b"%PDF-faux"
 
 
@@ -147,6 +150,7 @@ def _service(
         monde.duels,
         generateur or _FauxGenerateurPalmares(),
         monde.departs,
+        FauxClubRepository(),
         aggregation,
     )
 
@@ -156,6 +160,20 @@ def _rangs(
 ) -> list[tuple[int, int | None, int | None]]:
     palmares = _service(monde, aggregation=aggregation).pour_tournoi(monde.tournoi_id)
     return [(ligne.archer_id, ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes]
+
+
+def _podium(palmares: Palmares, categorie_id: int) -> tuple[LignePalmares, ...]:
+    """Le podium d'une catégorie, tel qu'E06US004 le rendait.
+
+    `Palmares.podium(categorie_id)` a été généralisé en `podiums(reglage)` par E16US014. Cette aide
+    ramène la forme d'avant pour que **l'oracle de ces tests ne bouge pas d'un chiffre** — ce qui
+    est vérifié plus bas est le comportement livré, pas la nouvelle interface.
+    """
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.CATEGORIE}))
+    for bloc in palmares.podiums(reglage):
+        if bloc.cle == categorie_id:
+            return tuple(place.ligne for place in bloc.places)
+    return ()
 
 
 # --- gardes --------------------------------------------------------------------------------------
@@ -205,7 +223,7 @@ def test_le_podium_sort_des_matchs_terminaux_du_tableau() -> None:
     tableau, _lignes = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
     attendus = [place.participant.ref_id for place in tableau.podium()]
 
-    podium = palmares.podium(monde.categorie_id)
+    podium = _podium(palmares, monde.categorie_id)
     assert [ligne.archer_id for ligne in podium] == attendus
     assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
     assert all(ligne.origine is OriginePalmares.DUELS for ligne in podium)
@@ -223,7 +241,7 @@ def test_le_podium_se_publie_des_la_petite_finale_sans_attendre_la_finale() -> N
 
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
 
-    assert [ligne.rang_min for ligne in palmares.podium(monde.categorie_id)] == [3, 4]
+    assert [ligne.rang_min for ligne in _podium(palmares, monde.categorie_id)] == [3, 4]
 
 
 # --- CA « agrégation » ---------------------------------------------------------------------------
@@ -410,7 +428,7 @@ def test_une_phase_sans_duel_tranche_ne_pese_pas_sur_le_palmares() -> None:
     assert [ligne.archer_id for ligne in palmares.lignes] == archers
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
-    assert palmares.podium(monde.categorie_id) == ()
+    assert _podium(palmares, monde.categorie_id) == ()
 
 
 def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> None:
@@ -455,7 +473,7 @@ def test_sans_petite_finale_le_bronze_n_est_pas_gagne_au_tir() -> None:
         monde.gagner(numero)
 
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
-    podium = palmares.podium(monde.categorie_id)
+    podium = _podium(palmares, monde.categorie_id)
 
     assert [ligne.rang_categorie_min for ligne in podium] == [1, 2, 3, 4]
     assert [ligne.decerne for ligne in podium] == [True, True, False, False]
@@ -468,7 +486,7 @@ def test_avec_petite_finale_le_bronze_est_decerne() -> None:
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
 
-    podium = _service(monde).pour_tournoi(monde.tournoi_id).podium(monde.categorie_id)
+    podium = _podium(_service(monde).pour_tournoi(monde.tournoi_id), monde.categorie_id)
 
     assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
     assert all(ligne.decerne for ligne in podium)
@@ -627,7 +645,7 @@ def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
     ], "La basse dispute les rangs 3-4, et son ordre est celui de son propre second tour."
     origines = {ligne.archer_id: ligne.origine for ligne in palmares.lignes}
     assert origines[basse_archers[0]] is OriginePalmares.QUALIFICATION
-    assert not palmares.podium(monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
+    assert not _podium(palmares, monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
 
 
 def _v10(valeurs: tuple[str, ...] = ("10", "10", "10")) -> tuple[ZoneScore, ...]:

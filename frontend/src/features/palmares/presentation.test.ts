@@ -5,7 +5,7 @@
 // nomme. Ce sont les trois choses qu'un écran peut faire dire de faux à un palmarès juste.
 
 import { describe, expect, it } from 'vitest'
-import type { LignePalmares, PodiumCategorie } from './api'
+import type { LignePalmares, Podium } from './api'
 import { detail, etatPodium, medaille, rang } from './presentation'
 
 function ligne(partiel: Partial<LignePalmares> = {}): LignePalmares {
@@ -108,33 +108,65 @@ describe('detail', () => {
 })
 
 describe('etatPodium', () => {
-  function podium(nb: number): PodiumCategorie {
+  function podium(nb: number): Podium {
     return {
-      categorie_id: 1,
-      categorie_libelle: 'Senior Homme',
-      lignes: Array.from({ length: nb }, (_, i) => ligne({ archer_id: i + 1 })),
+      portee: 'categorie',
+      cle: 1,
+      libelle: 'Senior Homme',
+      places: Array.from({ length: nb }, (_, i) => ({
+        rang: i + 1,
+        ligne: ligne({ archer_id: i + 1 }),
+      })),
     }
   }
 
   it('nomme un podium vide plutôt que de laisser un blanc', () => {
     // Sur un écran projeté, un blanc se lit comme une panne d'affichage (`P-3`, E07US008).
-    expect(etatPodium(podium(0), 8)).toBe('Podium en cours — aucune place décernée.')
+    expect(etatPodium(podium(0), 8, 4)).toBe('Podium en cours — aucune place décernée.')
   })
 
   it('signale un podium partiel — le bronze se tire couramment avant l’or', () => {
-    expect(etatPodium(podium(2), 8)).toBe('Podium partiel — les finales ne sont pas toutes tirées.')
+    expect(etatPodium(podium(2), 8, 4)).toBe(
+      'Podium partiel — les finales ne sont pas toutes tirées.',
+    )
   })
 
   it('ne dit rien d’un podium complet', () => {
-    expect(etatPodium(podium(3), 8)).toBeNull()
-    expect(etatPodium(podium(4), 8)).toBeNull()
+    expect(etatPodium(podium(3), 8, 4)).toBeNull()
+    expect(etatPodium(podium(4), 8, 4)).toBeNull()
   })
 
   it('ne dit pas « partiel » du podium complet d’une petite catégorie', () => {
     // Benjamine, Cadet Femme… : deux archers inscrits, podium complet à deux noms. Comparé à la
     // constante 3, le message « les finales ne sont pas toutes tirées » restait affiché à
     // perpétuité, tournoi terminé compris (relevé en revue).
-    expect(etatPodium(podium(2), 2)).toBeNull()
-    expect(etatPodium(podium(1), 1)).toBeNull()
+    expect(etatPodium(podium(2), 2, 4)).toBeNull()
+    expect(etatPodium(podium(1), 1, 4)).toBeNull()
+  })
+})
+
+describe('etatPodium — profondeur réglée (E16US014)', () => {
+  function podium(nb: number): Podium {
+    return {
+      portee: 'scratch',
+      cle: null,
+      libelle: 'Scratch',
+      places: Array.from({ length: nb }, (_, i) => ({
+        rang: i + 1,
+        ligne: ligne({ archer_id: i + 1 }),
+      })),
+    }
+  }
+
+  it('ne dit pas « partiel » d’un podium complet plus court que trois places', () => {
+    // Profondeur 2 : deux places décernées, il n'en manque aucune. Comparer au 3 des médailles
+    // aurait laissé « les finales ne sont pas toutes tirées » sur un podium terminé.
+    expect(etatPodium(podium(2), 8, 2)).toBeNull()
+  })
+
+  it('garde le seuil des médailles quand la profondeur est plus grande', () => {
+    // Profondeur 6 : le seuil reste 3 — le message parle des **médailles**, pas des places
+    // affichées. Sans quoi tout podium complet de trois médaillés se serait dit « partiel ».
+    expect(etatPodium(podium(3), 8, 6)).toBeNull()
   })
 })

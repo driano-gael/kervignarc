@@ -34,6 +34,7 @@ from domain.palmares import Palmares
 from domain.phase import Phase, PhaseId, TypePhase
 from domain.placement import Affectation
 from domain.placement_par_bloc import BlocDeCouloirs
+from domain.podium import ReglagePodiums
 from domain.poste import Poste, PosteId, TypePoste
 from domain.remboursement import Remboursement, RemboursementId
 from domain.score import Score
@@ -988,8 +989,12 @@ class GenerateurPalmares(Protocol):
     d'impression en ont un parce qu'elles portent, elles, des paramètres de composition.
     """
 
-    def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
-        """Rend le palmarès en un PDF (podiums par catégorie + classement complet)."""
+    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
+        """Rend le palmarès en un PDF (les podiums réglés + classement complet).
+
+        Le réglage est passé **à part** plutôt que lu dans `Palmares` : le palmarès est le résultat
+        sportif, ce que le club récompense est de la configuration (E16US014, règle 2).
+        """
         ...
 
 

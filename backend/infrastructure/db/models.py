@@ -39,6 +39,13 @@ class TournoiORM(Base):
     # 0041). NOT NULL avec défaut serveur `aucun` — un tournoi a **toujours** un réglage, et
     # « aucun » est une valeur, pas une absence : `NULL` aurait ouvert un cinquième état à traduire.
     cloisonnement: Mapped[str] = mapped_column(nullable=False, server_default="aucun")
+    # E16US014 : ce que le tournoi récompense (0052). Les portées sont un **tableau JSON** de codes
+    # — même procédé que `CategorieORM` — parce qu'elles se cumulent : une colonne par portée
+    # figerait l'énumération dans le schéma, et une chaîne à séparateur obligerait chaque lecture à
+    # redécouper. NOT NULL avec défauts serveur `["categorie"]` / `4` : c'est le comportement
+    # d'E06US004, donc un tournoi déjà en base ne change pas d'affichage.
+    podium_portees: Mapped[str] = mapped_column(nullable=False, server_default='["categorie"]')
+    podium_profondeur: Mapped[int] = mapped_column(nullable=False, server_default="4")
 
 
 class DepartORM(Base):

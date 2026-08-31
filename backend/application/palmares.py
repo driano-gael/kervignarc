@@ -25,6 +25,7 @@ from application.prelevement import tranche
 from application.routage import LecteurRencontresARouter
 from application.saisie_duels import ServiceSaisieDuels
 from domain.categorie import CategorieId
+from domain.club import ClubId
 from domain.contrat_phase import TYPES_CLASSANTS_LUS, TYPES_RECONSTRUCTIBLES
 from domain.depart import DepartId
 from domain.erreurs import DomainError, EffectifTableauInvalide
@@ -37,8 +38,10 @@ from domain.palmares import (
 )
 from domain.participant import GenreParticipant
 from domain.phase import Phase, TypePhase
+from domain.podium import ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import (
+    ClubRepository,
     DepartRepository,
     DuelRepository,
     GenerateurPalmares,
@@ -83,6 +86,7 @@ class ServicePalmares:
         duels: DuelRepository,
         generateur: GenerateurPalmares,
         departs: DepartRepository,
+        clubs: ClubRepository,
         aggregation: Aggregation | None = None,
         big_shoot_off: LecteurEtatBigShootOff | None = None,
         rencontres: Mapping[TypePhase, LecteurRencontresARouter] | None = None,
@@ -90,6 +94,9 @@ class ServicePalmares:
         self._tournois = tournois
         # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
         self._departs = departs
+        # E16US014 : de quoi **nommer** les podiums de club. Référentiel global (E02US001),
+        # relu à chaque palmarès — une liste de clubs, sans commune mesure avec DETTE-031.
+        self._clubs = clubs
         self._phases = phases
         self._classements = classements
         self._saisie_duels = saisie_duels
@@ -178,8 +185,45 @@ class ServicePalmares:
                 if (resultat := self._resultat_classant(tournoi_id, phase, phases)) is not None
             )
         )
-        palmares = calculer_palmares(qualification, resultats, self._aggregation)
+        palmares = calculer_palmares(
+            qualification, resultats, self._aggregation, self._libelles_club()
+        )
         return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
+
+    def _libelles_club(self) -> Mapping[ClubId, str]:
+        """Le nom de chaque club, pour que les podiums de club se **nomment** (E16US014).
+
+        Résolu ici et non à l'écran : le PDF doit nommer ses blocs et n'a pas de front pour le
+        faire à sa place. Le référentiel est global et de la taille d'une liste de clubs — la
+        lecture est sans commune mesure avec la reconstruction des tableaux (`DETTE-031`).
+        """
+        return {club.id: club.nom for club in self._clubs.lister() if club.id is not None}
+
+    def reglage_podiums(self, tournoi_id: TournoiId) -> ReglagePodiums:
+        """Ce que ce tournoi récompense (E16US014) — lecture d'une seule ligne.
+
+        Servie à part du palmarès plutôt que fondue dedans : `Palmares` est le **résultat sportif**,
+        le réglage est de la configuration, et l'écran de réglage doit pouvoir le lire sans payer
+        la reconstruction de tous les tableaux (`DETTE-031`).
+        """
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return tournoi.reglage_podiums
+
+    def definir_reglage_podiums(
+        self, tournoi_id: TournoiId, reglage: ReglagePodiums
+    ) -> ReglagePodiums:
+        """Règle ce que le tournoi récompense et renvoie la valeur retenue (E16US014).
+
+        Aucune garde de statut : le palmarès se recalcule à chaque lecture, changer le réglage ne
+        réécrit donc aucun résultat — et ce que le club récompense se décide jusqu'à la remise.
+        """
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        enregistre = self._tournois.enregistrer(tournoi.definir_reglage_podiums(reglage))
+        return enregistre.reglage_podiums
 
     def imprimer(self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None) -> bytes:
         """Rend le palmarès en **PDF** (CA « affiché et exportable »).
@@ -191,7 +235,11 @@ class ServicePalmares:
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        return self._generateur.palmares(tournoi.nom, self.pour_tournoi(tournoi_id, categorie_id))
+        return self._generateur.palmares(
+            tournoi.nom,
+            self.pour_tournoi(tournoi_id, categorie_id),
+            tournoi.reglage_podiums,
+        )
 
     def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
         """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.

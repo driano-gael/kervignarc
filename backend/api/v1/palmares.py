@@ -8,12 +8,17 @@ finirait par contredire l'écran.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Response
-from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
+import asyncio
 
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+
+from api.dependances import exiger_admin
 from application.palmares import ServicePalmares
 from domain.palmares import LignePalmares, Palmares
+from domain.podium import PorteePodium, ReglagePodiums
+from infrastructure.db import WriteQueue
 
 # DETTE-031 (../../../docs/dette.md) : les deux routes de ce module appellent
 # `ServicePalmares`, qui reconstruit **chaque phase à tableau** (classement complet + arbre
@@ -69,41 +74,85 @@ class LignePalmaresReponse(BaseModel):
         )
 
 
-class PodiumCategorieReponse(BaseModel):
-    """Le podium d'une catégorie : ses rangs **décernés** parmi les quatre premiers.
+class PlacePodiumReponse(BaseModel):
+    """Une place d'un podium : le rang **dans la portée du bloc**, et l'archer qui l'occupe.
 
-    Un podium par catégorie, parce que les médailles se remettent par catégorie. Il peut être
-    **partiel** (rangs 1-2 seuls, la petite finale n'étant pas tirée) ou **vide** — la lecture au
-    fil de l'eau de tout le projet. Les *ex æquo* n'y figurent pas : on ne remet pas une médaille à
-    quatre archers 5ᵉ-8ᵉ.
+    Le rang est rendu à part de la ligne pour que le client n'ait pas à choisir entre trois couples
+    de bornes selon la portée du bloc — c'est le serveur qui sait laquelle s'applique (E16US014).
     """
 
-    categorie_id: int
-    categorie_libelle: str
-    lignes: list[LignePalmaresReponse]
+    rang: int
+    ligne: LignePalmaresReponse
+
+
+class PodiumReponse(BaseModel):
+    """Un podium : ce qu'il récompense, et ses rangs **décernés** dans la profondeur réglée.
+
+    Il peut être **partiel** (rangs 1-2 seuls, la petite finale n'étant pas tirée) — la lecture au
+    fil de l'eau de tout le projet. Les *ex æquo* n'y figurent pas : on ne remet pas une médaille à
+    quatre archers 5ᵉ-8ᵉ. `cle` vaut `null` pour le scratch, qui ne regroupe rien.
+    """
+
+    portee: str
+    cle: int | None
+    libelle: str
+    places: list[PlacePodiumReponse]
+
+
+class ReglagePodiumsReponse(BaseModel):
+    """Ce que ce tournoi récompense — la **lecture** est ouverte, comme le palmarès lui-même."""
+
+    portees: list[str]
+    profondeur: int
+
+    @staticmethod
+    def de_reglage(reglage: ReglagePodiums) -> ReglagePodiumsReponse:
+        return ReglagePodiumsReponse(
+            portees=[portee.value for portee in reglage.portees_actives()],
+            profondeur=reglage.profondeur,
+        )
+
+
+class ReglerPodiumsRequete(BaseModel):
+    """La demande de réglage. Une liste **vide** est licite : ne rien récompenser est un choix.
+
+    ⚠️ `profondeur` est bornée **ici aussi** (`ge=1`) alors que `ReglagePodiums` la refuse déjà : la
+    frontière rend un 422 lisible au lieu du 500 qu'une `DomainError` non mappée produirait.
+    """
+
+    portees: list[PorteePodium]
+    profondeur: int = Field(ge=1)
 
 
 class PalmaresReponse(BaseModel):
-    """Le palmarès d'un tournoi : les podiums par catégorie, puis le classement complet."""
+    """Le palmarès d'un tournoi : les podiums réglés, puis le classement complet."""
 
     tournoi_id: int
-    podiums: list[PodiumCategorieReponse]
+    podiums: list[PodiumReponse]
+    profondeur_podium: int
+    """Les places récompensées (E16US014) — rendue ici pour que l'écran sache si un podium est
+    complet **sans** payer une seconde requête sur les surfaces publiques."""
+
     lignes: list[LignePalmaresReponse]
 
     @staticmethod
-    def de_agregat(tournoi_id: int, palmares: Palmares) -> PalmaresReponse:
+    def de_agregat(tournoi_id: int, palmares: Palmares, reglage: ReglagePodiums) -> PalmaresReponse:
         return PalmaresReponse(
             tournoi_id=tournoi_id,
+            profondeur_podium=reglage.profondeur,
             podiums=[
-                PodiumCategorieReponse(
-                    categorie_id=categorie_id,
-                    categorie_libelle=libelle,
-                    lignes=[
-                        LignePalmaresReponse.de_ligne(ligne)
-                        for ligne in palmares.podium(categorie_id)
+                PodiumReponse(
+                    portee=bloc.portee.value,
+                    cle=bloc.cle,
+                    libelle=bloc.libelle,
+                    places=[
+                        PlacePodiumReponse(
+                            rang=place.rang, ligne=LignePalmaresReponse.de_ligne(place.ligne)
+                        )
+                        for place in bloc.places
                     ],
                 )
-                for categorie_id, libelle in palmares.categories()
+                for bloc in palmares.podiums(reglage)
             ],
             lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in palmares.lignes],
         )
@@ -120,8 +169,44 @@ async def consulter_palmares(
     d'ensemble, comme pour le classement de qualification.
     """
     service: ServicePalmares = request.app.state.service_palmares
+    reglage = await run_in_threadpool(service.reglage_podiums, tournoi_id)
     palmares = await run_in_threadpool(service.pour_tournoi, tournoi_id, categorie_id)
-    return PalmaresReponse.de_agregat(tournoi_id, palmares)
+    return PalmaresReponse.de_agregat(tournoi_id, palmares, reglage)
+
+
+@router.get("/tournois/{tournoi_id}/reglage-podiums", response_model=ReglagePodiumsReponse)
+async def reglage_podiums(tournoi_id: int, request: Request) -> ReglagePodiumsReponse:
+    """Lit ce que ce tournoi récompense (E16US014).
+
+    **Ouverte**, comme le palmarès lui-même : savoir qu'un tournoi remet des médailles par club
+    n'est pas un secret, et l'écran public en a besoin pour titrer ses blocs. 404 si le tournoi est
+    inconnu. Lecture d'une ligne — elle ne paie pas la reconstruction des tableaux (`DETTE-031`).
+    """
+    service: ServicePalmares = request.app.state.service_palmares
+    reglage = await run_in_threadpool(service.reglage_podiums, tournoi_id)
+    return ReglagePodiumsReponse.de_reglage(reglage)
+
+
+@router.put(
+    "/tournois/{tournoi_id}/reglage-podiums",
+    response_model=ReglagePodiumsReponse,
+    dependencies=[Depends(exiger_admin)],
+)
+async def regler_podiums(
+    tournoi_id: int, requete: ReglerPodiumsRequete, request: Request
+) -> ReglagePodiumsReponse:
+    """Règle ce que le tournoi récompense (**action admin**) : écriture via la file.
+
+    **Ne fige aucun résultat** : le palmarès se recalcule à chaque lecture, ce réglage ne fait que
+    décider quels blocs en sortent. Le front réinvalide donc le palmarès après ce PUT.
+    """
+    service: ServicePalmares = request.app.state.service_palmares
+    write_queue: WriteQueue = request.app.state.write_queue
+    reglage = ReglagePodiums(portees=frozenset(requete.portees), profondeur=requete.profondeur)
+    valeur = await asyncio.wrap_future(
+        write_queue.submit(lambda: service.definir_reglage_podiums(tournoi_id, reglage))
+    )
+    return ReglagePodiumsReponse.de_reglage(valeur)
 
 
 @router.get(

@@ -29,12 +29,14 @@ from __future__ import annotations
 
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.palmares import (
+    LignePalmares,
     OriginePalmares,
     Palmares,
     PositionPhase,
     ResultatPhase,
     calculer_palmares,
 )
+from domain.podium import PorteePodium, ReglagePodiums
 
 
 def _ligne(archer_id: int, rang: int, total: int) -> LigneClassement:
@@ -110,6 +112,21 @@ def _rangs(palmares: Palmares) -> list[tuple[int, int | None]]:
     return [(ligne.archer_id, ligne.rang_min) for ligne in palmares.lignes]
 
 
+def _podium(palmares: Palmares, categorie_id: int) -> tuple[LignePalmares, ...]:
+    """Le podium d'une catégorie, tel qu'E06US004 le rendait.
+
+    `Palmares.podium(categorie_id)` a été généralisé en `podiums(reglage)` par E16US014, qui rend
+    des blocs pour trois portées. Cette aide ramène la forme d'avant pour que **l'oracle de ces
+    tests ne bouge pas d'un chiffre** : ce qui est vérifié plus bas est le comportement livré, pas
+    la nouvelle interface.
+    """
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.CATEGORIE}))
+    for bloc in palmares.podiums(reglage):
+        if bloc.cle == categorie_id:
+            return tuple(place.ligne for place in bloc.places)
+    return ()
+
+
 # --- CA « le rang vient de la phase, jamais du cumul » --------------------------------------------
 
 
@@ -178,7 +195,7 @@ def test_le_podium_reste_vide_sans_le_moindre_duel() -> None:
     """
     palmares = calculer_palmares(_premiere_qualification(), (_haute(), _basse()))
 
-    assert palmares.podium(categorie_id=1) == ()
+    assert _podium(palmares, 1) == ()
 
 
 def test_l_origine_distingue_la_phase_du_repli_sur_la_qualification() -> None:
@@ -214,4 +231,4 @@ def test_une_phase_a_tableau_reste_decernee_et_etiquetee_duels() -> None:
 
     assert all(ligne.decerne for ligne in palmares.lignes)
     assert {ligne.origine for ligne in palmares.lignes} == {OriginePalmares.DUELS}
-    assert [ligne.archer_id for ligne in palmares.podium(categorie_id=1)] == [20, 10, 30, 40]
+    assert [ligne.archer_id for ligne in _podium(palmares, 1)] == [20, 10, 30, 40]
