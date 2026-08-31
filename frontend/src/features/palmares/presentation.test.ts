@@ -122,26 +122,26 @@ describe('etatPodium', () => {
 
   it('nomme un podium vide plutôt que de laisser un blanc', () => {
     // Sur un écran projeté, un blanc se lit comme une panne d'affichage (`P-3`, E07US008).
-    expect(etatPodium(podium(0), 8, 4)).toBe('Podium en cours — aucune place décernée.')
+    expect(etatPodium(podium(0), 8, 4, true)).toBe('Podium en cours — aucune place décernée.')
   })
 
   it('signale un podium partiel — le bronze se tire couramment avant l’or', () => {
-    expect(etatPodium(podium(2), 8, 4)).toBe(
+    expect(etatPodium(podium(2), 8, 4, true)).toBe(
       'Podium partiel — les finales ne sont pas toutes tirées.',
     )
   })
 
   it('ne dit rien d’un podium complet', () => {
-    expect(etatPodium(podium(3), 8, 4)).toBeNull()
-    expect(etatPodium(podium(4), 8, 4)).toBeNull()
+    expect(etatPodium(podium(3), 8, 4, true)).toBeNull()
+    expect(etatPodium(podium(4), 8, 4, true)).toBeNull()
   })
 
   it('ne dit pas « partiel » du podium complet d’une petite catégorie', () => {
     // Benjamine, Cadet Femme… : deux archers inscrits, podium complet à deux noms. Comparé à la
     // constante 3, le message « les finales ne sont pas toutes tirées » restait affiché à
     // perpétuité, tournoi terminé compris (relevé en revue).
-    expect(etatPodium(podium(2), 2, 4)).toBeNull()
-    expect(etatPodium(podium(1), 1, 4)).toBeNull()
+    expect(etatPodium(podium(2), 2, 4, true)).toBeNull()
+    expect(etatPodium(podium(1), 1, 4, true)).toBeNull()
   })
 })
 
@@ -161,12 +161,45 @@ describe('etatPodium — profondeur réglée (E16US014)', () => {
   it('ne dit pas « partiel » d’un podium complet plus court que trois places', () => {
     // Profondeur 2 : deux places décernées, il n'en manque aucune. Comparer au 3 des médailles
     // aurait laissé « les finales ne sont pas toutes tirées » sur un podium terminé.
-    expect(etatPodium(podium(2), 8, 2)).toBeNull()
+    expect(etatPodium(podium(2), 8, 2, true)).toBeNull()
   })
 
   it('garde le seuil des médailles quand la profondeur est plus grande', () => {
     // Profondeur 6 : le seuil reste 3 — le message parle des **médailles**, pas des places
     // affichées. Sans quoi tout podium complet de trois médaillés se serait dit « partiel ».
-    expect(etatPodium(podium(3), 8, 6)).toBeNull()
+    expect(etatPodium(podium(3), 8, 6, true)).toBeNull()
+  })
+})
+
+describe('etatPodium — attente réelle ou ex æquo (E16US014)', () => {
+  function podium(nb: number): Podium {
+    return {
+      portee: 'club',
+      cle: 7,
+      libelle: 'Compagnie de Kervignarc',
+      places: Array.from({ length: nb }, (_, i) => ({
+        rang: i + 1,
+        ligne: ligne({ archer_id: i + 1 }),
+      })),
+    }
+  }
+
+  it('ne promet pas des finales quand plus aucun match ne départagera', () => {
+    // Portée club : la plupart des clubs n'ont personne au tableau (DETTE-028). Annoncer « les
+    // finales ne sont pas toutes tirées » y est faux deux fois — ni finale de club, ni finale
+    // restante — et le resterait tournoi terminé.
+    expect(etatPodium(podium(0), 5, 4, false)).toBe(
+      'Aucune place départageable — ces archers sont ex æquo.',
+    )
+    expect(etatPodium(podium(1), 5, 4, false)).toBe(
+      'Podium partiel — les places restantes sont ex æquo.',
+    )
+  })
+
+  it('garde le message d’attente quand un archer du groupe a encore un match', () => {
+    expect(etatPodium(podium(0), 5, 4, true)).toBe('Podium en cours — aucune place décernée.')
+    expect(etatPodium(podium(1), 5, 4, true)).toBe(
+      'Podium partiel — les finales ne sont pas toutes tirées.',
+    )
   })
 })

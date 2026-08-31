@@ -222,8 +222,11 @@ def test_une_portee_inconnue_est_refusee_a_la_frontiere(
     """Refus typé plutôt qu'une valeur silencieusement ignorée — une portée qu'on croit réglée
     et qui ne rend rien est le pire des deux mondes. Idem pour une profondeur nulle.
 
-    **400** et non le 422 de FastAPI : le dépôt mappe `RequestValidationError` sur son enveloppe
-    `{code, message, details}` en 400 (`api/erreurs.py`), pour toutes les routes.
+    ⚠️ **Deux codes, et la différence est voulue** (corrigée en revue) : une portée inconnue est un
+    refus de **forme**, tranché par l'énumération Pydantic → `RequestValidationError` → **400**
+    générique (`api/erreurs.py`). Une profondeur hors bornes est un refus **métier**, tranché par
+    `ReglagePodiums` → `DomainError` → **422** portant `profondeur_podium_invalide`. Répéter la
+    borne à la frontière aurait dégradé le second en 400, comme `ReglagePages` l'a déjà écrit.
     """
     with TestClient(app_palmares) as client:
         connecter_admin(client)
@@ -239,7 +242,8 @@ def test_une_portee_inconnue_est_refusee_a_la_frontiere(
         )
 
     assert portee.status_code == 400, portee.text
-    assert profondeur.status_code == 400, profondeur.text
+    assert profondeur.status_code == 422, profondeur.text
+    assert profondeur.json()["code"] == "profondeur_podium_invalide"
 
 
 def test_regler_les_podiums_exige_l_admin(app_palmares: FastAPI) -> None:
@@ -251,3 +255,44 @@ def test_regler_les_podiums_exige_l_admin(app_palmares: FastAPI) -> None:
         )
 
     assert refus.status_code in (401, 403), refus.text
+
+
+def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le cas adverse du bloquant de revue : **un podium est celui du tournoi**, pas de la vue.
+
+    Composer les blocs sur le palmarès filtré rendait un « Toutes catégories » réduit aux archers
+    d'une seule catégorie — voire vide, avec « Podium en cours » sur un tournoi terminé — et le même
+    document partait au mur en PDF. Le filtre ne doit toucher **que** le classement.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["scratch"], "profondeur": 4},
+        )
+
+        entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        # Une catégorie qui n'existe pas : le filtre le plus dur qui soit, aucune ligne ne survit.
+        filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
+
+    # ⚠️ Ce test vérifie le **câblage** de la route (les blocs ne suivent pas le filtre) ; le décor
+    # d'API ne joue aucun duel, donc aucune place n'y est décernée. La preuve que les blocs restent
+    # **peuplés** sous filtre est au service, sur un tableau réellement joué :
+    # `test_un_filtre_par_categorie_ne_rogne_pas_les_podiums` de `test_service_palmares.py`.
+    assert entier["podiums"] == filtre["podiums"], "les podiums ne dépendent pas du filtre"
+    assert filtre["lignes"] == [], "le filtre, lui, restreint bien le classement"
+
+
+def test_le_reglage_se_lit_sans_authentification(app_palmares: FastAPI) -> None:
+    """CA « se règle en admin, **se lit en public** » — la moitié que le PUT ne prouve pas.
+
+    Sans ce test, un `Depends(exiger_admin)` ajouté par erreur sur le GET ne ferait rougir personne.
+    """
+    with TestClient(app_palmares) as client:
+        lecture = client.get("/api/v1/tournois/1/reglage-podiums")
+
+    assert lecture.status_code != 401, lecture.text
+    assert lecture.status_code != 403, lecture.text

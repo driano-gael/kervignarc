@@ -86,6 +86,12 @@ def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
     silencieusement un palmarès amputé d'un podium que l'organisateur croit réglé.
     """
     codes = json.loads(ligne.podium_portees)
+    # ⚠️ `4` ou `{"a": 1}` sont du JSON **valide** : sans ce contrôle, l'itération levait un
+    # `TypeError` que l'enveloppe de `_vers_tournoi` (`DomainError`, `ValueError`) ne rattrapait
+    # pas, et toute lecture de tournoi tombait en 500 non typé au lieu de l'`InfrastructureError`
+    # que la migration promet.
+    if not isinstance(codes, list):
+        raise ValueError(f"`podium_portees` n'est pas une liste JSON : {ligne.podium_portees!r}")
     return ReglagePodiums(
         portees=frozenset(PorteePodium(code) for code in codes),
         profondeur=ligne.podium_profondeur,

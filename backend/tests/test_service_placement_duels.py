@@ -13,6 +13,7 @@ Fakes en mémoire conformes aux ports (ni base ni serveur). Le classement est vr
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from collections.abc import Sequence
 from dataclasses import replace
@@ -66,10 +67,17 @@ class FauxTournoiRepository:
     def __init__(self, ids: set[int], cloisonnement: Cloisonnement = Cloisonnement.AUCUN) -> None:
         self._ids = ids
         self.cloisonnement = cloisonnement
+        # E16US014 : les réglages **écrits** par un service, retenus par identifiant. Sans cela,
+        # `enregistrer` levait et aucun test de service ne pouvait poser un réglage puis le relire —
+        # le double rendait éternellement un tournoi neuf.
+        self._enregistres: dict[TournoiId, Tournoi] = {}
 
     def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
         if tournoi_id not in self._ids:
             return None
+        retenu = self._enregistres.get(tournoi_id)
+        if retenu is not None:
+            return retenu
         return Tournoi.creer("Salle 18m", _DATE).definir_cloisonnement(self.cloisonnement)
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
@@ -79,7 +87,11 @@ class FauxTournoiRepository:
         raise NotImplementedError
 
     def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        raise NotImplementedError
+        """Retient le tournoi tel quel — `id` est celui que l'appelant a lu, jamais réattribué."""
+        identifiant = tournoi.id if tournoi.id is not None else next(iter(self._ids))
+        persiste = dataclasses.replace(tournoi, id=identifiant)
+        self._enregistres[identifiant] = persiste
+        return persiste
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         raise NotImplementedError

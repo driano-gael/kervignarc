@@ -20,11 +20,14 @@ from domain.club import ClubId
 from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 
-LIBELLE_SCRATCH = "Scratch"
-"""Le nom du podium sans regroupement — vocabulaire FFTA (règle 3), pas de la copie d'interface.
+LIBELLE_SCRATCH = "Toutes catégories"
+"""Le nom du podium sans regroupement. ⚠️ **Surtout pas « Scratch »** : le glossaire réserve ce mot
+à un **libellé de catégorie** (regroupement de classement arc nu, U21+S1+S2+S3).
 
-Rendu par le serveur pour la même raison que `categorie_libelle` : le PDF doit nommer ses blocs et
-n'a pas d'écran pour le faire à sa place.
+Un club qui nomme sa catégorie arc nu « Scratch » — le cas nominal FFTA — et coche les deux portées
+imprimait alors **deux blocs « Podium — Scratch »** sur la même page, contenus différents (relevé en
+revue). Le code de la portée, lui, reste `scratch` : il est cohérent avec `rang_scratch`, qui porte
+ce second sens partout dans le moteur.
 """
 
 
@@ -186,23 +189,30 @@ class Palmares:
             for cle, libelle in self._groupes(portee)
         )
 
-    def _groupes(self, portee: PorteePodium) -> tuple[tuple[int | None, str], ...]:
+    def _groupes(self, portee: PorteePodium) -> tuple[tuple[CategorieId | ClubId | None, str], ...]:
         """Ce que cette portée regroupe, dans l'ordre du palmarès — donc du meilleur au moins bon.
 
         Le scratch ne regroupe rien : un groupe unique, sans clé.
         """
         if portee is PorteePodium.SCRATCH:
             return ((None, LIBELLE_SCRATCH),)
-        vus: dict[int, str] = {}
+        vus: dict[CategorieId | ClubId, str] = {}
         for ligne in self.lignes:
             if portee is PorteePodium.CATEGORIE:
                 vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
             elif ligne.club_id is not None:
-                vus.setdefault(ligne.club_id, ligne.club_libelle or "")
+                # Repli **visible** : un titre vide imprimerait « Podium — » au mur sans que
+                # personne sache pourquoi. Inatteignable aujourd'hui (supprimer un club
+                # référencé est refusé), donc un garde-fou, pas un correctif.
+                vus.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
         return tuple(vus.items())
 
     def _bloc(
-        self, portee: PorteePodium, cle: int | None, libelle: str, profondeur: int
+        self,
+        portee: PorteePodium,
+        cle: CategorieId | ClubId | None,
+        libelle: str,
+        profondeur: int,
     ) -> BlocPodium:
         """Les places décernées d'un groupe — le tuple est vide tant qu'il n'y en a aucune.
 
@@ -222,7 +232,7 @@ class Palmares:
         return BlocPodium(portee, cle, libelle, places)
 
     @staticmethod
-    def _cle_de(portee: PorteePodium, ligne: LignePalmares) -> int | None:
+    def _cle_de(portee: PorteePodium, ligne: LignePalmares) -> CategorieId | ClubId | None:
         """Le groupe auquel cette ligne appartient pour la portée donnée.
 
         ⚠️ Un archer **sans club** rend `None`, qui n'est la clé d'aucun bloc de club — il n'entre
@@ -248,12 +258,13 @@ def _rang_exact(portee: PorteePodium, ligne: LignePalmares) -> int | None:
 
     Un *ex æquo* n'a pas de place de podium : personne ne saurait quelle médaille lui remettre.
     """
-    bornes = {
-        PorteePodium.SCRATCH: (ligne.rang_min, ligne.rang_max),
-        PorteePodium.CATEGORIE: (ligne.rang_categorie_min, ligne.rang_categorie_max),
-        PorteePodium.CLUB: (ligne.rang_club_min, ligne.rang_club_max),
-    }[portee]
-    return bornes[0] if bornes[0] is not None and bornes[0] == bornes[1] else None
+    if portee is PorteePodium.SCRATCH:
+        minimum, maximum = ligne.rang_min, ligne.rang_max
+    elif portee is PorteePodium.CATEGORIE:
+        minimum, maximum = ligne.rang_categorie_min, ligne.rang_categorie_max
+    else:
+        minimum, maximum = ligne.rang_club_min, ligne.rang_club_max
+    return minimum if minimum is not None and minimum == maximum else None
 
 
 # --- calcul --------------------------------------------------------------------------------------
@@ -336,7 +347,9 @@ def calculer_palmares(
     return Palmares(lignes=tuple(lignes))
 
 
-def _du_groupe(par_archer: Mapping[ArcherId, int], groupe: int) -> Callable[[ArcherId], bool]:
+def _du_groupe(
+    par_archer: Mapping[ArcherId, CategorieId | ClubId], groupe: CategorieId | ClubId
+) -> Callable[[ArcherId], bool]:
     """Le filtre « cet archer est-il de ce groupe ? », fermé sur le groupe voulu.
 
     Une catégorie ou un club (E16US014) : `_numeroter` ne demande qu'un prédicat, et les deux

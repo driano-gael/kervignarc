@@ -13,18 +13,17 @@
 > cas de doute au moment de reprendre, recouper avec `git log main --first-parent` / `git branch -r`.
 
 **Dernière mise à jour : 31/08/2026, 14 h 46** · **132 US livrées** · dernière : `E16US014`
-*(**chercher partout, et voir d'avance ce qui bloque** — la barre de recherche de l'administration
-porte une déroulante (tournoi · archer · club), trouve sans accents ni majuscules et **ouvre la
-fiche d'un clic**, avec une adresse copiable qui survit au F5 ([ADR-0100](../docs/adr/0100-une-destination-d-admin-porte-l-element-qu-elle-ouvre.md)).
-La liste des tournois porte **deux niveaux de pastille** — « à compléter » et « ne peut pas
-démarrer » —, dérivés du jalon « prêt à démarrer » et non recalculés. Les **doublons** quittent leur
-écran dédié pour la ligne de l'archer. ⚠️ **Un CA n'est pas livré et c'est écrit** : « déclarer un
-forfait » depuis la fiche d'archer — la route de qualification est réservée au scoreur, l'élargir à
-l'organisateur est **une décision qui vous revient**. ⚠️ **Deux passes de revue, un bloquant
-chacune** — le mécanisme central (l'ouverture d'une fiche par l'adresse) ne marchait pas, puis son
-correctif tactile a repeint la pastille en aplat de marque. Deux entrées de dette ouvertes :
-`DETTE-092` (la recherche lit trois référentiels par frappe) et `DETTE-093` (**un verdict de porte
-mécanique peut être vert sans que toutes les étapes aient tourné** — constaté sur cette US).)*
+*(**choisir ce que le tournoi récompense** — le palmarès n'impose plus son découpage : trois
+portées **cumulables** (toutes catégories · par catégorie · par club) et un **nombre de places**
+réglable, d'un seul réglage pour l'écran d'admin, l'appli publique, l'écran de salle et le PDF
+([ADR-0103](../docs/adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md), migration `0052`).
+Les défauts serveur **sont** le comportement d'E06US004 : aucun tournoi déjà en base ne change
+d'affichage. ⚠️ **La fiche a été coupée en deux au cadrage** : classer les **clubs entre eux** est un
+classement neuf et non un regroupement — `E16US017`, au décompte de médailles. ⚠️ **Deux bloquants
+en revue**, dont un défaut de conjonction que quatre axes ont relevé : le filtre par catégorie
+rognait les podiums, jusque sur le PDF du mur. ⚠️ **« Pas d'ADR » était faux** — le « patron déjà
+posé » invoqué au commit était le cloisonnement, qui portait lui-même ADR-0071 ; ADR-0067 § Décision 5
+a dû être amendé, le glossaire et le modèle de données réalignés)*
 
 **Précédente : `E00US027`**
 *(**le code porte des pointeurs, pas le raisonnement** — une règle d'écriture, née des **trois

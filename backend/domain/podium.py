@@ -15,6 +15,14 @@ from domain.erreurs import ProfondeurPodiumInvalide
 PROFONDEUR_PODIUM_PAR_DEFAUT = 4
 """Les quatre places d'E06US004 : finale et petite finale d'un tableau."""
 
+PROFONDEUR_PODIUM_MAX = 64
+"""Plafond d'un podium — au-delà, ce n'est plus un podium mais le classement, qui suit déjà.
+
+⚠️ **Borné au domaine et non à la frontière**, même parti qu'`ReglagePages` (E16US009) : une borne
+Pydantic dégraderait le refus en 400 générique là où `DomainError` rend un 422 portant le code
+métier. Sans plafond, `profondeur = 10**30` traversait le domaine et cassait à l'insertion SQLite.
+"""
+
 
 class PorteePodium(str, Enum):
     """Ce qu'un podium récompense (réglage **de tournoi**, A16).
@@ -45,10 +53,10 @@ class ReglagePodiums:
     def __post_init__(self) -> None:
         # Invariant tenu quelle que soit la porte d'entrée — `replace()` et la reconstruction du
         # repository comprises, comme `Tournoi.effectif_minimum_exige`.
-        if self.profondeur < 1:
+        if not 1 <= self.profondeur <= PROFONDEUR_PODIUM_MAX:
             raise ProfondeurPodiumInvalide(
-                f"Un podium compte au moins une place (reçu {self.profondeur}) ; « ne rien "
-                "récompenser » se dit en ne retenant aucune portée."
+                f"Un podium compte de 1 à {PROFONDEUR_PODIUM_MAX} places (reçu "
+                f"{self.profondeur}) ; « ne rien récompenser » se dit en ne retenant aucune portée."
             )
 
     def portees_actives(self) -> tuple[PorteePodium, ...]:

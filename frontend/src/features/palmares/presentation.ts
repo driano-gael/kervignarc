@@ -59,8 +59,23 @@ export function detail(ligne: LignePalmares): string | null {
 }
 
 // L'état d'un bloc de podium quand il n'est pas complet.
-export function etatPodium(podium: Podium, effectif: number, profondeur: number): string | null {
-  if (podium.places.length === 0) return 'Podium en cours — aucune place décernée.'
+//
+// ⚠️ **`enAttente` distingue « pas encore » de « jamais »** (E16US014) : un bloc peut n'avoir aucune
+// place parce que les finales restent à tirer, ou parce qu'aucun de ses archers n'a disputé de duel
+// — cas devenu **typique** avec la portée club, où la plupart des clubs n'ont personne au tableau
+// (`DETTE-028`). Annoncer « les finales ne sont pas toutes tirées » y serait faux deux fois : il n'y
+// a ni finale de club, ni finale restante.
+export function etatPodium(
+  podium: Podium,
+  effectif: number,
+  profondeur: number,
+  enAttente: boolean,
+): string | null {
+  if (podium.places.length === 0) {
+    return enAttente
+      ? 'Podium en cours — aucune place décernée.'
+      : 'Aucune place départageable — ces archers sont ex æquo.'
+  }
   // Comparé à l'**effectif du groupe**, pas à la constante 3 : un groupe de deux archers (courant
   // en salle — Benjamine, Cadet Femme…) a un podium complet à deux noms, et affichait « podium
   // partiel » à perpétuité, tournoi terminé compris (relevé en revue, axes B et C1).
@@ -70,17 +85,29 @@ export function etatPodium(podium: Podium, effectif: number, profondeur: number)
   // « partiel » à tout podium complet de trois médaillés, une régression sur tous les tournois.
   const complet = Math.min(3, profondeur, effectif)
   if (podium.places.length < complet) {
-    return 'Podium partiel — les finales ne sont pas toutes tirées.'
+    return enAttente
+      ? 'Podium partiel — les finales ne sont pas toutes tirées.'
+      : 'Podium partiel — les places restantes sont ex æquo.'
   }
   return null
+}
+
+// Un archer du groupe a-t-il encore un match devant lui ? C'est ce qui sépare « pas encore décerné »
+// de « plus rien ne le départagera » — les deux rendent un bloc creux, pour deux raisons opposées.
+export function groupeEnAttente(podium: Podium, lignes: LignePalmares[]): boolean {
+  return lignesDuGroupe(podium, lignes).some((ligne) => ligne.en_lice)
 }
 
 // Combien d'archers ce bloc regroupe — de quoi savoir si son podium est complet. Le scratch
 // regroupe tout le monde ; les deux autres portées comparent la clé du bloc.
 export function effectifDuGroupe(podium: Podium, lignes: LignePalmares[]): number {
-  if (podium.portee === 'scratch') return lignes.length
+  return lignesDuGroupe(podium, lignes).length
+}
+
+function lignesDuGroupe(podium: Podium, lignes: LignePalmares[]): LignePalmares[] {
+  if (podium.portee === 'scratch') return lignes
   const cle = podium.portee === 'categorie' ? 'categorie_id' : 'club_id'
-  return lignes.filter((ligne) => ligne[cle] === podium.cle).length
+  return lignes.filter((ligne) => ligne[cle] === podium.cle)
 }
 
 export const nomComplet = (ligne: LignePalmares) => `${ligne.prenom} ${ligne.nom}`.trim()

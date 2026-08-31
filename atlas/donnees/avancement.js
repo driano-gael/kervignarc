@@ -744,7 +744,8 @@ window.ATLAS.avancement = {
   {
    "identifiant": "045",
    "introduite_par": [
-    "E06US009"
+    "E06US009",
+    "E16US014"
    ],
    "ouverte": true,
    "resorption_us": [],
@@ -829,7 +830,9 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
-   "0100"
+   "0103",
+   "0071",
+   "0067"
   ],
   "derniere": "E16US014"
  },
@@ -3139,7 +3142,8 @@ window.ATLAS.avancement = {
     "0050",
     "0066",
     "0067",
-    "0079"
+    "0079",
+    "0103"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [
@@ -3189,7 +3193,8 @@ window.ATLAS.avancement = {
     "0068",
     "0070",
     "0080",
-    "0082"
+    "0082",
+    "0103"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [
@@ -4357,8 +4362,14 @@ window.ATLAS.avancement = {
    "titre_story": "Le lancement d'un tour : automatique ou manuel, au choix"
   },
   {
-   "adr": [],
-   "dettes_introduites": [],
+   "adr": [
+    "0067",
+    "0075",
+    "0103"
+   ],
+   "dettes_introduites": [
+    "045"
+   ],
    "dettes_resorbees": [],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
@@ -4404,7 +4415,9 @@ window.ATLAS.avancement = {
    "titre_story": "Exports : les formats et les documents qui restent dus"
   },
   {
-   "adr": [],
+   "adr": [
+    "0103"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",

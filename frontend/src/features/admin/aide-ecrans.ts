@@ -156,7 +156,7 @@ export const AIDE_ECRANS: Record<DestinationAdminId, string> = {
     'Consultez le classement, mis à jour en direct au fil de la saisie. C’est une vue de lecture : ' +
     'rien ne s’y saisit, elle reflète les scores validés.',
   palmares:
-    'Le classement final du tournoi : le podium de chaque catégorie, puis le classement complet ' +
+    'Le classement final du tournoi. Vous choisissez en haut **ce que ce tournoi récompense** — toutes catégories, par catégorie, par club — et sur combien de places ; le réglage vaut pour l’écran, l’affichage public et le PDF ' +
     'de tous les archers. Il se remplit au fil des duels — un rang affiché « 5ᵉ-8ᵉ » signifie que ' +
     'ces archers sont à égalité, aucun match ne les ayant départagés. « Exporter en PDF » sort le ' +
     'document à afficher au mur.',

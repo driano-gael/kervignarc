@@ -3248,7 +3248,7 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "ServicePalmares",
-      "pour_tournoi",
+      "rendu",
       "calculer_palmares"
      ],
      "symboles_absents": [],
@@ -3295,7 +3295,8 @@ window.ATLAS.decisions = {
     "E06US004",
     "E07US004",
     "E07US008",
-    "E12US002"
+    "E12US002",
+    "E16US014"
    ]
   },
   {
@@ -3830,7 +3831,8 @@ window.ATLAS.decisions = {
     "E16US007",
     "E16US008",
     "E16US009",
-    "E16US010"
+    "E16US010",
+    "E16US014"
    ]
   },
   {
@@ -8780,6 +8782,193 @@ window.ATLAS.decisions = {
     "E16US007",
     "E16US008",
     "E16US010"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-08-31",
+   "date_brute": "2026-08-31",
+   "extrait": "### 1. La portée est de la configuration, et elle se cumule ReglagePodiums (domain/podium.py) porte un ensemble de PorteePodium — SCRATCH, CATEGORIE, CLUB — et une profondeur. Un ensemble, pas un choix unique : le club qui remet des médailles par catégorie et un trophée scratch ne doit pas changer de réglage entre deux remises (arbitrage du commanditaire, 31/08/2026). L'ensemble vide est valide — un tournoi peut ne rien récompenser. C'est un réglage du tournoi, persisté sur tournoi (migration 0052), au même titre que le cloisonnement des cibles (ADR-0071) : deux tournois montés sur le même format ne remettent pas forcément les mêmes médailles. Un format de tournoi est de la configuration, […]",
+   "fichier": "docs/adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md",
+   "identifiant": "0103",
+   "liens": [
+    {
+     "cible": "E16US014",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0067",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0070",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0014",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0071",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "PodiumReponse",
+      "PlacePodiumReponse",
+      "ReglagePodiumsReponse",
+      "ReglerPodiumsRequete",
+      "PalmaresReponse.de_rendu",
+      "GET",
+      "exiger_admin"
+     ],
+     "symboles_absents": [
+      "GET"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "RenduPalmares",
+      "ServicePalmares.rendu",
+      "_libelles_club",
+      "reglage_podiums",
+      "definir_reglage_podiums"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/palmares.py",
+     "existe": true,
+     "symboles": [
+      "Palmares.podiums",
+      "_bloc",
+      "_cle_de",
+      "_groupes",
+      "_rang_exact",
+      "_du_groupe",
+      "rangs_club",
+      "calculer_palmares",
+      "LIBELLE_SCRATCH",
+      "LignePalmares.rang_club_min",
+      "rang_club_max",
+      "club_libelle"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/podium.py",
+     "existe": true,
+     "symboles": [
+      "PorteePodium",
+      "ReglagePodiums",
+      "PROFONDEUR_PODIUM_PAR_DEFAUT",
+      "PROFONDEUR_PODIUM_MAX"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tournoi.py",
+     "existe": true,
+     "symboles": [
+      "Tournoi.reglage_podiums",
+      "definir_reglage_podiums"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "TournoiORM.podium_portees",
+      "podium_profondeur",
+      "_vers_reglage_podiums",
+      "_portees_en_json"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/referentiel.py",
+     "existe": true,
+     "symboles": [
+      "TournoiORM.podium_portees",
+      "podium_profondeur",
+      "_vers_reglage_podiums",
+      "_portees_en_json"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/pdf/palmares.py",
+     "existe": true,
+     "symboles": [
+      "_podiums",
+      "complet"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0052_reglage_podiums.py",
+     "existe": true,
+     "symboles": [
+      "TournoiORM.podium_portees",
+      "podium_profondeur",
+      "_vers_reglage_podiums",
+      "_portees_en_json"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/ReglagePodiums.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "etatPodium",
+      "groupeEnAttente"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "La portée d'un podium est un réglage du tournoi",
+   "us": [
+    "E06US001",
+    "E06US004",
+    "E16US014",
+    "E16US017"
    ]
   }
  ]

@@ -22,6 +22,7 @@ palmarès lit exactement le tournoi que le routage et le pilotage lisent.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 
 import pytest
@@ -33,6 +34,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
+from domain.club import Club
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
@@ -130,9 +132,14 @@ class _FauxGenerateurPalmares:
     def __init__(self) -> None:
         self.appels: list[tuple[str, Palmares]] = []
         self.reglages: list[ReglagePodiums] = []
+        # Le palmarès **complet** reçu à part : c'est lui qui porte les podiums.
+        self.podiums: list[Palmares] = []
 
-    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
-        self.appels.append((tournoi, palmares))
+    def palmares(
+        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+    ) -> bytes:
+        self.appels.append((tournoi, affiche))
+        self.podiums.append(complet)
         self.reglages.append(reglage)
         return b"%PDF-faux"
 
@@ -650,3 +657,142 @@ def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
 
 def _v10(valeurs: tuple[str, ...] = ("10", "10", "10")) -> tuple[ZoneScore, ...]:
     return tuple(ZoneScore(v) for v in valeurs)
+
+
+# --- E16US014 : le câblage du référentiel des clubs, et le réglage porté jusqu'au PDF -------------
+
+
+def _rattacher_a_un_club(
+    monde: _Monde, clubs: FauxClubRepository, par_archer: dict[int, str]
+) -> None:
+    """Crée les clubs nommés et y rattache les archers du décor.
+
+    `_Monde` n'inscrit personne dans un club : sans ce geste, `club_id` reste `None` partout et la
+    portée *club* ne rend aucun bloc — le test passerait sans rien prouver.
+    """
+    identifiants: dict[str, int] = {}
+    for archer_id, nom in par_archer.items():
+        if nom not in identifiants:
+            club = clubs.ajouter(Club(nom=nom))
+            assert club.id is not None
+            identifiants[nom] = club.id
+        archer = monde.archers.par_id(archer_id)
+        assert archer is not None
+        monde.archers._archers[archer_id] = dataclasses.replace(archer, club_id=identifiants[nom])
+
+
+def test_un_podium_de_club_porte_le_nom_du_club_lu_au_referentiel() -> None:
+    """Le seul test qui exerce `ClubRepository` → `_libelles_club` → `bloc.libelle`.
+
+    Sans lui, un `_libelles_club` rendant `{}` — ou un mauvais repository au composition root —
+    faisait sortir **tous** les podiums de club titrés `""`, à l'écran comme sur le PDF, sans qu'une
+    seule assertion bouge (relevé en revue : la borne testée n'était pas celle qui est exercée).
+    """
+    monde, archers = _monde_de_quatre()
+    clubs = FauxClubRepository()
+    _rattacher_a_un_club(monde, clubs, {archers[0]: "Compagnie de Kervignarc"})
+    service = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        clubs,
+    )
+    service.definir_reglage_podiums(
+        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+
+    blocs = service.rendu(monde.tournoi_id).complet.podiums(
+        ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+
+    assert [bloc.libelle for bloc in blocs] == ["Compagnie de Kervignarc"]
+
+
+def test_le_referentiel_des_clubs_n_est_pas_lu_quand_la_portee_club_est_inactive() -> None:
+    """Le défaut est *catégorie* seule : le cas courant ne doit pas payer une lecture inutile.
+
+    `DETTE-031` porte déjà le coût d'une lecture de palmarès sur une route publique ; y ajouter un
+    balayage du référentiel pour un réglage inactif l'élargissait pour rien.
+    """
+    monde, _ = _monde_de_quatre()
+    clubs = _ClubsComptes()
+    service = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        clubs,
+    )
+
+    service.rendu(monde.tournoi_id)
+    lectures_par_defaut = clubs.lectures
+    service.definir_reglage_podiums(
+        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+    service.rendu(monde.tournoi_id)
+
+    assert lectures_par_defaut == 0
+    assert clubs.lectures == 1
+
+
+class _ClubsComptes(FauxClubRepository):
+    """Compte les appels à `lister()` — la seule chose que ce test regarde."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lectures = 0
+
+    def lister(self) -> list[Club]:
+        self.lectures += 1
+        return super().lister()
+
+
+def test_le_pdf_recoit_le_reglage_du_tournoi_et_le_palmares_complet() -> None:
+    """CA « le réglage vaut partout … **et PDF** » — la 4ᵉ surface, sans écran pour se voir.
+
+    Deux choses en une : le réglage **du tournoi** part au générateur (et non un défaut), et
+    c'est le palmarès **complet** qui porte les podiums même quand l'impression est filtrée —
+    sans quoi le mur du gymnase montrerait un « Toutes catégories » amputé (bloquant de revue).
+    """
+    monde, _ = _monde_de_quatre()
+    generateur = _FauxGenerateurPalmares()
+    service = _service(monde, generateur=generateur)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}), profondeur=2)
+    service.definir_reglage_podiums(monde.tournoi_id, reglage)
+
+    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
+
+    assert generateur.reglages[-1] == reglage
+    # Les podiums viennent du palmarès complet ; le classement imprimé suit le filtre.
+    assert generateur.podiums[-1].lignes
+    assert generateur.appels[-1][1].lignes == ()
+
+
+def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
+    """Le contre-cas du **bloquant de revue**, sur un tableau réellement joué.
+
+    Composer les blocs sur le palmarès filtré rendait un « Toutes catégories » réduit aux archers
+    d'une seule catégorie — vide si aucun d'eux n'est dans les places, avec « Podium en cours »
+    affiché sur un tournoi terminé — et le même document partait au mur en PDF. Un podium est celui
+    du **tournoi** : le filtre ne touche que le classement.
+    """
+    monde, _ = _monde_de_quatre()
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+    service = _service(monde)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
+    service.definir_reglage_podiums(monde.tournoi_id, reglage)
+
+    entier = service.rendu(monde.tournoi_id)
+    filtre = service.rendu(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
+
+    assert entier.complet.podiums(reglage)[0].places, "le décor doit décerner des places"
+    assert filtre.complet.podiums(reglage) == entier.complet.podiums(reglage)
+    assert filtre.affiche.lignes == (), "le filtre restreint bien le classement, lui"

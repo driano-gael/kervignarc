@@ -66,6 +66,41 @@ describe('ReglagePodiums', () => {
     )
   })
 
+  it('refuse une profondeur nulle sans rien envoyer, et ramène le champ à la valeur retenue', async () => {
+    // Le CA « une profondeur < 1 est refusée » était prouvé au domaine et à l'API, pas à l'écran —
+    // or c'est l'écran que l'organisateur voit (relevé en revue).
+    await panneauCharge()
+    const champ = screen.getByLabelText('Places récompensées')
+
+    fireEvent.change(champ, { target: { value: '0' } })
+    fireEvent.blur(champ)
+
+    expect(putReglagePodiums).not.toHaveBeenCalled()
+    expect((champ as HTMLInputElement).value).toBe('4')
+  })
+
+  it('garde les deux portées quand on coche deux fois sans attendre le serveur', async () => {
+    // Le verrou seul ne suffisait pas : `isPending` retombe dès que le PUT répond, avant que le
+    // refetch atterrisse, si bien que le second clic partait d'un réglage périmé et effaçait le
+    // premier. C'est ce que le commentaire du composant prétendait interdire (relevé en revue).
+    vi.mocked(putReglagePodiums).mockResolvedValue({
+      portees: ['categorie', 'scratch'],
+      profondeur: 4,
+    })
+    await panneauCharge()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Toutes catégories/ }))
+    await waitFor(() => expect(putReglagePodiums).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Par club/ }))
+
+    await waitFor(() =>
+      expect(putReglagePodiums).toHaveBeenLastCalledWith(7, {
+        portees: ['categorie', 'scratch', 'club'],
+        profondeur: 4,
+      }),
+    )
+  })
+
   it('n’envoie la profondeur qu’une fois la saisie terminée', async () => {
     // À chaque frappe, « 12 » passe par « 1 » : envoyer à `onChange` aurait fait retenir un podium
     // à une place si l'organisateur s'arrêtait là.

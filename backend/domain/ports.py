@@ -989,11 +989,16 @@ class GenerateurPalmares(Protocol):
     d'impression en ont un parce qu'elles portent, elles, des paramètres de composition.
     """
 
-    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
-        """Rend le palmarès en un PDF (les podiums réglés + classement complet).
+    def palmares(
+        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+    ) -> bytes:
+        """Rend le palmarès en un PDF (les podiums réglés + le classement).
 
-        Le réglage est passé **à part** plutôt que lu dans `Palmares` : le palmarès est le résultat
-        sportif, ce que le club récompense est de la configuration (E16US014, règle 2).
+        ⚠️ **Deux palmarès, et ce n'est pas une redondance** : les podiums se composent sur
+        `complet`, le classement se tire d'`affiche` (restreint quand une catégorie est filtrée).
+        Les confondre imprimait au mur un « Podium — Scratch » amputé (E16US014, bloquant de revue).
+        Le réglage vient à part : le palmarès est le résultat sportif, ce que le club récompense est
+        de la configuration (règle 2).
         """
         ...
 

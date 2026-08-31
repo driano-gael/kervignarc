@@ -635,7 +635,7 @@ def test_le_verdict_du_barrage_debloque_la_manche() -> None:
 class _FauxGenerateurPalmares:
     """Double du port `GenerateurPalmares` — le palmarès de ce test ne s'imprime pas."""
 
-    def palmares(self, nom: str, palmares: object, reglage: object) -> bytes:
+    def palmares(self, nom: str, complet: object, affiche: object, reglage: object) -> bytes:
         raise NotImplementedError
 
 

@@ -67,26 +67,32 @@ class GenerateurPalmaresPdf:
         )
         self._info = ParagraphStyle("info_palmares", parent=styles["Normal"], fontSize=11)
 
-    def palmares(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> bytes:
+    def palmares(
+        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+    ) -> bytes:
         """Rend le palmarès en PDF. Enveloppe tout échec en `InfrastructureError`."""
         try:
-            return self._rendre("Palmarès", self._corps(tournoi, palmares, reglage))
+            return self._rendre("Palmarès", self._corps(tournoi, complet, affiche, reglage))
         # ReportLab lève une famille d'exceptions hétérogène : on enveloppe (aucune fuite brute).
         except Exception as exc:
             raise InfrastructureError("Échec de génération du PDF du palmarès.") from exc
 
-    def _corps(self, tournoi: str, palmares: Palmares, reglage: ReglagePodiums) -> list[Flowable]:
+    def _corps(
+        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+    ) -> list[Flowable]:
         elements: list[Flowable] = [
             Paragraph(f"Palmarès — {_echapper(tournoi)}", self._titre),
             Paragraph("Podiums décernés, puis classement complet", self._sous_titre),
             Spacer(1, 4 * mm),
         ]
-        if not palmares.lignes:
+        if not affiche.lignes:
             elements.append(Paragraph("Aucun archer classé.", self._info))
             return elements
-        elements.extend(self._podiums(palmares, reglage))
+        # Les podiums sur le palmarès **complet**, le classement sur ce qui est demandé : un
+        # podium est celui du tournoi, il ne se rétrécit pas parce qu'on filtre l'affichage.
+        elements.extend(self._podiums(complet, reglage))
         elements.append(Paragraph("Classement complet", self._section))
-        elements.append(self._table_classement(palmares.lignes))
+        elements.append(self._table_classement(affiche.lignes))
         return elements
 
     def _podiums(self, palmares: Palmares, reglage: ReglagePodiums) -> list[Flowable]:

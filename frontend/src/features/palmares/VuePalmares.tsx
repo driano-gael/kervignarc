@@ -16,6 +16,7 @@ import {
   detail,
   effectifDuGroupe,
   etatPodium,
+  groupeEnAttente,
   medaille,
   nomComplet,
   provenance,
@@ -91,6 +92,7 @@ export function VuePalmares({
               podium={podium}
               profondeur={donnees.profondeur_podium}
               effectif={effectifDuGroupe(podium, donnees.lignes)}
+              enAttente={groupeEnAttente(podium, donnees.lignes)}
             />
           ))}
           <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
@@ -110,6 +112,7 @@ function BlocPodium({
   podium,
   effectif,
   profondeur,
+  enAttente,
 }: {
   podium: Podium
   /** Le nombre d'archers du groupe — un groupe de deux a un podium complet à deux noms,
@@ -117,8 +120,10 @@ function BlocPodium({
   effectif: number
   /** Les places que ce tournoi récompense (E16US014) — borne le seuil de « complet ». */
   profondeur: number
+  /** Un archer du groupe a-t-il encore un match ? Départage « pas encore » de « jamais ». */
+  enAttente: boolean
 }) {
-  const etat = etatPodium(podium, effectif, profondeur)
+  const etat = etatPodium(podium, effectif, profondeur, enAttente)
   return (
     <section className="palmares-podium" aria-label={`Podium ${podium.libelle}`}>
       <h4 className="palmares-section">{podium.libelle}</h4>

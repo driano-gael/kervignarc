@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from application.big_shoot_off import LecteurEtatBigShootOff
 from application.classements import ServiceClassement
@@ -38,7 +39,7 @@ from domain.palmares import (
 )
 from domain.participant import GenreParticipant
 from domain.phase import Phase, TypePhase
-from domain.podium import ReglagePodiums
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import (
     ClubRepository,
@@ -74,6 +75,20 @@ déroule le résultat. Un type absent ne casse pas le palmarès — il n'y appor
 """
 
 
+@dataclass(frozen=True)
+class RenduPalmares:
+    """Ce qu'il faut pour rendre un palmarès **cohérent**, lu d'un seul coup.
+
+    ⚠️ **`complet` porte les podiums, `affiche` porte le classement.** Les deux diffèrent dès qu'un
+    filtre par catégorie est demandé, et les confondre fabriquait des blocs faux : un podium est
+    celui du tournoi, il ne dépend pas de ce que l'organisateur a choisi de regarder.
+    """
+
+    complet: Palmares
+    affiche: Palmares
+    reglage: ReglagePodiums
+
+
 class ServicePalmares:
     """Cas d'usage du palmarès : consulter le classement final d'un tournoi."""
 
@@ -94,8 +109,8 @@ class ServicePalmares:
         self._tournois = tournois
         # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
         self._departs = departs
-        # E16US014 : de quoi **nommer** les podiums de club. Référentiel global (E02US001),
-        # relu à chaque palmarès — une liste de clubs, sans commune mesure avec DETTE-031.
+        # E16US014 : de quoi **nommer** les podiums de club. Référentiel global (E02US001), lu
+        # **seulement** quand la portée `club` est réglée — cf. `_libelles_club`.
         self._clubs = clubs
         self._phases = phases
         self._classements = classements
@@ -133,21 +148,42 @@ class ServicePalmares:
         # invente pas.
         self._rencontres: dict[TypePhase, LecteurRencontresARouter] = dict(rencontres or {})
 
+    def rendu(
+        self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
+    ) -> RenduPalmares:
+        """Le palmarès **complet**, sa restriction d'affichage et le réglage — en **une** lecture.
+
+        Les trois ensemble parce qu'ils doivent être cohérents : composer les podiums sur le
+        palmarès filtré rendait un bloc « Scratch » amputé de tout ce qui n'est pas la catégorie
+        demandée (bloquant de revue). Un seul `par_id`, un seul `calculer_palmares` — le coût est
+        celui d'avant, pas le double.
+        """
+        tournoi = self._tournois.par_id(tournoi_id)
+        if tournoi is None:
+            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        complet = self._calculer(tournoi_id, tournoi.reglage_podiums)
+        affiche = complet if categorie_id is None else complet.pour_categorie(categorie_id)
+        return RenduPalmares(complet=complet, affiche=affiche, reglage=tournoi.reglage_podiums)
+
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
     ) -> Palmares:
-        """Renvoie le palmarès d'un tournoi, éventuellement **filtré** à une catégorie.
+        """Le palmarès d'un tournoi, éventuellement **filtré** à une catégorie.
 
-        Lève `TournoiIntrouvable` si le tournoi manque. Le calcul se fait **toujours en entier**
-        (les rangs scratch et de catégorie sont ceux du tournoi complet) ; `categorie_id` ne fait
-        que restreindre l'affichage — même parti qu'E06US001, pour ne pas transformer le 1ᵉʳ de sa
-        catégorie en 1ᵉʳ tout court.
+        ⚠️ **Ne sert plus à composer des podiums** : ce qu'elle rend est la vue d'**affichage**, et
+        les blocs se lisent sur `RenduPalmares.complet`. Conservée parce que le filtre est le CA
+        d'E06US001 — voir une catégorie sans perdre la position d'ensemble, les rangs restant ceux
+        du tournoi complet.
         """
-        if self._tournois.par_id(tournoi_id) is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
+        return self.rendu(tournoi_id, categorie_id).affiche
+
+    def _calculer(self, tournoi_id: TournoiId, reglage: ReglagePodiums) -> Palmares:
+        """Reconstruit le palmarès **entier** du tournoi (`DETTE-031` : rien n'est mis en cache)."""
         # Le palmarès d'un **départ** (ADR-0075) : il s'appuie sur le classement de qualification,
         # qui n'existe plus qu'à cette maille. Le premier départ qui en porte un fait référence
-        # tant que la route reste au niveau tournoi — cf. DETTE-045.
+        # tant que la route reste au niveau tournoi — `DETTE-045`.
+        # ⚠️ E16US014 l'aggrave : « Toutes catégories » et les podiums de club **nomment** une portée
+        # tournoi sur une donnée d'un seul créneau. Le raccourci n'est plus implicite, il est titré.
         premier = self._premier_depart(tournoi_id)
         qualification = self._classements.pour_depart(premier)
         # ⚠️ **Les phases du même créneau que la qualification**, pas celles du tournoi. Le résultat
@@ -185,18 +221,20 @@ class ServicePalmares:
                 if (resultat := self._resultat_classant(tournoi_id, phase, phases)) is not None
             )
         )
-        palmares = calculer_palmares(
-            qualification, resultats, self._aggregation, self._libelles_club()
+        return calculer_palmares(
+            qualification, resultats, self._aggregation, self._libelles_club(reglage)
         )
-        return palmares if categorie_id is None else palmares.pour_categorie(categorie_id)
 
-    def _libelles_club(self) -> Mapping[ClubId, str]:
+    def _libelles_club(self, reglage: ReglagePodiums) -> Mapping[ClubId, str]:
         """Le nom de chaque club, pour que les podiums de club se **nomment** (E16US014).
 
         Résolu ici et non à l'écran : le PDF doit nommer ses blocs et n'a pas de front pour le
-        faire à sa place. Le référentiel est global et de la taille d'une liste de clubs — la
-        lecture est sans commune mesure avec la reconstruction des tableaux (`DETTE-031`).
+        faire à sa place. ⚠️ **Lu seulement si la portée *club* est réglée** : le défaut est
+        *catégorie* seule, et faire payer au cas courant une lecture du référentiel dont il ne fait
+        rien élargissait `DETTE-031` pour rien (relevé en revue).
         """
+        if PorteePodium.CLUB not in reglage.portees:
+            return {}
         return {club.id: club.nom for club in self._clubs.lister() if club.id is not None}
 
     def reglage_podiums(self, tournoi_id: TournoiId) -> ReglagePodiums:
@@ -235,11 +273,11 @@ class ServicePalmares:
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        return self._generateur.palmares(
-            tournoi.nom,
-            self.pour_tournoi(tournoi_id, categorie_id),
-            tournoi.reglage_podiums,
-        )
+        # ⚠️ Les blocs se composent sur le palmarès **complet**, jamais sur la restriction : sinon
+        # le mur du gymnase porte un « Podium — Scratch » amputé de tout ce qui n'est pas la
+        # catégorie filtrée, sans que rien ne le dise (bloquant de revue).
+        rendu = self.rendu(tournoi_id, categorie_id)
+        return self._generateur.palmares(tournoi.nom, rendu.complet, rendu.affiche, rendu.reglage)
 
     def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
         """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.

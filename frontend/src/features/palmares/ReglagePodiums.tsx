@@ -11,10 +11,20 @@ import type { PorteePodium } from './api'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import { useReglagePodiums, useReglerPodiums } from './hooks'
 
+/** Le défaut d'E06US004, répété ici pour l'affichage d'avant la première réponse du serveur — la
+ *  valeur qui fait foi est celle de la base (migration 0052), jamais celle-ci. */
+const PROFONDEUR_PAR_DEFAUT = 4
+
+/** Miroir de `PROFONDEUR_PODIUM_MAX` (`domain/podium.py`) : le serveur reste seul juge, le
+ *  champ ne fait qu'éviter d'envoyer une valeur qu'on sait refusée. */
+const PROFONDEUR_MAX = 64
+
 const PORTEES: { valeur: PorteePodium; libelle: string; aide: string }[] = [
   {
     valeur: 'scratch',
-    libelle: 'Scratch',
+    // ⚠️ Pas « Scratch » : le glossaire réserve ce mot à un libellé de **catégorie** (arc nu). Le
+    // code de la portée reste `scratch`, l'écran dit ce qu'il montre.
+    libelle: 'Toutes catégories',
     aide: 'Le podium du tournoi, toutes catégories mêlées.',
   },
   { valeur: 'categorie', libelle: 'Par catégorie', aide: 'Un podium par catégorie présente.' },
@@ -24,11 +34,15 @@ const PORTEES: { valeur: PorteePodium; libelle: string; aide: string }[] = [
 export function ReglagePodiums({ tournoiId }: { tournoiId: number }) {
   const reglage = useReglagePodiums(tournoiId)
   const regler = useReglerPodiums(tournoiId)
-  const portees = reglage.data?.portees ?? []
-  const profondeur = reglage.data?.profondeur ?? 4
-  // Verrouillé tant que le serveur n'a pas répondu : sans cela, deux clics rapides enverraient le
-  // second réglage calculé sur une liste que le premier a déjà changée.
-  const fige = reglage.isPending || reglage.isError || regler.isPending
+  // ⚠️ **Ce qui est EN VOL prime sur le cache**, sinon un second geste part d'un réglage périmé et
+  // efface le premier : `isPending` retombe dès que le PUT répond, avant que le refetch atterrisse.
+  // Le verrou seul ne suffisait pas — il était même faux de le dire (relevé en revue).
+  const enVol = regler.isPending ? regler.variables : undefined
+  const portees = enVol?.portees ?? reglage.data?.portees ?? []
+  const profondeur = enVol?.profondeur ?? reglage.data?.profondeur ?? PROFONDEUR_PAR_DEFAUT
+  // Figé sur la seule lecture : verrouiller aussi pendant l'écriture avalait le clic suivant, le
+  // `blur` du champ profondeur désactivant le `fieldset` avant que le `click` ne soit dispatché.
+  const fige = reglage.isPending || reglage.isError
 
   const basculer = (portee: PorteePodium) => {
     const retenues = portees.includes(portee)
@@ -64,11 +78,14 @@ export function ReglagePodiums({ tournoiId }: { tournoiId: number }) {
           recalé par `useEffect` rouvrirait la divergence. Le `key` remonte le champ sur la valeur
           **du serveur** dès qu'elle change : la frappe vit dans le DOM, la vérité reste au-dessus. */}
       <input
-        key={profondeur}
+        // La clé porte aussi les échecs : sans `failureCount`, un PUT refusé laissait à l'écran le
+        // nombre que le serveur venait de rejeter, à côté du message d'erreur qui le contredit.
+        key={`${profondeur}-${regler.failureCount}`}
         id="profondeur-podium"
         className="formulaire__champ"
         type="number"
         min={1}
+        max={PROFONDEUR_MAX}
         defaultValue={profondeur}
         disabled={fige}
         onBlur={(e) => {
@@ -88,7 +105,8 @@ export function ReglagePodiums({ tournoiId }: { tournoiId: number }) {
           ? 'Aucun podium affiché — le palmarès ne montrera que le classement complet.'
           : 'Les podiums réglés ici sont ceux de l’écran, de l’affichage public et du PDF.'}{' '}
         Changer ce réglage <strong>ne modifie aucun résultat</strong> : le palmarès se recalcule à
-        chaque lecture, seul ce qu’il affiche change.
+        chaque lecture, seul ce qu’il affiche change. Le nombre de places récompensées ne commande
+        pas le nombre de duels tirés — cela reste le réglage de chaque phase.
       </p>
       <MessageErreur erreur={reglage.error} />
       <MessageErreur erreur={regler.error} />

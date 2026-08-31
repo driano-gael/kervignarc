@@ -12,11 +12,11 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from api.dependances import exiger_admin
-from application.palmares import ServicePalmares
-from domain.palmares import LignePalmares, Palmares
+from application.palmares import RenduPalmares, ServicePalmares
+from domain.palmares import LignePalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.db import WriteQueue
 
@@ -93,7 +93,7 @@ class PodiumReponse(BaseModel):
     quatre archers 5ᵉ-8ᵉ. `cle` vaut `null` pour le scratch, qui ne regroupe rien.
     """
 
-    portee: str
+    portee: PorteePodium
     cle: int | None
     libelle: str
     places: list[PlacePodiumReponse]
@@ -102,13 +102,13 @@ class PodiumReponse(BaseModel):
 class ReglagePodiumsReponse(BaseModel):
     """Ce que ce tournoi récompense — la **lecture** est ouverte, comme le palmarès lui-même."""
 
-    portees: list[str]
+    portees: list[PorteePodium]
     profondeur: int
 
     @staticmethod
     def de_reglage(reglage: ReglagePodiums) -> ReglagePodiumsReponse:
         return ReglagePodiumsReponse(
-            portees=[portee.value for portee in reglage.portees_actives()],
+            portees=list(reglage.portees_actives()),
             profondeur=reglage.profondeur,
         )
 
@@ -116,12 +116,14 @@ class ReglagePodiumsReponse(BaseModel):
 class ReglerPodiumsRequete(BaseModel):
     """La demande de réglage. Une liste **vide** est licite : ne rien récompenser est un choix.
 
-    ⚠️ `profondeur` est bornée **ici aussi** (`ge=1`) alors que `ReglagePodiums` la refuse déjà : la
-    frontière rend un 422 lisible au lieu du 500 qu'une `DomainError` non mappée produirait.
+    ⚠️ **Aucune borne `Field(ge=…, le=…)` sur `profondeur`**, même parti qu'`ReglagePages`
+    (E16US009) : `ReglagePodiums` la borne déjà, et la répéter ici dégraderait le refus en **400
+    générique** là où `DomainError` rend un **422** portant le code métier
+    (`profondeur_podium_invalide`) et la phrase du domaine.
     """
 
     portees: list[PorteePodium]
-    profondeur: int = Field(ge=1)
+    profondeur: int
 
 
 class PalmaresReponse(BaseModel):
@@ -136,13 +138,18 @@ class PalmaresReponse(BaseModel):
     lignes: list[LignePalmaresReponse]
 
     @staticmethod
-    def de_agregat(tournoi_id: int, palmares: Palmares, reglage: ReglagePodiums) -> PalmaresReponse:
+    def de_rendu(tournoi_id: int, rendu: RenduPalmares) -> PalmaresReponse:
+        """⚠️ **Les podiums viennent de `complet`, les lignes d'`affiche`.**
+
+        Les composer sur la vue filtrée rendait un bloc « Scratch » réduit aux archers d'une seule
+        catégorie — un podium faux, à l'écran public comme sur le PDF (bloquant de revue).
+        """
         return PalmaresReponse(
             tournoi_id=tournoi_id,
-            profondeur_podium=reglage.profondeur,
+            profondeur_podium=rendu.reglage.profondeur,
             podiums=[
                 PodiumReponse(
-                    portee=bloc.portee.value,
+                    portee=bloc.portee,
                     cle=bloc.cle,
                     libelle=bloc.libelle,
                     places=[
@@ -152,9 +159,9 @@ class PalmaresReponse(BaseModel):
                         for place in bloc.places
                     ],
                 )
-                for bloc in palmares.podiums(reglage)
+                for bloc in rendu.complet.podiums(rendu.reglage)
             ],
-            lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in palmares.lignes],
+            lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in rendu.affiche.lignes],
         )
 
 
@@ -169,9 +176,10 @@ async def consulter_palmares(
     d'ensemble, comme pour le classement de qualification.
     """
     service: ServicePalmares = request.app.state.service_palmares
-    reglage = await run_in_threadpool(service.reglage_podiums, tournoi_id)
-    palmares = await run_in_threadpool(service.pour_tournoi, tournoi_id, categorie_id)
-    return PalmaresReponse.de_agregat(tournoi_id, palmares, reglage)
+    # Une seule lecture : le réglage et le palmarès doivent venir du **même** instant, sans quoi un
+    # PUT intercalé fait sortir une profondeur qui ne correspond pas aux blocs rendus.
+    rendu = await run_in_threadpool(service.rendu, tournoi_id, categorie_id)
+    return PalmaresReponse.de_rendu(tournoi_id, rendu)
 
 
 @router.get("/tournois/{tournoi_id}/reglage-podiums", response_model=ReglagePodiumsReponse)

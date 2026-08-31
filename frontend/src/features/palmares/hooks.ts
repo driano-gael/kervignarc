@@ -40,11 +40,14 @@ export function useReglerPodiums(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation<ReglagePodiums, Error, ReglagePodiums>({
     mutationFn: (reglage) => putReglagePodiums(tournoiId, reglage),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cleReglage(tournoiId) })
-      // ⚠️ **Le palmarès aussi** : ce sont ses blocs que le réglage vient de changer. Sans cette
-      // seconde invalidation, l'écran garderait les anciens podiums jusqu'au prochain poll (30 s),
-      // et le réglage passerait pour sans effet.
+    onSuccess: (valeur) => {
+      // ⚠️ **La réponse est POSÉE, pas seulement invalidée** — patron des dix autres mutations du
+      // dépôt. `invalidateQueries` seule laisse `data` sur l'ancienne valeur pendant que le refetch
+      // est en vol, or `isPending` est déjà retombé : le geste suivant se calculait alors sur un
+      // réglage périmé et **perdait la portée qu'on venait d'enregistrer** (relevé en revue).
+      queryClient.setQueryData(cleReglage(tournoiId), valeur)
+      // Le palmarès aussi : ce sont ses blocs que le réglage vient de changer. Sans cela, l'écran
+      // garderait les anciens podiums jusqu'au prochain poll (30 s).
       queryClient.invalidateQueries({ queryKey: ['palmares', tournoiId] })
     },
   })
