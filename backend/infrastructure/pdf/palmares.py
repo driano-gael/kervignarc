@@ -68,7 +68,12 @@ class GenerateurPalmaresPdf:
         self._info = ParagraphStyle("info_palmares", parent=styles["Normal"], fontSize=11)
 
     def palmares(
-        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+        self,
+        tournoi: str,
+        *,
+        complet: Palmares,
+        affiche: Palmares,
+        reglage: ReglagePodiums,
     ) -> bytes:
         """Rend le palmarès en PDF. Enveloppe tout échec en `InfrastructureError`."""
         try:

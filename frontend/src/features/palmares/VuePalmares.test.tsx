@@ -62,6 +62,8 @@ const PALMARES: Palmares = {
       portee: 'categorie',
       cle: 3,
       libelle: 'Senior 1 Homme',
+      effectif: 2,
+      en_attente: false,
       places: [{ rang: 1, ligne: MEDAILLE }],
     },
   ],

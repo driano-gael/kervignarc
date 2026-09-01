@@ -59,6 +59,11 @@ export interface Podium {
   cle: number | null
   libelle: string
   places: PlacePodium[]
+  // ⚠️ **L'état du bloc vient du serveur, il ne se recalcule pas ici.** Le client ne voit que les
+  // lignes qu'il a demandées — filtre par catégorie compris —, donc un effectif compté à l'écran
+  // vient d'une autre population que celle du bloc. C'était la moitié front du bloquant de revue.
+  effectif: number
+  en_attente: boolean
 }
 
 export interface Palmares {

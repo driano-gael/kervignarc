@@ -189,6 +189,30 @@ class Palmares:
             for cle, libelle in self._groupes(portee)
         )
 
+    def effectif_du_groupe(self, bloc: BlocPodium) -> int:
+        """Combien d'archers ce bloc regroupe — de quoi savoir si son podium est complet.
+
+        ⚠️ **Compté sur le palmarès qui porte le bloc**, jamais sur une vue filtrée : un bloc dont
+        l'effectif vient d'une autre population se déclare complet à tort (relevé en revue).
+        """
+        return len(self._lignes_du_groupe(bloc))
+
+    def groupe_en_attente(self, bloc: BlocPodium) -> bool:
+        """Un archer du groupe a-t-il encore un match devant lui ?
+
+        Sépare « pas encore décerné » de « plus rien ne le départagera » : deux blocs creux pour des
+        raisons opposées. Annoncer des finales là où il n'y en a plus est faux — cas devenu
+        **typique** avec la portée club, où la plupart des clubs n'ont personne au tableau
+        (`DETTE-028`).
+        """
+        return any(ligne.en_lice for ligne in self._lignes_du_groupe(bloc))
+
+    def _lignes_du_groupe(self, bloc: BlocPodium) -> tuple[LignePalmares, ...]:
+        """Les lignes que ce bloc regroupe — tout le monde pour le scratch, la clé sinon."""
+        if bloc.portee is PorteePodium.SCRATCH:
+            return self.lignes
+        return tuple(ligne for ligne in self.lignes if self._cle_de(bloc.portee, ligne) == bloc.cle)
+
     def _groupes(self, portee: PorteePodium) -> tuple[tuple[CategorieId | ClubId | None, str], ...]:
         """Ce que cette portée regroupe, dans l'ordre du palmarès — donc du meilleur au moins bon.
 

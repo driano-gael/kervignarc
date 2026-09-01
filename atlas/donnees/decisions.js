@@ -8956,7 +8956,9 @@ window.ATLAS.decisions = {
       "etatPodium",
       "groupeEnAttente"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "groupeEnAttente"
+     ],
      "verifiable": true
     }
    ],

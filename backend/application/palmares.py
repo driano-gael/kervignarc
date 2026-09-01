@@ -170,10 +170,10 @@ class ServicePalmares:
     ) -> Palmares:
         """Le palmarès d'un tournoi, éventuellement **filtré** à une catégorie.
 
-        ⚠️ **Ne sert plus à composer des podiums** : ce qu'elle rend est la vue d'**affichage**, et
-        les blocs se lisent sur `RenduPalmares.complet`. Conservée parce que le filtre est le CA
-        d'E06US001 — voir une catégorie sans perdre la position d'ensemble, les rangs restant ceux
-        du tournoi complet.
+        ⚠️ **Aucun appelant de production** : les routes passent par `rendu`, `imprimer` ou
+        `reglage_podiums`. C'est une commodité de lecture pour les tests, et elle ne compose
+        **jamais** de podium — les blocs se lisent sur `RenduPalmares.complet`. Le filtre lui-même
+        reste le CA d'E06US001 : voir une catégorie sans perdre la position d'ensemble.
         """
         return self.rendu(tournoi_id, categorie_id).affiche
 
@@ -277,7 +277,12 @@ class ServicePalmares:
         # le mur du gymnase porte un « Podium — Scratch » amputé de tout ce qui n'est pas la
         # catégorie filtrée, sans que rien ne le dise (bloquant de revue).
         rendu = self.rendu(tournoi_id, categorie_id)
-        return self._generateur.palmares(tournoi.nom, rendu.complet, rendu.affiche, rendu.reglage)
+        return self._generateur.palmares(
+            tournoi.nom,
+            complet=rendu.complet,
+            affiche=rendu.affiche,
+            reglage=rendu.reglage,
+        )
 
     def _premier_depart(self, tournoi_id: TournoiId) -> DepartId:
         """Le premier créneau du tournoi — référence tant que la route reste au niveau tournoi.

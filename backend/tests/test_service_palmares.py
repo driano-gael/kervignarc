@@ -136,7 +136,12 @@ class _FauxGenerateurPalmares:
         self.podiums: list[Palmares] = []
 
     def palmares(
-        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+        self,
+        tournoi: str,
+        *,
+        complet: Palmares,
+        affiche: Palmares,
+        reglage: ReglagePodiums,
     ) -> bytes:
         self.appels.append((tournoi, affiche))
         self.podiums.append(complet)

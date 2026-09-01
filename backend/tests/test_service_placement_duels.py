@@ -13,7 +13,6 @@ Fakes en mémoire conformes aux ports (ni base ni serveur). Le classement est vr
 
 from __future__ import annotations
 
-import dataclasses
 import datetime
 from collections.abc import Sequence
 from dataclasses import replace
@@ -75,10 +74,14 @@ class FauxTournoiRepository:
     def par_id(self, tournoi_id: TournoiId) -> Tournoi | None:
         if tournoi_id not in self._ids:
             return None
+        # ⚠️ **Le tournoi rendu porte son `id`** : `Tournoi.creer` le laisse à `None`, état
+        # qu'aucun repository réel ne produit. Sans cela, un service qui perdrait l'identité en
+        # chemin restait vert (relevé en revue).
         retenu = self._enregistres.get(tournoi_id)
-        if retenu is not None:
-            return retenu
-        return Tournoi.creer("Salle 18m", _DATE).definir_cloisonnement(self.cloisonnement)
+        base = retenu or replace(Tournoi.creer("Salle 18m", _DATE), id=tournoi_id)
+        # Le cloisonnement reste piloté par l'attribut du double, y compris après un enregistrement
+        # — c'est ainsi que `_Monde.regler_cloisonnement` le règle.
+        return base.definir_cloisonnement(self.cloisonnement)
 
     def ajouter(self, tournoi: Tournoi) -> Tournoi:
         raise NotImplementedError
@@ -87,11 +90,15 @@ class FauxTournoiRepository:
         raise NotImplementedError
 
     def enregistrer(self, tournoi: Tournoi) -> Tournoi:
-        """Retient le tournoi tel quel — `id` est celui que l'appelant a lu, jamais réattribué."""
-        identifiant = tournoi.id if tournoi.id is not None else next(iter(self._ids))
-        persiste = dataclasses.replace(tournoi, id=identifiant)
-        self._enregistres[identifiant] = persiste
-        return persiste
+        """Retient le tournoi, et **refuse ce que la base refuserait**.
+
+        L'adapter réel lève `InfrastructureError("Tournoi à mettre à jour introuvable")` sur un
+        `id` absent ; inventer un identifiant ici aurait fait passer un service qui enregistre le
+        mauvais tournoi.
+        """
+        assert tournoi.id in self._ids, "Tournoi à mettre à jour absent du double."
+        self._enregistres[tournoi.id] = tournoi
+        return tournoi
 
     def supprimer(self, tournoi_id: TournoiId) -> None:
         raise NotImplementedError

@@ -65,14 +65,9 @@ export function detail(ligne: LignePalmares): string | null {
 // — cas devenu **typique** avec la portée club, où la plupart des clubs n'ont personne au tableau
 // (`DETTE-028`). Annoncer « les finales ne sont pas toutes tirées » y serait faux deux fois : il n'y
 // a ni finale de club, ni finale restante.
-export function etatPodium(
-  podium: Podium,
-  effectif: number,
-  profondeur: number,
-  enAttente: boolean,
-): string | null {
+export function etatPodium(podium: Podium, profondeur: number): string | null {
   if (podium.places.length === 0) {
-    return enAttente
+    return podium.en_attente
       ? 'Podium en cours — aucune place décernée.'
       : 'Aucune place départageable — ces archers sont ex æquo.'
   }
@@ -83,31 +78,13 @@ export function etatPodium(
   // ⚠️ `profondeur` entre au minimum **sans remplacer le 3** (E16US014) : le seuil reste celui des
   // **médailles**, pas des places affichées — sinon le réglage par défaut (4 places) ferait dire
   // « partiel » à tout podium complet de trois médaillés, une régression sur tous les tournois.
-  const complet = Math.min(3, profondeur, effectif)
+  const complet = Math.min(3, profondeur, podium.effectif)
   if (podium.places.length < complet) {
-    return enAttente
+    return podium.en_attente
       ? 'Podium partiel — les finales ne sont pas toutes tirées.'
       : 'Podium partiel — les places restantes sont ex æquo.'
   }
   return null
-}
-
-// Un archer du groupe a-t-il encore un match devant lui ? C'est ce qui sépare « pas encore décerné »
-// de « plus rien ne le départagera » — les deux rendent un bloc creux, pour deux raisons opposées.
-export function groupeEnAttente(podium: Podium, lignes: LignePalmares[]): boolean {
-  return lignesDuGroupe(podium, lignes).some((ligne) => ligne.en_lice)
-}
-
-// Combien d'archers ce bloc regroupe — de quoi savoir si son podium est complet. Le scratch
-// regroupe tout le monde ; les deux autres portées comparent la clé du bloc.
-export function effectifDuGroupe(podium: Podium, lignes: LignePalmares[]): number {
-  return lignesDuGroupe(podium, lignes).length
-}
-
-function lignesDuGroupe(podium: Podium, lignes: LignePalmares[]): LignePalmares[] {
-  if (podium.portee === 'scratch') return lignes
-  const cle = podium.portee === 'categorie' ? 'categorie_id' : 'club_id'
-  return lignes.filter((ligne) => ligne[cle] === podium.cle)
 }
 
 export const nomComplet = (ligne: LignePalmares) => `${ligne.prenom} ${ligne.nom}`.trim()

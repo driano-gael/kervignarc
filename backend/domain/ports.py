@@ -990,15 +990,19 @@ class GenerateurPalmares(Protocol):
     """
 
     def palmares(
-        self, tournoi: str, complet: Palmares, affiche: Palmares, reglage: ReglagePodiums
+        self,
+        tournoi: str,
+        *,
+        complet: Palmares,
+        affiche: Palmares,
+        reglage: ReglagePodiums,
     ) -> bytes:
         """Rend le palmarès en un PDF (les podiums réglés + le classement).
 
         ⚠️ **Deux palmarès, et ce n'est pas une redondance** : les podiums se composent sur
         `complet`, le classement se tire d'`affiche` (restreint quand une catégorie est filtrée).
-        Les confondre imprimait au mur un « Podium — Scratch » amputé (E16US014, bloquant de revue).
-        Le réglage vient à part : le palmarès est le résultat sportif, ce que le club récompense est
-        de la configuration (règle 2).
+        Les confondre imprimait au mur un podium amputé (E16US014, bloquant de revue). ⚠️ **Passés
+        par mot-clé** : deux `Palmares` positionnels s'inversent sans que mypy le voie.
         """
         ...
 

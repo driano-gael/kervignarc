@@ -97,6 +97,17 @@ class PodiumReponse(BaseModel):
     cle: int | None
     libelle: str
     places: list[PlacePodiumReponse]
+    effectif: int
+    """Le nombre d'archers du groupe, compté sur le palmarès **complet** (E16US014).
+
+    ⚠️ **Calculé ici et non à l'écran** : le client ne voit que les lignes qu'il a demandées,
+    filtre par catégorie compris, et un bloc dont l'effectif vient d'une autre population se
+    déclare complet à tort — la moitié du bloquant de revue qui vivait encore côté front.
+    """
+
+    en_attente: bool
+    """Un archer du groupe a-t-il encore un match ? Sépare « pas encore décerné » de « plus rien ne
+    le départagera » — deux blocs creux, pour deux raisons opposées, et deux phrases différentes."""
 
 
 class ReglagePodiumsReponse(BaseModel):
@@ -152,6 +163,8 @@ class PalmaresReponse(BaseModel):
                     portee=bloc.portee,
                     cle=bloc.cle,
                     libelle=bloc.libelle,
+                    effectif=rendu.complet.effectif_du_groupe(bloc),
+                    en_attente=rendu.complet.groupe_en_attente(bloc),
                     places=[
                         PlacePodiumReponse(
                             rang=place.rang, ligne=LignePalmaresReponse.de_ligne(place.ligne)

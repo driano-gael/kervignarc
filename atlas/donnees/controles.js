@@ -272,10 +272,16 @@ window.ATLAS.controles = {
    "message": "annonce GET dans « backend/api/v1/palmares.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0103"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce groupeEnAttente dans « frontend/src/features/palmares/presentation.ts » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0103"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 45
+  "signaux": 46
  }
 };

@@ -12,16 +12,7 @@ import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
 import type { LignePalmares, Podium } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
-import {
-  detail,
-  effectifDuGroupe,
-  etatPodium,
-  groupeEnAttente,
-  medaille,
-  nomComplet,
-  provenance,
-  rang,
-} from './presentation'
+import { detail, etatPodium, medaille, nomComplet, provenance, rang } from './presentation'
 
 export function VuePalmares({
   tournoiId,
@@ -91,8 +82,6 @@ export function VuePalmares({
               key={`${podium.portee}-${podium.cle ?? 'scratch'}`}
               podium={podium}
               profondeur={donnees.profondeur_podium}
-              effectif={effectifDuGroupe(podium, donnees.lignes)}
-              enAttente={groupeEnAttente(podium, donnees.lignes)}
             />
           ))}
           <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
@@ -110,20 +99,15 @@ export function VuePalmares({
  */
 function BlocPodium({
   podium,
-  effectif,
   profondeur,
-  enAttente,
 }: {
+  /** ⚠️ L'effectif du groupe et son attente sont **portés par le bloc** (E16US014), jamais
+   * recalculés sur les lignes affichées : celles-ci sont filtrées, le bloc ne l'est pas. */
   podium: Podium
-  /** Le nombre d'archers du groupe — un groupe de deux a un podium complet à deux noms,
-   * et ne doit pas être annoncé « partiel » indéfiniment. */
-  effectif: number
   /** Les places que ce tournoi récompense (E16US014) — borne le seuil de « complet ». */
   profondeur: number
-  /** Un archer du groupe a-t-il encore un match ? Départage « pas encore » de « jamais ». */
-  enAttente: boolean
 }) {
-  const etat = etatPodium(podium, effectif, profondeur, enAttente)
+  const etat = etatPodium(podium, profondeur)
   return (
     <section className="palmares-podium" aria-label={`Podium ${podium.libelle}`}>
       <h4 className="palmares-section">{podium.libelle}</h4>
