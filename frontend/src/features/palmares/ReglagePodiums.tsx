@@ -108,11 +108,13 @@ export function ReglagePodiums({ tournoiId }: { tournoiId: number }) {
       <p className="carte__etat">
         {/* ⚠️ Rien tant que le serveur n'a pas répondu : `portees` vaut `[]` pendant la lecture,
             donc la phrase « aucun podium affiché » clignotait — fausse — à chaque ouverture. */}
-        {reglage.data === undefined
-          ? 'Lecture du réglage…'
-          : portees.length === 0
-            ? 'Aucun podium affiché — le palmarès ne montrera que le classement complet.'
-            : 'Les podiums réglés ici sont ceux de l’écran, de l’affichage public et du PDF.'}{' '}
+        {reglage.isError
+          ? 'Réglage indisponible — les podiums affichés restent ceux du serveur.'
+          : reglage.data === undefined
+            ? 'Lecture du réglage…'
+            : portees.length === 0
+              ? 'Aucun podium affiché — le palmarès ne montrera que le classement complet.'
+              : 'Les podiums réglés ici sont ceux de l’écran, de l’affichage public et du PDF.'}{' '}
         Changer ce réglage <strong>ne modifie aucun résultat</strong> : le palmarès se recalcule à
         chaque lecture, seul ce qu’il affiche change. Le nombre de places récompensées ne commande
         pas le nombre de duels tirés — cela reste le réglage de chaque phase.

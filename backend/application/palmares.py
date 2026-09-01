@@ -206,13 +206,17 @@ class ServicePalmares:
         # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
         # répétant d'un départ à l'autre.
         phases = self._phases.par_depart(premier)
+        # ⚠️ **Ce qui n'a encore RIEN livré compte autant que ce qui a livré** (E16US014) : une
+        # phase à duels sans résultat lisible est une phase qui reste à tirer, et c'est ce fait —
+        # et lui seul — qui permet à l'écran de dire « en cours » plutôt que « plus jamais ».
+        tableaux = [
+            (phase, self._resultat(tournoi_id, phase))
+            for phase in phases
+            if phase.type in _TYPES_RECONSTRUCTIBLES
+        ]
+        duels_a_tirer = any(resultat is None for _, resultat in tableaux)
         resultats = (
-            tuple(
-                resultat
-                for phase in phases
-                if phase.type in _TYPES_RECONSTRUCTIBLES
-                if (resultat := self._resultat(tournoi_id, phase)) is not None
-            )
+            tuple(resultat for _, resultat in tableaux if resultat is not None)
             + tuple(
                 resultat
                 for phase in phases
@@ -233,7 +237,11 @@ class ServicePalmares:
             )
         )
         return calculer_palmares(
-            qualification, resultats, self._aggregation, self._libelles_club(reglage)
+            qualification,
+            resultats,
+            self._aggregation,
+            self._libelles_club(reglage),
+            duels_a_tirer=duels_a_tirer,
         )
 
     def _libelles_club(self, reglage: ReglagePodiums) -> Mapping[ClubId, str]:

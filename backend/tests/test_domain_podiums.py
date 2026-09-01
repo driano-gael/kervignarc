@@ -33,7 +33,7 @@ _CLUBS = {1: "Compagnie de Kervignarc", 2: "Arc Club de Vannes", 3: "Les Archers
 
 def _ligne(
     archer_id: int,
-    rang: int,
+    rang: int | None,
     categorie_id: int = 1,
     categorie_libelle: str = "Senior Homme",
     club_id: int | None = 1,
@@ -128,6 +128,7 @@ def test_une_profondeur_au_dela_du_plafond_est_refusee() -> None:
     Borné **au domaine** et non à la frontière (parti d'`ReglagePages`, E16US009) : sans plafond,
     une valeur absurde traversait tout et cassait à l'insertion SQLite en 500 non typé.
     """
+    assert ReglagePodiums(profondeur=PROFONDEUR_PODIUM_MAX).profondeur == 64, "la borne est légale"
     with pytest.raises(ProfondeurPodiumInvalide):
         ReglagePodiums(profondeur=PROFONDEUR_PODIUM_MAX + 1)
 
@@ -376,15 +377,20 @@ def test_l_effectif_ne_compte_que_les_archers_qui_peuvent_occuper_une_place() ->
             _ligne(2, 2),
             # Jamais entré au tableau : il garde un rang de qualification, exact et distinct.
             _ligne(3, 3),
-            # Disqualifié : aucun rang, donc aucune place possible (ADR-0050).
-            _ligne(4, 4, statut=StatutClassement.DISQUALIFIE),
+            # ⚠️ Disqualifié : `rang_scratch` est **None**, pas 4 — `domain/classement.py` sort
+            # les disqualifiés du rangement (ADR-0050). Un décor qui lui donne un rang le rend
+            # classable et n'éprouve donc PAS la garde qu'il prétend couvrir (relevé en revue).
+            _ligne(4, None, statut=StatutClassement.DISQUALIFIE),
         )
     )
 
     palmares = calculer_palmares(qualification, (hors_tableau,), libelles_club=_CLUBS)
     (bloc,) = palmares.podiums(ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH})))
 
-    assert len(palmares.lignes) == 4, "les quatre archers restent au classement"
+    hors_classement = [ligne for ligne in palmares.lignes if ligne.rang_min is None]
+
+    assert len(palmares.lignes) == 4, "les quatre archers restent au palmarès"
+    assert [ligne.archer_id for ligne in hors_classement] == [4], "le DSQ n'a aucun rang (ADR-0050)"
     assert bloc.effectif == 2, "seuls les deux passés par le tableau peuvent être récompensés"
     assert [place.ligne.archer_id for place in bloc.places] == [1, 2]
 
@@ -415,3 +421,34 @@ def test_un_groupe_jamais_entre_au_tableau_n_est_pas_en_attente() -> None:
     assert blocs[2].places == (), "personne de ce club n'est passé par le tableau"
     assert blocs[2].en_attente is False, "et plus aucun match ne viendra"
     assert blocs[2].effectif == 0, "aucun de ses archers ne peut occuper une place"
+
+
+def test_un_palmares_vide_ne_decerne_aucun_bloc() -> None:
+    """Le scratch ne regroupe rien : sans cette sortie, il existerait **toujours**.
+
+    Un bloc « Toutes catégories » à effectif zéro flottait alors au-dessus de personne, et l'écran
+    y écrivait une phrase d'état. C'est aussi ce qui rend vraie la garde de vacuité des surfaces.
+    """
+    vide = Palmares(lignes=())
+
+    assert vide.podiums(ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))) == ()
+    assert vide.podiums(ReglagePodiums()) == ()
+
+
+def test_pendant_la_qualification_les_blocs_disent_en_cours_et_non_jamais() -> None:
+    """CA « l'écran distingue *pas encore* de *plus jamais* » — le cas le plus long de la journée.
+
+    Tant qu'aucun duel n'est enregistré, aucune phase à tableau ne livre de résultat : personne
+    n'est `en_lice`, et le bloc annonçait « aucun duel n'a départagé ce groupe » — la phrase du
+    définitif — pendant toute la matinée. C'est `duels_a_tirer`, porté par le créneau, qui tranche
+    (arbitrage du commanditaire, 01/09/2026).
+    """
+    qualification = Classement(lignes=tuple(_ligne(i, i) for i in range(1, 5)))
+
+    matinee = calculer_palmares(qualification, (), duels_a_tirer=True)
+    apres = calculer_palmares(qualification, (), duels_a_tirer=False)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
+
+    assert matinee.podiums(reglage)[0].places == (), "rien n'est décerné dans les deux cas"
+    assert matinee.podiums(reglage)[0].en_attente is True, "des duels restent à tirer"
+    assert apres.podiums(reglage)[0].en_attente is False, "plus aucun duel : c'est définitif"

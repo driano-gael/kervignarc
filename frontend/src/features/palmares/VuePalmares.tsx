@@ -73,11 +73,11 @@ export function VuePalmares({
             ? 'Connexion momentanément perdue — mise à jour au retour.'
             : 'Chargement…'}
         </p>
-      ) : /* ⚠️ **La garde de vacuité regarde les DEUX** : posée sur les seules lignes — qui sont
-             filtrées —, elle faisait disparaître tous les podiums dès qu'on choisissait une
-             catégorie sans inscrit (bloquant de revue). Les podiums, eux, viennent du palmarès
-             complet : leur présence prouve que le tournoi est classé. */
-      donnees.podiums.length === 0 && donnees.lignes.length === 0 ? (
+      ) : /* ⚠️ **Le serveur le dit, on ne le déduit pas.** Quatre gardes successives ont tenté
+             d'inférer « ce tournoi est-il classé ? » de `lignes` (filtrées) puis de `podiums` (que
+             le réglage vide à bon droit quand aucune portée n'est cochée) : quatre fois fausses,
+             dans un coin différent. Le vide du FILTRE, lui, est nommé par `ClassementFinal`. */
+      donnees.classement_vide ? (
         <p className="carte__etat">Aucun archer classé pour l'instant.</p>
       ) : (
         <>

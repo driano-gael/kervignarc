@@ -8828,6 +8828,7 @@ window.ATLAS.decisions = {
      "chemin": "backend/api/v1/palmares.py",
      "existe": true,
      "symboles": [
+      "PalmaresReponse.classement_vide",
       "PodiumReponse",
       "effectif",
       "en_attente",
@@ -8848,6 +8849,8 @@ window.ATLAS.decisions = {
      "symboles": [
       "RenduPalmares",
       "ServicePalmares.rendu",
+      "duels_a_tirer",
+      "_calculer",
       "_libelles_club",
       "reglage_podiums",
       "definir_reglage_podiums"
@@ -8866,6 +8869,7 @@ window.ATLAS.decisions = {
       "_rang_exact",
       "BlocPodium.effectif",
       "BlocPodium.en_attente",
+      "Palmares.duels_a_tirer",
       "_du_groupe",
       "rangs_club",
       "calculer_palmares",

@@ -72,6 +72,10 @@ export interface Palmares {
   // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
   // les surfaces publiques ne lisent jamais le réglage lui-même.
   profondeur_podium: number
+  // ⚠️ **« Ce tournoi est-il classé ? », dit par le serveur.** Ni `podiums` (que le réglage peut
+  // vider à bon droit) ni `lignes` (que le filtre restreint) ne répondent à cette question : quatre
+  // gardes successives ont tenté de l'inférer et l'ont ratée quatre fois.
+  classement_vide: boolean
   lignes: LignePalmares[]
 }
 

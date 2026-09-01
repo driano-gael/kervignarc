@@ -144,6 +144,15 @@ class PalmaresReponse(BaseModel):
     """Les places récompensées (E16US014) — rendue ici pour que l'écran sache si un podium est
     complet **sans** payer une seconde requête sur les surfaces publiques."""
 
+    classement_vide: bool
+    """Le tournoi n'a **aucun** archer classé — dit par le serveur, jamais déduit par le client.
+
+    ⚠️ **C'est le fait que quatre gardes successives ont tenté d'inférer, et raté quatre fois.**
+    Ni `podiums` (que le réglage peut vider à bon droit) ni `lignes` (que le filtre restreint) ne
+    répondent à « ce tournoi est-il classé ? ». Le porter ici rend la question non déductible, donc
+    impossible à mal déduire.
+    """
+
     lignes: list[LignePalmaresReponse]
 
     @staticmethod
@@ -156,6 +165,7 @@ class PalmaresReponse(BaseModel):
         return PalmaresReponse(
             tournoi_id=tournoi_id,
             profondeur_podium=rendu.reglage.profondeur,
+            classement_vide=not rendu.complet.lignes,
             podiums=[
                 PodiumReponse(
                     portee=bloc.portee,

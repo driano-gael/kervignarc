@@ -107,11 +107,28 @@ describe('ReglagePodiums', () => {
     await panneauCharge()
     const champ = screen.getByLabelText('Places récompensées')
 
-    fireEvent.change(champ, { target: { value: '500' } })
+    fireEvent.change(champ, { target: { value: '65' } })
     fireEvent.blur(champ)
 
     expect(putReglagePodiums).not.toHaveBeenCalled()
     expect(champ).toHaveValue(4)
+  })
+
+  it('accepte la borne haute elle-même — 64 est légal', async () => {
+    // Sans ce cas, un `<` au lieu d'un `<=` refuserait la valeur légale et resterait vert : la
+    // borne *acceptée* n'était ancrée nulle part, ni ici ni au domaine (relevé en revue).
+    await panneauCharge()
+    const champ = screen.getByLabelText('Places récompensées')
+
+    fireEvent.change(champ, { target: { value: '64' } })
+    fireEvent.blur(champ)
+
+    await waitFor(() =>
+      expect(putReglagePodiums).toHaveBeenCalledWith(7, {
+        portees: ['categorie'],
+        profondeur: 64,
+      }),
+    )
   })
 
   it('n’envoie la profondeur qu’une fois la saisie terminée', async () => {

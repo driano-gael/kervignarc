@@ -16,6 +16,8 @@ lecture, et l'objet `Flowable` porte exactement ce que l'adapter a décidé d'é
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from reportlab.platypus import Flowable, Paragraph
 
 from domain.classement import StatutClassement
@@ -94,7 +96,7 @@ def test_un_bloc_sans_place_ne_s_imprime_pas() -> None:
     papier non. C'est la seule divergence assumée entre les deux surfaces.
     """
     en_lice = _ligne(1, 1)
-    complet = Palmares(lignes=(LignePalmares(**{**vars(en_lice), "en_lice": True}),))
+    complet = Palmares(lignes=(replace(en_lice, en_lice=True),))
 
     corps = GenerateurPalmaresPdf()._corps("Salle 18m", complet, complet, _REGLAGE)
 
@@ -112,3 +114,22 @@ def test_le_document_rendu_est_un_pdf_non_vide() -> None:
 
     assert document.startswith(b"%PDF")
     assert len(document) > 1000
+
+
+def test_la_table_du_classement_suit_la_selection_demandee() -> None:
+    """Le **miroir** du cas précédent, et il manquait : les podiums viennent de `complet`, mais la
+    table du classement doit venir d'`affiche`.
+
+    Sans ce cas, remplacer `affiche.lignes` par `complet.lignes` dans `_table_classement` laissait
+    toute la suite verte — le CA « un podium est celui du tournoi, pas de la vue » n'était pris que
+    par un seul de ses deux bouts, sur le document affiché au mur.
+    """
+    complet = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2), _ligne(3, 3, categorie_id=2)))
+    affiche = complet.pour_categorie(2)
+
+    corps = GenerateurPalmaresPdf()._corps("Salle 18m", complet, affiche, _REGLAGE)
+
+    table = corps[-1]
+    noms = [cellule[2] for cellule in table._cellvalues[1:]]
+    assert noms == ["NOM3"], "la table ne porte que la catégorie demandée"
+    assert "Podium — Toutes catégories" in _textes(corps), "le podium, lui, reste celui du tournoi"

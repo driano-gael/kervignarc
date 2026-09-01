@@ -117,6 +117,12 @@ blocs vides — un tableau à en-tête seul n'a pas d'équivalent du message « 
 clubs n'ont personne au tableau (`DETTE-028`), et « les finales ne sont pas toutes tirées » y serait
 faux deux fois. `BlocPodium.en_attente`, rempli **au domaine**, porte la nuance.
 
+⚠️ **Le créneau prime sur le groupe** (arbitrage du 01/09/2026) : `Palmares.duels_a_tirer` — vrai
+tant qu'une phase à duels n'a livré aucun résultat — force `en_attente`. Sans lui, personne n'étant
+« en lice » pendant la qualification, chaque bloc annonçait le **définitif** toute la matinée. La
+règle est asymétrique et c'est voulu : on n'annonce jamais « plus jamais » pendant que le tournoi
+peut encore changer, quitte à dire « en cours » un peu trop longtemps.
+
 ⚠️ **Cet état est porté par le bloc, jamais recalculé par l'appelant** — c'est la leçon des trois
 passes de revue qu'a coûtées cette décision : les blocs ont d'abord été composés sur un palmarès
 filtré, puis leur effectif compté à l'écran sur les lignes affichées, puis la garde de vacuité lue
@@ -171,16 +177,20 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
   `PROFONDEUR_PODIUM_MAX` : la décision 1 et la borne du §4. Module à part pour la même raison que
   `domain/cloisonnement.py` (éviter un cycle avec `domain/palmares`).
 - `backend/domain/palmares.py` — `Palmares.podiums`, `_bloc`, `_cle_de`, `_groupes`, `_rang_exact`
-  (décisions 2 et 6), et `BlocPodium.effectif` / `BlocPodium.en_attente`, qui portent l'état du
-  bloc au lieu de le laisser recalculer par ses lecteurs (décision 6) ; `_du_groupe` et la passe `rangs_club` de `calculer_palmares` (décision 3) ;
+  (décisions 2 et 6), `BlocPodium.effectif` / `BlocPodium.en_attente`, qui portent l'état du bloc
+  au lieu de le laisser recalculer par ses lecteurs, et `Palmares.duels_a_tirer`, qui fait primer
+  le créneau sur le groupe (décision 6) ; `_du_groupe` et la passe `rangs_club` de `calculer_palmares` (décision 3) ;
   `LIBELLE_SCRATCH` (décision 5) ; `LignePalmares.rang_club_min` / `rang_club_max` / `club_libelle`.
 - `backend/domain/tournoi.py` — `Tournoi.reglage_podiums` et `definir_reglage_podiums` : le réglage
   vit sur l'agrégat tournoi (décision 1).
-- `backend/application/palmares.py` — `RenduPalmares` et `ServicePalmares.rendu` (décision 7) ;
+- `backend/application/palmares.py` — `RenduPalmares` et `ServicePalmares.rendu` (décision 7), et
+  le calcul de `duels_a_tirer` dans `_calculer` — le service est le seul à savoir qu'une phase à
+  duels n'a encore rien livré (décision 6) ;
   `_libelles_club` (lecture conditionnelle, décision 3) ; `reglage_podiums` /
   `definir_reglage_podiums`.
-- `backend/api/v1/palmares.py` — `PodiumReponse` (dont `effectif` et `en_attente`, recopiés du
-  bloc), `PlacePodiumReponse`, `ReglagePodiumsReponse`, `ReglerPodiumsRequete`,
+- `backend/api/v1/palmares.py` — `PalmaresReponse.classement_vide`, qui **porte** le fait « ce
+  tournoi est-il classé ? » que quatre gardes successives avaient tenté d'inférer ; `PodiumReponse`
+  (dont `effectif` et `en_attente`, recopiés du bloc), `PlacePodiumReponse`, `ReglagePodiumsReponse`, `ReglerPodiumsRequete`,
   `PalmaresReponse.de_rendu`, et les fonctions de route `reglage_podiums` (lecture ouverte) et
   `regler_podiums` (derrière `exiger_admin`).
 - `backend/infrastructure/db/models.py` (`TournoiORM.podium_portees`, `podium_profondeur`),

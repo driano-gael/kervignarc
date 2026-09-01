@@ -196,6 +196,14 @@ class Palmares:
     """Le classement final d'un tournoi, ordonné du 1ᵉʳ au dernier (hors classement en fin)."""
 
     lignes: tuple[LignePalmares, ...]
+    duels_a_tirer: bool = False
+    """Le créneau porte-t-il une phase à duels dont aucun résultat n'est encore lisible ?
+
+    ⚠️ **Sans ce fait, « pas encore » est indistinguable de « plus jamais » toute la matinée** :
+    tant qu'aucun duel n'est enregistré, personne n'est `en_lice`, et chaque bloc annonçait
+    « aucun duel n'a départagé ce groupe » — la phrase du définitif, sur le provisoire le plus long
+    de la journée (arbitrage du commanditaire, 01/09/2026).
+    """
 
     def podiums(self, reglage: ReglagePodiums) -> tuple[BlocPodium, ...]:
         """Les podiums que ce tournoi décerne, dans l'ordre d'affichage (E16US014).
@@ -227,9 +235,9 @@ class Palmares:
                 vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
             elif ligne.club_id is not None:
                 # Repli **visible** : un titre vide imprimerait « Podium — » au mur sans que
-                # personne sache pourquoi. ⚠️ Il n'est PAS inatteignable : `_libelles_club` ne lit
-                # le référentiel que si la portée `club` est réglée, donc un `Palmares` calculé
-                # sans elle puis interrogé avec elle titre « Club 7 » (relevé en revue).
+                # personne sache pourquoi. Inatteignable par la production — `RenduPalmares` fait
+                # calculer et interroger avec le **même** réglage. Garde-fou pour un `club_id`
+                # absent du référentiel, et pour tout appelant qui désaccorderait les deux.
                 vus.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
         return tuple(vus.items())
 
@@ -265,7 +273,10 @@ class Palmares:
                 for ligne in groupe
                 if ligne.origine is OriginePalmares.DUELS and ligne.rang_min is not None
             ),
-            en_attente=any(ligne.en_lice for ligne in groupe),
+            # ⚠️ **Le créneau prime sur le groupe** : tant que des duels restent à tirer, rien
+            # n'est définitif nulle part. On ne dit jamais « plus jamais » pendant que le
+            # tournoi peut encore changer — l'erreur, si erreur il y a, va vers l'attente.
+            en_attente=self.duels_a_tirer or any(ligne.en_lice for ligne in groupe),
         )
 
     @staticmethod
@@ -286,7 +297,8 @@ class Palmares:
         recalcul ferait du 1ᵉʳ de sa catégorie un « 1ᵉʳ » tout court, ce qu'il n'est pas.
         """
         return Palmares(
-            lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id)
+            lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id),
+            duels_a_tirer=self.duels_a_tirer,
         )
 
 
@@ -326,6 +338,7 @@ def calculer_palmares(
     resultats: Sequence[ResultatPhase] = (),
     aggregation: Aggregation | None = None,
     libelles_club: Mapping[ClubId, str] | None = None,
+    duels_a_tirer: bool = False,
 ) -> Palmares:
     """Fusionne les rangs des phases en un palmarès (CA « podium » + CA « agrégation »).
 
@@ -381,7 +394,7 @@ def calculer_palmares(
         _ligne(entree, None, None, None, libelles, decerne=False, en_lice=False)
         for entree in hors_classement
     ]
-    return Palmares(lignes=tuple(lignes))
+    return Palmares(lignes=tuple(lignes), duels_a_tirer=duels_a_tirer)
 
 
 def _du_groupe(
