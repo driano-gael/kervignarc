@@ -286,3 +286,59 @@ def test_un_archer_sans_club_n_entre_dans_aucun_bloc_de_club() -> None:
     assert [bloc.cle for bloc in blocs] == [1]
     assert 6 not in [place.ligne.archer_id for place in blocs[0].places]
     assert 6 in [ligne.archer_id for ligne in palmares.lignes]
+
+
+# --- CA « l'écran distingue « pas encore » de « jamais » » ----------------------------------------
+
+
+def test_l_effectif_d_un_bloc_se_compte_sur_le_groupe_pas_sur_le_palmares() -> None:
+    """Le bloc porte son propre effectif : c'est lui qui dit si son podium est complet.
+
+    ⚠️ **Calculé au domaine et non à l'écran** (relevé en 2ᵉ passe de revue) : le client ne voit que
+    les lignes qu'il a demandées — filtre par catégorie compris —, donc un effectif compté là-bas
+    vient d'une autre population que celle du bloc, et déclare complet un podium qui ne l'est pas.
+    """
+    palmares = _palmares_de_huit({i: 1 if i <= 4 else 2 for i in range(1, 9)})
+    reglage = ReglagePodiums(
+        portees=frozenset({PorteePodium.SCRATCH, PorteePodium.CATEGORIE, PorteePodium.CLUB})
+    )
+
+    effectifs = {
+        (bloc.portee, bloc.cle): palmares.effectif_du_groupe(bloc)
+        for bloc in palmares.podiums(reglage)
+    }
+
+    assert effectifs[(PorteePodium.SCRATCH, None)] == 8, "le scratch regroupe tout le monde"
+    assert effectifs[(PorteePodium.CATEGORIE, 1)] == 8, "une seule catégorie dans ce décor"
+    assert effectifs[(PorteePodium.CLUB, 1)] == 4
+    assert effectifs[(PorteePodium.CLUB, 2)] == 4
+
+
+def test_un_bloc_creux_dit_si_l_attente_est_reelle_ou_definitive() -> None:
+    """CA : « pas encore décerné » et « plus rien ne le départagera » rendent le même bloc creux.
+
+    Les distinguer n'est pas cosmétique — annoncer « les finales ne sont pas toutes tirées » là où
+    il n'y a plus de finale est faux, et devient le cas **typique** avec la portée club, où la
+    plupart des clubs n'ont personne au tableau (`DETTE-028`).
+    """
+    tableau_en_cours = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=2, en_lice=True),
+            PositionPhase(archer_id=2, rang_min=1, rang_max=2, en_lice=True),
+            PositionPhase(archer_id=3, rang_min=3, rang_max=4),
+            PositionPhase(archer_id=4, rang_min=3, rang_max=4),
+        ),
+    )
+    clubs: dict[int, int | None] = {1: 1, 2: 1, 3: 2, 4: 2}
+    qualification = Classement(lignes=tuple(_ligne(i, i, club_id=clubs[i]) for i in range(1, 5)))
+    palmares = calculer_palmares(
+        qualification, (tableau_en_cours,), aggregation=AggregationExAequo(), libelles_club=_CLUBS
+    )
+    blocs = {
+        bloc.cle: bloc
+        for bloc in palmares.podiums(ReglagePodiums(portees=frozenset({PorteePodium.CLUB})))
+    }
+
+    assert palmares.groupe_en_attente(blocs[1]) is True, "les deux finalistes ont un match devant"
+    assert palmares.groupe_en_attente(blocs[2]) is False, "rien ne départagera plus ces deux-là"
