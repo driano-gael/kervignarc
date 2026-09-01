@@ -7,7 +7,7 @@
 - **S'appuie sur** :
   - [ADR-0067](0067-palmares-agregation-des-rangs-de-phases.md) — l'agrégation des rangs de phases.
     Cet ADR **révise sa Décision 5**, qui figeait le podium « par catégorie, rangs 1-4 »
-  - [ADR-0070](0070-profondeur-de-classement-top-n.md) — la profondeur de classement `top_n`,
+  - [ADR-0070](0070-profondeur-de-classement-reglee-par-phase.md) — la profondeur de classement `top_n`,
     dont §2 explique pourquoi le mot « podium » avait été **écarté** d'un nom persisté
   - [ADR-0014](0014-club-inconnu-plutot-que-club-sentinelle.md) — « club inconnu » est une anomalie
     à signaler, pas un club de rattachement
@@ -115,7 +115,15 @@ blocs vides — un tableau à en-tête seul n'a pas d'équivalent du message « 
 
 ⚠️ **L'écran doit distinguer « pas encore » de « jamais »** : avec la portée club, la plupart des
 clubs n'ont personne au tableau (`DETTE-028`), et « les finales ne sont pas toutes tirées » y serait
-faux deux fois. `groupeEnAttente` tranche sur `en_lice`.
+faux deux fois. `BlocPodium.en_attente`, rempli **au domaine**, porte la nuance.
+
+⚠️ **Cet état est porté par le bloc, jamais recalculé par l'appelant** — c'est la leçon des trois
+passes de revue qu'a coûtées cette décision : les blocs ont d'abord été composés sur un palmarès
+filtré, puis leur effectif compté à l'écran sur les lignes affichées, puis la garde de vacuité lue
+sur la vue. À chaque fois l'énoncé portait sur une autre population que le contenu. `effectif` et
+`en_attente` vivent donc sur `BlocPodium`, remplis là où le groupe est déjà filtré : l'erreur cesse
+d'être représentable. ⚠️ `effectif` compte les archers **récompensables** (rang issu des duels et
+classé), pas tous ceux du groupe — les compter tous déclarait « podium partiel » à perpétuité.
 
 ### 7. Les podiums se composent sur le palmarès **complet**, jamais sur la vue filtrée
 
@@ -147,6 +155,12 @@ l'épingle.
 pour le faire à sa place) ; et deux réglages homonymes dans le vocabulaire du projet — la profondeur
 de classement d'une phase et la profondeur d'un podium —, distingués au §4 et dans l'aide de l'écran.
 
+**Ce qui n'est pas fait, et qu'il faut savoir.** L'écran projeté ne **pagine pas** le palmarès :
+E16US009 a donné une pagination au classement et aux affectations, jamais à cette vue. Tenable à
+huit blocs de quatre places, la portée *club* peut en produire des dizaines — le vidéoprojecteur
+montrera le haut et rien d'autre. Le déclencheur est un choix explicite de l'organisateur (le défaut
+reste catégorie / 4 places) ; la limite est inscrite au registre de dette plutôt que corrigée ici.
+
 **Ce qui reste à surveiller.** `DETTE-045` : le palmarès est rendu « du tournoi » alors qu'il dérive
 du **premier créneau**. Les portées *toutes catégories* et *club* revendiquent explicitement une
 portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
@@ -157,16 +171,18 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
   `PROFONDEUR_PODIUM_MAX` : la décision 1 et la borne du §4. Module à part pour la même raison que
   `domain/cloisonnement.py` (éviter un cycle avec `domain/palmares`).
 - `backend/domain/palmares.py` — `Palmares.podiums`, `_bloc`, `_cle_de`, `_groupes`, `_rang_exact`
-  (décision 2 et 6) ; `_du_groupe` et la passe `rangs_club` de `calculer_palmares` (décision 3) ;
+  (décisions 2 et 6), et `BlocPodium.effectif` / `BlocPodium.en_attente`, qui portent l'état du
+  bloc au lieu de le laisser recalculer par ses lecteurs (décision 6) ; `_du_groupe` et la passe `rangs_club` de `calculer_palmares` (décision 3) ;
   `LIBELLE_SCRATCH` (décision 5) ; `LignePalmares.rang_club_min` / `rang_club_max` / `club_libelle`.
 - `backend/domain/tournoi.py` — `Tournoi.reglage_podiums` et `definir_reglage_podiums` : le réglage
   vit sur l'agrégat tournoi (décision 1).
 - `backend/application/palmares.py` — `RenduPalmares` et `ServicePalmares.rendu` (décision 7) ;
   `_libelles_club` (lecture conditionnelle, décision 3) ; `reglage_podiums` /
   `definir_reglage_podiums`.
-- `backend/api/v1/palmares.py` — `PodiumReponse`, `PlacePodiumReponse`, `ReglagePodiumsReponse`,
-  `ReglerPodiumsRequete`, `PalmaresReponse.de_rendu`, et les routes `GET`/`PUT
-  /tournois/{id}/reglage-podiums` (le PUT derrière `exiger_admin`, la lecture ouverte).
+- `backend/api/v1/palmares.py` — `PodiumReponse` (dont `effectif` et `en_attente`, recopiés du
+  bloc), `PlacePodiumReponse`, `ReglagePodiumsReponse`, `ReglerPodiumsRequete`,
+  `PalmaresReponse.de_rendu`, et les fonctions de route `reglage_podiums` (lecture ouverte) et
+  `regler_podiums` (derrière `exiger_admin`).
 - `backend/infrastructure/db/models.py` (`TournoiORM.podium_portees`, `podium_profondeur`),
   `backend/migrations/versions/0052_reglage_podiums.py` (les défauts serveur qui portent la
   non-régression) et `backend/infrastructure/db/repositories/referentiel.py`
@@ -175,5 +191,6 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
   compose sur `complet` (décision 7).
 - `frontend/src/features/palmares/ReglagePodiums.tsx` — l'écran de réglage, monté par
   `features/admin/CoquilleAdmin.tsx` et **jamais** par `VuePalmares.tsx`, qui sert aussi le public.
-- `frontend/src/features/palmares/presentation.ts` — `etatPodium` et `groupeEnAttente` : la nuance
-  « pas encore » / « jamais » de la décision 6.
+- `frontend/src/features/palmares/presentation.ts` — `etatPodium` : la **mise en mots** de la
+  nuance « pas encore » / « plus jamais » (décision 6). Le front ne calcule plus rien : il lit
+  `podium.effectif` et `podium.en_attente`.

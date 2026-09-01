@@ -236,7 +236,7 @@ Chaque symbole vérifié dans le code du jour.)*
 - `backend/domain/palmares.py` — l'agrégation elle-même : `calculer_palmares(…)` fusionne les
   `ResultatPhase` en `LignePalmares` / `Palmares`, via `PositionPhase` et `OriginePalmares`.
   ⚠️ La politique s'applique **au palmarès entier**, pas par phase — `Phase` ne persiste aucun
-  réglage d'agrégation (commentaire l. 84), et c'est délibéré.
+  réglage d'agrégation (docstring de `ResultatPhase`), et c'est délibéré.
 - `backend/application/palmares.py` — `ServicePalmares` reçoit `aggregation: Aggregation | None` et
-  **retombe sur `AggregationParQualification()`** si rien n'est injecté (l. 129-131) ; `rendu`
+  **retombe sur `AggregationParQualification()`** si rien n'est injecté (constructeur de `ServicePalmares`) ; `rendu`
   passe la politique à `calculer_palmares`. C'est le point d'injection réel.

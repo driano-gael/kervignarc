@@ -193,12 +193,13 @@ describe('etatPodium — attente réelle ou ex æquo (E16US014)', () => {
   it('ne promet pas des finales quand plus aucun match ne départagera', () => {
     // Portée club : la plupart des clubs n'ont personne au tableau (DETTE-028). Annoncer « les
     // finales ne sont pas toutes tirées » y est faux deux fois — ni finale de club, ni finale
-    // restante — et le resterait tournoi terminé.
+    // restante — et le resterait tournoi terminé. ⚠️ Le message ne dit pas non plus « ex æquo » :
+    // ces archers ont des rangs de qualification distincts (relevé par trois axes).
     expect(etatPodium(podium(0, 5, false), 4)).toBe(
-      'Aucune place départageable — ces archers sont ex æquo.',
+      'Aucune place décernée — aucun duel n’a départagé ce groupe.',
     )
     expect(etatPodium(podium(1, 5, false), 4)).toBe(
-      'Podium partiel — les places restantes sont ex æquo.',
+      'Podium partiel — aucun duel n’a départagé les places restantes.',
     )
   })
 

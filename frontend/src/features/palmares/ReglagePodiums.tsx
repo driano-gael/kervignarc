@@ -90,20 +90,29 @@ export function ReglagePodiums({ tournoiId }: { tournoiId: number }) {
         disabled={fige}
         onBlur={(e) => {
           const saisie = Number(e.target.value)
-          if (Number.isInteger(saisie) && saisie >= 1 && saisie !== profondeur) {
+          if (
+            Number.isInteger(saisie) &&
+            saisie >= 1 &&
+            saisie <= PROFONDEUR_MAX &&
+            saisie !== profondeur
+          ) {
             regler.mutate({ portees, profondeur: saisie })
             return
           }
-          // Saisie vide, nulle ou inchangée : on **ramène** l'affichage au réglage retenu plutôt
-          // que de laisser à l'écran un nombre que le serveur ignore.
+          // Saisie vide, hors bornes ou inchangée : on **ramène** l'affichage au réglage retenu
+          // plutôt que de laisser à l'écran un nombre que le serveur refuserait.
           e.target.value = String(profondeur)
         }}
       />
 
       <p className="carte__etat">
-        {portees.length === 0
-          ? 'Aucun podium affiché — le palmarès ne montrera que le classement complet.'
-          : 'Les podiums réglés ici sont ceux de l’écran, de l’affichage public et du PDF.'}{' '}
+        {/* ⚠️ Rien tant que le serveur n'a pas répondu : `portees` vaut `[]` pendant la lecture,
+            donc la phrase « aucun podium affiché » clignotait — fausse — à chaque ouverture. */}
+        {reglage.data === undefined
+          ? 'Lecture du réglage…'
+          : portees.length === 0
+            ? 'Aucun podium affiché — le palmarès ne montrera que le classement complet.'
+            : 'Les podiums réglés ici sont ceux de l’écran, de l’affichage public et du PDF.'}{' '}
         Changer ce réglage <strong>ne modifie aucun résultat</strong> : le palmarès se recalcule à
         chaque lecture, seul ce qu’il affiche change. Le nombre de places récompensées ne commande
         pas le nombre de duels tirés — cela reste le réglage de chaque phase.

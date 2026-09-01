@@ -73,7 +73,11 @@ export function VuePalmares({
             ? 'Connexion momentanément perdue — mise à jour au retour.'
             : 'Chargement…'}
         </p>
-      ) : donnees.lignes.length === 0 ? (
+      ) : /* ⚠️ **La garde de vacuité regarde les DEUX** : posée sur les seules lignes — qui sont
+             filtrées —, elle faisait disparaître tous les podiums dès qu'on choisissait une
+             catégorie sans inscrit (bloquant de revue). Les podiums, eux, viennent du palmarès
+             complet : leur présence prouve que le tournoi est classé. */
+      donnees.podiums.length === 0 && donnees.lignes.length === 0 ? (
         <p className="carte__etat">Aucun archer classé pour l'instant.</p>
       ) : (
         <>
@@ -151,8 +155,9 @@ function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: Mode
           {/* Cause non nommée (correctif de revue) : le filtre par catégorie de cet écran vide la
               liste tout aussi souvent que l'interrupteur, et désigner le second envoyait chercher
               au mauvais endroit. Le podium, lui, reste entier au-dessus — il n'est jamais centré. */}
-          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
-          tournoi », ou élargissez le filtre.
+          {mode === 'suivis'
+            ? 'Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le tournoi », ou élargissez le filtre.'
+            : 'Aucun archer dans cette sélection — élargissez le filtre par catégorie.'}
         </p>
       ) : (
         // Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse

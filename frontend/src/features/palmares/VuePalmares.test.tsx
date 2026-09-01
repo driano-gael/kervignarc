@@ -117,3 +117,17 @@ describe('VuePalmares — centrage « mes archers »', () => {
     expect(screen.getByText(/CHAMPION/)).toBeInTheDocument()
   })
 })
+
+describe('VuePalmares — un filtre qui vide le classement ne retire pas les podiums', () => {
+  it('garde les podiums quand la sélection ne contient aucun archer', async () => {
+    // Le bloquant de la 3ᵉ passe, côté écran : la garde « aucun archer classé » portait sur les
+    // lignes, qui sont filtrées, et emportait tous les podiums avec elle. Un podium est celui du
+    // tournoi — sa présence prouve justement que le tournoi est classé.
+    vi.mocked(getPalmares).mockResolvedValue({ ...PALMARES, lignes: [] })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    expect(await screen.findByText('Senior 1 Homme')).toBeInTheDocument()
+    expect(screen.queryByText(/Aucun archer classé pour l’instant/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Aucun archer classé pour l'instant/)).not.toBeInTheDocument()
+  })
+})

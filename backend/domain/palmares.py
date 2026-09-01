@@ -139,6 +139,11 @@ class LignePalmares:
     categorie_libelle: str
     club_id: ClubId | None
     club_libelle: str | None
+    """Le nom du club, ou `None`. ⚠️ **`None` a deux sens**, et le second n'est pas une anomalie :
+    club inconnu (ADR-0014), **ou** portée *club* non réglée — le référentiel n'est alors pas lu
+    (`ServicePalmares._libelles_club`). Ne pas en déduire « club inconnu » sans regarder `club_id`.
+    """
+
     origine: OriginePalmares
     statut: StatutClassement
 
@@ -158,7 +163,14 @@ class PlacePodium:
 
 @dataclass(frozen=True)
 class BlocPodium:
-    """Un podium affichable : ce qu'il récompense, et les places décernées."""
+    """Un podium affichable : ce qu'il récompense, ses places, et de quoi dire son état.
+
+    ⚠️ **L'état est PORTÉ, jamais recalculé par l'appelant.** Trois fois de suite, cette US a
+    produit un bloc dont l'énoncé portait sur une autre population que son contenu — blocs composés
+    sur un palmarès filtré, puis effectif compté à l'écran sur les lignes affichées, puis garde de
+    vacuité lue sur la vue. Les champs ci-dessous rendent la faute **non représentable** : ils sont
+    remplis dans `_bloc`, là où le groupe est déjà filtré (ADR-0103 §6).
+    """
 
     portee: PorteePodium
     cle: CategorieId | ClubId | None
@@ -166,6 +178,17 @@ class BlocPodium:
 
     libelle: str
     places: tuple[PlacePodium, ...]
+    effectif: int
+    """Les archers du groupe qui peuvent **occuper une place** — pas tous ceux du groupe.
+
+    Donc : rang issu des duels (`DETTE-028` : ceux restés en qualification n'entrent sur aucun
+    podium) **et** classé (un disqualifié n'a pas de rang, ADR-0050). Compter tout le monde
+    déclarait « podium partiel » à perpétuité sur un club de vingt dont deux sont au tableau, et sur
+    toute catégorie portant un disqualifié — la régression même que le seuil d'E06US004 corrigeait.
+    """
+
+    en_attente: bool
+    """Un archer du groupe a-t-il encore un match ? Sépare « pas encore » de « plus jamais »."""
 
 
 @dataclass(frozen=True)
@@ -177,41 +200,19 @@ class Palmares:
     def podiums(self, reglage: ReglagePodiums) -> tuple[BlocPodium, ...]:
         """Les podiums que ce tournoi décerne, dans l'ordre d'affichage (E16US014).
 
-        Un bloc par groupe de la portée — un seul pour le scratch, un par catégorie ou par club
-        sinon. ⚠️ **Un bloc sans place décernée est rendu quand même** : à l'écran, un groupe qui
-        disparaît se lit comme un groupe sans archers alors qu'il est simplement en cours (parti
-        `P-3`). C'est au **document** de sauter les vides — sur le papier, un tableau à en-tête seul
-        n'a pas d'équivalent du message « podium en cours ».
+        Un bloc par groupe — un seul pour le scratch. ⚠️ **Un bloc sans place est rendu quand
+        même** : à l'écran, un groupe qui disparaît se lit comme un groupe sans archers alors
+        qu'il est en cours (`P-3`) ; c'est au **document** de sauter les vides. ⚠️ Un palmarès
+        vide, lui, ne décerne rien — le scratch ne regroupant rien, il existerait toujours, et
+        l'écran écrirait une phrase d'état au-dessus de personne.
         """
+        if not self.lignes:
+            return ()
         return tuple(
             self._bloc(portee, cle, libelle, reglage.profondeur)
             for portee in reglage.portees_actives()
             for cle, libelle in self._groupes(portee)
         )
-
-    def effectif_du_groupe(self, bloc: BlocPodium) -> int:
-        """Combien d'archers ce bloc regroupe — de quoi savoir si son podium est complet.
-
-        ⚠️ **Compté sur le palmarès qui porte le bloc**, jamais sur une vue filtrée : un bloc dont
-        l'effectif vient d'une autre population se déclare complet à tort (relevé en revue).
-        """
-        return len(self._lignes_du_groupe(bloc))
-
-    def groupe_en_attente(self, bloc: BlocPodium) -> bool:
-        """Un archer du groupe a-t-il encore un match devant lui ?
-
-        Sépare « pas encore décerné » de « plus rien ne le départagera » : deux blocs creux pour des
-        raisons opposées. Annoncer des finales là où il n'y en a plus est faux — cas devenu
-        **typique** avec la portée club, où la plupart des clubs n'ont personne au tableau
-        (`DETTE-028`).
-        """
-        return any(ligne.en_lice for ligne in self._lignes_du_groupe(bloc))
-
-    def _lignes_du_groupe(self, bloc: BlocPodium) -> tuple[LignePalmares, ...]:
-        """Les lignes que ce bloc regroupe — tout le monde pour le scratch, la clé sinon."""
-        if bloc.portee is PorteePodium.SCRATCH:
-            return self.lignes
-        return tuple(ligne for ligne in self.lignes if self._cle_de(bloc.portee, ligne) == bloc.cle)
 
     def _groupes(self, portee: PorteePodium) -> tuple[tuple[CategorieId | ClubId | None, str], ...]:
         """Ce que cette portée regroupe, dans l'ordre du palmarès — donc du meilleur au moins bon.
@@ -226,8 +227,9 @@ class Palmares:
                 vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
             elif ligne.club_id is not None:
                 # Repli **visible** : un titre vide imprimerait « Podium — » au mur sans que
-                # personne sache pourquoi. Inatteignable aujourd'hui (supprimer un club
-                # référencé est refusé), donc un garde-fou, pas un correctif.
+                # personne sache pourquoi. ⚠️ Il n'est PAS inatteignable : `_libelles_club` ne lit
+                # le référentiel que si la portée `club` est réglée, donc un `Palmares` calculé
+                # sans elle puis interrogé avec elle titre « Club 7 » (relevé en revue).
                 vus.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
         return tuple(vus.items())
 
@@ -246,14 +248,25 @@ class Palmares:
         (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch (`DETTE-028`),
         donc l'exiger priverait de podium toutes les catégories, et tous les clubs.
         """
+        groupe = tuple(ligne for ligne in self.lignes if self._cle_de(portee, ligne) == cle)
         places = tuple(
             PlacePodium(rang=rang, ligne=ligne)
-            for ligne in self.lignes
-            if self._cle_de(portee, ligne) == cle
+            for ligne in groupe
             if ligne.origine is OriginePalmares.DUELS and not ligne.en_lice
             if (rang := _rang_exact(portee, ligne)) is not None and rang <= profondeur
         )
-        return BlocPodium(portee, cle, libelle, places)
+        return BlocPodium(
+            portee=portee,
+            cle=cle,
+            libelle=libelle,
+            places=places,
+            effectif=sum(
+                1
+                for ligne in groupe
+                if ligne.origine is OriginePalmares.DUELS and ligne.rang_min is not None
+            ),
+            en_attente=any(ligne.en_lice for ligne in groupe),
+        )
 
     @staticmethod
     def _cle_de(portee: PorteePodium, ligne: LignePalmares) -> CategorieId | ClubId | None:

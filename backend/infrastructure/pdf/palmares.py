@@ -90,13 +90,18 @@ class GenerateurPalmaresPdf:
             Paragraph("Podiums décernés, puis classement complet", self._sous_titre),
             Spacer(1, 4 * mm),
         ]
-        if not affiche.lignes:
+        # ⚠️ **La garde de vacuité porte sur `complet`, jamais sur `affiche`.** Posée sur la vue
+        # filtrée, elle jetait TOUS les podiums dès qu'une catégorie sans inscrit était demandée —
+        # et le document affiché au mur ne portait plus que « Aucun archer classé » (bloquant de
+        # revue, 3ᵉ déplacement du même défaut).
+        if not complet.lignes:
             elements.append(Paragraph("Aucun archer classé.", self._info))
             return elements
-        # Les podiums sur le palmarès **complet**, le classement sur ce qui est demandé : un
-        # podium est celui du tournoi, il ne se rétrécit pas parce qu'on filtre l'affichage.
         elements.extend(self._podiums(complet, reglage))
         elements.append(Paragraph("Classement complet", self._section))
+        if not affiche.lignes:
+            elements.append(Paragraph("Aucun archer dans la sélection imprimée.", self._info))
+            return elements
         elements.append(self._table_classement(affiche.lignes))
         return elements
 

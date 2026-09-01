@@ -527,6 +527,27 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "096",
+   "introduite_par": [
+    "E16US014",
+    "E05US033"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
+   "identifiant": "097",
+   "introduite_par": [
+    "E16US014"
+   ],
+   "ouverte": true,
+   "resorption_us": [
+    "E16US009"
+   ],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "088",
    "introduite_par": [
     "E00US027"
@@ -3062,7 +3083,8 @@ window.ATLAS.avancement = {
     "054",
     "064",
     "073",
-    "074"
+    "074",
+    "096"
    ],
    "dettes_resorbees": [
     "031"
@@ -4262,11 +4284,13 @@ window.ATLAS.avancement = {
     "0064",
     "0075",
     "0098",
-    "0099"
+    "0099",
+    "0103"
    ],
    "dettes_introduites": [],
    "dettes_resorbees": [
-    "039"
+    "039",
+    "097"
    ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
@@ -4368,7 +4392,9 @@ window.ATLAS.avancement = {
     "0103"
    ],
    "dettes_introduites": [
-    "045"
+    "045",
+    "096",
+    "097"
    ],
    "dettes_resorbees": [],
    "epic": "16",

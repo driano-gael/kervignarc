@@ -76,7 +76,7 @@ describe('ReglagePodiums', () => {
     fireEvent.blur(champ)
 
     expect(putReglagePodiums).not.toHaveBeenCalled()
-    expect((champ as HTMLInputElement).value).toBe('4')
+    expect(champ).toHaveValue(4)
   })
 
   it('garde les deux portées quand on coche deux fois sans attendre le serveur', async () => {
@@ -99,6 +99,19 @@ describe('ReglagePodiums', () => {
         profondeur: 4,
       }),
     )
+  })
+
+  it('n’envoie pas une profondeur au-delà du plafond, et ramène le champ', async () => {
+    // Le commentaire promettait « éviter d'envoyer une valeur qu'on sait refusée » ; seul `max`
+    // était posé, or le navigateur ne l'impose pas à la frappe (relevé en revue).
+    await panneauCharge()
+    const champ = screen.getByLabelText('Places récompensées')
+
+    fireEvent.change(champ, { target: { value: '500' } })
+    fireEvent.blur(champ)
+
+    expect(putReglagePodiums).not.toHaveBeenCalled()
+    expect(champ).toHaveValue(4)
   })
 
   it('n’envoie la profondeur qu’une fois la saisie terminée', async () => {

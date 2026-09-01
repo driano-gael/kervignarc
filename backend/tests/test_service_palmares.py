@@ -798,6 +798,10 @@ def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
     entier = service.rendu(monde.tournoi_id)
     filtre = service.rendu(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
 
-    assert entier.complet.podiums(reglage)[0].places, "le décor doit décerner des places"
-    assert filtre.complet.podiums(reglage) == entier.complet.podiums(reglage)
+    (bloc_entier,) = entier.complet.podiums(reglage)
+    (bloc_filtre,) = filtre.complet.podiums(reglage)
+
+    assert bloc_entier.places, "le décor doit décerner des places"
+    assert bloc_entier.effectif == 4, "les quatre archers du décor sont tous passés par le tableau"
+    assert bloc_filtre == bloc_entier, "le bloc ne dépend en rien du filtre demandé"
     assert filtre.affiche.lignes == (), "le filtre restreint bien le classement, lui"

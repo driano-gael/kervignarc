@@ -114,10 +114,29 @@ def test_une_valeur_illisible_en_base_est_refusee_et_non_ignoree(
     croit réglé — et le `TypeError` des deux formes du milieu échappait à l'enveloppe (relevé en
     revue).
     """
-    engine, cfg = _base(tmp_path, f"illisible-{abs(hash(ecrit))}.db")
+    # `tmp_path` est déjà unique par cas paramétré : un `hash()` ici n'ajoutait que de
+    # l'aléa non maîtrisé (`PYTHONHASHSEED`), ce que la règle 9 proscrit.
+    engine, cfg = _base(tmp_path, "illisible.db")
     command.upgrade(cfg, _PODIUMS)
     with engine.begin() as conn:
         conn.execute(sa.text("UPDATE tournoi SET podium_portees = :ecrit"), {"ecrit": ecrit})
+
+    with pytest.raises(InfrastructureError):
+        TournoiRepositorySQL(sessionmaker(bind=engine)).par_id(1)
+
+
+@pytest.mark.parametrize("ecrit", ["0", "'abc'", "999"])
+def test_une_profondeur_illisible_est_refusee_elle_aussi(tmp_path: Path, ecrit: str) -> None:
+    """La colonne d'à côté relève du même modèle de menace, et n'avait aucune garde.
+
+    SQLite est à typage **dynamique** : une affinité `INTEGER` ne rejette pas `'abc'`. Les trois
+    formes couvrent le hors-borne bas (que le domaine refuse), le mauvais type (qui levait un
+    `TypeError` hors enveloppe) et le hors-borne haut, atteignable depuis une base plus récente.
+    """
+    engine, cfg = _base(tmp_path, "profondeur.db")
+    command.upgrade(cfg, _PODIUMS)
+    with engine.begin() as conn:
+        conn.execute(sa.text(f"UPDATE tournoi SET podium_profondeur = {ecrit}"))
 
     with pytest.raises(InfrastructureError):
         TournoiRepositorySQL(sessionmaker(bind=engine)).par_id(1)

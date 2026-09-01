@@ -60,16 +60,16 @@ export function detail(ligne: LignePalmares): string | null {
 
 // L'état d'un bloc de podium quand il n'est pas complet.
 //
-// ⚠️ **`enAttente` distingue « pas encore » de « jamais »** (E16US014) : un bloc peut n'avoir aucune
-// place parce que les finales restent à tirer, ou parce qu'aucun de ses archers n'a disputé de duel
-// — cas devenu **typique** avec la portée club, où la plupart des clubs n'ont personne au tableau
-// (`DETTE-028`). Annoncer « les finales ne sont pas toutes tirées » y serait faux deux fois : il n'y
-// a ni finale de club, ni finale restante.
+// ⚠️ **`en_attente` distingue « pas encore » de « plus jamais »** (E16US014). La branche « plus
+// jamais » couvre DEUX causes — un ex æquo que rien ne départagera, et un groupe dont aucun archer
+// n'est entré au tableau (cas **typique** de la portée club, `DETTE-028`) — d'où une formulation
+// vraie des deux : « aucun duel n'a départagé ». Dire « ces archers sont ex æquo » était faux pour
+// des archers aux rangs de qualification tous distincts (relevé par trois axes).
 export function etatPodium(podium: Podium, profondeur: number): string | null {
   if (podium.places.length === 0) {
     return podium.en_attente
       ? 'Podium en cours — aucune place décernée.'
-      : 'Aucune place départageable — ces archers sont ex æquo.'
+      : 'Aucune place décernée — aucun duel n’a départagé ce groupe.'
   }
   // Comparé à l'**effectif du groupe**, pas à la constante 3 : un groupe de deux archers (courant
   // en salle — Benjamine, Cadet Femme…) a un podium complet à deux noms, et affichait « podium
@@ -82,7 +82,7 @@ export function etatPodium(podium: Podium, profondeur: number): string | null {
   if (podium.places.length < complet) {
     return podium.en_attente
       ? 'Podium partiel — les finales ne sont pas toutes tirées.'
-      : 'Podium partiel — les places restantes sont ex æquo.'
+      : 'Podium partiel — aucun duel n’a départagé les places restantes.'
   }
   return null
 }

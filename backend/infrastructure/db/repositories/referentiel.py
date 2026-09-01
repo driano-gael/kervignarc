@@ -92,6 +92,11 @@ def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
     # que la migration promet.
     if not isinstance(codes, list):
         raise ValueError(f"`podium_portees` n'est pas une liste JSON : {ligne.podium_portees!r}")
+    # Même modèle de menace sur la colonne d'à côté : SQLite est à typage **dynamique**, une
+    # affinité `INTEGER` ne rejette pas `'abc'`. Sans ce contrôle, `1 <= 'abc'` lève un `TypeError`
+    # que l'enveloppe de `_vers_tournoi` ne rattrape pas — 500 non typé sur une route publique.
+    if not isinstance(ligne.podium_profondeur, int):
+        raise ValueError(f"`podium_profondeur` n'est pas un entier : {ligne.podium_profondeur!r}")
     return ReglagePodiums(
         portees=frozenset(PorteePodium(code) for code in codes),
         profondeur=ligne.podium_profondeur,

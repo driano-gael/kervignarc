@@ -1,6 +1,7 @@
 # Modèle de données détaillé — Kervignarc
 
 - **Version** : 0.13
+- ⚠️ **Retard connu (`DETTE-096`)** : les migrations **0048 → 0051** ne sont pas encore reflétées ici — tables `franchissement_arret`, `arret_de_circonstance`, `identite_tournoi`, et colonnes `poste.noms_par_page` / `cadence_page_s`. La date ci-dessous est celle de la **dernière entrée**, pas d'un audit du schéma.
 - **Date** : 2026-08-31 *(v0.13 : `TOURNOI` gagne **`podium_portees`** et **`podium_profondeur`** — ce que le tournoi récompense et sur combien de places, réglage **du tournoi** comme `cloisonnement` — E16US014, [ADR-0103](adr/0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md), migration 0052)*
 - *v0.12 : 2026-08-07 — **la définition quitte `PHASE`** — table **`DEROULE_ETAPE`** neuve (le déroulé, défini **une fois** au tournoi : `ordre`, `type`, `config`), `PHASE` réduite à l'**avancement** d'une étape dans un créneau (`depart_id`, `ordre`, `statut`) et perd `type`/`config` — E01US025, [ADR-0076](adr/0076-un-deroule-defini-une-fois-un-avancement-par-depart.md), migration 0043)*
 - *v0.11 : 2026-08-06 — **`PHASE` change de parent** — `depart_id` remplace `tournoi_id`, le **départ** devenant la portée sportive (séquence, classements, tableaux, duels). Rattrapage d'une divergence de treize mois avec [ADR-0017](adr/0017-le-depart-est-un-creneau-du-tournoi.md), qui l'avait décidé sans que le moteur le porte — E01US025, [ADR-0075](adr/0075-le-depart-est-la-portee-sportive.md), migration 0042)*

@@ -87,6 +87,12 @@ class RenduPalmares:
     complet: Palmares
     affiche: Palmares
     reglage: ReglagePodiums
+    nom_tournoi: str
+    """Le nom du tournoi, lu au **même instant** que le reste — le PDF le titre avec.
+
+    Sans lui, `imprimer` relisait la ligne pour ce seul champ : le nom et le réglage pouvaient
+    venir de part et d'autre d'un PUT, ce que cet objet existe pour empêcher.
+    """
 
 
 class ServicePalmares:
@@ -163,7 +169,12 @@ class ServicePalmares:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
         complet = self._calculer(tournoi_id, tournoi.reglage_podiums)
         affiche = complet if categorie_id is None else complet.pour_categorie(categorie_id)
-        return RenduPalmares(complet=complet, affiche=affiche, reglage=tournoi.reglage_podiums)
+        return RenduPalmares(
+            complet=complet,
+            affiche=affiche,
+            reglage=tournoi.reglage_podiums,
+            nom_tournoi=tournoi.nom,
+        )
 
     def pour_tournoi(
         self, tournoi_id: TournoiId, categorie_id: CategorieId | None = None
@@ -267,18 +278,14 @@ class ServicePalmares:
         """Rend le palmarès en **PDF** (CA « affiché et exportable »).
 
         Même calcul que `pour_tournoi` — un document qui divergerait de l'écran serait pire que
-        pas de document du tout : c'est celui-là qu'on affiche au mur et qu'on remet aux archers.
-        Le rendu part au port `GenerateurPalmares` ; le service ne connaît ni ReportLab ni HTTP.
+        pas de document du tout : c'est celui-là qu'on affiche au mur. Le rendu part au port
+        `GenerateurPalmares` ; le service ne connaît ni ReportLab ni HTTP.
         """
-        tournoi = self._tournois.par_id(tournoi_id)
-        if tournoi is None:
-            raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
-        # ⚠️ Les blocs se composent sur le palmarès **complet**, jamais sur la restriction : sinon
-        # le mur du gymnase porte un « Podium — Scratch » amputé de tout ce qui n'est pas la
-        # catégorie filtrée, sans que rien ne le dise (bloquant de revue).
+        # ⚠️ Les blocs se composent sur `complet`, jamais sur la restriction : sinon le mur du
+        # gymnase porte un podium amputé sans que rien ne le dise (bloquant de revue).
         rendu = self.rendu(tournoi_id, categorie_id)
         return self._generateur.palmares(
-            tournoi.nom,
+            rendu.nom_tournoi,
             complet=rendu.complet,
             affiche=rendu.affiche,
             reglage=rendu.reglage,

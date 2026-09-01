@@ -8829,16 +8829,17 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PodiumReponse",
+      "effectif",
+      "en_attente",
       "PlacePodiumReponse",
       "ReglagePodiumsReponse",
       "ReglerPodiumsRequete",
       "PalmaresReponse.de_rendu",
-      "GET",
+      "reglage_podiums",
+      "regler_podiums",
       "exiger_admin"
      ],
-     "symboles_absents": [
-      "GET"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -8863,6 +8864,8 @@ window.ATLAS.decisions = {
       "_cle_de",
       "_groupes",
       "_rang_exact",
+      "BlocPodium.effectif",
+      "BlocPodium.en_attente",
       "_du_groupe",
       "rangs_club",
       "calculer_palmares",
@@ -8954,11 +8957,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "etatPodium",
-      "groupeEnAttente"
+      "podium.effectif",
+      "podium.en_attente"
      ],
-     "symboles_absents": [
-      "groupeEnAttente"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     }
    ],
@@ -8969,6 +8971,7 @@ window.ATLAS.decisions = {
    "us": [
     "E06US001",
     "E06US004",
+    "E16US009",
     "E16US014",
     "E16US017"
    ]

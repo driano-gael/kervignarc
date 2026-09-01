@@ -37,6 +37,7 @@ def _ligne(
     categorie_id: int = 1,
     categorie_libelle: str = "Senior Homme",
     club_id: int | None = 1,
+    statut: StatutClassement = StatutClassement.EN_LICE,
 ) -> LigneClassement:
     """Une ligne de qualification réduite à ce que le palmarès en lit."""
     return LigneClassement(
@@ -52,7 +53,7 @@ def _ligne(
         total=600 - archer_id,
         nb_dix=0,
         nb_neuf=0,
-        statut=StatutClassement.EN_LICE,
+        statut=statut,
     )
 
 
@@ -298,18 +299,28 @@ def test_l_effectif_d_un_bloc_se_compte_sur_le_groupe_pas_sur_le_palmares() -> N
     les lignes qu'il a demandées — filtre par catégorie compris —, donc un effectif compté là-bas
     vient d'une autre population que celle du bloc, et déclare complet un podium qui ne l'est pas.
     """
-    palmares = _palmares_de_huit({i: 1 if i <= 4 else 2 for i in range(1, 9)})
+    qualification = Classement(
+        lignes=tuple(
+            _ligne(
+                i,
+                i,
+                categorie_id=1 if i <= 5 else 2,
+                categorie_libelle="Senior Homme" if i <= 5 else "Senior Femme",
+                club_id=1 if i <= 4 else 2,
+            )
+            for i in range(1, 9)
+        )
+    )
+    palmares = calculer_palmares(qualification, (_tableau_de_huit_joue(),), libelles_club=_CLUBS)
     reglage = ReglagePodiums(
         portees=frozenset({PorteePodium.SCRATCH, PorteePodium.CATEGORIE, PorteePodium.CLUB})
     )
 
-    effectifs = {
-        (bloc.portee, bloc.cle): palmares.effectif_du_groupe(bloc)
-        for bloc in palmares.podiums(reglage)
-    }
+    effectifs = {(bloc.portee, bloc.cle): bloc.effectif for bloc in palmares.podiums(reglage)}
 
     assert effectifs[(PorteePodium.SCRATCH, None)] == 8, "le scratch regroupe tout le monde"
-    assert effectifs[(PorteePodium.CATEGORIE, 1)] == 8, "une seule catégorie dans ce décor"
+    assert effectifs[(PorteePodium.CATEGORIE, 1)] == 5, "cinq archers dans la première catégorie"
+    assert effectifs[(PorteePodium.CATEGORIE, 2)] == 3, "trois dans la seconde — pas 8"
     assert effectifs[(PorteePodium.CLUB, 1)] == 4
     assert effectifs[(PorteePodium.CLUB, 2)] == 4
 
@@ -340,5 +351,67 @@ def test_un_bloc_creux_dit_si_l_attente_est_reelle_ou_definitive() -> None:
         for bloc in palmares.podiums(ReglagePodiums(portees=frozenset({PorteePodium.CLUB})))
     }
 
-    assert palmares.groupe_en_attente(blocs[1]) is True, "les deux finalistes ont un match devant"
-    assert palmares.groupe_en_attente(blocs[2]) is False, "rien ne départagera plus ces deux-là"
+    assert blocs[1].places == () and blocs[2].places == (), "les deux blocs sont bien creux"
+    assert blocs[1].en_attente is True, "les deux finalistes ont un match devant"
+    assert blocs[2].en_attente is False, "rien ne départagera plus ces deux-là"
+
+
+def test_l_effectif_ne_compte_que_les_archers_qui_peuvent_occuper_une_place() -> None:
+    """Un disqualifié et un archer resté en qualification ne prendront **jamais** de place.
+
+    Les compter déclarait « podium partiel » à perpétuité, tournoi terminé compris — la régression
+    exacte que le seuil d'E06US004 avait corrigée pour les petites catégories, réintroduite à
+    l'échelle des clubs par la portée que cette US livre (relevé par trois axes).
+    """
+    hors_tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=1),
+            PositionPhase(archer_id=2, rang_min=2, rang_max=2),
+        ),
+    )
+    qualification = Classement(
+        lignes=(
+            _ligne(1, 1),
+            _ligne(2, 2),
+            # Jamais entré au tableau : il garde un rang de qualification, exact et distinct.
+            _ligne(3, 3),
+            # Disqualifié : aucun rang, donc aucune place possible (ADR-0050).
+            _ligne(4, 4, statut=StatutClassement.DISQUALIFIE),
+        )
+    )
+
+    palmares = calculer_palmares(qualification, (hors_tableau,), libelles_club=_CLUBS)
+    (bloc,) = palmares.podiums(ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH})))
+
+    assert len(palmares.lignes) == 4, "les quatre archers restent au classement"
+    assert bloc.effectif == 2, "seuls les deux passés par le tableau peuvent être récompensés"
+    assert [place.ligne.archer_id for place in bloc.places] == [1, 2]
+
+
+def test_un_groupe_jamais_entre_au_tableau_n_est_pas_en_attente() -> None:
+    """Le cas **typique** de la portée club : un club dont personne n'a disputé de duel.
+
+    Ses archers ont des rangs de qualification exacts et **distincts** — ils ne sont pas *ex æquo*,
+    et plus aucun match ne viendra : `en_attente` doit être faux sans que l'écran puisse en conclure
+    une égalité. C'est ce contresens que la formulation « ces archers sont ex æquo » commettait.
+    """
+    tableau = ResultatPhase(
+        ordre=2,
+        positions=(
+            PositionPhase(archer_id=1, rang_min=1, rang_max=1),
+            PositionPhase(archer_id=2, rang_min=2, rang_max=2),
+        ),
+    )
+    clubs: dict[int, int | None] = {1: 1, 2: 1, 3: 2, 4: 2}
+    qualification = Classement(lignes=tuple(_ligne(i, i, club_id=clubs[i]) for i in range(1, 5)))
+
+    palmares = calculer_palmares(qualification, (tableau,), libelles_club=_CLUBS)
+    blocs = {
+        bloc.cle: bloc
+        for bloc in palmares.podiums(ReglagePodiums(portees=frozenset({PorteePodium.CLUB})))
+    }
+
+    assert blocs[2].places == (), "personne de ce club n'est passé par le tableau"
+    assert blocs[2].en_attente is False, "et plus aucun match ne viendra"
+    assert blocs[2].effectif == 0, "aucun de ses archers ne peut occuper une place"

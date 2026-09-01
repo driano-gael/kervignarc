@@ -240,10 +240,16 @@ def test_une_portee_inconnue_est_refusee_a_la_frontiere(
             f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
             json={"portees": ["categorie"], "profondeur": 0},
         )
+        plafond = client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["categorie"], "profondeur": 65},
+        )
 
     assert portee.status_code == 400, portee.text
     assert profondeur.status_code == 422, profondeur.text
     assert profondeur.json()["code"] == "profondeur_podium_invalide"
+    assert plafond.status_code == 422, plafond.text
+    assert plafond.json()["code"] == "profondeur_podium_invalide"
 
 
 def test_regler_les_podiums_exige_l_admin(app_palmares: FastAPI) -> None:
@@ -283,6 +289,10 @@ def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums(
     # **peuplés** sous filtre est au service, sur un tableau réellement joué :
     # `test_un_filtre_par_categorie_ne_rogne_pas_les_podiums` de `test_service_palmares.py`.
     assert entier["podiums"] == filtre["podiums"], "les podiums ne dépendent pas du filtre"
+    # Ancré sur le contenu, pas sur une égalité de listes vides : le bloc doit exister et se
+    # nommer. ⚠️ Son `effectif` vaut 0 ici, et c'est juste — le décor d'API ne joue aucun duel,
+    # donc personne n'est récompensable. La valeur est ancrée au service, qui les joue.
+    assert entier["podiums"][0]["libelle"] == "Toutes catégories"
     assert filtre["lignes"] == [], "le filtre, lui, restreint bien le classement"
 
 
