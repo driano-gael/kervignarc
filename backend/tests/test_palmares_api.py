@@ -306,3 +306,28 @@ def test_le_reglage_se_lit_sans_authentification(app_palmares: FastAPI) -> None:
 
     assert lecture.status_code != 401, lecture.text
     assert lecture.status_code != 403, lecture.text
+
+
+def test_classement_vide_dit_le_tournoi_pas_la_selection(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le fait porté par le serveur, ancré **côté serveur** — sans quoi rien ne le protège.
+
+    ⚠️ Les tests front mockent la réponse HTTP : ils ne peuvent structurellement pas voir un champ
+    mal rempli ici. Remplacer `not rendu.complet.lignes` par `rendu.affiche.lignes` rétablirait à
+    l'identique le bloquant de la 3ᵉ passe **et passerait toute la porte** (relevé en revue).
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": [], "profondeur": 4},
+        )
+
+        entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
+
+    assert entier["classement_vide"] is False, "le tournoi est classé"
+    assert filtre["classement_vide"] is False, "il l'est toujours, filtre ou pas"
+    assert filtre["lignes"] == [] and filtre["podiums"] == [], "le décor du 4ᵉ déplacement"

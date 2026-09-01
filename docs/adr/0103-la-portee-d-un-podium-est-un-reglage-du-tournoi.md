@@ -117,11 +117,23 @@ blocs vides — un tableau à en-tête seul n'a pas d'équivalent du message « 
 clubs n'ont personne au tableau (`DETTE-028`), et « les finales ne sont pas toutes tirées » y serait
 faux deux fois. `BlocPodium.en_attente`, rempli **au domaine**, porte la nuance.
 
-⚠️ **Le créneau prime sur le groupe** (arbitrage du 01/09/2026) : `Palmares.duels_a_tirer` — vrai
-tant qu'une phase à duels n'a livré aucun résultat — force `en_attente`. Sans lui, personne n'étant
-« en lice » pendant la qualification, chaque bloc annonçait le **définitif** toute la matinée. La
-règle est asymétrique et c'est voulu : on n'annonce jamais « plus jamais » pendant que le tournoi
-peut encore changer, quitte à dire « en cours » un peu trop longtemps.
+⚠️ **Le créneau prime sur le groupe** (arbitrage du 01/09/2026) : `Palmares.duels_non_commences`
+force `en_attente`. Sans lui, personne n'étant « en lice » tant qu'aucun résultat n'est lisible,
+chaque bloc annonçait le **définitif** toute la matinée.
+
+⚠️ **La règle exacte, parce qu'une approximation ici a déjà coûté une passe de revue** : le drapeau
+est vrai tant qu'une phase à duels **encore ouverte** n'a rien livré — **les trois familles**
+(tableau, poules/suisse/colline, Big Shoot Off), un créneau *qualification → poules* gardant sinon
+le défaut intact. Il retombe au **premier résultat lisible**, pas à la fin du tournoi : l'attente se
+lit ensuite archer par archer (`en_lice`), ce qui est juste pour un groupe jamais entré au tableau.
+Et il exclut les phases **terminées** : un producteur rend `None` pour cinq raisons dont **une
+seule** veut dire « ça va être tiré » — sans ce filtre, une consolante abandonnée laissait « Podium
+en cours » **pour toujours**, et la branche du définitif devenait inatteignable.
+
+⚠️ **Le serveur porte les faits, le client ne les déduit pas.** Même leçon que ci-dessus, un cran
+plus haut : la vacuité du classement (`PalmaresReponse.classement_vide`) est **servie**, parce que
+quatre gardes successives ont tenté de l'inférer de données filtrées ou commandées par le réglage,
+et se sont trompées dans quatre coins différents.
 
 ⚠️ **Cet état est porté par le bloc, jamais recalculé par l'appelant** — c'est la leçon des trois
 passes de revue qu'a coûtées cette décision : les blocs ont d'abord été composés sur un palmarès
@@ -178,14 +190,14 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
   `domain/cloisonnement.py` (éviter un cycle avec `domain/palmares`).
 - `backend/domain/palmares.py` — `Palmares.podiums`, `_bloc`, `_cle_de`, `_groupes`, `_rang_exact`
   (décisions 2 et 6), `BlocPodium.effectif` / `BlocPodium.en_attente`, qui portent l'état du bloc
-  au lieu de le laisser recalculer par ses lecteurs, et `Palmares.duels_a_tirer`, qui fait primer
+  au lieu de le laisser recalculer par ses lecteurs, et `Palmares.duels_non_commences`, qui fait primer
   le créneau sur le groupe (décision 6) ; `_du_groupe` et la passe `rangs_club` de `calculer_palmares` (décision 3) ;
   `LIBELLE_SCRATCH` (décision 5) ; `LignePalmares.rang_club_min` / `rang_club_max` / `club_libelle`.
 - `backend/domain/tournoi.py` — `Tournoi.reglage_podiums` et `definir_reglage_podiums` : le réglage
   vit sur l'agrégat tournoi (décision 1).
 - `backend/application/palmares.py` — `RenduPalmares` et `ServicePalmares.rendu` (décision 7), et
-  le calcul de `duels_a_tirer` dans `_calculer` — le service est le seul à savoir qu'une phase à
-  duels n'a encore rien livré (décision 6) ;
+  `_duels_non_commences` et son appel dans `_calculer` — le service est le seul à voir les phases
+  du créneau et leur statut (décision 6) ;
   `_libelles_club` (lecture conditionnelle, décision 3) ; `reglage_podiums` /
   `definir_reglage_podiums`.
 - `backend/api/v1/palmares.py` — `PalmaresReponse.classement_vide`, qui **porte** le fait « ce

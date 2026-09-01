@@ -10,7 +10,7 @@ fait entrer dans `TYPES_CLASSANTS_LUS`, donc au palmarès et au PDF. Bascule à 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from domain.archer import ArcherId
@@ -181,10 +181,10 @@ class BlocPodium:
     effectif: int
     """Les archers du groupe qui peuvent **occuper une place** — pas tous ceux du groupe.
 
-    Donc : rang issu des duels (`DETTE-028` : ceux restés en qualification n'entrent sur aucun
-    podium) **et** classé (un disqualifié n'a pas de rang, ADR-0050). Compter tout le monde
-    déclarait « podium partiel » à perpétuité sur un club de vingt dont deux sont au tableau, et sur
-    toute catégorie portant un disqualifié — la régression même que le seuil d'E06US004 corrigeait.
+    Donc : rang issu des duels — `DETTE-028`, ceux restés en qualification n'entrent sur aucun
+    podium — **et** classé. ⚠️ Le second terme est **défensif et non exercé** : `_situer` force
+    `origine=QUALIFICATION` sur un disqualifié, donc le premier l'écarte déjà. Il garde les
+    `Palmares` construits à la main et les producteurs à venir (relevé en revue).
     """
 
     en_attente: bool
@@ -196,13 +196,13 @@ class Palmares:
     """Le classement final d'un tournoi, ordonné du 1ᵉʳ au dernier (hors classement en fin)."""
 
     lignes: tuple[LignePalmares, ...]
-    duels_a_tirer: bool = False
-    """Le créneau porte-t-il une phase à duels dont aucun résultat n'est encore lisible ?
+    duels_non_commences: bool = False
+    """Une phase à duels **encore ouverte** n'a-t-elle rien livré ? (arbitrage du 01/09/2026)
 
-    ⚠️ **Sans ce fait, « pas encore » est indistinguable de « plus jamais » toute la matinée** :
-    tant qu'aucun duel n'est enregistré, personne n'est `en_lice`, et chaque bloc annonçait
-    « aucun duel n'a départagé ce groupe » — la phrase du définitif, sur le provisoire le plus long
-    de la journée (arbitrage du commanditaire, 01/09/2026).
+    ⚠️ **Le nom dit ce qui est calculé, et pas plus** : ce n'est PAS « il reste des duels » — le
+    champ est faux au milieu d'un tableau où il en reste des dizaines, l'attente s'y lisant alors
+    archer par archer (`en_lice`). Sans ce fait, personne n'étant en lice tant qu'aucun résultat
+    n'est lisible, chaque bloc annonçait le **définitif** toute la matinée.
     """
 
     def podiums(self, reglage: ReglagePodiums) -> tuple[BlocPodium, ...]:
@@ -276,7 +276,7 @@ class Palmares:
             # ⚠️ **Le créneau prime sur le groupe** : tant que des duels restent à tirer, rien
             # n'est définitif nulle part. On ne dit jamais « plus jamais » pendant que le
             # tournoi peut encore changer — l'erreur, si erreur il y a, va vers l'attente.
-            en_attente=self.duels_a_tirer or any(ligne.en_lice for ligne in groupe),
+            en_attente=self.duels_non_commences or any(ligne.en_lice for ligne in groupe),
         )
 
     @staticmethod
@@ -296,9 +296,11 @@ class Palmares:
         Même parti qu'E06US001 : on voit une catégorie sans perdre la position d'ensemble. Un
         recalcul ferait du 1ᵉʳ de sa catégorie un « 1ᵉʳ » tout court, ce qu'il n'est pas.
         """
-        return Palmares(
+        # `replace` et non une reconstruction champ par champ : la prochaine dérivation (une
+        # `pour_depart` le jour où `DETTE-045` se résorbe) hériterait sinon d'un défaut silencieux.
+        return replace(
+            self,
             lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id),
-            duels_a_tirer=self.duels_a_tirer,
         )
 
 
@@ -338,7 +340,7 @@ def calculer_palmares(
     resultats: Sequence[ResultatPhase] = (),
     aggregation: Aggregation | None = None,
     libelles_club: Mapping[ClubId, str] | None = None,
-    duels_a_tirer: bool = False,
+    duels_non_commences: bool = False,
 ) -> Palmares:
     """Fusionne les rangs des phases en un palmarès (CA « podium » + CA « agrégation »).
 
@@ -394,7 +396,7 @@ def calculer_palmares(
         _ligne(entree, None, None, None, libelles, decerne=False, en_lice=False)
         for entree in hors_classement
     ]
-    return Palmares(lignes=tuple(lignes), duels_a_tirer=duels_a_tirer)
+    return Palmares(lignes=tuple(lignes), duels_non_commences=duels_non_commences)
 
 
 def _du_groupe(

@@ -8849,7 +8849,7 @@ window.ATLAS.decisions = {
      "symboles": [
       "RenduPalmares",
       "ServicePalmares.rendu",
-      "duels_a_tirer",
+      "_duels_non_commences",
       "_calculer",
       "_libelles_club",
       "reglage_podiums",
@@ -8869,7 +8869,7 @@ window.ATLAS.decisions = {
       "_rang_exact",
       "BlocPodium.effectif",
       "BlocPodium.en_attente",
-      "Palmares.duels_a_tirer",
+      "Palmares.duels_non_commences",
       "_du_groupe",
       "rangs_club",
       "calculer_palmares",

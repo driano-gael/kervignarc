@@ -9,7 +9,7 @@ un classement que la compétition va encore modifier.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from application.big_shoot_off import LecteurEtatBigShootOff
@@ -38,7 +38,7 @@ from domain.palmares import (
     calculer_palmares,
 )
 from domain.participant import GenreParticipant
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, StatutPhase, TypePhase
 from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import (
@@ -93,6 +93,23 @@ class RenduPalmares:
     Sans lui, `imprimer` relisait la ligne pour ce seul champ : le nom et le réglage pouvaient
     venir de part et d'autre d'un PUT, ce que cet objet existe pour empêcher.
     """
+
+
+def _duels_non_commences(
+    phases_a_duels: Sequence[tuple[Phase, ResultatPhase | None]],
+) -> bool:
+    """Une phase à duels **encore ouverte** n'a-t-elle rien livré ? (E16US014)
+
+    ⚠️ **`statut is not TERMINEE` n'est pas décoratif.** Un producteur rend `None` pour cinq raisons
+    et **une seule** veut dire « ça va encore être tiré » : effectif invalide, prélèvement en
+    attente, phase introuvable et aucun match tranché rendent `None` **définitivement**. Sans ce
+    filtre, une consolante composée puis abandonnée laissait « Podium en cours » à l'écran **pour
+    toujours**, et la phrase du définitif devenait inatteignable (relevé en revue).
+    """
+    return any(
+        resultat is None and phase.statut is not StatutPhase.TERMINEE
+        for phase, resultat in phases_a_duels
+    )
 
 
 class ServicePalmares:
@@ -206,15 +223,25 @@ class ServicePalmares:
         # voir attribuer la position acquise dans le tableau de l'autre créneau, les rangs se
         # répétant d'un départ à l'autre.
         phases = self._phases.par_depart(premier)
-        # ⚠️ **Ce qui n'a encore RIEN livré compte autant que ce qui a livré** (E16US014) : une
-        # phase à duels sans résultat lisible est une phase qui reste à tirer, et c'est ce fait —
-        # et lui seul — qui permet à l'écran de dire « en cours » plutôt que « plus jamais ».
+        # ⚠️ **Ce qui n'a encore rien livré compte autant que ce qui a livré** (E16US014) : les
+        # `None` retenus ici sont ce qui permet à l'écran de dire « en cours » plutôt que
+        # « plus jamais ». Les **trois** familles à duels, pas seulement les tableaux — un créneau
+        # qualification → poules gardait sinon le défaut intact (relevé en revue).
         tableaux = [
             (phase, self._resultat(tournoi_id, phase))
             for phase in phases
             if phase.type in _TYPES_RECONSTRUCTIBLES
         ]
-        duels_a_tirer = any(resultat is None for _, resultat in tableaux)
+        gros_shoot_offs = [
+            (phase, self._resultat_big_shoot_off(tournoi_id, phase))
+            for phase in phases
+            if phase.type is TypePhase.BIG_SHOOT_OFF
+        ]
+        classants = [
+            (phase, self._resultat_classant(tournoi_id, phase, phases))
+            for phase in phases
+            if phase.type in _TYPES_CLASSANTS_AU_PALMARES
+        ]
         resultats = (
             tuple(resultat for _, resultat in tableaux if resultat is not None)
             + tuple(
@@ -223,25 +250,15 @@ class ServicePalmares:
                 if phase.type is TypePhase.QUALIFICATION
                 if (resultat := self._resultat_qualification(tournoi_id, phase)) is not None
             )
-            + tuple(
-                resultat
-                for phase in phases
-                if phase.type is TypePhase.BIG_SHOOT_OFF
-                if (resultat := self._resultat_big_shoot_off(tournoi_id, phase)) is not None
-            )
-            + tuple(
-                resultat
-                for phase in phases
-                if phase.type in _TYPES_CLASSANTS_AU_PALMARES
-                if (resultat := self._resultat_classant(tournoi_id, phase, phases)) is not None
-            )
+            + tuple(resultat for _, resultat in gros_shoot_offs if resultat is not None)
+            + tuple(resultat for _, resultat in classants if resultat is not None)
         )
         return calculer_palmares(
             qualification,
             resultats,
             self._aggregation,
             self._libelles_club(reglage),
-            duels_a_tirer=duels_a_tirer,
+            duels_non_commences=_duels_non_commences((*tableaux, *gros_shoot_offs, *classants)),
         )
 
     def _libelles_club(self, reglage: ReglagePodiums) -> Mapping[ClubId, str]:

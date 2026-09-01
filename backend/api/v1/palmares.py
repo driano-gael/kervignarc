@@ -145,12 +145,11 @@ class PalmaresReponse(BaseModel):
     complet **sans** payer une seconde requête sur les surfaces publiques."""
 
     classement_vide: bool
-    """Le tournoi n'a **aucun** archer classé — dit par le serveur, jamais déduit par le client.
+    """Le palmarès complet ne porte **aucune ligne** — donc aucun archer au classement du créneau de
+    référence (`DETTE-045`). Dit par le serveur, jamais déduit par le client.
 
-    ⚠️ **C'est le fait que quatre gardes successives ont tenté d'inférer, et raté quatre fois.**
-    Ni `podiums` (que le réglage peut vider à bon droit) ni `lignes` (que le filtre restreint) ne
-    répondent à « ce tournoi est-il classé ? ». Le porter ici rend la question non déductible, donc
-    impossible à mal déduire.
+    ⚠️ **C'est le fait que quatre gardes successives ont tenté d'inférer, et raté quatre fois.** Ni
+    `podiums` (que le réglage vide à bon droit) ni `lignes` (que le filtre restreint) n'y répondent.
     """
 
     lignes: list[LignePalmaresReponse]

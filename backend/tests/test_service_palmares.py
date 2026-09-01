@@ -805,3 +805,25 @@ def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
     assert bloc_entier.effectif == 4, "les quatre archers du décor sont tous passés par le tableau"
     assert bloc_filtre == bloc_entier, "le bloc ne dépend en rien du filtre demandé"
     assert filtre.affiche.lignes == (), "le filtre restreint bien le classement, lui"
+
+
+def test_une_phase_a_duels_non_commencee_tient_les_blocs_en_attente() -> None:
+    """CA « tant qu'aucune phase à duels n'a livré, rien n'est définitif » — ancré au service.
+
+    C'est le service, et lui seul, qui voit les phases : le domaine reçoit le fait tout fait. Sans
+    ce test, supprimer `duels_non_commences=…` de l'appel à `calculer_palmares` laissait toute la
+    porte verte (relevé en revue).
+    """
+    monde, _ = _monde_de_quatre()
+    service = _service(monde)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
+
+    avant = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+    apres = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+
+    assert avant[0].places == (), "aucun duel tiré : rien n'est décerné"
+    assert avant[0].en_attente is True, "mais la phase est ouverte et n'a rien livré"
+    assert apres[0].places, "le tableau a livré"
+    assert apres[0].en_attente is False, "et plus personne n'est en lice"
