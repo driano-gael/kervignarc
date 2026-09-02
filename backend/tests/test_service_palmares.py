@@ -22,6 +22,7 @@ palmarès lit exactement le tournoi que le routage et le pilotage lisent.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 
 import pytest
@@ -33,18 +34,20 @@ from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
+from domain.club import Club
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
 from domain.inscription import Inscription
-from domain.palmares import OriginePalmares, Palmares
+from domain.palmares import LignePalmares, OriginePalmares, Palmares
 from domain.phase import Phase, SourcePhase, TypePhase
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import (
     Aggregation,
     AggregationExAequo,
     AggregationParQualification,
     ProfondeurClassement,
 )
-from tests.conftest import poser_phase_factice
+from tests.conftest import FauxClubRepository, poser_phase_factice
 from tests.test_service_routage import _Monde
 
 _QUAND = datetime.datetime(2026, 3, 14, 14, 20, tzinfo=datetime.UTC)
@@ -128,9 +131,21 @@ class _FauxGenerateurPalmares:
 
     def __init__(self) -> None:
         self.appels: list[tuple[str, Palmares]] = []
+        self.reglages: list[ReglagePodiums] = []
+        # Le palmarès **complet** reçu à part : c'est lui qui porte les podiums.
+        self.podiums: list[Palmares] = []
 
-    def palmares(self, tournoi: str, palmares: Palmares) -> bytes:
-        self.appels.append((tournoi, palmares))
+    def palmares(
+        self,
+        tournoi: str,
+        *,
+        complet: Palmares,
+        affiche: Palmares,
+        reglage: ReglagePodiums,
+    ) -> bytes:
+        self.appels.append((tournoi, affiche))
+        self.podiums.append(complet)
+        self.reglages.append(reglage)
         return b"%PDF-faux"
 
 
@@ -147,6 +162,7 @@ def _service(
         monde.duels,
         generateur or _FauxGenerateurPalmares(),
         monde.departs,
+        FauxClubRepository(),
         aggregation,
     )
 
@@ -156,6 +172,20 @@ def _rangs(
 ) -> list[tuple[int, int | None, int | None]]:
     palmares = _service(monde, aggregation=aggregation).pour_tournoi(monde.tournoi_id)
     return [(ligne.archer_id, ligne.rang_min, ligne.rang_max) for ligne in palmares.lignes]
+
+
+def _podium(palmares: Palmares, categorie_id: int) -> tuple[LignePalmares, ...]:
+    """Le podium d'une catégorie, tel qu'E06US004 le rendait.
+
+    `Palmares.podium(categorie_id)` a été généralisé en `podiums(reglage)` par E16US014. Cette aide
+    ramène la forme d'avant pour que **l'oracle de ces tests ne bouge pas d'un chiffre** — ce qui
+    est vérifié plus bas est le comportement livré, pas la nouvelle interface.
+    """
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.CATEGORIE}))
+    for bloc in palmares.podiums(reglage):
+        if bloc.cle == categorie_id:
+            return tuple(place.ligne for place in bloc.places)
+    return ()
 
 
 # --- gardes --------------------------------------------------------------------------------------
@@ -205,7 +235,7 @@ def test_le_podium_sort_des_matchs_terminaux_du_tableau() -> None:
     tableau, _lignes = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
     attendus = [place.participant.ref_id for place in tableau.podium()]
 
-    podium = palmares.podium(monde.categorie_id)
+    podium = _podium(palmares, monde.categorie_id)
     assert [ligne.archer_id for ligne in podium] == attendus
     assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
     assert all(ligne.origine is OriginePalmares.DUELS for ligne in podium)
@@ -223,7 +253,7 @@ def test_le_podium_se_publie_des_la_petite_finale_sans_attendre_la_finale() -> N
 
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
 
-    assert [ligne.rang_min for ligne in palmares.podium(monde.categorie_id)] == [3, 4]
+    assert [ligne.rang_min for ligne in _podium(palmares, monde.categorie_id)] == [3, 4]
 
 
 # --- CA « agrégation » ---------------------------------------------------------------------------
@@ -410,7 +440,7 @@ def test_une_phase_sans_duel_tranche_ne_pese_pas_sur_le_palmares() -> None:
     assert [ligne.archer_id for ligne in palmares.lignes] == archers
     assert [ligne.rang_min for ligne in palmares.lignes] == [1, 2, 3, 4]
     assert all(ligne.origine is OriginePalmares.QUALIFICATION for ligne in palmares.lignes)
-    assert palmares.podium(monde.categorie_id) == ()
+    assert _podium(palmares, monde.categorie_id) == ()
 
 
 def test_le_premier_duel_tranche_fait_basculer_le_palmares_sur_le_tableau() -> None:
@@ -455,7 +485,7 @@ def test_sans_petite_finale_le_bronze_n_est_pas_gagne_au_tir() -> None:
         monde.gagner(numero)
 
     palmares = _service(monde).pour_tournoi(monde.tournoi_id)
-    podium = palmares.podium(monde.categorie_id)
+    podium = _podium(palmares, monde.categorie_id)
 
     assert [ligne.rang_categorie_min for ligne in podium] == [1, 2, 3, 4]
     assert [ligne.decerne for ligne in podium] == [True, True, False, False]
@@ -468,7 +498,7 @@ def test_avec_petite_finale_le_bronze_est_decerne() -> None:
     for numero in (1, 2, 3, 4):
         monde.gagner(numero)
 
-    podium = _service(monde).pour_tournoi(monde.tournoi_id).podium(monde.categorie_id)
+    podium = _podium(_service(monde).pour_tournoi(monde.tournoi_id), monde.categorie_id)
 
     assert [ligne.rang_min for ligne in podium] == [1, 2, 3, 4]
     assert all(ligne.decerne for ligne in podium)
@@ -627,8 +657,173 @@ def test_une_seconde_qualification_est_rangee_derriere_la_premiere() -> None:
     ], "La basse dispute les rangs 3-4, et son ordre est celui de son propre second tour."
     origines = {ligne.archer_id: ligne.origine for ligne in palmares.lignes}
     assert origines[basse_archers[0]] is OriginePalmares.QUALIFICATION
-    assert not palmares.podium(monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
+    assert not _podium(palmares, monde.categorie_id), "Aucune médaille sans duel (ADR-0082 §3)."
 
 
 def _v10(valeurs: tuple[str, ...] = ("10", "10", "10")) -> tuple[ZoneScore, ...]:
     return tuple(ZoneScore(v) for v in valeurs)
+
+
+# --- E16US014 : le câblage du référentiel des clubs, et le réglage porté jusqu'au PDF -------------
+
+
+def _rattacher_a_un_club(
+    monde: _Monde, clubs: FauxClubRepository, par_archer: dict[int, str]
+) -> None:
+    """Crée les clubs nommés et y rattache les archers du décor.
+
+    `_Monde` n'inscrit personne dans un club : sans ce geste, `club_id` reste `None` partout et la
+    portée *club* ne rend aucun bloc — le test passerait sans rien prouver.
+    """
+    identifiants: dict[str, int] = {}
+    for archer_id, nom in par_archer.items():
+        if nom not in identifiants:
+            club = clubs.ajouter(Club(nom=nom))
+            assert club.id is not None
+            identifiants[nom] = club.id
+        archer = monde.archers.par_id(archer_id)
+        assert archer is not None
+        monde.archers._archers[archer_id] = dataclasses.replace(archer, club_id=identifiants[nom])
+
+
+def test_un_podium_de_club_porte_le_nom_du_club_lu_au_referentiel() -> None:
+    """Le seul test qui exerce `ClubRepository` → `_libelles_club` → `bloc.libelle`.
+
+    Sans lui, un `_libelles_club` rendant `{}` — ou un mauvais repository au composition root —
+    faisait sortir **tous** les podiums de club titrés `""`, à l'écran comme sur le PDF, sans qu'une
+    seule assertion bouge (relevé en revue : la borne testée n'était pas celle qui est exercée).
+    """
+    monde, archers = _monde_de_quatre()
+    clubs = FauxClubRepository()
+    _rattacher_a_un_club(monde, clubs, {archers[0]: "Compagnie de Kervignarc"})
+    service = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        clubs,
+    )
+    service.definir_reglage_podiums(
+        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+
+    blocs = service.rendu(monde.tournoi_id).complet.podiums(
+        ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+
+    assert [bloc.libelle for bloc in blocs] == ["Compagnie de Kervignarc"]
+
+
+def test_le_referentiel_des_clubs_n_est_pas_lu_quand_la_portee_club_est_inactive() -> None:
+    """Le défaut est *catégorie* seule : le cas courant ne doit pas payer une lecture inutile.
+
+    `DETTE-031` porte déjà le coût d'une lecture de palmarès sur une route publique ; y ajouter un
+    balayage du référentiel pour un réglage inactif l'élargissait pour rien.
+    """
+    monde, _ = _monde_de_quatre()
+    clubs = _ClubsComptes()
+    service = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        clubs,
+    )
+
+    service.rendu(monde.tournoi_id)
+    lectures_par_defaut = clubs.lectures
+    service.definir_reglage_podiums(
+        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+    )
+    service.rendu(monde.tournoi_id)
+
+    assert lectures_par_defaut == 0
+    assert clubs.lectures == 1
+
+
+class _ClubsComptes(FauxClubRepository):
+    """Compte les appels à `lister()` — la seule chose que ce test regarde."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.lectures = 0
+
+    def lister(self) -> list[Club]:
+        self.lectures += 1
+        return super().lister()
+
+
+def test_le_pdf_recoit_le_reglage_du_tournoi_et_le_palmares_complet() -> None:
+    """CA « le réglage vaut partout … **et PDF** » — la 4ᵉ surface, sans écran pour se voir.
+
+    Deux choses en une : le réglage **du tournoi** part au générateur (et non un défaut), et
+    c'est le palmarès **complet** qui porte les podiums même quand l'impression est filtrée —
+    sans quoi le mur du gymnase montrerait un « Toutes catégories » amputé (bloquant de revue).
+    """
+    monde, _ = _monde_de_quatre()
+    generateur = _FauxGenerateurPalmares()
+    service = _service(monde, generateur=generateur)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}), profondeur=2)
+    service.definir_reglage_podiums(monde.tournoi_id, reglage)
+
+    service.imprimer(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
+
+    assert generateur.reglages[-1] == reglage
+    # Les podiums viennent du palmarès complet ; le classement imprimé suit le filtre.
+    assert generateur.podiums[-1].lignes
+    assert generateur.appels[-1][1].lignes == ()
+
+
+def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums() -> None:
+    """Le contre-cas du **bloquant de revue**, sur un tableau réellement joué.
+
+    Composer les blocs sur le palmarès filtré rendait un « Toutes catégories » réduit aux archers
+    d'une seule catégorie — vide si aucun d'eux n'est dans les places, avec « Podium en cours »
+    affiché sur un tournoi terminé — et le même document partait au mur en PDF. Un podium est celui
+    du **tournoi** : le filtre ne touche que le classement.
+    """
+    monde, _ = _monde_de_quatre()
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+    service = _service(monde)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
+    service.definir_reglage_podiums(monde.tournoi_id, reglage)
+
+    entier = service.rendu(monde.tournoi_id)
+    filtre = service.rendu(monde.tournoi_id, categorie_id=monde.categorie_id + 99)
+
+    (bloc_entier,) = entier.complet.podiums(reglage)
+    (bloc_filtre,) = filtre.complet.podiums(reglage)
+
+    assert bloc_entier.places, "le décor doit décerner des places"
+    assert bloc_entier.effectif == 4, "les quatre archers du décor sont tous passés par le tableau"
+    assert bloc_filtre == bloc_entier, "le bloc ne dépend en rien du filtre demandé"
+    assert filtre.affiche.lignes == (), "le filtre restreint bien le classement, lui"
+
+
+def test_une_phase_a_duels_non_commencee_tient_les_blocs_en_attente() -> None:
+    """CA « tant qu'aucune phase à duels n'a livré, rien n'est définitif » — ancré au service.
+
+    C'est le service, et lui seul, qui voit les phases : le domaine reçoit le fait tout fait. Sans
+    ce test, supprimer `duels_non_commences=…` de l'appel à `calculer_palmares` laissait toute la
+    porte verte (relevé en revue).
+    """
+    monde, _ = _monde_de_quatre()
+    service = _service(monde)
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.SCRATCH}))
+
+    avant = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+    apres = service.rendu(monde.tournoi_id).complet.podiums(reglage)
+
+    assert avant[0].places == (), "aucun duel tiré : rien n'est décerné"
+    assert avant[0].en_attente is True, "mais la phase est ouverte et n'a rien livré"
+    assert apres[0].places, "le tableau a livré"
+    assert apres[0].en_attente is False, "et plus personne n'est en lice"

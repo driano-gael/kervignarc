@@ -66,3 +66,55 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+/* Réglage des podiums (E16US014) — panneau d'admin, posé au-dessus du palmarès. Jetons de la
+   charte uniquement (ADR-0074) : aucune couleur en dur, le sombre est le défaut. */
+.palmares-reglage {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.palmares-reglage__portees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.palmares-reglage__legende {
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Chaque portée est une cible tactile à part entière : l'organisateur règle aussi depuis une
+   tablette, où trois cases à cocher collées se manquent (ergonomie tactile, règle 10). */
+.palmares-reglage__portee {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.palmares-reglage__portee-libelle {
+  font-weight: 600;
+}
+
+.palmares-reglage__portee-aide {
+  grid-column: 2;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.palmares-reglage__profondeur {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

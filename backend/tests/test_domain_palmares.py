@@ -21,12 +21,14 @@ from __future__ import annotations
 
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.palmares import (
+    LignePalmares,
     OriginePalmares,
     Palmares,
     PositionPhase,
     ResultatPhase,
     calculer_palmares,
 )
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import AggregationExAequo, AggregationParQualification
 
 
@@ -97,6 +99,21 @@ def _ordre(palmares: Palmares) -> list[int]:
     return [ligne.archer_id for ligne in palmares.lignes]
 
 
+def _podium(palmares: Palmares, categorie_id: int) -> tuple[LignePalmares, ...]:
+    """Le podium d'une catégorie, tel qu'E06US004 le rendait.
+
+    `Palmares.podium(categorie_id)` a été généralisé en `podiums(reglage)` par E16US014, qui rend
+    des blocs pour trois portées. Cette aide ramène la forme d'avant pour que **l'oracle de ces
+    tests ne bouge pas d'un chiffre** : ce qui est vérifié plus bas est le comportement livré, pas
+    la nouvelle interface.
+    """
+    reglage = ReglagePodiums(portees=frozenset({PorteePodium.CATEGORIE}))
+    for bloc in palmares.podiums(reglage):
+        if bloc.cle == categorie_id:
+            return tuple(place.ligne for place in bloc.places)
+    return ()
+
+
 # --- CA « podium » -------------------------------------------------------------------------------
 
 
@@ -116,7 +133,7 @@ def test_le_podium_est_la_restriction_aux_quatre_premiers() -> None:
     """CA podium : `podium()` est une **vue** du palmarès, pas un second calcul."""
     palmares = calculer_palmares(_huit_archers(), (_tableau_de_huit_joue(),))
 
-    assert [ligne.archer_id for ligne in palmares.podium(1)] == [6, 1, 3, 2]
+    assert [ligne.archer_id for ligne in _podium(palmares, 1)] == [6, 1, 3, 2]
 
 
 def test_le_podium_ne_retient_que_les_rangs_exacts() -> None:
@@ -135,7 +152,7 @@ def test_le_podium_ne_retient_que_les_rangs_exacts() -> None:
 
     palmares = calculer_palmares(qualification, (tableau,), AggregationExAequo())
 
-    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2]
+    assert [ligne.archer_id for ligne in _podium(palmares, 1)] == [1, 2]
 
 
 # --- CA « agrégation » ---------------------------------------------------------------------------
@@ -352,7 +369,7 @@ def test_le_podium_d_une_categorie_est_celui_de_cette_categorie() -> None:
 
     palmares = calculer_palmares(qualification, (tableau,))
 
-    assert [ligne.archer_id for ligne in palmares.podium(categorie_id=2)] == [3, 4]
+    assert [ligne.archer_id for ligne in _podium(palmares, 2)] == [3, 4]
 
 
 def test_le_palmares_se_filtre_sans_perdre_le_rang_scratch() -> None:
@@ -434,7 +451,7 @@ def test_sans_phase_de_duels_aucun_podium_n_est_decerne() -> None:
     """
     palmares = calculer_palmares(_huit_archers(), ())
 
-    assert palmares.podium(1) == ()
+    assert _podium(palmares, 1) == ()
     assert all(not ligne.decerne for ligne in palmares.lignes)
 
 
@@ -464,7 +481,7 @@ def test_le_vainqueur_d_une_demi_finale_n_a_pas_encore_l_or() -> None:
     par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
     assert (par_archer[1].rang_min, par_archer[1].rang_max) == (1, 2)
     assert not par_archer[1].decerne
-    assert palmares.podium(1) == ()
+    assert _podium(palmares, 1) == ()
 
 
 def test_deux_finalistes_ne_sont_pas_departages_par_la_politique() -> None:
@@ -524,7 +541,7 @@ def test_un_disqualifie_ne_prend_pas_une_position_de_phase() -> None:
     palmares = calculer_palmares(qualification, (tableau,))
 
     assert _rangs(palmares) == [(1, 1, 1), (2, None, None)]
-    assert palmares.podium(1) == ()
+    assert _podium(palmares, 1) == ()
 
 
 def test_un_archer_sans_rang_de_qualification_passe_en_dernier() -> None:
@@ -559,7 +576,7 @@ def test_un_rang_tranche_par_la_politique_monte_au_podium_mais_le_dit() -> None:
     palmares = calculer_palmares(qualification, (tableau,), AggregationParQualification())
 
     assert _rangs(palmares)[2:] == [(3, 3, 3), (4, 4, 4)]
-    assert [ligne.archer_id for ligne in palmares.podium(1)] == [1, 2, 3, 4]
+    assert [ligne.archer_id for ligne in _podium(palmares, 1)] == [1, 2, 3, 4]
     par_archer = {ligne.archer_id: ligne for ligne in palmares.lignes}
     assert par_archer[1].decerne and par_archer[2].decerne
     assert not par_archer[3].decerne and not par_archer[4].decerne

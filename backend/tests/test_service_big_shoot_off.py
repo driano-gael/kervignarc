@@ -55,6 +55,7 @@ from domain.serie import Serie, Volee
 from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
+    FauxClubRepository,
     FauxDepartRepository,
     FauxDuelRepository,
     FauxForfaitRepository,
@@ -634,7 +635,7 @@ def test_le_verdict_du_barrage_debloque_la_manche() -> None:
 class _FauxGenerateurPalmares:
     """Double du port `GenerateurPalmares` — le palmarès de ce test ne s'imprime pas."""
 
-    def palmares(self, nom: str, palmares: object) -> bytes:
+    def palmares(self, nom: str, *, complet: object, affiche: object, reglage: object) -> bytes:
         raise NotImplementedError
 
 
@@ -665,6 +666,7 @@ def test_le_palmares_consomme_les_rangs_du_big_shoot_off() -> None:
         monde.duels,
         _FauxGenerateurPalmares(),
         monde.departs,
+        FauxClubRepository(),
         None,
         service,
     ).pour_tournoi(monde.tournoi_id)
@@ -700,6 +702,7 @@ def test_un_big_shoot_off_sans_elimination_n_entre_pas_au_palmares() -> None:
         monde.duels,
         _FauxGenerateurPalmares(),
         monde.departs,
+        FauxClubRepository(),
         None,
         service,
     )._resultat_big_shoot_off(monde.tournoi_id, phase)

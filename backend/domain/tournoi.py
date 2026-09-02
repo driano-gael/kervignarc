@@ -10,11 +10,12 @@ tournoi pouvant se jouer sur plusieurs créneaux à des prix différents.
 from __future__ import annotations
 
 import datetime
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from domain.cloisonnement import Cloisonnement
 from domain.erreurs import ExigenceEffectifInvalide, NomTournoiInvalide
+from domain.podium import ReglagePodiums
 
 TournoiId = int
 """Identifiant technique d'un tournoi, attribué par la persistance."""
@@ -65,6 +66,11 @@ class Tournoi:
     # qui est une brique de patrimoine partagée entre tournois : deux tournois montés sur le même
     # plan de salle peuvent cloisonner différemment. `AUCUN` par défaut = comportement d'E03US001.
     cloisonnement: Cloisonnement = Cloisonnement.AUCUN
+    # E16US014 (A16) : ce que le tournoi récompense, et sur combien de places. Réglage **du
+    # tournoi** comme le cloisonnement — deux tournois montés sur le même format peuvent ne pas
+    # remettre les mêmes médailles. Le défaut reproduit E06US004 (catégorie seule, quatre places),
+    # de sorte qu'un tournoi déjà en base ne change pas d'affichage.
+    reglage_podiums: ReglagePodiums = field(default_factory=ReglagePodiums)
     id: TournoiId | None = None
 
     def __post_init__(self) -> None:
@@ -138,6 +144,14 @@ class Tournoi:
         Déplacer en silence serait le contraire du serveur autoritaire.
         """
         return replace(self, cloisonnement=cloisonnement)
+
+    def definir_reglage_podiums(self, reglage: ReglagePodiums) -> Tournoi:
+        """Renvoie une copie au réglage des podiums remplacé (E16US014).
+
+        Aucune garde de statut : ce que le club récompense se décide jusqu'à la remise, et le
+        palmarès se recalcule à chaque lecture — rien n'est figé à changer.
+        """
+        return replace(self, reglage_podiums=reglage)
 
     def vers_pret(self) -> Tournoi:
         """Renvoie une copie passée `prêt` (précondition `brouillon` + complétude garantie en

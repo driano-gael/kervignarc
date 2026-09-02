@@ -88,8 +88,9 @@ def test_les_podiums_sortent_par_categorie(
         corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
 
     assert len(corps["podiums"]) == 1
-    assert corps["podiums"][0]["categorie_libelle"] != ""
-    assert corps["podiums"][0]["lignes"] == []
+    assert corps["podiums"][0]["portee"] == "categorie"
+    assert corps["podiums"][0]["libelle"] != ""
+    assert corps["podiums"][0]["places"] == []
 
 
 def test_le_filtre_par_categorie_est_transmis(
@@ -150,3 +151,183 @@ def test_lecture_publique_sans_authentification(
 
     assert json.status_code == 200, json.text
     assert pdf.status_code == 200, pdf.text
+
+
+# --- réglage des podiums (E16US014) --------------------------------------------------------------
+
+
+def test_le_reglage_par_defaut_est_celui_d_e06us004(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Câblage du défaut serveur (migration 0052) jusqu'au DTO : catégorie seule, quatre places."""
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/reglage-podiums").json()
+
+    assert corps == {"portees": ["categorie"], "profondeur": 4}
+
+
+def test_le_reglage_se_pose_et_se_relit(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le PUT traverse la file d'écriture, et le GET suivant rend ce qui a été posé.
+
+    Les portées ressortent dans l'ordre d'affichage, pas dans celui de la requête : c'est la
+    propriété qui garantit qu'un même réglage rend le même écran d'une écriture à l'autre.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        pose = client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["club", "scratch"], "profondeur": 2},
+        )
+        relu = client.get(f"/api/v1/tournois/{tournoi_id}/reglage-podiums").json()
+
+    assert pose.status_code == 200, pose.text
+    assert pose.json() == {"portees": ["scratch", "club"], "profondeur": 2}
+    assert relu == {"portees": ["scratch", "club"], "profondeur": 2}
+
+
+def test_le_reglage_commande_les_blocs_rendus_par_le_palmares(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Bout en bout : ce qui est réglé décide des blocs du palmarès, y compris « rien du tout »."""
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["scratch"], "profondeur": 4},
+        )
+        scratch = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": [], "profondeur": 4},
+        )
+        aucun = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+
+    assert [bloc["portee"] for bloc in scratch["podiums"]] == ["scratch"]
+    assert scratch["podiums"][0]["cle"] is None
+    assert aucun["podiums"] == []
+
+
+def test_une_portee_inconnue_est_refusee_a_la_frontiere(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Refus typé plutôt qu'une valeur silencieusement ignorée — une portée qu'on croit réglée
+    et qui ne rend rien est le pire des deux mondes. Idem pour une profondeur nulle.
+
+    ⚠️ **Deux codes, et la différence est voulue** (corrigée en revue) : une portée inconnue est un
+    refus de **forme**, tranché par l'énumération Pydantic → `RequestValidationError` → **400**
+    générique (`api/erreurs.py`). Une profondeur hors bornes est un refus **métier**, tranché par
+    `ReglagePodiums` → `DomainError` → **422** portant `profondeur_podium_invalide`. Répéter la
+    borne à la frontière aurait dégradé le second en 400, comme `ReglagePages` l'a déjà écrit.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        portee = client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["equipe"], "profondeur": 4},
+        )
+        profondeur = client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["categorie"], "profondeur": 0},
+        )
+        plafond = client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["categorie"], "profondeur": 65},
+        )
+
+    assert portee.status_code == 400, portee.text
+    assert profondeur.status_code == 422, profondeur.text
+    assert profondeur.json()["code"] == "profondeur_podium_invalide"
+    assert plafond.status_code == 422, plafond.text
+    assert plafond.json()["code"] == "profondeur_podium_invalide"
+
+
+def test_regler_les_podiums_exige_l_admin(app_palmares: FastAPI) -> None:
+    """Poser le réglage est une **action admin** ; le lire reste ouvert, comme le palmarès."""
+    with TestClient(app_palmares) as client:
+        refus = client.put(
+            "/api/v1/tournois/1/reglage-podiums",
+            json={"portees": ["scratch"], "profondeur": 4},
+        )
+
+    assert refus.status_code in (401, 403), refus.text
+
+
+def test_un_filtre_par_categorie_ne_rogne_pas_les_podiums(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le cas adverse du bloquant de revue : **un podium est celui du tournoi**, pas de la vue.
+
+    Composer les blocs sur le palmarès filtré rendait un « Toutes catégories » réduit aux archers
+    d'une seule catégorie — voire vide, avec « Podium en cours » sur un tournoi terminé — et le même
+    document partait au mur en PDF. Le filtre ne doit toucher **que** le classement.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["scratch"], "profondeur": 4},
+        )
+
+        entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        # Une catégorie qui n'existe pas : le filtre le plus dur qui soit, aucune ligne ne survit.
+        filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
+
+    # ⚠️ Ce test vérifie le **câblage** de la route (les blocs ne suivent pas le filtre) ; le décor
+    # d'API ne joue aucun duel, donc aucune place n'y est décernée. La preuve que les blocs restent
+    # **peuplés** sous filtre est au service, sur un tableau réellement joué :
+    # `test_un_filtre_par_categorie_ne_rogne_pas_les_podiums` de `test_service_palmares.py`.
+    assert entier["podiums"] == filtre["podiums"], "les podiums ne dépendent pas du filtre"
+    # Ancré sur le contenu, pas sur une égalité de listes vides : le bloc doit exister et se
+    # nommer. ⚠️ Son `effectif` vaut 0 ici, et c'est juste — le décor d'API ne joue aucun duel,
+    # donc personne n'est récompensable. La valeur est ancrée au service, qui les joue.
+    assert entier["podiums"][0]["libelle"] == "Toutes catégories"
+    assert filtre["lignes"] == [], "le filtre, lui, restreint bien le classement"
+
+
+def test_le_reglage_se_lit_sans_authentification(app_palmares: FastAPI) -> None:
+    """CA « se règle en admin, **se lit en public** » — la moitié que le PUT ne prouve pas.
+
+    Sans ce test, un `Depends(exiger_admin)` ajouté par erreur sur le GET ne ferait rougir personne.
+    """
+    with TestClient(app_palmares) as client:
+        lecture = client.get("/api/v1/tournois/1/reglage-podiums")
+
+    assert lecture.status_code != 401, lecture.text
+    assert lecture.status_code != 403, lecture.text
+
+
+def test_classement_vide_dit_le_tournoi_pas_la_selection(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Le fait porté par le serveur, ancré **côté serveur** — sans quoi rien ne le protège.
+
+    ⚠️ Les tests front mockent la réponse HTTP : ils ne peuvent structurellement pas voir un champ
+    mal rempli ici. Remplacer `not rendu.complet.lignes` par `rendu.affiche.lignes` rétablirait à
+    l'identique le bloquant de la 3ᵉ passe **et passerait toute la porte** (relevé en revue).
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": [], "profondeur": 4},
+        )
+
+        entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
+
+    assert entier["classement_vide"] is False, "le tournoi est classé"
+    assert filtre["classement_vide"] is False, "il l'est toujours, filtre ou pas"
+    assert filtre["lignes"] == [] and filtre["podiums"] == [], "le décor du 4ᵉ déplacement"

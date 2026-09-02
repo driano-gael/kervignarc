@@ -10,17 +10,25 @@ fait entrer dans `TYPES_CLASSANTS_LUS`, donc au palmarès et au PDF. Bascule à 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from domain.archer import ArcherId
 from domain.categorie import CategorieId
 from domain.classement import Classement, LigneClassement, StatutClassement
 from domain.club import ClubId
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 
-PODIUM_JUSQU_AU = 4
-"""Les rangs qui font un podium : 1-2 (finale) et 3-4 (petite finale), CA « podium »."""
+LIBELLE_SCRATCH = "Toutes catégories"
+"""Le nom du podium sans regroupement. ⚠️ **Surtout pas « Scratch »** : le glossaire réserve ce mot
+à un **libellé de catégorie** (regroupement de classement arc nu, U21+S1+S2+S3).
+
+Un club qui nomme sa catégorie arc nu « Scratch » — le cas nominal FFTA — et coche les deux portées
+imprimait alors **deux blocs « Podium — Scratch »** sur la même page, contenus différents (relevé en
+revue). Le code de la portée, lui, reste `scratch` : il est cohérent avec `rang_scratch`, qui porte
+ce second sens partout dans le moteur.
+"""
 
 
 class OriginePalmares(str, Enum):
@@ -98,6 +106,15 @@ class LignePalmares:
     rang_max: int | None
     rang_categorie_min: int | None
     rang_categorie_max: int | None
+    rang_club_min: int | None
+    rang_club_max: int | None
+    """Le rang de l'archer **parmi ceux de son club** (E16US014), `None` s'il n'a pas de club.
+
+    Troisième couple de bornes, et pas un rang de plus dans un champ générique : chacun se lit dans
+    **son** espace de rangs et les trois cohabitent sur la même ligne. `None` sur `club_id is None`
+    — l'anomalie « club inconnu » d'ADR-0014 n'est pas un club de rattachement.
+    """
+
     decerne: bool
     """Un **match** a décerné ce rang — la seule forme qui vaut une médaille.
 
@@ -121,8 +138,57 @@ class LignePalmares:
     categorie_id: CategorieId
     categorie_libelle: str
     club_id: ClubId | None
+    club_libelle: str | None
+    """Le nom du club, ou `None`. ⚠️ **`None` a deux sens**, et le second n'est pas une anomalie :
+    club inconnu (ADR-0014), **ou** portée *club* non réglée — le référentiel n'est alors pas lu
+    (`ServicePalmares._libelles_club`). Ne pas en déduire « club inconnu » sans regarder `club_id`.
+    """
+
     origine: OriginePalmares
     statut: StatutClassement
+
+
+@dataclass(frozen=True)
+class PlacePodium:
+    """Une place d'un podium : le rang **dans la portée du bloc**, et l'archer qui l'occupe.
+
+    ⚠️ Le rang est porté ici et non lu sur la ligne : sans lui, chaque surface devrait aiguiller sur
+    `bloc.portee` pour choisir entre trois couples de bornes — trois occasions de se tromper, dont
+    une sur le papier où personne ne verrait l'erreur.
+    """
+
+    rang: int
+    ligne: LignePalmares
+
+
+@dataclass(frozen=True)
+class BlocPodium:
+    """Un podium affichable : ce qu'il récompense, ses places, et de quoi dire son état.
+
+    ⚠️ **L'état est PORTÉ, jamais recalculé par l'appelant.** Trois fois de suite, cette US a
+    produit un bloc dont l'énoncé portait sur une autre population que son contenu — blocs composés
+    sur un palmarès filtré, puis effectif compté à l'écran sur les lignes affichées, puis garde de
+    vacuité lue sur la vue. Les champs ci-dessous rendent la faute **non représentable** : ils sont
+    remplis dans `_bloc`, là où le groupe est déjà filtré (ADR-0103 §6).
+    """
+
+    portee: PorteePodium
+    cle: CategorieId | ClubId | None
+    """L'identifiant de ce qui est regroupé — `None` pour le scratch, qui ne regroupe rien."""
+
+    libelle: str
+    places: tuple[PlacePodium, ...]
+    effectif: int
+    """Les archers du groupe qui peuvent **occuper une place** — pas tous ceux du groupe.
+
+    Donc : rang issu des duels — `DETTE-028`, ceux restés en qualification n'entrent sur aucun
+    podium — **et** classé. ⚠️ Le second terme est **défensif et non exercé** : `_situer` force
+    `origine=QUALIFICATION` sur un disqualifié, donc le premier l'écarte déjà. Il garde les
+    `Palmares` construits à la main et les producteurs à venir (relevé en revue).
+    """
+
+    en_attente: bool
+    """Un archer du groupe a-t-il encore un match ? Sépare « pas encore » de « plus jamais »."""
 
 
 @dataclass(frozen=True)
@@ -130,26 +196,99 @@ class Palmares:
     """Le classement final d'un tournoi, ordonné du 1ᵉʳ au dernier (hors classement en fin)."""
 
     lignes: tuple[LignePalmares, ...]
+    duels_non_commences: bool = False
+    """Une phase à duels **encore ouverte** n'a-t-elle rien livré ? (arbitrage du 01/09/2026)
 
-    def podium(self, categorie_id: CategorieId) -> tuple[LignePalmares, ...]:
-        """Les quatre premiers **d'une catégorie** (CA « podium »).
+    ⚠️ **Le nom dit ce qui est calculé, et pas plus** : ce n'est PAS « il reste des duels » — le
+    champ est faux au milieu d'un tableau où il en reste des dizaines, l'attente s'y lisant alors
+    archer par archer (`en_lice`). Sans ce fait, personne n'étant en lice tant qu'aucun résultat
+    n'est lisible, chaque bloc annonçait le **définitif** toute la matinée.
+    """
 
-        Trois conditions : le rang vient des **duels** et n'est plus ouvert ; le rang de catégorie
-        est **exact** ; il est **≤ 4**. ⚠️ Un rang définitif suffit, il n'a pas à être **décerné
-        par un match** (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch
-        (`# DETTE-028`), donc exiger `decerne` privait de podium toutes les catégories. La
-        provenance n'est pas perdue — `decerne` la porte, et l'écran le **dit**.
+    def podiums(self, reglage: ReglagePodiums) -> tuple[BlocPodium, ...]:
+        """Les podiums que ce tournoi décerne, dans l'ordre d'affichage (E16US014).
+
+        Un bloc par groupe — un seul pour le scratch. ⚠️ **Un bloc sans place est rendu quand
+        même** : à l'écran, un groupe qui disparaît se lit comme un groupe sans archers alors
+        qu'il est en cours (`P-3`) ; c'est au **document** de sauter les vides. ⚠️ Un palmarès
+        vide, lui, ne décerne rien — le scratch ne regroupant rien, il existerait toujours, et
+        l'écran écrirait une phrase d'état au-dessus de personne.
         """
+        if not self.lignes:
+            return ()
         return tuple(
-            ligne
-            for ligne in self.lignes
-            if ligne.categorie_id == categorie_id
-            and ligne.origine is OriginePalmares.DUELS
-            and not ligne.en_lice
-            and ligne.rang_categorie_min is not None
-            and ligne.rang_categorie_min == ligne.rang_categorie_max
-            and ligne.rang_categorie_min <= PODIUM_JUSQU_AU
+            self._bloc(portee, cle, libelle, reglage.profondeur)
+            for portee in reglage.portees_actives()
+            for cle, libelle in self._groupes(portee)
         )
+
+    def _groupes(self, portee: PorteePodium) -> tuple[tuple[CategorieId | ClubId | None, str], ...]:
+        """Ce que cette portée regroupe, dans l'ordre du palmarès — donc du meilleur au moins bon.
+
+        Le scratch ne regroupe rien : un groupe unique, sans clé.
+        """
+        if portee is PorteePodium.SCRATCH:
+            return ((None, LIBELLE_SCRATCH),)
+        vus: dict[CategorieId | ClubId, str] = {}
+        for ligne in self.lignes:
+            if portee is PorteePodium.CATEGORIE:
+                vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
+            elif ligne.club_id is not None:
+                # Repli **visible** : un titre vide imprimerait « Podium — » au mur sans que
+                # personne sache pourquoi. Inatteignable par la production — `RenduPalmares` fait
+                # calculer et interroger avec le **même** réglage. Garde-fou pour un `club_id`
+                # absent du référentiel, et pour tout appelant qui désaccorderait les deux.
+                vus.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
+        return tuple(vus.items())
+
+    def _bloc(
+        self,
+        portee: PorteePodium,
+        cle: CategorieId | ClubId | None,
+        libelle: str,
+        profondeur: int,
+    ) -> BlocPodium:
+        """Les places décernées d'un groupe — le tuple est vide tant qu'il n'y en a aucune.
+
+        Trois conditions, les mêmes pour les trois portées (E06US004, élargi par E16US014) : le
+        rang vient des **duels** et n'est plus ouvert ; il est **exact** ; il tient dans la
+        profondeur. ⚠️ Un rang définitif suffit, il n'a pas à être **décerné par un match**
+        (arbitrage du 03/08/2026) : le moteur ne monte qu'un seul tableau scratch (`DETTE-028`),
+        donc l'exiger priverait de podium toutes les catégories, et tous les clubs.
+        """
+        groupe = tuple(ligne for ligne in self.lignes if self._cle_de(portee, ligne) == cle)
+        places = tuple(
+            PlacePodium(rang=rang, ligne=ligne)
+            for ligne in groupe
+            if ligne.origine is OriginePalmares.DUELS and not ligne.en_lice
+            if (rang := _rang_exact(portee, ligne)) is not None and rang <= profondeur
+        )
+        return BlocPodium(
+            portee=portee,
+            cle=cle,
+            libelle=libelle,
+            places=places,
+            effectif=sum(
+                1
+                for ligne in groupe
+                if ligne.origine is OriginePalmares.DUELS and ligne.rang_min is not None
+            ),
+            # ⚠️ **Le créneau prime sur le groupe** : tant que des duels restent à tirer, rien
+            # n'est définitif nulle part. On ne dit jamais « plus jamais » pendant que le
+            # tournoi peut encore changer — l'erreur, si erreur il y a, va vers l'attente.
+            en_attente=self.duels_non_commences or any(ligne.en_lice for ligne in groupe),
+        )
+
+    @staticmethod
+    def _cle_de(portee: PorteePodium, ligne: LignePalmares) -> CategorieId | ClubId | None:
+        """Le groupe auquel cette ligne appartient pour la portée donnée.
+
+        ⚠️ Un archer **sans club** rend `None`, qui n'est la clé d'aucun bloc de club — il n'entre
+        donc dans aucun. C'est `None` qui vaut « scratch », et le scratch retient tout le monde.
+        """
+        if portee is PorteePodium.SCRATCH:
+            return None
+        return ligne.categorie_id if portee is PorteePodium.CATEGORIE else ligne.club_id
 
     def pour_categorie(self, categorie_id: CategorieId) -> Palmares:
         """Restreint l'**affichage** à une catégorie, **sans renuméroter** le rang scratch.
@@ -157,16 +296,26 @@ class Palmares:
         Même parti qu'E06US001 : on voit une catégorie sans perdre la position d'ensemble. Un
         recalcul ferait du 1ᵉʳ de sa catégorie un « 1ᵉʳ » tout court, ce qu'il n'est pas.
         """
-        return Palmares(
-            lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id)
+        # `replace` et non une reconstruction champ par champ : la prochaine dérivation (une
+        # `pour_depart` le jour où `DETTE-045` se résorbe) hériterait sinon d'un défaut silencieux.
+        return replace(
+            self,
+            lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id),
         )
 
-    def categories(self) -> tuple[tuple[CategorieId, str], ...]:
-        """Les catégories présentes, dans l'ordre du palmarès — de quoi composer les podiums."""
-        vues: dict[CategorieId, str] = {}
-        for ligne in self.lignes:
-            vues.setdefault(ligne.categorie_id, ligne.categorie_libelle)
-        return tuple(vues.items())
+
+def _rang_exact(portee: PorteePodium, ligne: LignePalmares) -> int | None:
+    """Le rang de la ligne **dans la portée**, s'il est fermé — `None` s'il reste une fourchette.
+
+    Un *ex æquo* n'a pas de place de podium : personne ne saurait quelle médaille lui remettre.
+    """
+    if portee is PorteePodium.SCRATCH:
+        minimum, maximum = ligne.rang_min, ligne.rang_max
+    elif portee is PorteePodium.CATEGORIE:
+        minimum, maximum = ligne.rang_categorie_min, ligne.rang_categorie_max
+    else:
+        minimum, maximum = ligne.rang_club_min, ligne.rang_club_max
+    return minimum if minimum is not None and minimum == maximum else None
 
 
 # --- calcul --------------------------------------------------------------------------------------
@@ -190,6 +339,8 @@ def calculer_palmares(
     qualification: Classement,
     resultats: Sequence[ResultatPhase] = (),
     aggregation: Aggregation | None = None,
+    libelles_club: Mapping[ClubId, str] | None = None,
+    duels_non_commences: bool = False,
 ) -> Palmares:
     """Fusionne les rangs des phases en un palmarès (CA « podium » + CA « agrégation »).
 
@@ -212,16 +363,29 @@ def calculer_palmares(
     par_categorie = {entree.ligne.archer_id: entree.ligne.categorie_id for entree in classables}
     rangs_categorie: dict[ArcherId, tuple[int, int]] = {}
     for categorie_id in dict.fromkeys(par_categorie.values()):
-        rangs_categorie.update(
-            _numeroter(paquets, retenir=_de_categorie(par_categorie, categorie_id))
-        )
+        rangs_categorie.update(_numeroter(paquets, retenir=_du_groupe(par_categorie, categorie_id)))
 
+    # E16US014 : le rang **dans son club**, calculé par la même passe que le rang de catégorie.
+    # ⚠️ Un archer sans club n'est d'aucun groupe (ADR-0014) : il reste au classement, sans rang de
+    # club — ce n'est pas un club à part, c'est une absence de club.
+    par_club = {
+        entree.ligne.archer_id: entree.ligne.club_id
+        for entree in classables
+        if entree.ligne.club_id is not None
+    }
+    rangs_club: dict[ArcherId, tuple[int, int]] = {}
+    for club_id in dict.fromkeys(par_club.values()):
+        rangs_club.update(_numeroter(paquets, retenir=_du_groupe(par_club, club_id)))
+
+    libelles = libelles_club if libelles_club is not None else {}
     entree_par_archer = {entree.ligne.archer_id: entree for entree in classables}
     lignes = [
         _ligne(
             entree_par_archer[archer_id],
             rangs.get(archer_id),
             rangs_categorie.get(archer_id),
+            rangs_club.get(archer_id),
+            libelles,
             decerne=paquet.decerne,
             en_lice=paquet.en_lice,
         )
@@ -229,21 +393,23 @@ def calculer_palmares(
         for archer_id in paquet.archers
     ]
     lignes += [
-        _ligne(entree, None, None, decerne=False, en_lice=False) for entree in hors_classement
+        _ligne(entree, None, None, None, libelles, decerne=False, en_lice=False)
+        for entree in hors_classement
     ]
-    return Palmares(lignes=tuple(lignes))
+    return Palmares(lignes=tuple(lignes), duels_non_commences=duels_non_commences)
 
 
-def _de_categorie(
-    par_categorie: Mapping[ArcherId, CategorieId], categorie_id: CategorieId
+def _du_groupe(
+    par_archer: Mapping[ArcherId, CategorieId | ClubId], groupe: CategorieId | ClubId
 ) -> Callable[[ArcherId], bool]:
-    """Le filtre « cet archer est-il de cette catégorie ? », fermé sur la catégorie voulue.
+    """Le filtre « cet archer est-il de ce groupe ? », fermé sur le groupe voulu.
 
-    Une fonction nommée plutôt qu'une `lambda` à paramètre par défaut : la seconde capture la
-    variable de boucle par valeur *par effet de bord* d'une astuce de portée, ce que ni mypy ni un
-    relecteur ne lisent volontiers.
+    Une catégorie ou un club (E16US014) : `_numeroter` ne demande qu'un prédicat, et les deux
+    portées renumérotent à l'identique. Fonction nommée plutôt que `lambda` à paramètre par défaut :
+    la seconde capture la variable de boucle *par effet de bord* d'une astuce de portée, que ni mypy
+    ni un relecteur ne lisent volontiers.
     """
-    return lambda archer: par_categorie.get(archer) == categorie_id
+    return lambda archer: par_archer.get(archer) == groupe
 
 
 def _positions_par_archer(
@@ -426,10 +592,13 @@ def _ligne(
     entree: _Entree,
     rang: tuple[int, int] | None,
     rang_categorie: tuple[int, int] | None,
+    rang_club: tuple[int, int] | None,
+    libelles_club: Mapping[ClubId, str],
     *,
     decerne: bool,
     en_lice: bool,
 ) -> LignePalmares:
+    club_id = entree.ligne.club_id
     return LignePalmares(
         decerne=decerne,
         en_lice=en_lice,
@@ -437,12 +606,17 @@ def _ligne(
         rang_max=rang[1] if rang is not None else None,
         rang_categorie_min=rang_categorie[0] if rang_categorie is not None else None,
         rang_categorie_max=rang_categorie[1] if rang_categorie is not None else None,
+        rang_club_min=rang_club[0] if rang_club is not None else None,
+        rang_club_max=rang_club[1] if rang_club is not None else None,
         archer_id=entree.ligne.archer_id,
         nom=entree.ligne.nom,
         prenom=entree.ligne.prenom,
         categorie_id=entree.ligne.categorie_id,
         categorie_libelle=entree.ligne.categorie_libelle,
-        club_id=entree.ligne.club_id,
+        club_id=club_id,
+        # `None` et non "" : l'écran distingue « club inconnu » (ADR-0014) d'un nom vide, et le
+        # référentiel peut manquer au lot passé sans que la ligne mente sur l'absence de club.
+        club_libelle=libelles_club.get(club_id) if club_id is not None else None,
         origine=entree.origine,
         statut=entree.ligne.statut,
     )

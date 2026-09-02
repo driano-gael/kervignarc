@@ -150,6 +150,14 @@ des dépendances (règle 2) pour une règle métier de bout en bout.
 
 ### 5. Le podium ne montre **que** des rangs exacts
 
+> ⚠️ **Révisé par [ADR-0103](0103-la-portee-d-un-podium-est-un-reglage-du-tournoi.md) (E16US014,
+> 31/08/2026).** La portée d'un podium est devenue un **réglage du tournoi** : `podium(categorie_id)`
+> est remplacée par `Palmares.podiums(reglage)`, le paramètre obligatoire par un **ensemble** de
+> portées (*toutes catégories*, catégorie, club), et le `≤ 4` par une profondeur réglable. La crainte
+> exprimée ci-dessous — « une branche scratch que seuls ses tests tenaient » — est honorée
+> autrement : il n'y a **pas** de branche par portée, mais un mécanisme unique paramétré
+> (ADR-0103 §2). Les trois conditions ci-dessous, elles, valent toujours — pour les trois portées.
+
 `Palmares.podium(categorie_id)` exige trois choses, et chacune ferme un trou trouvé en revue : le
 rang est **décerné par un match** (§3), il est **exact** — on ne remet pas une médaille à quatre
 archers 5ᵉ-8ᵉ — et il vaut **≤ 4**.
@@ -228,7 +236,7 @@ Chaque symbole vérifié dans le code du jour.)*
 - `backend/domain/palmares.py` — l'agrégation elle-même : `calculer_palmares(…)` fusionne les
   `ResultatPhase` en `LignePalmares` / `Palmares`, via `PositionPhase` et `OriginePalmares`.
   ⚠️ La politique s'applique **au palmarès entier**, pas par phase — `Phase` ne persiste aucun
-  réglage d'agrégation (commentaire l. 84), et c'est délibéré.
+  réglage d'agrégation (docstring de `ResultatPhase`), et c'est délibéré.
 - `backend/application/palmares.py` — `ServicePalmares` reçoit `aggregation: Aggregation | None` et
-  **retombe sur `AggregationParQualification()`** si rien n'est injecté (l. 98-99) ; `pour_tournoi`
+  **retombe sur `AggregationParQualification()`** si rien n'est injecté (constructeur de `ServicePalmares`) ; `rendu`
   passe la politique à `calculer_palmares`. C'est le point d'injection réel.

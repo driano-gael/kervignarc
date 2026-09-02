@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
-import type { LignePalmares, PodiumCategorie } from './api'
+import type { LignePalmares, Podium } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
 import { detail, etatPodium, medaille, nomComplet, provenance, rang } from './presentation'
@@ -73,15 +73,19 @@ export function VuePalmares({
             ? 'Connexion momentanément perdue — mise à jour au retour.'
             : 'Chargement…'}
         </p>
-      ) : donnees.lignes.length === 0 ? (
+      ) : /* ⚠️ **Le serveur le dit, on ne le déduit pas.** Quatre gardes successives ont tenté
+             d'inférer « ce tournoi est-il classé ? » de `lignes` (filtrées) puis de `podiums` (que
+             le réglage vide à bon droit quand aucune portée n'est cochée) : quatre fois fausses,
+             dans un coin différent. Le vide du FILTRE, lui, est nommé par `ClassementFinal`. */
+      donnees.classement_vide ? (
         <p className="carte__etat">Aucun archer classé pour l'instant.</p>
       ) : (
         <>
           {donnees.podiums.map((podium) => (
             <BlocPodium
-              key={podium.categorie_id}
+              key={`${podium.portee}-${podium.cle ?? 'scratch'}`}
               podium={podium}
-              effectif={donnees.lignes.filter((l) => l.categorie_id === podium.categorie_id).length}
+              profondeur={donnees.profondeur_podium}
             />
           ))}
           <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
@@ -99,30 +103,31 @@ export function VuePalmares({
  */
 function BlocPodium({
   podium,
-  effectif,
+  profondeur,
 }: {
-  podium: PodiumCategorie
-  /** Le nombre d'archers de la catégorie — une catégorie de deux a un podium complet
-   * à deux noms, et ne doit pas être annoncée « partielle » indéfiniment. */
-  effectif: number
+  /** ⚠️ L'effectif du groupe et son attente sont **portés par le bloc** (E16US014), jamais
+   * recalculés sur les lignes affichées : celles-ci sont filtrées, le bloc ne l'est pas. */
+  podium: Podium
+  /** Les places que ce tournoi récompense (E16US014) — borne le seuil de « complet ». */
+  profondeur: number
 }) {
-  const etat = etatPodium(podium, effectif)
+  const etat = etatPodium(podium, profondeur)
   return (
-    <section className="palmares-podium" aria-label={`Podium ${podium.categorie_libelle}`}>
-      <h4 className="palmares-section">{podium.categorie_libelle}</h4>
+    <section className="palmares-podium" aria-label={`Podium ${podium.libelle}`}>
+      <h4 className="palmares-section">{podium.libelle}</h4>
       {etat && <p className="carte__etat">{etat}</p>}
-      {podium.lignes.length > 0 && (
+      {podium.places.length > 0 && (
         <ol className="palmares-podium__places">
-          {podium.lignes.map((ligne) => (
-            <li key={ligne.archer_id} className="palmares-podium__place">
-              <span className="palmares-podium__rang">
-                {rang(ligne.rang_categorie_min, ligne.rang_categorie_max)}
-              </span>
-              <span className="palmares-podium__nom">{nomComplet(ligne)}</span>
-              {medaille(ligne.rang_categorie_min) && (
+          {podium.places.map((place) => (
+            <li key={place.ligne.archer_id} className="palmares-podium__place">
+              {/* Le rang du bloc, jamais un des trois couples de bornes de la ligne : c'est le
+                  serveur qui sait lequel s'applique à cette portée. */}
+              <span className="palmares-podium__rang">{rang(place.rang, place.rang)}</span>
+              <span className="palmares-podium__nom">{nomComplet(place.ligne)}</span>
+              {medaille(place.rang) && (
                 <span className="palmares-podium__medaille">
-                  {medaille(ligne.rang_categorie_min)}
-                  {provenance(ligne) && ` · ${provenance(ligne)}`}
+                  {medaille(place.rang)}
+                  {provenance(place.ligne) && ` · ${provenance(place.ligne)}`}
                 </span>
               )}
             </li>
@@ -150,8 +155,9 @@ function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: Mode
           {/* Cause non nommée (correctif de revue) : le filtre par catégorie de cet écran vide la
               liste tout aussi souvent que l'interrupteur, et désigner le second envoyait chercher
               au mauvais endroit. Le podium, lui, reste entier au-dessus — il n'est jamais centré. */}
-          Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le
-          tournoi », ou élargissez le filtre.
+          {mode === 'suivis'
+            ? 'Aucun des archers que vous suivez n’apparaît dans cette sélection. Passez à « Tout le tournoi », ou élargissez le filtre.'
+            : 'Aucun archer dans cette sélection — élargissez le filtre par catégorie.'}
         </p>
       ) : (
         // Conteneur défilant : la table déborde sur mobile (CA « responsive ») — on la laisse

@@ -39,18 +39,51 @@ export interface LignePalmares {
   en_lice: boolean
 }
 
-// Le podium d'une catégorie : ses rangs **décernés** parmi les quatre premiers. Peut être vide (la
-// finale n'est pas tirée) ou partiel (bronze avant l'or, l'usage en salle).
-export interface PodiumCategorie {
-  categorie_id: number
-  categorie_libelle: string
-  lignes: LignePalmares[]
+// Ce qu'un podium récompense (E16US014). L'ordre de cette union est celui de l'affichage, et il
+// est décidé par le serveur : le front ne retrie jamais les blocs.
+export type PorteePodium = 'scratch' | 'categorie' | 'club'
+
+// Une place : le rang **dans la portée du bloc**. Rendu à part de la ligne pour que l'écran n'ait
+// pas à choisir entre trois couples de bornes selon la portée — c'est le serveur qui sait laquelle
+// s'applique.
+export interface PlacePodium {
+  rang: number
+  ligne: LignePalmares
+}
+
+// Un podium : ses rangs **décernés** dans la profondeur réglée. Peut être vide (la finale n'est pas
+// tirée) ou partiel (bronze avant l'or, l'usage en salle). `cle` est `null` pour le scratch, qui ne
+// regroupe rien.
+export interface Podium {
+  portee: PorteePodium
+  cle: number | null
+  libelle: string
+  places: PlacePodium[]
+  // ⚠️ **L'état du bloc vient du serveur, il ne se recalcule pas ici.** Le client ne voit que les
+  // lignes qu'il a demandées — filtre par catégorie compris —, donc un effectif compté à l'écran
+  // vient d'une autre population que celle du bloc. C'était la moitié front du bloquant de revue.
+  effectif: number
+  en_attente: boolean
 }
 
 export interface Palmares {
   tournoi_id: number
-  podiums: PodiumCategorie[]
+  podiums: Podium[]
+  // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
+  // les surfaces publiques ne lisent jamais le réglage lui-même.
+  profondeur_podium: number
+  // ⚠️ **« Ce tournoi est-il classé ? », dit par le serveur.** Ni `podiums` (que le réglage peut
+  // vider à bon droit) ni `lignes` (que le filtre restreint) ne répondent à cette question : quatre
+  // gardes successives ont tenté de l'inférer et l'ont ratée quatre fois.
+  classement_vide: boolean
   lignes: LignePalmares[]
+}
+
+// Ce que le tournoi récompense. La **lecture** est publique comme le palmarès ; seule l'écriture
+// est réservée à l'admin.
+export interface ReglagePodiums {
+  portees: PorteePodium[]
+  profondeur: number
 }
 
 export function getPalmares(tournoiId: number, categorieId?: number): Promise<Palmares> {
@@ -70,4 +103,21 @@ export function urlPalmaresPdf(tournoiId: number, categorieId?: number): string 
   if (categorieId != null) parametres.set('categorie_id', String(categorieId))
   const suffixe = parametres.toString()
   return `/api/v1/tournois/${tournoiId}/palmares.pdf${suffixe ? `?${suffixe}` : ''}`
+}
+
+// Le réglage n'est lu que par l'écran d'admin : portée par défaut, comme `getCloisonnement`. La
+// route est ouverte côté serveur (le palmarès l'est), mais aucune surface publique ne l'appelle —
+// les blocs arrivent déjà composés dans le palmarès.
+export function getReglagePodiums(tournoiId: number): Promise<ReglagePodiums> {
+  return fetchJson<ReglagePodiums>(`/api/v1/tournois/${tournoiId}/reglage-podiums`)
+}
+
+export function putReglagePodiums(
+  tournoiId: number,
+  reglage: ReglagePodiums,
+): Promise<ReglagePodiums> {
+  return fetchJson<ReglagePodiums>(`/api/v1/tournois/${tournoiId}/reglage-podiums`, {
+    method: 'PUT',
+    body: JSON.stringify(reglage),
+  })
 }

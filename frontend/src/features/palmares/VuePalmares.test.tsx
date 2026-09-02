@@ -57,7 +57,18 @@ const MON_ARCHER = ligne({
 
 const PALMARES: Palmares = {
   tournoi_id: 1,
-  podiums: [{ categorie_id: 3, categorie_libelle: 'Senior 1 Homme', lignes: [MEDAILLE] }],
+  podiums: [
+    {
+      portee: 'categorie',
+      cle: 3,
+      libelle: 'Senior 1 Homme',
+      effectif: 2,
+      en_attente: false,
+      places: [{ rang: 1, ligne: MEDAILLE }],
+    },
+  ],
+  profondeur_podium: 4,
+  classement_vide: false,
   lignes: [MEDAILLE, MON_ARCHER],
 }
 
@@ -105,5 +116,46 @@ describe('VuePalmares — centrage « mes archers »', () => {
     expect(screen.queryByText(/Aucun archer classé/)).toBeNull()
     // Et le podium, lui, reste affiché : ce vide-là ne l'ampute pas non plus.
     expect(screen.getByText(/CHAMPION/)).toBeInTheDocument()
+  })
+})
+
+describe('VuePalmares — un filtre qui vide le classement ne retire pas les podiums', () => {
+  it('garde les podiums quand la sélection ne contient aucun archer', async () => {
+    // Le bloquant de la 3ᵉ passe, côté écran : la garde « aucun archer classé » portait sur les
+    // lignes, qui sont filtrées, et emportait tous les podiums avec elle. Un podium est celui du
+    // tournoi — sa présence prouve justement que le tournoi est classé.
+    vi.mocked(getPalmares).mockResolvedValue({ ...PALMARES, lignes: [] })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    expect(await screen.findByText('Senior 1 Homme')).toBeInTheDocument()
+    expect(screen.queryByText(/Aucun archer classé pour l['’]instant/)).not.toBeInTheDocument()
+  })
+
+  it('ne dit pas « aucun archer classé » quand AUCUNE portée n’est cochée', async () => {
+    // Le 4ᵉ déplacement : `podiums` vide est un réglage **valide** (CA « n'en cocher aucune »), et
+    // `lignes` vide peut venir du filtre. Les deux réunis, la garde précédente concluait « rien
+    // n'est classé » sur un tournoi entièrement classé. Le serveur porte désormais le fait.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      podiums: [],
+      lignes: [],
+      classement_vide: false,
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    expect(await screen.findByText(/Aucun archer dans cette sélection/)).toBeInTheDocument()
+    expect(screen.queryByText(/Aucun archer classé pour l['’]instant/)).not.toBeInTheDocument()
+  })
+
+  it('dit « aucun archer classé » quand le tournoi ne l’est vraiment pas', async () => {
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      podiums: [],
+      lignes: [],
+      classement_vide: true,
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    expect(await screen.findByText(/Aucun archer classé pour l['’]instant/)).toBeInTheDocument()
   })
 })

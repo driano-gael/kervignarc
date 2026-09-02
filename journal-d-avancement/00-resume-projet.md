@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 30 août 2026
+# Résumé du projet — où on en est au 31 août 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -44,7 +44,11 @@ un sens pour lui — PDF pour imprimer, **CSV pour le tableur** —, si bien qu'
 une liste club & paiement s'ouvre dans Excel, se trie, se filtre et **s'additionne** au lieu de se
 ressaisir à la main ; les **feuilles de marque**, dont la fonction existait sans qu'aucun bouton n'y
 mène, ont rejoint le même écran. Et l'organisateur peut désormais **déclarer lui-même l'abandon d'un
-archer en qualification**, depuis sa fiche, sans aller chercher un scoreur. Et l'application se **déploie désormais en un seul fichier**
+archer en qualification**, depuis sa fiche, sans aller chercher un scoreur. Le **palmarès** cesse enfin d'imposer
+son découpage : l'organisateur coche **ce que son club récompense** — le podium du tournoi toutes
+catégories mêlées, un podium par catégorie, les archers de chaque club classés entre eux — et les
+trois se cumulent ; le **nombre de places** récompensées se règle aussi, et ce choix vaut d'un coup
+pour l'écran, l'affichage public, l'écran du gymnase et le PDF affiché au mur. Et l'application se **déploie désormais en un seul fichier**
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
@@ -574,9 +578,16 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **131 US livrées** sur `main` (mergées, revues, CI verte) à la date du 30/08/2026 — dont deux
+- **132 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/08/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US007` — **choisir le format de chaque
+  autorité sur le compte) —, la dernière étant `E16US014` — **choisir ce que le tournoi
+  récompense** : les podiums ne sont plus figés « par catégorie, quatre places » dans le code. Trois
+  portées **cumulables** (scratch, catégorie, club) et une profondeur réglable, valables d'un seul
+  réglage sur l'écran, l'affichage public, l'écran du gymnase et le PDF. ⚠️ **La fiche a été coupée
+  en deux au cadrage** : classer les **clubs entre eux** est un classement neuf et non un
+  regroupement — il part en `E16US017`, au **décompte de médailles** (arbitrage du 31/08). Les
+  podiums **par équipe** d'A16 restent hors de portée tant qu'EPIC-13 n'a pas livré les équipes.
+  Précédente : `E16US007` — **choisir le format de chaque
   document** : l'écran « Exports & impressions » ne propose plus un bouton par document mais **un
   bouton par format**, et c'est le serveur qui dit lesquels — de sorte qu'ajouter un format demain
   n'obligera pas à retoucher l'écran. Les deux listes sortent en **PDF ou en CSV** ; la feuille de

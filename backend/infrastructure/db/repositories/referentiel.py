@@ -27,6 +27,7 @@ from domain.gabarit_salle import GabaritSalle, GabaritSalleId
 from domain.identite import Couleur, EmplacementLogo, IdentiteVisuelle, Logo, TypeLogo
 from domain.inscription import Inscription, InscriptionId
 from domain.patrimoine import OrigineBrique
+from domain.podium import PorteePodium, ReglagePodiums
 from domain.remboursement import (
     MotifRemboursement,
     Remboursement,
@@ -77,6 +78,40 @@ def _purger_descendance_du_depart(session: Session, depart_id: DepartId) -> None
     session.execute(delete(InscriptionORM).where(InscriptionORM.depart_id == depart_id))
 
 
+def _vers_reglage_podiums(ligne: TournoiORM) -> ReglagePodiums:
+    """Traduit les deux colonnes de podium en value object (E16US014).
+
+    ⚠️ Une portée **inconnue** est refusée, elle n'est pas ignorée : un code que cette version ne
+    sait pas lire vient d'une base plus récente (ou éditée à la main), et l'ignorer rendrait
+    silencieusement un palmarès amputé d'un podium que l'organisateur croit réglé.
+    """
+    codes = json.loads(ligne.podium_portees)
+    # ⚠️ `4` ou `{"a": 1}` sont du JSON **valide** : sans ce contrôle, l'itération levait un
+    # `TypeError` que l'enveloppe de `_vers_tournoi` (`DomainError`, `ValueError`) ne rattrapait
+    # pas, et toute lecture de tournoi tombait en 500 non typé au lieu de l'`InfrastructureError`
+    # que la migration promet.
+    if not isinstance(codes, list):
+        raise ValueError(f"`podium_portees` n'est pas une liste JSON : {ligne.podium_portees!r}")
+    # Même modèle de menace sur la colonne d'à côté : SQLite est à typage **dynamique**, une
+    # affinité `INTEGER` ne rejette pas `'abc'`. Sans ce contrôle, `1 <= 'abc'` lève un `TypeError`
+    # que l'enveloppe de `_vers_tournoi` ne rattrape pas — 500 non typé sur une route publique.
+    if not isinstance(ligne.podium_profondeur, int):
+        raise ValueError(f"`podium_profondeur` n'est pas un entier : {ligne.podium_profondeur!r}")
+    return ReglagePodiums(
+        portees=frozenset(PorteePodium(code) for code in codes),
+        profondeur=ligne.podium_profondeur,
+    )
+
+
+def _portees_en_json(reglage: ReglagePodiums) -> str:
+    """Sérialise les portées dans l'ordre d'affichage — un ensemble n'en a pas, une colonne si.
+
+    Sans tri, deux réglages identiques s'écriraient différemment d'une écriture à l'autre : la ligne
+    changerait sans que rien n'ait changé, et tout diff de base deviendrait illisible.
+    """
+    return json.dumps([portee.value for portee in reglage.portees_actives()])
+
+
 def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
     """Traduit une ligne ORM en agrégat de domaine `Tournoi`.
 
@@ -95,6 +130,7 @@ def _vers_tournoi(ligne: TournoiORM) -> Tournoi:
             statut=StatutTournoi(ligne.statut),
             effectif_minimum_exige=ligne.effectif_minimum_exige,
             cloisonnement=Cloisonnement(ligne.cloisonnement),
+            reglage_podiums=_vers_reglage_podiums(ligne),
             id=ligne.id,
         )
     except (DomainError, ValueError) as exc:
@@ -238,6 +274,8 @@ class TournoiRepositorySQL:
                     statut=tournoi.statut.value,
                     effectif_minimum_exige=tournoi.effectif_minimum_exige,
                     cloisonnement=tournoi.cloisonnement.value,
+                    podium_portees=_portees_en_json(tournoi.reglage_podiums),
+                    podium_profondeur=tournoi.reglage_podiums.profondeur,
                 )
                 session.add(ligne)
                 session.commit()
@@ -284,6 +322,8 @@ class TournoiRepositorySQL:
                 ligne.statut = tournoi.statut.value
                 ligne.effectif_minimum_exige = tournoi.effectif_minimum_exige
                 ligne.cloisonnement = tournoi.cloisonnement.value
+                ligne.podium_portees = _portees_en_json(tournoi.reglage_podiums)
+                ligne.podium_profondeur = tournoi.reglage_podiums.profondeur
                 session.commit()
                 return _vers_tournoi(ligne)
         except SQLAlchemyError as exc:
