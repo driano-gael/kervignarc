@@ -9,7 +9,7 @@ Jusqu'ici, le palmarès affichait **un podium par catégorie**, sur **quatre pla
 aucun moyen d'en décider autrement : c'était écrit dans le code. Désormais, l'écran « Palmarès »
 porte un panneau **« Ce que ce tournoi récompense »** où l'organisateur coche ce qu'il veut voir :
 
-- **Scratch** — le podium du tournoi, toutes catégories mêlées ;
+- **Toutes catégories** — le podium du tournoi, toutes catégories mêlées. *(Le mot « scratch » a été écarté : en FFTA, il désigne aussi une catégorie — le regroupement arc nu. Un club qui nomme ainsi sa catégorie aurait vu deux blocs de même titre sur la même page.)*
 - **Par catégorie** — un podium par catégorie présente (ce qui existait) ;
 - **Par club** — les archers de chaque club, classés entre eux.
 
