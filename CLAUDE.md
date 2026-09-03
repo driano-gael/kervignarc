@@ -386,6 +386,7 @@ qu'un outil y verse reste jusqu'à la fin. Ce ne sont pas ces docs qui le rempli
 | [`moteur-placement-lucky-loser.md`](moteur-placement-lucky-loser.md) | Formalisation du moteur de placement |
 | [`docs/glossaire.md`](docs/glossaire.md) · [`docs/modele-de-donnees.md`](docs/modele-de-donnees.md) · [`docs/referentiel-ffta.md`](docs/referentiel-ffta.md) | Vocabulaire, modèle, règles FFTA |
 | [`docs/dette.md`](docs/dette.md) · [`docs/dependances.md`](docs/dependances.md) · [`docs/adr/`](docs/adr/) | Registres et décisions |
+| [`docs/maquettes.md`](docs/maquettes.md) | Maquettes vivantes (URL + contenu) et écarts doc/CA/code qu'elles ont fait remonter — lu par [`/maquettes`](.claude/commands/maquettes.md) |
 | [`epics/`](epics/) · [`stories/`](stories/) | Backlog produit (jalons J0→J4) |
 | [`journal-d-avancement/`](journal-d-avancement/) | **Livrable de suivi** : `SUIVI-US.md` (point de reprise) + `00-resume-projet.md` (photo d'ensemble) + faits marquants datés |
 
