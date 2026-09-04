@@ -16,6 +16,7 @@ import {
 } from './api'
 
 const cleScoreurs = (tournoiId: number) => ['scoreurs', tournoiId] as const
+const cleQrScoreur = (tournoiId: number, code: string) => ['qr-scoreur', tournoiId, code] as const
 
 export function useScoreurs(tournoiId: number) {
   return useQuery({
@@ -45,13 +46,7 @@ export function useSupprimerScoreur(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (scoreurId: number) => supprimerScoreur(tournoiId, scoreurId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: cleScoreurs(tournoiId) })
-      // ⚠️ `remove` et non `invalidate` : supprimer un scoreur **révoque son code**, or SQLite
-      // réattribue les `id` (PK sans AUTOINCREMENT). Sans purge, le QR périmé resterait servable
-      // depuis le cache pendant `gcTime` sous le nom du scoreur créé ensuite (revue du 04/09/2026).
-      queryClient.removeQueries({ queryKey: ['qr-scoreur', tournoiId] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleScoreurs(tournoiId) }),
   })
 }
 
@@ -66,9 +61,13 @@ export function useTelechargerCartesScoreurs(tournoiId: number) {
 // conditionnel** de `QrScoreur` dans `Scoreurs.tsx`. Une première version passait un `enabled`
 // qu'aucun appelant ne mettait à `false` : un garde-fou nommé au mauvais endroit se fait contourner
 // par le lecteur suivant, qui le croit actif (relevé en revue, 04/09/2026).
-export function useQrScoreur(tournoiId: number, scoreurId: number) {
+export function useQrScoreur(tournoiId: number, scoreurId: number, code: string) {
   return useQuery({
-    queryKey: ['qr-scoreur', tournoiId, scoreurId] as const,
+    // ⚠️ La clé porte le **code**, pas le `scoreurId` : le QR est une image DU CODE, et SQLite
+    // réattribue les `id` (PK sans AUTOINCREMENT). Sur `['qr-scoreur', t, id]`, le QR révoqué d'un
+    // scoreur supprimé se servait du cache sous le nom de son successeur. Une purge à la
+    // suppression ne couvrait que le chemin local et synchrone (2ᵉ passe de revue, 05/09/2026).
+    queryKey: cleQrScoreur(tournoiId, code),
     queryFn: () => getQrScoreur(tournoiId, scoreurId),
   })
 }

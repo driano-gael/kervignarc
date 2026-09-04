@@ -463,11 +463,14 @@ def test_qr_scoreur_d_un_autre_tournoi_leve_scoreur_introuvable() -> None:
 
 
 def test_qr_scoreur_echappe_le_code_dans_l_url() -> None:
-    """Un caractère réservé dans le code ne peut pas ouvrir un second paramètre.
+    """Un caractère réservé dans le code est encodé, donc le code lu est le code émis.
 
-    ⚠️ La sûreté ne vient PAS de l'alphabet sans confondables (ADR-0025) : c'est une garantie d'un
-    autre fichier, qu'un code choisi à la main ferait tomber. Sans échappement, un code contenant
-    `&poste=…` verrouillerait le téléphone du scoreur en mode tablette (`resoudreRole`).
+    ⚠️ La sûreté ne vient PAS de l'alphabet sans confondables : c'est une garantie d'un autre
+    fichier (`infrastructure/scoreurs/codes.py`), qu'un code choisi à la main ferait tomber. Sans
+    échappement, un `&` couperait le fragment en deux paramètres et **tronquerait** le code : le
+    scoreur essuierait un refus incompréhensible. *(Motif corrigé en 2ᵉ passe : la version
+    précédente invoquait un verrouillage en mode tablette, impossible depuis le fragment — le
+    lecteur de `?poste=` ne lit que la query.)*
     """
     monde = _monde()
     piege = monde.scoreurs.ajouter(
@@ -478,3 +481,18 @@ def test_qr_scoreur_echappe_le_code_dans_l_url() -> None:
     monde.service.qr_scoreur(monde.tournoi_id, piege.id, _ORIGINE)
 
     assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=A%26POSTE%3DX"
+
+
+def test_qr_rattachement_echappe_le_code_dans_l_url() -> None:
+    """Le jumeau cible est épinglé lui aussi — et c'est là que la menace est RÉELLE.
+
+    ⚠️ L'URL d'un poste porte son code en **query**, que `features/poste/url.ts` lit : un code
+    contenant `&scoreur=…` y ouvrirait un second paramètre. `quote` avait été ajouté aux deux
+    constructeurs sans que celui-ci soit couvert (relevé en 2ᵉ passe de revue).
+    """
+    monde = _monde()
+    monde.postes.ajouter(Poste.creer(monde.tournoi_id, 7, "A&SCOREUR=X"))
+
+    monde.service.qr_rattachement(monde.tournoi_id, 7, _ORIGINE)
+
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/?poste=A%26SCOREUR%3DX"

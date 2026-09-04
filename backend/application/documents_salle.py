@@ -98,16 +98,16 @@ class ServiceDocumentsSalle:
         """Rend en **SVG** le QR de session d'un scoreur (E16US015), ADR-0105.
 
         Même **port** que `qr_rattachement`, mais **forme d'URL différente** —
-        `{origine}/scoreur#code=<code>`, cf. `_url_scoreur`. Le code encodé est un secret
-        **personnel** : d'où la garde d'appartenance ci-dessous, plus stricte que celle d'une cible.
-        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `ScoreurIntrouvable` sinon.
+        `{origine}/scoreur#code=<code>`, cf. `_url_scoreur`. Lève `TournoiIntrouvable` si le tournoi
+        n'existe pas, `ScoreurIntrouvable` sinon.
         """
         self._verifier_tournoi(tournoi_id)
         scoreur = self._scoreurs.par_id(scoreur_id)
-        # ⚠️ `par_id` ne filtre PAS par tournoi (le code est unique dans toute la base, cf. le port
-        # `ScoreurRepository`) : sans ce test d'appartenance, l'admin d'un tournoi obtiendrait le
-        # QR — donc le code personnel — d'un scoreur d'un AUTRE tournoi. Le jumeau cible n'a pas
-        # ce risque, il interroge un repository déjà borné au tournoi.
+        # ⚠️ Garde de **cohérence 404** (hors-tournoi = inexistant), que `par_tournoi_et_type`
+        # donne gratuitement au QR de cible et que `par_id` n'assure pas — le code est unique dans
+        # toute la base (cf. le port `ScoreurRepository`). ⚠️ Ce n'est PAS une garde de fuite entre
+        # tournois : `exiger_admin` ne borne rien au tournoi, et cet admin liste déjà tous les
+        # codes en clair (motif corrigé en 2ᵉ passe de revue — la prémisse inverse est fausse).
         if scoreur is None or scoreur.tournoi_id != tournoi_id:
             raise ScoreurIntrouvable(
                 f"Aucun scoreur d'identifiant {scoreur_id} dans le tournoi {tournoi_id}."
@@ -138,7 +138,7 @@ def _url_rattachement(origine: str, code: str) -> str:
     """URL de rattachement d'un poste : `{origine}/?poste=<code>`, sans `//` parasite.
 
     ⚠️ `quote` n'est pas décoratif : l'alphabet sans confondables qui le rendrait inutile est une
-    garantie d'un AUTRE fichier (`infrastructure/scoreurs/codes.py`, ADR-0025). Lu à la racine par
+    garantie d'un AUTRE fichier (`infrastructure/postes/codes.py`). Lu à la racine par
     `frontend/src/features/poste/url.ts`.
     """
     # DETTE-012 : `origine` est l'origine de la requête admin, faute de base URL configurée.

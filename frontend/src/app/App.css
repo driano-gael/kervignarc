@@ -911,6 +911,8 @@ button.badge-preparation:focus-visible {
   color: var(--danger-strong);
 }
 
+/* Postes de cible : code + QR de rattachement à l'écran (E11US008). La vignette du QR elle-même
+   est stylée par `shared/ui/qr.css`, partagée avec le QR de session d'un scoreur (E16US015). */
 .liste-postes {
   list-style: none;
   margin: 12px 0 0;
@@ -933,8 +935,6 @@ button.badge-preparation:focus-visible {
 .poste-item__ligne {
   min-width: 0;
 }
-
-/* Le QR (SVG) doit rester sur **fond blanc** pour être scannable, quel que soit le thème. */
 
 /* Formulaires (nom de tournoi / d'archer). */
 .formulaire {

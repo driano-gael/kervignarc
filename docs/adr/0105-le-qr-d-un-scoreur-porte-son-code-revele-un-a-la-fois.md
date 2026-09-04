@@ -49,9 +49,13 @@ scannable d'un seul cliché.
 ⚠️ **La garde est le montage conditionnel du composant, pas un drapeau `enabled`.** Une première
 implémentation passait un `enabled` à React Query qu'aucun appelant ne mettait jamais à `false` :
 un garde-fou nommé au mauvais endroit se fait contourner par le lecteur suivant, qui le croit actif.
-⚠️ **L'état d'ouverture est indexé sur le `code`, jamais sur l'`id`** : SQLite réattribue les `id`
-(clé primaire sans `AUTOINCREMENT`), si bien qu'un scoreur supprimé puis remplacé rouvrirait le QR
-de son successeur **sans clic**. La suppression purge en outre le cache du QR révoqué.
+⚠️ **Rien n'est indexé sur l'`id`** — ni l'état d'ouverture, ni la clé de cache : SQLite réattribue
+les `id` (clé primaire sans `AUTOINCREMENT`), si bien qu'un scoreur supprimé puis remplacé rouvrait
+le QR de son successeur **sans clic**, et se voyait servir le SVG révoqué depuis le cache. Les deux
+portent le **code**. *(2ᵉ passe de revue : la 1ʳᵉ correction n'avait traité que l'état d'ouverture et
+compensait le cache par une purge à la suppression — laquelle ne couvrait que le chemin local et
+synchrone, et n'était épinglée par aucun test. Une clé qui ne peut pas collisionner vaut mieux
+qu'une purge qui doit s'exécuter.)*
 
 **3. L'URL nomme le monde dans le chemin et porte le code dans le FRAGMENT** :
 `{origine}/scoreur#code=<code>`.
@@ -92,12 +96,21 @@ le geste visé est justement d'éviter l'impression le matin du tournoi.
 - **+** Aucune dépendance ajoutée (règle 11) : ReportLab rend déjà le SVG, et le port
   `GenerateurDocumentsSalle.qr_rattachement(url)` reçoit une URL déjà composée — il a été réutilisé
   tel quel plutôt que doublé.
-- **+** Le code ne transite jamais par le serveur (fragment), ni ne survit dans l'historique du
-  téléphone.
+- **+** Le code n'apparaît dans **aucune URL reçue par le serveur** (fragment) : ni journal d'accès
+  d'uvicorn, ni en-tête `Referer` des sous-ressources. ⚠️ Il **circule bien** vers le serveur, dans
+  le corps du `POST /api/v1/scoreurs/session` — c'est l'acte d'authentification. *(Formulation
+  corrigée en 2ᵉ passe de revue : « ne transite jamais par le serveur » était faux.)*
+- **+** L'application retire le code de l'adresse dès l'arrivée, y compris quand le verrou de poste
+  détourne l'appareil vers l'écran de cible, et ne le conserve pas en mémoire au-delà.
 - **−** **Un QR photographié n'est pas révocable.** Il n'existe aucune rotation de code : la seule
   parade est de supprimer le scoreur et de le recréer, ce qui coupe sa session en cours. Écarté du
   périmètre par le commanditaire au cadrage du 04/09/2026 ; à reprendre en US dédiée si le besoin
   se confirme.
+- **−** **L'historique de l'application de scan échappe au produit** : elle conserve l'URL brute,
+  code compris. Même famille que le QR photographié, et même absence de parade.
+- **−** Le port réutilisé s'appelle toujours `qr_rattachement` alors qu'il sert désormais un QR de
+  **session**, que le glossaire oppose au rattachement d'un poste. Divergence assumée : le
+  renommage (`qr_svg`) touche port, adapter et doublures de test, hors périmètre de cette US.
 - **−** La route hérite de `DETTE-012` en **3ᵉ site** : l'URL est bâtie sur l'origine de la requête
   admin. Générer depuis `localhost` produit un QR porteur du code mais inutilisable.
 - **−** Le code reste **en clair en base** : ce point n'est pas tranché ici, il préexiste
@@ -113,10 +126,16 @@ le geste visé est justement d'éviter l'impression le matin du tournoi.
 | `backend/application/documents_salle.py` — `_url_scoreur` | Décision 3 : chemin `/scoreur`, code dans le fragment, échappement `quote` |
 | `backend/api/v1/documents_salle.py` — `qr_scoreur` | Frontière : SVG, `Depends(exiger_admin)` |
 | `frontend/src/features/scoreurs/Scoreurs.tsx` — état `qrOuvert` | Décision 2 : révélation une par une, indexée sur le **code** ; c'est **ici**, et nulle part ailleurs, que vit la garde |
-| `frontend/src/features/scoreurs/hooks.ts` — `useSupprimerScoreur` | Décision 2 : purge du cache du QR révoqué |
+| `frontend/src/features/scoreurs/QrScoreur.tsx` | Décision 2 : le composant dont le **montage** déclenche l'appel — le monter sans condition casserait la garde sans toucher aucun autre module de ce tableau |
+| `frontend/src/features/scoreurs/hooks.ts` — `cleQrScoreur` | Décision 2 : la clé de cache porte le **code**, donc aucune collision d'`id` réattribué |
+| `frontend/src/features/scoreur-session/EspaceScoreur.tsx` | Conséquence « ouvre sa session sans recopier son code » : préremplissage et connexion automatique, garde de tentative unique |
 | `frontend/src/features/scoreur-session/url.ts` | Décision 3 : lecture et effacement ciblé du fragment |
 | `frontend/src/app/App.tsx` | Décision 3 : l'effacement au **shell**, seul niveau traversé par tous les mondes |
 
-**Épinglé par** : `frontend/src/features/scoreurs/Scoreurs.test.tsx` (aucun QR chargé au montage, un
-seul ouvert, id réattribué), `frontend/src/app/App.entree.test.tsx` (effacement malgré le verrou de
-poste), `backend/tests/test_service_documents_salle.py` (forme d'URL, échappement, garde de tournoi).
+**Épinglé par** : `frontend/src/features/scoreurs/Scoreurs.test.tsx` (aucun QR chargé au montage,
+un seul ouvert, id réattribué côté état **et** côté cache), `frontend/src/app/App.entree.test.tsx`
+(effacement malgré le verrou de poste, `?poste=` préservé, code **consommé**),
+`frontend/src/features/scoreur-session/url.test.ts` (le contrat est le fragment, pas la query),
+`backend/tests/test_service_documents_salle.py` (forme d'URL, échappement des deux côtés, garde de
+tournoi). ⚠️ Chacun de ces tests a été **rejoué contre le code défectueux** et vu rouge : trois
+rédactions antérieures restaient vertes sur le défaut qu'elles prétendaient garder.

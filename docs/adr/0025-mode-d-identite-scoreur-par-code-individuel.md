@@ -93,3 +93,19 @@ Côté front, chaque requête n'engage **qu'une** identité (portée `'admin' | 
 - **Périmètre** : E10US003 livre la **définition** (CRUD admin) et la **session** (login/déconnexion).
   L'autorisation des endpoints de **validation** et la **trace** nominative sont E04US002 / E10US005 —
   `exiger_scoreur` et le store nominatif sont **prêts**, rien à élargir tant que ces endpoints n'existent pas.
+
+## Porté dans le code par
+
+*(Section ajoutée le 05/09/2026 : l'amendement d'ADR-0105 touche la § Décision, ce qui **rouvre** cet
+ADR au sens d'[ADR-0075 § Portée de la règle](0075-le-depart-est-la-portee-sportive.md) — relevé en
+2ᵉ passe de revue d'E16US015. Vérifiée en ouvrant chaque module, pas déduite de la décision.)*
+
+| Module | Ce qu'il porte |
+|---|---|
+| `backend/domain/scoreur.py` | Décision 1 : l'entité `Scoreur` du tournoi, et `normaliser_code` (forme canonique, comparaison à la connexion) |
+| `backend/infrastructure/scoreurs/codes.py` | Décision 2 : l'alphabet **sans confondables**, la longueur, le tirage par `secrets` |
+| `backend/application/scoreurs.py` | Décision 2 : l'attribution du code par le **service** (le domaine ne peut pas garantir l'unicité) et le ré-essai sur collision |
+| `backend/infrastructure/scoreurs/sessions.py` | Décision 3 : le jeton opaque **sans expiration**, révoqué à la déconnexion ou à la suppression — c'est ce fait qui fait écarter le jeton à usage unique en ADR-0105 |
+| `backend/api/dependances.py` — `exiger_scoreur` | Décision 4 : l'en-tête `X-Jeton-Scoreur` et le `Scoreur` rendu pour tracer « qui a validé » |
+| `frontend/src/shared/stores/sessionScoreurStore.ts` | Décision 3 : la session persistée localement le temps de la journée |
+| `docs/adr/0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md` | Amende la Décision 2 : le code n'est plus seulement **retapé**, il est aussi **scannable** |

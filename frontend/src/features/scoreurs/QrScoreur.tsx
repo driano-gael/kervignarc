@@ -12,12 +12,14 @@ import { useQrScoreur } from './hooks'
 export function QrScoreur({
   tournoiId,
   scoreurId,
+  code,
   nom,
 }: {
   tournoiId: number
   scoreurId: number
+  code: string
   nom: string
 }) {
-  const { data: src, isError } = useQrScoreur(tournoiId, scoreurId)
+  const { data: src, isError } = useQrScoreur(tournoiId, scoreurId, code)
   return <QrAgrandissable src={src} alt={`QR de session de ${nom}`} enErreur={isError} />
 }

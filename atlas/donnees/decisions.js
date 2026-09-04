@@ -921,7 +921,65 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/dependances.py",
+     "existe": true,
+     "symboles": [
+      "exiger_scoreur",
+      "Scoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/scoreurs.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/scoreur.py",
+     "existe": true,
+     "symboles": [
+      "Scoreur",
+      "normaliser_code"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/scoreurs/codes.py",
+     "existe": true,
+     "symboles": [
+      "secrets"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/scoreurs/sessions.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "docs/adr/0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/stores/sessionScoreurStore.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -9168,7 +9226,21 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "frontend/src/features/scoreur-session/EspaceScoreur.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "frontend/src/features/scoreur-session/url.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/scoreurs/QrScoreur.tsx",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -9187,7 +9259,8 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/scoreurs/hooks.ts",
      "existe": true,
      "symboles": [
-      "useSupprimerScoreur"
+      "cleQrScoreur",
+      "id"
      ],
      "symboles_absents": [],
      "verifiable": true

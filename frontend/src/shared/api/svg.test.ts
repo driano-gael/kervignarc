@@ -1,8 +1,7 @@
-// Test de la construction de la data URL des QR (E11US008 cible, E16US015 scoreur) —
-// logique **pure**, sans DOM ni
-// réseau (patron testable du projet : extraire la logique pure et la verrouiller, cf.
-// `exports/api.test.ts`). On fige le format de la data URL (préfixe + encodage) : une régression
-// silencieuse casserait l'affichage du QR à l'écran.
+// Test de la construction de la data URL des QR (E11US008 cible, E16US015 scoreur) — logique
+// **pure**, sans DOM ni réseau (patron testable du projet : extraire la logique pure et la
+// verrouiller, cf. `exports/api.test.ts`). On fige le format de la data URL (préfixe + encodage) :
+// une régression silencieuse casserait l'affichage du QR à l'écran.
 
 import { describe, expect, it } from 'vitest'
 import { svgEnDataUrl } from './svg'

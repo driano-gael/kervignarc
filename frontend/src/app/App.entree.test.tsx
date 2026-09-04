@@ -11,10 +11,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 
 let estPoste = false
+// Hissé hors du sélecteur : construit à l'intérieur, il changeait d'identité à chaque rendu et
+// son compteur d'appels devenait inexploitable pour un test futur (relevé en revue).
+const entrerModePoste = vi.fn()
 
 vi.mock('../shared/stores/sessionPosteStore', () => ({
   useSessionPosteStore: (selecteur: (etat: unknown) => unknown) =>
-    selecteur({ estPoste, poste: null, entrerModePoste: vi.fn() }),
+    selecteur({ estPoste, poste: null, entrerModePoste }),
 }))
 vi.mock('../shared/stores/sessionRoleStore', () => ({
   useSessionRoleStore: (selecteur: (etat: unknown) => unknown) =>
@@ -36,8 +39,14 @@ vi.mock('../features/poste/EspacePoste', () => ({
 }))
 vi.mock('../features/admin/CoquilleAdmin', () => ({ CoquilleAdmin: () => <p>admin</p> }))
 vi.mock('../features/public/AccueilPublic', () => ({ AccueilPublic: () => <p>public</p> }))
+// La doublure **enregistre** ce qu'elle reçoit à chaque rendu : c'est la seule façon d'observer
+// que le shell ne GARDE pas le code (cf. le test « consomme »).
+const codesRecus: (string | null)[] = []
 vi.mock('../features/scoreur-session/EspaceScoreur', () => ({
-  EspaceScoreur: ({ codeUrl }: { codeUrl: string | null }) => <p>scoreur : {String(codeUrl)}</p>,
+  EspaceScoreur: ({ codeUrl }: { codeUrl: string | null }) => {
+    codesRecus.push(codeUrl)
+    return <p>scoreur : {String(codeUrl)}</p>
+  },
 }))
 vi.mock('../shared/realtime/IndicateurConnexion', () => ({ IndicateurConnexion: () => null }))
 
@@ -48,6 +57,8 @@ function placerUrl(url: string) {
 describe('App — arrivée par le QR d’un scoreur', () => {
   beforeEach(() => {
     estPoste = false
+    entrerModePoste.mockClear()
+    codesRecus.length = 0
     placerUrl('/')
   })
 
@@ -55,8 +66,11 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     placerUrl('/scoreur#code=AB12CD')
 
     render(<App />)
+    await screen.findByText(/^scoreur : /)
 
-    expect(await screen.findByText('scoreur : AB12CD')).toBeInTheDocument()
+    // ⚠️ L'oracle est ce que l'espace a **reçu**, pas ce qui reste affiché : le code étant consommé
+    // (cf. le dernier test), l'écran retombe à `null` dans le même commit de rendu.
+    expect(codesRecus[0]).toBe('AB12CD')
     expect(window.location.hash).toBe('')
   })
 
@@ -85,5 +99,24 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     expect(await screen.findByText('écran de poste')).toBeInTheDocument()
     expect(window.location.search).toBe('?poste=ZZZ999')
     expect(window.location.hash).toBe('')
+  })
+
+  it('CONSOMME le code : il est transmis une fois, puis plus jamais', async () => {
+    // ⚠️ **Bloquant de la 2ᵉ passe de revue.** Le shell gardait le code pour toute la durée de
+    // l'onglet, et `FormulaireCode` rejoue la connexion à chaque montage : « Fermer ma session »
+    // rouvrait donc la session, et « Changer de rôle » rendait l'appareil en y laissant celle du
+    // scoreur précédent. L'oracle est la SUITE des valeurs reçues, pas la première.
+    placerUrl('/scoreur#code=AB12CD')
+
+    const { rerender } = render(<App />)
+    await screen.findByText(/^scoreur : /)
+    // ⚠️ Le re-rendu est l'oracle, pas un détail : c'est lui qui rejoue la lecture. Sans lui,
+    // `codesRecus` n'aurait qu'une entrée et l'assertion serait vraie **par vacuité** — le piège
+    // dans lequel la 1ʳᵉ rédaction de ce test est tombée. `rerender` sans enveloppe supplémentaire :
+    // ajouter un niveau remonterait `App` et détruirait ce qu'on observe.
+    rerender(<App />)
+
+    expect(codesRecus[0]).toBe('AB12CD')
+    expect(codesRecus[codesRecus.length - 1]).toBeNull()
   })
 })

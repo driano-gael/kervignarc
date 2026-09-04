@@ -225,7 +225,9 @@ inter-clubs : un classement neuf, dont l'entité classée n'est pas un archer), 
 (E16US015, 04/09/2026 — le QR d'un scoreur porte son code : le **canal de distribution** d'un
 secret personnel change, ce qui amende ADR-0025 § Décision 2, dont la phrase « distribué sur
 papier et retapé » devenait fausse en silence). Et, par
-**réouverture**, **`0103`** une seconde fois (E16US017, 04/09/2026 — sa *Décision 3* affirmait
+**réouverture**, **`0025`** (E16US015, 05/09/2026 — ADR-0105 amende sa *Décision 2* : le code
+cesse d'être « distribué sur papier et **retapé** » pour devenir scannable ; section « Porté dans le
+code par » écrite à cette occasion), **`0103`** une seconde fois (E16US017, 04/09/2026 — sa *Décision 3* affirmait
 « `DETTE-029` n'a pas gagné de 5ᵉ site », ce que `0104` rend faux, et sa mention de la lecture
 conditionnelle du référentiel des clubs était périmée par la levée du bornage ; sa section
 « Porté dans le code par » a été re-vérifiée symbole par symbole à cette occasion — front compris,

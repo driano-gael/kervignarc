@@ -46,7 +46,7 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
           <ul className="liste-scoreurs">
             {scoreurs.data.map((scoreur) => (
               <LigneScoreur
-                key={scoreur.id}
+                key={scoreur.code}
                 tournoiId={tournoiId}
                 scoreur={scoreur}
                 qrOuvert={qrOuvert === scoreur.code}
@@ -109,8 +109,8 @@ function LigneScoreur({
           {/* ⚠️ Révélation **une par une** (arbitrage E16US015) : le QR rend le code personnel
               scannable à distance, là où le code écrit demande de s'approcher. */}
           {/* ⚠️ Le libellé visible tient sur la ligne, mais le **nom accessible** nomme le
-              scoreur : une liste de dix boutons « Afficher le QR » est illisible au lecteur
-              d'écran, et indistinguable en test. */}
+              scoreur — sur TOUS les boutons de la ligne, y compris les destructeurs : dix
+              « Supprimer » identiques au lecteur d'écran, sur une action qui coupe une session. */}
           <button
             type="button"
             className="bouton--discret"
@@ -120,7 +120,12 @@ function LigneScoreur({
           >
             {qrOuvert ? 'Masquer le QR' : 'Afficher le QR'}
           </button>
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
+          <button
+            type="button"
+            className="bouton--discret"
+            aria-label={`Renommer ${scoreur.nom}`}
+            onClick={() => setEdition(true)}
+          >
             Renommer
           </button>
           {confirmationSuppression ? (
@@ -129,6 +134,7 @@ function LigneScoreur({
                 type="button"
                 className="bouton--danger"
                 disabled={supprimer.isPending}
+                aria-label={`Confirmer la suppression de ${scoreur.nom}`}
                 onClick={() => supprimer.mutate(scoreur.id)}
               >
                 Confirmer la suppression
@@ -145,6 +151,7 @@ function LigneScoreur({
             <button
               type="button"
               className="bouton--danger"
+              aria-label={`Supprimer ${scoreur.nom}`}
               onClick={() => setConfirmationSuppression(true)}
             >
               Supprimer
@@ -154,7 +161,12 @@ function LigneScoreur({
       </div>
       {qrOuvert && (
         <div className="scoreur__qr">
-          <QrScoreur tournoiId={tournoiId} scoreurId={scoreur.id} nom={scoreur.nom} />
+          <QrScoreur
+            tournoiId={tournoiId}
+            scoreurId={scoreur.id}
+            code={scoreur.code}
+            nom={scoreur.nom}
+          />
           <p className="carte__etat">
             À scanner par {scoreur.nom} : ouvre sa session sans retaper le code.
           </p>

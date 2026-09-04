@@ -30,7 +30,10 @@ vi.mock('./api', () => ({
 let client: QueryClient
 
 function monter() {
-  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // ⚠️ `staleTime` **doit refléter la production** (`app/queryClient.ts`, 30 s) : à 0, React Query
+  // refetche à chaque montage et le test du cache devient vert quoi qu'il arrive — c'est le piège
+  // dans lequel la 1ʳᵉ rédaction est tombée (2ᵉ passe de revue).
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } })
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>
   }
@@ -108,5 +111,24 @@ describe('Scoreurs — le QR ne se montre que sur geste', () => {
     // rendu en même temps que la ligne — c'est la seule assertion qui discrimine.
     expect(screen.queryByRole('button', { name: /^Masquer le QR/ })).toBeNull()
     expect(screen.getAllByRole('button', { name: /^Afficher le QR/ })).toHaveLength(2)
+  })
+
+  it('ne sert PAS le QR du supprimé depuis le cache quand son id est réattribué', async () => {
+    // ⚠️ 2ᵉ passe de revue : l'`id` avait été chassé de l'état d'ouverture mais **pas de la clé de
+    // cache**. Sur `['qr-scoreur', t, id]`, rouvrir le QR du successeur servait le SVG révoqué du
+    // supprimé. La clé porte donc le **code** — d'où un appel réseau neuf, et lui seul le prouve.
+    monter()
+    await userEvent.click(await screen.findByRole('button', { name: 'Afficher le QR de Bob' }))
+    await screen.findByAltText('QR de session de Bob')
+    await userEvent.click(screen.getByRole('button', { name: 'Masquer le QR de Bob' }))
+
+    const charlie: Scoreur = { id: bob.id, tournoi_id: 1, nom: 'Charlie', code: 'CCC444' }
+    scoreursRendus = [alice, charlie]
+    await client.invalidateQueries({ queryKey: ['scoreurs', 1] })
+    await screen.findByText('Charlie')
+    await userEvent.click(screen.getByRole('button', { name: 'Afficher le QR de Charlie' }))
+
+    await screen.findByAltText('QR de session de Charlie')
+    expect(getQrScoreur).toHaveBeenCalledTimes(2)
   })
 })
