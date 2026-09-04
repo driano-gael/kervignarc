@@ -34,6 +34,7 @@ from domain.bareme import BaremeQualification
 from domain.blason import ZoneScore
 from domain.categorie import Categorie
 from domain.classement import StatutClassement
+from domain.classement_clubs import classer_clubs
 from domain.club import Club
 from domain.forfait import Forfait, NatureForfait
 from domain.grain_validation import GrainValidation
@@ -717,11 +718,16 @@ def test_un_podium_de_club_porte_le_nom_du_club_lu_au_referentiel() -> None:
     assert [bloc.libelle for bloc in blocs] == ["Compagnie de Kervignarc"]
 
 
-def test_le_referentiel_des_clubs_n_est_pas_lu_quand_la_portee_club_est_inactive() -> None:
-    """Le défaut est *catégorie* seule : le cas courant ne doit pas payer une lecture inutile.
+def test_le_referentiel_des_clubs_n_est_pas_lu_quand_le_tournoi_ne_recompense_rien() -> None:
+    """Un tournoi sans aucune portée ne décerne rien : aucun nom de club ne lui sert.
 
     `DETTE-031` porte déjà le coût d'une lecture de palmarès sur une route publique ; y ajouter un
-    balayage du référentiel pour un réglage inactif l'élargissait pour rien.
+    balayage du référentiel pour un réglage vide l'élargissait pour rien.
+
+    ⚠️ **La garde a été élargie par E16US017**, et ce test avec elle : elle ne portait que sur la
+    portée *club*, au motif que le cas courant (*catégorie* seule) « n'en fait rien ». Le
+    classement des clubs entre eux, lui, doit **nommer** ses clubs dès qu'une portée inter-club est
+    réglée — le motif est tombé, l'invariant restant est celui du réglage vide.
     """
     monde, _ = _monde_de_quatre()
     clubs = _ClubsComptes()
@@ -736,15 +742,16 @@ def test_le_referentiel_des_clubs_n_est_pas_lu_quand_la_portee_club_est_inactive
         clubs,
     )
 
+    service.definir_reglage_podiums(monde.tournoi_id, ReglagePodiums(portees=frozenset()))
     service.rendu(monde.tournoi_id)
-    lectures_par_defaut = clubs.lectures
+    lectures_sans_portee = clubs.lectures
     service.definir_reglage_podiums(
-        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CLUB}))
+        monde.tournoi_id, ReglagePodiums(portees=frozenset({PorteePodium.CATEGORIE}))
     )
     service.rendu(monde.tournoi_id)
 
-    assert lectures_par_defaut == 0
-    assert clubs.lectures == 1
+    assert lectures_sans_portee == 0
+    assert clubs.lectures == 1, "la portée *catégorie* alimente le classement des clubs (E16US017)"
 
 
 class _ClubsComptes(FauxClubRepository):
@@ -827,3 +834,35 @@ def test_une_phase_a_duels_non_commencee_tient_les_blocs_en_attente() -> None:
     assert avant[0].en_attente is True, "mais la phase est ouverte et n'a rien livré"
     assert apres[0].places, "le tableau a livré"
     assert apres[0].en_attente is False, "et plus personne n'est en lice"
+
+
+def test_le_classement_des_clubs_nomme_ses_clubs_sans_la_portee_club() -> None:
+    """E16US017 : le décompte porte sur les portées **inter-clubs**, et il faut nommer les clubs.
+
+    ⚠️ C'est la borne qu'E16US014 laissait à découvert : son test de nommage réglait la portée
+    *club*, la seule qui déclenchait alors la lecture du référentiel. Avec le défaut (*catégorie*
+    seule), `_libelles_club` rendait `{}` et le classement des clubs se serait titré « Club 1 ».
+    """
+    monde, archers = _monde_de_quatre()
+    clubs = FauxClubRepository()
+    _rattacher_a_un_club(monde, clubs, {archers[0]: "Compagnie de Kervignarc"})
+    # Le tableau est **joué** : sans médaille décernée, le classement des clubs est vide par
+    # construction depuis la revue (axe C1), et le test ne prouverait plus rien du nommage.
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
+    service = ServicePalmares(
+        monde.tournois,
+        monde.phases,
+        monde._classement(),
+        monde.saisie,
+        monde.duels,
+        _FauxGenerateurPalmares(),
+        monde.departs,
+        clubs,
+    )
+
+    rendu = service.rendu(monde.tournoi_id)
+    classement = classer_clubs(rendu.complet, rendu.reglage)
+
+    assert classement.portees_comptees == (PorteePodium.CATEGORIE,), "le défaut d'ADR-0103"
+    assert [ligne.club_libelle for ligne in classement.lignes] == ["Compagnie de Kervignarc"]

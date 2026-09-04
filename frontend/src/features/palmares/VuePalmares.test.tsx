@@ -7,7 +7,7 @@
 // gagné », et le spectateur qui ne suit aucun médaillé est celui pour qui la question se pose.
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LignePalmares, Palmares } from './api'
@@ -55,6 +55,15 @@ const MON_ARCHER = ligne({
   decerne: false,
 })
 
+const CLUB = {
+  rang: 1,
+  club_id: 2,
+  club_libelle: 'Compagnie de Kervignarc',
+  medailles_or: 1,
+  medailles_argent: 0,
+  medailles_bronze: 0,
+}
+
 const PALMARES: Palmares = {
   tournoi_id: 1,
   podiums: [
@@ -67,6 +76,21 @@ const PALMARES: Palmares = {
       places: [{ rang: 1, ligne: MEDAILLE }],
     },
   ],
+  classement_clubs: {
+    lignes: [
+      {
+        rang: 1,
+        club_id: 2,
+        club_libelle: 'Compagnie de Kervignarc',
+        medailles_or: 1,
+        medailles_argent: 0,
+        medailles_bronze: 0,
+      },
+    ],
+    portees_comptees: ['categorie'],
+    portees_reglees: ['categorie'],
+    provisoire: false,
+  },
   profondeur_podium: 4,
   classement_vide: false,
   lignes: [MEDAILLE, MON_ARCHER],
@@ -95,7 +119,9 @@ describe('VuePalmares — centrage « mes archers »', () => {
     render(<Cadre enfants={<VuePalmares tournoiId={1} mode="suivis" suivis={[99]} />} />)
 
     await waitFor(() => expect(screen.getByText('Mes archers')).toBeInTheDocument())
-    const classement = screen.getByRole('table')
+    // Nommé, et non pris par sa position : E16US017 a ajouté un second tableau à cet écran (le
+    // classement des clubs), et `getByRole('table')` seul est devenu ambigu.
+    const classement = within(screen.getByLabelText('Mes archers')).getByRole('table')
     expect(classement).toHaveTextContent('MARTIN')
     expect(classement).not.toHaveTextContent('CHAMPION')
   })
@@ -157,5 +183,122 @@ describe('VuePalmares — un filtre qui vide le classement ne retire pas les pod
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
     expect(await screen.findByText(/Aucun archer classé pour l['’]instant/)).toBeInTheDocument()
+  })
+})
+
+describe('VuePalmares — classement des clubs (E16US017)', () => {
+  it('affiche le décompte de médailles à côté des podiums', async () => {
+    vi.mocked(getPalmares).mockResolvedValue(PALMARES)
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByLabelText('Classement des clubs')).toBeInTheDocument())
+    expect(
+      within(screen.getByLabelText('Classement des clubs')).getByRole('table'),
+    ).toHaveTextContent('Compagnie de Kervignarc')
+  })
+
+  it('rend les rangs du serveur, sauts d’ex æquo compris', async () => {
+    // ⚠️ Le garde-fou qui n'a pas de recours : deux clubs à décompte identique partagent le rang 1
+    // et le suivant est **3ᵉ**. Numéroter sur l'index de la boucle rendrait 1-2-3 — un classement
+    // cohérent et faux, exactement ce que `DETTE-029` décrit.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: {
+        ...PALMARES.classement_clubs,
+        lignes: [
+          { ...CLUB, rang: 1, club_id: 1, club_libelle: 'Arc Club de Vannes' },
+          { ...CLUB, rang: 1, club_id: 2, club_libelle: 'Compagnie de Kervignarc' },
+          { ...CLUB, rang: 3, club_id: 3, club_libelle: 'Les Archers du Golfe', medailles_or: 0 },
+        ],
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByLabelText('Classement des clubs')).toBeInTheDocument())
+    const rangs = within(screen.getByLabelText('Classement des clubs'))
+      .getAllByRole('row')
+      .slice(1)
+      .map((ligne) => ligne.querySelectorAll('td')[0]?.textContent)
+    expect(rangs).toEqual(['1ᵉʳ', '1ᵉʳ', '3ᵉ'])
+  })
+
+  it('dit pourquoi il n’y a rien plutôt que de laisser un blanc', async () => {
+    // Arbitrage du 04/09/2026 : réglé sur la seule portée *club*, le décompte n'a aucune base. Un
+    // tableau vide se lirait comme une panne, et l'organisateur irait chercher au mauvais endroit.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: {
+        lignes: [],
+        portees_comptees: [],
+        portees_reglees: ['club'],
+        provisoire: false,
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() =>
+      expect(screen.getByText(/à l’intérieur de chaque club/)).toBeInTheDocument(),
+    )
+    expect(within(screen.getByLabelText('Classement des clubs')).queryByRole('table')).toBeNull()
+  })
+})
+
+describe('VuePalmares — classement des clubs, correctifs de revue', () => {
+  it('range chaque métal dans sa propre colonne', async () => {
+    // ⚠️ Relevé en revue (axe B) : aucune surface n'ancrait *quelle colonne porte quel métal*, si
+    // bien qu'une permutation argent ↔ bronze restait verte partout. Trois valeurs distinctes.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: {
+        ...PALMARES.classement_clubs,
+        lignes: [{ ...CLUB, medailles_or: 3, medailles_argent: 2, medailles_bronze: 1 }],
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByLabelText('Classement des clubs')).toBeInTheDocument())
+    const ligne = within(screen.getByLabelText('Classement des clubs')).getAllByRole('row')[1]
+    expect([...(ligne?.querySelectorAll('td') ?? [])].map((c) => c.textContent)).toEqual([
+      '1ᵉʳ',
+      'Compagnie de Kervignarc',
+      '3',
+      '2',
+      '1',
+    ])
+  })
+
+  it('n’affiche rien du tout quand le tournoi ne récompense rien', async () => {
+    // ⚠️ Relevé en revue (axe C2) : la garde vivait en JSX et lisait `podiums` — 5ᵉ inférence du
+    // même genre sur ce DTO. Le fait est désormais servi (`portees_reglees`), donc testable ici.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      podiums: [],
+      classement_clubs: {
+        lignes: [],
+        portees_comptees: [],
+        portees_reglees: [],
+        provisoire: false,
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByText('Classement complet')).toBeInTheDocument())
+    expect(screen.queryByLabelText('Classement des clubs')).toBeNull()
+  })
+
+  it('dit qu’aucun club n’a de médaille plutôt que de les ranger tous 1ᵉʳˢ', async () => {
+    // ⚠️ Relevé en revue (axe C1) : le domaine rendait un club par ligne à (0,0,0), donc tous au
+    // rang 1 — « un classement où tout le monde est premier », que le CA interdit. Le serveur ne
+    // renvoie plus de lignes ; l'écran doit dire pourquoi.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: { ...PALMARES.classement_clubs, lignes: [], provisoire: true },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Aucun club n’a encore de médaille.')).toBeInTheDocument(),
+    )
+    expect(within(screen.getByLabelText('Classement des clubs')).queryByRole('table')).toBeNull()
   })
 })

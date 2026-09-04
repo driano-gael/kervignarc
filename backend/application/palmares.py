@@ -39,7 +39,7 @@ from domain.palmares import (
 )
 from domain.participant import GenreParticipant
 from domain.phase import Phase, StatutPhase, TypePhase
-from domain.podium import PorteePodium, ReglagePodiums
+from domain.podium import ReglagePodiums
 from domain.politiques import Aggregation, AggregationParQualification
 from domain.ports import (
     ClubRepository,
@@ -132,8 +132,8 @@ class ServicePalmares:
         self._tournois = tournois
         # Le classement — donc le palmarès — vit par départ depuis ADR-0075.
         self._departs = departs
-        # E16US014 : de quoi **nommer** les podiums de club. Référentiel global (E02US001), lu
-        # **seulement** quand la portée `club` est réglée — cf. `_libelles_club`.
+        # E16US014 : de quoi **nommer** les podiums de club et, depuis E16US017, le classement des
+        # clubs. Référentiel global (E02US001), lu dès qu'une portée est réglée — `_libelles_club`.
         self._clubs = clubs
         self._phases = phases
         self._classements = classements
@@ -262,14 +262,14 @@ class ServicePalmares:
         )
 
     def _libelles_club(self, reglage: ReglagePodiums) -> Mapping[ClubId, str]:
-        """Le nom de chaque club, pour que les podiums de club se **nomment** (E16US014).
+        """Le nom de chaque club — les podiums de club et le classement des clubs le portent.
 
         Résolu ici et non à l'écran : le PDF doit nommer ses blocs et n'a pas de front pour le
-        faire à sa place. ⚠️ **Lu seulement si la portée *club* est réglée** : le défaut est
-        *catégorie* seule, et faire payer au cas courant une lecture du référentiel dont il ne fait
-        rien élargissait `DETTE-031` pour rien (relevé en revue).
+        faire à sa place. ⚠️ **Lu dès qu'une portée est réglée**, et non plus pour la seule portée
+        *club* : le classement des clubs (E16US017) se compte sur les portées **inter-clubs**, donc
+        le cas courant a désormais besoin des noms — ADR-0104 § Conséquences.
         """
-        if PorteePodium.CLUB not in reglage.portees:
+        if not reglage.portees:
             return {}
         return {club.id: club.nom for club in self._clubs.lister() if club.id is not None}
 

@@ -9,10 +9,20 @@
 import { useState } from 'react'
 import { useCategories } from '../categories/hooks'
 import { centrerLignes, type ModeAffichage } from '../../shared/suivis/focus'
-import type { LignePalmares, Podium } from './api'
+import type { ClassementClubs as ClassementClubsDto, LignePalmares, Podium } from './api'
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
-import { detail, etatPodium, medaille, nomComplet, provenance, rang } from './presentation'
+import {
+  baseDuDecompte,
+  detail,
+  etatClassementClubs,
+  etatPodium,
+  medaille,
+  nomComplet,
+  ordinal,
+  provenance,
+  rang,
+} from './presentation'
 
 export function VuePalmares({
   tournoiId,
@@ -88,6 +98,7 @@ export function VuePalmares({
               profondeur={donnees.profondeur_podium}
             />
           ))}
+          <ClassementClubs classement={donnees.classement_clubs} />
           <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
         </>
       )}
@@ -138,6 +149,60 @@ function BlocPodium({
   )
 }
 
+/** Le classement des clubs entre eux (E16US017) — le trophée du club le plus performant.
+ *
+ * Placé entre les podiums et le classement final, comme sur le PDF : les deux se remettent au même
+ * moment, et l'écran doit se comparer au papier d'un coup d'œil.
+ *
+ * ⚠️ **Le rang vient du serveur**, sauts d'*ex æquo* compris (1-2-2-4) : le recalculer sur l'index
+ * de la boucle ferait passer un second 1ᵉʳ pour un 2ᵉ.
+ */
+function ClassementClubs({ classement }: { classement: ClassementClubsDto }) {
+  // ⚠️ **Le serveur le dit, on ne le déduit pas** — même avertissement que quinze lignes plus haut.
+  // Un tournoi qui ne récompense rien (réglage vide, licite — ADR-0103 §1) n'a pas de question à se
+  // voir répondre. Lire `podiums` pour le savoir aurait été la 5ᵉ inférence du même genre.
+  if (classement.portees_reglees.length === 0) return null
+  const etat = etatClassementClubs(classement)
+  return (
+    <section className="palmares-podium" aria-label="Classement des clubs">
+      <h4 className="palmares-section">Classement des clubs</h4>
+      {/* Sur quoi le décompte repose — sans quoi « Or : 2 » pour un club à un seul archer se lit
+          comme une erreur, alors que c'est le cumul de deux portées réglées. */}
+      {classement.portees_comptees.length > 0 && (
+        <p className="carte__etat">Compté sur : {baseDuDecompte(classement.portees_comptees)}</p>
+      )}
+      {etat && <p className="carte__etat">{etat}</p>}
+      {classement.portees_comptees.length > 0 && classement.lignes.length > 0 && (
+        // Conteneur défilant : cinq colonnes débordent sur mobile, comme la table du classement.
+        <div className="table-defilement">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Rang</th>
+                <th scope="col">Club</th>
+                <th scope="col">Or</th>
+                <th scope="col">Argent</th>
+                <th scope="col">Bronze</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classement.lignes.map((ligne) => (
+                <tr key={ligne.club_id}>
+                  <td>{ordinal(ligne.rang)}</td>
+                  <td>{ligne.club_libelle}</td>
+                  <td>{ligne.medailles_or}</td>
+                  <td>{ligne.medailles_argent}</td>
+                  <td>{ligne.medailles_bronze}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 /** Le classement final sous les podiums — entier, ou centré sur les archers suivis (E16US004).
  *
  * La table vide n'est **pas** rendue : un `<thead>` seul sous un titre « Mes archers » se lit comme
@@ -145,11 +210,15 @@ function BlocPodium({
  * qualification), ou dans une catégorie filtrée juste au-dessus.
  */
 function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: ModeAffichage }) {
+  // ⚠️ Le libellé de la section est **celui du titre visible**, jamais un synonyme : un `aria-label`
+  // qui contredit son propre `<h4>` annonce autre chose que ce qui est affiché.
+  const titre = mode === 'suivis' ? 'Mes archers' : 'Classement complet'
   return (
-    <>
-      <h4 className="palmares-section">
-        {mode === 'suivis' ? 'Mes archers' : 'Classement complet'}
-      </h4>
+    // Section nommée comme ses deux voisines (`BlocPodium`, `ClassementClubs`) depuis qu'E16US017
+    // a ajouté un second tableau à cet écran : sans elle, les deux ne se distinguent que par leur
+    // position dans le DOM.
+    <section aria-label={titre}>
+      <h4 className="palmares-section">{titre}</h4>
       {lignes.length === 0 ? (
         <p className="carte__etat">
           {/* Cause non nommée (correctif de revue) : le filtre par catégorie de cet écran vide la
@@ -166,7 +235,7 @@ function ClassementFinal({ lignes, mode }: { lignes: LignePalmares[]; mode: Mode
           <TablePalmares lignes={lignes} />
         </div>
       )}
-    </>
+    </section>
   )
 }
 

@@ -66,9 +66,39 @@ export interface Podium {
   en_attente: boolean
 }
 
+// Un club au classement des clubs (E16US017). Le rang est **partagé** entre clubs à décompte
+// identique, avec sauts (1-2-2-4) : deux 1ᵉʳˢ sont suivis d'un 3ᵉ. Le front l'affiche tel quel.
+export interface LigneClassementClubs {
+  rang: number
+  club_id: number
+  club_libelle: string
+  medailles_or: number
+  medailles_argent: number
+  medailles_bronze: number
+}
+
+// Le classement des clubs entre eux, et **sur quoi il repose**.
+export interface ClassementClubs {
+  // **Vide** tant qu'aucun club n'a de médaille : à décompte égal le rang est partagé, donc un
+  // champ de zéros sortait tous les clubs **1ᵉʳˢ** — un résultat, là où il n'y en a pas encore.
+  lignes: LigneClassementClubs[]
+  // Les portées qui alimentent le décompte — **vide** = aucune base de comparaison. ⚠️ `'club'`
+  // n'y figure jamais : ce podium-là décerne un or à l'intérieur de chaque club, donc à tous.
+  portees_comptees: PorteePodium[]
+  // Tout ce que le tournoi récompense, portée `'club'` **comprise** — **vide** = il ne récompense
+  // rien. ⚠️ Sans lui, l'écran distinguait « rien n'est récompensé » de « seuls des podiums de club
+  // le sont » en lisant `podiums` : cinquième inférence du même genre, les quatre précédentes étant
+  // fausses (cf. l'avertissement de `VuePalmares`).
+  portees_reglees: PorteePodium[]
+  // Un podium compté attend-il encore ? Sépare « en cours » de « c'est le trophée ». Servi, jamais
+  // déduit des lignes — elles sont peuplées bien avant que le tournoi soit fini.
+  provisoire: boolean
+}
+
 export interface Palmares {
   tournoi_id: number
   podiums: Podium[]
+  classement_clubs: ClassementClubs
   // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
   // les surfaces publiques ne lisent jamais le réglage lui-même.
   profondeur_podium: number

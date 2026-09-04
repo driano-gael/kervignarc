@@ -140,8 +140,10 @@ class LignePalmares:
     club_id: ClubId | None
     club_libelle: str | None
     """Le nom du club, ou `None`. ⚠️ **`None` a deux sens**, et le second n'est pas une anomalie :
-    club inconnu (ADR-0014), **ou** portée *club* non réglée — le référentiel n'est alors pas lu
-    (`ServicePalmares._libelles_club`). Ne pas en déduire « club inconnu » sans regarder `club_id`.
+    club inconnu (ADR-0014), **ou** **aucune** portée réglée — le référentiel n'est alors pas lu
+    (`ServicePalmares._libelles_club`, garde élargie par E16US017/ADR-0104 : la lecture a désormais
+    lieu dès qu'**une** portée l'est, défaut compris). Ne pas en déduire « club inconnu » sans
+    regarder `club_id`.
     """
 
     origine: OriginePalmares
@@ -234,11 +236,10 @@ class Palmares:
             if portee is PorteePodium.CATEGORIE:
                 vus.setdefault(ligne.categorie_id, ligne.categorie_libelle)
             elif ligne.club_id is not None:
-                # Repli **visible** : un titre vide imprimerait « Podium — » au mur sans que
-                # personne sache pourquoi. Inatteignable par la production — `RenduPalmares` fait
-                # calculer et interroger avec le **même** réglage. Garde-fou pour un `club_id`
-                # absent du référentiel, et pour tout appelant qui désaccorderait les deux.
-                vus.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
+                # Garde-fou pour un `club_id` absent du référentiel, et pour tout appelant qui
+                # désaccorderait réglage et calcul — cf. `libelle_de_club`, partagé avec le
+                # classement des clubs pour que les deux vues nomment un club à l'identique.
+                vus.setdefault(ligne.club_id, libelle_de_club(ligne))
         return tuple(vus.items())
 
     def _bloc(
@@ -302,6 +303,16 @@ class Palmares:
             self,
             lignes=tuple(ligne for ligne in self.lignes if ligne.categorie_id == categorie_id),
         )
+
+
+def libelle_de_club(ligne: LignePalmares) -> str:
+    """Le nom du club d'une ligne, avec son repli **visible**.
+
+    ⚠️ Un titre vide imprimerait « Podium — » au mur sans que personne sache pourquoi. Partagée
+    avec `domain.classement_clubs` : le même club doit porter le même nom selon qu'on lit son
+    podium ou le classement des clubs, et un commentaire ne suffisait pas à le tenir.
+    """
+    return ligne.club_libelle or f"Club {ligne.club_id}"
 
 
 def _rang_exact(portee: PorteePodium, ligne: LignePalmares) -> int | None:

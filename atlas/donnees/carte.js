@@ -292,7 +292,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 89,
+   "occurrences": 90,
    "source": "infrastructure"
   },
   {
@@ -316,7 +316,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 97,
+   "occurrences": 98,
    "source": "api"
   },
   {
@@ -544,7 +544,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "api",
-   "occurrences": 93,
+   "occurrences": 94,
    "origines": [
     "backend/api/v1/audit.py",
     "backend/api/v1/bareme_qualification.py",
@@ -1117,7 +1117,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "infrastructure",
-   "occurrences": 6,
+   "occurrences": 7,
    "origines": [
     "backend/infrastructure/pdf/documents_salle.py",
     "backend/infrastructure/pdf/feuille_de_marque.py",
@@ -2998,8 +2998,8 @@ window.ATLAS.carte = {
   "aretes_front": 173,
   "enchevetrements": 4,
   "features": 49,
-  "imports": 941,
-  "imports_entre_couches": 795,
+  "imports": 943,
+  "imports_entre_couches": 797,
   "plus_gros_noeud": 24,
   "ports": 68,
   "ports_hors_domaine": 25,

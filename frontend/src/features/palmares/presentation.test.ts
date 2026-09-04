@@ -5,8 +5,8 @@
 // nomme. Ce sont les trois choses qu'un écran peut faire dire de faux à un palmarès juste.
 
 import { describe, expect, it } from 'vitest'
-import type { LignePalmares, Podium } from './api'
-import { detail, etatPodium, medaille, rang } from './presentation'
+import type { ClassementClubs, LignePalmares, Podium } from './api'
+import { detail, etatClassementClubs, etatPodium, medaille, rang } from './presentation'
 
 function ligne(partiel: Partial<LignePalmares> = {}): LignePalmares {
   return {
@@ -208,5 +208,58 @@ describe('etatPodium — attente réelle ou ex æquo (E16US014)', () => {
     expect(etatPodium(podium(1, 5, true), 4)).toBe(
       'Podium partiel — les finales ne sont pas toutes tirées.',
     )
+  })
+})
+
+describe('etatClassementClubs (E16US017)', () => {
+  const CLASSEMENT: ClassementClubs = {
+    lignes: [
+      {
+        rang: 1,
+        club_id: 1,
+        club_libelle: 'Compagnie de Kervignarc',
+        medailles_or: 1,
+        medailles_argent: 0,
+        medailles_bronze: 0,
+      },
+    ],
+    portees_comptees: ['categorie'],
+    portees_reglees: ['categorie'],
+    provisoire: false,
+  }
+
+  it('ne dit rien quand le décompte est complet — la table parle d’elle-même', () => {
+    expect(etatClassementClubs(CLASSEMENT)).toBeNull()
+  })
+
+  it('sépare les trois causes d’un tableau vide, qui n’appellent pas le même geste', () => {
+    const rienRecompense = etatClassementClubs({
+      ...CLASSEMENT,
+      lignes: [],
+      portees_comptees: [],
+      portees_reglees: [],
+    })
+    const sansBase = etatClassementClubs({
+      ...CLASSEMENT,
+      lignes: [],
+      portees_comptees: [],
+      portees_reglees: ['club'],
+    })
+    const sansMedaille = etatClassementClubs({ ...CLASSEMENT, lignes: [] })
+
+    // Rien de récompensé : la section entière ne se rend pas, il n'y a pas de question posée.
+    expect(rienRecompense).toBeNull()
+    // Aucune base : vient du **réglage**, ne se corrigera pas en attendant.
+    expect(sansBase).toMatch(/à l’intérieur de chaque club/)
+    // Aucune médaille : vient du **tournoi**. ⚠️ « encore » **seulement si ça peut changer** — sur
+    // un tournoi sans phase à duels, l'adverbe promettrait une suite qui ne vient jamais.
+    expect(sansMedaille).toBe('Aucun club n’a de médaille.')
+    expect(etatClassementClubs({ ...CLASSEMENT, lignes: [], provisoire: true })).toBe(
+      'Aucun club n’a encore de médaille.',
+    )
+  })
+
+  it('porte la réserve tant qu’un podium compté attend — on ne promet pas le trophée à 9 h', () => {
+    expect(etatClassementClubs({ ...CLASSEMENT, provisoire: true })).toMatch(/provisoire/)
   })
 })

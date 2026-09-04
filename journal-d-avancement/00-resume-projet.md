@@ -1,4 +1,4 @@
-# Résumé du projet — où on en est au 31 août 2026
+# Résumé du projet — où on en est au 4 septembre 2026
 
 > Ce fichier est la **photo d'ensemble** : ce qui existe et fonctionne aujourd'hui, dans l'ordre où
 > ça a été construit. Pour le détail « quelle US est faite, quelle est la suivante », voir
@@ -48,7 +48,10 @@ archer en qualification**, depuis sa fiche, sans aller chercher un scoreur. Le *
 son découpage : l'organisateur coche **ce que son club récompense** — le podium du tournoi toutes
 catégories mêlées, un podium par catégorie, les archers de chaque club classés entre eux — et les
 trois se cumulent ; le **nombre de places** récompensées se règle aussi, et ce choix vaut d'un coup
-pour l'écran, l'affichage public, l'écran du gymnase et le PDF affiché au mur. Et l'application se **déploie désormais en un seul fichier**
+pour l'écran, l'affichage public, l'écran du gymnase et le PDF affiché au mur. Dans la foulée, les
+**clubs se classent entre eux** : l'application compte les médailles de chacun — l'or d'abord, puis
+l'argent, puis le bronze — et désigne le club le plus performant de la journée, sur les quatre mêmes
+surfaces, sans que personne ait à recompter à la main au moment de remettre le trophée. Et l'application se **déploie désormais en un seul fichier**
 exécutable qui crée sa base au premier lancement, s'ouvre sur le réseau local, **se sauvegarde toute
 seule** et sait produire une **archive complète** du tournoi — prêt pour le jour J, sans installation
 ni internet.** Le jalon « qualification de bout en bout » est ainsi **terminé** (à un reliquat de
@@ -578,9 +581,15 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **132 US livrées** sur `main` (mergées, revues, CI verte) à la date du 31/08/2026 — dont deux
+- **133 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/09/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US014` — **choisir ce que le tournoi
+  autorité sur le compte) —, la dernière étant `E16US017` — **le trophée du club le plus
+  performant** : les clubs se classent entre eux au **décompte de médailles**, dans l'ordre
+  olympique (or, puis argent, puis bronze), sur les quatre surfaces du palmarès. Aucun effectif
+  minimum, les égalités parfaites restent *ex æquo*, et un tournoi qui ne récompense qu'à
+  l'intérieur de chaque club **le dit** au lieu d'afficher tout le monde à égalité
+  ([ADR-0104](../docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md)).
+  Précédente : `E16US014` — **choisir ce que le tournoi
   récompense** : les podiums ne sont plus figés « par catégorie, quatre places » dans le code. Trois
   portées **cumulables** (scratch, catégorie, club) et une profondeur réglable, valables d'un seul
   réglage sur l'écran, l'affichage public, l'écran du gymnase et le PDF. ⚠️ **La fiche a été coupée
