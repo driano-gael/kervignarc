@@ -5,8 +5,8 @@
 // nomme. Ce sont les trois choses qu'un écran peut faire dire de faux à un palmarès juste.
 
 import { describe, expect, it } from 'vitest'
-import type { LignePalmares, Podium } from './api'
-import { detail, etatPodium, medaille, rang } from './presentation'
+import type { ClassementClubs, LignePalmares, Podium } from './api'
+import { detail, etatClassementClubs, etatPodium, medaille, rang } from './presentation'
 
 function ligne(partiel: Partial<LignePalmares> = {}): LignePalmares {
   return {
@@ -208,5 +208,40 @@ describe('etatPodium — attente réelle ou ex æquo (E16US014)', () => {
     expect(etatPodium(podium(1, 5, true), 4)).toBe(
       'Podium partiel — les finales ne sont pas toutes tirées.',
     )
+  })
+})
+
+describe('etatClassementClubs (E16US017)', () => {
+  const CLASSEMENT: ClassementClubs = {
+    lignes: [
+      {
+        rang: 1,
+        club_id: 1,
+        club_libelle: 'Compagnie de Kervignarc',
+        medailles_or: 1,
+        medailles_argent: 0,
+        medailles_bronze: 0,
+      },
+    ],
+    portees_comptees: ['categorie'],
+    provisoire: false,
+  }
+
+  it('ne dit rien quand le décompte est complet — la table parle d’elle-même', () => {
+    expect(etatClassementClubs(CLASSEMENT)).toBeNull()
+  })
+
+  it('distingue « aucune base » d’« aucun club » : les deux tables sont vides, pas les causes', () => {
+    const sansBase = etatClassementClubs({ ...CLASSEMENT, lignes: [], portees_comptees: [] })
+    const sansClub = etatClassementClubs({ ...CLASSEMENT, lignes: [] })
+
+    // « Aucune base » vient du réglage et ne se corrigera pas en attendant ; « aucun club » vient
+    // de la population. Les rendre sous un même blanc renverrait vérifier le mauvais écran.
+    expect(sansBase).toMatch(/à l’intérieur de chaque club/)
+    expect(sansClub).toBe('Aucun club au classement.')
+  })
+
+  it('porte la réserve tant qu’un podium compté attend — on ne promet pas le trophée à 9 h', () => {
+    expect(etatClassementClubs({ ...CLASSEMENT, provisoire: true })).toMatch(/provisoire/)
   })
 })

@@ -87,7 +87,11 @@ règle de départage à la demande (A16/P07), dialogue de confirmation en rempla
 - [x] Recherche transverse et alerte de complétude en liste (E16US010) — livrée le 29/08/2026,
       ADR-0100. ⚠️ Case restée décochée jusqu'au 30/08/2026, corrigée en découpant `E16US007`.
 - [ ] Rattrapage : les règles de S06, S08, S09, A09, A02 et P05 (E16US011).
-- [ ] Podiums configurables (E16US014) — **sortie d'E16US007** le 30/08/2026.
+- [x] Podiums configurables (E16US014) — **sortie d'E16US007** le 30/08/2026, livrée le
+      31/08/2026 (ADR-0103). ⚠️ Case restée décochée à la livraison, corrigée par `E16US017`.
+      ⚠️ **Coupée en deux au cadrage** : classer les clubs entre eux part en `E16US017`.
+- [x] Le classement des clubs entre eux (E16US017) — **tranche B d'E16US014**, livrée le
+      04/09/2026, ADR-0104. Décompte de médailles inter-clubs ; la portée *club* en est exclue.
 - [ ] Un QR par scoreur (E16US015) — **sortie d'E16US007** le 30/08/2026.
 - [ ] Exports : les formats et documents qui restent dus (E16US016) — reliquat d'`E16US007`,
       30/08/2026 : palmarès en tableur (renommage d'une route publique à arbitrer), export du

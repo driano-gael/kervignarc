@@ -6,7 +6,7 @@
 // à une élimination en duel. **Ce qui n'est pas décidé se nomme** : un podium vide dit « en cours
 // », un blanc passerait pour une panne d'affichage sur un écran projeté.
 
-import type { LignePalmares, Podium } from './api'
+import type { ClassementClubs, LignePalmares, Podium } from './api'
 
 const MEDAILLES: Record<number, string> = { 1: 'Or', 2: 'Argent', 3: 'Bronze' }
 
@@ -88,3 +88,18 @@ export function etatPodium(podium: Podium, profondeur: number): string | null {
 }
 
 export const nomComplet = (ligne: LignePalmares) => `${ligne.prenom} ${ligne.nom}`.trim()
+
+// L'état du classement des clubs (E16US017) quand il n'y a rien à mettre dans la table — ou une
+// réserve à porter au-dessus.
+//
+// ⚠️ **Les trois cas ne se confondent pas.** « Aucune base » vient du **réglage** (seuls des
+// podiums internes aux clubs sont décernés) et ne se corrigera pas en attendant ; « aucun club »
+// vient de la population ; « provisoire » vient du tournoi, et se lèvera tout seul. Les rendre
+// sous un même blanc renverrait l'organisateur vérifier le mauvais écran.
+export function etatClassementClubs(classement: ClassementClubs): string | null {
+  if (classement.portees_comptees.length === 0)
+    return 'Aucun classement des clubs — les podiums réglés récompensent à l’intérieur de chaque club, ils ne les comparent pas entre eux.'
+  if (classement.lignes.length === 0) return 'Aucun club au classement.'
+  if (classement.provisoire) return 'Décompte provisoire — des podiums restent à décerner.'
+  return null
+}

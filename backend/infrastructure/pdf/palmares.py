@@ -23,6 +23,7 @@ from reportlab.platypus import (
 )
 
 from domain.classement import StatutClassement
+from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares, Palmares, PlacePodium
 from domain.podium import ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
@@ -98,6 +99,7 @@ class GenerateurPalmaresPdf:
             elements.append(Paragraph("Aucun archer classé.", self._info))
             return elements
         elements.extend(self._podiums(complet, reglage))
+        elements.extend(self._classement_clubs(classer_clubs(complet, reglage)))
         elements.append(Paragraph("Classement complet", self._section))
         if not affiche.lignes:
             elements.append(Paragraph("Aucun archer dans la sélection imprimée.", self._info))
@@ -134,6 +136,41 @@ class GenerateurPalmaresPdf:
             )
             table.setStyle(_STYLE_TABLE)
             elements.append(table)
+        return elements
+
+    def _classement_clubs(self, classement: ClassementClubs) -> list[Flowable]:
+        """Le trophée du club le plus performant (E16US017) — rien du tout s'il n'a pas de base.
+
+        Même parti que `_podiums` : le papier saute ce qu'il ne peut pas commenter. Un tableau vide
+        se lirait comme « aucun club », alors que la cause est un réglage sans portée inter-club.
+        """
+        if not classement.portees_comptees or not classement.lignes:
+            return []
+        elements: list[Flowable] = [Paragraph("Classement des clubs", self._section)]
+        if classement.provisoire:
+            # Le papier circule : une feuille imprimée à 10 h et relue à 17 h n'a plus d'indice de
+            # fraîcheur, là où l'écran se rafraîchit tout seul.
+            elements.append(
+                Paragraph("Décompte provisoire — des podiums restent à décerner.", self._info)
+            )
+        table = Table(
+            [
+                ["Rang", "Club", "Or", "Argent", "Bronze"],
+                *[
+                    [
+                        str(ligne.rang),
+                        ligne.club_libelle,
+                        str(ligne.medailles_or),
+                        str(ligne.medailles_argent),
+                        str(ligne.medailles_bronze),
+                    ]
+                    for ligne in classement.lignes
+                ],
+            ],
+            repeatRows=1,
+        )
+        table.setStyle(_STYLE_TABLE)
+        elements.append(table)
         return elements
 
     def _table_classement(self, lignes: tuple[LignePalmares, ...]) -> Table:

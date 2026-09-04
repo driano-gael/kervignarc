@@ -133,3 +133,43 @@ def test_la_table_du_classement_suit_la_selection_demandee() -> None:
     noms = [cellule[2] for cellule in table._cellvalues[1:]]
     assert noms == ["NOM3"], "la table ne porte que la catégorie demandée"
     assert "Podium — Toutes catégories" in _textes(corps), "le podium, lui, reste celui du tournoi"
+
+
+def test_le_classement_des_clubs_s_imprime_avec_le_palmares() -> None:
+    """E16US017 : le trophée du club se remet en même temps que les médailles, donc il figure sur
+    la même feuille — l'organisateur n'a pas un second document à sortir au pied du podium."""
+    palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)))
+
+    corps = GenerateurPalmaresPdf()._corps(
+        "Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE
+    )
+
+    assert "Classement des clubs" in _textes(corps)
+
+
+def test_le_classement_des_clubs_ne_s_imprime_pas_sans_base() -> None:
+    """Réglé sur la seule portée *club*, le décompte n'a aucune base : le papier saute la section.
+
+    ⚠️ Même parti que `_podiums` : une table vide se lirait « aucun club », alors que la cause est
+    le réglage. L'écran, lui, peut l'écrire — le papier ne le peut pas.
+    """
+    palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)))
+    reglage = replace(_REGLAGE, portees=frozenset({PorteePodium.CLUB}))
+
+    corps = GenerateurPalmaresPdf()._corps(
+        "Tournoi", complet=palmares, affiche=palmares, reglage=reglage
+    )
+
+    assert "Classement des clubs" not in _textes(corps)
+
+
+def test_un_decompte_provisoire_se_dit_sur_le_papier() -> None:
+    """Une feuille imprimée à 10 h et relue à 17 h n'a aucun indice de fraîcheur : le document doit
+    porter lui-même la réserve, là où l'écran se rafraîchit tout seul."""
+    palmares = Palmares(lignes=(_ligne(1, 1), _ligne(2, 2)), duels_non_commences=True)
+
+    corps = GenerateurPalmaresPdf()._corps(
+        "Tournoi", complet=palmares, affiche=palmares, reglage=_REGLAGE
+    )
+
+    assert any(texte.startswith("Décompte provisoire") for texte in _textes(corps))

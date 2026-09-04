@@ -331,3 +331,63 @@ def test_classement_vide_dit_le_tournoi_pas_la_selection(
     assert entier["classement_vide"] is False, "le tournoi est classé"
     assert filtre["classement_vide"] is False, "il l'est toujours, filtre ou pas"
     assert filtre["lignes"] == [] and filtre["podiums"] == [], "le décor du 4ᵉ déplacement"
+
+
+def test_le_classement_des_clubs_est_servi_avec_le_palmares(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """E16US017 : le DTO porte le classement des clubs et **sur quoi il repose**.
+
+    ⚠️ Le décor d'API ne tranche aucun duel : aucune médaille n'est décernée, donc les clubs sont
+    tous à zéro. Ce qui est ancré ici est le **câblage** — la preuve du décompte est au domaine
+    (`test_domain_classement_clubs.py`), celle du nommage au service.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+
+    assert corps["classement_clubs"]["portees_comptees"] == ["categorie"], "le défaut d'ADR-0103"
+    assert corps["classement_clubs"]["provisoire"] is True, "aucun duel n'est tranché"
+
+
+def test_la_portee_club_seule_ne_donne_aucune_base_au_classement_des_clubs(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Arbitrage du 04/09/2026, servi jusqu'au client : la portée *club* décerne un or **dans**
+    chaque club, elle ne compare rien entre eux.
+
+    L'écran a besoin de la distinction pour dire « aucune base de comparaison » plutôt que
+    d'afficher un tableau vide que l'organisateur prendrait pour une panne.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["club"], "profondeur": 4},
+        )
+
+        corps = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+
+    assert corps["classement_clubs"]["portees_comptees"] == []
+    assert corps["classement_clubs"]["lignes"] == []
+
+
+def test_un_filtre_par_categorie_ne_rogne_pas_le_classement_des_clubs(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Même parti que les podiums (ADR-0103 §7) : le trophée du club est celui du **tournoi**.
+
+    Composé sur la vue filtrée, il n'aurait compté que les médailles d'une catégorie — un
+    classement faux, et faux différemment selon ce que l'organisateur regarde.
+    """
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        entier = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
+
+    assert entier["classement_clubs"] == filtre["classement_clubs"]

@@ -219,7 +219,9 @@ retenus** mérite le même balayage que celle des ajouts.
 **Ajoutés depuis** (ADR neufs, donc soumis à la règle sans rétro-équipement) : `0080`, `0081`,
 `0082`, `0083`, `0084`, `0085`, **`0087`**, `0090`, `0091`, `0092`, `0093`, `0094`, **`0103`**
 (E16US014, 31/08/2026 — la portée d'un podium devient un réglage de tournoi : le moteur publie
-un **troisième espace de rangs** et la notion de podium change de définition). Et, par
+un **troisième espace de rangs** et la notion de podium change de définition), **`0104`**
+(E16US017, 04/09/2026 — le classement des **clubs entre eux**, au décompte de médailles
+inter-clubs : un classement neuf, dont l'entité classée n'est pas un archer). Et, par
 réouverture plutôt que par création : **`0067`** (E16US014, 31/08/2026 — sa Décision 5 figeait
 le podium « par catégorie, rangs 1-4 » ; elle est révisée par `0103`, et sa section « Porté dans
 le code par » a été re-vérifiée symbole par symbole à cette occasion), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à

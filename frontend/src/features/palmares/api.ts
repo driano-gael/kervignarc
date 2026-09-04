@@ -66,9 +66,32 @@ export interface Podium {
   en_attente: boolean
 }
 
+// Un club au classement des clubs (E16US017). Le rang est **partagé** entre clubs à décompte
+// identique, avec sauts (1-2-2-4) : deux 1ᵉʳˢ sont suivis d'un 3ᵉ. Le front l'affiche tel quel.
+export interface LigneClassementClubs {
+  rang: number
+  club_id: number
+  club_libelle: string
+  medailles_or: number
+  medailles_argent: number
+  medailles_bronze: number
+}
+
+// Le classement des clubs entre eux, et **sur quoi il repose**.
+export interface ClassementClubs {
+  lignes: LigneClassementClubs[]
+  // Les portées qui alimentent le décompte — **vide** = aucune base de comparaison. ⚠️ `'club'`
+  // n'y figure jamais : ce podium-là décerne un or à l'intérieur de chaque club, donc à tous.
+  portees_comptees: PorteePodium[]
+  // Un podium compté attend-il encore ? Sépare « en cours » de « c'est le trophée ». Servi, jamais
+  // déduit des lignes — elles sont peuplées bien avant que le tournoi soit fini.
+  provisoire: boolean
+}
+
 export interface Palmares {
   tournoi_id: number
   podiums: Podium[]
+  classement_clubs: ClassementClubs
   // Les places récompensées : de quoi savoir si un bloc est complet sans une seconde requête —
   // les surfaces publiques ne lisent jamais le réglage lui-même.
   profondeur_podium: number

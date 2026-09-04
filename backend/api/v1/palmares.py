@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from api.dependances import exiger_admin
 from application.palmares import RenduPalmares, ServicePalmares
+from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares
 from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.db import WriteQueue
@@ -108,6 +109,54 @@ class PodiumReponse(BaseModel):
     """Un archer du groupe a-t-il encore un match ? Sépare « pas encore » de « plus jamais »."""
 
 
+class LigneClassementClubsReponse(BaseModel):
+    """Un club au classement des clubs (E16US017) : son rang et son décompte de médailles.
+
+    Le rang est **partagé** entre clubs à décompte identique, avec sauts (1-2-2-4) : deux 1ᵉʳˢ sont
+    suivis d'un 3ᵉ. Le client l'affiche, il ne le recalcule pas.
+    """
+
+    rang: int
+    club_id: int
+    club_libelle: str
+    medailles_or: int
+    medailles_argent: int
+    medailles_bronze: int
+
+
+class ClassementClubsReponse(BaseModel):
+    """Le classement des clubs entre eux, et **sur quoi il repose** (E16US017)."""
+
+    lignes: list[LigneClassementClubsReponse]
+    portees_comptees: list[PorteePodium]
+    """Les portées qui alimentent le décompte — **liste vide** = aucune base de comparaison.
+
+    ⚠️ La portée *club* n'y figure jamais : elle décerne un or à l'intérieur de chaque club, donc à
+    tous. Un client qui la verrait ici en déduirait un décompte qu'aucune ligne ne porte.
+    """
+
+    provisoire: bool
+    """Un podium compté attend-il encore ? Sépare « en cours » de « c'est le trophée »."""
+
+    @staticmethod
+    def de_classement(classement: ClassementClubs) -> ClassementClubsReponse:
+        return ClassementClubsReponse(
+            portees_comptees=list(classement.portees_comptees),
+            provisoire=classement.provisoire,
+            lignes=[
+                LigneClassementClubsReponse(
+                    rang=ligne.rang,
+                    club_id=ligne.club_id,
+                    club_libelle=ligne.club_libelle,
+                    medailles_or=ligne.medailles_or,
+                    medailles_argent=ligne.medailles_argent,
+                    medailles_bronze=ligne.medailles_bronze,
+                )
+                for ligne in classement.lignes
+            ],
+        )
+
+
 class ReglagePodiumsReponse(BaseModel):
     """Ce que ce tournoi récompense — la **lecture** est ouverte, comme le palmarès lui-même."""
 
@@ -152,6 +201,13 @@ class PalmaresReponse(BaseModel):
     `podiums` (que le réglage vide à bon droit) ni `lignes` (que le filtre restreint) n'y répondent.
     """
 
+    classement_clubs: ClassementClubsReponse
+    """Le trophée du club le plus performant (E16US017), servi avec le reste du palmarès.
+
+    Rendu ici plutôt que sur une route à part : il dérive des **mêmes** podiums, et deux requêtes
+    pourraient encadrer un PUT de réglage — le décompte contredirait alors les blocs affichés.
+    """
+
     lignes: list[LignePalmaresReponse]
 
     @staticmethod
@@ -181,6 +237,11 @@ class PalmaresReponse(BaseModel):
                 )
                 for bloc in rendu.complet.podiums(rendu.reglage)
             ],
+            # Sur `complet`, pour la même raison que les podiums : un classement de clubs composé
+            # sur la vue filtrée ne compterait que les médailles d'une catégorie.
+            classement_clubs=ClassementClubsReponse.de_classement(
+                classer_clubs(rendu.complet, rendu.reglage)
+            ),
             lignes=[LignePalmaresReponse.de_ligne(ligne) for ligne in rendu.affiche.lignes],
         )
 

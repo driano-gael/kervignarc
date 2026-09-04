@@ -3832,7 +3832,8 @@ window.ATLAS.decisions = {
     "E16US008",
     "E16US009",
     "E16US010",
-    "E16US014"
+    "E16US014",
+    "E16US017"
    ]
   },
   {
@@ -8976,6 +8977,114 @@ window.ATLAS.decisions = {
     "E06US001",
     "E06US004",
     "E16US009",
+    "E16US014",
+    "E16US017"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-04",
+   "date_brute": "2026-09-04",
+   "extrait": "### 1. Le décompte se lit sur les podiums décernés, pas sur les rangs classer_clubs(palmares, reglage) consomme les BlocPodium que Palmares.podiums(reglage) rend déjà. C'est la traduction littérale du CA — « les médailles comptées sont celles que le tournoi décerne » — et surtout la seule forme qui interdit structurellement aux deux barèmes de diverger : il n'existe pas de seconde traversée des rangs qui pourrait un jour ne plus appliquer les mêmes trois conditions que _bloc (rang issu des duels, plus en lice, rang exact). Conséquence directe : le réglage des podiums commande le classement des clubs. Un tournoi qui ne récompense que par catégorie classe ses clubs sur les médailles de […]",
+   "fichier": "docs/adr/0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md",
+   "identifiant": "0104",
+   "liens": [
+    {
+     "cible": "E16US017",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0103",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0014",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0065",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/palmares.py",
+     "existe": true,
+     "symboles": [
+      "ClassementClubsReponse",
+      "LigneClassementClubsReponse",
+      "classer_clubs",
+      "PalmaresReponse.de_rendu",
+      "rendu.complet",
+      "rendu.affiche"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/palmares.py",
+     "existe": true,
+     "symboles": [
+      "ServicePalmares._libelles_club"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/classement_clubs.py",
+     "existe": true,
+     "symboles": [
+      "PORTEES_INTER_CLUBS",
+      "_METAUX",
+      "classer_clubs",
+      "ClassementClubs.portees_comptees",
+      "_libelles",
+      "_ranger"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/pdf/palmares.py",
+     "existe": true,
+     "symboles": [
+      "GenerateurPalmaresPdf._classement_clubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/VuePalmares.tsx",
+     "existe": true,
+     "symboles": [
+      "ClassementClubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/palmares/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "etatClassementClubs"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le classement des clubs se compte en médailles **inter-clubs**",
+   "us": [
     "E16US014",
     "E16US017"
    ]
