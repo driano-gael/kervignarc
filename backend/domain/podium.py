@@ -27,13 +27,11 @@ métier. Sans plafond, `profondeur = 10**30` traversait le domaine et cassait à
 class PorteePodium(str, Enum):
     """Ce qu'un podium récompense (réglage **de tournoi**, A16).
 
-    ⚠️ **L'ordre de déclaration est l'ordre d'affichage** — du plus large au plus fin. Les portées
-    étant un ensemble, c'est lui qui rend deux réglages équivalents identiques à l'écran.
-    ⚠️ La portée *équipe* d'A16 **n'est pas ici** : la classe `Equipe` n'existe pas (EPIC-13,
-    ADR-0028), et un membre qui ne peut rien rendre est pire qu'un membre absent.
-    ⚠️ **Toute portée neuve doit être rangée dans `classement_clubs.PORTEES_INTER_CLUBS`**, ou
-    explicitement écartée : le trophée du club l'ignorerait sinon **en silence**, sans qu'un test
-    échoue ni qu'on ait de raison d'ouvrir ce module-là (ADR-0104 §2).
+    ⚠️ **L'ordre de déclaration est l'ordre d'affichage** — du plus large au plus fin, ce qui rend
+    deux réglages équivalents identiques à l'écran.
+    ⚠️ La portée *équipe* d'A16 **n'est pas ici** : `Equipe` n'existe pas (EPIC-13, ADR-0028).
+    ⚠️ Une portée neuve se range dans `classement_clubs.PORTEES_INTER_CLUBS` ou s'en exclut
+    explicitement — `test_toute_portee_est_rangee_dans_un_camp` rougit sinon (ADR-0104 §2).
     """
 
     SCRATCH = "scratch"

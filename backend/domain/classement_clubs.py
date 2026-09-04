@@ -67,14 +67,10 @@ class ClassementClubs:
 
     portees_reglees: tuple[PorteePodium, ...]
     """Tout ce que le tournoi récompense, portée *club* **comprise** — **vide** = il ne récompense
-    rien (réglage licite, ADR-0103 §1), et la surface n'a alors aucune question à traiter.
+    rien, et la surface n'a alors aucune question à traiter (ADR-0104 §3).
 
-    ⚠️ Servi parce que `portees_comptees` vide **confond** deux causes : « rien n'est récompensé »
-    et « seuls des podiums internes aux clubs le sont ». L'écran le déduisait de `podiums`, ce que
-    `VuePalmares` interdit en toutes lettres — quatre gardes l'avaient déjà tenté et raté.
-    ⚠️ **Sans valeur par défaut, délibérément** (relevé en revue, axe D) : `()` fait disparaître la
-    section des quatre surfaces, donc un constructeur qui l'oublierait supprimerait la
-    fonctionnalité **en silence**, sans que mypy dise rien.
+    ⚠️ **Sans valeur par défaut, délibérément** : `()` fait disparaître la section des quatre
+    surfaces, donc un constructeur qui l'oublierait supprimerait la fonctionnalité en silence.
     """
 
     provisoire: bool = False
@@ -85,13 +81,10 @@ def classer_clubs(palmares: Palmares, reglage: ReglagePodiums) -> ClassementClub
     """Classe les clubs à l'or, puis à l'argent, puis au bronze (ordre olympique).
 
     Le décompte porte sur les médailles que le tournoi **décerne** : un archer médaillé dans deux
-    portées cumulées en rapporte deux à son club (arbitrage du 04/09/2026). ⚠️ Un archer **sans
-    club** n'en rapporte à personne et ne crée aucune ligne — « club inconnu » est une anomalie à
-    signaler, pas un club de rattachement (ADR-0014).
-
-    ⚠️ `DETTE-045` — le palmarès dérive du **premier créneau**, et c'est ici que l'imprécision
-    change de nature : ce classement **agrège**, et il désigne un **lauréat unique** à qui l'on
-    remet un trophée. Un club dont les archers tirent l'après-midi n'apporte rien.
+    portées cumulées en rapporte deux à son club (ADR-0104 §4, dont la limite mono-catégorie).
+    ⚠️ Un archer **sans club** n'en rapporte à personne et ne crée aucune ligne (ADR-0014).
+    ⚠️ `DETTE-045` — ce classement **agrège** et désigne un **lauréat unique**, sur la donnée du
+    seul premier créneau : un club qui tire l'après-midi n'apporte rien.
     """
     reglees = reglage.portees_actives()
     portees = tuple(portee for portee in reglees if portee in PORTEES_INTER_CLUBS)
