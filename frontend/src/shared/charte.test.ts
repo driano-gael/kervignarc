@@ -105,7 +105,7 @@ function neutraliserCommentaires(source: string): string {
 /** Le **groupe** de sélecteurs ouvert avant chaque ligne — pour dire *où* une faute se trouve, et
  *  pour qu'une dérogation ne puisse pas excuser ses voisins.
  *
- *  Le groupe, et non le dernier sélecteur : `.autre,\n.qr-cible__vignette { … }` faisait profiter
+ *  Le groupe, et non le dernier sélecteur : `.autre,\n.qr__vignette { … }` faisait profiter
  *  `.autre` de la dérogation accordée au QR. Remis à zéro sur une accolade fermante, sinon les
  *  lignes hors règle héritent du groupe précédent. */
 function lignesAvecSelecteur(source: string): { selecteurs: string[]; ligne: string }[] {
@@ -155,19 +155,19 @@ describe('CA — aucune couleur écrite hors de la charte', () => {
 
   // Les seules exceptions admises, **nommées une par une avec leur raison**. Comparaison par
   // **égalité** de sélecteur : un `includes` excusait aussi `.jauge span.plein` ou
-  // `.qr-cible__vignette-large`, c'est-à-dire des règles jamais examinées.
+  // `.qr__vignette-large`, c'est-à-dire des règles jamais examinées.
   //
   // Le compte est tenu par une assertion et non par une phrase : « une septième apparaîtrait en
   // échec » était devenu faux dès qu'E16US006 en a ajouté deux, et dans **ce** fichier un compte
   // faux est ce qui invite la suivante à passer sans discussion (relevé en revue).
   const COULEURS_ADMISES: Record<string, string> = {
     // Raison **physique** : un QR sur fond sombre ne se scanne pas.
-    '.qr-cible__vignette': 'fond blanc obligatoire pour la lecture du QR',
-    '.qr-cible__grand': 'idem, en plein écran',
-    '.qr-cible__aide': 'texte posé sur le voile noir de l’agrandissement',
+    '.qr__vignette': 'fond blanc obligatoire pour la lecture du QR',
+    '.qr__grand': 'idem, en plein écran',
+    '.qr__aide': 'texte posé sur le voile noir de l’agrandissement',
     // Voiles et ombres : du **noir transparent**, pas une teinte. La charte ne les décrit pas parce
     // qu'ils ne sont pas de la couleur — ils sont de l'absence de lumière.
-    '.qr-cible__overlay': 'voile d’agrandissement, noir transparent',
+    '.qr__overlay': 'voile d’agrandissement, noir transparent',
     '.dialogue': 'ombre portée, noir transparent',
     '.dialogue::backdrop': 'voile de modale, noir transparent',
     // Raison **logique** : une vignette d'aperçu doit montrer le rendu du thème qu'elle

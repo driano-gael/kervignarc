@@ -6,7 +6,7 @@
 // aucune cible (D-12) — il pourra valider n'importe laquelle. La **surface de validation** (voir les
 // cibles, valider) relève de la saisie (E04US002) : ici, on ouvre et on ferme la session.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   type ScoreurConnecte,
@@ -21,21 +21,43 @@ import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
+import { codeScoreurDepuisUrl, oublierCodeScoreurUrl } from './url'
 
 export function EspaceScoreur() {
   const scoreur = useSessionScoreurStore((s) => s.scoreur)
+  // Arrivée par le QR (E16US015) : le code est lu **une fois**, au premier rendu, puis effacé de
+  // l'adresse — quel que soit l'état de la session. ⚠️ L'effacement est ici et non dans le
+  // formulaire : un scoreur déjà connecté qui rescanne son QR ne monte pas le formulaire, et son
+  // code personnel resterait dans la barre d'adresse et l'historique du téléphone.
+  const [codeUrl] = useState(() => codeScoreurDepuisUrl())
+  useEffect(() => {
+    if (codeUrl !== null) oublierCodeScoreurUrl()
+  }, [codeUrl])
 
   return (
     <section className="carte carte--large">
       <h2 className="carte__titre">Espace scoreur</h2>
-      {scoreur ? <SessionOuverte scoreur={scoreur} /> : <FormulaireCode />}
+      {scoreur ? <SessionOuverte scoreur={scoreur} /> : <FormulaireCode codeUrl={codeUrl} />}
     </section>
   )
 }
 
-function FormulaireCode() {
-  const [code, setCode] = useState('')
+function FormulaireCode({ codeUrl }: { codeUrl: string | null }) {
+  // Arrivée par le QR (E16US015) : le champ est prérempli, et la session s'ouvre sans geste. Le
+  // champ garde le code même si l'appel échoue — le scoreur corrige au lieu de repartir de zéro.
+  const [code, setCode] = useState(codeUrl ?? '')
   const connexion = useConnexionScoreur()
+  // ⚠️ Garde de **tentative unique**. Sans elle, StrictMode (double montage en dev) rejouerait la
+  // connexion, et tout re-rendu du formulaire aussi — le champ resterait prérempli tant que l'appel
+  // n'a pas abouti. Un `ref` et non un `state` : ce drapeau ne doit provoquer aucun rendu.
+  const tentee = useRef(false)
+
+  const { mutate } = connexion
+  useEffect(() => {
+    if (tentee.current || codeUrl === null || codeUrl.trim() === '') return
+    tentee.current = true
+    mutate(codeUrl)
+  }, [codeUrl, mutate])
 
   const entreeValide = code.trim() !== ''
 

@@ -7,6 +7,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   creerScoreur,
+  getQrScoreur,
   getScoreurs,
   modifierScoreur,
   type NouveauScoreur,
@@ -52,4 +53,17 @@ export function useSupprimerScoreur(tournoiId: number) {
 // etiquettes de cible — `useMutation`, jamais `useQuery`.
 export function useTelechargerCartesScoreurs(tournoiId: number) {
   return useMutation({ mutationFn: () => telechargerCartesScoreurs(tournoiId) })
+}
+
+// QR de session d'un scoreur (E16US015). ⚠️ **`enabled` n'est pas une optimisation ici, c'est la
+// mesure de sécurité de l'US** : le QR ne se charge que sur geste explicite de l'admin (arbitrage
+// du 04/09/2026, un seul scoreur à la fois). Sans lui, ouvrir l'écran afficherait tous les codes
+// sous forme scannable — photographiables d'un cliché. Le cache React Query (règle 10) évite un
+// rechargement à chaque ouverture/fermeture du même QR.
+export function useQrScoreur(tournoiId: number, scoreurId: number, actif: boolean) {
+  return useQuery({
+    queryKey: ['qr-scoreur', tournoiId, scoreurId] as const,
+    queryFn: () => getQrScoreur(tournoiId, scoreurId),
+    enabled: actif,
+  })
 }

@@ -4,6 +4,7 @@
 // La lecture aussi est réservée à l'admin (la réponse porte les **codes**, des secrets à distribuer).
 
 import { fetchBlob, fetchJson, telechargerFichier } from '../../shared/api/client'
+import { svgEnDataUrl } from '../../shared/api/svg'
 
 export interface Scoreur {
   id: number
@@ -57,4 +58,13 @@ export function supprimerScoreur(tournoiId: number, scoreurId: number): Promise<
 export async function telechargerCartesScoreurs(tournoiId: number): Promise<void> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/scoreurs/cartes-codes`)
   telechargerFichier(blob, `cartes-scoreurs-tournoi-${tournoiId}.pdf`)
+}
+
+// Image SVG du QR de session d'un scoreur (E16US015), jumeau de `getQrCible`. Blob **authentifié**
+// (`fetchBlob`) : le Bearer admin vit en JS, un `<img src>` direct rendrait 401. Converti en data
+// URL autoporteuse. ⚠️ Le QR encode le **code personnel** du scoreur : ne jamais monter l'appel
+// sans geste explicite de l'admin (cf. `useQrScoreur`, appel désarmé par défaut).
+export async function getQrScoreur(tournoiId: number, scoreurId: number): Promise<string> {
+  const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/scoreurs/${scoreurId}/qr`)
+  return svgEnDataUrl(await blob.text())
 }

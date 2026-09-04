@@ -4,6 +4,7 @@
 // puis coller sur les cibles avec leur QR — E09US008).
 
 import { fetchBlob, fetchJson, telechargerFichier } from '../../shared/api/client'
+import { svgEnDataUrl } from '../../shared/api/svg'
 
 export interface PosteAdmin {
   id: number
@@ -43,11 +44,4 @@ export async function getQrCible(tournoiId: number, cibleIndex: number): Promise
 export async function telechargerEtiquettesQr(tournoiId: number): Promise<void> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/postes/etiquettes-qr`)
   telechargerFichier(blob, `etiquettes-qr-tournoi-${tournoiId}.pdf`)
-}
-
-// Construit la data URL d'un SVG pour un `<img src>`. `encodeURIComponent` échappe tout le contenu
-// (`#`, `&`, espaces, `%`…) : aucun caractère du SVG ne peut refermer ou détourner le contexte de
-// la data URL. Logique **pure**, extraite pour être verrouillée par un test (patron du projet).
-export function svgEnDataUrl(svg: string): string {
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }

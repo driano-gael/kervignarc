@@ -135,4 +135,17 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
 
     expect(await screen.findByText(/Aucun départ n’est encore défini/)).toBeInTheDocument()
   })
+
+  // E16US015 — un scoreur DÉJÀ connecté qui rescanne son QR. Le cas vit ici et non dans
+  // `EspaceScoreur.qr.test.tsx` parce que c'est ce fichier qui double la branche « session
+  // ouverte » ; ⚠️ le formulaire n'étant alors pas monté, l'effacement de l'adresse ne peut pas
+  // venir de lui — sans quoi le code personnel resterait dans l'historique du téléphone.
+  it('efface le code de l’adresse même si la session est déjà ouverte (rescan)', async () => {
+    window.history.replaceState(null, '', '/scoreur?code=AB12CD')
+    monter()
+    await screen.findByText('duels : 41')
+
+    expect(window.location.search).toBe('')
+    expect(window.location.pathname).toBe('/scoreur')
+  })
 })
