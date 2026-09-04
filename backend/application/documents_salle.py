@@ -7,7 +7,7 @@ parce que le jour J l'admin accède au serveur par son IP réseau. ADR-0031
 
 from __future__ import annotations
 
-from application.erreurs import PosteIntrouvable, TournoiIntrouvable
+from application.erreurs import PosteIntrouvable, ScoreurIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CarteScoreur, CartesScoreurs, EtiquetteCible, EtiquettesCibles
 from domain.ports import (
     GenerateurDocumentsSalle,
@@ -16,6 +16,7 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.poste import TypePoste
+from domain.scoreur import ScoreurId
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -91,6 +92,26 @@ class ServiceDocumentsSalle:
         # base URL publique configurée — d'où l'intérêt d'ouvrir l'admin par l'IP LAN (E11US008).
         return self._generateur.qr_rattachement(_url_rattachement(origine, poste.code))
 
+    def qr_scoreur(self, tournoi_id: TournoiId, scoreur_id: ScoreurId, origine: str) -> bytes:
+        """Rend en **SVG** le QR de rattachement d'un scoreur (E16US015), jumeau du QR de cible.
+
+        Même port, même forme d'URL — `{origine}/?scoreur=<code>` — que `qr_rattachement`, à ceci
+        près que le code encodé est un secret **personnel** : d'où la garde d'appartenance
+        ci-dessous, plus stricte que celle d'une cible. Lève `TournoiIntrouvable` si le tournoi
+        n'existe pas, `ScoreurIntrouvable` sinon.
+        """
+        self._verifier_tournoi(tournoi_id)
+        scoreur = self._scoreurs.par_id(scoreur_id)
+        # ⚠️ `par_id` ne filtre PAS par tournoi (le code est unique dans toute la base, cf. le port
+        # `ScoreurRepository`) : sans ce test d'appartenance, l'admin d'un tournoi obtiendrait le
+        # QR — donc le code personnel — d'un scoreur d'un AUTRE tournoi. Le jumeau cible n'a pas
+        # ce risque, il interroge un repository déjà borné au tournoi.
+        if scoreur is None or scoreur.tournoi_id != tournoi_id:
+            raise ScoreurIntrouvable(
+                f"Aucun scoreur d'identifiant {scoreur_id} dans le tournoi {tournoi_id}."
+            )
+        return self._generateur.qr_rattachement(_url_scoreur(origine, scoreur.code))
+
     def cartes_scoreurs(self, tournoi_id: TournoiId) -> bytes:
         """Rend en PDF les cartes de scoreur (un papier par scoreur : nom + code personnel).
 
@@ -121,3 +142,15 @@ def _url_rattachement(origine: str, code: str) -> str:
     # URL publique configurée. Correct dans le flux réel (IP réseau le jour J), faux depuis
     # `localhost`. Résorption : base URL configurable en E11US001 (mise en réseau).
     return f"{origine.rstrip('/')}/?poste={code}"
+
+
+def _url_scoreur(origine: str, code: str) -> str:
+    """URL de session d'un scoreur : `{origine}/scoreur?code=<code>` (E16US015).
+
+    ⚠️ **Forme volontairement différente** de `_url_rattachement`, qui vise la racine : celle-ci
+    nomme le **monde** dans le chemin (`/scoreur`, ADR-0059), si bien que le routeur d'adresses
+    aiguille seul — aucune règle à ajouter à `resoudreRole`, le cœur risqué de l'entrée (ADR-0042).
+    Le code reste en query, lu par `frontend/src/features/scoreur-session/url.ts`.
+    """
+    # Même DETTE-012 que l'URL de poste : `origine` est l'origine de la requête admin.
+    return f"{origine.rstrip('/')}/scoreur?code={code}"
