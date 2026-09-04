@@ -16,7 +16,8 @@ import {
 } from './api'
 
 const cleScoreurs = (tournoiId: number) => ['scoreurs', tournoiId] as const
-const cleQrScoreur = (tournoiId: number, code: string) => ['qr-scoreur', tournoiId, code] as const
+const cleQrScoreur = (tournoiId: number, code: string, scoreurId: number) =>
+  ['qr-scoreur', tournoiId, code, scoreurId] as const
 
 export function useScoreurs(tournoiId: number) {
   return useQuery({
@@ -63,11 +64,11 @@ export function useTelechargerCartesScoreurs(tournoiId: number) {
 // par le lecteur suivant, qui le croit actif (relevé en revue, 04/09/2026).
 export function useQrScoreur(tournoiId: number, scoreurId: number, code: string) {
   return useQuery({
-    // ⚠️ La clé porte le **code**, pas le `scoreurId` : le QR est une image DU CODE, et SQLite
-    // réattribue les `id` (PK sans AUTOINCREMENT). Sur `['qr-scoreur', t, id]`, le QR révoqué d'un
-    // scoreur supprimé se servait du cache sous le nom de son successeur. Une purge à la
-    // suppression ne couvrait que le chemin local et synchrone (2ᵉ passe de revue, 05/09/2026).
-    queryKey: cleQrScoreur(tournoiId, code),
+    // ⚠️ La clé porte le **code**, et c'est lui qui discrimine : SQLite réattribue les `id` (PK sans
+    // AUTOINCREMENT), si bien que sur `['qr-scoreur', t, id]` le QR révoqué d'un supprimé se servait
+    // du cache sous le nom de son successeur. `scoreurId` y figure aussi pour que la clé contienne
+    // **toutes** les entrées de `queryFn` (règle React Query) — il n'ajoute aucune discrimination.
+    queryKey: cleQrScoreur(tournoiId, code, scoreurId),
     queryFn: () => getQrScoreur(tournoiId, scoreurId),
   })
 }

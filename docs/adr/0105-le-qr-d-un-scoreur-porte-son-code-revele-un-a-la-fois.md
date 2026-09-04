@@ -69,6 +69,14 @@ qu'une purge qui doit s'exécuter.)*
   de chaque sous-ressource. Le code est retiré de l'adresse dès l'arrivée, **au shell** — donc y
   compris quand le verrou de poste (`D-13`) détourne l'appareil vers l'écran de cible.
 
+⚠️ **Le code d'arrivée se CONSOMME, et la consommation est ABONNÉE.** Le shell lit l'adresse par
+`useSyncExternalStore` et l'effacement notifie ses abonnés (`useCodeScoreurDArrivee`). Deux formes
+antérieures ont été écartées en revue : le **mémoriser** (`useState`) lui donne la durée de vie de
+l'onglet, alors que la garde de tentative unique de `FormulaireCode` est **par montage** — « Fermer
+ma session » rejouait alors la connexion ; le **relire au rendu** sans abonnement ne vaut que si un
+store voisin re-rend au bon moment, invariant qu'aucun texte n'écrivait et qu'un reset partiel aurait
+cassé.
+
 ⚠️ Cette forme **diffère volontairement** de celle du QR de cible (`{origine}/?poste=<code>`), qui
 précède E14US003 : à l'époque l'adresse n'était pas encore une source d'entrée. Les QR de cible déjà
 imprimés restent valides, aucune migration n'est due.
@@ -101,7 +109,8 @@ le geste visé est justement d'éviter l'impression le matin du tournoi.
   le corps du `POST /api/v1/scoreurs/session` — c'est l'acte d'authentification. *(Formulation
   corrigée en 2ᵉ passe de revue : « ne transite jamais par le serveur » était faux.)*
 - **+** L'application retire le code de l'adresse dès l'arrivée, y compris quand le verrou de poste
-  détourne l'appareil vers l'écran de cible, et ne le conserve pas en mémoire au-delà.
+  détourne l'appareil vers l'écran de cible. Le **shell** ne le mémorise pas ; seul le champ
+  prérempli du formulaire le porte, le temps de la tentative.
 - **−** **Un QR photographié n'est pas révocable.** Il n'existe aucune rotation de code : la seule
   parade est de supprimer le scoreur et de le recréer, ce qui coupe sa session en cours. Écarté du
   périmètre par le commanditaire au cadrage du 04/09/2026 ; à reprendre en US dédiée si le besoin
@@ -109,8 +118,8 @@ le geste visé est justement d'éviter l'impression le matin du tournoi.
 - **−** **L'historique de l'application de scan échappe au produit** : elle conserve l'URL brute,
   code compris. Même famille que le QR photographié, et même absence de parade.
 - **−** Le port réutilisé s'appelle toujours `qr_rattachement` alors qu'il sert désormais un QR de
-  **session**, que le glossaire oppose au rattachement d'un poste. Divergence assumée : le
-  renommage (`qr_svg`) touche port, adapter et doublures de test, hors périmètre de cette US.
+  **session**, que le glossaire oppose au rattachement d'un poste. Divergence assumée et **inscrite
+  au registre** (DETTE-098) : le renommage (`qr_svg`) touche port, adapter et doublures de test.
 - **−** La route hérite de `DETTE-012` en **3ᵉ site** : l'URL est bâtie sur l'origine de la requête
   admin. Générer depuis `localhost` produit un QR porteur du code mais inutilisable.
 - **−** Le code reste **en clair en base** : ce point n'est pas tranché ici, il préexiste
@@ -127,15 +136,16 @@ le geste visé est justement d'éviter l'impression le matin du tournoi.
 | `backend/api/v1/documents_salle.py` — `qr_scoreur` | Frontière : SVG, `Depends(exiger_admin)` |
 | `frontend/src/features/scoreurs/Scoreurs.tsx` — état `qrOuvert` | Décision 2 : révélation une par une, indexée sur le **code** ; c'est **ici**, et nulle part ailleurs, que vit la garde |
 | `frontend/src/features/scoreurs/QrScoreur.tsx` | Décision 2 : le composant dont le **montage** déclenche l'appel — le monter sans condition casserait la garde sans toucher aucun autre module de ce tableau |
-| `frontend/src/features/scoreurs/hooks.ts` — `cleQrScoreur` | Décision 2 : la clé de cache porte le **code**, donc aucune collision d'`id` réattribué |
+| `frontend/src/features/scoreurs/hooks.ts` — `cleQrScoreur` | Décision 2 : la clé de cache porte le **code**, donc aucune collision d'identifiant réattribué |
 | `frontend/src/features/scoreur-session/EspaceScoreur.tsx` | Conséquence « ouvre sa session sans recopier son code » : préremplissage et connexion automatique, garde de tentative unique |
 | `frontend/src/features/scoreur-session/url.ts` | Décision 3 : lecture et effacement ciblé du fragment |
-| `frontend/src/app/App.tsx` | Décision 3 : l'effacement au **shell**, seul niveau traversé par tous les mondes |
+| `frontend/src/app/App.tsx` | Décision 3 : la lecture **abonnée** (`useCodeScoreurDArrivee`) et l'effacement au **shell**, seul niveau traversé par tous les mondes |
 
 **Épinglé par** : `frontend/src/features/scoreurs/Scoreurs.test.tsx` (aucun QR chargé au montage,
 un seul ouvert, id réattribué côté état **et** côté cache), `frontend/src/app/App.entree.test.tsx`
 (effacement malgré le verrou de poste, `?poste=` préservé, code **consommé**),
 `frontend/src/features/scoreur-session/url.test.ts` (le contrat est le fragment, pas la query),
 `backend/tests/test_service_documents_salle.py` (forme d'URL, échappement des deux côtés, garde de
-tournoi). ⚠️ Chacun de ces tests a été **rejoué contre le code défectueux** et vu rouge : trois
-rédactions antérieures restaient vertes sur le défaut qu'elles prétendaient garder.
+tournoi). ⚠️ Chaque test **écrit pour garder un défaut relevé en revue** a été rejoué contre le code
+fautif et vu rouge — geste non négociable ici : **six** rédactions successives de cette US restaient
+vertes sur le défaut qu'elles prétendaient garder.

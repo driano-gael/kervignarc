@@ -11,7 +11,7 @@ import { useEffect } from 'react'
 import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
 import { EspacePoste } from '../features/poste/EspacePoste'
 import { codePosteDepuisUrl } from '../features/poste/url'
-import { codeScoreurDepuisUrl, oublierCodeScoreurUrl } from '../features/scoreur-session/url'
+import { oublierCodeScoreurUrl, useCodeScoreurDArrivee } from '../features/scoreur-session/url'
 import { AccueilPublic } from '../features/public/AccueilPublic'
 import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
@@ -46,11 +46,11 @@ export function App() {
   const aJetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const aJetonScoreur = useSessionScoreurStore((s) => s.jeton) !== null
   const codePoste = codePosteDepuisUrl()
-  // ⚠️ **Ici et non dans `EspaceScoreur`, et relu à chaque rendu — jamais mémorisé.** Une tablette
-  // rattachée ne monte pas cet espace (verrou `D-13`), et mémoriser le code rejouerait la connexion
-  // à chaque remontage du formulaire. L'adresse *est* le stockage à usage unique : l'effet ci-dessous
-  // l'efface. ADR-0105 § Décision 3 porte le raisonnement.
-  const codeScoreur = codeScoreurDepuisUrl()
+  // ⚠️ **Ici et non dans `EspaceScoreur`** (une tablette rattachée ne monte pas cet espace, verrou
+  // `D-13`), et **abonné** plutôt que lu : l'effacement ci-dessous notifie, donc la consommation est
+  // une transition observable et non un pari sur le rendu d'un store voisin.
+  // ADR-0105 § Décision 3 porte le raisonnement.
+  const codeScoreur = useCodeScoreurDArrivee()
   useEffect(() => {
     if (codeScoreur !== null) oublierCodeScoreurUrl()
   }, [codeScoreur])

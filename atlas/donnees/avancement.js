@@ -162,6 +162,15 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "098",
+   "introduite_par": [
+    "E16US015"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "012",
    "introduite_par": [
     "E09US008"
@@ -4416,7 +4425,9 @@ window.ATLAS.avancement = {
     "0075",
     "0105"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "098"
+   ],
    "dettes_resorbees": [],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",

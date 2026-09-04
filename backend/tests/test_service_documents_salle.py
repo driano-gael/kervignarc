@@ -491,7 +491,7 @@ def test_qr_rattachement_echappe_le_code_dans_l_url() -> None:
     constructeurs sans que celui-ci soit couvert (relevé en 2ᵉ passe de revue).
     """
     monde = _monde()
-    monde.postes.ajouter(Poste.creer(monde.tournoi_id, 7, "A&SCOREUR=X"))
+    monde.preparer_cible(7, "A&SCOREUR=X")
 
     monde.service.qr_rattachement(monde.tournoi_id, 7, _ORIGINE)
 

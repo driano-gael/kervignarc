@@ -32,8 +32,8 @@ vi.mock('../shared/stores/sessionScoreurStore', () => ({
 }))
 
 // Les quatre mondes sont doublés : ce test répond de **l'aiguillage et de l'adresse**, pas de leur
-// contenu. `EspaceScoreur` annonce le code reçu — c'est ainsi qu'on prouve qu'il lui parvient
-// malgré l'effacement de l'adresse, qui a lieu dans le même commit de rendu.
+// contenu. `EspaceScoreur` annonce le code reçu — c'est ainsi qu'on prouve qu'il lui parvient, puis
+// qu'il lui est retiré.
 vi.mock('../features/poste/EspacePoste', () => ({
   EspacePoste: () => <p>écran de poste</p>,
 }))
@@ -66,10 +66,10 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     placerUrl('/scoreur#code=AB12CD')
 
     render(<App />)
-    await screen.findByText(/^scoreur : /)
 
-    // ⚠️ L'oracle est ce que l'espace a **reçu**, pas ce qui reste affiché : le code étant consommé
-    // (cf. le dernier test), l'écran retombe à `null` dans le même commit de rendu.
+    // L'espace reçoit le code, puis l'écran retombe à `null` — l'effacement de l'adresse notifie
+    // ses abonnés (`useCodeScoreurDArrivee`), donc la transition est visible dans le DOM.
+    expect(await screen.findByText('scoreur : null')).toBeInTheDocument()
     expect(codesRecus[0]).toBe('AB12CD')
     expect(window.location.hash).toBe('')
   })
@@ -108,14 +108,13 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     // scoreur précédent. L'oracle est la SUITE des valeurs reçues, pas la première.
     placerUrl('/scoreur#code=AB12CD')
 
-    const { rerender } = render(<App />)
-    await screen.findByText(/^scoreur : /)
-    // ⚠️ Le re-rendu est l'oracle, pas un détail : c'est lui qui rejoue la lecture. Sans lui,
-    // `codesRecus` n'aurait qu'une entrée et l'assertion serait vraie **par vacuité** — le piège
-    // dans lequel la 1ʳᵉ rédaction de ce test est tombée. `rerender` sans enveloppe supplémentaire :
-    // ajouter un niveau remonterait `App` et détruirait ce qu'on observe.
-    rerender(<App />)
+    render(<App />)
+    await screen.findByText('scoreur : null')
 
+    // ⚠️ **Aucun `rerender` ici, et c'est le point.** Les deux rédactions précédentes en avaient un :
+    // elles prouvaient « le shell ne mémorise pas » sans jamais montrer que le code est retiré **de
+    // lui-même**. Le trou ne se refermait alors que parce qu'un store voisin re-rendait au bon
+    // moment — invariant qu'aucun texte n'écrivait et qu'un reset partiel du store aurait cassé.
     expect(codesRecus[0]).toBe('AB12CD')
     expect(codesRecus[codesRecus.length - 1]).toBeNull()
   })

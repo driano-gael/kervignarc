@@ -940,11 +940,40 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "ScoreurRepository",
+      "par_code",
+      "tournoi_id"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
      "chemin": "backend/domain/scoreur.py",
      "existe": true,
      "symboles": [
       "Scoreur",
       "normaliser_code"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "ScoreurORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/exploitation.py",
+     "existe": true,
+     "symboles": [
+      "ScoreurRepositorySQL"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -967,6 +996,13 @@ window.ATLAS.decisions = {
     },
     {
      "chemin": "docs/adr/0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/shared/api/client.ts",
      "existe": true,
      "symboles": [],
      "symboles_absents": [],
@@ -9221,7 +9257,9 @@ window.ATLAS.decisions = {
     {
      "chemin": "frontend/src/app/App.tsx",
      "existe": true,
-     "symboles": [],
+     "symboles": [
+      "useCodeScoreurDArrivee"
+     ],
      "symboles_absents": [],
      "verifiable": true
     },
@@ -9259,8 +9297,7 @@ window.ATLAS.decisions = {
      "chemin": "frontend/src/features/scoreurs/hooks.ts",
      "existe": true,
      "symboles": [
-      "cleQrScoreur",
-      "id"
+      "cleQrScoreur"
      ],
      "symboles_absents": [],
      "verifiable": true

@@ -6,9 +6,29 @@
 // donc le routeur d'adresses (ADR-0059) aiguille seul, sans règle ajoutée à `resoudreRole`
 // (ADR-0042). Isolé d'`EspaceScoreur.tsx` pour qu'il n'exporte que des composants (ESLint).
 
+import { useSyncExternalStore } from 'react'
+
 export function codeScoreurDepuisUrl(): string | null {
   if (typeof window === 'undefined') return null
   return new URLSearchParams(window.location.hash.slice(1)).get('code')
+}
+
+const abonnes = new Set<() => void>()
+
+function abonner(rappel: () => void): () => void {
+  abonnes.add(rappel)
+  return () => {
+    abonnes.delete(rappel)
+  }
+}
+
+// Le code d'arrivée **abonné**, pas seulement lu. ⚠️ C'est ce qui rend sa consommation
+// **structurelle** : `replaceState` ne notifie personne, si bien qu'une simple lecture au rendu
+// laisse l'ancienne valeur dans l'élément React déjà committé. Le trou ne se refermait alors que
+// parce qu'un store voisin provoquait un rendu au bon moment — invariant que rien n'écrivait ni ne
+// gardait (3ᵉ passe de revue, 05/09/2026). Même idiome que `shared/navigation/useChemin.ts`.
+export function useCodeScoreurDArrivee(): string | null {
+  return useSyncExternalStore(abonner, codeScoreurDepuisUrl, () => null)
 }
 
 // Retire `code` du fragment **sans recharger**, en laissant intacts la query et le reste du
@@ -24,4 +44,5 @@ export function oublierCodeScoreurUrl(): void {
   const reste = fragment.toString()
   const adresse = window.location.pathname + window.location.search + (reste ? `#${reste}` : '')
   window.history.replaceState(null, '', adresse)
+  abonnes.forEach((rappel) => rappel())
 }

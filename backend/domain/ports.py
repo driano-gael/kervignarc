@@ -952,12 +952,12 @@ class GenerateurDocumentsSalle(Protocol):
         ...
 
     def qr_rattachement(self, url: str) -> bytes:
-        """Rend un seul QR de rattachement en **image SVG** (octets UTF-8) — cible ou scoreur.
+        """Rend un seul QR en **image SVG** (octets UTF-8) — cible ou scoreur. ⚠️ Le nom ment
+        depuis E16US015 : un scoreur ouvre une **session** (DETTE-098).
 
         Ce QR s'affiche **à l'écran**, il n'est pas imprimé — d'où le **SVG**, net une fois agrandi
-        pour le scan et sans dépendance ajoutée (règle 11). `url` est l'URL de rattachement **déjà
-        composée** : le domaine ne sait pas la bâtir (règle 1), le service la lui passe — c'est ce
-        qui permet à E16US015 (QR d'un scoreur) de réutiliser ce port sans en ajouter un second.
+        et sans dépendance ajoutée (règle 11). `url` est **déjà composée** : le domaine ne sait pas
+        la bâtir (règle 1), ce qui permet de réutiliser ce port sans en ajouter un second.
         """
         ...
 

@@ -34,7 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-09-04 | `E16US015` | 29 | +801/−126 | ~13 min *(22:07→22:20, avant la revue)* | ~24 min | **D** (22:24→22:36) | majeur:3 mineur:3 suggestion:1 | majeur:2 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:4 mineur:3 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:3 | **D (1)**, puis **C1 (1)** et **D (1)** en 2ᵉ passe | 2 |
+| 2026-09-04 | `E16US015` | 29 | +801/−126 | ~13 min *(22:07→22:20, avant la revue)* | ~24 min | **D** (22:24→22:36) | majeur:3 mineur:3 suggestion:1 | majeur:2 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:4 mineur:3 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:3 | **D (1)**, puis **C1 (1)** et **D (1)** en 2ᵉ passe | 3 |
 | 2026-09-04 | `E16US017` | 33 | +2100/−120 | ~40 min *(lancée **en parallèle** de la revue — écart relevé en majeur par D)* | ~24 min | **D** (10:44→11:06) | majeur:1 mineur:2 suggestion:2 | majeur:3 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:5 suggestion:2 | majeur:4 mineur:5 suggestion:1 | **aucun bloquant.** Les deux défauts de fond viennent de **C1** (décompte de zéros → tous les clubs 1ᵉʳˢ, invisible axe par axe) et de **D** (la propriété qui justifie le double comptage tombe en mono-catégorie). **C1 et C2 ont trouvé le même** registre faux (`DETTE-031`), et **B seul** a vu que la restitution des colonnes n'était ancrée nulle part | 1 |
 | 2026-08-30 | `E16US007` | 44 | +2498/−268 | ~23 min | ~27 min | **D** (18:55→19:12) | mineur:5 suggestion:1 | **bloquant:2** majeur:3 mineur:6 suggestion:2 | **bloquant:1** majeur:2 mineur:5 suggestion:3 | majeur:2 mineur:4 suggestion:3 | **bloquant:1** majeur:8 mineur:7 suggestion:2 | **C1, B et D** (le même : `key` manquante) ; **B** seul sur le 2ᵉ (surface sans fiche fonctionnelle) | 2 |
 | 2026-08-29 | `E16US010` | 59 | +3171/−375 | ~25 min | ~32 min | **D** (15:03→15:19) | majeur:2 mineur:1 suggestion:1 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **bloquant:1** majeur:3 mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:1 | **C1, C2 et D — le même**, trouvé indépendamment par trois axes : un défaut de **câblage** (`segmentsAdmin` appelé sans son 4ᵉ argument) qu'aucune fonction pure ne pouvait voir. ⚠️ **La porte mécanique s'est déclarée VERTE à tort** : `pip-audit` n'avait produit aucun `EXIT` et ne fait pas partie des deux omissions autorisées — l'agent l'a justifié par des « permissions refusées » alors que l'outil est installé. Rattrapé à la main — et la **3ᵉ passe** a montré pourquoi : la définition d'agent autorisait **trois** omissions sans en énumérer que deux, le faux vert était donc *autorisé par le texte* (`DETTE-093`). **Trois passes, trois bloquants, chacun dans les correctifs de la précédente** : le mécanisme mort (1ʳᵉ), la pastille repeinte par le reset `button` (2ᵉ), la 3ᵉ omission fantôme (3ᵉ). Les axes B et D ont établi **par mutation** que six gardes successives ne gardaient rien. ⚠️ **Et la CI a rougi APRÈS l'ouverture de la PR**, sur un test de cette US : la porte locale exécute `pytest` avec `frontend/dist/` **présent**, le job `backend` de la CI **sans** — la SPA montée à la racine change alors des codes de réponse (`404` contre `405`). Une suite verte en local pouvait donc être rouge en CI **sans qu'aucun code ait bougé** : le geste est désormais verrouillé dans la définition de l'agent de porte (`KERVIGNARC_FRONTEND_DIST` sur un chemin inexistant). Même famille que `DETTE-093`. | 3 |
@@ -722,10 +722,11 @@ scoreur) est une amélioration d'accessibilité que personne n'avait demandée.
 suggestion:1` · B `majeur:2 mineur:5 suggestion:1` · C1 `**bloquant:1** majeur:1 mineur:2
 suggestion:1` · C2 `majeur:1 mineur:6` · D `**bloquant:1** majeur:2 mineur:4 suggestion:3`.
 
-⚠️ **Cette ligne a d'abord été renseignée à `passes: 1`, et c'était un pronostic** — écrit à
-l'étape 2 de la passe qu'il décrit, par la partie relue. La 2ᵉ passe l'a démenti en cours d'écriture ;
-c'est C2 qui l'a relevé, sur ce fichier même, en s'appuyant sur son propre encart du 30/08. La
-colonne enregistre donc désormais ce qui s'est passé, et non ce qu'on espérait.
+⚠️ **La colonne `passes` a été renseignée deux fois de suite comme un PRONOSTIC** — à `1`, puis à
+`2` —, chaque fois à l'étape 2 de la passe qu'elle décrit, par la partie relue, et chaque fois
+démentie par la passe suivante. C2 l'a relevé les deux fois, sur ce fichier même. **Correctif de
+procédure, plus utile que la valeur** : `passes` ne se renseigne **que dans le commit qui clôt la
+revue** — celui qui ne reçoit plus de bloquant ni de majeur. Avant cela, la case vaut `—`.
 
 **Ce que la 2ᵉ passe apprend, et qui vaut plus que la 1ʳᵉ.** Les deux gestes centraux de la
 correction étaient **des trous déplacés, pas fermés** — et les deux ont été trouvés par des axes
@@ -742,13 +743,23 @@ différents, sur le même raisonnement à moitié appliqué :
 
 ⚠️ **Conseil de conduite, le plus important de cette US** : *une correction déplace le défaut aussi
 souvent qu'elle le ferme ; le geste qui le prouve est de rejouer chaque test neuf contre le code
-d'avant.* Sur cette US, **cinq** rédactions de tests ont dû être refaites parce qu'elles restaient
-vertes sur le défaut qu'elles prétendaient garder : assertion sur une image chargée de façon
-asynchrone, `rerender` dans un provider supplémentaire qui remontait le composant, doublures de
-store qui rendaient la transition inobservable, et un `QueryClient` de test à `staleTime: 0` — qui
-refetche à chaque montage, donc **teste un cache qui n'existe pas**. Ce dernier mérite d'être retenu
-tel quel : *un test de cache dont le client ne reproduit pas le `staleTime` de production est vert
-par construction.*
+d'avant.* **Six** rédactions ont dû être refaites parce qu'elles restaient vertes sur le défaut
+qu'elles gardaient :
+
+1. assertion sur une **image chargée en asynchrone** — nulle au moment où on l'interroge, donc vraie
+   quoi qu'il arrive ;
+2. `rerender` dans un **provider supplémentaire**, qui déplace le composant dans l'arbre et le
+   **remonte** — détruisant l'état même qu'on observe ;
+3. `QueryClient` de test à **`staleTime: 0`** : il refetche à chaque montage, donc **teste un cache
+   qui n'existe pas** ;
+4. assertion vraie **par vacuité** (`slice(1).every(...)` sur un tableau vide) ;
+5. **doublure de store constante**, qui rend la transition à observer structurellement impossible ;
+6. oracle porté sur un **compteur d'appels** au lieu de la **donnée servie** — vert sur toute
+   régression qui refetche *et* sert du périmé.
+
+Les six ont un trait commun : **l'oracle ne peut pas prendre la valeur qui ferait échouer le test.**
+C'est le contrôle à faire avant de commiter un test de non-régression — plus rapide que de relire
+l'assertion : *quelle valeur, ici, ferait rougir ?* Si la réponse n'existe pas, le test est décoratif.
 
 ⚠️ **Second enseignement, sur la revue elle-même** : le remède réclamé par un axe peut ouvrir un
 défaut de sa propre règle. C2 avait exigé un ADR ; l'ADR écrit **amende la § Décision d'ADR-0025**,

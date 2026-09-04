@@ -40,13 +40,15 @@ function monter() {
   return render(<Scoreurs tournoiId={1} />, { wrapper: Enveloppe })
 }
 
+const QR_PAR_DEFAUT = 'data:image/svg+xml,%3Csvg%3E%3C%2Fsvg%3E'
+
 const alice: Scoreur = { id: 1, tournoi_id: 1, nom: 'Alice', code: 'AAA222' }
 const bob: Scoreur = { id: 2, tournoi_id: 1, nom: 'Bob', code: 'BBB333' }
 
 describe('Scoreurs — le QR ne se montre que sur geste', () => {
   beforeEach(() => {
     getQrScoreur.mockReset()
-    getQrScoreur.mockResolvedValue('data:image/svg+xml,%3Csvg%3E%3C%2Fsvg%3E')
+    getQrScoreur.mockResolvedValue(QR_PAR_DEFAUT)
     scoreursRendus = [alice, bob]
   })
 
@@ -116,7 +118,13 @@ describe('Scoreurs — le QR ne se montre que sur geste', () => {
   it('ne sert PAS le QR du supprimé depuis le cache quand son id est réattribué', async () => {
     // ⚠️ 2ᵉ passe de revue : l'`id` avait été chassé de l'état d'ouverture mais **pas de la clé de
     // cache**. Sur `['qr-scoreur', t, id]`, rouvrir le QR du successeur servait le SVG révoqué du
-    // supprimé. La clé porte donc le **code** — d'où un appel réseau neuf, et lui seul le prouve.
+    // supprimé. ⚠️ L'oracle est **l'image servie**, pas le compteur d'appels : revenir à une clé par
+    // `id` en compensant par un `invalidateQueries` laisserait le compteur juste tout en affichant
+    // le SVG périmé pendant le refetch de fond (3ᵉ passe).
+    getQrScoreur.mockReset()
+    getQrScoreur
+      .mockResolvedValueOnce('data:image/svg+xml,bob')
+      .mockResolvedValueOnce('data:image/svg+xml,charlie')
     monter()
     await userEvent.click(await screen.findByRole('button', { name: 'Afficher le QR de Bob' }))
     await screen.findByAltText('QR de session de Bob')
@@ -128,7 +136,30 @@ describe('Scoreurs — le QR ne se montre que sur geste', () => {
     await screen.findByText('Charlie')
     await userEvent.click(screen.getByRole('button', { name: 'Afficher le QR de Charlie' }))
 
-    await screen.findByAltText('QR de session de Charlie')
+    expect(await screen.findByAltText('QR de session de Charlie')).toHaveAttribute(
+      'src',
+      'data:image/svg+xml,charlie',
+    )
     expect(getQrScoreur).toHaveBeenCalledTimes(2)
+  })
+
+  it('ne transporte pas l’état d’une ligne supprimée sur celle qui hérite de son id', async () => {
+    // ⚠️ La `key` de ligne gouverne l'état LOCAL (`edition`, `confirmationSuppression`). Sur
+    // `key={scoreur.id}`, armer « Supprimer » sur Bob puis voir la liste revenir avec Charlie sur
+    // l'id 2 laissait la ligne de Charlie **armée en confirmation** — un geste destructeur
+    // transféré à une autre personne. La `key` porte donc le code (3ᵉ passe de revue).
+    monter()
+    await userEvent.click(await screen.findByRole('button', { name: 'Supprimer Bob' }))
+    expect(
+      screen.getByRole('button', { name: 'Confirmer la suppression de Bob' }),
+    ).toBeInTheDocument()
+
+    const charlie: Scoreur = { id: bob.id, tournoi_id: 1, nom: 'Charlie', code: 'CCC444' }
+    scoreursRendus = [alice, charlie]
+    await client.invalidateQueries({ queryKey: ['scoreurs', 1] })
+    await screen.findByText('Charlie')
+
+    expect(screen.getByRole('button', { name: 'Supprimer Charlie' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Confirmer la suppression/ })).toBeNull()
   })
 })

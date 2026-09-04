@@ -26,7 +26,7 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   // ⚠️ Indexé sur le **code** et non sur l'`id` : SQLite réattribue les `id` (PK sans
   // AUTOINCREMENT), donc supprimer un scoreur dont le QR est ouvert puis en créer un autre
   // rouvrait le QR **sans clic** sur le nouveau venu. Le code, lui, est unique dans toute la base
-  // et jamais réémis (ADR-0025). Bloquant relevé en revue le 04/09/2026.
+  // unique parmi les scoreurs vivants (`UNIQUE(code)`, ADR-0025 § Décision 2). Bloquant de revue.
   const [qrOuvert, setQrOuvert] = useState<string | null>(null)
 
   return (
@@ -142,6 +142,7 @@ function LigneScoreur({
               <button
                 type="button"
                 className="bouton--discret"
+                aria-label={`Annuler la suppression de ${scoreur.nom}`}
                 onClick={() => setConfirmationSuppression(false)}
               >
                 Annuler
