@@ -25,7 +25,7 @@ from reportlab.platypus import (
 from domain.classement import StatutClassement
 from domain.classement_clubs import ClassementClubs, classer_clubs
 from domain.palmares import LignePalmares, Palmares, PlacePodium
-from domain.podium import ReglagePodiums
+from domain.podium import PorteePodium, ReglagePodiums
 from infrastructure.erreurs import InfrastructureError
 from infrastructure.pdf._commun import echapper as _echapper
 
@@ -42,6 +42,20 @@ _STYLE_TABLE = TableStyle(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]
 )
+
+_PORTEES = {
+    PorteePodium.SCRATCH: "Toutes catégories",
+    PorteePodium.CATEGORIE: "Par catégorie",
+    PorteePodium.CLUB: "Par club",
+}
+"""Les libellés des portées au décompte des clubs. ⚠️ **À garder identiques à `presentation.ts`** :
+écran et papier se comparent d'un coup d'œil, c'est le parti de tout ce module."""
+
+
+def _base(classement: ClassementClubs) -> str:
+    """Sur quoi le décompte repose, en toutes lettres."""
+    return " · ".join(_PORTEES[portee] for portee in classement.portees_comptees)
+
 
 _MEDAILLES = {1: "Or", 2: "Argent", 3: "Bronze"}
 """Les trois métaux, pour que le podium imprimé se lise sans compter les lignes. Le 4ᵉ n'en a pas —
@@ -141,12 +155,25 @@ class GenerateurPalmaresPdf:
     def _classement_clubs(self, classement: ClassementClubs) -> list[Flowable]:
         """Le trophée du club le plus performant (E16US017) — rien du tout s'il n'a pas de base.
 
-        Même parti que `_podiums` : le papier saute ce qu'il ne peut pas commenter. Un tableau vide
-        se lirait comme « aucun club », alors que la cause est un réglage sans portée inter-club.
+        Deux vides, deux traitements — **et c'est ce que le papier peut commenter qui les sépare**.
+        Sans portée inter-club, la section entière saute : un tableau vide se lirait « aucun club »
+        alors que la cause est un réglage. Sans club médaillé, la section reste et **le dit**, comme
+        l'écran — sinon un tournoi dont personne n'a de club rattaché n'imprime aucun signal
+        (relevé en revue, axe B : la 1ʳᵉ rédaction sautait les deux et divergeait de l'écran).
         """
-        if not classement.portees_comptees or not classement.lignes:
+        if not classement.portees_reglees or not classement.portees_comptees:
             return []
-        elements: list[Flowable] = [Paragraph("Classement des clubs", self._section)]
+        elements: list[Flowable] = [
+            Paragraph("Classement des clubs", self._section),
+            # Sur quoi le décompte repose — la même ligne qu'à l'écran. Sans elle, « Or : 2 » pour
+            # un club à un seul archer se lit comme une erreur sur un papier qui circule.
+            Paragraph(f"Compté sur : {_base(classement)}", self._info),
+        ]
+        if not classement.lignes:
+            # « encore » seulement si ça peut changer — même règle qu'à l'écran (`presentation.ts`).
+            attente = " encore" if classement.provisoire else ""
+            elements.append(Paragraph(f"Aucun club n'a{attente} de médaille.", self._info))
+            return elements
         if classement.provisoire:
             # Le papier circule : une feuille imprimée à 10 h et relue à 17 h n'a plus d'indice de
             # fraîcheur, là où l'écran se rafraîchit tout seul.

@@ -65,7 +65,7 @@ forme d'appel.
 `_numeroter(paquets, retenir=…)` sait déjà renuméroter un sous-ensemble depuis 1 — c'est ce qui
 produit le rang de catégorie. Le rang de club est **le même appel** avec un autre filtre
 (`_du_groupe`, généralisé depuis `_de_categorie`). Aucune arithmétique d'*ex æquo* n'est réécrite :
-`DETTE-029` n'a pas gagné de 5ᵉ site.
+`DETTE-029` n'a pas gagné de 5ᵉ site **à cette US** — il est ouvert par E16US017 ([ADR-0104](0104-le-classement-des-clubs-se-compte-en-medailles-inter-clubs.md) §6), qui classe les clubs entre eux et doit donc ranger autre chose que des archers.
 
 Ce rang est calculé **inconditionnellement**, pas seulement quand la portée est active : le rendre
 conditionnel aurait fait dépendre la **forme** de `LignePalmares` d'un réglage, donc obligé chaque
@@ -198,7 +198,7 @@ portée que la donnée ne couvre pas — la ligne est élargie en conséquence.
 - `backend/application/palmares.py` — `RenduPalmares` et `ServicePalmares.rendu` (décision 7), et
   `_duels_non_commences` et son appel dans `_calculer` — le service est le seul à voir les phases
   du créneau et leur statut (décision 6) ;
-  `_libelles_club` (lecture conditionnelle, décision 3) ; `reglage_podiums` /
+  `_libelles_club` (lecture conditionnelle, décision 3 — ⚠️ **garde élargie par E16US017/ADR-0104** : la lecture a lieu dès qu'une portée est réglée) ; `reglage_podiums` /
   `definir_reglage_podiums`.
 - `backend/api/v1/palmares.py` — `PalmaresReponse.classement_vide`, qui **porte** le fait « ce
   tournoi est-il classé ? » que quatre gardes successives avaient tenté d'inférer ; `PodiumReponse`

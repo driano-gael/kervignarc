@@ -6,9 +6,23 @@
 // à une élimination en duel. **Ce qui n'est pas décidé se nomme** : un podium vide dit « en cours
 // », un blanc passerait pour une panne d'affichage sur un écran projeté.
 
-import type { ClassementClubs, LignePalmares, Podium } from './api'
+import type { ClassementClubs, LignePalmares, Podium, PorteePodium } from './api'
 
 const MEDAILLES: Record<number, string> = { 1: 'Or', 2: 'Argent', 3: 'Bronze' }
+
+// Les libellés des portées, pour dire **sur quoi** le décompte des clubs repose. Servi puis jamais
+// lu, `portees_comptees` ne tenait pas la promesse de son propre commentaire (relevé en revue, axe
+// D) — et c'est l'information qui désamorce la surprise du double comptage : « Or : 2 » pour un club
+// à un archer s'explique dès qu'on lit « Compté sur : Toutes catégories · Par catégorie ».
+const PORTEES: Record<string, string> = {
+  scratch: 'Toutes catégories',
+  categorie: 'Par catégorie',
+  club: 'Par club',
+}
+
+export function baseDuDecompte(portees: PorteePodium[]): string {
+  return portees.map((portee) => PORTEES[portee] ?? portee).join(' · ')
+}
 
 // « 3ᵉ », « 5ᵉ-8ᵉ » ou « — » (hors classement). L'exposant ordinal suit l'usage français : « 1ᵉʳ »
 // au premier rang, « ᵉ » ensuite.
@@ -97,9 +111,19 @@ export const nomComplet = (ligne: LignePalmares) => `${ligne.prenom} ${ligne.nom
 // vient de la population ; « provisoire » vient du tournoi, et se lèvera tout seul. Les rendre
 // sous un même blanc renverrait l'organisateur vérifier le mauvais écran.
 export function etatClassementClubs(classement: ClassementClubs): string | null {
+  // Le tournoi ne récompense rien : la section entière ne se rend pas (cf. `VuePalmares`).
+  if (classement.portees_reglees.length === 0) return null
   if (classement.portees_comptees.length === 0)
     return 'Aucun classement des clubs — les podiums réglés récompensent à l’intérieur de chaque club, ils ne les comparent pas entre eux.'
-  if (classement.lignes.length === 0) return 'Aucun club au classement.'
+  // ⚠️ Une phrase pour **trois** causes, et c'est délibéré : aucun club inscrit, aucune médaille
+  // encore décernée, ou des médailles toutes revenues à des archers sans club. Elle est vraie des
+  // trois, là où « le classement démarrera aux finales » serait faux de la première.
+  // ⚠️ « encore » **seulement si ça peut changer** (relevé en revue, axe D) : sur un tournoi
+  // sans phase à duels, il n'y en aura jamais, et l'adverbe promet une suite qui ne vient pas.
+  if (classement.lignes.length === 0)
+    return classement.provisoire
+      ? 'Aucun club n’a encore de médaille.'
+      : 'Aucun club n’a de médaille.'
   if (classement.provisoire) return 'Décompte provisoire — des podiums restent à décerner.'
   return null
 }

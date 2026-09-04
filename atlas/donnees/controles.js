@@ -266,10 +266,16 @@ window.ATLAS.controles = {
    "message": "annonce test_un_club_nomme_comme_une_formule_n_est_pas_execute, test_les_montants_ne_sont_jamais_neutralises dans « backend/infrastructure/tableur/listes_impression.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0101"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce vu_par_archer dans « backend/domain/classement_clubs.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0104"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 44
+  "signaux": 45
  }
 };

@@ -224,6 +224,7 @@ describe('etatClassementClubs (E16US017)', () => {
       },
     ],
     portees_comptees: ['categorie'],
+    portees_reglees: ['categorie'],
     provisoire: false,
   }
 
@@ -231,14 +232,31 @@ describe('etatClassementClubs (E16US017)', () => {
     expect(etatClassementClubs(CLASSEMENT)).toBeNull()
   })
 
-  it('distingue « aucune base » d’« aucun club » : les deux tables sont vides, pas les causes', () => {
-    const sansBase = etatClassementClubs({ ...CLASSEMENT, lignes: [], portees_comptees: [] })
-    const sansClub = etatClassementClubs({ ...CLASSEMENT, lignes: [] })
+  it('sépare les trois causes d’un tableau vide, qui n’appellent pas le même geste', () => {
+    const rienRecompense = etatClassementClubs({
+      ...CLASSEMENT,
+      lignes: [],
+      portees_comptees: [],
+      portees_reglees: [],
+    })
+    const sansBase = etatClassementClubs({
+      ...CLASSEMENT,
+      lignes: [],
+      portees_comptees: [],
+      portees_reglees: ['club'],
+    })
+    const sansMedaille = etatClassementClubs({ ...CLASSEMENT, lignes: [] })
 
-    // « Aucune base » vient du réglage et ne se corrigera pas en attendant ; « aucun club » vient
-    // de la population. Les rendre sous un même blanc renverrait vérifier le mauvais écran.
+    // Rien de récompensé : la section entière ne se rend pas, il n'y a pas de question posée.
+    expect(rienRecompense).toBeNull()
+    // Aucune base : vient du **réglage**, ne se corrigera pas en attendant.
     expect(sansBase).toMatch(/à l’intérieur de chaque club/)
-    expect(sansClub).toBe('Aucun club au classement.')
+    // Aucune médaille : vient du **tournoi**. ⚠️ « encore » **seulement si ça peut changer** — sur
+    // un tournoi sans phase à duels, l'adverbe promettrait une suite qui ne vient jamais.
+    expect(sansMedaille).toBe('Aucun club n’a de médaille.')
+    expect(etatClassementClubs({ ...CLASSEMENT, lignes: [], provisoire: true })).toBe(
+      'Aucun club n’a encore de médaille.',
+    )
   })
 
   it('porte la réserve tant qu’un podium compté attend — on ne promet pas le trophée à 9 h', () => {

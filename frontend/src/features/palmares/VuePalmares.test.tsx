@@ -88,6 +88,7 @@ const PALMARES: Palmares = {
       },
     ],
     portees_comptees: ['categorie'],
+    portees_reglees: ['categorie'],
     provisoire: false,
   },
   profondeur_podium: 4,
@@ -226,12 +227,77 @@ describe('VuePalmares — classement des clubs (E16US017)', () => {
     // tableau vide se lirait comme une panne, et l'organisateur irait chercher au mauvais endroit.
     vi.mocked(getPalmares).mockResolvedValue({
       ...PALMARES,
-      classement_clubs: { lignes: [], portees_comptees: [], provisoire: false },
+      classement_clubs: {
+        lignes: [],
+        portees_comptees: [],
+        portees_reglees: ['club'],
+        provisoire: false,
+      },
     })
     render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
 
     await waitFor(() =>
       expect(screen.getByText(/à l’intérieur de chaque club/)).toBeInTheDocument(),
+    )
+    expect(within(screen.getByLabelText('Classement des clubs')).queryByRole('table')).toBeNull()
+  })
+})
+
+describe('VuePalmares — classement des clubs, correctifs de revue', () => {
+  it('range chaque métal dans sa propre colonne', async () => {
+    // ⚠️ Relevé en revue (axe B) : aucune surface n'ancrait *quelle colonne porte quel métal*, si
+    // bien qu'une permutation argent ↔ bronze restait verte partout. Trois valeurs distinctes.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: {
+        ...PALMARES.classement_clubs,
+        lignes: [{ ...CLUB, medailles_or: 3, medailles_argent: 2, medailles_bronze: 1 }],
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByLabelText('Classement des clubs')).toBeInTheDocument())
+    const ligne = within(screen.getByLabelText('Classement des clubs')).getAllByRole('row')[1]
+    expect([...(ligne?.querySelectorAll('td') ?? [])].map((c) => c.textContent)).toEqual([
+      '1ᵉʳ',
+      'Compagnie de Kervignarc',
+      '3',
+      '2',
+      '1',
+    ])
+  })
+
+  it('n’affiche rien du tout quand le tournoi ne récompense rien', async () => {
+    // ⚠️ Relevé en revue (axe C2) : la garde vivait en JSX et lisait `podiums` — 5ᵉ inférence du
+    // même genre sur ce DTO. Le fait est désormais servi (`portees_reglees`), donc testable ici.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      podiums: [],
+      classement_clubs: {
+        lignes: [],
+        portees_comptees: [],
+        portees_reglees: [],
+        provisoire: false,
+      },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() => expect(screen.getByText('Classement complet')).toBeInTheDocument())
+    expect(screen.queryByLabelText('Classement des clubs')).toBeNull()
+  })
+
+  it('dit qu’aucun club n’a de médaille plutôt que de les ranger tous 1ᵉʳˢ', async () => {
+    // ⚠️ Relevé en revue (axe C1) : le domaine rendait un club par ligne à (0,0,0), donc tous au
+    // rang 1 — « un classement où tout le monde est premier », que le CA interdit. Le serveur ne
+    // renvoie plus de lignes ; l'écran doit dire pourquoi.
+    vi.mocked(getPalmares).mockResolvedValue({
+      ...PALMARES,
+      classement_clubs: { ...PALMARES.classement_clubs, lignes: [], provisoire: true },
+    })
+    render(<Cadre enfants={<VuePalmares tournoiId={1} />} />)
+
+    await waitFor(() =>
+      expect(screen.getByText('Aucun club n’a encore de médaille.')).toBeInTheDocument(),
     )
     expect(within(screen.getByLabelText('Classement des clubs')).queryByRole('table')).toBeNull()
   })

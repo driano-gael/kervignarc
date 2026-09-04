@@ -20,7 +20,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.v1.palmares import ClassementClubsReponse
 from bootstrap.composition import create_app
+from domain.classement_clubs import ClassementClubs, LigneClassementClubs
+from domain.podium import PorteePodium
 from tests.base_migree import preparer_base
 from tests.conftest import ConnecterAdmin
 from tests.test_placement_api import _appliquer_gabarit, _creer_tournoi
@@ -391,3 +394,71 @@ def test_un_filtre_par_categorie_ne_rogne_pas_le_classement_des_clubs(
         filtre = client.get(f"/api/v1/tournois/{tournoi_id}/palmares?categorie_id=9999").json()
 
     assert entier["classement_clubs"] == filtre["classement_clubs"]
+
+
+def test_le_dto_du_classement_des_clubs_recopie_chaque_metal_dans_sa_colonne() -> None:
+    """⚠️ **Relevé en revue (axe B)** : le décor d'API ne tranche aucun duel, donc `de_classement`
+    n'était **jamais** exercé sur une valeur non nulle — une permutation `argent` ↔ `bronze` dans
+    la recopie restait verte de bout en bout.
+
+    Test unitaire pur sur la frontière (règle 6 : le DTO est distinct de l'entité), sans décor.
+    """
+    classement = ClassementClubs(
+        lignes=(
+            LigneClassementClubs(
+                rang=1,
+                club_id=7,
+                club_libelle="Compagnie de Kervignarc",
+                medailles_or=3,
+                medailles_argent=2,
+                medailles_bronze=1,
+            ),
+        ),
+        portees_comptees=(PorteePodium.SCRATCH,),
+        portees_reglees=(PorteePodium.SCRATCH, PorteePodium.CLUB),
+        provisoire=True,
+    )
+
+    dto = ClassementClubsReponse.de_classement(classement).model_dump()
+
+    assert dto == {
+        "lignes": [
+            {
+                "rang": 1,
+                "club_id": 7,
+                "club_libelle": "Compagnie de Kervignarc",
+                "medailles_or": 3,
+                "medailles_argent": 2,
+                "medailles_bronze": 1,
+            }
+        ],
+        "portees_comptees": [PorteePodium.SCRATCH],
+        "portees_reglees": [PorteePodium.SCRATCH, PorteePodium.CLUB],
+        "provisoire": True,
+    }
+
+
+def test_le_reglage_vide_se_distingue_a_la_frontiere_de_l_absence_de_base(
+    app_palmares: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """⚠️ **Relevé en revue (axe C2)** : `portees_comptees` vide confond deux causes, et l'écran
+    les séparait en lisant `podiums` — cinquième inférence du même genre sur ce DTO."""
+    with TestClient(app_palmares) as client:
+        connecter_admin(client)
+        tournoi_id, _ = _preparer(app_palmares, client)
+
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": [], "profondeur": 4},
+        )
+        rien = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+        client.put(
+            f"/api/v1/tournois/{tournoi_id}/reglage-podiums",
+            json={"portees": ["club"], "profondeur": 4},
+        )
+        club_seul = client.get(f"/api/v1/tournois/{tournoi_id}/palmares").json()
+
+    assert rien["classement_clubs"]["portees_comptees"] == []
+    assert club_seul["classement_clubs"]["portees_comptees"] == [], "même absence de base"
+    assert rien["classement_clubs"]["portees_reglees"] == [], "le tournoi ne récompense rien"
+    assert club_seul["classement_clubs"]["portees_reglees"] == ["club"], "lui, si"

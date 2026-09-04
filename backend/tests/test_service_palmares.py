@@ -846,6 +846,10 @@ def test_le_classement_des_clubs_nomme_ses_clubs_sans_la_portee_club() -> None:
     monde, archers = _monde_de_quatre()
     clubs = FauxClubRepository()
     _rattacher_a_un_club(monde, clubs, {archers[0]: "Compagnie de Kervignarc"})
+    # Le tableau est **joué** : sans médaille décernée, le classement des clubs est vide par
+    # construction depuis la revue (axe C1), et le test ne prouverait plus rien du nommage.
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
     service = ServicePalmares(
         monde.tournois,
         monde.phases,

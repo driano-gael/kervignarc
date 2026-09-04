@@ -128,11 +128,22 @@ class ClassementClubsReponse(BaseModel):
     """Le classement des clubs entre eux, et **sur quoi il repose** (E16US017)."""
 
     lignes: list[LigneClassementClubsReponse]
+    """Les clubs classés — **vide** tant qu'aucun n'a de médaille : un champ de zéros les mettrait
+    tous *ex æquo* 1ᵉʳˢ, ce que le client afficherait comme un résultat."""
+
     portees_comptees: list[PorteePodium]
     """Les portées qui alimentent le décompte — **liste vide** = aucune base de comparaison.
 
     ⚠️ La portée *club* n'y figure jamais : elle décerne un or à l'intérieur de chaque club, donc à
     tous. Un client qui la verrait ici en déduirait un décompte qu'aucune ligne ne porte.
+    """
+
+    portees_reglees: list[PorteePodium]
+    """Tout ce que le tournoi récompense, portée *club* comprise — **vide** = il ne récompense rien.
+
+    ⚠️ Sans ce champ, le client distinguait « rien n'est récompensé » de « seuls des podiums de
+    club le sont » en lisant `podiums` — cinquième inférence du même genre sur ce DTO, les quatre
+    précédentes étant fausses.
     """
 
     provisoire: bool
@@ -142,6 +153,7 @@ class ClassementClubsReponse(BaseModel):
     def de_classement(classement: ClassementClubs) -> ClassementClubsReponse:
         return ClassementClubsReponse(
             portees_comptees=list(classement.portees_comptees),
+            portees_reglees=list(classement.portees_reglees),
             provisoire=classement.provisoire,
             lignes=[
                 LigneClassementClubsReponse(
@@ -260,7 +272,10 @@ async def consulter_palmares(
     # Une seule lecture : le réglage et le palmarès doivent venir du **même** instant, sans quoi un
     # PUT intercalé fait sortir une profondeur qui ne correspond pas aux blocs rendus.
     rendu = await run_in_threadpool(service.rendu, tournoi_id, categorie_id)
-    return PalmaresReponse.de_rendu(tournoi_id, rendu)
+    # ⚠️ La **composition** aussi sort de la boucle : elle recompose tous les blocs de podium (deux
+    # fois depuis E16US017, le classement des clubs les relisant) et construit un modèle Pydantic
+    # par ligne. Route publique et pollée par chaque tablette — cf. `DETTE-031`.
+    return await run_in_threadpool(PalmaresReponse.de_rendu, tournoi_id, rendu)
 
 
 @router.get("/tournois/{tournoi_id}/reglage-podiums", response_model=ReglagePodiumsReponse)

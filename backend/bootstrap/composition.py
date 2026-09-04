@@ -948,8 +948,9 @@ def create_app(
         duel_repository,
         GenerateurPalmaresPdf(),
         depart_repository,
-        # E16US014 : de quoi **nommer** les podiums de club — le PDF doit les titrer, et il n'a pas
-        # d'écran pour résoudre les identifiants à sa place.
+        # E16US014/E16US017 : de quoi **nommer** les podiums de club et le classement des clubs
+        # (ADR-0104) — le PDF doit les titrer, et il n'a pas d'écran pour résoudre les identifiants
+        # à sa place.
         club_repository,
         aggregation,
         # ⚠️ **Au constructeur, pas par un `brancher_…`** : il n'y a aucun cycle entre le palmarès et

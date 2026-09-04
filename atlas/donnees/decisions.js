@@ -9043,13 +9043,19 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PORTEES_INTER_CLUBS",
-      "_METAUX",
       "classer_clubs",
+      "portees_comptees",
+      "portees_reglees",
+      "aucune",
       "ClassementClubs.portees_comptees",
       "_libelles",
-      "_ranger"
+      "_ranger",
+      "_decompter",
+      "vu_par_archer"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "vu_par_archer"
+     ],
      "verifiable": true
     },
     {

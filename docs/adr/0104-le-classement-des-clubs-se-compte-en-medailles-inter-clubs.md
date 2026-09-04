@@ -80,8 +80,32 @@ sont distincts et l'écran ne dit pas la même phrase : « les podiums réglés 
 l'intérieur de chaque club » (réglage, ne bougera pas) contre « aucun club au classement »
 (population).
 
+⚠️ **Un troisième fait, ajouté en revue : `portees_reglees`.** `portees_comptees` vide **confond**
+deux causes — « le tournoi ne récompense rien » (réglage vide, licite §1) et « il ne récompense qu'à
+l'intérieur des clubs ». La première ne pose aucune question, la seconde en pose une à laquelle
+l'écran doit répondre. La première rédaction les séparait **côté client**, en lisant `podiums` : la
+**cinquième** inférence de ce type sur ce DTO, écrite quinze lignes sous l'avertissement de
+`VuePalmares` qui recense les quatre précédentes, toutes fausses. Le fait est donc servi.
+
 C'est la leçon des **trois passes de revue** qu'a coûtées ADR-0103 §6, où l'énoncé d'un bloc portait
 chaque fois sur une autre population que son contenu.
+
+### 3 bis. Un décompte de zéros n'est **pas** un classement
+
+Tant qu'aucun club n'a de médaille, `classer_clubs` ne rend **aucune ligne**.
+
+⚠️ **Ajouté en revue (axe C1), et c'est le défaut le plus visible qu'elle ait trouvé.** À décompte
+égal le rang est partagé (décision 6) : un champ de zéros sortait donc tous les clubs **1ᵉʳˢ**.
+C'est mot pour mot l'état que la décision 2 interdit — « pas un classement où tout le monde est
+premier » — atteint par la porte du **décompte** au lieu de celle de la **portée**, et il dure
+**toute la matinée** d'un tournoi, projeté au gymnase. Défaut de **conjonction** au sens propre :
+le domaine, le front et le PDF étaient chacun verts, et le test de tri du domaine l'épinglait même
+comme un comportement voulu (`"tous à zéro, tous 1ᵉʳˢ"`).
+
+La règle vit **au domaine**, pas dans les trois surfaces : c'est là que le rang naît. Les surfaces
+disent « Aucun club n'a encore de médaille. » — une phrase vraie des **trois** causes possibles
+(aucun club inscrit, rien d'encore décerné, médailles toutes revenues à des archers sans club), là
+où « le classement démarrera aux finales » serait faux de la première.
 
 ### 4. Une médaille décernée deux fois compte deux fois
 
@@ -94,6 +118,20 @@ récompensait la profondeur d'effectif, mais faisait diverger le tableau du rée
 cou d'un archer, une seule au décompte de son club.
 
 ⚠️ **Effet assumé, énoncé avant l'arbitrage** : un club à un seul archer très fort double son score.
+
+⚠️ **Et une limite trouvée en revue (axe D), qui borne la propriété ci-dessus.** Elle tombe quand le
+tournoi n'a **qu'une seule catégorie** : le bloc *Toutes catégories* et l'unique bloc de catégorie
+contiennent alors les **mêmes archers aux mêmes rangs**. Un seul jeu de médailles est remis, deux
+sont comptés — le décompte ne coïncide plus avec le réel, ce qui était l'argument même de la
+décision.
+
+Elle est **documentée et non corrigée**, pour deux raisons. D'abord, dédoublonner casserait le cas
+nominal, celui pour lequel l'arbitrage a été rendu : à plusieurs catégories, deux médailles sont
+réellement remises. Ensuite, la duplication est **visible** — l'écran affiche deux blocs de podium
+portant les mêmes noms, et l'organisateur qui règle deux portées sur une catégorie unique a demandé
+cette redondance. La ligne « Compté sur : … » affichée sous le titre du classement (décision 8) la
+rend lisible. Épinglée par `test_le_decompte_double_quand_le_tournoi_n_a_qu_une_categorie`, pour
+qu'elle ne se redécouvre pas au pied du podium.
 
 ### 5. Trois métaux, et pas un de plus
 
@@ -126,15 +164,24 @@ Un archer **sans club** (ADR-0014) ne rapporte sa médaille à personne et **ne 
 « sans club » : le club inconnu reste une anomalie à corriger aux inscriptions, pas une entité de
 classement.
 
-### 8. Le classement suit les quatre surfaces du palmarès
+### 8. Le classement suit les quatre surfaces, et **dit sur quoi il repose**
 
 Écran d'admin, appli publique, écran de salle et PDF — le trophée se remet en même temps que les
 médailles, il se lit donc au même endroit. Le composant `VuePalmares` étant unique pour les trois
 surfaces d'écran (prop `interactif`), cela coûte **un** bloc de JSX et **une** section de PDF.
 
-⚠️ **Le papier saute la section quand elle n'a pas de base**, là où l'écran l'annonce : une table
-vide imprimée se lirait « aucun club » sans que rien ne puisse la commenter. Même parti que
-`_podiums` (ADR-0103 §6).
+Chaque surface affiche, sous le titre, la ligne **« Compté sur : Toutes catégories · Par
+catégorie »**. ⚠️ Ajoutée en revue (axe D) : `portees_comptees` était servi et **jamais lu** — le
+champ ne tenait pas la promesse de son propre commentaire. C'est pourtant l'information qui
+désamorce la surprise de la décision 4 : « Or : 2 » pour un club d'un seul archer s'explique dès
+qu'on lit sur quoi le décompte porte.
+
+⚠️ **Trois vides, trois traitements**, et c'est ce que la surface peut commenter qui les sépare.
+Réglage **vide** : rien ne s'affiche, il n'y a pas de question posée. **Aucune portée inter-club** :
+le papier saute la section — une table vide imprimée se lirait « aucun club » sans que rien puisse
+la commenter (parti de `_podiums`, ADR-0103 §6) — quand l'écran, lui, nomme la cause. **Aucun club
+médaillé** : les deux le disent, le papier compris, car un tournoi dont personne n'a de club
+rattaché doit produire ce signal.
 
 ## Conséquences
 
@@ -170,10 +217,19 @@ cache, c'est là qu'il faudra le poser, pas ici.
 
 ## Porté dans le code par
 
-- `backend/domain/classement_clubs.py` — **tout l'ADR**. `PORTEES_INTER_CLUBS` (décision 2),
-  `_METAUX` (décision 5), `classer_clubs` (décisions 1 et 4), `ClassementClubs.portees_comptees` et
-  `.provisoire` (décision 3), `_libelles` (décision 7, y compris l'exclusion des archers sans club),
-  `_ranger` (décision 6, et le marqueur `DETTE-029` du 5ᵉ site).
+- `backend/domain/classement_clubs.py` — **tout l'ADR**. `PORTEES_INTER_CLUBS` (décision 2) ;
+  `classer_clubs` (décision 1 — la composition sur les blocs déjà décernés —, décision 3, qui
+  dérive `portees_comptees` **et** `portees_reglees` du réglage, et **décision 3 bis** : la garde
+  `aucune` qui refuse de ranger un champ de zéros) ; `ClassementClubs.portees_comptees`, `.portees_reglees` et
+  `.provisoire` (décision 3) ; `_libelles` (décision 7, y compris l'exclusion des archers sans
+  club) ; `_ranger` (décision 6, et le marqueur `DETTE-029` du 5ᵉ site).
+  ⚠️ **`_decompter` porte à lui seul les décisions 4 et 5**, et c'est là que le mode de panne vit —
+  relevé en revue (axe C2), la première rédaction l'omettait. La décision 4 (« deux fois compté »)
+  n'est tenue par **aucune ligne** : elle l'est par l'**absence** de dédoublonnage par archer dans
+  la double boucle `for bloc … for place`. Un mainteneur qui y ajouterait un `vu_par_archer`
+  casserait l'ADR sans toucher un symbole nommé ailleurs. La décision 5, elle, est tenue par le
+  **test** `place.rang <= _METAUX` : retirer la constante ne compilerait pas, relâcher la
+  comparaison passerait.
 - `backend/application/palmares.py` — `ServicePalmares._libelles_club` : la garde élargie du
   § Conséquences. C'est **le** symbole dont la modification casserait le nommage des clubs sans
   qu'aucun rang ne bouge.

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from domain.club import ClubId
-from domain.palmares import BlocPodium, Palmares
+from domain.palmares import BlocPodium, Palmares, libelle_de_club
 from domain.podium import PorteePodium, ReglagePodiums
 
 PORTEES_INTER_CLUBS = frozenset({PorteePodium.SCRATCH, PorteePodium.CATEGORIE})
@@ -51,11 +51,30 @@ class ClassementClubs:
     """
 
     lignes: tuple[LigneClassementClubs, ...]
+    """Les clubs classés — **vide** tant qu'aucun d'eux n'a de médaille (décision 8 d'ADR-0104).
+
+    ⚠️ **Ne pas ranger un champ de zéros** : à décompte égal le rang est partagé, donc tous les
+    clubs sortaient **1ᵉʳˢ** toute la matinée — l'état que le CA interdit, atteint par la porte du
+    décompte au lieu de celle de la portée (relevé en revue, axe C1).
+    """
+
     portees_comptees: tuple[PorteePodium, ...]
     """Les portées du réglage qui alimentent le décompte — **vide** = aucune base de comparaison.
 
     ⚠️ Dérivé du **réglage**, pas des blocs rendus : sans quoi un tournoi qui n'a encore décerné
     aucune médaille se dirait « sans base », ce qui est faux et ne se corrigerait jamais à l'écran.
+    """
+
+    portees_reglees: tuple[PorteePodium, ...]
+    """Tout ce que le tournoi récompense, portée *club* **comprise** — **vide** = il ne récompense
+    rien (réglage licite, ADR-0103 §1), et la surface n'a alors aucune question à traiter.
+
+    ⚠️ Servi parce que `portees_comptees` vide **confond** deux causes : « rien n'est récompensé »
+    et « seuls des podiums internes aux clubs le sont ». L'écran le déduisait de `podiums`, ce que
+    `VuePalmares` interdit en toutes lettres — quatre gardes l'avaient déjà tenté et raté.
+    ⚠️ **Sans valeur par défaut, délibérément** (relevé en revue, axe D) : `()` fait disparaître la
+    section des quatre surfaces, donc un constructeur qui l'oublierait supprimerait la
+    fonctionnalité **en silence**, sans que mypy dise rien.
     """
 
     provisoire: bool = False
@@ -69,32 +88,59 @@ def classer_clubs(palmares: Palmares, reglage: ReglagePodiums) -> ClassementClub
     portées cumulées en rapporte deux à son club (arbitrage du 04/09/2026). ⚠️ Un archer **sans
     club** n'en rapporte à personne et ne crée aucune ligne — « club inconnu » est une anomalie à
     signaler, pas un club de rattachement (ADR-0014).
+
+    ⚠️ `DETTE-045` — le palmarès dérive du **premier créneau**, et c'est ici que l'imprécision
+    change de nature : ce classement **agrège**, et il désigne un **lauréat unique** à qui l'on
+    remet un trophée. Un club dont les archers tirent l'après-midi n'apporte rien.
     """
-    portees = tuple(portee for portee in reglage.portees_actives() if portee in PORTEES_INTER_CLUBS)
+    reglees = reglage.portees_actives()
+    portees = tuple(portee for portee in reglees if portee in PORTEES_INTER_CLUBS)
     if not portees:
-        return ClassementClubs(lignes=(), portees_comptees=())
+        return ClassementClubs(lignes=(), portees_comptees=(), portees_reglees=reglees)
 
     blocs = tuple(bloc for bloc in palmares.podiums(reglage) if bloc.portee in PORTEES_INTER_CLUBS)
     libelles = _libelles(palmares)
     decomptes = _decompter(blocs, libelles)
+    # Tant que personne n'a rien gagné, il n'y a pas de classement — pas un classement de zéros.
+    # Le ranger donnerait le **même** rang à tous (clé égale), donc « 1ᵉʳ » à chaque club, ce que
+    # le CA interdit et que trois surfaces auraient affiché toute la matinée.
+    aucune = not any(decompte != (0, 0, 0) for decompte in decomptes.values())
     return ClassementClubs(
-        lignes=_ranger(decomptes, libelles),
+        lignes=() if aucune else _ranger(decomptes, libelles),
         portees_comptees=portees,
-        provisoire=any(bloc.en_attente for bloc in blocs),
+        portees_reglees=reglees,
+        # ⚠️ **Le créneau prime, comme au bloc** (ADR-0103 §6) : tant qu'une phase à duels ouverte
+        # n'a rien livré, elle peut encore renuméroter tout le monde — quels que soient les métaux
+        # déjà décernés. Ce n'est qu'à l'intérieur de ce cas que l'attente s'affine, archer par
+        # archer.
+        provisoire=palmares.duels_non_commences
+        or any(_reste_une_medaille(bloc, reglage.profondeur) for bloc in blocs),
     )
+
+
+def _reste_une_medaille(bloc: BlocPodium, profondeur: int) -> bool:
+    """Ce bloc peut-il encore **changer le décompte** ? — pas « attend-il quelqu'un ».
+
+    ⚠️ **La nuance décide d'un trophée** (relevé en revue, axe D). `bloc.en_attente` est vrai dès
+    qu'un archer du groupe est en lice, **fût-ce pour la 5ᵉ place** : le classement annonçait alors
+    « décompte provisoire » sous des podiums qui, eux, n'affichaient aucune réserve — les trois
+    métaux étant décernés. L'organisateur retenait le trophée sans savoir pourquoi.
+    """
+    decernees = sum(1 for place in bloc.places if place.rang <= _METAUX)
+    return bloc.en_attente and decernees < min(_METAUX, profondeur, bloc.effectif)
 
 
 def _libelles(palmares: Palmares) -> dict[ClubId, str]:
     """Tous les clubs **présents au tournoi**, dans l'ordre du palmarès.
 
     Aucun effectif minimum (arbitrage du 31/08/2026) : un seuil masquerait des clubs en silence.
-    ⚠️ Le repli doit rester **identique** à celui de `Palmares._groupes`, sinon le même club
-    s'appellerait autrement selon qu'on lit son podium ou son rang.
+    Le repli de nom vient de `libelle_de_club`, partagé avec `Palmares._groupes` : le même club
+    doit s'appeler pareil selon qu'on lit son podium ou le classement.
     """
     libelles: dict[ClubId, str] = {}
     for ligne in palmares.lignes:
         if ligne.club_id is not None:
-            libelles.setdefault(ligne.club_id, ligne.club_libelle or f"Club {ligne.club_id}")
+            libelles.setdefault(ligne.club_id, libelle_de_club(ligne))
     return libelles
 
 
@@ -130,10 +176,10 @@ def _ranger(
         ),
     )
 
-    # DETTE-029 — 5ᵉ site de l'arithmétique « rang partagé à clé égale, avec sauts (1-2-2-4) »
-    # (avec `classement._ranger`, `poule`, `suisse`, `palmares._numeroter`). La clé est ici un
-    # triplet de médailles et non un score : le remède attendu (`attribuer_rangs(ordonnes,
-    # meme_rang)`) l'accommode, il ne demande qu'un prédicat d'égalité.
+    # DETTE-029 — site de l'arithmétique « rang partagé à clé égale, avec sauts (1-2-2-4) ».
+    # Le compte des sites vit au registre, pas ici : l'écrire en dur périme le commentaire au
+    # prochain ajout, ce qui est le défaut même que ce marqueur sert à retrouver. La clé est un
+    # triplet de médailles et non un score ; le remède attendu ne demande qu'un prédicat d'égalité.
     lignes: list[LigneClassementClubs] = []
     rang = 0
     precedent: tuple[int, int, int] | None = None

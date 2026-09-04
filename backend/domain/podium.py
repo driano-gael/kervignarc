@@ -31,6 +31,9 @@ class PorteePodium(str, Enum):
     étant un ensemble, c'est lui qui rend deux réglages équivalents identiques à l'écran.
     ⚠️ La portée *équipe* d'A16 **n'est pas ici** : la classe `Equipe` n'existe pas (EPIC-13,
     ADR-0028), et un membre qui ne peut rien rendre est pire qu'un membre absent.
+    ⚠️ **Toute portée neuve doit être rangée dans `classement_clubs.PORTEES_INTER_CLUBS`**, ou
+    explicitement écartée : le trophée du club l'ignorerait sinon **en silence**, sans qu'un test
+    échoue ni qu'on ait de raison d'ouvrir ce module-là (ADR-0104 §2).
     """
 
     SCRATCH = "scratch"

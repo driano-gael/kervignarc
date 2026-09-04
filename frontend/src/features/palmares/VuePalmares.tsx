@@ -13,6 +13,7 @@ import type { ClassementClubs as ClassementClubsDto, LignePalmares, Podium } fro
 import { urlPalmaresPdf } from './api'
 import { usePalmares } from './hooks'
 import {
+  baseDuDecompte,
   detail,
   etatClassementClubs,
   etatPodium,
@@ -97,11 +98,7 @@ export function VuePalmares({
               profondeur={donnees.profondeur_podium}
             />
           ))}
-          {/* ⚠️ **Conditionné aux podiums, pas au classement des clubs lui-même** : un tournoi qui
-              ne récompense rien du tout (réglage vide, licite — ADR-0103 §1) n'a aucune médaille à
-              compter, et lui annoncer que son classement de clubs n'a pas de base répondrait à une
-              question que personne n'a posée. */}
-          {donnees.podiums.length > 0 && <ClassementClubs classement={donnees.classement_clubs} />}
+          <ClassementClubs classement={donnees.classement_clubs} />
           <ClassementFinal lignes={centrerLignes(donnees.lignes, mode, suivis)} mode={mode} />
         </>
       )}
@@ -161,10 +158,19 @@ function BlocPodium({
  * de la boucle ferait passer un second 1ᵉʳ pour un 2ᵉ.
  */
 function ClassementClubs({ classement }: { classement: ClassementClubsDto }) {
+  // ⚠️ **Le serveur le dit, on ne le déduit pas** — même avertissement que quinze lignes plus haut.
+  // Un tournoi qui ne récompense rien (réglage vide, licite — ADR-0103 §1) n'a pas de question à se
+  // voir répondre. Lire `podiums` pour le savoir aurait été la 5ᵉ inférence du même genre.
+  if (classement.portees_reglees.length === 0) return null
   const etat = etatClassementClubs(classement)
   return (
     <section className="palmares-podium" aria-label="Classement des clubs">
       <h4 className="palmares-section">Classement des clubs</h4>
+      {/* Sur quoi le décompte repose — sans quoi « Or : 2 » pour un club à un seul archer se lit
+          comme une erreur, alors que c'est le cumul de deux portées réglées. */}
+      {classement.portees_comptees.length > 0 && (
+        <p className="carte__etat">Compté sur : {baseDuDecompte(classement.portees_comptees)}</p>
+      )}
       {etat && <p className="carte__etat">{etat}</p>}
       {classement.portees_comptees.length > 0 && classement.lignes.length > 0 && (
         // Conteneur défilant : cinq colonnes débordent sur mobile, comme la table du classement.
