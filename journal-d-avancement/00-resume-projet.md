@@ -581,9 +581,15 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **133 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/09/2026 — dont deux
+- **134 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/09/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US017` — **le trophée du club le plus
+  autorité sur le compte) —, la dernière étant `E16US015` — **un QR par scoreur** : le scoreur
+  ouvre sa session en scannant, au lieu de retaper son code. ⚠️ **Un arbitrage de sécurité était
+  posé et il a été tranché** : le QR porte le code personnel en clair — il n'expose rien de plus
+  que l'écran et la carte imprimée —, mais l'écran ne l'affiche **qu'à la demande, un scoreur à la
+  fois**, parce qu'un QR se photographie d'un mètre là où un code demande de s'approcher. Le code
+  disparaît de la barre d'adresse dès l'arrivée.
+  Précédente : `E16US017` — **le trophée du club le plus
   performant** : les clubs se classent entre eux au **décompte de médailles**, dans l'ordre
   olympique (or, puis argent, puis bronze), sur les quatre surfaces du palmarès. Aucun effectif
   minimum, les égalités parfaites restent *ex æquo*, et un tournoi qui ne récompense qu'à
