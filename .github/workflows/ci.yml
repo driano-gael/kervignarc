@@ -156,5 +156,20 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Seul step de la CI qui interroge un service tiers *pendant* le run : le point d'entrée
+      # d'avis du registre npm. Un timeout de sa part rougit le job sans qu'aucune vulnérabilité
+      # soit en cause (vu le 04/09/2026, run 33861941481). D'où les trois essais, et le
+      # fetch-timeout ramené de 300 s à 60 s pour qu'un essai muet ne coûte pas cinq minutes.
+      # ⚠️ Un avis réel échoue aux trois essais : la reprise absorbe l'aléa réseau, jamais la
+      # vulnérabilité. Ne jamais la neutraliser en `|| true` ni en `continue-on-error`.
       - name: Audit sécurité (npm)
-        run: npm audit --audit-level=high
+        timeout-minutes: 5
+        run: |
+          for essai in 1 2 3; do
+            if npm audit --audit-level=high --fetch-timeout=60000; then
+              exit 0
+            fi
+            echo "::warning::npm audit en échec (essai $essai/3)."
+            sleep 15
+          done
+          exit 1
