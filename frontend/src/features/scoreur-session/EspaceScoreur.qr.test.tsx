@@ -2,7 +2,9 @@
 //
 // Fichier distinct d'`EspaceScoreur.test.tsx`, qui double le store sur une session **déjà ouverte**
 // pour garder `DETTE-056` : ici il faut l'inverse (aucune session), et mélanger les deux doublures
-// dans un même module reviendrait à affaiblir celle qui garde la dette.
+// affaiblirait celle qui garde la dette. ⚠️ L'**effacement** de l'adresse ne se teste pas ici mais
+// dans `src/app/App.entree.test.tsx` : depuis la revue du 04/09/2026 il vit au shell, parce qu'une
+// tablette rattachée ne monte jamais ce composant.
 
 import { render, screen } from '@testing-library/react'
 import { StrictMode } from 'react'
@@ -22,59 +24,35 @@ vi.mock('./hooks', () => ({
   useDeconnexionScoreur: () => MUTATION,
 }))
 
-function placerUrl(url: string) {
-  window.history.replaceState(null, '', url)
-}
-
 describe('arrivée par le QR d’un scoreur', () => {
-  beforeEach(() => {
-    MUTATION.mutate.mockClear()
-    placerUrl('/scoreur')
-  })
+  beforeEach(() => MUTATION.mutate.mockClear())
 
-  it('ouvre la session avec le code porté par l’URL, sans geste', () => {
-    placerUrl('/scoreur?code=AB12CD')
-
-    render(<EspaceScoreur />)
+  it('ouvre la session avec le code reçu du shell, sans geste', () => {
+    render(<EspaceScoreur codeUrl="AB12CD" />)
 
     expect(MUTATION.mutate).toHaveBeenCalledWith('AB12CD')
     expect(screen.getByLabelText('Code du scoreur')).toHaveValue('AB12CD')
   })
 
-  it('retire le code de la barre d’adresse, sans quitter le monde scoreur', () => {
-    placerUrl('/scoreur?code=AB12CD')
-
-    render(<EspaceScoreur />)
-
-    // Le code ne doit survivre ni dans l'historique ni dans un rechargement : un QR photographié
-    // reste un risque, une URL laissée à l'écran en est un second, gratuit.
-    expect(window.location.search).toBe('')
-    expect(window.location.pathname).toBe('/scoreur')
-  })
-
   it('ne tente la connexion qu’une fois, même au double montage StrictMode', () => {
-    placerUrl('/scoreur?code=AB12CD')
-
     render(
       <StrictMode>
-        <EspaceScoreur />
+        <EspaceScoreur codeUrl="AB12CD" />
       </StrictMode>,
     )
 
     expect(MUTATION.mutate).toHaveBeenCalledTimes(1)
   })
 
-  it('ne tente rien sans code dans l’URL (entrée normale, saisie à la main)', () => {
+  it('ne tente rien sans code (entrée normale, saisie à la main)', () => {
     render(<EspaceScoreur />)
 
     expect(MUTATION.mutate).not.toHaveBeenCalled()
     expect(screen.getByLabelText('Code du scoreur')).toHaveValue('')
   })
 
-  it('ne tente rien sur un paramètre vide — une connexion à blanc n’est pas une arrivée', () => {
-    placerUrl('/scoreur?code=')
-
-    render(<EspaceScoreur />)
+  it('ne tente rien sur un code vide — une connexion à blanc n’est pas une arrivée', () => {
+    render(<EspaceScoreur codeUrl="" />)
 
     expect(MUTATION.mutate).not.toHaveBeenCalled()
   })

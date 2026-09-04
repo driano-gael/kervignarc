@@ -83,7 +83,7 @@ async def cartes_codes(tournoi_id: int, request: Request) -> Response:
     responses=_SVG,
 )
 async def qr_scoreur(tournoi_id: int, scoreur_id: int, request: Request) -> Response:
-    """Renvoie l'image **SVG** du QR de rattachement d'un scoreur (affiché à l'écran, E16US015)."""
+    """Renvoie l'image **SVG** du QR de **session** d'un scoreur (affiché à l'écran, E16US015)."""
     service: ServiceDocumentsSalle = request.app.state.service_documents_salle
     svg = await run_in_threadpool(service.qr_scoreur, tournoi_id, scoreur_id, str(request.base_url))
     return Response(content=svg, media_type="image/svg+xml")

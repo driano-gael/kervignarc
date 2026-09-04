@@ -62,8 +62,8 @@ export async function telechargerCartesScoreurs(tournoiId: number): Promise<void
 
 // Image SVG du QR de session d'un scoreur (E16US015), jumeau de `getQrCible`. Blob **authentifié**
 // (`fetchBlob`) : le Bearer admin vit en JS, un `<img src>` direct rendrait 401. Converti en data
-// URL autoporteuse. ⚠️ Le QR encode le **code personnel** du scoreur : ne jamais monter l'appel
-// sans geste explicite de l'admin (cf. `useQrScoreur`, appel désarmé par défaut).
+// URL autoporteuse. ⚠️ Le QR encode le **code personnel** du scoreur : n'appeler que sur geste
+// explicite de l'admin — la garde est le montage conditionnel de `QrScoreur` (`Scoreurs.tsx`).
 export async function getQrScoreur(tournoiId: number, scoreurId: number): Promise<string> {
   const blob = await fetchBlob(`/api/v1/tournois/${tournoiId}/scoreurs/${scoreurId}/qr`)
   return svgEnDataUrl(await blob.text())

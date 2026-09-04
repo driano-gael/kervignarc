@@ -40,6 +40,11 @@ créés/modifiés/supprimés **au runtime**, **nominatifs** et rattachés à un 
 `tournoi_id`, dans le périmètre DETTE-001), redéfinissable même tournoi en cours (`D-14`, aucune
 garde de statut).
 
+> ⚠️ **Amendé le 04/09/2026 par [ADR-0105](0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md)**
+> (E16US015) : « distribué sur papier et **retapé** » n'est plus exact — le code est aussi
+> **scannable** depuis un QR affiché à l'écran de l'admin. L'alphabet sans confondables et les
+> 6 caractères restent justifiés par la saisie manuelle, qui demeure le repli.
+
 **2. Code individuel généré par le serveur, unique dans toute la base.** L'admin déclare un scoreur
 par son **nom** ; le système **génère** son `code` (comme `Depart.numero` est attribué par le
 service). Le code est un **secret d'usage** distribué sur papier et **retapé** par le scoreur : d'où

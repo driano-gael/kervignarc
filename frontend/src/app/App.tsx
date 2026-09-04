@@ -7,10 +7,11 @@
 // ne correspond pas à l'adresse, celle-ci est **corrigée en `replaceState`** : sinon « précédent »
 // renverrait sur l'adresse que l'app vient de refuser.
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
 import { EspacePoste } from '../features/poste/EspacePoste'
 import { codePosteDepuisUrl } from '../features/poste/url'
+import { codeScoreurDepuisUrl, oublierCodeScoreurUrl } from '../features/scoreur-session/url'
 import { AccueilPublic } from '../features/public/AccueilPublic'
 import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
@@ -45,6 +46,15 @@ export function App() {
   const aJetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const aJetonScoreur = useSessionScoreurStore((s) => s.jeton) !== null
   const codePoste = codePosteDepuisUrl()
+  // Le code d'arrivée d'un scoreur est lu **une fois** puis effacé de l'adresse, ⚠️ **ici et non
+  // dans `EspaceScoreur`** : sur une tablette déjà rattachée, le verrou de poste (`D-13`) sert le
+  // monde `tablette` et cet espace n'est jamais monté — le code personnel resterait affiché dans la
+  // barre d'adresse d'un appareil partagé allumé toute la journée. `naviguer` ne nettoie pas non
+  // plus : il **conserve** query et fragment, pour le `?poste=` du QR de cible.
+  const [codeScoreur] = useState(() => codeScoreurDepuisUrl())
+  useEffect(() => {
+    if (codeScoreur !== null) oublierCodeScoreurUrl()
+  }, [codeScoreur])
 
   // Arriver par le QR de sa cible marque d'emblée le navigateur comme poste (avant même le
   // rattachement) : le rôle tablette est alors verrouillé et l'écran de choix sauté.
@@ -118,7 +128,7 @@ export function App() {
         ) : role === 'public' ? (
           <AccueilPublic />
         ) : role === 'scoreur' ? (
-          <EspaceScoreur />
+          <EspaceScoreur codeUrl={codeScoreur} />
         ) : role === 'admin' ? (
           <CoquilleAdmin />
         ) : (

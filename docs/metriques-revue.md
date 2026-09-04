@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-04 | `E16US015` | 29 | +801/−126 | ~13 min *(22:07→22:20, avant la revue)* | ~24 min | **D** (22:24→22:36) | majeur:3 mineur:3 suggestion:1 | majeur:2 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:4 mineur:3 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:3 | **D (1)** | 1 |
 | 2026-09-04 | `E16US017` | 33 | +2100/−120 | ~40 min *(lancée **en parallèle** de la revue — écart relevé en majeur par D)* | ~24 min | **D** (10:44→11:06) | majeur:1 mineur:2 suggestion:2 | majeur:3 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:5 suggestion:2 | majeur:4 mineur:5 suggestion:1 | **aucun bloquant.** Les deux défauts de fond viennent de **C1** (décompte de zéros → tous les clubs 1ᵉʳˢ, invisible axe par axe) et de **D** (la propriété qui justifie le double comptage tombe en mono-catégorie). **C1 et C2 ont trouvé le même** registre faux (`DETTE-031`), et **B seul** a vu que la restitution des colonnes n'était ancrée nulle part | 1 |
 | 2026-08-30 | `E16US007` | 44 | +2498/−268 | ~23 min | ~27 min | **D** (18:55→19:12) | mineur:5 suggestion:1 | **bloquant:2** majeur:3 mineur:6 suggestion:2 | **bloquant:1** majeur:2 mineur:5 suggestion:3 | majeur:2 mineur:4 suggestion:3 | **bloquant:1** majeur:8 mineur:7 suggestion:2 | **C1, B et D** (le même : `key` manquante) ; **B** seul sur le 2ᵉ (surface sans fiche fonctionnelle) | 2 |
 | 2026-08-29 | `E16US010` | 59 | +3171/−375 | ~25 min | ~32 min | **D** (15:03→15:19) | majeur:2 mineur:1 suggestion:1 | majeur:3 mineur:4 suggestion:2 | **bloquant:1** majeur:3 mineur:3 suggestion:1 | **bloquant:1** majeur:3 mineur:2 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:1 | **C1, C2 et D — le même**, trouvé indépendamment par trois axes : un défaut de **câblage** (`segmentsAdmin` appelé sans son 4ᵉ argument) qu'aucune fonction pure ne pouvait voir. ⚠️ **La porte mécanique s'est déclarée VERTE à tort** : `pip-audit` n'avait produit aucun `EXIT` et ne fait pas partie des deux omissions autorisées — l'agent l'a justifié par des « permissions refusées » alors que l'outil est installé. Rattrapé à la main — et la **3ᵉ passe** a montré pourquoi : la définition d'agent autorisait **trois** omissions sans en énumérer que deux, le faux vert était donc *autorisé par le texte* (`DETTE-093`). **Trois passes, trois bloquants, chacun dans les correctifs de la précédente** : le mécanisme mort (1ʳᵉ), la pastille repeinte par le reset `button` (2ᵉ), la 3ᵉ omission fantôme (3ᵉ). Les axes B et D ont établi **par mutation** que six gardes successives ne gardaient rien. ⚠️ **Et la CI a rougi APRÈS l'ouverture de la PR**, sur un test de cette US : la porte locale exécute `pytest` avec `frontend/dist/` **présent**, le job `backend` de la CI **sans** — la SPA montée à la racine change alors des codes de réponse (`404` contre `405`). Une suite verte en local pouvait donc être rouge en CI **sans qu'aucun code ait bougé** : le geste est désormais verrouillé dans la définition de l'agent de porte (`KERVIGNARC_FRONTEND_DIST` sur un chemin inexistant). Même famille que `DETTE-093`. | 3 |
@@ -678,3 +679,41 @@ veut bien y lire.
 **Conseil de conduite, reversé de l'axe D** : *une correction faite « partout » se termine par un
 `grep`, pas par une relecture.* `grep -rn "audit en cours"`, `grep -rn DETTE-090`,
 `grep -rn "CSV (tableur)"` ont rendu en trente secondes ce que deux relectures avaient manqué.
+
+---
+
+## 2026-09-04 — `E16US015` (QR par scoreur) : quatre axes autour d'un seul défaut
+
+**Ce que la passe apprend.** Les cinq rapports convergent sur **un mécanisme unique** : la mesure de
+sécurité de l'US était *affirmée* (dans un commentaire, dans un **CA**, dans le tracker) là où elle
+n'était portée ni par un test ni par le code désigné. Quatre remarques majeures distinctes n'en
+étaient qu'une : `enabled` inerte, aucun test d'écran, le code laissé dans l'adresse d'une tablette
+rattachée, et le bloquant d'identité. Corriger revenait à **écrire les tests manquants et à faire
+dire aux commentaires ce que le code fait**.
+
+**Le bloquant n'a été vu que par l'axe adversarial (D).** Aucune grille ne contient « SQLite
+réattribue les `id` d'une PK sans `AUTOINCREMENT` » : c'est exactement ce que l'axe D existe pour
+trouver. Il l'a par ailleurs **prouvé empiriquement** sur la DDL réelle plutôt que déduit.
+
+**L'axe C2 a eu raison contre l'auteur sur l'ADR**, et c'est la démonstration de la décision 12-ADR :
+l'auteur avait jugé « aucun ADR nécessaire ». Or `ADR-0025` § Décision 2 définit le code scoreur
+comme « un secret d'usage distribué sur papier et **retapé** » — phrase que cette US rendait
+**fausse en silence**, défaut d'ADR-0017 à l'identique. Confier cette règle à l'auteur la
+neutraliserait ; elle est au bon endroit.
+
+**Deux erreurs commises pendant la CORRECTION, pas pendant l'US.** Les deux premières rédactions du
+test du bloquant **passaient sur le code défectueux** : la 1ʳᵉ assertait sur l'image du QR (chargée
+de façon asynchrone), la 2ᵉ enveloppait le composant dans un provider supplémentaire, ce qui le
+**déplaçait dans l'arbre React et le remontait**, détruisant l'état à observer. Elles n'ont été vues
+que parce que chaque test neuf a été **rejoué contre le code d'avant**.
+
+⚠️ **Conseil de conduite** : *un test de non-régression écrit après coup ne vaut que si on l'a vu
+échouer.* Le geste coûte trente secondes (rétablir le défaut, relancer, restaurer) et il a rattrapé
+deux faux verts sur deux tentatives — dans la passe même où la revue reprochait des gardes
+non mécanisées.
+
+**Deux portes rouges enchaînées, toutes deux utiles.** La 1ʳᵉ a mordu sur la règle 13 (deux blocs à
+9 lignes) : c'est le garde-fou qui a forcé le raisonnement à partir en ADR, comme la règle le veut.
+La 2ᵉ, un `TS2345` sur `boutons[0]`, a fait apparaître que **tous les boutons s'appelaient « Afficher
+le QR »** — indistinguables en test *et* au lecteur d'écran. Le correctif (un `aria-label` nommant le
+scoreur) est une amélioration d'accessibilité que personne n'avait demandée.

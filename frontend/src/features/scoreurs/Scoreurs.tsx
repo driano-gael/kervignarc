@@ -23,7 +23,11 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   const cartes = useTelechargerCartesScoreurs(tournoiId)
   // Un seul QR ouvert à la fois : porté par le **parent**, pas par un booléen dans chaque ligne —
   // l'exclusivité devient structurelle au lieu de dépendre d'un `useEffect` de synchronisation.
-  const [qrOuvert, setQrOuvert] = useState<number | null>(null)
+  // ⚠️ Indexé sur le **code** et non sur l'`id` : SQLite réattribue les `id` (PK sans
+  // AUTOINCREMENT), donc supprimer un scoreur dont le QR est ouvert puis en créer un autre
+  // rouvrait le QR **sans clic** sur le nouveau venu. Le code, lui, est unique dans toute la base
+  // et jamais réémis (ADR-0025). Bloquant relevé en revue le 04/09/2026.
+  const [qrOuvert, setQrOuvert] = useState<string | null>(null)
 
   return (
     <section>
@@ -45,8 +49,8 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
                 key={scoreur.id}
                 tournoiId={tournoiId}
                 scoreur={scoreur}
-                qrOuvert={qrOuvert === scoreur.id}
-                ouvrirQr={(ouvrir) => setQrOuvert(ouvrir ? scoreur.id : null)}
+                qrOuvert={qrOuvert === scoreur.code}
+                ouvrirQr={(ouvrir) => setQrOuvert(ouvrir ? scoreur.code : null)}
               />
             ))}
           </ul>
@@ -104,10 +108,14 @@ function LigneScoreur({
         <span className="scoreur__actions">
           {/* ⚠️ Révélation **une par une** (arbitrage E16US015) : le QR rend le code personnel
               scannable à distance, là où le code écrit demande de s'approcher. */}
+          {/* ⚠️ Le libellé visible tient sur la ligne, mais le **nom accessible** nomme le
+              scoreur : une liste de dix boutons « Afficher le QR » est illisible au lecteur
+              d'écran, et indistinguable en test. */}
           <button
             type="button"
             className="bouton--discret"
             aria-expanded={qrOuvert}
+            aria-label={`${qrOuvert ? 'Masquer' : 'Afficher'} le QR de ${scoreur.nom}`}
             onClick={() => ouvrirQr(!qrOuvert)}
           >
             {qrOuvert ? 'Masquer le QR' : 'Afficher le QR'}

@@ -21,18 +21,12 @@ import { ChoixCreneau } from '../departs/ChoixCreneau'
 import { useCreneauDesDuels } from '../departs/hooks'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
-import { codeScoreurDepuisUrl, oublierCodeScoreurUrl } from './url'
 
-export function EspaceScoreur() {
+export function EspaceScoreur({ codeUrl = null }: { codeUrl?: string | null }) {
   const scoreur = useSessionScoreurStore((s) => s.scoreur)
-  // Arrivée par le QR (E16US015) : le code est lu **une fois**, au premier rendu, puis effacé de
-  // l'adresse — quel que soit l'état de la session. ⚠️ L'effacement est ici et non dans le
-  // formulaire : un scoreur déjà connecté qui rescanne son QR ne monte pas le formulaire, et son
-  // code personnel resterait dans la barre d'adresse et l'historique du téléphone.
-  const [codeUrl] = useState(() => codeScoreurDepuisUrl())
-  useEffect(() => {
-    if (codeUrl !== null) oublierCodeScoreurUrl()
-  }, [codeUrl])
+  // ⚠️ `codeUrl` vient du **shell** (`App.tsx`), qui le lit et l'efface de l'adresse : ce composant
+  // n'est pas monté sur une tablette déjà rattachée, il ne peut donc pas répondre de l'effacement.
+  // Un scoreur déjà connecté qui rescanne ne monte même pas le formulaire ci-dessous.
 
   return (
     <section className="carte carte--large">

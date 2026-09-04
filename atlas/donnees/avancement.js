@@ -3645,7 +3645,8 @@ window.ATLAS.avancement = {
     "0049",
     "0050",
     "0056",
-    "0057"
+    "0057",
+    "0105"
    ],
    "dettes_introduites": [
     "001"
@@ -4029,7 +4030,8 @@ window.ATLAS.avancement = {
     "0058",
     "0059",
     "0060",
-    "0063"
+    "0063",
+    "0105"
    ],
    "dettes_introduites": [
     "024"
@@ -4409,7 +4411,11 @@ window.ATLAS.avancement = {
    "titre_story": "Podiums configurables"
   },
   {
-   "adr": [],
+   "adr": [
+    "0025",
+    "0075",
+    "0105"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",

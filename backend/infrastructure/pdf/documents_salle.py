@@ -132,7 +132,7 @@ class GenerateurDocumentsSallePdf:
     # --- QR de rattachement à l'écran (E11US008) ---
 
     def qr_rattachement(self, url: str) -> bytes:
-        """Rend le QR de rattachement d'une cible en **SVG** (octets UTF-8). Écran, pas impression.
+        """Rend un QR en **SVG** (octets UTF-8) — cible ou scoreur. Écran, pas impression.
 
         Réutilise `_dessin_qr` (le même widget QR natif que l'étiquette PDF) mais le sérialise via
         le backend **SVG** de ReportLab (`renderSVG`, pur Python — aucune dépendance ajoutée,

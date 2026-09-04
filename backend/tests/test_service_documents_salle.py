@@ -393,11 +393,11 @@ def test_cartes_tournoi_inconnu_leve_tournoi_introuvable() -> None:
 
 
 def test_qr_scoreur_encode_le_code_personnel() -> None:
-    """Le QR d'un scoreur encode `…/scoreur?code=<code>`.
+    """Le QR d'un scoreur encode `…/scoreur#code=<code>` (ADR-0105).
 
-    ⚠️ **Pas la forme littérale du jumeau cible** (`…/?poste=`) : le chemin nomme le monde, de
-    sorte que le routeur d'adresses (ADR-0059) aiguille sans qu'on touche à `resoudreRole`.
-    Décision d'E16US015, reversée dans les Notes de la fiche.
+    ⚠️ **Deux écarts avec le jumeau cible** (`…/?poste=`) : le chemin nomme le monde (le routeur
+    d'adresses aiguille seul), et le code vit dans le **fragment** — jamais envoyé au serveur, donc
+    absent du journal d'accès et du `Referer`.
     """
     monde = _monde()
     monde.definir_scoreur("Alice", "AAA222")
@@ -407,7 +407,7 @@ def test_qr_scoreur_encode_le_code_personnel() -> None:
     octets = monde.service.qr_scoreur(monde.tournoi_id, bob.id, _ORIGINE)
 
     assert octets == FauxGenerateur.SENTINELLE_QR
-    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur?code=BBB333"
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=BBB333"
 
 
 def test_qr_scoreur_url_sans_double_slash_si_origine_sans_slash_final() -> None:
@@ -418,7 +418,7 @@ def test_qr_scoreur_url_sans_double_slash_si_origine_sans_slash_final() -> None:
 
     monde.service.qr_scoreur(monde.tournoi_id, alice.id, "http://192.168.1.10:8000")
 
-    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur?code=AAA222"
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=AAA222"
 
 
 def test_qr_scoreur_regenerable_a_l_identique() -> None:
@@ -460,3 +460,21 @@ def test_qr_scoreur_d_un_autre_tournoi_leve_scoreur_introuvable() -> None:
 
     with pytest.raises(ScoreurIntrouvable):
         monde.service.qr_scoreur(monde.tournoi_id, autre.id, _ORIGINE)
+
+
+def test_qr_scoreur_echappe_le_code_dans_l_url() -> None:
+    """Un caractère réservé dans le code ne peut pas ouvrir un second paramètre.
+
+    ⚠️ La sûreté ne vient PAS de l'alphabet sans confondables (ADR-0025) : c'est une garantie d'un
+    autre fichier, qu'un code choisi à la main ferait tomber. Sans échappement, un code contenant
+    `&poste=…` verrouillerait le téléphone du scoreur en mode tablette (`resoudreRole`).
+    """
+    monde = _monde()
+    piege = monde.scoreurs.ajouter(
+        Scoreur(tournoi_id=monde.tournoi_id, nom="Piège", code="A&POSTE=X")
+    )
+    assert piege.id is not None
+
+    monde.service.qr_scoreur(monde.tournoi_id, piege.id, _ORIGINE)
+
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=A%26POSTE%3DX"

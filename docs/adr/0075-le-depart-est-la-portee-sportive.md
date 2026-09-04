@@ -221,7 +221,10 @@ retenus** mérite le même balayage que celle des ajouts.
 (E16US014, 31/08/2026 — la portée d'un podium devient un réglage de tournoi : le moteur publie
 un **troisième espace de rangs** et la notion de podium change de définition), **`0104`**
 (E16US017, 04/09/2026 — le classement des **clubs entre eux**, au décompte de médailles
-inter-clubs : un classement neuf, dont l'entité classée n'est pas un archer). Et, par
+inter-clubs : un classement neuf, dont l'entité classée n'est pas un archer), **`0105`**
+(E16US015, 04/09/2026 — le QR d'un scoreur porte son code : le **canal de distribution** d'un
+secret personnel change, ce qui amende ADR-0025 § Décision 2, dont la phrase « distribué sur
+papier et retapé » devenait fausse en silence). Et, par
 **réouverture**, **`0103`** une seconde fois (E16US017, 04/09/2026 — sa *Décision 3* affirmait
 « `DETTE-029` n'a pas gagné de 5ᵉ site », ce que `0104` rend faux, et sa mention de la lecture
 conditionnelle du référentiel des clubs était périmée par la levée du bornage ; sa section

@@ -45,7 +45,13 @@ export function useSupprimerScoreur(tournoiId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (scoreurId: number) => supprimerScoreur(tournoiId, scoreurId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: cleScoreurs(tournoiId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: cleScoreurs(tournoiId) })
+      // ⚠️ `remove` et non `invalidate` : supprimer un scoreur **révoque son code**, or SQLite
+      // réattribue les `id` (PK sans AUTOINCREMENT). Sans purge, le QR périmé resterait servable
+      // depuis le cache pendant `gcTime` sous le nom du scoreur créé ensuite (revue du 04/09/2026).
+      queryClient.removeQueries({ queryKey: ['qr-scoreur', tournoiId] })
+    },
   })
 }
 
@@ -55,15 +61,14 @@ export function useTelechargerCartesScoreurs(tournoiId: number) {
   return useMutation({ mutationFn: () => telechargerCartesScoreurs(tournoiId) })
 }
 
-// QR de session d'un scoreur (E16US015). ⚠️ **`enabled` n'est pas une optimisation ici, c'est la
-// mesure de sécurité de l'US** : le QR ne se charge que sur geste explicite de l'admin (arbitrage
-// du 04/09/2026, un seul scoreur à la fois). Sans lui, ouvrir l'écran afficherait tous les codes
-// sous forme scannable — photographiables d'un cliché. Le cache React Query (règle 10) évite un
-// rechargement à chaque ouverture/fermeture du même QR.
-export function useQrScoreur(tournoiId: number, scoreurId: number, actif: boolean) {
+// QR de session d'un scoreur (E16US015, ADR-0105). ⚠️ **Ce hook ne porte AUCUNE garde** : la
+// mesure de sécurité — le QR n'est pas seulement caché, il n'est pas demandé — tient au **montage
+// conditionnel** de `QrScoreur` dans `Scoreurs.tsx`. Une première version passait un `enabled`
+// qu'aucun appelant ne mettait à `false` : un garde-fou nommé au mauvais endroit se fait contourner
+// par le lecteur suivant, qui le croit actif (relevé en revue, 04/09/2026).
+export function useQrScoreur(tournoiId: number, scoreurId: number) {
   return useQuery({
     queryKey: ['qr-scoreur', tournoiId, scoreurId] as const,
     queryFn: () => getQrScoreur(tournoiId, scoreurId),
-    enabled: actif,
   })
 }

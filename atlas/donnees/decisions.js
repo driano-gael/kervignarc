@@ -893,10 +893,12 @@ window.ATLAS.decisions = {
    ]
   },
   {
-   "amende_par": [],
+   "amende_par": [
+    "0105"
+   ],
    "date": "2026-07-18",
    "date_brute": "2026-07-18",
-   "extrait": "1. Le scoreur est une entité de domaine — à la différence de l'admin. Table scoreur (tournoi_id, nom, code), agrégat domain.scoreur.Scoreur, port ScoreurRepository, adapter SQL. Asymétrie assumée avec l'admin, qui, lui, n'a pas d'entité (secret dans .env, ADR-0009) : l'admin est un secret unique de configuration ; les scoreurs sont multiples, créés/modifiés/supprimés au runtime, nominatifs et rattachés à un tournoi — c'est de la donnée métier persistée, comme Depart, pas un paramètre d'accès. Entité du tournoi (FK tournoi_id, dans le périmètre DETTE-001), redéfinissable même tournoi en cours (D-14, aucune garde de statut). 2. Code individuel généré par le serveur, unique dans toute la base. […]",
+   "extrait": "1. Le scoreur est une entité de domaine — à la différence de l'admin. Table scoreur (tournoi_id, nom, code), agrégat domain.scoreur.Scoreur, port ScoreurRepository, adapter SQL. Asymétrie assumée avec l'admin, qui, lui, n'a pas d'entité (secret dans .env, ADR-0009) : l'admin est un secret unique de configuration ; les scoreurs sont multiples, créés/modifiés/supprimés au runtime, nominatifs et rattachés à un tournoi — c'est de la donnée métier persistée, comme Depart, pas un paramètre d'accès. Entité du tournoi (FK tournoi_id, dans le périmètre DETTE-001), redéfinissable même tournoi en cours (D-14, aucune garde de statut). > ⚠️ Amendé le 04/09/2026 par ADR-0105 > (E16US015) : « distribué […]",
    "fichier": "docs/adr/0025-mode-d-identite-scoreur-par-code-individuel.md",
    "identifiant": "0025",
    "liens": [
@@ -929,7 +931,8 @@ window.ATLAS.decisions = {
     "E10US002",
     "E10US003",
     "E10US005",
-    "E10US007"
+    "E10US007",
+    "E16US015"
    ]
   },
   {
@@ -3833,6 +3836,7 @@ window.ATLAS.decisions = {
     "E16US009",
     "E16US010",
     "E16US014",
+    "E16US015",
     "E16US017"
    ]
   },
@@ -9093,6 +9097,110 @@ window.ATLAS.decisions = {
    "us": [
     "E16US014",
     "E16US017"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-04",
+   "date_brute": "2026-09-04",
+   "extrait": "1. Le QR porte le code personnel en clair. L'URL encodée contient le code tel quel. Cohérent avec le fait que quatre autres surfaces le portent déjà en clair ; l'alternative « jeton » est écartée ci-dessous. 2. La révélation est le geste de sécurité, pas le contenu. L'écran d'administration ne charge aucun QR à son montage : un bouton « Afficher le QR » par ligne, et un seul ouvert à la fois. Ouvrir la rubrique « Scoreurs » ne met donc jamais tous les codes du tournoi sous une forme scannable d'un seul cliché. ⚠️ La garde est le montage conditionnel du composant, pas un drapeau enabled. Une première implémentation passait un enabled à React Query qu'aucun appelant ne mettait jamais à false […]",
+   "fichier": "docs/adr/0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md",
+   "identifiant": "0105",
+   "liens": [
+    {
+     "cible": "E16US015",
+     "libelle": "US",
+     "sens": "sortant",
+     "type": "us"
+    },
+    {
+     "cible": "0025",
+     "libelle": "Amende",
+     "sens": "sortant",
+     "type": "amende"
+    },
+    {
+     "cible": "0059",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0042",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    },
+    {
+     "cible": "0031",
+     "libelle": "Liés",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/documents_salle.py",
+     "existe": true,
+     "symboles": [
+      "qr_scoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/documents_salle.py",
+     "existe": true,
+     "symboles": [
+      "ServiceDocumentsSalle.qr_scoreur",
+      "par_id",
+      "_url_scoreur",
+      "quote"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/app/App.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/scoreur-session/url.ts",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/scoreurs/Scoreurs.tsx",
+     "existe": true,
+     "symboles": [
+      "qrOuvert"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/scoreurs/hooks.ts",
+     "existe": true,
+     "symboles": [
+      "useSupprimerScoreur"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Le QR d'un scoreur porte son code, révélé un à la fois",
+   "us": [
+    "E10US005",
+    "E14US003",
+    "E16US015"
    ]
   }
  ]

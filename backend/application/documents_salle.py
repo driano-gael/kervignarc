@@ -7,6 +7,8 @@ parce que le jour J l'admin accède au serveur par son IP réseau. ADR-0031
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from application.erreurs import PosteIntrouvable, ScoreurIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CarteScoreur, CartesScoreurs, EtiquetteCible, EtiquettesCibles
 from domain.ports import (
@@ -93,12 +95,12 @@ class ServiceDocumentsSalle:
         return self._generateur.qr_rattachement(_url_rattachement(origine, poste.code))
 
     def qr_scoreur(self, tournoi_id: TournoiId, scoreur_id: ScoreurId, origine: str) -> bytes:
-        """Rend en **SVG** le QR de rattachement d'un scoreur (E16US015), jumeau du QR de cible.
+        """Rend en **SVG** le QR de session d'un scoreur (E16US015), ADR-0105.
 
-        Même port, même forme d'URL — `{origine}/?scoreur=<code>` — que `qr_rattachement`, à ceci
-        près que le code encodé est un secret **personnel** : d'où la garde d'appartenance
-        ci-dessous, plus stricte que celle d'une cible. Lève `TournoiIntrouvable` si le tournoi
-        n'existe pas, `ScoreurIntrouvable` sinon.
+        Même **port** que `qr_rattachement`, mais **forme d'URL différente** —
+        `{origine}/scoreur#code=<code>`, cf. `_url_scoreur`. Le code encodé est un secret
+        **personnel** : d'où la garde d'appartenance ci-dessous, plus stricte que celle d'une cible.
+        Lève `TournoiIntrouvable` si le tournoi n'existe pas, `ScoreurIntrouvable` sinon.
         """
         self._verifier_tournoi(tournoi_id)
         scoreur = self._scoreurs.par_id(scoreur_id)
@@ -135,22 +137,20 @@ class ServiceDocumentsSalle:
 def _url_rattachement(origine: str, code: str) -> str:
     """URL de rattachement d'un poste : `{origine}/?poste=<code>`, sans `//` parasite.
 
-    Le front lit le paramètre de query `poste` à la racine (`frontend/src/features/poste/url.ts`).
-    Les codes sont tirés d'un alphabet URL-safe (sans confondables) : aucun échappement nécessaire.
+    ⚠️ `quote` n'est pas décoratif : l'alphabet sans confondables qui le rendrait inutile est une
+    garantie d'un AUTRE fichier (`infrastructure/scoreurs/codes.py`, ADR-0025). Lu à la racine par
+    `frontend/src/features/poste/url.ts`.
     """
-    # DETTE-012 : `origine` est l'origine de la requête admin (`request.base_url`), faute de base
-    # URL publique configurée. Correct dans le flux réel (IP réseau le jour J), faux depuis
-    # `localhost`. Résorption : base URL configurable en E11US001 (mise en réseau).
-    return f"{origine.rstrip('/')}/?poste={code}"
+    # DETTE-012 : `origine` est l'origine de la requête admin, faute de base URL configurée.
+    return f"{origine.rstrip('/')}/?poste={quote(code, safe='')}"
 
 
 def _url_scoreur(origine: str, code: str) -> str:
-    """URL de session d'un scoreur : `{origine}/scoreur?code=<code>` (E16US015).
+    """URL de session d'un scoreur : `{origine}/scoreur#code=<code>` — ADR-0105 § Décision 3.
 
-    ⚠️ **Forme volontairement différente** de `_url_rattachement`, qui vise la racine : celle-ci
-    nomme le **monde** dans le chemin (`/scoreur`, ADR-0059), si bien que le routeur d'adresses
-    aiguille seul — aucune règle à ajouter à `resoudreRole`, le cœur risqué de l'entrée (ADR-0042).
-    Le code reste en query, lu par `frontend/src/features/scoreur-session/url.ts`.
+    ⚠️ **Deux écarts délibérés** avec `_url_rattachement`, motivés dans l'ADR : le chemin nomme le
+    monde, et le code vit dans le **fragment** — jamais envoyé au serveur, donc hors journal d'accès
+    et hors `Referer`. Lu par `frontend/src/features/scoreur-session/url.ts`.
     """
-    # Même DETTE-012 que l'URL de poste : `origine` est l'origine de la requête admin.
-    return f"{origine.rstrip('/')}/scoreur?code={code}"
+    # DETTE-012, 3ᵉ site — et le seul où le QR reste porteur du code (registre, section détail).
+    return f"{origine.rstrip('/')}/scoreur#code={quote(code, safe='')}"
