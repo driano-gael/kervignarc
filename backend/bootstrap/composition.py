@@ -118,6 +118,7 @@ from application.pilotage_simulation import (
 from application.pilotage_tour import ServicePilotageTour
 from application.placement import ServicePlacement
 from application.placement_duels import ServicePlacementDuels
+from application.pose_du_tour import PoseurDeTour
 from application.postes import ServicePostes
 from application.poules import ServicePoules
 from application.prelevement import (
@@ -305,11 +306,6 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         categories,
         blasons,
         placements_tableau,
-        classement,
-        SeedingSerpent(),
-        ByesAuxMieuxClasses(),
-        PlacementEnCascade(),
-        registre,
         saisie_duels,
     )
     return HarnaisSimulation(
@@ -717,11 +713,6 @@ def create_app(
         categorie_repository,
         blason_repository,
         placement_tableau_repository,
-        app.state.service_classement,
-        SeedingSerpent(),
-        ByesAuxMieuxClasses(),
-        PlacementEnCascade(),
-        app.state.registre_politiques,
         app.state.service_saisie_duels,
     )
 
@@ -1327,6 +1318,17 @@ def create_app(
         phase_repository,
         HorlogeSysteme(),
     )
+
+    # Pose automatique du tour suivant (E03US012, ADR-0106). Même patron de branchement tardif que
+    # les arrêts programmés ci-dessus, et pour la même raison : `ServicePlacementDuels` dépend de
+    # `ServiceSaisieDuels`, brancher dans l'autre sens à la construction fermerait le cycle.
+    #
+    # ⚠️ **Sans cette boucle, la pose automatique est inerte** — mode de panne de `DETTE-028`.
+    # ⚠️ **DEUX services, et pas un** : un tour s'achève par la validation d'un duel **ou** par un
+    # forfait (walkover), qui tranche sans qu'aucun score soit saisi. Le test les nomme un par un.
+    poseur: PoseurDeTour = app.state.service_placement_duels
+    app.state.service_saisie_duels.brancher_poseur_de_tour(poseur)
+    app.state.service_forfait.brancher_poseur_de_tour(poseur)
 
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
     # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée

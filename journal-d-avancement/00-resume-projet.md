@@ -27,7 +27,10 @@ organisateur — et deux couleurs, dont l'application dérive seule les nuances 
 salle et l'appli du public (jamais sur l'outil des bénévoles). L'**écran projeté dans le gymnase** se règle enfin sans passer par un
 développeur — vitesse de défilement et nombre de noms par page, **écran par écran** — et son
 classement ne s'arrête plus aux trois premiers : ils restent affichés en haut pendant que tous les
-autres archers défilent page après page en dessous. L'écran de **placement sur les cibles**
+autres archers défilent page après page en dessous. Le **tableau à élimination directe** se conduit
+enfin jusqu'au bout depuis l'application : chaque tour reçoit ses cibles dès qu'il est déterminé, si
+bien que le feu vert et l'écran de routage restent utiles après le premier tour au lieu de s'éteindre.
+L'écran de **placement sur les cibles**
 se lit désormais sur toute la largeur d'un PC — une cible
 par ligne, chaque archer avec son club, sa catégorie et son blason, et une réserve qui reste sous la
 main — de sorte qu'ajuster un plan ne demande plus de quitter l'écran pour savoir qui cause un
@@ -581,9 +584,17 @@ est désormais **livré** (E01US017) ; restent le **vocabulaire de score configu
 
 ## Chiffres repères
 
-- **134 US livrées** sur `main` (mergées, revues, CI verte) à la date du 04/09/2026 — dont deux
+- **135 US livrées** sur `main` (mergées, revues, CI verte) à la date du 05/09/2026 — dont deux
   fiches pour **une seule** livraison (`E16US006` absorbe `E01US016`, cf. `SUIVI-US.md`, qui fait
-  autorité sur le compte) —, la dernière étant `E16US015` — **un QR par scoreur** : le scoreur
+  autorité sur le compte) —, la dernière étant `E03US012` — **les cibles des tours suivants** : au
+  delà du premier tour, les duellistes reçoivent enfin une cible, **tout seuls**, dès que leur tour
+  est déterminé. ⚠️ **Ce n'était pas un confort mais un trou** : passé le premier tour, aucun duel
+  n'était jamais annoncé « prêt », le feu vert restait éteint et l'écran de routage n'envoyait plus
+  personne nulle part — l'organisateur reprenait le papier pour la fin de la journée. Le plan
+  affiche désormais **un tour à la fois**, celui qui se joue, qu'il nomme ; les archers se
+  regroupent vers les premières cibles, et les ajustements à la main ne sont jamais écrasés
+  ([ADR-0106](../docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md), migration `0053`).
+  Précédente : `E16US015` — **un QR par scoreur** : le scoreur
   ouvre sa session en scannant, au lieu de retaper son code. ⚠️ **Un arbitrage de sécurité était
   posé et il a été tranché** : le QR porte le code personnel en clair — il n'expose rien de plus
   que l'écran et la carte imprimée —, mais l'écran ne l'affiche **qu'à la demande, un scoreur à la

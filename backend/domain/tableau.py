@@ -493,19 +493,37 @@ def _a_classer(plage: Plage, rangs: frozenset[int]) -> bool:
     return any(rang in rangs for rang in range(plage.debut, plage.fin + 1))
 
 
-def paires_du_premier_tour(tableau: Tableau) -> tuple[tuple[Participant, Participant], ...]:
-    """Les duels **effectivement disputés** au premier tour : (haut, bas) de chaque match jouable.
+def paires_du_tour(tableau: Tableau, tour: int) -> tuple[tuple[Participant, Participant], ...]:
+    """Les duels **effectivement disputés** à ce tour : (haut, bas) de chaque match jouable.
 
-    Sert le placement des duellistes côte à côte (E03US009) : seuls les matchs du **tour 1** ont
-    leurs deux occupants connus dès la construction (les tours ≥ 2 restent `None` jusqu'à la
-    progression). On exclut les **byes** (un seul occupant, `est_jouable` faux) : un exempté n'a pas
-    d'adversaire à placer à côté de lui. Fonction **pure**, ordre = celui des matchs (donc de
-    l'ensemencement)."""
+    Sert le placement des duellistes côte à côte (E03US009, élargi aux tours ≥ 2 par E03US012). Un
+    match dont un camp est encore vide n'a **aucune** paire : au-delà du tour 1 les occupants ne
+    sont connus qu'une fois le tour amont tranché. On exclut les **byes** (un seul occupant,
+    `est_jouable` faux) : un exempté n'a pas d'adversaire à placer à côté de lui. Fonction **pure**,
+    ordre = celui des matchs (donc de l'ensemencement)."""
     return tuple(
         (m.haut, m.bas)
         for m in tableau.matchs
-        if m.tour == 1 and m.est_jouable and m.haut is not None and m.bas is not None
+        if m.tour == tour and m.est_jouable and m.haut is not None and m.bas is not None
     )
+
+
+def tour_a_poser(tableau: Tableau) -> int | None:
+    """Le plus petit tour **encore à jouer**, s'il est entièrement déterminé — `None` sinon.
+
+    C'est le tour dont les cibles peuvent être attribuées (E03US012) : la maille est le **tour
+    entier**, jamais le duel, parce que regrouper les archers suppose de connaître tout l'ensemble
+    à poser. Un tour dont un camp reste vide n'est pas encore déterminé — le tour amont n'est pas
+    tranché — et ne rend donc rien. Un tour sans aucun duel disputé (que des byes) n'a rien à poser
+    et ne retient pas la progression. Fonction **pure**.
+    """
+    a_jouer = [m for m in tableau.matchs if m.est_jouable and m.vainqueur is None]
+    if not a_jouer:
+        return None
+    tour = min(m.tour for m in a_jouer)
+    if any(m.haut is None or m.bas is None for m in a_jouer if m.tour == tour):
+        return None
+    return tour
 
 
 def libelle_tour(

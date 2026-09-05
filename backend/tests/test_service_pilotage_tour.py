@@ -18,6 +18,7 @@ placement, audit) plutôt que d'en refaire.
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 from dataclasses import replace
 
@@ -39,7 +40,7 @@ from domain.entree_audit import ActionAuditee
 from domain.forfait import Forfait, NatureForfait
 from domain.gabarit_salle import GabaritSalle
 from domain.inscription import Inscription
-from domain.phase import Phase, TypePhase
+from domain.phase import Phase, StatutPhase, TypePhase
 from domain.politiques import (
     AggregationParQualification,
     ByesAuxMieuxClasses,
@@ -203,11 +204,6 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
-            self._classement(),
-            SeedingSerpent(),
-            ByesAuxMieuxClasses(),
-            PlacementEnCascade(),
-            registre_par_defaut(),
             self.saisie,
         )
 
@@ -221,8 +217,13 @@ class _Monde:
         self.placement.regenerer(self.tournoi_id, self.phase_id)
 
     def gagner(self, numero: int) -> None:
-        """Fait gagner 6-0 le camp **haut** du match `numero` (3 manches) puis valide."""
+        """Fait gagner 6-0 le camp **haut** du match `numero` (3 manches) puis valide.
+
+        Le poseur de tour est branché **comme au composition root** (ADR-0106 §5) : sans lui, la
+        pose automatique du tour suivant serait muette, et le décor mentirait sur le produit.
+        """
         saisie = self.saisie
+        saisie.brancher_poseur_de_tour(self.placement)
         for manche in (1, 2, 3):
             saisie.saisir_manche(
                 self.tournoi_id,
@@ -292,27 +293,34 @@ def test_feu_vert_cible_non_attribuee_sans_placement() -> None:
     assert feu.nb_prets == 0
 
 
-def test_feu_vert_tour2_cible_non_attribuee_apres_les_demies() -> None:
-    """CA/ADR-0056 (séquencement) : le placement des cibles n'existe qu'au **tour 1** (E03US009).
-    Une fois les **deux** demis validés, la finale a ses occupants **connus** mais reste « cible non
-    attribuée » — la cible de tour 1 des finalistes est **périmée** (le placement 1→N est E05US010).
-    Le feu vert ne doit donc PAS afficher un tour ≥ 2 prêt avec une cible périmée (sinon il
-    enverrait les finalistes, venus de deux cibles distinctes, chacun sur son ancienne)."""
+def test_feu_vert_tour2_annonce_les_cibles_du_tour_2() -> None:
+    """L'invariant de sûreté d'ADR-0056 **survit** à E03US012, sous une forme généralisée.
+
+    L'ancienne rédaction refusait toute cible au-delà du tour 1, faute de pose fraîche : une cible
+    de tour 1 est **périmée** au tour 2, et l'annoncer enverrait les finalistes, venus de deux
+    cibles distinctes, chacun sur son ancienne. La garde n'a pas disparu — elle compare désormais
+    au **tour posé** (ADR-0106 §2). Ce test verrouille que les cibles annoncées viennent bien du
+    plan du **tour 2**, jamais d'un report du tour 1."""
     monde = _Monde(capacites=(4,))
     _quatre(monde)
     monde.placer()
     monde.gagner(1)  # demi n°1 tranché
     monde.gagner(2)  # demi n°2 tranché → la finale a ses deux occupants (vainqueurs propagés)
 
+    plan = monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert plan.tour == 2, "le plan a suivi le tour qui se joue"
+    poses = {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
     feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
     tour2 = [d for d in feu.duels if d.tour == 2]
-    assert tour2  # au moins la finale est à venir
+    assert tour2
     for duel in tour2:
-        assert duel.participants_connus  # les occupants sont propagés...
-        assert duel.cible_haut is None and duel.cible_bas is None  # ...mais aucune cible ce tour-ci
-        assert not duel.cible_attribuee and not duel.pret_a_lancer
-        assert duel.blocage == "cible non attribuée"
-    assert feu.nb_prets == 0
+        assert duel.participants_connus and duel.cible_attribuee and duel.pret_a_lancer
+        assert duel.blocage is None
+        # L'assertion qui compte : la cible annoncée EST celle du plan du tour 2.
+        assert duel.haut is not None and duel.bas is not None
+        assert duel.cible_haut == poses[duel.haut.archer_id]
+        assert duel.cible_bas == poses[duel.bas.archer_id]
+    assert feu.nb_prets == len(tour2)
 
 
 def test_feu_vert_ignore_les_byes() -> None:
@@ -328,11 +336,13 @@ def test_feu_vert_ignore_les_byes() -> None:
     assert len(tour1) == 1  # le bye (2ᵉ match du tour 1) est résolu et absent du feu vert
 
 
-def test_feu_vert_tour3_finale_cible_non_attribuee() -> None:
-    """Le garde vaut pour **tous** les tours ≥ 2, pas seulement le tour 2 : sur un tableau à 8
-    (trois tours), une fois quarts (tour 1) et demies (tour 2) validés, la finale (tour 3) a ses
-    occupants connus mais reste « cible non attribuée » — le placement 1→N est E05US010. Ce cas
-    distingue le garde `tour == 1` d'un `tour != nb_tours` (indiscernables à 4 archers)."""
+def test_feu_vert_ne_pose_que_le_tour_qui_se_joue_sur_trois_tours() -> None:
+    """Un seul tour est posé à la fois (ADR-0106 §2), et ce tour n'est ni le 1er ni le dernier.
+
+    Sur un tableau à 8 (trois tours), une fois les quarts validés, **les demies** sont posées et
+    prêtes, tandis que la finale (tour 3) attend encore ses occupants. C'est le cas qui distingue
+    « le tour posé » d'un `tour == 1` **et** d'un `tour == nb_tours` — indiscernables à 4 archers.
+    """
     monde = _Monde(capacites=(4, 4))
     for valeurs in (
         ("10", "10"),
@@ -348,17 +358,21 @@ def test_feu_vert_tour3_finale_cible_non_attribuee() -> None:
     monde.placer()
     for numero in (1, 2, 3, 4):  # les quarts (tour 1)
         monde.gagner(numero)
-    for numero in (5, 6):  # les demies (tour 2) → la finale (tour 3) a ses deux occupants
-        monde.gagner(numero)
 
     feu = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    assert feu.tour_pose == 2
+    demies = [d for d in feu.duels if d.tour == 2]
+    assert demies and all(d.pret_a_lancer for d in demies), "le tour qui se joue est posé"
     tour3 = [d for d in feu.duels if d.tour == 3]
-    assert tour3  # finale + petite finale
+    assert tour3, "la finale est à venir"
     for duel in tour3:
-        assert duel.participants_connus
+        # Pas encore déterminée : ses sources sont les demies, non tranchées. Le blocage est donc
+        # **nommé** (« en attente du duel n°X »), jamais « cible non attribuée », qui laisserait
+        # croire à un oubli de placement.
+        assert not duel.participants_connus
         assert duel.cible_haut is None and duel.cible_bas is None
-        assert not duel.cible_attribuee and not duel.pret_a_lancer
-        assert duel.blocage == "cible non attribuée"
+        assert not duel.pret_a_lancer
+        assert duel.blocage is not None and duel.blocage.startswith("en attente du duel")
 
 
 def test_lancer_global_chiffre_et_trace() -> None:
@@ -481,12 +495,13 @@ def test_une_ligne_bloquee_attend_une_ou_deux_sources_selon_ce_qui_reste_a_tranc
 
 
 def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> None:
-    """Le volet « compteur » de l'oracle (E16US008) — et le seul cas qu'aucun test ne couvrait.
+    """Le volet « compteur » de l'oracle (E16US008), **réécrit** par E03US012.
 
-    Le compteur du bouton « Lancer » ne diminue au forfait QUE si le duel tranché y figurait. Un
-    duel de tour ≥ 2 n'a jamais de cible (`place = match.tour == 1`), donc n'est jamais compté : le
-    forfait fait avancer le tableau **sans** bouger le compteur. C'est la phrase que la recette et
-    le journal rendent à l'organisateur — voir ADR-0013 §10 : elle vit ici, pas dans la prose.
+    ⚠️ La prémisse d'origine est **abolie** : elle tenait à ce qu'un duel de tour ≥ 2 n'ait jamais
+    de cible (`place = match.tour == 1`), donc ne soit jamais compté. Depuis ADR-0106 la finale est
+    posée dès qu'elle est déterminée, donc **comptée** — et un forfait qui la tranche fait bien
+    baisser le compteur. C'est la phrase que la recette rend à l'organisateur (ADR-0013 §10) : elle
+    vit ici, pas dans la prose, et c'est pourquoi elle change avec le comportement.
     """
     monde = _Monde(capacites=(4,))
     _quatre(monde)
@@ -494,9 +509,9 @@ def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> N
     monde.gagner(1)
     monde.gagner(2)
     avant = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
-    assert avant.nb_prets == 0
     finale = next(d for d in avant.duels if d.tour == 2)
-    assert finale.participants_connus and not finale.pret_a_lancer
+    assert finale.participants_connus and finale.pret_a_lancer
+    assert avant.nb_prets >= 1
 
     monde.forfaits.semer(
         Forfait.creer(
@@ -511,5 +526,99 @@ def test_un_forfait_sur_un_amont_de_tour_2_ne_fait_pas_bouger_le_compteur() -> N
     apres = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
     # Le tableau a avancé (le duel forfait est tranché, il quitte les duels à venir)...
     assert len(apres.duels) < len(avant.duels)
-    # ...et le compteur n'a pas bougé : ce duel n'y figurait pas.
-    assert apres.nb_prets == 0
+    # ...et le compteur **suit**, puisque ce duel y figurait désormais.
+    assert apres.nb_prets == avant.nb_prets - 1
+
+
+# --- CA E03US012 « poser les cibles des tours suivants » (ADR-0106) -----------------------------
+# Ces tests dérivent du CA de `stories/E03-placement.md` § E03US012, pas du code : ce que
+# l'organisateur doit constater, c'est qu'un duel devient **prêt à lancer** passé le premier tour.
+
+
+def test_le_tour_suivant_recoit_ses_cibles_des_qu_il_est_determine() -> None:
+    """CA : « quand tous les duels d'un tour sont tranchés, les duellistes du tour suivant
+    reçoivent leur pose sans geste de l'organisateur ».
+
+    C'est la capacité neuve, et c'est aussi la non-régression qui compte le plus : avant E03US012,
+    `pret_a_lancer` était **toujours faux** au-delà du tour 1, donc plus rien ne partait de la
+    journée passé le premier tour.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+    ):
+        monde.gagner(numero)
+
+    tour2 = [d for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 2]
+    assert tour2, "le tour 2 doit exister une fois le tour 1 tranché"
+    assert all(d.participants_connus for d in tour2)
+    assert all(d.cible_attribuee for d in tour2), "le tour 2 doit avoir reçu ses cibles sans geste"
+    assert all(d.pret_a_lancer and d.blocage is None for d in tour2)
+
+
+def test_rien_ne_se_pose_tant_que_le_tour_n_est_pas_determine() -> None:
+    """CA : « un duel dont les sources ne sont pas tranchées n'a aucune pose ».
+
+    Un seul des deux duels du tour 1 est joué : le tour 2 n'est pas déterminé, donc rien ne se
+    pose, et le blocage reste **nommé** — « en attente du duel n°X », jamais « cible non
+    attribuée », qui laisserait croire à un oubli de placement.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    premier = next(
+        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+    )
+    monde.gagner(premier)
+
+    tour2 = [d for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 2]
+    finale = next(d for d in tour2 if d.sources_en_attente)
+    assert not finale.cible_attribuee
+    assert finale.blocage is not None and finale.blocage.startswith("en attente du duel")
+
+
+def test_le_tour_avance_se_regroupe_sur_les_premieres_cibles() -> None:
+    """CA (arbitrage du commanditaire, 05/09/2026) : « un tour avancé se tasse sur les cibles de
+    plus petit numéro et libère les cibles hautes »."""
+    monde = _Monde(capacites=(2, 2, 2))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+    ):
+        monde.gagner(numero)
+
+    plan = monde.placement.plan_de_duels(1, monde.phase_id)
+    assert plan.tour == 2, "le plan suit le tour qui se joue"
+    occupees = {c.index for c in plan.cibles if c.placements}
+    assert occupees and max(occupees) < 3, "la cible haute doit rester libre"
+
+
+def test_une_phase_en_pause_ne_prepare_pas_la_butte_d_apres() -> None:
+    """CA / ADR-0106 §4 : un arrêt éteint la salle — on ne pose pas les cibles du tour suivant.
+
+    Sans cette garde, le panneau de routage annoncerait une butte à des archers qu'on vient
+    d'arrêter.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+    ):
+        monde.gagner(numero)
+    # On défait la pose du tour 2 pour observer le geste suivant : c'est l'ordre réel du jour J —
+    # la validation signale d'abord les arrêts (qui mettent la phase en pause), **puis** la pose.
+    for affectation in monde.placements.par_phase_et_tour(monde.phase_id, 2):
+        monde.placements.retirer(monde.phase_id, 2, affectation.inscription_id)
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+    monde.placement.poser_le_tour_courant(1, monde.phase_id)
+
+    assert (
+        monde.placements.par_phase_et_tour(monde.phase_id, 2) == []
+    ), "une phase en pause ne prepare pas la butte suivante"

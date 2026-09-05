@@ -26,6 +26,7 @@ from application.gel_de_pause import (
     refuser_si_en_pause,
 )
 from application.portee import phase_du_tournoi
+from application.pose_du_tour import DeclencheurPoseDeTour, PoseurDeTour
 from application.prelevement import (
     LecteurClassementDePhase,
     ResolveurClassement,
@@ -204,6 +205,7 @@ class ServiceSaisieDuels:
         # E05US033 : collaborateur **partagé** par les cinq services d'écriture
         # (`application.gel_de_pause`), inerte tant que rien n'y est branché.
         self._arrets = DeclencheurArrets()
+        self._pose_de_tour = DeclencheurPoseDeTour()
 
     def brancher_lecteur(self, type_phase: TypePhase, lecteur: LecteurClassementDePhase) -> None:
         """Donne à ce service de quoi lire le classement d'un type de phase (ADR-0084).
@@ -346,6 +348,10 @@ class ServiceSaisieDuels:
         """Dit à qui signaler qu'un résultat vient d'être validé (E05US033) — délègue au partagé."""
         self._arrets.brancher(evaluateur)
 
+    def brancher_poseur_de_tour(self, poseur: PoseurDeTour) -> None:
+        """Dit à qui signaler qu'un duel vient d'être tranché (E03US012)."""
+        self._pose_de_tour.brancher(poseur)
+
     def _signaler_validation_de(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
         """Résout le créneau **dans** le bloc protégé, puis signale (E05US033).
 
@@ -360,6 +366,10 @@ class ServiceSaisieDuels:
             return
         if phase is not None:
             self._arrets.signaler(phase.depart_id)
+        # ⚠️ **Après les arrêts, pas avant** : une phase que l'arrêt vient de mettre en pause ne
+        # doit pas voir son tour suivant posé dans la foulée — la salle s'éteint, on ne prépare pas
+        # la butte d'après.
+        self._pose_de_tour.signaler(tournoi_id, phase_id)
 
     def _refuser_si_en_pause(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
         """Refuse un résultat **neuf** sur une phase en pause (E05US033) — `PhaseEnPause`, 409.

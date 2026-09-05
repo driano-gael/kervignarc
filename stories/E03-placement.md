@@ -11,7 +11,7 @@
 
 ---
 
-### E03US001 — Placement automatique & plan de cibles
+### E03US001 — Placement automatique & plan de cibles ✅
 *En tant qu'*administrateur, *je veux* que le système instancie les cibles/positions depuis le
 gabarit, place automatiquement les archers en respectant capacité et fractions de blason, signale
 les conflits qu'il ne peut résoudre, et produise le plan de cibles de la qualification, *afin de*
@@ -146,7 +146,7 @@ respecter les règles officielles.
   - Recette : [`docs/fonctionnel/E03US007.md`](../docs/fonctionnel/E03US007.md).
 - **Dépend de** : E03US001, E01US006 · **Jalon** : J3
 
-### E03US009 — Placer les duellistes côte à côte
+### E03US009 — Placer les duellistes côte à côte ✅
 *En tant qu'*administrateur, *je veux* que les adversaires d'un duel soient sur des positions
 voisines, *afin de* faciliter les matchs.
 - **CA** : lors d'une phase de tableau, les 2 duellistes sont placés côte à côte dans la mesure du
@@ -193,6 +193,64 @@ l'événement.
 - **CA — position visible** : chaque archer placé affiche sa **position** (A, B, C, D…, cf. E01US019 au-delà de D) sur sa cible **côté admin**, comme côté public.
 - **Notes** : correctifs **front** (présentation) ; pas de changement de domaine attendu. ⚠️ Front sans tests de rendu → vérifier **à l'écran**. US à **surface visible** → doc fonctionnelle + journal d'avancement.
 - **Dépend de** : E03US001, E03US004 · **Jalon** : J1 · **Origine** : démo 27/07/2026
+
+
+### E03US012 — Poser les cibles des tours suivants
+
+*En tant qu'*administrateur, *je veux* que les duellistes d'un tour ≥ 2 reçoivent une cible dès que
+leur tour est déterminé, *afin de* savoir où envoyer chaque archer au lieu de lire
+« cible non attribuée » sur tout le tableau passé le premier tour.
+
+- **Contexte** : `E03US009` a livré le plan de duels **tour 1 uniquement** et renvoyait les tours
+  ≥ 2 « downstream (E05US010/E06US006) ». Ce renvoi est **faux** : ces deux US désignent la
+  **profondeur de classement** (classer du rang 1 au rang N), pas la pose de cibles, et elles sont
+  livrées depuis le 31/07/2026 sans que la garde bouge. `DETTE-019` l'avait constaté (« le registre
+  attendait une US déjà passée ») ; **aucune US n'a jamais porté ce sujet**. Cadrée le 05/09/2026 en
+  amont d'`E16US013`, dont elle conditionne la valeur : sans pose au-delà du tour 1, aucun duel n'est
+  jamais « prêt à lancer » après le tour 1, donc il n'y a rien à lancer automatiquement.
+- **CA — une pose appartient à un tour** : un archer occupe une cible **par tour**, pas une par
+  phase. Les poses existantes deviennent celles du **tour 1**, sans changement d'affichage pour un
+  tournoi déjà en base.
+- **CA — le tour suivant se pose seul, dès qu'il est déterminé** : quand **tous** les duels d'un tour
+  sont tranchés, les duellistes du tour suivant reçoivent leur pose **sans geste de l'organisateur**,
+  puis restent ajustables au glisser-déposer comme le tour 1. ⚠️ **La maille est le tour entier, pas
+  le duel** (tranché au cadrage du 05/09/2026) : regrouper les archers demande de connaître
+  l'ensemble à placer, et poser duel par duel au fil des validations éparpillerait le tour sur le pas
+  de tir dans l'ordre d'arrivée des résultats.
+- **CA — un tour avancé se regroupe sur les premières cibles** (arbitrage du commanditaire,
+  05/09/2026) : moins d'archers restant à chaque tour, le tour se tasse sur les cibles de **plus
+  petit numéro** et libère les cibles hautes. La contrainte « côte à côte » d'`E03US009`
+  ([ADR-0048](../docs/adr/0048-cote-a-cote-des-duellistes-par-reordonnancement.md)) reste **molle** et
+  s'applique à l'identique.
+- **CA — rien ne se pose pour un tour indéterminé** : un duel dont les sources ne sont pas tranchées
+  n'a **aucune** pose, et le feu vert garde son blocage nommé (« en attente du duel n°X »). L'absence
+  de pose n'est jamais une pose vide.
+- **CA — la garde « tour 1 » tombe** aux **quatre** sites que `DETTE-019` énumère (feu vert,
+  routage, et leurs deux jumeaux **front**) : le feu vert cesse d'annoncer « cible non attribuée »
+  sur un tour ≥ 2 posé, et le panneau de routage annonce la vraie cible. ⚠️ Lever la garde côté
+  serveur **sans** toucher les deux fichiers front laisserait l'écran annoncer une limite disparue,
+  **sans qu'aucun test rougisse** — c'est nommément le piège décrit au registre.
+- **CA — une pose périmée ne survit pas à la correction qui l'a périmée** : corriger un résultat d'un
+  tour antérieur change les vainqueurs, donc les occupants des tours suivants. Les poses des tours
+  devenus faux suivent la règle déjà posée par `E03US009` pour les **poses orphelines** — masquées en
+  lecture, purgées à la première écriture — et le tour se repose quand il redevient déterminé.
+- **Notes** :
+  - ⚠️ **Le moteur n'est pas en cause** : `domain.placement.placer` est un glouton **générique, sans
+    notion de tour**. La limite vient de son appelant (`ServicePlacementDuels._charger`, qui ne lui
+    passe que `paires_du_premier_tour`). Il n'y a **aucun moteur à écrire**.
+  - ⚠️ **Le vrai blocage est la clé de la table** : `placement_tableau` a pour clé primaire
+    `(phase_id, inscription_id)`. Elle ne **peut pas** représenter deux poses du même archer. La clé
+    gagne le tour — changement de clé primaire + reprise des lignes en tour 1, donc migration `0053`
+    et [ADR-0106](../docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md).
+  - ⚠️ **Cette US aggrave `DETTE-021`** (le feu vert dit « prêt » sans vérifier que les deux
+    duellistes sont sur la **même** cible) : le défaut n'existait qu'au tour 1, il vaudra désormais à
+    **tous** les tours. La ligne du registre est **élargie**, pas contournée.
+  - ⚠️ **Pas de sélecteur de tour** à l'écran du plan de duels dans cette tranche : il rend le plan
+    du **tour en cours**, qu'il **nomme**. Consulter un tour passé ou à venir est un confort écarté du
+    périmètre, faute de besoin énoncé.
+  - US à **surface visible** → doc fonctionnelle + journal d'avancement.
+- **Dépend de** : E03US009, E05US005, E12US002 · **Jalon** : J2 · **Origine** : cadrage d'`E16US013`,
+  05/09/2026 — résorption de `DETTE-019`
 
 ---
 

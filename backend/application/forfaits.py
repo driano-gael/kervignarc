@@ -19,6 +19,7 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi, qualification_du_tournoi
+from application.pose_du_tour import DeclencheurPoseDeTour, PoseurDeTour
 from domain.archer import ArcherId
 from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
 from domain.entree_audit import ActionAuditee, EntreeAudit
@@ -54,6 +55,11 @@ class ServiceForfait:
         self._archers = archers
         self._phases = phases
         self._horloge = horloge
+        self._pose_de_tour = DeclencheurPoseDeTour()
+
+    def brancher_poseur_de_tour(self, poseur: PoseurDeTour) -> None:
+        """Dit à qui signaler qu'un walkover vient de trancher un duel (E03US012)."""
+        self._pose_de_tour.brancher(poseur)
 
     # --- Qualification (phase résolue par le service) ------------------------------------------
 
@@ -90,7 +96,12 @@ class ServiceForfait:
     ) -> Forfait:
         """Déclare un forfait dans une **phase de tableau** : l'adversaire passera (walkover)."""
         phase = self._exiger_phase_de_tableau(tournoi_id, phase_id)
-        return self._declarer(tournoi_id, phase, archer_id, nature, declare_par, motif)
+        forfait = self._declarer(tournoi_id, phase, archer_id, nature, declare_par, motif)
+        # Un walkover **tranche** un duel sans qu'aucun score soit saisi : c'est le second chemin
+        # par lequel un tour s'achève (E03US012). L'oublier rendait la pose automatique muette dès
+        # qu'un tour se finissait sur un forfait.
+        self._pose_de_tour.signaler(tournoi_id, phase_id)
+        return forfait
 
     def annuler_en_duel(
         self, tournoi_id: TournoiId, phase_id: PhaseId, archer_id: ArcherId, annule_par: str
@@ -98,6 +109,9 @@ class ServiceForfait:
         """Annule un forfait de duel : à la reconstruction suivante, le walkover disparaît."""
         self._exiger_phase_de_tableau(tournoi_id, phase_id)
         self._annuler(tournoi_id, phase_id, archer_id, annule_par)
+        # L'annulation défait un walkover : le tour redevient indéterminé et ses poses orphelines.
+        # Signaler ici les fait purger au prochain chargement plutôt qu'au prochain hasard.
+        self._pose_de_tour.signaler(tournoi_id, phase_id)
 
     # --- Interne -------------------------------------------------------------------------------
 

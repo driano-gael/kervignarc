@@ -268,7 +268,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "domain",
-   "occurrences": 363,
+   "occurrences": 365,
    "source": "application"
   },
   {
@@ -346,7 +346,7 @@ window.ATLAS.carte = {
   {
    "autorise": true,
    "cible": "application",
-   "occurrences": 54,
+   "occurrences": 55,
    "source": "bootstrap"
   },
   {
@@ -758,7 +758,7 @@ window.ATLAS.carte = {
    "cible": "domain",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 349,
+   "occurrences": 350,
    "origines": [
     "backend/application/archers.py",
     "backend/application/archive.py",
@@ -797,6 +797,7 @@ window.ATLAS.carte = {
     "backend/application/placement.py",
     "backend/application/placement_duels.py",
     "backend/application/portee.py",
+    "backend/application/pose_du_tour.py",
     "backend/application/postes.py",
     "backend/application/poules.py",
     "backend/application/prelevement.py",
@@ -822,7 +823,7 @@ window.ATLAS.carte = {
    "cible": "domain/erreurs",
    "couche_cible": "domain",
    "couche_source": "application",
-   "occurrences": 14,
+   "occurrences": 15,
    "origines": [
     "backend/application/barrages.py",
     "backend/application/classements.py",
@@ -831,6 +832,7 @@ window.ATLAS.carte = {
     "backend/application/palmares.py",
     "backend/application/pilotage_simulation.py",
     "backend/application/pilotage_tour.py",
+    "backend/application/placement_duels.py",
     "backend/application/poules.py",
     "backend/application/routage.py",
     "backend/application/saisie.py",
@@ -868,7 +870,7 @@ window.ATLAS.carte = {
    "cible": "application",
    "couche_cible": "application",
    "couche_source": "bootstrap",
-   "occurrences": 54,
+   "occurrences": 55,
    "origines": [
     "backend/bootstrap/composition.py"
    ],
@@ -1600,6 +1602,10 @@ window.ATLAS.carte = {
     {
      "fichier": "backend/application/gel_de_pause.py",
      "nom": "DeclencheurArrets"
+    },
+    {
+     "fichier": "backend/application/pose_du_tour.py",
+     "nom": "DeclencheurPoseDeTour"
     },
     {
      "fichier": "backend/infrastructure/realtime/diffusion_simulation.py",
@@ -2590,11 +2596,27 @@ window.ATLAS.carte = {
    "hors_domaine": false,
    "methodes": [
     "definir_plan",
-    "par_phase",
+    "par_phase_et_tour",
     "poser_plusieurs",
     "retirer"
    ],
    "nom": "PlacementTableauRepository",
+   "sans_adapter": false
+  },
+  {
+   "adapters": [
+    {
+     "fichier": "backend/application/placement_duels.py",
+     "nom": "ServicePlacementDuels"
+    }
+   ],
+   "couche": "application",
+   "fichier": "backend/application/pose_du_tour.py",
+   "hors_domaine": true,
+   "methodes": [
+    "poser_le_tour_courant"
+   ],
+   "nom": "PoseurDeTour",
    "sans_adapter": false
   },
   {
@@ -2998,11 +3020,11 @@ window.ATLAS.carte = {
   "aretes_front": 173,
   "enchevetrements": 4,
   "features": 49,
-  "imports": 944,
-  "imports_entre_couches": 798,
+  "imports": 947,
+  "imports_entre_couches": 801,
   "plus_gros_noeud": 24,
-  "ports": 68,
-  "ports_hors_domaine": 25,
+  "ports": 69,
+  "ports_hors_domaine": 26,
   "ports_sans_adapter": 0,
   "violations": 0
  },

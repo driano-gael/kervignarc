@@ -289,13 +289,13 @@ class RoutageArcher:
 class _PlanLu:
     """Ce que le routage retient du plan de duels : les poses, et **qui n'est pas côte à côte**.
 
-    `separes` vient de `PlanDeDuels.duels_separes`, dérivé par le domaine
-    (`duels_non_cote_a_cote`) des paires du tableau **d'aujourd'hui** confrontées aux poses
-    **persistées**. C'est exactement l'oracle qu'il faut ici, et il existait déjà : le recalculer à
-    la main (« même index de cible ») en serait une 3ᵉ écriture, plus faible — elle raterait le cas
-    « même cible, positions non adjacentes ».
+    `separes` vient de `PlanDeDuels.duels_separes`, dérivé par le domaine des paires du tableau
+    **d'aujourd'hui** confrontées aux poses **persistées** : le recalculer à la main (« même index
+    de cible ») en serait une 3ᵉ écriture, plus faible — elle raterait « même cible, positions non
+    adjacentes ». `tour` = le tour de ces poses (`None` = plan indisponible), ADR-0106 §1.
     """
 
+    tour: int | None
     poses: dict[int, tuple[int, str]]
     separes: frozenset[int]
 
@@ -993,20 +993,19 @@ class ServiceRoutage:
             alerte=alerte,
         )
 
-    # DETTE-019 : garde tour-1, jumelle de `ServicePilotageTour._duel_a_venir`.
+    # DETTE-019 : jumelle de `ServicePilotageTour._duel_a_venir`.
     @staticmethod
     def _pose_a_annoncer(
         match: Match, moi: Participant, adversaire: Participant | None, plan: _PlanLu
     ) -> tuple[tuple[int, str] | None, str | None, str | None]:
         """La pose à annoncer, le **manque** s'il n'y en a pas, l'**alerte** si elle est douteuse.
 
-        1. **tour ≥ 2** → aucune cible : le plan ne pose que le 1ᵉʳ tour (ADR-0048 ; E05US010) ;
-        2. **pose absente au tour 1** → aucune cible, libellé **neutre** : rien ne viendra tant que
-           l'organisateur n'a pas placé ;
+        1. **tour non encore posé** → aucune cible (ADR-0106 §2 : le plan pose un tour à la fois) ;
+        2. **pose absente au tour posé** → aucune cible, libellé **neutre** ;
         3. **duel non côte à côte** → cible annoncée **et** alerte qualifiée : même butte (se
            décaler d'une place) ou buttes différentes (on nomme alors l'autre butte).
         """
-        if match.tour != 1:
+        if match.tour != plan.tour:
             return None, CIBLE_A_VENIR, None
         pose = plan.poses.get(moi.ref_id)
         if pose is None:
@@ -1035,8 +1034,9 @@ class ServiceRoutage:
         try:
             plan = self._placement_duels.plan_de_duels(tournoi_id, phase_id)
         except GabaritDuTournoiAbsent:
-            return _PlanLu(poses={}, separes=frozenset())
+            return _PlanLu(tour=None, poses={}, separes=frozenset())
         return _PlanLu(
+            tour=plan.tour,
             poses={
                 pose.archer_id: (cible.index, pose.position)
                 for cible in plan.cibles

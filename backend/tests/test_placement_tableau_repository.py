@@ -93,12 +93,13 @@ def test_definir_plan_puis_relire(tmp_path: Path) -> None:
     try:
         decor.placements.definir_plan(
             decor.phase_id,
+            1,
             [
                 Affectation(inscription_id=i2, cible_index=1, position="B"),
                 Affectation(inscription_id=i1, cible_index=1, position="A"),
             ],
         )
-        assert decor.placements.par_phase(decor.phase_id) == [
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == [
             Affectation(inscription_id=i1, cible_index=1, position="A"),
             Affectation(inscription_id=i2, cible_index=1, position="B"),
         ]
@@ -112,12 +113,12 @@ def test_definir_plan_remplace_tout(tmp_path: Path) -> None:
     i1 = decor.inscrire()
     try:
         decor.placements.definir_plan(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=1, position="A")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=1, position="A")]
         )
         decor.placements.definir_plan(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=2, position="C")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=2, position="C")]
         )
-        assert decor.placements.par_phase(decor.phase_id) == [
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == [
             Affectation(inscription_id=i1, cible_index=2, position="C")
         ]
     finally:
@@ -130,12 +131,12 @@ def test_poser_plusieurs_insere_puis_met_a_jour(tmp_path: Path) -> None:
     i1 = decor.inscrire()
     try:
         decor.placements.poser_plusieurs(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=1, position="A")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=1, position="A")]
         )
         decor.placements.poser_plusieurs(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=3, position="B")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=3, position="B")]
         )
-        assert decor.placements.par_phase(decor.phase_id) == [
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == [
             Affectation(inscription_id=i1, cible_index=3, position="B")
         ]
     finally:
@@ -148,11 +149,11 @@ def test_retirer_met_en_reserve(tmp_path: Path) -> None:
     i1 = decor.inscrire()
     try:
         decor.placements.poser_plusieurs(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=1, position="A")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=1, position="A")]
         )
-        decor.placements.retirer(decor.phase_id, i1)
-        assert decor.placements.par_phase(decor.phase_id) == []
-        decor.placements.retirer(decor.phase_id, i1)  # sans effet, pas d'erreur
+        decor.placements.retirer(decor.phase_id, 1, i1)
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == []
+        decor.placements.retirer(decor.phase_id, 1, i1)  # sans effet, pas d'erreur
     finally:
         decor.db.engine.dispose()
 
@@ -163,11 +164,47 @@ def test_supprimer_l_inscription_efface_la_pose(tmp_path: Path) -> None:
     i1 = decor.inscrire()
     try:
         decor.placements.poser_plusieurs(
-            decor.phase_id, [Affectation(inscription_id=i1, cible_index=1, position="A")]
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=1, position="A")]
         )
         InscriptionRepositorySQL(
             decor.db.session_factory, AuditRepositorySQL(decor.db.session_factory)
         ).supprimer(i1)
-        assert decor.placements.par_phase(decor.phase_id) == []
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == []
+    finally:
+        decor.db.engine.dispose()
+
+
+def test_un_archer_occupe_une_cible_differente_a_chaque_tour(tmp_path: Path) -> None:
+    """E03US012 : la raison d'être de la clé `(phase, tour, inscription)`.
+
+    Avec l'ancienne clé, poser le tour 2 **écrasait** la pose du tour 1 — le finaliste perdait la
+    trace de la butte où il avait tiré son quart. Les deux poses doivent coexister, et régénérer le
+    tour 2 ne doit pas défaire le tour 1, déjà tiré.
+    """
+    decor = _Decor(tmp_path)
+    i1 = decor.inscrire()
+    try:
+        decor.placements.definir_plan(
+            decor.phase_id, 1, [Affectation(inscription_id=i1, cible_index=7, position="B")]
+        )
+        decor.placements.definir_plan(
+            decor.phase_id, 2, [Affectation(inscription_id=i1, cible_index=1, position="A")]
+        )
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == [
+            Affectation(inscription_id=i1, cible_index=7, position="B")
+        ]
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 2) == [
+            Affectation(inscription_id=i1, cible_index=1, position="A")
+        ]
+        # Le port `LecteurDonneesDePhase` (garde de remplacement de format) compte, lui, **toutes**
+        # les poses de la phase — une par tour ici.
+        assert len(decor.placements.par_phase(decor.phase_id)) == 2
+        # Régénérer le tour 2 laisse le tour 1 intact.
+        decor.placements.definir_plan(
+            decor.phase_id, 2, [Affectation(inscription_id=i1, cible_index=2, position="C")]
+        )
+        assert decor.placements.par_phase_et_tour(decor.phase_id, 1) == [
+            Affectation(inscription_id=i1, cible_index=7, position="B")
+        ]
     finally:
         decor.db.engine.dispose()

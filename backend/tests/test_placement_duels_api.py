@@ -192,3 +192,27 @@ def test_phase_inconnue_renvoie_404(app_duels: FastAPI, connecter_admin: Connect
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/phases/999/plan-de-duels")
 
     assert reponse.status_code == 404, reponse.text
+
+
+def test_les_deux_services_qui_tranchent_un_duel_signalent_la_pose_du_tour(
+    app_duels: FastAPI,
+) -> None:
+    """Le branchement du poseur de tour sur les **deux** chemins d'écriture, prouvé (ADR-0106 §5).
+
+    ⚠️ **C'est le seul garde-fou du mode de panne** : un branchement oublié rend la pose automatique
+    muette sans qu'une ligne rougisse (`DETTE-028`, déjà vécu sur les arrêts programmés, où la
+    première livraison n'avait branché que deux services sur six).
+
+    ⚠️ **Le forfait est le second, et c'est celui qu'on oublie** : un walkover tranche un duel sans
+    qu'aucun score soit saisi, donc sans passer par la validation. Un tour qui se termine sur un
+    forfait — cas banal le jour J — n'aurait jamais reçu ses cibles.
+
+    Il touche un attribut privé, comme son voisin d'E05US033 sur les arrêts, pour la même raison :
+    le composition root n'expose pas ce qu'il a branché, et c'est ce branchement qu'on veut garder.
+    """
+    attendu = app_duels.state.service_placement_duels
+    for service in (app_duels.state.service_saisie_duels, app_duels.state.service_forfait):
+        nom = type(service).__name__
+        assert (
+            service._pose_de_tour._poseur is attendu
+        ), f"{nom} n'est pas branché : la pose automatique du tour serait inerte."

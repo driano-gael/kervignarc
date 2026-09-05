@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import partial
 
-from application.classements import ServiceClassement
 from application.erreurs import (
     DeplacementInvalide,
     GabaritDuTournoiAbsent,
@@ -21,15 +20,15 @@ from application.erreurs import (
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
-from application.prelevement import preleves, profondeur_de
 from application.saisie_duels import ServiceSaisieDuels
 from domain.archer import ArcherId
 from domain.cloisonnement import Cloisonnement
 from domain.contrat_phase import TYPES_EN_TABLEAU_JOUE
+from domain.erreurs import EffectifTableauInvalide
 from domain.gabarit_salle import Cible, GabaritSalle
 from domain.inscription import Inscription, InscriptionId
 from domain.participant import GenreParticipant, Participant
-from domain.phase import PhaseId
+from domain.phase import PhaseId, StatutPhase
 from domain.placement import (
     Affectation,
     ArcherAPlacer,
@@ -48,7 +47,6 @@ from domain.placement import (
     placer,
     placer_restants,
 )
-from domain.politiques import Byes, RegistrePolitiques, Routing, Seeding
 from domain.ports import (
     ArcherRepository,
     BlasonRepository,
@@ -59,7 +57,7 @@ from domain.ports import (
     PlacementTableauRepository,
     TournoiRepository,
 )
-from domain.tableau import construire_tableau, paires_du_premier_tour
+from domain.tableau import paires_du_tour, tour_a_poser
 from domain.tournoi import TournoiId
 
 
@@ -67,11 +65,14 @@ from domain.tournoi import TournoiId
 class PlanDeDuels:
     """Plan de duels rendu : le plan de cibles + le signal **côte à côte** dérivé (ADR-0048).
 
-    `adjacence_non_garantie` = index des cibles portant un duelliste dont l'adversaire n'est pas
-    côte à côte (badge par cible). `duels_separes` = les paires d'`ArcherId` non côte à côte
-    (bannière récapitulative). Les deux sont **dérivés**, jamais persistés (comme la mixité).
+    `tour` est le tour que ce plan pose (E03US012) : l'écran le **nomme**, parce qu'une cible n'a
+    de sens que rapportée à un tour. `adjacence_non_garantie` = index des cibles portant un
+    duelliste dont l'adversaire n'est pas côte à côte (badge par cible). `duels_separes` = les
+    paires d'`ArcherId` non côte à côte (bannière récapitulative). Ces deux derniers sont
+    **dérivés**, jamais persistés (comme la mixité).
     """
 
+    tour: int
     cibles: tuple[CiblePlacee, ...]
     conflits: tuple[Conflit, ...]
     adjacence_non_garantie: frozenset[int]
@@ -80,7 +81,7 @@ class PlanDeDuels:
 
 @dataclass
 class _Contexte:
-    """Décor d'une phase de tableau : gabarit, duellistes du 1er tour et leurs jointures.
+    """Décor d'un **tour** de phase de tableau : gabarit, duellistes du tour et leurs jointures.
 
     `donnees` ne contient que les duellistes **plaçables** (blason exploitable) ; `partenaire`
     associe chaque archer à son adversaire (pour l'ordre d'adjacence) ; `paires` liste les duels en
@@ -88,6 +89,7 @@ class _Contexte:
     """
 
     phase_id: PhaseId
+    tour: int
     gabarit: GabaritSalle
     # Cloisonnement des cibles réglé sur le tournoi (E03US007) : le plan de duels est posé dans la
     # **même salle** que la qualification, un réglage qui ne vaudrait que pour l'une serait
@@ -119,11 +121,6 @@ class ServicePlacementDuels:
         categories: CategorieRepository,
         blasons: BlasonRepository,
         placements: PlacementTableauRepository,
-        classements: ServiceClassement,
-        seeding: Seeding,
-        byes: Byes,
-        routing: Routing,
-        registre: RegistrePolitiques,
         saisie_duels: ServiceSaisieDuels,
     ) -> None:
         self._tournois = tournois
@@ -134,20 +131,12 @@ class ServicePlacementDuels:
         self._categories = categories
         self._blasons = blasons
         self._placements = placements
-        self._classements = classements
-        # Politiques du tableau (E05US003) : le format est de la configuration (règle 2). MVP =
-        # défauts (serpent / byes aux mieux classés / élimination sèche) — ADR-0048.
-        self._seeding = seeding
-        self._byes = byes
-        self._routing = routing
-        # La **profondeur** n'est plus injectée ici depuis E06US006 : elle se lit sur la phase
-        # (`profondeur_de`), qui la porte enfin. Garder le paramètre aurait laissé deux sources —
-        # celle du câblage, celle de l'organisateur — dont l'une aurait silencieusement gagné.
-        self._registre = registre
-        # E05US024 : **pas** pour saisir, uniquement pour emprunter sa résolution de classement
-        # amont — reconstruire un tableau source est son métier, pas celui du plan de cibles. Le
-        # sens de dépendance est sûr : `saisie_duels` ne connaît pas le placement, et `palmares`
-        # emprunte déjà ce chemin.
+        # ⚠️ **Le tableau vient d'ici, pas d'une construction locale** (E03US012) : `reconstruire`
+        # est la seule source de vérité de la progression — seule elle rejoue les duels validés,
+        # donc seule elle connaît les occupants d'un tour ≥ 2. Les politiques du tableau (seeding,
+        # byes, routing, profondeur) et le classement amont sont résolus **par elle** ; les injecter
+        # ici en second exemplaire est ce que ce service faisait avant, et l'écart entre les deux
+        # recopies avait déjà produit un plan de 8 poses pour un tableau de 4 (E05US024).
         self._saisie_duels = saisie_duels
 
     # --- Lecture -------------------------------------------------------------------------------
@@ -159,7 +148,9 @@ class ServicePlacementDuels:
         n'est pas une élimination directe) ou `GabaritDuTournoiAbsent`.
         """
         contexte = self._charger(tournoi_id, phase_id)
-        return self._construire_plan(contexte, self._placements.par_phase(phase_id))
+        return self._construire_plan(
+            contexte, self._placements.par_phase_et_tour(phase_id, contexte.tour)
+        )
 
     # --- Écritures (via la file) ---------------------------------------------------------------
 
@@ -186,7 +177,7 @@ class ServicePlacementDuels:
             for cible in plan.cibles
             for pose in cible.placements
         ]
-        self._placements.definir_plan(phase_id, affectations)
+        self._placements.definir_plan(phase_id, contexte.tour, affectations)
         return self._construire_plan(contexte, affectations)
 
     def deplacer(
@@ -212,8 +203,10 @@ class ServicePlacementDuels:
             )
 
         if cible_index is None:
-            self._placements.retirer(phase_id, inscription_id)
-            return self._construire_plan(contexte, self._placements.par_phase(phase_id))
+            self._placements.retirer(phase_id, contexte.tour, inscription_id)
+            return self._construire_plan(
+                contexte, self._placements.par_phase_et_tour(phase_id, contexte.tour)
+            )
 
         if position is None:
             raise DeplacementInvalide(
@@ -246,11 +239,13 @@ class ServicePlacementDuels:
         if occupant is None:
             self._valider_pose(contexte, affectations, cible, candidat, {inscription_id})
             self._placements.poser_plusieurs(
-                phase_id, [Affectation(inscription_id, cible_index, position)]
+                phase_id, contexte.tour, [Affectation(inscription_id, cible_index, position)]
             )
         else:
             self._echanger(contexte, affectations, cible, candidat, source, occupant, phase_id)
-        return self._construire_plan(contexte, self._placements.par_phase(phase_id))
+        return self._construire_plan(
+            contexte, self._placements.par_phase_et_tour(phase_id, contexte.tour)
+        )
 
     def placer_les_restants(self, tournoi_id: TournoiId, phase_id: PhaseId) -> PlanDeDuels:
         """Complète la réserve automatiquement dans les trous du plan, **sans bouger les placés**.
@@ -258,7 +253,11 @@ class ServicePlacementDuels:
         Ce qu'aucune cible ne peut accueillir reste en réserve. Réordonne les restants pour
         l'adjacence (un duel encore entier tombe côte à côte quand la place le permet).
         """
-        contexte = self._charger(tournoi_id, phase_id)
+        return self._completer(self._charger(tournoi_id, phase_id))
+
+    def _completer(self, contexte: _Contexte) -> PlanDeDuels:
+        """Complète les trous du plan d'un décor déjà chargé — corps de `placer_les_restants`."""
+        phase_id = contexte.phase_id
         affectations = self._poses_a_jour(phase_id, contexte)
         plan_actuel = self._plan_de_cibles(contexte, affectations)
         placees = {
@@ -290,8 +289,27 @@ class ServicePlacementDuels:
             )
             for pose in poses
         ]
-        self._placements.poser_plusieurs(phase_id, nouvelles)
-        return self._construire_plan(contexte, self._placements.par_phase(phase_id))
+        self._placements.poser_plusieurs(phase_id, contexte.tour, nouvelles)
+        return self._construire_plan(
+            contexte, self._placements.par_phase_et_tour(phase_id, contexte.tour)
+        )
+
+    def poser_le_tour_courant(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
+        """Donne une cible aux duellistes du tour à poser qui n'en ont pas — **sans clic**.
+
+        Appelée après chaque acte qui peut trancher un duel — ADR-0106 §4 porte le raisonnement.
+
+        ⚠️ **Compléter, jamais régénérer** : régénérer écraserait les ajustements manuels de
+        l'organisateur à la première validation venue. Les deux exclusions ci-dessous (tour 1,
+        phase en pause) sont nécessaires, pas des optimisations.
+        """
+        phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
+        if phase is None or phase.statut is StatutPhase.EN_PAUSE:
+            return
+        contexte = self._charger(tournoi_id, phase_id)
+        if contexte.tour == 1:
+            return
+        self._completer(contexte)
 
     def _poses_a_jour(self, phase_id: PhaseId, contexte: _Contexte) -> list[Affectation]:
         """Lit les poses de la phase après avoir **purgé** celles devenues orphelines (ADR-0048).
@@ -303,11 +321,11 @@ class ServicePlacementDuels:
         double pose. Arbitrage tranché à la revue d'E03US009 (reversé dans `stories/`).
         """
         a_jour: list[Affectation] = []
-        for affectation in self._placements.par_phase(phase_id):
+        for affectation in self._placements.par_phase_et_tour(phase_id, contexte.tour):
             if affectation.inscription_id in contexte.archer_par_inscription:
                 a_jour.append(affectation)
             else:
-                self._placements.retirer(phase_id, affectation.inscription_id)
+                self._placements.retirer(phase_id, contexte.tour, affectation.inscription_id)
         return a_jour
 
     # --- Interne : validation d'un déplacement (calqué sur ServicePlacement, ADR-0048) ---------
@@ -348,6 +366,7 @@ class ServicePlacementDuels:
             )
         self._placements.poser_plusieurs(
             phase_id,
+            contexte.tour,
             [
                 Affectation(source.inscription_id, cible_cible.index, occupant.position),
                 Affectation(occupant.inscription_id, source.cible_index, source.position),
@@ -478,6 +497,7 @@ class ServicePlacementDuels:
         """Assemble le plan de cibles depuis les affectations, puis dérive le signal côte à côte."""
         plan = self._plan_de_cibles(contexte, affectations)
         return PlanDeDuels(
+            tour=contexte.tour,
             cibles=plan.cibles,
             conflits=plan.conflits,
             adjacence_non_garantie=cibles_avec_duel_separe(plan, contexte.paires),
@@ -581,7 +601,12 @@ class ServicePlacementDuels:
     # --- Interne : chargement du décor (classement → arbre → duellistes) -----------------------
 
     def _charger(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _Contexte:
-        """Valide les gardes et assemble le décor : classement → arbre → duellistes du 1er tour."""
+        """Valide les gardes et assemble le décor du **tour à poser** : tableau → duellistes.
+
+        Le tour posé est celui que `tour_a_poser` désigne — le plus petit encore à jouer, et
+        seulement s'il est entièrement déterminé (E03US012). Un tableau **terminé** garde son
+        dernier tour affiché plutôt que de vider l'écran : le plan de la finale reste consultable.
+        """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
             raise TournoiIntrouvable(f"Aucun tournoi d'identifiant {tournoi_id}.")
@@ -602,45 +627,19 @@ class ServicePlacementDuels:
             )
 
         contexte = _Contexte(
-            phase_id=phase_id, gabarit=gabarit, cloisonnement=tournoi.cloisonnement
+            phase_id=phase_id, tour=1, gabarit=gabarit, cloisonnement=tournoi.cloisonnement
         )
-        # Le classement **du départ de cette phase** (ADR-0075) — même ensemencement que la
-        # reconstruction, donc même portée : le plan pose les duellistes que le tableau jouera.
-        classement = self._classements.pour_depart(phase.depart_id)
-        # ⚠️ **Même ensemencement que la reconstruction, par la même fonction** (E05US020) : le plan
-        # pose les duellistes que le tableau fera jouer. Les deux règles étaient **recopiées**, avec
-        # un commentaire affirmant leur parité ; la recopie a lâché à la première évolution — la
-        # revue a mesuré un plan de 8 placements pour un tableau de 4, soit un archer sur une butte
-        # sans duel, invisible jusqu'au jour J. E05US024 : le résolveur vient de
-        # `ServiceSaisieDuels`, seul à savoir reconstruire un tableau amont pour le lire comme un
-        # classement ; le réimplémenter ici rouvrirait le même écart, un cran plus loin.
         try:
-            participants = [
-                Participant.individuel(ligne.archer_id)
-                for ligne in preleves(
-                    phase,
-                    classement,
-                    self._saisie_duels.resolveur_de_classement(tournoi_id, phase.depart_id),
-                )
-            ]
-        except PrelevementEnAttente:
-            # La source n'a pas encore départagé les places prélevées (ADR-0081). On retombe sur le
-            # chemin **gracieux** déjà prévu ci-dessous pour « pas assez de participants » : un plan
-            # vide, pas un écran en erreur. Laisser remonter donnerait un 409 sur le plan de cibles
-            # pendant que l'écran public, lui, dit poliment « en attente » — trois surfaces, trois
-            # comportements pour le même état (relevé en revue, axes C2 et adversarial).
+            tableau, _ = self._saisie_duels.reconstruire(tournoi_id, phase_id)
+        # Deux façons pour un tableau de ne pas exister **encore** : trop peu d'archers en lice, ou
+        # une source qui n'a pas départagé ses places prélevées (ADR-0081). Les deux sont « il est
+        # trop tôt », pas une erreur : on rend un plan **vide**, jamais un écran en défaut — même
+        # tolérance que le feu vert, qui lit le même tableau par la même porte.
+        except (EffectifTableauInvalide, PrelevementEnAttente):
             return contexte
-        if len(participants) < 2:
-            return contexte  # pas de tableau possible : plan vide, sans duel
-
-        tableau = construire_tableau(
-            participants,
-            self._seeding,
-            self._byes,
-            self._routing,
-            profondeur_de(phase, self._registre),
-        )
-        for haut, bas in paires_du_premier_tour(tableau):
+        # Tableau terminé : plus rien à poser, mais le dernier tour reste ce qu'il y a à montrer.
+        contexte.tour = tour_a_poser(tableau) or tableau.nb_tours
+        for haut, bas in paires_du_tour(tableau, contexte.tour):
             self._enregistrer_duel(contexte, haut, bas)
         return contexte
 

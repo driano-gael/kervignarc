@@ -607,22 +607,35 @@ class InMemoryDuelRepository:
 
 
 class InMemoryPlacementTableauRepository:
-    """Port `PlacementTableauRepository` en mémoire (plan par phase, clé composite)."""
+    """Port `PlacementTableauRepository` en mémoire (plan par phase **et par tour**)."""
 
     def __init__(self) -> None:
-        # phase_id -> {inscription_id -> Affectation}
-        self._plans: dict[int, dict[int, Affectation]] = {}
+        # (phase_id, tour) -> {inscription_id -> Affectation}
+        self._plans: dict[tuple[int, int], dict[int, Affectation]] = {}
+
+    def par_phase_et_tour(self, phase_id: PhaseId, tour: int) -> list[Affectation]:
+        return list(self._plans.get((phase_id, tour), {}).values())
 
     def par_phase(self, phase_id: PhaseId) -> list[Affectation]:
-        return list(self._plans.get(phase_id, {}).values())
+        """Toutes les poses de la phase — port `LecteurDonneesDePhase`, pas le plan de duels."""
+        return [
+            affectation
+            for (phase, _), plan in self._plans.items()
+            if phase == phase_id
+            for affectation in plan.values()
+        ]
 
-    def definir_plan(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
-        self._plans[phase_id] = {a.inscription_id: a for a in affectations}
+    def definir_plan(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
+        self._plans[(phase_id, tour)] = {a.inscription_id: a for a in affectations}
 
-    def poser_plusieurs(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
-        plan = self._plans.setdefault(phase_id, {})
+    def poser_plusieurs(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
+        plan = self._plans.setdefault((phase_id, tour), {})
         for affectation in affectations:
             plan[affectation.inscription_id] = affectation
 
-    def retirer(self, phase_id: PhaseId, inscription_id: InscriptionId) -> None:
-        self._plans.get(phase_id, {}).pop(inscription_id, None)
+    def retirer(self, phase_id: PhaseId, tour: int, inscription_id: InscriptionId) -> None:
+        self._plans.get((phase_id, tour), {}).pop(inscription_id, None)

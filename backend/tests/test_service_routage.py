@@ -288,11 +288,6 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
-            self._classement(),
-            SeedingSerpent(),
-            ByesAuxMieuxClasses(),
-            self.routing,
-            _REGISTRE,
             self.saisie,
         )
 
@@ -882,14 +877,14 @@ def test_le_routage_est_une_lecture_pure() -> None:
     monde = _Monde()
     archers = _quatre(monde)
     monde.placer()
-    poses_avant = len(monde.placements.par_phase(monde.phase_id or 0))
+    poses_avant = len(monde.placements.par_phase_et_tour(monde.phase_id or 0, 1))
     duels_avant = len(monde.duels._tirs)
 
     premier = monde.routage.routage(monde.depart_id, tuple(archers))
     second = monde.routage.routage(monde.depart_id, tuple(archers))
 
     assert premier == second
-    assert len(monde.placements.par_phase(monde.phase_id or 0)) == poses_avant
+    assert len(monde.placements.par_phase_et_tour(monde.phase_id or 0, 1)) == poses_avant
     assert len(monde.duels._tirs) == duels_avant
 
 
