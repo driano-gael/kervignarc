@@ -494,36 +494,29 @@ def _a_classer(plage: Plage, rangs: frozenset[int]) -> bool:
 
 
 def paires_du_tour(tableau: Tableau, tour: int) -> tuple[tuple[Participant, Participant], ...]:
-    """Les duels **effectivement disputés** à ce tour : (haut, bas) de chaque match jouable.
+    """Les duels **réels** de ce tour : (haut, bas) de chaque match à deux occupants connus.
 
-    Sert le placement des duellistes côte à côte (E03US009, élargi aux tours ≥ 2 par E03US012). Un
-    match dont un camp est encore vide n'a **aucune** paire : au-delà du tour 1 les occupants ne
-    sont connus qu'une fois le tour amont tranché. On exclut les **byes** (un seul occupant,
-    `est_jouable` faux) : un exempté n'a pas d'adversaire à placer à côté de lui. Fonction **pure**,
-    ordre = celui des matchs (donc de l'ensemencement)."""
+    ⚠️ **On ne filtre PAS sur `est_jouable`** (qui exige `vainqueur is None`) : un duel **tranché**
+    reste un duel de ce tour, ses archers restent posés, et les filtrer les faisait passer pour des
+    poses **orphelines** — donc supprimer. Byes et camps vides exclus. Pure."""
     return tuple(
         (m.haut, m.bas)
         for m in tableau.matchs
-        if m.tour == tour and m.est_jouable and m.haut is not None and m.bas is not None
+        if m.tour == tour and not m.est_bye and m.haut is not None and m.bas is not None
     )
 
 
 def tour_a_poser(tableau: Tableau) -> int | None:
-    """Le plus petit tour **encore à jouer**, s'il est entièrement déterminé — `None` sinon.
+    """Le plus petit tour portant **au moins un duel jouable** — `None` si le tableau est fini.
 
-    C'est le tour dont les cibles peuvent être attribuées (E03US012) : la maille est le **tour
-    entier**, jamais le duel, parce que regrouper les archers suppose de connaître tout l'ensemble
-    à poser. Un tour dont un camp reste vide n'est pas encore déterminé — le tour amont n'est pas
-    tranché — et ne rend donc rien. Un tour sans aucun duel disputé (que des byes) n'a rien à poser
-    et ne retient pas la progression. Fonction **pure**.
+    C'est le tour dont les cibles peuvent être attribuées : ADR-0106 §2 porte le raisonnement.
+
+    ⚠️ **Ne pas y ajouter de garde « tour entièrement déterminé »**, malgré ce que le nom suggère :
+    les matchs nourris par le **perdant d'un bye** ont deux camps vides pour toujours, et une telle
+    garde rendrait `None` définitivement (sondé en revue). Fonction **pure**.
     """
-    a_jouer = [m for m in tableau.matchs if m.est_jouable and m.vainqueur is None]
-    if not a_jouer:
-        return None
-    tour = min(m.tour for m in a_jouer)
-    if any(m.haut is None or m.bas is None for m in a_jouer if m.tour == tour):
-        return None
-    return tour
+    jouables = [m for m in tableau.matchs if m.est_jouable]
+    return min((m.tour for m in jouables), default=None)
 
 
 def libelle_tour(

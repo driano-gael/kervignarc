@@ -264,6 +264,15 @@ class ServiceSaisieDuels:
         """
         return self._decor(tournoi_id, phase_id)
 
+    def numeros_avec_tir(self, phase_id: PhaseId) -> frozenset[int]:
+        """Les `match_numero` de cette phase qui portent **déjà un tir** (validé ou non).
+
+        Exposée pour le plan de duels (E03US012) : régénérer un tour dont des duels sont **en cours
+        de tir** redistribuerait des archers déjà sur la butte. Un `vainqueur` ne suffit pas à le
+        dire — c'est le tir **saisi et non encore validé** qui est le cas dangereux.
+        """
+        return self._duels.numeros_enregistres(phase_id)
+
     def duelliste(
         self, participant: Participant | None, lignes: dict[int, LigneClassement]
     ) -> Duelliste | None:

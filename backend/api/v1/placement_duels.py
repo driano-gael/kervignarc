@@ -119,8 +119,10 @@ async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> Pl
     """(Re)génère le plan de duels auto (**action admin**) — c'est aussi « annuler » (déterministe).
 
     Recalcule l'arbre du classement, place les duellistes côte à côte, écrase l'existant. Écriture
-    via la file. Pas de confirmation d'impact : régénérer ne touche **que** le tour en cours de
-    pose, jamais un tour déjà tiré (E03US012)."""
+    via la file. Pas de confirmation d'impact parce qu'il n'y a rien à chiffrer : la route est
+    **refusée** (409, `regeneration_sur_tour_en_tir`) dès qu'un duel du tour posé porte un tir.
+    ⚠️ Le tour posé est celui **qui se joue** — ne pas lire « tour déjà tiré » comme « tour
+    terminé »."""
     service: ServicePlacementDuels = request.app.state.service_placement_duels
     write_queue: WriteQueue = request.app.state.write_queue
     plan = await asyncio.wrap_future(

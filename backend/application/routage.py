@@ -55,8 +55,10 @@ from domain.tournoi import TournoiId
 # Les phrases que le panneau affiche quand l'information n'existe pas encore. Elles vivent ici (et
 # non dans le front) pour la même raison que le `blocage` du feu vert : c'est le serveur qui sait
 # **pourquoi** la donnée manque, et les quatre canaux de routage doivent dire la même chose.
-CIBLE_A_VENIR = "cible attribuée au lancement du tour"
-"""Tour ≥ 2 : la cible **existera**, elle n'est simplement pas encore posée (E05US010)."""
+CIBLE_A_VENIR = "cible attribuée dès que le tour précédent sera terminé"
+"""Tour pas encore posé : la cible **existera**. ⚠️ Le libellé disait « au lancement du tour »,
+faux depuis E03US012 — la pose suit la fin du tour amont, et « lancer » ne pose rien (ADR-0056 §3).
+Le feu vert dit la même chose, mot pour mot (`frontend/src/features/feu-vert/etat.ts`)."""
 
 CIBLE_NON_ATTRIBUEE = "cible non attribuée"
 """Tour 1 sans pose : aucun plan matérialisé, ou archer en réserve. Rien ne viendra tant que
@@ -1000,11 +1002,14 @@ class ServiceRoutage:
     ) -> tuple[tuple[int, str] | None, str | None, str | None]:
         """La pose à annoncer, le **manque** s'il n'y en a pas, l'**alerte** si elle est douteuse.
 
-        1. **tour non encore posé** → aucune cible (ADR-0106 §2 : le plan pose un tour à la fois) ;
-        2. **pose absente au tour posé** → aucune cible, libellé **neutre** ;
-        3. **duel non côte à côte** → cible annoncée **et** alerte qualifiée : même butte (se
-           décaler d'une place) ou buttes différentes (on nomme alors l'autre butte).
+        1. **aucun plan lisible** (`plan.tour is None`, pas de gabarit) → « cible non attribuée ».
+           ⚠️ Ne pas confondre avec 2, qui **promet** une cible : ici il n'y en aura pas ;
+        2. **tour non encore posé** → aucune cible (ADR-0106 §2) ;
+        3. **pose absente au tour posé** → aucune cible, libellé **neutre** ;
+        4. **duel non côte à côte** → cible annoncée **et** alerte qualifiée.
         """
+        if plan.tour is None:
+            return None, CIBLE_NON_ATTRIBUEE, None
         if match.tour != plan.tour:
             return None, CIBLE_A_VENIR, None
         pose = plan.poses.get(moi.ref_id)
@@ -1021,7 +1026,7 @@ class ServiceRoutage:
 
     # --- Lectures best-effort ------------------------------------------------------------------
 
-    # DETTE-019 : jumelle de `ServicePilotageTour._cibles_par_archer`.
+    # DETTE-019 : jumelle de `ServicePilotageTour._poses_du_tour_pose`.
     def _plan_lu(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _PlanLu:
         """Le plan de duels **persisté**, réduit à ce que le routage en fait.
 
@@ -1029,7 +1034,7 @@ class ServiceRoutage:
         garde la **position**, et on **conserve** `duels_separes` — le signal qui dit que la pose ne
         correspond plus au duel du jour, et que le pilotage, lui, jette.
 
-        Sans gabarit appliqué, plan **vide** — d'où « cible non attribuée », jamais un échec.
+        Sans gabarit, plan **vide** et `tour` à `None` — « cible non attribuée », jamais un échec.
         """
         try:
             plan = self._placement_duels.plan_de_duels(tournoi_id, phase_id)

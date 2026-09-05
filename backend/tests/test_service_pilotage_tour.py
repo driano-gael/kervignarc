@@ -26,7 +26,13 @@ import pytest
 
 from application.audit import ServiceAudit
 from application.classements import ServiceClassement
-from application.erreurs import AucunDuelALancer, PhasePasUnTableau
+from application.erreurs import (
+    AucunDuelALancer,
+    PhasePasUnTableau,
+    RegenerationSurTourEnTir,
+)
+from application.forfaits import ServiceForfait
+from application.phases import ServicePhases
 from application.pilotage_tour import ServicePilotageTour
 from application.placement_duels import ServicePlacementDuels
 from application.saisie_duels import ServiceSaisieDuels
@@ -53,6 +59,7 @@ from tests.conftest import (
     FauxArcherRepository,
     FauxCategorieRepository,
     FauxDepartRepository,
+    FauxDerouleRepository,
     FauxDuelRepository,
     FauxForfaitRepository,
     FauxInscriptionRepository,
@@ -89,6 +96,7 @@ class _Monde:
         )
         assert _d.id is not None
         self.depart_id = _d.id
+        self.deroules = FauxDerouleRepository()
         self.phases = FauxPhaseRepository(self.departs)
         self.gabarits = FauxGabaritRepository()
         self.inscriptions = FauxInscriptionRepository()
@@ -206,6 +214,24 @@ class _Monde:
             self.placements,
             self.saisie,
         )
+
+    @property
+    def forfait(self) -> ServiceForfait:
+        """Le service de forfait, **branché comme au composition root** : un walkover tranche un
+        duel sans qu'aucun score soit saisi (ADR-0106 §5, 2ᵉ chemin)."""
+        service = ServiceForfait(
+            self.forfaits, self.tournois, self.archers, self.phases, HorlogeFigee(_QUAND)
+        )
+        service.brancher_poseur_de_tour(self.placement)
+        return service
+
+    @property
+    def cycle_de_vie(self) -> ServicePhases:
+        """Le service des transitions de phase, **branché comme au composition root** : c'est lui
+        qui rattrape la pose sautée pendant une pause (ADR-0106 §5, 3ᵉ chemin)."""
+        service = ServicePhases(self.tournois, self.phases, self.departs, self.deroules)
+        service.brancher_poseur_de_tour(self.placement)
+        return service
 
     @property
     def pilotage(self) -> ServicePilotageTour:
@@ -547,11 +573,15 @@ def test_le_tour_suivant_recoit_ses_cibles_des_qu_il_est_determine() -> None:
     _quatre(monde)
     monde.placer()
     for numero in (
-        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
     ):
         monde.gagner(numero)
 
-    tour2 = [d for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 2]
+    tour2 = [
+        d for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels if d.tour == 2
+    ]
     assert tour2, "le tour 2 doit exister une fois le tour 1 tranché"
     assert all(d.participants_connus for d in tour2)
     assert all(d.cible_attribuee for d in tour2), "le tour 2 doit avoir reçu ses cibles sans geste"
@@ -569,11 +599,15 @@ def test_rien_ne_se_pose_tant_que_le_tour_n_est_pas_determine() -> None:
     _quatre(monde)
     monde.placer()
     premier = next(
-        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
     )
     monde.gagner(premier)
 
-    tour2 = [d for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 2]
+    tour2 = [
+        d for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels if d.tour == 2
+    ]
     finale = next(d for d in tour2 if d.sources_en_attente)
     assert not finale.cible_attribuee
     assert finale.blocage is not None and finale.blocage.startswith("en attente du duel")
@@ -581,19 +615,40 @@ def test_rien_ne_se_pose_tant_que_le_tour_n_est_pas_determine() -> None:
 
 def test_le_tour_avance_se_regroupe_sur_les_premieres_cibles() -> None:
     """CA (arbitrage du commanditaire, 05/09/2026) : « un tour avancé se tasse sur les cibles de
-    plus petit numéro et libère les cibles hautes »."""
-    monde = _Monde(capacites=(2, 2, 2))
-    _quatre(monde)
-    monde.placer()
-    for numero in (
-        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+    plus petit numéro et libère les cibles hautes ».
+
+    ⚠️ **Il faut un effectif qui DÉCROÎT** (relevé en revue) : à 4 archers, le tour 2 compte encore
+    4 duellistes (finale **et** petite finale) et occupe forcément les mêmes cibles — l'assertion
+    passait quelle que soit l'implémentation, y compris une qui recopierait les poses du tour 1. À
+    8 archers, le tour 2 n'en compte plus que 4 : les cibles hautes doivent se **libérer**.
+    """
+    monde = _Monde(capacites=(2, 2, 2, 2))
+    for valeurs in (
+        ("10", "10"),
+        ("9", "9"),
+        ("8", "8"),
+        ("7", "7"),
+        ("6", "6"),
+        ("5", "5"),
+        ("4", "4"),
+        ("3", "3"),
     ):
+        monde.inscrire_classe(valeurs)
+    monde.placer()
+    assert {
+        c.index
+        for c in monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id).cibles
+        if c.placements
+    } == {1, 2, 3, 4}, "les 8 archers occupent les 4 cibles au tour 1"
+
+    for numero in (1, 2, 3, 4):  # les quarts
         monde.gagner(numero)
 
-    plan = monde.placement.plan_de_duels(1, monde.phase_id)
+    plan = monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id)
     assert plan.tour == 2, "le plan suit le tour qui se joue"
     occupees = {c.index for c in plan.cibles if c.placements}
-    assert occupees and max(occupees) < 3, "la cible haute doit rester libre"
+    assert occupees == {1, 2}, f"le tour 2 doit se tasser sur les cibles basses, vu {occupees}"
+    assert 3 not in occupees and 4 not in occupees, "les cibles hautes doivent se libérer"
 
 
 def test_une_phase_en_pause_ne_prepare_pas_la_butte_d_apres() -> None:
@@ -606,7 +661,9 @@ def test_une_phase_en_pause_ne_prepare_pas_la_butte_d_apres() -> None:
     _quatre(monde)
     monde.placer()
     for numero in (
-        d.numero for d in monde.pilotage.feu_vert(1, monde.phase_id).duels if d.tour == 1
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
     ):
         monde.gagner(numero)
     # On défait la pose du tour 2 pour observer le geste suivant : c'est l'ordre réel du jour J —
@@ -617,8 +674,182 @@ def test_une_phase_en_pause_ne_prepare_pas_la_butte_d_apres() -> None:
     assert phase is not None
     monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
 
-    monde.placement.poser_le_tour_courant(1, monde.phase_id)
+    monde.placement.poser_le_tour_courant(monde.tournoi_id, monde.phase_id)
 
     assert (
         monde.placements.par_phase_et_tour(monde.phase_id, 2) == []
     ), "une phase en pause ne prepare pas la butte suivante"
+
+
+def test_valider_un_duel_du_tour_pose_ne_supprime_pas_ses_cibles() -> None:
+    """Non-régression du **bloquant** de revue : l'acte automatique ne détruit rien.
+
+    Le décor du tour était bâti sur `est_jouable`, qui exige `vainqueur is None` : dès qu'un duel
+    du tour posé était tranché, ses deux archers quittaient le décor, donc `_poses_a_jour` les
+    traitait en **orphelins** et supprimait leurs poses. Le plan se vidait au fil du tour, puis
+    entièrement à la fin de la phase — y compris au tour 1, qui n'était même pas censé changer.
+    """
+    monde = _Monde(capacites=(4, 4))
+    for valeurs in (
+        ("10", "10"),
+        ("9", "9"),
+        ("8", "8"),
+        ("7", "7"),
+        ("6", "6"),
+        ("5", "5"),
+        ("4", "4"),
+        ("3", "3"),
+    ):
+        monde.inscrire_classe(valeurs)
+    monde.placer()
+    poses_tour1 = monde.placements.par_phase_et_tour(monde.phase_id, 1)
+    assert len(poses_tour1) == 8
+
+    monde.gagner(1)
+    assert (
+        monde.placements.par_phase_et_tour(monde.phase_id, 1) == poses_tour1
+    ), "valider un duel ne doit pas retirer les poses de ses duellistes"
+
+    for numero in (2, 3, 4):
+        monde.gagner(numero)
+    poses_tour2 = monde.placements.par_phase_et_tour(monde.phase_id, 2)
+    assert len(poses_tour2) == 4, "le tour 2 est posé"
+    monde.gagner(5)
+    assert monde.placements.par_phase_et_tour(monde.phase_id, 2) == poses_tour2
+
+
+def test_le_plan_de_la_finale_reste_consultable_une_fois_le_tableau_termine() -> None:
+    """L'ADR promet que le dernier tour reste affiché ; il se vidait (relevé en revue)."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ):
+        monde.gagner(numero)
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 2
+    ):
+        monde.gagner(numero)
+
+    plan = monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id)
+    assert plan.tour == 2
+    assert any(cible.placements for cible in plan.cibles), "le plan du dernier tour reste visible"
+
+
+def test_la_reprise_apres_une_pause_pose_le_tour_qui_attendait() -> None:
+    """Non-régression du **bloquant** de revue : sans ce chemin, la pose n'a jamais lieu.
+
+    Un arrêt programmé coupe **à la fin d'un tour** (ADR-0091), donc exactement quand le tour
+    suivant devrait être posé — et la pose est sautée, la phase étant en pause. Il ne reste alors
+    plus aucun duel amont à valider : seule la reprise peut la rattraper.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ):
+        monde.gagner(numero)
+    # On rejoue la situation : le tour 2 n'a pas été posé (la phase était en pause à cet instant).
+    for affectation in monde.placements.par_phase_et_tour(monde.phase_id, 2):
+        monde.placements.retirer(monde.phase_id, 2, affectation.inscription_id)
+    phase = monde.phases.par_id(monde.phase_id)
+    assert phase is not None
+    monde.phases.enregistrer(dataclasses.replace(phase, statut=StatutPhase.EN_PAUSE))
+
+    monde.cycle_de_vie.reprendre(monde.depart_id, monde.phase_id)
+
+    assert monde.placements.par_phase_et_tour(
+        monde.phase_id, 2
+    ), "la reprise doit poser le tour resté sans cibles pendant la pause"
+
+
+def test_le_tour_1_n_est_jamais_pose_d_office() -> None:
+    """ADR-0106 §4 : le tour 1 garde son geste explicite — le compléter reposerait un archer que
+    l'organisateur a délibérément mis en réserve. La garde n'avait aucun test."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    assert monde.placements.par_phase_et_tour(monde.phase_id, 1) == []
+
+    monde.placement.poser_le_tour_courant(monde.tournoi_id, monde.phase_id)
+
+    assert (
+        monde.placements.par_phase_et_tour(monde.phase_id, 1) == []
+    ), "le tour 1 ne se pose que sur le geste « Générer le plan »"
+
+
+def test_un_tour_deja_pose_n_est_pas_recomplete_donc_la_reserve_tient() -> None:
+    """ADR-0106 §4 : « compléter les trous » **reposerait** l'archer mis en réserve — une réserve
+    *est* un trou. C'est l'objection qui exclut le tour 1, et elle vaut à tous les tours."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ):
+        monde.gagner(numero)
+    poses = monde.placements.par_phase_et_tour(monde.phase_id, 2)
+    assert poses, "le tour 2 est posé"
+    ecarte = poses[0].inscription_id
+    monde.placement.deplacer(monde.tournoi_id, monde.phase_id, ecarte, None, None)
+
+    monde.placement.poser_le_tour_courant(monde.tournoi_id, monde.phase_id)
+
+    restants = {a.inscription_id for a in monde.placements.par_phase_et_tour(monde.phase_id, 2)}
+    assert ecarte not in restants, "un archer mis en réserve ne doit pas être reposé d'office"
+
+
+def test_regenerer_un_tour_dont_un_duel_a_tire_est_refuse() -> None:
+    """La justification « au tour 1 aucun score n'existe » est tombée avec E03US012 : le tour posé
+    est celui **qui se joue**. Régénérer y déplacerait des archers sur la butte."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    saisie = monde.saisie
+    saisie.saisir_manche(
+        monde.tournoi_id, monde.phase_id, 1, 1, (ZoneScore.DIX,) * 3, (ZoneScore.SIX,) * 3
+    )
+
+    with pytest.raises(RegenerationSurTourEnTir):
+        monde.placement.regenerer(monde.tournoi_id, monde.phase_id)
+
+
+def test_un_tour_acheve_par_walkover_recoit_ses_cibles() -> None:
+    """CA E03US012, 2ᵉ chemin : un forfait tranche un duel **sans qu'aucun score soit saisi**.
+
+    Le seul test existant était un test de **câblage** : retirer l'appel `signaler` de
+    `declarer_en_duel` l'aurait laissé vert. Celui-ci prouve le comportement — c'est le cas banal
+    du jour J que la story met en ⚠️.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    numeros = [
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ]
+    monde.gagner(numeros[0])
+    perdant = monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id)
+    duel = next(d for d in perdant.duels if d.numero == numeros[1])
+    assert duel.haut is not None
+
+    monde.forfait.declarer_en_duel(
+        monde.tournoi_id, monde.phase_id, duel.haut.archer_id, NatureForfait.ABANDON, "ADMIN"
+    )
+
+    tour2 = [
+        d for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels if d.tour == 2
+    ]
+    assert tour2 and all(
+        d.cible_attribuee for d in tour2
+    ), "le walkover achève le tour 1 : le tour 2 doit recevoir ses cibles sans clic"

@@ -9420,8 +9420,24 @@ window.ATLAS.decisions = {
      "symboles": [
       "brancher_poseur_de_tour",
       "_signaler_validation_de",
+      "numeros_avec_tir",
       "declarer_en_duel",
-      "annuler_en_duel"
+      "annuler_en_duel",
+      "reprendre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "brancher_poseur_de_tour",
+      "_signaler_validation_de",
+      "numeros_avec_tir",
+      "declarer_en_duel",
+      "annuler_en_duel",
+      "reprendre"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9447,7 +9463,9 @@ window.ATLAS.decisions = {
       "_charger",
       "PlanDeDuels.tour",
       "poser_le_tour_courant",
-      "_completer"
+      "_completer",
+      "_refuser_si_le_tour_a_tire",
+      "regenerer"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9481,8 +9499,10 @@ window.ATLAS.decisions = {
      "symboles": [
       "brancher_poseur_de_tour",
       "_signaler_validation_de",
+      "numeros_avec_tir",
       "declarer_en_duel",
-      "annuler_en_duel"
+      "annuler_en_duel",
+      "reprendre"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9499,12 +9519,9 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PlacementTableauRepository",
-      "par_phase",
-      "application.formats.LecteurDonneesDePhase"
+      "par_phase"
      ],
-     "symboles_absents": [
-      "application.formats.LecteurDonneesDePhase"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9512,13 +9529,10 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "paires_du_tour",
-      "paires_du_premier_tour",
       "tour_a_poser",
       "None"
      ],
-     "symboles_absents": [
-      "paires_du_premier_tour"
-     ],
+     "symboles_absents": [],
      "verifiable": true
     },
     {
@@ -9565,21 +9579,17 @@ window.ATLAS.decisions = {
      "verifiable": true
     },
     {
-     "chemin": "frontend/src/features/feu-vert/etat.ts",
+     "chemin": "frontend/src/features/duels/Duels.tsx",
      "existe": true,
-     "symboles": [
-      "actionDuel",
-      "partitionner"
-     ],
+     "symboles": [],
      "symboles_absents": [],
      "verifiable": true
     },
     {
-     "chemin": "frontend/src/features/routage/presentation.ts",
+     "chemin": "frontend/src/features/feu-vert/etat.ts",
      "existe": true,
      "symboles": [
-      "actionDuel",
-      "partitionner"
+      "actionDuel"
      ],
      "symboles_absents": [],
      "verifiable": true
@@ -9594,6 +9604,7 @@ window.ATLAS.decisions = {
     "E03US012",
     "E05US010",
     "E05US024",
+    "E16US008",
     "E16US013"
    ]
   }

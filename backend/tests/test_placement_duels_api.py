@@ -194,10 +194,10 @@ def test_phase_inconnue_renvoie_404(app_duels: FastAPI, connecter_admin: Connect
     assert reponse.status_code == 404, reponse.text
 
 
-def test_les_deux_services_qui_tranchent_un_duel_signalent_la_pose_du_tour(
+def test_les_trois_chemins_qui_peuvent_poser_un_tour_signalent_le_poseur(
     app_duels: FastAPI,
 ) -> None:
-    """Le branchement du poseur de tour sur les **deux** chemins d'écriture, prouvé (ADR-0106 §5).
+    """Le branchement du poseur de tour sur les **trois** chemins, prouvé (ADR-0106 §5).
 
     ⚠️ **C'est le seul garde-fou du mode de panne** : un branchement oublié rend la pose automatique
     muette sans qu'une ligne rougisse (`DETTE-028`, déjà vécu sur les arrêts programmés, où la
@@ -207,11 +207,19 @@ def test_les_deux_services_qui_tranchent_un_duel_signalent_la_pose_du_tour(
     qu'aucun score soit saisi, donc sans passer par la validation. Un tour qui se termine sur un
     forfait — cas banal le jour J — n'aurait jamais reçu ses cibles.
 
+    ⚠️ **La reprise est le troisième, et son oubli était un bloquant de revue** : un arrêt programmé
+    coupe à la **fin d'un tour** (ADR-0091), donc la pose est sautée pendant la pause — et il ne
+    reste alors plus aucun duel amont à valider pour la rattraper.
+
     Il touche un attribut privé, comme son voisin d'E05US033 sur les arrêts, pour la même raison :
     le composition root n'expose pas ce qu'il a branché, et c'est ce branchement qu'on veut garder.
     """
     attendu = app_duels.state.service_placement_duels
-    for service in (app_duels.state.service_saisie_duels, app_duels.state.service_forfait):
+    for service in (
+        app_duels.state.service_saisie_duels,
+        app_duels.state.service_forfait,
+        app_duels.state.service_phases,
+    ):
         nom = type(service).__name__
         assert (
             service._pose_de_tour._poseur is attendu

@@ -171,6 +171,15 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "099",
+   "introduite_par": [
+    "E03US012"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "012",
    "introduite_par": [
     "E09US008"
@@ -223,7 +232,8 @@ window.ATLAS.avancement = {
    "resorption_us": [
     "E03US012",
     "E05US010",
-    "E16US013"
+    "E16US013",
+    "E16US008"
    ],
    "severite": "mineur"
   },
@@ -330,7 +340,8 @@ window.ATLAS.avancement = {
     "E05US033",
     "E05US034",
     "E05US035",
-    "E05US025"
+    "E05US025",
+    "E03US012"
    ],
    "severite": "mineur"
   },
@@ -2418,10 +2429,13 @@ window.ATLAS.avancement = {
     "0075",
     "0106"
    ],
-   "dettes_introduites": [],
+   "dettes_introduites": [
+    "099"
+   ],
    "dettes_resorbees": [
     "019",
-    "021"
+    "021",
+    "031"
    ],
    "epic": "03",
    "epic_titre": "Placement des archers & plan de cibles",
@@ -2432,7 +2446,7 @@ window.ATLAS.avancement = {
    ],
    "story": "stories/E03-placement.md",
    "titre": "Poser les cibles des tours suivants",
-   "titre_story": "Poser les cibles des tours suivants"
+   "titre_story": "Poser les cibles des tours suivants ✅"
   },
   {
    "adr": [
@@ -4302,7 +4316,8 @@ window.ATLAS.avancement = {
     "0050",
     "0075",
     "0096",
-    "0102"
+    "0102",
+    "0106"
    ],
    "dettes_introduites": [
     "017",
@@ -4310,7 +4325,9 @@ window.ATLAS.avancement = {
     "090",
     "091"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "019"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "✅",

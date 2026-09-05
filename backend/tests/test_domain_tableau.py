@@ -205,9 +205,11 @@ def test_tour_a_poser_est_vide_sur_un_tableau_termine() -> None:
     assert tour_a_poser(tableau) is None
 
 
-def test_tour_a_poser_saute_un_tour_sans_duel_dispute() -> None:
+def test_tour_a_poser_avance_quand_le_seul_duel_d_un_tour_est_joue() -> None:
     # 5 archers dans un tableau de 8 : le tour 1 n'a qu'un duel (4 vs 5), les têtes 1-3 sont
-    # exemptées. Un tour sans aucun duel disputé n'a rien à poser — on ne s'y arrête pas.
+    # exemptées. Une fois ce duel joué, le tour 1 n'a plus rien de jouable — on passe au suivant.
+    # ⚠️ Le nom disait « saute un tour sans duel disputé » : ce cas n'était PAS construit ici (le
+    # tour 1 a bien un duel). Renommé d'après ce qui est réellement vérifié (relevé en revue).
     tableau = construire(5)
     assert tour_a_poser(tableau) == 1
     tableau = jouer_gagne_mieux_classe(

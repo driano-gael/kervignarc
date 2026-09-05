@@ -17,6 +17,7 @@ from application.erreurs import (
     PhaseIntrouvable,
     PhasePasUnTableau,
     PrelevementEnAttente,
+    RegenerationSurTourEnTir,
     TournoiIntrouvable,
 )
 from application.portee import phase_du_tournoi
@@ -95,6 +96,8 @@ class _Contexte:
     # **même salle** que la qualification, un réglage qui ne vaudrait que pour l'une serait
     # incompréhensible pour l'organisateur.
     cloisonnement: Cloisonnement
+    # Les `match_numero` du tour posé : sert la garde de régénération (E03US012).
+    numeros_du_tour: set[int] = field(default_factory=set)
     inscriptions: list[Inscription] = field(default_factory=list)
     donnees: dict[ArcherId, ArcherAPlacer] = field(default_factory=dict)
     sans_blason: set[InscriptionId] = field(default_factory=set)
@@ -157,11 +160,14 @@ class ServicePlacementDuels:
     def regenerer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> PlanDeDuels:
         """(Re)génère le plan de duels auto et **écrase** l'existant — sert aussi d'« annuler ».
 
-        Déterministe (ADR-0023) : recalcule l'arbre du classement, réordonne l'entrée pour
-        l'adjacence (`_ordonner_pour_adjacence`), place, matérialise. Pas d'alerte d'impact
-        (E12US007) : au tour 1 aucun score de duel n'existe, jamais de régénération « massive ».
+        Déterministe (ADR-0023), **pour le seul tour posé**.
+
+        ⚠️ **Refusé (409) si un duel du tour porte déjà un tir** : le tour posé est celui **qui se
+        joue**, et non plus le tour 1 avant tout tir. Sans cette garde, régénérer redistribuerait
+        des archers déjà sur la butte (ADR-0106 §4).
         """
         contexte = self._charger(tournoi_id, phase_id)
+        self._refuser_si_le_tour_a_tire(contexte)
         plan = placer(
             contexte.gabarit.cibles,
             tuple(contexte.donnees.values()),
@@ -196,7 +202,7 @@ class ServicePlacementDuels:
         purge des poses orphelines (`_poses_a_jour`) peut précéder un refus 409, mais elle ne retire
         que des lignes déjà **invisibles** en lecture — l'état rendu, lui, ne bouge pas.
         """
-        contexte = self._charger(tournoi_id, phase_id)
+        contexte = self._charger(tournoi_id, phase_id)  # DETTE-099 : tour recalculé, pas reçu
         if inscription_id not in contexte.archer_par_inscription:
             raise InscriptionIntrouvable(
                 f"L'inscription {inscription_id} ne dispute pas la phase {phase_id}."
@@ -255,6 +261,15 @@ class ServicePlacementDuels:
         """
         return self._completer(self._charger(tournoi_id, phase_id))
 
+    def _refuser_si_le_tour_a_tire(self, contexte: _Contexte) -> None:
+        """Refuse de rejouer le placement d'un tour dont un duel porte déjà un tir (E03US012)."""
+        numeros = self._saisie_duels.numeros_avec_tir(contexte.phase_id)
+        if numeros & contexte.numeros_du_tour:
+            raise RegenerationSurTourEnTir(
+                f"Des duels du tour {contexte.tour} ont déjà tiré : régénérer le plan "
+                "déplacerait des archers en cours de match."
+            )
+
     def _completer(self, contexte: _Contexte) -> PlanDeDuels:
         """Complète les trous du plan d'un décor déjà chargé — corps de `placer_les_restants`."""
         phase_id = contexte.phase_id
@@ -295,19 +310,21 @@ class ServicePlacementDuels:
         )
 
     def poser_le_tour_courant(self, tournoi_id: TournoiId, phase_id: PhaseId) -> None:
-        """Donne une cible aux duellistes du tour à poser qui n'en ont pas — **sans clic**.
+        """Pose les cibles du tour à poser s'il n'en a aucune — **sans clic**. ADR-0106 §4.
 
-        Appelée après chaque acte qui peut trancher un duel — ADR-0106 §4 porte le raisonnement.
-
-        ⚠️ **Compléter, jamais régénérer** : régénérer écraserait les ajustements manuels de
-        l'organisateur à la première validation venue. Les deux exclusions ci-dessous (tour 1,
-        phase en pause) sont nécessaires, pas des optimisations.
+        ⚠️ **Un tour ne se pose qu'UNE fois.** Sans cette garde, « compléter les trous »
+        **reposerait** l'archer que l'organisateur vient de mettre en réserve — une réserve *est*
+        un trou. Les trois sorties ci-dessous sont nécessaires, pas des optimisations.
+        ⚠️ `DETTE-031` : une reconstruction complète du tableau par validation de duel, sur le
+        writer unique.
         """
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None or phase.statut is StatutPhase.EN_PAUSE:
             return
         contexte = self._charger(tournoi_id, phase_id)
         if contexte.tour == 1:
+            return
+        if self._placements.par_phase_et_tour(phase_id, contexte.tour):
             return
         self._completer(contexte)
 
@@ -603,9 +620,11 @@ class ServicePlacementDuels:
     def _charger(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _Contexte:
         """Valide les gardes et assemble le décor du **tour à poser** : tableau → duellistes.
 
-        Le tour posé est celui que `tour_a_poser` désigne — le plus petit encore à jouer, et
-        seulement s'il est entièrement déterminé (E03US012). Un tableau **terminé** garde son
-        dernier tour affiché plutôt que de vider l'écran : le plan de la finale reste consultable.
+        Le tour posé est celui que `tour_a_poser` désigne. Un tableau **terminé** n'en a plus, et
+        garde alors son dernier tour affiché plutôt que de vider l'écran : le plan de la finale
+        reste consultable (E03US012).
+
+        ⚠️ `DETTE-031` : toute lecture du plan paie ici une reconstruction complète du tableau.
         """
         tournoi = self._tournois.par_id(tournoi_id)
         if tournoi is None:
@@ -637,8 +656,11 @@ class ServicePlacementDuels:
         # tolérance que le feu vert, qui lit le même tableau par la même porte.
         except (EffectifTableauInvalide, PrelevementEnAttente):
             return contexte
-        # Tableau terminé : plus rien à poser, mais le dernier tour reste ce qu'il y a à montrer.
+        # ⚠️ **Le `None` de `tour_a_poser` a UN seul sens** — plus aucun duel jouable, donc tableau
+        # terminé —, et c'est ce qui rend ce repli sûr. Lui en donner un second sans rouvrir ici
+        # ferait charger la finale sur un tableau *indéterminé*.
         contexte.tour = tour_a_poser(tableau) or tableau.nb_tours
+        contexte.numeros_du_tour = {m.numero for m in tableau.matchs if m.tour == contexte.tour}
         for haut, bas in paires_du_tour(tableau, contexte.tour):
             self._enregistrer_duel(contexte, haut, bas)
         return contexte

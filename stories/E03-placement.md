@@ -195,7 +195,7 @@ l'événement.
 - **Dépend de** : E03US001, E03US004 · **Jalon** : J1 · **Origine** : démo 27/07/2026
 
 
-### E03US012 — Poser les cibles des tours suivants
+### E03US012 — Poser les cibles des tours suivants ✅
 
 *En tant qu'*administrateur, *je veux* que les duellistes d'un tour ≥ 2 reçoivent une cible dès que
 leur tour est déterminé, *afin de* savoir où envoyer chaque archer au lieu de lire
@@ -248,6 +248,25 @@ leur tour est déterminé, *afin de* savoir où envoyer chaque archer au lieu de
   - ⚠️ **Pas de sélecteur de tour** à l'écran du plan de duels dans cette tranche : il rend le plan
     du **tour en cours**, qu'il **nomme**. Consulter un tour passé ou à venir est un confort écarté du
     périmètre, faute de besoin énoncé.
+  - ✅ **Arbitrages tranchés en revue le 05/09/2026, reversés ici** (règle 9) :
+    - **Un tour ne se pose qu'UNE fois.** La rédaction d'origine disait « compléter les trous », en
+      croyant le geste inoffensif. Il ne l'est pas : une **réserve est un trou**, donc compléter
+      reposait d'office l'archer que l'organisateur venait d'écarter — exactement l'objection qui
+      fait exclure le tour 1, et elle valait aux tours qu'on n'avait pas exclus.
+    - **La pose ne rattrape PAS un tour périmé par une correction.** La rédaction d'origine le
+      promettait ; aucun chemin ne le déclencherait (un résultat de duel ne se corrige pas, et la
+      correction d'un score de qualification ne signale rien). C'est un geste de l'organisateur.
+    - **Trois chemins de déclenchement, pas deux** : valider un duel, le trancher par forfait, et
+      **reprendre** une phase après une pause. Sans le troisième, un arrêt programmé — qui coupe
+      *entre deux tours* — annulait la fonctionnalité dans sa configuration nominale.
+    - **`regenerer` est refusé (409) sur un tour dont un duel a déjà tiré.** La justification « au
+      tour 1 aucun score n'existe » est tombée avec cette US : le tour posé est celui **qui se
+      joue**.
+    - ⚠️ **La garde « tour entièrement déterminé » n'existe pas et ne doit pas exister** : les matchs
+      nourris par le perdant d'un bye ont deux camps vides pour toujours ; l'ajouter supprimerait
+      l'automatisme (démontré par sonde).
+  - ⚠️ **`DETTE-031` élargie** (reconstruction du tableau à chaque validation) et **`DETTE-099`
+    ouverte** (un ajustement peut atterrir sur un autre tour, le tour pouvant basculer sans geste).
   - US à **surface visible** → doc fonctionnelle + journal d'avancement.
 - **Dépend de** : E03US009, E05US005, E12US002 · **Jalon** : J2 · **Origine** : cadrage d'`E16US013`,
   05/09/2026 — résorption de `DETTE-019`

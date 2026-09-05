@@ -308,6 +308,10 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         placements_tableau,
         saisie_duels,
     )
+    # ⚠️ **Le poseur de tour EST branché ici**, à la différence de l'évaluateur d'arrêts ci-dessus :
+    # sans lui, une simulation ne poserait jamais les tours ≥ 2 et cesserait d'être le miroir de la
+    # production sur la capacité même d'E03US012 (ADR-0106 §5).
+    saisie_duels.brancher_poseur_de_tour(placement_duels)
     return HarnaisSimulation(
         tournois,
         archers,
@@ -1324,11 +1328,13 @@ def create_app(
     # `ServiceSaisieDuels`, brancher dans l'autre sens à la construction fermerait le cycle.
     #
     # ⚠️ **Sans cette boucle, la pose automatique est inerte** — mode de panne de `DETTE-028`.
-    # ⚠️ **DEUX services, et pas un** : un tour s'achève par la validation d'un duel **ou** par un
-    # forfait (walkover), qui tranche sans qu'aucun score soit saisi. Le test les nomme un par un.
+    # ⚠️ **TROIS services, et pas deux** : valider un duel, le trancher par forfait, et **reprendre**
+    # après une pause — seul chemin qui rattrape la pose sautée (ADR-0106 §5, bloquant de revue).
+    # Le test les nomme un par un.
     poseur: PoseurDeTour = app.state.service_placement_duels
     app.state.service_saisie_duels.brancher_poseur_de_tour(poseur)
     app.state.service_forfait.brancher_poseur_de_tour(poseur)
+    app.state.service_phases.brancher_poseur_de_tour(poseur)
 
     # Idempotence de la saisie (ADR-0036) : registre en mémoire consulté **dans** la commande de la
     # file (writer unique) par l'endpoint de saisie, pour qu'un rejeu réseau ne double ni une volée

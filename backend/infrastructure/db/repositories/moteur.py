@@ -1061,9 +1061,9 @@ class PlacementTableauRepositorySQL:
 
     Jumeau de `PlacementRepositorySQL`, scoppé par **phase** et **tour** au lieu du départ, clé
     composite `(phase_id, tour, inscription_id)` — l'ordre de la clé suit celui des colonnes du
-    modèle, dont dépendent les `session.get` ci-dessous. Pas de couture d'audit ici : la
-    régénération d'un plan de duels n'est jamais « massive » au sens d'E12US007 (ADR-0048), donc
-    pas de `definir_plan_avec_trace`.
+    modèle, dont dépendent les `session.get` ci-dessous. Pas de couture d'audit : le service
+    **refuse** de régénérer un tour qui a déjà tiré, jamais de régénération « massive » au sens
+    d'E12US007 (ADR-0048/0106) — donc pas de `definir_plan_avec_trace`.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:

@@ -109,8 +109,9 @@ class ServiceForfait:
         """Annule un forfait de duel : à la reconstruction suivante, le walkover disparaît."""
         self._exiger_phase_de_tableau(tournoi_id, phase_id)
         self._annuler(tournoi_id, phase_id, archer_id, annule_par)
-        # L'annulation défait un walkover : le tour redevient indéterminé et ses poses orphelines.
-        # Signaler ici les fait purger au prochain chargement plutôt qu'au prochain hasard.
+        # L'annulation défait un walkover : le tour à poser peut reculer. Le signal ne purge rien
+        # (les poses d'un tour non posé ne sont simplement plus lues) — il repose le tour redevenu
+        # courant s'il n'a aucune pose.
         self._pose_de_tour.signaler(tournoi_id, phase_id)
 
     # --- Interne -------------------------------------------------------------------------------

@@ -272,22 +272,10 @@ window.ATLAS.controles = {
    "message": "annonce vu_par_archer dans « backend/domain/classement_clubs.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0104"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0106"
-  },
-  {
-   "code": "portage-symbole-absent",
-   "message": "annonce paires_du_premier_tour dans « backend/domain/tableau.py » — introuvable(s) dans le fichier.",
-   "severite": "signal",
-   "sujet": "ADR-0106"
   }
  ],
  "resume": {
   "bloquants": 0,
-  "signaux": 47
+  "signaux": 45
  }
 };

@@ -301,9 +301,15 @@ class _Monde:
         self.placement.regenerer(self.tournoi_id, self.phase_id)
 
     def gagner(self, numero: int) -> None:
-        """Fait gagner 6-0 le camp **haut** du match `numero` (3 manches) puis valide."""
+        """Fait gagner 6-0 le camp **haut** du match `numero` (3 manches) puis valide.
+
+        Le poseur de tour est branché **comme au composition root** (ADR-0106 §5) : sans lui, le
+        décor observerait silencieusement le monde d'avant E03US012 — le mode de panne
+        `DETTE-028` reproduit à l'intérieur du décor censé le couvrir.
+        """
         assert self.phase_id is not None
         saisie = self.saisie
+        saisie.brancher_poseur_de_tour(self.placement)
         for manche in (1, 2, 3):
             saisie.saisir_manche(
                 self.tournoi_id,
@@ -473,10 +479,11 @@ def test_l_exempt_est_route_directement_au_tour_deux() -> None:
 # --- Ce qui n'est pas encore connu est **nommé** (arbitrage de cadrage du 30/07/2026) -----------
 
 
-def test_pas_de_cible_au_dela_du_premier_tour_et_le_manque_est_nomme() -> None:
-    """Le placement ne pose que le **1er tour** (ADR-0048 ; l'intégral 1→N est E05US010). Le duel
-    suivant n'a donc **aucune** cible — et surtout pas celle du tour 1, qui serait **périmée** et
-    enverrait le finaliste sur son ancienne butte. Le panneau dit que la cible viendra."""
+def test_un_tour_pas_encore_pose_n_annonce_pas_de_cible_et_le_manque_est_nomme() -> None:
+    """Le plan pose **un tour à la fois**, celui qui se joue (ADR-0106 §2). Un duel d'un tour qui
+    n'est pas encore posé n'a donc **aucune** cible — et surtout pas celle d'un autre tour, qui
+    serait **périmée** et enverrait le finaliste sur son ancienne butte. Le panneau dit qu'elle
+    viendra. ⚠️ Ici une seule demie est jouée : le tour 2 n'est pas déterminé, donc pas posé."""
     monde = _Monde()
     _quatre(monde)
     monde.placer()
@@ -492,6 +499,33 @@ def test_pas_de_cible_au_dela_du_premier_tour_et_le_manque_est_nomme() -> None:
     # assertion lâche laisserait passer n'importe lequel des trois — donc ne prouverait rien.
     assert ligne.prochain.manque == CIBLE_A_VENIR
     assert ligne.prochain.alerte is None
+
+
+def test_le_tour_pose_annonce_bien_la_cible_du_plan_de_ce_tour() -> None:
+    """CA E03US012 : « le panneau de routage annonce la vraie cible » au-delà du tour 1.
+
+    Quatrième et dernier site de la garde levée — le seul qui n'avait aucun test positif : son
+    voisin ci-dessus reste vert pour une autre raison (tour 2 non déterminé), ce qui ne prouve
+    rien du comportement neuf.
+    """
+    monde = _Monde()
+    _quatre(monde)
+    monde.placer()
+    finaliste = monde.gagne_de(1)
+    monde.gagner(1)
+    monde.gagner(2)
+
+    assert monde.phase_id is not None
+    poses = {
+        pose.archer_id: (cible.index, pose.position)
+        for cible in monde.placement.plan_de_duels(monde.tournoi_id, monde.phase_id).cibles
+        for pose in cible.placements
+    }
+    ligne = monde.routage.routage(monde.depart_id, (finaliste,)).archers[0]
+
+    assert ligne.prochain is not None
+    assert ligne.prochain.manque is None, "le tour 2 est posé : plus rien ne manque"
+    assert (ligne.prochain.cible, ligne.prochain.position) == poses[finaliste]
 
 
 def test_adversaire_pas_encore_connu_nomme_le_duel_attendu() -> None:

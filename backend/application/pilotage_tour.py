@@ -215,7 +215,7 @@ class ServicePilotageTour:
         cibles = ", ".join(str(cible) for cible in resume.cibles) or "—"
         return f"{resume.nb_duels} duel(s) lancé(s), cible(s) {cibles}"
 
-    # DETTE-019 : jumelle de `ServiceRoutage._poses_par_archer` (E04US018).
+    # DETTE-019 : jumelle de `ServiceRoutage._plan_lu` (E04US018).
     def _poses_du_tour_pose(
         self, tournoi_id: TournoiId, phase_id: PhaseId
     ) -> tuple[int | None, dict[int, int]]:

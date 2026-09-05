@@ -29,7 +29,18 @@ attendait `E05US010`, livrée le 31/07 et **hors sujet** (son « 1→N » désig
 classement, pas la pose de cibles) — aucune US n'a jamais porté ce travail. ⚠️ **`ADR-0105` était
 déjà pris** par `E16US015` la veille : collision vue en tenant la liste d'ADR-0075, pas en listant
 le dossier. ⚠️ `ADR-0048` **rouvert** (sa Décision 2 fixait l'ancienne clé) et doté de sa section
-« Porté dans le code par », qu'il n'avait pas)*
+« Porté dans le code par », qu'il n'avait pas. ⚠️ **La revue a trouvé DEUX bloquants**, chacun
+relevé par plusieurs axes : (1) après un **arrêt programmé**, le tour suivant n'était **jamais** posé
+— l'arrêt coupe *entre deux tours*, donc pile quand la pose devrait avoir lieu, et rien ne la
+rejouait à la reprise : la fonctionnalité s'annulait dans sa configuration nominale ; (2) l'acte
+automatique **détruisait** des poses et **replaçait** un archer mis en réserve, parce que le décor du
+tour était bâti sur `est_jouable` — un duel tranché en sortait, donc ses poses passaient pour
+orphelines. Ce second défaut **régressait aussi le tour 1**, que l'US disait ne pas toucher. Les deux
+sont corrigés et verrouillés par des tests. ⚠️ **L'axe adversarial a tranché contre trois autres
+axes** : ils proposaient de rendre « vivante » une garde morte de `tour_a_poser` ; il a **prouvé par
+sonde** que ce correctif supprimerait l'automatisme — les matchs nourris par le perdant d'un bye ont
+deux camps vides pour toujours. La garde a donc été **supprimée** et la documentation alignée sur la
+sémantique réelle)*
 
 **Précédente : `E16US015`**
 *(**un QR par scoreur** — le scoreur ouvre sa session **en scannant**, au lieu de retaper son code.
