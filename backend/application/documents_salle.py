@@ -7,7 +7,9 @@ parce que le jour J l'admin accède au serveur par son IP réseau. ADR-0031
 
 from __future__ import annotations
 
-from application.erreurs import PosteIntrouvable, TournoiIntrouvable
+from urllib.parse import quote
+
+from application.erreurs import PosteIntrouvable, ScoreurIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CarteScoreur, CartesScoreurs, EtiquetteCible, EtiquettesCibles
 from domain.ports import (
     GenerateurDocumentsSalle,
@@ -16,6 +18,7 @@ from domain.ports import (
     TournoiRepository,
 )
 from domain.poste import TypePoste
+from domain.scoreur import ScoreurId
 from domain.tournoi import Tournoi, TournoiId
 
 
@@ -91,6 +94,26 @@ class ServiceDocumentsSalle:
         # base URL publique configurée — d'où l'intérêt d'ouvrir l'admin par l'IP LAN (E11US008).
         return self._generateur.qr_rattachement(_url_rattachement(origine, poste.code))
 
+    def qr_scoreur(self, tournoi_id: TournoiId, scoreur_id: ScoreurId, origine: str) -> bytes:
+        """Rend en **SVG** le QR de session d'un scoreur (E16US015), ADR-0105.
+
+        Même **port** que `qr_rattachement`, mais **forme d'URL différente** —
+        `{origine}/scoreur#code=<code>`, cf. `_url_scoreur`. Lève `TournoiIntrouvable` si le tournoi
+        n'existe pas, `ScoreurIntrouvable` sinon.
+        """
+        self._verifier_tournoi(tournoi_id)
+        scoreur = self._scoreurs.par_id(scoreur_id)
+        # ⚠️ Garde de **cohérence 404** (hors-tournoi = inexistant), que `par_tournoi_et_type`
+        # donne gratuitement au QR de cible et que `par_id` n'assure pas — le code est unique dans
+        # toute la base (cf. le port `ScoreurRepository`). ⚠️ Ce n'est PAS une garde de fuite entre
+        # tournois : `exiger_admin` ne borne rien au tournoi, et cet admin liste déjà tous les
+        # codes en clair (motif corrigé en 2ᵉ passe de revue — la prémisse inverse est fausse).
+        if scoreur is None or scoreur.tournoi_id != tournoi_id:
+            raise ScoreurIntrouvable(
+                f"Aucun scoreur d'identifiant {scoreur_id} dans le tournoi {tournoi_id}."
+            )
+        return self._generateur.qr_rattachement(_url_scoreur(origine, scoreur.code))
+
     def cartes_scoreurs(self, tournoi_id: TournoiId) -> bytes:
         """Rend en PDF les cartes de scoreur (un papier par scoreur : nom + code personnel).
 
@@ -114,10 +137,20 @@ class ServiceDocumentsSalle:
 def _url_rattachement(origine: str, code: str) -> str:
     """URL de rattachement d'un poste : `{origine}/?poste=<code>`, sans `//` parasite.
 
-    Le front lit le paramètre de query `poste` à la racine (`frontend/src/features/poste/url.ts`).
-    Les codes sont tirés d'un alphabet URL-safe (sans confondables) : aucun échappement nécessaire.
+    ⚠️ `quote` n'est pas décoratif : l'alphabet sans confondables qui le rendrait inutile est une
+    garantie d'un AUTRE fichier (`infrastructure/postes/codes.py`). Lu à la racine par
+    `frontend/src/features/poste/url.ts`.
     """
-    # DETTE-012 : `origine` est l'origine de la requête admin (`request.base_url`), faute de base
-    # URL publique configurée. Correct dans le flux réel (IP réseau le jour J), faux depuis
-    # `localhost`. Résorption : base URL configurable en E11US001 (mise en réseau).
-    return f"{origine.rstrip('/')}/?poste={code}"
+    # DETTE-012 : `origine` est l'origine de la requête admin, faute de base URL configurée.
+    return f"{origine.rstrip('/')}/?poste={quote(code, safe='')}"
+
+
+def _url_scoreur(origine: str, code: str) -> str:
+    """URL de session d'un scoreur : `{origine}/scoreur#code=<code>` — ADR-0105 § Décision 3.
+
+    ⚠️ **Deux écarts délibérés** avec `_url_rattachement`, motivés dans l'ADR : le chemin nomme le
+    monde, et le code vit dans le **fragment** — jamais envoyé au serveur, donc hors journal d'accès
+    et hors `Referer`. Lu par `frontend/src/features/scoreur-session/url.ts`.
+    """
+    # DETTE-012, 3ᵉ site — et le seul où le QR reste porteur du code (registre, section détail).
+    return f"{origine.rstrip('/')}/scoreur#code={quote(code, safe='')}"

@@ -1,4 +1,4 @@
-"""Documents de salle — deux PDF à imprimer, plus le **QR d'une cible à l'écran** (SVG).
+"""Documents de salle — deux PDF à imprimer, plus les **QR à l'écran** (SVG) : cible, scoreur.
 
 Le SVG est chargé par **blob authentifié** : le Bearer admin vit en JS, un `<img src>` direct
 n'emporterait pas le jeton. ⚠️ **Réservé à l'admin** (`exiger_admin`, E10US001) : les QR encodent
@@ -75,3 +75,15 @@ async def cartes_codes(tournoi_id: int, request: Request) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{nom_fichier}"'},
     )
+
+
+@router.get(
+    "/tournois/{tournoi_id}/scoreurs/{scoreur_id}/qr",
+    dependencies=[Depends(exiger_admin)],
+    responses=_SVG,
+)
+async def qr_scoreur(tournoi_id: int, scoreur_id: int, request: Request) -> Response:
+    """Renvoie l'image **SVG** du QR de **session** d'un scoreur (affiché à l'écran, E16US015)."""
+    service: ServiceDocumentsSalle = request.app.state.service_documents_salle
+    svg = await run_in_threadpool(service.qr_scoreur, tournoi_id, scoreur_id, str(request.base_url))
+    return Response(content=svg, media_type="image/svg+xml")

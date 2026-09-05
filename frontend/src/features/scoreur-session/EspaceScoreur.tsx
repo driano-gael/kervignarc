@@ -6,7 +6,7 @@
 // aucune cible (D-12) — il pourra valider n'importe laquelle. La **surface de validation** (voir les
 // cibles, valider) relève de la saisie (E04US002) : ici, on ouvre et on ferme la session.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import {
   type ScoreurConnecte,
@@ -22,20 +22,36 @@ import { useCreneauDesDuels } from '../departs/hooks'
 import { PanneauForfaitsQualif } from '../forfaits/PanneauForfaitsQualif'
 import { useConnexionScoreur, useDeconnexionScoreur } from './hooks'
 
-export function EspaceScoreur() {
+export function EspaceScoreur({ codeUrl = null }: { codeUrl?: string | null }) {
   const scoreur = useSessionScoreurStore((s) => s.scoreur)
+  // ⚠️ `codeUrl` vient du **shell** (`App.tsx`), qui le lit et l'efface de l'adresse : ce composant
+  // n'est pas monté sur une tablette déjà rattachée, il ne peut donc pas répondre de l'effacement.
+  // Un scoreur déjà connecté qui rescanne ne monte même pas le formulaire ci-dessous.
 
   return (
     <section className="carte carte--large">
       <h2 className="carte__titre">Espace scoreur</h2>
-      {scoreur ? <SessionOuverte scoreur={scoreur} /> : <FormulaireCode />}
+      {scoreur ? <SessionOuverte scoreur={scoreur} /> : <FormulaireCode codeUrl={codeUrl} />}
     </section>
   )
 }
 
-function FormulaireCode() {
-  const [code, setCode] = useState('')
+function FormulaireCode({ codeUrl }: { codeUrl: string | null }) {
+  // Arrivée par le QR (E16US015) : le champ est prérempli, et la session s'ouvre sans geste. Le
+  // champ garde le code même si l'appel échoue — le scoreur corrige au lieu de repartir de zéro.
+  const [code, setCode] = useState(codeUrl ?? '')
   const connexion = useConnexionScoreur()
+  // ⚠️ Garde de **tentative unique**. Sans elle, StrictMode (double montage en dev) rejouerait la
+  // connexion, et tout re-rendu du formulaire aussi — le champ resterait prérempli tant que l'appel
+  // n'a pas abouti. Un `ref` et non un `state` : ce drapeau ne doit provoquer aucun rendu.
+  const tentee = useRef(false)
+
+  const { mutate } = connexion
+  useEffect(() => {
+    if (tentee.current || codeUrl === null || codeUrl.trim() === '') return
+    tentee.current = true
+    mutate(codeUrl)
+  }, [codeUrl, mutate])
 
   const entreeValide = code.trim() !== ''
 

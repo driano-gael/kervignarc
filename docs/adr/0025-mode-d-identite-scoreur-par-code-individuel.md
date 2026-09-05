@@ -40,6 +40,11 @@ créés/modifiés/supprimés **au runtime**, **nominatifs** et rattachés à un 
 `tournoi_id`, dans le périmètre DETTE-001), redéfinissable même tournoi en cours (`D-14`, aucune
 garde de statut).
 
+> ⚠️ **Amendé le 04/09/2026 par [ADR-0105](0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md)**
+> (E16US015) : « distribué sur papier et **retapé** » n'est plus exact — le code est aussi
+> **scannable** depuis un QR affiché à l'écran de l'admin. L'alphabet sans confondables et les
+> 6 caractères restent justifiés par la saisie manuelle, qui demeure le repli.
+
 **2. Code individuel généré par le serveur, unique dans toute la base.** L'admin déclare un scoreur
 par son **nom** ; le système **génère** son `code` (comme `Depart.numero` est attribué par le
 service). Le code est un **secret d'usage** distribué sur papier et **retapé** par le scoreur : d'où
@@ -88,3 +93,29 @@ Côté front, chaque requête n'engage **qu'une** identité (portée `'admin' | 
 - **Périmètre** : E10US003 livre la **définition** (CRUD admin) et la **session** (login/déconnexion).
   L'autorisation des endpoints de **validation** et la **trace** nominative sont E04US002 / E10US005 —
   `exiger_scoreur` et le store nominatif sont **prêts**, rien à élargir tant que ces endpoints n'existent pas.
+
+## Porté dans le code par
+
+*(Section ajoutée le 05/09/2026 : l'amendement d'ADR-0105 touche la § Décision, ce qui **rouvre** cet
+ADR au sens d'[ADR-0075 § Portée de la règle](0075-le-depart-est-la-portee-sportive.md) — relevé en
+2ᵉ passe de revue d'E16US015. Vérifiée en ouvrant chaque module, pas déduite de la décision.)*
+
+⚠️ **Complétée en 3ᵉ passe** : la 1ʳᵉ rédaction n'avait fait le balayage que **dans un sens** — partir
+de chaque décision et lui chercher un porteur — au lieu de partir du **code** et chercher tout ce qui
+applique la décision. Quatre porteurs manquaient, dont la contrainte `UNIQUE(code)`. Une section
+sous-listée se lit comme une preuve autant qu'une section sur-promise : c'est le défaut symétrique de
+celui d'ADR-0028, et l'atlas ne peut pas le voir (il ne détecte que les symboles **absents**).
+
+| Module | Ce qu'il porte |
+|---|---|
+| `backend/domain/scoreur.py` | Décision 1 : l'entité `Scoreur` du tournoi, et `normaliser_code` (forme canonique, comparaison à la connexion) |
+| `backend/domain/ports.py` — `ScoreurRepository` | Décision 2 : le contrat d'**unicité globale** (`par_code` n'a pas de `tournoi_id`), qui est l'argument de tout le reste |
+| `backend/infrastructure/db/models.py` — `ScoreurORM` | Décisions 1 et 2 : la table, et la contrainte `UNIQUE(code)` que la Décision 2 appelle son **garde-fou ultime** — une migration qui reconstruit la table sans elle ne toucherait aucun autre module de ce tableau |
+| `backend/infrastructure/db/repositories/exploitation.py` — `ScoreurRepositorySQL` | Décision 1 : l'adapter SQL du port |
+| `frontend/src/shared/api/client.ts` | Décision 4 : le cloisonnement des portées d'authentification — une requête n'engage qu'une identité |
+| `backend/infrastructure/scoreurs/codes.py` | Décision 2 : l'alphabet **sans confondables**, la longueur, le tirage par `secrets` |
+| `backend/application/scoreurs.py` | Décision 2 : l'attribution du code par le **service** (le domaine ne peut pas garantir l'unicité) et le ré-essai sur collision |
+| `backend/infrastructure/scoreurs/sessions.py` | Décision 3 : le jeton opaque **sans expiration**, révoqué à la déconnexion ou à la suppression — c'est ce fait qui fait écarter le jeton à usage unique en ADR-0105 |
+| `backend/api/dependances.py` — `exiger_scoreur` | Décision 4 : l'en-tête `X-Jeton-Scoreur` et le `Scoreur` rendu pour tracer « qui a validé » |
+| `frontend/src/shared/stores/sessionScoreurStore.ts` | Décision 3 : la session persistée localement le temps de la journée |
+| `docs/adr/0105-le-qr-d-un-scoreur-porte-son-code-revele-un-a-la-fois.md` | Amende la Décision 2 : le code n'est plus seulement **retapé**, il est aussi **scannable** |

@@ -171,3 +171,72 @@ def test_qr_cible_cible_inconnue_404(app_salle: FastAPI, connecter_admin: Connec
         reponse = client.get(f"/api/v1/tournois/{tournoi_id}/postes/99/qr")
 
     assert reponse.status_code == 404, reponse.text
+
+
+# --- QR d'un scoreur à l'écran (E16US015) ---
+
+
+def _id_du_premier_scoreur(client: TestClient, tournoi_id: int) -> int:
+    scoreurs = client.get(f"/api/v1/tournois/{tournoi_id}/scoreurs")
+    assert scoreurs.status_code == 200, scoreurs.text
+    return int(scoreurs.json()[0]["id"])
+
+
+def test_qr_scoreur_renvoie_une_image_svg(
+    app_salle: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """La route renvoie l'image SVG du QR d'un scoreur (`image/svg+xml`), affichée à l'écran."""
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        tournoi_id = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        scoreur_id = _id_du_premier_scoreur(client, tournoi_id)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/scoreurs/{scoreur_id}/qr")
+
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.headers["content-type"] == "image/svg+xml"
+    assert b"<svg" in reponse.content
+
+
+def test_qr_scoreur_sans_admin_refuse(app_salle: FastAPI) -> None:
+    """Le QR encode un code **personnel** : sans session admin, 401 — comme celui d'une cible."""
+    with TestClient(app_salle) as client:
+        reponse = client.get("/api/v1/tournois/1/scoreurs/1/qr")
+
+    assert reponse.status_code == 401, reponse.text
+
+
+def test_qr_scoreur_tournoi_inconnu_404(
+    app_salle: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        reponse = client.get("/api/v1/tournois/9999/scoreurs/1/qr")
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_qr_scoreur_inconnu_404(app_salle: FastAPI, connecter_admin: ConnecterAdmin) -> None:
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        tournoi_id = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        reponse = client.get(f"/api/v1/tournois/{tournoi_id}/scoreurs/9999/qr")
+
+    assert reponse.status_code == 404, reponse.text
+
+
+def test_qr_scoreur_d_un_autre_tournoi_404(
+    app_salle: FastAPI, connecter_admin: ConnecterAdmin
+) -> None:
+    """Garde d'appartenance de bout en bout : le scoreur existe, mais pas dans CE tournoi.
+
+    Sans elle, l'admin lirait le code personnel d'un scoreur d'un autre tournoi — `par_code` étant
+    global à la base, ce code ouvrirait bien une session.
+    """
+    with TestClient(app_salle) as client:
+        connecter_admin(client)
+        premier = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        second = _preparer_tournoi_avec_cibles_et_scoreurs(client)
+        etranger = _id_du_premier_scoreur(client, second)
+        reponse = client.get(f"/api/v1/tournois/{premier}/scoreurs/{etranger}/qr")
+
+    assert reponse.status_code == 404, reponse.text

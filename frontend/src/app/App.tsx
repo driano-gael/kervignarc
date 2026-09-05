@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 import { CoquilleAdmin } from '../features/admin/CoquilleAdmin'
 import { EspacePoste } from '../features/poste/EspacePoste'
 import { codePosteDepuisUrl } from '../features/poste/url'
+import { oublierCodeScoreurUrl, useCodeScoreurDArrivee } from '../features/scoreur-session/url'
 import { AccueilPublic } from '../features/public/AccueilPublic'
 import { EspaceScoreur } from '../features/scoreur-session/EspaceScoreur'
 import { IndicateurConnexion } from '../shared/realtime/IndicateurConnexion'
@@ -45,6 +46,14 @@ export function App() {
   const aJetonAdmin = useSessionAdminStore((s) => s.jeton) !== null
   const aJetonScoreur = useSessionScoreurStore((s) => s.jeton) !== null
   const codePoste = codePosteDepuisUrl()
+  // ⚠️ **Ici et non dans `EspaceScoreur`** (une tablette rattachée ne monte pas cet espace, verrou
+  // `D-13`), et **abonné** plutôt que lu : l'effacement ci-dessous ET le `hashchange` du navigateur
+  // notifient, donc la consommation est observable au lieu d'être un pari sur le rendu d'un voisin.
+  // ADR-0105 § Décision 3 porte le raisonnement.
+  const codeScoreur = useCodeScoreurDArrivee()
+  useEffect(() => {
+    if (codeScoreur !== null) oublierCodeScoreurUrl()
+  }, [codeScoreur])
 
   // Arriver par le QR de sa cible marque d'emblée le navigateur comme poste (avant même le
   // rattachement) : le rôle tablette est alors verrouillé et l'écran de choix sauté.
@@ -118,7 +127,7 @@ export function App() {
         ) : role === 'public' ? (
           <AccueilPublic />
         ) : role === 'scoreur' ? (
-          <EspaceScoreur />
+          <EspaceScoreur codeUrl={codeScoreur} />
         ) : role === 'admin' ? (
           <CoquilleAdmin />
         ) : (

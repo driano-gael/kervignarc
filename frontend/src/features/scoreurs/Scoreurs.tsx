@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { MessageErreur } from '../../shared/ui/MessageErreur'
 import type { Scoreur } from './api'
+import { QrScoreur } from './QrScoreur'
 import {
   useCreerScoreur,
   useModifierScoreur,
@@ -20,6 +21,13 @@ import {
 export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   const scoreurs = useScoreurs(tournoiId)
   const cartes = useTelechargerCartesScoreurs(tournoiId)
+  // Un seul QR ouvert à la fois : porté par le **parent**, pas par un booléen dans chaque ligne —
+  // l'exclusivité devient structurelle au lieu de dépendre d'un `useEffect` de synchronisation.
+  // ⚠️ Indexé sur le **code** et non sur l'`id` : SQLite réattribue les `id` (PK sans
+  // AUTOINCREMENT), donc supprimer un scoreur dont le QR est ouvert puis en créer un autre
+  // rouvrait le QR **sans clic** sur le nouveau venu. Le code, lui, est unique dans toute la base
+  // unique parmi les scoreurs vivants (`UNIQUE(code)`, ADR-0025 § Décision 2). Bloquant de revue.
+  const [qrOuvert, setQrOuvert] = useState<string | null>(null)
 
   return (
     <section>
@@ -37,7 +45,13 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
         <>
           <ul className="liste-scoreurs">
             {scoreurs.data.map((scoreur) => (
-              <LigneScoreur key={scoreur.id} tournoiId={tournoiId} scoreur={scoreur} />
+              <LigneScoreur
+                key={scoreur.code}
+                tournoiId={tournoiId}
+                scoreur={scoreur}
+                qrOuvert={qrOuvert === scoreur.code}
+                ouvrirQr={(ouvrir) => setQrOuvert(ouvrir ? scoreur.code : null)}
+              />
             ))}
           </ul>
           {/* **Imprimer toutes les cartes** (A08 : *« garde quand meme la possibilite de pouvoir
@@ -58,7 +72,17 @@ export function Scoreurs({ tournoiId }: { tournoiId: number }) {
   )
 }
 
-function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scoreur }) {
+function LigneScoreur({
+  tournoiId,
+  scoreur,
+  qrOuvert,
+  ouvrirQr,
+}: {
+  tournoiId: number
+  scoreur: Scoreur
+  qrOuvert: boolean
+  ouvrirQr: (ouvrir: boolean) => void
+}) {
   const [edition, setEdition] = useState(false)
   const [confirmationSuppression, setConfirmationSuppression] = useState(false)
   const supprimer = useSupprimerScoreur(tournoiId)
@@ -82,7 +106,26 @@ function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scor
         {/* Code en évidence, en chiffres/lettres lisibles : c'est ce qu'on recopie sur le papier. */}
         <code className="scoreur__code">{scoreur.code}</code>
         <span className="scoreur__actions">
-          <button type="button" className="bouton--discret" onClick={() => setEdition(true)}>
+          {/* ⚠️ Révélation **une par une** (arbitrage E16US015) : le QR rend le code personnel
+              scannable à distance, là où le code écrit demande de s'approcher. */}
+          {/* ⚠️ Le libellé visible tient sur la ligne, mais le **nom accessible** nomme le
+              scoreur — sur TOUS les boutons de la ligne, y compris les destructeurs : dix
+              « Supprimer » identiques au lecteur d'écran, sur une action qui coupe une session. */}
+          <button
+            type="button"
+            className="bouton--discret"
+            aria-expanded={qrOuvert}
+            aria-label={`${qrOuvert ? 'Masquer' : 'Afficher'} le QR de ${scoreur.nom}`}
+            onClick={() => ouvrirQr(!qrOuvert)}
+          >
+            {qrOuvert ? 'Masquer le QR' : 'Afficher le QR'}
+          </button>
+          <button
+            type="button"
+            className="bouton--discret"
+            aria-label={`Renommer ${scoreur.nom}`}
+            onClick={() => setEdition(true)}
+          >
             Renommer
           </button>
           {confirmationSuppression ? (
@@ -91,6 +134,7 @@ function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scor
                 type="button"
                 className="bouton--danger"
                 disabled={supprimer.isPending}
+                aria-label={`Confirmer la suppression de ${scoreur.nom}`}
                 onClick={() => supprimer.mutate(scoreur.id)}
               >
                 Confirmer la suppression
@@ -98,6 +142,7 @@ function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scor
               <button
                 type="button"
                 className="bouton--discret"
+                aria-label={`Annuler la suppression de ${scoreur.nom}`}
                 onClick={() => setConfirmationSuppression(false)}
               >
                 Annuler
@@ -107,6 +152,7 @@ function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scor
             <button
               type="button"
               className="bouton--danger"
+              aria-label={`Supprimer ${scoreur.nom}`}
               onClick={() => setConfirmationSuppression(true)}
             >
               Supprimer
@@ -114,6 +160,19 @@ function LigneScoreur({ tournoiId, scoreur }: { tournoiId: number; scoreur: Scor
           )}
         </span>
       </div>
+      {qrOuvert && (
+        <div className="scoreur__qr">
+          <QrScoreur
+            tournoiId={tournoiId}
+            scoreurId={scoreur.id}
+            code={scoreur.code}
+            nom={scoreur.nom}
+          />
+          <p className="carte__etat">
+            À scanner par {scoreur.nom} : ouvre sa session sans retaper le code.
+          </p>
+        </div>
+      )}
       {confirmationSuppression && (
         <p className="carte__etat">
           Sa session en cours sera coupée ; ses validations passées restent tracées.

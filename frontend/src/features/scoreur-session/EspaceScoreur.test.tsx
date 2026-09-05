@@ -62,12 +62,12 @@ vi.mock('../forfaits/hooks', () => ({
   useAnnulerForfaitQualif: () => MUTATION,
 }))
 
-function monter() {
+function monter(codeUrl?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Enveloppe({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>
   }
-  return render(<EspaceScoreur />, { wrapper: Enveloppe })
+  return render(<EspaceScoreur codeUrl={codeUrl ?? null} />, { wrapper: Enveloppe })
 }
 
 describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
@@ -134,5 +134,17 @@ describe('EspaceScoreur — un seul créneau pour tous les panneaux', () => {
     monter()
 
     expect(await screen.findByText(/Aucun départ n’est encore défini/)).toBeInTheDocument()
+  })
+
+  // E16US015 — un scoreur DÉJÀ connecté qui rescanne son QR. Le cas vit ici et non dans
+  // `EspaceScoreur.qr.test.tsx` parce que c'est ce fichier qui double la branche « session
+  // ouverte ». ⚠️ Le formulaire n'étant pas monté, aucune connexion ne doit partir : le rescan est
+  // sans effet, comme la recette le promet. L'effacement de l'adresse, lui, est au shell.
+  it('ne relance aucune connexion si la session est déjà ouverte (rescan)', async () => {
+    MUTATION.mutate.mockClear()
+    monter('AB12CD')
+    await screen.findByText('duels : 41')
+
+    expect(MUTATION.mutate).not.toHaveBeenCalled()
   })
 })

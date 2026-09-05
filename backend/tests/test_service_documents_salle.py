@@ -24,7 +24,7 @@ import datetime
 import pytest
 
 from application.documents_salle import ServiceDocumentsSalle
-from application.erreurs import PosteIntrouvable, TournoiIntrouvable
+from application.erreurs import PosteIntrouvable, ScoreurIntrouvable, TournoiIntrouvable
 from domain.documents_salle import CartesScoreurs, EtiquettesCibles
 from domain.poste import Poste, PosteId, TypePoste, normaliser_code
 from domain.scoreur import Scoreur, ScoreurId
@@ -175,8 +175,8 @@ class _Monde:
     def preparer_cible(self, cible_index: int, code: str) -> None:
         self.postes.ajouter(Poste.creer(self.tournoi_id, cible_index, code))
 
-    def definir_scoreur(self, nom: str, code: str) -> None:
-        self.scoreurs.ajouter(Scoreur.creer(self.tournoi_id, nom, code))
+    def definir_scoreur(self, nom: str, code: str) -> Scoreur:
+        return self.scoreurs.ajouter(Scoreur.creer(self.tournoi_id, nom, code))
 
 
 def _monde() -> _Monde:
@@ -381,3 +381,118 @@ def test_cartes_tournoi_inconnu_leve_tournoi_introuvable() -> None:
     monde = _monde()
     with pytest.raises(TournoiIntrouvable):
         monde.service.cartes_scoreurs(9999)
+
+
+# --- QR d'un scoreur à l'écran (E16US015) ------------------------------------------------------
+#
+# CA : « un QR par scoreur, jumeau de celui des cibles, affichable à l'écran ».
+# Arbitrage du 04/09/2026 (reversé dans `stories/E16`, puce CA) : l'URL porte le **code personnel
+# en clair**, comme celle d'une cible — le code est déjà en clair en base, dans la réponse admin
+# et sur le PDF des cartes. Le risque résiduel est un risque de *contexte d'affichage*, traité
+# côté front (un scoreur à la fois, sur geste explicite), pas ici.
+
+
+def test_qr_scoreur_encode_le_code_personnel() -> None:
+    """Le QR d'un scoreur encode `…/scoreur#code=<code>` (ADR-0105).
+
+    ⚠️ **Deux écarts avec le jumeau cible** (`…/?poste=`) : le chemin nomme le monde (le routeur
+    d'adresses aiguille seul), et le code vit dans le **fragment** — jamais envoyé au serveur, donc
+    absent du journal d'accès et du `Referer`.
+    """
+    monde = _monde()
+    monde.definir_scoreur("Alice", "AAA222")
+    bob = monde.definir_scoreur("Bob", "BBB333")
+    assert bob.id is not None
+
+    octets = monde.service.qr_scoreur(monde.tournoi_id, bob.id, _ORIGINE)
+
+    assert octets == FauxGenerateur.SENTINELLE_QR
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=BBB333"
+
+
+def test_qr_scoreur_url_sans_double_slash_si_origine_sans_slash_final() -> None:
+    """Même exigence de forme que l'URL de rattachement d'une cible : jamais de `//` parasite."""
+    monde = _monde()
+    alice = monde.definir_scoreur("Alice", "AAA222")
+    assert alice.id is not None
+
+    monde.service.qr_scoreur(monde.tournoi_id, alice.id, "http://192.168.1.10:8000")
+
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=AAA222"
+
+
+def test_qr_scoreur_regenerable_a_l_identique() -> None:
+    """« Régénérable » vaut aussi ici : le code est persisté, on réimprime — on ne réémet pas."""
+    monde = _monde()
+    alice = monde.definir_scoreur("Alice", "AAA222")
+    assert alice.id is not None
+
+    monde.service.qr_scoreur(monde.tournoi_id, alice.id, _ORIGINE)
+    premiere = monde.generateur.derniere_url_qr
+    monde.service.qr_scoreur(monde.tournoi_id, alice.id, _ORIGINE)
+
+    assert monde.generateur.derniere_url_qr == premiere
+
+
+def test_qr_scoreur_tournoi_inconnu_leve_tournoi_introuvable() -> None:
+    monde = _monde()
+    alice = monde.definir_scoreur("Alice", "AAA222")
+    assert alice.id is not None
+    with pytest.raises(TournoiIntrouvable):
+        monde.service.qr_scoreur(9999, alice.id, _ORIGINE)
+
+
+def test_qr_scoreur_inconnu_leve_scoreur_introuvable() -> None:
+    monde = _monde()
+    with pytest.raises(ScoreurIntrouvable):
+        monde.service.qr_scoreur(monde.tournoi_id, 9999, _ORIGINE)
+
+
+def test_qr_scoreur_d_un_autre_tournoi_leve_scoreur_introuvable() -> None:
+    """« Lié au tournoi » : le code d'un scoreur d'un AUTRE tournoi ne se lit pas depuis celui-ci.
+
+    Même parti « hors-tournoi = inexistant » que le QR de cible — et ici l'enjeu n'est pas
+    cosmétique : le QR porte un secret personnel, il ne doit pas traverser la frontière du tournoi.
+    """
+    monde = _monde()
+    autre = monde.scoreurs.ajouter(Scoreur.creer(999, "Autre", "ZZZ999"))
+    assert autre.id is not None
+
+    with pytest.raises(ScoreurIntrouvable):
+        monde.service.qr_scoreur(monde.tournoi_id, autre.id, _ORIGINE)
+
+
+def test_qr_scoreur_echappe_le_code_dans_l_url() -> None:
+    """Un caractère réservé dans le code est encodé, donc le code lu est le code émis.
+
+    ⚠️ La sûreté ne vient PAS de l'alphabet sans confondables : c'est une garantie d'un autre
+    fichier (`infrastructure/scoreurs/codes.py`), qu'un code choisi à la main ferait tomber. Sans
+    échappement, un `&` couperait le fragment en deux paramètres et **tronquerait** le code : le
+    scoreur essuierait un refus incompréhensible. *(Motif corrigé en 2ᵉ passe : la version
+    précédente invoquait un verrouillage en mode tablette, impossible depuis le fragment — le
+    lecteur de `?poste=` ne lit que la query.)*
+    """
+    monde = _monde()
+    piege = monde.scoreurs.ajouter(
+        Scoreur(tournoi_id=monde.tournoi_id, nom="Piège", code="A&POSTE=X")
+    )
+    assert piege.id is not None
+
+    monde.service.qr_scoreur(monde.tournoi_id, piege.id, _ORIGINE)
+
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/scoreur#code=A%26POSTE%3DX"
+
+
+def test_qr_rattachement_echappe_le_code_dans_l_url() -> None:
+    """Le jumeau cible est épinglé lui aussi — et c'est là que la menace est RÉELLE.
+
+    ⚠️ L'URL d'un poste porte son code en **query**, que `features/poste/url.ts` lit : un code
+    contenant `&scoreur=…` y ouvrirait un second paramètre. `quote` avait été ajouté aux deux
+    constructeurs sans que celui-ci soit couvert (relevé en 2ᵉ passe de revue).
+    """
+    monde = _monde()
+    monde.preparer_cible(7, "A&SCOREUR=X")
+
+    monde.service.qr_rattachement(monde.tournoi_id, 7, _ORIGINE)
+
+    assert monde.generateur.derniere_url_qr == "http://192.168.1.10:8000/?poste=A%26SCOREUR%3DX"

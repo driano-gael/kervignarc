@@ -911,7 +911,8 @@ button.badge-preparation:focus-visible {
   color: var(--danger-strong);
 }
 
-/* Postes de cible : code + QR de rattachement à l'écran (E11US008). */
+/* Postes de cible : code + QR de rattachement à l'écran (E11US008). La vignette du QR elle-même
+   est stylée par `shared/ui/qr.css`, partagée avec le QR de session d'un scoreur (E16US015). */
 .liste-postes {
   list-style: none;
   margin: 12px 0 0;
@@ -933,63 +934,6 @@ button.badge-preparation:focus-visible {
 
 .poste-item__ligne {
   min-width: 0;
-}
-
-/* Le QR (SVG) doit rester sur **fond blanc** pour être scannable, quel que soit le thème. */
-.qr-cible__vignette {
-  flex: none;
-  padding: 4px;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 0;
-}
-
-.qr-cible__vignette img {
-  display: block;
-}
-
-.qr-cible__attente,
-.qr-cible__indispo {
-  flex: none;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  text-align: center;
-  color: var(--text);
-}
-
-/* Agrandissement plein écran pour présenter le QR à une tablette et le scanner. */
-.qr-cible__overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.85);
-  cursor: pointer;
-}
-
-.qr-cible__grand {
-  width: min(80vmin, 520px);
-  height: min(80vmin, 520px);
-  padding: 16px;
-  background: #fff;
-  border-radius: 12px;
-}
-
-.qr-cible__aide {
-  margin: 0;
-  color: #fff;
-  font-size: 14px;
 }
 
 /* Formulaires (nom de tournoi / d'archer). */
@@ -1399,6 +1343,15 @@ button:disabled {
 .scoreur__actions button {
   padding: 2px 8px;
   font-size: 13px;
+}
+
+/* QR de session d'un scoreur (E16US015), révélé une ligne à la fois. La vignette elle-même est
+   stylée par `.qr__vignette`, partagée avec le QR de cible. */
+.scoreur__qr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
 }
 
 /* Écran d'administration des archers (E02US003) — liste, édition, désinscription. */
