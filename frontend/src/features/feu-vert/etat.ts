@@ -76,9 +76,13 @@ export function actionDuel(
   // « adversaire non déterminé » (aucune source) se répare à la composition de la phase, pas ici.
   if (!duel.participants_connus) return null
   if (duel.cible_attribuee) return null
-  // Le duel du tour posé est le seul dont le placement se répare depuis le plan de duels ; le
-  // serveur dit lequel (`tour_pose`), le front ne le déduit plus d'une constante.
-  if (tourPose === null || duel.tour !== tourPose) {
+  // ⚠️ `tourPose === null` n'est PAS « le tour n'est pas encore posé » : c'est « aucun plan n'est
+  // lisible » (pas de gabarit appliqué). Le geste attendu est justement d'aller au plan de duels —
+  // les confondre retirait le renvoi livré par E16US008 et affichait « attendez le tour précédent »
+  // sur un tour 1, qui n'en a pas.
+  if (tourPose === null) return { genre: 'placement' }
+  // Le duel du tour posé est le seul dont le placement se répare d'ici ; le serveur dit lequel.
+  if (duel.tour !== tourPose) {
     return { genre: 'sans-recours', explication: SANS_RECOURS_TOUR_NON_POSE }
   }
   return { genre: 'placement' }

@@ -178,7 +178,7 @@ export function detail(archer: RoutageArcher): string | null {
   if (archer.issue === 'prochain_duel' && archer.prochain !== null) {
     const contexte = `${archer.prochain.libelle} · ${adversaire(archer.prochain)}`
     // Cible inconnue : le titre a déjà pris le libellé du tour, on ne le répète pas — on annonce
-    // l'attente (« cible attribuée au lancement du tour »).
+    // l'attente (« cible attribuée dès que le tour précédent sera terminé »).
     // `manque` est garanti non nul par le serveur quand il n'y a pas de cible (c'est lui qui sait
     // *pourquoi* : tour à venir, ou plan non matérialisé) — pas de repli local à inventer.
     return destination(archer.prochain) === null

@@ -183,6 +183,24 @@ describe('Plan de duels — alignement sur le plan de cibles (E16US005)', () => 
     )
   })
 
+  it('CA E03US012 — l’écran NOMME le tour qu’il montre, d’après le serveur', async () => {
+    // Le plan ne rend qu'un tour à la fois (ADR-0106 §2) : sans ce libellé, un organisateur qui
+    // régénère croit agir sur tout le tableau. Le `<span>` n'était couvert par rien — le supprimer
+    // laissait la suite verte.
+    monter(<Duels tournoiId={1} />)
+    await choisirLaPhase()
+
+    expect(await screen.findByText('Tour 1')).toBeVisible()
+  })
+
+  it('CA E03US012 — le tour affiché suit la DONNÉE serveur, pas une constante', async () => {
+    vi.mocked(getPlanDeDuels).mockResolvedValue({ ...PLAN, tour: 3 })
+    monter(<Duels tournoiId={1} />)
+    await choisirLaPhase()
+
+    expect(await screen.findByText('Tour 3')).toBeVisible()
+  })
+
   it('la lettre du couloir est rendue sur une case occupée, comme en qualification', async () => {
     // Ajoutée aux duels par cette US (le placement la rendait depuis E03US011). En bandes, c'est
     // elle qui rattache un jeton à sa colonne quand les capacités diffèrent — et la fiche de

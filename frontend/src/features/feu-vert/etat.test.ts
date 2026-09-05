@@ -238,7 +238,10 @@ describe('actionDuel', () => {
     expect(actionDuel(tourDeux, [tourDeux], 2)).toEqual({ genre: 'placement' })
   })
 
-  it('ne propose rien quand aucun plan n’est lisible (tour posé inconnu)', () => {
+  it('renvoie au plan de duels quand AUCUN plan n’est lisible (pas de gabarit)', () => {
+    // ⚠️ `tour_pose === null` = « aucun plan lisible », pas « tour pas encore posé ». Le geste qui
+    // lève le manquement est d'aller appliquer un plan de salle puis générer — c'est le CA
+    // d'E16US008. Dire « attendez le tour précédent » sur un tour 1 est faux : il n'y en a pas.
     const sansPlan = duel({
       tour: 1,
       cible_haut: null,
@@ -247,10 +250,7 @@ describe('actionDuel', () => {
       pret_a_lancer: false,
       blocage: 'cible non attribuée',
     })
-    expect(actionDuel(sansPlan, [sansPlan], null)).toEqual({
-      genre: 'sans-recours',
-      explication: 'Les cibles de ce tour seront posées quand le tour précédent sera terminé.',
-    })
+    expect(actionDuel(sansPlan, [sansPlan], null)).toEqual({ genre: 'placement' })
   })
 
   it('ne propose rien sur « adversaire non déterminé » : rien ne se lève depuis le feu vert', () => {
