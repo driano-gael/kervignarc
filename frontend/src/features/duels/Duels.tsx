@@ -201,8 +201,9 @@ function PlanCharge({
     <div className="placement">
       <div className="placement__barre">
         {/* Le plan ne montre qu'un tour à la fois (ADR-0106 §2) : sans le nommer, un organisateur
-            qui régénère croit agir sur tout le tableau. */}
-        <span className="placement__tour">Tour {plan.tour}</span>
+            qui régénère croit agir sur tout le tableau. Rien à nommer si le tableau n'existe pas
+            encore — mieux vaut se taire qu'annoncer un tour inventé. */}
+        {plan.tour !== null && <span className="placement__tour">Tour {plan.tour}</span>}
         <button
           type="button"
           className={planVide ? undefined : 'bouton--discret'}

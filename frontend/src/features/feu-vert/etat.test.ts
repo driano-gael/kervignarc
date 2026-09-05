@@ -251,6 +251,10 @@ describe('actionDuel', () => {
       blocage: 'cible non attribuée',
     })
     expect(actionDuel(sansPlan, [sansPlan], null)).toEqual({ genre: 'placement' })
+    // Et la raison est bien « aucun plan », pas « tour 1 » : un tour ≥ 2 sans gabarit renvoie
+    // au même endroit — c'est là qu'on applique un plan de salle.
+    const tourDeuxSansPlan = duel({ ...sansPlan, tour: 2 })
+    expect(actionDuel(tourDeuxSansPlan, [tourDeuxSansPlan], null)).toEqual({ genre: 'placement' })
   })
 
   it('ne propose rien sur « adversaire non déterminé » : rien ne se lève depuis le feu vert', () => {

@@ -60,7 +60,8 @@ export interface DuelSepare {
 export interface PlanDeDuels {
   phase_id: number
   // Le tour que ce plan pose (ADR-0106 §2) : le plan n'en montre **qu'un**, celui qui se joue.
-  tour: number
+  // `null` = le tableau n'est pas encore constitué : il n'y a aucun tour à nommer.
+  tour: number | null
   cibles: CiblePlaceeDuel[]
   conflits: Conflit[]
   duels_separes: DuelSepare[]
