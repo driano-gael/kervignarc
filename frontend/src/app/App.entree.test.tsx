@@ -115,7 +115,26 @@ describe('App — arrivée par le QR d’un scoreur', () => {
     // elles prouvaient « le shell ne mémorise pas » sans jamais montrer que le code est retiré **de
     // lui-même**. Le trou ne se refermait alors que parce qu'un store voisin re-rendait au bon
     // moment — invariant qu'aucun texte n'écrivait et qu'un reset partiel du store aurait cassé.
-    expect(codesRecus[0]).toBe('AB12CD')
-    expect(codesRecus[codesRecus.length - 1]).toBeNull()
+    // ⚠️ La **suite entière**, pas ses deux extrémités : `['AB12CD', 'AB12CD', null]` passait, alors
+    // que le titre promet « une fois ». Chaque rendu supplémentaire portant le code est une fenêtre
+    // de plus où il vit dans un élément committé. ⚠️ Casserait sous `StrictMode` (rendu doublé) —
+    // c'est voulu : il faudrait alors décider ce que « une fois » signifie, pas relâcher l'oracle.
+    expect(codesRecus).toEqual(['AB12CD', null])
+  })
+
+  it('reçoit un code arrivé APRÈS le chargement (scan sur un onglet déjà ouvert)', async () => {
+    // ⚠️ Le chemin que le mécanisme d'abonnement avait laissé ouvert : une URL qui ne diffère que
+    // par le fragment est une navigation *same-document*, sans rechargement. Sans l'écoute de
+    // `hashchange`, le code n'arrivait jamais **et restait dans la barre d'adresse** — sur l'écran
+    // même où le scoreur vient de demander son QR (revue ciblée du 05/09/2026).
+    placerUrl('/scoreur')
+    render(<App />)
+    await screen.findByText('scoreur : null')
+
+    window.location.hash = '#code=AB12CD'
+
+    expect(await screen.findByText('scoreur : null')).toBeInTheDocument()
+    expect(codesRecus).toContain('AB12CD')
+    expect(window.location.hash).toBe('')
   })
 })

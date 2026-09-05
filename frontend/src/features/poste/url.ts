@@ -13,6 +13,9 @@ export function codePosteDepuisUrl(): string | null {
 // Retire `?poste=…` de l'URL **sans recharger** (pas de routeur : `history.replaceState`). Appelé au
 // **détachement** : sans ça, le paramètre survivrait et l'app réafficherait l'écran de poste (voire
 // re-rattacherait automatiquement) alors que le bénévole vient de détacher la tablette.
+// ⚠️ **Ne notifie personne** (le jumeau scoreur, lui, s'abonne) : `codePoste` n'est relu que grâce
+// au `quitterModePoste()` + `naviguer('/')` du même gestionnaire. Retirer l'un des deux laisserait
+// la tablette verrouillée sans échappatoire (`D-13`) — relevé en revue d'E16US015, non aligné.
 export function oublierCodePosteUrl(): void {
   if (typeof window === 'undefined') return
   window.history.replaceState(null, '', window.location.pathname + window.location.hash)

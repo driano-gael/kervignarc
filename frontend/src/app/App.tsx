@@ -47,8 +47,8 @@ export function App() {
   const aJetonScoreur = useSessionScoreurStore((s) => s.jeton) !== null
   const codePoste = codePosteDepuisUrl()
   // ⚠️ **Ici et non dans `EspaceScoreur`** (une tablette rattachée ne monte pas cet espace, verrou
-  // `D-13`), et **abonné** plutôt que lu : l'effacement ci-dessous notifie, donc la consommation est
-  // une transition observable et non un pari sur le rendu d'un store voisin.
+  // `D-13`), et **abonné** plutôt que lu : l'effacement ci-dessous ET le `hashchange` du navigateur
+  // notifient, donc la consommation est observable au lieu d'être un pari sur le rendu d'un voisin.
   // ADR-0105 § Décision 3 porte le raisonnement.
   const codeScoreur = useCodeScoreurDArrivee()
   useEffect(() => {

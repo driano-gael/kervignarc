@@ -59,11 +59,22 @@ describe('oublierCodeScoreurUrl', () => {
     expect(window.location.hash).toBe('')
   })
 
-  it('laisse le reste du fragment intact', () => {
+  it('garde les autres paramètres du fragment', () => {
     placerUrl('/scoreur#code=AB12CD&onglet=duels')
 
     oublierCodeScoreurUrl()
 
     expect(window.location.hash).toBe('#onglet=duels')
+  })
+
+  it('re-normalise le reste du fragment — la promesse n’est pas « intact »', () => {
+    // ⚠️ L'aller-retour `URLSearchParams` ré-encode : `du%20els` devient `du+els`, et un drapeau nu
+    // gagne un `=`. Sans conséquence aujourd'hui (le monde scoreur n'a pas d'autre paramètre), mais
+    // le test s'appelait « laisse le reste **intact** » et promettait donc plus qu'il ne tient.
+    placerUrl('/scoreur#code=AB12CD&ancre')
+
+    oublierCodeScoreurUrl()
+
+    expect(window.location.hash).toBe('#ancre=')
   })
 })

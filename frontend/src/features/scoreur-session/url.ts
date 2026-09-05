@@ -17,8 +17,15 @@ const abonnes = new Set<() => void>()
 
 function abonner(rappel: () => void): () => void {
   abonnes.add(rappel)
+  // ⚠️ **Deux écrivains, deux fils.** `abonnes` couvre l'écriture de l'application
+  // (`oublierCodeScoreurUrl`) ; `hashchange` couvre celle du **navigateur** — un QR scanné alors que
+  // l'onglet est déjà sur `/scoreur` est une navigation *same-document*, sans rechargement. Sans ce
+  // second fil, le code n'arrivait jamais et restait dans la barre d'adresse (revue du 05/09/2026).
+  // `replaceState` n'émet pas `hashchange` : aucune double notification.
+  window.addEventListener('hashchange', rappel)
   return () => {
     abonnes.delete(rappel)
+    window.removeEventListener('hashchange', rappel)
   }
 }
 
@@ -26,7 +33,8 @@ function abonner(rappel: () => void): () => void {
 // **structurelle** : `replaceState` ne notifie personne, si bien qu'une simple lecture au rendu
 // laisse l'ancienne valeur dans l'élément React déjà committé. Le trou ne se refermait alors que
 // parce qu'un store voisin provoquait un rendu au bon moment — invariant que rien n'écrivait ni ne
-// gardait (3ᵉ passe de revue, 05/09/2026). Même idiome que `shared/navigation/useChemin.ts`.
+// gardait (3ᵉ passe de revue, 05/09/2026). Même idiome que `shared/navigation/useChemin.ts`, dont
+// l'instantané est le `pathname` **seul** — il ne voit donc aucun changement de fragment.
 export function useCodeScoreurDArrivee(): string | null {
   return useSyncExternalStore(abonner, codeScoreurDepuisUrl, () => null)
 }
