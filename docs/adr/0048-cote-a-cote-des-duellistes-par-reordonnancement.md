@@ -71,9 +71,15 @@ Trois options pesées :
   `cible_index`, `position`. **Retenu** : isole le concern, laisse la qualification intacte, autorise
   l'ajustement (drag & drop) sans toucher l'invariant d'ADR-0024. Un inscrit **sans** ligne = réserve
   (l'absence *est* l'information, comme ADR-0024).
+  ⚠️ **Clé amendée le 05/09/2026 par [ADR-0106](0106-la-pose-d-une-cible-appartient-a-un-tour.md)** :
+  elle est désormais `(phase_id, **tour**, inscription_id)` (migration `0053`). L'option (a) écartée
+  ci-dessus le fut pour la table de **qualification**, où le tour n'a pas de sens ; ici il en a un —
+  un archer change de cible d'un tour à l'autre, et la clé d'origine ne pouvait pas le représenter.
+  Le reste de cette décision (table dédiée, absence = réserve, ajustable) est **inchangé**.
 - **(c) recalculé non persisté** ⇒ écarté par le choix « ajustable » du commanditaire.
 
-Le scope est la **phase** (une phase `ELIMINATION_DIRECTE`), pas le départ : une phase de tableau est
+Le scope est la **phase** (une phase `ELIMINATION_DIRECTE`), pas le départ — et, depuis ADR-0106,
+la phase **et son tour**. Une phase de tableau est
 **tournoi-large**, pas un créneau. `ON DELETE CASCADE` sur `phase_id` **et** `inscription_id`.
 
 ### 3. Le pont `Participant → inscription` vit dans le **service**, sans nouveau port
@@ -157,3 +163,32 @@ Logique de présentation **pure** dans `presentation.ts`, jumelle de la mixité.
   d'ajustement, qui tournent dans la file ; la régénération réécrit tout de toute façon). Sans ce
   traitement, la détection d'occupant d'un déplacement tombait sur une ligne fantôme → 500. Le plan de
   duels fait donc autorité **après régénération** ; entre-temps l'orpheline est inerte.
+
+
+## Porté dans le code par
+
+*Section ajoutée le 05/09/2026, l'ADR ayant été rouvert par E03US012 (amendement de la décision 2).
+Elle décrit le code **du jour**, relu site par site — pas ce que l'ADR promettait.*
+
+- `backend/domain/placement.py` — `_ordonner_pour_adjacence` : la décision 1 **en entier**. La
+  contrainte molle n'existe que là : elle regroupe les deux duellistes dans l'ordre d'entrée du
+  glouton, qui n'est pas modifié. C'est ce qui la rend non bloquante par construction, sans qu'aucun
+  code n'ait à « décider » de renoncer.
+- `backend/domain/placement.py` — `duels_non_cote_a_cote` et `cibles_avec_duel_separe` : la
+  décision 3 (le signal **dérivé**, jamais persisté). Deux fonctions pures ; leurs appelants les
+  recalculent à chaque lecture.
+- `backend/infrastructure/db/models.py` (`PlacementTableauORM`) et
+  `backend/migrations/versions/0029_placement_tableau.py` — la décision 2 (table dédiée, `ON DELETE
+  CASCADE`, absence de ligne = réserve). ⚠️ **La clé y est celle d'ADR-0106**
+  `(phase_id, tour, inscription_id)`, migration `0053` : lire la décision 2 sans son amendement
+  donne une clé qui n'existe plus.
+- `backend/application/placement_duels.py` — `ServicePlacementDuels` : la décision 4 (matérialisé
+  **et** ajustable) — `regenerer`, `deplacer`, `placer_les_restants`, et `_poses_a_jour` qui porte la
+  règle des **poses orphelines** (masquées en lecture, purgées à la première écriture).
+- `backend/api/v1/placement_duels.py` — la surface du glisser-déposer : `PlanDeDuelsReponse` et les
+  routes d'écriture, toutes passées par la file (règle 7).
+- `frontend/src/features/duels/` — l'écran d'ajustement (drag HTML5 natif) et
+  `presentation.ts`, qui rend le badge d'adjacence et la bannière récapitulative de la décision 3.
+
+⚠️ **Ce que cet ADR ne porte PAS, malgré sa lettre** : « MVP tour 1 uniquement » n'est plus vrai —
+c'est précisément ce qu'E03US012 a levé. Aucun module n'implémente plus cette restriction.

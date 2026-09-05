@@ -125,6 +125,7 @@ export function FeuVert({
                   key={duel.numero}
                   duel={duel}
                   duels={feu.data.duels}
+                  tourPose={feu.data.tour_pose}
                   tournoiId={tournoiId}
                   phaseId={phaseId}
                   surPlanDeDuels={surPlanDeDuels}
@@ -164,19 +165,21 @@ export function FeuVert({
 function LigneDuel({
   duel,
   duels,
+  tourPose,
   tournoiId,
   phaseId,
   surPlanDeDuels,
 }: {
   duel: DuelAVenir
   duels: DuelAVenir[]
+  tourPose: number | null
   tournoiId: number
   phaseId: number | null
   surPlanDeDuels: () => void
 }) {
   const { classe, libelle } = afficheDuel(duel)
   const cibles = libelleCibles(duel)
-  const action = actionDuel(duel, duels)
+  const action = actionDuel(duel, duels, tourPose)
   return (
     <li className="feu-vert__duel">
       <span className="feu-vert__match">

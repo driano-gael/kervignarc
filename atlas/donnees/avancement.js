@@ -171,6 +171,15 @@ window.ATLAS.avancement = {
    "severite": "mineur"
   },
   {
+   "identifiant": "099",
+   "introduite_par": [
+    "E03US012"
+   ],
+   "ouverte": true,
+   "resorption_us": [],
+   "severite": "mineur"
+  },
+  {
    "identifiant": "012",
    "introduite_par": [
     "E09US008"
@@ -220,7 +229,12 @@ window.ATLAS.avancement = {
     "E16US008"
    ],
    "ouverte": true,
-   "resorption_us": [],
+   "resorption_us": [
+    "E03US012",
+    "E05US010",
+    "E16US013",
+    "E16US008"
+   ],
    "severite": "mineur"
   },
   {
@@ -241,7 +255,8 @@ window.ATLAS.avancement = {
    ],
    "ouverte": true,
    "resorption_us": [
-    "E03US009"
+    "E03US009",
+    "E03US012"
    ],
    "severite": "majeur"
   },
@@ -325,7 +340,8 @@ window.ATLAS.avancement = {
     "E05US033",
     "E05US034",
     "E05US035",
-    "E05US025"
+    "E05US025",
+    "E03US012"
    ],
    "severite": "mineur"
   },
@@ -860,10 +876,12 @@ window.ATLAS.avancement = {
  ],
  "entete": {
   "adr_du_resume": [
-   "0059",
-   "0042"
+   "0106",
+   "0105",
+   "0075",
+   "0048"
   ],
-  "derniere": "E16US015"
+  "derniere": "E03US012"
  },
  "epics": [
   {
@@ -1245,7 +1263,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US013",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E00-socle.md",
    "titre": "Factoriser les briques d'UI partagées",
@@ -1284,7 +1302,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E00US015",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**",
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**",
     "Ajouts de l'entretien du 18/07/2026 — 🔶 **en cours (4/10)**"
    ],
    "story": "stories/E00-socle.md",
@@ -1846,7 +1864,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US016",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Définir l'identité visuelle du tournoi",
@@ -2015,7 +2033,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US024",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Composer, diagnostiquer et simuler un déroulé",
@@ -2042,7 +2060,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E01US025",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E01-configuration.md",
    "titre": "Le départ est la portée sportive + le déroulé se définit une fois",
@@ -2282,7 +2300,7 @@ window.ATLAS.avancement = {
    ],
    "story": "stories/E03-placement.md",
    "titre": "Placement automatique & plan de cibles",
-   "titre_story": "Placement automatique & plan de cibles"
+   "titre_story": "Placement automatique & plan de cibles ✅"
   },
   {
    "adr": [
@@ -2346,7 +2364,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E03US007",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E03-placement.md",
    "titre": "Contrainte séparation catégorie/blason",
@@ -2355,7 +2373,8 @@ window.ATLAS.avancement = {
   {
    "adr": [
     "0048",
-    "0071"
+    "0071",
+    "0106"
    ],
    "dettes_introduites": [
     "085"
@@ -2372,7 +2391,7 @@ window.ATLAS.avancement = {
    ],
    "story": "stories/E03-placement.md",
    "titre": "Placer les duellistes côte à côte",
-   "titre_story": "Placer les duellistes côte à côte"
+   "titre_story": "Placer les duellistes côte à côte ✅"
   },
   {
    "adr": [],
@@ -2403,6 +2422,31 @@ window.ATLAS.avancement = {
    "story": "stories/E03-placement.md",
    "titre": "Placement : retour visuel de génération + position A..D côté admin",
    "titre_story": "Placement : retour visuel de génération + position (A..D) visible"
+  },
+  {
+   "adr": [
+    "0048",
+    "0075",
+    "0106"
+   ],
+   "dettes_introduites": [
+    "099"
+   ],
+   "dettes_resorbees": [
+    "019",
+    "021",
+    "031"
+   ],
+   "epic": "03",
+   "epic_titre": "Placement des archers & plan de cibles",
+   "etat": "✅",
+   "identifiant": "E03US012",
+   "sections": [
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
+   ],
+   "story": "stories/E03-placement.md",
+   "titre": "Poser les cibles des tours suivants",
+   "titre_story": "Poser les cibles des tours suivants ✅"
   },
   {
    "adr": [
@@ -2630,7 +2674,8 @@ window.ATLAS.avancement = {
     "0063",
     "0065",
     "0068",
-    "0070"
+    "0070",
+    "0106"
    ],
    "dettes_introduites": [
     "026",
@@ -2638,14 +2683,15 @@ window.ATLAS.avancement = {
     "054"
    ],
    "dettes_resorbees": [
-    "015"
+    "015",
+    "019"
    ],
    "epic": "05",
    "epic_titre": "Moteur de phases & tableaux",
    "etat": "✅",
    "identifiant": "E05US010",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Placement intégral 1→N & peuplement multiple",
@@ -2672,7 +2718,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US015",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Catalogue de types de phase (échauffement, barrage, poules, repêchage, BSO)",
@@ -2702,7 +2748,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US018",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "",
    "titre": "~~Oracle 120~~ → absorbée par E05US010",
@@ -2717,7 +2763,7 @@ window.ATLAS.avancement = {
    "etat": "⛔",
    "identifiant": "E05US019",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "",
    "titre": "~~Enregistrer une séquence comme modèle~~ → absorbée par E01US023",
@@ -2741,7 +2787,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US020",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Le moteur consomme les prélèvements déclarés",
@@ -2766,7 +2812,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US021",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Un format connaît son effectif minimum (avertir avant de lancer)",
@@ -2817,7 +2863,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US023",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**",
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**",
     "Résorptions de dette planifiées (arbitrages du 07/08/2026)"
    ],
    "story": "stories/E05-moteur-phases.md",
@@ -2829,7 +2875,8 @@ window.ATLAS.avancement = {
     "0080",
     "0081",
     "0083",
-    "0095"
+    "0095",
+    "0106"
    ],
    "dettes_introduites": [
     "031",
@@ -2843,7 +2890,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US024",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Un prélèvement lit le classement de sa phase source",
@@ -2872,7 +2919,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US025",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Plusieurs qualifications dans un même déroulé",
@@ -2906,7 +2953,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US026",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Le système suisse jouable (backend)",
@@ -2939,7 +2986,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US027",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "La colline jouable",
@@ -2972,7 +3019,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US028",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Le Big Shoot Off jouable de bout en bout",
@@ -2996,7 +3043,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US029",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Des poules de niveau en une seule étape",
@@ -3021,7 +3068,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US030",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Le système suisse à l'écran",
@@ -3044,7 +3091,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US031",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Le public voit les formats sans arbre",
@@ -3072,7 +3119,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US032",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "Une phase avance par tours",
@@ -3102,7 +3149,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US033",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "L'organisateur programme les pauses du déroulé",
@@ -3129,7 +3176,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US034",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "La pause se voit, et se pose en cours de journée",
@@ -3158,7 +3205,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E05US035",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E05-moteur-phases.md",
    "titre": "La qualification se découpe en tours",
@@ -3259,7 +3306,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E06US006",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E06-classements.md",
    "titre": "Classement intégral 1→N & profondeur configurable",
@@ -3323,7 +3370,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E07US004",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E07-affichage-public.md",
    "titre": "Écran de salle + suivi du déroulé (un composant, trois surfaces)",
@@ -3345,7 +3392,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E07US005",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E07-affichage-public.md",
    "titre": "Vue tableaux/arbres live",
@@ -3524,7 +3571,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E09US005",
    "sections": [
-    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+    "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
    ],
    "story": "stories/E09-exports.md",
    "titre": "Classements PDF",
@@ -3884,7 +3931,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0040",
     "0051",
-    "0071"
+    "0071",
+    "0106"
    ],
    "dettes_introduites": [
     "017"
@@ -4125,7 +4173,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US001",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Plan de salle : se mettre d'accord sur ce qu'est un pas de tir",
@@ -4148,7 +4196,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US002",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Phases : une bibliothèque de phases réglables, pas une séquence figée",
@@ -4170,7 +4218,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US003",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Complétude : ne plus mélanger le déroulé et la gestion administrative",
@@ -4192,7 +4240,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US004",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le public suit plusieurs archers, de bout en bout",
@@ -4215,7 +4263,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US005",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Placement : la largeur d'un PC, et un puits de réserve",
@@ -4234,7 +4282,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US006",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "L'identité visuelle du tournoi : deux logos, deux couleurs",
@@ -4257,7 +4305,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US007",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Exports : choisir le format de chaque document",
@@ -4269,7 +4317,8 @@ window.ATLAS.avancement = {
     "0050",
     "0075",
     "0096",
-    "0102"
+    "0102",
+    "0106"
    ],
    "dettes_introduites": [
     "017",
@@ -4277,13 +4326,15 @@ window.ATLAS.avancement = {
     "090",
     "091"
    ],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "019"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "✅",
    "identifiant": "E16US008",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Feu vert : agir depuis la ligne du duel qui bloque",
@@ -4307,7 +4358,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US009",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Écran de salle : régler ce qui défile, et défiler ce qui ne tient pas",
@@ -4335,7 +4386,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US010",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Chercher partout, et voir d'avance ce qui bloque un lancement",
@@ -4352,7 +4403,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E16US011",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Ce que trois questionnaires « validés » demandaient quand même",
@@ -4374,25 +4425,30 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US012",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "La famille des écrans « prêt à… »",
    "titre_story": "La famille des écrans « prêt à… »"
   },
   {
-   "adr": [],
+   "adr": [
+    "0106"
+   ],
    "dettes_introduites": [],
-   "dettes_resorbees": [],
+   "dettes_resorbees": [
+    "019"
+   ],
    "epic": "16",
    "epic_titre": "Retours du questionnaire de maquettes — 36 planches revues le 04/08/2026",
    "etat": "⬜",
    "identifiant": "E16US013",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**",
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
-   "titre": "Le lancement d'un tour : automatique ou manuel, au choix",
+   "titre": "Le lancement d'un tour : automatique ou manuel",
    "titre_story": "Le lancement d'un tour : automatique ou manuel, au choix"
   },
   {
@@ -4413,7 +4469,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US014",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Podiums configurables",
@@ -4434,7 +4490,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US015",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Un QR par scoreur",
@@ -4451,7 +4507,7 @@ window.ATLAS.avancement = {
    "etat": "⬜",
    "identifiant": "E16US016",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Exports : les formats et documents qui restent dus",
@@ -4470,7 +4526,7 @@ window.ATLAS.avancement = {
    "etat": "✅",
    "identifiant": "E16US017",
    "sections": [
-    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+    "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
    ],
    "story": "stories/E16-retours-maquettes.md",
    "titre": "Le classement des clubs entre eux",
@@ -4637,8 +4693,8 @@ window.ATLAS.avancement = {
   }
  ],
  "resume": {
-  "livrees": 134,
-  "vivantes": 172
+  "livrees": 135,
+  "vivantes": 173
  },
  "sections": [
   {
@@ -5129,12 +5185,12 @@ window.ATLAS.avancement = {
   },
   {
    "calcule": [
-    25,
-    26
+    26,
+    27
    ],
    "compteur_ecrit": [
-    25,
-    26
+    26,
+    27
    ],
    "lignes": [
     {
@@ -5306,13 +5362,19 @@ window.ATLAS.avancement = {
      "titre": "~~Enregistrer une séquence comme modèle~~ → absorbée par E01US023"
     },
     {
+     "comptee": true,
+     "etat": "✅",
+     "identifiant": "E03US012",
+     "titre": "Poser les cibles des tours suivants"
+    },
+    {
      "comptee": false,
      "etat": "✅",
      "identifiant": "E00US015",
      "titre": "Ossature de navigation admin (coquille)"
     }
    ],
-   "titre": "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (25/26)**"
+   "titre": "J3 — Placement intégral 1→N + écran de salle — 🔶 **en cours (26/27)**"
   },
   {
    "calcule": [
@@ -5580,11 +5642,11 @@ window.ATLAS.avancement = {
   {
    "calcule": [
     14,
-    17
+    18
    ],
    "compteur_ecrit": [
     14,
-    17
+    18
    ],
    "lignes": [
     {
@@ -5650,6 +5712,12 @@ window.ATLAS.avancement = {
     {
      "comptee": true,
      "etat": "⬜",
+     "identifiant": "E16US013",
+     "titre": "Le lancement d'un tour : automatique ou manuel"
+    },
+    {
+     "comptee": true,
+     "etat": "⬜",
      "identifiant": "E16US016",
      "titre": "Exports : les formats et documents qui restent dus"
     },
@@ -5690,7 +5758,7 @@ window.ATLAS.avancement = {
      "titre": "La famille des écrans « prêt à… »"
     }
    ],
-   "titre": "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/17)**"
+   "titre": "Retours du questionnaire de maquettes (EPIC-16) — 🔶 **en cours (14/18)**"
   },
   {
    "calcule": [

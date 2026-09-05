@@ -493,19 +493,30 @@ def _a_classer(plage: Plage, rangs: frozenset[int]) -> bool:
     return any(rang in rangs for rang in range(plage.debut, plage.fin + 1))
 
 
-def paires_du_premier_tour(tableau: Tableau) -> tuple[tuple[Participant, Participant], ...]:
-    """Les duels **effectivement disputés** au premier tour : (haut, bas) de chaque match jouable.
+def paires_du_tour(tableau: Tableau, tour: int) -> tuple[tuple[Participant, Participant], ...]:
+    """Les duels **réels** de ce tour : (haut, bas) de chaque match à deux occupants connus.
 
-    Sert le placement des duellistes côte à côte (E03US009) : seuls les matchs du **tour 1** ont
-    leurs deux occupants connus dès la construction (les tours ≥ 2 restent `None` jusqu'à la
-    progression). On exclut les **byes** (un seul occupant, `est_jouable` faux) : un exempté n'a pas
-    d'adversaire à placer à côté de lui. Fonction **pure**, ordre = celui des matchs (donc de
-    l'ensemencement)."""
+    ⚠️ **On ne filtre PAS sur `est_jouable`** (qui exige `vainqueur is None`) : un duel **tranché**
+    reste un duel de ce tour, ses archers restent posés, et les filtrer les faisait passer pour des
+    poses **orphelines** — donc supprimer. Byes et camps vides exclus. Pure."""
     return tuple(
         (m.haut, m.bas)
         for m in tableau.matchs
-        if m.tour == 1 and m.est_jouable and m.haut is not None and m.bas is not None
+        if m.tour == tour and not m.est_bye and m.haut is not None and m.bas is not None
     )
+
+
+def tour_a_poser(tableau: Tableau) -> int | None:
+    """Le plus petit tour portant **au moins un duel jouable** — `None` si le tableau est fini.
+
+    C'est le tour dont les cibles peuvent être attribuées : ADR-0106 §2 porte le raisonnement.
+
+    ⚠️ **Ne pas y ajouter de garde « tour entièrement déterminé »**, malgré ce que le nom suggère :
+    les matchs nourris par le **perdant d'un bye** ont deux camps vides pour toujours, et une telle
+    garde rendrait `None` définitivement (sondé en revue). Fonction **pure**.
+    """
+    jouables = [m for m in tableau.matchs if m.est_jouable]
+    return min((m.tour for m in jouables), default=None)
 
 
 def libelle_tour(

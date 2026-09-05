@@ -224,7 +224,11 @@ un **troisième espace de rangs** et la notion de podium change de définition),
 inter-clubs : un classement neuf, dont l'entité classée n'est pas un archer), **`0105`**
 (E16US015, 04/09/2026 — le QR d'un scoreur porte son code : le **canal de distribution** d'un
 secret personnel change, ce qui amende ADR-0025 § Décision 2, dont la phrase « distribué sur
-papier et retapé » devenait fausse en silence). Et, par
+papier et retapé » devenait fausse en silence), **`0106`** (E03US012, 05/09/2026 — la pose d'une
+cible appartient à un **tour**, et le tour suivant se pose seul : le placement, donc le moteur
+sportif au sens du critère ci-dessus. ⚠️ **Numéroté 0106 et non 0105** : `0105` avait été pris la
+veille par E16US015, et la collision n'est apparue qu'en venant tenir cette liste — signe que la
+lire avant d'écrire un ADR neuf vaut mieux que compter sur `ls docs/adr/`). Et, par
 **réouverture**, **`0025`** (E16US015, 05/09/2026 — ADR-0105 amende sa *Décision 2* : le code
 n'est plus **seulement** « distribué sur papier et retapé », il devient **aussi** scannable ; section « Porté dans le
 code par » écrite à cette occasion), **`0103`** une seconde fois (E16US017, 04/09/2026 — sa *Décision 3* affirmait
@@ -234,7 +238,13 @@ conditionnelle du référentiel des clubs était périmée par la levée du born
 `etatPodium` n'étant pas un symbole Python). Et, par
 réouverture plutôt que par création : **`0067`** (E16US014, 31/08/2026 — sa Décision 5 figeait
 le podium « par catégorie, rangs 1-4 » ; elle est révisée par `0103`, et sa section « Porté dans
-le code par » a été re-vérifiée symbole par symbole à cette occasion), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à
+le code par » a été re-vérifiée symbole par symbole à cette occasion), **`0048`** (E03US012,
+05/09/2026 — sa *Décision 2* fixait la clé `(phase_id, inscription_id)` du plan de duels, que
+`0106` amende en `(phase_id, tour, inscription_id)` ; l'ADR n'avait **aucune** section « Porté dans
+le code par », elle a été écrite à cette occasion. ⚠️ Il figurait déjà parmi les « au moins cinq
+autres candidats » que le paragraphe `0050` ci-dessus énumérait sans porteur — c'est la 2ᵉ fois que
+cette liste de candidats est confirmée par les faits plutôt que par un audit, ce que `DETTE-091`
+porte), **`0050`** (E16US008, 28/08/2026 ; **rouvert une 2ᵉ fois** par E16US007 le 30/08/2026 — la qualification rejoint le régime « admin ou scoreur », et sa section « Porté dans le code par » nommait `autoriser_forfait_duel`, symbole que le diff avait supprimé). La liste dérive à
 chaque US qui crée ou rouvre un ADR structurant — c'est pourquoi elle vit ici et non dans
 `CLAUDE.md`.
 

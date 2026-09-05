@@ -46,9 +46,13 @@ class DuelSepareReponse(BaseModel):
 
 
 class PlanDeDuelsReponse(BaseModel):
-    """Le plan de duels d'une phase : cibles remplies + réserve + duels non côte à côte."""
+    """Le plan de duels d'un **tour** : cibles remplies + réserve + duels non côte à côte."""
 
     phase_id: int
+    # Le tour que ce plan pose (ADR-0106 §2) : l'écran le nomme. `null` quand le tableau n'est
+    # pas encore constitué — il n'y a alors aucun tour à nommer, et en inventer un ferait afficher
+    # « Tour 1 » pendant que le tableau joue le tour N.
+    tour: int | None
     cibles: list[CiblePlaceeDuelReponse]
     conflits: list[ConflitReponse]
     duels_separes: list[DuelSepareReponse]
@@ -57,6 +61,7 @@ class PlanDeDuelsReponse(BaseModel):
     def de_plan(phase_id: int, plan: PlanDeDuels) -> PlanDeDuelsReponse:
         return PlanDeDuelsReponse(
             phase_id=phase_id,
+            tour=plan.tour,
             cibles=[
                 CiblePlaceeDuelReponse(
                     index=cible.index,
@@ -115,7 +120,10 @@ async def regenerer_plan(tournoi_id: int, phase_id: int, request: Request) -> Pl
     """(Re)génère le plan de duels auto (**action admin**) — c'est aussi « annuler » (déterministe).
 
     Recalcule l'arbre du classement, place les duellistes côte à côte, écrase l'existant. Écriture
-    via la file. Pas de confirmation d'impact : au tour 1 aucun score de duel n'existe."""
+    via la file. Pas de confirmation d'impact parce qu'il n'y a rien à chiffrer : la route est
+    **refusée** (409, `regeneration_sur_tour_en_tir`) dès qu'un duel du tour posé porte un tir.
+    ⚠️ Le tour posé est celui **qui se joue** — ne pas lire « tour déjà tiré » comme « tour
+    terminé »."""
     service: ServicePlacementDuels = request.app.state.service_placement_duels
     write_queue: WriteQueue = request.app.state.write_queue
     plan = await asyncio.wrap_future(

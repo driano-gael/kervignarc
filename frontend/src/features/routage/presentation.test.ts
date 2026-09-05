@@ -58,8 +58,8 @@ describe('destination', () => {
   })
 
   it('rend null quand la cible n’est pas encore attribuée', () => {
-    // Tour ≥ 2 : le placement intégral 1→N est E05US010. Surtout pas la cible du tour 1, qui serait
-    // périmée — c'est le panneau qui enverrait le finaliste sur son ancienne butte.
+    // Tour pas encore posé (ADR-0106 §2). Surtout pas la cible d'un autre tour, qui serait périmée
+    // — c'est le panneau qui enverrait le finaliste sur son ancienne butte.
     expect(destination(prochain({ cible: null, position: null }))).toBeNull()
   })
 })
@@ -172,7 +172,11 @@ describe('partitionner (E07US008)', () => {
   const pose = archer({ archer_id: 1, prochain: prochain({ cible: 4 }) })
   const sansCible = archer({
     archer_id: 2,
-    prochain: prochain({ cible: null, position: null, manque: 'cible attribuée au lancement' }),
+    prochain: prochain({
+      cible: null,
+      position: null,
+      manque: 'cible attribuée dès que le tour précédent sera terminé',
+    }),
   })
   const sorti = archer({ archer_id: 3, issue: 'termine', prochain: null, rang_final: 5 })
 
@@ -181,9 +185,9 @@ describe('partitionner (E07US008)', () => {
   })
 
   it('range EN ATTENTE, jamais parmi les sortis, celui qui est en lice sans cible', () => {
-    // ⚠️ **Le bloquant, en une assertion.** Le serveur ne pose une cible qu'au tour 1 : partitionner
-    // sur la cible rangeait les demi-finalistes sous « Sortis du tableau », sur l'écran projeté du
-    // gymnase, pendant toute la durée du tableau sauf le premier tour.
+    // ⚠️ **Le bloquant, en une assertion.** Le serveur ne pose qu'un tour à la fois (ADR-0106 §2) :
+    // partitionner sur la cible rangeait sous « Sortis du tableau », sur l'écran projeté du gymnase,
+    // tous les archers d'un tour pas encore posé — demi-finalistes compris.
     const { attente, sortis } = partitionner([sansCible])
     expect(attente).toEqual([sansCible])
     expect(sortis).toEqual([])
@@ -244,10 +248,12 @@ describe('detail', () => {
       prochain: prochain({
         cible: null,
         position: null,
-        manque: 'cible attribuée au lancement du tour',
+        manque: 'cible attribuée dès que le tour précédent sera terminé',
       }),
     })
-    expect(detail(sansCible)).toBe('cible attribuée au lancement du tour · DUPONT Jean')
+    expect(detail(sansCible)).toBe(
+      'cible attribuée dès que le tour précédent sera terminé · DUPONT Jean',
+    )
   })
 
   it('relaie tel quel le motif du serveur, quel qu’il soit', () => {

@@ -48,7 +48,8 @@ from domain.tableau import (
     VainqueurDe,
     construire_tableau,
     libelle_tour,
-    paires_du_premier_tour,
+    paires_du_tour,
+    tour_a_poser,
 )
 
 SEEDING = SeedingSerpent()
@@ -127,24 +128,94 @@ def test_effectif_inferieur_a_deux_refuse() -> None:
         construire(1)
 
 
-# --- CA E03US009 « paires du premier tour » (source des duels à placer côte à côte) -------------
+# --- CA E03US009 / E03US012 « paires d'un tour » (source des duels à placer côte à côte) --------
 
 
-def test_paires_du_premier_tour_donne_les_duels_disputes() -> None:
+def test_paires_du_tour_donne_les_duels_disputes() -> None:
     # Effectif = puissance de 2 : tous les matchs du 1er tour sont disputés (aucun exempt).
     # Le serpent oppose r et 2^k+1-r (cf. test_premier_tour_suit_l_ordre_serpent) : (1,4) et (2,3).
-    paires = paires_du_premier_tour(construire(4))
+    paires = paires_du_tour(construire(4), 1)
     assert {frozenset((a.ref_id, b.ref_id)) for a, b in paires} == {
         frozenset((1, 4)),
         frozenset((2, 3)),
     }
 
 
-def test_paires_du_premier_tour_exclut_les_exempts() -> None:
+def test_paires_du_tour_exclut_les_exempts() -> None:
     # 5 archers dans un tableau de 8 : les têtes 1, 2, 3 sont exemptées (byes), seul 4 vs 5 se joue.
     # Un exempté n'a pas d'adversaire à placer à côté de lui : le bye est exclu des paires.
-    paires = paires_du_premier_tour(construire(5))
+    paires = paires_du_tour(construire(5), 1)
     assert {frozenset((a.ref_id, b.ref_id)) for a, b in paires} == {frozenset((4, 5))}
+
+
+def test_paires_d_un_tour_non_determine_sont_vides() -> None:
+    # CA E03US012 « rien ne se pose pour un tour indéterminé » : tant que le tour 1 n'est pas joué,
+    # les camps du tour 2 sont vides. L'absence de pose est l'information — jamais une pose vide.
+    assert paires_du_tour(construire(4), 2) == ()
+
+
+def test_paires_du_tour_suivant_apres_un_tour_joue() -> None:
+    # CA E03US012 : le tour 2 devient plaçable dès que le tour 1 est tranché — ce sont les
+    # vainqueurs propagés qu'il faut poser, pas les têtes de série.
+    tableau = construire(4)
+    for numero in (m.numero for m in tableau.matchs if m.tour == 1):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+    paires = paires_du_tour(tableau, 2)
+    # Les mieux classés de (1,4) et (2,3) l'emportent : la finale oppose 1 à 2. La **petite
+    # finale** (3 vs 4) se dispute au même tour — les deux matchs sont à poser ensemble, ce qui est
+    # précisément pourquoi la maille de pose est le tour et non le duel.
+    assert {frozenset((a.ref_id, b.ref_id)) for a, b in paires} == {
+        frozenset((1, 2)),
+        frozenset((3, 4)),
+    }
+
+
+# --- CA E03US012 « le tour à poser » -----------------------------------------------------------
+# Le tour à poser est le plus petit tour encore à jouer, et seulement s'il est **entièrement**
+# déterminé : c'est ce qui décide quand les cibles du tour suivant peuvent être attribuées.
+
+
+def test_tour_a_poser_est_le_premier_tant_qu_il_se_joue() -> None:
+    tableau = construire(4)
+    assert tour_a_poser(tableau) == 1
+    # Un tour entamé mais pas fini reste le tour à poser : ses duellistes sont connus depuis le
+    # départ, et le tour suivant ne l'est pas encore.
+    tableau = jouer_gagne_mieux_classe(tableau, tableau.matchs[0].numero)
+    assert tour_a_poser(tableau) == 1
+
+
+def test_tour_a_poser_avance_quand_le_tour_est_tranche() -> None:
+    # CA E03US012 : « quand **tous** les duels d'un tour sont tranchés » — la maille est le tour
+    # entier, pas le duel.
+    tableau = construire(4)
+    for numero in (m.numero for m in tableau.matchs if m.tour == 1):
+        tableau = jouer_gagne_mieux_classe(tableau, numero)
+    assert tour_a_poser(tableau) == 2
+
+
+def test_tour_a_poser_est_vide_sur_un_tableau_termine() -> None:
+    # Plus rien à poser quand tout est joué : `None`, jamais un tour au-delà du dernier.
+    tableau = construire(4)
+    for _ in range(len(tableau.matchs)):
+        for m in tableau.matchs:
+            if m.vainqueur is None and m.est_jouable:
+                tableau = jouer_gagne_mieux_classe(tableau, m.numero)
+                break
+    assert tableau.est_termine
+    assert tour_a_poser(tableau) is None
+
+
+def test_tour_a_poser_avance_quand_le_seul_duel_d_un_tour_est_joue() -> None:
+    # 5 archers dans un tableau de 8 : le tour 1 n'a qu'un duel (4 vs 5), les têtes 1-3 sont
+    # exemptées. Une fois ce duel joué, le tour 1 n'a plus rien de jouable — on passe au suivant.
+    # ⚠️ Le nom disait « saute un tour sans duel disputé » : ce cas n'était PAS construit ici (le
+    # tour 1 a bien un duel). Renommé d'après ce qui est réellement vérifié (relevé en revue).
+    tableau = construire(5)
+    assert tour_a_poser(tableau) == 1
+    tableau = jouer_gagne_mieux_classe(
+        tableau, next(m.numero for m in tableau.matchs if m.tour == 1 and m.est_jouable)
+    )
+    assert tour_a_poser(tableau) == 2
 
 
 # --- CA « byes » -------------------------------------------------------------------------------

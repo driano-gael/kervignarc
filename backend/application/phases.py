@@ -24,6 +24,7 @@ from application.erreurs import (
     TransitionStatutInvalide,
 )
 from application.portee import phase_du_depart
+from application.pose_du_tour import DeclencheurPoseDeTour, PoseurDeTour
 from domain.arret_programme import ArretProgramme
 from domain.bareme import BaremeQualification
 from domain.big_shoot_off import ConfigurationBigShootOff
@@ -73,6 +74,11 @@ class ServicePhases:
         # Le **déroulé** : la définition, une fois par tournoi (ADR-0076). Ce service porte
         # donc deux mailles, délibérément — composer au tournoi, faire vivre au départ.
         self._deroules = deroules
+        self._pose_de_tour = DeclencheurPoseDeTour()
+
+    def brancher_poseur_de_tour(self, poseur: PoseurDeTour) -> None:
+        """Dit à qui signaler qu'une phase repart (E03US012) — 3ᵉ chemin, cf. ADR-0106 §5."""
+        self._pose_de_tour.brancher(poseur)
 
     # --- Lecture -------------------------------------------------------------------------------
 
@@ -352,10 +358,21 @@ class ServicePhases:
         )
 
     def reprendre(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
-        """`en_pause → en_cours`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_pause`."""
-        return self._transition(
+        """`en_pause → en_cours`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_pause`.
+
+        ⚠️ **Signale la pose du tour**, et c'est le chemin **indispensable** (E03US012) : un arrêt
+        programmé coupe le déroulé **à la fin d'un tour** (ADR-0091), donc précisément à l'instant
+        où le tour suivant devrait être posé — et la pose est alors sautée, la phase étant en pause.
+        Sans ce signal, plus aucun duel du tour amont ne reste à valider : la pose n'aurait plus
+        jamais lieu, et la salle repartirait sans cibles (bloquant relevé en revue).
+        """
+        phase = self._transition(
             depart_id, phase_id, StatutPhase.EN_PAUSE, Phase.reprendre, "en pause"
         )
+        depart = self._departs.par_id(depart_id)
+        assert depart is not None, "Une phase transitionnée appartient à un créneau existant."
+        self._pose_de_tour.signaler(depart.tournoi_id, phase_id)
+        return phase
 
     def terminer(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
         """`en_cours → terminee`. Lève `TransitionStatutInvalide` (→ 409) hors de `en_cours`."""

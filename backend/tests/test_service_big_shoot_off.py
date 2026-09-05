@@ -729,11 +729,6 @@ def _routage(monde: _Monde, service: ServiceBigShootOff) -> ServiceRoutage:
         monde.categories,
         monde.blasons,
         FauxPlacementTableauRepository(),
-        service._classements,
-        SeedingSerpent(),
-        ByesAuxMieuxClasses(),
-        PlacementEnCascade(),
-        registre_par_defaut(),
         service._saisie_duels,
     )
     return ServiceRoutage(

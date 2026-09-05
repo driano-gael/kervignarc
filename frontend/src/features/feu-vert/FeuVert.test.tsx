@@ -57,6 +57,7 @@ function duel(patch: Partial<DuelAVenir>): DuelAVenir {
 function monter(duels: DuelAVenir[], surPlanDeDuels = vi.fn()) {
   const donnees: FeuVertData = {
     phase_id: 7,
+    tour_pose: 1,
     est_termine: false,
     duels,
     nb_prets: duels.filter((d) => d.pret_a_lancer).length,
@@ -149,7 +150,7 @@ describe('FeuVert — actions sur la ligne bloquée', () => {
     // geste y a survécu. Défaut livré en 2ᵉ passe, corrigé en 3ᵉ, gardé seulement maintenant.
     expect(await screen.findByRole('status')).toHaveTextContent(/Forfait enregistré/)
     rafraichir()
-    expect(screen.getByText(/Les cibles ne sont posées qu’au premier tour/)).toBeVisible()
+    expect(screen.getByText(/Les cibles de ce tour seront posées/)).toBeVisible()
     expect(screen.getByRole('status')).toHaveTextContent(/Forfait enregistré/)
     expect(screen.getByRole('status')).toHaveTextContent(/Forfait enregistré/)
     expect(vi.mocked(declarerForfaitDuel).mock.calls[0]).toEqual([

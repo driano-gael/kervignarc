@@ -2151,6 +2151,13 @@ button:disabled {
   margin: 8px 0;
 }
 
+/* Le tour posé, à gauche des actions de la barre : le plan n'en montre qu'un (ADR-0106 §2). */
+.placement__tour {
+  align-self: center;
+  margin-right: 4px;
+  font-weight: 600;
+}
+
 /* Refus de déplacement (409) : une **alerte** ambre (DV-03, `--danger`), pas une erreur rouge — le
    geste était légitime, seulement pas applicable ici. */
 .placement__alerte {

@@ -113,11 +113,11 @@ describe('actionDuel', () => {
   const amont = duel({ numero: 3 })
 
   it('ne propose rien sur un duel prêt : il n’a aucun manquement à lever', () => {
-    expect(actionDuel(duel({}), [duel({})])).toBeNull()
+    expect(actionDuel(duel({}), [duel({})], 1)).toBeNull()
   })
 
   it('déplie le duel amont attendu — ses occupants et sa cible, sans quitter l’écran', () => {
-    expect(actionDuel(aval, [amont, aval])).toEqual({
+    expect(actionDuel(aval, [amont, aval], 1)).toEqual({
       genre: 'sources',
       sources: [
         {
@@ -145,14 +145,14 @@ describe('actionDuel', () => {
       cible_haut: 7,
       cible_bas: 7,
     })
-    const action = actionDuel(bloque, [amont, quatre, bloque])
+    const action = actionDuel(bloque, [amont, quatre, bloque], 1)
     expect(action?.genre).toBe('sources')
     expect(action?.genre === 'sources' && action.sources.map((s) => s.numero)).toEqual([3, 4])
   })
 
   it('n’offre aucun archer à déclarer forfait quand le duel amont n’a pas encore d’occupant', () => {
     const vide = duel({ numero: 3, haut: null, bas: null, participants_connus: false })
-    const action = actionDuel(aval, [vide, aval])
+    const action = actionDuel(aval, [vide, aval], 1)
     expect(action).toEqual({
       genre: 'sources',
       sources: [{ numero: 3, detail: 'occupants pas encore connus', archers: [] }],
@@ -175,7 +175,7 @@ describe('actionDuel', () => {
     // ⚠️ L'aval passe au tour 3 : une source de tour 2 ne peut pas alimenter un match de tour 2
     // (`VainqueurDe`/`PerdantDe` ne sont engendrés qu'à `tour + 1`).
     const avalTour3 = { ...aval, tour: 3 }
-    const action = actionDuel(avalTour3, [demi, avalTour3])
+    const action = actionDuel(avalTour3, [demi, avalTour3], 1)
     expect(action).toEqual({
       genre: 'sources',
       // Le duel amont se déplie quand même (CA : « ses occupants, sa cible ») — c'est le camp
@@ -185,13 +185,13 @@ describe('actionDuel', () => {
   })
 
   it('ne casse pas si le duel amont a disparu de la liste entre deux rafraîchissements', () => {
-    expect(actionDuel(aval, [aval])).toEqual({
+    expect(actionDuel(aval, [aval], 1)).toEqual({
       genre: 'sources',
       sources: [{ numero: 3, detail: 'plus dans la liste des duels à venir', archers: [] }],
     })
   })
 
-  it('renvoie au plan de cibles quand la cible manque au premier tour', () => {
+  it('renvoie au plan de duels quand la cible manque AU TOUR POSÉ', () => {
     const sansCible = duel({
       tour: 1,
       cible_haut: null,
@@ -200,10 +200,10 @@ describe('actionDuel', () => {
       pret_a_lancer: false,
       blocage: 'cible non attribuée',
     })
-    expect(actionDuel(sansCible, [sansCible])).toEqual({ genre: 'placement' })
+    expect(actionDuel(sansCible, [sansCible], 1)).toEqual({ genre: 'placement' })
   })
 
-  it('dit la limite au lieu d’offrir une fausse porte au-delà du premier tour', () => {
+  it('dit la limite au lieu d’offrir une fausse porte sur un tour NON encore posé', () => {
     const tourDeux = duel({
       numero: 5,
       tour: 2,
@@ -213,15 +213,48 @@ describe('actionDuel', () => {
       pret_a_lancer: false,
       blocage: 'cible non attribuée',
     })
-    const action = actionDuel(tourDeux, [tourDeux])
-    // Le TEXTE, pas seulement le genre : c'est la seule accroche côté front du `grep DETTE-019`
-    // le jour où le placement 1→N lèvera la garde serveur (sans quoi l'écran annonce une limite
-    // abolie et rien ne rougit).
+    // Le tour posé est le 1 : le tour 2 n'a pas encore de cibles, aucun geste d'ici ne les pose.
+    const action = actionDuel(tourDeux, [tourDeux], 1)
+    // Le TEXTE, pas seulement le genre : c'est l'accroche côté front qui doit suivre la garde
+    // serveur, sans quoi l'écran annonce une limite abolie et rien ne rougit (DETTE-019).
     expect(action).toEqual({
       genre: 'sans-recours',
-      explication:
-        'Les cibles ne sont posées qu’au premier tour : ce duel ne peut pas encore partir d’ici.',
+      explication: 'Les cibles de ce tour seront posées quand le tour précédent sera terminé.',
     })
+  })
+
+  it('offre le plan de duels sur un tour ≥ 2 DEVENU le tour posé (E03US012)', () => {
+    // La capacité neuve : passé le premier tour, « cible non attribuée » se répare enfin. Cette
+    // même ligne renvoyait « sans-recours » quel que soit l'état du plan.
+    const tourDeux = duel({
+      numero: 5,
+      tour: 2,
+      cible_haut: null,
+      cible_bas: null,
+      cible_attribuee: false,
+      pret_a_lancer: false,
+      blocage: 'cible non attribuée',
+    })
+    expect(actionDuel(tourDeux, [tourDeux], 2)).toEqual({ genre: 'placement' })
+  })
+
+  it('renvoie au plan de duels quand AUCUN plan n’est lisible (pas de gabarit)', () => {
+    // ⚠️ `tour_pose === null` = « aucun plan lisible », pas « tour pas encore posé ». Le geste qui
+    // lève le manquement est d'aller appliquer un plan de salle puis générer — c'est le CA
+    // d'E16US008. Dire « attendez le tour précédent » sur un tour 1 est faux : il n'y en a pas.
+    const sansPlan = duel({
+      tour: 1,
+      cible_haut: null,
+      cible_bas: null,
+      cible_attribuee: false,
+      pret_a_lancer: false,
+      blocage: 'cible non attribuée',
+    })
+    expect(actionDuel(sansPlan, [sansPlan], null)).toEqual({ genre: 'placement' })
+    // Et la raison est bien « aucun plan », pas « tour 1 » : un tour ≥ 2 sans gabarit renvoie
+    // au même endroit — c'est là qu'on applique un plan de salle.
+    const tourDeuxSansPlan = duel({ ...sansPlan, tour: 2 })
+    expect(actionDuel(tourDeuxSansPlan, [tourDeuxSansPlan], null)).toEqual({ genre: 'placement' })
   })
 
   it('ne propose rien sur « adversaire non déterminé » : rien ne se lève depuis le feu vert', () => {
@@ -233,7 +266,7 @@ describe('actionDuel', () => {
       pret_a_lancer: false,
       blocage: 'adversaire non déterminé',
     })
-    expect(actionDuel(orphelin, [orphelin])).toBeNull()
+    expect(actionDuel(orphelin, [orphelin], 1)).toBeNull()
   })
 })
 

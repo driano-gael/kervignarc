@@ -210,29 +210,33 @@ class FauxSerieRepository:
 
 
 class FauxPlacementTableauRepository:
-    """Double en mémoire de `PlacementTableauRepository` (clé composite (phase, inscription))."""
+    """Double en mémoire de `PlacementTableauRepository` (clé (phase, tour, inscription))."""
 
     def __init__(self) -> None:
-        self._plan: dict[tuple[int, int], tuple[int, str]] = {}
+        self._plan: dict[tuple[int, int, int], tuple[int, str]] = {}
 
-    def par_phase(self, phase_id: PhaseId) -> list[Affectation]:
+    def par_phase_et_tour(self, phase_id: PhaseId, tour: int) -> list[Affectation]:
         return [
             Affectation(inscription_id=insc, cible_index=cible, position=pos)
-            for (phase, insc), (cible, pos) in sorted(self._plan.items())
-            if phase == phase_id
+            for (phase, t, insc), (cible, pos) in sorted(self._plan.items())
+            if phase == phase_id and t == tour
         ]
 
-    def definir_plan(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
-        self._plan = {k: v for k, v in self._plan.items() if k[0] != phase_id}
+    def definir_plan(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
+        self._plan = {k: v for k, v in self._plan.items() if k[:2] != (phase_id, tour)}
         for a in affectations:
-            self._plan[(phase_id, a.inscription_id)] = (a.cible_index, a.position)
+            self._plan[(phase_id, tour, a.inscription_id)] = (a.cible_index, a.position)
 
-    def poser_plusieurs(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
+    def poser_plusieurs(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
         for a in affectations:
-            self._plan[(phase_id, a.inscription_id)] = (a.cible_index, a.position)
+            self._plan[(phase_id, tour, a.inscription_id)] = (a.cible_index, a.position)
 
-    def retirer(self, phase_id: PhaseId, inscription_id: InscriptionId) -> None:
-        self._plan.pop((phase_id, inscription_id), None)
+    def retirer(self, phase_id: PhaseId, tour: int, inscription_id: InscriptionId) -> None:
+        self._plan.pop((phase_id, tour, inscription_id), None)
 
 
 class _Monde:
@@ -379,19 +383,15 @@ class _Monde:
             self.categories,
             self.blasons,
             self.placements,
-            classement,
-            SeedingSerpent(),
-            ByesAuxMieuxClasses(),
-            PlacementEnCascade(),
-            registre_par_defaut(),
             self._saisie_duels(classement),
         )
 
     def _saisie_duels(self, classement: ServiceClassement) -> ServiceSaisieDuels:
-        """Le jumeau dont le plan emprunte la résolution de classement amont (E05US024).
+        """Le service qui **monte l'arbre** dont le plan pose les duellistes (E03US012).
 
-        **Mêmes politiques que le plan** : les deux montent le même arbre, et les faire diverger ici
-        ferait mentir le décor avant même le test.
+        Depuis E03US012 le plan n'en construit plus un second : les politiques câblées ici sont donc
+        les seules en jeu, et le décor ne peut plus faire diverger deux arbres qui se croyaient
+        jumeaux.
         """
         return ServiceSaisieDuels(
             self.tournois,

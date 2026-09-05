@@ -297,10 +297,10 @@ class PlacementORM(Base):
 class PlacementTableauORM(Base):
     """Table `placement_tableau` — pose matérialisée d'un duelliste, par phase (E03US009, ADR-0048).
 
-    Le **plan de duels**, distinct du plan de cibles (`placement`, par départ) : scopé par la
-    **phase**, clé primaire `(phase_id, inscription_id)`. ⚠️ L'**appariement** n'est **pas**
-    persisté — il se recalcule du classement (ADR-0023/0048) ; seule la **pose** l'est, pour
-    l'ajustement au glisser-déposer. `ON DELETE CASCADE` sur les deux FK (donnée dérivée, feuille).
+    Le **plan de duels**, distinct du plan de cibles (`placement`, par départ) : clé primaire
+    `(phase_id, tour, inscription_id)` — ADR-0106 §1 pour le `tour`. ⚠️ **L'ordre des colonnes est
+    l'ordre de la clé**, dont dépendent les `session.get` de l'adapter. L'appariement n'est pas
+    persisté (recalculé, ADR-0023/0048) ; `ON DELETE CASCADE` sur les deux FK (feuille dérivée).
     """
 
     __tablename__ = "placement_tableau"
@@ -308,6 +308,7 @@ class PlacementTableauORM(Base):
     phase_id: Mapped[int] = mapped_column(
         ForeignKey("phase.id", ondelete="CASCADE"), primary_key=True
     )
+    tour: Mapped[int] = mapped_column(primary_key=True)
     inscription_id: Mapped[int] = mapped_column(
         ForeignKey("inscription.id", ondelete="CASCADE"), primary_key=True
     )
