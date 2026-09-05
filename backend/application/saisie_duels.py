@@ -264,14 +264,29 @@ class ServiceSaisieDuels:
         """
         return self._decor(tournoi_id, phase_id)
 
-    def numeros_avec_tir(self, phase_id: PhaseId) -> frozenset[int]:
-        """Les `match_numero` de cette phase qui portent **déjà un tir** (validé ou non).
+    def numeros_avec_tir(self, tournoi_id: TournoiId, phase_id: PhaseId) -> frozenset[int]:
+        """Les `match_numero` dont le tir oppose **les duellistes d'aujourd'hui** (validé ou non).
 
-        Exposée pour le plan de duels (E03US012) : régénérer un tour dont des duels sont **en cours
-        de tir** redistribuerait des archers déjà sur la butte. Un `vainqueur` ne suffit pas à le
-        dire — c'est le tir **saisi et non encore validé** qui est le cas dangereux.
+        Sert la garde de régénération du plan de duels (ADR-0106 §4).
+
+        ⚠️ **Règle de désynchronisation d'ADR-0049 §4** : une correction de qualification
+        ré-ensemence l'arbre, et les tirs d'avant deviennent des **vestiges**. Les compter
+        verrouillait le seul geste qui répare un plan devenu faux.
         """
-        return self._duels.numeros_enregistres(phase_id)
+        tableau, lignes = self.reconstruire(tournoi_id, phase_id)
+        enregistres = self._duels.numeros_enregistres(phase_id)
+        vivants = set()
+        for numero in enregistres & {m.numero for m in tableau.matchs}:
+            match = tableau.match(numero)
+            if match.est_bye or match.haut is None or match.bas is None:
+                continue
+            duel = self._duels.charger(phase_id, numero, bareme=self._bareme_du(match.haut, lignes))
+            if duel is not None and (duel.participant_haut, duel.participant_bas) == (
+                match.haut,
+                match.bas,
+            ):
+                vivants.add(numero)
+        return frozenset(vivants)
 
     def duelliste(
         self, participant: Participant | None, lignes: dict[int, LigneClassement]

@@ -1,8 +1,8 @@
 """Plan de duels — **matérialisé** par phase et ajustable, comme le plan de qualification.
 
 ⚠️ **L'appariement, lui, n'est JAMAIS persisté** : il est recalculé du classement à chaque
-régénération (déterministe, ADR-0023). MVP : ensemencement scratch, tour 1 seulement, gabarit du
-tournoi réutilisé. Les participants de genre équipe sont ignorés — pas d'entité `Equipe`.
+régénération (déterministe, ADR-0023). Ensemencement scratch, **un tour à la fois** — celui qui se
+joue (ADR-0106 §2) —, gabarit du tournoi réutilisé. Les participants de genre équipe sont ignorés.
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ class PlanDeDuels:
     **dérivés**, jamais persistés (comme la mixité).
     """
 
-    tour: int
+    tour: int | None
     cibles: tuple[CiblePlacee, ...]
     conflits: tuple[Conflit, ...]
     adjacence_non_garantie: frozenset[int]
@@ -98,6 +98,14 @@ class _Contexte:
     cloisonnement: Cloisonnement
     # Les `match_numero` du tour posé : sert la garde de régénération (E03US012).
     numeros_du_tour: set[int] = field(default_factory=set)
+    # ⚠️ Duellistes d'un duel **déjà tranché** : ils restent au décor (leurs poses ne sont donc pas
+    # orphelines) mais ne sont **pas à placer** — un walkover n'ira jamais sur la butte, et
+    # l'asseoir consomme deux places au détriment d'un duelliste réel.
+    tranches: set[InscriptionId] = field(default_factory=set)
+    nb_tours: int = 1
+    # `False` = le tableau n'existe pas encore (effectif, prélèvement en attente). Le `tour` est
+    # alors une valeur de repli qui ne désigne rien : ne rien en déduire, ne rien écrire.
+    tableau_lisible: bool = True
     inscriptions: list[Inscription] = field(default_factory=list)
     donnees: dict[ArcherId, ArcherAPlacer] = field(default_factory=dict)
     sans_blason: set[InscriptionId] = field(default_factory=set)
@@ -167,10 +175,18 @@ class ServicePlacementDuels:
         des archers déjà sur la butte (ADR-0106 §4).
         """
         contexte = self._charger(tournoi_id, phase_id)
-        self._refuser_si_le_tour_a_tire(contexte)
+        self._refuser_si_le_tour_a_tire(tournoi_id, contexte)
+        a_placer = tuple(
+            donnee
+            for inscription_id, donnee in (
+                (contexte.inscription_par_archer.get(archer_id), donnee)
+                for archer_id, donnee in contexte.donnees.items()
+            )
+            if inscription_id is not None and inscription_id not in contexte.tranches
+        )
         plan = placer(
             contexte.gabarit.cibles,
-            tuple(contexte.donnees.values()),
+            a_placer,
             ordonner=partial(_ordonner_pour_adjacence, partenaire=contexte.partenaire),
             cloisonnement=contexte.cloisonnement,
         )
@@ -261,10 +277,20 @@ class ServicePlacementDuels:
         """
         return self._completer(self._charger(tournoi_id, phase_id))
 
-    def _refuser_si_le_tour_a_tire(self, contexte: _Contexte) -> None:
-        """Refuse de rejouer le placement d'un tour dont un duel porte déjà un tir (E03US012)."""
-        numeros = self._saisie_duels.numeros_avec_tir(contexte.phase_id)
-        if numeros & contexte.numeros_du_tour:
+    def _refuser_si_le_tour_a_tire(self, tournoi_id: TournoiId, contexte: _Contexte) -> None:
+        """Refuse de rejouer le placement d'un tour dont un duel porte déjà un tir (ADR-0106 §4).
+
+        ⚠️ Le refus porte sur les tirs **d'aujourd'hui** : `numeros_avec_tir` écarte les traces
+        désynchronisées (ADR-0049 §4), sans quoi une correction de qualification verrouillait le
+        seul geste qui répare un plan devenu faux.
+        ⚠️ **Un tableau illisible n'est PAS un refus** : il rend un plan **vide**, dégradation
+        gracieuse voulue (E05US024) — et reconstruire ici relèverait l'exception absorbée.
+        """
+        if not contexte.tableau_lisible:
+            return
+        if self._saisie_duels.numeros_avec_tir(tournoi_id, contexte.phase_id) & (
+            contexte.numeros_du_tour
+        ):
             raise RegenerationSurTourEnTir(
                 f"Des duels du tour {contexte.tour} ont déjà tiré : régénérer le plan "
                 "déplacerait des archers en cours de match."
@@ -287,6 +313,7 @@ class ServicePlacementDuels:
             if inscription.id is not None
             and inscription.id not in placees
             and inscription.id not in contexte.sans_blason
+            and inscription.id not in contexte.tranches
         )
         poses, _ = placer_restants(
             contexte.gabarit.cibles,
@@ -321,12 +348,34 @@ class ServicePlacementDuels:
         phase = phase_du_tournoi(self._phases, tournoi_id, phase_id)
         if phase is None or phase.statut is StatutPhase.EN_PAUSE:
             return
+        # ⚠️ **Le signal de reprise vaut pour TOUTE phase** (qualification, poules, suisse…) : sans
+        # ce filtre, `_charger` lève `PhasePasUnTableau` sur un chemin nominal et le déclencheur en
+        # journalise un WARNING — or ce log est le seul détecteur de `DETTE-028`. Le noyer l'éteint.
+        if phase.type not in TYPES_EN_TABLEAU_JOUE:
+            return
         contexte = self._charger(tournoi_id, phase_id)
+        if not contexte.tableau_lisible:
+            return
+        # ⚠️ **Avant la sortie sur le tour 1** : un recul du tour y ramène précisément, et c'est le
+        # seul cas où des poses aval existent.
+        self._purger_les_tours_aval(contexte)
         if contexte.tour == 1:
             return
         if self._placements.par_phase_et_tour(phase_id, contexte.tour):
             return
         self._completer(contexte)
+
+    def _purger_les_tours_aval(self, contexte: _Contexte) -> None:
+        """Retire les poses des tours **postérieurs** au tour à poser (E03US012).
+
+        ⚠️ Sert le **recul** du tour, seul cas où elles existent : annuler un forfait dé-tranche un
+        duel, le tour redevient jouable, et un autre archer peut le gagner. Sans purge, le tour aval
+        garde ses anciennes poses, donc « il a des poses », donc la garde d'unicité l'estime posé —
+        et le nouveau qualifié reste sans cible, définitivement (relevé en revue, sondé).
+        """
+        for tour in range(contexte.tour + 1, contexte.nb_tours + 1):
+            for affectation in self._placements.par_phase_et_tour(contexte.phase_id, tour):
+                self._placements.retirer(contexte.phase_id, tour, affectation.inscription_id)
 
     def _poses_a_jour(self, phase_id: PhaseId, contexte: _Contexte) -> list[Affectation]:
         """Lit les poses de la phase après avoir **purgé** celles devenues orphelines (ADR-0048).
@@ -514,7 +563,7 @@ class ServicePlacementDuels:
         """Assemble le plan de cibles depuis les affectations, puis dérive le signal côte à côte."""
         plan = self._plan_de_cibles(contexte, affectations)
         return PlanDeDuels(
-            tour=contexte.tour,
+            tour=contexte.tour if contexte.tableau_lisible else None,
             cibles=plan.cibles,
             conflits=plan.conflits,
             adjacence_non_garantie=cibles_avec_duel_separe(plan, contexte.paires),
@@ -655,15 +704,32 @@ class ServicePlacementDuels:
         # trop tôt », pas une erreur : on rend un plan **vide**, jamais un écran en défaut — même
         # tolérance que le feu vert, qui lit le même tableau par la même porte.
         except (EffectifTableauInvalide, PrelevementEnAttente):
+            contexte.tableau_lisible = False
             return contexte
         # ⚠️ **Le `None` de `tour_a_poser` a UN seul sens** — plus aucun duel jouable, donc tableau
         # terminé —, et c'est ce qui rend ce repli sûr. Lui en donner un second sans rouvrir ici
         # ferait charger la finale sur un tableau *indéterminé*.
         contexte.tour = tour_a_poser(tableau) or tableau.nb_tours
+        contexte.nb_tours = tableau.nb_tours
         contexte.numeros_du_tour = {m.numero for m in tableau.matchs if m.tour == contexte.tour}
         for haut, bas in paires_du_tour(tableau, contexte.tour):
             self._enregistrer_duel(contexte, haut, bas)
+        for match in tableau.matchs:
+            if match.tour == contexte.tour and match.vainqueur is not None:
+                self._marquer_tranche(contexte, match.haut, match.bas)
         return contexte
+
+    def _marquer_tranche(
+        self, contexte: _Contexte, haut: Participant | None, bas: Participant | None
+    ) -> None:
+        """Range les duellistes d'un duel déjà tranché hors des archers **à placer**."""
+        for participant in (haut, bas):
+            archer_id = self._archer_du(participant) if participant is not None else None
+            if archer_id is None:
+                continue
+            inscription_id = contexte.inscription_par_archer.get(archer_id)
+            if inscription_id is not None:
+                contexte.tranches.add(inscription_id)
 
     def _enregistrer_duel(self, contexte: _Contexte, haut: Participant, bas: Participant) -> None:
         """Résout un duel (Participant → archer → inscription) et l'inscrit au décor.

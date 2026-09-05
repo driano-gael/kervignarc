@@ -49,9 +49,10 @@ class PlanDeDuelsReponse(BaseModel):
     """Le plan de duels d'un **tour** : cibles remplies + réserve + duels non côte à côte."""
 
     phase_id: int
-    # Le tour que ce plan pose (E03US012) : l'écran le nomme, une cible n'ayant de sens que
-    # rapportée à un tour. Toujours ≥ 1, y compris sur un plan vide.
-    tour: int
+    # Le tour que ce plan pose (ADR-0106 §2) : l'écran le nomme. `null` quand le tableau n'est
+    # pas encore constitué — il n'y a alors aucun tour à nommer, et en inventer un ferait afficher
+    # « Tour 1 » pendant que le tableau joue le tour N.
+    tour: int | None
     cibles: list[CiblePlaceeDuelReponse]
     conflits: list[ConflitReponse]
     duels_separes: list[DuelSepareReponse]

@@ -308,9 +308,9 @@ def fabriquer_harnais_simulation() -> HarnaisSimulation:
         placements_tableau,
         saisie_duels,
     )
-    # ⚠️ **Le poseur de tour EST branché ici**, à la différence de l'évaluateur d'arrêts ci-dessus :
-    # sans lui, une simulation ne poserait jamais les tours ≥ 2 et cesserait d'être le miroir de la
-    # production sur la capacité même d'E03US012 (ADR-0106 §5).
+    # ⚠️ **Le poseur EST branché ici**, à la différence de l'évaluateur d'arrêts ci-dessus. Un seul
+    # des trois chemins d'ADR-0106 §5 l'est : ce harnais n'a ni service de forfait ni cycle de vie
+    # de phase — une simulation ne rejoue ni le walkover ni la reprise après pause.
     saisie_duels.brancher_poseur_de_tour(placement_duels)
     return HarnaisSimulation(
         tournois,

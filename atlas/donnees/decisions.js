@@ -9519,9 +9519,12 @@ window.ATLAS.decisions = {
      "existe": true,
      "symboles": [
       "PlacementTableauRepository",
-      "par_phase"
+      "par_phase",
+      "application.formats.LecteurDonneesDePhase"
      ],
-     "symboles_absents": [],
+     "symboles_absents": [
+      "application.formats.LecteurDonneesDePhase"
+     ],
      "verifiable": true
     },
     {
@@ -9604,6 +9607,7 @@ window.ATLAS.decisions = {
     "E03US012",
     "E05US010",
     "E05US024",
+    "E12US007",
     "E16US008",
     "E16US013"
    ]

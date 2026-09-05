@@ -156,6 +156,14 @@ class _Monde:
         assert posee.id is not None
         return posee.id
 
+    def inscription_de(self, archer_id: int) -> int:
+        """L'`inscription_id` de cet archer dans le créneau du décor."""
+        inscription = next(
+            i for i in self.inscriptions.par_depart(self.depart_id) if i.archer_id == archer_id
+        )
+        assert inscription.id is not None
+        return inscription.id
+
     def inscrire_classe(self, valeurs: tuple[str, ...]) -> int:
         archer = self.archers.ajouter(
             Archer(nom="N", prenom="P", tournoi_id=self.tournoi_id, categorie_id=self.categorie_id)
@@ -853,3 +861,109 @@ def test_un_tour_acheve_par_walkover_recoit_ses_cibles() -> None:
     assert tour2 and all(
         d.cible_attribuee for d in tour2
     ), "le walkover achève le tour 1 : le tour 2 doit recevoir ses cibles sans clic"
+
+
+def test_regenerer_le_tour_2_reste_possible_malgre_les_tirs_du_tour_1() -> None:
+    """La garde de régénération porte sur le **tour posé**, pas sur la phase entière.
+
+    ⚠️ Le seul test de cette garde l'exerçait au tour 1, où l'intersection avec `numeros_du_tour`
+    est indistinguable d'un simple `if numeros:` — il ne prouvait donc pas la moitié qui compte
+    (relevé en revue). Sans l'intersection, « Régénérer » deviendrait 409 **définitivement** dès le
+    premier tir du tournoi, et le rattrapage que la recette recommande serait inatteignable.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ):
+        monde.gagner(numero)
+
+    plan = monde.placement.regenerer(monde.tournoi_id, monde.phase_id)
+
+    assert plan.tour == 2
+
+
+def test_regenerer_est_refuse_des_qu_un_duel_du_tour_pose_a_tire() -> None:
+    """Le cas que l'arbitrage invoque : « redistribuerait des archers déjà sur la butte »."""
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    for numero in (
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 1
+    ):
+        monde.gagner(numero)
+    finale = next(
+        d.numero
+        for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels
+        if d.tour == 2
+    )
+    monde.saisie.saisir_manche(
+        monde.tournoi_id,
+        monde.phase_id,
+        finale,
+        1,
+        (ZoneScore.DIX,) * 3,
+        (ZoneScore.SIX,) * 3,
+    )
+
+    with pytest.raises(RegenerationSurTourEnTir):
+        monde.placement.regenerer(monde.tournoi_id, monde.phase_id)
+
+
+def test_un_duel_tranche_par_walkover_n_occupe_pas_de_place_sur_la_butte() -> None:
+    """Un forfait tranche un duel qui ne sera **jamais tiré** : l'asseoir gaspille deux places.
+
+    ⚠️ Régression introduite par le correctif du 1ᵉʳ bloquant : en cessant de filtrer sur
+    `est_jouable`, `paires_du_tour` a fait entrer au décor les duels tranchés — y compris les
+    walkovers, qui gardent leurs **deux** occupants. Le bon discriminant n'est pas « tranché » mais
+    « tranché **avant** la pose » : ils restent au décor (leurs poses ne sont pas orphelines) et
+    sortent du **placement**.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    duel = next(
+        d for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels if d.numero == 1
+    )
+    assert duel.haut is not None
+    monde.forfait.declarer_en_duel(
+        monde.tournoi_id, monde.phase_id, duel.haut.archer_id, NatureForfait.ABANDON, "ADMIN"
+    )
+
+    monde.placer()
+
+    poses = {a.inscription_id for a in monde.placements.par_phase_et_tour(monde.phase_id, 1)}
+    forfaitaire = monde.inscription_de(duel.haut.archer_id)
+    assert forfaitaire not in poses, "un archer forfait n'occupe pas de couloir"
+
+
+def test_annuler_un_forfait_laisse_le_tour_suivant_posable() -> None:
+    """`D-15` : le forfait est réversible, et la pose doit suivre le recul du tour.
+
+    ⚠️ La garde « un tour ne se pose qu'une fois » testait « au moins une pose ». Après annulation,
+    le tour amont redevient jouable, un **autre** archer peut le gagner — et le tour aval gardait
+    ses anciennes poses, donc passait pour posé : le nouveau qualifié restait sans cible,
+    définitivement (relevé en revue, sondé). Les tours aval sont désormais purgés au recul.
+    """
+    monde = _Monde(capacites=(4,))
+    _quatre(monde)
+    monde.placer()
+    monde.gagner(1)
+    duel = next(
+        d for d in monde.pilotage.feu_vert(monde.tournoi_id, monde.phase_id).duels if d.numero == 2
+    )
+    assert duel.haut is not None and duel.bas is not None
+    monde.forfait.declarer_en_duel(
+        monde.tournoi_id, monde.phase_id, duel.bas.archer_id, NatureForfait.ABANDON, "ADMIN"
+    )
+    assert monde.placements.par_phase_et_tour(monde.phase_id, 2), "le tour 2 est posé"
+
+    monde.forfait.annuler_en_duel(monde.tournoi_id, monde.phase_id, duel.bas.archer_id, "ADMIN")
+
+    assert (
+        monde.placements.par_phase_et_tour(monde.phase_id, 2) == []
+    ), "le recul du tour purge les poses aval, sans quoi le tour aval passe pour posé"

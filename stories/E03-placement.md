@@ -230,10 +230,15 @@ leur tour est déterminé, *afin de* savoir où envoyer chaque archer au lieu de
   sur un tour ≥ 2 posé, et le panneau de routage annonce la vraie cible. ⚠️ Lever la garde côté
   serveur **sans** toucher les deux fichiers front laisserait l'écran annoncer une limite disparue,
   **sans qu'aucun test rougisse** — c'est nommément le piège décrit au registre.
-- **CA — une pose périmée ne survit pas à la correction qui l'a périmée** : corriger un résultat d'un
-  tour antérieur change les vainqueurs, donc les occupants des tours suivants. Les poses des tours
-  devenus faux suivent la règle déjà posée par `E03US009` pour les **poses orphelines** — masquées en
-  lecture, purgées à la première écriture — et le tour se repose quand il redevient déterminé.
+- **CA — une pose périmée ne survit pas à la correction qui l'a périmée** : corriger un résultat
+  d'un tour antérieur change les vainqueurs, donc les occupants des tours suivants. Les poses des
+  tours devenus faux suivent la règle déjà posée par `E03US009` pour les **poses orphelines** —
+  masquées en lecture, purgées à la première écriture. ⚠️ **Le tour ne se repose pas tout seul** :
+  quand le tour à poser **recule** (seule l'annulation d'un forfait le provoque), les poses des
+  tours **aval** sont purgées, ce qui les rend re-posables ; mais un tour qui garde ses poses n'est
+  jamais recomplété — c'est la contrepartie de la garde qui protège la réserve. Le geste de
+  rattrapage est **« Placer les restants »**, qui ne déplace personne. *(Rédaction d'origine
+  corrigée en revue : elle promettait une repose automatique que rien ne déclenchait.)*
 - **Notes** :
   - ⚠️ **Le moteur n'est pas en cause** : `domain.placement.placer` est un glouton **générique, sans
     notion de tour**. La limite vient de son appelant (`ServicePlacementDuels._charger`, qui ne lui
@@ -253,9 +258,11 @@ leur tour est déterminé, *afin de* savoir où envoyer chaque archer au lieu de
       croyant le geste inoffensif. Il ne l'est pas : une **réserve est un trou**, donc compléter
       reposait d'office l'archer que l'organisateur venait d'écarter — exactement l'objection qui
       fait exclure le tour 1, et elle valait aux tours qu'on n'avait pas exclus.
-    - **La pose ne rattrape PAS un tour périmé par une correction.** La rédaction d'origine le
-      promettait ; aucun chemin ne le déclencherait (un résultat de duel ne se corrige pas, et la
-      correction d'un score de qualification ne signale rien). C'est un geste de l'organisateur.
+    - **La pose ne rattrape PAS un tour déjà posé.** La rédaction d'origine promettait une repose
+      automatique. Le seul chemin qui **dé-tranche** un duel est l'annulation d'un forfait : il fait
+      **reculer** le tour à poser, ce qui purge les poses aval et les rend re-posables. Partout
+      ailleurs — correction d'un score de qualification, notamment — le tour garde ses poses et le
+      rattrapage est **« Placer les restants »**, qui ne déplace aucun archer déjà posé.
     - **Trois chemins de déclenchement, pas deux** : valider un duel, le trancher par forfait, et
       **reprendre** une phase après une pause. Sans le troisième, un arrêt programmé — qui coupe
       *entre deux tours* — annulait la fonctionnalité dans sa configuration nominale.

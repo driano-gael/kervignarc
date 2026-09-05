@@ -105,6 +105,12 @@ déclencherait** — un résultat de duel ne se corrige pas (`DuelVerrouille`), 
 score de *qualification* ne signale pas le poseur. La repose d'un tour périmé est donc un **geste de
 l'organisateur** (« Générer le plan »), et c'est écrit tel quel dans la recette.
 
+**Et régénérer un tour qui se joue est refusé** (409, `regeneration_sur_tour_en_tir`). La
+justification d'origine — « au tour 1 aucun score de duel n'existe, donc pas d'alerte d'impact »
+(E12US007) — tombe avec cette décision : le tour posé **est** celui qui tire. ⚠️ Le refus porte sur
+les tirs **d'aujourd'hui** : une correction de qualification ré-ensemence l'arbre et périme les
+traces, et les compter verrouillerait le seul geste qui répare un plan devenu faux (ADR-0049 §4).
+
 Deux exclusions, toutes deux nécessaires :
 
 - **le tour 1** garde son geste explicite (« Générer le plan »). Le compléter d'office reposerait un
@@ -166,6 +172,9 @@ désormais à tous les tours. La ligne du registre est élargie, pas contournée
   (`_sources_en_attente`) reste, et reste inscrite.
 - **La route `regenerer` ne touche plus que le tour en cours de pose**, jamais un tour déjà tiré.
   C'est une garantie neuve : auparavant elle purgeait le plan de la phase entière.
+- **Le contrat de `POST …/plan-de-duels/regenerer` change** : 409 `regeneration_sur_tour_en_tir`
+  quand un duel du tour posé porte un tir. Le geste de rattrapage devient « Placer les restants »,
+  qui ne déplace aucun archer déjà posé.
 - **Pas de sélecteur de tour** à l'écran : il rend le plan du tour en cours, qu'il **nomme**.
   Consulter un tour passé ou à venir est un confort écarté du périmètre, faute de besoin énoncé.
 - **E16US013** (lancement automatique ou manuel) redevient utile : c'est le blocage que son cadrage
@@ -182,7 +191,7 @@ désormais à tous les tours. La ligne du registre est élargie, pas contournée
   recréation explicite de la table (décision 1, y compris l'avertissement sur `batch_alter_table`).
 - `backend/domain/ports.py` — `PlacementTableauRepository` : les quatre gestes portent le tour
   (décision 1). ⚠️ `par_phase` **n'y est pas** : cette lecture (toutes poses d'une phase) appartient
-  à un autre port, déclaré dans `application/formats.py`, qui pose une question distincte.
+  au port `application.formats.LecteurDonneesDePhase`, qui pose une question distincte.
 - `backend/infrastructure/db/repositories/moteur.py` et `backend/infrastructure/memory/repositories.py`
   — `PlacementTableauRepositorySQL` / `InMemoryPlacementTableauRepository` : `par_phase_et_tour`,
   et `par_phase` conservée pour le seul port des formats.

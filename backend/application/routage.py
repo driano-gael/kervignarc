@@ -58,10 +58,12 @@ from domain.tournoi import TournoiId
 CIBLE_A_VENIR = "cible attribuée dès que le tour précédent sera terminé"
 """Tour pas encore posé : la cible **existera**. ⚠️ Le libellé disait « au lancement du tour »,
 faux depuis E03US012 — la pose suit la fin du tour amont, et « lancer » ne pose rien (ADR-0056 §3).
-Le feu vert dit la même chose, mot pour mot (`frontend/src/features/feu-vert/etat.ts`)."""
+Le feu vert porte le même **sens** sous une autre forme (`SANS_RECOURS_TOUR_NON_POSE`, front) : les
+deux doivent rester cohérents, pas identiques — aucun test ne les tient ensemble."""
 
 CIBLE_NON_ATTRIBUEE = "cible non attribuée"
-"""Tour 1 sans pose : aucun plan matérialisé, ou archer en réserve. Rien ne viendra tant que
+"""**Tour posé** sans pose (archer en réserve), ou **aucun plan lisible** (pas de gabarit appliqué,
+`plan.tour is None`) — élargi par E03US012. Rien ne viendra tant que
 l'organisateur n'aura pas placé — d'où le libellé **neutre** du feu vert, et non une promesse."""
 
 PLACEMENT_AUTRE_CIBLE = "placement à revoir — votre adversaire est sur la cible {cible}"
@@ -1030,7 +1032,7 @@ class ServiceRoutage:
     def _plan_lu(self, tournoi_id: TournoiId, phase_id: PhaseId) -> _PlanLu:
         """Le plan de duels **persisté**, réduit à ce que le routage en fait.
 
-        Jumeau de `ServicePilotageTour._cibles_par_archer` (2ᵉ occurrence) à deux choses près : on
+        Jumeau de `ServicePilotageTour._poses_du_tour_pose` (2ᵉ occurrence) à deux choses près : on
         garde la **position**, et on **conserve** `duels_separes` — le signal qui dit que la pose ne
         correspond plus au duel du jour, et que le pilotage, lui, jette.
 

@@ -370,8 +370,8 @@ class ServicePhases:
             depart_id, phase_id, StatutPhase.EN_PAUSE, Phase.reprendre, "en pause"
         )
         depart = self._departs.par_id(depart_id)
-        if depart is not None:
-            self._pose_de_tour.signaler(depart.tournoi_id, phase_id)
+        assert depart is not None, "Une phase transitionnée appartient à un créneau existant."
+        self._pose_de_tour.signaler(depart.tournoi_id, phase_id)
         return phase
 
     def terminer(self, depart_id: DepartId, phase_id: PhaseId) -> Phase:
