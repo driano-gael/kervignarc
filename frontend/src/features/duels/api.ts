@@ -59,6 +59,8 @@ export interface DuelSepare {
 
 export interface PlanDeDuels {
   phase_id: number
+  // Le tour que ce plan pose (ADR-0106 §2) : le plan n'en montre **qu'un**, celui qui se joue.
+  tour: number
   cibles: CiblePlaceeDuel[]
   conflits: Conflit[]
   duels_separes: DuelSepare[]

@@ -130,7 +130,13 @@ const CIBLE: CiblePlaceeDuel = {
   cloisonnement_non_respecte: false,
 }
 
-const PLAN: PlanDeDuels = { phase_id: 30, cibles: [CIBLE], conflits: [], duels_separes: [] }
+const PLAN: PlanDeDuels = {
+  phase_id: 30,
+  tour: 1,
+  cibles: [CIBLE],
+  conflits: [],
+  duels_separes: [],
+}
 
 function creerClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
