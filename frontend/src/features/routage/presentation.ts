@@ -56,11 +56,10 @@ export function repechage(
 
 // Les trois groupes d'un panneau d'affectations — **logique pure, donc testable**.
 //
-// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose une cible qu'au **tour
-// 1** (`DETTE-019`) : partitionner sur `prochain?.cible` rangeait dès le tour 2 tous les archers
-// encore en lice — demi-finalistes compris — parmi les **sortis**. Laissée dans le composant, la
-// correction n'avait aucun filet. Trois groupes car il y a trois situations : posé sur une butte,
-// en lice sans butte attribuée, sorti du tableau.
+// ⚠️ **On partitionne sur l'ISSUE, jamais sur la cible.** Le serveur ne pose qu'**un tour à la
+// fois**, celui qui se joue (ADR-0106 §2) : partitionner sur `prochain?.cible` rangeait tous les
+// archers d'un tour pas encore posé — demi-finalistes compris — parmi les **sortis**. Trois groupes
+// car il y a trois situations : posé sur une butte, en lice sans butte attribuée, sorti du tableau.
 export function partitionner(archers: RoutageArcher[]): {
   poses: RoutageArcher[]
   attente: RoutageArcher[]
@@ -179,7 +178,7 @@ export function detail(archer: RoutageArcher): string | null {
   if (archer.issue === 'prochain_duel' && archer.prochain !== null) {
     const contexte = `${archer.prochain.libelle} · ${adversaire(archer.prochain)}`
     // Cible inconnue : le titre a déjà pris le libellé du tour, on ne le répète pas — on annonce
-    // l'attente (« cible attribuée au lancement du tour »).
+    // l'attente (« cible attribuée dès que le tour précédent sera terminé »).
     // `manque` est garanti non nul par le serveur quand il n'y a pas de cible (c'est lui qui sait
     // *pourquoi* : tour à venir, ou plan non matérialisé) — pas de repli local à inventer.
     return destination(archer.prochain) === null

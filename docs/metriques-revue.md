@@ -34,6 +34,7 @@ dit.
 
 | date | US | fichiers | lignes diff | durée porte | durée revue | axe le + lent | A | B | C1 | C2 | D | bloquants par | passes |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-09-05 | `E03US012` | 49 | +1844/−412 | ~22 min *(12:19→12:41, **avant** la revue)* | ~19 min *(12:41→13:00)* | **D** (→13:00) | majeur:3 mineur:4 | majeur:9 mineur:5 suggestion:1 | **bloquant:1** majeur:6 mineur:3 | majeur:4 mineur:6 suggestion:2 | **bloquant:1** majeur:7 mineur:4 suggestion:2 | **C1 et D**, sur deux bloquants **distincts** — C1 sur la pause non rattrapée (conjonction garde × branchement), D sur la destruction de poses (sondes exécutées). A et B avaient vu les deux, classés **majeurs** : la sévérité, pas la détection, est ce qui les séparait. **2ᵉ passe : D à nouveau seul** (garde de régénération verrouillée par des traces périmées) | **2** |
 | 2026-09-04 | `E16US015` | 29 | +801/−126 | ~13 min *(22:07→22:20, avant la revue)* | ~24 min | **D** (22:24→22:36) | majeur:3 mineur:3 suggestion:1 | majeur:2 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:4 mineur:3 suggestion:1 | **bloquant:1** majeur:4 mineur:4 suggestion:3 | **D (1)**, puis **C1 (1)** et **D (1)** en 2ᵉ passe | 3 |
 | 2026-09-04 | `E16US017` | 33 | +2100/−120 | ~40 min *(lancée **en parallèle** de la revue — écart relevé en majeur par D)* | ~24 min | **D** (10:44→11:06) | majeur:1 mineur:2 suggestion:2 | majeur:3 mineur:2 suggestion:1 | majeur:3 mineur:2 suggestion:1 | majeur:2 mineur:5 suggestion:2 | majeur:4 mineur:5 suggestion:1 | **aucun bloquant.** Les deux défauts de fond viennent de **C1** (décompte de zéros → tous les clubs 1ᵉʳˢ, invisible axe par axe) et de **D** (la propriété qui justifie le double comptage tombe en mono-catégorie). **C1 et C2 ont trouvé le même** registre faux (`DETTE-031`), et **B seul** a vu que la restitution des colonnes n'était ancrée nulle part | 1 |
 | 2026-08-30 | `E16US007` | 44 | +2498/−268 | ~23 min | ~27 min | **D** (18:55→19:12) | mineur:5 suggestion:1 | **bloquant:2** majeur:3 mineur:6 suggestion:2 | **bloquant:1** majeur:2 mineur:5 suggestion:3 | majeur:2 mineur:4 suggestion:3 | **bloquant:1** majeur:8 mineur:7 suggestion:2 | **C1, B et D** (le même : `key` manquante) ; **B** seul sur le 2ᵉ (surface sans fiche fonctionnelle) | 2 |
@@ -766,3 +767,33 @@ défaut de sa propre règle. C2 avait exigé un ADR ; l'ADR écrit **amende la �
 ce qui la **rouvre** au sens d'ADR-0075 — donc lui impose une section « Porté dans le code par » et
 une inscription à la liste des réouvertures, ni l'une ni l'autre faites dans le commit qui invoquait
 pourtant ADR-0075 pour y inscrire le numéro neuf. C'est C2 qui l'a relevé, contre son propre remède.
+
+---
+
+## Enseignement d'E03US012 (05/09/2026) — un axe peut avoir raison **contre** trois autres
+
+Trois axes (A, C1, C2) ont relevé le même défaut réel : la garde « tour entièrement déterminé » de
+`tour_a_poser` était du **code mort**. Les trois ont proposé le même correctif — la rendre vivante.
+L'axe **D** a exécuté une sonde et montré que ce correctif **casserait la fonctionnalité** : sur un
+sous-tableau de placement, les matchs nourris par le **perdant d'un bye** ont deux camps vides *pour
+toujours*, donc la garde rendrait `None` définitivement.
+
+Ce qui distingue D ici n'est ni sa grille ni sa sévérité : c'est qu'il a **exécuté** au lieu de
+raisonner. Trois lecteurs attentifs, partant du même constat exact, ont convergé vers un remède
+faux ; une sonde de dix lignes l'a tranché. C'est l'argument le plus concret qu'on ait pour l'axe
+adversarial — non pas « il trouve ce que les grilles ratent », mais **il vérifie ce que les grilles
+déduisent**.
+
+⚠️ **Corollaire pour l'agent auteur** : « trois axes sur cinq » n'est pas un critère d'arbitrage. La
+procédure demande de trancher **sur preuve**, et c'est exactement le cas où compter les voix aurait
+introduit le défaut que la revue venait de trouver.
+
+⚠️ **Second enseignement, de la 2ᵉ passe : un correctif de bloquant déplace le trou plus souvent
+qu'il ne le ferme.** Les deux défauts les plus graves de la 2ᵉ passe sont nés de la 1ʳᵉ — la garde de
+régénération, posée pour empêcher de déplacer des archers en train de tirer, verrouillait aussi le
+seul geste qui répare un plan devenu faux ; et lever `est_jouable` du décor, posé pour cesser de
+supprimer des poses, faisait asseoir les walkovers. **Trois** des majeurs de la 2ᵉ passe sont de
+cette famille. C'est l'argument le plus concret pour la boucle de l'étape 3 : rejouer la revue sur
+les fichiers **touchés par les correctifs** n'est pas une formalité, c'est là que le taux de défaut
+est le plus élevé — un correctif s'écrit sous pression, sans le recul qu'on avait sur le code
+d'origine.

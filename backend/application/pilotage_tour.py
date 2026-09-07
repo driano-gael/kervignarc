@@ -54,9 +54,14 @@ class DuelAVenir:
 
 @dataclass(frozen=True)
 class FeuVert:
-    """La photo du feu vert : les duels à venir avec leur état, et combien sont prêts à partir."""
+    """La photo du feu vert : les duels à venir avec leur état, et combien sont prêts à partir.
+
+    `tour_pose` = le tour dont les cibles sont posées (`None` = aucun plan lisible) — ADR-0106 §2 :
+    lui seul se répare depuis le plan de duels, et l'écran a besoin de le savoir.
+    """
 
     phase_id: int
+    tour_pose: int | None
     est_termine: bool
     duels: tuple[DuelAVenir, ...]
     nb_prets: int
@@ -110,15 +115,18 @@ class ServicePilotageTour:
         # tolérance et faisait échouer en bloc ce que le site s'engage à dégrader (relevé par
         # trois axes de revue : régression introduite par le refus typé lui-même).
         except (EffectifTableauInvalide, PrelevementEnAttente):
-            return FeuVert(phase_id=phase_id, est_termine=False, duels=(), nb_prets=0)
-        cibles = self._cibles_par_archer(tournoi_id, phase_id)
+            return FeuVert(
+                phase_id=phase_id, tour_pose=None, est_termine=False, duels=(), nb_prets=0
+            )
+        tour_pose, cibles = self._poses_du_tour_pose(tournoi_id, phase_id)
         a_venir = tuple(
-            self._duel_a_venir(match, lignes, cibles)
+            self._duel_a_venir(match, lignes, tour_pose, cibles)
             for match in tableau.matchs
             if not match.est_bye and match.vainqueur is None
         )
         return FeuVert(
             phase_id=phase_id,
+            tour_pose=tour_pose,
             est_termine=tableau.est_termine,
             duels=a_venir,
             nb_prets=sum(1 for duel in a_venir if duel.pret_a_lancer),
@@ -207,38 +215,42 @@ class ServicePilotageTour:
         cibles = ", ".join(str(cible) for cible in resume.cibles) or "—"
         return f"{resume.nb_duels} duel(s) lancé(s), cible(s) {cibles}"
 
-    # DETTE-019 : jumelle de `ServiceRoutage._poses_par_archer` (E04US018).
-    def _cibles_par_archer(self, tournoi_id: TournoiId, phase_id: PhaseId) -> dict[int, int]:
-        """`archer_id → cible_index` depuis le plan de duels **persisté** (`placement_tableau`).
+    # DETTE-019 : jumelle de `ServiceRoutage._plan_lu` (E04US018).
+    def _poses_du_tour_pose(
+        self, tournoi_id: TournoiId, phase_id: PhaseId
+    ) -> tuple[int | None, dict[int, int]]:
+        """Le tour que le plan de duels pose, et sa carte `archer_id → cible_index`.
 
-        Best-effort en lecture : si le plan est indisponible — aucun gabarit appliqué, ou le
-        placement des tours ≥ 2 (E05US010) n'existe pas encore — on renvoie une carte **vide**, d'où
-        « cible non attribuée » sur les duels concernés, jamais un échec du feu vert. Même tolérance
-        que `_zones_best_effort` de la saisie.
+        Best-effort en lecture : si le plan est indisponible — aucun gabarit appliqué — on renvoie
+        `(None, {})`, d'où « cible non attribuée » partout, jamais un échec du feu vert. Même
+        tolérance que `_zones_best_effort` de la saisie.
         """
         try:
             plan = self._placement_duels.plan_de_duels(tournoi_id, phase_id)
         except GabaritDuTournoiAbsent:
-            return {}
-        return {pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements}
+            return None, {}
+        return plan.tour, {
+            pose.archer_id: cible.index for cible in plan.cibles for pose in cible.placements
+        }
 
-    # DETTE-019 : garde tour-1, jumelle de `ServiceRoutage._pose_a_annoncer` (E04US018).
     # DETTE-021 : `cible_attribuee` n'exige pas que les deux camps soient sur la **même**
     # cible ni côte à côte — « prêt · cibles 4 et 7 » est donc affiché, et lancé. Le routage
-    # porte l'alerte correspondante depuis E04US018 ; ici elle manque encore.
+    # porte l'alerte correspondante depuis E04US018 ; ici elle manque encore, et depuis E03US012
+    # le défaut vaut à **tous** les tours, plus seulement au premier.
     def _duel_a_venir(
-        self, match: Match, lignes: dict[int, LigneClassement], cibles: dict[int, int]
+        self,
+        match: Match,
+        lignes: dict[int, LigneClassement],
+        tour_pose: int | None,
+        cibles: dict[int, int],
     ) -> DuelAVenir:
         """Assemble l'état d'un duel à venir : les trois questions du CA + le blocage nommé."""
         participants_connus = match.haut is not None and match.bas is not None
-        # Le placement des cibles n'existe **qu'au tour 1** (E03US009, MVP tour-1 uniquement) ; le
-        # placement intégral 1→N est E05US010, non livré. On **n'attribue donc aucune cible** aux
-        # duels de tour ≥ 2 : leurs occupants (vainqueurs propagés) gardent leur ligne de placement
-        # de tour 1 dans `placement_tableau`, mais cette cible serait **périmée** pour le tour
-        # suivant (elle enverrait les finalistes, venus de deux cibles distinctes, sur l'ancienne).
-        # Sans ce garde, le feu vert afficherait « prêt · cibles X et Y » et lancerait la finale à
-        # tort — l'inverse de ce que promet l'ADR-0056. S'ouvrira aux tours ≥ 2 avec E05US010.
-        place = match.tour == 1
+        # ⚠️ **La carte des cibles ne vaut que pour le tour posé** (E03US012, ADR-0106) : un archer
+        # occupe une cible différente à chaque tour, et l'attribuer à un duel d'un autre tour
+        # enverrait les finalistes, venus de deux cibles distinctes, sur l'ancienne. Un duel d'un
+        # tour non encore posé n'a donc **pas** de cible — jamais celle d'un tour voisin.
+        place = tour_pose is not None and match.tour == tour_pose
         cible_haut = self._cible_de(match.haut, cibles) if place else None
         cible_bas = self._cible_de(match.bas, cibles) if place else None
         cible_attribuee = cible_haut is not None and cible_bas is not None

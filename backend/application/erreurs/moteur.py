@@ -145,6 +145,19 @@ class PhasePasUnTableau(ApplicationError):
     code = "phase_pas_un_tableau"
 
 
+class RegenerationSurTourEnTir(ApplicationError):
+    """Régénérer le plan d'un tour dont un duel porte **déjà un tir** (E03US012) → 409.
+
+    ⚠️ **La justification d'origine est tombée.** Tant que le plan ne posait que le tour 1,
+    « régénérer » ne pouvait rien perturber : aucun duel n'avait encore tiré, d'où l'absence
+    d'alerte d'impact (E12US007, ADR-0048). Depuis que le plan suit le tour **qui se joue**,
+    régénérer redistribuerait des archers **sur la butte**, et effacerait les poses des duels déjà
+    tirés du tour. Un tir enregistré — validé ou non — est donc un conflit d'état.
+    """
+
+    code = "regeneration_sur_tour_en_tir"
+
+
 class PhasePasDesPoules(ApplicationError):
     """La phase existe mais n'est **pas** une phase de poules (E05US023) → 409.
 

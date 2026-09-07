@@ -378,27 +378,32 @@ class PlacementParBlocRepository(Protocol):
 class PlacementTableauRepository(Protocol):
     """Port de persistance du **plan de duels** matérialisé d'une phase (E03US009, ADR-0048).
 
-    Jumeau de `PlacementRepository` mais scoppé par **phase** (et non par départ) : le placement des
-    duellistes d'une phase de tableau, ajustable au glisser-déposer. Une `Affectation` par
-    inscription posée ; un inscrit **sans** affectation est en réserve (l'absence *est*
-    l'information, ADR-0024). L'appariement n'est pas persisté (recalculé du classement, ADR-0023) —
-    seule la pose l'est.
+    Jumeau de `PlacementRepository`, scoppé par **phase** et **tour** (ADR-0106) et non par départ.
+    Un inscrit **sans** affectation est en réserve (l'absence *est* l'information, ADR-0024) ; seule
+    la pose est persistée, l'appariement se recalcule (ADR-0023).
+
+    ⚠️ **Tous les gestes portent le tour** : l'omettre écraserait la pose d'un autre tour.
     """
 
-    def par_phase(self, phase_id: PhaseId) -> list[Affectation]:
-        """Renvoie les affectations d'une phase (liste éventuellement vide = tout en réserve)."""
+    def par_phase_et_tour(self, phase_id: PhaseId, tour: int) -> list[Affectation]:
+        """Les affectations d'un tour d'une phase (liste vide = tout en réserve)."""
         ...
 
-    def definir_plan(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
-        """Remplace **intégralement** le plan de duels d'une phase — régénérer / annuler (ADR-0048).
+    def definir_plan(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
+        """Remplace **intégralement** le plan d'un tour — régénérer / annuler (ADR-0048).
 
-        Purge les affectations de la phase puis insère, en une transaction. Ce qui n'est pas dans
-        `affectations` retombe en réserve.
+        Purge les affectations de ce tour puis insère, en une transaction. Ce qui n'est pas dans
+        `affectations` retombe en réserve. ⚠️ Les **autres tours ne sont pas touchés** : régénérer
+        le tour 2 ne défait pas le tour 1, qui est déjà tiré.
         """
         ...
 
-    def poser_plusieurs(self, phase_id: PhaseId, affectations: Sequence[Affectation]) -> None:
-        """Insère/met à jour plusieurs affectations d'une phase en **une** transaction (upsert).
+    def poser_plusieurs(
+        self, phase_id: PhaseId, tour: int, affectations: Sequence[Affectation]
+    ) -> None:
+        """Insère/met à jour plusieurs affectations d'un tour en **une** transaction (upsert).
 
         Atomicité voulue par l'**échange** (deux poses indissociables) et le déplacement (une
         pose) : le service valide avant, la file sérialise, la transaction unique garantit le
@@ -406,11 +411,11 @@ class PlacementTableauRepository(Protocol):
         """
         ...
 
-    def retirer(self, phase_id: PhaseId, inscription_id: InscriptionId) -> None:
-        """Retire l'affectation d'un inscrit **dans cette phase** (réserve) ; sans effet sinon.
+    def retirer(self, phase_id: PhaseId, tour: int, inscription_id: InscriptionId) -> None:
+        """Retire l'affectation d'un inscrit **à ce tour** (réserve) ; sans effet sinon.
 
-        La clé est **composite** `(phase_id, inscription_id)` : retirer un duelliste ne touche pas
-        sa pose de qualification (autre table), d'où le `phase_id` requis ici.
+        La clé est **composite** `(phase_id, tour, inscription_id)` : retirer un duelliste ne touche
+        ni sa pose de qualification (autre table) ni ses poses des autres tours.
         """
         ...
 

@@ -2098,7 +2098,66 @@ window.ATLAS.decisions = {
      "type": "socle"
     }
    ],
-   "portage": [],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/placement_duels.py",
+     "existe": true,
+     "symboles": [
+      "PlanDeDuelsReponse"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [
+      "ServicePlacementDuels",
+      "regenerer",
+      "deplacer",
+      "placer_les_restants",
+      "_poses_a_jour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/placement.py",
+     "existe": true,
+     "symboles": [
+      "_ordonner_pour_adjacence",
+      "duels_non_cote_a_cote",
+      "cibles_avec_duel_separe"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0029_placement_tableau.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauORM"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/duels/",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
    "remplace_par": "",
    "statut": "accepte",
    "statut_brut": "Accepté",
@@ -2108,6 +2167,7 @@ window.ATLAS.decisions = {
     "E03US004",
     "E03US006",
     "E03US009",
+    "E03US012",
     "E05US005",
     "E05US010",
     "E06US006",
@@ -3919,6 +3979,7 @@ window.ATLAS.decisions = {
     "E00US028",
     "E00US030",
     "E01US025",
+    "E03US012",
     "E05US026",
     "E05US029",
     "E05US032",
@@ -9311,6 +9372,244 @@ window.ATLAS.decisions = {
     "E10US005",
     "E14US003",
     "E16US015"
+   ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-05",
+   "date_brute": "2026-09-05",
+   "extrait": "### 1. La pose appartient à un tour, et la clé le dit placement_tableau a pour clé primaire (phase_id, tour, inscription_id) (migration 0053). Les lignes existantes sont reprises en tour 1 — c'est exactement ce qu'elles étaient. Aucun tournoi déjà en base ne change d'affichage. ⚠️ SQLite ne sait pas modifier une clé primaire, et batch_alter_table ne convient pas ici : en mode batch, Alembic réfléchit la table existante et une PrimaryKeyConstraint passée en table_args s'y ajoute au lieu de la remplacer — SQLAlchemy émet un avertissement et garde l'ancienne clé, si bien que la migration paraît réussir. La table est donc recréée explicitement. ### 2. Le plan pose un tour à la fois, celui qui […]",
+   "fichier": "docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md",
+   "identifiant": "0106",
+   "liens": [
+    {
+     "cible": "0048",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0090",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0023",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0049",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    },
+    {
+     "cible": "0091",
+     "libelle": "Voisin",
+     "sens": "symetrique",
+     "type": "voisin"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/application/forfaits.py",
+     "existe": true,
+     "symboles": [
+      "brancher_poseur_de_tour",
+      "_signaler_validation_de",
+      "numeros_avec_tir",
+      "declarer_en_duel",
+      "annuler_en_duel",
+      "reprendre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/phases.py",
+     "existe": true,
+     "symboles": [
+      "brancher_poseur_de_tour",
+      "_signaler_validation_de",
+      "numeros_avec_tir",
+      "declarer_en_duel",
+      "annuler_en_duel",
+      "reprendre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/pilotage_tour.py",
+     "existe": true,
+     "symboles": [
+      "_poses_du_tour_pose",
+      "_duel_a_venir",
+      "_PlanLu.tour",
+      "_pose_a_annoncer",
+      "_plan_lu"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/placement_duels.py",
+     "existe": true,
+     "symboles": [
+      "_Contexte.tour",
+      "_charger",
+      "PlanDeDuels.tour",
+      "poser_le_tour_courant",
+      "_completer",
+      "_refuser_si_le_tour_a_tire",
+      "regenerer"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/pose_du_tour.py",
+     "existe": true,
+     "symboles": [
+      "PoseurDeTour",
+      "DeclencheurPoseDeTour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "_poses_du_tour_pose",
+      "_duel_a_venir",
+      "_PlanLu.tour",
+      "_pose_a_annoncer",
+      "_plan_lu"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/saisie_duels.py",
+     "existe": true,
+     "symboles": [
+      "brancher_poseur_de_tour",
+      "_signaler_validation_de",
+      "numeros_avec_tir",
+      "declarer_en_duel",
+      "annuler_en_duel",
+      "reprendre"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/bootstrap/composition.py",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/ports.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauRepository",
+      "par_phase",
+      "application.formats.LecteurDonneesDePhase"
+     ],
+     "symboles_absents": [
+      "application.formats.LecteurDonneesDePhase"
+     ],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/domain/tableau.py",
+     "existe": true,
+     "symboles": [
+      "paires_du_tour",
+      "tour_a_poser",
+      "None"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/models.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauORM.tour",
+      "session.get"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/db/repositories/moteur.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauRepositorySQL",
+      "InMemoryPlacementTableauRepository",
+      "par_phase_et_tour",
+      "par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/infrastructure/memory/repositories.py",
+     "existe": true,
+     "symboles": [
+      "PlacementTableauRepositorySQL",
+      "InMemoryPlacementTableauRepository",
+      "par_phase_et_tour",
+      "par_phase"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/migrations/versions/0053_placement_tableau_par_tour.py",
+     "existe": true,
+     "symboles": [
+      "batch_alter_table"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/duels/Duels.tsx",
+     "existe": true,
+     "symboles": [],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/feu-vert/etat.ts",
+     "existe": true,
+     "symboles": [
+      "actionDuel"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "La pose d'une cible appartient à un tour, et le tour suivant se pose seul",
+   "us": [
+    "E03US009",
+    "E03US012",
+    "E05US010",
+    "E05US024",
+    "E12US007",
+    "E16US008",
+    "E16US013"
    ]
   }
  ]

@@ -515,7 +515,31 @@
 - **CA — l'automatique lance ce qui est prêt** : quand toutes les conditions d'un duel sont remplies, il part **sans clic**, et les postes et écrans sont prévenus exactement comme au lancement manuel (même trace d'audit, même diffusion).
 - **CA — le manuel ne change pas** : le feu vert garde son bouton chiffré et sa confirmation (`E12US002`, ADR-0056).
 - **Notes** : ⚠️ **Trois questions à trancher avant d'implémenter, aucune n'est dans le questionnaire.** (1) **Qui évalue les conditions ?** Aujourd'hui le feu vert est calculé **à la lecture**, par le poll de l'écran (5 s) : personne ne l'évalue côté serveur quand aucun organisateur ne regarde. Un lancement automatique demande un déclencheur serveur — au fil des validations de duel (le flux qui fait bouger le tableau), ou une boucle. C'est le vrai coût de l'US. (2) **Que fait l'automatique d'un duel bloqué par une cible manquante ?** Il ne peut pas l'inventer : le mode ne supprime pas les manquements, il supprime le clic. (3) **La maille « par tour » existe-t-elle ?** Un réglage par phase est immédiat (`Reglage*` d'étape) ; « par tour » n'a aucun support persistant aujourd'hui. Candidate à un **ADR** (le lancement cesse d'être un geste pour devenir une politique).
-- **Dépend de** : E12US002, E16US008 · **Jalon** : J3 · **Origine** : questionnaire A15 Q3, 04/08/2026 — sortie d'`E16US008` le 28/08/2026
+- **⛔ Cadrée puis REPOSÉE le 05/09/2026** (arbitrage du commanditaire). Le cadrage a établi trois
+  faits, tous vérifiés dans le code, qui rendaient l'US sans valeur en l'état :
+  1. **Le feu vert n'existe que pour les phases à tableau.** `ServicePilotageTour.feu_vert` refuse
+     tout le reste (`PhasePasUnTableau`) : ni poules, ni système suisse, ni colline, ni Big Shoot
+     Off, ni qualification n'ont de bouton « lancer ». Or c'est **pour eux** que la fiche voulait
+     l'automatique (« les formats qui n'en ont pas besoin ») : il ne s'agirait pas d'automatiser un
+     geste, mais d'**inventer le geste** d'abord.
+  2. **« Lancer » n'autorise rien** ([ADR-0056](../docs/adr/0056-lancement-d-un-tour-acte-audite-et-diffuse.md) §3) :
+     l'acte consigne une trace `LANCEMENT` et émet un `LiveEvent`, sans poser aucun statut. Un
+     scoreur peut saisir un duel jamais lancé. Le bouton **prévient**, il ne déverrouille pas.
+  3. **Aucun duel n'était prêt au-delà du tour 1**, faute de cibles posées. L'automatique n'aurait
+     donc émis **qu'une annonce par tableau**, au tour 1, où tout devient prêt d'un coup — pas
+     « ne plus rester la main sur le bouton toute la journée ».
+  ✅ **Arbitrage** : lever le verrou d'abord. C'est `E03US012` (poser les cibles des tours suivants,
+  [ADR-0106](../docs/adr/0106-la-pose-d-une-cible-appartient-a-un-tour.md)), **livrée**.
+  ⚠️ **Question à trancher AVANT de reprendre cette fiche**, et absente de la rédaction d'origine :
+  [ADR-0091](../docs/adr/0091-un-arret-programme-coupe-le-deroule-a-la-fin-d-un-tour.md) §5 affirme
+  déjà que « le pilotage tour par tour reste possible **sans second mode** : il suffit de programmer
+  un arrêt à chaque tour ». Les deux leviers ne font pourtant pas la même chose — l'arrêt **gèle la
+  saisie**, le lancement ne gèle rien. Reprendre l'US suppose de dire lequel des deux le
+  commanditaire veut, sous peine de livrer un doublon de l'arrêt programmé.
+  ⚠️ **Le cadrage retenu au 05/09/2026** (à reconfirmer, il a plus de valeur que la fiche d'origine) :
+  « automatique » = **l'annonce part seule** (trace + diffusion aux postes et écrans), jamais un
+  verrou ; et la maille est la **phase**, pas le tour.
+- **Dépend de** : E12US002, E16US008, **E03US012** · **Jalon** : J3 · **Origine** : questionnaire A15 Q3, 04/08/2026 — sortie d'`E16US008` le 28/08/2026
 
 ---
 

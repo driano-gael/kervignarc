@@ -82,12 +82,6 @@ window.ATLAS.controles = {
    "sujet": "ADR-0092"
   },
   {
-   "code": "derniere-us-orpheline",
-   "message": "est annoncée « dernière » en tête du tracker, mais son résumé cite ADR-0059, ADR-0042, qui ne la mentionne pas — le résumé décrit peut-être une autre US.",
-   "severite": "signal",
-   "sujet": "E16US015"
-  },
-  {
    "code": "features-enchevetrees",
    "message": "et 3 autre(s) feature(s) s'importent mutuellement (accueil, completude, jalons, paiements) : aucune ne peut plus être lue, testée ni retirée seule (règle 10). Lecture heuristique — jamais bloquante.",
    "severite": "signal",
@@ -113,7 +107,7 @@ window.ATLAS.controles = {
   },
   {
    "code": "port-hors-domaine",
-   "message": "déclare 25 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
+   "message": "déclare 26 port(s) hors du domaine (CompteurEngages, ConstructeurArchive, DiffusionSimulation, EvaluateurArrets…) — la règle 2 veut les ports dans le domaine et les adapters dans l'infrastructure. Écart peut-être légitime (une préoccupation technique n'est pas du métier de tir à l'arc) : à trancher par un humain, pas par la porte. Détail sur « La carte du code ».",
    "severite": "signal",
    "sujet": "application"
   },
@@ -278,6 +272,12 @@ window.ATLAS.controles = {
    "message": "annonce vu_par_archer dans « backend/domain/classement_clubs.py » — introuvable(s) dans le fichier.",
    "severite": "signal",
    "sujet": "ADR-0104"
+  },
+  {
+   "code": "portage-symbole-absent",
+   "message": "annonce application.formats.LecteurDonneesDePhase dans « backend/domain/ports.py » — introuvable(s) dans le fichier.",
+   "severite": "signal",
+   "sujet": "ADR-0106"
   }
  ],
  "resume": {

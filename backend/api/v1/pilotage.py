@@ -64,6 +64,9 @@ class FeuVertReponse(BaseModel):
     """Le feu vert : les duels à venir avec leur état, et combien sont prêts à partir."""
 
     phase_id: int
+    # Le tour dont les cibles sont posées (`null` = aucun plan lisible) — ADR-0106 §2 : l'écran s'en
+    # sert pour savoir quel duel se répare depuis le plan de duels.
+    tour_pose: int | None
     est_termine: bool
     duels: list[DuelAVenirReponse]
     nb_prets: int
@@ -72,6 +75,7 @@ class FeuVertReponse(BaseModel):
     def de_feu_vert(feu: FeuVert) -> FeuVertReponse:
         return FeuVertReponse(
             phase_id=feu.phase_id,
+            tour_pose=feu.tour_pose,
             est_termine=feu.est_termine,
             duels=[DuelAVenirReponse.de_duel(duel) for duel in feu.duels],
             nb_prets=feu.nb_prets,

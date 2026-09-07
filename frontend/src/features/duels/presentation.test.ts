@@ -18,7 +18,7 @@ function cible(over: Partial<CiblePlaceeDuel> = {}): CiblePlaceeDuel {
 }
 
 function plan(over: Partial<PlanDeDuels> = {}): PlanDeDuels {
-  return { phase_id: 1, cibles: [], conflits: [], duels_separes: [], ...over }
+  return { phase_id: 1, tour: 1, cibles: [], conflits: [], duels_separes: [], ...over }
 }
 
 function duel(archer_a: number, archer_b: number): DuelSepare {

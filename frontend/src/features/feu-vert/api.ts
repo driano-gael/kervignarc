@@ -27,6 +27,8 @@ export interface DuelAVenir {
 }
 
 export interface FeuVert {
+  // Le tour dont les cibles sont posées (ADR-0106 §2) ; `null` = aucun plan lisible.
+  tour_pose: number | null
   phase_id: number
   est_termine: boolean
   duels: DuelAVenir[]
