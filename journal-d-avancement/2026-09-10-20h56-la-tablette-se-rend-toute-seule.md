@@ -38,6 +38,24 @@ restée figée sur ses écrans d'annonce.
 
 Trois minutes suffisent à lire « 3ᵉ du tableau », et le lien de réouverture est là pour le relire.
 
+## Un cas que la revue a rattrapé : l'écriteau
+
+Le même écran ne sert pas qu'à envoyer les gens quelque part. Quand l'organisateur **met une phase
+en pause**, il affiche « Tir suspendu — restez à disposition ». Ce n'est pas une annonce qu'on lit et
+qu'on emporte : c'est une **consigne**, qui doit rester tant que la pause dure.
+
+Une pause tient quinze à vingt minutes. Le retour automatique l'aurait effacée au bout de trois.
+
+Désormais l'application distingue les deux : une **annonce** se referme, un **écriteau** reste. Cela
+vaut aussi pour « phase finale non configurée » et « tableau non constitué ».
+
+## Ce qu'il faut savoir des trois minutes
+
+Elles courent **aussi quand la tablette dort**. Si l'écran se met en veille et qu'on le réveille deux
+minutes plus tard, le panneau peut avoir disparu. C'est un choix délibéré — un seul concept plutôt
+que deux — et le lien « Où tire-t-on ensuite ? » permet de le rouvrir. À rouvrir comme sujet si un
+tournoi réel montre que c'est gênant.
+
 ## Au passage : une place ne s'annonce que si elle est acquise
 
 Vérification ajoutée sur un point qui était vrai mais que rien ne protégeait : **l'application

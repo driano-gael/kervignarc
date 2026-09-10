@@ -159,7 +159,10 @@ def test_sans_archer_demande_la_reponse_est_vide(
         reponse = client.get(f"/api/v1/routage/departs/{depart_id}")
 
     assert reponse.status_code == 200, reponse.text
-    assert reponse.json() == {"phase_id": phase_id, "archers": []}
+    # `avis_permanent` est **additif** (E16US018) : la phase est résolue, donc c'est une annonce
+    # (vide), pas un écriteau. Épinglé ici parce que ce test fixe la **forme complète** de la
+    # réponse — un champ de plus le fait rougir, et c'est voulu.
+    assert reponse.json() == {"phase_id": phase_id, "archers": [], "avis_permanent": False}
 
 
 def test_phase_imposee_introuvable_rend_404(

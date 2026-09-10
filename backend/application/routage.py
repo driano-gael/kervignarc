@@ -317,6 +317,15 @@ class Routage:
 
     phase_id: int | None
     archers: tuple[RoutageArcher, ...]
+    avis_permanent: bool = False
+    """Le panneau porte un **écriteau**, pas une annonce (E16US018).
+
+    ⚠️ **C'est le serveur qui le dit, jamais le front qui le devine.** Un écriteau (« tir
+    suspendu », « phase non configurée ») vaut tant que la situation dure — une pause tient 15 à
+    20 minutes — alors qu'une annonce se lit une fois et s'emporte. Le déduire côté client de
+    « toutes les lignes sont en attente » confondrait le cas avec une ronde suisse où les quatre
+    archers d'une cible portent un bye.
+    """
 
 
 @dataclass(frozen=True)
@@ -770,6 +779,10 @@ class ServiceRoutage:
             tableau=tableau,
             lignes=lignes,
             plan=self._plan_lu(tournoi_id, phase_id),
+            # ⚠️ **`classement()`, jamais `positions_acquises()`** : seul le premier ne rend
+            # que des places **acquises**, décernées par un match terminal (E16US018, ADR-0108).
+            # Le second rend aussi la **fourchette** d'un battu sans rang exact, que `rang_final=`
+            # promouvrait en place : les quatre battus des quarts liraient « 5ᵉ du tableau ».
             rangs={place.participant: place.rang for place in tableau.classement()},
             identites=self._identites(tournoi_id),
             repechages=self._repechages(phase),
@@ -853,6 +866,7 @@ class ServiceRoutage:
         identites = self._identites(tournoi_id)
         return Routage(
             phase_id=phase_id,
+            avis_permanent=True,
             archers=tuple(
                 RoutageArcher(
                     archer_id=archer_id,
@@ -950,11 +964,9 @@ class ServiceRoutage:
                 destination=destination,
                 motif=REPECHAGE_SANS_DESTINATION if destination is None else None,
             )
-        # ⚠️ **`rang_final` ne vaut que ce que `Tableau.classement()` a décidé** — des places
-        # **acquises**, chacune décernée par un match terminal (E16US018, CA « la place finale n'est
-        # annoncée que si le rang est établi »). C'est l'invariant du domaine qui porte ce CA, pas
-        # une garde locale : le remplacer par `positions_acquises()`, qui rend aussi des fourchettes
-        # et la plage d'un match **en cours**, ferait annoncer une place à qui n'a rien gagné.
+        # `rang_final` ne vaut que ce que `Tableau.classement()` a décidé (E16US018) — la source
+        # est choisie en `_grille`, où vit l'avertissement. Ici `rang` peut être `None` : la
+        # fourchette prend le relais, épinglée par `test_l_elimine_sort_du_tableau_...`.
         rang = grille.rangs.get(moi)
         fourchette = fourchette_de_rangs(rang, dernier if a_perdu else None, tableau.effectif)
         return RoutageArcher(

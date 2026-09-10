@@ -75,16 +75,20 @@ const DUEL_TRANCHE = [
   }),
 ]
 
-function monter(lignes: RoutageArcher[], onRetour: () => void) {
+function monter(lignes: RoutageArcher[], onRetour: () => void, avisPermanent = false) {
+  // ⚠️ `as unknown as ReturnType<…>` et non `as never` — patron du voisin `VueAffectations.test.tsx`.
+  // `as never` désactive toute vérification de forme : si le hook changeait de contrat, le mock
+  // cesserait de fournir `archers`, `lignes` retomberait à `[]` et le test « quelle que soit
+  // l'issue » ne testerait plus rien — en restant vert.
   vi.mocked(useDeparts).mockReturnValue({
     data: [{ id: 7, numero: 1, statut: 'en_cours' }],
-  } as never)
+  } as unknown as ReturnType<typeof useDeparts>)
   vi.mocked(useRoutage).mockReturnValue({
-    data: { archers: lignes },
+    data: { phase_id: 9, archers: lignes, avis_permanent: avisPermanent },
     isLoading: false,
     isError: false,
     error: null,
-  } as never)
+  } as unknown as ReturnType<typeof useRoutage>)
   render(
     <Cadre
       enfants={
@@ -102,7 +106,11 @@ function monter(lignes: RoutageArcher[], onRetour: () => void) {
 describe('PanneauRoutage — retour automatique', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
-    vi.runOnlyPendingTimers()
+    // ⚠️ `clearAllTimers` et non `runOnlyPendingTimers` : les `afterEach` s'exécutent en pile
+    // inverse, donc **avant** le démontage de Testing Library. Faire battre l'horloge une fois de
+    // plus sur un panneau vivant avance `maintenant` hors d'`act()` — inoffensif aujourd'hui, mais
+    // le jour où un test se posera à une seconde de l'échéance, il basculera sans raison lisible.
+    vi.clearAllTimers()
     vi.useRealTimers()
     vi.restoreAllMocks()
   })
@@ -127,16 +135,34 @@ describe('PanneauRoutage — retour automatique', () => {
     // au-delà de l'échéance, et en duels cela remonterait la liste des matchs en boucle.
     const onRetour = vi.fn()
     monter(DUEL_TRANCHE, onRetour)
-    act(() => void vi.advanceTimersByTime(FERMETURE_MS * 3))
+    act(() => void vi.advanceTimersByTime(FERMETURE_MS + 5_000))
     expect(onRetour).toHaveBeenCalledTimes(1)
   })
 
   it('annonce le retour par un signal discret, sans compter les secondes', () => {
     monter(DUEL_TRANCHE, vi.fn())
-    const jauge = screen.getByRole('progressbar')
-    expect(jauge).toHaveAccessibleName(/retour automatique/i)
-    // ⚠️ Le compte à rebours chiffré est la variante C du questionnaire S06, écartée : un chiffre
-    // rendu ici serait un écart de structure qu'`E17US008` retirerait, cassant le CA.
-    expect(jauge.textContent ?? '').not.toMatch(/\d/)
+    const signal = screen.getByRole('img', { name: /retour automatique/i })
+
+    // ⚠️ L'assertion porte sur le **bloc entier**, jamais sur la seule barre : celle-ci n'a pas de
+    // texte par construction, donc son `textContent` est vide quoi qu'on écrive à côté. La version
+    // précédente serait restée verte si l'on avait ajouté « 2:41 » à la mention voisine —
+    // c'est-à-dire précisément la variante C écartée au questionnaire S06 (relevé en revue).
+    expect(signal.textContent ?? '').not.toMatch(/\d/)
+    expect(signal.querySelector('[aria-valuenow]')).toBeNull()
+  })
+
+  it('ne referme pas un écriteau — une pause dure plus longtemps que trois minutes', () => {
+    // ⚠️ « Tir suspendu : restez à disposition » vaut tant que la pause dure (15 à 20 min) ; le
+    // minuteur l'emporterait au tiers. C'est le **serveur** qui distingue l'écriteau de l'annonce.
+    const onRetour = vi.fn()
+    const enPause = [
+      archer({ issue: 'en_attente', prochain: null, motif: 'Tir suspendu… Restez à disposition.' }),
+    ]
+    monter(enPause, onRetour, true)
+
+    act(() => void vi.advanceTimersByTime(FERMETURE_MS * 2))
+
+    expect(onRetour).not.toHaveBeenCalled()
+    expect(screen.queryByRole('img', { name: /retour automatique/i })).toBeNull()
   })
 })

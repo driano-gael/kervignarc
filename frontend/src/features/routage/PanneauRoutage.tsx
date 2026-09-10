@@ -47,21 +47,28 @@ export function PanneauRoutage({
   const routage = useRoutage(departId, archerIds, phaseId)
   const lignes = routage.data?.archers ?? []
 
-  // Le retour automatique (E16US018). ⚠️ Le décompte part à **l'ouverture du panneau**, pas à
-  // l'arrivée des données : un écran resté trois minutes sur « Recherche des destinations… » n'a
-  // plus rien à apprendre à personne, et le rendre à la saisie est alors la bonne issue.
-  const [ouverture] = useState(() => Date.now())
+  // Le retour automatique (E16US018). ⚠️ **Un écriteau ne se referme pas** : « tir suspendu » ou
+  // « phase non configurée » valent tant que la situation dure (une pause tient 15 à 20 minutes),
+  // alors qu'une annonce de destination se lit une fois. C'est le **serveur** qui les distingue.
+  // ⚠️ Le décompte part de l'ouverture, pas de l'arrivée des données : un écran resté trois
+  // minutes sur « Recherche des destinations… » n'a plus rien à apprendre à personne.
+  const ecriteau = routage.data?.avis_permanent === true
+  // ⚠️ **L'ancre est l'instant de MONTAGE, donc tout démontage la remet à zéro.** C'est pourquoi
+  // les deux appelants rendent désormais ce panneau **avant** toute sortie `isPending` / `isError` :
+  // placé après, un refetch en échec le démontait puis le remontait avec trois minutes neuves, et
+  // sur un wifi de salle il pouvait ne **jamais** se refermer. Ne pas déplacer cette branche.
+  const [ouvertureMs] = useState(() => Date.now())
   const maintenant = useMaintenant(BATTEMENT_MS)
   const rendu = useRef(false)
   useEffect(() => {
     // ⚠️ Le garde n'est pas décoratif : `onRetour` est une lambda recréée à chaque rendu chez les
     // deux appelants, et le battement continue après l'échéance. Sans lui, la liste des matchs
     // remonterait une fois par seconde.
-    if (rendu.current || !doitSeRefermer(ouverture, maintenant)) return
+    if (ecriteau || rendu.current || !doitSeRefermer(ouvertureMs, maintenant)) return
     rendu.current = true
     onRetour()
-  }, [ouverture, maintenant, onRetour])
-  const avancee = avanceeFermeture(ouverture, maintenant)
+  }, [ecriteau, ouvertureMs, maintenant, onRetour])
+  const avancee = avanceeFermeture(ouvertureMs, maintenant)
 
   return (
     <section className="routage" aria-label={titrePanneau}>
@@ -94,7 +101,7 @@ export function PanneauRoutage({
         ))}
       </ul>
 
-      <JaugeRetour avancee={avancee} />
+      {!ecriteau && <JaugeRetour avancee={avancee} />}
     </section>
   )
 }
@@ -125,21 +132,18 @@ function LigneRoutage({ ligne }: { ligne: RoutageArcher }) {
 }
 
 // Le signal du retour automatique : une jauge et une mention, **jamais un chiffre**. Le compte à
-// rebours en secondes est la signature de la variante C du questionnaire S06, écartée au profit
-// de la variante A ; l'afficher serait un écart de structure qu'`E17US008` retirerait. La mention
-// existe parce qu'un écran qui disparaît sans prévenir se lit comme un plantage.
+// rebours en secondes est la signature de la variante C du questionnaire S06, écartée au profit de
+// la variante A (ADR-0108). La mention existe parce qu'un écran qui disparaît sans prévenir se lit
+// comme un plantage.
+//
+// ⚠️ `role="img"` et non `progressbar` — patron déjà retenu par `Supervision.tsx`. Un
+// `progressbar` **publie** `aria-valuenow`, donc annonce « 45 pour cent » : le « jamais un chiffre »
+// est un principe, pas une contrainte seulement visuelle.
 function JaugeRetour({ avancee }: { avancee: number }) {
   return (
-    <div className="routage__retour">
+    <div className="routage__retour" role="img" aria-label="Retour automatique à la saisie">
       <span className="routage__retour-mention">Retour automatique</span>
-      <div
-        className="routage__retour-piste"
-        role="progressbar"
-        aria-label="Retour automatique à la saisie"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(avancee * 100)}
-      >
+      <div className="routage__retour-piste">
         <span className="routage__retour-jauge" style={{ width: `${avancee * 100}%` }} />
       </div>
     </div>

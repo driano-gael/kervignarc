@@ -599,6 +599,19 @@
 - **✅ ARBITRÉ le 10/09/2026 au cadrage — UN SEUL MINUTEUR, 3 minutes, quelle que soit l’issue.** *(Les deux « questions de cadrage » de la rédaction précédente — l’**agrégation** et le **cas terminal** — sont closes par cette réponse unique, et c’est ce qui la rend bonne : elles **disparaissent** au lieu d’être arbitrées séparément.)* Ni règle d’agrégation, ni classification d’issue. ⚠️ **La règle « il reste dès qu’une ligne est terminale » a été écartée sur mesure** : en duels le panneau est monté sur les **deux duellistes** du duel qu’on vient de valider, il y a donc une ligne terminale à **chaque** duel, à **tous** les tours — elle aurait rendu l’US **morte-née** sur cet écran, tests verts compris. La **fermeture par ligne** tombe pour la même raison : la ligne terminale reste, donc la tablette de duels ne revient jamais.
 - **CA — le panneau se referme au bout de 3 minutes, dans tous les cas** : passé ce délai, la tablette revient d’elle-même à la saisie, sans geste. ⚠️ **Écart assumé au libellé du questionnaire** (*« 3 mn si un autre tour suit »*, muet sur le cas contraire) : la condition « si un tour suit » est **retirée**. Trois minutes suffisent à lire « 3ᵉ du tableau » ; un « jamais » laissait chaque tablette de la salle bloquée sur son annonce **au dernier tour**, l’inverse de l’intention de l’US.
 - **CA — les duels gagnent la poignée de réouverture que la qualification a déjà** : un bouton « Où tire-t-on ensuite ? » sur la liste des matchs rouvre le panneau du dernier duel validé. ⚠️ **C’est ce qui rend la fermeture automatique sans danger**, et la raison pour laquelle le cas terminal n’a plus besoin de règle : `Saisie.tsx` porte cette poignée depuis `E04US018` (*« une porte automatique a toujours besoin d’une poignée »*), `SaisieDuels.tsx` **non** — une fermeture y était irréversible pour ce duel. Ferme du même coup les **deux cas adverses** rendus par la revue (repêché sans destination, `TERMINE` sans aucune place) : l’écran perdu se rouvre.
+- **CA — un ÉCRITEAU ne se referme pas** *(ajouté en revue le 10/09/2026, arbitré par le
+  commanditaire)*. Un avis **global** — « tir suspendu : restez à disposition », « phase finale non
+  configurée », « tableau non constitué » — vaut **tant que la situation dure** : une pause tient 15
+  à 20 minutes, et le minuteur l'emportait au tiers. ⚠️ **La question n'était donc PAS sans objet**,
+  contrairement à ce que la 1ʳᵉ rédaction d'après-cadrage affirmait : le minuteur est aveugle aux
+  issues **de routage**, pas aux avis permanents. ⚠️ **C'est le serveur qui les distingue**
+  (`Routage.avis_permanent`, posé par l'unique constructeur `_tous_indisponibles`) : déduire l'écriteau
+  côté client de « toutes les lignes sont en attente » confondrait la pause avec une ronde suisse où
+  les quatre archers d'une cible portent un bye.
+- **CA — la poignée des duels NOMME son duel** (« Où tire-t-on ensuite ? — duel n°3 ») *(ajouté en
+  revue)*. L'état survit à la fermeture : à 11 h, un lien muet rouvre le duel validé à 9 h 40 en
+  promettant celui qu'on regarde. ⚠️ **La parité avec la qualification était fausse** — là-bas le
+  panneau suit la **cible affichée**, recalculée à chaque rendu ; ici c'est un instantané.
 - **CA — le retour automatique s’annonce par un signal DISCRET, non chiffré** : une barre de progression et la mention « retour automatique », **sans compter les secondes**. ⚠️ **Le compte à rebours chiffré a été explicitement écarté au cadrage** : c’est la signature de la variante **C** du questionnaire S06, elle-même écartée au profit de la variante **A**. Un écran qui disparaît sans prévenir se lit comme un plantage, d’où le signal ; le chiffre, lui, rouvrait une variante déjà tranchée. ⚠️ **Reste un écart à la planche S06**, qui ne montre aucun signal : à tracer dans [`docs/maquettes.md`](../docs/maquettes.md), faute de quoi `E17US008` le relèvera comme écart de structure et le retirera.
 - **CA — la place finale n’est annoncée que si le rang est établi** : sinon l’écran dit ce qu’il sait (fourchette, ou tour de sortie), sans jamais laisser croire à un classement acquis.
 - **Notes** : ⚠️ **Vérifié dans le code au découpage — la moitié du travail est déjà là, l'autre pas du tout.**
@@ -608,6 +621,23 @@
   - ⚠️ **Deux cas adverses à couvrir, rendus par la revue** : un **repêché sans destination** (`REPECHAGE_SANS_DESTINATION`, `destination = None`) a « une suite », donc le minuteur emporterait le seul écran qui lui dit qu'il est repêché **sans lui dire où aller** ; et un **`TERMINE` sans aucune place** (`rang_final`, `rang_min` et `rang_max` tous `None`, motif `RANG_A_VENIR`) fait tomber la prémisse du CA « il reste, c'est là qu'il lit sa place » — il n'y a aucune place à lire. ✅ **Les deux sont couverts par le CA de la poignée de réouverture**, pas par une exception au minuteur : l’écran se referme comme les autres, et se rouvre à la main.
   - ⚠️ **Le CA *la place finale…* est en grande partie tenu, mais par accident, et c'est le piège** : `rang_final` est calculé **inconditionnellement** dès l'issue `TERMINE` (`backend/application/routage.py`), et le front replie sur `rang_min`/`rang_max` puis sur `tour_sortie` (`presentation.ts`). Le comportement observable ressemble à la règle ; **rien dans le code ne la porte**. Un `null` qui cesse d'être `null` la révoque en silence — d'où un test qui l'épingle. ⚠️ **Un test qui épingle une règle que le code ne fonde pas EST de la dette de conception** : à l'implémentation, soit la règle entre dans le code, soit elle s'inscrit au registre.
   - ⚠️ **`docs/fonctionnel/E04US018.md` est PÉRIMÉE sur ce point, pas seulement incomplète** *(corrigé en revue)* : elle affirme que pour un archer sorti avant les demi-finales « la mention **reste** *rang publié en fin de phase* », alors que depuis `E07US008` le front rend une **fourchette** (« 5ᵉ-8ᵉ du tableau ») et que `RANG_A_VENIR` ne subsiste **que** là où rien n'est acquis. L'US la **reprend**, elle ne fait pas que l'étendre. Elle ne mentionne par ailleurs aucune fermeture automatique.
+  - **✅ Décisions de comportement, reversees ici en revue** (elles ne vivaient que dans le code et la
+    fiche de recette) : **(a)** le décompte part de l'**ouverture du panneau**, pas de l'arrivée des
+    données — un écran resté 3 min sur « Recherche des destinations… » se rend quand même ; **(b)** le
+    minuteur **ne se réarme pas** à l'interaction ; **(c)** le panneau est rendu **avant** les sorties
+    `isPending` / `isError` de ses deux appelants — son ancre est son instant de **montage**, donc
+    placé après, un refetch en échec (`retry: false`) le démontait et le remontait avec trois minutes
+    neuves : il ne se refermait **jamais** sur un wifi de salle. ⚠️ **L'ordre des branches est la
+    règle** ; aucun test de rendu ne le protège (ils montent le composant une fois). Une US suivante
+    qui dérive ses tests des CA ne verrait aucune des trois.
+  - ⚠️ **COÛT ASSUMÉ — le décompte court écran éteint** *(arbitré par le commanditaire le
+    10/09/2026 : temps d'horloge, pas temps visible)*. Sur une tablette BYOD qui se met en veille
+    (30 s à 2 min), les archers rangent leurs flèches, reviennent, réveillent l'écran — le panneau a
+    déjà disparu. Un seul concept a été préféré à deux ; la poignée rattrape, à condition de savoir
+    qu'il y avait quelque chose à lire. **À rouvrir si un tournoi réel remonte le cas.**
+  - ⚠️ **L'étape « ne touchez à rien pendant trois minutes » de la fiche de recette n'est pas
+    exécutable telle quelle** sur une vraie tablette : le testeur devra l'empêcher de dormir, donc ne
+    testera pas tout à fait le comportement livré. Conséquence directe du point ci-dessus.
 - **Dépend de** : E04US018 (routage) · **Jalon** : J3 · **Origine** : questionnaire S06, 04/08/2026 — sortie d'`E16US011` le 10/09/2026
 
 ---

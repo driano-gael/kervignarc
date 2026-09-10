@@ -638,40 +638,46 @@ def test_rang_final_publie_quand_le_podium_est_acquis() -> None:
     assert all(r.issue is IssueRoutage.TERMINE and r.prochain is None for r in routage.archers)
 
 
-def test_aucune_place_annoncee_tant_que_le_match_terminal_n_est_pas_joue() -> None:
+def test_le_panneau_n_annonce_jamais_une_place_que_nul_match_n_a_decernee() -> None:
     """CA E16US018 « la place finale n'est annoncée que si le rang est établi ».
 
-    Petite finale jouée, **finale pas encore tirée** : les rangs 3-4 sont acquis et sortent, mais
-    l'or et l'argent ne sont décernés par aucun match. Les deux finalistes ne doivent porter
-    **aucun rang** — ni exact, ni fourchette promue en place.
+    Tableau de 8, quarts joués : les quatre battus sont **5ᵉ-8ᵉ ex æquo** et aucun match ne les
+    départage. Ils doivent porter la **fourchette** et **aucun rang exact**.
 
-    ⚠️ Le sens manquait : `test_rang_final_publie_quand_le_podium_est_acquis` joue les deux matchs,
-    donc il ne prouve que « acquis ⇒ publié ». Rien n'interdisait l'inverse — annoncer une place
-    que nul match n'a décernée — alors que c'est là qu'est le CA.
+    ⚠️ **Ce test mord sur le choix de source**, et c'est le seul angle qui le fasse
+    (relevé en revue par 3 axes). La régression visée — `_grille` dérivant `rangs`
+    de `positions_acquises()` au lieu de `classement()` — promouvrait `rang_min` en
+    `rang_final`, et chacun des quatre battus lirait « 5ᵉ du tableau ».
+
+    ⚠️ **Ne pas reconstruire ce test sur un décor à quatre archers.** La version
+    d'origine prenait les *finalistes* comme témoins, or ils sortent en `PROCHAIN_DUEL`
+    **avant** toute lecture de rang (`_router`) : ses assertions ne portaient que sur
+    les valeurs par défaut de la dataclass — vertes sous la régression qu'elles
+    prétendaient interdire.
     """
     monde = _Monde()
-    archers = _quatre(monde)
+    archers = _huit(monde)
     monde.placer()
-    monde.gagner(1)
-    monde.gagner(2)
-    tableau, _ = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
-    petite = tableau.petite_finale
-    assert petite is not None
-    monde.gagner(petite.numero)
+    battus = [monde.perd_de(numero) for numero in (1, 2, 3, 4)]
+    for numero in (1, 2, 3, 4):
+        monde.gagner(numero)
 
-    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+    routage = monde.routage.routage(monde.depart_id, tuple(battus))
 
-    finalistes = [r for r in routage.archers if r.issue is IssueRoutage.PROCHAIN_DUEL]
-    assert len(finalistes) == 2, "les deux finalistes attendent encore la finale"
-    for ligne in finalistes:
-        assert ligne.rang_final is None
-        assert (ligne.rang_min, ligne.rang_max) == (None, None)
-    classes = sorted(
-        r.rang_final
-        for r in routage.archers
-        if r.issue is IssueRoutage.TERMINE and r.rang_final is not None
-    )
-    assert classes == [3, 4], "la petite finale, elle, a bien décerné ses deux places"
+    assert len(routage.archers) == 4
+    for ligne in routage.archers:
+        assert ligne.issue is IssueRoutage.TERMINE
+        assert ligne.rang_final is None, "aucun match n'a décerné de rang exact à un battu de quart"
+        assert (ligne.rang_min, ligne.rang_max) == (5, 8), "la fourchette, elle, est acquise"
+
+    # Le versant « acquis ⇒ publié » reste couvert par
+    # `test_rang_final_publie_quand_le_podium_est_acquis`.
+    encore_en_lice = monde.routage.routage(monde.depart_id, tuple(archers)).archers
+    assert all(
+        ligne.rang_final is None
+        for ligne in encore_en_lice
+        if ligne.issue is IssueRoutage.PROCHAIN_DUEL
+    ), "un archer qui a encore un match devant lui ne porte aucune place"
 
 
 # --- Ce que le panneau ne sait pas router ------------------------------------------------------
@@ -1111,6 +1117,44 @@ def test_une_phase_en_pause_route_l_archer_en_attente() -> None:
         assert ligne.motif is not None and "pause" in ligne.motif.lower()
         # Le panneau reste **nominatif** même dégradé : quatre lignes anonymes seraient illisibles.
         assert ligne.nom
+
+
+def test_un_avis_global_est_marque_ecriteau_une_annonce_ne_l_est_pas() -> None:
+    """CA E16US018 — l'écran ne se referme pas tout seul sur un **écriteau**.
+
+    Un avis global (« tir suspendu », « phase non configurée ») vaut **tant que la situation
+    dure** — une pause tient 15 à 20 minutes — alors qu'une annonce de destination se lit une fois
+    et s'emporte. Le minuteur de 3 minutes emporterait l'écriteau au tiers de la pause.
+
+    ⚠️ **C'est le serveur qui le dit**, et le test le vérifie des deux côtés : un panneau nominal
+    ne doit **pas** être marqué. Déduire l'écriteau côté client de « toutes les lignes sont en
+    attente » confondrait la pause avec une ronde suisse où les quatre archers portent un bye.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+
+    nominal = monde.routage.routage(monde.depart_id, tuple(archers))
+    assert nominal.avis_permanent is False, "un panneau qui route vraiment est une annonce"
+
+    _mettre_en_pause(monde)
+    en_pause = monde.routage.routage(monde.depart_id, tuple(archers))
+    assert en_pause.avis_permanent is True
+
+
+def test_sans_phase_de_tableau_le_panneau_est_un_ecriteau() -> None:
+    """Même règle pour l'état le plus fréquent de la journée : la phase finale n'est configurée
+    qu'une fois la qualification close, et « phase finale non configurée » reste vrai tant que
+    l'organisateur n'a rien fait."""
+    monde = _Monde()
+    archer = monde.inscrire_classe(("10", "10"))
+    monde.inscrire_classe(("9", "9"))
+    # aucune phase ELIMINATION_DIRECTE créée
+
+    routage = monde.routage.routage(monde.depart_id, (archer,))
+
+    assert routage.avis_permanent is True
+    assert routage.phase_id is None
 
 
 def test_une_phase_en_pause_ne_fait_pas_tomber_le_routage_sur_une_autre_phase() -> None:

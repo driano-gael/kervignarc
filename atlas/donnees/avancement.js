@@ -2574,7 +2574,8 @@ window.ATLAS.avancement = {
    "adr": [
     "0056",
     "0065",
-    "0067"
+    "0067",
+    "0108"
    ],
    "dettes_introduites": [
     "019",
@@ -4533,7 +4534,9 @@ window.ATLAS.avancement = {
    "titre_story": "Le classement des clubs entre eux ✅"
   },
   {
-   "adr": [],
+   "adr": [
+    "0108"
+   ],
    "dettes_introduites": [],
    "dettes_resorbees": [],
    "epic": "16",

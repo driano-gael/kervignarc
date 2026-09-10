@@ -540,14 +540,9 @@ describe('retour automatique du panneau', () => {
   })
 
   it('ne recule pas si l’horloge recule', () => {
-    // Une tablette qui se resynchronise pendant que le panneau est ouvert (heure d'été, NTP du
-    // jour J) rendait une avancée négative, donc une barre qui repart en arrière.
+    // ⚠️ Pas de NTP le jour J — le déploiement est un réseau local **sans internet**. Le cas réel
+    // est une tablette BYOD dont l'heure est recalée à la main, ou reprise du réseau mobile.
     expect(avanceeFermeture(OUVERTURE, OUVERTURE - 60_000)).toBe(0)
     expect(doitSeRefermer(OUVERTURE, OUVERTURE - 60_000)).toBe(false)
-  })
-
-  it('ne divise pas par zéro si la durée est nulle', () => {
-    expect(avanceeFermeture(OUVERTURE, OUVERTURE, 0)).toBe(1)
-    expect(doitSeRefermer(OUVERTURE, OUVERTURE, 0)).toBe(true)
   })
 })

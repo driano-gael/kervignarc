@@ -9654,6 +9654,94 @@ window.ATLAS.decisions = {
    "us": [
     "E16US011"
    ]
+  },
+  {
+   "amende_par": [],
+   "date": "2026-09-10",
+   "date_brute": "2026-09-10",
+   "extrait": "1. Une durée unique — 3 minutes — aveugle aux issues des lignes. Le minuteur ne lit aucune IssueRoutage. La condition « si un autre tour suit » du questionnaire est retirée : trois minutes suffisent à lire « 3ᵉ du tableau », et le cas terminal est couvert par la durée elle-même. 2. Toute porte automatique porte une poignée. Un panneau refermé — au bouton ou au délai — se rouvre à la main, des deux côtés. La qualification l'avait depuis E04US018 ; les duels l'ont gagnée ici. En duels la poignée nomme son duel (« — duel n°3 ») : elle rouvre un instantané qui peut dater d'une heure, là où la qualification suit la cible affichée. 3. Un écriteau ne se referme pas. Un avis global — « tir suspendu […]",
+   "fichier": "docs/adr/0108-un-panneau-d-annonce-se-referme-sur-une-duree-jamais-sur-ses-issues.md",
+   "identifiant": "0108",
+   "liens": [
+    {
+     "cible": "0074",
+     "libelle": "S'appuie sur",
+     "sens": "sortant",
+     "type": "socle"
+    }
+   ],
+   "portage": [
+    {
+     "chemin": "backend/api/v1/routage.py",
+     "existe": true,
+     "symboles": [
+      "RoutageReponse.avis_permanent"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "backend/application/routage.py",
+     "existe": true,
+     "symboles": [
+      "Routage.avis_permanent",
+      "_tous_indisponibles"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/PanneauRoutage.tsx",
+     "existe": true,
+     "symboles": [
+      "useMaintenant",
+      "JaugeRetour",
+      "ecriteau"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/routage/presentation.ts",
+     "existe": true,
+     "symboles": [
+      "FERMETURE_MS",
+      "avanceeFermeture",
+      "doitSeRefermer",
+      "encoreEnLice"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie-duels/SaisieDuels.tsx",
+     "existe": true,
+     "symboles": [
+      "isPending",
+      "isError"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    },
+    {
+     "chemin": "frontend/src/features/saisie/Saisie.tsx",
+     "existe": true,
+     "symboles": [
+      "panneauOuvert",
+      "apresRetour"
+     ],
+     "symboles_absents": [],
+     "verifiable": true
+    }
+   ],
+   "remplace_par": "",
+   "statut": "accepte",
+   "statut_brut": "Accepté",
+   "titre": "Un panneau d'annonce se referme sur une durée, jamais sur ses issues",
+   "us": [
+    "E04US018",
+    "E16US018"
+   ]
   }
  ]
 };
