@@ -950,6 +950,11 @@ class ServiceRoutage:
                 destination=destination,
                 motif=REPECHAGE_SANS_DESTINATION if destination is None else None,
             )
+        # ⚠️ **`rang_final` ne vaut que ce que `Tableau.classement()` a décidé** — des places
+        # **acquises**, chacune décernée par un match terminal (E16US018, CA « la place finale n'est
+        # annoncée que si le rang est établi »). C'est l'invariant du domaine qui porte ce CA, pas
+        # une garde locale : le remplacer par `positions_acquises()`, qui rend aussi des fourchettes
+        # et la plage d'un match **en cours**, ferait annoncer une place à qui n'a rien gagné.
         rang = grille.rangs.get(moi)
         fourchette = fourchette_de_rangs(rang, dernier if a_perdu else None, tableau.effectif)
         return RoutageArcher(

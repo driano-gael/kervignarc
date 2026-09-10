@@ -638,6 +638,42 @@ def test_rang_final_publie_quand_le_podium_est_acquis() -> None:
     assert all(r.issue is IssueRoutage.TERMINE and r.prochain is None for r in routage.archers)
 
 
+def test_aucune_place_annoncee_tant_que_le_match_terminal_n_est_pas_joue() -> None:
+    """CA E16US018 « la place finale n'est annoncée que si le rang est établi ».
+
+    Petite finale jouée, **finale pas encore tirée** : les rangs 3-4 sont acquis et sortent, mais
+    l'or et l'argent ne sont décernés par aucun match. Les deux finalistes ne doivent porter
+    **aucun rang** — ni exact, ni fourchette promue en place.
+
+    ⚠️ Le sens manquait : `test_rang_final_publie_quand_le_podium_est_acquis` joue les deux matchs,
+    donc il ne prouve que « acquis ⇒ publié ». Rien n'interdisait l'inverse — annoncer une place
+    que nul match n'a décernée — alors que c'est là qu'est le CA.
+    """
+    monde = _Monde()
+    archers = _quatre(monde)
+    monde.placer()
+    monde.gagner(1)
+    monde.gagner(2)
+    tableau, _ = monde.saisie.reconstruire(monde.tournoi_id, monde.phase_id or 0)
+    petite = tableau.petite_finale
+    assert petite is not None
+    monde.gagner(petite.numero)
+
+    routage = monde.routage.routage(monde.depart_id, tuple(archers))
+
+    finalistes = [r for r in routage.archers if r.issue is IssueRoutage.PROCHAIN_DUEL]
+    assert len(finalistes) == 2, "les deux finalistes attendent encore la finale"
+    for ligne in finalistes:
+        assert ligne.rang_final is None
+        assert (ligne.rang_min, ligne.rang_max) == (None, None)
+    classes = sorted(
+        r.rang_final
+        for r in routage.archers
+        if r.issue is IssueRoutage.TERMINE and r.rang_final is not None
+    )
+    assert classes == [3, 4], "la petite finale, elle, a bien décerné ses deux places"
+
+
 # --- Ce que le panneau ne sait pas router ------------------------------------------------------
 
 
